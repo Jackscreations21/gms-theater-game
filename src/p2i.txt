@@ -1,0 +1,249 @@
+
+/* ============================================================================
+   ROOMS — portal culling
+
+   The building is five rooms in a line: the scene shop, the backstage crossover
+   and dock, the stage, the auditorium, and the front of house.  You can only
+   ever see the room you are standing in and the one either side of it, so
+   everything else is switched off before the renderer ever looks at it.
+
+   Nothing here moves geometry.  Each room is an empty Group sitting at the
+   origin, so a mesh keeps exactly the position it was built with when it is
+   handed over to its room.  Anything that straddles a boundary — the walls, the
+   proscenium, the doors — goes in SHARED and is never hidden, and so does
+   anything carrying a light, because hiding a light would change the look of a
+   room you can still see into.
+   ========================================================================== */
+const ROOM_ORDER = ['stage','house','lobby'];
+const ROOMS = {
+  /* Three rooms now.  Nothing lives behind the stage any more, and the
+     loading dock is off the stage-right wing — same z, so it is part of the
+     stage and culls with it.                                              */
+  stage: {label:'the stage',          z0:-Infinity,          z1:1.3},
+  house: {label:'the auditorium',     z0:1.3,                z1:D.houseBack + 0.5},
+  lobby: {label:'the front of house', z0:D.houseBack + 0.5,  z1:Infinity}
+};
+/* what you can see from where.  A room always sees itself and its neighbours,
+   so walking through a door never pops anything in. */
+const ROOM_SEES = {
+  stage: ['stage','house'],
+  house: ['house','stage','lobby'],
+  lobby: ['lobby','house']
+};
+const SHARED = new T.Group();
+SHARED.name = 'shared';
+const ROOM_GROUP = {};
+let ROOMS_BUILT = false;
+let curRoom = 'house';
+
+/* which room is a point standing in */
+function roomAt(z){
+  for(const n of ROOM_ORDER){ const r = ROOMS[n]; if(z >= r.z0 && z < r.z1) return n; }
+  return 'stage';
+}
+
+/* A world-space box that understands instanced meshes.  r128 builds an
+   instanced bounding box from the base geometry alone, which would put all
+   1392 seats at the origin and file the whole auditorium under "the stage". */
+const _rb = new T.Box3(), _rm = new T.Matrix4();
+function worldBox(obj){
+  const box = new T.Box3();
+  obj.traverse(c=>{
+    const g = c.geometry;
+    if(!g || !(c.isMesh || c.isLine || c.isPoints)) return;
+    if(!g.boundingBox) g.computeBoundingBox();
+    if(!g.boundingBox) return;
+    if(c.isInstancedMesh){
+      for(let i=0;i<c.count;i++){
+        c.getMatrixAt(i, _rm);
+        if(_rm.elements[0] === 0 && _rm.elements[5] === 0 && _rm.elements[10] === 0) continue;
+        _rm.premultiply(c.matrixWorld);
+        _rb.copy(g.boundingBox).applyMatrix4(_rm);
+        if(!isFinite(_rb.min.x) || !isFinite(_rb.max.x)) continue;
+        box.union(_rb);
+      }
+    } else {
+      _rb.copy(g.boundingBox).applyMatrix4(c.matrixWorld);
+      box.union(_rb);
+    }
+  });
+  return box.isEmpty() ? null : box;
+}
+function carriesLight(obj){
+  let found = false;
+  obj.traverse(c=>{ if(c.isLight) found = true; });
+  return found;
+}
+/* If I pin a whole room by hand and it happens to contain lights, the lights
+   have to come out of it — a hidden light is a dark room.  They are lifted into
+   SHARED at their exact world transform, so nothing moves.                   */
+const _lp = new T.Vector3(), _lq = new T.Quaternion(), _ls = new T.Vector3();
+function liftLights(obj){
+  const found = [];
+  obj.traverse(c=>{ if(c.isLight) found.push(c); });
+  for(const l of found){
+    l.updateMatrixWorld(true);
+    l.matrixWorld.decompose(_lp, _lq, _ls);
+    if(l.target && l.target.isObject3D && l.target.parent){
+      l.target.updateMatrixWorld(true);
+      const tp = new T.Vector3().setFromMatrixPosition(l.target.matrixWorld);
+      SHARED.add(l.target);
+      l.target.position.copy(tp);
+    }
+    SHARED.add(l);
+    l.position.copy(_lp); l.quaternion.copy(_lq); l.scale.copy(_ls);
+    l.updateMatrix();
+  }
+  return found.length;
+}
+/* which rooms does this thing overlap?  More than one and it is shared. */
+function roomsOver(box){
+  const hit = [];
+  for(const n of ROOM_ORDER){
+    const r = ROOMS[n];
+    if(box.max.z > r.z0 + 0.02 && box.min.z < r.z1 - 0.02) hit.push(n);
+  }
+  return hit;
+}
+
+/* ---- sort the building into its rooms.  Run once, after it is all built. ---- */
+const ROOM_FORCE = new Map();          // things I want kept together by hand
+function roomForce(obj, room){ if(obj) ROOM_FORCE.set(obj, room); }
+
+function buildRooms(){
+  if(ROOMS_BUILT) return;
+  world.updateMatrixWorld(true);
+  for(const n of ROOM_ORDER){
+    const g = new T.Group(); g.name = n;
+    ROOM_GROUP[n] = g;
+  }
+  const kids = world.children.slice();
+  const tally = {shared:0};
+  for(const n of ROOM_ORDER) tally[n] = 0;
+
+  for(const o of kids){
+    let room = ROOM_FORCE.get(o) || null;
+    if(room && room !== 'shared' && !ROOM_GROUP[room]) room = 'shared';   // a room that no longer exists
+    if(!room && carriesLight(o)) room = 'shared';
+    if(!room){
+      const box = worldBox(o);
+      if(!box) room = 'shared';
+      else {
+        const over = roomsOver(box);
+        room = (over.length === 1) ? over[0] : 'shared';
+      }
+    }
+    (room === 'shared' ? SHARED : ROOM_GROUP[room]).add(o);
+    if(room !== 'shared') liftLights(o);
+    tally[room]++;
+  }
+  for(const n of ROOM_ORDER) world.add(ROOM_GROUP[n]);
+  world.add(SHARED);
+  world.updateMatrixWorld(true);
+  ROOMS_BUILT = true;
+  ROOM_TALLY = tally;
+  return tally;
+}
+let ROOM_TALLY = null;
+
+/* ---- the doors are real portals ----
+   The only way between the auditorium and the front of house is through the
+   pass doors.  With every one of them shut there is nothing to see, so the
+   room on the far side comes off the list entirely.  Everything else — the
+   crossover openings, the proscenium arch — is a permanent hole in a wall
+   and is always treated as open.                                            */
+function doorsShut(){
+  for(const dw of DOORWAYS){
+    if(dw.plane !== 'foh') continue;
+    for(const l of dw.leaves) if(l.open > 0.01 || l.target > 0.01) return false;
+  }
+  return true;
+}
+/* The house curtain is a portal too, and the one you spend most of a working
+   day behind.  With it in and closed there is no auditorium to see from
+   upstage of it — so from the stage the whole house comes off the list.  Only
+   in that direction: from the auditorium the curtain itself is part of the
+   stage, so the stage is never culled from out front.                       */
+function houseCurtainShut(){
+  for(const ls of FLY){
+    const spec = GOODS[ls.goodsKey];
+    // any traveler is a front curtain — a show can hang its own
+    if(!spec || !spec.traveler) continue;
+    const trim = TRIMS[ls.goodsKey] !== undefined ? TRIMS[ls.goodsKey] : TRIMS.house;
+    if(ls.pos > trim + 0.4) continue;                     // flown out
+    if(ls.open > 0.02 || ls.travTarget > 0.02) continue;  // drawn open
+    return ls;
+  }
+  return null;
+}
+function portalShut(a, b){
+  if((a === 'house' && b === 'lobby') || (a === 'lobby' && b === 'house'))
+    return doorsShut();
+  if(a === 'stage' && b === 'house'){
+    const c = houseCurtainShut();
+    if(!c) return false;
+    // and only if you are actually standing behind it
+    const z = (Player.mode === 'walk') ? Player.pos.z : camera.position.z;
+    return z < c.z - 0.4;
+  }
+  return false;
+}
+
+/* ---- switch the rooms on and off as you move ---- */
+let roomsShown = '';
+function updateRooms(force){
+  if(!ROOMS_BUILT) return curRoom;
+  /* Two buildings.  Whichever one you are standing in, the other is switched
+     off at the root — geometry, lights and all — so the far venue costs
+     nothing while you are not in it.                                       */
+  if(typeof ARC !== 'undefined' && ARC.built){
+    const px = (Player.mode === 'walk') ? Player.pos.x : camera.position.x;
+    const ven = venueAt(px);
+    if(ven !== VENUE){ VENUE = ven; force = true; roomsShown = ''; shadowsDirty = true; }
+    ARC.group.visible = (ven === 'arc');
+    if(ven === 'arc'){
+      for(const n of ROOM_ORDER) ROOM_GROUP[n].visible = false;
+      SHARED.visible = false;
+      updateArcRooms(force);
+      return curRoom;
+    }
+    SHARED.visible = true;
+  }
+  const z = (Player.mode === 'walk') ? Player.pos.z : camera.position.z;
+  const now = roomAt(z);
+  let on;
+  if(QUALITY.rooms){
+    on = ROOM_SEES[now].filter(n => n === now || !portalShut(now, n));
+  } else on = ROOM_ORDER;
+  const key = QUALITY.rooms ? on.join(',') : 'all';
+  if(key === roomsShown && !force){ curRoom = now; return now; }
+  roomsShown = key;
+  for(const n of ROOM_ORDER) ROOM_GROUP[n].visible = on.indexOf(n) !== -1;
+  if(curRoom !== now && QUALITY.rooms) shadowsDirty = true;
+  curRoom = now;
+  return now;
+}
+/* what is actually being drawn right now */
+function roomsLive(){
+  if(typeof VENUE !== 'undefined' && VENUE === 'arc')
+    return ARC.order.filter(n=>ARC.rooms[n].visible).map(n=>'arc:'+n);
+  if(!ROOMS_BUILT) return ROOM_ORDER.concat(['shared']);
+  const out = ['shared'];
+  for(const n of ROOM_ORDER) if(ROOM_GROUP[n].visible) out.push(n);
+  return out;
+}
+/* what a room costs, for the readout on the settings card */
+function roomCost(name){
+  const g = (name === 'shared') ? SHARED : ROOM_GROUP[name];
+  if(!g) return {meshes:0, tris:0};
+  let meshes = 0, tris = 0;
+  g.traverse(c=>{
+    if(!c.isMesh || !c.geometry) return;
+    meshes++;
+    const idx = c.geometry.index;
+    const n = idx ? idx.count/3 : (c.geometry.attributes.position ?
+      c.geometry.attributes.position.count/3 : 0);
+    tris += n * (c.isInstancedMesh ? c.count : 1);
+  });
+  return {meshes, tris:Math.round(tris)};
+}

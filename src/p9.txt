@@ -1,0 +1,719 @@
+
+/* ============================================================================
+   VR  —  WebXR, built for a Quest 3 at 90Hz
+
+   The same building, the same board, the same shows.  What changes is that
+   you are standing in it: you walk on the sticks, and instead of a web page
+   along the bottom of a monitor there is a lighting console in each house
+   that you walk up to and point at.
+
+   Nothing here touches the desktop.  The game detects what it is running on
+   and configures itself; on a monitor every line below is inert.
+
+   Two notes on how WebXR wants to be driven:
+   · the camera is moved BY THE HEADSET, so the player has to be a rig that
+     the camera sits inside — write to camera.position in a session and the
+     next pose overwrites you;
+   · the frame loop has to come from renderer.setAnimationLoop, because in a
+     session requestAnimationFrame is the page's clock, not the headset's.
+   ========================================================================== */
+/* `var`, deliberately.  Function declarations hoist to the top of the whole
+   concatenated script, so updatePlayer can be called before this file has been
+   evaluated — and `typeof VR` on a `const` in that window does not return
+   'undefined', it throws.  A `var` is simply undefined until we get here, which
+   is what every guard below is written against. */
+var VR = {
+  supported: false, active: false,
+  rig: null, camHome: null,
+  controllers: [], grips: [], ray: null, cursor: null,
+  axes: {lx:0, ly:0, rx:0, ry:0},
+  speed: 3.2, turn: 2.1,
+  desks: [], deskMeshes: [], hits: [], page: 'cues',
+  canvas: null, ctx: null, tex: null,
+  hover: null, held: null, ropes: [], goButtons: [],
+  saved: null, drawT: 0, session: null
+};
+
+/* ---------------------------------------------------------------- detect */
+function vrDetect(){
+  const btn = $('#vrBtn');
+  if(!navigator.xr || !navigator.xr.isSessionSupported){
+    if(btn) btn.style.display = 'none';
+    return Promise.resolve(false);
+  }
+  return navigator.xr.isSessionSupported('immersive-vr').then(ok=>{
+    VR.supported = !!ok;
+    if(btn) btn.style.display = ok ? '' : 'none';
+    return VR.supported;
+  }).catch(()=>{ if(btn) btn.style.display = 'none'; return false; });
+}
+
+/* ============================================================================
+   THE QUALITY TIER
+   A Quest 3 at 90Hz has eleven milliseconds to draw the room TWICE.  The
+   expensive things here are the ones this game is made of — additive beams in
+   haze are overdraw, and overdraw is what a mobile tile renderer hates most.
+   So a session turns the count down rather than the quality: the beams stay,
+   there are simply fewer of them alight at once.
+   ========================================================================== */
+function vrQualityOn(){
+  if(VR.saved) return;
+  VR.saved = {
+    shadows: renderer.shadowMap.enabled,
+    budget: RIG.shadowBudget,
+    smoke: SMOKE.n,
+    pixelRatio: renderer.getPixelRatio ? renderer.getPixelRatio() : 1,
+    far: camera.far
+  };
+  renderer.shadowMap.enabled = false;         // the single biggest win
+  RIG.shadowBudget = 0;
+  VR.beamCap = 14;                            // beams alight at once
+  camera.far = 160;                           // the far building is switched off anyway
+  camera.updateProjectionMatrix();
+  if(renderer.xr && renderer.xr.setFoveation) renderer.xr.setFoveation(0.4);
+  if(typeof toast === 'function') toast('VR: shadows off, beams capped, 90Hz');
+}
+function vrQualityOff(){
+  if(!VR.saved) return;
+  renderer.shadowMap.enabled = VR.saved.shadows;
+  RIG.shadowBudget = VR.saved.budget;
+  camera.far = VR.saved.far;
+  camera.updateProjectionMatrix();
+  VR.beamCap = 0;
+  VR.saved = null;
+}
+/* called from the rig update: keep only the nearest N beams alive */
+const _bp = new T.Vector3();
+function vrCapBeams(){
+  if(!VR || !VR.active || !VR.beamCap) return;
+  const live = [];
+  for(const f of FIXTURES) if(f.beam && f.beam.visible) live.push(f);
+  if(live.length <= VR.beamCap) return;
+  camera.getWorldPosition(_bp);
+  live.sort((a,b)=>a.group.position.distanceToSquared(_bp) -
+                   b.group.position.distanceToSquared(_bp));
+  for(let i = VR.beamCap; i < live.length; i++) live[i].beam.visible = false;
+}
+
+/* ============================================================================
+   THE SESSION
+   ========================================================================== */
+function vrEnter(){
+  if(!VR.supported || VR.active) return;
+  navigator.xr.requestSession('immersive-vr', {
+    optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
+  }).then(s=>{
+    renderer.xr.setReferenceSpaceType('local-floor');
+    return renderer.xr.setSession(s).then(()=>s);
+  }).then(s=>{ VR.session = s; }).catch(e=>{
+    if(typeof toast === 'function') toast('VR would not start: ' + e.message);
+  });
+}
+function vrOnStart(){
+  VR.active = true;
+  /* the camera has to live inside a rig, because in a session the headset
+     writes camera.position every frame and would throw ours away */
+  if(!VR.rig){
+    VR.rig = new T.Group();
+    VR.rig.name = 'vr:rig';
+    scene.add(VR.rig);
+  }
+  VR.camHome = camera.parent;
+  VR.rig.add(camera);
+  Player.mode = 'walk';
+  Player.pitch = 0;
+  vrQualityOn();
+  vrBuildControllers();
+  vrBuildDesks();
+  vrBuildRopes();
+  vrDrawConsole(true);
+  const app = $('#app'); if(app) app.classList.add('inVR');
+  if(typeof toast === 'function') toast('Walk with the left stick, turn with the right');
+}
+function vrOnEnd(){
+  VR.active = false;
+  VR.session = null;
+  if(VR.camHome) VR.camHome.add(camera); else scene.add(camera);
+  vrQualityOff();
+  VR.held = null;
+  const app = $('#app'); if(app) app.classList.remove('inVR');
+}
+
+/* ---- where the rig stands.  Called instead of writing camera.position ---- */
+function vrPlaceRig(){
+  if(!VR || !VR.rig) return;
+  VR.rig.position.set(Player.pos.x, Player.pos.y, Player.pos.z);
+  VR.rig.rotation.set(0, Player.yaw, 0);
+}
+
+/* ============================================================================
+   CONTROLLERS
+   ========================================================================== */
+function vrBuildControllers(){
+  if(VR.controllers.length) return;
+  const rayMat = new T.LineBasicMaterial({color:0x8fd0ff, transparent:true, opacity:0.7});
+  for(let i=0;i<2;i++){
+    const c = renderer.xr.getController(i);
+    c.userData.hand = i;
+    VR.rig.add(c);
+    VR.controllers.push(c);
+
+    if(i === 1){                                   // the right hand points
+      const g = new T.BufferGeometry().setFromPoints(
+        [new T.Vector3(0,0,0), new T.Vector3(0,0,-4)]);
+      const line = new T.Line(g, rayMat);
+      line.name = 'vr:ray';
+      c.add(line);
+      VR.ray = line;
+      const dot = new T.Mesh(new T.SphereGeometry(0.014, 8, 6),
+        new T.MeshBasicMaterial({color:0xffd08a}));
+      dot.visible = false;
+      VR.rig.add(dot);
+      VR.cursor = dot;
+    }
+    c.addEventListener('selectstart', ()=>vrSelect(i, true));
+    c.addEventListener('selectend',   ()=>vrSelect(i, false));
+    c.addEventListener('squeezestart',()=>vrSqueeze(i, true));
+    c.addEventListener('squeezeend',  ()=>vrSqueeze(i, false));
+
+    const grip = renderer.xr.getControllerGrip(i);
+    const body = new T.Mesh(new T.BoxGeometry(0.045, 0.03, 0.12),
+      new T.MeshStandardMaterial({color:0x1a1c22, roughness:.6}));
+    body.position.z = 0.02;
+    const ring = new T.Mesh(new T.TorusGeometry(0.032, 0.008, 6, 16),
+      new T.MeshStandardMaterial({color:0x3a3f48, roughness:.5, metalness:.6}));
+    ring.rotation.x = 0.4; ring.position.set(0, 0.01, -0.03);
+    grip.add(body, ring);
+    VR.rig.add(grip);
+    VR.grips.push(grip);
+  }
+}
+
+/* read the sticks straight off the input sources */
+function vrReadSticks(){
+  VR.axes.lx = VR.axes.ly = VR.axes.rx = VR.axes.ry = 0;
+  const s = renderer.xr.getSession && renderer.xr.getSession();
+  if(!s || !s.inputSources) return;
+  for(const src of s.inputSources){
+    const gp = src.gamepad;
+    if(!gp || !gp.axes) continue;
+    // 0,1 are the touchpad on some runtimes; 2,3 the stick.  Take whichever moves.
+    const ax = (Math.abs(gp.axes[2]||0) + Math.abs(gp.axes[3]||0) > 0.001)
+      ? [gp.axes[2]||0, gp.axes[3]||0] : [gp.axes[0]||0, gp.axes[1]||0];
+    const dead = v => Math.abs(v) < 0.12 ? 0 : v;
+    if(src.handedness === 'left'){ VR.axes.lx = dead(ax[0]); VR.axes.ly = dead(ax[1]); }
+    else                         { VR.axes.rx = dead(ax[0]); VR.axes.ry = dead(ax[1]); }
+  }
+}
+
+/* ============================================================================
+   THE CONSOLE FACE
+   Drawn onto a canvas and mapped onto the desk.  It cannot be the page you
+   see on a monitor — a browser will not hand you HTML as a texture — so this
+   is a console drawn for the purpose, with the same things on it.
+   ========================================================================== */
+const VRC = {W:1200, H:760};
+function vrCanvas(){
+  if(VR.canvas) return VR.canvas;
+  const c = cvs(VRC.W, VRC.H);
+  VR.canvas = c;
+  VR.ctx = c.getContext('2d');
+  VR.tex = tex(c, 1, 1);
+  return c;
+}
+const VR_TABS = [
+  {id:'cues',   label:'CUES'},
+  {id:'lights', label:'LIGHTS'},
+  {id:'fly',    label:'FLY RAIL'},
+  {id:'shows',  label:'SHOWS'},
+  {id:'venues', label:'VENUES'},
+  {id:'smoke',  label:'SMOKE'},
+  {id:'script', label:'SCRIPT'}
+];
+function vrHit(x, y, w, h, fn){ VR.hits.push({x, y, w, h, fn}); }
+
+function vrDrawConsole(force){
+  vrCanvas();
+  const g = VR.ctx, W = VRC.W, H = VRC.H;
+  VR.hits.length = 0;
+
+  g.fillStyle = '#0b0d10'; g.fillRect(0,0,W,H);
+  g.fillStyle = '#12161c'; g.fillRect(0,0,W,64);
+  g.fillStyle = '#1d242e'; g.fillRect(0,62,W,2);
+
+  // which board is this
+  g.font = '600 26px Helvetica, Arial, sans-serif';
+  g.textBaseline = 'middle'; g.textAlign = 'left';
+  g.fillStyle = '#ffb347';
+  const board = (typeof STAGES !== 'undefined' && STAGES[STAGE]) ? STAGES[STAGE].label : '';
+  g.fillText(board, 22, 32);
+
+  // tabs
+  let tx = 380;
+  for(const t of VR_TABS){
+    const w = 112, on = (VR.page === t.id);
+    g.fillStyle = on ? '#26313e' : '#161b22';
+    g.fillRect(tx, 12, w - 6, 40);
+    g.fillStyle = on ? '#ffd08a' : '#8b95a3';
+    g.font = '600 17px Helvetica, Arial, sans-serif';
+    g.textAlign = 'center';
+    g.fillText(t.label, tx + (w-6)/2, 33);
+    vrHit(tx, 12, w - 6, 40, ((id)=>()=>{ VR.page = id; vrDrawConsole(true); })(t.id));
+    tx += w;
+  }
+  g.textAlign = 'left';
+
+  const P = {x:22, y:86, w:W-44, h:H-108};
+  if(VR.page === 'cues')   vrPageCues(g, P);
+  if(VR.page === 'lights') vrPageLights(g, P);
+  if(VR.page === 'fly')    vrPageFly(g, P);
+  if(VR.page === 'shows')  vrPageShows(g, P);
+  if(VR.page === 'venues') vrPageVenues(g, P);
+  if(VR.page === 'smoke')  vrPageSmoke(g, P);
+  if(VR.page === 'script') vrPageScript(g, P);
+
+  if(VR.tex) VR.tex.needsUpdate = true;
+}
+/* ---- little drawing helpers ---- */
+function vrBtnBox(g, x, y, w, h, label, fn, style){
+  const s = style || {};
+  g.fillStyle = s.bg || '#1b232d';
+  g.fillRect(x, y, w, h);
+  g.fillStyle = s.edge || '#2c3846';
+  g.fillRect(x, y, w, 2);
+  g.fillStyle = s.fg || '#d6dee8';
+  g.font = (s.font || '600 18px Helvetica, Arial, sans-serif');
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(label, x + w/2, y + h/2);
+  g.textAlign = 'left';
+  if(fn) vrHit(x, y, w, h, fn);
+}
+function vrBar(g, x, y, w, h, v, col){
+  g.fillStyle = '#151b22'; g.fillRect(x, y, w, h);
+  g.fillStyle = col || '#ffb347'; g.fillRect(x, y, Math.max(0, Math.min(1, v))*w, h);
+}
+
+/* ---------------------------------------------------------------- CUES */
+function vrPageCues(g, P){
+  const rowH = 46, n = Math.floor((P.h - 90)/rowH);
+  const start = Math.max(0, Math.min(nextCue - 2, CUES.length - n));
+  g.font = '600 17px Helvetica, Arial, sans-serif';
+  for(let i=0;i<n && start+i<CUES.length;i++){
+    const c = CUES[start+i], y = P.y + i*rowH, on = (start+i === nextCue);
+    g.fillStyle = on ? '#243447' : (i%2 ? '#0f1319' : '#121821');
+    g.fillRect(P.x, y, P.w - 300, rowH - 4);
+    g.fillStyle = on ? '#ffd08a' : '#7f8b99';
+    g.textBaseline = 'middle';
+    g.fillText('Q' + c.n, P.x + 14, y + rowH/2 - 2);
+    g.fillStyle = on ? '#ffffff' : '#aab4c0';
+    g.fillText(c.label, P.x + 96, y + rowH/2 - 2);
+    g.fillStyle = '#5d6874';
+    g.fillText(c.fade + 's', P.x + P.w - 360, y + rowH/2 - 2);
+    vrHit(P.x, y, P.w - 300, rowH - 4, ((k)=>()=>{ nextCue = k; vrDrawConsole(true); })(start+i));
+  }
+  const bx = P.x + P.w - 280;
+  vrBtnBox(g, bx, P.y, 280, 120, 'GO', ()=>{ go(); vrDrawConsole(true); },
+           {bg:'#1f6b2e', fg:'#ffffff', font:'700 48px Helvetica, Arial, sans-serif'});
+  vrBtnBox(g, bx, P.y + 132, 134, 56, 'BACK', ()=>{ goBack(); vrDrawConsole(true); });
+  vrBtnBox(g, bx + 146, P.y + 132, 134, 56, 'TOP',
+           ()=>{ nextCue = 0; vrDrawConsole(true); });
+  vrBtnBox(g, bx, P.y + 200, 280, 52, 'HOLD FADES',
+           ()=>{ FIXTURES.forEach(f=>{ f.lvlDur=0; f.colDur=0; }); });
+  g.fillStyle = '#5d6874';
+  g.font = '400 16px Helvetica, Arial, sans-serif';
+  g.fillText(CUES.length + ' cues  ·  next Q' +
+             (CUES[nextCue] ? CUES[nextCue].n : '—'), bx, P.y + 280);
+}
+/* -------------------------------------------------------------- LIGHTS */
+function vrPageLights(g, P){
+  const cols = SECTIONS.length, w = Math.floor(P.w/cols) - 8;
+  for(let i=0;i<cols;i++){
+    const s = SECTIONS[i], x = P.x + i*(w + 8);
+    g.fillStyle = '#10151b'; g.fillRect(x, P.y, w, P.h - 60);
+    g.fillStyle = s.color; g.fillRect(x, P.y, w, 5);
+    g.font = '600 14px Helvetica, Arial, sans-serif';
+    g.fillStyle = '#9aa5b2'; g.textAlign = 'center';
+    s.name.split('<br>').forEach((ln,k)=>g.fillText(ln, x + w/2, P.y + 26 + k*18));
+    // the fader: click anywhere on the track to set it
+    const tx = x + w/2 - 26, ty = P.y + 76, th = P.h - 200;
+    g.fillStyle = '#0a0d11'; g.fillRect(tx, ty, 52, th);
+    const lv = s.level;
+    g.fillStyle = s.color;
+    g.fillRect(tx, ty + th*(1-lv), 52, th*lv);
+    g.fillStyle = '#e8eef5';
+    g.font = '700 20px Helvetica, Arial, sans-serif';
+    g.fillText(Math.round(lv*100), x + w/2, ty + th + 26);
+    vrHit(tx, ty, 52, th, ((sec, y0, hh)=>(u, v)=>{
+      setSection(sec, 1 - (v - y0)/hh, 0.6);
+      vrDrawConsole(true);
+    })(s, ty, th));
+    vrBtnBox(g, x + 6, P.y + P.h - 52, (w-18)/2, 40, '0',
+             ((sec)=>()=>{ setSection(sec, 0, 1); vrDrawConsole(true); })(s));
+    vrBtnBox(g, x + 12 + (w-18)/2, P.y + P.h - 52, (w-18)/2, 40, 'FL',
+             ((sec)=>()=>{ setSection(sec, 1, 1); vrDrawConsole(true); })(s));
+  }
+  g.textAlign = 'left';
+}
+/* ----------------------------------------------------------------- FLY */
+function vrPageFly(g, P){
+  const rowH = 44, n = Math.min(FLY.length, Math.floor(P.h/rowH));
+  g.font = '600 17px Helvetica, Arial, sans-serif';
+  for(let i=0;i<n;i++){
+    const ls = FLY[i], y = P.y + i*rowH;
+    g.fillStyle = i%2 ? '#0f1319' : '#121821';
+    g.fillRect(P.x, y, P.w, rowH - 4);
+    g.fillStyle = '#7f8b99'; g.textBaseline = 'middle';
+    g.fillText(String(ls.id).padStart(2,'0'), P.x + 12, y + rowH/2 - 2);
+    const spec = GOODS[ls.goodsKey];
+    g.fillStyle = '#c6d0dc';
+    g.fillText(spec ? spec.label : ls.goodsKey, P.x + 62, y + rowH/2 - 2);
+    vrBar(g, P.x + 420, y + 12, 260, 16, (ls.pos - 0.6)/(OUT_TRIM - 0.6), '#ffb347');
+    g.fillStyle = '#8f9aa7';
+    g.fillText(ls.pos.toFixed(1) + 'm', P.x + 700, y + rowH/2 - 2);
+    vrBtnBox(g, P.x + 790, y + 3, 84, rowH - 10, 'IN',
+             ((l)=>()=>{ flyIn(l); vrDrawConsole(true); })(ls));
+    vrBtnBox(g, P.x + 882, y + 3, 84, rowH - 10, 'OUT',
+             ((l)=>()=>{ flyOut(l); vrDrawConsole(true); })(ls));
+    vrBtnBox(g, P.x + 974, y + 3, 84, rowH - 10, '■',
+             ((l)=>()=>{ l.target = l.pos; })(ls));
+  }
+  vrBtnBox(g, P.x + P.w - 120, P.y, 116, 46, 'ALL IN',
+           ()=>{ FLY.forEach(flyIn); vrDrawConsole(true); });
+  vrBtnBox(g, P.x + P.w - 120, P.y + 54, 116, 46, 'ALL OUT',
+           ()=>{ FLY.forEach(flyOut); vrDrawConsole(true); });
+}
+/* --------------------------------------------------------------- SHOWS */
+function vrPageShows(g, P){
+  const keys = Object.keys(SHOWS);
+  g.font = '600 19px Helvetica, Arial, sans-serif';
+  keys.forEach((k, i)=>{
+    const y = P.y + i*84, on = (SHOW.key === k);
+    g.fillStyle = on ? '#243447' : '#101620';
+    g.fillRect(P.x, y, P.w - 300, 76);
+    g.fillStyle = on ? '#ffd08a' : '#c6d0dc'; g.textBaseline = 'middle';
+    g.fillText(SHOWS[k].name, P.x + 16, y + 26);
+    g.font = '400 15px Helvetica, Arial, sans-serif';
+    g.fillStyle = '#7f8b99';
+    g.fillText((SHOWS[k].blurb||'').slice(0, 96), P.x + 16, y + 52);
+    g.font = '600 19px Helvetica, Arial, sans-serif';
+    vrHit(P.x, y, P.w - 300, 76, ((key)=>()=>{ VR.showSel = key; vrDrawConsole(true); })(k));
+  });
+  const sel = VR.showSel || SHOW.key || keys[0];
+  const bx = P.x + P.w - 280;
+  vrBtnBox(g, bx, P.y, 280, 62, 'LOAD IN',
+           ()=>{ showLoad(sel); vrDrawConsole(true); }, {bg:'#1f4f6b'});
+  vrBtnBox(g, bx, P.y + 72, 280, 62, 'CALL THE CREW',
+           ()=>{ crewLoadShow(sel); vrDrawConsole(true); });
+  vrBtnBox(g, bx, P.y + 144, 280, 62, 'STRIKE',
+           ()=>{ showStrike(); vrDrawConsole(true); }, {bg:'#5a1f24'});
+  g.fillStyle = '#5d6874'; g.font = '400 16px Helvetica, Arial, sans-serif';
+  g.fillText('selected: ' + (SHOWS[sel] ? SHOWS[sel].name : '—'), bx, P.y + 232);
+}
+/* -------------------------------------------------------------- VENUES */
+function vrPageVenues(g, P){
+  const list = Object.keys(VIEWS);
+  g.font = '600 17px Helvetica, Arial, sans-serif';
+  list.forEach((n, i)=>{
+    const v = VIEWS[n];
+    const col = i % 3, row = Math.floor(i/3);
+    const w = (P.w - 24)/3, x = P.x + col*(w + 12), y = P.y + row*64;
+    const here = (v.venue || 'palace') === VENUE;
+    vrBtnBox(g, x, y, w, 54, v.name, ((k)=>()=>{ goToView(+k); vrDrawConsole(true); })(n),
+             {bg: here ? '#1b232d' : '#12161c', fg: here ? '#d6dee8' : '#69737f'});
+  });
+}
+/* --------------------------------------------------------------- SMOKE */
+function vrPageSmoke(g, P){
+  g.font = '600 17px Helvetica, Arial, sans-serif';
+  SMOKE.units.forEach((u, i)=>{
+    const y = P.y + i*60;
+    if(y > P.y + P.h - 120) return;
+    g.fillStyle = i%2 ? '#0f1319' : '#121821';
+    g.fillRect(P.x, y, P.w - 300, 52);
+    g.fillStyle = '#c6d0dc'; g.textBaseline = 'middle';
+    g.fillText(u.name + (u.show ? '  · show' : ''), P.x + 14, y + 26);
+    vrBar(g, P.x + 300, y + 18, 200, 16, u.out, '#9fb6cc');
+    vrBtnBox(g, P.x + 540, y + 6, 110, 40, 'BURST',
+             ((unit)=>()=>{ smokeBurst(unit); })(u));
+    vrBtnBox(g, P.x + 660, y + 6, 110, 40, u.target > 0.5 ? 'OFF' : 'ON',
+             ((unit)=>()=>{ setSmoke(unit, unit.target > 0.5 ? 0 : 0.8); vrDrawConsole(true); })(u));
+  });
+  const bx = P.x + P.w - 280;
+  vrBtnBox(g, bx, P.y, 280, 56, 'BIG SHOT', ()=>smokeBurstAll(), {bg:'#4a3a1f'});
+  vrBtnBox(g, bx, P.y + 66, 280, 56, 'ALL OFF',
+           ()=>{ smokeAll(0); vrDrawConsole(true); });
+  vrBtnBox(g, bx, P.y + 132, 280, 56, 'FILL TANKS',
+           ()=>{ smokeRefill(); vrDrawConsole(true); });
+}
+/* -------------------------------------------------------------- SCRIPT */
+function vrPageScript(g, P){
+  g.font = '400 17px Helvetica, Arial, sans-serif';
+  g.fillStyle = '#7f8b99'; g.textBaseline = 'middle';
+  g.fillText('The code console is a keyboard job — it stays at the desktop.', P.x, P.y + 14);
+  g.fillText('These run the plots that are already written.', P.x, P.y + 42);
+  const keys = Object.keys(SNIPPETS);
+  keys.forEach((k, i)=>{
+    const y = P.y + 80 + i*66;
+    vrBtnBox(g, P.x, y, 420, 56, k, ((name)=>()=>{
+      Snd.init(); runProgram(SNIPPETS[name]);
+      if(typeof toast === 'function') toast(name + ' running');
+    })(k));
+  });
+  vrBtnBox(g, P.x + 460, P.y + 80, 240, 56, 'STOP', ()=>haltProgram(), {bg:'#5a1f24'});
+}
+
+/* ============================================================================
+   THE DESKS
+   One in each house you can run a show from.  They all show the same board,
+   because there is only one board — it is patched to whichever theatre you
+   are standing in.
+   ========================================================================== */
+function vrMakeDesk(o){
+  const g = new T.Group();
+  g.position.set(o.x, o.y, o.z);
+  g.rotation.y = o.yaw || 0;
+  (o.parent || world).add(g);
+
+  const shell = new T.MeshStandardMaterial({color:0x14181e, roughness:.7, metalness:.2});
+  const trimM = new T.MeshStandardMaterial({color:0x2a323c, roughness:.5, metalness:.5});
+
+  // the carcass: a desk you stand at, top at about a metre
+  const top = new T.Mesh(new T.BoxGeometry(1.5, 0.06, 0.62), shell);
+  top.position.set(0, 0.98, 0); g.add(top);
+  const front = new T.Mesh(new T.BoxGeometry(1.5, 0.94, 0.06), shell);
+  front.position.set(0, 0.5, 0.3); g.add(front);
+  for(const sx of [-1, 1]){
+    const leg = new T.Mesh(new T.BoxGeometry(0.07, 0.96, 0.55), trimM);
+    leg.position.set(sx*0.7, 0.48, 0); g.add(leg);
+  }
+  // the face, raked back like a console
+  const faceGeo = new T.PlaneGeometry(1.42, 0.9);
+  const faceMat = new T.MeshBasicMaterial({map:VR.tex});
+  const face = new T.Mesh(faceGeo, faceMat);
+  face.position.set(0, 1.36, -0.24);
+  face.rotation.x = -0.42;
+  face.userData.deskFace = true;
+  g.add(face);
+  const bezel = new T.Mesh(new T.BoxGeometry(1.5, 0.98, 0.04), trimM);
+  bezel.position.set(0, 1.36, -0.27);
+  bezel.rotation.x = -0.42;
+  g.add(bezel);
+
+  // a little desk lamp so you can find it in a blackout
+  const lamp = new T.Mesh(new T.SphereGeometry(0.03, 8, 6),
+    new T.MeshBasicMaterial({color:0xff9a3c}));
+  lamp.position.set(-0.62, 1.06, -0.1); g.add(lamp);
+
+  // and the GO button, on the desk, to be pressed with a hand
+  const goBtn = new T.Mesh(new T.CylinderGeometry(0.055, 0.055, 0.028, 16),
+    new T.MeshStandardMaterial({color:0x2fbf4a, roughness:.5}));
+  goBtn.position.set(0.52, 1.015, 0.02);
+  goBtn.userData.goButton = true;
+  g.add(goBtn);
+  VR.goButtons.push({mesh:goBtn, y0:goBtn.position.y, cool:0});
+
+  const d = {group:g, face, label:o.label, stage:o.stage};
+  VR.desks.push(d);
+  VR.deskMeshes.push(face);
+  return d;
+}
+function vrBuildDesks(){
+  if(VR.desks.length) return;
+  vrCanvas();
+
+  /* THE PALACE — on the first balcony rail, where a control position sits */
+  vrMakeDesk({
+    label:'THE PALACE', stage:'palace',
+    x:0, y:D.mezzY, z:D.mezzZ + 1.5, yaw:Math.PI,
+    parent:(typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.house) ? ROOM_GROUP.house : world
+  });
+
+  /* THE ARC — a tech table out in the stalls and a desk at the control room */
+  if(typeof ARC !== 'undefined' && ARC.built){
+    for(const key of ['main','studio']){
+      const H = ARC.houses[key];
+      if(!H || !H.rake) continue;
+      const room = ARC.rooms[H.room];
+      // the tech table: mid stalls, on the rake, facing the stage
+      const midRow = Math.floor(H.rake.zFirst + (H.rake.zLast - H.rake.zFirst)*0.55);
+      const rows = Math.round((midRow - H.rake.zFirst)/H.rake.RUN);
+      vrMakeDesk({
+        label:H.label + ' — TECH TABLE', stage:H.stage,
+        x:H.cx, y:H.rake.Y0 + rows*H.rake.RISE + 0.2,
+        z:H.rake.zFirst + rows*H.rake.RUN, yaw:Math.PI, parent:room
+      });
+      // the control room, at the back under its window
+      vrMakeDesk({
+        label:H.label + ' — CONTROL ROOM', stage:H.stage,
+        x:H.cx, y:AS.BACKY, z:H.zHouse - 1.5, yaw:Math.PI, parent:room
+      });
+    }
+  }
+}
+
+/* ============================================================================
+   THE ROPES
+   A line at the pin rail for every lineset.  Take hold of one and pull it
+   down and the batten comes in; push it up and it goes out.  Let go and it
+   stops where you left it.
+   ========================================================================== */
+function vrBuildRopes(){
+  vrClearRopes();
+  const st = (typeof STAGES !== 'undefined') ? STAGES[STAGE] : null;
+  if(!st) return;
+  const fr = (typeof crewFrame === 'function') ? crewFrame() : null;
+  const railX = fr ? fr.rail : -D.stageW/2 + 2.8;
+  const zOff = fr ? fr.zOff : 0;
+  const parent = (typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.stage)
+    ? ROOM_GROUP.stage : world;
+  const mat = new T.MeshStandardMaterial({color:0xb9a071, roughness:1});
+
+  const holder = new T.Group();
+  holder.name = 'vr:ropes';
+  /* the ropes are placed in WORLD coordinates, so the group holding them has
+     to sit at the world origin whichever building we are in */
+  if(st.venue === 'arc') holder.position.x = -ARC.X;
+  (st.venue === 'arc' ? ARC.rooms[st.room] : parent).add(holder);
+  VR.ropeRoot = holder;
+
+  for(const ls of FLY){
+    if(ls.goodsKey === 'none') continue;
+    const m = new T.Mesh(new T.CylinderGeometry(0.028, 0.028, 2.0, 6), mat);
+    m.position.set(railX, 1.55, ls.z + zOff);
+    m.userData.rope = ls;
+    holder.add(m);
+    VR.ropes.push({mesh:m, ls, home:m.position.clone()});
+  }
+}
+function vrClearRopes(){
+  if(VR.ropeRoot && VR.ropeRoot.parent) VR.ropeRoot.parent.remove(VR.ropeRoot);
+  if(VR.ropeRoot && typeof disposeTree === 'function') disposeTree(VR.ropeRoot);
+  VR.ropeRoot = null;
+  VR.ropes.length = 0;
+}
+
+/* ============================================================================
+   INPUT
+   ========================================================================== */
+const _rayO = new T.Vector3(), _rayD = new T.Vector3(), _m = new T.Matrix4();
+const _vrRay = new T.Raycaster();
+function vrPointAt(){
+  if(!VR.controllers[1]) return null;
+  const c = VR.controllers[1];
+  c.updateMatrixWorld(true);
+  _m.identity().extractRotation(c.matrixWorld);
+  _rayO.setFromMatrixPosition(c.matrixWorld);
+  _rayD.set(0, 0, -1).applyMatrix4(_m).normalize();
+  _vrRay.set(_rayO, _rayD);
+  _vrRay.near = 0; _vrRay.far = 6;
+  const hits = _vrRay.intersectObjects(VR.deskMeshes, false);
+  if(!hits.length){ if(VR.cursor) VR.cursor.visible = false; return null; }
+  const h = hits[0];
+  if(VR.cursor){
+    VR.cursor.visible = true;
+    VR.cursor.position.copy(VR.rig.worldToLocal(h.point.clone()));
+  }
+  return {u:h.uv.x, v:1 - h.uv.y};
+}
+function vrSelect(hand, down){
+  if(hand !== 1 || !down) return;
+  const p = vrPointAt();
+  if(!p) return;
+  const px = p.u * VRC.W, py = p.v * VRC.H;
+  for(let i = VR.hits.length - 1; i >= 0; i--){
+    const h = VR.hits[i];
+    if(px >= h.x && px <= h.x + h.w && py >= h.y && py <= h.y + h.h){
+      h.fn(px, py);
+      if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+      return;
+    }
+  }
+}
+function vrSqueeze(hand, down){
+  const c = VR.controllers[hand];
+  if(!c) return;
+  if(!down){
+    if(VR.held && VR.held.hand === hand) VR.held = null;
+    return;
+  }
+  c.updateMatrixWorld(true);
+  _rayO.setFromMatrixPosition(c.matrixWorld);
+  let best = null, bd = 0.32;
+  for(const r of VR.ropes){
+    r.mesh.updateMatrixWorld(true);
+    const d = _rayD.setFromMatrixPosition(r.mesh.matrixWorld).distanceTo(_rayO);
+    if(d < bd){ bd = d; best = r; }
+  }
+  if(best){
+    VR.held = {hand, rope:best, y0:_rayO.y, trim0:best.ls.pos};
+    if(typeof toast === 'function') toast('lineset ' + best.ls.id + ' — haul away');
+  }
+}
+function vrUpdateHold(){
+  if(!VR.held) return;
+  const c = VR.controllers[VR.held.hand];
+  if(!c) return;
+  c.updateMatrixWorld(true);
+  _rayO.setFromMatrixPosition(c.matrixWorld);
+  /* pull DOWN and the batten comes IN, the way a counterweight line works */
+  const pulled = VR.held.y0 - _rayO.y;
+  const want = VR.held.trim0 - pulled * 5.5;
+  const ls = VR.held.rope.ls;
+  if(!ls.locked){ ls.target = clamp(want, 0.6, OUT_TRIM); ls.pos = ls.target; ls.group.position.y = ls.pos; }
+  VR.held.rope.mesh.position.y = VR.held.rope.home.y - clamp(pulled, -0.5, 0.5);
+}
+
+/* the GO button, pressed with a hand rather than pointed at */
+const _gp = new T.Vector3(), _hp = new T.Vector3();
+function vrUpdateButtons(dt){
+  for(const b of VR.goButtons){
+    if(b.cool > 0) b.cool -= dt;
+    b.mesh.getWorldPosition(_gp);
+    let near = false;
+    for(const g of VR.grips){
+      g.getWorldPosition(_hp);
+      if(_hp.distanceTo(_gp) < 0.09) near = true;
+    }
+    b.mesh.position.y = b.y0 - (near ? 0.012 : 0);
+    if(near && b.cool <= 0){
+      b.cool = 0.8;
+      go();
+      vrDrawConsole(true);
+      if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+    }
+  }
+}
+
+/* ============================================================================
+   THE FRAME
+   ========================================================================== */
+function vrUpdate(dt){
+  if(!VR || !VR.active) return;      // may be called before this file has run
+  vrReadSticks();
+  Player.yaw -= VR.axes.rx * VR.turn * dt;      // smooth turn, as asked for
+  vrPointAt();
+  vrUpdateHold();
+  vrUpdateButtons(dt);
+  vrCapBeams();
+  VR.drawT += dt;
+  if(VR.drawT > 0.2){ VR.drawT = 0; vrDrawConsole(); }
+}
+/* the ropes belong to the stage you are standing on */
+function vrOnStageChange(){ if(VR && VR.active) vrBuildRopes(); }
+
+/* ---------------------------------------------------------------- wiring */
+if(typeof renderer !== 'undefined' && renderer.xr){
+  renderer.xr.enabled = true;
+  if(renderer.xr.addEventListener){
+    renderer.xr.addEventListener('sessionstart', vrOnStart);
+    renderer.xr.addEventListener('sessionend', vrOnEnd);
+  }
+}
+$('#vrBtn') && ($('#vrBtn').onclick = ()=>vrEnter());
+vrDetect();
+/* one clock for both: in a session requestAnimationFrame is the page's, and
+   the headset needs its own */
+if(typeof renderer !== 'undefined' && renderer.setAnimationLoop){
+  LOOP_XR = true;
+  renderer.setAnimationLoop(frame);
+}

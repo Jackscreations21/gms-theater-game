@@ -1,0 +1,676 @@
+
+/* ============================================================================
+   THE LOST BOYS
+   Not a boardwalk — a structure.  Four storeys of open steel filling the whole
+   opening: columns, beams, grated landings and zigzag stairs, clad here and
+   there in corrugated sheet, with the light coming down through it in shafts
+   and a great deal of haze in the air.
+
+   An interpretation in the show's vocabulary.  Nobody's drawings were used.
+   ========================================================================== */
+
+/* The practicals on the structure — caged bulkhead lamps — are drawn unlit so
+   they hold up in a blackout.  They go on a list the cues can dim.          */
+function neonTube(pts, colour, radius, parent){
+  const curve = new T.CatmullRomCurve3(pts.map(p=>new T.Vector3(p[0], p[1], p[2])));
+  const geo = new T.TubeGeometry(curve, Math.max(8, pts.length*5), radius || 0.07, 6, false);
+  const mat = new T.MeshBasicMaterial({color:new T.Color(colour)});
+  const m = new T.Mesh(geo, mat);
+  m.raycast = ()=>{};
+  (parent || showRoot()).add(m);
+  SHOW.neon.push({mesh:m, base:new T.Color(colour)});
+  return m;
+}
+function setNeon(v){ SHOW.neonTarget = clamp(v, 0, 1.4); }
+function updateNeon(dt){
+  if(!SHOW.neon || !SHOW.neon.length) return;
+  SHOW.neonLevel += clamp((SHOW.neonTarget === undefined ? 1 : SHOW.neonTarget) - SHOW.neonLevel,
+                          -dt*1.2, dt*1.2);
+  SHOW.neonT = (SHOW.neonT || 0) + dt;
+  const hum = 0.93 + 0.07*Math.sin(SHOW.neonT*29.7);
+  for(let i=0;i<SHOW.neon.length;i++){
+    const n = SHOW.neon[i];
+    let v = SHOW.neonLevel * hum;
+    if(i % 5 === 2){                        // one of them is on its way out
+      const f = Math.sin(SHOW.neonT*11.3 + i);
+      v *= (f > 0.78 && Math.random() < 0.5) ? rnd(0.1, 0.5) : 1;
+    }
+    n.mesh.material.color.copy(n.base).multiplyScalar(clamp(v, 0, 1.4));
+    n.mesh.visible = v > 0.02;
+  }
+  if(SHOW.neonLights)
+    SHOW.neonLights.forEach(l=>{ l.light.intensity = SHOW.neonLevel * l.power * hum; });
+}
+
+/* ---- corrugated sheet, riveted and streaked ---- */
+function corrugatedTex(){
+  const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#33383e'; g.fillRect(0,0,W,H);
+  for(let x=0; x<W; x+=18){
+    const gr = g.createLinearGradient(x,0,x+18,0);
+    gr.addColorStop(0,'rgba(0,0,0,.45)');
+    gr.addColorStop(0.42,'rgba(150,158,168,.20)');
+    gr.addColorStop(0.62,'rgba(120,128,138,.10)');
+    gr.addColorStop(1,'rgba(0,0,0,.45)');
+    g.fillStyle = gr; g.fillRect(x,0,18,H);
+  }
+  // rivet lines and rust running down from them
+  for(let y=26; y<H; y+=118){
+    for(let x=9; x<W; x+=18){
+      g.fillStyle = 'rgba(18,20,24,.75)';
+      g.beginPath(); g.arc(x, y, 2.2, 0, 6.283); g.fill();
+      if(Math.random() < 0.3){
+        const gr = g.createLinearGradient(x, y, x, y + 70);
+        gr.addColorStop(0,'rgba(120,66,30,.34)'); gr.addColorStop(1,'rgba(120,66,30,0)');
+        g.fillStyle = gr; g.fillRect(x-3, y, 6, 70);
+      }
+    }
+    g.fillStyle = 'rgba(12,14,18,.5)'; g.fillRect(0, y-6, W, 3);
+  }
+  for(let i=0;i<160;i++){
+    g.fillStyle = 'rgba(0,0,0,'+(0.04+Math.random()*0.12).toFixed(2)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(4,40), rnd(20,140));
+  }
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+/* ---- open steel grating, as a cut-out so the light comes through ---- */
+function gratingTex(){
+  const W = 128, H = 128, c = cvs(W, H), g = c.getContext('2d');
+  g.clearRect(0,0,W,H);
+  g.fillStyle = '#3b4046';
+  for(let x=0; x<W; x+=16) g.fillRect(x, 0, 5, H);
+  for(let y=0; y<H; y+=32) g.fillRect(0, y, W, 3);
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+/* ---- the wall behind: more of the same, going up into the dark ---- */
+function lostBoysWallCanvas(){
+  const W = 1024, H = 576, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#1c2026'; g.fillRect(0,0,W,H);
+  for(let x=0; x<W; x+=26){
+    const gr = g.createLinearGradient(x,0,x+26,0);
+    gr.addColorStop(0,'rgba(0,0,0,.55)');
+    gr.addColorStop(0.45,'rgba(120,130,142,.16)');
+    gr.addColorStop(1,'rgba(0,0,0,.55)');
+    g.fillStyle = gr; g.fillRect(x,0,26,H);
+  }
+  // bays of brick between steel stanchions
+  for(let x=0; x<W; x+=170){
+    g.fillStyle = 'rgba(48,38,34,.5)'; g.fillRect(x+18, 0, 134, H);
+    for(let y=0; y<H; y+=13){
+      g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(x+18, y, 134, 1.6);
+    }
+    g.fillStyle = 'rgba(20,23,28,.9)'; g.fillRect(x, 0, 18, H);
+  }
+  // a couple of blocked windows, and grime everywhere
+  for(let i=0;i<6;i++){
+    const x = rnd(40, W-140), y = rnd(30, H*0.5);
+    g.fillStyle = 'rgba(10,12,16,.85)'; g.fillRect(x, y, 96, 130);
+    g.strokeStyle = 'rgba(70,78,88,.5)'; g.lineWidth = 3; g.strokeRect(x, y, 96, 130);
+  }
+  const dark = g.createLinearGradient(0,0,0,H);
+  dark.addColorStop(0,'rgba(0,0,0,.72)'); dark.addColorStop(0.5,'rgba(0,0,0,.16)');
+  dark.addColorStop(1,'rgba(0,0,0,.6)');
+  g.fillStyle = dark; g.fillRect(0,0,W,H);
+  for(let i=0;i<400;i++){
+    g.fillStyle = 'rgba(0,0,0,'+(0.05+Math.random()*0.15).toFixed(2)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(6,60), rnd(30,180));
+  }
+  return {canvas:c, tex:tex(c,1,1)};
+}
+
+/* ---- the show cloth: black, with the title on it ----
+   Each half of a traveler is over-wide and the pair overlap on the centre
+   line, so both halves are given the SAME world-x to u mapping.  That way the
+   wordmark runs continuously across the join instead of appearing twice.  */
+const LB_CLOTH_W = 17.2;                 // the full cloth, both halves together
+function lostBoysCurtainCanvas(){
+  const W = 2048, H = 1024, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#080809'; g.fillRect(0,0,W,H);
+  // velour: vertical pleats catching a little light
+  for(let x=0; x<W; x+=52){
+    const gr = g.createLinearGradient(x,0,x+52,0);
+    gr.addColorStop(0,'rgba(0,0,0,.9)');
+    gr.addColorStop(0.5,'rgba(70,74,82,.22)');
+    gr.addColorStop(1,'rgba(0,0,0,.9)');
+    g.fillStyle = gr; g.fillRect(x,0,52,H);
+  }
+  // the wordmark
+  const cx = W/2, cy = H*0.46;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '700 210px Impact, "Arial Black", Helvetica, sans-serif';
+  g.fillStyle = 'rgba(226,226,232,.95)';
+  g.fillText('LOST BOYS', cx, cy);
+  g.lineWidth = 5;
+  g.strokeStyle = 'rgba(150,20,30,.85)';
+  g.strokeText('LOST BOYS', cx, cy);
+  g.font = '600 58px Helvetica, Arial, sans-serif';
+  g.fillStyle = 'rgba(150,156,168,.8)';
+  g.fillText('S A N T A   C A R L A', cx, cy + 170);
+  // wear over the top of it
+  for(let i=0;i<700;i++){
+    g.fillStyle = 'rgba(0,0,0,'+(0.04+Math.random()*0.12).toFixed(2)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(2,26), rnd(10,90));
+  }
+  const vig = g.createLinearGradient(0,0,0,H);
+  vig.addColorStop(0,'rgba(0,0,0,.85)'); vig.addColorStop(0.35,'rgba(0,0,0,.1)');
+  vig.addColorStop(1,'rgba(0,0,0,.8)');
+  g.fillStyle = vig; g.fillRect(0,0,W,H);
+  return {canvas:c, tex:tex(c,1,1)};
+}
+
+/* ---- the welcome drop: a painted boardwalk sign, the width of the stage ---- */
+function santaCarlaDropCanvas(){
+  const W = 2048, H = 1024, c = cvs(W, H), g = c.getContext('2d');
+  // painted boards, a sign that has been out in the salt air a long time
+  const base = g.createLinearGradient(0, 0, 0, H);
+  base.addColorStop(0.00, '#101724');
+  base.addColorStop(0.34, '#1d2b40');
+  base.addColorStop(0.66, '#2a2038');
+  base.addColorStop(1.00, '#0b0c14');
+  g.fillStyle = base; g.fillRect(0, 0, W, H);
+  for(let x=0; x<W; x+=74){
+    g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(x, 0, 3, H);
+    g.fillStyle = 'rgba(160,180,210,.05)'; g.fillRect(x+3, 0, 2, H);
+  }
+  // a glow behind the lettering, as if it were lit from the boardwalk below
+  const glow = g.createRadialGradient(W/2, H*0.52, 20, W/2, H*0.52, W*0.5);
+  glow.addColorStop(0, 'rgba(255,176,64,.24)');
+  glow.addColorStop(0.5, 'rgba(255,110,60,.10)');
+  glow.addColorStop(1, 'rgba(255,110,60,0)');
+  g.fillStyle = glow; g.fillRect(0, 0, W, H);
+
+  const cx = W/2;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '600 96px Georgia, "Times New Roman", serif';
+  g.fillStyle = 'rgba(240,224,190,.92)';
+  g.fillText('WELCOME TO', cx, H*0.30);
+  g.font = '700 232px Impact, "Arial Black", Helvetica, sans-serif';
+  g.fillStyle = 'rgba(255,214,140,.96)';
+  g.fillText('SANTA CARLA', cx, H*0.52);
+  g.lineWidth = 7;
+  g.strokeStyle = 'rgba(196,62,44,.9)';
+  g.strokeText('SANTA CARLA', cx, H*0.52);
+  g.font = '600 62px Georgia, serif';
+  g.fillStyle = 'rgba(210,190,160,.7)';
+  g.fillText('MURDER  CAPITAL  OF  THE  WORLD', cx, H*0.70);
+
+  // a painted rule top and bottom, and a run of lamps along the top
+  g.fillStyle = 'rgba(255,196,120,.5)';
+  g.fillRect(W*0.08, H*0.18, W*0.84, 6);
+  g.fillRect(W*0.08, H*0.79, W*0.84, 6);
+  for(let x=W*0.08; x<=W*0.92; x+=64){
+    g.fillStyle = 'rgba(255,238,190,.75)';
+    g.beginPath(); g.arc(x, H*0.14, 11, 0, 6.283); g.fill();
+  }
+  // weather it
+  for(let i=0;i<900;i++){
+    g.fillStyle = 'rgba(0,0,0,'+(0.03+Math.random()*0.11).toFixed(2)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(3,40), rnd(20,170));
+  }
+  for(let i=0;i<40;i++){
+    g.fillStyle = 'rgba(190,200,215,'+(0.02+Math.random()*0.05).toFixed(2)+')';
+    g.beginPath();
+    g.ellipse(Math.random()*W, Math.random()*H, rnd(30,140), rnd(20,90), 0, 0, 6.283);
+    g.fill();
+  }
+  const vig = g.createLinearGradient(0,0,0,H);
+  vig.addColorStop(0,'rgba(0,0,0,.6)'); vig.addColorStop(0.4,'rgba(0,0,0,0)');
+  vig.addColorStop(1,'rgba(0,0,0,.66)');
+  g.fillStyle = vig; g.fillRect(0,0,W,H);
+  return {canvas:c, tex:tex(c,1,1)};
+}
+
+SHOWS.lostboys = {
+  name: 'THE LOST BOYS',
+  blurb: 'Four storeys of open steel — columns, grated landings, zigzag stairs and a lot of haze.',
+  note: 'An interpretation in the show’s own vocabulary, not a copy of anyone’s design.',
+  load(){
+    const G = showRoot();
+    SHOW.neon = []; SHOW.neonLevel = 0; SHOW.neonTarget = 1; SHOW.neonLights = [];
+
+    const CORR = corrugatedTex(), GRATE = gratingTex();
+    const steel  = new T.MeshStandardMaterial({color:0x3a4046, roughness:.52, metalness:.78});
+    const steelD = new T.MeshStandardMaterial({color:0x22262b, roughness:.6,  metalness:.7});
+    const steelL = new T.MeshStandardMaterial({color:0x565d66, roughness:.45, metalness:.8});
+    const clad   = new T.MeshStandardMaterial({map:CORR, roughness:.7, metalness:.5});
+    const grate  = new T.MeshStandardMaterial({map:GRATE, roughness:.6, metalness:.7,
+                                               transparent:true, alphaTest:0.4, side:T.DoubleSide});
+    const deckM  = new T.MeshStandardMaterial({color:0x2b2e33, roughness:.95});
+
+    /* ---- the deck: bare, dark, scuffed ---- */
+    {
+      const sh = new T.Shape(), HW = D.stageW/2;
+      const usZ = -(D.backWall + 0.4);
+      sh.moveTo(-HW+0.4, usZ); sh.lineTo(HW-0.4, usZ);
+      sh.lineTo(HW-0.4, -D.apron);
+      sh.quadraticCurveTo(0, -(D.apron + 2*D.thrust*0.9), -HW+0.4, -D.apron);
+      sh.lineTo(-HW+0.4, usZ);
+      const geo = new T.ExtrudeGeometry(sh, {depth:0.1, bevelEnabled:false, curveSegments:36});
+      geo.rotateX(-Math.PI/2);
+      const m = new T.Mesh(geo, deckM);
+      m.receiveShadow = true; G.add(m); showWalk(m);
+    }
+
+    /* ================================================================
+       THE STRUCTURE
+       ================================================================ */
+    /* Thin and well upstage: two rows of columns 4.4 m apart, sitting against
+       the back wall, so there is a whole stage of clear floor in front of it. */
+    const S = {x0:-9.4, x1:9.4, z0:-14.6, z1:-10.2,
+               lv:[3.2, 6.2, 9.1], top:11.4, bay:3.13};
+    S.cz = (S.z0 + S.z1)/2;
+    {
+      const cols = [], flanges = [], beamsX = [], beamsZ = [], webs = [];
+      const zRows = [S.z0, S.z1];
+
+      /* columns — an I-section read as a web plus two flanges */
+      for(let x = S.x0; x <= S.x1 + 0.01; x += S.bay)
+        for(const z of zRows){
+          cols.push({x:+x.toFixed(2), y:S.top/2, z, sy:S.top/10});
+          for(const sd of [-1, 1])
+            flanges.push({x:+x.toFixed(2), y:S.top/2, z:z + sd*0.15, sy:S.top/10});
+        }
+      showBatch(new T.BoxGeometry(0.14, 10, 0.30), steel, cols);
+      showBatch(new T.BoxGeometry(0.34, 10, 0.05), steelL, flanges);
+
+      /* beams at every level, both ways, plus knee plates at the joints */
+      for(const y of S.lv.concat([S.top])){
+        for(const z of zRows) beamsX.push({x:(S.x0 + S.x1)/2, y, z});
+        for(let x = S.x0; x <= S.x1 + 0.01; x += S.bay)
+          beamsZ.push({x:+x.toFixed(2), y, z:(S.z0 + S.z1)/2});
+      }
+      showBatch(new T.BoxGeometry(S.x1 - S.x0 + 0.3, 0.34, 0.16), steel, beamsX);
+      showBatch(new T.BoxGeometry(0.16, 0.30, S.z1 - S.z0 + 0.3), steel, beamsZ);
+
+      /* diagonal bracing in the outer bays, both faces */
+      const braces = [];
+      for(let i=0;i<6;i++){
+        const x = S.x0 + i*S.bay;
+        if(i === 2 || i === 3) continue;             // leave the middle open
+        for(const z of [S.z0, S.z1]){
+          for(let l=0;l<S.lv.length;l++){
+            const y0 = l ? S.lv[l-1] : 0.1, y1 = S.lv[l];
+            const len = Math.hypot(S.bay, y1 - y0);
+            braces.push({x:x + S.bay/2, y:(y0+y1)/2, z,
+                         rz:Math.atan2(S.bay, y1-y0)*((i+l)%2?1:-1), sy:len/4});
+          }
+        }
+      }
+      showBatch(new T.BoxGeometry(0.1, 4, 0.1), steelD, braces);
+
+      /* ---- the galleries: one per level, running the full width ---- */
+      const landing = (y, z, depth)=>{
+        const w = S.x1 - S.x0 + 0.3;
+        const d = new T.Mesh(new T.BoxGeometry(w, 0.09, depth), grate);
+        d.position.set((S.x0 + S.x1)/2, y + 0.05, z);
+        d.castShadow = d.receiveShadow = true;
+        G.add(d); showWalk(d);
+        // the kick plate and the bearers under it
+        showBox(w, 0.18, 0.05, steelD, (S.x0+S.x1)/2, y - 0.02, z + depth/2);
+        const bear = [];
+        for(let x = S.x0; x <= S.x1 + 0.01; x += S.bay/2)
+          bear.push({x:+x.toFixed(2), y:y - 0.14, z});
+        showBatch(new T.BoxGeometry(0.1, 0.2, depth), steelD, bear);
+        // handrail: two rails and a run of stanchions
+        const posts = [];
+        for(let x = S.x0; x <= S.x1 + 0.01; x += 1.55)
+          posts.push({x:+x.toFixed(2), y:y + 0.62, z:z + depth/2 - 0.06});
+        showBatch(new T.BoxGeometry(0.07, 1.15, 0.07), steelL, posts);
+        showBox(w, 0.07, 0.07, steelL, (S.x0+S.x1)/2, y + 1.16, z + depth/2 - 0.06);
+        showBox(w, 0.05, 0.05, steelL, (S.x0+S.x1)/2, y + 0.66, z + depth/2 - 0.06);
+        return d;
+      };
+      S.lv.forEach(y=>{ landing(y, S.cz, 3.4); });
+
+      /* ---- zigzag stairs, alternating direction at every landing ---- */
+      const flight = (y0, y1, x, z, dirn)=>{
+        const n = 11, rise = (y1 - y0)/n, going = 0.30;
+        const steps = [];
+        for(let i=0;i<n;i++)
+          steps.push({x:x + dirn*i*going, y:y0 + rise*(i+1) - 0.05, z});
+        showWalk(showBatch(new T.BoxGeometry(0.34, 0.07, 1.15), grate, steps, {walk:true}));
+        const run = n*going, len = Math.hypot(run, y1 - y0);
+        [-1,1].forEach(sd=>{
+          const str = showBox(len, 0.28, 0.08, steelD,
+            x + dirn*run/2, (y0 + y1)/2, z + sd*0.6);
+          str.rotation.z = dirn * Math.atan2(y1 - y0, run);
+          const rail = showBox(len, 0.06, 0.06, steelL,
+            x + dirn*run/2, (y0 + y1)/2 + 1.0, z + sd*0.6);
+          rail.rotation.z = dirn * Math.atan2(y1 - y0, run);
+        });
+      };
+      flight(0.1,     S.lv[0], -8.2, S.cz - 0.9,  1);
+      flight(S.lv[0], S.lv[1],   8.2, S.cz - 0.9, -1);
+      flight(S.lv[1], S.lv[2],  -8.2, S.cz - 0.9,  1);
+      flight(0.1,     S.lv[0],   7.4, S.cz + 1.0, -1);
+
+      /* ---- corrugated cladding on some of the bays ---- */
+      const panels = [
+        [-9.4, S.lv[0], S.lv[1], S.z0], [-3.1, S.lv[1], S.lv[2], S.z0],
+        [ 3.1, 0.1,     S.lv[0], S.z0], [ 6.3, S.lv[1], S.top,   S.z0],
+        [-6.3, 0.1,     S.lv[0], S.z1], [ 6.3, S.lv[0], S.lv[1], S.z1]
+      ];
+      panels.forEach(([x, y0, y1, z])=>{
+        const h = y1 - y0;
+        const p = new T.Mesh(new T.PlaneGeometry(S.bay, h), clad);
+        p.material = clad;
+        p.position.set(x + S.bay/2, (y0 + y1)/2, z + (z === S.z1 ? 0.18 : -0.18));
+        p.receiveShadow = true;
+        G.add(p);
+      });
+
+      /* ---- caged bulkhead lamps on the steel ---- */
+      const lampSpots = [[-8.0, S.lv[0] + 1.6, S.z1 - 0.2], [ 8.0, S.lv[1] + 1.6, S.z1 - 0.2],
+                         [-2.0, S.lv[2] + 1.4, S.z0 + 0.25], [ 4.6, S.lv[0] + 1.6, S.z0 + 0.25],
+                         [ 0.0, S.top - 0.8,   S.z1 - 0.2]];
+      lampSpots.forEach(([x,y,z], i)=>{
+        showCyl(0.13,0.16,0.2,8, steelD, x, y, z);
+        neonTube([[x, y - 0.16, z],[x, y - 0.26, z]], 0xffd9a0, 0.11);
+        for(let k=0;k<4;k++){
+          const a = k*Math.PI/4;
+          neonTube([[x + Math.cos(a)*0.14, y - 0.1, z + Math.sin(a)*0.02],
+                    [x + Math.cos(a)*0.14, y - 0.3, z + Math.sin(a)*0.02]], 0x2a2e34, 0.012);
+        }
+        const l = new T.PointLight(0xffc27a, 0, 9, 1.7);
+        l.position.set(x, y - 0.3, z);
+        l.userData.moves = true;
+        G.add(l);
+        SHOW.neonLights.push({light:l, power:1.1});
+      });
+    }
+
+    /* ---- what is on the deck: a rostrum, drums, cable, rubble ---- */
+    {
+      const rost = showBox(3.6, 0.6, 2.4, deckM, -1.0, 0.4, -2.6);
+      showWalk(rost);
+      showBox(3.7, 0.1, 2.5, steelD, -1.0, 0.72, -2.6);
+      const rust = new T.MeshStandardMaterial({color:0x4a3324, roughness:.95, metalness:.25});
+      [[-6.4,-1.6],[5.8,-2.4],[7.8,-1.2]].forEach(([x,z])=>{
+        showCyl(0.44,0.44,0.92,12, rust, x, 0.58, z);
+        showCyl(0.47,0.47,0.06,12, rust, x, 0.86, z);
+      });
+      const rubble = [];
+      for(let i=0;i<26;i++)
+        rubble.push({x:rnd(-11,11), y:0.16, z:rnd(-4.2,-0.6), ry:Math.random()*3,
+                     sx:rnd(0.5,1.5), sy:rnd(0.4,1.1), sz:rnd(0.5,1.5)});
+      showBatch(new T.BoxGeometry(0.4,0.22,0.4),
+        new T.MeshStandardMaterial({color:0x3a3d42, roughness:1}), rubble);
+      const coils = [];
+      for(let i=0;i<5;i++)
+        coils.push({x:rnd(-9,9), y:0.16, z:rnd(-4,-1), rx:Math.PI/2, ry:Math.random()*3});
+      showBatch(new T.TorusGeometry(0.44, 0.09, 6, 14),
+        new T.MeshStandardMaterial({color:0x191b1f, roughness:.95}), coils);
+    }
+
+    /* ---- the welcome drop ----
+       An in-one cloth hung just downstage of the structure.  It is what the
+       audience looks at for the first two cues, and it flies out to reveal
+       the steel.                                                            */
+    {
+      const c = santaCarlaDropCanvas();
+      const key = 'santaCarlaDrop';
+      GOODS[key] = {label:'WELCOME TO SANTA CARLA drop', h:11.5, wt:250, made:true,
+        build:()=>{
+          const g = new T.Group();
+          const m = new T.MeshStandardMaterial({map:c.tex, roughness:1, side:T.DoubleSide});
+          const d = drape(D.procW + 5, 11.5, m, 2, .05);
+          d.position.y = -5.75; g.add(d);
+          return g; }};
+      TRIMS[key] = 11.6;
+      SHOW.goods.push(key);
+      SHOW.dropKey = key;
+      buildGoodsPalette();
+    }
+
+    /* ---- the show curtain: black, with the title on it ---- */
+    {
+      const c = lostBoysCurtainCanvas();
+      const key = 'lostBoysCurtain';
+      const halfW = D.procW/2 + 3.0;
+      GOODS[key] = {label:'THE LOST BOYS show curtain', h:13.0, wt:400,
+        traveler:true, made:true, build:()=>{
+          const g = new T.Group();
+          [-1,1].forEach(sd=>{
+            /* both halves map the same world x onto the same u, so the
+               wordmark runs across the overlap instead of doubling up */
+            const t2 = c.tex.clone();
+            t2.needsUpdate = true;
+            t2.wrapS = t2.wrapT = T.ClampToEdgeWrapping;
+            t2.repeat.set(halfW / LB_CLOTH_W, 1);
+            t2.offset.set(sd < 0 ? 0 : (LB_CLOTH_W - halfW) / LB_CLOTH_W, 0);
+            const mat = new T.MeshStandardMaterial({map:t2, roughness:.97,
+              side:T.DoubleSide, color:0xffffff});
+            const d = drape(halfW, 13.0, mat, 7, .18);
+            d.position.set(sd*(D.procW/4 - 0.4), -6.5, 0);
+            d.userData.side = sd;
+            g.add(d);
+          });
+          return g; }};
+      TRIMS[key] = TRIMS.house;
+      SHOW.goods.push(key);
+      SHOW.curtainKey = key;
+      buildGoodsPalette();
+    }
+
+    /* ---- the wall behind ---- */
+    {
+      const c = lostBoysWallCanvas();
+      const w = new T.Mesh(new T.PlaneGeometry(23, 15),
+        new T.MeshStandardMaterial({map:c.tex, roughness:1}));
+      w.position.set(0, 7.5, D.backWall + 2.2);
+      w.receiveShadow = true;
+      G.add(w); SHOW.wall = w;
+      [-1,1].forEach(sd=>{
+        const r = new T.Mesh(new T.PlaneGeometry(5.0, 15),
+          new T.MeshStandardMaterial({color:0x101216, roughness:1, side:T.DoubleSide}));
+        r.position.set(sd*11.5, 7.5, D.backWall + 4.7);
+        r.rotation.y = sd * Math.PI/2;
+        G.add(r);
+      });
+    }
+
+    /* ---- machines rigged on the structure itself ---- */
+    if(typeof addShowSmoke === 'function'){
+      addShowSmoke({name:'DECK 1 SL', kind:'haze', x:-6.0, y:S.lv[0] + 0.15, z:S.cz,
+                    yaw:0, tilt:0.45});                 // down through the grating
+      addShowSmoke({name:'DECK 2 SR', kind:'haze', x: 6.0, y:S.lv[1] + 0.15, z:S.cz,
+                    yaw:0, tilt:0.45});
+      addShowSmoke({name:'UNDER',     kind:'fog',  x: 0.0, y:0, z:S.z1 - 0.6,
+                    yaw:0, tilt:0.05});                 // rolling out from under it
+    }
+
+    /* a fire in one of the drums, for the scene that needs it */
+    makeFire({count:160, embers:80, y:0.9, x0:-6.8, x1:-6.0, z0:-2.0, z1:-1.2});
+    if(SHOW.fire) SHOW.fire.target = 0;
+
+    /* ---- the hang: heavy on electrics, this is a toplight show ----
+       Show curtain on lineset 1, first black border on lineset 2.         */
+    hangGoods(FLY[0], SHOW.curtainKey);
+    FLY[0].target = TRIMS[SHOW.curtainKey]; FLY[0].travTarget = 0; FLY[0].open = 0;
+    hangGoods(FLY[1], 'border');    FLY[1].target = TRIMS.border;
+    hangGoods(FLY[2], 'legs');      FLY[2].target = inTrimOf(FLY[2]);
+    hangGoods(FLY[3], 'border');    FLY[3].target = TRIMS.border;
+    hangGoods(FLY[4], 'electric');  FLY[4].target = 8.6;
+    hangGoods(FLY[5], 'truss');     FLY[5].target = 11.6;
+    hangGoods(FLY[6], 'legs');      FLY[6].target = inTrimOf(FLY[6]);
+    hangGoods(FLY[7], 'scrim');     FLY[7].target = OUT_TRIM;
+    hangGoods(FLY[8], 'electric');  FLY[8].target = 9.4;
+    hangGoods(FLY[10], SHOW.dropKey); FLY[10].target = TRIMS[SHOW.dropKey];   // in, to start
+    hangGoods(FLY[11],'none');      FLY[11].target = OUT_TRIM;
+    hangGoods(FLY[12],'electric');  FLY[12].target = 10.4;
+    hangGoods(FLY[13],'none');      FLY[13].target = OUT_TRIM;
+    FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
+
+    RIG.haze = 1;                    // the air is the fourth wall in this one
+
+    plotLostBoys();
+    standByAtTheTop();
+  }
+};
+
+function plotLostBoys(){
+  const FRONT = [1,2,3,4,5,6], BOOM = [7,8], WASH = [9,10,11,12,13,14],
+        BACK = [15,16,17,18], CYC = [19,20,21,22], MOVE = [23,24], SPOT = 25;
+  const all = v => FIXTURES.forEach(f=>{ f.level = v; });
+  const set = (list, v, col)=>list.forEach(n=>{
+    const f = chan(n); if(!f) return; f.level = v; if(col) f.color.set(col); });
+  const one = (n, v, col)=>set([n], v, col);
+
+  const looks = [
+    {n:0.5, label:'preshow — house open', fade:0, house:0.85, haze:0.55, neon:0.5, fire:0,
+     drop:true, curtain:'shut',
+     look(){ all(0); set(CYC, 0.08, '#141a24'); }},
+
+    {n:1, label:'house to half — warmers on the title', fade:6, house:0.3, haze:0.5, neon:0.4,
+     drop:true, curtain:'shut',
+     look(){ all(0);
+       // the curtain stays in; this is light on the lettering, nothing more
+       aimFrontAt(FRONT, 0, 7.4, -1.0);
+       set(FRONT, 0.7, '#ff2a2a'); set(BOOM, 0.2, '#b81020'); }},
+
+    {n:2, label:'curtain out — welcome to Santa Carla', fade:5, house:0, haze:0.7, neon:0.5,
+     drop:true,
+     look(){ all(0);
+       set(FRONT, 0.7, '#ffd6a0'); set(BOOM, 0.3, '#ff9a44');
+       set(CYC, 0.1, '#101620'); }},
+
+    {n:3, label:'the drop out — the structure revealed', fade:5, house:0, haze:1, neon:0.7,
+     look(){ all(0);
+       set(WASH, 0.9, '#dfe8f6');                    // straight down through the steel
+       set(BACK, 0.7, '#9fc0ff'); set(BOOM, 0.35, '#6a86b8');
+       set(FRONT, 0.1, '#b8c8e0'); set(CYC, 0.12, '#0c1220');
+       FIXTURES.forEach(f=>{ if(f.ls === 4) f.gobo = 1; }); }},
+
+    {n:4, label:'shafts through the grating', fade:4, house:0, haze:1, neon:0.5,
+     look(){ all(0);
+       set(WASH, 1.0, '#eaf2ff'); set(BACK, 0.5, '#7f9ed0');
+       set(BOOM, 0.7, '#4a6a9a'); set(FRONT, 0.06, '#8fa8c8');
+       set(CYC, 0.1, '#08101c'); set(MOVE, 0.6, '#cfe2ff');
+       FIXTURES.forEach(f=>{ if(f.ls === 4 || f.ls === 8) f.gobo = 5; }); }},
+
+    {n:5, label:'the drum fire', fade:5, house:0, haze:1, neon:0.35,
+     fire:{chans:[9,10,11], base:0.8, size:1},
+     look(){ all(0);
+       set(WASH, 0.7, '#ff7a2e'); set(FRONT, 0.1, '#ffa060');
+       set(BOOM, 0.5, '#c8501a'); set(BACK, 0.45, '#5f7fae');
+       set(CYC, 0.14, '#0a1020'); }},
+
+    {n:6, label:'the lower level — sodium and shadow', fade:6, house:0, haze:1, neon:1.1, fire:0,
+     look(){ all(0);
+       set(FRONT, 0.12, '#e0a860'); set(WASH, 0.25, '#c88a3a');
+       set(BOOM, 0.8, '#8a5a20'); set(BACK, 0.35, '#5a76a8');
+       set(CYC, 0.1, '#0a0c14'); }},
+
+    /* ---- the interval ---- */
+    {n:6.5, label:'act one ends — blackout, curtain in', fade:3, house:0, haze:0.4, neon:0.3, fire:0,
+     curtain:'shut',
+     look(){ all(0); }},
+
+    {n:6.6, label:'INTERVAL — house up', fade:6, house:1, haze:0, neon:0,
+     curtain:'shut',
+     look(){ all(0); }},
+
+    {n:6.7, label:'house to half — act two', fade:5, house:0.3, haze:0.6, neon:0.4,
+     curtain:'shut',
+     look(){ all(0); set(CYC, 0.1, '#101620'); }},
+
+    {n:7, label:'the climb', fade:4, house:0, haze:1, neon:0.5,
+     look(){ all(0);
+       set(BACK, 1.0, '#cfe2ff'); set(BOOM, 0.85, '#7f9ed0');
+       set(WASH, 0.3, '#aebfd8'); set(CYC, 0.16, '#060c18');
+       set(MOVE, 0.9, '#dfeaff'); one(SPOT, 0.5, '#eef4ff'); }},
+
+    {n:8, label:'the chase — strobing steel', fade:1, house:0, haze:1, neon:0,
+     look(){ all(0);
+       set(BOOM, 1.0, '#ffffff'); set(BACK, 0.9, '#cfe2ff');
+       set(MOVE, 1.0, '#ffffff'); set(WASH, 0.15, '#8fa8c8');
+       set(CYC, 0.1, '#050a14'); }},
+
+    {n:9, label:'blood on the grating', fade:2, house:0, haze:1, neon:0.2,
+     look(){ all(0);
+       set(WASH, 0.55, '#ff1e2a'); set(BOOM, 0.95, '#c8000f');
+       set(BACK, 0.6, '#ff3a4a'); set(CYC, 0.5, '#4a0008');
+       set(MOVE, 0.9, '#ff2a1e'); }},
+
+    {n:10, label:'the structure burns', fade:2, house:0, haze:1, neon:0.15,
+     fire:{chans:[9,10,11,12,13,14], base:0.95, size:1},
+     look(){ all(0);
+       set(WASH, 0.95, '#ff5a1e'); set(BOOM, 0.75, '#ff4a12');
+       set(BACK, 0.5, '#ffae52'); set(CYC, 0.55, '#8a1c06'); }},
+
+    {n:11, label:'after — one lamp left on', fade:8, house:0, haze:0.9, neon:0.8, fire:0.15,
+     look(){ all(0);
+       set(FRONT, 0.14, '#c8b49a'); set(WASH, 0.16, '#a89880');
+       set(BACK, 0.3, '#7f9ed0'); set(CYC, 0.08, '#080c14');
+       one(SPOT, 0.45, '#fff0d4'); }},
+
+    {n:12, label:'daylight in the stairwell', fade:12, house:0, haze:0.75, neon:0, fire:0,
+     look(){ all(0);
+       set(WASH, 0.75, '#ffe8c4'); set(FRONT, 0.3, '#ffd9a8');
+       set(BACK, 0.55, '#ffd0a0'); set(CYC, 0.5, '#c8a468');
+       FIXTURES.forEach(f=>{ if(f.ls === 4) f.gobo = 3; }); }},
+
+    {n:13, label:'curtain call', fade:2, house:0, haze:0.5, neon:1.2,
+     look(){ all(1, '#eaf0ff');
+       set(CYC, 0.9, '#2f6bff'); set(BACK, 0.9, '#cfe2ff'); set(MOVE, 1, '#ffffff'); }},
+
+    {n:14, label:'blackout', fade:1.5, house:0, haze:0.5, neon:0.6,
+     look(){ all(0); }},
+
+    {n:15, label:'the second bow — lights back up', fade:2, house:0, haze:0.5, neon:1.2,
+     look(){ all(0.9, '#eaf0ff');
+       set(CYC, 0.8, '#2f6bff'); set(BACK, 0.9, '#cfe2ff'); set(MOVE, 1, '#ffffff'); }},
+
+    {n:16, label:'blackout — curtain in', fade:2, house:0, haze:0.3, neon:0.2,
+     curtain:'shut',
+     look(){ all(0); }},
+
+    {n:17, label:'curtain warmers — the title in red', fade:4, house:0, haze:0.2, neon:0,
+     curtain:'shut',
+     look(){ all(0);
+       // point the front of house up onto the lettering, not down at the deck
+       aimFrontAt(FRONT, 0, 7.4, -1.0);
+       set(FRONT, 0.9, '#ff1420'); set(BOOM, 0.25, '#c00a18'); }},
+
+    {n:18, label:'house up — warmers stay', fade:8, house:0.5, haze:0, neon:0,
+     curtain:'shut',
+     look(){ all(0);
+       // the house comes up under the title; the red stays on the cloth
+       aimFrontAt(FRONT, 0, 7.4, -1.0);
+       set(FRONT, 0.9, '#ff1420'); set(BOOM, 0.25, '#c00a18'); }}
+  ];
+
+  CUES.length = 0;
+  const savedHaze = RIG.haze;
+  /* the welcome drop is in for the top of the show and flies out on cue 2 —
+     each cue carries a fly state so it goes back in if you run the show again */
+  const dropLs = FLY.find(l=>l.goodsKey === SHOW.dropKey);
+  const savedFly = snapshotFly();
+  const homeAims = captureAims();
+  looks.forEach(L=>{
+    FIXTURES.forEach(f=>{ f.gobo = 0; });
+    restoreAims(homeAims);          // every look starts from the rig's own focus
+    L.look();
+    if(dropLs) dropLs.target = L.drop ? TRIMS[SHOW.dropKey] : OUT_TRIM;
+    // and the front curtain — flown out unless the cue asks for it in
+    setCurtainForCue(L.curtain || 'out');
+    CUES.push({
+      n:L.n, label:L.label, fade:L.fade, follow:null,
+      lx:snapshotLX(), fly:snapshotFly(), sfx:null,
+      house:L.house, work:0, practical:0, haze:L.haze,
+      rain:0, storm:false,
+      fire:L.fire && L.fire.chans ? L.fire : null,
+      neon:L.neon === undefined ? 1 : L.neon
+    });
+  });
+  FIXTURES.forEach(f=>{ f.level = 0; f.gobo = 0; });
+  restoreAims(homeAims);
+  RIG.haze = savedHaze;
+  savedFly.forEach(r=>{ const ls = FLY[r.id-1]; if(ls){ ls.target = r.target; ls.travTarget = r.open; } });
+  SHOW.cues = CUES.length;
+  nextCue = 0;
+}

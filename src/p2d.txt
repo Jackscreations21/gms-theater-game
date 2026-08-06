@@ -1,0 +1,162 @@
+
+/* ============================================================================
+   THE WORKSHOP
+   Cut timber into scenery, cut and sew soft goods, paint a backdrop on the
+   paint frame, then deliver any of it to the theatre.
+   ========================================================================== */
+const WORKSHOP = {
+  stock: [],            // finished pieces waiting on the bench
+  built: 0,
+  stockAnchor: null
+};
+
+/* ---- the paint frame's canvas ---- */
+const PAINT = {
+  canvas: (function(){ const c = cvs(1024, 576); const x = c.getContext('2d');
+    x.fillStyle = '#d9d2c4'; x.fillRect(0,0,1024,576); return c; })(),
+  tex: null, mesh: null,
+  colour: '#2f6bff', size: 26, tool: 'brush', painting: false, last: null, dirty: false
+};
+function paintCtx(){ return PAINT.canvas.getContext('2d'); }
+function paintDab(x, y){
+  const g = paintCtx();
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  g.strokeStyle = PAINT.tool === 'eraser' ? '#d9d2c4' : PAINT.colour;
+  g.lineWidth = PAINT.size;
+  g.beginPath();
+  if(PAINT.last) g.moveTo(PAINT.last.x, PAINT.last.y); else g.moveTo(x-0.1, y);
+  g.lineTo(x, y);
+  g.stroke();
+  PAINT.last = {x, y};
+  PAINT.dirty = true;
+}
+function paintWash(kind){
+  const g = paintCtx(), W = 1024, H = 576;
+  if(kind === 'clear'){ g.fillStyle = '#d9d2c4'; g.fillRect(0,0,W,H); }
+  else if(kind === 'sky'){
+    const gr = g.createLinearGradient(0,0,0,H);
+    gr.addColorStop(0,'#173a72'); gr.addColorStop(.55,'#5786bd'); gr.addColorStop(1,'#c9b98d');
+    g.fillStyle = gr; g.fillRect(0,0,W,H);
+  } else if(kind === 'night'){
+    const gr = g.createLinearGradient(0,0,0,H);
+    gr.addColorStop(0,'#05081c'); gr.addColorStop(1,'#22305a');
+    g.fillStyle = gr; g.fillRect(0,0,W,H);
+    g.fillStyle = '#fffbe8';
+    for(let i=0;i<200;i++){ const r = rnd(0.6,2.0);
+      g.beginPath(); g.arc(Math.random()*W, Math.random()*H*0.7, r, 0, 6.283); g.fill(); }
+  } else if(kind === 'ground'){
+    g.fillStyle = '#3b3324'; g.fillRect(0, H*0.72, W, H*0.28);
+    for(let i=0;i<400;i++){ g.fillStyle = 'rgba('+(60+Math.random()*50|0)+','+(70+Math.random()*50|0)+',40,.5)';
+      g.fillRect(Math.random()*W, H*0.72 + Math.random()*H*0.28, 3, 3); }
+  } else if(kind === 'trees'){
+    for(let k=0;k<26;k++){
+      const tx = Math.random()*W, th = rnd(120, 300);
+      g.fillStyle = 'rgba(30,24,16,.9)';
+      g.fillRect(tx, H*0.78-th*0.35, 14, th*0.35);
+      g.fillStyle = 'rgba('+(20+Math.random()*30|0)+','+(55+Math.random()*45|0)+',30,.92)';
+      g.beginPath(); g.ellipse(tx+7, H*0.78-th*0.35, rnd(40,80), rnd(30,55), 0, 0, 6.283); g.fill();
+    }
+  } else if(kind === 'brick'){
+    g.fillStyle = '#5d3a30'; g.fillRect(0,0,W,H);
+    for(let r=0;r<18;r++){ const yy=r*32, off=(r%2)*34;
+      for(let b=0;b<16;b++){ g.fillStyle='rgb('+(110+Math.random()*30|0)+','+(64+Math.random()*20|0)+','+(52+Math.random()*18|0)+')';
+        g.fillRect(b*68+off+2, yy+2, 64, 28); } }
+  }
+  PAINT.dirty = true;
+}
+
+/* ---- what the shop can make ---- */
+const SOFT_KINDS = [
+  {id:'border', label:'border',   base:'border'},
+  {id:'legs',   label:'legs',     base:'legs'},
+  {id:'drop',   label:'plain drop', base:'sky'},
+  {id:'scrim',  label:'scrim',    base:'scrim'},
+  {id:'valance',label:'valance',  base:'valance'},
+  {id:'portal', label:'hard portal', base:'portal'}
+];
+let customGoods = 0;
+
+/* build a scenic unit — it lands in the shop's stock */
+function shopBuildScenic(key){
+  const spec = SCENIC[key]; if(!spec) return;
+  WORKSHOP.stock.push({kind:'scenic', key, label:spec.label, id:++WORKSHOP.built});
+  Snd.play('footsteps');
+  toast('Built: ' + spec.label + ' — it is on the assembly bench');
+  refreshShopUI();
+}
+/* sew a piece of soft goods — it joins the goods palette on the fly rail */
+function shopSewGoods(kindId, colour){
+  const kind = SOFT_KINDS.find(k=>k.id===kindId) || SOFT_KINDS[0];
+  const src = GOODS[kind.base];
+  const key = 'made'+(++customGoods);
+  const col = new T.Color(colour);
+  const mat = new T.MeshStandardMaterial({
+    map: (kind.base==='scrim' ? null : TX.serge),
+    alphaMap: (kind.base==='scrim' ? TX.scrimA : null),
+    transparent: kind.base==='scrim', depthWrite: kind.base!=='scrim',
+    opacity: kind.base==='scrim' ? .92 : 1,
+    color: col, roughness:.95, side:T.DoubleSide
+  });
+  GOODS[key] = {
+    label: kind.label + ' #' + customGoods,
+    h: src.h, wt: src.wt, traveler: !!src.traveler, made: true,
+    build: ()=>{
+      const g = new T.Group();
+      if(kind.id==='legs'){
+        [-1,1].forEach(s=>{ const d = drape(5.6, src.h, mat, 9, .2);
+          d.position.set(s*(D.procW/2+1.9), -src.h/2, 0); g.add(d); });
+      } else if(kind.id==='border' || kind.id==='valance'){
+        const d = drape(D.procW+6, src.h, mat, 11, .2);
+        d.position.y = -src.h/2; g.add(d);
+      } else if(kind.id==='portal'){
+        [-1,1].forEach(s=>{ const f = new T.Mesh(new T.BoxGeometry(3.0, src.h, .16), mat);
+          f.position.set(s*(D.procW/2-1.5), -src.h/2, 0); f.castShadow=true; g.add(f); });
+        const t = new T.Mesh(new T.BoxGeometry(D.procW, 1.8, .16), mat);
+        t.position.y = -0.9; g.add(t);
+      } else {
+        const d = drape(D.procW+6, src.h, mat, 3, .06);
+        d.position.y = -src.h/2; g.add(d);
+      }
+      return g;
+    }
+  };
+  TRIMS[key] = TRIMS[kind.base] !== undefined ? TRIMS[kind.base] : 12.0;
+  toast('Sewn: ' + GOODS[key].label + ' — it is on the fly rail goods list');
+  Snd.play('whoosh');
+  buildGoodsPalette();
+  refreshShopUI();
+  return key;
+}
+/* send what is on the paint frame to the rail as a painted cloth */
+function shopHangPainting(){
+  const snap = cvs(1024, 576);
+  snap.getContext('2d').drawImage(PAINT.canvas, 0, 0);
+  const t = tex(snap, 1, 1);
+  t.wrapS = t.wrapT = T.ClampToEdgeWrapping;
+  const key = 'made'+(++customGoods);
+  GOODS[key] = {
+    label: 'painted cloth #' + customGoods, h: 11.5, wt: 230, made: true,
+    build: ()=>{
+      const g = new T.Group();
+      const m = new T.MeshStandardMaterial({map:t, roughness:1, side:T.DoubleSide});
+      const d = drape(D.procW+6, 11.5, m, 2, .05);
+      d.position.y = -5.75; g.add(d); return g;
+    }
+  };
+  TRIMS[key] = 11.6;
+  toast('The painted cloth is on the rail — hang it on a lineset');
+  buildGoodsPalette();
+  refreshShopUI();
+  return key;
+}
+/* walk a finished scenic unit out to the stage */
+function shopDeliver(i){
+  const item = WORKSHOP.stock[i]; if(!item) return;
+  const p = placeScenic(item.key, rnd(-4,4), rnd(-8,-3));
+  WORKSHOP.stock.splice(i,1);
+  selPiece = p;
+  Snd.play('doorSlam');
+  toast(item.label + ' delivered to the deck — drag it where you want it');
+  refreshShopUI();
+}
+function shopDeliverAll(){ while(WORKSHOP.stock.length) shopDeliver(0); }

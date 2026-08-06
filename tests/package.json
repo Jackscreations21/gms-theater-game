@@ -1,0 +1,6 @@
+{
+  "name": "the-house-tests",
+  "private": true,
+  "description": "jsdom + real three.js with a stubbed WebGLRenderer. See HANDOFF.md §2.",
+  "dependencies": { "jsdom": "^22.1.0", "three": "0.128.0" }
+}

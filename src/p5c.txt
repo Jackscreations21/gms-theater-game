@@ -1,0 +1,1360 @@
+
+/* ============================================================================
+   SHOWS — a whole production, loaded in one go
+
+   A show preset does the load-in for you: it builds the scenery, hangs and
+   trims the goods, sets the haze and the practicals, and plots a cue stack you
+   can then sit at the board and run.  Everything it makes goes into SHOW.group
+   so STRIKE takes it all out again in one move.
+
+   These are interpretations, not reproductions.  Nobody's ground plan or
+   light plot went into them — they are built from the vocabulary of the show:
+   the shape of the room, the materials, the colours, the way the light sits.
+   ========================================================================== */
+const SHOWS = {};
+const SHOW = {
+  key:null, group:null, effects:[], goods:[], walk:[], cues:0,
+  rain:null, fire:null, gyms:null, gymIn:0,
+  neon:[], neonLevel:0, neonTarget:1, neonLights:[], smoke:[],
+  scenes:[], scene:null, revolve:null, wrong:[],
+  rainSound:false, flicker:null, lightning:0, lightningT:0,
+  stormOn:false, stormT:0, porch:null
+};
+/* the lightning sits on the scene, not in a room, so it can never be culled */
+const LIGHTNING = new T.DirectionalLight(0xdfeaff, 0);
+LIGHTNING.position.set(-14, 20, -16);
+scene.add(LIGHTNING);
+const LIGHTNING_AMB = new T.AmbientLight(0xcfe0ff, 0);
+scene.add(LIGHTNING_AMB);
+
+function showLog(s){ if(typeof toast === 'function') toast(s); }
+
+/* is anything, on any stage, still hanging this? */
+function goodsInUse(key){
+  const on = list => !!(list && list.some(ls=>ls.goodsKey === key));
+  if(on(FLY)) return true;
+  if(typeof STAGES !== 'undefined')
+    for(const k in STAGES) if(on(STAGES[k].fly)) return true;
+  return false;
+}
+
+/* everything a preset makes hangs off here, on the stage, so the room culling
+   takes it with the rest of the stage */
+function showRoot(){
+  if(SHOW.group) return SHOW.group;
+  const g = new T.Group(); g.name = 'show';
+  /* a production goes onto the stage the board is patched to, not onto the
+     Palace's stage by default — otherwise loading a show at the Arc builds
+     it four hundred metres away in an empty building */
+  const st = (typeof stageLive === 'function') ? stageLive() : null;
+  if(st && st.showParent) st.showParent().add(g);
+  else if(typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.stage) ROOM_GROUP.stage.add(g);
+  else world.add(g);
+  SHOW.group = g;
+  return g;
+}
+function showWalk(o){ SHOW.walk.push(o); WALKABLE.push(o); return o; }
+
+/* ============================================================================
+   SCENES — more than one set, and a way to change between them
+
+   A show with eight locations does not get eight stages.  It gets one, and the
+   sets take turns on it.  Each scene is a group built at load-in and parked
+   invisible until it is called.
+
+   Two things can hide a piece of scenery, and they must not fight: the scene
+   system, when this set is not the one playing, and the crew, when they have
+   not carried it on yet.  Either one alone is enough to keep it off — so both
+   are recorded and the visibility is worked out from the pair of them, rather
+   than each writing over the other.
+   ========================================================================== */
+function setPieceVisible(o, crewHidden){
+  if(crewHidden !== undefined) o.userData.crewHidden = crewHidden;
+  o.visible = !o.userData.crewHidden && !o.userData.sceneOff;
+}
+function sceneAdd(name, label){
+  const g = new T.Group();
+  g.name = 'scene:' + name;
+  g.userData.scene = name;
+  g.userData.sceneOff = true;
+  g.visible = false;
+  showRoot().add(g);
+  const sc = {name, label: label || name.toUpperCase(), group:g, walk:[], on:false};
+  SHOW.scenes.push(sc);
+  return sc;
+}
+function sceneFind(name){ return SHOW.scenes.find(s=>s.name === name) || null; }
+/* anything you can stand on inside a scene goes on the scene's own list, so it
+   leaves WALKABLE the moment that set goes off — otherwise you would be
+   walking on the staircase of a house that is not on the stage */
+function sceneWalk(sc, o){ if(sc) sc.walk.push(o); return o; }
+function sceneShow(name){
+  if(!SHOW.scenes.length) return null;
+  const want = sceneFind(name);
+  if(!want) return null;
+  for(const sc of SHOW.scenes){
+    const on = (sc === want);
+    if(sc.on === on && SHOW.scene === name) continue;
+    sc.on = on;
+    sc.group.userData.sceneOff = !on;
+    setPieceVisible(sc.group);
+    /* visible is only a drawing flag — a raycast goes straight through it and
+       hits the set anyway.  A set that is off has to be inert as well as
+       unseen, or you can click on a house that is not there and the picking
+       lands on a wall in the wings.  Clearing the layers does both: nothing
+       renders it and no ray tests it.                                     */
+    sc.group.traverse(o=>{ if(on) o.layers.set(0); else o.layers.disableAll(); });
+    for(const o of sc.walk){
+      const i = WALKABLE.indexOf(o);
+      if(on && i < 0) WALKABLE.push(o);
+      if(!on && i >= 0) WALKABLE.splice(i, 1);
+    }
+  }
+  SHOW.scene = name;
+  if(typeof refreshSceneUI === 'function') refreshSceneUI();
+  return want;
+}
+function sceneNext(step){
+  if(!SHOW.scenes.length) return null;
+  const i = SHOW.scenes.findIndex(s=>s.name === SHOW.scene);
+  const n = (i < 0 ? 0 : i + (step || 1) + SHOW.scenes.length) % SHOW.scenes.length;
+  return sceneShow(SHOW.scenes[n].name);
+}
+function showStrike(){
+  if(typeof crewForgetLoads === 'function') crewForgetLoads();
+  if(typeof CREW !== 'undefined' && CREW.running && typeof crewStop === 'function') crewStop(true);
+  for(const o of SHOW.walk){ const i = WALKABLE.indexOf(o); if(i >= 0) WALKABLE.splice(i,1); }
+  SHOW.walk = [];
+  if(SHOW.rainSound && typeof Snd !== 'undefined'){ Snd.play('rain'); SHOW.rainSound = false; }
+  if(SHOW.group){
+    SHOW.group.parent && SHOW.group.parent.remove(SHOW.group);
+    disposeTree(SHOW.group);
+    SHOW.group = null;
+  }
+  LIGHTNING.intensity = 0; LIGHTNING_AMB.intensity = 0;
+  SHOW.stormOn = false; SHOW.porch = null;
+  // a show curtain gets the house's own curtain back, not a bare pipe
+  FLY.forEach(ls=>{
+    if(SHOW.goods.indexOf(ls.goodsKey) === -1) return;
+    const wasTraveler = GOODS[ls.goodsKey] && GOODS[ls.goodsKey].traveler;
+    hangGoods(ls, wasTraveler ? 'house' : 'none');
+    if(wasTraveler){ ls.target = ls.pos = TRIMS.house; ls.travTarget = ls.open = 0; }
+  });
+  /* GOODS is one catalogue for the whole game, but a show's own cloths are
+     registered into it — and the same production can be up on two stages at
+     once.  Striking one of them must not take the other's house curtain out
+     of the catalogue, or the far rail is left pointing at nothing.       */
+  for(const k of SHOW.goods) if(!goodsInUse(k)){ delete GOODS[k]; delete TRIMS[k]; }
+  SHOW.goods = [];
+  SHOW.effects = [];
+  SHOW.rain = null; SHOW.fire = null; SHOW.flicker = null; SHOW.lightning = 0;
+  SHOW.gyms = null; SHOW.gymIn = 0; SHOW.tyre = null; SHOW.curtainKey = null;
+  SHOW.neon = []; SHOW.neonLights = []; SHOW.neonLevel = 0; SHOW.neonTarget = 1;
+  SHOW.scenes = []; SHOW.scene = null; SHOW.revolve = null; SHOW.wrong = [];
+  if(typeof removeShowSmoke === 'function') removeShowSmoke();
+  SHOW.key = null;
+  if(typeof buildGoodsPalette === 'function') buildGoodsPalette();
+  if(typeof refreshShowUI === 'function') refreshShowUI();
+  if(typeof refreshFlyUI === 'function') refreshFlyUI();
+}
+/* ============================================================================
+   THE SAVED HANG
+   A preset arrives with the hang its designer intended.  The moment you move
+   a lineset, re-hang a batten or lock something off, that is your hang, and
+   you can write it back to the show so it loads in that way from then on.
+   Kept per show and outside SHOW, so striking the set does not lose it.
+   ========================================================================== */
+const SHOW_HANGS = {};
+function hangSnapshot(){
+  return FLY.map(ls=>({
+    id: ls.id,
+    goods: ls.goodsKey,
+    target: +ls.target.toFixed(3),
+    open: +((ls.travTarget || 0).toFixed(3)),
+    locked: !!ls.locked
+  }));
+}
+function saveHang(){
+  if(!SHOW.key){ toast('Load a show first — there is nothing to save the hang to'); return null; }
+  SHOW_HANGS[SHOW.key] = hangSnapshot();
+  const hung = SHOW_HANGS[SHOW.key].filter(r=>r.goods !== 'none').length;
+  toast('Hang saved to ' + SHOWS[SHOW.key].name + ' — ' + hung +
+        ' linesets. It will load in like this from now on.');
+  if(typeof refreshHangUI === 'function') refreshHangUI();
+  return SHOW_HANGS[SHOW.key];
+}
+function applyHang(key){
+  const snap = SHOW_HANGS[key];
+  if(!snap) return {set:0, missing:0};
+  let set = 0, missing = 0;
+  for(const r of snap){
+    const ls = FLY[r.id - 1];
+    if(!ls) continue;
+    if(!GOODS[r.goods]){ missing++; continue; }   // a shop cloth that has since gone
+    if(ls.goodsKey !== r.goods) hangGoods(ls, r.goods);
+    ls.locked = false;                            // trim it before locking it off
+    ls.target = ls.pos = r.target;
+    ls.group.position.y = ls.pos;
+    ls.travTarget = ls.open = r.open;
+    ls.locked = r.locked;
+    set++;
+  }
+  if(typeof refreshFlyUI === 'function') refreshFlyUI();
+  if(typeof refreshHangUI === 'function') refreshHangUI();
+  return {set, missing};
+}
+function forgetHang(){
+  if(!SHOW.key) return false;
+  if(!SHOW_HANGS[SHOW.key]){ toast('That show has no saved hang'); return false; }
+  delete SHOW_HANGS[SHOW.key];
+  toast('Saved hang discarded — back to the hang the show came with');
+  if(typeof refreshHangUI === 'function') refreshHangUI();
+  return true;
+}
+/* has the rail been touched since it was loaded or last saved? */
+function hangIsDirty(){
+  if(!SHOW.key) return false;
+  const ref = SHOW_HANGS[SHOW.key] || SHOW.loadedHang;
+  if(!ref) return false;
+  const now = hangSnapshot();
+  for(let i=0;i<now.length;i++){
+    const a = now[i], b = ref[i];
+    if(!b) return true;
+    if(a.goods !== b.goods || a.locked !== b.locked) return true;
+    if(Math.abs(a.target - b.target) > 0.05) return true;
+    if(Math.abs(a.open - b.open) > 0.02) return true;
+  }
+  return false;
+}
+
+function showLoad(key){
+  const spec = SHOWS[key]; if(!spec) return false;
+  showStrike();
+  strikeAll();                       // clear anything you had on the deck
+  SHOW.key = key;
+  /* Clear the rail first.  A show's hang has to be deterministic — locks and
+     leftovers from whatever you were doing before must not survive into it,
+     or FORGET would never really take you back to the show as written. */
+  FLY.forEach(ls=>{
+    ls.locked = false;
+    if(ls.goodsKey !== 'none') hangGoods(ls, 'none');
+    ls.travTarget = ls.open = 0;
+    ls.target = ls.pos = OUT_TRIM;
+    ls.group.position.y = ls.pos;
+  });
+  showRoot();
+  spec.load();
+  // your hang, if you have saved one, wins over the one it shipped with
+  if(SHOW_HANGS[key]) applyHang(key);
+  SHOW.loadedHang = hangSnapshot();
+  if(typeof lockShowStatic === 'function') lockShowStatic();
+  if(typeof crewForgetLoads === 'function') crewForgetLoads();
+  if(typeof refreshShowUI === 'function') refreshShowUI();
+  if(typeof refreshCues === 'function') refreshCues();
+  if(typeof refreshFlyUI === 'function') refreshFlyUI();
+  if(typeof refreshHangUI === 'function') refreshHangUI();
+  showLog(spec.name + ' is loaded in — go to CUES and press GO');
+  return true;
+}
+/* freeze the set: it is scenery, it does not move on its own */
+function lockShowStatic(){
+  if(!SHOW.group) return;
+  SHOW.group.updateMatrixWorld(true);
+  SHOW.group.traverse(o=>{
+    if(o === SHOW.group) return;
+    if(o.userData.moves) return;
+    o.updateMatrix();
+    o.matrixAutoUpdate = false;
+  });
+}
+
+/* ---------------------------------------------------------------- helpers */
+function showBox(w,h,d, mat, x,y,z, parent, rx,ry,rz){
+  const m = new T.Mesh(new T.BoxGeometry(w,h,d), mat);
+  m.position.set(x,y,z);
+  if(rx) m.rotation.x = rx; if(ry) m.rotation.y = ry; if(rz) m.rotation.z = rz;
+  m.castShadow = m.receiveShadow = true;
+  (parent || showRoot()).add(m);
+  return m;
+}
+function showCyl(rt,rb,h,seg, mat, x,y,z, parent){
+  const m = new T.Mesh(new T.CylinderGeometry(rt,rb,h,seg), mat);
+  m.position.set(x,y,z);
+  m.castShadow = m.receiveShadow = true;
+  (parent || showRoot()).add(m);
+  return m;
+}
+/* A batch of identical parts in one draw call.
+
+   The bounding sphere is a trap here.  r128 uses geometry.boundingSphere for
+   BOTH frustum culling and the first rejection test in a raycast — but the
+   raycast applies it per instance, on top of that instance's own transform.
+   Widening the sphere to cover every instance fixes the culling and breaks
+   the raycast, which is how the scaffold ended up un-standable-on.  So:
+   anything you have to be able to walk on keeps its honest local sphere and
+   is simply never culled; everything else gets the wide sphere and gives up
+   raycasting, which it never needed.                                        */
+function showBatch(geo, mat, list, opt){
+  opt = opt || {};
+  const parent = opt.parent;
+  const im = new T.InstancedMesh(geo, mat, list.length);
+  const d = new T.Object3D();
+  const box = new T.Box3();
+  if(!geo.boundingBox) geo.computeBoundingBox();
+  const tmp = new T.Box3();
+  list.forEach((p,i)=>{
+    d.position.set(p.x, p.y, p.z);
+    d.rotation.set(p.rx||0, p.ry||0, p.rz||0);
+    d.scale.set(p.sx||1, p.sy||1, p.sz||1);
+    d.updateMatrix();
+    im.setMatrixAt(i, d.matrix);
+    tmp.copy(geo.boundingBox).applyMatrix4(d.matrix);
+    box.union(tmp);
+  });
+  im.instanceMatrix.needsUpdate = true;
+  if(opt.walk){
+    geo.computeBoundingSphere();       // honest and local, so raycasts land
+    im.frustumCulled = false;
+  } else {
+    const s = new T.Sphere(); box.getBoundingSphere(s);
+    im.geometry.boundingSphere = s;    // wide, so it is not culled at a glance
+    im.raycast = ()=>{};
+  }
+  im.userData.spread = box.clone();
+  im.castShadow = im.receiveShadow = true;
+  (parent || showRoot()).add(im);
+  return im;
+}
+
+/* ============================================================================
+   RAIN, LIGHTNING AND FIRELIGHT
+   Effects a cue can call for.  The rain is one instanced batch of streaks
+   falling in a slab in front of the wall; lightning and firelight are cheap
+   modulations laid over whatever the board is already doing.
+   ========================================================================== */
+function makeRain(o){
+  const n = o.count || 900;
+  const geo = new T.PlaneGeometry(0.018, 0.42);
+  const mat = new T.MeshBasicMaterial({color:0xbcd2e8, transparent:true, opacity:0.34,
+    depthWrite:false, side:T.DoubleSide, blending:T.AdditiveBlending});
+  const im = new T.InstancedMesh(geo, mat, n);
+  im.frustumCulled = false;
+  im.raycast = ()=>{};
+  im.visible = false;
+  const drops = [];
+  for(let i=0;i<n;i++)
+    drops.push({x:rnd(o.x0,o.x1), y:rnd(o.y0,o.y1), z:rnd(o.z0,o.z1), v:rnd(9,15), len:rnd(0.7,1.6)});
+  const d0 = new T.Object3D();
+  drops.forEach((p,i)=>{
+    d0.position.set(p.x, p.y, p.z);
+    d0.scale.set(1, p.len, 1);
+    d0.updateMatrix();
+    im.setMatrixAt(i, d0.matrix);
+  });
+  im.instanceMatrix.needsUpdate = true;
+  showRoot().add(im);
+  const r = {mesh:im, drops, o, level:0, target:0, _d:new T.Object3D()};
+  r.mesh.userData.moves = true;
+  r.mesh.userData.effect = true;          // not the crew's to carry
+  SHOW.rain = r;
+  return r;
+}
+function updateRain(dt){
+  const r = SHOW.rain; if(!r) return;
+  r.level += clamp(r.target - r.level, -dt*0.8, dt*0.8);
+  r.mesh.visible = r.level > 0.01;
+  if(!r.mesh.visible) return;
+  r.mesh.material.opacity = 0.34 * r.level;
+  const d = r._d, o = r.o;
+  const live = Math.max(1, Math.floor(r.drops.length * r.level));
+  for(let i=0;i<r.drops.length;i++){
+    const p = r.drops[i];
+    if(i >= live){ d.scale.set(0,0,0); d.updateMatrix(); r.mesh.setMatrixAt(i, d.matrix); continue; }
+    p.y -= p.v * dt;
+    if(p.y < o.y0){ p.y = o.y1; p.x = rnd(o.x0,o.x1); p.z = rnd(o.z0,o.z1); }
+    d.position.set(p.x, p.y, p.z);
+    d.rotation.set(0,0,0);
+    d.scale.set(1, p.len, 1);
+    d.updateMatrix();
+    r.mesh.setMatrixAt(i, d.matrix);
+  }
+  r.mesh.instanceMatrix.needsUpdate = true;
+}
+/* a lightning hit: a hard white flash that decays over about a third of a second */
+function strikeLightning(power){
+  SHOW.lightning = power === undefined ? 1 : power;
+  SHOW.lightningT = 0;
+  if(typeof Snd !== 'undefined' && Snd.play) Snd.play('thunder');
+}
+function updateStorm(dt){
+  updateRain(dt);
+  updateFire(dt);
+  updateNeon(dt);
+  updateShowStorm(dt);
+  if(typeof updateRevolve === 'function') updateRevolve(dt);
+  if(typeof updateWrong === 'function') updateWrong(dt);
+  if(SHOW.lightning > 0.001){
+    SHOW.lightningT += dt;
+    SHOW.lightning = Math.max(0, SHOW.lightning - dt*3.4);
+  } else SHOW.lightning = 0;
+  // a flash reads as a hard raking key plus a lift in the ambient
+  LIGHTNING.intensity     = SHOW.lightning * 2.6;
+  LIGHTNING_AMB.intensity = SHOW.lightning * 0.5;
+  // the porch light is a practical, so it rides the practical master
+  if(SHOW.porch){
+    const v = (typeof HOUSE !== 'undefined' ? HOUSE.practical : 0);
+    SHOW.porch.lamp.intensity = v * 1.7;
+    SHOW.porch.bulb.material = v > 0.02 ? M.bulb : M.fixture;
+  }
+  // the rain has a sound, and it comes in and out with the water
+  if(typeof Snd !== 'undefined' && SHOW.rain){
+    const want = SHOW.rain.target > 0.05;
+    if(want !== SHOW.rainSound){ Snd.play('rain'); SHOW.rainSound = want; }
+  }
+  if(SHOW.flicker){
+    const f = SHOW.flicker;
+    f.t += dt;
+    // two detuned waves plus a little noise reads as firelight, not a sine
+    f.v = 0.72 + 0.18*Math.sin(f.t*7.3) + 0.10*Math.sin(f.t*17.1 + 1.3) + rnd(-0.05,0.05);
+    for(const ch of f.chans){
+      const fx = chan(ch); if(!fx) continue;
+      fx.level = clamp(f.base * f.v, 0, 1);
+    }
+  }
+}
+/* track the climbing frames in towards the centre, or back out to the walls */
+function setGymInset(v){
+  SHOW.gymIn = clamp(v, 0, 6.5);
+  if(!SHOW.gyms) return SHOW.gymIn;
+  for(const g of SHOW.gyms) g.group.position.x = g.home - g.side * SHOW.gymIn;
+  return SHOW.gymIn;
+}
+function setFirelight(chans, base){
+  SHOW.flicker = chans ? {chans, base:base===undefined?0.8:base, t:0, v:1} : null;
+}
+
+
+/* ============================================================================
+   FIRE — the church goes up
+   Flame tongues are instanced quads that rise, lean, shrink and die, turned
+   to face the camera each frame.  Embers ride up on top of them.  Two point
+   lights sit inside it so the timber around it actually gets lit, and the
+   rig channels flicker underneath the whole thing.
+   ========================================================================== */
+let FIRE_TEX = null, EMBER_TEX = null;
+function fireTextures(){
+  if(FIRE_TEX) return;
+  // a flame tongue: white hot at the base, orange through the middle, gone at the tip
+  const c = cvs(128, 256), g = c.getContext('2d');
+  g.clearRect(0,0,128,256);
+  for(let i=0;i<44;i++){
+    const t = i/43;
+    const w = 58 * Math.sin(Math.PI * Math.pow(t, 0.62)) * (1 - t*0.25);
+    const y = 250 - t*244;
+    const a = (1 - t) * 0.30 + 0.04;
+    const col = t < 0.28 ? '255,246,206' : t < 0.6 ? '255,186,64' : '226,92,20';
+    g.fillStyle = 'rgba('+col+','+a.toFixed(3)+')';
+    g.beginPath(); g.ellipse(64, y, Math.max(2,w), Math.max(4, 26*(1-t*0.5)), 0, 0, 6.283); g.fill();
+  }
+  FIRE_TEX = tex(c,1,1);
+  const e = cvs(32,32), ge = e.getContext('2d');
+  const gr = ge.createRadialGradient(16,16,0,16,16,16);
+  gr.addColorStop(0,'rgba(255,236,180,1)'); gr.addColorStop(0.35,'rgba(255,150,50,.75)');
+  gr.addColorStop(1,'rgba(255,90,20,0)');
+  ge.fillStyle = gr; ge.fillRect(0,0,32,32);
+  EMBER_TEX = tex(e,1,1);
+}
+function makeFire(o){
+  fireTextures();
+  const n = o.count || 260, nE = o.embers || 130;
+  const mat = new T.MeshBasicMaterial({map:FIRE_TEX, transparent:true, opacity:1,
+    blending:T.AdditiveBlending, depthWrite:false, side:T.DoubleSide});
+  const im = new T.InstancedMesh(new T.PlaneGeometry(1, 1), mat, n);
+  im.frustumCulled = false; im.raycast = ()=>{}; im.visible = false;
+  im.userData.moves = true;
+  const eMat = new T.MeshBasicMaterial({map:EMBER_TEX, transparent:true, opacity:1,
+    blending:T.AdditiveBlending, depthWrite:false, side:T.DoubleSide});
+  const em = new T.InstancedMesh(new T.PlaneGeometry(1, 1), eMat, nE);
+  em.frustumCulled = false; em.raycast = ()=>{}; em.visible = false;
+  em.userData.moves = true;
+
+  const seed = ()=>({
+    x:rnd(o.x0,o.x1), y:o.y + rnd(-0.1,0.3), z:rnd(o.z0,o.z1),
+    t:Math.random(), life:rnd(0.9,2.1), v:rnd(2.2,4.4),
+    w:rnd(0.9,2.2), h:rnd(2.0,4.6), sway:rnd(-0.5,0.5), ph:Math.random()*6.283
+  });
+  const seedE = ()=>({
+    x:rnd(o.x0,o.x1), y:o.y + rnd(0,1.5), z:rnd(o.z0,o.z1),
+    t:Math.random(), life:rnd(1.6,3.6), v:rnd(1.4,3.6),
+    s:rnd(0.08,0.26), drift:rnd(-0.8,0.8), ph:Math.random()*6.283
+  });
+  const flames = [], embers = [];
+  for(let i=0;i<n;i++)  flames.push(seed());
+  for(let i=0;i<nE;i++) embers.push(seedE());
+
+  const g = new T.Group();
+  g.userData.effect = true;               // not the crew's to carry
+  g.add(im); g.add(em);
+  const l1 = new T.PointLight(0xff7a22, 0, 22, 1.5);
+  const l2 = new T.PointLight(0xffb040, 0, 16, 1.6);
+  l1.position.set((o.x0+o.x1)/2 - 2.4, o.y + 2.0, (o.z0+o.z1)/2);
+  l2.position.set((o.x0+o.x1)/2 + 2.4, o.y + 3.4, (o.z0+o.z1)/2);
+  l1.userData.moves = l2.userData.moves = true;
+  g.add(l1); g.add(l2);
+  showRoot().add(g);
+
+  const f = {group:g, mesh:im, embers:em, flames, ember:embers, o,
+             level:0, target:0, t:0, lights:[l1,l2], _d:new T.Object3D()};
+  SHOW.fire = f;
+  return f;
+}
+function updateFire(dt){
+  const f = SHOW.fire; if(!f) return;
+  f.level += clamp(f.target - f.level, -dt*0.55, dt*0.7);
+  const on = f.level > 0.01;
+  f.mesh.visible = f.embers.visible = on;
+  if(!on){ f.lights.forEach(l=>l.intensity = 0); return; }
+  f.t += dt;
+  const o = f.o, d = f._d;
+  // flames face the camera: yaw only, so they stay upright
+  const yaw = Math.atan2(camera.position.x - (o.x0+o.x1)/2,
+                         camera.position.z - (o.z0+o.z1)/2);
+  f.mesh.material.opacity = f.level;
+  f.embers.material.opacity = f.level;
+  const live = Math.max(1, Math.floor(f.flames.length * f.level));
+  for(let i=0;i<f.flames.length;i++){
+    const p = f.flames[i];
+    if(i >= live){ d.scale.set(0,0,0); d.updateMatrix(); f.mesh.setMatrixAt(i, d.matrix); continue; }
+    p.t += dt / p.life;
+    if(p.t >= 1){ Object.assign(p, seedFlame(o)); p.t = 0; }
+    const k = p.t;                                   // 0 new, 1 spent
+    const rise = p.v * k * p.life;
+    const grow = Math.sin(Math.PI * Math.min(1, k*1.25));   // fat in the middle
+    d.position.set(p.x + Math.sin(f.t*2.2 + p.ph)*0.25*k + p.sway*k,
+                   p.y + rise + p.h*0.35,
+                   p.z + Math.cos(f.t*1.7 + p.ph)*0.18*k);
+    d.rotation.set(0, yaw, Math.sin(f.t*2.6 + p.ph)*0.12);
+    d.scale.set(p.w * grow * (1 - k*0.35), p.h * grow, 1);
+    d.updateMatrix();
+    f.mesh.setMatrixAt(i, d.matrix);
+  }
+  f.mesh.instanceMatrix.needsUpdate = true;
+  const liveE = Math.max(1, Math.floor(f.ember.length * f.level));
+  for(let i=0;i<f.ember.length;i++){
+    const p = f.ember[i];
+    if(i >= liveE){ d.scale.set(0,0,0); d.updateMatrix(); f.embers.setMatrixAt(i, d.matrix); continue; }
+    p.t += dt / p.life;
+    if(p.t >= 1){ Object.assign(p, seedEmber(o)); p.t = 0; }
+    const k = p.t;
+    d.position.set(p.x + p.drift*k*3.2 + Math.sin(f.t*3 + p.ph)*0.4*k,
+                   p.y + p.v*k*p.life*2.1,
+                   p.z + Math.cos(f.t*2.4 + p.ph)*0.5*k);
+    d.rotation.set(0, yaw, 0);
+    const sc = p.s * (1 - k*0.7);
+    d.scale.set(sc, sc, 1);
+    d.updateMatrix();
+    f.embers.setMatrixAt(i, d.matrix);
+  }
+  f.embers.instanceMatrix.needsUpdate = true;
+  // the light inside it never sits still
+  const a = 0.74 + 0.2*Math.sin(f.t*9.1) + 0.12*Math.sin(f.t*21.3 + 2.1) + rnd(-0.06,0.06);
+  const b = 0.74 + 0.2*Math.sin(f.t*7.4 + 1.1) + 0.12*Math.sin(f.t*18.2) + rnd(-0.06,0.06);
+  f.lights[0].intensity = f.level * 3.4 * a;
+  f.lights[1].intensity = f.level * 2.2 * b;
+}
+function seedFlame(o){
+  return {x:rnd(o.x0,o.x1), y:o.y + rnd(-0.1,0.3), z:rnd(o.z0,o.z1),
+          t:0, life:rnd(0.9,2.1), v:rnd(2.2,4.4),
+          w:rnd(0.9,2.2), h:rnd(2.0,4.6), sway:rnd(-0.5,0.5), ph:Math.random()*6.283};
+}
+function seedEmber(o){
+  return {x:rnd(o.x0,o.x1), y:o.y + rnd(0,1.5), z:rnd(o.z0,o.z1),
+          t:0, life:rnd(1.6,3.6), v:rnd(1.4,3.6),
+          s:rnd(0.08,0.26), drift:rnd(-0.8,0.8), ph:Math.random()*6.283};
+}
+
+/* ============================================================================
+   THE OUTSIDERS
+   Tulsa, 1967.  A lot behind the houses: a rough plank wall with the daylight
+   coming through the gaps in it, a scaffold you can climb, a dead car the
+   boys sit on and in, tyres, cut timber, an oil drum.  One drop upstage that
+   is the drive-in screen, then a wall, then the church.
+
+   The lighting is plotted for tungsten — warm, low, and side-on — with the
+   cool kept for the rain.
+   ========================================================================== */
+/* The wall behind the frame is not a picture.  It is a flat field of aged
+   ochre board, seamed vertically, that the cyc wash turns to gold — so the
+   frame reads as a black skeleton standing against a lit surface.          */
+function outsidersCanvas(kind){
+  if(kind === 'curtain') return outsidersCurtainCanvas();
+  const c = cvs(1024, 576), g = c.getContext('2d');
+  const W = 1024, H = 576;
+  g.fillStyle = '#8a6524'; g.fillRect(0,0,W,H);
+  // a slow vertical shade, brighter through the middle
+  const gr = g.createLinearGradient(0,0,0,H);
+  gr.addColorStop(0,'rgba(60,40,12,.55)'); gr.addColorStop(0.34,'rgba(255,206,110,.20)');
+  gr.addColorStop(0.62,'rgba(255,190,86,.12)'); gr.addColorStop(1,'rgba(28,18,8,.62)');
+  g.fillStyle = gr; g.fillRect(0,0,W,H);
+  // board seams
+  g.strokeStyle = 'rgba(40,26,10,.55)'; g.lineWidth = 3;
+  for(let x=0; x<W; x+=64){
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke();
+  }
+  g.strokeStyle = 'rgba(40,26,10,.3)'; g.lineWidth = 2;
+  for(let y=0; y<H; y+=96){
+    g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke();
+  }
+  // grain and grime, so it is not a flat fill
+  for(let i=0;i<2600;i++){
+    const x = Math.random()*W, y = Math.random()*H;
+    g.fillStyle = 'rgba('+(120+Math.random()*90|0)+','+(84+Math.random()*60|0)+',30,'+
+      (0.03+Math.random()*0.09).toFixed(2)+')';
+    g.fillRect(x, y, 1 + Math.random()*46, 1 + Math.random()*2);
+  }
+  for(let i=0;i<40;i++){
+    g.fillStyle = 'rgba(28,18,8,'+(0.05+Math.random()*0.12).toFixed(2)+')';
+    g.beginPath();
+    g.ellipse(Math.random()*W, Math.random()*H, rnd(20,90), rnd(14,60), 0, 0, 6.283);
+    g.fill();
+  }
+  return {canvas:c, tex:tex(c,1,1)};
+}
+
+/* The show curtain: a painted cloth in the same weathered ochre as the wall
+   behind the frame, boarded and distressed, with a low sun bleeding through
+   it and a dark ground band along the bottom.  It is a traveler, so it draws
+   like any house curtain and answers the CURTAINS group call.              */
+function outsidersCurtainCanvas(){
+  const W = 1024, H = 1024, c = cvs(W, H), g = c.getContext('2d');
+  // the ground of the cloth: deep rust up into amber
+  const base = g.createLinearGradient(0, 0, 0, H);
+  base.addColorStop(0.00, '#2a1608');
+  base.addColorStop(0.26, '#7a3d10');
+  base.addColorStop(0.50, '#b8701e');
+  base.addColorStop(0.68, '#d99a34');
+  base.addColorStop(0.84, '#5e3413');
+  base.addColorStop(1.00, '#180e06');
+  g.fillStyle = base; g.fillRect(0, 0, W, H);
+  // a low sun burning through from behind
+  const sun = g.createRadialGradient(W*0.5, H*0.60, 10, W*0.5, H*0.60, W*0.44);
+  sun.addColorStop(0, 'rgba(255,232,158,.62)');
+  sun.addColorStop(0.32, 'rgba(255,186,72,.24)');
+  sun.addColorStop(1, 'rgba(255,150,40,0)');
+  g.fillStyle = sun; g.fillRect(0, 0, W, H);
+  // boarded, like the wall it hides
+  g.strokeStyle = 'rgba(30,18,7,.5)'; g.lineWidth = 4;
+  for(let x = 0; x <= W; x += 58){
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x + rnd(-6,6), H); g.stroke();
+  }
+  g.strokeStyle = 'rgba(255,214,140,.10)'; g.lineWidth = 2;
+  for(let x = 29; x <= W; x += 58){
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x + rnd(-5,5), H); g.stroke();
+  }
+  // grain
+  for(let i=0;i<5200;i++){
+    const y = Math.random()*H;
+    g.fillStyle = 'rgba('+(150+Math.random()*90|0)+','+(96+Math.random()*70|0)+',36,'+
+      (0.03 + Math.random()*0.08).toFixed(2)+')';
+    g.fillRect(Math.random()*W, y, 2 + Math.random()*70, 1 + Math.random()*2);
+  }
+  // a flat horizon and a dark treeline low down, barely there
+  g.fillStyle = 'rgba(22,13,6,.82)';
+  g.beginPath(); g.moveTo(0, H*0.80);
+  for(let x=0; x<=W; x+=12)
+    g.lineTo(x, H*0.80 - Math.sin(x*0.011)*13 - Math.sin(x*0.037)*7);
+  g.lineTo(W, H); g.lineTo(0, H); g.closePath(); g.fill();
+  // wear: scuffs, water marks, and a rubbed patch through the middle
+  for(let i=0;i<70;i++){
+    g.fillStyle = 'rgba(24,14,6,'+(0.04 + Math.random()*0.10).toFixed(2)+')';
+    g.beginPath();
+    g.ellipse(Math.random()*W, Math.random()*H, rnd(20,120), rnd(10,70), 0, 0, 6.283);
+    g.fill();
+  }
+  for(let i=0;i<26;i++){
+    g.fillStyle = 'rgba(255,206,132,'+(0.03 + Math.random()*0.06).toFixed(2)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(6,30), rnd(60,300));
+  }
+  // a heavier band top and bottom, where a cloth takes the most punishment
+  const top = g.createLinearGradient(0,0,0,H*0.12);
+  top.addColorStop(0,'rgba(12,7,3,.85)'); top.addColorStop(1,'rgba(12,7,3,0)');
+  g.fillStyle = top; g.fillRect(0,0,W,H*0.12);
+  return {canvas:c, tex:tex(c,1,1)};
+}
+
+SHOWS.outsiders = {
+  name: 'THE OUTSIDERS',
+  blurb: 'Tulsa, 1967 — a plank wall, a scaffold, a dead car and a rumble in the rain.',
+  note: 'An interpretation in the show’s own vocabulary, not a copy of anyone’s design.',
+  load(){
+    const G = showRoot();
+    const HW = D.stageW/2;
+
+    /* ---- materials: everything weathered, nothing new ---- */
+    const timber   = new T.MeshStandardMaterial({map:TX.deck, color:0x6c5540, roughness:.95});
+    const timberDk = new T.MeshStandardMaterial({map:TX.deck, color:0x4a3a2c, roughness:.97});
+    const timberLt = new T.MeshStandardMaterial({map:TX.deck, color:0x8a7255, roughness:.94});
+    const dirt     = new T.MeshStandardMaterial({map:TX.deck, color:0x4b4238, roughness:1});
+    const rust     = new T.MeshStandardMaterial({color:0x6d4326, roughness:.92, metalness:.25});
+    const rustDk   = new T.MeshStandardMaterial({color:0x4a2e1e, roughness:.95, metalness:.2});
+    const chrome   = new T.MeshStandardMaterial({color:0x8a9099, roughness:.34, metalness:.9});
+    const glassMat = new T.MeshStandardMaterial({color:0x1b2630, roughness:.18, metalness:.2,
+                                                 transparent:true, opacity:.42});
+    const rubber   = new T.MeshStandardMaterial({color:0x14151a, roughness:.98});
+    const scaff    = new T.MeshStandardMaterial({color:0x6a6257, roughness:.62, metalness:.55});
+
+    /* ---- the deck: dark boards, not dirt ---- */
+    {
+      /* the shape is drawn in plan and then laid down: after rotateX(-90) a
+         shape y of -k becomes a world z of +k, so every edge is written as the
+         negative of the stage coordinate it belongs to.                      */
+      const sh = new T.Shape();
+      const usZ = -(D.backWall + 0.4);
+      sh.moveTo(-HW+0.4, usZ);
+      sh.lineTo( HW-0.4, usZ);
+      sh.lineTo( HW-0.4, -D.apron);
+      sh.quadraticCurveTo(0, -(D.apron + 2*D.thrust*0.9), -HW+0.4, -D.apron);
+      sh.lineTo(-HW+0.4, usZ);
+      const geo = new T.ExtrudeGeometry(sh, {depth:0.1, bevelEnabled:false, curveSegments:36});
+      geo.rotateX(-Math.PI/2);          // the deck now sits 0 to 0.1 high
+      const lot = new T.Mesh(geo, dirt);
+      lot.receiveShadow = true;
+      G.add(lot);
+      showWalk(lot);
+    }
+
+    /* ================================================================
+       THE FRAME
+       The whole set is one thing: the skeleton of a house, two storeys
+       of stud and rail with the bracing left showing, a gable over it
+       and a round window in the gable.  You see straight through it to
+       the wall behind, and every backlight cue comes through the gaps
+       between the members.
+       ================================================================ */
+    const FR = {
+      z:      D.backWall + 5.4,      // the frame's plane
+      halfW:  7.2,                   // just inside the proscenium
+      bay:    1.2,                   // stud centres
+      sill:   0.15,
+      gallery:3.5,                   // first floor
+      plate:  7.0,                   // top of the wall
+      peak:   10.4,                  // the gable apex
+      thick:  0.21
+    };
+    {
+      const t = FR.thick, HWF = FR.halfW, Z = FR.z;
+      const studs = [], rails = [], braces = [];
+
+      /* studs, floor to plate, at bay centres */
+      for(let x = -HWF; x <= HWF + 0.01; x += FR.bay)
+        studs.push({x:+x.toFixed(3), y:(FR.plate + FR.sill)/2, z:Z,
+                    sy:(FR.plate - FR.sill)/FR.plate});
+      showBatch(new T.BoxGeometry(t, FR.plate, t*1.15), timber, studs);
+
+      /* the horizontal runs: sill, first floor, plate, and a nogging band */
+      [FR.sill, FR.gallery, FR.gallery + 0.42, FR.plate].forEach(y=>{
+        rails.push({x:0, y, z:Z});
+      });
+      showBatch(new T.BoxGeometry(HWF*2 + t, t*1.4, t*1.3), timberDk, rails);
+
+      /* the X-bracing.  Not every bay — that would read as a lattice.  Pairs
+         of crossed diagonals in the outer bays and one wide X either side of
+         centre, which is what gives the thing its shoulders.               */
+      const brace = (x0,y0,x1,y1)=>{
+        const dx = x1-x0, dy = y1-y0;
+        const len = Math.hypot(dx,dy);
+        braces.push({x:(x0+x1)/2, y:(y0+y1)/2, z:Z - 0.06,
+                     rz:Math.atan2(dy,dx) - Math.PI/2, sy:len/4});
+      };
+      const bayX = i => -HWF + i*FR.bay;
+      // ground storey
+      [0,1, 4,5, 7,8, 11].forEach(i=>{
+        brace(bayX(i), FR.sill, bayX(i+1), FR.gallery);
+        if(i % 2 === 0) brace(bayX(i+1), FR.sill, bayX(i), FR.gallery);
+      });
+      // upper storey
+      [0, 2,3, 6, 9,10, 11].forEach(i=>{
+        brace(bayX(i), FR.gallery + 0.42, bayX(i+1), FR.plate);
+        if(i % 3 === 0) brace(bayX(i+1), FR.gallery + 0.42, bayX(i), FR.plate);
+      });
+      showBatch(new T.BoxGeometry(t*0.85, 4, t), timber, braces);
+
+      /* The gable.  A box's long axis is its local Y, and a rotation of a
+         about Z carries +Y to (-sin a, cos a).  To lay a rafter from the end
+         of the plate at (sd*run, plate) up to the apex at (0, peak) the
+         direction has to be (-sd*run, rise)/len, so sin a = sd*run/len and
+         cos a = rise/len — that is a = sd*atan2(run, rise).  I had the sign
+         inverted, which is why the two rafters leaned the same way, crossed
+         over each other and shot out past the peak.                        */
+      const rise = FR.peak - FR.plate, run = HWF;
+      const rlen = Math.hypot(run, rise);
+      [-1, 1].forEach(sd=>{
+        const r = showBox(t*1.25, rlen, t*1.35, timberDk,
+          sd*run/2, FR.plate + rise/2, Z);
+        r.rotation.z = sd * Math.atan2(run, rise);
+        r.userData.part = 'rafter'; r.userData.len = rlen;
+      });
+      // a ridge block where they meet, so the apex is a joint and not a gap
+      showBox(t*1.6, t*1.7, t*1.6, timberDk, 0, FR.peak - t*0.6, Z);
+      /* no collar tie across the gable — it would cut the window in half.
+         The gable is braced instead by two raking struts off the plate.    */
+      [-1,1].forEach(sd=>{
+        const st = showBox(t*0.9, rise*0.66, t, timber,
+          sd*HWF*0.34, FR.plate + rise*0.26, Z);
+        st.rotation.z = sd*0.72;
+      });
+      showBox(t, rise*0.24, t, timber, 0, FR.peak - rise*0.12, Z);            // king post
+
+      /* the round window in the gable — the moon you see through the house */
+      {
+        const cy = FR.plate + rise*0.55, R = 1.32;
+        const ring = new T.Mesh(new T.TorusGeometry(R, 0.10, 8, 30), timberLt);
+        ring.position.set(0, cy, Z);
+        ring.castShadow = ring.receiveShadow = true;
+        G.add(ring);
+        const ring2 = new T.Mesh(new T.TorusGeometry(R*0.62, 0.07, 8, 26), timberLt);
+        ring2.position.set(0, cy, Z);
+        G.add(ring2);
+        // spokes, like a wheel
+        for(let i=0;i<8;i++){
+          const sp = showBox(0.07, R*2 - 0.1, 0.07, timberLt, 0, cy, Z);
+          sp.rotation.z = i * Math.PI/8;
+        }
+        SHOW.window = {y:cy, r:R};
+      }
+
+      /* ---- the balcony ----
+         It was a thin slab tucked in behind the frame with steel posts on
+         it, which from out front read as a few white sticks floating in mid
+         air.  It is a proper timber gallery now: a deck with a fascia board
+         along the front edge, joists and knee braces under it, and a heavy
+         timber handrail instead of scaffold pipe.                          */
+      const gallery = (cy, x0, x1, dp)=>{
+        const w = x1 - x0, cx = (x0 + x1)/2;
+        /* it hangs off the DOWNSTAGE face and projects towards the house — it
+           was tucked in behind the frame, so you were looking at the back of
+           it through the studs.  z grows towards the audience.              */
+        const back  = Z + 0.06;              // where it meets the frame
+        const front = back + dp;             // the edge you look at
+        const zc    = back + dp/2;
+        showWalk(showBox(w, 0.16, dp, timberLt, cx, cy + 0.08, zc));
+        // the fascia is what you actually see from the house
+        showBox(w, 0.44, 0.1, timberDk, cx, cy - 0.14, front);
+        const joists = [], knees = [];
+        for(let x = x0 + 0.5; x <= x1 - 0.49; x += 1.2){
+          joists.push({x:+x.toFixed(2), y:cy - 0.18, z:zc});
+          // the knee braces rake back up to the frame behind it
+          knees.push({x:+x.toFixed(2), y:cy - 0.62, z:back + 0.34, rx:0.72, sy:0.24});
+        }
+        showBatch(new T.BoxGeometry(0.12, 0.24, dp - 0.1), timberDk, joists);
+        showBatch(new T.BoxGeometry(0.1, 4, 0.1), timber, knees);
+        const posts = [];
+        for(let x = x0 + 0.25; x <= x1 - 0.24; x += 1.15)
+          posts.push({x:+x.toFixed(2), y:cy + 0.68, z:front});
+        showBatch(new T.BoxGeometry(0.12, 1.1, 0.12), timberDk, posts);
+        showBox(w + 0.24, 0.13, 0.15, timberLt, cx, cy + 1.26, front);   // top rail
+        showBox(w, 0.09, 0.11, timber, cx, cy + 0.74, front);            // mid rail
+        // and a rail returning down each end, so it is not open at the sides
+        [x0, x1].forEach(x=>{
+          showBox(0.12, 1.1, 0.12, timberDk, x, cy + 0.68, back + 0.1);
+          showBox(0.12, 0.13, dp, timberLt, x, cy + 1.26, zc);
+        });
+      };
+      gallery(FR.gallery, -5.4, 5.4, 1.9);
+      gallery(FR.plate,    1.0, 4.6, 1.3);      // the small landing up in the gable
+
+      /* the stair up to the gallery, stage left, and a ladder above it */
+      {
+        const sx = -6.4, steps = [];
+        const rise2 = FR.gallery/9;
+        for(let i=0;i<9;i++)
+          steps.push({x:sx, y:rise2*(i+1) - 0.05, z:Z - 1.9 - i*0.32});
+        showWalk(showBatch(new T.BoxGeometry(1.1, 0.1, 0.34), timberLt, steps, {walk:true}));
+        [-0.5, 0.5].forEach(sd=>{
+          const str = showBox(0.12, 4.4, 0.16, timberDk, sx + sd*0.58, FR.gallery/2, Z - 3.2);
+          str.rotation.x = 0.62;
+        });
+        const rungs = [];
+        for(let i=1; i*0.36 < FR.plate - FR.gallery; i++)
+          rungs.push({x:sx + 1.6, y:FR.gallery + i*0.36, z:Z - 0.5, rz:Math.PI/2});
+        showBatch(new T.CylinderGeometry(0.022,0.022,0.52,6), scaff, rungs);
+        [-1,1].forEach(sd=>showBox(0.06, FR.plate - FR.gallery, 0.06, scaff,
+          sx + 1.6 + sd*0.26, (FR.plate + FR.gallery)/2, Z - 0.5));
+      }
+
+      /* two returns, so the frame reads as a building and not a flat */
+      [-1, 1].forEach(sd=>{
+        const rets = [];
+        for(let i=0;i<3;i++)
+          rets.push({x:sd*HWF, y:(FR.plate + FR.sill)/2, z:Z + 0.9 + i*1.1,
+                     sy:(FR.plate - FR.sill)/FR.plate});
+        showBatch(new T.BoxGeometry(t, FR.plate, t*1.15), timber, rets);
+        showBox(0.16, 0.16, 3.4, timberDk, sd*HWF, FR.plate, Z + 2.0);
+        showBox(0.16, 0.16, 3.4, timberDk, sd*HWF, FR.gallery, Z + 2.0);
+      });
+    }
+
+    /* ---- the car: a stripped hulk, down stage right ---- */
+    {
+      const car = new T.Group();
+      car.position.set(5.2, 0.1, -6.2);
+      car.rotation.y = -0.5;
+      G.add(car);
+      const body = showBox(4.4, 0.72, 1.86, rust, 0, 0.86, 0, car);
+      showBox(4.0, 0.30, 1.72, rustDk, 0, 0.50, 0, car);          // sill
+      showBox(2.1, 0.62, 1.70, rust, -0.15, 1.44, 0, car);        // cabin
+      showBox(1.9, 0.06, 1.60, rustDk, -0.15, 1.76, 0, car);      // roof
+      showBox(0.07, 0.56, 1.56, glassMat, 0.92, 1.44, 0, car);    // windscreen
+      showBox(1.4, 0.10, 1.78, chrome, 1.5, 1.24, 0, car, -0.42); // bonnet lip
+      showBox(0.16, 0.34, 1.86, chrome, 2.24, 0.82, 0, car);      // grille
+      showBox(0.14, 0.26, 1.80, chrome, -2.24, 0.86, 0, car);     // rear
+      [[2.24,0.62],[2.24,-0.62]].forEach(([x,z])=>{
+        const l = new T.Mesh(new T.SphereGeometry(0.13, 10, 8),
+          new T.MeshStandardMaterial({color:0xb8ab8a, roughness:.5, metalness:.3}));
+        l.position.set(x*0.98, 1.02, z); car.add(l);
+      });
+      const wheelGeo = new T.TorusGeometry(0.42, 0.19, 8, 18);
+      [[1.5,0.95],[1.5,-0.95],[-1.5,0.95]].forEach(([x,z])=>{
+        const wl = new T.Mesh(wheelGeo, rubber);
+        wl.rotation.y = Math.PI/2;
+        wl.position.set(x, 0.48, z);
+        wl.castShadow = wl.receiveShadow = true; car.add(wl);
+      });
+      showCyl(0.09,0.09,1.9,8, chrome, -1.5, 0.5, 0, car).rotation.z = Math.PI/2;
+      car.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+    }
+
+    /* ---- one tyre, downstage of the curtain line, where you can sit on it ---- */
+    {
+      const flat = new T.Mesh(new T.TorusGeometry(0.86, 0.32, 12, 24), rubber);
+      flat.rotation.x = Math.PI/2;
+      flat.position.set(-1.7, 0.42, 2.1);          // out on the apron, in front
+      flat.castShadow = flat.receiveShadow = true;
+      G.add(flat);
+      SHOW.tyre = flat; flat.userData.part = 'tyre';
+    }
+
+    /* ---- the bars: pipe frames in both wings, climbed like a jungle gym ----
+       Each one is built into its own group at the origin and then put where it
+       belongs, so the whole frame can be tracked in and out on a slider
+       without rebuilding anything.                                          */
+    {
+      const gym = (bx, bz, bays, levels, sd)=>{
+        const g = new T.Group();
+        g.position.set(bx, 0, bz);
+        g.userData.moves = true;            // it tracks, so do not freeze it
+        G.add(g);
+        const W = 2.6, DP = 1.7, lift = 1.45, H = levels*lift;
+        const posts = [], rungs = [], braces = [];
+        for(let b2=0;b2<=bays;b2++) for(const s2 of [-1,1])
+          posts.push({x:s2*W/2, y:H/2, z:-b2*DP, sy:H/4});
+        for(let l=1;l<=levels;l++){
+          for(let b2=0;b2<=bays;b2++)
+            rungs.push({x:0, y:l*lift, z:-b2*DP});                          // across
+          for(const s2 of [-1,1]) for(let b2=0;b2<bays;b2++)
+            rungs.push({x:s2*W/2, y:l*lift, z:-b2*DP - DP/2,
+                        ry:Math.PI/2, sx:DP/W});                            // fore and aft
+        }
+        for(let b2=0;b2<bays;b2++){
+          if(b2 % 2) continue;
+          braces.push({x:sd*W/2, y:H/2, z:-b2*DP - DP/2,
+                       rx:Math.atan2(DP, H), sy:Math.hypot(DP, H)/4});
+        }
+        showBatch(new T.CylinderGeometry(0.05,0.05,4,7), scaff, posts, {parent:g});
+        showBatch(new T.BoxGeometry(W, 0.075, 0.075), scaff, rungs, {parent:g});
+        if(braces.length)
+          showBatch(new T.CylinderGeometry(0.038,0.038,4,6), scaff, braces, {parent:g});
+        const planks = [];
+        for(let b2=0;b2<bays;b2++) planks.push({x:0, y:H + 0.07, z:-b2*DP - DP/2});
+        const deck = showWalk(showBatch(new T.BoxGeometry(W - 0.12, 0.1, DP - 0.1),
+                              timberLt, planks, {walk:true, parent:g}));
+        const lad = [];
+        for(let r=1; r*0.38 < H; r++) lad.push({x:0, y:r*0.38, z:DP*0.55, rz:Math.PI/2});
+        showBatch(new T.CylinderGeometry(0.022,0.022,0.62,6), scaff, lad, {parent:g});
+        [-1,1].forEach(s2=>showBox(0.055, H, 0.055, scaff, s2*0.31, H/2, DP*0.55, g));
+        return {group:g, home:bx, z:bz, h:H, side:sd, deck,
+                get x(){ return g.position.x; }};
+      };
+      SHOW.gyms = [gym(-10.3, -5.6, 3, 3, -1), gym(10.6, -6.4, 2, 2, 1)];
+      SHOW.gymIn = 0;
+    }
+
+    /* ---- crates, pallets and a drum: the rest of the yard ---- */
+    {
+      const crates = [];
+      [[-4.9,-8.8,0.34],[-4.1,-9.2,0.0],[-4.6,-8.0,0.6],[7.4,-9.2,0.2],[6.6,-8.7,-0.4]]
+        .forEach(([x,z,r],i)=>crates.push({x, y:0.42 + (i===1?0.82:0), z, ry:r}));
+      showBatch(new T.BoxGeometry(0.86, 0.72, 0.86), timberLt, crates);
+      const pallets = [];
+      for(let i=0;i<4;i++) pallets.push({x:8.2, y:0.14 + i*0.14, z:-9.4, ry:rnd(-0.06,0.06)});
+      showBatch(new T.BoxGeometry(1.2, 0.12, 1.0), timberDk, pallets);
+      const dr = showCyl(0.44,0.44,0.92,14, rustDk, -7.4, 0.56, -3.6);
+      showCyl(0.47,0.47,0.06,14, rust, -7.4, 0.82, -3.6);
+      showCyl(0.47,0.47,0.06,14, rust, -7.4, 0.32, -3.6);
+    }
+
+    /* ---- one bare practical hanging in the frame ---- */
+    {
+      const bulb = new T.Mesh(new T.SphereGeometry(0.12, 10, 8), M.bulb);
+      bulb.position.set(-3.2, 4.9, FR.z - 0.5);
+      G.add(bulb);
+      const lamp = new T.PointLight(0xffc27a, 0, 11, 1.4);
+      lamp.position.copy(bulb.position);
+      lamp.userData.moves = true;
+      G.add(lamp);
+      SHOW.porch = {bulb, lamp};
+      showCyl(0.012,0.012,2.1,5, scaff, -3.2, 5.95, FR.z - 0.5);
+    }
+
+    /* ---- the show curtain ---- */
+    {
+      const c = outsidersCanvas('curtain');
+      const key = 'outsidersCurtain';
+      const mat = new T.MeshStandardMaterial({map:c.tex, roughness:.96,
+        side:T.DoubleSide, color:0xffffff});
+      GOODS[key] = {label:'THE OUTSIDERS show curtain', h:13.0, wt:400,
+        traveler:true, made:true, build:()=>{
+          const g = new T.Group();
+          // two over-wide halves that overlap on the centre line, like a real pair
+          [-1,1].forEach(sd=>{
+            const d = drape(D.procW/2 + 3.0, 13.0, mat, 9, .24);
+            d.position.set(sd*(D.procW/4 - 0.4), -6.5, 0);
+            d.userData.side = sd;
+            g.add(d);
+          });
+          return g; }};
+      TRIMS[key] = TRIMS.house;
+      SHOW.goods.push(key);
+      SHOW.curtainKey = key;
+      buildGoodsPalette();
+    }
+
+    /* ---- the wall the whole frame stands against ----
+       Solid, upstage of the frame, and lit by the cyc units, so the frame
+       reads as a black skeleton against a sheet of gold.                   */
+    {
+      const c = outsidersCanvas('wall');
+      const wallMat = new T.MeshStandardMaterial({map:c.tex, roughness:.94,
+        emissive:new T.Color(0x2a1a06), emissiveIntensity:0.55});
+      /* the top edge sits just above the gable, so the peak is drawn against
+         gold and everything above it goes black, the way the photograph does */
+      const w = new T.Mesh(new T.PlaneGeometry(21, 11.0), wallMat);
+      w.position.set(0, 5.5, D.backWall + 2.4);
+      w.receiveShadow = true;
+      G.add(w);
+      SHOW.wall = w;
+      // a dark return either side so you never see past the end of it
+      [-1,1].forEach(sd=>{
+        const r = new T.Mesh(new T.PlaneGeometry(5.0, 11.0),
+          new T.MeshStandardMaterial({color:0x14110c, roughness:1, side:T.DoubleSide}));
+        r.position.set(sd*10.5, 5.5, D.backWall + 4.9);
+        r.rotation.y = sd * Math.PI/2;
+        G.add(r);
+      });
+    }
+
+    /* ---- two machines in behind the frame, pouring through the studs ---- */
+    if(typeof addShowSmoke === 'function'){
+      addShowSmoke({name:'FRAME SL', kind:'fog',  x:-5.0, y:0, z:FR.z - 1.5, yaw:0,        tilt:0.1});
+      addShowSmoke({name:'FRAME SR', kind:'fog',  x: 5.0, y:0, z:FR.z - 1.5, yaw:0,        tilt:0.1});
+      addShowSmoke({name:'GALLERY',  kind:'haze', x: 0.0, y:FR.gallery + 0.2, z:FR.z + 1.2,
+                    yaw:Math.PI, tilt:-0.3});
+    }
+
+    /* ---- the fire, banked along the foot of the frame ---- */
+    makeFire({count:280, embers:150, y:0.2,
+              x0:-5.6, x1:5.6, z0:FR.z - 0.9, z1:FR.z + 0.9});
+
+    /* ---- the rain, sitting in a slab just downstage of the wall ---- */
+    makeRain({count:1000, x0:-HW+1, x1:HW-1, y0:0.05, y1:11.5,
+              z0:D.backWall + 1.0, z1:-0.4});
+
+    /* ---- the hang ----
+       The show curtain goes on lineset 1, right behind the proscenium, with
+       the first black border immediately upstage of it on lineset 2.      */
+    hangGoods(FLY[0], SHOW.curtainKey);
+    FLY[0].target = TRIMS[SHOW.curtainKey]; FLY[0].travTarget = 0; FLY[0].open = 0;
+    hangGoods(FLY[1], 'border');    FLY[1].target = TRIMS.border;
+    hangGoods(FLY[2], 'legs');      FLY[2].target = inTrimOf(FLY[2]);
+    hangGoods(FLY[3], 'border');    FLY[3].target = TRIMS.border;
+    hangGoods(FLY[4], 'electric');  FLY[4].target = 8.0;
+    hangGoods(FLY[5], 'border');    FLY[5].target = TRIMS.border;
+    hangGoods(FLY[6], 'legs');      FLY[6].target = inTrimOf(FLY[6]);
+    hangGoods(FLY[7], 'scrim');     FLY[7].target = OUT_TRIM;
+    hangGoods(FLY[8], 'electric');  FLY[8].target = 8.0;
+    hangGoods(FLY[10],'none');      FLY[10].target = OUT_TRIM;
+    hangGoods(FLY[11],'none');      FLY[11].target = OUT_TRIM;
+    hangGoods(FLY[12],'electric');  FLY[12].target = 9.5;   // washes the gold wall
+    hangGoods(FLY[13],'none');      FLY[13].target = OUT_TRIM;
+    FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
+
+    RIG.haze = 0.62;                 // the beams have to read through the slats
+
+    /* ---------------------------------------------------------- the plot */
+    plotOutsiders();
+    /* Stand the board at the TOP of the show: the preshow preset is up and the
+       next GO is cue 1.  It used to fire the middle of act one, which left you
+       standing by halfway through a show you had not run yet.               */
+    standByAtTheTop();
+  }
+};
+
+/* The cue stack.  Each look is written as a plain function against the board,
+   then snapshotted, exactly the way you would build it by hand at the tech. */
+function plotOutsiders(){
+  const FRONT = [1,2,3,4,5,6], BOOM = [7,8], WASH = [9,10,11,12,13,14],
+        BACK = [15,16,17,18], CYC = [19,20,21,22], MOVE = [23,24], SPOT = 25;
+  const all = v => FIXTURES.forEach(f=>{ f.level = v; });
+  const set = (list, v, col)=>list.forEach(n=>{
+    const f = chan(n); if(!f) return; f.level = v; if(col) f.color.set(col); });
+  const one = (n, v, col)=>set([n], v, col);
+
+  const looks = [
+    {n:0.5, label:'preshow — house open', fade:0, house:0.85, haze:0.35, rain:0, porch:0.5,
+     curtain:'shut',
+     look(){ all(0); set(CYC, 0.12, '#241a33'); }},
+
+    {n:1, label:'house to half, porch light', fade:6, house:0.35, haze:0.5, rain:0, porch:1,
+     curtain:'shut',
+     look(){ all(0); set(CYC, 0.14, '#1b1430'); }},
+
+    {n:2, label:'act one — Tulsa, late afternoon', fade:7, house:0, haze:0.55, rain:0, porch:1,
+     look(){ all(0);
+       // front light stays low: the picture is made by the side and the wall
+       set(FRONT, 0.26, '#ffc98c'); set(WASH, 0.44, '#ffb268');
+       set(BOOM, 0.78, '#ffa64e');
+       set(BACK, 0.66, '#ffce8e');
+       set(CYC, 0.88, '#e8912e'); }},
+
+    {n:3, label:'the lot — through the frame', fade:5, house:0, haze:0.7, rain:0, porch:1,
+     look(){ all(0);
+       set(FRONT, 0.18, '#ffc07a'); set(WASH, 0.3, '#ffa855');
+       set(BOOM, 0.92, '#ff9438');                    // hard and side-on
+       set(BACK, 0.86, '#ffb862');
+       set(CYC, 1.0, '#e07a22');                      // the wall does the work
+       set(MOVE, 0.42, '#ffb45e'); }},
+
+    {n:4, label:'the drive-in', fade:4, house:0, haze:0.6, rain:0, porch:0,
+     look(){ all(0);
+       set(FRONT, 0.22, '#9fb6d8'); set(WASH, 0.2, '#8fa8cc');
+       set(BACK, 0.5, '#cfe0ff'); set(CYC, 0.92, '#cdd8e8');   // the wall as the screen
+       one(SPOT, 0.45, '#fff4e2'); }},
+
+    {n:5, label:'the Curtis house — tungsten interior', fade:5, house:0, haze:0.4, rain:0, porch:1,
+     look(){ all(0);
+       set(FRONT, 0.55, '#ffbb70'); set(WASH, 0.6, '#ffa855');
+       set([9,10], 0.75, '#ff9c48'); set(BACK, 0.2, '#ffca94');
+       set(CYC, 0.34, '#8a5a18'); }},
+
+    {n:6, label:'nightfall — Stay Gold', fade:9, house:0, haze:0.65, rain:0, porch:1,
+     look(){ all(0);
+       set(FRONT, 0.28, '#ffd9a0'); set(WASH, 0.3, '#ffc987');
+       set(BACK, 0.62, '#ffcf7a'); set(CYC, 0.86, '#d9902f');
+       set(MOVE, 0.55, '#ffc866'); one(SPOT, 0.7, '#ffe9c0'); }},
+
+    /* ---- the interval ---- */
+    {n:6.5, label:'act one ends — blackout, curtain in', fade:3, house:0, haze:0.4, rain:0, porch:0,
+     curtain:'shut',
+     look(){ all(0); }},
+
+    {n:6.6, label:'INTERVAL — house up', fade:6, house:1, haze:0, rain:0, porch:0,
+     curtain:'shut',
+     look(){ all(0); }},
+
+    {n:6.7, label:'house to half — act two', fade:5, house:0.3, haze:0.5, rain:0, porch:1,
+     curtain:'shut',
+     look(){ all(0); set(CYC, 0.12, '#241a33'); }},
+
+    {n:7, label:'the church — cold shafts through the slats', fade:6, house:0, haze:0.9, rain:0, porch:0,
+     look(){ all(0);
+       set(FRONT, 0.12, '#9ab4d8');
+       set(BACK, 0.95, '#bcd6ff');                    // steep, hard, from upstage
+       set(BOOM, 0.4, '#a8c4e8'); set(CYC, 0.22, '#16204a');
+       set(MOVE, 0.7, '#cfe2ff'); FIXTURES.forEach(f=>{ if(f.ls===8) f.gobo = 2; }); }},
+
+    {n:8, label:'the church fire', fade:3, house:0, haze:1, rain:0, porch:0,
+     fire:{chans:[9,10,11,12,13,14], base:0.95},
+     look(){ all(0);
+       set(WASH, 0.95, '#ff5a1e'); set(FRONT, 0.35, '#ff7a3a');
+       set(BOOM, 0.7, '#ff4a12'); set(BACK, 0.5, '#ffae52');
+       set(CYC, 0.8, '#c22a08'); set(MOVE, 0.6, '#ff6a20'); }},
+
+    {n:8.5, label:'the church — burnt out, smouldering', fade:6, house:0, haze:1, rain:0, porch:0,
+     fire:{chans:[9,10,11,12,13,14], base:0.4, size:0.22},
+     look(){ all(0);
+       set(WASH, 0.4, '#c8481a'); set(BOOM, 0.3, '#a83a12');
+       set(BACK, 0.35, '#8a6a52'); set(CYC, 0.3, '#5a1c06'); }},
+
+    {n:9, label:'the hospital — cold and flat', fade:4, house:0, haze:0.3, rain:0, porch:0,
+     look(){ all(0);
+       set(FRONT, 0.5, '#dfe8f2'); set(WASH, 0.55, '#e8eef6');
+       set(CYC, 0.15, '#0e1626'); }},
+
+    {n:10, label:'the rumble — rain in, steel back', fade:5, house:0, haze:1, rain:1, porch:0,
+     look(){ all(0);
+       set(BACK, 1.0, '#8fb4e8');                     // everything from behind
+       set(BOOM, 0.85, '#6f95c8');
+       set(WASH, 0.18, '#5f7fae'); set(FRONT, 0.08, '#7f9ec8');
+       set(CYC, 0.35, '#0a1430'); set(MOVE, 0.8, '#a8c8ff'); }},
+
+    {n:11, label:'the rumble — full downpour', fade:2, house:0, haze:1, rain:1, porch:0,
+     storm:true,
+     look(){ all(0);
+       set(BACK, 1.0, '#cfe2ff'); set(BOOM, 1.0, '#8fb4e8');
+       set(WASH, 0.1, '#4f6d9c'); set(CYC, 0.2, '#06102a');
+       set(MOVE, 1.0, '#dfeeff'); }},
+
+    {n:12, label:'after the rain — one light left on', fade:8, house:0, haze:0.8, rain:0.25, porch:1,
+     look(){ all(0);
+       set(FRONT, 0.2, '#c8b49a'); set(WASH, 0.22, '#b8a086');
+       set(BACK, 0.3, '#9fb6d8'); set(CYC, 0.12, '#101a2e');
+       one(SPOT, 0.6, '#fff0d4'); }},
+
+    {n:13, label:'nothing gold can stay', fade:10, house:0, haze:0.55, rain:0, porch:0,
+     look(){ all(0);
+       set(FRONT, 0.34, '#ffd489'); set(WASH, 0.3, '#ffc06a');
+       set(BACK, 0.7, '#ffcf7a'); set(CYC, 0.72, '#e0952f');
+       set(MOVE, 0.5, '#ffcc70'); one(SPOT, 0.55, '#ffeec4'); }},
+
+    {n:14, label:'curtain call', fade:2, house:0, haze:0.4, rain:0, porch:1,
+     look(){ all(1, '#ffe8c4');
+       set(CYC, 1, '#e0952f'); set(BACK, 0.9, '#ffd79a'); }},
+
+    {n:15, label:'blackout — curtain in', fade:2, house:0, haze:0.2, rain:0, porch:0,
+     curtain:'shut',
+     look(){ all(0); }},
+
+    {n:16, label:'curtain warmers — the title', fade:4, house:0, haze:0.15, rain:0, porch:0,
+     curtain:'shut',
+     look(){ all(0);
+       aimFrontAt(FRONT, 0, 7.2, -1.0);
+       set(FRONT, 0.85, '#ffb060'); set(BOOM, 0.2, '#ff8a3a'); }},
+
+    {n:17, label:'house up — warmers stay', fade:8, house:1, haze:0, rain:0, porch:0,
+     curtain:'shut',
+     look(){ all(0);
+       // the house comes up under the title; the warmers stay on the cloth
+       aimFrontAt(FRONT, 0, 7.2, -1.0);
+       set(FRONT, 0.85, '#ffb060'); set(BOOM, 0.2, '#ff8a3a'); }}
+  ];
+
+  CUES.length = 0;
+  const savedHaze = RIG.haze;
+  const savedFly = snapshotFly();
+  const homeAims = captureAims();
+  looks.forEach(L=>{
+    FIXTURES.forEach(f=>{ f.gobo = 0; });
+    restoreAims(homeAims);          // every look starts from the rig's own focus
+    L.look();
+    // the curtain flies out unless a cue asks for it in
+    setCurtainForCue(L.curtain || 'out');
+    CUES.push({
+      n:L.n, label:L.label, fade:L.fade, follow:null,
+      lx:snapshotLX(), fly:snapshotFly(), sfx:null,
+      house:L.house, work:0, practical:L.porch === undefined ? 0 : L.porch,
+      haze:L.haze,
+      rain:L.rain === undefined ? 0 : L.rain,
+      storm:!!L.storm,
+      fire:L.fire || null
+    });
+  });
+  FIXTURES.forEach(f=>{ f.level = 0; f.gobo = 0; });
+  RIG.haze = savedHaze;
+  savedFly.forEach(r=>{ const ls = FLY[r.id-1]; if(ls){ ls.target = r.target; ls.travTarget = r.open; } });
+  SHOW.cues = CUES.length;
+  nextCue = 0;
+}
+
+/* ============================================================================
+   THE FRONT CURTAIN IN THE CUE STACK
+   Every cue that carries a fly state carries the curtain's state with it, so
+   "shut" has to be declared per cue.  It defaulted to whatever the curtain
+   happened to be at plotting time — which was IN and SHUT — so every cue in
+   the stack pulled a black cloth across the stage.  That is what looked like
+   a blackout on Q2.
+   ========================================================================== */
+function frontCurtainLineset(){
+  return FLY.find(l=>GOODS[l.goodsKey] && GOODS[l.goodsKey].traveler) || null;
+}
+/* Point a set of channels at a spot — used to throw the front of house up
+   onto a show cloth instead of down at the deck.  Non-movers only; the movers
+   have pan and tilt of their own.                                          */
+/* The rig's own focus, not whatever the last cue fired happened to leave it
+   pointing at — otherwise plotting a show straight after running one bakes
+   that cue's aim into every look.                                         */
+function captureAims(){
+  return FIXTURES.map(f=>{
+    if(f.mover) return null;
+    const a = f.homeAim || f.aim;
+    return [a.x, a.y, a.z];
+  });
+}
+function restoreAims(a){
+  if(!a) return;
+  FIXTURES.forEach((f,i)=>{
+    if(!a[i]) return;
+    f.aim.set(a[i][0], a[i][1], a[i][2]);
+    f.group.lookAt(f.aim);
+  });
+}
+function aimFrontAt(chans, x, y, z){
+  chans.forEach(n=>{
+    const f = chan(n); if(!f || f.mover) return;
+    // fan them a little so it reads as a wash, not six hard hits
+    const spread = (n - (chans[0] + chans[chans.length-1])/2) * 1.1;
+    stageToWorld(x + spread, y, z, f.aim);
+    f.group.lookAt(f.aim);
+  });
+}
+function setCurtainForCue(state){
+  const ls = frontCurtainLineset();
+  if(!ls) return null;
+  const trim = TRIMS[ls.goodsKey] !== undefined ? TRIMS[ls.goodsKey] : TRIMS.house;
+  /* It flies, it does not draw.  The halves stay closed to each other the
+     whole time and the whole cloth goes up out of sight — which is what a
+     painted show curtain does, and it keeps the title readable on the way. */
+  ls.travTarget = 0;
+  ls.target = (state === 'shut') ? trim : OUT_TRIM;
+  return ls;
+}
+
+/* Put the board where a show starts: preset up, next GO is the first real cue. */
+function standByAtTheTop(){
+  if(!CUES.length) return;
+  fireCue(0);
+  CUES[0].lx.forEach((r,i)=>{
+    const f = chan(i+1); if(!f) return;
+    f.level = r.lvl; f.color.set(r.col); f.lvlDur = 0; f.colDur = 0;
+  });
+  nextCue = 1;
+  if(typeof refreshCues === 'function') refreshCues();
+}
+
+/* the extra business a show cue can carry, run after the normal cue fires */
+function showCueExtras(c){
+  if(!c) return;
+  if(SHOW.rain) SHOW.rain.target = c.rain || 0;
+  if(SHOW.fire) SHOW.fire.target = c.fire ? (c.fire.size === undefined ? 1 : c.fire.size) : 0;
+  if(c.neon !== undefined && typeof setNeon === 'function') setNeon(c.neon);
+  setFirelight(c.fire ? c.fire.chans : null, c.fire ? c.fire.base : 0.8);
+  if(c.scene && SHOW.scenes.length) sceneShow(c.scene);
+  if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
+    setRevolve('outer', c.rev.outer || 0);
+    setRevolve('inner', c.rev.inner || 0);
+  }
+  /* the scenery that is meant to fail.  A cue can stand it all back up —
+     which is what the top of the show does — or push a named piece over. */
+  if(c.wrongReset && typeof wrongReset === 'function') wrongReset();
+  if(c.wrong && typeof wrongTrigger === 'function') c.wrong.forEach(k=>wrongTrigger(k));
+  if(c.storm){
+    SHOW.stormOn = true; SHOW.stormT = rnd(0.4, 1.4);
+  } else SHOW.stormOn = false;
+}
+function updateShowStorm(dt){
+  if(!SHOW.stormOn) return;
+  SHOW.stormT -= dt;
+  if(SHOW.stormT <= 0){
+    strikeLightning(rnd(0.6, 1));
+    SHOW.stormT = rnd(1.8, 5.2);
+  }
+}

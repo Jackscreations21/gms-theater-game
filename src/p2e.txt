@@ -1,0 +1,81 @@
+
+/* ============================================================================
+   THE SCENE SHOP — the room, and the stock model behind the bench
+   ========================================================================== */
+const SHOP = {
+  x0:-19, x1:19,
+  z0: BOH.z2 - 0.5,            // shares the dock's back wall
+  z1: BOH.z2 - 26,             // the back of the shed
+  h: 9.5,
+  cloth:  [],                  // cut panels for backdrops
+  builds: [],                  // finished grid builds
+  log:    [],
+  seq: 0
+};
+const BOLTS = [
+  {name:'black serge',    col:'#15161a'},
+  {name:'crimson velour', col:'#7d1420'},
+  {name:'bleached calico',col:'#e6e0d2'},
+  {name:'midnight blue',  col:'#1d3f6e'},
+  {name:'forest green',   col:'#2d5a34'}
+];
+const POTS = ['#0b0d12','#ffffff','#e6e0d2','#7d1420','#c8412a','#e08a2a','#e8d05a',
+              '#1e7a4a','#2d5a34','#1d3f6e','#2f6bff','#5786bd','#6a3fa0','#8a6a44'];
+
+const shopGroup = new T.Group(); world.add(shopGroup);
+const M_TIMBER = new T.MeshStandardMaterial({color:0xc2a06a, roughness:.85});
+const M_SHOP   = new T.MeshStandardMaterial({color:0x3c4046, roughness:.95});
+const M_CONC   = new T.MeshStandardMaterial({color:0x4a4e54, roughness:.96});
+
+function shopLog(s){ SHOP.log.unshift(s); if(SHOP.log.length > 16) SHOP.log.pop(); }
+
+/* The shed itself is gone — the workshop is a bench you open from the console,
+   not a room you walk to.  The paint frame material stays, because the bench
+   paints onto it, and the stock model below is unchanged.                   */
+SHOP.frameMat = new T.MeshStandardMaterial({color:0xd9d2c4, roughness:1, side:T.DoubleSide,
+  transparent:true, alphaTest:0.35});
+
+/* ============================================================================
+   SHOP OPERATIONS — pure model, driven by the bench UI
+   ========================================================================== */
+function newCanvas(w, h, fill){
+  const c = cvs(w,h), x = c.getContext('2d');
+  x.fillStyle = fill; x.fillRect(0,0,w,h);
+  const t = tex(c,1,1); t.wrapS = t.wrapT = T.ClampToEdgeWrapping;
+  return {canvas:c, tex:t};
+}
+/* --- backdrops: no cutting, you just take a cloth off the shelf --- */
+function shopNewCloth(boltIdx){
+  const spec = BOLTS[boltIdx] || BOLTS[0];
+  const c = newCanvas(1024, 576, spec.col);
+  const item = {id:++SHOP.seq, spec, len:D.procW+6, canvas:c.canvas, tex:c.tex, w:1024, h:576};
+  SHOP.cloth.push(item);
+  shopLog('took a '+spec.name+' backdrop off the shelf');
+  Snd.play('whoosh');
+  return item;
+}
+/* --- delivery --- */
+function placeBuilt(group, label){
+  group.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+  setGroup.add(group);
+  const p = {key:'built', group, label:label||'built piece', rot:0};
+  SET.push(p); stagePieces.push(group); group.userData.piece = p;
+  refreshSetUI();
+  return p;
+}
+function shopDeliverCloth(i){
+  const cl = SHOP.cloth[i]; if(!cl) return false;
+  const key = 'shop'+cl.id;
+  const t = cl.tex;
+  GOODS[key] = {label:'shop cloth #'+cl.id, h:11.5, wt:230, made:true,
+    build:()=>{ const g = new T.Group();
+      const m = new T.MeshStandardMaterial({map:t, roughness:1, side:T.DoubleSide,
+        transparent:true, alphaTest:0.35});
+      const d = drape(D.procW+6, 11.5, m, 2, .05); d.position.y = -5.75; g.add(d); return g; }};
+  TRIMS[key] = 11.6;
+  SHOP.cloth.splice(i,1);
+  buildGoodsPalette();
+  shopLog('sent a cloth to the fly rail');
+  toast('Cloth is on the fly rail goods list');
+  return true;
+}

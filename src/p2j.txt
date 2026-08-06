@@ -1,0 +1,927 @@
+
+/* ============================================================================
+   THE ARC CENTRE — the second venue
+
+   A modern complex a long way across town: a glazed foyer with a bar and a
+   box office, and two houses off it — the Main House and the Studio Theatre.
+
+   Both of them are built by ONE function called twice, so their stage boxes
+   are identical to each other and to the Palace's: the same 15 x 10.4m
+   opening, the same 44m width, the same 17m depth and the same grid at 25m.
+   Everything that differs between the two — the size of the auditorium, the
+   finishes, which side the dock is on — is passed in.  Build a stage twice
+   by hand and the two will drift apart within a week.
+
+   The whole thing is hung off the scene rather than off `world`, so the
+   Palace's room sorter never sees it and the two buildings can never file
+   each other's walls.  Whichever venue you are standing in, the other is
+   switched off entirely.
+   ========================================================================== */
+const ARC = {
+  X: 420,                       // how far across town it is
+  group: null, rooms: {}, order: ['lobby','main','studio'],
+  walk: [], lights: [], glow: [],
+  houses: {}, doors: [], doorMap: {}, walls: [],
+  house: 0.85, level: 0.85,
+  built: false, cur: 'lobby'
+};
+let VENUE = 'palace';
+
+/* The stage box, shared by every stage in the game.  These come straight off
+   the Palace's own dimensions — change D and all three stages change. */
+const AS = {
+  W:     D.stageW,          // 44m wall to wall
+  DEPTH: D.stageD,          // 17m from the setting line to the back wall
+  GRID:  D.gridY,           // 25m to the grid
+  PROCW: D.procW,           // 15m opening
+  PROCH: D.procH,           // 10.4m high
+  ZPROS: -30,               // where the proscenium line sits in the Arc
+  OUT:   22,                // out trim for the fly system
+  DOCKY: 5.4,               // clear height of a dock door
+  /* The stalls floor rises to the back, and the foyer meets it there — the
+     way round every real building does it.  Both houses are raked to land
+     on exactly this height so one foyer floor serves both, and the rise per
+     row falls out of the number of rows rather than being guessed at.    */
+  BACKY: 5.5,
+  DOORH: 2.9,               // clear height of the way in from the foyer
+  /* THE DECK IS y = 0.  It is at the Palace, and every set, every trim and
+     every fixture aim in the game is written to that.  Building the Arc's
+     decks a metre up buried every production that loaded onto them a metre
+     into the floor — the fly trims were a metre out with it. */
+  DECK: 0
+};
+
+/* ---- terrazzo, poured and polished ---- */
+function terrazzoTex(){
+  const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#d9d5cc'; g.fillRect(0,0,W,H);
+  const chips = ['#8d8a83','#b0aca2','#6d6a64','#c9c4b8','#7a6f60','#9aa39c'];
+  for(let i=0;i<2600;i++){
+    g.fillStyle = chips[(Math.random()*chips.length)|0];
+    g.save();
+    g.translate(Math.random()*W, Math.random()*H);
+    g.rotate(Math.random()*3.14);
+    g.beginPath(); g.ellipse(0, 0, rnd(2,9), rnd(2,7), 0, 0, 6.283); g.fill();
+    g.restore();
+  }
+  g.fillStyle = 'rgba(180,150,90,.5)';
+  for(let x=0; x<W; x+=170) g.fillRect(x, 0, 2.5, H);
+  for(let y=0; y<H; y+=170) g.fillRect(0, y, W, 2.5);
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+/* ---- brushed acoustic timber, in narrow strips ---- */
+function acousticTex(){
+  const W = 256, H = 256, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#7a5a38'; g.fillRect(0,0,W,H);
+  for(let x=0; x<W; x+=12){
+    g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(x, 0, 4, H);
+    const gr = g.createLinearGradient(x+4, 0, x+12, 0);
+    gr.addColorStop(0, 'rgba(190,150,100,.5)');
+    gr.addColorStop(1, 'rgba(60,40,22,.5)');
+    g.fillStyle = gr; g.fillRect(x+4, 0, 8, H);
+  }
+  for(let i=0;i<200;i++){
+    g.fillStyle = 'rgba(0,0,0,'+(0.02+Math.random()*0.07).toFixed(2)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(2,8), rnd(20,120));
+  }
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+/* ---- profiled steel, for the dock shutters ---- */
+function shutterTex(){
+  const W = 128, H = 128, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#4c5158'; g.fillRect(0,0,W,H);
+  for(let y=0; y<H; y+=10){
+    const gr = g.createLinearGradient(0, y, 0, y+10);
+    gr.addColorStop(0, 'rgba(0,0,0,.5)');
+    gr.addColorStop(0.45, 'rgba(160,168,178,.35)');
+    gr.addColorStop(1, 'rgba(0,0,0,.5)');
+    g.fillStyle = gr; g.fillRect(0, y, W, 10);
+  }
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+
+/* ---------------------------------------------------------------- helpers */
+function aBox(w,h,d, mat, x,y,z, parent, rx,ry,rz){
+  const m = new T.Mesh(new T.BoxGeometry(w,h,d), mat);
+  m.position.set(x,y,z);
+  if(rx) m.rotation.x = rx; if(ry) m.rotation.y = ry; if(rz) m.rotation.z = rz;
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+function aCyl(rt,rb,h,seg, mat, x,y,z, parent){
+  const m = new T.Mesh(new T.CylinderGeometry(rt,rb,h,seg), mat);
+  m.position.set(x,y,z);
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+function aBatch(geo, mat, list, parent, walk){
+  const im = new T.InstancedMesh(geo, mat, Math.max(1, list.length));
+  const d = new T.Object3D(), box = new T.Box3(), tmp = new T.Box3();
+  if(!geo.boundingBox) geo.computeBoundingBox();
+  list.forEach((p,i)=>{
+    d.position.set(p.x, p.y, p.z);
+    d.rotation.set(p.rx||0, p.ry||0, p.rz||0);
+    d.scale.set(p.sx||1, p.sy||1, p.sz||1);
+    d.updateMatrix();
+    im.setMatrixAt(i, d.matrix);
+    tmp.copy(geo.boundingBox).applyMatrix4(d.matrix);
+    box.union(tmp);
+  });
+  im.instanceMatrix.needsUpdate = true;
+  if(walk){ geo.computeBoundingSphere(); im.frustumCulled = false; }
+  else {
+    const s = new T.Sphere(); box.getBoundingSphere(s);
+    im.geometry.boundingSphere = s;
+    im.raycast = ()=>{};
+  }
+  im.castShadow = im.receiveShadow = true;
+  parent.add(im);
+  return im;
+}
+/* something that reads as lit without costing a light: an unlit surface that
+   the house fader dims along with everything else */
+/* A fitting belongs to a room, and answers that room's master.  Left on the
+   foyer's master, every lens on the FOH bridge of both auditoria stayed at
+   full through a blackout — which is why the Arc could never get as dark as
+   the Palace.  Anything marked `keep` is a safety fitting: exit signs and
+   dock lights stay on when everything else goes out, because they do.     */
+function aGlow(mesh, colour, power, room, keep){
+  ARC.glow.push({mesh, base:new T.Color(colour),
+                 power:power === undefined ? 1 : power,
+                 room:room || 'lobby', keep:!!keep});
+  return mesh;
+}
+function arcWalk(o){ ARC.walk.push(o); WALKABLE.push(o); return o; }
+
+/* ============================================================================
+   DOORS
+   Two kinds: leaves that swing on a hinge, and shutters that roll straight
+   up.  Both open on a timer and both stop you walking through them while
+   they are shut.
+   ========================================================================== */
+function arcDoor(o){
+  const d = {
+    key:o.key, label:o.label, kind:o.kind || 'swing',
+    house:o.house, group:o.group, leaves:o.leaves || [],
+    axis:o.axis, plane:o.plane, at:o.at, halfW:o.halfW, H:o.H,
+    open:0, target:0, travel:o.travel || 0, swing:o.swing || 1.9
+  };
+  ARC.doors.push(d);
+  ARC.doorMap[d.key] = d;
+  return d;
+}
+function arcDoorSet(key, open){
+  const d = ARC.doorMap[key]; if(!d) return null;
+  d.target = open ? 1 : 0;
+  if(typeof toast === 'function') toast(d.label + (open ? ' opening' : ' closing'));
+  if(typeof refreshArcUI === 'function') refreshArcUI();
+  return d;
+}
+function arcDoorToggle(key){
+  const d = ARC.doorMap[key]; if(!d) return null;
+  return arcDoorSet(key, d.target < 0.5);
+}
+function arcDoorsAll(houseKey, open){
+  ARC.doors.forEach(d=>{ if(!houseKey || d.house === houseKey) arcDoorSet(d.key, open); });
+}
+function updateArcDoors(dt){
+  for(const d of ARC.doors){
+    if(Math.abs(d.target - d.open) < 0.001){ d.open = d.target; continue; }
+    d.open += clamp(d.target - d.open, -dt*0.55, dt*0.55);
+    if(d.kind === 'roll'){
+      d.group.position.y = d.y0 + d.open * d.travel;
+    } else {
+      d.leaves.forEach(l=>{ l.group.rotation.y = l.sign * d.open * d.swing; });
+    }
+  }
+}
+
+/* ============================================================================
+   ONE HOUSE
+   Called twice.  Everything about the stage comes from AS; only the room it
+   goes in, where it sits, how big the auditorium is and how it is finished
+   are passed in.
+   ========================================================================== */
+function arcBuildHouse(o, MAT){
+  const R = ARC.rooms[o.room], cx = o.cx;
+  const H = {
+    key:o.key, label:o.label, cx, room:o.room,
+    zPros:AS.ZPROS, zBack:AS.ZPROS - AS.DEPTH, zHouse:o.zHouse,
+    x0:cx - AS.W/2, x1:cx + AS.W/2,
+    dockDir:o.dockDir, fly:[], walk:[]
+  };
+  ARC.houses[o.key] = H;
+
+  const SH = AS.GRID + 4;               // the underside of the stage-house roof
+  const {plaster, plastD, conc, acous, timber, steel, blackM, blackS,
+         seatM, seatB, carpet, glassM, shutterM, deckM} = MAT;
+  const wallM = o.dark ? blackM : plaster;
+  const finish = o.dark ? blackS : acous;
+
+  /* ---------------------------------------------------- the stage floor */
+  {
+    const fl = aBox(AS.W, 1.0, AS.DEPTH, deckM, cx, AS.DECK - 0.5,
+                    (H.zBack + H.zPros)/2, R);
+    arcWalk(fl); H.walk.push(fl);
+    H.deckY = AS.DECK;
+  }
+
+  /* ---------------------------------------- the stage house: walls, roof
+     The roof is the whole point of this block.  A stage without one is a
+     hole you can see the sky through from the stalls, which is what the
+     main house had.                                                      */
+  {
+    // side walls, full height to the grid roof
+    [-1,1].forEach(sd=>
+      aBox(0.6, SH, AS.DEPTH + 1.0, conc, cx + sd*AS.W/2, SH/2, (H.zBack + H.zPros)/2 - 0.5, R));
+    // the back wall
+    aBox(AS.W + 1.2, SH, 0.6, conc, cx, SH/2, H.zBack - 0.3, R);
+    // THE ROOF over the whole stage box, and a slab over the auditorium too
+    aBox(AS.W + 1.2, 0.7, AS.DEPTH + 1.4, conc, cx, SH + 0.35, (H.zBack + H.zPros)/2 - 0.2, R);
+    // and the wall over the proscenium, up to the roof
+    aBox(AS.W + 1.2, SH - AS.PROCH, 0.6, conc, cx,
+         AS.PROCH + (SH - AS.PROCH)/2, H.zPros, R);
+  }
+
+  /* ------------------------------------------- the proscenium, both piers */
+  {
+    const pier = (AS.W - AS.PROCW)/2;
+    [-1,1].forEach(sd=>aBox(pier, AS.PROCH, 0.9, blackM,
+      cx + sd*(AS.PROCW + pier)/2, AS.PROCH/2, H.zPros, R));
+    // a black border round the opening so the edge reads
+    aBox(AS.PROCW + 0.6, 0.4, 1.0, blackM, cx, AS.PROCH + 0.2, H.zPros, R);
+    H.pros = {w:AS.PROCW, h:AS.PROCH, z:H.zPros, cx};
+  }
+
+  /* ---------------------------------------------------- the grid, up top */
+  {
+    const beams = [], purlins = [];
+    for(let x = cx - AS.W/2 + 3; x <= cx + AS.W/2 - 3; x += 2.2)
+      beams.push({x:+x.toFixed(2), y:AS.GRID, z:(H.zBack + H.zPros)/2, rx:Math.PI/2});
+    for(let z = H.zBack + 1.5; z <= H.zPros - 1; z += 2.0)
+      purlins.push({x:cx, y:AS.GRID + 0.22, z:+z.toFixed(2), rz:Math.PI/2});
+    aBatch(new T.CylinderGeometry(0.06,0.06,AS.DEPTH - 1.5,6), steel, beams, R);
+    aBatch(new T.CylinderGeometry(0.08,0.08,AS.W - 6,6), steel, purlins, R);
+    // the loft blocks, in a row over the stage-left side
+    const blocks = [];
+    for(let z = H.zPros - 1.2; z > H.zBack + 1.5; z -= 1.05)
+      blocks.push({x:cx + AS.W/2 - 3.5, y:AS.GRID + 0.7, z:+z.toFixed(2)});
+    aBatch(new T.BoxGeometry(0.5, 0.5, 0.24), steel, blocks, R);
+  }
+
+  /* ------------------------------------------ the fly floor and the rail */
+  {
+    const gx = cx + AS.W/2 - 2.6, gy = 9.4;
+    const deck = aBox(4.0, 0.24, AS.DEPTH - 2, steel, gx, gy, (H.zBack + H.zPros)/2, R);
+    arcWalk(deck); H.walk.push(deck);
+    const rails = [];
+    for(let z = H.zBack + 2; z < H.zPros - 1; z += 1.4)
+      rails.push({x:gx - 2.0, y:gy + 0.6, z:+z.toFixed(2)});
+    aBatch(new T.CylinderGeometry(0.045,0.045,1.2,6), steel, rails, R);
+    aCyl(0.05,0.05,AS.DEPTH - 2,8, steel, gx - 2.0, gy + 1.2, (H.zBack + H.zPros)/2, R)
+      .rotation.x = Math.PI/2;
+    // the pin rail, with a pin for every line
+    aCyl(0.07,0.07,AS.DEPTH - 2.4,8, steel, gx - 1.4, gy + 1.0, (H.zBack + H.zPros)/2, R)
+      .rotation.x = Math.PI/2;
+    const pins = [];
+    for(let z = H.zBack + 2.2; z < H.zPros - 1; z += 0.5)
+      pins.push({x:gx - 1.4, y:gy + 1.0, z:+z.toFixed(2), rz:Math.PI/2});
+    aBatch(new T.CylinderGeometry(0.03,0.03,0.5,6), steel, pins, R);
+    // a ladder up to it
+    const rungs = [];
+    for(let y=0.5; y<gy; y+=0.4) rungs.push({x:gx + 1.4, y, z:H.zPros - 2.0, rz:Math.PI/2});
+    aBatch(new T.CylinderGeometry(0.03,0.03,0.7,6), steel, rungs, R);
+    [-1,1].forEach(sd=>aCyl(0.05,0.05,gy,6, steel, gx + 1.4 + sd*0.35, gy/2, H.zPros - 2.0, R));
+  }
+
+  /* The fly system is not built here any more.  Both of these stages are
+     the same box as the Palace's, so they get the Palace's own fly rail and
+     the Palace's own rig, built by the same code and simply translated onto
+     this house's centre line.  See buildArcStage.                        */
+
+  /* ======================================================== THE DOCK
+     A bay off the outer side of the stage house with a roller shutter in
+     the wall, so a lorry can back up to the stage.
+     ================================================================== */
+  {
+    const dir = o.dockDir;                       // -1 = outer side is -x
+    const inner = cx + dir*AS.W/2;               // the stage-house wall
+    const outer = inner + dir*13;
+    const dz = H.zPros - AS.DEPTH*0.55;
+    const bayZ0 = dz - 4.5, bayZ1 = dz + 4.5;
+
+    /* the pad is level with the deck — that is the whole point of a dock */
+    const pad = aBox(13, 0.6, 9, conc, (inner + outer)/2, AS.DECK - 0.3, dz, R);
+    arcWalk(pad); H.walk.push(pad);
+    // the bay: three walls and a roof, open to the street at the far end
+    aBox(13, 8.0, 0.5, conc, (inner + outer)/2, AS.DECK + 3.0, bayZ0, R);
+    aBox(13, 8.0, 0.5, conc, (inner + outer)/2, AS.DECK + 3.0, bayZ1, R);
+    aBox(13, 0.5, 9.5, conc, (inner + outer)/2, AS.DECK + 7.2, dz, R);
+    aBox(0.5, 8.0, 9.5, conc, outer, AS.DECK + 3.0, dz, R);
+    // a lorry-height opening in the street wall of the bay
+    aBox(0.6, 2.2, 9.5, conc, outer, AS.DECK + 6.0, dz, R);
+
+    /* the shutter in the stage-house wall */
+    const DW = 6.0, DH = AS.DOCKY;
+    const sg = new T.Group();
+    sg.position.set(inner + dir*0.16, AS.DECK, dz);
+    sg.userData.moves = true;
+    R.add(sg);
+    const leaf = new T.Mesh(new T.BoxGeometry(0.14, DH, DW), MAT.shutterM);
+    leaf.position.y = DH/2;
+    leaf.castShadow = leaf.receiveShadow = true;
+    sg.add(leaf);
+    aBox(0.3, 0.36, DW + 0.7, steel, 0, DH + 0.2, 0, sg);
+    const d = arcDoor({
+      key:o.key + 'Dock', label:H.label + ' dock shutter', kind:'roll',
+      house:o.key, group:sg,
+      axis:'x', plane:inner, at:dz, halfW:DW/2, H:DH,
+      travel:DH - 0.3
+    });
+    d.y0 = sg.position.y;
+
+    // a light over the door, and a bollard or two
+    const lamp = aBox(0.7, 0.24, 0.5, new T.MeshBasicMaterial({color:0xffd9a0}),
+                      inner + dir*0.9, AS.DECK + DH + 0.9, dz, R);
+    aGlow(lamp, 0xffd9a0, 0.9, o.room, true);      // the dock light stays on
+    const bol = [];
+    for(const z2 of [dz - 3, dz + 3]) bol.push({x:inner + dir*3.5, y:AS.DECK + 0.4, z:z2});
+    aBatch(new T.CylinderGeometry(0.14,0.14,1.4,8),
+           new T.MeshStandardMaterial({color:0xd8a028, roughness:.8}), bol, R);
+
+    H.dock = {inner, outer, dir, z:dz, z0:bayZ0, z1:bayZ1};
+  }
+
+  /* ================================================ THE PASS DOORS
+     Two of them, one each side, from the auditorium into the wings.
+     ============================================================== */
+  {
+    const DW = 1.5, DH = 2.4;
+    [-1,1].forEach(sd=>{
+      const at = cx + sd*(AS.PROCW/2 + 3.4);
+      const g = new T.Group();
+      g.position.set(at - sd*DW/2, 0, H.zPros);
+      g.userData.moves = true;
+      R.add(g);
+      const leaf = aBox(DW, DH, 0.1, MAT.doorM, sd*DW/2, DH/2, 0, g);
+      leaf.castShadow = true;
+      aCyl(0.05,0.05,0.12,8, MAT.brass, sd*(DW - 0.2), 1.05, 0.1, g);
+      // the frame round it
+      aBox(DW + 0.4, 0.16, 0.34, MAT.steel, at, DH + 0.08, H.zPros, R);
+      const key = o.key + 'Pass' + (sd < 0 ? 'SR' : 'SL');
+      arcDoor({
+        key, label:H.label + ' pass door ' + (sd < 0 ? 'SR' : 'SL'), kind:'swing',
+        house:o.key, group:g, leaves:[{group:g, sign:-sd}],
+        axis:'z', plane:H.zPros, at, halfW:DW/2, H:DH, swing:1.9
+      });
+      // a lit EXIT over it
+      const m = new T.Mesh(new T.PlaneGeometry(0.9, 0.34),
+        new T.MeshBasicMaterial({color:0x2fd84a}));
+      m.position.set(at, DH + 0.5, H.zPros + 0.3);
+      R.add(m); aGlow(m, 0x2fd84a, 1, o.room, true);
+    });
+  }
+
+  /* The walls you cannot walk through, and the holes in them.
+
+     Both houses sit on the SAME proscenium line, so a wall has to say how
+     far along itself it reaches as well as where it is — otherwise the main
+     house's proscenium wall closes the studio's opening and neither set of
+     pass doors works.                                                     */
+  ARC.walls.push({axis:'z', plane:H.zPros, lo:H.x0, hi:H.x1, gaps:[
+    {at:cx, halfW:AS.PROCW/2},
+    {at:cx - (AS.PROCW/2 + 3.4), halfW:0.75, door:o.key + 'PassSR'},
+    {at:cx + (AS.PROCW/2 + 3.4), halfW:0.75, door:o.key + 'PassSL'}
+  ]});
+  ARC.walls.push({axis:'x', plane:H.dock.inner, lo:H.zBack, hi:H.zPros, gaps:[
+    {at:H.dock.z, halfW:3.0, door:o.key + 'Dock'}
+  ]});
+
+  /* ==================================================== THE AUDITORIUM */
+  {
+    /* The rake has to REACH the back wall.  Fixing the row spacing and
+       letting the row count decide how deep the seating runs left the studio
+       — which has five fewer rows than the main house — stopping five metres
+       short of its own cross aisle, with nothing but a hole in between.  So
+       the spacing is worked out from the depth available instead: first row,
+       last row and aisle are all placed, and the rows divide what is left. */
+    const ROWS = o.rows, HALF0 = o.half, AISLE = 3.4;
+    const zFirst = H.zPros + 3.6;
+    const zLast  = o.zHouse - AISLE;
+    const RUN    = (zLast - zFirst)/(ROWS - 1);
+    /* the front row starts a little UNDER the deck — you look up at a stage,
+       not down onto it — and the rake still has to finish on the foyer floor */
+    const Y0     = AS.DECK - 0.6;
+    const RISE   = (AS.BACKY - Y0 - 0.2)/(ROWS - 1);
+    /* Each row is a solid block down to the floor, not a slab floating in
+       the air.  Built as thin treads you could see clean under the seating
+       from the stalls and from the stage — there was nothing holding it up. */
+    const BASE = Y0 - 1.4;
+    const steps = [];
+    for(let i=0;i<ROWS;i++){
+      const top = Y0 + i*RISE + 0.2;
+      steps.push({x:cx, y:(top + BASE)/2, z:+(zFirst + i*RUN).toFixed(2), sy:top - BASE});
+    }
+    arcWalk(aBatch(new T.BoxGeometry(o.width - 1.2, 1, RUN + 0.02), carpet, steps, R, true));
+    // and a riser face on the front of each one, so the steps read as steps
+    const risers = [];
+    for(let i=1;i<ROWS;i++)
+      risers.push({x:cx, y:Y0 + i*RISE, z:+(zFirst + i*RUN - RUN/2).toFixed(2), sy:RISE + 0.1});
+    aBatch(new T.BoxGeometry(o.width - 1.15, 1, 0.06), MAT.plastD, risers, R);
+    /* the flat bit in front of the first row.  It was built and then never
+       put on the walkable list, so the whole width of it in both houses was
+       a hole you dropped through. */
+    const apron = aBox(o.width, 1.6, 6.0, carpet, cx, Y0 - 0.8, H.zPros + 1.0, R);
+    arcWalk(apron); H.walk.push(apron);
+    // the cross aisle at the back: whatever the rows did not use, exactly
+    const aZ0 = zLast + RUN/2, aZ1 = o.zHouse + 0.3;
+    const aisle = aBox(o.width - 1.2, AS.BACKY - BASE, aZ1 - aZ0, carpet, cx,
+                       (AS.BACKY + BASE)/2, (aZ0 + aZ1)/2, R);
+    arcWalk(aisle); H.walk.push(aisle);
+    H.rake = {zFirst, zLast, RUN, RISE, aZ0, aZ1, Y0};
+
+    const bases = [], backs = [], arms = [];
+    for(let i=0;i<ROWS;i++){
+      const z = zFirst + i*RUN, y = 0.4 + i*RISE;
+      const half = HALF0 + i*0.3;
+      const n = Math.round(half*2/0.62);
+      for(let j=0;j<n;j++){
+        const x = cx - half + j*(half*2/(n-1));
+        const yaw = -(x - cx)*0.012;
+        bases.push({x, y:y + 0.22, z, ry:yaw});
+        backs.push({x, y:y + 0.66, z:z + 0.28, ry:yaw});
+        arms.push({x, y:y + 0.34, z:z - 0.02, ry:yaw});
+      }
+    }
+    aBatch(new T.BoxGeometry(0.54, 0.12, 0.5), seatM, bases, R);
+    aBatch(new T.BoxGeometry(0.54, 0.78, 0.12), seatB, backs, R);
+    aBatch(new T.BoxGeometry(0.6, 0.08, 0.44), blackS, arms, R);
+    H.seats = bases.length;
+
+    const zBackWall = o.zHouse;
+    // side walls, with finish panels on them
+    [-1,1].forEach(sd=>{
+      aBox(0.6, 16, zBackWall - H.zPros, wallM, cx + sd*o.width/2, 8, (H.zPros + zBackWall)/2, R);
+      const fins = [];
+      for(let z = H.zPros + 2; z < zBackWall - 1; z += 1.6)
+        fins.push({x:cx + sd*(o.width/2 - 0.6), y:6.5, z:+z.toFixed(2), ry:sd*0.35});
+      aBatch(new T.BoxGeometry(0.9, 9, 0.28), finish, fins, R);
+    });
+    /* The back wall, with the way in from the foyer cut through it.  Built
+       solid it looked right and left the two houses unreachable.        */
+    const DW = o.doorW, TOP = AS.BACKY + AS.DOORH;
+    [-1,1].forEach(sd=>aBox((o.width + 1 - DW)/2, 16, 0.6, wallM,
+      cx + sd*(DW + (o.width + 1 - DW)/2)/2, 8, zBackWall, R));
+    aBox(DW, AS.BACKY, 0.6, wallM, cx, AS.BACKY/2, zBackWall, R);       // under the seats
+    aBox(DW, 16 - TOP, 0.6, wallM, cx, TOP + (16 - TOP)/2, zBackWall, R);
+    aBox(DW + 0.5, 0.3, 0.8, MAT.steel, cx, TOP + 0.15, zBackWall, R);
+    // the control room, up over the doorway
+    aBox(7.0, 1.9, 0.24, glassM, cx, TOP + 2.3, zBackWall - 0.35, R);
+    aBox(7.6, 0.4, 0.5, plastD, cx, TOP + 1.2, zBackWall - 0.4, R);
+    H.doorW = DW;
+    // the ceiling, and a reflector stepping down towards the stage
+    aBox(o.width + 1, 0.5, zBackWall - H.zPros, plastD, cx, 16.2,
+         (H.zPros + zBackWall)/2, R);
+    const clouds = [];
+    for(let i=0;i<5;i++)
+      clouds.push({x:cx, y:13.4 - i*0.4, z:H.zPros + 5 + i*((zBackWall - H.zPros)/5.5), rx:0.06});
+    aBatch(new T.BoxGeometry(o.width - 4, 0.3, 5.6), plaster, clouds, R);
+    // the FOH bridge
+    {
+      const bz = H.zPros + 9;
+      aBox(o.width - 4, 0.3, 1.6, steel, cx, 11.4, bz, R);
+      aCyl(0.06,0.06,o.width - 4,8, steel, cx, 10.8, bz - 0.6, R).rotation.z = Math.PI/2;
+      const lamps = [];
+      for(let x = cx - (o.width/2 - 4); x <= cx + (o.width/2 - 4); x += 1.6)
+        lamps.push({x:+x.toFixed(2), y:10.3, z:bz - 0.6, rx:0.6});
+      aBatch(new T.BoxGeometry(0.34, 0.6, 0.34), blackS, lamps, R);
+      const le = aBatch(new T.CylinderGeometry(0.14,0.14,0.05,10),
+        new T.MeshBasicMaterial({color:0xffe0b0}),
+        lamps.map(p=>Object.assign({}, p, {y:10.0})), R);
+      aGlow(le, 0xffe0b0, 0.8, o.room);           // the FOH lenses go out with the house
+    }
+    // exits at the back
+    [[cx - o.width/2 + 1.6, zBackWall - 1.6],[cx + o.width/2 - 1.6, zBackWall - 1.6]]
+      .forEach(p=>{
+        const m = new T.Mesh(new T.PlaneGeometry(1.1, 0.42),
+          new T.MeshBasicMaterial({color:0x2fd84a}));
+        m.position.set(p[0], 3.0, p[1]);
+        R.add(m); aGlow(m, 0x2fd84a, 1, o.room, true);
+      });
+  }
+
+  /* The auditorium lamps are this house's HOUSE LIGHTS, not the foyer's —
+     they answer the house master of whichever board is patched to it. */
+  H.lamps = [];
+  const l = new T.PointLight(0xffdcb4, 0, 70, 1.5);
+  l.position.set(cx, 12, H.zPros + 14);
+  R.add(l);
+  H.lamps.push({light:l, power:o.dark ? 2.0 : 2.6});
+  const l2 = new T.PointLight(0xdfe8ff, 0, 46, 1.6);
+  l2.position.set(cx, 9, H.zPros - 8);
+  R.add(l2);
+  H.lamps.push({light:l2, power:1.4});
+
+  return H;
+}
+
+/* ============================================================================
+   BUILD
+   ========================================================================== */
+function buildArc(){
+  if(ARC.built) return ARC;
+  const G = new T.Group();
+  G.name = 'arc';
+  G.position.x = ARC.X;
+  scene.add(G);                       // NOT world — the room sorter must not see it
+  ARC.group = G;
+  for(const n of ARC.order){
+    const g = new T.Group(); g.name = 'arc:' + n;
+    G.add(g); ARC.rooms[n] = g;
+  }
+
+  /* ---------------------------------------------------------- materials */
+  const TERR  = terrazzoTex(); TERR.repeat.set(12, 9);
+  const MAT = {
+    floorL:  new T.MeshStandardMaterial({map:TERR, roughness:.24, metalness:.05}),
+    plaster: new T.MeshStandardMaterial({color:0xe4e0d8, roughness:.9}),
+    plastD:  new T.MeshStandardMaterial({color:0xbdb8ae, roughness:.92}),
+    conc:    new T.MeshStandardMaterial({color:0x8e8b84, roughness:.9}),
+    glassM:  new T.MeshStandardMaterial({color:0x9fc6d8, roughness:.06, metalness:.2,
+                                         transparent:true, opacity:0.24, side:T.DoubleSide}),
+    mull:    new T.MeshStandardMaterial({color:0x2a2d32, roughness:.4, metalness:.7}),
+    acous:   null, timber:null, steel:null, blackM:null, blackS:null,
+    seatM:   new T.MeshStandardMaterial({color:0x2f3d54, roughness:.9}),
+    seatB:   new T.MeshStandardMaterial({color:0x263449, roughness:.9}),
+    seatR:   new T.MeshStandardMaterial({color:0x7a1d2b, roughness:.9}),
+    carpet:  new T.MeshStandardMaterial({map:TX.carpet, color:0x36404f, roughness:1}),
+    brass:   new T.MeshStandardMaterial({color:0xb99a4e, roughness:.32, metalness:.85}),
+    serge:   new T.MeshStandardMaterial({map:TX.serge, color:0x1a1c20, roughness:1,
+                                         side:T.DoubleSide}),
+    house:   new T.MeshStandardMaterial({map:TX.velour, color:0x8a1626, roughness:.95,
+                                         side:T.DoubleSide}),
+    wire:    new T.MeshStandardMaterial({color:0x8a8f98, roughness:.5, metalness:.7}),
+    doorM:   new T.MeshStandardMaterial({color:0x2a2d33, roughness:.7}),
+    deckM:   new T.MeshStandardMaterial({map:TX.deck, color:0x4a4034, roughness:.9}),
+    shutterM:new T.MeshStandardMaterial({map:shutterTex(), roughness:.55, metalness:.6})
+  };
+  const AC = acousticTex(); AC.repeat.set(6, 3);
+  MAT.acous  = new T.MeshStandardMaterial({map:AC, roughness:.85});
+  MAT.timber = new T.MeshStandardMaterial({map:TX.deck, color:0xa07b4c, roughness:.7});
+  MAT.steel  = new T.MeshStandardMaterial({color:0x585d66, roughness:.4, metalness:.85});
+  MAT.blackM = new T.MeshStandardMaterial({color:0x0a0b0d, roughness:.96});
+  MAT.blackS = new T.MeshStandardMaterial({color:0x121317, roughness:.9});
+  MAT.shutterM.map.repeat.set(1, 4);
+
+  const FOY = {x0:-50, x1:50, z0:8, z1:34, H:12, y:AS.BACKY};
+  const MAIN_CX = -26, STUDIO_CX = 26;
+
+  /* ======================================================================
+     THE TWO HOUSES — same builder, same stage box, twice
+     ================================================================== */
+  arcBuildHouse({
+    key:'main', label:'MAIN HOUSE', room:'main', cx:MAIN_CX,
+    zHouse:FOY.z0 - 0.4, rows:18, half:12, width:34, doorW:7.4,
+    dockDir:-1, dark:false
+  }, MAT);
+  arcBuildHouse({
+    key:'studio', label:'STUDIO THEATRE', room:'studio', cx:STUDIO_CX,
+    zHouse:FOY.z0 - 0.4, rows:13, half:8.5, width:26, doorW:6.2,
+    dockDir:1, dark:true
+  }, MAT);
+
+  /* ======================================================================
+     THE FOYER
+     ================================================================== */
+  {
+    /* the foyer is built at the origin and then set on its floor, so every
+       number in here stays readable */
+    const L = new T.Group();
+    L.position.y = FOY.y;
+    ARC.rooms.lobby.add(L);
+    const {x0:X0, x1:X1, z0:Z0, z1:Z1, H} = FOY;
+    const {floorL, plaster, plastD, glassM, mull, timber, steel, brass,
+           seatR, plastD:PD} = MAT;
+
+    const fl = aBox(X1 - X0, 0.3, Z1 - Z0, floorL, 0, -0.15, (Z0+Z1)/2, L);
+    arcWalk(fl);
+
+    // the glazed wall
+    const posts = [], panes = [];
+    for(let x = X0; x <= X1 + 0.01; x += 2.5){
+      posts.push({x:+x.toFixed(2), y:H/2, z:Z1});
+      if(x < X1) panes.push({x:+(x + 1.25).toFixed(2), y:H/2, z:Z1});
+    }
+    aBatch(new T.BoxGeometry(0.22, H, 0.55), mull, posts, L);
+    aBatch(new T.BoxGeometry(2.3, H - 0.3, 0.06), glassM, panes, L);
+    [2.6, 5.6, 8.6].forEach(y=>aBox(X1 - X0, 0.14, 0.3, mull, 0, y, Z1, L));
+    [-1,1].forEach(sd=>{
+      const sp = [], sg = [];
+      for(let z = Z1; z >= Z1 - 12; z -= 2.5){
+        sp.push({x:sd*X1, y:H/2, z:+z.toFixed(2)});
+        if(z > Z1 - 12) sg.push({x:sd*X1, y:H/2, z:+(z - 1.25).toFixed(2)});
+      }
+      aBatch(new T.BoxGeometry(0.55, H, 0.22), mull, sp, L);
+      aBatch(new T.BoxGeometry(0.06, H - 0.3, 2.3), glassM, sg, L);
+      aBox(0.5, H, 14, plaster, sd*X1, H/2, Z0 + 7, L);
+    });
+
+    // the soffit
+    const slats = [];
+    for(let x = X0 + 1; x < X1; x += 1.1) slats.push({x:+x.toFixed(2), y:H, z:(Z0+Z1)/2});
+    aBatch(new T.BoxGeometry(0.5, 0.34, Z1 - Z0 - 1), timber, slats, L);
+    aBox(X1 - X0, 0.3, Z1 - Z0, plastD, 0, H + 0.35, (Z0+Z1)/2, L);
+    for(const z of [Z0 + 6, Z0 + 13, Z0 + 20]){
+      const strip = aBox(X1 - X0 - 4, 0.1, 0.34,
+        new T.MeshBasicMaterial({color:0xfff0d8}), 0, H - 0.02, z, L);
+      aGlow(strip, 0xfff0d8, 1);
+    }
+
+    /* the back wall, with the way into each house */
+    const DOORS = [{x:MAIN_CX, w:7.4, text:'MAIN HOUSE', col:'#ffd27a'},
+                   {x:STUDIO_CX, w:6.2, text:'STUDIO THEATRE', col:'#7ad6ff'}];
+    let edge = X0;
+    for(const d of DOORS.slice().sort((a,b)=>a.x - b.x)){
+      if(d.x - d.w/2 > edge)
+        aBox(d.x - d.w/2 - edge, H, 0.6, plaster, (edge + d.x - d.w/2)/2, H/2, Z0, L);
+      edge = d.x + d.w/2;
+      aBox(d.w, H - AS.DOORH, 0.6, plaster, d.x, AS.DOORH + (H - AS.DOORH)/2, Z0, L);
+    }
+    if(edge < X1) aBox(X1 - edge, H, 0.6, plaster, (edge + X1)/2, H/2, Z0, L);
+    for(const d of DOORS){
+      const c = cvs(512, 128), g2 = c.getContext('2d');
+      g2.fillStyle = '#0b0c0e'; g2.fillRect(0,0,512,128);
+      g2.textAlign = 'center'; g2.textBaseline = 'middle';
+      g2.font = '600 46px Helvetica, Arial, sans-serif';
+      g2.fillStyle = d.col;
+      g2.fillText(d.text + '  →', 256, 64);
+      const m = new T.Mesh(new T.PlaneGeometry(d.w - 0.6, (d.w - 0.6)/4),
+                           new T.MeshBasicMaterial({map:tex(c,1,1)}));
+      m.position.set(d.x, AS.DOORH + 1.4, Z0 + 0.33);
+      L.add(m); aGlow(m, 0xffffff, 1);
+    }
+    // the foyer wall, with its two openings
+    ARC.walls.push({axis:'z', plane:Z0, lo:X0, hi:X1,
+                    gaps:DOORS.map(d=>({at:d.x, halfW:d.w/2}))});
+    ARC.walls.push({axis:'z', plane:Z0 - 0.4, lo:X0, hi:X1,
+                    gaps:DOORS.map(d=>({at:d.x, halfW:d.w/2}))});
+
+    /* THE ARC, on the wall */
+    {
+      const c = cvs(1024, 256), g2 = c.getContext('2d');
+      g2.clearRect(0,0,1024,256);
+      g2.textAlign = 'center'; g2.textBaseline = 'middle';
+      g2.font = '300 150px Helvetica, Arial, sans-serif';
+      g2.fillStyle = '#f4efe4';
+      g2.fillText('THE ARC', 512, 110);
+      g2.font = '400 40px Helvetica, Arial, sans-serif';
+      g2.fillStyle = '#c9a25a';
+      g2.fillText('C E N T R E   F O R   T H E   A R T S', 512, 205);
+      const m = new T.Mesh(new T.PlaneGeometry(12, 3),
+        new T.MeshBasicMaterial({map:tex(c,1,1), transparent:true}));
+      m.position.set(0, 8.6, Z0 + 0.33);
+      L.add(m); aGlow(m, 0xffffff, 1);
+    }
+
+    /* the bar */
+    {
+      const bx = -40, bz0 = Z0 + 4, bz1 = Z0 + 18;
+      aBox(2.0, 0.14, bz1 - bz0, timber, bx, 1.12, (bz0+bz1)/2, L);
+      aBox(1.7, 1.1, bz1 - bz0, plastD, bx, 0.55, (bz0+bz1)/2, L);
+      const rev = aBox(1.75, 0.1, bz1 - bz0 - 0.4,
+        new T.MeshBasicMaterial({color:0xffc98a}), bx, 0.12, (bz0+bz1)/2, L);
+      aGlow(rev, 0xffc98a, 0.8);
+      aBox(0.5, 5.0, bz1 - bz0, plastD, bx - 1.9, 2.5, (bz0+bz1)/2, L);
+      const shelves = [];
+      for(let y=1.6; y<=4.2; y+=0.85) shelves.push({x:bx - 1.55, y, z:(bz0+bz1)/2});
+      aBatch(new T.BoxGeometry(0.5, 0.07, bz1 - bz0 - 0.6), timber, shelves, L);
+      const bottles = [];
+      for(const s of shelves)
+        for(let z = bz0 + 0.6; z < bz1 - 0.4; z += 0.32)
+          bottles.push({x:bx - 1.5 + rnd(-0.08,0.08), y:s.y + 0.24, z:+z.toFixed(2),
+                        sy:rnd(0.7, 1.3)});
+      aBatch(new T.CylinderGeometry(0.055,0.07,0.4,7), glassM, bottles, L);
+      for(const s of shelves){
+        const st = aBox(0.42, 0.03, bz1 - bz0 - 0.8,
+          new T.MeshBasicMaterial({color:0x9fe8ff}), bx - 1.7, s.y + 0.06, (bz0+bz1)/2, L);
+        aGlow(st, 0x9fe8ff, 0.7);
+      }
+      const stools = [];
+      for(let z = bz0 + 1.2; z < bz1 - 0.6; z += 1.7) stools.push({x:bx + 1.7, y:0.4, z:+z.toFixed(2)});
+      aBatch(new T.CylinderGeometry(0.24,0.2,0.8,10), steel, stools, L);
+      aBatch(new T.CylinderGeometry(0.28,0.28,0.1,12), MAT.seatR,
+             stools.map(p=>Object.assign({}, p, {y:0.82})), L);
+    }
+
+    /* the box office */
+    {
+      const bx = 42, bz0 = Z0 + 5, bz1 = Z0 + 14;
+      aBox(1.6, 1.15, bz1 - bz0, plastD, bx, 0.58, (bz0+bz1)/2, L);
+      aBox(1.9, 0.12, bz1 - bz0, timber, bx, 1.18, (bz0+bz1)/2, L);
+      aBox(0.4, 6.0, bz1 - bz0 + 2, plaster, bx + 1.4, 3.0, (bz0+bz1)/2, L);
+      const screens = [];
+      for(let z = bz0 + 1.2; z < bz1; z += 2.8) screens.push({x:bx + 1.1, y:2.6, z:+z.toFixed(2)});
+      screens.forEach(p=>{
+        const m = new T.Mesh(new T.PlaneGeometry(1.6, 0.9),
+          new T.MeshBasicMaterial({color:0x2f9ad8}));
+        m.rotation.y = -Math.PI/2;
+        m.position.set(p.x - 0.05, p.y, p.z);
+        L.add(m); aGlow(m, 0x2f9ad8, 0.9);
+      });
+    }
+
+    /* the feature stair, and the mezzanine */
+    {
+      const MZ = 5.8, sx = 0;
+      const treads = [];
+      for(let i=0;i<18;i++)
+        treads.push({x:sx, y:0.32 + i*(MZ - 0.32)/18, z:Z0 + 20 - i*0.62});
+      arcWalk(aBatch(new T.BoxGeometry(3.6, 0.14, 0.62), timber, treads, L, true));
+      [-1,1].forEach(sd=>{
+        const run = 18*0.62, len = Math.hypot(run, MZ);
+        const s2 = aBox(len, 0.3, 0.12, steel, sx + sd*1.8, MZ/2, Z0 + 20 - run/2, L);
+        s2.rotation.x = Math.atan2(MZ, run);
+        const r2 = aBox(len, 0.06, 0.06, steel, sx + sd*1.8, MZ/2 + 1.05, Z0 + 20 - run/2, L);
+        r2.rotation.x = Math.atan2(MZ, run);
+      });
+      const mez = aBox(40, 0.3, 7.0, floorL, 0, MZ - 0.15, Z0 + 4.0, L);
+      arcWalk(mez);
+      aBox(40, 0.5, 0.14, plastD, 0, MZ - 0.3, Z0 + 7.5, L);
+      const glassRail = [];
+      for(let x=-19; x<=19; x+=1.5) glassRail.push({x, y:MZ + 0.6, z:Z0 + 7.5});
+      aBatch(new T.BoxGeometry(1.42, 1.1, 0.05), glassM, glassRail, L);
+      aBox(40, 0.08, 0.1, brass, 0, MZ + 1.2, Z0 + 7.5, L);
+      for(const x of [-17, 17]) aBox(0.4, MZ, 0.4, plastD, x, MZ/2, Z0 + 2, L);
+    }
+
+    /* the pendants */
+    {
+      const globes = [], rods = [];
+      for(let i=0;i<52;i++){
+        const x = rnd(-30, 34), z = rnd(Z0 + 10, Z1 - 3), y = rnd(4.6, 9.4);
+        globes.push({x, y, z, sx:rnd(.7,1.3), sy:rnd(.7,1.3), sz:rnd(.7,1.3)});
+        rods.push({x, y:(y + H)/2 + 0.2, z, sy:(H - y)/2});
+      }
+      aBatch(new T.CylinderGeometry(0.012,0.012,2,4), mull, rods, L);
+      const gl = aBatch(new T.SphereGeometry(0.24, 10, 8),
+                        new T.MeshBasicMaterial({color:0xffe3b0}), globes, L);
+      aGlow(gl, 0xffe3b0, 1);
+    }
+
+    /* benches and planters */
+    {
+      const b = [];
+      for(const o of [[-14, Z0+13],[-8, Z0+13],[8, Z0+13],[14, Z0+13],
+                      [-14, Z0+19],[-8, Z0+19],[8, Z0+19],[14, Z0+19]])
+        b.push({x:o[0], y:0.42, z:o[1]});
+      aBatch(new T.BoxGeometry(3.0, 0.16, 0.9), timber, b, L);
+      aBatch(new T.BoxGeometry(2.6, 0.4, 0.6), steel,
+             b.map(p=>Object.assign({}, p, {y:0.2})), L);
+      const pots = [], plants = [];
+      for(const o of [[-46, Z1-4],[46, Z1-4],[-46, Z0+20],[46, Z0+20]]){
+        pots.push({x:o[0], y:0.5, z:o[1]});
+        for(let i=0;i<7;i++){
+          const a = i*0.9;
+          plants.push({x:o[0] + Math.cos(a)*0.4, y:1.5, z:o[1] + Math.sin(a)*0.4,
+                       rz:Math.cos(a)*0.6, rx:Math.sin(a)*0.6, sy:rnd(.7,1.4)});
+        }
+      }
+      aBatch(new T.CylinderGeometry(0.55,0.42,1.0,12), plastD, pots, L);
+      aBatch(new T.ConeGeometry(0.18, 1.6, 5),
+             new T.MeshStandardMaterial({color:0x2f5c2a, roughness:.95}), plants, L);
+    }
+
+    const l = new T.PointLight(0xffe6c4, 0, 90, 1.4);
+    l.position.set(0, 9.5, Z0 + 14);   // local to the raised floor
+    L.add(l);
+    ARC.lights.push({light:l, power:3.0});
+  }
+
+  /* the bed light for the whole building */
+  {
+    ARC.amb  = new T.AmbientLight(0xdfe4ee, 0);
+    ARC.hemi = new T.HemisphereLight(0xdfe8ff, 0x2a2620, 0);
+    ARC.group.add(ARC.amb, ARC.hemi);
+  }
+
+  ARC.built = true;
+  ARC.group.visible = false;
+  return ARC;
+}
+
+/* ============================================================================
+   WHICH ROOM, WHICH BUILDING
+   ========================================================================== */
+function venueAt(x){ return x > ARC.X - 140 ? 'arc' : 'palace'; }
+function arcRoomAt(x, z){
+  const lx = x - ARC.X;
+  if(z > 7.6) return 'lobby';
+  return lx < 0 ? 'main' : 'studio';
+}
+function arcHouseAt(x, z){
+  const n = arcRoomAt(x, z);
+  return n === 'lobby' ? null : ARC.houses[n];
+}
+const ARC_SEES = {
+  lobby:  ['lobby','main','studio'],
+  main:   ['main','lobby'],
+  studio: ['studio','lobby']
+};
+function updateArcRooms(force){
+  if(!ARC.built) return;
+  const px = (Player.mode === 'walk') ? Player.pos.x : camera.position.x;
+  const pz = (Player.mode === 'walk') ? Player.pos.z : camera.position.z;
+  const now = arcRoomAt(px, pz);
+  if(now === ARC.cur && !force) return;
+  ARC.cur = now;
+  const on = QUALITY.rooms ? ARC_SEES[now] : ARC.order;
+  for(const n of ARC.order) ARC.rooms[n].visible = on.indexOf(n) !== -1;
+}
+function setArcHouse(v){ ARC.house = clamp(v, 0, 1); return ARC.house; }
+function updateArc(dt){
+  if(!ARC.built) return;
+  ARC.level += clamp(ARC.house - ARC.level, -dt*0.9, dt*0.9);
+  const v = ARC.level;
+  for(const l of ARC.lights) l.light.intensity = v * l.power;
+
+  /* The bed light is the FOYER's.  It used to carry a fixed floor and light
+     the whole building with it, so an Arc auditorium in a blackout never got
+     below a dull grey while the Palace went properly black.
+
+     Ambient is global — there is no way to bed one room and not the next —
+     so standing inside a house it goes off entirely and the auditorium is as
+     black as the Palace's.  The foyer you can see out to through the doorway
+     keeps its own lamps and its own lit fittings, which is what was doing the
+     work there anyway.                                                     */
+  const inHouse = (ARC.cur !== 'lobby');
+  const bed = inHouse ? 0 : v;
+  ARC.amb.intensity  = bed * 0.30;
+  ARC.hemi.intensity = bed * 0.26;
+
+  /* the fittings are unlit surfaces, so they have to be dimmed by hand or
+     the building goes dark with all its lamps still blazing */
+  const roomLevel = (r)=>{
+    if(r === 'lobby') return v;
+    const H = ARC.houses[r];
+    return (H && H.stage && typeof stageHouseLevel === 'function')
+      ? stageHouseLevel(H.stage) : v;
+  };
+  for(const g of ARC.glow){
+    const lv = roomLevel(g.room);
+    const k = (g.keep ? Math.max(0.55, lv) : lv) * g.power;
+    g.mesh.material.color.copy(g.base).multiplyScalar(k);
+  }
+  updateArcDoors(dt);
+}
+
+/* ---- where you may walk, and what stops you ---- */
+function arcBounds(x, z){
+  const lx = x - ARC.X;
+  if(z > 7.6) return lx > -49.4 && lx < 49.4 && z < 33.4;          // the foyer
+  const H = lx < 0 ? ARC.houses.main : ARC.houses.studio;
+  if(!H) return false;
+  if(z > H.zPros)                                                   // the auditorium
+    return Math.abs(lx - H.cx) < (H.key === 'main' ? 16.4 : 12.4) && z > H.zPros - 0.1;
+  // the stage, and the dock bay off the side of it
+  if(z > H.zBack + 0.5 && Math.abs(lx - H.cx) < AS.W/2 - 0.5) return true;
+  if(z > H.dock.z0 + 0.6 && z < H.dock.z1 - 0.6){
+    const a = Math.min(H.dock.inner, H.dock.outer), b = Math.max(H.dock.inner, H.dock.outer);
+    if(lx > a + 0.4 && lx < b - 0.4) return true;
+  }
+  return false;
+}
+function arcWallBlocks(x, z, ox, oz, y){
+  const lx = x - ARC.X, olx = ox - ARC.X;
+  for(const w of ARC.walls){
+    const from = w.axis === 'z' ? oz : olx, to = w.axis === 'z' ? z : lx;
+    if((from < w.plane) === (to < w.plane)) continue;         // not crossing this one
+    const along = w.axis === 'z' ? lx : z;
+    if(w.lo !== undefined && (along < w.lo || along > w.hi)) continue;  // not this house's
+    const gap = w.gaps.find(g=>Math.abs(along - g.at) < g.halfW - 0.25);
+    if(!gap) return true;
+    if(gap.door){
+      const d = ARC.doorMap[gap.door];
+      if(d && d.open < 0.5 && y < d.H) return true;
+    }
+  }
+  return false;
+}
+/* where you are standing, for the readout */
+function arcZone(x, y, z){
+  const n = arcRoomAt(x, z);
+  if(n === 'lobby')  return y > AS.BACKY + 4 ? 'ARC MEZZANINE' : 'ARC FOYER';
+  const H = ARC.houses[n];
+  const lx = x - ARC.X;
+  if(z > H.zPros) return H.label;
+  if(Math.abs(lx - H.cx) > AS.W/2 - 1) return H.label + ' DOCK';
+  if(y > 6) return H.label + ' FLY FLOOR';
+  return H.label + ' STAGE';
+}

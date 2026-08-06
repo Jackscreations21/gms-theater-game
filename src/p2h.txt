@@ -1,0 +1,101 @@
+
+/* ============================================================================
+   MACHINES
+   Anything you build on a joint moves. Powered joints — motors and powered
+   sliders — take a fader on the MACHINES page. Passive ones — pivots and plain
+   sliders — you push yourself: look at the moving half and pull.
+   ========================================================================== */
+const MACHINES = [];
+const MACH_TRAVEL = 3.0;                 // how far a slider runs, in metres
+const MACH_SWEEP  = Math.PI;             // how far a pivot turns
+
+function registerMachine(m, where){
+  m.id = MACHINES.length + 1;
+  m.where = where || '';
+  m.speed = 0.5;
+  m.value = 0; m.target = 0;
+  m.group.userData.machine = m;
+  m.group.traverse(o=>{ if(o.isMesh) o.userData.machinePart = m; });
+  MACHINES.push(m);
+  refreshMachineUI();
+  return m;
+}
+function machineAxis(m){
+  // the joint's rotation picks which way a slider runs
+  return (m.rot % 2) ? 'z' : 'x';
+}
+function applyMachine(m){
+  if(m.kind === 'turn'){
+    m.group.rotation.y = m.value * (m.powered ? Math.PI*2 : MACH_SWEEP);
+  } else {
+    const d = (m.value - 0.5) * 2 * MACH_TRAVEL;
+    if(machineAxis(m) === 'x') m.group.position.x = m.home ? m.home.x + d : d;
+    else                       m.group.position.z = m.home ? m.home.z + d : d;
+  }
+}
+function updateMachines(dt){
+  for(const m of MACHINES){
+    if(!m.home) m.home = {x:m.group.position.x, z:m.group.position.z};
+    if(m.powered){
+      const d = m.target - m.value;
+      if(Math.abs(d) > 0.001) m.value += clamp(d, -dt*m.speed, dt*m.speed);
+      else m.value = m.target;
+    }
+    applyMachine(m);
+  }
+}
+function nudgeMachine(m, delta){
+  if(m.powered) return false;
+  m.value = clamp(m.value + delta, 0, 1);
+  m.target = m.value;
+  applyMachine(m);
+  refreshMachineUI();
+  return true;
+}
+function clearMachinesFor(group){
+  for(let i = MACHINES.length-1; i >= 0; i--){
+    let p = MACHINES[i].group, gone = false;
+    while(p){ if(p === group){ gone = true; break; } p = p.parent; }
+    if(gone) MACHINES.splice(i,1);
+  }
+  refreshMachineUI();
+}
+
+/* ---------------------------------------------------------------- the page */
+function refreshMachineUI(){
+  const el = $('#machList'); if(!el) return;
+  if(!MACHINES.length){
+    el.innerHTML = '<span class="mini" style="color:var(--dim)">Nothing built with a joint yet. '+
+      'Drop a pivot, motor or slider into a build and everything resting on it will move.</span>';
+    const c = $('#machCount'); if(c) c.textContent = '';
+    return;
+  }
+  const c = $('#machCount'); if(c) c.textContent = MACHINES.length + ' fitted';
+  el.innerHTML = MACHINES.map((m,i)=>
+    '<div class="card" style="margin-bottom:6px;padding:7px">'+
+    '<div class="row" style="align-items:center;gap:8px">'+
+      '<b style="color:'+(m.powered?'var(--amber)':'var(--cyan)')+'">'+
+        (m.powered?'POWERED':'PASSIVE')+'</b>'+
+      '<span>'+m.label+' #'+m.id+'</span>'+
+      '<span class="mini" style="color:var(--dim);flex:1">'+m.n+' blocks &middot; '+m.where+'</span>'+
+    '</div>'+
+    (m.powered
+      ? '<label class="f" style="margin-top:5px">'+
+          (m.kind==='turn'?'TURN':'TRAVEL')+
+          ' <input type="range" min="0" max="100" value="'+Math.round(m.target*100)+'" '+
+          'data-m="'+i+'" style="flex:1"><span data-v="'+i+'">'+Math.round(m.target*100)+'</span></label>'+
+        '<label class="f">SPEED <input type="range" min="5" max="200" value="'+Math.round(m.speed*100)+'" '+
+          'data-s="'+i+'" style="flex:1"></label>'
+      : '<div class="mini" style="margin-top:5px;color:var(--dim)">'+
+          'at '+Math.round(m.value*100)+'% &mdash; walk up to it, look at the moving half '+
+          'and hold the left button to push it'+
+        '</div>')+
+    '</div>').join('');
+  Array.from(el.querySelectorAll('input[data-m]')).forEach(r=>{
+    r.oninput = ()=>{ const m = MACHINES[+r.dataset.m]; m.target = r.value/100;
+      const v = el.querySelector('[data-v="'+r.dataset.m+'"]'); if(v) v.textContent = r.value; };
+  });
+  Array.from(el.querySelectorAll('input[data-s]')).forEach(r=>{
+    r.oninput = ()=>{ MACHINES[+r.dataset.s].speed = r.value/100; };
+  });
+}

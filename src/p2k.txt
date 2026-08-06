@@ -1,0 +1,255 @@
+
+/* ============================================================================
+   THREE STAGES, ONE BOARD
+
+   There is one lighting console, one fly rail and one cue stack in this game,
+   and they belong to whichever theatre you are standing in.  Walk from the
+   Palace's stalls to the Arc's Main House and the board in front of you is
+   the Main House's board: its channels, its linesets, its cue stack, its
+   house lights, its production.
+
+   That is done by SWAPPING THE CONTENTS of the globals rather than by
+   handing every function a stage argument.  FIXTURES, FLY, CUES, SHOW and
+   HOUSE stay exactly where they were, and every one of the two hundred
+   functions that reads them carries on working — they simply describe a
+   different room now.  The alternative was threading a stage through the
+   whole codebase, which would have been a fortnight of work and a great
+   many places to get it wrong.
+
+   The Arc's two stages are the same box as the Palace's, so their rigs and
+   their fly systems are built by the SAME code, just translated: one group
+   moved to the house's centre line and its proscenium, and everything inside
+   it lands where it should.
+   ========================================================================== */
+const STAGES = {};
+let STAGE = 'palace';
+
+function makeStage(o){
+  const st = {
+    key:o.key, label:o.label, venue:o.venue, room:o.room,
+    cx:o.cx || 0, zPros:o.zPros || 0,
+    rigGroup:o.rigGroup, poolGroup:o.poolGroup, flyGroup:o.flyGroup,
+    showParent:o.showParent,
+    fixtures:[], fly:[], cues:[], nextCue:0,
+    show:null, house:null, rig:null, live:false
+  };
+  STAGES[o.key] = st;
+  return st;
+}
+
+/* ---- what a stage owns, lifted out of the globals and put back again ---- */
+function stageCapture(st){
+  st.fixtures = FIXTURES.splice(0, FIXTURES.length);
+  st.fly      = FLY.splice(0, FLY.length);
+  st.cues     = CUES.splice(0, CUES.length);
+  st.nextCue  = nextCue;
+  st.show     = Object.assign({}, SHOW);
+  st.house    = Object.assign({}, HOUSE);
+  st.rig      = {haze:RIG.haze, grand:RIG.grand, blackout:RIG.blackout};
+  st.live     = false;
+}
+function stageRestore(st){
+  FIXTURES.push.apply(FIXTURES, st.fixtures); st.fixtures.length = 0;
+  FLY.push.apply(FLY, st.fly);                st.fly.length = 0;
+  CUES.push.apply(CUES, st.cues);             st.cues.length = 0;
+  nextCue = st.nextCue;
+  if(st.show)  Object.assign(SHOW, st.show);
+  if(st.house) Object.assign(HOUSE, st.house);
+  if(st.rig){ RIG.haze = st.rig.haze; RIG.grand = st.rig.grand; RIG.blackout = st.rig.blackout; }
+  rigGroup  = st.rigGroup;
+  poolGroup = st.poolGroup;
+  flyGroup  = st.flyGroup;
+  st.live = true;
+}
+function stageOf(key){ return STAGES[key] || null; }
+function stageLive(){ return STAGES[STAGE]; }
+/* the house-light level of any stage, live or not */
+function stageHouseLevel(key){
+  if(key === STAGE) return HOUSE.house;
+  const st = STAGES[key];
+  return st && st.house ? st.house.house : 0;
+}
+
+function stageSwitch(key, quiet){
+  if(key === STAGE || !STAGES[key]) return STAGES[STAGE];
+  stageCapture(STAGES[STAGE]);
+  STAGE = key;
+  stageRestore(STAGES[key]);
+  /* the console, the rail, the cue stack and the show card are all looking
+     at different objects now — every one of them has to be redrawn */
+  if(typeof refreshChannelStrip === 'function') refreshChannelStrip();
+  if(typeof refreshFlyUI === 'function') refreshFlyUI();
+  if(typeof refreshCues === 'function') refreshCues();
+  if(typeof refreshShowUI === 'function') refreshShowUI();
+  if(typeof refreshHangUI === 'function') refreshHangUI();
+  if(typeof refreshWrongUI === 'function') refreshWrongUI();
+  if(typeof syncMasters === 'function') syncMasters();
+  if(typeof refreshVenueUI === 'function') refreshVenueUI();
+  if(typeof refreshStageChip === 'function') refreshStageChip();
+  if(typeof refreshStageNames === 'function') refreshStageNames();
+  if(typeof buildGoodsPalette === 'function') buildGoodsPalette();
+  if(typeof vrOnStageChange === 'function') vrOnStageChange();
+  if(!quiet && typeof toast === 'function')
+    toast('The board is patched to ' + STAGES[key].label);
+  return STAGES[key];
+}
+
+/* ---- which stage are you standing in ---- */
+function stageAt(x, z){
+  if(typeof ARC === 'undefined' || !ARC.built) return 'palace';
+  if(venueAt(x) !== 'arc') return 'palace';
+  const room = arcRoomAt(x, z);
+  if(room === 'main')   return 'arcMain';
+  if(room === 'studio') return 'arcStudio';
+  return null;              // the foyer belongs to neither: keep what you had
+}
+/* called every frame; the board follows you about the building */
+function updateStageFromPosition(){
+  if(typeof Player === 'undefined') return STAGE;
+  const x = (Player.mode === 'walk') ? Player.pos.x : camera.position.x;
+  const z = (Player.mode === 'walk') ? Player.pos.z : camera.position.z;
+  const want = stageAt(x, z);
+  if(want && want !== STAGE) stageSwitch(want);
+  return STAGE;
+}
+
+/* ============================================================================
+   BUILDING A STAGE
+   The Palace was built first, in the globals, so it is simply adopted.  The
+   Arc's two are built by pointing the globals at empty groups, running the
+   very same builders, and lifting the result out again.
+   ========================================================================== */
+function adoptPalaceStage(){
+  const st = makeStage({
+    key:'palace', label:'THE PALACE', venue:'palace', room:'stage',
+    cx:0, zPros:0,
+    rigGroup, poolGroup, flyGroup,
+    showParent:()=>(typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.stage)
+                    ? ROOM_GROUP.stage : world
+  });
+  st.live = true;
+  STAGE = 'palace';
+  return st;
+}
+
+function buildArcStage(key, label, houseKey){
+  const H = ARC.houses[houseKey];
+  if(!H) return null;
+  const room = ARC.rooms[H.room];
+
+  /* one group per stage, set on the house's centre line and its proscenium.
+     Everything inside is built in the Palace's own stage coordinates, which
+     is exactly what makes it come out identical.                         */
+  const mk = ()=>{
+    const g = new T.Group();
+    g.position.set(H.cx, 0, H.zPros);
+    room.add(g);
+    return g;
+  };
+  const rg = mk(), fg = mk(), sg = mk();
+  /* The floor-pool decals are worked out in WORLD space — where the beam
+     actually meets the deck — so the group that holds them has to sit at the
+     world origin, not on this house's centre line, or every pool lands one
+     building over. */
+  const pg = new T.Group();
+  pg.position.set(-ARC.X, 0, 0);
+  room.add(pg);
+
+  /* The crew walk in WORLD coordinates, but this room sits four hundred
+     metres out along x — so they get a root that cancels the offset back
+     out again.  Parent them straight to the room and every hand is one
+     building's width to the right of where it thinks it is. */
+  const crewRootG = new T.Group();
+  crewRootG.name = 'crew:' + key;
+  crewRootG.position.x = -ARC.X;
+  room.add(crewRootG);
+
+  const st = makeStage({
+    key, label, venue:'arc', room:H.room,
+    cx:H.cx, zPros:H.zPros,
+    rigGroup:rg, poolGroup:pg, flyGroup:fg,
+    showParent:()=>sg
+  });
+  st.arcHouse = houseKey;
+  H.stage = key;
+
+  /* everything the crew need to know about working in this house */
+  const dockKey = houseKey + 'Dock';
+  st.crew = {
+    label: label,
+    root: ()=>crewRootG,
+    gate: {x: ARC.X + H.dock.inner - H.dock.dir*2.2, z: H.dock.z},
+    off:  {x: ARC.X + H.dock.inner + H.dock.dir*4.5, z: H.dock.z},
+    rail: ARC.X + H.cx + AS.W/2 - 2.6,          // the fly floor down the side
+    zOff: H.zPros,
+    xMin: ARC.X + H.cx - 12, xMax: ARC.X + H.cx + 12,
+    zMin: H.zPros - 15,      zMax: H.zPros - 1,
+    doors:(open)=>{ if(typeof arcDoorSet === 'function') arcDoorSet(dockKey, open); }
+  };
+
+  /* stand the globals aside, build into the new groups, take the result */
+  const keepFix = FIXTURES.splice(0, FIXTURES.length);
+  const keepFly = FLY.splice(0, FLY.length);
+  const keepCue = CUES.splice(0, CUES.length);
+  const keepRig = rigGroup, keepPool = poolGroup, keepFlyG = flyGroup;
+  rigGroup = rg; poolGroup = pg; flyGroup = fg;
+
+  for(let i=0;i<14;i++) makeLineset(i);
+  buildRig();
+  FIXTURES.forEach(f=>{ f.homeAim = f.aim.clone(); });
+
+  /* the standing hang every receiving house keeps up: house curtain in,
+     borders and legs in, electrics at their trims, the rest out */
+  hangGoods(FLY[0], 'house');   FLY[0].target = TRIMS.house;
+  hangGoods(FLY[1], 'border');  FLY[1].target = TRIMS.border;
+  hangGoods(FLY[2], 'legs');    FLY[2].target = inTrimOf(FLY[2]);
+  hangGoods(FLY[3], 'border');  FLY[3].target = TRIMS.border;
+  hangGoods(FLY[4], 'electric');FLY[4].target = TRIMS.electric;
+  hangGoods(FLY[5], 'legs');    FLY[5].target = inTrimOf(FLY[5]);
+  hangGoods(FLY[6], 'truss');   FLY[6].target = TRIMS.truss;
+  hangGoods(FLY[8], 'electric');FLY[8].target = TRIMS.electric;
+  hangGoods(FLY[10],'legs');    FLY[10].target = inTrimOf(FLY[10]);
+  hangGoods(FLY[12],'electric');FLY[12].target = TRIMS.electric;
+  hangGoods(FLY[13],'cyc');     FLY[13].target = TRIMS.cyc;
+  FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
+
+  st.fixtures = FIXTURES.splice(0, FIXTURES.length);
+  st.fly      = FLY.splice(0, FLY.length);
+  st.cues     = CUES.splice(0, CUES.length);
+  st.nextCue  = 0;
+  st.show     = {key:null, group:null, effects:[], goods:[], walk:[], cues:0,
+                 rain:null, fire:null, gyms:null, gymIn:0,
+                 neon:[], neonLevel:0, neonTarget:1, neonLights:[], smoke:[],
+                 scenes:[], scene:null, revolve:null, wrong:[],
+                 rainSound:false, flicker:null, lightning:0, lightningT:0,
+                 stormOn:false, stormT:0, porch:null};
+  st.house    = {house:0.7, work:0, practical:0, lobby:0.9, backstage:0.7};
+  st.rig      = {haze:0.35, grand:1, blackout:false};
+
+  FIXTURES.push.apply(FIXTURES, keepFix);
+  FLY.push.apply(FLY, keepFly);
+  CUES.push.apply(CUES, keepCue);
+  rigGroup = keepRig; poolGroup = keepPool; flyGroup = keepFlyG;
+  return st;
+}
+
+function buildStages(){
+  if(STAGES.palace) return STAGES;
+  adoptPalaceStage();
+  if(typeof ARC !== 'undefined' && ARC.built){
+    buildArcStage('arcMain',   'THE ARC — MAIN HOUSE',    'main');
+    buildArcStage('arcStudio', 'THE ARC — STUDIO THEATRE','studio');
+  }
+  return STAGES;
+}
+
+/* ---- the Arc's auditorium lamps follow that stage's own house master ---- */
+function updateStageHouseLights(){
+  if(typeof ARC === 'undefined' || !ARC.built) return;
+  for(const k of ['main','studio']){
+    const H = ARC.houses[k];
+    if(!H || !H.lamps) continue;
+    const v = stageHouseLevel(H.stage);
+    for(const l of H.lamps) l.light.intensity = v * l.power;
+  }
+}

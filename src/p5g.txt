@@ -1,0 +1,767 @@
+
+/* ============================================================================
+   THE PLAY THAT GOES WRONG
+   The Cornley Polytechnic Drama Society present "The Murder at Haversham
+   Manor": a green damask study with a fireplace, a grandfather clock, a
+   gothic window and a second storey carried on one post.
+
+   The point of the set is that it does not stay up.  Every piece that is
+   meant to fail is built on its own hinge with its own weight, so it goes
+   over under gravity, lands, rocks and settles — and can be stood back up
+   again for the next performance.
+   ========================================================================== */
+
+/* ============================================================================
+   THINGS THAT GO WRONG
+   A hinged piece of scenery with its pivot at the bottom, left to fall over.
+   The torque falls away as it approaches flat, it bounces when it lands and
+   it rocks itself to a stop, so a wall going over reads as weight rather
+   than as an animation being played at you.
+   ========================================================================== */
+const WRONG_G = 7.4;
+function makeWrong(o){
+  const p = {
+    key:o.key, label:o.label, group:o.group,
+    axis:o.axis || 'z',
+    dir:o.dir === undefined ? 1 : o.dir,
+    limit:o.limit === undefined ? 1.5 : o.limit,
+    drop:o.drop || 0,
+    rate:o.rate === undefined ? 1 : o.rate,
+    base:{x:o.group.rotation.x, y:o.group.rotation.y, z:o.group.rotation.z},
+    y0:o.group.position.y,
+    walk:o.walk || [], sound:o.sound || 'crash',
+    ang:0, vel:0, fall:0, fvel:0, bounces:0, state:'ok'
+  };
+  o.group.userData.moves = true;
+  SHOW.wrong.push(p);
+  return p;
+}
+function wrongFind(key){ return (SHOW.wrong || []).find(w=>w.key === key) || null; }
+function wrongTrigger(key){
+  const p = wrongFind(key);
+  if(!p || p.state !== 'ok') return null;
+  p.state = 'going';
+  p.vel = rnd(0.25, 0.6);              // the shove that starts it
+  p.fvel = 0;
+  /* nobody stands on a floor that is on its way down */
+  for(const o of p.walk){
+    const i = WALKABLE.indexOf(o);
+    if(i >= 0) WALKABLE.splice(i, 1);
+  }
+  if(typeof Snd !== 'undefined' && Snd.play) Snd.play(p.sound);
+  if(typeof toast === 'function') toast(p.label + ' goes');
+  if(typeof refreshWrongUI === 'function') refreshWrongUI();
+  return p;
+}
+function wrongAll(){ (SHOW.wrong || []).forEach(p=>wrongTrigger(p.key)); }
+function wrongReset(){
+  for(const p of (SHOW.wrong || [])){
+    p.ang = 0; p.vel = 0; p.fall = 0; p.fvel = 0; p.bounces = 0; p.state = 'ok';
+    p.group.rotation.set(p.base.x, p.base.y, p.base.z);
+    p.group.position.y = p.y0;
+    for(const o of p.walk) if(WALKABLE.indexOf(o) < 0) WALKABLE.push(o);
+  }
+  if(typeof refreshWrongUI === 'function') refreshWrongUI();
+}
+function wrongStanding(){ return (SHOW.wrong || []).filter(p=>p.state === 'ok').length; }
+function updateWrong(dt){
+  const list = SHOW.wrong;
+  if(!list || !list.length) return;
+  for(const p of list){
+    if(p.state === 'ok' || p.state === 'down') continue;
+    /* it goes over faster the further it goes: the weight of it is further
+       out from the hinge every degree, until it is flat and there is none */
+    p.vel += dt * WRONG_G * Math.max(0.1, Math.cos(p.ang)) * p.rate;
+    p.ang += p.vel * dt;
+    if(p.drop){
+      p.fvel += dt * 9.2;
+      p.fall += p.fvel * dt;
+      if(p.fall >= p.drop){
+        p.fall = p.drop;
+        p.fvel = -p.fvel * 0.22;
+        if(Math.abs(p.fvel) < 0.6) p.fvel = 0;
+      }
+    }
+    if(p.ang >= p.limit){
+      p.ang = p.limit;
+      p.vel = -Math.abs(p.vel) * 0.24;                 // it lands and rocks
+      p.bounces++;
+      /* It is only down when it has finished BOTH halves of the fall.  The
+         chandelier tips over faster than it drops, and settling on the tilt
+         alone left it hanging in mid-air with the ceiling gone.          */
+      const landed = !p.drop || p.fall >= p.drop - 1e-4;
+      if(landed && (p.bounces > 3 || Math.abs(p.vel) < 0.4)){
+        p.vel = 0; p.state = 'down';
+        if(typeof refreshWrongUI === 'function') refreshWrongUI();
+      }
+    }
+    p.group.rotation[p.axis] = p.base[p.axis] + p.dir * p.ang;
+    p.group.position.y = p.y0 - p.fall;
+  }
+}
+
+/* ---- green damask, hung by people who have never hung paper ---- */
+function damaskTex(){
+  const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#1f5a4e'; g.fillRect(0,0,W,H);
+  const motif = (x, y)=>{
+    g.save(); g.translate(x, y);
+    g.fillStyle = 'rgba(96,168,142,.4)';
+    g.beginPath();
+    g.moveTo(0,-16); g.quadraticCurveTo(13,-8, 0,14); g.quadraticCurveTo(-13,-8, 0,-16);
+    g.fill();
+    g.beginPath();
+    g.moveTo(-15,2); g.quadraticCurveTo(0,-4, 15,2); g.quadraticCurveTo(0,10, -15,2);
+    g.fill();
+    g.restore();
+  };
+  for(let y=0; y<H+40; y+=58)
+    for(let x=0; x<W+40; x+=52)
+      motif(x + ((y/58)%2)*26, y);
+  // vertical seams where the lengths meet, and a general dinginess
+  for(let x=0; x<W; x+=128){
+    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(x, 0, 2, H);
+    g.fillStyle = 'rgba(180,220,200,.06)'; g.fillRect(x+2, 0, 3, H);
+  }
+  for(let i=0;i<260;i++){
+    g.fillStyle = 'rgba(0,0,0,'+(0.03+Math.random()*0.10).toFixed(2)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(4,40), rnd(10,90));
+  }
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+/* ---- a shelf of books, seen from the front ---- */
+function booksTex(){
+  const W = 256, H = 256, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#22160e'; g.fillRect(0,0,W,H);
+  const cols = ['#6b2418','#3d4a22','#1e3450','#5a3a12','#472046','#22423a','#7a5a20'];
+  for(let shelf=0; shelf<4; shelf++){
+    const y = shelf*64, h = 56;
+    let x = 2;
+    while(x < W - 6){
+      const w = rnd(7, 17), lean = Math.random() < 0.12;
+      g.save();
+      g.translate(x, y + h);
+      if(lean) g.rotate(rnd(-0.16, 0.16));
+      g.fillStyle = cols[(Math.random()*cols.length)|0];
+      g.fillRect(0, -h*rnd(0.78, 1), w, h);
+      g.fillStyle = 'rgba(214,182,110,.5)';
+      g.fillRect(1, -h*0.66, w-2, 2);
+      g.fillRect(1, -h*0.5, w-2, 1.4);
+      g.restore();
+      x += w + 1.4;
+    }
+    g.fillStyle = '#2f2013'; g.fillRect(0, y + h, W, 8);
+    g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(0, y + h - 4, W, 4);
+  }
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+/* ---- leaded glass, with a wet night behind it ---- */
+function leadedTex(){
+  const W = 256, H = 512, c = cvs(W, H), g = c.getContext('2d');
+  const sky = g.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0, '#2b4f8a'); sky.addColorStop(0.55, '#1b3560'); sky.addColorStop(1, '#101d38');
+  g.fillStyle = sky; g.fillRect(0,0,W,H);
+  for(let i=0;i<40;i++){
+    g.fillStyle = 'rgba(150,190,240,'+(0.04+Math.random()*0.10).toFixed(2)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(10,50), rnd(10,60));
+  }
+  g.strokeStyle = 'rgba(20,22,26,.85)'; g.lineWidth = 3;
+  for(let y=-W; y<H+W; y+=40){
+    g.beginPath(); g.moveTo(-10, y); g.lineTo(W+10, y + W); g.stroke();
+    g.beginPath(); g.moveTo(-10, y + W); g.lineTo(W+10, y); g.stroke();
+  }
+  g.strokeStyle = 'rgba(16,18,22,.95)'; g.lineWidth = 7;
+  for(let x=0; x<=W; x+=W/2){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,H); g.stroke(); }
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+/* ---- the society's own front cloth, lovingly made ---- */
+function cornleyCurtainCanvas(){
+  const W = 2048, H = 1024, c = cvs(W, H), g = c.getContext('2d');
+  const base = g.createLinearGradient(0, 0, 0, H);
+  base.addColorStop(0.00, '#1a0508');
+  base.addColorStop(0.32, '#6a0d18');
+  base.addColorStop(0.58, '#8c1422');
+  base.addColorStop(0.84, '#4a080f');
+  base.addColorStop(1.00, '#150406');
+  g.fillStyle = base; g.fillRect(0, 0, W, H);
+  for(let x=0; x<W; x+=54){
+    const gr = g.createLinearGradient(x,0,x+54,0);
+    gr.addColorStop(0,'rgba(0,0,0,.66)');
+    gr.addColorStop(0.5,'rgba(255,160,150,.14)');
+    gr.addColorStop(1,'rgba(0,0,0,.66)');
+    g.fillStyle = gr; g.fillRect(x,0,54,H);
+  }
+  const cx = W/2, cy = H*0.44;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '600 46px Georgia, "Times New Roman", serif';
+  g.fillStyle = 'rgba(226,206,150,.78)';
+  g.fillText('THE CORNLEY POLYTECHNIC DRAMA SOCIETY', cx, cy - 190);
+  g.font = '400 34px Georgia, serif';
+  g.fillText('p r e s e n t s', cx, cy - 130);
+  g.font = '700 132px Georgia, "Times New Roman", serif';
+  g.fillStyle = 'rgba(246,232,190,.96)';
+  g.fillText('THE MURDER AT', cx, cy - 10);
+  g.fillText('HAVERSHAM MANOR', cx, cy + 128);
+  g.fillStyle = 'rgba(214,178,110,.6)';
+  g.fillRect(W*0.22, cy - 78, W*0.56, 3);
+  g.fillRect(W*0.22, cy + 206, W*0.56, 3);
+  g.font = '400 30px Georgia, serif';
+  g.fillStyle = 'rgba(214,196,150,.6)';
+  g.fillText('a murder mystery in two acts', cx, cy + 256);
+  for(let i=0;i<700;i++){
+    g.fillStyle = 'rgba(0,0,0,'+(0.03+Math.random()*0.10).toFixed(2)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(2,24), rnd(10,80));
+  }
+  const vig = g.createLinearGradient(0,0,0,H);
+  vig.addColorStop(0,'rgba(0,0,0,.76)'); vig.addColorStop(0.4,'rgba(0,0,0,.05)');
+  vig.addColorStop(1,'rgba(0,0,0,.72)');
+  g.fillStyle = vig; g.fillRect(0,0,W,H);
+  return {canvas:c, tex:tex(c,1,1)};
+}
+
+SHOWS.goeswrong = {
+  name: 'THE PLAY THAT GOES WRONG',
+  blurb: 'A green damask study with a second storey carried on one post. The post ' +
+         'gives way, the storey comes down and the walls go over — under their own ' +
+         'weight, on the cue or by hand, and you can stand it all back up.',
+  note: 'An interpretation in the show’s own vocabulary, not a copy of anyone’s design.',
+  load(){
+    const G = showRoot();
+    SHOW.neon = []; SHOW.neonLevel = 0; SHOW.neonTarget = 1; SHOW.neonLights = [];
+    SHOW.wrong = [];
+
+    /* ---------------------------------------------------------- materials */
+    const paper  = new T.MeshStandardMaterial({map:damaskTex(), roughness:.96,
+                                               side:T.DoubleSide});
+    const oak    = new T.MeshStandardMaterial({map:TX.deck, color:0x5a3a20, roughness:.82});
+    const oakD   = new T.MeshStandardMaterial({map:TX.deck, color:0x33200f, roughness:.86});
+    const oakL   = new T.MeshStandardMaterial({map:TX.deck, color:0x7a5228, roughness:.8});
+    const floorM = new T.MeshStandardMaterial({map:TX.deck, color:0x8a6238, roughness:.72});
+    const stone  = new T.MeshStandardMaterial({color:0x8d8880, roughness:.95});
+    const stoneD = new T.MeshStandardMaterial({color:0x676259, roughness:.96});
+    const velvet = new T.MeshStandardMaterial({map:TX.velour, color:0x7e1024, roughness:.95,
+                                               side:T.DoubleSide});
+    const books  = new T.MeshStandardMaterial({map:booksTex(), roughness:.94});
+    const leaded = new T.MeshStandardMaterial({map:leadedTex(), roughness:.3, metalness:.1});
+    const brass  = new T.MeshStandardMaterial({color:0xc09a3e, roughness:.34, metalness:.85});
+    const chaise = new T.MeshStandardMaterial({color:0xd9622c, roughness:.85});
+    const rugM   = new T.MeshStandardMaterial({map:TX.carpet, color:0xa8683c, roughness:1});
+
+    const RM = {x0:-8.3, x1:8.3, zBack:-13.4, zFront:0.6, h:8.6};
+
+    /* a black surround, so the room is all there is to see */
+    showBox(34, 17, 0.3, M.black, 0, 8.5, -15.6);
+    [-1,1].forEach(sd=>showBox(0.3, 17, 14, M.black, sd*13.8, 8.5, -9.0));
+
+    /* --------------------------------------------------------- the floor */
+    {
+      const fl = showBox(RM.x1 - RM.x0, 0.3, RM.zFront - RM.zBack, floorM,
+                         0, 0.15, (RM.zBack + RM.zFront)/2);
+      showWalk(fl);
+      const boards = [];
+      for(let z = RM.zBack + 0.5; z < RM.zFront; z += 0.62)
+        boards.push({x:0, y:0.31, z:+z.toFixed(2)});
+      showBatch(new T.BoxGeometry(RM.x1 - RM.x0 - 0.2, 0.015, 0.05), oakD, boards);
+      showBox(RM.x1 - RM.x0, 0.3, 0.5, oakD, 0, 0.15, RM.zFront + 0.2);
+
+      // the rug, and the chaise longue on it
+      showBox(6.4, 0.03, 3.6, rugM, -0.4, 0.32, -4.6);
+      showBox(6.6, 0.02, 3.8, oakD, -0.4, 0.305, -4.6);
+      showBox(3.4, 0.5, 1.25, chaise, -0.4, 0.78, -4.4);
+      showBox(3.4, 0.5, 0.4,  chaise, -0.4, 1.2, -4.95);
+      showCyl(0.3, 0.3, 1.25, 12, chaise, -2.0, 1.2, -4.4).rotation.x = Math.PI/2;
+      {
+        const legs = [];
+        for(const o of [[-1.5,-0.45],[1.5,-0.45],[-1.5,0.45],[1.5,0.45]])
+          legs.push({x:-0.4 + o[0], y:0.4, z:-4.4 + o[1]});
+        showBatch(new T.BoxGeometry(0.1, 0.5, 0.1), oakD, legs);
+      }
+      // a low table with the decanter on it
+      showBox(1.3, 0.08, 0.8, oakL, 3.4, 0.86, -3.2);
+      for(const o of [[-0.55,-0.3],[0.55,-0.3],[-0.55,0.3],[0.55,0.3]])
+        showBox(0.08, 0.52, 0.08, oakD, 3.4 + o[0], 0.56, -3.2 + o[1]);
+      showCyl(0.11, 0.15, 0.32, 10, leaded, 3.2, 1.06, -3.2);
+      showCyl(0.05, 0.05, 0.16, 8, leaded, 3.6, 0.98, -3.1);
+    }
+
+    /* ======================================================================
+       THE FIREPLACE WALL — hinged along its foot, so the whole flat can go
+       over into the room.
+       ================================================================== */
+    {
+      const g = new T.Group();
+      g.position.set(RM.x0, 0, 0);
+      G.add(g);
+
+      const zc = (RM.zBack + RM.zFront - 1.2)/2, zl = RM.zFront - RM.zBack - 1.2;
+      showBox(0.28, RM.h, zl, paper, 0.14, RM.h/2, zc, g);
+      showBox(0.36, 1.0, zl, oakD, 0.2, 0.5, zc, g);              // dado
+      showBox(0.4, 0.22, zl, oak,  0.22, 1.06, zc, g);            // dado rail
+      showBox(0.44, 0.34, zl, oak, 0.24, RM.h - 0.2, zc, g);      // cornice
+
+      const fz = -6.2;
+      showBox(0.7, 4.0, 3.5, stone, 0.5, 2.0, fz, g);
+      showBox(0.72, 2.3, 2.1, M.black, 0.56, 1.15, fz, g);        // the opening
+      [-1,1].forEach(sd=>showBox(0.8, 2.5, 0.55, stoneD, 0.58, 1.25, fz + sd*1.35, g));
+      showCyl(0.03,0.03,1.0,6, M.steel, 0.5, 0.5, fz + 1.9, g);
+      showCyl(0.22,0.3,0.36,10, M.steel, 0.5, 0.18, fz + 2.4, g);
+      if(typeof makeFire === 'function')
+        SHOW.fire = makeFire({x:RM.x0 + 0.62, y:0.28, z:fz, w:1.5, h:1.4, n:16});
+
+      // the portrait over the fire, and a shield further along
+      showBox(0.12, 2.3, 1.7, oak,   0.34, 5.5, fz, g);
+      showBox(0.14, 1.9, 1.35, stoneD, 0.4, 5.5, fz, g);
+      showBox(0.1, 1.0, 0.85, new T.MeshStandardMaterial({color:0x2f4a7a, roughness:.8}),
+              0.36, 5.5, fz - 3.6, g);
+      showBatch(new T.ConeGeometry(0.48, 0.5, 3),
+                new T.MeshStandardMaterial({color:0xc9a83e, roughness:.5, metalness:.6}),
+                [{x:0.36, y:4.9, z:fz - 3.6, rz:-Math.PI/2, ry:Math.PI/2}], {parent:g});
+      // a sconce with a candle in it
+      showCyl(0.05,0.05,0.3,8, brass, 0.42, 4.4, fz + 3.0, g);
+      {
+        const fm = new T.Mesh(new T.SphereGeometry(0.07, 8, 6), M.bulb);
+        fm.position.set(0.42, 4.7, fz + 3.0);
+        g.add(fm);
+        SHOW.neon.push({mesh:fm, base:new T.Color(0xffc077)});
+      }
+
+      /* the mantelpiece: its own hinge, so it can come off on its own */
+      {
+        const mg = new T.Group();
+        mg.position.set(0.6, 3.2, fz);
+        g.add(mg);
+        showBox(1.0, 0.28, 4.3, oakL, 0, 0, 0, mg);
+        showBox(0.9, 0.16, 4.0, oakD, 0, -0.2, 0, mg);
+        showCyl(0.16,0.2,0.5,10, brass, 0, 0.4, -1.3, mg);
+        showCyl(0.16,0.2,0.5,10, brass, 0, 0.4,  1.3, mg);
+        makeWrong({key:'mantel', label:'The mantelpiece', group:mg,
+                   axis:'z', dir:1, limit:1.35, drop:2.8, rate:1.5});
+      }
+
+      makeWrong({key:'wallSL', label:'The fireplace wall', group:g,
+                 axis:'z', dir:-1, limit:1.52, rate:0.72});
+    }
+
+    /* ======================================================================
+       THE BACK WALL — door, curtained window, clock, gothic window.
+       ================================================================== */
+    {
+      const g = new T.Group();
+      g.position.set(0, 0, RM.zBack);
+      G.add(g);
+
+      showBox(RM.x1 - RM.x0, RM.h, 0.28, paper, 0, RM.h/2, 0.14, g);
+      showBox(RM.x1 - RM.x0, 1.0, 0.36, oakD, 0, 0.5, 0.2, g);
+      showBox(RM.x1 - RM.x0, 0.22, 0.4, oak,  0, 1.06, 0.22, g);
+      showBox(RM.x1 - RM.x0, 0.34, 0.44, oak, 0, RM.h - 0.2, 0.24, g);
+      const studs = [];
+      for(let x = RM.x0 + 1.1; x < RM.x1; x += 2.35)
+        studs.push({x:+x.toFixed(2), y:RM.h/2 + 0.5, z:0.3});
+      showBatch(new T.BoxGeometry(0.16, RM.h - 1.0, 0.1), oak, studs, {parent:g});
+
+      /* the door */
+      showBox(2.3, 4.5, 0.2, oak, -4.4, 2.25, 0.3, g);
+      showBox(1.85, 4.1, 0.14, oakD, -4.4, 2.05, 0.42, g);
+      [[-0.42,3.0],[0.42,3.0],[-0.42,1.1],[0.42,1.1]].forEach(([dx,y])=>
+        showBox(0.62, 1.5, 0.06, oak, -4.4 + dx, y, 0.5, g));
+      showCyl(0.08,0.08,0.14,10, brass, -3.66, 2.0, 0.55, g).rotation.x = Math.PI/2;
+
+      /* the curtained window */
+      showBox(3.0, 4.2, 0.18, oakD, -1.1, 3.2, 0.3, g);
+      showBox(2.5, 3.7, 0.12, leaded, -1.1, 3.2, 0.4, g);
+      [-1,1].forEach(sd=>{
+        const d = drape(1.5, 4.6, velvet, 5, 0.16);
+        d.position.set(-1.1 + sd*0.95, 3.1, 0.62);
+        d.castShadow = true;
+        g.add(d);
+      });
+      showBox(3.6, 0.5, 0.3, velvet, -1.1, 5.35, 0.6, g);
+      showCyl(0.05,0.05,3.6,8, brass, -1.1, 5.15, 0.66, g).rotation.z = Math.PI/2;
+
+      /* the grandfather clock — its own hinge, it goes over on its own */
+      {
+        const cg = new T.Group();
+        cg.position.set(1.9, 0, 0.85);
+        g.add(cg);
+        showBox(0.95, 4.5, 0.55, oak, 0, 2.25, 0, cg);
+        showBox(0.7, 2.2, 0.1, M.black, 0, 2.1, 0.3, cg);
+        showCyl(0.36,0.36,0.1,16, new T.MeshStandardMaterial({color:0xe8dfc4, roughness:.7}),
+                0, 3.75, 0.3, cg).rotation.x = Math.PI/2;
+        showBox(0.05, 0.28, 0.04, M.black, 0, 3.86, 0.36, cg);
+        showBox(0.2, 0.05, 0.04, M.black, 0.08, 3.75, 0.36, cg);
+        showCyl(0.2,0.2,0.05,14, brass, 0, 1.2, 0.28, cg).rotation.x = Math.PI/2;
+        showBox(1.15, 0.4, 0.7, oakD, 0, 4.62, 0, cg);
+        makeWrong({key:'clock', label:'The grandfather clock', group:cg,
+                   axis:'x', dir:1, limit:1.56, rate:1.15});
+      }
+
+      /* the gothic window, and shelves along from it */
+      {
+        const wx = 5.2;
+        showBox(3.2, 5.4, 0.2, oakD, wx, 3.6, 0.3, g);
+        showBox(2.7, 4.9, 0.12, leaded, wx, 3.5, 0.4, g);
+        const arch = new T.Mesh(new T.CylinderGeometry(1.6, 1.6, 0.2, 18, 1, false, 0, Math.PI), oakD);
+        arch.rotation.z = -Math.PI/2; arch.rotation.y = Math.PI/2;
+        arch.position.set(wx, 6.3, 0.3); g.add(arch);
+        const archG = new T.Mesh(new T.CylinderGeometry(1.35, 1.35, 0.12, 18, 1, false, 0, Math.PI), leaded);
+        archG.rotation.z = -Math.PI/2; archG.rotation.y = Math.PI/2;
+        archG.position.set(wx, 6.3, 0.4); g.add(archG);
+        showBox(0.14, 5.4, 0.14, oakD, wx, 3.6, 0.46, g);
+        showBox(2.7, 0.12, 0.14, oakD, wx, 4.4, 0.46, g);
+      }
+      showBox(2.0, 3.4, 0.5, books, -7.1, 2.7, 0.45, g);
+      showBox(2.2, 0.16, 0.6, oakD, -7.1, 4.48, 0.48, g);
+
+      makeWrong({key:'wallUS', label:'The back wall', group:g,
+                 axis:'x', dir:1, limit:1.5, rate:0.66});
+    }
+
+    /* ======================================================================
+       THE SECOND STOREY — a study on a platform, carried on one post.  The
+       post has its own hinge and its own trigger; the platform has a hinge
+       and a drop.  Kick the post out and the storey follows it down.
+       ================================================================== */
+    {
+      showBox(0.5, 3.6, 5.4, books, 7.9, 1.9, -9.0);
+      showBox(0.6, 0.18, 5.6, oakD, 7.9, 3.8, -9.0);
+      showBox(2.6, 3.6, 0.5, books, 6.6, 1.9, -11.8);
+      showBox(2.8, 0.18, 0.6, oakD, 6.6, 3.8, -11.8);
+
+      /* the post, downstage corner — the one thing holding it all up */
+      const pg = new T.Group();
+      pg.position.set(4.5, 0, -6.4);
+      G.add(pg);
+      showBox(0.34, 4.1, 0.34, oak, 0, 2.05, 0, pg);
+      showBox(0.5, 0.26, 0.5, oakD, 0, 0.13, 0, pg);
+      showBox(0.5, 0.26, 0.5, oakD, 0, 4.0, 0, pg);
+      makeWrong({key:'post', label:'The post under the balcony', group:pg,
+                 axis:'x', dir:1, limit:1.4, rate:1.9, sound:'clunk'});
+
+      /* The storey itself.  The hinge has to be at the WALL, with the free
+         end out over the room on the post — hinge it at the inner edge and
+         the thing swings upwards when the post goes, which is the opposite
+         of what everyone in the building is expecting.  So the group pivots
+         on the outer wall and the contents sit inboard of it.            */
+      const ug = new T.Group();
+      ug.position.set(8.5, 0, -9.0);
+      G.add(ug);
+      const uc = new T.Group();
+      uc.position.x = -4.2;
+      ug.add(uc);
+      const deck2 = showBox(4.2, 0.3, 5.6, oakL, 2.1, 4.15, 0, uc);
+      const walk2 = showWalk(deck2);
+      showBox(4.4, 0.24, 5.8, oakD, 2.1, 3.94, 0, uc);
+      {
+        const joists = [];
+        for(let z=-2.4; z<=2.41; z+=0.7) joists.push({x:2.1, y:3.82, z:+z.toFixed(2)});
+        showBatch(new T.BoxGeometry(4.2, 0.2, 0.14), oakD, joists, {parent:uc});
+      }
+      {
+        const bal = [];
+        for(let x=0.2; x<=4.01; x+=0.42) bal.push({x:+x.toFixed(2), y:4.9, z:-2.7});
+        for(let z=-2.5; z<=2.61; z+=0.42) bal.push({x:0.15, y:4.9, z:+z.toFixed(2)});
+        showBatch(new T.CylinderGeometry(0.055,0.07,1.2,7), oakL, bal, {parent:uc});
+      }
+      showBox(4.2, 0.13, 0.15, oak, 2.1, 5.54, -2.7, uc);
+      showBox(0.15, 0.13, 5.4, oak, 0.15, 5.54, 0, uc);
+      showBox(0.2, 1.5, 0.2, oak, 0.15, 5.05, -2.7, uc);
+
+      // a desk, a lamp and a plant up there
+      showBox(1.7, 0.1, 0.85, oakL, 2.6, 5.0, 1.6, uc);
+      for(const o of [[-0.72,-0.32],[0.72,-0.32],[-0.72,0.32],[0.72,0.32]])
+        showBox(0.09, 0.55, 0.09, oakD, 2.6 + o[0], 4.72, 1.6 + o[1], uc);
+      showCyl(0.2,0.24,0.06,10, brass, 2.2, 5.08, 1.6, uc);
+      showCyl(0.03,0.03,0.5,6, brass, 2.2, 5.33, 1.6, uc);
+      showCyl(0.26,0.14,0.3,10, new T.MeshStandardMaterial({color:0xe8d49a, roughness:.8}),
+              2.2, 5.7, 1.6, uc);
+      {
+        const fm = new T.Mesh(new T.SphereGeometry(0.09, 8, 6), M.bulb);
+        fm.position.set(2.2, 5.62, 1.6);
+        uc.add(fm);
+        SHOW.neon.push({mesh:fm, base:new T.Color(0xffd79a)});
+        const l = new T.PointLight(0xffbe70, 0, 9, 1.7);
+        l.position.set(2.2, 5.7, 1.6);
+        l.userData.moves = true;
+        uc.add(l);
+        SHOW.neonLights.push({light:l, power:0.9});
+      }
+      showCyl(0.3,0.22,0.44,10, new T.MeshStandardMaterial({color:0x9a5a34, roughness:.9}),
+              3.4, 4.52, -1.4, uc);
+      {
+        const fronds = [];
+        for(let i=0;i<9;i++){
+          const a = i*0.7;
+          fronds.push({x:3.4 + Math.cos(a)*0.3, y:5.1, z:-1.4 + Math.sin(a)*0.3,
+                       rz:Math.cos(a)*0.7, rx:Math.sin(a)*0.7});
+        }
+        showBatch(new T.ConeGeometry(0.1, 1.0, 4),
+          new T.MeshStandardMaterial({color:0x2e5c28, roughness:.95}), fronds, {parent:uc});
+      }
+
+      /* it comes down to about half a metre at the far corner: a ramp of
+         broken balcony, not a platform buried in the deck */
+      makeWrong({key:'upper', label:'The second storey', group:ug,
+                 axis:'z', dir:1, limit:0.55, drop:0.9, rate:0.8, walk:[walk2]});
+    }
+
+    /* ------------------------------------------- the chandelier, on its line */
+    {
+      const cg = new T.Group();
+      cg.position.set(-0.6, 8.9, -6.0);
+      G.add(cg);
+      showCyl(0.03,0.03,1.6,6, brass, 0, 0.8, 0, cg);
+      const ring = new T.Mesh(new T.TorusGeometry(1.05, 0.06, 8, 22), brass);
+      ring.rotation.x = Math.PI/2; cg.add(ring);
+      const ring2 = new T.Mesh(new T.TorusGeometry(0.62, 0.05, 8, 18), brass);
+      ring2.rotation.x = Math.PI/2; ring2.position.y = 0.45; cg.add(ring2);
+      const arms = [], candles = [];
+      for(let i=0;i<8;i++){
+        const a = i*0.7854;
+        arms.push({x:Math.cos(a)*1.05, y:0.16, z:Math.sin(a)*1.05});
+        candles.push({x:Math.cos(a)*1.05, y:0.48, z:Math.sin(a)*1.05});
+      }
+      showBatch(new T.CylinderGeometry(0.05,0.05,0.34,6), brass, arms, {parent:cg});
+      showBatch(new T.CylinderGeometry(0.045,0.045,0.34,6),
+        new T.MeshStandardMaterial({color:0xe8e0cc, roughness:.85}), candles, {parent:cg});
+      candles.forEach(p=>{
+        const fm = new T.Mesh(new T.SphereGeometry(0.065, 8, 6), M.bulb);
+        fm.position.set(p.x, p.y + 0.24, p.z);
+        cg.add(fm);
+        SHOW.neon.push({mesh:fm, base:new T.Color(0xffc87e)});
+      });
+      const l = new T.PointLight(0xffb668, 0, 17, 1.6);
+      l.position.set(0, 0.3, 0); l.userData.moves = true; cg.add(l);
+      SHOW.neonLights.push({light:l, power:1.4});
+      makeWrong({key:'chandelier', label:'The chandelier', group:cg,
+                 axis:'z', dir:1, limit:0.5, drop:6.4, rate:0.5});
+    }
+
+    /* --------------------------------------- the border over the whole box */
+    {
+      showBox(RM.x1 - RM.x0 + 1.4, 1.1, 0.4, oakD, 0, RM.h + 0.55, RM.zFront - 0.2);
+      const scallop = [];
+      for(let x = RM.x0; x <= RM.x1; x += 0.86)
+        scallop.push({x:+x.toFixed(2), y:RM.h + 0.05, z:RM.zFront - 0.2});
+      showBatch(new T.SphereGeometry(0.46, 10, 6, 0, 6.283, 1.6, 1.6), oak, scallop);
+    }
+
+    /* ---- machines rigged on the set ---- */
+    if(typeof addShowSmoke === 'function'){
+      addShowSmoke({name:'CHIMNEY', kind:'fog', x:-7.4, y:0, z:-6.2, yaw:1.571, tilt:0.1});
+      addShowSmoke({name:'BALCONY', kind:'haze', x:6.4, y:4.4, z:-9.0, yaw:-1.571, tilt:0.3});
+    }
+
+    /* ---- the show curtain ---- */
+    {
+      const c = cornleyCurtainCanvas();
+      const key = 'cornleyCurtain';
+      const halfW = D.procW/2 + 3.0;
+      GOODS[key] = {label:'HAVERSHAM MANOR show curtain', h:13.0, wt:420,
+        traveler:true, made:true, build:()=>{
+          const g = new T.Group();
+          [-1,1].forEach(sd=>{
+            const t2 = c.tex.clone();
+            t2.needsUpdate = true;
+            t2.wrapS = t2.wrapT = T.ClampToEdgeWrapping;
+            t2.repeat.set(halfW / LB_CLOTH_W, 1);
+            t2.offset.set(sd < 0 ? 0 : (LB_CLOTH_W - halfW) / LB_CLOTH_W, 0);
+            const mat = new T.MeshStandardMaterial({map:t2, roughness:.95,
+              side:T.DoubleSide, color:0xffffff});
+            const d = drape(halfW, 13.0, mat, 9, .22);
+            d.position.set(sd*(D.procW/4 - 0.4), -6.5, 0);
+            d.userData.side = sd;
+            g.add(d);
+          });
+          return g; }};
+      TRIMS[key] = TRIMS.house;
+      SHOW.goods.push(key);
+      SHOW.curtainKey = key;
+      buildGoodsPalette();
+    }
+
+    /* ---- the hang ---- */
+    hangGoods(FLY[0], SHOW.curtainKey);
+    FLY[0].target = TRIMS[SHOW.curtainKey]; FLY[0].travTarget = 0; FLY[0].open = 0;
+    hangGoods(FLY[1], 'border');    FLY[1].target = TRIMS.border;
+    hangGoods(FLY[2], 'legs');      FLY[2].target = inTrimOf(FLY[2]);
+    hangGoods(FLY[3], 'border');    FLY[3].target = TRIMS.border;
+    hangGoods(FLY[4], 'electric');  FLY[4].target = 9.4;
+    hangGoods(FLY[5], 'legs');      FLY[5].target = inTrimOf(FLY[5]);
+    hangGoods(FLY[6], 'truss');     FLY[6].target = 11.6;
+    hangGoods(FLY[8], 'electric');  FLY[8].target = 10.2;
+    FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
+
+    RIG.haze = 0.35;
+    plotGoesWrong();
+    standByAtTheTop();
+  }
+};
+
+function plotGoesWrong(){
+  const FRONT = [1,2,3,4,5,6], BOOM = [7,8], WASH = [9,10,11,12,13,14],
+        BACK = [15,16,17,18], CYC = [19,20,21,22], MOVE = [23,24], SPOT = 25;
+  const all = v => FIXTURES.forEach(f=>{ f.level = v; });
+  const set = (list, v, col)=>list.forEach(n=>{
+    const f = chan(n); if(!f) return; f.level = v; if(col) f.color.set(col); });
+  const one = (n, v, col)=>set([n], v, col);
+  const FIRE = {size:0.8, chans:[9,10,11], base:0.75};
+
+  const looks = [
+    {n:0.5, label:'preshow — house open', fade:0, house:0.85, haze:0.2, neon:0.3,
+     curtain:'shut', reset:true,
+     look(){ all(0); set(CYC, 0.08, '#241a10'); }},
+
+    {n:1, label:'house to half — warmers on the cloth', fade:6, house:0.3, haze:0.3, neon:0.3,
+     curtain:'shut', reset:true,
+     look(){ all(0);
+       aimFrontAt(FRONT, 0, 7.2, -1.0);
+       set(FRONT, 0.8, '#ffbe72'); set(BOOM, 0.2, '#a86a20'); }},
+
+    {n:2, label:'act one — the study at Haversham Manor', fade:5, house:0, haze:0.35,
+     neon:1, fire:{size:0.7, chans:[9,10,11], base:0.7},
+     look(){ all(0);
+       set(FRONT, 0.72, '#ffe4bc'); set(WASH, 0.8, '#ffd9a8');
+       set(BOOM, 0.4, '#ffcf96'); set(BACK, 0.35, '#cfe0ff');
+       set(CYC, 0.3, '#28406a'); }},
+
+    {n:3, label:'the body is discovered', fade:3, house:0, haze:0.5, neon:0.85,
+     fire:{size:0.9, chans:[9,10,11], base:0.8},
+     look(){ all(0);
+       set(FRONT, 0.4, '#ffd8ae'); set(WASH, 0.5, '#e8b880');
+       set(BOOM, 0.75, '#ffbe70'); set(BACK, 0.5, '#9fbfe8');
+       set(CYC, 0.2, '#16233f'); one(SPOT, 0.5, '#fff2dc'); }},
+
+    {n:4, label:'the mantelpiece comes off', fade:1, house:0, haze:0.5, neon:0.85,
+     wrong:['mantel'], fire:{size:1, chans:[9,10,11], base:0.85},
+     look(){ all(0);
+       set(FRONT, 0.55, '#ffe0b4'); set(WASH, 0.72, '#ffd0a0');
+       set(BOOM, 0.6, '#ffc888'); set(BACK, 0.4, '#b8cfee');
+       set(CYC, 0.22, '#1a2846'); }},
+
+    {n:5, label:'the inspector arrives', fade:4, house:0, haze:0.4, neon:1, fire:FIRE,
+     look(){ all(0);
+       set(FRONT, 0.75, '#ffe8c8'); set(WASH, 0.85, '#ffdcb0');
+       set(BOOM, 0.45, '#ffd0a0'); set(BACK, 0.4, '#cfe0ff');
+       set(CYC, 0.32, '#2a4470'); }},
+
+    {n:6, label:'the clock goes over', fade:1, house:0, haze:0.5, neon:0.9,
+     wrong:['clock'], fire:FIRE,
+     look(){ all(0);
+       set(FRONT, 0.7, '#ffe4bc'); set(WASH, 0.8, '#ffd4a4');
+       set(BOOM, 0.5, '#ffcc90'); set(BACK, 0.42, '#c8dcff');
+       set(CYC, 0.3, '#243c66'); }},
+
+    /* ---- the interval ---- */
+    {n:6.5, label:'act one ends — blackout, curtain in', fade:3, house:0, haze:0.3, neon:0.2,
+     curtain:'shut',
+     look(){ all(0); }},
+
+    {n:6.6, label:'INTERVAL — house up', fade:6, house:1, haze:0, neon:0,
+     curtain:'shut',
+     look(){ all(0); }},
+
+    {n:6.7, label:'house to half — act two', fade:5, house:0.3, haze:0.3, neon:0.3,
+     curtain:'shut',
+     look(){ all(0); set(CYC, 0.1, '#241a10'); }},
+
+    {n:7, label:'act two — the same study, patched up', fade:5, house:0, haze:0.4,
+     neon:1, fire:{size:0.7, chans:[9,10,11], base:0.7},
+     look(){ all(0);
+       set(FRONT, 0.72, '#ffe4bc'); set(WASH, 0.8, '#ffd9a8');
+       set(BOOM, 0.42, '#ffcf96'); set(BACK, 0.38, '#cfe0ff');
+       set(CYC, 0.3, '#28406a'); }},
+
+    {n:8, label:'the post is kicked out', fade:1, house:0, haze:0.5, neon:0.9,
+     wrong:['post'], fire:FIRE,
+     look(){ all(0);
+       set(FRONT, 0.6, '#ffdcb0'); set(WASH, 0.75, '#ffcf9a');
+       set(BOOM, 0.6, '#ffc484'); set(BACK, 0.45, '#c0d8ff');
+       set(CYC, 0.26, '#1e3358'); }},
+
+    {n:9, label:'the second storey comes down', fade:0.6, house:0, haze:0.8, neon:0.7,
+     wrong:['upper'], fire:{size:0.9, chans:[9,10,11], base:0.8},
+     look(){ all(0);
+       set(FRONT, 0.5, '#ffd0a0'); set(WASH, 0.6, '#e8b078');
+       set(BOOM, 0.9, '#ffb060'); set(BACK, 0.55, '#a8c4ee');
+       set(CYC, 0.2, '#16233f'); set(MOVE, 0.7, '#ffe0c0'); }},
+
+    {n:10, label:'the wrong cue — and the chandelier with it', fade:0.4, house:0,
+     haze:1, neon:0.2, wrong:['chandelier'],
+     look(){ all(0);
+       set(WASH, 1.0, '#2fd83f'); set(BOOM, 0.9, '#8a2fd8');
+       set(BACK, 0.8, '#2fd8c8'); set(CYC, 0.9, '#d82f8a');
+       set(MOVE, 1, '#ffffff'); one(SPOT, 1, '#2fd83f'); }},
+
+    {n:11, label:'somebody finds the right cue again', fade:3, house:0, haze:0.6,
+     neon:0.8, fire:FIRE,
+     look(){ all(0);
+       set(FRONT, 0.62, '#ffe0b8'); set(WASH, 0.72, '#ffd0a0');
+       set(BOOM, 0.5, '#ffc890'); set(BACK, 0.4, '#c8dcff');
+       set(CYC, 0.28, '#243c66'); }},
+
+    {n:12, label:'the back wall goes', fade:0.8, house:0, haze:0.9, neon:0.5,
+     wrong:['wallUS'], fire:{size:0.7, chans:[9,10,11], base:0.7},
+     look(){ all(0);
+       set(FRONT, 0.55, '#ffd4a8'); set(WASH, 0.66, '#ffc890');
+       set(BOOM, 0.85, '#ffb870'); set(BACK, 0.7, '#dfeaff');
+       set(CYC, 0.5, '#1a2f56'); set(MOVE, 0.8, '#ffffff'); }},
+
+    {n:13, label:'and the last wall with it', fade:0.8, house:0, haze:1, neon:0.3,
+     wrong:['wallSL'],
+     look(){ all(0);
+       set(FRONT, 0.5, '#ffcf9a'); set(WASH, 0.6, '#ffc084');
+       set(BOOM, 0.95, '#ffab58'); set(BACK, 0.85, '#dfeaff');
+       set(CYC, 0.6, '#14294e'); set(MOVE, 1, '#ffffff'); }},
+
+    {n:14, label:'curtain call', fade:2, house:0, haze:0.5, neon:0.6,
+     look(){ all(1, '#ffeccc');
+       set(CYC, 0.9, '#c07a24'); set(BACK, 0.95, '#ffdcae'); set(MOVE, 1, '#ffffff'); }},
+
+    {n:15, label:'blackout — curtain in', fade:2, house:0, haze:0.3, neon:0.2,
+     curtain:'shut',
+     look(){ all(0); }},
+
+    {n:16, label:'curtain warmers — the title', fade:4, house:0, haze:0.2, neon:0,
+     curtain:'shut',
+     look(){ all(0);
+       aimFrontAt(FRONT, 0, 7.2, -1.0);
+       set(FRONT, 0.92, '#ffb85e'); set(BOOM, 0.25, '#a05e18'); }},
+
+    {n:17, label:'house up — warmers stay', fade:8, house:1, haze:0, neon:0,
+     curtain:'shut',
+     look(){ all(0);
+       aimFrontAt(FRONT, 0, 7.2, -1.0);
+       set(FRONT, 0.92, '#ffb85e'); set(BOOM, 0.25, '#a05e18'); }}
+  ];
+
+  CUES.length = 0;
+  const savedHaze = RIG.haze;
+  const savedFly = snapshotFly();
+  const homeAims = captureAims();
+  looks.forEach(L=>{
+    FIXTURES.forEach(f=>{ f.gobo = 0; });
+    restoreAims(homeAims);
+    L.look();
+    setCurtainForCue(L.curtain || 'out');
+    CUES.push({
+      n:L.n, label:L.label, fade:L.fade, follow:null,
+      lx:snapshotLX(), fly:snapshotFly(), sfx:null,
+      house:L.house, work:0, practical:0, haze:L.haze,
+      rain:0, storm:false, fire:L.fire || null,
+      neon:L.neon === undefined ? 1 : L.neon,
+      wrong:L.wrong || null, wrongReset:!!L.reset
+    });
+  });
+  FIXTURES.forEach(f=>{ f.level = 0; f.gobo = 0; });
+  restoreAims(homeAims);
+  RIG.haze = savedHaze;
+  savedFly.forEach(r=>{ const ls = FLY[r.id-1]; if(ls){ ls.target = r.target; ls.travTarget = r.open; } });
+  SHOW.cues = CUES.length;
+  nextCue = 0;
+}

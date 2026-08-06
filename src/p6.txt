@@ -1,0 +1,696 @@
+
+/* ============================================================================
+   CHANNEL ENGINE — levels & colours fade in real time
+   ========================================================================== */
+const _cA = new T.Color(), _cB = new T.Color();
+function chan(n){ return FIXTURES[n-1]; }
+function setLevel(n, v, fade){
+  const f = chan(n); if(!f) return;
+  f.lvlFrom = f.level; f.lvlTo = clamp(v,0,1); f.lvlT = 0; f.lvlDur = Math.max(0,fade||0);
+  if(!f.lvlDur) f.level = f.lvlTo;
+}
+function setColorCh(n, hex, fade){
+  const f = chan(n); if(!f) return;
+  f.colFrom = f.color.clone(); f.colTo = new T.Color(hex); f.colT = 0; f.colDur = Math.max(0,fade||0);
+  if(!f.colDur) f.color.copy(f.colTo);
+}
+function updateFades(dt){
+  for(const f of FIXTURES){
+    if(f.lvlDur > 0){
+      f.lvlT += dt;
+      const t = clamp(f.lvlT/f.lvlDur,0,1);
+      const e = t*t*(3-2*t);
+      f.level = lerp(f.lvlFrom, f.lvlTo, e);
+      if(t>=1) f.lvlDur = 0;
+    }
+    if(f.colDur > 0){
+      f.colT += dt;
+      const t = clamp(f.colT/f.colDur,0,1);
+      f.color.copy(f.colFrom).lerp(f.colTo, t);
+      if(t>=1) f.colDur = 0;
+    }
+  }
+}
+/* ============================================================================
+   SECTIONS — the board is divided into lighting sections, not single lamps.
+   Each section owns a group of fixtures (or the house/work circuits) and gets
+   one brightness fader and one colour. The faders read back from the rig, so
+   cues and scripts move them too.
+   ========================================================================== */
+const SECTIONS = [
+  {id:'front',  name:'FRONT<br>WASH',  chans:[1,2,3,4,5,6,7,8], color:'#ffd6a8', gobo:0, gel:true},
+  {id:'wash',   name:'STAGE<br>WASH',  chans:[9,10,11,12,13,14], color:'#ffe6c0', gobo:0, gel:true},
+  {id:'back',   name:'BACK<br>LIGHT',  chans:[15,16,17,18],      color:'#bfe0ff', gobo:0, gel:true},
+  {id:'cyc',    name:'CYC<br>WASH',    chans:[19,20,21,22],      color:'#2f6bff', gobo:0, gel:true},
+  {id:'movers', name:'MOVING<br>HEADS',chans:[23,24],            color:'#66ccff', gobo:0, gel:true, mover:true},
+  {id:'spot',   name:'FOLLOW<br>SPOT', chans:[25],               color:'#fff4e2', gobo:0, gel:true},
+  {id:'house',  name:'HOUSE<br>LIGHTS',sys:'house',              color:'#ffb877'},
+  {id:'work',   name:'WORK<br>LIGHT',  sys:'work',               color:'#f4f8ff'},
+  {id:'lobby',  name:'LOBBY',           sys:'lobby',              color:'#ffce96'},
+  {id:'boh',    name:'BACK<br>STAGE',   sys:'backstage',          color:'#dfe8f2'}
+];
+SECTIONS.forEach(s=>{ s.level = 0; });
+let selSec = 0;
+
+function sectionOfChannel(ch){
+  return Math.max(0, SECTIONS.findIndex(s=>s.chans && s.chans.includes(ch)));
+}
+function setSection(s, v, fade){
+  s.level = clamp(v,0,1);
+  if(s.sys){ HOUSE[s.sys] = s.level; syncMasters(); return; }
+  s.chans.forEach(c=>setLevel(c, s.level, fade||0));
+}
+function setSectionColor(s, hex, fade){
+  s.color = hex;
+  if(s.sys) return;
+  s.chans.forEach(c=>setColorCh(c, hex, fade||0));
+}
+function setSectionGobo(s, g){
+  s.gobo = g;
+  if(s.sys) return;
+  s.chans.forEach(c=>{ const f=chan(c); if(f) f.gobo = g; });
+}
+/* read the live rig back into the faders */
+function syncSections(){
+  for(const s of SECTIONS){
+    if(s.sys){ s.level = HOUSE[s.sys]; continue; }
+    let hi = 0;
+    for(const c of s.chans){ const f = chan(c); if(f && f.level > hi) hi = f.level; }
+    s.level = hi;
+    const f0 = chan(s.chans[0]);
+    if(f0) s.color = '#'+f0.color.getHexString();
+  }
+}
+
+const GROUPS = {
+  all:  Array.from({length:25},(_,i)=>i+1),
+  foh:  [1,2,3,4,5,6], booms:[7,8], front:[1,2,3,4,5,6,7,8],
+  wash: [9,10,11,12,13,14], warm:[9,10], cool:[13,14],
+  back: [15,16,17,18], cyc:[19,20,21,22], movers:[23,24], spot:[25],
+  stage:[9,10,11,12,13,14,15,16,17,18]
+};
+const COLORS = {
+  white:'#ffffff', warm:'#ffd6a8', cool:'#cfe0ff', red:'#ff2a1e', deepred:'#b00010',
+  blue:'#2f6bff', deepblue:'#0c1e9c', congo:'#3a1ea0', green:'#1ee05a', moss:'#3f8a2e',
+  amber:'#ff9c22', gold:'#ffc04a', pink:'#ff2f8a', magenta:'#e01ec8', lavender:'#b79dff',
+  purple:'#7a2eff', cyan:'#2fe0e0', straw:'#ffe6a0', sunset:'#ff5a2a', moon:'#9fc0ff'
+};
+const GOBO_NAMES = {none:0, breakup:1, leaves:2, window:3, stars:4, bars:5};
+
+/* ============================================================================
+   SUBMASTERS
+   ========================================================================== */
+const SUBS = Array.from({length:8},(_,i)=>({i:i+1, val:0, rec:null, label:'sub '+(i+1)}));
+function recordSub(s){
+  s.rec = FIXTURES.map(f=>({lvl:f.level, col:'#'+f.color.getHexString()}));
+  s.label = 'REC';
+  toast('Submaster '+s.i+' recorded');
+  refreshSubs();
+}
+function runSub(s){
+  if(!s.rec) return;
+  s.rec.forEach((r,i)=>{ if(r.lvl>0.001){ setLevel(i+1, r.lvl*s.val, 0); setColorCh(i+1, r.col, 0); } });
+}
+
+/* ============================================================================
+   CUE STACK
+   ========================================================================== */
+const CUES = [];
+let nextCue = 0, selCue = -1;
+
+/* A cue stores where each lamp is pointing as well as what it is doing, so a
+   look can re-aim the front of house — at a face, or up onto a show cloth —
+   and get put back where it was by the next cue.                          */
+function snapshotLX(){
+  return FIXTURES.map(f=>({lvl:f.level, col:'#'+f.color.getHexString(), gobo:f.gobo,
+    pan:f.mover?f.panT:0, tilt:f.mover?f.tiltT:0,
+    aim:f.mover?null:[f.aim.x, f.aim.y, f.aim.z]}));
+}
+function snapshotFly(){ return FLY.map(ls=>({id:ls.id, target:ls.target, open:ls.travTarget})); }
+
+function recordCue(){
+  const n = parseFloat($('#qNum').value) || (CUES.length ? Math.floor(Math.max(...CUES.map(c=>c.n)))+1 : 1);
+  const c = {
+    n, label: $('#qLabel').value || 'cue '+n,
+    fade: parseFloat($('#qFade').value)||0,
+    follow: $('#qFollow').value===''?null:parseFloat($('#qFollow').value),
+    lx: $('#qLx').checked ? snapshotLX() : null,
+    fly: $('#qFly').checked ? snapshotFly() : null,
+    sfx: $('#qSfx').checked ? $('#qSfxSel').value : null,
+    house: HOUSE.house, work: HOUSE.work, practical: HOUSE.practical, haze: RIG.haze
+  };
+  const ex = CUES.findIndex(q=>q.n===n);
+  if(ex>=0) CUES[ex]=c; else CUES.push(c);
+  CUES.sort((a,b)=>a.n-b.n);
+  $('#qNum').value=''; $('#qLabel').value='';
+  toast('Recorded cue '+n);
+  refreshCues();
+}
+function fireCue(idx){
+  const c = CUES[idx]; if(!c) return;
+  if(c.lx) c.lx.forEach((r,i)=>{
+    setLevel(i+1, r.lvl, c.fade); setColorCh(i+1, r.col, c.fade);
+    const f = chan(i+1); if(!f) return;
+    f.gobo = r.gobo;
+    if(f.mover){ f.panT = r.pan; f.tiltT = r.tilt; }
+    else if(r.aim){ f.aim.set(r.aim[0], r.aim[1], r.aim[2]); f.group.lookAt(f.aim); }
+  });
+  if(c.fly) c.fly.forEach(r=>{ const ls=FLY[r.id-1]; if(ls && !ls.locked){ ls.target=r.target; ls.travTarget=r.open; } });
+  if(c.sfx) Snd.play(c.sfx);
+  HOUSE.house=c.house; HOUSE.work=c.work; HOUSE.practical=c.practical; RIG.haze=c.haze;
+  if(typeof showCueExtras === 'function') showCueExtras(c);   // rain, storm, firelight
+  syncMasters();
+  nextCue = idx+1;
+  refreshCues();
+  if(c.follow!==null && c.follow!==undefined && !isNaN(c.follow)){
+    setTimeout(()=>{ if(nextCue===idx+1) go(); }, c.follow*1000);
+  }
+}
+function go(){
+  if(nextCue >= CUES.length){ toast('End of cue stack'); return; }
+  const c = CUES[nextCue];
+  toast('GO  ▸  Q'+c.n+'  '+c.label+'   ('+c.fade+'s)');
+  fireCue(nextCue);
+}
+function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) fireCue(nextCue); }
+
+/* ============================================================================
+   SHOW SCRIPT — the light-show programming language
+   ========================================================================== */
+const Prog = {
+  ops:[], pc:0, wait:0, running:false, loopStack:[], loop:false, t0:0,
+  log(s, cls){ const o=$('#codeOut'); o.textContent += s+'\n'; o.scrollTop=1e6; },
+  clear(){ $('#codeOut').textContent=''; }
+};
+
+function parseChans(tok, i){
+  const out=[]; let n=i;
+  const push=v=>{ if(!out.includes(v)) out.push(v); };
+  while(n<tok.length){
+    const w = tok[n].toLowerCase().replace(/,$/,'');
+    if(GROUPS[w]){ GROUPS[w].forEach(push); n++; }
+    else if(/^\d+$/.test(w)){
+      if(tok[n+1] && /^(thru|through|-)$/i.test(tok[n+1]) && /^\d+$/.test(tok[n+2]||'')){
+        const a=+w, b=+tok[n+2]; for(let k=Math.min(a,b);k<=Math.max(a,b);k++) push(k); n+=3;
+      } else { push(+w); n++; }
+    }
+    else if(w==='+'){ n++; }
+    else break;
+  }
+  return {chans:out, next:n};
+}
+function parseLevel(w){
+  if(w===undefined) return 1;
+  w = String(w).toLowerCase();
+  if(w==='full'||w==='ff') return 1;
+  if(w==='out'||w==='off'||w==='zero') return 0;
+  const v = parseFloat(w); return isNaN(v)?0:clamp(v/100,0,1);
+}
+function colorOf(w){
+  if(!w) return '#ffffff';
+  w = w.toLowerCase();
+  if(w[0]==='#') return w;
+  return COLORS[w] || '#ffffff';
+}
+
+function compile(src){
+  const ops=[]; let fade=0;
+  const lines = src.split('\n');
+  const push=o=>ops.push(o);
+  for(let li=0; li<lines.length; li++){
+    let line = lines[li].replace(/#.*$/,'').trim();
+    if(!line) continue;
+    const tok = line.split(/\s+/);
+    const cmd = tok[0].toLowerCase();
+
+    if(cmd==='fade'){ fade = parseFloat(tok[1])||0; push({op:'fade', v:fade}); continue; }
+    if(cmd==='wait'||cmd==='delay'){ push({op:'wait', v:parseFloat(tok[1])||0}); continue; }
+    if(cmd==='blackout'||cmd==='bo'){ push({op:'bo', v:true}); continue; }
+    if(cmd==='restore'){ push({op:'bo', v:false}); continue; }
+    if(cmd==='haze'){ push({op:'sys', k:'haze', v:(parseFloat(tok[1])||0)/100}); continue; }
+    if(cmd==='house'){ push({op:'sys', k:'house', v:(parseFloat(tok[1])||0)/100}); continue; }
+    if(cmd==='work'){ push({op:'sys', k:'work', v:(parseFloat(tok[1])||0)/100}); continue; }
+    if(cmd==='practical'){ push({op:'sys', k:'practical', v:(parseFloat(tok[1])||0)/100}); continue; }
+    if(cmd==='grand'){ push({op:'sys', k:'grand', v:(parseFloat(tok[1])||0)/100}); continue; }
+    if(cmd==='sound'||cmd==='sfx'){ push({op:'sfx', v:tok[1]}); continue; }
+    if(cmd==='cue'||cmd==='q'){ push({op:'cue', v:parseFloat(tok[1])}); continue; }
+    if(cmd==='curtain'){ push({op:'curtain', v:(tok[1]||'open').toLowerCase()}); continue; }
+    if(cmd==='fly'){
+      const id=parseInt(tok[1]); const w=(tok[2]||'in').toLowerCase();
+      push({op:'fly', id:id, mode:w, v:parseFloat(tok[3]||tok[2])}); continue;
+    }
+    if(cmd==='pan'||cmd==='tilt'){
+      const p=parseChans(tok,1);
+      push({op:cmd, chans:p.chans, v:parseFloat(tok[p.next])||0}); continue;
+    }
+    if(cmd==='point'){
+      const p=parseChans(tok,1);
+      push({op:'point', chans:p.chans, x:parseFloat(tok[p.next])||0,
+            y:parseFloat(tok[p.next+1])||0, z:parseFloat(tok[p.next+2])||0}); continue;
+    }
+    if(cmd==='color'||cmd==='colour'){
+      const p=parseChans(tok,1);
+      push({op:'color', chans:p.chans, v:colorOf(tok[p.next]), fade:fade}); continue;
+    }
+    if(cmd==='gobo'){
+      const p=parseChans(tok,1);
+      push({op:'gobo', chans:p.chans, v:GOBO_NAMES[(tok[p.next]||'none').toLowerCase()]||0}); continue;
+    }
+    if(cmd==='loop'){ push({op:'loop', v:parseInt(tok[1])||2}); continue; }
+    if(cmd==='end'){ push({op:'end'}); continue; }
+    if(cmd==='repeat'){ push({op:'repeat'}); continue; }
+    if(cmd==='chase'){
+      // chase <chans> rate <s> times <n> [level <n>]
+      const p=parseChans(tok,1);
+      let rate=.2, times=4, lvl=1;
+      for(let k=p.next;k<tok.length;k++){
+        const w=tok[k].toLowerCase();
+        if(w==='rate') rate=parseFloat(tok[k+1])||.2;
+        if(w==='times') times=parseInt(tok[k+1])||4;
+        if(w==='level'||w==='@') lvl=parseLevel(tok[k+1]);
+      }
+      for(let r=0;r<times;r++) for(let c=0;c<p.chans.length;c++){
+        push({op:'at', chans:[p.chans[c]], v:lvl, fade:0});
+        push({op:'at', chans:p.chans.filter(x=>x!==p.chans[c]), v:0, fade:0});
+        push({op:'wait', v:rate});
+      }
+      continue;
+    }
+    if(cmd==='strobe'){
+      const p=parseChans(tok,1);
+      let rate=.07, times=16;
+      for(let k=p.next;k<tok.length;k++){
+        const w=tok[k].toLowerCase();
+        if(w==='rate') rate=parseFloat(tok[k+1])||.07;
+        if(w==='times') times=parseInt(tok[k+1])||16;
+      }
+      for(let r=0;r<times;r++){
+        push({op:'at', chans:p.chans, v:1, fade:0}); push({op:'wait', v:rate*.4});
+        push({op:'at', chans:p.chans, v:0, fade:0}); push({op:'wait', v:rate*.6});
+      }
+      continue;
+    }
+    if(cmd==='bump'){
+      const p=parseChans(tok,1);
+      push({op:'at', chans:p.chans, v:1, fade:0});
+      push({op:'wait', v:.12});
+      push({op:'at', chans:p.chans, v:0, fade:0});
+      continue;
+    }
+    if(cmd==='sub'){
+      const i=parseInt(tok[1]); const at=tok.indexOf('@');
+      push({op:'sub', i:i, v:parseLevel(tok[at+1])}); continue;
+    }
+    // default:  <chans> @ <level>   /   at <chans> @ <level>
+    let start = (cmd==='at') ? 1 : 0;
+    const p = parseChans(tok, start);
+    if(p.chans.length){
+      let at = tok.indexOf('@', p.next-1);
+      let lvl = at>=0 ? parseLevel(tok[at+1]) : parseLevel(tok[p.next]);
+      let fd = fade;
+      const fi = tok.findIndex(w=>/^(fade|in)$/i.test(w));
+      if(fi>0 && fi>=p.next) fd = parseFloat(tok[fi+1])||0;
+      push({op:'at', chans:p.chans, v:lvl, fade:fd});
+      continue;
+    }
+    push({op:'err', v:'line '+(li+1)+': ? '+line});
+  }
+  return ops;
+}
+
+function runProgram(src){
+  Prog.clear();
+  Prog.ops = compile(src);
+  const errs = Prog.ops.filter(o=>o.op==='err');
+  errs.forEach(e=>Prog.log('!! '+e.v));
+  Prog.pc=0; Prog.wait=0; Prog.running=true; Prog.loopStack=[]; Prog.fade=0; Prog.t0=performance.now();
+  Prog.log('▶ '+Prog.ops.length+' operations compiled');
+  $('#runState').textContent='RUNNING';
+}
+function haltProgram(){ Prog.running=false; $('#runState').textContent='HALTED'; }
+
+function stepProgram(dt){
+  if(!Prog.running) return;
+  if(Prog.wait > 0){ Prog.wait -= dt; return; }
+  let guard = 0;
+  while(Prog.running && Prog.wait<=0 && guard++ < 4000){
+    if(Prog.pc >= Prog.ops.length){
+      if(Prog.loop){ Prog.pc=0; continue; }
+      Prog.running=false; $('#runState').textContent='DONE'; Prog.log('■ end of show'); return;
+    }
+    const o = Prog.ops[Prog.pc++];
+    switch(o.op){
+      case 'fade': Prog.fade=o.v; break;
+      case 'wait': Prog.wait=o.v; break;
+      case 'at': o.chans.forEach(c=>setLevel(c, o.v, o.fade!==undefined?o.fade:Prog.fade)); break;
+      case 'color': o.chans.forEach(c=>setColorCh(c, o.v, o.fade!==undefined?o.fade:Prog.fade)); break;
+      case 'gobo': o.chans.forEach(c=>{ const f=chan(c); if(f) f.gobo=o.v; }); break;
+      case 'pan': o.chans.forEach(c=>{ const f=chan(c); if(f&&f.mover) f.panT=o.v; }); break;
+      case 'tilt': o.chans.forEach(c=>{ const f=chan(c); if(f&&f.mover) f.tiltT=o.v; }); break;
+      case 'point': o.chans.forEach(c=>{ const f=chan(c); if(!f) return;
+        if(f.mover) aimMoverAt(f, stageToWorld(o.x,o.y,o.z));
+        else stageToWorld(o.x, o.y, o.z, f.aim); }); break;
+      case 'bo': RIG.blackout=o.v; break;
+      case 'sys':
+        if(o.k==='haze') RIG.haze=o.v; else if(o.k==='grand') RIG.grand=o.v;
+        else HOUSE[o.k]=o.v; syncMasters(); break;
+      case 'sfx': Snd.play(o.v); break;
+      case 'cue': { const i=CUES.findIndex(c=>c.n===o.v); if(i>=0) fireCue(i); } break;
+      case 'curtain': { const ls=FLY.find(l=>GOODS[l.goodsKey] && GOODS[l.goodsKey].traveler);
+        if(ls) ls.travTarget = o.v==='open'?1:0; } break;
+      case 'fly': { const ls=FLY[o.id-1]; if(ls){
+          if(o.mode==='in') flyIn(ls); else if(o.mode==='out') flyOut(ls);
+          else if(o.mode==='to') flyTo(ls, o.v);
+          else if(!isNaN(o.v)) flyTo(ls,o.v); } } break;
+      case 'sub': { const s=SUBS[o.i-1]; if(s){ s.val=o.v; runSub(s); refreshSubs(); } } break;
+      case 'loop': Prog.loopStack.push({pc:Prog.pc, n:o.v}); break;
+      case 'end': { const L=Prog.loopStack[Prog.loopStack.length-1];
+        if(L){ if(--L.n > 0) Prog.pc=L.pc; else Prog.loopStack.pop(); } } break;
+      case 'repeat': Prog.pc=0; break;
+    }
+  }
+}
+function aimMoverAt(f, pt){
+  f.group.updateMatrixWorld(true);
+  const local = f.group.worldToLocal(pt.clone());
+  f.panT = clamp(Math.atan2(local.x, -local.z)/DEG, -180, 180);
+  const horiz = Math.sqrt(local.x*local.x + local.z*local.z);
+  f.tiltT = clamp(Math.atan2(local.y, horiz)/DEG, -90, 20);
+}
+
+/* ============================================================================
+   UI
+   ========================================================================== */
+function toast(msg){
+  const el=$('#toast'); el.textContent=msg; el.classList.add('on');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('on'), 2400);
+}
+
+/* ---- section faders ---- */
+function buildChannelStrip(){
+  const wrap = $('#chStrip'); wrap.innerHTML='';
+  SECTIONS.forEach((s,i)=>{
+    const d = document.createElement('div');
+    d.className = 'fx'+(s.mover?' mv':'')+(s.sys?' sys':'');
+    d.dataset.sec = i;
+    d.innerHTML = '<div class="n">'+s.name+'</div>'+
+      '<div class="sw"></div>'+
+      '<div class="track"><div class="fill"></div></div>'+
+      '<div class="v">0</div>'+
+      '<div class="row" style="gap:3px">'+
+        '<button class="b mini2">0</button><button class="b mini2">FL</button></div>';
+    wrap.appendChild(d);
+    s.ui = {el:d, fill:d.querySelector('.fill'), val:d.querySelector('.v'), sw:d.querySelector('.sw')};
+    const track = d.querySelector('.track');
+    let dragging=false;
+    const setFromY = e=>{
+      const r = track.getBoundingClientRect();
+      setSection(s, clamp(1-(e.clientY-r.top)/r.height,0,1), 0);
+    };
+    d.addEventListener('mousedown', e=>{ selectSection(i);
+      if(track.contains(e.target)||e.target===track){ dragging=true; setFromY(e); e.preventDefault(); } });
+    addEventListener('mousemove', e=>{ if(dragging) setFromY(e); });
+    addEventListener('mouseup', ()=>dragging=false);
+    d.addEventListener('wheel', e=>{ e.preventDefault();
+      setSection(s, clamp(s.level - Math.sign(e.deltaY)*0.05,0,1), 0); }, {passive:false});
+    const btns = d.querySelectorAll('button');
+    btns[0].onclick = e=>{ e.stopPropagation(); setSection(s, 0, 1.0); };
+    btns[1].onclick = e=>{ e.stopPropagation(); setSection(s, 1, 1.0); };
+  });
+}
+function selectSection(i){
+  selSec = i;
+  const s = SECTIONS[i]; if(!s) return;
+  $$('.fx').forEach(e=>e.classList.toggle('sel', +e.dataset.sec===i));
+  const what = s.sys ? 'house circuit'
+    : s.chans.length+' fixture'+(s.chans.length>1?'s':'')+' — '+
+      s.chans.map(c=>chan(c) ? chan(c).name : '').filter(Boolean).slice(0,3).join(', ')+
+      (s.chans.length>3?'…':'');
+  $('#selInfo').innerHTML = '<b style="color:var(--amber)">'+s.name.replace('<br>',' ')+'</b><br>'+what;
+  $('#selColor').value = s.color;
+  $('#goboSel').value = s.gobo||0;
+  $('#colourCtl').style.display = s.sys ? 'none' : 'block';
+  $('#moverCtl').style.display = s.mover ? 'block' : 'none';
+  if(s.mover){ const f = chan(s.chans[0]);
+    $('#panR').value=f.panT; $('#tiltR').value=f.tiltT;
+    $('#panV').textContent=Math.round(f.panT); $('#tiltV').textContent=Math.round(f.tiltT); }
+}
+function refreshChannelStrip(){
+  syncSections();
+  for(const s of SECTIONS){
+    if(!s.ui) continue;
+    const pc = Math.round(s.level*100);
+    s.ui.fill.style.height = pc+'%';
+    s.ui.val.textContent = pc;
+    s.ui.sw.style.background = s.color;
+    s.ui.sw.style.boxShadow = s.level>0.02 ? '0 0 8px '+s.color : 'none';
+  }
+}
+
+/* ---- submasters ---- */
+function refreshSubs(){
+  const w=$('#subs'); w.innerHTML='';
+  SUBS.forEach(s=>{
+    const d=document.createElement('div'); d.className='sub';
+    d.innerHTML='<div class="mini" style="color:'+(s.rec?'var(--amber)':'var(--dim)')+'">'+s.i+'</div>'+
+      '<input type="range" min="0" max="100" value="'+Math.round(s.val*100)+'">'+
+      '<button class="b" style="padding:2px 4px;font-size:9px">'+(s.rec?'REC':'—')+'</button>';
+    const r=d.querySelector('input');
+    r.addEventListener('input',()=>{ s.val=r.value/100; runSub(s); });
+    d.querySelector('button').addEventListener('click',()=>recordSub(s));
+    w.appendChild(d);
+  });
+}
+
+/* ---- masters ---- */
+function syncMasters(){
+  $('#gm').value=Math.round(RIG.grand*100); $('#gmV').textContent=Math.round(RIG.grand*100);
+  $('#hz').value=Math.round(RIG.haze*100);  $('#hzV').textContent=Math.round(RIG.haze*100);
+  $('#hl').value=Math.round(HOUSE.house*100); $('#hlV').textContent=Math.round(HOUSE.house*100);
+  $('#wl').value=Math.round(HOUSE.work*100);  $('#wlV').textContent=Math.round(HOUSE.work*100);
+}
+
+/* ---- fly rail ----------------------------------------------------------
+   The rows are built ONCE. Rebuilding this table on a timer used to destroy
+   the buttons between mousedown and mouseup, which ate most of your clicks —
+   the live values are now poked into the existing cells instead.           */
+let selLineset = null;
+function buildFlyUI(){
+  const tb = $('#lsTable tbody'); if(!tb) return;
+  /* Every lineset in the game caches its own row in ls.ui.  Wiping the table
+     for another stage leaves the stage you came FROM holding references to
+     rows that are no longer in the document — so when you walk back, the
+     rail happily updates a table nobody can see while the one on screen is
+     still wired to the theatre across town.  Clear them all first.       */
+  if(typeof STAGES !== 'undefined')
+    for(const k in STAGES){
+      const st = STAGES[k];
+      if(st.fly) for(const ls of st.fly) ls.ui = null;
+    }
+  FLY.forEach(ls=>{ ls.ui = null; });
+  if(selLineset && FLY.indexOf(selLineset) === -1) selLineset = null;
+  tb.innerHTML='';
+  tb.dataset.stage = (typeof STAGE !== 'undefined') ? STAGE : 'palace';
+  FLY.forEach(ls=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td style="color:var(--amber)">'+String(ls.id).padStart(2,'0')+'</td>'+
+      '<td class="mini">LS '+ls.id+'</td>'+
+      '<td class="goods"></td>'+
+      '<td><div class="pipbar"><i></i></div></td>'+
+      '<td class="mini ht"></td>'+
+      '<td class="mini wt"></td>'+
+      '<td><span class="dot"></span></td>'+
+      '<td></td>';
+    const cell = tr.lastElementChild;
+    const mk=(t,fn,cls)=>{
+      const b=document.createElement('button'); b.className='b '+(cls||'');
+      b.style.padding='2px 6px'; b.style.fontSize='10px'; b.textContent=t;
+      b.addEventListener('click', e=>{ e.stopPropagation(); fn(); syncFlyRow(ls); });
+      cell.appendChild(b); return b;
+    };
+    mk('IN',  ()=>{ flyIn(ls);  selLineset=ls; });
+    mk('OUT', ()=>{ flyOut(ls); selLineset=ls; });
+    mk('■', ()=>{ ls.target = ls.pos; });
+    ls.ui = {
+      row:tr, bar:tr.querySelector('.pipbar i'), ht:tr.querySelector('.ht'),
+      wt:tr.querySelector('.wt'), dot:tr.querySelector('.dot'), goods:tr.querySelector('.goods'),
+      lock: mk('LOCK', ()=>{ ls.locked=!ls.locked; }),
+      trav: mk('OPEN', ()=>{ ls.travTarget = ls.travTarget>.5?0:1; })
+    };
+    tr.addEventListener('click', ()=>{ selLineset=ls; syncFlyUI(); });
+    tb.appendChild(tr);
+    syncFlyRow(ls);
+  });
+}
+function syncFlyRow(ls){
+  const u = ls.ui; if(!u) return;
+  const pct = clamp((ls.pos-0.6)/(OUT_TRIM-0.6), 0, 1);
+  u.bar.style.width = (pct*100).toFixed(1)+'%';
+  u.ht.textContent  = ls.pos.toFixed(1)+'m';
+  u.wt.textContent  = ls.weight+'kg';
+  const spec = GOODS[ls.goodsKey];
+  u.goods.textContent = spec ? spec.label : '(missing: ' + ls.goodsKey + ')';
+  u.dot.className = 'dot '+(ls.locked ? 'lk' : (ls.moving ? 'mv' : ''));
+  u.lock.textContent = ls.locked ? 'LOCKED' : 'LOCK';
+  u.lock.classList.toggle('on', ls.locked);
+  const trav = !!(spec && spec.traveler);
+  u.trav.style.display = trav ? '' : 'none';
+  if(trav) u.trav.textContent = ls.travTarget > .5 ? 'CLOSE' : 'OPEN';
+  u.row.classList.toggle('sel', ls === selLineset);
+}
+function syncFlyUI(){ FLY.forEach(syncFlyRow); }
+/* kept for the callers that change what's hanging */
+function refreshFlyUI(){
+  const tb = $('#lsTable tbody');
+  const stale = !FLY.length || !FLY[0].ui ||
+                (tb && tb.dataset.stage !== ((typeof STAGE !== 'undefined') ? STAGE : 'palace'));
+  if(stale) buildFlyUI(); else syncFlyUI();
+  syncRailGroups();
+}
+
+/* ============================================================================
+   GROUP CALLS — "electrics in", "borders out", the way you would call it
+   A group is defined by what is hung, not by lineset number, so it follows the
+   goods around when you re-hang the rail or load a show.
+   ========================================================================== */
+const RAIL_GROUPS = [
+  {id:'electrics', label:'ELECTRICS', keys:['electric','truss']},
+  {id:'legs',      label:'LEGS',      keys:['legs','legSL','legSR']},
+  {id:'borders',   label:'BORDERS',   keys:['border','valance']},
+  {id:'curtains',  label:'CURTAINS',  keys:['house'], traveler:true, draw:true},
+  {id:'drops',     label:'DROPS & CYC',
+   keys:['scrim','cyc','sky','forest','town','portal'], made:true}
+];
+function railGroup(id){
+  const g = RAIL_GROUPS.find(x=>x.id === id);
+  if(!g) return [];
+  return FLY.filter(ls=>{
+    const spec = GOODS[ls.goodsKey];
+    if(!spec || ls.goodsKey === 'none') return false;
+    if(g.keys.indexOf(ls.goodsKey) !== -1) return true;
+    if(g.traveler && spec.traveler) return true;
+    if(g.made && spec.made) return true;           // shop cloths and show drops
+    return false;
+  });
+}
+function railCall(id, what){
+  const list = railGroup(id);
+  const g = RAIL_GROUPS.find(x=>x.id === id);
+  const name = g ? g.label.toLowerCase() : id;
+  if(!list.length){ toast('Nothing is hung with '+name); return {moved:0, locked:0, total:0}; }
+  let moved = 0, locked = 0;
+  for(const ls of list){
+    if(ls.locked && (what === 'in' || what === 'out')){ locked++; continue; }
+    if(what === 'in'){ if(flyIn(ls)) moved++; }
+    else if(what === 'out'){ if(flyOut(ls)) moved++; }
+    else if(what === 'open'){ ls.travTarget = 1; moved++; }
+    else if(what === 'close'){ ls.travTarget = 0; moved++; }
+  }
+  const verb = what === 'in' ? 'coming in' : what === 'out' ? 'going out'
+             : what === 'open' ? 'opening' : 'closing';
+  toast(g.label.charAt(0) + g.label.slice(1).toLowerCase() + ' ' + verb + ' — ' +
+        moved + ' lineset' + (moved === 1 ? '' : 's') +
+        (locked ? ', ' + locked + ' locked off' : ''));
+  syncFlyUI(); syncRailGroups();
+  return {moved, locked, total:list.length};
+}
+function buildRailGroups(){
+  const el = $('#railGroups'); if(!el || el.dataset.built) return;
+  el.dataset.built = '1';
+  el.innerHTML = RAIL_GROUPS.map(g=>
+    '<div class="grpRow" data-g="'+g.id+'">'+
+      '<span class="gl">'+g.label+'</span>'+
+      '<span class="gc"></span>'+
+      '<button class="b" data-do="in">IN</button>'+
+      '<button class="b" data-do="out">OUT</button>'+
+      (g.draw ? '<button class="b" data-do="open">OPEN</button>'+
+                '<button class="b" data-do="close">SHUT</button>' : '')+
+    '</div>').join('');
+  Array.from(el.querySelectorAll('button')).forEach(b=>{
+    b.onclick = ()=>railCall(b.parentNode.dataset.g, b.dataset.do);
+  });
+  syncRailGroups();
+}
+/* keep the counts live without rebuilding the buttons underneath the mouse */
+function syncRailGroups(){
+  const el = $('#railGroups'); if(!el || !el.dataset.built) return;
+  Array.from(el.querySelectorAll('.grpRow')).forEach(row=>{
+    const list = railGroup(row.dataset.g);
+    row.classList.toggle('empty', list.length === 0);
+    const inCount = list.filter(ls=>ls.target < OUT_TRIM - 0.5).length;
+    row.querySelector('.gc').textContent = list.length ? (inCount+'/'+list.length) : '—';
+    Array.from(row.querySelectorAll('button')).forEach(b=>b.disabled = !list.length);
+  });
+}
+function buildGoodsPalette(){
+  const w=$('#goodsPal'); w.innerHTML='';
+  Object.keys(GOODS).forEach(k=>{
+    const b=document.createElement('button'); b.className='b'; b.textContent=GOODS[k].label;
+    b.onclick=()=>{ if(!selLineset){ toast('Select a lineset first'); return; }
+      hangGoods(selLineset, k); toast(GOODS[k].label+' hung on lineset '+selLineset.id); };
+    w.appendChild(b);
+  });
+}
+
+/* ---- sets ---- */
+function buildSetPalette(){
+  const w=$('#setPal'); w.innerHTML='';
+  Object.keys(SCENIC).forEach(k=>{
+    const b=document.createElement('button'); b.className='b'; b.textContent=SCENIC[k].label;
+    b.onclick=()=>{ placingKey = (placingKey===k?null:k);
+      $$('#setPal .b').forEach(x=>x.classList.remove('on'));
+      if(placingKey) b.classList.add('on');
+      toast(placingKey?'Click the deck to place: '+SCENIC[k].label:'Placement cancelled'); };
+    w.appendChild(b);
+  });
+}
+function refreshSetUI(){
+  const w=$('#setList'); if(!w) return;
+  if(!SET.length){ w.innerHTML='<span style="color:var(--dim)">bare stage</span>'; return; }
+  w.innerHTML = SET.map((p,i)=>
+    '<div style="padding:2px 0;cursor:pointer;'+(p===selPiece?'color:var(--amber)':'')+'" data-i="'+i+'">'+
+    (i+1)+'. '+p.label+'  <span style="color:var(--dim)">x '+p.group.position.x.toFixed(1)+
+    '  z '+p.group.position.z.toFixed(1)+'  '+Math.round(p.rot/DEG)+'&deg;</span></div>').join('');
+  $$('#setList div').forEach(d=>d.onclick=()=>{ selPiece=SET[+d.dataset.i]; refreshSetUI(); });
+}
+
+/* ---- sound ---- */
+function buildSoundUI(){
+  const w=$('#sfxPal'); w.innerHTML='';
+  const looped = ['wind','rain','crowd','sea','hum','preshow'];
+  Snd.names().forEach(n=>{
+    const b=document.createElement('button'); b.className='b';
+    b.textContent = (looped.includes(n)?'∞ ':'')+n;
+    b.onclick=()=>{ Snd.play(n);
+      if(looped.includes(n)) b.classList.toggle('on', Snd.isLooping(n)); };
+    w.appendChild(b);
+  });
+  const sel=$('#qSfxSel'); sel.innerHTML='';
+  Snd.names().forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
+  const bs=$('#busStrip'); bs.innerHTML='';
+  ['master'].concat(Snd.busses()).forEach(b=>{
+    const d=document.createElement('div'); d.className='sub'; d.style.width='58px';
+    d.innerHTML='<div class="mini">'+b.toUpperCase()+'</div>'+
+      '<input type="range" min="0" max="100" value="'+Math.round(Snd.level[b]*100)+'">';
+    d.querySelector('input').addEventListener('input',e=>Snd.setLevel(b, e.target.value/100));
+    bs.appendChild(d);
+  });
+}
+
+/* ---- cues ---- */
+function refreshCues(){
+  const w=$('#cuelist');
+  if(!CUES.length){ w.innerHTML='<div class="mini" style="padding:8px">No cues recorded. '+
+    'Build a look, then RECORD LIVE STATE.</div>'; $('#cueTxt').textContent='—'; return; }
+  w.innerHTML = CUES.map((c,i)=>
+    '<div class="cue '+(i===nextCue?'next':(i<nextCue?'done':''))+'" data-i="'+i+'">'+
+    '<span class="q">Q'+c.n+'</span><span class="lb">'+c.label+'</span>'+
+    '<span class="mt">'+c.fade+'s'+(c.follow!=null?' ▸'+c.follow+'s':'')+
+    (c.sfx?' ♪'+c.sfx:'')+(c.fly?' ⇅':'')+'</span></div>').join('');
+  $$('#cuelist .cue').forEach(d=>{
+    d.onclick=()=>{ selCue=+d.dataset.i; nextCue=selCue; refreshCues(); };
+    d.ondblclick=()=>{ fireCue(+d.dataset.i); };
+  });
+  $('#cueTxt').textContent = CUES[nextCue] ? ('Q'+CUES[nextCue].n) : 'END';
+}

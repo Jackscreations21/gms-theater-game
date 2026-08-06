@@ -1,0 +1,440 @@
+
+/* ============================================================================
+   THE BENCH — the shop's full-screen interface
+   ========================================================================== */
+const BENCH = {
+  open:false, tab:'build',
+  boltSel:1, boltFrac:0.35,
+  paintOn:null, tool:'brush', colour:'#7d1420', size:34,
+  drawing:false, last:null
+};
+
+function openBench(tab){
+  for(const k in keys) keys[k] = false;
+  BENCH.open = true;
+  $('#shopUI').classList.add('on');
+  if(typeof unlock === 'function') unlock();
+  benchTab(tab || BENCH.tab);
+  renderBench();
+}
+function closeBench(){
+  for(const k in keys) keys[k] = false;
+  BENCH.open = false;
+  $('#shopUI').classList.remove('on');
+}
+function benchTab(t){
+  BENCH.tab = t;
+  const main = $('#shopMain');
+  if(main) main.classList.toggle('viewport', t === 'build');
+  if(t === 'build'){ edInit(); renderBuildBar(); }
+  $$('#shopRail button').forEach(b=>b.classList.toggle('on', b.dataset.bench === t));
+  $$('.bench').forEach(b=>b.classList.toggle('on', b.id === 'b-'+t));
+  const names = {build:'the workbench grid', paint:'paint deck', stock:'finished stock'};
+  $('#shopWhere').textContent = names[t] || '';
+  renderBench();
+}
+
+/* -------------------------------------------------------------- rendering */
+function renderBench(){
+  if(!$('#shopUI')) return;
+  const C = SHOP.cloth, nb = ED.ready ? ED.blocks.size : 0;
+  $('#cntBuild').textContent = nb;
+  $('#cntPaint').textContent = C.length;
+  $('#cntStock').textContent = C.length + SHOP.builds.length;
+  $('#shopTally').textContent =
+    nb+' blocks on the plate  ·  '+C.length+' cloths  ·  '+SHOP.builds.length+' builds sent';
+  $('#benchLog').innerHTML = SHOP.log.length
+    ? SHOP.log.map(x=>'<div style="padding:2px 0;border-bottom:1px solid #171b23">'+x+'</div>').join('')
+    : '<span style="color:var(--dim)">nothing yet</span>';
+  const sum = $('#shopSummary');
+  if(sum) sum.innerHTML = nb+' blocks on the plate &middot; '+C.length+' cut cloths &middot; '+
+    SHOP.builds.length+' builds delivered';
+  const made = $('#shopMade');
+  if(made) made.innerHTML = SHOP.log.slice(0,10).map(x=>'<div>'+x+'</div>').join('') ||
+    '<span style="color:var(--dim)">nothing yet</span>';
+
+  renderPaintPick(); renderStock(); renderBuildBar();
+}
+function ruler(el, metres){
+  let h = '';
+  for(let m=0; m<=metres; m+=0.5){
+    const p = (m/metres)*100;
+    h += '<i style="left:'+p+'%"></i>';
+    if(m % 1 === 0) h += '<span style="left:'+p+'%">'+m+'m</span>';
+  }
+  el.innerHTML = h;
+}
+/* ---- paint ---- */
+function paintables(){ return SHOP.cloth.map((c,i)=>({it:c, kind:'cloth', i})); }
+function renderPaintPick(){
+  const el = $('#paintPick'); if(!el) return;
+  const list = paintables();
+  if(!BENCH.paintOn && list.length) BENCH.paintOn = list[0].it;
+  if(BENCH.paintOn && !list.some(x=>x.it === BENCH.paintOn)) BENCH.paintOn = list.length?list[0].it:null;
+  el.innerHTML = list.length ? list.map((x,i)=>
+    '<div class="tile'+(x.it===BENCH.paintOn?' on':'')+'" data-i="'+i+'">'+
+    '<div class="sq" style="background:'+x.it.spec.col+'"></div>'+
+    '<div class="nm">'+(x.it.len.toFixed(1)+' m cloth #'+x.it.id)+
+    '</div></div>').join('')
+    : '<span class="mini" style="color:var(--dim)">cut some cloth first</span>';
+  Array.from(el.querySelectorAll('.tile')).forEach(t=>t.onclick = ()=>{
+    BENCH.paintOn = list[+t.dataset.i].it; syncPaintCanvas(); renderBench(); });
+  const pots = $('#potRow');
+  if(pots && !pots.dataset.built){
+    pots.dataset.built = '1';
+    pots.innerHTML = POTS.map(c=>'<button class="sw2" style="background:'+c+'" data-c="'+c+'"></button>').join('');
+    Array.from(pots.querySelectorAll('.sw2')).forEach(b=>b.onclick = ()=>{
+      BENCH.colour = b.dataset.c; BENCH.tool = 'brush';
+      $('#paintCustom').value = b.dataset.c; markTool(); markPot(); });
+  }
+  markPot();
+}
+function markPot(){
+  $$('#potRow .sw2').forEach(b=>b.classList.toggle('on', b.dataset.c === BENCH.colour));
+}
+function markTool(){
+  [['tBrush','brush'],['tRoller','roller'],['tFill','fill'],['tErase','erase'],
+   ['tUnerase','patch'],['tCut','cut']]
+    .forEach(([id,t])=>{ const b = $('#'+id); if(b) b.classList.toggle('on', BENCH.tool === t); });
+}
+function syncPaintCanvas(){
+  const cv = $('#paintCv'); if(!cv) return;
+  const it = BENCH.paintOn;
+  if(!it){ cv.width = 576; cv.height = 1024;
+    cv.getContext('2d').clearRect(0,0,576,1024); return; }
+  cv.width = it.w; cv.height = it.h;
+  cv.style.width  = (it.w > it.h ? 640 : 320) + 'px';
+  redrawPaintCanvas();
+}
+function benchPaintAt(x, y){
+  const it = BENCH.paintOn; if(!it) return;
+  const g = it.canvas.getContext('2d');
+  if(BENCH.tool === 'fill'){
+    g.globalCompositeOperation = 'source-over';
+    g.fillStyle = BENCH.colour; g.fillRect(0,0,it.w,it.h);
+  } else {
+    /* CUT punches a real hole: the alpha channel goes to zero and the cloth
+       is see-through there, on the frame and on the rail.                  */
+    g.globalCompositeOperation = (BENCH.tool === 'cut') ? 'destination-out' : 'source-over';
+    /* the eraser rags the paint off back to the bare bolt; it also fills the
+       alpha back in, so it patches a hole you cut by mistake                */
+    g.strokeStyle = (BENCH.tool === 'erase' || BENCH.tool === 'patch')
+                  ? (it.spec ? it.spec.col : '#d9d2c4')
+                  : BENCH.tool === 'cut' ? 'rgba(0,0,0,1)' : BENCH.colour;
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    g.lineWidth = BENCH.tool === 'roller' ? BENCH.size*2.4
+                : (BENCH.tool === 'cut' || BENCH.tool === 'erase') ? BENCH.size*1.4
+                : BENCH.size;
+    g.beginPath();
+    if(BENCH.last) g.moveTo(BENCH.last.x, BENCH.last.y); else g.moveTo(x-0.1, y);
+    g.lineTo(x, y); g.stroke();
+    g.globalCompositeOperation = 'source-over';
+    BENCH.last = {x, y};
+  }
+  it.tex.needsUpdate = true;
+  if(SHOP.frameMat){ SHOP.frameMat.map = it.tex; SHOP.frameMat.needsUpdate = true; }
+  redrawPaintCanvas();
+}
+/* the preview shows holes against a checker, not against the last frame */
+function redrawPaintCanvas(){
+  const cv = $('#paintCv'), it = BENCH.paintOn;
+  if(!cv || !it) return;
+  const g = cv.getContext('2d');
+  g.clearRect(0,0,cv.width,cv.height);
+  g.drawImage(it.canvas, 0, 0);
+}
+function benchWash(kind){
+  const it = BENCH.paintOn; if(!it) return;
+  const g = it.canvas.getContext('2d'), W = it.w, H = it.h;
+  if(kind==='clear'){ g.fillStyle = it.spec ? it.spec.col : '#d9d2c4'; g.fillRect(0,0,W,H); }
+  else if(kind==='sky'){
+    const gr = g.createLinearGradient(0,0,0,H);
+    gr.addColorStop(0,'#173a72'); gr.addColorStop(.55,'#5786bd'); gr.addColorStop(1,'#c9b98d');
+    g.fillStyle = gr; g.fillRect(0,0,W,H);
+  } else if(kind==='night'){
+    const gr = g.createLinearGradient(0,0,0,H);
+    gr.addColorStop(0,'#05081c'); gr.addColorStop(1,'#22305a');
+    g.fillStyle = gr; g.fillRect(0,0,W,H);
+    g.fillStyle = '#fffbe8';
+    for(let i=0;i<220;i++){ g.beginPath();
+      g.arc(Math.random()*W, Math.random()*H*0.7, rnd(0.6,2.2), 0, 6.283); g.fill(); }
+  } else if(kind==='ground'){
+    g.fillStyle = '#3b3324'; g.fillRect(0, H*0.72, W, H*0.28);
+    for(let i=0;i<500;i++){ g.fillStyle='rgba('+(60+Math.random()*50|0)+','+(70+Math.random()*50|0)+',40,.5)';
+      g.fillRect(Math.random()*W, H*0.72+Math.random()*H*0.28, 3, 3); }
+  } else if(kind==='trees'){
+    for(let k=0;k<30;k++){
+      const tx = Math.random()*W, th = rnd(H*0.2, H*0.5);
+      g.fillStyle='rgba(30,24,16,.9)'; g.fillRect(tx, H*0.78-th, 14, th);
+      g.fillStyle='rgba('+(20+Math.random()*30|0)+','+(55+Math.random()*45|0)+',30,.92)';
+      g.beginPath(); g.ellipse(tx+7, H*0.78-th, rnd(W*0.05,W*0.11), rnd(H*0.04,H*0.08), 0, 0, 6.283); g.fill();
+    }
+  } else if(kind==='brick'){
+    g.fillStyle='#5d3a30'; g.fillRect(0,0,W,H);
+    const bw = W/12, bh = bw*0.45;
+    for(let r=0;r*bh<H;r++){ const off=(r%2)*bw/2;
+      for(let b=-1;b*bw<W+bw;b++){ g.fillStyle='rgb('+(110+Math.random()*30|0)+','+(64+Math.random()*20|0)+','+(52+Math.random()*18|0)+')';
+        g.fillRect(b*bw+off+2, r*bh+2, bw-4, bh-4); } }
+  } else if(kind==='boards'){
+    const bw = W/9;
+    for(let b=0;b*bw<W;b++){
+      g.fillStyle = 'rgb('+(150+Math.random()*30|0)+','+(120+Math.random()*24|0)+','+(84+Math.random()*20|0)+')';
+      g.fillRect(b*bw, 0, bw-2, H);
+    }
+  }
+  it.tex.needsUpdate = true;
+  if(SHOP.frameMat){ SHOP.frameMat.map = it.tex; SHOP.frameMat.needsUpdate = true; }
+  redrawPaintCanvas();
+}
+/* ---- stock ---- */
+function renderStock(){
+  const fl = $('#stockFlats');
+  if(fl){
+    const nb = ED.ready ? ED.blocks.size : 0;
+    fl.innerHTML = '<div class="tile"><div class="sq" style="background:#c2a06a"></div>'+
+      '<div class="nm">'+nb+' blocks on the build plate</div>'+
+      '<button class="b" id="stockSend"'+(nb?'':' disabled')+'>TO THE DECK</button></div>' +
+      (SHOP.builds.length ? SHOP.builds.map(b=>
+        '<div class="mini" style="padding:3px 0;color:var(--dim)">delivered: '+b.n+' blocks</div>').join('') : '');
+    const sb = $('#stockSend');
+    if(sb) sb.onclick = ()=>{ edSend(); renderBench(); };
+  }
+  const cl = $('#stockCloth');
+  if(cl){
+    cl.innerHTML = SHOP.cloth.length ? SHOP.cloth.map((c,i)=>
+      '<div class="tile"><div class="sq" style="background:'+c.spec.col+'"></div>'+
+      '<div class="nm">'+c.len.toFixed(1)+' m '+c.spec.name+'</div>'+
+      '<button class="b" data-c="'+i+'">TO THE RAIL</button></div>').join('')
+      : '<span class="mini" style="color:var(--dim)">none</span>';
+    Array.from(cl.querySelectorAll('button')).forEach(b=>b.onclick = ()=>{
+      shopDeliverCloth(+b.dataset.c); renderBench(); });
+  }
+}
+
+/* ---------------------------------------------------------- the build bar */
+function renderBuildBar(){
+  const dest = $('#buildDest');
+  if(dest && !dest.dataset.built){
+    dest.dataset.built = '1';
+    dest.innerHTML = '<option value="deck">to the deck</option>' +
+      FLY.map((ls,i)=>'<option value="'+i+'">fly it on lineset '+ls.id+'</option>').join('');
+  }
+  const row = $('#shapeRow');
+  if(row && !row.dataset.built){
+    row.dataset.built = '1';
+    row.innerHTML = ED_SHAPES.map(sname=>
+      '<button class="b shape" data-s="'+sname+'" title="'+sname+'">'+
+      '<svg viewBox="0 0 34 34" fill="currentColor">'+ED_ICONS[sname]+'</svg></button>').join('');
+    Array.from(row.querySelectorAll('.shape')).forEach(b=>b.onclick = ()=>{
+      ED.shape = b.dataset.s; ED.paintTool = false; ED.erase = false; renderBuildBar(); });
+  }
+  if(row) Array.from(row.querySelectorAll('.shape'))
+    .forEach(b=>b.classList.toggle('on', b.dataset.s === ED.shape && !ED.paintTool));
+
+  const pots = $('#buildPots');
+  if(pots && !pots.dataset.built){
+    pots.dataset.built = '1';
+    pots.innerHTML = POTS.map(c=>'<button class="sw2" style="background:'+c+'" data-c="'+c+'"></button>').join('');
+    Array.from(pots.querySelectorAll('.sw2')).forEach(b=>b.onclick = ()=>{
+      ED.colour = b.dataset.c; $('#buildCustom').value = b.dataset.c; renderBuildBar(); });
+  }
+  if(pots) Array.from(pots.querySelectorAll('.sw2'))
+    .forEach(b=>b.classList.toggle('on', b.dataset.c === ED.colour));
+
+  const rb = $('#bRefs'); if(rb && ED.ready) rb.classList.toggle('on', ED.refs.visible);
+  const mb = $('#bMirror'); if(mb) mb.classList.toggle('on', ED.mirror);
+  const pb = $('#bBrush');  if(pb) pb.classList.toggle('on', ED.paintTool);
+  const eb = $('#bErase');
+  if(eb){
+    eb.classList.toggle('on', ED.erase);
+    eb.textContent = ED.erase && ED.paintTool ? 'STRIPPING PAINT [X]'
+                   : ED.erase ? 'ERASING [X]' : 'ERASE [X]';
+  }
+  const lay = $('#bLayer'); if(lay) lay.textContent = 'layer ' + ED.layer;
+  const st = $('#buildStat');
+  if(st && ED.ready) st.innerHTML = ED.blocks.size + ' blocks &nbsp;·&nbsp; ' +
+    (ED.erase && ED.paintTool ? 'stripping paint' : ED.erase ? 'erasing' :
+     ED.paintTool ? 'painting' : ED.shape) +
+    (ED.rot && !ED.erase ? ' · '+(ED.rot*90)+'&deg;' : '') + (ED.mirror ? ' · mirrored' : '');
+  if(ED.ready){ ED.mirrorLine.visible = ED.mirror; edCam(); }
+}
+/* -------------------------------------------------------------- the wiring */
+function wireBuild(){
+  const view = $('#buildView'); if(!view) return;
+  const ndc = e=>{ const r = view.getBoundingClientRect();
+    return {x:((e.clientX-r.left)/r.width)*2-1, y:-((e.clientY-r.top)/r.height)*2+1}; };
+
+  /* Stormworks-style: press, drag out the run, and it shows you exactly what
+     will land. Let go to commit; press Escape or the right button to drop it. */
+  view.addEventListener('mousemove', e=>{
+    if(!ED.ready) return;
+    if(ED.orbiting){
+      ED.yaw   -= (e.clientX - ED.lastX)*0.008;
+      ED.pitch  = clamp(ED.pitch - (e.clientY - ED.lastY)*0.006, -0.2, 1.45);
+      ED.lastX = e.clientX; ED.lastY = e.clientY;
+      edCam(); return;
+    }
+    const p = ndc(e), cell = edPick(p.x, p.y);
+    if(ED.anchor && cell){
+      const t = (ED.dragMode === 'place') ? cell : (cell.on || cell);
+      ED.dragTo = t;
+      const list = edSpan(ED.anchor, t);
+      const n = edShowPreview(list, ED.dragMode);
+      edHover(null);
+      const st = $('#buildStat');
+      if(st) st.innerHTML = n + ' × ' + (ED.dragMode === 'remove' ? 'erase'
+                                       : ED.dragMode === 'strip'  ? 'strip back to bare timber'
+                                       : ED.dragMode === 'paint'  ? 'repaint' : ED.shape) +
+        ' &nbsp;·&nbsp; let go to confirm';
+      return;
+    }
+    edHover(cell);
+  });
+  view.addEventListener('mousedown', e=>{
+    if(!ED.ready) return;
+    if(e.button === 1 || (e.button === 0 && e.altKey)){
+      ED.orbiting = true; ED.lastX = e.clientX; ED.lastY = e.clientY;
+      e.preventDefault(); return;
+    }
+    if(e.button === 0 || e.button === 2){
+      const p = ndc(e), cell = edPick(p.x, p.y);
+      if(!cell){ e.preventDefault(); return; }
+      ED.dragMode = (e.button === 2) ? 'remove'
+                  : ED.erase ? (ED.paintTool ? 'strip' : 'remove')
+                  : ED.paintTool ? 'paint' : 'place';
+      ED.anchor = (ED.dragMode === 'place') ? cell : (cell.on || cell);
+      ED.dragTo = ED.anchor;
+      edShowPreview([ED.anchor], ED.dragMode);
+      edHover(null);
+      e.preventDefault();
+    }
+  });
+  addEventListener('mouseup', ()=>{
+    if(!ED.ready) return;
+    ED.orbiting = false;
+    if(!ED.anchor) return;
+    const list = edSpan(ED.anchor, ED.dragTo || ED.anchor);
+    let n = 0;
+    for(const c of list){
+      if(ED.dragMode === 'place'){ if(edAct(c, 'place')) n++; }
+      else if(ED.dragMode === 'remove'){ if(edAct(c, 'remove')) n++; }
+      else if(edAct(c, 'paint')) n++;
+    }
+    ED.anchor = null; ED.dragTo = null;
+    edClearPreview();
+    if(n > 1) toast(n + ' blocks ' + (ED.dragMode === 'remove' ? 'erased'
+      : ED.dragMode === 'strip' ? 'stripped back to bare timber'
+      : ED.dragMode === 'paint' ? 'repainted' : 'placed'));
+    renderBuildBar(); renderBench();
+  });
+  /* these three went missing when the drag code was rewritten */
+  view.addEventListener('contextmenu', e=>e.preventDefault());
+  view.addEventListener('wheel', e=>{
+    ED.dist = clamp(ED.dist * (1 + Math.sign(e.deltaY)*0.12), 4, 80);
+    edCam(); e.preventDefault();
+  }, {passive:false});
+  view.addEventListener('mouseleave', ()=>{ if(!ED.anchor) edHover(null); });
+
+  $('#bRefs').onclick   = ()=>{ ED.refs.visible = !ED.refs.visible; renderBuildBar(); };
+  $('#bHome').onclick   = ()=>{ edHome(); renderBuildBar(); };
+  $('#bRot').onclick    = ()=>{ ED.rot = (ED.rot+1)%4; renderBuildBar(); };
+  $('#bMirror').onclick = ()=>{ ED.mirror = !ED.mirror; renderBuildBar(); };
+  $('#bBrush').onclick  = ()=>{ ED.paintTool = !ED.paintTool; renderBuildBar(); };
+  $('#bErase').onclick  = ()=>{ ED.erase = !ED.erase; renderBuildBar(); };
+  $('#bUp').onclick     = ()=>{ ED.layer = clamp(ED.layer+1, 0, ED.ny-1); edBuildGrid(); renderBuildBar(); };
+  $('#bDown').onclick   = ()=>{ ED.layer = clamp(ED.layer-1, 0, ED.ny-1); edBuildGrid(); renderBuildBar(); };
+  $('#bClear').onclick  = ()=>{ edClear(); renderBuildBar(); renderBench(); };
+  $('#bSend').onclick   = ()=>{
+    const sel = $('#buildDest'), v = sel ? sel.value : 'deck';
+    edSend(v === 'deck' ? null : {lineset: +v});
+    renderBench();
+  };
+  $('#buildCustom').oninput = e=>{ ED.colour = e.target.value; renderBuildBar(); };
+  $('#buildFinish').onchange = e=>{ ED.finish = e.target.value; renderBuildBar(); };
+}
+function benchKey(k){
+  if(BENCH.tab !== 'build' || !ED.ready) return false;
+  if(k === 'escape' && ED.anchor){ ED.anchor = null; ED.dragTo = null; edClearPreview(); return true; }
+  if(k === 'r'){ ED.rot = (ED.rot+1)%4; renderBuildBar(); return true; }
+  if(k === 'm'){ ED.mirror = !ED.mirror; renderBuildBar(); return true; }
+  if(k === 'p'){ ED.paintTool = !ED.paintTool; renderBuildBar(); return true; }
+  if(k === 'x'){ ED.erase = !ED.erase; renderBuildBar(); return true; }
+  if(k === 'e'){ ED.layer = clamp(ED.layer+1, 0, ED.ny-1); edBuildGrid(); renderBuildBar(); return true; }
+  if(k === 'q'){ ED.layer = clamp(ED.layer-1, 0, ED.ny-1); edBuildGrid(); renderBuildBar(); return true; }
+  return false;
+}
+function wireBench(){
+  if(!$('#shopUI')) return;
+  $$('#shopRail button').forEach(b=>b.onclick = ()=>benchTab(b.dataset.bench));
+  $('#benchClose').onclick = closeBench;
+  $('#openBench').onclick  = ()=>openBench();
+
+  /* the paint canvas */
+  const cv = $('#paintCv');
+  const toCv = e=>{ const r = cv.getBoundingClientRect();
+    return {x:(e.clientX-r.left)/r.width*cv.width, y:(e.clientY-r.top)/r.height*cv.height}; };
+  cv.addEventListener('mousedown', e=>{ BENCH.drawing = true; BENCH.last = null;
+    const p = toCv(e); benchPaintAt(p.x, p.y); e.preventDefault(); });
+  cv.addEventListener('mousemove', e=>{ if(BENCH.drawing){ const p = toCv(e); benchPaintAt(p.x, p.y); } });
+  addEventListener('mouseup', ()=>{ BENCH.drawing = false; BENCH.last = null; });
+  cv.addEventListener('mouseleave', ()=>{ BENCH.last = null; });
+
+  const sc = $('#sendCloth');
+  if(sc) sc.onclick = ()=>{
+    const it = BENCH.paintOn;
+    if(!it) return toast('Take a cloth off the shelf first');
+    const i = SHOP.cloth.indexOf(it);
+    if(i < 0) return;
+    shopDeliverCloth(i);
+    BENCH.paintOn = SHOP.cloth.length ? SHOP.cloth[0] : null;
+    syncPaintCanvas(); renderBench();
+  };
+  const nb = $('#newBackdrop');
+  if(nb) nb.onclick = ()=>{
+    const c = shopNewCloth(BENCH.boltSel);
+    BENCH.paintOn = c; syncPaintCanvas(); renderBench();
+  };
+  const bs = $('#backdropStock');
+  if(bs) bs.onchange = e=>{ BENCH.boltSel = +e.target.value; };
+  const imp = $('#importPic');
+  if(imp) imp.onchange = e=>{
+    const f = e.target.files && e.target.files[0];
+    if(!f || !BENCH.paintOn) return;
+    const rd = new FileReader();
+    rd.onload = ev=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const it = BENCH.paintOn, g = it.canvas.getContext('2d');
+        /* fit the picture inside the cloth, keeping its proportions */
+        const s2 = Math.min(it.w/img.width, it.h/img.height);
+        const w = img.width*s2, h = img.height*s2;
+        g.globalCompositeOperation = 'source-over';
+        g.drawImage(img, (it.w-w)/2, (it.h-h)/2, w, h);
+        it.tex.needsUpdate = true;
+        if(SHOP.frameMat){ SHOP.frameMat.map = it.tex; SHOP.frameMat.needsUpdate = true; }
+        redrawPaintCanvas();
+        shopLog('imported a picture onto cloth #'+it.id);
+        toast('Picture dropped onto the cloth — paint over it or send it to the rail');
+        renderBench();
+      };
+      img.src = ev.target.result;
+    };
+    rd.readAsDataURL(f);
+    e.target.value = '';
+  };
+  const fill = $('#fillPic');
+  if(fill) fill.onclick = ()=>{ BENCH.fitMode = BENCH.fitMode === 'cover' ? 'fit' : 'cover';
+    fill.textContent = BENCH.fitMode === 'cover' ? 'FILL THE CLOTH' : 'FIT INSIDE'; };
+  $('#paintCustom').oninput = e=>{ BENCH.colour = e.target.value; BENCH.tool='brush'; markTool(); markPot(); };
+  $('#tBrush').onclick  = ()=>{ BENCH.tool='brush';  markTool(); };
+  $('#tRoller').onclick = ()=>{ BENCH.tool='roller'; markTool(); };
+  $('#tFill').onclick   = ()=>{ BENCH.tool='fill';   markTool(); };
+  $('#tErase').onclick  = ()=>{ BENCH.tool='erase';  markTool(); };
+  $('#tCut').onclick    = ()=>{ BENCH.tool='cut';    markTool(); };
+  $('#pSize').oninput   = e=>{ BENCH.size = +e.target.value; $('#pSizeV').textContent = e.target.value; };
+  $$('#b-paint button[data-wash]').forEach(b=>b.onclick = ()=>benchWash(b.dataset.wash));
+  markTool();
+  syncPaintCanvas();
+  wireBuild();
+  renderBench();
+}

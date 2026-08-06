@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>THE HOUSE &mdash; Theatre Technician Simulator</title>
+<style>
+:root{
+  --bg:#08090c; --panel:#101319; --panel2:#161a22; --line:#252b36;
+  --txt:#c9d1dd; --dim:#7b8493; --amber:#ffb340; --cyan:#3fd0e0; --red:#ff4d5a;
+  --green:#5ad67d; --violet:#a97bff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+  font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;-webkit-font-smoothing:antialiased}
+canvas{display:block}
+#app{position:fixed;inset:0}
+#veil{position:fixed;inset:0;background:#05060a;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;z-index:200;transition:opacity .8s}
+#veil h1{font-size:34px;letter-spacing:14px;margin:0 0 6px;color:var(--amber);font-weight:400}
+#veil h2{font-size:11px;letter-spacing:6px;color:var(--dim);font-weight:400;margin:0 0 28px}
+#bar{width:280px;height:2px;background:#1b1f28;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:var(--amber);transition:width .3s}
+#veil small{color:#4a515e;margin-top:18px;letter-spacing:2px}
+#startBtn{margin-top:26px;padding:12px 30px;background:none;border:1px solid var(--amber);color:var(--amber);
+  letter-spacing:5px;cursor:pointer;font-family:inherit;font-size:12px;display:none}
+#startBtn:hover{background:var(--amber);color:#000}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;top:0;left:0;right:0;padding:8px 12px;display:flex;gap:14px;align-items:center;
+  pointer-events:none;z-index:50;text-shadow:0 1px 3px #000}
+.chip{background:rgba(16,19,25,.82);border:1px solid var(--line);padding:4px 9px;letter-spacing:1px;
+  pointer-events:auto;border-radius:2px}
+.chip b{color:var(--amber);font-weight:600}
+.chip.live{border-color:var(--red);color:var(--red)}
+.chip.on{border-color:var(--amber);color:var(--amber);background:rgba(255,179,64,.14)}
+#clockChip b{color:var(--cyan)}
+#xhair{position:fixed;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;pointer-events:none;z-index:40;opacity:.5}
+#xhair:before,#xhair:after{content:'';position:absolute;background:#fff}
+#xhair:before{left:6px;top:0;width:2px;height:14px}
+#xhair:after{top:6px;left:0;height:2px;width:14px}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);background:rgba(10,12,16,.95);
+  border-left:2px solid var(--amber);padding:8px 16px;z-index:90;opacity:0;transition:opacity .25s;
+  pointer-events:none;letter-spacing:1px;max-width:60vw}
+#toast.on{opacity:1}
+#target{position:fixed;left:50%;top:calc(50% + 26px);transform:translateX(-50%);z-index:40;
+  color:var(--amber);letter-spacing:2px;opacity:0;transition:opacity .15s;pointer-events:none;text-shadow:0 1px 4px #000}
+#target.on{opacity:1}
+
+/* ---------- Console dock ---------- */
+#dock{position:fixed;left:0;right:0;bottom:0;height:308px;background:linear-gradient(180deg,#0d1015,#0a0c10);
+  border-top:1px solid var(--line);z-index:60;display:flex;flex-direction:column;
+  transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:0 -20px 60px rgba(0,0,0,.7)}
+#dock.hidden{transform:translateY(308px)}
+#tabs{display:flex;border-bottom:1px solid var(--line);background:#0b0e13;flex:none}
+#tabs button{background:none;border:none;border-right:1px solid var(--line);color:var(--dim);
+  padding:9px 16px;letter-spacing:3px;cursor:pointer;font-family:inherit;font-size:11px}
+#tabs button:hover{color:var(--txt);background:#12161d}
+#tabs button.on{color:var(--amber);background:var(--panel);box-shadow:inset 0 -2px 0 var(--amber)}
+#tabs .grow{flex:1;border:none}
+#tabs .util{color:var(--dim);border-left:1px solid var(--line);border-right:none}
+.page{display:none;flex:1;overflow:auto;padding:10px 12px}
+.page.on{display:block}
+.row{display:flex;gap:10px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:6px}
+h4{margin:0 0 7px;font-size:10px;letter-spacing:3px;color:var(--dim);font-weight:500;
+  border-bottom:1px solid var(--line);padding-bottom:4px}
+.card{background:var(--panel);border:1px solid var(--line);padding:9px;border-radius:3px}
+button.b{background:#171c24;border:1px solid #2c3340;color:var(--txt);padding:5px 10px;cursor:pointer;
+  font-family:inherit;font-size:11px;letter-spacing:1px;border-radius:2px}
+button.b:hover{border-color:var(--amber);color:var(--amber)}
+button.b.on{background:var(--amber);color:#000;border-color:var(--amber)}
+button.b.dgr:hover{border-color:var(--red);color:var(--red)}
+button.b.go{background:#123a1c;border-color:var(--green);color:var(--green);font-size:14px;letter-spacing:6px;padding:12px 0;width:100%}
+button.b.go:hover{background:var(--green);color:#000}
+input,select,textarea{background:#0b0e13;border:1px solid #2c3340;color:var(--txt);font-family:inherit;
+  font-size:11px;padding:4px 6px;border-radius:2px}
+input[type=color]{padding:1px;height:24px;width:34px;cursor:pointer}
+input[type=range]{-webkit-appearance:none;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:#2c3340;border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-5px;
+  border-radius:50%;background:var(--amber);border:none}
+label.f{display:flex;gap:6px;align-items:center;color:var(--dim);letter-spacing:1px}
+
+/* faders */
+#chStrip{display:flex;gap:3px;flex-wrap:wrap}
+.fx{width:74px;background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:6px 4px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;position:relative}
+.fx.sys{background:#141a17}
+.fx .n{line-height:1.15;text-align:center}
+button.b.mini2{padding:1px 5px;font-size:9px;letter-spacing:0}
+.fx.sel{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber)}
+.fx .n{font-size:9px;color:var(--txt);letter-spacing:1px;font-weight:600}
+.fx .sw{width:100%;height:8px;border-radius:1px;background:#333}
+.fx .track{width:22px;height:104px;background:#0a0d12;border:1px solid #232935;border-radius:2px;
+  position:relative;overflow:hidden}
+.fx .fill{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,var(--amber),#7a4d0a)}
+.fx .v{font-size:9px;color:var(--txt);letter-spacing:0}
+.fx .tag{font-size:8px;color:#5b6472;height:9px;overflow:hidden;text-align:center;line-height:9px}
+.fx.mv .n{color:var(--violet)}
+
+/* smoke machines */
+.smk{width:150px;background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:8px}
+.smk .nm{font-size:10px;letter-spacing:2px;color:var(--txt);font-weight:600}
+.smk .kd{font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:6px}
+.smk .rd{display:flex;align-items:center;gap:5px;margin-top:6px}
+.smk .led{width:8px;height:8px;border-radius:50%;background:#2a2f36}
+.smk .led.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.smk .led.dry{background:var(--red);box-shadow:0 0 6px var(--red)}
+.smk .tk{flex:1;height:5px;background:#0a0d12;border:1px solid #232935;border-radius:2px;position:relative}
+.smk .tk i{position:absolute;inset:0 auto 0 0;background:var(--cyan);opacity:.8}
+.smk .out{font-size:9px;color:var(--dim);min-width:28px;text-align:right}
+
+/* group calls on the fly rail */
+.grpRow{display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid #171b23}
+.grpRow .gl{flex:1;font-size:10px;letter-spacing:2px;color:var(--txt)}
+.grpRow .gc{font-size:9px;color:var(--dim);min-width:30px;text-align:right}
+.grpRow button.b{padding:3px 7px;font-size:10px;letter-spacing:1px}
+.grpRow.empty .gl{color:#4d5460}
+
+/* linesets */
+table.ls{width:100%;border-collapse:collapse;font-size:11px}
+table.ls th{color:var(--dim);font-weight:500;letter-spacing:2px;font-size:9px;text-align:left;
+  border-bottom:1px solid var(--line);padding:4px 5px}
+table.ls td{padding:2px 5px;border-bottom:1px solid #171b23}
+table.ls tr:hover td{background:#141822}
+table.ls tr.sel td{background:#1c2230}
+.pipbar{width:100%;height:6px;background:#0a0d12;border:1px solid #232935;position:relative;border-radius:2px}
+.pipbar i{position:absolute;top:0;bottom:0;left:0;background:var(--cyan);opacity:.75}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#39414f}
+.dot.mv{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+.dot.lk{background:var(--red)}
+
+/* cue list */
+#cuelist{max-height:210px;overflow:auto}
+.cue{display:flex;gap:8px;align-items:center;padding:4px 6px;border-bottom:1px solid #171b23;cursor:pointer}
+.cue:hover{background:#141822}
+.cue.next{background:#1d2410;box-shadow:inset 2px 0 0 var(--green)}
+.cue.done{opacity:.45}
+.cue .q{color:var(--amber);width:38px}
+.cue .lb{flex:1;color:var(--txt)}
+.cue .mt{color:var(--dim);font-size:10px}
+
+/* code */
+#code{width:100%;height:190px;resize:none;line-height:1.55;tab-size:2;white-space:pre;overflow:auto}
+#codeOut{height:60px;overflow:auto;background:#0b0e13;border:1px solid var(--line);padding:6px;color:var(--dim);
+  white-space:pre-wrap;border-radius:2px}
+.snip{display:block;width:100%;text-align:left;margin-bottom:3px}
+.kbd{background:#1b212b;border:1px solid #2c3340;border-radius:2px;padding:1px 5px;color:var(--txt)}
+
+/* ---------- the scene shop bench, full screen ---------- */
+#shopUI{position:fixed;inset:0;z-index:150;background:linear-gradient(180deg,#0b0d11,#07080b);
+  display:none;grid-template-rows:auto 1fr;font-size:12px}
+#shopUI.on{display:grid}
+#shopHead{display:flex;align-items:center;gap:16px;padding:12px 18px;border-bottom:1px solid var(--line);
+  background:#0d1015}
+#shopHead h2{margin:0;font-size:15px;letter-spacing:8px;color:var(--amber);font-weight:400}
+#shopHead .sp{flex:1}
+#shopBody{display:grid;grid-template-columns:190px 1fr 250px;min-height:0}
+#buildView{position:relative;width:100%;height:100%;min-height:340px;cursor:crosshair;
+  border:1px solid var(--line);border-radius:3px;background:#0d1117;overflow:hidden}
+#buildView canvas{position:absolute;inset:0}
+#b-build{height:100%;display:none;grid-template-rows:auto 1fr;gap:10px}
+#b-build.on{display:grid}
+#buildBar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex:none}
+#shopMain.viewport{padding:12px;display:grid;min-height:0}
+.shape{width:52px;height:52px;padding:0;display:flex;align-items:center;justify-content:center}
+.shape svg{width:34px;height:34px}
+.hint{position:absolute;left:10px;bottom:10px;color:var(--dim);font-size:10px;letter-spacing:1px;
+  background:rgba(8,10,14,.72);padding:6px 9px;border-radius:2px;pointer-events:none;line-height:1.6}
+#buildStat{position:absolute;right:10px;top:10px;color:var(--txt);font-size:10px;letter-spacing:1px;
+  background:rgba(8,10,14,.72);padding:6px 9px;border-radius:2px;pointer-events:none}
+#shopRail{border-right:1px solid var(--line);background:#0b0e13;padding:12px 0;display:flex;
+  flex-direction:column;gap:2px}
+#shopRail button{background:none;border:none;border-left:3px solid transparent;color:var(--dim);
+  text-align:left;padding:13px 18px;letter-spacing:3px;cursor:pointer;font-family:inherit;font-size:12px}
+#shopRail button:hover{color:var(--txt);background:#12161d}
+#shopRail button.on{color:var(--amber);border-left-color:var(--amber);background:#141922}
+#shopRail .cnt{float:right;color:var(--dim);letter-spacing:0;font-size:10px}
+#shopMain{padding:20px 26px;overflow:auto;min-width:0}
+#shopSide{border-left:1px solid var(--line);background:#0b0e13;padding:14px;overflow:auto}
+.bench{display:none} .bench.on{display:block}
+.bench h3{margin:0 0 4px;font-size:13px;letter-spacing:5px;color:var(--txt);font-weight:400}
+.bench .lede{color:var(--dim);margin:0 0 18px;line-height:1.7;max-width:70ch}
+/* the plank */
+.plank{position:relative;height:64px;border-radius:3px;cursor:crosshair;margin:10px 0 4px;
+  background:repeating-linear-gradient(90deg,#c2a06a 0,#c2a06a 9px,#b8945c 9px,#b8945c 12px);
+  border:1px solid #6b5433;box-shadow:inset 0 -10px 18px rgba(0,0,0,.28)}
+.plank .cut{position:absolute;top:-9px;bottom:-9px;width:2px;background:var(--red);
+  box-shadow:0 0 8px var(--red)}
+.plank .cut:before{content:'';position:absolute;left:-7px;top:-7px;border:8px solid transparent;
+  border-top-color:var(--red)}
+.ruler{position:relative;height:16px;margin-bottom:12px;color:var(--dim);font-size:9px}
+.ruler i{position:absolute;top:0;width:1px;height:5px;background:#39414f}
+.ruler span{position:absolute;top:6px;transform:translateX(-50%)}
+.chip2{background:#171c24;border:1px solid #2c3340;border-radius:2px;padding:5px 9px;cursor:pointer;
+  letter-spacing:1px}
+.chip2:hover{border-color:var(--amber);color:var(--amber)}
+.chip2.on{background:var(--amber);color:#000;border-color:var(--amber)}
+/* the jig diagram */
+#jigWrap{position:relative;width:330px;height:420px;margin:6px 0 14px;
+  background:#10141a;border:1px solid var(--line);border-radius:3px}
+.slot{position:absolute;background:#191f28;border:1px dashed #38424f;border-radius:2px;
+  color:var(--dim);font-size:9px;letter-spacing:1px;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;text-align:center}
+.slot:hover{border-color:var(--amber);color:var(--amber)}
+.slot.full{background:linear-gradient(180deg,#c2a06a,#a8874f);border:1px solid #6b5433;color:#2a1d0c;
+  font-weight:600}
+.slot.ok{border-color:var(--green);color:var(--green)}
+/* paint */
+#paintWrap{display:flex;gap:18px;align-items:flex-start}
+#paintCv{background:
+  linear-gradient(45deg,#2a2f38 25%,transparent 25%,transparent 75%,#2a2f38 75%),
+  linear-gradient(45deg,#2a2f38 25%,#1b2027 25%,#1b2027 75%,#2a2f38 75%);
+  background-size:18px 18px;background-position:0 0,9px 9px;border:1px solid var(--line);border-radius:2px;cursor:crosshair;
+  max-height:56vh;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.sw2{width:30px;height:24px;border:1px solid #2c3340;border-radius:2px;cursor:pointer;padding:0}
+.sw2.on{outline:2px solid var(--amber);outline-offset:1px}
+.tile{display:flex;gap:8px;align-items:center;padding:6px;border:1px solid var(--line);
+  border-radius:3px;margin-bottom:5px;background:#10141a;cursor:pointer}
+.tile:hover{border-color:var(--amber)}
+.tile.on{border-color:var(--amber);background:#171c24}
+.tile .sq{width:26px;height:26px;border-radius:2px;border:1px solid #2c3340;flex:none}
+.tile .nm{flex:1}
+#help{position:fixed;inset:0;background:rgba(4,5,8,.94);z-index:120;display:none;padding:5vh 8vw;overflow:auto}
+#help.on{display:block}
+#help h3{color:var(--amber);letter-spacing:6px;font-weight:400}
+#help td{padding:3px 16px 3px 0;vertical-align:top}
+.mini{color:var(--dim);font-size:10px;letter-spacing:1px;line-height:1.6}
+.sub{display:flex;flex-direction:column;align-items:center;gap:3px;width:46px}
+.sub input[type=range]{width:70px;transform:rotate(-90deg);margin:30px -12px}
+#fatal{display:none;position:fixed;inset:0;z-index:400;background:#07080c;padding:8vh 10vw;color:var(--txt)}
+#fatal.on{display:block}
+#fatal h3{color:var(--red);letter-spacing:5px;font-weight:400;margin:0 0 12px}
+#fatal pre{background:#0d1015;border:1px solid var(--line);padding:12px;white-space:pre-wrap;
+  color:var(--amber);border-radius:3px;max-height:40vh;overflow:auto}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#232935;border-radius:5px}
+::-webkit-scrollbar-track{background:#0b0e13}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="xhair"></div>
+<div id="target"></div>
+<div id="toast"></div>
+
+<div id="hud">
+  <div class="chip">MODE <b id="modeChip">WALK</b></div>
+  <div class="chip">POS <b id="posChip">HOUSE</b></div>
+  <div class="chip" id="stageChip">BOARD <b>THE PALACE</b></div>
+  <div class="chip" id="clockChip">SHOW <b id="clockTxt">00:00</b></div>
+  <div class="chip" id="cueChip">NEXT <b id="cueTxt">&mdash;</b></div>
+  <div class="chip" id="liveChip">HOUSE OPEN</div>
+  <div class="chip" id="slChip" style="cursor:pointer">SHIFT LOCK <b>OFF</b></div>
+  <div class="chip"><b id="fpsTxt">60</b> FPS</div>
+  <div class="chip" id="vrBtn" style="display:none;cursor:pointer;color:var(--green);
+    border-color:var(--green)"><b>ENTER VR</b></div>
+  <div class="chip" style="color:var(--dim)">TAB console &middot; H help &middot; 1&ndash;9 views &middot; VENUES tab to cross town</div>
+</div>
+
+<div id="dock">
+  <div id="tabs">
+    <button data-p="lights" class="on">LIGHTS</button>
+    <button data-p="fly">FLY RAIL</button>
+    <button data-p="sets">SETS</button>
+    <button data-p="show">SHOWS</button>
+    <button data-p="venue">VENUES</button>
+    <button data-p="shop">WORKSHOP</button>
+    <button data-p="mach">MACHINES</button>
+    <button data-p="smoke">SMOKE</button>
+    <button data-p="sound">SOUND</button>
+    <button data-p="cues">CUES</button>
+    <button data-p="code">CODE</button>
+    <div class="grow"></div>
+    <button class="util" id="btnHelp">HELP</button>
+    <button class="util" id="btnHide">HIDE &#9660;</button>
+  </div>
+
+  <!-- LIGHTS -->
+  <div class="page on" id="p-lights">
+    <div class="row">
+      <div class="card" style="flex:1;min-width:0">
+        <h4>SECTIONS &mdash; click to select, drag the fader, 0 / FL to snap</h4>
+        <div id="chStrip"></div>
+      </div>
+      <div class="col" style="width:230px;flex:none">
+        <div class="card">
+          <h4>SELECTED SECTION</h4>
+          <div id="selInfo" class="mini">no section selected</div>
+          <div id="colourCtl">
+          <div class="row" style="margin-top:7px;gap:6px;align-items:center">
+            <input type="color" id="selColor" value="#ffffff">
+            <select id="gelSel" style="flex:1">
+              <option value="#ffffff">Open White</option>
+              <option value="#ffd9a8">R02 Bastard Amber</option>
+              <option value="#ffb066">R21 Golden Amber</option>
+              <option value="#ff4a3d">R26 Light Red</option>
+              <option value="#ff2f8a">R43 Deep Pink</option>
+              <option value="#8f5cff">R49 Medium Purple</option>
+              <option value="#2f6bff">R80 Primary Blue</option>
+              <option value="#3fd0e0">L201 CTB</option>
+              <option value="#37e07a">R89 Moss Green</option>
+              <option value="#c8d8ff">L202 Cool</option>
+            </select>
+          </div>
+          <div class="row" style="margin-top:6px;gap:6px">
+            <select id="goboSel" style="flex:1">
+              <option value="0">no gobo</option>
+              <option value="1">breakup</option>
+              <option value="2">leaves</option>
+              <option value="3">window</option>
+              <option value="4">stars</option>
+              <option value="5">bars</option>
+            </select>
+            <button class="b" id="btnFocus">FOCUS</button>
+          </div>
+          </div>
+          <div id="moverCtl" style="display:none;margin-top:7px">
+            <label class="f">PAN <input type="range" id="panR" min="-90" max="90" value="0" style="flex:1"><span id="panV">0</span></label>
+            <label class="f">TILT <input type="range" id="tiltR" min="-85" max="20" value="-40" style="flex:1"><span id="tiltV">-40</span></label>
+          </div>
+        </div>
+        <div class="card">
+          <h4>MASTERS</h4>
+          <label class="f">GRAND <input type="range" id="gm" min="0" max="100" value="100" style="flex:1"><span id="gmV">100</span></label>
+          <label class="f">HAZE&nbsp; <input type="range" id="hz" min="0" max="100" value="55" style="flex:1"><span id="hzV">55</span></label>
+          <label class="f">HOUSE <input type="range" id="hl" min="0" max="100" value="70" style="flex:1"><span id="hlV">70</span></label>
+          <label class="f">WORK&nbsp; <input type="range" id="wl" min="0" max="100" value="0" style="flex:1"><span id="wlV">0</span></label>
+          <div class="row" style="margin-top:7px;gap:5px">
+            <button class="b dgr" id="btnBO">BLACKOUT</button>
+            <button class="b" id="btnAll">ALL @ FULL</button>
+          </div>
+          <div class="row" style="margin-top:7px;gap:5px">
+            <button class="b" id="doorsOpen">DOORS OPEN</button>
+            <button class="b" id="doorsShut">DOORS SHUT</button>
+            <button class="b" id="dockOpen">DOCK UP</button>
+            <button class="b" id="dockShut">DOCK DOWN</button>
+          </div>
+          <label class="f" style="margin-top:7px">
+            <input type="checkbox" id="roomCull" checked style="width:auto">
+            ROOM CULLING</label>
+          <div class="mini" style="color:var(--dim);margin-top:2px">
+            only draws the room you are in and the ones you can see into &mdash;
+            shut house doors close the portal</div>
+          <div id="roomStat" class="mini" style="margin-top:5px;color:var(--dim);line-height:1.5"></div>
+          <label class="f" style="margin-top:7px">RENDER
+            <select id="qual" style="flex:1">
+              <option value="auto">auto</option>
+              <option value="low">low &mdash; fastest</option>
+              <option value="med">medium</option>
+              <option value="high">high</option>
+            </select></label>
+        </div>
+      </div>
+      <div class="card" style="width:250px;flex:none">
+        <h4>SUBMASTERS &mdash; click to record, drag to run</h4>
+        <div class="row" id="subs"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLY -->
+  <!-- SHOWS -->
+  <div class="page" id="p-show">
+    <div class="row">
+      <div class="card" style="width:300px;flex:none">
+        <h4>PRODUCTIONS</h4>
+        <div id="showList"></div>
+        <button class="b go" id="showCrewBtn" style="margin-top:9px;font-size:12px;
+          letter-spacing:4px;padding:10px 0">CALL THE CREW IN</button>
+        <div class="row" style="margin-top:5px;gap:5px">
+          <button class="b" id="showLoadBtn" style="flex:1">LOAD IN NOW</button>
+          <button class="b dgr" id="showStrikeBtn">STRIKE</button>
+        </div>
+        <div class="mini" style="color:var(--dim);margin-top:8px;line-height:1.5">
+          <b>Call the crew</b> and the lorry arrives: they bring the set on
+          piece by piece under work light, haul the goods in on the rail, and
+          the show look comes up when they are done. <b>Load in now</b> skips
+          all that and puts it straight on the stage.
+        </div>
+      </div>
+      <div class="card" style="flex:1">
+        <h4>THE LOAD-IN</h4>
+        <div id="showInfo" class="mini" style="line-height:1.6"></div>
+      </div>
+      <div class="card" style="width:230px;flex:none">
+        <h4>THE CREW</h4>
+        <div class="row" style="gap:5px">
+          <button class="b" id="crewIn" style="flex:1">LOAD IN</button>
+          <button class="b" id="crewOut" style="flex:1">LOAD OUT</button>
+        </div>
+        <div class="row" style="gap:5px;margin-top:5px">
+          <button class="b dgr" id="crewStop" style="flex:1">STAND DOWN</button>
+        </div>
+        <label class="f" style="margin-top:6px">PACE
+          <input type="range" id="crewSpeed" min="40" max="300" value="100" style="flex:1"></label>
+        <div id="crewStat" class="mini" style="color:var(--dim);margin-top:6px;line-height:1.5"></div>
+        <div id="crewLog" class="mini" style="color:var(--dim);margin-top:6px;max-height:96px;
+          overflow:auto;line-height:1.45"></div>
+      </div>
+      <div class="card" style="width:250px;flex:none">
+        <h4>THE SETS</h4>
+        <div id="sceneList"></div>
+        <div class="row" style="margin-top:6px;gap:5px">
+          <button class="b" id="scPrev" style="flex:1">&larr; PREV</button>
+          <button class="b" id="scNext" style="flex:1">NEXT &rarr;</button>
+        </div>
+        <div class="mini" style="color:var(--dim);margin-top:8px;line-height:1.5">
+          A show with more than one location builds them all at load-in and
+          changes between them. The cues call the changes; these do it by hand.
+        </div>
+      </div>
+      <div class="card" style="width:220px;flex:none">
+        <h4>MACHINERY</h4>
+        <div id="machNone" class="mini" style="color:var(--dim)">nothing on this set moves</div>
+        <div id="machRev" style="display:none">
+          <label class="f">OUTER <input type="range" id="revOut" min="-100" max="100" value="0" style="flex:1"></label>
+          <label class="f" style="margin-top:6px">INNER <input type="range" id="revIn" min="-100" max="100" value="0" style="flex:1"></label>
+          <button class="b" id="revStop" style="margin-top:6px;width:100%">STOP BOTH</button>
+        </div>
+        <div id="machWrong" style="display:none">
+          <div id="wrongList"></div>
+          <div class="row" style="margin-top:6px;gap:5px">
+            <button class="b dgr" id="wrongAll" style="flex:1">ALL OF IT</button>
+            <button class="b go" id="wrongReset" style="flex:1">STAND IT UP</button>
+          </div>
+        </div>
+        <div id="machStat" class="mini" style="color:var(--dim);margin-top:8px;line-height:1.5"></div>
+      </div>
+      <div class="card" style="width:220px;flex:none">
+        <h4>EFFECTS</h4>
+        <label class="f">RAIN <input type="range" id="fxRain" min="0" max="100" value="0" style="flex:1"></label>
+        <label class="f" style="margin-top:6px">BARS
+          <input type="range" id="fxBars" min="0" max="100" value="0" style="flex:1"></label>
+          <div class="mini" style="color:var(--dim);margin-top:2px">tracks the climbing
+          frames in from the wings</div>
+        <div class="row" style="margin-top:7px;gap:5px">
+          <button class="b" id="fxBolt">LIGHTNING</button>
+          <button class="b" id="fxStorm">STORM</button>
+        </div>
+        <div class="row" style="margin-top:5px;gap:5px">
+          <button class="b" id="fxFire">FIRELIGHT</button>
+        </div>
+        <div id="fxStat" class="mini" style="color:var(--dim);margin-top:8px;line-height:1.5"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VENUES -->
+  <div class="page" id="p-venue">
+    <div class="row">
+      <div class="card" style="width:300px;flex:none">
+        <h4>WHERE YOU ARE</h4>
+        <div id="venueList"></div>
+        <div class="mini" style="color:var(--dim);margin-top:8px;line-height:1.5">
+          Two buildings. Only the one you are standing in is drawn — the other
+          costs nothing at all while you are not in it.
+        </div>
+      </div>
+      <div class="card" style="flex:1">
+        <h4>GO TO</h4>
+        <div id="venueViews" class="row" style="flex-wrap:wrap;gap:5px"></div>
+        <div id="venueInfo" class="mini" style="color:var(--dim);margin-top:10px;line-height:1.6"></div>
+      </div>
+      <div class="card" style="width:250px;flex:none">
+        <h4>THE ARC &mdash; DOORS</h4>
+        <div id="arcDoorList"></div>
+        <div class="row" style="margin-top:6px;gap:5px">
+          <button class="b" id="arcDoorsOpen" style="flex:1">OPEN ALL</button>
+          <button class="b dgr" id="arcDoorsShut" style="flex:1">SHUT ALL</button>
+        </div>
+      </div>
+      <div class="card" style="width:250px;flex:none">
+        <h4>THE ARC &mdash; FOYER LIGHTS</h4>
+        <label class="f">LEVEL <input type="range" id="arcHouse" min="0" max="100" value="85" style="flex:1"></label>
+        <div class="row" style="margin-top:6px;gap:5px">
+          <button class="b" id="arcUp" style="flex:1">FULL</button>
+          <button class="b dgr" id="arcDown" style="flex:1">OUT</button>
+        </div>
+        <div id="arcStat" class="mini" style="color:var(--dim);margin-top:8px;line-height:1.5"></div>
+        <div class="mini" style="color:var(--dim);margin-top:8px;line-height:1.5">
+          This is the front of house. Each auditorium's own house lights are on
+          its own board &mdash; the one you are standing in front of.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SMOKE -->
+  <div class="page" id="p-smoke">
+    <div class="row">
+      <div class="card" style="flex:1;min-width:0">
+        <h4>SMOKE MACHINES</h4>
+        <div id="smokeRack" class="row" style="gap:8px;flex-wrap:wrap"></div>
+      </div>
+      <div class="card" style="width:250px;flex:none">
+        <h4>ALL MACHINES</h4>
+        <button class="b go" id="smkShot" style="font-size:12px;letter-spacing:4px;padding:10px 0">
+          BIG SHOT</button>
+        <div class="row" style="margin-top:6px;gap:5px">
+          <button class="b" id="smkOn" style="flex:1">ALL ON</button>
+          <button class="b" id="smkOff" style="flex:1">ALL OFF</button>
+        </div>
+        <div class="row" style="margin-top:5px;gap:5px">
+          <button class="b" id="smkFill" style="flex:1">FILL TANKS</button>
+          <button class="b dgr" id="smkClear" style="flex:1">CLEAR AIR</button>
+        </div>
+        <label class="f" style="margin-top:8px">MASTER
+          <input type="range" id="smkMaster" min="0" max="100" value="100" style="flex:1"></label>
+        <div id="smokeStat" class="mini" style="color:var(--dim);margin-top:8px;line-height:1.5"></div>
+        <div class="mini" style="color:var(--dim);margin-top:6px;line-height:1.45">
+          What the machines put in the air feeds the haze the beams read
+          through, so the rig thickens up as the stage fills.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="p-fly">
+    <div class="row">
+      <div class="card" style="flex:1;min-width:0">
+        <h4>FLY RAIL &mdash; <span id="flyStageName" style="color:var(--amber)">THE PALACE</span>
+          &middot; single purchase counterweight, 14 linesets</h4>
+        <div style="max-height:215px;overflow:auto">
+        <table class="ls" id="lsTable">
+          <thead><tr><th>#</th><th>LINESET</th><th>GOODS</th><th style="width:120px">TRIM</th>
+          <th>HT</th><th>WT</th><th>STATE</th><th style="width:150px">MOVE</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+      <div class="col" style="width:260px;flex:none">
+        <div class="card">
+          <h4>HANG GOODS ON SELECTED</h4>
+          <div class="row" style="flex-wrap:wrap;gap:4px" id="goodsPal"></div>
+        </div>
+        <div class="card">
+          <h4>SHOW HANG</h4>
+          <div class="row" style="flex-wrap:wrap;gap:4px">
+            <button class="b" id="hangSave">SAVE TO SHOW</button>
+            <button class="b" id="hangLoad">RESTORE</button>
+            <button class="b dgr" id="hangForget">FORGET</button>
+          </div>
+          <div id="hangStat" class="mini" style="margin-top:7px;color:var(--dim);line-height:1.5"></div>
+        </div>
+        <div class="card">
+          <h4>GROUP CALLS</h4>
+          <div id="railGroups"></div>
+          <div class="mini" style="margin-top:7px;color:var(--dim)">Calls every lineset
+          carrying that kind of goods at once. Locked linesets sit it out.</div>
+        </div>
+        <div class="card">
+          <h4>RAIL CALLS</h4>
+          <div class="row" style="flex-wrap:wrap;gap:4px">
+            <button class="b" id="flyAllIn">ALL IN</button>
+            <button class="b" id="flyAllOut">ALL OUT</button>
+            <button class="b" id="flyStop">STOP ALL</button>
+            <button class="b" id="flyPreset">SHOW LOOK</button>
+          </div>
+          <div class="mini" style="margin-top:7px">Trim 0 = deck. Heavier goods travel slower &mdash;
+          the rail is only as fast as the operator. <b style="color:var(--red)">LOCK</b> a lineset to keep it from moving in a cue.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETS -->
+  <div class="page" id="p-sets">
+    <div class="row">
+      <div class="card" style="width:330px;flex:none">
+        <h4>SCENIC STOCK &mdash; click, then click the deck to place</h4>
+        <div class="row" style="flex-wrap:wrap;gap:4px" id="setPal"></div>
+      </div>
+      <div class="card" style="flex:1">
+        <h4>ON DECK</h4>
+        <div id="setList" style="max-height:150px;overflow:auto" class="mini"></div>
+        <div class="row" style="margin-top:8px;gap:5px;flex-wrap:wrap">
+          <button class="b" id="setRot">ROTATE 15&deg; <span class="mini">[R]</span></button>
+          <button class="b dgr" id="setDel">DELETE <span class="mini">[DEL]</span></button>
+          <button class="b dgr" id="setClear">STRIKE ALL</button>
+          <button class="b" id="setSave">SAVE GROUNDPLAN</button>
+          <button class="b" id="setLoad">LOAD</button>
+        </div>
+        <div class="mini" style="margin-top:8px">Placing works in ORBIT mode or in WALK mode looking at the deck.
+        Grab a placed piece by clicking it, then drag. Hold <span class="kbd">Shift</span> to nudge on the Y axis (stack platforms).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE SHOP -->
+  <div class="page" id="p-shop">
+    <div class="row">
+      <div class="card" style="width:300px;flex:none">
+        <h4>THE SCENE SHOP</h4>
+        <div class="mini">The workshop is a bench, not a room. Frame timber up on the
+        grid, take cloth off the shelf, paint it, then send it through to the stage.</div>
+        <button class="b" id="openBench" style="width:100%;margin-top:9px;padding:10px 0;
+          letter-spacing:4px">OPEN THE BENCH</button>
+        <div class="mini" style="margin-top:8px">Or press <span class="kbd">B</span> anywhere
+        in the building.</div>
+      </div>
+      <div class="card" style="flex:1">
+        <h4>STOCK</h4>
+        <div id="shopSummary" class="mini"></div>
+      </div>
+      <div class="card" style="width:230px;flex:none">
+        <h4>MADE TODAY</h4>
+        <div id="shopMade" class="mini" style="max-height:170px;overflow:auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MACHINES -->
+  <div class="page" id="p-mach">
+    <div class="row">
+      <div class="card" style="flex:1;min-width:0">
+        <h4>MACHINES &mdash; <span id="machCount"></span></h4>
+        <div id="machList" style="max-height:230px;overflow:auto"></div>
+      </div>
+      <div class="card" style="width:260px;flex:none">
+        <h4>HOW THEY WORK</h4>
+        <div class="mini" style="line-height:1.75">
+        Put a <b>pivot</b>, <b>motor</b>, <b>slider</b> or <b>powered slider</b> into a build and
+        everything resting on it becomes a moving assembly.<br><br>
+        <b style="color:var(--amber)">POWERED</b> parts get a fader here &mdash; a motor spins a
+        revolve, a powered slider tracks scenery on and off.<br>
+        <b style="color:var(--cyan)">PASSIVE</b> parts have no drive. Walk up, look at the moving
+        half and hold the left button to push it, the same way you haul a lineset.<br><br>
+        A slider runs along the axis the joint faces &mdash; rotate the joint with <b>R</b> in the
+        editor to swap between across and up-and-down stage.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOUND -->
+  <div class="page" id="p-sound">
+    <div class="row">
+      <div class="card" style="flex:1">
+        <h4>SFX &mdash; click to fire, right-click to loop</h4>
+        <div class="row" style="flex-wrap:wrap;gap:4px" id="sfxPal"></div>
+      </div>
+      <div class="card" style="width:340px;flex:none">
+        <h4>MIX</h4>
+        <div class="row" id="busStrip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUES -->
+  <div class="page" id="p-cues">
+    <div class="row">
+      <div class="card" style="flex:1;min-width:0">
+        <h4>CUE STACK</h4>
+        <div id="cuelist"></div>
+      </div>
+      <div class="col" style="width:290px;flex:none">
+        <div class="card">
+          <button class="b go" id="btnGo">G O</button>
+          <div class="row" style="margin-top:6px;gap:5px">
+            <button class="b" id="btnBack">&#9664; BACK</button>
+            <button class="b" id="btnStopFade">HOLD</button>
+            <button class="b" id="btnTop">TOP OF SHOW</button>
+          </div>
+        </div>
+        <div class="card">
+          <h4>RECORD CUE</h4>
+          <div class="row" style="gap:5px">
+            <input id="qNum" placeholder="q #" style="width:52px">
+            <input id="qLabel" placeholder="label" style="flex:1">
+          </div>
+          <div class="row" style="gap:5px;margin-top:5px">
+            <label class="f" style="flex:1">FADE <input id="qFade" value="3" style="width:44px"></label>
+            <label class="f" style="flex:1">FOLLOW <input id="qFollow" value="" style="width:44px"></label>
+          </div>
+          <div class="row" style="gap:5px;margin-top:5px;flex-wrap:wrap">
+            <label class="f"><input type="checkbox" id="qLx" checked> LX</label>
+            <label class="f"><input type="checkbox" id="qFly" checked> FLY</label>
+            <label class="f"><input type="checkbox" id="qSfx"> SFX</label>
+            <select id="qSfxSel" style="flex:1"></select>
+          </div>
+          <button class="b" id="btnRec" style="width:100%;margin-top:6px">RECORD LIVE STATE</button>
+          <button class="b dgr" id="btnDelQ" style="width:100%;margin-top:4px">DELETE SELECTED CUE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CODE -->
+  <div class="page" id="p-code">
+    <div class="row">
+      <div class="col" style="flex:1;min-width:0">
+        <textarea id="code" spellcheck="false"></textarea>
+        <div class="row" style="gap:5px">
+          <button class="b" id="btnRun">&#9654; RUN SHOW</button>
+          <button class="b dgr" id="btnHalt">&#9632; HALT</button>
+          <label class="f"><input type="checkbox" id="btnLoop"> loop</label>
+          <div id="runState" class="mini" style="flex:1;text-align:right"></div>
+        </div>
+        <div id="codeOut"></div>
+      </div>
+      <div class="card" style="width:280px;flex:none;overflow:auto">
+        <h4>LANGUAGE</h4>
+        <div class="mini" id="langRef"></div>
+      </div>
+      <div class="card" style="width:150px;flex:none">
+        <h4>LOAD</h4>
+        <div id="snips"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="shopUI">
+  <div id="shopHead">
+    <h2>THE SCENE SHOP</h2>
+    <div class="mini" id="shopWhere">saw bench</div>
+    <div class="sp"></div>
+    <div class="mini" id="shopTally"></div>
+    <button class="b" id="benchClose">CLOSE &nbsp;[ESC]</button>
+  </div>
+  <div id="shopBody">
+    <div id="shopRail">
+      <button data-bench="build">BUILD<span class="cnt" id="cntBuild"></span></button>
+      <button data-bench="paint">PAINT<span class="cnt" id="cntPaint"></span></button>
+      <button data-bench="stock">STOCK<span class="cnt" id="cntStock"></span></button>
+    </div>
+
+    <div id="shopMain">
+      <!-- BUILD -->
+      <div class="bench on" id="b-build">
+        <div id="buildBar">
+          <div class="row" style="gap:3px" id="shapeRow"></div>
+          <div style="width:1px;height:34px;background:var(--line);margin:0 4px"></div>
+          <div class="row" style="gap:3px;flex-wrap:wrap" id="buildPots"></div>
+          <input type="color" id="buildCustom" value="#c2a06a" style="height:26px;width:34px">
+          <div style="width:1px;height:34px;background:var(--line);margin:0 4px"></div>
+          <select id="buildFinish">
+            <option value="paint">painted</option>
+            <option value="timber">bare timber</option>
+            <option value="brick">brick</option>
+            <option value="plaster">plaster</option>
+          </select>
+          <button class="b" id="bRot">ROTATE [R]</button>
+          <button class="b" id="bMirror">MIRROR [M]</button>
+          <button class="b on" id="bRefs">SIGHTLINES</button>
+          <button class="b" id="bHome">RECENTRE</button>
+          <button class="b" id="bBrush">PAINT TOOL [P]</button>
+          <button class="b dgr" id="bErase">ERASE [X]</button>
+          <div style="width:1px;height:34px;background:var(--line);margin:0 4px"></div>
+          <button class="b" id="bDown">LAYER &minus;</button>
+          <span id="bLayer" class="mini" style="min-width:56px;text-align:center"></span>
+          <button class="b" id="bUp">LAYER +</button>
+          <div class="sp" style="flex:1"></div>
+          <button class="b dgr" id="bClear">CLEAR</button>
+          <select id="buildDest"></select>
+          <button class="b" id="bSend" style="letter-spacing:3px">SEND IT</button>
+        </div>
+        <div id="buildView">
+          <div id="buildStat"></div>
+          <div class="hint">
+            <b>LEFT-DRAG</b> place a run &nbsp;·&nbsp; <b>RIGHT-DRAG</b> remove a run
+            &nbsp;·&nbsp; <b>MIDDLE</b> or <b>ALT-DRAG</b> orbit &nbsp;·&nbsp; <b>WHEEL</b> zoom<br>
+            <b>WASD</b> move about the stage &nbsp;·&nbsp; <b>SPACE / CTRL</b> up and down
+            &nbsp;·&nbsp; <b>SHIFT</b> faster &nbsp;·&nbsp; <b>RECENTRE</b> puts you back<br>
+            <b>R</b> rotate &nbsp;·&nbsp; <b>M</b> mirror &nbsp;·&nbsp; <b>P</b> paint tool
+            &nbsp;·&nbsp; <b>X</b> erase
+            &nbsp;·&nbsp; <b>Q/E</b> layer down / up &nbsp;·&nbsp; <b>ESC</b> cancel a drag<br>
+            Joints carry whatever rests on them: <b>pivot</b> and <b>slider</b> you push by hand,
+            <b>motor</b> and <b>powered slider</b> get a fader on the MACHINES page.
+          </div>
+        </div>
+      </div>
+
+      <!-- PAINT -->
+      <div class="bench" id="b-paint">
+        <h3>THE PAINT DECK</h3>
+        <p class="lede">Pick something to paint, then work on it. Drag to paint, and the piece in
+        the shop updates as you go.</p>
+        <div id="paintWrap">
+          <canvas id="paintCv" width="576" height="1024"></canvas>
+          <div style="width:260px;flex:none">
+            <h4>ON THE FRAME</h4>
+            <div id="paintPick" style="max-height:120px;overflow:auto;margin-bottom:8px"></div>
+            <div class="row" style="gap:5px;margin-bottom:10px">
+              <select id="backdropStock" style="flex:1">
+                <option value="0">black serge</option>
+                <option value="1" selected>crimson velour</option>
+                <option value="2">bleached calico</option>
+                <option value="3">midnight blue</option>
+                <option value="4">forest green</option>
+              </select>
+              <button class="b" id="newBackdrop">NEW CLOTH</button>
+            </div>
+            <h4>IMPORT A PICTURE</h4>
+            <label class="b" style="display:block;text-align:center;cursor:pointer;margin-bottom:10px">
+              CHOOSE AN IMAGE
+              <input type="file" id="importPic" accept="image/*" style="display:none">
+            </label>
+            <h4>COLOUR</h4>
+            <div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px" id="potRow"></div>
+            <input type="color" id="paintCustom" value="#2f6bff" style="width:100%;height:26px">
+            <h4 style="margin-top:12px">TOOL</h4>
+            <div class="row" style="gap:4px;flex-wrap:wrap;margin-bottom:8px">
+              <button class="b" id="tBrush">BRUSH</button>
+              <button class="b" id="tRoller">ROLLER</button>
+              <button class="b" id="tFill">FLOOD</button>
+              <button class="b" id="tErase" title="rag off the paint, back to bare cloth">ERASER</button>
+              <button class="b" id="tUnerase" title="paint an unpainted hole back in">PATCH A HOLE</button>
+              <button class="b dgr" id="tCut">CUT A HOLE</button>
+            </div>
+            <label class="f">SIZE <input type="range" id="pSize" min="4" max="140" value="34" style="flex:1">
+              <span id="pSizeV">34</span></label>
+            <button class="b" id="sendCloth" style="width:100%;margin-top:10px;padding:9px 0;
+              letter-spacing:3px;border-color:var(--amber);color:var(--amber)">
+              SEND THIS CLOTH TO THE RAIL</button>
+            <h4 style="margin-top:12px">LAY IN</h4>
+            <div class="row" style="gap:4px;flex-wrap:wrap">
+              <button class="b" data-wash="sky">SKY</button>
+              <button class="b" data-wash="night">NIGHT</button>
+              <button class="b" data-wash="ground">GROUND</button>
+              <button class="b" data-wash="trees">TREES</button>
+              <button class="b" data-wash="brick">BRICK</button>
+              <button class="b" data-wash="boards">BOARDS</button>
+              <button class="b dgr" data-wash="clear">WIPE</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STOCK -->
+      <div class="bench" id="b-stock">
+        <h3>FINISHED STOCK</h3>
+        <p class="lede">Send it through to the theatre. Flats go onto the deck as scenery; cloths
+        join the goods list on the fly rail so you can hang them.</p>
+        <div class="row" style="gap:26px">
+          <div style="flex:1"><h4>COVERED FLATS</h4><div id="stockFlats"></div></div>
+          <div style="flex:1"><h4>CUT CLOTH</h4><div id="stockCloth"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="shopSide">
+      <h4>MADE TODAY</h4>
+      <div id="benchLog" class="mini"></div>
+    </div>
+  </div>
+</div>
+
+<div id="help">
+  <h3>THE HOUSE &mdash; OPERATOR'S MANUAL</h3>
+  <div class="row" style="gap:50px;align-items:flex-start">
+  <table><tbody>
+    <tr><td><span class="kbd">W A S D</span></td><td>walk</td></tr>
+    <tr><td><span class="kbd">Mouse</span></td><td>look (click canvas to capture)</td></tr>
+    <tr><td><span class="kbd">Shift</span></td><td>run</td></tr>
+    <tr><td><span class="kbd">L</span></td><td>shift lock &mdash; latch the run on</td></tr>
+    <tr><td><span class="kbd">Space</span></td><td>jump / <b>GO</b> when console focused</td></tr>
+    <tr><td><span class="kbd">V</span></td><td>toggle WALK / ORBIT camera</td></tr>
+    <tr><td><span class="kbd">1&ndash;9</span></td><td>orchestra, balcony, deck, wings, rail, grid, foyer, dock, scene shop</td></tr>
+    <tr><td><span class="kbd">E</span></td><td>use what you're looking at</td></tr>
+    <tr><td><span class="kbd">Hold LMB</span></td><td>haul an unlocked lineset up and down</td></tr>
+    <tr><td><span class="kbd">E</span> on a door</td><td>swing the house doors open or shut</td></tr>
+    <tr><td><span class="kbd">TAB</span></td><td>show / hide console</td></tr>
+  </tbody></table>
+  <table><tbody>
+    <tr><td><span class="kbd">B</span></td><td>open the scene shop bench</td></tr>
+    <tr><td><span class="kbd">Shift+B</span></td><td>blackout toggle</td></tr>
+    <tr><td><span class="kbd">G</span></td><td>GO next cue</td></tr>
+    <tr><td><span class="kbd">F</span></td><td>followspot on you / release</td></tr>
+    <tr><td><span class="kbd">H</span></td><td>this manual</td></tr>
+    <tr><td><span class="kbd">R</span></td><td>rotate held scenic piece</td></tr>
+    <tr><td><span class="kbd">DEL</span></td><td>strike selected scenic piece</td></tr>
+    <tr><td><span class="kbd">Esc</span></td><td>release mouse</td></tr>
+  </tbody></table>
+  <div style="max-width:420px" class="mini">
+    <p>The room is the <b>Palace Theatre, 1564 Broadway</b> &mdash; Kirchhoff &amp; Rose, 1913.
+    Plain plaster walls over a mahogany wainscot, two balconies sloping down toward the
+    stage, a coved ceiling on a gilded cornice and a 14&thinsp;ft bronze chandelier
+    hanging out of the dome. No pit &mdash; the apron bows out into the house across the
+    whole width of the stage.</p>
+    <p>You are the technician. The board is divided into <b>eight sections</b> &mdash;
+    front wash, stage wash, back light, cyc, moving heads, followspot, house and work
+    light. Each one has a brightness fader and a colour; you never touch a single lamp.
+    Fourteen counterweight linesets fly scenery in and out of a 25&thinsp;m loft, and if
+    you unlock one you can haul it by hand from the deck.</p>
+    <p>Behind the rear wall is the <b>grand foyer</b> &mdash; box office, bar, poster
+    frames, a staircase up to the mezzanine gallery and the street doors. The doors
+    between the lobby and the seats really swing: look at one and press <b>E</b>, or use
+    DOORS OPEN / DOORS SHUT.</p>
+    <p>Behind the stage is the <b>crossover</b>, then the <b>loading dock</b>, and beyond
+    that the <b>scene shop</b> &mdash; a separate shed where you do the work with your hands.
+    Cut timber on the saw, frame it up in the jig, cut and stretch cloth over it, dip a brush
+    in a pot and paint the thing, then carry it back and put it on the stage. Nothing is done
+    from a menu.</p>
+    <p>Bring every section to zero and the house goes properly black.</p>
+    <p>Build a set on the deck, hang goods on the rail, write a look, record it as a cue,
+    then run the stack with GO. Or drop into the CODE tab and program the whole show as a timed script.</p>
+    <p style="color:var(--amber)">Press H again to close.</p>
+  </div>
+  </div>
+</div>
+
+<div id="veil">
+  <h1>THE PALACE</h1>
+  <h2>1564 BROADWAY &middot; TECHNICIAN SIMULATOR</h2>
+  <div id="bar"><i></i></div>
+  <small id="loadTxt">RAISING THE IRON&hellip;</small>
+  <button id="startBtn">ENTER THE THEATRE</button>
+</div>
+
+<div id="fatal"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* if cdnjs is blocked or offline, try a second source before giving up */
+if(typeof THREE === 'undefined')
+  document.write('<scr'+'ipt src="https://unpkg.com/three@0.128.0/build/three.min.js"><\/scr'+'ipt>');
+</script>
+<script>
+/* ---- fatal-error reporting: never fail silently to a black screen ---- */
+function FATAL(title, detail){
+  var el = document.getElementById('fatal');
+  el.className = 'on';
+  el.innerHTML = '<div><h3>'+title+'</h3><pre>'+String(detail||'').replace(/</g,'&lt;')+'</pre>'+
+    '<p class="mini">If this keeps happening, try another browser, or turn on hardware '+
+    'acceleration in your browser settings.</p></div>';
+  var v = document.getElementById('veil'); if(v) v.style.display='none';
+}
+/* three.js reports shader/GPU trouble through console.error — catch it so a
+   driver limit shows up as a message instead of an unexplained black screen */
+window.__glErr = null;
+(function(){
+  var real = console.error.bind(console);
+  console.error = function(){
+    var msg = Array.prototype.map.call(arguments, String).join(' ');
+    if(!window.__glErr && /THREE|shader|WebGL|uniform|varying/i.test(msg)) window.__glErr = msg;
+    real.apply(null, arguments);
+  };
+})();
+window.addEventListener('error', function(e){
+  if(!document.getElementById('fatal').className)
+    FATAL('Something broke', (e.message||'')+'\n'+(e.filename||'')+':'+(e.lineno||''));
+});
+(function(){
+  if(typeof THREE === 'undefined'){
+    FATAL('Could not load the 3D engine',
+      'three.js could not be fetched from the network.\nThis page needs an internet connection the first time it loads.');
+    throw new Error('three.js missing');
+  }
+  try{
+    var c = document.createElement('canvas');
+    if(!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl')))
+      throw new Error('no WebGL context');
+  }catch(err){
+    FATAL('WebGL is not available', 'Your browser could not open a WebGL context.\n'+err.message);
+    throw err;
+  }
+})();
+</script>
+<script>

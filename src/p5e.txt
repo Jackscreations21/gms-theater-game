@@ -1,0 +1,262 @@
+
+/* ============================================================================
+   SMOKE
+
+   Four machines on the deck: two floor foggers downstage that push low fog
+   across the boards, and two hazers in the wings that fill the air upstage so
+   the beams read.  Each one has its own output fader, its own tank, and a
+   BURST button for a shot of it.
+
+   The puffs are one instanced batch of soft billboards.  They are lit, not
+   additive, so smoke in a red wash comes out red and smoke in the dark stays
+   dark — which is the whole point of putting it on a stage.
+   ========================================================================== */
+const SMOKE = {
+  units: [], puffs: null, list: [], group: null,
+  n: 340, next: 0, t: 0, haze: 0, master: 1
+};
+
+function smokeTex(){
+  const S = 128, c = cvs(S, S), g = c.getContext('2d');
+  const gr = g.createRadialGradient(S/2, S/2, 2, S/2, S/2, S/2);
+  gr.addColorStop(0.00, 'rgba(255,255,255,.72)');
+  gr.addColorStop(0.35, 'rgba(255,255,255,.34)');
+  gr.addColorStop(0.70, 'rgba(255,255,255,.10)');
+  gr.addColorStop(1.00, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  // break the perfect circle up a little
+  for(let i=0;i<26;i++){
+    const a = Math.random()*6.283, r = rnd(8, S*0.42);
+    const x = S/2 + Math.cos(a)*r, y = S/2 + Math.sin(a)*r;
+    const g2 = g.createRadialGradient(x, y, 1, x, y, rnd(10, 30));
+    g2.addColorStop(0, 'rgba(255,255,255,.16)');
+    g2.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = g2; g.fillRect(0, 0, S, S);
+  }
+  return tex(c, 1, 1);
+}
+
+/* ---- one machine: a black box on the deck with a nozzle ---- */
+function makeSmokeUnit(o){
+  const g = new T.Group();
+  g.position.set(o.x, o.y || 0, o.z);
+  g.rotation.y = o.yaw || 0;
+  smokeRoot().add(g);
+
+  const body = new T.Mesh(new T.BoxGeometry(0.62, 0.34, 0.44),
+    new T.MeshStandardMaterial({color:0x14161a, roughness:.7, metalness:.3}));
+  body.position.y = 0.19; body.castShadow = body.receiveShadow = true; g.add(body);
+  const vent = new T.Mesh(new T.CylinderGeometry(0.1, 0.13, 0.18, 12),
+    new T.MeshStandardMaterial({color:0x53585f, roughness:.5, metalness:.7}));
+  vent.rotation.x = Math.PI/2 + (o.tilt || 0);
+  vent.position.set(0, 0.22, 0.28); g.add(vent);
+  const feet = new T.Mesh(new T.BoxGeometry(0.66, 0.04, 0.48),
+    new T.MeshStandardMaterial({color:0x0a0b0d, roughness:.9}));
+  feet.position.y = 0.02; g.add(feet);
+  // the ready lamp: amber while it heats, green when it will fire
+  const lamp = new T.Mesh(new T.SphereGeometry(0.035, 8, 6),
+    new T.MeshBasicMaterial({color:0x1a2a1a}));
+  lamp.position.set(0.22, 0.3, 0.23); g.add(lamp);
+
+  const u = {
+    id: SMOKE.units.length + 1,
+    name: o.name, kind: o.kind || 'fog',
+    group: g, lamp, show: !!o.show,
+    x: o.x, y: o.y || 0, z: o.z, yaw: o.yaw || 0, tilt: o.tilt || 0,
+    out: 0, target: 0, burst: 0,
+    tank: 1, heat: 1, emit: 0
+  };
+  SMOKE.units.push(u);
+  return u;
+}
+
+/* ---- machines that come in with a set ----
+   A show can rig its own, up on a gallery or in behind a frame, and they take
+   their place on the SMOKE page alongside the house kit.  They go out again
+   when the set is struck.                                                  */
+function addShowSmoke(o){
+  const u = makeSmokeUnit(Object.assign({show:true}, o));
+  if(typeof SHOW !== 'undefined'){
+    SHOW.smoke = SHOW.smoke || [];
+    SHOW.smoke.push(u);
+  }
+  if(typeof buildSmokeUI === 'function') buildSmokeUI();
+  return u;
+}
+function removeShowSmoke(){
+  const keep = [];
+  for(const u of SMOKE.units){
+    if(!u.show){ keep.push(u); continue; }
+    u.group.parent && u.group.parent.remove(u.group);
+    if(typeof disposeTree === 'function') disposeTree(u.group);
+  }
+  SMOKE.units.length = 0;
+  keep.forEach((u,i)=>{ u.id = i+1; SMOKE.units.push(u); });
+  if(typeof SHOW !== 'undefined') SHOW.smoke = [];
+  if(typeof buildSmokeUI === 'function') buildSmokeUI();
+}
+function smokeRoot(){
+  if(SMOKE.group) return SMOKE.group;
+  const g = new T.Group(); g.name = 'smoke';
+  (typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.stage ? ROOM_GROUP.stage : world).add(g);
+  SMOKE.group = g;
+  return g;
+}
+
+function buildSmoke(){
+  if(SMOKE.puffs) return;
+  const mat = new T.MeshLambertMaterial({
+    map: smokeTex(), color: 0xdfe4ec, transparent: true, opacity: 1,
+    depthWrite: false, side: T.DoubleSide, fog: true
+  });
+  const im = new T.InstancedMesh(new T.PlaneGeometry(1, 1), mat, SMOKE.n);
+  im.frustumCulled = false;
+  im.raycast = ()=>{};
+  im.userData.effect = true;               // never the crew's to carry
+  im.userData.moves = true;
+  im.renderOrder = 3;
+  smokeRoot().add(im);
+  SMOKE.puffs = im;
+
+  const d = new T.Object3D();
+  for(let i=0;i<SMOKE.n;i++){
+    SMOKE.list.push({live:false, x:0, y:-99, z:0, vx:0, vy:0, vz:0,
+                     t:0, life:1, size:1, spin:0, seed:Math.random()*6.283});
+    d.scale.set(0,0,0); d.updateMatrix();
+    im.setMatrixAt(i, d.matrix);
+  }
+  im.instanceMatrix.needsUpdate = true;
+
+  /* two floor foggers downstage, aimed across; two hazers in the wings */
+  makeSmokeUnit({name:'FOGGER DSL', kind:'fog',  x:-8.6, z:-1.4, yaw: Math.PI*0.42, tilt:0.12});
+  makeSmokeUnit({name:'FOGGER DSR', kind:'fog',  x: 8.6, z:-1.4, yaw:-Math.PI*0.42, tilt:0.12});
+  makeSmokeUnit({name:'HAZER SL',   kind:'haze', x:-12.0, z:-9.0, yaw: Math.PI*0.5, tilt:-0.55});
+  makeSmokeUnit({name:'HAZER SR',   kind:'haze', x: 12.0, z:-9.0, yaw:-Math.PI*0.5, tilt:-0.55});
+}
+
+/* ---- controls ---- */
+function setSmoke(u, v){
+  if(!u) return 0;
+  u.target = clamp(v, 0, 1);
+  return u.target;
+}
+function smokeBurst(u, secs){
+  if(!u) return false;
+  if(u.tank < 0.02){ toast(u.name + ' is out of fluid'); return false; }
+  u.burst = Math.max(u.burst, secs === undefined ? 2.2 : secs);
+  if(typeof Snd !== 'undefined') Snd.play('whoosh');
+  return true;
+}
+function smokeAll(v){
+  SMOKE.units.forEach(u=>setSmoke(u, v));
+  toast(v > 0 ? 'All machines running' : 'All machines off');
+}
+function smokeBurstAll(){
+  SMOKE.units.forEach(u=>smokeBurst(u, 2.6));
+  toast('Big shot');
+}
+function smokeRefill(){
+  SMOKE.units.forEach(u=>{ u.tank = 1; });
+  toast('Tanks filled');
+}
+
+/* ---- the puffs ---- */
+function spawnPuff(u, hard){
+  const p = SMOKE.list[SMOKE.next];
+  SMOKE.next = (SMOKE.next + 1) % SMOKE.list.length;
+  const dirX = Math.sin(u.yaw), dirZ = Math.cos(u.yaw);
+  const up = Math.sin(-u.tilt);
+  const spd = (u.kind === 'fog' ? rnd(2.6, 4.4) : rnd(1.6, 2.8)) * (hard ? 1.7 : 1);
+  p.live = true;
+  p.x = u.x + dirX*0.4 + rnd(-0.1, 0.1);
+  p.y = u.y + 0.24 + rnd(-0.04, 0.06);
+  p.z = u.z + dirZ*0.4 + rnd(-0.1, 0.1);
+  p.vx = dirX*spd + rnd(-0.35, 0.35);
+  p.vz = dirZ*spd + rnd(-0.35, 0.35);
+  p.vy = up*spd + (u.kind === 'fog' ? rnd(-0.15, 0.12) : rnd(0.25, 0.7));
+  p.t = 0;
+  p.life = u.kind === 'fog' ? rnd(5.0, 9.0) : rnd(7.0, 12.0);
+  p.size = (u.kind === 'fog' ? rnd(1.1, 2.1) : rnd(1.8, 3.2)) * (hard ? 1.25 : 1);
+  p.spin = rnd(-0.3, 0.3);
+  p.seed = Math.random()*6.283;
+  return p;
+}
+const _sp = new T.Object3D();
+function updateSmoke(dt){
+  if(!SMOKE.puffs) return;
+  SMOKE.t += dt;
+
+  /* the machines: output chases the fader, a burst overrides it, and running
+     one costs fluid.  A cold machine cannot fire.                          */
+  let total = 0;
+  for(const u of SMOKE.units){
+    if(u.burst > 0) u.burst = Math.max(0, u.burst - dt);
+    const want = Math.max(u.target, u.burst > 0 ? 1 : 0) * SMOKE.master;
+    u.out += clamp(want - u.out, -dt*1.6, dt*2.6);
+    if(u.tank <= 0){ u.out = Math.min(u.out, 0); u.tank = 0; }
+    u.tank = clamp(u.tank - u.out * dt * 0.0016, 0, 1);   // ~10 minutes flat out
+    /* the block cools while it is pumping and comes back up when it is not.
+       Running flat out for a couple of minutes will drop it below temperature
+       and it has to catch up — which is exactly what they do.             */
+    u.heat = clamp(u.heat + (u.out > 0.4 ? -dt*0.008 : dt*0.05), 0, 1);
+    const able = u.tank > 0.01 && u.heat > 0.25;
+    u.emit = able ? u.out : 0;
+    total += u.emit;
+    // the ready lamp
+    u.lamp.material.color.setRGB(
+      able ? 0.1 : 0.5, able ? 0.9 : 0.25, 0.12);
+    // spawn
+    if(u.emit > 0.01){
+      const rate = (u.kind === 'fog' ? 26 : 14) * u.emit;
+      u._acc = (u._acc || 0) + rate * dt;
+      while(u._acc >= 1){ u._acc -= 1; spawnPuff(u, u.burst > 0); }
+    }
+  }
+  /* what the machines put in the air feeds the haze the beams read through */
+  SMOKE.haze = clamp(SMOKE.haze + (Math.min(1, total/2.4) - SMOKE.haze) * dt * 0.35, 0, 1);
+
+  /* the puffs themselves */
+  const cam = camera.position;
+  let live = 0;
+  for(let i=0;i<SMOKE.list.length;i++){
+    const p = SMOKE.list[i];
+    if(!p.live){ continue; }
+    p.t += dt;
+    if(p.t >= p.life){ p.live = false; _sp.scale.set(0,0,0); _sp.updateMatrix();
+                       SMOKE.puffs.setMatrixAt(i, _sp.matrix); continue; }
+    const k = p.t / p.life;
+    // it slows down, spreads, and drifts
+    const drag = 1 - Math.min(0.92, dt*1.1);
+    p.vx *= drag; p.vz *= drag;
+    p.vy = p.vy * drag + (0.06 - k*0.04) * dt;
+    p.x += p.vx*dt + Math.sin(SMOKE.t*0.5 + p.seed)*0.06*dt;
+    p.y += p.vy*dt;
+    p.z += p.vz*dt + Math.cos(SMOKE.t*0.4 + p.seed)*0.06*dt;
+    if(p.y < 0.05){ p.y = 0.05; p.vy = Math.abs(p.vy)*0.15; }
+    live++;
+    const grow = p.size * (0.5 + k*2.4);
+    _sp.position.set(p.x, p.y, p.z);
+    _sp.lookAt(cam);
+    _sp.rotateZ(p.seed + p.spin*p.t);
+    _sp.scale.set(grow, grow, 1);
+    _sp.updateMatrix();
+    SMOKE.puffs.setMatrixAt(i, _sp.matrix);
+  }
+  SMOKE.puffs.instanceMatrix.needsUpdate = true;
+  SMOKE.puffs.visible = live > 0;
+  // thin the whole batch out as it disperses, so it never turns into soup
+  SMOKE.puffs.material.opacity = 0.40;
+  SMOKE.live = live;
+}
+function smokeClear(){
+  SMOKE.units.forEach(u=>{ u.target = 0; u.burst = 0; u.out = 0; });
+  SMOKE.list.forEach(p=>{ p.live = false; });
+  SMOKE.haze = 0;
+  if(SMOKE.puffs){
+    const d = new T.Object3D(); d.scale.set(0,0,0); d.updateMatrix();
+    for(let i=0;i<SMOKE.list.length;i++) SMOKE.puffs.setMatrixAt(i, d.matrix);
+    SMOKE.puffs.instanceMatrix.needsUpdate = true;
+    SMOKE.puffs.visible = false;
+  }
+  toast('Smoke cleared');
+}

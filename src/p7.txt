@@ -1,0 +1,1535 @@
+
+WALKABLE.push(setGroup);
+
+/* freeze the matrices of everything that will never move again */
+function lockStatic(){
+  for(const o of STATIC){ o.updateMatrix(); o.matrixAutoUpdate = false; }
+  world.updateMatrixWorld(true);
+}
+
+/* ============================================================================
+   CAMERA / CONTROLS
+   ========================================================================== */
+const Player = {
+  pos: new T.Vector3(0, 0, 13),
+  vel: new T.Vector3(),
+  yaw: 0, pitch: 0.02,
+  eye: 1.68, onGround:true, mode:'walk'
+};
+const Orbit = { target:new T.Vector3(0,3,-3), dist:26, yaw:Math.PI, pitch:-0.28 };
+const keys = {};
+let pointerLocked = false;
+
+const VIEWS = {
+  1:{name:'ORCHESTRA', pos:new T.Vector3(0,0.2,13), yaw:0, pitch:0.05, orbit:[new T.Vector3(0,5,0),24,0,-0.12]},
+  2:{name:'BALCONY',   pos:new T.Vector3(0,D.balcY+0.6,25), yaw:0, pitch:-0.15, orbit:[new T.Vector3(0,8,4),24,0,-0.26]},
+  3:{name:'ON DECK',   pos:new T.Vector3(0,0.4,-3),yaw:Math.PI, pitch:0.02, orbit:[new T.Vector3(0,4,-4),18,0.10,-0.12]},
+  4:{name:'WINGS',     pos:new T.Vector3(-12,0.4,-6), yaw:-Math.PI/2, pitch:0, orbit:[new T.Vector3(-5,4,-6),17,Math.PI/2,-0.1]},
+  5:{name:'FLY RAIL',  pos:new T.Vector3(-13,8.7,-5), yaw:-Math.PI/2, pitch:-0.12, orbit:[new T.Vector3(-8,9,-5),15,Math.PI/2,-0.1]},
+  6:{name:'GRID',      pos:new T.Vector3(0,25.2,-6), yaw:0, pitch:-0.7, orbit:[new T.Vector3(0,13,-6),15,0,-0.45]},
+  7:{name:'GRAND FOYER', pos:new T.Vector3(0, FOH.y+0.4, FOH.z0+4), yaw:Math.PI, pitch:0.02,
+     orbit:[new T.Vector3(0, FOH.y+4, FOH.z0+7),13,Math.PI,-0.16]},
+  8:{name:'LOADING DOCK', pos:new T.Vector3(XR-5, 0.4, -7.5), yaw:-Math.PI/2, pitch:0.0,
+     orbit:[new T.Vector3(XR-5, 2.5, -7.5),16,-Math.PI/2,-0.14]},
+  9:{name:'STAGE RIGHT',  pos:new T.Vector3(XR+5, 0.4, -6), yaw:-Math.PI/2, pitch:0.0,
+     orbit:[new T.Vector3(XR+7,4,-6),18,-Math.PI/2,-0.12]},
+
+  /* ---- the other building, across town ---- */
+  11:{name:'ARC — FOYER', venue:'arc',
+      pos:new T.Vector3(ARC.X + 0, AS.BACKY + 0.4, 28), yaw:Math.PI, pitch:-0.02,
+      orbit:[new T.Vector3(ARC.X + 0, AS.BACKY + 5, 18), 30, Math.PI, -0.16]},
+  12:{name:'ARC — BAR', venue:'arc',
+      pos:new T.Vector3(ARC.X - 36, AS.BACKY + 0.4, 19), yaw:-Math.PI/2, pitch:0,
+      orbit:[new T.Vector3(ARC.X - 39, AS.BACKY + 3, 19), 14, -Math.PI/2, -0.1]},
+  13:{name:'ARC — MEZZANINE', venue:'arc',
+      pos:new T.Vector3(ARC.X + 0, AS.BACKY + 6.0, 13), yaw:0, pitch:-0.06,
+      orbit:[new T.Vector3(ARC.X, AS.BACKY + 8, 20), 22, 0, -0.2]},
+  14:{name:'ARC — MAIN HOUSE', venue:'arc',
+      pos:new T.Vector3(ARC.X - 26, AS.BACKY, 4.4), yaw:Math.PI, pitch:-0.06,
+      orbit:[new T.Vector3(ARC.X - 26, 8, -20), 34, Math.PI, -0.14]},
+  15:{name:'ARC — MAIN STAGE', venue:'arc',
+      pos:new T.Vector3(ARC.X - 26, 1.4, -36), yaw:0, pitch:0.02,
+      orbit:[new T.Vector3(ARC.X - 26, 6, -36), 26, 0, -0.12]},
+  16:{name:'ARC — MAIN FLY FLOOR', venue:'arc',
+      pos:new T.Vector3(ARC.X - 26 + AS.W/2 - 2.6, 9.6, -36), yaw:-Math.PI/2, pitch:-0.08,
+      orbit:[new T.Vector3(ARC.X - 26, 12, -38), 22, -Math.PI/2, -0.16]},
+  17:{name:'ARC — MAIN DOCK', venue:'arc',
+      pos:new T.Vector3(ARC.X - 26 - AS.W/2 - 6, 1.1, -39.4), yaw:Math.PI/2, pitch:0,
+      orbit:[new T.Vector3(ARC.X - 26 - AS.W/2 - 6, 4, -39.4), 16, Math.PI/2, -0.14]},
+  18:{name:'ARC — STUDIO', venue:'arc',
+      pos:new T.Vector3(ARC.X + 26, AS.BACKY, 4.4), yaw:Math.PI, pitch:-0.06,
+      orbit:[new T.Vector3(ARC.X + 26, 8, -20), 28, Math.PI, -0.14]},
+  19:{name:'ARC — STUDIO STAGE', venue:'arc',
+      pos:new T.Vector3(ARC.X + 26, 1.4, -36), yaw:0, pitch:0.02,
+      orbit:[new T.Vector3(ARC.X + 26, 6, -36), 26, 0, -0.12]},
+  20:{name:'ARC — STUDIO DOCK', venue:'arc',
+      pos:new T.Vector3(ARC.X + 26 + AS.W/2 + 6, 1.1, -39.4), yaw:-Math.PI/2, pitch:0,
+      orbit:[new T.Vector3(ARC.X + 26 + AS.W/2 + 6, 4, -39.4), 16, -Math.PI/2, -0.14]}
+};
+let curView = 1;
+let lastVenue = 'palace';
+
+function goToView(n){
+  const v = VIEWS[n]; if(!v) return;
+  curView = n;
+  Player.pos.copy(v.pos); Player.yaw = v.yaw; Player.pitch = v.pitch;
+  Player.vel.set(0,0,0);
+  /* Crossing town has to happen BEFORE the ground probe: the floor you are
+     about to land on is in the building that is currently switched off, and
+     a raycast into a hidden room still finds it but the venue bookkeeping
+     would be a frame behind. */
+  VENUE = venueAt(v.pos.x);
+  if(ARC.built) ARC.group.visible = (VENUE === 'arc');
+  updateArcRooms(true);
+  if(typeof updateStageFromPosition === 'function') updateStageFromPosition();
+  // land on whatever floor is actually there, rather than falling through it
+  const g = groundAt(v.pos.x, v.pos.z, v.pos.y + 2.5);
+  if(g !== null && Math.abs(g - v.pos.y) < 6){ Player.pos.y = g; Player.onGround = true; }
+  Orbit.target.copy(v.orbit[0]); Orbit.dist=v.orbit[1]; Orbit.yaw=v.orbit[2]; Orbit.pitch=v.orbit[3];
+  updateRooms(true);          // a teleport can cross the whole building
+  $('#posChip').textContent = v.name;
+  if(typeof refreshVenueUI === 'function') refreshVenueUI();
+}
+
+/* ---- ground probe ---- */
+const downRay = new T.Raycaster(new T.Vector3(), new T.Vector3(0,-1,0), 0, 30);
+function groundAt(x,z,fromY){
+  downRay.set(new T.Vector3(x, fromY+1.4, z), new T.Vector3(0,-1,0));
+  downRay.far = 28;
+  const hits = downRay.intersectObjects(WALKABLE, true);
+  return hits.length ? hits[0].point.y : null;
+}
+/* Every rule below describes a wall of the Palace, in the Palace's own
+   coordinates.  None of them mean anything in the other building — and left
+   ungated they would follow you across town and stop you walking through
+   thin air at the Arc.                                                     */
+function inPalace(){ return VENUE !== 'arc'; }
+/* the upstage wall is solid now — there is nothing behind the stage */
+function backWallBlocks(x, z, oz){
+  if(!inPalace()) return false;
+  const plane = D.backWall - 0.3;
+  return (oz < plane) !== (z < plane);
+}
+/* the stage-right wall: the dock opening is the only way out to the get-in */
+/* Every wall of the dock bay knows where its own openings are, so one rule
+   covers the stage-house wall and the street wall both.                    */
+function dockWallBlocks(x, z, ox){
+  if(!inPalace() || !DOCK.walls) return false;
+  for(const w of DOCK.walls){
+    if((ox < w.plane) === (x < w.plane)) continue;     // not crossing this one
+    if(!w.gaps.some(g=>Math.abs(z - g.z) < g.halfW - 0.3)) return true;
+  }
+  return false;
+}
+/* and the shutters themselves stop you while they are down */
+function dockDoorBlocks(x, z, ox, y){
+  for(const d of DOCKDOORS){
+    if((ox < d.plane) === (x < d.plane)) continue;
+    if(Math.abs(z - d.z) > d.halfW) continue;
+    if(y > d.H + 0.15) continue;                       // stepped over the top of it
+    if(d.open < 0.72) return true;                     // most of the way up to pass
+  }
+  return false;
+}
+/* the proscenium walls: you can't walk through the arch off-centre */
+function throughWall(x,z,oz){
+  const inArch = (a,b)=>(a<1.3 && b>1.3)||(a>1.3 && b<1.3);
+  return Math.abs(x) > D.procW/2-0.5 && inArch(z,oz);
+}
+
+/* ---- pointer lock + mouse look ---- */
+const dom = renderer.domElement;
+function unlock(){ if(document.exitPointerLock) document.exitPointerLock(); }
+function lock(){ if(dom.requestPointerLock) dom.requestPointerLock(); }
+dom.addEventListener('click', e=>{
+  if(Player.mode==='walk' && !pointerLocked && !UIclickGuard){ lock(); }
+});
+document.addEventListener('pointerlockchange', ()=>{
+  pointerLocked = document.pointerLockElement === dom;
+  if(!pointerLocked) flyDrag = null;
+  $('#xhair').style.display = (pointerLocked && Player.mode==='walk') ? 'block':'none';
+});
+addEventListener('mousemove', e=>{
+  if(pointerLocked && Player.mode==='walk'){
+    Player.yaw   -= e.movementX*0.0022;
+    Player.pitch -= e.movementY*0.0022;
+    Player.pitch = clamp(Player.pitch, -1.45, 1.45);
+  }
+});
+/* ---- hauling a lineset by hand ----
+   Unlock a lineset, look at its batten, hold the left button and pull. ---- */
+let machDrag = null;
+function grabMachine(m){
+  if(!m) return false;
+  if(m.powered){ toast(m.label+' #'+m.id+' is powered — drive it from the MACHINES page'); return false; }
+  machDrag = m;
+  toast('Pushing '+m.label+' #'+m.id);
+  return true;
+}
+let flyDrag = null, flyDragged = false;
+function grabLineset(ls){
+  if(!ls) return false;
+  if(ls.locked){ toast('Lineset '+ls.id+' is locked off — unlock it on the rail first'); return false; }
+  flyDrag = ls; flyDragged = false;
+  toast('Hauling lineset '+ls.id+' — pull to fly, let go to set it');
+  return true;
+}
+function haul(dy){
+  if(!flyDrag) return;
+  const ls = flyDrag;
+  const feel = 0.028 * (1.7/(1 + ls.weight/520));     // weight in the hand
+  ls.target = clamp(ls.target - dy*feel, 0.6, OUT_TRIM+0.4);
+  if(Math.abs(dy) > 0.5) flyDragged = true;
+  syncFlyRow(ls);
+}
+function releaseLineset(){
+  if(flyDrag){ toast('Lineset '+flyDrag.id+' set at '+flyDrag.target.toFixed(1)+' m'); flyDrag = null; }
+}
+
+/* orbit drag */
+let dragging=false, dragBtn=0, lastX=0, lastY=0, UIclickGuard=false;
+dom.addEventListener('mousedown', e=>{
+  if(e.button === 0){
+    // grab a lineset in either camera mode
+    if(Player.mode==='walk' && pointerLocked && hoverInfo && hoverInfo.kind==='machine'){
+      if(grabMachine(hoverInfo.m)){ e.preventDefault(); return; }
+    }
+    if(Player.mode==='walk' && pointerLocked && hoverInfo && hoverInfo.kind==='lineset'){
+      if(grabLineset(hoverInfo.ls)){ e.preventDefault(); return; }
+    }
+    if(Player.mode==='orbit'){
+      const hit = pickAll(castFromMouse(e));
+      const info = hit && describe(hit.object);
+      if(info && info.kind==='machine'){ if(grabMachine(info.m)){ e.preventDefault(); return; } }
+      if(info && info.kind==='lineset'){ if(grabLineset(info.ls)){ e.preventDefault(); return; } }
+    }
+  }
+  if(Player.mode!=='orbit') return;
+  if(tryGrabScenic(e)) return;
+  dragging=true; dragBtn=e.button; lastX=e.clientX; lastY=e.clientY;
+});
+addEventListener('mouseup', ()=>{ dragging=false; dragPiece=null; machDrag=null; releaseLineset(); });
+addEventListener('mousemove', e=>{
+  if(machDrag){
+    const dy = e.movementY !== undefined ? e.movementY : 0;
+    const dx = e.movementX !== undefined ? e.movementX : 0;
+    nudgeMachine(machDrag, (machDrag.kind === 'turn' ? dx : -dy) * 0.004);
+    return;
+  }
+  if(flyDrag){ haul(e.movementY !== undefined ? e.movementY : 0); return; }
+  if(dragPiece){ dragScenic(e); return; }
+  if(!dragging || Player.mode!=='orbit') return;
+  const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+  if(dragBtn===2 || keys['Space']){
+    const s = Orbit.dist*0.0016;
+    const right = new T.Vector3(Math.cos(Orbit.yaw),0,-Math.sin(Orbit.yaw));
+    Orbit.target.addScaledVector(right, -dx*s); Orbit.target.y += dy*s;
+  } else {
+    Orbit.yaw -= dx*0.006; Orbit.pitch = clamp(Orbit.pitch - dy*0.005, -1.4, 1.2);
+  }
+});
+dom.addEventListener('contextmenu', e=>e.preventDefault());
+dom.addEventListener('wheel', e=>{
+  if(Player.mode==='orbit'){ Orbit.dist = clamp(Orbit.dist*(1+Math.sign(e.deltaY)*0.09), 3, 90); e.preventDefault(); }
+}, {passive:false});
+
+/* ---- keyboard ---- */
+addEventListener('keydown', e=>{
+  const tag = (e.target.tagName||'').toLowerCase();
+  if(tag==='input'||tag==='textarea'||tag==='select') return;
+  keys[e.code] = true;
+  const k = e.key.toLowerCase();
+  if(BENCH.open){
+    if(k === 'escape'){ closeBench(); return; }
+    if(k === 'b'){ closeBench(); return; }
+    if(benchKey(k)) { e.preventDefault(); return; }
+    if(e.code === 'Space' || e.code === 'Tab') e.preventDefault();
+    return;
+  }
+  if(k==='tab'){ e.preventDefault(); $('#dock').classList.toggle('hidden'); }
+  if(k==='v'){ toggleMode(); }
+  if(k==='h'){ $('#help').classList.toggle('on'); }
+  if(k==='b'){
+    if(e.shiftKey){ RIG.blackout=!RIG.blackout; toast(RIG.blackout?'BLACKOUT':'restored'); }
+    else openBench();
+  }
+  if(k==='g'){ go(); }
+  if(k==='e'){ useTarget(); }
+  if(k==='f'){ toggleFollow(); }
+  if(k==='l'){ setShiftLock(!shiftLock); }
+  if(k==='r' && selPiece){ selPiece.rot += 15*DEG; selPiece.group.rotation.y = selPiece.rot; refreshSetUI(); }
+  if(e.code==='Delete' && selPiece){ strikePiece(selPiece); }
+  if(/^[1-9]$/.test(k)){ goToView(+k); }
+  if(e.code==='Space' && Player.mode==='walk' && Player.onGround){ Player.vel.y = 4.6; Player.onGround=false; e.preventDefault(); }
+  if(e.code==='Escape'){ if(BENCH.open) closeBench(); else unlock(); }
+});
+addEventListener('keyup', e=>{ keys[e.code]=false; });
+
+/* ---- shift lock: latch the run, and keep the mouse captured ---- */
+let shiftLock = false;
+function setShiftLock(v){
+  shiftLock = v;
+  const c = $('#slChip');
+  c.classList.toggle('on', v);
+  c.querySelector('b').textContent = v ? 'ON' : 'OFF';
+  if(v && Player.mode==='walk' && !pointerLocked) lock();
+  toast(v ? 'Shift lock ON — you run without holding Shift' : 'Shift lock off');
+}
+
+function toggleMode(){
+  Player.mode = Player.mode==='walk' ? 'orbit' : 'walk';
+  $('#modeChip').textContent = Player.mode.toUpperCase();
+  $('#xhair').style.display = Player.mode==='walk' && pointerLocked ? 'block':'none';
+  if(Player.mode==='orbit') unlock();
+  toast(Player.mode==='walk' ? 'WALK — click to capture the mouse' : 'ORBIT — drag to look, wheel to zoom, right-drag to pan');
+}
+
+/* ---- walking ---- */
+function updatePlayer(dt){
+  if(BENCH.open) return;              // the bench has the keyboard
+  if(Player.mode!=='walk') return;
+  const running = shiftLock || keys['ShiftLeft'] || keys['ShiftRight'];
+  const spd = running ? 6.4 : 3.1;
+  let fx=0, fz=0;
+  if(keys['KeyW']) fz+=1; if(keys['KeyS']) fz-=1;
+  if(keys['KeyA']) fx-=1; if(keys['KeyD']) fx+=1;
+  if(typeof VR !== 'undefined' && VR && VR.active){
+    fx += VR.axes.lx; fz -= VR.axes.ly;     // stick forward reads as -1
+  }
+  const len = Math.hypot(fx,fz);
+  /* a stick half over should walk at half pace, so keep the magnitude
+     rather than normalising every input to a full stride */
+  const mag = Math.min(1, len);
+  if(len>0){ fx = fx/len*mag; fz = fz/len*mag; }
+  // the camera looks down -Z, so forward = (-sin yaw, -cos yaw), right = (cos yaw, -sin yaw)
+  const sin=Math.sin(Player.yaw), cos=Math.cos(Player.yaw);
+  const wx = ( fx*cos - fz*sin)*spd;
+  const wz = (-fx*sin - fz*cos)*spd;
+
+  // gravity
+  Player.vel.y -= 13.5*dt;
+  let ny = Player.pos.y + Player.vel.y*dt;
+
+  // horizontal with step check
+  const tryMove=(ax,az)=>{
+    const nx = Player.pos.x + ax*dt, nz = Player.pos.z + az*dt;
+    if(!inPalace()){
+      // the other building has its own edges, walls and doors
+      if(!arcBounds(nx, nz)) return;
+      if(arcWallBlocks(nx, nz, Player.pos.x, Player.pos.z, Player.pos.y)) return;
+    } else {
+      // the world runs from the street beyond the dock across to the stage-left wall
+      if(nx < DOCK.x0 - 16 || nx > XL + 0.6) return;
+      if(nz < D.backWall + 0.6 || nz > FOH.z1 - 0.9) return;
+      if(Player.pos.y < 5 && throughWall(nx, nz, Player.pos.z)) return;
+      if(doorBlocks(nx, nz, Player.pos.z, Player.pos.y)) return;
+      if(backWallBlocks(nx, nz, Player.pos.z)) return;
+      if(dockWallBlocks(nx, nz, Player.pos.x)) return;
+      if(dockDoorBlocks(nx, nz, Player.pos.x, Player.pos.y)) return;
+    }
+    const g = groundAt(nx, nz, Player.pos.y);
+    if(g===null) return;
+    if(g - Player.pos.y > 0.62) return;          // too tall to step up
+    Player.pos.x = nx; Player.pos.z = nz;
+  };
+  tryMove(wx,0); tryMove(0,wz);
+
+  const g = groundAt(Player.pos.x, Player.pos.z, Player.pos.y);
+  if(g!==null && ny <= g + 0.01){ ny = g; Player.vel.y=0; Player.onGround=true; }
+  else Player.onGround=false;
+  Player.pos.y = ny;
+
+  // head bob
+  const moving = len>0 && Player.onGround;
+  Player.bob = (Player.bob||0) + (moving? dt*(spd>5?13:8) : 0);
+  const bob = moving ? Math.sin(Player.bob)*0.035 : 0;
+
+  if(typeof VR !== 'undefined' && VR && VR.active){
+    /* in a session the headset writes the camera every frame — all we may do
+       is move the rig it is sitting in */
+    vrPlaceRig();
+  } else {
+    camera.position.set(Player.pos.x, Player.pos.y + Player.eye + bob, Player.pos.z);
+    camera.rotation.set(0,0,0);
+    camera.rotateY(Player.yaw); camera.rotateX(Player.pitch);
+  }
+
+  // where am I?
+  const zone = !inPalace() ? arcZone(Player.pos.x, Player.pos.y, Player.pos.z) :
+      Player.pos.z < D.apron+0.4 ?
+      (Player.pos.y > 15 ? 'THE GRID' : Player.pos.y > 5 ? 'FLY RAIL' :
+       Math.abs(Player.pos.x) > D.procW/2 ? 'THE WINGS' : 'ON DECK') :
+      (Player.pos.y > D.balcY-1 ? 'SECOND BALCONY' :
+       Player.pos.y > D.mezzY-1 ? 'FIRST BALCONY' : 'ORCHESTRA');
+  $('#posChip').textContent = zone;
+}
+function updateOrbit(){
+  if(Player.mode!=='orbit') return;
+  const cp = Math.cos(Orbit.pitch);
+  camera.position.set(
+    Orbit.target.x + Math.sin(Orbit.yaw)*cp*Orbit.dist,
+    Orbit.target.y - Math.sin(Orbit.pitch)*Orbit.dist,
+    Orbit.target.z + Math.cos(Orbit.yaw)*cp*Orbit.dist);
+  camera.lookAt(Orbit.target);
+}
+
+/* ============================================================================
+   INTERACTION
+   ========================================================================== */
+const ray = new T.Raycaster();
+const mouseNDC = new T.Vector2();
+let hoverInfo = null, focusMode=false, dragPiece=null, dragPlane=new T.Plane(new T.Vector3(0,1,0),0);
+
+function castFromCamera(){
+  ray.setFromCamera(new T.Vector2(0,0), camera);
+  return ray;
+}
+function castFromMouse(e){
+  mouseNDC.set((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1);
+  ray.setFromCamera(mouseNDC, camera);
+  return ray;
+}
+const _pickList = [];
+function pickAll(r){
+  /* a short, curated list — raycasting the whole building every frame was the
+     single most expensive thing the game did                                */
+  _pickList.length = 0;
+  _pickList.push(rigGroup, flyGroup, setGroup, doorGroup);
+  for(const o of INTERACT) _pickList.push(o);
+  const hits = r.intersectObjects(_pickList, true);
+  return hits.length?hits[0]:null;
+}
+function describe(obj){
+  let o=obj;
+  while(o){
+    if(o.userData.piece) return {kind:'scenic', piece:o.userData.piece, label:'SCENIC — '+o.userData.piece.label+'  [E] select'};
+    const f = FIXTURES.find(x=>x.group===o);
+    if(f) return {kind:'fixture', f, label:'CH '+f.ch+'  '+f.name+'   [E] select / bump'};
+    const ls = FLY.find(x=>x.group===o);
+    if(ls) return {kind:'lineset', ls, label:'LINESET '+ls.id+' — '+GOODS[ls.goodsKey].label+
+      (ls.locked ? '   [LOCKED OFF]' : '   [E] fly in / out  ·  hold LMB and pull to haul')};
+    if(o.userData && o.userData.station)
+      return {kind:'station', st:o.userData.station, obj:o, label:o.userData.station.label};
+    if(o.userData && o.userData.machinePart){
+      const m = o.userData.machinePart;
+      return {kind:'machine', m, label:(m.powered ? 'POWERED ' : '') + m.label.toUpperCase() +
+        ' #' + m.id + (m.powered ? '   [driven from the MACHINES page]'
+                                 : '   hold the left button and pull')};
+    }
+    const dr = DOORS.find(x=>x.group===o);
+    if(dr) return {kind:'door', dw:dr.dw,
+      label:'HOUSE DOOR   [E] '+(dr.target>0.5?'close':'open')};
+    o = o.parent;
+  }
+  return null;
+}
+function updateHover(){
+  if(Player.mode!=='walk' || !pointerLocked){ $('#target').classList.remove('on'); hoverInfo=null; return; }
+  const hit = pickAll(castFromCamera());
+  if(hit && hit.distance < 22){
+    const info = describe(hit.object);
+    if(info){ hoverInfo = info; $('#target').textContent = info.label; $('#target').classList.add('on'); return; }
+  }
+  hoverInfo=null; $('#target').classList.remove('on');
+}
+function useTarget(){
+  if(!hoverInfo) return;
+  if(hoverInfo.kind==='fixture'){
+    const i = sectionOfChannel(hoverInfo.f.ch);
+    selectSection(i);
+    setSection(SECTIONS[i], SECTIONS[i].level > 0.02 ? 0 : 1, 0.6);
+    showPage('lights');
+  } else if(hoverInfo.kind==='lineset'){
+    const ls=hoverInfo.ls;
+    if(ls.locked){ toast('Lineset '+ls.id+' is locked off'); return; }
+    (ls.pos > 15 ? flyIn : flyOut)(ls);
+    toast('Lineset '+ls.id+' '+(ls.pos>15?'coming in':'going out'));
+  } else if(hoverInfo.kind==='scenic'){
+    selPiece = hoverInfo.piece; refreshSetUI(); showPage('sets'); toast('Selected '+selPiece.label);
+  } else if(hoverInfo.kind==='station'){
+    useStation(hoverInfo.st, hoverInfo.obj);
+  } else if(hoverInfo.kind==='door'){
+    toggleDoorway(hoverInfo.dw);
+  }
+}
+function toggleFollow(){
+  const f = FIXTURES.find(x=>x.follow); if(!f) return;
+  if(followTarget){ followTarget=null; toast('Followspot released'); }
+  else { followTarget = new T.Vector3(); toast('Followspot picked you up'); setLevel(f.ch, 1, 1.5); }
+}
+
+/* placing & dragging scenic */
+dom.addEventListener('click', e=>{
+  const r = Player.mode==='walk' ? castFromCamera() : castFromMouse(e);
+  if(placingKey){
+    const hits = r.intersectObject(deck, false);
+    if(hits.length){
+      const p = hits[0].point;
+      const piece = placeScenic(placingKey, Math.round(p.x*4)/4, Math.round(p.z*4)/4);
+      selPiece = piece; toast(SCENIC[placingKey].label+' placed');
+      if(!keys['ShiftLeft']) { placingKey=null; $$('#setPal .b').forEach(x=>x.classList.remove('on')); }
+      refreshSetUI();
+    }
+    return;
+  }
+  if(focusMode){
+    const hits = r.intersectObjects([deck, setGroup], true);
+    if(hits.length){
+      const sec = SECTIONS[selSec], p = hits[0].point;
+      if(sec.chans) sec.chans.forEach((c,i)=>{
+        const f = chan(c); if(!f) return;
+        const spread = (i - (sec.chans.length-1)/2) * 1.6;
+        const pt = p.clone(); pt.x += spread;
+        if(f.mover) aimMoverAt(f, pt); else f.aim.copy(pt);
+      });
+      toast(sec.name.replace('<br>',' ')+' refocused');
+      focusMode=false; $('#btnFocus').classList.remove('on');
+    }
+    return;
+  }
+  if(Player.mode==='orbit'){
+    const hit = pickAll(r);
+    if(hit){ const info=describe(hit.object);
+      if(info && info.kind==='scenic'){ selPiece=info.piece; refreshSetUI(); }
+      else if(info && info.kind==='fixture'){ selectSection(sectionOfChannel(info.f.ch)); showPage('lights'); }
+      else if(info && info.kind==='lineset'){ selLineset=info.ls; refreshFlyUI(); showPage('fly'); }
+    }
+  }
+});
+function tryGrabScenic(e){
+  const r = castFromMouse(e);
+  const hits = r.intersectObject(setGroup, true);
+  if(!hits.length) return false;
+  let o=hits[0].object; while(o && !o.userData.piece) o=o.parent;
+  if(!o) return false;
+  dragPiece = o.userData.piece; selPiece = dragPiece; refreshSetUI();
+  return true;
+}
+function dragScenic(e){
+  const r = castFromMouse(e);
+  if(keys['ShiftLeft']||keys['ShiftRight']){
+    dragPiece.group.position.y = clamp(dragPiece.group.position.y - e.movementY*0.01, 0, 6);
+  } else {
+    dragPlane.set(new T.Vector3(0,1,0), -dragPiece.group.position.y);
+    const p = new T.Vector3();
+    if(r.ray.intersectPlane(dragPlane, p)){
+      dragPiece.group.position.x = clamp(p.x, -13, 13);
+      dragPiece.group.position.z = clamp(p.z, D.backWall+1, D.apron);
+    }
+  }
+  refreshSetUI();
+}
+
+/* ============================================================================
+   UI WIRING
+   ========================================================================== */
+function showPage(id){
+  $$('#tabs button[data-p]').forEach(b=>b.classList.toggle('on', b.dataset.p===id));
+  $$('.page').forEach(p=>p.classList.toggle('on', p.id==='p-'+id));
+  $('#dock').classList.remove('hidden');
+}
+$$('#tabs button[data-p]').forEach(b=>b.onclick=()=>showPage(b.dataset.p));
+$('#btnHide').onclick=()=>$('#dock').classList.toggle('hidden');
+$('#slChip').onclick=()=>setShiftLock(!shiftLock);
+$('#btnHelp').onclick=()=>$('#help').classList.toggle('on');
+$('#help').onclick=()=>$('#help').classList.remove('on');
+
+$('#selColor').oninput = e=>{ setSectionColor(SECTIONS[selSec], e.target.value, 0); };
+$('#gelSel').onchange  = e=>{ setSectionColor(SECTIONS[selSec], e.target.value, 0); $('#selColor').value=e.target.value; };
+$('#goboSel').onchange = e=>{ setSectionGobo(SECTIONS[selSec], +e.target.value); };
+$('#btnFocus').onclick = ()=>{ focusMode=!focusMode; $('#btnFocus').classList.toggle('on',focusMode);
+  toast(focusMode?'FOCUS — click the deck to aim '+SECTIONS[selSec].name.replace('<br>',' '):'focus cancelled'); };
+$('#panR').oninput = e=>{ const s=SECTIONS[selSec]; if(!s.mover) return;
+  s.chans.forEach((c,i)=>{ const f=chan(c); if(f) f.panT = (+e.target.value)*(i%2?-1:1); });
+  $('#panV').textContent=e.target.value; };
+$('#tiltR').oninput= e=>{ const s=SECTIONS[selSec]; if(!s.mover) return;
+  s.chans.forEach(c=>{ const f=chan(c); if(f) f.tiltT=+e.target.value; });
+  $('#tiltV').textContent=e.target.value; };
+$('#gm').oninput = e=>{ RIG.grand=e.target.value/100; $('#gmV').textContent=e.target.value; };
+$('#hz').oninput = e=>{ RIG.haze=e.target.value/100; $('#hzV').textContent=e.target.value; };
+$('#hl').oninput = e=>{ HOUSE.house=e.target.value/100; $('#hlV').textContent=e.target.value; };
+$('#wl').oninput = e=>{ HOUSE.work=e.target.value/100; $('#wlV').textContent=e.target.value; };
+$('#btnBO').onclick=()=>{ RIG.blackout=!RIG.blackout; $('#btnBO').classList.toggle('on',RIG.blackout); };
+$('#shopGoto') && ($('#shopGoto').onclick = ()=>{ closeBench(); goToView(9); });
+$('#doorsOpen').onclick = ()=>setAllDoors(true);
+$('#doorsShut').onclick = ()=>setAllDoors(false);
+$('#dockOpen')  && ($('#dockOpen').onclick  = ()=>setAllDockDoors(true));
+$('#dockShut')  && ($('#dockShut').onclick  = ()=>setAllDockDoors(false));
+/* --------------------------------------------------------- the smoke */
+function buildSmokeUI(){
+  const rack = $('#smokeRack'); if(!rack) return;
+  // rebuild when a show rigs or strikes machines of its own
+  if(rack.dataset.built === String(SMOKE.units.length)) return;
+  rack.dataset.built = String(SMOKE.units.length);
+  rack.innerHTML = SMOKE.units.map((u,i)=>
+    '<div class="smk" data-u="'+i+'">'+
+      '<div class="nm">'+u.name+'</div>'+
+      '<div class="kd">'+(u.kind === 'fog' ? 'low fog' : 'haze')+
+        (u.show ? ' &middot; <span style="color:var(--amber)">show</span>' : '')+'</div>'+
+      '<input type="range" class="smkFader" min="0" max="100" value="0" style="width:100%">'+
+      '<div class="rd"><span class="led"></span>'+
+        '<span class="tk"><i></i></span><span class="out">0%</span></div>'+
+      '<button class="b" style="width:100%;margin-top:6px;letter-spacing:2px">BURST</button>'+
+    '</div>').join('');
+  Array.from(rack.querySelectorAll('.smk')).forEach(el=>{
+    const u = SMOKE.units[+el.dataset.u];
+    el.querySelector('.smkFader').value = Math.round(u.target*100);
+    el.querySelector('.smkFader').oninput = e=>{ setSmoke(u, (+e.target.value)/100); };
+    el.querySelector('button').onclick = ()=>smokeBurst(u);
+  });
+  syncSmokeUI();
+}
+function syncSmokeUI(){
+  const rack = $('#smokeRack'); if(!rack || !rack.dataset.built) return;
+  Array.from(rack.querySelectorAll('.smk')).forEach(el=>{
+    const u = SMOKE.units[+el.dataset.u];
+    const led = el.querySelector('.led');
+    const able = u.tank > 0.01 && u.heat > 0.25;
+    led.className = 'led' + (u.tank <= 0.01 ? ' dry' : able ? ' on' : '');
+    el.querySelector('.tk i').style.width = Math.round(u.tank*100)+'%';
+    el.querySelector('.out').textContent = Math.round(u.out*100)+'%';
+  });
+  const st = $('#smokeStat');
+  if(st) st.innerHTML =
+    'in the air: <b style="color:var(--amber)">'+Math.round(SMOKE.haze*100)+'%</b><br>'+
+    (SMOKE.live || 0)+' puffs drifting<br>'+
+    'effective haze '+Math.round(clamp(RIG.haze + SMOKE.haze*0.7, 0, 1)*100)+'%';
+}
+$('#smkShot')   && ($('#smkShot').onclick   = ()=>{ smokeBurstAll(); syncSmokeUI(); });
+$('#smkOn')     && ($('#smkOn').onclick     = ()=>{ smokeAll(0.7); syncSmokeUI(); buildSmokeUI();
+  Array.from(document.querySelectorAll('#smokeRack .smkFader')).forEach(f=>f.value = 70); });
+$('#smkOff')    && ($('#smkOff').onclick    = ()=>{ smokeAll(0); syncSmokeUI();
+  Array.from(document.querySelectorAll('#smokeRack .smkFader')).forEach(f=>f.value = 0); });
+$('#smkFill')   && ($('#smkFill').onclick   = ()=>{ smokeRefill(); syncSmokeUI(); });
+$('#smkClear')  && ($('#smkClear').onclick  = ()=>{ smokeClear(); syncSmokeUI();
+  Array.from(document.querySelectorAll('#smokeRack .smkFader')).forEach(f=>f.value = 0); });
+$('#smkMaster') && ($('#smkMaster').oninput = e=>{ SMOKE.master = (+e.target.value)/100; });
+
+/* ---------------------------------------------------------- the crew */
+function refreshCrewUI(){
+  const st = $('#crewStat'); if(!st) return;
+  const running = CREW.running;
+  $('#crewIn').disabled  = !!running;
+  $('#crewOut').disabled = !!running;
+  $('#crewStop').disabled = !running;
+  $('#crewIn').classList.toggle('on', running === 'in');
+  $('#crewOut').classList.toggle('on', running === 'out');
+  st.innerHTML = running
+    ? '<b style="color:var(--amber)">'+(running === 'in' ? 'LOADING IN' : 'LOADING OUT')+'</b><br>'+
+      CREW.jobs.length+' jobs to go &middot; '+crewBusy()+' of '+CREW.people.length+' working'
+    : 'The crew are in the pub. Call them in and they will bring the show in '+
+      'through the dock.';
+  const lg = $('#crewLog');
+  if(lg) lg.innerHTML = CREW.log.map(x=>'<div>'+x+'</div>').join('');
+}
+$('#crewIn')    && ($('#crewIn').onclick    = ()=>{
+  // nothing on the stage and a show picked? then this is a get-in for that show
+  if(!SHOW.key && showSel) crewLoadShow(showSel);
+  else crewStart('in');
+  refreshCrewUI(); refreshShowUI();
+});
+$('#crewOut')   && ($('#crewOut').onclick   = ()=>{
+  crewWorkLight(true); crewStart('out'); refreshCrewUI();
+});
+$('#crewStop')  && ($('#crewStop').onclick  = ()=>{ crewStop(); refreshCrewUI(); });
+$('#crewSpeed') && ($('#crewSpeed').oninput = e=>{ CREW.speed = (+e.target.value)/100; });
+
+/* ------------------------------------------------------ the saved hang */
+function refreshHangUI(){
+  const st = $('#hangStat'); if(!st) return;
+  const loaded = !!SHOW.key;
+  const saved  = loaded && SHOW_HANGS[SHOW.key];
+  $('#hangSave').disabled = !loaded;
+  $('#hangLoad').disabled = !saved;
+  $('#hangForget').disabled = !saved;
+  if(!loaded){ st.innerHTML = 'No show loaded. Load one on the SHOWS page and the '+
+    'rail can be saved to it.'; return; }
+  const dirty = hangIsDirty();
+  st.innerHTML =
+    '<b style="color:var(--amber)">'+SHOWS[SHOW.key].name+'</b><br>'+
+    (saved ? 'saved hang: '+saved.filter(r=>r.goods!=='none').length+' linesets'
+           : 'no saved hang — it loads in as the show came') +
+    (dirty ? '<br><b style="color:var(--cyan)">the rail has been changed</b>' : '');
+}
+$('#hangSave')   && ($('#hangSave').onclick   = ()=>{ saveHang(); refreshHangUI(); });
+$('#hangForget') && ($('#hangForget').onclick = ()=>{ forgetHang(); refreshHangUI(); });
+$('#hangLoad')   && ($('#hangLoad').onclick   = ()=>{
+  if(!SHOW.key || !SHOW_HANGS[SHOW.key]){ toast('Nothing saved for this show'); return; }
+  const r = applyHang(SHOW.key);
+  toast('Restored the saved hang — '+r.set+' linesets'+
+        (r.missing ? ', '+r.missing+' goods no longer exist' : ''));
+  refreshHangUI();
+});
+
+/* ---------------------------------------------------------------- SHOWS */
+let showSel = Object.keys(SHOWS)[0] || null;
+function refreshShowUI(){
+  const list = $('#showList'); if(!list) return;
+  const keys = Object.keys(SHOWS);
+  list.innerHTML = keys.map(k=>{
+    const sh = SHOWS[k], on = (k === showSel);
+    return '<div class="cue'+(on?' next':'')+'" data-k="'+k+'" style="align-items:flex-start">'+
+      '<div style="flex:1"><div style="color:var(--amber);letter-spacing:2px">'+sh.name+
+      (SHOW.key === k ? ' &nbsp;<span style="color:var(--green)">LOADED</span>' : '')+'</div>'+
+      '<div class="mt">'+sh.blurb+'</div></div></div>';
+  }).join('') || '<span style="color:var(--dim)">no productions</span>';
+  $$('#showList .cue').forEach(el=>el.onclick = ()=>{ showSel = el.dataset.k; refreshShowUI(); });
+
+  const info = $('#showInfo');
+  const sh = SHOWS[showSel];
+  if(info) info.innerHTML = !sh ? '' :
+    '<div style="color:var(--amber);letter-spacing:3px;margin-bottom:6px">'+sh.name+'</div>'+
+    '<div>'+sh.blurb+'</div>'+
+    '<div style="margin-top:8px;color:var(--dim)">'+sh.note+'</div>'+
+    (SHOW.key === showSel
+      ? '<div style="margin-top:10px;color:var(--green)">Loaded in on '+
+        (typeof STAGES !== 'undefined' && STAGES[STAGE] ? STAGES[STAGE].label : 'this stage')+
+        ' — '+CUES.length+' cues plotted.</div>'
+      : '<div style="margin-top:10px;color:var(--dim)">Press LOAD IN to build it on <b>'+
+        (typeof STAGES !== 'undefined' && STAGES[STAGE] ? STAGES[STAGE].label : 'this stage')+
+        '</b>.</div>')+
+    (typeof STAGE !== 'undefined' && STAGE !== 'palace'
+      ? '<div style="margin-top:8px;color:var(--dim)">The crew work out of the Palace '+
+        'dock, so CALL THE CREW is a Palace call. LOAD IN NOW works anywhere.</div>' : '');
+  refreshSceneUI();
+  const st = $('#fxStat');
+  if(st) st.innerHTML = SHOW.rain
+    ? 'rain '+Math.round(SHOW.rain.target*100)+'%<br>storm '+(SHOW.stormOn?'running':'off')+
+      '<br>fire '+(SHOW.fire ? Math.round(SHOW.fire.level*100)+'%' : 'none')+
+      '<br>firelight '+(SHOW.flicker?'on':'off')+
+      '<br>bars in '+SHOW.gymIn.toFixed(1)+'m'
+    : 'load a show first';
+}
+$('#showLoadBtn') && ($('#showLoadBtn').onclick = ()=>{
+  if(!showSel) return;
+  showLoad(showSel);
+  refreshHangUI();
+  showPage('cues');
+});
+const CREW_WATCH = {palace:4, arcMain:15, arcStudio:19};
+$('#showCrewBtn') && ($('#showCrewBtn').onclick = ()=>{
+  if(!showSel) return;
+  /* Only move if the call actually went out, and only to a view of the stage
+     they are working on.  Jumping to the Palace wings whatever happened is
+     how you end up watching an empty stage in the wrong building. */
+  if(!crewLoadShow(showSel)){ refreshShowUI(); return; }
+  refreshShowUI(); refreshCrewUI(); refreshHangUI();
+  goToView(CREW_WATCH[STAGE] || 4);
+});
+$('#showStrikeBtn') && ($('#showStrikeBtn').onclick = ()=>{
+  showStrike(); toast('Set struck'); refreshShowUI(); refreshHangUI();
+});
+$('#fxRain') && ($('#fxRain').oninput = e=>{
+  if(SHOW.rain) SHOW.rain.target = (+e.target.value)/100;
+  refreshShowUI();
+});
+$('#fxBars') && ($('#fxBars').oninput = e=>{
+  setGymInset((+e.target.value)/100 * 6.5);
+  refreshShowUI();
+});
+/* ---- the sets, and whatever moves on them ---- */
+function refreshSceneUI(){
+  const list = $('#sceneList');
+  if(list){
+    list.innerHTML = SHOW.scenes.length
+      ? SHOW.scenes.map(sc=>{
+          const on = sc.name === SHOW.scene;
+          return '<div class="cue'+(on?' next':'')+'" data-s="'+sc.name+'">'+
+            '<div style="flex:1;color:'+(on?'var(--amber)':'var(--fg)')+'">'+sc.label+'</div>'+
+            (on ? '<div class="mt" style="color:var(--green)">ON</div>' : '')+'</div>';
+        }).join('')
+      : '<span style="color:var(--dim)">this show has one set</span>';
+    $$('#sceneList .cue').forEach(el=>el.onclick = ()=>{
+      sceneShow(el.dataset.s);
+      const sc = sceneFind(el.dataset.s);
+      if(sc) toast(sc.label + ' is on');
+    });
+  }
+  refreshWrongUI();
+}
+/* ---- the scenery that is meant to fall down ---- */
+function refreshWrongUI(){
+  const hasRev = !!SHOW.revolve;
+  const wrong = SHOW.wrong || [];
+  const nn = $('#machNone'), mr = $('#machRev'), mw = $('#machWrong');
+  if(nn) nn.style.display = (hasRev || wrong.length) ? 'none' : '';
+  if(mr) mr.style.display = hasRev ? '' : 'none';
+  if(mw) mw.style.display = wrong.length ? '' : 'none';
+  const list = $('#wrongList');
+  if(list){
+    list.innerHTML = wrong.map(p=>{
+      const c = p.state === 'ok' ? 'var(--fg)'
+              : p.state === 'down' ? 'var(--dim)' : 'var(--red)';
+      const s2 = p.state === 'ok' ? 'up' : p.state === 'down' ? 'down' : 'going';
+      return '<div class="cue" data-w="'+p.key+'">'+
+        '<div style="flex:1;color:'+c+'">'+p.label+'</div>'+
+        '<div class="mt" style="color:'+c+'">'+s2+'</div></div>';
+    }).join('');
+    $$('#wrongList .cue').forEach(el=>el.onclick = ()=>wrongTrigger(el.dataset.w));
+  }
+  const st = $('#machStat');
+  if(st) st.innerHTML =
+    (hasRev ? 'outer '+Math.round(SHOW.revolve.outer.rate*100)+'%<br>'+
+              'inner '+Math.round(SHOW.revolve.inner.rate*100)+'%<br>' : '')+
+    (wrong.length ? wrongStanding()+' of '+wrong.length+' still standing' : '');
+}
+$('#wrongAll')   && ($('#wrongAll').onclick   = ()=>{ wrongAll(); refreshWrongUI(); });
+$('#wrongReset') && ($('#wrongReset').onclick = ()=>{
+  wrongReset(); toast('Set back up — as if nothing had happened');
+});
+$('#scPrev') && ($('#scPrev').onclick = ()=>{ const s2 = sceneNext(-1); if(s2) toast(s2.label); });
+$('#scNext') && ($('#scNext').onclick = ()=>{ const s2 = sceneNext( 1); if(s2) toast(s2.label); });
+$('#revOut') && ($('#revOut').oninput = e=>{ setRevolve('outer', (+e.target.value)/100); });
+$('#revIn')  && ($('#revIn').oninput  = e=>{ setRevolve('inner', (+e.target.value)/100); });
+$('#revStop')&& ($('#revStop').onclick = ()=>{
+  setRevolve('outer', 0); setRevolve('inner', 0);
+  const a = $('#revOut'), b = $('#revIn'); if(a) a.value = 0; if(b) b.value = 0;
+  toast('Revolves stopped');
+});
+$('#fxBolt')  && ($('#fxBolt').onclick  = ()=>strikeLightning(1));
+$('#fxStorm') && ($('#fxStorm').onclick = ()=>{
+  SHOW.stormOn = !SHOW.stormOn; SHOW.stormT = 0.3;
+  toast(SHOW.stormOn ? 'Storm running' : 'Storm off'); refreshShowUI();
+});
+$('#fxFire')  && ($('#fxFire').onclick  = ()=>{
+  const lit = SHOW.fire && SHOW.fire.target > 0.02;
+  if(SHOW.fire) SHOW.fire.target = lit ? 0 : 1;
+  setFirelight(lit ? null : [9,10,11,12,13,14], 0.9);
+  toast(lit ? 'Fire out' : 'The church is alight'); refreshShowUI();
+});
+
+/* ---------------------------------------------------------------- VENUES */
+const VENUE_LABEL = {palace:'THE PALACE', arc:'THE ARC CENTRE'};
+function refreshStageChip(){
+  const el = $('#stageChip');
+  if(el && typeof STAGES !== 'undefined' && STAGES[STAGE])
+    el.innerHTML = 'BOARD <b>' + STAGES[STAGE].label + '</b>';
+}
+function stageBanner(){
+  return (typeof STAGES !== 'undefined' && STAGES[STAGE]) ? STAGES[STAGE].label : '';
+}
+function refreshStageNames(){
+  const el = $('#flyStageName');
+  if(el) el.textContent = stageBanner();
+}
+function refreshVenueUI(){
+  const list = $('#venueList');
+  if(list){
+    list.innerHTML = ['palace','arc'].map(v=>{
+      const on = (VENUE === v);
+      const where = v === 'palace'
+        ? 'A 1,400-seat Broadway house: fly tower, dock, four productions in the book.'
+        : 'A modern complex: glazed foyer, a 600-seat lyric house and a studio.';
+      return '<div class="cue'+(on?' next':'')+'" data-v="'+v+'" style="align-items:flex-start">'+
+        '<div style="flex:1"><div style="color:var(--amber);letter-spacing:2px">'+
+        VENUE_LABEL[v]+(on?' &nbsp;<span style="color:var(--green)">YOU ARE HERE</span>':'')+
+        '</div><div class="mt">'+where+'</div></div></div>';
+    }).join('');
+    $$('#venueList .cue').forEach(el=>el.onclick = ()=>{
+      const v = el.dataset.v;
+      goToView(v === 'arc' ? 11 : 1);
+      refreshVenueUI();
+    });
+  }
+  const vv = $('#venueViews');
+  if(vv){
+    vv.innerHTML = Object.keys(VIEWS).map(n=>{
+      const v = VIEWS[n], here = (v.venue || 'palace') === VENUE;
+      return '<button class="b'+(curView == n ? ' go' : '')+'" data-n="'+n+'" '+
+             'style="font-size:11px;'+(here?'':'opacity:.55')+'">'+v.name+'</button>';
+    }).join('');
+    $$('#venueViews .b').forEach(b=>b.onclick = ()=>{
+      goToView(+b.dataset.n); refreshVenueUI();
+    });
+  }
+  const info = $('#venueInfo');
+  if(info) info.innerHTML =
+    'You are in <b style="color:var(--amber)">'+VENUE_LABEL[VENUE]+'</b>'+
+    (VENUE === 'arc' ? ', in the '+ARC.cur+'.' : ', in the '+ROOMS[curRoom].label+'.')+
+    '<br>Anything greyed out is in the other building — pressing it takes you there.';
+  const st = $('#arcStat');
+  if(st && ARC.built) st.innerHTML =
+    'house at '+Math.round(ARC.level*100)+'%<br>'+
+    ((ARC.houses.main && ARC.houses.main.seats)||0)+' seats in the main house, '+
+    ((ARC.houses.studio && ARC.houses.studio.seats)||0)+' in the studio<br>'+
+    'drawing: '+(VENUE === 'arc' ? ARC.order.filter(n=>ARC.rooms[n].visible).join(', ')
+                                 : 'nothing — you are at the Palace');
+  refreshArcUI();
+}
+/* ---- the Arc's own doors and fly rail ---- */
+function arcHere(){
+  if(!ARC.built) return null;
+  if(VENUE === 'arc' && ARC.houses[ARC.cur]) return ARC.houses[ARC.cur];
+  return ARC.houses.main || null;
+}
+function refreshArcUI(){
+  if(!ARC.built) return;
+  const H = arcHere();
+  const dl = $('#arcDoorList');
+  if(dl){
+    const mine = ARC.doors.filter(d=>!H || d.house === H.key);
+    dl.innerHTML = (H ? '<div class="mini" style="color:var(--dim);margin-bottom:4px">'+
+      H.label+'</div>' : '') + mine.map(d=>{
+      const shut = d.target < 0.5;
+      return '<div class="cue" data-d="'+d.key+'">'+
+        '<div style="flex:1">'+d.label.replace(H ? H.label + ' ' : '', '')+'</div>'+
+        '<div class="mt" style="color:'+(shut?'var(--dim)':'var(--green)')+'">'+
+        (shut ? 'shut' : 'open')+'</div></div>';
+    }).join('');
+    $$('#arcDoorList .cue').forEach(el=>el.onclick = ()=>arcDoorToggle(el.dataset.d));
+  }
+}
+$('#arcDoorsOpen') && ($('#arcDoorsOpen').onclick = ()=>{
+  const H = arcHere(); arcDoorsAll(H && H.key, true); });
+$('#arcDoorsShut') && ($('#arcDoorsShut').onclick = ()=>{
+  const H = arcHere(); arcDoorsAll(H && H.key, false); });
+
+$('#arcHouse') && ($('#arcHouse').oninput = e=>{ setArcHouse((+e.target.value)/100); });
+$('#arcUp')   && ($('#arcUp').onclick   = ()=>{ setArcHouse(1);
+  const el = $('#arcHouse'); if(el) el.value = 100; toast('Arc house lights up'); });
+$('#arcDown') && ($('#arcDown').onclick = ()=>{ setArcHouse(0);
+  const el = $('#arcHouse'); if(el) el.value = 0; toast('Arc house lights out'); });
+
+$('#roomCull').onchange = e=>{
+  QUALITY.rooms = e.target.checked;
+  updateRooms(true);
+  toast(QUALITY.rooms ? 'Only the rooms you can see into are being drawn'
+                      : 'Drawing the whole building at once');
+  showRoomCost();
+};
+function showRoomCost(){
+  const el = $('#roomStat'); if(!el || !ROOM_TALLY) return;
+  const rows = ROOM_ORDER.concat(['shared']).map(n=>{
+    const c = roomCost(n);
+    const live = (n === 'shared') || !QUALITY.rooms || ROOM_GROUP[n].visible;
+    return '<div style="display:flex;gap:6px;'+(live?'':'opacity:.4')+'">'+
+      '<span style="flex:1">'+(n === 'shared' ? 'shared / walls' : ROOMS[n].label)+'</span>'+
+      '<b style="color:var(--'+(live?'amber':'dim')+')">'+(c.tris/1000).toFixed(0)+'k</b></div>';
+  }).join('');
+  let drawn = 0, total = 0;
+  ROOM_ORDER.concat(['shared']).forEach(n=>{
+    const c = roomCost(n);
+    total += c.tris;
+    if(n === 'shared' || !QUALITY.rooms || ROOM_GROUP[n].visible) drawn += c.tris;
+  });
+  el.innerHTML = rows + '<div style="margin-top:4px;border-top:1px solid var(--line);padding-top:3px">'+
+    'you are in <b style="color:var(--cyan)">'+ROOMS[curRoom].label+'</b><br>drawing '+
+    (drawn/1000).toFixed(0)+'k of '+(total/1000).toFixed(0)+'k triangles</div>';
+}
+$('#qual').onchange = e=>{
+  QUALITY.level = e.target.value;
+  if(QUALITY.level === 'auto'){ QUALITY.scale=1; QUALITY.shadows=true;
+    renderer.shadowMap.enabled=true; resize(); }
+  else applyQuality(QUALITY.level);
+  toast('Render quality: '+QUALITY.level);
+};
+$('#btnAll').onclick=()=>{ SECTIONS.forEach(s=>{ if(!s.sys) setSection(s,1,1.5); }); };
+
+$('#flyAllIn').onclick =()=>FLY.forEach(flyIn);
+$('#flyAllOut').onclick=()=>FLY.forEach(flyOut);
+$('#flyStop').onclick  =()=>FLY.forEach(ls=>ls.target=ls.pos);
+$('#flyPreset').onclick=()=>{ [0,2,3,5,6,10,11].forEach(i=>flyIn(FLY[i]));
+  flyTo(FLY[13],10.6); flyTo(FLY[9],20.5); flyTo(FLY[7],20.5); FLY[1].travTarget=1; toast('Show look set'); };
+
+$('#setRot').onclick=()=>{ if(selPiece){ selPiece.rot+=15*DEG; selPiece.group.rotation.y=selPiece.rot; refreshSetUI(); } };
+$('#setDel').onclick=()=>{ if(selPiece) strikePiece(selPiece); };
+$('#setClear').onclick=()=>strikeAll();
+$('#setSave').onclick=()=>{ SAVED_SET = SET.map(p=>({key:p.key, x:p.group.position.x, y:p.group.position.y,
+  z:p.group.position.z, rot:p.rot})); toast('Groundplan saved ('+SAVED_SET.length+' pieces)'); };
+$('#setLoad').onclick=()=>{ if(!SAVED_SET.length){ toast('Nothing saved'); return; }
+  strikeAll(); SAVED_SET.forEach(d=>{ const p=placeScenic(d.key,d.x,d.z);
+    if(p){ p.group.position.y=d.y; p.rot=d.rot; p.group.rotation.y=d.rot; } }); toast('Groundplan restored'); };
+let SAVED_SET = [];
+
+$('#btnGo').onclick=go;
+$('#btnBack').onclick=goBack;
+$('#btnTop').onclick=()=>{ nextCue=0; refreshCues(); toast('Standing by at the top'); };
+$('#btnStopFade').onclick=()=>{ FIXTURES.forEach(f=>{ f.lvlDur=0; f.colDur=0; }); toast('Fades held'); };
+$('#btnRec').onclick=recordCue;
+$('#btnDelQ').onclick=()=>{ if(selCue>=0){ CUES.splice(selCue,1); selCue=-1; nextCue=clamp(nextCue,0,CUES.length); refreshCues(); } };
+
+$('#btnRun').onclick=()=>{ Snd.init(); Prog.loop=$('#btnLoop').checked; runProgram($('#code').value); };
+$('#btnHalt').onclick=haltProgram;
+
+/* ============================================================================
+   SAMPLE SHOWS
+   ========================================================================== */
+const SNIPPETS = {
+  'GOES WRONG': `# ---- THE MURDER AT HAVERSHAM MANOR — run the plot ----
+# Load the show on the SHOWS page first, then run this.
+# The cues stand the set back up at the top, then take it apart again.
+cue 0.5
+wait 4
+cue 1
+wait 8
+cue 2
+wait 14
+cue 3
+wait 12
+cue 4
+wait 8
+cue 5
+wait 12
+cue 6
+wait 10
+# --- the interval ---
+cue 6.5
+wait 4
+cue 6.6
+wait 12
+cue 6.7
+wait 6
+cue 7
+wait 12
+cue 8
+wait 6
+cue 9
+wait 10
+cue 10
+wait 8
+cue 11
+wait 10
+cue 12
+wait 8
+cue 13
+wait 12
+cue 14
+sound ovation
+wait 14
+cue 15
+wait 3
+cue 16
+wait 3
+cue 17`,
+
+  'HAMILTON': `# ---- HAMILTON — run the plot ----
+# Load the show on the SHOWS page first, then run this.
+# The revolves are in the cues: watch the deck turn under the company.
+cue 0.5
+wait 4
+cue 1
+wait 8
+cue 2
+wait 12
+cue 3
+wait 12
+cue 4
+wait 14
+cue 5
+wait 12
+cue 6
+wait 14
+# --- the interval ---
+cue 6.5
+wait 4
+cue 6.6
+wait 12
+cue 6.7
+wait 6
+cue 7
+wait 12
+cue 8
+wait 16
+cue 9
+wait 14
+cue 10
+wait 12
+cue 11
+wait 18
+cue 12
+sound ovation
+wait 14
+cue 13
+wait 3
+cue 14
+wait 3
+cue 15`,
+
+  'LOST BOYS': `# ---- THE LOST BOYS — run the plot ----
+# Load the show on the SHOWS page first, then run this.
+# The curtain stays in until cue 2. The neon rides the stack with everything else.
+cue 0.5
+wait 4
+cue 1
+wait 8
+cue 2
+wait 10
+cue 3
+wait 12
+cue 4
+wait 10
+cue 5
+wait 12
+cue 6
+wait 12
+# --- the interval ---
+cue 6.5
+wait 4
+cue 6.6
+wait 12
+cue 6.7
+wait 6
+cue 7
+wait 10
+sound whoosh
+cue 8
+wait 10
+cue 9
+wait 8
+sound sting
+cue 10
+wait 10
+sound crash
+cue 11
+wait 14
+cue 12
+wait 16
+cue 13
+sound ovation
+wait 12
+cue 14
+wait 2
+cue 15
+wait 10
+cue 16
+wait 3
+cue 17
+wait 8
+cue 18`,
+
+  'OUTSIDERS': `# ---- THE OUTSIDERS — run the plot ----
+# Load the show on the SHOWS page first, then run this.
+# Every cue carries its own rain, storm and firelight.
+cue 0.5
+wait 4
+cue 1
+wait 8
+cue 2
+wait 10
+cue 3
+wait 10
+cue 4
+wait 8
+cue 5
+wait 10
+cue 6
+wait 12
+# --- the interval ---
+cue 6.5
+wait 4
+cue 6.6
+wait 12
+cue 6.7
+wait 6
+cue 7
+wait 10
+# the church goes up
+sound crash
+cue 8
+wait 16
+cue 8.5
+wait 8
+cue 9
+wait 8
+# the rumble
+sound rain
+cue 10
+wait 8
+cue 11
+wait 20
+cue 12
+wait 12
+cue 13
+wait 14
+cue 14
+sound ovation
+wait 12
+cue 15
+wait 3
+cue 16
+wait 8
+cue 17`,
+
+  'OPENING': `# ---- HOUSE TO HALF, THEN CURTAIN UP ----
+haze 60
+house 100
+work 0
+fade 4
+all @ out
+wait 1
+house 50
+wait 3
+house 0
+sound preshow
+wait 2
+fade 3
+color foh warm
+foh @ 60
+wait 3
+curtain open
+wait 4
+fade 5
+color wash straw
+wash @ 85
+color back moon
+back @ 70
+color cyc deepblue
+cyc @ 60
+sound fanfare
+wait 6
+sound applause`,
+
+  'STORM': `# ---- STORM SEQUENCE ----
+haze 80
+fade 2
+all @ out
+color cyc deepblue
+cyc @ 35
+color wash moon
+wash @ 20
+gobo wash breakup
+sound wind
+sound rain
+wait 3
+loop 6
+  strobe foh rate 0.05 times 5
+  sound thunder
+  wait 0.4
+  color cyc congo
+  cyc @ 90
+  wait 0.2
+  fade 1.2
+  cyc @ 30
+  fade 0
+  wait 3
+end
+sound wind
+fade 6
+all @ out`,
+
+  'ROCK SHOW': `# ---- CONCERT LOOK, MOVERS BUSY ----
+haze 100
+house 0
+fade 0
+all @ out
+color movers magenta
+color back cyan
+color cyc magenta
+movers @ 100
+loop 8
+  pan 23 -50
+  pan 24 50
+  tilt movers -70
+  chase back rate 0.12 times 2
+  color cyc cyan
+  cyc @ 90
+  wait 0.6
+  pan 23 50
+  pan 24 -50
+  tilt movers -30
+  chase wash rate 0.1 times 2
+  color cyc magenta
+  wait 0.6
+  bump front
+end
+strobe all rate 0.05 times 24
+fade 3
+all @ out`,
+
+  'SCENE CHANGE': `# ---- FLY A SCENE CHANGE IN THE DARK ----
+fade 2
+all @ out
+wait 2
+work 25
+fly 10 in
+fly 8 out
+fly 14 to 10.6
+wait 6
+work 0
+wait 1
+fade 4
+color wash amber
+wash @ 90
+color back straw
+back @ 60
+gobo back leaves
+color cyc gold
+cyc @ 75`,
+
+  'CURTAIN CALL': `# ---- BOWS ----
+fade 1
+color all white
+front @ 100
+wash @ 100
+back @ 80
+cyc @ 100
+color cyc gold
+sound ovation
+wait 4
+curtain close
+wait 3
+fade 6
+all @ out
+house 100`
+};
+function buildSnippets(){
+  const w=$('#snips'); w.innerHTML='';
+  Object.keys(SNIPPETS).forEach(k=>{
+    const b=document.createElement('button'); b.className='b snip'; b.textContent=k;
+    b.onclick=()=>{ $('#code').value=SNIPPETS[k]; toast(k+' loaded — hit RUN SHOW'); };
+    w.appendChild(b);
+  });
+  $('#code').value = SNIPPETS.OPENING;
+}
+$('#langRef').innerHTML = `
+<b style="color:var(--amber)">LEVELS</b><br>
+<code>1 thru 6 @ 80</code><br><code>at 9 + 12 @ full</code><br><code>wash @ out</code><br>
+<code>fade 3</code> &mdash; time for what follows<br><br>
+<b style="color:var(--amber)">SECTIONS</b><br>
+front · wash · back · cyc · movers · spot &mdash; the same names as the faders<br>
+also: all · foh · booms · warm · cool · stage<br><br>
+<b style="color:var(--amber)">COLOUR &amp; GOBO</b><br>
+<code>color wash amber</code><br><code>color 1 thru 6 #ff2200</code><br><code>gobo back leaves</code><br>
+<span class="mini">white warm cool red deepred blue deepblue congo green moss amber gold pink magenta lavender purple cyan straw sunset moon</span><br>
+<span class="mini">gobos: none breakup leaves window stars bars</span><br><br>
+<b style="color:var(--amber)">MOVEMENT</b><br>
+<code>pan 23 -40</code> <code>tilt movers -60</code><br><code>point 23 0 1.5 -4</code><br><br>
+<b style="color:var(--amber)">EFFECTS</b><br>
+<code>chase back rate 0.12 times 4</code><br><code>strobe all rate 0.05 times 20</code><br><code>bump front</code><br><br>
+<b style="color:var(--amber)">TIME &amp; FLOW</b><br>
+<code>wait 2.5</code><br><code>loop 4 … end</code><br><code>repeat</code><br><br>
+<b style="color:var(--amber)">STAGE</b><br>
+<code>fly 10 in</code> <code>fly 8 out</code> <code>fly 3 to 12</code><br>
+<code>curtain open|close</code><br><code>sound thunder</code><br><code>cue 5</code><br>
+<code>haze 70</code> <code>house 0</code> <code>work 20</code> <code>grand 100</code><br>
+<code>blackout</code> / <code>restore</code><br><code>sub 1 @ 80</code>`;
+
+/* ============================================================================
+   SCENE SHOP
+   ========================================================================== */
+function refreshShopUI(){ if(typeof renderBench === 'function') renderBench(); }
+function stationOf(o){
+  while(o){ if(o.userData && o.userData.station) return o.userData.station; o = o.parent; }
+  return null;
+}
+function useStation(st){
+  if(st.id.indexOf('dock') === 0){
+    toggleDockDoor(DOCKDOORS[(+st.id.slice(4) || 1) - 1]);
+    return;
+  }
+  openBench(st.id);
+}
+
+/* ============================================================================
+   MAIN LOOP
+   ========================================================================== */
+let last = performance.now(), fpsT=0, fpsN=0, showClock=0, uiT=0, frameErrs=0;
+let LOOP_XR = false;      // set by the VR module: the headset drives the clock
+function frame(now){
+  if(!LOOP_XR) requestAnimationFrame(frame);
+  try{ tick(now); }
+  catch(err){
+    if(++frameErrs === 1){ console.error(err); FATAL('The show stopped', err.message+'\n\n'+err.stack); }
+  }
+}
+let hoverT = 0, frameNo = 0;
+function tick(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  const t = now/1000;
+  frameNo++;
+
+  updatePlayer(dt);
+  updateOrbit();
+  updateRooms(false);         // switch off the rooms you cannot see into
+  updateFades(dt);
+  stepProgram(dt);
+  updateFly(dt);
+  updateDoors(dt);
+  updateDockDoors(dt);
+  updateMachines(dt);
+  updateStorm(dt);            // rain, lightning and firelight
+  updateCrew(dt);             // the stagehands, if they have been called
+  updateSmoke(dt);            // the fog machines
+  updateArc(dt);              // the other building's foyer
+  updateStageFromPosition();  // the board is patched to the room you are in
+  updateStageHouseLights();   // and every auditorium answers its own master
+  if(typeof vrUpdate === 'function') vrUpdate(dt);
+  if(VENUE !== lastVenue){ lastVenue = VENUE; refreshVenueUI(); }
+  if(followTarget){
+    if(Player.mode==='walk') followTarget.set(Player.pos.x, Player.pos.y+1.2, Player.pos.z);
+    else followTarget.copy(Orbit.target);
+  }
+  updateRig(dt, t);
+
+  // picking is only needed a few times a second, not every frame
+  hoverT += dt;
+  if(hoverT > 0.12){ hoverT = 0; updateHover(); }
+
+  // shadow maps refresh on a cadence rather than every single frame
+  renderer.shadowMap.needsUpdate = QUALITY.shadows && (shadowsDirty || (frameNo & 1) === 0);
+  shadowsDirty = false;
+
+  showClock += dt;
+  uiT += dt;
+  if(uiT > 0.1){
+    uiT = 0;
+    refreshChannelStrip();
+    if($('#p-fly').classList.contains('on')){ syncFlyUI(); syncRailGroups(); refreshHangUI(); }
+    const m = Math.floor(showClock/60), s = Math.floor(showClock%60);
+    $('#clockTxt').textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    const live = HOUSE.house < 0.15;
+    const lc = $('#liveChip');
+    lc.textContent = live ? 'SHOW IN PROGRESS' : 'HOUSE OPEN';
+    lc.classList.toggle('live', live);
+    if($('#p-lights').classList.contains('on')) showRoomCost();
+    if($('#p-show').classList.contains('on')) refreshCrewUI();
+    if($('#p-smoke').classList.contains('on')) syncSmokeUI();
+  }
+  fpsN++; fpsT+=dt;
+  if(fpsT>0.6){
+    const fps = Math.round(fpsN/fpsT);
+    $('#fpsTxt').textContent = fps;
+    fpsN=0; fpsT=0;
+    autoTune(fps);
+  }
+
+  /* with the bench up, the theatre is hidden behind it — draw the grid instead */
+  if(BENCH.open){
+    if(BENCH.tab === 'build') edRender();
+    return;
+  }
+  renderer.render(scene, camera);
+}
+
+/* if the machine is struggling, quietly step the renderer down a gear */
+let tuneStreak = 0;
+function autoTune(fps){
+  if(QUALITY.level !== 'auto') return;
+  if(fps < 34){ tuneStreak++; } else if(fps > 52){ tuneStreak--; } else { tuneStreak = 0; }
+  if(tuneStreak >= 3 && QUALITY.scale > 0.63){
+    QUALITY.scale = Math.max(0.62, QUALITY.scale - 0.16);
+    if(QUALITY.scale <= 0.7 && QUALITY.shadows){ QUALITY.shadows=false; renderer.shadowMap.enabled=false; }
+    resize(); tuneStreak = 0;
+    toast('Eased the render quality back to hold the frame rate');
+  } else if(tuneStreak <= -6 && QUALITY.scale < 1){
+    QUALITY.scale = Math.min(1, QUALITY.scale + 0.12); resize(); tuneStreak = 0;
+  }
+}
+
+/* ============================================================================
+   BOOT
+   ========================================================================== */
+function init(){
+  initHang();
+  /* pieces you place and doors you swing belong to no single room */
+  roomForce(setGroup,  'shared');
+  roomForce(doorGroup, 'shared');
+  roomForce(poolGroup, 'shared');
+  buildRooms();
+  buildArc();       // the second venue, hung off the scene so the sorter never sees it
+  buildStages();    // three stages, one board — see p2k
+  refreshVenueUI();
+  refreshStageChip();
+  updateRooms(true);
+  lockStatic();
+  buildChannelStrip();
+  buildGoodsPalette();
+  buildSetPalette();
+  buildSoundUI();
+  wireBench();
+  buildSnippets();
+  refreshSubs();
+  refreshSetUI();
+  refreshCues();
+  buildFlyUI();
+  buildRailGroups();
+  buildSmoke();
+  buildSmokeUI();
+  refreshHangUI();
+  selLineset = FLY[4];
+  selectSection(0);
+  syncMasters();
+  goToView(1);
+
+  // a starting look so the room reads on entry
+  HOUSE.house = 0.75; HOUSE.work = 0;
+  [1,2,3,4,5,6].forEach(c=>setLevel(c,0.22,0));
+  [9,10,11,12,13,14].forEach(c=>setLevel(c,0.14,0));
+
+  // a starter cue stack
+  const seed = [
+    {n:0.5,label:'preset — house open',fade:0,lx:[],house:0.75,work:0},
+    {n:1,  label:'house to half',fade:5,house:0.4},
+    {n:2,  label:'house out / curtain warmers',fade:4,house:0},
+    {n:3,  label:'lights up — act one',fade:5},
+    {n:4,  label:'night — cyc blue',fade:8},
+    {n:5,  label:'blackout',fade:2},
+    {n:6,  label:'curtain call',fade:1}
+  ];
+  const looks = [
+    ()=>{ all(0); },
+    ()=>{ all(0); },
+    ()=>{ all(0); set([1,2,3,4,5,6],0.35,'#ffd6a8'); },
+    ()=>{ all(0); set(GROUPS.wash,0.85,'#ffe6c0'); set(GROUPS.back,0.6,'#cfe0ff');
+          set(GROUPS.foh,0.7,'#ffd6a8'); set(GROUPS.cyc,0.55,'#2f6bff'); },
+    ()=>{ all(0); set(GROUPS.wash,0.28,'#9fc0ff'); set(GROUPS.back,0.55,'#2f6bff');
+          set(GROUPS.cyc,0.7,'#0c1e9c'); set(GROUPS.movers,0.5,'#b79dff'); },
+    ()=>{ all(0); },
+    ()=>{ all(1,'#ffffff'); set(GROUPS.cyc,1,'#ffc04a'); }
+  ];
+  function all(v,c){ FIXTURES.forEach(f=>{ f.level=v; if(c) f.color.set(c); }); }
+  function set(list,v,c){ list.forEach(n=>{ const f=chan(n); if(f){ f.level=v; if(c) f.color.set(c); } }); }
+  const savedLevels = snapshotLX();
+  seed.forEach((s,i)=>{
+    looks[i]();
+    CUES.push({n:s.n, label:s.label, fade:s.fade, follow:null, lx:snapshotLX(), fly:null, sfx:null,
+      house:(s.house!==undefined?s.house:0), work:(s.work!==undefined?s.work:0),
+      practical:0, haze:RIG.haze});
+  });
+  // restore the entry look
+  savedLevels.forEach((r,i)=>{ const f=chan(i+1); f.level=r.lvl; f.color.set(r.col); });
+  CUES[2].fly = snapshotFly();
+  nextCue = 0;
+  refreshCues();
+
+  refreshShowUI();
+  refreshCrewUI();
+  showPage('lights');
+  toast('Welcome to the house. Press H for the manual.');
+}
+
+/* loading veil */
+(function boot(){
+  const bar = $('#bar i'), txt = $('#loadTxt');
+  const steps = ['RAISING THE IRON…','HANGING THE PLOT…','LOADING THE ARBORS…',
+                 'PATCHING THE BOARD…','FOCUS SESSION…','HOUSE OPEN'];
+  let i=0;
+  const iv = setInterval(()=>{
+    i++; bar.style.width = (i/steps.length*100)+'%';
+    txt.textContent = steps[Math.min(i,steps.length-1)];
+    if(i>=steps.length){
+      clearInterval(iv);
+      $('#startBtn').style.display='block';
+    }
+  }, 260);
+  $('#startBtn').onclick = ()=>{
+    Snd.init();
+    $('#veil').style.opacity=0;
+    setTimeout(()=>$('#veil').style.display='none', 800);
+    if(Player.mode==='walk') lock();
+  };
+})();
+
+try{
+  init();
+  last = performance.now();
+  tick(last);                       // one eager frame: surfaces GPU trouble immediately
+  if(window.__glErr)
+    FATAL('Your GPU rejected the lighting shaders',
+      'The theatre could not be drawn.\n\n'+window.__glErr);
+  else
+    requestAnimationFrame(frame);
+}catch(err){
+  console.error(err);
+  FATAL('The theatre would not open', err.message+'\n\n'+err.stack);
+}

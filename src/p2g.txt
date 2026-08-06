@@ -1,0 +1,599 @@
+
+/* ============================================================================
+   THE WORKBENCH GRID
+   A build plate you work on block by block: pick a shape, pick a colour and a
+   finish, click to place, right-click to take away, rotate, mirror, work up
+   layer by layer, then send the whole thing to the stage.
+   ========================================================================== */
+const ED = {
+  scene:null, camera:null, renderer:null, plate:null, ghost:null, gridHelp:null,
+  vw:0, vh:0,
+  blocks:new Map(),                 // "x,y,z" -> {mesh, shape, colour, finish, rot}
+  ny:40, cell:0.5,                  // the plate IS the stage, in stage coordinates
+  drag:null, touched:new Set(),
+  shape:'block', colour:'#c2a06a', finish:'paint', rot:0,
+  mirror:false, paintTool:false, erase:false, layer:0,
+  yaw:0.35, pitch:0.55, dist:34, target:null,
+  focus:null, lastT:0,
+  ready:false
+};
+const ED_SHAPES = ['block','slab','panel','wedge','corner','pillar','step','post',
+                   'pivot','motor','slider','slidepow'];
+/* the four joints: a joint carries everything that hangs off it */
+const ED_JOINTS = {
+  pivot:    {kind:'turn',  powered:false, label:'pivot'},
+  motor:    {kind:'turn',  powered:true,  label:'motor'},
+  slider:   {kind:'slide', powered:false, label:'slider'},
+  slidepow: {kind:'slide', powered:true,  label:'powered slider'}
+};
+const ED_ICONS = {
+  block:'<rect x="6" y="6" width="22" height="22" rx="1"/>',
+  slab: '<rect x="6" y="17" width="22" height="11" rx="1"/>',
+  panel:'<rect x="6" y="6" width="7" height="22" rx="1"/>',
+  wedge:'<path d="M6 28 L28 28 L28 8 Z"/>',
+  corner:'<path d="M6 28 L28 28 L6 8 Z"/>',
+  pillar:'<rect x="11" y="6" width="12" height="22" rx="6"/>',
+  step: '<path d="M6 28 L28 28 L28 16 L17 16 L17 8 L6 8 Z"/>',
+  post: '<rect x="14" y="6" width="6" height="22" rx="1"/>',
+  pivot:'<circle cx="17" cy="17" r="9" fill="none" stroke="currentColor" stroke-width="3"/>'+
+        '<circle cx="17" cy="17" r="2.5"/>',
+  motor:'<circle cx="17" cy="17" r="9" fill="none" stroke="currentColor" stroke-width="3"/>'+
+        '<path d="M17 8 L17 17 L23 21"/>',
+  slider:'<rect x="4" y="14" width="26" height="6" rx="3" fill="none" stroke="currentColor" stroke-width="3"/>'+
+        '<rect x="12" y="11" width="10" height="12" rx="2"/>',
+  slidepow:'<rect x="4" y="14" width="26" height="6" rx="3" fill="none" stroke="currentColor" stroke-width="3"/>'+
+        '<path d="M14 9 L22 9 L17 17 L23 17 L13 27 L16 18 L11 18 Z"/>'
+};
+
+/* ---- one geometry per shape, all sitting in a unit cell ---- */
+function edGeoms(){
+  const c = ED.cell, g = {};
+  g.block = new T.BoxGeometry(c, c, c);
+  g.slab  = new T.BoxGeometry(c, c/2, c);  g.slab.translate(0, -c/4, 0);
+  g.panel = new T.BoxGeometry(c/5, c, c);  g.panel.translate(-c*0.4, 0, 0);
+  g.pillar= new T.CylinderGeometry(c/2, c/2, c, 14);
+  g.post  = new T.BoxGeometry(c/4, c, c/4);
+  // joints read as machined hardware
+  g.pivot = new T.CylinderGeometry(c*0.38, c*0.44, c*0.7, 16);
+  g.motor = new T.CylinderGeometry(c*0.40, c*0.40, c*0.86, 16);
+  g.slider = new T.BoxGeometry(c*0.94, c*0.42, c*0.62);
+  g.slidepow = new T.BoxGeometry(c*0.94, c*0.52, c*0.62);
+  // a ramp
+  const w = new T.BufferGeometry();
+  const h = c/2;
+  const v = [
+    -h,-h,-h,  h,-h,-h,  h, h,-h,
+    -h,-h, h,  h,-h, h,  h, h, h
+  ];
+  w.setAttribute('position', new T.Float32BufferAttribute(v,3));
+  w.setIndex([0,1,2, 3,5,4, 0,2,5, 0,5,3, 0,3,4, 0,4,1, 1,4,5, 1,5,2]);
+  w.computeVertexNormals();
+  g.wedge = w;
+  // a corner
+  const k = new T.BufferGeometry();
+  k.setAttribute('position', new T.Float32BufferAttribute([
+    -h,-h,-h,  h,-h,-h,  -h,-h, h,  -h, h,-h
+  ],3));
+  k.setIndex([0,2,1, 0,1,3, 0,3,2, 1,2,3]);
+  k.computeVertexNormals();
+  g.corner = k;
+  // a step
+  const s1 = new T.BoxGeometry(c, c/2, c);      s1.translate(0, -c/4, 0);
+  const s2 = new T.BoxGeometry(c, c/2, c/2);    s2.translate(0,  c/4, -c/4);
+  const sp = [], si = [], sn = [];
+  [s1, s2].forEach(part=>{
+    const off = sp.length/3;
+    const p = part.attributes.position.array, n = part.attributes.normal.array;
+    for(let i=0;i<p.length;i++){ sp.push(p[i]); sn.push(n[i]); }
+    const idx = part.index.array;
+    for(let i=0;i<idx.length;i++) si.push(idx[i] + off);
+  });
+  const st = new T.BufferGeometry();
+  st.setAttribute('position', new T.Float32BufferAttribute(sp,3));
+  st.setAttribute('normal',   new T.Float32BufferAttribute(sn,3));
+  st.setIndex(si);
+  g.step = st;
+  return g;
+}
+const ED_MATCACHE = new Map();
+const ED_JOINTMAT = {
+  pivot:    new T.MeshStandardMaterial({color:0x7f8794, roughness:.4, metalness:.85}),
+  motor:    new T.MeshStandardMaterial({color:0xffb340, roughness:.4, metalness:.6}),
+  slider:   new T.MeshStandardMaterial({color:0x7f8794, roughness:.4, metalness:.85}),
+  slidepow: new T.MeshStandardMaterial({color:0xffb340, roughness:.4, metalness:.6})
+};
+function edMat(colour, finish){
+  const key = colour+'|'+finish;
+  if(ED_MATCACHE.has(key)) return ED_MATCACHE.get(key);
+  const o = {color:new T.Color(colour)};
+  if(finish === 'timber'){ o.map = TX.deck; o.roughness = .85; o.color = new T.Color(colour); }
+  else if(finish === 'brick'){ o.map = TX.brick; o.roughness = .95; }
+  else if(finish === 'plaster'){ o.map = TX.plaster; o.roughness = .92; }
+  else { o.roughness = .8; }
+  const m = new T.MeshStandardMaterial(o);
+  ED_MATCACHE.set(key, m);
+  return m;
+}
+
+function edInit(){
+  if(ED.ready) return;
+  ED.geo = edGeoms();
+
+  /* The bench is an opaque panel, so a "transparent" hole in it would only
+     show the panel behind. The grid gets a renderer and a canvas of its own. */
+  const view = $('#buildView');
+  if(!view) return;
+  ED.renderer = new T.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
+  ED.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  ED.renderer.outputEncoding = T.sRGBEncoding;
+  ED.renderer.toneMapping = T.ACESFilmicToneMapping;
+  ED.renderer.toneMappingExposure = 1.1;
+  ED.renderer.domElement.style.display = 'block';
+  ED.renderer.domElement.style.width = '100%';
+  ED.renderer.domElement.style.height = '100%';
+  view.appendChild(ED.renderer.domElement);
+  ED.ready = true;
+  ED.scene = new T.Scene();
+  ED.scene.background = new T.Color(0x0d1117);
+  ED.camera = new T.PerspectiveCamera(45, 1.6, 0.1, 400);
+
+  ED.scene.add(new T.AmbientLight(0xcfd8e6, 0.75));
+  ED.scene.add(new T.HemisphereLight(0xbcd0e8, 0x20242c, 0.6));
+  const key = new T.DirectionalLight(0xffffff, 0.9); key.position.set(9, 16, 7);
+  ED.scene.add(key);
+  const fill = new T.DirectionalLight(0x9fb6d6, 0.35); fill.position.set(-8, 6, -9);
+  ED.scene.add(fill);
+
+  /* the build plate is the stage deck itself — full width, back wall to the
+     bowed apron — so where you build is exactly where it lands.            */
+  {
+    const sh = new T.Shape(), HW = D.stageW/2;
+    sh.moveTo(-HW, -D.backWall); sh.lineTo(HW, -D.backWall);
+    sh.lineTo(HW, -D.apron);
+    sh.quadraticCurveTo(0, -(D.apron + 2*D.thrust), -HW, -D.apron);
+    sh.lineTo(-HW, -D.backWall);
+    const geo = new T.ExtrudeGeometry(sh, {depth:0.3, bevelEnabled:false, curveSegments:44});
+    geo.rotateX(-Math.PI/2); geo.translate(0, -0.3, 0);
+    ED.plate = new T.Mesh(geo, new T.MeshStandardMaterial({color:0x2f353f, roughness:.9}));
+    ED.scene.add(ED.plate);
+  }
+  /* grid lines, clipped to the shape of the stage */
+  ED.gridHelp = new T.Group();
+  ED.scene.add(ED.gridHelp);
+  edBuildGrid();
+  // the centre line, for mirroring
+  ED.mirrorLine = new T.Mesh(new T.BoxGeometry(0.04, 0.02, D.apron + D.thrust - D.backWall),
+    new T.MeshBasicMaterial({color:0xa97bff}));
+  ED.mirrorLine.position.set(0, 0.012, (D.apron + D.thrust + D.backWall)/2);
+  ED.mirrorLine.visible = false;
+  ED.scene.add(ED.mirrorLine);
+
+  /* the drag preview: a batch of ghosts showing exactly what will land */
+  ED.preview = new T.InstancedMesh(ED.geo.block,
+    new T.MeshBasicMaterial({color:0xffb340, transparent:true, opacity:.3, depthWrite:false}), 4096);
+  ED.preview.count = 0;
+  ED.preview.frustumCulled = false;
+  ED.scene.add(ED.preview);
+  ED.previewShape = 'block';
+
+  edRefs();
+
+  ED.ghost = new T.Mesh(ED.geo.block,
+    new T.MeshBasicMaterial({color:0xffb340, transparent:true, opacity:.35, depthWrite:false}));
+  ED.ghost.visible = false;
+  ED.scene.add(ED.ghost);
+  ED.ghostEdge = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(ED.cell,ED.cell,ED.cell)),
+    new T.LineBasicMaterial({color:0xffb340}));
+  ED.ghostEdge.visible = false;
+  ED.scene.add(ED.ghostEdge);
+  edCam();
+}
+/* draw the grid, resizing to whatever the panel gives us */
+function edRender(){
+  if(!ED.ready || !ED.renderer) return;
+  const view = $('#buildView'); if(!view) return;
+  const now = performance.now();
+  const dt = ED.lastT ? Math.min(0.05, (now - ED.lastT)/1000) : 0.016;
+  ED.lastT = now;
+  edMove(dt);
+  const w = view.clientWidth, h = view.clientHeight;
+  if(w < 8 || h < 8) return;
+  if(w !== ED.vw || h !== ED.vh){
+    ED.vw = w; ED.vh = h;
+    ED.renderer.setSize(w, h, false);
+    ED.camera.aspect = w/h;
+    ED.camera.updateProjectionMatrix();
+  }
+  ED.renderer.render(ED.scene, ED.camera);
+}
+/* ---------------------------------------------------------------------------
+   What the audience can and cannot see: the proscenium opening, the masking
+   line down each side, and the wings beyond it.
+   --------------------------------------------------------------------------- */
+function edRefs(){
+  const g = new T.Group();
+  ED.refs = g; ED.scene.add(g);
+  const HP = D.procW/2, HW = D.stageW/2;
+
+  // the proscenium opening, stood up on the plaster line
+  const arch = [];
+  const seg = 26, top = D.procH, spring = D.procH - 1.8;
+  arch.push(-HP, 0, 0, -HP, spring, 0);
+  for(let i=0;i<seg;i++){
+    const u = i/seg, u2 = (i+1)/seg;
+    const bz = t=>{ const a=(1-t)*(1-t), b=2*t*(1-t), c=t*t;
+      return {x:a*(-HP)+c*HP, y:a*spring + b*(top+1.4) + c*spring}; };
+    const p1 = bz(u), p2 = bz(u2);
+    arch.push(p1.x, p1.y, 0, p2.x, p2.y, 0);
+  }
+  arch.push(HP, spring, 0, HP, 0, 0);
+  const ag = new T.BufferGeometry();
+  ag.setAttribute('position', new T.Float32BufferAttribute(arch,3));
+  g.add(new T.LineSegments(ag, new T.LineBasicMaterial({color:0xffb340})));
+
+  // the plaster line itself, right across the stage
+  const pl = new T.BufferGeometry();
+  pl.setAttribute('position', new T.Float32BufferAttribute([-HW,0.03,0, HW,0.03,0],3));
+  g.add(new T.LineSegments(pl, new T.LineBasicMaterial({color:0xffb340, transparent:true, opacity:.5})));
+
+  // the wings: everything outside the opening, shaded so you can see it is masked
+  [-1,1].forEach(s=>{
+    const w = HW - HP;
+    const m = new T.Mesh(new T.PlaneGeometry(w, -D.backWall + D.apron),
+      new T.MeshBasicMaterial({color:0x3fd0e0, transparent:true, opacity:.07,
+                               side:T.DoubleSide, depthWrite:false}));
+    m.rotation.x = -Math.PI/2;
+    m.position.set(s*(HP + w/2), 0.02, (D.backWall + D.apron)/2);
+    g.add(m);
+    // and the sightline wall standing on that edge
+    const post = new T.Mesh(new T.PlaneGeometry(-D.backWall + D.apron, D.procH),
+      new T.MeshBasicMaterial({color:0x3fd0e0, transparent:true, opacity:.05,
+                               side:T.DoubleSide, depthWrite:false}));
+    post.rotation.y = Math.PI/2;
+    post.position.set(s*HP, D.procH/2, (D.backWall + D.apron)/2);
+    g.add(post);
+  });
+
+  // the upstage wall
+  const bw = new T.BufferGeometry();
+  bw.setAttribute('position', new T.Float32BufferAttribute(
+    [-HW,0.03,D.backWall, HW,0.03,D.backWall,
+     -HW,0.03,D.backWall, -HW,D.procH,D.backWall,
+      HW,0.03,D.backWall,  HW,D.procH,D.backWall,
+     -HW,D.procH,D.backWall, HW,D.procH,D.backWall],3));
+  g.add(new T.LineSegments(bw, new T.LineBasicMaterial({color:0x5b6472})));
+
+  // labels: a marker post at each wing and one on centre
+  [[-HP,'wing'],[HP,'wing'],[0,'centre']].forEach(([x])=>{
+    const t2 = new T.Mesh(new T.BoxGeometry(0.08, 0.5, 0.08),
+      new T.MeshBasicMaterial({color:0xffb340}));
+    t2.position.set(x, 0.25, D.apron + D.thrust*0.4);
+    g.add(t2);
+  });
+}
+/* the grid, drawn only where there is stage under it */
+function edBuildGrid(){
+  while(ED.gridHelp.children.length) ED.gridHelp.remove(ED.gridHelp.children[0]);
+  const c = ED.cell, HW = D.stageW/2, pts = [];
+  const y = ED.layer*c + 0.004;
+  for(let i = Math.ceil(-HW/c); i <= Math.floor(HW/c); i++){
+    const x = i*c;
+    pts.push(x, y, D.backWall, x, y, stageFrontZ(x));
+  }
+  for(let j = Math.ceil(D.backWall/c); j <= Math.floor((D.apron+D.thrust)/c); j++){
+    const z = j*c;
+    let hx = HW;
+    if(z > D.apron) hx = HW*Math.sqrt(Math.max(0, 1 - (z - D.apron)/D.thrust));
+    if(hx < 0.05) continue;
+    pts.push(-hx, y, z, hx, y, z);
+  }
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pts, 3));
+  ED.gridHelp.add(new T.LineSegments(g,
+    new T.LineBasicMaterial({color:0x3fd0e0, transparent:true, opacity:.35})));
+  // the edge of the stage, picked out
+  const edge = [];
+  for(let i=0;i<=80;i++){ const t=i/80, x = HW*(1-2*t);
+    edge.push(x, 0.02, stageFrontZ(x)); }
+  edge.push(HW, 0.02, D.backWall, -HW, 0.02, D.backWall);
+  const eg = new T.BufferGeometry();
+  eg.setAttribute('position', new T.Float32BufferAttribute(edge, 3));
+  ED.gridHelp.add(new T.Line(eg, new T.LineBasicMaterial({color:0xffb340})));
+}
+function edCam(){
+  if(!ED.focus) ED.focus = new T.Vector3(0, 1.5, (D.backWall + D.apron)/2);
+  const cp = Math.cos(ED.pitch);
+  ED.camera.position.set(
+    ED.focus.x + Math.sin(ED.yaw)*cp*ED.dist,
+    ED.focus.y + Math.sin(ED.pitch)*ED.dist,
+    ED.focus.z + Math.cos(ED.yaw)*cp*ED.dist);
+  ED.camera.lookAt(ED.focus);
+}
+/* WASD walks the view about the plate; Space and Shift take it up and down */
+function edMove(dt){
+  if(!ED.focus) edCam();
+  const run = keys['ShiftLeft'] || keys['ShiftRight'];
+  const spd = (3 + ED.dist*0.22) * (run ? 2.6 : 1) * dt;
+  let f = 0, r = 0, u = 0;
+  if(keys['KeyW']) f += 1;
+  if(keys['KeyS']) f -= 1;
+  if(keys['KeyD']) r += 1;
+  if(keys['KeyA']) r -= 1;
+  if(keys['Space']) u += 1;
+  if(keys['ControlLeft'] || keys['ControlRight']) u -= 1;
+  if(!f && !r && !u) return false;
+  const len = Math.hypot(f, r) || 1;
+  f /= len; r /= len;
+  // forward is the way the camera looks, flattened onto the deck
+  const sy = Math.sin(ED.yaw), cy = Math.cos(ED.yaw);
+  ED.focus.x += (-f*sy + r*cy) * spd;
+  ED.focus.z += (-f*cy - r*sy) * spd;
+  ED.focus.y += u * spd * 0.7;
+  ED.focus.x = clamp(ED.focus.x, -40, 40);
+  ED.focus.z = clamp(ED.focus.z, D.backWall - 20, D.apron + D.thrust + 22);
+  ED.focus.y = clamp(ED.focus.y, -1, 22);
+  edCam();
+  return true;
+}
+function edHome(){
+  ED.focus = new T.Vector3(0, 1.5, (D.backWall + D.apron)/2);
+  ED.yaw = 0.35; ED.pitch = 0.55; ED.dist = 34;
+  edCam();
+}
+const edKey = (x,y,z)=>x+','+y+','+z;
+function edInBounds(x,y,z){
+  if(y < 0 || y >= ED.ny) return false;
+  const wx = x*ED.cell, wz = z*ED.cell;
+  if(Math.abs(wx) > D.stageW/2 - 0.24) return false;
+  if(wz < D.backWall + 0.24) return false;
+  if(wz > stageFrontZ(wx) - 0.24) return false;
+  return true;
+}
+function edPlace(x,y,z, shape, colour, finish, rot){
+  if(!edInBounds(x,y,z)) return false;
+  const k = edKey(x,y,z);
+  if(ED.blocks.has(k)) edRemove(x,y,z);
+  const m = new T.Mesh(ED.geo[shape] || ED.geo.block,
+    ED_JOINTS[shape] ? ED_JOINTMAT[shape] : edMat(colour, finish));
+  m.position.set(x*ED.cell, y*ED.cell + ED.cell/2, z*ED.cell);
+  m.rotation.y = (rot||0) * Math.PI/2;
+  m.userData.cell = {x,y,z};
+  ED.scene.add(m);
+  ED.blocks.set(k, {mesh:m, shape, colour, finish, rot:rot||0, x, y, z});
+  return true;
+}
+function edRemove(x,y,z){
+  const k = edKey(x,y,z), b = ED.blocks.get(k);
+  if(!b) return false;
+  ED.scene.remove(b.mesh);
+  ED.blocks.delete(k);
+  return true;
+}
+const ED_BARE = {colour:'#c2a06a', finish:'timber'};
+/* strip: take a block back to bare timber, as if it had never been painted */
+function edStripAt(x,y,z){
+  const b = ED.blocks.get(edKey(x,y,z));
+  if(!b) return false;
+  if(ED_JOINTS[b.shape]) return false;             // hardware has no paint on it
+  if(b.colour === ED_BARE.colour && b.finish === ED_BARE.finish) return false;
+  b.colour = ED_BARE.colour; b.finish = ED_BARE.finish;
+  b.mesh.material = edMat(b.colour, b.finish);
+  return true;
+}
+function edPaintAt(x,y,z){
+  const b = ED.blocks.get(edKey(x,y,z));
+  if(!b) return false;
+  if(ED_JOINTS[b.shape]) return false;             // you don't paint a motor
+  b.colour = ED.colour; b.finish = ED.finish;
+  b.mesh.material = edMat(b.colour, b.finish);
+  return true;
+}
+/* place / remove / paint, honouring the mirror */
+function edAct(cell, mode){
+  if(!cell) return false;
+  const doOne = (x,y,z)=>{
+    if(mode === 'place')  return edPlace(x,y,z, ED.shape, ED.colour, ED.finish, ED.rot);
+    if(mode === 'remove') return edRemove(x,y,z);
+    if(mode === 'strip')  return edStripAt(x,y,z);
+    return edPaintAt(x,y,z);
+  };
+  let ok = doOne(cell.x, cell.y, cell.z);
+  if(ED.mirror && cell.x !== 0){
+    const mr = ED.rot === 1 ? 3 : ED.rot === 3 ? 1 : ED.rot;
+    if(mode === 'place') edPlace(-cell.x, cell.y, cell.z, ED.shape, ED.colour, ED.finish, mr);
+    else doOne(-cell.x, cell.y, cell.z);
+  }
+  return ok;
+}
+function edClear(){
+  ED.blocks.forEach(b=>ED.scene.remove(b.mesh));
+  ED.blocks.clear();
+}
+/* work out which cell the mouse is over */
+const edRay = new T.Raycaster();
+function edPick(nx, ny){
+  edRay.setFromCamera(new T.Vector2(nx, ny), ED.camera);
+  const meshes = [ED.plate];
+  ED.blocks.forEach(b=>meshes.push(b.mesh));
+  const hits = edRay.intersectObjects(meshes, false);
+  if(!hits.length) return null;
+  const h = hits[0];
+  if(h.object === ED.plate){
+    const x = Math.round(h.point.x/ED.cell), z = Math.round(h.point.z/ED.cell);
+    return edInBounds(x, ED.layer, z) ? {x, y:ED.layer, z, on:null} : null;
+  }
+  const c = h.object.userData.cell;
+  if(!c) return null;
+  const n = h.face ? h.face.normal.clone().applyQuaternion(h.object.quaternion) : new T.Vector3(0,1,0);
+  const step = {x:Math.round(n.x), y:Math.round(n.y), z:Math.round(n.z)};
+  return {x:c.x+step.x, y:c.y+step.y, z:c.z+step.z, on:c};
+}
+/* every cell in the box between two grid points */
+function edSpan(a, b, cap){
+  const out = [];
+  if(!a || !b) return out;
+  const x0 = Math.min(a.x,b.x), x1 = Math.max(a.x,b.x);
+  const y0 = Math.min(a.y,b.y), y1 = Math.max(a.y,b.y);
+  const z0 = Math.min(a.z,b.z), z1 = Math.max(a.z,b.z);
+  for(let x=x0;x<=x1;x++) for(let y=y0;y<=y1;y++) for(let z=z0;z<=z1;z++){
+    out.push({x,y,z});
+    if(out.length >= (cap||3000)) return out;
+  }
+  return out;
+}
+/* show the run that is about to be placed */
+const _pv = new T.Object3D();
+function edShowPreview(list, mode){
+  if(!ED.preview) return;
+  const onBlocks = (mode === 'remove' || mode === 'strip');
+  if(ED.previewShape !== ED.shape && !onBlocks){
+    ED.preview.geometry = ED.geo[ED.shape] || ED.geo.block;
+    ED.previewShape = ED.shape;
+  }
+  if(onBlocks && ED.previewShape !== 'block'){
+    ED.preview.geometry = ED.geo.block; ED.previewShape = 'block';
+  }
+  ED.preview.material.color.set(mode === 'remove' ? 0xff4d5a
+                              : mode === 'strip'  ? 0x3fd0e0 : 0xffb340);
+  let n = 0;
+  const put = (x,y,z)=>{
+    if(n >= 4096) return;
+    if(!onBlocks && !edInBounds(x,y,z)) return;
+    if(onBlocks && !ED.blocks.has(edKey(x,y,z))) return;
+    _pv.position.set(x*ED.cell, y*ED.cell + ED.cell/2, z*ED.cell);
+    _pv.rotation.set(0, ED.rot*Math.PI/2, 0);
+    _pv.scale.set(1,1,1);
+    _pv.updateMatrix();
+    ED.preview.setMatrixAt(n++, _pv.matrix);
+  };
+  for(const c of list){
+    put(c.x, c.y, c.z);
+    if(ED.mirror && c.x !== 0) put(-c.x, c.y, c.z);
+  }
+  ED.preview.count = n;
+  ED.preview.instanceMatrix.needsUpdate = true;
+  return n;
+}
+function edClearPreview(){ if(ED.preview) ED.preview.count = 0; }
+function edHover(cell){
+  ED.target = cell;
+  const show = !!cell;
+  const onBlocks = ED.erase || ED.paintTool;
+  ED.ghost.visible = show && !onBlocks;
+  ED.ghostEdge.visible = show;
+  if(!show) return;
+  const t = onBlocks && cell.on ? cell.on : cell;
+  ED.ghost.geometry = ED.geo[ED.shape] || ED.geo.block;
+  ED.ghost.position.set(t.x*ED.cell, t.y*ED.cell + ED.cell/2, t.z*ED.cell);
+  ED.ghost.rotation.y = ED.rot * Math.PI/2;
+  ED.ghostEdge.position.copy(ED.ghost.position);
+}
+/* ---------------------------------------------------------------------------
+   Work out what moves with what. Joints are lifted out of the graph, the rest
+   is flooded from the deck: anything still connected to the floor is the base,
+   and each remaining island belongs to the joint it touches.
+   --------------------------------------------------------------------------- */
+function edAssemble(){
+  const solid = new Map(), joints = [];
+  ED.blocks.forEach((b,k)=>{ if(ED_JOINTS[b.shape]) joints.push(b); else solid.set(k,b); });
+  const seen = new Set(), base = [];
+  const nbrs = b => [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]
+    .map(d=>edKey(b.x+d[0], b.y+d[1], b.z+d[2]));
+  // flood the base from everything sitting on the deck
+  const stack = [];
+  solid.forEach(b=>{ if(b.y === 0){ stack.push(b); seen.add(edKey(b.x,b.y,b.z)); } });
+  while(stack.length){
+    const b = stack.pop(); base.push(b);
+    for(const k of nbrs(b)){
+      if(seen.has(k)) continue;
+      const n = solid.get(k);
+      if(n){ seen.add(k); stack.push(n); }
+    }
+  }
+  // each joint takes the island hanging off it
+  const parts = [];
+  for(const j of joints){
+    const members = [], st = [];
+    for(const k of nbrs(j)){
+      const n = solid.get(k);
+      if(n && !seen.has(k)){ seen.add(k); st.push(n); }
+    }
+    while(st.length){
+      const b = st.pop(); members.push(b);
+      for(const k of nbrs(b)){
+        if(seen.has(k)) continue;
+        const n = solid.get(k);
+        if(n){ seen.add(k); st.push(n); }
+      }
+    }
+    parts.push({joint:j, members});
+  }
+  // anything still unvisited is loose scenery — treat it as base
+  solid.forEach((b,k)=>{ if(!seen.has(k)){ seen.add(k); base.push(b); } });
+  return {base, parts, joints};
+}
+
+/* ---- ship the whole build to the stage ---- */
+function edBuildGroup(){
+  const {base, parts} = edAssemble();
+  const root = new T.Group();
+  const machines = [];
+  const clone = b=>{
+    const m = new T.Mesh(b.mesh.geometry, b.mesh.material);
+    m.position.copy(b.mesh.position);
+    m.rotation.copy(b.mesh.rotation);
+    return m;
+  };
+  base.forEach(b=>root.add(clone(b)));
+  parts.forEach(p=>{
+    const j = p.joint, spec = ED_JOINTS[j.shape];
+    const pivot = new T.Group();
+    pivot.position.set(j.x*ED.cell, j.y*ED.cell + ED.cell/2, j.z*ED.cell);
+    // the joint's own housing stays with the moving half
+    const jm = clone(j); jm.position.sub(pivot.position); pivot.add(jm);
+    p.members.forEach(b=>{ const m = clone(b); m.position.sub(pivot.position); pivot.add(m); });
+    root.add(pivot);
+    machines.push({
+      kind: spec.kind, powered: spec.powered, label: spec.label,
+      group: pivot, rot: j.rot|0, value: 0, target: 0,
+      n: p.members.length
+    });
+  });
+  return {root, machines, count:ED.blocks.size};
+}
+function edSend(dest){
+  if(!ED.blocks.size){ toast('Nothing on the plate'); return false; }
+  const built = edBuildGroup();
+  const n = built.count;
+
+  if(dest && dest.lineset !== undefined){
+    /* hang it off a batten instead: shift it so its top sits at the pipe */
+    const bb = new T.Box3().setFromObject(built.root);
+    built.root.position.y -= bb.max.y;
+    const ls = FLY[dest.lineset];
+    const key = 'build'+(++SHOP.seq);
+    const grp = built.root;
+    GOODS[key] = {label:'built piece ('+n+' blocks)', h: Math.max(1, bb.max.y - bb.min.y),
+      wt: 90 + n*8, made:true, build:()=>grp};
+    TRIMS[key] = clamp((bb.max.y - bb.min.y) + 0.4, 1, OUT_TRIM);
+    buildGoodsPalette();
+    hangGoods(ls, key);
+    built.machines.forEach(m=>registerMachine(m, 'lineset '+ls.id));
+    SHOP.builds.push({n, at:Date.now()});
+    shopLog('flew a '+n+'-block build onto lineset '+ls.id);
+    toast(n+' blocks hung on lineset '+ls.id);
+    Snd.play('crash');
+    return true;
+  }
+
+  /* the plate is the stage, so the build goes on where you built it */
+  built.root.position.set(0, 0, 0);
+  const piece = placeBuilt(built.root, 'built piece ('+n+' blocks)');
+  selPiece = piece;
+  built.machines.forEach(m=>registerMachine(m, 'on the deck'));
+  SHOP.builds.push({n, at:Date.now()});
+  shopLog('sent a '+n+'-block build to the stage');
+  toast(n+' blocks delivered to the deck — drag it into place');
+  Snd.play('crash');
+  return true;
+}

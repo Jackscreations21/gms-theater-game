@@ -1,0 +1,525 @@
+
+/* ============================================================================
+   THE CREW — load in and load out
+
+   A small crew of stagehands that actually do the work: they come in through
+   the dock, carry the scenery on in armfuls, hang the goods off the pin rail,
+   set the props, and then at the end of the night take it all out again in
+   reverse.  Nothing here is a canned animation — there is a queue of jobs and
+   a handful of people who pick them up as they come free, so the timing is
+   different every run and it looks like a crew rather than a cutscene.
+   ========================================================================== */
+const CREW = {
+  people: [], jobs: [], running:null, t:0, group:null,
+  onDone:null, log:[], speed:1
+};
+
+const CREW_COLOURS = [0x2a3140, 0x3d3a35, 0x24303a, 0x35292b, 0x2e3630, 0x3a3340];
+const CREW_HATS    = [0xffb340, 0xe8e2d4, 0x3fd0e0, 0xff6a4a, 0xffb340, 0xe8e2d4];
+const M_CREW_SKIN  = new T.MeshStandardMaterial({color:0xb98a68, roughness:.85});
+const M_CREW_CASE  = new T.MeshStandardMaterial({color:0x1b1d22, roughness:.85});
+
+/* ============================================================================
+   WHERE THE CREW ARE WORKING
+   Every number the crew used to know — which door they come in by, where the
+   pin rail is, how far downstage they may set a flat — was the Palace's.
+   There are three stages now, so the geometry comes from whichever one the
+   board is patched to.
+   ========================================================================== */
+function crewPalaceFrame(){
+  const big = (typeof DOCKDOORS !== 'undefined') && DOCKDOORS.find(d=>d.big);
+  const gz = big ? big.z : -6;
+  return {
+    label:'THE PALACE',
+    root: ()=>(typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.stage) ? ROOM_GROUP.stage : world,
+    gate: {x: DOCK.inner + 2.0, z: gz},
+    off:  {x: DOCK.inner + DOCK.dir*5, z: gz},
+    rail: (typeof XR !== 'undefined' ? XR : -D.stageW/2) + 2.8,
+    zOff: 0, xMin:-12, xMax:12, zMin:-13, zMax:-1,
+    doors:(open)=>{ if(typeof setAllDockDoors === 'function') setAllDockDoors(open); }
+  };
+}
+function crewFrame(){
+  const st = (typeof STAGES !== 'undefined' && typeof STAGE !== 'undefined') ? STAGES[STAGE] : null;
+  if(st && st.crew) return st.crew;
+  return crewPalaceFrame();
+}
+function crewRoot(){
+  if(CREW.group) return CREW.group;
+  const g = new T.Group(); g.name = 'crew';
+  crewFrame().root().add(g);
+  CREW.group = g;
+  return g;
+}
+/* the hands belong to the building they are working in, or they are drawn
+   into a room that is switched off and nobody sees the get-in at all */
+function crewAttach(){
+  const room = crewFrame().root();
+  const g = crewRoot();
+  if(g.parent !== room) room.add(g);
+  return g;
+}
+
+/* ---- one stagehand ---- */
+function makeHand(i){
+  const g = new T.Group();
+  const cloth = new T.MeshStandardMaterial({color:CREW_COLOURS[i % CREW_COLOURS.length], roughness:.9});
+  const hat   = new T.MeshStandardMaterial({color:CREW_HATS[i % CREW_HATS.length], roughness:.5});
+
+  const torso = new T.Mesh(new T.BoxGeometry(0.46, 0.62, 0.26), cloth);
+  torso.position.y = 1.16; g.add(torso);
+  const hips = new T.Mesh(new T.BoxGeometry(0.42, 0.22, 0.25), cloth);
+  hips.position.y = 0.84; g.add(hips);
+  const head = new T.Mesh(new T.SphereGeometry(0.13, 12, 10), M_CREW_SKIN);
+  head.position.y = 1.60; g.add(head);
+  const cap = new T.Mesh(new T.SphereGeometry(0.145, 12, 8, 0, 6.283, 0, 1.1), hat);
+  cap.position.y = 1.62; g.add(cap);
+
+  const limb = (w,h,d,mat)=>{
+    const p = new T.Group();
+    const m = new T.Mesh(new T.BoxGeometry(w,h,d), mat);
+    m.position.y = -h/2; p.add(m);
+    return p;
+  };
+  const armL = limb(0.13, 0.62, 0.15, cloth); armL.position.set(-0.30, 1.44, 0);
+  const armR = limb(0.13, 0.62, 0.15, cloth); armR.position.set( 0.30, 1.44, 0);
+  const legL = limb(0.16, 0.84, 0.18, cloth); legL.position.set(-0.12, 0.84, 0);
+  const legR = limb(0.16, 0.84, 0.18, cloth); legR.position.set( 0.12, 0.84, 0);
+  g.add(armL, armR, legL, legR);
+
+  const hands = new T.Group();          // where whatever they are carrying rides
+  hands.position.set(0, 1.02, 0.42);
+  g.add(hands);
+
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+  g.visible = false;
+  crewRoot().add(g);
+
+  return {
+    group:g, armL, armR, legL, legR, hands, torso,
+    x:0, z:0, ax:0, az:0, yaw:0, phase:Math.random()*6.283,
+    state:'off', job:null, wait:0, carry:null, speed:rnd(2.0, 2.7), id:i+1
+  };
+}
+function crewSpawn(n){
+  while(CREW.people.length < n) CREW.people.push(makeHand(CREW.people.length));
+  return CREW.people.slice(0, n);
+}
+
+/* where they come from and go back to */
+function crewGate(){ return crewFrame().gate; }
+function crewOff(){  return crewFrame().off; }
+
+/* ---- walking ---- */
+function handGoTo(h, x, z, then){
+  h.ax = x; h.az = z; h.state = 'walk'; h.then = then || null;
+}
+function updateHand(h, dt){
+  if(h.state === 'off'){ h.group.visible = false; return; }
+  h.group.visible = true;
+  if(h.state === 'walk'){
+    const dx = h.ax - h.x, dz = h.az - h.z;
+    const d = Math.hypot(dx, dz);
+    if(d < 0.22){
+      h.state = 'idle';
+      const t = h.then; h.then = null;
+      if(t) t(h);
+    } else {
+      const s = h.speed * CREW.speed * dt;
+      h.x += dx/d * Math.min(s, d);
+      h.z += dz/d * Math.min(s, d);
+      const want = Math.atan2(dx, dz);
+      let diff = want - h.yaw;
+      while(diff >  Math.PI) diff -= 6.283;
+      while(diff < -Math.PI) diff += 6.283;
+      h.yaw += clamp(diff, -dt*7, dt*7);
+      h.phase += dt * 8.5 * CREW.speed;
+    }
+  } else if(h.state === 'work'){
+    h.wait -= dt;
+    h.phase += dt * 3.2;
+    if(h.wait <= 0){
+      h.state = 'idle';
+      const t = h.then; h.then = null;
+      if(t) t(h);
+    }
+  }
+  // pose
+  const moving = h.state === 'walk';
+  const sw = Math.sin(h.phase) * (moving ? 0.62 : 0.04);
+  h.legL.rotation.x =  sw;
+  h.legR.rotation.x = -sw;
+  if(h.carry){
+    h.armL.rotation.x = h.armR.rotation.x = -1.32;   // both arms out, holding it
+    h.armL.rotation.z =  0.16; h.armR.rotation.z = -0.16;
+  } else if(h.state === 'work'){
+    const r = Math.sin(h.phase*2.2)*0.5 - 0.9;       // working overhead
+    h.armL.rotation.x = r; h.armR.rotation.x = r - 0.3;
+    h.armL.rotation.z = h.armR.rotation.z = 0;
+  } else {
+    h.armL.rotation.x = -sw*0.7; h.armR.rotation.x = sw*0.7;
+    h.armL.rotation.z = h.armR.rotation.z = 0;
+  }
+  h.torso.position.y = 1.16 + (moving ? Math.abs(Math.sin(h.phase))*0.035 : 0);
+  h.group.position.set(h.x, 0, h.z);
+  h.group.rotation.y = h.yaw;
+}
+
+/* ---- what they are carrying ---- */
+function crewPickUp(h, kind){
+  if(h.carry) crewPutDown(h);
+  const g = new T.Group();
+  if(kind === 'case'){
+    const b = new T.Mesh(new T.BoxGeometry(1.1, 0.7, 0.62), M_CREW_CASE);
+    b.position.y = 0.1; g.add(b);
+    for(const sx of [-1,1]) for(const sy of [-1,1]){
+      const c = new T.Mesh(new T.BoxGeometry(0.09,0.09,0.66), M.steel);
+      c.position.set(sx*0.5, 0.1 + sy*0.3, 0); g.add(c);
+    }
+  } else if(kind === 'flat'){
+    const b = new T.Mesh(new T.BoxGeometry(1.3, 2.4, 0.08),
+      new T.MeshStandardMaterial({color:0x8a7a62, roughness:.92}));
+    b.position.y = 0.7; b.rotation.z = 0.1; g.add(b);
+  } else if(kind === 'prop'){
+    const b = new T.Mesh(new T.BoxGeometry(0.55, 0.5, 0.45),
+      new T.MeshStandardMaterial({color:0x6d4326, roughness:.9}));
+    b.position.y = 0.1; g.add(b);
+  } else {
+    const b = new T.Mesh(new T.CylinderGeometry(0.06,0.06,2.2,7), M.steel);
+    b.rotation.z = Math.PI/2; b.position.y = 0.1; g.add(b);
+  }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow = true; });
+  h.hands.add(g);
+  h.carry = g;
+  return g;
+}
+function crewPutDown(h){
+  if(!h.carry) return;
+  h.hands.remove(h.carry);
+  disposeTree(h.carry);
+  h.carry = null;
+}
+
+/* ============================================================================
+   THE JOB QUEUE
+   ========================================================================== */
+function crewLog(s){ CREW.log.unshift(s); if(CREW.log.length > 12) CREW.log.pop(); }
+
+/* what there is to move.  With a show loaded that is the show's own scenery,
+   taken in armfuls; without one, the crew build a set out of stock pieces. */
+/* The same load list has to serve the way in and the way out, or the load out
+   builds a fresh set of loads that have never been placed and strikes nothing.
+   It is rebuilt only when what is on the stage actually changes.           */
+/* What the crew can pick up.  Effects — rain, fire — and anything carrying a
+   light are theirs to leave alone; a hidden light is a dark stage and a
+   hidden rain slab is a broken cue.  Everything else is scenery, including
+   the pieces that can be repositioned on a slider.                        */
+function crewHandleable(o){
+  if(o.userData.effect) return false;
+  let light = false;
+  o.traverse(c=>{ if(c.isLight) light = true; });
+  return !light;
+}
+function crewLoads(){
+  const key = (typeof SHOW !== 'undefined' && SHOW.key) ? SHOW.key : '(stock)';
+  if(CREW.loads && CREW.loadsFor === key) return CREW.loads;
+  const loads = [];
+  if(typeof SHOW !== 'undefined' && SHOW.group && SHOW.group.children.length){
+    const kids = SHOW.group.children.filter(crewHandleable);
+    const per = Math.max(1, Math.ceil(kids.length / 9));
+    for(let i=0;i<kids.length;i+=per) loads.push({parts:kids.slice(i, i+per), kind:'flat'});
+  } else {
+    const plan = [['platform',-4,-5],['platform',-1.4,-5],['riser',3.2,-6],
+                  ['stairs',-6.6,-3],['flat',-8,-8],['flat',6.4,-8],
+                  ['wall',0,-9],['table',2.2,-3],['chair',-2.4,-2.6]];
+    plan.forEach(p=>{ if(SCENIC[p[0]]) loads.push({scenic:p, kind: p[0]==='flat'||p[0]==='wall'?'flat':'prop'}); });
+  }
+  CREW.loads = loads;
+  CREW.loadsFor = key;
+  return loads;
+}
+function crewForgetLoads(){ CREW.loads = null; CREW.loadsFor = null; }
+function crewLinesets(){
+  return FLY.filter(ls=>ls.goodsKey && ls.goodsKey !== 'none' && !ls.locked);
+}
+
+function crewPlan(dir){
+  const jobs = [];
+  const loads = crewLoads();
+  const lines = crewLinesets();
+  /* The rail stays out until the deck is finished.  A 'hold' job blocks the
+     queue until every hand is free, so nothing comes in over the heads of
+     people still carrying scenery.                                        */
+  if(dir === 'in'){
+    jobs.push({kind:'doors', open:true});
+    loads.forEach(l=>jobs.push({kind:'on', load:l}));
+    jobs.push({kind:'hold', say:'deck is set — take the goods in'});
+    lines.forEach(ls=>jobs.push({kind:'fly', ls, in:true}));
+    jobs.push({kind:'doors', open:false});
+  } else {
+    jobs.push({kind:'doors', open:true});
+    lines.slice().reverse().forEach(ls=>jobs.push({kind:'fly', ls, in:false}));
+    jobs.push({kind:'hold', say:'rail is out — strike the deck'});
+    loads.slice().reverse().forEach(l=>jobs.push({kind:'off', load:l}));
+    jobs.push({kind:'doors', open:false});
+  }
+  return jobs;
+}
+
+/* ============================================================================
+   CALLING A SHOW IN
+   Pick a production and the crew bring it in from the lorry: the set goes up
+   piece by piece, the goods go out and are hauled back in on the rail, and it
+   all happens under work light.  When they are done the show's own opening
+   look comes up and the stage is yours.
+   ========================================================================== */
+function crewLoadShow(key){
+  if(typeof SHOWS === 'undefined' || !SHOWS[key]) return false;
+  showLoad(key);                       // build it, then take it all off again
+  crewForgetLoads();
+  crewWorkLight(true);
+  crewStart('in');
+  CREW.onDone = dir=>{ if(dir === 'in') crewWorkLight(false); };
+  crewLog('called in: ' + SHOWS[key].name + ' at ' + crewFrame().label);
+  toast(SHOWS[key].name + ' — the lorry is at ' + crewFrame().label);
+  return true;
+}
+/* a get-in happens under work light, and the show look comes back afterwards */
+function crewWorkLight(on){
+  if(on){
+    if(!CREW.savedLook){
+      CREW.savedLook  = (typeof snapshotLX === 'function') ? snapshotLX() : null;
+      CREW.savedHouse = {house:HOUSE.house, work:HOUSE.work,
+                         practical:HOUSE.practical, haze:RIG.haze};
+    }
+    FIXTURES.forEach(f=>{ f.level = 0; f.lvlDur = 0; f.lvlTo = 0; });
+    HOUSE.work = 0.9; HOUSE.house = 0.3; HOUSE.practical = 0; RIG.haze = 0;
+  } else {
+    if(CREW.savedLook){
+      CREW.savedLook.forEach((r,i)=>{ setLevel(i+1, r.lvl, 4); setColorCh(i+1, r.col, 4); });
+      const hs = CREW.savedHouse;
+      HOUSE.house = hs.house; HOUSE.work = hs.work;
+      HOUSE.practical = hs.practical; RIG.haze = hs.haze;
+      CREW.savedLook = null; CREW.savedHouse = null;
+      crewLog('work light out, show look up');
+    } else {
+      HOUSE.work = 0;
+    }
+  }
+  if(typeof syncMasters === 'function') syncMasters();
+  if(typeof refreshChannelStrip === 'function') refreshChannelStrip();
+}
+
+function crewStart(dir){
+  if(CREW.running) crewStop(true);
+  crewAttach();
+  CREW.onDone = null;
+  CREW.running = dir;
+  CREW.t = 0;
+  CREW.log = [];
+  const jobs = crewPlan(dir);
+  CREW.jobs = jobs;
+  const hands = crewSpawn(6);
+  const gate = crewGate(), off = crewOff();
+  hands.forEach((h, i)=>{
+    h.state = 'idle'; h.job = null; h.wait = 0;
+    crewPutDown(h);
+    h.x = off.x + rnd(-1.5, 1.5); h.z = off.z + rnd(-2.2, 2.2) + i*0.4;
+    h.yaw = Math.PI/2;
+    h.group.visible = true;
+  });
+  if(dir === 'in'){
+    // on the way in the stage starts empty and the rail starts out —
+    // otherwise the crew would be hauling in things that are already in
+    crewHideLoads(true);
+    crewClearStock();
+    crewLinesets().forEach(ls=>{
+      ls.target = ls.pos = OUT_TRIM;
+      ls.group.position.y = ls.pos;
+    });
+    if(typeof refreshFlyUI === 'function') refreshFlyUI();
+  }
+  crewLog((dir === 'in' ? 'Load in' : 'Load out')+' called — '+jobs.length+' jobs');
+  toast(dir === 'in' ? 'Load in: the crew are on the dock' : 'Load out: strike it all');
+  if(typeof refreshCrewUI === 'function') refreshCrewUI();
+  return jobs.length;
+}
+function crewHideLoads(hide){
+  if(typeof SHOW === 'undefined' || !SHOW.group) return;
+  SHOW.group.children.forEach(o=>{
+    if(!crewHandleable(o)) return;               // effects and lights stay put
+    setPieceVisible(o, hide);
+  });
+}
+/* the stock set the crew build when there is no show: take it off again */
+function crewClearStock(){
+  const loads = CREW.loads;
+  if(!loads) return;
+  loads.forEach(l=>{
+    if(l.scenic && l.placed && SET.indexOf(l.placed) !== -1) strikePiece(l.placed);
+    if(l.scenic) l.placed = null;
+  });
+}
+function crewStop(silent){
+  CREW.running = null;
+  CREW.jobs = [];
+  CREW.people.forEach(h=>{ crewPutDown(h); h.state = 'off'; h.job = null; h.group.visible = false; });
+  crewHideLoads(false);
+  if(!silent) toast('Crew stood down');
+  if(typeof refreshCrewUI === 'function') refreshCrewUI();
+}
+
+/* hand the next job to whoever is free */
+function crewAssign(h){
+  const job = CREW.jobs.shift();
+  if(!job) return false;
+  h.job = job;
+  const gate = crewGate();
+
+  if(job.kind === 'doors'){
+    handGoTo(h, gate.x, gate.z, ()=>{
+      h.state = 'work'; h.wait = 1.0;
+      h.then = ()=>{
+        crewFrame().doors(job.open);
+        crewLog(job.open ? 'dock doors up' : 'dock doors down');
+        h.job = null;
+      };
+    });
+    return true;
+  }
+
+  if(job.kind === 'fly'){
+    // to the pin rail, haul, then back out of the way
+    const fr = crewFrame();
+    handGoTo(h, fr.rail, clamp(job.ls.z + fr.zOff, fr.zMin, fr.zMax), ()=>{
+      h.state = 'work'; h.wait = rnd(1.4, 2.4);
+      h.then = ()=>{
+        if(job.in) flyIn(job.ls); else flyOut(job.ls);
+        crewLog('lineset '+job.ls.id+' '+(job.in ? 'in' : 'out')+
+                ' — '+(GOODS[job.ls.goodsKey] ? GOODS[job.ls.goodsKey].label : ''));
+        if(typeof syncFlyUI === 'function') syncFlyUI();
+        h.job = null;
+      };
+    });
+    return true;
+  }
+
+  if(job.kind === 'on'){
+    // out to the dock, pick it up, carry it on, set it, walk back
+    const off = crewOff();
+    handGoTo(h, off.x, off.z + rnd(-1.5,1.5), ()=>{
+      crewPickUp(h, job.load.kind);
+      const spot = crewSpot(job.load);
+      handGoTo(h, spot.x, spot.z, ()=>{
+        h.state = 'work'; h.wait = rnd(0.8, 1.6);
+        h.then = ()=>{
+          crewPutDown(h);
+          crewDeliver(job.load);
+          handGoTo(h, gate.x, gate.z + rnd(-1.5,1.5), ()=>{ h.job = null; });
+        };
+      });
+    });
+    return true;
+  }
+
+  if(job.kind === 'off'){
+    const spot = crewSpot(job.load);
+    handGoTo(h, spot.x, spot.z, ()=>{
+      h.state = 'work'; h.wait = rnd(0.8, 1.6);
+      h.then = ()=>{
+        crewStrike(job.load);
+        crewPickUp(h, job.load.kind);
+        const off = crewOff();
+        handGoTo(h, off.x, off.z + rnd(-1.5,1.5), ()=>{
+          crewPutDown(h);
+          handGoTo(h, gate.x, gate.z + rnd(-1.5,1.5), ()=>{ h.job = null; });
+        });
+      };
+    });
+    return true;
+  }
+  h.job = null;
+  return true;
+}
+
+/* where on the deck a load belongs */
+function crewSpot(load){
+  const fr = crewFrame();
+  if(load.scenic) return {x:load.scenic[1], z:load.scenic[2]};
+  const b = worldBox2(load.parts);
+  if(b) return {x:clamp(b.x, fr.xMin, fr.xMax), z:clamp(b.z, fr.zMin, fr.zMax)};
+  return {x:rnd(fr.xMin*0.5, fr.xMax*0.5),
+          z:rnd(fr.zMin + 3, fr.zMax - 1)};
+}
+function worldBox2(parts){
+  if(!parts || !parts.length) return null;
+  let n = 0, x = 0, z = 0;
+  for(const p of parts){
+    const b = (typeof worldBox === 'function') ? worldBox(p) : null;
+    if(!b) continue;
+    const c = b.getCenter(new T.Vector3());
+    x += c.x; z += c.z; n++;
+  }
+  return n ? {x:x/n, z:z/n} : null;
+}
+function crewDeliver(load){
+  if(load.scenic){
+    // if it was struck by hand since, put it back rather than leaving a ghost
+    if(!load.placed || SET.indexOf(load.placed) === -1)
+      load.placed = placeScenic(load.scenic[0], load.scenic[1], load.scenic[2]);
+    crewLog('set '+load.scenic[0]);
+  } else {
+    load.parts.forEach(o=>setPieceVisible(o, false));
+    crewLog('brought on '+load.parts.length+' pieces');
+  }
+}
+function crewStrike(load){
+  if(load.scenic){
+    if(load.placed && SET.indexOf(load.placed) !== -1) strikePiece(load.placed);
+    load.placed = null;
+    crewLog('struck '+load.scenic[0]);
+  } else {
+    load.parts.forEach(o=>setPieceVisible(o, true));
+    crewLog('took off '+load.parts.length+' pieces');
+  }
+}
+
+/* ---- the director, run every frame ---- */
+function updateCrew(dt){
+  if(!CREW.people.length) return;
+  for(const h of CREW.people) updateHand(h, dt);
+  if(!CREW.running) return;
+  CREW.t += dt;
+
+  let busy = CREW.people.filter(h=>h.job || h.state === 'walk' || h.state === 'work').length;
+  // a hold sits at the head of the queue until everyone has finished
+  while(CREW.jobs.length && CREW.jobs[0].kind === 'hold' && busy === 0){
+    const held = CREW.jobs.shift();
+    if(held.say) crewLog(held.say);
+  }
+  for(const h of CREW.people){
+    if(h.job || h.state === 'walk' || h.state === 'work') continue;
+    if(CREW.jobs.length && CREW.jobs[0].kind !== 'hold') crewAssign(h);
+    if(h.job) busy++;
+  }
+  if(!CREW.jobs.length && !busy){
+    // everyone off, and we are done
+    const off = crewOff();
+    let clear = true;
+    for(const h of CREW.people){
+      if(Math.abs(h.x - off.x) > 3){ handGoTo(h, off.x + rnd(-1.5,1.5), off.z + rnd(-2,2)); clear = false; }
+    }
+    if(clear){
+      const was = CREW.running;
+      CREW.running = null;
+      CREW.people.forEach(h=>{ h.state = 'off'; h.group.visible = false; });
+      crewLog((was === 'in' ? 'Load in' : 'Load out')+' complete');
+      toast(was === 'in' ? 'Load in complete — the stage is yours' : 'Load out complete');
+      if(CREW.onDone) CREW.onDone(was);
+      if(typeof refreshCrewUI === 'function') refreshCrewUI();
+    }
+  }
+}
+function crewBusy(){
+  return CREW.people.filter(h=>h.job || h.state === 'walk' || h.state === 'work').length;
+}

@@ -1,0 +1,549 @@
+
+/* ============================================================================
+   THE AUDITORIUM
+   "Baroque with Beaux-Arts influences" — damask side walls, boxes in arched
+   niches, two balconies sloping down toward the stage, a coved ceiling and a
+   dome over the orchestra. Every moulding is a continuous run, not a chain of
+   loose blocks, and every surface closes against its neighbour.
+   ========================================================================== */
+
+let CHANDELIER = null;
+
+/* ---- an arc ribbon: the cove profile, extruded ---- */
+function arcRibbon(r, thA, thB, segs, len){
+  const pos=[], nor=[], uv=[], idx=[];
+  for(let i=0;i<=segs;i++){
+    const t = i/segs, th = lerp(thA, thB, t);
+    const cx = Math.cos(th)*r, cy = Math.sin(th)*r;
+    for(let j=0;j<=1;j++){
+      pos.push(cx, cy, (j-0.5)*len);
+      nor.push(-Math.cos(th), -Math.sin(th), 0);
+      uv.push(t*2, j*4);
+    }
+  }
+  for(let i=0;i<segs;i++){ const a=i*2; idx.push(a,a+2,a+1, a+1,a+2,a+3); }
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pos,3));
+  g.setAttribute('normal',   new T.Float32BufferAttribute(nor,3));
+  g.setAttribute('uv',       new T.Float32BufferAttribute(uv,2));
+  g.setIndex(idx);
+  return g;
+}
+/* a smooth continuous moulding swept along a path of points */
+function moulding(points, radius, mat, parent, seg){
+  const curve = new T.CatmullRomCurve3(points);
+  const m = new T.Mesh(new T.TubeGeometry(curve, seg||90, radius, 8, false), mat);
+  m.castShadow = false; m.receiveShadow = true;
+  (parent||world).add(m); STATIC.push(m);
+  return m;
+}
+
+/* ============================================================================
+   STAGE: deck, rounded apron, stage front
+   ========================================================================== */
+/* The downstage edge is one shallow bow running the whole width of the stage,
+   deepest on centre and meeting the side walls square.                       */
+const HALFW = D.stageW/2;
+/* Stage right is the performer's right as they face the audience, which is
+   negative x.  It runs further out than stage left, so the walls are not
+   symmetric: XL is the stage-left wall, XR the stage-right one.            */
+const XL =  D.stageW/2;
+const XR = -(D.stageW/2 + D.wingSR);
+function frontZ(t){                       // t: 0 = house right, 1 = house left
+  const a=(1-t)*(1-t), b=2*t*(1-t), c=t*t;
+  return 1.2*(a+c) + (D.apron + 2*D.thrust)*b;   // world z of the apron edge
+}
+function frontX(t){ return HALFW*(1-2*t); }
+/* the same bow, solved for x: z = apron + thrust(1 - (x/halfW)^2) */
+function stageFrontZ(x){
+  const u = clamp(x/HALFW, -1, 1);
+  return D.apron + D.thrust*(1 - u*u);
+}
+
+const deck = (function(){
+  const sh = new T.Shape();
+  const back = -D.backWall;                       // shape-y is world -z
+  /* the bowed apron still runs between +/-HALFW; the deck simply carries on
+     out past it on the stage-right side */
+  sh.moveTo(XR, back); sh.lineTo(XL, back);
+  sh.lineTo(XL, -D.apron);
+  sh.quadraticCurveTo(0, -(D.apron + 2*D.thrust), -HALFW, -D.apron);
+  sh.lineTo(XR, -D.apron);
+  sh.lineTo(XR, back);
+  const geo = new T.ExtrudeGeometry(sh, {depth:0.7, bevelEnabled:false, curveSegments:40});
+  geo.rotateX(-Math.PI/2);
+  geo.translate(0, -0.7, 0);
+  const m = new T.Mesh(geo, M.deck);
+  m.castShadow = m.receiveShadow = true;
+  world.add(m); STATIC.push(m); WALKABLE.push(m);
+  return m;
+})();
+{
+  // the nosing and the gilt band, swept along that same bow
+  const nose=[], band=[], skirtTop=[], skirtBot=[];
+  for(let i=0;i<=48;i++){
+    const t=i/48, x=frontX(t), z=frontZ(t);
+    nose.push(new T.Vector3(x, -0.02, z));
+    band.push(new T.Vector3(x, -0.34, z));
+    skirtTop.push(x, -0.05, z); skirtBot.push(x, -1.55, z);
+  }
+  moulding(nose, 0.13, M.mahog, world, 100);
+  moulding(band, 0.09, M.gold,  world, 100);
+  // the stage front below it
+  const pos=[], idx=[], uv=[], nor=[];
+  for(let i=0;i<=48;i++){
+    const t=i/48, x=frontX(t), z=frontZ(t);
+    pos.push(x,-0.05,z, x,-1.55,z);
+    uv.push(t*8,1, t*8,0);
+    nor.push(0,0,1, 0,0,1);
+  }
+  for(let i=0;i<48;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
+  const fg = new T.BufferGeometry();
+  fg.setAttribute('position', new T.Float32BufferAttribute(pos,3));
+  fg.setAttribute('normal',   new T.Float32BufferAttribute(nor,3));
+  fg.setAttribute('uv',       new T.Float32BufferAttribute(uv,2));
+  fg.setIndex(idx);
+  const front = new T.Mesh(fg, new T.MeshStandardMaterial({color:0x3d1d16, roughness:.42, side:T.DoubleSide}));
+  front.receiveShadow = true; world.add(front); STATIC.push(front);
+  // steps up onto the stage, house left and right
+  [-1,1].forEach(s2=>{
+    for(let i=0;i<4;i++){
+      const st = box(2.6,.36,.55, M.mahog, s2*10.5, -0.18-i*0.34, 2.2+i*0.55);
+      WALKABLE.push(st);
+    }
+  });
+}
+
+/* ---- the raked orchestra floor ---- */
+function houseFloorY(z){
+  const t = clamp((z - D.houseFront)/(D.houseBack - D.houseFront), 0, 1);
+  return D.houseY + t*D.houseRake;
+}
+const RAKE = {mezz:0.36, balc:0.40};
+function mezzFloorY(z){ return D.mezzY + Math.max(0, z - D.mezzZ)*RAKE.mezz; }
+function balcFloorY(z){ return D.balcY + Math.max(0, z - D.balcZ)*RAKE.balc; }
+{
+  const g = new T.PlaneGeometry(D.houseW-0.4, D.houseBack-D.houseFront, 1, 30);
+  g.rotateX(-Math.PI/2);
+  const p = g.attributes.position;
+  const zc = D.houseFront + (D.houseBack-D.houseFront)/2;
+  for(let i=0;i<p.count;i++) p.setY(i, houseFloorY(p.getZ(i)+zc) - D.houseY);
+  g.computeVertexNormals();
+  const f = new T.Mesh(g, M.carpet);
+  f.position.set(0, D.houseY, zc); f.receiveShadow = true;
+  world.add(f); STATIC.push(f); WALKABLE.push(f);
+}
+
+/* ============================================================================
+   THE SHELL — damask walls, wainscot, cornice
+   ========================================================================== */
+const WX = D.houseW/2;                        // inner face of the side walls
+{
+  // structural walls, well outside the finished surfaces
+  const wm = M.ivoryD;
+  box(1.0, D.coveY+2, D.houseBack+2, wm, -WX-0.5, (D.coveY+2)/2, D.houseBack/2);
+  box(1.0, D.coveY+2, D.houseBack+2, wm,  WX+0.5, (D.coveY+2)/2, D.houseBack/2);
+  /* The upstage wall of the stage house.  Solid, and wide enough to close
+     off both wings — there is nothing behind it any more, so a hole in it is
+     a hole out into nothing.                                              */
+  {
+    const bw = new T.Mesh(new T.BoxGeometry(XL - XR + 2.4, 34, 0.7), M.brick);
+    bw.position.set((XL + XR)/2, 17, D.backWall - 0.35);
+    bw.castShadow = bw.receiveShadow = true;
+    world.add(bw); STATIC.push(bw);
+  }
+  /* the stage-house side walls, deep enough to meet the back wall and the
+     proscenium wall with no daylight at either end */
+  /* the stage-right wall, with a big opening in it for the get-in.  Built as
+     three pieces rather than one slab so the hole is real, not painted on. */
+  {
+    const zA = -D.stageD/2 + 1.2 - (D.stageD+3)/2, zB = -D.stageD/2 + 1.2 + (D.stageD+3)/2;
+    const OZ0 = -12.5, OZ1 = -3.0, OH = 6.8;
+    box(.6, D.loftY, OZ0 - zA, M.plaster, XR-.3, D.loftY/2, (zA + OZ0)/2);       // upstage pier
+    box(.6, D.loftY, zB - OZ1, M.plaster, XR-.3, D.loftY/2, (OZ1 + zB)/2);       // downstage pier
+    box(.6, D.loftY - OH, OZ1 - OZ0, M.plaster, XR-.3, OH + (D.loftY - OH)/2, (OZ0 + OZ1)/2);
+  }
+  box(.6, D.loftY, D.stageD+3, M.plaster, XL+.3, D.loftY/2, -D.stageD/2+1.2);
+  box(XL-XR+2, .6, D.stageD+3, M.plaster, (XL+XR)/2, D.loftY, -D.stageD/2+1.2);
+  box(D.houseW+2, .6, D.houseBack+2, M.plaster, 0, D.ceilY+4.6, D.houseBack/2);
+
+  /* Plaster faces on the SIDE walls only. The rear wall is built in one piece
+     with its door openings cut through it, so nothing may be laid over it.  */
+  const wallBot = -1.8, wallH = D.coveY - wallBot;
+  [-1,1].forEach(s=>{
+    const w = new T.Mesh(new T.PlaneGeometry(D.houseBack-1.0, wallH), M.ivory2);
+    w.rotation.y = -s*Math.PI/2;
+    w.position.set(s*WX, wallBot + wallH/2, D.houseBack/2);
+    w.receiveShadow = true; world.add(w); STATIC.push(w);
+  });
+
+  /* The wainscot follows the rake of the stalls instead of running dead level
+     — otherwise it buries itself at the back and floats at the front.       */
+  {
+    const dado=[], cap=[], n = 40, z0 = 0.8, z1 = D.houseBack - 0.6;
+    for(let i=0;i<n;i++){
+      const z = z0 + (i+0.5)*((z1-z0)/n), fy = houseFloorY(z);
+      [-1,1].forEach(s=>{
+        dado.push({x:s*(WX-0.08), y:fy+0.68, z});
+        cap.push({x:s*(WX-0.13), y:fy+1.42, z});
+      });
+    }
+    instanced(new T.BoxGeometry(.16, 1.36, (z1-z0)/n + 0.02), M.mahog, dado, {cast:false});
+    instanced(new T.BoxGeometry(.30, .18,  (z1-z0)/n + 0.02), M.gold,  cap,  {cast:false});
+  }
+
+  // a continuous gilded cornice where the wall turns into the cove
+  [-1,1].forEach(s=>{
+    box(.5, .55, D.houseBack-0.6, M.gold,   s*(WX-0.24), D.coveY-0.55, D.houseBack/2);
+    box(.34,.3,  D.houseBack-0.6, M.goldDk, s*(WX-0.42), D.coveY-1.0,  D.houseBack/2);
+  });
+  box(D.houseW-0.5, .55, .5,  M.gold,   0, D.coveY-0.55, D.houseBack-0.3);
+  box(D.houseW-0.5, .3,  .34, M.goldDk, 0, D.coveY-1.0,  D.houseBack-0.45);
+
+  // pilasters dividing the upper wall into bays
+  const pil=[], cap=[], bas=[];
+  [-1,1].forEach(s=>{
+    for(let i=0;i<8;i++){
+      const z = 6.0 + i*2.9;
+      pil.push({x:s*(WX-0.22), y:(D.balcY+D.coveY-1.4)/2, z});
+      cap.push({x:s*(WX-0.30), y:D.coveY-1.5, z});
+      bas.push({x:s*(WX-0.30), y:D.balcY-0.2, z});
+    }
+  });
+  instanced(new T.BoxGeometry(.44, D.coveY-1.4-D.balcY, .95), M.ivory, pil, {cast:false});
+  instanced(new T.BoxGeometry(.62,.26,1.2), M.gold, cap, {cast:false});
+  instanced(new T.BoxGeometry(.62,.22,1.2), M.goldDk, bas, {cast:false});
+}
+
+/* ============================================================================
+   PROSCENIUM — 15 m opening, continuous moulded band, keystone
+   ========================================================================== */
+(function proscenium(){
+  const g = new T.Group(); g.position.z = 0.6; world.add(g);
+  const halfW = D.procW/2, top = D.procH, spring = D.procH-1.8, wallH = D.coveY+1;
+
+  /* It has to run right out to the stage-house side walls.  Stopping it at
+     the width of the auditorium left a clear gap either side of the arch that
+     you could see — and walk — straight through.                          */
+  const wx0 = XR - 1, wx1 = XL + 1;
+  const shape = new T.Shape();
+  shape.moveTo(wx0, 0); shape.lineTo(wx1, 0);
+  shape.lineTo(wx1, wallH); shape.lineTo(wx0, wallH); shape.lineTo(wx0, 0);
+  const hole = new T.Path();
+  hole.moveTo(-halfW, 0); hole.lineTo(-halfW, spring);
+  hole.quadraticCurveTo(0, top + 1.4, halfW, spring);
+  hole.lineTo(halfW, 0); hole.lineTo(-halfW, 0);
+  shape.holes.push(hole);
+  const wall = new T.Mesh(new T.ExtrudeGeometry(shape, {depth:1.2, bevelEnabled:false}), M.ivory);
+  wall.position.z = -0.6; wall.castShadow = wall.receiveShadow = true;
+  g.add(wall); STATIC.push(wall);
+
+  // the moulded band that follows the opening — one continuous sweep
+  const pts = [];
+  const N = 60;
+  for(let i=0;i<=N;i++){
+    const t = i/N;
+    if(t < 0.28){ pts.push(new T.Vector3(-halfW-0.25, lerp(0.2, spring, t/0.28), 0.66)); }
+    else if(t > 0.72){ pts.push(new T.Vector3(halfW+0.25, lerp(spring, 0.2, (t-0.72)/0.28), 0.66)); }
+    else {
+      const u=(t-0.28)/0.44, a=(1-u)*(1-u), b=2*u*(1-u), c=u*u;
+      pts.push(new T.Vector3(a*(-halfW-0.25) + c*(halfW+0.25),
+                             a*spring + b*(top+1.75) + c*spring, 0.66));
+    }
+  }
+  moulding(pts, 0.26, M.gold, g, 130);
+  const inner = pts.map(p=>new T.Vector3(p.x*0.975, p.y*0.975+0.06, 0.74));
+  moulding(inner, 0.12, M.goldDk, g, 130);
+
+  // keystone
+  box(1.3, 1.7, .6, M.gold, 0, top+1.4, 0.7, g);
+  const head = new T.Mesh(new T.SphereGeometry(.3,14,12), M.goldDk);
+  head.scale.set(1,1.15,.7); head.position.set(0, top+1.35, 1.02); g.add(head); STATIC.push(head);
+
+  // the sounding board above the arch, and its lyre panel
+  const sb = new T.Mesh(new T.PlaneGeometry(D.procW+7, 3.6), M.ivory);
+  sb.rotation.x = -0.40; sb.position.set(0, top+3.4, 1.6);
+  sb.receiveShadow = true; g.add(sb); STATIC.push(sb);
+  const lyre = new T.Mesh(new T.TorusGeometry(1.05,.1,8,30), M.gold);
+  lyre.rotation.x = -0.40; lyre.position.set(0, top+3.3, 1.98); g.add(lyre); STATIC.push(lyre);
+  const strings=[]; for(let i=0;i<7;i++) strings.push({x:-.54+i*.18, y:top+3.3, z:1.99, rx:-0.40});
+  instanced(new T.BoxGeometry(.04,1.2,.04), M.goldDk, strings, {parent:g, cast:false});
+  // a continuous foliate band under the sounding board
+  box(D.procW+7, .34, .34, M.goldDk, 0, top+1.95, 1.1, g);
+})();
+
+/* ============================================================================
+   THE TWO BALCONIES
+   ========================================================================== */
+function buildBalcony(front, y, fasciaH, floorFn, bays){
+  const halfW = D.houseW/2 - 0.15;
+  const back  = D.houseBack - 0.2;
+  const g = new T.Group(); world.add(g);
+  const segs = 34;
+
+  /* the deck */
+  const pos=[], idx=[], uv=[], nor=[];
+  const yBack = floorFn(back);
+  for(let i=0;i<=segs;i++){
+    const t = -1 + 2*i/segs;
+    const f = balconyFront(t, front, halfW);
+    pos.push(f.x, floorFn(f.z), f.z); uv.push(i/segs*6, 0); nor.push(0,1,0);
+    pos.push(f.x, yBack, back);       uv.push(i/segs*6, 6); nor.push(0,1,0);
+  }
+  for(let i=0;i<segs;i++){ const a=i*2; idx.push(a,a+2,a+1, a+1,a+2,a+3); }
+  const gg = new T.BufferGeometry();
+  gg.setAttribute('position', new T.Float32BufferAttribute(pos,3));
+  gg.setAttribute('normal',   new T.Float32BufferAttribute(nor,3));
+  gg.setAttribute('uv',       new T.Float32BufferAttribute(uv,2));
+  gg.setIndex(idx);
+  const slab = new T.Mesh(gg, M.deckTwo); slab.receiveShadow = true;
+  g.add(slab); STATIC.push(slab); WALKABLE.push(slab);
+
+  /* a smooth plaster underside — nothing hanging off it */
+  const under = new T.Mesh(gg.clone(), M.ivoryU);
+  under.position.y = -0.62;
+  g.add(under); STATIC.push(under);
+
+  /* the curved fascia */
+  const fp=[], fidx=[], fuv=[], fnor=[];
+  for(let i=0;i<=segs;i++){
+    const t=-1+2*i/segs, f=balconyFront(t, front, halfW);
+    fp.push(f.x, floorFn(f.z)+0.1, f.z); fuv.push(i/segs*8,1); fnor.push(0,0,1);
+    fp.push(f.x, floorFn(f.z)-fasciaH, f.z); fuv.push(i/segs*8,0); fnor.push(0,0,1);
+  }
+  for(let i=0;i<segs;i++){ const a=i*2; fidx.push(a,a+1,a+2, a+1,a+3,a+2); }
+  const fg = new T.BufferGeometry();
+  fg.setAttribute('position', new T.Float32BufferAttribute(fp,3));
+  fg.setAttribute('normal',   new T.Float32BufferAttribute(fnor,3));
+  fg.setAttribute('uv',       new T.Float32BufferAttribute(fuv,2));
+  fg.setIndex(fidx);
+  const fascia = new T.Mesh(fg, M.ivory2);
+  fascia.castShadow = fascia.receiveShadow = true;
+  g.add(fascia); STATIC.push(fascia);
+
+  /* gilt rails top and bottom, swept as continuous mouldings */
+  const railPts = u => { const t=-1+2*u, f=balconyFront(t, front, halfW); return f; };
+  const top=[], bot=[], mid=[];
+  for(let i=0;i<=40;i++){
+    const f = railPts(i/40);
+    top.push(new T.Vector3(f.x, floorFn(f.z)+0.12, f.z+0.06));
+    bot.push(new T.Vector3(f.x, floorFn(f.z)-fasciaH+0.12, f.z+0.06));
+    mid.push(new T.Vector3(f.x, floorFn(f.z)-fasciaH*0.55, f.z+0.1));
+  }
+  moulding(top, 0.15, M.gold, g, 80);
+  moulding(bot, 0.13, M.goldDk, g, 80);
+  moulding(mid, 0.07, M.goldDk, g, 80);
+
+  /* panel divisions and classical masks between them */
+  const divs=[], masks=[];
+  for(let i=0;i<=bays;i++){
+    const f = railPts(i/bays);
+    divs.push({x:f.x, y:floorFn(f.z)-fasciaH*0.5, z:f.z+0.1});
+  }
+  for(let i=0;i<bays;i++){
+    const f = railPts((i+0.5)/bays);
+    masks.push({x:f.x, y:floorFn(f.z)-fasciaH*0.52, z:f.z+0.13});
+  }
+  instanced(new T.BoxGeometry(.2, fasciaH*0.78, .18), M.gold, divs, {cast:false, parent:g});
+  const mg = new T.SphereGeometry(.24,12,10); mg.scale(1,1.3,.5);
+  instanced(mg, M.gold, masks, {cast:false, parent:g});
+
+  /* a brass rail above the front, as on the real balconies */
+  const stand=[];
+  for(let i=0;i<=bays*2;i++){ const f = railPts(i/(bays*2));
+    stand.push({x:f.x, y:floorFn(f.z)+0.55, z:f.z+0.02}); }
+  instanced(new T.CylinderGeometry(.035,.035,.9,6), M.bronze, stand, {cast:false, parent:g});
+  const railTop=[]; for(let i=0;i<=40;i++){ const f=railPts(i/40);
+    railTop.push(new T.Vector3(f.x, floorFn(f.z)+1.0, f.z+0.02)); }
+  moulding(railTop, 0.05, M.bronze, g, 80);
+  return g;
+}
+buildBalcony(D.mezzZ, D.mezzY, 1.7, mezzFloorY, 16);
+buildBalcony(D.balcZ, D.balcY, 1.8, balcFloorY, 14);
+
+/* ============================================================================
+   COVED CEILING, DOME AND THE 14 ft CHANDELIER
+   ========================================================================== */
+(function ceiling(){
+  const r = D.ceilY - D.coveY;
+  const innerX = D.houseW/2 - r, innerZ = D.houseBack - r;
+  const domeZ = D.domeZ, rimR = D.domeRim;
+
+  /* Four cove ribbons, each run the FULL length of its wall so the corners
+     are double-covered rather than left as holes.                          */
+  const mk = (len, rotY, px, pz) => {
+    const m = new T.Mesh(arcRibbon(r, Math.PI, Math.PI/2, 16, len), M.ivory2);
+    m.rotation.y = rotY; m.position.set(px, D.coveY, pz);
+    m.receiveShadow = true; world.add(m); STATIC.push(m);
+  };
+  mk(D.houseBack + 2*r, 0,            -innerX, D.houseBack/2);
+  mk(D.houseBack + 2*r, Math.PI,       innerX, D.houseBack/2);
+  mk(D.houseW  + 2*r,  Math.PI/2,  0, innerZ);
+  mk(D.houseW  + 2*r, -Math.PI/2,  0, r);
+
+  /* the flat ceiling, oversized so it always overlaps the cove */
+  const sh = new T.Shape();
+  sh.moveTo(-innerX-0.4, r-0.4);   sh.lineTo(innerX+0.4, r-0.4);
+  sh.lineTo(innerX+0.4, innerZ+0.4); sh.lineTo(-innerX-0.4, innerZ+0.4);
+  sh.lineTo(-innerX-0.4, r-0.4);
+  const hole = new T.Path(); hole.absarc(0, domeZ, rimR, 0, Math.PI*2, true);
+  sh.holes.push(hole);
+  const flat = new T.Mesh(new T.ShapeGeometry(sh, 48),
+    new T.MeshStandardMaterial({map:TX.plaster, roughness:.92, side:T.DoubleSide, color:0xf2e8d2}));
+  flat.rotation.x = Math.PI/2; flat.position.y = D.ceilY;
+  world.add(flat); STATIC.push(flat);
+
+  /* the dome */
+  const R = 9, th = Math.asin(rimR/R);
+  const dome = new T.Mesh(new T.SphereGeometry(R, 48, 20, 0, Math.PI*2, 0, th),
+    new T.MeshStandardMaterial({map:TX.plaster, roughness:.9, side:T.BackSide, color:0xf6eeda}));
+  const domeCY = D.ceilY - R*Math.cos(th);
+  dome.position.set(0, domeCY, domeZ);
+  world.add(dome); STATIC.push(dome);
+
+  /* a continuous gilt ring at the dome rim, with modillions under it */
+  const ring = new T.Mesh(new T.TorusGeometry(rimR, .22, 10, 64), M.gold);
+  ring.rotation.x = Math.PI/2; ring.position.set(0, D.ceilY-0.1, domeZ);
+  world.add(ring); STATIC.push(ring);
+  const mod=[];
+  for(let i=0;i<48;i++){ const a=i/48*6.283;
+    mod.push({x:Math.cos(a)*(rimR-0.35), y:D.ceilY-0.42, z:domeZ+Math.sin(a)*(rimR-0.35), ry:-a}); }
+  instanced(new T.BoxGeometry(.3,.34,.5), M.goldDk, mod, {cast:false});
+  /* coffer rings climbing the inside of the dome */
+  for(let ringN=0; ringN<3; ringN++){
+    const rr = rimR*(0.80 - ringN*0.22);
+    const yy = domeCY + Math.sqrt(Math.max(0.01, R*R - rr*rr));
+    const t2 = new T.Mesh(new T.TorusGeometry(rr, .1, 8, 56), M.goldDk);
+    t2.rotation.x = Math.PI/2; t2.position.set(0, yy-0.1, domeZ);
+    world.add(t2); STATIC.push(t2);
+  }
+
+  /* ---- the chandelier: 14 ft across, old-ivory bronze ---- */
+  const apexY = domeCY + R;
+  const ch = new T.Group();
+  ch.position.set(0, apexY - 0.5, domeZ);
+  world.add(ch);
+  const stemLen = 6.4;
+  const stem = new T.Mesh(new T.CylinderGeometry(.1,.1,stemLen,8), M.bronze);
+  stem.position.y = -stemLen/2; ch.add(stem); STATIC.push(stem);
+  const bodyY = -stemLen - 0.5;
+  [[2.15,.11],[1.62,.1],[1.02,.09]].forEach((rg,i)=>{
+    const tr = new T.Mesh(new T.TorusGeometry(rg[0], rg[1], 8, 44), M.bronze);
+    tr.rotation.x = Math.PI/2; tr.position.y = bodyY + i*0.68; ch.add(tr); STATIC.push(tr);
+  });
+  const arms=[], lamps=[], drops=[];
+  for(let i=0;i<24;i++){
+    const a=i/24*6.283, rr=2.15;
+    arms.push({x:Math.cos(a)*rr*0.86, y:bodyY+0.34, z:Math.sin(a)*rr*0.86, ry:-a, rz:0.45});
+    lamps.push({x:Math.cos(a)*rr, y:bodyY+0.66, z:Math.sin(a)*rr});
+  }
+  for(let i=0;i<16;i++){ const a=i/16*6.283;
+    lamps.push({x:Math.cos(a)*1.02, y:bodyY+1.6, z:Math.sin(a)*1.02}); }
+  for(let i=0;i<70;i++){ const a=Math.random()*6.283, rr=rnd(0.9,2.2);
+    drops.push({x:Math.cos(a)*rr, y:bodyY-rnd(.2,1.2), z:Math.sin(a)*rr}); }
+  instanced(new T.BoxGeometry(.07,.55,.07), M.bronze, arms, {parent:ch, cast:false});
+  const chandBulbs = instanced(new T.SphereGeometry(.12,8,6), M.bulb, lamps, {parent:ch, cast:false});
+  instanced(new T.OctahedronGeometry(.1,0),
+    new T.MeshStandardMaterial({color:0xe8e2d0, roughness:.1, metalness:.2}), drops, {parent:ch, cast:false});
+  const chandLight = new T.PointLight(0xffc98a, 0, 40, 1);
+  chandLight.position.y = bodyY + 0.6; ch.add(chandLight);
+  CHANDELIER = {group:ch, light:chandLight, bulbs:chandBulbs};
+})();
+
+/* ============================================================================
+   SEATING — laid out on a real 22 in. pitch so nothing overlaps
+   ========================================================================== */
+(function seating(){
+  const pan=[], back=[], legs=[], arms=[];
+  const FOCUS = -3.0, PITCH = 0.56;
+
+  function bank(o){
+    let placed = 0;
+    for(let r=0; r<o.rows; r++){
+      const zc = o.z0 + r*o.gap;
+      if(zc > D.houseBack - 1.6) break;
+      const n = Math.floor((o.halfW*2)/PITCH);
+      for(let i=0;i<n;i++){
+        const t = n===1 ? 0 : (i/(n-1))*2 - 1;
+        if(o.aisles.some(a=>Math.abs(t)>a[0] && Math.abs(t)<a[1])) continue;
+        const x = t*o.halfW;
+        const z = zc + BOW*0.45*(t*t);
+        const y = o.floorY(z);
+        const ry = Math.atan2(x, z - FOCUS);
+        pan.push({x, y:y+0.44, z, ry});
+        back.push({x, y:y+0.80, z:z+0.25, ry, rx:0.13});
+        legs.push({x:x-0.22, y:y+0.22, z, ry});
+        legs.push({x:x+0.22, y:y+0.22, z, ry});
+        arms.push({x:x-0.27, y:y+0.58, z:z+0.02, ry});
+        placed++;
+      }
+    }
+    return placed;
+  }
+
+  const nOrch = bank({z0:5.4, gap:1.05, rows:20, halfW:12.4,
+    aisles:[[0.28,0.36],[0.66,0.74]], floorY:houseFloorY});
+  const nMezz = bank({z0:D.mezzZ+1.4, gap:1.02, rows:12, halfW:12.9,
+    aisles:[[0.28,0.36],[0.66,0.74]], floorY:mezzFloorY});
+  const nBalc = bank({z0:D.balcZ+1.4, gap:1.02, rows:7, halfW:12.6,
+    aisles:[[0.28,0.36],[0.66,0.74]], floorY:balcFloorY});
+
+  instanced(new T.BoxGeometry(.50,.13,.60), M.seat, pan, {receive:true});
+  instanced(new T.BoxGeometry(.50,.78,.12), M.seatBack, back, {receive:true});
+  instanced(new T.BoxGeometry(.07,.44,.48), M.woodDk, legs, {cast:false});
+  instanced(new T.BoxGeometry(.08,.07,.54), M.mahog, arms, {cast:false});
+  window.SEAT_COUNT = nOrch + nMezz + nBalc;
+})();
+
+/* ============================================================================
+   FLY LOFT — grid, operating gallery, arbors
+   ========================================================================== */
+(function loft(){
+  const gm = new T.MeshStandardMaterial({color:0x2b2f36, roughness:.6, metalness:.6});
+  const wells=[], cross=[];
+  for(let i=0;i<28;i++) wells.push({x:-14+i*1.05, y:D.gridY, z:-D.stageD/2+1});
+  instanced(new T.BoxGeometry(.09,.14,D.stageD), gm, wells, {cast:false});
+  for(let i=0;i<17;i++) cross.push({x:0, y:D.gridY-.16, z:1.2-i*1.05});
+  instanced(new T.BoxGeometry(D.stageW,.14,.09), gm, cross, {cast:false});
+
+  const gal = box(2.8, .3, D.stageD-2, M.steel, XR+1.6, 8.0, -D.stageD/2+1);
+  WALKABLE.push(gal);
+  const gw = new T.Mesh(new T.BoxGeometry(XL-XR-2,.1,D.stageD-1), new T.MeshBasicMaterial({visible:false}));
+  gw.position.set((XL+XR)/2, D.gridY-.1, -D.stageD/2+1); world.add(gw); WALKABLE.push(gw);
+
+  const pins=[];
+  for(let i=0;i<20;i++) pins.push({x:XR+2.8, y:8.7, z:1-i*.66});
+  instanced(new T.CylinderGeometry(.045,.045,1.1,6), M.steel, pins, {cast:false});
+  box(.12,1.1,D.stageD-2, M.steel, XR+2.95, 8.7, -D.stageD/2+1);
+
+  for(let i=0;i<14;i++){
+    const arb = new T.Group(); arb.position.set(XR+.8, 0, -.6-i*.82);
+    const bar = new T.Mesh(new T.BoxGeometry(.5,3.4,.16), M.steel); bar.position.y=10; arb.add(bar);
+    const w=[]; for(let k=0;k<7;k++) w.push({x:0, y:8.7+k*.18, z:0});
+    instanced(new T.BoxGeometry(.62,.15,.3), M.black, w, {parent:arb, cast:false, cull:false});
+    world.add(arb); ARBORS.push(arb);
+  }
+  const rungs=[];
+  for(let i=0;i<26;i++) rungs.push({x:XR+1.1, y:.4+i*.34, z:2.2, rz:Math.PI/2});
+  instanced(new T.CylinderGeometry(.035,.035,.6,6), M.steel, rungs, {cast:false});
+})();
+
+/* ============================================================================
+   CONTROL BOOTH — rear of the second balcony
+   ========================================================================== */
+(function booth(){
+  const z = D.houseBack-1.6, y = balcFloorY(z);
+  box(10, 2.6, 2.6, new T.MeshStandardMaterial({color:0x191b20,roughness:.8}), 0, y+1.3, z);
+  const glass = new T.Mesh(new T.BoxGeometry(9.4,1.4,.06),
+    new T.MeshPhysicalMaterial({color:0x223040, transparent:true, opacity:.16, roughness:.05}));
+  glass.position.set(0, y+1.7, z-1.34); world.add(glass); STATIC.push(glass);
+  box(8.4,.12,1.5, M.woodDk, 0, y+.66, z-.7);
+  const bc = cvs(512,128), bx = bc.getContext('2d');
+  bx.fillStyle='#0a0c10'; bx.fillRect(0,0,512,128);
+  for(let i=0;i<48;i++){ bx.fillStyle='#191d25'; bx.fillRect(6+i*10.4,10,7,80);
+    bx.fillStyle=['#ffb340','#3fd0e0','#5ad67d'][i%3]; bx.fillRect(6+i*10.4, 20+Math.random()*60, 7, 4); }
+  bx.fillStyle='#ffb340'; bx.font='16px monospace'; bx.fillText('GO',470,110);
+  const bm = new T.Mesh(new T.PlaneGeometry(7,1.4), new T.MeshBasicMaterial({map:tex(bc,1,1)}));
+  bm.rotation.x = -Math.PI/2.1; bm.position.set(0, y+.74, z-.7); world.add(bm); STATIC.push(bm);
+  const bl = new T.PointLight(0x7fd8ff, .5, 9); bl.position.set(0, y+1.5, z-1.1); world.add(bl);
+})();

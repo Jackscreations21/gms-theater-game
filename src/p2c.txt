@@ -1,0 +1,522 @@
+
+/* ============================================================================
+   FRONT OF HOUSE AND BACK OF HOUSE
+   A grand foyer behind the auditorium, a crossover and dressing rooms behind
+   the stage, and a set of doors between the lobby and the seats that actually
+   swing shut and stop you walking through.
+   ========================================================================== */
+const FOH = {
+  z0: D.houseBack + 1.0,          // inner face of the lobby
+  z1: D.houseBack + 15.5,         // the street wall
+  y:  0, h: 12.5,                 // filled in below
+  gallY: 0
+};
+FOH.y     = houseFloorY(D.houseBack);        // the lobby is level with the rear stalls
+FOH.gallY = mezzFloorY(D.houseBack) - 0.2;   // the gallery is level with the mezzanine
+
+const DOCK = {};
+const BOH = {
+  z0: D.backWall - 0.7,           // upstage face of the stage-house wall
+  z1: D.backWall - 7.0,           // back of the crossover
+  z2: D.backWall - 18.0,          // back of the dock and workshop
+  h: 5.4, dockH: 7.0
+};
+
+/* ============================================================================
+   DOORS — hinged, and they really do block you
+   ========================================================================== */
+const DOORS = [];
+const DOORWAYS = [];
+const doorGroup = new T.Group(); world.add(doorGroup);
+
+function makeDoorway(o){
+  // o: {x, y, z, w (clear width), h, plane}
+  const dw = {x:o.x, y:o.y, z:o.z, halfW:o.w/2, h:o.h, plane:o.plane, leaves:[]};
+  [-1, 1].forEach(side=>{
+    const g = new T.Group();
+    g.position.set(o.x + side*o.w/2, o.y, o.z);
+    doorGroup.add(g);
+    // the leaves overlap on the centre line, like a real pair with an astragal,
+    // so there is no slot of daylight down the middle when they are shut
+    const leafW = o.w/2 + 0.06;
+    const leaf = new T.Mesh(new T.BoxGeometry(leafW, o.h, 0.09), M.mahog);
+    leaf.position.set(-side*leafW/2, o.h/2, side < 0 ? 0 : 0.02);
+    leaf.castShadow = leaf.receiveShadow = true;
+    g.add(leaf);
+    // a brass push bar and a small vision panel
+    const bar = new T.Mesh(new T.CylinderGeometry(.035,.035,leafW*0.7,8), M.bronze);
+    bar.rotation.z = Math.PI/2;
+    bar.position.set(-side*leafW/2, o.h*0.45, 0.075); g.add(bar);
+    const pane = new T.Mesh(new T.PlaneGeometry(leafW*0.5, 0.5),
+      new T.MeshPhysicalMaterial({color:0x2a3442, transparent:true, opacity:.3, roughness:.1}));
+    pane.position.set(-side*leafW/2, o.h*0.74, 0.05); g.add(pane);
+    const d = {group:g, side:side, open:0, target:0, dw:dw};
+    DOORS.push(d); dw.leaves.push(d);
+  });
+  DOORWAYS.push(dw);
+  return dw;
+}
+function updateDoors(dt){
+  for(const d of DOORS){
+    if(Math.abs(d.target - d.open) < 0.002){ d.open = d.target; }
+    else {
+      const was = d.open;
+      d.open += clamp(d.target - d.open, -dt*1.5, dt*1.5);
+      if(was > 0.06 && d.open <= 0.06) Snd.play('doorSlam');
+    }
+    d.group.rotation.y = d.side * d.open * 1.75;    // ~100 degrees
+  }
+}
+function toggleDoorway(dw){
+  const closed = dw.leaves[0].target < 0.5;
+  dw.leaves.forEach(l=>l.target = closed ? 1 : 0);
+  toast('House doors ' + (closed ? 'open' : 'closed'));
+  return closed;
+}
+function setAllDoors(open){
+  DOORS.forEach(d=>d.target = open ? 1 : 0);
+  toast(open ? 'All house doors open' : 'All house doors closed');
+}
+function doorwayAt(x, y){
+  for(const dw of DOORWAYS){
+    if(Math.abs(x - dw.x) < dw.halfW - 0.25 && y > dw.y - 0.6 && y < dw.y + dw.h) return dw;
+  }
+  return null;
+}
+/* true if this step would take you through the lobby wall illegally */
+function doorBlocks(nx, nz, oz, py){
+  const plane = FOH.z0 - 0.5;
+  const crossing = (oz < plane) !== (nz < plane);
+  if(!crossing) return false;
+  const dw = doorwayAt(nx, py);
+  if(!dw) return true;                       // solid wall
+  return dw.leaves[0].open < 0.55;           // shut, or barely cracked
+}
+
+/* ============================================================================
+   THE REAR WALL OF THE AUDITORIUM, with its door openings
+   ========================================================================== */
+(function rearWall(){
+  const wallH = D.coveY + 2, halfW = D.houseW/2 + 1;
+  const sh = new T.Shape();
+  sh.moveTo(-halfW, 0); sh.lineTo(halfW, 0);
+  sh.lineTo(halfW, wallH); sh.lineTo(-halfW, wallH); sh.lineTo(-halfW, 0);
+
+  const cut = (cx, cy, w, h)=>{
+    const p = new T.Path();
+    p.moveTo(cx-w/2, cy); p.lineTo(cx+w/2, cy);
+    p.lineTo(cx+w/2, cy+h); p.lineTo(cx-w/2, cy+h); p.lineTo(cx-w/2, cy);
+    sh.holes.push(p);
+  };
+  const stallsY = houseFloorY(D.houseBack), mezzY = mezzFloorY(D.houseBack);
+  [-9.5, 0, 9.5].forEach(x=>cut(x, stallsY, 3.2, 2.9));
+  [-6.5, 6.5].forEach(x=>cut(x, mezzY, 3.2, 2.9));
+
+  const geo = new T.ExtrudeGeometry(sh, {depth:1.0, bevelEnabled:false});
+  const m = new T.Mesh(geo, M.ivoryD);
+  m.position.set(0, 0, D.houseBack);
+  m.castShadow = m.receiveShadow = true;
+  world.add(m); STATIC.push(m);
+
+  // wainscot panels between the doorways, at both levels
+  const panelRun = (fy, gaps)=>{
+    let x = -D.houseW/2 + 0.4;
+    const edges = [];
+    gaps.forEach(g=>{ edges.push([x, g-1.8]); x = g + 1.8; });
+    edges.push([x, D.houseW/2 - 0.4]);
+    edges.forEach(([a,b])=>{
+      const w = b-a; if(w < 0.4) return;
+      box(w, 1.36, .16, M.mahog, (a+b)/2, fy+0.68, D.houseBack-0.09);
+      box(w, .18,  .30, M.gold,  (a+b)/2, fy+1.42, D.houseBack-0.14);
+    });
+  };
+  panelRun(stallsY, [-9.5, 0, 9.5]);
+  panelRun(mezzY,   [-6.5, 6.5]);
+
+  // the doors themselves, and the architraves round them
+  [-9.5, 0, 9.5].forEach(x=>{
+    makeDoorway({x:x, y:stallsY, z:D.houseBack+0.06, w:3.2, h:2.9, plane:'foh'});
+    box(3.8, .26, .34, M.gold, x, stallsY+3.0, D.houseBack+0.1);
+  });
+  [-6.5, 6.5].forEach(x=>{
+    makeDoorway({x:x, y:mezzY, z:D.houseBack+0.06, w:3.2, h:2.9, plane:'foh'});
+    box(3.8, .26, .34, M.gold, x, mezzY+3.0, D.houseBack+0.1);
+  });
+})();
+
+/* ============================================================================
+   THE GRAND FOYER
+   ========================================================================== */
+(function lobby(){
+  const w = D.houseW/2, y = FOH.y, z0 = FOH.z0, z1 = FOH.z1, h = 12.5;
+  const lobbyMat = new T.MeshStandardMaterial({map:TX.plaster, roughness:.85, color:0xf0e6cf});
+
+  // floor, ceiling, walls — the floor reaches back under the rear wall so the
+  // doorways have something to stand on
+  const fz0 = D.houseBack - 0.6;
+  const floor = box(D.houseW, .4, z1-fz0, M.carpet, 0, y-0.2, (fz0+z1)/2);
+  WALKABLE.push(floor);
+  box(D.houseW+2, .5, z1-z0+1, lobbyMat, 0, y+h, (z0+z1)/2);
+  [-1,1].forEach(s=>box(.6, h, z1-z0, lobbyMat, s*(w+0.3), y+h/2, (z0+z1)/2));
+  box(D.houseW+2, h, .6, lobbyMat, 0, y+h/2, z1+0.3);
+
+  // marble dado and a gilt cornice, all the way round
+  [-1,1].forEach(s=>{
+    box(.14, 1.5, z1-z0, M.marble, s*(w-0.07), y+0.75, (z0+z1)/2);
+    box(.3, .2, z1-z0, M.gold, s*(w-0.12), y+1.55, (z0+z1)/2);
+    box(.5, .5, z1-z0, M.gold, s*(w-0.25), y+h-0.6, (z0+z1)/2);
+  });
+  box(D.houseW, 1.5, .14, M.marble, 0, y+0.75, z1-0.07);
+  box(D.houseW, .5, .5,  M.gold,   0, y+h-0.6, z1-0.25);
+
+  // pilasters down both sides
+  const pil=[], cap=[];
+  [-1,1].forEach(s=>{ for(let i=0;i<6;i++){ const z=z0+1.6+i*2.4;
+    pil.push({x:s*(w-0.3), y:y+(h-1.6)/2+1.5, z});
+    cap.push({x:s*(w-0.38), y:y+h-1.3, z}); } });
+  instanced(new T.BoxGeometry(.5, h-2.4, 1.1), lobbyMat, pil, {cast:false});
+  instanced(new T.BoxGeometry(.7,.3,1.4), M.gold, cap, {cast:false});
+
+  // the grand staircase, centre back, up to the mezzanine gallery
+  const gy = FOH.gallY;
+  const steps = 22, rise = (gy - y)/steps;
+  for(let i=0;i<steps;i++){
+    const st = box(7.0, rise+0.06, 0.42, M.carpet, 0, y + rise*(i+0.5), z1-2.2-i*0.42);
+    WALKABLE.push(st);
+  }
+  [-1,1].forEach(s=>{
+    const rail=[];
+    for(let i=0;i<=steps;i++) rail.push(new T.Vector3(s*3.6, y + rise*i + 1.0, z1-2.2-i*0.42+0.2));
+    moulding(rail, 0.07, M.bronze, world, 40);
+    const bal=[];
+    for(let i=0;i<=steps;i+=2) bal.push({x:s*3.6, y:y+rise*i+0.5, z:z1-2.2-i*0.42+0.2});
+    instanced(new T.CylinderGeometry(.035,.035,1.0,6), M.bronze, bal, {cast:false});
+  });
+
+  // the mezzanine gallery: a landing across the back and two arms down the sides
+  const land = box(D.houseW-1, .4, 5.0 + (z0-(D.houseBack-0.6)), M.carpet, 0, gy-0.2,
+                   ((D.houseBack-0.6) + z0+5.0)/2);
+  WALKABLE.push(land);
+  [-1,1].forEach(s=>{
+    const arm = box(4.5, .4, z1-z0-5.0, M.carpet, s*(w-2.4), gy-0.2, (z0+5.0+z1)/2);
+    WALKABLE.push(arm);
+    // gallery rail
+    const rail=[];
+    for(let i=0;i<=20;i++) rail.push(new T.Vector3(s*(w-4.7), gy+1.05, z0+5.0+i*((z1-z0-5.0)/20)));
+    moulding(rail, 0.07, M.bronze, world, 40);
+    const bal=[];
+    for(let i=0;i<=20;i++) bal.push({x:s*(w-4.7), y:gy+0.5, z:z0+5.0+i*((z1-z0-5.0)/20)});
+    instanced(new T.CylinderGeometry(.03,.03,1.0,6), M.bronze, bal, {cast:false});
+    box(4.5, .5, z1-z0-5.0, M.gold, s*(w-2.4), gy-0.5, (z0+5.0+z1)/2);
+  });
+  {
+    const rail=[];
+    for(let i=0;i<=24;i++) rail.push(new T.Vector3(-11 + i*(22/24), gy+1.05, z0+5.0));
+    moulding(rail, 0.07, M.bronze, world, 40);
+    const bal=[];
+    for(let i=0;i<=24;i++) bal.push({x:-11 + i*(22/24), y:gy+0.5, z:z0+5.0});
+    instanced(new T.CylinderGeometry(.03,.03,1.0,6), M.bronze, bal, {cast:false});
+    box(D.houseW-1, .5, .5, M.gold, 0, gy-0.5, z0+5.0);
+  }
+
+  // box office, house left
+  {
+    const bx = -w + 2.6;
+    box(5.2, 3.2, .4, M.mahog, bx, y+1.6, z1-3.6);
+    box(5.2, .3, 1.4, M.marble, bx, y+1.15, z1-3.0);
+    for(let i=0;i<3;i++){
+      const gl = new T.Mesh(new T.PlaneGeometry(1.2,1.0),
+        new T.MeshPhysicalMaterial({color:0x27303c, transparent:true, opacity:.28, roughness:.08}));
+      gl.position.set(bx-1.6+i*1.6, y+2.1, z1-3.38); world.add(gl); STATIC.push(gl);
+    }
+    box(4.4, .5, .2, M.gold, bx, y+3.35, z1-3.36);
+  }
+  // the bar, house right
+  {
+    const bx = w - 3.0;
+    box(5.6, 1.15, 1.0, M.mahog, bx, y+0.58, z1-4.0);
+    box(5.8, .1, 1.2, M.marble, bx, y+1.2, z1-4.0);
+    box(5.6, 2.6, .4, M.mahog, bx, y+1.3, z1-2.6);
+    const gl=[]; for(let i=0;i<14;i++) gl.push({x:bx-2.4+i*0.37, y:y+1.34, z:z1-4.3});
+    instanced(new T.CylinderGeometry(.05,.035,.22,8),
+      new T.MeshPhysicalMaterial({color:0xdfe8ee, transparent:true, opacity:.4, roughness:.05}), gl, {cast:false});
+  }
+
+  // poster frames along both walls
+  const posterMat = [];
+  for(let i=0;i<4;i++){
+    const c = cvs(128,192), x2 = c.getContext('2d');
+    const hue = [ ['#7d1420','#e8c66a'], ['#132a52','#d8dee8'], ['#1e3a1e','#e3d9a8'], ['#3a1240','#f0c8e0'] ][i];
+    x2.fillStyle = hue[0]; x2.fillRect(0,0,128,192);
+    x2.fillStyle = hue[1];
+    x2.fillRect(10,140,108,4); x2.fillRect(10,152,80,3); x2.fillRect(10,161,94,3);
+    x2.beginPath(); x2.arc(64,72,38,0,6.283); x2.fill();
+    x2.fillStyle = hue[0]; x2.beginPath(); x2.arc(64,72,30,0,6.283); x2.fill();
+    x2.fillStyle = hue[1]; x2.font='bold 15px monospace'; x2.textAlign='center';
+    x2.fillText('THE', 64, 30); x2.fillText('PALACE', 64, 48);
+    posterMat.push(new T.MeshStandardMaterial({map:tex(c,1,1), roughness:.85}));
+  }
+  [-1,1].forEach(s=>{ for(let i=0;i<3;i++){
+    const z = z0+3.4+i*3.6;
+    const p = new T.Mesh(new T.PlaneGeometry(1.7,2.5), posterMat[(i + (s>0?1:0))%4]);
+    p.rotation.y = -s*Math.PI/2; p.position.set(s*(w-0.62), y+3.0, z);
+    world.add(p); STATIC.push(p);
+    box(.1, 2.9, 2.1, M.gold, s*(w-0.56), y+3.0, z);
+  }});
+
+  // street doors
+  for(let i=-1;i<=1;i++){
+    box(3.4, 3.4, .25, M.mahog, i*6.0, y+1.7, z1-0.05);
+    box(3.0, 2.4, .1, new T.MeshPhysicalMaterial({color:0x1b2430, transparent:true, opacity:.35, roughness:.06}),
+        i*6.0, y+1.9, z1-0.2);
+    box(4.0, .4, .4, M.gold, i*6.0, y+3.6, z1-0.1);
+  }
+
+  // two foyer chandeliers
+  FOH.lamps = [];
+  [z0+4.5, z1-5.5].forEach(cz=>{
+    const g = new T.Group(); g.position.set(0, y+h-0.4, cz); world.add(g);
+    const stem = new T.Mesh(new T.CylinderGeometry(.06,.06,1.8,7), M.bronze);
+    stem.position.y = -0.9; g.add(stem); STATIC.push(stem);
+    [[1.5,.08],[1.0,.07]].forEach((r,i)=>{
+      const t = new T.Mesh(new T.TorusGeometry(r[0], r[1], 7, 30), M.bronze);
+      t.rotation.x = Math.PI/2; t.position.y = -2.0 + i*0.5; g.add(t); STATIC.push(t);
+    });
+    const lamps=[];
+    for(let i=0;i<16;i++){ const a=i/16*6.283;
+      lamps.push({x:Math.cos(a)*1.5, y:-1.85, z:Math.sin(a)*1.5}); }
+    for(let i=0;i<10;i++){ const a=i/10*6.283;
+      lamps.push({x:Math.cos(a)*1.0, y:-1.35, z:Math.sin(a)*1.0}); }
+    instanced(new T.SphereGeometry(.1,8,6), M.bulbFoh, lamps, {parent:g, cast:false});
+    const pl = new T.PointLight(0xffce96, 0, 30, 1); pl.position.y = -2.0; g.add(pl);
+    FOH.lamps.push(pl);
+  });
+})();
+
+/* ============================================================================
+   BACK OF HOUSE — crossover, loading dock, and the scenic workshop
+   ========================================================================== */
+const STATIONS = [];                     // things you can walk up to and use
+function station(mesh, id, label){
+  mesh.userData.station = {id, label};
+  INTERACT.push(mesh);
+  return mesh;
+}
+
+/* ============================================================================
+   THE LOADING DOCK — off the stage-right wing, with roller doors to the street
+   Nothing sits behind the stage any more: the stage house is one big room with
+   deep wings, and the get-in comes in from the side.
+   ========================================================================== */
+const DOCKDOORS = [];
+(function dock(){
+  const cm = new T.MeshStandardMaterial({color:0x3a3d42, roughness:.95});
+  const bm = new T.MeshStandardMaterial({color:0x2f3237, roughness:.94});
+
+  /* Stage right is negative x — the performer's right facing the audience —
+     so the whole bay is built outward from XR with dir = -1.               */
+  const dir = -1;
+  DOCK.dir   = dir;
+  DOCK.inner = XR;                       // the stage-house wall
+  DOCK.outer = XR + dir*12;              // the street wall
+  DOCK.x0 = Math.min(DOCK.inner, DOCK.outer);
+  DOCK.x1 = Math.max(DOCK.inner, DOCK.outer);
+  DOCK.z0 = -1.5;                        // downstage end of the bay
+  DOCK.z1 = -13.5;                       // upstage end
+  /* A loading dock IS stage height — that is the point of one.  The road
+     outside drops away to a lorry bed below, so there is no ramp cluttering
+     up the wing.                                                          */
+  DOCK.y    = 0;
+  DOCK.road = -1.25;
+  DOCK.h    = 7.4;
+  const cz = (DOCK.z0 + DOCK.z1)/2, L = DOCK.z0 - DOCK.z1;
+  const W = Math.abs(DOCK.outer - DOCK.inner), mid = (DOCK.inner + DOCK.outer)/2;
+
+  /* the dock floor, flush with the stage, lapping under the wall so the
+     threshold is not a hole you fall through */
+  WALKABLE.push(box(W + 1.6, .3, L, cm, mid + dir*-0.8, DOCK.y - 0.15, cz));
+  // the dock lip, and a chequer plate edge along it
+  box(0.3, 0.5, L, new T.MeshStandardMaterial({color:0x53585f, roughness:.6, metalness:.5}),
+      DOCK.outer + dir*0.1, -0.25, cz);
+
+  /* the shell of the bay — roof, both ends, and the street wall */
+  box(W + 1, .5, L + 1, bm, mid, DOCK.y + DOCK.h, cz);
+  box(W, DOCK.h, .5, bm, mid, DOCK.y + DOCK.h/2, DOCK.z1 - 0.25);
+  box(W, DOCK.h, .5, bm, mid, DOCK.y + DOCK.h/2, DOCK.z0 + 0.25);
+  /* The street wall, built from boxes.  It was an ExtrudeGeometry rotated
+     into place, and rotateY(90) maps shape-u to world -z — so the whole wall
+     came out mirrored about the centre line and ended up 15 m the other side
+     of the building, leaving the bay with no street wall at all.          */
+  {
+    const wt = 0.5, DH = 4.6;
+    const doorZ = [cz - 3.4, cz + 3.4], hw = 2.1;
+    DOCK.doorZ = doorZ; DOCK.doorHalfW = hw; DOCK.doorH = DH;
+    // header over the openings, lapped 0.1 down over the head so there is no
+    // hairline seam where it meets the piers
+    box(wt, DOCK.h - DH + 0.1, L, bm, DOCK.outer, DH - 0.05 + (DOCK.h - DH + 0.1)/2, cz);
+    const piers = [
+      [DOCK.z1, doorZ[0] - hw],
+      [doorZ[0] + hw, doorZ[1] - hw],
+      [doorZ[1] + hw, DOCK.z0]
+    ];
+    for(const [a2, b2] of piers){
+      const w2 = b2 - a2;
+      if(w2 > 0.02) box(wt, DH, w2, bm, DOCK.outer, DH/2, (a2 + b2)/2);
+    }
+  }
+
+  /* ---- the roller doors ----
+     Twelve slats each.  Rolling up, the slats travel and then stack into the
+     drum above the opening, so it reads as a real shutter and not a plane
+     that shrinks.                                                          */
+  [-3.4, 3.4].forEach((off, i)=>{
+    const cz2 = cz + off, DW = 4.2, H = 4.55, N = 12;
+    const g = new T.Group();
+    g.position.set(DOCK.outer - dir*0.34, DOCK.y, cz2);
+    world.add(g);
+    const slatMat = new T.MeshStandardMaterial({color:0x6a6f76, roughness:.55, metalness:.6});
+    const slats = [];
+    for(let k=0;k<N;k++){
+      const sl = new T.Mesh(new T.BoxGeometry(0.09, H/N - 0.015, DW), slatMat);
+      sl.position.set(0, (k + 0.5)*(H/N), 0);
+      sl.castShadow = sl.receiveShadow = true;
+      g.add(sl); slats.push(sl);
+    }
+    [-1,1].forEach(sd=>box(0.16, H + 0.5, 0.16, M.steel,
+      DOCK.outer - dir*0.34, DOCK.y + H/2, cz2 + sd*(DW/2 + 0.1)));
+    const drum = new T.Mesh(new T.CylinderGeometry(0.34, 0.34, DW + 0.3, 12), M.steel);
+    drum.rotation.x = Math.PI/2;
+    drum.position.set(DOCK.outer - dir*0.34, DOCK.y + H + 0.36, cz2);
+    world.add(drum); STATIC.push(drum);
+
+    const d = {group:g, slats, H, N, open:0, target:0, id:i+1, z:cz2,
+               halfW: DW/2, drumY: H + 0.36, plane: DOCK.outer - dir*0.34};
+    DOCKDOORS.push(d);
+    const ctl = box(0.5, 0.7, 0.24, M.fixture,
+      DOCK.outer - dir*0.95, DOCK.y + 1.5, cz2 + DW/2 + 0.6);
+    station(ctl, 'dock'+(i+1), 'DOCK DOOR ' + (i+1) + '  —  [E] open or shut it');
+  });
+
+  /* ---- the big shutter into the stage house ----
+     The stage-right wall was solid, so there was no way into the bay at all.
+     It has an opening in it now, filled by one large door at scenery scale —
+     wide enough and tall enough to walk a flat straight through.          */
+  {
+    const OZ0 = -12.5, OZ1 = -3.0, OH = 6.6;
+    DOCK.openZ0 = OZ0; DOCK.openZ1 = OZ1; DOCK.openH = OH;
+    const ocz = (OZ0 + OZ1)/2, OW = OZ1 - OZ0;
+    const plane = DOCK.inner + dir*0.45;
+    const g = new T.Group();
+    g.position.set(plane, 0, ocz);
+    world.add(g);
+    const slatMat = new T.MeshStandardMaterial({color:0x5c626a, roughness:.55, metalness:.6});
+    const N = 16, slats = [];
+    for(let k=0;k<N;k++){
+      const sl = new T.Mesh(new T.BoxGeometry(0.11, OH/N - 0.02, OW - 0.1), slatMat);
+      sl.position.set(0, (k + 0.5)*(OH/N), 0);
+      sl.castShadow = sl.receiveShadow = true;
+      g.add(sl); slats.push(sl);
+    }
+    [-1,1].forEach(sd=>box(0.2, OH + 0.6, 0.2, M.steel, plane, OH/2, ocz + sd*(OW/2 + 0.12)));
+    const drum = new T.Mesh(new T.CylinderGeometry(0.44, 0.44, OW + 0.4, 12), M.steel);
+    drum.rotation.x = Math.PI/2;
+    drum.position.set(plane, OH + 0.48, ocz);
+    world.add(drum); STATIC.push(drum);
+
+    DOCKDOORS.push({group:g, slats, H:OH, N, open:0, target:0, id:3, z:ocz,
+                    halfW: OW/2, drumY: OH + 0.48, plane, big:true});
+    const ctl = box(0.5, 0.7, 0.24, M.fixture, plane + dir*-0.55, 1.5, ocz + OW/2 + 0.9);
+    station(ctl, 'dock3', 'THE BIG DOOR  —  [E] roll it up or down');
+  }
+
+  /* every wall of the bay, and where the holes in it are */
+  DOCK.walls = [
+    {plane: DOCK.inner - dir*0.3, gaps:[{z:(DOCK.openZ0 + DOCK.openZ1)/2,
+                                         halfW:(DOCK.openZ1 - DOCK.openZ0)/2}]},
+    {plane: DOCK.outer,           gaps: DOCK.doorZ.map(z2=>({z:z2, halfW:DOCK.doorHalfW}))}
+  ];
+
+  /* what you can see out of them: the road a lorry-bed below, and a ramp at
+     the upstage end to walk back up */
+  {
+    WALKABLE.push(box(18, .2, L + 10, new T.MeshStandardMaterial({color:0x24262a, roughness:1}),
+                      DOCK.outer + dir*9, DOCK.road - 0.1, cz));
+    {
+      const rl = 5.0;
+      const ramp = new T.Mesh(new T.BoxGeometry(3.2, .26, rl),
+        new T.MeshStandardMaterial({color:0x2e3136, roughness:.95}));
+      ramp.position.set(DOCK.outer + dir*1.7, (DOCK.y + DOCK.road)/2, DOCK.z1 - 3.0);
+      ramp.rotation.x = Math.atan2(DOCK.y - DOCK.road, rl);
+      ramp.receiveShadow = true;
+      world.add(ramp); STATIC.push(ramp); WALKABLE.push(ramp);
+    }
+    const lorry = new T.Group();
+    lorry.position.set(DOCK.outer + dir*4.8, 0, cz - 4.4);
+    lorry.rotation.y = 0.06;
+    world.add(lorry);
+    const bodyM = new T.MeshStandardMaterial({color:0x4a4f57, roughness:.7, metalness:.25});
+    const bx = new T.Mesh(new T.BoxGeometry(2.6, 2.9, 8.4), bodyM);
+    bx.position.set(0, 2.5, 0); bx.castShadow = bx.receiveShadow = true; lorry.add(bx);
+    const cab = new T.Mesh(new T.BoxGeometry(2.5, 2.2, 2.4),
+      new T.MeshStandardMaterial({color:0x6d2b24, roughness:.6, metalness:.3}));
+    cab.position.set(0, 2.1, 5.6); cab.castShadow = true; lorry.add(cab);
+    for(const z2 of [-3.0, -1.4, 4.6]) for(const sd of [-1,1]){
+      const wh = new T.Mesh(new T.CylinderGeometry(0.62,0.62,0.34,12),
+        new T.MeshStandardMaterial({color:0x141519, roughness:.98}));
+      wh.rotation.z = Math.PI/2;
+      wh.position.set(sd*1.3, 0.62, z2); lorry.add(wh);
+    }
+    lorry.traverse(o=>{ if(o.isMesh) STATIC.push(o); });
+  }
+
+  /* dock furniture */
+  const cases = [];
+  for(let i=0;i<7;i++)
+    cases.push({x:DOCK.inner + dir*(2.4 + (i%3)*1.5), y:DOCK.y + 0.55,
+                z:DOCK.z1 + 2.2 + Math.floor(i/3)*1.4, ry:rnd(-0.08,0.08)});
+  instanced(new T.BoxGeometry(1.3,1.1,0.9),
+    new T.MeshStandardMaterial({color:0x1b1d22, roughness:.85}), cases, {cast:true});
+
+  BOH.light  = new T.PointLight(0xbfd0e0, 0, 30, 1);
+  BOH.light.position.set(DOCK.inner + dir*4, DOCK.y + DOCK.h - 1.2, cz + 3); world.add(BOH.light);
+  BOH.light2 = new T.PointLight(0xbfd0e0, 0, 30, 1);
+  BOH.light2.position.set(DOCK.inner + dir*4, DOCK.y + DOCK.h - 1.2, cz - 4); world.add(BOH.light2);
+  BOH.light3 = new T.PointLight(0xd8e4f0, 0, 26, 1);
+  BOH.light3.position.set(DOCK.outer + dir*4, 6.0, cz); world.add(BOH.light3);
+})();
+
+/* the shutters run like the pass doors do */
+function updateDockDoors(dt){
+  for(const d of DOCKDOORS){
+    if(Math.abs(d.target - d.open) < 0.002){ d.open = d.target; }
+    else d.open += clamp(d.target - d.open, -dt*0.55, dt*0.55);
+    const lift = d.open * d.H;
+    for(let k=0;k<d.N;k++){
+      const base = (k + 0.5)*(d.H/d.N);
+      const y = base + lift;
+      const sl = d.slats[k];
+      if(y > d.H + 0.05){
+        // it has reached the head: from here it rolls into the drum
+        const over = Math.min(1, (y - d.H)/(d.H/d.N));
+        sl.position.y = d.drumY || (d.H + 0.36);
+        sl.position.x = -0.02 * (k % 3);
+        sl.scale.set(1, 1 - over*0.92, 1);
+      } else {
+        sl.position.y = y; sl.position.x = 0; sl.scale.set(1,1,1);
+      }
+    }
+  }
+}
+function toggleDockDoor(d){
+  if(!d) return false;
+  const shut = d.target < 0.5;
+  d.target = shut ? 1 : 0;
+  toast('Dock door ' + d.id + (shut ? ' rolling up' : ' coming down'));
+  Snd.play(shut ? 'whoosh' : 'doorSlam');
+  return shut;
+}
+function setAllDockDoors(open){
+  DOCKDOORS.forEach(d=>d.target = open ? 1 : 0);
+  toast(open ? 'Both dock doors up' : 'Dock doors down');
+}
+

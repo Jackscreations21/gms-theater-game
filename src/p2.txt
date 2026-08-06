@@ -1,0 +1,415 @@
+/* ============================================================================
+   THE HOUSE — Theatre Technician Simulator
+   A working model of the Palace Theatre, 1564 Broadway (Kirchhoff & Rose, 1913)
+   Single file. Three.js r128.
+   ========================================================================== */
+'use strict';
+const T = THREE;
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const lerp = (a,b,t) => a+(b-a)*t;
+const rnd = (a,b) => a+Math.random()*(b-a);
+const DEG = Math.PI/180;
+
+/* ---------------------------------------------------------------------------
+   THE PALACE, IN METRES
+   Proscenium 44 ft (13.4 m) across — the one hard dimension on record.
+   Roof girders span 86 ft (26 m), which sets the auditorium width; the house
+   is "slightly wider than it is deep", so the orchestra runs ~24 m back.
+   Two balconies cantilever over the orchestra, the first reaching half its
+   depth. A 14 ft (4.3 m) bronze chandelier hangs from the dome.
+   --------------------------------------------------------------------------- */
+const D = {
+  procW: 15.0, procH: 10.4,         // proscenium opening
+  stageW: 44, stageD: 17,           // full stage incl. deep wings
+  wingSR: 11,                       // stage right runs further out still
+  apron: 1.2,                       // where the straight deck edge sits
+  thrust: 3.4,                      // the rounded apron that bulges into the house
+  backWall: -17,
+  gridY: 25, loftY: 26.5,
+  houseY: -1.35,                    // orchestra floor at the stage
+  houseRake: 4.6,                   // total rise of the raked orchestra
+  houseFront: 1.0,                  // where the orchestra floor begins
+  houseBack: 30, houseW: 30,
+  mezzY: 6.6,  mezzZ: 15.0,         // first balcony  — front edge
+  balcY: 13.4, balcZ: 21.0,         // second balcony — front edge
+  coveY: 20.0,                      // where the walls turn into the cove
+  ceilY: 24.6,                      // flat ceiling
+  domeZ: 11.5, domeRim: 7.4         // the dome, and the chandelier under it
+};
+
+/* ============================================================================
+   RENDERER / QUALITY
+   ========================================================================== */
+const QUALITY = {
+  level: 'auto',                    // auto | low | med | high
+  scale: 1, shadow: 1024, shadows: true, autoTune: true, rooms: true,
+  presets: {
+    low:  {scale:0.62, shadow:0,    shadows:false},
+    med:  {scale:0.85, shadow:1024, shadows:true},
+    high: {scale:1.0,  shadow:2048, shadows:true}
+  }
+};
+
+const scene = new T.Scene();
+scene.background = new T.Color(0x05060a);
+scene.fog = new T.FogExp2(0x07080e, 0.0055);
+
+const renderer = new T.WebGLRenderer({antialias:true, powerPreference:'high-performance', stencil:false});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = T.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;      // shadows refreshed on demand, not every frame
+renderer.outputEncoding = T.sRGBEncoding;
+renderer.toneMapping = T.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.35;
+$('#app').appendChild(renderer.domElement);
+
+const camera = new T.PerspectiveCamera(60, innerWidth/innerHeight, 0.08, 300);
+
+function applyQuality(name){
+  const p = QUALITY.presets[name] || QUALITY.presets.med;
+  QUALITY.scale = p.scale; QUALITY.shadow = p.shadow; QUALITY.shadows = p.shadows;
+  renderer.shadowMap.enabled = p.shadows;
+  if(typeof LIGHT_POOL !== 'undefined')
+    LIGHT_POOL.forEach(l=>{ if(l.userData.canShadow){
+      l.castShadow = p.shadows;
+      if(p.shadow) l.shadow.mapSize.set(p.shadow, p.shadow);
+      if(l.shadow.map){ l.shadow.map.dispose(); l.shadow.map = null; }
+    }});
+  resize();
+  shadowsDirty = true;
+}
+let shadowsDirty = true;
+function resize(){
+  const s = QUALITY.scale;
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5) * s);
+  renderer.setSize(innerWidth, innerHeight);
+  shadowsDirty = true;
+}
+addEventListener('resize', resize);
+
+/* ============================================================================
+   PROCEDURAL TEXTURES
+   ========================================================================== */
+function cvs(w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; return c; }
+function tex(c, rx, ry, srgb){
+  const t = new T.CanvasTexture(c);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  t.repeat.set(rx||1, ry||1);
+  t.anisotropy = 4;
+  if(srgb !== false) t.encoding = T.sRGBEncoding;
+  return t;
+}
+function grain(x,w,h,amt){
+  const img=x.getImageData(0,0,w,h), d=img.data;
+  for(let i=0;i<d.length;i+=4){ const n=(Math.random()-0.5)*amt;
+    d[i]=clamp(d[i]+n,0,255); d[i+1]=clamp(d[i+1]+n,0,255); d[i+2]=clamp(d[i+2]+n,0,255); }
+  x.putImageData(img,0,0);
+}
+
+/* stage deck — black-painted masonite over planks */
+function deckTex(){
+  const c=cvs(512,512), x=c.getContext('2d');
+  x.fillStyle='#15130f'; x.fillRect(0,0,512,512);
+  for(let i=0;i<8;i++){
+    const y=i*64;
+    x.fillStyle = i%2 ? '#171511' : '#141210'; x.fillRect(0,y,512,64);
+    x.strokeStyle='rgba(0,0,0,.75)'; x.lineWidth=2;
+    x.beginPath(); x.moveTo(0,y); x.lineTo(512,y); x.stroke();
+    for(let k=0;k<30;k++){
+      x.strokeStyle='rgba(255,240,220,'+(0.012+Math.random()*0.02)+')'; x.lineWidth=1;
+      const yy=y+Math.random()*64;
+      x.beginPath(); x.moveTo(0,yy); x.bezierCurveTo(170,yy+rnd(-4,4),340,yy+rnd(-4,4),512,yy); x.stroke();
+    }
+  }
+  for(let k=0;k<70;k++){ x.fillStyle='rgba(210,205,195,'+(0.02+Math.random()*0.05)+')';
+    x.save(); x.translate(Math.random()*512,Math.random()*512); x.rotate(Math.random()*6.28);
+    x.fillRect(0,0,rnd(6,50),rnd(1,3)); x.restore(); }
+  grain(x,512,512,16);
+  return tex(c,10,7);
+}
+/* ivory plaster with a warm bloom — the Palace's "ivory and bronze" */
+function plasterTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#ded1b6'; x.fillRect(0,0,256,256);
+  for(let k=0;k<220;k++){
+    x.fillStyle='rgba('+(200+Math.random()*40|0)+','+(185+Math.random()*40|0)+','+(150+Math.random()*40|0)+',.35)';
+    x.beginPath(); x.arc(Math.random()*256,Math.random()*256,rnd(4,26),0,6.283); x.fill();
+  }
+  grain(x,256,256,14);
+  return tex(c,3,3);
+}
+/* gilding — beaten gold leaf */
+function goldTex(){
+  const c=cvs(128,128), x=c.getContext('2d');
+  x.fillStyle='#b8902f'; x.fillRect(0,0,128,128);
+  for(let k=0;k<300;k++){
+    x.fillStyle='rgba('+(190+Math.random()*60|0)+','+(150+Math.random()*60|0)+',60,'+rnd(.1,.5)+')';
+    x.save(); x.translate(Math.random()*128,Math.random()*128); x.rotate(Math.random()*6.283);
+    x.fillRect(0,0,rnd(3,16),rnd(3,16)); x.restore();
+  }
+  grain(x,128,128,20);
+  return tex(c,2,2);
+}
+/* white marble with grey veining — the orchestra box barriers */
+function marbleTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#e9e6de'; x.fillRect(0,0,256,256);
+  for(let k=0;k<26;k++){
+    x.strokeStyle='rgba('+(120+Math.random()*60|0)+','+(120+Math.random()*55|0)+','+(115+Math.random()*50|0)+','+rnd(.08,.3)+')';
+    x.lineWidth=rnd(.6,3); x.beginPath();
+    let px=rnd(-30,286), py=rnd(-30,286);
+    x.moveTo(px,py);
+    for(let s=0;s<7;s++){ px+=rnd(-60,60); py+=rnd(-50,50); x.lineTo(px,py); }
+    x.stroke();
+  }
+  grain(x,256,256,7);
+  return tex(c,2,2);
+}
+/* crimson velour — house curtain and drapery */
+function velourTex(col){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle=col; x.fillRect(0,0,256,256);
+  for(let i=0;i<256;i+=4){
+    const s=Math.sin(i*0.19)*0.5+0.5;
+    x.fillStyle='rgba(0,0,0,'+(0.05+s*0.42)+')'; x.fillRect(i,0,2,256);
+    x.fillStyle='rgba(255,255,255,'+((1-s)*0.05)+')'; x.fillRect(i+2,0,1,256);
+  }
+  grain(x,256,256,18);
+  return tex(c,7,2);
+}
+/* black serge / masking */
+function sergeTex(){
+  const c=cvs(128,128), x=c.getContext('2d');
+  x.fillStyle='#0a0a0c'; x.fillRect(0,0,128,128);
+  for(let i=0;i<128;i+=3){ x.fillStyle='rgba(255,255,255,'+(Math.random()*0.03)+')'; x.fillRect(i,0,1,128); }
+  grain(x,128,128,10);
+  return tex(c,6,3);
+}
+/* painted brick — the upstage wall of the stage house */
+function brickTex(){
+  const c=cvs(512,512), x=c.getContext('2d');
+  x.fillStyle='#26241f'; x.fillRect(0,0,512,512);
+  for(let r=0;r<16;r++){ const y=r*32, off=(r%2)*32;
+    for(let b=0;b<8;b++){ const bx=b*64+off;
+      x.fillStyle='rgb('+(38+Math.random()*16|0)+','+(36+Math.random()*14|0)+','+(32+Math.random()*12|0)+')';
+      x.fillRect(bx+1.5,y+1.5,61,29); } }
+  grain(x,512,512,20);
+  return tex(c,8,5);
+}
+/* patterned house carpet — crimson with a gold medallion repeat */
+function carpetTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#4a121c'; x.fillRect(0,0,256,256);
+  for(let k=0;k<2600;k++){ x.fillStyle='rgba('+(110+Math.random()*70|0)+',30,44,'+(Math.random()*0.4)+')';
+    x.fillRect(Math.random()*256,Math.random()*256,2,2); }
+  x.strokeStyle='rgba(196,158,66,.30)'; x.lineWidth=2.5;
+  for(let k=0;k<7;k++){ x.beginPath(); x.arc(128,128,24+k*15,0,6.283); x.stroke(); }
+  for(let a=0;a<12;a++){ const th=a/12*6.283;
+    x.beginPath(); x.ellipse(128+Math.cos(th)*74,128+Math.sin(th)*74,16,7,th,0,6.283); x.stroke(); }
+  grain(x,256,256,22);
+  return tex(c,14,16);
+}
+/* silk damask wall covering — crimson ground, gold ornament */
+function damaskTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#7d1b23'; x.fillRect(0,0,256,256);
+  // woven ground
+  for(let i=0;i<256;i+=2){ x.fillStyle='rgba(0,0,0,.08)'; x.fillRect(i,0,1,256); }
+  for(let i=0;i<256;i+=2){ x.fillStyle='rgba(255,255,255,.04)'; x.fillRect(0,i,256,1); }
+  // a damask motif, mirrored into a half-drop repeat
+  function motif(cx,cy,s){
+    x.save(); x.translate(cx,cy); x.scale(s,s);
+    x.strokeStyle='rgba(206,170,90,.85)'; x.fillStyle='rgba(196,158,74,.42)';
+    x.lineWidth=2.2;
+    for(const dir of [-1,1]){
+      x.save(); x.scale(dir,1);
+      x.beginPath();                                   // the ogee lobe
+      x.moveTo(0,-46); x.bezierCurveTo(30,-40, 44,-14, 30,6);
+      x.bezierCurveTo(20,22, 6,30, 0,46);
+      x.stroke();
+      x.beginPath();                                   // an acanthus curl
+      x.moveTo(0,-16); x.bezierCurveTo(20,-20, 26,-4, 14,6);
+      x.bezierCurveTo(8,11, 3,10, 0,4);
+      x.fill(); x.stroke();
+      x.beginPath();                                   // a leaf tip
+      x.moveTo(2,26); x.quadraticCurveTo(20,22, 22,36);
+      x.quadraticCurveTo(12,40, 2,26); x.fill();
+      x.restore();
+    }
+    x.beginPath(); x.arc(0,0,5,0,6.283); x.fill();     // the centre boss
+    x.restore();
+  }
+  motif(64,64,1); motif(192,64,1); motif(0,192,1); motif(128,192,1); motif(256,192,1);
+  grain(x,256,256,10);
+  return tex(c,7,5);
+}
+/* crimson seat plush */
+function seatTex(){
+  const c=cvs(64,64), x=c.getContext('2d');
+  x.fillStyle='#6b1420'; x.fillRect(0,0,64,64);
+  grain(x,64,64,26);
+  return tex(c,1,1);
+}
+/* painted backdrops */
+function dropTex(kind){
+  const c=cvs(1024,512), x=c.getContext('2d');
+  if(kind==='sky'){
+    const g=x.createLinearGradient(0,0,0,512);
+    g.addColorStop(0,'#173a72'); g.addColorStop(.55,'#5786bd'); g.addColorStop(1,'#c9b98d');
+    x.fillStyle=g; x.fillRect(0,0,1024,512);
+    for(let k=0;k<26;k++){ const cx=Math.random()*1024, cy=rnd(30,230), r=rnd(30,90);
+      x.fillStyle='rgba(255,255,255,'+rnd(.05,.16)+')';
+      for(let j=0;j<7;j++){ x.beginPath(); x.arc(cx+rnd(-r,r),cy+rnd(-r*.3,r*.3),rnd(r*.3,r*.7),0,6.283); x.fill(); } }
+  } else if(kind==='forest'){
+    x.fillStyle='#0d1a12'; x.fillRect(0,0,1024,512);
+    for(let k=0;k<130;k++){ const tx=Math.random()*1024, w=rnd(8,34), h=rnd(180,470);
+      x.fillStyle='rgba('+(10+Math.random()*26|0)+','+(30+Math.random()*40|0)+','+(18+Math.random()*22|0)+',.85)';
+      x.fillRect(tx,512-h,w,h);
+      x.beginPath(); x.ellipse(tx+w/2,512-h,w*rnd(1.6,3),h*rnd(.12,.24),0,0,6.283); x.fill(); }
+  } else if(kind==='town'){
+    const g=x.createLinearGradient(0,0,0,512);
+    g.addColorStop(0,'#101a2e'); g.addColorStop(1,'#3c3550'); x.fillStyle=g; x.fillRect(0,0,1024,512);
+    for(let k=0;k<40;k++){ const bx=k*26+rnd(-8,8), h=rnd(90,330), w=rnd(20,46);
+      x.fillStyle='rgba('+(20+Math.random()*22|0)+','+(20+Math.random()*20|0)+','+(30+Math.random()*26|0)+',1)';
+      x.fillRect(bx,512-h,w,h);
+      for(let wy=512-h+10; wy<500; wy+=18) for(let wx=bx+5; wx<bx+w-6; wx+=12)
+        if(Math.random()>.45){ x.fillStyle='rgba(255,204,120,'+rnd(.25,.85)+')'; x.fillRect(wx,wy,5,8); } }
+  } else {
+    x.fillStyle='#e8e8e6'; x.fillRect(0,0,1024,512); grain(x,1024,512,8);
+  }
+  return tex(c,1,1);
+}
+function scrimAlpha(){
+  const c=cvs(64,64), x=c.getContext('2d');
+  x.fillStyle='#000'; x.fillRect(0,0,64,64);
+  x.fillStyle='#aaa';
+  for(let i=0;i<64;i+=4) for(let j=0;j<64;j+=4) x.fillRect(i,j,2,2);
+  return tex(c,120,60,false);
+}
+
+const TX = {
+  deck: deckTex(), velour: velourTex('#7d1420'), serge: sergeTex(),
+  brick: brickTex(), carpet: carpetTex(), seat: seatTex(),
+  plaster: plasterTex(), gold: goldTex(), marble: marbleTex(),
+  drops: {sky:dropTex('sky'), forest:dropTex('forest'), town:dropTex('town'), cyc:dropTex('cyc')},
+  scrimA: scrimAlpha()
+};
+
+/* ---------- materials ---------- */
+const M = {
+  deck:   new T.MeshStandardMaterial({map:TX.deck, roughness:.82, metalness:.04, color:0x9a968e}),
+  black:  new T.MeshStandardMaterial({color:0x0c0d10, roughness:.95}),
+  serge:  new T.MeshStandardMaterial({map:TX.serge, roughness:1, side:T.DoubleSide, color:0x8a8a8a}),
+  velour: new T.MeshStandardMaterial({map:TX.velour, roughness:.95, side:T.DoubleSide, color:0xbbbbbb}),
+  brick:  new T.MeshStandardMaterial({map:TX.brick, roughness:.95}),
+  carpet: new T.MeshStandardMaterial({map:TX.carpet, roughness:1}),
+  seat:   new T.MeshStandardMaterial({map:TX.seat, roughness:.92, color:0xcccccc}),
+  seatBack:new T.MeshStandardMaterial({map:TX.seat, roughness:.92, color:0xb4b4b4}),
+  /* the auditorium palette: ivory plaster, bronze-gold enrichment, crimson */
+  ivory:  new T.MeshStandardMaterial({map:TX.plaster, roughness:.88, color:0xffffff}),
+  /* hand-built strips and slabs get seen from both sides — cove soffits,
+     balcony decks and fasciae must not vanish depending on where you stand */
+  ivory2: new T.MeshStandardMaterial({map:TX.plaster, roughness:.88, color:0xffffff, side:T.DoubleSide}),
+  ivoryU: new T.MeshStandardMaterial({map:TX.plaster, roughness:.9, color:0xd8ccb2, side:T.DoubleSide}),
+  ivoryD: new T.MeshStandardMaterial({map:TX.plaster, roughness:.9,  color:0xcfc3aa}),
+  gold:   new T.MeshStandardMaterial({map:TX.gold, roughness:.32, metalness:.85, color:0xffffff}),
+  goldDk: new T.MeshStandardMaterial({map:TX.gold, roughness:.45, metalness:.8,  color:0xa07f2a}),
+  marble: new T.MeshStandardMaterial({map:TX.marble, roughness:.28, metalness:.05, color:0xffffff}),
+  marbleK:new T.MeshStandardMaterial({color:0x14151a, roughness:.24, metalness:.1}),
+  crimson:new T.MeshStandardMaterial({map:TX.velour, roughness:.94, color:0x9e2030}),
+  steel:  new T.MeshStandardMaterial({color:0x494f58, roughness:.42, metalness:.85}),
+  pipe:   new T.MeshStandardMaterial({color:0x2d3139, roughness:.5, metalness:.7}),
+  fixture:new T.MeshStandardMaterial({color:0x121316, roughness:.55, metalness:.55}),
+  plaster:new T.MeshStandardMaterial({color:0x2a2620, roughness:.92}),
+  wood:   new T.MeshStandardMaterial({color:0x6b4a2c, roughness:.7}),
+  woodDk: new T.MeshStandardMaterial({color:0x3a2818, roughness:.75}),
+  mahog:  new T.MeshStandardMaterial({color:0x3d1d16, roughness:.42, metalness:.1}),
+  rope:   new T.MeshStandardMaterial({color:0x2a2a2c, roughness:.9}),
+  deckTwo:new T.MeshStandardMaterial({map:TX.carpet, roughness:1, side:T.DoubleSide}),
+  bronze: new T.MeshStandardMaterial({color:0xc9ad72, roughness:.36, metalness:.9}),
+  bulb:    new T.MeshBasicMaterial({color:0xffd9a0}),
+  bulbFoh: new T.MeshBasicMaterial({color:0xffce96}),
+  bulbBoh: new T.MeshBasicMaterial({color:0xdfe8f2}),
+  bulbRun: new T.MeshBasicMaterial({color:0x2a6cff}),
+  exit:    new T.MeshBasicMaterial({color:0x1fdd5a})
+};
+
+/* ============================================================================
+   BUILD HELPERS  —  everything static is instanced or matrix-frozen
+   ========================================================================== */
+const world = new T.Group(); scene.add(world);
+const stagePieces = [];
+const ARBORS = [];
+const WALKABLE = [];
+const INTERACT = [];            // the only things worth raycasting against
+const STATIC = [];              // gets matrixAutoUpdate=false after the build
+
+function box(w,h,d,mat,x,y,z,parent){
+  const m = new T.Mesh(new T.BoxGeometry(w,h,d), mat);
+  m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true;
+  (parent||world).add(m); STATIC.push(m); return m;
+}
+const _dummy = new T.Object3D();
+/* one draw call for hundreds of identical ornaments */
+function instanced(geo, mat, list, opt){
+  opt = opt || {};
+  if(!list.length) return null;
+  const m = new T.InstancedMesh(geo, mat, list.length);
+  for(let i=0;i<list.length;i++){
+    const t = list[i];
+    _dummy.position.set(t.x||0, t.y||0, t.z||0);
+    _dummy.rotation.set(t.rx||0, t.ry||0, t.rz||0);
+    _dummy.scale.set(t.s||t.sx||1, t.s||t.sy||1, t.s||t.sz||1);
+    _dummy.updateMatrix();
+    m.setMatrixAt(i, _dummy.matrix);
+  }
+  m.instanceMatrix.needsUpdate = true;
+  /* r128 sizes an InstancedMesh's bounding sphere from ONE instance at the
+     origin, so a spread-out batch vanishes the moment the origin leaves the
+     frustum. Give it a sphere that actually contains every instance.        */
+  geo.computeBoundingSphere();
+  const r0 = geo.boundingSphere ? geo.boundingSphere.radius : 1;
+  let cx=0, cy=0, cz=0, sMax=1;
+  for(const t of list){ cx+=t.x||0; cy+=t.y||0; cz+=t.z||0;
+    sMax = Math.max(sMax, t.s||t.sx||1, t.s||t.sy||1, t.s||t.sz||1); }
+  cx/=list.length; cy/=list.length; cz/=list.length;
+  let rad = 0;
+  for(const t of list) rad = Math.max(rad,
+    Math.hypot((t.x||0)-cx, (t.y||0)-cy, (t.z||0)-cz));
+  geo.boundingSphere = new T.Sphere(new T.Vector3(cx,cy,cz), rad + r0*sMax + 0.5);
+  m.castShadow = opt.cast !== false;
+  m.receiveShadow = opt.receive !== false;
+  m.frustumCulled = opt.cull !== false;
+  (opt.parent||world).add(m);
+  STATIC.push(m);
+  return m;
+}
+/* a run of ornament along a straight line */
+function runAlong(x0,y0,z0, x1,y1,z1, n, extra){
+  const out=[];
+  for(let i=0;i<n;i++){
+    const t = n===1?0.5:i/(n-1);
+    out.push(Object.assign({x:lerp(x0,x1,t), y:lerp(y0,y1,t), z:lerp(z0,z1,t)}, extra||{}));
+  }
+  return out;
+}
+/* a run of ornament along the curved front of a balcony */
+function runCurve(fn, n, extra){
+  const out=[];
+  for(let i=0;i<n;i++){ const p = fn(i/(n-1));
+    out.push(Object.assign({x:p.x, y:p.y, z:p.z, ry:p.ry||0}, extra||{})); }
+  return out;
+}
+
+/* the curved sweep both balconies share: a shallow arc bowing toward the stage */
+const BOW = 3.4;                               // how far the centre reaches forward
+function balconyFront(t, zFront, halfW){       // t: -1 (house left) .. 1 (house right)
+  const x = t*halfW;
+  const z = zFront + BOW*(t*t);
+  return {x, z};
+}
