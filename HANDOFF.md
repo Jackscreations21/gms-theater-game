@@ -14,12 +14,18 @@ theater_game/
   the-house.html     the game — open this, or serve it (VR needs HTTPS)
   build.sh           rebuilds the-house.html from src/
   HANDOFF.md         this
+  README.md          the GitHub front page
   src/               the 24 parts it is built from
   tests/             twelve suites — npm install, then node real.js
   tools/             probes that draw pictures — see tools/README.md
 ```
 
 `the-house.html` is committed built. You only need `build.sh` if you edit `src/`.
+
+Git: the remote is `https://github.com/Jackscreations21/gms-theater-game`
+(private as of 2026-08-06). Commits use the owner's GitHub no-reply address —
+**keep it that way**; the repo may go public. `.gitattributes` pins LF because
+`build.sh` breaks under CRLF.
 
 ---
 
@@ -78,6 +84,12 @@ node vr.js        # WebXR: rig, sticks, desks, ropes, GO
 ```
 
 All twelve are at `--- failures: 0 ---`. Keep them there.
+
+`full14.js` wraps `window.MouseEvent` at the top of its harness: jsdom has no
+pointer-lock support, so a stock jsdom `MouseEvent` silently drops
+`movementX`/`movementY`, and the five fly-haul tests pull with undefined force
+and fail in cascade. Any new test that synthesizes mouse movement needs the
+same shim (or belongs in `full14.js`, which already has it).
 
 `tools/` holds **probes**, which are not pass/fail but print pictures —
 `audience.js`, `goes-wrong.js`, `arc-foyer.js`, `arc-studio.js`. They cast a
@@ -183,6 +195,11 @@ had run. `VR` is a `var` for this reason.
 which side the dock was on, the street wall). `rotateX(-π/2)` maps shape-y to
 world −z. `rotateY(π/2)` mirrors. A box's long axis is local Y.
 
+**jsdom's `MouseEvent` has no `movementX`/`movementY` at all** — not 0,
+undefined. The game guards it to 0, so synthetic hauling events do nothing and
+the failure looks like broken game code. It isn't; shim the event (see §2).
+Cost half a session before anyone checked what jsdom actually constructs.
+
 **Measure the right thing.** Two tests passed while being wrong: a darkness
 comparison that swept in the Palace's foyer chandeliers 30m away through a shut
 door, and a floor probe that found the fly gallery instead of the stage. And "is
@@ -194,6 +211,39 @@ compare the *same* production across stages instead.
 ## 6. Where it stands / what is next
 
 Working and tested. Nothing is known to be broken.
+
+**Done 2026-08-06:** fixed the `full14.js` harness (the jsdom `movementY` shim
+above — the game code was never wrong), created the git repo (there had never
+been one), pushed to GitHub, rewrote both commits onto the no-reply address,
+added `README.md`. GitHub Pages is **not** enabled yet — it needs the repo
+public or a paid plan, and that decision is the owner's.
+
+**NEXT SESSION IS A CODE AUDIT.** Read this file first, then audit — don't
+refactor as you read. Findings before fixes: list what you find with
+file/part and line, severity, and evidence, and let the owner pick what gets
+changed. The tests are the safety net for anything that does get changed —
+run all twelve before and after. Things an audit of this codebase should
+actually look at:
+
+- **Global state.** It is one concatenated script on purpose; ~everything is
+  a top-level `let`/`const`/`var`. The question is not "are there globals"
+  but whether any two parts write the same one for different reasons
+  (see the `userData.moves` story in §5 — that class of bug).
+- **The stage-swap in `p2k`.** Walking between theatres swaps the *contents*
+  of `FIXTURES`/`FLY`/`CUES`/`SHOW`/`HOUSE`. Anything that keeps a stale
+  reference across a swap is a latent bug of exactly the kind §5 documents
+  for cached DOM rows.
+- **Dead weight.** `p2d` is known-orphaned; the scene-change machinery in
+  `p5c` (`SHOW.scenes`) has no user since Beetlejuice was cut. Confirm, and
+  find whatever else nothing calls.
+- **Duplication across the show files.** `p5f`/`p5g` already reach into
+  `p5d` for `LB_CLOTH_W`; there is likely more copy-paste between the four
+  productions worth flagging.
+- **World/stage coordinate discipline.** Every invariant in §4 is a past
+  bug. Grep for raw `.position` math near `ARC.X`, trims, and `aim` and
+  check each against §4.
+- **What the tests don't cover.** They catch structure and state, not looks
+  or speed. Note untested seams (the VR paths especially — stubbed only).
 
 **Not done:**
 
@@ -211,5 +261,6 @@ Working and tested. Nothing is known to be broken.
 - The scene-change system (`SHOW.scenes`, `p5c`) is general machinery that no
   current show uses — it was built for Beetlejuice, which was removed.
 
-**Asked for and not yet built:** hosting the VR version, and the "stage 2" VR
-work — grabbable faders on the console, carrying scenery by hand.
+**Asked for and not yet built:** hosting the VR version (blocked on the
+public/private decision above), and the "stage 2" VR work — grabbable faders
+on the console, carrying scenery by hand.
