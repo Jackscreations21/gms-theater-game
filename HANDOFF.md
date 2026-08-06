@@ -14,6 +14,7 @@ theater_game/
   the-house.html     the game — open this, or serve it (VR needs HTTPS)
   build.sh           rebuilds the-house.html from src/
   HANDOFF.md         this
+  AUDIT.md           the 2026-08-06 code audit — findings, evidence, line numbers
   README.md          the GitHub front page
   src/               the 24 parts it is built from
   tests/             twelve suites — npm install, then node real.js
@@ -210,40 +211,113 @@ compare the *same* production across stages instead.
 
 ## 6. Where it stands / what is next
 
-Working and tested. Nothing is known to be broken.
+All twelve suites green, and now audited. Nothing crashes on the beaten path,
+but **AUDIT.md** (repo root, 2026-08-06) lists 6 high / 17 medium / 6 low
+findings with line-numbered evidence — none fixed yet. The high six are all
+one shape: walk between theatres while something is in flight (the crew, the
+smoke rack, a running show script) and it acts on the wrong stage.
 
 **Done 2026-08-06:** fixed the `full14.js` harness (the jsdom `movementY` shim
 above — the game code was never wrong), created the git repo (there had never
 been one), pushed to GitHub, rewrote both commits onto the no-reply address,
 added `README.md`. GitHub Pages is **not** enabled yet — it needs the repo
-public or a paid plan, and that decision is the owner's.
+public or a paid plan, and that decision is the owner's. Later the same day:
+ran the code audit — six independent read-only passes (global state, the p2k
+swap, dead weight, duplication, coordinates, test coverage), cross-checked,
+the sharpest single-source claims re-verified by hand and one by a live jsdom
+probe. No code was touched; AUDIT.md is the deliverable.
 
-**NEXT SESSION IS A CODE AUDIT.** Read this file first, then audit — don't
-refactor as you read. Findings before fixes: list what you find with
-file/part and line, severity, and evidence, and let the owner pick what gets
-changed. The tests are the safety net for anything that does get changed —
-run all twelve before and after. Things an audit of this codebase should
-actually look at:
+**NEXT SESSION: work the bug list, one item at a time.** Every item below is
+expanded in AUDIT.md with evidence and line numbers, and its "checked and
+sound" section lists what NOT to re-audit. Ground rules: run all twelve
+suites before starting and after every item; one finding, one commit; tick
+the box here as each lands; where a fix touches the swap boundary, add the
+in-flight regression test the coverage pass says is missing (AUDIT §"What the
+tests don't cover").
 
-- **Global state.** It is one concatenated script on purpose; ~everything is
-  a top-level `let`/`const`/`var`. The question is not "are there globals"
-  but whether any two parts write the same one for different reasons
-  (see the `userData.moves` story in §5 — that class of bug).
-- **The stage-swap in `p2k`.** Walking between theatres swaps the *contents*
-  of `FIXTURES`/`FLY`/`CUES`/`SHOW`/`HOUSE`. Anything that keeps a stale
-  reference across a swap is a latent bug of exactly the kind §5 documents
-  for cached DOM rows.
-- **Dead weight.** `p2d` is known-orphaned; the scene-change machinery in
-  `p5c` (`SHOW.scenes`) has no user since Beetlejuice was cut. Confirm, and
-  find whatever else nothing calls.
-- **Duplication across the show files.** `p5f`/`p5g` already reach into
-  `p5d` for `LB_CLOTH_W`; there is likely more copy-paste between the four
-  productions worth flagging.
-- **World/stage coordinate discipline.** Every invariant in §4 is a past
-  bug. Grep for raw `.position` math near `ARC.X`, trims, and `aim` and
-  check each against §4.
-- **What the tests don't cover.** They catch structure and state, not looks
-  or speed. Note untested seams (the VR paths especially — stubbed only).
+Quick wins first — each is small, self-contained, and already hand-verified:
+
+- [ ] 1. **M16** — make the other eleven suites exit non-zero on failure the
+      way `full14.js` does, and add an `npm test` script that runs all
+      twelve. Do this first; it hardens every item after it.
+- [ ] 2. **M1** — `p5g:314` calls `makeFire` with the obsolete
+      `{x,y,z,w,h,n}` shape, so every flame seeds at NaN and the GOES WRONG
+      fireplace never renders. Convert to `{count, embers, y, x0,x1,z0,z1}`
+      (the two correct callers are p5c:1065 and p5d:487).
+- [ ] 3. **M2** — `plotOutsiders` is missing `restoreAims(homeAims)` before
+      `RIG.haze = savedHaze` (p5c:1261); the other three plots all have it.
+- [ ] 4. **M3** — guard the `updateNeon()` call at p5c:392 like its
+      neighbours two lines down, and the unguarded `wrong*`/`setRevolve`
+      references in p7:768-785.
+- [ ] 5. **M14** — two `function damaskTex()` (p2:218 Palace crimson,
+      p5g:104 Cornley green); hoisting means p5g's silently wins everywhere.
+      Rename the p5g one.
+
+The swap boundary — decide the design ONCE, then the fixes are mechanical.
+The choice per subsystem: PARK it (capture/restore in p2k) or HALT it (stop
+on `stageSwitch`). AUDIT's recommendation: crew finish-or-stop, script stop,
+follow cancel, audio stop, smoke gets a per-stage root exactly the way
+`showRoot()` (p5c:43) already solved this for scenery:
+
+- [ ] 6. **H1** — smoke: `smokeRoot()` is memoized to the Palace forever, so
+      shows loaded at the Arc rig their foggers 420m away (probe-verified);
+      `removeShowSmoke()` strips units game-wide; `hazeNow()` reads global
+      haze into whichever rig you're under.
+- [ ] 7. **H2–H5 + M5** — the crew, as one cluster: jobs mix plan-time and
+      execution-time stages; `CREW.savedLook` restores onto whichever board
+      is live; the loads cache is keyed by show only (LOAD OUT can strike
+      the other stage's set); the stock plan is stage coordinates executed
+      as world (Arc LOAD IN builds on the Palace deck); `crewStop` un-hides
+      the wrong show, leaving scenery invisible with no UI recovery.
+- [ ] 8. **H6** — a running `Prog` script follows the board across a swap
+      and drives the other theatre's rig and cue stack.
+- [ ] 9. **M7** — cue-follow `setTimeout` survives the swap and can GO the
+      wrong stage's cue; cancel or park it.
+- [ ] 10. **M8** — `selCue` isn't swapped; DELETE CUE after a walk splices
+      the wrong stack.
+- [ ] 11. **M9** — `SUBS` are one-board while `CUES` are per-stage. Possibly
+      deliberate — owner rules: document it or capture them.
+- [ ] 12. **M10** — rail-motor audio loop leaks for a lineset mid-travel at
+      swap (and collides with the other stage's same-id lineset); the rain
+      rumble has the same shape.
+- [ ] 13. **M11** — VR: `vrClearRopes` must null `VR.held`, or a held rope
+      keeps flying the parked lineset and repositioning a disposed mesh.
+- [ ] 14. **M4** — the scenic palette and FOCUS raycast only the Palace's
+      `deck` (and from the Arc can hit it *invisibly* through the walls —
+      §5's own trap — aiming FOH across town); `setGroup` is one global
+      store for three stages, and `showLoad`'s `strikeAll()` clears it
+      cross-venue.
+
+Coordinate/cosmetic — only ever visible at the Arc or in a headset:
+
+- [ ] 15. **M12** — the VR beam cap sorts fixtures' *local* positions
+      against the camera's *world* position; on the Arc "nearest 14" means
+      "most stage-left 14". Use `f._org` (p4:361).
+- [ ] 16. **M13** — fire billboards yaw from a stage-local centre toward the
+      world camera; flames render edge-on at the Arc.
+- [ ] 17. **L2** — `camera.position` stops being world once
+      `VR.rig.add(camera)`; smoke puffs (p5e:219) and lens glows (p4:378)
+      need `getWorldPosition`.
+- [ ] 18. **M17** — the Outsiders show curtain never got the split-texture
+      fix the other three have; its painted sun renders twice. A probe
+      (tools/) confirms in seconds.
+
+Structural / owner-taste — read the AUDIT sections before deciding:
+
+- [ ] 19. **M6** — `setPieceVisible` hides with `visible` only; crew-hidden
+      scenery is still raycastable, so you can stand on invisible galleries.
+      Fix shape depends on item 20 — the dead scene machinery contains the
+      correct hide implementation.
+- [ ] 20. Dead weight — `p2d` (orphaned, not even built), the Beetlejuice
+      scene-change machinery (~110 lines plus a visible inert panel), eight
+      functions, eight variables, two CSS blocks. Full inventory in AUDIT,
+      including the `shopGroup` tombstone assertion in full14.js that must
+      move with any deletion.
+- [ ] 21. **M15** — `SHOW`'s shape is defined in three drifting places and
+      ad-hoc keys leak across swaps via `Object.assign`; unify the template.
+- [ ] 22. Duplication — the four plot builders, show curtains, and the neon
+      machinery want shared homes in p5c; bulk, not bugs. AUDIT lists every
+      cluster with lines.
 
 **Not done:**
 
