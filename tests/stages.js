@@ -771,6 +771,65 @@ const probe = `
     return 'both hang it, the first strike leaves it, the last one clears it';
   });
 
+  P('a show at the arc rigs its smoke in the arc, not the palace', ()=>{
+    goToView(19);                    // the studio
+    showLoad('outsiders');           // rigs FRAME SL/SR and the GALLERY hazer
+    if(!SHOW.smoke || !SHOW.smoke.length) throw new Error('the show rigged no smoke');
+    scene.updateMatrixWorld(true);
+    const st = STAGES.arcStudio;
+    for(const u of SHOW.smoke){
+      const p = u.group.getWorldPosition(new THREE.Vector3());
+      if(Math.abs(p.x - (ARC.X + st.cx)) > 20)
+        throw new Error(u.name+' is at world x='+p.x.toFixed(0)+' — the palace, not the studio');
+    }
+    showStrike(); goToView(3);
+    return 'every unit inside the studio walls';
+  });
+
+  P('each stage has its own smoke rack, parked and resumed across the walk', ()=>{
+    goToView(3);
+    const palaceUnits = SMOKE.units, palaceGroup = SMOKE.group;
+    if(!palaceUnits.length) throw new Error('the palace has no machines');
+    setSmoke(SMOKE.units[0], 0.8);                    // leave a fogger running
+    for(let i=0;i<200;i++) updateSmoke(0.05);
+    const hazeBefore = SMOKE.haze;
+    if(hazeBefore < 0.02) throw new Error('the fogger never fed the haze');
+    goToView(15);                                     // walk to the arc main
+    if(SMOKE.units === palaceUnits) throw new Error('the arc is showing the palace rack');
+    if(SMOKE.group === palaceGroup) throw new Error('one smoke group serves two stages');
+    if(SMOKE.units.length < 4) throw new Error('the arc main got no house kit');
+    if(SMOKE.haze > 0.001)
+      throw new Error('the palace haze followed the board: '+SMOKE.haze.toFixed(3));
+    scene.updateMatrixWorld(true);
+    for(const u of SMOKE.units){
+      const p = u.group.getWorldPosition(new THREE.Vector3());
+      if(Math.abs(p.x - (ARC.X + STAGES.arcMain.cx)) > 20)
+        throw new Error(u.name+' is at world x='+p.x.toFixed(0));
+    }
+    goToView(3);                                      // and back
+    if(SMOKE.units !== palaceUnits) throw new Error('the palace rack did not come back');
+    if(Math.abs(SMOKE.haze - hazeBefore) > 1e-6)
+      throw new Error('the parked haze changed while we were away');
+    setSmoke(SMOKE.units[0], 0); smokeClear();
+    return 'palace haze '+hazeBefore.toFixed(2)+' parked and resumed, arc kit its own';
+  });
+
+  P('striking a show at one stage leaves the other stage\\'s show smoke rigged', ()=>{
+    goToView(3); showLoad('outsiders');
+    const palaceSmoke = SHOW.smoke.slice();
+    if(!palaceSmoke.length) throw new Error('no smoke rigged at the palace');
+    goToView(15); showLoad('outsiders');   // the same show next door
+    showStrike();                          // struck next door
+    for(const u of palaceSmoke)
+      if(!u.group.parent) throw new Error(u.name+' was struck from the other building');
+    goToView(3);
+    if(!SHOW.smoke.length) throw new Error('the palace show lost its smoke list');
+    if(SMOKE.units.indexOf(palaceSmoke[0]) < 0)
+      throw new Error('the palace rack lost the show machines');
+    showStrike();
+    return 'the palace units survived an arc strike';
+  });
+
   P('600 frames walking all three stages with shows on two of them', ()=>{
     goToView(15); showLoad('goeswrong');
     goToView(1);  showLoad('hamilton');

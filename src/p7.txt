@@ -558,9 +558,12 @@ $('#dockShut')  && ($('#dockShut').onclick  = ()=>setAllDockDoors(false));
 /* --------------------------------------------------------- the smoke */
 function buildSmokeUI(){
   const rack = $('#smokeRack'); if(!rack) return;
-  // rebuild when a show rigs or strikes machines of its own
-  if(rack.dataset.built === String(SMOKE.units.length)) return;
-  rack.dataset.built = String(SMOKE.units.length);
+  // rebuild when a show rigs or strikes machines, or the board patches to
+  // another stage — the count alone collides across stages (§5's DOM trap:
+  // faders would keep driving the parked rack's units)
+  const rackKey = (typeof STAGE !== 'undefined' ? STAGE : '') + ':' + SMOKE.units.length;
+  if(rack.dataset.built === rackKey) return;
+  rack.dataset.built = rackKey;
   rack.innerHTML = SMOKE.units.map((u,i)=>
     '<div class="smk" data-u="'+i+'">'+
       '<div class="nm">'+u.name+'</div>'+

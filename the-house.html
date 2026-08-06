@@ -4787,9 +4787,36 @@ function removeShowSmoke(){
 function smokeRoot(){
   if(SMOKE.group) return SMOKE.group;
   const g = new T.Group(); g.name = 'smoke';
-  (typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.stage ? ROOM_GROUP.stage : world).add(g);
+  /* the rack belongs to the stage the board is patched to, same as showRoot —
+     otherwise a show loaded at the Arc rigs its foggers on the Palace's deck,
+     four hundred metres from the set */
+  const st = (typeof stageLive === 'function') ? stageLive() : null;
+  if(st && st.showParent) st.showParent().add(g);
+  else if(typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.stage) ROOM_GROUP.stage.add(g);
+  else world.add(g);
   SMOKE.group = g;
   return g;
+}
+
+/* ---- the whole rack is per-stage: p2k parks it with the rest of the board.
+   Machines, puffs and the haze they have put in the air all stay in the room
+   they are physically in; a parked rack freezes mid-drift and resumes when
+   you walk back in, like everything else on a parked stage. ---- */
+function smokeCapture(){
+  return {units:SMOKE.units, puffs:SMOKE.puffs, list:SMOKE.list, group:SMOKE.group,
+          next:SMOKE.next, t:SMOKE.t, haze:SMOKE.haze, live:SMOKE.live || 0};
+}
+function smokeRestore(s){
+  if(s){
+    SMOKE.units = s.units; SMOKE.puffs = s.puffs; SMOKE.list = s.list;
+    SMOKE.group = s.group; SMOKE.next = s.next; SMOKE.t = s.t;
+    SMOKE.haze = s.haze; SMOKE.live = s.live;
+  } else {
+    /* first time the board is patched here: an empty rack, then the house kit */
+    SMOKE.units = []; SMOKE.puffs = null; SMOKE.list = [];
+    SMOKE.group = null; SMOKE.next = 0; SMOKE.t = 0; SMOKE.haze = 0; SMOKE.live = 0;
+    buildSmoke();
+  }
 }
 
 function buildSmoke(){
@@ -4871,6 +4898,7 @@ function spawnPuff(u, hard){
   return p;
 }
 const _sp = new T.Object3D();
+const _camW = new T.Vector3();
 function updateSmoke(dt){
   if(!SMOKE.puffs) return;
   SMOKE.t += dt;
@@ -4904,8 +4932,12 @@ function updateSmoke(dt){
   /* what the machines put in the air feeds the haze the beams read through */
   SMOKE.haze = clamp(SMOKE.haze + (Math.min(1, total/2.4) - SMOKE.haze) * dt * 0.35, 0, 1);
 
-  /* the puffs themselves */
-  const cam = camera.position;
+  /* the puffs themselves.  They live in the stage's own group, which at the
+     Arc sits 420 m out — so the camera has to be brought into THAT space (and
+     read via getWorldPosition, which camera.position stops being in VR). */
+  const cam = SMOKE.group
+    ? SMOKE.group.worldToLocal(camera.getWorldPosition(_camW))
+    : camera.position;
   let live = 0;
   for(let i=0;i<SMOKE.list.length;i++){
     const p = SMOKE.list[i];
@@ -10452,7 +10484,7 @@ function makeStage(o){
     rigGroup:o.rigGroup, poolGroup:o.poolGroup, flyGroup:o.flyGroup,
     showParent:o.showParent,
     fixtures:[], fly:[], cues:[], nextCue:0,
-    show:null, house:null, rig:null, live:false
+    show:null, house:null, rig:null, smokeRack:null, live:false
   };
   STAGES[o.key] = st;
   return st;
@@ -10467,6 +10499,7 @@ function stageCapture(st){
   st.show     = Object.assign({}, SHOW);
   st.house    = Object.assign({}, HOUSE);
   st.rig      = {haze:RIG.haze, grand:RIG.grand, blackout:RIG.blackout};
+  st.smokeRack = (typeof smokeCapture === 'function') ? smokeCapture() : null;
   st.live     = false;
 }
 function stageRestore(st){
@@ -10477,6 +10510,8 @@ function stageRestore(st){
   if(st.show)  Object.assign(SHOW, st.show);
   if(st.house) Object.assign(HOUSE, st.house);
   if(st.rig){ RIG.haze = st.rig.haze; RIG.grand = st.rig.grand; RIG.blackout = st.rig.blackout; }
+  /* a stage that has never had the board builds its house smoke kit here */
+  if(typeof smokeRestore === 'function'){ smokeRestore(st.smokeRack); st.smokeRack = null; }
   rigGroup  = st.rigGroup;
   poolGroup = st.poolGroup;
   flyGroup  = st.flyGroup;
@@ -10504,6 +10539,8 @@ function stageSwitch(key, quiet){
   if(typeof refreshShowUI === 'function') refreshShowUI();
   if(typeof refreshHangUI === 'function') refreshHangUI();
   if(typeof refreshWrongUI === 'function') refreshWrongUI();
+  if(typeof buildSmokeUI === 'function') buildSmokeUI();
+  if(typeof syncSmokeUI === 'function') syncSmokeUI();
   if(typeof syncMasters === 'function') syncMasters();
   if(typeof refreshVenueUI === 'function') refreshVenueUI();
   if(typeof refreshStageChip === 'function') refreshStageChip();
@@ -11483,9 +11520,12 @@ $('#dockShut')  && ($('#dockShut').onclick  = ()=>setAllDockDoors(false));
 /* --------------------------------------------------------- the smoke */
 function buildSmokeUI(){
   const rack = $('#smokeRack'); if(!rack) return;
-  // rebuild when a show rigs or strikes machines of its own
-  if(rack.dataset.built === String(SMOKE.units.length)) return;
-  rack.dataset.built = String(SMOKE.units.length);
+  // rebuild when a show rigs or strikes machines, or the board patches to
+  // another stage — the count alone collides across stages (§5's DOM trap:
+  // faders would keep driving the parked rack's units)
+  const rackKey = (typeof STAGE !== 'undefined' ? STAGE : '') + ':' + SMOKE.units.length;
+  if(rack.dataset.built === rackKey) return;
+  rack.dataset.built = rackKey;
   rack.innerHTML = SMOKE.units.map((u,i)=>
     '<div class="smk" data-u="'+i+'">'+
       '<div class="nm">'+u.name+'</div>'+

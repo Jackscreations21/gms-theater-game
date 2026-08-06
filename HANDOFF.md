@@ -266,7 +266,7 @@ on `stageSwitch`). AUDIT's recommendation: crew finish-or-stop, script stop,
 follow cancel, audio stop, smoke gets a per-stage root exactly the way
 `showRoot()` (p5c:43) already solved this for scenery:
 
-- [ ] 6. **H1** — smoke: `smokeRoot()` is memoized to the Palace forever, so
+- [x] 6. **H1** — smoke: `smokeRoot()` is memoized to the Palace forever, so
       shows loaded at the Arc rig their foggers 420m away (probe-verified);
       `removeShowSmoke()` strips units game-wide; `hazeNow()` reads global
       haze into whichever rig you're under.
