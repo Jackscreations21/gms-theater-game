@@ -30,7 +30,7 @@ function makeStage(o){
     cx:o.cx || 0, zPros:o.zPros || 0,
     rigGroup:o.rigGroup, poolGroup:o.poolGroup, flyGroup:o.flyGroup,
     showParent:o.showParent,
-    fixtures:[], fly:[], cues:[], nextCue:0,
+    fixtures:[], fly:[], cues:[], nextCue:0, selCue:-1,
     show:null, house:null, rig:null, smokeRack:null, live:false
   };
   STAGES[o.key] = st;
@@ -43,6 +43,7 @@ function stageCapture(st){
   st.fly      = FLY.splice(0, FLY.length);
   st.cues     = CUES.splice(0, CUES.length);
   st.nextCue  = nextCue;
+  st.selCue   = (typeof selCue !== 'undefined') ? selCue : -1;
   st.show     = Object.assign({}, SHOW);
   st.house    = Object.assign({}, HOUSE);
   st.rig      = {haze:RIG.haze, grand:RIG.grand, blackout:RIG.blackout};
@@ -54,6 +55,7 @@ function stageRestore(st){
   FLY.push.apply(FLY, st.fly);                st.fly.length = 0;
   CUES.push.apply(CUES, st.cues);             st.cues.length = 0;
   nextCue = st.nextCue;
+  if(typeof selCue !== 'undefined') selCue = (st.selCue === undefined) ? -1 : st.selCue;
   if(st.show)  Object.assign(SHOW, st.show);
   if(st.house) Object.assign(HOUSE, st.house);
   if(st.rig){ RIG.haze = st.rig.haze; RIG.grand = st.rig.grand; RIG.blackout = st.rig.blackout; }

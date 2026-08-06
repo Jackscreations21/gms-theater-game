@@ -802,6 +802,20 @@ const probe = `
     return 'armed at the palace, cancelled at the walk';
   });
 
+  P('DELETE CUE after a walk cannot splice the other stage\\'s stack', ()=>{
+    goToView(3);
+    selCue = 2;                                // select a cue on the palace board
+    goToView(15);
+    if(selCue === 2) throw new Error('the selection walked to the arc with the board');
+    const arcCues = CUES.length;
+    click(document.querySelector('#btnDelQ')); // DELETE CUE with nothing selected here
+    if(CUES.length !== arcCues) throw new Error('DELETE CUE spliced the arc stack');
+    goToView(3);
+    if(selCue !== 2) throw new Error('the palace selection did not come back');
+    selCue = -1; refreshCues();
+    return 'the selection parks with its stage';
+  });
+
   P('a show at the arc rigs its smoke in the arc, not the palace', ()=>{
     goToView(19);                    // the studio
     showLoad('outsiders');           // rigs FRAME SL/SR and the GALLERY hazer

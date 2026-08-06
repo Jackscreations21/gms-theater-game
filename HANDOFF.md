@@ -280,7 +280,7 @@ follow cancel, audio stop, smoke gets a per-stage root exactly the way
       and drives the other theatre's rig and cue stack.
 - [x] 9. **M7** — cue-follow `setTimeout` survives the swap and can GO the
       wrong stage's cue; cancel or park it.
-- [ ] 10. **M8** — `selCue` isn't swapped; DELETE CUE after a walk splices
+- [x] 10. **M8** — `selCue` isn't swapped; DELETE CUE after a walk splices
       the wrong stack.
 - [ ] 11. **M9** — `SUBS` are one-board while `CUES` are per-stage. Possibly
       deliberate — owner rules: document it or capture them.
