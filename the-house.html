@@ -4680,11 +4680,22 @@ const Snd = (()=>{
     delete railNodes[ls.id];
     if(ac) noiseHit('rail',.1,220,90,2,.16);   // batten settling
   }
+  /* every motor at once, without the settling thud — for the stage swap,
+     where a parked lineset never "arrives" and its id collides with the
+     next stage's lineset of the same number */
+  function railStopAll(){
+    for(const id of Object.keys(railNodes)){
+      const n = railNodes[id];
+      n.g.gain.linearRampToValueAtTime(0,ac.currentTime+.35);
+      setTimeout(()=>{ try{n.s.stop();}catch(e){} },500);
+      delete railNodes[id];
+    }
+  }
   function play(name){ init(); if(ac && SFX[name]) try{ SFX[name](); }catch(e){} }
   function setLevel(b,v){ level[b]=v; init(); if(!ac) return;
     if(b==='master') master.gain.value=v; else if(bus[b]) bus[b].gain.value=v; }
   function isLooping(n){ return loops[n]!==undefined; }
-  return {init, play, setLevel, level, railStart, railStop, toggleLoop, isLooping,
+  return {init, play, setLevel, level, railStart, railStop, railStopAll, toggleLoop, isLooping,
           names:()=>Object.keys(SFX), busses:()=>BUSSES};
 })();
 
@@ -10505,6 +10516,15 @@ function makeStage(o){
 
 /* ---- what a stage owns, lifted out of the globals and put back again ---- */
 function stageCapture(st){
+  /* wall-clock WebAudio does not park.  Stop every rail motor (a parked
+     lineset never arrives, so its hum would follow you out — and its id
+     collides with the next stage's lineset of the same number) and the rain
+     rumble, and clear the flags so both re-arm when this stage is live. */
+  if(typeof Snd !== 'undefined' && Snd.railStopAll) Snd.railStopAll();
+  FLY.forEach(ls=>{ ls.moving = false; });
+  if(typeof Snd !== 'undefined' && Snd.toggleLoop && SHOW.rainSound){
+    Snd.toggleLoop('rain', false); SHOW.rainSound = false;
+  }
   st.fixtures = FIXTURES.splice(0, FIXTURES.length);
   st.fly      = FLY.splice(0, FLY.length);
   st.cues     = CUES.splice(0, CUES.length);

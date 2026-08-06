@@ -284,7 +284,7 @@ follow cancel, audio stop, smoke gets a per-stage root exactly the way
       the wrong stack.
 - [ ] 11. **M9** — `SUBS` are one-board while `CUES` are per-stage. Possibly
       deliberate — owner rules: document it or capture them.
-- [ ] 12. **M10** — rail-motor audio loop leaks for a lineset mid-travel at
+- [x] 12. **M10** — rail-motor audio loop leaks for a lineset mid-travel at
       swap (and collides with the other stage's same-id lineset); the rain
       rumble has the same shape.
 - [ ] 13. **M11** — VR: `vrClearRopes` must null `VR.held`, or a held rope

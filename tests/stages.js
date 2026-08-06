@@ -816,6 +816,38 @@ const probe = `
     return 'the selection parks with its stage';
   });
 
+  P('a lineset mid-travel parks quiet and finishes after the walk back', ()=>{
+    goToView(3);
+    const ls = FLY[4];
+    flyOut(ls); run(900, 0.05);
+    flyIn(ls);  run(3, 0.05);              // just enough to get it moving
+    if(!ls.moving) throw new Error('the lineset never started moving');
+    goToView(15);
+    if(STAGES.palace.fly[4].moving)
+      throw new Error('the parked lineset still says its motor is running');
+    goToView(3);
+    run(900, 0.05);
+    if(Math.abs(ls.pos - inTrimOf(ls)) > 0.2)
+      throw new Error('it never finished its travel, at '+ls.pos.toFixed(2));
+    flyOut(ls); run(900, 0.05);
+    return 'motor flag cleared at the walk, travel finished on return';
+  });
+
+  P('the rain rumble does not follow you out of the building', ()=>{
+    goToView(3); showLoad('outsiders');
+    SHOW.rain.target = 1; updateStorm(0.05);
+    if(!SHOW.rainSound) throw new Error('the rain never flagged its sound on');
+    goToView(15);
+    if(SHOW.rainSound) throw new Error('the arc thinks the rain is sounding');
+    if(STAGES.palace.show.rainSound)
+      throw new Error('the parked flag was not cleared — it can never re-arm');
+    goToView(3);
+    updateStorm(0.05);
+    if(!SHOW.rainSound) throw new Error('the rain did not re-arm on return');
+    SHOW.rain.target = 0; updateStorm(0.05); showStrike();
+    return 'stopped at the walk, re-armed on return';
+  });
+
   P('a show at the arc rigs its smoke in the arc, not the palace', ()=>{
     goToView(19);                    // the studio
     showLoad('outsiders');           // rigs FRAME SL/SR and the GALLERY hazer
