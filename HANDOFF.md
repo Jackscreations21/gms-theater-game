@@ -28,6 +28,11 @@ Git: the remote is `https://github.com/Jackscreations21/gms-theater-game`
 **keep it that way**; the repo may go public. `.gitattributes` pins LF because
 `build.sh` breaks under CRLF.
 
+**All work goes through pull requests** (owner's rule, 2026-08-06, so there
+is a record): branch off `main`, commit there, push, open a PR with `gh`, and
+let the owner review/merge. No direct commits to `main`. Everything up to
+`6d635ce` predates the rule.
+
 ---
 
 ## 1. Build it
