@@ -1113,6 +1113,21 @@ const probe = `
     if(g > 0.35) throw new Error('the lot deck is still there at '+g);
     return 'back to bare deck at '+g.toFixed(2)+'m';
   });
+  P('plotting THE OUTSIDERS leaves every aim back at home focus', ()=>{
+    showLoad('outsiders');
+    const home = captureAims();
+    plotOutsiders();          // the plot must restore what it found, not the last look
+    const off = [];
+    FIXTURES.forEach((f,i)=>{
+      if(!home[i]) return;
+      const d = Math.abs(f.aim.x - home[i][0]) + Math.abs(f.aim.y - home[i][1])
+              + Math.abs(f.aim.z - home[i][2]);
+      if(d > 1e-6) off.push(f.ch);
+    });
+    if(off.length) throw new Error(off.length+' fixtures left aimed at the final look: ch '+off.join(','));
+    return 'every non-mover aim back at home';
+  });
+
   P('load, strike, load again five times over', ()=>{
     for(let i=0;i<5;i++){ showLoad('outsiders'); showStrike(); }
     showLoad('outsiders');

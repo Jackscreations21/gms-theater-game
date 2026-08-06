@@ -251,7 +251,7 @@ Quick wins first — each is small, self-contained, and already hand-verified:
       `{x,y,z,w,h,n}` shape, so every flame seeds at NaN and the GOES WRONG
       fireplace never renders. Convert to `{count, embers, y, x0,x1,z0,z1}`
       (the two correct callers are p5c:1065 and p5d:487).
-- [ ] 3. **M2** — `plotOutsiders` is missing `restoreAims(homeAims)` before
+- [x] 3. **M2** — `plotOutsiders` is missing `restoreAims(homeAims)` before
       `RIG.haze = savedHaze` (p5c:1261); the other three plots all have it.
 - [ ] 4. **M3** — guard the `updateNeon()` call at p5c:392 like its
       neighbours two lines down, and the unguarded `wrong*`/`setRevolve`
