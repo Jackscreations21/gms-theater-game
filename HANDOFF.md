@@ -256,7 +256,7 @@ Quick wins first — each is small, self-contained, and already hand-verified:
 - [x] 4. **M3** — guard the `updateNeon()` call at p5c:392 like its
       neighbours two lines down, and the unguarded `wrong*`/`setRevolve`
       references in p7:768-785.
-- [ ] 5. **M14** — two `function damaskTex()` (p2:218 Palace crimson,
+- [x] 5. **M14** — two `function damaskTex()` (p2:218 Palace crimson,
       p5g:104 Cornley green); hoisting means p5g's silently wins everywhere.
       Rename the p5g one.
 

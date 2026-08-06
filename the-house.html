@@ -8824,8 +8824,10 @@ function updateWrong(dt){
   }
 }
 
-/* ---- green damask, hung by people who have never hung paper ---- */
-function damaskTex(){
+/* ---- green damask, hung by people who have never hung paper ----
+   NOT damaskTex: p2 already declares that for the Palace crimson, and two
+   hoisted declarations in one script means the later one silently wins. */
+function cornleyDamaskTex(){
   const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');
   g.fillStyle = '#1f5a4e'; g.fillRect(0,0,W,H);
   const motif = (x, y)=>{
@@ -8961,7 +8963,7 @@ SHOWS.goeswrong = {
     SHOW.wrong = [];
 
     /* ---------------------------------------------------------- materials */
-    const paper  = new T.MeshStandardMaterial({map:damaskTex(), roughness:.96,
+    const paper  = new T.MeshStandardMaterial({map:cornleyDamaskTex(), roughness:.96,
                                                side:T.DoubleSide});
     const oak    = new T.MeshStandardMaterial({map:TX.deck, color:0x5a3a20, roughness:.82});
     const oakD   = new T.MeshStandardMaterial({map:TX.deck, color:0x33200f, roughness:.86});
