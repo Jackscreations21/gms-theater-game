@@ -247,7 +247,7 @@ Quick wins first — each is small, self-contained, and already hand-verified:
 - [x] 1. **M16** — make the other eleven suites exit non-zero on failure the
       way `full14.js` does, and add an `npm test` script that runs all
       twelve. Do this first; it hardens every item after it.
-- [ ] 2. **M1** — `p5g:314` calls `makeFire` with the obsolete
+- [x] 2. **M1** — `p5g:314` calls `makeFire` with the obsolete
       `{x,y,z,w,h,n}` shape, so every flame seeds at NaN and the GOES WRONG
       fireplace never renders. Convert to `{count, embers, y, x0,x1,z0,z1}`
       (the two correct callers are p5c:1065 and p5d:487).
