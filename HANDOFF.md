@@ -75,6 +75,7 @@ wiring, and cannot catch anything about how it looks or how fast it runs.
 ```sh
 cd tests
 npm install       # once — jsdom and three@0.128
+npm test          # all twelve suites, exits non-zero if any fail
 node real.js      # boots the whole file, reports "fatal": null
 node full14.js    # the building
 node rooms.js     # portal culling
@@ -89,7 +90,8 @@ node legs.js      # goods, including the half legs
 node vr.js        # WebXR: rig, sticks, desks, ropes, GO
 ```
 
-All twelve are at `--- failures: 0 ---`. Keep them there.
+All twelve are at `--- failures: 0 ---`. Keep them there. Every suite exits
+non-zero on failure (including a failure to boot), and `npm test` runs the lot.
 
 `full14.js` wraps `window.MouseEvent` at the top of its harness: jsdom has no
 pointer-lock support, so a stock jsdom `MouseEvent` silently drops
@@ -242,7 +244,7 @@ tests don't cover").
 
 Quick wins first — each is small, self-contained, and already hand-verified:
 
-- [ ] 1. **M16** — make the other eleven suites exit non-zero on failure the
+- [x] 1. **M16** — make the other eleven suites exit non-zero on failure the
       way `full14.js` does, and add an `npm test` script that runs all
       twelve. Do this first; it hardens every item after it.
 - [ ] 2. **M1** — `p5g:314` calls `makeFire` with the obsolete
