@@ -75,6 +75,13 @@ function stageHouseLevel(key){
 
 function stageSwitch(key, quiet){
   if(key === STAGE || !STAGES[key]) return STAGES[STAGE];
+  /* the code console drives the LIVE board — carried across a swap, the rest
+     of a running script would fire cues and fly goods in the other theatre.
+     A show you walked out on halts; it does not haunt the next room. */
+  if(typeof Prog !== 'undefined' && Prog.running && typeof haltProgram === 'function'){
+    haltProgram();
+    Prog.log('■ halted — the board patched to ' + STAGES[key].label);
+  }
   stageCapture(STAGES[STAGE]);
   STAGE = key;
   stageRestore(STAGES[key]);

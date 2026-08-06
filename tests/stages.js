@@ -771,6 +771,22 @@ const probe = `
     return 'both hang it, the first strike leaves it, the last one clears it';
   });
 
+  P('a running show script halts when the board patches away', ()=>{
+    goToView(3);
+    runProgram('fade 0\\nat 1 thru 6 @ 80\\nwait 60\\nat 1 thru 6 @ 0');
+    stepProgram(0.016);
+    if(!Prog.running) throw new Error('the program never ran');
+    goToView(15);
+    if(Prog.running) throw new Error('the program followed the board to the arc');
+    const lv = FIXTURES.map(f=>f.level).join(',');
+    for(let i=0;i<200;i++) stepProgram(0.05);
+    if(FIXTURES.map(f=>f.level).join(',') !== lv)
+      throw new Error('a halted program is still driving the arc rig');
+    goToView(3);
+    for(let c=1;c<=6;c++) setLevel(c, 0, 0);
+    return 'halted at the swap, the arc rig untouched';
+  });
+
   P('a show at the arc rigs its smoke in the arc, not the palace', ()=>{
     goToView(19);                    // the studio
     showLoad('outsiders');           // rigs FRAME SL/SR and the GALLERY hazer

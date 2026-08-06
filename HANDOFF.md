@@ -276,7 +276,7 @@ follow cancel, audio stop, smoke gets a per-stage root exactly the way
       the other stage's set); the stock plan is stage coordinates executed
       as world (Arc LOAD IN builds on the Palace deck); `crewStop` un-hides
       the wrong show, leaving scenery invisible with no UI recovery.
-- [ ] 8. **H6** — a running `Prog` script follows the board across a swap
+- [x] 8. **H6** — a running `Prog` script follows the board across a swap
       and drives the other theatre's rig and cue stack.
 - [ ] 9. **M7** — cue-follow `setTimeout` survives the swap and can GO the
       wrong stage's cue; cancel or park it.
