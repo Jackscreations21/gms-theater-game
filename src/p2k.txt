@@ -82,6 +82,8 @@ function stageSwitch(key, quiet){
     haltProgram();
     Prog.log('■ halted — the board patched to ' + STAGES[key].label);
   }
+  /* same rule for the one-shot cue follow: cancelled, not carried */
+  if(typeof cancelFollow === 'function') cancelFollow();
   stageCapture(STAGES[STAGE]);
   STAGE = key;
   stageRestore(STAGES[key]);

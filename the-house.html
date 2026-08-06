@@ -5100,6 +5100,13 @@ function runSub(s){
    ========================================================================== */
 const CUES = [];
 let nextCue = 0, selCue = -1;
+/* the one armed auto-follow.  Wall-clock timers cannot be spliced into a
+   stage swap, so the swap cancels it instead — an unattended follow must
+   never GO a cue on a stage the operator has walked away from. */
+let followTimer = null;
+function cancelFollow(){
+  if(followTimer !== null){ clearTimeout(followTimer); followTimer = null; }
+}
 
 /* A cue stores where each lamp is pointing as well as what it is doing, so a
    look can re-aim the front of house — at a face, or up onto a show cloth —
@@ -5146,7 +5153,13 @@ function fireCue(idx){
   nextCue = idx+1;
   refreshCues();
   if(c.follow!==null && c.follow!==undefined && !isNaN(c.follow)){
-    setTimeout(()=>{ if(nextCue===idx+1) go(); }, c.follow*1000);
+    cancelFollow();
+    const armedStage = (typeof STAGE !== 'undefined') ? STAGE : null;
+    followTimer = setTimeout(()=>{
+      followTimer = null;
+      if(typeof STAGE !== 'undefined' && STAGE !== armedStage) return;
+      if(nextCue===idx+1) go();
+    }, c.follow*1000);
   }
 }
 function go(){
@@ -10535,6 +10548,8 @@ function stageSwitch(key, quiet){
     haltProgram();
     Prog.log('■ halted — the board patched to ' + STAGES[key].label);
   }
+  /* same rule for the one-shot cue follow: cancelled, not carried */
+  if(typeof cancelFollow === 'function') cancelFollow();
   stageCapture(STAGES[STAGE]);
   STAGE = key;
   stageRestore(STAGES[key]);

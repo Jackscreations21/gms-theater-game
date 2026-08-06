@@ -787,6 +787,21 @@ const probe = `
     return 'halted at the swap, the arc rig untouched';
   });
 
+  P('an armed cue follow is cancelled when the board patches away', ()=>{
+    goToView(3);
+    const base = CUES.length;
+    CUES.push({n:98, label:'armed', fade:0, follow:5, lx:null, fly:null, sfx:null,
+               house:HOUSE.house, work:HOUSE.work, practical:HOUSE.practical, haze:RIG.haze});
+    fireCue(base);
+    if(followTimer === null) throw new Error('the follow never armed');
+    goToView(15);
+    if(followTimer !== null) throw new Error('the follow survived the swap');
+    goToView(3);
+    CUES.splice(base, 1);
+    nextCue = 0; refreshCues();
+    return 'armed at the palace, cancelled at the walk';
+  });
+
   P('a show at the arc rigs its smoke in the arc, not the palace', ()=>{
     goToView(19);                    // the studio
     showLoad('outsiders');           // rigs FRAME SL/SR and the GALLERY hazer

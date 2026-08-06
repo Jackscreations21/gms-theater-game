@@ -278,7 +278,7 @@ follow cancel, audio stop, smoke gets a per-stage root exactly the way
       the wrong show, leaving scenery invisible with no UI recovery.
 - [x] 8. **H6** — a running `Prog` script follows the board across a swap
       and drives the other theatre's rig and cue stack.
-- [ ] 9. **M7** — cue-follow `setTimeout` survives the swap and can GO the
+- [x] 9. **M7** — cue-follow `setTimeout` survives the swap and can GO the
       wrong stage's cue; cancel or park it.
 - [ ] 10. **M8** — `selCue` isn't swapped; DELETE CUE after a walk splices
       the wrong stack.
