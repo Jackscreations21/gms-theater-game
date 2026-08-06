@@ -389,7 +389,7 @@ function strikeLightning(power){
 function updateStorm(dt){
   updateRain(dt);
   updateFire(dt);
-  updateNeon(dt);
+  if(typeof updateNeon === 'function') updateNeon(dt);
   updateShowStorm(dt);
   if(typeof updateRevolve === 'function') updateRevolve(dt);
   if(typeof updateWrong === 'function') updateWrong(dt);

@@ -6561,7 +6561,7 @@ function strikeLightning(power){
 function updateStorm(dt){
   updateRain(dt);
   updateFire(dt);
-  updateNeon(dt);
+  if(typeof updateNeon === 'function') updateNeon(dt);
   updateShowStorm(dt);
   if(typeof updateRevolve === 'function') updateRevolve(dt);
   if(typeof updateWrong === 'function') updateWrong(dt);
@@ -11688,23 +11688,35 @@ function refreshWrongUI(){
         '<div style="flex:1;color:'+c+'">'+p.label+'</div>'+
         '<div class="mt" style="color:'+c+'">'+s2+'</div></div>';
     }).join('');
-    $$('#wrongList .cue').forEach(el=>el.onclick = ()=>wrongTrigger(el.dataset.w));
+    $$('#wrongList .cue').forEach(el=>el.onclick = ()=>{
+      if(typeof wrongTrigger === 'function') wrongTrigger(el.dataset.w);
+    });
   }
   const st = $('#machStat');
   if(st) st.innerHTML =
     (hasRev ? 'outer '+Math.round(SHOW.revolve.outer.rate*100)+'%<br>'+
               'inner '+Math.round(SHOW.revolve.inner.rate*100)+'%<br>' : '')+
-    (wrong.length ? wrongStanding()+' of '+wrong.length+' still standing' : '');
+    (wrong.length && typeof wrongStanding === 'function'
+      ? wrongStanding()+' of '+wrong.length+' still standing' : '');
 }
-$('#wrongAll')   && ($('#wrongAll').onclick   = ()=>{ wrongAll(); refreshWrongUI(); });
+$('#wrongAll')   && ($('#wrongAll').onclick   = ()=>{
+  if(typeof wrongAll === 'function') wrongAll();
+  refreshWrongUI();
+});
 $('#wrongReset') && ($('#wrongReset').onclick = ()=>{
+  if(typeof wrongReset !== 'function') return;
   wrongReset(); toast('Set back up — as if nothing had happened');
 });
 $('#scPrev') && ($('#scPrev').onclick = ()=>{ const s2 = sceneNext(-1); if(s2) toast(s2.label); });
 $('#scNext') && ($('#scNext').onclick = ()=>{ const s2 = sceneNext( 1); if(s2) toast(s2.label); });
-$('#revOut') && ($('#revOut').oninput = e=>{ setRevolve('outer', (+e.target.value)/100); });
-$('#revIn')  && ($('#revIn').oninput  = e=>{ setRevolve('inner', (+e.target.value)/100); });
+$('#revOut') && ($('#revOut').oninput = e=>{
+  if(typeof setRevolve === 'function') setRevolve('outer', (+e.target.value)/100);
+});
+$('#revIn')  && ($('#revIn').oninput  = e=>{
+  if(typeof setRevolve === 'function') setRevolve('inner', (+e.target.value)/100);
+});
 $('#revStop')&& ($('#revStop').onclick = ()=>{
+  if(typeof setRevolve !== 'function') return;
   setRevolve('outer', 0); setRevolve('inner', 0);
   const a = $('#revOut'), b = $('#revIn'); if(a) a.value = 0; if(b) b.value = 0;
   toast('Revolves stopped');

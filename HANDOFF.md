@@ -253,7 +253,7 @@ Quick wins first — each is small, self-contained, and already hand-verified:
       (the two correct callers are p5c:1065 and p5d:487).
 - [x] 3. **M2** — `plotOutsiders` is missing `restoreAims(homeAims)` before
       `RIG.haze = savedHaze` (p5c:1261); the other three plots all have it.
-- [ ] 4. **M3** — guard the `updateNeon()` call at p5c:392 like its
+- [x] 4. **M3** — guard the `updateNeon()` call at p5c:392 like its
       neighbours two lines down, and the unguarded `wrong*`/`setRevolve`
       references in p7:768-785.
 - [ ] 5. **M14** — two `function damaskTex()` (p2:218 Palace crimson,
