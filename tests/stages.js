@@ -222,6 +222,43 @@ const probe = `
     return 'palace parked low at '+palaceLow.toFixed(2)+', the arc stayed home, both came back';
   });
 
+  console.log('--- FOH bar: wires to the roof, lanterns to hand ---');
+
+  P('palace wires anchor at the real ceiling', ()=>{
+    goToView(3);
+    if(FOHBAR.wireTop !== D.ceilY)
+      throw new Error('wireTop '+FOHBAR.wireTop+' — the ceiling is '+D.ceilY);
+    const want = FOHBAR.wireTop - FOHBAR.y;
+    if(Math.abs(FOHBAR.wires[0].scale.y - want) > 0.02)
+      throw new Error('wire is '+FOHBAR.wires[0].scale.y.toFixed(2)+'m, needs '+want.toFixed(2));
+    return 'anchored at '+FOHBAR.wireTop+'m';
+  });
+
+  P('palace lanterns come to hand at the bottom of travel', ()=>{
+    goToView(3);
+    const floor = houseFloorY(FOHBAR.z);
+    const lanternAtMin = FOHBAR.min - 0.45;
+    if(lanternAtMin - floor > 1.7)
+      throw new Error('lowest lantern is '+(lanternAtMin-floor).toFixed(2)+'m over the stalls floor');
+    return 'lanterns reach '+(lanternAtMin-floor).toFixed(2)+'m';
+  });
+
+  P('the arc keeps its own anchor and reach', ()=>{
+    goToView(15);
+    if(FOHBAR.wireTop > 15.95)
+      throw new Error('arc wireTop '+FOHBAR.wireTop+' is through the 15.95 soffit');
+    const want = FOHBAR.wireTop - FOHBAR.y;
+    if(Math.abs(FOHBAR.wires[0].scale.y - want) > 0.02)
+      throw new Error('arc wire is '+FOHBAR.wires[0].scale.y.toFixed(2)+'m, needs '+want.toFixed(2));
+    const H = ARC.houses.main;
+    const row = Math.max(0, (H.zPros + FOHBAR.z - H.rake.zFirst)/H.rake.RUN);
+    const floor = H.rake.Y0 + row*H.rake.RISE + 0.2;
+    if(FOHBAR.min - 0.45 - floor > 1.7)
+      throw new Error('arc lanterns stop '+(FOHBAR.min-0.45-floor).toFixed(2)+'m up');
+    goToView(3);
+    return 'ok';
+  });
+
   console.log('--- how dark it gets ---');
 
   /* everything reaching a point on the stage: the two beds, every real light

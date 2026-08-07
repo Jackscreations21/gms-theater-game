@@ -299,10 +299,14 @@ function buildRig(){
     });
     FOHBAR = {
       y:barY, target:barY, max:barY,         // no higher than it was hung
-      /* no lower than head height over the stalls beneath it; the Arc's
-         steeper rake overrides this per house in buildArcStage */
-      min:houseFloorY(barZ) + 3.2,
-      z:barZ, wireTop:15.8,                  // under the Arc's 16.2m ceiling too
+      /* low enough to take the lanterns off by hand — they hang 0.45 under
+         the pipe, so this puts them at chest height over the stalls.  The
+         Arc's steeper rake overrides this per house in buildArcStage (p2k) */
+      min:houseFloorY(barZ) + 2.0,
+      /* the wires anchor at the Palace's flat ceiling (the cove ribbons and
+         the dome hole both miss this spot); the Arc's 15.95m soffit
+         overrides this per house in buildArcStage (p2k) */
+      z:barZ, wireTop:D.ceilY,
       group:bar, wires:wires
     };
     fohBarPose(FOHBAR);

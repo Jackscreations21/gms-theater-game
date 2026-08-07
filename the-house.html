@@ -4251,10 +4251,14 @@ function buildRig(){
     });
     FOHBAR = {
       y:barY, target:barY, max:barY,         // no higher than it was hung
-      /* no lower than head height over the stalls beneath it; the Arc's
-         steeper rake overrides this per house in buildArcStage */
-      min:houseFloorY(barZ) + 3.2,
-      z:barZ, wireTop:15.8,                  // under the Arc's 16.2m ceiling too
+      /* low enough to take the lanterns off by hand — they hang 0.45 under
+         the pipe, so this puts them at chest height over the stalls.  The
+         Arc's steeper rake overrides this per house in buildArcStage (p2k) */
+      min:houseFloorY(barZ) + 2.0,
+      /* the wires anchor at the Palace's flat ceiling (the cove ribbons and
+         the dome hole both miss this spot); the Arc's 15.95m soffit
+         overrides this per house in buildArcStage (p2k) */
+      z:barZ, wireTop:D.ceilY,
       group:bar, wires:wires
     };
     fohBarPose(FOHBAR);
@@ -11005,7 +11009,12 @@ function buildArcStage(key, label, houseKey){
   {
     const rk = H.rake;
     const row = Math.max(0, (H.zPros + FOHBAR.z - rk.zFirst)/rk.RUN);
-    FOHBAR.min = Math.min(FOHBAR.max - 0.5, rk.Y0 + row*rk.RISE + 0.2 + 3.2);
+    FOHBAR.min = Math.min(FOHBAR.max - 0.5, rk.Y0 + row*rk.RISE + 0.2 + 2.0);
+    /* the Arc's auditorium ceiling is a slab with its soffit at 15.95
+       (p2j) — anchor the drop wires just under it, not at the Palace's
+       24.6m plaster the buildRig default assumes */
+    FOHBAR.wireTop = 15.8;
+    fohBarPose(FOHBAR);
   }
 
   /* the standing hang every receiving house keeps up: house curtain in,

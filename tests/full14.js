@@ -180,14 +180,20 @@ const probe = `
       throw new Error('the readout says '+txt+' and the bar is at '+FOHBAR.y.toFixed(2));
     return 'home at '+txt;
   });
-  P('the bar will not go below heads or above home', ()=>{
+  P('the bar will not go below hand height or above home', ()=>{
     fohBarTo(-99);
     if(Math.abs(FOHBAR.target - FOHBAR.min) > 1e-9)
       throw new Error('drove to '+FOHBAR.target.toFixed(2)+' past the floor clamp '+FOHBAR.min.toFixed(2));
     fohBarTo(99);
     if(Math.abs(FOHBAR.target - FOHBAR.max) > 1e-9)
       throw new Error('drove to '+FOHBAR.target.toFixed(2)+' past the top clamp');
-    if(FOHBAR.min < 3.2) throw new Error('the floor clamp '+FOHBAR.min.toFixed(2)+' is in the audience');
+    /* the bar comes down INTO the stalls on purpose — low enough to take
+       the lanterns off by hand (they hang 0.45 under the pipe), but the
+       pipe itself never kisses the floor */
+    if(FOHBAR.min < houseFloorY(FOHBAR.z) + 1.5)
+      throw new Error('the floor clamp '+FOHBAR.min.toFixed(2)+' puts the pipe on the floor');
+    if(FOHBAR.min - 0.45 - houseFloorY(FOHBAR.z) > 1.7)
+      throw new Error('the floor clamp '+FOHBAR.min.toFixed(2)+' keeps the lanterns out of reach');
     for(let i=0;i<40;i++) updateRig(0.05, 1);
     return 'clamped '+FOHBAR.min.toFixed(2)+' .. '+FOHBAR.max.toFixed(2);
   });
