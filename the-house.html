@@ -11658,6 +11658,11 @@ function describe(obj){
         ' #' + m.id + (m.powered ? '   [driven from the MACHINES page]'
                                  : '   hold the left button and pull')};
     }
+    /* the traveler's hand line (p9): the VR hover label reads this, and it
+       says which run does what rather than offering an E nobody has */
+    if(o.userData && o.userData.travRope)
+      return {kind:'traveler', ls:o.userData.travRope,
+        label:'TRAVELER — front run opens · back run closes'};
     const dr = DOORS.find(x=>x.group===o);
     if(dr) return {kind:'door', dw:dr.dw,
       label:'HOUSE DOOR   [E] '+(dr.target>0.5?'close':'open')};
@@ -13511,6 +13516,13 @@ function vrBuildDesks(){
    (toward you) and the line is released.  Release a line with nothing holding
    it — no lock, no hand — and there is nothing on the load at all: it runs
    away downwards (updateFly, p3).
+
+   One rope on the stage is NOT a fly line: the traveler's hand line, a small
+   loop of its own at the side of the proscenium.  Hauling it slides the house
+   curtain open and shut instead of flying the pipe — front run down opens it
+   out to both sides, the back run closes.  A hand line has no counterweight,
+   so there is no lock and nothing to run away: let go and the curtain simply
+   stays where the hand left it.
    ========================================================================== */
 const ROPE = {
   headDrop: 0.6,      // the head block hangs this far under the grid
@@ -13525,7 +13537,11 @@ const ROPE = {
   lockH:    0.15,     // the rope-lock housing on top of the rail
   grabR:    0.32,     // a hand within this of a run has hold of the rope
   knobR:    0.12,     // a hand within this of a handle has hold of the LEVER
-  throw_:   0.95      // how far the handle lies over when it is pulled OUT
+  throw_:   0.95,     // how far the handle lies over when it is pulled OUT
+  travTop:  4.5,      // the traveler hand line's little head block
+  travFloor:0.15,     // and its floor block, just off the deck
+  travOff:  0.9,      // the hand line hangs this far offstage of the arch
+  travScale:2.5       // metres of hand line for the curtain's full 0..1 travel
 };
 /* the number plates are drawn once and kept: vrClearRopes disposes geometry,
    and eleven little canvases a stage-walk would otherwise pile up as leaks */
@@ -13657,6 +13673,46 @@ function vrBuildRopes(){
                    head, foot, runs, lock, lever, knob, plate,
                    pos0:ls.pos, last:ls.pos});
   }
+
+  /* ---- the traveler hand line ------------------------------------------
+     The house curtain does not only fly: it TRAVELS.  Its hand line hangs
+     at the side of the proscenium — stage right, just offstage of the arch,
+     a step downstage of the curtain so the pleats slide past it — a small
+     loop the flyman works standing on the deck.  Kept out of the wall: the
+     proscenium starts at z = 0, so the loop never comes further downstage
+     than a hand's breadth short of it. */
+  const trav = hung.find(l => GOODS[l.goodsKey] && GOODS[l.goodsKey].traveler);
+  if(trav){
+    const asm = new T.Group();
+    asm.name = 'vr:traveler' + trav.id;
+    asm.position.set(org.x - (D.procW/2 + ROPE.travOff), 0,
+                     Math.min(trav.z + 0.5, -0.35) + zOff);
+    /* the hover label needs to find it: the asm is the one rope assembly in
+       the pick list, and describe (p7) reads this tag off it */
+    asm.userData.travRope = trav;
+    holder.add(asm);
+    INTERACT.push(asm);
+    const runH2 = ROPE.travTop - ROPE.travFloor;
+    const gWheel2 = new T.CylinderGeometry(ROPE.wheel*0.6, ROPE.wheel*0.6, 0.025, 8);
+    gWheel2.rotateX(Math.PI/2);
+    const gRun2 = new T.CylinderGeometry(0.012, 0.012, runH2, 6);
+    const head = new T.Mesh(gWheel2, iron); head.position.y = ROPE.travTop;   asm.add(head);
+    const foot = new T.Mesh(gWheel2, iron); foot.position.y = ROPE.travFloor; asm.add(foot);
+    const runs = [];
+    /* the front run faces centre stage, where the flyman stands: runs[0] */
+    for(const s of [1, -1]){
+      const run = new T.Mesh(gRun2, mat);
+      run.position.set(s*ROPE.gap, ROPE.travFloor + runH2/2, 0);
+      asm.add(run); runs.push(run);
+    }
+    const m = new T.Mesh(gGrab, grab);
+    m.position.set(ROPE.gap, ROPE.handY, 0);
+    m.userData.rope = trav;
+    asm.add(m);
+    VR.ropes.push({mesh:m, ls:trav, home:m.position.clone(), asm, inw:1,
+                   head, foot, runs, traveler:true,
+                   open0:trav.open, last:trav.open});
+  }
 }
 function vrClearRopes(){
   /* let go of whatever is in hand FIRST — a held rope references a rope and
@@ -13664,6 +13720,10 @@ function vrClearRopes(){
      would keep hauling them every frame until the squeeze was released */
   VR.held = null;
   VR.heldLever = null;
+  /* the traveler's hand line sits in the pick list for its hover label —
+     take it back out before its meshes are disposed */
+  for(let i = INTERACT.length - 1; i >= 0; i--)
+    if(INTERACT[i].userData && INTERACT[i].userData.travRope) INTERACT.splice(i, 1);
   if(VR.ropeRoot && VR.ropeRoot.parent) VR.ropeRoot.parent.remove(VR.ropeRoot);
   if(VR.ropeRoot && typeof disposeTree === 'function') disposeTree(VR.ropeRoot);
   VR.ropeRoot = null;
@@ -13699,6 +13759,20 @@ const _lvp = new T.Vector3();
 function vrUpdateRopes(dt){
   for(const r of VR.ropes){
     const ls = r.ls;
+    if(r.traveler){
+      /* the hand line turns with the CURTAIN, not the pipe: travScale metres
+         of rope is the whole 0..1, and there is no lever to mind */
+      const d = (ls.open - r.last) * ROPE.travScale;
+      if(d){
+        r.last = ls.open;
+        const spin = d / (ROPE.wheel * 0.6);
+        r.head.rotation.z += spin;
+        r.foot.rotation.z += spin;
+        if(!(VR.held && VR.held.rope === r))
+          r.mesh.position.y = r.home.y - clamp((ls.open - r.open0)*ROPE.travScale, -0.5, 0.5);
+      }
+      continue;
+    }
     if(VR.heldLever && VR.heldLever.rope === r){
       const c = VR.controllers[VR.heldLever.hand];
       if(c){
@@ -13873,7 +13947,9 @@ function vrSqueeze(hand, down){
       VR.held = null;
       /* the whipped section goes back to marking the front run at rest */
       h.rope.mesh.position.copy(h.rope.home);
-      vrLetGo(h);
+      /* a let-go traveler just stays where it is: no weight on a hand line,
+         so no runaway — vrLetGo is for counterweight lines only */
+      if(!h.rope.traveler) vrLetGo(h);
     }
     return;
   }
@@ -13886,8 +13962,10 @@ function vrSqueeze(hand, down){
   let lv = null, lvd = ROPE.knobR;
   let best = null, bd = ROPE.grabR, bestRun = 0, bestY = 0;
   for(const r of VR.ropes){
-    const kd = _rayD.setFromMatrixPosition(r.knob.matrixWorld).distanceTo(_rayO);
-    if(kd < lvd){ lvd = kd; lv = r; }
+    if(r.knob){          // the traveler's hand line has no lever to grab
+      const kd = _rayD.setFromMatrixPosition(r.knob.matrixWorld).distanceTo(_rayO);
+      if(kd < lvd){ lvd = kd; lv = r; }
+    }
     for(let i = 0; i < r.runs.length; i++){
       const run = r.runs[i];
       run.getWorldPosition(_run);
@@ -13906,6 +13984,19 @@ function vrSqueeze(hand, down){
   }
   if(best){
     const ls = best.ls;
+    if(best.traveler){
+      /* the traveler's hand line: nothing on it to arrest and nothing that
+         can run away — the hand simply takes the curtain.  The rope lock
+         means nothing here, so ls.locked is left entirely alone. */
+      const run = best.runs[bestRun];
+      best.mesh.position.x = run.position.x;
+      best.mesh.position.y = clamp(bestY, ROPE.travFloor + 0.35, ROPE.travTop - 0.35);
+      VR.held = {hand, rope:best, y0:_rayO.y, open0:ls.open, vel:0,
+                 dir: bestRun === 0 ? 1 : -1, grabY: best.mesh.position.y};
+      if(typeof toast === 'function')
+        toast('traveler — front run opens, back run closes');
+      return;
+    }
     /* a hand on the rope arrests a runaway — you have the weight now — but
        it does NOT touch the lock: only the lever does that */
     ls.runaway = false;
@@ -13932,6 +14023,22 @@ function vrUpdateHold(dt){
   c.updateMatrixWorld(true);
   _rayO.setFromMatrixPosition(c.matrixWorld);
   const ls = VR.held.rope.ls;
+  /* the traveler's hand line: hand travel IS curtain travel.  The front run
+     pulled down slides the curtain OPEN, out to both sides; the back run is
+     the other half of the loop and closes it.  Both open and travTarget are
+     written, or p3's animator would haul the curtain back against the hand
+     at its own 0.42/s.  The rope lock means nothing on a hand line. */
+  if(VR.held.rope.traveler){
+    const pulled = VR.held.y0 - _rayO.y;
+    const want = VR.held.open0 + (pulled / ROPE.travScale) * VR.held.dir;
+    ls.open = clamp(want, 0, 1);
+    ls.travTarget = ls.open;
+    /* against a dead end the rope cannot pay out: re-base, so the return
+       pull takes up at once instead of paying back the overshoot first */
+    if(want !== ls.open){ VR.held.y0 = _rayO.y; VR.held.open0 = ls.open; }
+    VR.held.rope.mesh.position.y = VR.held.grabY - clamp(pulled, -0.5, 0.5);
+    return;
+  }
   /* with the lock in the rail has the weight: the hand rides the rope and
      nothing moves.  Keep re-basing so pulling the lever out mid-hold picks
      up smoothly from here rather than jumping the accumulated pull. */

@@ -607,8 +607,14 @@ const probe = `
     goToView(3);
     vrBuildRopes();
     const hung = FLY.filter(l=>l.goodsKey !== 'none').length;
-    if(VR.ropes.length !== hung)
-      throw new Error(VR.ropes.length + ' ropes for ' + hung + ' hung linesets');
+    /* every hung line gets its operating loop at the rail — and a hung
+       traveler gets a second, smaller hand line at the proscenium on top,
+       so the count is hung + 1 whenever a house curtain is up */
+    const trav = FLY.some(l=>l.goodsKey !== 'none' &&
+                             GOODS[l.goodsKey] && GOODS[l.goodsKey].traveler) ? 1 : 0;
+    if(VR.ropes.length !== hung + trav)
+      throw new Error(VR.ropes.length + ' ropes for ' + hung + ' hung linesets' +
+                      (trav ? ' and a traveler' : ''));
     scene.updateMatrixWorld(true);
     for(const r of VR.ropes){
       const p = r.mesh.getWorldPosition(new THREE.Vector3());
@@ -616,7 +622,7 @@ const probe = `
         throw new Error('the rope for ' + r.ls.id + ' is at z=' + p.z.toFixed(1) +
                         ', its lineset is at ' + r.ls.z.toFixed(1));
     }
-    return VR.ropes.length + ' ropes at the pin rail';
+    return VR.ropes.length + ' ropes: the pin rail, plus the traveler hand line';
   });
 
   /* put a hand on a rope's grab section and squeeze */
@@ -967,7 +973,8 @@ const probe = `
       vrBuildRopes();
       scene.updateMatrixWorld(true);
       if(!VR.ropes.length) throw new Error(label + ' has no ropes at all');
-      for(const r of VR.ropes){
+      const loops = VR.ropes.filter(x=>!x.traveler);
+      for(const r of loops){
         const h = r.head.getWorldPosition(new THREE.Vector3());
         const f = r.foot.getWorldPosition(new THREE.Vector3());
         const g = r.mesh.getWorldPosition(new THREE.Vector3());
@@ -1005,14 +1012,221 @@ const probe = `
       }
       const beam = VR.ropeRoot.children.find(o=>o.name === 'vr:rail');
       if(!beam) throw new Error(label + ' has no locking-rail beam at all');
-      return VR.ropes.length;
+      /* and one rope that is NOT a fly loop: the traveler's hand line, a
+         small loop of its own at the proscenium.  No lock, no lever, no
+         number plate — a traveler has no counterweight to lock off. */
+      const hand = VR.ropes.filter(x=>x.traveler);
+      if(hand.length !== 1)
+        throw new Error(label + ' has ' + hand.length + ' traveler hand lines, wanted exactly 1');
+      const tr = hand[0];
+      const th = tr.head.getWorldPosition(new THREE.Vector3());
+      const tf = tr.foot.getWorldPosition(new THREE.Vector3());
+      if(th.y < 3.5 || th.y > 5.5)
+        throw new Error(label + ': traveler head block at y=' + th.y.toFixed(2) +
+                        ' — that is a fly loop, not a hand line');
+      if(tf.y < 0.05 || tf.y > 0.6)
+        throw new Error(label + ': traveler floor block at y=' + tf.y.toFixed(2));
+      if(tr.runs.length !== 2)
+        throw new Error(label + ': the hand line has ' + tr.runs.length + ' runs, wanted 2');
+      if(tr.knob || tr.lever || tr.lock)
+        throw new Error(label + ': the hand line grew a rope lock — a traveler has none');
+      return loops.length;
     };
     goToView(3);
     const pal = look('the palace');
     goToView(15);
     const arc = look('the arc');
     goToView(3);
-    return pal + ' loops at the palace, ' + arc + ' at the arc';
+    return pal + ' loops and a hand line at the palace, ' + arc + ' and one at the arc';
+  });
+
+  /* ---- the traveler hand line: pull a rope at the side of the proscenium
+     and the house curtain slides open to both sides ---- */
+  const travRope = ()=>VR.ropes.find(x=>x.traveler);
+  /* put a hand on a given RUN of the hand line at a given height and squeeze */
+  const takeRun = (r, i, y)=>{
+    scene.updateMatrixWorld(true);
+    const run = r.runs[i].getWorldPosition(new THREE.Vector3());
+    const c = VR.controllers[0];
+    VR.rig.updateMatrixWorld(true);
+    c.position.copy(VR.rig.worldToLocal(new THREE.Vector3(run.x, y, run.z)));
+    c.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    return c;
+  };
+
+  P('the traveler hand line hangs at the side of the arch — in both buildings', ()=>{
+    const look = (label)=>{
+      vrBuildRopes();
+      scene.updateMatrixWorld(true);
+      const r = travRope();
+      if(!r) throw new Error(label + ' has no traveler hand line');
+      if(!(GOODS[r.ls.goodsKey] && GOODS[r.ls.goodsKey].traveler))
+        throw new Error(label + ': the hand line is tied to ' + r.ls.goodsKey +
+                        ', which is no traveler');
+      const p = r.mesh.getWorldPosition(new THREE.Vector3());
+      const org = stageOrigin();
+      /* stage right of the opening, just offstage of the arch, and not lost
+         down the wing */
+      if(p.x - org.x > -(D.procW/2 + 0.4))
+        throw new Error(label + ': the hand line is inside the opening at x=' +
+                        (p.x - org.x).toFixed(2));
+      if(p.x - org.x < -(D.procW/2 + 2.5))
+        throw new Error(label + ': the hand line is lost in the wing at x=' +
+                        (p.x - org.x).toFixed(2));
+      /* workable from the deck: the grab section at hand height */
+      if(p.y < 0.8 || p.y > 2.2)
+        throw new Error(label + ': the grab section is at y=' + p.y.toFixed(2));
+      return (p.x - org.x).toFixed(1);
+    };
+    goToView(3);
+    const pal = look('the palace');
+    goToView(15);
+    const arc = look('the arc');
+    goToView(3);
+    return 'offstage of the arch at x ' + pal + ' (palace) and ' + arc + ' (arc)';
+  });
+
+  P('haul the hand line and the curtain slides — front run opens, back run closes', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = travRope();
+    if(!r) throw new Error('no traveler hand line to haul');
+    const ls = r.ls;
+    ls.open = ls.travTarget = 0;
+    updateFly(0.05);                              // settle the halves shut
+    const pipe = ls.pos;
+    /* take the FRONT run mid-height and pull a metre of rope down */
+    const c = takeRun(r, 0, 2.0);
+    if(!VR.held || VR.held.rope !== r)
+      throw new Error('a hand on the front run grabbed nothing');
+    c.position.y -= 1.0;
+    c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    if(ls.open < 0.25)
+      throw new Error('a metre of rope only opened it to ' + ls.open.toFixed(2));
+    if(Math.abs(ls.travTarget - ls.open) > 1e-9)
+      throw new Error('the hand and the board target disagree: open ' +
+                      ls.open.toFixed(2) + ', target ' + ls.travTarget.toFixed(2));
+    if(Math.abs(ls.pos - pipe) > 1e-6)
+      throw new Error('hauling the hand line flew the pipe to ' + ls.pos.toFixed(2));
+    /* p3 slides the halves apart: side * x grows as it opens */
+    updateFly(0.05);
+    for(const half of ls.goods.children){
+      if(half.userData.side === undefined) continue;
+      const reach = half.userData.side * half.position.x;
+      if(reach < (D.procW/4 - 0.4) + 0.5)
+        throw new Error('a half only reached ' + reach.toFixed(2) +
+                        ' — the curtain did not slide out');
+    }
+    vrSqueeze(0, false);
+    const was = ls.open;
+    /* the BACK run is the other half of the loop: down closes */
+    takeRun(r, 1, 2.0);
+    if(!VR.held || VR.held.rope !== r)
+      throw new Error('a hand on the back run grabbed nothing');
+    c.position.y -= 0.5;
+    c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    if(ls.open >= was)
+      throw new Error('pulling the back run down did not close it: ' + ls.open.toFixed(2));
+    vrSqueeze(0, false);
+    c.position.set(0, 0, 0); c.updateMatrixWorld(true);
+    ls.open = ls.travTarget = 0; updateFly(0.05);
+    return 'front run opened it to ' + was.toFixed(2) + ', the back run took it back';
+  });
+
+  P('let go of the hand line mid-travel and the curtain stays exactly where it is', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = travRope();
+    if(!r) throw new Error('no traveler hand line to let go of');
+    const ls = r.ls;
+    ls.open = ls.travTarget = 0; updateFly(0.05);
+    const c = takeRun(r, 0, 1.8);
+    if(!VR.held) throw new Error('the hand did not take hold of it');
+    c.position.y -= 1.2;               // haul, and let go while it is moving
+    c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    const at = ls.open;
+    if(at <= 0.2) throw new Error('nothing to release mid-travel: open ' + at.toFixed(2));
+    vrSqueeze(0, false);
+    /* no counterweight on a hand line: nothing to run away, nothing to fall */
+    if(ls.runaway) throw new Error('a traveler ran away — it has no counterweight to lose');
+    if(Math.abs(ls.open - at) > 1e-9)
+      throw new Error('the release itself moved it to ' + ls.open.toFixed(2));
+    const pipe = ls.pos;
+    for(let i=0;i<100;i++){ updateFly(0.05); vrUpdateRopes(0.05); }
+    if(Math.abs(ls.open - at) > 1e-6)
+      throw new Error('five seconds later the curtain had crept to ' + ls.open.toFixed(2));
+    if(Math.abs(ls.pos - pipe) > 1e-6)
+      throw new Error('the pipe moved to ' + ls.pos.toFixed(2) + ' after the hand let go');
+    c.position.set(0, 0, 0); c.updateMatrixWorld(true);
+    ls.open = ls.travTarget = 0; updateFly(0.05);
+    return 'let go at ' + at.toFixed(2) + ' and it stayed put';
+  });
+
+  P('the board still travels the curtain with no hand on the rope', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = travRope();
+    if(!r) throw new Error('no traveler hand line — nothing to prove it keeps clear of');
+    const ls = r.ls;
+    if(VR.held) throw new Error('a hand is still on a rope from the last test');
+    ls.open = ls.travTarget = 0; updateFly(0.05);
+    ls.travTarget = 1;                 // the desk's OPEN button writes exactly this
+    for(let i=0;i<70;i++){ updateFly(0.05); vrUpdateRopes(0.05); }
+    const got = ls.open;
+    if(got < 0.99)
+      throw new Error('three and a half seconds of travel only got it to ' + got.toFixed(2));
+    ls.open = ls.travTarget = 0; updateFly(0.05);
+    return 'travTarget alone walked it open to ' + got.toFixed(2) + ', the way the desk does';
+  });
+
+  P('a traveler held through the walk is let go, and the far house has its own', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = travRope();
+    if(!r) throw new Error('no traveler hand line at the palace');
+    const ls = r.ls;
+    const at = ls.open;
+    takeHold(r, 0);
+    if(!VR.held || VR.held.rope !== r) throw new Error('the hand did not take hold of it');
+    goToView(15);                      // walk into the other venue mid-squeeze
+    if(VR.held) throw new Error('the hand is still holding the parked hand line');
+    const r2 = travRope();
+    if(!r2) throw new Error('the arc house has no traveler hand line');
+    if(r2 === r) throw new Error('the arc is showing the palace hand line');
+    const c = VR.controllers[0];
+    c.position.y -= 0.5; c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);                // must be a no-op with nothing in hand
+    if(Math.abs(ls.open - at) > 1e-9)
+      throw new Error('the parked curtain slid to ' + ls.open.toFixed(2));
+    vrSqueeze(0, false);
+    c.position.set(0, 0, 0); c.updateMatrixWorld(true);
+    goToView(3);
+    return 'the swap opened the hand, and each house keeps its own hand line';
+  });
+
+  P('the floating label on the hand line says which run does what', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = travRope();
+    if(!r) throw new Error('no traveler hand line to point at');
+    scene.updateMatrixWorld(true);
+    const at = r.mesh.getWorldPosition(new THREE.Vector3());
+    /* point from a pace toward centre stage, the way the flyman stands */
+    aim(1, at.clone().add(new THREE.Vector3(1.4, 0.2, 0)), at);
+    vrUpdate(0.016);
+    if(!VR.labelSpr || !VR.labelSpr.visible)
+      throw new Error('no label came up on the hand line');
+    if(!/TRAVELER/.test(VR.labelTxt) || !/open/i.test(VR.labelTxt) || !/close/i.test(VR.labelTxt))
+      throw new Error('the label says "' + VR.labelTxt + '"');
+    const said = VR.labelTxt;
+    aim(1, new THREE.Vector3(0, 1.5, 0), new THREE.Vector3(0, 60, 0));  // at the sky
+    vrUpdate(0.016);
+    if(VR.labelSpr.visible) throw new Error('the label did not clear');
+    return '"' + said + '" — and it clears';
   });
 
   P('reaching for the GO button on the desk fires a cue', ()=>{

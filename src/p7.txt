@@ -468,6 +468,11 @@ function describe(obj){
         ' #' + m.id + (m.powered ? '   [driven from the MACHINES page]'
                                  : '   hold the left button and pull')};
     }
+    /* the traveler's hand line (p9): the VR hover label reads this, and it
+       says which run does what rather than offering an E nobody has */
+    if(o.userData && o.userData.travRope)
+      return {kind:'traveler', ls:o.userData.travRope,
+        label:'TRAVELER — front run opens · back run closes'};
     const dr = DOORS.find(x=>x.group===o);
     if(dr) return {kind:'door', dw:dr.dw,
       label:'HOUSE DOOR   [E] '+(dr.target>0.5?'close':'open')};
