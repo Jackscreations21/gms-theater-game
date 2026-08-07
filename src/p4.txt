@@ -427,15 +427,6 @@ function buildRig(){
   addFixture({name:'FOLLOWSPOT', type:'profile', follow:true,
     pos:V(0, balcFloorY(D.houseBack-3.4)+1.8, D.houseBack-3.4), aim:V(0, 1.6, 0),
     angle:8, beamLen:32, beamRad:2.0, power:4.2, color:new T.Color(0xfff4e2)});
-  // 26-27 PAR WARMERS — a pair of cans on the 2nd electric, the warm punch
-  // every house rig hangs.  Appended after the followspot so the channel
-  // numbers of everything above stay exactly what the plots and cues expect.
-  [-2.0, 2.0].forEach((x,i)=>{
-    addFixture({name:'PAR '+(i+1), type:'par', ls:8, lsX:x, lsOffset:-.45,
-      pos:V(x, 8.0, FLY[8].z), aim:V(x*0.5, .8, FLY[8].z-4.0),
-      angle:24, beamLen:14, beamRad:3.2, power:2.6,
-      color:new T.Color(0xffd9a0)});
-  });
 }
 buildRig();
 /* the focus each lamp was rigged with — a cue may re-aim one, but this is

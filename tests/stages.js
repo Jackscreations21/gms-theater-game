@@ -1119,13 +1119,15 @@ const probe = `
 
   console.log('--- fixture bodies ---');
   P('every fixture type hangs from a real clamp', ()=>{
-    const types = ['profile','fresnel','par','cyc','mover'];
-    const missing = types.filter(t=>{
+    // par is stocked, not hung — no rig hangs one today, but the order
+    // screen (a later PR) sells them, so the builder must carry the clamp
+    const missing = ['profile','fresnel','cyc','mover'].filter(t=>{
       const f = FIXTURES.find(x=>x.type===t);
       return !f || !f.body.userData.clamp;
     });
+    if(typeof bodyPar !== 'function' || !bodyPar().userData.clamp) missing.push('par');
     if(missing.length) throw new Error('no clamp on: '+missing.join(', '));
-    return types.length+' types clamped';
+    return '4 hung types + the stocked par, all clamped';
   });
   P('bodies share geometry across instances', ()=>{
     const profs = FIXTURES.filter(f=>f.type==='profile').slice(0,2);
@@ -1138,13 +1140,18 @@ const probe = `
   });
   P('bodies stay inside the VR triangle budget', ()=>{
     const over = [];
-    ['profile','fresnel','par','cyc','mover'].forEach(t=>{
-      const f = FIXTURES.find(x=>x.type===t); if(!f) return;
-      let tris = 0;
-      f.body.traverse(o=>{ if(o.isMesh){ const p=o.geometry;
+    const count = b=>{ let tris = 0;
+      b.traverse(o=>{ if(o.isMesh){ const p=o.geometry;
         tris += p.index ? p.index.count/3 : p.attributes.position.count/3; }});
+      return tris; };
+    ['profile','fresnel','cyc','mover'].forEach(t=>{
+      const f = FIXTURES.find(x=>x.type===t); if(!f) return;
+      const tris = count(f.body);
       if(tris > 700) over.push(t+':'+Math.round(tris));
     });
+    // par is stocked, not hung — build one and hold it to the same budget
+    const pt = count(bodyPar());
+    if(pt > 700) over.push('par:'+Math.round(pt));
     if(over.length) throw new Error('over budget: '+over.join(' '));
     return 'all under 700 tris';
   });
