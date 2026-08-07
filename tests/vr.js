@@ -32,6 +32,7 @@ class FakeXR {
   setSession(s){ this._session = s; return Promise.resolve(); }
   getSession(){ return this._session; }
   setFoveation(v){ this.foveation = v; }
+  setFramebufferScaleFactor(v){ this.fbScale = v; }
 }
 THREE.WebGLRenderer = class {
   constructor(){ const c = w.document.createElement('canvas');
@@ -112,7 +113,12 @@ const probe = `
     if(!VR.beamCap) throw new Error('the beams are not capped');
     if(camera.far > 200) throw new Error('the far plane is still ' + camera.far);
     if(renderer.xr.foveation < 0.2) throw new Error('foveation was not asked for');
-    return 'shadows off, beams capped to ' + VR.beamCap + ', far ' + camera.far;
+    if(VR.beamCap > 10) throw new Error('the beam cap is ' + VR.beamCap + ' — 10 was the tune-down');
+    /* the framebuffer scale must be asked for BEFORE any session existed */
+    if(Math.abs((renderer.xr.fbScale || 0) - 0.85) > 0.001)
+      throw new Error('framebuffer scale is ' + renderer.xr.fbScale + ', wanted 0.85');
+    return 'shadows off, beams capped to ' + VR.beamCap + ', far ' + camera.far +
+           ', eyes at ' + renderer.xr.fbScale;
   });
 
   P('and only that many beams are ever alight', ()=>{

@@ -12749,7 +12749,9 @@ function vrQualityOn(){
   };
   renderer.shadowMap.enabled = false;         // the single biggest win
   RIG.shadowBudget = 0;
-  VR.beamCap = 14;                            // beams alight at once
+  VR.beamCap = 10;                            /* beams alight at once — was 14;
+                                                 the first Quest 3 run reported
+                                                 the frame rate a little low */
   camera.far = 160;                           // the far building is switched off anyway
   camera.updateProjectionMatrix();
   if(renderer.xr && renderer.xr.setFoveation) renderer.xr.setFoveation(0.4);
@@ -13393,6 +13395,10 @@ function vrOnStageChange(){ if(VR && VR.active) vrBuildRopes(); }
 /* ---------------------------------------------------------------- wiring */
 if(typeof renderer !== 'undefined' && renderer.xr){
   renderer.xr.enabled = true;
+  /* draw each eye at 85% — barely visible on a Quest 3 lens, ~28% fewer
+     pixels.  It MUST be asked for here, before any session exists: WebXR
+     reads it at session start and ignores it after. */
+  if(renderer.xr.setFramebufferScaleFactor) renderer.xr.setFramebufferScaleFactor(0.85);
   if(renderer.xr.addEventListener){
     renderer.xr.addEventListener('sessionstart', vrOnStart);
     renderer.xr.addEventListener('sessionend', vrOnEnd);

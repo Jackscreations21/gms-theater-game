@@ -280,14 +280,34 @@ byte-identical per PR, work branches deleted, 12/12 green.
 
 **NEXT SESSION: fix VR — whatever the headset teaches.**
 
-**Step zero: get the headset findings.** As of this writing no Quest 3 run
-has been recorded. Ask the owner what the headset actually did before
-touching code — get symptoms against the four-point checklist in
-VR-SETUP.md §6 (session start / frame rate / pointing / human factors),
-then record them HERE. If the run hasn't happened yet, walk the owner
-through VR-SETUP.md first; there is nothing to fix until the headset has
-spoken. Everything below is the symptom → code map for what it is likely
-to say. All VR code is `src/p9.txt` unless noted.
+**Quest 3 findings, recorded 2026-08-06 (first run on hardware):**
+
+1. **First attempt did not enter VR at all** — the page loaded flat and
+   nothing responded. Resolved without a code change: the owner had not
+   tapped the green ENTER VR chip (and "can't move on the flat page" is
+   expected on a headset — movement is keyboard/mouse until a session
+   starts). On the second attempt the owner **loaded into VR
+   successfully** — `vrEnter()` and the session chain are now proven on
+   hardware.
+2. **Frame rate: "a little low"** (owner's words; no number measured).
+   Addressed with the mild option — beams 14 → 10 and framebuffer scale
+   0.85 (this PR). Retest before reaching for the bigger knobs in the
+   map below.
+3. **Pointing / consoles: no verdict yet.** The owner asked for world
+   interactions instead — triggers now act like the desktop E key
+   (PR #12). The UV flip got its posed-controller regression test in the
+   same PR; still wants a real-hardware confirmation on the desks.
+4. **Human factors: no findings reported yet.** Comfort, console text
+   size and turn speed remain unmeasured. New this round on the owner's
+   ask: tap A jumps, double-tap A flies (PR #13).
+
+Delivered for it, 2026-08-06: PR #12 (triggers use what you point at),
+PR #13 (jump/fly), this PR (perf notch + these notes). Next headset run
+should answer: is 90Hz held now, do the desks respond where you point,
+is anything nauseating, and can you read the console text.
+
+The symptom → code map below still stands for whatever that run turns
+up. All VR code is `src/p9.txt` unless noted.
 
 1. **Session won't start.** `vrEnter()` (p9:104) — the real
    `requestSession` promise chain has never run on hardware; the tests
