@@ -272,7 +272,12 @@ function buildArcStage(key, label, houseKey){
   {
     const rk = H.rake;
     const row = Math.max(0, (H.zPros + FOHBAR.z - rk.zFirst)/rk.RUN);
-    FOHBAR.min = Math.min(FOHBAR.max - 0.5, rk.Y0 + row*rk.RISE + 0.2 + 3.2);
+    FOHBAR.min = Math.min(FOHBAR.max - 0.5, rk.Y0 + row*rk.RISE + 0.2 + 2.0);
+    /* the Arc's auditorium ceiling is a slab with its soffit at 15.95
+       (p2j) — anchor the drop wires just under it, not at the Palace's
+       24.6m plaster the buildRig default assumes */
+    FOHBAR.wireTop = 15.8;
+    fohBarPose(FOHBAR);
   }
 
   /* the standing hang every receiving house keeps up: house curtain in,
