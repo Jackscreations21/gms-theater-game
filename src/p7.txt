@@ -328,9 +328,16 @@ function updatePlayer(dt){
   const wx = ( fx*cos - fz*sin)*spd;
   const wz = (-fx*sin - fz*cos)*spd;
 
-  // gravity
-  Player.vel.y -= 13.5*dt;
-  let ny = Player.pos.y + Player.vel.y*dt;
+  /* flying is VR-only: double-tap A (p9) sets VR.fly, landing clears it */
+  const flying = typeof VR !== 'undefined' && VR && VR.active && VR.fly;
+
+  // gravity — unless you are flying
+  let ny;
+  if(flying){ Player.vel.y = 0; ny = Player.pos.y; }
+  else {
+    Player.vel.y -= 13.5*dt;
+    ny = Player.pos.y + Player.vel.y*dt;
+  }
 
   // horizontal with step check
   const tryMove=(ax,az)=>{
@@ -354,12 +361,31 @@ function updatePlayer(dt){
     if(g - Player.pos.y > 0.62) return;          // too tall to step up
     Player.pos.x = nx; Player.pos.z = nz;
   };
-  tryMove(wx,0); tryMove(0,wz);
+  if(flying){
+    /* FLYING — the stick moves you along the way the HEAD looks: look up and
+       push forward to climb.  Strafe stays on the flat, walls still block. */
+    camera.getWorldDirection(_flyDir);
+    const fs = 8;                                  // a notch over sprint
+    const vx = (_flyDir.x*fz + fx*cos)*fs;
+    const vz = (_flyDir.z*fz - fx*sin)*fs;
+    tryMove(vx,0); tryMove(0,vz);
+    const vy = _flyDir.y*fz*fs;
+    ny = clamp(Player.pos.y + vy*dt, 0, 60);
+    const g = groundAt(Player.pos.x, Player.pos.z, Player.pos.y);
+    if(vy < -0.01 && g!==null && ny <= g + 0.01){
+      /* feet met a floor on the way down: land, and walk off */
+      ny = g; VR.fly = false; Player.onGround = true;
+      toast('Landed — walking');
+    } else Player.onGround = false;
+    Player.pos.y = ny;
+  } else {
+    tryMove(wx,0); tryMove(0,wz);
 
-  const g = groundAt(Player.pos.x, Player.pos.z, Player.pos.y);
-  if(g!==null && ny <= g + 0.01){ ny = g; Player.vel.y=0; Player.onGround=true; }
-  else Player.onGround=false;
-  Player.pos.y = ny;
+    const g = groundAt(Player.pos.x, Player.pos.z, Player.pos.y);
+    if(g!==null && ny <= g + 0.01){ ny = g; Player.vel.y=0; Player.onGround=true; }
+    else Player.onGround=false;
+    Player.pos.y = ny;
+  }
 
   // head bob
   const moving = len>0 && Player.onGround;
@@ -399,6 +425,7 @@ function updateOrbit(){
    INTERACTION
    ========================================================================== */
 const ray = new T.Raycaster();
+const _flyDir = new T.Vector3();
 const mouseNDC = new T.Vector2();
 let hoverInfo = null, focusMode=false, dragPiece=null, dragPlane=new T.Plane(new T.Vector3(0,1,0),0);
 
