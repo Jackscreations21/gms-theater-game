@@ -234,6 +234,21 @@ swap, dead weight, duplication, coordinates, test coverage), cross-checked,
 the sharpest single-source claims re-verified by hand and one by a live jsdom
 probe. No code was touched; AUDIT.md is the deliverable.
 
+**Done 2026-08-06, evening session: worked the bug list.** Twenty of the
+twenty-two items below are fixed, one finding per commit, ~30 new
+regression tests, every fix negative-checked against the unfixed code.
+Delivered as four stacked PRs — **merge in order**: [#2 quick
+wins](https://github.com/Jackscreations21/gms-theater-game/pull/2) → [#3
+swap boundary](https://github.com/Jackscreations21/gms-theater-game/pull/3)
+→ [#4 coordinate fixes](https://github.com/Jackscreations21/gms-theater-game/pull/4)
+→ [#5 structural](https://github.com/Jackscreations21/gms-theater-game/pull/5).
+Still open: item 20 (dead weight — owner's deletion call; M6 no longer
+depends on it), item 22 (duplication — big churn, do after the PRs merge),
+and the M9 ruling (documented one-board; capture them if you disagree).
+Note: `gh` is not installed on this machine — the PRs were opened through
+the GitHub API with the stored git credential; installing `gh` would be
+tidier.
+
 **NEXT SESSION: work the bug list, one item at a time.** Every item below is
 expanded in AUDIT.md with evidence and line numbers, and its "checked and
 sound" section lists what NOT to re-audit. Ground rules: run all twelve
