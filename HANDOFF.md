@@ -75,6 +75,7 @@ wiring, and cannot catch anything about how it looks or how fast it runs.
 ```sh
 cd tests
 npm install       # once — jsdom and three@0.128
+npm test          # all twelve suites, exits non-zero if any fail
 node real.js      # boots the whole file, reports "fatal": null
 node full14.js    # the building
 node rooms.js     # portal culling
@@ -89,7 +90,8 @@ node legs.js      # goods, including the half legs
 node vr.js        # WebXR: rig, sticks, desks, ropes, GO
 ```
 
-All twelve are at `--- failures: 0 ---`. Keep them there.
+All twelve are at `--- failures: 0 ---`. Keep them there. Every suite exits
+non-zero on failure (including a failure to boot), and `npm test` runs the lot.
 
 `full14.js` wraps `window.MouseEvent` at the top of its harness: jsdom has no
 pointer-lock support, so a stock jsdom `MouseEvent` silently drops
@@ -242,19 +244,19 @@ tests don't cover").
 
 Quick wins first — each is small, self-contained, and already hand-verified:
 
-- [ ] 1. **M16** — make the other eleven suites exit non-zero on failure the
+- [x] 1. **M16** — make the other eleven suites exit non-zero on failure the
       way `full14.js` does, and add an `npm test` script that runs all
       twelve. Do this first; it hardens every item after it.
-- [ ] 2. **M1** — `p5g:314` calls `makeFire` with the obsolete
+- [x] 2. **M1** — `p5g:314` calls `makeFire` with the obsolete
       `{x,y,z,w,h,n}` shape, so every flame seeds at NaN and the GOES WRONG
       fireplace never renders. Convert to `{count, embers, y, x0,x1,z0,z1}`
       (the two correct callers are p5c:1065 and p5d:487).
-- [ ] 3. **M2** — `plotOutsiders` is missing `restoreAims(homeAims)` before
+- [x] 3. **M2** — `plotOutsiders` is missing `restoreAims(homeAims)` before
       `RIG.haze = savedHaze` (p5c:1261); the other three plots all have it.
-- [ ] 4. **M3** — guard the `updateNeon()` call at p5c:392 like its
+- [x] 4. **M3** — guard the `updateNeon()` call at p5c:392 like its
       neighbours two lines down, and the unguarded `wrong*`/`setRevolve`
       references in p7:768-785.
-- [ ] 5. **M14** — two `function damaskTex()` (p2:218 Palace crimson,
+- [x] 5. **M14** — two `function damaskTex()` (p2:218 Palace crimson,
       p5g:104 Cornley green); hoisting means p5g's silently wins everywhere.
       Rename the p5g one.
 

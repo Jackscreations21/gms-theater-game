@@ -62,6 +62,23 @@ const probe = `
 `;
 const blocks = html.match(/<script>[\s\S]*?<\/script>/g).map(b=>b.replace(/^<script>/,'').replace(/<\/script>$/,''));
 const js = 'window.FATAL=function(t,d){ window.__fatal=(t+" :: "+d); };\n' + blocks[blocks.length-1];
+// two hoisted declarations in one script and the later one silently wins (M14)
+const declCounts = {};
+for(const m of js.matchAll(/^function (\w+)\(/gm)) declCounts[m[1]] = (declCounts[m[1]]||0)+1;
+const dupes = Object.keys(declCounts).filter(k=>declCounts[k] > 1);
+if(dupes.length){
+  console.log('!! duplicate top-level function declarations: '+dupes.join(', '));
+  process.exit(1);
+}
 try { w.eval(js + probe); console.log('=== TOP LEVEL + init() OK ==='); }
 catch(e){ console.log('!! CONSTRUCTION ERROR: '+e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
 console.log(JSON.stringify(w.__out,null,1));
+const out = w.__out || {};
+const bad = [];
+if(out.fatal) bad.push('fatal: '+out.fatal);
+if(!out.frames) bad.push('no frames ran');
+if(!out.renderCalls) bad.push('nothing rendered');
+if(!out.onGround) bad.push('player not on the ground');
+if(!out.walkable) bad.push('WALKABLE is empty');
+bad.forEach(b=>console.log('!! '+b));
+process.exit(bad.length ? 1 : 0);

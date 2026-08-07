@@ -63,6 +63,23 @@ const probe = `
     return m+' pieces, '+(tri/1000).toFixed(1)+'k triangles, '+CUES.length+' cues';
   });
 
+  P('the fireplace fire is real: every seed finite and inside the firebox', ()=>{
+    showLoad('goeswrong');
+    if(!SHOW.fire) throw new Error('no fire was made');
+    const f = SHOW.fire;
+    const all = f.flames.concat(f.ember);
+    for(const p of all)
+      if(!isFinite(p.x) || !isFinite(p.y) || !isFinite(p.z))
+        throw new Error('a seed is not finite: '+JSON.stringify(p));
+    for(const p of all)
+      if(p.x < -8.3 || p.x > -7 || p.z < -7.2 || p.z > -5.2)
+        throw new Error('a seed is outside the firebox: '+p.x.toFixed(2)+','+p.z.toFixed(2));
+    for(const l of f.lights)
+      if(!isFinite(l.position.x) || !isFinite(l.position.y) || !isFinite(l.position.z))
+        throw new Error('a fire light sits at NaN');
+    return f.flames.length+' flames, '+f.ember.length+' embers, all finite';
+  });
+
   P('everything that is meant to fall has a hinge of its own', ()=>{
     const want = ['post','upper','wallSL','wallUS','mantel','clock','chandelier'];
     const got = SHOW.wrong.map(p=>p.key);
@@ -384,4 +401,5 @@ const probe = `
 
 const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?script>/g,'');
 try{ w.eval(script + probe); }
-catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); }
+catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
+process.exit((w.__errs||[]).length ? 1 : 0);

@@ -167,4 +167,5 @@ const probe = `
 
 const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?script>/g,'');
 try{ w.eval(script + probe); }
-catch(e){ console.log('TOP LEVEL THREW: ' + e.message); }
+catch(e){ console.log('TOP LEVEL THREW: ' + e.message); process.exit(1); }
+process.exit((w.__errs||[]).length ? 1 : 0);

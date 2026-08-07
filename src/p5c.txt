@@ -389,7 +389,7 @@ function strikeLightning(power){
 function updateStorm(dt){
   updateRain(dt);
   updateFire(dt);
-  updateNeon(dt);
+  if(typeof updateNeon === 'function') updateNeon(dt);
   updateShowStorm(dt);
   if(typeof updateRevolve === 'function') updateRevolve(dt);
   if(typeof updateWrong === 'function') updateWrong(dt);
@@ -1259,6 +1259,7 @@ function plotOutsiders(){
     });
   });
   FIXTURES.forEach(f=>{ f.level = 0; f.gobo = 0; });
+  restoreAims(homeAims);
   RIG.haze = savedHaze;
   savedFly.forEach(r=>{ const ls = FLY[r.id-1]; if(ls){ ls.target = r.target; ls.travTarget = r.open; } });
   SHOW.cues = CUES.length;

@@ -100,8 +100,10 @@ function updateWrong(dt){
   }
 }
 
-/* ---- green damask, hung by people who have never hung paper ---- */
-function damaskTex(){
+/* ---- green damask, hung by people who have never hung paper ----
+   NOT damaskTex: p2 already declares that for the Palace crimson, and two
+   hoisted declarations in one script means the later one silently wins. */
+function cornleyDamaskTex(){
   const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');
   g.fillStyle = '#1f5a4e'; g.fillRect(0,0,W,H);
   const motif = (x, y)=>{
@@ -237,7 +239,7 @@ SHOWS.goeswrong = {
     SHOW.wrong = [];
 
     /* ---------------------------------------------------------- materials */
-    const paper  = new T.MeshStandardMaterial({map:damaskTex(), roughness:.96,
+    const paper  = new T.MeshStandardMaterial({map:cornleyDamaskTex(), roughness:.96,
                                                side:T.DoubleSide});
     const oak    = new T.MeshStandardMaterial({map:TX.deck, color:0x5a3a20, roughness:.82});
     const oakD   = new T.MeshStandardMaterial({map:TX.deck, color:0x33200f, roughness:.86});
@@ -312,7 +314,8 @@ SHOWS.goeswrong = {
       showCyl(0.03,0.03,1.0,6, M.steel, 0.5, 0.5, fz + 1.9, g);
       showCyl(0.22,0.3,0.36,10, M.steel, 0.5, 0.18, fz + 2.4, g);
       if(typeof makeFire === 'function')
-        SHOW.fire = makeFire({x:RM.x0 + 0.62, y:0.28, z:fz, w:1.5, h:1.4, n:16});
+        makeFire({count:160, embers:80, y:0.28,
+                  x0:RM.x0 + 0.4, x1:RM.x0 + 0.85, z0:fz - 0.75, z1:fz + 0.75});
 
       // the portrait over the fire, and a shield further along
       showBox(0.12, 2.3, 1.7, oak,   0.34, 5.5, fz, g);
