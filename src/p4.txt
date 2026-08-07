@@ -95,53 +95,124 @@ function makeBeam(len, rad){
   return m;
 }
 
-/* ---- fixture bodies ---- */
-function bodyProfile(){ // ellipsoidal / leko
-  const g=new T.Group();
-  const barrel=new T.Mesh(new T.CylinderGeometry(.13,.16,.62,12),M.fixture);
-  barrel.rotation.x=Math.PI/2; barrel.position.z=.3; g.add(barrel);
-  const bell=new T.Mesh(new T.SphereGeometry(.21,12,10),M.fixture); bell.position.z=-.08; g.add(bell);
-  const lens=new T.Mesh(new T.CircleGeometry(.125,14),new T.MeshBasicMaterial({color:0x111111}));
-  lens.position.z=.615; g.add(lens);
-  const yoke=new T.Mesh(new T.TorusGeometry(.24,.022,5,14,Math.PI),M.steel);
-  yoke.rotation.y=Math.PI/2; g.add(yoke);
-  g.userData.lens=lens; return g;
+/* ---- fixture bodies ------------------------------------------------------
+   Real lanterns, not primitives.  Every geometry is built ONCE via fixG and
+   shared across all instances — three stages hang ~25 channels each, so
+   per-body geometry would be ~400 duplicate buffers.  Contracts the rest of
+   p4 reads and must survive any edit here: userData.lens on every body,
+   userData.base/yoke/head on movers.  New for the detach system (PR 5):
+   userData.clamp is the C-clamp that meets the pipe.  Budget: each body
+   stays well under 700 triangles — these are drawn ~75x in a headset.     */
+const FIXG = {};
+function fixG(k, make){ return FIXG[k] || (FIXG[k] = make()); }
+function lensMat(c){ return new T.MeshBasicMaterial({color:c}); }
+/* yoke + C-clamp + safety loop, shared by every hanging body */
+function addHang(g, yokeR){
+  const yoke = new T.Mesh(fixG('yoke'+yokeR, ()=>new T.TorusGeometry(yokeR,.022,5,14,Math.PI)), M.steel);
+  yoke.rotation.y = Math.PI/2; g.add(yoke);
+  const stem = new T.Mesh(fixG('stem', ()=>new T.CylinderGeometry(.02,.02,.14,6)), M.steel);
+  stem.position.y = yokeR + .06; g.add(stem);
+  const jaw = new T.Mesh(fixG('jaw', ()=>new T.BoxGeometry(.1,.13,.08)), M.steel);
+  jaw.position.y = yokeR + .18; g.add(jaw);
+  const bolt = new T.Mesh(fixG('bolt', ()=>new T.CylinderGeometry(.013,.013,.14,6)), M.steel);
+  bolt.rotation.x = Math.PI/2; bolt.position.set(0, yokeR + .11, .06); g.add(bolt);
+  const safety = new T.Mesh(fixG('safety', ()=>new T.TorusGeometry(.085,.008,4,10)), M.steel);
+  safety.position.set(.06, yokeR + .1, 0); safety.rotation.x = .6; g.add(safety);
+  g.userData.clamp = jaw;
+  return g;
+}
+/* a square gel-frame at the nose: four thin bars, not a plate (a plate
+   would occlude the lens) */
+function addFrame(g, half, z){
+  [half, -half].forEach(y=>{
+    const b = new T.Mesh(fixG('frH'+half, ()=>new T.BoxGeometry(half*2+.04, .028, .02)), M.steel);
+    b.position.set(0, y, z); g.add(b);
+  });
+  [half, -half].forEach(x=>{
+    const b = new T.Mesh(fixG('frV'+half, ()=>new T.BoxGeometry(.028, half*2+.04, .02)), M.steel);
+    b.position.set(x, 0, z); g.add(b);
+  });
+}
+function bodyProfile(){ // ellipsoidal — the Source Four silhouette
+  const g = new T.Group();
+  const barrel = new T.Mesh(fixG('proBarrel', ()=>new T.CylinderGeometry(.105,.15,.56,14)), M.fixture);
+  barrel.rotation.x = Math.PI/2; barrel.position.z = .33; g.add(barrel);
+  const gate = new T.Mesh(fixG('proGate', ()=>new T.CylinderGeometry(.155,.155,.18,14)), M.fixture);
+  gate.rotation.x = Math.PI/2; gate.position.z = .05; g.add(gate);
+  const lamp = new T.Mesh(fixG('proLamp', ()=>new T.BoxGeometry(.19,.24,.22)), M.fixture);
+  lamp.position.set(0,.01,-.14); g.add(lamp);
+  // four shutter handles at the gate
+  [[0,.2,0],[0,-.2,0],[.2,0,Math.PI/2],[-.2,0,Math.PI/2]].forEach(s=>{
+    const b = new T.Mesh(fixG('proShutter', ()=>new T.BoxGeometry(.1,.045,.012)), M.steel);
+    b.position.set(s[0], s[1], .05); b.rotation.z = s[2]; g.add(b);
+  });
+  addFrame(g, .15, .585);
+  const lens = new T.Mesh(fixG('proLens', ()=>new T.CircleGeometry(.115,14)), lensMat(0x111111));
+  lens.position.z = .615; g.add(lens);
+  addHang(g, .24);
+  g.userData.lens = lens; return g;
 }
 function bodyFresnel(){
-  const g=new T.Group();
-  const b=new T.Mesh(new T.BoxGeometry(.34,.34,.36),M.fixture); b.position.z=.1; g.add(b);
-  const barn=new T.Mesh(new T.BoxGeometry(.42,.42,.06),M.fixture); barn.position.z=.3; g.add(barn);
-  const lens=new T.Mesh(new T.CircleGeometry(.16,14),new T.MeshBasicMaterial({color:0x161616}));
-  lens.position.z=.33; g.add(lens);
-  const yoke=new T.Mesh(new T.TorusGeometry(.26,.022,5,14,Math.PI),M.steel); yoke.rotation.y=Math.PI/2; g.add(yoke);
-  g.userData.lens=lens; return g;
+  const g = new T.Group();
+  const b = new T.Mesh(fixG('freBody', ()=>new T.BoxGeometry(.32,.34,.4)), M.fixture);
+  b.position.z = .08; g.add(b);
+  // four barn-door leaves, folded half-open
+  [[0,.24,-.5,0],[0,-.24,.5,0],[.23,0,0,-.5],[-.23,0,0,.5]].forEach(s=>{
+    const leaf = new T.Mesh(fixG('freBarn', ()=>new T.BoxGeometry(.34,.22,.01)), M.fixture);
+    leaf.position.set(s[0], s[1], .32);
+    leaf.rotation.x = s[2]; leaf.rotation.y = s[3]; g.add(leaf);
+  });
+  addFrame(g, .17, .285);
+  const lens = new T.Mesh(fixG('freLens', ()=>new T.CircleGeometry(.155,14)), lensMat(0x161616));
+  lens.position.z = .305; g.add(lens);
+  addHang(g, .26);
+  g.userData.lens = lens; return g;
 }
 function bodyPar(){
-  const g=new T.Group();
-  const b=new T.Mesh(new T.CylinderGeometry(.16,.16,.42,14),M.fixture);
-  b.rotation.x=Math.PI/2; b.position.z=.16; g.add(b);
-  const lens=new T.Mesh(new T.CircleGeometry(.155,14),new T.MeshBasicMaterial({color:0x141414}));
-  lens.position.z=.375; g.add(lens);
-  g.userData.lens=lens; return g;
+  const g = new T.Group();
+  const can = new T.Mesh(fixG('parCan', ()=>new T.CylinderGeometry(.16,.155,.44,14)), M.fixture);
+  can.rotation.x = Math.PI/2; can.position.z = .16; g.add(can);
+  const rim = new T.Mesh(fixG('parRim', ()=>new T.CylinderGeometry(.17,.17,.05,14)), M.fixture);
+  rim.rotation.x = Math.PI/2; rim.position.z = .38; g.add(rim);
+  addFrame(g, .16, .41);
+  const lens = new T.Mesh(fixG('parLens', ()=>new T.CircleGeometry(.15,14)), lensMat(0x141414));
+  lens.position.z = .406; g.add(lens);
+  addHang(g, .23);
+  g.userData.lens = lens; return g;
 }
 function bodyCyc(){
-  const g=new T.Group();
-  const b=new T.Mesh(new T.BoxGeometry(.55,.3,.42),M.fixture); g.add(b);
-  const lens=new T.Mesh(new T.PlaneGeometry(.5,.24),new T.MeshBasicMaterial({color:0x141414}));
-  lens.position.z=.215; g.add(lens);
-  g.userData.lens=lens; return g;
+  const g = new T.Group();
+  const trough = new T.Mesh(fixG('cycTrough', ()=>new T.BoxGeometry(.55,.3,.4)), M.fixture);
+  g.add(trough);
+  const hood = new T.Mesh(fixG('cycHood', ()=>new T.BoxGeometry(.55,.05,.46)), M.fixture);
+  hood.position.set(0,.19,.05); hood.rotation.x = -.35; g.add(hood);
+  const lens = new T.Mesh(fixG('cycLens', ()=>new T.PlaneGeometry(.5,.24)), lensMat(0x141414));
+  lens.position.z = .205; g.add(lens);
+  addHang(g, .28);
+  g.userData.lens = lens; return g;
 }
 function bodyMover(){
-  const g=new T.Group();
-  const base=new T.Mesh(new T.BoxGeometry(.42,.26,.42),M.fixture); base.position.y=.16; g.add(g.userData.base=base);
-  const yoke=new T.Group(); yoke.position.y=-.05; g.add(yoke);
-  const arm1=new T.Mesh(new T.BoxGeometry(.07,.42,.14),M.fixture); arm1.position.set(-.24,-.2,0); yoke.add(arm1);
-  const arm2=arm1.clone(); arm2.position.x=.24; yoke.add(arm2);
-  const head=new T.Group(); head.position.y=-.4; yoke.add(head);
-  const hb=new T.Mesh(new T.CylinderGeometry(.17,.19,.46,14),M.fixture); hb.rotation.x=Math.PI/2; head.add(hb);
-  const lens=new T.Mesh(new T.CircleGeometry(.15,16),new T.MeshBasicMaterial({color:0x101010}));
-  lens.position.z=.235; head.add(lens);
-  g.userData.yoke=yoke; g.userData.head=head; g.userData.lens=lens; return g;
+  const g = new T.Group();
+  const base = new T.Mesh(fixG('movBase', ()=>new T.BoxGeometry(.44,.24,.44)), M.fixture);
+  base.position.y = .16; g.add(g.userData.base = base);
+  // carry handles on the base
+  [-.26,.26].forEach(x=>{
+    const h = new T.Mesh(fixG('movHandle', ()=>new T.TorusGeometry(.07,.014,4,8,Math.PI)), M.steel);
+    h.position.set(x,.2,0); h.rotation.z = x<0?Math.PI/2:-Math.PI/2; g.add(h);
+  });
+  const yoke = new T.Group(); yoke.position.y = -.05; g.add(yoke);
+  const arm1 = new T.Mesh(fixG('movArm', ()=>new T.BoxGeometry(.08,.44,.16)), M.fixture);
+  arm1.position.set(-.26,-.2,0); yoke.add(arm1);
+  const arm2 = arm1.clone(); arm2.position.x = .26; yoke.add(arm2);
+  const head = new T.Group(); head.position.y = -.4; yoke.add(head);
+  const hb = new T.Mesh(fixG('movHead', ()=>new T.CylinderGeometry(.18,.21,.5,14)), M.fixture);
+  hb.rotation.x = Math.PI/2; head.add(hb);
+  const hr = new T.Mesh(fixG('movRing', ()=>new T.CylinderGeometry(.215,.215,.06,14)), M.fixture);
+  hr.rotation.x = Math.PI/2; hr.position.z = .22; head.add(hr);
+  const lens = new T.Mesh(fixG('movLens', ()=>new T.CircleGeometry(.15,16)), lensMat(0x101010));
+  lens.position.z = .253; head.add(lens);
+  g.userData.clamp = base;   // movers clamp through their base
+  g.userData.yoke = yoke; g.userData.head = head; g.userData.lens = lens; return g;
 }
 
 /* ---- the patch ---- */
@@ -356,6 +427,15 @@ function buildRig(){
   addFixture({name:'FOLLOWSPOT', type:'profile', follow:true,
     pos:V(0, balcFloorY(D.houseBack-3.4)+1.8, D.houseBack-3.4), aim:V(0, 1.6, 0),
     angle:8, beamLen:32, beamRad:2.0, power:4.2, color:new T.Color(0xfff4e2)});
+  // 26-27 PAR WARMERS — a pair of cans on the 2nd electric, the warm punch
+  // every house rig hangs.  Appended after the followspot so the channel
+  // numbers of everything above stay exactly what the plots and cues expect.
+  [-2.0, 2.0].forEach((x,i)=>{
+    addFixture({name:'PAR '+(i+1), type:'par', ls:8, lsX:x, lsOffset:-.45,
+      pos:V(x, 8.0, FLY[8].z), aim:V(x*0.5, .8, FLY[8].z-4.0),
+      angle:24, beamLen:14, beamRad:3.2, power:2.6,
+      color:new T.Color(0xffd9a0)});
+  });
 }
 buildRig();
 /* the focus each lamp was rigged with — a cue may re-aim one, but this is
