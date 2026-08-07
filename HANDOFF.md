@@ -19,7 +19,7 @@ theater_game/
   VR-SETUP.md        getting it onto a Quest 3 — routes, controls, first-run list
   README.md          the GitHub front page
   src/               the 24 parts it is built from
-  tests/             twelve suites — npm install, then node real.js
+  tests/             fourteen suites — npm install, then node real.js
   tools/             probes that draw pictures — see tools/README.md
 ```
 
@@ -77,7 +77,7 @@ wiring, and cannot catch anything about how it looks or how fast it runs.
 ```sh
 cd tests
 npm install       # once — jsdom and three@0.128
-npm test          # all thirteen suites, exits non-zero if any fail
+npm test          # all fourteen suites, exits non-zero if any fail
 node real.js      # boots the whole file, reports "fatal": null
 node full14.js    # the building
 node rooms.js     # portal culling
@@ -89,11 +89,12 @@ node sets.js      # scene changes, the collapsing set, the revolves
 node arc.js       # the Arc Centre
 node stages.js    # three stages, one board
 node legs.js      # goods, including the half legs
-node warehouse.js # the warehouse sheds, their doors, the carts
-node vr.js        # WebXR: rig, sticks, desks, ropes, GO
+node warehouse.js # the warehouse sheds, their doors, the carts, the slots
+node orders.js    # the supply screens, the pallet, rulings C/D/E
+node vr.js        # WebXR: rig, sticks, desks, ropes, GO, bodies
 ```
 
-All thirteen are at `--- failures: 0 ---`. Keep them there. Every suite exits
+All fourteen are at `--- failures: 0 ---`. Keep them there. Every suite exits
 non-zero on failure (including a failure to boot), and `npm test` runs the lot.
 
 `full14.js` wraps `window.MouseEvent` at the top of its harness: jsdom has no
@@ -514,32 +515,55 @@ keep it: give each branch a DIFFERENT insertion anchor in shared test
 files (top / middle / end of the stages.js probe) — four branches,
 zero textual conflicts.
 
-**NEXT SESSION: PR 5 — THE DETACH SYSTEM (spec §3), then PR 6 —
-ORDERING (spec §6).** Step zero: confirm #32–#35 merged (merge them if
-not — each is double-reviewed, green, negative-checked). Then write
-the PR 5/6 plan the way the 1–4 plan was written — explore first,
-bite-sized tasks; the existing plan file covers 1–4 ONLY. PR 5 in one
-breath: every hanging position becomes a POINT (per-stage, p2k-parked,
-owns the channel and the plot — RULING A, "the circuit lives in the
-pipe") and every lantern/speaker box becomes a BODY (venue-level;
-hung / held / slotted / loose) grabbable via `vrSqueeze` (extend the
-arbitration the cart joined — never fork it); an empty point's channel
-is DEAD via ONE gate at the single choke point, p4's
-`const lvl = clamp(f.level,0,1) * master` (~p4:418) — NEVER via
-`visible` (§5). Bodies snap to empty points, cart slots and rack
-slots. The hooks are already on `main` once #33/#35 merge:
-`userData.clamp` on every body, `SHEDS[*].slots`, `CARTS[*].slots`,
-and the cart's `kind:'cart'` `VR.held` record as the
-discriminated-union precedent. PR 6 after: the order screen per shed
-(VR console pattern — five precedents in p9), ~30s pallet delivery,
-RULINGS C (free), D (one pending order, self-clearing pallet), E
-(24-loose-body venue cap). The deferred **VR BUILD FEATURE** (owner's
-words, "adding a vr build feature" — still no spec; ask before coding)
-comes after this feature set is done.
+**Done 2026-08-07, the detach/ordering session (PRs #37, #38 — #37
+merged same day; #38 open as of this writing, check it merged before
+building on it).** The rig/warehouse feature set is COMPLETE. Plan:
+`docs/superpowers/plans/2026-08-07-detach-ordering-prs5-6.md`. Two
+owner asks folded into #37: the speaker arrays went to SIX boxes per
+side (was 3, J-array toe-in) and every box detaches individually.
+
+- **[#37](https://github.com/Jackscreations21/gms-theater-game/pull/37)
+  — the detach system** (spec §3+§4). Every FIXTURES record IS a
+  hanging POINT; `BODIES` is the venue-level registry
+  (hung / held / slotted / loose). An empty point's channel is DEAD via
+  ONE gate — p4 `updateRig`, `lvl = f.body ? clamp(...)*master : 0`
+  (the choke point is **p4:554** now, NOT ~418 — #34 moved it) — never
+  via `visible`. RULING A holds: any lantern body answers whatever the
+  point is patched as; speaker points take only PA boxes. The grab
+  extends `vrSqueeze` nearest-wins (bodies 0.35 vs ropes 0.32 vs levers
+  0.12 vs carts 0.30); held bodies follow the grip KINEMATICALLY, never
+  re-parented to the hand, so `vrOnEnd`/`vrClearRopes` dropping the
+  record cold is safe — `updateBodies` (p4) demotes and settles them.
+  Release snaps: empty live point (0.4) → slot (0.4) → floor.
+  **`vrClearRopes` now opens only ROPE holds** — a carried body or cart
+  survives the stage walk (the Main→Studio carry the spec wanted).
+- **[#38](https://github.com/Jackscreations21/gms-theater-game/pull/38)
+  — ordering** (spec §6). A wall supply screen per shed (own canvas,
+  own pixel hit list, `p.obj.userData.orderScreen` branch in
+  `vrSelect`; screens build in `vrBuildOrderScreens`, called from
+  `vrBuildDesks`). ORDER → ~30s (GAME time in `updateSheds`, never
+  setTimeout — M7) → loaded pallet at the apron, six slots in the snap
+  scan. RULING C free; D one pending per shed, pallet self-clears ~5s
+  after emptied; E 24 loose bodies per venue → STOCK FULL. New 14th
+  suite `tests/orders.js`.
+
+Every new assertion (13 in #37, 6 in #38) verified to FAIL against the
+pre-change build. #38 was built ON #37's branch and opened only after
+#37 merged (rebase → retest → open): the clean way to ship dependent
+PRs without stacking.
+
+**NEXT SESSION: A NEW FEATURE — the owner will say which.** The
+standing candidate is the deferred **VR BUILD FEATURE** (owner's words,
+2026-08-06: "adding a vr build feature" — still NO SPEC; the nearest
+standing ask is carrying scenery by hand, and the detach system is now
+the obvious precedent to extend, but DO NOT GUESS: ask what it means
+before writing any code, then spec → plan → PRs the way this feature
+set was done). Step zero regardless: confirm #38 merged (merge-check
+before building on it), `npm test` 14/14 on `main`.
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
-the owner on `…/the-house.html?v=7`, bump the number, Quest Browser
+the owner on `…/the-house.html?v=8`, bump the number, Quest Browser
 caches hard):
 
 **Read the wrist meter and WRITE THE NUMBERS HERE.** The worst cases,
@@ -591,7 +615,14 @@ the cart feel right — grab height 1.02m, 1:1 chase, yaw easing at 2.5
 rad/s — and is pushing it through a doorway comfortable or claustro;
 do the sheds read as real rooms (lit enough? the keep lights are
 deliberate dusk, not work light); does the speaker-bar travel read
-believably from the stalls. Known cosmetic, unfixed:
+believably from the stalls. New from the detach/ordering round
+(#37/#38): does the grab feel right at 0.35m and the snap at 0.4m
+(both are one constant in p9); does carrying a lantern through the
+roller door and hanging it read believably; is the wall order screen
+legible at arm's length (560×520 canvas, 22px rows); does the pallet
+read as a delivery; mind the frame rate holding a body under a full
+rig, and do the 6-box arrays read as real PA from the stalls. Known
+cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).
 
