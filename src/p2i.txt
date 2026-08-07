@@ -14,19 +14,21 @@
    anything carrying a light, because hiding a light would change the look of a
    room you can still see into.
    ========================================================================== */
-const ROOM_ORDER = ['stage','house','lobby'];
+const ROOM_ORDER = ['shed','stage','house','lobby'];
 const ROOMS = {
-  /* Three rooms now.  Nothing lives behind the stage any more, and the
-     loading dock is off the stage-right wing — same z, so it is part of the
-     stage and culls with it.                                              */
-  stage: {label:'the stage',          z0:-Infinity,          z1:1.3},
+  /* Four rooms.  The warehouse shed (p2m) lives behind the stage house wall;
+     the loading dock is off the stage-right wing — same z as the stage, so
+     it is part of the stage and culls with it.                            */
+  shed:  {label:'the warehouse',      z0:-Infinity,          z1:D.backWall - 0.7},
+  stage: {label:'the stage',          z0:D.backWall - 0.7,   z1:1.3},
   house: {label:'the auditorium',     z0:1.3,                z1:D.houseBack + 0.5},
   lobby: {label:'the front of house', z0:D.houseBack + 0.5,  z1:Infinity}
 };
 /* what you can see from where.  A room always sees itself and its neighbours,
    so walking through a door never pops anything in. */
 const ROOM_SEES = {
-  stage: ['stage','house'],
+  shed:  ['shed','stage'],
+  stage: ['stage','house','shed'],
   house: ['house','stage','lobby'],
   lobby: ['lobby','house']
 };
@@ -110,6 +112,16 @@ function roomsOver(box){
 const ROOM_FORCE = new Map();          // things I want kept together by hand
 function roomForce(obj, room){ if(obj) ROOM_FORCE.set(obj, room); }
 
+/* The warehouse (p2m) built before this part ran, so ROOM_FORCE did not
+   exist yet for it to register with (a const is dead until its own line
+   executes, however early the function around it hoists).  Pin it here:
+   the shed group to its own room, and the door's [E] station to the stage,
+   where you stand when you use it.                                        */
+if(typeof SHEDS !== 'undefined' && SHEDS.palace){
+  roomForce(SHEDS.palace.group, 'shed');
+  roomForce(SHEDS.palace.ctl, 'stage');
+}
+
 function buildRooms(){
   if(ROOMS_BUILT) return;
   world.updateMatrixWorld(true);
@@ -179,6 +191,11 @@ function houseCurtainShut(){
 function portalShut(a, b){
   if((a === 'house' && b === 'lobby') || (a === 'lobby' && b === 'house'))
     return doorsShut();
+  /* the warehouse roller door is the only way between the stage and the
+     shed: down and staying down, there is nothing of the other to see */
+  if((a === 'stage' && b === 'shed') || (a === 'shed' && b === 'stage'))
+    return !!(typeof SHEDS !== 'undefined' && SHEDS.palace &&
+              SHEDS.palace.door.open < 0.01 && SHEDS.palace.door.target < 0.01);
   if(a === 'stage' && b === 'house'){
     const c = houseCurtainShut();
     if(!c) return false;

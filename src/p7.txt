@@ -104,11 +104,29 @@ function groundAt(x,z,fromY){
    ungated they would follow you across town and stop you walking through
    thin air at the Arc.                                                     */
 function inPalace(){ return VENUE !== 'arc'; }
-/* the upstage wall is solid now — there is nothing behind the stage */
+/* the upstage wall — solid except for the warehouse doorway at x = 0 (p2m),
+   and there the roller door has to be most of the way up to pass */
 function backWallBlocks(x, z, oz){
   if(!inPalace()) return false;
   const plane = D.backWall - 0.3;
-  return (oz < plane) !== (z < plane);
+  if((oz < plane) === (z < plane)) return false;   // not crossing it
+  const S = (typeof SHEDS !== 'undefined') ? SHEDS.palace : null;
+  if(S && Math.abs(x - S.door.x) < S.door.halfW - 0.2)
+    return S.door.open < 0.72;
+  return true;
+}
+/* the shed's own shell: its side walls, and the thickness of the theatre's
+   back wall anywhere but the doorway (position checks, not crossings, so a
+   step can never tunnel in from the side) */
+function shedWallBlocks(nx, nz){
+  if(!inPalace()) return false;
+  const S = (typeof SHEDS !== 'undefined') ? SHEDS.palace : null;
+  if(!S) return false;
+  if(nz <= S.z1)                                    // inside the shed proper
+    return nx < S.x0 + 0.4 || nx > S.x1 - 0.4;
+  if(nz < D.backWall - 0.05)                        // inside the wall's thickness
+    return Math.abs(nx - S.door.x) > S.door.halfW - 0.2;
+  return false;
 }
 /* the stage-right wall: the dock opening is the only way out to the get-in */
 /* Every wall of the dock bay knows where its own openings are, so one rule
@@ -352,10 +370,14 @@ function updatePlayer(dt){
     } else {
       // the world runs from the street beyond the dock across to the stage-left wall
       if(nx < DOCK.x0 - 16 || nx > XL + 0.6) return;
-      if(nz < D.backWall + 0.6 || nz > FOH.z1 - 0.9) return;
+      // upstage it now ends at the warehouse shed's rear wall, not the stage's
+      const zFloor = (typeof SHEDS !== 'undefined' && SHEDS.palace)
+        ? SHEDS.palace.z0 + 0.5 : D.backWall + 0.6;
+      if(nz < zFloor || nz > FOH.z1 - 0.9) return;
       if(Player.pos.y < 5 && throughWall(nx, nz, Player.pos.z)) return;
       if(doorBlocks(nx, nz, Player.pos.z, Player.pos.y)) return;
       if(backWallBlocks(nx, nz, Player.pos.z)) return;
+      if(shedWallBlocks(nx, nz)) return;
       if(dockWallBlocks(nx, nz, Player.pos.x)) return;
       if(dockDoorBlocks(nx, nz, Player.pos.x, Player.pos.y)) return;
     }
@@ -473,6 +495,9 @@ function describe(obj){
     if(o.userData && o.userData.travRope)
       return {kind:'traveler', ls:o.userData.travRope,
         label:'TRAVELER — front run opens · back run closes'};
+    /* the warehouse cart (p2m): VR-only, a squeeze on the handle takes it */
+    if(o.userData && o.userData.cartInfo)
+      return {kind:'cart', label:'WAREHOUSE CART — squeeze the handle and push'};
     const dr = DOORS.find(x=>x.group===o);
     if(dr) return {kind:'door', dw:dr.dw,
       label:'HOUSE DOOR   [E] '+(dr.target>0.5?'close':'open')};
@@ -1392,6 +1417,10 @@ function stationOf(o){
   return null;
 }
 function useStation(st){
+  if(st.id === 'shedP'){
+    shedDoorToggle('palace');
+    return;
+  }
   if(st.id.indexOf('dock') === 0){
     toggleDockDoor(DOCKDOORS[(+st.id.slice(4) || 1) - 1]);
     return;
@@ -1425,6 +1454,7 @@ function tick(now){
   updateFly(dt);
   updateDoors(dt);
   updateDockDoors(dt);
+  if(typeof updateSheds === 'function') updateSheds(dt);
   updateMachines(dt);
   updateStorm(dt);            // rain, lightning and firelight
   updateCrew(dt);             // the stagehands, if they have been called
