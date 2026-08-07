@@ -270,7 +270,7 @@ follow cancel, audio stop, smoke gets a per-stage root exactly the way
       shows loaded at the Arc rig their foggers 420m away (probe-verified);
       `removeShowSmoke()` strips units game-wide; `hazeNow()` reads global
       haze into whichever rig you're under.
-- [ ] 7. **H2–H5 + M5** — the crew, as one cluster: jobs mix plan-time and
+- [x] 7. **H2–H5 + M5** — the crew, as one cluster: jobs mix plan-time and
       execution-time stages; `CREW.savedLook` restores onto whichever board
       is live; the loads cache is keyed by show only (LOAD OUT can strike
       the other stage's set); the stock plan is stage coordinates executed

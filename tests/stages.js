@@ -729,6 +729,70 @@ const probe = `
            c.x.toFixed(0)+', '+c.z.toFixed(0)+')';
   });
 
+  P('a walk-out mid get-in stands the crew down on their own stage', ()=>{
+    /* earlier tests abandon get-ins with crewStop(true), which by design
+       leaves the work light up and the snapshot parked — start clean */
+    CREW.savedLook = null; CREW.savedHouse = null;
+    for(const v of [15, 3]){ goToView(v); HOUSE.work = 0; }
+    showStrike();
+    crewLoadShow('goeswrong');            // work light on, snapshot parked
+    for(let i=0;i<40;i++) updateCrew(0.05);
+    if(!CREW.running) throw new Error('the crew never set off');
+    if(!CREW.savedLook) throw new Error('no work-light snapshot was taken');
+    const mainDock = ARC.doorMap.mainDock.target;
+    const arcFly = STAGES.arcMain.fly.map(l=>+l.target.toFixed(2)).join(',');
+    goToView(15);                          // walk out mid-job
+    if(CREW.running) throw new Error('the crew followed the board to the arc');
+    if(CREW.savedLook) throw new Error('the work-light snapshot is still parked');
+    if(HOUSE.work > 0.05) throw new Error('the arc is in the palace crew work light');
+    if(STAGES.palace.house.work > 0.05)
+      throw new Error('the palace parked stuck in work light at '+STAGES.palace.house.work);
+    for(let i=0;i<200;i++) updateCrew(0.05);
+    if(ARC.doorMap.mainDock.target !== mainDock)
+      throw new Error('the crew opened the arc dock');
+    if(FLY.map(l=>+l.target.toFixed(2)).join(',') !== arcFly)
+      throw new Error('the crew are flying the arc rail');
+    goToView(3); showStrike();
+    return 'stood down at the boundary, show look home, arc untouched';
+  });
+
+  P('the load list is the stage\\'s own, not the show\\'s last', ()=>{
+    goToView(3); showLoad('goeswrong');
+    const palaceParts = crewLoads()[0].parts[0];
+    goToView(15); showLoad('goeswrong');
+    const arcParts = crewLoads()[0].parts[0];
+    if(arcParts === palaceParts) throw new Error('two stages share one load list');
+    goToView(3);
+    const again = crewLoads()[0].parts[0];
+    if(again === arcParts) throw new Error('the palace crew were handed the arc list');
+    let p = again, inPalace = false;
+    while(p){ if(p === SHOW.group) inPalace = true; p = p.parent; }
+    if(!inPalace) throw new Error('the palace list points at pieces not on its stage');
+    for(const v of [15, 3]){ goToView(v); showStrike(); }
+    return 'each stage builds its own list';
+  });
+
+  P('a stock load-in at the arc builds the set at the arc', ()=>{
+    goToView(15);
+    showStrike();
+    crewStart('in');                       // no show loaded: the stock plan
+    for(let i=0;i<6000;i++){ updateCrew(0.05); updateArc(0.05); if(!CREW.running) break; }
+    if(CREW.running) throw new Error('the stock get-in never finished');
+    if(!SET.length) throw new Error('nothing was built');
+    scene.updateMatrixWorld(true);
+    const st = STAGES.arcMain;
+    for(const p of SET){
+      const w = p.group.getWorldPosition(new THREE.Vector3());
+      if(Math.abs(w.x - (ARC.X + st.cx)) > 16)
+        throw new Error(p.label+' was built at world x='+w.x.toFixed(0));
+    }
+    crewStart('out');
+    for(let i=0;i<6000;i++){ updateCrew(0.05); updateArc(0.05); if(!CREW.running) break; }
+    if(SET.length) throw new Error(SET.length+' pieces left after the load out');
+    goToView(3);
+    return 'built at the arc, struck at the arc';
+  });
+
   P('the fly rail and the chip say which board you are at', ()=>{
     const seen = [];
     for(const [view, key] of [[3,'palace'],[15,'arcMain'],[19,'arcStudio']]){

@@ -95,6 +95,20 @@ function stageSwitch(key, quiet){
   }
   /* same rule for the one-shot cue follow: cancelled, not carried */
   if(typeof cancelFollow === 'function') cancelFollow();
+  /* the crew work the stage they were called on.  Rather than let a live job
+     queue mix this stage's plan with the next stage's rail and doors (H2) or
+     restore the work-light snapshot onto the wrong board when they finish
+     (H3), they stand down at the boundary — and the show look comes home
+     first, while their own stage is still the live one. */
+  if(typeof CREW !== 'undefined' && CREW.running && typeof crewStop === 'function'){
+    const was = CREW.running;
+    crewStop(true);
+    CREW.onDone = null;
+    if(CREW.savedLook && typeof crewWorkLight === 'function') crewWorkLight(false);
+    if(typeof crewLog === 'function')
+      crewLog('stood down — the board patched away mid ' +
+              (was === 'in' ? 'load in' : 'load out'));
+  }
   stageCapture(STAGES[STAGE]);
   STAGE = key;
   stageRestore(STAGES[key]);

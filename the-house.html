@@ -5924,7 +5924,10 @@ function crewHandleable(o){
   return !light;
 }
 function crewLoads(){
-  const key = (typeof SHOW !== 'undefined' && SHOW.key) ? SHOW.key : '(stock)';
+  /* keyed by stage AND show: the same production can stand on two stages at
+     once, and a load list cached next door strikes the wrong building's set */
+  const key = ((typeof STAGE !== 'undefined') ? STAGE : 'palace') + ':' +
+              ((typeof SHOW !== 'undefined' && SHOW.key) ? SHOW.key : '(stock)');
   if(CREW.loads && CREW.loadsFor === key) return CREW.loads;
   const loads = [];
   if(typeof SHOW !== 'undefined' && SHOW.group && SHOW.group.children.length){
@@ -6148,7 +6151,11 @@ function crewAssign(h){
 /* where on the deck a load belongs */
 function crewSpot(load){
   const fr = crewFrame();
-  if(load.scenic) return {x:load.scenic[1], z:load.scenic[2]};
+  /* the stock plan is written in stage coordinates; the hands walk in world.
+     The frame's bounds are centred on the stage it serves, so the middle of
+     them IS the stage origin — at the Palace that comes out unchanged. */
+  if(load.scenic) return {x:(fr.xMin + fr.xMax)/2 + load.scenic[1],
+                          z:fr.zOff + load.scenic[2]};
   const b = worldBox2(load.parts);
   if(b) return {x:clamp(b.x, fr.xMin, fr.xMax), z:clamp(b.z, fr.zMin, fr.zMax)};
   return {x:rnd(fr.xMin*0.5, fr.xMax*0.5),
@@ -6168,8 +6175,10 @@ function worldBox2(parts){
 function crewDeliver(load){
   if(load.scenic){
     // if it was struck by hand since, put it back rather than leaving a ghost
-    if(!load.placed || SET.indexOf(load.placed) === -1)
-      load.placed = placeScenic(load.scenic[0], load.scenic[1], load.scenic[2]);
+    if(!load.placed || SET.indexOf(load.placed) === -1){
+      const spot = crewSpot(load);            // world, not the plan's stage coords
+      load.placed = placeScenic(load.scenic[0], spot.x, spot.z);
+    }
     crewLog('set '+load.scenic[0]);
   } else {
     load.parts.forEach(o=>setPieceVisible(o, false));
@@ -10572,6 +10581,20 @@ function stageSwitch(key, quiet){
   }
   /* same rule for the one-shot cue follow: cancelled, not carried */
   if(typeof cancelFollow === 'function') cancelFollow();
+  /* the crew work the stage they were called on.  Rather than let a live job
+     queue mix this stage's plan with the next stage's rail and doors (H2) or
+     restore the work-light snapshot onto the wrong board when they finish
+     (H3), they stand down at the boundary — and the show look comes home
+     first, while their own stage is still the live one. */
+  if(typeof CREW !== 'undefined' && CREW.running && typeof crewStop === 'function'){
+    const was = CREW.running;
+    crewStop(true);
+    CREW.onDone = null;
+    if(CREW.savedLook && typeof crewWorkLight === 'function') crewWorkLight(false);
+    if(typeof crewLog === 'function')
+      crewLog('stood down — the board patched away mid ' +
+              (was === 'in' ? 'load in' : 'load out'));
+  }
   stageCapture(STAGES[STAGE]);
   STAGE = key;
   stageRestore(STAGES[key]);
