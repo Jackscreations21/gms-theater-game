@@ -105,6 +105,23 @@ const probe = `
     if(!ls.locked) throw new Error('the flyman did not lock it off on arrival');
     return 'locked -> flown -> locked at '+ls.pos.toFixed(1)+'m';
   });
+  P('a hand grabbing mid-move takes over from the flyman — no relock under it', ()=>{
+    /* start a board move on a locked line, then grab it before it arrives:
+       the pending relock must hand over to the hand, at the desktop rail
+       exactly as at the VR one */
+    const ls = FLY[3];
+    const b = document.querySelectorAll('#lsTable tbody tr')[3].querySelectorAll('button');
+    ls.target = ls.pos = OUT_TRIM; ls.group.position.y = ls.pos;
+    if(!ls.locked) b[3].click();
+    b[0].click();                                   // IN — relock now pending
+    for(let k=0;k<10;k++) updateFly(0.05);          // in flight, not arrived
+    if(!grabLineset(ls)) throw new Error('the grab was refused mid-move');
+    for(let i=0;i<400;i++) updateFly(0.05);         // arrive under the hand
+    if(ls.locked) throw new Error('the line locked itself under a live hand');
+    releaseLineset();
+    b[3].click();                                   // leave it locked off, as found
+    return 'arrived under the hand, still free until the flyman is asked';
+  });
   P('STOP halts travel on one click', ()=>{
     const ls = FLY[6]; flyOut(ls);
     for(let k=0;k<10;k++) updateFly(0.05);

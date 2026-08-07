@@ -173,6 +173,9 @@ let flyDrag = null, flyDragged = false;
 function grabLineset(ls){
   if(!ls) return false;
   if(ls.locked){ toast('Lineset '+ls.id+' is locked off — unlock it on the rail first'); return false; }
+  /* a board move in flight hands over, exactly as at the VR rail (p9):
+     nothing relocks itself under a live hand */
+  ls.relock = false;
   flyDrag = ls; flyDragged = false;
   toast('Hauling lineset '+ls.id+' — pull to fly, let go to set it');
   return true;

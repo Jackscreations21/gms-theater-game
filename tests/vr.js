@@ -117,15 +117,18 @@ const probe = `
   P('the rail wakes up locked, and every lever stands upright', ()=>{
     /* a counterweight rail at rest is locked off, so the ropes a session
        builds must all carry their levers IN — straight up */
-    if(!VR.ropes.length) throw new Error('the session built no ropes');
-    for(const r of VR.ropes){
+    /* only the counterweight lines carry a lever — a rope without one
+       (a hand line, if the stage has one) has no lock to stand upright */
+    const rail = VR.ropes.filter(r=>r.lever);
+    if(!rail.length) throw new Error('the session built no ropes');
+    for(const r of rail){
       if(!r.ls.locked)
         throw new Error('lineset ' + r.ls.id + ' started with its lock off');
       if(r.lever.rotation.z !== 0)
         throw new Error('lineset ' + r.ls.id + ' lever leans at ' +
                         r.lever.rotation.z.toFixed(2) + ' with the lock in');
     }
-    return VR.ropes.length + ' levers in — the rail is locked off at rest';
+    return rail.length + ' levers in — the rail is locked off at rest';
   });
 
   P('the quality tier comes on for the headset', ()=>{

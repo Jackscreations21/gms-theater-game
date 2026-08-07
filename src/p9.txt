@@ -1004,11 +1004,10 @@ function vrSqueeze(hand, down){
   if(best){
     const ls = best.ls;
     /* a hand on the rope arrests a runaway — you have the weight now — but
-       it does NOT touch the lock: only the lever does that.  A board move in
-       flight hands over too: nothing relocks itself under a live hand. */
+       it does NOT touch the lock: only the lever does that */
     ls.runaway = false;
     ls.flyVel = 0;
-    ls.relock = false;
+    ls.relock = false;   // a board move in flight hands over: nothing relocks under a live hand
     ls.target = ls.pos;
     if(typeof syncFlyRow === 'function') syncFlyRow(ls);
     /* the whipped section slides to meet the hand, whichever run, whatever
