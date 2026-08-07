@@ -546,6 +546,39 @@ const probe = `
     return VR.ropes.length + ' ropes at the pin rail';
   });
 
+  /* put a hand on a rope's grab section and squeeze */
+  const takeHold = (r, hand)=>{
+    scene.updateMatrixWorld(true);
+    const at = r.mesh.getWorldPosition(new THREE.Vector3());
+    const c = VR.controllers[hand];
+    VR.rig.updateMatrixWorld(true);
+    c.position.copy(VR.rig.worldToLocal(at.clone()));
+    c.updateMatrixWorld(true);
+    vrSqueeze(hand, true);
+    return c;
+  };
+  /* push the little red lever with a hand, the way the GO button is pushed */
+  const throwLever = (r)=>{
+    scene.updateMatrixWorld(true);
+    const at = r.knob.getWorldPosition(new THREE.Vector3());
+    const grip = VR.grips[1];
+    VR.rig.updateMatrixWorld(true);
+    grip.position.copy(VR.rig.worldToLocal(at.clone()));
+    grip.updateMatrixWorld(true);
+    r.cool = 0;
+    vrUpdateRopes(0.016);
+    grip.position.set(0, 0, 0); grip.updateMatrixWorld(true);
+  };
+  /* the deck limit a runaway line stops at — guarded the way p3 guards it */
+  const floorOf = ls => (typeof minTrimOf === 'function') ? minTrimOf(ls) : 0.6;
+  const anElectric = ()=>{
+    /* an electric hangs nothing below its pipe, so the deck limit is the
+       bottom of the load as well as the bottom of the batten */
+    const r = VR.ropes.find(x=>x.ls.goodsKey === 'electric');
+    if(!r) throw new Error('nothing electric on the rail to haul');
+    return r;
+  };
+
   P('hauling a rope down brings the lineset in', ()=>{
     goToView(3);
     vrBuildRopes();
@@ -553,27 +586,182 @@ const probe = `
     flyOut(ls); run(700, 0.05);
     const out = ls.pos;
     // put a hand on it and pull down half a metre
-    scene.updateMatrixWorld(true);
-    const at = r.mesh.getWorldPosition(new THREE.Vector3());
-    const c = VR.controllers[0];
-    VR.rig.updateMatrixWorld(true);
-    c.position.copy(VR.rig.worldToLocal(at.clone()));
-    c.updateMatrixWorld(true);
-    vrSqueeze(0, true);
+    const c = takeHold(r, 0);
     if(!VR.held) throw new Error('the hand did not take hold of it');
+    if(ls.locked) throw new Error('taking hold did not take the lock off');
     c.position.y -= 0.5;
     c.updateMatrixWorld(true);
-    vrUpdateHold();
+    vrUpdateHold(0.05);
     if(ls.pos >= out - 1)
       throw new Error('pulling down moved it to ' + ls.pos.toFixed(2) + ' from ' + out.toFixed(2));
     const pulled = out - ls.pos;
+    /* throw the little red lever before you let go, or it runs away */
+    throwLever(r);
+    if(!ls.locked) throw new Error('the lever did not lock it off');
     vrSqueeze(0, false);
     if(VR.held) throw new Error('it would not let go');
+    if(ls.runaway) throw new Error('it ran away with the lock thrown');
     const stopped = ls.pos;
     run(200, 0.05);
     if(Math.abs(ls.pos - stopped) > 0.2)
       throw new Error('it kept moving after the hand let go');
-    return 'half a metre of rope brought it in ' + pulled.toFixed(1) + 'm, and it stayed there';
+    vrRopeLock(r, false);                       // leave the rail as we found it
+    return 'half a metre of rope brought it in ' + pulled.toFixed(1) +
+           'm, and the lever held it there';
+  });
+
+  P('let go of a rope with the lever off and the line runs to the deck', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = anElectric(), ls = r.ls;
+    flyOut(ls); run(700, 0.05);
+    const out = ls.pos;
+    takeHold(r, 0);
+    if(!VR.held) throw new Error('the hand did not take hold of it');
+    vrUpdateHold(0.05);                         // one still frame: let go at rest
+    vrSqueeze(0, false);
+    if(!ls.runaway) throw new Error('letting go with the lock off held it anyway');
+    let after1s = null;
+    for(let i=0;i<400;i++){
+      updateFly(0.05);
+      if(i === 19) after1s = ls.pos;
+      if(ls.pos - (ls.h||0) < -0.1)
+        throw new Error('it went through the deck: batten ' + ls.pos.toFixed(2) +
+                        ', bottom ' + (ls.pos - (ls.h||0)).toFixed(2));
+    }
+    if(after1s >= out - 0.5)
+      throw new Error('a second later it had only moved to ' + after1s.toFixed(2));
+    const lo = floorOf(ls);
+    if(Math.abs(ls.pos - lo) > 1e-6)
+      throw new Error('it came to rest at ' + ls.pos.toFixed(3) + ', the floor is ' + lo);
+    if(ls.runaway) throw new Error('it is still marked as running away');
+    if(ls.flyVel !== 0) throw new Error('it still has ' + ls.flyVel.toFixed(2) + ' m/s on it');
+    return 'let go at ' + out.toFixed(1) + 'm, on the deck at ' + ls.pos.toFixed(2) +
+           'm and stopped';
+  });
+
+  P('the hand itself cannot drag a line through the deck', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = VR.ropes[0], ls = r.ls;
+    flyOut(ls); run(700, 0.05);
+    const c = takeHold(r, 0);
+    if(!VR.held) throw new Error('the hand did not take hold of it');
+    c.position.y -= 8;                 // an impossible single pull — 44m of line
+    c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    const lo = floorOf(ls);
+    if(ls.pos < lo - 1e-6)
+      throw new Error('the hand dragged it to ' + ls.pos.toFixed(2) +
+                      'm, under the floor of ' + lo.toFixed(2) + 'm');
+    throwLever(r);                     // hold it, let go, and leave the rail tidy
+    vrSqueeze(0, false);
+    vrRopeLock(r, false);
+    flyOut(ls); run(700, 0.05);
+    return 'a full-arm yank stopped at the floor of ' + lo.toFixed(2) + 'm';
+  });
+
+  P('let go while hauling out and it slows, stops and comes back down', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = anElectric(), ls = r.ls;
+    flyTo(ls, 12, true); run(4, 0.05);
+    const c = takeHold(r, 0);
+    if(!VR.held) throw new Error('the hand did not take hold of it');
+    /* push the rope UP over ten frames — the batten flies OUT under the hand */
+    for(let i=0;i<10;i++){
+      c.position.y += 0.018;
+      c.updateMatrixWorld(true);
+      vrUpdateHold(0.05);
+    }
+    const release = ls.pos;
+    if(release <= 12.05)
+      throw new Error('pushing up did not fly it out: ' + release.toFixed(2));
+    if(VR.held.vel <= 0.5)
+      throw new Error('the haul read ' + VR.held.vel.toFixed(2) + ' m/s going out');
+    vrSqueeze(0, false);
+    if(!ls.runaway) throw new Error('letting go did not start it');
+    let peak = ls.pos;
+    for(let i=0;i<20;i++){ updateFly(0.05); peak = Math.max(peak, ls.pos); }
+    if(peak <= release + 0.1)
+      throw new Error('it stopped dead instead of running on: peak ' + peak.toFixed(2) +
+                      ' against a release at ' + release.toFixed(2));
+    for(let i=0;i<80;i++) updateFly(0.05);
+    if(ls.pos >= peak - 1)
+      throw new Error('it never turned round: ' + ls.pos.toFixed(2) +
+                      ' against a peak of ' + peak.toFixed(2));
+    for(let i=0;i<400;i++) updateFly(0.05);
+    const lo = floorOf(ls);
+    if(Math.abs(ls.pos - lo) > 1e-6)
+      throw new Error('it finished at ' + ls.pos.toFixed(3) + ', the floor is ' + lo);
+    return 'let go at ' + release.toFixed(2) + 'm going out, ran on to ' +
+           peak.toFixed(2) + 'm, then down to the deck';
+  });
+
+  P('the red lever stops a runaway, and taking hold takes the lock off again', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = anElectric(), ls = r.ls;
+    flyTo(ls, 14, true); run(4, 0.05);
+    takeHold(r, 0);
+    vrUpdateHold(0.05);
+    vrSqueeze(0, false);
+    if(!ls.runaway) throw new Error('it is not running away to begin with');
+    for(let i=0;i<10;i++) updateFly(0.05);
+    const caught = ls.pos;
+    if(caught >= 14) throw new Error('it never started falling');
+    throwLever(r);
+    if(!ls.locked) throw new Error('the lever did not throw the lock on');
+    if(ls.runaway) throw new Error('it is still running away with the lock on');
+    updateFly(0.05); updateFly(0.05);
+    if(Math.abs(ls.pos - caught) > 0.02)
+      throw new Error('it fell another ' + (caught - ls.pos).toFixed(3) + 'm after the lock');
+    /* and taking hold of the rope again takes the lock straight off */
+    takeHold(r, 0);
+    if(!VR.held) throw new Error('the hand did not take hold of it');
+    if(ls.locked) throw new Error('grabbing it left the lock on');
+    vrRopeLock(r, true);                        // tie it off before we walk away
+    vrSqueeze(0, false);
+    if(ls.runaway) throw new Error('a locked line ran away on release');
+    vrRopeLock(r, false);
+    return 'caught at ' + caught.toFixed(2) + 'm and held within two frames';
+  });
+
+  P('every rope is a loop — a head block at the grid, a floor block on the deck', ()=>{
+    const look = (label)=>{
+      vrBuildRopes();
+      scene.updateMatrixWorld(true);
+      if(!VR.ropes.length) throw new Error(label + ' has no ropes at all');
+      for(const r of VR.ropes){
+        const h = r.head.getWorldPosition(new THREE.Vector3());
+        const f = r.foot.getWorldPosition(new THREE.Vector3());
+        const g = r.mesh.getWorldPosition(new THREE.Vector3());
+        const k = r.knob.getWorldPosition(new THREE.Vector3());
+        const at = label + ': lineset ' + r.ls.id + ' ';
+        if(Math.abs(h.y - D.gridY) > 1.5)
+          throw new Error(at + 'head block at y=' + h.y.toFixed(2) + ', the grid is ' + D.gridY);
+        if(f.y < 0.05 || f.y > 0.6)
+          throw new Error(at + 'floor block at y=' + f.y.toFixed(2));
+        if(Math.abs(h.x - f.x) > 1e-6 || Math.abs(h.z - f.z) > 1e-6)
+          throw new Error(at + 'blocks are not one over the other');
+        if(r.runs.length !== 2)
+          throw new Error(at + 'has ' + r.runs.length + ' runs of rope, wanted 2');
+        const sp = Math.abs(r.runs[0].position.x - r.runs[1].position.x);
+        if(Math.abs(sp - 0.12) > 1e-6)
+          throw new Error(at + 'runs are ' + sp.toFixed(3) + 'm apart');
+        if(Math.abs(g.y - 1.55) > 0.6)
+          throw new Error(at + 'grab section is at y=' + g.y.toFixed(2));
+        if(k.y < 0.8 || k.y > 1.6)
+          throw new Error(at + 'lever is at y=' + k.y.toFixed(2) + ' — out of reach');
+      }
+      return VR.ropes.length;
+    };
+    goToView(3);
+    const pal = look('the palace');
+    goToView(15);
+    const arc = look('the arc');
+    goToView(3);
+    return pal + ' loops at the palace, ' + arc + ' at the arc';
   });
 
   P('reaching for the GO button on the desk fires a cue', ()=>{
