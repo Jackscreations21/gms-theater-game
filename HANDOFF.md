@@ -356,42 +356,73 @@ Suites 12/12 before and after; the eight new/reworked assertions all fail
 against the pre-change build (negative-checked). What only the headset
 can answer is folded into the step-zero list below.
 
-**NEXT SESSION: IMPROVE THE FRAME RATE.**
+**Done 2026-08-07, frame-rate round one (PRs #21, #22, #23 — open as
+of this writing, check they merged before building on them).** The
+measure-first order above is honoured — #22 IS the readout — and two
+of the cheap wins went in alongside it, each its own PR, each gated on
+the session so the desktop is untouched:
 
-The owner has named the goal. The only datum on record is "a little
-low" (2026-08-06, no number), and that was measured BEFORE the pin rail
-(#16) and the locking rail (#19) added their meshes. Order of work:
+- **[#21](https://github.com/Jackscreations21/gms-theater-game/pull/21)
+  — the session is paced at 72Hz, not 90.** On sessionstart the game
+  asks `updateTargetFrameRate` for the lowest supported rate at or
+  above 72 and remembers it in `VR.targetHz`. 13.9ms of frame budget
+  instead of 11.1 before any other knob turns; a held 72 beats a 90
+  that drops. Browsers without the API are left alone. If the meter
+  later shows miles of headroom, this is one line to retune.
+- **[#22](https://github.com/Jackscreations21/gms-theater-game/pull/22)
+  — the frame meter, and foveation on a feedback loop.** `vrPerf`
+  (called from `vrUpdate`): a 120-frame ring buffer, avg/worst in
+  `VR.perf`, evaluated twice a second, drawn on a small tag riding the
+  LEFT WRIST — glance at your watch; green under budget, red over,
+  peak and foveation level alongside. Over budget the controller steps
+  foveation 0.4 → 1.0 by 0.15 (foveation is the one knob WebXR turns
+  mid-session; framebuffer scale is start-only); with headroom it
+  relaxes by 0.05 back to the 0.4 base, never below. Climb fast, relax
+  slow. `vrOnEnd` resets the window.
+- **[#23](https://github.com/Jackscreations21/gms-theater-game/pull/23)
+  — four real spotlights in VR, not eight.** `VR.lightCap = 4` set by
+  `vrQualityOn`, honoured by the p4 hand-out loop (`_active` was
+  already sorted by workload, so the four that matter keep theirs).
+  178 `MeshStandardMaterial` uses pay per-pixel for every live light,
+  twice per frame in a headset — this halves that term. Beams, gobo
+  pools and lens glows still draw for all 25 channels, so the rig
+  still reads fully lit.
 
-**Step zero:** confirm the locking-rail PR
-([#19](https://github.com/Jackscreations21/gms-theater-game/pull/19))
-merged — merge it if not, it is reviewed, green and negative-checked —
-and bump the cache-buster to `…/the-house.html?v=5`.
+Seven new vr.js probes across the three PRs, every one verified to
+fail against the pre-change build. The three branches were also merged
+together locally (any order — they are written independent) and the
+combined build passed 12/12; the per-PR builds did too.
 
-**First, measure — do not tune blind.** Nothing in the game reports
-frame rate today. Build a small VR-visible readout first (average and
-worst frame time over the last second or two, drawn onto something that
-can be read in-headset — the console canvas or a wrist/HUD sprite; a
-frame-time ring buffer in `vrUpdate` is jsdom-testable even if the
-display is not). Then have the owner stand in the two worst cases and
-read out numbers: centre stage under a full rig in haze, and at the
-locking rail with a full hang (~11 unbatched meshes per line after #19:
-loop, blocks, runs, housing, lever, knob, plate).
+**NEXT SESSION: the headset run, meter in hand.**
 
-**Then the knobs, in order of likely win** (retest after each — one
-change per PR):
+**Step zero:** confirm #21/#22/#23 merged (merge them if not — each is
+reviewed, green and negative-checked, and they merge clean in any
+order), then put the owner in the headset on `…/the-house.html?v=6`
+(bump the number: the Quest Browser caches hard).
 
-1. `VR.beamCap` lower still (10 today). Additive beams in haze are
-   overdraw, the thing a mobile tile GPU hates most.
-2. Batch the rail: merge the locking rail's static per-line meshes
+**Read the wrist meter and WRITE THE NUMBERS HERE.** The two worst
+cases are unchanged: centre stage under a full rig in haze, and at the
+locking rail with a full hang (~11 unbatched meshes per line: loop,
+blocks, runs, housing, lever, knob, plate). Also note what the
+foveation level settles at in each spot — if it is pinned at 1.0 the
+controller is out of headroom and the next knob is needed; if it sits
+at 0.4 we are done tuning.
+
+**The remaining knobs, if the meter still reads over budget** (retest
+after each — one change per PR):
+
+1. Batch the rail: merge the locking rail's static per-line meshes
    (housings, plates via a shared atlas, runs, blocks) into shared
    geometry / instanced draws in `vrBuildRopes`. Only the lever, knob
    and grab section actually move per line; everything else can be one
    draw. Built correctness-first on purpose — this is the deliberate
    follow-up.
+2. `VR.beamCap` lower still (10 today). Additive beams in haze are
+   overdraw, the thing a mobile tile GPU hates most.
 3. Framebuffer scale below 0.85 (`setFramebufferScaleFactor`, wiring
    section of p9 — MUST be set before any session exists).
-4. Thin `LIGHT_POOL` (p4); cut `SMOKE.n`; RENDER *low* preselected
-   before entering.
+4. Cut `SMOKE.n`; RENDER *low* preselected before entering. (Thinning
+   `LIGHT_POOL` is done — that was #23.)
 
 **While the headset is on anyway**, collect the deferred verdicts and
 write them here: does the locking rail read as the photograph, does
@@ -401,8 +432,13 @@ as a load getting loose; do desk buttons land where the cursor sits
 (the `v: 1 - h.uv.y` flip has a regression test but has never met real
 hardware); console text size, smooth turn (`VR.turn` 2.1 rad/s — offer
 snap if it turns stomachs), walk 3.2, fly 8, the 0.35s double-tap
-window, label legibility. Known cosmetic, unfixed: rope runs pass
-through the fly-gallery floor at y=8 (real rails have rope slots).
+window, label legibility. New from this round: is the wrist tag
+readable and sized like a watch; does 72Hz feel smoother than the
+dropping 90 did; is the four-light stage look visibly poorer in a busy
+cue (if so, `VR.lightCap` is one number); is the foveated edge
+noticeable when the controller leans on it. Known cosmetic, unfixed:
+rope runs pass through the fly-gallery floor at y=8 (real rails have
+rope slots).
 
 Ground rules unchanged: suites green before and after; what jsdom can
 test gets a regression test, what only a headset can verify gets written
