@@ -287,7 +287,7 @@ follow cancel, audio stop, smoke gets a per-stage root exactly the way
 - [x] 12. **M10** — rail-motor audio loop leaks for a lineset mid-travel at
       swap (and collides with the other stage's same-id lineset); the rain
       rumble has the same shape.
-- [ ] 13. **M11** — VR: `vrClearRopes` must null `VR.held`, or a held rope
+- [x] 13. **M11** — VR: `vrClearRopes` must null `VR.held`, or a held rope
       keeps flying the parked lineset and repositioning a disposed mesh.
 - [ ] 14. **M4** — the scenic palette and FOCUS raycast only the Palace's
       `deck` (and from the Arc can hit it *invisibly* through the walls —

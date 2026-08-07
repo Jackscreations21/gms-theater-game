@@ -586,6 +586,10 @@ function vrBuildRopes(){
   }
 }
 function vrClearRopes(){
+  /* let go of whatever is in hand FIRST — a held rope references a rope and
+     a lineset that are about to be disposed and parked, and vrUpdateHold
+     would keep hauling them every frame until the squeeze was released */
+  VR.held = null;
   if(VR.ropeRoot && VR.ropeRoot.parent) VR.ropeRoot.parent.remove(VR.ropeRoot);
   if(VR.ropeRoot && typeof disposeTree === 'function') disposeTree(VR.ropeRoot);
   VR.ropeRoot = null;

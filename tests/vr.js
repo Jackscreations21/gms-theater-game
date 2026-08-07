@@ -338,6 +338,30 @@ const probe = `
     return 'palace ' + palaceRopes + ' ropes, arc rebuilt on arrival';
   });
 
+  P('a rope held through the walk is let go, not carried', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = VR.ropes[0], ls = r.ls;
+    const before = ls.pos;
+    scene.updateMatrixWorld(true);
+    const at = r.mesh.getWorldPosition(new THREE.Vector3());
+    const c = VR.controllers[0];
+    VR.rig.updateMatrixWorld(true);
+    c.position.copy(VR.rig.worldToLocal(at.clone()));
+    c.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held) throw new Error('the hand did not take hold of it');
+    goToView(15);                     // stick-walk into the other venue mid-squeeze
+    if(VR.held) throw new Error('the hand is still holding the parked rope');
+    c.position.y -= 0.5; c.updateMatrixWorld(true);
+    vrUpdateHold();                   // must be a no-op with nothing in hand
+    if(Math.abs(ls.pos - before) > 1e-6)
+      throw new Error('the parked lineset moved to ' + ls.pos.toFixed(2));
+    vrSqueeze(0, false);
+    goToView(3);
+    return 'the swap opened the hand';
+  });
+
   console.log('--- vr: getting out ---');
 
   P('leaving the session puts everything back', ()=>{
