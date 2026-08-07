@@ -106,7 +106,8 @@ const probe = `
   });
 
   console.log('--- what it saves ---');
-  const zOf = {stage:-4, house:13, lobby:FOH.z0+5};
+  // shed added by the warehouse PR — its slab runs upstage of the back wall
+  const zOf = {shed:-25, stage:-4, house:13, lobby:FOH.z0+5};
   QUALITY.rooms = false; updateRooms(true);
   const before = submitted();
   P('with culling off, the whole building is submitted', ()=> before);
@@ -139,6 +140,8 @@ const probe = `
   console.log('--- and does not hide anything you can see ---');
   P('you can always see the room next door', ()=>{
     setAllDoors(true); for(const d of DOORS) d.open = 1;
+    // the warehouse door is a portal too (the warehouse PR) — open it as well
+    SHEDS.palace.door.open = 1; SHEDS.palace.door.target = 1;
     for(const room of ROOM_ORDER){
       Player.pos.z = zOf[room]; updateRooms(true);
       for(const other of ROOM_SEES[room])

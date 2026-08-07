@@ -332,7 +332,10 @@ const probe = `
     stick('left', 0, -1);                     // straight at the back wall
     for(let i=0;i<200;i++){ vrUpdate(0.05); updatePlayer(0.05); }
     stick('left', 0, 0);
-    if(Player.pos.z < D.backWall)
+    /* the warehouse PR cut a doorway at x=0: the flyer may now nose right up
+       to the wall plane (D.backWall - 0.3) where its shut roller door stops
+       him, but never through the wall's thickness into the shed */
+    if(Player.pos.z < D.backWall - 0.35)
       throw new Error('flew through the back wall to z=' + Player.pos.z.toFixed(1));
     tapA(); tapA();                           // back on the ground for the rest
     settle();
@@ -1472,6 +1475,46 @@ const probe = `
     if(err) throw err;
     exitVR();
     return 'no errors';
+  });
+
+  console.log('--- the warehouse cart ---');
+  P('a squeeze on the handle pushes the cart, walls stop it', ()=>{
+    if(typeof CARTS === 'undefined' || !CARTS.palace) throw new Error('no cart');
+    enterVR();                        // the last test left the session
+    goToView(3);
+    /* park the rig at the origin, the way aim() does for the trigger tests,
+       so a controller's local position IS its world position */
+    VR.rig.position.set(0,0,0); VR.rig.rotation.set(0,0,0);
+    VR.rig.updateMatrixWorld(true);
+    const cart = CARTS.palace;
+    cart.x = 8.5; cart.z = -27.5; cart.yaw = 0; cartPose(cart);
+    const c = VR.controllers[0];
+    c.quaternion.set(0,0,0,1);
+    c.position.set(cart.x, cart.handleH, cart.z + cart.handleZ);
+    c.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'cart') throw new Error('the handle did not take');
+    const z0 = cart.z;
+    for(let i=0;i<40;i++){
+      c.position.z += 0.05; c.updateMatrixWorld(true);
+      vrUpdateHold(0.05);
+    }
+    if(!(cart.z > z0 + 1.2)) throw new Error('cart stayed at z='+cart.z.toFixed(2));
+    vrSqueeze(0, false);
+    cart.x = SHEDS.palace.x0 + 1.0; cart.z = -25; cart.yaw = 0; cartPose(cart);
+    c.position.set(cart.x, cart.handleH, cart.z + cart.handleZ);
+    c.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    for(let i=0;i<40;i++){
+      c.position.x -= 0.05; c.updateMatrixWorld(true);
+      vrUpdateHold(0.05);
+    }
+    vrSqueeze(0, false);
+    if(cart.x < SHEDS.palace.x0 + 0.3) throw new Error('cart went through the wall to x='+cart.x.toFixed(2));
+    cart.x = 8.5; cart.z = -27.5; cartPose(cart);
+    c.position.set(0, 0, 0); c.updateMatrixWorld(true);
+    exitVR();
+    return 'pushes and stops';
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
