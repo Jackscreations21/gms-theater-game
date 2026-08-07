@@ -6269,14 +6269,23 @@ function crewBusy(){
    the shape of the room, the materials, the colours, the way the light sits.
    ========================================================================== */
 const SHOWS = {};
-const SHOW = {
-  key:null, group:null, effects:[], goods:[], walk:[], cues:0,
-  rain:null, fire:null, gyms:null, gymIn:0,
-  neon:[], neonLevel:0, neonTarget:1, neonLights:[], smoke:[],
-  scenes:[], scene:null, revolve:null, wrong:[],
-  rainSound:false, flicker:null, lightning:0, lightningT:0,
-  stormOn:false, stormT:0, porch:null
-};
+/* THE one definition of SHOW's shape.  The live object below, the parked
+   templates p2k gives the Arc stages, and the strike-reset all build from
+   here — three hand-copies had drifted apart, and keys a show wrote ad hoc
+   (wall, dropKey, …) leaked across stage swaps because Object.assign can
+   overwrite but never remove.  Add new show state HERE, nowhere else. */
+function showBlank(){
+  return {
+    key:null, group:null, effects:[], goods:[], walk:[], cues:0,
+    rain:null, fire:null, gyms:null, gymIn:0, tyre:null,
+    neon:[], neonLevel:0, neonTarget:1, neonLights:[], neonT:0, smoke:[],
+    scenes:[], scene:null, revolve:null, wrong:[],
+    rainSound:false, flicker:null, lightning:0, lightningT:0,
+    stormOn:false, stormT:0, porch:null,
+    curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
+  };
+}
+const SHOW = showBlank();
 /* the lightning sits on the scene, not in a room, so it can never be culled */
 const LIGHTNING = new T.DirectionalLight(0xdfeaff, 0);
 LIGHTNING.position.set(-14, 20, -16);
@@ -6327,7 +6336,20 @@ function showWalk(o){ SHOW.walk.push(o); WALKABLE.push(o); return o; }
    ========================================================================== */
 function setPieceVisible(o, crewHidden){
   if(crewHidden !== undefined) o.userData.crewHidden = crewHidden;
-  o.visible = !o.userData.crewHidden && !o.userData.sceneOff;
+  const on = !o.userData.crewHidden && !o.userData.sceneOff;
+  o.visible = on;
+  /* §5: visible is only a drawing flag — a raycast still hits the piece, so
+     groundAt would stand you mid-air on a gallery the crew have not carried
+     in yet.  Clear the layers so a hidden piece is inert, and take its
+     walkable surfaces out of WALKABLE while it is off (marked, so exactly
+     those come back when it is). */
+  o.traverse(c=>{
+    if(on) c.layers.set(0); else c.layers.disableAll();
+    if(typeof WALKABLE === 'undefined') return;
+    const i = WALKABLE.indexOf(c);
+    if(!on && i >= 0){ WALKABLE.splice(i, 1); c.userData.wasWalkable = true; }
+    if(on && c.userData.wasWalkable && i < 0) WALKABLE.push(c);
+  });
 }
 function sceneAdd(name, label){
   const g = new T.Group();
@@ -6402,14 +6424,11 @@ function showStrike(){
      once.  Striking one of them must not take the other's house curtain out
      of the catalogue, or the far rail is left pointing at nothing.       */
   for(const k of SHOW.goods) if(!goodsInUse(k)){ delete GOODS[k]; delete TRIMS[k]; }
-  SHOW.goods = [];
-  SHOW.effects = [];
-  SHOW.rain = null; SHOW.fire = null; SHOW.flicker = null; SHOW.lightning = 0;
-  SHOW.gyms = null; SHOW.gymIn = 0; SHOW.tyre = null; SHOW.curtainKey = null;
-  SHOW.neon = []; SHOW.neonLights = []; SHOW.neonLevel = 0; SHOW.neonTarget = 1;
-  SHOW.scenes = []; SHOW.scene = null; SHOW.revolve = null; SHOW.wrong = [];
+  /* one wipe from the single template — keys a show wrote ad hoc go with it,
+     instead of surviving into the next production's SHOW */
+  for(const k of Object.keys(SHOW)) delete SHOW[k];
+  Object.assign(SHOW, showBlank());
   if(typeof removeShowSmoke === 'function') removeShowSmoke();
-  SHOW.key = null;
   if(typeof buildGoodsPalette === 'function') buildGoodsPalette();
   if(typeof refreshShowUI === 'function') refreshShowUI();
   if(typeof refreshFlyUI === 'function') refreshFlyUI();
@@ -10589,7 +10608,13 @@ function stageRestore(st){
   CUES.push.apply(CUES, st.cues);             st.cues.length = 0;
   nextCue = st.nextCue;
   if(typeof selCue !== 'undefined') selCue = (st.selCue === undefined) ? -1 : st.selCue;
-  if(st.show)  Object.assign(SHOW, st.show);
+  /* replace, don't merge: Object.assign can overwrite but never remove, so
+     the other stage's ad-hoc keys (wall, dropKey, …) survived onto the live
+     SHOW.  Wipe first, then lay the parked copy down whole. */
+  if(st.show){
+    for(const k of Object.keys(SHOW)) delete SHOW[k];
+    Object.assign(SHOW, st.show);
+  }
   if(st.house) Object.assign(HOUSE, st.house);
   if(st.rig){ RIG.haze = st.rig.haze; RIG.grand = st.rig.grand; RIG.blackout = st.rig.blackout; }
   /* a stage that has never had the board builds its house smoke kit here */
@@ -10799,12 +10824,7 @@ function buildArcStage(key, label, houseKey){
   st.fly      = FLY.splice(0, FLY.length);
   st.cues     = CUES.splice(0, CUES.length);
   st.nextCue  = 0;
-  st.show     = {key:null, group:null, effects:[], goods:[], walk:[], cues:0,
-                 rain:null, fire:null, gyms:null, gymIn:0,
-                 neon:[], neonLevel:0, neonTarget:1, neonLights:[], smoke:[],
-                 scenes:[], scene:null, revolve:null, wrong:[],
-                 rainSound:false, flicker:null, lightning:0, lightningT:0,
-                 stormOn:false, stormT:0, porch:null};
+  st.show     = showBlank();     // the one template — see p5c
   st.house    = {house:0.7, work:0, practical:0, lobby:0.9, backstage:0.7};
   st.rig      = {haze:0.35, grand:1, blackout:false};
 

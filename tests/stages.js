@@ -823,6 +823,22 @@ const probe = `
     return 'each board raycasts its own deck';
   });
 
+  P('SHOW has one shape: blank after a strike, replaced whole at a swap', ()=>{
+    goToView(3);
+    showLoad('lostboys');                // writes wall, dropKey, neonT …
+    showStrike();
+    const blank = Object.keys(showBlank()).sort().join(',');
+    const now = Object.keys(SHOW).sort().join(',');
+    if(now !== blank) throw new Error('after a strike SHOW carries strays: '+now);
+    SHOW.__marker = 1;                   // an ad-hoc key, like a show would write
+    goToView(15);
+    if('__marker' in SHOW) throw new Error('a palace key leaked onto the arc SHOW');
+    goToView(3);
+    if(SHOW.__marker !== 1) throw new Error('the palace SHOW lost its own key');
+    delete SHOW.__marker;
+    return 'blank after strike, wholesale at the swap';
+  });
+
   P('the fly rail and the chip say which board you are at', ()=>{
     const seen = [];
     for(const [view, key] of [[3,'palace'],[15,'arcMain'],[19,'arcStudio']]){
