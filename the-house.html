@@ -10122,9 +10122,16 @@ function arcBuildHouse(o, MAT){
     arcWalk(aisle); H.walk.push(aisle);
     H.rake = {zFirst, zLast, RUN, RISE, aZ0, aZ1, Y0};
 
-    const bases = [], backs = [], arms = [];
+    /* Every seat stands ON ITS TREAD.  The rows were laid out from
+       y = 0.4 + i*RISE — a leftover of an earlier rake that started at the
+       deck — while the treads themselves top out at Y0 + i*RISE + 0.2, a
+       metre lower.  Both houses' seating hung in the air over its own
+       floor.  The tech tables (p9) always used the tread-top formula;
+       the seats now use the same one, with a pedestal underneath so
+       nothing hovers on close inspection. */
+    const bases = [], backs = [], arms = [], plinths = [];
     for(let i=0;i<ROWS;i++){
-      const z = zFirst + i*RUN, y = 0.4 + i*RISE;
+      const z = zFirst + i*RUN, y = Y0 + i*RISE + 0.2;   // the tread top
       const half = HALF0 + i*0.3;
       const n = Math.round(half*2/0.62);
       for(let j=0;j<n;j++){
@@ -10133,11 +10140,13 @@ function arcBuildHouse(o, MAT){
         bases.push({x, y:y + 0.22, z, ry:yaw});
         backs.push({x, y:y + 0.66, z:z + 0.28, ry:yaw});
         arms.push({x, y:y + 0.34, z:z - 0.02, ry:yaw});
+        plinths.push({x, y:y + 0.08, z, ry:yaw});
       }
     }
     aBatch(new T.BoxGeometry(0.54, 0.12, 0.5), seatM, bases, R);
     aBatch(new T.BoxGeometry(0.54, 0.78, 0.12), seatB, backs, R);
     aBatch(new T.BoxGeometry(0.6, 0.08, 0.44), blackS, arms, R);
+    aBatch(new T.BoxGeometry(0.34, 0.16, 0.44), blackS, plinths, R);
     H.seats = bases.length;
 
     const zBackWall = o.zHouse;
