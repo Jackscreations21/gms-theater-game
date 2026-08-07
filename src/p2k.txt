@@ -31,7 +31,7 @@ function makeStage(o){
     rigGroup:o.rigGroup, poolGroup:o.poolGroup, flyGroup:o.flyGroup,
     showParent:o.showParent,
     fixtures:[], fly:[], cues:[], nextCue:0, selCue:-1,
-    show:null, house:null, rig:null, smokeRack:null, live:false
+    show:null, house:null, rig:null, smokeRack:null, fohBar:null, live:false
   };
   STAGES[o.key] = st;
   return st;
@@ -57,6 +57,10 @@ function stageCapture(st){
   st.house    = Object.assign({}, HOUSE);
   st.rig      = {haze:RIG.haze, grand:RIG.grand, blackout:RIG.blackout};
   st.smokeRack = (typeof smokeCapture === 'function') ? smokeCapture() : null;
+  /* the FOH bar is one object per stage, meshes and state together — its
+     meshes are already parked inside this stage's rigGroup, so capturing is
+     just remembering which bar the board was driving */
+  st.fohBar   = FOHBAR;
   st.live     = false;
 }
 function stageRestore(st){
@@ -79,6 +83,7 @@ function stageRestore(st){
   rigGroup  = st.rigGroup;
   poolGroup = st.poolGroup;
   flyGroup  = st.flyGroup;
+  if(st.fohBar) FOHBAR = st.fohBar;
   st.live = true;
 }
 function stageOf(key){ return STAGES[key] || null; }
@@ -256,11 +261,19 @@ function buildArcStage(key, label, houseKey){
   const keepFly = FLY.splice(0, FLY.length);
   const keepCue = CUES.splice(0, CUES.length);
   const keepRig = rigGroup, keepPool = poolGroup, keepFlyG = flyGroup;
+  const keepBar = FOHBAR;
   rigGroup = rg; poolGroup = pg; flyGroup = fg;
 
   for(let i=0;i<14;i++) makeLineset(i);
   buildRig();
   FIXTURES.forEach(f=>{ f.homeAim = f.aim.clone(); });
+  /* the FOH bar's floor clamp is against THIS house's stalls, not the
+     Palace's — the Arc's rake climbs a good metre higher under the bar */
+  {
+    const rk = H.rake;
+    const row = Math.max(0, (H.zPros + FOHBAR.z - rk.zFirst)/rk.RUN);
+    FOHBAR.min = Math.min(FOHBAR.max - 0.5, rk.Y0 + row*rk.RISE + 0.2 + 3.2);
+  }
 
   /* the standing hang every receiving house keeps up: house curtain in,
      borders and legs in, electrics at their trims, the rest out */
@@ -280,6 +293,7 @@ function buildArcStage(key, label, houseKey){
   st.fixtures = FIXTURES.splice(0, FIXTURES.length);
   st.fly      = FLY.splice(0, FLY.length);
   st.cues     = CUES.splice(0, CUES.length);
+  st.fohBar   = FOHBAR;
   st.nextCue  = 0;
   st.show     = showBlank();     // the one template — see p5c
   st.house    = {house:0.7, work:0, practical:0, lobby:0.9, backstage:0.7};
@@ -289,6 +303,7 @@ function buildArcStage(key, label, houseKey){
   FLY.push.apply(FLY, keepFly);
   CUES.push.apply(CUES, keepCue);
   rigGroup = keepRig; poolGroup = keepPool; flyGroup = keepFlyG;
+  FOHBAR = keepBar;
   return st;
 }
 

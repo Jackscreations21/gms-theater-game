@@ -490,6 +490,30 @@ const probe = `
     return 'lineset 5 in at ' + ls.pos.toFixed(1) + 'm from the desk';
   });
 
+  P('the FOH bar comes down from the desk fly page', ()=>{
+    VR.page = 'fly'; vrDrawConsole(true);
+    if(typeof FOHBAR === 'undefined' || !FOHBAR) throw new Error('there is no FOH bar');
+    /* the RAISE/LOWER pair sits under ALL IN / ALL OUT in the right column */
+    const raise = VR.hits.find(h=>h.w === 116 && h.h === 46 && h.y === 86 + 136);
+    const lower = VR.hits.find(h=>h.w === 116 && h.h === 46 && h.y === 86 + 190);
+    if(!raise || !lower) throw new Error('no RAISE/LOWER pair on the fly page');
+    for(let i=0;i<40;i++) updateRig(0.05, 1);
+    const y0 = FOHBAR.y;
+    const foh = FIXTURES.filter(f=>f.name.indexOf('FOH ') === 0);
+    const org0 = foh.map(f=>f._org.y);
+    lower.fn();
+    for(let i=0;i<120;i++) updateRig(0.05, 1);
+    if(!(FOHBAR.y < y0 - 1.0))
+      throw new Error('the desk button left the bar at '+FOHBAR.y.toFixed(2));
+    foh.forEach((f,i)=>{
+      if(!(f._org.y < org0[i] - 1.0)) throw new Error(f.name+' stayed put');
+    });
+    raise.fn();
+    for(let i=0;i<200;i++) updateRig(0.05, 1);
+    if(Math.abs(FOHBAR.y - y0) > 0.05) throw new Error('RAISE did not bring it home');
+    return 'bar '+y0.toFixed(2)+'m, down 1.2 and home again, six lanterns riding';
+  });
+
   P('the desk shows the board of the room it is in', ()=>{
     goToView(15);
     vrDrawConsole(true);

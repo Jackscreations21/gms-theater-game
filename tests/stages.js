@@ -156,6 +156,72 @@ const probe = `
     return 'selection follows you, and the goods land on the rail in front of you';
   });
 
+  console.log('--- the FOH bar hangs in all three houses ---');
+
+  P('a bar spans the FOH lanterns on every stage', ()=>{
+    const out = [];
+    for(const [view, key] of [[3,'palace'],[15,'arcMain'],[19,'arcStudio']]){
+      goToView(view);
+      if(STAGE !== key) throw new Error('expected to be at '+key);
+      if(typeof FOHBAR === 'undefined' || !FOHBAR) throw new Error(key+': no live FOH bar');
+      updateRig(0.05, 1);
+      scene.updateMatrixWorld(true);
+      const foh = FIXTURES.filter(f=>f.name.indexOf('FOH ') === 0);
+      if(foh.length !== 6) throw new Error(key+': '+foh.length+' FOH lanterns');
+      let pipe = null;
+      FOHBAR.group.traverse(o=>{ if(o.isMesh && o.geometry.parameters &&
+        Math.abs((o.geometry.parameters.radiusTop||0) - 0.055) < 1e-6 &&
+        (o.geometry.parameters.height||0) > 10) pipe = o; });
+      if(!pipe) throw new Error(key+': the bar has no pipe mesh');
+      const bp = pipe.getWorldPosition(new THREE.Vector3());
+      const half = pipe.geometry.parameters.height/2;
+      /* the bar hangs over THIS house's stalls in world space — height is
+         the only state, so nothing can leak a building over (the M12 trap) */
+      const ox = (STAGES[key].venue === 'arc') ? ARC.X + STAGES[key].cx : 0;
+      if(Math.abs(bp.x - ox) > 1) throw new Error(key+': the bar is at world x '+bp.x.toFixed(1));
+      for(const f of foh){
+        const p = f.group.getWorldPosition(new THREE.Vector3());
+        if(Math.abs(bp.y - (p.y + 0.45)) > 0.02)
+          throw new Error(key+': '+f.name+' is not hanging 0.45 under the bar ('+
+                          bp.y.toFixed(2)+' vs '+p.y.toFixed(2)+')');
+        if(Math.abs(p.x - bp.x) > half + 0.01)
+          throw new Error(key+': '+f.name+' hangs past the end of the pipe');
+        if(Math.abs(p.z - bp.z) > 0.02)
+          throw new Error(key+': '+f.name+' still floats on the old bow curve at z '+p.z.toFixed(2));
+        if(f._org.distanceTo(p) > 0.5)
+          throw new Error(key+': '+f.name+' emits from somewhere it is not');
+      }
+      if(!(FOHBAR.min > 2 && FOHBAR.min < FOHBAR.max - 0.4))
+        throw new Error(key+': a useless clamp, '+FOHBAR.min.toFixed(2)+' .. '+FOHBAR.max.toFixed(2));
+      out.push(key+' bar y '+bp.y.toFixed(2)+' clamp '+FOHBAR.min.toFixed(2));
+    }
+    goToView(3);
+    return out;
+  });
+
+  P('each stage keeps its own bar where you left it', ()=>{
+    goToView(3);
+    fohBarTo(FOHBAR.min);
+    for(let i=0;i<400;i++) updateRig(0.05, 1);
+    const palaceLow = FOHBAR.y;
+    if(!(palaceLow < FOHBAR.max - 0.8))
+      throw new Error('the palace bar never came down: '+palaceLow.toFixed(2));
+    goToView(15);
+    if(FOHBAR === STAGES.palace.fohBar) throw new Error('two stages share one bar');
+    if(Math.abs(FOHBAR.y - FOHBAR.max) > 0.01)
+      throw new Error('the palace call moved the main house bar to '+FOHBAR.y.toFixed(2));
+    for(let i=0;i<100;i++) updateRig(0.05, 1);
+    if(Math.abs(STAGES.palace.fohBar.y - palaceLow) > 1e-6)
+      throw new Error('the parked palace bar moved on its own');
+    goToView(3);
+    if(Math.abs(FOHBAR.y - palaceLow) > 0.01)
+      throw new Error('the palace bar is at '+FOHBAR.y.toFixed(2)+
+                      ', it was left at '+palaceLow.toFixed(2));
+    fohBarTo(FOHBAR.max);
+    for(let i=0;i<400;i++) updateRig(0.05, 1);
+    return 'palace parked low at '+palaceLow.toFixed(2)+', the arc stayed home, both came back';
+  });
+
   console.log('--- how dark it gets ---');
 
   /* everything reaching a point on the stage: the two beds, every real light

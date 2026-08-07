@@ -518,6 +518,22 @@ function vrPageFly(g, P){
            ()=>{ FLY.forEach(flyIn); vrDrawConsole(true); });
   vrBtnBox(g, P.x + P.w - 120, P.y + 54, 116, 46, 'ALL OUT',
            ()=>{ FLY.forEach(flyOut); vrDrawConsole(true); });
+  /* the FOH bar, on this board like everything else over this stage —
+     the same idiom as the desktop row: one press is one step of travel */
+  if(FOHBAR){
+    const bx = P.x + P.w - 120;
+    g.fillStyle = '#8f9aa7';
+    g.font = '600 15px Helvetica, Arial, sans-serif';
+    g.textBaseline = 'middle';
+    g.fillText('FOH BAR', bx, P.y + 124);
+    vrBtnBox(g, bx, P.y + 136, 116, 46, 'RAISE',
+             ()=>{ fohBarStep(1); vrDrawConsole(true); });
+    vrBtnBox(g, bx, P.y + 190, 116, 46, 'LOWER',
+             ()=>{ fohBarStep(-1); vrDrawConsole(true); });
+    g.fillStyle = '#8f9aa7';
+    g.font = '600 17px Helvetica, Arial, sans-serif';
+    g.fillText(FOHBAR.y.toFixed(1) + 'm', bx, P.y + 260);
+  }
 }
 /* --------------------------------------------------------------- SHOWS */
 function vrPageShows(g, P){
