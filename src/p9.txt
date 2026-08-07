@@ -139,6 +139,7 @@ function vrOnEnd(){
   if(VR.camHome) VR.camHome.add(camera); else scene.add(camera);
   vrQualityOff();
   VR.held = null;
+  vrLabel(null);
   const app = $('#app'); if(app) app.classList.remove('inVR');
 }
 
@@ -161,12 +162,14 @@ function vrBuildControllers(){
     VR.rig.add(c);
     VR.controllers.push(c);
 
-    if(i === 1){                                   // the right hand points
-      const g = new T.BufferGeometry().setFromPoints(
-        [new T.Vector3(0,0,0), new T.Vector3(0,0,-4)]);
-      const line = new T.Line(g, rayMat);
-      line.name = 'vr:ray';
-      c.add(line);
+    /* both hands point: the right one runs the desks, and either trigger
+       is the desktop E key on whatever the ray lands on in the room */
+    const g = new T.BufferGeometry().setFromPoints(
+      [new T.Vector3(0,0,0), new T.Vector3(0,0,-4)]);
+    const line = new T.Line(g, rayMat);
+    line.name = 'vr:ray' + i;
+    c.add(line);
+    if(i === 1){
       VR.ray = line;
       const dot = new T.Mesh(new T.SphereGeometry(0.014, 8, 6),
         new T.MeshBasicMaterial({color:0xffd08a}));
@@ -622,19 +625,97 @@ function vrPointAt(){
   }
   return {u:h.uv.x, v:1 - h.uv.y};
 }
+/* point a hand's ray into the ROOM — doors, linesets, fixtures, scenic,
+   stations: the same curated pick list the desktop crosshair uses */
+function vrCastWorld(hand){
+  const c = VR.controllers[hand];
+  if(!c) return null;
+  c.updateMatrixWorld(true);
+  _m.identity().extractRotation(c.matrixWorld);
+  _rayO.setFromMatrixPosition(c.matrixWorld);
+  _rayD.set(0, 0, -1).applyMatrix4(_m).normalize();
+  _vrRay.set(_rayO, _rayD);
+  _vrRay.near = 0; _vrRay.far = 22;            // the desktop reach
+  const hit = (typeof pickAll === 'function') ? pickAll(_vrRay) : null;
+  if(!hit) return null;
+  const info = (typeof describe === 'function') ? describe(hit.object) : null;
+  if(!info) return null;
+  return {hit, info};
+}
 function vrSelect(hand, down){
-  if(hand !== 1 || !down) return;
-  const p = vrPointAt();
-  if(!p) return;
-  const px = p.u * VRC.W, py = p.v * VRC.H;
-  for(let i = VR.hits.length - 1; i >= 0; i--){
-    const h = VR.hits[i];
-    if(px >= h.x && px <= h.x + h.w && py >= h.y && py <= h.y + h.h){
-      h.fn(px, py);
-      if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+  if(!down) return;
+  /* the desks keep priority for the pointing hand: on a desk, the trigger
+     presses the console and never reaches through it into the room */
+  if(hand === 1){
+    const p = vrPointAt();
+    if(p){
+      const px = p.u * VRC.W, py = p.v * VRC.H;
+      for(let i = VR.hits.length - 1; i >= 0; i--){
+        const h = VR.hits[i];
+        if(px >= h.x && px <= h.x + h.w && py >= h.y && py <= h.y + h.h){
+          h.fn(px, py);
+          if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+          return;
+        }
+      }
       return;
     }
   }
+  /* off the desk, either trigger is the desktop E key */
+  const w = vrCastWorld(hand);
+  if(!w) return;
+  useInfo(w.info);
+  if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+}
+
+/* ---- the floating label: what a trigger pull would do, drawn at the ray ---- */
+function vrLabel(text, at, dist){
+  if(!text){
+    if(VR.labelSpr) VR.labelSpr.visible = false;
+    VR.labelTxt = null;
+    return;
+  }
+  if(!VR.labelSpr){
+    const c = cvs(1024, 96);
+    VR.labelCvs = c;
+    VR.labelCtx = c.getContext('2d');
+    VR.labelTex = tex(c, 1, 1);
+    const m = new T.SpriteMaterial({map:VR.labelTex, transparent:true, depthTest:false});
+    VR.labelSpr = new T.Sprite(m);
+    VR.labelSpr.renderOrder = 999;
+    scene.add(VR.labelSpr);
+  }
+  if(text !== VR.labelTxt){
+    VR.labelTxt = text;
+    const g = VR.labelCtx;
+    g.clearRect(0, 0, 1024, 96);
+    g.fillStyle = 'rgba(10,12,16,0.82)';
+    g.fillRect(0, 0, 1024, 96);
+    g.font = '600 40px Helvetica, Arial, sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#ffd08a';
+    g.fillText(text.slice(0, 48), 512, 48);
+    VR.labelTex.needsUpdate = true;
+  }
+  /* constant angular size: scale with distance so it reads across the room */
+  const h = clamp(0.045 * Math.max(1.2, dist || 2), 0.06, 0.45);
+  VR.labelSpr.scale.set(h * 1024/96, h, 1);
+  VR.labelSpr.position.copy(at);
+  VR.labelSpr.position.y += h * 1.1;
+  VR.labelSpr.visible = true;
+}
+/* each frame: if the pointing hand is not on a desk, hover the room */
+function vrHoverWorld(){
+  const w = vrCastWorld(1);
+  if(!w){
+    vrLabel(null);
+    return;
+  }
+  if(VR.cursor){
+    VR.cursor.visible = true;
+    VR.cursor.position.copy(VR.rig.worldToLocal(w.hit.point.clone()));
+  }
+  vrLabel(w.info.label.replace(/\s*\[E\]\s*/, ' — '), w.hit.point, w.hit.distance);
 }
 function vrSqueeze(hand, down){
   const c = VR.controllers[hand];
@@ -698,7 +779,8 @@ function vrUpdate(dt){
   if(!VR || !VR.active) return;      // may be called before this file has run
   vrReadSticks();
   Player.yaw -= VR.axes.rx * VR.turn * dt;      // smooth turn, as asked for
-  vrPointAt();
+  if(vrPointAt()) vrLabel(null);                // on a desk, the desk is the label
+  else vrHoverWorld();
   vrUpdateHold();
   vrUpdateButtons(dt);
   vrCapBeams();
