@@ -9,6 +9,8 @@ one of these drew it.
     node goes-wrong.js     the Haversham study, before and after it falls down
     node arc-foyer.js      the Arc foyer, from just inside the glass
     node arc-studio.js     the Studio seating, from the stage
+    node warehouse.js      both warehouse sheds — the Palace's from its
+                           doorway, the Arc's from the main house rear door
 
 Each is ~40 lines of probe on top of the same jsdom harness the tests use.
 Copy one and change the eye position to look at something else.

@@ -143,14 +143,25 @@ const WX = D.houseW/2;                        // inner face of the side walls
   const wm = M.ivoryD;
   box(1.0, D.coveY+2, D.houseBack+2, wm, -WX-0.5, (D.coveY+2)/2, D.houseBack/2);
   box(1.0, D.coveY+2, D.houseBack+2, wm,  WX+0.5, (D.coveY+2)/2, D.houseBack/2);
-  /* The upstage wall of the stage house.  Solid, and wide enough to close
-     off both wings — there is nothing behind it any more, so a hole in it is
-     a hole out into nothing.                                              */
+  /* The upstage wall of the stage house.  Wide enough to close off both
+     wings, in three pieces now: the warehouse shed (p2m) stands behind it,
+     and a 3.2 x 3.6 doorway at x = 0 leads out to it.                      */
   {
-    const bw = new T.Mesh(new T.BoxGeometry(XL - XR + 2.4, 34, 0.7), M.brick);
-    bw.position.set((XL + XR)/2, 17, D.backWall - 0.35);
-    bw.castShadow = bw.receiveShadow = true;
-    world.add(bw); STATIC.push(bw);
+    // left of the doorway: from the stage-right edge (-34.2) to x = -1.6
+    const bwL = new T.Mesh(new T.BoxGeometry(32.6, 34, 0.7), M.brick);
+    bwL.position.set(-17.9, 17, D.backWall - 0.35);
+    bwL.castShadow = bwL.receiveShadow = true;
+    world.add(bwL); STATIC.push(bwL);
+    // right of it: from x = 1.6 to the stage-left edge (23.2)
+    const bwR = new T.Mesh(new T.BoxGeometry(21.6, 34, 0.7), M.brick);
+    bwR.position.set(12.4, 17, D.backWall - 0.35);
+    bwR.castShadow = bwR.receiveShadow = true;
+    world.add(bwR); STATIC.push(bwR);
+    // and the header over the opening, from y = 3.6 to the top
+    const bwH = new T.Mesh(new T.BoxGeometry(3.2, 30.4, 0.7), M.brick);
+    bwH.position.set(0, 18.8, D.backWall - 0.35);
+    bwH.castShadow = bwH.receiveShadow = true;
+    world.add(bwH); STATIC.push(bwH);
   }
   /* the stage-house side walls, deep enough to meet the back wall and the
      proscenium wall with no daylight at either end */

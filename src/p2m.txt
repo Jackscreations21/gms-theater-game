@@ -1,0 +1,228 @@
+
+/* ============================================================================
+   p2m — THE WAREHOUSES.  One shed behind each venue: racking for the rig's
+   loose lanterns (the detach system is a later PR — this part builds the
+   buildings, the racks and the carts), a pushable cart each, and a roller
+   door into the venue's backstage.
+
+   The Palace shed is plain world geometry behind the stage house — it
+   builds at parse time like the rest of the Palace, and p2i (later in the
+   build) files it into its own room.  The Arc shed needs ARC.group, which
+   only exists once buildArc has run, so buildArcShed() is called from the
+   tail of buildArc (p2j) — function declarations hoist across the
+   concatenated file.
+   ========================================================================== */
+var SHEDS = {palace:null, arc:null};
+var CARTS = {palace:null, arc:null};
+
+/* the poured slab both sheds stand on */
+const M_SHED = {
+  conc: new T.MeshStandardMaterial({color:0x8e8b84, roughness:.9})
+};
+
+/* one rack bay: two shelves of slot anchors against a wall */
+function shedRack(parent, cx, cy, cz, yaw, slots){
+  const g = new T.Group(); g.position.set(cx, cy, cz); g.rotation.y = yaw;
+  parent.add(g);
+  const frame = new T.Mesh(new T.BoxGeometry(3.6, 2.2, 0.1), M.steel);
+  frame.position.set(0, 1.1, -0.3); frame.castShadow = frame.receiveShadow = true;
+  g.add(frame);
+  [0.55, 1.45].forEach(sy=>{
+    const shelf = new T.Mesh(new T.BoxGeometry(3.6, 0.06, 0.62), M.steel);
+    shelf.position.set(0, sy, 0); shelf.castShadow = shelf.receiveShadow = true;
+    g.add(shelf);
+    for(let i=0;i<4;i++){
+      const a = new T.Object3D();
+      a.position.set(-1.35 + i*0.9, sy + 0.06, 0);
+      g.add(a); slots.push(a);
+    }
+  });
+  return g;
+}
+
+/* ---- the cart: a two-shelf pushcart with a handle bar on its -z end ---- */
+function buildCart(venue, parent, x, z){
+  const g = new T.Group();
+  g.userData.moves = true;
+  g.userData.cartInfo = true;
+  const frame = new T.Mesh(new T.BoxGeometry(0.74, 0.06, 1.24), M.steel);
+  frame.position.y = 0.26; g.add(frame);
+  const top = new T.Mesh(new T.BoxGeometry(0.74, 0.06, 1.24), M.steel);
+  top.position.y = 0.86; g.add(top);
+  [[-0.35,-0.6],[0.35,-0.6],[-0.35,0.6],[0.35,0.6]].forEach(cn=>{
+    const leg = new T.Mesh(new T.CylinderGeometry(0.02,0.02,0.86,6), M.steel);
+    leg.position.set(cn[0], 0.55, cn[1]); g.add(leg);
+    const wheel = new T.Mesh(new T.CylinderGeometry(0.08,0.08,0.05,10), M.fixture);
+    wheel.rotation.z = Math.PI/2; wheel.position.set(cn[0], 0.08, cn[1]); g.add(wheel);
+  });
+  const hz = -0.72;
+  const handle = new T.Mesh(new T.CylinderGeometry(0.022,0.022,0.7,8), M.pipe);
+  handle.rotation.z = Math.PI/2; handle.position.set(0, 1.02, hz); g.add(handle);
+  [-0.33, 0.33].forEach(hx=>{
+    const up = new T.Mesh(new T.CylinderGeometry(0.018,0.018,0.34,6), M.steel);
+    up.position.set(hx, 0.95, hz); g.add(up);
+  });
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+  const cart = {
+    venue, group:g, x, z, yaw:0, yBase:0,
+    handleH:1.02, handleZ:hz, handleHalf:0.33, grabR:0.30,
+    slots:[]
+  };
+  [0.32, 0.92].forEach(sy=>{
+    for(let i=0;i<3;i++){
+      const a = new T.Object3D();
+      a.position.set(0, sy, -0.42 + i*0.42);
+      g.add(a); cart.slots.push(a);
+    }
+  });
+  parent.add(g);
+  CARTS[venue] = cart;
+  cartPose(cart);
+  if(typeof INTERACT !== 'undefined') INTERACT.push(g);
+  return cart;
+}
+/* the cart's pose lives in {x, z, yaw, yBase} in WORLD coordinates; the Arc
+   cart's parent hangs off ARC.group at x=420, so the offset comes back off */
+function cartPose(c){
+  const ox = (c.venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
+  c.group.position.set(c.x - ox, c.yBase, c.z);
+  c.group.rotation.y = c.yaw;
+}
+
+/* ============================================================================
+   THE PALACE SHED — brick, behind the stage house, straight out the new
+   doorway in the back wall.  World geometry at parse time; p2i pins the
+   group to its own room ('shed') and the door station to the stage.
+   ========================================================================== */
+(function buildPalaceShed(){
+  const x0 = -12, x1 = 12, z0 = -30.2, z1 = D.backWall - 0.7;   // interior faces
+  const g = new T.Group(); g.name = 'shedPalace';
+  world.add(g);
+
+  /* the slab — top face exactly at deck height, and it runs downstage to the
+     stage side of the doorway so there is floor under your feet in it */
+  const fl = box(x1 - x0 + 0.8, 0.6, -16.8 - z0, M_SHED.conc,
+                 (x0 + x1)/2, -0.3, (z0 - 16.8)/2, g);
+  WALKABLE.push(fl);
+
+  // the shell: rear wall, side walls, a flat roof
+  box(x1 - x0 + 1.6, 6.2, 0.7, M.brick, (x0 + x1)/2, 3.1, z0 - 0.35, g);
+  box(0.7, 6.2, z1 - z0 + 1.0, M.brick, x0 - 0.35, 3.1, (z0 + z1)/2 + 0.1, g);
+  box(0.7, 6.2, z1 - z0 + 1.0, M.brick, x1 + 0.35, 3.1, (z0 + z1)/2 + 0.1, g);
+  box(x1 - x0 + 2.4, 0.5, z1 - z0 + 1.4, M.steel, (x0 + x1)/2, 6.45, (z0 + z1)/2, g);
+
+  /* the roller leaf, hung on the shed side of the theatre's back wall */
+  const dg = new T.Group();
+  dg.position.set(0, 0, z1 - 0.12);
+  dg.userData.moves = true;
+  g.add(dg);
+  const leaf = new T.Mesh(new T.BoxGeometry(3.3, 3.4, 0.14), M.steel);
+  leaf.position.y = 1.7;
+  leaf.castShadow = leaf.receiveShadow = true;
+  dg.add(leaf);
+  // the head box and guides it runs in
+  box(4.0, 0.5, 0.4, M.steel, 0, 3.85, z1 - 0.2, g);
+  box(0.12, 3.8, 0.3, M.steel, -1.76, 1.9, z1 - 0.15, g);
+  box(0.12, 3.8, 0.3, M.steel,  1.76, 1.9, z1 - 0.15, g);
+
+  SHEDS.palace = {
+    x0, x1, z0, z1, group:g, slots:[],
+    door:{group:dg, open:0, target:0, travel:3.2, H:3.4, halfW:1.6, x:0, y0:0}
+  };
+
+  // racking along the rear wall
+  for(const rx of [-8.4, -4.5, -0.6, 3.3])
+    shedRack(g, rx, 0, z0 + 0.7, 0, SHEDS.palace.slots);
+
+  buildCart('palace', g, 8.5, -27.5);
+
+  /* the door control, an [E] station on the STAGE side of the wall — a
+     top-level world child so p2i can pin it to the stage room, never the
+     shed's (the shed may be culled while you are looking right at it) */
+  const ctl = box(0.34, 0.5, 0.14, M.fixture, 2.4, 1.25, D.backWall + 0.08);
+  station(ctl, 'shedP', 'WAREHOUSE DOOR  —  [E] open or shut it');
+  SHEDS.palace.ctl = ctl;
+})();
+
+function shedDoorToggle(which){
+  const S = SHEDS[which]; if(!S) return false;
+  S.door.target = S.door.target > 0.5 ? 0 : 1;
+  if(typeof toast === 'function')
+    toast('warehouse door '+(S.door.target ? 'opening' : 'closing'));
+  return true;
+}
+function updateSheds(dt){
+  const d = SHEDS.palace && SHEDS.palace.door;
+  if(d && Math.abs(d.target - d.open) > 0.001){
+    d.open += clamp(d.target - d.open, -dt*0.55, dt*0.55);
+    d.group.position.y = d.y0 + d.open * d.travel;
+  }
+}
+
+/* ============================================================================
+   THE ARC SHED — one long concrete lean-to across the back of BOTH stage
+   houses, in ARC-local coordinates.  Called from the tail of buildArc with
+   its material set; the rear roller doors themselves are cut into each
+   house's back wall by arcBuildHouse (p2j).
+   ========================================================================== */
+function buildArcShed(MAT){
+  if(typeof ARC === 'undefined' || !ARC.rooms.shed || SHEDS.arc) return;
+  const R = ARC.rooms.shed;
+  const conc = (MAT && MAT.conc) ? MAT.conc : M.steel;
+  const x0 = -34, x1 = 34, z0 = -60, z1 = -47.0;
+
+  const fl = aBox(x1 - x0, 0.6, 13.2, conc, 0, -0.3, -53.5, R);
+  arcWalk(fl);
+  aBox(x1 - x0 + 0.8, 6.4, 0.6, conc, 0, 3.2, z0 - 0.3, R);        // rear
+  aBox(0.6, 6.4, 13.6, conc, x0 - 0.3, 3.2, -53.6, R);             // sides
+  aBox(0.6, 6.4, 13.6, conc, x1 + 0.3, 3.2, -53.6, R);
+  aBox(x1 - x0 + 1.4, 0.5, 14.4, conc, 0, 6.65, -53.7, R);         // roof
+  /* the strip of back wall BETWEEN the two stage houses — neither house
+     builds it, and without it the shed leaks out between them */
+  aBox(8.6, 6.4, 0.6, conc, 0, 3.2, z1 - 0.3, R);
+  ARC.walls.push({axis:'z', plane:z1 - 0.3, lo:-4.2, hi:4.2, gaps:[]});
+
+  SHEDS.arc = {x0, x1, z0, z1, group:R, slots:[]};
+  ARC.shed = SHEDS.arc;
+
+  // racking along the rear wall, clear of both doorway lanes at x = ±26
+  for(const rx of [-14, -6, 6, 14])
+    shedRack(R, rx, 0, z0 + 0.7, 0, SHEDS.arc.slots);
+
+  buildCart('arc', R, 420 + 0, -55);
+}
+
+/* ============================================================================
+   PUSHING A CART — the cart obeys the same walls the player does, branched
+   on the CART's venue (never the player's: you could in principle lean
+   through a doorway).  Axis-separated by cartMoveTo, so it slides.
+   ========================================================================== */
+function cartBlocked(cart, nx, nz){
+  const ox = cart.x, oz = cart.z;
+  if(cart.venue === 'arc'){
+    if(typeof arcBounds === 'function' && !arcBounds(nx, nz)) return true;
+    if(typeof arcWallBlocks === 'function' && arcWallBlocks(nx, nz, ox, oz, 0.9)) return true;
+  } else {
+    const S = SHEDS.palace;
+    if(nz < S.z0 + 0.5 || nz > FOH.z1 - 0.9) return true;
+    if(nx < DOCK.x0 - 16 || nx > XL + 0.6) return true;
+    /* throughWall is deliberately not consulted: the proscenium opening is
+       legitimate cart territory */
+    if(typeof doorBlocks === 'function' && doorBlocks(nx, nz, oz, 0.9)) return true;
+    if(typeof backWallBlocks === 'function' && backWallBlocks(nx, nz, oz)) return true;
+    if(typeof shedWallBlocks === 'function' && shedWallBlocks(nx, nz)) return true;
+    if(typeof dockWallBlocks === 'function' && dockWallBlocks(nx, nz, ox)) return true;
+    if(typeof dockDoorBlocks === 'function' && dockDoorBlocks(nx, nz, ox, 0.9)) return true;
+  }
+  const g = (typeof groundAt === 'function') ? groundAt(nx, nz, cart.yBase + 0.6) : 0;
+  if(g === null) return true;
+  if(Math.abs(g - cart.yBase) > 0.3) return true;
+  return false;
+}
+function cartMoveTo(cart, wx, wz){
+  if(!cartBlocked(cart, wx, cart.z)) cart.x = wx;
+  if(!cartBlocked(cart, cart.x, wz)) cart.z = wz;
+  const g = (typeof groundAt === 'function') ? groundAt(cart.x, cart.z, cart.yBase + 0.6) : 0;
+  if(g !== null && Math.abs(g - cart.yBase) <= 0.3) cart.yBase = g;
+  cartPose(cart);
+}
