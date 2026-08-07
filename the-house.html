@@ -1835,6 +1835,9 @@ buildBalcony(D.balcZ, D.balcY, 1.8, balcFloorY, 14);
 
   function bank(o){
     let placed = 0;
+    /* an optional keep-out: a rectangle of the bank left empty because
+       something else stands there (the VR control desk on the balcony) */
+    const clear = o.clear || null;
     for(let r=0; r<o.rows; r++){
       const zc = o.z0 + r*o.gap;
       if(zc > D.houseBack - 1.6) break;
@@ -1844,6 +1847,7 @@ buildBalcony(D.balcZ, D.balcY, 1.8, balcFloorY, 14);
         if(o.aisles.some(a=>Math.abs(t)>a[0] && Math.abs(t)<a[1])) continue;
         const x = t*o.halfW;
         const z = zc + BOW*0.45*(t*t);
+        if(clear && Math.abs(x) <= clear.halfW && z >= clear.z0 && z <= clear.z1) continue;
         const y = o.floorY(z);
         const ry = Math.atan2(x, z - FOCUS);
         pan.push({x, y:y+0.44, z, ry});
@@ -1859,8 +1863,11 @@ buildBalcony(D.balcZ, D.balcY, 1.8, balcFloorY, 14);
 
   const nOrch = bank({z0:5.4, gap:1.05, rows:20, halfW:12.4,
     aisles:[[0.28,0.36],[0.66,0.74]], floorY:houseFloorY});
+  /* the balcony bank leaves a hole at its centre front: the control desk
+     stands there, and the operator stands behind it */
   const nMezz = bank({z0:D.mezzZ+1.4, gap:1.02, rows:12, halfW:12.9,
-    aisles:[[0.28,0.36],[0.66,0.74]], floorY:mezzFloorY});
+    aisles:[[0.28,0.36],[0.66,0.74]], floorY:mezzFloorY,
+    clear:{halfW:2.2, z0:D.mezzZ, z1:D.mezzZ+3.6}});
   const nBalc = bank({z0:D.balcZ+1.4, gap:1.02, rows:7, halfW:12.6,
     aisles:[[0.28,0.36],[0.66,0.74]], floorY:balcFloorY});
 
@@ -13273,7 +13280,9 @@ function vrBuildDesks(){
   /* THE PALACE — on the first balcony rail, where a control position sits */
   vrMakeDesk({
     label:'THE PALACE', stage:'palace',
-    x:0, y:D.mezzY, z:D.mezzZ + 1.5, yaw:Math.PI,
+    /* yaw 0: the raked face looks back up the house (+z), so the operator
+       stands BEHIND the desk and reads it looking downstage at the stage */
+    x:0, y:D.mezzY, z:D.mezzZ + 1.5, yaw:0,
     parent:(typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.house) ? ROOM_GROUP.house : world
   });
 
