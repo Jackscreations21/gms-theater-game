@@ -3839,9 +3839,18 @@ function inTrimOf(ls){
   if(!spec || !spec.h) return 8.0;
   return clamp(spec.h + 0.05, 0.6, OUT_TRIM);
 }
+/* the lowest a lineset may be flown: goods hang BELOW the pipe, so a pipe
+   brought in far enough puts its cloth through the deck (y = 0) */
+function minTrimOf(ls){
+  // the pipe may only come down until what hangs on it kisses the deck —
+  // but never above the goods' own working trim: the house curtain is CUT
+  // to puddle (h 13.0, trim 12.6) and must still make its trim
+  const h = (ls.h || 0) + 0.05;
+  return clamp(Math.min(h, inTrimOf(ls)), 0.6, OUT_TRIM);
+}
 function flyTo(ls, y, instant){
   if(ls.locked) return false;
-  ls.target = clamp(y, 0.6, OUT_TRIM+0.4);
+  ls.target = clamp(y, minTrimOf(ls), OUT_TRIM+0.4);
   if(instant) ls.pos = ls.target;
   return true;
 }
@@ -11331,7 +11340,7 @@ function haul(dy){
   if(!flyDrag) return;
   const ls = flyDrag;
   const feel = 0.028 * (1.7/(1 + ls.weight/520));     // weight in the hand
-  ls.target = clamp(ls.target - dy*feel, 0.6, OUT_TRIM+0.4);
+  ls.target = clamp(ls.target - dy*feel, minTrimOf(ls), OUT_TRIM+0.4);
   if(Math.abs(dy) > 0.5) flyDragged = true;
   syncFlyRow(ls);
 }
