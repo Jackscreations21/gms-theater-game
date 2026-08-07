@@ -121,7 +121,9 @@ function makeLineset(i){
   const z = -0.50 - i*0.80;    // every lineset lives UPSTAGE of the plaster line
   const ls = {
     id:i+1, z:z, pos:OUT_TRIM, target:OUT_TRIM, locked:false, goodsKey:'none',
-    speed:1.2, weight:0, moving:false, open:1, travTarget:1
+    speed:1.2, weight:0, moving:false, open:1, travTarget:1,
+    /* a line let go of at the rail with no lock thrown on it — see updateFly */
+    runaway:false, flyVel:0
   };
   const grp = new T.Group(); grp.position.set(0, ls.pos, z); flyGroup.add(grp);
   const batten = new T.Mesh(new T.CylinderGeometry(.055,.055,D.procW+6,8), M.pipe);
@@ -172,12 +174,47 @@ const flyOut = ls => flyTo(ls, OUT_TRIM);
 
 function updateFly(dt){
   for(const ls of FLY){
-    const d = ls.target - ls.pos;
-    const step = ls.speed*dt;
-    if(Math.abs(d) < 0.004){ if(ls.moving){ ls.moving=false; Snd.railStop(ls); } ls.pos = ls.target; }
-    else {
-      if(!ls.moving){ ls.moving=true; Snd.railStart(ls); }
-      ls.pos += clamp(d, -step, step);
+    /* ---- A LINE THAT HAS BEEN LET GO OF -----------------------------------
+       Take your hand off a rope at the pin rail without throwing the little
+       red lever and there is nothing at all holding the load: it runs away
+       downwards until it is on the deck.  A line let go of while it was
+       flying OUT slows, stops and comes back down the way it went up; one
+       already coming in just keeps coming.  Anything that writes ls.target
+       — the board, a cue, a group call — has taken the line back, and the
+       runaway is over.  Only the VR rail starts one (p9); the desktop haul
+       still sets a line where you leave it.                              */
+    if(ls.runaway){
+      if(Math.abs(ls.target - ls.pos) > 0.02) ls.runaway = false;
+      else {
+        const lo = (typeof minTrimOf === 'function') ? minTrimOf(ls) : 0.6;
+        const hi = OUT_TRIM + 0.4;
+        ls.flyVel = Math.max(ls.flyVel - (1.2 + ls.weight/400)*dt,
+                            -(1.5 + ls.weight/500));
+        ls.pos += ls.flyVel*dt;
+        if(ls.pos <= lo){                       // on the deck, and that is that
+          ls.pos = lo; ls.flyVel = 0; ls.runaway = false;
+          if(ls.moving){
+            ls.moving = false;
+            if(typeof Snd !== 'undefined' && Snd.railStop) Snd.railStop(ls);
+          }
+        } else {
+          if(ls.pos >= hi){ ls.pos = hi; if(ls.flyVel > 0) ls.flyVel = 0; }
+          if(!ls.moving){
+            ls.moving = true;
+            if(typeof Snd !== 'undefined' && Snd.railStart) Snd.railStart(ls);
+          }
+        }
+        ls.target = ls.pos;
+      }
+    }
+    if(!ls.runaway){
+      const d = ls.target - ls.pos;
+      const step = ls.speed*dt;
+      if(Math.abs(d) < 0.004){ if(ls.moving){ ls.moving=false; Snd.railStop(ls); } ls.pos = ls.target; }
+      else {
+        if(!ls.moving){ ls.moving=true; Snd.railStart(ls); }
+        ls.pos += clamp(d, -step, step);
+      }
     }
     ls.group.position.y = ls.pos;
     // lift lines stretch to grid
