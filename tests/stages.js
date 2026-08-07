@@ -1154,6 +1154,54 @@ const probe = `
     return 'no errors';
   });
 
+  console.log('--- fixture bodies ---');
+  P('every fixture type hangs from a real clamp', ()=>{
+    // par is stocked, not hung — no rig hangs one today, but the order
+    // screen (a later PR) sells them, so the builder must carry the clamp
+    const missing = ['profile','fresnel','cyc','mover'].filter(t=>{
+      const f = FIXTURES.find(x=>x.type===t);
+      return !f || !f.body.userData.clamp;
+    });
+    if(typeof bodyPar !== 'function' || !bodyPar().userData.clamp) missing.push('par');
+    if(missing.length) throw new Error('no clamp on: '+missing.join(', '));
+    return '4 hung types + the stocked par, all clamped';
+  });
+  P('bodies share geometry across instances', ()=>{
+    const profs = FIXTURES.filter(f=>f.type==='profile').slice(0,2);
+    if(profs.length < 2) throw new Error('need two profiles to compare');
+    const geoms = b=>{ const s=new Set(); b.traverse(o=>{ if(o.isMesh) s.add(o.geometry); }); return s; };
+    const a = geoms(profs[0].body), bb = geoms(profs[1].body);
+    let shared = 0; a.forEach(g=>{ if(bb.has(g)) shared++; });
+    if(shared < 10) throw new Error('only '+shared+' geometries shared, 10+ expected — cache not working');
+    return shared+' shared geometries';
+  });
+  P('bodies stay inside the VR triangle budget', ()=>{
+    const over = [];
+    const count = b=>{ let tris = 0;
+      b.traverse(o=>{ if(o.isMesh){ const p=o.geometry;
+        tris += p.index ? p.index.count/3 : p.attributes.position.count/3; }});
+      return tris; };
+    ['profile','fresnel','cyc','mover'].forEach(t=>{
+      const f = FIXTURES.find(x=>x.type===t);
+      if(!f){ over.push(t+':missing'); return; }
+      const tris = count(f.body);
+      if(tris > 700) over.push(t+':'+Math.round(tris));
+    });
+    // par is stocked, not hung — build one and hold it to the same budget
+    const pt = count(bodyPar());
+    if(pt > 700) over.push('par:'+Math.round(pt));
+    if(over.length) throw new Error('over budget: '+over.join(' '));
+    return 'all under 700 tris';
+  });
+  P('the lens contract survives', ()=>{
+    const bad = FIXTURES.filter(f=>!f.body.userData.lens);
+    if(bad.length) throw new Error(bad.length+' bodies lost userData.lens');
+    const m = FIXTURES.find(f=>f.type==='mover');
+    if(!m.body.userData.base || !m.body.userData.yoke || !m.body.userData.head)
+      throw new Error('mover lost base/yoke/head');
+    return 'lens + mover parts intact';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
