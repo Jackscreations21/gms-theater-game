@@ -561,7 +561,9 @@ function vrBuildDesks(){
   /* THE PALACE — on the first balcony rail, where a control position sits */
   vrMakeDesk({
     label:'THE PALACE', stage:'palace',
-    x:0, y:D.mezzY, z:D.mezzZ + 1.5, yaw:Math.PI,
+    /* yaw 0: the raked face looks back up the house (+z), so the operator
+       stands BEHIND the desk and reads it looking downstage at the stage */
+    x:0, y:D.mezzY, z:D.mezzZ + 1.5, yaw:0,
     parent:(typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.house) ? ROOM_GROUP.house : world
   });
 

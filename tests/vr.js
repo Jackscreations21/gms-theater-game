@@ -310,6 +310,71 @@ const probe = `
     return out;
   });
 
+  P('the Palace desk faces the operator, not the stage', ()=>{
+    scene.updateMatrixWorld(true);
+    const d = VR.desks.find(x=>x.label.indexOf('THE PALACE') === 0);
+    if(!d) throw new Error('no Palace desk');
+    /* the raked face is a plane: its world +Z is the way the screen looks.
+       The stage is at -z, the house is at +z, so a readable desk points +z
+       and the operator stands behind it looking downstage over the top. */
+    const n = d.face.getWorldDirection(new THREE.Vector3());
+    if(!(n.z > 0.3))
+      throw new Error('the screen normal is z=' + n.z.toFixed(3) +
+                      ' — it is turned toward the stage, so the operator has their back to it');
+    const p = d.group.getWorldPosition(new THREE.Vector3());
+    if(Math.abs(p.y - D.mezzY) > 1)
+      throw new Error('the desk left the balcony: y=' + p.y.toFixed(2) +
+                      ' against mezzY ' + D.mezzY);
+    if(Math.abs(p.x) > 0.5)
+      throw new Error('the desk is off centre at x=' + p.x.toFixed(2));
+    return 'face normal z ' + n.z.toFixed(3) + ', desk at (' +
+           p.x.toFixed(2) + ', ' + p.y.toFixed(2) + ', ' + p.z.toFixed(2) + ')';
+  });
+
+  /* the seat pans: the one instanced batch of BoxGeometry(.50,.13,.60) in M.seat */
+  const seatPanMesh = ()=>{
+    let found = null, n = 0;
+    scene.traverse(c=>{
+      if(!c.isInstancedMesh) return;
+      const q = c.geometry.parameters || {};
+      if(c.material !== M.seat) return;
+      if(Math.abs(q.width - 0.50) > 1e-6 || Math.abs(q.height - 0.13) > 1e-6 ||
+         Math.abs(q.depth - 0.60) > 1e-6) return;
+      found = c; n++;
+    });
+    if(n !== 1) throw new Error(n + ' seat-pan batches in the scene, wanted 1');
+    return found;
+  };
+
+  P('the control position on the balcony is clear of seats', ()=>{
+    scene.updateMatrixWorld(true);
+    const mesh = seatPanMesh();
+    const m = new THREE.Matrix4(), v = new THREE.Vector3();
+    const q = new THREE.Quaternion(), s = new THREE.Vector3();
+    let mezz = 0, inside = 0;
+    const worst = [];
+    for(let i = 0; i < mesh.count; i++){
+      mesh.getMatrixAt(i, m);
+      m.decompose(v, q, s);
+      v.applyMatrix4(mesh.matrixWorld);
+      /* only the balcony bank: a mezz pan sits exactly 0.44 above the mezz
+         rake at its own z.  The orchestra shares this x/z footprint four
+         metres below and must not be counted either way. */
+      if(v.y < D.mezzY - 1.5 || v.y > D.balcY) continue;
+      if(Math.abs(v.y - (mezzFloorY(v.z) + 0.44)) > 0.05) continue;
+      mezz++;
+      if(Math.abs(v.x) <= 2.2 && v.z >= D.mezzZ && v.z <= D.mezzZ + 3.6){
+        inside++;
+        if(worst.length < 4) worst.push('(' + v.x.toFixed(2) + ',' + v.z.toFixed(2) + ')');
+      }
+    }
+    if(inside) throw new Error(inside + ' seats still standing in the desk keep-out: ' +
+                               worst.join(' '));
+    if(mezz <= 100) throw new Error('only ' + mezz + ' seats left on the balcony');
+    return mezz + ' balcony seats, none of them inside |x|<=2.2 and z ' +
+           D.mezzZ + '..' + (D.mezzZ + 3.6);
+  });
+
   P('the console draws, and the buttons on it are hittable', ()=>{
     vrDrawConsole(true);
     if(!VR.canvas) throw new Error('no canvas');
