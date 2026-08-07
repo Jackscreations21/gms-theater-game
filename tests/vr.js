@@ -65,17 +65,24 @@ const probe = `
   /* pretend a headset is on: the runtime fires sessionstart, and the sticks
      come off a fake input source */
   const sticks = {left:[0,0,0,0], right:[0,0,0,0]};
+  const btns = {left:  [0,1,2,3,4].map(()=>({pressed:false})),
+                right: [0,1,2,3,4].map(()=>({pressed:false}))};
   const enterVR = ()=>{
     renderer.xr._session = {
       inputSources: [
-        {handedness:'left',  gamepad:{axes:sticks.left}},
-        {handedness:'right', gamepad:{axes:sticks.right}}
+        {handedness:'left',  gamepad:{axes:sticks.left,  buttons:btns.left}},
+        {handedness:'right', gamepad:{axes:sticks.right, buttons:btns.right}}
       ]
     };
     renderer.xr.fire('sessionstart');
   };
   const exitVR = ()=>{ renderer.xr._session = null; renderer.xr.fire('sessionend'); };
   const stick = (hand, x, y)=>{ sticks[hand][2] = x; sticks[hand][3] = y; };
+  /* one press-and-release of the A button, one frame each */
+  const tapA = ()=>{
+    btns.right[4].pressed = true;  vrUpdate(0.016);
+    btns.right[4].pressed = false; vrUpdate(0.016);
+  };
 
   console.log('--- vr: getting in ---');
 
@@ -169,6 +176,106 @@ const probe = `
     if(Player.pos.z < D.backWall)
       throw new Error('walked through the back wall to z=' + Player.pos.z.toFixed(1));
     return 'stopped at z=' + Player.pos.z.toFixed(1) + ', the wall is ' + D.backWall;
+  });
+
+  console.log('--- vr: jump and fly ---');
+
+  /* let the player fall to the floor AND run the VR clock on, so a tap in
+     one test can never read as the double of a tap in the last one */
+  const settle = ()=>{ for(let i=0;i<30;i++){ vrUpdate(0.05); updatePlayer(0.05); } };
+
+  P('a tap of A is a jump', ()=>{
+    goToView(3);
+    settle();
+    if(!Player.onGround) throw new Error('not on the ground to start');
+    tapA();
+    if(Player.vel.y < 3) throw new Error('vel.y is ' + Player.vel.y.toFixed(2));
+    if(VR.fly) throw new Error('one tap put it in the air for good');
+    let peak = Player.pos.y;
+    for(let i=0;i<60;i++){ updatePlayer(0.05); peak = Math.max(peak, Player.pos.y); }
+    if(peak < 0.3) throw new Error('it only rose ' + peak.toFixed(2) + 'm');
+    if(!Player.onGround) throw new Error('it never came back down');
+    return 'up ' + peak.toFixed(2) + 'm and back on the deck';
+  });
+
+  P('two quick taps and you are flying', ()=>{
+    goToView(3);
+    settle();
+    tapA(); tapA();
+    if(!VR.fly) throw new Error('two taps did not lift it');
+    for(let i=0;i<40;i++){ vrUpdate(0.05); updatePlayer(0.05); }
+    if(!VR.fly) throw new Error('flying did not hold with no floor contact');
+    tapA(); tapA();
+    if(VR.fly) throw new Error('two more taps did not set it down');
+    return 'on with two taps, off with two more';
+  });
+
+  P('two SLOW taps stay on the ground', ()=>{
+    goToView(3);
+    settle();
+    tapA();
+    for(let i=0;i<12;i++){ vrUpdate(0.05); updatePlayer(0.05); }   // 0.6s between
+    tapA();
+    if(VR.fly) throw new Error('a slow pair of taps went flying');
+    for(let i=0;i<60;i++){ updatePlayer(0.05); }
+    return 'two jumps, no flight';
+  });
+
+  P('flying goes where the head looks', ()=>{
+    goToView(3);
+    settle();
+    /* centre stage, facing the open house, so there is room to fly */
+    Player.pos.set(0, 0, -5); Player.yaw = Math.PI;
+    tapA(); tapA();
+    if(!VR.fly) throw new Error('could not take off');
+    /* look up 30 degrees and push forward: must climb AND advance */
+    camera.rotation.set(0.52, 0, 0);
+    const p0 = Player.pos.clone();
+    stick('left', 0, -1);
+    for(let i=0;i<20;i++){ vrUpdate(0.05); updatePlayer(0.05); }
+    stick('left', 0, 0);
+    const rose = Player.pos.y - p0.y;
+    const flat = Math.hypot(Player.pos.x - p0.x, Player.pos.z - p0.z);
+    if(rose < 1) throw new Error('looking up it only rose ' + rose.toFixed(2) + 'm');
+    if(flat < 1) throw new Error('it went straight up — no forward drift');
+    /* and with the stick centred it hangs there, no gravity */
+    const hold = Player.pos.y;
+    for(let i=0;i<20;i++){ vrUpdate(0.05); updatePlayer(0.05); }
+    if(Math.abs(Player.pos.y - hold) > 0.01) throw new Error('it fell while hovering');
+    camera.rotation.set(0, 0, 0);
+    return 'rose ' + rose.toFixed(1) + 'm over ' + flat.toFixed(1) + 'm, then hung there';
+  });
+
+  P('flying down to the floor lands you walking', ()=>{
+    if(!VR.fly) throw new Error('should still be airborne from the last test');
+    camera.rotation.set(-1.1, 0, 0);          // look well down
+    stick('left', 0, -1);
+    let landed = false;
+    for(let i=0;i<200 && !landed;i++){ vrUpdate(0.05); updatePlayer(0.05); landed = !VR.fly; }
+    stick('left', 0, 0);
+    camera.rotation.set(0, 0, 0);
+    if(!landed) throw new Error('it never touched down');
+    if(!Player.onGround) throw new Error('landed but not on its feet');
+    settle();
+    if(VR.fly) throw new Error('still flying after the landing');
+    return 'touched down at y=' + Player.pos.y.toFixed(2);
+  });
+
+  P('the walls still stop you mid-air', ()=>{
+    goToView(3);
+    settle();
+    tapA(); tapA();
+    if(!VR.fly) throw new Error('could not take off');
+    Player.pos.set(0, 2.5, -10); Player.yaw = 0;
+    camera.rotation.set(0, 0, 0);
+    stick('left', 0, -1);                     // straight at the back wall
+    for(let i=0;i<200;i++){ vrUpdate(0.05); updatePlayer(0.05); }
+    stick('left', 0, 0);
+    if(Player.pos.z < D.backWall)
+      throw new Error('flew through the back wall to z=' + Player.pos.z.toFixed(1));
+    tapA(); tapA();                           // back on the ground for the rest
+    settle();
+    return 'stopped at z=' + Player.pos.z.toFixed(1) + ' at altitude';
   });
 
   console.log('--- vr: the desks ---');
