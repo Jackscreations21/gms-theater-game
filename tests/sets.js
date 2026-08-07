@@ -80,6 +80,36 @@ const probe = `
     return f.flames.length+' flames, '+f.ember.length+' embers, all finite';
   });
 
+  P('scenery the crew have not brought in yet cannot be stood on', ()=>{
+    showLoad('lostboys');
+    SHOW.group.updateMatrixWorld(true);
+    /* find a piece the crew WILL hide (handleable) that you can stand on
+       well above the deck — the upper gallery has a practical on it, so
+       the crew leave that one alone, correctly */
+    let at = null, before = null;
+    for(const kid of SHOW.group.children){
+      if(at || !crewHandleable(kid)) continue;
+      kid.traverse(c=>{
+        if(at || WALKABLE.indexOf(c) < 0) return;
+        const p = new THREE.Box3().setFromObject(c).getCenter(new THREE.Vector3());
+        const h = groundAt(p.x, p.z, p.y + 3);
+        if(h !== null && h > 0.5){ at = p; before = h; }
+      });
+    }
+    if(!at) throw new Error('no handleable walkable surface above the deck to test with');
+    crewHideLoads(true);                 // what a get-in does before the carry
+    const g = groundAt(at.x, at.z, at.y + 3);
+    if(g !== null && g > before - 0.3)
+      throw new Error('you can stand at y='+g.toFixed(2)+' on scenery that is not there');
+    crewHideLoads(false);
+    const after = groundAt(at.x, at.z, at.y + 3);
+    if(after === null || Math.abs(after - before) > 0.01)
+      throw new Error('bringing it back did not restore the floor: '+after);
+    showLoad('goeswrong');               // the tests after this expect it up
+    return 'hidden: '+(g === null ? 'no floor' : 'floor at '+g.toFixed(2))+
+           ', shown again: '+after.toFixed(2)+'m';
+  });
+
   P('everything that is meant to fall has a hinge of its own', ()=>{
     const want = ['post','upper','wallSL','wallUS','mantel','clock','chandelier'];
     const got = SHOW.wrong.map(p=>p.key);

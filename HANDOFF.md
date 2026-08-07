@@ -313,7 +313,7 @@ Coordinate/cosmetic — only ever visible at the Arc or in a headset:
 
 Structural / owner-taste — read the AUDIT sections before deciding:
 
-- [ ] 19. **M6** — `setPieceVisible` hides with `visible` only; crew-hidden
+- [x] 19. **M6** — `setPieceVisible` hides with `visible` only; crew-hidden
       scenery is still raycastable, so you can stand on invisible galleries.
       Fix shape depends on item 20 — the dead scene machinery contains the
       correct hide implementation.
