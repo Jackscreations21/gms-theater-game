@@ -218,11 +218,12 @@ compare the *same* production across stages instead.
 
 ## 6. Where it stands / what is next
 
-All twelve suites green, and now audited. Nothing crashes on the beaten path,
-but **AUDIT.md** (repo root, 2026-08-06) lists 6 high / 17 medium / 6 low
-findings with line-numbered evidence — none fixed yet. The high six are all
-one shape: walk between theatres while something is in flight (the crew, the
-smoke rack, a running show script) and it acts on the wrong stage.
+All twelve suites green, audited, and the audit **worked off**: of the 6 high
+/ 17 medium / 6 low findings in **AUDIT.md** (repo root, 2026-08-06), 20 of
+the 22 queue items below are fixed and merged to `main`. What used to be the
+headline risk — walk between theatres while something is in flight and it
+acts on the wrong stage — is now covered by design (park what lives in the
+room, stop what follows the operator) and by ~30 regression tests.
 
 **Done 2026-08-06:** fixed the `full14.js` harness (the jsdom `movementY` shim
 above — the game code was never wrong), created the git repo (there had never
@@ -234,28 +235,68 @@ swap, dead weight, duplication, coordinates, test coverage), cross-checked,
 the sharpest single-source claims re-verified by hand and one by a live jsdom
 probe. No code was touched; AUDIT.md is the deliverable.
 
-**Done 2026-08-06, evening session: worked the bug list.** Twenty of the
-twenty-two items below are fixed, one finding per commit, ~30 new
-regression tests, every fix negative-checked against the unfixed code.
-Delivered as four stacked PRs — **merge in order**: [#2 quick
-wins](https://github.com/Jackscreations21/gms-theater-game/pull/2) → [#3
-swap boundary](https://github.com/Jackscreations21/gms-theater-game/pull/3)
-→ [#4 coordinate fixes](https://github.com/Jackscreations21/gms-theater-game/pull/4)
-→ [#5 structural](https://github.com/Jackscreations21/gms-theater-game/pull/5).
-Still open: item 20 (dead weight — owner's deletion call; M6 no longer
-depends on it), item 22 (duplication — big churn, do after the PRs merge),
-and the M9 ruling (documented one-board; capture them if you disagree).
-Note: `gh` is not installed on this machine — the PRs were opened through
-the GitHub API with the stored git credential; installing `gh` would be
-tidier.
+**Done 2026-08-06, evening session: worked the bug list — and it is all on
+`main` (80b3521).** Twenty of the twenty-two items below fixed, one finding
+per commit, ~30 new regression tests, every fix negative-checked against the
+unfixed code. Delivered as four stacked PRs (#2–#5); the stacking bit us —
+the PRs were merged without deleting each base branch, so #3/#4/#5 landed on
+their stale *bases* instead of `main`, and it took a catch-all
+[#6](https://github.com/Jackscreations21/gms-theater-game/pull/6) to bring
+the missing 17 commits home. **Lesson: with this repo, PR straight to `main`
+— don't stack.** Post-merge verification: `main`'s tree byte-identical to the
+tested state, the build reproduces exactly, 12/12 suites green on `main`,
+work branches deleted. Still open from the queue: item 20 (dead weight —
+owner's deletion call), item 22 (duplication — now unblocked), and the M9
+ruling (documented one-board; capture them in p2k if you disagree). `gh` is
+not installed on this machine — PRs were opened through the GitHub API with
+the stored git credential.
 
-**NEXT SESSION: work the bug list, one item at a time.** Every item below is
-expanded in AUDIT.md with evidence and line numbers, and its "checked and
-sound" section lists what NOT to re-audit. Ground rules: run all twelve
-suites before starting and after every item; one finding, one commit; tick
-the box here as each lands; where a fix touches the swap boundary, add the
-in-flight regression test the coverage pass says is missing (AUDIT §"What the
-tests don't cover").
+**NEXT SESSION: enable GitHub Pages, then get it running on the Quest 3.**
+
+Pages first — it solves VR's HTTPS requirement for free:
+
+1. **The owner flips the repo public** (Settings → General → Danger Zone), or
+   pays for Pages on private. Commits are already on the no-reply address and
+   the audit turned up no secrets, but eyeball the front page once it flips.
+2. Enable Pages: Settings → Pages → Source "Deploy from a branch" → `main`,
+   `/ (root)`.
+3. The game is `the-house.html`, not `index.html` — PR a one-line
+   `index.html` redirect (or live with the full URL
+   `https://jackscreations21.github.io/gms-theater-game/the-house.html`).
+4. Smoke-test the URL on desktop before touching the headset: it loads, you
+   can walk, a show runs. Pages serves HTTPS, which is exactly what WebXR
+   demands.
+
+Then the first-ever run on real hardware. jsdom has verified everything it
+can; AUDIT §"What the tests don't cover" names the three structural VR
+bypasses, and they are the checklist, in order:
+
+1. **Does a session start at all?** The real `requestSession` promise chain
+   has never run — the test stub fires `sessionstart` itself. Open the Pages
+   URL in the Quest Browser, press the VR button.
+2. **Frame rate.** 90Hz is the target; `VR.beamCap` (14) exists for exactly
+   this. If it chugs: lower the cap, thin `LIGHT_POOL`, cut `SMOKE.n`.
+3. **The pointing path** — `vrSelect`→`vrPointAt` with real controller poses.
+   The tests fire `hit.fn()` directly, so a broken UV flip passes the suite
+   while every console on the headset is dead (the VR analogue of the
+   detached-row lesson). Point at a desk; if the cursor lands where you
+   point, it works.
+4. **Human factors**: console text size, rope reach at the pin rail, the GO
+   button, comfort of smooth turn. Expect a tuning pass, not a rewrite.
+
+If Pages is blocked (repo stays private): `adb reverse tcp:8080 tcp:8080`
+and open `http://localhost:8080/the-house.html` in the Quest Browser —
+localhost is a secure context, so WebXR runs without any certificate dance.
+A LAN IP will NOT work without HTTPS.
+
+Record what the headset teaches in this file. After that, the leftovers:
+item 20, item 22, and the "stage 2" VR asks at the bottom of this section.
+
+---
+
+**The 2026-08-06 fix queue, for the record** (details in AUDIT.md; ground
+rules were: suites green before and after every item, one finding one
+commit, in-flight regression tests at the swap boundary):
 
 Quick wins first — each is small, self-contained, and already hand-verified:
 
@@ -348,9 +389,9 @@ Structural / owner-taste — read the AUDIT sections before deciding:
 - **The VR build has never run on a headset.** There is no device here. The XR
   code paths are exercised against a stubbed `WebXRManager` in `vr.js`, but frame
   rate, comfort and whether the consoles are a readable size are unknown. That
-  is the first thing to find out.
-- **WebXR needs HTTPS.** It will not start from `file://`. Serve it — GitHub
-  Pages, or a local server reached from the headset over the network.
+  is next session's job — the brief above is the checklist.
+- **WebXR needs HTTPS.** It will not start from `file://`. GitHub Pages (next
+  session) solves this; until then only the `adb reverse` localhost trick works.
 - Only the live stage ticks. Leave a theatre mid-show and its fades and flys wait
   for you. Deliberate, but arguable.
 - The Arc has no productions of its own; the four in the book are written for the
