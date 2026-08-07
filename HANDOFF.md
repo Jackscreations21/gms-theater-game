@@ -322,7 +322,7 @@ Structural / owner-taste — read the AUDIT sections before deciding:
       functions, eight variables, two CSS blocks. Full inventory in AUDIT,
       including the `shopGroup` tombstone assertion in full14.js that must
       move with any deletion.
-- [ ] 21. **M15** — `SHOW`'s shape is defined in three drifting places and
+- [x] 21. **M15** — `SHOW`'s shape is defined in three drifting places and
       ad-hoc keys leak across swaps via `Object.assign`; unify the template.
 - [ ] 22. Duplication — the four plot builders, show curtains, and the neon
       machinery want shared homes in p5c; bulk, not bugs. AUDIT lists every
