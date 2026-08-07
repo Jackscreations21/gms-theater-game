@@ -4313,7 +4313,7 @@ function buildRig(){
       SPKBARS[side] = {
         y:sy, target:sy, max:sy,
         min:houseFloorY(sz) + 2.9,          // lowest box at chest height
-        z:sz, x:sx, wireTop:D.coveY,        // the cove band is overhead here, not the flat ceiling
+        z:sz, wireTop:D.coveY,              // the cove band is overhead here, not the flat ceiling
         group:bar, wires:wires
       };
       fohBarPose(SPKBARS[side]);
@@ -11119,7 +11119,7 @@ function buildArcStage(key, label, houseKey){
     const rk = H.rake;
     for(const k in SPKBARS){
       const b = SPKBARS[k];
-      b.min = rk.Y0 + 0.2 + 2.9;
+      b.min = Math.min(b.max - 0.5, rk.Y0 + 0.2 + 2.9);
       b.wireTop = 15.8;
       fohBarPose(b);
     }
@@ -13578,7 +13578,7 @@ function vrPageFly(g, P){
     g.font = '600 17px Helvetica, Arial, sans-serif';
     g.fillText(FOHBAR.y.toFixed(1) + 'm', bx, P.y + 260);
   }
-  if(typeof SPKBARS !== 'undefined' && SPKBARS){
+  if(typeof SPKBARS !== 'undefined' && SPKBARS){ // typeof: this p9 chunk may land without its p4 chunk in a cross-branch merge
     const bx = P.x + P.w - 120;
     g.fillStyle = '#8f9aa7';
     g.font = '600 15px Helvetica, Arial, sans-serif';

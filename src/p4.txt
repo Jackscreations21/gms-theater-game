@@ -361,7 +361,7 @@ function buildRig(){
       SPKBARS[side] = {
         y:sy, target:sy, max:sy,
         min:houseFloorY(sz) + 2.9,          // lowest box at chest height
-        z:sz, x:sx, wireTop:D.coveY,        // the cove band is overhead here, not the flat ceiling
+        z:sz, wireTop:D.coveY,              // the cove band is overhead here, not the flat ceiling
         group:bar, wires:wires
       };
       fohBarPose(SPKBARS[side]);

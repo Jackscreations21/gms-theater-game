@@ -283,7 +283,7 @@ function buildArcStage(key, label, houseKey){
     const rk = H.rake;
     for(const k in SPKBARS){
       const b = SPKBARS[k];
-      b.min = rk.Y0 + 0.2 + 2.9;
+      b.min = Math.min(b.max - 0.5, rk.Y0 + 0.2 + 2.9);
       b.wireTop = 15.8;
       fohBarPose(b);
     }

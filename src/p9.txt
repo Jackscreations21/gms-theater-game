@@ -534,7 +534,7 @@ function vrPageFly(g, P){
     g.font = '600 17px Helvetica, Arial, sans-serif';
     g.fillText(FOHBAR.y.toFixed(1) + 'm', bx, P.y + 260);
   }
-  if(typeof SPKBARS !== 'undefined' && SPKBARS){
+  if(typeof SPKBARS !== 'undefined' && SPKBARS){ // typeof: this p9 chunk may land without its p4 chunk in a cross-branch merge
     const bx = P.x + P.w - 120;
     g.fillStyle = '#8f9aa7';
     g.font = '600 15px Helvetica, Arial, sans-serif';
