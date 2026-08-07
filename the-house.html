@@ -12866,6 +12866,75 @@ function vrCapBeams(){
 }
 
 /* ============================================================================
+   THE METER
+   Nothing in the game reported frame rate before this — the only datum the
+   first headset run produced was "a little low", no number.  So: a ring
+   buffer of frame times, averaged twice a second, drawn on a small tag on
+   the left wrist.  Glance at your watch.
+
+   And a hand on the one knob WebXR lets us turn MID-session: foveation.
+   (Framebuffer scale is read once at session start and never again.)  Over
+   budget, peripheral resolution goes first — 0.4 stepping up toward 1.0;
+   comfortably under, it relaxes back down, never below the 0.4 base the
+   quality tier asks for.  Climbing is fast and relaxing is slow on purpose:
+   a dropped frame is felt, a soft edge is not.
+
+   dt arrives clamped to 50ms (p7), so `worst` saturates at 50 — by which
+   point the number is no longer the interesting part.
+   ========================================================================== */
+function vrPerf(dt){
+  let P = VR.perf;
+  if(!P) P = VR.perf = {buf:new Float32Array(120), i:0, n:0, avg:0, worst:0, t:0, fov:0.4};
+  P.buf[P.i] = dt*1000;
+  P.i = (P.i+1) % P.buf.length;
+  if(P.n < P.buf.length) P.n++;
+  P.t += dt;
+  if(P.t < 0.5 || P.n < 30) return;     // let the window fill before judging
+  P.t = 0;
+  let sum = 0, worst = 0;
+  for(let i=0;i<P.n;i++){ const v = P.buf[i]; sum += v; if(v > worst) worst = v; }
+  P.avg = sum/P.n; P.worst = worst;
+  const budget = 1000/(VR.targetHz || 90);
+  let f = P.fov;
+  if(P.avg > budget*1.06)      f = Math.min(1.0, f + 0.15);
+  else if(P.avg < budget*0.82) f = Math.max(0.4, f - 0.05);
+  if(f !== P.fov){
+    P.fov = f;
+    if(renderer.xr.setFoveation) renderer.xr.setFoveation(f);
+  }
+  vrDrawMeter();
+}
+
+function vrDrawMeter(){
+  const P = VR.perf;
+  if(!VR.meter){
+    if(!VR.grips.length) return;        // no hands yet, no wrist to sit on
+    const c = cvs(256, 96);
+    const tex = new T.CanvasTexture(c);
+    const m = new T.Mesh(new T.PlaneGeometry(0.08, 0.03),
+      new T.MeshBasicMaterial({map:tex, transparent:true, depthTest:false}));
+    m.name = 'vr:meter';
+    m.renderOrder = 30;
+    m.position.set(0, 0.035, 0.10);     // just above the wrist, tilted to the eye
+    m.rotation.x = -1.05;
+    VR.grips[0].add(m);
+    VR.meter = {mesh:m, g:c.getContext('2d'), tex:tex};
+  }
+  const g = VR.meter.g, budget = 1000/(VR.targetHz || 90);
+  g.clearRect(0,0,256,96);
+  g.fillStyle = 'rgba(8,10,13,0.78)'; g.fillRect(0,0,256,96);
+  g.textBaseline = 'middle'; g.textAlign = 'left';
+  g.font = '600 40px Helvetica, Arial, sans-serif';
+  g.fillStyle = P.avg > budget ? '#ff7a6b' : '#9fe8a9';
+  g.fillText(P.avg.toFixed(1), 10, 28);
+  g.font = '500 24px Helvetica, Arial, sans-serif';
+  g.fillStyle = '#8b95a3';
+  g.fillText('ms', 108, 32);
+  g.fillText('pk ' + P.worst.toFixed(0) + ' · fov ' + P.fov.toFixed(2), 10, 72);
+  VR.meter.tex.needsUpdate = true;
+}
+
+/* ============================================================================
    THE SESSION
    ========================================================================== */
 function vrEnter(){
@@ -12909,6 +12978,9 @@ function vrOnEnd(){
   VR.held = null;
   VR.heldLever = null;
   vrLabel(null);
+  /* the meter's window is this session's story — start the next one clean,
+     and put the foveation base back where vrQualityOn will set it */
+  if(VR.perf){ VR.perf.n = 0; VR.perf.i = 0; VR.perf.t = 0; VR.perf.fov = 0.4; }
   const app = $('#app'); if(app) app.classList.remove('inVR');
 }
 
@@ -13853,6 +13925,7 @@ function vrUpdate(dt){
   vrUpdateRopes(dt);
   vrUpdateButtons(dt);
   vrCapBeams();
+  vrPerf(dt);
   VR.drawT += dt;
   if(VR.drawT > 0.2){ VR.drawT = 0; vrDrawConsole(); }
 }

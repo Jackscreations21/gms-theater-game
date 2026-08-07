@@ -1023,6 +1023,56 @@ const probe = `
     return 'the swap opened the hand';
   });
 
+  console.log('--- vr: the meter ---');
+
+  P('the frame meter measures what the frames cost', ()=>{
+    if(typeof vrPerf !== 'function') throw new Error('there is no vrPerf');
+    /* 160 frames of exactly 16ms: more than the 120-slot window, so any
+       history from the tests above is fully overwritten */
+    for(let i=0;i<160;i++) vrUpdate(0.016);
+    const Pm = VR.perf;
+    if(!Pm || !Pm.n) throw new Error('nothing was recorded');
+    if(Math.abs(Pm.avg - 16) > 0.5)
+      throw new Error('avg reads ' + Pm.avg.toFixed(2) + 'ms for 16ms frames');
+    if(Math.abs(Pm.worst - 16) > 0.5)
+      throw new Error('worst reads ' + Pm.worst.toFixed(2) + 'ms for 16ms frames');
+    return 'avg ' + Pm.avg.toFixed(1) + 'ms, worst ' + Pm.worst.toFixed(1) +
+           'ms over a ' + Pm.buf.length + '-frame window';
+  });
+
+  P('the meter rides the left wrist', ()=>{
+    if(!VR.meter || !VR.meter.mesh) throw new Error('no meter was built');
+    if(VR.meter.mesh.parent !== VR.grips[0])
+      throw new Error('the meter is hanging off ' +
+        (VR.meter.mesh.parent && VR.meter.mesh.parent.name));
+    return 'a tag on the left grip, redrawn twice a second';
+  });
+
+  P('over budget, the peripheral goes first — foveation climbs', ()=>{
+    /* 16ms frames against an 11.1ms budget (no rate negotiated in this
+       harness, so the default 90Hz stands): the controller must push
+       foveation up from the 0.4 base, and stop at 1.0 */
+    const f0 = renderer.xr.foveation;
+    for(let i=0;i<400;i++) vrUpdate(0.016);
+    if(!(renderer.xr.foveation > 0.41))
+      throw new Error('foveation stayed at ' + renderer.xr.foveation);
+    if(renderer.xr.foveation > 1.0001)
+      throw new Error('foveation overflowed to ' + renderer.xr.foveation);
+    return 'foveation ' + f0.toFixed(2) + ' -> ' + renderer.xr.foveation.toFixed(2);
+  });
+
+  P('with headroom it relaxes to the 0.4 base, never below', ()=>{
+    /* 6ms frames: miles under budget.  It must come all the way back down
+       and sit at the base the quality tier asked for, not sink past it */
+    for(let i=0;i<1400;i++) vrUpdate(0.006);
+    if(Math.abs(renderer.xr.foveation - 0.4) > 0.001)
+      throw new Error('foveation settled at ' + renderer.xr.foveation);
+    if(!VR.perf || Math.abs(VR.perf.fov - 0.4) > 0.001)
+      throw new Error('the controller believes ' + (VR.perf && VR.perf.fov) +
+                      ' while the runtime is at 0.4');
+    return 'back to 0.4 and no further';
+  });
+
   console.log('--- vr: getting out ---');
 
   P('leaving the session puts everything back', ()=>{
