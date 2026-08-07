@@ -73,7 +73,14 @@ const probe = `
       inputSources: [
         {handedness:'left',  gamepad:{axes:sticks.left,  buttons:btns.left}},
         {handedness:'right', gamepad:{axes:sticks.right, buttons:btns.right}}
-      ]
+      ],
+      /* what a Quest 3 offers, deliberately unsorted: the game must pick
+         the LOWEST rate at or above 72, not the first it happens upon */
+      supportedFrameRates: [90, 120, 80, 72],
+      updateTargetFrameRate(r){
+        (this.ratesAsked = this.ratesAsked || []).push(r);
+        return Promise.resolve();
+      }
     };
     renderer.xr.fire('sessionstart');
   };
@@ -126,6 +133,17 @@ const probe = `
       throw new Error('framebuffer scale is ' + renderer.xr.fbScale + ', wanted 0.85');
     return 'shadows off, beams capped to ' + VR.beamCap + ', far ' + camera.far +
            ', eyes at ' + renderer.xr.fbScale;
+  });
+
+  P('the session is paced at 72Hz, not the 90 it could not hold', ()=>{
+    const s = renderer.xr._session;
+    if(!s.ratesAsked || !s.ratesAsked.length)
+      throw new Error('updateTargetFrameRate was never called');
+    if(s.ratesAsked[s.ratesAsked.length-1] !== 72)
+      throw new Error('asked for ' + s.ratesAsked.join(',') + ' — wanted 72, the lowest rate at or above 72');
+    if(VR.targetHz !== 72)
+      throw new Error('VR.targetHz is ' + VR.targetHz);
+    return 'asked for 72 of [' + Array.from(s.supportedFrameRates).join(', ') + '], and remembers it';
   });
 
   P('and only that many beams are ever alight', ()=>{
