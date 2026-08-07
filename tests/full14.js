@@ -154,25 +154,63 @@ const probe = `
     if(!(a > b)) throw new Error('weight is not being felt');
     return 'light '+a.toFixed(2)+'m vs heavy '+b.toFixed(2)+'m';
   });
-  P('shift lock latches the run', ()=>{
-    setShiftLock(true);
-    if(!shiftLock) throw new Error('did not latch');
+  P('tap Shift locks the cursor, tap again releases', ()=>{
+    /* jsdom has no pointer lock at all — mock the whole API so that
+       requestPointerLock/exitPointerLock drive pointerlockchange the way a
+       browser does, and the game's own handler keeps the chip honest */
+    const el = renderer.domElement;
+    window.__plk = null;
+    Object.defineProperty(document, 'pointerLockElement', {configurable:true, get:()=>window.__plk});
+    el.requestPointerLock = ()=>{ window.__plk = el; document.dispatchEvent(new window.Event('pointerlockchange')); };
+    document.exitPointerLock = ()=>{ window.__plk = null; document.dispatchEvent(new window.Event('pointerlockchange')); };
+    window.__tapShift = ()=>{
+      window.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Shift',code:'ShiftLeft',bubbles:true}));
+      window.dispatchEvent(new window.KeyboardEvent('keyup',{key:'Shift',code:'ShiftLeft',bubbles:true}));
+    };
+    Player.mode='walk';
+    document.dispatchEvent(new window.Event('pointerlockchange'));   // settle to unlocked
+    window.__tapShift();
+    if(!shiftLock) throw new Error('tap did not lock');
     if(!document.querySelector('#slChip').classList.contains('on')) throw new Error('chip did not light');
-    Player.mode='walk'; keys['KeyW']=true;
+    window.__tapShift();
+    if(shiftLock) throw new Error('second tap did not release');
+    if(document.querySelector('#slChip').classList.contains('on')) throw new Error('chip stayed lit');
+    return 'locks and releases';
+  });
+  P('holding Shift runs, and does NOT toggle the lock', ()=>{
+    Player.mode='walk';
+    const before = shiftLock;
+    window.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Shift',code:'ShiftLeft',bubbles:true}));
+    const t0 = Date.now(); while(Date.now()-t0 < 300){}   // a HOLD, not a tap
+    keys['KeyW']=true;
     const z0 = Player.pos.z; for(let i=0;i<30;i++) updatePlayer(0.016);
     const fast = Math.abs(Player.pos.z - z0);
-    setShiftLock(false);
+    window.dispatchEvent(new window.KeyboardEvent('keyup',{key:'Shift',code:'ShiftLeft',bubbles:true}));
+    if(shiftLock !== before) throw new Error('a hold toggled the lock');
     const z1 = Player.pos.z; for(let i=0;i<30;i++) updatePlayer(0.016);
     const slow = Math.abs(Player.pos.z - z1);
     keys['KeyW']=false;
-    if(!(fast > slow*1.4)) throw new Error('locked run was not faster ('+fast.toFixed(2)+' vs '+slow.toFixed(2)+')');
-    return 'run '+fast.toFixed(2)+'m vs walk '+slow.toFixed(2)+'m over 30 frames';
+    if(!(fast > slow*1.4)) throw new Error('held run was not faster ('+fast.toFixed(2)+' vs '+slow.toFixed(2)+')');
+    return 'run '+fast.toFixed(2)+'m vs walk '+slow.toFixed(2)+'m, no toggle';
   });
-  P('the L key toggles shift lock', ()=>{
+  P('the browser Esc-unlock turns the chip off', ()=>{
+    Player.mode='walk';
+    if(!shiftLock) window.__tapShift();
+    if(!shiftLock) throw new Error('setup: could not lock');
+    /* the browser exits pointer lock on Esc without asking the page — all we
+       get is the event, so the chip must follow it */
+    window.__plk = null; document.dispatchEvent(new window.Event('pointerlockchange'));
+    if(shiftLock) throw new Error('chip state did not follow the browser');
+    if(document.querySelector('#slChip').classList.contains('on')) throw new Error('chip stayed lit');
+    return 'chip follows pointerlockchange';
+  });
+  P('the L key toggles the cursor lock too', ()=>{
+    Player.mode='walk';
     const before = shiftLock;
     window.dispatchEvent(new window.KeyboardEvent('keydown',{key:'l',code:'KeyL',bubbles:true}));
     if(shiftLock === before) throw new Error('L did nothing');
     window.dispatchEvent(new window.KeyboardEvent('keydown',{key:'l',code:'KeyL',bubbles:true}));
+    if(shiftLock !== before) throw new Error('L did not toggle back');
     return 'toggles both ways';
   });
   P('no wall boxes left on the damask', ()=>{

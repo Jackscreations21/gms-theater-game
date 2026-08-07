@@ -852,9 +852,9 @@ table.ls tr.sel td{background:#1c2230}
   <div class="row" style="gap:50px;align-items:flex-start">
   <table><tbody>
     <tr><td><span class="kbd">W A S D</span></td><td>walk</td></tr>
-    <tr><td><span class="kbd">Mouse</span></td><td>look (click canvas to capture)</td></tr>
-    <tr><td><span class="kbd">Shift</span></td><td>run</td></tr>
-    <tr><td><span class="kbd">L</span></td><td>shift lock &mdash; latch the run on</td></tr>
+    <tr><td><span class="kbd">Mouse</span></td><td>look (tap Shift or click canvas to capture)</td></tr>
+    <tr><td><span class="kbd">Shift</span></td><td>hold: run &middot; tap: lock / release the cursor</td></tr>
+    <tr><td><span class="kbd">L</span></td><td>shift lock &mdash; same cursor toggle as a Shift tap</td></tr>
     <tr><td><span class="kbd">Space</span></td><td>jump / <b>GO</b> when console focused</td></tr>
     <tr><td><span class="kbd">V</span></td><td>toggle WALK / ORBIT camera</td></tr>
     <tr><td><span class="kbd">1&ndash;9</span></td><td>orchestra, balcony, deck, wings, rail, grid, foyer, dock, scene shop</td></tr>
@@ -11254,6 +11254,9 @@ document.addEventListener('pointerlockchange', ()=>{
   pointerLocked = document.pointerLockElement === dom;
   if(!pointerLocked) flyDrag = null;
   $('#xhair').style.display = (pointerLocked && Player.mode==='walk') ? 'block':'none';
+  /* the chip mirrors the REAL lock state, however it changed — Shift tap,
+     canvas click, or the browser's own Esc, which never asks us */
+  setShiftLock(pointerLocked);
 });
 addEventListener('mousemove', e=>{
   if(pointerLocked && Player.mode==='walk'){
@@ -11344,6 +11347,7 @@ addEventListener('keydown', e=>{
   const tag = (e.target.tagName||'').toLowerCase();
   if(tag==='input'||tag==='textarea'||tag==='select') return;
   keys[e.code] = true;
+  if(e.key === 'Shift' && !e.repeat) shiftTapAt = performance.now();
   const k = e.key.toLowerCase();
   if(BENCH.open){
     if(k === 'escape'){ closeBench(); return; }
@@ -11362,24 +11366,42 @@ addEventListener('keydown', e=>{
   if(k==='g'){ go(); }
   if(k==='e'){ useTarget(); }
   if(k==='f'){ toggleFollow(); }
-  if(k==='l'){ setShiftLock(!shiftLock); }
+  if(k==='l'){ toggleShiftLock(); }
   if(k==='r' && selPiece){ selPiece.rot += 15*DEG; selPiece.group.rotation.y = selPiece.rot; refreshSetUI(); }
   if(e.code==='Delete' && selPiece){ strikePiece(selPiece); }
   if(/^[1-9]$/.test(k)){ goToView(+k); }
   if(e.code==='Space' && Player.mode==='walk' && Player.onGround){ Player.vel.y = 4.6; Player.onGround=false; e.preventDefault(); }
   if(e.code==='Escape'){ if(BENCH.open) closeBench(); else unlock(); }
 });
-addEventListener('keyup', e=>{ keys[e.code]=false; });
+addEventListener('keyup', e=>{
+  keys[e.code]=false;
+  /* a TAP of Shift (under 250ms) toggles the cursor lock; a HOLD is still run */
+  if(e.key === 'Shift' && !BENCH.open && performance.now() - shiftTapAt < 250){
+    const tag = (e.target.tagName||'').toLowerCase();
+    if(tag!=='input' && tag!=='textarea' && tag!=='select') toggleShiftLock();
+  }
+});
 
-/* ---- shift lock: latch the run, and keep the mouse captured ---- */
-let shiftLock = false;
+/* ---- shift lock: TAP Shift and the cursor locks to the centre of the
+   screen with the mouse steering the camera; tap again and it lets go.
+   HOLD Shift and it is still run — the toggle only fires on a tap shorter
+   than 250ms, so sprinting never drops the mouse.  `shiftLock` is not a
+   second state: the chip simply mirrors the real pointer lock, however it
+   changed (tap, canvas click, or the browser's Esc). ---- */
+let shiftLock = false, shiftTapAt = -1e9;
 function setShiftLock(v){
+  if(v === shiftLock) return;
   shiftLock = v;
   const c = $('#slChip');
   c.classList.toggle('on', v);
   c.querySelector('b').textContent = v ? 'ON' : 'OFF';
-  if(v && Player.mode==='walk' && !pointerLocked) lock();
-  toast(v ? 'Shift lock ON — you run without holding Shift' : 'Shift lock off');
+  toast(v ? 'Cursor locked — mouse steers the camera, tap Shift to release'
+          : 'Cursor released — tap Shift to lock it again');
+}
+function toggleShiftLock(){
+  if(Player.mode !== 'walk') return;
+  if(typeof VR !== 'undefined' && VR && VR.active) return;
+  if(pointerLocked) unlock(); else lock();
 }
 
 function toggleMode(){
@@ -11387,14 +11409,14 @@ function toggleMode(){
   $('#modeChip').textContent = Player.mode.toUpperCase();
   $('#xhair').style.display = Player.mode==='walk' && pointerLocked ? 'block':'none';
   if(Player.mode==='orbit') unlock();
-  toast(Player.mode==='walk' ? 'WALK — click to capture the mouse' : 'ORBIT — drag to look, wheel to zoom, right-drag to pan');
+  toast(Player.mode==='walk' ? 'WALK — tap Shift or click to capture the mouse' : 'ORBIT — drag to look, wheel to zoom, right-drag to pan');
 }
 
 /* ---- walking ---- */
 function updatePlayer(dt){
   if(BENCH.open) return;              // the bench has the keyboard
   if(Player.mode!=='walk') return;
-  const running = shiftLock || keys['ShiftLeft'] || keys['ShiftRight'];
+  const running = keys['ShiftLeft'] || keys['ShiftRight'];
   const spd = running ? 6.4 : 3.1;
   let fx=0, fz=0;
   if(keys['KeyW']) fz+=1; if(keys['KeyS']) fz-=1;
@@ -11640,7 +11662,7 @@ function showPage(id){
 }
 $$('#tabs button[data-p]').forEach(b=>b.onclick=()=>showPage(b.dataset.p));
 $('#btnHide').onclick=()=>$('#dock').classList.toggle('hidden');
-$('#slChip').onclick=()=>setShiftLock(!shiftLock);
+$('#slChip').onclick=()=>toggleShiftLock();
 $('#btnHelp').onclick=()=>$('#help').classList.toggle('on');
 $('#help').onclick=()=>$('#help').classList.remove('on');
 
