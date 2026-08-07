@@ -356,43 +356,53 @@ Suites 12/12 before and after; the eight new/reworked assertions all fail
 against the pre-change build (negative-checked). What only the headset
 can answer is folded into the step-zero list below.
 
-**NEXT SESSION: the second headset run, then tune.**
+**NEXT SESSION: IMPROVE THE FRAME RATE.**
 
-**Step zero:** #15/#16/#17 are merged and verified (2026-08-07); confirm
-the locking-rail PR above is too, then put the owner in the headset on
-`…/the-house.html?v=5` (bump the number: the Quest Browser caches hard)
-and collect answers to, in order:
+The owner has named the goal. The only datum on record is "a little
+low" (2026-08-06, no number), and that was measured BEFORE the pin rail
+(#16) and the locking rail (#19) added their meshes. Order of work:
 
-1. **Frame rate** — is 90Hz held now, after the 0.85 scale and the
-   10-beam cap? Worst cases to stand in: centre stage under a full rig
-   in haze, and AT THE PIN RAIL — #16 adds ~7 meshes per hung lineset
-   (~77 on a full rail), unbatched draw calls, and that is new since the
-   last run.
-2. **The rail itself** — does the locking rail read as the photograph
-   (beam, number plates, red handles facing you)? Does a grab land
-   anywhere you reach on a rope (0.32m to either run, deck to grid)?
-   Does the lever answer only a deliberate closed hand on its knob
-   (0.12m), does pull-out-to-release / push-in-to-lock feel right, and
-   does a line released with nothing on it running away read as a load
-   getting loose rather than a glitch? Known cosmetic: the rope runs
-   pass visually THROUGH the fly-gallery floor at y=8 — a real rail has
-   rope slots cut in the fly floor; model holes if it grates.
-3. **Pointing** — do the desk buttons land where the cursor sits? The
-   UV flip (`v: 1 - h.uv.y` in `vrPointAt`) now has a posed-controller
-   regression test, but has still never met real hardware.
-4. **Human factors** — console text (`VRC.W/H`, `vrDrawConsole` fonts),
-   smooth turn (`VR.turn` 2.1 rad/s — offer snap turn if it turns
-   stomachs), walk 3.2, fly 8 m/s, jump/double-tap timing (0.35s window
-   in `vrButtonJump`), and the trigger's floating label legibility.
+**Step zero:** confirm the locking-rail PR
+([#19](https://github.com/Jackscreations21/gms-theater-game/pull/19))
+merged — merge it if not, it is reviewed, green and negative-checked —
+and bump the cache-buster to `…/the-house.html?v=5`.
 
-Write what the headset says HERE, then tune. The knobs, if frame rate
-still sags, in order of likely win: `VR.beamCap` lower still;
-framebuffer scale below 0.85 (`renderer.xr.setFramebufferScaleFactor`,
-wiring section of p9 — MUST be set before any session exists); thin
-`LIGHT_POOL` (p4); cut `SMOKE.n`; and now also: share/batch the rope
-loop meshes in `vrBuildRopes`, which were built for correctness first —
-the locking rail added a housing, lever, knob and number plate per line
-on top of the ~7 loop meshes, all unbatched.
+**First, measure — do not tune blind.** Nothing in the game reports
+frame rate today. Build a small VR-visible readout first (average and
+worst frame time over the last second or two, drawn onto something that
+can be read in-headset — the console canvas or a wrist/HUD sprite; a
+frame-time ring buffer in `vrUpdate` is jsdom-testable even if the
+display is not). Then have the owner stand in the two worst cases and
+read out numbers: centre stage under a full rig in haze, and at the
+locking rail with a full hang (~11 unbatched meshes per line after #19:
+loop, blocks, runs, housing, lever, knob, plate).
+
+**Then the knobs, in order of likely win** (retest after each — one
+change per PR):
+
+1. `VR.beamCap` lower still (10 today). Additive beams in haze are
+   overdraw, the thing a mobile tile GPU hates most.
+2. Batch the rail: merge the locking rail's static per-line meshes
+   (housings, plates via a shared atlas, runs, blocks) into shared
+   geometry / instanced draws in `vrBuildRopes`. Only the lever, knob
+   and grab section actually move per line; everything else can be one
+   draw. Built correctness-first on purpose — this is the deliberate
+   follow-up.
+3. Framebuffer scale below 0.85 (`setFramebufferScaleFactor`, wiring
+   section of p9 — MUST be set before any session exists).
+4. Thin `LIGHT_POOL` (p4); cut `SMOKE.n`; RENDER *low* preselected
+   before entering.
+
+**While the headset is on anyway**, collect the deferred verdicts and
+write them here: does the locking rail read as the photograph, does
+grab-anywhere land (0.32m to either run, deck to grid), does
+pull-out-to-release / push-in-to-lock feel right, does a runaway read
+as a load getting loose; do desk buttons land where the cursor sits
+(the `v: 1 - h.uv.y` flip has a regression test but has never met real
+hardware); console text size, smooth turn (`VR.turn` 2.1 rad/s — offer
+snap if it turns stomachs), walk 3.2, fly 8, the 0.35s double-tap
+window, label legibility. Known cosmetic, unfixed: rope runs pass
+through the fly-gallery floor at y=8 (real rails have rope slots).
 
 Ground rules unchanged: suites green before and after; what jsdom can
 test gets a regression test, what only a headset can verify gets written
