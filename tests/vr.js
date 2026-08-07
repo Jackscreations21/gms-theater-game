@@ -369,6 +369,24 @@ const probe = `
            p.x.toFixed(2) + ', ' + p.y.toFixed(2) + ', ' + p.z.toFixed(2) + ')';
   });
 
+  P('and all four Arc desks face their operators too', ()=>{
+    /* the Arc houses share the Palace's orientation — stage at −z, house
+       at +z — so the same ruling holds: a readable screen's world normal
+       points UP the house.  All four were built turned to the stage. */
+    scene.updateMatrixWorld(true);
+    const arcs = VR.desks.filter(x=>x.label.indexOf('THE PALACE') !== 0);
+    if(arcs.length !== 4) throw new Error(arcs.length + ' Arc desks, wanted 4');
+    const out = [];
+    for(const d of arcs){
+      const n = d.face.getWorldDirection(new THREE.Vector3());
+      if(!(n.z > 0.3))
+        throw new Error(d.label + ': screen normal z=' + n.z.toFixed(3) +
+                        ' — turned toward the stage, back to the operator');
+      out.push(d.label + ' z ' + n.z.toFixed(2));
+    }
+    return out;
+  });
+
   /* the seat pans: the one instanced batch of BoxGeometry(.50,.13,.60) in M.seat */
   const seatPanMesh = ()=>{
     let found = null, n = 0;

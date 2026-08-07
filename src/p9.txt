@@ -673,18 +673,23 @@ function vrBuildDesks(){
       const H = ARC.houses[key];
       if(!H || !H.rake) continue;
       const room = ARC.rooms[H.room];
-      // the tech table: mid stalls, on the rake, facing the stage
+      /* yaw 0, same ruling as the Palace desk: the Arc houses share the
+         Palace's orientation (stage −z, house +z), so a readable desk
+         points its raked face UP the house and the operator stands behind
+         it looking downstage.  These two were built at yaw π — every desk
+         in the building turned its screen to the stage and its back to
+         the person running the show. */
       const midRow = Math.floor(H.rake.zFirst + (H.rake.zLast - H.rake.zFirst)*0.55);
       const rows = Math.round((midRow - H.rake.zFirst)/H.rake.RUN);
       vrMakeDesk({
         label:H.label + ' — TECH TABLE', stage:H.stage,
         x:H.cx, y:H.rake.Y0 + rows*H.rake.RISE + 0.2,
-        z:H.rake.zFirst + rows*H.rake.RUN, yaw:Math.PI, parent:room
+        z:H.rake.zFirst + rows*H.rake.RUN, yaw:0, parent:room
       });
       // the control room, at the back under its window
       vrMakeDesk({
         label:H.label + ' — CONTROL ROOM', stage:H.stage,
-        x:H.cx, y:AS.BACKY, z:H.zHouse - 1.5, yaw:Math.PI, parent:room
+        x:H.cx, y:AS.BACKY, z:H.zHouse - 1.5, yaw:0, parent:room
       });
     }
   }
