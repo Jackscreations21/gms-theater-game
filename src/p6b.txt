@@ -243,7 +243,9 @@ function crewLoads(){
 }
 function crewForgetLoads(){ CREW.loads = null; CREW.loadsFor = null; }
 function crewLinesets(){
-  return FLY.filter(ls=>ls.goodsKey && ls.goodsKey !== 'none' && !ls.locked);
+  /* locked lines included: the crew's flyIn/flyOut go through flyTo, and the
+     flyman works the locks himself */
+  return FLY.filter(ls=>ls.goodsKey && ls.goodsKey !== 'none');
 }
 
 function crewPlan(dir){

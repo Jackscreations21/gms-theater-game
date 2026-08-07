@@ -121,6 +121,23 @@ const probe = `
     return 'rig at the player, camera inside it';
   });
 
+  P('the rail wakes up locked, and every lever stands upright', ()=>{
+    /* a counterweight rail at rest is locked off, so the ropes a session
+       builds must all carry their levers IN — straight up */
+    /* only the counterweight lines carry a lever — a rope without one
+       (a hand line, if the stage has one) has no lock to stand upright */
+    const rail = VR.ropes.filter(r=>r.lever);
+    if(!rail.length) throw new Error('the session built no ropes');
+    for(const r of rail){
+      if(!r.ls.locked)
+        throw new Error('lineset ' + r.ls.id + ' started with its lock off');
+      if(r.lever.rotation.z !== 0)
+        throw new Error('lineset ' + r.ls.id + ' lever leans at ' +
+                        r.lever.rotation.z.toFixed(2) + ' with the lock in');
+    }
+    return rail.length + ' levers in — the rail is locked off at rest';
+  });
+
   P('the quality tier comes on for the headset', ()=>{
     if(renderer.shadowMap.enabled) throw new Error('shadows are still on');
     if(RIG.shadowBudget !== 0) throw new Error('the shadow budget is ' + RIG.shadowBudget);
@@ -659,6 +676,7 @@ const probe = `
     // put a hand on it and pull down half a metre
     const c = takeHold(r, 0);
     if(!VR.held) throw new Error('the hand did not take hold of it');
+    pullLever(r);          // the rail wakes locked off — lever out with the load in hand
     c.position.y -= 0.5;
     c.updateMatrixWorld(true);
     vrUpdateHold(0.05);
@@ -675,7 +693,6 @@ const probe = `
     run(200, 0.05);
     if(Math.abs(ls.pos - stopped) > 0.2)
       throw new Error('it kept moving after the hand let go');
-    ls.locked = false;                          // leave the rail as we found it
     return 'half a metre of rope brought it in ' + pulled.toFixed(1) +
            'm, and the lever held it there';
   });
@@ -688,6 +705,7 @@ const probe = `
     const out = ls.pos;
     takeHold(r, 0);
     if(!VR.held) throw new Error('the hand did not take hold of it');
+    pullLever(r);                               // lever out: only the hand holds it now
     vrUpdateHold(0.05);                         // one still frame: let go at rest
     vrSqueeze(0, false);
     if(!ls.runaway) throw new Error('letting go with the lock off held it anyway');
@@ -717,6 +735,7 @@ const probe = `
     flyOut(ls); run(700, 0.05);
     const c = takeHold(r, 0);
     if(!VR.held) throw new Error('the hand did not take hold of it');
+    pullLever(r);                      // lever out, so the hand really has the weight
     c.position.y -= 8;                 // an impossible single pull — 44m of line
     c.updateMatrixWorld(true);
     vrUpdateHold(0.05);
@@ -738,6 +757,7 @@ const probe = `
     flyTo(ls, 12, true); run(4, 0.05);
     const c = takeHold(r, 0);
     if(!VR.held) throw new Error('the hand did not take hold of it');
+    pullLever(r);                               // lever out before the haul
     /* push the rope UP over ten frames — the batten flies OUT under the hand */
     for(let i=0;i<10;i++){
       c.position.y += 0.018;
@@ -774,6 +794,7 @@ const probe = `
     const r = anElectric(), ls = r.ls;
     flyTo(ls, 14, true); run(4, 0.05);
     takeHold(r, 0);
+    pullLever(r);                               // lever out while the hand has the weight
     vrUpdateHold(0.05);
     vrSqueeze(0, false);
     if(!ls.runaway) throw new Error('it is not running away to begin with');
@@ -835,6 +856,7 @@ const probe = `
     if(Math.abs(r.mesh.position.y - 5.0) > 0.01)
       throw new Error('the grab section did not slide to the hand: y=' +
                       r.mesh.position.y.toFixed(2));
+    pullLever(r);                               // lever out before the haul
     c0.position.y -= 0.4;
     c0.updateMatrixWorld(true);
     vrUpdateHold(0.05);
@@ -916,6 +938,28 @@ const probe = `
     ls.locked = false;
     flyTo(ls, 14, true); run(4, 0.05);
     return 'out is released — it fell to ' + caught.toFixed(2) + 'm until the lever caught it';
+  });
+
+  P('a runaway is never ended by a relock — only the lever or the deck stops it', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = anElectric(), ls = r.ls;
+    if(!ls.locked) throwLever(r);               // tie it off the way the rail rests
+    flyTo(ls, 16, true); run(4, 0.05);
+    if(Math.abs(ls.pos - 16) > 0.01)
+      throw new Error('the board could not work the lock: it sits at ' + ls.pos.toFixed(2));
+    if(!ls.locked) throw new Error('the board did not lock it off on arrival');
+    pullLever(r);                               // released with no hand on it: away it goes
+    if(!ls.runaway) throw new Error('released with nothing on it, and it hung there');
+    for(let i=0;i<400 && ls.runaway;i++){
+      updateFly(0.05);
+      if(ls.locked) throw new Error('the runaway relocked itself at ' + ls.pos.toFixed(2) + 'm');
+    }
+    if(ls.runaway) throw new Error('twenty seconds on and it is still falling');
+    if(ls.locked) throw new Error('the deck stop threw the lock on by itself');
+    if(Math.abs(ls.pos - floorOf(ls)) > 1e-6)
+      throw new Error('it came to rest at ' + ls.pos.toFixed(3));
+    return 'fell from 16m to ' + ls.pos.toFixed(2) + 'm with the lock off the whole way';
   });
 
   P('every rope is a loop — a head block at the grid, a floor block on the deck', ()=>{

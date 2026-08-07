@@ -47,6 +47,19 @@ const probe = `
     .find(b=>b.textContent === text);
   const click = el=>{ const e = new window.MouseEvent('click', {bubbles:true}); el.dispatchEvent(e); };
 
+  P('every lineset on every stage wakes up locked off', ()=>{
+    /* a counterweight rail at rest is locked off — all three stages boot
+       with every lock thrown, before anything has been called */
+    const out = [];
+    for(const [view, key] of [[3,'palace'],[15,'arcMain'],[19,'arcStudio'],[3,'palace']]){
+      goToView(view);
+      const un = FLY.filter(l=>!l.locked).length;
+      if(un) throw new Error(key+': '+un+' of '+FLY.length+' linesets started unlocked');
+      out.push(key);
+    }
+    return out.slice(0,3).join(', ')+' — locked off at rest';
+  });
+
   P('the table on screen belongs to the stage you are on', ()=>{
     const out = [];
     for(const [view, key] of [[3,'palace'],[15,'arcMain'],[19,'arcStudio'],[3,'palace']]){

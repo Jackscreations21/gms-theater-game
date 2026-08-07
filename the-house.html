@@ -3796,10 +3796,15 @@ function dropGoods(kind){
 function makeLineset(i){
   const z = -0.50 - i*0.80;    // every lineset lives UPSTAGE of the plaster line
   const ls = {
-    id:i+1, z:z, pos:OUT_TRIM, target:OUT_TRIM, locked:false, goodsKey:'none',
+    /* a counterweight rail at rest is locked off — every line wakes with its
+       lock thrown.  The lock is the HAND's interlock; the board is the
+       flyman, and flyTo works the lock itself. */
+    id:i+1, z:z, pos:OUT_TRIM, target:OUT_TRIM, locked:true, goodsKey:'none',
     speed:1.2, weight:0, moving:false, open:1, travTarget:1,
     /* a line let go of at the rail with no lock thrown on it — see updateFly */
-    runaway:false, flyVel:0
+    runaway:false, flyVel:0,
+    /* a board move that took the lock off itself owes it back on arrival */
+    relock:false
   };
   const grp = new T.Group(); grp.position.set(0, ls.pos, z); flyGroup.add(grp);
   const batten = new T.Mesh(new T.CylinderGeometry(.055,.055,D.procW+6,8), M.pipe);
@@ -3849,7 +3854,11 @@ function minTrimOf(ls){
   return clamp(Math.min(h, inTrimOf(ls)), 0.6, OUT_TRIM);
 }
 function flyTo(ls, y, instant){
-  if(ls.locked) return false;
+  /* the board is the flyman: a thrown lock does not refuse it.  It takes the
+     lock off itself, runs the line, and locks off again on arrival
+     (updateFly).  Only the hand is interlocked — the desktop haul (p7) and
+     the VR rope (p9) get nothing while the lever is in. */
+  if(ls.locked){ ls.locked = false; ls.relock = true; }
   ls.target = clamp(y, minTrimOf(ls), OUT_TRIM+0.4);
   if(instant) ls.pos = ls.target;
   return true;
@@ -3895,7 +3904,13 @@ function updateFly(dt){
     if(!ls.runaway){
       const d = ls.target - ls.pos;
       const step = ls.speed*dt;
-      if(Math.abs(d) < 0.004){ if(ls.moving){ ls.moving=false; Snd.railStop(ls); } ls.pos = ls.target; }
+      if(Math.abs(d) < 0.004){
+        if(ls.moving){ ls.moving=false; Snd.railStop(ls); }
+        ls.pos = ls.target;
+        /* the flyman locks off on arrival — but only the move he began:
+           runaways never carry relock, so a fall can never lock itself */
+        if(ls.relock){ ls.relock = false; ls.locked = true; }
+      }
       else {
         if(!ls.moving){ ls.moving=true; Snd.railStart(ls); }
         ls.pos += clamp(d, -step, step);
@@ -5234,7 +5249,8 @@ function fireCue(idx){
     if(f.mover){ f.panT = r.pan; f.tiltT = r.tilt; }
     else if(r.aim){ f.aim.set(r.aim[0], r.aim[1], r.aim[2]); f.group.lookAt(f.aim); }
   });
-  if(c.fly) c.fly.forEach(r=>{ const ls=FLY[r.id-1]; if(ls && !ls.locked){ ls.target=r.target; ls.travTarget=r.open; } });
+  /* a cue is a board move: flyTo works the lock and clamps to the deck */
+  if(c.fly) c.fly.forEach(r=>{ const ls=FLY[r.id-1]; if(ls){ flyTo(ls, r.target); ls.travTarget=r.open; } });
   if(c.sfx) Snd.play(c.sfx);
   HOUSE.house=c.house; HOUSE.work=c.work; HOUSE.practical=c.practical; RIG.haze=c.haze;
   if(typeof showCueExtras === 'function') showCueExtras(c);   // rain, storm, firelight
@@ -5663,10 +5679,10 @@ function railCall(id, what){
   const list = railGroup(id);
   const g = RAIL_GROUPS.find(x=>x.id === id);
   const name = g ? g.label.toLowerCase() : id;
-  if(!list.length){ toast('Nothing is hung with '+name); return {moved:0, locked:0, total:0}; }
-  let moved = 0, locked = 0;
+  if(!list.length){ toast('Nothing is hung with '+name); return {moved:0, total:0}; }
+  let moved = 0;
   for(const ls of list){
-    if(ls.locked && (what === 'in' || what === 'out')){ locked++; continue; }
+    /* locked lines answer too: flyTo is the flyman, and works the lock */
     if(what === 'in'){ if(flyIn(ls)) moved++; }
     else if(what === 'out'){ if(flyOut(ls)) moved++; }
     else if(what === 'open'){ ls.travTarget = 1; moved++; }
@@ -5675,10 +5691,9 @@ function railCall(id, what){
   const verb = what === 'in' ? 'coming in' : what === 'out' ? 'going out'
              : what === 'open' ? 'opening' : 'closing';
   toast(g.label.charAt(0) + g.label.slice(1).toLowerCase() + ' ' + verb + ' — ' +
-        moved + ' lineset' + (moved === 1 ? '' : 's') +
-        (locked ? ', ' + locked + ' locked off' : ''));
+        moved + ' lineset' + (moved === 1 ? '' : 's'));
   syncFlyUI(); syncRailGroups();
-  return {moved, locked, total:list.length};
+  return {moved, total:list.length};
 }
 function buildRailGroups(){
   const el = $('#railGroups'); if(!el || el.dataset.built) return;
@@ -6024,7 +6039,9 @@ function crewLoads(){
 }
 function crewForgetLoads(){ CREW.loads = null; CREW.loadsFor = null; }
 function crewLinesets(){
-  return FLY.filter(ls=>ls.goodsKey && ls.goodsKey !== 'none' && !ls.locked);
+  /* locked lines included: the crew's flyIn/flyOut go through flyTo, and the
+     flyman works the locks himself */
+  return FLY.filter(ls=>ls.goodsKey && ls.goodsKey !== 'none');
 }
 
 function crewPlan(dir){
@@ -11346,6 +11363,9 @@ let flyDrag = null, flyDragged = false;
 function grabLineset(ls){
   if(!ls) return false;
   if(ls.locked){ toast('Lineset '+ls.id+' is locked off — unlock it on the rail first'); return false; }
+  /* a board move in flight hands over, exactly as at the VR rail (p9):
+     nothing relocks itself under a live hand */
+  ls.relock = false;
   flyDrag = ls; flyDragged = false;
   toast('Hauling lineset '+ls.id+' — pull to fly, let go to set it');
   return true;
@@ -13890,6 +13910,7 @@ function vrSqueeze(hand, down){
        it does NOT touch the lock: only the lever does that */
     ls.runaway = false;
     ls.flyVel = 0;
+    ls.relock = false;   // a board move in flight hands over: nothing relocks under a live hand
     ls.target = ls.pos;
     if(typeof syncFlyRow === 'function') syncFlyRow(ls);
     /* the whipped section slides to meet the hand, whichever run, whatever

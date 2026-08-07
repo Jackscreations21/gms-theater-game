@@ -1111,6 +1111,7 @@ function vrSqueeze(hand, down){
        it does NOT touch the lock: only the lever does that */
     ls.runaway = false;
     ls.flyVel = 0;
+    ls.relock = false;   // a board move in flight hands over: nothing relocks under a live hand
     ls.target = ls.pos;
     if(typeof syncFlyRow === 'function') syncFlyRow(ls);
     /* the whipped section slides to meet the hand, whichever run, whatever
