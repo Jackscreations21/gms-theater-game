@@ -5105,6 +5105,13 @@ const GOBO_NAMES = {none:0, breakup:1, leaves:2, window:3, stars:4, bars:5};
 
 /* ============================================================================
    SUBMASTERS
+
+   Deliberately ONE-BOARD, not per-stage: a submaster is a recording of
+   levels by channel number, and it travels with the operator — walk to the
+   Arc and sub 1 replays the same channels on that rig.  This is unlike the
+   cue stack, which is the stage's own and parks with it (p2k).  If that
+   ever feels wrong, the fix is to capture SUBS in stageCapture/Restore the
+   way CUES are — see AUDIT.md M9.
    ========================================================================== */
 const SUBS = Array.from({length:8},(_,i)=>({i:i+1, val:0, rec:null, label:'sub '+(i+1)}));
 function recordSub(s){

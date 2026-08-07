@@ -282,8 +282,10 @@ follow cancel, audio stop, smoke gets a per-stage root exactly the way
       wrong stage's cue; cancel or park it.
 - [x] 10. **M8** — `selCue` isn't swapped; DELETE CUE after a walk splices
       the wrong stack.
-- [ ] 11. **M9** — `SUBS` are one-board while `CUES` are per-stage. Possibly
-      deliberate — owner rules: document it or capture them.
+- [x] 11. **M9** — `SUBS` are one-board while `CUES` are per-stage. Possibly
+      deliberate — owner rules: document it or capture them. *Documented as
+      one-board (p6, comment above `SUBS`); if the owner rules the other
+      way, capture them in p2k the way `CUES` are.*
 - [x] 12. **M10** — rail-motor audio loop leaks for a lineset mid-travel at
       swap (and collides with the other stage's same-id lineset); the rain
       rumble has the same shape.
