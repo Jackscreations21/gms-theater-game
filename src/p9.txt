@@ -945,10 +945,12 @@ function vrBuildRopes(){
   }
 }
 function vrClearRopes(){
-  /* let go of whatever is in hand FIRST — a held rope references a rope and
-     a lineset that are about to be disposed and parked, and vrUpdateHold
-     would keep hauling them every frame until the squeeze was released */
-  VR.held = null;
+  /* let go of any held ROPE first — it references a rope and a lineset that
+     are about to be disposed and parked, and vrUpdateHold would keep hauling
+     them every frame until the squeeze was released.  A held BODY or CART is
+     venue-level state and walks between stages in the hand (§3) — that hold
+     survives the swap untouched. */
+  if(VR.held && VR.held.rope) VR.held = null;
   VR.heldLever = null;
   /* the traveler's hand line sits in the pick list for its hover label —
      take it back out before its meshes are disposed */
@@ -1166,6 +1168,59 @@ function vrLetGo(h){
   if(typeof toast === 'function')
     toast('lineset ' + ls.id + ' — let go with the lock off, it is running away');
 }
+/* what releasing a held body will do: the nearest empty LIVE point within
+   reach of the BODY, else the nearest empty slot (rack, cart shelf, pallet).
+   Shared by the release itself and the floating label, so the label can
+   never promise one thing and the hand do another.  Points first: hanging
+   is the deliberate act, stowing the fallback. */
+const _bodT = new T.Vector3(), _bodP = new T.Vector3();
+function vrBodyTarget(b){
+  b.mesh.getWorldPosition(_bodP);
+  let pt = null, pd = 0.4;
+  if(b.kind === 'speaker'){
+    if(typeof SPKBARS !== 'undefined' && SPKBARS)
+      for(const k in SPKBARS){
+        const bar = SPKBARS[k];
+        if(!bar.points) continue;
+        for(const p of bar.points){
+          if(p.body) continue;
+          _bodT.set(0, p.y, 0);
+          bar.group.localToWorld(_bodT);
+          const d = _bodT.distanceTo(_bodP);
+          if(d < pd){ pd = d; pt = p; }
+        }
+      }
+  } else {
+    for(const f of FIXTURES){
+      if(f.body) continue;
+      f.group.getWorldPosition(_bodT);
+      const d = _bodT.distanceTo(_bodP);
+      if(d < pd){ pd = d; pt = f; }
+    }
+  }
+  if(pt) return {point:pt};
+  let sl = null, sd = 0.4;
+  const scan = (arr)=>{
+    if(!arr) return;
+    for(const a of arr){
+      if(a.userData.body) continue;
+      a.getWorldPosition(_bodT);
+      const d = _bodT.distanceTo(_bodP);
+      if(d < sd){ sd = d; sl = a; }
+    }
+  };
+  if(typeof SHEDS !== 'undefined'){
+    scan(SHEDS.palace && SHEDS.palace.slots);
+    scan(SHEDS.arc && SHEDS.arc.slots);
+  }
+  if(typeof CARTS !== 'undefined'){
+    scan(CARTS.palace && CARTS.palace.slots);
+    scan(CARTS.arc && CARTS.arc.slots);
+  }
+  if(typeof ORDERS !== 'undefined')
+    for(const k in ORDERS){ const o = ORDERS[k]; if(o && o.pallet) scan(o.pallet.slots); }
+  return sl ? {slot:sl} : null;
+}
 const _run = new T.Vector3(), _vecA = new T.Vector3();
 function vrSqueeze(hand, down){
   const c = VR.controllers[hand];
@@ -1175,6 +1230,19 @@ function vrSqueeze(hand, down){
     if(VR.held && VR.held.hand === hand){
       const h = VR.held;
       VR.held = null;
+      /* a released BODY snaps to what the label promised: an empty point,
+         an empty slot, or the floor (updateBodies settles it) */
+      if(h.kind === 'body'){
+        const b = h.body;
+        const t = vrBodyTarget(b);
+        if(t && t.point && hangBody(b, t.point)){
+          if(typeof toast === 'function') toast(BODY_LABEL[b.kind] + ' — hung');
+        } else if(t && t.slot && slotBody(b, t.slot)){
+          if(typeof toast === 'function') toast(BODY_LABEL[b.kind] + ' — stowed');
+        } else b.state = 'loose';
+        vrLabel(null);
+        return;
+      }
       /* a let-go CART simply stands where it is; only a rope has a whipped
          section to park and a load to run away */
       if(h.rope){
@@ -1232,6 +1300,34 @@ function vrSqueeze(hand, down){
       const d = Math.sqrt(px*px + py*py + pz*pz);
       if(d < ct.grabR && d < cd){ cd = d; cart = ct; }
     }
+  }
+  /* loose gear (the p4 detach system): hung bodies on the LIVE rig, and
+     anything slotted or standing loose — a body within reach of the closing
+     hand.  A parked stage's rig is across town; its bodies are not takeable. */
+  let bod = null, bdd = 0.35;
+  if(typeof BODIES !== 'undefined'){
+    for(const b of BODIES){
+      if(b.state === 'held') continue;
+      if(b.state === 'hung'){
+        const p = b.point;
+        const live = p && (p.spk
+          ? (SPKBARS && (SPKBARS.L === p.bar || SPKBARS.R === p.bar))
+          : FIXTURES.indexOf(p) >= 0);
+        if(!live) continue;
+      }
+      b.mesh.getWorldPosition(_vecA);
+      const d = _vecA.distanceTo(_rayO);
+      if(d < bdd){ bdd = d; bod = b; }
+    }
+  }
+  /* nearest wins across all four classes — never fork this arbitration */
+  if(bod && (!cart || bdd < cd) && (!lv || bdd < lvd) && (!best || bdd < bd)){
+    grabBody(bod);
+    bod.mesh.getWorldPosition(_vecA);
+    VR.held = {hand, kind:'body', body:bod,
+               offX:_vecA.x - _rayO.x, offY:_vecA.y - _rayO.y, offZ:_vecA.z - _rayO.z};
+    if(typeof toast === 'function') toast(BODY_LABEL[bod.kind] + ' — in hand');
+    return;
   }
   if(cart && (!best || cd < bd) && (!lv || cd < lvd)){
     VR.held = {hand, kind:'cart', cart, offX:cart.x - _rayO.x, offZ:cart.z - _rayO.z};
@@ -1302,6 +1398,24 @@ function vrUpdateHold(dt){
       ct.yaw += clamp(diff, -step, step);
       cartPose(ct);
     }
+    return;
+  }
+  /* a held BODY follows the grip kinematically — never re-parented to the
+     hand, so a hold record dropped without a release (session end, stage
+     swap: vrOnEnd and vrClearRopes null VR.held cold) leaves a correctly
+     parented mesh right where it was; updateBodies (p4) then demotes it to
+     loose and settles it to the floor */
+  if(VR.held.kind === 'body'){
+    const b = VR.held.body;
+    _vecA.set(_rayO.x + VR.held.offX, _rayO.y + VR.held.offY, _rayO.z + VR.held.offZ);
+    if(b.mesh.parent) b.mesh.parent.worldToLocal(_vecA);
+    b.mesh.position.copy(_vecA);
+    const t = vrBodyTarget(b);
+    b.mesh.getWorldPosition(_bodP);
+    const camD = camera.getWorldPosition(_bodT).distanceTo(_bodP);
+    vrLabel(BODY_LABEL[b.kind] + (t ? (t.point ? ' — release to HANG IT'
+                                              : ' — release to STOW IT')
+                                    : ' — release to set it down'), _bodP, camD);
     return;
   }
   const ls = VR.held.rope.ls;

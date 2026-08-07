@@ -1455,6 +1455,7 @@ function tick(now){
   updateDoors(dt);
   updateDockDoors(dt);
   if(typeof updateSheds === 'function') updateSheds(dt);
+  updateBodies(dt);           // loose gear settles; dropped holds demote (p4)
   updateMachines(dt);
   updateStorm(dt);            // rain, lightning and firelight
   updateCrew(dt);             // the stagehands, if they have been called

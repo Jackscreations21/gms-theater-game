@@ -159,6 +159,58 @@ const probe = `
     return 'both carts drawn with their sheds culled';
   });
 
+  console.log('--- the slots ---');
+  P('a body files into a rack slot and comes back off', ()=>{
+    goToView(3);
+    const b = BODIES.find(x=>x.venue==='palace' && x.kind!=='speaker' && x.state==='hung');
+    const home = b.point;
+    unhangBody(b);
+    const slot = SHEDS.palace.slots[0];
+    if(!slotBody(b, slot)) throw new Error('the slot refused it');
+    if(slot.userData.body !== b || b.state !== 'slotted') throw new Error('occupancy not recorded');
+    const b2 = BODIES.find(x=>x!==b && x.venue==='palace' && x.kind!=='speaker' && x.state==='hung');
+    const home2 = b2.point;
+    unhangBody(b2);
+    if(slotBody(b2, slot)) throw new Error('two bodies in one slot');
+    grabBody(b);
+    if(slot.userData.body) throw new Error('off the shelf, but the slot still names it');
+    if(!hangBody(b, home) || !hangBody(b2, home2)) throw new Error('re-hanging failed');
+    return 'filed, refused a double-booking, taken back';
+  });
+  P('a body on the cart rides the cart', ()=>{
+    goToView(3);
+    const cart = CARTS.palace;
+    const cx = cart.x, cz = cart.z;
+    const b = BODIES.find(x=>x.venue==='palace' && x.kind!=='speaker' && x.state==='hung');
+    const home = b.point;
+    unhangBody(b);
+    if(!slotBody(b, cart.slots[0])) throw new Error('the cart shelf refused it');
+    cart.x = cx + 2.0; cartPose(cart);
+    scene.updateMatrixWorld(true);
+    const p = new THREE.Vector3(); b.mesh.getWorldPosition(p);
+    if(Math.abs(p.x - cart.x) > 1.0) throw new Error('the cart moved and the body stayed at x='+p.x.toFixed(2));
+    grabBody(b);
+    if(!hangBody(b, home)) throw new Error('re-hanging failed');
+    cart.x = cx; cart.z = cz; cartPose(cart);
+    return 'the load travels with the cart';
+  });
+  P('a loose body settles to the floor under it', ()=>{
+    goToView(3);
+    const foh = FIXTURES.find(x=>x.name.indexOf('FOH')===0);
+    const b = BODIES.find(x=>x.mesh===foh.body);
+    unhangBody(b);           // loose, at FOH-bar height over the stalls
+    scene.updateMatrixWorld(true);
+    const before = new THREE.Vector3(); b.mesh.getWorldPosition(before);
+    for(let i=0;i<200;i++) updateBodies(0.05);
+    const p = new THREE.Vector3(); b.mesh.getWorldPosition(p);
+    const floor = houseFloorY(p.z);
+    if(!(before.y - p.y > 1)) throw new Error('it never fell: '+before.y.toFixed(2)+' -> '+p.y.toFixed(2));
+    if(p.y > floor + 0.35) throw new Error('it stopped '+(p.y-floor).toFixed(2)+'m up');
+    if(b.state !== 'loose') throw new Error('state is '+b.state);
+    if(!hangBody(b, foh)) throw new Error('re-hanging failed');
+    return 'fell '+(before.y-p.y).toFixed(1)+'m to the stalls floor';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

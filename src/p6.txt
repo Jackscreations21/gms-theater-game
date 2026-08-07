@@ -601,7 +601,7 @@ function buildSpkBarUI(){
     tr.innerHTML =
       '<td style="color:var(--amber)">S'+side+'</td>'+
       '<td class="mini">'+pair[1]+'</td>'+
-      '<td class="goods">3 &times; PA box</td>'+
+      '<td class="goods">6 &times; PA box</td>'+
       '<td><div class="pipbar"><i></i></div></td>'+
       '<td class="mini ht"></td>'+
       '<td class="mini"></td>'+
