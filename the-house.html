@@ -11126,7 +11126,8 @@ function updateStageHouseLights(){
 var SHEDS = {palace:null, arc:null};
 var CARTS = {palace:null, arc:null};
 
-/* the poured slab both sheds stand on */
+/* the poured slab the Palace shed stands on (the Arc shed is built from
+   buildArc's own concrete, passed in) */
 const M_SHED = {
   conc: new T.MeshStandardMaterial({color:0x8e8b84, roughness:.9})
 };
@@ -11210,10 +11211,11 @@ function cartPose(c){
   const g = new T.Group(); g.name = 'shedPalace';
   world.add(g);
 
-  /* the slab — top face exactly at deck height, and it runs downstage to the
-     stage side of the doorway so there is floor under your feet in it */
-  const fl = box(x1 - x0 + 0.8, 0.6, -16.8 - z0, M_SHED.conc,
-                 (x0 + x1)/2, -0.3, (z0 - 16.8)/2, g);
+  /* the slab — top face exactly at deck height.  It ends at D.backWall,
+     where the stage deck takes over: run it any further and the two floors
+     share the y=0 plane and z-fight on the stage side of the wall */
+  const fl = box(x1 - x0 + 0.8, 0.6, D.backWall - z0, M_SHED.conc,
+                 (x0 + x1)/2, -0.3, (z0 + D.backWall)/2, g);
   WALKABLE.push(fl);
 
   // the shell: rear wall, side walls, a flat roof
@@ -11241,11 +11243,26 @@ function cartPose(c){
     door:{group:dg, open:0, target:0, travel:3.2, H:3.4, halfW:1.6, x:0, y0:0}
   };
 
+  /* a practical over the door — the shed is its own room, and the stage
+     work light has no business reaching it through a brick wall.  It lives
+     in the shed group; buildRooms (p2i) lifts the light itself into SHARED,
+     which is the designed behaviour: a hidden light is a dark room. */
+  box(0.5, 0.2, 0.36, M.fixture, 0, 4.15, z1 - 0.5, g);
+  const bulb = new T.Mesh(new T.SphereGeometry(0.09, 8, 6), M.bulb);
+  bulb.position.set(0, 4.0, z1 - 0.5); g.add(bulb);
+  const pl = new T.PointLight(0xffd9a0, 0.7, 13, 1.5);
+  pl.position.set(0, 3.9, z1 - 0.7); g.add(pl);
+
   // racking along the rear wall
   for(const rx of [-8.4, -4.5, -0.6, 3.3])
     shedRack(g, rx, 0, z0 + 0.7, 0, SHEDS.palace.slots);
 
-  buildCart('palace', g, 8.5, -27.5);
+  /* The cart is a TOP-LEVEL world child, not a child of the shed group: a
+     cart gets pushed out of its shed in ordinary play, and a cart filed
+     with the shed room would vanish the moment the roller door shut behind
+     it.  p2i pins it 'shared' — fifteen meshes drawn behind a shut door is
+     free. */
+  buildCart('palace', world, 8.5, -27.5);
 
   /* the door control, an [E] station on the STAGE side of the wall — a
      top-level world child so p2i can pin it to the stage room, never the
@@ -11296,11 +11313,25 @@ function buildArcShed(MAT){
   SHEDS.arc = {x0, x1, z0, z1, group:R, slots:[]};
   ARC.shed = SHEDS.arc;
 
+  /* a keep fitting over EACH rear door — the ambient bed is the foyer's and
+     goes out entirely inside a house (updateArc), which left this room
+     pitch black.  Same pattern as the dock light: it never goes out. */
+  [-26, 26].forEach(dx=>{
+    const lamp = aBox(0.7, 0.24, 0.5, new T.MeshBasicMaterial({color:0xffd9a0}),
+                      dx, 4.3, z1 - 0.6, R);
+    aGlow(lamp, 0xffd9a0, 0.9, 'shed', true);
+  });
+
   // racking along the rear wall, clear of both doorway lanes at x = ±26
   for(const rx of [-14, -6, 6, 14])
     shedRack(R, rx, 0, z0 + 0.7, 0, SHEDS.arc.slots);
 
-  buildCart('arc', R, 420 + 0, -55);
+  /* The cart hangs off ARC.group itself, NOT the shed's room group: it gets
+     pushed onto a stage, and from the foyer neither house room is the shed,
+     so a room-filed cart would vanish mid-shove.  ARC.group's frame is the
+     same x=420 offset cartPose already removes (the room groups all sit at
+     the origin inside it). */
+  buildCart('arc', ARC.group, ARC.X + 0, -55);
 }
 
 /* ============================================================================
@@ -11459,6 +11490,10 @@ function roomForce(obj, room){ if(obj) ROOM_FORCE.set(obj, room); }
 if(typeof SHEDS !== 'undefined' && SHEDS.palace){
   roomForce(SHEDS.palace.group, 'shed');
   roomForce(SHEDS.palace.ctl, 'stage');
+  /* the cart is pushed about the whole building — file it with the walls
+     and the doors, never with a room that can shut behind it */
+  if(typeof CARTS !== 'undefined' && CARTS.palace)
+    roomForce(CARTS.palace.group, 'shared');
 }
 
 function buildRooms(){

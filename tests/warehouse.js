@@ -37,7 +37,6 @@ const probe = `
   window.__errs = [];
   const P = (name, fn)=>{ try{ const v=fn(); console.log('  ok  '+name+(v!==undefined?'  -> '+JSON.stringify(v).slice(0,210):'')); }
     catch(e){ console.log('  ERR '+name+': '+e.message); if(e.stack) console.log('      '+e.stack.split('\\n').slice(1,4).join(' | ')); window.__errs.push(name+': '+e.message); } };
-  const run = (n, dt)=>{ for(let i=0;i<n;i++){ updateArc(dt); updateFades(dt); updateFly(dt); updateStorm(dt); } };
 
   console.log('--- the palace warehouse ---');
   P('the shed exists and is a room', ()=>{
@@ -128,6 +127,36 @@ const probe = `
     if(SHEDS.palace.slots.length < 12) throw new Error('palace rack has '+SHEDS.palace.slots.length);
     if(SHEDS.arc.slots.length < 12) throw new Error('arc rack has '+SHEDS.arc.slots.length);
     return SHEDS.palace.slots.length+' + '+SHEDS.arc.slots.length;
+  });
+  P('a cart left outside its shed is not culled with it', ()=>{
+    /* a cart gets pushed out of its shed in ordinary play; if it is filed
+       with the shed room it vanishes the moment the door shuts behind it.
+       Palace: door shut, player mid-stage — shed culls, cart must not. */
+    SHEDS.palace.door.open = 0; SHEDS.palace.door.target = 0;
+    goToView(3);
+    Player.mode = 'walk'; Player.pos.set(0, 0, -8);
+    updateRooms(true);
+    if(ROOM_GROUP.shed.visible) throw new Error('the shed should be culled for this check');
+    let o = CARTS.palace.group;
+    while(o){
+      if(o.visible === false)
+        throw new Error('a palace cart ancestor is hidden: '+(o.name || o.type));
+      o = o.parent;
+    }
+    /* Arc: from the foyer neither house room is the shed (ARC_SEES.lobby),
+       so a room-filed cart would vanish — walk there and check the chain */
+    goToView(11);
+    Player.mode = 'walk';
+    updateRooms(true);
+    if(ARC.rooms.shed.visible) throw new Error('the arc shed should be culled for this check');
+    o = CARTS.arc.group;
+    while(o){
+      if(o.visible === false)
+        throw new Error('an arc cart ancestor is hidden: '+(o.name || o.type));
+      o = o.parent;
+    }
+    goToView(3);
+    return 'both carts drawn with their sheds culled';
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'

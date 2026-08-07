@@ -120,6 +120,10 @@ function roomForce(obj, room){ if(obj) ROOM_FORCE.set(obj, room); }
 if(typeof SHEDS !== 'undefined' && SHEDS.palace){
   roomForce(SHEDS.palace.group, 'shed');
   roomForce(SHEDS.palace.ctl, 'stage');
+  /* the cart is pushed about the whole building — file it with the walls
+     and the doors, never with a room that can shut behind it */
+  if(typeof CARTS !== 'undefined' && CARTS.palace)
+    roomForce(CARTS.palace.group, 'shared');
 }
 
 function buildRooms(){
