@@ -251,6 +251,105 @@ const probe = `
     return 'the same console, patched to whichever house you are standing in';
   });
 
+  console.log('--- vr: the triggers ---');
+
+  /* pose a hand: put it at FROM, point its ray (-Z) at AT — world coords */
+  const aim = (hand, from, at)=>{
+    VR.rig.position.set(0,0,0); VR.rig.rotation.set(0,0,0);
+    VR.rig.updateMatrixWorld(true);
+    const c = VR.controllers[hand];
+    c.position.copy(from);
+    const d = at.clone().sub(from).normalize();
+    c.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,-1), d);
+    c.updateMatrixWorld(true);
+  };
+
+  P('the ray reads the desk where you point it', ()=>{
+    goToView(3);
+    const face = VR.desks[0].face;
+    scene.updateMatrixWorld(true);
+    /* a point three quarters across and three quarters up the face:
+       u must be 0.75 and v (canvas, y down) 0.25 — the flip in vrPointAt */
+    const at = face.localToWorld(new THREE.Vector3(1.42*0.25, 0.9*0.25, 0));
+    const n = face.getWorldDirection(new THREE.Vector3());
+    aim(1, at.clone().add(n.multiplyScalar(1.2)), at);
+    const p = vrPointAt();
+    if(!p) throw new Error('the ray missed the desk face');
+    if(Math.abs(p.u - 0.75) > 0.02 || Math.abs(p.v - 0.25) > 0.02)
+      throw new Error('u,v = ' + p.u.toFixed(3) + ',' + p.v.toFixed(3) +
+                      ' — wanted 0.75,0.25');
+    return 'u ' + p.u.toFixed(2) + ', v ' + p.v.toFixed(2);
+  });
+
+  /* find a door leaf the world ray can actually see, from any of four sides */
+  const aimAtDoor = (hand)=>{
+    for(const d of DOORS){
+      const p = d.group.getWorldPosition(new THREE.Vector3()); p.y += 1.0;
+      for(const off of [[0,0,2],[0,0,-2],[2,0,0],[-2,0,0]]){
+        const from = p.clone().add(new THREE.Vector3(off[0], off[1], off[2]));
+        aim(hand, from, p);
+        const w = vrCastWorld(hand);
+        if(w && w.info.kind === 'door') return {d, w};
+      }
+    }
+    return null;
+  };
+
+  P('a trigger pull works the house doors from where you stand', ()=>{
+    goToView(1);
+    scene.updateMatrixWorld(true);
+    const found = aimAtDoor(1);
+    if(!found) throw new Error('no door leaf answered the ray');
+    const dw = found.w.info.dw;
+    const before = dw.leaves[0].target;
+    vrSelect(1, true);
+    if(dw.leaves[0].target === before) throw new Error('the trigger did not toggle it');
+    return 'doors ' + (dw.leaves[0].target > 0.5 ? 'opening' : 'closing');
+  });
+
+  P('the left trigger is a trigger too', ()=>{
+    scene.updateMatrixWorld(true);
+    const found = aimAtDoor(0);
+    if(!found) throw new Error('no door leaf answered the left ray');
+    const dw = found.w.info.dw;
+    const before = dw.leaves[0].target;
+    vrSelect(0, true);
+    if(dw.leaves[0].target === before) throw new Error('the left trigger did nothing');
+    return 'toggled back with the left hand';
+  });
+
+  P('the floating label says what a pull would do', ()=>{
+    scene.updateMatrixWorld(true);
+    const found = aimAtDoor(1);
+    if(!found) throw new Error('no door leaf answered the ray');
+    vrUpdate(0.016);
+    if(!VR.labelSpr || !VR.labelSpr.visible) throw new Error('no label came up');
+    if(!/DOOR/.test(VR.labelTxt)) throw new Error('the label says "' + VR.labelTxt + '"');
+    if(/\\[E\\]/.test(VR.labelTxt)) throw new Error('the label still says [E]: "' + VR.labelTxt + '"');
+    const said = VR.labelTxt;
+    aim(1, new THREE.Vector3(0, 1.5, 0), new THREE.Vector3(0, 60, 0));  // at the sky
+    vrUpdate(0.016);
+    if(VR.labelSpr.visible) throw new Error('the label did not clear');
+    return '"' + said + '" — and it clears';
+  });
+
+  P('on the desk, the trigger stays on the desk', ()=>{
+    goToView(3);
+    scene.updateMatrixWorld(true);
+    const face = VR.desks[0].face;
+    /* dead centre of the face is BETWEEN the buttons on every page — a pull
+       there must do nothing at all, and must never reach through the desk */
+    const at = face.localToWorld(new THREE.Vector3(0, -0.05, 0));
+    const n = face.getWorldDirection(new THREE.Vector3());
+    aim(1, at.clone().add(n.multiplyScalar(1.0)), at);
+    if(!vrPointAt()) throw new Error('the ray is not on the desk');
+    const doors = DOORS.map(d=>d.target);
+    vrSelect(1, true);
+    if(DOORS.some((d,i)=>d.target !== doors[i]))
+      throw new Error('the trigger reached through the desk into the room');
+    return 'swallowed by the desk, as it should be';
+  });
+
   console.log('--- vr: the ropes and the GO button ---');
 
   P('there is a rope for everything hanging', ()=>{

@@ -454,26 +454,29 @@ function updateHover(){
   }
   hoverInfo=null; $('#target').classList.remove('on');
 }
-function useTarget(){
-  if(!hoverInfo) return;
-  if(hoverInfo.kind==='fixture'){
-    const i = sectionOfChannel(hoverInfo.f.ch);
+/* act on a described target — the E key feeds it hoverInfo, and the VR
+   triggers (p9) feed it whatever the controller ray lands on */
+function useInfo(info){
+  if(!info) return;
+  if(info.kind==='fixture'){
+    const i = sectionOfChannel(info.f.ch);
     selectSection(i);
     setSection(SECTIONS[i], SECTIONS[i].level > 0.02 ? 0 : 1, 0.6);
     showPage('lights');
-  } else if(hoverInfo.kind==='lineset'){
-    const ls=hoverInfo.ls;
+  } else if(info.kind==='lineset'){
+    const ls=info.ls;
     if(ls.locked){ toast('Lineset '+ls.id+' is locked off'); return; }
     (ls.pos > 15 ? flyIn : flyOut)(ls);
     toast('Lineset '+ls.id+' '+(ls.pos>15?'coming in':'going out'));
-  } else if(hoverInfo.kind==='scenic'){
-    selPiece = hoverInfo.piece; refreshSetUI(); showPage('sets'); toast('Selected '+selPiece.label);
-  } else if(hoverInfo.kind==='station'){
-    useStation(hoverInfo.st, hoverInfo.obj);
-  } else if(hoverInfo.kind==='door'){
-    toggleDoorway(hoverInfo.dw);
+  } else if(info.kind==='scenic'){
+    selPiece = info.piece; refreshSetUI(); showPage('sets'); toast('Selected '+selPiece.label);
+  } else if(info.kind==='station'){
+    useStation(info.st, info.obj);
+  } else if(info.kind==='door'){
+    toggleDoorway(info.dw);
   }
 }
+function useTarget(){ useInfo(hoverInfo); }
 function toggleFollow(){
   const f = FIXTURES.find(x=>x.follow); if(!f) return;
   if(followTarget){ followTarget=null; toast('Followspot released'); }
