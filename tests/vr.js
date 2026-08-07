@@ -1517,6 +1517,139 @@ const probe = `
     return 'pushes and stops';
   });
 
+  console.log('--- vr: bodies ---');
+  P('a squeeze takes a lantern off its pipe, and the channel dies in the hand', ()=>{
+    enterVR();
+    goToView(3);
+    VR.rig.position.set(0,0,0); VR.rig.rotation.set(0,0,0);
+    VR.rig.updateMatrixWorld(true);
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    const f = FIXTURES.find(x=>x.type==='fresnel' && x.ls>=0);
+    f.level = 1;
+    updateRig(0.05, 1);
+    if(!(f._lvl > 0.5)) throw new Error('channel dark before the grab: '+f._lvl);
+    const c = VR.controllers[0];
+    c.quaternion.set(0,0,0,1);
+    scene.updateMatrixWorld(true);
+    const at = f.body.getWorldPosition(new THREE.Vector3());
+    c.position.copy(at); c.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body') throw new Error('the hand did not take the lantern');
+    const b = VR.held.body;
+    if(f.body) throw new Error('grabbed, but the point still names a body');
+    updateRig(0.05, 1);
+    if(f._lvl !== 0) throw new Error('off the pipe, the channel still reads '+f._lvl);
+    c.position.x += 1.0; c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    scene.updateMatrixWorld(true);
+    const p = b.mesh.getWorldPosition(new THREE.Vector3());
+    if(Math.abs(p.x - (at.x + 1.0)) > 0.05)
+      throw new Error('the hand went to '+(at.x+1).toFixed(2)+', the lantern to '+p.x.toFixed(2));
+    c.position.copy(at); c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    vrSqueeze(0, false);
+    if(b.state !== 'hung' || f.body !== b.mesh)
+      throw new Error('release at the empty point left it '+b.state);
+    updateRig(0.05, 1);
+    if(!(f._lvl > 0.5)) throw new Error('re-hung, the channel is still dead');
+    f.level = 0;
+    exitVR();
+    return 'off the pipe dark, back on the pipe lit';
+  });
+  P('release over the cart files the lantern on a shelf', ()=>{
+    enterVR();
+    goToView(3);
+    VR.rig.position.set(0,0,0); VR.rig.rotation.set(0,0,0);
+    VR.rig.updateMatrixWorld(true);
+    const cart = CARTS.palace;
+    cart.x = 8.5; cart.z = -27.5; cart.yaw = 0; cartPose(cart);
+    const f = FIXTURES.find(x=>x.type==='fresnel' && x.ls>=0);
+    const b = BODIES.find(x=>x.mesh===f.body);
+    const c = VR.controllers[0];
+    c.quaternion.set(0,0,0,1);
+    scene.updateMatrixWorld(true);
+    c.position.copy(f.body.getWorldPosition(new THREE.Vector3()));
+    c.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body') throw new Error('no grab');
+    scene.updateMatrixWorld(true);
+    const seat = cart.slots[3].getWorldPosition(new THREE.Vector3());
+    c.position.set(seat.x, seat.y + 0.1, seat.z); c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    vrSqueeze(0, false);
+    if(b.state !== 'slotted' || b.slot !== cart.slots[3])
+      throw new Error('release over the shelf left it '+b.state);
+    if(cart.slots[3].userData.body !== b) throw new Error('the slot does not name it');
+    grabBody(b);
+    if(!hangBody(b, f)) throw new Error('re-hanging failed');
+    exitVR();
+    return 'stowed on the cart shelf';
+  });
+  P('the hand takes whichever is nearer — rope or lantern', ()=>{
+    enterVR();
+    goToView(3);
+    VR.rig.position.set(0,0,0); VR.rig.rotation.set(0,0,0);
+    VR.rig.updateMatrixWorld(true);
+    vrBuildRopes();
+    const r = VR.ropes[0];
+    r.ls.locked = true;                 // a locked line cannot run away on release
+    const f = FIXTURES.find(x=>x.type==='fresnel' && x.ls>=0);
+    const b = BODIES.find(x=>x.mesh===f.body);
+    unhangBody(b);
+    scene.updateMatrixWorld(true);
+    const runAt = r.runs[0].getWorldPosition(new THREE.Vector3());
+    b.mesh.position.set(runAt.x + 0.25, 1.4, runAt.z);   // the venue root is the world frame
+    scene.updateMatrixWorld(true);
+    const c = VR.controllers[0];
+    c.quaternion.set(0,0,0,1);
+    c.position.set(runAt.x, 1.4, runAt.z); c.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || !VR.held.rope) throw new Error('with the hand on the run, the rope should take');
+    vrSqueeze(0, false);
+    c.position.set(runAt.x + 0.25, 1.4, runAt.z); c.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body') throw new Error('with the hand on the lantern, it should take');
+    vrSqueeze(0, false);
+    if(!hangBody(b, f)) throw new Error('re-hanging failed');
+    exitVR();
+    return 'rope in hand takes the rope, lantern in hand takes the lantern';
+  });
+  P('a carried lantern survives the walk, and a session end sets it down', ()=>{
+    enterVR();
+    goToView(3);
+    VR.rig.position.set(0,0,0); VR.rig.rotation.set(0,0,0);
+    VR.rig.updateMatrixWorld(true);
+    const f = FIXTURES.find(x=>x.type==='fresnel' && x.ls>=0);
+    const b = BODIES.find(x=>x.mesh===f.body);
+    const c = VR.controllers[0];
+    c.quaternion.set(0,0,0,1);
+    scene.updateMatrixWorld(true);
+    c.position.copy(f.body.getWorldPosition(new THREE.Vector3()));
+    c.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body') throw new Error('no grab');
+    /* the walk to the Arc parks the palace board — the lantern is venue
+       state and must stay in the hand (vrClearRopes only opens rope holds) */
+    goToView(15);
+    if(!VR.held || VR.held.kind !== 'body' || VR.held.body !== b)
+      throw new Error('the stage swap opened the hand');
+    goToView(3);
+    c.position.set(2, 1.5, -6); c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    exitVR();
+    if(VR.held) throw new Error('vrOnEnd left a hold record');
+    updateBodies(0.05);
+    if(b.state !== 'loose') throw new Error('after the session it reads '+b.state);
+    for(let i=0;i<200;i++) updateBodies(0.05);
+    scene.updateMatrixWorld(true);
+    const p = b.mesh.getWorldPosition(new THREE.Vector3());
+    /* it settles onto whatever is UNDER it — an earlier test leaves a show
+       standing, so the floor here may be a set piece, not the deck */
+    if(p.y > 0.8) throw new Error('it never came down: y='+p.y.toFixed(2));
+    if(!hangBody(b, f)) throw new Error('re-hanging failed');
+    return 'carried through the walk; set down by the session end';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

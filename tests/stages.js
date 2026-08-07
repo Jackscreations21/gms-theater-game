@@ -78,11 +78,29 @@ const probe = `
     goToView(3);
     const b = SPKBARS.L;
     const floor = houseFloorY(b.z);
-    // three boxes hang to 1.24m + half a box below the pipe
-    const lowestBox = b.min - 1.24 - 0.21;
+    // six boxes hang SPK_DROP + half a box below the pipe
+    const lowestBox = b.min - SPK_DROP - 0.23;
     if(lowestBox - floor > 1.8) throw new Error('lowest box stops '+(lowestBox-floor).toFixed(2)+'m up');
     if(b.wires[0].scale.y < 1) throw new Error('no drop wires');
     return 'boxes reach '+(lowestBox-floor).toFixed(2)+'m';
+  });
+  P('six boxes to an array, each on its own point', ()=>{
+    goToView(3);
+    ['L','R'].forEach(side=>{
+      const b = SPKBARS[side];
+      if(!b.points || b.points.length !== 6)
+        throw new Error(side+' has '+(b.points?b.points.length:0)+' points, wanted 6');
+      const empty = b.points.filter(p=>!p.body);
+      if(empty.length) throw new Error(empty.length+' points on '+side+' hang nothing');
+    });
+    /* one grille material across every box — a fresh material per box was
+       the old leak */
+    const mats = new Set();
+    SPKBARS.L.points.concat(SPKBARS.R.points).forEach(p=>{
+      p.body.traverse(o=>{ if(o.isMesh && o.geometry.type==='PlaneGeometry') mats.add(o.material); });
+    });
+    if(mats.size !== 1) throw new Error(mats.size+' grille materials across 12 boxes');
+    return '12 boxes, 12 points, one grille material';
   });
   P('the desktop rows drive the bars', ()=>{
     goToView(3);
@@ -1252,6 +1270,73 @@ const probe = `
     if(!m.body.userData.base || !m.body.userData.yoke || !m.body.userData.head)
       throw new Error('mover lost base/yoke/head');
     return 'lens + mover parts intact';
+  });
+
+  console.log('--- the detach system ---');
+  P('every lantern and PA box in the game is a registered body', ()=>{
+    goToView(3);
+    const hungFix = BODIES.filter(b=>b.kind!=='speaker' && b.state==='hung');
+    const hungSpk = BODIES.filter(b=>b.kind==='speaker' && b.state==='hung');
+    if(hungFix.length !== 75) throw new Error(hungFix.length+' lantern bodies, wanted 75 (25 x 3 stages)');
+    if(hungSpk.length !== 36) throw new Error(hungSpk.length+' PA boxes, wanted 36 (12 x 3 stages)');
+    const pal = BODIES.filter(b=>b.venue==='palace').length;
+    const arc = BODIES.filter(b=>b.venue==='arc').length;
+    if(pal !== 37 || arc !== 74) throw new Error('venue split '+pal+'/'+arc+', wanted 37 palace / 74 arc');
+    return '111 bodies: 37 palace, 74 arc, all hung';
+  });
+  P('an empty point is a dead channel — killed on the level path, never with visible', ()=>{
+    goToView(3);
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    const f = FIXTURES.find(x=>x.type==='fresnel' && x.ls>=0);
+    f.level = 1;
+    updateRig(0.05, 1);
+    if(!(f._lvl > 0.5)) throw new Error('the channel is not live to begin with: '+f._lvl);
+    if(!f.beam.visible) throw new Error('no beam before the test even starts');
+    const b = BODIES.find(x=>x.mesh === f.body);
+    unhangBody(b);
+    updateRig(0.05, 1);
+    if(f._lvl !== 0) throw new Error('unhung, the channel still reads '+f._lvl);
+    if(f.beam.visible) throw new Error('unhung, the beam still draws');
+    if(f.pool.visible) throw new Error('unhung, the floor pool still draws');
+    if(f._live) throw new Error('unhung, it still holds a real light');
+    if(f.level !== 1) throw new Error('the LEVEL was written — the gate must be the body, not the level');
+    if(!f.group.visible) throw new Error('the point was hidden — visible is a drawing flag, not a gate (§5)');
+    if(!hangBody(b, f)) throw new Error('it would not hang back on its own point');
+    updateRig(0.05, 1);
+    if(!(f._lvl > 0.5)) throw new Error('re-hung, the channel is still dead');
+    f.level = 0;
+    return 'dead while empty, live again on the pipe';
+  });
+  P('RULING A — the circuit lives in the pipe', ()=>{
+    goToView(3);
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    const foh = FIXTURES.find(x=>x.name.indexOf('FOH')===0);
+    const e1  = FIXTURES.find(x=>x.type==='fresnel' && x.ls>=0);
+    const bFoh = BODIES.find(x=>x.mesh===foh.body);
+    const bE1  = BODIES.find(x=>x.mesh===e1.body);
+    unhangBody(bFoh); unhangBody(bE1);
+    if(!hangBody(bE1, foh)) throw new Error('the fresnel body would not take the FOH clamp');
+    foh.level = 1;
+    updateRig(0.05, 1);
+    if(!(foh._lvl > 0.5)) throw new Error('a fresnel in the FOH point leaves FOH dead');
+    if(e1._lvl !== 0) throw new Error('the body took its old channel with it — the circuit must stay in the pipe');
+    unhangBody(bE1);
+    if(!hangBody(bFoh, foh) || !hangBody(bE1, e1)) throw new Error('putting the rig back failed');
+    foh.level = 0;
+    updateRig(0.05, 1);
+    return 'any body answers whatever the point is patched as';
+  });
+  P('rigging stays rigging — no PA box in a lantern clamp, no lantern on the bar', ()=>{
+    goToView(3);
+    const spkB = BODIES.find(b=>b.kind==='speaker' && b.venue==='palace' && b.state==='hung');
+    const spkP = spkB.point;
+    const boom = FIXTURES.find(x=>x.name.indexOf('BOOM')===0);
+    const boomB = BODIES.find(x=>x.mesh===boom.body);
+    unhangBody(spkB); unhangBody(boomB);
+    if(hangBody(spkB, boom)) throw new Error('a PA box took a profile clamp');
+    if(hangBody(boomB, spkP)) throw new Error('a lantern hung itself on the speaker bar');
+    if(!hangBody(spkB, spkP) || !hangBody(boomB, boom)) throw new Error('putting them back failed');
+    return 'the clamps know their own';
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'

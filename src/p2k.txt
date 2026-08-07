@@ -265,6 +265,10 @@ function buildArcStage(key, label, houseKey){
   const keepRig = rigGroup, keepPool = poolGroup, keepFlyG = flyGroup;
   const keepBar = FOHBAR;
   const keepSpk = SPKBARS;
+  /* bodies built while the Arc goes up are Arc property (the detach
+     system's venue tag, p4) */
+  const keepVen = BUILD_VENUE;
+  BUILD_VENUE = 'arc';
   rigGroup = rg; poolGroup = pg; flyGroup = fg;
 
   for(let i=0;i<14;i++) makeLineset(i);
@@ -288,7 +292,7 @@ function buildArcStage(key, label, houseKey){
     const rk = H.rake;
     for(const k in SPKBARS){
       const b = SPKBARS[k];
-      b.min = Math.min(b.max - 0.5, rk.Y0 + 0.2 + 2.9);
+      b.min = Math.min(b.max - 0.5, rk.Y0 + 0.2 + 1.55 + SPK_DROP);
       b.wireTop = 15.8;
       fohBarPose(b);
     }
@@ -325,6 +329,7 @@ function buildArcStage(key, label, houseKey){
   rigGroup = keepRig; poolGroup = keepPool; flyGroup = keepFlyG;
   FOHBAR = keepBar;
   SPKBARS = keepSpk;
+  BUILD_VENUE = keepVen;
   return st;
 }
 

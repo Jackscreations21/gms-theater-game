@@ -217,6 +217,141 @@ function bodyMover(){
   g.userData.clamp = base;   // movers clamp through their base
   g.userData.yoke = yoke; g.userData.head = head; g.userData.lens = lens; return g;
 }
+function bodySpeaker(){
+  const g = new T.Group();
+  const box = new T.Mesh(fixG('spkBox', ()=>new T.BoxGeometry(.62,.46,.54)), M.fixture);
+  g.add(box);
+  const grille = new T.Mesh(fixG('spkGrille', ()=>new T.PlaneGeometry(.56,.4)), lensMat(0x101010));
+  grille.position.z = .271; g.add(grille);
+  // the flying bracket on top is what meets the bar, and what a hand takes
+  const bkt = new T.Mesh(fixG('spkBkt', ()=>new T.BoxGeometry(.5,.06,.1)), M.steel);
+  bkt.position.y = .26; g.add(bkt);
+  g.userData.clamp = bkt;
+  return g;
+}
+
+/* ---- bodies off the pipe -------------------------------------------------
+   The detach system.  Every lantern and PA box is a BODY that can come off
+   its hanging POINT.  The point is per-stage state and parks with the board
+   (a lantern point IS its FIXTURES record; a speaker point rides SPKBARS);
+   the body is VENUE-level and never parks — carry it into the other house
+   and it is still wherever you left it.  `state` is the one word for where
+   a body is (§5: one flag, one meaning):
+     'hung'     on a point (mesh a child of the point's group)
+     'held'     in a VR hand (mesh at the venue root, following the grip
+                kinematically — so a hold record dropped without a release,
+                session end or stage swap, leaves a correctly-parented mesh)
+     'slotted'  in a rack, cart or pallet slot (mesh a child of the anchor)
+     'loose'    standing wherever it was dropped (mesh at the venue root)   */
+var BODIES = [];
+var BUILD_VENUE = 'palace';   // buildArcStage flips this while it builds (p2k)
+const BODY_LABEL = {profile:'PROFILE SPOT', fresnel:'FRESNEL', par:'PAR CAN',
+                    cyc:'CYC UNIT', mover:'MOVING HEAD', speaker:'PA BOX'};
+function makeBodyMesh(kind){
+  return kind==='fresnel'?bodyFresnel(): kind==='par'?bodyPar():
+         kind==='cyc'?bodyCyc(): kind==='mover'?bodyMover():
+         kind==='speaker'?bodySpeaker(): bodyProfile();
+}
+/* register a body that is already sitting hung on its point */
+function regBody(kind, mesh, point){
+  mesh.userData.moves = true;
+  const b = {kind, venue:BUILD_VENUE, mesh, state:'hung', point, slot:null};
+  BODIES.push(b);
+  return b;
+}
+/* where an un-hung body lives: the venue root, never a room or stage group —
+   the cart's rule (p2m), so it neither culls with a shut door nor parks with
+   a stage.  Runtime children of `world` sit outside the room groups
+   (buildRooms sorted world.children once, at boot), which is the point. */
+function venueRoot(v){
+  return (v === 'arc' && typeof ARC !== 'undefined' && ARC.group) ? ARC.group : world;
+}
+/* take a body off its point: the point stays put, and its channel goes dead
+   at the one gate in updateRig — the level path, never `visible` (§5) */
+function unhangBody(b){
+  if(b.state !== 'hung' || !b.point) return b;
+  const p = b.point;
+  if(!p.spk && p.beam && p.beam.parent !== p.group){
+    /* a mover's beam and glow are parented to the body's head; they are
+       point equipment, so they stay behind when the body goes */
+    p.group.add(p.beam); p.beam.position.set(0,0,0); p.beam.rotation.set(0,0,0);
+    p.group.add(p.glow); p.glow.position.set(0,0,.4); p.glow.rotation.set(0,0,0);
+  }
+  p.body = null;
+  venueRoot(b.venue).attach(b.mesh);
+  b.point = null; b.state = 'loose';
+  return b;
+}
+/* hang a body on an empty point.  RULING A: the circuit lives in the pipe —
+   any lantern body answers whatever the point is patched as.  Speaker points
+   are rigging and take only PA boxes (and vice versa). */
+function canHang(b, p){
+  if(p.body) return false;
+  return p.spk ? b.kind === 'speaker' : b.kind !== 'speaker';
+}
+function hangBody(b, p){
+  if(b.state === 'hung' || !canHang(b, p)) return false;
+  if(b.state === 'slotted') unslotBody(b);
+  if(p.spk){
+    p.bar.group.add(b.mesh);
+    b.mesh.position.set(0, p.y, 0);
+    b.mesh.rotation.set(p.tilt || 0, 0, 0);
+  } else {
+    p.group.add(b.mesh);
+    b.mesh.position.set(0,0,0); b.mesh.rotation.set(0,0,0);
+    if(p.mover && b.mesh.userData.head){
+      const h = b.mesh.userData.head;
+      h.add(p.beam); p.beam.position.set(0,0,0); p.beam.rotation.set(0,0,0);
+      h.add(p.glow); p.glow.position.set(0,0,.4); p.glow.rotation.set(0,0,0);
+    }
+  }
+  p.body = b.mesh;
+  b.point = p; b.slot = null; b.state = 'hung';
+  return true;
+}
+function unslotBody(b){
+  if(b.state !== 'slotted') return b;
+  venueRoot(b.venue).attach(b.mesh);
+  if(b.slot) b.slot.userData.body = null;
+  b.slot = null; b.state = 'loose';
+  return b;
+}
+function slotBody(b, anchor){
+  if(anchor.userData.body || b.state === 'hung') return false;
+  anchor.add(b.mesh);
+  b.mesh.position.set(0,0,0); b.mesh.rotation.set(0,0,0);
+  anchor.userData.body = b;
+  b.slot = anchor; b.state = 'slotted';
+  return true;
+}
+/* the squeeze that takes a body, whatever it was doing */
+function grabBody(b){
+  if(b.state === 'hung') unhangBody(b);
+  else if(b.state === 'slotted') unslotBody(b);
+  b.state = 'held';
+  return b;
+}
+/* loose bodies settle to the floor under them.  A body still marked 'held'
+   that no live hand names has had its hold record dropped without a release
+   (session end, stage swap — the p9 discipline): demote it here, which is
+   what makes those drops safe. */
+const _bodyV = new T.Vector3();
+function updateBodies(dt){
+  if(!BODIES.length) return;
+  const inHand = (typeof VR !== 'undefined' && VR && VR.held && VR.held.kind === 'body')
+    ? VR.held.body : null;
+  for(const b of BODIES){
+    if(b.state === 'held' && b !== inHand) b.state = 'loose';
+    if(b.state !== 'loose') continue;
+    b.mesh.getWorldPosition(_bodyV);
+    const g = (typeof groundAt === 'function') ? groundAt(_bodyV.x, _bodyV.z, _bodyV.y + 0.5) : 0;
+    if(g === null) continue;
+    const want = g + 0.25;
+    /* both venue roots stand at y=0 unrotated, so local y IS world y */
+    if(Math.abs(_bodyV.y - want) > 0.005)
+      b.mesh.position.y += clamp(want - _bodyV.y, -3*dt, 3*dt);
+  }
+}
 
 /* ---- the patch ---- */
 const FIXTURES = [];
@@ -288,10 +423,11 @@ function addFixture(o){
   const grp = new T.Group(); grp.position.copy(f.pos); rigGroup.add(grp);
   // the plot gave the aim in stage coordinates; from here on it is world
   stageToWorld(f.aim.x, f.aim.y, f.aim.z, f.aim);
-  const body = f.type==='fresnel'?bodyFresnel(): f.type==='par'?bodyPar():
-               f.type==='cyc'?bodyCyc(): f.type==='mover'?bodyMover(): bodyProfile();
+  const body = makeBodyMesh(f.type);
   grp.add(body);
   f.group = grp; f.body = body;
+  /* the point is this record; the lantern on it is a detachable body */
+  regBody(f.type, body, f);
 
   const beam = makeBeam(f.beamLen, f.beamRad);
   (f.type==='mover' ? body.userData.head : grp).add(beam);
@@ -356,6 +492,12 @@ function fohBarStep(s){
 var SPKBARS = null;
 const SPK_BAR_SPEED = 0.4;
 const SPK_BAR_STEP  = 1.2;
+/* six boxes to an array (the owner sized them up from three, 2026-08-07),
+   half a metre apart under the pipe; the bottom of the hang toes in the way
+   a real J-array does */
+const SPK_N = 6, SPK_TOP = -.34, SPK_STEP = .5;
+const SPK_TILT = [0, 0, 0, .07, .15, .26];
+const SPK_DROP = -SPK_TOP + (SPK_N-1)*SPK_STEP;   // pipe to the lowest box centre
 function spkBarTo(side, y){
   if(!SPKBARS || !SPKBARS[side]) return false;
   const b = SPKBARS[side];
@@ -412,8 +554,11 @@ function buildRig(){
       f.group.position.set(x, -0.45, 0);
     }
   }
-  // L+R SPEAKER ARRAYS — three boxes on a short pipe each side of the arch.
+  // L+R SPEAKER ARRAYS — six-box line arrays each side of the arch.
   // Stage-local coordinates, parented to the bar so travel carries them.
+  // Every box is a BODY hung on a speaker POINT: no channel, no plot, no
+  // audio (RULING B) — they are rigging, and they come off the bar the way
+  // a lantern comes off a pipe.
   {
     const sy = 9.4, sz = 2.8;
     SPKBARS = {};
@@ -428,21 +573,24 @@ function buildRig(){
         const wr = new T.Mesh(new T.CylinderGeometry(.012,.012,1,4), M.steel);
         wr.position.x = wx; bar.add(wr); wires.push(wr);
       });
-      for(let i=0;i<3;i++){
-        const by = -.32 - i*.46;
-        const box = new T.Mesh(new T.BoxGeometry(.56,.42,.5), M.fixture);
-        box.position.y = by; bar.add(box);
-        const grille = new T.Mesh(new T.PlaneGeometry(.5,.36),
-          new T.MeshBasicMaterial({color:0x101010}));
-        grille.position.set(0, by, .251); bar.add(grille);
-      }
-      SPKBARS[side] = {
+      const rec = SPKBARS[side] = {
         y:sy, target:sy, max:sy,
-        min:houseFloorY(sz) + 2.9,          // lowest box at chest height
+        /* the hang is SPK_DROP deep now — the min keeps the LOWEST box at
+           chest height, the same take-it-off-by-hand rule as the FOH bar */
+        min:houseFloorY(sz) + 1.55 + SPK_DROP,
         z:sz, wireTop:D.coveY,              // the cove band is overhead here, not the flat ceiling
-        group:bar, wires:wires
+        group:bar, wires:wires, points:[]
       };
-      fohBarPose(SPKBARS[side]);
+      for(let i=0;i<SPK_N;i++){
+        const p = {spk:true, bar:rec, side, y:SPK_TOP - i*SPK_STEP, tilt:SPK_TILT[i], body:null};
+        rec.points.push(p);
+        const mesh = bodySpeaker();
+        bar.add(mesh);
+        mesh.position.y = p.y; mesh.rotation.x = p.tilt;
+        p.body = mesh;
+        regBody('speaker', mesh, p);
+      }
+      fohBarPose(rec);
     });
   }
   // 7-8 BOX BOOMS — in the arched niches beside the proscenium
@@ -544,21 +692,31 @@ function updateRig(dt, t){
     if(f.mover){
       f.pan  += (f.panT  - f.pan ) * Math.min(1, dt*3.2);
       f.tilt += (f.tiltT - f.tilt) * Math.min(1, dt*3.2);
-      f.body.userData.yoke.rotation.y = f.pan*DEG;
-      f.body.userData.head.rotation.x = (f.tilt+90)*DEG;
+      /* RULING A allows a headless body in a mover's clamp (it lights, it
+         just can't articulate) — and an empty point has no body at all */
+      if(f.body && f.body.userData.head){
+        f.body.userData.yoke.rotation.y = f.pan*DEG;
+        f.body.userData.head.rotation.x = (f.tilt+90)*DEG;
+      }
     }
     if(f.follow && followTarget){
       _v.copy(followTarget); _v.y = clamp(_v.y,0.2,3.2);
       f.aim.copy(_v); f.group.lookAt(f.aim);
     }
-    const lvl = clamp(f.level,0,1) * master;
+    /* THE gate.  An empty point's channel drives nothing: cues, subs and
+       plots still write f.level, they just land on air, like a real
+       unplugged circuit.  Everything downstream — beam, glow, pool, the
+       real-light pool, the ambient bed — keys off lvl/_active, so this one
+       line is the whole of channel-dead.  Never gate with `visible` (§5). */
+    const lvl = f.body ? clamp(f.level,0,1) * master : 0;
     f._lvl = lvl;
 
     // where this fixture emits from, and where it's pointing
-    const src = f.mover ? f.body.userData.head : f.group;
+    const headed = f.mover && f.body && f.body.userData.head;
+    const src = headed ? f.body.userData.head : f.group;
     src.updateMatrixWorld(true);
     src.getWorldPosition(f._org);
-    if(f.mover){ src.getWorldDirection(_v2); f._dir.copy(_v2).normalize(); }
+    if(headed){ src.getWorldDirection(_v2); f._dir.copy(_v2).normalize(); }
     else { f._dir.copy(f.aim).sub(f._org).normalize(); }
     if(lvl > 0.004) _active.push(f);
 
