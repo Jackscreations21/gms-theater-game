@@ -450,47 +450,105 @@ adds ~7 meshes per stage and #29 ~9, small but real.
 merged #21–#30 the same day, `main` rebuilds byte-identical, 12/12
 suites green on the merged result. Nothing is in flight.
 
-**NEXT SESSION: THE VR BUILD FEATURE.** The owner's words, verbatim:
-"adding a vr build feature" — one line, no spec yet. **Step zero is to
-get the spec from the owner before writing any code.** Questions to
-put to them, with the likely shape as far as it can be guessed:
+**Done 2026-08-07, the rig/warehouse session (PRs #32–#35 — open as of
+this writing; check they merged before building on them; they merge
+clean in ANY order, seam-checked both ways, 13/13 on the combination).**
+The owner deferred the VR build feature — "we have to do some other
+things first" — and asked for six things. The spec is
+`docs/superpowers/specs/2026-08-07-rig-warehouse-design.md` (approved,
+five rulings inline — READ IT before touching any of this), the plan
+for the first four is `docs/superpowers/plans/2026-08-07-rig-warehouse-prs1-4.md`,
+and those four are built:
 
-- What gets built? The nearest standing ask is "stage 2" VR: **carrying
-  scenery by hand** — grab a set piece with a squeeze, walk it, set it
-  down. Or is it bigger: assembling sets from the scenic stock (p5),
-  placing new pieces the way the desktop scenic palette does, or even
-  laying out rigs/goods? Do not guess — the traveler ask ("slide the
-  curtain out to both sides") turned out to mean the real
-  counterweight thing, and this one deserves the same precision.
-- Where does what you build LIVE? If a VR-built layout should survive
-  a stage walk it has to park with the stage (the p2k pattern — see
-  the FOH bar in p4/p2k for the freshest worked example); if it should
-  survive a reload it needs a save shape (SHOW/`setGroup`, p5c).
-- Do the crew know about it? Hand-placed pieces and crewed LOAD IN/OUT
-  share `setGroup` — decide whether a strike removes hand-built work.
+- **[#32](https://github.com/Jackscreations21/gms-theater-game/pull/32)
+  — the FOH fix.** `wireTop` was one hard-coded 15.8 — Arc-sized; the
+  Palace ceiling over the bar is 24.6 (`D.ceilY`), so its wires stopped
+  8.8m short. `buildRig` now defaults to `D.ceilY` and `buildArcStage`
+  overrides per house (15.8, re-posed). `FOHBAR.min` floor+3.2 → +2.0
+  in all three houses: the lanterns come to chest height, the point
+  being PR 5 makes them takeable. The full14 "below heads" test asserts
+  the NEW rule now (to hand, pipe never on the floor). This PR also
+  carries the spec and plan docs.
+- **[#33](https://github.com/Jackscreations21/gms-theater-game/pull/33)
+  — real lantern bodies.** The five p4 builders are real lanterns
+  (barrel/gate/shutter handles, barn doors, gel frames, C-clamps),
+  every geometry built once and shared (`FIXG` cache), lens materials
+  cached (`LENSM` — shared, so never tint one per fixture;
+  `userData.lens` is write-only today). Every body carries
+  `userData.clamp` for PR 5. `buildRig` is byte-identical to before:
+  **PAR is stocked, not hung** — no rig hangs one, the tests build one
+  directly via `bodyPar()`, and the patch stays 25 channels.
+- **[#34](https://github.com/Jackscreations21/gms-theater-game/pull/34)
+  — speaker bars.** L+R flown PA per stage (short pipe, two wires,
+  three boxes) at x ±(procW/2+1.6), z 2.8, home 9.4 — the FOH-bar
+  pattern run twice: `SPKBARS` parked by p2k, SPK BAR L/R tfoot rows on
+  the desktop fly panel, RAISE/LOWER pairs on the VR fly page at pixel
+  y 312/366/448/502 (vr.js pins them by literal pixel — do not shift
+  them, same trap as the FOH pair). No audio (RULING B). Boxes are
+  static meshes until PR 5.
+- **[#35](https://github.com/Jackscreations21/gms-theater-game/pull/35)
+  — the warehouses.** A shed behind each venue — the first geometry
+  that has EVER stood behind either back wall. Palace: doorway cut in
+  the p2b brick wall at x=0, roller door, `shedP` [E] station, a
+  fourth portal-culled room (`'shed'`, a z-slab past `D.backWall−0.7`).
+  Arc: one shared shed behind both houses, a rear roller door per
+  house (`mainRear`/`studioRear`, in each house's door UI);
+  `arcRoomAt` answers `'shed'` BEFORE the main/studio sign test and
+  `stageAt` returns null there, so crossing the shed's width does NOT
+  swap the board — the foyer ruling. One 6-slot pushcart per shed,
+  VR-only: squeeze the handle and it rolls through the SAME wall
+  predicates the player walks against, nearest-wins against ropes and
+  levers. Carts are venue-level on purpose (palace: `world` +
+  `roomForce 'shared'`; arc: `ARC.group`) — review caught them
+  vanishing in front of you when their shed room culled. Racks carry
+  32 slot anchors per shed, waiting for PR 5. New 13th suite:
+  `tests/warehouse.js`; probe: `tools/warehouse.js`.
 
-What is already in the toolbox for whoever builds it: the two-hand
-squeeze/grab machinery in p9 (ropes, levers, traveler — nearest-wins
-against desks; extend `vrSqueeze`, don't fork it); the scenic stock
-and `setPieceVisible` in p5/p5c; `userData.effect` vs crew-keep-off
-flags (§5 — a flag used for two purposes WILL go wrong); the r128
-raycast traps in §5 (instanced bounding spheres, `visible` is only a
-drawing flag). Physics of carried pieces: keep it simple — kinematic
-follow of the grip, drop on release, no dynamics; the GOES WRONG
-collapse machinery (p5g) is show scripting, not a physics engine.
+Process notes that earned their keep: #33/#34/#35 by parallel worktree
+agents with TWO-STAGE review (spec compliance, then quality) — the
+reviews caught an agent quietly adding two PAR channels to make a test
+pass (reverted: scope), the cart room-cull vanish, and a pitch-black
+Arc shed (both sheds now carry dock-style keep lights). New trick,
+keep it: give each branch a DIFFERENT insertion anchor in shared test
+files (top / middle / end of the stages.js probe) — four branches,
+zero textual conflicts.
+
+**NEXT SESSION: PR 5 — THE DETACH SYSTEM (spec §3), then PR 6 —
+ORDERING (spec §6).** Step zero: confirm #32–#35 merged (merge them if
+not — each is double-reviewed, green, negative-checked). Then write
+the PR 5/6 plan the way the 1–4 plan was written — explore first,
+bite-sized tasks; the existing plan file covers 1–4 ONLY. PR 5 in one
+breath: every hanging position becomes a POINT (per-stage, p2k-parked,
+owns the channel and the plot — RULING A, "the circuit lives in the
+pipe") and every lantern/speaker box becomes a BODY (venue-level;
+hung / held / slotted / loose) grabbable via `vrSqueeze` (extend the
+arbitration the cart joined — never fork it); an empty point's channel
+is DEAD via ONE gate at the single choke point, p4's
+`const lvl = clamp(f.level,0,1) * master` (~p4:418) — NEVER via
+`visible` (§5). Bodies snap to empty points, cart slots and rack
+slots. The hooks are already on `main` once #33/#35 merge:
+`userData.clamp` on every body, `SHEDS[*].slots`, `CARTS[*].slots`,
+and the cart's `kind:'cart'` `VR.held` record as the
+discriminated-union precedent. PR 6 after: the order screen per shed
+(VR console pattern — five precedents in p9), ~30s pallet delivery,
+RULINGS C (free), D (one pending order, self-clearing pallet), E
+(24-loose-body venue cap). The deferred **VR BUILD FEATURE** (owner's
+words, "adding a vr build feature" — still no spec; ask before coding)
+comes after this feature set is done.
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
-the owner on `…/the-house.html?v=6`, bump the number, Quest Browser
+the owner on `…/the-house.html?v=7`, bump the number, Quest Browser
 caches hard):
 
-**Read the wrist meter and WRITE THE NUMBERS HERE.** The two worst
-cases are unchanged: centre stage under a full rig in haze, and at the
-locking rail with a full hang (~11 unbatched meshes per line: loop,
-blocks, runs, housing, lever, knob, plate). Also note what the
-foveation level settles at in each spot — if it is pinned at 1.0 the
-controller is out of headroom and the next knob is needed; if it sits
-at 0.4 we are done tuning.
+**Read the wrist meter and WRITE THE NUMBERS HERE.** The worst cases,
+now three: centre stage under a full rig in haze, at the locking rail
+with a full hang (~11 unbatched meshes per line), and — new with #33 —
+anywhere a rig fills the view: the real lantern bodies grew per-stage
+body meshes ~3.8× (~94 → ~359; r128 WebXR draws each eye separately).
+Also note what the foveation level settles at in each spot — if it is
+pinned at 1.0 the controller is out of headroom and the next knob is
+needed; if it sits at 0.4 we are done tuning.
 
 **The remaining knobs, if the meter still reads over budget** (retest
 after each — one change per PR):
@@ -505,7 +563,12 @@ after each — one change per PR):
    overdraw, the thing a mobile tile GPU hates most.
 3. Framebuffer scale below 0.85 (`setFramebufferScaleFactor`, wiring
    section of p9 — MUST be set before any session exists).
-4. Cut `SMOKE.n`; RENDER *low* preselected before entering. (Thinning
+4. Merge the new lantern bodies' static steel clusters (gel frame 4→1,
+   shutter handles 4→1, yoke+stem+bolt+safety→1 per yoke radius — keep
+   the jaw and lens separate: the jaw IS `userData.clamp` and PR 5
+   grabs by it). Spec'd in #33's quality review; brings a profile from
+   17 meshes to ~8 with zero visual change.
+5. Cut `SMOKE.n`; RENDER *low* preselected before entering. (Thinning
    `LIGHT_POOL` is done — that was #23.)
 
 **While the headset is on anyway**, collect the deferred verdicts and
@@ -520,7 +583,14 @@ window, label legibility. New from this round: is the wrist tag
 readable and sized like a watch; does 72Hz feel smoother than the
 dropping 90 did; is the four-light stage look visibly poorer in a busy
 cue (if so, `VR.lightCap` is one number); is the foveated edge
-noticeable when the controller leans on it. Known cosmetic, unfixed:
+noticeable when the controller leans on it. New from the rig/warehouse
+round (#32–#35): do the new lantern bodies read as real lanterns at
+arm's length (lower the FOH bar all the way and look); does pushing
+the cart feel right — grab height 1.02m, 1:1 chase, yaw easing at 2.5
+rad/s — and is pushing it through a doorway comfortable or claustro;
+do the sheds read as real rooms (lit enough? the keep lights are
+deliberate dusk, not work light); does the speaker-bar travel read
+believably from the stalls. Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).
 
@@ -541,12 +611,13 @@ that day: never `git add -A` while agent worktrees exist under
 `.claude/` — three gitlink pointers rode into a commit that way
 (`.gitignore` covers it now).
 
-After VR holds up on hardware, the leftovers: item 20, item 22, and the
-"stage 2" VR asks at the bottom of this section — plus two new small
-ones from this round: rope slots in the fly-gallery floor (cosmetic),
-and clearing `runaway` when a stage is parked mid-fall (today it
-resumes when you walk back in; arguably fine, documented here so it is
-a decision rather than a surprise).
+After VR holds up on hardware, the leftovers: item 20, item 22, the
+"stage 2" VR asks at the bottom of this section, and the deferred VR
+BUILD feature (no spec — ask the owner what it means first) — plus the
+small ones from earlier rounds: rope slots in the fly-gallery floor
+(cosmetic), and clearing `runaway` when a stage is parked mid-fall
+(today it resumes when you walk back in; arguably fine, documented
+here so it is a decision rather than a surprise).
 
 ---
 
