@@ -398,11 +398,16 @@ function updateRig(dt, t){
     } else pool.visible = false;
   }
 
-  /* hand the real lights to the fixtures currently doing the most work */
+  /* hand the real lights to the fixtures currently doing the most work.
+     In a VR session only VR.lightCap of them (p9): every live SpotLight is
+     per-pixel work in every material, and a headset draws the room twice.
+     `VR` is a var and this guard is safe before p9 has run. */
   _active.sort((a,b)=> (b._lvl*b.power) - (a._lvl*a.power));
   FIXTURES.forEach(f=>f._live=false);
+  const nLights = (VR && VR.active && VR.lightCap)
+    ? Math.min(VR.lightCap, LIGHT_POOL.length) : LIGHT_POOL.length;
   for(let i=0;i<LIGHT_POOL.length;i++){
-    const l = LIGHT_POOL[i], f = _active[i];
+    const l = LIGHT_POOL[i], f = i < nLights ? _active[i] : null;
     if(!f){ l.intensity = 0; continue; }
     f._live = true;
     l.position.copy(f._org);

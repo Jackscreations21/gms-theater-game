@@ -158,6 +158,26 @@ const probe = `
     return on + ' of ' + FIXTURES.length + ' beams alight';
   });
 
+  P('and only four real spotlights back them up in a session', ()=>{
+    if(!VR.lightCap) throw new Error('there is no light cap');
+    FIXTURES.forEach(f=>{ f.level = 1; f.lvlDur = 0; });
+    for(let i=0;i<20;i++){ updateFades(0.05); }
+    updateRig(0.05, 1);
+    const lit = LIGHT_POOL.filter(l=>l.intensity > 0).length;
+    if(lit > 4) throw new Error(lit + ' real lights alight in VR — the cap is 4');
+    /* the cap is the session's, not the game's: on the desktop the whole
+       pool must come back without a single saved value to restore */
+    VR.active = false;
+    updateRig(0.05, 1);
+    const flat = LIGHT_POOL.filter(l=>l.intensity > 0).length;
+    VR.active = true;
+    updateRig(0.05, 1);
+    if(flat <= 4)
+      throw new Error('the desktop only lit ' + flat + ' — the cap leaked out of the session');
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    return lit + ' of ' + LIGHT_POOL.length + ' spots in VR, all ' + flat + ' on the desktop';
+  });
+
   console.log('--- vr: moving ---');
 
   P('the left stick walks you and the right stick turns you', ()=>{
