@@ -159,6 +159,47 @@ const probe = `
     return '24 sightlines under the rows in both houses, every one of them stopped';
   });
 
+  P('every seat stands on its tread, in both houses', ()=>{
+    /* the rows were laid out from 0.4 + i*RISE while the treads top out at
+       Y0 + i*RISE + 0.2 — a metre lower.  Both houses' seating floated.
+       Now each seat base must sit on its pedestal, and the pedestal on the
+       tread: base bottom a plinth-height above the tread top, everywhere. */
+    const out = [];
+    for(const [view, key] of [[15,'arcMain'],[19,'arcStudio']]){
+      goToView(view);
+      const H = ARC.houses[STAGES[key].arcHouse];
+      const room = ARC.rooms[H.room];
+      let baseMesh = null, plinthMesh = null;
+      room.traverse(c=>{
+        if(!c.isInstancedMesh || !c.geometry.parameters) return;
+        const q = c.geometry.parameters;
+        if(Math.abs(q.width-0.54)<1e-6 && Math.abs(q.height-0.12)<1e-6 &&
+           Math.abs(q.depth-0.5)<1e-6) baseMesh = c;
+        if(Math.abs(q.width-0.34)<1e-6 && Math.abs(q.height-0.16)<1e-6 &&
+           Math.abs(q.depth-0.44)<1e-6) plinthMesh = c;
+      });
+      if(!baseMesh) throw new Error(H.label + ' has no seat-base batch');
+      if(!plinthMesh || plinthMesh.count !== baseMesh.count)
+        throw new Error(H.label + ' seats have no pedestals under them (' +
+          (plinthMesh ? plinthMesh.count : 0) + ' for ' + baseMesh.count + ' seats)');
+      const rake = H.rake, m = new THREE.Matrix4(), v = new THREE.Vector3(),
+            q4 = new THREE.Quaternion(), s = new THREE.Vector3();
+      let worst = 0.16, worstAt = 'nowhere';   // 0.16 IS the plinth: zero deviation
+      for(let i=0;i<baseMesh.count;i++){
+        baseMesh.getMatrixAt(i, m); m.decompose(v, q4, s);
+        const row = Math.round((v.z - rake.zFirst)/rake.RUN);
+        const tread = rake.Y0 + row*rake.RISE + 0.2;
+        const gap = (v.y - 0.06) - tread;      // base bottom above its tread
+        if(Math.abs(gap - 0.16) > Math.abs(worst - 0.16)){ worst = gap; worstAt = 'row ' + row; }
+      }
+      if(worst > 0.35 || worst < 0.0)
+        throw new Error(H.label + ': a seat base floats ' + worst.toFixed(2) +
+                        'm over its tread (' + worstAt + ') — wanted the 0.16m plinth gap');
+      out.push(H.label + ': ' + baseMesh.count + ' seats, worst gap ' + worst.toFixed(2) + 'm');
+    }
+    return out;
+  });
+
   P('the rake runs the whole way from the front row to the back wall', ()=>{
     const out = [];
     for(const [view, key] of [[15,'arcMain'],[19,'arcStudio']]){
