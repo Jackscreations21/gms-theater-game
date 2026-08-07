@@ -104,6 +104,61 @@ const probe = `
     if(ls.travTarget === before) throw new Error('traveler did not move');
     return 'open -> '+ls.travTarget;
   });
+  console.log('--- the FOH bar, from the board ---');
+  P('LOWER on the board brings the bar and all six lanterns down', ()=>{
+    if(typeof FOHBAR === 'undefined' || !FOHBAR) throw new Error('there is no FOH bar');
+    const foh = FIXTURES.filter(f=>f.name.indexOf('FOH ') === 0);
+    if(foh.length !== 6) throw new Error(foh.length+' FOH lanterns');
+    const row = document.querySelector('#lsTable tfoot tr.fohbar');
+    if(!row) throw new Error('no FOH BAR row on the rail panel');
+    const btn = Array.prototype.slice.call(row.querySelectorAll('button'))
+      .find(b=>b.textContent === 'LOWER');
+    if(!btn) throw new Error('the FOH BAR row has no LOWER button');
+    for(let i=0;i<40;i++) updateRig(0.05, 1);
+    const y0 = FOHBAR.y;
+    const org0 = foh.map(f=>f._org.y);
+    const aim0 = foh.map(f=>f.aim.clone());
+    btn.click();
+    if(FOHBAR.target > y0 - 1.0) throw new Error('one click moved the target to '+FOHBAR.target.toFixed(2));
+    for(let i=0;i<120;i++) updateRig(0.05, 1);
+    if(!(FOHBAR.y < y0 - 1.0)) throw new Error('the bar did not come down: '+FOHBAR.y.toFixed(2));
+    const dir = new THREE.Vector3(), want = new THREE.Vector3();
+    foh.forEach((f,i)=>{
+      if(!(f._org.y < org0[i] - 1.0)) throw new Error(f.name+' did not ride the bar down');
+      if(f.aim.distanceTo(aim0[i]) > 1e-6) throw new Error(f.name+' lost its focus');
+      /* the lantern must TILT to hold its focus: its +z looks at the aim */
+      f.group.getWorldDirection(dir);
+      want.copy(f.aim).sub(f._org).normalize();
+      if(dir.dot(want) < 0.999) throw new Error(f.name+' is no longer pointed at its focus');
+    });
+    return 'bar '+y0.toFixed(2)+' -> '+FOHBAR.y.toFixed(2)+'m, six lanterns riding, aims held';
+  });
+  P('RAISE takes it home and the readout follows', ()=>{
+    const row = document.querySelector('#lsTable tfoot tr.fohbar');
+    const btn = Array.prototype.slice.call(row.querySelectorAll('button'))
+      .find(b=>b.textContent === 'RAISE');
+    if(!btn) throw new Error('no RAISE button');
+    btn.click();
+    for(let i=0;i<200;i++) updateRig(0.05, 1);
+    if(Math.abs(FOHBAR.y - FOHBAR.max) > 0.01)
+      throw new Error('RAISE left the bar at '+FOHBAR.y.toFixed(2));
+    syncFlyUI();
+    const txt = row.querySelector('.ht').textContent;
+    if(Math.abs(parseFloat(txt) - FOHBAR.y) > 0.15)
+      throw new Error('the readout says '+txt+' and the bar is at '+FOHBAR.y.toFixed(2));
+    return 'home at '+txt;
+  });
+  P('the bar will not go below heads or above home', ()=>{
+    fohBarTo(-99);
+    if(Math.abs(FOHBAR.target - FOHBAR.min) > 1e-9)
+      throw new Error('drove to '+FOHBAR.target.toFixed(2)+' past the floor clamp '+FOHBAR.min.toFixed(2));
+    fohBarTo(99);
+    if(Math.abs(FOHBAR.target - FOHBAR.max) > 1e-9)
+      throw new Error('drove to '+FOHBAR.target.toFixed(2)+' past the top clamp');
+    if(FOHBAR.min < 3.2) throw new Error('the floor clamp '+FOHBAR.min.toFixed(2)+' is in the audience');
+    for(let i=0;i<40;i++) updateRig(0.05, 1);
+    return 'clamped '+FOHBAR.min.toFixed(2)+' .. '+FOHBAR.max.toFixed(2);
+  });
   console.log('--- hauling + shift lock ---');
   P('hold LMB on an unlocked lineset hauls it', ()=>{
     const ls = FLY[9]; ls.locked=false; ls.target = ls.pos = 14.0;

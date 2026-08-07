@@ -4185,16 +4185,73 @@ function addFixture(o){
   return f;
 }
 
+/* ---- the FOH bar --------------------------------------------------------
+   The six FOH lanterns hang on a bar the board can raise and lower, not on
+   air.  One bar per stage: buildRig puts it up inside whichever rigGroup is
+   being built, so its whole state is a height in STAGE coordinates and
+   nothing about it can leak a building over at the Arc.  FOHBAR names the
+   LIVE stage's bar the way FIXTURES holds the live rig — p2k swaps it with
+   the rest of the board.  A var on purpose: typeof does not protect a const
+   declared later in the file (§5), and other parts reach for this. */
+var FOHBAR = null;
+const FOH_BAR_SPEED = 0.4;      // m/s — a sedate motor, not a fly cue
+const FOH_BAR_STEP  = 1.2;      // one press on either board moves it this far
+function fohBarPose(b){
+  b.group.position.y = b.y;
+  // the drop wires stretch up to their anchor, the way lift lines do
+  const len = Math.max(.05, b.wireTop - b.y);
+  b.wires.forEach(wr=>{ wr.scale.y = len; wr.position.y = len/2; });
+}
+function fohBarTo(y){
+  if(!FOHBAR) return false;
+  FOHBAR.target = clamp(y, FOHBAR.min, FOHBAR.max);
+  return true;
+}
+function fohBarStep(s){
+  if(!FOHBAR) return false;
+  return fohBarTo(FOHBAR.target + s*FOH_BAR_STEP);
+}
+
 function buildRig(){
   const V = (x,y,z)=>new T.Vector3(x,y,z);
-  // 1-6  FRONT OF HOUSE — the balcony-rail position under the first balcony
-  for(let i=0;i<6;i++){
-    const x = -8.0 + i*3.2;
-    const zf = D.mezzZ + BOW*Math.pow(x/(D.houseW/2-0.25),2) - 0.35;
-    addFixture({name:'FOH '+(i+1)+(i%2?' cool':' warm'), type:'profile',
-      pos:V(x, D.mezzY-0.45, zf), aim:V(x*0.42, 1.3, -1.2 - (i%2)*1.4),
-      angle:15, beamLen:20, beamRad:2.6, power:3.1,
-      color:new T.Color(i%2?0xd7e4ff:0xffd6a8)});
+  // 1-6  FRONT OF HOUSE — six profiles on a raisable bar under the first
+  // balcony.  The bar is a straight pipe just clear of the balcony face
+  // (the face bows AWAY from centre, so its closest point sets the z), with
+  // two drop wires running up toward the cove.  The fixtures are parented
+  // to the bar: move it and lanterns, beams, pools and glows all ride along
+  // — while the aims deliberately stay put, so each lantern tilts on its
+  // yoke to hold its focus as the bar travels.
+  {
+    const barY = D.mezzY - 0.45;             // home — where the rig was hung
+    const barZ = D.mezzZ - 0.35;             // clear of the face at its closest
+    const bar = new T.Group();
+    bar.position.set(0, barY, barZ);
+    rigGroup.add(bar);
+    const pipe = new T.Mesh(new T.CylinderGeometry(.055,.055,17.6,8), M.pipe);
+    pipe.rotation.z = Math.PI/2; bar.add(pipe);
+    const wires = [];
+    [-8.4, 8.4].forEach(x=>{
+      const wr = new T.Mesh(new T.CylinderGeometry(.012,.012,1,4), M.steel);
+      wr.position.x = x; bar.add(wr); wires.push(wr);
+    });
+    FOHBAR = {
+      y:barY, target:barY, max:barY,         // no higher than it was hung
+      /* no lower than head height over the stalls beneath it; the Arc's
+         steeper rake overrides this per house in buildArcStage */
+      min:houseFloorY(barZ) + 3.2,
+      z:barZ, wireTop:15.8,                  // under the Arc's 16.2m ceiling too
+      group:bar, wires:wires
+    };
+    fohBarPose(FOHBAR);
+    for(let i=0;i<6;i++){
+      const x = -8.0 + i*3.2;
+      const f = addFixture({name:'FOH '+(i+1)+(i%2?' cool':' warm'), type:'profile',
+        pos:V(x, barY-0.45, barZ), aim:V(x*0.42, 1.3, -1.2 - (i%2)*1.4),
+        angle:15, beamLen:20, beamRad:2.6, power:3.1,
+        color:new T.Color(i%2?0xd7e4ff:0xffd6a8)});
+      bar.add(f.group);                      // ride the bar, not the rigGroup
+      f.group.position.set(x, -0.45, 0);
+    }
   }
   // 7-8 BOX BOOMS — in the arched niches beside the proscenium
   [-1,1].forEach(s=>{
@@ -4269,6 +4326,12 @@ function updateRig(dt, t){
     const st = STAGES[STAGE];
     _sx = (st.venue === 'arc' && typeof ARC !== 'undefined' ? ARC.X : 0) + st.cx;
     _sz = st.zPros;
+  }
+  /* the FOH bar rides toward its target at motor speed.  Only the live
+     stage's bar is here to tick — a parked stage's waits, like its rail */
+  if(FOHBAR && FOHBAR.y !== FOHBAR.target){
+    FOHBAR.y += clamp(FOHBAR.target - FOHBAR.y, -FOH_BAR_SPEED*dt, FOH_BAR_SPEED*dt);
+    fohBarPose(FOHBAR);
   }
   for(const f of FIXTURES){
     // electrics carry their fixtures
@@ -5602,6 +5665,49 @@ function buildFlyUI(){
     tb.appendChild(tr);
     syncFlyRow(ls);
   });
+  buildFohBarUI();
+}
+/* ---- the FOH bar row ----------------------------------------------------
+   The bar over the stalls is rail furniture, not a lineset, so it lives in a
+   footer row: the fourteen lineset rows keep their indices and their rebuild
+   cycle, and this row is built exactly once.  Its buttons read whatever
+   FOHBAR names at click time — the LIVE stage's bar — so nothing per-stage
+   is cached on the DOM (§5: that is how the rail "stopped working"). */
+let fohBarUI = null;
+function buildFohBarUI(){
+  const table = $('#lsTable'); if(!table || fohBarUI) return;
+  const tf = document.createElement('tfoot');
+  const tr = document.createElement('tr'); tr.className = 'fohbar';
+  tr.innerHTML =
+    '<td style="color:var(--amber)">FB</td>'+
+    '<td class="mini">FOH BAR</td>'+
+    '<td class="goods">6 &times; FOH profile</td>'+
+    '<td><div class="pipbar"><i></i></div></td>'+
+    '<td class="mini ht"></td>'+
+    '<td class="mini"></td>'+
+    '<td><span class="dot"></span></td>'+
+    '<td></td>';
+  const cell = tr.lastElementChild;
+  const mk=(t,fn)=>{
+    const b=document.createElement('button'); b.className='b';
+    b.style.padding='2px 6px'; b.style.fontSize='10px'; b.textContent=t;
+    b.addEventListener('click', e=>{ e.stopPropagation(); fn(); syncFohBarRow(); });
+    cell.appendChild(b); return b;
+  };
+  mk('LOWER', ()=>fohBarStep(-1));
+  mk('RAISE', ()=>fohBarStep(1));
+  fohBarUI = { bar:tr.querySelector('.pipbar i'), ht:tr.querySelector('.ht'),
+               dot:tr.querySelector('.dot') };
+  tf.appendChild(tr); table.appendChild(tf);
+  syncFohBarRow();
+}
+function syncFohBarRow(){
+  if(!fohBarUI || !FOHBAR) return;
+  const b = FOHBAR;
+  const pct = clamp((b.y - b.min)/Math.max(0.01, b.max - b.min), 0, 1);
+  fohBarUI.bar.style.width = (pct*100).toFixed(1)+'%';
+  fohBarUI.ht.textContent = b.y.toFixed(1)+'m';
+  fohBarUI.dot.className = 'dot '+(Math.abs(b.target - b.y) > 0.004 ? 'mv' : '');
 }
 function syncFlyRow(ls){
   const u = ls.ui; if(!u) return;
@@ -5619,7 +5725,7 @@ function syncFlyRow(ls){
   if(trav) u.trav.textContent = ls.travTarget > .5 ? 'CLOSE' : 'OPEN';
   u.row.classList.toggle('sel', ls === selLineset);
 }
-function syncFlyUI(){ FLY.forEach(syncFlyRow); }
+function syncFlyUI(){ FLY.forEach(syncFlyRow); syncFohBarRow(); }
 /* kept for the callers that change what's hanging */
 function refreshFlyUI(){
   const tb = $('#lsTable tbody');
@@ -10627,7 +10733,7 @@ function makeStage(o){
     rigGroup:o.rigGroup, poolGroup:o.poolGroup, flyGroup:o.flyGroup,
     showParent:o.showParent,
     fixtures:[], fly:[], cues:[], nextCue:0, selCue:-1,
-    show:null, house:null, rig:null, smokeRack:null, live:false
+    show:null, house:null, rig:null, smokeRack:null, fohBar:null, live:false
   };
   STAGES[o.key] = st;
   return st;
@@ -10653,6 +10759,10 @@ function stageCapture(st){
   st.house    = Object.assign({}, HOUSE);
   st.rig      = {haze:RIG.haze, grand:RIG.grand, blackout:RIG.blackout};
   st.smokeRack = (typeof smokeCapture === 'function') ? smokeCapture() : null;
+  /* the FOH bar is one object per stage, meshes and state together — its
+     meshes are already parked inside this stage's rigGroup, so capturing is
+     just remembering which bar the board was driving */
+  st.fohBar   = FOHBAR;
   st.live     = false;
 }
 function stageRestore(st){
@@ -10675,6 +10785,7 @@ function stageRestore(st){
   rigGroup  = st.rigGroup;
   poolGroup = st.poolGroup;
   flyGroup  = st.flyGroup;
+  if(st.fohBar) FOHBAR = st.fohBar;
   st.live = true;
 }
 function stageOf(key){ return STAGES[key] || null; }
@@ -10852,11 +10963,19 @@ function buildArcStage(key, label, houseKey){
   const keepFly = FLY.splice(0, FLY.length);
   const keepCue = CUES.splice(0, CUES.length);
   const keepRig = rigGroup, keepPool = poolGroup, keepFlyG = flyGroup;
+  const keepBar = FOHBAR;
   rigGroup = rg; poolGroup = pg; flyGroup = fg;
 
   for(let i=0;i<14;i++) makeLineset(i);
   buildRig();
   FIXTURES.forEach(f=>{ f.homeAim = f.aim.clone(); });
+  /* the FOH bar's floor clamp is against THIS house's stalls, not the
+     Palace's — the Arc's rake climbs a good metre higher under the bar */
+  {
+    const rk = H.rake;
+    const row = Math.max(0, (H.zPros + FOHBAR.z - rk.zFirst)/rk.RUN);
+    FOHBAR.min = Math.min(FOHBAR.max - 0.5, rk.Y0 + row*rk.RISE + 0.2 + 3.2);
+  }
 
   /* the standing hang every receiving house keeps up: house curtain in,
      borders and legs in, electrics at their trims, the rest out */
@@ -10876,6 +10995,7 @@ function buildArcStage(key, label, houseKey){
   st.fixtures = FIXTURES.splice(0, FIXTURES.length);
   st.fly      = FLY.splice(0, FLY.length);
   st.cues     = CUES.splice(0, CUES.length);
+  st.fohBar   = FOHBAR;
   st.nextCue  = 0;
   st.show     = showBlank();     // the one template — see p5c
   st.house    = {house:0.7, work:0, practical:0, lobby:0.9, backstage:0.7};
@@ -10885,6 +11005,7 @@ function buildArcStage(key, label, houseKey){
   FLY.push.apply(FLY, keepFly);
   CUES.push.apply(CUES, keepCue);
   rigGroup = keepRig; poolGroup = keepPool; flyGroup = keepFlyG;
+  FOHBAR = keepBar;
   return st;
 }
 
@@ -13184,6 +13305,22 @@ function vrPageFly(g, P){
            ()=>{ FLY.forEach(flyIn); vrDrawConsole(true); });
   vrBtnBox(g, P.x + P.w - 120, P.y + 54, 116, 46, 'ALL OUT',
            ()=>{ FLY.forEach(flyOut); vrDrawConsole(true); });
+  /* the FOH bar, on this board like everything else over this stage —
+     the same idiom as the desktop row: one press is one step of travel */
+  if(FOHBAR){
+    const bx = P.x + P.w - 120;
+    g.fillStyle = '#8f9aa7';
+    g.font = '600 15px Helvetica, Arial, sans-serif';
+    g.textBaseline = 'middle';
+    g.fillText('FOH BAR', bx, P.y + 124);
+    vrBtnBox(g, bx, P.y + 136, 116, 46, 'RAISE',
+             ()=>{ fohBarStep(1); vrDrawConsole(true); });
+    vrBtnBox(g, bx, P.y + 190, 116, 46, 'LOWER',
+             ()=>{ fohBarStep(-1); vrDrawConsole(true); });
+    g.fillStyle = '#8f9aa7';
+    g.font = '600 17px Helvetica, Arial, sans-serif';
+    g.fillText(FOHBAR.y.toFixed(1) + 'm', bx, P.y + 260);
+  }
 }
 /* --------------------------------------------------------------- SHOWS */
 function vrPageShows(g, P){

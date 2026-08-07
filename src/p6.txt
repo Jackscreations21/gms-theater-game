@@ -542,6 +542,49 @@ function buildFlyUI(){
     tb.appendChild(tr);
     syncFlyRow(ls);
   });
+  buildFohBarUI();
+}
+/* ---- the FOH bar row ----------------------------------------------------
+   The bar over the stalls is rail furniture, not a lineset, so it lives in a
+   footer row: the fourteen lineset rows keep their indices and their rebuild
+   cycle, and this row is built exactly once.  Its buttons read whatever
+   FOHBAR names at click time — the LIVE stage's bar — so nothing per-stage
+   is cached on the DOM (§5: that is how the rail "stopped working"). */
+let fohBarUI = null;
+function buildFohBarUI(){
+  const table = $('#lsTable'); if(!table || fohBarUI) return;
+  const tf = document.createElement('tfoot');
+  const tr = document.createElement('tr'); tr.className = 'fohbar';
+  tr.innerHTML =
+    '<td style="color:var(--amber)">FB</td>'+
+    '<td class="mini">FOH BAR</td>'+
+    '<td class="goods">6 &times; FOH profile</td>'+
+    '<td><div class="pipbar"><i></i></div></td>'+
+    '<td class="mini ht"></td>'+
+    '<td class="mini"></td>'+
+    '<td><span class="dot"></span></td>'+
+    '<td></td>';
+  const cell = tr.lastElementChild;
+  const mk=(t,fn)=>{
+    const b=document.createElement('button'); b.className='b';
+    b.style.padding='2px 6px'; b.style.fontSize='10px'; b.textContent=t;
+    b.addEventListener('click', e=>{ e.stopPropagation(); fn(); syncFohBarRow(); });
+    cell.appendChild(b); return b;
+  };
+  mk('LOWER', ()=>fohBarStep(-1));
+  mk('RAISE', ()=>fohBarStep(1));
+  fohBarUI = { bar:tr.querySelector('.pipbar i'), ht:tr.querySelector('.ht'),
+               dot:tr.querySelector('.dot') };
+  tf.appendChild(tr); table.appendChild(tf);
+  syncFohBarRow();
+}
+function syncFohBarRow(){
+  if(!fohBarUI || !FOHBAR) return;
+  const b = FOHBAR;
+  const pct = clamp((b.y - b.min)/Math.max(0.01, b.max - b.min), 0, 1);
+  fohBarUI.bar.style.width = (pct*100).toFixed(1)+'%';
+  fohBarUI.ht.textContent = b.y.toFixed(1)+'m';
+  fohBarUI.dot.className = 'dot '+(Math.abs(b.target - b.y) > 0.004 ? 'mv' : '');
 }
 function syncFlyRow(ls){
   const u = ls.ui; if(!u) return;
@@ -559,7 +602,7 @@ function syncFlyRow(ls){
   if(trav) u.trav.textContent = ls.travTarget > .5 ? 'CLOSE' : 'OPEN';
   u.row.classList.toggle('sel', ls === selLineset);
 }
-function syncFlyUI(){ FLY.forEach(syncFlyRow); }
+function syncFlyUI(){ FLY.forEach(syncFlyRow); syncFohBarRow(); }
 /* kept for the callers that change what's hanging */
 function refreshFlyUI(){
   const tb = $('#lsTable tbody');
