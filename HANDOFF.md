@@ -278,75 +278,101 @@ cannot lie. Four new tests in `full14.js` drive real key events through a
 full pointer-lock mock (jsdom has none). Post-merge: `main` verified
 byte-identical per PR, work branches deleted, 12/12 green.
 
-**NEXT SESSION: fix VR — whatever the headset teaches.**
+**Done 2026-08-06, the VR features session — two rounds in one day.**
 
-**Quest 3 findings, recorded 2026-08-06 (first run on hardware):**
+*The first headset run happened.* Findings, for the record: the first
+attempt never entered VR because the ENTER VR chip went untapped (not a
+bug — the flat page is keyboard/mouse by design); the second attempt
+loaded in fine, so `vrEnter()` and the session chain are proven on
+hardware. Frame rate was "a little low" (owner's words, no number). No
+verdict yet on pointing accuracy, console readability or comfort.
 
-1. **First attempt did not enter VR at all** — the page loaded flat and
-   nothing responded. Resolved without a code change: the owner had not
-   tapped the green ENTER VR chip (and "can't move on the flat page" is
-   expected on a headset — movement is keyboard/mouse until a session
-   starts). On the second attempt the owner **loaded into VR
-   successfully** — `vrEnter()` and the session chain are now proven on
-   hardware.
-2. **Frame rate: "a little low"** (owner's words; no number measured).
-   Addressed with the mild option — beams 14 → 10 and framebuffer scale
-   0.85 (this PR). Retest before reaching for the bigger knobs in the
-   map below.
-3. **Pointing / consoles: no verdict yet.** The owner asked for world
-   interactions instead — triggers now act like the desktop E key
-   (PR #12). The UV flip got its posed-controller regression test in the
-   same PR; still wants a real-hardware confirmation on the desks.
-4. **Human factors: no findings reported yet.** Comfort, console text
-   size and turn speed remain unmeasured. New this round on the owner's
-   ask: tap A jumps, double-tap A flies (PR #13).
+*Round one (merged: #12, #13, #14):* triggers act on whatever the ray
+lands on, the way the desktop E key does — either hand, desks keep
+priority, floating label says what a pull will do; tap A jumps,
+double-tap A flies (gaze-directed, gravity off, walls still block,
+landing or another double-tap puts you back on your feet); the mild perf
+notch — beams 14 → 10 in-session, framebuffer scale 0.85 asked for at
+wiring time.
 
-Delivered for it, 2026-08-06: PR #12 (triggers use what you point at),
-PR #13 (jump/fly), this PR (perf notch + these notes). Next headset run
-should answer: is 90Hz held now, do the desks respond where you point,
-is anything nauseating, and can you read the console text.
+*Round two (open as of this writing: #15, #16, #17 — check they merged
+before building on them):* built by three parallel worktree agents, each
+reviewed line-by-line and independently re-verified before push. The
+review caught one real seam bug: the live VR haul still used the flat
+0.6m floor, so a held rope could drag goods through the deck.
 
-The symptom → code map below still stands for whatever that run turns
-up. All VR code is `src/p9.txt` unless noted.
+- **#15** — nothing hung can go below the deck. `minTrimOf(ls)` in p3:
+  the pipe stops when its goods kiss the floor, but never above the
+  goods' own working trim (the house curtain is cut to puddle — h 13.0
+  on a 12.6 trim — and must still make it). `flyTo` and the desktop haul
+  clamp against it. Known change: SHOW LOOK's cyc call was burying 2.9m
+  of cloth; it now stops at 13.55m.
+- **#16** — the pin rail is real now. Full operating loops (head block
+  under the grid, floor block off the deck, two runs, sheaves that
+  spin), and a little red lever per line: the rope lock, which IS
+  `ls.locked`. Grabbing a rope takes the lock off; releasing without
+  throwing the lever starts a runaway — down from rest, slow-stop-return
+  if it was going out, ever on if it was coming in — integrated in p3
+  `updateFly`, stopped by the deck floor or the lever. Board commands
+  cancel a runaway. Stage swaps tie off (no runaway — the parked-stage
+  regression stays green). Desktop hauling unchanged.
+- **#17** — the Palace balcony desk faces its operator (yaw π → 0, face
+  normal now +z) and the 24 seats crowding the control position are
+  gone (keep-out rectangle in the p2b mezz bank; SEAT_COUNT 1392 → 1368).
 
-1. **Session won't start.** `vrEnter()` (p9:104) — the real
-   `requestSession` promise chain has never run on hardware; the tests
-   stub it. The `VR would not start: <message>` toast is the diagnosis —
-   get the exact text. No ENTER VR chip at all means `vrDetect()` (p9:38)
-   said no XR: almost always a non-HTTPS URL, not a code bug.
-2. **Frame rate below 90Hz.** `vrQualityOn()` (p9:59) already drops
-   shadows, caps beams at 14 (`VR.beamCap`), pulls `camera.far` to 160 and
-   sets foveation 0.4. Knobs beyond it, in order of likely win: lower
-   `VR.beamCap`; `renderer.xr.setFramebufferScaleFactor(<1)` — currently
-   untouched, must be called before the session; thin `LIGHT_POOL` (p4);
-   cut `SMOKE.n`; RENDER *low* preselected before entering. Beams in haze
-   are additive overdraw — the one thing a mobile tile GPU hates — so
-   suspect them first, and test standing centre stage under a full rig,
-   which is the worst case.
-3. **Consoles dead / cursor lands wrong.** `vrPointAt()` (p9:607) —
-   the ray comes from `VR.controllers[1]` only, and the UV flip
-   (`v: 1 - h.uv.y`, p9:623) has never met a real pose. The suite fires
-   `hit.fn()` directly, so a broken flip passes every test while every
-   desk in the headset is dead — the VR analogue of the detached-row
-   lesson in §5. If the cursor is mirrored or offset, it is this line.
-   Hit rects live in `VR.hits`, painted by `vrDrawConsole`.
-4. **Human factors.** Console text: `VRC.W/H` canvas + `vrDrawConsole`
-   font sizes. Ropes: placed near p9:575, grab radius 0.32m (p9:648).
-   GO button: press radius 0.09m, cooldown 0.8s (p9:675). Turn:
-   `VR.turn = 2.1` rad/s smooth — if it is nauseating, offer snap turn
-   (a small change in the `VR.axes.rx` handling, p9:700). Walk speed:
-   `VR.speed = 3.2`. Expect a tuning pass, not a rewrite.
+`#15` and `#16` are written to merge in either order: `#16` reaches
+`minTrimOf` only through `typeof` guards.
 
-Ground rules unchanged: suites green before and after; a fix that CAN be
-tested in jsdom gets a regression test (the pointing math can — feed
-`vrPointAt` a posed controller matrix and assert the UV, rather than
-firing `hit.fn()`); what only a headset can verify gets documented here
-instead. PR straight to `main`, one concern per PR, never stack. `gh` is
-not installed — open PRs through the GitHub API with the stored git
-credential.
+**NEXT SESSION: the second headset run, then tune.**
+
+**Step zero:** confirm #15/#16/#17 merged (merge them if not — they are
+reviewed and green), then put the owner in the headset on
+`…/the-house.html?v=4` (bump the number: the Quest Browser caches hard)
+and collect answers to, in order:
+
+1. **Frame rate** — is 90Hz held now, after the 0.85 scale and the
+   10-beam cap? Worst cases to stand in: centre stage under a full rig
+   in haze, and AT THE PIN RAIL — #16 adds ~7 meshes per hung lineset
+   (~77 on a full rail), unbatched draw calls, and that is new since the
+   last run.
+2. **The rail itself** — do the loops read as ropes, does the red lever
+   toggle where you slap it (0.11m radius on the knob), does the runaway
+   feel like a load getting away from you or like a glitch, and does the
+   grab still land (0.32m radius, and the lever was deliberately moved
+   to 0.28m out so the two radii don't overlap)? Known cosmetic: the
+   rope runs pass visually THROUGH the fly-gallery floor at y=8 — a real
+   rail has rope slots cut in the fly floor; model holes if it grates.
+3. **Pointing** — do the desk buttons land where the cursor sits? The
+   UV flip (`v: 1 - h.uv.y` in `vrPointAt`) now has a posed-controller
+   regression test, but has still never met real hardware.
+4. **Human factors** — console text (`VRC.W/H`, `vrDrawConsole` fonts),
+   smooth turn (`VR.turn` 2.1 rad/s — offer snap turn if it turns
+   stomachs), walk 3.2, fly 8 m/s, jump/double-tap timing (0.35s window
+   in `vrButtonJump`), and the trigger's floating label legibility.
+
+Write what the headset says HERE, then tune. The knobs, if frame rate
+still sags, in order of likely win: `VR.beamCap` lower still;
+framebuffer scale below 0.85 (`renderer.xr.setFramebufferScaleFactor`,
+wiring section of p9 — MUST be set before any session exists); thin
+`LIGHT_POOL` (p4); cut `SMOKE.n`; and now also: share/batch the rope
+loop meshes in `vrBuildRopes`, which were built for correctness first.
+
+Ground rules unchanged: suites green before and after; what jsdom can
+test gets a regression test, what only a headset can verify gets written
+here; PR straight to `main`, one concern per PR, never stack; `gh` is
+not installed — PRs go through the GitHub API with the stored git
+credential; PowerShell 5.1 mangles `git commit -m` when the message has
+double quotes in it — write the message to a file and `-F` it. The
+parallel-worktree-agents pattern (one branch per concern, review and
+revise before push) worked well this session; the seam between two
+agents' branches is where the one real bug was, so review THERE first.
 
 After VR holds up on hardware, the leftovers: item 20, item 22, and the
-"stage 2" VR asks at the bottom of this section.
+"stage 2" VR asks at the bottom of this section — plus two new small
+ones from this round: rope slots in the fly-gallery floor (cosmetic),
+and clearing `runaway` when a stage is parked mid-fall (today it
+resumes when you walk back in; arguably fine, documented here so it is
+a decision rather than a surprise).
 
 ---
 
