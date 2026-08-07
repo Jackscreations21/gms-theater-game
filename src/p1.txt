@@ -852,9 +852,9 @@ table.ls tr.sel td{background:#1c2230}
   <div class="row" style="gap:50px;align-items:flex-start">
   <table><tbody>
     <tr><td><span class="kbd">W A S D</span></td><td>walk</td></tr>
-    <tr><td><span class="kbd">Mouse</span></td><td>look (click canvas to capture)</td></tr>
-    <tr><td><span class="kbd">Shift</span></td><td>run</td></tr>
-    <tr><td><span class="kbd">L</span></td><td>shift lock &mdash; latch the run on</td></tr>
+    <tr><td><span class="kbd">Mouse</span></td><td>look (tap Shift or click canvas to capture)</td></tr>
+    <tr><td><span class="kbd">Shift</span></td><td>hold: run &middot; tap: lock / release the cursor</td></tr>
+    <tr><td><span class="kbd">L</span></td><td>shift lock &mdash; same cursor toggle as a Shift tap</td></tr>
     <tr><td><span class="kbd">Space</span></td><td>jump / <b>GO</b> when console focused</td></tr>
     <tr><td><span class="kbd">V</span></td><td>toggle WALK / ORBIT camera</td></tr>
     <tr><td><span class="kbd">1&ndash;9</span></td><td>orchestra, balcony, deck, wings, rail, grid, foyer, dock, scene shop</td></tr>
