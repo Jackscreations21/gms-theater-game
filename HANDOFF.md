@@ -12,9 +12,11 @@ r128, no build step beyond concatenating text files.
 ```
 theater_game/
   the-house.html     the game — open this, or serve it (VR needs HTTPS)
+  index.html         one-line redirect so the bare Pages URL lands in the game
   build.sh           rebuilds the-house.html from src/
   HANDOFF.md         this
   AUDIT.md           the 2026-08-06 code audit — findings, evidence, line numbers
+  VR-SETUP.md        getting it onto a Quest 3 — routes, controls, first-run list
   README.md          the GitHub front page
   src/               the 24 parts it is built from
   tests/             twelve suites — npm install, then node real.js
@@ -218,12 +220,22 @@ compare the *same* production across stages instead.
 
 ## 6. Where it stands / what is next
 
-All twelve suites green, audited, and the audit **worked off**: of the 6 high
-/ 17 medium / 6 low findings in **AUDIT.md** (repo root, 2026-08-06), 20 of
-the 22 queue items below are fixed and merged to `main`. What used to be the
-headline risk — walk between theatres while something is in flight and it
-acts on the wrong stage — is now covered by design (park what lives in the
-room, stop what follows the operator) and by ~30 regression tests.
+All twelve suites green on `main`, audited, and the audit **worked off**:
+of the 6 high / 17 medium / 6 low findings in **AUDIT.md** (repo root,
+2026-08-06), 20 of the 22 queue items below are fixed and merged. The two
+leftovers (items 20, 22) are owner-taste, not bugs.
+
+**The game is LIVE on GitHub Pages:**
+
+```
+https://jackscreations21.github.io/gms-theater-game/the-house.html
+```
+
+The bare `…/gms-theater-game/` URL redirects there. Pages serves whatever
+is on `main`, so a merged PR is live within a couple of minutes. The Quest
+Browser caches hard — bust with `?v=2` or clear site data before deciding
+a fix "didn't work". VR-SETUP.md (repo root) is the full guide: both
+serving routes, the control scheme, the first-run checklist.
 
 **Done 2026-08-06:** fixed the `full14.js` harness (the jsdom `movementY` shim
 above — the game code was never wrong), created the git repo (there had never
@@ -251,46 +263,70 @@ ruling (documented one-board; capture them in p2k if you disagree). `gh` is
 not installed on this machine — PRs were opened through the GitHub API with
 the stored git credential.
 
-**NEXT SESSION: enable GitHub Pages, then get it running on the Quest 3.**
+**Done 2026-08-07 (the Pages session):** the owner enabled Pages; verified
+live and smoke-tested on desktop (boots clean over HTTPS, zero console
+errors, four shows registered, `navigator.xr` present). Merged the same
+day, one PR each, straight to `main`, no stacking: **#8** the `index.html`
+redirect, **#9** VR-SETUP.md (the Quest guide — controls read out of p9,
+not guessed), **#10** the shift-lock rework. That last one changed a
+control: **tap Shift** (under 250ms) now toggles the pointer lock — cursor
+locked to centre, mouse steers the camera, tap again to release — while a
+**hold** is still run, so sprinting never drops the mouse. The old
+run-latch is gone; the SHIFT LOCK chip now mirrors the *real* pointer-lock
+state however it changed (tap, canvas click, or the browser's Esc), so it
+cannot lie. Four new tests in `full14.js` drive real key events through a
+full pointer-lock mock (jsdom has none). Post-merge: `main` verified
+byte-identical per PR, work branches deleted, 12/12 green.
 
-Pages first — it solves VR's HTTPS requirement for free:
+**NEXT SESSION: fix VR — whatever the headset teaches.**
 
-1. **The owner flips the repo public** (Settings → General → Danger Zone), or
-   pays for Pages on private. Commits are already on the no-reply address and
-   the audit turned up no secrets, but eyeball the front page once it flips.
-2. Enable Pages: Settings → Pages → Source "Deploy from a branch" → `main`,
-   `/ (root)`.
-3. The game is `the-house.html`, not `index.html` — PR a one-line
-   `index.html` redirect (or live with the full URL
-   `https://jackscreations21.github.io/gms-theater-game/the-house.html`).
-4. Smoke-test the URL on desktop before touching the headset: it loads, you
-   can walk, a show runs. Pages serves HTTPS, which is exactly what WebXR
-   demands.
+**Step zero: get the headset findings.** As of this writing no Quest 3 run
+has been recorded. Ask the owner what the headset actually did before
+touching code — get symptoms against the four-point checklist in
+VR-SETUP.md §6 (session start / frame rate / pointing / human factors),
+then record them HERE. If the run hasn't happened yet, walk the owner
+through VR-SETUP.md first; there is nothing to fix until the headset has
+spoken. Everything below is the symptom → code map for what it is likely
+to say. All VR code is `src/p9.txt` unless noted.
 
-Then the first-ever run on real hardware. jsdom has verified everything it
-can; AUDIT §"What the tests don't cover" names the three structural VR
-bypasses, and they are the checklist, in order:
+1. **Session won't start.** `vrEnter()` (p9:104) — the real
+   `requestSession` promise chain has never run on hardware; the tests
+   stub it. The `VR would not start: <message>` toast is the diagnosis —
+   get the exact text. No ENTER VR chip at all means `vrDetect()` (p9:38)
+   said no XR: almost always a non-HTTPS URL, not a code bug.
+2. **Frame rate below 90Hz.** `vrQualityOn()` (p9:59) already drops
+   shadows, caps beams at 14 (`VR.beamCap`), pulls `camera.far` to 160 and
+   sets foveation 0.4. Knobs beyond it, in order of likely win: lower
+   `VR.beamCap`; `renderer.xr.setFramebufferScaleFactor(<1)` — currently
+   untouched, must be called before the session; thin `LIGHT_POOL` (p4);
+   cut `SMOKE.n`; RENDER *low* preselected before entering. Beams in haze
+   are additive overdraw — the one thing a mobile tile GPU hates — so
+   suspect them first, and test standing centre stage under a full rig,
+   which is the worst case.
+3. **Consoles dead / cursor lands wrong.** `vrPointAt()` (p9:607) —
+   the ray comes from `VR.controllers[1]` only, and the UV flip
+   (`v: 1 - h.uv.y`, p9:623) has never met a real pose. The suite fires
+   `hit.fn()` directly, so a broken flip passes every test while every
+   desk in the headset is dead — the VR analogue of the detached-row
+   lesson in §5. If the cursor is mirrored or offset, it is this line.
+   Hit rects live in `VR.hits`, painted by `vrDrawConsole`.
+4. **Human factors.** Console text: `VRC.W/H` canvas + `vrDrawConsole`
+   font sizes. Ropes: placed near p9:575, grab radius 0.32m (p9:648).
+   GO button: press radius 0.09m, cooldown 0.8s (p9:675). Turn:
+   `VR.turn = 2.1` rad/s smooth — if it is nauseating, offer snap turn
+   (a small change in the `VR.axes.rx` handling, p9:700). Walk speed:
+   `VR.speed = 3.2`. Expect a tuning pass, not a rewrite.
 
-1. **Does a session start at all?** The real `requestSession` promise chain
-   has never run — the test stub fires `sessionstart` itself. Open the Pages
-   URL in the Quest Browser, press the VR button.
-2. **Frame rate.** 90Hz is the target; `VR.beamCap` (14) exists for exactly
-   this. If it chugs: lower the cap, thin `LIGHT_POOL`, cut `SMOKE.n`.
-3. **The pointing path** — `vrSelect`→`vrPointAt` with real controller poses.
-   The tests fire `hit.fn()` directly, so a broken UV flip passes the suite
-   while every console on the headset is dead (the VR analogue of the
-   detached-row lesson). Point at a desk; if the cursor lands where you
-   point, it works.
-4. **Human factors**: console text size, rope reach at the pin rail, the GO
-   button, comfort of smooth turn. Expect a tuning pass, not a rewrite.
+Ground rules unchanged: suites green before and after; a fix that CAN be
+tested in jsdom gets a regression test (the pointing math can — feed
+`vrPointAt` a posed controller matrix and assert the UV, rather than
+firing `hit.fn()`); what only a headset can verify gets documented here
+instead. PR straight to `main`, one concern per PR, never stack. `gh` is
+not installed — open PRs through the GitHub API with the stored git
+credential.
 
-If Pages is blocked (repo stays private): `adb reverse tcp:8080 tcp:8080`
-and open `http://localhost:8080/the-house.html` in the Quest Browser —
-localhost is a secure context, so WebXR runs without any certificate dance.
-A LAN IP will NOT work without HTTPS.
-
-Record what the headset teaches in this file. After that, the leftovers:
-item 20, item 22, and the "stage 2" VR asks at the bottom of this section.
+After VR holds up on hardware, the leftovers: item 20, item 22, and the
+"stage 2" VR asks at the bottom of this section.
 
 ---
 
@@ -386,12 +422,11 @@ Structural / owner-taste — read the AUDIT sections before deciding:
 
 **Not done:**
 
-- **The VR build has never run on a headset.** There is no device here. The XR
-  code paths are exercised against a stubbed `WebXRManager` in `vr.js`, but frame
-  rate, comfort and whether the consoles are a readable size are unknown. That
-  is next session's job — the brief above is the checklist.
-- **WebXR needs HTTPS.** It will not start from `file://`. GitHub Pages (next
-  session) solves this; until then only the `adb reverse` localhost trick works.
+- **No recorded headset run.** Hosting is solved (Pages, above), but as of
+  this writing no Quest 3 findings have been written down. The XR code
+  paths are exercised against a stubbed `WebXRManager` in `vr.js`; frame
+  rate, comfort, real pointing and console readability are unknown. Next
+  session opens by collecting exactly this — see step zero above.
 - Only the live stage ticks. Leave a theatre mid-show and its fades and flys wait
   for you. Deliberate, but arguable.
 - The Arc has no productions of its own; the four in the book are written for the
@@ -400,6 +435,6 @@ Structural / owner-taste — read the AUDIT sections before deciding:
 - The scene-change system (`SHOW.scenes`, `p5c`) is general machinery that no
   current show uses — it was built for Beetlejuice, which was removed.
 
-**Asked for and not yet built:** hosting the VR version (blocked on the
-public/private decision above), and the "stage 2" VR work — grabbable faders
-on the console, carrying scenery by hand.
+**Asked for and not yet built:** the "stage 2" VR work — grabbable faders
+on the console, carrying scenery by hand. Worth folding into the VR fix
+session only after the basics survive the headset.
