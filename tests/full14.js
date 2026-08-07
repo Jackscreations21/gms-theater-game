@@ -410,12 +410,17 @@ const probe = `
     if(street === null) throw new Error('no road outside the doors');
     return 'foyer '+lob.toFixed(1)+' / gallery '+gal.toFixed(1)+' / dock '+dock.toFixed(2);
   });
-  P('nothing is left behind the stage', ()=>{
-    // no floor and no walkable surface anywhere upstage of the back wall
-    for(const z of [D.backWall - 2, D.backWall - 8, D.backWall - 18])
+  P('nothing is left behind the stage but the warehouse', ()=>{
+    /* the warehouse PR: a shed now stands behind the back wall (x -12..12,
+       z -30.2..-17.7) — floor inside it, and still nothing anywhere else */
+    if(groundAt(0, -25, 2) === null) throw new Error('the warehouse shed has no floor');
+    for(const z of [D.backWall - 18, D.backWall - 28])       // beyond its rear wall
       for(const x of [-12, 0, 12])
         if(groundAt(x, z, 2) !== null)
-          throw new Error('still a floor behind the stage at '+x+','+z);
+          throw new Error('still a floor behind the warehouse at '+x+','+z);
+    for(const x of [-16, 18])                                 // and beside it
+      if(groundAt(x, -25, 2) !== null)
+        throw new Error('a floor beside the shed at '+x+',-25');
     // and the old rooms are not in the room list any more
     if(ROOM_ORDER.indexOf('boh') !== -1 || ROOM_ORDER.indexOf('shop') !== -1)
       throw new Error('the culling still thinks there are rooms back there');
@@ -838,10 +843,12 @@ const probe = `
     return 'three benches';
   });
   P('the workshop is a menu, not a room', ()=>{
-    // the shed is gone: nothing in its group, and no floor to stand on back there
+    // the old workshop is gone: nothing in its group, and no floor beyond the
+    // warehouse shed's rear wall (the warehouse PR put a real floor at
+    // z -30.2..-17.7, so probe upstage of that)
     if(shopGroup.children.length)
       throw new Error(shopGroup.children.length+' bits of the old shed are still there');
-    for(const z of [D.backWall - 4, D.backWall - 12, D.backWall - 24])
+    for(const z of [D.backWall - 24, D.backWall - 34])
       if(groundAt(0, z, 2) !== null) throw new Error('there is still a floor at z='+z);
     // but the bench still opens, from the console and from the keyboard
     ['build','paint','stock'].forEach(id=>{
@@ -854,12 +861,20 @@ const probe = `
     closeBench();
     return 'shed gone, bench opens on all three tabs';
   });
-  P('the only stations left are the dock doors', ()=>{
+  P('the only stations left are the dock doors and the warehouse door', ()=>{
     const seen = [];
     world.traverse(o=>{ if(o.userData && o.userData.station) seen.push(o.userData.station.id); });
     if(!seen.length) throw new Error('no stations at all');
-    if(seen.some(id=>id.indexOf('dock') !== 0))
-      throw new Error('a bench station survived: '+seen.filter(id=>id.indexOf('dock')!==0).join(', '));
+    // shedP is the warehouse roller-door control (the warehouse PR)
+    if(seen.some(id=>id.indexOf('dock') !== 0 && id !== 'shedP'))
+      throw new Error('a bench station survived: '+
+        seen.filter(id=>id.indexOf('dock')!==0 && id !== 'shedP').join(', '));
+    if(seen.indexOf('shedP') === -1) throw new Error('the warehouse door has no station');
+    const wasTarget = SHEDS.palace.door.target;
+    useStation({id:'shedP'});
+    if(SHEDS.palace.door.target === wasTarget)
+      throw new Error('the warehouse station did not work the door');
+    useStation({id:'shedP'});
     useStation({id:'dock1'});
     if(DOCKDOORS[0].target !== 1) throw new Error('pressing the control did not open it');
     useStation({id:'dock1'});

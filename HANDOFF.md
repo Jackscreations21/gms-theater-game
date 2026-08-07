@@ -77,7 +77,7 @@ wiring, and cannot catch anything about how it looks or how fast it runs.
 ```sh
 cd tests
 npm install       # once — jsdom and three@0.128
-npm test          # all twelve suites, exits non-zero if any fail
+npm test          # all thirteen suites, exits non-zero if any fail
 node real.js      # boots the whole file, reports "fatal": null
 node full14.js    # the building
 node rooms.js     # portal culling
@@ -89,10 +89,11 @@ node sets.js      # scene changes, the collapsing set, the revolves
 node arc.js       # the Arc Centre
 node stages.js    # three stages, one board
 node legs.js      # goods, including the half legs
+node warehouse.js # the warehouse sheds, their doors, the carts
 node vr.js        # WebXR: rig, sticks, desks, ropes, GO
 ```
 
-All twelve are at `--- failures: 0 ---`. Keep them there. Every suite exits
+All thirteen are at `--- failures: 0 ---`. Keep them there. Every suite exits
 non-zero on failure (including a failure to boot), and `npm test` runs the lot.
 
 `full14.js` wraps `window.MouseEvent` at the top of its harness: jsdom has no

@@ -1519,14 +1519,25 @@ const WX = D.houseW/2;                        // inner face of the side walls
   const wm = M.ivoryD;
   box(1.0, D.coveY+2, D.houseBack+2, wm, -WX-0.5, (D.coveY+2)/2, D.houseBack/2);
   box(1.0, D.coveY+2, D.houseBack+2, wm,  WX+0.5, (D.coveY+2)/2, D.houseBack/2);
-  /* The upstage wall of the stage house.  Solid, and wide enough to close
-     off both wings — there is nothing behind it any more, so a hole in it is
-     a hole out into nothing.                                              */
+  /* The upstage wall of the stage house.  Wide enough to close off both
+     wings, in three pieces now: the warehouse shed (p2m) stands behind it,
+     and a 3.2 x 3.6 doorway at x = 0 leads out to it.                      */
   {
-    const bw = new T.Mesh(new T.BoxGeometry(XL - XR + 2.4, 34, 0.7), M.brick);
-    bw.position.set((XL + XR)/2, 17, D.backWall - 0.35);
-    bw.castShadow = bw.receiveShadow = true;
-    world.add(bw); STATIC.push(bw);
+    // left of the doorway: from the stage-right edge (-34.2) to x = -1.6
+    const bwL = new T.Mesh(new T.BoxGeometry(32.6, 34, 0.7), M.brick);
+    bwL.position.set(-17.9, 17, D.backWall - 0.35);
+    bwL.castShadow = bwL.receiveShadow = true;
+    world.add(bwL); STATIC.push(bwL);
+    // right of it: from x = 1.6 to the stage-left edge (23.2)
+    const bwR = new T.Mesh(new T.BoxGeometry(21.6, 34, 0.7), M.brick);
+    bwR.position.set(12.4, 17, D.backWall - 0.35);
+    bwR.castShadow = bwR.receiveShadow = true;
+    world.add(bwR); STATIC.push(bwR);
+    // and the header over the opening, from y = 3.6 to the top
+    const bwH = new T.Mesh(new T.BoxGeometry(3.2, 30.4, 0.7), M.brick);
+    bwH.position.set(0, 18.8, D.backWall - 0.35);
+    bwH.castShadow = bwH.receiveShadow = true;
+    world.add(bwH); STATIC.push(bwH);
   }
   /* the stage-house side walls, deep enough to meet the back wall and the
      proscenium wall with no daylight at either end */
@@ -9815,7 +9826,7 @@ function plotGoesWrong(){
    ========================================================================== */
 const ARC = {
   X: 420,                       // how far across town it is
-  group: null, rooms: {}, order: ['lobby','main','studio'],
+  group: null, rooms: {}, order: ['lobby','main','studio','shed'],
   walk: [], lights: [], glow: [],
   houses: {}, doors: [], doorMap: {}, walls: [],
   house: 0.85, level: 0.85,
@@ -10039,8 +10050,34 @@ function arcBuildHouse(o, MAT){
     // side walls, full height to the grid roof
     [-1,1].forEach(sd=>
       aBox(0.6, SH, AS.DEPTH + 1.0, conc, cx + sd*AS.W/2, SH/2, (H.zBack + H.zPros)/2 - 0.5, R));
-    // the back wall
-    aBox(AS.W + 1.2, SH, 0.6, conc, cx, SH/2, H.zBack - 0.3, R);
+    /* the back wall, in three pieces: a 3.2 x 3.6 doorway at x = cx leads
+       out to the warehouse shed (p2m) behind both houses */
+    {
+      const DW2 = 3.2, DH2 = 3.6, half = (AS.W + 1.2)/2;
+      const pier = half - DW2/2;
+      [-1,1].forEach(sd=>aBox(pier, SH, 0.6, conc,
+        cx + sd*(DW2/2 + pier/2), SH/2, H.zBack - 0.3, R));
+      aBox(DW2, SH - DH2, 0.6, conc, cx, DH2 + (SH - DH2)/2, H.zBack - 0.3, R);
+      /* the roller leaf in it, mirroring the dock shutter below */
+      const sg = new T.Group();
+      sg.position.set(cx, AS.DECK, H.zBack - 0.3 + 0.16);
+      sg.userData.moves = true;
+      R.add(sg);
+      const rleaf = new T.Mesh(new T.BoxGeometry(DW2 + 0.1, 3.4, 0.14), MAT.shutterM);
+      rleaf.position.y = 1.7;
+      rleaf.castShadow = rleaf.receiveShadow = true;
+      sg.add(rleaf);
+      aBox(DW2 + 0.7, 0.36, 0.3, steel, 0, DH2 + 0.1, 0, sg);
+      const rd = arcDoor({
+        key:o.key + 'Rear', label:H.label + ' warehouse door', kind:'roll',
+        house:o.key, group:sg,
+        axis:'z', plane:H.zBack - 0.3, at:cx, halfW:1.6, H:3.4,
+        travel:3.2
+      });
+      rd.y0 = sg.position.y;
+      ARC.walls.push({axis:'z', plane:H.zBack - 0.3, lo:H.x0, hi:H.x1,
+                      gaps:[{at:cx, halfW:1.6, door:o.key + 'Rear'}]});
+    }
     // THE ROOF over the whole stage box, and a slab over the auditorium too
     aBox(AS.W + 1.2, 0.7, AS.DEPTH + 1.4, conc, cx, SH + 0.35, (H.zBack + H.zPros)/2 - 0.2, R);
     // and the wall over the proscenium, up to the roof
@@ -10618,6 +10655,10 @@ function buildArc(){
     ARC.group.add(ARC.amb, ARC.hemi);
   }
 
+  /* the warehouse shed across the back of both houses — p2m, which needs
+     the room groups and both houses standing first */
+  if(typeof buildArcShed === 'function') buildArcShed(MAT);
+
   ARC.built = true;
   ARC.group.visible = false;
   return ARC;
@@ -10630,6 +10671,7 @@ function venueAt(x){ return x > ARC.X - 140 ? 'arc' : 'palace'; }
 function arcRoomAt(x, z){
   const lx = x - ARC.X;
   if(z > 7.6) return 'lobby';
+  if(z < -47.0) return 'shed';          // the warehouse, behind both houses
   return lx < 0 ? 'main' : 'studio';
 }
 function arcHouseAt(x, z){
@@ -10638,8 +10680,9 @@ function arcHouseAt(x, z){
 }
 const ARC_SEES = {
   lobby:  ['lobby','main','studio'],
-  main:   ['main','lobby'],
-  studio: ['studio','lobby']
+  main:   ['main','lobby','shed'],
+  studio: ['studio','lobby','shed'],
+  shed:   ['shed','main','studio']
 };
 function updateArcRooms(force){
   if(!ARC.built) return;
@@ -10692,6 +10735,11 @@ function updateArc(dt){
 function arcBounds(x, z){
   const lx = x - ARC.X;
   if(z > 7.6) return lx > -49.4 && lx < 49.4 && z < 33.4;          // the foyer
+  /* the warehouse shed, running to half a metre past its own wall plane so
+     a step through either rear doorway is never refused mid-crossing */
+  if(typeof SHEDS !== 'undefined' && SHEDS.arc && z < -46.0 &&
+     lx > SHEDS.arc.x0 + 0.4 && lx < SHEDS.arc.x1 - 0.4 &&
+     z > SHEDS.arc.z0 + 0.4) return true;
   const H = lx < 0 ? ARC.houses.main : ARC.houses.studio;
   if(!H) return false;
   if(z > H.zPros)                                                   // the auditorium
@@ -10723,6 +10771,7 @@ function arcWallBlocks(x, z, ox, oz, y){
 /* where you are standing, for the readout */
 function arcZone(x, y, z){
   const n = arcRoomAt(x, z);
+  if(n === 'shed')   return 'THE WAREHOUSE';   // no house to deref back here
   if(n === 'lobby')  return y > AS.BACKY + 4 ? 'ARC MEZZANINE' : 'ARC FOYER';
   const H = ARC.houses[n];
   const lx = x - ARC.X;
@@ -11062,6 +11111,234 @@ function updateStageHouseLights(){
 }
 
 /* ============================================================================
+   p2m — THE WAREHOUSES.  One shed behind each venue: racking for the rig's
+   loose lanterns (the detach system is a later PR — this part builds the
+   buildings, the racks and the carts), a pushable cart each, and a roller
+   door into the venue's backstage.
+
+   The Palace shed is plain world geometry behind the stage house — it
+   builds at parse time like the rest of the Palace, and p2i (later in the
+   build) files it into its own room.  The Arc shed needs ARC.group, which
+   only exists once buildArc has run, so buildArcShed() is called from the
+   tail of buildArc (p2j) — function declarations hoist across the
+   concatenated file.
+   ========================================================================== */
+var SHEDS = {palace:null, arc:null};
+var CARTS = {palace:null, arc:null};
+
+/* the poured slab both sheds stand on */
+const M_SHED = {
+  conc: new T.MeshStandardMaterial({color:0x8e8b84, roughness:.9})
+};
+
+/* one rack bay: two shelves of slot anchors against a wall */
+function shedRack(parent, cx, cy, cz, yaw, slots){
+  const g = new T.Group(); g.position.set(cx, cy, cz); g.rotation.y = yaw;
+  parent.add(g);
+  const frame = new T.Mesh(new T.BoxGeometry(3.6, 2.2, 0.1), M.steel);
+  frame.position.set(0, 1.1, -0.3); frame.castShadow = frame.receiveShadow = true;
+  g.add(frame);
+  [0.55, 1.45].forEach(sy=>{
+    const shelf = new T.Mesh(new T.BoxGeometry(3.6, 0.06, 0.62), M.steel);
+    shelf.position.set(0, sy, 0); shelf.castShadow = shelf.receiveShadow = true;
+    g.add(shelf);
+    for(let i=0;i<4;i++){
+      const a = new T.Object3D();
+      a.position.set(-1.35 + i*0.9, sy + 0.06, 0);
+      g.add(a); slots.push(a);
+    }
+  });
+  return g;
+}
+
+/* ---- the cart: a two-shelf pushcart with a handle bar on its -z end ---- */
+function buildCart(venue, parent, x, z){
+  const g = new T.Group();
+  g.userData.moves = true;
+  g.userData.cartInfo = true;
+  const frame = new T.Mesh(new T.BoxGeometry(0.74, 0.06, 1.24), M.steel);
+  frame.position.y = 0.26; g.add(frame);
+  const top = new T.Mesh(new T.BoxGeometry(0.74, 0.06, 1.24), M.steel);
+  top.position.y = 0.86; g.add(top);
+  [[-0.35,-0.6],[0.35,-0.6],[-0.35,0.6],[0.35,0.6]].forEach(cn=>{
+    const leg = new T.Mesh(new T.CylinderGeometry(0.02,0.02,0.86,6), M.steel);
+    leg.position.set(cn[0], 0.55, cn[1]); g.add(leg);
+    const wheel = new T.Mesh(new T.CylinderGeometry(0.08,0.08,0.05,10), M.fixture);
+    wheel.rotation.z = Math.PI/2; wheel.position.set(cn[0], 0.08, cn[1]); g.add(wheel);
+  });
+  const hz = -0.72;
+  const handle = new T.Mesh(new T.CylinderGeometry(0.022,0.022,0.7,8), M.pipe);
+  handle.rotation.z = Math.PI/2; handle.position.set(0, 1.02, hz); g.add(handle);
+  [-0.33, 0.33].forEach(hx=>{
+    const up = new T.Mesh(new T.CylinderGeometry(0.018,0.018,0.34,6), M.steel);
+    up.position.set(hx, 0.95, hz); g.add(up);
+  });
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+  const cart = {
+    venue, group:g, x, z, yaw:0, yBase:0,
+    handleH:1.02, handleZ:hz, handleHalf:0.33, grabR:0.30,
+    slots:[]
+  };
+  [0.32, 0.92].forEach(sy=>{
+    for(let i=0;i<3;i++){
+      const a = new T.Object3D();
+      a.position.set(0, sy, -0.42 + i*0.42);
+      g.add(a); cart.slots.push(a);
+    }
+  });
+  parent.add(g);
+  CARTS[venue] = cart;
+  cartPose(cart);
+  if(typeof INTERACT !== 'undefined') INTERACT.push(g);
+  return cart;
+}
+/* the cart's pose lives in {x, z, yaw, yBase} in WORLD coordinates; the Arc
+   cart's parent hangs off ARC.group at x=420, so the offset comes back off */
+function cartPose(c){
+  const ox = (c.venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
+  c.group.position.set(c.x - ox, c.yBase, c.z);
+  c.group.rotation.y = c.yaw;
+}
+
+/* ============================================================================
+   THE PALACE SHED — brick, behind the stage house, straight out the new
+   doorway in the back wall.  World geometry at parse time; p2i pins the
+   group to its own room ('shed') and the door station to the stage.
+   ========================================================================== */
+(function buildPalaceShed(){
+  const x0 = -12, x1 = 12, z0 = -30.2, z1 = D.backWall - 0.7;   // interior faces
+  const g = new T.Group(); g.name = 'shedPalace';
+  world.add(g);
+
+  /* the slab — top face exactly at deck height, and it runs downstage to the
+     stage side of the doorway so there is floor under your feet in it */
+  const fl = box(x1 - x0 + 0.8, 0.6, -16.8 - z0, M_SHED.conc,
+                 (x0 + x1)/2, -0.3, (z0 - 16.8)/2, g);
+  WALKABLE.push(fl);
+
+  // the shell: rear wall, side walls, a flat roof
+  box(x1 - x0 + 1.6, 6.2, 0.7, M.brick, (x0 + x1)/2, 3.1, z0 - 0.35, g);
+  box(0.7, 6.2, z1 - z0 + 1.0, M.brick, x0 - 0.35, 3.1, (z0 + z1)/2 + 0.1, g);
+  box(0.7, 6.2, z1 - z0 + 1.0, M.brick, x1 + 0.35, 3.1, (z0 + z1)/2 + 0.1, g);
+  box(x1 - x0 + 2.4, 0.5, z1 - z0 + 1.4, M.steel, (x0 + x1)/2, 6.45, (z0 + z1)/2, g);
+
+  /* the roller leaf, hung on the shed side of the theatre's back wall */
+  const dg = new T.Group();
+  dg.position.set(0, 0, z1 - 0.12);
+  dg.userData.moves = true;
+  g.add(dg);
+  const leaf = new T.Mesh(new T.BoxGeometry(3.3, 3.4, 0.14), M.steel);
+  leaf.position.y = 1.7;
+  leaf.castShadow = leaf.receiveShadow = true;
+  dg.add(leaf);
+  // the head box and guides it runs in
+  box(4.0, 0.5, 0.4, M.steel, 0, 3.85, z1 - 0.2, g);
+  box(0.12, 3.8, 0.3, M.steel, -1.76, 1.9, z1 - 0.15, g);
+  box(0.12, 3.8, 0.3, M.steel,  1.76, 1.9, z1 - 0.15, g);
+
+  SHEDS.palace = {
+    x0, x1, z0, z1, group:g, slots:[],
+    door:{group:dg, open:0, target:0, travel:3.2, H:3.4, halfW:1.6, x:0, y0:0}
+  };
+
+  // racking along the rear wall
+  for(const rx of [-8.4, -4.5, -0.6, 3.3])
+    shedRack(g, rx, 0, z0 + 0.7, 0, SHEDS.palace.slots);
+
+  buildCart('palace', g, 8.5, -27.5);
+
+  /* the door control, an [E] station on the STAGE side of the wall — a
+     top-level world child so p2i can pin it to the stage room, never the
+     shed's (the shed may be culled while you are looking right at it) */
+  const ctl = box(0.34, 0.5, 0.14, M.fixture, 2.4, 1.25, D.backWall + 0.08);
+  station(ctl, 'shedP', 'WAREHOUSE DOOR  —  [E] open or shut it');
+  SHEDS.palace.ctl = ctl;
+})();
+
+function shedDoorToggle(which){
+  const S = SHEDS[which]; if(!S) return false;
+  S.door.target = S.door.target > 0.5 ? 0 : 1;
+  if(typeof toast === 'function')
+    toast('warehouse door '+(S.door.target ? 'opening' : 'closing'));
+  return true;
+}
+function updateSheds(dt){
+  const d = SHEDS.palace && SHEDS.palace.door;
+  if(d && Math.abs(d.target - d.open) > 0.001){
+    d.open += clamp(d.target - d.open, -dt*0.55, dt*0.55);
+    d.group.position.y = d.y0 + d.open * d.travel;
+  }
+}
+
+/* ============================================================================
+   THE ARC SHED — one long concrete lean-to across the back of BOTH stage
+   houses, in ARC-local coordinates.  Called from the tail of buildArc with
+   its material set; the rear roller doors themselves are cut into each
+   house's back wall by arcBuildHouse (p2j).
+   ========================================================================== */
+function buildArcShed(MAT){
+  if(typeof ARC === 'undefined' || !ARC.rooms.shed || SHEDS.arc) return;
+  const R = ARC.rooms.shed;
+  const conc = (MAT && MAT.conc) ? MAT.conc : M.steel;
+  const x0 = -34, x1 = 34, z0 = -60, z1 = -47.0;
+
+  const fl = aBox(x1 - x0, 0.6, 13.2, conc, 0, -0.3, -53.5, R);
+  arcWalk(fl);
+  aBox(x1 - x0 + 0.8, 6.4, 0.6, conc, 0, 3.2, z0 - 0.3, R);        // rear
+  aBox(0.6, 6.4, 13.6, conc, x0 - 0.3, 3.2, -53.6, R);             // sides
+  aBox(0.6, 6.4, 13.6, conc, x1 + 0.3, 3.2, -53.6, R);
+  aBox(x1 - x0 + 1.4, 0.5, 14.4, conc, 0, 6.65, -53.7, R);         // roof
+  /* the strip of back wall BETWEEN the two stage houses — neither house
+     builds it, and without it the shed leaks out between them */
+  aBox(8.6, 6.4, 0.6, conc, 0, 3.2, z1 - 0.3, R);
+  ARC.walls.push({axis:'z', plane:z1 - 0.3, lo:-4.2, hi:4.2, gaps:[]});
+
+  SHEDS.arc = {x0, x1, z0, z1, group:R, slots:[]};
+  ARC.shed = SHEDS.arc;
+
+  // racking along the rear wall, clear of both doorway lanes at x = ±26
+  for(const rx of [-14, -6, 6, 14])
+    shedRack(R, rx, 0, z0 + 0.7, 0, SHEDS.arc.slots);
+
+  buildCart('arc', R, 420 + 0, -55);
+}
+
+/* ============================================================================
+   PUSHING A CART — the cart obeys the same walls the player does, branched
+   on the CART's venue (never the player's: you could in principle lean
+   through a doorway).  Axis-separated by cartMoveTo, so it slides.
+   ========================================================================== */
+function cartBlocked(cart, nx, nz){
+  const ox = cart.x, oz = cart.z;
+  if(cart.venue === 'arc'){
+    if(typeof arcBounds === 'function' && !arcBounds(nx, nz)) return true;
+    if(typeof arcWallBlocks === 'function' && arcWallBlocks(nx, nz, ox, oz, 0.9)) return true;
+  } else {
+    const S = SHEDS.palace;
+    if(nz < S.z0 + 0.5 || nz > FOH.z1 - 0.9) return true;
+    if(nx < DOCK.x0 - 16 || nx > XL + 0.6) return true;
+    /* throughWall is deliberately not consulted: the proscenium opening is
+       legitimate cart territory */
+    if(typeof doorBlocks === 'function' && doorBlocks(nx, nz, oz, 0.9)) return true;
+    if(typeof backWallBlocks === 'function' && backWallBlocks(nx, nz, oz)) return true;
+    if(typeof shedWallBlocks === 'function' && shedWallBlocks(nx, nz)) return true;
+    if(typeof dockWallBlocks === 'function' && dockWallBlocks(nx, nz, ox)) return true;
+    if(typeof dockDoorBlocks === 'function' && dockDoorBlocks(nx, nz, ox, 0.9)) return true;
+  }
+  const g = (typeof groundAt === 'function') ? groundAt(nx, nz, cart.yBase + 0.6) : 0;
+  if(g === null) return true;
+  if(Math.abs(g - cart.yBase) > 0.3) return true;
+  return false;
+}
+function cartMoveTo(cart, wx, wz){
+  if(!cartBlocked(cart, wx, cart.z)) cart.x = wx;
+  if(!cartBlocked(cart, cart.x, wz)) cart.z = wz;
+  const g = (typeof groundAt === 'function') ? groundAt(cart.x, cart.z, cart.yBase + 0.6) : 0;
+  if(g !== null && Math.abs(g - cart.yBase) <= 0.3) cart.yBase = g;
+  cartPose(cart);
+}
+
+/* ============================================================================
    ROOMS — portal culling
 
    The building is five rooms in a line: the scene shop, the backstage crossover
@@ -11076,19 +11353,21 @@ function updateStageHouseLights(){
    anything carrying a light, because hiding a light would change the look of a
    room you can still see into.
    ========================================================================== */
-const ROOM_ORDER = ['stage','house','lobby'];
+const ROOM_ORDER = ['shed','stage','house','lobby'];
 const ROOMS = {
-  /* Three rooms now.  Nothing lives behind the stage any more, and the
-     loading dock is off the stage-right wing — same z, so it is part of the
-     stage and culls with it.                                              */
-  stage: {label:'the stage',          z0:-Infinity,          z1:1.3},
+  /* Four rooms.  The warehouse shed (p2m) lives behind the stage house wall;
+     the loading dock is off the stage-right wing — same z as the stage, so
+     it is part of the stage and culls with it.                            */
+  shed:  {label:'the warehouse',      z0:-Infinity,          z1:D.backWall - 0.7},
+  stage: {label:'the stage',          z0:D.backWall - 0.7,   z1:1.3},
   house: {label:'the auditorium',     z0:1.3,                z1:D.houseBack + 0.5},
   lobby: {label:'the front of house', z0:D.houseBack + 0.5,  z1:Infinity}
 };
 /* what you can see from where.  A room always sees itself and its neighbours,
    so walking through a door never pops anything in. */
 const ROOM_SEES = {
-  stage: ['stage','house'],
+  shed:  ['shed','stage'],
+  stage: ['stage','house','shed'],
   house: ['house','stage','lobby'],
   lobby: ['lobby','house']
 };
@@ -11172,6 +11451,16 @@ function roomsOver(box){
 const ROOM_FORCE = new Map();          // things I want kept together by hand
 function roomForce(obj, room){ if(obj) ROOM_FORCE.set(obj, room); }
 
+/* The warehouse (p2m) built before this part ran, so ROOM_FORCE did not
+   exist yet for it to register with (a const is dead until its own line
+   executes, however early the function around it hoists).  Pin it here:
+   the shed group to its own room, and the door's [E] station to the stage,
+   where you stand when you use it.                                        */
+if(typeof SHEDS !== 'undefined' && SHEDS.palace){
+  roomForce(SHEDS.palace.group, 'shed');
+  roomForce(SHEDS.palace.ctl, 'stage');
+}
+
 function buildRooms(){
   if(ROOMS_BUILT) return;
   world.updateMatrixWorld(true);
@@ -11241,6 +11530,11 @@ function houseCurtainShut(){
 function portalShut(a, b){
   if((a === 'house' && b === 'lobby') || (a === 'lobby' && b === 'house'))
     return doorsShut();
+  /* the warehouse roller door is the only way between the stage and the
+     shed: down and staying down, there is nothing of the other to see */
+  if((a === 'stage' && b === 'shed') || (a === 'shed' && b === 'stage'))
+    return !!(typeof SHEDS !== 'undefined' && SHEDS.palace &&
+              SHEDS.palace.door.open < 0.01 && SHEDS.palace.door.target < 0.01);
   if(a === 'stage' && b === 'house'){
     const c = houseCurtainShut();
     if(!c) return false;
@@ -11415,11 +11709,29 @@ function groundAt(x,z,fromY){
    ungated they would follow you across town and stop you walking through
    thin air at the Arc.                                                     */
 function inPalace(){ return VENUE !== 'arc'; }
-/* the upstage wall is solid now — there is nothing behind the stage */
+/* the upstage wall — solid except for the warehouse doorway at x = 0 (p2m),
+   and there the roller door has to be most of the way up to pass */
 function backWallBlocks(x, z, oz){
   if(!inPalace()) return false;
   const plane = D.backWall - 0.3;
-  return (oz < plane) !== (z < plane);
+  if((oz < plane) === (z < plane)) return false;   // not crossing it
+  const S = (typeof SHEDS !== 'undefined') ? SHEDS.palace : null;
+  if(S && Math.abs(x - S.door.x) < S.door.halfW - 0.2)
+    return S.door.open < 0.72;
+  return true;
+}
+/* the shed's own shell: its side walls, and the thickness of the theatre's
+   back wall anywhere but the doorway (position checks, not crossings, so a
+   step can never tunnel in from the side) */
+function shedWallBlocks(nx, nz){
+  if(!inPalace()) return false;
+  const S = (typeof SHEDS !== 'undefined') ? SHEDS.palace : null;
+  if(!S) return false;
+  if(nz <= S.z1)                                    // inside the shed proper
+    return nx < S.x0 + 0.4 || nx > S.x1 - 0.4;
+  if(nz < D.backWall - 0.05)                        // inside the wall's thickness
+    return Math.abs(nx - S.door.x) > S.door.halfW - 0.2;
+  return false;
 }
 /* the stage-right wall: the dock opening is the only way out to the get-in */
 /* Every wall of the dock bay knows where its own openings are, so one rule
@@ -11663,10 +11975,14 @@ function updatePlayer(dt){
     } else {
       // the world runs from the street beyond the dock across to the stage-left wall
       if(nx < DOCK.x0 - 16 || nx > XL + 0.6) return;
-      if(nz < D.backWall + 0.6 || nz > FOH.z1 - 0.9) return;
+      // upstage it now ends at the warehouse shed's rear wall, not the stage's
+      const zFloor = (typeof SHEDS !== 'undefined' && SHEDS.palace)
+        ? SHEDS.palace.z0 + 0.5 : D.backWall + 0.6;
+      if(nz < zFloor || nz > FOH.z1 - 0.9) return;
       if(Player.pos.y < 5 && throughWall(nx, nz, Player.pos.z)) return;
       if(doorBlocks(nx, nz, Player.pos.z, Player.pos.y)) return;
       if(backWallBlocks(nx, nz, Player.pos.z)) return;
+      if(shedWallBlocks(nx, nz)) return;
       if(dockWallBlocks(nx, nz, Player.pos.x)) return;
       if(dockDoorBlocks(nx, nz, Player.pos.x, Player.pos.y)) return;
     }
@@ -11784,6 +12100,9 @@ function describe(obj){
     if(o.userData && o.userData.travRope)
       return {kind:'traveler', ls:o.userData.travRope,
         label:'TRAVELER — front run opens · back run closes'};
+    /* the warehouse cart (p2m): VR-only, a squeeze on the handle takes it */
+    if(o.userData && o.userData.cartInfo)
+      return {kind:'cart', label:'WAREHOUSE CART — squeeze the handle and push'};
     const dr = DOORS.find(x=>x.group===o);
     if(dr) return {kind:'door', dw:dr.dw,
       label:'HOUSE DOOR   [E] '+(dr.target>0.5?'close':'open')};
@@ -12703,6 +13022,10 @@ function stationOf(o){
   return null;
 }
 function useStation(st){
+  if(st.id === 'shedP'){
+    shedDoorToggle('palace');
+    return;
+  }
   if(st.id.indexOf('dock') === 0){
     toggleDockDoor(DOCKDOORS[(+st.id.slice(4) || 1) - 1]);
     return;
@@ -12736,6 +13059,7 @@ function tick(now){
   updateFly(dt);
   updateDoors(dt);
   updateDockDoors(dt);
+  if(typeof updateSheds === 'function') updateSheds(dt);
   updateMachines(dt);
   updateStorm(dt);            // rain, lightning and firelight
   updateCrew(dt);             // the stagehands, if they have been called
@@ -14073,7 +14397,7 @@ function vrLetGo(h){
   if(typeof toast === 'function')
     toast('lineset ' + ls.id + ' — let go with the lock off, it is running away');
 }
-const _run = new T.Vector3();
+const _run = new T.Vector3(), _vecA = new T.Vector3();
 function vrSqueeze(hand, down){
   const c = VR.controllers[hand];
   if(!c) return;
@@ -14082,11 +14406,15 @@ function vrSqueeze(hand, down){
     if(VR.held && VR.held.hand === hand){
       const h = VR.held;
       VR.held = null;
-      /* the whipped section goes back to marking the front run at rest */
-      h.rope.mesh.position.copy(h.rope.home);
-      /* a let-go traveler just stays where it is: no weight on a hand line,
-         so no runaway — vrLetGo is for counterweight lines only */
-      if(!h.rope.traveler) vrLetGo(h);
+      /* a let-go CART simply stands where it is; only a rope has a whipped
+         section to park and a load to run away */
+      if(h.rope){
+        /* the whipped section goes back to marking the front run at rest */
+        h.rope.mesh.position.copy(h.rope.home);
+        /* a let-go traveler just stays where it is: no weight on a hand line,
+           so no runaway — vrLetGo is for counterweight lines only */
+        if(!h.rope.traveler) vrLetGo(h);
+      }
     }
     return;
   }
@@ -14112,6 +14440,34 @@ function vrSqueeze(hand, down){
       const d = Math.sqrt(dx*dx + dy*dy + dz*dz);
       if(d < bd){ bd = d; best = r; bestRun = i; bestY = y; }
     }
+  }
+  /* the warehouse carts (p2m): a hand on the handle bar — the nearest point
+     of the bar treated as a segment, so anywhere along it is a hold */
+  let cart = null, cd = Infinity;
+  if(typeof CARTS !== 'undefined'){
+    for(const ck in CARTS){
+      const ct = CARTS[ck];
+      if(!ct) continue;
+      ct.group.updateMatrixWorld(true);
+      _run.set(-ct.handleHalf, ct.handleH, ct.handleZ);
+      ct.group.localToWorld(_run);
+      _vecA.set(ct.handleHalf, ct.handleH, ct.handleZ);
+      ct.group.localToWorld(_vecA);
+      const sx = _vecA.x - _run.x, sy = _vecA.y - _run.y, sz = _vecA.z - _run.z;
+      const L2 = sx*sx + sy*sy + sz*sz;
+      let t = L2 > 0 ? ((_rayO.x - _run.x)*sx + (_rayO.y - _run.y)*sy +
+                        (_rayO.z - _run.z)*sz)/L2 : 0;
+      t = clamp(t, 0, 1);
+      const px = _run.x + sx*t - _rayO.x, py = _run.y + sy*t - _rayO.y,
+            pz = _run.z + sz*t - _rayO.z;
+      const d = Math.sqrt(px*px + py*py + pz*pz);
+      if(d < ct.grabR && d < cd){ cd = d; cart = ct; }
+    }
+  }
+  if(cart && (!best || cd < bd) && (!lv || cd < lvd)){
+    VR.held = {hand, kind:'cart', cart, offX:cart.x - _rayO.x, offZ:cart.z - _rayO.z};
+    if(typeof toast === 'function') toast('warehouse cart — push it where you want it');
+    return;
   }
   /* nearest wins: with the lock in, the handle stands right against the
      front run, and the hand should get whichever it actually closed on */
@@ -14159,6 +14515,26 @@ function vrUpdateHold(dt){
   if(!c) return;
   c.updateMatrixWorld(true);
   _rayO.setFromMatrixPosition(c.matrixWorld);
+  /* a held CART chases the hand across the floor, through the same wall
+     rules the player obeys (p2m), easing its nose round to the direction
+     of travel — release just leaves it standing */
+  if(VR.held.kind === 'cart'){
+    const ct = VR.held.cart;
+    const wx = _rayO.x + VR.held.offX, wz = _rayO.z + VR.held.offZ;
+    const px = ct.x, pz = ct.z;
+    if(typeof cartMoveTo === 'function') cartMoveTo(ct, wx, wz);
+    const dx = ct.x - px, dz = ct.z - pz;
+    if(dx*dx + dz*dz > 1e-8){
+      const want = Math.atan2(dx, dz);
+      let diff = want - ct.yaw;
+      while(diff >  Math.PI) diff -= Math.PI*2;
+      while(diff < -Math.PI) diff += Math.PI*2;
+      const step = 2.5 * (dt || 0.016);
+      ct.yaw += clamp(diff, -step, step);
+      cartPose(ct);
+    }
+    return;
+  }
   const ls = VR.held.rope.ls;
   /* the traveler's hand line: hand travel IS curtain travel.  The front run
      pulled down slides the curtain OPEN, out to both sides; the back run is

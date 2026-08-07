@@ -1148,7 +1148,7 @@ function vrLetGo(h){
   if(typeof toast === 'function')
     toast('lineset ' + ls.id + ' — let go with the lock off, it is running away');
 }
-const _run = new T.Vector3();
+const _run = new T.Vector3(), _vecA = new T.Vector3();
 function vrSqueeze(hand, down){
   const c = VR.controllers[hand];
   if(!c) return;
@@ -1157,11 +1157,15 @@ function vrSqueeze(hand, down){
     if(VR.held && VR.held.hand === hand){
       const h = VR.held;
       VR.held = null;
-      /* the whipped section goes back to marking the front run at rest */
-      h.rope.mesh.position.copy(h.rope.home);
-      /* a let-go traveler just stays where it is: no weight on a hand line,
-         so no runaway — vrLetGo is for counterweight lines only */
-      if(!h.rope.traveler) vrLetGo(h);
+      /* a let-go CART simply stands where it is; only a rope has a whipped
+         section to park and a load to run away */
+      if(h.rope){
+        /* the whipped section goes back to marking the front run at rest */
+        h.rope.mesh.position.copy(h.rope.home);
+        /* a let-go traveler just stays where it is: no weight on a hand line,
+           so no runaway — vrLetGo is for counterweight lines only */
+        if(!h.rope.traveler) vrLetGo(h);
+      }
     }
     return;
   }
@@ -1187,6 +1191,34 @@ function vrSqueeze(hand, down){
       const d = Math.sqrt(dx*dx + dy*dy + dz*dz);
       if(d < bd){ bd = d; best = r; bestRun = i; bestY = y; }
     }
+  }
+  /* the warehouse carts (p2m): a hand on the handle bar — the nearest point
+     of the bar treated as a segment, so anywhere along it is a hold */
+  let cart = null, cd = Infinity;
+  if(typeof CARTS !== 'undefined'){
+    for(const ck in CARTS){
+      const ct = CARTS[ck];
+      if(!ct) continue;
+      ct.group.updateMatrixWorld(true);
+      _run.set(-ct.handleHalf, ct.handleH, ct.handleZ);
+      ct.group.localToWorld(_run);
+      _vecA.set(ct.handleHalf, ct.handleH, ct.handleZ);
+      ct.group.localToWorld(_vecA);
+      const sx = _vecA.x - _run.x, sy = _vecA.y - _run.y, sz = _vecA.z - _run.z;
+      const L2 = sx*sx + sy*sy + sz*sz;
+      let t = L2 > 0 ? ((_rayO.x - _run.x)*sx + (_rayO.y - _run.y)*sy +
+                        (_rayO.z - _run.z)*sz)/L2 : 0;
+      t = clamp(t, 0, 1);
+      const px = _run.x + sx*t - _rayO.x, py = _run.y + sy*t - _rayO.y,
+            pz = _run.z + sz*t - _rayO.z;
+      const d = Math.sqrt(px*px + py*py + pz*pz);
+      if(d < ct.grabR && d < cd){ cd = d; cart = ct; }
+    }
+  }
+  if(cart && (!best || cd < bd) && (!lv || cd < lvd)){
+    VR.held = {hand, kind:'cart', cart, offX:cart.x - _rayO.x, offZ:cart.z - _rayO.z};
+    if(typeof toast === 'function') toast('warehouse cart — push it where you want it');
+    return;
   }
   /* nearest wins: with the lock in, the handle stands right against the
      front run, and the hand should get whichever it actually closed on */
@@ -1234,6 +1266,26 @@ function vrUpdateHold(dt){
   if(!c) return;
   c.updateMatrixWorld(true);
   _rayO.setFromMatrixPosition(c.matrixWorld);
+  /* a held CART chases the hand across the floor, through the same wall
+     rules the player obeys (p2m), easing its nose round to the direction
+     of travel — release just leaves it standing */
+  if(VR.held.kind === 'cart'){
+    const ct = VR.held.cart;
+    const wx = _rayO.x + VR.held.offX, wz = _rayO.z + VR.held.offZ;
+    const px = ct.x, pz = ct.z;
+    if(typeof cartMoveTo === 'function') cartMoveTo(ct, wx, wz);
+    const dx = ct.x - px, dz = ct.z - pz;
+    if(dx*dx + dz*dz > 1e-8){
+      const want = Math.atan2(dx, dz);
+      let diff = want - ct.yaw;
+      while(diff >  Math.PI) diff -= Math.PI*2;
+      while(diff < -Math.PI) diff += Math.PI*2;
+      const step = 2.5 * (dt || 0.016);
+      ct.yaw += clamp(diff, -step, step);
+      cartPose(ct);
+    }
+    return;
+  }
   const ls = VR.held.rope.ls;
   /* the traveler's hand line: hand travel IS curtain travel.  The front run
      pulled down slides the curtain OPEN, out to both sides; the back run is
