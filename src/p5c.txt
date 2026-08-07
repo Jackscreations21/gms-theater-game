@@ -1017,14 +1017,24 @@ SHOWS.outsiders = {
     {
       const c = outsidersCanvas('curtain');
       const key = 'outsidersCurtain';
-      const mat = new T.MeshStandardMaterial({map:c.tex, roughness:.96,
-        side:T.DoubleSide, color:0xffffff});
+      const halfW = D.procW/2 + 3.0;
+      const CLOTH_W = 17.2;          // both halves together, like the other shows
       GOODS[key] = {label:'THE OUTSIDERS show curtain', h:13.0, wt:400,
         traveler:true, made:true, build:()=>{
           const g = new T.Group();
           // two over-wide halves that overlap on the centre line, like a real pair
           [-1,1].forEach(sd=>{
-            const d = drape(D.procW/2 + 3.0, 13.0, mat, 9, .24);
+            /* both halves map the same world x onto the same u — the split-
+               texture fix the other three shows have.  One un-split map per
+               half painted the low sun once per half. */
+            const t2 = c.tex.clone();
+            t2.needsUpdate = true;
+            t2.wrapS = t2.wrapT = T.ClampToEdgeWrapping;
+            t2.repeat.set(halfW / CLOTH_W, 1);
+            t2.offset.set(sd < 0 ? 0 : (CLOTH_W - halfW) / CLOTH_W, 0);
+            const mat = new T.MeshStandardMaterial({map:t2, roughness:.96,
+              side:T.DoubleSide, color:0xffffff});
+            const d = drape(halfW, 13.0, mat, 9, .24);
             d.position.set(sd*(D.procW/4 - 0.4), -6.5, 0);
             d.userData.side = sd;
             g.add(d);
