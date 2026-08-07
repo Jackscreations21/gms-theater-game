@@ -94,7 +94,7 @@ re-run the `adb reverse` line if the page stops loading.
 | **Left stick** | walk, head-relative (forward is where you look) |
 | **Right stick ←/→** | smooth turn |
 | **Right trigger** | click whatever the pointer ray touches on a console desk |
-| **Grip (either hand)** | grab a rope at the pin rail; release to let go |
+| **Grip (either hand)** | grab a rope — anywhere along it — or a lock's red handle; release to let go |
 | **Reach out and touch the GO button** | fires the next cue (it physically depresses) |
 
 - **Consoles.** Five physical desks: on the Palace balcony rail, and a tech
@@ -104,11 +104,16 @@ re-run the `adb reverse` line if the page stops loading.
   the browser reports, normally the **right** hand) — if no cursor appears,
   try the other hand before assuming it is broken. Trigger clicks whatever
   the cursor is on: cue list, faders, page tabs.
-- **Ropes.** At the Palace pin rail (stage right, by the fly rail), close a
-  grip within arm's reach of a rope to seize it — a toast names the
-  lineset. Pull **down** and the batten comes **in**, like a real
-  counterweight line; the toast follows the trim. A locked lineset will not
-  move (unlock it at the rail or on the desk first).
+- **Ropes.** At the Palace locking rail (stage right), close a grip on a
+  rope — **anywhere** along either run, deck to grid — to seize it; a toast
+  names the lineset. Pull **down** on the front run and the batten comes
+  **in**, like a real counterweight line; the back run is the other half of
+  the loop and works in reverse. A locked lineset will not move.
+- **Rope locks.** Every line has a red handle on the rail in front of it,
+  over its number plate. Grab the handle and **push it in** (upright) to
+  lock the line off; **pull it out** (toward you) to release it. The handle
+  only moves when a closed hand moves it. Release a line with nothing
+  holding it — no lock, no hand — and it runs away to the deck.
 - **GO.** Each console has a raised button; put a hand on it. It has a
   cooldown so a lingering hand fires one cue, not ten.
 - Crossing town works the same as on desktop — walk out through the foyer;
@@ -147,4 +152,4 @@ HANDOFF.md, even — especially — the failures.
 | Blank page over `adb reverse` | Reverse dropped (cable/sleep) — re-run `adb reverse tcp:8080 tcp:8080` |
 | Judder / low FPS | Work the knob list in §6.2, starting with `VR.beamCap` |
 | Cursor lands nowhere / consoles dead | Try the other hand's trigger; if still dead, that is checklist item 3 failing — report it |
-| Held rope does nothing | Lineset locked, or you grabbed air — get within ~30 cm of the rope and re-grip |
+| Held rope does nothing | Lineset locked (pull its red handle out first), or you grabbed air — get within ~30 cm of the rope and re-grip |

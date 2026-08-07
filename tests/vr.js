@@ -557,18 +557,33 @@ const probe = `
     vrSqueeze(hand, true);
     return c;
   };
-  /* push the little red lever with a hand, the way the GO button is pushed */
-  const throwLever = (r)=>{
-    scene.updateMatrixWorld(true);
-    const at = r.knob.getWorldPosition(new THREE.Vector3());
-    const grip = VR.grips[1];
+  /* put a hand anywhere in the world (hand 1, so hand 0 can hold a rope) */
+  const handAt = (world)=>{
+    const c = VR.controllers[1];
     VR.rig.updateMatrixWorld(true);
-    grip.position.copy(VR.rig.worldToLocal(at.clone()));
-    grip.updateMatrixWorld(true);
-    r.cool = 0;
-    vrUpdateRopes(0.016);
-    grip.position.set(0, 0, 0); grip.updateMatrixWorld(true);
+    c.position.copy(VR.rig.worldToLocal(world.clone()));
+    c.updateMatrixWorld(true);
+    return c;
   };
+  /* work the lock's red handle the way a hand now must: close a grip ON the
+     knob, lean it to the detent wanted, and let go.  Nothing else moves it. */
+  const leverTo = (r, on)=>{
+    scene.updateMatrixWorld(true);
+    handAt(r.knob.getWorldPosition(new THREE.Vector3()));
+    vrSqueeze(1, true);
+    if(!VR.heldLever || VR.heldLever.rope !== r)
+      throw new Error('the hand did not close on the lever');
+    const pivot = r.lever.getWorldPosition(new THREE.Vector3());
+    handAt(on ? pivot.clone().add(new THREE.Vector3(0, 0.3, 0))
+              : pivot.clone().add(new THREE.Vector3(r.inw*0.3, 0.05, 0)));
+    scene.updateMatrixWorld(true);
+    vrUpdateRopes(0.016);
+    vrSqueeze(1, false);
+    const c = VR.controllers[1];
+    c.position.set(0, 0, 0); c.updateMatrixWorld(true);
+  };
+  const throwLever = r => leverTo(r, true);    // push it IN: locked
+  const pullLever  = r => leverTo(r, false);   // pull it OUT: released
   /* the deck limit a runaway line stops at — guarded the way p3 guards it */
   const floorOf = ls => (typeof minTrimOf === 'function') ? minTrimOf(ls) : 0.6;
   const anElectric = ()=>{
@@ -588,14 +603,13 @@ const probe = `
     // put a hand on it and pull down half a metre
     const c = takeHold(r, 0);
     if(!VR.held) throw new Error('the hand did not take hold of it');
-    if(ls.locked) throw new Error('taking hold did not take the lock off');
     c.position.y -= 0.5;
     c.updateMatrixWorld(true);
     vrUpdateHold(0.05);
     if(ls.pos >= out - 1)
       throw new Error('pulling down moved it to ' + ls.pos.toFixed(2) + ' from ' + out.toFixed(2));
     const pulled = out - ls.pos;
-    /* throw the little red lever before you let go, or it runs away */
+    /* push the little red lever in before you let go, or it runs away */
     throwLever(r);
     if(!ls.locked) throw new Error('the lever did not lock it off');
     vrSqueeze(0, false);
@@ -605,7 +619,7 @@ const probe = `
     run(200, 0.05);
     if(Math.abs(ls.pos - stopped) > 0.2)
       throw new Error('it kept moving after the hand let go');
-    vrRopeLock(r, false);                       // leave the rail as we found it
+    ls.locked = false;                          // leave the rail as we found it
     return 'half a metre of rope brought it in ' + pulled.toFixed(1) +
            'm, and the lever held it there';
   });
@@ -656,7 +670,7 @@ const probe = `
                       'm, under the floor of ' + lo.toFixed(2) + 'm');
     throwLever(r);                     // hold it, let go, and leave the rail tidy
     vrSqueeze(0, false);
-    vrRopeLock(r, false);
+    ls.locked = false;
     flyOut(ls); run(700, 0.05);
     return 'a full-arm yank stopped at the floor of ' + lo.toFixed(2) + 'm';
   });
@@ -698,7 +712,7 @@ const probe = `
            peak.toFixed(2) + 'm, then down to the deck';
   });
 
-  P('the red lever stops a runaway, and taking hold takes the lock off again', ()=>{
+  P('the red lever stops a runaway, and only the lever gives the lock back', ()=>{
     goToView(3);
     vrBuildRopes();
     const r = anElectric(), ls = r.ls;
@@ -716,15 +730,136 @@ const probe = `
     updateFly(0.05); updateFly(0.05);
     if(Math.abs(ls.pos - caught) > 0.02)
       throw new Error('it fell another ' + (caught - ls.pos).toFixed(3) + 'm after the lock');
-    /* and taking hold of the rope again takes the lock straight off */
-    takeHold(r, 0);
+    /* taking hold of the rope again leaves the lock exactly where it is */
+    const c = takeHold(r, 0);
     if(!VR.held) throw new Error('the hand did not take hold of it');
-    if(ls.locked) throw new Error('grabbing it left the lock on');
-    vrRopeLock(r, true);                        // tie it off before we walk away
+    if(!ls.locked) throw new Error('grabbing the rope took the lock off — only the lever may');
+    /* and hauling against a thrown lock moves nothing: the rail has the weight */
+    c.position.y -= 0.5;
+    c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    if(Math.abs(ls.pos - caught) > 1e-6)
+      throw new Error('a haul moved a locked line to ' + ls.pos.toFixed(2));
+    /* pull the lever out with a hand still on the rope: released, no runaway */
+    pullLever(r);
+    if(ls.locked) throw new Error('pulling the lever out did not release it');
+    if(ls.runaway) throw new Error('it ran away with a hand still on the rope');
+    /* and the haul picks up smoothly from here — no jump for the half metre
+       pulled while the lock had the weight */
+    const freed = ls.pos;
+    c.position.y -= 0.3;
+    c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    if(ls.pos >= freed) throw new Error('the freed line would not haul');
+    if(freed - ls.pos > 2.5)
+      throw new Error('the pull made while locked was banked and let fly: it jumped ' +
+                      (freed - ls.pos).toFixed(2) + 'm');
+    throwLever(r);                              // tie it off before we walk away
     vrSqueeze(0, false);
     if(ls.runaway) throw new Error('a locked line ran away on release');
-    vrRopeLock(r, false);
+    ls.locked = false;
     return 'caught at ' + caught.toFixed(2) + 'm and held within two frames';
+  });
+
+  P('a hand takes the rope anywhere along it — and the back run hauls in reverse', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = anElectric(), ls = r.ls;
+    flyTo(ls, 12, true); run(4, 0.05);
+    scene.updateMatrixWorld(true);
+    /* the front run, high over the whipped grab section */
+    const front = r.runs[0].getWorldPosition(new THREE.Vector3());
+    const c0 = VR.controllers[0];
+    VR.rig.updateMatrixWorld(true);
+    c0.position.copy(VR.rig.worldToLocal(new THREE.Vector3(front.x, 5.0, front.z)));
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.rope !== r)
+      throw new Error('a hand five metres up the front run grabbed nothing');
+    if(Math.abs(r.mesh.position.y - 5.0) > 0.01)
+      throw new Error('the grab section did not slide to the hand: y=' +
+                      r.mesh.position.y.toFixed(2));
+    c0.position.y -= 0.4;
+    c0.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    if(ls.pos >= 12) throw new Error('pulling the front run down did not bring it in');
+    vrSqueeze(0, false);
+    /* the board takes the runaway back: a non-instant call writes a target
+       away from pos, which is what cancels one (updateFly, p3) */
+    flyTo(ls, 12); run(150, 0.05);
+    /* the back run is the other half of the loop: down hauls the batten OUT */
+    scene.updateMatrixWorld(true);
+    const back = r.runs[1].getWorldPosition(new THREE.Vector3());
+    c0.position.copy(VR.rig.worldToLocal(new THREE.Vector3(back.x, 5.0, back.z)));
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.rope !== r)
+      throw new Error('a hand on the back run grabbed nothing');
+    c0.position.y -= 0.4;
+    c0.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    if(ls.pos <= 12) throw new Error('pulling the back run down did not send it out');
+    vrSqueeze(0, false);
+    flyTo(ls, 12); run(150, 0.05);
+    c0.position.set(0, 0, 0); c0.updateMatrixWorld(true);
+    return 'took hold at 5m up both runs; front hauled in, back hauled out';
+  });
+
+  P('the levers never move on their own', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = VR.ropes[0], ls = r.ls;
+    ls.locked = true;
+    for(let i=0;i<80;i++) vrUpdateRopes(0.05);  // settle into the detent
+    scene.updateMatrixWorld(true);
+    const pose = r.lever.rotation.z;
+    /* a hand right on the knob without a squeeze — the old rail toggled on
+       proximity alone, and a knuckle mid-haul threw locks nobody asked for */
+    const at = r.knob.getWorldPosition(new THREE.Vector3());
+    const c = VR.controllers[0];
+    VR.rig.updateMatrixWorld(true);
+    c.position.copy(VR.rig.worldToLocal(at.clone()));
+    c.updateMatrixWorld(true);
+    const g = VR.grips[0];
+    g.position.copy(c.position);
+    g.updateMatrixWorld(true);
+    for(let i=0;i<80;i++) vrUpdateRopes(0.016);
+    if(!ls.locked) throw new Error('a hand near the knob took the lock off by itself');
+    if(Math.abs(r.lever.rotation.z - pose) > 1e-6)
+      throw new Error('the lever moved with nobody holding it');
+    c.position.set(0, 0, 0); c.updateMatrixWorld(true);
+    g.position.set(0, 0, 0); g.updateMatrixWorld(true);
+    /* hauling the rope does not touch the lever either */
+    takeHold(r, 0);
+    if(!VR.held) throw new Error('the hand did not take hold of it');
+    for(let i=0;i<10;i++) vrUpdateRopes(0.016);
+    if(!ls.locked) throw new Error('grabbing the rope threw the lever');
+    if(Math.abs(r.lever.rotation.z - pose) > 1e-6)
+      throw new Error('the lever leaned when the rope was grabbed');
+    vrSqueeze(0, false);
+    if(ls.runaway) throw new Error('a locked line ran away on release');
+    ls.locked = false;
+    return 'a loitering hand and a full haul, and the lever never stirred';
+  });
+
+  P('pull the lever out with nothing on the rope and the load is released', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = anElectric(), ls = r.ls;
+    flyTo(ls, 14, true); run(4, 0.05);
+    throwLever(r);
+    if(!ls.locked) throw new Error('could not lock it to begin with');
+    pullLever(r);
+    if(ls.locked) throw new Error('pulling the lever out did not release it');
+    if(!ls.runaway) throw new Error('released with no hand on it, and it just hung there');
+    for(let i=0;i<20;i++) updateFly(0.05);
+    if(ls.pos >= 14) throw new Error('released, and it never started to fall');
+    throwLever(r);                              // catch it on the way down
+    if(ls.runaway) throw new Error('the lever did not catch it');
+    const caught = ls.pos;
+    ls.locked = false;
+    flyTo(ls, 14, true); run(4, 0.05);
+    return 'out is released — it fell to ' + caught.toFixed(2) + 'm until the lever caught it';
   });
 
   P('every rope is a loop — a head block at the grid, a floor block on the deck', ()=>{
@@ -753,7 +888,23 @@ const probe = `
           throw new Error(at + 'grab section is at y=' + g.y.toFixed(2));
         if(k.y < 0.8 || k.y > 1.6)
           throw new Error(at + 'lever is at y=' + k.y.toFixed(2) + ' — out of reach');
+        /* the locking rail: a lock housing and a number plate for every line,
+           and the red handle on the OPERATOR'S side of the ropes — the front */
+        if(!r.lock)  throw new Error(at + 'has no rope-lock housing');
+        if(!r.plate) throw new Error(at + 'has no number plate on the rail');
+        if(!r.plate.material.map)
+          throw new Error(at + 'number plate has nothing painted on it');
+        if(r.lever.position.x * r.inw < 0.05)
+          throw new Error(at + 'lever is behind the ropes, not in front');
+        if(r.plate.position.x * r.inw <= r.lever.position.x * r.inw)
+          throw new Error(at + 'number plate is behind the lock');
+        /* pulled OUT, the handle lies toward the flyman, never the other way */
+        if(!r.ls.locked && r.lever.rotation.z * r.inw > -0.5)
+          throw new Error(at + 'released handle leans the wrong way: ' +
+                          r.lever.rotation.z.toFixed(2));
       }
+      const beam = VR.ropeRoot.children.find(o=>o.name === 'vr:rail');
+      if(!beam) throw new Error(label + ' has no locking-rail beam at all');
       return VR.ropes.length;
     };
     goToView(3);
@@ -853,6 +1004,21 @@ const probe = `
     if(Math.abs(ls.pos - before) > 1e-6)
       throw new Error('the parked lineset moved to ' + ls.pos.toFixed(2));
     vrSqueeze(0, false);
+    goToView(3);
+    /* and a lever held through the walk is dropped the same way */
+    scene.updateMatrixWorld(true);
+    const r2 = VR.ropes[0];
+    const k2 = r2.knob.getWorldPosition(new THREE.Vector3());
+    const c2 = VR.controllers[1];
+    VR.rig.updateMatrixWorld(true);
+    c2.position.copy(VR.rig.worldToLocal(k2.clone()));
+    c2.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    if(!VR.heldLever) throw new Error('the hand did not close on the lever');
+    goToView(15);
+    if(VR.heldLever) throw new Error('the hand is still holding the parked lever');
+    vrSqueeze(1, false);
+    c2.position.set(0, 0, 0); c2.updateMatrixWorld(true);
     goToView(3);
     return 'the swap opened the hand';
   });
