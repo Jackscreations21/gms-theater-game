@@ -446,13 +446,43 @@ real position over the stalls, and is watching it travel from the
 stalls comfortable; and at the rail, mind the frame rate again — #28
 adds ~7 meshes per stage and #29 ~9, small but real.
 
-**NEXT SESSION: the headset run, meter in hand.**
+**Session closed 2026-08-07: everything above is ON `main`.** The owner
+merged #21–#30 the same day, `main` rebuilds byte-identical, 12/12
+suites green on the merged result. Nothing is in flight.
 
-**Step zero:** confirm #25–#29 merged (merge them if not — each is
-reviewed, green and negative-checked, and they merge clean in any
-order; #21–#24 already landed), then put the owner in the headset on
-`…/the-house.html?v=6` (bump the number: the Quest Browser caches
-hard).
+**NEXT SESSION: THE VR BUILD FEATURE.** The owner's words, verbatim:
+"adding a vr build feature" — one line, no spec yet. **Step zero is to
+get the spec from the owner before writing any code.** Questions to
+put to them, with the likely shape as far as it can be guessed:
+
+- What gets built? The nearest standing ask is "stage 2" VR: **carrying
+  scenery by hand** — grab a set piece with a squeeze, walk it, set it
+  down. Or is it bigger: assembling sets from the scenic stock (p5),
+  placing new pieces the way the desktop scenic palette does, or even
+  laying out rigs/goods? Do not guess — the traveler ask ("slide the
+  curtain out to both sides") turned out to mean the real
+  counterweight thing, and this one deserves the same precision.
+- Where does what you build LIVE? If a VR-built layout should survive
+  a stage walk it has to park with the stage (the p2k pattern — see
+  the FOH bar in p4/p2k for the freshest worked example); if it should
+  survive a reload it needs a save shape (SHOW/`setGroup`, p5c).
+- Do the crew know about it? Hand-placed pieces and crewed LOAD IN/OUT
+  share `setGroup` — decide whether a strike removes hand-built work.
+
+What is already in the toolbox for whoever builds it: the two-hand
+squeeze/grab machinery in p9 (ropes, levers, traveler — nearest-wins
+against desks; extend `vrSqueeze`, don't fork it); the scenic stock
+and `setPieceVisible` in p5/p5c; `userData.effect` vs crew-keep-off
+flags (§5 — a flag used for two purposes WILL go wrong); the r128
+raycast traps in §5 (instanced bounding spheres, `visible` is only a
+drawing flag). Physics of carried pieces: keep it simple — kinematic
+follow of the grip, drop on release, no dynamics; the GOES WRONG
+collapse machinery (p5g) is show scripting, not a physics engine.
+
+**STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
+2026-08-06; the meter shipped in #22 but has never met hardware — put
+the owner on `…/the-house.html?v=6`, bump the number, Quest Browser
+caches hard):
 
 **Read the wrist meter and WRITE THE NUMBERS HERE.** The two worst
 cases are unchanged: centre stage under a full rig in haze, and at the
@@ -501,8 +531,15 @@ not installed — PRs go through the GitHub API with the stored git
 credential; PowerShell 5.1 mangles `git commit -m` when the message has
 double quotes in it — write the message to a file and `-F` it. The
 parallel-worktree-agents pattern (one branch per concern, review and
-revise before push) worked well this session; the seam between two
-agents' branches is where the one real bug was, so review THERE first.
+revise before push) has now worked well twice — and the SEAM CHECK is
+no longer optional: before opening multi-branch PRs, merge every open
+branch into a throwaway, rebuild, and run the full suite. On 2026-08-07
+it caught two real bugs that every branch passed alone (a desktop grab
+missing the relock handover; a lock test crashing on the lever-less
+traveler rope only once both branches were merged). One more trap from
+that day: never `git add -A` while agent worktrees exist under
+`.claude/` — three gitlink pointers rode into a commit that way
+(`.gitignore` covers it now).
 
 After VR holds up on hardware, the leftovers: item 20, item 22, and the
 "stage 2" VR asks at the bottom of this section — plus two new small
