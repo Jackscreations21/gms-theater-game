@@ -11650,6 +11650,7 @@ function updateSheds(dt){
     d.open += clamp(d.target - d.open, -dt*0.55, dt*0.55);
     d.group.position.y = d.y0 + d.open * d.travel;
   }
+  updateOrders(dt);
 }
 
 /* ============================================================================
@@ -11732,6 +11733,107 @@ function cartMoveTo(cart, wx, wz){
   const g = (typeof groundAt === 'function') ? groundAt(cart.x, cart.z, cart.yBase + 0.6) : 0;
   if(g !== null && Math.abs(g - cart.yBase) <= 0.3) cart.yBase = g;
   cartPose(cart);
+}
+
+/* ============================================================================
+   ORDERING NEW STOCK (spec §6).  A wall screen in each shed (p9) writes an
+   order; ~30s later a loaded pallet stands at the roller-door apron and its
+   six slots join the snap scan.  RULING C: ordering is free.  RULING D: one
+   order pending per shed, and an emptied pallet clears itself away.
+   RULING E: at most 24 loose bodies to a venue — held, carted, shelved,
+   palleted or on the floor.  Timers run on GAME time, never setTimeout —
+   a timer that survives a stage swap GOes the wrong theatre (M7).
+   ========================================================================== */
+var ORDERS = {palace:{pending:null, pallet:null}, arc:{pending:null, pallet:null}};
+const ORDER_DELIVERY = 30;    // seconds from ORDER to the pallet
+const ORDER_MAX = 6;          // line items to an order — one pallet's worth
+const STOCK_CAP = 24;         // RULING E, per venue
+function venueLooseCount(v){
+  if(typeof BODIES === 'undefined') return 0;
+  let n = 0;
+  for(const b of BODIES) if(b.venue === v && b.state !== 'hung') n++;
+  return n;
+}
+function orderPlace(which, items){
+  const o = ORDERS[which];
+  if(!o || !SHEDS[which] || o.pending || o.pallet) return 'BUSY';
+  if(!items.length || items.length > ORDER_MAX) return 'COUNT';
+  if(venueLooseCount(which) + items.length > STOCK_CAP) return 'STOCK FULL';
+  o.pending = {items:items.slice(), t:ORDER_DELIVERY};
+  return 'OK';
+}
+/* the pallet: boards on two bearers, six body seats on top.  A child of the
+   shed group on purpose — a pallet never leaves the shed, so it may cull
+   with it (the cart's escape from room-filing is for things that roam). */
+function spawnPallet(which){
+  const S = SHEDS[which];
+  const g = new T.Group();
+  const at = which === 'palace' ? {x:-2.4, z:S.z1 - 1.6} : {x:-26, z:S.z1 - 1.8};
+  g.position.set(at.x, 0, at.z);
+  const top = new T.Mesh(new T.BoxGeometry(1.7, 0.05, 1.2), M.wood);
+  top.position.y = 0.15; g.add(top);
+  [-0.5, 0.5].forEach(bz=>{
+    const b = new T.Mesh(new T.BoxGeometry(1.7, 0.12, 0.14), M.woodDk);
+    b.position.set(0, 0.06, bz); g.add(b);
+  });
+  const slots = [];
+  for(let zi=0; zi<2; zi++) for(let xi=0; xi<3; xi++){
+    const a = new T.Object3D();
+    a.position.set(-0.55 + xi*0.55, 0.42, -0.3 + zi*0.6);
+    g.add(a); slots.push(a);
+  }
+  S.group.add(g);
+  return {group:g, slots};
+}
+let _orderUiT = 0;
+function updateOrders(dt){
+  let redraw = false;
+  for(const k in ORDERS){
+    const o = ORDERS[k];
+    if(!o) continue;
+    if(o.pending){
+      o.pending.t -= dt;
+      if(o.pending.t <= 0){
+        const items = o.pending.items;
+        o.pending = null;
+        o.pallet = spawnPallet(k);
+        /* delivered stock belongs to the shed's venue, wherever the board is */
+        const keep = BUILD_VENUE;
+        BUILD_VENUE = k;
+        items.forEach((kind, i)=>{
+          const mesh = makeBodyMesh(kind);
+          const b = regBody(kind, mesh, null);
+          b.state = 'loose';
+          slotBody(b, o.pallet.slots[i]);
+        });
+        BUILD_VENUE = keep;
+        if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+        if(typeof toast === 'function') toast('the warehouse — your order is on the apron');
+        redraw = true;
+      }
+    } else if(o.pallet){
+      const loaded = o.pallet.slots.some(a=>a.userData.body);
+      if(loaded) o.pallet.emptyT = undefined;
+      else {
+        /* RULING D: a few seconds after the last body comes off, it goes */
+        if(o.pallet.emptyT === undefined) o.pallet.emptyT = 5;
+        o.pallet.emptyT -= dt;
+        if(o.pallet.emptyT <= 0){
+          if(o.pallet.group.parent) o.pallet.group.parent.remove(o.pallet.group);
+          if(typeof disposeTree === 'function') disposeTree(o.pallet.group);
+          o.pallet = null;
+          redraw = true;
+        }
+      }
+    }
+  }
+  /* keep the wall screens honest — countdowns tick on both boards' time */
+  _orderUiT -= dt;
+  if((redraw || _orderUiT <= 0) && typeof VR !== 'undefined' && VR && VR.orders){
+    _orderUiT = 0.5;
+    for(const k in VR.orders)
+      if(VR.orders[k] && typeof vrDrawOrder === 'function') vrDrawOrder(VR.orders[k]);
+  }
 }
 
 /* ============================================================================
@@ -14377,6 +14479,96 @@ function vrBuildDesks(){
       });
     }
   }
+  vrBuildOrderScreens();
+}
+
+/* ============================================================================
+   THE ORDER SCREENS (spec §6) — a wall panel in each shed, the console
+   pattern at one-canvas-per-screen scale: its own texture, its own pixel
+   hit list, the same ray + trigger and the same v = 1 - uv.y flip (the
+   vrSelect branch).  State and delivery live in p2m (ORDERS/orderPlace);
+   this is only the glass.
+   ========================================================================== */
+const ORDER_KINDS = ['profile','fresnel','par','cyc','mover','speaker'];
+function vrMakeOrderScreen(which, parent, x, y, z){
+  const c = document.createElement('canvas');
+  c.width = 560; c.height = 520;
+  const sc = {which, canvas:c, ctx:c.getContext('2d'), tex:tex(c,1,1), hits:[],
+              counts:{profile:0, fresnel:0, par:0, cyc:0, mover:0, speaker:0},
+              status:''};
+  const g = new T.Group(); g.position.set(x, y, z); parent.add(g);
+  const back = new T.Mesh(new T.BoxGeometry(1.44, 1.34, 0.05),
+    new T.MeshStandardMaterial({color:0x14181e, roughness:.7, metalness:.2}));
+  back.position.z = -0.04; g.add(back);
+  const face = new T.Mesh(new T.PlaneGeometry(1.3, 1.2),
+    new T.MeshBasicMaterial({map:sc.tex}));
+  face.userData.orderScreen = which;
+  g.add(face);
+  sc.face = face;
+  VR.orders[which] = sc;
+  VR.deskMeshes.push(face);
+  vrDrawOrder(sc);
+  return sc;
+}
+function vrBuildOrderScreens(){
+  VR.orders = VR.orders || {};
+  if(VR.orders.palace || typeof SHEDS === 'undefined') return;
+  if(SHEDS.palace)
+    vrMakeOrderScreen('palace', SHEDS.palace.group, 7.4, 1.7, SHEDS.palace.z0 + 0.1);
+  if(SHEDS.arc && typeof ARC !== 'undefined' && ARC.rooms.shed)
+    vrMakeOrderScreen('arc', ARC.rooms.shed, 20, 1.8, SHEDS.arc.z0 + 0.1);
+}
+function vrDrawOrder(sc){
+  const g = sc.ctx, W = sc.canvas.width;
+  sc.hits.length = 0;
+  g.fillStyle = '#0b0e12'; g.fillRect(0, 0, W, sc.canvas.height);
+  g.fillStyle = '#ffd08a'; g.font = 'bold 26px monospace';
+  g.fillText('WAREHOUSE SUPPLY', 24, 40);
+  const o = (typeof ORDERS !== 'undefined') ? ORDERS[sc.which] : null;
+  ORDER_KINDS.forEach((k, i)=>{
+    const y = 64 + i*56;
+    g.fillStyle = '#cfd8e3'; g.font = '22px monospace';
+    g.fillText(BODY_LABEL[k], 24, y + 31);
+    g.fillStyle = '#232b35'; g.fillRect(300, y, 56, 44);
+    g.fillRect(440, y, 56, 44);
+    g.fillStyle = '#ffd08a'; g.font = 'bold 28px monospace';
+    g.fillText('-', 321, y + 32); g.fillText('+', 458, y + 32);
+    g.fillStyle = '#eef3f8'; g.fillText('' + sc.counts[k], 388, y + 32);
+    sc.hits.push({x:300, y, w:56, h:44, fn:()=>{
+      if(sc.counts[k] > 0){ sc.counts[k]--; sc.status = ''; }
+      vrDrawOrder(sc);
+    }});
+    sc.hits.push({x:440, y, w:56, h:44, fn:()=>{
+      const tot = ORDER_KINDS.reduce((s, kk)=>s + sc.counts[kk], 0);
+      if(tot < ORDER_MAX){ sc.counts[k]++; sc.status = ''; }
+      else sc.status = 'SIX TO AN ORDER';
+      vrDrawOrder(sc);
+    }});
+  });
+  const oy = 64 + 6*56 + 8;
+  g.fillStyle = '#2fbf4a'; g.fillRect(24, oy, 300, 56);
+  g.fillStyle = '#08130a'; g.font = 'bold 30px monospace';
+  g.fillText('ORDER', 118, oy + 39);
+  sc.hits.push({x:24, y:oy, w:300, h:56, fn:()=>{ vrOrderPress(sc); }});
+  g.fillStyle = '#ffd08a'; g.font = '20px monospace';
+  let line = sc.status;
+  if(o && o.pending) line = 'DELIVERY IN ' + Math.max(1, Math.ceil(o.pending.t)) + 's';
+  else if(o && o.pallet) line = 'PALLET ON THE APRON';
+  g.fillText(line || 'THE SHELVES ARE YOURS', 24, oy + 92);
+  sc.tex.needsUpdate = true;
+}
+function vrOrderPress(sc){
+  const items = [];
+  ORDER_KINDS.forEach(k=>{ for(let i = 0; i < sc.counts[k]; i++) items.push(k); });
+  const r = (typeof orderPlace === 'function') ? orderPlace(sc.which, items) : 'BUSY';
+  if(r === 'OK'){
+    ORDER_KINDS.forEach(k=>{ sc.counts[k] = 0; });
+    sc.status = '';
+  }
+  else if(r === 'COUNT') sc.status = items.length ? 'SIX TO AN ORDER' : 'NOTHING ON THE SLIP';
+  else if(r === 'BUSY') sc.status = 'ONE ORDER AT A TIME';
+  else sc.status = r;   // STOCK FULL
+  vrDrawOrder(sc);
 }
 
 /* ============================================================================
@@ -14709,7 +14901,7 @@ function vrPointAt(){
     VR.cursor.visible = true;
     VR.cursor.position.copy(VR.rig.worldToLocal(h.point.clone()));
   }
-  return {u:h.uv.x, v:1 - h.uv.y};
+  return {u:h.uv.x, v:1 - h.uv.y, obj:h.object};
 }
 /* point a hand's ray into the ROOM — doors, linesets, fixtures, scenic,
    stations: the same curated pick list the desktop crosshair uses */
@@ -14735,6 +14927,23 @@ function vrSelect(hand, down){
   if(hand === 1){
     const p = vrPointAt();
     if(p){
+      /* the warehouse order screens carry their own canvas and hit list —
+         a press on one never falls through to the main console's regions */
+      if(p.obj && p.obj.userData.orderScreen && VR.orders){
+        const sc = VR.orders[p.obj.userData.orderScreen];
+        if(sc){
+          const sx = p.u * sc.canvas.width, sy = p.v * sc.canvas.height;
+          for(let i = sc.hits.length - 1; i >= 0; i--){
+            const h = sc.hits[i];
+            if(sx >= h.x && sx <= h.x + h.w && sy >= h.y && sy <= h.y + h.h){
+              h.fn(sx, sy);
+              if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+              return;
+            }
+          }
+        }
+        return;
+      }
       const px = p.u * VRC.W, py = p.v * VRC.H;
       for(let i = VR.hits.length - 1; i >= 0; i--){
         const h = VR.hits[i];
