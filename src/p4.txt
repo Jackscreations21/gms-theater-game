@@ -98,14 +98,17 @@ function makeBeam(len, rad){
 /* ---- fixture bodies ------------------------------------------------------
    Real lanterns, not primitives.  Every geometry is built ONCE via fixG and
    shared across all instances — three stages hang ~25 channels each, so
-   per-body geometry would be ~400 duplicate buffers.  Contracts the rest of
+   per-body geometry would be ~900 duplicate buffers.  Contracts the rest of
    p4 reads and must survive any edit here: userData.lens on every body,
    userData.base/yoke/head on movers.  New for the detach system (PR 5):
    userData.clamp is the C-clamp that meets the pipe.  Budget: each body
    stays well under 700 triangles — these are drawn ~75x in a headset.     */
 const FIXG = {};
 function fixG(k, make){ return FIXG[k] || (FIXG[k] = make()); }
-function lensMat(c){ return new T.MeshBasicMaterial({color:c}); }
+/* lens materials are cached by colour and SHARED — never tint one per
+   fixture (userData.lens is write-only today; detach/order work, take note) */
+const LENSM = {};
+function lensMat(c){ return LENSM[c] || (LENSM[c] = new T.MeshBasicMaterial({color:c})); }
 /* yoke + C-clamp + safety loop, shared by every hanging body */
 function addHang(g, yokeR){
   const yoke = new T.Mesh(fixG('yoke'+yokeR, ()=>new T.TorusGeometry(yokeR,.022,5,14,Math.PI)), M.steel);

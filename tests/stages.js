@@ -1135,7 +1135,7 @@ const probe = `
     const geoms = b=>{ const s=new Set(); b.traverse(o=>{ if(o.isMesh) s.add(o.geometry); }); return s; };
     const a = geoms(profs[0].body), bb = geoms(profs[1].body);
     let shared = 0; a.forEach(g=>{ if(bb.has(g)) shared++; });
-    if(shared < 3) throw new Error('only '+shared+' geometries shared — cache not working');
+    if(shared < 10) throw new Error('only '+shared+' geometries shared, 10+ expected — cache not working');
     return shared+' shared geometries';
   });
   P('bodies stay inside the VR triangle budget', ()=>{
@@ -1145,7 +1145,8 @@ const probe = `
         tris += p.index ? p.index.count/3 : p.attributes.position.count/3; }});
       return tris; };
     ['profile','fresnel','cyc','mover'].forEach(t=>{
-      const f = FIXTURES.find(x=>x.type===t); if(!f) return;
+      const f = FIXTURES.find(x=>x.type===t);
+      if(!f){ over.push(t+':missing'); return; }
       const tris = count(f.body);
       if(tris > 700) over.push(t+':'+Math.round(tris));
     });
