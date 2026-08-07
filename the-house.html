@@ -4335,11 +4335,16 @@ function updateRig(dt, t){
     } else pool.visible = false;
   }
 
-  /* hand the real lights to the fixtures currently doing the most work */
+  /* hand the real lights to the fixtures currently doing the most work.
+     In a VR session only VR.lightCap of them (p9): every live SpotLight is
+     per-pixel work in every material, and a headset draws the room twice.
+     `VR` is a var and this guard is safe before p9 has run. */
   _active.sort((a,b)=> (b._lvl*b.power) - (a._lvl*a.power));
   FIXTURES.forEach(f=>f._live=false);
+  const nLights = (VR && VR.active && VR.lightCap)
+    ? Math.min(VR.lightCap, LIGHT_POOL.length) : LIGHT_POOL.length;
   for(let i=0;i<LIGHT_POOL.length;i++){
-    const l = LIGHT_POOL[i], f = _active[i];
+    const l = LIGHT_POOL[i], f = i < nLights ? _active[i] : null;
     if(!f){ l.intensity = 0; continue; }
     f._live = true;
     l.position.copy(f._org);
@@ -12835,6 +12840,14 @@ function vrQualityOn(){
   VR.beamCap = 10;                            /* beams alight at once — was 14;
                                                  the first Quest 3 run reported
                                                  the frame rate a little low */
+  VR.lightCap = 4;                            /* real SpotLights handed out by
+                                                 p4 — half the desktop pool.
+                                                 Every material pays for every
+                                                 live light on every pixel, and
+                                                 a Quest pays it twice.  Beams,
+                                                 gobo pools and lens glows still
+                                                 draw for all 25 channels, so
+                                                 the rig still reads fully lit */
   camera.far = 160;                           // the far building is switched off anyway
   camera.updateProjectionMatrix();
   if(renderer.xr && renderer.xr.setFoveation) renderer.xr.setFoveation(0.4);
@@ -12847,6 +12860,7 @@ function vrQualityOff(){
   camera.far = VR.saved.far;
   camera.updateProjectionMatrix();
   VR.beamCap = 0;
+  VR.lightCap = 0;
   VR.saved = null;
 }
 /* called from the rig update: keep only the nearest N beams alive */

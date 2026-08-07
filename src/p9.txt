@@ -70,6 +70,14 @@ function vrQualityOn(){
   VR.beamCap = 10;                            /* beams alight at once — was 14;
                                                  the first Quest 3 run reported
                                                  the frame rate a little low */
+  VR.lightCap = 4;                            /* real SpotLights handed out by
+                                                 p4 — half the desktop pool.
+                                                 Every material pays for every
+                                                 live light on every pixel, and
+                                                 a Quest pays it twice.  Beams,
+                                                 gobo pools and lens glows still
+                                                 draw for all 25 channels, so
+                                                 the rig still reads fully lit */
   camera.far = 160;                           // the far building is switched off anyway
   camera.updateProjectionMatrix();
   if(renderer.xr && renderer.xr.setFoveation) renderer.xr.setFoveation(0.4);
@@ -82,6 +90,7 @@ function vrQualityOff(){
   camera.far = VR.saved.far;
   camera.updateProjectionMatrix();
   VR.beamCap = 0;
+  VR.lightCap = 0;
   VR.saved = null;
 }
 /* called from the rig update: keep only the nearest N beams alive */
