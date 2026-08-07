@@ -462,7 +462,8 @@ function toggleFollow(){
 dom.addEventListener('click', e=>{
   const r = Player.mode==='walk' ? castFromCamera() : castFromMouse(e);
   if(placingKey){
-    const hits = r.intersectObject(deck, false);
+    const dk = (typeof stageDeck === 'function') ? stageDeck() : deck;
+    const hits = dk ? r.intersectObject(dk, false) : [];
     if(hits.length){
       const p = hits[0].point;
       const piece = placeScenic(placingKey, Math.round(p.x*4)/4, Math.round(p.z*4)/4);
@@ -473,7 +474,8 @@ dom.addEventListener('click', e=>{
     return;
   }
   if(focusMode){
-    const hits = r.intersectObjects([deck, setGroup], true);
+    const dk = (typeof stageDeck === 'function') ? stageDeck() : deck;
+    const hits = r.intersectObjects([dk, setGroup].filter(Boolean), true);
     if(hits.length){
       const sec = SECTIONS[selSec], p = hits[0].point;
       if(sec.chans) sec.chans.forEach((c,i)=>{
@@ -513,8 +515,10 @@ function dragScenic(e){
     dragPlane.set(new T.Vector3(0,1,0), -dragPiece.group.position.y);
     const p = new T.Vector3();
     if(r.ray.intersectPlane(dragPlane, p)){
-      dragPiece.group.position.x = clamp(p.x, -13, 13);
-      dragPiece.group.position.z = clamp(p.z, D.backWall+1, D.apron);
+      /* the clamps are the stage box, wherever the live stage's box is */
+      const o = (typeof stageOrigin === 'function') ? stageOrigin() : {x:0, z:0};
+      dragPiece.group.position.x = clamp(p.x, o.x - 13, o.x + 13);
+      dragPiece.group.position.z = clamp(p.z, o.z + D.backWall + 1, o.z + D.apron);
     }
   }
   refreshSetUI();
@@ -558,9 +562,12 @@ $('#dockShut')  && ($('#dockShut').onclick  = ()=>setAllDockDoors(false));
 /* --------------------------------------------------------- the smoke */
 function buildSmokeUI(){
   const rack = $('#smokeRack'); if(!rack) return;
-  // rebuild when a show rigs or strikes machines of its own
-  if(rack.dataset.built === String(SMOKE.units.length)) return;
-  rack.dataset.built = String(SMOKE.units.length);
+  // rebuild when a show rigs or strikes machines, or the board patches to
+  // another stage — the count alone collides across stages (§5's DOM trap:
+  // faders would keep driving the parked rack's units)
+  const rackKey = (typeof STAGE !== 'undefined' ? STAGE : '') + ':' + SMOKE.units.length;
+  if(rack.dataset.built === rackKey) return;
+  rack.dataset.built = rackKey;
   rack.innerHTML = SMOKE.units.map((u,i)=>
     '<div class="smk" data-u="'+i+'">'+
       '<div class="nm">'+u.name+'</div>'+

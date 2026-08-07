@@ -3114,8 +3114,9 @@ function edSend(dest){
     return true;
   }
 
-  /* the plate is the stage, so the build goes on where you built it */
-  built.root.position.set(0, 0, 0);
+  /* the plate is the stage — the one the board is patched to */
+  const o = (typeof stageOrigin === 'function') ? stageOrigin() : {x:0, z:0};
+  built.root.position.set(o.x, 0, o.z);
   const piece = placeBuilt(built.root, 'built piece ('+n+' blocks)');
   selPiece = piece;
   built.machines.forEach(m=>registerMachine(m, 'on the deck'));
@@ -4204,7 +4205,7 @@ const ambient = new T.AmbientLight(0x2c3242, 0); scene.add(ambient);
 const hemi = new T.HemisphereLight(0x3a4a6a, 0x181410, 0); scene.add(hemi);
 
 /* ---- rig update ---- */
-const _v = new T.Vector3(), _v2 = new T.Vector3();
+const _v = new T.Vector3(), _v2 = new T.Vector3(), _glowCam = new T.Vector3();
 const _active = [];
 function updateRig(dt, t){
   const master = RIG.blackout ? 0 : RIG.grand;
@@ -4255,10 +4256,11 @@ function updateRig(dt, t){
     u.uUseGobo.value = f.gobo>0 ? 1 : 0;
     u.uGobo.value = GOBOS[f.gobo];
     f.beam.visible = lvl > 0.004 && hazeNow() > 0.005;
-    // lens glow
+    // lens glow — camera.position stops being a world point once the VR rig
+    // holds the camera, so ask for the world pose
     f.glow.material.opacity = Math.min(1, lvl*1.3);
     f.glow.material.color.copy(f.color);
-    if(lvl > 0.004) f.glow.lookAt(camera.position);
+    if(lvl > 0.004) f.glow.lookAt(camera.getWorldPosition(_glowCam));
     // floor pool
     const pool = f.pool;
     if(lvl > 0.004){
@@ -4517,6 +4519,17 @@ function strikePiece(p){
   refreshSetUI();
 }
 function strikeAll(){ SET.slice().forEach(strikePiece); }
+/* strike only what stands on the LIVE stage's deck.  SET is one world-space
+   store for all three stages, and a show load must not clear scenery parked
+   on another building's deck.  ±24 m around the stage origin is well past
+   the stage box and nowhere near the next house (they sit 52 m apart). */
+function strikeStageSet(){
+  const o = (typeof stageOrigin === 'function') ? stageOrigin() : {x:0, z:0};
+  SET.slice().forEach(p=>{
+    const g = p.group.position;
+    if(Math.abs(g.x - o.x) <= 24 && Math.abs(g.z - o.z) <= 24) strikePiece(p);
+  });
+}
 
 /* ============================================================================
    SOUND — everything synthesised in WebAudio, no assets
@@ -4680,11 +4693,22 @@ const Snd = (()=>{
     delete railNodes[ls.id];
     if(ac) noiseHit('rail',.1,220,90,2,.16);   // batten settling
   }
+  /* every motor at once, without the settling thud — for the stage swap,
+     where a parked lineset never "arrives" and its id collides with the
+     next stage's lineset of the same number */
+  function railStopAll(){
+    for(const id of Object.keys(railNodes)){
+      const n = railNodes[id];
+      n.g.gain.linearRampToValueAtTime(0,ac.currentTime+.35);
+      setTimeout(()=>{ try{n.s.stop();}catch(e){} },500);
+      delete railNodes[id];
+    }
+  }
   function play(name){ init(); if(ac && SFX[name]) try{ SFX[name](); }catch(e){} }
   function setLevel(b,v){ level[b]=v; init(); if(!ac) return;
     if(b==='master') master.gain.value=v; else if(bus[b]) bus[b].gain.value=v; }
   function isLooping(n){ return loops[n]!==undefined; }
-  return {init, play, setLevel, level, railStart, railStop, toggleLoop, isLooping,
+  return {init, play, setLevel, level, railStart, railStop, railStopAll, toggleLoop, isLooping,
           names:()=>Object.keys(SFX), busses:()=>BUSSES};
 })();
 
@@ -4787,9 +4811,36 @@ function removeShowSmoke(){
 function smokeRoot(){
   if(SMOKE.group) return SMOKE.group;
   const g = new T.Group(); g.name = 'smoke';
-  (typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.stage ? ROOM_GROUP.stage : world).add(g);
+  /* the rack belongs to the stage the board is patched to, same as showRoot —
+     otherwise a show loaded at the Arc rigs its foggers on the Palace's deck,
+     four hundred metres from the set */
+  const st = (typeof stageLive === 'function') ? stageLive() : null;
+  if(st && st.showParent) st.showParent().add(g);
+  else if(typeof ROOM_GROUP !== 'undefined' && ROOM_GROUP.stage) ROOM_GROUP.stage.add(g);
+  else world.add(g);
   SMOKE.group = g;
   return g;
+}
+
+/* ---- the whole rack is per-stage: p2k parks it with the rest of the board.
+   Machines, puffs and the haze they have put in the air all stay in the room
+   they are physically in; a parked rack freezes mid-drift and resumes when
+   you walk back in, like everything else on a parked stage. ---- */
+function smokeCapture(){
+  return {units:SMOKE.units, puffs:SMOKE.puffs, list:SMOKE.list, group:SMOKE.group,
+          next:SMOKE.next, t:SMOKE.t, haze:SMOKE.haze, live:SMOKE.live || 0};
+}
+function smokeRestore(s){
+  if(s){
+    SMOKE.units = s.units; SMOKE.puffs = s.puffs; SMOKE.list = s.list;
+    SMOKE.group = s.group; SMOKE.next = s.next; SMOKE.t = s.t;
+    SMOKE.haze = s.haze; SMOKE.live = s.live;
+  } else {
+    /* first time the board is patched here: an empty rack, then the house kit */
+    SMOKE.units = []; SMOKE.puffs = null; SMOKE.list = [];
+    SMOKE.group = null; SMOKE.next = 0; SMOKE.t = 0; SMOKE.haze = 0; SMOKE.live = 0;
+    buildSmoke();
+  }
 }
 
 function buildSmoke(){
@@ -4871,6 +4922,7 @@ function spawnPuff(u, hard){
   return p;
 }
 const _sp = new T.Object3D();
+const _camW = new T.Vector3();
 function updateSmoke(dt){
   if(!SMOKE.puffs) return;
   SMOKE.t += dt;
@@ -4904,8 +4956,12 @@ function updateSmoke(dt){
   /* what the machines put in the air feeds the haze the beams read through */
   SMOKE.haze = clamp(SMOKE.haze + (Math.min(1, total/2.4) - SMOKE.haze) * dt * 0.35, 0, 1);
 
-  /* the puffs themselves */
-  const cam = camera.position;
+  /* the puffs themselves.  They live in the stage's own group, which at the
+     Arc sits 420 m out — so the camera has to be brought into THAT space (and
+     read via getWorldPosition, which camera.position stops being in VR). */
+  const cam = SMOKE.group
+    ? SMOKE.group.worldToLocal(camera.getWorldPosition(_camW))
+    : camera.position;
   let live = 0;
   for(let i=0;i<SMOKE.list.length;i++){
     const p = SMOKE.list[i];
@@ -5050,6 +5106,13 @@ const GOBO_NAMES = {none:0, breakup:1, leaves:2, window:3, stars:4, bars:5};
 
 /* ============================================================================
    SUBMASTERS
+
+   Deliberately ONE-BOARD, not per-stage: a submaster is a recording of
+   levels by channel number, and it travels with the operator — walk to the
+   Arc and sub 1 replays the same channels on that rig.  This is unlike the
+   cue stack, which is the stage's own and parks with it (p2k).  If that
+   ever feels wrong, the fix is to capture SUBS in stageCapture/Restore the
+   way CUES are — see AUDIT.md M9.
    ========================================================================== */
 const SUBS = Array.from({length:8},(_,i)=>({i:i+1, val:0, rec:null, label:'sub '+(i+1)}));
 function recordSub(s){
@@ -5068,6 +5131,13 @@ function runSub(s){
    ========================================================================== */
 const CUES = [];
 let nextCue = 0, selCue = -1;
+/* the one armed auto-follow.  Wall-clock timers cannot be spliced into a
+   stage swap, so the swap cancels it instead — an unattended follow must
+   never GO a cue on a stage the operator has walked away from. */
+let followTimer = null;
+function cancelFollow(){
+  if(followTimer !== null){ clearTimeout(followTimer); followTimer = null; }
+}
 
 /* A cue stores where each lamp is pointing as well as what it is doing, so a
    look can re-aim the front of house — at a face, or up onto a show cloth —
@@ -5114,7 +5184,13 @@ function fireCue(idx){
   nextCue = idx+1;
   refreshCues();
   if(c.follow!==null && c.follow!==undefined && !isNaN(c.follow)){
-    setTimeout(()=>{ if(nextCue===idx+1) go(); }, c.follow*1000);
+    cancelFollow();
+    const armedStage = (typeof STAGE !== 'undefined') ? STAGE : null;
+    followTimer = setTimeout(()=>{
+      followTimer = null;
+      if(typeof STAGE !== 'undefined' && STAGE !== armedStage) return;
+      if(nextCue===idx+1) go();
+    }, c.follow*1000);
   }
 }
 function go(){
@@ -5868,7 +5944,10 @@ function crewHandleable(o){
   return !light;
 }
 function crewLoads(){
-  const key = (typeof SHOW !== 'undefined' && SHOW.key) ? SHOW.key : '(stock)';
+  /* keyed by stage AND show: the same production can stand on two stages at
+     once, and a load list cached next door strikes the wrong building's set */
+  const key = ((typeof STAGE !== 'undefined') ? STAGE : 'palace') + ':' +
+              ((typeof SHOW !== 'undefined' && SHOW.key) ? SHOW.key : '(stock)');
   if(CREW.loads && CREW.loadsFor === key) return CREW.loads;
   const loads = [];
   if(typeof SHOW !== 'undefined' && SHOW.group && SHOW.group.children.length){
@@ -6092,7 +6171,11 @@ function crewAssign(h){
 /* where on the deck a load belongs */
 function crewSpot(load){
   const fr = crewFrame();
-  if(load.scenic) return {x:load.scenic[1], z:load.scenic[2]};
+  /* the stock plan is written in stage coordinates; the hands walk in world.
+     The frame's bounds are centred on the stage it serves, so the middle of
+     them IS the stage origin — at the Palace that comes out unchanged. */
+  if(load.scenic) return {x:(fr.xMin + fr.xMax)/2 + load.scenic[1],
+                          z:fr.zOff + load.scenic[2]};
   const b = worldBox2(load.parts);
   if(b) return {x:clamp(b.x, fr.xMin, fr.xMax), z:clamp(b.z, fr.zMin, fr.zMax)};
   return {x:rnd(fr.xMin*0.5, fr.xMax*0.5),
@@ -6112,8 +6195,10 @@ function worldBox2(parts){
 function crewDeliver(load){
   if(load.scenic){
     // if it was struck by hand since, put it back rather than leaving a ghost
-    if(!load.placed || SET.indexOf(load.placed) === -1)
-      load.placed = placeScenic(load.scenic[0], load.scenic[1], load.scenic[2]);
+    if(!load.placed || SET.indexOf(load.placed) === -1){
+      const spot = crewSpot(load);            // world, not the plan's stage coords
+      load.placed = placeScenic(load.scenic[0], spot.x, spot.z);
+    }
     crewLog('set '+load.scenic[0]);
   } else {
     load.parts.forEach(o=>setPieceVisible(o, false));
@@ -6184,14 +6269,23 @@ function crewBusy(){
    the shape of the room, the materials, the colours, the way the light sits.
    ========================================================================== */
 const SHOWS = {};
-const SHOW = {
-  key:null, group:null, effects:[], goods:[], walk:[], cues:0,
-  rain:null, fire:null, gyms:null, gymIn:0,
-  neon:[], neonLevel:0, neonTarget:1, neonLights:[], smoke:[],
-  scenes:[], scene:null, revolve:null, wrong:[],
-  rainSound:false, flicker:null, lightning:0, lightningT:0,
-  stormOn:false, stormT:0, porch:null
-};
+/* THE one definition of SHOW's shape.  The live object below, the parked
+   templates p2k gives the Arc stages, and the strike-reset all build from
+   here — three hand-copies had drifted apart, and keys a show wrote ad hoc
+   (wall, dropKey, …) leaked across stage swaps because Object.assign can
+   overwrite but never remove.  Add new show state HERE, nowhere else. */
+function showBlank(){
+  return {
+    key:null, group:null, effects:[], goods:[], walk:[], cues:0,
+    rain:null, fire:null, gyms:null, gymIn:0, tyre:null,
+    neon:[], neonLevel:0, neonTarget:1, neonLights:[], neonT:0, smoke:[],
+    scenes:[], scene:null, revolve:null, wrong:[],
+    rainSound:false, flicker:null, lightning:0, lightningT:0,
+    stormOn:false, stormT:0, porch:null,
+    curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
+  };
+}
+const SHOW = showBlank();
 /* the lightning sits on the scene, not in a room, so it can never be culled */
 const LIGHTNING = new T.DirectionalLight(0xdfeaff, 0);
 LIGHTNING.position.set(-14, 20, -16);
@@ -6242,7 +6336,20 @@ function showWalk(o){ SHOW.walk.push(o); WALKABLE.push(o); return o; }
    ========================================================================== */
 function setPieceVisible(o, crewHidden){
   if(crewHidden !== undefined) o.userData.crewHidden = crewHidden;
-  o.visible = !o.userData.crewHidden && !o.userData.sceneOff;
+  const on = !o.userData.crewHidden && !o.userData.sceneOff;
+  o.visible = on;
+  /* §5: visible is only a drawing flag — a raycast still hits the piece, so
+     groundAt would stand you mid-air on a gallery the crew have not carried
+     in yet.  Clear the layers so a hidden piece is inert, and take its
+     walkable surfaces out of WALKABLE while it is off (marked, so exactly
+     those come back when it is). */
+  o.traverse(c=>{
+    if(on) c.layers.set(0); else c.layers.disableAll();
+    if(typeof WALKABLE === 'undefined') return;
+    const i = WALKABLE.indexOf(c);
+    if(!on && i >= 0){ WALKABLE.splice(i, 1); c.userData.wasWalkable = true; }
+    if(on && c.userData.wasWalkable && i < 0) WALKABLE.push(c);
+  });
 }
 function sceneAdd(name, label){
   const g = new T.Group();
@@ -6317,14 +6424,11 @@ function showStrike(){
      once.  Striking one of them must not take the other's house curtain out
      of the catalogue, or the far rail is left pointing at nothing.       */
   for(const k of SHOW.goods) if(!goodsInUse(k)){ delete GOODS[k]; delete TRIMS[k]; }
-  SHOW.goods = [];
-  SHOW.effects = [];
-  SHOW.rain = null; SHOW.fire = null; SHOW.flicker = null; SHOW.lightning = 0;
-  SHOW.gyms = null; SHOW.gymIn = 0; SHOW.tyre = null; SHOW.curtainKey = null;
-  SHOW.neon = []; SHOW.neonLights = []; SHOW.neonLevel = 0; SHOW.neonTarget = 1;
-  SHOW.scenes = []; SHOW.scene = null; SHOW.revolve = null; SHOW.wrong = [];
+  /* one wipe from the single template — keys a show wrote ad hoc go with it,
+     instead of surviving into the next production's SHOW */
+  for(const k of Object.keys(SHOW)) delete SHOW[k];
+  Object.assign(SHOW, showBlank());
   if(typeof removeShowSmoke === 'function') removeShowSmoke();
-  SHOW.key = null;
   if(typeof buildGoodsPalette === 'function') buildGoodsPalette();
   if(typeof refreshShowUI === 'function') refreshShowUI();
   if(typeof refreshFlyUI === 'function') refreshFlyUI();
@@ -6402,7 +6506,7 @@ function hangIsDirty(){
 function showLoad(key){
   const spec = SHOWS[key]; if(!spec) return false;
   showStrike();
-  strikeAll();                       // clear anything you had on the deck
+  strikeStageSet();                  // clear THIS deck — not the other building's
   SHOW.key = key;
   /* Clear the rail first.  A show's hang has to be deterministic — locks and
      leftovers from whatever you were doing before must not survive into it,
@@ -6680,6 +6784,7 @@ function makeFire(o){
   SHOW.fire = f;
   return f;
 }
+const _fireCam = new T.Vector3();
 function updateFire(dt){
   const f = SHOW.fire; if(!f) return;
   f.level += clamp(f.target - f.level, -dt*0.55, dt*0.7);
@@ -6688,9 +6793,15 @@ function updateFire(dt){
   if(!on){ f.lights.forEach(l=>l.intensity = 0); return; }
   f.t += dt;
   const o = f.o, d = f._d;
-  // flames face the camera: yaw only, so they stay upright
-  const yaw = Math.atan2(camera.position.x - (o.x0+o.x1)/2,
-                         camera.position.z - (o.z0+o.z1)/2);
+  // flames face the camera: yaw only, so they stay upright.  The fire lives
+  // in showRoot's stage space, which at the Arc sits 420m out — bring the
+  // camera's WORLD pose (VR moves it out of camera.position) into that space
+  // or every quad faces the stage-left wall.
+  const camL = f.group.parent
+    ? f.group.parent.worldToLocal(camera.getWorldPosition(_fireCam))
+    : camera.position;
+  const yaw = Math.atan2(camL.x - (o.x0+o.x1)/2,
+                         camL.z - (o.z0+o.z1)/2);
   f.mesh.material.opacity = f.level;
   f.embers.material.opacity = f.level;
   const live = Math.max(1, Math.floor(f.flames.length * f.level));
@@ -7182,14 +7293,24 @@ SHOWS.outsiders = {
     {
       const c = outsidersCanvas('curtain');
       const key = 'outsidersCurtain';
-      const mat = new T.MeshStandardMaterial({map:c.tex, roughness:.96,
-        side:T.DoubleSide, color:0xffffff});
+      const halfW = D.procW/2 + 3.0;
+      const CLOTH_W = 17.2;          // both halves together, like the other shows
       GOODS[key] = {label:'THE OUTSIDERS show curtain', h:13.0, wt:400,
         traveler:true, made:true, build:()=>{
           const g = new T.Group();
           // two over-wide halves that overlap on the centre line, like a real pair
           [-1,1].forEach(sd=>{
-            const d = drape(D.procW/2 + 3.0, 13.0, mat, 9, .24);
+            /* both halves map the same world x onto the same u — the split-
+               texture fix the other three shows have.  One un-split map per
+               half painted the low sun once per half. */
+            const t2 = c.tex.clone();
+            t2.needsUpdate = true;
+            t2.wrapS = t2.wrapT = T.ClampToEdgeWrapping;
+            t2.repeat.set(halfW / CLOTH_W, 1);
+            t2.offset.set(sd < 0 ? 0 : (CLOTH_W - halfW) / CLOTH_W, 0);
+            const mat = new T.MeshStandardMaterial({map:t2, roughness:.96,
+              side:T.DoubleSide, color:0xffffff});
+            const d = drape(halfW, 13.0, mat, 9, .24);
             d.position.set(sd*(D.procW/4 - 0.4), -6.5, 0);
             d.userData.side = sd;
             g.add(d);
@@ -9725,6 +9846,7 @@ function arcBuildHouse(o, MAT){
     const fl = aBox(AS.W, 1.0, AS.DEPTH, deckM, cx, AS.DECK - 0.5,
                     (H.zBack + H.zPros)/2, R);
     arcWalk(fl); H.walk.push(fl);
+    H.deck = fl;               // the scenic palette and FOCUS raycast this
     H.deckY = AS.DECK;
   }
 
@@ -10451,8 +10573,8 @@ function makeStage(o){
     cx:o.cx || 0, zPros:o.zPros || 0,
     rigGroup:o.rigGroup, poolGroup:o.poolGroup, flyGroup:o.flyGroup,
     showParent:o.showParent,
-    fixtures:[], fly:[], cues:[], nextCue:0,
-    show:null, house:null, rig:null, live:false
+    fixtures:[], fly:[], cues:[], nextCue:0, selCue:-1,
+    show:null, house:null, rig:null, smokeRack:null, live:false
   };
   STAGES[o.key] = st;
   return st;
@@ -10460,13 +10582,24 @@ function makeStage(o){
 
 /* ---- what a stage owns, lifted out of the globals and put back again ---- */
 function stageCapture(st){
+  /* wall-clock WebAudio does not park.  Stop every rail motor (a parked
+     lineset never arrives, so its hum would follow you out — and its id
+     collides with the next stage's lineset of the same number) and the rain
+     rumble, and clear the flags so both re-arm when this stage is live. */
+  if(typeof Snd !== 'undefined' && Snd.railStopAll) Snd.railStopAll();
+  FLY.forEach(ls=>{ ls.moving = false; });
+  if(typeof Snd !== 'undefined' && Snd.toggleLoop && SHOW.rainSound){
+    Snd.toggleLoop('rain', false); SHOW.rainSound = false;
+  }
   st.fixtures = FIXTURES.splice(0, FIXTURES.length);
   st.fly      = FLY.splice(0, FLY.length);
   st.cues     = CUES.splice(0, CUES.length);
   st.nextCue  = nextCue;
+  st.selCue   = (typeof selCue !== 'undefined') ? selCue : -1;
   st.show     = Object.assign({}, SHOW);
   st.house    = Object.assign({}, HOUSE);
   st.rig      = {haze:RIG.haze, grand:RIG.grand, blackout:RIG.blackout};
+  st.smokeRack = (typeof smokeCapture === 'function') ? smokeCapture() : null;
   st.live     = false;
 }
 function stageRestore(st){
@@ -10474,9 +10607,18 @@ function stageRestore(st){
   FLY.push.apply(FLY, st.fly);                st.fly.length = 0;
   CUES.push.apply(CUES, st.cues);             st.cues.length = 0;
   nextCue = st.nextCue;
-  if(st.show)  Object.assign(SHOW, st.show);
+  if(typeof selCue !== 'undefined') selCue = (st.selCue === undefined) ? -1 : st.selCue;
+  /* replace, don't merge: Object.assign can overwrite but never remove, so
+     the other stage's ad-hoc keys (wall, dropKey, …) survived onto the live
+     SHOW.  Wipe first, then lay the parked copy down whole. */
+  if(st.show){
+    for(const k of Object.keys(SHOW)) delete SHOW[k];
+    Object.assign(SHOW, st.show);
+  }
   if(st.house) Object.assign(HOUSE, st.house);
   if(st.rig){ RIG.haze = st.rig.haze; RIG.grand = st.rig.grand; RIG.blackout = st.rig.blackout; }
+  /* a stage that has never had the board builds its house smoke kit here */
+  if(typeof smokeRestore === 'function'){ smokeRestore(st.smokeRack); st.smokeRack = null; }
   rigGroup  = st.rigGroup;
   poolGroup = st.poolGroup;
   flyGroup  = st.flyGroup;
@@ -10484,6 +10626,25 @@ function stageRestore(st){
 }
 function stageOf(key){ return STAGES[key] || null; }
 function stageLive(){ return STAGES[STAGE]; }
+/* the live stage's deck slab — what the scenic palette and FOCUS raycast.
+   Raycasting the Palace's `deck` from the Arc found it INVISIBLY through
+   every wall (§5: visible is only a drawing flag) and aimed FOH across town */
+function stageDeck(){
+  const st = STAGES[STAGE];
+  if(st && st.venue === 'arc' && typeof ARC !== 'undefined'){
+    const H = ARC.houses[st.arcHouse];
+    if(H && H.deck) return H.deck;
+  }
+  return (typeof deck !== 'undefined') ? deck : null;
+}
+/* where the live stage's origin sits in the world — loose scenery and drag
+   clamps are worked in world space, so the stage box has to come to them */
+function stageOrigin(){
+  const st = STAGES[STAGE];
+  if(st && st.venue === 'arc' && typeof ARC !== 'undefined')
+    return {x: ARC.X + st.cx, z: st.zPros};
+  return {x: 0, z: 0};
+}
 /* the house-light level of any stage, live or not */
 function stageHouseLevel(key){
   if(key === STAGE) return HOUSE.house;
@@ -10493,6 +10654,29 @@ function stageHouseLevel(key){
 
 function stageSwitch(key, quiet){
   if(key === STAGE || !STAGES[key]) return STAGES[STAGE];
+  /* the code console drives the LIVE board — carried across a swap, the rest
+     of a running script would fire cues and fly goods in the other theatre.
+     A show you walked out on halts; it does not haunt the next room. */
+  if(typeof Prog !== 'undefined' && Prog.running && typeof haltProgram === 'function'){
+    haltProgram();
+    Prog.log('■ halted — the board patched to ' + STAGES[key].label);
+  }
+  /* same rule for the one-shot cue follow: cancelled, not carried */
+  if(typeof cancelFollow === 'function') cancelFollow();
+  /* the crew work the stage they were called on.  Rather than let a live job
+     queue mix this stage's plan with the next stage's rail and doors (H2) or
+     restore the work-light snapshot onto the wrong board when they finish
+     (H3), they stand down at the boundary — and the show look comes home
+     first, while their own stage is still the live one. */
+  if(typeof CREW !== 'undefined' && CREW.running && typeof crewStop === 'function'){
+    const was = CREW.running;
+    crewStop(true);
+    CREW.onDone = null;
+    if(CREW.savedLook && typeof crewWorkLight === 'function') crewWorkLight(false);
+    if(typeof crewLog === 'function')
+      crewLog('stood down — the board patched away mid ' +
+              (was === 'in' ? 'load in' : 'load out'));
+  }
   stageCapture(STAGES[STAGE]);
   STAGE = key;
   stageRestore(STAGES[key]);
@@ -10504,6 +10688,8 @@ function stageSwitch(key, quiet){
   if(typeof refreshShowUI === 'function') refreshShowUI();
   if(typeof refreshHangUI === 'function') refreshHangUI();
   if(typeof refreshWrongUI === 'function') refreshWrongUI();
+  if(typeof buildSmokeUI === 'function') buildSmokeUI();
+  if(typeof syncSmokeUI === 'function') syncSmokeUI();
   if(typeof syncMasters === 'function') syncMasters();
   if(typeof refreshVenueUI === 'function') refreshVenueUI();
   if(typeof refreshStageChip === 'function') refreshStageChip();
@@ -10638,12 +10824,7 @@ function buildArcStage(key, label, houseKey){
   st.fly      = FLY.splice(0, FLY.length);
   st.cues     = CUES.splice(0, CUES.length);
   st.nextCue  = 0;
-  st.show     = {key:null, group:null, effects:[], goods:[], walk:[], cues:0,
-                 rain:null, fire:null, gyms:null, gymIn:0,
-                 neon:[], neonLevel:0, neonTarget:1, neonLights:[], smoke:[],
-                 scenes:[], scene:null, revolve:null, wrong:[],
-                 rainSound:false, flicker:null, lightning:0, lightningT:0,
-                 stormOn:false, stormT:0, porch:null};
+  st.show     = showBlank();     // the one template — see p5c
   st.house    = {house:0.7, work:0, practical:0, lobby:0.9, backstage:0.7};
   st.rig      = {haze:0.35, grand:1, blackout:false};
 
@@ -11387,7 +11568,8 @@ function toggleFollow(){
 dom.addEventListener('click', e=>{
   const r = Player.mode==='walk' ? castFromCamera() : castFromMouse(e);
   if(placingKey){
-    const hits = r.intersectObject(deck, false);
+    const dk = (typeof stageDeck === 'function') ? stageDeck() : deck;
+    const hits = dk ? r.intersectObject(dk, false) : [];
     if(hits.length){
       const p = hits[0].point;
       const piece = placeScenic(placingKey, Math.round(p.x*4)/4, Math.round(p.z*4)/4);
@@ -11398,7 +11580,8 @@ dom.addEventListener('click', e=>{
     return;
   }
   if(focusMode){
-    const hits = r.intersectObjects([deck, setGroup], true);
+    const dk = (typeof stageDeck === 'function') ? stageDeck() : deck;
+    const hits = r.intersectObjects([dk, setGroup].filter(Boolean), true);
     if(hits.length){
       const sec = SECTIONS[selSec], p = hits[0].point;
       if(sec.chans) sec.chans.forEach((c,i)=>{
@@ -11438,8 +11621,10 @@ function dragScenic(e){
     dragPlane.set(new T.Vector3(0,1,0), -dragPiece.group.position.y);
     const p = new T.Vector3();
     if(r.ray.intersectPlane(dragPlane, p)){
-      dragPiece.group.position.x = clamp(p.x, -13, 13);
-      dragPiece.group.position.z = clamp(p.z, D.backWall+1, D.apron);
+      /* the clamps are the stage box, wherever the live stage's box is */
+      const o = (typeof stageOrigin === 'function') ? stageOrigin() : {x:0, z:0};
+      dragPiece.group.position.x = clamp(p.x, o.x - 13, o.x + 13);
+      dragPiece.group.position.z = clamp(p.z, o.z + D.backWall + 1, o.z + D.apron);
     }
   }
   refreshSetUI();
@@ -11483,9 +11668,12 @@ $('#dockShut')  && ($('#dockShut').onclick  = ()=>setAllDockDoors(false));
 /* --------------------------------------------------------- the smoke */
 function buildSmokeUI(){
   const rack = $('#smokeRack'); if(!rack) return;
-  // rebuild when a show rigs or strikes machines of its own
-  if(rack.dataset.built === String(SMOKE.units.length)) return;
-  rack.dataset.built = String(SMOKE.units.length);
+  // rebuild when a show rigs or strikes machines, or the board patches to
+  // another stage — the count alone collides across stages (§5's DOM trap:
+  // faders would keep driving the parked rack's units)
+  const rackKey = (typeof STAGE !== 'undefined' ? STAGE : '') + ':' + SMOKE.units.length;
+  if(rack.dataset.built === rackKey) return;
+  rack.dataset.built = rackKey;
   rack.innerHTML = SMOKE.units.map((u,i)=>
     '<div class="smk" data-u="'+i+'">'+
       '<div class="nm">'+u.name+'</div>'+
@@ -12562,8 +12750,11 @@ function vrCapBeams(){
   for(const f of FIXTURES) if(f.beam && f.beam.visible) live.push(f);
   if(live.length <= VR.beamCap) return;
   camera.getWorldPosition(_bp);
-  live.sort((a,b)=>a.group.position.distanceToSquared(_bp) -
-                   b.group.position.distanceToSquared(_bp));
+  /* f._org is the WORLD emit position (p4 refreshes it every rig update).
+     f.group.position is local to the rig group, which at the Arc sits 420m
+     out — sorting that against a world camera kept the wrong 14 beams. */
+  live.sort((a,b)=>a._org.distanceToSquared(_bp) -
+                   b._org.distanceToSquared(_bp));
   for(let i = VR.beamCap; i < live.length; i++) live[i].beam.visible = false;
 }
 
@@ -13058,6 +13249,10 @@ function vrBuildRopes(){
   }
 }
 function vrClearRopes(){
+  /* let go of whatever is in hand FIRST — a held rope references a rope and
+     a lineset that are about to be disposed and parked, and vrUpdateHold
+     would keep hauling them every frame until the squeeze was released */
+  VR.held = null;
   if(VR.ropeRoot && VR.ropeRoot.parent) VR.ropeRoot.parent.remove(VR.ropeRoot);
   if(VR.ropeRoot && typeof disposeTree === 'function') disposeTree(VR.ropeRoot);
   VR.ropeRoot = null;

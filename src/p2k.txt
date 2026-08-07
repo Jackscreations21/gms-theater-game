@@ -30,8 +30,8 @@ function makeStage(o){
     cx:o.cx || 0, zPros:o.zPros || 0,
     rigGroup:o.rigGroup, poolGroup:o.poolGroup, flyGroup:o.flyGroup,
     showParent:o.showParent,
-    fixtures:[], fly:[], cues:[], nextCue:0,
-    show:null, house:null, rig:null, live:false
+    fixtures:[], fly:[], cues:[], nextCue:0, selCue:-1,
+    show:null, house:null, rig:null, smokeRack:null, live:false
   };
   STAGES[o.key] = st;
   return st;
@@ -39,13 +39,24 @@ function makeStage(o){
 
 /* ---- what a stage owns, lifted out of the globals and put back again ---- */
 function stageCapture(st){
+  /* wall-clock WebAudio does not park.  Stop every rail motor (a parked
+     lineset never arrives, so its hum would follow you out — and its id
+     collides with the next stage's lineset of the same number) and the rain
+     rumble, and clear the flags so both re-arm when this stage is live. */
+  if(typeof Snd !== 'undefined' && Snd.railStopAll) Snd.railStopAll();
+  FLY.forEach(ls=>{ ls.moving = false; });
+  if(typeof Snd !== 'undefined' && Snd.toggleLoop && SHOW.rainSound){
+    Snd.toggleLoop('rain', false); SHOW.rainSound = false;
+  }
   st.fixtures = FIXTURES.splice(0, FIXTURES.length);
   st.fly      = FLY.splice(0, FLY.length);
   st.cues     = CUES.splice(0, CUES.length);
   st.nextCue  = nextCue;
+  st.selCue   = (typeof selCue !== 'undefined') ? selCue : -1;
   st.show     = Object.assign({}, SHOW);
   st.house    = Object.assign({}, HOUSE);
   st.rig      = {haze:RIG.haze, grand:RIG.grand, blackout:RIG.blackout};
+  st.smokeRack = (typeof smokeCapture === 'function') ? smokeCapture() : null;
   st.live     = false;
 }
 function stageRestore(st){
@@ -53,9 +64,18 @@ function stageRestore(st){
   FLY.push.apply(FLY, st.fly);                st.fly.length = 0;
   CUES.push.apply(CUES, st.cues);             st.cues.length = 0;
   nextCue = st.nextCue;
-  if(st.show)  Object.assign(SHOW, st.show);
+  if(typeof selCue !== 'undefined') selCue = (st.selCue === undefined) ? -1 : st.selCue;
+  /* replace, don't merge: Object.assign can overwrite but never remove, so
+     the other stage's ad-hoc keys (wall, dropKey, …) survived onto the live
+     SHOW.  Wipe first, then lay the parked copy down whole. */
+  if(st.show){
+    for(const k of Object.keys(SHOW)) delete SHOW[k];
+    Object.assign(SHOW, st.show);
+  }
   if(st.house) Object.assign(HOUSE, st.house);
   if(st.rig){ RIG.haze = st.rig.haze; RIG.grand = st.rig.grand; RIG.blackout = st.rig.blackout; }
+  /* a stage that has never had the board builds its house smoke kit here */
+  if(typeof smokeRestore === 'function'){ smokeRestore(st.smokeRack); st.smokeRack = null; }
   rigGroup  = st.rigGroup;
   poolGroup = st.poolGroup;
   flyGroup  = st.flyGroup;
@@ -63,6 +83,25 @@ function stageRestore(st){
 }
 function stageOf(key){ return STAGES[key] || null; }
 function stageLive(){ return STAGES[STAGE]; }
+/* the live stage's deck slab — what the scenic palette and FOCUS raycast.
+   Raycasting the Palace's `deck` from the Arc found it INVISIBLY through
+   every wall (§5: visible is only a drawing flag) and aimed FOH across town */
+function stageDeck(){
+  const st = STAGES[STAGE];
+  if(st && st.venue === 'arc' && typeof ARC !== 'undefined'){
+    const H = ARC.houses[st.arcHouse];
+    if(H && H.deck) return H.deck;
+  }
+  return (typeof deck !== 'undefined') ? deck : null;
+}
+/* where the live stage's origin sits in the world — loose scenery and drag
+   clamps are worked in world space, so the stage box has to come to them */
+function stageOrigin(){
+  const st = STAGES[STAGE];
+  if(st && st.venue === 'arc' && typeof ARC !== 'undefined')
+    return {x: ARC.X + st.cx, z: st.zPros};
+  return {x: 0, z: 0};
+}
 /* the house-light level of any stage, live or not */
 function stageHouseLevel(key){
   if(key === STAGE) return HOUSE.house;
@@ -72,6 +111,29 @@ function stageHouseLevel(key){
 
 function stageSwitch(key, quiet){
   if(key === STAGE || !STAGES[key]) return STAGES[STAGE];
+  /* the code console drives the LIVE board — carried across a swap, the rest
+     of a running script would fire cues and fly goods in the other theatre.
+     A show you walked out on halts; it does not haunt the next room. */
+  if(typeof Prog !== 'undefined' && Prog.running && typeof haltProgram === 'function'){
+    haltProgram();
+    Prog.log('■ halted — the board patched to ' + STAGES[key].label);
+  }
+  /* same rule for the one-shot cue follow: cancelled, not carried */
+  if(typeof cancelFollow === 'function') cancelFollow();
+  /* the crew work the stage they were called on.  Rather than let a live job
+     queue mix this stage's plan with the next stage's rail and doors (H2) or
+     restore the work-light snapshot onto the wrong board when they finish
+     (H3), they stand down at the boundary — and the show look comes home
+     first, while their own stage is still the live one. */
+  if(typeof CREW !== 'undefined' && CREW.running && typeof crewStop === 'function'){
+    const was = CREW.running;
+    crewStop(true);
+    CREW.onDone = null;
+    if(CREW.savedLook && typeof crewWorkLight === 'function') crewWorkLight(false);
+    if(typeof crewLog === 'function')
+      crewLog('stood down — the board patched away mid ' +
+              (was === 'in' ? 'load in' : 'load out'));
+  }
   stageCapture(STAGES[STAGE]);
   STAGE = key;
   stageRestore(STAGES[key]);
@@ -83,6 +145,8 @@ function stageSwitch(key, quiet){
   if(typeof refreshShowUI === 'function') refreshShowUI();
   if(typeof refreshHangUI === 'function') refreshHangUI();
   if(typeof refreshWrongUI === 'function') refreshWrongUI();
+  if(typeof buildSmokeUI === 'function') buildSmokeUI();
+  if(typeof syncSmokeUI === 'function') syncSmokeUI();
   if(typeof syncMasters === 'function') syncMasters();
   if(typeof refreshVenueUI === 'function') refreshVenueUI();
   if(typeof refreshStageChip === 'function') refreshStageChip();
@@ -217,12 +281,7 @@ function buildArcStage(key, label, houseKey){
   st.fly      = FLY.splice(0, FLY.length);
   st.cues     = CUES.splice(0, CUES.length);
   st.nextCue  = 0;
-  st.show     = {key:null, group:null, effects:[], goods:[], walk:[], cues:0,
-                 rain:null, fire:null, gyms:null, gymIn:0,
-                 neon:[], neonLevel:0, neonTarget:1, neonLights:[], smoke:[],
-                 scenes:[], scene:null, revolve:null, wrong:[],
-                 rainSound:false, flicker:null, lightning:0, lightningT:0,
-                 stormOn:false, stormT:0, porch:null};
+  st.show     = showBlank();     // the one template — see p5c
   st.house    = {house:0.7, work:0, practical:0, lobby:0.9, backstage:0.7};
   st.rig      = {haze:0.35, grand:1, blackout:false};
 

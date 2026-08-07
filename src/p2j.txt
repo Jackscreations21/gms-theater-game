@@ -231,6 +231,7 @@ function arcBuildHouse(o, MAT){
     const fl = aBox(AS.W, 1.0, AS.DEPTH, deckM, cx, AS.DECK - 0.5,
                     (H.zBack + H.zPros)/2, R);
     arcWalk(fl); H.walk.push(fl);
+    H.deck = fl;               // the scenic palette and FOCUS raycast this
     H.deckY = AS.DECK;
   }
 

@@ -234,6 +234,21 @@ swap, dead weight, duplication, coordinates, test coverage), cross-checked,
 the sharpest single-source claims re-verified by hand and one by a live jsdom
 probe. No code was touched; AUDIT.md is the deliverable.
 
+**Done 2026-08-06, evening session: worked the bug list.** Twenty of the
+twenty-two items below are fixed, one finding per commit, ~30 new
+regression tests, every fix negative-checked against the unfixed code.
+Delivered as four stacked PRs — **merge in order**: [#2 quick
+wins](https://github.com/Jackscreations21/gms-theater-game/pull/2) → [#3
+swap boundary](https://github.com/Jackscreations21/gms-theater-game/pull/3)
+→ [#4 coordinate fixes](https://github.com/Jackscreations21/gms-theater-game/pull/4)
+→ [#5 structural](https://github.com/Jackscreations21/gms-theater-game/pull/5).
+Still open: item 20 (dead weight — owner's deletion call; M6 no longer
+depends on it), item 22 (duplication — big churn, do after the PRs merge),
+and the M9 ruling (documented one-board; capture them if you disagree).
+Note: `gh` is not installed on this machine — the PRs were opened through
+the GitHub API with the stored git credential; installing `gh` would be
+tidier.
+
 **NEXT SESSION: work the bug list, one item at a time.** Every item below is
 expanded in AUDIT.md with evidence and line numbers, and its "checked and
 sound" section lists what NOT to re-audit. Ground rules: run all twelve
@@ -266,30 +281,32 @@ on `stageSwitch`). AUDIT's recommendation: crew finish-or-stop, script stop,
 follow cancel, audio stop, smoke gets a per-stage root exactly the way
 `showRoot()` (p5c:43) already solved this for scenery:
 
-- [ ] 6. **H1** — smoke: `smokeRoot()` is memoized to the Palace forever, so
+- [x] 6. **H1** — smoke: `smokeRoot()` is memoized to the Palace forever, so
       shows loaded at the Arc rig their foggers 420m away (probe-verified);
       `removeShowSmoke()` strips units game-wide; `hazeNow()` reads global
       haze into whichever rig you're under.
-- [ ] 7. **H2–H5 + M5** — the crew, as one cluster: jobs mix plan-time and
+- [x] 7. **H2–H5 + M5** — the crew, as one cluster: jobs mix plan-time and
       execution-time stages; `CREW.savedLook` restores onto whichever board
       is live; the loads cache is keyed by show only (LOAD OUT can strike
       the other stage's set); the stock plan is stage coordinates executed
       as world (Arc LOAD IN builds on the Palace deck); `crewStop` un-hides
       the wrong show, leaving scenery invisible with no UI recovery.
-- [ ] 8. **H6** — a running `Prog` script follows the board across a swap
+- [x] 8. **H6** — a running `Prog` script follows the board across a swap
       and drives the other theatre's rig and cue stack.
-- [ ] 9. **M7** — cue-follow `setTimeout` survives the swap and can GO the
+- [x] 9. **M7** — cue-follow `setTimeout` survives the swap and can GO the
       wrong stage's cue; cancel or park it.
-- [ ] 10. **M8** — `selCue` isn't swapped; DELETE CUE after a walk splices
+- [x] 10. **M8** — `selCue` isn't swapped; DELETE CUE after a walk splices
       the wrong stack.
-- [ ] 11. **M9** — `SUBS` are one-board while `CUES` are per-stage. Possibly
-      deliberate — owner rules: document it or capture them.
-- [ ] 12. **M10** — rail-motor audio loop leaks for a lineset mid-travel at
+- [x] 11. **M9** — `SUBS` are one-board while `CUES` are per-stage. Possibly
+      deliberate — owner rules: document it or capture them. *Documented as
+      one-board (p6, comment above `SUBS`); if the owner rules the other
+      way, capture them in p2k the way `CUES` are.*
+- [x] 12. **M10** — rail-motor audio loop leaks for a lineset mid-travel at
       swap (and collides with the other stage's same-id lineset); the rain
       rumble has the same shape.
-- [ ] 13. **M11** — VR: `vrClearRopes` must null `VR.held`, or a held rope
+- [x] 13. **M11** — VR: `vrClearRopes` must null `VR.held`, or a held rope
       keeps flying the parked lineset and repositioning a disposed mesh.
-- [ ] 14. **M4** — the scenic palette and FOCUS raycast only the Palace's
+- [x] 14. **M4** — the scenic palette and FOCUS raycast only the Palace's
       `deck` (and from the Arc can hit it *invisibly* through the walls —
       §5's own trap — aiming FOH across town); `setGroup` is one global
       store for three stages, and `showLoad`'s `strikeAll()` clears it
@@ -297,21 +314,21 @@ follow cancel, audio stop, smoke gets a per-stage root exactly the way
 
 Coordinate/cosmetic — only ever visible at the Arc or in a headset:
 
-- [ ] 15. **M12** — the VR beam cap sorts fixtures' *local* positions
+- [x] 15. **M12** — the VR beam cap sorts fixtures' *local* positions
       against the camera's *world* position; on the Arc "nearest 14" means
       "most stage-left 14". Use `f._org` (p4:361).
-- [ ] 16. **M13** — fire billboards yaw from a stage-local centre toward the
+- [x] 16. **M13** — fire billboards yaw from a stage-local centre toward the
       world camera; flames render edge-on at the Arc.
-- [ ] 17. **L2** — `camera.position` stops being world once
+- [x] 17. **L2** — `camera.position` stops being world once
       `VR.rig.add(camera)`; smoke puffs (p5e:219) and lens glows (p4:378)
       need `getWorldPosition`.
-- [ ] 18. **M17** — the Outsiders show curtain never got the split-texture
+- [x] 18. **M17** — the Outsiders show curtain never got the split-texture
       fix the other three have; its painted sun renders twice. A probe
       (tools/) confirms in seconds.
 
 Structural / owner-taste — read the AUDIT sections before deciding:
 
-- [ ] 19. **M6** — `setPieceVisible` hides with `visible` only; crew-hidden
+- [x] 19. **M6** — `setPieceVisible` hides with `visible` only; crew-hidden
       scenery is still raycastable, so you can stand on invisible galleries.
       Fix shape depends on item 20 — the dead scene machinery contains the
       correct hide implementation.
@@ -320,7 +337,7 @@ Structural / owner-taste — read the AUDIT sections before deciding:
       functions, eight variables, two CSS blocks. Full inventory in AUDIT,
       including the `shopGroup` tombstone assertion in full14.js that must
       move with any deletion.
-- [ ] 21. **M15** — `SHOW`'s shape is defined in three drifting places and
+- [x] 21. **M15** — `SHOW`'s shape is defined in three drifting places and
       ad-hoc keys leak across swaps via `Object.assign`; unify the template.
 - [ ] 22. Duplication — the four plot builders, show curtains, and the neon
       machinery want shared homes in p5c; bulk, not bugs. AUDIT lists every

@@ -172,6 +172,17 @@ function strikePiece(p){
   refreshSetUI();
 }
 function strikeAll(){ SET.slice().forEach(strikePiece); }
+/* strike only what stands on the LIVE stage's deck.  SET is one world-space
+   store for all three stages, and a show load must not clear scenery parked
+   on another building's deck.  ±24 m around the stage origin is well past
+   the stage box and nowhere near the next house (they sit 52 m apart). */
+function strikeStageSet(){
+  const o = (typeof stageOrigin === 'function') ? stageOrigin() : {x:0, z:0};
+  SET.slice().forEach(p=>{
+    const g = p.group.position;
+    if(Math.abs(g.x - o.x) <= 24 && Math.abs(g.z - o.z) <= 24) strikePiece(p);
+  });
+}
 
 /* ============================================================================
    SOUND — everything synthesised in WebAudio, no assets
@@ -335,10 +346,21 @@ const Snd = (()=>{
     delete railNodes[ls.id];
     if(ac) noiseHit('rail',.1,220,90,2,.16);   // batten settling
   }
+  /* every motor at once, without the settling thud — for the stage swap,
+     where a parked lineset never "arrives" and its id collides with the
+     next stage's lineset of the same number */
+  function railStopAll(){
+    for(const id of Object.keys(railNodes)){
+      const n = railNodes[id];
+      n.g.gain.linearRampToValueAtTime(0,ac.currentTime+.35);
+      setTimeout(()=>{ try{n.s.stop();}catch(e){} },500);
+      delete railNodes[id];
+    }
+  }
   function play(name){ init(); if(ac && SFX[name]) try{ SFX[name](); }catch(e){} }
   function setLevel(b,v){ level[b]=v; init(); if(!ac) return;
     if(b==='master') master.gain.value=v; else if(bus[b]) bus[b].gain.value=v; }
   function isLooping(n){ return loops[n]!==undefined; }
-  return {init, play, setLevel, level, railStart, railStop, toggleLoop, isLooping,
+  return {init, play, setLevel, level, railStart, railStop, railStopAll, toggleLoop, isLooping,
           names:()=>Object.keys(SFX), busses:()=>BUSSES};
 })();

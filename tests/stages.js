@@ -729,6 +729,116 @@ const probe = `
            c.x.toFixed(0)+', '+c.z.toFixed(0)+')';
   });
 
+  P('a walk-out mid get-in stands the crew down on their own stage', ()=>{
+    /* earlier tests abandon get-ins with crewStop(true), which by design
+       leaves the work light up and the snapshot parked — start clean */
+    CREW.savedLook = null; CREW.savedHouse = null;
+    for(const v of [15, 3]){ goToView(v); HOUSE.work = 0; }
+    showStrike();
+    crewLoadShow('goeswrong');            // work light on, snapshot parked
+    for(let i=0;i<40;i++) updateCrew(0.05);
+    if(!CREW.running) throw new Error('the crew never set off');
+    if(!CREW.savedLook) throw new Error('no work-light snapshot was taken');
+    const mainDock = ARC.doorMap.mainDock.target;
+    const arcFly = STAGES.arcMain.fly.map(l=>+l.target.toFixed(2)).join(',');
+    goToView(15);                          // walk out mid-job
+    if(CREW.running) throw new Error('the crew followed the board to the arc');
+    if(CREW.savedLook) throw new Error('the work-light snapshot is still parked');
+    if(HOUSE.work > 0.05) throw new Error('the arc is in the palace crew work light');
+    if(STAGES.palace.house.work > 0.05)
+      throw new Error('the palace parked stuck in work light at '+STAGES.palace.house.work);
+    for(let i=0;i<200;i++) updateCrew(0.05);
+    if(ARC.doorMap.mainDock.target !== mainDock)
+      throw new Error('the crew opened the arc dock');
+    if(FLY.map(l=>+l.target.toFixed(2)).join(',') !== arcFly)
+      throw new Error('the crew are flying the arc rail');
+    goToView(3); showStrike();
+    return 'stood down at the boundary, show look home, arc untouched';
+  });
+
+  P('the load list is the stage\\'s own, not the show\\'s last', ()=>{
+    goToView(3); showLoad('goeswrong');
+    const palaceParts = crewLoads()[0].parts[0];
+    goToView(15); showLoad('goeswrong');
+    const arcParts = crewLoads()[0].parts[0];
+    if(arcParts === palaceParts) throw new Error('two stages share one load list');
+    goToView(3);
+    const again = crewLoads()[0].parts[0];
+    if(again === arcParts) throw new Error('the palace crew were handed the arc list');
+    let p = again, inPalace = false;
+    while(p){ if(p === SHOW.group) inPalace = true; p = p.parent; }
+    if(!inPalace) throw new Error('the palace list points at pieces not on its stage');
+    for(const v of [15, 3]){ goToView(v); showStrike(); }
+    return 'each stage builds its own list';
+  });
+
+  P('a stock load-in at the arc builds the set at the arc', ()=>{
+    goToView(15);
+    showStrike();
+    crewStart('in');                       // no show loaded: the stock plan
+    for(let i=0;i<6000;i++){ updateCrew(0.05); updateArc(0.05); if(!CREW.running) break; }
+    if(CREW.running) throw new Error('the stock get-in never finished');
+    if(!SET.length) throw new Error('nothing was built');
+    scene.updateMatrixWorld(true);
+    const st = STAGES.arcMain;
+    for(const p of SET){
+      const w = p.group.getWorldPosition(new THREE.Vector3());
+      if(Math.abs(w.x - (ARC.X + st.cx)) > 16)
+        throw new Error(p.label+' was built at world x='+w.x.toFixed(0));
+    }
+    crewStart('out');
+    for(let i=0;i<6000;i++){ updateCrew(0.05); updateArc(0.05); if(!CREW.running) break; }
+    if(SET.length) throw new Error(SET.length+' pieces left after the load out');
+    goToView(3);
+    return 'built at the arc, struck at the arc';
+  });
+
+  P('loose scenery is per-deck: a show load clears only its own stage', ()=>{
+    goToView(3);
+    showStrike();
+    const pal = placeScenic('chair', 2, -3);
+    goToView(15);
+    const o = stageOrigin();
+    const arc = placeScenic('table', o.x + 1, o.z - 4);
+    showLoad('goeswrong');                 // must clear THIS deck for the set
+    if(SET.indexOf(arc) !== -1) throw new Error('the arc deck was not cleared for the show');
+    if(SET.indexOf(pal) === -1) throw new Error('loading at the arc struck the palace piece');
+    showStrike();
+    goToView(3);
+    if(SET.indexOf(pal) === -1) throw new Error('the palace piece is gone');
+    strikePiece(pal);
+    return 'the arc cleared its own deck and left the palace alone';
+  });
+
+  P('the palette and FOCUS raycast the deck of the stage you are on', ()=>{
+    goToView(15);
+    const dk = stageDeck();
+    if(dk === deck) throw new Error('the arc is still using the palace deck');
+    scene.updateMatrixWorld(true);
+    const w = dk.getWorldPosition(new THREE.Vector3());
+    if(Math.abs(w.x - (ARC.X + STAGES.arcMain.cx)) > 5)
+      throw new Error('the arc main deck is at x='+w.x.toFixed(0));
+    goToView(3);
+    if(stageDeck() !== deck) throw new Error('the palace is not using its own deck');
+    return 'each board raycasts its own deck';
+  });
+
+  P('SHOW has one shape: blank after a strike, replaced whole at a swap', ()=>{
+    goToView(3);
+    showLoad('lostboys');                // writes wall, dropKey, neonT …
+    showStrike();
+    const blank = Object.keys(showBlank()).sort().join(',');
+    const now = Object.keys(SHOW).sort().join(',');
+    if(now !== blank) throw new Error('after a strike SHOW carries strays: '+now);
+    SHOW.__marker = 1;                   // an ad-hoc key, like a show would write
+    goToView(15);
+    if('__marker' in SHOW) throw new Error('a palace key leaked onto the arc SHOW');
+    goToView(3);
+    if(SHOW.__marker !== 1) throw new Error('the palace SHOW lost its own key');
+    delete SHOW.__marker;
+    return 'blank after strike, wholesale at the swap';
+  });
+
   P('the fly rail and the chip say which board you are at', ()=>{
     const seen = [];
     for(const [view, key] of [[3,'palace'],[15,'arcMain'],[19,'arcStudio']]){
@@ -769,6 +879,142 @@ const probe = `
       syncFlyUI();
     }
     return 'both hang it, the first strike leaves it, the last one clears it';
+  });
+
+  P('a running show script halts when the board patches away', ()=>{
+    goToView(3);
+    runProgram('fade 0\\nat 1 thru 6 @ 80\\nwait 60\\nat 1 thru 6 @ 0');
+    stepProgram(0.016);
+    if(!Prog.running) throw new Error('the program never ran');
+    goToView(15);
+    if(Prog.running) throw new Error('the program followed the board to the arc');
+    const lv = FIXTURES.map(f=>f.level).join(',');
+    for(let i=0;i<200;i++) stepProgram(0.05);
+    if(FIXTURES.map(f=>f.level).join(',') !== lv)
+      throw new Error('a halted program is still driving the arc rig');
+    goToView(3);
+    for(let c=1;c<=6;c++) setLevel(c, 0, 0);
+    return 'halted at the swap, the arc rig untouched';
+  });
+
+  P('an armed cue follow is cancelled when the board patches away', ()=>{
+    goToView(3);
+    const base = CUES.length;
+    CUES.push({n:98, label:'armed', fade:0, follow:5, lx:null, fly:null, sfx:null,
+               house:HOUSE.house, work:HOUSE.work, practical:HOUSE.practical, haze:RIG.haze});
+    fireCue(base);
+    if(followTimer === null) throw new Error('the follow never armed');
+    goToView(15);
+    if(followTimer !== null) throw new Error('the follow survived the swap');
+    goToView(3);
+    CUES.splice(base, 1);
+    nextCue = 0; refreshCues();
+    return 'armed at the palace, cancelled at the walk';
+  });
+
+  P('DELETE CUE after a walk cannot splice the other stage\\'s stack', ()=>{
+    goToView(3);
+    selCue = 2;                                // select a cue on the palace board
+    goToView(15);
+    if(selCue === 2) throw new Error('the selection walked to the arc with the board');
+    const arcCues = CUES.length;
+    click(document.querySelector('#btnDelQ')); // DELETE CUE with nothing selected here
+    if(CUES.length !== arcCues) throw new Error('DELETE CUE spliced the arc stack');
+    goToView(3);
+    if(selCue !== 2) throw new Error('the palace selection did not come back');
+    selCue = -1; refreshCues();
+    return 'the selection parks with its stage';
+  });
+
+  P('a lineset mid-travel parks quiet and finishes after the walk back', ()=>{
+    goToView(3);
+    const ls = FLY[4];
+    flyOut(ls); run(900, 0.05);
+    flyIn(ls);  run(3, 0.05);              // just enough to get it moving
+    if(!ls.moving) throw new Error('the lineset never started moving');
+    goToView(15);
+    if(STAGES.palace.fly[4].moving)
+      throw new Error('the parked lineset still says its motor is running');
+    goToView(3);
+    run(900, 0.05);
+    if(Math.abs(ls.pos - inTrimOf(ls)) > 0.2)
+      throw new Error('it never finished its travel, at '+ls.pos.toFixed(2));
+    flyOut(ls); run(900, 0.05);
+    return 'motor flag cleared at the walk, travel finished on return';
+  });
+
+  P('the rain rumble does not follow you out of the building', ()=>{
+    goToView(3); showLoad('outsiders');
+    SHOW.rain.target = 1; updateStorm(0.05);
+    if(!SHOW.rainSound) throw new Error('the rain never flagged its sound on');
+    goToView(15);
+    if(SHOW.rainSound) throw new Error('the arc thinks the rain is sounding');
+    if(STAGES.palace.show.rainSound)
+      throw new Error('the parked flag was not cleared — it can never re-arm');
+    goToView(3);
+    updateStorm(0.05);
+    if(!SHOW.rainSound) throw new Error('the rain did not re-arm on return');
+    SHOW.rain.target = 0; updateStorm(0.05); showStrike();
+    return 'stopped at the walk, re-armed on return';
+  });
+
+  P('a show at the arc rigs its smoke in the arc, not the palace', ()=>{
+    goToView(19);                    // the studio
+    showLoad('outsiders');           // rigs FRAME SL/SR and the GALLERY hazer
+    if(!SHOW.smoke || !SHOW.smoke.length) throw new Error('the show rigged no smoke');
+    scene.updateMatrixWorld(true);
+    const st = STAGES.arcStudio;
+    for(const u of SHOW.smoke){
+      const p = u.group.getWorldPosition(new THREE.Vector3());
+      if(Math.abs(p.x - (ARC.X + st.cx)) > 20)
+        throw new Error(u.name+' is at world x='+p.x.toFixed(0)+' — the palace, not the studio');
+    }
+    showStrike(); goToView(3);
+    return 'every unit inside the studio walls';
+  });
+
+  P('each stage has its own smoke rack, parked and resumed across the walk', ()=>{
+    goToView(3);
+    const palaceUnits = SMOKE.units, palaceGroup = SMOKE.group;
+    if(!palaceUnits.length) throw new Error('the palace has no machines');
+    setSmoke(SMOKE.units[0], 0.8);                    // leave a fogger running
+    for(let i=0;i<200;i++) updateSmoke(0.05);
+    const hazeBefore = SMOKE.haze;
+    if(hazeBefore < 0.02) throw new Error('the fogger never fed the haze');
+    goToView(15);                                     // walk to the arc main
+    if(SMOKE.units === palaceUnits) throw new Error('the arc is showing the palace rack');
+    if(SMOKE.group === palaceGroup) throw new Error('one smoke group serves two stages');
+    if(SMOKE.units.length < 4) throw new Error('the arc main got no house kit');
+    if(SMOKE.haze > 0.001)
+      throw new Error('the palace haze followed the board: '+SMOKE.haze.toFixed(3));
+    scene.updateMatrixWorld(true);
+    for(const u of SMOKE.units){
+      const p = u.group.getWorldPosition(new THREE.Vector3());
+      if(Math.abs(p.x - (ARC.X + STAGES.arcMain.cx)) > 20)
+        throw new Error(u.name+' is at world x='+p.x.toFixed(0));
+    }
+    goToView(3);                                      // and back
+    if(SMOKE.units !== palaceUnits) throw new Error('the palace rack did not come back');
+    if(Math.abs(SMOKE.haze - hazeBefore) > 1e-6)
+      throw new Error('the parked haze changed while we were away');
+    setSmoke(SMOKE.units[0], 0); smokeClear();
+    return 'palace haze '+hazeBefore.toFixed(2)+' parked and resumed, arc kit its own';
+  });
+
+  P('striking a show at one stage leaves the other stage\\'s show smoke rigged', ()=>{
+    goToView(3); showLoad('outsiders');
+    const palaceSmoke = SHOW.smoke.slice();
+    if(!palaceSmoke.length) throw new Error('no smoke rigged at the palace');
+    goToView(15); showLoad('outsiders');   // the same show next door
+    showStrike();                          // struck next door
+    for(const u of palaceSmoke)
+      if(!u.group.parent) throw new Error(u.name+' was struck from the other building');
+    goToView(3);
+    if(!SHOW.smoke.length) throw new Error('the palace show lost its smoke list');
+    if(SMOKE.units.indexOf(palaceSmoke[0]) < 0)
+      throw new Error('the palace rack lost the show machines');
+    showStrike();
+    return 'the palace units survived an arc strike';
   });
 
   P('600 frames walking all three stages with shows on two of them', ()=>{

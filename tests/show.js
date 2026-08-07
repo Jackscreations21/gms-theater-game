@@ -1128,6 +1128,26 @@ const probe = `
     return 'every non-mover aim back at home';
   });
 
+  P('the outsiders show curtain maps one picture across both halves', ()=>{
+    showLoad('outsiders');
+    const ls = FLY.find(l=>l.goodsKey === SHOW.curtainKey);
+    if(!ls) throw new Error('the show curtain is not hung');
+    const halves = [];
+    ls.goods.traverse(o=>{ if(o.userData && o.userData.side !== undefined) halves.push(o); });
+    if(halves.length !== 2) throw new Error(halves.length+' halves');
+    const maps = halves.map(h=>{
+      let m = null;
+      h.traverse(o=>{ if(o.isMesh && o.material && o.material.map) m = o.material.map; });
+      return m;
+    });
+    if(!maps[0] || !maps[1]) throw new Error('a half has no texture');
+    if(maps[0] === maps[1]) throw new Error('both halves share one un-split texture — the sun paints twice');
+    if(maps[0].repeat.x >= 0.999) throw new Error('the texture is not windowed: repeat '+maps[0].repeat.x);
+    if(Math.abs(maps[0].offset.x - maps[1].offset.x) < 1e-6)
+      throw new Error('both halves show the same window of the picture');
+    return 'two windows onto one cloth, SR offset '+maps[1].offset.x.toFixed(2);
+  });
+
   P('load, strike, load again five times over', ()=>{
     for(let i=0;i<5;i++){ showLoad('outsiders'); showStrike(); }
     showLoad('outsiders');

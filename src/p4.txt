@@ -321,7 +321,7 @@ const ambient = new T.AmbientLight(0x2c3242, 0); scene.add(ambient);
 const hemi = new T.HemisphereLight(0x3a4a6a, 0x181410, 0); scene.add(hemi);
 
 /* ---- rig update ---- */
-const _v = new T.Vector3(), _v2 = new T.Vector3();
+const _v = new T.Vector3(), _v2 = new T.Vector3(), _glowCam = new T.Vector3();
 const _active = [];
 function updateRig(dt, t){
   const master = RIG.blackout ? 0 : RIG.grand;
@@ -372,10 +372,11 @@ function updateRig(dt, t){
     u.uUseGobo.value = f.gobo>0 ? 1 : 0;
     u.uGobo.value = GOBOS[f.gobo];
     f.beam.visible = lvl > 0.004 && hazeNow() > 0.005;
-    // lens glow
+    // lens glow — camera.position stops being a world point once the VR rig
+    // holds the camera, so ask for the world pose
     f.glow.material.opacity = Math.min(1, lvl*1.3);
     f.glow.material.color.copy(f.color);
-    if(lvl > 0.004) f.glow.lookAt(camera.position);
+    if(lvl > 0.004) f.glow.lookAt(camera.getWorldPosition(_glowCam));
     // floor pool
     const pool = f.pool;
     if(lvl > 0.004){

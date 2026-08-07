@@ -12,14 +12,23 @@
    the shape of the room, the materials, the colours, the way the light sits.
    ========================================================================== */
 const SHOWS = {};
-const SHOW = {
-  key:null, group:null, effects:[], goods:[], walk:[], cues:0,
-  rain:null, fire:null, gyms:null, gymIn:0,
-  neon:[], neonLevel:0, neonTarget:1, neonLights:[], smoke:[],
-  scenes:[], scene:null, revolve:null, wrong:[],
-  rainSound:false, flicker:null, lightning:0, lightningT:0,
-  stormOn:false, stormT:0, porch:null
-};
+/* THE one definition of SHOW's shape.  The live object below, the parked
+   templates p2k gives the Arc stages, and the strike-reset all build from
+   here — three hand-copies had drifted apart, and keys a show wrote ad hoc
+   (wall, dropKey, …) leaked across stage swaps because Object.assign can
+   overwrite but never remove.  Add new show state HERE, nowhere else. */
+function showBlank(){
+  return {
+    key:null, group:null, effects:[], goods:[], walk:[], cues:0,
+    rain:null, fire:null, gyms:null, gymIn:0, tyre:null,
+    neon:[], neonLevel:0, neonTarget:1, neonLights:[], neonT:0, smoke:[],
+    scenes:[], scene:null, revolve:null, wrong:[],
+    rainSound:false, flicker:null, lightning:0, lightningT:0,
+    stormOn:false, stormT:0, porch:null,
+    curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
+  };
+}
+const SHOW = showBlank();
 /* the lightning sits on the scene, not in a room, so it can never be culled */
 const LIGHTNING = new T.DirectionalLight(0xdfeaff, 0);
 LIGHTNING.position.set(-14, 20, -16);
@@ -70,7 +79,20 @@ function showWalk(o){ SHOW.walk.push(o); WALKABLE.push(o); return o; }
    ========================================================================== */
 function setPieceVisible(o, crewHidden){
   if(crewHidden !== undefined) o.userData.crewHidden = crewHidden;
-  o.visible = !o.userData.crewHidden && !o.userData.sceneOff;
+  const on = !o.userData.crewHidden && !o.userData.sceneOff;
+  o.visible = on;
+  /* §5: visible is only a drawing flag — a raycast still hits the piece, so
+     groundAt would stand you mid-air on a gallery the crew have not carried
+     in yet.  Clear the layers so a hidden piece is inert, and take its
+     walkable surfaces out of WALKABLE while it is off (marked, so exactly
+     those come back when it is). */
+  o.traverse(c=>{
+    if(on) c.layers.set(0); else c.layers.disableAll();
+    if(typeof WALKABLE === 'undefined') return;
+    const i = WALKABLE.indexOf(c);
+    if(!on && i >= 0){ WALKABLE.splice(i, 1); c.userData.wasWalkable = true; }
+    if(on && c.userData.wasWalkable && i < 0) WALKABLE.push(c);
+  });
 }
 function sceneAdd(name, label){
   const g = new T.Group();
@@ -145,14 +167,11 @@ function showStrike(){
      once.  Striking one of them must not take the other's house curtain out
      of the catalogue, or the far rail is left pointing at nothing.       */
   for(const k of SHOW.goods) if(!goodsInUse(k)){ delete GOODS[k]; delete TRIMS[k]; }
-  SHOW.goods = [];
-  SHOW.effects = [];
-  SHOW.rain = null; SHOW.fire = null; SHOW.flicker = null; SHOW.lightning = 0;
-  SHOW.gyms = null; SHOW.gymIn = 0; SHOW.tyre = null; SHOW.curtainKey = null;
-  SHOW.neon = []; SHOW.neonLights = []; SHOW.neonLevel = 0; SHOW.neonTarget = 1;
-  SHOW.scenes = []; SHOW.scene = null; SHOW.revolve = null; SHOW.wrong = [];
+  /* one wipe from the single template — keys a show wrote ad hoc go with it,
+     instead of surviving into the next production's SHOW */
+  for(const k of Object.keys(SHOW)) delete SHOW[k];
+  Object.assign(SHOW, showBlank());
   if(typeof removeShowSmoke === 'function') removeShowSmoke();
-  SHOW.key = null;
   if(typeof buildGoodsPalette === 'function') buildGoodsPalette();
   if(typeof refreshShowUI === 'function') refreshShowUI();
   if(typeof refreshFlyUI === 'function') refreshFlyUI();
@@ -230,7 +249,7 @@ function hangIsDirty(){
 function showLoad(key){
   const spec = SHOWS[key]; if(!spec) return false;
   showStrike();
-  strikeAll();                       // clear anything you had on the deck
+  strikeStageSet();                  // clear THIS deck — not the other building's
   SHOW.key = key;
   /* Clear the rail first.  A show's hang has to be deterministic — locks and
      leftovers from whatever you were doing before must not survive into it,
@@ -508,6 +527,7 @@ function makeFire(o){
   SHOW.fire = f;
   return f;
 }
+const _fireCam = new T.Vector3();
 function updateFire(dt){
   const f = SHOW.fire; if(!f) return;
   f.level += clamp(f.target - f.level, -dt*0.55, dt*0.7);
@@ -516,9 +536,15 @@ function updateFire(dt){
   if(!on){ f.lights.forEach(l=>l.intensity = 0); return; }
   f.t += dt;
   const o = f.o, d = f._d;
-  // flames face the camera: yaw only, so they stay upright
-  const yaw = Math.atan2(camera.position.x - (o.x0+o.x1)/2,
-                         camera.position.z - (o.z0+o.z1)/2);
+  // flames face the camera: yaw only, so they stay upright.  The fire lives
+  // in showRoot's stage space, which at the Arc sits 420m out — bring the
+  // camera's WORLD pose (VR moves it out of camera.position) into that space
+  // or every quad faces the stage-left wall.
+  const camL = f.group.parent
+    ? f.group.parent.worldToLocal(camera.getWorldPosition(_fireCam))
+    : camera.position;
+  const yaw = Math.atan2(camL.x - (o.x0+o.x1)/2,
+                         camL.z - (o.z0+o.z1)/2);
   f.mesh.material.opacity = f.level;
   f.embers.material.opacity = f.level;
   const live = Math.max(1, Math.floor(f.flames.length * f.level));
@@ -1010,14 +1036,24 @@ SHOWS.outsiders = {
     {
       const c = outsidersCanvas('curtain');
       const key = 'outsidersCurtain';
-      const mat = new T.MeshStandardMaterial({map:c.tex, roughness:.96,
-        side:T.DoubleSide, color:0xffffff});
+      const halfW = D.procW/2 + 3.0;
+      const CLOTH_W = 17.2;          // both halves together, like the other shows
       GOODS[key] = {label:'THE OUTSIDERS show curtain', h:13.0, wt:400,
         traveler:true, made:true, build:()=>{
           const g = new T.Group();
           // two over-wide halves that overlap on the centre line, like a real pair
           [-1,1].forEach(sd=>{
-            const d = drape(D.procW/2 + 3.0, 13.0, mat, 9, .24);
+            /* both halves map the same world x onto the same u — the split-
+               texture fix the other three shows have.  One un-split map per
+               half painted the low sun once per half. */
+            const t2 = c.tex.clone();
+            t2.needsUpdate = true;
+            t2.wrapS = t2.wrapT = T.ClampToEdgeWrapping;
+            t2.repeat.set(halfW / CLOTH_W, 1);
+            t2.offset.set(sd < 0 ? 0 : (CLOTH_W - halfW) / CLOTH_W, 0);
+            const mat = new T.MeshStandardMaterial({map:t2, roughness:.96,
+              side:T.DoubleSide, color:0xffffff});
+            const d = drape(halfW, 13.0, mat, 9, .24);
             d.position.set(sd*(D.procW/4 - 0.4), -6.5, 0);
             d.userData.side = sd;
             g.add(d);
