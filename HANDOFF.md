@@ -299,15 +299,15 @@ follow cancel, audio stop, smoke gets a per-stage root exactly the way
 
 Coordinate/cosmetic — only ever visible at the Arc or in a headset:
 
-- [ ] 15. **M12** — the VR beam cap sorts fixtures' *local* positions
+- [x] 15. **M12** — the VR beam cap sorts fixtures' *local* positions
       against the camera's *world* position; on the Arc "nearest 14" means
       "most stage-left 14". Use `f._org` (p4:361).
-- [ ] 16. **M13** — fire billboards yaw from a stage-local centre toward the
+- [x] 16. **M13** — fire billboards yaw from a stage-local centre toward the
       world camera; flames render edge-on at the Arc.
-- [ ] 17. **L2** — `camera.position` stops being world once
+- [x] 17. **L2** — `camera.position` stops being world once
       `VR.rig.add(camera)`; smoke puffs (p5e:219) and lens glows (p4:378)
       need `getWorldPosition`.
-- [ ] 18. **M17** — the Outsiders show curtain never got the split-texture
+- [x] 18. **M17** — the Outsiders show curtain never got the split-texture
       fix the other three have; its painted sun renders twice. A probe
       (tools/) confirms in seconds.
 
