@@ -172,6 +172,17 @@ function strikePiece(p){
   refreshSetUI();
 }
 function strikeAll(){ SET.slice().forEach(strikePiece); }
+/* strike only what stands on the LIVE stage's deck.  SET is one world-space
+   store for all three stages, and a show load must not clear scenery parked
+   on another building's deck.  ±24 m around the stage origin is well past
+   the stage box and nowhere near the next house (they sit 52 m apart). */
+function strikeStageSet(){
+  const o = (typeof stageOrigin === 'function') ? stageOrigin() : {x:0, z:0};
+  SET.slice().forEach(p=>{
+    const g = p.group.position;
+    if(Math.abs(g.x - o.x) <= 24 && Math.abs(g.z - o.z) <= 24) strikePiece(p);
+  });
+}
 
 /* ============================================================================
    SOUND — everything synthesised in WebAudio, no assets

@@ -289,7 +289,7 @@ follow cancel, audio stop, smoke gets a per-stage root exactly the way
       rumble has the same shape.
 - [x] 13. **M11** — VR: `vrClearRopes` must null `VR.held`, or a held rope
       keeps flying the parked lineset and repositioning a disposed mesh.
-- [ ] 14. **M4** — the scenic palette and FOCUS raycast only the Palace's
+- [x] 14. **M4** — the scenic palette and FOCUS raycast only the Palace's
       `deck` (and from the Arc can hit it *invisibly* through the walls —
       §5's own trap — aiming FOH across town); `setGroup` is one global
       store for three stages, and `showLoad`'s `strikeAll()` clears it

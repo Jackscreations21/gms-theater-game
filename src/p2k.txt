@@ -77,6 +77,25 @@ function stageRestore(st){
 }
 function stageOf(key){ return STAGES[key] || null; }
 function stageLive(){ return STAGES[STAGE]; }
+/* the live stage's deck slab — what the scenic palette and FOCUS raycast.
+   Raycasting the Palace's `deck` from the Arc found it INVISIBLY through
+   every wall (§5: visible is only a drawing flag) and aimed FOH across town */
+function stageDeck(){
+  const st = STAGES[STAGE];
+  if(st && st.venue === 'arc' && typeof ARC !== 'undefined'){
+    const H = ARC.houses[st.arcHouse];
+    if(H && H.deck) return H.deck;
+  }
+  return (typeof deck !== 'undefined') ? deck : null;
+}
+/* where the live stage's origin sits in the world — loose scenery and drag
+   clamps are worked in world space, so the stage box has to come to them */
+function stageOrigin(){
+  const st = STAGES[STAGE];
+  if(st && st.venue === 'arc' && typeof ARC !== 'undefined')
+    return {x: ARC.X + st.cx, z: st.zPros};
+  return {x: 0, z: 0};
+}
 /* the house-light level of any stage, live or not */
 function stageHouseLevel(key){
   if(key === STAGE) return HOUSE.house;

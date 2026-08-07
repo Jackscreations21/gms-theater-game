@@ -3114,8 +3114,9 @@ function edSend(dest){
     return true;
   }
 
-  /* the plate is the stage, so the build goes on where you built it */
-  built.root.position.set(0, 0, 0);
+  /* the plate is the stage — the one the board is patched to */
+  const o = (typeof stageOrigin === 'function') ? stageOrigin() : {x:0, z:0};
+  built.root.position.set(o.x, 0, o.z);
   const piece = placeBuilt(built.root, 'built piece ('+n+' blocks)');
   selPiece = piece;
   built.machines.forEach(m=>registerMachine(m, 'on the deck'));
@@ -4517,6 +4518,17 @@ function strikePiece(p){
   refreshSetUI();
 }
 function strikeAll(){ SET.slice().forEach(strikePiece); }
+/* strike only what stands on the LIVE stage's deck.  SET is one world-space
+   store for all three stages, and a show load must not clear scenery parked
+   on another building's deck.  ±24 m around the stage origin is well past
+   the stage box and nowhere near the next house (they sit 52 m apart). */
+function strikeStageSet(){
+  const o = (typeof stageOrigin === 'function') ? stageOrigin() : {x:0, z:0};
+  SET.slice().forEach(p=>{
+    const g = p.group.position;
+    if(Math.abs(g.x - o.x) <= 24 && Math.abs(g.z - o.z) <= 24) strikePiece(p);
+  });
+}
 
 /* ============================================================================
    SOUND — everything synthesised in WebAudio, no assets
@@ -6467,7 +6479,7 @@ function hangIsDirty(){
 function showLoad(key){
   const spec = SHOWS[key]; if(!spec) return false;
   showStrike();
-  strikeAll();                       // clear anything you had on the deck
+  strikeStageSet();                  // clear THIS deck — not the other building's
   SHOW.key = key;
   /* Clear the rail first.  A show's hang has to be deterministic — locks and
      leftovers from whatever you were doing before must not survive into it,
@@ -9790,6 +9802,7 @@ function arcBuildHouse(o, MAT){
     const fl = aBox(AS.W, 1.0, AS.DEPTH, deckM, cx, AS.DECK - 0.5,
                     (H.zBack + H.zPros)/2, R);
     arcWalk(fl); H.walk.push(fl);
+    H.deck = fl;               // the scenic palette and FOCUS raycast this
     H.deckY = AS.DECK;
   }
 
@@ -10563,6 +10576,25 @@ function stageRestore(st){
 }
 function stageOf(key){ return STAGES[key] || null; }
 function stageLive(){ return STAGES[STAGE]; }
+/* the live stage's deck slab — what the scenic palette and FOCUS raycast.
+   Raycasting the Palace's `deck` from the Arc found it INVISIBLY through
+   every wall (§5: visible is only a drawing flag) and aimed FOH across town */
+function stageDeck(){
+  const st = STAGES[STAGE];
+  if(st && st.venue === 'arc' && typeof ARC !== 'undefined'){
+    const H = ARC.houses[st.arcHouse];
+    if(H && H.deck) return H.deck;
+  }
+  return (typeof deck !== 'undefined') ? deck : null;
+}
+/* where the live stage's origin sits in the world — loose scenery and drag
+   clamps are worked in world space, so the stage box has to come to them */
+function stageOrigin(){
+  const st = STAGES[STAGE];
+  if(st && st.venue === 'arc' && typeof ARC !== 'undefined')
+    return {x: ARC.X + st.cx, z: st.zPros};
+  return {x: 0, z: 0};
+}
 /* the house-light level of any stage, live or not */
 function stageHouseLevel(key){
   if(key === STAGE) return HOUSE.house;
@@ -11491,7 +11523,8 @@ function toggleFollow(){
 dom.addEventListener('click', e=>{
   const r = Player.mode==='walk' ? castFromCamera() : castFromMouse(e);
   if(placingKey){
-    const hits = r.intersectObject(deck, false);
+    const dk = (typeof stageDeck === 'function') ? stageDeck() : deck;
+    const hits = dk ? r.intersectObject(dk, false) : [];
     if(hits.length){
       const p = hits[0].point;
       const piece = placeScenic(placingKey, Math.round(p.x*4)/4, Math.round(p.z*4)/4);
@@ -11502,7 +11535,8 @@ dom.addEventListener('click', e=>{
     return;
   }
   if(focusMode){
-    const hits = r.intersectObjects([deck, setGroup], true);
+    const dk = (typeof stageDeck === 'function') ? stageDeck() : deck;
+    const hits = r.intersectObjects([dk, setGroup].filter(Boolean), true);
     if(hits.length){
       const sec = SECTIONS[selSec], p = hits[0].point;
       if(sec.chans) sec.chans.forEach((c,i)=>{
@@ -11542,8 +11576,10 @@ function dragScenic(e){
     dragPlane.set(new T.Vector3(0,1,0), -dragPiece.group.position.y);
     const p = new T.Vector3();
     if(r.ray.intersectPlane(dragPlane, p)){
-      dragPiece.group.position.x = clamp(p.x, -13, 13);
-      dragPiece.group.position.z = clamp(p.z, D.backWall+1, D.apron);
+      /* the clamps are the stage box, wherever the live stage's box is */
+      const o = (typeof stageOrigin === 'function') ? stageOrigin() : {x:0, z:0};
+      dragPiece.group.position.x = clamp(p.x, o.x - 13, o.x + 13);
+      dragPiece.group.position.z = clamp(p.z, o.z + D.backWall + 1, o.z + D.apron);
     }
   }
   refreshSetUI();

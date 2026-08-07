@@ -230,7 +230,7 @@ function hangIsDirty(){
 function showLoad(key){
   const spec = SHOWS[key]; if(!spec) return false;
   showStrike();
-  strikeAll();                       // clear anything you had on the deck
+  strikeStageSet();                  // clear THIS deck — not the other building's
   SHOW.key = key;
   /* Clear the rail first.  A show's hang has to be deterministic — locks and
      leftovers from whatever you were doing before must not survive into it,

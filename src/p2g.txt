@@ -586,8 +586,9 @@ function edSend(dest){
     return true;
   }
 
-  /* the plate is the stage, so the build goes on where you built it */
-  built.root.position.set(0, 0, 0);
+  /* the plate is the stage — the one the board is patched to */
+  const o = (typeof stageOrigin === 'function') ? stageOrigin() : {x:0, z:0};
+  built.root.position.set(o.x, 0, o.z);
   const piece = placeBuilt(built.root, 'built piece ('+n+' blocks)');
   selPiece = piece;
   built.machines.forEach(m=>registerMachine(m, 'on the deck'));

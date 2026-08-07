@@ -793,6 +793,36 @@ const probe = `
     return 'built at the arc, struck at the arc';
   });
 
+  P('loose scenery is per-deck: a show load clears only its own stage', ()=>{
+    goToView(3);
+    showStrike();
+    const pal = placeScenic('chair', 2, -3);
+    goToView(15);
+    const o = stageOrigin();
+    const arc = placeScenic('table', o.x + 1, o.z - 4);
+    showLoad('goeswrong');                 // must clear THIS deck for the set
+    if(SET.indexOf(arc) !== -1) throw new Error('the arc deck was not cleared for the show');
+    if(SET.indexOf(pal) === -1) throw new Error('loading at the arc struck the palace piece');
+    showStrike();
+    goToView(3);
+    if(SET.indexOf(pal) === -1) throw new Error('the palace piece is gone');
+    strikePiece(pal);
+    return 'the arc cleared its own deck and left the palace alone';
+  });
+
+  P('the palette and FOCUS raycast the deck of the stage you are on', ()=>{
+    goToView(15);
+    const dk = stageDeck();
+    if(dk === deck) throw new Error('the arc is still using the palace deck');
+    scene.updateMatrixWorld(true);
+    const w = dk.getWorldPosition(new THREE.Vector3());
+    if(Math.abs(w.x - (ARC.X + STAGES.arcMain.cx)) > 5)
+      throw new Error('the arc main deck is at x='+w.x.toFixed(0));
+    goToView(3);
+    if(stageDeck() !== deck) throw new Error('the palace is not using its own deck');
+    return 'each board raycasts its own deck';
+  });
+
   P('the fly rail and the chip say which board you are at', ()=>{
     const seen = [];
     for(const [view, key] of [[3,'palace'],[15,'arcMain'],[19,'arcStudio']]){
