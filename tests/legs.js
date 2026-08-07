@@ -159,6 +159,84 @@ const probe = `
     return labels.filter(l=>/leg/.test(l));
   });
 
+  console.log('--- nothing hangs through the deck ---');
+
+  P('a full-height drop stops when its hem reaches the deck', ()=>{
+    goToView(3);
+    const ls = FLY[9];
+    hangGoods(ls, 'sky');
+    if(Math.abs(ls.h - 11.5) > 0.001) throw new Error('the sky drop is '+ls.h+'m, not the 11.5m this test is about');
+    flyTo(ls, 0);                       // haul it all the way to the floor
+    run(1200, 0.05);
+    if(!(ls.target >= 11.5))
+      throw new Error('it was let down to '+ls.target.toFixed(2)+'m — 11.5m of cloth is '+(11.5-ls.target).toFixed(2)+'m under the deck');
+    if(Math.abs(ls.pos - ls.target) > 0.01)
+      throw new Error('it never settled: pos '+ls.pos.toFixed(2)+' target '+ls.target.toFixed(2));
+    if(!(ls.pos - ls.h >= -0.1))
+      throw new Error('the hem finished at y='+(ls.pos-ls.h).toFixed(2));
+    ls.group.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(ls.goods);
+    if(b.min.y < -0.1) throw new Error('the cloth itself reaches y='+b.min.y.toFixed(2));
+    const out = 'pipe stopped at '+ls.pos.toFixed(2)+'m, hem at '+b.min.y.toFixed(2)+'m';
+    hangGoods(ls, 'none'); flyOut(ls); run(1200, 0.05);
+    return out;
+  });
+
+  P('the house curtain still makes its own trim, and puddles', ()=>{
+    goToView(3);
+    const ls = FLY[1];
+    if(ls.goodsKey !== 'house') throw new Error('lineset 2 is carrying '+ls.goodsKey+', not the house curtain');
+    // it is CUT to puddle: 13.0m of velour on a 12.6m trim, 0.4m on the floor
+    flyTo(ls, 0);
+    run(1200, 0.05);
+    if(Math.abs(ls.target - TRIMS.house) > 0.001)
+      throw new Error('it stopped at '+ls.target.toFixed(2)+'m, not its trim of '+TRIMS.house);
+    if(Math.abs(minTrimOf(ls) - TRIMS.house) > 0.001)
+      throw new Error('the floor under the house curtain is '+minTrimOf(ls)+', not its trim '+TRIMS.house);
+    if(!(ls.h > TRIMS.house))
+      throw new Error('the house curtain is no longer cut long — h '+ls.h+' against trim '+TRIMS.house);
+    flyIn(ls); run(1200, 0.05);
+    if(Math.abs(ls.pos - TRIMS.house) > 0.01)
+      throw new Error('flyIn left it at '+ls.pos.toFixed(2)+'m');
+    return 'held at '+TRIMS.house+'m with '+(ls.h - TRIMS.house).toFixed(1)+'m of puddle';
+  });
+
+  P('a bare pipe still comes right down to the rail floor', ()=>{
+    goToView(3);
+    const ls = FLY[9];
+    for(const key of ['pipe', 'none']){
+      hangGoods(ls, key);
+      flyTo(ls, 0);
+      run(1200, 0.05);
+      if(Math.abs(ls.target - 0.6) > 0.001)
+        throw new Error(key+' stopped at '+ls.target.toFixed(2)+'m, not 0.6m');
+      if(Math.abs(ls.pos - 0.6) > 0.01)
+        throw new Error(key+' never got there: pos '+ls.pos.toFixed(2));
+    }
+    hangGoods(ls, 'none'); flyOut(ls); run(1200, 0.05);
+    return 'bare pipe and empty lineset both reach 0.6m';
+  });
+
+  P('and the floor never floats a working trim', ()=>{
+    goToView(3);
+    DEFAULT_HANG.forEach((k,i)=>{ hangGoods(FLY[i], k); });
+    const out = [];
+    DEFAULT_HANG.forEach((k,i)=>{
+      const ls = FLY[i];
+      const want = inTrimOf(ls);
+      if(minTrimOf(ls) > want + 0.001)
+        throw new Error(k+': the deck floor is '+minTrimOf(ls).toFixed(2)+'m, above its trim of '+want.toFixed(2)+'m');
+      flyOut(ls); run(1200, 0.05);
+      flyIn(ls);  run(1200, 0.05);
+      if(Math.abs(ls.target - want) > 0.001)
+        throw new Error(k+' trims to '+want.toFixed(2)+' but flyIn set '+ls.target.toFixed(2));
+      if(Math.abs(ls.pos - want) > 0.01)
+        throw new Error(k+' flew in to '+ls.pos.toFixed(2)+', not '+want.toFixed(2));
+      out.push(k+' '+want.toFixed(2));
+    });
+    return out;
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
