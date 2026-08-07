@@ -90,8 +90,11 @@ function vrCapBeams(){
   for(const f of FIXTURES) if(f.beam && f.beam.visible) live.push(f);
   if(live.length <= VR.beamCap) return;
   camera.getWorldPosition(_bp);
-  live.sort((a,b)=>a.group.position.distanceToSquared(_bp) -
-                   b.group.position.distanceToSquared(_bp));
+  /* f._org is the WORLD emit position (p4 refreshes it every rig update).
+     f.group.position is local to the rig group, which at the Arc sits 420m
+     out — sorting that against a world camera kept the wrong 14 beams. */
+  live.sort((a,b)=>a._org.distanceToSquared(_bp) -
+                   b._org.distanceToSquared(_bp));
   for(let i = VR.beamCap; i < live.length; i++) live[i].beam.visible = false;
 }
 

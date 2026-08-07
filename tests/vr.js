@@ -338,6 +338,36 @@ const probe = `
     return 'palace ' + palaceRopes + ' ropes, arc rebuilt on arrival';
   });
 
+  P('the beam cap keeps the beams nearest your head at the arc', ()=>{
+    goToView(15);
+    /* in VR the rig carries the camera — stand it in the arc main house,
+       a little stage-right, so "nearest" has a right answer */
+    VR.rig.position.set(ARC.X + STAGES.arcMain.cx - 6, 0, STAGES.arcMain.zPros + 6);
+    VR.rig.updateMatrixWorld(true);
+    for(let c=1;c<=FIXTURES.length;c++) setLevel(c, 1, 0);
+    RIG.haze = 0.6;
+    updateRig(0.05, 1);
+    scene.updateMatrixWorld(true);
+    const cam = camera.getWorldPosition(new THREE.Vector3());
+    const lit = FIXTURES.filter(f=>f.beam && f.beam.visible);
+    if(lit.length <= VR.beamCap) throw new Error('only '+lit.length+' beams lit — nothing to cap');
+    vrCapBeams();
+    const kept = FIXTURES.filter(f=>f.beam && f.beam.visible);
+    if(kept.length !== VR.beamCap) throw new Error(kept.length+' beams kept');
+    const dist = f=>f._org.distanceTo(cam);
+    const worstKept  = Math.max.apply(null, kept.map(dist));
+    const bestKilled = Math.min.apply(null,
+      lit.filter(f=>!f.beam.visible).map(dist));
+    if(worstKept > bestKilled + 1e-6)
+      throw new Error('kept a beam '+worstKept.toFixed(1)+'m away and killed one '+
+                      bestKilled.toFixed(1)+'m away');
+    for(let c=1;c<=FIXTURES.length;c++) setLevel(c, 0, 0);
+    updateRig(0.05, 1);
+    VR.rig.position.set(0, 0, 0); VR.rig.updateMatrixWorld(true);
+    goToView(3);
+    return 'the cap is by real distance, worst kept '+worstKept.toFixed(1)+'m';
+  });
+
   P('a rope held through the walk is let go, not carried', ()=>{
     goToView(3);
     vrBuildRopes();
