@@ -53,6 +53,16 @@ const probe = `
   const P = window.__probe;
   console.log('--- fly rail buttons (single clicks) ---');
   document.querySelector('[data-p="fly"]').click();
+  P('the rail wakes up locked off, every line', ()=>{
+    /* a counterweight rail at rest is locked off — the boot state IS locked */
+    const un = FLY.filter(l=>!l.locked);
+    if(un.length) throw new Error(un.length+' of '+FLY.length+' linesets started unlocked');
+    const dots = Array.prototype.slice.call(document.querySelectorAll('#lsTable tbody .dot'));
+    if(dots.length !== FLY.length) throw new Error(dots.length+' dots for '+FLY.length+' linesets');
+    if(!dots.every(d=>d.className.indexOf('lk') !== -1))
+      throw new Error('the board does not show the locks');
+    return FLY.length+' linesets locked off at rest';
+  });
   P('button node survives 60 UI ticks', ()=>{
     const first = document.querySelector('#lsTable tbody tr button');
     for(let i=0;i<60;i++){ const cb=window.__raf; window.__raf=null; if(cb) cb(Date.now()+i*16); }
@@ -79,16 +89,21 @@ const probe = `
     if(Math.abs(ls.target - OUT_TRIM) < 0.01) throw new Error('click lost');
     return 'target -> '+ls.target.toFixed(2);
   });
-  P('LOCK takes on one click and blocks the move', ()=>{
+  P('the board flies a locked line, and locks it off again on arrival', ()=>{
+    /* the lock is the hand's interlock; the board is the flyman — it takes
+       the lock off itself, runs the line, and locks off again on arrival */
     const ls = FLY[3];
     const b = document.querySelectorAll('#lsTable tbody tr')[3].querySelectorAll('button');
-    b[3].click();
-    if(!ls.locked) throw new Error('lock did not take');
-    const t = ls.target; b[0].click();
-    if(ls.target !== t) throw new Error('locked lineset still moved');
-    b[3].click();
-    if(ls.locked) throw new Error('did not unlock');
-    return 'locks and unlocks';
+    ls.target = ls.pos = OUT_TRIM; ls.group.position.y = ls.pos;
+    if(!ls.locked) b[3].click();                    // lock it off at the rail first
+    if(!ls.locked) throw new Error('setup: the LOCK button did not take');
+    b[0].click();                                   // IN, from the board
+    if(ls.locked) throw new Error('the board did not take the lock off for its move');
+    if(Math.abs(ls.target - ls.pos) < 0.01) throw new Error('the board move was refused');
+    for(let i=0;i<400;i++) updateFly(0.05);
+    if(Math.abs(ls.pos - ls.target) > 0.01) throw new Error('it never arrived');
+    if(!ls.locked) throw new Error('the flyman did not lock it off on arrival');
+    return 'locked -> flown -> locked at '+ls.pos.toFixed(1)+'m';
   });
   P('STOP halts travel on one click', ()=>{
     const ls = FLY[6]; flyOut(ls);
@@ -106,7 +121,10 @@ const probe = `
   });
   console.log('--- hauling + shift lock ---');
   P('hold LMB on an unlocked lineset hauls it', ()=>{
-    const ls = FLY[9]; ls.locked=false; ls.target = ls.pos = 14.0;
+    const ls = FLY[9];
+    const b9 = document.querySelectorAll('#lsTable tbody tr')[9].querySelectorAll('button');
+    if(ls.locked) b9[3].click();   // the rail wakes locked — take the lock off through its button
+    ls.target = ls.pos = 14.0;
     Player.mode='walk'; pointerLocked = true;
     hoverInfo = {kind:'lineset', ls:ls};
     dom.dispatchEvent(new window.MouseEvent('mousedown',{button:0,bubbles:true}));
@@ -120,19 +138,23 @@ const probe = `
     if(flyDrag) throw new Error('did not release');
     return 'hauled '+up.toFixed(2)+' -> '+ls.target.toFixed(2);
   });
-  P('a LOCKED lineset refuses to be hauled', ()=>{
-    const ls = FLY[4]; ls.locked = true; const before = ls.target;
+  P('a lineset the hand has not unlocked refuses the haul', ()=>{
+    const ls = FLY[4];             // untouched since boot: its lock is still in
+    if(!ls.locked) throw new Error('lineset 5 lost its boot lock');
+    const before = ls.target;
     hoverInfo = {kind:'lineset', ls:ls};
     dom.dispatchEvent(new window.MouseEvent('mousedown',{button:0,bubbles:true}));
     if(flyDrag) throw new Error('grabbed a locked lineset');
     for(let i=0;i<20;i++) window.dispatchEvent(new window.MouseEvent('mousemove',{bubbles:true, movementY:-10}));
     window.dispatchEvent(new window.MouseEvent('mouseup',{bubbles:true}));
-    ls.locked = false;
     if(Math.abs(ls.target-before) > 0.001) throw new Error('locked lineset moved');
-    return 'held fast';
+    return 'held fast, straight off the boot';
   });
   P('hauling respects the travel limits', ()=>{
-    const ls = FLY[9]; hoverInfo = {kind:'lineset', ls:ls};
+    const ls = FLY[9];
+    const b9 = document.querySelectorAll('#lsTable tbody tr')[9].querySelectorAll('button');
+    if(ls.locked) b9[3].click();   // unlock through the board so the grab takes
+    hoverInfo = {kind:'lineset', ls:ls};
     dom.dispatchEvent(new window.MouseEvent('mousedown',{button:0,bubbles:true}));
     for(let i=0;i<600;i++) window.dispatchEvent(new window.MouseEvent('mousemove',{bubbles:true, movementY:-30}));
     const hi = ls.target;
@@ -144,7 +166,9 @@ const probe = `
   });
   P('heavier goods haul slower than light ones', ()=>{
     const light = FLY[2], heavy = FLY[1];      // border 110 kg vs house curtain 420 kg
-    const run = ls => { ls.locked=false; ls.target = 12.0; hoverInfo={kind:'lineset', ls:ls};
+    const run = ls => { const row = document.querySelectorAll('#lsTable tbody tr')[FLY.indexOf(ls)];
+      if(ls.locked) row.querySelectorAll('button')[3].click();   // unlock through the board
+      ls.target = 12.0; hoverInfo={kind:'lineset', ls:ls};
       dom.dispatchEvent(new window.MouseEvent('mousedown',{button:0,bubbles:true}));
       for(let i=0;i<20;i++) window.dispatchEvent(new window.MouseEvent('mousemove',{bubbles:true, movementY:-10}));
       const d = ls.target - 12.0;
@@ -1375,18 +1399,37 @@ const probe = `
     for(let i=0;i<400;i++) updateFly(0.05);
     return c.length+' traveler, opens, shuts, flies';
   });
-  P('a locked lineset sits the call out', ()=>{
+  P('a locked lineset answers the call, and is locked off again on arrival', ()=>{
     initHang();
     const list = railGroup('electrics');
     const victim = list[0];
     victim.locked = true;
-    const held = victim.target;
+    victim.target = victim.pos = inTrimOf(victim);
     const r = railCall('electrics','out');
-    if(r.locked !== 1) throw new Error('the call did not report the lock');
-    if(Math.abs(victim.target - held) > 0.01) throw new Error('the locked lineset moved anyway');
-    victim.locked = false;
+    if(r.moved !== list.length) throw new Error('the call moved '+r.moved+' of '+list.length);
+    if(victim.locked) throw new Error('the call left the lock on for the travel');
+    if(Math.abs(victim.target - OUT_TRIM) > 0.01) throw new Error('the locked lineset was not sent out');
+    for(let i=0;i<400;i++) updateFly(0.05);
+    if(!victim.locked) throw new Error('it was not locked off again on arrival');
     railCall('electrics','in');
-    return 'locked one held at '+held.toFixed(1)+'m while '+r.moved+' others moved';
+    for(let i=0;i<400;i++) updateFly(0.05);
+    return 'the flyman worked the lock: out, and locked off at '+victim.pos.toFixed(1)+'m';
+  });
+  P('a cue still flies a locked line, and it is locked again on arrival', ()=>{
+    initHang();
+    const ls = FLY[9];                       // the sky drop, out at boot
+    ls.locked = true; ls.target = ls.pos = OUT_TRIM;
+    CUES.push({n:99.9, label:'relock probe', fade:0, follow:null, lx:null,
+               fly:[{id:ls.id, target:14.0, open:ls.travTarget}], sfx:null,
+               house:HOUSE.house, work:HOUSE.work, practical:HOUSE.practical, haze:RIG.haze});
+    fireCue(CUES.length-1);
+    if(ls.locked) throw new Error('the cue left the lock on for the travel');
+    if(Math.abs(ls.target - 14.0) > 0.01) throw new Error('the cue did not take the locked line: target '+ls.target.toFixed(2));
+    for(let i=0;i<300;i++) updateFly(0.05);
+    if(Math.abs(ls.pos - 14.0) > 0.05) throw new Error('it never arrived: '+ls.pos.toFixed(2));
+    if(!ls.locked) throw new Error('not locked off again on arrival');
+    CUES.pop();
+    return 'the cue flew a locked line to 14m and the flyman locked it off';
   });
   P('calling an empty group is harmless', ()=>{
     FLY.forEach(ls=>hangGoods(ls,'none'));
