@@ -73,7 +73,8 @@ function vrQualityOn(){
   camera.far = 160;                           // the far building is switched off anyway
   camera.updateProjectionMatrix();
   if(renderer.xr && renderer.xr.setFoveation) renderer.xr.setFoveation(0.4);
-  if(typeof toast === 'function') toast('VR: shadows off, beams capped, 90Hz');
+  if(typeof toast === 'function')
+    toast('VR: shadows off, beams capped, ' + (VR.targetHz || 90) + 'Hz');
 }
 function vrQualityOff(){
   if(!VR.saved) return;
@@ -117,6 +118,23 @@ function vrEnter(){
 function vrOnStart(){
   VR.active = true;
   VR.fly = false;                    // every session starts on its feet
+  /* ask the runtime to pace the session at 72Hz.  The browser defaults a
+     Quest to 90, and the first headset run could not hold it; a held 72
+     beats a 90 that drops, and it hands every frame 13.9ms of budget
+     instead of 11.1.  The rates on offer vary by device, so take the
+     LOWEST one at or above 72 — never below: under 72 the display
+     flickers.  Where the API is missing this leaves everything alone. */
+  VR.targetHz = 90;
+  const s = renderer.xr.getSession && renderer.xr.getSession();
+  if(s && s.supportedFrameRates && s.updateTargetFrameRate){
+    let want = 0;
+    for(const r of s.supportedFrameRates) if(r >= 71.9 && (!want || r < want)) want = r;
+    if(want){
+      VR.targetHz = want;
+      const p = s.updateTargetFrameRate(want);
+      if(p && p.catch) p.catch(()=>{});   // refusal is fine — the default stands
+    }
+  }
   /* the camera has to live inside a rig, because in a session the headset
      writes camera.position every frame and would throw ours away */
   if(!VR.rig){
