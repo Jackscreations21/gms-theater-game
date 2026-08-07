@@ -6765,6 +6765,7 @@ function makeFire(o){
   SHOW.fire = f;
   return f;
 }
+const _fireCam = new T.Vector3();
 function updateFire(dt){
   const f = SHOW.fire; if(!f) return;
   f.level += clamp(f.target - f.level, -dt*0.55, dt*0.7);
@@ -6773,9 +6774,15 @@ function updateFire(dt){
   if(!on){ f.lights.forEach(l=>l.intensity = 0); return; }
   f.t += dt;
   const o = f.o, d = f._d;
-  // flames face the camera: yaw only, so they stay upright
-  const yaw = Math.atan2(camera.position.x - (o.x0+o.x1)/2,
-                         camera.position.z - (o.z0+o.z1)/2);
+  // flames face the camera: yaw only, so they stay upright.  The fire lives
+  // in showRoot's stage space, which at the Arc sits 420m out — bring the
+  // camera's WORLD pose (VR moves it out of camera.position) into that space
+  // or every quad faces the stage-left wall.
+  const camL = f.group.parent
+    ? f.group.parent.worldToLocal(camera.getWorldPosition(_fireCam))
+    : camera.position;
+  const yaw = Math.atan2(camL.x - (o.x0+o.x1)/2,
+                         camL.z - (o.z0+o.z1)/2);
   f.mesh.material.opacity = f.level;
   f.embers.material.opacity = f.level;
   const live = Math.max(1, Math.floor(f.flames.length * f.level));
