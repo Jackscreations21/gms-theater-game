@@ -12795,7 +12795,7 @@ var VR = {
   speed: 3.2, turn: 2.1,
   desks: [], deskMeshes: [], hits: [], page: 'cues',
   canvas: null, ctx: null, tex: null,
-  hover: null, held: null, ropes: [], goButtons: [],
+  hover: null, held: null, heldLever: null, ropes: [], goButtons: [],
   saved: null, drawT: 0, session: null
 };
 
@@ -12907,6 +12907,7 @@ function vrOnEnd(){
   if(VR.camHome) VR.camHome.add(camera); else scene.add(camera);
   vrQualityOff();
   VR.held = null;
+  VR.heldLever = null;
   vrLabel(null);
   const app = $('#app'); if(app) app.classList.remove('inVR');
 }
@@ -13360,24 +13361,49 @@ function vrBuildDesks(){
    A full operating line at the pin rail for every lineset that is hung: a
    floor block just off the deck, a head block up under the grid, and the line
    running all the way round the pair of them — two runs, the way a rope goes
-   when it comes back to where it started.  Take hold of the grab section at
-   hand height, pull it down and the batten comes in; push it up and it goes
-   out, and the blocks turn while it travels.
+   when it comes back to where it started.  Take hold of either run ANYWHERE
+   along it and haul: on the front run, down brings the batten in and up sends
+   it out; the back run is the other half of the same loop, so it works the
+   other way round.  The blocks turn while the line travels.
 
-   Beside every line is a little red lever: the rope lock.  Throw it and the
-   line is held where it is.  Leave it off and there is nothing on the load
-   but your hands — take them away and it runs away downwards (updateFly, p3).
+   In front of the lines stands the LOCKING RAIL — a steel rail with a number
+   plate for every lineset and a rope lock on top of each, its red handle
+   facing the flyman.  The handle IS ls.locked, and only a hand that closes on
+   it moves it: push it IN (upright) and the line is locked off, pull it OUT
+   (toward you) and the line is released.  Release a line with nothing holding
+   it — no lock, no hand — and there is nothing on the load at all: it runs
+   away downwards (updateFly, p3).
    ========================================================================== */
 const ROPE = {
   headDrop: 0.6,      // the head block hangs this far under the grid
   floorY:   0.25,     // the floor block sits just off the deck
   gap:      0.06,     // half the distance between the two runs of the loop
   wheel:    0.10,     // sheave radius — also what the spin is worked out from
-  handY:    1.55,     // the grab section, at hand height
-  leverY:   1.05,     // the red lever, on the rail beside the line
-  leverZ:   0.28,
-  throw_:  -0.95      // how far it lies over when the lock is OFF
+  handY:    1.55,     // where the whipped grab section sits at rest
+  railY:    0.96,     // the top surface of the locking rail
+  railH:    0.14,     // the rail beam, top to bottom
+  railD:    0.12,     // and front to back
+  railOff:  0.14,     // beam centre, this far in FRONT of the line of ropes
+  lockH:    0.15,     // the rope-lock housing on top of the rail
+  grabR:    0.32,     // a hand within this of a run has hold of the rope
+  knobR:    0.12,     // a hand within this of a handle has hold of the LEVER
+  throw_:   0.95      // how far the handle lies over when it is pulled OUT
 };
+/* the number plates are drawn once and kept: vrClearRopes disposes geometry,
+   and eleven little canvases a stage-walk would otherwise pile up as leaks */
+const ROPE_PLATES = {};
+function ropePlateTex(n){
+  if(ROPE_PLATES[n]) return ROPE_PLATES[n];
+  const c = cvs(64, 48), g = c.getContext('2d');
+  g.fillStyle = '#ddd8cc'; g.fillRect(0, 0, 64, 48);
+  g.strokeStyle = '#2a2d33'; g.lineWidth = 4; g.strokeRect(0, 0, 64, 48);
+  g.fillStyle = '#15181d';
+  g.font = '700 30px Helvetica, Arial, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(String(n), 32, 26);
+  ROPE_PLATES[n] = tex(c, 1, 1);
+  return ROPE_PLATES[n];
+}
 function vrBuildRopes(){
   vrClearRopes();
   const st = (typeof STAGES !== 'undefined') ? STAGES[STAGE] : null;
@@ -13415,12 +13441,37 @@ function vrBuildRopes(){
                                       // spins about its own local z
   const gRun   = new T.CylinderGeometry(0.014, 0.014, runH, 6);
   const gGrab  = new T.CylinderGeometry(0.034, 0.034, 0.9, 6);
+  const gLock  = new T.BoxGeometry(0.11, ROPE.lockH, 0.09);
   const gLever = new T.BoxGeometry(0.045, 0.26, 0.045);
-  gLever.translate(0, 0.13, 0);       // pivot at the foot, so rotation.x throws it
+  gLever.translate(0, 0.13, 0);       // pivot at the foot, so a rotation throws it
   const gKnob  = new T.SphereGeometry(0.045, 6, 5);
+  const gPlate = new T.PlaneGeometry(0.085, 0.065);
 
-  for(const ls of FLY){
-    if(ls.goodsKey === 'none') continue;
+  const hung = FLY.filter(l => l.goodsKey !== 'none');
+
+  /* ---- the locking rail itself: one beam the length of the hung lines, a
+     kick rail below it and a post every couple of metres, all in front of
+     the ropes so the locks sit over the run the flyman hauls on ---------- */
+  if(hung.length){
+    const z0 = Math.min(...hung.map(l => l.z)) + zOff - 0.45;
+    const z1 = Math.max(...hung.map(l => l.z)) + zOff + 0.45;
+    const railC = railX + inw*ROPE.railOff;
+    const beam = new T.Mesh(new T.BoxGeometry(ROPE.railD, ROPE.railH, z1 - z0), iron);
+    beam.name = 'vr:rail';
+    beam.position.set(railC, ROPE.railY - ROPE.railH/2, (z0 + z1)/2);
+    holder.add(beam);
+    const kick = new T.Mesh(new T.BoxGeometry(ROPE.railD*0.7, 0.06, z1 - z0), iron);
+    kick.position.set(railC, 0.18, (z0 + z1)/2);
+    holder.add(kick);
+    const gPost = new T.BoxGeometry(0.06, ROPE.railY, 0.06);
+    for(let z = z0 + 0.2; z < z1; z += 2.0){
+      const post = new T.Mesh(gPost, iron);
+      post.position.set(railC, ROPE.railY/2, z);
+      holder.add(post);
+    }
+  }
+
+  for(const ls of hung){
     const asm = new T.Group();
     asm.name = 'vr:rope' + ls.id;
     asm.position.set(railX, 0, ls.z + zOff);
@@ -13434,24 +13485,39 @@ function vrBuildRopes(){
       run.position.set(s*inw*ROPE.gap, ROPE.floorY + runH/2, 0);
       asm.add(run); runs.push(run);
     }
-    /* the grab section — a whipped length of the front run at hand height.
-       This is the mesh the hands and the tests know a rope by. */
+    /* the grab section — a whipped length of rope that slides to wherever a
+       hand takes hold.  At rest it marks the front run at hand height, and
+       it is the mesh the tests know a rope by. */
     const m = new T.Mesh(gGrab, grab);
     m.position.set(inw*ROPE.gap, ROPE.handY, 0);
     m.userData.rope = ls;
     asm.add(m);
 
+    /* the rope lock: a housing on top of the rail that the front run passes
+       through, its red handle on the operator's side.  IN (upright) is
+       locked, OUT (lying toward the flyman) is released. */
+    const lock = new T.Mesh(gLock, iron);
+    lock.position.set(inw*0.11, ROPE.railY + ROPE.lockH/2, 0);
+    asm.add(lock);
     const lever = new T.Mesh(gLever, red);
-    lever.position.set(inw*0.10, ROPE.leverY, ROPE.leverZ);
-    lever.rotation.x = ls.locked ? 0 : ROPE.throw_;
+    lever.position.set(inw*0.11, ROPE.railY + ROPE.lockH, 0);
+    lever.rotation.z = ls.locked ? 0 : -inw*ROPE.throw_;
     const knob = new T.Mesh(gKnob, red);
     knob.position.y = 0.26;
     lever.add(knob);
     asm.add(lever);
 
-    VR.ropes.push({mesh:m, ls, home:m.position.clone(), asm,
-                   head, foot, runs, lever, knob,
-                   pos0:ls.pos, last:ls.pos, cool:0});
+    /* the number plate on the rail's face, the way a real rail is indexed */
+    const plate = new T.Mesh(gPlate,
+      new T.MeshBasicMaterial({map:ropePlateTex(ls.id)}));
+    plate.position.set(inw*(ROPE.railOff + ROPE.railD/2 + 0.004),
+                       ROPE.railY - ROPE.railH/2, 0);
+    plate.rotation.y = inw > 0 ? Math.PI/2 : -Math.PI/2;
+    asm.add(plate);
+
+    VR.ropes.push({mesh:m, ls, home:m.position.clone(), asm, inw,
+                   head, foot, runs, lock, lever, knob, plate,
+                   pos0:ls.pos, last:ls.pos});
   }
 }
 function vrClearRopes(){
@@ -13459,6 +13525,7 @@ function vrClearRopes(){
      a lineset that are about to be disposed and parked, and vrUpdateHold
      would keep hauling them every frame until the squeeze was released */
   VR.held = null;
+  VR.heldLever = null;
   if(VR.ropeRoot && VR.ropeRoot.parent) VR.ropeRoot.parent.remove(VR.ropeRoot);
   if(VR.ropeRoot && typeof disposeTree === 'function') disposeTree(VR.ropeRoot);
   VR.ropeRoot = null;
@@ -13467,13 +13534,19 @@ function vrClearRopes(){
 
 /* throw the lock on a line, or take it off.  ls.locked IS the rail's rope
    lock — the LOCK button on the fly page is the same flag, and the lever
-   simply shows and works it from inside the headset. */
+   simply shows and works it from inside the headset.  Pulling the lever OUT
+   with nothing holding the rope releases the load to gravity: nothing at all
+   is on it, and it runs away exactly as a let-go line does. */
 function vrRopeLock(r, on){
   const ls = r.ls;
-  ls.locked = !!on;
+  on = !!on;
+  if(ls.locked === on) return;
+  ls.locked = on;
   if(on){
     /* a lever thrown on a line that is running away stops it dead */
     ls.runaway = false; ls.flyVel = 0; ls.target = ls.pos;
+  } else if(!(VR.held && VR.held.rope === r)){
+    ls.runaway = true; ls.flyVel = 0; ls.target = ls.pos;
   }
   if(typeof syncFlyRow === 'function') syncFlyRow(ls);
   if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
@@ -13481,23 +13554,33 @@ function vrRopeLock(r, on){
     toast('lineset ' + ls.id + (on ? ' — locked off at the rail'
                                    : ' — lock off, mind the load'));
 }
-/* every frame: the levers answer a hand, and the loops turn with the line */
-const _lvp = new T.Vector3(), _hnd = new T.Vector3();
+/* every frame: a held lever follows the hand that has it, and the loops turn
+   with the line.  NOTHING else moves a lever — not a hand walking past, not
+   a knuckle brushing the knob mid-haul.  Deliberate grabs only (vrSqueeze). */
+const _lvp = new T.Vector3();
 function vrUpdateRopes(dt){
   for(const r of VR.ropes){
     const ls = r.ls;
-    if(r.cool > 0) r.cool -= dt;
-    /* worked with a hand rather than pointed at, the way the GO button is */
-    r.knob.getWorldPosition(_lvp);
-    let near = false;
-    for(const g of VR.grips){
-      g.getWorldPosition(_hnd);
-      if(_hnd.distanceTo(_lvp) < 0.11) near = true;
+    if(VR.heldLever && VR.heldLever.rope === r){
+      const c = VR.controllers[VR.heldLever.hand];
+      if(c){
+        c.updateMatrixWorld(true);
+        _lvp.setFromMatrixPosition(c.matrixWorld);
+        r.asm.worldToLocal(_lvp);
+        /* the handle leans to meet the hand: + is out, toward the flyman */
+        const dx = (_lvp.x - r.lever.position.x) * r.inw;
+        const dy = Math.max(0.02, _lvp.y - r.lever.position.y);
+        const a = clamp(Math.atan2(dx, dy), 0, ROPE.throw_);
+        r.lever.rotation.z = -r.inw * a;
+        if(a > ROPE.throw_*0.75 && ls.locked)  vrRopeLock(r, false);
+        if(a < ROPE.throw_*0.25 && !ls.locked) vrRopeLock(r, true);
+      }
+    } else {
+      /* at rest the handle sits in its detent: upright when the lock is on,
+         lying toward the operator when it is off */
+      const want = ls.locked ? 0 : -r.inw*ROPE.throw_;
+      r.lever.rotation.z += clamp(want - r.lever.rotation.z, -dt*7, dt*7);
     }
-    if(near && r.cool <= 0){ r.cool = 0.6; vrRopeLock(r, !ls.locked); }
-    /* upright when the lock is on, lying over when it is off */
-    const want = ls.locked ? 0 : ROPE.throw_;
-    r.lever.rotation.x += clamp(want - r.lever.rotation.x, -dt*7, dt*7);
     /* the blocks turn and the grab section rides with the load — cosmetic */
     const d = ls.pos - r.last;
     if(d){
@@ -13641,13 +13724,17 @@ function vrLetGo(h){
   if(typeof toast === 'function')
     toast('lineset ' + ls.id + ' — let go with the lock off, it is running away');
 }
+const _run = new T.Vector3();
 function vrSqueeze(hand, down){
   const c = VR.controllers[hand];
   if(!c) return;
   if(!down){
+    if(VR.heldLever && VR.heldLever.hand === hand) VR.heldLever = null;
     if(VR.held && VR.held.hand === hand){
       const h = VR.held;
       VR.held = null;
+      /* the whipped section goes back to marking the front run at rest */
+      h.rope.mesh.position.copy(h.rope.home);
       vrLetGo(h);
     }
     return;
@@ -13655,21 +13742,48 @@ function vrSqueeze(hand, down){
   c.updateMatrixWorld(true);
   _rayO.setFromMatrixPosition(c.matrixWorld);
   if(VR.ropeRoot) VR.ropeRoot.updateMatrixWorld(true);   // the loops nest a group deep
-  let best = null, bd = 0.32;
+
+  /* what is under the hand: the nearest lever knob, and the nearest point on
+     any RUN of any loop — the whole rope is a handful, top to bottom */
+  let lv = null, lvd = ROPE.knobR;
+  let best = null, bd = ROPE.grabR, bestRun = 0, bestY = 0;
   for(const r of VR.ropes){
-    r.mesh.updateMatrixWorld(true);
-    const d = _rayD.setFromMatrixPosition(r.mesh.matrixWorld).distanceTo(_rayO);
-    if(d < bd){ bd = d; best = r; }
+    const kd = _rayD.setFromMatrixPosition(r.knob.matrixWorld).distanceTo(_rayO);
+    if(kd < lvd){ lvd = kd; lv = r; }
+    for(let i = 0; i < r.runs.length; i++){
+      const run = r.runs[i];
+      run.getWorldPosition(_run);
+      const half = run.geometry.parameters.height/2;
+      const y = clamp(_rayO.y, _run.y - half, _run.y + half);
+      const dx = _rayO.x - _run.x, dy = _rayO.y - y, dz = _rayO.z - _run.z;
+      const d = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      if(d < bd){ bd = d; best = r; bestRun = i; bestY = y; }
+    }
+  }
+  /* nearest wins: with the lock in, the handle stands right against the
+     front run, and the hand should get whichever it actually closed on */
+  if(lv && (!best || lvd < bd)){
+    VR.heldLever = {hand, rope:lv};
+    return;
   }
   if(best){
-    /* taking hold of a line takes the lock off it — you have the weight now */
-    best.ls.locked = false;
-    best.ls.runaway = false;
-    best.ls.flyVel = 0;
-    best.ls.target = best.ls.pos;
-    if(typeof syncFlyRow === 'function') syncFlyRow(best.ls);
-    VR.held = {hand, rope:best, y0:_rayO.y, trim0:best.ls.pos, vel:0};
-    if(typeof toast === 'function') toast('lineset ' + best.ls.id + ' — haul away');
+    const ls = best.ls;
+    /* a hand on the rope arrests a runaway — you have the weight now — but
+       it does NOT touch the lock: only the lever does that */
+    ls.runaway = false;
+    ls.flyVel = 0;
+    ls.target = ls.pos;
+    if(typeof syncFlyRow === 'function') syncFlyRow(ls);
+    /* the whipped section slides to meet the hand, whichever run, whatever
+       height it was taken at */
+    const run = best.runs[bestRun];
+    best.mesh.position.x = run.position.x;
+    best.mesh.position.y = clamp(bestY, ROPE.floorY + 0.5, D.gridY - ROPE.headDrop - 0.5);
+    VR.held = {hand, rope:best, y0:_rayO.y, trim0:ls.pos, vel:0,
+               dir: bestRun === 0 ? 1 : -1, grabY: best.mesh.position.y};
+    if(typeof toast === 'function')
+      toast('lineset ' + ls.id + (ls.locked
+        ? ' — locked off at the rail, pull the lever' : ' — haul away'));
   }
 }
 function vrUpdateHold(dt){
@@ -13678,21 +13792,30 @@ function vrUpdateHold(dt){
   if(!c) return;
   c.updateMatrixWorld(true);
   _rayO.setFromMatrixPosition(c.matrixWorld);
-  /* pull DOWN and the batten comes IN, the way a counterweight line works */
-  const pulled = VR.held.y0 - _rayO.y;
-  const want = VR.held.trim0 - pulled * 5.5;
   const ls = VR.held.rope.ls;
+  /* with the lock in the rail has the weight: the hand rides the rope and
+     nothing moves.  Keep re-basing so pulling the lever out mid-hold picks
+     up smoothly from here rather than jumping the accumulated pull. */
+  if(ls.locked){
+    VR.held.y0 = _rayO.y; VR.held.trim0 = ls.pos; VR.held.vel = 0;
+    return;
+  }
+  /* pull DOWN on the front run and the batten comes IN, the way a
+     counterweight line works; the back run is the other half of the loop,
+     so it carries the opposite sign */
+  const pulled = VR.held.y0 - _rayO.y;
+  const want = VR.held.trim0 - pulled * 5.5 * VR.held.dir;
   const was = ls.pos;
   /* the hand respects the same deck floor as everything else: goods hang
      below the pipe, and hauling by hand must not drag them through the
      stage.  Guarded because minTrimOf arrives on a parallel branch. */
   const lo = (typeof minTrimOf === 'function') ? minTrimOf(ls) : 0.6;
-  if(!ls.locked){ ls.target = clamp(want, lo, OUT_TRIM); ls.pos = ls.target; ls.group.position.y = ls.pos; }
+  ls.target = clamp(want, lo, OUT_TRIM); ls.pos = ls.target; ls.group.position.y = ls.pos;
   /* how fast the line is travelling in the hand — half-and-half against the
      last frame, so one jittery pose cannot throw the load across the grid.
      This is what the line carries away if the rope is let go of. */
   if(dt > 0) VR.held.vel = VR.held.vel*0.5 + ((ls.pos - was)/dt)*0.5;
-  VR.held.rope.mesh.position.y = VR.held.rope.home.y - clamp(pulled, -0.5, 0.5);
+  VR.held.rope.mesh.position.y = VR.held.grabY - clamp(pulled, -0.5, 0.5);
 }
 
 /* the GO button, pressed with a hand rather than pointed at */

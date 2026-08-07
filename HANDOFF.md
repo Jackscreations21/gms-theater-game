@@ -323,11 +323,44 @@ review caught one real seam bug: the live VR haul still used the flat
 `#15` and `#16` are written to merge in either order: `#16` reaches
 `minTrimOf` only through `typeof` guards.
 
+**Done 2026-08-07, the locking-rail rework (this PR).** The owner sent a
+photograph of a real counterweight locking rail and three asks; all three
+are in:
+
+- **The rail looks like the photograph.** A steel locking rail now stands
+  in FRONT of the rope loops: one beam the length of the hung lines, a
+  kick rail, posts, and — per lineset — a rope-lock housing on top with
+  its red handle facing the flyman, over a painted number plate on the
+  rail's face (`ropePlateTex`, cached in `ROPE_PLATES` so stage walks
+  don't leak canvases; `disposeTree` only ever disposed geometry).
+- **Grab anywhere on the rope.** A squeeze takes the nearest point on
+  EITHER run of any loop, deck to grid (distance-to-segment, radius
+  0.32m), not just the whipped section at hand height — the whipped
+  section now slides to meet the hand. The back run is the other half of
+  the loop, so it hauls in reverse (`VR.held.dir`).
+- **Levers never move on their own.** The old rail toggled a lock when
+  any hand came within 0.11m of the knob — a knuckle mid-haul could
+  throw it — and grabbing a rope silently took its lock off. Both gone.
+  A lever moves ONLY while a hand is squeezed closed on its knob
+  (nearest-wins against the rope, `VR.heldLever`): lean it IN (upright)
+  and the line locks; pull it OUT (toward you, past ~70% of the throw)
+  and the line is RELEASED — and a line released with no lock and no
+  hand on it runs away to the deck, same physics as a let-go rope.
+  Grabbing a rope still arrests a runaway (you have the weight) but no
+  longer touches the lock; hauling against a thrown lock moves nothing,
+  and the hold re-bases while locked so pulling the lever out mid-haul
+  cannot bank the blocked pull and let it fly. Board/desk LOCK is still
+  the same `ls.locked` flag.
+
+Suites 12/12 before and after; the eight new/reworked assertions all fail
+against the pre-change build (negative-checked). What only the headset
+can answer is folded into the step-zero list below.
+
 **NEXT SESSION: the second headset run, then tune.**
 
-**Step zero:** confirm #15/#16/#17 merged (merge them if not — they are
-reviewed and green), then put the owner in the headset on
-`…/the-house.html?v=4` (bump the number: the Quest Browser caches hard)
+**Step zero:** #15/#16/#17 are merged and verified (2026-08-07); confirm
+the locking-rail PR above is too, then put the owner in the headset on
+`…/the-house.html?v=5` (bump the number: the Quest Browser caches hard)
 and collect answers to, in order:
 
 1. **Frame rate** — is 90Hz held now, after the 0.85 scale and the
@@ -335,13 +368,15 @@ and collect answers to, in order:
    in haze, and AT THE PIN RAIL — #16 adds ~7 meshes per hung lineset
    (~77 on a full rail), unbatched draw calls, and that is new since the
    last run.
-2. **The rail itself** — do the loops read as ropes, does the red lever
-   toggle where you slap it (0.11m radius on the knob), does the runaway
-   feel like a load getting away from you or like a glitch, and does the
-   grab still land (0.32m radius, and the lever was deliberately moved
-   to 0.28m out so the two radii don't overlap)? Known cosmetic: the
-   rope runs pass visually THROUGH the fly-gallery floor at y=8 — a real
-   rail has rope slots cut in the fly floor; model holes if it grates.
+2. **The rail itself** — does the locking rail read as the photograph
+   (beam, number plates, red handles facing you)? Does a grab land
+   anywhere you reach on a rope (0.32m to either run, deck to grid)?
+   Does the lever answer only a deliberate closed hand on its knob
+   (0.12m), does pull-out-to-release / push-in-to-lock feel right, and
+   does a line released with nothing on it running away read as a load
+   getting loose rather than a glitch? Known cosmetic: the rope runs
+   pass visually THROUGH the fly-gallery floor at y=8 — a real rail has
+   rope slots cut in the fly floor; model holes if it grates.
 3. **Pointing** — do the desk buttons land where the cursor sits? The
    UV flip (`v: 1 - h.uv.y` in `vrPointAt`) now has a posed-controller
    regression test, but has still never met real hardware.
@@ -355,7 +390,9 @@ still sags, in order of likely win: `VR.beamCap` lower still;
 framebuffer scale below 0.85 (`renderer.xr.setFramebufferScaleFactor`,
 wiring section of p9 — MUST be set before any session exists); thin
 `LIGHT_POOL` (p4); cut `SMOKE.n`; and now also: share/batch the rope
-loop meshes in `vrBuildRopes`, which were built for correctness first.
+loop meshes in `vrBuildRopes`, which were built for correctness first —
+the locking rail added a housing, lever, knob and number plate per line
+on top of the ~7 loop meshes, all unbatched.
 
 Ground rules unchanged: suites green before and after; what jsdom can
 test gets a regression test, what only a headset can verify gets written
