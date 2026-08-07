@@ -393,12 +393,66 @@ fail against the pre-change build. The three branches were also merged
 together locally (any order — they are written independent) and the
 combined build passed 12/12; the per-PR builds did too.
 
+**Done 2026-08-07, the owner's five asks (PRs #25–#29 — open as of this
+writing, check they merged before building on them).** Five one-line
+asks, five PRs, all off `main`, no stacking. #25/#26 by hand; #27/#28/#29
+by three parallel worktree agents, each reviewed line-by-line. Every new
+probe negative-checked; all open branches merged together locally in two
+different orders, rebuilt, 12/12 on the combination:
+
+- **[#25](https://github.com/Jackscreations21/gms-theater-game/pull/25)
+  — all four Arc desks face their operators** (both tech tables, both
+  control rooms): built at yaw π — the same bug #17 fixed on the Palace
+  desk, the same ruling: yaw 0, screen normal up the house.
+- **[#26](https://github.com/Jackscreations21/gms-theater-game/pull/26)
+  — the Arc seats sit on their treads.** They floated exactly 0.96m:
+  rows laid out from `0.4 + i*RISE` against treads that top out at
+  `Y0 + i*RISE + 0.2`. Now on real pedestals (a fourth instanced
+  batch), 1,273 seats across the two houses.
+- **[#27](https://github.com/Jackscreations21/gms-theater-game/pull/27)
+  — the rail starts locked, and the semantics are DECIDED: the lock is
+  the hand's interlock; the board is the flyman.** `flyTo` (cues, group
+  calls, crew, presets) takes a thrown lock off itself, runs the line,
+  relocks on arrival (`ls.relock`); manual hauls still refuse while
+  locked; runaways never relock; a grab — VR or desktop — clears a
+  pending relock, so nothing relocks under a live hand. NOTE FOR THE
+  OWNER: LOCK no longer makes a line refuse cues/group calls — say so
+  if that reads wrong. The seam check earned its keep twice here: the
+  desktop grab was missing the handover the VR grab had, and a lock
+  test crashed on the traveler rope (no lever) only once both branches
+  were merged.
+- **[#28](https://github.com/Jackscreations21/gms-theater-game/pull/28)
+  — the traveler hand line.** A small rope loop just offstage of the
+  arch, stage right, on every stage with a house curtain hung: the
+  front run pulled down slides the curtain OPEN out to both sides, the
+  back run closes it, 2.5m of rope for the full travel. While held it
+  writes `ls.open` AND `ls.travTarget` so the p3 animator never fights
+  the hand; no lock, no runaway — let go and the curtain stays. Board
+  OPEN/CLOSE untouched.
+- **[#29](https://github.com/Jackscreations21/gms-theater-game/pull/29)
+  — the FOH bar.** The six house-front lanterns hang on a steel pipe
+  with drop wires (one `buildRig`, so all three theatres get it),
+  raised and lowered from BOTH boards — a FOH BAR tfoot row on the
+  desktop fly panel, a RAISE/LOWER pair on the VR fly page — 1.2m a
+  press at 0.4 m/s, aims held so the lanterns tilt to keep their
+  focus, per-stage park/restore via the p2k pattern, per-house floor
+  clamp.
+
+New headset questions from this round, for the step-zero list: does
+the locked-at-rest rail read right (all red handles upright until you
+pull one out); does the traveler rope fall to hand at the proscenium
+and does the curtain answer it believably; does the FOH bar read as a
+real position over the stalls, and is watching it travel from the
+stalls comfortable; and at the rail, mind the frame rate again — #28
+adds ~7 meshes per stage and #29 ~9, small but real.
+
 **NEXT SESSION: the headset run, meter in hand.**
 
-**Step zero:** confirm #21/#22/#23 merged (merge them if not — each is
+**Step zero:** confirm #25–#29 merged (merge them if not — each is
 reviewed, green and negative-checked, and they merge clean in any
-order), then put the owner in the headset on `…/the-house.html?v=6`
-(bump the number: the Quest Browser caches hard).
+order; #21–#24 already landed), then put the owner in the headset on
+`…/the-house.html?v=6` (bump the number: the Quest Browser caches
+hard).
 
 **Read the wrist meter and WRITE THE NUMBERS HERE.** The two worst
 cases are unchanged: centre stage under a full rig in haze, and at the
