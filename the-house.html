@@ -13665,7 +13665,11 @@ function vrUpdateHold(dt){
   const want = VR.held.trim0 - pulled * 5.5;
   const ls = VR.held.rope.ls;
   const was = ls.pos;
-  if(!ls.locked){ ls.target = clamp(want, 0.6, OUT_TRIM); ls.pos = ls.target; ls.group.position.y = ls.pos; }
+  /* the hand respects the same deck floor as everything else: goods hang
+     below the pipe, and hauling by hand must not drag them through the
+     stage.  Guarded because minTrimOf arrives on a parallel branch. */
+  const lo = (typeof minTrimOf === 'function') ? minTrimOf(ls) : 0.6;
+  if(!ls.locked){ ls.target = clamp(want, lo, OUT_TRIM); ls.pos = ls.target; ls.group.position.y = ls.pos; }
   /* how fast the line is travelling in the hand — half-and-half against the
      last frame, so one jittery pose cannot throw the load across the grid.
      This is what the line carries away if the rope is let go of. */

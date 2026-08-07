@@ -575,6 +575,27 @@ const probe = `
            'm and stopped';
   });
 
+  P('the hand itself cannot drag a line through the deck', ()=>{
+    goToView(3);
+    vrBuildRopes();
+    const r = VR.ropes[0], ls = r.ls;
+    flyOut(ls); run(700, 0.05);
+    const c = takeHold(r, 0);
+    if(!VR.held) throw new Error('the hand did not take hold of it');
+    c.position.y -= 8;                 // an impossible single pull — 44m of line
+    c.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    const lo = floorOf(ls);
+    if(ls.pos < lo - 1e-6)
+      throw new Error('the hand dragged it to ' + ls.pos.toFixed(2) +
+                      'm, under the floor of ' + lo.toFixed(2) + 'm');
+    throwLever(r);                     // hold it, let go, and leave the rail tidy
+    vrSqueeze(0, false);
+    vrRopeLock(r, false);
+    flyOut(ls); run(700, 0.05);
+    return 'a full-arm yank stopped at the floor of ' + lo.toFixed(2) + 'm';
+  });
+
   P('let go while hauling out and it slows, stops and comes back down', ()=>{
     goToView(3);
     vrBuildRopes();
