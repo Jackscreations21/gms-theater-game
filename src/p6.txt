@@ -544,6 +544,7 @@ function buildFlyUI(){
     syncFlyRow(ls);
   });
   buildFohBarUI();
+  buildSpkBarUI();
 }
 /* ---- the FOH bar row ----------------------------------------------------
    The bar over the stalls is rail furniture, not a lineset, so it lives in a
@@ -587,6 +588,50 @@ function syncFohBarRow(){
   fohBarUI.ht.textContent = b.y.toFixed(1)+'m';
   fohBarUI.dot.className = 'dot '+(Math.abs(b.target - b.y) > 0.004 ? 'mv' : '');
 }
+/* ---- the speaker bar rows — same tfoot, same rules as the FOH row:
+   read the global at click time, cache nothing per-stage on the DOM     */
+let spkBarUI = null;
+function buildSpkBarUI(){
+  const table = $('#lsTable'); if(!table || spkBarUI) return;
+  const tf = table.querySelector('tfoot'); if(!tf) return;   // the FOH row built it
+  spkBarUI = {};
+  [['L','SPK BAR L'],['R','SPK BAR R']].forEach(pair=>{
+    const side = pair[0];
+    const tr = document.createElement('tr'); tr.className = 'spkbar '+side.toLowerCase();
+    tr.innerHTML =
+      '<td style="color:var(--amber)">S'+side+'</td>'+
+      '<td class="mini">'+pair[1]+'</td>'+
+      '<td class="goods">3 &times; PA box</td>'+
+      '<td><div class="pipbar"><i></i></div></td>'+
+      '<td class="mini ht"></td>'+
+      '<td class="mini"></td>'+
+      '<td><span class="dot"></span></td>'+
+      '<td></td>';
+    const cell = tr.lastElementChild;
+    const mk = (t,fn)=>{
+      const b = document.createElement('button'); b.className = 'b';
+      b.style.padding = '2px 6px'; b.style.fontSize = '10px'; b.textContent = t;
+      b.addEventListener('click', e=>{ e.stopPropagation(); fn(); syncSpkBarRows(); });
+      cell.appendChild(b); return b;
+    };
+    mk('LOWER', ()=>spkBarStep(side,-1));
+    mk('RAISE', ()=>spkBarStep(side,1));
+    spkBarUI[side] = { bar:tr.querySelector('.pipbar i'), ht:tr.querySelector('.ht'),
+                       dot:tr.querySelector('.dot') };
+    tf.appendChild(tr);
+  });
+  syncSpkBarRows();
+}
+function syncSpkBarRows(){
+  if(!spkBarUI || !SPKBARS) return;
+  for(const side in spkBarUI){
+    const b = SPKBARS[side], ui = spkBarUI[side]; if(!b) continue;
+    const pct = clamp((b.y - b.min)/Math.max(0.01, b.max - b.min), 0, 1);
+    ui.bar.style.width = (pct*100).toFixed(1)+'%';
+    ui.ht.textContent = b.y.toFixed(1)+'m';
+    ui.dot.className = 'dot '+(Math.abs(b.target - b.y) > 0.004 ? 'mv' : '');
+  }
+}
 function syncFlyRow(ls){
   const u = ls.ui; if(!u) return;
   const pct = clamp((ls.pos-0.6)/(OUT_TRIM-0.6), 0, 1);
@@ -603,7 +648,7 @@ function syncFlyRow(ls){
   if(trav) u.trav.textContent = ls.travTarget > .5 ? 'CLOSE' : 'OPEN';
   u.row.classList.toggle('sel', ls === selLineset);
 }
-function syncFlyUI(){ FLY.forEach(syncFlyRow); syncFohBarRow(); }
+function syncFlyUI(){ FLY.forEach(syncFlyRow); syncFohBarRow(); syncSpkBarRows(); }
 /* kept for the callers that change what's hanging */
 function refreshFlyUI(){
   const tb = $('#lsTable tbody');

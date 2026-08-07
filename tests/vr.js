@@ -514,6 +514,23 @@ const probe = `
     return 'bar '+y0.toFixed(2)+'m, down 1.2 and home again, six lanterns riding';
   });
 
+  P('the speaker bars are on the VR fly page', ()=>{
+    VR.page = 'fly'; vrDrawConsole(true);
+    if(typeof SPKBARS === 'undefined' || !SPKBARS) throw new Error('no speaker bars');
+    const lRaise = VR.hits.find(h=>h.w === 116 && h.h === 46 && h.y === 86 + 312);
+    const lLower = VR.hits.find(h=>h.w === 116 && h.h === 46 && h.y === 86 + 366);
+    const rRaise = VR.hits.find(h=>h.w === 116 && h.h === 46 && h.y === 86 + 448);
+    const rLower = VR.hits.find(h=>h.w === 116 && h.h === 46 && h.y === 86 + 502);
+    if(!lRaise || !lLower || !rRaise || !rLower) throw new Error('missing RAISE/LOWER pairs');
+    const y0 = SPKBARS.R.y;
+    rLower.fn();
+    for(let i=0;i<120;i++) updateRig(0.05, 1);
+    if(!(SPKBARS.R.y < y0 - 1.0)) throw new Error('R LOWER left the bar at '+SPKBARS.R.y.toFixed(2));
+    SPKBARS.R.target = SPKBARS.R.max;
+    for(let i=0;i<400;i++) updateRig(0.05, 1);
+    return 'VR pairs wired';
+  });
+
   P('the desk shows the board of the room it is in', ()=>{
     goToView(15);
     vrDrawConsole(true);

@@ -47,6 +47,58 @@ const probe = `
     .find(b=>b.textContent === text);
   const click = el=>{ const e = new window.MouseEvent('click', {bubbles:true}); el.dispatchEvent(e); };
 
+  console.log('--- speaker bars ---');
+  P('every stage hangs an L+R speaker pair', ()=>{
+    goToView(3);
+    if(typeof SPKBARS === 'undefined' || !SPKBARS || !SPKBARS.L || !SPKBARS.R)
+      throw new Error('no speaker bars at the palace');
+    const pal = SPKBARS;
+    goToView(15);
+    if(!SPKBARS || SPKBARS === pal) throw new Error('two stages share one speaker pair');
+    goToView(3);
+    if(SPKBARS !== pal) throw new Error('the palace pair did not come back');
+    return 'per-stage pairs';
+  });
+  P('a parked pair does not move', ()=>{
+    goToView(3);
+    const pal = SPKBARS;
+    spkBarStep('L', -1);
+    goToView(15);
+    const y0 = pal.L.y;
+    for(let i=0;i<60;i++) updateRig(0.05, 1);
+    if(pal.L.y !== y0) throw new Error('the parked palace bar moved on its own');
+    goToView(3);
+    for(let i=0;i<60;i++) updateRig(0.05, 1);
+    if(!(SPKBARS.L.y < SPKBARS.L.max - 0.5)) throw new Error('the live bar never travelled');
+    SPKBARS.L.target = SPKBARS.L.max;
+    for(let i=0;i<400;i++) updateRig(0.05, 1);
+    return 'parked holds, live travels';
+  });
+  P('speaker boxes come to hand at the bottom of travel', ()=>{
+    goToView(3);
+    const b = SPKBARS.L;
+    const floor = houseFloorY(b.z);
+    // three boxes hang to 1.24m + half a box below the pipe
+    const lowestBox = b.min - 1.24 - 0.21;
+    if(lowestBox - floor > 1.8) throw new Error('lowest box stops '+(lowestBox-floor).toFixed(2)+'m up');
+    if(b.wires[0].scale.y < 1) throw new Error('no drop wires');
+    return 'boxes reach '+(lowestBox-floor).toFixed(2)+'m';
+  });
+  P('the desktop rows drive the bars', ()=>{
+    goToView(3);
+    buildFlyUI();
+    const spkRows = Array.prototype.slice.call(document.querySelectorAll('#lsTable tfoot tr.spkbar'));
+    if(spkRows.length !== 2) throw new Error(spkRows.length+' spkbar rows, wanted 2');
+    const btn = Array.prototype.slice.call(spkRows[0].querySelectorAll('button')).find(b=>b.textContent==='LOWER');
+    if(!btn) throw new Error('no LOWER on the L row');
+    const y0 = SPKBARS.L.target;
+    btn.dispatchEvent(new window.MouseEvent('click', {bubbles:true}));
+    if(!(SPKBARS.L.target < y0)) throw new Error('the click moved nothing');
+    SPKBARS.L.target = SPKBARS.L.max;
+    for(let i=0;i<400;i++) updateRig(0.05, 1);
+    return 'rows wired';
+  });
+
   P('every lineset on every stage wakes up locked off', ()=>{
     /* a counterweight rail at rest is locked off — all three stages boot
        with every lock thrown, before anything has been called */

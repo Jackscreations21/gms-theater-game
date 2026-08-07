@@ -349,6 +349,24 @@ function fohBarStep(s){
   return fohBarTo(FOHBAR.target + s*FOH_BAR_STEP);
 }
 
+/* ---- the speaker bars ----------------------------------------------------
+   L+R flown PA beside the arch, one pair per stage — the FOH bar pattern
+   run twice: same pose math (fohBarPose is shape-generic), same park in
+   p2k, same two boards.  A var for the same reason FOHBAR is.            */
+var SPKBARS = null;
+const SPK_BAR_SPEED = 0.4;
+const SPK_BAR_STEP  = 1.2;
+function spkBarTo(side, y){
+  if(!SPKBARS || !SPKBARS[side]) return false;
+  const b = SPKBARS[side];
+  b.target = clamp(y, b.min, b.max);
+  return true;
+}
+function spkBarStep(side, s){
+  if(!SPKBARS || !SPKBARS[side]) return false;
+  return spkBarTo(side, SPKBARS[side].target + s*SPK_BAR_STEP);
+}
+
 function buildRig(){
   const V = (x,y,z)=>new T.Vector3(x,y,z);
   // 1-6  FRONT OF HOUSE — six profiles on a raisable bar under the first
@@ -393,6 +411,39 @@ function buildRig(){
       bar.add(f.group);                      // ride the bar, not the rigGroup
       f.group.position.set(x, -0.45, 0);
     }
+  }
+  // L+R SPEAKER ARRAYS — three boxes on a short pipe each side of the arch.
+  // Stage-local coordinates, parented to the bar so travel carries them.
+  {
+    const sy = 9.4, sz = 2.8;
+    SPKBARS = {};
+    [['L',-(D.procW/2+1.6)],['R',D.procW/2+1.6]].forEach(pair=>{
+      const side = pair[0], sx = pair[1];
+      const bar = new T.Group();
+      bar.position.set(sx, sy, sz); rigGroup.add(bar);
+      const pipe = new T.Mesh(new T.CylinderGeometry(.05,.05,1.4,8), M.pipe);
+      pipe.rotation.z = Math.PI/2; bar.add(pipe);
+      const wires = [];
+      [-0.6, 0.6].forEach(wx=>{
+        const wr = new T.Mesh(new T.CylinderGeometry(.012,.012,1,4), M.steel);
+        wr.position.x = wx; bar.add(wr); wires.push(wr);
+      });
+      for(let i=0;i<3;i++){
+        const by = -.32 - i*.46;
+        const box = new T.Mesh(new T.BoxGeometry(.56,.42,.5), M.fixture);
+        box.position.y = by; bar.add(box);
+        const grille = new T.Mesh(new T.PlaneGeometry(.5,.36),
+          new T.MeshBasicMaterial({color:0x101010}));
+        grille.position.set(0, by, .251); bar.add(grille);
+      }
+      SPKBARS[side] = {
+        y:sy, target:sy, max:sy,
+        min:houseFloorY(sz) + 2.9,          // lowest box at chest height
+        z:sz, wireTop:D.coveY,              // the cove band is overhead here, not the flat ceiling
+        group:bar, wires:wires
+      };
+      fohBarPose(SPKBARS[side]);
+    });
   }
   // 7-8 BOX BOOMS — in the arched niches beside the proscenium
   [-1,1].forEach(s=>{
@@ -473,6 +524,13 @@ function updateRig(dt, t){
   if(FOHBAR && FOHBAR.y !== FOHBAR.target){
     FOHBAR.y += clamp(FOHBAR.target - FOHBAR.y, -FOH_BAR_SPEED*dt, FOH_BAR_SPEED*dt);
     fohBarPose(FOHBAR);
+  }
+  if(SPKBARS) for(const k in SPKBARS){
+    const b = SPKBARS[k];
+    if(b.y !== b.target){
+      b.y += clamp(b.target - b.y, -SPK_BAR_SPEED*dt, SPK_BAR_SPEED*dt);
+      fohBarPose(b);
+    }
   }
   for(const f of FIXTURES){
     // electrics carry their fixtures

@@ -534,6 +534,24 @@ function vrPageFly(g, P){
     g.font = '600 17px Helvetica, Arial, sans-serif';
     g.fillText(FOHBAR.y.toFixed(1) + 'm', bx, P.y + 260);
   }
+  if(typeof SPKBARS !== 'undefined' && SPKBARS){ // typeof: this p9 chunk may land without its p4 chunk in a cross-branch merge
+    const bx = P.x + P.w - 120;
+    g.fillStyle = '#8f9aa7';
+    g.font = '600 15px Helvetica, Arial, sans-serif';
+    g.textBaseline = 'middle';
+    g.fillText('SPK L  ' + SPKBARS.L.y.toFixed(1) + 'm', bx, P.y + 300);
+    vrBtnBox(g, bx, P.y + 312, 116, 46, 'RAISE',
+             ()=>{ spkBarStep('L',1); vrDrawConsole(true); });
+    vrBtnBox(g, bx, P.y + 366, 116, 46, 'LOWER',
+             ()=>{ spkBarStep('L',-1); vrDrawConsole(true); });
+    g.fillStyle = '#8f9aa7';
+    g.font = '600 15px Helvetica, Arial, sans-serif';
+    g.fillText('SPK R  ' + SPKBARS.R.y.toFixed(1) + 'm', bx, P.y + 436);
+    vrBtnBox(g, bx, P.y + 448, 116, 46, 'RAISE',
+             ()=>{ spkBarStep('R',1); vrDrawConsole(true); });
+    vrBtnBox(g, bx, P.y + 502, 116, 46, 'LOWER',
+             ()=>{ spkBarStep('R',-1); vrDrawConsole(true); });
+  }
 }
 /* --------------------------------------------------------------- SHOWS */
 function vrPageShows(g, P){
