@@ -205,7 +205,9 @@ const probe = `
     flyIn(ls);  run(900, 0.05); syncFlyUI();
     const inTxt = rows()[3].querySelector('.ht').textContent;
     if(outTxt === inTxt) throw new Error('the readout says '+inTxt+' either way');
-    if(Math.abs(parseFloat(inTxt) - ls.pos) > 0.15)
+    /* the glass reads ft-in (build-feel RULING S): compare the STRING the
+       formatter makes of the model — never parse the display back */
+    if(inTxt !== ftIn(ls.pos))
       throw new Error('the readout says '+inTxt+' and it is at '+ls.pos.toFixed(2));
     return 'reads '+outTxt+' out and '+inTxt+' in';
   });

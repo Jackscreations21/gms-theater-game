@@ -572,7 +572,7 @@ function vrPageFly(g, P){
     g.fillText(spec ? spec.label : ls.goodsKey, P.x + 62, y + rowH/2 - 2);
     vrBar(g, P.x + 420, y + 12, 260, 16, (ls.pos - 0.6)/(OUT_TRIM - 0.6), '#ffb347');
     g.fillStyle = '#8f9aa7';
-    g.fillText(ls.pos.toFixed(1) + 'm', P.x + 700, y + rowH/2 - 2);
+    g.fillText(ftIn(ls.pos), P.x + 700, y + rowH/2 - 2);
     vrBtnBox(g, P.x + 790, y + 3, 84, rowH - 10, 'IN',
              ((l)=>()=>{ flyIn(l); vrDrawConsole(true); })(ls));
     vrBtnBox(g, P.x + 882, y + 3, 84, rowH - 10, 'OUT',
@@ -598,21 +598,21 @@ function vrPageFly(g, P){
              ()=>{ fohBarStep(-1); vrDrawConsole(true); });
     g.fillStyle = '#8f9aa7';
     g.font = '600 17px Helvetica, Arial, sans-serif';
-    g.fillText(FOHBAR.y.toFixed(1) + 'm', bx, P.y + 260);
+    g.fillText(ftIn(FOHBAR.y), bx, P.y + 260);
   }
   if(typeof SPKBARS !== 'undefined' && SPKBARS){ // typeof: this p9 chunk may land without its p4 chunk in a cross-branch merge
     const bx = P.x + P.w - 120;
     g.fillStyle = '#8f9aa7';
     g.font = '600 15px Helvetica, Arial, sans-serif';
     g.textBaseline = 'middle';
-    g.fillText('SPK L  ' + SPKBARS.L.y.toFixed(1) + 'm', bx, P.y + 300);
+    g.fillText('SPK L  ' + ftIn(SPKBARS.L.y), bx, P.y + 300);
     vrBtnBox(g, bx, P.y + 312, 116, 46, 'RAISE',
              ()=>{ spkBarStep('L',1); vrDrawConsole(true); });
     vrBtnBox(g, bx, P.y + 366, 116, 46, 'LOWER',
              ()=>{ spkBarStep('L',-1); vrDrawConsole(true); });
     g.fillStyle = '#8f9aa7';
     g.font = '600 15px Helvetica, Arial, sans-serif';
-    g.fillText('SPK R  ' + SPKBARS.R.y.toFixed(1) + 'm', bx, P.y + 436);
+    g.fillText('SPK R  ' + ftIn(SPKBARS.R.y), bx, P.y + 436);
     vrBtnBox(g, bx, P.y + 448, 116, 46, 'RAISE',
              ()=>{ spkBarStep('R',1); vrDrawConsole(true); });
     vrBtnBox(g, bx, P.y + 502, 116, 46, 'LOWER',

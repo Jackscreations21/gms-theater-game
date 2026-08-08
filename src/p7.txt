@@ -207,7 +207,7 @@ function haul(dy){
   syncFlyRow(ls);
 }
 function releaseLineset(){
-  if(flyDrag){ toast('Lineset '+flyDrag.id+' set at '+flyDrag.target.toFixed(1)+' m'); flyDrag = null; }
+  if(flyDrag){ toast('Lineset '+flyDrag.id+' set at '+ftIn(flyDrag.target)); flyDrag = null; }
 }
 
 /* orbit drag */
@@ -800,7 +800,7 @@ function refreshShowUI(){
     ? 'rain '+Math.round(SHOW.rain.target*100)+'%<br>storm '+(SHOW.stormOn?'running':'off')+
       '<br>fire '+(SHOW.fire ? Math.round(SHOW.fire.level*100)+'%' : 'none')+
       '<br>firelight '+(SHOW.flicker?'on':'off')+
-      '<br>bars in '+SHOW.gymIn.toFixed(1)+'m'
+      '<br>bars in '+ftIn(SHOW.gymIn)
     : 'load a show first';
 }
 $('#showLoadBtn') && ($('#showLoadBtn').onclick = ()=>{

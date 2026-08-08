@@ -63,6 +63,32 @@ const probe = `
       throw new Error('the board does not show the locks');
     return FLY.length+' linesets locked off at rest';
   });
+  P('the board reads in feet and inches', ()=>{
+    /* build-feel RULING S: the glass reads ft-in; the bones stay metric */
+    /* the probe rides a template literal, so the regex is built from a
+       doubled-backslash string — a literal /\d/ would lose its backslash */
+    const ftin = new RegExp("^\\\\d+'\\\\d+\\"$");
+    syncFlyRow(FLY[2]);
+    const ht = document.querySelectorAll('#lsTable tbody tr')[2].querySelector('.ht');
+    if(!ftin.test(ht.textContent))
+      throw new Error('a fly row height reads "'+ht.textContent+'"');
+    if(typeof syncFohBarRow === 'function'){
+      syncFohBarRow();
+      const fh = document.querySelector('#lsTable tfoot tr.fohbar .ht');
+      if(fh && !ftin.test(fh.textContent))
+        throw new Error('the FOH row reads "'+fh.textContent+'"');
+    }
+    if(typeof syncSpkBarRows === 'function'){
+      syncSpkBarRows();
+      const sh = document.querySelector('#lsTable tfoot tr.spkbar .ht');
+      if(sh && !ftin.test(sh.textContent))
+        throw new Error('a SPK row reads "'+sh.textContent+'"');
+    }
+    /* and the model underneath is still metres: OUT_TRIM is a number of
+       metres every invariant in the handoff is written against */
+    if(OUT_TRIM < 10 || OUT_TRIM > 40) throw new Error('OUT_TRIM moved: '+OUT_TRIM);
+    return 'rows read like a tape: '+ht.textContent;
+  });
   P('button node survives 60 UI ticks', ()=>{
     const first = document.querySelector('#lsTable tbody tr button');
     for(let i=0;i<60;i++){ const cb=window.__raf; window.__raf=null; if(cb) cb(Date.now()+i*16); }
@@ -175,8 +201,10 @@ const probe = `
     if(Math.abs(FOHBAR.y - FOHBAR.max) > 0.01)
       throw new Error('RAISE left the bar at '+FOHBAR.y.toFixed(2));
     syncFlyUI();
+    /* the glass reads ft-in now (build-feel RULING S): compare the STRING
+       the formatter makes of the model — never parse the display back */
     const txt = row.querySelector('.ht').textContent;
-    if(Math.abs(parseFloat(txt) - FOHBAR.y) > 0.15)
+    if(txt !== ftIn(FOHBAR.y))
       throw new Error('the readout says '+txt+' and the bar is at '+FOHBAR.y.toFixed(2));
     return 'home at '+txt;
   });
