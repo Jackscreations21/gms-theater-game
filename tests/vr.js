@@ -66,8 +66,8 @@ const probe = `
   /* pretend a headset is on: the runtime fires sessionstart, and the sticks
      come off a fake input source */
   const sticks = {left:[0,0,0,0], right:[0,0,0,0]};
-  const btns = {left:  [0,1,2,3,4].map(()=>({pressed:false})),
-                right: [0,1,2,3,4].map(()=>({pressed:false}))};
+  const btns = {left:  [0,1,2,3,4,5].map(()=>({pressed:false})),
+                right: [0,1,2,3,4,5].map(()=>({pressed:false}))};
   const enterVR = ()=>{
     renderer.xr._session = {
       inputSources: [
@@ -1716,6 +1716,45 @@ const probe = `
     vrSqueeze(0, false);
     BODIES.splice(BODIES.indexOf(b), 1);
     return 'on the grid bare-handed, free under X';
+  });
+  P('Y parks the piece exactly where it is, and a grab frees it', ()=>{
+    /* build-feel RULING N: Y while wood is in hand releases it FROZEN —
+       exact pose, mid-air included, never settles, grab to unfreeze */
+    /* fail BEFORE touching shared state, so a pre-change run cannot strand
+       a held piece and cascade into later tests */
+    if(typeof vrButtonFreeze !== 'function') throw new Error('vrButtonFreeze is not defined');
+    const b = regWood('s2x4');
+    b.mesh.rotation.set(0, 0, Math.PI/2);
+    b.mesh.position.set(4, 1.5, 2.0);
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(5.21, 1.5, 2.0);
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body' || VR.held.body !== b)
+      throw new Error('not taken: '+(VR.held && VR.held.kind));
+    vrUpdateHold(0.016);
+    scene.updateMatrixWorld(true);
+    const pose = b.mesh.position.clone(), quat = b.mesh.quaternion.clone();
+    btns.left[5].pressed = true;
+    vrButtonFreeze();
+    btns.left[5].pressed = false;
+    vrButtonFreeze();
+    if(VR.held) throw new Error('Y did not open the hand');
+    if(!b.frozen || b.state !== 'loose')
+      throw new Error('not parked: frozen='+b.frozen+' state='+b.state);
+    for(let i = 0; i < 80; i++) updateBodies(0.05);
+    if(b.mesh.position.distanceTo(pose) > 1e-4 ||
+       Math.abs(b.mesh.quaternion.dot(quat)) < 0.9999)
+      throw new Error('the parked piece moved: y='+b.mesh.position.y.toFixed(2));
+    /* the grab takes the park off */
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.body !== b) throw new Error('could not regrab it');
+    if(b.frozen) throw new Error('still frozen in the hand');
+    vrSqueeze(0, false);
+    BODIES.splice(BODIES.indexOf(b), 1);
+    return 'parked mid-air at its angle, freed by the grab';
   });
   P('the work table is a handful at its edge, and carries in the hand', ()=>{
     /* the owner's report: "I can't move the work table."  The old grab

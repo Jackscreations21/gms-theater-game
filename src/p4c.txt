@@ -139,6 +139,8 @@ function newAsm(venue){
 }
 function asmAdopt(a, b){
   if(b.state === 'slotted') unslotBody(b);
+  delete b.frozen;   // nailed work is the assembly's story: hammering it
+                     // apart later gives ordinary loose wood, not a float
   a.root.attach(b.mesh);
   b.state = 'fixed'; b.asm = a;
   if(a.pieces.indexOf(b) < 0) a.pieces.push(b);
@@ -937,6 +939,7 @@ function serBody(b){
   if(b.color !== undefined) d.c = b.color;
   if(b.kind === 'wood') d.paint = b.mesh.material.map(m=>m.color.getHex());
   if(b.tick) d.tick = [b.tick.p.x, b.tick.p.y, b.tick.p.z];
+  if(b.frozen) d.fz = 1;                    // parked in place (RULING N)
   return d;
 }
 function makeSerBody(d, venue){
@@ -952,6 +955,7 @@ function makeSerBody(d, venue){
     b.state = 'loose';
   }
   if(d.tick) b.tick = {p:new T.Vector3(d.tick[0], d.tick[1], d.tick[2])};
+  if(d.fz) b.frozen = true;
   BUILD_VENUE = keep;
   return b;
 }
