@@ -1548,6 +1548,113 @@ const probe = `
     return 'held like a cart, forks on the stick';
   });
 
+  console.log('--- vr: the belt ---');
+  P('the belt rides the hips, and a squeeze at the hip draws the gun', ()=>{
+    enterVR();
+    goToView(3);
+    VR.rig.position.set(0,0,0); VR.rig.rotation.set(0,0,0);
+    camera.position.set(0, 1.7, 1.5); camera.quaternion.set(0,0,0,1);
+    if(!VR.belt) throw new Error('no belt came with the session');
+    vrUpdateBelt();
+    VR.rig.updateMatrixWorld(true);
+    const hp = VR.holsters.nailgun.getWorldPosition(new THREE.Vector3());
+    if(Math.abs(hp.y - (1.7 - 0.72)) > 0.05) throw new Error('the belt is at y='+hp.y.toFixed(2));
+    const c = VR.controllers[1];
+    c.quaternion.set(0,0,0,1);
+    c.position.copy(hp);
+    c.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    if(VR.tools[1] !== 'nailgun') throw new Error('the holster did not give up the gun: '+VR.tools[1]);
+    if(VR.toolMesh.nailgun.parent !== c) throw new Error('drawn but not in the hand');
+    vrSqueeze(1, false);
+    if(VR.tools[1]) throw new Error('the open hand kept the tool');
+    if(VR.toolMesh.nailgun.parent !== VR.holsters.nailgun) throw new Error('never went home');
+    return 'drawn at the hip, holstered on release';
+  });
+  P('gun nails a lined-up stud; the hammer pulls it back out', ()=>{
+    const tgt = regWood('s2x4'), held = regWood('s2x4');
+    tgt.mesh.position.set(0.5, 1.22, -0.6);
+    held.mesh.position.set(1.4, 1.22, -0.6);
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0], c1 = VR.controllers[1];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(1.4, 1.22, -0.6);
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body' || VR.held.body !== held)
+      throw new Error('the stud was not taken: '+(VR.held && VR.held.kind));
+    /* offer it against the other stud: the ghost snap engages in the hold */
+    c0.position.set(0.58, 1.22, -0.6);
+    c0.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    if(!VR.snap || !VR.snap.target || VR.snap.target.body !== tgt)
+      throw new Error('no joint offered');
+    /* the other hand draws the gun and fires into it */
+    vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
+    c1.position.copy(VR.holsters.nailgun.getWorldPosition(new THREE.Vector3()));
+    c1.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    c1.position.set(0.55, 1.2, -0.55);
+    c1.updateMatrixWorld(true);
+    const asmBefore = ASSEMBLIES.length;
+    vrSelect(1, true);
+    if(ASSEMBLIES.length !== asmBefore + 1) throw new Error('the shot never joined them');
+    if(VR.held) throw new Error('the nailed piece is still in the hand');
+    if(held.state !== 'fixed' || tgt.state !== 'fixed') throw new Error('states: '+held.state+'/'+tgt.state);
+    const asm = held.asm, nail = asm.nails[0];
+    vrSqueeze(0, false);
+    vrSqueeze(1, false);                       // gun home
+    /* the hammer, on the nail's head */
+    c1.position.copy(VR.holsters.hammer.getWorldPosition(new THREE.Vector3()));
+    c1.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    if(VR.tools[1] !== 'hammer') throw new Error('the hammer never drew: '+VR.tools[1]);
+    c1.position.copy(nail.mesh.getWorldPosition(new THREE.Vector3()));
+    c1.updateMatrixWorld(true);
+    vrSelect(1, true);
+    if(ASSEMBLIES.indexOf(asm) >= 0) throw new Error('the assembly survived its only nail');
+    if(held.state !== 'loose' || tgt.state !== 'loose') throw new Error('never came loose');
+    vrSqueeze(1, false);
+    return 'joined by the gun, parted by the hammer';
+  });
+  P('the tape stretches to a hand and marks the wood', ()=>{
+    const c0 = VR.controllers[0], c1 = VR.controllers[1];
+    vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
+    c0.position.copy(VR.holsters.tape.getWorldPosition(new THREE.Vector3()));
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(VR.tools[0] !== 'tape') throw new Error('the tape never drew');
+    c0.position.set(0, 1.2, -0.6); c0.updateMatrixWorld(true);
+    const tab = VR.toolMesh.tape.getWorldPosition(new THREE.Vector3());
+    c1.position.copy(tab); c1.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    if(!VR.held || VR.held.kind !== 'tapetab') throw new Error('the tab was not taken');
+    c1.position.set(0.61, 1.2, -0.6); c1.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    if(Math.abs(VR.held.len - 0.61) > 0.12) throw new Error('the tape reads '+VR.held.len);
+    /* trigger on the tape hand: a pencil tick on the wood nearest the tab
+       (two loose studs stand together here — either may take the mark) */
+    scene.updateMatrixWorld(true);
+    vrSelect(0, true);
+    if(!BODIES.some(b=>b.kind==='wood' && b.tick)) throw new Error('no mark on the wood');
+    vrSqueeze(1, false);
+    vrSqueeze(0, false);
+    if(VR.tapeLn && VR.tapeLn.visible) throw new Error('the line outlived the hold');
+    return 'stretched, read in ft-in, marked';
+  });
+  P('a session end holsters everything', ()=>{
+    const c0 = VR.controllers[0];
+    vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
+    c0.position.copy(VR.holsters.nailgun.getWorldPosition(new THREE.Vector3()));
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(VR.tools[0] !== 'nailgun') throw new Error('setup: no gun');
+    exitVR();
+    if(VR.tools[0]) throw new Error('the session ended with a tool in hand');
+    if(VR.toolMesh.nailgun.parent !== VR.holsters.nailgun) throw new Error('the gun never went home');
+    return 'tools home, snap cleared';
+  });
+
   console.log('--- vr: bodies ---');
   P('a squeeze takes a lantern off its pipe, and the channel dies in the hand', ()=>{
     enterVR();

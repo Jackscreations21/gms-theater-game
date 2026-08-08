@@ -3860,9 +3860,12 @@ function inTrimOf(ls){
 function minTrimOf(ls){
   // the pipe may only come down until what hangs on it kisses the deck —
   // but never above the goods' own working trim: the house curtain is CUT
-  // to puddle (h 13.0, trim 12.6) and must still make its trim
-  const h = (ls.h || 0) + 0.05;
-  return clamp(Math.min(h, inTrimOf(ls)), 0.6, OUT_TRIM);
+  // to puddle (h 13.0, trim 12.6) and must still make its trim.  ls.asmH
+  // is anything BUILT and nailed to this pipe (p4c asmHangDepth): a flown
+  // flat gets the same floor the cloth gets.
+  const goods = Math.min((ls.h || 0) + 0.05, inTrimOf(ls));
+  const built = ls.asmH ? ls.asmH + 0.05 : 0;
+  return clamp(Math.max(goods, built), 0.6, OUT_TRIM);
 }
 function flyTo(ls, y, instant){
   /* the board is the flyman: a thrown lock does not refuse it.  It takes the
@@ -4312,12 +4315,17 @@ function updateBodies(dt){
   const inHand = (typeof VR !== 'undefined' && VR && VR.held && VR.held.kind === 'body')
     ? VR.held.body : null;
   for(const b of BODIES){
-    if(b.state === 'held' && b !== inHand) b.state = 'loose';
+    if(b.state === 'held' && b !== inHand){
+      b.state = 'loose';
+      /* a cold drop (session end, stage walk): wood still lies flat */
+      if(b.kind === 'wood' && b.restH === undefined && typeof woodRestH === 'function')
+        b.restH = woodRestH(b);
+    }
     if(b.state !== 'loose') continue;
     b.mesh.getWorldPosition(_bodyV);
     const g = (typeof groundAt === 'function') ? groundAt(_bodyV.x, _bodyV.z, _bodyV.y + 0.5) : 0;
     if(g === null) continue;
-    const want = g + 0.25;
+    const want = g + (b.restH !== undefined ? b.restH : 0.25);
     /* both venue roots stand at y=0 unrotated, so local y IS world y */
     if(Math.abs(_bodyV.y - want) > 0.005)
       b.mesh.position.y += clamp(want - _bodyV.y, -3*dt, 3*dt);
@@ -4891,6 +4899,308 @@ function venueBuildCount(v){
   let n = 0;
   for(const b of BODIES) if(b.venue === v && BUILD_KINDS[b.kind]) n++;
   return n;
+}
+
+/* ============================================================================
+   ASSEMBLIES & NAILS (PR 3, spec §5, RULING G).  An assembly is DATA: a
+   root Group at the venue root, a list of member pieces, and a list of
+   nails.  Per piece, the nail count decides the constraint — exactly one
+   nail and the piece rides a PIVOT group at that nail (swing it by hand);
+   two or more and it is a plain child of the root, rigid.  Nothing ever
+   falls or detaches on its own: the hammer (removeNail) is the only way
+   apart.  Anchors: a 'deck' nail pins the root where it stands; a 'pipe'
+   nail hangs the root off a lineset's group so it FLIES — and tells p3's
+   minTrimOf how deep it hangs, so nothing built goes through the deck.
+   ========================================================================== */
+var ASSEMBLIES = [];
+var ASM_SEQ = 1;
+const _av = new T.Vector3(), _av2 = new T.Vector3(), _av3 = new T.Vector3();
+const _aq = new T.Quaternion(), _aq2 = new T.Quaternion();
+const _ae = new T.Euler();
+const _abox = new T.Box3();
+const NAILG = new T.CylinderGeometry(0.016, 0.006, 0.05, 6);   // head down to point
+function makeNailMesh(){
+  const m = new T.Mesh(NAILG, M.steel);
+  m.userData.nail = true;
+  return m;
+}
+function newAsm(venue){
+  const root = new T.Group();
+  root.userData.moves = true;
+  venueRoot(venue).add(root);
+  const a = {id:ASM_SEQ++, venue, root, pieces:[], nails:[], anchor:null};
+  ASSEMBLIES.push(a);
+  return a;
+}
+function asmAdopt(a, b){
+  if(b.state === 'slotted') unslotBody(b);
+  a.root.attach(b.mesh);
+  b.state = 'fixed'; b.asm = a;
+  if(a.pieces.indexOf(b) < 0) a.pieces.push(b);
+}
+function asmMerge(a, o){
+  for(const p of o.pieces){ a.root.attach(p.mesh); p.asm = a; a.pieces.push(p); }
+  for(const n of o.nails){ a.root.attach(n.mesh); n.asm = a; a.nails.push(n); }
+  if(o.anchor && !a.anchor){
+    a.anchor = o.anchor;
+    if(o.anchor.type === 'pipe') o.anchor.ls.group.attach(a.root);
+  }
+  o.root.parent.remove(o.root);
+  ASSEMBLIES.splice(ASSEMBLIES.indexOf(o), 1);
+}
+function nailCount(a, p){
+  let n = 0;
+  for(const x of a.nails) if(x.a === p || x.b === p) n++;
+  return n;
+}
+/* target: {body} | {deck:true} | {ls}.  wp/wax in WORLD.  Returns the nail,
+   or null where the shot is refused (deck AND pipe on one assembly, or a
+   second pipe). */
+function addNail(bA, target, wp, wax){
+  let a = bA.asm || null;
+  const tb = target.body || null;
+  if(tb){
+    const ta = tb.asm || null;
+    if(!a && !ta){ a = newAsm(bA.venue); asmAdopt(a, bA); asmAdopt(a, tb); }
+    else if(a && !ta) asmAdopt(a, tb);
+    else if(!a && ta){ a = ta; asmAdopt(a, bA); }
+    else if(a !== ta){
+      if(a.anchor && ta.anchor) return null;   // two nailed-down things do not join
+      if(ta.anchor) { const t = a; a = ta; asmMerge(a, t); }
+      else asmMerge(a, ta);
+    }
+  } else {
+    if(!a){ a = newAsm(bA.venue); asmAdopt(a, bA); }
+    if(target.deck){
+      if(a.anchor && a.anchor.type === 'pipe') return null;
+      a.anchor = {type:'deck'};
+    } else if(target.ls){
+      if(a.anchor) return null;                // one anchor to an assembly
+      a.anchor = {type:'pipe', ls:target.ls};
+      target.ls.group.attach(a.root);
+      asmHangDepth(target.ls);
+    }
+  }
+  const nm = makeNailMesh();
+  a.root.add(nm);
+  nm.position.copy(a.root.worldToLocal(_av.copy(wp)));
+  a.root.getWorldQuaternion(_aq).invert();
+  const axL = _av2.copy(wax).applyQuaternion(_aq).normalize();
+  nm.quaternion.setFromUnitVectors(_av3.set(0, 1, 0), axL);
+  const n = {a:bA, b:(tb || (target.deck ? 'deck' : 'pipe')), asm:a,
+             p:nm.position.clone(), axis:axL.clone(), mesh:nm};
+  a.nails.push(n);
+  asmJoints(a);
+  return n;
+}
+function detachPiece(a, p){
+  asmUnpivot(a, p);
+  venueRoot(a.venue).attach(p.mesh);
+  p.state = 'loose'; p.asm = null;
+  if(typeof woodRestH === 'function') p.restH = woodRestH(p);
+  a.pieces.splice(a.pieces.indexOf(p), 1);
+}
+function removeAsm(a){
+  if(a.root.parent) a.root.parent.remove(a.root);
+  ASSEMBLIES.splice(ASSEMBLIES.indexOf(a), 1);
+}
+function removeNail(n){
+  const a = n.asm;
+  a.nails.splice(a.nails.indexOf(n), 1);
+  if(n.mesh.parent) n.mesh.parent.remove(n.mesh);    // shared geometry, no dispose
+  /* anchors live in their nails: pull the last one and the hold is gone */
+  if(n.b === 'deck' && !a.nails.some(x=>x.b === 'deck')) a.anchor = null;
+  if(n.b === 'pipe' && !a.nails.some(x=>x.b === 'pipe')){
+    const ls = a.anchor && a.anchor.ls;
+    a.anchor = null;
+    venueRoot(a.venue).attach(a.root);
+    if(ls) asmHangDepth(ls);
+  }
+  for(const p of a.pieces.slice()) if(nailCount(a, p) === 0) detachPiece(a, p);
+  if(a.pieces.length === 0) removeAsm(a);
+  else if(a.pieces.length === 1 && !a.anchor && a.nails.length === 0){
+    detachPiece(a, a.pieces[0]);
+    removeAsm(a);
+  }
+  else asmJoints(a);
+}
+/* one nail = a pivot group AT the nail; the piece swings on it (p9) */
+function asmPivot(a, p, n){
+  const g = new T.Group();
+  g.position.copy(n.p);
+  g.userData.axis = n.axis.clone();
+  a.root.add(g);
+  g.updateMatrixWorld(true);
+  g.attach(p.mesh);
+  p.pivot = g; p.pivotN = n;
+}
+function asmUnpivot(a, p){
+  if(!p.pivot) return;
+  a.root.attach(p.mesh);
+  if(p.pivot.parent) p.pivot.parent.remove(p.pivot);
+  p.pivot = null; p.pivotN = null;
+}
+function asmJoints(a){
+  for(const p of a.pieces){
+    const k = nailCount(a, p);
+    if(k === 1 && (a.pieces.length > 1 || a.anchor)){
+      const n = a.nails.find(x=>x.a === p || x.b === p);
+      if(p.pivotN !== n){ asmUnpivot(a, p); asmPivot(a, p, n); }
+    } else asmUnpivot(a, p);
+  }
+}
+/* how deep everything nailed to this pipe hangs below it — p3's minTrimOf
+   reads ls.asmH so a flown flat stops at the deck, the #15 rule */
+function asmHangDepth(ls){
+  let h = 0;
+  for(const a of ASSEMBLIES){
+    if(!a.anchor || a.anchor.type !== 'pipe' || a.anchor.ls !== ls) continue;
+    _abox.setFromObject(a.root);
+    ls.group.getWorldPosition(_av);
+    h = Math.max(h, _av.y - _abox.min.y);
+  }
+  ls.asmH = h;
+}
+/* the rest height of a loose piece: half its world box, so a dropped plank
+   lies ON the floor instead of floating at a lantern's 0.25 */
+function woodRestH(b){
+  _abox.setFromObject(b.mesh);
+  return Math.max(0.02, (_abox.max.y - _abox.min.y)/2);
+}
+
+/* ============================================================================
+   THE GHOST SNAP (spec §5): a held piece of wood squares itself up to
+   whatever it is offered against — yaw to the nearest 45°, pitch and roll
+   to the nearest 90°, faces flush (OBB half-extents projected through the
+   quantized relative rotation, |R|·h).  Returns where the piece WANTS to
+   be plus the nail's point and axis; p9 applies the pose and the nail gun
+   confirms it.  Targets: other wood, the deck (any y=0 floor), and the
+   live stage's fly pipes.
+   ========================================================================== */
+const _sm = new T.Matrix4();
+function snapQuantize(heldM, targetQ){
+  heldM.getWorldQuaternion(_aq2);
+  _aq.copy(targetQ).invert().multiply(_aq2);          // held relative to target
+  _ae.setFromQuaternion(_aq, 'YXZ');
+  _ae.x = Math.round(_ae.x/(Math.PI/2))*(Math.PI/2);
+  _ae.z = Math.round(_ae.z/(Math.PI/2))*(Math.PI/2);
+  _ae.y = Math.round(_ae.y/(Math.PI/4))*(Math.PI/4);
+  return _aq.setFromEuler(_ae);                        // quantized RELATIVE quat
+}
+/* |R|·h — the held box's half extents seen along the target's axes */
+function snapHalf(relQ, s, out){
+  _sm.makeRotationFromQuaternion(relQ);
+  const e = _sm.elements;
+  out.set(
+    Math.abs(e[0])*s.x/2 + Math.abs(e[4])*s.y/2 + Math.abs(e[8])*s.z/2,
+    Math.abs(e[1])*s.x/2 + Math.abs(e[5])*s.y/2 + Math.abs(e[9])*s.z/2,
+    Math.abs(e[2])*s.x/2 + Math.abs(e[6])*s.y/2 + Math.abs(e[10])*s.z/2);
+  return out;
+}
+const _shalf = new T.Vector3(), _slp = new T.Vector3(), _sq = new T.Quaternion();
+function snapWood(held){
+  const hm = held.mesh;
+  hm.updateMatrixWorld(true);
+  hm.getWorldPosition(_av);
+  /* 1 — the nearest other piece of wood within arm's offering */
+  let tgt = null, td = 1.4;
+  for(const b of BODIES){
+    if(b === held || b.kind !== 'wood' || b.venue !== held.venue) continue;
+    if(b.state === 'held') continue;
+    b.mesh.getWorldPosition(_av2);
+    const d = _av2.distanceTo(_av);
+    if(d < td){ td = d; tgt = b; }
+  }
+  if(tgt){
+    const tm = tgt.mesh;
+    tm.updateMatrixWorld(true);
+    tm.getWorldQuaternion(_sq);
+    const rel = snapQuantize(hm, _sq);
+    snapHalf(rel, hm.scale, _shalf);
+    _slp.copy(_av);
+    tm.worldToLocal(_slp);                             // held centre, target-local
+    /* close the gap on the axis where the faces are nearest to touching */
+    let ax = 0, gap = 1e9;
+    ['x','y','z'].forEach((k, i)=>{
+      const flush = tm.scale[k]/2 + _shalf.getComponent(i);
+      const g = Math.abs(Math.abs(_slp[k]) - flush);
+      if(g < gap){ gap = g; ax = i; }
+    });
+    if(gap > 0.14) return null;                        // offered, not insisted
+    const k = ['x','y','z'][ax];
+    const sign = _slp[k] < 0 ? -1 : 1;
+    _slp[k] = sign * (tm.scale[k]/2 + _shalf.getComponent(ax));
+    const pos = tm.localToWorld(_slp.clone());
+    const quat = _sq.clone().multiply(rel);            // world = target · rel
+    /* the nail: on the contact plane, along the contact normal */
+    _slp[k] = sign * tm.scale[k]/2;
+    const point = tm.localToWorld(_slp.clone());
+    const axis = _av3.set(ax===0?sign:0, ax===1?sign:0, ax===2?sign:0)
+      .applyQuaternion(_sq).normalize();
+    return {target:{body:tgt}, pos, quat, point, axis: axis.clone()};
+  }
+  /* 2 — the deck: near the floor, lie flat on it */
+  hm.getWorldQuaternion(_sq);
+  const relW = snapQuantize(hm, _aq2.identity());
+  snapHalf(relW, hm.scale, _shalf);
+  if(_av.y - _shalf.y < 0.3){
+    const pos = _av.clone(); pos.y = _shalf.y;
+    return {target:{deck:true}, pos, quat:_aq2.identity().clone().multiply(relW).clone(),
+            point:new T.Vector3(_av.x, 0, _av.z), axis:new T.Vector3(0, -1, 0)};
+  }
+  /* 3 — a live fly pipe: hang the piece under the batten */
+  if(typeof FLY !== 'undefined'){
+    for(const ls of FLY){
+      if(!ls.group) continue;
+      ls.group.getWorldPosition(_av2);
+      if(Math.abs(_av.z - _av2.z) > 0.35) continue;
+      if(Math.abs((_av.y + _shalf.y) - _av2.y) > 0.4) continue;
+      if(Math.abs(_av.x - _av2.x) > (D.procW + 6)/2) continue;
+      const pos = new T.Vector3(_av.x, _av2.y - 0.055 - _shalf.y, _av2.z);
+      return {target:{ls}, pos, quat:relW.clone(),
+              point:new T.Vector3(_av.x, _av2.y - 0.05, _av2.z),
+              axis:new T.Vector3(0, 1, 0)};
+    }
+  }
+  return null;
+}
+/* the same offer for a whole HELD ASSEMBLY: the deck under it, or a pipe
+   over it.  No re-orientation — you carry it how you carry it. */
+function snapAsm(a){
+  _abox.setFromObject(a.root);
+  _abox.getCenter(_av);
+  if(_abox.min.y < 0.3){
+    const lift = -_abox.min.y;
+    let low = a.pieces[0], ly = 1e9;
+    for(const p of a.pieces){
+      p.mesh.getWorldPosition(_av2);
+      if(_av2.y < ly){ ly = _av2.y; low = p; }
+    }
+    return {target:{deck:true}, dy:lift, piece:low,
+            point:new T.Vector3(_av.x, 0, _av.z), axis:new T.Vector3(0, -1, 0)};
+  }
+  if(typeof FLY !== 'undefined'){
+    for(const ls of FLY){
+      if(!ls.group) continue;
+      ls.group.getWorldPosition(_av2);
+      if(Math.abs(_av.z - _av2.z) > 0.4) continue;
+      if(Math.abs(_abox.max.y - _av2.y) > 0.45) continue;
+      let high = a.pieces[0], hy = -1e9;
+      for(const p of a.pieces){
+        p.mesh.getWorldPosition(_av3);
+        if(_av3.y > hy){ hy = _av3.y; high = p; }
+      }
+      return {target:{ls}, dy:(_av2.y - 0.055) - _abox.max.y, piece:high,
+              point:new T.Vector3(_av.x, _av2.y - 0.05, _av2.z),
+              axis:new T.Vector3(0, 1, 0)};
+    }
+  }
+  return null;
+}
+/* feet-and-inches for the tape, the saws and the labels: 2.4384 -> 8'0" */
+function ftIn(m){
+  const inches = Math.round(m/0.0254);
+  return Math.floor(inches/12) + "'" + (inches%12) + '"';
 }
 
 /* ============================================================================
@@ -14266,6 +14576,7 @@ function vrOnStart(){
   vrBuildControllers();
   vrBuildDesks();
   vrBuildRopes();
+  vrBuildBelt();
   vrDrawConsole(true);
   const app = $('#app'); if(app) app.classList.add('inVR');
   if(typeof toast === 'function') toast('Walk with the left stick, turn with the right');
@@ -14277,6 +14588,10 @@ function vrOnEnd(){
   vrQualityOff();
   VR.held = null;
   VR.heldLever = null;
+  /* every tool back on the belt, no line, no stale joint offer */
+  if(VR.tools){ vrHolster(0); vrHolster(1); }
+  VR.snap = null;
+  if(VR.tapeLn) VR.tapeLn.visible = false;
   vrLabel(null);
   /* the meter's window is this session's story — start the next one clean,
      and put the foveation base back where vrQualityOn will set it */
@@ -14907,6 +15222,171 @@ function vrOrderPress(sc){
 }
 
 /* ============================================================================
+   THE TOOLBELT (build spec §5).  Three tools ride the hips: nail gun on
+   the right, hammer on the left, tape at the buckle.  A hand that closes
+   at a holster DRAWS the tool; opening that hand anywhere returns it —
+   a tool can never be dropped, lost or left on a stage.  Tools live in
+   VR.tools[hand], a slot of their own: VR.held stays the single WORLD
+   hold it always was (rope / cart / body), so one hand can carry the
+   plank while the other works the gun.  The trigger of a tool hand fires
+   the tool (vrSelect head) instead of the world ray.
+   ========================================================================== */
+const TOOLG = {};
+function toolG(key, mk){ return TOOLG[key] || (TOOLG[key] = mk()); }
+const _tq1 = new T.Quaternion(), _tq2 = new T.Quaternion();
+function vrToolGun(){
+  const g = new T.Group();
+  const body = new T.Mesh(toolG('gb', ()=>new T.BoxGeometry(0.05, 0.09, 0.17)), M.fixture);
+  body.position.set(0, 0.02, -0.04); g.add(body);
+  const grip = new T.Mesh(toolG('gg', ()=>new T.BoxGeometry(0.04, 0.1, 0.05)), M.steel);
+  grip.position.set(0, -0.05, 0.03); grip.rotation.x = 0.25; g.add(grip);
+  const nose = new T.Mesh(toolG('gn', ()=>new T.CylinderGeometry(0.011, 0.011, 0.07, 8)), M.steel);
+  nose.rotation.x = Math.PI/2; nose.position.set(0, 0.01, -0.16); g.add(nose);
+  return g;
+}
+function vrToolHammer(){
+  const g = new T.Group();
+  const handle = new T.Mesh(toolG('hh', ()=>new T.CylinderGeometry(0.014, 0.016, 0.26, 8)), M.wood);
+  handle.rotation.x = Math.PI/2; handle.position.z = 0.04; g.add(handle);
+  const head = new T.Mesh(toolG('hd', ()=>new T.BoxGeometry(0.03, 0.035, 0.09)), M.steel);
+  head.position.set(0, 0, -0.1); g.add(head);
+  return g;
+}
+function vrToolTape(){
+  const g = new T.Group();
+  const box = new T.Mesh(toolG('tb', ()=>new T.BoxGeometry(0.07, 0.07, 0.05)), M.fixture);
+  g.add(box);
+  const tab = new T.Mesh(toolG('tt', ()=>new T.BoxGeometry(0.03, 0.02, 0.012)), M.steel);
+  tab.position.set(0, -0.03, -0.035); g.add(tab);
+  return g;
+}
+function vrBuildBelt(){
+  if(!VR.tools) VR.tools = {0:null, 1:null};
+  if(VR.belt) return;
+  const g = new T.Group(); g.name = 'vr:belt';
+  VR.rig.add(g);
+  VR.belt = g;
+  VR.holsters = {}; VR.toolMesh = {};
+  const mk = (key, builder, x, z)=>{
+    const a = new T.Object3D(); a.position.set(x, 0, z); g.add(a);
+    const t = builder(); a.add(t);
+    VR.holsters[key] = a; VR.toolMesh[key] = t;
+  };
+  mk('nailgun', vrToolGun,  0.24, 0.06);
+  mk('hammer',  vrToolHammer, -0.24, 0.06);
+  mk('tape',    vrToolTape,  0.0, 0.17);
+}
+/* the belt rides the hips: headset x/z in rig space, a fixed drop, head yaw */
+const _beltE = new T.Euler();
+function vrUpdateBelt(){
+  if(!VR.belt) return;
+  VR.belt.position.set(camera.position.x,
+                       Math.max(0.55, camera.position.y - 0.72),
+                       camera.position.z);
+  _beltE.setFromQuaternion(camera.quaternion, 'YXZ');
+  VR.belt.rotation.set(0, _beltE.y, 0);
+}
+function vrDraw(hand, key){
+  const c = VR.controllers[hand];
+  if(!c) return;
+  const m = VR.toolMesh[key];
+  c.add(m);
+  m.position.set(0, -0.01, -0.03);
+  m.rotation.set(0, 0, 0);
+  VR.tools[hand] = key;
+  if(typeof toast === 'function') toast(
+    key === 'nailgun' ? 'nail gun — trigger fires into a lined-up joint' :
+    key === 'hammer'  ? 'hammer — trigger pulls the nail under its head' :
+    'tape — the other hand takes the tab; trigger marks the wood');
+}
+function vrHolster(hand){
+  const key = VR.tools && VR.tools[hand];
+  if(!key) return;
+  const a = VR.holsters[key], m = VR.toolMesh[key];
+  a.add(m); m.position.set(0, 0, 0); m.rotation.set(0, 0, 0);
+  VR.tools[hand] = null;
+  if(VR.held && VR.held.kind === 'tapetab' && VR.held.toolHand === hand){
+    VR.held = null;
+    if(VR.tapeLn) VR.tapeLn.visible = false;
+    vrLabel(null);
+  }
+}
+/* the stretched tape, drawn as one thin cylinder between case and hand.
+   Its own temp: the callers pass the shared _vecA in as an argument. */
+const _tapeUp = new T.Vector3(0, 1, 0), _tapeDir = new T.Vector3();
+function vrTapeLine(a, b){
+  if(!VR.tapeLn){
+    VR.tapeLn = new T.Mesh(toolG('tl', ()=>new T.CylinderGeometry(0.004, 0.004, 1, 6)),
+                           new T.MeshBasicMaterial({color:0xffd34d}));
+    scene.add(VR.tapeLn);
+  }
+  const L = a.distanceTo(b);
+  VR.tapeLn.visible = L > 0.02;
+  VR.tapeLn.position.copy(a).add(b).multiplyScalar(0.5);
+  _tapeDir.copy(b).sub(a).normalize();
+  VR.tapeLn.quaternion.setFromUnitVectors(_tapeUp, _tapeDir);
+  VR.tapeLn.scale.set(1, Math.max(0.02, L), 1);
+}
+/* the trigger of a tool hand: fire the tool */
+function vrToolFire(hand, key){
+  const c = VR.controllers[hand];
+  if(!c) return;
+  c.updateMatrixWorld(true);
+  _rayO.setFromMatrixPosition(c.matrixWorld);
+  if(key === 'nailgun'){
+    const s = VR.snap;
+    if(!s){ if(typeof toast === 'function') toast('nothing lined up to nail'); return; }
+    if(s.point && _rayO.distanceTo(s.point) > 1.0){
+      if(typeof toast === 'function') toast('closer to the joint'); return;
+    }
+    let n = null;
+    if(s.body){
+      n = addNail(s.body, s.target, s.point, s.axis);
+      if(n && VR.held && VR.held.kind === 'body' && VR.held.body === s.body) VR.held = null;
+    } else if(s.asm){
+      n = addNail(s.piece, s.target, s.point, s.axis);
+      if(n && VR.held && VR.held.kind === 'asm' && VR.held.asm === s.asm) VR.held = null;
+    }
+    VR.snap = null;
+    vrLabel(null);
+    if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+    if(typeof toast === 'function') toast(n ? 'nailed' : 'that will not take a nail');
+  } else if(key === 'hammer'){
+    let best = null, bd = 0.25;
+    if(typeof ASSEMBLIES !== 'undefined')
+      for(const a of ASSEMBLIES)
+        for(const n of a.nails){
+          n.mesh.getWorldPosition(_vecA);
+          const d = _vecA.distanceTo(_rayO);
+          if(d < bd){ bd = d; best = n; }
+        }
+    if(best){
+      removeNail(best);
+      if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+      if(typeof toast === 'function') toast('nail out');
+    } else if(typeof toast === 'function') toast('no nail under the hammer');
+  } else if(key === 'tape'){
+    if(!(VR.held && VR.held.kind === 'tapetab')) return;
+    const oc = VR.controllers[VR.held.hand];
+    if(!oc) return;
+    oc.updateMatrixWorld(true);
+    _vecA.setFromMatrixPosition(oc.matrixWorld);
+    let best = null, bd = 1.6;
+    for(const b of BODIES){
+      if(b.kind !== 'wood') continue;
+      b.mesh.getWorldPosition(_run);
+      const d = _run.distanceTo(_vecA);
+      if(d < bd){ bd = d; best = b; }
+    }
+    if(best){
+      best.tick = {p: best.mesh.worldToLocal(_vecA.clone())};
+      if(typeof toast === 'function')
+        toast('marked at ' + ftIn(VR.held.len || 0));
+    }
+  }
+}
+
+/* ============================================================================
    THE ROPES
    A full operating line at the pin rail for every lineset that is hung: a
    floor block just off the deck, a head block up under the grid, and the line
@@ -15257,6 +15737,8 @@ function vrCastWorld(hand){
 }
 function vrSelect(hand, down){
   if(!down) return;
+  /* a hand holding a tool: the trigger IS the tool (build spec §5) */
+  if(VR.tools && VR.tools[hand]){ vrToolFire(hand, VR.tools[hand]); return; }
   /* the desks keep priority for the pointing hand: on a desk, the trigger
      presses the console and never reaches through it into the room */
   if(hand === 1){
@@ -15420,20 +15902,37 @@ function vrSqueeze(hand, down){
   const c = VR.controllers[hand];
   if(!c) return;
   if(!down){
+    /* an open hand holsters its tool before anything else */
+    if(VR.tools && VR.tools[hand]){ vrHolster(hand); return; }
     if(VR.heldLever && VR.heldLever.hand === hand) VR.heldLever = null;
     if(VR.held && VR.held.hand === hand){
       const h = VR.held;
       VR.held = null;
+      if(h.kind === 'tapetab'){
+        if(VR.tapeLn) VR.tapeLn.visible = false;
+        vrLabel(null);
+        return;
+      }
+      /* a let-go assembly (or swinging piece) simply stays as it lies */
+      if(h.kind === 'asm' || h.kind === 'swing'){
+        VR.snap = null;
+        vrLabel(null);
+        return;
+      }
       /* a released BODY snaps to what the label promised: an empty point,
          an empty slot, or the floor (updateBodies settles it) */
       if(h.kind === 'body'){
         const b = h.body;
+        VR.snap = null;
         const t = vrBodyTarget(b);
         if(t && t.point && hangBody(b, t.point)){
           if(typeof toast === 'function') toast(BODY_LABEL[b.kind] + ' — hung');
         } else if(t && t.slot && slotBody(b, t.slot)){
           if(typeof toast === 'function') toast(BODY_LABEL[b.kind] + ' — stowed');
-        } else b.state = 'loose';
+        } else {
+          b.state = 'loose';
+          if(b.kind === 'wood' && typeof woodRestH === 'function') b.restH = woodRestH(b);
+        }
         vrLabel(null);
         return;
       }
@@ -15451,6 +15950,23 @@ function vrSqueeze(hand, down){
   }
   c.updateMatrixWorld(true);
   _rayO.setFromMatrixPosition(c.matrixWorld);
+  /* the belt first: a hand that closes at a holster draws the tool; a hand
+     at the tape's tab (worn by the OTHER hand) takes the tab to stretch */
+  if(VR.tools && !VR.tools[hand] && VR.holsters){
+    for(const key in VR.holsters){
+      if(VR.tools[0] === key || VR.tools[1] === key) continue;
+      VR.holsters[key].getWorldPosition(_vecA);
+      if(_vecA.distanceTo(_rayO) < 0.22){ vrDraw(hand, key); return; }
+    }
+    const oh = 1 - hand;
+    if(VR.tools[oh] === 'tape'){
+      VR.toolMesh.tape.getWorldPosition(_vecA);
+      if(_vecA.distanceTo(_rayO) < 0.2){
+        VR.held = {hand, kind:'tapetab', toolHand:oh, len:0};
+        return;
+      }
+    }
+  }
   if(VR.ropeRoot) VR.ropeRoot.updateMatrixWorld(true);   // the loops nest a group deep
 
   /* what is under the hand: the nearest lever knob, and the nearest point on
@@ -15516,10 +16032,45 @@ function vrSqueeze(hand, down){
   }
   /* nearest wins across all four classes — never fork this arbitration */
   if(bod && (!cart || bdd < cd) && (!lv || bdd < lvd) && (!best || bdd < bd)){
+    /* a piece already NAILED (p4c): swing it on its one nail, carry the
+       whole assembly by any rigid piece, or bounce off anchored work */
+    if(bod.asm){
+      if(bod.pivot){
+        const piv = bod.pivot;
+        piv.updateMatrixWorld(true);
+        const P = new T.Vector3().setFromMatrixPosition(piv.matrixWorld);
+        const ax = piv.userData.axis.clone();
+        bod.asm.root.getWorldQuaternion(_tq1);
+        ax.applyQuaternion(_tq1).normalize();
+        const ref = _rayO.clone().sub(P);
+        ref.addScaledVector(ax, -ref.dot(ax));
+        if(ref.lengthSq() < 1e-6) return;
+        ref.normalize();
+        VR.held = {hand, kind:'swing', body:bod, P, ax, ref0:ref,
+                   q0:piv.quaternion.clone()};
+        if(typeof toast === 'function') toast('it swings on its nail');
+      } else if(!bod.asm.anchor){
+        const a = bod.asm;
+        a.root.updateMatrixWorld(true);
+        a.root.getWorldPosition(_vecA);
+        VR.held = {hand, kind:'asm', asm:a,
+                   offX:_vecA.x - _rayO.x, offY:_vecA.y - _rayO.y, offZ:_vecA.z - _rayO.z};
+        if(typeof toast === 'function')
+          toast('the assembly comes whole — ' + a.pieces.length + ' pieces');
+      } else if(typeof toast === 'function')
+        toast('nailed down — the hammer first');
+      return;
+    }
     grabBody(bod);
     bod.mesh.getWorldPosition(_vecA);
     VR.held = {hand, kind:'body', body:bod,
                offX:_vecA.x - _rayO.x, offY:_vecA.y - _rayO.y, offZ:_vecA.z - _rayO.z};
+    /* wood turns with the wrist (lanterns keep their old fixed carry) */
+    if(bod.kind === 'wood'){
+      c.getWorldQuaternion(_tq1);
+      bod.mesh.getWorldQuaternion(_tq2);
+      VR.held.relQ = _tq1.invert().multiply(_tq2).clone();
+    }
     if(typeof toast === 'function') toast(BODY_LABEL[bod.kind] + ' — in hand');
     return;
   }
@@ -15602,6 +16153,50 @@ function vrUpdateHold(dt){
                        0, LIFT_FORK_TOP);
     return;
   }
+  /* the tape's tab: a line from the case to the hand, read out in ft-in */
+  if(VR.held.kind === 'tapetab'){
+    const tm = VR.toolMesh && VR.toolMesh.tape;
+    if(!tm || VR.tools[VR.held.toolHand] !== 'tape'){ VR.held = null; return; }
+    tm.getWorldPosition(_vecA);
+    vrTapeLine(_vecA, _rayO);
+    VR.held.len = _vecA.distanceTo(_rayO);
+    vrLabel('TAPE  ' + ftIn(VR.held.len), _rayO, 1);
+    return;
+  }
+  /* a held ASSEMBLY: the whole root follows the grip, kinematic like a
+     body; the deck or a pipe under/over it makes the same offer a single
+     piece gets (snapAsm), and the gun confirms it */
+  if(VR.held.kind === 'asm'){
+    const a = VR.held.asm;
+    _vecA.set(_rayO.x + VR.held.offX, _rayO.y + VR.held.offY, _rayO.z + VR.held.offZ);
+    if(a.root.parent) a.root.parent.worldToLocal(_vecA);
+    a.root.position.copy(_vecA);
+    a.root.updateMatrixWorld(true);
+    const s = (typeof snapAsm === 'function') ? snapAsm(a) : null;
+    if(s){
+      a.root.position.y += s.dy;
+      a.root.updateMatrixWorld(true);
+      VR.snap = {asm:a, target:s.target, point:s.point, axis:s.axis, piece:s.piece};
+      vrLabel(s.target.deck ? 'ON THE DECK — nail it down' : 'UNDER THE PIPE — nail it on',
+              s.point, 1);
+    } else { VR.snap = null; }
+    return;
+  }
+  /* a piece on ONE nail swings: the hand drives the angle about the axis */
+  if(VR.held.kind === 'swing'){
+    const H = VR.held, piv = H.body.pivot;
+    if(!piv){ VR.held = null; return; }
+    const ref = _rayO.clone().sub(H.P);
+    ref.addScaledVector(H.ax, -ref.dot(H.ax));
+    if(ref.lengthSq() > 1e-6){
+      ref.normalize();
+      let th = Math.acos(clamp(H.ref0.dot(ref), -1, 1));
+      _vecA.crossVectors(H.ref0, ref);
+      if(_vecA.dot(H.ax) < 0) th = -th;
+      piv.quaternion.setFromAxisAngle(piv.userData.axis, th).multiply(H.q0);
+    }
+    return;
+  }
   /* a held BODY follows the grip kinematically — never re-parented to the
      hand, so a hold record dropped without a release (session end, stage
      swap: vrOnEnd and vrClearRopes null VR.held cold) leaves a correctly
@@ -15612,6 +16207,23 @@ function vrUpdateHold(dt){
     _vecA.set(_rayO.x + VR.held.offX, _rayO.y + VR.held.offY, _rayO.z + VR.held.offZ);
     if(b.mesh.parent) b.mesh.parent.worldToLocal(_vecA);
     b.mesh.position.copy(_vecA);
+    /* wood turns with the wrist, then squares itself up to whatever it is
+       offered against (p4c snapWood) — the gun confirms the joint */
+    if(b.kind === 'wood'){
+      if(VR.held.relQ){
+        c.getWorldQuaternion(_tq1).multiply(VR.held.relQ);
+        b.mesh.quaternion.copy(_tq1);
+      }
+      b.mesh.updateMatrixWorld(true);
+      const s = (typeof snapWood === 'function') ? snapWood(b) : null;
+      if(s){
+        _vecA.copy(s.pos);
+        if(b.mesh.parent) b.mesh.parent.worldToLocal(_vecA);
+        b.mesh.position.copy(_vecA);
+        b.mesh.quaternion.copy(s.quat);
+        VR.snap = {body:b, target:s.target, point:s.point, axis:s.axis};
+      } else VR.snap = null;
+    }
     const t = vrBodyTarget(b);
     b.mesh.getWorldPosition(_bodP);
     const camD = camera.getWorldPosition(_bodT).distanceTo(_bodP);
@@ -15690,6 +16302,7 @@ function vrUpdate(dt){
   if(!VR || !VR.active) return;      // may be called before this file has run
   vrReadSticks();
   vrButtonJump(dt);
+  vrUpdateBelt();
   Player.yaw -= VR.axes.rx * VR.turn * dt;      // smooth turn, as asked for
   if(vrPointAt()) vrLabel(null);                // on a desk, the desk is the label
   else vrHoverWorld();

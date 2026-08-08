@@ -202,6 +202,107 @@ const probe = `
     return 'lifted at the apron, set down on the SL wing paint';
   });
 
+  console.log('--- nails and assemblies ---');
+  P('one nail pivots, a second makes it rigid (RULING G)', ()=>{
+    const a = regWood('s2x4'), b = regWood('s2x4');
+    a.mesh.position.set(30, 1.22, 30);
+    b.mesh.position.set(30.1, 1.22, 30);
+    scene.updateMatrixWorld(true);
+    const before = ASSEMBLIES.length;
+    const n1 = addNail(a, {body:b}, new THREE.Vector3(30.05, 1.22, 30), new THREE.Vector3(0,0,1));
+    if(!n1 || ASSEMBLIES.length !== before + 1) throw new Error('no assembly formed');
+    if(a.asm !== b.asm || a.state !== 'fixed' || b.state !== 'fixed') throw new Error('membership wrong');
+    if(!a.pivot || !b.pivot) throw new Error('one nail each, but no pivots');
+    /* swing b half a turn about the nail: its far end must move, a must not */
+    scene.updateMatrixWorld(true);
+    const aBefore = a.mesh.getWorldPosition(new THREE.Vector3());
+    const bBefore = b.mesh.getWorldPosition(new THREE.Vector3());
+    b.pivot.quaternion.setFromAxisAngle(b.pivot.userData.axis, 0.6);
+    scene.updateMatrixWorld(true);
+    const bAfter = b.mesh.getWorldPosition(new THREE.Vector3());
+    if(bAfter.distanceTo(bBefore) < 0.005) throw new Error('the pivot never moved it');
+    if(a.mesh.getWorldPosition(new THREE.Vector3()).distanceTo(aBefore) > 1e-6)
+      throw new Error('swinging b moved a');
+    b.pivot.quaternion.identity();
+    const n2 = addNail(a, {body:b}, new THREE.Vector3(30.05, 2.0, 30), new THREE.Vector3(1,0,0));
+    if(!n2) throw new Error('the second nail refused');
+    if(a.pivot || b.pivot) throw new Error('two nails and still swinging');
+    window.__n1 = n1; window.__n2 = n2; window.__wA = a; window.__wB = b;
+    return 'one nail swings, two hold';
+  });
+  P('the hammer takes it back apart', ()=>{
+    const a = window.__wA, b = window.__wB;
+    removeNail(window.__n2);
+    if(!a.pivot || !b.pivot) throw new Error('down to one nail, no pivots back');
+    const asmCount = ASSEMBLIES.length;
+    removeNail(window.__n1);
+    if(ASSEMBLIES.length !== asmCount - 1) throw new Error('the assembly never dissolved');
+    if(a.state !== 'loose' || b.state !== 'loose') throw new Error('pieces not loose: '+a.state+'/'+b.state);
+    if(a.asm || b.asm) throw new Error('membership never cleared');
+    return 'two pulls, two loose studs';
+  });
+  P('a deck nail anchors it, and an anchored piece still pivots free of it', ()=>{
+    const a = window.__wA;
+    a.mesh.position.set(31, 0.045, 31); a.mesh.rotation.set(Math.PI/2, 0, 0);
+    scene.updateMatrixWorld(true);
+    const n = addNail(a, {deck:true}, new THREE.Vector3(31, 0, 31), new THREE.Vector3(0,-1,0));
+    if(!n) throw new Error('the deck refused the nail');
+    if(!a.asm || !a.asm.anchor || a.asm.anchor.type !== 'deck') throw new Error('no anchor');
+    removeNail(n);
+    if(a.asm || a.state !== 'loose') throw new Error('the anchor never cleared');
+    return 'pinned to the deck and freed again';
+  });
+  P('nailed to a pipe it flies — and stops at the deck (the #15 rule)', ()=>{
+    /* the BAREST pipe, so the built work is what binds the clamp — on a
+       dressed pipe the goods clamp masks it and the test proves nothing */
+    const ls = FLY.reduce((p, q)=> ((p.h || 0) <= (q.h || 0) ? p : q));
+    const m0 = minTrimOf(ls);
+    const a = window.__wA;
+    scene.updateMatrixWorld(true);
+    const py = ls.group.getWorldPosition(new THREE.Vector3());
+    a.mesh.rotation.set(0, 0, 0);
+    a.mesh.position.set(py.x, py.y - 1.25, py.z);
+    scene.updateMatrixWorld(true);
+    const n = addNail(a, {ls}, new THREE.Vector3(py.x, py.y - 0.05, py.z), new THREE.Vector3(0,1,0));
+    if(!n) throw new Error('the pipe refused the nail');
+    if(a.asm.root.parent !== ls.group) throw new Error('not hanging off the pipe group');
+    if(!(ls.asmH > 2)) throw new Error('hang depth never measured: '+ls.asmH);
+    const m1 = minTrimOf(ls);
+    if(!(m1 >= ls.asmH)) throw new Error('the clamp ignores the work: '+m1.toFixed(2)+' vs hang '+ls.asmH.toFixed(2));
+    if(!(m1 > m0 + 1)) throw new Error('the clamp never moved: '+m0.toFixed(2)+' -> '+m1.toFixed(2));
+    flyTo(ls, 0);
+    if(!(ls.target >= ls.asmH)) throw new Error('the pipe may bury the work: target '+ls.target.toFixed(2));
+    removeNail(n);
+    if(ls.asmH > 0.001) throw new Error('the hang depth never cleared');
+    if(minTrimOf(ls) > m0 + 0.001) throw new Error('the clamp never came back');
+    a.mesh.position.set(30, 1.22, 30);
+    return 'clamp '+m0.toFixed(2)+' -> '+m1.toFixed(2)+'m with the work hung';
+  });
+  P('a held sheet squares itself up to a stud', ()=>{
+    const stud = window.__wB;
+    stud.mesh.position.set(40, 1.22, 40); stud.mesh.rotation.set(0, 0, 0);
+    const sheet = regWood('sheet');
+    sheet.mesh.position.set(40.08, 1.3, 40);
+    sheet.mesh.rotation.set(0.06, 0.35, 0.08);   // offered at a sloppy angle
+    scene.updateMatrixWorld(true);
+    const s = snapWood(sheet);
+    if(!s) throw new Error('no offer made');
+    if(!s.target || s.target.body !== stud) throw new Error('snapped to the wrong thing');
+    /* the pose is QUANTIZED: yaw to 45s, pitch and roll to 90s */
+    const e = new THREE.Euler().setFromQuaternion(s.quat, 'YXZ');
+    const q45 = v => Math.abs(v - Math.round(v/(Math.PI/4))*(Math.PI/4)) < 1e-4;
+    const q90 = v => Math.abs(v - Math.round(v/(Math.PI/2))*(Math.PI/2)) < 1e-4;
+    if(!q45(e.y) || !q90(e.x) || !q90(e.z)) throw new Error('not squared: '+[e.x,e.y,e.z].map(v=>v.toFixed(3)));
+    if(!s.point || !s.axis) throw new Error('no nail offer with the pose');
+    BODIES.splice(BODIES.indexOf(sheet), 1);
+    return 'squared and flush, nail offered';
+  });
+  P('the tape reads feet and inches', ()=>{
+    if(ftIn(2.4384) !== "8'0\\"") throw new Error('8ft reads '+ftIn(2.4384));
+    if(ftIn(0.3048 + 3*0.0254) !== "1'3\\"") throw new Error("1'3 reads "+ftIn(0.3048+3*0.0254));
+    return ftIn(2.4384);
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

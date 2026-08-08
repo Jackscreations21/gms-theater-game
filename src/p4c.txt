@@ -96,3 +96,305 @@ function venueBuildCount(v){
   for(const b of BODIES) if(b.venue === v && BUILD_KINDS[b.kind]) n++;
   return n;
 }
+
+/* ============================================================================
+   ASSEMBLIES & NAILS (PR 3, spec §5, RULING G).  An assembly is DATA: a
+   root Group at the venue root, a list of member pieces, and a list of
+   nails.  Per piece, the nail count decides the constraint — exactly one
+   nail and the piece rides a PIVOT group at that nail (swing it by hand);
+   two or more and it is a plain child of the root, rigid.  Nothing ever
+   falls or detaches on its own: the hammer (removeNail) is the only way
+   apart.  Anchors: a 'deck' nail pins the root where it stands; a 'pipe'
+   nail hangs the root off a lineset's group so it FLIES — and tells p3's
+   minTrimOf how deep it hangs, so nothing built goes through the deck.
+   ========================================================================== */
+var ASSEMBLIES = [];
+var ASM_SEQ = 1;
+const _av = new T.Vector3(), _av2 = new T.Vector3(), _av3 = new T.Vector3();
+const _aq = new T.Quaternion(), _aq2 = new T.Quaternion();
+const _ae = new T.Euler();
+const _abox = new T.Box3();
+const NAILG = new T.CylinderGeometry(0.016, 0.006, 0.05, 6);   // head down to point
+function makeNailMesh(){
+  const m = new T.Mesh(NAILG, M.steel);
+  m.userData.nail = true;
+  return m;
+}
+function newAsm(venue){
+  const root = new T.Group();
+  root.userData.moves = true;
+  venueRoot(venue).add(root);
+  const a = {id:ASM_SEQ++, venue, root, pieces:[], nails:[], anchor:null};
+  ASSEMBLIES.push(a);
+  return a;
+}
+function asmAdopt(a, b){
+  if(b.state === 'slotted') unslotBody(b);
+  a.root.attach(b.mesh);
+  b.state = 'fixed'; b.asm = a;
+  if(a.pieces.indexOf(b) < 0) a.pieces.push(b);
+}
+function asmMerge(a, o){
+  for(const p of o.pieces){ a.root.attach(p.mesh); p.asm = a; a.pieces.push(p); }
+  for(const n of o.nails){ a.root.attach(n.mesh); n.asm = a; a.nails.push(n); }
+  if(o.anchor && !a.anchor){
+    a.anchor = o.anchor;
+    if(o.anchor.type === 'pipe') o.anchor.ls.group.attach(a.root);
+  }
+  o.root.parent.remove(o.root);
+  ASSEMBLIES.splice(ASSEMBLIES.indexOf(o), 1);
+}
+function nailCount(a, p){
+  let n = 0;
+  for(const x of a.nails) if(x.a === p || x.b === p) n++;
+  return n;
+}
+/* target: {body} | {deck:true} | {ls}.  wp/wax in WORLD.  Returns the nail,
+   or null where the shot is refused (deck AND pipe on one assembly, or a
+   second pipe). */
+function addNail(bA, target, wp, wax){
+  let a = bA.asm || null;
+  const tb = target.body || null;
+  if(tb){
+    const ta = tb.asm || null;
+    if(!a && !ta){ a = newAsm(bA.venue); asmAdopt(a, bA); asmAdopt(a, tb); }
+    else if(a && !ta) asmAdopt(a, tb);
+    else if(!a && ta){ a = ta; asmAdopt(a, bA); }
+    else if(a !== ta){
+      if(a.anchor && ta.anchor) return null;   // two nailed-down things do not join
+      if(ta.anchor) { const t = a; a = ta; asmMerge(a, t); }
+      else asmMerge(a, ta);
+    }
+  } else {
+    if(!a){ a = newAsm(bA.venue); asmAdopt(a, bA); }
+    if(target.deck){
+      if(a.anchor && a.anchor.type === 'pipe') return null;
+      a.anchor = {type:'deck'};
+    } else if(target.ls){
+      if(a.anchor) return null;                // one anchor to an assembly
+      a.anchor = {type:'pipe', ls:target.ls};
+      target.ls.group.attach(a.root);
+      asmHangDepth(target.ls);
+    }
+  }
+  const nm = makeNailMesh();
+  a.root.add(nm);
+  nm.position.copy(a.root.worldToLocal(_av.copy(wp)));
+  a.root.getWorldQuaternion(_aq).invert();
+  const axL = _av2.copy(wax).applyQuaternion(_aq).normalize();
+  nm.quaternion.setFromUnitVectors(_av3.set(0, 1, 0), axL);
+  const n = {a:bA, b:(tb || (target.deck ? 'deck' : 'pipe')), asm:a,
+             p:nm.position.clone(), axis:axL.clone(), mesh:nm};
+  a.nails.push(n);
+  asmJoints(a);
+  return n;
+}
+function detachPiece(a, p){
+  asmUnpivot(a, p);
+  venueRoot(a.venue).attach(p.mesh);
+  p.state = 'loose'; p.asm = null;
+  if(typeof woodRestH === 'function') p.restH = woodRestH(p);
+  a.pieces.splice(a.pieces.indexOf(p), 1);
+}
+function removeAsm(a){
+  if(a.root.parent) a.root.parent.remove(a.root);
+  ASSEMBLIES.splice(ASSEMBLIES.indexOf(a), 1);
+}
+function removeNail(n){
+  const a = n.asm;
+  a.nails.splice(a.nails.indexOf(n), 1);
+  if(n.mesh.parent) n.mesh.parent.remove(n.mesh);    // shared geometry, no dispose
+  /* anchors live in their nails: pull the last one and the hold is gone */
+  if(n.b === 'deck' && !a.nails.some(x=>x.b === 'deck')) a.anchor = null;
+  if(n.b === 'pipe' && !a.nails.some(x=>x.b === 'pipe')){
+    const ls = a.anchor && a.anchor.ls;
+    a.anchor = null;
+    venueRoot(a.venue).attach(a.root);
+    if(ls) asmHangDepth(ls);
+  }
+  for(const p of a.pieces.slice()) if(nailCount(a, p) === 0) detachPiece(a, p);
+  if(a.pieces.length === 0) removeAsm(a);
+  else if(a.pieces.length === 1 && !a.anchor && a.nails.length === 0){
+    detachPiece(a, a.pieces[0]);
+    removeAsm(a);
+  }
+  else asmJoints(a);
+}
+/* one nail = a pivot group AT the nail; the piece swings on it (p9) */
+function asmPivot(a, p, n){
+  const g = new T.Group();
+  g.position.copy(n.p);
+  g.userData.axis = n.axis.clone();
+  a.root.add(g);
+  g.updateMatrixWorld(true);
+  g.attach(p.mesh);
+  p.pivot = g; p.pivotN = n;
+}
+function asmUnpivot(a, p){
+  if(!p.pivot) return;
+  a.root.attach(p.mesh);
+  if(p.pivot.parent) p.pivot.parent.remove(p.pivot);
+  p.pivot = null; p.pivotN = null;
+}
+function asmJoints(a){
+  for(const p of a.pieces){
+    const k = nailCount(a, p);
+    if(k === 1 && (a.pieces.length > 1 || a.anchor)){
+      const n = a.nails.find(x=>x.a === p || x.b === p);
+      if(p.pivotN !== n){ asmUnpivot(a, p); asmPivot(a, p, n); }
+    } else asmUnpivot(a, p);
+  }
+}
+/* how deep everything nailed to this pipe hangs below it — p3's minTrimOf
+   reads ls.asmH so a flown flat stops at the deck, the #15 rule */
+function asmHangDepth(ls){
+  let h = 0;
+  for(const a of ASSEMBLIES){
+    if(!a.anchor || a.anchor.type !== 'pipe' || a.anchor.ls !== ls) continue;
+    _abox.setFromObject(a.root);
+    ls.group.getWorldPosition(_av);
+    h = Math.max(h, _av.y - _abox.min.y);
+  }
+  ls.asmH = h;
+}
+/* the rest height of a loose piece: half its world box, so a dropped plank
+   lies ON the floor instead of floating at a lantern's 0.25 */
+function woodRestH(b){
+  _abox.setFromObject(b.mesh);
+  return Math.max(0.02, (_abox.max.y - _abox.min.y)/2);
+}
+
+/* ============================================================================
+   THE GHOST SNAP (spec §5): a held piece of wood squares itself up to
+   whatever it is offered against — yaw to the nearest 45°, pitch and roll
+   to the nearest 90°, faces flush (OBB half-extents projected through the
+   quantized relative rotation, |R|·h).  Returns where the piece WANTS to
+   be plus the nail's point and axis; p9 applies the pose and the nail gun
+   confirms it.  Targets: other wood, the deck (any y=0 floor), and the
+   live stage's fly pipes.
+   ========================================================================== */
+const _sm = new T.Matrix4();
+function snapQuantize(heldM, targetQ){
+  heldM.getWorldQuaternion(_aq2);
+  _aq.copy(targetQ).invert().multiply(_aq2);          // held relative to target
+  _ae.setFromQuaternion(_aq, 'YXZ');
+  _ae.x = Math.round(_ae.x/(Math.PI/2))*(Math.PI/2);
+  _ae.z = Math.round(_ae.z/(Math.PI/2))*(Math.PI/2);
+  _ae.y = Math.round(_ae.y/(Math.PI/4))*(Math.PI/4);
+  return _aq.setFromEuler(_ae);                        // quantized RELATIVE quat
+}
+/* |R|·h — the held box's half extents seen along the target's axes */
+function snapHalf(relQ, s, out){
+  _sm.makeRotationFromQuaternion(relQ);
+  const e = _sm.elements;
+  out.set(
+    Math.abs(e[0])*s.x/2 + Math.abs(e[4])*s.y/2 + Math.abs(e[8])*s.z/2,
+    Math.abs(e[1])*s.x/2 + Math.abs(e[5])*s.y/2 + Math.abs(e[9])*s.z/2,
+    Math.abs(e[2])*s.x/2 + Math.abs(e[6])*s.y/2 + Math.abs(e[10])*s.z/2);
+  return out;
+}
+const _shalf = new T.Vector3(), _slp = new T.Vector3(), _sq = new T.Quaternion();
+function snapWood(held){
+  const hm = held.mesh;
+  hm.updateMatrixWorld(true);
+  hm.getWorldPosition(_av);
+  /* 1 — the nearest other piece of wood within arm's offering */
+  let tgt = null, td = 1.4;
+  for(const b of BODIES){
+    if(b === held || b.kind !== 'wood' || b.venue !== held.venue) continue;
+    if(b.state === 'held') continue;
+    b.mesh.getWorldPosition(_av2);
+    const d = _av2.distanceTo(_av);
+    if(d < td){ td = d; tgt = b; }
+  }
+  if(tgt){
+    const tm = tgt.mesh;
+    tm.updateMatrixWorld(true);
+    tm.getWorldQuaternion(_sq);
+    const rel = snapQuantize(hm, _sq);
+    snapHalf(rel, hm.scale, _shalf);
+    _slp.copy(_av);
+    tm.worldToLocal(_slp);                             // held centre, target-local
+    /* close the gap on the axis where the faces are nearest to touching */
+    let ax = 0, gap = 1e9;
+    ['x','y','z'].forEach((k, i)=>{
+      const flush = tm.scale[k]/2 + _shalf.getComponent(i);
+      const g = Math.abs(Math.abs(_slp[k]) - flush);
+      if(g < gap){ gap = g; ax = i; }
+    });
+    if(gap > 0.14) return null;                        // offered, not insisted
+    const k = ['x','y','z'][ax];
+    const sign = _slp[k] < 0 ? -1 : 1;
+    _slp[k] = sign * (tm.scale[k]/2 + _shalf.getComponent(ax));
+    const pos = tm.localToWorld(_slp.clone());
+    const quat = _sq.clone().multiply(rel);            // world = target · rel
+    /* the nail: on the contact plane, along the contact normal */
+    _slp[k] = sign * tm.scale[k]/2;
+    const point = tm.localToWorld(_slp.clone());
+    const axis = _av3.set(ax===0?sign:0, ax===1?sign:0, ax===2?sign:0)
+      .applyQuaternion(_sq).normalize();
+    return {target:{body:tgt}, pos, quat, point, axis: axis.clone()};
+  }
+  /* 2 — the deck: near the floor, lie flat on it */
+  hm.getWorldQuaternion(_sq);
+  const relW = snapQuantize(hm, _aq2.identity());
+  snapHalf(relW, hm.scale, _shalf);
+  if(_av.y - _shalf.y < 0.3){
+    const pos = _av.clone(); pos.y = _shalf.y;
+    return {target:{deck:true}, pos, quat:_aq2.identity().clone().multiply(relW).clone(),
+            point:new T.Vector3(_av.x, 0, _av.z), axis:new T.Vector3(0, -1, 0)};
+  }
+  /* 3 — a live fly pipe: hang the piece under the batten */
+  if(typeof FLY !== 'undefined'){
+    for(const ls of FLY){
+      if(!ls.group) continue;
+      ls.group.getWorldPosition(_av2);
+      if(Math.abs(_av.z - _av2.z) > 0.35) continue;
+      if(Math.abs((_av.y + _shalf.y) - _av2.y) > 0.4) continue;
+      if(Math.abs(_av.x - _av2.x) > (D.procW + 6)/2) continue;
+      const pos = new T.Vector3(_av.x, _av2.y - 0.055 - _shalf.y, _av2.z);
+      return {target:{ls}, pos, quat:relW.clone(),
+              point:new T.Vector3(_av.x, _av2.y - 0.05, _av2.z),
+              axis:new T.Vector3(0, 1, 0)};
+    }
+  }
+  return null;
+}
+/* the same offer for a whole HELD ASSEMBLY: the deck under it, or a pipe
+   over it.  No re-orientation — you carry it how you carry it. */
+function snapAsm(a){
+  _abox.setFromObject(a.root);
+  _abox.getCenter(_av);
+  if(_abox.min.y < 0.3){
+    const lift = -_abox.min.y;
+    let low = a.pieces[0], ly = 1e9;
+    for(const p of a.pieces){
+      p.mesh.getWorldPosition(_av2);
+      if(_av2.y < ly){ ly = _av2.y; low = p; }
+    }
+    return {target:{deck:true}, dy:lift, piece:low,
+            point:new T.Vector3(_av.x, 0, _av.z), axis:new T.Vector3(0, -1, 0)};
+  }
+  if(typeof FLY !== 'undefined'){
+    for(const ls of FLY){
+      if(!ls.group) continue;
+      ls.group.getWorldPosition(_av2);
+      if(Math.abs(_av.z - _av2.z) > 0.4) continue;
+      if(Math.abs(_abox.max.y - _av2.y) > 0.45) continue;
+      let high = a.pieces[0], hy = -1e9;
+      for(const p of a.pieces){
+        p.mesh.getWorldPosition(_av3);
+        if(_av3.y > hy){ hy = _av3.y; high = p; }
+      }
+      return {target:{ls}, dy:(_av2.y - 0.055) - _abox.max.y, piece:high,
+              point:new T.Vector3(_av.x, _av2.y - 0.05, _av2.z),
+              axis:new T.Vector3(0, 1, 0)};
+    }
+  }
+  return null;
+}
+/* feet-and-inches for the tape, the saws and the labels: 2.4384 -> 8'0" */
+function ftIn(m){
+  const inches = Math.round(m/0.0254);
+  return Math.floor(inches/12) + "'" + (inches%12) + '"';
+}

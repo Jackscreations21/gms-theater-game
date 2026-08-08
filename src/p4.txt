@@ -349,12 +349,17 @@ function updateBodies(dt){
   const inHand = (typeof VR !== 'undefined' && VR && VR.held && VR.held.kind === 'body')
     ? VR.held.body : null;
   for(const b of BODIES){
-    if(b.state === 'held' && b !== inHand) b.state = 'loose';
+    if(b.state === 'held' && b !== inHand){
+      b.state = 'loose';
+      /* a cold drop (session end, stage walk): wood still lies flat */
+      if(b.kind === 'wood' && b.restH === undefined && typeof woodRestH === 'function')
+        b.restH = woodRestH(b);
+    }
     if(b.state !== 'loose') continue;
     b.mesh.getWorldPosition(_bodyV);
     const g = (typeof groundAt === 'function') ? groundAt(_bodyV.x, _bodyV.z, _bodyV.y + 0.5) : 0;
     if(g === null) continue;
-    const want = g + 0.25;
+    const want = g + (b.restH !== undefined ? b.restH : 0.25);
     /* both venue roots stand at y=0 unrotated, so local y IS world y */
     if(Math.abs(_bodyV.y - want) > 0.005)
       b.mesh.position.y += clamp(want - _bodyV.y, -3*dt, 3*dt);

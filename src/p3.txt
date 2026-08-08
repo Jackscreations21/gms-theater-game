@@ -173,9 +173,12 @@ function inTrimOf(ls){
 function minTrimOf(ls){
   // the pipe may only come down until what hangs on it kisses the deck —
   // but never above the goods' own working trim: the house curtain is CUT
-  // to puddle (h 13.0, trim 12.6) and must still make its trim
-  const h = (ls.h || 0) + 0.05;
-  return clamp(Math.min(h, inTrimOf(ls)), 0.6, OUT_TRIM);
+  // to puddle (h 13.0, trim 12.6) and must still make its trim.  ls.asmH
+  // is anything BUILT and nailed to this pipe (p4c asmHangDepth): a flown
+  // flat gets the same floor the cloth gets.
+  const goods = Math.min((ls.h || 0) + 0.05, inTrimOf(ls));
+  const built = ls.asmH ? ls.asmH + 0.05 : 0;
+  return clamp(Math.max(goods, built), 0.6, OUT_TRIM);
 }
 function flyTo(ls, y, instant){
   /* the board is the flyman: a thrown lock does not refuse it.  It takes the
