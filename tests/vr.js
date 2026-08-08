@@ -1827,6 +1827,38 @@ const probe = `
     BODIES.splice(BODIES.indexOf(t), 1);
     return 'edge grab, in-hand carry, square landing';
   });
+  P('the roller paints a curtain it is held against', ()=>{
+    /* goods round RULING T: the trigger with a dipped roller against cloth
+       colours the whole of that lineset's goods */
+    const rack = RACKS.palace;
+    const ls = FLY.find(l=>l.goodsKey === 'legs');
+    if(!ls) throw new Error('nothing masking to paint');
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.copy(rack.roller.mesh.getWorldPosition(new THREE.Vector3()));
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'roller') throw new Error('no roller in hand');
+    rack.roller.color = PAINT_COLORS[6].c;             // GREEN, as if dipped
+    /* stand the roller head on the cloth */
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(ls.goods);
+    const at = box.getCenter(new THREE.Vector3());
+    const head = rack.roller.head.getWorldPosition(new THREE.Vector3());
+    c0.position.add(at.clone().sub(head));
+    c0.updateMatrixWorld(true);
+    scene.updateMatrixWorld(true);
+    vrSelect(0, true);
+    let hit = 0;
+    ls.goods.traverse(o=>{
+      if(o.isMesh && o.material && o.material.isMeshStandardMaterial &&
+         o.material.color.getHex() === PAINT_COLORS[6].c) hit++;
+    });
+    vrSqueeze(0, false);
+    rack.roller.color = null;
+    if(!hit) throw new Error('the trigger did not paint the cloth');
+    return hit + ' cloths took the colour';
+  });
   P('painting says how it works, step by step', ()=>{
     /* the owner's report: "I can't figure out how to do the painting."
        The mechanic stands; the room now SAYS it (build-feel, ask 4). */

@@ -582,6 +582,58 @@ const probe = `
     return 'three sections, one run, slid and stopped at 8ft';
   });
 
+  console.log('--- painting the goods ---');
+  P('a painted curtain does not repaint every drape in the building', ()=>{
+    /* goods round RULING T: M.serge is ONE material shared by every border,
+       leg and half leg on all three stages (and the Arc's dressing).  Paint
+       must clone through a cache, never mutate the shared object. */
+    if(typeof paintGoods !== 'function') throw new Error('paintGoods is not defined');
+    const a = FLY.find(l=>l.goodsKey === 'border');
+    const b = FLY.filter(l=>l.goodsKey === 'border')[1];
+    if(!a || !b) throw new Error('the default hang has fewer than two borders');
+    const sergeWas = M.serge.color.getHex();
+    const bWas = (()=>{ let c = null; b.goods.traverse(o=>{ if(!c && o.isMesh) c = o.material; }); return c; })();
+    const color = PAINT_COLORS[4].c;                    // RED
+    if(!paintGoods(a, color)) throw new Error('nothing on the pipe took the coat');
+    let painted = 0, wrong = 0;
+    a.goods.traverse(o=>{
+      if(!o.isMesh || !o.material || !o.material.isMeshStandardMaterial) return;
+      if(o.material.color.getHex() === color) painted++; else wrong++;
+    });
+    if(!painted) throw new Error('the cloth is unchanged');
+    if(wrong) throw new Error(wrong + ' cloths on the pipe missed the coat');
+    if(M.serge.color.getHex() !== sergeWas)
+      throw new Error('the SHARED serge material was mutated — every drape in the game just turned');
+    let bNow = null; b.goods.traverse(o=>{ if(!bNow && o.isMesh) bNow = o.material; });
+    if(bNow !== bWas) throw new Error('the other border changed material too');
+    /* the cache: the same colour on another pipe is the SAME material */
+    if(!paintGoods(b, color)) throw new Error('the second pipe refused');
+    let aM = null, bM = null;
+    a.goods.traverse(o=>{ if(!aM && o.isMesh && o.material.isMeshStandardMaterial) aM = o.material; });
+    b.goods.traverse(o=>{ if(!bM && o.isMesh && o.material.isMeshStandardMaterial) bM = o.material; });
+    if(aM !== bM) throw new Error('two pipes painted the same colour minted two materials');
+    /* repaint is a pointer swap back to the cache, never clone-of-clone */
+    paintGoods(a, PAINT_COLORS[5].c);
+    paintGoods(a, color);
+    let aBack = null;
+    a.goods.traverse(o=>{ if(!aBack && o.isMesh && o.material.isMeshStandardMaterial) aBack = o.material; });
+    if(aBack !== aM) throw new Error('repainting the original colour minted a new material');
+    return 'the pipe took it; the shared serge and the other border did not';
+  });
+  P('the chandelier keeps its bulbs lit through a coat of paint', ()=>{
+    const ls = FLY[11];
+    hangGoods(ls, 'chand');
+    const bulbs = [];
+    ls.goods.traverse(o=>{ if(o.isMesh && o.material && o.material.isMeshBasicMaterial) bulbs.push(o.material); });
+    if(!bulbs.length) throw new Error('the chandelier has no self-lit bulbs to protect');
+    paintGoods(ls, PAINT_COLORS[0].c);
+    let changed = 0;
+    ls.goods.traverse(o=>{ if(o.isMesh && bulbs.indexOf(o.material) < 0 && o.material.isMeshBasicMaterial) changed++; });
+    if(changed) throw new Error('a self-lit bulb was painted over');
+    hangGoods(ls, 'none');
+    return 'lit equipment is not cloth';
+  });
+
   console.log('--- the trash ---');
   P('DELETE ALL WOOD clears the venue and nothing else', ()=>{
     /* build-feel RULING P: every wood body goes, through the machinery

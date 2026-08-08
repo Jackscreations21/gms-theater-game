@@ -1571,7 +1571,18 @@ function vrSelect(hand, down){
       if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
       if(typeof toast === 'function')
         toast(bw.prof === 'sheet' ? 'painted the face' : 'painted');
-    } else if(typeof toast === 'function') toast('no wood under the roller');
+      return;
+    }
+    /* no wood under it: cloth (RULING T).  Goods paint whole — the pipe's
+       whole hang takes the colour, both halves of a curtain together. */
+    const gls = (typeof goodsAt === 'function') ? goodsAt(_vecA) : null;
+    if(gls && paintGoods(gls, ro.color)){
+      if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+      if(typeof toast === 'function')
+        toast('painted the ' + ((GOODS[gls.goodsKey] && GOODS[gls.goodsKey].label) || 'goods'));
+      return;
+    }
+    if(typeof toast === 'function') toast('nothing under the roller to paint');
     return;
   }
   /* a hand on a saw cutter: the trigger is the blade (build spec §6) */
@@ -2463,6 +2474,11 @@ function vrPaintLabel(dt){
             _pnAt.copy(_pnV);
             break;
           }
+        }
+        /* cloth answers the sign too, or it would lie at a curtain */
+        if(!VR.paintTxt && typeof goodsAt === 'function' && goodsAt(_pnV)){
+          VR.paintTxt = 'TRIGGER TO PAINT';
+          _pnAt.copy(_pnV);
         }
       }
     } else if(!VR.held){
