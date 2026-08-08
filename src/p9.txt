@@ -1634,6 +1634,10 @@ function vrBodyTarget(b){
   return sl ? {slot:sl} : null;
 }
 const _run = new T.Vector3(), _vecA = new T.Vector3();
+/* wood is grabbed by its SURFACE, not its centre — an 8ft stick is a
+   handful anywhere along it (build-usability spec §2).  Wood meshes are
+   the shared unit box scaled, so local-space clamp is the exact distance. */
+const GRAB_WOOD = 0.15;
 function vrSqueeze(hand, down){
   const c = VR.controllers[hand];
   if(!c) return;
@@ -1833,8 +1837,22 @@ function vrSqueeze(hand, down){
           : FIXTURES.indexOf(p) >= 0);
         if(!live) continue;
       }
-      b.mesh.getWorldPosition(_vecA);
-      const d = _vecA.distanceTo(_rayO);
+      let d;
+      if(b.kind === 'wood'){
+        /* hand into the unit-box local frame; per-axis overshoot times the
+           scale is the true metric gap to the nearest point on the piece */
+        b.mesh.updateWorldMatrix(true, false);
+        _vecA.copy(_rayO);
+        b.mesh.worldToLocal(_vecA);
+        const gx = Math.max(0, Math.abs(_vecA.x) - 0.5) * b.mesh.scale.x,
+              gy = Math.max(0, Math.abs(_vecA.y) - 0.5) * b.mesh.scale.y,
+              gz = Math.max(0, Math.abs(_vecA.z) - 0.5) * b.mesh.scale.z;
+        d = Math.sqrt(gx*gx + gy*gy + gz*gz);
+        if(d >= GRAB_WOOD) continue;
+      } else {
+        b.mesh.getWorldPosition(_vecA);
+        d = _vecA.distanceTo(_rayO);
+      }
       if(d < bdd){ bdd = d; bod = b; }
     }
   }
