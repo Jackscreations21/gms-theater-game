@@ -6,8 +6,9 @@ hinges that swing, track that slides — and the game's first save.
 Binding specs: `docs/superpowers/specs/2026-08-07-build-system-design.md`
 (rulings F–J), `…build-usability-design.md` (K),
 `…2026-08-08-build-feel-round-design.md` (L–S),
-`…goods-round-design.md` (T–W). **Read them before touching any of
-this.**
+`…goods-round-design.md` (T–W), `…carpenters-design.md` (X–AC — the
+crew that builds through these same functions; p6b/p6c). **Read them
+before touching any of this.**
 
 ## Wood
 

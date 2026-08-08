@@ -14,7 +14,8 @@ order; **the order is a dependency order and must never be sorted**.
 | `p4` | lighting: `FIXTURES`, light pool, beam shader, `stageToWorld`, `updateRig`, `BODIES`/`updateBodies` | after `p3` |
 | `p4c` | **the build system**: wood, assemblies, nails/hinges/track, saws, paint, ordering, the save | after `p4` |
 | `p5 p5e` | scenic stock, smoke | |
-| `p6 p6b` | cue engine + console UI; the crew (`CREW`, job queue) | |
+| `p6 p6b` | cue engine + console UI; the crew (`CREW`, job queue; the lead carpenter + carp job kinds) | |
+| `p6c` | **the carpenters**: `CARP_CAT`, `carpSurvey`/`carpPlan` (pure), `carpStart`/`CARP_RUN` | after `p6b` (extends the crew), before `p5c` |
 | `p5c` | `SHOWS`/`SHOW`, scenes, rain/fire, helpers | after the crew (`crewForgetLoads`) |
 | `p5d p5f p5g` | Lost Boys, Hamilton, The Play That Goes Wrong | `p5f`/`p5g` reuse `LB_CLOTH_W` from `p5d` |
 | `p2j` | the Arc Centre (second venue) | after the shows, before the stages |
@@ -65,8 +66,10 @@ behind it (orders, saws, paint, forklift).
   pieces, nails as DATA, `asmJoints` decides rigid vs swing.
 - `ORDERS[venue]` — `{pending:[], pallets:[]}`, three orders out per
   shed, game-time delivery in `updateSheds`.
-- `CREW` (p6b) — six stagehands, a plain job queue; `crewAssign` switches
-  on `job.kind`. **Adding a trade = adding job kinds, not an engine.**
+- `CREW` (p6b) — six stagehands plus the lead carpenter (`people[6]`,
+  `trade:'carpenter'`, lazy), a plain job queue; `crewAssign` switches
+  on `job.kind` with trade guards BEFORE the shift. **Adding a trade =
+  adding job kinds, not an engine** — the carpenters proved it.
 - Carts and the forklift live at venue level on purpose (they leave
   their shed's cull room).
 

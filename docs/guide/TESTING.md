@@ -10,7 +10,7 @@ checklist in HANDOFF.md.
 ```sh
 cd tests
 npm install       # once — jsdom and three@0.128
-npm test          # all 15 suites, exits non-zero if any fail
+npm test          # all 16 suites, exits non-zero if any fail
 node real.js      # boots the whole file, expect "fatal": null
 ```
 
@@ -33,8 +33,9 @@ node real.js      # boots the whole file, expect "fatal": null
 | `orders.js` | supply screens, pallets, rulings C/D/E |
 | `build.js` | wood stock, tabbed screen, caps, the save round-trip |
 | `vr.js` | WebXR: rig, sticks, desks, ropes, GO, bodies |
+| `carp.js` | the carpenters: catalogue, planner, the lead, the build at the mark, the screen |
 
-All 15 are at `--- failures: 0 ---`. **Keep them there.** Every suite
+All 16 are at `--- failures: 0 ---`. **Keep them there.** Every suite
 exits non-zero on failure, including a failure to boot.
 
 ## The discipline
