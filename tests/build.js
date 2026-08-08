@@ -142,6 +142,66 @@ const probe = `
     return 'a hinge, a track section and two red cans, 420m out';
   });
 
+  console.log('--- the forklift ---');
+  P('each shed parks a forklift, and the floors are painted for pallets', ()=>{
+    if(typeof LIFTS === 'undefined' || !LIFTS.palace || !LIFTS.arc) throw new Error('lifts missing');
+    if(!LIFTS.palace.lift || !CARTS.palaceLift) throw new Error('the lift is not on the cart books');
+    const pal = PALLET_SLOTS.filter(s=>s.venue==='palace');
+    const arc = PALLET_SLOTS.filter(s=>s.venue==='arc');
+    if(pal.length !== 6) throw new Error(pal.length+' palace slots, wanted 4 shed + 2 wing');
+    if(arc.length !== 8) throw new Error(arc.length+' arc slots, wanted 4 shed + 2 per house');
+    /* the wing slots are ON the stages */
+    if(!pal.some(s=>Math.abs(s.x - 16.5) < 0.1 && s.z > -17)) throw new Error('no palace SL wing slot');
+    if(!arc.some(s=>s.x > 400)) throw new Error('the arc slots missed their venue');
+    return '6 palace + 8 arc, lifts parked';
+  });
+  P('the lift minds the walls the cart minds', ()=>{
+    const L = LIFTS.palace;
+    if(!cartBlocked(L, L.x, SHEDS.palace.z0 - 1)) throw new Error('drove through the shed rear wall');
+    const x0 = L.x;
+    cartMoveTo(L, L.x + 0.5, L.z);
+    if(Math.abs(L.x - (x0 + 0.5)) > 0.01) throw new Error('a legal move refused');
+    cartMoveTo(L, x0, L.z);
+    return 'blocked and free, same book as the cart';
+  });
+  P('forks under the boards take the pallet, and a wing slot takes it back', ()=>{
+    const L = LIFTS.palace;
+    if(orderPlace('palace', ['par']) !== 'OK') throw new Error('the slip was refused');
+    for(let i=0;i<620;i++) updateSheds(0.05);
+    const o = ORDERS.palace;
+    if(!o.pallets.length) throw new Error('no pallet came');
+    /* the sheet test's loaded pallet still stands — ours is the newest */
+    const pal = o.pallets[o.pallets.length - 1];
+    scene.updateMatrixWorld(true);
+    const pw = pal.group.getWorldPosition(new THREE.Vector3());
+    /* walk the lift up to it, forks toward the boards */
+    L.x = pw.x; L.z = pw.z - 0.85; L.yaw = 0; L.forkY = 0; L.prevForkY = 0; cartPose(L);
+    for(let i=0;i<30;i++){ L.forkY = Math.min(0.4, L.forkY + 0.02); updateLifts(0.05); }
+    if(L.riding !== pal) throw new Error('the forks came up empty');
+    if(pal.spot !== -1) throw new Error('the apron spot never freed');
+    /* it rides: move the lift, the pallet and its load move with it */
+    const body = BODIES[BODIES.length-1];
+    const b0 = body.mesh.getWorldPosition(new THREE.Vector3());
+    L.x += 2.5; cartPose(L); scene.updateMatrixWorld(true);
+    const b1 = body.mesh.getWorldPosition(new THREE.Vector3());
+    if(Math.abs(b1.x - b0.x - 2.5) > 0.1) throw new Error('the load stayed behind: '+(b1.x-b0.x).toFixed(2));
+    /* carry it to the SL wing and set it down on the paint */
+    L.x = 16.4; L.z = -15.5 - 0.85; cartPose(L);
+    for(let i=0;i<40;i++){ L.forkY = Math.max(0, L.forkY - 0.02); updateLifts(0.05); }
+    if(L.riding) throw new Error('the forks never let go');
+    scene.updateMatrixWorld(true);
+    const dw = pal.group.getWorldPosition(new THREE.Vector3());
+    if(Math.abs(dw.x - 16.5) > 0.1 || Math.abs(dw.z - (-15.5)) > 0.1)
+      throw new Error('missed the slot: '+dw.x.toFixed(2)+','+dw.z.toFixed(2));
+    if(pal.group.parent !== world) throw new Error('the pallet came down in the wrong tree');
+    if(body.state !== 'slotted') throw new Error('the load fell off: '+body.state);
+    /* the pallet still clears itself once emptied, wherever it stands */
+    grabBody(body); body.state = 'loose';
+    for(let i=0;i<130;i++) updateSheds(0.05);
+    if(o.pallets.indexOf(pal) >= 0) throw new Error('the emptied pallet stayed');
+    return 'lifted at the apron, set down on the SL wing paint';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

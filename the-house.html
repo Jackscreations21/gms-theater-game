@@ -11673,6 +11673,123 @@ function cartPose(c){
 }
 
 /* ============================================================================
+   THE FORKLIFT (build spec §4, RULING H) — a walk-behind pallet jack with
+   a forklift silhouette, one per shed.  Grab the handle and it follows,
+   exactly the cart: the record lives in CARTS as well as LIFTS, so the p9
+   grab, chase and wall code drive it WITHOUT A FORK of the machinery.
+   While it is held, the RIGHT stick runs the forks (rx is smooth turn and
+   the left stick walks — ry was the free axis).  Forks under a pallet's
+   boards + raise = the pallet rides them; lower them off at the floor and
+   it stands where it stops — or snaps to a painted PALLET SLOT within
+   half a metre.  Slots: four to a shed, one in each stage wing.
+   ========================================================================== */
+var LIFTS = {palace:null, arc:null};
+var PALLET_SLOTS = [];            // {venue, x, z, mesh} — x/z in WORLD coords
+const LIFT_FORK_TOP = 1.2;        // metres of fork travel
+const LIFT_FORK_RATE = 0.5;      // m/s under the stick
+const M_SLOT = new T.MeshBasicMaterial({color:0xc9a03c, transparent:true, opacity:0.35});
+const M_LIFT = new T.MeshStandardMaterial({color:0xc9611d, roughness:.6, metalness:.3});
+function palletSlot(venue, wx, wz, parent){
+  const m = new T.Mesh(new T.PlaneGeometry(1.9, 1.4), M_SLOT);
+  m.rotation.x = -Math.PI/2;
+  const ox = (venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
+  m.position.set(wx - ox, 0.02, wz);
+  m.raycast = ()=>{};             // paint on the floor, not a thing
+  parent.add(m);
+  PALLET_SLOTS.push({venue, x:wx, z:wz, mesh:m});
+}
+function buildLift(venue, parent, wx, wz){
+  const g = new T.Group();
+  g.userData.moves = true;
+  const body = new T.Mesh(new T.BoxGeometry(0.62, 0.72, 0.6), M_LIFT);
+  body.position.set(0, 0.42, -0.26); g.add(body);
+  [-0.24, 0.24].forEach(mx=>{      // the mast the carriage rides
+    const up = new T.Mesh(new T.BoxGeometry(0.07, 1.62, 0.07), M.steel);
+    up.position.set(mx, 0.81, 0.1); g.add(up);
+  });
+  const handle = new T.Mesh(new T.CylinderGeometry(0.022, 0.022, 0.56, 8), M.pipe);
+  handle.rotation.z = Math.PI/2; handle.position.set(0, 1.0, -0.62); g.add(handle);
+  const stem = new T.Mesh(new T.CylinderGeometry(0.02, 0.02, 0.5, 6), M.steel);
+  stem.rotation.x = 0.55; stem.position.set(0, 0.82, -0.5); g.add(stem);
+  [[-0.26,-0.4],[0.26,-0.4],[-0.28,1.2],[0.28,1.2]].forEach(cn=>{
+    const wheel = new T.Mesh(new T.CylinderGeometry(0.09, 0.09, 0.06, 10), M.fixture);
+    wheel.rotation.z = Math.PI/2; wheel.position.set(cn[0], 0.09, cn[1]); g.add(wheel);
+  });
+  const forks = new T.Group(); g.add(forks);
+  [-0.28, 0.28].forEach(fx=>{
+    const f = new T.Mesh(new T.BoxGeometry(0.15, 0.05, 1.1), M.steel);
+    f.position.set(fx, 0.09, 0.85); forks.add(f);
+  });
+  const carr = new T.Mesh(new T.BoxGeometry(0.6, 0.34, 0.06), M.steel);
+  carr.position.set(0, 0.24, 0.33); forks.add(carr);
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+  const lift = {
+    venue, group:g, x:wx, z:wz, yaw:0, yBase:0,
+    handleH:1.0, handleZ:-0.62, handleHalf:0.28, grabR:0.30,
+    slots:[], lift:true, forks, forkY:0, prevForkY:0, riding:null
+  };
+  parent.add(g);
+  LIFTS[venue] = lift;
+  CARTS[venue + 'Lift'] = lift;   // the p9 cart machinery takes it whole
+  cartPose(lift);
+  if(typeof INTERACT !== 'undefined') INTERACT.push(g);
+  return lift;
+}
+/* forks up under the boards takes a pallet; forks flat on the floor while
+   one is riding sets it down — snapped to a slot if one is in reach */
+const _liftV = new T.Vector3();
+function updateLifts(dt){
+  for(const k in LIFTS){
+    const L = LIFTS[k];
+    if(!L) continue;
+    L.forks.position.y = L.forkY;
+    const rising = L.forkY > L.prevForkY + 1e-5;
+    const lowering = L.forkY < L.prevForkY - 1e-5;
+    if(!L.riding && rising && L.prevForkY < 0.13 && L.forkY >= 0.13){
+      const o = ORDERS[L.venue];
+      L.group.updateMatrixWorld(true);
+      for(const pal of o.pallets){
+        pal.group.getWorldPosition(_liftV);
+        const lp = L.group.worldToLocal(_liftV.clone());
+        if(Math.abs(lp.x) < 0.5 && lp.z > 0.35 && lp.z < 1.45 && Math.abs(lp.y) < 0.5){
+          L.forks.attach(pal.group);
+          L.riding = pal;
+          pal.spot = -1;            // the apron spot is free again
+          if(typeof toast === 'function') toast('the pallet is on the forks');
+          break;
+        }
+      }
+    }
+    if(L.riding && lowering && L.forkY <= 0.02) liftDrop(L);
+    L.prevForkY = L.forkY;
+  }
+}
+function liftDrop(L){
+  const pal = L.riding;
+  L.riding = null;
+  const root = (typeof venueRoot === 'function') ? venueRoot(L.venue) : world;
+  root.attach(pal.group);
+  pal.group.updateMatrixWorld(true);
+  pal.group.getWorldPosition(_liftV);
+  let best = null, bd = 0.6;
+  for(const s of PALLET_SLOTS){
+    if(s.venue !== L.venue) continue;
+    const d = Math.hypot(_liftV.x - s.x, _liftV.z - s.z);
+    if(d < bd){ bd = d; best = s; }
+  }
+  const ox = (L.venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
+  if(best){
+    pal.group.position.set(best.x - ox, 0, best.z);
+    pal.group.rotation.set(0, 0, 0);
+  } else {
+    const g = (typeof groundAt === 'function')
+      ? groundAt(_liftV.x, _liftV.z, _liftV.y + 0.6) : 0;
+    pal.group.position.y -= _liftV.y - (g === null ? 0 : g);
+  }
+  if(typeof toast === 'function') toast('pallet set down');
+}
+
+/* ============================================================================
    THE PALACE SHED — brick, behind the stage house, straight out the new
    doorway in the back wall.  World geometry at parse time; p2i pins the
    group to its own room ('shed') and the door station to the stage.
@@ -11735,6 +11852,15 @@ function cartPose(c){
      free. */
   buildCart('palace', world, 8.5, -27.5);
 
+  /* the forklift parks by the roller door; pallet slots paint the west
+     side of the shed, and one waits in each stage wing (top-level world
+     children like the cart — a slot on the stage is stage furniture) */
+  buildLift('palace', world, 4.5, D.backWall - 2.5);
+  for(let i = 0; i < 4; i++)
+    palletSlot('palace', -9.8, D.backWall - 3 - i*2.2, world);
+  palletSlot('palace', -16.5, -15.5, world);
+  palletSlot('palace',  16.5, -15.5, world);
+
   /* the door control, an [E] station on the STAGE side of the wall — a
      top-level world child so p2i can pin it to the stage room, never the
      shed's (the shed may be culled while you are looking right at it) */
@@ -11757,6 +11883,7 @@ function updateSheds(dt){
     d.group.position.y = d.y0 + d.open * d.travel;
   }
   updateOrders(dt);
+  updateLifts(dt);
 }
 
 /* ============================================================================
@@ -11804,6 +11931,17 @@ function buildArcShed(MAT){
      same x=420 offset cartPose already removes (the room groups all sit at
      the origin inside it). */
   buildCart('arc', ARC.group, ARC.X + 0, -55);
+
+  /* the arc's forklift and slots: four painted spots in the shared shed,
+     and one in each wing of each house, just inside its rear door */
+  buildLift('arc', ARC.group, ARC.X - 14, -50);
+  [-31, -16, 16, 31].forEach(sx=> palletSlot('arc', ARC.X + sx, -52, ARC.group));
+  for(const key of ['main','studio']){
+    const H = ARC.houses[key];
+    if(!H) continue;
+    palletSlot('arc', ARC.X + H.cx - 16.5, H.zBack + 2.6, ARC.group);
+    palletSlot('arc', ARC.X + H.cx + 16.5, H.zBack + 2.6, ARC.group);
+  }
 }
 
 /* ============================================================================
@@ -11883,9 +12021,11 @@ function orderPlace(which, units){
 /* the pallet: boards on two bearers, its seats laid out FROM the manifest —
    sheets flat-stack the middle, long stock lies in two columns, gear and
    smalls take the six seats (twice over).  An anchor carries the LIE of
-   what sits on it, because slotBody zeroes the mesh against it.  A child
-   of the shed group on purpose — until the forklift (PR 2) a pallet never
-   leaves the shed, so it may cull with it. */
+   what sits on it, because slotBody zeroes the mesh against it.  Born a
+   child of the shed group (it may cull with the shed while it stands on
+   the apron); the forklift re-parents it by attach() — the fork group
+   while riding, the venue root when set down anywhere else — so a pallet
+   out on a stage can never vanish with the shed room (the cart's lesson). */
 function spawnPallet(which, items){
   const S = SHEDS[which], o = ORDERS[which];
   const g = new T.Group();
@@ -15385,7 +15525,9 @@ function vrSqueeze(hand, down){
   }
   if(cart && (!best || cd < bd) && (!lv || cd < lvd)){
     VR.held = {hand, kind:'cart', cart, offX:cart.x - _rayO.x, offZ:cart.z - _rayO.z};
-    if(typeof toast === 'function') toast('warehouse cart — push it where you want it');
+    if(typeof toast === 'function') toast(cart.lift
+      ? 'forklift — walk it; the right stick runs the forks'
+      : 'warehouse cart — push it where you want it');
     return;
   }
   /* nearest wins: with the lock in, the handle stands right against the
@@ -15452,6 +15594,12 @@ function vrUpdateHold(dt){
       ct.yaw += clamp(diff, -step, step);
       cartPose(ct);
     }
+    /* the forklift only: the right stick runs the forks (push away = up).
+       rx is smooth turn and the left stick walks; ry was the free axis,
+       whichever hand took the handle. */
+    if(ct.lift && VR.axes && VR.axes.ry)
+      ct.forkY = clamp(ct.forkY - VR.axes.ry * LIFT_FORK_RATE * (dt || 0.016),
+                       0, LIFT_FORK_TOP);
     return;
   }
   /* a held BODY follows the grip kinematically — never re-parented to the

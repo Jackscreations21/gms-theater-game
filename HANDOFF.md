@@ -586,10 +586,26 @@ a dependency chain on p9/p4c/p2m — do not parallelize them).
   negative-checked (whole-suite vs main's build; the canHang guard
   by rebuild-without-it).
 
-**NEXT: PR 2 (forklift) through PR 7 (save), in plan order.** Step
-zero: confirm the previous PR merged, `npm test` 15/15 on `main`,
-then branch the next off `main` (or build on the unmerged branch and
-open after it merges — the #38 pattern).
+- **PR 2 (branch `build-forklift`, built on PR 1's branch — open it
+  only after PR 1 merges, rebase first) — the forklift.** RULING H:
+  walk-behind. `buildLift` in p2m parks one per shed; the record lives
+  in `LIFTS[venue]` AND in `CARTS[venue+'Lift']`, so the p9 cart grab /
+  chase / wall machinery drives it with NO fork of the arbitration —
+  the only p9 additions are the toast and the fork stick (RIGHT stick
+  Y while held; rx is turn, lx/ly walk — ry was free). `updateLifts`
+  (called from `updateSheds`): forks crossing y=0.13 upward under a
+  pallet's boards take it (`forks.attach`, spot freed); forks lowered
+  home while riding set it down — snapped to the nearest `PALLET_SLOTS`
+  paint within 0.6 (4 per shed, 2 per stage wing, palace west wall /
+  wings ±16.5 z −15.5; arc shed ±31/±16 z −52 + per-house wings), else
+  flat where it stands via `groundAt`. Pallets reparent by `attach()`
+  only — venue root when down (they LEAVE the shed now; the old
+  shed-group cull note is dead), fork group when riding.
+
+**NEXT: PR 3 (toolbelt + nails + assemblies) through PR 7 (save), in
+plan order.** Step zero: confirm the previous PR merged, `npm test`
+15/15 on `main`, then branch the next off `main` (or build on the
+unmerged branch and open after it merges — the #38 pattern).
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
@@ -655,6 +671,10 @@ rig, and do the 6-box arrays read as real PA from the stalls. New from
 the build round (PR 1): is the tabbed supply screen still legible at
 arm's length (the paint rows are 28px against everything else's 48),
 and do the stacked wood pallets read as lumber stock on the apron.
+(PR 2): does walking the forklift feel like a pallet jack or like
+dragging furniture; is the right-stick fork control discoverable and
+comfortable (push away = up); is steering a loaded pallet through the
+roller door claustro; do the painted floor slots read as parking.
 Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).

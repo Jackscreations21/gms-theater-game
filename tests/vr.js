@@ -1516,6 +1516,37 @@ const probe = `
     exitVR();
     return 'pushes and stops';
   });
+  P('the forklift answers the hand, and the right stick runs the forks', ()=>{
+    if(typeof LIFTS === 'undefined' || !LIFTS.palace) throw new Error('no forklift');
+    enterVR();
+    goToView(3);
+    VR.rig.position.set(0,0,0); VR.rig.rotation.set(0,0,0);
+    VR.rig.updateMatrixWorld(true);
+    const L = LIFTS.palace;
+    const hx = L.x, hz = L.z;
+    L.yaw = 0; cartPose(L);
+    const c = VR.controllers[0];
+    c.quaternion.set(0,0,0,1);
+    c.position.set(L.x, L.handleH, L.z + L.handleZ);
+    c.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'cart' || !VR.held.cart.lift)
+      throw new Error('the handle did not take: '+JSON.stringify(VR.held && VR.held.kind));
+    /* stick pushed away = forks up; the game reads it out of VR.axes.ry */
+    VR.axes.ry = -1;
+    for(let i=0;i<20;i++){ vrUpdateHold(0.05); updateLifts(0.05); }
+    VR.axes.ry = 0;
+    if(!(L.forkY > 0.3)) throw new Error('the forks never rose: '+L.forkY.toFixed(2));
+    VR.axes.ry = 1;
+    for(let i=0;i<40;i++){ vrUpdateHold(0.05); updateLifts(0.05); }
+    VR.axes.ry = 0;
+    if(L.forkY > 0.001) throw new Error('the forks never came home: '+L.forkY.toFixed(2));
+    vrSqueeze(0, false);
+    L.x = hx; L.z = hz; L.forkY = 0; cartPose(L);
+    c.position.set(0, 0, 0); c.updateMatrixWorld(true);
+    exitVR();
+    return 'held like a cart, forks on the stick';
+  });
 
   console.log('--- vr: bodies ---');
   P('a squeeze takes a lantern off its pipe, and the channel dies in the hand', ()=>{
