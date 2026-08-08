@@ -831,6 +831,13 @@ like grabbing lumber or like a magnet (one constant, p9); does the
 gun-at-seam read — point at two touching pieces, TRIGGER TO NAIL label,
 fire — or does the SEAM_REACH 0.45 leash feel short; does SEAM_TOUCH
 0.05 accept the seams a real stack of lumber offers.
+New from the usability round (snap + table): does the earlier ghost
+(SNAP_OFFER 0.22, was 0.14) help or grab too eagerly; do end-to-end
+butts and T-joints offer the joint you meant (SNAP_SLACK 0.08 is the
+overlap forgiveness); does the WORK TABLE (HDWE tab) carry comfortably
+and land square on release; is building at 0.925m height right in VR;
+and does 'the table holds it — no nail needed' read as design, not
+refusal.
 Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).

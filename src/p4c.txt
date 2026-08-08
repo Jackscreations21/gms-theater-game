@@ -18,7 +18,7 @@
    part has executed — a hoisted var reads undefined there (falsy, correct:
    factory stock is all lanterns), where a const would throw (§5).
    ========================================================================== */
-var BUILD_KINDS = {wood:1, hinge:1, track:1, carriage:1, paint:1};
+var BUILD_KINDS = {wood:1, hinge:1, track:1, carriage:1, paint:1, table:1};
 const BUILD_CAP = 150;          // build pieces to a venue — enforced at the screen
 const FT = 0.3048, INCH = 0.0254;
 const WOOD_LEN = 8*FT;          // every stick and sheet is born 8ft long
@@ -79,6 +79,15 @@ function makeBuildMesh(kind, color){
   } else if(kind === 'carriage'){
     const car = new T.Mesh(buildG('car', ()=>new T.BoxGeometry(0.16, 0.08, 0.16)), M.steel);
     car.position.y = 0.04; g.add(car);
+  } else if(kind === 'table'){
+    /* the work table (build-usability §5, RULING K): orderable, carried by
+       hand, stood anywhere — its top is a raised piece of deck */
+    const top = new T.Mesh(buildG('tabletop', ()=>new T.BoxGeometry(1.6, 0.05, 0.8)), M.wood);
+    top.position.y = 0.90; g.add(top);
+    [-1, 1].forEach(sx=>[-1, 1].forEach(sz=>{
+      const leg = new T.Mesh(buildG('tableleg', ()=>new T.BoxGeometry(0.06, 0.875, 0.06)), M.steel);
+      leg.position.set(sx*0.72, 0.4375, sz*0.34); g.add(leg);
+    }));
   } else {                                        // a paint can, banded its color
     const can = new T.Mesh(buildG('can', ()=>new T.CylinderGeometry(0.09, 0.09, 0.22, 12)), M.steel);
     can.position.y = 0.11; g.add(can);
@@ -461,6 +470,29 @@ const _shalf = new T.Vector3(), _slp = new T.Vector3(), _sq = new T.Quaternion()
 /* build-usability §3: candidates by SURFACE gap, the joint axis by real
    face overlap (daylight first), the winner by the smallest flush error */
 const SNAP_SEEK = 0.35, SNAP_OFFER = 0.22, SNAP_SLACK = 0.08;
+/* a REAL identity for snapQuantize's targetQ — passing _aq2 in aliased the
+   temp snapQuantize writes first, so flat offers forced pieces upright */
+const _IDQ = new T.Quaternion();
+/* the work table's top surface (§5): legs 0.875, slab 0.875..0.925 */
+const TABLE_TOP = 0.925;
+const _tbV = new T.Vector3(), _tbV2 = new T.Vector3();
+/* the highest tabletop under a world point, or null.  Own temps — this is
+   called from inside snapWood and updateBodies, which own _av/_bodyV. */
+function tableTopAt(wx, wy, wz, venue, self){
+  let top = null;
+  for(const t of BODIES){
+    if(t.kind !== 'table' || t === self || t.venue !== venue) continue;
+    if(t.state === 'held') continue;
+    t.mesh.updateWorldMatrix(true, false);
+    _tbV.set(wx, wy, wz);
+    t.mesh.worldToLocal(_tbV);                    // a Group: local IS metric
+    if(Math.abs(_tbV.x) > 0.8 || Math.abs(_tbV.z) > 0.4) continue;
+    t.mesh.getWorldPosition(_tbV2);
+    const ty = _tbV2.y + TABLE_TOP;
+    if(wy > ty - 0.35 && (top === null || ty > top)) top = ty;
+  }
+  return top;
+}
 function snapWood(held){
   const hm = held.mesh;
   hm.updateMatrixWorld(true);
@@ -544,13 +576,21 @@ function snapWood(held){
       .applyQuaternion(_sq).normalize();
     return {target:{body:best.tgt}, pos, quat, point, axis: axis.clone()};
   }
-  /* 2 — the deck: near the floor, lie flat on it */
+  /* 2 — flat surfaces: a work table's top first, then the deck */
   hm.getWorldQuaternion(_sq);
-  const relW = snapQuantize(hm, _aq2.identity());
+  const relW = snapQuantize(hm, _IDQ);
   snapHalf(relW, hm.scale, _shalf);
+  /* 2a — a table under it: lie flat ON the top.  Never a nail — the gun
+     refuses a table target (§5); you build on it and carry the work off */
+  const tt = tableTopAt(_av.x, _av.y, _av.z, held.venue, held);
+  if(tt !== null && _av.y - _shalf.y < tt + 0.35){
+    const pos = _av.clone(); pos.y = tt + _shalf.y;
+    return {target:{table:true}, pos, quat:relW.clone(),
+            point:new T.Vector3(_av.x, tt, _av.z), axis:new T.Vector3(0, -1, 0)};
+  }
   if(_av.y - _shalf.y < 0.3){
     const pos = _av.clone(); pos.y = _shalf.y;
-    return {target:{deck:true}, pos, quat:_aq2.identity().clone().multiply(relW).clone(),
+    return {target:{deck:true}, pos, quat:relW.clone(),
             point:new T.Vector3(_av.x, 0, _av.z), axis:new T.Vector3(0, -1, 0)};
   }
   /* 3 — a live fly pipe: hang the piece under the batten */
