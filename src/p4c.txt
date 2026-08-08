@@ -192,7 +192,7 @@ function addNail(bA, target, wp, wax){
 function detachPiece(a, p){
   asmUnpivot(a, p);
   venueRoot(a.venue).attach(p.mesh);
-  p.state = 'loose'; p.asm = null;
+  p.state = 'loose'; p.asm = null; p.slider = null;
   if(typeof woodRestH === 'function') p.restH = woodRestH(p);
   a.pieces.splice(a.pieces.indexOf(p), 1);
 }
@@ -203,7 +203,16 @@ function removeAsm(a){
 function removeNail(n){
   const a = n.asm;
   a.nails.splice(a.nails.indexOf(n), 1);
-  if(n.mesh.parent) n.mesh.parent.remove(n.mesh);    // shared geometry, no dispose
+  if(n.hinge){
+    /* a pulled hinge is hardware again: the body respawns loose */
+    venueRoot(a.venue).attach(n.mesh);
+    const keep = BUILD_VENUE;
+    BUILD_VENUE = a.venue;
+    const hb = regBody('hinge', n.mesh, null);
+    BUILD_VENUE = keep;
+    hb.state = 'loose'; hb.restH = 0.14;
+  }
+  else if(n.mesh.parent) n.mesh.parent.remove(n.mesh);   // shared geometry, no dispose
   /* anchors live in their nails: pull the last one and the hold is gone */
   if(n.b === 'deck' && !a.nails.some(x=>x.b === 'deck')) a.anchor = null;
   if(n.b === 'pipe' && !a.nails.some(x=>x.b === 'pipe')){
@@ -239,12 +248,165 @@ function asmUnpivot(a, p){
 function asmJoints(a){
   for(const p of a.pieces){
     const k = nailCount(a, p);
-    if(k === 1 && (a.pieces.length > 1 || a.anchor)){
-      const n = a.nails.find(x=>x.a === p || x.b === p);
+    const n = k === 1 ? a.nails.find(x=>x.a === p || x.b === p) : null;
+    /* one nail swings — UNLESS it is a world nail (deck/pipe pins where
+       it stands) or a carriage nail (the slide is the carriage's dof) */
+    if(n && (a.pieces.length > 1 || a.anchor) &&
+       n.b !== 'deck' && n.b !== 'pipe' && !n.carriage){
       if(p.pivotN !== n){ asmUnpivot(a, p); asmPivot(a, p, n); }
     } else asmUnpivot(a, p);
   }
 }
+/* ============================================================================
+   HINGES & TRACK (PR 6, spec §7).  A HINGE is a nail that swings: hold
+   the hinge body at the seam between a LOOSE piece and its neighbour,
+   fire the gun — the hinge body is consumed into a range-limited pivot
+   (its own pin axis is the hinge axis: you place it the way it should
+   swing), and the loose piece joins the neighbour's assembly on it.
+   Nail the door shut later and it goes rigid; hammer that nail and it
+   swings again; hammer the HINGE and the body respawns loose.
+
+   TRACK: sections gun-nail to the deck and CHAIN end-to-end into one
+   deck-anchored assembly (a.track.n sections along root-local X).  A
+   carriage released onto a run RIDES it — a slider Group, the pivot
+   pattern with translation for rotation.  Wood gun-nailed to a carriage
+   attaches UNDER the slider, so pushing any of it slides the lot, hard
+   stops at the run's ends (slideTo).
+   ========================================================================== */
+const TRACK_LEN = 4*FT;
+function addHinge(hb, wp, wax){
+  let sw = null, swd = 1e9, tg = null, tgd = 1e9;
+  for(const b of BODIES){
+    if(b.kind !== 'wood' || b.venue !== hb.venue) continue;
+    b.mesh.getWorldPosition(_av2);
+    const reach = Math.max(b.mesh.scale.x, b.mesh.scale.y, b.mesh.scale.z)/2 + 0.35;
+    const d = _av2.distanceTo(wp);
+    if(d > reach) continue;
+    if(b.state === 'loose' && d < swd){ swd = d; sw = b; }
+  }
+  if(!sw) return null;
+  for(const b of BODIES){
+    if(b === sw || b.kind !== 'wood' || b.venue !== hb.venue) continue;
+    if(b.state !== 'loose' && b.state !== 'fixed') continue;
+    b.mesh.getWorldPosition(_av2);
+    const reach = Math.max(b.mesh.scale.x, b.mesh.scale.y, b.mesh.scale.z)/2 + 0.35;
+    const d = _av2.distanceTo(wp);
+    if(d < reach && d < tgd){ tgd = d; tg = b; }
+  }
+  if(!tg) return null;
+  let a = tg.asm || null;
+  if(!a){ a = newAsm(tg.venue); asmAdopt(a, tg); }
+  asmAdopt(a, sw);
+  const nm = hb.mesh;                       // the hinge body IS the joint marker
+  a.root.attach(nm);
+  a.root.getWorldQuaternion(_aq).invert();
+  const axL = _av3.copy(wax).applyQuaternion(_aq).normalize();
+  const n = {a:sw, b:tg, asm:a, p:a.root.worldToLocal(_av.copy(wp)).clone(),
+             axis:axL.clone(), mesh:nm, hinge:true, range:Math.PI/2};
+  a.nails.push(n);
+  BODIES.splice(BODIES.indexOf(hb), 1);     // consumed
+  asmJoints(a);
+  return n;
+}
+/* lay a POSED track section: into an existing run, or as a new one */
+function layTrack(tb, asm){
+  let a = asm || null;
+  const keep = BUILD_VENUE;
+  BUILD_VENUE = tb.venue;
+  if(!a){
+    a = newAsm(tb.venue);
+    a.anchor = {type:'deck'};
+    a.track = {n:0};
+    tb.mesh.updateMatrixWorld(true);
+    tb.mesh.getWorldPosition(_av);
+    a.root.parent.worldToLocal(_av);
+    a.root.position.copy(_av);
+    _ae.setFromQuaternion(tb.mesh.getWorldQuaternion(_aq), 'YXZ');
+    a.root.rotation.y = _ae.y;
+    a.root.updateMatrixWorld(true);
+  }
+  asmAdopt(a, tb);
+  tb.mesh.position.set(a.track.n * TRACK_LEN, 0.025, 0);
+  tb.mesh.rotation.set(0, 0, 0);
+  const nm = makeNailMesh();
+  a.root.add(nm);
+  nm.position.set(a.track.n * TRACK_LEN, 0.055, 0);
+  a.nails.push({a:tb, b:'deck', asm:a, p:nm.position.clone(),
+                axis:new T.Vector3(0, -1, 0), mesh:nm});
+  a.track.n++;
+  BUILD_VENUE = keep;
+  asmJoints(a);
+  return a;
+}
+/* the held-track offer: the end of an existing run first, then the deck */
+function snapTrackHeld(b){
+  b.mesh.updateMatrixWorld(true);
+  b.mesh.getWorldPosition(_av);
+  for(const a of ASSEMBLIES){
+    if(!a.track || a.venue !== b.venue) continue;
+    a.root.updateMatrixWorld(true);
+    const endW = a.root.localToWorld(_av2.set(a.track.n * TRACK_LEN, 0.025, 0));
+    if(endW.distanceTo(_av) < 0.45)
+      return {lay:{asm:a}, pos:endW.clone(),
+              quat:a.root.getWorldQuaternion(_aq).clone(), point:endW.clone()};
+  }
+  if(_av.y < 0.35){
+    const relW = snapQuantize(b.mesh, _aq2.identity());
+    const pos = _av.clone(); pos.y = 0.05;
+    return {lay:{asm:null}, pos,
+            quat:_aq2.identity().clone().multiply(relW).clone(), point:pos.clone()};
+  }
+  return null;
+}
+function rideTrack(cb, a){
+  if(!a.track || cb.kind !== 'carriage') return false;
+  const slider = new T.Group();
+  a.root.add(slider);
+  a.root.updateMatrixWorld(true);
+  cb.mesh.getWorldPosition(_av);
+  a.root.worldToLocal(_av);
+  slider.position.set(clamp(_av.x, 0, (a.track.n - 1)*TRACK_LEN), 0.05, 0);
+  slider.updateMatrixWorld(true);
+  slider.add(cb.mesh);
+  cb.mesh.position.set(0, 0.02, 0);
+  cb.mesh.rotation.set(0, 0, 0);
+  cb.state = 'riding'; cb.slider = slider; cb.tAsm = a;
+  return true;
+}
+function slideTo(a, slider, x){
+  slider.position.x = clamp(x, 0, (a.track.n - 1)*TRACK_LEN);
+  return slider.position.x;
+}
+function nailToCarriage(wb, cb){
+  const a = cb.tAsm;
+  if(!a || wb.kind !== 'wood') return null;
+  if(wb.state === 'slotted') unslotBody(wb);
+  cb.slider.attach(wb.mesh);
+  wb.state = 'fixed'; wb.asm = a; wb.slider = cb.slider;
+  a.pieces.push(wb);
+  const nm = makeNailMesh();
+  cb.slider.add(nm);
+  cb.mesh.getWorldPosition(_av);
+  nm.position.copy(cb.slider.worldToLocal(_av));
+  nm.position.y += 0.06;
+  const n = {a:wb, b:cb, asm:a, p:nm.position.clone(),
+             axis:new T.Vector3(0, 0, 1), mesh:nm, carriage:true};
+  a.nails.push(n);
+  asmJoints(a);
+  return n;
+}
+/* pop a rider off its run — refuse while it carries work */
+function unrideTrack(cb){
+  if(!cb.slider) return false;
+  const a = cb.tAsm;
+  if(a.pieces.some(p=>p.slider === cb.slider)) return false;
+  venueRoot(cb.venue).attach(cb.mesh);
+  if(cb.slider.parent) cb.slider.parent.remove(cb.slider);
+  cb.slider = null; cb.tAsm = null;
+  cb.state = 'loose';
+  return true;
+}
+
 /* how deep everything nailed to this pipe hangs below it — p3's minTrimOf
    reads ls.asmH so a flown flat stops at the deck, the #15 rule */
 function asmHangDepth(ls){
@@ -298,6 +460,19 @@ function snapWood(held){
   const hm = held.mesh;
   hm.updateMatrixWorld(true);
   hm.getWorldPosition(_av);
+  /* 0 — a carriage riding a track: the piece mounts on it (PR 6) */
+  for(const cb of BODIES){
+    if(cb.kind !== 'carriage' || !cb.slider || cb.venue !== held.venue) continue;
+    cb.mesh.getWorldPosition(_av2);
+    if(_av2.distanceTo(_av) > 0.5) continue;
+    const a = cb.tAsm;
+    a.root.getWorldQuaternion(_sq);
+    const rel = snapQuantize(hm, _sq);
+    snapHalf(rel, hm.scale, _shalf);
+    const pos = _av2.clone(); pos.y += 0.04 + _shalf.y;
+    return {target:{carriage:cb}, pos, quat:_sq.clone().multiply(rel),
+            point:_av2.clone(), axis:new T.Vector3(0, 0, 1)};
+  }
   /* 1 — the nearest other piece of wood within arm's offering */
   let tgt = null, td = 1.4;
   for(const b of BODIES){

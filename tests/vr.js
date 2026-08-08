@@ -1707,6 +1707,54 @@ const probe = `
     BODIES.splice(BODIES.indexOf(sheet), 1);
     return 'dipped black, painted, re-racked on release';
   });
+  P('a held hinge under the gun makes a door swing; a hand slides the run', ()=>{
+    /* a standing stud and a loose panel beside it, mid-stage */
+    const post = regWood('s2x4'), door = regWood('s2x4');
+    post.mesh.position.set(-0.6, 1.22, -0.8);
+    door.mesh.position.set(-0.45, 1.22, -0.8);
+    scene.updateMatrixWorld(true);
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const hb = regBody('hinge', makeBodyMesh('hinge'), null);
+    const t1 = regBody('track', makeBodyMesh('track'), null);
+    const t2 = regBody('track', makeBodyMesh('track'), null);
+    const car = regBody('carriage', makeBodyMesh('carriage'), null);
+    BUILD_VENUE = keep;
+    hb.state = t1.state = t2.state = car.state = 'loose';
+    hb.mesh.position.set(-0.52, 1.22, -0.75);
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0], c1 = VR.controllers[1];
+    /* hand 0 takes the hinge, hand 1 draws the gun and fires */
+    c0.quaternion.set(0,0,0,1);
+    c0.position.copy(hb.mesh.position); c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.body !== hb) throw new Error('the hinge was not taken');
+    vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
+    c1.position.copy(VR.holsters.nailgun.getWorldPosition(new THREE.Vector3()));
+    c1.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    c1.position.set(-0.5, 1.2, -0.7); c1.updateMatrixWorld(true);
+    vrSelect(1, true);
+    if(door.asm !== post.asm || !door.asm) throw new Error('the shot never hinged them');
+    if(!(door.pivot || post.pivot)) throw new Error('nothing swings');
+    vrSqueeze(0, false); vrSqueeze(1, false);
+    /* the track: lay one section by hand-of-god, ride the carriage, slide */
+    t1.mesh.position.set(2.2, 0.05, -0.8); t1.mesh.updateMatrixWorld(true);
+    const run = layTrack(t1, null);
+    layTrack(t2, run);
+    car.mesh.position.copy(run.root.localToWorld(new THREE.Vector3(0, 0.1, 0)));
+    car.mesh.updateMatrixWorld(true);
+    rideTrack(car, run);
+    scene.updateMatrixWorld(true);
+    c0.position.copy(car.mesh.getWorldPosition(new THREE.Vector3()));
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'slide') throw new Error('the carriage hand is '+(VR.held && VR.held.kind));
+    c0.position.x += 0.5; c0.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    if(car.slider.position.x < 0.2) throw new Error('the run never slid: x='+car.slider.position.x.toFixed(3));
+    vrSqueeze(0, false);
+    return 'hinged by the gun, slid by the hand';
+  });
   P('a session end holsters everything', ()=>{
     const c0 = VR.controllers[0];
     vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
