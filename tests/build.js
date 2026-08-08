@@ -336,6 +336,59 @@ const probe = `
     BODIES.splice(BODIES.indexOf(t), 1); BODIES.splice(BODIES.indexOf(h), 1);
     return 'no face overlap, no offer';
   });
+  P('a work table is on the HDWE tab and delivers on the pallet', ()=>{
+    const sc = VR.orders.palace;
+    sc.tab = 2; sc.counts = {table:1};
+    vrOrderPress(sc);
+    if(ORDERS.palace.pending.length < 1) throw new Error('the slip was refused: '+sc.status);
+    for(let i=0;i<620;i++) updateSheds(0.05);
+    const t = BODIES[BODIES.length-1];
+    if(t.kind !== 'table') throw new Error('delivered: '+t.kind);
+    if(t.venue !== 'palace') throw new Error('wrong venue: '+t.venue);
+    if(BODY_LABEL.table !== 'WORK TABLE') throw new Error('no label for the table');
+    /* keep it: carried clear of the shed, stood on open floor */
+    grabBody(t);
+    t.mesh.position.set(5, 0, -6);
+    t.mesh.rotation.set(0, 0, 0);
+    t.state = 'loose'; t.restH = 0;
+    window.__table = t;
+    for(let i=0;i<130;i++) updateSheds(0.05);   // the emptied pallet clears
+    scene.updateMatrixWorld(true);
+    return 'WORK TABLE ordered, delivered, stood up';
+  });
+  P('wood released above the table rests on the top', ()=>{
+    const w = regWood('s2x4');
+    w.mesh.rotation.set(0, 0, Math.PI/2);        // lying flat
+    w.mesh.position.set(5, 1.6, -6);            // above the table
+    w.state = 'loose';
+    w.restH = woodRestH(w);
+    scene.updateMatrixWorld(true);
+    for(let i=0;i<200;i++) updateBodies(0.05);
+    scene.updateMatrixWorld(true);
+    const y = w.mesh.getWorldPosition(new THREE.Vector3()).y;
+    BODIES.splice(BODIES.indexOf(w), 1);
+    if(Math.abs(y - 0.945) > 0.02) throw new Error('rests at '+y.toFixed(3));
+    return 'stock settles onto the top, not through it';
+  });
+  P('held wood over the table is offered the top, flat', ()=>{
+    const w = regWood('s2x4');
+    w.mesh.rotation.set(0, 0, Math.PI/2);
+    w.mesh.position.set(5, 1.15, -6);           // just above the top
+    w.state = 'held';
+    scene.updateMatrixWorld(true);
+    const s = snapWood(w);
+    BODIES.splice(BODIES.indexOf(w), 1);
+    if(!s || !s.target || !s.target.table)
+      throw new Error('no tabletop offer: '+JSON.stringify(s && s.target || null));
+    if(Math.abs(s.pos.y - 0.944) > 0.02) throw new Error('lies at '+s.pos.y.toFixed(3));
+    if(s.point.y > 1.0 && s.axis.y > -0.9) throw new Error('a nail was offered on the table');
+    return 'lies flat ON the top, no nail in the offer';
+  });
+  P('the table itself rides the save', ()=>{
+    const d = JSON.parse(buildSerialize());
+    if(!d.bodies.some(b=>b.k === 'table')) throw new Error('the table missed the save');
+    return 'saved standing where it stood';
+  });
   P('the tape reads feet and inches', ()=>{
     if(ftIn(2.4384) !== "8'0\\"") throw new Error('8ft reads '+ftIn(2.4384));
     if(ftIn(0.3048 + 3*0.0254) !== "1'3\\"") throw new Error("1'3 reads "+ftIn(0.3048+3*0.0254));

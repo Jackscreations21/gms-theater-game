@@ -759,7 +759,8 @@ function orderRows(tab){
   if(tab === 2) return [
     {key:'hinge',    label:'HINGE',       unit:{kind:'hinge'}},
     {key:'track',    label:'TRACK - 4FT', unit:{kind:'track'}},
-    {key:'carriage', label:'CARRIAGE',    unit:{kind:'carriage'}}];
+    {key:'carriage', label:'CARRIAGE',    unit:{kind:'carriage'}},
+    {key:'table',    label:'WORK TABLE',  unit:{kind:'table'}}];
   return PAINT_COLORS.map((pc, i)=>({key:'p'+i, label:pc.name, swatch:pc.c,
                                      unit:{kind:'paint', color:pc.c}}));
 }
@@ -1040,6 +1041,12 @@ function vrToolFire(hand, key){
     } else if(s.target && s.target.carriage){
       n = (typeof nailToCarriage === 'function') ? nailToCarriage(s.body, s.target.carriage) : null;
       if(n && VR.held && VR.held.kind === 'body' && VR.held.body === s.body) VR.held = null;
+    } else if(s.target && s.target.table){
+      /* the table is a work surface, never a joint (build-usability §5) */
+      if(typeof toast === 'function') toast('the table holds it — no nail needed');
+      VR.snap = null;
+      vrLabel(null);
+      return;
     } else if(s.body){
       n = addNail(s.body, s.target, s.point, s.axis);
       if(n && VR.held && VR.held.kind === 'body' && VR.held.body === s.body) VR.held = null;
@@ -1727,6 +1734,19 @@ function vrSqueeze(hand, down){
         } else {
           b.state = 'loose';
           if(b.kind === 'wood' && typeof woodRestH === 'function') b.restH = woodRestH(b);
+          /* a let-go table lands square: upright, yaw to the nearest 45 */
+          if(b.kind === 'table'){
+            b.restH = 0;
+            b.mesh.getWorldQuaternion(_tq1);
+            const e = new T.Euler().setFromQuaternion(_tq1, 'YXZ');
+            e.y = Math.round(e.y/(Math.PI/4))*(Math.PI/4); e.x = 0; e.z = 0;
+            _tq1.setFromEuler(e);
+            if(b.mesh.parent){
+              b.mesh.parent.getWorldQuaternion(_tq2).invert();
+              _tq1.premultiply(_tq2);
+            }
+            b.mesh.quaternion.copy(_tq1);
+          }
         }
         vrLabel(null);
         return;

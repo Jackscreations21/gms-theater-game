@@ -1764,6 +1764,40 @@ const probe = `
     scene.updateMatrixWorld(true);
     return 'label at the seam, silence away from it';
   });
+  P('the gun refuses the table — a work surface, never a joint', ()=>{
+    const t = regBody('table', makeBodyMesh('table'), null);
+    t.state = 'loose'; t.restH = 0;
+    t.mesh.position.set(12, 0, -1.0);
+    t.mesh.rotation.set(0, 0, 0);
+    const w = regWood('s2x4');
+    w.mesh.rotation.set(0, 0, Math.PI/2);
+    w.mesh.position.set(12, 1.15, -1.0);
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0], c1 = VR.controllers[1];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(12, 1.15, -1.0);
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);                          // wood in hand over the table
+    if(!VR.held || !VR.held.body || VR.held.body !== w) throw new Error('the wood was not taken');
+    vrUpdateHold(0.05);
+    if(!VR.snap || !VR.snap.target || !VR.snap.target.table)
+      throw new Error('no tabletop offer under the hold');
+    vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
+    c1.position.copy(VR.holsters.nailgun.getWorldPosition(new THREE.Vector3()));
+    c1.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    c1.position.set(12, 1.0, -1.0);
+    c1.updateMatrixWorld(true);
+    const before = ASSEMBLIES.length;
+    vrSelect(1, true);
+    if(ASSEMBLIES.length !== before) throw new Error('it nailed the work to the table');
+    if(VR.snap) throw new Error('the refused offer still stands');
+    vrSqueeze(1, false);
+    vrSqueeze(0, false);
+    BODIES.splice(BODIES.indexOf(w), 1);
+    BODIES.splice(BODIES.indexOf(t), 1);
+    return 'the table holds it — no nail needed';
+  });
   P('the tape stretches to a hand and marks the wood', ()=>{
     const c0 = VR.controllers[0], c1 = VR.controllers[1];
     vrUpdateBelt(); VR.rig.updateMatrixWorld(true);

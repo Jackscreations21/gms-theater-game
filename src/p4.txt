@@ -248,7 +248,7 @@ var BUILD_VENUE = 'palace';   // buildArcStage flips this while it builds (p2k)
 const BODY_LABEL = {profile:'PROFILE SPOT', fresnel:'FRESNEL', par:'PAR CAN',
                     cyc:'CYC UNIT', mover:'MOVING HEAD', speaker:'PA BOX',
                     wood:'WOOD', hinge:'HINGE', track:'TRACK', carriage:'CARRIAGE',
-                    paint:'PAINT CAN'};
+                    paint:'PAINT CAN', table:'WORK TABLE'};
 function makeBodyMesh(kind, color){
   /* BUILD_KINDS is p4c's hoisted var — undefined while the Palace rig builds
      during THIS part's parse-time run, so factory stock never takes this
@@ -362,9 +362,15 @@ function updateBodies(dt){
     }
     if(b.state !== 'loose') continue;
     b.mesh.getWorldPosition(_bodyV);
-    const g = (typeof groundAt === 'function') ? groundAt(_bodyV.x, _bodyV.z, _bodyV.y + 0.5) : 0;
+    let g = (typeof groundAt === 'function') ? groundAt(_bodyV.x, _bodyV.z, _bodyV.y + 0.5) : 0;
     if(g === null) continue;
-    const want = g + (b.restH !== undefined ? b.restH : 0.25);
+    /* a work table's top is a raised piece of deck (p4c, build-usability §5) */
+    if(b.kind !== 'table' && typeof tableTopAt === 'function'){
+      const tt = tableTopAt(_bodyV.x, _bodyV.y, _bodyV.z, b.venue, b);
+      if(tt !== null && tt > g) g = tt;
+    }
+    /* a table's group origin is its feet: it stands, never floats at 0.25 */
+    const want = g + (b.restH !== undefined ? b.restH : (b.kind === 'table' ? 0 : 0.25));
     /* both venue roots stand at y=0 unrotated, so local y IS world y */
     if(Math.abs(_bodyV.y - want) > 0.005)
       b.mesh.position.y += clamp(want - _bodyV.y, -3*dt, 3*dt);
