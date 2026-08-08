@@ -1671,6 +1671,44 @@ const probe = `
       throw new Error('the grabbed end is '+d.toFixed(2)+'m from the palm');
     return 'the end stays in the palm through a quarter turn';
   });
+  P('the work table is a handful at its edge, and carries in the hand', ()=>{
+    /* the owner's report: "I can't move the work table."  The old grab
+       measured hand-to-origin against 0.35 — and a table's origin is its
+       FEET, on the floor, under the middle of the top: to grab the table
+       you had to reach through it (build-feel RULING Q) */
+    const t = regBody('table', makeBodyMesh('table'), null);
+    t.state = 'loose'; t.restH = 0;
+    t.mesh.position.set(14, 0, 2.0);
+    t.mesh.rotation.set(0, 0, 0);
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(14.79, 0.9, 2.0);          // at the +x edge, under the lip
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body' || VR.held.body !== t)
+      throw new Error('the edge was not taken: '+(VR.held && VR.held.kind));
+    /* it carries like wood now: the grabbed spot stays in the palm */
+    const grabL = t.mesh.worldToLocal(new THREE.Vector3(14.79, 0.9, 2.0));
+    c0.position.set(13.5, 1.1, 2.6);
+    c0.quaternion.setFromAxisAngle(new THREE.Vector3(0,1,0), 0.6);
+    c0.updateMatrixWorld(true);
+    vrUpdateHold(0.016);
+    scene.updateMatrixWorld(true);
+    const wp = t.mesh.localToWorld(grabL.clone());
+    if(wp.distanceTo(new THREE.Vector3(13.5, 1.1, 2.6)) > 0.06)
+      throw new Error('the table does not ride in the hand');
+    vrSqueeze(0, false);
+    /* and the #51 landing contract still holds: upright, yaw on a 45 */
+    const e = new THREE.Euler().setFromQuaternion(
+      t.mesh.getWorldQuaternion(new THREE.Quaternion()), 'YXZ');
+    const y8 = e.y / (Math.PI/4);
+    if(Math.abs(e.x) > 1e-3 || Math.abs(e.z) > 1e-3 ||
+       Math.abs(y8 - Math.round(y8)) > 1e-3)
+      throw new Error('did not land square: '+e.x.toFixed(3)+'/'+e.y.toFixed(3)+'/'+e.z.toFixed(3));
+    BODIES.splice(BODIES.indexOf(t), 1);
+    return 'edge grab, in-hand carry, square landing';
+  });
   P('a sheet is a handful at its corner', ()=>{
     const s = regWood('sheet');
     s.mesh.rotation.set(0, 0, 0);
