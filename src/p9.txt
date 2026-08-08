@@ -1391,6 +1391,14 @@ function vrSelect(hand, down){
   if(!down) return;
   /* a hand holding a tool: the trigger IS the tool (build spec §5) */
   if(VR.tools && VR.tools[hand]){ vrToolFire(hand, VR.tools[hand]); return; }
+  /* a hand on a saw cutter: the trigger is the blade (build spec §6) */
+  if(VR.held && VR.held.kind === 'saw' && VR.held.hand === hand){
+    const r = (typeof sawCut === 'function') ? sawCut(VR.held.st) : null;
+    if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+    if(typeof toast === 'function') toast(!r ? 'nothing under the blade'
+      : r.off ? 'two pieces' : 'trimmed — the scrap end is gone');
+    return;
+  }
   /* the desks keep priority for the pointing hand: on a desk, the trigger
      presses the console and never reaches through it into the room */
   if(hand === 1){
@@ -1576,6 +1584,23 @@ function vrSqueeze(hand, down){
       if(h.kind === 'body'){
         const b = h.body;
         VR.snap = null;
+        /* wood let go over a cut station SEATS on it (p4c seatWood) */
+        if(b.kind === 'wood' && typeof SAWS !== 'undefined' && SAWS[b.venue]){
+          const set = SAWS[b.venue];
+          for(const kk in set){
+            const st = set[kk];
+            st.group.updateMatrixWorld(true);
+            b.mesh.getWorldPosition(_vecA);
+            const lp = st.group.worldToLocal(_vecA.clone());
+            if(Math.abs(lp.x) < st.span/2 + 0.3 && Math.abs(lp.z) < 1.0 &&
+               lp.y > 0.4 && lp.y < 1.9 && seatWood(st, b)){
+              if(typeof toast === 'function')
+                toast('on the ' + (st.kind === 'track' ? 'table' : 'bench'));
+              vrLabel(null);
+              return;
+            }
+          }
+        }
         const t = vrBodyTarget(b);
         if(t && t.point && hangBody(b, t.point)){
           if(typeof toast === 'function') toast(BODY_LABEL[b.kind] + ' — hung');
@@ -1663,6 +1688,21 @@ function vrSqueeze(hand, down){
       if(d < ct.grabR && d < cd){ cd = d; cart = ct; }
     }
   }
+  /* the saw cutters (p4c): a hand on the track rail or the chop arm */
+  let saw = null, sd = 0.28;
+  if(typeof SAWS !== 'undefined'){
+    for(const vk in SAWS){
+      const set = SAWS[vk];
+      if(!set) continue;
+      for(const kk in set){
+        const st = set[kk];
+        st.cutter.getWorldPosition(_vecA);
+        _vecA.y += 0.15;
+        const d = _vecA.distanceTo(_rayO);
+        if(d < sd){ sd = d; saw = st; }
+      }
+    }
+  }
   /* loose gear (the p4 detach system): hung bodies on the LIVE rig, and
      anything slotted or standing loose — a body within reach of the closing
      hand.  A parked stage's rig is across town; its bodies are not takeable. */
@@ -1682,8 +1722,17 @@ function vrSqueeze(hand, down){
       if(d < bdd){ bdd = d; bod = b; }
     }
   }
-  /* nearest wins across all four classes — never fork this arbitration */
-  if(bod && (!cart || bdd < cd) && (!lv || bdd < lvd) && (!best || bdd < bd)){
+  /* nearest wins across all five classes — never fork this arbitration */
+  if(saw && (!bod || sd <= bdd) && (!cart || sd < cd) && (!lv || sd < lvd) && (!best || sd < bd)){
+    saw.group.updateMatrixWorld(true);
+    const lx = saw.group.worldToLocal(_rayO.clone()).x;
+    VR.held = {hand, kind:'saw', st:saw, off:saw.cut - lx};
+    if(typeof toast === 'function') toast(saw.kind === 'track'
+      ? 'track saw — slide it, trigger cuts'
+      : 'chop saw — slide it, trigger cuts');
+    return;
+  }
+  if(bod && (!saw || bdd < sd) && (!cart || bdd < cd) && (!lv || bdd < lvd) && (!best || bdd < bd)){
     /* a piece already NAILED (p4c): swing it on its one nail, carry the
        whole assembly by any rigid piece, or bounce off anchored work */
     if(bod.asm){
@@ -1726,7 +1775,7 @@ function vrSqueeze(hand, down){
     if(typeof toast === 'function') toast(BODY_LABEL[bod.kind] + ' — in hand');
     return;
   }
-  if(cart && (!best || cd < bd) && (!lv || cd < lvd)){
+  if(cart && (!saw || cd < sd) && (!best || cd < bd) && (!lv || cd < lvd)){
     VR.held = {hand, kind:'cart', cart, offX:cart.x - _rayO.x, offZ:cart.z - _rayO.z};
     if(typeof toast === 'function') toast(cart.lift
       ? 'forklift — walk it; the right stick runs the forks'
@@ -1735,7 +1784,7 @@ function vrSqueeze(hand, down){
   }
   /* nearest wins: with the lock in, the handle stands right against the
      front run, and the hand should get whichever it actually closed on */
-  if(lv && (!best || lvd < bd)){
+  if(lv && (!saw || lvd < sd) && (!best || lvd < bd)){
     VR.heldLever = {hand, rope:lv};
     return;
   }
@@ -1803,6 +1852,24 @@ function vrUpdateHold(dt){
     if(ct.lift && VR.axes && VR.axes.ry)
       ct.forkY = clamp(ct.forkY - VR.axes.ry * LIFT_FORK_RATE * (dt || 0.016),
                        0, LIFT_FORK_TOP);
+    return;
+  }
+  /* a hand on a saw cutter slides it along the table — snapped to the
+     inch (a pencil tick first), read out against the piece under it */
+  if(VR.held.kind === 'saw'){
+    const st = VR.held.st;
+    st.group.updateMatrixWorld(true);
+    const lx = st.group.worldToLocal(_rayO.clone()).x;
+    sawSetCut(st, lx + VR.held.off);
+    const p = st.pieces.find(q=>{
+      const half = seatLen(q)/2;
+      return st.cut > q.mesh.position.x - half && st.cut < q.mesh.position.x + half;
+    });
+    if(p){
+      st.cutter.getWorldPosition(_vecA);
+      _vecA.y += 0.3;
+      vrLabel('CUT AT ' + ftIn(st.cut - (p.mesh.position.x - seatLen(p)/2)), _vecA, 1);
+    } else vrLabel(null);
     return;
   }
   /* the tape's tab: a line from the case to the hand, read out in ft-in */

@@ -116,6 +116,50 @@ function palletSlot(venue, wx, wz, parent){
   parent.add(m);
   PALLET_SLOTS.push({venue, x:wx, z:wz, mesh:m});
 }
+/* ---- the cut stations (build spec §6; the logic lives in p4c) ----------
+   One pair per shed: the TRACK TABLE for sheets, the CHOP BENCH for
+   lumber.  st.cutter is the one grabbable — a rail-and-head for the
+   track saw, an arm-and-blade for the chop — sliding along table X. */
+function buildSaw(venue, kind, parent, wx, wz){
+  const g = new T.Group(); g.name = 'saw:' + venue + ':' + kind;
+  const ox = (venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
+  g.position.set(wx - ox, 0, wz);
+  const W = kind === 'track' ? 2.9 : 2.8, D2 = kind === 'track' ? 1.6 : 0.62;
+  const topY = 0.86;
+  const top = new T.Mesh(new T.BoxGeometry(W, 0.07, D2), M.steel);
+  top.position.y = topY; g.add(top);
+  [[-W/2+0.15, -D2/2+0.1],[W/2-0.15, -D2/2+0.1],[-W/2+0.15, D2/2-0.1],[W/2-0.15, D2/2-0.1]]
+    .forEach(cn=>{
+      const leg = new T.Mesh(new T.CylinderGeometry(0.03, 0.03, topY, 6), M.steel);
+      leg.position.set(cn[0], topY/2, cn[1]); g.add(leg);
+    });
+  const seat = new T.Object3D();
+  seat.position.y = topY + 0.035;
+  g.add(seat);
+  const cutter = new T.Group();
+  cutter.position.y = topY + 0.035;
+  if(kind === 'track'){
+    const rail = new T.Mesh(new T.BoxGeometry(0.09, 0.03, D2 + 0.3), M.pipe);
+    rail.position.y = 0.08; cutter.add(rail);
+    const head = new T.Mesh(new T.BoxGeometry(0.2, 0.16, 0.22), M.fixture);
+    head.position.y = 0.16; cutter.add(head);
+  } else {
+    const arm = new T.Mesh(new T.BoxGeometry(0.07, 0.5, 0.1), M.steel);
+    arm.position.set(0, 0.25, -D2/2 - 0.06); cutter.add(arm);
+    const blade = new T.Mesh(new T.CylinderGeometry(0.16, 0.16, 0.012, 16), M.fixture);
+    blade.rotation.z = Math.PI/2; blade.position.y = 0.3; cutter.add(blade);
+  }
+  cutter.userData.moves = true;
+  g.add(cutter);
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+  parent.add(g);
+  const st = {venue, kind, group:g, seat, cutter, pieces:[], cut:0,
+              span:W - 0.1, grabR:0.28, gripY:topY + 0.2};
+  if(!SAWS[venue]) SAWS[venue] = {};
+  SAWS[venue][kind] = st;
+  return st;
+}
+
 function buildLift(venue, parent, wx, wz){
   const g = new T.Group();
   g.userData.moves = true;
@@ -279,6 +323,10 @@ function liftDrop(L){
   palletSlot('palace', -16.5, -15.5, world);
   palletSlot('palace',  16.5, -15.5, world);
 
+  /* the cut stations, mid-shed, clear of the racks, aprons and slots */
+  buildSaw('palace', 'track', g, 2.0, -24.0);
+  buildSaw('palace', 'chop',  g, -4.5, -24.0);
+
   /* the door control, an [E] station on the STAGE side of the wall — a
      top-level world child so p2i can pin it to the stage room, never the
      shed's (the shed may be culled while you are looking right at it) */
@@ -354,6 +402,8 @@ function buildArcShed(MAT){
      and one in each wing of each house, just inside its rear door */
   buildLift('arc', ARC.group, ARC.X - 14, -50);
   [-31, -16, 16, 31].forEach(sx=> palletSlot('arc', ARC.X + sx, -52, ARC.group));
+  buildSaw('arc', 'track', R, ARC.X + 6, -54);
+  buildSaw('arc', 'chop',  R, ARC.X + 0, -51);
   for(const key of ['main','studio']){
     const H = ARC.houses[key];
     if(!H) continue;

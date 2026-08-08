@@ -303,6 +303,75 @@ const probe = `
     return ftIn(2.4384);
   });
 
+  console.log('--- the saws ---');
+  P('each shed has a track table and a chop bench, and they know their stock', ()=>{
+    if(typeof SAWS === 'undefined' || !SAWS.palace || !SAWS.arc) throw new Error('stations missing');
+    if(!SAWS.palace.track || !SAWS.palace.chop || !SAWS.arc.track || !SAWS.arc.chop)
+      throw new Error('a shed is missing a station');
+    const sheet = regWood('sheet'), stud = regWood('s2x4');
+    if(seatWood(SAWS.palace.chop, sheet)) throw new Error('the chop bench took a sheet');
+    if(seatWood(SAWS.palace.track, stud)) throw new Error('the track table took a stud');
+    if(!seatWood(SAWS.palace.track, sheet)) throw new Error('the table refused its sheet');
+    if(!seatWood(SAWS.palace.chop, stud)) throw new Error('the bench refused its stud');
+    if(sheet.state !== 'seated' || stud.state !== 'seated') throw new Error('never seated');
+    /* seated pieces do not settle: they live on the table, not the floor */
+    for(let i=0;i<40;i++) updateBodies(0.05);
+    scene.updateMatrixWorld(true);
+    const y = sheet.mesh.getWorldPosition(new THREE.Vector3()).y;
+    if(y < 0.7) throw new Error('the sheet sank to y='+y.toFixed(2));
+    window.__sheet = sheet; window.__stud = stud;
+    return 'both stations, right stock, nothing sinks';
+  });
+  P('the cutter snaps to the inch — and a pencil tick wins', ()=>{
+    const st = SAWS.palace.track, sheet = window.__sheet;
+    const lo = sheet.mesh.position.x - seatLen(sheet)/2;
+    sawSetCut(st, lo + 0.617);                   // 24.3 inches from the edge
+    const at = st.cut - lo;
+    if(Math.abs(at - 24*0.0254) > 1e-6) throw new Error('snapped to '+(at/0.0254).toFixed(2)+'in');
+    /* a tape tick at 13in beats the inch grid */
+    scene.updateMatrixWorld(true);
+    const wp = new THREE.Vector3(lo + 13*0.0254, 0, 0);
+    st.group.localToWorld(wp);
+    sheet.tick = {p: sheet.mesh.worldToLocal(wp.clone())};
+    sawSetCut(st, lo + 13.4*0.0254);
+    if(Math.abs((st.cut - lo) - 13*0.0254) > 1e-3)
+      throw new Error('the tick lost: cut at '+((st.cut-lo)/0.0254).toFixed(2)+'in');
+    return 'the grid is inches, the pencil wins';
+  });
+  P('a cut makes two pieces on one geometry, and the paint rides it', ()=>{
+    const st = SAWS.palace.track, sheet = window.__sheet;
+    const red = woodMat(PAINT_COLORS[4].c);
+    sheet.mesh.material[2] = red;                // paint one face first
+    const lo = sheet.mesh.position.x - seatLen(sheet)/2;
+    sawSetCut(st, lo + 24*0.0254);
+    const before = BODIES.length;
+    const r = sawCut(st);
+    if(!r || !r.off) throw new Error('no second piece came');
+    if(BODIES.length !== before + 1) throw new Error('registry off by '+(BODIES.length-before));
+    if(Math.abs(seatLen(r.kept) - 24*0.0254) > 1e-3) throw new Error('kept side is '+seatLen(r.kept));
+    if(Math.abs(seatLen(r.off) + seatLen(r.kept) - 2.4384) > 0.01) throw new Error('the sides do not sum');
+    if(r.off.mesh.geometry !== r.kept.mesh.geometry) throw new Error('the cut minted geometry');
+    if(r.off.mesh.material[2] !== red || r.kept.mesh.material[2] !== red)
+      throw new Error('the paint fell off the cut');
+    if(st.pieces.length !== 2) throw new Error(st.pieces.length+' pieces on the table');
+    return '24in and 72in, both painted, one geometry';
+  });
+  P('scrap under six inches vanishes', ()=>{
+    const st = SAWS.palace.chop, stud = window.__stud;
+    const lo = stud.mesh.position.x - seatLen(stud)/2;
+    sawSetCut(st, lo + 4*0.0254);                // four inches: scrap
+    const before = BODIES.length;
+    const r = sawCut(st);
+    if(!r || r.off) throw new Error('the scrap end survived');
+    if(BODIES.length !== before) throw new Error('the registry grew for scrap');
+    if(Math.abs(stud.dims.L - (2.4384 - 4*0.0254)) > 1e-3) throw new Error('trimmed to '+stud.dims.L);
+    /* a grab takes it off the bench and the station forgets it */
+    grabBody(stud);
+    if(stud.station || st.pieces.indexOf(stud) >= 0) throw new Error('the bench never let go');
+    stud.state = 'loose';
+    return 'four inches to the bucket, the rest to hand';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
