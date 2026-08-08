@@ -1638,6 +1638,9 @@ try{
     FATAL('Your GPU rejected the lighting shaders',
       'The theatre could not be drawn.\n\n'+window.__glErr);
   else
+    /* the saved build, last of the boot: every registry it rebuilds into
+       exists by here (p4c; wrapped inside — a bad save never stops the show) */
+    if(typeof buildLoad === 'function') buildLoad();
     requestAnimationFrame(frame);
 }catch(err){
   console.error(err);

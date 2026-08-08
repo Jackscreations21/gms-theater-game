@@ -4996,6 +4996,7 @@ function addNail(bA, target, wp, wax){
              p:nm.position.clone(), axis:axL.clone(), mesh:nm};
   a.nails.push(n);
   asmJoints(a);
+  if(typeof buildDirty === 'function') buildDirty();
   return n;
 }
 function detachPiece(a, p){
@@ -5037,6 +5038,7 @@ function removeNail(n){
     removeAsm(a);
   }
   else asmJoints(a);
+  if(typeof buildDirty === 'function') buildDirty();
 }
 /* one nail = a pivot group AT the nail; the piece swings on it (p9) */
 function asmPivot(a, p, n){
@@ -5539,7 +5541,310 @@ function sawCut(st){
   nb.mesh.position.x = x + s2/2 + 0.01;
   nb.state = 'seated'; nb.station = st; nb.seatAxis = b.seatAxis;
   st.pieces.push(nb);
+  if(typeof buildDirty === 'function') buildDirty();
   return {kept:b, off:nb};
+}
+
+/* ============================================================================
+   THE SAVE SYSTEM (PR 7, spec §8) — the game's first.  Everything the
+   build system owns — wood and hardware wherever they stand, paint,
+   assemblies with their nails, hinges and pivot poses, track runs and
+   their riders, pallets and their loads, pending orders with time left,
+   rack colors, forklift poses — serialized to localStorage, versioned,
+   and rebuilt at boot by REPLAYING the same functions the hands use
+   (makeSerBody, asmAdopt, addNail, rideTrack), so the loaded world obeys
+   every rule the built one did.  Deliberately NOT saved: shows, cues,
+   fly positions, the lantern patch — a different feature.  Load is
+   wrapped whole: any throw clears the key and the boot carries on empty
+   (a bad save must never brick the game).
+   ========================================================================== */
+const BUILD_SAVE_KEY = 'house.build';
+const BUILD_SAVE_VER = 1;
+var _buildDirty = false, _buildFlushT = 0, _buildSlowT = 10, _buildLoading = false;
+function buildDirty(){ if(!_buildLoading) _buildDirty = true; }
+/* dirty writes flush within a second; a slow heartbeat saves every ten
+   regardless, so a missed dirty call can never lose more than that */
+function buildTick(dt){
+  _buildFlushT -= dt;
+  _buildSlowT -= dt;
+  if(_buildDirty && _buildFlushT <= 0){
+    _buildFlushT = 1;
+    _buildSlowT = 10;
+    _buildDirty = false;
+    buildSave();
+  } else if(_buildSlowT <= 0){
+    _buildSlowT = 10;
+    buildSave();
+  }
+}
+function serPose(o){
+  o.updateMatrixWorld(true);
+  const p = o.getWorldPosition(new T.Vector3());
+  const q = o.getWorldQuaternion(new T.Quaternion());
+  return [p.x, p.y, p.z, q.x, q.y, q.z, q.w];
+}
+function setPose(o, s){
+  _av.set(s[0], s[1], s[2]);
+  _aq.set(s[3], s[4], s[5], s[6]);
+  if(o.parent){
+    o.parent.updateMatrixWorld(true);
+    o.parent.worldToLocal(_av);
+    o.parent.getWorldQuaternion(_aq2).invert();
+    _aq.premultiply(_aq2);
+  }
+  o.position.copy(_av);
+  o.quaternion.copy(_aq);
+  o.updateMatrixWorld(true);
+}
+function serBody(b){
+  const d = {k:b.kind};
+  if(b.prof) d.prof = b.prof;
+  if(b.dims) d.dims = {L:b.dims.L, W:b.dims.W};
+  if(b.color !== undefined) d.c = b.color;
+  if(b.kind === 'wood') d.paint = b.mesh.material.map(m=>m.color.getHex());
+  if(b.tick) d.tick = [b.tick.p.x, b.tick.p.y, b.tick.p.z];
+  return d;
+}
+function makeSerBody(d, venue){
+  const keep = BUILD_VENUE;
+  BUILD_VENUE = venue;
+  let b;
+  if(d.k === 'wood'){
+    b = regWood(d.prof, {L:d.dims.L, W:d.dims.W});
+    if(d.paint) b.mesh.material = d.paint.map(c=>woodMat(c));
+  } else {
+    b = regBody(d.k, makeBodyMesh(d.k, d.c), null);
+    if(d.c !== undefined) b.color = d.c;
+    b.state = 'loose';
+  }
+  if(d.tick) b.tick = {p:new T.Vector3(d.tick[0], d.tick[1], d.tick[2])};
+  BUILD_VENUE = keep;
+  return b;
+}
+function lsAddress(ls){
+  const i0 = FLY.indexOf(ls);
+  if(i0 >= 0) return {stage:STAGE, idx:i0};
+  for(const k in STAGES){
+    const i = STAGES[k].fly.indexOf(ls);
+    if(i >= 0) return {stage:k, idx:i};
+  }
+  return null;
+}
+function lsResolve(ad){
+  if(!ad) return null;
+  if(ad.stage === STAGE) return FLY[ad.idx] || null;
+  return (STAGES[ad.stage] && STAGES[ad.stage].fly[ad.idx]) || null;
+}
+function onPallet(b){
+  const o = ORDERS[b.venue];
+  if(!o || !b.slot) return false;
+  return o.pallets.some(p=>p.slots.indexOf(b.slot) >= 0);
+}
+function buildSerialize(){
+  const out = {v:BUILD_SAVE_VER, bodies:[], asms:[], pallets:[], pending:[],
+               racks:{}, lifts:{}};
+  for(const b of BODIES){
+    if(!BUILD_KINDS[b.kind]) continue;
+    if(b.state === 'fixed' || b.state === 'riding') continue;  // their assembly's story
+    if(b.state === 'slotted' && onPallet(b)) continue;         // the pallet's story
+    const d = serBody(b);
+    d.venue = b.venue;
+    d.pose = serPose(b.mesh);
+    if(b.state === 'slotted'){
+      const sh = SHEDS[b.venue] ? SHEDS[b.venue].slots.indexOf(b.slot) : -1;
+      const ca = CARTS[b.venue] ? CARTS[b.venue].slots.indexOf(b.slot) : -1;
+      if(sh >= 0) d.slot = {t:'shed', i:sh};
+      else if(ca >= 0) d.slot = {t:'cart', i:ca};
+      else continue;                       // an anchor we cannot address: skip it
+    }
+    if(b.state === 'seated' && b.station)
+      d.seat = {kind:b.station.kind, x:b.mesh.position.x};
+    out.bodies.push(d);
+  }
+  for(const a of ASSEMBLIES){
+    const d = {venue:a.venue, rootPose:serPose(a.root), pieces:[], nails:[], cars:[]};
+    if(a.track) d.track = a.track.n;
+    if(a.anchor) d.anchor = a.anchor.type === 'pipe'
+      ? {t:'pipe', ls:lsAddress(a.anchor.ls)} : {t:'deck'};
+    for(const cb of BODIES)
+      if(cb.kind === 'carriage' && cb.tAsm === a)
+        d.cars.push({c:serBody(cb), x:cb.slider.position.x, _slider:cb.slider});
+    for(const p of a.pieces){
+      if(p.kind === 'track') continue;     // track runs re-lay their own sections
+      const pd = serBody(p);
+      pd.pose = serPose(p.mesh);
+      if(p.slider){
+        const ci = d.cars.findIndex(c=>c._slider === p.slider);
+        if(ci >= 0) pd.car = ci;
+      }
+      pd._b = p;
+      d.pieces.push(pd);
+    }
+    for(const n of a.nails){
+      if(a.track && n.b === 'deck') continue;       // laid again by layTrack
+      if(n.carriage) continue;                      // implied by pd.car
+      a.root.updateMatrixWorld(true);
+      const wp = a.root.localToWorld(n.p.clone());
+      const wax = n.axis.clone()
+        .applyQuaternion(a.root.getWorldQuaternion(new T.Quaternion()));
+      d.nails.push({ai:d.pieces.findIndex(x=>x._b === n.a),
+                    bi:n.b === 'deck' ? 'deck' : n.b === 'pipe' ? 'pipe'
+                       : d.pieces.findIndex(x=>x._b === n.b),
+                    p:[wp.x, wp.y, wp.z], ax:[wax.x, wax.y, wax.z],
+                    h:n.hinge ? 1 : 0, r:n.range});
+    }
+    d.pieces.forEach(pd=>{ delete pd._b; });
+    d.cars.forEach(cd=>{ delete cd._slider; });
+    out.asms.push(d);
+  }
+  for(const v in ORDERS){
+    const o = ORDERS[v];
+    for(const pal of o.pallets){
+      out.pallets.push({venue:v, spot:pal.spot, pose:serPose(pal.group),
+        slots:pal.slots.map(an=>({p:[an.position.x, an.position.y, an.position.z],
+          rx:an.rotation.x, rz:an.rotation.z,
+          d:an.userData.body ? serBody(an.userData.body) : null}))});
+    }
+    for(const pd of o.pending) out.pending.push({venue:v, items:pd.items, t:pd.t});
+  }
+  for(const v in RACKS) if(RACKS[v]) out.racks[v] = RACKS[v].colors.slice();
+  for(const v in LIFTS) if(LIFTS[v])
+    out.lifts[v] = {x:LIFTS[v].x, z:LIFTS[v].z, yaw:LIFTS[v].yaw, forkY:LIFTS[v].forkY};
+  return JSON.stringify(out);
+}
+function buildSave(){
+  try{ localStorage.setItem(BUILD_SAVE_KEY, buildSerialize()); }catch(e){}
+}
+function buildClearSave(){
+  try{ localStorage.removeItem(BUILD_SAVE_KEY); }catch(e){}
+  if(typeof toast === 'function') toast('saved build cleared — the next visit starts empty');
+}
+function buildPalletFromSer(pd){
+  const o = ORDERS[pd.venue];
+  if(!o) return;
+  const g = new T.Group();
+  const top = new T.Mesh(new T.BoxGeometry(1.7, 0.05, 1.2), M.wood);
+  top.position.y = 0.15; g.add(top);
+  [-0.5, 0.5].forEach(bz=>{
+    const br = new T.Mesh(new T.BoxGeometry(1.7, 0.12, 0.14), M.woodDk);
+    br.position.set(0, 0.06, bz); g.add(br);
+  });
+  const slots = [];
+  for(const sd of pd.slots){
+    const an = new T.Object3D();
+    an.position.set(sd.p[0], sd.p[1], sd.p[2]);
+    an.rotation.x = sd.rx || 0;
+    an.rotation.z = sd.rz || 0;
+    g.add(an); slots.push(an);
+  }
+  venueRoot(pd.venue).add(g);
+  setPose(g, pd.pose);
+  o.pallets.push({group:g, slots, spot:pd.spot});
+  pd.slots.forEach((sd, i)=>{
+    if(sd.d) slotBody(makeSerBody(sd.d, pd.venue), slots[i]);
+  });
+}
+function buildLoad(){
+  let raw = null;
+  try{ raw = localStorage.getItem(BUILD_SAVE_KEY); }catch(e){ return; }
+  if(!raw) return;
+  _buildLoading = true;
+  try{
+    const s = JSON.parse(raw);
+    if(!s || s.v !== BUILD_SAVE_VER) throw new Error('unknown save version');
+    for(const v in s.racks) if(RACKS[v])
+      s.racks[v].forEach(c=>rackAddColor(RACKS[v], c));
+    for(const d of s.bodies){
+      const b = makeSerBody(d, d.venue);
+      if(d.slot){
+        const an = d.slot.t === 'shed' ? SHEDS[d.venue].slots[d.slot.i]
+                                       : CARTS[d.venue].slots[d.slot.i];
+        if(an && !an.userData.body){ slotBody(b, an); continue; }
+      }
+      venueRoot(d.venue).add(b.mesh);
+      setPose(b.mesh, d.pose);
+      if(d.seat && typeof SAWS !== 'undefined' && SAWS[d.venue] && SAWS[d.venue][d.seat.kind]){
+        if(seatWood(SAWS[d.venue][d.seat.kind], b)){ b.mesh.position.x = d.seat.x; continue; }
+      }
+      b.restH = b.kind === 'wood' ? woodRestH(b) : 0.14;
+    }
+    for(const pd of s.pallets) buildPalletFromSer(pd);
+    for(const ad of s.asms){
+      if(ad.track){
+        let a = null;
+        for(let i = 0; i < ad.track; i++){
+          const tb = makeSerBody({k:'track'}, ad.venue);
+          if(i === 0){
+            venueRoot(ad.venue).add(tb.mesh);
+            setPose(tb.mesh, ad.rootPose);
+          }
+          a = layTrack(tb, a);
+        }
+        (ad.cars || []).forEach(cd=>{
+          const cb = makeSerBody(cd.c, ad.venue);
+          venueRoot(ad.venue).add(cb.mesh);
+          a.root.updateMatrixWorld(true);
+          cb.mesh.position.copy(a.root.localToWorld(new T.Vector3(cd.x, 0.1, 0)));
+          cb.mesh.updateMatrixWorld(true);
+          rideTrack(cb, a);
+          cd._cb = cb;
+        });
+        (ad.pieces || []).forEach(pd=>{
+          const b = makeSerBody(pd, ad.venue);
+          venueRoot(ad.venue).add(b.mesh);
+          setPose(b.mesh, pd.pose);
+          if(pd.car !== undefined && ad.cars[pd.car] && ad.cars[pd.car]._cb){
+            nailToCarriage(b, ad.cars[pd.car]._cb);
+            setPose(b.mesh, pd.pose);
+          }
+        });
+        continue;
+      }
+      const a = newAsm(ad.venue);
+      setPose(a.root, ad.rootPose);
+      const ps = ad.pieces.map(pd=>{
+        const b = makeSerBody(pd, ad.venue);
+        venueRoot(ad.venue).add(b.mesh);
+        setPose(b.mesh, pd.pose);
+        asmAdopt(a, b);
+        setPose(b.mesh, pd.pose);
+        return b;
+      });
+      for(const nd of ad.nails){
+        const wp = new T.Vector3(nd.p[0], nd.p[1], nd.p[2]);
+        const wax = new T.Vector3(nd.ax[0], nd.ax[1], nd.ax[2]);
+        let n = null;
+        if(nd.bi === 'deck') n = addNail(ps[nd.ai], {deck:true}, wp, wax);
+        else if(nd.bi === 'pipe')
+          n = addNail(ps[nd.ai], {ls:lsResolve(ad.anchor && ad.anchor.ls)}, wp, wax);
+        else n = addNail(ps[nd.ai], {body:ps[nd.bi]}, wp, wax);
+        if(n && nd.h){
+          n.hinge = true;
+          n.range = nd.r || Math.PI/2;
+          if(n.mesh.parent) n.mesh.parent.remove(n.mesh);
+          const hm = makeBuildMesh('hinge');
+          a.root.add(hm);
+          hm.position.copy(n.p);
+          n.mesh = hm;
+          asmJoints(a);
+        }
+      }
+    }
+    for(const od of s.pending)
+      if(ORDERS[od.venue]) ORDERS[od.venue].pending.push({items:od.items, t:od.t});
+    for(const v in s.lifts){
+      const L = LIFTS[v];
+      if(!L) continue;
+      L.x = s.lifts[v].x; L.z = s.lifts[v].z; L.yaw = s.lifts[v].yaw;
+      L.forkY = L.prevForkY = s.lifts[v].forkY;
+      L.forks.position.y = L.forkY;
+      cartPose(L);
+    }
+  }catch(e){
+    try{ localStorage.removeItem(BUILD_SAVE_KEY); }catch(e2){}
+    if(typeof toast === 'function') toast('the saved build would not load — cleared');
+  }
+  _buildLoading = false;
 }
 
 /* ============================================================================
@@ -12617,6 +12922,7 @@ function updateSheds(dt){
   }
   updateOrders(dt);
   updateLifts(dt);
+  if(typeof buildTick === 'function') buildTick(dt);
 }
 
 /* ============================================================================
@@ -12816,6 +13122,7 @@ function deliverOrder(which, items){
     slotBody(b, pal.slots[i]);
   });
   BUILD_VENUE = keep;
+  if(typeof buildDirty === 'function') buildDirty();
   if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
   if(typeof toast === 'function') toast('the warehouse — your order is on the apron');
 }
@@ -14767,6 +15074,9 @@ try{
     FATAL('Your GPU rejected the lighting shaders',
       'The theatre could not be drawn.\n\n'+window.__glErr);
   else
+    /* the saved build, last of the boot: every registry it rebuilds into
+       exists by here (p4c; wrapped inside — a bad save never stops the show) */
+    if(typeof buildLoad === 'function') buildLoad();
     requestAnimationFrame(frame);
 }catch(err){
   console.error(err);
@@ -15623,6 +15933,13 @@ function vrDrawOrder(sc){
   g.fillStyle = '#08130a'; g.font = 'bold 30px monospace';
   g.fillText('ORDER', 118, oy + 39);
   sc.hits.push({x:24, y:oy, w:300, h:56, fn:()=>{ vrOrderPress(sc); }});
+  /* the save's escape hatch (spec §8): wipes STORAGE only, never the room */
+  g.fillStyle = '#3a2020'; g.fillRect(340, oy + 8, 196, 40);
+  g.fillStyle = '#e08a8a'; g.font = 'bold 16px monospace';
+  g.fillText('CLEAR SAVE', 388, oy + 33);
+  sc.hits.push({x:340, y:oy + 8, w:196, h:40, fn:()=>{
+    if(typeof buildClearSave === 'function') buildClearSave();
+  }});
   g.fillStyle = '#ffd08a'; g.font = '20px monospace';
   let line = sc.status;
   if(!line && o && o.pending.length){

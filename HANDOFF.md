@@ -677,10 +677,40 @@ a dependency chain on p9/p4c/p2m — do not parallelize them).
   learned the difference: world nails (deck/pipe) and carriage nails
   never pivot — only piece-to-piece singles and hinges swing.
 
-**NEXT: PR 7 (save), last of the plan.** Step zero: confirm the
-previous PR merged, `npm test` 15/15 on `main`, then branch off
-`main` (or build on the unmerged branch and open after it merges —
-the #38 pattern).
+- **PR 7 (branch `build-save`, on PR 6's branch) — the save system,
+  the game's FIRST.** All in p4c: `buildSerialize` → localStorage
+  (`house.build`, versioned) → `buildLoad` at the p7 boot tail, which
+  REPLAYS the same functions the hands use (makeSerBody → asmAdopt →
+  addNail → layTrack → rideTrack), so the loaded world obeys every
+  rule the built one did. Saved: build bodies everywhere (pose, dims,
+  per-face paint by hex — the WOODM cache re-keys), shed/cart slot
+  addresses, saw seats, assemblies (world-posed pieces, nails, hinges
+  with ranges, deck/pipe anchors — pipes addressed as {stage, fly
+  index} via `lsAddress`/`lsResolve`), track runs re-laid n-long with
+  riders and their mounts, pallets with per-slot loads, pending
+  orders with time left, rack colors, lift poses. NOT saved (spec):
+  shows, cues, fly positions, patch. Dirty writes flush ≤1s; a 10s
+  heartbeat backstops any missed dirty call. Load is wrapped WHOLE:
+  any throw (bad JSON, alien version) clears the key and boots empty.
+  CLEAR SAVE button on the order-screen footer wipes STORAGE only.
+  The test is a true round trip: `build.js` boots a SECOND jsdom
+  world seeded with the first one's save (needs `url:` on JSDOM —
+  about:blank has no localStorage) and asserts it all came back.
+  Known drift, accepted: a swung pivot reloads at its swung POSE but
+  its stops re-baseline there (range measures from the reloaded
+  pose); pipe-anchored work reloads at saved world pose whatever trim
+  the pipe wakes at (fly positions are not saved, by spec).
+
+**THE PLAN IS FULLY BUILT — all seven PRs, 15/15 green on every one,
+every branch pushed.** As of this writing only PR 1 (#40) is OPEN;
+each later branch is stacked one-on-the-last and opens ONLY after its
+parent merges (rebase → retest → open, the #38 pattern): merge #40,
+then open `build-forklift`, then `build-tools`, `build-saws`,
+`build-paint`, `build-hinges`, `build-save`. If a session picks this
+up mid-chain: merge-check first, `npm test` 15/15 on `main`, rebase
+the next branch, open. After PR 7 lands: PHASE 2 is the furniture
+catalogue (doors, lamps, tables, nightstands — RULING J; they slot in
+as ordered bodies), plus the standing headset checklist below.
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
@@ -768,6 +798,11 @@ can you find the roller on the rack at 0.22.
 axis, or does it need a ghost arc; ±90° stops — enough for a door;
 does the track chain-snap at 0.45 feel magnetic; sliding a panel by
 grabbing the panel (not a handle) — natural or weird.
+(PR 7): reload with a real build standing — does everything come
+back where it stood (walk the shed AND the stage); is CLEAR SAVE too
+easy to fat-finger next to ORDER (it only wipes storage, but say so);
+and mind the frame rate with a 100-piece saved build restoring at
+boot.
 Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).

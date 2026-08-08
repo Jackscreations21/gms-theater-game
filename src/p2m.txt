@@ -386,6 +386,7 @@ function updateSheds(dt){
   }
   updateOrders(dt);
   updateLifts(dt);
+  if(typeof buildTick === 'function') buildTick(dt);
 }
 
 /* ============================================================================
@@ -585,6 +586,7 @@ function deliverOrder(which, items){
     slotBody(b, pal.slots[i]);
   });
   BUILD_VENUE = keep;
+  if(typeof buildDirty === 'function') buildDirty();
   if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
   if(typeof toast === 'function') toast('the warehouse — your order is on the apron');
 }
