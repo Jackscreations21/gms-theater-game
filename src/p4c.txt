@@ -962,6 +962,63 @@ function paintWood(b, wp, color){
   return true;
 }
 
+/* ============================================================================
+   PAINTING THE GOODS (goods round, RULING T).  The roller paints cloth as
+   well as wood — a curtain, a border, a pair of legs.  Goods paint WHOLE:
+   a pull against any cloth on a lineset colours every cloth on that
+   lineset, both halves of a house curtain and both legs of a pair.
+
+   The trap this is written around: M.serge and M.velour (p2) are ONE
+   material object each, shared by every drape that uses them on all three
+   stages and by the Arc's dressing besides.  Tinting one would repaint the
+   masking of the entire game.  So paint clones through a cache keyed by
+   the ORIGINAL base plus the colour — the WOODM/LENSM lesson a third time:
+   repaint is a pointer swap, two pipes the same colour share one material,
+   and a painted clone remembers its base so it never chains clone-of-clone.
+   ========================================================================== */
+var GOODSM = {};
+function goodsMat(base, color){
+  const src = (base.userData && base.userData.goodsBase) || base;
+  const k = src.uuid + ':' + color;
+  if(GOODSM[k]) return GOODSM[k];
+  const m = src.clone();                       // keeps map, alphaMap, side, opacity
+  m.color = new T.Color(color);
+  m.userData = m.userData || {};
+  m.userData.goodsBase = src;
+  return GOODSM[k] = m;
+}
+/* the nearest lineset whose GOODS come within reach of a world point.
+   Measured to the bounding BOX: a house curtain is thirteen metres of
+   cloth with its centre five metres up, and a centre test would miss it
+   the way the old wood grab missed an 8ft stick.  Own temps. */
+const _ggBox = new T.Box3();
+function goodsAt(wp, reach){
+  let best = null, bd = (reach === undefined ? 0.45 : reach);
+  if(typeof FLY === 'undefined') return null;
+  for(const ls of FLY){
+    if(!ls.goods) continue;
+    _ggBox.setFromObject(ls.goods);
+    if(_ggBox.isEmpty()) continue;
+    const d = _ggBox.distanceToPoint(wp);      // 0 when the point is inside
+    if(d < bd){ bd = d; best = ls; }
+  }
+  return best;
+}
+function paintGoods(ls, color){
+  if(!ls || !ls.goods || color === undefined || color === null) return false;
+  let n = 0;
+  ls.goods.traverse(o=>{
+    if(!o.isMesh || !o.material || Array.isArray(o.material)) return;
+    /* only LIT cloth takes a coat: the chandelier's self-lit bulbs are
+       equipment, not scenery, and its PointLight is not a mesh at all */
+    if(!o.material.isMeshStandardMaterial) return;
+    o.material = goodsMat(o.material, color);
+    n++;
+  });
+  if(n) ls.painted = color;
+  return n > 0;
+}
+
 function sawCut(st){
   const x = st.cut;
   const b = st.pieces.find(p=>{
