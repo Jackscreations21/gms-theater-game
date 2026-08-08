@@ -1639,6 +1639,38 @@ const probe = `
     if(VR.held) vrSqueeze(0, false);
     return 'held at the end, missed at 35cm';
   });
+  P('held wood rides IN the hand: the grabbed end stays in the palm', ()=>{
+    /* the old carry stored a world-space CENTRE offset and turned the piece
+       about its centre — grab an 8ft stick by the end, turn your wrist, and
+       the end you grabbed swept away from your palm (build-feel RULING R) */
+    const b = regWood('s2x4');
+    b.mesh.rotation.set(0, 0, Math.PI/2);      // long axis X, lying level
+    b.mesh.position.set(4, 1.5, 2.0);          // high and downstage: no snap offer
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(5.21, 1.5, 2.0);           // 1cm inside the +x END
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body' || VR.held.body !== b)
+      throw new Error('the end was not taken: '+(VR.held && VR.held.kind));
+    /* remember the grabbed spot in the PIECE's own frame */
+    const grabL = b.mesh.worldToLocal(new THREE.Vector3(5.21, 1.5, 2.0));
+    /* move the hand and turn the wrist a quarter round */
+    c0.position.set(4.0, 1.6, 2.5);
+    c0.quaternion.setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI/2);
+    c0.updateMatrixWorld(true);
+    vrUpdateHold(0.016);
+    scene.updateMatrixWorld(true);
+    if(VR.snap) throw new Error('a snap offer crept under this test: rewrite it clear of targets');
+    const wp = b.mesh.localToWorld(grabL.clone());
+    const d = wp.distanceTo(new THREE.Vector3(4.0, 1.6, 2.5));
+    vrSqueeze(0, false);
+    BODIES.splice(BODIES.indexOf(b), 1);
+    if(d > 0.06)
+      throw new Error('the grabbed end is '+d.toFixed(2)+'m from the palm');
+    return 'the end stays in the palm through a quarter turn';
+  });
   P('a sheet is a handful at its corner', ()=>{
     const s = regWood('sheet');
     s.mesh.rotation.set(0, 0, 0);
