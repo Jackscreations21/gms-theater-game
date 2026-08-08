@@ -908,12 +908,23 @@ function vrDrawOrder(sc){
   g.fillStyle = '#08130a'; g.font = 'bold 30px monospace';
   g.fillText('ORDER', 118, oy + 39);
   sc.hits.push({x:24, y:oy, w:300, h:56, fn:()=>{ vrOrderPress(sc); }});
-  /* the save's escape hatch (spec §8): wipes STORAGE only, never the room */
-  g.fillStyle = '#3a2020'; g.fillRect(340, oy + 8, 196, 40);
-  g.fillStyle = '#e08a8a'; g.font = 'bold 16px monospace';
-  g.fillText('CLEAR SAVE', 388, oy + 33);
-  sc.hits.push({x:340, y:oy + 8, w:196, h:40, fn:()=>{
+  /* the save's escape hatch (spec §8): wipes STORAGE only, never the room —
+     stacked over the wood button, which acts on the ROOM (RULING P) */
+  g.fillStyle = '#3a2020'; g.fillRect(340, oy, 196, 25);
+  g.fillStyle = '#e08a8a'; g.font = 'bold 14px monospace';
+  g.fillText('CLEAR SAVE', 396, oy + 18);
+  sc.hits.push({x:340, y:oy, w:196, h:25, fn:()=>{
     if(typeof buildClearSave === 'function') buildClearSave();
+  }});
+  g.fillStyle = '#4a1a1a'; g.fillRect(340, oy + 31, 196, 25);
+  g.fillStyle = '#ff9a8a'; g.font = 'bold 14px monospace';
+  g.fillText('DELETE ALL WOOD', 376, oy + 49);
+  sc.hits.push({x:340, y:oy + 31, w:196, h:25, fn:()=>{
+    const n = (typeof deleteAllWood === 'function') ? deleteAllWood(sc.which) : 0;
+    sc.status = n ? n + ' PIECES OF WOOD GONE' : 'NO WOOD TO DELETE';
+    if(typeof toast === 'function')
+      toast(n ? n + ' pieces of wood deleted' : 'no wood to delete');
+    vrDrawOrder(sc);
   }});
   g.fillStyle = '#ffd08a'; g.font = '20px monospace';
   let line = sc.status;
@@ -1758,6 +1769,22 @@ function vrSqueeze(hand, down){
       if(h.kind === 'body'){
         const b = h.body;
         VR.snap = null;
+        /* the drum FIRST — it outranks every snap: holding a thing over
+           the bin is the one unambiguous act of intent (RULING P) */
+        if(typeof TRASH !== 'undefined' && BUILD_KINDS && BUILD_KINDS[b.kind] &&
+           TRASH[b.venue]){
+          const tr = TRASH[b.venue];
+          tr.group.updateMatrixWorld(true);
+          b.mesh.getWorldPosition(_vecA);
+          const lp = tr.group.worldToLocal(_vecA.clone());
+          if(Math.sqrt(lp.x*lp.x + lp.z*lp.z) < tr.r && lp.y < 1.4 &&
+             removeBody(b)){
+            if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+            if(typeof toast === 'function') toast(BODY_LABEL[b.kind] + ' — binned');
+            vrLabel(null);
+            return;
+          }
+        }
         /* a carriage let go over a track run RIDES it (p4c rideTrack) */
         if(b.kind === 'carriage' && typeof ASSEMBLIES !== 'undefined'){
           b.mesh.getWorldPosition(_vecA);

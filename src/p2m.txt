@@ -194,6 +194,26 @@ function buildRack(venue, parent, wx, wz, yaw){
   return rack;
 }
 
+/* the trash drum (build-feel RULING P): a steel bin by the paint rack.
+   Registry state lives in p4c (TRASH); this is only the metal. */
+function buildTrash(venue, parent, wx, wz){
+  const g = new T.Group(); g.name = 'trash:' + venue;
+  const ox = (venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
+  g.position.set(wx - ox, 0, wz);
+  const body = new T.Mesh(new T.CylinderGeometry(0.32, 0.28, 0.85, 14), M.steel);
+  body.position.y = 0.425;
+  body.castShadow = body.receiveShadow = true;
+  g.add(body);
+  const rim = new T.Mesh(new T.TorusGeometry(0.32, 0.03, 8, 14), M.pipe);
+  rim.rotation.x = Math.PI/2; rim.position.y = 0.86; g.add(rim);
+  const mouth = new T.Mesh(new T.CylinderGeometry(0.29, 0.29, 0.02, 14),
+    new T.MeshBasicMaterial({color:0x0a0c0e}));
+  mouth.position.y = 0.852; g.add(mouth);
+  parent.add(g);
+  TRASH[venue] = {venue, group:g, r:0.45};
+  return TRASH[venue];
+}
+
 function buildLift(venue, parent, wx, wz){
   const g = new T.Group();
   g.userData.moves = true;
@@ -362,6 +382,8 @@ function liftDrop(L){
   buildSaw('palace', 'chop',  g, -4.5, -24.0);
   /* the paint rack, on the east wall above the cart's beat */
   buildRack('palace', g, 11.3, -23.0, -Math.PI/2);
+  /* and the trash drum beside it (RULING P) */
+  buildTrash('palace', g, 10.9, -21.4);
 
   /* the door control, an [E] station on the STAGE side of the wall — a
      top-level world child so p2i can pin it to the stage room, never the
@@ -442,6 +464,7 @@ function buildArcShed(MAT){
   buildSaw('arc', 'track', R, ARC.X + 6, -54);
   buildSaw('arc', 'chop',  R, ARC.X + 0, -51);
   buildRack('arc', R, ARC.X - 10, -59.2, 0);
+  buildTrash('arc', R, ARC.X + 10, -58.6);
   for(const key of ['main','studio']){
     const H = ARC.houses[key];
     if(!H) continue;
