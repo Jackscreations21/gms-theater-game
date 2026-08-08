@@ -710,30 +710,100 @@ merged. Post-merge verification: `main` rebuilds byte-identical,
 remote. The game on Pages now carries the whole feature; bust the
 Quest cache with `?v=9`.
 
-**NEXT SESSION: BUG FIXES (owner's word, 2026-08-07 — no list given
-yet).** Step zero: ASK THE OWNER FOR THE BUG LIST before touching
-anything, then per bug: reproduce it in a failing test FIRST (jsdom
-if it can, a `tools/` probe if it is visual), fix, negative-check,
-one bug one PR, straight to `main`. Likely sources, in rough order:
+**Done 2026-08-07, the build-usability round (PRs #48–#51 — ALL
+MERGED same day).** The owner's first bug list, straight off the
+first headset run of the build system, four asks in one line: grab
+the wood from anywhere on the wood; a table for building on; wood
+auto-detects other wood and finds the best connection; "i wasnt able
+to get the nail gun to work" (he laid two pieces together on the
+ground and pulled the trigger — the gun only confirmed a ghost offer
+on a HELD piece, so the natural move did nothing).  Specced first
+(`docs/superpowers/specs/2026-08-07-build-usability-design.md`,
+RULING K inline: the table is orderable and movable, and never takes
+a nail), planned (`docs/superpowers/plans/2026-08-07-build-usability-
+prs1-2.md` + addendum), then shipped failing-test-first, one concern
+per PR, each branch cut after its parent merged:
 
-- **The first headset run of the build system.** Nothing in PRs 1–7
-  has met hardware; the per-PR feel questions in the step-zero list
-  below are exactly where the bug reports will come from. If a
-  report is about grab/snap/reach distances, the constants are
-  gathered at the top of their sections (0.35 body, 0.4 snap, 0.32
-  rope, 0.28 saw, 0.30 cart/lift, 0.22 tool/roller, 0.12 lever).
+- **[#48](https://github.com/Jackscreations21/gms-theater-game/pull/48)
+  — grab wood by its SURFACE, not its centre.** The vrSqueeze body
+  loop measured hand-to-centre against 0.35, so an 8ft stick was
+  grabbable only across its middle 0.7m.  Wood now measures to the
+  nearest point on the piece (unit-box local clamp, exact); constant
+  `GRAB_WOOD 0.15`.  Sheets gained their corners; a built frame comes
+  by any plank end.  Compact bodies keep the centre test.
+- **[#49](https://github.com/Jackscreations21/gms-theater-game/pull/49)
+  — the gun fires into a SEAM.** With no held offer standing, the
+  trigger seeks the nearest touching wood pair within `SEAM_REACH
+  0.45` of the muzzle (OBB touch on the target's axes, `SEAM_TOUCH
+  0.05`) and drives the nail at the contact; addNail already knew how
+  to join any mix of loose and fixed.  A throttled seek floats
+  TRIGGER TO NAIL at a reachable seam while the gun is in hand.
+  Same-assembly pairs stay nailable on purpose (that is how a
+  swinging piece is nailed rigid).  Precedence: hinge in the other
+  hand → held ghost offer → seam → refusal.
+- **[#50](https://github.com/Jackscreations21/gms-theater-game/pull/50)
+  — snapWood rebuilt.** The old step 1 picked targets by CENTRE
+  distance ≤1.4 (end-to-end 8ft butts have centres 2.48m apart — they
+  could NEVER see each other), picked its axis with no overlap test,
+  and mixed unit-box coordinates with metric flush distances.  Now:
+  candidates by surface gap (`SNAP_SEEK 0.35`), a face is a joint
+  only if the cross axes overlap (`SNAP_SLACK 0.08`), daylight axes
+  beat overlapped ones, smallest flush error ≤ `SNAP_OFFER 0.22`
+  wins, all metric.  Ghost/quantize/gun-confirm contract untouched.
+- **[#51](https://github.com/Jackscreations21/gms-theater-game/pull/51)
+  — the WORK TABLE (RULING K).** A build kind on the HDWE tab:
+  pallet-delivered, carried like a body, lands square on release
+  (upright, yaw to 45).  Its top (`TABLE_TOP 0.925`) is a raised
+  piece of deck — loose stock settles ONTO it (`tableTopAt`, asked by
+  updateBodies before the floor), held wood is offered flat ON it
+  (snapWood step 2a), the gun refuses the table target with its own
+  toast; you build on it and carry the work off whole.  Counts
+  against BUILD_CAP, canHang refuses it, rides the save for free
+  (serBody is generic by kind).  EN ROUTE, a latent bug: the deck
+  offer passed `_aq2` into snapQuantize, whose FIRST LINE overwrites
+  `_aq2` — rel came out identity and every "lie flat" offer stood the
+  piece bolt upright.  Both flat offers now use a real identity quat
+  (`_IDQ`).  The aliasing trap strikes again — never hand a shared
+  temp to a function that writes it.
+
+Post-merge verification done: `main` rebuilds byte-identical, 15/15
+on the merged result, all four work branches deleted local and
+remote.  Pages carries it all — bust the Quest cache with `?v=10`.
+Ten new regression tests across vr.js and build.js, every one
+verified failing against its pre-change build.
+
+**NEXT SESSION: BUG FIXES (owner's word, 2026-08-08).** Step zero:
+ASK THE OWNER FOR THE BUG LIST before touching anything, then per
+bug: reproduce it in a failing test FIRST (jsdom if it can, a
+`tools/` probe if it is visual), fix, negative-check, one bug one PR,
+straight to `main`. Likely sources, in rough order:
+
+- **The next headset run.** The build system has met hardware ONCE
+  (it produced the four asks above); the usability round that
+  answered them has met hardware NEVER.  The two usability question
+  blocks in the step-zero list below are where the reports will come
+  from.  Feel constants, all one-line tunes: `GRAB_WOOD 0.15`,
+  `SEAM_TOUCH 0.05`, `SEAM_REACH 0.45`, `SNAP_SEEK 0.35`,
+  `SNAP_OFFER 0.22`, `SNAP_SLACK 0.08`, `TABLE_TOP 0.925` — plus the
+  older radii (0.32 rope, 0.28 saw, 0.30 cart/lift, 0.22 tool/roller,
+  0.12 lever, 0.35 compact bodies).
 - **Known accepted drifts** (documented, may get promoted to bugs by
   the owner): a swung pivot reloads at its pose but its stops
   re-baseline there; pipe-anchored work reloads at saved pose
   whatever trim the pipe wakes at; a runaway resumes when a parked
   stage is re-entered; rope runs pass through the fly-gallery floor
-  at y=8 (cosmetic).
+  at y=8 (cosmetic); a cold-dropped table (session end mid-carry)
+  settles standing but keeps its held tilt — only a live release
+  squares it.
+- **Small housekeeping:** `pr6.json` is still untracked in the repo
+  root (leftover PR-body file; the owner never ruled on deleting it).
 - **Standing owner-taste leftovers:** audit items 20 (dead weight)
   and 22 (duplication) — decisions, not defects.
 
 After the bugs: PHASE 2 is the furniture catalogue (doors, lamps,
 tables, nightstands — RULING J; they slot straight in as ordered
-bodies), and the headset checklist below still stands.
+bodies — and the WORK TABLE body from #51 is the pattern to copy),
+and the headset checklist below still stands.
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
