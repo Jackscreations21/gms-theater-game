@@ -19,7 +19,7 @@ theater_game/
   VR-SETUP.md        getting it onto a Quest 3 — routes, controls, first-run list
   README.md          the GitHub front page
   src/               the 24 parts it is built from
-  tests/             fourteen suites — npm install, then node real.js
+  tests/             fifteen suites — npm install, then node real.js
   tools/             probes that draw pictures — see tools/README.md
 ```
 
@@ -91,10 +91,11 @@ node stages.js    # three stages, one board
 node legs.js      # goods, including the half legs
 node warehouse.js # the warehouse sheds, their doors, the carts, the slots
 node orders.js    # the supply screens, the pallet, rulings C/D/E
+node build.js     # the build system: wood stock, the tabbed screen, caps
 node vr.js        # WebXR: rig, sticks, desks, ropes, GO, bodies
 ```
 
-All fourteen are at `--- failures: 0 ---`. Keep them there. Every suite exits
+All fifteen are at `--- failures: 0 ---`. Keep them there. Every suite exits
 non-zero on failure (including a failure to boot), and `npm test` runs the lot.
 
 `full14.js` wraps `window.MouseEvent` at the top of its harness: jsdom has no
@@ -552,14 +553,43 @@ pre-change build. #38 was built ON #37's branch and opened only after
 #37 merged (rebase → retest → open): the clean way to ship dependent
 PRs without stacking.
 
-**NEXT SESSION: A NEW FEATURE — the owner will say which.** The
-standing candidate is the deferred **VR BUILD FEATURE** (owner's words,
-2026-08-06: "adding a vr build feature" — still NO SPEC; the nearest
-standing ask is carrying scenery by hand, and the detach system is now
-the obvious precedent to extend, but DO NOT GUESS: ask what it means
-before writing any code, then spec → plan → PRs the way this feature
-set was done). Step zero regardless: confirm #38 merged (merge-check
-before building on it), `npm test` 14/14 on `main`.
+**Done 2026-08-07, the build-system session begins — THE VR BUILD
+FEATURE HAS A SPEC NOW.** The owner specified it live: physically build
+scenery from wood — order it, forklift the pallets, cut on shed saws,
+nail with a gun / pull with a hammer, paint, hinges that swing, track
+that slides, and the game's FIRST SAVE SYSTEM. Spec (rulings F–J
+inline — read it before touching any of this):
+`docs/superpowers/specs/2026-08-07-build-system-design.md`. Plan, all
+seven PRs: `docs/superpowers/plans/2026-08-07-build-system-prs1-7.md`.
+Built SOLO and STRICTLY SEQUENTIAL (owner's token ruling; the PRs are
+a dependency chain on p9/p4c/p2m — do not parallelize them).
+
+- **PR 1 (branch `build-ordering`, carries spec+plan) — ordering knows
+  wood.** New part `src/p4c.txt` (after p4 in build.sh): wood as
+  PARAMETRIC bodies — one shared unit BoxGeometry for every piece of
+  every profile (sheet/2x4/4x4/2x8, all born 8ft), scaled per piece,
+  six material slots per mesh from the color-keyed `WOODM` cache; a
+  cut must NEVER mint geometry (spec invariant). Hardware (hinge /
+  track / carriage) and paint cans (10-color `PAINT_COLORS`, band
+  material from the same cache) are bodies too. `canHang` refuses
+  build kinds (wood joins assemblies, PR 3 — never a patch point).
+  Ordering: `ORDERS[v]` is now `{pending:[], pallets:[]}` — RULING D'
+  is THREE orders out per shed, `ORDER_MAX` 12 units, pallets lay
+  their anchors FROM the manifest (sheets flat-stack, long stock in
+  columns, smalls on seats) at one of three apron spots. `BUILD_CAP`
+  150 build pieces per venue (p4c, shown on the glass as PIECES
+  n/150, refusal 'PIECES FULL'); gear keeps its own 24 book —
+  `venueLooseCount` now skips build kinds. The screen grew a tab
+  strip (GEAR/WOOD/HDWE/PAINT, rows at y=112 pitch 48 — vr.js pins
+  the first + at px 468,132; sc.counts starts EMPTY, `|| 0` your
+  reads). New 15th suite `tests/build.js`; every new assertion
+  negative-checked (whole-suite vs main's build; the canHang guard
+  by rebuild-without-it).
+
+**NEXT: PR 2 (forklift) through PR 7 (save), in plan order.** Step
+zero: confirm the previous PR merged, `npm test` 15/15 on `main`,
+then branch the next off `main` (or build on the unmerged branch and
+open after it merges — the #38 pattern).
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
@@ -621,8 +651,11 @@ believably from the stalls. New from the detach/ordering round
 roller door and hanging it read believably; is the wall order screen
 legible at arm's length (560×520 canvas, 22px rows); does the pallet
 read as a delivery; mind the frame rate holding a body under a full
-rig, and do the 6-box arrays read as real PA from the stalls. Known
-cosmetic, unfixed:
+rig, and do the 6-box arrays read as real PA from the stalls. New from
+the build round (PR 1): is the tabbed supply screen still legible at
+arm's length (the paint rows are 28px against everything else's 48),
+and do the stacked wood pallets read as lumber stock on the apron.
+Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).
 

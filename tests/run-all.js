@@ -1,7 +1,7 @@
-// npm test — runs all fourteen suites in HANDOFF.md §2 order, exits non-zero if any fail.
+// npm test — runs all fifteen suites in HANDOFF.md §2 order, exits non-zero if any fail.
 const {spawnSync} = require('child_process');
 const path = require('path');
-const suites = ['real','full14','rooms','holes','crew','smoke','show','sets','arc','stages','legs','warehouse','orders','vr'];
+const suites = ['real','full14','rooms','holes','crew','smoke','show','sets','arc','stages','legs','warehouse','orders','build','vr'];
 const failed = [];
 for(const s of suites){
   console.log('\n===== '+s+'.js =====');

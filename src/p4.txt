@@ -246,8 +246,14 @@ function bodySpeaker(){
 var BODIES = [];
 var BUILD_VENUE = 'palace';   // buildArcStage flips this while it builds (p2k)
 const BODY_LABEL = {profile:'PROFILE SPOT', fresnel:'FRESNEL', par:'PAR CAN',
-                    cyc:'CYC UNIT', mover:'MOVING HEAD', speaker:'PA BOX'};
-function makeBodyMesh(kind){
+                    cyc:'CYC UNIT', mover:'MOVING HEAD', speaker:'PA BOX',
+                    wood:'WOOD', hinge:'HINGE', track:'TRACK', carriage:'CARRIAGE',
+                    paint:'PAINT CAN'};
+function makeBodyMesh(kind, color){
+  /* BUILD_KINDS is p4c's hoisted var — undefined while the Palace rig builds
+     during THIS part's parse-time run, so factory stock never takes this
+     branch (and a typeof guard is unnecessary: var, not const) */
+  if(BUILD_KINDS && BUILD_KINDS[kind]) return makeBuildMesh(kind, color);
   return kind==='fresnel'?bodyFresnel(): kind==='par'?bodyPar():
          kind==='cyc'?bodyCyc(): kind==='mover'?bodyMover():
          kind==='speaker'?bodySpeaker(): bodyProfile();
@@ -287,6 +293,8 @@ function unhangBody(b){
    are rigging and take only PA boxes (and vice versa). */
 function canHang(b, p){
   if(p.body) return false;
+  /* build stock (p4c) nails to assemblies, never hangs on a patch point */
+  if(BUILD_KINDS && BUILD_KINDS[b.kind]) return false;
   return p.spk ? b.kind === 'speaker' : b.kind !== 'speaker';
 }
 function hangBody(b, p){

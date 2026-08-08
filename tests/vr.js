@@ -1655,16 +1655,17 @@ const probe = `
     vrBuildOrderScreens();
     const sc = VR.orders.palace;
     scene.updateMatrixWorld(true);
-    /* the first row's + button: canvas px (468, 86) on a 560x520 canvas,
-       through the same v = 1 - uv.y flip the desks use */
-    const u = 468/560, v = 86/520;
+    /* the first GEAR row's + button: canvas px (468, 132) on a 560x520
+       canvas (the rows sit under the tab strip now), through the same
+       v = 1 - uv.y flip the desks use */
+    const u = 468/560, v = 132/520;
     const at = sc.face.localToWorld(new THREE.Vector3((u - 0.5)*1.3, (0.5 - v)*1.2, 0));
     const n = sc.face.getWorldDirection(new THREE.Vector3());
     aim(1, at.clone().add(n.multiplyScalar(1.0)), at);
     const p = vrPointAt();
     if(!p || !p.obj || p.obj.userData.orderScreen !== 'palace')
       throw new Error('the ray missed the screen');
-    const c0 = sc.counts.profile;
+    const c0 = sc.counts.profile || 0;   // counts start empty now, not zeroed
     vrSelect(1, true);
     if(sc.counts.profile !== c0 + 1)
       throw new Error('the press did not land: profile count '+sc.counts.profile);
