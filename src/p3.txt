@@ -156,6 +156,13 @@ function hangGoods(ls, key){
   if(key==='electric') buildElectric(ls);
   else stripElectric(ls);
   ls.practical = ls.goods && ls.goods.userData.practical || null;
+  /* RULING V — a pipe lifts to make room for what you just hung.
+     minTrimOf (#15) is enforced by everything that MOVES a pipe, and
+     hanging is not a move: a 13m house curtain hung on a pipe standing at
+     2m put ten metres of cloth straight through the stage.  A pipe with
+     room to spare is left exactly where it stands. */
+  const lo = minTrimOf(ls);
+  if(ls.pos < lo){ ls.pos = ls.target = lo; ls.group.position.y = ls.pos; }
   refreshFlyUI();
 }
 function disposeTree(o){ o.traverse(n=>{ if(n.geometry) n.geometry.dispose(); }); }
