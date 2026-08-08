@@ -19,18 +19,21 @@ Last updated: **2026-08-08** (session start).
 ## Current focus: THE CARPENTERS
 
 Crew members who build scenery for you, using the build system the
-player already has. **There is no spec yet.** Step zero is asking the
-owner the five shaping questions (HANDOFF §"NEXT SESSION"):
+player already has. **The owner answered all five shaping questions
+(2026-08-08)**: (1) a catalogue list chosen on a warehouse screen;
+(2) cut in the warehouse, erected at a spot the player marks with a
+new toolbelt tool; (3) real stock, nothing conjured; (4) hybrid — the
+six hands haul and nail, one new lead carpenter runs the job and owns
+the saws; (5) VR only, called from a new wall screen beside the order
+screen. Plus: planks are **really carried, one piece per trip** — not
+the show-load-in dummy look.
 
-1. What do you point them at — catalogue item, cut list, or copy of something already built?
-2. Where do they work — shed saws, or on the deck where it stands?
-3. Do they consume real stock (order → forklift → saw → nail) or conjure timber? (Honest version is mostly already built.)
-4. Existing six stagehands with new job kinds, or a new trade/crew?
-5. Callable from inside VR, or a desktop-console call?
-
-**Status: waiting on owner's answers.** Then: spec (rulings continue
-at **X**), plan, build failing-test-first, one concern per PR,
-straight to `main`.
+**Spec written:** `docs/superpowers/specs/2026-08-08-carpenters-design.md`
+(RULINGS X, Y, Z, AA, AB, AC — after Z the letters double).
+**Plan written:** `docs/superpowers/plans/2026-08-08-carpenters-prs1-5.md`
+(carp-mark → carp-plan → carp-lead → carp-build → carp-screen,
+sequential). **Status: spec+plan PR open, waiting on owner review.**
+Then build failing-test-first, one concern per PR, straight to `main`.
 
 Key reuse (do NOT rebuild): crew engine `p6b` (add job kinds, not an
 engine), build primitives in `p4c` (`regWood`, `sawCut`, `addNail`,
@@ -68,4 +71,5 @@ wrong deck, cuts never mint geometry.
 - 2026-08-08 — tried to verify the suites: no Node.js on this machine. Repo itself verified: `main` @ `a571f18`, tree clean.
 - 2026-08-08 — user installed Node v24.19.0 (winget); `npm install` in `tests/` (59 packages), full suite run: **15/15 green, `"fatal": null`**. Blocker cleared — this machine can now build and test.
 - 2026-08-08 — STATE.md landed on `main` via [PR #66](https://github.com/Jackscreations21/gms-theater-game/pull/66) (merged same day).
-- 2026-08-08 — created the agent documentation system: `CLAUDE.md` (root entry point, auto-loaded by Claude Code) + `docs/guide/` (ARCHITECTURE, INVARIANTS, TRAPS, TESTING, WORKFLOW, VR, BUILD-SYSTEM) — HANDOFF.md distilled into topical files; HANDOFF stays the chronological record. PR'd on branch `agent-docs`.
+- 2026-08-08 — created the agent documentation system: `CLAUDE.md` (root entry point, auto-loaded by Claude Code) + `docs/guide/` (ARCHITECTURE, INVARIANTS, TRAPS, TESTING, WORKFLOW, VR, BUILD-SYSTEM) — HANDOFF.md distilled into topical files; HANDOFF stays the chronological record. PR'd on branch `agent-docs`, merged as #67.
+- 2026-08-08 — owner answered the five carpenter questions (catalogue on a warehouse screen / cut in the shed, build at a marked spot / real stock / hybrid: hands + a lead carpenter / VR only; planks really carried one per trip). Three scout agents mapped p6b, p4c+p2m, and the toolbelt+spec system. Spec (RULINGS X–AC) and 5-PR plan written on branch `carpenters-spec`.
