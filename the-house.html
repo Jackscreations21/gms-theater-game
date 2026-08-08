@@ -8683,6 +8683,19 @@ function carpFullStick(b){
   return true;
 }
 
+/* ---- the glass wording (PR 5, RULING X) -----------------------------------
+   The NEED list as the screen speaks it — 'NEED 1× SHEET · 3× 2x4' — the
+   catalogue shorthand, never ftIn: it is a shopping list, and the order
+   screen an arm's length away sells by the stick.  Lives here so the
+   words sit with the data they describe; p9 only paints them. */
+function carpProfShort(prof){
+  return prof === 'sheet' ? 'SHEET' : prof.slice(1);
+}
+function carpStockLine(list){
+  return list.map(s=>s.n + '× ' + carpProfShort(s.prof)).join(' · ');
+}
+function carpNeedLine(need){ return 'NEED ' + carpStockLine(need); }
+
 /* ---- the planner ----------------------------------------------------------
    carpPlan(key, mark) is PURE: it reads the venue's bodies and the
    catalogue row and returns one of
@@ -14191,6 +14204,10 @@ function updateOrders(dt){
     _orderUiT = 0.5;
     for(const k in VR.orders)
       if(VR.orders[k] && typeof vrDrawOrder === 'function') vrDrawOrder(VR.orders[k]);
+    /* the carpenter screens ride the same half second: mark, stock and
+       status lines stay live between presses (carpenters RULING X) */
+    if(VR.carps) for(const k in VR.carps)
+      if(VR.carps[k] && typeof vrDrawCarp === 'function') vrDrawCarp(VR.carps[k]);
   }
 }
 
@@ -17034,6 +17051,7 @@ function vrMakeOrderScreen(which, parent, x, y, z){
 }
 function vrBuildOrderScreens(){
   VR.orders = VR.orders || {};
+  vrBuildCarpScreens();              // the second panel, its own guard (RULING X)
   if(VR.orders.palace || typeof SHEDS === 'undefined') return;
   if(SHEDS.palace)
     vrMakeOrderScreen('palace', SHEDS.palace.group, 7.4, 1.7, SHEDS.palace.z0 + 0.1);
@@ -17143,6 +17161,136 @@ function vrOrderPress(sc){
   else if(r === 'BUSY') sc.status = 'THREE ORDERS OUT ALREADY';
   else sc.status = r;   // STOCK FULL / PIECES FULL
   vrDrawOrder(sc);
+}
+
+/* ============================================================================
+   THE CARPENTERS SCREEN (carpenters spec RULING X) — a second wall panel
+   beside each shed's order screen, built in the order screen's mould:
+   its own 560x520 canvas, its own hits[], its own userData tag and its
+   own vrSelect branch.  The ORDER canvas is pixel-pinned by tests and
+   does not move; every region HERE carries META on the hit record
+   (carpKey / carpCall) so tests find it by meaning, never by pixel
+   (VR.md, the goods-picker rule).  This is only the glass: the catalogue
+   and the pure planner are p6c's, the run is the crew's (carpStart), and
+   the refusals are worded here in spec order.
+   ========================================================================== */
+function vrMakeCarpScreen(which, parent, x, y, z){
+  const c = document.createElement('canvas');
+  c.width = 560; c.height = 520;
+  const sc = {which, canvas:c, ctx:c.getContext('2d'), tex:tex(c,1,1), hits:[],
+              sel:null, status:'', stockLine:'', markLine:''};
+  const g = new T.Group(); g.position.set(x, y, z); parent.add(g);
+  const back = new T.Mesh(new T.BoxGeometry(1.44, 1.34, 0.05),
+    new T.MeshStandardMaterial({color:0x1e150c, roughness:.7, metalness:.2}));
+  back.position.z = -0.04; g.add(back);
+  const face = new T.Mesh(new T.PlaneGeometry(1.3, 1.2),
+    new T.MeshBasicMaterial({map:sc.tex}));
+  face.userData.carpScreen = which;
+  g.add(face);
+  sc.face = face;
+  VR.carps[which] = sc;
+  VR.deskMeshes.push(face);
+  vrDrawCarp(sc);
+  return sc;
+}
+/* hung a screen-width along the rear wall from each order screen — same
+   parent, same z, offset in x so the two glasses read side by side */
+function vrBuildCarpScreens(){
+  VR.carps = VR.carps || {};
+  if(VR.carps.palace || typeof SHEDS === 'undefined') return;
+  if(SHEDS.palace)
+    vrMakeCarpScreen('palace', SHEDS.palace.group, 9.1, 1.7, SHEDS.palace.z0 + 0.1);
+  if(SHEDS.arc && typeof ARC !== 'undefined' && ARC.rooms.shed)
+    vrMakeCarpScreen('arc', ARC.rooms.shed, 21.7, 1.8, SHEDS.arc.z0 + 0.1);
+}
+function vrDrawCarp(sc){
+  const g = sc.ctx, W = sc.canvas.width;
+  sc.hits.length = 0;
+  g.fillStyle = '#0d0b08'; g.fillRect(0, 0, W, sc.canvas.height);
+  g.fillStyle = '#ffd08a'; g.font = 'bold 26px monospace';
+  g.fillText('CARPENTERS', 24, 40);
+  /* the cap, on the glass where the refusal happens (RULING Y) */
+  g.font = '18px monospace';
+  g.fillText('PIECES ' + venueBuildCount(sc.which) + '/' + BUILD_CAP, 396, 40);
+  const mark = (typeof CARP !== 'undefined' && CARP) ? CARP.mark : null;
+  /* the catalogue rows — a press selects; the SELECTED row carries the
+     stock check off the pure planner with the CURRENT mark: READY, or
+     the NEED list.  No mark shows the recipe and claims nothing. */
+  Object.keys(CARP_CAT).forEach((key, i)=>{
+    const row = CARP_CAT[key], y = 66 + i*86, on = sc.sel === key;
+    g.fillStyle = on ? '#4a3b26' : '#1d1a14';
+    g.fillRect(24, y, 512, 78);
+    g.fillStyle = on ? '#ffd08a' : '#cfd8e3';
+    g.font = 'bold 22px monospace';
+    g.fillText(row.label, 40, y + 32);
+    if(on){
+      let line = 'TAKES ' + carpStockLine(row.stock);
+      if(mark && typeof carpPlan === 'function'){
+        const p = carpPlan(key, mark);
+        if(p && p.need) line = carpNeedLine(p.need);
+        else if(p && p.full) line = 'PIECES FULL';
+        else if(p && p.jobs) line = 'READY — ' + p.jobs.length + ' JOBS';
+      }
+      sc.stockLine = line;
+      g.font = '16px monospace';
+      g.fillStyle = (line.indexOf('NEED') === 0 || line === 'PIECES FULL') ? '#e0a08a' : '#9fd08a';
+      g.fillText(line, 40, y + 60);
+    }
+    sc.hits.push({x:24, y, w:512, h:78, carpKey:key, fn:()=>{
+      sc.sel = key; sc.status = '';
+      vrDrawCarp(sc);
+    }});
+  });
+  if(!sc.sel) sc.stockLine = '';
+  /* the mark line: where the crayon last stamped, or NO MARK (RULING Z) */
+  let ml = 'NO MARK';
+  if(mark){
+    ml = 'MARK: ' + String(mark.stage || mark.venue).toUpperCase();
+    if(mark.venue !== sc.which) ml += ' — THE OTHER HOUSE';
+  }
+  sc.markLine = ml;
+  g.font = '18px monospace';
+  g.fillStyle = (mark && mark.venue === sc.which) ? '#9fd08a' : '#e0a08a';
+  g.fillText(ml, 24, 372);
+  /* the one CALL button */
+  g.fillStyle = '#2fbf4a'; g.fillRect(24, 404, 300, 56);
+  g.fillStyle = '#08130a'; g.font = 'bold 30px monospace';
+  g.fillText('CALL', 128, 443);
+  sc.hits.push({x:24, y:404, w:300, h:56, carpCall:true, fn:()=>{ vrCarpPress(sc); }});
+  /* the status line — the refusals land here, worded per RULING X */
+  g.fillStyle = '#ffd08a'; g.font = '20px monospace';
+  let line = sc.status;
+  if(!line && typeof CREW !== 'undefined' && CREW.running === 'carp')
+    line = 'THE CARPENTERS ARE ON IT';
+  g.fillText(line || 'PICK A PIECE - STAMP A MARK - CALL', 24, 496);
+  sc.tex.needsUpdate = true;
+}
+/* the CALL: refusals in spec order — NO MARK, MARK IS IN THE OTHER HOUSE,
+   then carpStart's own contract worded on the glass (CREW BUSY, the NEED
+   list, PIECES FULL).  Success gets the show crew's work light and toast:
+   a build runs under work light like a get-in (crewLoadShow's shape). */
+function vrCarpPress(sc){
+  const mark = (typeof CARP !== 'undefined' && CARP) ? CARP.mark : null;
+  if(!sc.sel) sc.status = 'PICK A PIECE';
+  else if(!mark) sc.status = 'NO MARK';
+  else if(mark.venue !== sc.which) sc.status = 'MARK IS IN THE OTHER HOUSE';
+  else {
+    const r = (typeof carpStart === 'function') ? carpStart(sc.sel, mark) : null;
+    if(!r) sc.status = 'NO MARK';        // a dead mark record: cannot plan
+    else if(r.busy) sc.status = 'CREW BUSY';
+    else if(r.need) sc.status = carpNeedLine(r.need);
+    else if(r.full) sc.status = 'PIECES FULL';
+    else {
+      sc.status = 'CALLED — ' + CARP_CAT[sc.sel].label;
+      if(typeof crewWorkLight === 'function'){
+        crewWorkLight(true);
+        CREW.onDone = was=>{ if(was === 'carp') crewWorkLight(false); };
+      }
+      if(typeof toast === 'function')
+        toast('the carpenters are called — ' + CARP_CAT[sc.sel].label + ' at the mark');
+    }
+  }
+  vrDrawCarp(sc);
 }
 
 /* ============================================================================
@@ -17856,6 +18004,22 @@ function vrSelect(hand, down){
          a press on one never falls through to the main console's regions */
       if(p.obj && p.obj.userData.orderScreen && VR.orders){
         const sc = VR.orders[p.obj.userData.orderScreen];
+        if(sc){
+          const sx = p.u * sc.canvas.width, sy = p.v * sc.canvas.height;
+          for(let i = sc.hits.length - 1; i >= 0; i--){
+            const h = sc.hits[i];
+            if(sx >= h.x && sx <= h.x + h.w && sy >= h.y && sy <= h.y + h.h){
+              h.fn(sx, sy);
+              if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+              return;
+            }
+          }
+        }
+        return;
+      }
+      /* the carpenters screen: same shape, its own registry (RULING X) */
+      if(p.obj && p.obj.userData.carpScreen && VR.carps){
+        const sc = VR.carps[p.obj.userData.carpScreen];
         if(sc){
           const sx = p.u * sc.canvas.width, sy = p.v * sc.canvas.height;
           for(let i = sc.hits.length - 1; i >= 0; i--){
