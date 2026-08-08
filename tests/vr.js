@@ -1617,6 +1617,65 @@ const probe = `
     vrSqueeze(1, false);
     return 'joined by the gun, parted by the hammer';
   });
+  P('an 8ft stick is a handful anywhere along it', ()=>{
+    const b = regWood('s2x4');
+    b.mesh.rotation.set(0, 0, 0);
+    b.mesh.position.set(4, 1.22, -0.6);        // upright: ends at y=0 and y=2.44
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(4, 2.49, -0.6);            // 5cm past the TOP END — 1.27m from centre
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body' || VR.held.body !== b)
+      throw new Error('the end of the stick was not taken: '+(VR.held && VR.held.kind));
+    vrSqueeze(0, false);
+    /* and the tolerance is a tolerance, not a beam: 35cm off is a miss */
+    c0.position.set(4, 2.79, -0.6);
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(VR.held && VR.held.kind === 'body' && VR.held.body === b)
+      throw new Error('a hand 35cm off the end still took it');
+    if(VR.held) vrSqueeze(0, false);
+    return 'held at the end, missed at 35cm';
+  });
+  P('a sheet is a handful at its corner', ()=>{
+    const s = regWood('sheet');
+    s.mesh.rotation.set(0, 0, 0);
+    s.mesh.position.set(4, 1.5, -1.2);         // corner at x=5.22, y=2.11
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(5.25, 2.14, -1.2);         // 3cm past the corner both ways
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body' || VR.held.body !== s)
+      throw new Error('the corner of the sheet was not taken: '+(VR.held && VR.held.kind));
+    vrSqueeze(0, false);
+    return 'the corner is in reach';
+  });
+  P('a built frame comes by the end of any plank', ()=>{
+    const a1 = regWood('s2x4'), a2 = regWood('s2x4');
+    a1.mesh.rotation.set(0, 0, 0); a2.mesh.rotation.set(0, 0, 0);
+    a1.mesh.position.set(6, 1.22, -0.6);
+    a2.mesh.position.set(6.038, 1.22, -0.6);   // faces kissing in x
+    scene.updateMatrixWorld(true);
+    addNail(a1, {body:a2}, new THREE.Vector3(6.019, 1.9, -0.6), new THREE.Vector3(1,0,0));
+    addNail(a1, {body:a2}, new THREE.Vector3(6.019, 0.6, -0.6), new THREE.Vector3(1,0,0));
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(6, 2.47, -0.6);            // 3cm past a1's top end
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'asm')
+      throw new Error('the frame was not taken whole: '+(VR.held && VR.held.kind));
+    vrSqueeze(0, false);
+    const asm = a1.asm;
+    while(a1.asm && a1.asm.nails.length) removeNail(a1.asm.nails[0]);   // tidy
+    if(ASSEMBLIES.indexOf(asm) >= 0) throw new Error('tidy-up failed');
+    return 'the whole frame by one plank end';
+  });
   P('the tape stretches to a hand and marks the wood', ()=>{
     const c0 = VR.controllers[0], c1 = VR.controllers[1];
     vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
