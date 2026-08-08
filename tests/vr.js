@@ -1827,6 +1827,46 @@ const probe = `
     BODIES.splice(BODIES.indexOf(t), 1);
     return 'edge grab, in-hand carry, square landing';
   });
+  P('painting says how it works, step by step', ()=>{
+    /* the owner's report: "I can't figure out how to do the painting."
+       The mechanic stands; the room now SAYS it (build-feel, ask 4). */
+    if(typeof vrPaintLabel !== 'function') throw new Error('vrPaintLabel is not defined');
+    const rack = RACKS.palace;
+    const rp = rack.roller.mesh.getWorldPosition(new THREE.Vector3());
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.copy(rp).add(new THREE.Vector3(0.3, 0, 0));
+    c0.updateMatrixWorld(true);
+    vrLabel(null);
+    vrPaintLabel(1);                           // dt=1 beats the throttle
+    if(VR.labelTxt !== 'SQUEEZE TO TAKE THE ROLLER')
+      throw new Error('an empty hand at the rack hears: '+VR.labelTxt);
+    /* the roller in hand, dry: the label moves to the cans */
+    c0.position.copy(rp);
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'roller')
+      throw new Error('the roller was not taken: '+(VR.held && VR.held.kind));
+    vrLabel(null);
+    vrPaintLabel(1);
+    if(VR.labelTxt !== 'DIP THE HEAD IN A CAN')
+      throw new Error('the dry roller hears: '+VR.labelTxt);
+    /* dipped, wood at the head: the trigger line */
+    rack.roller.color = PAINT_COLORS[0].c;
+    const wd = regWood('s2x4');
+    wd.mesh.rotation.set(0, 0, Math.PI/2);
+    wd.mesh.position.copy(rack.roller.head.getWorldPosition(new THREE.Vector3()));
+    scene.updateMatrixWorld(true);
+    vrLabel(null);
+    vrPaintLabel(1);
+    if(VR.labelTxt !== 'TRIGGER TO PAINT')
+      throw new Error('the dipped roller hears: '+VR.labelTxt);
+    vrSqueeze(0, false);                       // re-racks the roller
+    rack.roller.color = null;
+    BODIES.splice(BODIES.indexOf(wd), 1);
+    vrLabel(null);
+    return 'the rack, the can and the trigger all speak up';
+  });
   P('a piece released over the drum is gone', ()=>{
     /* build-feel RULING P: the trash can outranks every release snap */
     if(typeof TRASH === 'undefined' || !TRASH.palace) throw new Error('no drum in the shed');
