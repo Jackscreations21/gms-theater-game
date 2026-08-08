@@ -333,21 +333,32 @@ function updatePlayer(dt){
   if(Player.mode!=='walk') return;
   const running = keys['ShiftLeft'] || keys['ShiftRight'];
   const spd = running ? 6.4 : 3.1;
-  let fx=0, fz=0;
-  if(keys['KeyW']) fz+=1; if(keys['KeyS']) fz-=1;
-  if(keys['KeyA']) fx-=1; if(keys['KeyD']) fx+=1;
+  let kfx=0, kfz=0, sfx=0, sfz=0;
+  if(keys['KeyW']) kfz+=1; if(keys['KeyS']) kfz-=1;
+  if(keys['KeyA']) kfx-=1; if(keys['KeyD']) kfx+=1;
   if(typeof VR !== 'undefined' && VR && VR.active){
-    fx += VR.axes.lx; fz -= VR.axes.ly;     // stick forward reads as -1
+    sfx = VR.axes.lx; sfz = -VR.axes.ly;    // stick forward reads as -1
   }
+  let fx = kfx + sfx, fz = kfz + sfz;       // the combined stride: pace, bob, flight
   const len = Math.hypot(fx,fz);
   /* a stick half over should walk at half pace, so keep the magnitude
      rather than normalising every input to a full stride */
   const mag = Math.min(1, len);
+  const k = len > 0 ? mag/len : 0;
   if(len>0){ fx = fx/len*mag; fz = fz/len*mag; }
   // the camera looks down -Z, so forward = (-sin yaw, -cos yaw), right = (cos yaw, -sin yaw)
   const sin=Math.sin(Player.yaw), cos=Math.cos(Player.yaw);
-  const wx = ( fx*cos - fz*sin)*spd;
-  const wz = (-fx*sin - fz*cos)*spd;
+  /* the keyboard walks the way the CAMERA faces; the VR stick walks the
+     way the LEFT CONTROLLER points (p9 vrMoveYaw, build-feel RULING O) */
+  let wx = ( kfx*cos - kfz*sin)*k*spd;
+  let wz = (-kfx*sin - kfz*cos)*k*spd;
+  if(sfx || sfz){
+    let my = (typeof vrMoveYaw === 'function') ? vrMoveYaw() : null;
+    if(my === null) my = Player.yaw;
+    const ms = Math.sin(my), mc = Math.cos(my);
+    wx += ( sfx*mc - sfz*ms)*k*spd;
+    wz += (-sfx*ms - sfz*mc)*k*spd;
+  }
 
   /* flying is VR-only: double-tap A (p9) sets VR.fly, landing clears it */
   const flying = typeof VR !== 'undefined' && VR && VR.active && VR.fly;

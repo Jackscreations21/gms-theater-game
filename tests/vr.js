@@ -239,6 +239,39 @@ const probe = `
     return 'stopped at z=' + Player.pos.z.toFixed(1) + ', the wall is ' + D.backWall;
   });
 
+  P('the stick walks where the LEFT CONTROLLER points', ()=>{
+    /* build-feel RULING O: point the controller right, push forward, walk
+       right — whatever way the headset and the rig happen to face */
+    if(typeof vrMoveYaw !== 'function') throw new Error('vrMoveYaw is not defined');
+    goToView(3);
+    Player.pos.set(2, 0, -6); Player.yaw = 0;
+    Player.vel.set(0, 0, 0);
+    const c0 = VR.controllers[0];
+    const q0 = c0.quaternion.clone();
+    c0.quaternion.setFromAxisAngle(new THREE.Vector3(0,1,0), -Math.PI/2); // points +x
+    c0.updateMatrixWorld(true);
+    stick('left', 0, -1);                     // push straight forward
+    for(let i=0;i<20;i++){ vrUpdate(0.05); updatePlayer(0.05); }
+    stick('left', 0, 0);
+    const dx = Player.pos.x - 2, dz = Player.pos.z + 6;
+    if(!(dx > 0.8) || Math.abs(dz) > 0.35*dx)
+      throw new Error('walked ('+dx.toFixed(2)+', '+dz.toFixed(2)+') — the rig yaw won');
+    /* a controller aimed at the floor has no direction: the headset's yaw
+       takes over, and nothing goes NaN */
+    Player.pos.set(2, 0, -6);
+    c0.quaternion.setFromAxisAngle(new THREE.Vector3(1,0,0), -Math.PI/2*0.98);
+    c0.updateMatrixWorld(true);
+    stick('left', 0, -1);
+    for(let i=0;i<10;i++){ vrUpdate(0.05); updatePlayer(0.05); }
+    stick('left', 0, 0);
+    if(isNaN(Player.pos.x) || isNaN(Player.pos.z)) throw new Error('NaN in the walk');
+    if(!(Player.pos.z < -6.3))
+      throw new Error('the floor-aimed fallback never walked the headset way: z='+Player.pos.z.toFixed(2));
+    c0.quaternion.copy(q0);
+    c0.updateMatrixWorld(true);
+    return 'the controller steers the walk; the floor aim falls back';
+  });
+
   console.log('--- vr: jump and fly ---');
 
   /* let the player fall to the floor AND run the VR clock on, so a tap in
