@@ -1487,7 +1487,9 @@ function vrSqueeze(hand, down){
   }
   if(cart && (!best || cd < bd) && (!lv || cd < lvd)){
     VR.held = {hand, kind:'cart', cart, offX:cart.x - _rayO.x, offZ:cart.z - _rayO.z};
-    if(typeof toast === 'function') toast('warehouse cart — push it where you want it');
+    if(typeof toast === 'function') toast(cart.lift
+      ? 'forklift — walk it; the right stick runs the forks'
+      : 'warehouse cart — push it where you want it');
     return;
   }
   /* nearest wins: with the lock in, the handle stands right against the
@@ -1554,6 +1556,12 @@ function vrUpdateHold(dt){
       ct.yaw += clamp(diff, -step, step);
       cartPose(ct);
     }
+    /* the forklift only: the right stick runs the forks (push away = up).
+       rx is smooth turn and the left stick walks; ry was the free axis,
+       whichever hand took the handle. */
+    if(ct.lift && VR.axes && VR.axes.ry)
+      ct.forkY = clamp(ct.forkY - VR.axes.ry * LIFT_FORK_RATE * (dt || 0.016),
+                       0, LIFT_FORK_TOP);
     return;
   }
   /* a held BODY follows the grip kinematically — never re-parented to the
