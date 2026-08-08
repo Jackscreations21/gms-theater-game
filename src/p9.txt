@@ -2108,6 +2108,7 @@ function vrSqueeze(hand, down){
   if(typeof BODIES !== 'undefined'){
     for(const b of BODIES){
       if(b.state === 'held') continue;
+      if(b.state === 'carried') continue;   // riding a carpenter's arms (p6b): not takeable
       if(b.state === 'hung'){
         const p = b.point;
         const live = p && (p.spk

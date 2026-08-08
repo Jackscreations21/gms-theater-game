@@ -248,6 +248,143 @@ const probe = `
     return 'refused at 151, planned at exactly 150';
   });
 
+  console.log('--- the lead and the saws (PR 3) ---');
+  P('the lead exists only after a carpenter call, and is the seventh', ()=>{
+    if(CREW.people.some(h=>h.trade === 'carpenter'))
+      throw new Error('a carpenter existed before any call');
+    const lead = carpLead();
+    if(CREW.people.length !== 7) throw new Error(CREW.people.length+' people, want 7');
+    if(CREW.people[6] !== lead) throw new Error('the lead is not the seventh');
+    if(lead.trade !== 'carpenter') throw new Error('the lead has no trade');
+    if(carpLead() !== lead) throw new Error('a second call minted a second lead');
+    if(lead.cap.visible) throw new Error('the lead is wearing a cap');
+    /* the show census (RULING AA): crewSpawn(6) never hands out the lead */
+    const hands = crewSpawn(6);
+    if(hands.length !== 6 || hands.indexOf(lead) >= 0)
+      throw new Error('the lead is in the show six');
+    if(hands.some(h=>h.trade === 'carpenter')) throw new Error('a show hand carries the trade');
+    return 'seventh figure, trade carpenter, no cap, show six unchanged';
+  });
+  P('a fetch really carries: the same mesh rides the hands to the bench', ()=>{
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const sticks = [regWood('s2x4'), regWood('s2x4'), regWood('s2x4')];
+    const psheet = regWood('sheet');
+    BUILD_VENUE = keep;
+    sticks.concat([psheet]).forEach((b, i)=>{
+      venueRoot('palace').add(b.mesh);
+      b.mesh.position.set(-9 + i*0.4, 0.1, -21);   // on the shed floor, near the benches
+    });
+    const mark = {venue:'palace', stage:'palace', x:0, z:-6, yaw:0};
+    window.__mark2 = mark;
+    const plan = carpPlan('flat4x8', mark);
+    if(!plan || !plan.jobs) throw new Error('no plan: '+JSON.stringify(plan && (plan.need || plan)));
+    const holdAt = plan.jobs.findIndex(j=>j.kind === 'hold');
+    const fetch = plan.jobs.find(j=>j.kind === 'carpFetch');
+    const b = fetch.body, mesh = b.mesh, before = BODIES.length;
+    if(!carpRun(plan.jobs.slice(0, holdAt + 1))) throw new Error('the run refused');
+    if(CREW.running !== 'carp') throw new Error('running is '+CREW.running);
+    const lead = CREW.people[6];
+    /* fixed-dt drive to the moment the plank is in the lead's arms —
+       watching the guard the whole way: no show hand ever holds a saw job */
+    let carried = false;
+    for(let i=0;i<20000 && !carried;i++){
+      updateCrew(0.05); updateBodies(0.05);
+      for(const h of CREW.people)
+        if(h !== lead && h.job && (h.job.kind === 'carpFetch' || h.job.kind === 'carpCut'))
+          throw new Error('a show hand took '+h.job.kind);
+      if(mesh.parent === lead.hands) carried = true;
+    }
+    if(!carried) throw new Error('the stick never rode the hands');
+    if(b.state !== 'carried') throw new Error('mid-carry state is '+b.state);
+    if(BODIES.length !== before) throw new Error('the pickup minted or destroyed a body');
+    if(carpSurvey('palace').s2x4.indexOf(b) >= 0)
+      throw new Error('a carried stick still answers the survey as stock');
+    let seated = false;
+    for(let i=0;i<20000 && !seated;i++){
+      updateCrew(0.05); updateBodies(0.05);
+      if(b.state === 'seated') seated = true;
+    }
+    if(!seated) throw new Error('never seated on the saw');
+    if(b.station !== SAWS.palace.chop) throw new Error('seated on the wrong station');
+    if(b.mesh !== mesh) throw new Error('the mesh changed identity on the way');
+    if(mesh.parent !== SAWS.palace.chop.seat) throw new Error('the mesh did not land on the seat');
+    if(BODIES.length !== before) throw new Error('the fetch changed the body count');
+    return 'same mesh: floor -> arms -> saw seat, body count unchanged';
+  });
+  P('the cuts land on the schedule and the run state records them', ()=>{
+    if(!CARP_RUN || !CARP_RUN.bench.chop) throw new Error('no run state on the bench');
+    const before = BODIES.length;
+    let guard = 0;
+    while(CREW.running && guard++ < 40000){ updateCrew(0.05); updateBodies(0.05); }
+    if(CREW.running) throw new Error('the cutting phase never finished');
+    /* two rails kept, recorded under their blueprint piece indices (PR 4 reads this) */
+    const r3 = CARP_RUN.made[3], r4 = CARP_RUN.made[4];
+    if(!r3 || !r4) throw new Error('the cuts were not recorded by piece index');
+    if(r3 === r4) throw new Error('one body recorded under two indices');
+    if(Math.abs(r3.dims.L - 1.0414) > 0.0254 || Math.abs(r4.dims.L - 1.0414) > 0.0254)
+      throw new Error('rails came out '+r3.dims.L.toFixed(4)+' and '+r4.dims.L.toFixed(4));
+    if(r3.mesh.geometry !== WOODG || r4.mesh.geometry !== WOODG)
+      throw new Error('a cut minted geometry');
+    if(r3.state !== 'loose' || r4.state !== 'loose')
+      throw new Error('rails are '+r3.state+'/'+r4.state+', not set aside loose');
+    /* exactly the planner's mint count: both off sides clear SAW_MIN, so +2 */
+    if(BODIES.length !== before + 2)
+      throw new Error('the body count grew by '+(BODIES.length - before)+', want 2');
+    /* the bench is clear and the honest 14in off-cut is back in stock, loose */
+    if(SAWS.palace.chop.pieces.length)
+      throw new Error(SAWS.palace.chop.pieces.length+' pieces left seated on the bench');
+    const off = BODIES.filter(x=>x.kind === 'wood' && x.venue === 'palace' &&
+      x.prof === 's2x4' && x.state === 'loose' && Math.abs(x.dims.L - 0.3556) < 0.0254);
+    if(!off.length) throw new Error('the 14in off-cut never went back to the shed');
+    const lead = CREW.people[6];
+    if(lead.group.visible || lead.state !== 'off') throw new Error('the lead never went home');
+    return 'two 41in rails under their indices, +2 bodies, bench clear, 14in in stock';
+  });
+  P('a show queue never reaches the lead', ()=>{
+    const lead = CREW.people[6];
+    crewStart('in');                       // no show loaded: the stock-scenery plan
+    if(!CREW.running) throw new Error('no show run started');
+    let handWorked = false;
+    for(let i=0;i<2000 && CREW.running;i++){
+      updateCrew(0.05);
+      if(lead.job) throw new Error('the lead took a show job: '+lead.job.kind);
+      if(lead.group.visible) throw new Error('the lead turned up to a load in');
+      if(CREW.people.some((h, hi)=>hi < 6 && h.job)) handWorked = true;
+    }
+    if(!handWorked) throw new Error('nobody worked at all — the guard is too wide');
+    crewStop(true);
+    return 'the hands worked, the lead never stirred';
+  });
+  P('stand down mid-fetch leaves the stick loose where the lead stands', ()=>{
+    const plan = carpPlan('flat4x8', window.__mark2);
+    if(!plan || !plan.jobs) throw new Error('no second plan: '+JSON.stringify(plan && plan.need));
+    const fetch = plan.jobs.find(j=>j.kind === 'carpFetch');
+    const b = fetch.body, mesh = b.mesh;
+    const holdAt = plan.jobs.findIndex(j=>j.kind === 'hold');
+    if(!carpRun(plan.jobs.slice(0, holdAt + 1))) throw new Error('the run refused');
+    const lead = CREW.people[6];
+    let carrying = false;
+    for(let i=0;i<20000 && !carrying;i++){
+      updateCrew(0.05); updateBodies(0.05);
+      if(mesh.parent === lead.hands && lead.state === 'walk') carrying = true;
+    }
+    if(!carrying) throw new Error('never caught the lead mid-carry');
+    const before = BODIES.length, lx = lead.x, lz = lead.z;
+    crewStop(true);                        // the stage swap's stand-down path (p2k)
+    if(BODIES.indexOf(b) < 0) throw new Error('the stick was disposed');
+    if(b.state !== 'loose') throw new Error('set down as '+b.state);
+    if(mesh.parent !== venueRoot('palace'))
+      throw new Error('set down into '+(mesh.parent && mesh.parent.name));
+    if(mesh.geometry !== WOODG) throw new Error('the geometry was replaced');
+    scene.updateMatrixWorld(true);
+    const wp = mesh.getWorldPosition(new THREE.Vector3());
+    const drift = Math.hypot(wp.x - lx, wp.z - lz);
+    if(drift > 1.5) throw new Error('the stick teleported '+drift.toFixed(1)+'m from the lead');
+    if(BODIES.length !== before) throw new Error('stand down changed the body count');
+    if(CARP_RUN) throw new Error('a stood-down run left its state behind');
+    return 'loose at the lead, nothing disposed, run state cleared';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
