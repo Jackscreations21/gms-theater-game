@@ -701,16 +701,39 @@ a dependency chain on p9/p4c/p2m — do not parallelize them).
   pose); pipe-anchored work reloads at saved world pose whatever trim
   the pipe wakes at (fly positions are not saved, by spec).
 
-**THE PLAN IS FULLY BUILT — all seven PRs, 15/15 green on every one,
-every branch pushed.** As of this writing only PR 1 (#40) is OPEN;
-each later branch is stacked one-on-the-last and opens ONLY after its
-parent merges (rebase → retest → open, the #38 pattern): merge #40,
-then open `build-forklift`, then `build-tools`, `build-saws`,
-`build-paint`, `build-hinges`, `build-save`. If a session picks this
-up mid-chain: merge-check first, `npm test` 15/15 on `main`, rebase
-the next branch, open. After PR 7 lands: PHASE 2 is the furniture
-catalogue (doors, lamps, tables, nightstands — RULING J; they slot in
-as ordered bodies), plus the standing headset checklist below.
+**THE BUILD SYSTEM IS FULLY ON `main` (2026-08-07, same day):** all
+seven PRs merged in order — #40 ordering, #41 forklift, #42 toolbelt,
+#43 saws, #44 paint, #45 hinges & track, #46 save — each one rebased
+onto the fresh `main`, retested 15/15, opened only after its parent
+merged. Post-merge verification: `main` rebuilds byte-identical,
+15/15 on the merged result, all seven work branches deleted local and
+remote. The game on Pages now carries the whole feature; bust the
+Quest cache with `?v=9`.
+
+**NEXT SESSION: BUG FIXES (owner's word, 2026-08-07 — no list given
+yet).** Step zero: ASK THE OWNER FOR THE BUG LIST before touching
+anything, then per bug: reproduce it in a failing test FIRST (jsdom
+if it can, a `tools/` probe if it is visual), fix, negative-check,
+one bug one PR, straight to `main`. Likely sources, in rough order:
+
+- **The first headset run of the build system.** Nothing in PRs 1–7
+  has met hardware; the per-PR feel questions in the step-zero list
+  below are exactly where the bug reports will come from. If a
+  report is about grab/snap/reach distances, the constants are
+  gathered at the top of their sections (0.35 body, 0.4 snap, 0.32
+  rope, 0.28 saw, 0.30 cart/lift, 0.22 tool/roller, 0.12 lever).
+- **Known accepted drifts** (documented, may get promoted to bugs by
+  the owner): a swung pivot reloads at its pose but its stops
+  re-baseline there; pipe-anchored work reloads at saved pose
+  whatever trim the pipe wakes at; a runaway resumes when a parked
+  stage is re-entered; rope runs pass through the fly-gallery floor
+  at y=8 (cosmetic).
+- **Standing owner-taste leftovers:** audit items 20 (dead weight)
+  and 22 (duplication) — decisions, not defects.
+
+After the bugs: PHASE 2 is the furniture catalogue (doors, lamps,
+tables, nightstands — RULING J; they slot straight in as ordered
+bodies), and the headset checklist below still stands.
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
