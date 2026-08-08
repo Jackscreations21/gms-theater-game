@@ -738,12 +738,32 @@ function vrBuildDesks(){
    this is only the glass.
    ========================================================================== */
 const ORDER_KINDS = ['profile','fresnel','par','cyc','mover','speaker'];
+const ORDER_TABS = ['GEAR','WOOD','HDWE','PAINT'];
+/* the rows of each tab: a key into sc.counts, a label, and the order UNIT
+   a count of it turns into (p2m orderPlace) */
+function orderRows(tab){
+  if(tab === 0) return ORDER_KINDS.map(k=>({key:k, label:BODY_LABEL[k], unit:{kind:k}}));
+  if(tab === 1) return [
+    {key:'sheet', label:'4x8 SHEET 3/4', unit:{kind:'wood', prof:'sheet'}},
+    {key:'s2x4',  label:'2x4 - 8FT',     unit:{kind:'wood', prof:'s2x4'}},
+    {key:'s4x4',  label:'4x4 - 8FT',     unit:{kind:'wood', prof:'s4x4'}},
+    {key:'s2x8',  label:'2x8 - 8FT',     unit:{kind:'wood', prof:'s2x8'}}];
+  if(tab === 2) return [
+    {key:'hinge',    label:'HINGE',       unit:{kind:'hinge'}},
+    {key:'track',    label:'TRACK - 4FT', unit:{kind:'track'}},
+    {key:'carriage', label:'CARRIAGE',    unit:{kind:'carriage'}}];
+  return PAINT_COLORS.map((pc, i)=>({key:'p'+i, label:pc.name, swatch:pc.c,
+                                     unit:{kind:'paint', color:pc.c}}));
+}
+function orderTotal(sc){
+  let n = 0; for(const k in sc.counts) n += sc.counts[k];
+  return n;
+}
 function vrMakeOrderScreen(which, parent, x, y, z){
   const c = document.createElement('canvas');
   c.width = 560; c.height = 520;
   const sc = {which, canvas:c, ctx:c.getContext('2d'), tex:tex(c,1,1), hits:[],
-              counts:{profile:0, fresnel:0, par:0, cyc:0, mover:0, speaker:0},
-              status:''};
+              counts:{}, tab:0, status:''};
   const g = new T.Group(); g.position.set(x, y, z); parent.add(g);
   const back = new T.Mesh(new T.BoxGeometry(1.44, 1.34, 0.05),
     new T.MeshStandardMaterial({color:0x14181e, roughness:.7, metalness:.2}));
@@ -772,50 +792,79 @@ function vrDrawOrder(sc){
   g.fillStyle = '#0b0e12'; g.fillRect(0, 0, W, sc.canvas.height);
   g.fillStyle = '#ffd08a'; g.font = 'bold 26px monospace';
   g.fillText('WAREHOUSE SUPPLY', 24, 40);
+  /* the piece cap, on the glass where the refusal will happen (spec §3) */
+  g.font = '18px monospace';
+  g.fillText('PIECES ' + venueBuildCount(sc.which) + '/' + BUILD_CAP, 396, 40);
   const o = (typeof ORDERS !== 'undefined') ? ORDERS[sc.which] : null;
-  ORDER_KINDS.forEach((k, i)=>{
-    const y = 64 + i*56;
-    g.fillStyle = '#cfd8e3'; g.font = '22px monospace';
-    g.fillText(BODY_LABEL[k], 24, y + 31);
-    g.fillStyle = '#232b35'; g.fillRect(300, y, 56, 44);
-    g.fillRect(440, y, 56, 44);
-    g.fillStyle = '#ffd08a'; g.font = 'bold 28px monospace';
-    g.fillText('-', 321, y + 32); g.fillText('+', 458, y + 32);
-    g.fillStyle = '#eef3f8'; g.fillText('' + sc.counts[k], 388, y + 32);
-    sc.hits.push({x:300, y, w:56, h:44, fn:()=>{
-      if(sc.counts[k] > 0){ sc.counts[k]--; sc.status = ''; }
+  ORDER_TABS.forEach((tl, i)=>{
+    const x = 24 + i*130;
+    g.fillStyle = sc.tab === i ? '#3a4657' : '#1a212b';
+    g.fillRect(x, 56, 122, 40);
+    g.fillStyle = sc.tab === i ? '#ffd08a' : '#8fa0b4';
+    g.font = 'bold 20px monospace';
+    g.fillText(tl, x + 24, 83);
+    sc.hits.push({x, y:56, w:122, h:40, fn:()=>{ sc.tab = i; vrDrawOrder(sc); }});
+  });
+  const rows = orderRows(sc.tab);
+  const paint = sc.tab === 3;              // ten rows only fit drawn small
+  rows.forEach((r, i)=>{
+    const y = 112 + i*(paint ? 28 : 48);
+    const h = paint ? 24 : 40;
+    const bx1 = paint ? 340 : 300, bx2 = paint ? 460 : 440, bw = paint ? 40 : 56;
+    if(paint){
+      g.fillStyle = '#' + ('00000' + r.swatch.toString(16)).slice(-6);
+      g.fillRect(24, y + 2, 28, 20);
+      g.fillStyle = '#cfd8e3'; g.font = '16px monospace';
+      g.fillText(r.label, 60, y + 18);
+    } else {
+      g.fillStyle = '#cfd8e3'; g.font = '20px monospace';
+      g.fillText(r.label, 24, y + 27);
+    }
+    g.fillStyle = '#232b35'; g.fillRect(bx1, y, bw, h); g.fillRect(bx2, y, bw, h);
+    g.fillStyle = '#ffd08a'; g.font = paint ? 'bold 18px monospace' : 'bold 26px monospace';
+    g.fillText('-', bx1 + bw/2 - 5, y + h - (paint ? 6 : 12));
+    g.fillText('+', bx2 + bw/2 - 7, y + h - (paint ? 6 : 12));
+    g.fillStyle = '#eef3f8';
+    g.fillText('' + (sc.counts[r.key] || 0), (bx1 + bx2 + bw)/2 - 8, y + h - (paint ? 6 : 12));
+    sc.hits.push({x:bx1, y, w:bw, h, fn:()=>{
+      if(sc.counts[r.key] > 0){ sc.counts[r.key]--; sc.status = ''; }
       vrDrawOrder(sc);
     }});
-    sc.hits.push({x:440, y, w:56, h:44, fn:()=>{
-      const tot = ORDER_KINDS.reduce((s, kk)=>s + sc.counts[kk], 0);
-      if(tot < ORDER_MAX){ sc.counts[k]++; sc.status = ''; }
-      else sc.status = 'SIX TO AN ORDER';
+    sc.hits.push({x:bx2, y, w:bw, h, fn:()=>{
+      if(orderTotal(sc) < ORDER_MAX){ sc.counts[r.key] = (sc.counts[r.key] || 0) + 1; sc.status = ''; }
+      else sc.status = 'TWELVE TO AN ORDER';
       vrDrawOrder(sc);
     }});
   });
-  const oy = 64 + 6*56 + 8;
+  const oy = 404;
   g.fillStyle = '#2fbf4a'; g.fillRect(24, oy, 300, 56);
   g.fillStyle = '#08130a'; g.font = 'bold 30px monospace';
   g.fillText('ORDER', 118, oy + 39);
   sc.hits.push({x:24, y:oy, w:300, h:56, fn:()=>{ vrOrderPress(sc); }});
   g.fillStyle = '#ffd08a'; g.font = '20px monospace';
   let line = sc.status;
-  if(o && o.pending) line = 'DELIVERY IN ' + Math.max(1, Math.ceil(o.pending.t)) + 's';
-  else if(o && o.pallet) line = 'PALLET ON THE APRON';
+  if(!line && o && o.pending.length){
+    let t = 1e9; o.pending.forEach(pd=>{ if(pd.t < t) t = pd.t; });
+    line = o.pending.length + ' ORDERED - NEXT IN ' + Math.max(1, Math.ceil(t)) + 's';
+  }
+  if(!line && o && o.pallets.length)
+    line = o.pallets.length > 1 ? o.pallets.length + ' PALLETS ON THE APRON'
+                                : 'PALLET ON THE APRON';
   g.fillText(line || 'THE SHELVES ARE YOURS', 24, oy + 92);
   sc.tex.needsUpdate = true;
 }
 function vrOrderPress(sc){
-  const items = [];
-  ORDER_KINDS.forEach(k=>{ for(let i = 0; i < sc.counts[k]; i++) items.push(k); });
-  const r = (typeof orderPlace === 'function') ? orderPlace(sc.which, items) : 'BUSY';
-  if(r === 'OK'){
-    ORDER_KINDS.forEach(k=>{ sc.counts[k] = 0; });
-    sc.status = '';
-  }
-  else if(r === 'COUNT') sc.status = items.length ? 'SIX TO AN ORDER' : 'NOTHING ON THE SLIP';
-  else if(r === 'BUSY') sc.status = 'ONE ORDER AT A TIME';
-  else sc.status = r;   // STOCK FULL
+  const units = [];
+  [0, 1, 2, 3].forEach(t=>{
+    orderRows(t).forEach(r=>{
+      for(let i = 0; i < (sc.counts[r.key] || 0); i++) units.push(r.unit);
+    });
+  });
+  const r = (typeof orderPlace === 'function') ? orderPlace(sc.which, units) : 'BUSY';
+  if(r === 'OK'){ sc.counts = {}; sc.status = ''; }
+  else if(r === 'COUNT') sc.status = units.length ? 'TWELVE TO AN ORDER' : 'NOTHING ON THE SLIP';
+  else if(r === 'BUSY') sc.status = 'THREE ORDERS OUT ALREADY';
+  else sc.status = r;   // STOCK FULL / PIECES FULL
   vrDrawOrder(sc);
 }
 

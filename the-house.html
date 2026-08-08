@@ -4209,8 +4209,14 @@ function bodySpeaker(){
 var BODIES = [];
 var BUILD_VENUE = 'palace';   // buildArcStage flips this while it builds (p2k)
 const BODY_LABEL = {profile:'PROFILE SPOT', fresnel:'FRESNEL', par:'PAR CAN',
-                    cyc:'CYC UNIT', mover:'MOVING HEAD', speaker:'PA BOX'};
-function makeBodyMesh(kind){
+                    cyc:'CYC UNIT', mover:'MOVING HEAD', speaker:'PA BOX',
+                    wood:'WOOD', hinge:'HINGE', track:'TRACK', carriage:'CARRIAGE',
+                    paint:'PAINT CAN'};
+function makeBodyMesh(kind, color){
+  /* BUILD_KINDS is p4c's hoisted var — undefined while the Palace rig builds
+     during THIS part's parse-time run, so factory stock never takes this
+     branch (and a typeof guard is unnecessary: var, not const) */
+  if(BUILD_KINDS && BUILD_KINDS[kind]) return makeBuildMesh(kind, color);
   return kind==='fresnel'?bodyFresnel(): kind==='par'?bodyPar():
          kind==='cyc'?bodyCyc(): kind==='mover'?bodyMover():
          kind==='speaker'?bodySpeaker(): bodyProfile();
@@ -4250,6 +4256,8 @@ function unhangBody(b){
    are rigging and take only PA boxes (and vice versa). */
 function canHang(b, p){
   if(p.body) return false;
+  /* build stock (p4c) nails to assemblies, never hangs on a patch point */
+  if(BUILD_KINDS && BUILD_KINDS[b.kind]) return false;
   return p.spk ? b.kind === 'speaker' : b.kind !== 'speaker';
 }
 function hangBody(b, p){
@@ -4786,6 +4794,104 @@ function updateRig(dt, t){
 }
 const HOUSE = { house:0.7, work:0.0, practical:0.0, lobby:0.9, backstage:0.7 };
 let followTarget = null;
+
+/* ============================================================================
+   p4c — THE BUILD SYSTEM (spec docs/superpowers/specs/2026-08-07-build-
+   system-design.md).  PR 1: the stock — wood, hardware and paint as bodies
+   in the p4 detach registry, and the piece cap the order screen enforces.
+   Later PRs add assemblies and nails, the saws, paint application, hinges,
+   track, and the save system — all of it here, one part, one home.
+
+   Wood is PARAMETRIC: one unit BoxGeometry serves every piece of every
+   profile — a mesh is the shared box SCALED, and a cut never mints
+   geometry, it re-scales one body and registers a second (the frame-rate
+   invariant, spec §9).  Box geometry's six native material groups carry
+   paint: mesh.material is an array of six entries from the shared color-
+   keyed cache below (the LENSM lesson — never one material per piece).
+
+   BUILD_KINDS is a var ON PURPOSE: p4's makeBodyMesh and canHang test it,
+   and the Palace rig builds during p4's own parse-time run, before this
+   part has executed — a hoisted var reads undefined there (falsy, correct:
+   factory stock is all lanterns), where a const would throw (§5).
+   ========================================================================== */
+var BUILD_KINDS = {wood:1, hinge:1, track:1, carriage:1, paint:1};
+const BUILD_CAP = 150;          // build pieces to a venue — enforced at the screen
+const FT = 0.3048, INCH = 0.0254;
+const WOOD_LEN = 8*FT;          // every stick and sheet is born 8ft long
+const WOOD_PROF = {             // real sections, in metres
+  sheet: {t:0.019, W:4*FT},     // 4x8 ply, 3/4" — dims {L, W}, t thick (local Z)
+  s2x4:  {a:0.038, b:0.089},    // lumber: dims {L}, long axis local Y (§5 — own it)
+  s4x4:  {a:0.089, b:0.089},
+  s2x8:  {a:0.038, b:0.184}
+};
+const WOOD_COL = {ply:0xc8ab7a, pine:0xd8c193};
+const WOODG = new T.BoxGeometry(1, 1, 1);
+var WOODM = {};                 // color -> ONE MeshStandardMaterial, shared
+function woodMat(color){
+  return WOODM[color] || (WOODM[color] =
+    new T.MeshStandardMaterial({color, roughness:.85}));
+}
+function makeWoodMesh(prof, dims){
+  const P = WOOD_PROF[prof];
+  const m = woodMat(prof === 'sheet' ? WOOD_COL.ply : WOOD_COL.pine);
+  const mesh = new T.Mesh(WOODG, [m, m, m, m, m, m]);
+  if(prof === 'sheet') mesh.scale.set(dims.L, dims.W, P.t);
+  else mesh.scale.set(P.a, dims.L, P.b);
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.userData.moves = true;
+  return mesh;
+}
+function regWood(prof, dims){
+  dims = dims || (prof === 'sheet' ? {L:WOOD_LEN, W:WOOD_PROF.sheet.W} : {L:WOOD_LEN});
+  const b = regBody('wood', makeWoodMesh(prof, dims), null);
+  b.prof = prof; b.dims = dims; b.state = 'loose';
+  return b;
+}
+
+/* the scenic palette — ten colors, fixed (spec §7); PAINT tab orders cans */
+const PAINT_COLORS = [
+  {name:'BLACK', c:0x141414}, {name:'WHITE', c:0xf2f0ea},
+  {name:'GREY',  c:0x8a8f94}, {name:'SLATE', c:0x3c4450},
+  {name:'RED',   c:0xa8231d}, {name:'BLUE',  c:0x1f3f7a},
+  {name:'GREEN', c:0x2a6b34}, {name:'BROWN', c:0x6b4a2e},
+  {name:'CREAM', c:0xe8dcbb}, {name:'GOLD',  c:0xc9a03c}
+];
+
+/* hardware and paint-can bodies — small cached geometries, shared materials */
+const BUILDG = {};
+function buildG(key, mk){ return BUILDG[key] || (BUILDG[key] = mk()); }
+function makeBuildMesh(kind, color){
+  const g = new T.Group();
+  g.userData.moves = true;
+  if(kind === 'hinge'){
+    [-1, 1].forEach(s=>{
+      const leaf = new T.Mesh(buildG('leaf', ()=>new T.BoxGeometry(0.1, 0.24, 0.012)), M.steel);
+      leaf.position.x = s*0.06; g.add(leaf);
+    });
+    g.add(new T.Mesh(buildG('pin', ()=>new T.CylinderGeometry(0.014, 0.014, 0.28, 8)), M.steel));
+  } else if(kind === 'track'){
+    const rail = new T.Mesh(buildG('rail', ()=>new T.BoxGeometry(4*FT, 0.05, 0.12)), M.steel);
+    rail.position.y = 0.025; g.add(rail);
+  } else if(kind === 'carriage'){
+    const car = new T.Mesh(buildG('car', ()=>new T.BoxGeometry(0.16, 0.08, 0.16)), M.steel);
+    car.position.y = 0.04; g.add(car);
+  } else {                                        // a paint can, banded its color
+    const can = new T.Mesh(buildG('can', ()=>new T.CylinderGeometry(0.09, 0.09, 0.22, 12)), M.steel);
+    can.position.y = 0.11; g.add(can);
+    const band = new T.Mesh(buildG('band', ()=>new T.CylinderGeometry(0.092, 0.092, 0.1, 12)),
+                            woodMat(color !== undefined ? color : 0x888888));
+    band.position.y = 0.11; g.add(band);
+  }
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow = o.receiveShadow = true; } });
+  return g;
+}
+
+/* the piece cap's book: wood and hardware, wherever it stands (spec §3) */
+function venueBuildCount(v){
+  let n = 0;
+  for(const b of BODIES) if(b.venue === v && BUILD_KINDS[b.kind]) n++;
+  return n;
+}
 
 /* ============================================================================
    ELECTRICS — fixtures riding a lineset
@@ -11736,39 +11842,57 @@ function cartMoveTo(cart, wx, wz){
 }
 
 /* ============================================================================
-   ORDERING NEW STOCK (spec §6).  A wall screen in each shed (p9) writes an
-   order; ~30s later a loaded pallet stands at the roller-door apron and its
-   six slots join the snap scan.  RULING C: ordering is free.  RULING D: one
-   order pending per shed, and an emptied pallet clears itself away.
-   RULING E: at most 24 loose bodies to a venue — held, carted, shelved,
-   palleted or on the floor.  Timers run on GAME time, never setTimeout —
-   a timer that survives a stage swap GOes the wrong theatre (M7).
+   ORDERING NEW STOCK (spec §6; grown by the build-system spec §3).  A wall
+   screen in each shed (p9) writes an order; ~30s later a loaded pallet
+   stands at the roller-door apron and its slots join the snap scan.
+   RULING C: ordering is free.  RULING D': up to THREE orders pending per
+   shed, each its own pallet, and an emptied pallet clears itself away.
+   RULING E: at most 24 loose GEAR bodies to a venue — wood and hardware
+   keep a separate book, BUILD_CAP (p4c), enforced here too.  Timers run on
+   GAME time, never setTimeout — a timer that survives a stage swap GOes
+   the wrong theatre (M7).
    ========================================================================== */
-var ORDERS = {palace:{pending:null, pallet:null}, arc:{pending:null, pallet:null}};
-const ORDER_DELIVERY = 30;    // seconds from ORDER to the pallet
-const ORDER_MAX = 6;          // line items to an order — one pallet's worth
-const STOCK_CAP = 24;         // RULING E, per venue
+var ORDERS = {palace:{pending:[], pallets:[]}, arc:{pending:[], pallets:[]}};
+const ORDER_DELIVERY = 30;      // seconds from ORDER to the pallet
+const ORDER_MAX = 12;           // units to an order — one pallet's worth
+const ORDER_PENDING_MAX = 3;    // RULING D': three orders out per shed at once
+const STOCK_CAP = 24;           // RULING E, per venue — gear only
 function venueLooseCount(v){
   if(typeof BODIES === 'undefined') return 0;
   let n = 0;
-  for(const b of BODIES) if(b.venue === v && b.state !== 'hung') n++;
+  for(const b of BODIES)
+    if(b.venue === v && b.state !== 'hung' && !(BUILD_KINDS && BUILD_KINDS[b.kind])) n++;
   return n;
 }
-function orderPlace(which, items){
+/* an order is a list of UNITS — {kind, prof?, color?}; plain strings are
+   taken as gear kinds (the pre-wood callers, and half the tests) */
+function orderPlace(which, units){
   const o = ORDERS[which];
-  if(!o || !SHEDS[which] || o.pending || o.pallet) return 'BUSY';
-  if(!items.length || items.length > ORDER_MAX) return 'COUNT';
-  if(venueLooseCount(which) + items.length > STOCK_CAP) return 'STOCK FULL';
-  o.pending = {items:items.slice(), t:ORDER_DELIVERY};
+  if(!o || !SHEDS[which]) return 'BUSY';
+  if(o.pending.length >= ORDER_PENDING_MAX) return 'BUSY';
+  units = units.map(u => typeof u === 'string' ? {kind:u} : u);
+  if(!units.length || units.length > ORDER_MAX) return 'COUNT';
+  let gear = 0, build = 0;
+  for(const u of units){ if(BUILD_KINDS && BUILD_KINDS[u.kind]) build++; else gear++; }
+  if(gear && venueLooseCount(which) + gear > STOCK_CAP) return 'STOCK FULL';
+  if(build && typeof venueBuildCount === 'function' &&
+     venueBuildCount(which) + build > BUILD_CAP) return 'PIECES FULL';
+  o.pending.push({items:units, t:ORDER_DELIVERY});
   return 'OK';
 }
-/* the pallet: boards on two bearers, six body seats on top.  A child of the
-   shed group on purpose — a pallet never leaves the shed, so it may cull
-   with it (the cart's escape from room-filing is for things that roam). */
-function spawnPallet(which){
-  const S = SHEDS[which];
+/* the pallet: boards on two bearers, its seats laid out FROM the manifest —
+   sheets flat-stack the middle, long stock lies in two columns, gear and
+   smalls take the six seats (twice over).  An anchor carries the LIE of
+   what sits on it, because slotBody zeroes the mesh against it.  A child
+   of the shed group on purpose — until the forklift (PR 2) a pallet never
+   leaves the shed, so it may cull with it. */
+function spawnPallet(which, items){
+  const S = SHEDS[which], o = ORDERS[which];
   const g = new T.Group();
-  const at = which === 'palace' ? {x:-2.4, z:S.z1 - 1.6} : {x:-26, z:S.z1 - 1.8};
+  const used = o.pallets.map(p=>p.spot);
+  let spot = 0; while(used.indexOf(spot) >= 0) spot++;
+  const at = which === 'palace' ? {x:-2.4 - spot*2.6, z:S.z1 - 1.6}
+                                : {x:-26 + spot*2.8, z:S.z1 - 1.8};
   g.position.set(at.x, 0, at.z);
   const top = new T.Mesh(new T.BoxGeometry(1.7, 0.05, 1.2), M.wood);
   top.position.y = 0.15; g.add(top);
@@ -11777,13 +11901,47 @@ function spawnPallet(which){
     b.position.set(0, 0.06, bz); g.add(b);
   });
   const slots = [];
-  for(let zi=0; zi<2; zi++) for(let xi=0; xi<3; xi++){
+  let nSheet = 0, nLong = 0, nSmall = 0;
+  for(const u of (items || [])){
     const a = new T.Object3D();
-    a.position.set(-0.55 + xi*0.55, 0.42, -0.3 + zi*0.6);
+    if(u.kind === 'wood' && u.prof === 'sheet'){
+      a.position.set(0, 0.21 + nSheet*0.024, 0);
+      a.rotation.x = -Math.PI/2;                    // thickness up: it lies flat
+      nSheet++;
+    } else if(u.kind === 'wood' || u.kind === 'track'){
+      a.position.set(0, 0.24 + Math.floor(nLong/2)*0.1, nLong%2 ? 0.3 : -0.3);
+      if(u.kind === 'wood') a.rotation.z = -Math.PI/2;   // long axis along the boards
+      nLong++;
+    } else {
+      a.position.set(-0.55 + (nSmall%3)*0.55, 0.42 + Math.floor(nSmall/6)*0.34,
+                     -0.3 + (Math.floor(nSmall/3)%2)*0.6);
+      nSmall++;
+    }
     g.add(a); slots.push(a);
   }
   S.group.add(g);
-  return {group:g, slots};
+  return {group:g, slots, spot};
+}
+function deliverOrder(which, items){
+  const o = ORDERS[which];
+  const pal = spawnPallet(which, items);
+  o.pallets.push(pal);
+  /* delivered stock belongs to the shed's venue, wherever the board is */
+  const keep = BUILD_VENUE;
+  BUILD_VENUE = which;
+  items.forEach((u, i)=>{
+    let b;
+    if(u.kind === 'wood') b = regWood(u.prof);
+    else {
+      b = regBody(u.kind, makeBodyMesh(u.kind, u.color), null);
+      if(u.color !== undefined) b.color = u.color;
+      b.state = 'loose';
+    }
+    slotBody(b, pal.slots[i]);
+  });
+  BUILD_VENUE = keep;
+  if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+  if(typeof toast === 'function') toast('the warehouse — your order is on the apron');
 }
 let _orderUiT = 0;
 function updateOrders(dt){
@@ -11791,39 +11949,27 @@ function updateOrders(dt){
   for(const k in ORDERS){
     const o = ORDERS[k];
     if(!o) continue;
-    if(o.pending){
-      o.pending.t -= dt;
-      if(o.pending.t <= 0){
-        const items = o.pending.items;
-        o.pending = null;
-        o.pallet = spawnPallet(k);
-        /* delivered stock belongs to the shed's venue, wherever the board is */
-        const keep = BUILD_VENUE;
-        BUILD_VENUE = k;
-        items.forEach((kind, i)=>{
-          const mesh = makeBodyMesh(kind);
-          const b = regBody(kind, mesh, null);
-          b.state = 'loose';
-          slotBody(b, o.pallet.slots[i]);
-        });
-        BUILD_VENUE = keep;
-        if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
-        if(typeof toast === 'function') toast('the warehouse — your order is on the apron');
+    for(let i = o.pending.length - 1; i >= 0; i--){
+      const pd = o.pending[i];
+      pd.t -= dt;
+      if(pd.t <= 0){
+        o.pending.splice(i, 1);
+        deliverOrder(k, pd.items);
         redraw = true;
       }
-    } else if(o.pallet){
-      const loaded = o.pallet.slots.some(a=>a.userData.body);
-      if(loaded) o.pallet.emptyT = undefined;
-      else {
-        /* RULING D: a few seconds after the last body comes off, it goes */
-        if(o.pallet.emptyT === undefined) o.pallet.emptyT = 5;
-        o.pallet.emptyT -= dt;
-        if(o.pallet.emptyT <= 0){
-          if(o.pallet.group.parent) o.pallet.group.parent.remove(o.pallet.group);
-          if(typeof disposeTree === 'function') disposeTree(o.pallet.group);
-          o.pallet = null;
-          redraw = true;
-        }
+    }
+    for(let i = o.pallets.length - 1; i >= 0; i--){
+      const pal = o.pallets[i];
+      const loaded = pal.slots.some(a=>a.userData.body);
+      if(loaded){ pal.emptyT = undefined; continue; }
+      /* RULING D: a few seconds after the last body comes off, it goes */
+      if(pal.emptyT === undefined) pal.emptyT = 5;
+      pal.emptyT -= dt;
+      if(pal.emptyT <= 0){
+        if(pal.group.parent) pal.group.parent.remove(pal.group);
+        if(typeof disposeTree === 'function') disposeTree(pal.group);
+        o.pallets.splice(i, 1);
+        redraw = true;
       }
     }
   }
@@ -14490,12 +14636,32 @@ function vrBuildDesks(){
    this is only the glass.
    ========================================================================== */
 const ORDER_KINDS = ['profile','fresnel','par','cyc','mover','speaker'];
+const ORDER_TABS = ['GEAR','WOOD','HDWE','PAINT'];
+/* the rows of each tab: a key into sc.counts, a label, and the order UNIT
+   a count of it turns into (p2m orderPlace) */
+function orderRows(tab){
+  if(tab === 0) return ORDER_KINDS.map(k=>({key:k, label:BODY_LABEL[k], unit:{kind:k}}));
+  if(tab === 1) return [
+    {key:'sheet', label:'4x8 SHEET 3/4', unit:{kind:'wood', prof:'sheet'}},
+    {key:'s2x4',  label:'2x4 - 8FT',     unit:{kind:'wood', prof:'s2x4'}},
+    {key:'s4x4',  label:'4x4 - 8FT',     unit:{kind:'wood', prof:'s4x4'}},
+    {key:'s2x8',  label:'2x8 - 8FT',     unit:{kind:'wood', prof:'s2x8'}}];
+  if(tab === 2) return [
+    {key:'hinge',    label:'HINGE',       unit:{kind:'hinge'}},
+    {key:'track',    label:'TRACK - 4FT', unit:{kind:'track'}},
+    {key:'carriage', label:'CARRIAGE',    unit:{kind:'carriage'}}];
+  return PAINT_COLORS.map((pc, i)=>({key:'p'+i, label:pc.name, swatch:pc.c,
+                                     unit:{kind:'paint', color:pc.c}}));
+}
+function orderTotal(sc){
+  let n = 0; for(const k in sc.counts) n += sc.counts[k];
+  return n;
+}
 function vrMakeOrderScreen(which, parent, x, y, z){
   const c = document.createElement('canvas');
   c.width = 560; c.height = 520;
   const sc = {which, canvas:c, ctx:c.getContext('2d'), tex:tex(c,1,1), hits:[],
-              counts:{profile:0, fresnel:0, par:0, cyc:0, mover:0, speaker:0},
-              status:''};
+              counts:{}, tab:0, status:''};
   const g = new T.Group(); g.position.set(x, y, z); parent.add(g);
   const back = new T.Mesh(new T.BoxGeometry(1.44, 1.34, 0.05),
     new T.MeshStandardMaterial({color:0x14181e, roughness:.7, metalness:.2}));
@@ -14524,50 +14690,79 @@ function vrDrawOrder(sc){
   g.fillStyle = '#0b0e12'; g.fillRect(0, 0, W, sc.canvas.height);
   g.fillStyle = '#ffd08a'; g.font = 'bold 26px monospace';
   g.fillText('WAREHOUSE SUPPLY', 24, 40);
+  /* the piece cap, on the glass where the refusal will happen (spec §3) */
+  g.font = '18px monospace';
+  g.fillText('PIECES ' + venueBuildCount(sc.which) + '/' + BUILD_CAP, 396, 40);
   const o = (typeof ORDERS !== 'undefined') ? ORDERS[sc.which] : null;
-  ORDER_KINDS.forEach((k, i)=>{
-    const y = 64 + i*56;
-    g.fillStyle = '#cfd8e3'; g.font = '22px monospace';
-    g.fillText(BODY_LABEL[k], 24, y + 31);
-    g.fillStyle = '#232b35'; g.fillRect(300, y, 56, 44);
-    g.fillRect(440, y, 56, 44);
-    g.fillStyle = '#ffd08a'; g.font = 'bold 28px monospace';
-    g.fillText('-', 321, y + 32); g.fillText('+', 458, y + 32);
-    g.fillStyle = '#eef3f8'; g.fillText('' + sc.counts[k], 388, y + 32);
-    sc.hits.push({x:300, y, w:56, h:44, fn:()=>{
-      if(sc.counts[k] > 0){ sc.counts[k]--; sc.status = ''; }
+  ORDER_TABS.forEach((tl, i)=>{
+    const x = 24 + i*130;
+    g.fillStyle = sc.tab === i ? '#3a4657' : '#1a212b';
+    g.fillRect(x, 56, 122, 40);
+    g.fillStyle = sc.tab === i ? '#ffd08a' : '#8fa0b4';
+    g.font = 'bold 20px monospace';
+    g.fillText(tl, x + 24, 83);
+    sc.hits.push({x, y:56, w:122, h:40, fn:()=>{ sc.tab = i; vrDrawOrder(sc); }});
+  });
+  const rows = orderRows(sc.tab);
+  const paint = sc.tab === 3;              // ten rows only fit drawn small
+  rows.forEach((r, i)=>{
+    const y = 112 + i*(paint ? 28 : 48);
+    const h = paint ? 24 : 40;
+    const bx1 = paint ? 340 : 300, bx2 = paint ? 460 : 440, bw = paint ? 40 : 56;
+    if(paint){
+      g.fillStyle = '#' + ('00000' + r.swatch.toString(16)).slice(-6);
+      g.fillRect(24, y + 2, 28, 20);
+      g.fillStyle = '#cfd8e3'; g.font = '16px monospace';
+      g.fillText(r.label, 60, y + 18);
+    } else {
+      g.fillStyle = '#cfd8e3'; g.font = '20px monospace';
+      g.fillText(r.label, 24, y + 27);
+    }
+    g.fillStyle = '#232b35'; g.fillRect(bx1, y, bw, h); g.fillRect(bx2, y, bw, h);
+    g.fillStyle = '#ffd08a'; g.font = paint ? 'bold 18px monospace' : 'bold 26px monospace';
+    g.fillText('-', bx1 + bw/2 - 5, y + h - (paint ? 6 : 12));
+    g.fillText('+', bx2 + bw/2 - 7, y + h - (paint ? 6 : 12));
+    g.fillStyle = '#eef3f8';
+    g.fillText('' + (sc.counts[r.key] || 0), (bx1 + bx2 + bw)/2 - 8, y + h - (paint ? 6 : 12));
+    sc.hits.push({x:bx1, y, w:bw, h, fn:()=>{
+      if(sc.counts[r.key] > 0){ sc.counts[r.key]--; sc.status = ''; }
       vrDrawOrder(sc);
     }});
-    sc.hits.push({x:440, y, w:56, h:44, fn:()=>{
-      const tot = ORDER_KINDS.reduce((s, kk)=>s + sc.counts[kk], 0);
-      if(tot < ORDER_MAX){ sc.counts[k]++; sc.status = ''; }
-      else sc.status = 'SIX TO AN ORDER';
+    sc.hits.push({x:bx2, y, w:bw, h, fn:()=>{
+      if(orderTotal(sc) < ORDER_MAX){ sc.counts[r.key] = (sc.counts[r.key] || 0) + 1; sc.status = ''; }
+      else sc.status = 'TWELVE TO AN ORDER';
       vrDrawOrder(sc);
     }});
   });
-  const oy = 64 + 6*56 + 8;
+  const oy = 404;
   g.fillStyle = '#2fbf4a'; g.fillRect(24, oy, 300, 56);
   g.fillStyle = '#08130a'; g.font = 'bold 30px monospace';
   g.fillText('ORDER', 118, oy + 39);
   sc.hits.push({x:24, y:oy, w:300, h:56, fn:()=>{ vrOrderPress(sc); }});
   g.fillStyle = '#ffd08a'; g.font = '20px monospace';
   let line = sc.status;
-  if(o && o.pending) line = 'DELIVERY IN ' + Math.max(1, Math.ceil(o.pending.t)) + 's';
-  else if(o && o.pallet) line = 'PALLET ON THE APRON';
+  if(!line && o && o.pending.length){
+    let t = 1e9; o.pending.forEach(pd=>{ if(pd.t < t) t = pd.t; });
+    line = o.pending.length + ' ORDERED - NEXT IN ' + Math.max(1, Math.ceil(t)) + 's';
+  }
+  if(!line && o && o.pallets.length)
+    line = o.pallets.length > 1 ? o.pallets.length + ' PALLETS ON THE APRON'
+                                : 'PALLET ON THE APRON';
   g.fillText(line || 'THE SHELVES ARE YOURS', 24, oy + 92);
   sc.tex.needsUpdate = true;
 }
 function vrOrderPress(sc){
-  const items = [];
-  ORDER_KINDS.forEach(k=>{ for(let i = 0; i < sc.counts[k]; i++) items.push(k); });
-  const r = (typeof orderPlace === 'function') ? orderPlace(sc.which, items) : 'BUSY';
-  if(r === 'OK'){
-    ORDER_KINDS.forEach(k=>{ sc.counts[k] = 0; });
-    sc.status = '';
-  }
-  else if(r === 'COUNT') sc.status = items.length ? 'SIX TO AN ORDER' : 'NOTHING ON THE SLIP';
-  else if(r === 'BUSY') sc.status = 'ONE ORDER AT A TIME';
-  else sc.status = r;   // STOCK FULL
+  const units = [];
+  [0, 1, 2, 3].forEach(t=>{
+    orderRows(t).forEach(r=>{
+      for(let i = 0; i < (sc.counts[r.key] || 0); i++) units.push(r.unit);
+    });
+  });
+  const r = (typeof orderPlace === 'function') ? orderPlace(sc.which, units) : 'BUSY';
+  if(r === 'OK'){ sc.counts = {}; sc.status = ''; }
+  else if(r === 'COUNT') sc.status = units.length ? 'TWELVE TO AN ORDER' : 'NOTHING ON THE SLIP';
+  else if(r === 'BUSY') sc.status = 'THREE ORDERS OUT ALREADY';
+  else sc.status = r;   // STOCK FULL / PIECES FULL
   vrDrawOrder(sc);
 }
 

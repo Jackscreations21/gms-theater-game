@@ -1,0 +1,98 @@
+
+/* ============================================================================
+   p4c — THE BUILD SYSTEM (spec docs/superpowers/specs/2026-08-07-build-
+   system-design.md).  PR 1: the stock — wood, hardware and paint as bodies
+   in the p4 detach registry, and the piece cap the order screen enforces.
+   Later PRs add assemblies and nails, the saws, paint application, hinges,
+   track, and the save system — all of it here, one part, one home.
+
+   Wood is PARAMETRIC: one unit BoxGeometry serves every piece of every
+   profile — a mesh is the shared box SCALED, and a cut never mints
+   geometry, it re-scales one body and registers a second (the frame-rate
+   invariant, spec §9).  Box geometry's six native material groups carry
+   paint: mesh.material is an array of six entries from the shared color-
+   keyed cache below (the LENSM lesson — never one material per piece).
+
+   BUILD_KINDS is a var ON PURPOSE: p4's makeBodyMesh and canHang test it,
+   and the Palace rig builds during p4's own parse-time run, before this
+   part has executed — a hoisted var reads undefined there (falsy, correct:
+   factory stock is all lanterns), where a const would throw (§5).
+   ========================================================================== */
+var BUILD_KINDS = {wood:1, hinge:1, track:1, carriage:1, paint:1};
+const BUILD_CAP = 150;          // build pieces to a venue — enforced at the screen
+const FT = 0.3048, INCH = 0.0254;
+const WOOD_LEN = 8*FT;          // every stick and sheet is born 8ft long
+const WOOD_PROF = {             // real sections, in metres
+  sheet: {t:0.019, W:4*FT},     // 4x8 ply, 3/4" — dims {L, W}, t thick (local Z)
+  s2x4:  {a:0.038, b:0.089},    // lumber: dims {L}, long axis local Y (§5 — own it)
+  s4x4:  {a:0.089, b:0.089},
+  s2x8:  {a:0.038, b:0.184}
+};
+const WOOD_COL = {ply:0xc8ab7a, pine:0xd8c193};
+const WOODG = new T.BoxGeometry(1, 1, 1);
+var WOODM = {};                 // color -> ONE MeshStandardMaterial, shared
+function woodMat(color){
+  return WOODM[color] || (WOODM[color] =
+    new T.MeshStandardMaterial({color, roughness:.85}));
+}
+function makeWoodMesh(prof, dims){
+  const P = WOOD_PROF[prof];
+  const m = woodMat(prof === 'sheet' ? WOOD_COL.ply : WOOD_COL.pine);
+  const mesh = new T.Mesh(WOODG, [m, m, m, m, m, m]);
+  if(prof === 'sheet') mesh.scale.set(dims.L, dims.W, P.t);
+  else mesh.scale.set(P.a, dims.L, P.b);
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.userData.moves = true;
+  return mesh;
+}
+function regWood(prof, dims){
+  dims = dims || (prof === 'sheet' ? {L:WOOD_LEN, W:WOOD_PROF.sheet.W} : {L:WOOD_LEN});
+  const b = regBody('wood', makeWoodMesh(prof, dims), null);
+  b.prof = prof; b.dims = dims; b.state = 'loose';
+  return b;
+}
+
+/* the scenic palette — ten colors, fixed (spec §7); PAINT tab orders cans */
+const PAINT_COLORS = [
+  {name:'BLACK', c:0x141414}, {name:'WHITE', c:0xf2f0ea},
+  {name:'GREY',  c:0x8a8f94}, {name:'SLATE', c:0x3c4450},
+  {name:'RED',   c:0xa8231d}, {name:'BLUE',  c:0x1f3f7a},
+  {name:'GREEN', c:0x2a6b34}, {name:'BROWN', c:0x6b4a2e},
+  {name:'CREAM', c:0xe8dcbb}, {name:'GOLD',  c:0xc9a03c}
+];
+
+/* hardware and paint-can bodies — small cached geometries, shared materials */
+const BUILDG = {};
+function buildG(key, mk){ return BUILDG[key] || (BUILDG[key] = mk()); }
+function makeBuildMesh(kind, color){
+  const g = new T.Group();
+  g.userData.moves = true;
+  if(kind === 'hinge'){
+    [-1, 1].forEach(s=>{
+      const leaf = new T.Mesh(buildG('leaf', ()=>new T.BoxGeometry(0.1, 0.24, 0.012)), M.steel);
+      leaf.position.x = s*0.06; g.add(leaf);
+    });
+    g.add(new T.Mesh(buildG('pin', ()=>new T.CylinderGeometry(0.014, 0.014, 0.28, 8)), M.steel));
+  } else if(kind === 'track'){
+    const rail = new T.Mesh(buildG('rail', ()=>new T.BoxGeometry(4*FT, 0.05, 0.12)), M.steel);
+    rail.position.y = 0.025; g.add(rail);
+  } else if(kind === 'carriage'){
+    const car = new T.Mesh(buildG('car', ()=>new T.BoxGeometry(0.16, 0.08, 0.16)), M.steel);
+    car.position.y = 0.04; g.add(car);
+  } else {                                        // a paint can, banded its color
+    const can = new T.Mesh(buildG('can', ()=>new T.CylinderGeometry(0.09, 0.09, 0.22, 12)), M.steel);
+    can.position.y = 0.11; g.add(can);
+    const band = new T.Mesh(buildG('band', ()=>new T.CylinderGeometry(0.092, 0.092, 0.1, 12)),
+                            woodMat(color !== undefined ? color : 0x888888));
+    band.position.y = 0.11; g.add(band);
+  }
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow = o.receiveShadow = true; } });
+  return g;
+}
+
+/* the piece cap's book: wood and hardware, wherever it stands (spec §3) */
+function venueBuildCount(v){
+  let n = 0;
+  for(const b of BODIES) if(b.venue === v && BUILD_KINDS[b.kind]) n++;
+  return n;
+}
