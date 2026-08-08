@@ -585,7 +585,7 @@ function syncFohBarRow(){
   const b = FOHBAR;
   const pct = clamp((b.y - b.min)/Math.max(0.01, b.max - b.min), 0, 1);
   fohBarUI.bar.style.width = (pct*100).toFixed(1)+'%';
-  fohBarUI.ht.textContent = b.y.toFixed(1)+'m';
+  fohBarUI.ht.textContent = ftIn(b.y);   // the glass reads ft-in (RULING S)
   fohBarUI.dot.className = 'dot '+(Math.abs(b.target - b.y) > 0.004 ? 'mv' : '');
 }
 /* ---- the speaker bar rows — same tfoot, same rules as the FOH row:
@@ -628,7 +628,7 @@ function syncSpkBarRows(){
     const b = SPKBARS[side], ui = spkBarUI[side]; if(!b) continue;
     const pct = clamp((b.y - b.min)/Math.max(0.01, b.max - b.min), 0, 1);
     ui.bar.style.width = (pct*100).toFixed(1)+'%';
-    ui.ht.textContent = b.y.toFixed(1)+'m';
+    ui.ht.textContent = ftIn(b.y);
     ui.dot.className = 'dot '+(Math.abs(b.target - b.y) > 0.004 ? 'mv' : '');
   }
 }
@@ -636,7 +636,7 @@ function syncFlyRow(ls){
   const u = ls.ui; if(!u) return;
   const pct = clamp((ls.pos-0.6)/(OUT_TRIM-0.6), 0, 1);
   u.bar.style.width = (pct*100).toFixed(1)+'%';
-  u.ht.textContent  = ls.pos.toFixed(1)+'m';
+  u.ht.textContent  = ftIn(ls.pos);
   u.wt.textContent  = ls.weight+'kg';
   const spec = GOODS[ls.goodsKey];
   u.goods.textContent = spec ? spec.label : '(missing: ' + ls.goodsKey + ')';
