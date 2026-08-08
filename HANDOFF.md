@@ -2,7 +2,7 @@
 
 A 3D theatre you work in. Two buildings, three stages, a lighting rig you can
 plot, a counterweight fly rail you can haul, productions that load in, a crew
-that carries them, and a VR mode for a Quest 3. One HTML file, ~583KB, three.js
+that carries them, and a VR mode for a Quest 3. One HTML file, ~805KB, three.js
 r128, no build step beyond concatenating text files.
 
 ---
@@ -18,7 +18,7 @@ theater_game/
   AUDIT.md           the 2026-08-06 code audit — findings, evidence, line numbers
   VR-SETUP.md        getting it onto a Quest 3 — routes, controls, first-run list
   README.md          the GitHub front page
-  src/               the 24 parts it is built from
+  src/               the 26 parts it is built from (build.sh has the order)
   tests/             fifteen suites — npm install, then node real.js
   tools/             probes that draw pictures — see tools/README.md
 ```
@@ -773,19 +773,14 @@ Ten new regression tests across vr.js and build.js, every one
 verified failing against its pre-change build.
 
 **Done 2026-08-08, the build-feel round — the owner's second headset
-list, nine asks, nine PRs.  PR 1 is
-[#53](https://github.com/Jackscreations21/gms-theater-game/pull/53)
-(open as of this writing); PRs 2–9 are BUILT, TESTED and PUSHED but
-NOT OPENED — they are a strictly sequential local chain, each branch
-cut from its parent, and opening them all at once would be stacking
-(the #2–#6 disaster).**  Spec (rulings L–S inline — READ IT first):
+list, nine asks, nine PRs, ALL MERGED (#53, #55–#62; #54 the handoff).**
+Spec (rulings L–S inline — READ IT before touching any of this):
 `docs/superpowers/specs/2026-08-08-build-feel-round-design.md`; plan:
-`docs/superpowers/plans/2026-08-08-build-feel-prs1-9.md`.
-
-**To land the rest: after a PR merges, take the NEXT branch in this
-exact order, rebase it onto fresh `main`, rebuild, run all fifteen
-suites, THEN open its PR.**  The chain (each contains its parents'
-commits until rebased):
+`docs/superpowers/plans/2026-08-08-build-feel-prs1-9.md`.  Landed one
+at a time, each branch rebased onto fresh `main` after its parent
+merged, rebuilt and 15/15 before opening — the linear-chain discipline
+that replaces stacking.  Post-merge: `main` rebuilds byte-identical,
+15/15 on the merged result, work branches deleted.  What went in:
 
 1. `feel-carry` = **#53** — wood rides IN the hand: the hold keeps
    the pose relative to the CONTROLLER (relQ + grabV, the grabbed
@@ -839,17 +834,137 @@ trap re-confirmed: a regex literal inside a test PROBE template
 loses its backslashes (`/\d/` arrives as `/d/`) — build regexes from
 doubled-backslash strings there (full14's ft-in test).
 
-**NEXT SESSION:** step zero is landing the chain above (open, in
-order, as the owner merges).  Then MORE BUG FIXES on the same
-discipline: reproduce in a failing test FIRST (jsdom if it can, a
-`tools/` probe if it is visual), fix, negative-check, one bug one PR,
-straight to `main`. Likely sources, in rough order:
+**Done 2026-08-08, the goods round — two asks, two PRs, both merged
+(#63, #64).**  Spec (rulings T–W):
+`docs/superpowers/specs/2026-08-08-goods-round-design.md`.
 
-- **The next headset run.** The build system has met hardware ONCE
-  (it produced the four asks above); the usability round that
-  answered them has met hardware NEVER.  The two usability question
-  blocks in the step-zero list below are where the reports will come
-  from.  Feel constants, all one-line tunes: `GRAB_WOOD 0.15`,
+- **[#63](https://github.com/Jackscreations21/gms-theater-game/pull/63)
+  — the roller paints the goods** (RULING T).  Cloth as well as wood,
+  and WHOLE: a pull against any cloth on a lineset colours every cloth
+  on that lineset (both halves of a house curtain, both legs of a
+  pair).  The trap it is written around: `M.serge` and `M.velour` (p2)
+  are ONE material object each, shared by every border, leg, half leg
+  and house curtain on ALL THREE stages plus the Arc's dressing and
+  the Cornley velvet — tinting one would have repainted the masking of
+  the whole game.  So paint clones through `GOODSM`, keyed by the
+  ORIGINAL base plus the colour (`userData.goodsBase` stops
+  clone-of-clone chains): repaint is a pointer swap, two pipes the
+  same colour share one material.  **The WOODM/LENSM lesson, third
+  time — if you add any paintable class, do it this way.**  Reach is
+  to the goods' BOUNDING BOX (a 13m curtain's centre is five metres
+  up — the 8ft-stick bug); wood keeps priority under the roller; only
+  `isMeshStandardMaterial` takes a coat, so the chandelier's self-lit
+  bulbs stay lit; the paint labels learn goods.
+- **[#64](https://github.com/Jackscreations21/gms-theater-game/pull/64)
+  — the VR goods picker** (RULINGS U + V).  The fly page's goods cell
+  is a button: it opens a per-lineset picker (every `GOODS` entry with
+  its weight, current one lit, own BACK) and choosing calls the same
+  `hangGoods` the desktop palette calls.  **Hanging rebuilds the rail**
+  (`vrBuildRopes`), or a newly hung pipe would have no rope and no
+  lock and a stripped one would keep a rope to nowhere.  `vrHit` now
+  takes optional META so the picker's regions are findable by meaning
+  rather than by pixel (vr.js pinning rows by literal pixel has been a
+  trap twice).  **RULING V, a real bug it flushed out:** `minTrimOf`
+  (#15) is enforced by everything that MOVES a pipe, and hanging is
+  not a move — a 13m house curtain hung on a pipe standing at 2m put
+  ten metres of cloth through the stage.  `hangGoods` now lifts a pipe
+  that is below its new floor; one with clearance never moves.  This
+  fixed the desktop palette too.
+
+**RULING W stands and is the owner's to revisit: the hang is NOT
+saved, and neither is its paint.**  The build save deliberately
+excludes shows, cues, fly positions and the patch; what is on each
+pipe belongs with those.  Saving paint without the hang under it would
+be incoherent.  If the owner wants persistence, save the hang (key per
+lineset per stage) AND its paint together in the same versioned blob —
+its own small round, not a bolt-on.
+
+---
+
+## NEXT SESSION: **THE CARPENTERS** (owner's word, 2026-08-08)
+
+The build system lets the PLAYER build scenery by hand in VR.  The
+next feature is people who do it for you.  **There is no spec yet —
+step zero is to ask the owner what a carpenter is for**, then spec it
+(rulings continue at X), plan it, and build it failing-test-first, one
+concern per PR, straight to `main`.
+
+**The questions that decide the whole shape** (ask these first):
+
+1. **What do you point them at?**  A named thing from a catalogue
+   ("build me a 4x8 flat", "a 2-step platform"), a cut list, or
+   something you have already built once and want copied?
+2. **Where do they work** — at the shed saws and carry it out, or on
+   the deck where it will stand?
+3. **Do they consume real stock?**  The honest version orders wood,
+   forklifts the pallet, cuts on the saws and nails it — every step
+   the player does.  The cheap version conjures the timber.  The
+   honest one is much better and MOSTLY ALREADY BUILT (see below).
+4. **Are they the existing hands or a new trade?**  `CREW.people` are
+   six generic stagehands; carpenters could be a new job kind in the
+   same queue, or their own crew with their own frame and log.
+5. **Can you call them from inside VR**, or is it a desktop-console
+   call like CALL THE CREW?  (The VR fly page and order screens are
+   the two precedents for a VR button.)
+
+**What already exists that a carpenter should reuse — do not rebuild
+any of this:**
+
+- **The crew engine, `p6b`.**  `CREW.jobs` is a plain queue of
+  `{kind, …}` records; `crewAssign(h)` switches on `job.kind`
+  ('doors' | 'fly' | 'on' | 'off' | 'hold'); a hand walks with
+  `handGoTo(h, x, z, then)` and works with
+  `h.state='work'; h.wait=…; h.then=…`.  **Adding a trade is adding
+  job kinds**, not a new engine.  `crewPlan(dir)` is the model for
+  planning a sequence; `'hold'` is the barrier that waits for everyone
+  to finish.
+- **Every build primitive, `p4c`.**  `regWood(prof, dims)` mints
+  stock, `seatWood`/`sawSetCut`/`sawCut` cut it on a real station,
+  `addNail(a, target, wp, wax)` joins anything to anything and builds
+  or merges the assembly, `asmAdopt`, `addHinge`, `layTrack`,
+  `paintWood`/`paintGoods`.
+- **THE BIG WIN: build through the same functions the hands use and
+  the work rides the SAVE for free.**  `buildLoad` already replays
+  exactly those calls (makeSerBody → asmAdopt → addNail → layTrack) to
+  rebuild a saved world, so anything a carpenter assembles the same
+  way serializes with no new save code.  A carpenter that pokes meshes
+  directly would be invisible to the save — **do not do that.**
+
+**Constraints a carpenter plan must respect:**
+
+- `BUILD_CAP` is 150 build pieces per venue and the ORDER SCREEN is
+  the enforcement point — a carpenter must check it too, or it will
+  quietly walk past the cap the player is refused at.
+- **Never `setTimeout` for game timing** (ruling M7): time comes off
+  the frame `dt`, the way `updateSheds`/`updateOrders`/`updateLifts`
+  do.  A carpenter tick belongs in that family.
+- **Only the LIVE stage ticks** (documented limitation, §6): walk away
+  mid-build and the carpenters freeze until you come back.  Decide
+  deliberately whether that is acceptable or whether this is the
+  feature that finally makes parked stages tick.
+- The crew work out of the PALACE dock for `CALL THE CREW` (LOAD IN
+  NOW works anywhere) — a carpenter needs the same `crewFrame()`
+  treatment or it will build on the wrong stage's deck.  Read the
+  §4 invariants on stage coordinates before writing any placement.
+- Wood is PARAMETRIC and a cut must NEVER mint geometry (build spec
+  §9): re-scale one body, register a second.
+
+**Likely first PRs, if the owner's answers are the obvious ones:** the
+carpenter job kinds + a trade in `CREW` (or `SHOP`) ; a catalogue of
+buildable items with cut lists ; the call button (VR + desktop) ; the
+saw/nail choreography so it reads as work rather than teleporting
+timber ; the piece-cap and stock refusals.
+
+**Also still open, in rough order:**
+
+- **The next headset run.** The build system has met hardware TWICE
+  (each run produced a bug list — the usability round, then the
+  build-feel round).  **Everything from #48 onward — the whole
+  usability round, all nine build-feel PRs and both goods PRs — has
+  met hardware NEVER.**  Put the owner on
+  `…/the-house.html?v=11` (bump the number, the Quest Browser caches
+  hard) and work the question blocks at the bottom of this section.
+  Feel constants, all one-line tunes: `GRAB_WOOD 0.15`,
   `SEAM_TOUCH 0.05`, `SEAM_REACH 0.45`, `SNAP_SEEK 0.35`,
   `SNAP_OFFER 0.22`, `SNAP_SLACK 0.08`, `TABLE_TOP 0.925` — plus the
   older radii (0.32 rope, 0.28 saw, 0.30 cart/lift, 0.22 tool/roller,
@@ -874,7 +989,7 @@ and the headset checklist below still stands.
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
-the owner on `…/the-house.html?v=8`, bump the number, Quest Browser
+the owner on `…/the-house.html?v=11`, bump the number, Quest Browser
 caches hard):
 
 **Read the wrist meter and WRITE THE NUMBERS HERE.** The worst cases,
@@ -986,6 +1101,16 @@ easy to fat-finger next to CLEAR SAVE (both act instantly; the wood
 button reports its count); do the three paint labels appear at the
 right moments on hardware; do the ft-in fly rows read at arm's
 length (they replaced "12.2m" with "40'0\"").
+New from the goods round (#63/#64): does painting a curtain read as
+painting the WHOLE hang (both legs of a pair go together — is that
+right, or do you want a leg at a time); is the roller's reach to a
+curtain comfortable, or does cloth grab the roller when you meant the
+plank in front of it (wood has priority, but the box reach is
+generous); is the goods picker legible at arm's length and is the
+weight useful; does a pipe LIFTING when you hang something tall on it
+read as sensible or as the board moving on its own; and the standing
+question — do you want the hang and its paint SAVED (RULING W says
+they are not, and both must be done together if so).
 Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).
