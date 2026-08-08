@@ -826,6 +826,11 @@ back where it stood (walk the shed AND the stage); is CLEAR SAVE too
 easy to fat-finger next to ORDER (it only wipes storage, but say so);
 and mind the frame rate with a 100-piece saved build restoring at
 boot.
+New from the usability round (grab + gun): does GRAB_WOOD 0.15 feel
+like grabbing lumber or like a magnet (one constant, p9); does the
+gun-at-seam read — point at two touching pieces, TRIGGER TO NAIL label,
+fire — or does the SEAM_REACH 0.45 leash feel short; does SEAM_TOUCH
+0.05 accept the seams a real stack of lumber offers.
 Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).
