@@ -1019,7 +1019,16 @@ function vrToolFire(hand, key){
       return;
     }
     const s = VR.snap;
-    if(!s){ if(typeof toast === 'function') toast('nothing lined up to nail'); return; }
+    if(!s){
+      /* no held offer: the seam under the muzzle (build-usability §4) */
+      const sm = (typeof seamSeek === 'function') ? seamSeek(_rayO) : null;
+      if(sm){
+        const n = addNail(sm.a, {body:sm.b}, sm.point, sm.axis);
+        if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+        if(typeof toast === 'function') toast(n ? 'nailed' : 'that will not take a nail');
+      } else if(typeof toast === 'function') toast('nothing lined up to nail');
+      return;
+    }
     if(s.point && _rayO.distanceTo(s.point) > 1.0){
       if(typeof toast === 'function') toast('closer to the joint'); return;
     }
@@ -2217,6 +2226,29 @@ function vrUpdateButtons(dt){
 /* ============================================================================
    THE FRAME
    ========================================================================== */
+/* the gun talks: while a nail gun is in hand and no held offer stands, a
+   nailable seam near the muzzle labels itself.  The seek is throttled —
+   a pair walk over a dense build is not a per-frame cost — and the cached
+   seam re-labels every frame so the hover never wins the flicker war. */
+const _gunV = new T.Vector3();
+function vrGunLabel(dt){
+  VR.seamT = (VR.seamT || 0) + dt;
+  if(VR.snap || (VR.held && VR.held.kind === 'body')){ VR.seam = null; return; }
+  const gh = !VR.tools ? -1 : VR.tools[0] === 'nailgun' ? 0 : VR.tools[1] === 'nailgun' ? 1 : -1;
+  if(gh < 0){ VR.seam = null; return; }
+  if(VR.seamT > 0.12){
+    VR.seamT = 0;
+    const c = VR.controllers[gh];
+    if(!c){ VR.seam = null; return; }
+    c.updateMatrixWorld(true);
+    _gunV.setFromMatrixPosition(c.matrixWorld);
+    VR.seam = (typeof seamSeek === 'function') ? seamSeek(_gunV) : null;
+  }
+  if(VR.seam){
+    const d = camera.getWorldPosition(_gunV).distanceTo(VR.seam.point);
+    vrLabel('TRIGGER TO NAIL', VR.seam.point, d);
+  }
+}
 function vrUpdate(dt){
   if(!VR || !VR.active) return;      // may be called before this file has run
   vrReadSticks();
@@ -2226,6 +2258,7 @@ function vrUpdate(dt){
   if(vrPointAt()) vrLabel(null);                // on a desk, the desk is the label
   else vrHoverWorld();
   vrUpdateHold(dt);
+  vrGunLabel(dt);
   vrUpdateRopes(dt);
   vrUpdateButtons(dt);
   vrCapBeams();

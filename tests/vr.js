@@ -1676,6 +1676,94 @@ const probe = `
     if(ASSEMBLIES.indexOf(asm) >= 0) throw new Error('tidy-up failed');
     return 'the whole frame by one plank end';
   });
+  P('the gun nails two pieces already lying together', ()=>{
+    const a = regWood('s2x4'), b = regWood('s2x4');
+    a.mesh.rotation.set(0, 0, Math.PI/2);      // both lying flat, long axis X
+    b.mesh.rotation.set(0, 0, Math.PI/2);
+    a.mesh.position.set(8, 0.019, -1.0);
+    b.mesh.position.set(8, 0.019, -1.089);     // side by side, faces kissing in z
+    scene.updateMatrixWorld(true);
+    const c1 = VR.controllers[1];
+    vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
+    c1.position.copy(VR.holsters.nailgun.getWorldPosition(new THREE.Vector3()));
+    c1.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    if(VR.tools[1] !== 'nailgun') throw new Error('the gun never drew: '+VR.tools[1]);
+    c1.position.set(8, 0.1, -1.045);           // over the seam, nothing in the other hand
+    c1.updateMatrixWorld(true);
+    const before = ASSEMBLIES.length;
+    vrSelect(1, true);
+    if(ASSEMBLIES.length !== before + 1) throw new Error('the shot never joined them');
+    if(a.state !== 'fixed' || b.state !== 'fixed') throw new Error('states: '+a.state+'/'+b.state);
+    const n = a.asm.nails[0];
+    if(Math.abs(n.axis.z) < 0.9) throw new Error('the nail went in sideways: '+JSON.stringify(n.axis));
+    vrSqueeze(1, false);                       // gun home
+    const asm = a.asm;
+    while(a.asm && a.asm.nails.length) removeNail(a.asm.nails[0]);   // tidy
+    if(ASSEMBLIES.indexOf(asm) >= 0) throw new Error('tidy-up failed');
+    return 'two loose pieces, one trigger, one frame';
+  });
+  P('the gun refuses pieces apart, and a seam out of reach', ()=>{
+    const a = regWood('s2x4'), b = regWood('s2x4');
+    a.mesh.rotation.set(0, 0, Math.PI/2);
+    b.mesh.rotation.set(0, 0, Math.PI/2);
+    a.mesh.position.set(8, 0.019, -3.0);
+    b.mesh.position.set(8, 0.019, -3.289);     // 0.2m of daylight between them
+    scene.updateMatrixWorld(true);
+    const c1 = VR.controllers[1];
+    vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
+    c1.position.copy(VR.holsters.nailgun.getWorldPosition(new THREE.Vector3()));
+    c1.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    c1.position.set(8, 0.1, -3.14);
+    c1.updateMatrixWorld(true);
+    let before = ASSEMBLIES.length;
+    vrSelect(1, true);
+    if(ASSEMBLIES.length !== before) throw new Error('it nailed across 0.2m of air');
+    /* close the gap so they touch, but fire from too far away */
+    b.mesh.position.set(8, 0.019, -3.089);
+    scene.updateMatrixWorld(true);
+    c1.position.set(8, 0.1, -3.75);            // ~0.66m from the seam
+    c1.updateMatrixWorld(true);
+    before = ASSEMBLIES.length;
+    vrSelect(1, true);
+    if(ASSEMBLIES.length !== before) throw new Error('it nailed from across the room');
+    vrSqueeze(1, false);
+    a.mesh.position.set(8, 0.019, -5.0);       // tidy: part them so later tests
+    scene.updateMatrixWorld(true);             // never see this pair as a seam
+    return 'daylight refused, long reach refused';
+  });
+  P('the gun talks when a seam is in reach', ()=>{
+    /* fail BEFORE touching shared state, so a pre-change run cannot
+       strand the gun in the hand and cascade into later tests */
+    if(typeof vrGunLabel !== 'function') throw new Error('vrGunLabel is not defined');
+    const a = regWood('s2x4'), b = regWood('s2x4');
+    a.mesh.rotation.set(0, 0, Math.PI/2);
+    b.mesh.rotation.set(0, 0, Math.PI/2);
+    a.mesh.position.set(10, 0.019, -1.0);
+    b.mesh.position.set(10, 0.019, -1.089);
+    scene.updateMatrixWorld(true);
+    const c1 = VR.controllers[1];
+    vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
+    c1.position.copy(VR.holsters.nailgun.getWorldPosition(new THREE.Vector3()));
+    c1.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    c1.position.set(10, 0.1, -1.045);
+    c1.updateMatrixWorld(true);
+    vrLabel(null);
+    vrGunLabel(1);                             // dt=1 beats the 0.12s throttle
+    if(VR.labelTxt !== 'TRIGGER TO NAIL')
+      throw new Error('the gun said nothing: '+VR.labelTxt);
+    c1.position.set(10, 0.1, -3.5);            // walk away
+    c1.updateMatrixWorld(true);
+    vrLabel(null);
+    vrGunLabel(1);
+    if(VR.labelTxt === 'TRIGGER TO NAIL') throw new Error('it is still talking from 2.5m');
+    vrSqueeze(1, false);
+    a.mesh.position.set(10, 0.019, -5.0);      // tidy: part the pair
+    scene.updateMatrixWorld(true);
+    return 'label at the seam, silence away from it';
+  });
   P('the tape stretches to a hand and marks the wood', ()=>{
     const c0 = VR.controllers[0], c1 = VR.controllers[1];
     vrUpdateBelt(); VR.rig.updateMatrixWorld(true);

@@ -5379,6 +5379,77 @@ function snapAsm(a){
   }
   return null;
 }
+/* ============================================================================
+   THE SEAM (build-usability spec §4): the nail gun pointed at two pieces
+   ALREADY touching joins them, no hand on either.  A pair "touches" when
+   no axis of the target's frame separates them by more than SEAM_TOUCH
+   (the OBB test run on one box's axes — exact for our squared-up world,
+   honest enough for the rest).  The contact point is the held centre
+   projected onto the touching face, clamped to it; the axis is that
+   face's normal.  addNail already builds, joins and merges assemblies
+   from any mix of loose and fixed pieces, and already refuses what must
+   be refused (two anchored assemblies) — the seam adds NO new rules.
+   ========================================================================== */
+const SEAM_TOUCH = 0.05;         // faces within this are touching
+const SEAM_REACH = 0.45;         // the muzzle must be this close to the seam
+const _smA = new T.Vector3(), _smB = new T.Vector3(), _smH = new T.Vector3(),
+      _smQ = new T.Quaternion(), _smQ2 = new T.Quaternion(), _smP = new T.Vector3();
+const _AXES = ['x', 'y', 'z'];
+/* the seam between two wood bodies: {point, axis} in WORLD, or null */
+function seamPair(A, B){
+  const am = A.mesh, bm = B.mesh;
+  am.updateWorldMatrix(true, false);
+  bm.updateWorldMatrix(true, false);
+  bm.getWorldPosition(_smB);
+  _smA.copy(_smB);
+  am.worldToLocal(_smA);                        // B's centre, A-unit-local
+  am.getWorldQuaternion(_smQ);
+  bm.getWorldQuaternion(_smQ2);
+  _aq.copy(_smQ).invert().multiply(_smQ2);      // B relative to A
+  snapHalf(_aq, bm.scale, _smH);                // B's half extents on A's axes
+  let axis = 0, worst = -1e9;
+  for(let i = 0; i < 3; i++){
+    const k = _AXES[i];
+    const pm = _smA[k] * am.scale[k];           // metric offset on A's axis
+    const gap = Math.abs(pm) - (am.scale[k]/2 + _smH.getComponent(i));
+    if(gap > SEAM_TOUCH) return null;           // daylight on this axis: apart
+    if(gap > worst){ worst = gap; axis = i; }   // the touching face is the
+  }                                             // axis NEAREST to separating
+  const K = _AXES[axis];
+  const sgn = _smA[K] < 0 ? -1 : 1;
+  _smP.copy(_smA);
+  _smP[K] = sgn * 0.5;                          // onto A's touching face…
+  for(let i = 0; i < 3; i++){
+    if(i === axis) continue;
+    const k = _AXES[i];
+    _smP[k] = clamp(_smP[k], -0.5, 0.5);        // …and clamped to it
+  }
+  const point = am.localToWorld(_smP.clone());
+  const ax = _av3.set(axis === 0 ? sgn : 0, axis === 1 ? sgn : 0, axis === 2 ? sgn : 0)
+    .applyQuaternion(_smQ).normalize().clone();
+  return {point, axis: ax};
+}
+/* the nearest nailable seam to the muzzle.  The 2m prefilter also keeps
+   the pair walk to the local venue — the venues are 420m apart. */
+function seamSeek(muzzle){
+  let best = null, bd = SEAM_REACH;
+  const near = [];
+  for(const b of BODIES){
+    if(b.kind !== 'wood') continue;
+    if(b.state !== 'loose' && b.state !== 'fixed') continue;
+    b.mesh.getWorldPosition(_av2);
+    if(_av2.distanceTo(muzzle) < 2) near.push(b);
+  }
+  for(let i = 0; i < near.length; i++)
+    for(let j = i + 1; j < near.length; j++){
+      const s = seamPair(near[i], near[j]);
+      if(!s) continue;
+      const d = s.point.distanceTo(muzzle);
+      if(d < bd){ bd = d; best = {a:near[i], b:near[j], point:s.point, axis:s.axis}; }
+    }
+  return best;
+}
+
 /* feet-and-inches for the tape, the saws and the labels: 2.4384 -> 8'0" */
 function ftIn(m){
   const inches = Math.round(m/0.0254);
@@ -16103,7 +16174,16 @@ function vrToolFire(hand, key){
       return;
     }
     const s = VR.snap;
-    if(!s){ if(typeof toast === 'function') toast('nothing lined up to nail'); return; }
+    if(!s){
+      /* no held offer: the seam under the muzzle (build-usability §4) */
+      const sm = (typeof seamSeek === 'function') ? seamSeek(_rayO) : null;
+      if(sm){
+        const n = addNail(sm.a, {body:sm.b}, sm.point, sm.axis);
+        if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+        if(typeof toast === 'function') toast(n ? 'nailed' : 'that will not take a nail');
+      } else if(typeof toast === 'function') toast('nothing lined up to nail');
+      return;
+    }
     if(s.point && _rayO.distanceTo(s.point) > 1.0){
       if(typeof toast === 'function') toast('closer to the joint'); return;
     }
@@ -17301,6 +17381,29 @@ function vrUpdateButtons(dt){
 /* ============================================================================
    THE FRAME
    ========================================================================== */
+/* the gun talks: while a nail gun is in hand and no held offer stands, a
+   nailable seam near the muzzle labels itself.  The seek is throttled —
+   a pair walk over a dense build is not a per-frame cost — and the cached
+   seam re-labels every frame so the hover never wins the flicker war. */
+const _gunV = new T.Vector3();
+function vrGunLabel(dt){
+  VR.seamT = (VR.seamT || 0) + dt;
+  if(VR.snap || (VR.held && VR.held.kind === 'body')){ VR.seam = null; return; }
+  const gh = !VR.tools ? -1 : VR.tools[0] === 'nailgun' ? 0 : VR.tools[1] === 'nailgun' ? 1 : -1;
+  if(gh < 0){ VR.seam = null; return; }
+  if(VR.seamT > 0.12){
+    VR.seamT = 0;
+    const c = VR.controllers[gh];
+    if(!c){ VR.seam = null; return; }
+    c.updateMatrixWorld(true);
+    _gunV.setFromMatrixPosition(c.matrixWorld);
+    VR.seam = (typeof seamSeek === 'function') ? seamSeek(_gunV) : null;
+  }
+  if(VR.seam){
+    const d = camera.getWorldPosition(_gunV).distanceTo(VR.seam.point);
+    vrLabel('TRIGGER TO NAIL', VR.seam.point, d);
+  }
+}
 function vrUpdate(dt){
   if(!VR || !VR.active) return;      // may be called before this file has run
   vrReadSticks();
@@ -17310,6 +17413,7 @@ function vrUpdate(dt){
   if(vrPointAt()) vrLabel(null);                // on a desk, the desk is the label
   else vrHoverWorld();
   vrUpdateHold(dt);
+  vrGunLabel(dt);
   vrUpdateRopes(dt);
   vrUpdateButtons(dt);
   vrCapBeams();
