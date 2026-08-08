@@ -16325,7 +16325,12 @@ function vrDrawOrder(sc){
   if(!line && o && o.pallets.length)
     line = o.pallets.length > 1 ? o.pallets.length + ' PALLETS ON THE APRON'
                                 : 'PALLET ON THE APRON';
-  g.fillText(line || 'THE SHELVES ARE YOURS', 24, oy + 92);
+  /* the PAINT tab's idle line is the how-to (build-feel, ask 4) */
+  if(!line && sc.tab === 3){
+    g.font = '16px monospace';
+    g.fillText('CANS DELIVER TO THE PALLET AND STOCK THE RACK', 24, oy + 78);
+    g.fillText('DIP THE RACK ROLLER IN A CAN - TRIGGER PAINTS', 24, oy + 98);
+  } else g.fillText(line || 'THE SHELVES ARE YOURS', 24, oy + 92);
   sc.tex.needsUpdate = true;
 }
 function vrOrderPress(sc){
@@ -17812,6 +17817,68 @@ function vrGunLabel(dt){
     vrLabel('TRIGGER TO NAIL', VR.seam.point, d);
   }
 }
+/* paint says how it works (build-feel, ask 4).  The mechanic is a scene
+   shop's — rack, roller, dip, roll — and it stays; what failed on hardware
+   is that nothing in the room SAID any of it.  Three labels, one per step,
+   on the gun label's throttle discipline: an empty hand near the racked
+   roller, the dry roller near its cans, the dipped roller against wood. */
+const _pnV = new T.Vector3(), _pnV2 = new T.Vector3(), _pnAt = new T.Vector3();
+function vrPaintLabel(dt){
+  VR.paintT = (VR.paintT || 0) + dt;
+  if(typeof RACKS === 'undefined') return;
+  if(VR.paintT > 0.12){
+    VR.paintT = 0;
+    VR.paintTxt = null;
+    if(VR.held && VR.held.kind === 'roller'){
+      const rack = VR.held.rack, ro = rack.roller;
+      ro.head.getWorldPosition(_pnV);
+      if(ro.color === null){
+        let cm = null, cd = 1e9;
+        for(const m of rack.canMeshes){
+          m.getWorldPosition(_pnV2);
+          const d = _pnV2.distanceTo(_pnV);
+          if(d < cd){ cd = d; cm = m; }
+        }
+        if(cm){
+          VR.paintTxt = 'DIP THE HEAD IN A CAN';
+          _pnAt.copy(cm.getWorldPosition(_pnV2));
+        }
+      } else {
+        for(const b of BODIES){
+          if(b.kind !== 'wood') continue;
+          b.mesh.getWorldPosition(_pnV2);
+          const reach = Math.max(b.mesh.scale.x, b.mesh.scale.y, b.mesh.scale.z)/2 + 0.3;
+          if(_pnV2.distanceTo(_pnV) < reach){
+            VR.paintTxt = 'TRIGGER TO PAINT';
+            _pnAt.copy(_pnV);
+            break;
+          }
+        }
+      }
+    } else if(!VR.held){
+      for(const rk in RACKS){
+        const rack = RACKS[rk];
+        if(!rack) continue;
+        rack.roller.mesh.getWorldPosition(_pnV);
+        for(let i = 0; i < VR.controllers.length; i++){
+          if(VR.tools && VR.tools[i]) continue;      // that hand is a tool hand
+          VR.controllers[i].getWorldPosition(_pnV2);
+          if(_pnV2.distanceTo(_pnV) < 0.6){
+            VR.paintTxt = 'SQUEEZE TO TAKE THE ROLLER';
+            _pnAt.copy(_pnV);
+            break;
+          }
+        }
+        if(VR.paintTxt) break;
+      }
+    }
+  }
+  if(VR.paintTxt){
+    const d = camera.getWorldPosition(_pnV2).distanceTo(_pnAt);
+    vrLabel(VR.paintTxt, _pnAt, d);
+  }
+}
+
 function vrUpdate(dt){
   if(!VR || !VR.active) return;      // may be called before this file has run
   vrReadSticks();
@@ -17823,6 +17890,7 @@ function vrUpdate(dt){
   else vrHoverWorld();
   vrUpdateHold(dt);
   vrGunLabel(dt);
+  vrPaintLabel(dt);
   vrUpdateRopes(dt);
   vrUpdateButtons(dt);
   vrCapBeams();
