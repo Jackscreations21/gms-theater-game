@@ -1671,6 +1671,52 @@ const probe = `
       throw new Error('the grabbed end is '+d.toFixed(2)+'m from the palm');
     return 'the end stays in the palm through a quarter turn';
   });
+  P('held wood squares to the nearest 45 — and X holds it free', ()=>{
+    /* build-feel RULING M: with no offer standing, a held piece sits on
+       the 45-degree grid on every axis; holding X suspends the grid; the
+       grabbed point stays in the palm through the quantize */
+    const b = regWood('s2x4');
+    b.mesh.rotation.set(0, 0, Math.PI/2);
+    b.mesh.position.set(4, 1.5, 2.0);
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(5.21, 1.5, 2.0);
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body' || VR.held.body !== b)
+      throw new Error('not taken: '+(VR.held && VR.held.kind));
+    const grabL = b.mesh.worldToLocal(new THREE.Vector3(5.21, 1.5, 2.0));
+    /* an odd wrist, nowhere near the grid */
+    c0.quaternion.setFromEuler(new THREE.Euler(0.22, 0.3, 0.13, 'YXZ'));
+    c0.updateMatrixWorld(true);
+    vrReadSticks();                            // no X pressed
+    vrUpdateHold(0.016);
+    if(VR.snap) throw new Error('a snap offer crept under this test');
+    scene.updateMatrixWorld(true);
+    const off45 = v => Math.abs(v/(Math.PI/4) - Math.round(v/(Math.PI/4)));
+    let e = new THREE.Euler().setFromQuaternion(
+      b.mesh.getWorldQuaternion(new THREE.Quaternion()), 'YXZ');
+    if(off45(e.x) > 1e-3 || off45(e.y) > 1e-3 || off45(e.z) > 1e-3)
+      throw new Error('off the grid: '+e.x.toFixed(3)+'/'+e.y.toFixed(3)+'/'+e.z.toFixed(3));
+    const wp = b.mesh.localToWorld(grabL.clone());
+    if(wp.distanceTo(new THREE.Vector3(5.21, 1.5, 2.0)) > 0.06)
+      throw new Error('the quantize pulled the piece out of the palm');
+    /* X held: the grid lets go and the wrist is followed exactly */
+    btns.left[4].pressed = true;
+    vrReadSticks();
+    vrUpdateHold(0.016);
+    btns.left[4].pressed = false;
+    scene.updateMatrixWorld(true);
+    e = new THREE.Euler().setFromQuaternion(
+      b.mesh.getWorldQuaternion(new THREE.Quaternion()), 'YXZ');
+    if(off45(e.x) < 0.02 && off45(e.y) < 0.02 && off45(e.z) < 0.02)
+      throw new Error('X held, but the piece is still snapped to the grid');
+    vrReadSticks();                            // X back up for the next test
+    vrSqueeze(0, false);
+    BODIES.splice(BODIES.indexOf(b), 1);
+    return 'on the grid bare-handed, free under X';
+  });
   P('the work table is a handful at its edge, and carries in the hand', ()=>{
     /* the owner's report: "I can't move the work table."  The old grab
        measured hand-to-origin against 0.35 — and a table's origin is its

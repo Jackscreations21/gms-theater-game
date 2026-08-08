@@ -318,7 +318,13 @@ function vrReadSticks(){
     const ax = (Math.abs(gp.axes[2]||0) + Math.abs(gp.axes[3]||0) > 0.001)
       ? [gp.axes[2]||0, gp.axes[3]||0] : [gp.axes[0]||0, gp.axes[1]||0];
     const dead = v => Math.abs(v) < 0.12 ? 0 : v;
-    if(src.handedness === 'left'){ VR.axes.lx = dead(ax[0]); VR.axes.ly = dead(ax[1]); }
+    if(src.handedness === 'left'){
+      VR.axes.lx = dead(ax[0]); VR.axes.ly = dead(ax[1]);
+      /* xr-standard: left 4 is X — held, it frees a carried piece from the
+         45-degree grid (RULING M).  Guarded: some pads stop at 4 buttons. */
+      const bt = gp.buttons;
+      VR.btnX = !!(bt && bt[4] && bt[4].pressed);
+    }
     else                         { VR.axes.rx = dead(ax[0]); VR.axes.ry = dead(ax[1]); }
   }
 }
@@ -1654,6 +1660,7 @@ const _run = new T.Vector3(), _vecA = new T.Vector3();
    handful anywhere along it (build-usability spec §2).  Wood meshes are
    the shared unit box scaled, so local-space clamp is the exact distance. */
 const GRAB_WOOD = 0.15;
+const _wristE = new T.Euler();   // the 45° carry grid (RULING M)
 function vrSqueeze(hand, down){
   const c = VR.controllers[hand];
   if(!c) return;
@@ -1976,7 +1983,14 @@ function vrSqueeze(hand, down){
       c.getWorldQuaternion(_tq1);
       bod.mesh.getWorldQuaternion(_tq2);
       VR.held.relQ = _tq1.invert().multiply(_tq2).clone();
-      VR.held.relP = c.worldToLocal(_vecA.clone()).clone();
+      /* wood keeps the GRAB POINT itself (metric, piece frame): the 45°
+         quantize (RULING M) re-orients about the palm, which a rigid
+         grip-space offset cannot express.  The table carries rigid. */
+      if(bod.kind === 'wood'){
+        bod.mesh.updateWorldMatrix(true, false);
+        VR.held.grabV = bod.mesh.worldToLocal(_rayO.clone())
+          .multiply(bod.mesh.scale).clone();
+      } else VR.held.relP = c.worldToLocal(_vecA.clone()).clone();
     }
     if(typeof toast === 'function') toast(BODY_LABEL[bod.kind] + ' — in hand');
     return;
@@ -2157,20 +2171,30 @@ function vrUpdateHold(dt){
      loose and settles it to the floor */
   if(VR.held.kind === 'body'){
     const b = VR.held.body;
-    /* a grip-relative hold (wood): the grabbed point stays in the palm.
-       Everything else keeps the world-offset carry it always had. */
-    if(VR.held.relP) _vecA.copy(VR.held.relP).applyMatrix4(c.matrixWorld);
+    /* orientation first: wood and the table turn with the wrist, and held
+       wood with no X down squares to the nearest 45° on every axis
+       (RULING M).  The world quat lands directly on the mesh: both venue
+       roots stand unrotated. */
+    if(VR.held.relQ){
+      c.getWorldQuaternion(_tq1).multiply(VR.held.relQ);
+      if(b.kind === 'wood' && !VR.btnX){
+        _wristE.setFromQuaternion(_tq1, 'YXZ');
+        _wristE.x = Math.round(_wristE.x/(Math.PI/4))*(Math.PI/4);
+        _wristE.y = Math.round(_wristE.y/(Math.PI/4))*(Math.PI/4);
+        _wristE.z = Math.round(_wristE.z/(Math.PI/4))*(Math.PI/4);
+        _tq1.setFromEuler(_wristE);
+      }
+      b.mesh.quaternion.copy(_tq1);
+    }
+    /* then position: the grabbed point stays in the palm (RULING R) —
+       wood pivots about the palm through the quantize; the table rides a
+       rigid grip offset; everything else keeps the world-offset carry. */
+    if(VR.held.grabV)
+      _vecA.copy(VR.held.grabV).applyQuaternion(b.mesh.quaternion).negate().add(_rayO);
+    else if(VR.held.relP) _vecA.copy(VR.held.relP).applyMatrix4(c.matrixWorld);
     else _vecA.set(_rayO.x + VR.held.offX, _rayO.y + VR.held.offY, _rayO.z + VR.held.offZ);
     if(b.mesh.parent) b.mesh.parent.worldToLocal(_vecA);
     b.mesh.position.copy(_vecA);
-    /* wood (and the table) turns with the wrist; wood then squares itself
-       up to whatever it is offered against (p4c snapWood) — the gun
-       confirms the joint.  The world quat lands directly on the mesh:
-       both venue roots stand unrotated. */
-    if(VR.held.relQ){
-      c.getWorldQuaternion(_tq1).multiply(VR.held.relQ);
-      b.mesh.quaternion.copy(_tq1);
-    }
     if(b.kind === 'wood'){
       b.mesh.updateMatrixWorld(true);
       const s = (typeof snapWood === 'function') ? snapWood(b) : null;
