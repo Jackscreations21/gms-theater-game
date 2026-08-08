@@ -468,6 +468,62 @@ function sawResize(b, newLen, cx){
   b.mesh.position.x = cx;
   delete b.tick;                 // the mark is consumed by the cut
 }
+/* ============================================================================
+   PAINT (PR 5, spec §7).  A rack in each shed: open cans, one per color
+   the shed OWNS (four stock colors; a delivered can released over the
+   rack ADDS its color and is consumed), and one roller.  Dip the roller
+   in a can, trigger against wood: sheets take the color on the touched
+   FACE (box material group order px nx py ny pz nz), lumber whole-piece.
+   Materials only ever come from the WOODM cache — repaint is a pointer
+   swap, never a new material.
+   ========================================================================== */
+var RACKS = {palace:null, arc:null};
+const RACK_STOCK = [0, 1, 2, 7];         // black, white, grey, brown to start
+function rackCans(rack){
+  for(const m of rack.canMeshes){ if(m.parent) m.parent.remove(m); }
+  rack.canMeshes.length = 0;
+  rack.colors.forEach((c, i)=>{
+    const m = makeBuildMesh('paint', c);
+    m.position.set(-rack.shelfW/2 + 0.16 + i*0.24, rack.shelfY, 0);
+    m.userData.paintColor = c;
+    rack.group.add(m);
+    rack.canMeshes.push(m);
+  });
+}
+function rackAddColor(rack, color){
+  if(rack.colors.indexOf(color) >= 0) return false;
+  rack.colors.push(color);
+  rackCans(rack);
+  return true;
+}
+/* a delivered can released over the rack: color in, body consumed */
+function rackTakeCan(rack, b){
+  if(!b || b.kind !== 'paint') return false;
+  rackAddColor(rack, b.color);
+  if(b.mesh.parent) b.mesh.parent.remove(b.mesh);
+  if(b.slot) b.slot.userData.body = null;
+  BODIES.splice(BODIES.indexOf(b), 1);
+  return true;
+}
+function paintWood(b, wp, color){
+  if(!b || b.kind !== 'wood' || color === undefined || color === null) return false;
+  const m = woodMat(color);
+  if(b.prof !== 'sheet'){
+    for(let i = 0; i < 6; i++) b.mesh.material[i] = m;
+    return true;
+  }
+  b.mesh.updateMatrixWorld(true);
+  _av.copy(wp);
+  b.mesh.worldToLocal(_av);                // unit-box local: extents are ±0.5
+  const ax = Math.abs(_av.x), ay = Math.abs(_av.y), az = Math.abs(_av.z);
+  let idx;
+  if(ax >= ay && ax >= az) idx = _av.x >= 0 ? 0 : 1;
+  else if(ay >= az)        idx = _av.y >= 0 ? 2 : 3;
+  else                     idx = _av.z >= 0 ? 4 : 5;
+  b.mesh.material[idx] = m;
+  return true;
+}
+
 function sawCut(st){
   const x = st.cut;
   const b = st.pieces.find(p=>{

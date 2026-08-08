@@ -646,10 +646,24 @@ a dependency chain on p9/p4c/p2m — do not parallelize them).
   (the screen is the enforcement point). vrLabel is the readout —
   no per-station canvases.
 
-**NEXT: PR 5 (paint) through PR 7 (save), in plan order.** Step zero:
-confirm the previous PR merged, `npm test` 15/15 on `main`, then
-branch the next off `main` (or build on the unmerged branch and open
-after it merges — the #38 pattern).
+- **PR 5 (branch `build-paint`, on PR 4's branch) — paint.** A rack
+  per shed (`buildRack` in p2m, logic p4c): open cans for the colors
+  the shed OWNS (four stock; a delivered can released within 1.8 of
+  the rack pours in as a new color and the body is consumed —
+  `rackTakeCan`), and ONE roller — a seventh grab class, parented to
+  the controller ON PURPOSE (the one carried thing that is): release
+  ALWAYS re-racks it (`vrReRack`), including from `vrOnEnd` BEFORE the
+  hold record drops. Dip = hold the head within 0.16 of a can (tints
+  the head); trigger = `paintWood`: sheets take the touched FACE (box
+  material-group order px nx py ny pz nz, computed in unit-box local
+  coords — worldToLocal already divides out the scale), lumber
+  whole-piece; every entry from the WOODM cache, repaint is a pointer
+  swap. Cans never run out (RULING C's spirit).
+
+**NEXT: PR 6 (hinges & track) and PR 7 (save), in plan order.** Step
+zero: confirm the previous PR merged, `npm test` 15/15 on `main`,
+then branch the next off `main` (or build on the unmerged branch and
+open after it merges — the #38 pattern).
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
@@ -730,6 +744,9 @@ hinged; tape legibility and the tab grab at 0.2.
 (the release envelope is span/2+0.3 by 1.0); is the CUT AT label
 readable while sliding; does the inch snap feel like a fence or like
 stickiness; two stations 6.5m apart — is the shed getting crowded.
+(PR 5): does the dip read (head tint + toast) without looking down;
+is per-face painting discoverable or does everyone expect strokes;
+can you find the roller on the rack at 0.22.
 Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).
