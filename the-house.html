@@ -3843,6 +3843,13 @@ function hangGoods(ls, key){
   if(key==='electric') buildElectric(ls);
   else stripElectric(ls);
   ls.practical = ls.goods && ls.goods.userData.practical || null;
+  /* RULING V — a pipe lifts to make room for what you just hung.
+     minTrimOf (#15) is enforced by everything that MOVES a pipe, and
+     hanging is not a move: a 13m house curtain hung on a pipe standing at
+     2m put ten metres of cloth straight through the stage.  A pipe with
+     room to spare is left exactly where it stands. */
+  const lo = minTrimOf(ls);
+  if(ls.pos < lo){ ls.pos = ls.target = lo; ls.group.position.y = ls.pos; }
   refreshFlyUI();
 }
 function disposeTree(o){ o.traverse(n=>{ if(n.geometry) n.geometry.dispose(); }); }
@@ -15880,7 +15887,15 @@ const VR_TABS = [
   {id:'smoke',  label:'SMOKE'},
   {id:'script', label:'SCRIPT'}
 ];
-function vrHit(x, y, w, h, fn){ VR.hits.push({x, y, w, h, fn}); }
+/* meta rides the hit record: the goods picker tags its regions so the row
+   that opens it and the entry that hangs are findable by what they MEAN,
+   not by their pixel coordinates (vr.js pins the fly rows by pixel and
+   that has been a trap twice) */
+function vrHit(x, y, w, h, fn, meta){
+  const o = {x, y, w, h, fn};
+  if(meta) Object.assign(o, meta);
+  VR.hits.push(o);
+}
 
 function vrDrawConsole(force){
   vrCanvas();
@@ -15917,6 +15932,7 @@ function vrDrawConsole(force){
   if(VR.page === 'cues')   vrPageCues(g, P);
   if(VR.page === 'lights') vrPageLights(g, P);
   if(VR.page === 'fly')    vrPageFly(g, P);
+  if(VR.page === 'goods')  vrPageGoods(g, P);   // a sub-page of the fly rail
   if(VR.page === 'shows')  vrPageShows(g, P);
   if(VR.page === 'venues') vrPageVenues(g, P);
   if(VR.page === 'smoke')  vrPageSmoke(g, P);
@@ -16015,8 +16031,21 @@ function vrPageFly(g, P){
     g.fillStyle = '#7f8b99'; g.textBaseline = 'middle';
     g.fillText(String(ls.id).padStart(2,'0'), P.x + 12, y + rowH/2 - 2);
     const spec = GOODS[ls.goodsKey];
+    /* the goods cell is a BUTTON (RULING U): press it and the console
+       shows what else this pipe could carry.  VR has never had the
+       desktop's palette, so in a headset the hang was whatever the stage
+       booted with. */
+    g.fillStyle = '#1a2029';
+    g.fillRect(P.x + 56, y + 3, 356, rowH - 10);
     g.fillStyle = '#c6d0dc';
     g.fillText(spec ? spec.label : ls.goodsKey, P.x + 62, y + rowH/2 - 2);
+    g.fillStyle = '#5d6874';
+    g.font = '600 13px Helvetica, Arial, sans-serif';
+    g.fillText('CHANGE', P.x + 356, y + rowH/2 - 2);
+    g.font = '600 17px Helvetica, Arial, sans-serif';
+    vrHit(P.x + 56, y + 3, 356, rowH - 10, ((l)=>()=>{
+      VR.page = 'goods'; VR.goodsFor = l; vrDrawConsole(true);
+    })(ls), {goodsFor: ls});
     vrBar(g, P.x + 420, y + 12, 260, 16, (ls.pos - 0.6)/(OUT_TRIM - 0.6), '#ffb347');
     g.fillStyle = '#8f9aa7';
     g.fillText(ftIn(ls.pos), P.x + 700, y + rowH/2 - 2);
@@ -16065,6 +16094,47 @@ function vrPageFly(g, P){
     vrBtnBox(g, bx, P.y + 502, 116, 46, 'LOWER',
              ()=>{ spkBarStep('R',-1); vrDrawConsole(true); });
   }
+}
+/* ---------------------------------------------------------- THE GOODS
+   What is on a pipe, chosen from inside the headset (RULING U).  Reached
+   from the fly page's goods cell, never from the tab strip: it is about
+   ONE lineset, and it carries which one in VR.goodsFor.  Choosing calls
+   the same hangGoods the desktop palette calls, then rebuilds the rail —
+   vrBuildRopes gives an operating line to every lineset that carries
+   goods, so without that a newly hung pipe would have no rope and no lock
+   to work it with, and a stripped one would keep a rope to nowhere.     */
+function vrPageGoods(g, P){
+  const ls = VR.goodsFor;
+  if(!ls){ VR.page = 'fly'; vrPageFly(g, P); return; }
+  g.fillStyle = '#ffd08a';
+  g.font = '600 22px Helvetica, Arial, sans-serif';
+  g.textBaseline = 'middle';
+  g.fillText('LINESET ' + String(ls.id).padStart(2, '0') + '  —  WHAT IS ON IT',
+             P.x, P.y + 14);
+  vrBtnBox(g, P.x + P.w - 150, P.y - 6, 150, 44, 'BACK',
+           ()=>{ VR.page = 'fly'; vrDrawConsole(true); });
+  const keys = Object.keys(GOODS);
+  const cols = 3, w = Math.floor((P.w - 24)/cols), h = 74, pitch = 84;
+  keys.forEach((k, i)=>{
+    const col = i % cols, row = Math.floor(i/cols);
+    const x = P.x + col*(w + 12), y = P.y + 48 + row*pitch;
+    const spec = GOODS[k], on = (ls.goodsKey === k);
+    vrBtnBox(g, x, y, w, h, spec.label, ((key)=>()=>{
+      hangGoods(ls, key);
+      if(typeof vrBuildRopes === 'function') vrBuildRopes();
+      if(typeof toast === 'function')
+        toast(GOODS[key].label + ' on lineset ' + ls.id);
+      VR.page = 'fly';
+      vrDrawConsole(true);
+    })(k), {bg: on ? '#26313e' : '#1b232d', fg: on ? '#ffd08a' : '#d6dee8'});
+    /* vrBtnBox pushed the hit: tag it with what it means */
+    VR.hits[VR.hits.length - 1].goodsKey = k;
+    g.fillStyle = on ? '#c9a86a' : '#7f8b99';
+    g.font = '400 14px Helvetica, Arial, sans-serif';
+    g.textAlign = 'center';
+    g.fillText(spec.wt ? spec.wt + 'kg' : '—', x + w/2, y + h - 14);
+    g.textAlign = 'left';
+  });
 }
 /* --------------------------------------------------------------- SHOWS */
 function vrPageShows(g, P){

@@ -1827,6 +1827,35 @@ const probe = `
     BODIES.splice(BODIES.indexOf(t), 1);
     return 'edge grab, in-hand carry, square landing';
   });
+  P('the fly page changes what is on a pipe', ()=>{
+    /* goods round RULING U: the goods label on the VR fly page is a
+       button — it opens a picker for that lineset, and choosing hangs it */
+    if(typeof vrPageGoods !== 'function') throw new Error('vrPageGoods is not defined');
+    VR.page = 'fly';
+    vrDrawConsole(true);
+    const ls = FLY[11];
+    hangGoods(ls, 'none');
+    vrDrawConsole(true);
+    /* the row's goods cell: the hit that opens the picker */
+    const row = VR.hits.find(h=>h.goodsFor === ls);
+    if(!row) throw new Error('no goods button on the fly row');
+    row.fn();
+    if(VR.page !== 'goods' || VR.goodsFor !== ls)
+      throw new Error('the picker did not open: page='+VR.page);
+    vrDrawConsole(true);
+    const pick = VR.hits.find(h=>h.goodsKey === 'house');
+    if(!pick) throw new Error('the picker offers no house curtain');
+    pick.fn();
+    if(ls.goodsKey !== 'house')
+      throw new Error('the pipe still carries '+ls.goodsKey);
+    if(VR.page !== 'fly') throw new Error('it did not come back to the rail');
+    /* and the rail was rebuilt, so the new line has a rope to haul */
+    if(!VR.ropes.some(r=>r.ls === ls))
+      throw new Error('the newly hung line has no rope at the rail');
+    hangGoods(ls, 'none');
+    vrBuildRopes();
+    return 'picked from the console, hung, and roped';
+  });
   P('the roller paints a curtain it is held against', ()=>{
     /* goods round RULING T: the trigger with a dipped roller against cloth
        colours the whole of that lineset's goods */
