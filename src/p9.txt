@@ -329,6 +329,29 @@ function vrReadSticks(){
   }
 }
 
+/* the LEFT controller is the compass (RULING O): stick walking follows
+   where it POINTS, not where the headset happens to face — point it right,
+   push forward, walk right.  Returns a world yaw for updatePlayer (p7), or
+   null when there is no session to read.  A controller aimed within ~14°
+   of straight up or down leaves no floor direction: fall back to the
+   HEADSET's yaw, which is what a hand at rest used to mean anyway. */
+const _cmpV = new T.Vector3();
+function vrMoveYaw(){
+  if(!VR || !VR.active || !VR.controllers[0]) return null;
+  const c = VR.controllers[0];
+  c.updateMatrixWorld(true);
+  _m.identity().extractRotation(c.matrixWorld);
+  _cmpV.set(0, 0, -1).applyMatrix4(_m);
+  if(_cmpV.x*_cmpV.x + _cmpV.z*_cmpV.z < 0.06){
+    camera.updateMatrixWorld(true);
+    _m.identity().extractRotation(camera.matrixWorld);
+    _cmpV.set(0, 0, -1).applyMatrix4(_m);
+    if(_cmpV.x*_cmpV.x + _cmpV.z*_cmpV.z < 1e-6) return Player.yaw;
+  }
+  /* p7's convention: forward = (-sin yaw, -cos yaw) */
+  return Math.atan2(-_cmpV.x, -_cmpV.z);
+}
+
 /* the A button on the right hand: tap to jump, two quick taps to fly.
    Time comes off the frame clock (dt), not the wall, so a test can drive it. */
 function vrButtonJump(dt){
