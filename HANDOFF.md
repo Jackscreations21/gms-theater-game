@@ -772,9 +772,76 @@ remote.  Pages carries it all — bust the Quest cache with `?v=10`.
 Ten new regression tests across vr.js and build.js, every one
 verified failing against its pre-change build.
 
-**NEXT SESSION: BUG FIXES (owner's word, 2026-08-08).** Step zero:
-ASK THE OWNER FOR THE BUG LIST before touching anything, then per
-bug: reproduce it in a failing test FIRST (jsdom if it can, a
+**Done 2026-08-08, the build-feel round — the owner's second headset
+list, nine asks, nine PRs.  PR 1 is
+[#53](https://github.com/Jackscreations21/gms-theater-game/pull/53)
+(open as of this writing); PRs 2–9 are BUILT, TESTED and PUSHED but
+NOT OPENED — they are a strictly sequential local chain, each branch
+cut from its parent, and opening them all at once would be stacking
+(the #2–#6 disaster).**  Spec (rulings L–S inline — READ IT first):
+`docs/superpowers/specs/2026-08-08-build-feel-round-design.md`; plan:
+`docs/superpowers/plans/2026-08-08-build-feel-prs1-9.md`.
+
+**To land the rest: after a PR merges, take the NEXT branch in this
+exact order, rebase it onto fresh `main`, rebuild, run all fifteen
+suites, THEN open its PR.**  The chain (each contains its parents'
+commits until rebased):
+
+1. `feel-carry` = **#53** — wood rides IN the hand: the hold keeps
+   the pose relative to the CONTROLLER (relQ + grabV, the grabbed
+   point metric in the piece's frame); the wrist pivots about the
+   palm, not about a centre four feet up the stick.  Lanterns keep
+   the fixed centre carry.  Carries the spec+plan docs.
+2. `feel-table` — the table was never immovable, it was UNGRABBABLE:
+   the 0.35 test measured to its origin, which is its FEET on the
+   floor under the middle of the top.  It now grabs by its frame box
+   (RULING Q) and carries grip-relative; #51's square landing is
+   re-pinned.
+3. `feel-45` — held wood squares to the 45° grid on all three axes
+   about the grab point; HOLD X frees it (`VR.btnX`, read in
+   vrReadSticks, guarded for 4-button pads); a snapWood offer
+   overrides both (RULING M).
+4. `feel-freeze` — Y parks the held piece exactly where it is, mid-air
+   included (`b.frozen`, RULING N): updateBodies skips it, grabBody
+   and asmAdopt clear it, `fz:1` rides the save.  A parked piece is a
+   legal snap target ON PURPOSE — park it, build against it.
+5. `feel-nail-ray` — nails go where the gun POINTS (RULING L):
+   `nailRay` (p4c) casts the muzzle ray 1.2m, drives the nail at the
+   hit spot, partners with the piece touching there (or the nearest
+   seam ON the hit piece within SEAM_REACH); lone wood refuses
+   ("nothing behind it to bite"), NO cosmetic nails; a ray that hits
+   nothing falls back to #49's muzzle seam.  Label = same cast.
+6. `feel-compass` — the stick walks where the LEFT CONTROLLER points
+   (`vrMoveYaw`, RULING O); keyboard and FLYING unchanged; ~14° of
+   vertical falls back to headset yaw.
+7. `feel-trash` — a steel drum by each shed's rack (`buildTrash`,
+   p2m; `TRASH` in p4c): any held BUILD body released with its centre
+   over the mouth is destroyed; DELETE ALL WOOD on the order screen
+   footer (stacked under CLEAR SAVE, both 196×25 now) empties the
+   venue's wood through `removeBody`/`deleteAllWood` — installed
+   hinges respawn as hardware, bare track runs stand, gear untouched,
+   a piece in a live hand skipped (RULING P).
+8. `feel-paint-signs` — painting says how it works: `vrPaintLabel`
+   floats SQUEEZE TO TAKE THE ROLLER / DIP THE HEAD IN A CAN /
+   TRIGGER TO PAINT at the right moments; the PAINT tab's idle line
+   is the two-line how-to.
+9. `feel-ftin` — every player-facing LENGTH readout through `ftIn()`
+   (RULING S): desktop fly rows + toasts, FOH/SPK rows, VR fly page,
+   "bars in".  The MODEL stays metric — this was formatting, not a
+   unit migration.  Two old tests that parsed the display were
+   updated to compare the formatter's string of the model.
+
+Process notes: ~14 new regression tests, every one verified failing
+against its pre-change build (the freeze save-leg at the exact
+midpoint: runtime in, serialization not).  The chain tip passed all
+fifteen suites, which IS the seam check for a linear chain.  One
+trap re-confirmed: a regex literal inside a test PROBE template
+loses its backslashes (`/\d/` arrives as `/d/`) — build regexes from
+doubled-backslash strings there (full14's ft-in test).
+
+**NEXT SESSION:** step zero is landing the chain above (open, in
+order, as the owner merges).  Then MORE BUG FIXES on the same
+discipline: reproduce in a failing test FIRST (jsdom if it can, a
 `tools/` probe if it is visual), fix, negative-check, one bug one PR,
 straight to `main`. Likely sources, in rough order:
 
@@ -908,6 +975,17 @@ overlap forgiveness); does the WORK TABLE (HDWE tab) carry comfortably
 and land square on release; is building at 0.925m height right in VR;
 and does 'the table holds it — no nail needed' read as design, not
 refusal.
+New from the build-feel round (once the chain lands): does the 45°
+carry grid read as helpful or sticky, and is HOLD-X-to-free
+discoverable without being told; does Y-park mid-air read as a
+feature or a glitch (the toast says "parked"); does ray-nailing feel
+like pointing a real gun (NAIL_RAY 1.2m — one constant); does
+controller-compass walking fight the fork-stick habit when driving
+the lift; is the drum obvious as a bin and is DELETE ALL WOOD too
+easy to fat-finger next to CLEAR SAVE (both act instantly; the wood
+button reports its count); do the three paint labels appear at the
+right moments on hardware; do the ft-in fly rows read at arm's
+length (they replaced "12.2m" with "40'0\"").
 Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).
