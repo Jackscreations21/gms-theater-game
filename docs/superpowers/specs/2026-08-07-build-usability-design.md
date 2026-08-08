@@ -173,6 +173,12 @@ PR order: **grab → snap → gun → table**, one concern per PR, straight to
 (the #37/#38 pattern — §3, §4 and §5 all edit `snapWood`'s neighborhood
 or its callers).
 
+**Owner scope ruling, same day:** ship §2 (grab) and §4 (gun-at-seam)
+NOW, in that order; §3 (snap rebuild) and §5 (table) are DEFERRED until
+asked for. The gun's seam seek never depended on the snap rebuild — it
+has its own touch test — so the two shipping PRs are independent of the
+two deferred ones.
+
 Invariants honored: parametric wood (the table is not wood; its geometry
 is cached once); nearest-wins arbitration extended, never forked; bodies
 follow the grip kinematically, never re-parented (the table too); every
