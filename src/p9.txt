@@ -357,6 +357,35 @@ function vrButtonJump(dt){
   VR.btnA = a;
 }
 
+/* Y on the left hand: park the held piece of wood exactly where it is —
+   position, angle, mid-air included (RULING N).  The park is b.frozen:
+   updateBodies never settles it, a grab takes it back (grabBody clears the
+   flag), and the flag rides the save.  Edge-triggered off the frame, the
+   vrButtonJump pattern. */
+function vrButtonFreeze(){
+  const s = renderer.xr.getSession && renderer.xr.getSession();
+  let y = false;
+  if(s && s.inputSources) for(const src of s.inputSources){
+    if(src.handedness !== 'left') continue;
+    const bt = src.gamepad && src.gamepad.buttons;
+    /* xr-standard: left 5 is Y.  Guarded: some pads stop at 4 buttons. */
+    if(bt && bt[5] && bt[5].pressed) y = true;
+  }
+  if(y && !VR.btnY && VR.held && VR.held.kind === 'body' &&
+     VR.held.body.kind === 'wood'){
+    const b = VR.held.body;
+    VR.held = null;
+    VR.snap = null;
+    b.state = 'loose';
+    b.frozen = true;
+    vrLabel(null);
+    if(typeof buildDirty === 'function') buildDirty();
+    if(typeof toast === 'function')
+      toast('parked — it stays put exactly there; grab it to move it');
+  }
+  VR.btnY = y;
+}
+
 /* ============================================================================
    THE CONSOLE FACE
    Drawn onto a canvas and mapped onto the desk.  It cannot be the page you
@@ -2319,6 +2348,7 @@ function vrUpdate(dt){
   if(!VR || !VR.active) return;      // may be called before this file has run
   vrReadSticks();
   vrButtonJump(dt);
+  vrButtonFreeze();
   vrUpdateBelt();
   Player.yaw -= VR.axes.rx * VR.turn * dt;      // smooth turn, as asked for
   if(vrPointAt()) vrLabel(null);                // on a desk, the desk is the label

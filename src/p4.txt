@@ -334,6 +334,7 @@ function slotBody(b, anchor){
 }
 /* the squeeze that takes a body, whatever it was doing */
 function grabBody(b){
+  delete b.frozen;               // the grab takes the park off (RULING N)
   if(b.state === 'hung') unhangBody(b);
   else if(b.state === 'slotted') unslotBody(b);
   else if(b.state === 'seated' && b.station){        // off the saw table (p4c)
@@ -361,6 +362,8 @@ function updateBodies(dt){
         b.restH = woodRestH(b);
     }
     if(b.state !== 'loose') continue;
+    /* a parked piece (Y, RULING N) hangs exactly where it was left */
+    if(b.frozen) continue;
     b.mesh.getWorldPosition(_bodyV);
     let g = (typeof groundAt === 'function') ? groundAt(_bodyV.x, _bodyV.z, _bodyV.y + 0.5) : 0;
     if(g === null) continue;

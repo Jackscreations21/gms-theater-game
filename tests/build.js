@@ -583,6 +583,23 @@ const probe = `
   });
 
   console.log('--- the save ---');
+  P('a parked piece hangs where it was parked, and a grab frees it', ()=>{
+    /* build-feel RULING N: b.frozen skips the settle */
+    const b = regWood('s2x4');
+    b.mesh.rotation.set(0.3, 0.7, 0.1);
+    b.mesh.position.set(4, 2.0, 2.0);            // over the Palace deck
+    b.frozen = true;
+    b.restH = woodRestH(b);                      // even with a rest height set
+    scene.updateMatrixWorld(true);
+    for(let i = 0; i < 80; i++) updateBodies(0.05);
+    if(Math.abs(b.mesh.position.y - 2.0) > 1e-4)
+      throw new Error('it settled to '+b.mesh.position.y.toFixed(2));
+    grabBody(b);
+    if(b.frozen) throw new Error('the grab left it frozen');
+    b.state = 'loose';
+    BODIES.splice(BODIES.indexOf(b), 1);
+    return 'hangs mid-air where parked, freed by the grab';
+  });
   P('a built world serializes, and the slate wipes clean', ()=>{
     /* the scene the second boot must give back */
     const s1 = regWood('s2x4'), s2 = regWood('s2x4');
@@ -611,6 +628,12 @@ const probe = `
     if(orderPlace('palace', ['par']) !== 'OK') throw new Error('the slip refused');
     rackAddColor(RACKS.palace, PAINT_COLORS[5].c);   // blue on the rack
     LIFTS.palace.forkY = 0.5;
+    /* a parked piece, mid-air at an odd angle, must ride the save (N) */
+    const parked = regWood('s2x4');
+    parked.mesh.rotation.set(0.3, 0.7, 0.1);
+    parked.mesh.position.set(5, 2.2, 3.0);
+    parked.frozen = true;
+    scene.updateMatrixWorld(true);
     buildSave();
     const raw = localStorage.getItem('house.build');
     if(!raw) throw new Error('nothing landed in storage');
@@ -680,6 +703,17 @@ const probe2 = `
       Array.isArray(b.mesh.material) && b.mesh.material[2] === woodMat(0xa8231d));
     if(!red) throw new Error('the painted face came back bare');
     return 'wood, joints, run, slip, color, forks — all back';
+  });
+  P('a parked piece came back parked, mid-air', ()=>{
+    const b = BODIES.find(x=>x.kind === 'wood' && x.frozen);
+    if(!b) throw new Error('no parked piece returned');
+    scene.updateMatrixWorld(true);
+    const y0 = b.mesh.getWorldPosition(new THREE.Vector3()).y;
+    if(Math.abs(y0 - 2.2) > 0.01) throw new Error('parked at y='+y0.toFixed(2));
+    for(let i = 0; i < 80; i++) updateBodies(0.05);
+    if(Math.abs(b.mesh.getWorldPosition(new THREE.Vector3()).y - 2.2) > 1e-3)
+      throw new Error('it settled after the reload');
+    return 'still mid-air in the reloaded world';
   });
   P('a corrupt save clears itself and the boot stands', ()=>{
     localStorage.setItem('house.build', '{"v":1, busted');
