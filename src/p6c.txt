@@ -1,0 +1,285 @@
+
+/* ============================================================================
+   p6c — THE CARPENTERS: the catalogue and the planner (PR 2 of the
+   carpenters round, spec docs/superpowers/specs/2026-08-08-carpenters-
+   design.md, RULING Y plus the cap).  Pure data and pure functions: no
+   crew, no VR, no UI, no mutation — PR 3 adds the lead and the saw jobs,
+   PR 4 the haul and the nails, PR 5 the warehouse screen.
+
+   The catalogue (CARP_CAT) is a data table: adding a buildable is adding
+   a row, not code.  Each row names the loose stock it consumes (real
+   profiles from p4c's WOOD_PROF, full 8ft sticks), an executable cut
+   schedule (chop bench for lumber, track table for sheets — the same
+   stations sawCut runs on, so every length is on the saw's inch grid and
+   every off side clears SAW_MIN or is honest scrap), and a blueprint:
+   piece poses LOCAL TO THE MARK ORIGIN (deck y = 0, assembled lying flat
+   per RULING AC) and a nail list with TWO nails per joint (RULING G: one
+   nail is a pivot, two is rigid — carpenters build rigid).
+
+   OWNERSHIP: `CARP` (the crayon's mark) is DECLARED AND OWNED by p9,
+   which executes after this part — a second `var CARP = {...}` here
+   would clobber it (the concatenated-file trap, TRAPS.md).  Nothing in
+   this part declares or reads CARP: carpPlan takes the mark as an
+   argument.
+   ========================================================================== */
+
+/* poses below in metres, mark-local; the model is metric throughout and
+   ftIn() is display-only (RULING S).  Cut lengths sit on the saw's inch
+   grid so sawSetCut's snap reproduces them exactly:
+     41in = 1.0414   44in = 1.1176   18in = 0.4572   12in = 0.3048
+     14in = 0.3556    7in = 0.1778                                        */
+var CARP_CAT = {
+  /* one full sheet skinned over a 2x4 frame: two full-length stiles down
+     the long edges, one stick chopped into two 41in rails between them
+     (41 + 41 leaves a real 14in off-cut in the shed) */
+  flat4x8: {
+    label: '4x8 FLAT',
+    stock: [{prof:'sheet', n:1}, {prof:'s2x4', n:3}],
+    cuts:  [{stock:3, saw:'chop', make:[1.0414, 1.0414]}],
+    blueprint: {
+      pieces: [
+        {src:{stock:0},  prof:'sheet', len:2.4384, pos:[0, 0.0475,  0],      rot:[-Math.PI/2, 0, 0]},
+        {src:{stock:1},  prof:'s2x4',  len:2.4384, pos:[0, 0.019,  -0.5651], rot:[0, 0, -Math.PI/2]},
+        {src:{stock:2},  prof:'s2x4',  len:2.4384, pos:[0, 0.019,   0.5651], rot:[0, 0, -Math.PI/2]},
+        {src:{cut:[0,0]}, prof:'s2x4', len:1.0414, pos:[-1.1747, 0.019, 0],  rot:[0, Math.PI/2, -Math.PI/2]},
+        {src:{cut:[0,1]}, prof:'s2x4', len:1.0414, pos:[ 1.1747, 0.019, 0],  rot:[0, Math.PI/2, -Math.PI/2]}
+      ],
+      nails: [
+        {i:0, j:1, p:[-0.8, 0.038, -0.5651],    ax:[0,-1,0]},
+        {i:0, j:1, p:[ 0.8, 0.038, -0.5651],    ax:[0,-1,0]},
+        {i:0, j:2, p:[-0.8, 0.038,  0.5651],    ax:[0,-1,0]},
+        {i:0, j:2, p:[ 0.8, 0.038,  0.5651],    ax:[0,-1,0]},
+        {i:0, j:3, p:[-1.1747, 0.038, -0.35],   ax:[0,-1,0]},
+        {i:0, j:3, p:[-1.1747, 0.038,  0.35],   ax:[0,-1,0]},
+        {i:0, j:4, p:[ 1.1747, 0.038, -0.35],   ax:[0,-1,0]},
+        {i:0, j:4, p:[ 1.1747, 0.038,  0.35],   ax:[0,-1,0]},
+        {i:1, j:3, p:[-1.1947, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:1, j:3, p:[-1.1547, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:1, j:4, p:[ 1.1547, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:1, j:4, p:[ 1.1947, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:2, j:3, p:[-1.1947, 0.019,  0.5206], ax:[0,0,1]},
+        {i:2, j:3, p:[-1.1547, 0.019,  0.5206], ax:[0,0,1]},
+        {i:2, j:4, p:[ 1.1547, 0.019,  0.5206], ax:[0,0,1]},
+        {i:2, j:4, p:[ 1.1947, 0.019,  0.5206], ax:[0,0,1]}
+      ]
+    }
+  },
+  /* built the way a real crew does it — upside down, lying flat: the top
+     sheet on the deck, the 2x4 frame on edge on top of it (two full
+     sides, one stick chopped into two 44in ends, an 8in off-cut), and
+     one 4x4 chopped into four 18in legs pointing up (24in off-cut) */
+  plat4x8: {
+    label: '4x8 PLATFORM',
+    stock: [{prof:'sheet', n:1}, {prof:'s2x4', n:3}, {prof:'s4x4', n:1}],
+    cuts:  [{stock:3, saw:'chop', make:[1.1176, 1.1176]},
+            {stock:4, saw:'chop', make:[0.4572, 0.4572, 0.4572, 0.4572]}],
+    blueprint: {
+      pieces: [
+        {src:{stock:0},   prof:'sheet', len:2.4384, pos:[0, 0.0095,  0],      rot:[-Math.PI/2, 0, 0]},
+        {src:{stock:1},   prof:'s2x4',  len:2.4384, pos:[0, 0.0635, -0.5778], rot:[Math.PI/2, 0, -Math.PI/2]},
+        {src:{stock:2},   prof:'s2x4',  len:2.4384, pos:[0, 0.0635,  0.5778], rot:[Math.PI/2, 0, -Math.PI/2]},
+        {src:{cut:[0,0]}, prof:'s2x4',  len:1.1176, pos:[-1.2002, 0.0635, 0], rot:[Math.PI/2, 0, 0]},
+        {src:{cut:[0,1]}, prof:'s2x4',  len:1.1176, pos:[ 1.2002, 0.0635, 0], rot:[Math.PI/2, 0, 0]},
+        {src:{cut:[1,0]}, prof:'s4x4',  len:0.4572, pos:[-1.1367, 0.2476, -0.5143], rot:[0,0,0]},
+        {src:{cut:[1,1]}, prof:'s4x4',  len:0.4572, pos:[ 1.1367, 0.2476, -0.5143], rot:[0,0,0]},
+        {src:{cut:[1,2]}, prof:'s4x4',  len:0.4572, pos:[-1.1367, 0.2476,  0.5143], rot:[0,0,0]},
+        {src:{cut:[1,3]}, prof:'s4x4',  len:0.4572, pos:[ 1.1367, 0.2476,  0.5143], rot:[0,0,0]}
+      ],
+      nails: [
+        {i:0, j:1, p:[-0.8, 0.019, -0.5778],     ax:[0,-1,0]},
+        {i:0, j:1, p:[ 0.8, 0.019, -0.5778],     ax:[0,-1,0]},
+        {i:0, j:2, p:[-0.8, 0.019,  0.5778],     ax:[0,-1,0]},
+        {i:0, j:2, p:[ 0.8, 0.019,  0.5778],     ax:[0,-1,0]},
+        {i:0, j:3, p:[-1.2002, 0.019, -0.35],    ax:[0,-1,0]},
+        {i:0, j:3, p:[-1.2002, 0.019,  0.35],    ax:[0,-1,0]},
+        {i:0, j:4, p:[ 1.2002, 0.019, -0.35],    ax:[0,-1,0]},
+        {i:0, j:4, p:[ 1.2002, 0.019,  0.35],    ax:[0,-1,0]},
+        {i:1, j:3, p:[-1.2002, 0.0435, -0.5588], ax:[0,0,-1]},
+        {i:1, j:3, p:[-1.2002, 0.0835, -0.5588], ax:[0,0,-1]},
+        {i:1, j:4, p:[ 1.2002, 0.0435, -0.5588], ax:[0,0,-1]},
+        {i:1, j:4, p:[ 1.2002, 0.0835, -0.5588], ax:[0,0,-1]},
+        {i:2, j:3, p:[-1.2002, 0.0435,  0.5588], ax:[0,0,1]},
+        {i:2, j:3, p:[-1.2002, 0.0835,  0.5588], ax:[0,0,1]},
+        {i:2, j:4, p:[ 1.2002, 0.0435,  0.5588], ax:[0,0,1]},
+        {i:2, j:4, p:[ 1.2002, 0.0835,  0.5588], ax:[0,0,1]},
+        {i:5, j:1, p:[-1.1367, 0.04, -0.5588],   ax:[0,0,-1]},
+        {i:5, j:1, p:[-1.1367, 0.09, -0.5588],   ax:[0,0,-1]},
+        {i:6, j:1, p:[ 1.1367, 0.04, -0.5588],   ax:[0,0,-1]},
+        {i:6, j:1, p:[ 1.1367, 0.09, -0.5588],   ax:[0,0,-1]},
+        {i:7, j:2, p:[-1.1367, 0.04,  0.5588],   ax:[0,0,1]},
+        {i:7, j:2, p:[-1.1367, 0.09,  0.5588],   ax:[0,0,1]},
+        {i:8, j:2, p:[ 1.1367, 0.04,  0.5588],   ax:[0,0,1]},
+        {i:8, j:2, p:[ 1.1367, 0.09,  0.5588],   ax:[0,0,1]}
+      ]
+    }
+  },
+  /* two 12in-deep treads off one sheet, riding 2x8 blocks stood on end —
+     7in blocks under the low tread, 14in under the high one (a 54in
+     off-cut goes back to the shed); the low tread is nailed to the tall
+     blocks besides, so the unit is ONE assembly, and it climbs to -x */
+  steps2: {
+    label: '2-STEP UNIT',
+    stock: [{prof:'sheet', n:1}, {prof:'s2x8', n:1}],
+    cuts:  [{stock:0, saw:'track', make:[0.3048, 0.3048]},
+            {stock:1, saw:'chop',  make:[0.3556, 0.3556, 0.1778, 0.1778]}],
+    blueprint: {
+      pieces: [
+        {src:{cut:[0,0]}, prof:'sheet', len:0.3048, pos:[ 0.20,  0.1873, 0],  rot:[-Math.PI/2, 0, 0]},
+        {src:{cut:[0,1]}, prof:'sheet', len:0.3048, pos:[-0.10,  0.3651, 0],  rot:[-Math.PI/2, 0, 0]},
+        {src:{cut:[1,2]}, prof:'s2x8',  len:0.1778, pos:[ 0.20,  0.0889,  0.5], rot:[0,0,0]},
+        {src:{cut:[1,3]}, prof:'s2x8',  len:0.1778, pos:[ 0.20,  0.0889, -0.5], rot:[0,0,0]},
+        {src:{cut:[1,0]}, prof:'s2x8',  len:0.3556, pos:[ 0.0286, 0.1778,  0.5], rot:[0,0,0]},
+        {src:{cut:[1,1]}, prof:'s2x8',  len:0.3556, pos:[ 0.0286, 0.1778, -0.5], rot:[0,0,0]}
+      ],
+      nails: [
+        {i:0, j:2, p:[0.20, 0.1778,  0.45],    ax:[0,-1,0]},
+        {i:0, j:2, p:[0.20, 0.1778,  0.55],    ax:[0,-1,0]},
+        {i:0, j:3, p:[0.20, 0.1778, -0.45],    ax:[0,-1,0]},
+        {i:0, j:3, p:[0.20, 0.1778, -0.55],    ax:[0,-1,0]},
+        {i:1, j:4, p:[0.0286, 0.3556,  0.45],  ax:[0,-1,0]},
+        {i:1, j:4, p:[0.0286, 0.3556,  0.55],  ax:[0,-1,0]},
+        {i:1, j:5, p:[0.0286, 0.3556, -0.45],  ax:[0,-1,0]},
+        {i:1, j:5, p:[0.0286, 0.3556, -0.55],  ax:[0,-1,0]},
+        {i:0, j:4, p:[0.0476, 0.1873,  0.46],  ax:[-1,0,0]},
+        {i:0, j:4, p:[0.0476, 0.1873,  0.54],  ax:[-1,0,0]},
+        {i:0, j:5, p:[0.0476, 0.1873, -0.46],  ax:[-1,0,0]},
+        {i:0, j:5, p:[0.0476, 0.1873, -0.54],  ax:[-1,0,0]}
+      ]
+    }
+  }
+};
+
+/* ---- the stock survey -----------------------------------------------------
+   What a venue really has on hand: consumable loose wood by profile —
+   floor pieces ('loose') and pallet stock ('slotted'), never anything
+   seated on a saw, nailed into an assembly, in a hand or hung.  Each
+   list comes back nearest-its-saw first (sheets to the track table,
+   lumber to the chop bench — RULING Y: nearest first), so the planner
+   and later the lead take the close piece, not the far one.  Own temps
+   (the aliasing trap, TRAPS.md).                                          */
+const _carpV = new T.Vector3(), _carpV2 = new T.Vector3();
+function carpSurvey(venue){
+  const out = {};
+  for(const k in WOOD_PROF) out[k] = [];
+  for(const b of BODIES){
+    if(b.kind !== 'wood' || b.venue !== venue) continue;
+    if(b.state !== 'loose' && b.state !== 'slotted') continue;
+    if(out[b.prof]) out[b.prof].push(b);
+  }
+  const saws = (typeof SAWS !== 'undefined' && SAWS) ? SAWS[venue] : null;
+  if(saws){
+    for(const k in out){
+      const st = (k === 'sheet') ? saws.track : saws.chop;
+      if(!st || !st.group || out[k].length < 2) continue;
+      st.group.getWorldPosition(_carpV);
+      const dec = out[k].map(b=>(
+        {b, d:b.mesh.getWorldPosition(_carpV2).distanceToSquared(_carpV)}));
+      dec.sort((p, q)=>p.d - q.d);
+      out[k] = dec.map(p=>p.b);
+    }
+  }
+  return out;
+}
+/* the catalogue consumes whole sticks and whole sheets: an off-cut is
+   stock for the PLAYER, but a cut schedule is written from 8ft */
+function carpFullStick(b){
+  if(!b.dims || b.dims.L < WOOD_LEN - 0.001) return false;
+  if(b.prof === 'sheet' && b.dims.W < WOOD_PROF.sheet.W - 0.001) return false;
+  return true;
+}
+
+/* ---- the planner ----------------------------------------------------------
+   carpPlan(key, mark) is PURE: it reads the venue's bodies and the
+   catalogue row and returns one of
+     null                      — no such row, or no mark
+     {need:[{prof, n}...]}     — the venue is short: what to order
+     {full:true, pieces:n}     — the job would end past BUILD_CAP pieces
+                                 (cutting registers off-cuts as new bodies,
+                                 and nothing downstream of the order screen
+                                 checks the cap — this is the enforcement
+                                 point, RULING Y)
+     {jobs:[...], piecesAfter} — the ordered queue: carpFetch/carpCut for
+                                 every stick that meets a saw, a hold, one
+                                 carpHaul per blueprint piece, a hold, one
+                                 carpNail per joint (both nails ride it).
+   Nothing is mutated, nothing global is written: the jobs are plain
+   records for PR 3/4 to execute, poses and nail points mark-local.
+     carpFetch {kind, venue, body, prof, saw}        lead: stock -> saw seat
+     carpCut   {kind, venue, saw, len, piece}        lead: blade at len off
+                 the LOW end of the piece this run has seated there (the
+                 fetched stick, then the registered off side after each
+                 cut); piece is the blueprint index the kept side becomes
+     carpHaul  {kind, venue, piece, body, prof, len, pos, rot}
+                 hand: body for an uncut stick, null when the piece comes
+                 off a saw (PR 3 records which body each cut kept)
+     carpNail  {kind, venue, i, j, nails:[{p, ax} x2]}  hand: two nails
+     hold      {kind, say}                           the p6b barrier        */
+function carpPlan(key, mark){
+  const row = CARP_CAT[key];
+  if(!row || !mark || !mark.venue) return null;
+  const venue = mark.venue;
+
+  /* the stock check — full sticks of the right profile, or the NEED list */
+  const survey = carpSurvey(venue);
+  const pool = {}, need = [];
+  for(const s of row.stock){
+    if(!pool[s.prof]) pool[s.prof] = (survey[s.prof] || []).filter(carpFullStick);
+    const short = s.n - pool[s.prof].length;
+    if(short > 0) need.push({prof:s.prof, n:short});
+  }
+  if(need.length) return {need};
+
+  /* the cap — count the bodies the saws will register: every cut whose
+     off side clears SAW_MIN mints one; a scrap end mints nothing */
+  let mint = 0;
+  for(const c of row.cuts){
+    let rem = WOOD_LEN;
+    for(const len of c.make){
+      rem -= len;
+      if(rem >= SAW_MIN) mint++;
+    }
+  }
+  const piecesAfter = venueBuildCount(venue) + mint;
+  if(piecesAfter > BUILD_CAP) return {full:true, pieces:piecesAfter};
+
+  /* assign real bodies to the row's stock units, nearest first */
+  const units = [], taken = {};
+  for(const s of row.stock){
+    taken[s.prof] = taken[s.prof] || 0;
+    for(let i = 0; i < s.n; i++)
+      units.push({prof:s.prof, body:pool[s.prof][taken[s.prof]++]});
+  }
+
+  /* the queue: every stick to its saw and through the schedule, a hold
+     while the benches finish, every piece to the mark, a hold while the
+     deck fills, then the nails (RULING G: two per joint, rigid) */
+  const jobs = [];
+  row.cuts.forEach((c, ci)=>{
+    jobs.push({kind:'carpFetch', venue, body:units[c.stock].body,
+               prof:units[c.stock].prof, saw:c.saw});
+    c.make.forEach((len, k)=>{
+      let piece = -1;
+      row.blueprint.pieces.forEach((p, pi)=>{
+        if(p.src.cut && p.src.cut[0] === ci && p.src.cut[1] === k) piece = pi;
+      });
+      jobs.push({kind:'carpCut', venue, saw:c.saw, len, piece});
+    });
+  });
+  jobs.push({kind:'hold', say:'cuts are done — haul it to the mark'});
+  row.blueprint.pieces.forEach((p, pi)=>{
+    jobs.push({kind:'carpHaul', venue, piece:pi,
+               body:(p.src.stock !== undefined) ? units[p.src.stock].body : null,
+               prof:p.prof, len:p.len, pos:p.pos.slice(), rot:p.rot.slice()});
+  });
+  jobs.push({kind:'hold', say:'pieces are set — nail it up'});
+  const joints = {};
+  for(const n of row.blueprint.nails){
+    const jk = n.i + ':' + n.j;
+    if(!joints[jk]){
+      joints[jk] = {kind:'carpNail', venue, i:n.i, j:n.j, nails:[]};
+      jobs.push(joints[jk]);
+    }
+    joints[jk].nails.push({p:n.p.slice(), ax:n.ax.slice()});
+  }
+  return {jobs, piecesAfter};
+}
