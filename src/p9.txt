@@ -1056,7 +1056,24 @@ function vrToolFire(hand, key){
     }
     const s = VR.snap;
     if(!s){
-      /* no held offer: the seam under the muzzle (build-usability §4) */
+      /* no held offer: the nail goes where the gun POINTS (RULING L) —
+         the ray picks the spot; the piece touching it there is the
+         partner.  Only a ray that hits no wood at all falls back to the
+         muzzle-proximity seam (#49), which still covers pointing in the
+         general direction of a lying-together pair. */
+      _m.identity().extractRotation(c.matrixWorld);
+      _rayD.set(0, 0, -1).applyMatrix4(_m).normalize();
+      const nr = (typeof nailRay === 'function') ? nailRay(_rayO, _rayD) : null;
+      if(nr && nr.b){
+        const n = addNail(nr.a, {body:nr.b}, nr.point, nr.axis);
+        if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+        if(typeof toast === 'function') toast(n ? 'nailed' : 'that will not take a nail');
+        return;
+      }
+      if(nr && nr.miss){
+        if(typeof toast === 'function') toast('nothing behind it to bite');
+        return;
+      }
       const sm = (typeof seamSeek === 'function') ? seamSeek(_rayO) : null;
       if(sm){
         const n = addNail(sm.a, {body:sm.b}, sm.point, sm.axis);
@@ -2337,7 +2354,18 @@ function vrGunLabel(dt){
     if(!c){ VR.seam = null; return; }
     c.updateMatrixWorld(true);
     _gunV.setFromMatrixPosition(c.matrixWorld);
-    VR.seam = (typeof seamSeek === 'function') ? seamSeek(_gunV) : null;
+    /* the SAME cast the trigger runs (RULING L), so the label can never
+       promise a nail the shot would put somewhere else */
+    let sm = null;
+    if(typeof nailRay === 'function'){
+      _m.identity().extractRotation(c.matrixWorld);
+      _rayD.set(0, 0, -1).applyMatrix4(_m).normalize();
+      const nr = nailRay(_gunV, _rayD);
+      if(nr && nr.b) sm = nr;
+      else if(nr && nr.miss){ VR.seam = null; return; }
+    }
+    if(!sm && typeof seamSeek === 'function') sm = seamSeek(_gunV);
+    VR.seam = sm;
   }
   if(VR.seam){
     const d = camera.getWorldPosition(_gunV).distanceTo(VR.seam.point);
