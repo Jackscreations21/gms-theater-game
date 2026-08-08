@@ -2467,6 +2467,85 @@ const probe = `
     return 'uv to pixel to a landed press';
   });
 
+  /* ---- the crayon: the build mark (carpenters spec RULING Z) ---------- */
+  P('the crayon draws from the back of the belt and stamps the deck', ()=>{
+    enterVR();
+    VR.rig.position.set(0,0,0); VR.rig.rotation.set(0,0,0);
+    const c0 = VR.controllers[0];
+    vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
+    if(!VR.holsters.crayon) throw new Error('no crayon on the belt');
+    c0.position.copy(VR.holsters.crayon.getWorldPosition(new THREE.Vector3()));
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(VR.tools[0] !== 'crayon') throw new Error('the crayon never drew');
+    /* down-forward at the palace deck: 60 degrees below level, facing -z.
+       An earlier test left a show loaded — its floor rides at y 0.3, and
+       the crayon wants the BARE deck: refuse first, strike, then stamp */
+    c0.position.set(-4, 1.6, -5);
+    c0.quaternion.setFromEuler(new THREE.Euler(-Math.PI/3, 0, 0));
+    c0.updateMatrixWorld(true);
+    scene.updateMatrixWorld(true);
+    if(SHOW && SHOW.key){
+      vrSelect(0, true);
+      if(CARP.mark) throw new Error('the show floor took the mark');
+      showStrike();
+      scene.updateMatrixWorld(true);
+    }
+    vrSelect(0, true);
+    if(!CARP.mark) throw new Error('no mark was stamped');
+    if(CARP.mark.venue !== 'palace' || CARP.mark.stage !== 'palace')
+      throw new Error('the mark thinks it is at '+CARP.mark.venue+'/'+CARP.mark.stage);
+    if(Math.abs(CARP.mark.x - -4) > 0.05 || Math.abs(CARP.mark.z - -5.924) > 0.05)
+      throw new Error('the mark landed at '+CARP.mark.x.toFixed(2)+','+CARP.mark.z.toFixed(2));
+    if(Math.abs(Math.abs(CARP.mark.yaw) - Math.PI) > 0.02)
+      throw new Error('the mark faces yaw '+CARP.mark.yaw);
+    if(!CARP.markMesh || CARP.markMesh.parent !== world)
+      throw new Error('the marker is not on the venue root');
+    if(Math.abs(CARP.markMesh.position.y - 0.02) > 0.001)
+      throw new Error('the marker floats at y '+CARP.markMesh.position.y);
+    /* paint on the floor, not a thing */
+    const rc = new THREE.Raycaster(new THREE.Vector3(CARP.mark.x, 1, CARP.mark.z),
+                                   new THREE.Vector3(0, -1, 0), 0, 5);
+    if(rc.intersectObject(CARP.markMesh, true).length)
+      throw new Error('the marker is raycastable');
+    return 'stamped at '+CARP.mark.x.toFixed(1)+','+CARP.mark.z.toFixed(1);
+  });
+  P('the crayon refuses the fly gallery and keeps the standing mark', ()=>{
+    const c0 = VR.controllers[0];
+    if(VR.tools[0] !== 'crayon') throw new Error('the crayon is not in hand');
+    const was = {x: CARP.mark.x, z: CARP.mark.z};
+    /* the operating gallery is WALKABLE at y ~8 — a floor, but not a deck */
+    c0.position.set(XR + 1.6, 9.5, -6);
+    c0.quaternion.setFromEuler(new THREE.Euler(-Math.PI/2, 0, 0));
+    c0.updateMatrixWorld(true);
+    vrSelect(0, true);
+    if(CARP.mark.x !== was.x || CARP.mark.z !== was.z)
+      throw new Error('the gallery took the mark');
+    return 'the gallery refused; the mark stood';
+  });
+  P('a second stamp moves the one mark — Arc deck, offset corrected', ()=>{
+    const c0 = VR.controllers[0];
+    if(VR.tools[0] !== 'crayon') throw new Error('the crayon is not in hand');
+    const mesh = CARP.markMesh;
+    const fr = STAGES.arcMain.crew;
+    const ax = (fr.xMin + fr.xMax)/2, az = (fr.zMin + fr.zMax)/2;
+    c0.position.set(ax, 1.6, az);
+    c0.quaternion.setFromEuler(new THREE.Euler(-Math.PI/2, 0, 0));
+    c0.updateMatrixWorld(true);
+    scene.updateMatrixWorld(true);
+    vrSelect(0, true);
+    if(CARP.mark.venue !== 'arc' || CARP.mark.stage !== 'arcMain')
+      throw new Error('the Arc mark thinks it is at '+CARP.mark.venue+'/'+CARP.mark.stage);
+    if(CARP.markMesh !== mesh) throw new Error('a second marker was minted');
+    if(CARP.markMesh.parent !== ARC.group) throw new Error('the Arc marker is not under ARC.group');
+    if(Math.abs((CARP.markMesh.position.x + ARC.X) - CARP.mark.x) > 0.05)
+      throw new Error('the Arc offset was not corrected: local x '+CARP.markMesh.position.x.toFixed(2));
+    vrSqueeze(0, false);
+    if(VR.tools[0]) throw new Error('the crayon did not holster');
+    exitVR();
+    return 'one mark, moved to the Arc, -ARC.X corrected';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

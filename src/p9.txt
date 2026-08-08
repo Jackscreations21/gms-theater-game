@@ -1022,14 +1022,15 @@ function vrOrderPress(sc){
 }
 
 /* ============================================================================
-   THE TOOLBELT (build spec §5).  Three tools ride the hips: nail gun on
-   the right, hammer on the left, tape at the buckle.  A hand that closes
-   at a holster DRAWS the tool; opening that hand anywhere returns it —
-   a tool can never be dropped, lost or left on a stage.  Tools live in
-   VR.tools[hand], a slot of their own: VR.held stays the single WORLD
-   hold it always was (rope / cart / body), so one hand can carry the
-   plank while the other works the gun.  The trigger of a tool hand fires
-   the tool (vrSelect head) instead of the world ray.
+   THE TOOLBELT (build spec §5; the crayon: carpenters spec RULING Z).
+   Four tools ride the belt: nail gun on the right hip, hammer on the
+   left, tape at the buckle, crayon at the small of the back.  A hand
+   that closes at a holster DRAWS the tool; opening that hand anywhere
+   returns it — a tool can never be dropped, lost or left on a stage.
+   Tools live in VR.tools[hand], a slot of their own: VR.held stays the
+   single WORLD hold it always was (rope / cart / body), so one hand can
+   carry the plank while the other works the gun.  The trigger of a tool
+   hand fires the tool (vrSelect head) instead of the world ray.
    ========================================================================== */
 const TOOLG = {};
 function toolG(key, mk){ return TOOLG[key] || (TOOLG[key] = mk()); }
@@ -1060,6 +1061,15 @@ function vrToolTape(){
   tab.position.set(0, -0.03, -0.035); g.add(tab);
   return g;
 }
+const M_CRAYON = new T.MeshStandardMaterial({color:0x2f6fd6, roughness:.7});
+function vrToolCrayon(){
+  const g = new T.Group();
+  const stick = new T.Mesh(toolG('cs', ()=>new T.CylinderGeometry(0.012, 0.008, 0.14, 8)), M_CRAYON);
+  stick.rotation.x = Math.PI/2; stick.position.z = -0.02; g.add(stick);
+  const band = new T.Mesh(toolG('cband', ()=>new T.CylinderGeometry(0.013, 0.013, 0.02, 8)), M.steel);
+  band.rotation.x = Math.PI/2; band.position.z = 0.045; g.add(band);
+  return g;
+}
 function vrBuildBelt(){
   if(!VR.tools) VR.tools = {0:null, 1:null};
   if(VR.belt) return;
@@ -1075,6 +1085,9 @@ function vrBuildBelt(){
   mk('nailgun', vrToolGun,  0.24, 0.06);
   mk('hammer',  vrToolHammer, -0.24, 0.06);
   mk('tape',    vrToolTape,  0.0, 0.17);
+  mk('crayon',  vrToolCrayon, 0.0, -0.17);  // the small of the back — every
+                                            // holster pair stays > 0.22 apart,
+                                            // the draw radius (first hit wins)
 }
 /* the belt rides the hips: headset x/z in rig space, a fixed drop, head yaw */
 const _beltE = new T.Euler();
@@ -1097,7 +1110,8 @@ function vrDraw(hand, key){
   if(typeof toast === 'function') toast(
     key === 'nailgun' ? 'nail gun — trigger fires into a lined-up joint' :
     key === 'hammer'  ? 'hammer — trigger pulls the nail under its head' :
-    'tape — the other hand takes the tab; trigger marks the wood');
+    key === 'tape'    ? 'tape — the other hand takes the tab; trigger marks the wood' :
+    'crayon — trigger stamps the build mark on a deck');
 }
 function vrReRack(rack){
   const ro = rack.roller;
@@ -1132,6 +1146,33 @@ function vrTapeLine(a, b){
   _tapeDir.copy(b).sub(a).normalize();
   VR.tapeLn.quaternion.setFromUnitVectors(_tapeUp, _tapeDir);
   VR.tapeLn.scale.set(1, Math.max(0.02, L), 1);
+}
+/* ---- the build mark (carpenters spec RULING Z) --------------------------
+   One mark stands at a time; the crayon moves it.  World coords in the
+   record, the -ARC.X correction on the mesh (the marker parents to the
+   venue root, and ARC.group sits at x = ARC.X).  The plane is paint on
+   the floor, never a thing: raycast is a no-op, palletSlot's rule. */
+var CARP = { mark:null, markMesh:null };
+const M_MARK = new T.MeshBasicMaterial({color:0x4db2ff, transparent:true, opacity:0.4});
+const _crayRay = new T.Raycaster(); _crayRay.far = 12;
+function carpSetMark(v, st, x, z, yaw){
+  CARP.mark = {venue:v, stage:st, x, z, yaw};
+  if(!CARP.markMesh){
+    const g = new T.Group(); g.name = 'carp:mark';
+    const base = new T.Mesh(new T.PlaneGeometry(1.2, 1.2), M_MARK);
+    base.rotation.x = -Math.PI/2; base.raycast = ()=>{};
+    g.add(base);
+    const nose = new T.Mesh(new T.PlaneGeometry(0.28, 0.22), M_MARK);
+    nose.rotation.x = -Math.PI/2; nose.position.set(0, 0, -0.72);
+    nose.raycast = ()=>{};
+    g.add(nose);
+    CARP.markMesh = g;
+  }
+  const root = venueRoot(v);
+  if(CARP.markMesh.parent !== root) root.add(CARP.markMesh);
+  const ox = (v === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
+  CARP.markMesh.position.set(x - ox, 0.02, z);
+  CARP.markMesh.rotation.set(0, yaw, 0);
 }
 /* the trigger of a tool hand: fire the tool */
 function vrToolFire(hand, key){
@@ -1258,6 +1299,32 @@ function vrToolFire(hand, key){
       if(typeof toast === 'function')
         toast('marked at ' + ftIn(VR.held.len || 0));
     }
+  } else if(key === 'crayon'){
+    /* the build mark goes where the crayon points (RULING Z): a forward
+       ray at the WALKABLE floors, ankle height only — the deck is y = 0
+       everywhere, and the gallery at y ~8 is a floor but not a deck. */
+    _m.identity().extractRotation(c.matrixWorld);
+    _rayD.set(0, 0, -1).applyMatrix4(_m).normalize();
+    _crayRay.set(_rayO, _rayD);
+    const hits = _crayRay.intersectObjects(WALKABLE, false);
+    const h = hits.length ? hits[0] : null;
+    if(!h){
+      if(typeof toast === 'function') toast('point the crayon at a floor');
+      return;
+    }
+    if(h.point.y >= 0.3){
+      if(typeof toast === 'function') toast('not up there — mark a deck');
+      return;
+    }
+    const st = (typeof stageAt === 'function') ? stageAt(h.point.x, h.point.z) : 'palace';
+    if(!st){
+      if(typeof toast === 'function') toast('that floor belongs to no stage');
+      return;
+    }
+    const v = (typeof venueAt === 'function') ? venueAt(h.point.x) : 'palace';
+    carpSetMark(v, st, h.point.x, h.point.z, Math.atan2(_rayD.x, _rayD.z));
+    if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+    if(typeof toast === 'function') toast('marked — the carpenters build here');
   }
 }
 
