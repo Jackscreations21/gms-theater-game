@@ -602,10 +602,38 @@ a dependency chain on p9/p4c/p2m — do not parallelize them).
   only — venue root when down (they LEAVE the shed now; the old
   shed-group cull note is dead), fork group when riding.
 
-**NEXT: PR 3 (toolbelt + nails + assemblies) through PR 7 (save), in
-plan order.** Step zero: confirm the previous PR merged, `npm test`
-15/15 on `main`, then branch the next off `main` (or build on the
-unmerged branch and open after it merges — the #38 pattern).
+- **PR 3 (branch `build-tools`, on PR 2's branch) — the toolbelt and
+  the joints, the CORE.** New in p9: `VR.tools[hand]` — tools are a
+  slot of their own so `VR.held` stays the single world hold it always
+  was; one hand carries the plank, the other works the gun. Belt rides
+  the hips (`vrUpdateBelt`, camera x/z − 0.72, head yaw); squeeze at a
+  holster draws, open hand ANYWHERE holsters (tools cannot be lost);
+  the trigger of a tool hand IS the tool (vrSelect head). p4c:
+  `ASSEMBLIES` (root Group at venue root, pieces, nails as DATA);
+  RULING G is `asmJoints` — one nail → a pivot group at the nail
+  (grab = kind `'swing'`, hand drives the angle), two+ → rigid; the
+  hammer (`removeNail`) is the only way apart; a piece at zero nails
+  demotes to loose. Anchors ride their nails: 'deck' pins the root
+  (grab refuses), 'pipe' hangs the root off `ls.group` so it FLIES —
+  `ls.asmH` (asmHangDepth) extends p3 `minTrimOf`, so a flown flat
+  floors at the deck (#15's rule; the negative check here caught a
+  WEAK TEST first — on a dressed pipe the goods clamp masks the built
+  clamp; the test now uses the barest pipe and pins the movement).
+  The ghost snap (`snapWood`): held wood turns with the wrist
+  (`relQ`), then squares to offered wood (yaw 45s, pitch/roll 90s,
+  faces flush via |R|·h), the deck, or a live pipe; `VR.snap` is the
+  standing offer and the gun confirms it. `snapAsm` makes the same
+  offer for a carried assembly (no re-orientation). Tape: other hand
+  takes the tab, ft-in on the label (`ftIn`), trigger marks
+  `body.tick` for the saw fences (PR 4). Wood settles FLAT now —
+  `b.restH` (woodRestH) replaces the lantern 0.25 in updateBodies.
+  Watch for: `vrTapeLine` had to grow its OWN temps — callers pass
+  the shared `_vecA` in as an argument (aliasing bit once already).
+
+**NEXT: PR 4 (saws) through PR 7 (save), in plan order.** Step zero:
+confirm the previous PR merged, `npm test` 15/15 on `main`, then
+branch the next off `main` (or build on the unmerged branch and open
+after it merges — the #38 pattern).
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
@@ -675,6 +703,13 @@ and do the stacked wood pallets read as lumber stock on the apron.
 dragging furniture; is the right-stick fork control discoverable and
 comfortable (push away = up); is steering a loaded pallet through the
 roller door claustro; do the painted floor slots read as parking.
+(PR 3): does the belt sit where hands expect it (drop 0.72, holster
+reach 0.22); does drawing/holstering feel right or fumbly; does wood
+turning with the wrist feel natural after the lanterns' fixed carry;
+does the ghost snap GRAB the piece too eagerly (0.14 gap) or not
+eagerly enough; is one squeeze + other-hand trigger workable for
+gun-work at arm's length; does the swing of a one-nail piece read as
+hinged; tape legibility and the tab grab at 0.2.
 Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).
