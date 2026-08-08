@@ -4,7 +4,10 @@
 const {JSDOM} = require('jsdom');
 const fs = require('fs');
 const html = fs.readFileSync(require('path').join(__dirname,'..','the-house.html'),'utf8');
-const dom = new JSDOM(html.replace(/<script src=.*?<\/script>/,''), {runScripts:'outside-only', pretendToBeVisual:true});
+/* a real URL: an opaque about:blank origin has no localStorage, and the
+   save system (PR 7) needs one in both boots */
+const dom = new JSDOM(html.replace(/<script src=.*?<\/script>/,''),
+  {runScripts:'outside-only', pretendToBeVisual:true, url:'https://the.house/'});
 const w = dom.window;
 w.HTMLCanvasElement.prototype.getContext = function(){
   const noop=()=>{};
@@ -490,6 +493,115 @@ const probe = `
     return 'three sections, one run, slid and stopped at 8ft';
   });
 
+  console.log('--- the save ---');
+  P('a built world serializes, and the slate wipes clean', ()=>{
+    /* the scene the second boot must give back */
+    const s1 = regWood('s2x4'), s2 = regWood('s2x4');
+    s1.mesh.position.set(60, 1.22, 60); s2.mesh.position.set(60.1, 1.22, 60);
+    scene.updateMatrixWorld(true);
+    addNail(s1, {body:s2}, new THREE.Vector3(60.05, 1.22, 60), new THREE.Vector3(0,0,1));
+    s2.pivot.quaternion.setFromAxisAngle(s2.pivot.userData.axis, 0.4);   // left swung
+    const painted = regWood('sheet');
+    painted.mesh.position.set(61, 1.0, 61);
+    painted.mesh.material = painted.mesh.material.slice();
+    painted.mesh.material[2] = woodMat(PAINT_COLORS[4].c);
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const t1 = regBody('track', makeBodyMesh('track'), null); t1.state = 'loose';
+    const t2 = regBody('track', makeBodyMesh('track'), null); t2.state = 'loose';
+    const car = regBody('carriage', makeBodyMesh('carriage'), null); car.state = 'loose';
+    BUILD_VENUE = keep;
+    t1.mesh.position.set(63, 0.05, 63); t1.mesh.updateMatrixWorld(true);
+    const run = layTrack(t1, null); layTrack(t2, run);
+    car.mesh.position.copy(run.root.localToWorld(new THREE.Vector3(0.6, 0.1, 0)));
+    car.mesh.updateMatrixWorld(true);
+    rideTrack(car, run);
+    const panel = regWood('sheet');
+    panel.mesh.position.copy(car.mesh.getWorldPosition(new THREE.Vector3()));
+    scene.updateMatrixWorld(true);
+    nailToCarriage(panel, car);
+    if(orderPlace('palace', ['par']) !== 'OK') throw new Error('the slip refused');
+    rackAddColor(RACKS.palace, PAINT_COLORS[5].c);   // blue on the rack
+    LIFTS.palace.forkY = 0.5;
+    buildSave();
+    const raw = localStorage.getItem('house.build');
+    if(!raw) throw new Error('nothing landed in storage');
+    const j = JSON.parse(raw);
+    if(j.v !== 1) throw new Error('version '+j.v);
+    if(!j.asms.length || !j.bodies.length || !j.pending.length) throw new Error('a hollow save');
+    window.__saveJson = raw;
+    /* the escape hatch wipes storage, not the room */
+    const nWood = BODIES.filter(b=>b.kind==='wood').length;
+    buildClearSave();
+    if(localStorage.getItem('house.build')) throw new Error('CLEAR SAVE left the key');
+    if(BODIES.filter(b=>b.kind==='wood').length !== nWood) throw new Error('CLEAR SAVE touched the room');
+    return j.bodies.length+' bodies, '+j.asms.length+' assemblies to storage';
+  });
+
+  console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
+                                   : '--- failures: 0 ---');
+  window.__errs.forEach(e=>console.log('  '+e));
+})();
+`;
+
+/* ---- the second boot: the saved world must come back (spec §8) ---------- */
+const probe2 = `
+;(function(){
+  for(let i=0;i<90;i++){ const cb=window.__raf; window.__raf=null; if(cb){ cb(Date.now()+i*16); } }
+  window.__errs = [];
+  const P = (name, fn)=>{ try{ const v=fn(); console.log('  ok  '+name+(v!==undefined?'  -> '+JSON.stringify(v).slice(0,210):'')); }
+    catch(e){ console.log('  ERR '+name+': '+e.message); if(e.stack) console.log('      '+e.stack.split('\\n').slice(1,4).join(' | ')); window.__errs.push(name+': '+e.message); } };
+
+  console.log('--- the save, second boot ---');
+  P('the built world came back through the reload', ()=>{
+    const j = JSON.parse(localStorage.getItem('house.build'));
+    const woodSaved = j.bodies.filter(d=>d.k==='wood').length
+      + j.asms.reduce((s,a)=>s + a.pieces.filter(p=>p.k==='wood').length, 0);
+    const woodHere = BODIES.filter(b=>b.kind==='wood').length;
+    if(woodHere < woodSaved) throw new Error(woodHere+' wood bodies of '+woodSaved+' saved');
+    /* the one-nail pair: an assembly of two with both pieces on pivots,
+       and the swung stud still where the swing left it */
+    const pair = ASSEMBLIES.find(a=>!a.track && a.pieces.length===2 && a.nails.length===1 && !a.nails[0].hinge);
+    if(!pair) throw new Error('the nailed pair never returned');
+    if(!pair.pieces[0].pivot || !pair.pieces[1].pivot) throw new Error('the pivots never rebuilt');
+    scene.updateMatrixWorld(true);
+    const near60 = pair.pieces.some(p=>{
+      const w2 = p.mesh.getWorldPosition(new THREE.Vector3());
+      return Math.abs(w2.x - 60) < 1 && Math.abs(w2.z - 60) < 1;
+    });
+    if(!near60) throw new Error('the pair reloaded somewhere else');
+    /* the track run, its rider, and the panel that slides */
+    const run = ASSEMBLIES.find(a=>a.track && a.track.n===2);
+    if(!run) throw new Error('the run never returned');
+    const car = BODIES.find(b=>b.kind==='carriage' && b.tAsm===run);
+    if(!car || car.state !== 'riding') throw new Error('the carriage is not riding');
+    const panel = run.pieces.find(p=>p.slider);
+    if(!panel) throw new Error('the panel lost its carriage');
+    const p0 = panel.mesh.getWorldPosition(new THREE.Vector3());
+    slideTo(run, car.slider, 99);
+    scene.updateMatrixWorld(true);
+    if(p0.distanceTo(panel.mesh.getWorldPosition(new THREE.Vector3())) < 0.3)
+      throw new Error('the reloaded panel will not slide');
+    /* the slip, the color, the forks */
+    if(!ORDERS.palace.pending.length) throw new Error('the pending order was lost');
+    if(ORDERS.palace.pending[0].t > 30.01) throw new Error('the countdown reset');
+    if(RACKS.palace.colors.indexOf(${'0x1f3f7a'}) < 0) throw new Error('the blue washed off the rack');
+    if(Math.abs(LIFTS.palace.forkY - 0.5) > 0.01) throw new Error('the forks dropped: '+LIFTS.palace.forkY);
+    /* the paint: a sheet with one red face, from the one red in the till */
+    const red = BODIES.find(b=>b.kind==='wood' && b.prof==='sheet' && !b.asm &&
+      Array.isArray(b.mesh.material) && b.mesh.material[2] === woodMat(0xa8231d));
+    if(!red) throw new Error('the painted face came back bare');
+    return 'wood, joints, run, slip, color, forks — all back';
+  });
+  P('a corrupt save clears itself and the boot stands', ()=>{
+    localStorage.setItem('house.build', '{"v":1, busted');
+    buildLoad();
+    if(localStorage.getItem('house.build')) throw new Error('the bad save survived');
+    localStorage.setItem('house.build', JSON.stringify({v:99, bodies:[]}));
+    buildLoad();
+    if(localStorage.getItem('house.build')) throw new Error('the alien version survived');
+    return 'bad JSON gone, wrong version gone, no throw';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
@@ -499,4 +611,19 @@ const probe = `
 const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?script>/g,'');
 try{ w.eval(script + probe); }
 catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
-process.exit((w.__errs||[]).length ? 1 : 0);
+let errs = (w.__errs||[]).length;
+
+if(!errs && w.__saveJson){
+  const dom2 = new JSDOM(html.replace(/<script src=.*?<\/script>/,''),
+    {runScripts:'outside-only', pretendToBeVisual:true, url:'https://the.house/'});
+  const w2 = dom2.window;
+  w2.HTMLCanvasElement.prototype.getContext = w.HTMLCanvasElement.prototype.getContext;
+  w2.THREE = THREE;
+  w2.AudioContext = undefined;
+  w2.requestAnimationFrame = cb => { w2.__raf = cb; return 1; };
+  w2.localStorage.setItem('house.build', w.__saveJson);   // BEFORE the boot
+  try{ w2.eval(script + probe2); }
+  catch(e){ console.log('SECOND BOOT THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
+  errs += (w2.__errs||[]).length;
+}
+process.exit(errs ? 1 : 0);

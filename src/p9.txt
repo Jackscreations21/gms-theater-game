@@ -849,6 +849,13 @@ function vrDrawOrder(sc){
   g.fillStyle = '#08130a'; g.font = 'bold 30px monospace';
   g.fillText('ORDER', 118, oy + 39);
   sc.hits.push({x:24, y:oy, w:300, h:56, fn:()=>{ vrOrderPress(sc); }});
+  /* the save's escape hatch (spec §8): wipes STORAGE only, never the room */
+  g.fillStyle = '#3a2020'; g.fillRect(340, oy + 8, 196, 40);
+  g.fillStyle = '#e08a8a'; g.font = 'bold 16px monospace';
+  g.fillText('CLEAR SAVE', 388, oy + 33);
+  sc.hits.push({x:340, y:oy + 8, w:196, h:40, fn:()=>{
+    if(typeof buildClearSave === 'function') buildClearSave();
+  }});
   g.fillStyle = '#ffd08a'; g.font = '20px monospace';
   let line = sc.status;
   if(!line && o && o.pending.length){
