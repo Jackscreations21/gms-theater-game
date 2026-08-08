@@ -17188,11 +17188,15 @@ function vrSqueeze(hand, down){
     bod.mesh.getWorldPosition(_vecA);
     VR.held = {hand, kind:'body', body:bod,
                offX:_vecA.x - _rayO.x, offY:_vecA.y - _rayO.y, offZ:_vecA.z - _rayO.z};
-    /* wood turns with the wrist (lanterns keep their old fixed carry) */
+    /* wood turns with the wrist (lanterns keep their old fixed carry) — and
+       it rides IN the hand: the pose is kept relative to the CONTROLLER, so
+       the grabbed point stays in the palm and the wrist pivots about it,
+       not about a centre that may be four feet up the stick (RULING R) */
     if(bod.kind === 'wood'){
       c.getWorldQuaternion(_tq1);
       bod.mesh.getWorldQuaternion(_tq2);
       VR.held.relQ = _tq1.invert().multiply(_tq2).clone();
+      VR.held.relP = c.worldToLocal(_vecA.clone()).clone();
     }
     if(typeof toast === 'function') toast(BODY_LABEL[bod.kind] + ' — in hand');
     return;
@@ -17373,7 +17377,10 @@ function vrUpdateHold(dt){
      loose and settles it to the floor */
   if(VR.held.kind === 'body'){
     const b = VR.held.body;
-    _vecA.set(_rayO.x + VR.held.offX, _rayO.y + VR.held.offY, _rayO.z + VR.held.offZ);
+    /* a grip-relative hold (wood): the grabbed point stays in the palm.
+       Everything else keeps the world-offset carry it always had. */
+    if(VR.held.relP) _vecA.copy(VR.held.relP).applyMatrix4(c.matrixWorld);
+    else _vecA.set(_rayO.x + VR.held.offX, _rayO.y + VR.held.offY, _rayO.z + VR.held.offZ);
     if(b.mesh.parent) b.mesh.parent.worldToLocal(_vecA);
     b.mesh.position.copy(_vecA);
     /* wood turns with the wrist, then squares itself up to whatever it is
