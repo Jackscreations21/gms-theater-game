@@ -411,6 +411,85 @@ const probe = `
     return 'face for sheets, whole for sticks, one red';
   });
 
+  console.log('--- hinges and track ---');
+  P('a hinge joins a loose door to a frame, swings with stops, and comes off whole', ()=>{
+    /* the frame: two studs nailed rigid; the door: a loose sheet leaning at it */
+    const f1 = regWood('s2x4'), f2 = regWood('s2x4');
+    f1.mesh.position.set(50, 1.22, 50); f2.mesh.position.set(50.1, 1.22, 50);
+    scene.updateMatrixWorld(true);
+    addNail(f1, {body:f2}, new THREE.Vector3(50.05, 1.0, 50), new THREE.Vector3(0,0,1));
+    addNail(f1, {body:f2}, new THREE.Vector3(50.05, 1.5, 50), new THREE.Vector3(0,0,1));
+    const door = regWood('sheet');
+    door.mesh.position.set(50.8, 1.22, 50); door.mesh.rotation.set(Math.PI/2, 0, 0);
+    door.mesh.updateMatrixWorld(true);
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const hb = regBody('hinge', makeBodyMesh('hinge'), null);
+    BUILD_VENUE = keep;
+    hb.state = 'loose';
+    hb.mesh.position.set(50.2, 1.22, 50);
+    hb.mesh.updateMatrixWorld(true);
+    const before = BODIES.length;
+    const n = addHinge(hb, new THREE.Vector3(50.2, 1.22, 50), new THREE.Vector3(0,1,0));
+    if(!n || !n.hinge) throw new Error('the hinge never installed');
+    if(BODIES.length !== before - 1) throw new Error('the hinge body survived installation');
+    if(door.asm !== f1.asm) throw new Error('the door joined nothing');
+    if(!door.pivot) throw new Error('a hinged door with no pivot');
+    if(n.range !== Math.PI/2) throw new Error('no stops on the swing');
+    /* swing it, then pull the hinge: the body comes back, the door drops loose */
+    door.pivot.quaternion.setFromAxisAngle(door.pivot.userData.axis, 0.8);
+    scene.updateMatrixWorld(true);
+    const after = BODIES.length;
+    removeNail(n);
+    if(BODIES.length !== after + 1) throw new Error('the pulled hinge never respawned');
+    if(BODIES[BODIES.length-1].kind !== 'hinge') throw new Error('something else respawned');
+    if(door.state !== 'loose') throw new Error('the door is still: '+door.state);
+    window.__frame = f1;
+    return 'hinged, swung, pulled — hardware again';
+  });
+  P('track chains into one run, a carriage rides it, wood slides with the carriage', ()=>{
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const t1 = regBody('track', makeBodyMesh('track'), null); t1.state = 'loose';
+    const t2 = regBody('track', makeBodyMesh('track'), null); t2.state = 'loose';
+    const t3 = regBody('track', makeBodyMesh('track'), null); t3.state = 'loose';
+    const car = regBody('carriage', makeBodyMesh('carriage'), null); car.state = 'loose';
+    BUILD_VENUE = keep;
+    t1.mesh.position.set(55, 0.05, 55);
+    t1.mesh.updateMatrixWorld(true);
+    const a = layTrack(t1, null);
+    if(!a || !a.track || a.track.n !== 1) throw new Error('the first section never laid');
+    if(!a.anchor || a.anchor.type !== 'deck') throw new Error('a run that is not nailed down');
+    layTrack(t2, a); layTrack(t3, a);
+    if(a.track.n !== 3 || a.pieces.length !== 3) throw new Error('the run is '+a.track.n+' long');
+    if(a.pieces.some(p=>p.pivot)) throw new Error('a deck-nailed section is swinging');
+    /* the carriage, dropped at the middle of the run */
+    scene.updateMatrixWorld(true);
+    car.mesh.position.copy(a.root.localToWorld(new THREE.Vector3(1.2, 0.1, 0)));
+    car.mesh.updateMatrixWorld(true);
+    if(!rideTrack(car, a)) throw new Error('the run refused the carriage');
+    if(car.state !== 'riding' || !car.slider) throw new Error('not riding');
+    /* a panel nailed to the carriage slides with it, and stops at the ends */
+    const panel = regWood('sheet');
+    panel.mesh.position.copy(car.mesh.getWorldPosition(new THREE.Vector3()));
+    scene.updateMatrixWorld(true);
+    if(!nailToCarriage(panel, car)) throw new Error('the carriage refused the panel');
+    if(panel.pivot) throw new Error('a carriage nail must not swing');
+    const p0 = panel.mesh.getWorldPosition(new THREE.Vector3());
+    slideTo(a, car.slider, 99);
+    scene.updateMatrixWorld(true);
+    const p1 = panel.mesh.getWorldPosition(new THREE.Vector3());
+    if(p0.distanceTo(p1) < 0.5) throw new Error('the panel never slid');
+    if(Math.abs(car.slider.position.x - 2*1.2192) > 1e-6)
+      throw new Error('no hard stop: x='+car.slider.position.x.toFixed(3));
+    /* loaded carriage refuses to pop; unloaded pops clean */
+    if(unrideTrack(car)) throw new Error('popped off under load');
+    const pn = a.nails.find(x=>x.carriage);
+    removeNail(pn);
+    if(panel.state !== 'loose') throw new Error('the panel never came off');
+    if(!unrideTrack(car)) throw new Error('the empty carriage stuck');
+    if(car.state !== 'loose') throw new Error('carriage state: '+car.state);
+    return 'three sections, one run, slid and stopped at 8ft';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

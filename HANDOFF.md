@@ -660,10 +660,27 @@ a dependency chain on p9/p4c/p2m — do not parallelize them).
   whole-piece; every entry from the WOODM cache, repaint is a pointer
   swap. Cans never run out (RULING C's spirit).
 
-**NEXT: PR 6 (hinges & track) and PR 7 (save), in plan order.** Step
-zero: confirm the previous PR merged, `npm test` 15/15 on `main`,
-then branch the next off `main` (or build on the unmerged branch and
-open after it merges — the #38 pattern).
+- **PR 6 (branch `build-hinges`, on PR 5's branch) — hinges & track.**
+  A HINGE is a NAIL THAT SWINGS: hold the hinge body at the seam
+  between a LOOSE piece and its neighbour, fire the gun — `addHinge`
+  consumes the body into a range-limited (±90°) pivot whose axis is
+  the hinge's OWN PIN (you place it the way it should swing); nail
+  the door shut later and it goes rigid, hammer that nail and it
+  swings again, hammer the HINGE and the body respawns loose. TRACK:
+  held sections snap to a run's end (or the deck) and the gun lays
+  them (`layTrack`) — one deck-anchored assembly per run, `a.track.n`
+  sections along root-local X; a carriage released onto the run RIDES
+  it (`rideTrack` — a slider Group: the pivot pattern with
+  translation); wood gun-nailed to the carriage mounts UNDER the
+  slider; grabbing any of it is a `'slide'` hold, hard stops at the
+  ends (`slideTo`); the hammer pops an EMPTY carriage. `asmJoints`
+  learned the difference: world nails (deck/pipe) and carriage nails
+  never pivot — only piece-to-piece singles and hinges swing.
+
+**NEXT: PR 7 (save), last of the plan.** Step zero: confirm the
+previous PR merged, `npm test` 15/15 on `main`, then branch off
+`main` (or build on the unmerged branch and open after it merges —
+the #38 pattern).
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
@@ -747,6 +764,10 @@ stickiness; two stations 6.5m apart — is the shed getting crowded.
 (PR 5): does the dip read (head tint + toast) without looking down;
 is per-face painting discoverable or does everyone expect strokes;
 can you find the roller on the rack at 0.22.
+(PR 6): does placing the hinge BY ITS PIN read as choosing the swing
+axis, or does it need a ghost arc; ±90° stops — enough for a door;
+does the track chain-snap at 0.45 feel magnetic; sliding a panel by
+grabbing the panel (not a handle) — natural or weird.
 Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).

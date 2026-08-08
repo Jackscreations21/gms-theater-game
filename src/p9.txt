@@ -995,13 +995,36 @@ function vrToolFire(hand, key){
   c.updateMatrixWorld(true);
   _rayO.setFromMatrixPosition(c.matrixWorld);
   if(key === 'nailgun'){
+    /* a HINGE in the other hand: the shot installs it at the seam, its
+       own pin axis the swing axis (p4c addHinge) */
+    if(VR.held && VR.held.kind === 'body' && VR.held.body.kind === 'hinge'){
+      const hb = VR.held.body;
+      hb.mesh.getWorldPosition(_vecA);
+      if(_rayO.distanceTo(_vecA) > 1.0){
+        if(typeof toast === 'function') toast('closer to the hinge'); return;
+      }
+      _run.set(0, 1, 0).applyQuaternion(hb.mesh.getWorldQuaternion(_tq1));
+      const hn = addHinge(hb, _vecA.clone(), _run.clone());
+      if(hn) VR.held = null;
+      if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+      if(typeof toast === 'function')
+        toast(hn ? 'hinged — it swings now' : 'a hinge wants a loose piece against another');
+      return;
+    }
     const s = VR.snap;
     if(!s){ if(typeof toast === 'function') toast('nothing lined up to nail'); return; }
     if(s.point && _rayO.distanceTo(s.point) > 1.0){
       if(typeof toast === 'function') toast('closer to the joint'); return;
     }
     let n = null;
-    if(s.body){
+    if(s.lay !== undefined){
+      /* a snapped track section: lay it into the run (or start one) */
+      n = (typeof layTrack === 'function') ? layTrack(s.body, s.lay.asm) : null;
+      if(n && VR.held && VR.held.kind === 'body' && VR.held.body === s.body) VR.held = null;
+    } else if(s.target && s.target.carriage){
+      n = (typeof nailToCarriage === 'function') ? nailToCarriage(s.body, s.target.carriage) : null;
+      if(n && VR.held && VR.held.kind === 'body' && VR.held.body === s.body) VR.held = null;
+    } else if(s.body){
       n = addNail(s.body, s.target, s.point, s.axis);
       if(n && VR.held && VR.held.kind === 'body' && VR.held.body === s.body) VR.held = null;
     } else if(s.asm){
@@ -1024,7 +1047,21 @@ function vrToolFire(hand, key){
     if(best){
       removeNail(best);
       if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
-      if(typeof toast === 'function') toast('nail out');
+      if(typeof toast === 'function') toast(best.hinge ? 'hinge off' : 'nail out');
+      return;
+    }
+    /* no nail: an empty carriage under the hammer pops off its run */
+    let car = null, crd = 0.25;
+    for(const b of BODIES){
+      if(b.kind !== 'carriage' || !b.slider) continue;
+      b.mesh.getWorldPosition(_vecA);
+      const d = _vecA.distanceTo(_rayO);
+      if(d < crd){ crd = d; car = b; }
+    }
+    if(car){
+      if(unrideTrack(car)){
+        if(typeof toast === 'function') toast('carriage off the run');
+      } else if(typeof toast === 'function') toast('take its load off first');
     } else if(typeof toast === 'function') toast('no nail under the hammer');
   } else if(key === 'tape'){
     if(!(VR.held && VR.held.kind === 'tapetab')) return;
@@ -1607,8 +1644,8 @@ function vrSqueeze(hand, down){
       }
       /* an open hand re-racks the roller, wherever it is */
       if(h.kind === 'roller'){ vrReRack(h.rack); return; }
-      /* a let-go assembly (or swinging piece) simply stays as it lies */
-      if(h.kind === 'asm' || h.kind === 'swing'){
+      /* a let-go assembly (or swinging, or sliding piece) stays as it lies */
+      if(h.kind === 'asm' || h.kind === 'swing' || h.kind === 'slide'){
         VR.snap = null;
         vrLabel(null);
         return;
@@ -1618,6 +1655,22 @@ function vrSqueeze(hand, down){
       if(h.kind === 'body'){
         const b = h.body;
         VR.snap = null;
+        /* a carriage let go over a track run RIDES it (p4c rideTrack) */
+        if(b.kind === 'carriage' && typeof ASSEMBLIES !== 'undefined'){
+          b.mesh.getWorldPosition(_vecA);
+          for(const a2 of ASSEMBLIES){
+            if(!a2.track || a2.venue !== b.venue) continue;
+            a2.root.updateMatrixWorld(true);
+            const lp = a2.root.worldToLocal(_vecA.clone());
+            if(lp.x > -0.4 && lp.x < (a2.track.n - 1)*1.2192 + 0.4 &&
+               Math.abs(lp.z) < 0.35 && lp.y > -0.3 && lp.y < 0.7 &&
+               rideTrack(b, a2)){
+              if(typeof toast === 'function') toast('carriage on the run');
+              vrLabel(null);
+              return;
+            }
+          }
+        }
         /* a paint can let go over its shed's rack: color in, can gone */
         if(b.kind === 'paint' && typeof RACKS !== 'undefined' && RACKS[b.venue]){
           const rack = RACKS[b.venue];
@@ -1803,6 +1856,17 @@ function vrSqueeze(hand, down){
   if(bod && (!rol || bdd < rd) && (!saw || bdd < sd) && (!cart || bdd < cd) && (!lv || bdd < lvd) && (!best || bdd < bd)){
     /* a piece already NAILED (p4c): swing it on its one nail, carry the
        whole assembly by any rigid piece, or bounce off anchored work */
+    /* anything riding a slider — the carriage, or wood nailed to it —
+       slides the run under the hand (p4c, PR 6) */
+    if(bod.slider){
+      const a2 = bod.tAsm || bod.asm;
+      a2.root.updateMatrixWorld(true);
+      const lx2 = a2.root.worldToLocal(_rayO.clone()).x;
+      VR.held = {hand, kind:'slide', asm:a2, slider:bod.slider,
+                 off:bod.slider.position.x - lx2};
+      if(typeof toast === 'function') toast('it runs on the track');
+      return;
+    }
     if(bod.asm){
       if(bod.pivot){
         const piv = bod.pivot;
@@ -1816,8 +1880,11 @@ function vrSqueeze(hand, down){
         if(ref.lengthSq() < 1e-6) return;
         ref.normalize();
         VR.held = {hand, kind:'swing', body:bod, P, ax, ref0:ref,
-                   q0:piv.quaternion.clone()};
-        if(typeof toast === 'function') toast('it swings on its nail');
+                   q0:piv.quaternion.clone(),
+                   range:bod.pivotN && bod.pivotN.range};
+        if(typeof toast === 'function')
+          toast(bod.pivotN && bod.pivotN.hinge ? 'it swings on its hinge'
+                                               : 'it swings on its nail');
       } else if(!bod.asm.anchor){
         const a = bod.asm;
         a.root.updateMatrixWorld(true);
@@ -1999,8 +2066,17 @@ function vrUpdateHold(dt){
       let th = Math.acos(clamp(H.ref0.dot(ref), -1, 1));
       _vecA.crossVectors(H.ref0, ref);
       if(_vecA.dot(H.ax) < 0) th = -th;
+      if(H.range) th = clamp(th, -H.range, H.range);   // a hinge has stops
       piv.quaternion.setFromAxisAngle(piv.userData.axis, th).multiply(H.q0);
     }
+    return;
+  }
+  /* a slide hold: the hand drives the slider along the run, hard stops */
+  if(VR.held.kind === 'slide'){
+    const H = VR.held;
+    H.asm.root.updateMatrixWorld(true);
+    const lx = H.asm.root.worldToLocal(_rayO.clone()).x;
+    slideTo(H.asm, H.slider, lx + H.off);
     return;
   }
   /* a held BODY follows the grip kinematically — never re-parented to the
@@ -2028,6 +2104,18 @@ function vrUpdateHold(dt){
         b.mesh.position.copy(_vecA);
         b.mesh.quaternion.copy(s.quat);
         VR.snap = {body:b, target:s.target, point:s.point, axis:s.axis};
+      } else VR.snap = null;
+    }
+    /* a held TRACK section offers itself to a run's end, or the deck */
+    else if(b.kind === 'track' && typeof snapTrackHeld === 'function'){
+      b.mesh.updateMatrixWorld(true);
+      const s = snapTrackHeld(b);
+      if(s){
+        _vecA.copy(s.pos);
+        if(b.mesh.parent) b.mesh.parent.worldToLocal(_vecA);
+        b.mesh.position.copy(_vecA);
+        b.mesh.quaternion.copy(s.quat);
+        VR.snap = {body:b, lay:s.lay, point:s.point};
       } else VR.snap = null;
     }
     const t = vrBodyTarget(b);
