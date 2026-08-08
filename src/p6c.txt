@@ -190,6 +190,19 @@ function carpFullStick(b){
   return true;
 }
 
+/* ---- the glass wording (PR 5, RULING X) -----------------------------------
+   The NEED list as the screen speaks it — 'NEED 1× SHEET · 3× 2x4' — the
+   catalogue shorthand, never ftIn: it is a shopping list, and the order
+   screen an arm's length away sells by the stick.  Lives here so the
+   words sit with the data they describe; p9 only paints them. */
+function carpProfShort(prof){
+  return prof === 'sheet' ? 'SHEET' : prof.slice(1);
+}
+function carpStockLine(list){
+  return list.map(s=>s.n + '× ' + carpProfShort(s.prof)).join(' · ');
+}
+function carpNeedLine(need){ return 'NEED ' + carpStockLine(need); }
+
 /* ---- the planner ----------------------------------------------------------
    carpPlan(key, mark) is PURE: it reads the venue's bodies and the
    catalogue row and returns one of

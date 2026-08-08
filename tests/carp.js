@@ -651,6 +651,68 @@ const probe = `
     return 'restH carries the stack: 0.0475 held across 60 settle frames';
   });
 
+  console.log('--- the screen (PR 5) ---');
+  P('the whole build through the glass: pick, call, and the flat stands at the mark', ()=>{
+    stageSwitch('palace', true);          // the call is made where the mark will be
+    if(CREW.running) throw new Error('crew already running');
+    vrBuildOrderScreens();                // headless: the glass needs no session
+    if(!VR.carps || !VR.carps.palace) throw new Error('no carpenter screen in the palace shed');
+    const sc = VR.carps.palace;
+    /* real stock, laid by the palace benches the way PR 4 did */
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const st = [regWood('sheet'), regWood('s2x4'), regWood('s2x4'), regWood('s2x4')];
+    BUILD_VENUE = keep;
+    const root = venueRoot('palace');
+    root.updateMatrixWorld(true);
+    const chopW = SAWS.palace.chop.group.getWorldPosition(new THREE.Vector3());
+    st.forEach((b, i)=>{
+      root.add(b.mesh);
+      b.mesh.rotation.set(b.prof === 'sheet' ? -Math.PI/2 : 0, 0,
+                          b.prof === 'sheet' ? 0 : Math.PI/2);
+      const p = chopW.clone(); p.x += -2.6 + i*0.5; p.z += 2.0; p.y = 0.1;
+      b.mesh.position.copy(root.worldToLocal(p));
+      b.mesh.updateMatrixWorld(true);
+      b.restH = woodRestH(b);
+    });
+    const mark = {venue:'palace', stage:'palace', x:0.8, z:-6, yaw:0};
+    carpSetMark(mark.venue, mark.stage, mark.x, mark.z, mark.yaw);
+    if(!CARP.mark || CARP.mark.venue !== 'palace') throw new Error('the mark did not take');
+    /* the row and the CALL, found by META on the hit records (VR.md) */
+    vrDrawCarp(sc);
+    const rowHit = sc.hits.find(h=>h.carpKey === 'flat4x8');
+    if(!rowHit) throw new Error('no flat4x8 row on the glass');
+    rowHit.fn();
+    if(sc.sel !== 'flat4x8') throw new Error('the row press did not select');
+    if(sc.stockLine.indexOf('READY') !== 0) throw new Error('the stock line says: '+sc.stockLine);
+    crewSpawn(6).forEach(h=>{ h.speed = 2.4; });   // equal legs; the race is not under test
+    const preAsms = ASSEMBLIES.slice();
+    const work0 = HOUSE.work;
+    const callHit = sc.hits.find(h=>h.carpCall);
+    if(!callHit) throw new Error('no CALL on the glass');
+    callHit.fn();
+    if(CREW.running !== 'carp') throw new Error('the call did not take: '+sc.status);
+    if(sc.status !== 'CALLED — 4x8 FLAT') throw new Error('the glass says: '+sc.status);
+    if(HOUSE.work < 0.5) throw new Error('no work light for the carpenters');
+    let guard = 0;
+    while(CREW.running && guard++ < 120000){ updateCrew(0.05); updateBodies(0.05); }
+    if(CREW.running) throw new Error('the build never finished');
+    const made = ASSEMBLIES.filter(a=>preAsms.indexOf(a) < 0);
+    if(made.length !== 1) throw new Error(made.length+' assemblies stand where one flat should');
+    const a = made[0];
+    if(a.pieces.length !== 5 || a.nails.length !== 16)
+      throw new Error(a.pieces.length+' pieces / '+a.nails.length+' nails');
+    if(a.anchor) throw new Error('the carpenters nailed it to the deck');
+    if(a.pieces.some(p=>p.pivot)) throw new Error('a pivot joint — not rigid');
+    if(a.pieces.some(p=>p.state !== 'fixed')) throw new Error('a piece is not fixed');
+    scene.updateMatrixWorld(true);
+    const sp = a.pieces.find(p=>p.prof === 'sheet').mesh.getWorldPosition(new THREE.Vector3());
+    if(Math.hypot(sp.x - mark.x, sp.z - mark.z) > 0.05)
+      throw new Error('the skin is '+Math.hypot(sp.x - mark.x, sp.z - mark.z).toFixed(3)+'m off the mark');
+    if(sc.status !== 'CALLED — 4x8 FLAT') throw new Error('the status wandered: '+sc.status);
+    if(Math.abs(HOUSE.work - work0) > 1e-6) throw new Error('the work light never came back down');
+    return 'row by META, CALL by META, one un-anchored rigid flat of 5 at the mark';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
