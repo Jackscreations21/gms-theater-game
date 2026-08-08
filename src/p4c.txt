@@ -99,6 +99,55 @@ function makeBuildMesh(kind, color){
   return g;
 }
 
+/* ============================================================================
+   THE TRASH (build-feel RULING P).  A steel drum by each shed's paint
+   rack (geometry in p2m buildTrash): a held BUILD body released with its
+   centre over the mouth is destroyed.  DELETE ALL WOOD on the order
+   screen empties a venue of wood in one press.  Both go through
+   removeBody, which unpicks every filing with the machinery that owns
+   it — nails through removeNail (so installed hinges respawn as
+   hardware and carriage mounts pop), saw seats through the station's
+   list, slots through the anchor — so no invariant is ever side-stepped.
+   ========================================================================== */
+var TRASH = {palace:null, arc:null};
+function removeBody(b){
+  if(!b) return false;
+  /* assembly work: pull every nail that names the piece; removeNail
+     detaches a piece at zero nails and dissolves an emptied assembly */
+  let guard = 64;
+  while(b.asm && guard-- > 0){
+    const a = b.asm;
+    const n = a.nails.find(x=>x.a === b || x.b === b);
+    if(!n){ detachPiece(a, b); break; }
+    removeNail(n);
+  }
+  if(b.state === 'seated' && b.station){
+    const i = b.station.pieces.indexOf(b);
+    if(i >= 0) b.station.pieces.splice(i, 1);
+    b.station = null;
+  }
+  if(b.slot){ b.slot.userData.body = null; b.slot = null; }
+  if(b.point){ b.point.body = null; b.point = null; }
+  if(b.mesh.parent) b.mesh.parent.remove(b.mesh);   // shared geometry, no dispose
+  const i = BODIES.indexOf(b);
+  if(i >= 0) BODIES.splice(i, 1);
+  if(typeof buildDirty === 'function') buildDirty();
+  return true;
+}
+/* the big red button: every piece of WOOD in the venue — loose, parked,
+   slotted, seated, nailed, mounted.  A piece in a live hand is skipped.
+   Hardware, gear and tables stay: the button says WOOD and means it. */
+function deleteAllWood(venue){
+  const held = (typeof VR !== 'undefined' && VR && VR.held && VR.held.kind === 'body')
+    ? VR.held.body : null;
+  let n = 0;
+  for(const b of BODIES.slice()){
+    if(b.kind !== 'wood' || b.venue !== venue || b === held) continue;
+    if(removeBody(b)) n++;
+  }
+  return n;
+}
+
 /* the piece cap's book: wood and hardware, wherever it stands (spec §3) */
 function venueBuildCount(v){
   let n = 0;

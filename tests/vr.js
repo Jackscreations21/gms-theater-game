@@ -1827,6 +1827,26 @@ const probe = `
     BODIES.splice(BODIES.indexOf(t), 1);
     return 'edge grab, in-hand carry, square landing';
   });
+  P('a piece released over the drum is gone', ()=>{
+    /* build-feel RULING P: the trash can outranks every release snap */
+    if(typeof TRASH === 'undefined' || !TRASH.palace) throw new Error('no drum in the shed');
+    const b = regWood('s2x4');
+    b.mesh.rotation.set(0, 0, Math.PI/2);
+    const dp = TRASH.palace.group.getWorldPosition(new THREE.Vector3());
+    b.mesh.position.set(dp.x, 1.2, dp.z);      // centre over the mouth
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(dp.x + 1.21, 1.2, dp.z);   // held by the end
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body' || VR.held.body !== b)
+      throw new Error('not taken: '+(VR.held && VR.held.kind));
+    vrSqueeze(0, false);
+    if(BODIES.indexOf(b) >= 0) throw new Error('the drum did not take it');
+    if(b.mesh.parent) throw new Error('the mesh is still in the scene');
+    return 'binned on release';
+  });
   P('a sheet is a handful at its corner', ()=>{
     const s = regWood('sheet');
     s.mesh.rotation.set(0, 0, 0);

@@ -582,6 +582,66 @@ const probe = `
     return 'three sections, one run, slid and stopped at 8ft';
   });
 
+  console.log('--- the trash ---');
+  P('DELETE ALL WOOD clears the venue and nothing else', ()=>{
+    /* build-feel RULING P: every wood body goes, through the machinery
+       that owns each filing — hinges respawn as hardware, bare track
+       runs stand, gear is untouched */
+    if(typeof removeBody !== 'function' || typeof deleteAllWood !== 'function')
+      throw new Error('the trash machinery is not defined');
+    if(typeof TRASH === 'undefined' || !TRASH.palace || !TRASH.arc)
+      throw new Error('a shed has no drum');
+    const loose = regWood('s2x4');  loose.mesh.position.set(4, 0.019, 2);
+    const parked = regWood('s2x4'); parked.mesh.position.set(4, 2.0, 3); parked.frozen = true;
+    const s1 = regWood('s2x4'), s2 = regWood('s2x4');
+    s1.mesh.rotation.set(0, 0, 0); s2.mesh.rotation.set(0, 0, 0);
+    s1.mesh.position.set(70, 1.22, 70); s2.mesh.position.set(70.038, 1.22, 70);
+    scene.updateMatrixWorld(true);
+    addNail(s1, {body:s2}, new THREE.Vector3(70.019, 1.9, 70), new THREE.Vector3(1,0,0));
+    /* an installed hinge (consumed into the joint) must come back loose */
+    const keepV = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const hb = regBody('hinge', makeBodyMesh('hinge'), null); hb.state = 'loose';
+    const t1 = regBody('track', makeBodyMesh('track'), null); t1.state = 'loose';
+    BUILD_VENUE = keepV;
+    const door = regWood('s2x4');
+    door.mesh.rotation.set(0, 0, 0);
+    door.mesh.position.set(70.095, 1.22, 70);
+    hb.mesh.position.set(70.066, 1.22, 70);
+    scene.updateMatrixWorld(true);
+    if(!addHinge(hb, new THREE.Vector3(70.066, 1.22, 70), new THREE.Vector3(0,1,0)))
+      throw new Error('test rig: the hinge would not install');
+    /* a bare track run (no wood) must survive the button */
+    t1.mesh.position.set(72, 0.05, 72); t1.mesh.updateMatrixWorld(true);
+    const run = layTrack(t1, null);
+    const hinges0 = BODIES.filter(b=>b.kind === 'hinge' && b.venue === 'palace').length;
+    const gear0 = BODIES.filter(b=>!BUILD_KINDS[b.kind] && b.venue === 'palace').length;
+    const n = deleteAllWood('palace');
+    if(n < 5) throw new Error('only ' + n + ' pieces deleted');
+    if(BODIES.some(b=>b.kind === 'wood' && b.venue === 'palace'))
+      throw new Error('wood survived the button');
+    if(ASSEMBLIES.indexOf(run) < 0) throw new Error('the bare track run was torn down');
+    if(BODIES.filter(b=>b.kind === 'hinge' && b.venue === 'palace').length !== hinges0 + 1)
+      throw new Error('the installed hinge never respawned as hardware');
+    if(BODIES.filter(b=>!BUILD_KINDS[b.kind] && b.venue === 'palace').length !== gear0)
+      throw new Error('the button touched the gear');
+    /* removeBody alone: one piece, gone from registry and scene */
+    const w2 = regWood('s2x4');
+    if(!removeBody(w2) || BODIES.indexOf(w2) >= 0 || w2.mesh.parent)
+      throw new Error('removeBody left something behind');
+    /* and the button on the glass drives the same machinery */
+    vrBuildOrderScreens();
+    const sc = VR.orders.palace;
+    const extra = regWood('s2x4');
+    extra.mesh.position.set(4, 0.019, 2);
+    vrDrawOrder(sc);
+    const btn = sc.hits.find(h=>h.w === 196 && h.h === 25 && h.y > 430);
+    if(!btn) throw new Error('no DELETE ALL WOOD button on the glass');
+    btn.fn();
+    if(BODIES.indexOf(extra) >= 0) throw new Error('the glass button cleared nothing');
+    if(sc.status.indexOf('GONE') < 0) throw new Error('the status reads: '+sc.status);
+    return n + ' wood gone; run standing, hinge respawned, gear whole';
+  });
+
   console.log('--- the save ---');
   P('a parked piece hangs where it was parked, and a grab frees it', ()=>{
     /* build-feel RULING N: b.frozen skips the settle */
