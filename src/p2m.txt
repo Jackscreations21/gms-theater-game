@@ -649,5 +649,9 @@ function updateOrders(dt){
     _orderUiT = 0.5;
     for(const k in VR.orders)
       if(VR.orders[k] && typeof vrDrawOrder === 'function') vrDrawOrder(VR.orders[k]);
+    /* the carpenter screens ride the same half second: mark, stock and
+       status lines stay live between presses (carpenters RULING X) */
+    if(VR.carps) for(const k in VR.carps)
+      if(VR.carps[k] && typeof vrDrawCarp === 'function') vrDrawCarp(VR.carps[k]);
   }
 }

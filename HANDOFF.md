@@ -879,15 +879,72 @@ be incoherent.  If the owner wants persistence, save the hang (key per
 lineset per stage) AND its paint together in the same versioned blob —
 its own small round, not a bolt-on.
 
+**Done 2026-08-08, the carpenters round — spec #68, PRs #69–#73,
+landed via #74.**  (The chain lesson, so it is on the record: the
+owner waived never-stack and the four chain PRs were opened at once,
+each targeting its parent; on merge day #71–#73 were merged INTO
+their parent branches instead of being retargeted to `main` after
+each parent landed, so `main` briefly held only PRs 1–2 and #74
+carried the verified chain tip across.  Never-stack earned its keep.)
+RULINGS X–AC — after Z the letters double.  What shipped:
+
+- **The crayon** (#69, RULING Z): fourth belt tool at the small of
+  the back (0/-0.17 — every holster pair beyond the 0.22 draw radius,
+  first-in-range wins); forward ray at `WALKABLE`, ankle-height
+  floors only — the y≈8 gallery AND a loaded show's y=0.3 floor both
+  refuse: the crayon wants the BARE deck.  One mark stands; re-fire
+  moves it; palletSlot-style paint, `-ARC.X` corrected, yaw from the
+  controller's facing.
+- **The catalogue and planner** (#70, RULING Y): new part `p6c`
+  between `p6b` and `p5c`; `CARP_CAT` (4x8 FLAT / 4x8 PLATFORM /
+  2-STEP UNIT) with inch-grid cut schedules and mark-local
+  blueprints, two nails per joint (RULING G — carpenters build
+  rigid); `carpSurvey`; `carpPlan` PURE — NEED list, or PIECES FULL
+  counting the bodies the cuts will MINT (a new cap enforcement
+  point: nothing downstream of the order screen checked it), or the
+  phased job queue.  16th suite `tests/carp.js`.
+- **The lead and the saws** (#71, RULINGS AA + AC): the seventh
+  figure — apron, no cap, `trade:'carpenter'`, always `people[6]`;
+  trade guards BEFORE the queue shift so the head job waits for the
+  right person; REAL carry (`attach` both ways, the new `'carried'`
+  state — `'held'` demotes to loose every frame and would sink the
+  plank out of the walking arms); `carpFetch`/`carpCut` through
+  `seatWood`/`sawSetCut`/`sawCut` with a pencil tick so scheduled
+  lengths beat the saw's 0.01 seat offset; `CARP_RUN` records what
+  each cut kept.
+- **The haul and the nails** (#72, RULINGS AB + AC): the six hands
+  wake for the run; ONE piece per trip to the mark (poses composed
+  through the mark's yaw); both blueprint nails per joint via
+  `addNail` on live transforms; NO deck nail — the finished piece
+  lies un-anchored and grabbable at the mark; `restH` carries the
+  stack (the settle cannot see wood under wood); the work rides the
+  save with zero new save code (round-tripped in a second world);
+  a stood-down run leaves honest workshop state and the CALL itself
+  is not saved.
+- **The CARPENTERS screen** (#73, RULING X): a second wall panel
+  beside each shed's order screen (the order canvas is pixel-pinned
+  by tests and UNTOUCHED); META hits only; the selected row's live
+  verdict off the pure planner; refusals in spec order — PICK A
+  PIECE / NO MARK / MARK IS IN THE OTHER HOUSE / CREW BUSY /
+  NEED 1× SHEET · 3× 2x4 / PIECES FULL; a called build runs under
+  the show crew's work light.
+
+Built by four sequential agents on a reviewed linear chain — every
+link 16/16 green with the suites re-run independently, every new
+assertion negative-checked, six new TRAPS.md entries (the crew /
+carpenters section).  **NONE of it has met hardware** — the new
+question block rides the headset section below.
+
 ---
 
-## NEXT SESSION: **THE CARPENTERS** (owner's word, 2026-08-08)
+## THE CARPENTERS BRIEF (2026-08-08 — superseded the same day)
 
-The build system lets the PLAYER build scenery by hand in VR.  The
-next feature is people who do it for you.  **There is no spec yet —
-step zero is to ask the owner what a carpenter is for**, then spec it
-(rulings continue at X), plan it, and build it failing-test-first, one
-concern per PR, straight to `main`.
+Kept for the record; the round above answered it.  The owner's
+answers to the five shaping questions: (1) a catalogue on a warehouse
+screen; (2) cut at the shed saws, erect at a crayon-marked spot;
+(3) real stock; (4) hybrid — hands haul and nail, a lead carpenter
+owns the saws; (5) VR only.  Plus: planks visibly carried, one piece
+per trip — never the show-load-in dummy look.
 
 **The questions that decide the whole shape** (ask these first):
 
@@ -954,15 +1011,49 @@ carpenter job kinds + a trade in `CREW` (or `SHOP`) ; a catalogue of
 buildable items with cut lists ; the call button (VR + desktop) ; the
 saw/nail choreography so it reads as work rather than teleporting
 timber ; the piece-cap and stock refusals.
+(What actually shipped differs only where the owner ruled: VR only,
+no desktop call, and the mark tool nobody had predicted.)
+
+---
+
+## NEXT SESSION: **THE HEADSET RUN** (owed since #48)
+
+Everything from #48 onward — the usability round, all nine build-feel
+PRs, both goods PRs, and now the WHOLE CARPENTERS ROUND — has met
+hardware NEVER.  Put the owner on `…/the-house.html?v=12` (bumped
+past the Quest cache for the carpenters merge) and work the question
+blocks below, oldest first.  **New questions this round — record the
+answers here:**
+
+- **The belt is four now.**  Crayon at the small of the back
+  (0/-0.17): can you draw it without catching the tape?  Is a
+  behind-the-back reach comfortable in a headset, or does the crayon
+  want a hip?
+- **The mark:** legible on the deck from standing height?  Is the yaw
+  obvious from the nose notch, or does the build's facing surprise?
+- **Watching the build:** does the pace read as WORK, or does it
+  drag?  (Work-waits are one-line tunes in p6b's carp branches.)  Is
+  one-plank-per-trip theatre or tedium at platform scale — nine
+  hauls?
+- **The seventh figure:** wrist-meter numbers with a build running —
+  at the saws, and at the mark with the rig up.
+- **The CARPENTERS screen:** readable beside the order screen?  Do
+  the refusal strings land?
+
+Phase-2 candidates after the run, owner's call, no order: the
+furniture catalogue (RULING J); "copy something I already built"
+(shaping question 1's third answer — deliberately out of scope this
+round); carpenters that paint; RULING W revisited (save the hang +
+its paint together, one versioned blob, its own round).
 
 **Also still open, in rough order:**
 
 - **The next headset run.** The build system has met hardware TWICE
   (each run produced a bug list — the usability round, then the
   build-feel round).  **Everything from #48 onward — the whole
-  usability round, all nine build-feel PRs and both goods PRs — has
-  met hardware NEVER.**  Put the owner on
-  `…/the-house.html?v=11` (bump the number, the Quest Browser caches
+  usability round, all nine build-feel PRs, both goods PRs and the
+  carpenters round — has met hardware NEVER.**  Put the owner on
+  `…/the-house.html?v=12` (bump the number, the Quest Browser caches
   hard) and work the question blocks at the bottom of this section.
   Feel constants, all one-line tunes: `GRAB_WOOD 0.15`,
   `SEAM_TOUCH 0.05`, `SEAM_REACH 0.45`, `SNAP_SEEK 0.35`,
@@ -989,7 +1080,7 @@ and the headset checklist below still stands.
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
-the owner on `…/the-house.html?v=11`, bump the number, Quest Browser
+the owner on `…/the-house.html?v=12`, bump the number, Quest Browser
 caches hard):
 
 **Read the wrist meter and WRITE THE NUMBERS HERE.** The worst cases,

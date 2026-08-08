@@ -64,6 +64,36 @@ against this list before opening a PR; **add new traps as you hit them.**
 - Grab arbitration is nearest-wins across classes with per-class radii —
   see VR.md. Adding a grab class means extending the cross-checks.
 
+## The crew and the carpenters (p6b/p6c)
+
+- **`crewPutDown` DISPOSES what it holds.** The show crew carry a minted
+  dummy, and put-down destroys it. A real body must never ride that
+  path — real carry is `h.hands.attach` / `venueRoot().attach`
+  (`carpPickUp`/`carpSetDown`), the forklift's shape.
+- **A carried body cannot be `'held'`** — `updateBodies` demotes any
+  `'held'` body that is not the player's to `'loose'` EVERY frame, and
+  the loose settle then drags it floorward while still parented to the
+  walking hand. That is what the `'carried'` state is for.
+- **The settle cannot see wood under wood.** `groundAt` sees
+  architecture only, so a loose piece posed on other wood sinks through
+  it between frames — unless its `restH` carries the stack height
+  (which is exactly what restH means: where this piece rests).
+- **An `'off'` crew hand still counts as free in the assign loop.** A
+  new job kind must either wake its workers or watch ghosts eat the
+  queue at stale positions.
+- **The finish walk must skip figures that sat the run out** — or the
+  lead (through a show) and the six hands (through a carpenter call)
+  parade invisibly-turned-visible across the stage at every finish.
+- **`sawCut` seats the off side 0.01 off the inch grid** — a second cut
+  computed off the remainder's low end snaps one inch short unless a
+  pencil `tick` carries the exact mark (the tick beats the snap; that
+  is its job).
+- **Cut schedules that exactly consume a stick are a float knife-edge**:
+  a remainder within a millimetre of `SAW_MIN` lets binary float decide
+  whether the saw mints an off-cut body or bins it — and the planner's
+  cap count and the saw then disagree by one. Leave a fat off-cut or
+  honest scrap.
+
 ## Tests / jsdom
 
 - **jsdom's `MouseEvent` has no `movementX`/`movementY`** — not 0,

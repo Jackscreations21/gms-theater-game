@@ -366,6 +366,25 @@ const probe = `
     return CREW.people.length+' hands, '+meshes+' meshes total';
   });
 
+  console.log('--- the lead carpenter (PR 3) ---');
+  P('the show census holds at six with the lead on the books', ()=>{
+    const lead = carpLead();
+    if(CREW.people.length !== 7 || CREW.people[6] !== lead)
+      throw new Error('the lead is not the seventh of seven');
+    if(lead.trade !== 'carpenter') throw new Error('no trade on the lead');
+    crewStop(true); showStrike();
+    crewLoadShow('outsiders');
+    let leadStirred = false;
+    for(let i=0;i<14000 && CREW.running;i++){
+      updateCrew(0.05); updateFly(0.05); updateDockDoors(0.05);
+      if(lead.job || lead.group.visible) leadStirred = true;
+    }
+    if(CREW.running) throw new Error('the load in never finished with the lead about');
+    if(leadStirred) throw new Error('the lead worked a show');
+    if(crewSpawn(6).indexOf(lead) >= 0) throw new Error('crewSpawn hands out the lead');
+    return 'a whole load in ran on six hands; the lead never stirred';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

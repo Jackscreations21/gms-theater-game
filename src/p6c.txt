@@ -1,10 +1,12 @@
 
 /* ============================================================================
-   p6c — THE CARPENTERS: the catalogue and the planner (PR 2 of the
-   carpenters round, spec docs/superpowers/specs/2026-08-08-carpenters-
-   design.md, RULING Y plus the cap).  Pure data and pure functions: no
-   crew, no VR, no UI, no mutation — PR 3 adds the lead and the saw jobs,
-   PR 4 the haul and the nails, PR 5 the warehouse screen.
+   p6c — THE CARPENTERS: the catalogue, the planner, and the run (PRs 2-4
+   of the carpenters round, spec docs/superpowers/specs/2026-08-08-
+   carpenters-design.md, RULINGS Y, AA, AB and AC).  The catalogue and
+   planner are pure data and pure functions; the run entry at the bottom
+   (carpStart/carpRun + CARP_RUN) is the one stateful thing here — the
+   crew engine that executes the jobs (fetch/cut, and PR 4's haul/nail
+   at the mark) lives in p6b.  PR 5 adds the warehouse screen.
 
    The catalogue (CARP_CAT) is a data table: adding a buildable is adding
    a row, not code.  Each row names the loose stock it consumes (real
@@ -188,6 +190,19 @@ function carpFullStick(b){
   return true;
 }
 
+/* ---- the glass wording (PR 5, RULING X) -----------------------------------
+   The NEED list as the screen speaks it — 'NEED 1× SHEET · 3× 2x4' — the
+   catalogue shorthand, never ftIn: it is a shopping list, and the order
+   screen an arm's length away sells by the stick.  Lives here so the
+   words sit with the data they describe; p9 only paints them. */
+function carpProfShort(prof){
+  return prof === 'sheet' ? 'SHEET' : prof.slice(1);
+}
+function carpStockLine(list){
+  return list.map(s=>s.n + '× ' + carpProfShort(s.prof)).join(' · ');
+}
+function carpNeedLine(need){ return 'NEED ' + carpStockLine(need); }
+
 /* ---- the planner ----------------------------------------------------------
    carpPlan(key, mark) is PURE: it reads the venue's bodies and the
    catalogue row and returns one of
@@ -282,4 +297,78 @@ function carpPlan(key, mark){
     joints[jk].nails.push({p:n.p.slice(), ax:n.ax.slice()});
   }
   return {jobs, piecesAfter};
+}
+
+/* ---- the run (PR 3, RULING AA) --------------------------------------------
+   CARP_RUN is the ONE live carpenter run — the state the executing jobs
+   write and PR 4 reads.  Shape, exactly:
+     CARP_RUN = {
+       key,        // catalogue key, or null when carpRun was fed raw jobs
+       venue,      // the venue the run works
+       mark,       // the mark the plan was made against, or null
+       made:  {},  // blueprint piece index -> the KEPT body of the carpCut
+                   //   that named it (PR 4: a carpHaul with body:null takes
+                   //   made[job.piece] off the floor by the bench)
+       bench: {},  // saw kind 'track'/'chop' -> the body this run currently
+                   //   has seated there: the fetched stick, then the
+                   //   registered off side after each cut, null when done
+       placed: {}, // blueprint piece index -> the body a carpHaul has set
+                   //   down at its pose (PR 4: carpNail joins placed[i] to
+                   //   placed[j])
+       aside: 0    // how many pieces carpAside has rowed out by the benches
+     }
+   Cleared by crewStop (a stood-down build never resumes — RULING AC: the
+   wood and the cuts stay, honest workshop state; call them again) and
+   replaced whole by the next carpStart.  A var, not const: p6b assigns it
+   and executes earlier in the concatenated file (TRAPS.md).             */
+var CARP_RUN = null;
+
+/* push a job queue at the crew engine and wake the lead.  One queue with
+   the show crew — if anything is running this refuses (CREW BUSY both
+   ways, RULING AA; PR 5's screen words the refusal on the glass). */
+function carpRun(jobs){
+  if(!jobs || !jobs.length || CREW.running) return 0;
+  if(!CARP_RUN){
+    const j = jobs.find(x=>x.venue);
+    CARP_RUN = {key:null, venue:j ? j.venue : VENUE, mark:null, made:{}, bench:{}, placed:{}, aside:0};
+  }
+  const lead = carpLead();
+  crewAttach();
+  CREW.onDone = null;
+  CREW.running = 'carp';
+  CREW.t = 0;
+  CREW.log = [];
+  CREW.jobs = jobs.slice();
+  const off = crewOff();
+  lead.state = 'idle'; lead.job = null; lead.wait = 0; lead.carryB = null;
+  lead.x = off.x; lead.z = off.z; lead.yaw = Math.PI/2;
+  lead.group.visible = true;
+  /* the whole crew answers a carpenter call: the six hands wake HERE, at
+     call time, not lazily at the first haul — an 'off' hand still counts
+     as free in updateCrew's assign loop, and a haul handed to an invisible
+     figure at a stale position is work done by a ghost.  crewStart's own
+     spread at the dock in crewStart's own fields, so the show path is
+     untouched, and the finish walk in updateCrew (which skips only 'off'
+     people) sends everyone woken here home when the queue drains. */
+  crewSpawn(6).forEach((h, i)=>{
+    h.state = 'idle'; h.job = null; h.wait = 0;
+    crewPutDown(h);
+    h.x = off.x + rnd(-1.5, 1.5); h.z = off.z + rnd(-2.2, 2.2) + i*0.4;
+    h.yaw = Math.PI/2;
+    h.group.visible = true;
+  });
+  crewLog('the carpenter is called — ' + CREW.jobs.length + ' jobs');
+  if(typeof refreshCrewUI === 'function') refreshCrewUI();
+  return CREW.jobs.length;
+}
+/* the headless entry the screen wires up in PR 5: plan, then run.  Returns
+   carpPlan's own answer ({need}/{full}/null) unchanged on refusal, or
+   {busy:true} when the one queue is taken, so the caller can word it. */
+function carpStart(key, mark){
+  if(CREW.running) return {busy:true};
+  const plan = carpPlan(key, mark);
+  if(!plan || plan.need || plan.full) return plan;
+  CARP_RUN = {key, venue:mark.venue, mark, made:{}, bench:{}, placed:{}, aside:0};
+  carpRun(plan.jobs);
+  return plan;
 }

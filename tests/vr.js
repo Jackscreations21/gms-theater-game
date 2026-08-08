@@ -2546,6 +2546,124 @@ const probe = `
     return 'one mark, moved to the Arc, -ARC.X corrected';
   });
 
+  /* ---- the CARPENTERS screen (carpenters spec RULING X, PR 5) ---------- */
+  P('the carpenter screens hang beside the order screens and answer the ray', ()=>{
+    enterVR();
+    goToView(3);
+    vrBuildOrderScreens();
+    if(!VR.carps || !VR.carps.palace || !VR.carps.arc) throw new Error('no carpenter screens');
+    scene.updateMatrixWorld(true);
+    for(const k of ['palace','arc']){
+      const sc = VR.carps[k];
+      if(sc.face.userData.carpScreen !== k) throw new Error('the '+k+' face is untagged');
+      if(VR.deskMeshes.indexOf(sc.face) < 0) throw new Error('the '+k+' face is not in the pick list');
+      if(sc.canvas.width !== 560 || sc.canvas.height !== 520)
+        throw new Error('the '+k+' canvas is '+sc.canvas.width+'x'+sc.canvas.height);
+      /* beside its order screen on the same wall: offset in x, same z,
+         and far enough apart that the two glasses never overlap */
+      const op = VR.orders[k].face.getWorldPosition(new THREE.Vector3());
+      const cp = sc.face.getWorldPosition(new THREE.Vector3());
+      const dx = Math.abs(cp.x - op.x);
+      if(dx < 1.44 || dx > 3) throw new Error('the '+k+' screens sit '+dx.toFixed(2)+'m apart in x');
+      if(Math.abs(cp.z - op.z) > 0.05 || Math.abs(cp.y - op.y) > 0.3)
+        throw new Error('the '+k+' screen left the wall of its order screen');
+    }
+    /* the right hand resolves it the way it resolves every desk */
+    const face = VR.carps.palace.face;
+    const at = face.localToWorld(new THREE.Vector3(0, 0, 0));
+    const n = face.getWorldDirection(new THREE.Vector3());
+    aim(1, at.clone().add(n.multiplyScalar(1.0)), at);
+    const p = vrPointAt();
+    if(!p || p.obj !== face) throw new Error('the ray did not resolve the carpenter screen');
+    if(Math.abs(p.u - 0.5) > 0.03 || Math.abs(p.v - 0.5) > 0.03)
+      throw new Error('dead centre read u,v = '+p.u.toFixed(2)+','+p.v.toFixed(2));
+    return 'two screens, tagged, in the pick list, beside their order screens';
+  });
+  P('a catalogue row pressed through the glass selects, and the line follows', ()=>{
+    const sc = VR.carps.palace;
+    CARP.mark = null;                    // the crayon tests left a mark standing
+    sc.sel = null; sc.status = '';
+    vrDrawCarp(sc);
+    if(sc.markLine !== 'NO MARK') throw new Error('the mark line says '+sc.markLine);
+    /* the row found by META on the hit record, never by pixel (VR.md) */
+    const row = sc.hits.find(h=>h.carpKey === 'flat4x8');
+    if(!row) throw new Error('no flat4x8 row found by META');
+    const u = (row.x + row.w/2)/sc.canvas.width, v = (row.y + row.h/2)/sc.canvas.height;
+    const at = sc.face.localToWorld(new THREE.Vector3((u - 0.5)*1.3, (0.5 - v)*1.2, 0));
+    const n = sc.face.getWorldDirection(new THREE.Vector3());
+    aim(1, at.clone().add(n.multiplyScalar(1.0)), at);
+    vrSelect(1, true);
+    if(sc.sel !== 'flat4x8') throw new Error('the press selected '+sc.sel);
+    if(sc.stockLine !== 'TAKES 1× SHEET · 3× 2x4')
+      throw new Error('the stock line says: '+sc.stockLine);
+    return 'selected by a real press; no mark, so the line claims nothing';
+  });
+  P('the half-second shed tick keeps the carpenter glass live', ()=>{
+    const sc = VR.carps.palace;
+    if(sc.markLine !== 'NO MARK') throw new Error('setup: the mark line reads '+sc.markLine);
+    carpSetMark('palace', 'palace', 0, -6, 0);     // stamp, but press nothing
+    if(sc.markLine !== 'NO MARK')
+      throw new Error('something redrew early — the tick is not what is under test');
+    updateOrders(0.6);                   // p2m: one 0.5s tick for ALL the wall screens
+    if(sc.markLine !== 'MARK: PALACE')
+      throw new Error('after the tick the mark line reads '+sc.markLine);
+    return 'the mark reached the glass on the shed tick, no press needed';
+  });
+  P('every refusal lands as its spec string through the glass', ()=>{
+    const sc = VR.carps.palace;
+    const press = ()=>{
+      vrDrawCarp(sc);
+      const h = sc.hits.find(x=>x.carpCall);
+      if(!h) throw new Error('no CALL on the glass');
+      const u = (h.x + h.w/2)/sc.canvas.width, v = (h.y + h.h/2)/sc.canvas.height;
+      const at = sc.face.localToWorld(new THREE.Vector3((u - 0.5)*1.3, (0.5 - v)*1.2, 0));
+      const n = sc.face.getWorldDirection(new THREE.Vector3());
+      aim(1, at.clone().add(n.multiplyScalar(1.0)), at);
+      vrSelect(1, true);
+      return sc.status;
+    };
+    scene.updateMatrixWorld(true);
+    sc.sel = null; sc.status = ''; CARP.mark = null;
+    if(press() !== 'PICK A PIECE') throw new Error('no selection said: '+sc.status);
+    sc.sel = 'flat4x8';
+    if(press() !== 'NO MARK') throw new Error('no mark said: '+sc.status);
+    carpSetMark('arc', 'arcMain', ARC.X + 1, -5, 0);
+    if(press() !== 'MARK IS IN THE OTHER HOUSE') throw new Error('other house said: '+sc.status);
+    carpSetMark('palace', 'palace', 0, -6, 0);
+    /* an empty shed: park every full palace stick out of the survey for one
+       press ('carried' passes every switch untouched — p6b), restored after */
+    const parked = [];
+    BODIES.forEach(b=>{
+      if(b.kind === 'wood' && b.venue === 'palace' &&
+         (b.state === 'loose' || b.state === 'slotted') && carpFullStick(b)){
+        parked.push({b, state:b.state}); b.state = 'carried';
+      }
+    });
+    const needSaid = press();
+    parked.forEach(x=>{ x.b.state = x.state; });
+    if(needSaid !== 'NEED 1× SHEET · 3× 2x4') throw new Error('the need line says: '+needSaid);
+    /* the cap, enforced at THIS screen too (RULING Y): stock in, book full */
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    regWood('sheet'); regWood('s2x4'); regWood('s2x4'); regWood('s2x4');
+    BUILD_VENUE = keep;
+    const fakes = [];
+    while(venueBuildCount('palace') < 149){
+      const f = {kind:'paint', venue:'palace', mesh:new THREE.Object3D(), state:'loose', point:null, slot:null};
+      fakes.push(f); BODIES.push(f);
+    }
+    const fullSaid = press();
+    fakes.forEach(f=>BODIES.splice(BODIES.indexOf(f), 1));
+    if(fullSaid !== 'PIECES FULL') throw new Error('the cap says: '+fullSaid);
+    /* one queue with the show crew (RULING AA) */
+    const ran = CREW.running; CREW.running = 'in';
+    const busySaid = press();
+    CREW.running = ran;
+    if(busySaid !== 'CREW BUSY') throw new Error('busy says: '+busySaid);
+    if(CREW.running) throw new Error('a refused call left the crew running');
+    exitVR();
+    return 'PICK A PIECE / NO MARK / OTHER HOUSE / NEED list / PIECES FULL / CREW BUSY';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
