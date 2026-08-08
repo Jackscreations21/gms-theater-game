@@ -510,6 +510,26 @@ Open via the API exactly as in Task 3 (title "The nail gun fires into a seam", b
 
 ---
 
+## Addendum (same day): PRs 3–4 un-deferred
+
+The owner said go on the remaining two, late in the usage window — so this
+addendum is deliberately lean; spec §3 and §5 carry the full design and the
+constants, and the discipline is unchanged (failing test → negative check →
+implement → build → 15/15 → one PR, opened after its parent merges).
+
+- **PR 3 (`build-snap`, cut from `build-nailgun`)** — spec §3. Rebuild
+  `snapWood` step 1: candidates by metric SURFACE gap (`SNAP_SEEK 0.35`),
+  joint axes require cross-axis face overlap (`SNAP_SLACK 0.08`), daylight
+  axes beat overlapped axes, smallest flush error ≤ `SNAP_OFFER 0.22` wins;
+  position/nail math all metric (the old code mixed unit-box coordinates
+  with metric flush distances and could bury a snapped piece inside its
+  target). Tests in `tests/build.js`: end-to-end butt offers with flush pos
+  and seam nail (fails pre-change: centres 2.48m apart > the old 1.4m);
+  side-by-side flush position honest (fails pre-change: the unit/metric
+  bug left pos unmoved); past-the-edge refusal (guard for the new overlap
+  rule).
+- **PR 4 (`build-table`, cut from `build-snap`)** — spec §5, unchanged.
+
 ## Self-review (done at write time)
 
 - **Spec coverage:** §2 grab → Tasks 1–3 (surface distance, GRAB_WOOD 0.15, wood-only, arbitration untouched, stick/sheet/assembly tests). §4 gun → Tasks 4–8 (seam seek, precedence hinge→offer→seam→refusal, wood-to-wood only — states loose/fixed, no deck target in the seek — label, reach/touch constants, tests). §3/§5 correctly absent (deferred).

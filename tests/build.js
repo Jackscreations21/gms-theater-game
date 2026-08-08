@@ -300,6 +300,42 @@ const probe = `
     BODIES.splice(BODIES.indexOf(sheet), 1);
     return 'squared and flush, nail offered';
   });
+  P('two 8ft sticks see each other end-to-end', ()=>{
+    const t = regWood('s2x4'), h = regWood('s2x4');
+    t.mesh.position.set(44, 1.22, 40); t.mesh.rotation.set(0, 0, 0);   // ends y 0 / 2.44
+    h.mesh.position.set(44, 3.70, 40); h.mesh.rotation.set(0, 0, 0);   // its foot 4cm above t's top
+    scene.updateMatrixWorld(true);
+    const s = snapWood(h);
+    if(!s || !s.target || s.target.body !== t)
+      throw new Error('no end-to-end offer: '+JSON.stringify(s && s.target || null));
+    if(Math.abs(s.pos.y - 3.66) > 0.01) throw new Error('not flush: pos.y='+s.pos.y.toFixed(3));
+    if(Math.abs(s.point.y - 2.44) > 0.01) throw new Error('the nail is off the seam: '+s.point.y.toFixed(3));
+    BODIES.splice(BODIES.indexOf(t), 1); BODIES.splice(BODIES.indexOf(h), 1);
+    return 'butted end to end, nail on the seam';
+  });
+  P('a stud kisses a stud truly flush (the unit/metric fix)', ()=>{
+    const t = regWood('s2x4'), h = regWood('s2x4');
+    t.mesh.position.set(46, 1.22, 40); t.mesh.rotation.set(0, 0, 0);
+    h.mesh.position.set(46.06, 1.22, 40); h.mesh.rotation.set(0, 0, 0); // 6cm off in x
+    scene.updateMatrixWorld(true);
+    const s = snapWood(h);
+    if(!s || !s.target || s.target.body !== t) throw new Error('no side-by-side offer');
+    if(Math.abs(s.pos.x - 46.038) > 0.005) throw new Error('not flush: pos.x='+s.pos.x.toFixed(4));
+    if(Math.abs(s.point.x - 46.019) > 0.005) throw new Error('nail off the face: '+s.point.x.toFixed(4));
+    BODIES.splice(BODIES.indexOf(t), 1); BODIES.splice(BODIES.indexOf(h), 1);
+    return 'flush on the face, nail on the face';
+  });
+  P('past the edge is no joint at all', ()=>{
+    const t = regWood('sheet'), h = regWood('s2x4', {L:0.5});
+    t.mesh.position.set(50, 1.5, 40); t.mesh.rotation.set(0, 0, 0);    // spans x 48.78..51.22
+    h.mesh.position.set(51.35, 2.5, 40); h.mesh.rotation.set(0, 0, 0); // past the edge AND above
+    scene.updateMatrixWorld(true);
+    const s = snapWood(h);
+    if(s && s.target && s.target.body === t)
+      throw new Error('offered a joint hanging off the edge');
+    BODIES.splice(BODIES.indexOf(t), 1); BODIES.splice(BODIES.indexOf(h), 1);
+    return 'no face overlap, no offer';
+  });
   P('the tape reads feet and inches', ()=>{
     if(ftIn(2.4384) !== "8'0\\"") throw new Error('8ft reads '+ftIn(2.4384));
     if(ftIn(0.3048 + 3*0.0254) !== "1'3\\"") throw new Error("1'3 reads "+ftIn(0.3048+3*0.0254));

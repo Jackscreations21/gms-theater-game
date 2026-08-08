@@ -5267,6 +5267,9 @@ function snapHalf(relQ, s, out){
   return out;
 }
 const _shalf = new T.Vector3(), _slp = new T.Vector3(), _sq = new T.Quaternion();
+/* build-usability §3: candidates by SURFACE gap, the joint axis by real
+   face overlap (daylight first), the winner by the smallest flush error */
+const SNAP_SEEK = 0.35, SNAP_OFFER = 0.22, SNAP_SLACK = 0.08;
 function snapWood(held){
   const hm = held.mesh;
   hm.updateMatrixWorld(true);
@@ -5284,42 +5287,71 @@ function snapWood(held){
     return {target:{carriage:cb}, pos, quat:_sq.clone().multiply(rel),
             point:_av2.clone(), axis:new T.Vector3(0, 0, 1)};
   }
-  /* 1 — the nearest other piece of wood within arm's offering */
-  let tgt = null, td = 1.4;
+  /* 1 — the best joint among the wood in reach.  Candidates are judged by
+     the gap between SURFACES — centre distance is meaningless for 8ft
+     stock, which is how end-to-end butts never offered — and a face is
+     only a joint if the other two axes genuinely overlap (SNAP_SLACK).
+     Faces with DAYLIGHT between them beat faces already overlapped (the
+     daylight side is the side you are offering from); the smallest flush
+     error wins.  All of it METRIC: the local frame is the UNIT box, so
+     unit coordinates are converted through the target's scale — the old
+     mix of the two could bury a snapped piece inside its target. */
+  let best = null;
   for(const b of BODIES){
     if(b === held || b.kind !== 'wood' || b.venue !== held.venue) continue;
     if(b.state === 'held') continue;
-    b.mesh.getWorldPosition(_av2);
-    const d = _av2.distanceTo(_av);
-    if(d < td){ td = d; tgt = b; }
-  }
-  if(tgt){
-    const tm = tgt.mesh;
-    tm.updateMatrixWorld(true);
+    const tm = b.mesh;
+    tm.updateWorldMatrix(true, false);
     tm.getWorldQuaternion(_sq);
-    const rel = snapQuantize(hm, _sq);
-    snapHalf(rel, hm.scale, _shalf);
+    const rel = snapQuantize(hm, _sq).clone();
+    snapHalf(rel, hm.scale, _shalf);                   // held halves on target axes
     _slp.copy(_av);
-    tm.worldToLocal(_slp);                             // held centre, target-local
-    /* close the gap on the axis where the faces are nearest to touching */
-    let ax = 0, gap = 1e9;
-    ['x','y','z'].forEach((k, i)=>{
-      const flush = tm.scale[k]/2 + _shalf.getComponent(i);
-      const g = Math.abs(Math.abs(_slp[k]) - flush);
-      if(g < gap){ gap = g; ax = i; }
-    });
-    if(gap > 0.14) return null;                        // offered, not insisted
-    const k = ['x','y','z'][ax];
+    tm.worldToLocal(_slp);                             // held centre, target UNIT local
+    let seek = 0, dayAx = -1, dayG = 1e9, anyAx = -1, anyG = 1e9;
+    for(let i = 0; i < 3; i++){
+      const pm = Math.abs(_slp[_AXES[i]]) * tm.scale[_AXES[i]];
+      const flush = tm.scale[_AXES[i]]/2 + _shalf.getComponent(i);
+      const over = pm - flush;                         // daylight past flush
+      if(over > 0) seek += over * over;
+      let lap = true;
+      for(let j = 0; j < 3; j++){
+        if(j === i) continue;
+        const pj = Math.abs(_slp[_AXES[j]]) * tm.scale[_AXES[j]];
+        const fj = tm.scale[_AXES[j]]/2 + _shalf.getComponent(j);
+        if(pj - fj > SNAP_SLACK){ lap = false; break; }
+      }
+      if(!lap) continue;
+      const g = Math.abs(over);
+      if(over > 0.001 && g < dayG){ dayG = g; dayAx = i; }
+      if(g < anyG){ anyG = g; anyAx = i; }
+    }
+    if(Math.sqrt(seek) > SNAP_SEEK) continue;          // out of arm's offering
+    const ax = dayAx >= 0 ? dayAx : anyAx, g = dayAx >= 0 ? dayG : anyG;
+    if(ax < 0 || g > SNAP_OFFER) continue;             // nothing lines up
+    if(!best || g < best.g) best = {tgt:b, ax, g, rel};
+  }
+  if(best){
+    const tm = best.tgt.mesh;
+    tm.getWorldQuaternion(_sq);
+    snapHalf(best.rel, hm.scale, _shalf);
+    _slp.copy(_av);
+    tm.worldToLocal(_slp);
+    const k = _AXES[best.ax];
     const sign = _slp[k] < 0 ? -1 : 1;
-    _slp[k] = sign * (tm.scale[k]/2 + _shalf.getComponent(ax));
+    /* flush is METRIC; the local frame is the unit box — divide back out */
+    _slp[k] = sign * (tm.scale[k]/2 + _shalf.getComponent(best.ax)) / tm.scale[k];
     const pos = tm.localToWorld(_slp.clone());
-    const quat = _sq.clone().multiply(rel);            // world = target · rel
-    /* the nail: on the contact plane, along the contact normal */
-    _slp[k] = sign * tm.scale[k]/2;
+    const quat = _sq.clone().multiply(best.rel);       // world = target · rel
+    /* the nail: ON the touching face, under the held centre, clamped to it */
+    _slp[k] = sign * 0.5;
+    for(let j = 0; j < 3; j++){
+      if(j === best.ax) continue;
+      _slp[_AXES[j]] = clamp(_slp[_AXES[j]], -0.5, 0.5);
+    }
     const point = tm.localToWorld(_slp.clone());
-    const axis = _av3.set(ax===0?sign:0, ax===1?sign:0, ax===2?sign:0)
+    const axis = _av3.set(best.ax===0?sign:0, best.ax===1?sign:0, best.ax===2?sign:0)
       .applyQuaternion(_sq).normalize();
-    return {target:{body:tgt}, pos, quat, point, axis: axis.clone()};
+    return {target:{body:best.tgt}, pos, quat, point, axis: axis.clone()};
   }
   /* 2 — the deck: near the floor, lie flat on it */
   hm.getWorldQuaternion(_sq);
