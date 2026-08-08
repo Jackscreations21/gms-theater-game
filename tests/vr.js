@@ -1888,6 +1888,58 @@ const probe = `
     scene.updateMatrixWorld(true);             // never see this pair as a seam
     return 'daylight refused, long reach refused';
   });
+  P('nails go where the gun POINTS, not to the nearest seam', ()=>{
+    /* build-feel RULING L: the trigger casts the gun's ray; the hit spot
+       is where the nail drives, and the piece it touches there is the
+       partner.  A near seam OFF the ray must lose to a far seam ON it. */
+    if(typeof nailRay !== 'function') throw new Error('nailRay is not defined');
+    /* pair 1 — NEAR the muzzle (seam ~0.36m) but off the ray, up and behind */
+    const a1 = regWood('s2x4'), b1 = regWood('s2x4');
+    a1.mesh.rotation.set(0, 0, Math.PI/2); b1.mesh.rotation.set(0, 0, Math.PI/2);
+    a1.mesh.position.set(16, 1.331, 0.1);
+    b1.mesh.position.set(16, 1.369, 0.1);      // stacked, faces kissing in y
+    /* pair 2 — 0.85m out along the ray */
+    const a2 = regWood('s2x4'), b2 = regWood('s2x4');
+    a2.mesh.rotation.set(0, 0, Math.PI/2); b2.mesh.rotation.set(0, 0, Math.PI/2);
+    a2.mesh.position.set(16, 1.0, -0.9);
+    b2.mesh.position.set(16, 1.038, -0.9);     // stacked at ray height
+    scene.updateMatrixWorld(true);
+    const c1 = VR.controllers[1];
+    vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
+    c1.position.copy(VR.holsters.nailgun.getWorldPosition(new THREE.Vector3()));
+    c1.updateMatrixWorld(true);
+    vrSqueeze(1, true);
+    if(VR.tools[1] !== 'nailgun') throw new Error('the gun never drew: '+VR.tools[1]);
+    c1.position.set(16, 1.0, 0);
+    c1.quaternion.set(0, 0, 0, 1);             // ray straight down -z, at pair 2
+    c1.updateMatrixWorld(true);
+    const before = ASSEMBLIES.length;
+    vrSelect(1, true);
+    if(ASSEMBLIES.length !== before + 1) throw new Error('the shot joined nothing');
+    if(a2.state !== 'fixed' || b2.state !== 'fixed')
+      throw new Error('the RAY pair was not the one joined: '+a2.state+'/'+b2.state);
+    if(a1.state !== 'loose' || b1.state !== 'loose')
+      throw new Error('the shot went to the near pair the gun was not pointing at');
+    /* the nail sits where the ray landed, on the pieces, not at the muzzle */
+    const nl = a2.asm.nails[0].mesh.getWorldPosition(new THREE.Vector3());
+    if(Math.abs(nl.x - 16) > 0.1 || Math.abs(nl.z + 0.9) > 0.15)
+      throw new Error('the nail landed at '+nl.x.toFixed(2)+','+nl.z.toFixed(2));
+    const asm2 = a2.asm;
+    while(a2.asm && a2.asm.nails.length) removeNail(a2.asm.nails[0]);
+    if(ASSEMBLIES.indexOf(asm2) >= 0) throw new Error('tidy-up failed');
+    /* a lone piece under the ray: nothing behind it to bite — refusal.
+       Clear of the pair 2 pieces still standing at x=16. */
+    a1.mesh.position.set(17.6, 1.0, -0.9); b1.mesh.position.set(20, 0.019, 8);
+    scene.updateMatrixWorld(true);
+    c1.position.set(17.6, 1.0, 0);
+    c1.updateMatrixWorld(true);
+    const before2 = ASSEMBLIES.length;
+    vrSelect(1, true);
+    if(ASSEMBLIES.length !== before2) throw new Error('it nailed a lone piece to thin air');
+    vrSqueeze(1, false);                       // gun home
+    [a1, b1, a2, b2].forEach(x=>BODIES.splice(BODIES.indexOf(x), 1));
+    return 'the ray picks the joint; a lone piece refuses';
+  });
   P('the gun talks when a seam is in reach', ()=>{
     /* fail BEFORE touching shared state, so a pre-change run cannot
        strand the gun in the hand and cascade into later tests */

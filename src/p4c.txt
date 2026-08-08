@@ -715,6 +715,73 @@ function seamSeek(muzzle){
   return best;
 }
 
+/* ============================================================================
+   THE RAY NAIL (build-feel RULING L): the gun pointed AT a spot on the
+   wood drives the nail there.  The ray (1.2m — arm's length and a bit)
+   picks the piece and the spot; the partner is the piece TOUCHING it at
+   that spot (its box, grown by SEAM_TOUCH, contains the point).  If
+   nothing touches at the point itself, the nearest seam ON THE HIT
+   PIECE within SEAM_REACH of the spot still takes the nail — pointing
+   at a plank that lies against another means the pair, wherever along
+   the plank the ray landed.  A hit with no partner anywhere is a
+   refusal ({miss:'bite'}), never a cosmetic nail: a nail that joins
+   nothing has no place in the joint, hammer or save bookkeeping.
+   ========================================================================== */
+const NAIL_RAY = 1.2;
+const _nrRay = new T.Raycaster();
+const _nrQ = new T.Quaternion(), _nrV = new T.Vector3();
+function nailRay(origin, dir){
+  _nrRay.set(origin, dir);
+  _nrRay.near = 0; _nrRay.far = NAIL_RAY;
+  const meshes = [];
+  for(const b of BODIES){
+    if(b.kind !== 'wood') continue;
+    if(b.state !== 'loose' && b.state !== 'fixed') continue;
+    b.mesh.updateWorldMatrix(true, false);
+    meshes.push(b.mesh);
+  }
+  if(!meshes.length) return null;
+  const hits = _nrRay.intersectObjects(meshes, false);
+  if(!hits.length) return null;
+  const h = hits[0];
+  let A = null;
+  for(const b of BODIES) if(b.mesh === h.object){ A = b; break; }
+  if(!A) return null;
+  /* the face normal in world: box normals ride the quaternion exactly —
+     the scale is per-axis and the normals are axis-aligned */
+  const ax = h.face.normal.clone()
+    .applyQuaternion(h.object.getWorldQuaternion(_nrQ)).normalize();
+  /* the partner: the piece whose box holds the hit point */
+  let B = null, bg = 1e9;
+  for(const b of BODIES){
+    if(b === A || b.kind !== 'wood' || b.venue !== A.venue) continue;
+    if(b.state !== 'loose' && b.state !== 'fixed') continue;
+    b.mesh.updateWorldMatrix(true, false);
+    _nrV.copy(h.point);
+    b.mesh.worldToLocal(_nrV);
+    const gx = Math.max(0, Math.abs(_nrV.x) - 0.5) * b.mesh.scale.x,
+          gy = Math.max(0, Math.abs(_nrV.y) - 0.5) * b.mesh.scale.y,
+          gz = Math.max(0, Math.abs(_nrV.z) - 0.5) * b.mesh.scale.z;
+    const g = Math.sqrt(gx*gx + gy*gy + gz*gz);
+    if(g <= SEAM_TOUCH && g < bg){ bg = g; B = b; }
+  }
+  if(B) return {a:A, b:B, point:h.point.clone(), axis:ax};
+  /* nothing touching at the spot itself: the nearest seam on the HIT
+     piece still within reach of the spot */
+  let best = null, bd = SEAM_REACH;
+  for(const b of BODIES){
+    if(b === A || b.kind !== 'wood' || b.venue !== A.venue) continue;
+    if(b.state !== 'loose' && b.state !== 'fixed') continue;
+    b.mesh.getWorldPosition(_nrV);
+    if(_nrV.distanceTo(h.point) > 3) continue;
+    const s = seamPair(A, b);
+    if(!s) continue;
+    const d = s.point.distanceTo(h.point);
+    if(d < bd){ bd = d; best = {a:A, b, point:s.point, axis:s.axis}; }
+  }
+  return best || {miss:'bite', a:A, point:h.point.clone()};
+}
+
 /* feet-and-inches for the tape, the saws and the labels: 2.4384 -> 8'0" */
 function ftIn(m){
   const inches = Math.round(m/0.0254);
