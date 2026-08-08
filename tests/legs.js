@@ -237,6 +237,31 @@ const probe = `
     return out;
   });
 
+  P('a pipe lifts to make room for what you just hung', ()=>{
+    /* goods round RULING V: minTrimOf is enforced by the things that MOVE
+       a pipe, and hanging is not a move — so hanging a 13m house curtain
+       on a pipe standing at 2m used to put the cloth through the stage */
+    const ls = FLY[11];
+    hangGoods(ls, 'none');
+    ls.pos = ls.target = 2.0;
+    ls.group.position.y = ls.pos;
+    hangGoods(ls, 'house');
+    const lo = minTrimOf(ls);
+    if(ls.pos < lo - 1e-6)
+      throw new Error('the curtain hangs through the deck: pos '+ls.pos.toFixed(2)+' floor '+lo.toFixed(2));
+    if(Math.abs(ls.group.position.y - ls.pos) > 1e-6)
+      throw new Error('the pipe mesh did not follow the lift');
+    /* a pipe with room to spare is left exactly where it stands */
+    hangGoods(ls, 'none');
+    ls.pos = ls.target = 9.0;
+    ls.group.position.y = ls.pos;
+    hangGoods(ls, 'border');
+    if(Math.abs(ls.pos - 9.0) > 1e-6)
+      throw new Error('a pipe with room moved anyway, to '+ls.pos.toFixed(2));
+    hangGoods(ls, 'none');
+    return 'lifted for the curtain, left alone for the border';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
