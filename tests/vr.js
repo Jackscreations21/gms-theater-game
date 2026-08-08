@@ -1642,6 +1642,40 @@ const probe = `
     if(VR.tapeLn && VR.tapeLn.visible) throw new Error('the line outlived the hold');
     return 'stretched, read in ft-in, marked';
   });
+  P('wood let go over the table seats, and the cutter cuts under the trigger', ()=>{
+    const st = SAWS.palace.track;
+    const sheet = regWood('sheet');
+    scene.updateMatrixWorld(true);
+    const over = st.seat.getWorldPosition(new THREE.Vector3()); over.y += 0.35;
+    sheet.mesh.position.copy(over);
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.copy(over);
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'body' || VR.held.body !== sheet)
+      throw new Error('the sheet was not taken: '+(VR.held && VR.held.kind));
+    vrSqueeze(0, false);
+    if(sheet.state !== 'seated' || sheet.station !== st) throw new Error('never seated: '+sheet.state);
+    /* the cutter: grab, slide, trigger */
+    scene.updateMatrixWorld(true);
+    const grip = st.cutter.getWorldPosition(new THREE.Vector3()); grip.y += 0.15;
+    c0.position.copy(grip);
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'saw') throw new Error('the cutter was not taken: '+(VR.held && VR.held.kind));
+    c0.position.x += 0.4;
+    c0.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    const before = BODIES.length;
+    vrSelect(0, true);
+    if(BODIES.length !== before + 1) throw new Error('the trigger never cut');
+    vrSqueeze(0, false);
+    /* tidy: both halves off the table and loose */
+    st.pieces.slice().forEach(p=>{ grabBody(p); p.state = 'loose'; });
+    return 'seated on release, cut on the trigger';
+  });
   P('a session end holsters everything', ()=>{
     const c0 = VR.controllers[0];
     vrUpdateBelt(); VR.rig.updateMatrixWorld(true);

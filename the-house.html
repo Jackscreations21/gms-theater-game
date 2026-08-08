@@ -4302,6 +4302,11 @@ function slotBody(b, anchor){
 function grabBody(b){
   if(b.state === 'hung') unhangBody(b);
   else if(b.state === 'slotted') unslotBody(b);
+  else if(b.state === 'seated' && b.station){        // off the saw table (p4c)
+    b.station.pieces.splice(b.station.pieces.indexOf(b), 1);
+    venueRoot(b.venue).attach(b.mesh);
+    b.station = null;
+  }
   b.state = 'held';
   return b;
 }
@@ -5201,6 +5206,109 @@ function snapAsm(a){
 function ftIn(m){
   const inches = Math.round(m/0.0254);
   return Math.floor(inches/12) + "'" + (inches%12) + '"';
+}
+
+/* ============================================================================
+   THE SAWS (PR 4, spec §6).  One cut station pair per shed: a TRACK TABLE
+   for sheets and a CHOP BENCH for lumber (90° only in v1).  One mechanic
+   for both: release a held piece over the station and it SEATS (length
+   along table X, kept in st.pieces — 'seated' pieces never settle);
+   grab the CUTTER and slide it (snapped to the INCH, a pencil tick from
+   the tape snapping FIRST); trigger with the cutter in hand cuts
+   whichever piece lies under the blade.  A cut re-scales one body and
+   registers a second — never new geometry; both sides keep the paint
+   (shared material entries, copied array).  A side under six inches is
+   scrap and vanishes.  Geometry lives in p2m with the sheds; the logic
+   is here.
+   ========================================================================== */
+var SAWS = {palace:null, arc:null};
+const SAW_MIN = 0.1524;          // six inches — under this is scrap
+function seatLen(b){ return b.seatAxis === 'W' ? b.dims.W : b.dims.L; }
+/* seat a held/loose piece on a station: sheets on the track table, lumber
+   on the chop bench, length along table X.  Returns false if refused. */
+function seatWood(st, b){
+  if(!st || b.kind !== 'wood') return false;
+  if(st.kind === 'track' ? b.prof !== 'sheet' : b.prof === 'sheet') return false;
+  if(b.state === 'slotted') unslotBody(b);
+  if(b.station) return false;
+  /* which of the sheet's axes lies along the table: whichever the hand
+     offered closer to table X */
+  let axis = 'L';
+  if(b.prof === 'sheet'){
+    b.mesh.updateMatrixWorld(true);
+    _av.set(1, 0, 0).applyQuaternion(b.mesh.getWorldQuaternion(_aq));
+    st.group.getWorldQuaternion(_aq2);
+    _av2.set(1, 0, 0).applyQuaternion(_aq2);
+    axis = Math.abs(_av.dot(_av2)) >= 0.5 ? 'L' : 'W';
+  }
+  st.seat.add(b.mesh);
+  if(b.prof === 'sheet')
+    b.mesh.rotation.set(-Math.PI/2, axis === 'W' ? Math.PI/2 : 0, 0, 'YXZ');
+  else
+    b.mesh.rotation.set(0, 0, -Math.PI/2);       // lumber: long axis to X
+  b.mesh.position.set(0, 0, 0);
+  b.mesh.updateMatrixWorld(true);
+  _abox.setFromObject(b.mesh);
+  b.mesh.position.y = (_abox.max.y - _abox.min.y)/2 + 0.001;
+  b.mesh.position.x = 0;
+  b.state = 'seated'; b.station = st; b.seatAxis = axis;
+  st.pieces.push(b);
+  return true;
+}
+/* slide the cutter: snap to the inch, but a pencil tick on the piece under
+   the blade snaps FIRST (the tape's mark, spec §6) */
+function sawSetCut(st, rawX){
+  let x = clamp(rawX, -st.span/2, st.span/2);
+  x = Math.round(x/0.0254)*0.0254;
+  for(const p of st.pieces){
+    if(!p.tick) continue;
+    p.mesh.updateMatrixWorld(true);
+    _av.copy(p.tick.p).applyMatrix4(p.mesh.matrixWorld);
+    st.group.worldToLocal(_av);
+    if(Math.abs(rawX - _av.x) < 0.04){ x = _av.x; break; }
+  }
+  st.cut = x;
+  st.cutter.position.x = x;
+  return x;
+}
+function sawResize(b, newLen, cx){
+  if(b.seatAxis === 'W'){ b.dims.W = newLen; b.mesh.scale.y = newLen; }
+  else { b.dims.L = newLen; b.mesh.scale[b.prof === 'sheet' ? 'x' : 'y'] = newLen; }
+  b.mesh.position.x = cx;
+  delete b.tick;                 // the mark is consumed by the cut
+}
+function sawCut(st){
+  const x = st.cut;
+  const b = st.pieces.find(p=>{
+    const half = seatLen(p)/2;
+    return x > p.mesh.position.x - half + 0.005 && x < p.mesh.position.x + half - 0.005;
+  });
+  if(!b) return null;
+  const len = seatLen(b), lo = b.mesh.position.x - len/2;
+  let s1 = x - lo, s2 = len - s1;
+  if(s1 < SAW_MIN && s2 < SAW_MIN) return null;
+  if(s1 < SAW_MIN){                       // the near side is scrap: keep the far
+    sawResize(b, s2, x + s2/2);
+    return {kept:b, off:null};
+  }
+  if(s2 < SAW_MIN){
+    sawResize(b, s1, lo + s1/2);
+    return {kept:b, off:null};
+  }
+  const dims2 = b.seatAxis === 'W' ? {L:b.dims.L, W:s2} : {L:s2, W:b.dims.W};
+  sawResize(b, s1, lo + s1/2);
+  const keep = BUILD_VENUE;
+  BUILD_VENUE = st.venue;
+  const nb = regWood(b.prof, dims2);
+  BUILD_VENUE = keep;
+  nb.mesh.material = b.mesh.material.slice();   // paint rides the cut
+  st.seat.add(nb.mesh);
+  nb.mesh.rotation.copy(b.mesh.rotation);
+  nb.mesh.position.copy(b.mesh.position);
+  nb.mesh.position.x = x + s2/2 + 0.01;
+  nb.state = 'seated'; nb.station = st; nb.seatAxis = b.seatAxis;
+  st.pieces.push(nb);
+  return {kept:b, off:nb};
 }
 
 /* ============================================================================
@@ -12008,6 +12116,50 @@ function palletSlot(venue, wx, wz, parent){
   parent.add(m);
   PALLET_SLOTS.push({venue, x:wx, z:wz, mesh:m});
 }
+/* ---- the cut stations (build spec §6; the logic lives in p4c) ----------
+   One pair per shed: the TRACK TABLE for sheets, the CHOP BENCH for
+   lumber.  st.cutter is the one grabbable — a rail-and-head for the
+   track saw, an arm-and-blade for the chop — sliding along table X. */
+function buildSaw(venue, kind, parent, wx, wz){
+  const g = new T.Group(); g.name = 'saw:' + venue + ':' + kind;
+  const ox = (venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
+  g.position.set(wx - ox, 0, wz);
+  const W = kind === 'track' ? 2.9 : 2.8, D2 = kind === 'track' ? 1.6 : 0.62;
+  const topY = 0.86;
+  const top = new T.Mesh(new T.BoxGeometry(W, 0.07, D2), M.steel);
+  top.position.y = topY; g.add(top);
+  [[-W/2+0.15, -D2/2+0.1],[W/2-0.15, -D2/2+0.1],[-W/2+0.15, D2/2-0.1],[W/2-0.15, D2/2-0.1]]
+    .forEach(cn=>{
+      const leg = new T.Mesh(new T.CylinderGeometry(0.03, 0.03, topY, 6), M.steel);
+      leg.position.set(cn[0], topY/2, cn[1]); g.add(leg);
+    });
+  const seat = new T.Object3D();
+  seat.position.y = topY + 0.035;
+  g.add(seat);
+  const cutter = new T.Group();
+  cutter.position.y = topY + 0.035;
+  if(kind === 'track'){
+    const rail = new T.Mesh(new T.BoxGeometry(0.09, 0.03, D2 + 0.3), M.pipe);
+    rail.position.y = 0.08; cutter.add(rail);
+    const head = new T.Mesh(new T.BoxGeometry(0.2, 0.16, 0.22), M.fixture);
+    head.position.y = 0.16; cutter.add(head);
+  } else {
+    const arm = new T.Mesh(new T.BoxGeometry(0.07, 0.5, 0.1), M.steel);
+    arm.position.set(0, 0.25, -D2/2 - 0.06); cutter.add(arm);
+    const blade = new T.Mesh(new T.CylinderGeometry(0.16, 0.16, 0.012, 16), M.fixture);
+    blade.rotation.z = Math.PI/2; blade.position.y = 0.3; cutter.add(blade);
+  }
+  cutter.userData.moves = true;
+  g.add(cutter);
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+  parent.add(g);
+  const st = {venue, kind, group:g, seat, cutter, pieces:[], cut:0,
+              span:W - 0.1, grabR:0.28, gripY:topY + 0.2};
+  if(!SAWS[venue]) SAWS[venue] = {};
+  SAWS[venue][kind] = st;
+  return st;
+}
+
 function buildLift(venue, parent, wx, wz){
   const g = new T.Group();
   g.userData.moves = true;
@@ -12171,6 +12323,10 @@ function liftDrop(L){
   palletSlot('palace', -16.5, -15.5, world);
   palletSlot('palace',  16.5, -15.5, world);
 
+  /* the cut stations, mid-shed, clear of the racks, aprons and slots */
+  buildSaw('palace', 'track', g, 2.0, -24.0);
+  buildSaw('palace', 'chop',  g, -4.5, -24.0);
+
   /* the door control, an [E] station on the STAGE side of the wall — a
      top-level world child so p2i can pin it to the stage room, never the
      shed's (the shed may be culled while you are looking right at it) */
@@ -12246,6 +12402,8 @@ function buildArcShed(MAT){
      and one in each wing of each house, just inside its rear door */
   buildLift('arc', ARC.group, ARC.X - 14, -50);
   [-31, -16, 16, 31].forEach(sx=> palletSlot('arc', ARC.X + sx, -52, ARC.group));
+  buildSaw('arc', 'track', R, ARC.X + 6, -54);
+  buildSaw('arc', 'chop',  R, ARC.X + 0, -51);
   for(const key of ['main','studio']){
     const H = ARC.houses[key];
     if(!H) continue;
@@ -15739,6 +15897,14 @@ function vrSelect(hand, down){
   if(!down) return;
   /* a hand holding a tool: the trigger IS the tool (build spec §5) */
   if(VR.tools && VR.tools[hand]){ vrToolFire(hand, VR.tools[hand]); return; }
+  /* a hand on a saw cutter: the trigger is the blade (build spec §6) */
+  if(VR.held && VR.held.kind === 'saw' && VR.held.hand === hand){
+    const r = (typeof sawCut === 'function') ? sawCut(VR.held.st) : null;
+    if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+    if(typeof toast === 'function') toast(!r ? 'nothing under the blade'
+      : r.off ? 'two pieces' : 'trimmed — the scrap end is gone');
+    return;
+  }
   /* the desks keep priority for the pointing hand: on a desk, the trigger
      presses the console and never reaches through it into the room */
   if(hand === 1){
@@ -15924,6 +16090,23 @@ function vrSqueeze(hand, down){
       if(h.kind === 'body'){
         const b = h.body;
         VR.snap = null;
+        /* wood let go over a cut station SEATS on it (p4c seatWood) */
+        if(b.kind === 'wood' && typeof SAWS !== 'undefined' && SAWS[b.venue]){
+          const set = SAWS[b.venue];
+          for(const kk in set){
+            const st = set[kk];
+            st.group.updateMatrixWorld(true);
+            b.mesh.getWorldPosition(_vecA);
+            const lp = st.group.worldToLocal(_vecA.clone());
+            if(Math.abs(lp.x) < st.span/2 + 0.3 && Math.abs(lp.z) < 1.0 &&
+               lp.y > 0.4 && lp.y < 1.9 && seatWood(st, b)){
+              if(typeof toast === 'function')
+                toast('on the ' + (st.kind === 'track' ? 'table' : 'bench'));
+              vrLabel(null);
+              return;
+            }
+          }
+        }
         const t = vrBodyTarget(b);
         if(t && t.point && hangBody(b, t.point)){
           if(typeof toast === 'function') toast(BODY_LABEL[b.kind] + ' — hung');
@@ -16011,6 +16194,21 @@ function vrSqueeze(hand, down){
       if(d < ct.grabR && d < cd){ cd = d; cart = ct; }
     }
   }
+  /* the saw cutters (p4c): a hand on the track rail or the chop arm */
+  let saw = null, sd = 0.28;
+  if(typeof SAWS !== 'undefined'){
+    for(const vk in SAWS){
+      const set = SAWS[vk];
+      if(!set) continue;
+      for(const kk in set){
+        const st = set[kk];
+        st.cutter.getWorldPosition(_vecA);
+        _vecA.y += 0.15;
+        const d = _vecA.distanceTo(_rayO);
+        if(d < sd){ sd = d; saw = st; }
+      }
+    }
+  }
   /* loose gear (the p4 detach system): hung bodies on the LIVE rig, and
      anything slotted or standing loose — a body within reach of the closing
      hand.  A parked stage's rig is across town; its bodies are not takeable. */
@@ -16030,8 +16228,17 @@ function vrSqueeze(hand, down){
       if(d < bdd){ bdd = d; bod = b; }
     }
   }
-  /* nearest wins across all four classes — never fork this arbitration */
-  if(bod && (!cart || bdd < cd) && (!lv || bdd < lvd) && (!best || bdd < bd)){
+  /* nearest wins across all five classes — never fork this arbitration */
+  if(saw && (!bod || sd <= bdd) && (!cart || sd < cd) && (!lv || sd < lvd) && (!best || sd < bd)){
+    saw.group.updateMatrixWorld(true);
+    const lx = saw.group.worldToLocal(_rayO.clone()).x;
+    VR.held = {hand, kind:'saw', st:saw, off:saw.cut - lx};
+    if(typeof toast === 'function') toast(saw.kind === 'track'
+      ? 'track saw — slide it, trigger cuts'
+      : 'chop saw — slide it, trigger cuts');
+    return;
+  }
+  if(bod && (!saw || bdd < sd) && (!cart || bdd < cd) && (!lv || bdd < lvd) && (!best || bdd < bd)){
     /* a piece already NAILED (p4c): swing it on its one nail, carry the
        whole assembly by any rigid piece, or bounce off anchored work */
     if(bod.asm){
@@ -16074,7 +16281,7 @@ function vrSqueeze(hand, down){
     if(typeof toast === 'function') toast(BODY_LABEL[bod.kind] + ' — in hand');
     return;
   }
-  if(cart && (!best || cd < bd) && (!lv || cd < lvd)){
+  if(cart && (!saw || cd < sd) && (!best || cd < bd) && (!lv || cd < lvd)){
     VR.held = {hand, kind:'cart', cart, offX:cart.x - _rayO.x, offZ:cart.z - _rayO.z};
     if(typeof toast === 'function') toast(cart.lift
       ? 'forklift — walk it; the right stick runs the forks'
@@ -16083,7 +16290,7 @@ function vrSqueeze(hand, down){
   }
   /* nearest wins: with the lock in, the handle stands right against the
      front run, and the hand should get whichever it actually closed on */
-  if(lv && (!best || lvd < bd)){
+  if(lv && (!saw || lvd < sd) && (!best || lvd < bd)){
     VR.heldLever = {hand, rope:lv};
     return;
   }
@@ -16151,6 +16358,24 @@ function vrUpdateHold(dt){
     if(ct.lift && VR.axes && VR.axes.ry)
       ct.forkY = clamp(ct.forkY - VR.axes.ry * LIFT_FORK_RATE * (dt || 0.016),
                        0, LIFT_FORK_TOP);
+    return;
+  }
+  /* a hand on a saw cutter slides it along the table — snapped to the
+     inch (a pencil tick first), read out against the piece under it */
+  if(VR.held.kind === 'saw'){
+    const st = VR.held.st;
+    st.group.updateMatrixWorld(true);
+    const lx = st.group.worldToLocal(_rayO.clone()).x;
+    sawSetCut(st, lx + VR.held.off);
+    const p = st.pieces.find(q=>{
+      const half = seatLen(q)/2;
+      return st.cut > q.mesh.position.x - half && st.cut < q.mesh.position.x + half;
+    });
+    if(p){
+      st.cutter.getWorldPosition(_vecA);
+      _vecA.y += 0.3;
+      vrLabel('CUT AT ' + ftIn(st.cut - (p.mesh.position.x - seatLen(p)/2)), _vecA, 1);
+    } else vrLabel(null);
     return;
   }
   /* the tape's tab: a line from the case to the hand, read out in ft-in */

@@ -630,7 +630,23 @@ a dependency chain on p9/p4c/p2m — do not parallelize them).
   Watch for: `vrTapeLine` had to grow its OWN temps — callers pass
   the shared `_vecA` in as an argument (aliasing bit once already).
 
-**NEXT: PR 4 (saws) through PR 7 (save), in plan order.** Step zero:
+- **PR 4 (branch `build-saws`, on PR 3's branch) — the saws.** One
+  station pair per shed (geometry in p2m `buildSaw`, logic in p4c): a
+  TRACK TABLE (sheets only) and a CHOP BENCH (lumber only, 90°). One
+  mechanic for both: wood released over a station SEATS (`seatWood` —
+  length along table X, sheets keep whichever axis the hand offered,
+  `'seated'` pieces never settle and `grabBody` unfiles them); the
+  CUTTER is a sixth grab class (0.28, nearest-wins extended — bod /
+  cart / lever / rope / saw all cross-check now); sliding it snaps to
+  the INCH with a tape tick (body.tick) snapping FIRST (`sawSetCut`);
+  the trigger with the cutter in hand cuts whichever piece lies under
+  the blade (`sawCut`) — one body re-scaled, one registered, paint
+  rides both (copied material array, shared entries), a side under
+  six inches is scrap and vanishes, cuts at the piece cap are legal
+  (the screen is the enforcement point). vrLabel is the readout —
+  no per-station canvases.
+
+**NEXT: PR 5 (paint) through PR 7 (save), in plan order.** Step zero:
 confirm the previous PR merged, `npm test` 15/15 on `main`, then
 branch the next off `main` (or build on the unmerged branch and open
 after it merges — the #38 pattern).
@@ -710,6 +726,10 @@ does the ghost snap GRAB the piece too eagerly (0.14 gap) or not
 eagerly enough; is one squeeze + other-hand trigger workable for
 gun-work at arm's length; does the swing of a one-nail piece read as
 hinged; tape legibility and the tab grab at 0.2.
+(PR 4): does seating wood on the table feel deliberate or accidental
+(the release envelope is span/2+0.3 by 1.0); is the CUT AT label
+readable while sliding; does the inch snap feel like a fence or like
+stickiness; two stations 6.5m apart — is the shed getting crowded.
 Known cosmetic, unfixed:
 rope runs pass through the fly-gallery floor at y=8 (real rails have
 rope slots).

@@ -336,6 +336,11 @@ function slotBody(b, anchor){
 function grabBody(b){
   if(b.state === 'hung') unhangBody(b);
   else if(b.state === 'slotted') unslotBody(b);
+  else if(b.state === 'seated' && b.station){        // off the saw table (p4c)
+    b.station.pieces.splice(b.station.pieces.indexOf(b), 1);
+    venueRoot(b.venue).attach(b.mesh);
+    b.station = null;
+  }
   b.state = 'held';
   return b;
 }

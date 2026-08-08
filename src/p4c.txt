@@ -398,3 +398,106 @@ function ftIn(m){
   const inches = Math.round(m/0.0254);
   return Math.floor(inches/12) + "'" + (inches%12) + '"';
 }
+
+/* ============================================================================
+   THE SAWS (PR 4, spec §6).  One cut station pair per shed: a TRACK TABLE
+   for sheets and a CHOP BENCH for lumber (90° only in v1).  One mechanic
+   for both: release a held piece over the station and it SEATS (length
+   along table X, kept in st.pieces — 'seated' pieces never settle);
+   grab the CUTTER and slide it (snapped to the INCH, a pencil tick from
+   the tape snapping FIRST); trigger with the cutter in hand cuts
+   whichever piece lies under the blade.  A cut re-scales one body and
+   registers a second — never new geometry; both sides keep the paint
+   (shared material entries, copied array).  A side under six inches is
+   scrap and vanishes.  Geometry lives in p2m with the sheds; the logic
+   is here.
+   ========================================================================== */
+var SAWS = {palace:null, arc:null};
+const SAW_MIN = 0.1524;          // six inches — under this is scrap
+function seatLen(b){ return b.seatAxis === 'W' ? b.dims.W : b.dims.L; }
+/* seat a held/loose piece on a station: sheets on the track table, lumber
+   on the chop bench, length along table X.  Returns false if refused. */
+function seatWood(st, b){
+  if(!st || b.kind !== 'wood') return false;
+  if(st.kind === 'track' ? b.prof !== 'sheet' : b.prof === 'sheet') return false;
+  if(b.state === 'slotted') unslotBody(b);
+  if(b.station) return false;
+  /* which of the sheet's axes lies along the table: whichever the hand
+     offered closer to table X */
+  let axis = 'L';
+  if(b.prof === 'sheet'){
+    b.mesh.updateMatrixWorld(true);
+    _av.set(1, 0, 0).applyQuaternion(b.mesh.getWorldQuaternion(_aq));
+    st.group.getWorldQuaternion(_aq2);
+    _av2.set(1, 0, 0).applyQuaternion(_aq2);
+    axis = Math.abs(_av.dot(_av2)) >= 0.5 ? 'L' : 'W';
+  }
+  st.seat.add(b.mesh);
+  if(b.prof === 'sheet')
+    b.mesh.rotation.set(-Math.PI/2, axis === 'W' ? Math.PI/2 : 0, 0, 'YXZ');
+  else
+    b.mesh.rotation.set(0, 0, -Math.PI/2);       // lumber: long axis to X
+  b.mesh.position.set(0, 0, 0);
+  b.mesh.updateMatrixWorld(true);
+  _abox.setFromObject(b.mesh);
+  b.mesh.position.y = (_abox.max.y - _abox.min.y)/2 + 0.001;
+  b.mesh.position.x = 0;
+  b.state = 'seated'; b.station = st; b.seatAxis = axis;
+  st.pieces.push(b);
+  return true;
+}
+/* slide the cutter: snap to the inch, but a pencil tick on the piece under
+   the blade snaps FIRST (the tape's mark, spec §6) */
+function sawSetCut(st, rawX){
+  let x = clamp(rawX, -st.span/2, st.span/2);
+  x = Math.round(x/0.0254)*0.0254;
+  for(const p of st.pieces){
+    if(!p.tick) continue;
+    p.mesh.updateMatrixWorld(true);
+    _av.copy(p.tick.p).applyMatrix4(p.mesh.matrixWorld);
+    st.group.worldToLocal(_av);
+    if(Math.abs(rawX - _av.x) < 0.04){ x = _av.x; break; }
+  }
+  st.cut = x;
+  st.cutter.position.x = x;
+  return x;
+}
+function sawResize(b, newLen, cx){
+  if(b.seatAxis === 'W'){ b.dims.W = newLen; b.mesh.scale.y = newLen; }
+  else { b.dims.L = newLen; b.mesh.scale[b.prof === 'sheet' ? 'x' : 'y'] = newLen; }
+  b.mesh.position.x = cx;
+  delete b.tick;                 // the mark is consumed by the cut
+}
+function sawCut(st){
+  const x = st.cut;
+  const b = st.pieces.find(p=>{
+    const half = seatLen(p)/2;
+    return x > p.mesh.position.x - half + 0.005 && x < p.mesh.position.x + half - 0.005;
+  });
+  if(!b) return null;
+  const len = seatLen(b), lo = b.mesh.position.x - len/2;
+  let s1 = x - lo, s2 = len - s1;
+  if(s1 < SAW_MIN && s2 < SAW_MIN) return null;
+  if(s1 < SAW_MIN){                       // the near side is scrap: keep the far
+    sawResize(b, s2, x + s2/2);
+    return {kept:b, off:null};
+  }
+  if(s2 < SAW_MIN){
+    sawResize(b, s1, lo + s1/2);
+    return {kept:b, off:null};
+  }
+  const dims2 = b.seatAxis === 'W' ? {L:b.dims.L, W:s2} : {L:s2, W:b.dims.W};
+  sawResize(b, s1, lo + s1/2);
+  const keep = BUILD_VENUE;
+  BUILD_VENUE = st.venue;
+  const nb = regWood(b.prof, dims2);
+  BUILD_VENUE = keep;
+  nb.mesh.material = b.mesh.material.slice();   // paint rides the cut
+  st.seat.add(nb.mesh);
+  nb.mesh.rotation.copy(b.mesh.rotation);
+  nb.mesh.position.copy(b.mesh.position);
+  nb.mesh.position.x = x + s2/2 + 0.01;
+  nb.state = 'seated'; nb.station = st; nb.seatAxis = b.seatAxis;
+  st.pieces.push(nb);
+  return {kept:b, off:nb};
+}
