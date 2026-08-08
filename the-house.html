@@ -7938,6 +7938,34 @@ function carpAside(st, b, run){
   b.mesh.position.copy(_crewV);
 }
 
+/* ---- mark-local -> world (PR 4, RULINGS AB/AC) ----------------------------
+   The mark (CARP_RUN.mark, stamped by the crayon in p9) is WORLD {x, z, yaw}
+   on a deck at y = 0; the blueprint's piece poses and nail points are LOCAL
+   to it.  The frame is one yaw about Y standing at the mark — built here,
+   fresh, every time it is needed, and from nothing but the mark itself: any
+   other source is the wrong-deck trap (the Arc offset belongs to attach()
+   and worldToLocal, NEVER added by hand).  The out arguments are WRITTEN —
+   callers pass scratch THEY own (the aliasing trap, TRAPS.md). */
+const _carpMV = new T.Vector3(), _carpMV2 = new T.Vector3();
+const _carpMQ = new T.Quaternion(), _carpYQ = new T.Quaternion();
+const _carpME = new T.Euler();
+function carpMarkPoint(mark, p, out){
+  _carpYQ.setFromEuler(_carpME.set(0, mark.yaw || 0, 0));
+  out.set(p[0], p[1], p[2]).applyQuaternion(_carpYQ);
+  out.x += mark.x; out.z += mark.z;
+  return out;
+}
+function carpMarkAxis(mark, ax, out){
+  _carpYQ.setFromEuler(_carpME.set(0, mark.yaw || 0, 0));
+  return out.set(ax[0], ax[1], ax[2]).applyQuaternion(_carpYQ);
+}
+function carpMarkPose(mark, pos, rot, outP, outQ){
+  carpMarkPoint(mark, pos, outP);          // leaves the mark's yaw in _carpYQ
+  outQ.setFromEuler(_carpME.set(rot[0], rot[1], rot[2]));
+  outQ.premultiply(_carpYQ);
+  return outP;
+}
+
 /* ============================================================================
    THE JOB QUEUE
    ========================================================================== */
@@ -8218,6 +8246,88 @@ function crewAssign(h){
     return true;
   }
 
+  if(job.kind === 'carpHaul'){
+    /* hand: real-carry ONE piece to its blueprint pose at the mark (RULING
+       AB — one piece per trip, the same mesh end to end, never the dummy
+       path).  job.body is a stick used uncut; body:null means the piece
+       came off a saw and CARP_RUN.made knows which body the cut kept. */
+    const run = (typeof CARP_RUN !== 'undefined') ? CARP_RUN : null;
+    const b = job.body || (run && run.made && run.made[job.piece]) || null;
+    if(!run || !run.mark || !b || (b.state !== 'loose' && b.state !== 'slotted')){
+      h.job = null; return true;   // no mark to build at, or the piece was taken
+    }
+    b.mesh.getWorldPosition(_crewV);
+    handGoTo(h, _crewV.x, _crewV.z, ()=>{
+      h.state = 'work'; h.wait = rnd(0.5, 0.9);          // stoop and take it up
+      h.then = ()=>{
+        if(b.state !== 'loose' && b.state !== 'slotted'){ h.job = null; return; }
+        carpPickUp(h, b);
+        carpMarkPoint(run.mark, job.pos, _crewV);
+        handGoTo(h, _crewV.x, _crewV.z + 0.6, ()=>{      // stand just downstage of the lines
+          h.state = 'work'; h.wait = rnd(0.8, 1.4);      // lower it onto its lines
+          h.then = ()=>{
+            /* set-down at the blueprint pose: venueRoot attach — the
+               forklift's shape, three owns the Arc offset — then the WORLD
+               pose written through the parent's frame */
+            const root = venueRoot(b.venue);
+            root.attach(b.mesh);
+            root.updateWorldMatrix(true, false);
+            carpMarkPose(run.mark, job.pos, job.rot, _carpMV, _carpMQ);
+            b.mesh.position.copy(root.worldToLocal(_carpMV));
+            root.getWorldQuaternion(_crewQ).invert();
+            b.mesh.quaternion.copy(_crewQ.multiply(_carpMQ));
+            b.state = 'loose';
+            /* the POSE height is the rest height.  updateBodies (p4) settles
+               every loose body toward groundAt + restH, and groundAt sees
+               architecture, not the wood already placed under this piece —
+               so a skin posed on its frame (flat: 0.038 + half 0.0095) would
+               sink through it under a woodRestH value.  For a piece lying
+               directly on the deck the pose y IS woodRestH's half-box; for a
+               piece bearing on wood beneath, restH carries the stack exactly
+               the way woodRestH means it: this is where the piece rests.
+               Nothing new rides the save (restH is recomputed on load), and
+               a later hammer blow re-derives it via detachPiece. */
+            b.restH = job.pos[1];
+            b.mesh.updateMatrixWorld(true);
+            h.carryB = null;
+            if(run.placed) run.placed[job.piece] = b;
+            crewLog(b.prof + ' set at the mark');
+            h.job = null;
+          };
+        });
+      };
+    });
+    return true;
+  }
+
+  if(job.kind === 'carpNail'){
+    /* hand: work-wait at the joint, then BOTH of the blueprint's nails for
+       it (RULING G: two is rigid).  No deck nail ever — the finished piece
+       lies un-anchored at the mark (RULING AC).  addNail reads CURRENT
+       world transforms, so the scene is brought current before each shot;
+       a refused nail is logged and the run carries on. */
+    const run = (typeof CARP_RUN !== 'undefined') ? CARP_RUN : null;
+    const bi = run && run.placed && run.placed[job.i];
+    const bj = run && run.placed && run.placed[job.j];
+    if(!run || !run.mark || !bi || !bj){ h.job = null; return true; }
+    carpMarkPoint(run.mark, job.nails[0].p, _crewV);
+    handGoTo(h, _crewV.x + 0.3, _crewV.z + 0.45, ()=>{   // kneel beside the seam
+      h.state = 'work'; h.wait = rnd(1.0, 1.8);          // gun up, two shots
+      h.then = ()=>{
+        for(const nd of job.nails){
+          scene.updateMatrixWorld(true);
+          carpMarkPoint(run.mark, nd.p, _carpMV);
+          carpMarkAxis(run.mark, nd.ax, _carpMV2);
+          if(!addNail(bi, {body:bj}, _carpMV, _carpMV2))
+            crewLog('a nail refused at ' + job.i + '-' + job.j);
+        }
+        crewLog('nailed ' + job.i + ' to ' + job.j);
+        h.job = null;
+      };
+    });
+    return true;
+  }
+
   if(job.kind === 'doors'){
     handGoTo(h, gate.x, gate.z, ()=>{
       h.state = 'work'; h.wait = 1.0;
@@ -8365,6 +8475,10 @@ function updateCrew(dt){
       const was = CREW.running;
       CREW.running = null;
       CREW.people.forEach(h=>{ h.state = 'off'; h.group.visible = false; });
+      /* a finished catalogue build earns its line in the log (PR 4) */
+      if(was === 'carp' && typeof CARP_RUN !== 'undefined' && CARP_RUN && CARP_RUN.key &&
+         typeof CARP_CAT !== 'undefined' && CARP_CAT[CARP_RUN.key])
+        crewLog('built: ' + CARP_CAT[CARP_RUN.key].label + ' — lying at the mark');
       crewLog(was === 'carp' ? 'Carpenter work complete'
             : (was === 'in' ? 'Load in' : 'Load out')+' complete');
       toast(was === 'carp' ? 'The carpenters are done'
@@ -8379,13 +8493,13 @@ function crewBusy(){
 }
 
 /* ============================================================================
-   p6c — THE CARPENTERS: the catalogue, the planner, and the run (PRs 2-3
+   p6c — THE CARPENTERS: the catalogue, the planner, and the run (PRs 2-4
    of the carpenters round, spec docs/superpowers/specs/2026-08-08-
-   carpenters-design.md, RULINGS Y, AA and AC's cuts).  The catalogue and
+   carpenters-design.md, RULINGS Y, AA, AB and AC).  The catalogue and
    planner are pure data and pure functions; the run entry at the bottom
    (carpStart/carpRun + CARP_RUN) is the one stateful thing here — the
-   crew engine that executes the jobs lives in p6b.  PR 4 adds the haul
-   and the nails, PR 5 the warehouse screen.
+   crew engine that executes the jobs (fetch/cut, and PR 4's haul/nail
+   at the mark) lives in p6b.  PR 5 adds the warehouse screen.
 
    The catalogue (CARP_CAT) is a data table: adding a buildable is adding
    a row, not code.  Each row names the loose stock it consumes (real
@@ -8678,6 +8792,9 @@ function carpPlan(key, mark){
        bench: {},  // saw kind 'track'/'chop' -> the body this run currently
                    //   has seated there: the fetched stick, then the
                    //   registered off side after each cut, null when done
+       placed: {}, // blueprint piece index -> the body a carpHaul has set
+                   //   down at its pose (PR 4: carpNail joins placed[i] to
+                   //   placed[j])
        aside: 0    // how many pieces carpAside has rowed out by the benches
      }
    Cleared by crewStop (a stood-down build never resumes — RULING AC: the
@@ -8693,7 +8810,7 @@ function carpRun(jobs){
   if(!jobs || !jobs.length || CREW.running) return 0;
   if(!CARP_RUN){
     const j = jobs.find(x=>x.venue);
-    CARP_RUN = {key:null, venue:j ? j.venue : VENUE, mark:null, made:{}, bench:{}, aside:0};
+    CARP_RUN = {key:null, venue:j ? j.venue : VENUE, mark:null, made:{}, bench:{}, placed:{}, aside:0};
   }
   const lead = carpLead();
   crewAttach();
@@ -8706,6 +8823,20 @@ function carpRun(jobs){
   lead.state = 'idle'; lead.job = null; lead.wait = 0; lead.carryB = null;
   lead.x = off.x; lead.z = off.z; lead.yaw = Math.PI/2;
   lead.group.visible = true;
+  /* the whole crew answers a carpenter call: the six hands wake HERE, at
+     call time, not lazily at the first haul — an 'off' hand still counts
+     as free in updateCrew's assign loop, and a haul handed to an invisible
+     figure at a stale position is work done by a ghost.  crewStart's own
+     spread at the dock in crewStart's own fields, so the show path is
+     untouched, and the finish walk in updateCrew (which skips only 'off'
+     people) sends everyone woken here home when the queue drains. */
+  crewSpawn(6).forEach((h, i)=>{
+    h.state = 'idle'; h.job = null; h.wait = 0;
+    crewPutDown(h);
+    h.x = off.x + rnd(-1.5, 1.5); h.z = off.z + rnd(-2.2, 2.2) + i*0.4;
+    h.yaw = Math.PI/2;
+    h.group.visible = true;
+  });
   crewLog('the carpenter is called — ' + CREW.jobs.length + ' jobs');
   if(typeof refreshCrewUI === 'function') refreshCrewUI();
   return CREW.jobs.length;
@@ -8717,7 +8848,7 @@ function carpStart(key, mark){
   if(CREW.running) return {busy:true};
   const plan = carpPlan(key, mark);
   if(!plan || plan.need || plan.full) return plan;
-  CARP_RUN = {key, venue:mark.venue, mark, made:{}, bench:{}, aside:0};
+  CARP_RUN = {key, venue:mark.venue, mark, made:{}, bench:{}, placed:{}, aside:0};
   carpRun(plan.jobs);
   return plan;
 }
