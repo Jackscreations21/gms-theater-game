@@ -5277,6 +5277,62 @@ function sawResize(b, newLen, cx){
   b.mesh.position.x = cx;
   delete b.tick;                 // the mark is consumed by the cut
 }
+/* ============================================================================
+   PAINT (PR 5, spec §7).  A rack in each shed: open cans, one per color
+   the shed OWNS (four stock colors; a delivered can released over the
+   rack ADDS its color and is consumed), and one roller.  Dip the roller
+   in a can, trigger against wood: sheets take the color on the touched
+   FACE (box material group order px nx py ny pz nz), lumber whole-piece.
+   Materials only ever come from the WOODM cache — repaint is a pointer
+   swap, never a new material.
+   ========================================================================== */
+var RACKS = {palace:null, arc:null};
+const RACK_STOCK = [0, 1, 2, 7];         // black, white, grey, brown to start
+function rackCans(rack){
+  for(const m of rack.canMeshes){ if(m.parent) m.parent.remove(m); }
+  rack.canMeshes.length = 0;
+  rack.colors.forEach((c, i)=>{
+    const m = makeBuildMesh('paint', c);
+    m.position.set(-rack.shelfW/2 + 0.16 + i*0.24, rack.shelfY, 0);
+    m.userData.paintColor = c;
+    rack.group.add(m);
+    rack.canMeshes.push(m);
+  });
+}
+function rackAddColor(rack, color){
+  if(rack.colors.indexOf(color) >= 0) return false;
+  rack.colors.push(color);
+  rackCans(rack);
+  return true;
+}
+/* a delivered can released over the rack: color in, body consumed */
+function rackTakeCan(rack, b){
+  if(!b || b.kind !== 'paint') return false;
+  rackAddColor(rack, b.color);
+  if(b.mesh.parent) b.mesh.parent.remove(b.mesh);
+  if(b.slot) b.slot.userData.body = null;
+  BODIES.splice(BODIES.indexOf(b), 1);
+  return true;
+}
+function paintWood(b, wp, color){
+  if(!b || b.kind !== 'wood' || color === undefined || color === null) return false;
+  const m = woodMat(color);
+  if(b.prof !== 'sheet'){
+    for(let i = 0; i < 6; i++) b.mesh.material[i] = m;
+    return true;
+  }
+  b.mesh.updateMatrixWorld(true);
+  _av.copy(wp);
+  b.mesh.worldToLocal(_av);                // unit-box local: extents are ±0.5
+  const ax = Math.abs(_av.x), ay = Math.abs(_av.y), az = Math.abs(_av.z);
+  let idx;
+  if(ax >= ay && ax >= az) idx = _av.x >= 0 ? 0 : 1;
+  else if(ay >= az)        idx = _av.y >= 0 ? 2 : 3;
+  else                     idx = _av.z >= 0 ? 4 : 5;
+  b.mesh.material[idx] = m;
+  return true;
+}
+
 function sawCut(st){
   const x = st.cut;
   const b = st.pieces.find(p=>{
@@ -12160,6 +12216,40 @@ function buildSaw(venue, kind, parent, wx, wz){
   return st;
 }
 
+/* ---- the paint rack (build spec §7; the logic lives in p4c) ------------
+   A wall shelf of open cans — one per color the shed owns — and ONE
+   roller, homed to the rack.  The roller is its own grab class in p9;
+   release anywhere re-racks it, the belt-tool discipline. */
+function buildRack(venue, parent, wx, wz, yaw){
+  const g = new T.Group(); g.name = 'rack:' + venue;
+  const ox = (venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
+  g.position.set(wx - ox, 0, wz);
+  g.rotation.y = yaw || 0;
+  const shelfW = 2.4;
+  [1.0, 1.5].forEach(sy=>{
+    const shelf = new T.Mesh(new T.BoxGeometry(shelfW, 0.05, 0.36), M.steel);
+    shelf.position.set(0, sy, 0);
+    shelf.castShadow = shelf.receiveShadow = true;
+    g.add(shelf);
+  });
+  parent.add(g);
+  const rack = {venue, group:g, shelfW, shelfY:1.025, colors:RACK_STOCK.map(i=>PAINT_COLORS[i].c),
+                canMeshes:[], roller:null};
+  /* the roller: a handle and a head that shows the last dip */
+  const rg = new T.Group();
+  const handle = new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.2, 8), M.pipe);
+  handle.position.y = -0.1; rg.add(handle);
+  const head = new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 0.18, 10), M.steel);
+  head.rotation.z = Math.PI/2; head.position.y = 0.03; rg.add(head);
+  const home = new T.Object3D();
+  home.position.set(shelfW/2 - 0.15, 1.55, 0.05);
+  g.add(home); home.add(rg);
+  rack.roller = {mesh:rg, head, color:null, home, grabR:0.22};
+  RACKS[venue] = rack;
+  rackCans(rack);
+  return rack;
+}
+
 function buildLift(venue, parent, wx, wz){
   const g = new T.Group();
   g.userData.moves = true;
@@ -12326,6 +12416,8 @@ function liftDrop(L){
   /* the cut stations, mid-shed, clear of the racks, aprons and slots */
   buildSaw('palace', 'track', g, 2.0, -24.0);
   buildSaw('palace', 'chop',  g, -4.5, -24.0);
+  /* the paint rack, on the east wall above the cart's beat */
+  buildRack('palace', g, 11.3, -23.0, -Math.PI/2);
 
   /* the door control, an [E] station on the STAGE side of the wall — a
      top-level world child so p2i can pin it to the stage room, never the
@@ -12404,6 +12496,7 @@ function buildArcShed(MAT){
   [-31, -16, 16, 31].forEach(sx=> palletSlot('arc', ARC.X + sx, -52, ARC.group));
   buildSaw('arc', 'track', R, ARC.X + 6, -54);
   buildSaw('arc', 'chop',  R, ARC.X + 0, -51);
+  buildRack('arc', R, ARC.X - 10, -59.2, 0);
   for(const key of ['main','studio']){
     const H = ARC.houses[key];
     if(!H) continue;
@@ -14744,6 +14837,9 @@ function vrOnEnd(){
   VR.session = null;
   if(VR.camHome) VR.camHome.add(camera); else scene.add(camera);
   vrQualityOff();
+  /* the roller re-racks BEFORE the hold record drops — it is parented to
+     the controller, the one carried thing that is (release always homes it) */
+  if(VR.held && VR.held.kind === 'roller') vrReRack(VR.held.rack);
   VR.held = null;
   VR.heldLever = null;
   /* every tool back on the belt, no line, no stale joint offer */
@@ -15457,6 +15553,12 @@ function vrDraw(hand, key){
     key === 'hammer'  ? 'hammer — trigger pulls the nail under its head' :
     'tape — the other hand takes the tab; trigger marks the wood');
 }
+function vrReRack(rack){
+  const ro = rack.roller;
+  ro.home.add(ro.mesh);
+  ro.mesh.position.set(0, 0, 0);
+  ro.mesh.rotation.set(0, 0, 0);
+}
 function vrHolster(hand){
   const key = VR.tools && VR.tools[hand];
   if(!key) return;
@@ -15897,6 +15999,29 @@ function vrSelect(hand, down){
   if(!down) return;
   /* a hand holding a tool: the trigger IS the tool (build spec §5) */
   if(VR.tools && VR.tools[hand]){ vrToolFire(hand, VR.tools[hand]); return; }
+  /* a hand with the roller: the trigger paints the wood it touches */
+  if(VR.held && VR.held.kind === 'roller' && VR.held.hand === hand){
+    const ro = VR.held.rack.roller;
+    if(ro.color === null){
+      if(typeof toast === 'function') toast('dip it in a can first');
+      return;
+    }
+    ro.head.getWorldPosition(_vecA);
+    let bw = null, bwd = 1e9;
+    for(const b of BODIES){
+      if(b.kind !== 'wood') continue;
+      b.mesh.getWorldPosition(_run);
+      const reach = Math.max(b.mesh.scale.x, b.mesh.scale.y, b.mesh.scale.z)/2 + 0.3;
+      const d = _run.distanceTo(_vecA);
+      if(d < reach && d < bwd){ bwd = d; bw = b; }
+    }
+    if(bw && paintWood(bw, _vecA, ro.color)){
+      if(typeof Snd !== 'undefined' && Snd.play) Snd.play('click');
+      if(typeof toast === 'function')
+        toast(bw.prof === 'sheet' ? 'painted the face' : 'painted');
+    } else if(typeof toast === 'function') toast('no wood under the roller');
+    return;
+  }
   /* a hand on a saw cutter: the trigger is the blade (build spec §6) */
   if(VR.held && VR.held.kind === 'saw' && VR.held.hand === hand){
     const r = (typeof sawCut === 'function') ? sawCut(VR.held.st) : null;
@@ -16079,6 +16204,8 @@ function vrSqueeze(hand, down){
         vrLabel(null);
         return;
       }
+      /* an open hand re-racks the roller, wherever it is */
+      if(h.kind === 'roller'){ vrReRack(h.rack); return; }
       /* a let-go assembly (or swinging piece) simply stays as it lies */
       if(h.kind === 'asm' || h.kind === 'swing'){
         VR.snap = null;
@@ -16090,6 +16217,17 @@ function vrSqueeze(hand, down){
       if(h.kind === 'body'){
         const b = h.body;
         VR.snap = null;
+        /* a paint can let go over its shed's rack: color in, can gone */
+        if(b.kind === 'paint' && typeof RACKS !== 'undefined' && RACKS[b.venue]){
+          const rack = RACKS[b.venue];
+          rack.group.getWorldPosition(_vecA);
+          b.mesh.getWorldPosition(_run);
+          if(_run.distanceTo(_vecA) < 1.8 && rackTakeCan(rack, b)){
+            if(typeof toast === 'function') toast('a new color on the rack');
+            vrLabel(null);
+            return;
+          }
+        }
         /* wood let go over a cut station SEATS on it (p4c seatWood) */
         if(b.kind === 'wood' && typeof SAWS !== 'undefined' && SAWS[b.venue]){
           const set = SAWS[b.venue];
@@ -16209,6 +16347,17 @@ function vrSqueeze(hand, down){
       }
     }
   }
+  /* the paint rollers (p4c RACKS): one per shed, homed to its rack */
+  let rol = null, rd = 0.22;
+  if(typeof RACKS !== 'undefined'){
+    for(const rk in RACKS){
+      const rack = RACKS[rk];
+      if(!rack || (VR.held && VR.held.kind === 'roller' && VR.held.rack === rack)) continue;
+      rack.roller.mesh.getWorldPosition(_vecA);
+      const d = _vecA.distanceTo(_rayO);
+      if(d < rd){ rd = d; rol = rack; }
+    }
+  }
   /* loose gear (the p4 detach system): hung bodies on the LIVE rig, and
      anything slotted or standing loose — a body within reach of the closing
      hand.  A parked stage's rig is across town; its bodies are not takeable. */
@@ -16228,8 +16377,20 @@ function vrSqueeze(hand, down){
       if(d < bdd){ bdd = d; bod = b; }
     }
   }
-  /* nearest wins across all five classes — never fork this arbitration */
-  if(saw && (!bod || sd <= bdd) && (!cart || sd < cd) && (!lv || sd < lvd) && (!best || sd < bd)){
+  /* nearest wins across all six classes — never fork this arbitration */
+  if(rol && (!saw || rd < sd) && (!bod || rd <= bdd) && (!cart || rd < cd) &&
+     (!lv || rd < lvd) && (!best || rd < bd)){
+    const c2 = VR.controllers[hand];
+    c2.add(rol.roller.mesh);
+    rol.roller.mesh.position.set(0, 0, -0.02);
+    rol.roller.mesh.rotation.set(-0.9, 0, 0);
+    VR.held = {hand, kind:'roller', rack:rol};
+    if(typeof toast === 'function')
+      toast(rol.roller.color === null ? 'roller — dip it in a can first'
+                                      : 'roller — trigger paints the wood it touches');
+    return;
+  }
+  if(saw && (!rol || sd < rd) && (!bod || sd <= bdd) && (!cart || sd < cd) && (!lv || sd < lvd) && (!best || sd < bd)){
     saw.group.updateMatrixWorld(true);
     const lx = saw.group.worldToLocal(_rayO.clone()).x;
     VR.held = {hand, kind:'saw', st:saw, off:saw.cut - lx};
@@ -16238,7 +16399,7 @@ function vrSqueeze(hand, down){
       : 'chop saw — slide it, trigger cuts');
     return;
   }
-  if(bod && (!saw || bdd < sd) && (!cart || bdd < cd) && (!lv || bdd < lvd) && (!best || bdd < bd)){
+  if(bod && (!rol || bdd < rd) && (!saw || bdd < sd) && (!cart || bdd < cd) && (!lv || bdd < lvd) && (!best || bdd < bd)){
     /* a piece already NAILED (p4c): swing it on its one nail, carry the
        whole assembly by any rigid piece, or bounce off anchored work */
     if(bod.asm){
@@ -16358,6 +16519,25 @@ function vrUpdateHold(dt){
     if(ct.lift && VR.axes && VR.axes.ry)
       ct.forkY = clamp(ct.forkY - VR.axes.ry * LIFT_FORK_RATE * (dt || 0.016),
                        0, LIFT_FORK_TOP);
+    return;
+  }
+  /* the roller rides the hand (parented — release always re-racks); the
+     hold only watches for a DIP: the head near an open can takes its color */
+  if(VR.held.kind === 'roller'){
+    const rack = VR.held.rack, ro = rack.roller;
+    ro.head.getWorldPosition(_vecA);
+    for(const cm of rack.canMeshes){
+      cm.getWorldPosition(_run);
+      if(_run.distanceTo(_vecA) < 0.16){
+        if(ro.color !== cm.userData.paintColor){
+          ro.color = cm.userData.paintColor;
+          ro.head.material = woodMat(ro.color);
+          if(typeof toast === 'function')
+            toast('dipped — ' + (PAINT_COLORS.find(p=>p.c === ro.color) || {name:'?'}).name);
+        }
+        break;
+      }
+    }
     return;
   }
   /* a hand on a saw cutter slides it along the table — snapped to the

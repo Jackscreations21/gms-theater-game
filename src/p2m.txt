@@ -160,6 +160,40 @@ function buildSaw(venue, kind, parent, wx, wz){
   return st;
 }
 
+/* ---- the paint rack (build spec §7; the logic lives in p4c) ------------
+   A wall shelf of open cans — one per color the shed owns — and ONE
+   roller, homed to the rack.  The roller is its own grab class in p9;
+   release anywhere re-racks it, the belt-tool discipline. */
+function buildRack(venue, parent, wx, wz, yaw){
+  const g = new T.Group(); g.name = 'rack:' + venue;
+  const ox = (venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
+  g.position.set(wx - ox, 0, wz);
+  g.rotation.y = yaw || 0;
+  const shelfW = 2.4;
+  [1.0, 1.5].forEach(sy=>{
+    const shelf = new T.Mesh(new T.BoxGeometry(shelfW, 0.05, 0.36), M.steel);
+    shelf.position.set(0, sy, 0);
+    shelf.castShadow = shelf.receiveShadow = true;
+    g.add(shelf);
+  });
+  parent.add(g);
+  const rack = {venue, group:g, shelfW, shelfY:1.025, colors:RACK_STOCK.map(i=>PAINT_COLORS[i].c),
+                canMeshes:[], roller:null};
+  /* the roller: a handle and a head that shows the last dip */
+  const rg = new T.Group();
+  const handle = new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.2, 8), M.pipe);
+  handle.position.y = -0.1; rg.add(handle);
+  const head = new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 0.18, 10), M.steel);
+  head.rotation.z = Math.PI/2; head.position.y = 0.03; rg.add(head);
+  const home = new T.Object3D();
+  home.position.set(shelfW/2 - 0.15, 1.55, 0.05);
+  g.add(home); home.add(rg);
+  rack.roller = {mesh:rg, head, color:null, home, grabR:0.22};
+  RACKS[venue] = rack;
+  rackCans(rack);
+  return rack;
+}
+
 function buildLift(venue, parent, wx, wz){
   const g = new T.Group();
   g.userData.moves = true;
@@ -326,6 +360,8 @@ function liftDrop(L){
   /* the cut stations, mid-shed, clear of the racks, aprons and slots */
   buildSaw('palace', 'track', g, 2.0, -24.0);
   buildSaw('palace', 'chop',  g, -4.5, -24.0);
+  /* the paint rack, on the east wall above the cart's beat */
+  buildRack('palace', g, 11.3, -23.0, -Math.PI/2);
 
   /* the door control, an [E] station on the STAGE side of the wall — a
      top-level world child so p2i can pin it to the stage room, never the
@@ -404,6 +440,7 @@ function buildArcShed(MAT){
   [-31, -16, 16, 31].forEach(sx=> palletSlot('arc', ARC.X + sx, -52, ARC.group));
   buildSaw('arc', 'track', R, ARC.X + 6, -54);
   buildSaw('arc', 'chop',  R, ARC.X + 0, -51);
+  buildRack('arc', R, ARC.X - 10, -59.2, 0);
   for(const key of ['main','studio']){
     const H = ARC.houses[key];
     if(!H) continue;

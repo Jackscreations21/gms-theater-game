@@ -372,6 +372,45 @@ const probe = `
     return 'four inches to the bucket, the rest to hand';
   });
 
+  console.log('--- paint ---');
+  P('each shed racks four stock colors, and a delivered can adds a fifth', ()=>{
+    if(typeof RACKS === 'undefined' || !RACKS.palace || !RACKS.arc) throw new Error('racks missing');
+    const rack = RACKS.palace;
+    if(rack.colors.length !== 4) throw new Error(rack.colors.length+' stock colors');
+    if(rack.canMeshes.length !== 4) throw new Error(rack.canMeshes.length+' cans on the shelf');
+    /* a red can, as delivery would make it, released over the rack */
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const can = regBody('paint', makeBodyMesh('paint', PAINT_COLORS[4].c), null);
+    BUILD_VENUE = keep;
+    can.color = PAINT_COLORS[4].c; can.state = 'loose';
+    const before = BODIES.length;
+    if(!rackTakeCan(rack, can)) throw new Error('the rack refused the can');
+    if(rack.colors.length !== 5 || rack.canMeshes.length !== 5) throw new Error('the color never landed');
+    if(BODIES.length !== before - 1) throw new Error('the can survived being poured');
+    if(rackTakeCan(rack, {kind:'wood'})) throw new Error('the rack drank a plank');
+    return 'four stock, red poured in as the fifth';
+  });
+  P('sheets take paint by the face, lumber whole — always from the cache', ()=>{
+    const sheet = regWood('sheet'), stud = regWood('s2x4');
+    sheet.mesh.position.set(44, 1.2, 44);
+    /* regWood does not parent the mesh — refresh its own matrix, not the scene's */
+    sheet.mesh.updateMatrixWorld(true);
+    const red = PAINT_COLORS[4].c;
+    /* a touch on the +z face (the sheet's front): local z > others */
+    const wp = sheet.mesh.localToWorld(new THREE.Vector3(0.1, 0.1, 0.49));
+    if(!paintWood(sheet, wp, red)) throw new Error('the sheet refused paint');
+    if(sheet.mesh.material[4] !== woodMat(red)) throw new Error('the +z face is not red');
+    if(sheet.mesh.material[5] === woodMat(red)) throw new Error('the back took the front coat');
+    if(!paintWood(stud, stud.mesh.getWorldPosition(new THREE.Vector3()), red))
+      throw new Error('the stud refused paint');
+    if(stud.mesh.material.some(m=>m !== woodMat(red))) throw new Error('the stud is patchy');
+    /* one cache entry, however many things wear it */
+    if(sheet.mesh.material[4] !== stud.mesh.material[0]) throw new Error('two reds in the till');
+    BODIES.splice(BODIES.indexOf(sheet), 1);
+    BODIES.splice(BODIES.indexOf(stud), 1);
+    return 'face for sheets, whole for sticks, one red';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

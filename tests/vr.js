@@ -1676,6 +1676,37 @@ const probe = `
     st.pieces.slice().forEach(p=>{ grabBody(p); p.state = 'loose'; });
     return 'seated on release, cut on the trigger';
   });
+  P('the roller dips at the rack and paints at the trigger', ()=>{
+    const rack = RACKS.palace;
+    scene.updateMatrixWorld(true);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.copy(rack.roller.mesh.getWorldPosition(new THREE.Vector3()));
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'roller') throw new Error('the roller was not taken: '+(VR.held && VR.held.kind));
+    /* dip: the head to the red can (poured in by the build suite? no — this
+       suite's rack has its four stock cans; use the first, black) */
+    const can = rack.canMeshes[0], color = can.userData.paintColor;
+    scene.updateMatrixWorld(true);
+    const at = can.getWorldPosition(new THREE.Vector3());
+    c0.position.copy(at); c0.position.y += 0.02;
+    c0.updateMatrixWorld(true);
+    vrUpdateHold(0.05);
+    if(rack.roller.color !== color) throw new Error('the dip never took');
+    /* paint a sheet standing by the rack */
+    const sheet = regWood('sheet');
+    sheet.mesh.position.copy(at); sheet.mesh.position.z -= 0.8;
+    scene.updateMatrixWorld(true);
+    c0.position.copy(sheet.mesh.getWorldPosition(new THREE.Vector3()));
+    c0.updateMatrixWorld(true);
+    vrSelect(0, true);
+    if(!sheet.mesh.material.some(m=>m === woodMat(color))) throw new Error('no face took the coat');
+    vrSqueeze(0, false);
+    if(rack.roller.mesh.parent !== rack.roller.home) throw new Error('the roller never re-racked');
+    BODIES.splice(BODIES.indexOf(sheet), 1);
+    return 'dipped black, painted, re-racked on release';
+  });
   P('a session end holsters everything', ()=>{
     const c0 = VR.controllers[0];
     vrUpdateBelt(); VR.rig.updateMatrixWorld(true);
