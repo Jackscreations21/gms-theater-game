@@ -1878,6 +1878,19 @@ function vrSqueeze(hand, down){
               gz = Math.max(0, Math.abs(_vecA.z) - 0.5) * b.mesh.scale.z;
         d = Math.sqrt(gx*gx + gy*gy + gz*gz);
         if(d >= GRAB_WOOD) continue;
+      } else if(b.kind === 'table'){
+        /* the table's origin is its FEET — a point on the floor under the
+           middle of the top, which no hand ever came within 0.35 of.  Grab
+           it by its body instead: the gap to its frame box (RULING Q).
+           The mesh is a Group at scale 1, so local IS metric. */
+        b.mesh.updateWorldMatrix(true, false);
+        _vecA.copy(_rayO);
+        b.mesh.worldToLocal(_vecA);
+        const gx = Math.max(0, Math.abs(_vecA.x) - 0.8),
+              gy = Math.max(0, Math.abs(_vecA.y - TABLE_TOP/2) - TABLE_TOP/2),
+              gz = Math.max(0, Math.abs(_vecA.z) - 0.4);
+        d = Math.sqrt(gx*gx + gy*gy + gz*gz);
+        if(d >= GRAB_WOOD) continue;
       } else {
         b.mesh.getWorldPosition(_vecA);
         d = _vecA.distanceTo(_rayO);
@@ -1959,7 +1972,7 @@ function vrSqueeze(hand, down){
        it rides IN the hand: the pose is kept relative to the CONTROLLER, so
        the grabbed point stays in the palm and the wrist pivots about it,
        not about a centre that may be four feet up the stick (RULING R) */
-    if(bod.kind === 'wood'){
+    if(bod.kind === 'wood' || bod.kind === 'table'){
       c.getWorldQuaternion(_tq1);
       bod.mesh.getWorldQuaternion(_tq2);
       VR.held.relQ = _tq1.invert().multiply(_tq2).clone();
@@ -2150,13 +2163,15 @@ function vrUpdateHold(dt){
     else _vecA.set(_rayO.x + VR.held.offX, _rayO.y + VR.held.offY, _rayO.z + VR.held.offZ);
     if(b.mesh.parent) b.mesh.parent.worldToLocal(_vecA);
     b.mesh.position.copy(_vecA);
-    /* wood turns with the wrist, then squares itself up to whatever it is
-       offered against (p4c snapWood) — the gun confirms the joint */
+    /* wood (and the table) turns with the wrist; wood then squares itself
+       up to whatever it is offered against (p4c snapWood) — the gun
+       confirms the joint.  The world quat lands directly on the mesh:
+       both venue roots stand unrotated. */
+    if(VR.held.relQ){
+      c.getWorldQuaternion(_tq1).multiply(VR.held.relQ);
+      b.mesh.quaternion.copy(_tq1);
+    }
     if(b.kind === 'wood'){
-      if(VR.held.relQ){
-        c.getWorldQuaternion(_tq1).multiply(VR.held.relQ);
-        b.mesh.quaternion.copy(_tq1);
-      }
       b.mesh.updateMatrixWorld(true);
       const s = (typeof snapWood === 'function') ? snapWood(b) : null;
       if(s){
