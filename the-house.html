@@ -14290,26 +14290,64 @@ function buildSaw(venue, kind, parent, wx, wz){
 /* ---- the paint rack (build spec §7; the logic lives in p4c) ------------
    A wall shelf of open cans — one per color the shed owns — and ONE
    roller, homed to the rack.  The roller is its own grab class in p9;
-   release anywhere re-racks it, the belt-tool discipline. */
+   release anywhere re-racks it, the belt-tool discipline.
+   Shelving, uprights, brackets and drip boards merge into two meshes
+   (RULING AK); geometry is identical for every call (buildRack runs 2x,
+   one per shed), so it is cached, never re-merged.  The roller HEAD
+   stays its own mesh with its own material (RULING AL): p9 swaps
+   ro.head.material to show the last dip, and merging the head into the
+   handle would make every dip invisible. */
+var RACKG = {};
+function rackG(key, mk){ return RACKG[key] || (RACKG[key] = mk()); }
 function buildRack(venue, parent, wx, wz, yaw){
   const g = new T.Group(); g.name = 'rack:' + venue;
   const ox = (venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
   g.position.set(wx - ox, 0, wz);
   g.rotation.y = yaw || 0;
   const shelfW = 2.4;
-  [1.0, 1.5].forEach(sy=>{
-    const shelf = new T.Mesh(new T.BoxGeometry(shelfW, 0.05, 0.36), M.steel);
-    shelf.position.set(0, sy, 0);
-    shelf.castShadow = shelf.receiveShadow = true;
-    g.add(shelf);
+
+  const galvGeo = rackG('galv', ()=>{
+    const parts = [];
+    [1.0, 1.5].forEach(sy=>{
+      parts.push({geo:new T.BoxGeometry(shelfW, 0.05, 0.36), pos:[0, sy, 0]});
+    });
+    [-(shelfW/2 - 0.04), shelfW/2 - 0.04].forEach(ux=>{
+      [-0.15, 0.15].forEach(uz=>{
+        parts.push({geo:new T.BoxGeometry(0.05, 1.75, 0.05), pos:[ux, 0.875, uz]});
+      });
+    });
+    [1.0, 1.5].forEach(sy=>{
+      [-(shelfW/2 - 0.04), shelfW/2 - 0.04].forEach(ux=>{
+        parts.push({geo:new T.BoxGeometry(0.04, 0.04, 0.30), pos:[ux, sy, 0]});
+      });
+    });
+    parts.push({geo:new T.BoxGeometry(shelfW, 0.04, 0.03), pos:[0, 1.72, -0.16]});
+    return mergeParts(parts);
   });
+  const galvMesh = new T.Mesh(galvGeo, M.galv);
+  galvMesh.castShadow = galvMesh.receiveShadow = true;
+  g.add(galvMesh);
+
+  const plyGeo = rackG('ply', ()=>mergeParts([
+    {geo:new T.BoxGeometry(shelfW - 0.1, 0.018, 0.34), pos:[0, 1.03, 0]},
+    {geo:new T.BoxGeometry(shelfW - 0.1, 0.018, 0.34), pos:[0, 1.53, 0]}
+  ]));
+  const plyMesh = new T.Mesh(plyGeo, M.ply);
+  plyMesh.castShadow = plyMesh.receiveShadow = true;
+  g.add(plyMesh);
+
   parent.add(g);
   const rack = {venue, group:g, shelfW, shelfY:1.025, colors:RACK_STOCK.map(i=>PAINT_COLORS[i].c),
                 canMeshes:[], roller:null};
-  /* the roller: a handle and a head that shows the last dip */
+  /* the roller: a handle (merged) and a head that shows the last dip */
   const rg = new T.Group();
-  const handle = new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.2, 8), M.pipe);
-  handle.position.y = -0.1; rg.add(handle);
+  const handleGeo = rackG('handle', ()=>mergeParts([
+    {geo:new T.CylinderGeometry(0.012, 0.012, 0.2, 8), pos:[0, -0.1, 0]},
+    {geo:new T.CylinderGeometry(0.016, 0.016, 0.07, 8), pos:[0, -0.17, 0]},
+    {geo:new T.BoxGeometry(0.012, 0.012, 0.05), pos:[0, 0.02, 0.025]}
+  ]));
+  const handle = new T.Mesh(handleGeo, M.galv);
+  rg.add(handle);
   const head = new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 0.18, 10), M.steel);
   head.rotation.z = Math.PI/2; head.position.y = 0.03; rg.add(head);
   const home = new T.Object3D();

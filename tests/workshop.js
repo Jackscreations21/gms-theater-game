@@ -226,6 +226,52 @@ const probe = `
     return 'span ' + st.span.toFixed(2) + ', grabR ' + st.grabR;
   });
 
+  console.log('--- the paint rack and the drum (RULINGS AK + AL) ---');
+  P('the roller head survived as its own mesh with its own material', ()=>{
+    const ro = RACKS.palace.roller;
+    if(!ro || !ro.head) throw new Error('the rack lost its roller head');
+    if(!ro.head.isMesh) throw new Error('the roller head is not a mesh');
+    if(!ro.head.material) throw new Error('the roller head has no material of its own');
+    const before = ro.head.material;
+    ro.head.material = woodMat(0x884422);
+    if(ro.head.material === before) throw new Error('the head material cannot be swapped');
+    ro.head.material = before;
+    return 'swappable, so a dip still shows';
+  });
+  P('the rack record kept every field the logic reads', ()=>{
+    const r = RACKS.palace;
+    ['venue','group','shelfW','shelfY','colors','canMeshes','roller'].forEach(f=>{
+      if(r[f] === undefined) throw new Error('rack record lost ' + f); });
+    if(Math.abs(r.roller.grabR - 0.22) > 1e-9) throw new Error('roller grabR moved');
+    if(!r.roller.home) throw new Error('the roller lost its home — vrReRack would throw');
+    return 'shelfY ' + r.shelfY + ', grabR ' + r.roller.grabR;
+  });
+  P('each can still carries its own colour, independently', ()=>{
+    const r = RACKS.palace;
+    if(!r.canMeshes.length) throw new Error('no cans on the rack');
+    /* a can is a GROUP: a shared steel body plus a band in its own colour
+       from the woodMat cache.  What matters is that the bands do not share
+       a material, or every can on the shelf would be one colour. */
+    const bands = r.canMeshes.map(g=>{
+      let b = null;
+      g.traverse(c=>{ if(c.isMesh && c.material !== M.steel) b = c; });
+      if(!b) throw new Error('a can has no banded mesh of its own');
+      return b;
+    });
+    const mats = new Set(bands.map(b=>b.material));
+    if(mats.size !== bands.length) throw new Error('cans share band materials: ' + mats.size + ' for ' + bands.length + ' cans');
+    r.canMeshes.forEach(g=>{ if(g.userData.paintColor === undefined) throw new Error('a can lost its paintColor'); });
+    return bands.length + ' cans, ' + mats.size + ' distinct band materials';
+  });
+  P('the rack and the drum cost no more than they did', ()=>{
+    const count = o => { let n=0; o.traverse(c=>{ if(c.isMesh) n++; }); return n; };
+    const rk = count(RACKS.palace.group), tr = count(TRASH.palace.group);
+    if(rk > 12) throw new Error('the rack is ' + rk + ' meshes, budget 12');
+    if(tr > 3)  throw new Error('the drum is ' + tr + ' meshes, budget 3');
+    if(Math.abs(TRASH.palace.r - 0.45) > 1e-9) throw new Error('the drum mouth radius moved');
+    return {rack:rk, trash:tr};
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
