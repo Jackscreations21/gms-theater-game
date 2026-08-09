@@ -935,6 +935,39 @@ assertion negative-checked, six new TRAPS.md entries (the crew /
 carpenters section).  **NONE of it has met hardware** — the new
 question block rides the headset section below.
 
+**Done 2026-08-08, housekeeping — a stale clone caught up, and the
+branch list swept.**  No game code changed.  A second working copy was
+still parked on `handoff-carpenters` with its `main` at `4986f25`,
+**nineteen commits behind**: the entire carpenters round, `STATE.md`
+and the `docs/guide/` system had all landed from another machine while
+that clone sat still.  Fast-forwarded to `origin/main` @ `b22c299`
+(clean, no divergence, nothing local discarded) and verified the
+standing rule — `sh build.sh` reproduces the committed
+`the-house.html` byte for byte (`built 850229 bytes syntax OK`).
+
+Then the sweep: the three `.claude/worktrees/agent-*` worktrees from
+the rig/warehouse round removed (each checked clean first, then
+`git worktree prune`), and the **sixteen** fully-merged local branches
+deleted — the thirteen feature/handoff branches plus the three
+`worktree-agent-*` pointers.  `git branch --no-merged origin/main` was
+empty beforehand and `-d` was used throughout, so git itself was the
+backstop.  `main` is now the only local branch.
+
+**The lesson, which is the reason this is in the record at all: fetch
+and compare before trusting a local checkout — or a handoff — about
+what comes next.**  This clone, and the session memory that went with
+it, both confidently said "NEXT = CARPENTERS" for a round that had
+already shipped.  `git log main..origin/main` is the first move of any
+session that did not personally watch the last one land.
+
+Left deliberately undone: `origin` still carries ~40 merged branches
+(`carp-*`, `feel-*`, the `handoff-*` series and every older feature
+branch).  Local pruning is private; deleting them on GitHub changes
+what everyone else sees, so it stays the owner's call — the suggestion
+if it happens is to keep `carpenters-landing` and the `handoff-*`
+series as the round record and prune the rest.  `pr6.json` is still
+untracked, still unruled.
+
 ---
 
 ## THE CARPENTERS BRIEF (2026-08-08 — superseded the same day)
@@ -1070,6 +1103,10 @@ its paint together, one versioned blob, its own round).
   squares it.
 - **Small housekeeping:** `pr6.json` is still untracked in the repo
   root (leftover PR-body file; the owner never ruled on deleting it).
+  And `origin` still carries ~40 fully-merged branches (`carp-*`,
+  `feel-*`, the `handoff-*` series, every older feature branch) — the
+  local copies were pruned 2026-08-08, but a remote prune is
+  outward-facing and unruled.
 - **Standing owner-taste leftovers:** audit items 20 (dead weight)
   and 22 (duplication) — decisions, not defects.
 
