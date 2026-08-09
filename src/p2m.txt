@@ -119,34 +119,93 @@ function palletSlot(venue, wx, wz, parent){
 /* ---- the cut stations (build spec §6; the logic lives in p4c) ----------
    One pair per shed: the TRACK TABLE for sheets, the CHOP BENCH for
    lumber.  st.cutter is the one grabbable — a rail-and-head for the
-   track saw, an arm-and-blade for the chop — sliding along table X. */
+   track saw, an arm-and-blade for the chop — sliding along table X.
+
+   The static body is baked into TWO merged meshes (M.galv, M.castIron)
+   so detail is free of the mesh budget (RULING AK); the cutter stays its
+   own ungrudged Group per RULING AL — it slides, it is a grab class, and
+   merging it would kill both saws.  Geometry is identical for every call
+   with the same `kind` (buildSaw runs 4x: two kinds x two sheds), so it
+   is cached by kind, never re-merged. */
+var SAWG = {};
+function sawG(kind, key, mk){
+  const k = kind + ':' + key;
+  return SAWG[k] || (SAWG[k] = mk());
+}
 function buildSaw(venue, kind, parent, wx, wz){
   const g = new T.Group(); g.name = 'saw:' + venue + ':' + kind;
   const ox = (venue === 'arc' && typeof ARC !== 'undefined') ? ARC.X : 0;
   g.position.set(wx - ox, 0, wz);
   const W = kind === 'track' ? 2.9 : 2.8, D2 = kind === 'track' ? 1.6 : 0.62;
   const topY = 0.86;
-  const top = new T.Mesh(new T.BoxGeometry(W, 0.07, D2), M.steel);
-  top.position.y = topY; g.add(top);
-  [[-W/2+0.15, -D2/2+0.1],[W/2-0.15, -D2/2+0.1],[-W/2+0.15, D2/2-0.1],[W/2-0.15, D2/2-0.1]]
-    .forEach(cn=>{
-      const leg = new T.Mesh(new T.CylinderGeometry(0.03, 0.03, topY, 6), M.steel);
-      leg.position.set(cn[0], topY/2, cn[1]); g.add(leg);
+  const corners = [[-W/2+0.15, -D2/2+0.1],[W/2-0.15, -D2/2+0.1],
+                    [-W/2+0.15, D2/2-0.1],[W/2-0.15, D2/2-0.1]];
+
+  const galvGeo = sawG(kind, 'galv', ()=>{
+    const parts = [{geo:new T.BoxGeometry(W, 0.07, D2), pos:[0, topY, 0]}];
+    if(kind === 'track'){
+      parts.push({geo:new T.BoxGeometry(W, 0.09, 0.05), pos:[0, topY + 0.08, -D2/2 + 0.12]});
+    }
+    corners.forEach(cn=>{
+      parts.push({geo:new T.CylinderGeometry(0.03, 0.03, topY, 6), pos:[cn[0], topY/2, cn[1]]});
     });
+    [-(D2/2 - 0.1), D2/2 - 0.1].forEach(zz=>{
+      parts.push({geo:new T.BoxGeometry(W - 0.3, 0.04, 0.04), pos:[0, 0.2, zz]});
+    });
+    if(kind === 'chop'){
+      parts.push({geo:new T.BoxGeometry(W, 0.11, 0.045), pos:[0, topY + 0.09, -D2/2 + 0.10]});
+    }
+    return mergeParts(parts);
+  });
+  const top = new T.Mesh(galvGeo, M.galv);
+  g.add(top);
+
+  const ironGeo = sawG(kind, 'iron', ()=>{
+    if(kind === 'track'){
+      const parts = [];
+      for(let i=0;i<4;i++){
+        parts.push({geo:new T.BoxGeometry(W, 0.012, 0.03), pos:[0, topY + 0.036, -D2/2 + 0.35 + i*0.3]});
+      }
+      return mergeParts(parts);
+    }
+    return mergeParts([
+      {geo:new T.BoxGeometry(0.34, 0.014, D2 - 0.1), pos:[0, topY + 0.038, 0]},
+      {geo:new T.CylinderGeometry(0.03, 0.03, 0.30, 8), pos:[-(W/2 - 0.28), topY + 0.06, 0], rot:[0, 0, Math.PI/2]},
+      {geo:new T.CylinderGeometry(0.03, 0.03, 0.30, 8), pos:[W/2 - 0.28, topY + 0.06, 0], rot:[0, 0, Math.PI/2]}
+    ]);
+  });
+  const iron = new T.Mesh(ironGeo, M.castIron);
+  g.add(iron);
+
   const seat = new T.Object3D();
   seat.position.y = topY + 0.035;
   g.add(seat);
   const cutter = new T.Group();
   cutter.position.y = topY + 0.035;
   if(kind === 'track'){
-    const rail = new T.Mesh(new T.BoxGeometry(0.09, 0.03, D2 + 0.3), M.pipe);
+    const railGeo = sawG(kind, 'rail', ()=>new T.BoxGeometry(0.09, 0.03, D2 + 0.3));
+    const rail = new T.Mesh(railGeo, M.galv);
     rail.position.y = 0.08; cutter.add(rail);
-    const head = new T.Mesh(new T.BoxGeometry(0.2, 0.16, 0.22), M.fixture);
-    head.position.y = 0.16; cutter.add(head);
+    const headGeo = sawG(kind, 'head', ()=>mergeParts([
+      {geo:new T.BoxGeometry(0.2, 0.14, 0.22), pos:[0, 0.16, 0]},
+      {geo:new T.CylinderGeometry(0.055, 0.055, 0.14, 10), pos:[0.11, 0.19, 0], rot:[0, 0, Math.PI/2]},
+      {geo:new T.CylinderGeometry(0.09, 0.09, 0.03, 12), pos:[-0.02, 0.13, 0], rot:[0, 0, Math.PI/2]},
+      {geo:new T.CylinderGeometry(0.024, 0.024, 0.07, 8), pos:[0, 0.2, 0.12], rot:[Math.PI/2, 0, 0]}
+    ]));
+    const head = new T.Mesh(headGeo, M.moulded);
+    cutter.add(head);
   } else {
-    const arm = new T.Mesh(new T.BoxGeometry(0.07, 0.5, 0.1), M.steel);
-    arm.position.set(0, 0.25, -D2/2 - 0.06); cutter.add(arm);
-    const blade = new T.Mesh(new T.CylinderGeometry(0.16, 0.16, 0.012, 16), M.fixture);
+    const armGeo = sawG(kind, 'arm', ()=>mergeParts([
+      {geo:new T.BoxGeometry(0.07, 0.5, 0.1), pos:[0, 0.25, -D2/2 - 0.06]},
+      {geo:new T.CylinderGeometry(0.05, 0.05, 0.09, 10), pos:[0, 0.46, -D2/2 - 0.06], rot:[0, 0, Math.PI/2]},
+      {geo:new T.CylinderGeometry(0.07, 0.07, 0.18, 10), pos:[0.13, 0.32, -0.02], rot:[0, 0, Math.PI/2]},
+      {geo:new T.CylinderGeometry(0.018, 0.018, 0.13, 8), pos:[0, 0.42, 0.08], rot:[Math.PI/2, 0, 0]},
+      {geo:new T.CylinderGeometry(0.18, 0.18, 0.02, 14), pos:[-0.01, 0.30, 0], rot:[0, 0, Math.PI/2]}
+    ]));
+    const arm = new T.Mesh(armGeo, M.castIron);
+    cutter.add(arm);
+    const bladeGeo = sawG(kind, 'blade', ()=>new T.CylinderGeometry(0.16, 0.16, 0.012, 16));
+    const blade = new T.Mesh(bladeGeo, M.galv);
     blade.rotation.z = Math.PI/2; blade.position.y = 0.3; cutter.add(blade);
   }
   cutter.userData.moves = true;

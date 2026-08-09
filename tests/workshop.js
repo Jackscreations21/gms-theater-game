@@ -199,6 +199,33 @@ const probe = `
     return 'merged steel geometry reaches z ' + steel.geometry.boundingBox.min.z.toFixed(3);
   });
 
+  console.log('--- the cut stations (RULINGS AK + AL) ---');
+  P('the saws cost no more meshes than they did', ()=>{
+    const count = o => { let n=0; o.traverse(c=>{ if(c.isMesh) n++; }); return n; };
+    const t = count(SAWS.palace.track.group), ch = count(SAWS.palace.chop.group);
+    if(t > 7)  throw new Error('track saw is ' + t + ' meshes, budget 7');
+    if(ch > 7) throw new Error('chop bench is ' + ch + ' meshes, budget 7');
+    return {track:t, chop:ch};
+  });
+  P('the cutter survived the merge as its own moving group (RULING AL)', ()=>{
+    ['track','chop'].forEach(k=>{
+      const st = SAWS.palace[k];
+      if(!st.cutter) throw new Error(k + ' lost its cutter');
+      if(!st.cutter.userData.moves) throw new Error(k + ' cutter lost userData.moves');
+      if(st.cutter.parent !== st.group) throw new Error(k + ' cutter was merged into the body');
+      let n = 0; st.cutter.traverse(c=>{ if(c.isMesh) n++; });
+      if(n < 1) throw new Error(k + ' cutter has no mesh of its own');
+    });
+    return 'both cutters still slide';
+  });
+  P('the saw record kept every field the logic reads', ()=>{
+    const st = SAWS.palace.track;
+    ['venue','kind','group','seat','cutter','pieces','cut','span','grabR','gripY']
+      .forEach(f=>{ if(st[f] === undefined) throw new Error('saw record lost ' + f); });
+    if(Math.abs(st.grabR - 0.28) > 1e-9) throw new Error('grabR moved to ' + st.grabR);
+    return 'span ' + st.span.toFixed(2) + ', grabR ' + st.grabR;
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
