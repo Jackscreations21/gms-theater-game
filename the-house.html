@@ -4835,8 +4835,18 @@ let followTarget = null;
    profile — a mesh is the shared box SCALED, and a cut never mints
    geometry, it re-scales one body and registers a second (the frame-rate
    invariant, spec §9).  Box geometry's six native material groups carry
-   paint: mesh.material is an array of six entries from the shared color-
-   keyed cache below (the LENSM lesson — never one material per piece).
+   paint, from the shared color-keyed cache below (the LENSM lesson — never
+   one material per piece).
+
+   BUT A PIECE HOLDS ONE MATERIAL UNTIL ITS FACES DISAGREE.  r128 submits a
+   draw call PER GROUP whenever a mesh's material is an ARRAY, so six
+   identical entries cost six draw calls to draw one plank — 900 for the
+   wood alone at BUILD_CAP, per eye, and WebXR draws each eye separately.
+   Only a sheet can ever be patchy (paintWood coats lumber whole), so a
+   piece carries a single material while all six faces agree and promotes
+   to an array of six only when one face differs.  woodFaces/woodSetFaces
+   below are the ONLY places that know which form a mesh is in — read and
+   write paint through them and the distinction stays invisible.
 
    BUILD_KINDS is a var ON PURPOSE: p4's makeBodyMesh and canHang test it,
    and the Palace rig builds during p4's own parse-time run, before this
@@ -4860,10 +4870,23 @@ function woodMat(color){
   return WOODM[color] || (WOODM[color] =
     new T.MeshStandardMaterial({color, roughness:.85}));
 }
+/* the two accessors the header describes: every reader gets six faces
+   whatever form the mesh is in, and every writer collapses back to one
+   material the moment they agree again. */
+function woodFaces(mesh){
+  const m = mesh.material;
+  return Array.isArray(m) ? m.slice() : [m, m, m, m, m, m];
+}
+function woodSetFaces(mesh, faces){
+  const m0 = faces[0];
+  for(let i = 1; i < 6; i++)
+    if(faces[i] !== m0){ mesh.material = faces.slice(); return; }
+  mesh.material = m0;
+}
 function makeWoodMesh(prof, dims){
   const P = WOOD_PROF[prof];
   const m = woodMat(prof === 'sheet' ? WOOD_COL.ply : WOOD_COL.pine);
-  const mesh = new T.Mesh(WOODG, [m, m, m, m, m, m]);
+  const mesh = new T.Mesh(WOODG, m);
   if(prof === 'sheet') mesh.scale.set(dims.L, dims.W, P.t);
   else mesh.scale.set(P.a, dims.L, P.b);
   mesh.castShadow = mesh.receiveShadow = true;
@@ -5772,7 +5795,7 @@ function paintWood(b, wp, color){
   if(!b || b.kind !== 'wood' || color === undefined || color === null) return false;
   const m = woodMat(color);
   if(b.prof !== 'sheet'){
-    for(let i = 0; i < 6; i++) b.mesh.material[i] = m;
+    b.mesh.material = m;              // lumber coats WHOLE — always one material
     return true;
   }
   b.mesh.updateMatrixWorld(true);
@@ -5783,7 +5806,9 @@ function paintWood(b, wp, color){
   if(ax >= ay && ax >= az) idx = _av.x >= 0 ? 0 : 1;
   else if(ay >= az)        idx = _av.y >= 0 ? 2 : 3;
   else                     idx = _av.z >= 0 ? 4 : 5;
-  b.mesh.material[idx] = m;
+  const f = woodFaces(b.mesh);
+  f[idx] = m;
+  woodSetFaces(b.mesh, f);            // one face differing promotes to six
   return true;
 }
 
@@ -5868,7 +5893,7 @@ function sawCut(st){
   BUILD_VENUE = st.venue;
   const nb = regWood(b.prof, dims2);
   BUILD_VENUE = keep;
-  nb.mesh.material = b.mesh.material.slice();   // paint rides the cut
+  woodSetFaces(nb.mesh, woodFaces(b.mesh));     // paint rides the cut
   st.seat.add(nb.mesh);
   nb.mesh.rotation.copy(b.mesh.rotation);
   nb.mesh.position.copy(b.mesh.position);
@@ -5935,7 +5960,9 @@ function serBody(b){
   if(b.prof) d.prof = b.prof;
   if(b.dims) d.dims = {L:b.dims.L, W:b.dims.W};
   if(b.color !== undefined) d.c = b.color;
-  if(b.kind === 'wood') d.paint = b.mesh.material.map(m=>m.color.getHex());
+  /* still SIX hexes on the wire whichever form the mesh is in: the save
+     format does not change, so old saves load and these load on old code */
+  if(b.kind === 'wood') d.paint = woodFaces(b.mesh).map(m=>m.color.getHex());
   if(b.tick) d.tick = [b.tick.p.x, b.tick.p.y, b.tick.p.z];
   if(b.frozen) d.fz = 1;                    // parked in place (RULING N)
   return d;
@@ -5946,7 +5973,7 @@ function makeSerBody(d, venue){
   let b;
   if(d.k === 'wood'){
     b = regWood(d.prof, {L:d.dims.L, W:d.dims.W});
-    if(d.paint) b.mesh.material = d.paint.map(c=>woodMat(c));
+    if(d.paint) woodSetFaces(b.mesh, d.paint.map(c=>woodMat(c)));
   } else {
     b = regBody(d.k, makeBodyMesh(d.k, d.c), null);
     if(d.c !== undefined) b.color = d.c;
