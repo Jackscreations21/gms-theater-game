@@ -151,6 +151,13 @@ const probe = `
 ;(function(){
   for(let i=0;i<90;i++){ const cb=window.__raf; window.__raf=null; if(cb){ cb(Date.now()+i*16); } }
   const count = o => { let n=0; if(!o) return -1; o.traverse(c=>{ if(c.isMesh) n++; }); return n; };
+  /* The belt hangs off VR.rig, and VR.rig is null until vrOnStart runs off a
+     WebXR sessionstart event that never fires in a probe.  Making the rig
+     here is exactly what vrOnStart does with it (a bare named Group added to
+     the scene), and the tool geometry is identical either way — which is all
+     a mesh census reads.  tests/vr.js takes the fuller route, firing a real
+     sessionstart at a FakeXR, because it is testing the session itself. */
+  if(!VR.rig){ VR.rig = new THREE.Group(); VR.rig.name = 'vr:rig'; scene.add(VR.rig); }
   vrBuildBelt();
   const rows = [];
   rows.push(['nailgun', count(VR.toolMesh.nailgun)]);
@@ -590,6 +597,7 @@ Append inside the probe, before the failures line:
 ```js
   console.log('--- the belt, rebuilt (RULING AK budget) ---');
   P('the belt tools cost no more meshes than they did', ()=>{
+    if(!VR.rig){ VR.rig = new THREE.Group(); VR.rig.name = 'vr:rig'; scene.add(VR.rig); }
     if(!VR.belt) vrBuildBelt();
     const count = o => { let n=0; o.traverse(c=>{ if(c.isMesh) n++; }); return n; };
     const BUDGET = {nailgun:3, hammer:2, tape:2, crayon:2};
@@ -601,6 +609,7 @@ Append inside the probe, before the failures line:
     return got;
   });
   P('the gun still points from the same muzzle', ()=>{
+    if(!VR.rig){ VR.rig = new THREE.Group(); VR.rig.name = 'vr:rig'; scene.add(VR.rig); }
     if(!VR.belt) vrBuildBelt();
     const g = VR.toolMesh.nailgun;
     let nose = null;
