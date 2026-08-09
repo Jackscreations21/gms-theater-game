@@ -594,8 +594,12 @@ function crewAssign(h){
             /* the product leaves the bench so the next cut meets ONLY the
                remainder; it waits loose beside the saw for PR 4's haul */
             carpAside(st, r.kept, run);
+            /* the remainder stays on the bench if this run still wants it:
+               another cut, or a re-seat (a fetch with no body of its own)
+               that means to turn it round and rip it (RULING AE) */
             const nx = CREW.jobs[0];
-            const more = nx && nx.kind === 'carpCut' && nx.saw === job.saw;
+            const more = !!nx && nx.saw === job.saw &&
+              (nx.kind === 'carpCut' || (nx.kind === 'carpFetch' && !nx.body));
             if(run) run.bench[job.saw] = more ? r.off : null;
             /* a usable final off side goes back to the shed as stock,
                loose by the bench (RULING AC) */

@@ -1075,17 +1075,18 @@ function vrDrawCarp(sc){
   /* the catalogue rows — a press selects; the SELECTED row carries the
      stock check off the pure planner with the CURRENT mark: READY, or
      the NEED list.  No mark shows the recipe and claims nothing. */
+  if(sc.skin === undefined) sc.skin = true;      // RULING AF: skinned by default
   Object.keys(CARP_CAT).forEach((key, i)=>{
-    const row = CARP_CAT[key], y = 66 + i*86, on = sc.sel === key;
+    const row = CARP_CAT[key], y = 62 + i*64, on = sc.sel === key;
     g.fillStyle = on ? '#4a3b26' : '#1d1a14';
-    g.fillRect(24, y, 512, 78);
+    g.fillRect(24, y, 512, 58);
     g.fillStyle = on ? '#ffd08a' : '#cfd8e3';
     g.font = 'bold 22px monospace';
-    g.fillText(row.label, 40, y + 32);
+    g.fillText(row.label, 40, y + 26);
     if(on){
-      let line = 'TAKES ' + carpStockLine(row.stock);
+      let line = 'TAKES ' + carpStockLine(carpStock(row, sc.skin));
       if(mark && typeof carpPlan === 'function'){
-        const p = carpPlan(key, mark);
+        const p = carpPlan(key, mark, {skin:sc.skin});
         if(p && p.need) line = carpNeedLine(p.need);
         else if(p && p.full) line = 'PIECES FULL';
         else if(p && p.jobs) line = 'READY — ' + p.jobs.length + ' JOBS';
@@ -1093,9 +1094,9 @@ function vrDrawCarp(sc){
       sc.stockLine = line;
       g.font = '16px monospace';
       g.fillStyle = (line.indexOf('NEED') === 0 || line === 'PIECES FULL') ? '#e0a08a' : '#9fd08a';
-      g.fillText(line, 40, y + 60);
+      g.fillText(line, 40, y + 48);
     }
-    sc.hits.push({x:24, y, w:512, h:78, carpKey:key, fn:()=>{
+    sc.hits.push({x:24, y, w:512, h:58, carpKey:key, fn:()=>{
       sc.sel = key; sc.status = '';
       vrDrawCarp(sc);
     }});
@@ -1110,12 +1111,25 @@ function vrDrawCarp(sc){
   sc.markLine = ml;
   g.font = '18px monospace';
   g.fillStyle = (mark && mark.venue === sc.which) ? '#9fd08a' : '#e0a08a';
-  g.fillText(ml, 24, 372);
+  g.fillText(ml, 24, 400);
+  /* the SKIN switch (RULING AF) — a property of the CALL, so it reads
+     across every flat.  A row with no skin to leave off says so. */
+  const sel = sc.sel && CARP_CAT[sc.sel];
+  const canSkin = !!(sel && sel.skinnable);
+  g.fillStyle = !canSkin ? '#241f18' : (sc.skin ? '#2a4a6a' : '#4a3b26');
+  g.fillRect(24, 418, 208, 52);
+  g.fillStyle = !canSkin ? '#6d6a64' : '#ffd08a';
+  g.font = 'bold 22px monospace';
+  g.fillText(canSkin ? (sc.skin ? 'SKIN: ON' : 'SKIN: OFF') : 'SKIN: N/A', 44, 451);
+  sc.hits.push({x:24, y:418, w:208, h:52, carpSkin:true, fn:()=>{
+    sc.skin = !sc.skin; sc.status = '';
+    vrDrawCarp(sc);
+  }});
   /* the one CALL button */
-  g.fillStyle = '#2fbf4a'; g.fillRect(24, 404, 300, 56);
+  g.fillStyle = '#2fbf4a'; g.fillRect(252, 418, 284, 52);
   g.fillStyle = '#08130a'; g.font = 'bold 30px monospace';
-  g.fillText('CALL', 128, 443);
-  sc.hits.push({x:24, y:404, w:300, h:56, carpCall:true, fn:()=>{ vrCarpPress(sc); }});
+  g.fillText('CALL', 356, 455);
+  sc.hits.push({x:252, y:418, w:284, h:52, carpCall:true, fn:()=>{ vrCarpPress(sc); }});
   /* the status line — the refusals land here, worded per RULING X */
   g.fillStyle = '#ffd08a'; g.font = '20px monospace';
   let line = sc.status;
@@ -1134,7 +1148,8 @@ function vrCarpPress(sc){
   else if(!mark) sc.status = 'NO MARK';
   else if(mark.venue !== sc.which) sc.status = 'MARK IS IN THE OTHER HOUSE';
   else {
-    const r = (typeof carpStart === 'function') ? carpStart(sc.sel, mark) : null;
+    const r = (typeof carpStart === 'function')
+      ? carpStart(sc.sel, mark, {skin:sc.skin}) : null;
     if(!r) sc.status = 'NO MARK';        // a dead mark record: cannot plan
     else if(r.busy) sc.status = 'CREW BUSY';
     else if(r.need) sc.status = carpNeedLine(r.need);

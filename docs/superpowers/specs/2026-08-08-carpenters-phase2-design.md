@@ -91,15 +91,23 @@ changes, and the player's saws are untouched.
 existing flat's frame):
 
 - **4x8 DOOR FLAT** — a 30" × 80" opening. Two jamb studs land on the
-  opening edges, 9" in from each side; a 41" header crosses at 80"
-  (the same 41" cut the plain flat's rails already use). Skin: one 48"
-  × 16" panel over the opening, crosscut; two 9" × 80" strips beside
-  it, ripped. The 30" × 80" centre panel is a real off-cut and goes
-  back to the shed as stock — it is not scrap.
-- **4x8 WINDOW FLAT** — a 30" × 36" opening with its sill 36" up. A
-  41" sill at 36" and a 41" header at 72", two 36" jambs between them.
-  Skin: a 48" × 36" panel below the sill, a 48" × 24" panel above the
-  head, two 9" × 36" strips beside the opening.
+  opening edges, 9" in from each side, running the **full 89" between
+  the rails**, with a **30" header between them** at the door head.
+  Skin: one 48" × 16" panel over the opening, crosscut; two 9" × 80"
+  strips beside it, ripped. The 30" × 80" centre panel is a real
+  off-cut and goes back to the shed as stock — it is not scrap. The
+  opening runs down to the bottom rail, which is the sill you step over.
+- **4x8 WINDOW FLAT** — a 30" × 36" opening with its sill 36" up. The
+  same two 89" jambs, a 30" sill between them at 36" and a 30" header
+  at 72". Skin: a 48" × 36" panel below the sill, a 48" × 24" panel
+  above the head, two 9" × 36" strips beside the opening.
+
+> **Amended during implementation.** This ruling first had the jambs
+> stopping at a 41" header spanning the stiles. That cannot be built: a
+> jamb from the bottom rail's inner face to a header at 80" measures
+> 76.5", and the saw snaps to the inch. Full-height jambs with a short
+> header between them is both cuttable and the more usual framing. The
+> opening, the skin and the one-sheet check are unchanged.
 
 Both skins come out of **one sheet each**, which is the check that the
 cut schedules are honest: the door flat crosscuts 16" off, then rips

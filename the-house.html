@@ -8242,8 +8242,12 @@ function crewAssign(h){
             /* the product leaves the bench so the next cut meets ONLY the
                remainder; it waits loose beside the saw for PR 4's haul */
             carpAside(st, r.kept, run);
+            /* the remainder stays on the bench if this run still wants it:
+               another cut, or a re-seat (a fetch with no body of its own)
+               that means to turn it round and rip it (RULING AE) */
             const nx = CREW.jobs[0];
-            const more = nx && nx.kind === 'carpCut' && nx.saw === job.saw;
+            const more = !!nx && nx.saw === job.saw &&
+              (nx.kind === 'carpCut' || (nx.kind === 'carpFetch' && !nx.body));
             if(run) run.bench[job.saw] = more ? r.off : null;
             /* a usable final off side goes back to the shed as stock,
                loose by the bench (RULING AC) */
@@ -8540,11 +8544,13 @@ var CARP_CAT = {
      (41 + 41 leaves a real 14in off-cut in the shed) */
   flat4x8: {
     label: '4x8 FLAT',
+    skinnable: true,
     stock: [{prof:'sheet', n:1}, {prof:'s2x4', n:3}],
     cuts:  [{stock:3, saw:'chop', make:[1.0414, 1.0414]}],
     blueprint: {
       pieces: [
-        {src:{stock:0},  prof:'sheet', len:2.4384, pos:[0, 0.0475,  0],      rot:[-Math.PI/2, 0, 0]},
+        {src:{stock:0},  prof:'sheet', len:2.4384, skin:true,
+                         pos:[0, 0.0475,  0],      rot:[-Math.PI/2, 0, 0]},
         {src:{stock:1},  prof:'s2x4',  len:2.4384, pos:[0, 0.019,  -0.5651], rot:[0, 0, -Math.PI/2]},
         {src:{stock:2},  prof:'s2x4',  len:2.4384, pos:[0, 0.019,   0.5651], rot:[0, 0, -Math.PI/2]},
         {src:{cut:[0,0]}, prof:'s2x4', len:1.0414, pos:[-1.1747, 0.019, 0],  rot:[0, Math.PI/2, -Math.PI/2]},
@@ -8567,6 +8573,157 @@ var CARP_CAT = {
         {i:2, j:3, p:[-1.1547, 0.019,  0.5206], ax:[0,0,1]},
         {i:2, j:4, p:[ 1.1547, 0.019,  0.5206], ax:[0,0,1]},
         {i:2, j:4, p:[ 1.1947, 0.019,  0.5206], ax:[0,0,1]}
+      ]
+    }
+  },
+  /* A FLAT WITH A DOOR HOLE IN IT (phase 2, RULING AE).  A sheet can
+     never have a hole cut in it — wood is parametric and a cut must not
+     mint geometry — so the opening is FRAMED and the skin goes on in
+     pieces AROUND it, the way a real one is built: two jambs the full
+     89in between the rails, a 30in header between them at the head, and
+     three panels of skin.  The opening is 30 x 80in, open down to the
+     bottom rail, which is the sill you step over.
+     The skin comes out of ONE sheet: crosscut 16in off for the panel
+     over the door, then rip two 9in strips off the 80in remainder — the
+     30 x 80in panel left over is stock, not scrap. */
+  doorFlat: {
+    label: '4x8 DOOR FLAT',
+    skinnable: true,
+    stock: [{prof:'sheet', n:1}, {prof:'s2x4', n:6}],
+    cuts:  [{stock:3, saw:'chop',  make:[1.0414, 1.0414]},        // rails
+            {stock:4, saw:'chop',  make:[2.2606]},                // jamb
+            {stock:5, saw:'chop',  make:[2.2606]},                // jamb
+            {stock:6, saw:'chop',  make:[0.762]},                 // header
+            {stock:0, saw:'track', axis:'L', make:[0.4064]},      // over the door
+            {stock:0, saw:'track', axis:'W', make:[0.2286, 0.2286]}],
+    blueprint: {
+      pieces: [
+        {src:{stock:1},   prof:'s2x4', len:2.4384, pos:[0, 0.019, -0.5651],   rot:[0, 0, -Math.PI/2]},
+        {src:{stock:2},   prof:'s2x4', len:2.4384, pos:[0, 0.019,  0.5651],   rot:[0, 0, -Math.PI/2]},
+        {src:{cut:[0,0]}, prof:'s2x4', len:1.0414, pos:[-1.1747, 0.019, 0],   rot:[0, Math.PI/2, -Math.PI/2]},
+        {src:{cut:[0,1]}, prof:'s2x4', len:1.0414, pos:[ 1.1747, 0.019, 0],   rot:[0, Math.PI/2, -Math.PI/2]},
+        {src:{cut:[1,0]}, prof:'s2x4', len:2.2606, pos:[0, 0.019, -0.42545],  rot:[0, 0, -Math.PI/2]},
+        {src:{cut:[2,0]}, prof:'s2x4', len:2.2606, pos:[0, 0.019,  0.42545],  rot:[0, 0, -Math.PI/2]},
+        {src:{cut:[3,0]}, prof:'s2x4', len:0.762,  pos:[0.85725, 0.019, 0],   rot:[0, Math.PI/2, -Math.PI/2]},
+        {src:{cut:[4,0]}, prof:'sheet', len:0.4064, w:1.2192, skin:true,
+                          pos:[1.016, 0.0475, 0],        rot:[-Math.PI/2, 0, 0]},
+        {src:{cut:[5,0]}, prof:'sheet', len:2.032,  w:0.2286, skin:true,
+                          pos:[-0.2032, 0.0475, -0.4953], rot:[-Math.PI/2, 0, 0]},
+        {src:{cut:[5,1]}, prof:'sheet', len:2.032,  w:0.2286, skin:true,
+                          pos:[-0.2032, 0.0475,  0.4953], rot:[-Math.PI/2, 0, 0]}
+      ],
+      nails: [
+        {i:0, j:2, p:[-1.1947, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:0, j:2, p:[-1.1547, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:0, j:3, p:[ 1.1547, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:0, j:3, p:[ 1.1947, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:1, j:2, p:[-1.1947, 0.019,  0.5206], ax:[0,0,1]},
+        {i:1, j:2, p:[-1.1547, 0.019,  0.5206], ax:[0,0,1]},
+        {i:1, j:3, p:[ 1.1547, 0.019,  0.5206], ax:[0,0,1]},
+        {i:1, j:3, p:[ 1.1947, 0.019,  0.5206], ax:[0,0,1]},
+        {i:4, j:2, p:[-1.1302, 0.019, -0.44],   ax:[-1,0,0]},
+        {i:4, j:2, p:[-1.1302, 0.019, -0.41],   ax:[-1,0,0]},
+        {i:4, j:3, p:[ 1.1302, 0.019, -0.44],   ax:[1,0,0]},
+        {i:4, j:3, p:[ 1.1302, 0.019, -0.41],   ax:[1,0,0]},
+        {i:5, j:2, p:[-1.1302, 0.019,  0.41],   ax:[-1,0,0]},
+        {i:5, j:2, p:[-1.1302, 0.019,  0.44],   ax:[-1,0,0]},
+        {i:5, j:3, p:[ 1.1302, 0.019,  0.41],   ax:[1,0,0]},
+        {i:5, j:3, p:[ 1.1302, 0.019,  0.44],   ax:[1,0,0]},
+        {i:6, j:4, p:[0.83, 0.019, -0.381],     ax:[0,0,-1]},
+        {i:6, j:4, p:[0.88, 0.019, -0.381],     ax:[0,0,-1]},
+        {i:6, j:5, p:[0.83, 0.019,  0.381],     ax:[0,0,1]},
+        {i:6, j:5, p:[0.88, 0.019,  0.381],     ax:[0,0,1]},
+        {i:7, j:3, p:[1.1747, 0.038, -0.35],    ax:[0,-1,0]},
+        {i:7, j:3, p:[1.1747, 0.038,  0.35],    ax:[0,-1,0]},
+        {i:7, j:6, p:[0.85725, 0.038, -0.2],    ax:[0,-1,0]},
+        {i:7, j:6, p:[0.85725, 0.038,  0.2],    ax:[0,-1,0]},
+        {i:8, j:0, p:[-0.6, 0.038, -0.5651],    ax:[0,-1,0]},
+        {i:8, j:0, p:[ 0.2, 0.038, -0.5651],    ax:[0,-1,0]},
+        {i:8, j:2, p:[-1.1747, 0.038, -0.42],   ax:[0,-1,0]},
+        {i:8, j:2, p:[-1.1747, 0.038, -0.50],   ax:[0,-1,0]},
+        {i:9, j:1, p:[-0.6, 0.038,  0.5651],    ax:[0,-1,0]},
+        {i:9, j:1, p:[ 0.2, 0.038,  0.5651],    ax:[0,-1,0]},
+        {i:9, j:2, p:[-1.1747, 0.038,  0.42],   ax:[0,-1,0]},
+        {i:9, j:2, p:[-1.1747, 0.038,  0.50],   ax:[0,-1,0]}
+      ]
+    }
+  },
+  /* A FLAT WITH A WINDOW HOLE IN IT (phase 2, RULING AE).  Same frame,
+     with a sill at 36in and a header at 72in between the jambs: a
+     30 x 36in opening with its sill three feet off the deck.  Four
+     panels of skin, again out of ONE sheet — crosscut 36in and 24in
+     off, then rip two 9in strips off what is left, leaving a 30 x 36in
+     panel as stock. */
+  windowFlat: {
+    label: '4x8 WINDOW FLAT',
+    skinnable: true,
+    stock: [{prof:'sheet', n:1}, {prof:'s2x4', n:6}],
+    cuts:  [{stock:3, saw:'chop',  make:[1.0414, 1.0414]},        // rails
+            {stock:4, saw:'chop',  make:[2.2606]},                // jamb
+            {stock:5, saw:'chop',  make:[2.2606]},                // jamb
+            {stock:6, saw:'chop',  make:[0.762, 0.762]},          // sill + header
+            {stock:0, saw:'track', axis:'L', make:[0.9144, 0.6096]},
+            {stock:0, saw:'track', axis:'W', make:[0.2286, 0.2286]}],
+    blueprint: {
+      pieces: [
+        {src:{stock:1},   prof:'s2x4', len:2.4384, pos:[0, 0.019, -0.5651],   rot:[0, 0, -Math.PI/2]},
+        {src:{stock:2},   prof:'s2x4', len:2.4384, pos:[0, 0.019,  0.5651],   rot:[0, 0, -Math.PI/2]},
+        {src:{cut:[0,0]}, prof:'s2x4', len:1.0414, pos:[-1.1747, 0.019, 0],   rot:[0, Math.PI/2, -Math.PI/2]},
+        {src:{cut:[0,1]}, prof:'s2x4', len:1.0414, pos:[ 1.1747, 0.019, 0],   rot:[0, Math.PI/2, -Math.PI/2]},
+        {src:{cut:[1,0]}, prof:'s2x4', len:2.2606, pos:[0, 0.019, -0.42545],  rot:[0, 0, -Math.PI/2]},
+        {src:{cut:[2,0]}, prof:'s2x4', len:2.2606, pos:[0, 0.019,  0.42545],  rot:[0, 0, -Math.PI/2]},
+        {src:{cut:[3,0]}, prof:'s2x4', len:0.762,  pos:[-0.34925, 0.019, 0],  rot:[0, Math.PI/2, -Math.PI/2]},
+        {src:{cut:[3,1]}, prof:'s2x4', len:0.762,  pos:[ 0.65405, 0.019, 0],  rot:[0, Math.PI/2, -Math.PI/2]},
+        {src:{cut:[4,0]}, prof:'sheet', len:0.9144, w:1.2192, skin:true,
+                          pos:[-0.762, 0.0475, 0],       rot:[-Math.PI/2, 0, 0]},
+        {src:{cut:[4,1]}, prof:'sheet', len:0.6096, w:1.2192, skin:true,
+                          pos:[0.9144, 0.0475, 0],       rot:[-Math.PI/2, 0, 0]},
+        {src:{cut:[5,0]}, prof:'sheet', len:0.9144, w:0.2286, skin:true,
+                          pos:[0.1524, 0.0475, -0.4953], rot:[-Math.PI/2, 0, 0]},
+        {src:{cut:[5,1]}, prof:'sheet', len:0.9144, w:0.2286, skin:true,
+                          pos:[0.1524, 0.0475,  0.4953], rot:[-Math.PI/2, 0, 0]}
+      ],
+      nails: [
+        {i:0, j:2, p:[-1.1947, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:0, j:2, p:[-1.1547, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:0, j:3, p:[ 1.1547, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:0, j:3, p:[ 1.1947, 0.019, -0.5206], ax:[0,0,-1]},
+        {i:1, j:2, p:[-1.1947, 0.019,  0.5206], ax:[0,0,1]},
+        {i:1, j:2, p:[-1.1547, 0.019,  0.5206], ax:[0,0,1]},
+        {i:1, j:3, p:[ 1.1547, 0.019,  0.5206], ax:[0,0,1]},
+        {i:1, j:3, p:[ 1.1947, 0.019,  0.5206], ax:[0,0,1]},
+        {i:4, j:2, p:[-1.1302, 0.019, -0.44],   ax:[-1,0,0]},
+        {i:4, j:2, p:[-1.1302, 0.019, -0.41],   ax:[-1,0,0]},
+        {i:4, j:3, p:[ 1.1302, 0.019, -0.44],   ax:[1,0,0]},
+        {i:4, j:3, p:[ 1.1302, 0.019, -0.41],   ax:[1,0,0]},
+        {i:5, j:2, p:[-1.1302, 0.019,  0.41],   ax:[-1,0,0]},
+        {i:5, j:2, p:[-1.1302, 0.019,  0.44],   ax:[-1,0,0]},
+        {i:5, j:3, p:[ 1.1302, 0.019,  0.41],   ax:[1,0,0]},
+        {i:5, j:3, p:[ 1.1302, 0.019,  0.44],   ax:[1,0,0]},
+        {i:6, j:4, p:[-0.38, 0.019, -0.381],    ax:[0,0,-1]},
+        {i:6, j:4, p:[-0.32, 0.019, -0.381],    ax:[0,0,-1]},
+        {i:6, j:5, p:[-0.38, 0.019,  0.381],    ax:[0,0,1]},
+        {i:6, j:5, p:[-0.32, 0.019,  0.381],    ax:[0,0,1]},
+        {i:7, j:4, p:[0.63, 0.019, -0.381],     ax:[0,0,-1]},
+        {i:7, j:4, p:[0.68, 0.019, -0.381],     ax:[0,0,-1]},
+        {i:7, j:5, p:[0.63, 0.019,  0.381],     ax:[0,0,1]},
+        {i:7, j:5, p:[0.68, 0.019,  0.381],     ax:[0,0,1]},
+        {i:8, j:2, p:[-1.1747, 0.038, -0.35],   ax:[0,-1,0]},
+        {i:8, j:2, p:[-1.1747, 0.038,  0.35],   ax:[0,-1,0]},
+        {i:8, j:6, p:[-0.34925, 0.038, -0.2],   ax:[0,-1,0]},
+        {i:8, j:6, p:[-0.34925, 0.038,  0.2],   ax:[0,-1,0]},
+        {i:9, j:3, p:[1.1747, 0.038, -0.35],    ax:[0,-1,0]},
+        {i:9, j:3, p:[1.1747, 0.038,  0.35],    ax:[0,-1,0]},
+        {i:9, j:7, p:[0.65405, 0.038, -0.2],    ax:[0,-1,0]},
+        {i:9, j:7, p:[0.65405, 0.038,  0.2],    ax:[0,-1,0]},
+        {i:10, j:0, p:[0.0, 0.038, -0.5651],    ax:[0,-1,0]},
+        {i:10, j:0, p:[0.4, 0.038, -0.5651],    ax:[0,-1,0]},
+        {i:10, j:4, p:[0.0, 0.038, -0.42545],   ax:[0,-1,0]},
+        {i:10, j:4, p:[0.4, 0.038, -0.42545],   ax:[0,-1,0]},
+        {i:11, j:1, p:[0.0, 0.038,  0.5651],    ax:[0,-1,0]},
+        {i:11, j:1, p:[0.4, 0.038,  0.5651],    ax:[0,-1,0]},
+        {i:11, j:5, p:[0.0, 0.038,  0.42545],   ax:[0,-1,0]},
+        {i:11, j:5, p:[0.4, 0.038,  0.42545],   ax:[0,-1,0]}
       ]
     }
   },
@@ -8740,15 +8897,47 @@ function carpNeedLine(need){ return 'NEED ' + carpStockLine(need); }
                  off a saw (PR 3 records which body each cut kept)
      carpNail  {kind, venue, i, j, nails:[{p, ax} x2]}  hand: two nails
      hold      {kind, say}                           the p6b barrier        */
-function carpPlan(key, mark){
+/* RULING AF — the skin is a switch on the CALL, not a row of its own.
+   SKIN OFF drops the skin pieces, the nails that fasten them, the cuts
+   that make them and the stock they came out of.  Piece INDICES never
+   move: the jobs, CARP_RUN.made and CARP_RUN.placed are all keyed by
+   blueprint index, so a dropped piece leaves a HOLE in the numbering
+   rather than shifting everything after it.  All pure:
+     live(pi)    — is blueprint piece pi being built
+     liveCut(ci) — does cut entry ci still make something wanted
+     wanted[ui]  — is stock unit ui still wanted
+     stock       — the stock list to show on the glass and check against */
+function carpParts(row, skin){
+  const on = !(row.skinnable && skin === false);
+  const pieces = row.blueprint.pieces;
+  const live = pi => on || !pieces[pi].skin;
+  const liveCut = ci => on ||
+    pieces.some((p, pi)=>live(pi) && p.src.cut && p.src.cut[0] === ci);
+  const wanted = {};
+  pieces.forEach((p, pi)=>{ if(live(pi) && p.src.stock !== undefined) wanted[p.src.stock] = true; });
+  row.cuts.forEach((c, ci)=>{ if(liveCut(ci)) wanted[c.stock] = true; });
+  const stock = [];
+  let ui = 0;
+  for(const s of row.stock){
+    let n = 0;
+    for(let i = 0; i < s.n; i++, ui++) if(wanted[ui]) n++;
+    if(n) stock.push({prof:s.prof, n});
+  }
+  return {live, liveCut, wanted, stock};
+}
+function carpStock(row, skin){ return row ? carpParts(row, skin).stock : []; }
+
+function carpPlan(key, mark, opts){
   const row = CARP_CAT[key];
   if(!row || !mark || !mark.venue) return null;
   const venue = mark.venue;
+  const P = carpParts(row, !(opts && opts.skin === false));
+  const live = P.live, liveCut = P.liveCut, wanted = P.wanted;
 
   /* the stock check — full sticks of the right profile, or the NEED list */
   const survey = carpSurvey(venue);
   const pool = {}, need = [];
-  for(const s of row.stock){
+  for(const s of P.stock){
     if(!pool[s.prof]) pool[s.prof] = (survey[s.prof] || []).filter(carpFullStick);
     const short = s.n - pool[s.prof].length;
     if(short > 0) need.push({prof:s.prof, n:short});
@@ -8759,7 +8948,9 @@ function carpPlan(key, mark){
      off side clears SAW_MIN mints one; a scrap end mints nothing */
   let mint = 0;
   const left = {};
-  for(const c of row.cuts){
+  for(let ci = 0; ci < row.cuts.length; ci++){
+    const c = row.cuts[ci];
+    if(!liveCut(ci)) continue;
     /* what is left to cut, keyed by stock AND axis: two entries may name
        the same stick — a second 'L' entry carries on down the remainder,
        while a 'W' entry starts fresh across the sheet's full width,
@@ -8775,12 +8966,14 @@ function carpPlan(key, mark){
   const piecesAfter = venueBuildCount(venue) + mint;
   if(piecesAfter > BUILD_CAP) return {full:true, pieces:piecesAfter};
 
-  /* assign real bodies to the row's stock units, nearest first */
+  /* assign real bodies to the row's stock units, nearest first — a unit
+     nothing wants any more (SKIN OFF) is left standing in the shed */
   const units = [], taken = {};
   for(const s of row.stock){
     taken[s.prof] = taken[s.prof] || 0;
     for(let i = 0; i < s.n; i++)
-      units.push({prof:s.prof, body:pool[s.prof][taken[s.prof]++]});
+      units.push({prof:s.prof,
+                  body:wanted[units.length] ? pool[s.prof][taken[s.prof]++] : null});
   }
 
   /* the queue: every stick to its saw and through the schedule, a hold
@@ -8789,6 +8982,7 @@ function carpPlan(key, mark){
   const jobs = [];
   const onBench = {};                   // stock index -> the axis it lies on
   row.cuts.forEach((c, ci)=>{
+    if(!liveCut(ci)) return;
     const ax = c.axis || 'L';
     /* the first entry for a stick fetches it; a later entry only needs the
        lead if it wants the stick round the other way */
@@ -8809,13 +9003,15 @@ function carpPlan(key, mark){
   });
   jobs.push({kind:'hold', say:'cuts are done — haul it to the mark'});
   row.blueprint.pieces.forEach((p, pi)=>{
+    if(!live(pi)) return;
     jobs.push({kind:'carpHaul', venue, piece:pi,
                body:(p.src.stock !== undefined) ? units[p.src.stock].body : null,
-               prof:p.prof, len:p.len, pos:p.pos.slice(), rot:p.rot.slice()});
+               prof:p.prof, len:p.len, w:p.w, pos:p.pos.slice(), rot:p.rot.slice()});
   });
   jobs.push({kind:'hold', say:'pieces are set — nail it up'});
   const joints = {};
   for(const n of row.blueprint.nails){
+    if(!live(n.i) || !live(n.j)) continue;
     const jk = n.i + ':' + n.j;
     if(!joints[jk]){
       joints[jk] = {kind:'carpNail', venue, i:n.i, j:n.j, nails:[]};
@@ -8891,9 +9087,9 @@ function carpRun(jobs){
 /* the headless entry the screen wires up in PR 5: plan, then run.  Returns
    carpPlan's own answer ({need}/{full}/null) unchanged on refusal, or
    {busy:true} when the one queue is taken, so the caller can word it. */
-function carpStart(key, mark){
+function carpStart(key, mark, opts){
   if(CREW.running) return {busy:true};
-  const plan = carpPlan(key, mark);
+  const plan = carpPlan(key, mark, opts);
   if(!plan || plan.need || plan.full) return plan;
   CARP_RUN = {key, venue:mark.venue, mark, made:{}, bench:{}, placed:{}, aside:0};
   carpRun(plan.jobs);
@@ -17268,17 +17464,18 @@ function vrDrawCarp(sc){
   /* the catalogue rows — a press selects; the SELECTED row carries the
      stock check off the pure planner with the CURRENT mark: READY, or
      the NEED list.  No mark shows the recipe and claims nothing. */
+  if(sc.skin === undefined) sc.skin = true;      // RULING AF: skinned by default
   Object.keys(CARP_CAT).forEach((key, i)=>{
-    const row = CARP_CAT[key], y = 66 + i*86, on = sc.sel === key;
+    const row = CARP_CAT[key], y = 62 + i*64, on = sc.sel === key;
     g.fillStyle = on ? '#4a3b26' : '#1d1a14';
-    g.fillRect(24, y, 512, 78);
+    g.fillRect(24, y, 512, 58);
     g.fillStyle = on ? '#ffd08a' : '#cfd8e3';
     g.font = 'bold 22px monospace';
-    g.fillText(row.label, 40, y + 32);
+    g.fillText(row.label, 40, y + 26);
     if(on){
-      let line = 'TAKES ' + carpStockLine(row.stock);
+      let line = 'TAKES ' + carpStockLine(carpStock(row, sc.skin));
       if(mark && typeof carpPlan === 'function'){
-        const p = carpPlan(key, mark);
+        const p = carpPlan(key, mark, {skin:sc.skin});
         if(p && p.need) line = carpNeedLine(p.need);
         else if(p && p.full) line = 'PIECES FULL';
         else if(p && p.jobs) line = 'READY — ' + p.jobs.length + ' JOBS';
@@ -17286,9 +17483,9 @@ function vrDrawCarp(sc){
       sc.stockLine = line;
       g.font = '16px monospace';
       g.fillStyle = (line.indexOf('NEED') === 0 || line === 'PIECES FULL') ? '#e0a08a' : '#9fd08a';
-      g.fillText(line, 40, y + 60);
+      g.fillText(line, 40, y + 48);
     }
-    sc.hits.push({x:24, y, w:512, h:78, carpKey:key, fn:()=>{
+    sc.hits.push({x:24, y, w:512, h:58, carpKey:key, fn:()=>{
       sc.sel = key; sc.status = '';
       vrDrawCarp(sc);
     }});
@@ -17303,12 +17500,25 @@ function vrDrawCarp(sc){
   sc.markLine = ml;
   g.font = '18px monospace';
   g.fillStyle = (mark && mark.venue === sc.which) ? '#9fd08a' : '#e0a08a';
-  g.fillText(ml, 24, 372);
+  g.fillText(ml, 24, 400);
+  /* the SKIN switch (RULING AF) — a property of the CALL, so it reads
+     across every flat.  A row with no skin to leave off says so. */
+  const sel = sc.sel && CARP_CAT[sc.sel];
+  const canSkin = !!(sel && sel.skinnable);
+  g.fillStyle = !canSkin ? '#241f18' : (sc.skin ? '#2a4a6a' : '#4a3b26');
+  g.fillRect(24, 418, 208, 52);
+  g.fillStyle = !canSkin ? '#6d6a64' : '#ffd08a';
+  g.font = 'bold 22px monospace';
+  g.fillText(canSkin ? (sc.skin ? 'SKIN: ON' : 'SKIN: OFF') : 'SKIN: N/A', 44, 451);
+  sc.hits.push({x:24, y:418, w:208, h:52, carpSkin:true, fn:()=>{
+    sc.skin = !sc.skin; sc.status = '';
+    vrDrawCarp(sc);
+  }});
   /* the one CALL button */
-  g.fillStyle = '#2fbf4a'; g.fillRect(24, 404, 300, 56);
+  g.fillStyle = '#2fbf4a'; g.fillRect(252, 418, 284, 52);
   g.fillStyle = '#08130a'; g.font = 'bold 30px monospace';
-  g.fillText('CALL', 128, 443);
-  sc.hits.push({x:24, y:404, w:300, h:56, carpCall:true, fn:()=>{ vrCarpPress(sc); }});
+  g.fillText('CALL', 356, 455);
+  sc.hits.push({x:252, y:418, w:284, h:52, carpCall:true, fn:()=>{ vrCarpPress(sc); }});
   /* the status line — the refusals land here, worded per RULING X */
   g.fillStyle = '#ffd08a'; g.font = '20px monospace';
   let line = sc.status;
@@ -17327,7 +17537,8 @@ function vrCarpPress(sc){
   else if(!mark) sc.status = 'NO MARK';
   else if(mark.venue !== sc.which) sc.status = 'MARK IS IN THE OTHER HOUSE';
   else {
-    const r = (typeof carpStart === 'function') ? carpStart(sc.sel, mark) : null;
+    const r = (typeof carpStart === 'function')
+      ? carpStart(sc.sel, mark, {skin:sc.skin}) : null;
     if(!r) sc.status = 'NO MARK';        // a dead mark record: cannot plan
     else if(r.busy) sc.status = 'CREW BUSY';
     else if(r.need) sc.status = carpNeedLine(r.need);
