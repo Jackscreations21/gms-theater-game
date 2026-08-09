@@ -882,7 +882,7 @@ const probe = `
     const withSkin = sc.stockLine;
     /* the relayout: every region inside the canvas, and no two overlapping
        — five rows, a switch and a CALL on one 560x520 pane */
-    const rows = sc.hits.filter(h=>h.carpKey);
+    const rows = sc.hits.filter(h=>h.carpKey && !h.carpBump);
     if(rows.length !== Object.keys(CARP_CAT).length)
       throw new Error(rows.length+' rows drawn for '+Object.keys(CARP_CAT).length+' in the catalogue');
     sc.hits.forEach(h=>{
@@ -894,8 +894,9 @@ const probe = `
         const a = sc.hits[i], b = sc.hits[j];
         if(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h)
           throw new Error('two regions overlap: '+
-            (a.carpKey || (a.carpCall ? 'CALL' : 'SKIN'))+' and '+
-            (b.carpKey || (b.carpCall ? 'CALL' : 'SKIN')));
+            ((a.carpBump ? 'BUMP ' : '') + (a.carpKey || (a.carpCall ? 'CALL' : 'SKIN')))+
+            ' and '+
+            ((b.carpBump ? 'BUMP ' : '') + (b.carpKey || (b.carpCall ? 'CALL' : 'SKIN'))));
       }
     skinHit.fn();                           // throw it
     if(sc.skin !== false) throw new Error('the switch did not throw');
@@ -907,6 +908,108 @@ const probe = `
     CARP.mark = keepMark; sc.sel = keepSel; sc.skin = keepSkin === undefined ? true : keepSkin;
     vrDrawCarp(sc);
     return 'five rows, no overlaps, and the switch moves the stock line';
+  });
+
+  console.log('--- the build list (phase 2, RULINGS AG + AH) ---');
+  P('a list is summed, stacked on the one mark, and judged whole', ()=>{
+    if(CREW.running) throw new Error('crew already running');
+    const mark = {venue:'palace', stage:'palace', x:0, z:-6, yaw:0};
+    /* nothing in the shed: the NEED list sums across the whole list and
+       is reported ONCE (two flats want two sheets and six sticks) */
+    carpSurvey('palace').sheet.filter(carpFullStick).forEach(removeBody);
+    carpSurvey('palace').s2x4.filter(carpFullStick).forEach(removeBody);
+    const shortP = carpPlanList([{key:'flat4x8', n:2}], mark);
+    if(!shortP || !shortP.need) throw new Error('expected a NEED list: '+JSON.stringify(shortP));
+    const nOf = (l, p)=>(l.find(s=>s.prof === p) || {}).n;
+    if(nOf(shortP.need, 'sheet') !== 2 || nOf(shortP.need, 's2x4') !== 6)
+      throw new Error('summed NEED is '+carpNeedLine(shortP.need));
+    /* one flat's worth of stock: the list of two is still short by one */
+    const chopW = SAWS.palace.chop.group.getWorldPosition(new THREE.Vector3());
+    layStock('palace', chopW, ['sheet','s2x4','s2x4','s2x4']);
+    const half = carpPlanList([{key:'flat4x8', n:2}], mark);
+    if(!half || !half.need) throw new Error('two flats off one flat of stock: '+JSON.stringify(half));
+    if(nOf(half.need, 'sheet') !== 1 || nOf(half.need, 's2x4') !== 3)
+      throw new Error('the second flat asked for '+carpNeedLine(half.need));
+    /* stock for both: one queue, worked in order, stacked */
+    layStock('palace', chopW, ['sheet','s2x4','s2x4','s2x4']);
+    const plan = carpPlanList([{key:'flat4x8', n:2}], mark);
+    if(!plan || !plan.jobs) throw new Error('two flats refused: '+JSON.stringify(plan));
+    const hauls = plan.jobs.filter(j=>j.kind === 'carpHaul');
+    if(hauls.length !== 10) throw new Error(hauls.length+' hauls for two 5-piece flats');
+    /* piece indices never collide between items — made/placed are keyed
+       by them */
+    if(new Set(hauls.map(h=>h.piece)).size !== 10)
+      throw new Error('two items share a piece index');
+    /* and the second flat sits exactly one flat-height higher */
+    const h0 = hauls.slice(0, 5), h1 = hauls.slice(5);
+    const lift = carpStackH(CARP_CAT.flat4x8, true);
+    if(Math.abs(lift - 0.057) > 1e-6) throw new Error('a skinned flat stands '+lift+' high');
+    h0.forEach((j, i)=>{
+      if(Math.abs(h1[i].pos[1] - j.pos[1] - lift) > 1e-9)
+        throw new Error('piece '+i+' of the second flat is at '+h1[i].pos[1]+', not '+(j.pos[1]+lift));
+      if(Math.abs(h1[i].pos[0] - j.pos[0]) > 1e-9 || Math.abs(h1[i].pos[2] - j.pos[2]) > 1e-9)
+        throw new Error('the second flat wandered off the mark');
+    });
+    const nails = plan.jobs.filter(j=>j.kind === 'carpNail');
+    if(!nails.slice(8).every(j=>j.nails.every(n=>n.p[1] >= lift - 1e-9)))
+      throw new Error('the second flat is nailed down at the height of the first');
+    /* the cap is judged for the WHOLE list, not item by item (RULING AH):
+       two flats must count TWO flats' worth of cuts against BUILD_CAP.
+       The single-item boundary and its wording are pinned by the cap test
+       further up; what is new here is that item two is counted at all. */
+    const base = venueBuildCount('palace');
+    const each = carpPlan('flat4x8', mark).piecesAfter - base;
+    if(each < 1) throw new Error('a flat mints '+each+' pieces');
+    if(plan.piecesAfter - base !== each * 2)
+      throw new Error('a list of two counts '+(plan.piecesAfter - base)+
+                      ' pieces against the cap, not '+(each * 2));
+    return 'NEED summed once, 10 hauls with distinct indices, second flat stacked at '+
+           lift.toFixed(3)+'m';
+  });
+  P('one CALL builds the whole list, stacked, each its own assembly', ()=>{
+    if(CREW.running) throw new Error('crew already running');
+    stageSwitch('palace', true);
+    const sc = VR.carps.palace;
+    const chopW = SAWS.palace.chop.group.getWorldPosition(new THREE.Vector3());
+    layStock('palace', chopW, ['sheet','s2x4','s2x4','s2x4']);
+    layStock('palace', chopW, ['sheet','s2x4','s2x4','s2x4','s2x4','s2x4','s2x4']);
+    const mark = {venue:'palace', stage:'palace', x:3.6, z:-6, yaw:0};
+    carpSetMark(mark.venue, mark.stage, mark.x, mark.z, mark.yaw);
+    crewSpawn(6).forEach(h=>{ h.speed = 2.4; });
+    /* build the list on the glass: one plain flat, one door flat */
+    sc.counts = {}; sc.sel = null; sc.skin = true;
+    vrDrawCarp(sc);
+    ['flat4x8', 'doorFlat'].forEach(key=>{
+      const plus = sc.hits.find(h=>h.carpKey === key && h.carpBump === 1);
+      if(!plus) throw new Error('no + for '+key);
+      plus.fn();
+    });
+    if(sc.counts.flat4x8 !== 1 || sc.counts.doorFlat !== 1)
+      throw new Error('the counts read '+JSON.stringify(sc.counts));
+    const pre = ASSEMBLIES.slice();
+    sc.hits.find(h=>h.carpCall).fn();
+    if(CREW.running !== 'carp') throw new Error('the call did not take: '+sc.status);
+    if(sc.status.indexOf('CALLED') !== 0) throw new Error('the glass says: '+sc.status);
+    if(sc.counts.flat4x8) throw new Error('the list was not cleared by the call');
+    let guard = 0;
+    while(CREW.running && guard++ < 300000){ updateCrew(0.05); updateBodies(0.05); }
+    if(CREW.running) throw new Error('the list never finished');
+    const made = ASSEMBLIES.filter(a=>pre.indexOf(a) < 0);
+    if(made.length !== 2) throw new Error(made.length+' assemblies for a list of two');
+    const sizes = made.map(a=>a.pieces.length).sort((x,y)=>x-y);
+    if(sizes.join(',') !== '5,10') throw new Error('pieces: '+sizes.join(','));
+    if(made.some(a=>a.anchor)) throw new Error('the carpenters nailed one down');
+    /* stacked, not merged: two separate assemblies, one above the other */
+    scene.updateMatrixWorld(true);
+    const ys = made.map(a=>{
+      const b = new THREE.Box3();
+      a.pieces.forEach(p=>b.union(new THREE.Box3().setFromObject(p.mesh)));
+      return b.min.y;
+    }).sort((x,y)=>x-y);
+    if(ys[1] - ys[0] < 0.03)
+      throw new Error('the second one did not stack: bases at '+ys[0].toFixed(3)+' and '+ys[1].toFixed(3));
+    return 'one CALL, two assemblies of 5 and 10, the second stacked '+
+           (ys[1]-ys[0]).toFixed(3)+'m up';
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'

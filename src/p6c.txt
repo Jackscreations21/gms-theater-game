@@ -429,8 +429,13 @@ function carpPlan(key, mark, opts){
   /* the stock check — full sticks of the right profile, or the NEED list */
   const survey = carpSurvey(venue);
   const pool = {}, need = [];
+  /* opts.taken is READ-ONLY here: the sticks an earlier item of a build
+     list already spoke for.  carpPlan mutates nothing — it reports what
+     it claimed in plan.uses and lets the caller keep the tally. */
+  const spoken = (opts && opts.taken) || null;
   for(const s of P.stock){
-    if(!pool[s.prof]) pool[s.prof] = (survey[s.prof] || []).filter(carpFullStick);
+    if(!pool[s.prof]) pool[s.prof] = (survey[s.prof] || [])
+      .filter(b=>carpFullStick(b) && !(spoken && spoken.indexOf(b) >= 0));
     const short = s.n - pool[s.prof].length;
     if(short > 0) need.push({prof:s.prof, n:short});
   }
@@ -455,17 +460,21 @@ function carpPlan(key, mark, opts){
       if(left[k] >= SAW_MIN) mint++;
     }
   }
-  const piecesAfter = venueBuildCount(venue) + mint;
+  /* opts.minted is what earlier items of a build list will already have
+     cut by the time this one starts (RULING AH) */
+  const piecesAfter = venueBuildCount(venue) + ((opts && opts.minted) || 0) + mint;
   if(piecesAfter > BUILD_CAP) return {full:true, pieces:piecesAfter};
 
   /* assign real bodies to the row's stock units, nearest first — a unit
      nothing wants any more (SKIN OFF) is left standing in the shed */
-  const units = [], taken = {};
+  const units = [], drawn = {}, uses = [];
   for(const s of row.stock){
-    taken[s.prof] = taken[s.prof] || 0;
-    for(let i = 0; i < s.n; i++)
-      units.push({prof:s.prof,
-                  body:wanted[units.length] ? pool[s.prof][taken[s.prof]++] : null});
+    drawn[s.prof] = drawn[s.prof] || 0;
+    for(let i = 0; i < s.n; i++){
+      const body = wanted[units.length] ? pool[s.prof][drawn[s.prof]++] : null;
+      if(body) uses.push(body);
+      units.push({prof:s.prof, body});
+    }
   }
 
   /* the queue: every stick to its saw and through the schedule, a hold
@@ -511,7 +520,94 @@ function carpPlan(key, mark, opts){
     }
     joints[jk].nails.push({p:n.p.slice(), ax:n.ax.slice()});
   }
+  return {jobs, piecesAfter, uses, mint};
+}
+
+/* ---- the build LIST (RULINGS AG + AH) -------------------------------------
+   One CALL takes a list of {key, n} and works it IN ORDER — one queue,
+   not a concurrent one: each item's cuts, hauls and nails run to the end
+   before the next item starts.  Items STACK on the one mark (RULING Z
+   still stands, one mark), each lifted by the height of everything
+   already standing there, the way a crew stacks flats.
+
+   Pure, like carpPlan, and judged WHOLE before a single cut:
+     null                    — an empty list, or a key that does not exist
+     {need:[...]}            — summed across every item, reported once
+     {full:true, pieces:n}   — the list would end past BUILD_CAP
+     {jobs, piecesAfter}     — the whole queue, ready to run
+
+   Piece indices are offset per item by the row's full blueprint length,
+   so CARP_RUN.made and CARP_RUN.placed — both keyed by piece index —
+   never collide between two items of the same list.                    */
+const _stackM = new T.Mesh(WOODG), _stackB = new T.Box3();
+function carpStackH(row, skin){
+  if(!row) return 0;
+  const P = carpParts(row, skin);
+  let top = 0;
+  row.blueprint.pieces.forEach((p, pi)=>{
+    if(!P.live(pi)) return;
+    const PR = WOOD_PROF[p.prof];
+    if(p.prof === 'sheet') _stackM.scale.set(p.len, p.w || PR.W, PR.t);
+    else _stackM.scale.set(PR.a, p.len, PR.b);
+    _stackM.rotation.set(p.rot[0], p.rot[1], p.rot[2]);
+    _stackM.position.set(0, p.pos[1], 0);
+    _stackM.updateMatrixWorld(true);
+    _stackB.setFromObject(_stackM);
+    top = Math.max(top, _stackB.max.y);
+  });
+  return top;
+}
+function carpPlanList(items, mark, opts){
+  if(!items || !items.length || !mark || !mark.venue) return null;
+  const list = [];
+  for(const it of items){
+    const row = CARP_CAT[it.key];
+    if(!row) return null;
+    for(let i = 0; i < (it.n || 0); i++) list.push({key:it.key, row});
+  }
+  if(!list.length) return null;
+  const skin = !(opts && opts.skin === false);
+
+  /* the stock check for the WHOLE list, against one survey: summing the
+     rows and asking once is exact, where planning item by item would
+     count the same shortfall twice */
+  const survey = carpSurvey(mark.venue), want = {}, need = [];
+  for(const e of list)
+    for(const s of carpStock(e.row, skin)) want[s.prof] = (want[s.prof] || 0) + s.n;
+  for(const prof in want){
+    const have = (survey[prof] || []).filter(carpFullStick).length;
+    if(want[prof] > have) need.push({prof, n:want[prof] - have});
+  }
+  if(need.length) return {need};
+
+  const jobs = [], taken = [];
+  let minted = 0, lift = 0, base = 0, piecesAfter = 0;
+  for(const e of list){
+    const p = carpPlan(e.key, mark, {skin, taken, minted});
+    if(!p) return null;
+    if(p.need) return {need:p.need};      // the survey moved under us
+    if(p.full) return p;                  // RULING AH: refused whole, nothing cut
+    /* stack it on what is already there, and keep the piece indices apart */
+    p.jobs.forEach(j=>{
+      if(j.kind === 'carpHaul'){ j.pos[1] += lift; j.piece += base; }
+      else if(j.kind === 'carpCut'){ if(j.piece >= 0) j.piece += base; }
+      else if(j.kind === 'carpNail'){
+        j.i += base; j.j += base;
+        j.nails.forEach(n=>{ n.p[1] += lift; });
+      }
+    });
+    jobs.push.apply(jobs, p.jobs);
+    p.uses.forEach(b=>taken.push(b));
+    minted += p.mint;
+    piecesAfter = p.piecesAfter;
+    lift += carpStackH(e.row, skin);
+    base += e.row.blueprint.pieces.length;
+  }
   return {jobs, piecesAfter};
+}
+function carpListLine(items){
+  return items.filter(it=>it.n > 0)
+    .map(it=>(it.n > 1 ? it.n + '× ' : '') + CARP_CAT[it.key].label).join(' · ');
 }
 
 /* ---- the run (PR 3, RULING AA) --------------------------------------------
@@ -581,9 +677,12 @@ function carpRun(jobs){
    {busy:true} when the one queue is taken, so the caller can word it. */
 function carpStart(key, mark, opts){
   if(CREW.running) return {busy:true};
-  const plan = carpPlan(key, mark, opts);
+  /* a catalogue key, or a build LIST of {key, n} (RULING AG) */
+  const list = Array.isArray(key);
+  const plan = list ? carpPlanList(key, mark, opts) : carpPlan(key, mark, opts);
   if(!plan || plan.need || plan.full) return plan;
-  CARP_RUN = {key, venue:mark.venue, mark, made:{}, bench:{}, placed:{}, aside:0};
+  CARP_RUN = {key:list ? null : key, venue:mark.venue, mark,
+              made:{}, bench:{}, placed:{}, aside:0};
   carpRun(plan.jobs);
   return plan;
 }
