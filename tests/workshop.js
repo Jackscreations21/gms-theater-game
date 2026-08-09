@@ -133,6 +133,44 @@ const probe = `
     return uv.count + ' uvs, one per vertex';
   });
 
+  console.log('--- the workshop palette (RULING AM) ---');
+  P('the shed palette exists and every material is shared, not per object', ()=>{
+    const want = ['galv','castIron','moulded','rubber','hazard','ply'];
+    want.forEach(k=>{ if(!M[k]) throw new Error('no M.' + k); });
+    if(!TX.galv) throw new Error('no TX.galv');
+    if(M.galv.map !== TX.galv) throw new Error('M.galv is not wired to TX.galv');
+    return want.join(', ');
+  });
+  P('the palette is six materials, not one per object', ()=>{
+    const set = new Set([M.galv, M.castIron, M.moulded, M.rubber, M.hazard, M.ply]);
+    if(set.size !== 6) throw new Error('the palette collapsed to ' + set.size + ' materials');
+    return '6 distinct, all shared';
+  });
+  P('the palette is NEW material, not an alias of the old kit', ()=>{
+    const old = [M.steel, M.pipe, M.fixture, M.wood, M.woodDk, M.black, M.plaster];
+    ['galv','castIron','moulded','rubber','hazard','ply'].forEach(k=>{
+      if(old.indexOf(M[k]) !== -1) throw new Error('M.' + k + ' is an alias of an existing material');
+      if(!M[k].isMeshStandardMaterial) throw new Error('M.' + k + ' is not a standard material');
+    });
+    return 'six distinct new materials';
+  });
+  P('every workshop texture is a canvas texture, no asset files (RULING AI)', ()=>{
+    ['galv','castIron','moulded','rubber','hazard','ply'].forEach(k=>{
+      if(!TX[k]) throw new Error('no TX.' + k);
+      if(!TX[k].isCanvasTexture) throw new Error('TX.' + k + ' is not a CanvasTexture');
+    });
+    return 'six canvas textures';
+  });
+  P('stencil draws a label texture without touching a shared one', ()=>{
+    const a = stencilTex('SHOP', '#1a1a1a');
+    const b = stencilTex('SHOP', '#1a1a1a');
+    if(!a || !a.isTexture) throw new Error('stencilTex did not return a texture');
+    if(a !== b) throw new Error('stencilTex is not cached — it would mint a texture per call');
+    const c = stencilTex('BAY 2', '#1a1a1a');
+    if(c === a) throw new Error('stencilTex cache ignores the text');
+    return 'cached by text and colour';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

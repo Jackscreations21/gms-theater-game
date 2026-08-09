@@ -336,12 +336,104 @@ function scrimAlpha(){
   return tex(c,120,60,false);
 }
 
+/* ---------- the workshop palette (RULING AM: SHARED, never per object) ----
+   Six surfaces serve every tool and every fixture in the shed.  They are
+   deliberately few: each CanvasTexture is VRAM and a texture bind, and a
+   headset pays for both twice a frame.                                     */
+function galvTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#8d9299'; x.fillRect(0,0,256,256);
+  for(let i=0;i<160;i++){                       // the spangle of galvanising
+    const px=Math.random()*256, py=Math.random()*256, r=6+Math.random()*22;
+    x.fillStyle='rgba('+(150+Math.random()*60|0)+','+(155+Math.random()*60|0)+','+(162+Math.random()*60|0)+',0.5)';
+    x.beginPath(); x.ellipse(px,py,r,r*0.7,Math.random()*3.14,0,6.3); x.fill();
+  }
+  for(let i=0;i<40;i++){                        // scuffs
+    x.strokeStyle='rgba(70,74,80,'+(0.05+Math.random()*0.15).toFixed(2)+')';
+    x.lineWidth=0.5+Math.random()*1.5;
+    x.beginPath(); const sx=Math.random()*256, sy=Math.random()*256;
+    x.moveTo(sx,sy); x.lineTo(sx+(Math.random()-0.5)*60, sy+(Math.random()-0.5)*20); x.stroke();
+  }
+  grain(x,256,256,16);
+  return tex(c,1,1);
+}
+function castIronTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#3a3d42'; x.fillRect(0,0,256,256);
+  for(let i=0;i<900;i++){                       // the sand-cast pit texture
+    x.fillStyle='rgba('+(20+Math.random()*40|0)+','+(22+Math.random()*40|0)+','+(26+Math.random()*40|0)+',0.5)';
+    x.beginPath(); x.arc(Math.random()*256, Math.random()*256, 0.6+Math.random()*2.2, 0, 6.3); x.fill();
+  }
+  grain(x,256,256,10);
+  return tex(c,1,1);
+}
+function mouldedTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#23262b'; x.fillRect(0,0,256,256);
+  for(let i=0;i<256;i+=4){                      // the fine mould stipple
+    x.strokeStyle='rgba(255,255,255,0.025)'; x.lineWidth=1;
+    x.beginPath(); x.moveTo(0,i); x.lineTo(256,i+2); x.stroke();
+  }
+  grain(x,256,256,8);
+  return tex(c,1,1);
+}
+function rubberTex(){
+  const c=cvs(128,128), x=c.getContext('2d');
+  x.fillStyle='#191b1e'; x.fillRect(0,0,128,128);
+  for(let gy=0;gy<128;gy+=8){                   // the moulded grip diamonds
+    for(let gx=0;gx<128;gx+=8){
+      x.fillStyle='rgba(255,255,255,0.05)';
+      x.beginPath(); x.moveTo(gx+4,gy); x.lineTo(gx+8,gy+4);
+      x.lineTo(gx+4,gy+8); x.lineTo(gx,gy+4); x.fill();
+    }
+  }
+  grain(x,128,128,6);
+  return tex(c,1,1);
+}
+function hazardTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#c8a020'; x.fillRect(0,0,256,256);
+  for(let i=0;i<70;i++){                        // chipped through to primer
+    x.fillStyle='rgba(70,66,58,'+(0.2+Math.random()*0.5).toFixed(2)+')';
+    x.beginPath(); x.ellipse(Math.random()*256, Math.random()*256,
+      1+Math.random()*7, 1+Math.random()*4, Math.random()*3.14, 0, 6.3); x.fill();
+  }
+  grain(x,256,256,18);
+  return tex(c,1,1);
+}
+function plyTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#b99560'; x.fillRect(0,0,256,256);
+  for(let i=0;i<220;i++){                       // the strand of OSB
+    x.fillStyle='rgba('+(140+Math.random()*70|0)+','+(110+Math.random()*55|0)+','+(66+Math.random()*40|0)+',0.55)';
+    x.save(); x.translate(Math.random()*256, Math.random()*256); x.rotate(Math.random()*3.14);
+    x.fillRect(-14,-3.5,28,7); x.restore();
+  }
+  grain(x,256,256,14);
+  return tex(c,1,1);
+}
+/* stencilled labels — cached by text and colour so a shed full of the same
+   label is ONE texture (RULING AM) */
+const STENCILS = {};
+function stencilTex(text, bg){
+  const key = text + '|' + bg;
+  if(STENCILS[key]) return STENCILS[key];
+  const c=cvs(256,128), x=c.getContext('2d');
+  x.fillStyle=bg||'#1a1a1a'; x.fillRect(0,0,256,128);
+  x.fillStyle='#d8d4c8'; x.font='bold 44px monospace';
+  x.textAlign='center'; x.textBaseline='middle';
+  x.fillText(text, 128, 64);
+  return STENCILS[key] = tex(c,1,1);
+}
+
 const TX = {
   deck: deckTex(), velour: velourTex('#7d1420'), serge: sergeTex(),
   brick: brickTex(), carpet: carpetTex(), seat: seatTex(),
   plaster: plasterTex(), gold: goldTex(), marble: marbleTex(),
   drops: {sky:dropTex('sky'), forest:dropTex('forest'), town:dropTex('town'), cyc:dropTex('cyc')},
-  scrimA: scrimAlpha()
+  scrimA: scrimAlpha(),
+  galv: galvTex(), castIron: castIronTex(), moulded: mouldedTex(),
+  rubber: rubberTex(), hazard: hazardTex(), ply: plyTex(),
 };
 
 /* ---------- materials ---------- */
@@ -380,7 +472,16 @@ const M = {
   bulbFoh: new T.MeshBasicMaterial({color:0xffce96}),
   bulbBoh: new T.MeshBasicMaterial({color:0xdfe8f2}),
   bulbRun: new T.MeshBasicMaterial({color:0x2a6cff}),
-  exit:    new T.MeshBasicMaterial({color:0x1fdd5a})
+  exit:    new T.MeshBasicMaterial({color:0x1fdd5a}),
+  /* the workshop palette — SHARED across every tool and fixture (RULING AM).
+     Never tint one of these in place: the shared-material trap has bitten
+     three times (M.serge/M.velour, LENSM, WOODM). */
+  galv:     new T.MeshStandardMaterial({map:TX.galv, roughness:.55, metalness:.7}),
+  castIron: new T.MeshStandardMaterial({map:TX.castIron, roughness:.72, metalness:.5}),
+  moulded:  new T.MeshStandardMaterial({map:TX.moulded, roughness:.62, metalness:.05}),
+  rubber:   new T.MeshStandardMaterial({map:TX.rubber, roughness:.95, metalness:.02}),
+  hazard:   new T.MeshStandardMaterial({map:TX.hazard, roughness:.7,  metalness:.15}),
+  ply:      new T.MeshStandardMaterial({map:TX.ply, roughness:.85, metalness:.02})
 };
 
 /* ============================================================================
