@@ -171,6 +171,34 @@ const probe = `
     return 'cached by text and colour';
   });
 
+  console.log('--- the belt, rebuilt (RULING AK budget) ---');
+  P('the belt tools cost no more meshes than they did', ()=>{
+    if(!VR.rig){ VR.rig = new THREE.Group(); VR.rig.name = 'vr:rig'; scene.add(VR.rig); }
+    if(!VR.belt) vrBuildBelt();
+    const count = o => { let n=0; o.traverse(c=>{ if(c.isMesh) n++; }); return n; };
+    const BUDGET = {nailgun:3, hammer:2, tape:2, crayon:2};
+    const got = {};
+    Object.keys(BUDGET).forEach(k=>{
+      got[k] = count(VR.toolMesh[k]);
+      if(got[k] > BUDGET[k]) throw new Error(k + ' is ' + got[k] + ' meshes, budget ' + BUDGET[k]);
+    });
+    return got;
+  });
+  P('the gun steel still reaches the same muzzle depth', ()=>{
+    if(!VR.rig){ VR.rig = new THREE.Group(); VR.rig.name = 'vr:rig'; scene.add(VR.rig); }
+    if(!VR.belt) vrBuildBelt();
+    const g = VR.toolMesh.nailgun;
+    let steel = null;
+    g.traverse(c=>{ if(c.isMesh && c.geometry && c.geometry.attributes.position) {
+      if(!c.geometry.boundingBox) c.geometry.computeBoundingBox();
+      if(c.geometry.boundingBox.min.z < -0.1) steel = c;
+    }});
+    if(!steel) throw new Error('no mesh whose geometry reaches out to the muzzle end of the gun');
+    if(steel.geometry.boundingBox.min.z > -0.19)
+      throw new Error('muzzle only reaches z ' + steel.geometry.boundingBox.min.z.toFixed(3) + ', wanted <= -0.19 (nailRay has always cast from -0.16)');
+    return 'merged steel geometry reaches z ' + steel.geometry.boundingBox.min.z.toFixed(3);
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
