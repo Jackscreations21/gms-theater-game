@@ -1072,6 +1072,50 @@ function grain(x,w,h,amt){
   x.putImageData(img,0,0);
 }
 
+/* ----------------------------------------------------------------------------
+   mergeParts — bake a cluster of static detail into ONE geometry.
+   r128's core ships no BufferGeometryUtils, so this is the house version.
+   Each part is {geo, pos:[x,y,z], rot:[x,y,z], scale:[x,y,z]}; the transform
+   is baked into the vertices and the parts are concatenated, so a detailed
+   object costs one draw call instead of one per part (RULING AK).
+   EVERY part must be drawn with the material the merged mesh is given.
+   Anything that moves, is grabbed, or is recoloured at runtime must stay its
+   own mesh — see RULING AL for the list that must never come through here.
+   No negative scale: mirroring reverses triangle winding relative to the
+   shading normals, and a live mesh hides that with the matrix determinant,
+   but baked vertices carry no determinant — a mirrored part vanishes under
+   the default FrontSide. Mirrored parts must flip winding instead.
+   De-indexing costs vertices — the right trade on a Quest, but visible: the
+   planned nail-gun shell goes from 160 verts / 5 draw calls to 264 verts /
+   1 draw call, 1.65x the vertices for the same triangles.
+   -------------------------------------------------------------------------- */
+const _mpM = new T.Matrix4(), _mpQ = new T.Quaternion(), _mpE = new T.Euler();
+const _mpP = new T.Vector3(), _mpS = new T.Vector3();
+function mergeParts(parts){
+  const pos = [], nor = [], uvs = [];
+  parts.forEach(p=>{
+    const src = p.geo.index ? p.geo.toNonIndexed() : p.geo.clone();
+    _mpP.set(p.pos ? p.pos[0] : 0, p.pos ? p.pos[1] : 0, p.pos ? p.pos[2] : 0);
+    _mpE.set(p.rot ? p.rot[0] : 0, p.rot ? p.rot[1] : 0, p.rot ? p.rot[2] : 0);
+    _mpS.set(p.scale ? p.scale[0] : 1, p.scale ? p.scale[1] : 1, p.scale ? p.scale[2] : 1);
+    src.applyMatrix4(_mpM.compose(_mpP, _mpQ.setFromEuler(_mpE), _mpS));
+    if(!src.attributes.normal) src.computeVertexNormals();   // per-part, so smooth normals elsewhere survive
+    const pa = src.attributes.position, na = src.attributes.normal, ua = src.attributes.uv;
+    for(let i=0;i<pa.count;i++){
+      pos.push(pa.getX(i), pa.getY(i), pa.getZ(i));
+      nor.push(na.getX(i), na.getY(i), na.getZ(i));
+      ua ? uvs.push(ua.getX(i), ua.getY(i)) : uvs.push(0, 0);
+    }
+    src.dispose();
+  });
+  const out = new T.BufferGeometry();
+  out.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+  if(nor.length) out.setAttribute('normal', new T.Float32BufferAttribute(nor, 3));
+  if(uvs.length) out.setAttribute('uv',     new T.Float32BufferAttribute(uvs, 2));
+  out.computeBoundingSphere();
+  return out;
+}
+
 /* stage deck — black-painted masonite over planks */
 function deckTex(){
   const c=cvs(512,512), x=c.getContext('2d');
@@ -1253,12 +1297,104 @@ function scrimAlpha(){
   return tex(c,120,60,false);
 }
 
+/* ---------- the workshop palette (RULING AM: SHARED, never per object) ----
+   Six surfaces serve every tool and every fixture in the shed.  They are
+   deliberately few: each CanvasTexture is VRAM and a texture bind, and a
+   headset pays for both twice a frame.                                     */
+function galvTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#8d9299'; x.fillRect(0,0,256,256);
+  for(let i=0;i<160;i++){                       // the spangle of galvanising
+    const px=Math.random()*256, py=Math.random()*256, r=6+Math.random()*22;
+    x.fillStyle='rgba('+(150+Math.random()*60|0)+','+(155+Math.random()*60|0)+','+(162+Math.random()*60|0)+',0.5)';
+    x.beginPath(); x.ellipse(px,py,r,r*0.7,Math.random()*3.14,0,6.3); x.fill();
+  }
+  for(let i=0;i<40;i++){                        // scuffs
+    x.strokeStyle='rgba(70,74,80,'+(0.05+Math.random()*0.15).toFixed(2)+')';
+    x.lineWidth=0.5+Math.random()*1.5;
+    x.beginPath(); const sx=Math.random()*256, sy=Math.random()*256;
+    x.moveTo(sx,sy); x.lineTo(sx+(Math.random()-0.5)*60, sy+(Math.random()-0.5)*20); x.stroke();
+  }
+  grain(x,256,256,16);
+  return tex(c,1,1);
+}
+function castIronTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#3a3d42'; x.fillRect(0,0,256,256);
+  for(let i=0;i<900;i++){                       // the sand-cast pit texture
+    x.fillStyle='rgba('+(20+Math.random()*40|0)+','+(22+Math.random()*40|0)+','+(26+Math.random()*40|0)+',0.5)';
+    x.beginPath(); x.arc(Math.random()*256, Math.random()*256, 0.6+Math.random()*2.2, 0, 6.3); x.fill();
+  }
+  grain(x,256,256,10);
+  return tex(c,1,1);
+}
+function mouldedTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#23262b'; x.fillRect(0,0,256,256);
+  for(let i=0;i<256;i+=4){                      // the fine mould stipple
+    x.strokeStyle='rgba(255,255,255,0.025)'; x.lineWidth=1;
+    x.beginPath(); x.moveTo(0,i); x.lineTo(256,i+2); x.stroke();
+  }
+  grain(x,256,256,8);
+  return tex(c,1,1);
+}
+function rubberTex(){
+  const c=cvs(128,128), x=c.getContext('2d');
+  x.fillStyle='#191b1e'; x.fillRect(0,0,128,128);
+  for(let gy=0;gy<128;gy+=8){                   // the moulded grip diamonds
+    for(let gx=0;gx<128;gx+=8){
+      x.fillStyle='rgba(255,255,255,0.05)';
+      x.beginPath(); x.moveTo(gx+4,gy); x.lineTo(gx+8,gy+4);
+      x.lineTo(gx+4,gy+8); x.lineTo(gx,gy+4); x.fill();
+    }
+  }
+  grain(x,128,128,6);
+  return tex(c,1,1);
+}
+function hazardTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#c8a020'; x.fillRect(0,0,256,256);
+  for(let i=0;i<70;i++){                        // chipped through to primer
+    x.fillStyle='rgba(70,66,58,'+(0.2+Math.random()*0.5).toFixed(2)+')';
+    x.beginPath(); x.ellipse(Math.random()*256, Math.random()*256,
+      1+Math.random()*7, 1+Math.random()*4, Math.random()*3.14, 0, 6.3); x.fill();
+  }
+  grain(x,256,256,18);
+  return tex(c,1,1);
+}
+function plyTex(){
+  const c=cvs(256,256), x=c.getContext('2d');
+  x.fillStyle='#b99560'; x.fillRect(0,0,256,256);
+  for(let i=0;i<220;i++){                       // the strand of OSB
+    x.fillStyle='rgba('+(140+Math.random()*70|0)+','+(110+Math.random()*55|0)+','+(66+Math.random()*40|0)+',0.55)';
+    x.save(); x.translate(Math.random()*256, Math.random()*256); x.rotate(Math.random()*3.14);
+    x.fillRect(-14,-3.5,28,7); x.restore();
+  }
+  grain(x,256,256,14);
+  return tex(c,1,1);
+}
+/* stencilled labels — cached by text and colour so a shed full of the same
+   label is ONE texture (RULING AM) */
+const STENCILS = {};
+function stencilTex(text, bg){
+  const key = text + '|' + bg;
+  if(STENCILS[key]) return STENCILS[key];
+  const c=cvs(256,128), x=c.getContext('2d');
+  x.fillStyle=bg||'#1a1a1a'; x.fillRect(0,0,256,128);
+  x.fillStyle='#d8d4c8'; x.font='bold 44px monospace';
+  x.textAlign='center'; x.textBaseline='middle';
+  x.fillText(text, 128, 64);
+  return STENCILS[key] = tex(c,1,1);
+}
+
 const TX = {
   deck: deckTex(), velour: velourTex('#7d1420'), serge: sergeTex(),
   brick: brickTex(), carpet: carpetTex(), seat: seatTex(),
   plaster: plasterTex(), gold: goldTex(), marble: marbleTex(),
   drops: {sky:dropTex('sky'), forest:dropTex('forest'), town:dropTex('town'), cyc:dropTex('cyc')},
-  scrimA: scrimAlpha()
+  scrimA: scrimAlpha(),
+  galv: galvTex(), castIron: castIronTex(), moulded: mouldedTex(),
+  rubber: rubberTex(), hazard: hazardTex(), ply: plyTex(),
 };
 
 /* ---------- materials ---------- */
@@ -1297,7 +1433,16 @@ const M = {
   bulbFoh: new T.MeshBasicMaterial({color:0xffce96}),
   bulbBoh: new T.MeshBasicMaterial({color:0xdfe8f2}),
   bulbRun: new T.MeshBasicMaterial({color:0x2a6cff}),
-  exit:    new T.MeshBasicMaterial({color:0x1fdd5a})
+  exit:    new T.MeshBasicMaterial({color:0x1fdd5a}),
+  /* the workshop palette — SHARED across every tool and fixture (RULING AM).
+     Never tint one of these in place: the shared-material trap has bitten
+     three times (M.serge/M.velour, LENSM, WOODM). */
+  galv:     new T.MeshStandardMaterial({map:TX.galv, roughness:.55, metalness:.7}),
+  castIron: new T.MeshStandardMaterial({map:TX.castIron, roughness:.72, metalness:.5}),
+  moulded:  new T.MeshStandardMaterial({map:TX.moulded, roughness:.62, metalness:.05}),
+  rubber:   new T.MeshStandardMaterial({map:TX.rubber, roughness:.95, metalness:.02}),
+  hazard:   new T.MeshStandardMaterial({map:TX.hazard, roughness:.7,  metalness:.15}),
+  ply:      new T.MeshStandardMaterial({map:TX.ply, roughness:.85, metalness:.02})
 };
 
 /* ============================================================================
@@ -17723,39 +17868,95 @@ function vrCarpPress(sc){
 const TOOLG = {};
 function toolG(key, mk){ return TOOLG[key] || (TOOLG[key] = mk()); }
 const _tq1 = new T.Quaternion(), _tq2 = new T.Quaternion();
+/* a pneumatic framing nailer: angled stick magazine, depth-adjust nose,
+   contact tip, hose fitting at the heel.  The whole static body is ONE
+   merged mesh per material (RULING AK); the muzzle stays where nailRay
+   has always cast from, at z -0.16 (RULING AJ: nothing moves). */
 function vrToolGun(){
   const g = new T.Group();
-  const body = new T.Mesh(toolG('gb', ()=>new T.BoxGeometry(0.05, 0.09, 0.17)), M.fixture);
-  body.position.set(0, 0.02, -0.04); g.add(body);
-  const grip = new T.Mesh(toolG('gg', ()=>new T.BoxGeometry(0.04, 0.1, 0.05)), M.steel);
-  grip.position.set(0, -0.05, 0.03); grip.rotation.x = 0.25; g.add(grip);
-  const nose = new T.Mesh(toolG('gn', ()=>new T.CylinderGeometry(0.011, 0.011, 0.07, 8)), M.steel);
-  nose.rotation.x = Math.PI/2; nose.position.set(0, 0.01, -0.16); g.add(nose);
+  const shell = new T.Mesh(toolG('gun:shell', ()=>mergeParts([
+    {geo:new T.BoxGeometry(0.05, 0.085, 0.15),  pos:[0, 0.02, -0.04]},          // motor housing
+    {geo:new T.CylinderGeometry(0.026, 0.026, 0.10, 10), pos:[0, 0.055, 0.01], rot:[Math.PI/2, 0, 0]}, // head cap
+    {geo:new T.BoxGeometry(0.036, 0.095, 0.045), pos:[0, -0.05, 0.03], rot:[0.25, 0, 0]},  // grip core
+    {geo:new T.BoxGeometry(0.028, 0.012, 0.20),  pos:[0, -0.075, -0.07], rot:[-0.42, 0, 0]}, // magazine rail
+    {geo:new T.BoxGeometry(0.034, 0.030, 0.18),  pos:[0, -0.058, -0.07], rot:[-0.42, 0, 0]}  // magazine body
+  ])), M.moulded);
+  g.add(shell);
+  const steel = new T.Mesh(toolG('gun:steel', ()=>mergeParts([
+    {geo:new T.CylinderGeometry(0.011, 0.011, 0.07, 8), pos:[0, 0.01, -0.16], rot:[Math.PI/2, 0, 0]},  // nose
+    {geo:new T.CylinderGeometry(0.016, 0.016, 0.02, 8), pos:[0, 0.01, -0.125], rot:[Math.PI/2, 0, 0]}, // depth adjuster
+    {geo:new T.BoxGeometry(0.026, 0.026, 0.012),        pos:[0, -0.004, -0.192]},                       // contact tip
+    {geo:new T.CylinderGeometry(0.010, 0.010, 0.03, 8), pos:[0, -0.10, 0.055], rot:[0.25, 0, 0]},       // hose fitting
+    {geo:new T.BoxGeometry(0.014, 0.020, 0.014),        pos:[0, -0.012, -0.012]}                        // trigger
+  ])), M.castIron);
+  g.add(steel);
+  const grip = new T.Mesh(toolG('gun:grip', ()=>new T.CylinderGeometry(0.021, 0.021, 0.085, 10)), M.rubber);
+  grip.rotation.set(0.25 + Math.PI/2, 0, 0); grip.position.set(0, -0.05, 0.03);
+  g.add(grip);
   return g;
 }
+/* a 20oz framing hammer: forged head with a claw and a waffled face, a
+   tapered neck, a wood haft with a grip wrap.  Two meshes, as before. */
 function vrToolHammer(){
   const g = new T.Group();
-  const handle = new T.Mesh(toolG('hh', ()=>new T.CylinderGeometry(0.014, 0.016, 0.26, 8)), M.wood);
-  handle.rotation.x = Math.PI/2; handle.position.z = 0.04; g.add(handle);
-  const head = new T.Mesh(toolG('hd', ()=>new T.BoxGeometry(0.03, 0.035, 0.09)), M.steel);
-  head.position.set(0, 0, -0.1); g.add(head);
+  const haft = new T.Mesh(toolG('ham:haft', ()=>mergeParts([
+    {geo:new T.CylinderGeometry(0.013, 0.016, 0.20, 8), pos:[0, 0, 0.07], rot:[Math.PI/2, 0, 0]},
+    {geo:new T.CylinderGeometry(0.017, 0.015, 0.07, 8), pos:[0, 0, 0.155], rot:[Math.PI/2, 0, 0]}  // swell at the butt
+  ])), M.rubber);
+  g.add(haft);
+  const head = new T.Mesh(toolG('ham:head', ()=>mergeParts([
+    {geo:new T.CylinderGeometry(0.017, 0.020, 0.045, 10), pos:[0, 0, -0.125], rot:[Math.PI/2, 0, 0]}, // face
+    {geo:new T.BoxGeometry(0.026, 0.030, 0.055),          pos:[0, 0, -0.088]},                        // eye and neck
+    {geo:new T.BoxGeometry(0.020, 0.011, 0.040),          pos:[0, 0.014, -0.052], rot:[-0.55, 0, 0]}, // claw root
+    {geo:new T.BoxGeometry(0.017, 0.009, 0.034),          pos:[0, 0.037, -0.030], rot:[-1.05, 0, 0]}, // claw curve
+    {geo:new T.CylinderGeometry(0.010, 0.014, 0.045, 8),  pos:[0, 0, -0.062], rot:[Math.PI/2, 0, 0]}  // tapered neck
+  ])), M.castIron);
+  g.add(head);
   return g;
 }
+/* a cased 25ft tape: rounded ABS shell, brake button, belt clip, and a
+   hooked blade tip standing proud.  The tab the other hand takes stays at
+   its old offset (RULING AJ) — vrTapeLine reads it. */
 function vrToolTape(){
   const g = new T.Group();
-  const box = new T.Mesh(toolG('tb', ()=>new T.BoxGeometry(0.07, 0.07, 0.05)), M.fixture);
-  g.add(box);
-  const tab = new T.Mesh(toolG('tt', ()=>new T.BoxGeometry(0.03, 0.02, 0.012)), M.steel);
-  tab.position.set(0, -0.03, -0.035); g.add(tab);
+  const shell = new T.Mesh(toolG('tape:shell', ()=>mergeParts([
+    {geo:new T.BoxGeometry(0.066, 0.066, 0.044), pos:[0, 0, 0]},
+    {geo:new T.CylinderGeometry(0.033, 0.033, 0.046, 14), pos:[0, 0.005, 0], rot:[Math.PI/2, 0, 0]}, // the drum bulge
+    {geo:new T.BoxGeometry(0.020, 0.012, 0.014), pos:[0, 0.036, -0.010]},                            // brake button
+    {geo:new T.BoxGeometry(0.016, 0.040, 0.004), pos:[0, -0.012, 0.026]}                             // belt clip
+  ])), M.moulded);
+  g.add(shell);
+  const tab = new T.Mesh(toolG('tape:tab', ()=>mergeParts([
+    {geo:new T.BoxGeometry(0.030, 0.018, 0.010), pos:[0, 0, 0]},                    // the hook
+    {geo:new T.BoxGeometry(0.026, 0.004, 0.022), pos:[0, 0.008, 0.014]}             // the blade standing proud
+  ])), M.galv);
+  tab.position.set(0, -0.03, -0.035);
+  g.add(tab);
   return g;
 }
+/* a carpenter's pencil: flat oval body, chisel tip, printed band.
+   M_CRAYON is the existing declaration from the old line 1237 — it sits
+   INSIDE the replaced range, so it must be carried across, right here. */
 const M_CRAYON = new T.MeshStandardMaterial({color:0x2f6fd6, roughness:.7});
 function vrToolCrayon(){
   const g = new T.Group();
-  const stick = new T.Mesh(toolG('cs', ()=>new T.CylinderGeometry(0.012, 0.008, 0.14, 8)), M_CRAYON);
-  stick.rotation.x = Math.PI/2; stick.position.z = -0.02; g.add(stick);
-  const band = new T.Mesh(toolG('cband', ()=>new T.CylinderGeometry(0.013, 0.013, 0.02, 8)), M.steel);
-  band.rotation.x = Math.PI/2; band.position.z = 0.045; g.add(band);
+  const stick = new T.Mesh(toolG('cray:stick', ()=>{
+    const geo = mergeParts([
+      {geo:new T.CylinderGeometry(0.011, 0.011, 0.125, 8), pos:[0, 0, -0.015], rot:[Math.PI/2, 0, 0]},
+      {geo:new T.ConeGeometry(0.011, 0.028, 8),            pos:[0, 0, -0.091], rot:[-Math.PI/2, 0, 0]}
+    ]);
+    geo.scale(1, 0.55, 1);           // a carpenter's pencil is flat, not round
+    return geo;
+  }), M_CRAYON);
+  g.add(stick);
+  const band = new T.Mesh(toolG('cray:band', ()=>{
+    const geo = mergeParts([
+      {geo:new T.CylinderGeometry(0.0125, 0.0125, 0.018, 8), pos:[0, 0, 0.045], rot:[Math.PI/2, 0, 0]}
+    ]);
+    geo.scale(1, 0.55, 1);
+    return geo;
+  }), M.galv);
+  g.add(band);
   return g;
 }
 function vrBuildBelt(){
