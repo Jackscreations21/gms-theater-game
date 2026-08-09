@@ -219,7 +219,14 @@ function carpNeedLine(need){ return 'NEED ' + carpStockLine(need); }
                                  carpNail per joint (both nails ride it).
    Nothing is mutated, nothing global is written: the jobs are plain
    records for PR 3/4 to execute, poses and nail points mark-local.
-     carpFetch {kind, venue, body, prof, saw}        lead: stock -> saw seat
+     carpFetch {kind, venue, body, prof, saw, axis}  lead: stock -> saw seat
+                 axis is which way a SHEET meets the table: 'L' — its
+                 length along table X, a crosscut, the default — or 'W', a
+                 rip off its width (RULING AE: an opening is skinned in
+                 pieces AROUND it, which needs strips).  Lumber ignores it.
+                 body null means RE-SEAT what the run has on that bench,
+                 turned the other way: a schedule that crosscuts and then
+                 rips the same sheet emits one of these between the two.
      carpCut   {kind, venue, saw, len, piece}        lead: blade at len off
                  the LOW end of the piece this run has seated there (the
                  fetched stick, then the registered off side after each
@@ -247,11 +254,18 @@ function carpPlan(key, mark){
   /* the cap — count the bodies the saws will register: every cut whose
      off side clears SAW_MIN mints one; a scrap end mints nothing */
   let mint = 0;
+  const left = {};
   for(const c of row.cuts){
-    let rem = WOOD_LEN;
+    /* what is left to cut, keyed by stock AND axis: two entries may name
+       the same stick — a second 'L' entry carries on down the remainder,
+       while a 'W' entry starts fresh across the sheet's full width,
+       because crosscutting never touched it */
+    const ax = c.axis || 'L', k = c.stock + ':' + ax;
+    if(left[k] === undefined)
+      left[k] = (ax === 'W') ? WOOD_PROF.sheet.W : WOOD_LEN;
     for(const len of c.make){
-      rem -= len;
-      if(rem >= SAW_MIN) mint++;
+      left[k] -= len;
+      if(left[k] >= SAW_MIN) mint++;
     }
   }
   const piecesAfter = venueBuildCount(venue) + mint;
@@ -269,9 +283,18 @@ function carpPlan(key, mark){
      while the benches finish, every piece to the mark, a hold while the
      deck fills, then the nails (RULING G: two per joint, rigid) */
   const jobs = [];
+  const onBench = {};                   // stock index -> the axis it lies on
   row.cuts.forEach((c, ci)=>{
-    jobs.push({kind:'carpFetch', venue, body:units[c.stock].body,
-               prof:units[c.stock].prof, saw:c.saw});
+    const ax = c.axis || 'L';
+    /* the first entry for a stick fetches it; a later entry only needs the
+       lead if it wants the stick round the other way */
+    if(onBench[c.stock] === undefined)
+      jobs.push({kind:'carpFetch', venue, body:units[c.stock].body,
+                 prof:units[c.stock].prof, saw:c.saw, axis:ax});
+    else if(onBench[c.stock] !== ax)
+      jobs.push({kind:'carpFetch', venue, body:null,
+                 prof:units[c.stock].prof, saw:c.saw, axis:ax});
+    onBench[c.stock] = ax;
     c.make.forEach((len, k)=>{
       let piece = -1;
       row.blueprint.pieces.forEach((p, pi)=>{

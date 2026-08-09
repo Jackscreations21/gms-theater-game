@@ -713,6 +713,46 @@ const probe = `
     return 'row by META, CALL by META, one un-anchored rigid flat of 5 at the mark';
   });
 
+  console.log('--- the rip (phase 2, RULING AE) ---');
+  P('the schedule can ask for a RIP: a sheet seats on its width', ()=>{
+    /* a sheet can never have a hole cut in it, so an opening is framed and
+       skinned in pieces AROUND it — which needs strips ripped off a sheet,
+       not just crosscut.  The saws have always ripped (seatWood reads the
+       axis the hand offers, sawCut writes either dimension); only the
+       carpenters' schedule could not ask, because carpFetch turned every
+       sheet to seat 'L' unconditionally. */
+    if(CREW.running) throw new Error('crew already running');
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const sh = regWood('sheet');
+    BUILD_VENUE = keep;
+    const root = venueRoot('palace');
+    root.updateMatrixWorld(true);
+    const trackW = SAWS.palace.track.group.getWorldPosition(new THREE.Vector3());
+    root.add(sh.mesh);
+    sh.mesh.rotation.set(-Math.PI/2, 0, 0);
+    const p = trackW.clone(); p.x += -2.2; p.z += 2.0; p.y = 0.1;
+    sh.mesh.position.copy(root.worldToLocal(p));
+    sh.mesh.updateMatrixWorld(true);
+    sh.restH = woodRestH(sh);
+    const L0 = sh.dims.L;
+    const jobs = [
+      {kind:'carpFetch', venue:'palace', body:sh, prof:'sheet', saw:'track', axis:'W'},
+      {kind:'carpCut',   venue:'palace', saw:'track', len:0.2286, piece:-1}
+    ];
+    if(!carpRun(jobs)) throw new Error('the run refused');
+    let guard = 0;
+    while(CREW.running && guard++ < 120000){ updateCrew(0.05); updateBodies(0.05); }
+    if(CREW.running) throw new Error('the rip never finished');
+    if(Math.abs(sh.dims.W - 0.2286) > 0.002)
+      throw new Error('the kept side is ' + sh.dims.W.toFixed(4) +
+                      ' wide — it was crosscut, not ripped');
+    if(Math.abs(sh.dims.L - L0) > 0.002)
+      throw new Error('the rip shortened it to ' + sh.dims.L.toFixed(4));
+    if(sh.mesh.geometry !== WOODG) throw new Error('the rip minted geometry');
+    return 'ripped 9in off a full sheet: L ' + sh.dims.L.toFixed(3) +
+           ' x W ' + sh.dims.W.toFixed(3);
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
