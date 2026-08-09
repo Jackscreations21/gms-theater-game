@@ -14386,30 +14386,50 @@ function buildTrash(venue, parent, wx, wz){
   return TRASH[venue];
 }
 
+/* the walk-behind stacker bakes into three static meshes (RULING AK) plus
+   the forks, its own moving Group (RULING AL) with one merged mesh
+   inside it — four meshes where twelve loose ones stood.  Geometry is
+   identical for every call, so it is cached, never re-merged. */
+var LIFTG = {};
+function liftG(key, mk){ return LIFTG[key] || (LIFTG[key] = mk()); }
 function buildLift(venue, parent, wx, wz){
   const g = new T.Group();
   g.userData.moves = true;
-  const body = new T.Mesh(new T.BoxGeometry(0.62, 0.72, 0.6), M_LIFT);
-  body.position.set(0, 0.42, -0.26); g.add(body);
-  [-0.24, 0.24].forEach(mx=>{      // the mast the carriage rides
-    const up = new T.Mesh(new T.BoxGeometry(0.07, 1.62, 0.07), M.steel);
-    up.position.set(mx, 0.81, 0.1); g.add(up);
+  const hazGeo = liftG('hazard', ()=>mergeParts([
+    {geo:new T.BoxGeometry(0.62, 0.72, 0.6), pos:[0, 0.42, -0.26]},
+    {geo:new T.BoxGeometry(0.30, 0.12, 0.18), pos:[0, 0.95, -0.52]},
+    {geo:new T.BoxGeometry(0.5, 0.22, 0.16), pos:[0, 0.16, -0.5]}
+  ]));
+  const body = new T.Mesh(hazGeo, M.hazard);
+  g.add(body);
+  const galvGeo = liftG('galv', ()=>mergeParts([
+    {geo:new T.BoxGeometry(0.07, 1.62, 0.07), pos:[-0.24, 0.81, 0.1]},
+    {geo:new T.BoxGeometry(0.07, 1.62, 0.07), pos:[0.24, 0.81, 0.1]},
+    {geo:new T.BoxGeometry(0.55, 0.06, 0.05), pos:[0, 1.6, 0.1]},
+    {geo:new T.CylinderGeometry(0.022, 0.022, 0.56, 8), pos:[0, 1.0, -0.62], rot:[0, 0, Math.PI/2]},
+    {geo:new T.CylinderGeometry(0.02, 0.02, 0.5, 6), pos:[0, 0.82, -0.5], rot:[0.55, 0, 0]},
+    {geo:new T.CylinderGeometry(0.035, 0.035, 1.0, 8), pos:[0, 0.6, 0.1]},
+    {geo:new T.BoxGeometry(0.02, 1.4, 0.012), pos:[0, 0.85, 0.14]}
+  ]));
+  const mast = new T.Mesh(galvGeo, M.galv);
+  g.add(mast);
+  const ironGeo = liftG('castIron', ()=>{
+    const parts = [];
+    [[-0.26,-0.4],[0.26,-0.4],[-0.28,1.2],[0.28,1.2]].forEach(cn=>{
+      parts.push({geo:new T.CylinderGeometry(0.09, 0.09, 0.06, 10), pos:[cn[0], 0.09, cn[1]], rot:[0, 0, Math.PI/2]});
+    });
+    return mergeParts(parts);
   });
-  const handle = new T.Mesh(new T.CylinderGeometry(0.022, 0.022, 0.56, 8), M.pipe);
-  handle.rotation.z = Math.PI/2; handle.position.set(0, 1.0, -0.62); g.add(handle);
-  const stem = new T.Mesh(new T.CylinderGeometry(0.02, 0.02, 0.5, 6), M.steel);
-  stem.rotation.x = 0.55; stem.position.set(0, 0.82, -0.5); g.add(stem);
-  [[-0.26,-0.4],[0.26,-0.4],[-0.28,1.2],[0.28,1.2]].forEach(cn=>{
-    const wheel = new T.Mesh(new T.CylinderGeometry(0.09, 0.09, 0.06, 10), M.fixture);
-    wheel.rotation.z = Math.PI/2; wheel.position.set(cn[0], 0.09, cn[1]); g.add(wheel);
-  });
+  const wheels = new T.Mesh(ironGeo, M.castIron);
+  g.add(wheels);
   const forks = new T.Group(); g.add(forks);
-  [-0.28, 0.28].forEach(fx=>{
-    const f = new T.Mesh(new T.BoxGeometry(0.15, 0.05, 1.1), M.steel);
-    f.position.set(fx, 0.09, 0.85); forks.add(f);
-  });
-  const carr = new T.Mesh(new T.BoxGeometry(0.6, 0.34, 0.06), M.steel);
-  carr.position.set(0, 0.24, 0.33); forks.add(carr);
+  const forkGeo = liftG('forks', ()=>mergeParts([
+    {geo:new T.BoxGeometry(0.15, 0.05, 1.1), pos:[-0.28, 0.09, 0.85]},
+    {geo:new T.BoxGeometry(0.15, 0.05, 1.1), pos:[0.28, 0.09, 0.85]},
+    {geo:new T.BoxGeometry(0.6, 0.34, 0.06), pos:[0, 0.24, 0.33]}
+  ]));
+  const forkMesh = new T.Mesh(forkGeo, M.galv);
+  forks.add(forkMesh);
   g.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
   const lift = {
     venue, group:g, x:wx, z:wz, yaw:0, yBase:0,

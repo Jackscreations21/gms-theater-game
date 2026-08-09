@@ -272,6 +272,27 @@ const probe = `
     return {rack:rk, trash:tr};
   });
 
+  console.log('--- the heavy plant (RULINGS AK + AL) ---');
+  P('the forks survived the merge as their own moving group', ()=>{
+    const L = LIFTS.palace;
+    if(!L.forks) throw new Error('the lift lost its forks');
+    if(L.forks.parent !== L.group) throw new Error('the forks were merged into the body');
+    let n = 0; L.forks.traverse(c=>{ if(c.isMesh) n++; });
+    if(n < 1) throw new Error('the forks have no mesh');
+    L.forks.position.y = 0.5;
+    if(Math.abs(L.forks.position.y - 0.5) > 1e-9) throw new Error('the forks cannot be moved');
+    L.forks.position.y = 0;
+    return 'forks lift, ' + n + ' mesh(es)';
+  });
+  P('the lift record kept every field the p9 cart machinery reads', ()=>{
+    const L = LIFTS.palace;
+    ['venue','group','x','z','yaw','yBase','handleH','handleZ','handleHalf','grabR','slots','lift','forks','forkY','prevForkY','riding']
+      .forEach(f=>{ if(L[f] === undefined) throw new Error('lift record lost ' + f); });
+    if(CARTS.palaceLift !== L) throw new Error('the lift is no longer registered as a cart');
+    if(Math.abs(L.handleH - 1.0) > 1e-9) throw new Error('the tiller handle moved');
+    return 'handleH ' + L.handleH + ', grabR ' + L.grabR;
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
