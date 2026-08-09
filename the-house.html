@@ -1072,6 +1072,42 @@ function grain(x,w,h,amt){
   x.putImageData(img,0,0);
 }
 
+/* ----------------------------------------------------------------------------
+   mergeParts — bake a cluster of static detail into ONE geometry.
+   r128's core ships no BufferGeometryUtils, so this is the house version.
+   Each part is {geo, pos:[x,y,z], rot:[x,y,z], scale:[x,y,z]}; the transform
+   is baked into the vertices and the parts are concatenated, so a detailed
+   object costs one draw call instead of one per part (RULING AK).
+   EVERY part must be drawn with the material the merged mesh is given.
+   Anything that moves, is grabbed, or is recoloured at runtime must stay its
+   own mesh — see RULING AL for the list that must never come through here.
+   -------------------------------------------------------------------------- */
+const _mpM = new T.Matrix4(), _mpQ = new T.Quaternion(), _mpE = new T.Euler();
+const _mpP = new T.Vector3(), _mpS = new T.Vector3();
+function mergeParts(parts){
+  const pos = [], nor = [], uvs = [];
+  parts.forEach(p=>{
+    const src = p.geo.index ? p.geo.toNonIndexed() : p.geo.clone();
+    _mpP.set(p.pos ? p.pos[0] : 0, p.pos ? p.pos[1] : 0, p.pos ? p.pos[2] : 0);
+    _mpE.set(p.rot ? p.rot[0] : 0, p.rot ? p.rot[1] : 0, p.rot ? p.rot[2] : 0);
+    _mpS.set(p.scale ? p.scale[0] : 1, p.scale ? p.scale[1] : 1, p.scale ? p.scale[2] : 1);
+    src.applyMatrix4(_mpM.compose(_mpP, _mpQ.setFromEuler(_mpE), _mpS));
+    const pa = src.attributes.position, na = src.attributes.normal, ua = src.attributes.uv;
+    for(let i=0;i<pa.count;i++){
+      pos.push(pa.getX(i), pa.getY(i), pa.getZ(i));
+      if(na) nor.push(na.getX(i), na.getY(i), na.getZ(i));
+      if(ua) uvs.push(ua.getX(i), ua.getY(i));
+    }
+    src.dispose();
+  });
+  const out = new T.BufferGeometry();
+  out.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+  if(nor.length) out.setAttribute('normal', new T.Float32BufferAttribute(nor, 3));
+  if(uvs.length) out.setAttribute('uv',     new T.Float32BufferAttribute(uvs, 2));
+  out.computeBoundingSphere();
+  return out;
+}
+
 /* stage deck — black-painted masonite over planks */
 function deckTex(){
   const c=cvs(512,512), x=c.getContext('2d');
