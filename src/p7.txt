@@ -1432,6 +1432,12 @@ function useStation(st){
     shedDoorToggle('palace');
     return;
   }
+  /* 'arcDoor:<key>' — a physical control for an ARC door, keyed by the
+     ARC.doorMap key so any door that grows one needs no branch here */
+  if(st.id.indexOf('arcDoor:') === 0){
+    if(typeof arcDoorToggle === 'function') arcDoorToggle(st.id.slice(8));
+    return;
+  }
   if(st.id.indexOf('dock') === 0){
     toggleDockDoor(DOCKDOORS[(+st.id.slice(4) || 1) - 1]);
     return;
