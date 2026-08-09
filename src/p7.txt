@@ -93,8 +93,13 @@ function goToView(n){
 
 /* ---- ground probe ---- */
 const downRay = new T.Raycaster(new T.Vector3(), new T.Vector3(0,-1,0), 0, 30);
+/* the ray's origin and direction are temps: groundAt is called from the
+   player's own movement AND once per settling body, so minting two Vector3s
+   a call was thousands of throwaway objects a second — GC churn, which reads
+   as intermittent hitching rather than steady slowness */
+const _gaO = new T.Vector3(), _gaD = new T.Vector3(0,-1,0);
 function groundAt(x,z,fromY){
-  downRay.set(new T.Vector3(x, fromY+1.4, z), new T.Vector3(0,-1,0));
+  downRay.set(_gaO.set(x, fromY+1.4, z), _gaD);
   downRay.far = 28;
   const hits = downRay.intersectObjects(WALKABLE, true);
   return hits.length ? hits[0].point.y : null;

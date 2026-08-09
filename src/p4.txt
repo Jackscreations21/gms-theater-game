@@ -343,18 +343,40 @@ function grabBody(b){
     b.station = null;
   }
   b.state = 'held';
+  /* whatever was resting ON this, or on what this was standing on, may have
+     just lost its floor — wake the venue so the rota never has to notice */
+  wakeBodies(b.venue);
   return b;
+}
+/* A settled body is only re-tested on a rota (see updateBodies), so anything
+   that can pull the ground out from under one calls this.  The rota is the
+   backstop for whatever nobody thought to wake; this is the fast path, and
+   it is what keeps the saving invisible. */
+function wakeBodies(venue){
+  for(const b of BODIES) if(venue === undefined || b.venue === venue) b.rest = false;
 }
 /* loose bodies settle to the floor under them.  A body still marked 'held'
    that no live hand names has had its hold record dropped without a release
    (session end, stage swap — the p9 discipline): demote it here, which is
    what makes those drops safe. */
 const _bodyV = new T.Vector3();
+/* A piece that has come to rest is not re-tested every frame.  Every loose
+   body used to pay a recursive raycast AND a scan of the whole registry each
+   frame just to conclude it had not moved: at BUILD_CAP that was 150 of each,
+   ~11% of a 72Hz budget on a desktop and several times that on a headset.
+   Resting pieces are now checked on a rota instead, spread by body index so
+   the work is level across frames rather than spiking every REST_ROTA-th one.
+   grabBody wakes a venue outright, so the rota is only the backstop. */
+const REST_ROTA = 12;
+var BODY_TICK = 0;
 function updateBodies(dt){
   if(!BODIES.length) return;
+  BODY_TICK++;
   const inHand = (typeof VR !== 'undefined' && VR && VR.held && VR.held.kind === 'body')
     ? VR.held.body : null;
+  let bi = 0;
   for(const b of BODIES){
+    bi++;
     if(b.state === 'held' && b !== inHand){
       b.state = 'loose';
       /* a cold drop (session end, stage walk): wood still lies flat */
@@ -364,6 +386,7 @@ function updateBodies(dt){
     if(b.state !== 'loose') continue;
     /* a parked piece (Y, RULING N) hangs exactly where it was left */
     if(b.frozen) continue;
+    if(b.rest && (BODY_TICK + bi) % REST_ROTA) continue;
     b.mesh.getWorldPosition(_bodyV);
     let g = (typeof groundAt === 'function') ? groundAt(_bodyV.x, _bodyV.z, _bodyV.y + 0.5) : 0;
     if(g === null) continue;
@@ -375,8 +398,10 @@ function updateBodies(dt){
     /* a table's group origin is its feet: it stands, never floats at 0.25 */
     const want = g + (b.restH !== undefined ? b.restH : (b.kind === 'table' ? 0 : 0.25));
     /* both venue roots stand at y=0 unrotated, so local y IS world y */
-    if(Math.abs(_bodyV.y - want) > 0.005)
+    if(Math.abs(_bodyV.y - want) > 0.005){
       b.mesh.position.y += clamp(want - _bodyV.y, -3*dt, 3*dt);
+      b.rest = false;
+    } else b.rest = true;
   }
 }
 
