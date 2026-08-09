@@ -342,6 +342,63 @@ const probe = `
     return out;
   });
 
+  /* the warehouse doors are the only way into the Arc shed, and every Arc
+     door used to open ONLY from the DOM panel — which a headset cannot
+     reach, so the whole shed was unreachable in VR.  These two prove the
+     physical control exists and that the shared pick list finds it: the
+     desktop crosshair and the VR trigger both run pickAll -> describe ->
+     useInfo, so testing that chain tests both. */
+  P('each Arc warehouse door has a control the room ray finds', ()=>{
+    const out = [];
+    for(const k of ['main','studio']){
+      const H = ARC.houses[k];
+      const ctl = INTERACT.find(o=>o.userData.station &&
+                                   o.userData.station.id === 'arcDoor:'+k+'Rear');
+      if(!ctl) throw new Error(k+' has no control for its warehouse door');
+      const p = new T.Vector3(); ctl.getWorldPosition(p);
+      if(p.z < H.zBack + 0.001)
+        throw new Error(k+' control is at z='+p.z.toFixed(2)+', behind the wall at '+H.zBack);
+      if(Math.abs(p.x - (ARC.X + H.cx)) < 1.6)
+        throw new Error(k+' control stands in the 3.2m doorway');
+      if(p.y < 0.9 || p.y > 1.9)
+        throw new Error(k+' control is at y='+p.y.toFixed(2)+' — not at hand height');
+      const g = groundAt(p.x, p.z + 1.0, 2);
+      if(g === null || Math.abs(g - AS.DECK) > 0.05)
+        throw new Error(k+': nothing to stand on in front of it ('+g+')');
+      const r = new T.Raycaster(new T.Vector3(p.x, p.y, p.z + 1.6),
+                                new T.Vector3(0, 0, -1), 0, 6);
+      const hit = pickAll(r);
+      const info = hit ? describe(hit.object) : null;
+      if(!info || info.kind !== 'station' || info.st.id !== 'arcDoor:'+k+'Rear')
+        throw new Error(k+': the ray found '+(info ? info.kind : 'nothing'));
+      out.push(k+': '+info.label);
+    }
+    return out;
+  });
+
+  P('the control rolls the warehouse door up, and back down', ()=>{
+    const out = [];
+    for(const k of ['main','studio']){
+      const d = ARC.doorMap[k+'Rear'];
+      arcDoorSet(d.key, false); run(240, 0.05);
+      const shutY = d.group.position.y;
+      const ctl = INTERACT.find(o=>o.userData.station &&
+                                   o.userData.station.id === 'arcDoor:'+k+'Rear');
+      useInfo(describe(ctl));          // where [E] and the VR trigger both land
+      if(d.target !== 1) throw new Error(k+': one press did not call for open');
+      run(240, 0.05);
+      const rose = d.group.position.y - shutY;
+      if(rose < 3.0) throw new Error(k+': the leaf only rose '+rose.toFixed(2)+'m');
+      useInfo(describe(ctl));
+      if(d.target !== 0) throw new Error(k+': the second press did not shut it');
+      run(240, 0.05);
+      if(Math.abs(d.group.position.y - shutY) > 0.01)
+        throw new Error(k+': it never came back down');
+      out.push(k+': '+rose.toFixed(1)+'m up and shut again on a second press');
+    }
+    return out;
+  });
+
   P('a pass door swings, and stops you until it does', ()=>{
     const H = ARC.houses.main;
     const d = ARC.doorMap.mainPassSL;

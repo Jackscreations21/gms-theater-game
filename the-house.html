@@ -12495,6 +12495,18 @@ function arcBuildHouse(o, MAT){
       rd.y0 = sg.position.y;
       ARC.walls.push({axis:'z', plane:H.zBack - 0.3, lo:H.x0, hi:H.x1,
                       gaps:[{at:cx, halfW:1.6, door:o.key + 'Rear'}]});
+      /* the door control, an [E] station on the STAGE side of the wall, the
+         Palace's shedP (p2m) exactly.  Every other Arc door opens only from
+         the ARC DOORS panel, and a headset has no DOM: this one is the only
+         way into the warehouse, so it gets a button you can walk up to and a
+         VR trigger can hit.  Clear of the 3.2m opening by the same 0.8m the
+         Palace leaves, and a child of the HOUSE room — you stand on the deck
+         to press it, and the shed room may be culled from right here. */
+      const rc = aBox(0.34, 0.5, 0.14, M.fixture, cx + DW2/2 + 0.8, 1.25,
+                      H.zBack + 0.08, R);
+      station(rc, 'arcDoor:' + o.key + 'Rear',
+              H.label + ' WAREHOUSE DOOR  —  [E] open or shut it');
+      H.rearCtl = rc;
     }
     // THE ROOF over the whole stage box, and a slab over the auditorium too
     aBox(AS.W + 1.2, 0.7, AS.DEPTH + 1.4, conc, cx, SH + 0.35, (H.zBack + H.zPros)/2 - 0.2, R);
@@ -15912,6 +15924,12 @@ function stationOf(o){
 function useStation(st){
   if(st.id === 'shedP'){
     shedDoorToggle('palace');
+    return;
+  }
+  /* 'arcDoor:<key>' — a physical control for an ARC door, keyed by the
+     ARC.doorMap key so any door that grows one needs no branch here */
+  if(st.id.indexOf('arcDoor:') === 0){
+    if(typeof arcDoorToggle === 'function') arcDoorToggle(st.id.slice(8));
     return;
   }
   if(st.id.indexOf('dock') === 0){
