@@ -1322,5 +1322,9 @@ do not let it grow into dead code — either use it there or drop it.
 
 ## Baseline census
 
-*(Task 1 Step 3 pastes the measured `JSON` line here before any
-geometry changes.)*
+Measured against the unchanged build (commit `02ba3eb`), via
+`tools/census.js`:
+
+```
+JSON {"nailgun":3,"hammer":2,"tape":2,"crayon":2,"saw:track":7,"saw:chop":7,"rack":12,"trash":3,"lift":12,"cart":13}
+```
