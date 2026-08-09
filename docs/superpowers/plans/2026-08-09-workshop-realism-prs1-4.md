@@ -175,7 +175,11 @@ catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.spli
 
 - [ ] **Step 2: Run it against the UNCHANGED build**
 
-Run: `cd tests && node ../tools/census.js`
+Run: `cd tools && NODE_PATH=../tests/node_modules node census.js`
+
+(That is the documented way to run anything in `tools/` — see
+`tools/README.md`. The probes live outside `tests/`, so `jsdom` and
+`three` only resolve when `NODE_PATH` points at the tests' install.)
 
 Expected: a `JSON {...}` line. Based on reading the current source the
 counts should be approximately `nailgun 3, hammer 2, tape 2, crayon 2,
@@ -1245,7 +1249,7 @@ Expected: `===== 17/17 suites passed =====`.
 
 - [ ] **Step 1: Re-run the census and record the delta**
 
-Run: `cd tests && node ../tools/census.js`
+Run: `cd tools && NODE_PATH=../tests/node_modules node census.js`
 Compare against the baseline recorded in Task 1. Every number must be
 at or below it. Write the before/after table into the PR body — that
 is the evidence RULING AK was honoured.
