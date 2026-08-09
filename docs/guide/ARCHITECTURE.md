@@ -15,7 +15,7 @@ order; **the order is a dependency order and must never be sorted**.
 | `p4c` | **the build system**: wood, assemblies, nails/hinges/track, saws, paint, ordering, the save | after `p4` |
 | `p5 p5e` | scenic stock, smoke | |
 | `p6 p6b` | cue engine + console UI; the crew (`CREW`, job queue; the lead carpenter + carp job kinds) | |
-| `p6c` | **the carpenters**: `CARP_CAT`, `carpSurvey`/`carpPlan` (pure), `carpStart`/`CARP_RUN` | after `p6b` (extends the crew), before `p5c` |
+| `p6c` | **the carpenters**: `CARP_CAT` (5 rows), `carpSurvey`/`carpParts`/`carpPlan`/`carpPlanList`/`carpStackH` (all pure), `carpStart`/`CARP_RUN` | after `p6b` (extends the crew), before `p5c` |
 | `p5c` | `SHOWS`/`SHOW`, scenes, rain/fire, helpers | after the crew (`crewForgetLoads`) |
 | `p5d p5f p5g` | Lost Boys, Hamilton, The Play That Goes Wrong | `p5f`/`p5g` reuse `LB_CLOTH_W` from `p5d` |
 | `p2j` | the Arc Centre (second venue) | after the shows, before the stages |

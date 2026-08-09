@@ -1,6 +1,6 @@
 # THE HOUSE — agent entry point
 
-A 3D theatre sim in ONE HTML file (~805KB, three.js r128, no framework,
+A 3D theatre sim in ONE HTML file (~875KB, three.js r128, no framework,
 no build step beyond concatenating `src/` text files). Two venues, three
 stages sharing one board, four productions, a six-hand crew, a full VR
 mode (Quest 3), and a physical build system (order wood, saw, nail,

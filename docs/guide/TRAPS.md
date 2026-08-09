@@ -63,6 +63,22 @@ against this list before opening a PR; **add new traps as you hit them.**
   always re-racks it, including from `vrOnEnd` BEFORE the hold drops).
 - Grab arbitration is nearest-wins across classes with per-class radii —
   see VR.md. Adding a grab class means extending the cross-checks.
+- **A control that exists only in the DOM does not exist in VR.** Every
+  Arc door — including the two warehouse rollers that are the ONLY way
+  into the Arc shed — opened solely from the `#arcDoorList` panel, so in
+  a headset the whole shed (order screen, carpenters screen, both saws,
+  paint rack, forklift, cart) was unreachable and nobody noticed for
+  four rounds. The Palace was fine only because its shed door carries an
+  `[E]` station and the VR trigger runs the same `pickAll` →`describe` →
+  `useInfo` chain the crosshair does. **Anything a headset must reach
+  needs a physical thing in the room**; a station is the cheapest one,
+  and it serves both input paths from a single test.
+- **A hold that only writes `position` cannot be turned.** The `asm`
+  hold shipped that way while loose wood got the grip-relative carry, so
+  every assembly the carpenters ever built — and they build LYING FLAT —
+  was stuck face-up on the deck for good. When a carry rule changes,
+  walk every `VR.held.kind` that carries a world object, not just the
+  one in front of you.
 
 ## The crew and the carpenters (p6b/p6c)
 
@@ -88,6 +104,19 @@ against this list before opening a PR; **add new traps as you hit them.**
   computed off the remainder's low end snaps one inch short unless a
   pencil `tick` carries the exact mark (the tick beats the snap; that
   is its job).
+- **The saw bench is cleared the moment the next job is not a cut.**
+  `carpCut` decides whether to keep the remainder seated by peeking at
+  `CREW.jobs[0]`, and it only knew about another `carpCut` — so the
+  re-seat that turns a sheet round to rip it (a `carpFetch` with no body
+  of its own) found an empty bench and both skin strips silently went
+  missing: 8 pieces instead of 10, with no error anywhere. Any new job
+  kind that means to carry on with what is on a bench must be named in
+  that peek.
+- **A sheet's cut number means different things on different axes.** A
+  crosscut's schedule length is the piece's LENGTH; a rip's is its
+  WIDTH. Blueprint pieces that come off a rip therefore have to declare
+  `w`, and anything checking a piece against its cut has to know which
+  axis the entry asked for.
 - **Cut schedules that exactly consume a stick are a float knife-edge**:
   a remainder within a millimetre of `SAW_MIN` lets binary float decide
   whether the saw mints an off-cut body or bins it — and the planner's
@@ -99,9 +128,13 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **jsdom's `MouseEvent` has no `movementX`/`movementY`** — not 0,
   undefined. The game guards to 0, so synthetic hauls do nothing and it
   looks like broken game code. Shim the event (`full14.js` has it).
-- **A regex literal inside a test PROBE template loses its backslashes**
-  (`/\d/` arrives as `/d/`) — build regexes from doubled-backslash
-  strings there.
+- **A test PROBE template eats EVERY backslash, not just regex ones.**
+  The template literal is processed once when the probe string is built,
+  so `/\d/` arrives as `/d/` — and an escaped apostrophe in an error
+  message (`'the first one\'s height'`) arrives as an unescaped one and
+  the whole probe dies with `missing ) after argument list`, pointing at
+  the eval rather than the line. Build regexes from doubled-backslash
+  strings, and just reword around apostrophes.
 - **Test through the DOM, not the model** — a detached row still fires
   its handler perfectly well. Go through `document.querySelectorAll`.
 - **Measure the right thing.** Past tests passed while wrong: a darkness

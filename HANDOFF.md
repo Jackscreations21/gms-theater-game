@@ -2,7 +2,7 @@
 
 A 3D theatre you work in. Two buildings, three stages, a lighting rig you can
 plot, a counterweight fly rail you can haul, productions that load in, a crew
-that carries them, and a VR mode for a Quest 3. One HTML file, ~805KB, three.js
+that carries them, and a VR mode for a Quest 3. One HTML file, ~875KB, three.js
 r128, no build step beyond concatenating text files.
 
 ---
@@ -968,6 +968,94 @@ if it happens is to keep `carpenters-landing` and the `handoff-*`
 series as the round record and prune the rest.  `pr6.json` is still
 untracked, still unruled.
 
+**Done 2026-08-08, the first headset findings — and CARPENTERS PHASE 2,
+specced and built the same session (PRs #76–#79, all merged).**
+
+The headset finally went on, and two things came back.
+
+**"there is no but to open iether of the garages in the arc theaters"**
+— true, and worse than it read. Every one of the Arc's eight doors
+opened ONLY from the DOM panel (`p7`, `#arcDoorList`), and the two
+warehouse rollers are the ONLY way into the Arc shed — so in VR the
+whole shed was unreachable: order screen, carpenters screen, both saws,
+paint rack, trash drum, forklift, cart. The Palace was never affected
+because its shed door carries an `[E]` station and the VR trigger runs
+the same `pickAll` → `describe` → `useInfo` chain the desktop crosshair
+does. [#76](https://github.com/Jackscreations21/gms-theater-game/pull/76)
+puts a control box on the stage side of each rear door (0.8m clear of
+the opening, at hand height, filed with the HOUSE room because the shed
+room can be culled from where you stand) and one `arcDoor:<key>` branch
+in `useStation`, keyed off `ARC.doorMap` so any Arc door that grows a
+control later needs no branch of its own. **The other six Arc doors are
+still DOM-only** — deliberately left, one branch away.
+
+**"i cant find the screen for the carpenters in iether warhouse"** — the
+Arc half was the bug above. In the Palace the screen was where it
+should be: a probe on the committed build put it at (9.1, 1.7, −30.1),
+1.7m to the RIGHT of the order glass on the same wall, and the deployed
+Pages file was byte-identical to `main`. The owner confirmed the build
+was current (the crayon was on his belt), so it was a finding-it
+problem, not a missing-it one.
+
+**Then phase 2**, off four asks: build several things at once; a flat
+with a door hole; one with a window hole; flats with or without the
+sheets — plus **"it wont let me rotate stuff once it is built"**. Shaped
+live: the batch is a LIST worked in order, it STACKS on the one mark,
+and the skin is a SWITCH rather than eight catalogue rows. Spec
+(RULINGS AD–AH):
+`docs/superpowers/specs/2026-08-08-carpenters-phase2-design.md`; plan,
+with an as-built section recording five deviations:
+`docs/superpowers/plans/2026-08-08-carpenters-phase2-prs1-4.md`.
+
+- **[#78](https://github.com/Jackscreations21/gms-theater-game/pull/78)
+  — RULING AD: a built assembly turns in the hand.** The `asm` hold
+  copied `position` and never touched the root's quaternion; loose wood
+  got the grip-relative carry and the 45° grid in build-feel #53, the
+  `asm` hold got neither. And the carpenters assemble LYING FLAT
+  (RULING AC) — so every flat they had ever built was stuck face-up on
+  the deck for good. It now takes `relQ` + `grabV` exactly as a plank
+  does, squares to 45° unless X is held, and `snapAsm` is untouched: it
+  still offers only the drop, never a re-orientation.
+- **[#79](https://github.com/Jackscreations21/gms-theater-game/pull/79)
+  — the rip, the two new rows, and the build list**, three commits:
+  - **RULING AE's mechanism.** A sheet can never have a hole cut in it
+    (parametric wood; a cut must not mint geometry), so an opening is
+    FRAMED and skinned in pieces AROUND it. The saws already rip —
+    `dims {L, W}`, `seatWood` reads the offered axis, `sawCut` writes
+    either dimension — only the schedule could not ask, because
+    `carpCut` seated every sheet `'L'`. A cut entry now names its axis;
+    two entries may name one stick; a second entry wanting it turned
+    emits a fetch with no body, meaning *re-seat what is on that bench*.
+  - **The DOOR FLAT and WINDOW FLAT** (30×80″ and 30×36″ openings, the
+    window's sill 36″ up), each framed with two 89″ jambs and a 30″
+    header (**RULING AE amended mid-build**: the original 41″ header
+    made the jambs 76.5″, and the saw snaps to the inch). Both skins
+    come out of ONE sheet each — the check that the schedules are
+    honest — and both leftovers go back as stock, not scrap. **SKIN is
+    a switch on the CALL** (RULING AF) via `carpParts(row, skin)`, one
+    pure helper the planner and the glass share; piece INDICES never
+    move, so a dropped piece leaves a hole in the numbering and
+    `flat4x8` never had to be reordered.
+  - **The build LIST** (AG + AH): a count per row, one CALL, worked in
+    order and stacked on the one mark (RULING Z stands — `restH`
+    already carries a stack). Stock and cap are judged for the WHOLE
+    list before a single cut, and piece indices are offset per item or
+    item two's piece 0 overwrites item one's.
+
+Every new assertion negative-checked **against its own parent build**,
+not just against `main`, so each link genuinely fails before its fix.
+16/16 at every link and at the tip. Post-merge: all four PRs merged
+with `base=main` (the #71–#73 mishap did not repeat), `main`'s tree
+identical to the tested branch, byte-identical rebuild (873188),
+`"fatal": null`, and Pages already serving the same bytes. **Bust the
+Quest cache with `?v=13`** — the game changed twice that day.
+
+One real bug the work flushed out, now in TRAPS: `carpCut` decides
+whether to keep the remainder seated by peeking at `CREW.jobs[0]`, and
+it only knew about another `carpCut` — so the re-seat that turns a
+sheet round to rip it found an empty bench and both skin strips
+silently went missing (8 pieces instead of 10, no error anywhere).
+
 ---
 
 ## THE CARPENTERS BRIEF (2026-08-08 — superseded the same day)
@@ -1052,11 +1140,41 @@ no desktop call, and the mark tool nobody had predicted.)
 ## NEXT SESSION: **THE HEADSET RUN** (owed since #48)
 
 Everything from #48 onward — the usability round, all nine build-feel
-PRs, both goods PRs, and now the WHOLE CARPENTERS ROUND — has met
-hardware NEVER.  Put the owner on `…/the-house.html?v=12` (bumped
-past the Quest cache for the carpenters merge) and work the question
-blocks below, oldest first.  **New questions this round — record the
-answers here:**
+PRs, both goods PRs, the carpenters round and now PHASE 2 — has met
+hardware NEVER, except the two things the 2026-08-08 run turned up
+(#76, #78).  Put the owner on `…/the-house.html?v=13` (the game changed
+twice on 2026-08-08; `?v=12` serves the morning build) and work the
+question blocks below, oldest first.
+
+**New questions, PHASE 2 — record the answers here:**
+
+- **Standing a flat up.** A finished flat now turns with the wrist and
+  squares to 45°.  Does tipping one upright off the deck feel like
+  handling a flat, or does the 45° grid fight you halfway?  Is HOLD-X
+  discoverable when you want it free?  Can you carry a 4x8 through the
+  roller door without it snagging?
+- **The openings.** Do the door and window read as real openings at
+  arm's length, or does the framed-and-skinned construction show as
+  seams?  Is the 30×80″ door big enough to walk through in VR (the
+  bottom rail is a 3.5″ sill you step over — trip hazard or fine)?
+- **The SKIN switch.** Is ON/OFF beside the CALL obvious, and does a
+  bare frame read as deliberate rather than unfinished?
+- **The list, and the STACK.** Press + a few times, CALL once: does
+  watching a stack build read as work, or does the wait get long at
+  three or four items?  **Is a stack usable** — can you get the top one
+  off cleanly, or do they fight each other on the way up?
+- **The five-row glass.** Rows dropped from an 86px pitch to 64px to
+  fit five plus the counters.  Still readable at arm's length?  Are the
+  −/+ boxes (46px) big enough to hit with a controller ray?
+- **The Arc button.** Walk up to a rear door on the stage side and
+  press it — does it read as the way in, and is it where your hand
+  expects it (0.8m clear of the opening, 1.25m up)?
+- **Frame rate with a real build standing.** THE UNMEASURED WORST CASE:
+  wood is one draw call per piece, `BUILD_CAP` is 150 a venue, and r128
+  draws each eye separately.  Stand a full stack of flats under a lit
+  rig and read the wrist meter.
+
+**Older blocks follow — the questions below are still owed too:**
 
 - **The belt is four now.**  Crayon at the small of the back
   (0/-0.17): can you draw it without catching the tape?  Is a
@@ -1073,11 +1191,14 @@ answers here:**
 - **The CARPENTERS screen:** readable beside the order screen?  Do
   the refusal strings land?
 
-Phase-2 candidates after the run, owner's call, no order: the
+Candidates after the run, owner's call, no order — phase 2 took the
+build list and the openings, so what is left of that list is: the
 furniture catalogue (RULING J); "copy something I already built"
-(shaping question 1's third answer — deliberately out of scope this
-round); carpenters that paint; RULING W revisited (save the hang +
-its paint together, one versioned blob, its own round).
+(shaping question 1's third answer — still out of scope); carpenters
+that paint; RULING W revisited (save the hang + its paint together,
+one versioned blob, its own round); the other six Arc doors, which
+are still DOM-only and so still unreachable in VR (one branch on the
+`arcDoor:<key>` station id #76 already established).
 
 **Also still open, in rough order:**
 
@@ -1086,7 +1207,7 @@ its paint together, one versioned blob, its own round).
   build-feel round).  **Everything from #48 onward — the whole
   usability round, all nine build-feel PRs, both goods PRs and the
   carpenters round — has met hardware NEVER.**  Put the owner on
-  `…/the-house.html?v=12` (bump the number, the Quest Browser caches
+  `…/the-house.html?v=13` (bump the number, the Quest Browser caches
   hard) and work the question blocks at the bottom of this section.
   Feel constants, all one-line tunes: `GRAB_WOOD 0.15`,
   `SEAM_TOUCH 0.05`, `SEAM_REACH 0.45`, `SNAP_SEEK 0.35`,
@@ -1117,7 +1238,7 @@ and the headset checklist below still stands.
 
 **STILL OWED WHENEVER THE HEADSET NEXT GOES ON** (no recorded run since
 2026-08-06; the meter shipped in #22 but has never met hardware — put
-the owner on `…/the-house.html?v=12`, bump the number, Quest Browser
+the owner on `…/the-house.html?v=13`, bump the number, Quest Browser
 caches hard):
 
 **Read the wrist meter and WRITE THE NUMBERS HERE.** The worst cases,
