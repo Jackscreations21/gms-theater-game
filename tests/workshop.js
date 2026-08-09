@@ -77,6 +77,61 @@ const probe = `
     if(Math.abs(g.boundingSphere.center.y - 3) > 1e-6) throw new Error('sphere centre at y=' + g.boundingSphere.center.y);
     return 'centre y ' + g.boundingSphere.center.y;
   });
+  P('mergeParts does not mutate a cached non-indexed geometry, and repeats do not drift', ()=>{
+    const shape = new THREE.Shape();
+    shape.moveTo(0,0); shape.lineTo(1,0); shape.lineTo(1,1); shape.lineTo(0,1); shape.closePath();
+    const cached = new THREE.ExtrudeGeometry(shape, {depth:1, bevelEnabled:false});
+    if(cached.index) throw new Error('test assumption failed: ExtrudeGeometry came out indexed');
+    const before = Float32Array.from(cached.attributes.position.array);
+    mergeParts([{geo:cached, pos:[10,0,0]}]);
+    const after = cached.attributes.position.array;
+    for(let i=0;i<before.length;i++){
+      if(Math.abs(before[i]-after[i]) > 1e-9) throw new Error('cached geometry mutated at index '+i);
+    }
+    const a = mergeParts([{geo:cached, pos:[0,0,0]}]);
+    const b = mergeParts([{geo:cached, pos:[0,0,0]}]);
+    a.computeBoundingBox(); b.computeBoundingBox();
+    if(Math.abs(a.boundingBox.max.x - b.boundingBox.max.x) > 1e-6 || Math.abs(a.boundingBox.min.x - b.boundingBox.min.x) > 1e-6)
+      throw new Error('merging the same cached geometry twice drifted: '+a.boundingBox.max.x+' vs '+b.boundingBox.max.x);
+    return 'cached geometry untouched across two merges';
+  });
+  P('mergeParts turns the normals with the geometry, not just the positions', ()=>{
+    const g = mergeParts([{geo:new THREE.BoxGeometry(1,1,1), rot:[0, Math.PI/2, 0]}]);
+    const p = g.attributes.position, n = g.attributes.normal;
+    let sum = 0, count = 0;
+    for(let i=0;i<n.count;i++){
+      const nx = Math.round(n.getX(i)), ny = Math.round(n.getY(i)), nz = Math.round(n.getZ(i));
+      if(nx === 1 && ny === 0 && nz === 0){ sum += p.getX(i); count++; }
+    }
+    if(count === 0) throw new Error('no vertex normal rounded to (1,0,0) after the turn');
+    const meanX = sum / count;
+    if(Math.abs(meanX - 0.5) > 1e-5) throw new Error('(1,0,0)-normal face sits at mean x ' + meanX + ', wanted 0.5');
+    return 'the +X-normal face after the turn sits at x=' + meanX.toFixed(3);
+  });
+  P('mergeParts honours scale', ()=>{
+    const g = mergeParts([{geo:new THREE.BoxGeometry(1,1,1), scale:[3,1,1]}]);
+    g.computeBoundingBox();
+    const b = g.boundingBox;
+    if(Math.abs((b.max.x - b.min.x) - 3) > 1e-5) throw new Error('x span ' + (b.max.x-b.min.x) + ', wanted 3');
+    if(Math.abs((b.max.y - b.min.y) - 1) > 1e-5) throw new Error('y span ' + (b.max.y-b.min.y) + ', wanted 1');
+    return 'a 1x1x1 scaled 3x in x spans 3';
+  });
+  P('mergeParts applies the x Euler slot on its own, not swapped with z', ()=>{
+    const g = mergeParts([{geo:new THREE.BoxGeometry(1,2,1), rot:[Math.PI/2,0,0]}]);
+    g.computeBoundingBox();
+    const b = g.boundingBox;
+    if(Math.abs((b.max.x - b.min.x) - 1) > 1e-5) throw new Error('x span ' + (b.max.x-b.min.x) + ', wanted 1');
+    if(Math.abs((b.max.y - b.min.y) - 1) > 1e-5) throw new Error('y span ' + (b.max.y-b.min.y) + ', wanted 1');
+    if(Math.abs((b.max.z - b.min.z) - 2) > 1e-5) throw new Error('z span ' + (b.max.z-b.min.z) + ', wanted 2');
+    return 'a 1x2x1 turned 90deg about x spans 1,1,2';
+  });
+  P('mergeParts keeps a UV per vertex', ()=>{
+    const g = mergeParts([{geo:new THREE.BoxGeometry(1,1,1)}]);
+    const uv = g.attributes.uv;
+    if(!uv) throw new Error('no uv attribute on the merged geometry');
+    if(uv.count !== g.attributes.position.count) throw new Error('uv.count ' + uv.count + ' != position.count ' + g.attributes.position.count);
+    return uv.count + ' uvs, one per vertex';
+  });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
