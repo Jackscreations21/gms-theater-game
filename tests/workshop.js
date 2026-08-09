@@ -272,6 +272,42 @@ const probe = `
     return {rack:rk, trash:tr};
   });
 
+  console.log('--- the heavy plant (RULINGS AK + AL) ---');
+  P('the forks survived the merge as their own moving group', ()=>{
+    const L = LIFTS.palace;
+    if(!L.forks) throw new Error('the lift lost its forks');
+    if(L.forks.parent !== L.group) throw new Error('the forks were merged into the body');
+    let n = 0; L.forks.traverse(c=>{ if(c.isMesh) n++; });
+    if(n < 1) throw new Error('the forks have no mesh');
+    L.forks.position.y = 0.5;
+    if(Math.abs(L.forks.position.y - 0.5) > 1e-9) throw new Error('the forks cannot be moved');
+    L.forks.position.y = 0;
+    return 'forks lift, ' + n + ' mesh(es)';
+  });
+  P('the lift record kept every field the p9 cart machinery reads', ()=>{
+    const L = LIFTS.palace;
+    ['venue','group','x','z','yaw','yBase','handleH','handleZ','handleHalf','grabR','slots','lift','forks','forkY','prevForkY','riding']
+      .forEach(f=>{ if(L[f] === undefined) throw new Error('lift record lost ' + f); });
+    if(CARTS.palaceLift !== L) throw new Error('the lift is no longer registered as a cart');
+    if(Math.abs(L.handleH - 1.0) > 1e-9) throw new Error('the tiller handle moved');
+    return 'handleH ' + L.handleH + ', grabR ' + L.grabR;
+  });
+  P('the cart kept its six slots where the snap scan expects them', ()=>{
+    const c = CARTS.palace;
+    if(c.slots.length !== 6) throw new Error('the cart has ' + c.slots.length + ' slots, wanted 6');
+    const ys = c.slots.map(s=>+s.position.y.toFixed(3));
+    if(ys.filter(y=>Math.abs(y-0.32)<1e-6).length !== 3) throw new Error('lower shelf slots moved');
+    if(ys.filter(y=>Math.abs(y-0.92)<1e-6).length !== 3) throw new Error('upper shelf slots moved');
+    return '6 slots, two shelves of three';
+  });
+  P('the plant costs no more meshes than it did', ()=>{
+    const count = o => { let n=0; o.traverse(c=>{ if(c.isMesh) n++; }); return n; };
+    const l = count(LIFTS.palace.group), c = count(CARTS.palace.group);
+    if(l > 12) throw new Error('the lift is ' + l + ' meshes, budget 12');
+    if(c > 13) throw new Error('the cart is ' + c + ' meshes, budget 13');
+    return {lift:l, cart:c};
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
