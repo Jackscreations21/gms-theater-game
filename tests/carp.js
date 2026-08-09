@@ -43,8 +43,10 @@ const probe = `
     catch(e){ console.log('  ERR '+name+': '+e.message); if(e.stack) console.log('      '+e.stack.split('\\n').slice(1,4).join(' | ')); window.__errs.push(name+': '+e.message); } };
 
   console.log('--- the catalogue ---');
-  P('three rows, every schedule honest on a real saw, every blueprint sound', ()=>{
-    const labels = {flat4x8:'4x8 FLAT', plat4x8:'4x8 PLATFORM', steps2:'2-STEP UNIT'};
+  P('every row: schedule honest on a real saw, every blueprint sound', ()=>{
+    const labels = {flat4x8:'4x8 FLAT', doorFlat:'4x8 DOOR FLAT',
+                    windowFlat:'4x8 WINDOW FLAT', plat4x8:'4x8 PLATFORM',
+                    steps2:'2-STEP UNIT'};
     const keys = Object.keys(labels);
     if(Object.keys(CARP_CAT).join(',') !== keys.join(','))
       throw new Error('rows: '+Object.keys(CARP_CAT).join(','));
@@ -60,13 +62,22 @@ const probe = `
       /* every cut schedule runs on the right saw and inside the stick:
          products on the inch grid (sawSetCut snaps to it), nothing under
          SAW_MIN on either side of the blade except an honest final scrap */
-      const usedBy = units.map(()=>0);
+      const usedBy = units.map(()=>0), cutBy = units.map(()=>0), left = {};
       row.cuts.forEach((c, ci)=>{
         if(units[c.stock] === undefined) throw new Error(key+' cuts a unit that is not in the stock');
-        usedBy[c.stock]++;
+        cutBy[c.stock]++;
         const wantSaw = units[c.stock] === 'sheet' ? 'track' : 'chop';
         if(c.saw !== wantSaw) throw new Error(key+' sends '+units[c.stock]+' to the '+c.saw);
-        let rem = WOOD_LEN;
+        const ax = c.axis || 'L';
+        if(ax !== 'L' && ax !== 'W') throw new Error(key+' schedule '+ci+' asks for axis '+ax);
+        if(ax === 'W' && units[c.stock] !== 'sheet')
+          throw new Error(key+' tries to rip lumber in schedule '+ci);
+        /* what is left to cut, keyed by stock AND axis — a rip starts
+           fresh across the sheet's width, because crosscutting it never
+           touched that (RULING AE) */
+        const lk = c.stock+':'+ax;
+        if(left[lk] === undefined) left[lk] = (ax === 'W') ? WOOD_PROF.sheet.W : WOOD_LEN;
+        let rem = left[lk];
         c.make.forEach((len, k)=>{
           const inches = len/0.0254;
           if(Math.abs(inches - Math.round(inches)) > 1e-6)
@@ -77,10 +88,16 @@ const probe = `
           if(rem < SAW_MIN - 1e-9 && k < c.make.length - 1)
             throw new Error(key+' schedule '+ci+' saws on after the stick is spent');
         });
+        left[lk] = rem;
       });
-      /* every stock unit consumed exactly once — by one schedule or one uncut piece */
+      /* every stock unit consumed exactly once — cut (by one schedule or
+         more: a sheet may be crosscut and then ripped) or hauled uncut,
+         never both */
       row.blueprint.pieces.forEach(p=>{ if(p.src.stock !== undefined) usedBy[p.src.stock]++; });
-      usedBy.forEach((n, i)=>{ if(n !== 1) throw new Error(key+' stock unit '+i+' is used '+n+' times'); });
+      usedBy.forEach((n, i)=>{
+        if(n + Math.min(cutBy[i], 1) !== 1)
+          throw new Error(key+' stock unit '+i+' is used '+n+' times uncut and cut '+cutBy[i]);
+      });
       /* every piece poses a real box, on or above the deck (deck y=0,
          lying flat — RULING AC), its length agreeing with its source */
       const boxes = row.blueprint.pieces.map((p, pi)=>{
@@ -88,14 +105,18 @@ const probe = `
           const c = row.cuts[p.src.cut[0]];
           if(!c || c.make[p.src.cut[1]] === undefined)
             throw new Error(key+' piece '+pi+' comes off a cut that never happens');
-          if(Math.abs(c.make[p.src.cut[1]] - p.len) > 1e-6)
-            throw new Error(key+' piece '+pi+' disagrees with its cut about length');
+          /* the schedule's numbers are the extent along table X: a
+             crosscut names the piece's LENGTH, a rip names its WIDTH */
+          const want = (c.axis === 'W') ? p.w : p.len;
+          if(want === undefined || Math.abs(c.make[p.src.cut[1]] - want) > 1e-6)
+            throw new Error(key+' piece '+pi+' disagrees with its cut about size');
         } else if(Math.abs(p.len - WOOD_LEN) > 1e-6){
           throw new Error(key+' uncut piece '+pi+' is not a full stick: '+p.len);
         }
         const PR = WOOD_PROF[p.prof];
         const m = new THREE.Mesh(new THREE.BoxGeometry(1,1,1));
-        if(p.prof === 'sheet') m.scale.set(p.len, PR.W, PR.t);
+        /* a ripped panel carries its own width (RULING AE) */
+        if(p.prof === 'sheet') m.scale.set(p.len, p.w || PR.W, PR.t);
         else m.scale.set(PR.a, p.len, PR.b);
         m.rotation.set(p.rot[0], p.rot[1], p.rot[2]);
         m.position.set(p.pos[0], p.pos[1], p.pos[2]);
@@ -128,7 +149,8 @@ const probe = `
       if(Object.keys(roots).length !== 1)
         throw new Error(key+' nails up '+Object.keys(roots).length+' separate assemblies');
     });
-    return '3 rows, cuts on the inch grid inside the stick, 2 nails a joint, one assembly each';
+    return Object.keys(CARP_CAT).length +
+           ' rows, cuts on the inch grid inside the stick, 2 nails a joint, one assembly each';
   });
 
   console.log('--- the survey ---');
@@ -711,6 +733,283 @@ const probe = `
     if(sc.status !== 'CALLED — 4x8 FLAT') throw new Error('the status wandered: '+sc.status);
     if(Math.abs(HOUSE.work - work0) > 1e-6) throw new Error('the work light never came back down');
     return 'row by META, CALL by META, one un-anchored rigid flat of 5 at the mark';
+  });
+
+  console.log('--- the rip (phase 2, RULING AE) ---');
+  P('the schedule can ask for a RIP: a sheet seats on its width', ()=>{
+    /* a sheet can never have a hole cut in it, so an opening is framed and
+       skinned in pieces AROUND it — which needs strips ripped off a sheet,
+       not just crosscut.  The saws have always ripped (seatWood reads the
+       axis the hand offers, sawCut writes either dimension); only the
+       carpenters' schedule could not ask, because carpFetch turned every
+       sheet to seat 'L' unconditionally. */
+    if(CREW.running) throw new Error('crew already running');
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const sh = regWood('sheet');
+    BUILD_VENUE = keep;
+    const root = venueRoot('palace');
+    root.updateMatrixWorld(true);
+    const trackW = SAWS.palace.track.group.getWorldPosition(new THREE.Vector3());
+    root.add(sh.mesh);
+    sh.mesh.rotation.set(-Math.PI/2, 0, 0);
+    const p = trackW.clone(); p.x += -2.2; p.z += 2.0; p.y = 0.1;
+    sh.mesh.position.copy(root.worldToLocal(p));
+    sh.mesh.updateMatrixWorld(true);
+    sh.restH = woodRestH(sh);
+    const L0 = sh.dims.L;
+    const jobs = [
+      {kind:'carpFetch', venue:'palace', body:sh, prof:'sheet', saw:'track', axis:'W'},
+      {kind:'carpCut',   venue:'palace', saw:'track', len:0.2286, piece:-1}
+    ];
+    if(!carpRun(jobs)) throw new Error('the run refused');
+    let guard = 0;
+    while(CREW.running && guard++ < 120000){ updateCrew(0.05); updateBodies(0.05); }
+    if(CREW.running) throw new Error('the rip never finished');
+    if(Math.abs(sh.dims.W - 0.2286) > 0.002)
+      throw new Error('the kept side is ' + sh.dims.W.toFixed(4) +
+                      ' wide — it was crosscut, not ripped');
+    if(Math.abs(sh.dims.L - L0) > 0.002)
+      throw new Error('the rip shortened it to ' + sh.dims.L.toFixed(4));
+    if(sh.mesh.geometry !== WOODG) throw new Error('the rip minted geometry');
+    return 'ripped 9in off a full sheet: L ' + sh.dims.L.toFixed(3) +
+           ' x W ' + sh.dims.W.toFixed(3);
+  });
+
+  console.log('--- the openings and the skin (phase 2, RULINGS AE + AF) ---');
+  const layStock = (venue, near, list)=>{
+    const keep = BUILD_VENUE; BUILD_VENUE = venue;
+    const out = list.map(p=>regWood(p));
+    BUILD_VENUE = keep;
+    const root = venueRoot(venue);
+    root.updateMatrixWorld(true);
+    out.forEach((b, i)=>{
+      root.add(b.mesh);
+      b.mesh.rotation.set(b.prof === 'sheet' ? -Math.PI/2 : 0, 0,
+                          b.prof === 'sheet' ? 0 : Math.PI/2);
+      const p = near.clone(); p.x += -3.0 + i*0.45; p.z += 2.4; p.y = 0.1;
+      b.mesh.position.copy(root.worldToLocal(p));
+      b.mesh.updateMatrixWorld(true);
+      b.restH = woodRestH(b);
+    });
+    return out;
+  };
+  P('SKIN OFF builds the bare frame, and asks for no sheet', ()=>{
+    if(CREW.running) throw new Error('crew already running');
+    const chopW = SAWS.palace.chop.group.getWorldPosition(new THREE.Vector3());
+    const stock = layStock('palace', chopW,
+      ['sheet','s2x4','s2x4','s2x4','s2x4','s2x4','s2x4']);
+    const mark = {venue:'palace', stage:'palace', x:0, z:-6, yaw:0};
+    const on  = carpPlan('doorFlat', mark);
+    const off = carpPlan('doorFlat', mark, {skin:false});
+    if(!on || !on.jobs) throw new Error('skinned: '+JSON.stringify(on));
+    if(!off || !off.jobs) throw new Error('frame-only: '+JSON.stringify(off));
+    const hauls = p=>p.jobs.filter(j=>j.kind === 'carpHaul').map(j=>j.piece);
+    const nails = p=>p.jobs.filter(j=>j.kind === 'carpNail');
+    if(hauls(on).join(',') !== '0,1,2,3,4,5,6,7,8,9')
+      throw new Error('skinned hauls: '+hauls(on).join(','));
+    if(hauls(off).join(',') !== '0,1,2,3,4,5,6')
+      throw new Error('frame hauls: '+hauls(off).join(','));
+    if(nails(on).length !== 16) throw new Error(nails(on).length+' skinned joints');
+    if(nails(off).length !== 10) throw new Error(nails(off).length+' frame joints');
+    if(nails(off).some(j=>j.i > 6 || j.j > 6))
+      throw new Error('a frame-only nail still names a skin piece');
+    /* the sheet is never touched: no table-saw work, and it stays stock */
+    if(off.jobs.some(j=>j.saw === 'track'))
+      throw new Error('SKIN OFF still runs the table saw');
+    if(carpSurvey('palace').sheet.indexOf(stock[0]) < 0)
+      throw new Error('the frame-only plan spoke for the sheet anyway');
+    /* and with no full sheet in the shed at all — clear every one, not
+       just ours: earlier tests leave their own stock lying about — only
+       the skinned call is short */
+    carpSurvey('palace').sheet.filter(carpFullStick).forEach(removeBody);
+    const on2  = carpPlan('doorFlat', mark);
+    const off2 = carpPlan('doorFlat', mark, {skin:false});
+    if(!on2.need || !on2.need.some(n=>n.prof === 'sheet'))
+      throw new Error('the skinned call did not ask for the missing sheet');
+    if(off2.need) throw new Error('SKIN OFF asks for: '+carpNeedLine(off2.need));
+    stock.slice(1).forEach(removeBody);
+    return 'skinned 10 pieces / 16 joints, frame 7 / 10, and no sheet wanted';
+  });
+  P('a door flat really has a hole in it', ()=>{
+    if(CREW.running) throw new Error('crew already running');
+    stageSwitch('palace', true);
+    const chopW = SAWS.palace.chop.group.getWorldPosition(new THREE.Vector3());
+    layStock('palace', chopW, ['sheet','s2x4','s2x4','s2x4','s2x4','s2x4','s2x4']);
+    const mark = {venue:'palace', stage:'palace', x:-2.4, z:-6, yaw:0};
+    carpSetMark(mark.venue, mark.stage, mark.x, mark.z, mark.yaw);
+    crewSpawn(6).forEach(h=>{ h.speed = 2.4; });
+    const pre = ASSEMBLIES.slice();
+    const plan = carpStart('doorFlat', mark);
+    if(!plan || !plan.jobs) throw new Error('the call refused: '+JSON.stringify(plan));
+    let guard = 0;
+    while(CREW.running && guard++ < 200000){ updateCrew(0.05); updateBodies(0.05); }
+    if(CREW.running) throw new Error('the door flat never finished');
+    const made = ASSEMBLIES.filter(a=>pre.indexOf(a) < 0);
+    if(made.length !== 1) throw new Error(made.length+' assemblies stand where one flat should');
+    const a = made[0];
+    if(a.pieces.length !== 10 || a.nails.length !== 32)
+      throw new Error(a.pieces.length+' pieces / '+a.nails.length+' nails');
+    if(a.anchor) throw new Error('the carpenters nailed it to the deck — RULING AC says never');
+    if(a.pieces.some(p=>p.pivot)) throw new Error('a pivot joint — not rigid');
+    scene.updateMatrixWorld(true);
+    /* the hole: mark-local (-0.2032, 0.0475, 0) is the middle of a 30x80in
+       opening and must be clear of every piece, while the skin beside it
+       at z -0.5 must be solid.  Both points lie in the same plane, so this
+       cannot pass by the whole flat having ended up somewhere else. */
+    const at = dz=>{
+      const v = new THREE.Vector3(-0.2032, 0.0475, dz)
+        .applyAxisAngle(new THREE.Vector3(0,1,0), mark.yaw);
+      v.x += mark.x; v.z += mark.z;
+      return v;
+    };
+    const hits = v=>a.pieces.filter(p=>
+      new THREE.Box3().setFromObject(p.mesh).containsPoint(v)).length;
+    const inHole = hits(at(0)), inSkin = hits(at(-0.5));
+    if(inHole !== 0) throw new Error(inHole+' pieces block the doorway');
+    if(inSkin === 0)
+      throw new Error('the skin beside the door is missing too — the flat is elsewhere');
+    return 'one rigid flat of 10, 32 nails, a clear 30x80in hole with skin either side';
+  });
+  P('the SKIN switch is on the glass, and five rows still fit it', ()=>{
+    const sc = VR.carps.palace;
+    if(!sc) throw new Error('no carpenter screen');
+    const keepMark = CARP.mark, keepSel = sc.sel, keepSkin = sc.skin;
+    CARP.mark = null;                       // the recipe line, not a verdict
+    sc.sel = 'doorFlat'; sc.skin = true;
+    vrDrawCarp(sc);
+    const skinHit = sc.hits.find(h=>h.carpSkin);
+    if(!skinHit) throw new Error('no SKIN switch on the glass');
+    const withSkin = sc.stockLine;
+    /* the relayout: every region inside the canvas, and no two overlapping
+       — five rows, a switch and a CALL on one 560x520 pane */
+    const rows = sc.hits.filter(h=>h.carpKey && !h.carpBump);
+    if(rows.length !== Object.keys(CARP_CAT).length)
+      throw new Error(rows.length+' rows drawn for '+Object.keys(CARP_CAT).length+' in the catalogue');
+    sc.hits.forEach(h=>{
+      if(h.x < 0 || h.y < 0 || h.x + h.w > sc.canvas.width || h.y + h.h > sc.canvas.height)
+        throw new Error('a region falls off the glass at '+h.x+','+h.y);
+    });
+    for(let i = 0; i < sc.hits.length; i++)
+      for(let j = i+1; j < sc.hits.length; j++){
+        const a = sc.hits[i], b = sc.hits[j];
+        if(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h)
+          throw new Error('two regions overlap: '+
+            ((a.carpBump ? 'BUMP ' : '') + (a.carpKey || (a.carpCall ? 'CALL' : 'SKIN')))+
+            ' and '+
+            ((b.carpBump ? 'BUMP ' : '') + (b.carpKey || (b.carpCall ? 'CALL' : 'SKIN'))));
+      }
+    skinHit.fn();                           // throw it
+    if(sc.skin !== false) throw new Error('the switch did not throw');
+    const without = sc.stockLine;
+    if(withSkin === without)
+      throw new Error('the stock line ignored the switch: '+withSkin);
+    if(withSkin.indexOf('SHEET') < 0 || without.indexOf('SHEET') >= 0)
+      throw new Error('skinned takes "'+withSkin+'", frame-only takes "'+without+'"');
+    CARP.mark = keepMark; sc.sel = keepSel; sc.skin = keepSkin === undefined ? true : keepSkin;
+    vrDrawCarp(sc);
+    return 'five rows, no overlaps, and the switch moves the stock line';
+  });
+
+  console.log('--- the build list (phase 2, RULINGS AG + AH) ---');
+  P('a list is summed, stacked on the one mark, and judged whole', ()=>{
+    if(CREW.running) throw new Error('crew already running');
+    const mark = {venue:'palace', stage:'palace', x:0, z:-6, yaw:0};
+    /* nothing in the shed: the NEED list sums across the whole list and
+       is reported ONCE (two flats want two sheets and six sticks) */
+    carpSurvey('palace').sheet.filter(carpFullStick).forEach(removeBody);
+    carpSurvey('palace').s2x4.filter(carpFullStick).forEach(removeBody);
+    const shortP = carpPlanList([{key:'flat4x8', n:2}], mark);
+    if(!shortP || !shortP.need) throw new Error('expected a NEED list: '+JSON.stringify(shortP));
+    const nOf = (l, p)=>(l.find(s=>s.prof === p) || {}).n;
+    if(nOf(shortP.need, 'sheet') !== 2 || nOf(shortP.need, 's2x4') !== 6)
+      throw new Error('summed NEED is '+carpNeedLine(shortP.need));
+    /* one flat's worth of stock: the list of two is still short by one */
+    const chopW = SAWS.palace.chop.group.getWorldPosition(new THREE.Vector3());
+    layStock('palace', chopW, ['sheet','s2x4','s2x4','s2x4']);
+    const half = carpPlanList([{key:'flat4x8', n:2}], mark);
+    if(!half || !half.need) throw new Error('two flats off one flat of stock: '+JSON.stringify(half));
+    if(nOf(half.need, 'sheet') !== 1 || nOf(half.need, 's2x4') !== 3)
+      throw new Error('the second flat asked for '+carpNeedLine(half.need));
+    /* stock for both: one queue, worked in order, stacked */
+    layStock('palace', chopW, ['sheet','s2x4','s2x4','s2x4']);
+    const plan = carpPlanList([{key:'flat4x8', n:2}], mark);
+    if(!plan || !plan.jobs) throw new Error('two flats refused: '+JSON.stringify(plan));
+    const hauls = plan.jobs.filter(j=>j.kind === 'carpHaul');
+    if(hauls.length !== 10) throw new Error(hauls.length+' hauls for two 5-piece flats');
+    /* piece indices never collide between items — made/placed are keyed
+       by them */
+    if(new Set(hauls.map(h=>h.piece)).size !== 10)
+      throw new Error('two items share a piece index');
+    /* and the second flat sits exactly one flat-height higher */
+    const h0 = hauls.slice(0, 5), h1 = hauls.slice(5);
+    const lift = carpStackH(CARP_CAT.flat4x8, true);
+    if(Math.abs(lift - 0.057) > 1e-6) throw new Error('a skinned flat stands '+lift+' high');
+    h0.forEach((j, i)=>{
+      if(Math.abs(h1[i].pos[1] - j.pos[1] - lift) > 1e-9)
+        throw new Error('piece '+i+' of the second flat is at '+h1[i].pos[1]+', not '+(j.pos[1]+lift));
+      if(Math.abs(h1[i].pos[0] - j.pos[0]) > 1e-9 || Math.abs(h1[i].pos[2] - j.pos[2]) > 1e-9)
+        throw new Error('the second flat wandered off the mark');
+    });
+    const nails = plan.jobs.filter(j=>j.kind === 'carpNail');
+    if(!nails.slice(8).every(j=>j.nails.every(n=>n.p[1] >= lift - 1e-9)))
+      throw new Error('the second flat is nailed down at the height of the first');
+    /* the cap is judged for the WHOLE list, not item by item (RULING AH):
+       two flats must count TWO flats' worth of cuts against BUILD_CAP.
+       The single-item boundary and its wording are pinned by the cap test
+       further up; what is new here is that item two is counted at all. */
+    const base = venueBuildCount('palace');
+    const each = carpPlan('flat4x8', mark).piecesAfter - base;
+    if(each < 1) throw new Error('a flat mints '+each+' pieces');
+    if(plan.piecesAfter - base !== each * 2)
+      throw new Error('a list of two counts '+(plan.piecesAfter - base)+
+                      ' pieces against the cap, not '+(each * 2));
+    return 'NEED summed once, 10 hauls with distinct indices, second flat stacked at '+
+           lift.toFixed(3)+'m';
+  });
+  P('one CALL builds the whole list, stacked, each its own assembly', ()=>{
+    if(CREW.running) throw new Error('crew already running');
+    stageSwitch('palace', true);
+    const sc = VR.carps.palace;
+    const chopW = SAWS.palace.chop.group.getWorldPosition(new THREE.Vector3());
+    layStock('palace', chopW, ['sheet','s2x4','s2x4','s2x4']);
+    layStock('palace', chopW, ['sheet','s2x4','s2x4','s2x4','s2x4','s2x4','s2x4']);
+    const mark = {venue:'palace', stage:'palace', x:3.6, z:-6, yaw:0};
+    carpSetMark(mark.venue, mark.stage, mark.x, mark.z, mark.yaw);
+    crewSpawn(6).forEach(h=>{ h.speed = 2.4; });
+    /* build the list on the glass: one plain flat, one door flat */
+    sc.counts = {}; sc.sel = null; sc.skin = true;
+    vrDrawCarp(sc);
+    ['flat4x8', 'doorFlat'].forEach(key=>{
+      const plus = sc.hits.find(h=>h.carpKey === key && h.carpBump === 1);
+      if(!plus) throw new Error('no + for '+key);
+      plus.fn();
+    });
+    if(sc.counts.flat4x8 !== 1 || sc.counts.doorFlat !== 1)
+      throw new Error('the counts read '+JSON.stringify(sc.counts));
+    const pre = ASSEMBLIES.slice();
+    sc.hits.find(h=>h.carpCall).fn();
+    if(CREW.running !== 'carp') throw new Error('the call did not take: '+sc.status);
+    if(sc.status.indexOf('CALLED') !== 0) throw new Error('the glass says: '+sc.status);
+    if(sc.counts.flat4x8) throw new Error('the list was not cleared by the call');
+    let guard = 0;
+    while(CREW.running && guard++ < 300000){ updateCrew(0.05); updateBodies(0.05); }
+    if(CREW.running) throw new Error('the list never finished');
+    const made = ASSEMBLIES.filter(a=>pre.indexOf(a) < 0);
+    if(made.length !== 2) throw new Error(made.length+' assemblies for a list of two');
+    const sizes = made.map(a=>a.pieces.length).sort((x,y)=>x-y);
+    if(sizes.join(',') !== '5,10') throw new Error('pieces: '+sizes.join(','));
+    if(made.some(a=>a.anchor)) throw new Error('the carpenters nailed one down');
+    /* stacked, not merged: two separate assemblies, one above the other */
+    scene.updateMatrixWorld(true);
+    const ys = made.map(a=>{
+      const b = new THREE.Box3();
+      a.pieces.forEach(p=>b.union(new THREE.Box3().setFromObject(p.mesh)));
+      return b.min.y;
+    }).sort((x,y)=>x-y);
+    if(ys[1] - ys[0] < 0.03)
+      throw new Error('the second one did not stack: bases at '+ys[0].toFixed(3)+' and '+ys[1].toFixed(3));
+    return 'one CALL, two assemblies of 5 and 10, the second stacked '+
+           (ys[1]-ys[0]).toFixed(3)+'m up';
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'

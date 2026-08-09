@@ -517,29 +517,40 @@ function crewAssign(h){
     /* lead: walk to the surveyed stick, REAL-carry it to its saw, seat it.
        All of it in world coordinates off live objects at EXECUTION time —
        the crew root cancels the Arc offset (p2k), so h.x/h.z ARE world. */
-    const b = job.body;
+    /* body null means RE-SEAT what this run already has on that bench,
+       turned the other way (a schedule that rips after crosscutting):
+       the lead lifts it — carpPickUp unfiles a seated piece — and offers
+       it again on the axis this entry asks for */
+    const b = job.body ||
+      ((typeof CARP_RUN !== 'undefined' && CARP_RUN) ? CARP_RUN.bench[job.saw] : null);
     const set = (typeof SAWS !== 'undefined' && SAWS) ? SAWS[job.venue] : null;
     const st = set && set[job.saw];
-    if(!b || !st || (b.state !== 'loose' && b.state !== 'slotted')){
+    const takeable = b && (b.state === 'loose' || b.state === 'slotted' ||
+                           (!job.body && b.state === 'seated'));
+    if(!takeable || !st){
       h.job = null; return true;           // the stick was taken since the plan: skip
     }
     b.mesh.getWorldPosition(_crewV);
     handGoTo(h, _crewV.x, _crewV.z, ()=>{
       h.state = 'work'; h.wait = rnd(0.5, 0.9);        // stoop and take it up
       h.then = ()=>{
-        if(b.state !== 'loose' && b.state !== 'slotted'){ h.job = null; return; }
+        if(b.state !== 'loose' && b.state !== 'slotted' &&
+           !(!job.body && b.state === 'seated')){ h.job = null; return; }
         carpPickUp(h, b);
         st.group.getWorldPosition(_crewV);
         handGoTo(h, _crewV.x, _crewV.z + 1.0, ()=>{
           h.state = 'work'; h.wait = rnd(0.8, 1.4);    // offer it up to the bench
           h.then = ()=>{
-            /* a sheet must seat 'L' — length along table X — so the
-               schedule's lengths mean what they say: turn it to the table
-               before the seat reads its axis (seatWood, p4c) */
+            /* a sheet seats on the axis the SCHEDULE asks for, because
+               seatWood reads whichever axis the hand offers: 'L' puts its
+               length along table X (a crosscut — the default, so the
+               schedule's lengths mean what they say), 'W' turns it a
+               quarter round so the cut rips a strip off its width. */
             if(b.prof === 'sheet'){
               st.group.getWorldQuaternion(_crewQ);
               h.hands.getWorldQuaternion(_crewQ2).invert();
               b.mesh.quaternion.copy(_crewQ2.multiply(_crewQ));
+              if(job.axis === 'W') b.mesh.rotateY(Math.PI/2);
               b.mesh.updateMatrixWorld(true);
             }
             if(seatWood(st, b)){
@@ -583,8 +594,12 @@ function crewAssign(h){
             /* the product leaves the bench so the next cut meets ONLY the
                remainder; it waits loose beside the saw for PR 4's haul */
             carpAside(st, r.kept, run);
+            /* the remainder stays on the bench if this run still wants it:
+               another cut, or a re-seat (a fetch with no body of its own)
+               that means to turn it round and rip it (RULING AE) */
             const nx = CREW.jobs[0];
-            const more = nx && nx.kind === 'carpCut' && nx.saw === job.saw;
+            const more = !!nx && nx.saw === job.saw &&
+              (nx.kind === 'carpCut' || (nx.kind === 'carpFetch' && !nx.body));
             if(run) run.bench[job.saw] = more ? r.off : null;
             /* a usable final off side goes back to the shed as stock,
                loose by the bench (RULING AC) */
