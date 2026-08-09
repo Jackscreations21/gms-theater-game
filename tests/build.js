@@ -664,6 +664,64 @@ const probe = `
     return 'lit equipment is not cloth';
   });
 
+  console.log('--- the settle, at rest ---');
+  P('a settled piece stops paying a raycast every frame', ()=>{
+    /* Every loose body used to cast a recursive ray AND scan the whole
+       registry each frame just to conclude it had not moved.  At BUILD_CAP
+       that was 150 of each, every frame.  A piece that has come to rest is
+       now re-tested on a rota instead. */
+    if(typeof REST_ROTA !== 'number') throw new Error('no REST_ROTA');
+    const made = [];
+    for(let i=0;i<40;i++){
+      const b = regWood('s2x4');
+      b.venue = 'palace';
+      b.mesh.position.set(-6 + (i%10)*0.5, 0.25, -26 + Math.floor(i/10)*0.5);
+      b.state = 'loose';
+      made.push(b);
+    }
+    for(let i=0;i<400;i++) updateBodies(0.016);      // let them come to rest
+    if(made.some(b=>!b.rest)) throw new Error('pieces never reached rest');
+    const real = groundAt;
+    let calls = 0;
+    groundAt = function(){ calls++; return real.apply(null, arguments); };
+    for(let i=0;i<REST_ROTA;i++) updateBodies(0.016);
+    groundAt = real;
+    /* over one full rota each resting piece is tested about once, not once
+       a frame: allow generous slack and still catch a regression to N*ROTA */
+    const everyFrame = made.length * REST_ROTA;
+    if(calls > everyFrame / 3)
+      throw new Error(calls + ' groundAt calls over a rota; every-frame would be ' + everyFrame);
+    made.forEach(b=>removeBody(b));
+    return calls + ' calls over ' + REST_ROTA + ' frames, not ' + everyFrame;
+  });
+  P('a grab wakes the venue, so a piece that loses its floor still falls', ()=>{
+    /* the rota is only a backstop; anything that can pull the ground out
+       from under a resting piece wakes it at once */
+    const keepV = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const t = regBody('table', makeBuildMesh('table'), null);
+    t.state = 'loose'; t.venue = 'palace';
+    t.mesh.position.set(3, 0, -24);
+    const plank = regWood('s2x4');
+    plank.venue = 'palace';
+    plank.mesh.position.set(3, TABLE_TOP + 0.3, -24);
+    plank.state = 'loose';
+    BUILD_VENUE = keepV;
+    scene.updateMatrixWorld(true);
+    for(let i=0;i<400;i++) updateBodies(0.016);
+    const onTable = plank.mesh.position.y;
+    if(!plank.rest) throw new Error('the plank never settled on the table');
+    if(onTable < TABLE_TOP) throw new Error('the plank did not settle ON the table, y=' + onTable);
+    grabBody(t);                                     // carry the table away
+    if(plank.rest) throw new Error('the grab did not wake the plank');
+    t.mesh.position.set(30, 0, -24);
+    scene.updateMatrixWorld(true);
+    for(let i=0;i<10;i++) updateBodies(0.016);
+    if(plank.mesh.position.y >= onTable)
+      throw new Error('the plank hung in the air after its table left');
+    removeBody(plank); removeBody(t);
+    return 'settled at ' + onTable.toFixed(3) + ', fell when the table went';
+  });
+
   console.log('--- the trash ---');
   P('DELETE ALL WOOD clears the venue and nothing else', ()=>{
     /* build-feel RULING P: every wood body goes, through the machinery
