@@ -52,11 +52,15 @@ const probe = `
     if(Math.abs(a.mesh.scale.y - 2.4384) > 0.001) throw new Error('an 8ft stud is '+a.mesh.scale.y+'m');
     if(Math.abs(s.mesh.scale.x - 2.4384) > 0.001 || Math.abs(s.mesh.scale.y - 1.2192) > 0.001)
       throw new Error('a sheet is '+s.mesh.scale.x.toFixed(3)+' x '+s.mesh.scale.y.toFixed(3));
-    if(!Array.isArray(s.mesh.material) || s.mesh.material.length !== 6)
-      throw new Error('a sheet has '+(Array.isArray(s.mesh.material)?s.mesh.material.length:1)+' material slots');
-    if(s.mesh.material[0] !== regWood('sheet').mesh.material[0])
+    /* ONE material while the six faces agree: an array is a draw call PER
+       GROUP in r128, so six identical entries draw one plank six times. */
+    if(Array.isArray(s.mesh.material))
+      throw new Error('a bare sheet carries '+s.mesh.material.length+' material slots, not one');
+    if(Array.isArray(a.mesh.material))
+      throw new Error('a bare stud carries '+a.mesh.material.length+' material slots, not one');
+    if(s.mesh.material !== regWood('sheet').mesh.material)
       throw new Error('two bare sheets carry two materials');
-    return 'one geometry, six shared material slots';
+    return 'one geometry, one shared material until a face disagrees';
   });
   P('wood never hangs on a patch point', ()=>{
     const f = FIXTURES.find(x=>x.body);
@@ -433,7 +437,11 @@ const probe = `
   P('a cut makes two pieces on one geometry, and the paint rides it', ()=>{
     const st = SAWS.palace.track, sheet = window.__sheet;
     const red = woodMat(PAINT_COLORS[4].c);
-    sheet.mesh.material[2] = red;                // paint one face first
+    /* through the accessors: a bare sheet holds ONE material, so poking
+       material[2] would write a stray property onto the shared cache entry
+       and the assertion below would read it straight back and pass. */
+    const pf = woodFaces(sheet.mesh); pf[2] = red;
+    woodSetFaces(sheet.mesh, pf);                // paint one face first
     const lo = sheet.mesh.position.x - seatLen(sheet)/2;
     sawSetCut(st, lo + 24*0.0254);
     const before = BODIES.length;
@@ -491,16 +499,38 @@ const probe = `
     /* a touch on the +z face (the sheet's front): local z > others */
     const wp = sheet.mesh.localToWorld(new THREE.Vector3(0.1, 0.1, 0.49));
     if(!paintWood(sheet, wp, red)) throw new Error('the sheet refused paint');
+    /* one face differing PROMOTES the sheet to the six-slot form */
+    if(!Array.isArray(sheet.mesh.material))
+      throw new Error('a part-painted sheet stayed on one material');
     if(sheet.mesh.material[4] !== woodMat(red)) throw new Error('the +z face is not red');
     if(sheet.mesh.material[5] === woodMat(red)) throw new Error('the back took the front coat');
     if(!paintWood(stud, stud.mesh.getWorldPosition(new THREE.Vector3()), red))
       throw new Error('the stud refused paint');
-    if(stud.mesh.material.some(m=>m !== woodMat(red))) throw new Error('the stud is patchy');
+    /* lumber coats WHOLE, so it never leaves the one-material form */
+    if(Array.isArray(stud.mesh.material))
+      throw new Error('a wholly-coated stud sits on six slots');
+    if(stud.mesh.material !== woodMat(red)) throw new Error('the stud is patchy');
     /* one cache entry, however many things wear it */
-    if(sheet.mesh.material[4] !== stud.mesh.material[0]) throw new Error('two reds in the till');
+    if(sheet.mesh.material[4] !== stud.mesh.material) throw new Error('two reds in the till');
     BODIES.splice(BODIES.indexOf(sheet), 1);
     BODIES.splice(BODIES.indexOf(stud), 1);
     return 'face for sheets, whole for sticks, one red';
+  });
+  P('a sheet painted right round collapses back to one material', ()=>{
+    const s = regWood('sheet');
+    s.mesh.position.set(46, 1.2, 46); s.mesh.updateMatrixWorld(true);
+    const blue = PAINT_COLORS[5].c;
+    const F = [[0.49,0,0],[-0.49,0,0],[0,0.49,0],[0,-0.49,0],[0,0,0.49],[0,0,-0.49]];
+    F.forEach((f, i)=>{
+      paintWood(s, s.mesh.localToWorld(new THREE.Vector3(f[0], f[1], f[2])), blue);
+      if(i < 5 && !Array.isArray(s.mesh.material))
+        throw new Error('the sheet collapsed early, after '+(i+1)+' faces');
+    });
+    if(Array.isArray(s.mesh.material))
+      throw new Error('six faces of one colour stayed on six slots');
+    if(s.mesh.material !== woodMat(blue)) throw new Error('the collapse lost the colour');
+    BODIES.splice(BODIES.indexOf(s), 1);
+    return 'promoted on face one, collapsed on face six, one blue';
   });
 
   console.log('--- hinges and track ---');
@@ -721,8 +751,8 @@ const probe = `
     s2.pivot.quaternion.setFromAxisAngle(s2.pivot.userData.axis, 0.4);   // left swung
     const painted = regWood('sheet');
     painted.mesh.position.set(61, 1.0, 61);
-    painted.mesh.material = painted.mesh.material.slice();
-    painted.mesh.material[2] = woodMat(PAINT_COLORS[4].c);
+    const sf = woodFaces(painted.mesh); sf[2] = woodMat(PAINT_COLORS[4].c);
+    woodSetFaces(painted.mesh, sf);            // one odd face — rides the save as six hexes
     const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
     const t1 = regBody('track', makeBodyMesh('track'), null); t1.state = 'loose';
     const t2 = regBody('track', makeBodyMesh('track'), null); t2.state = 'loose';
@@ -814,6 +844,10 @@ const probe2 = `
     const red = BODIES.find(b=>b.kind==='wood' && b.prof==='sheet' && !b.asm &&
       Array.isArray(b.mesh.material) && b.mesh.material[2] === woodMat(0xa8231d));
     if(!red) throw new Error('the painted face came back bare');
+    /* serBody always writes SIX hexes, so every save — including every save
+       written before this change — takes the collapse path on load */
+    const bare = BODIES.find(b=>b.kind==='wood' && !Array.isArray(b.mesh.material));
+    if(!bare) throw new Error('every reloaded piece came back on six slots');
     return 'wood, joints, run, slip, color, forks — all back';
   });
   P('a parked piece came back parked, mid-air', ()=>{

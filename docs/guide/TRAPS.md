@@ -146,6 +146,16 @@ against this list before opening a PR; **add new traps as you hit them.**
   lesson).
 - `tests/build.js` boots a SECOND jsdom world to round-trip the save —
   it needs `url:` on JSDOM; `about:blank` has no localStorage.
+- **Indexing a material that is not an array writes a stray property and
+  the test reads it straight back.** The saw test set `sheet.mesh.material[2]
+  = red` to paint one face, then asserted the cut pieces carried
+  `material[2] === red`. Once wood held a single material, `[2] = red`
+  just hung a numeric property on the SHARED cache entry — which both cut
+  pieces point at — so the assertion passed while testing nothing, and
+  quietly polluted that material for the rest of the run. It never went
+  red. Read and write wood paint through `woodFaces`/`woodSetFaces`; more
+  generally, a test that poke-sets state it later reads back proves only
+  that assignment works.
 
 ## Environment
 
