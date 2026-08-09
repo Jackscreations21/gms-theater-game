@@ -1056,6 +1056,72 @@ it only knew about another `carpCut` — so the re-seat that turns a
 sheet round to rip it found an empty bench and both skin strips
 silently went missing (8 pieces instead of 10, no error anywhere).
 
+**Done 2026-08-09, the geometry review — and the draw call it turned up
+([#81](https://github.com/Jackscreations21/gms-theater-game/pull/81),
+OPEN as of this writing; check it merged before building on it).**
+
+The owner had the object system reviewed from outside. **Verdict: keep
+polygon meshes — no voxels, no SDF/raymarching, no CSG-first
+architecture**, and it rated the current approach 8.5/10 for this kind
+of game. That verdict is accepted and is the standing answer if the
+question comes round again. Three things about it are worth the record,
+because the review was working off the file rather than this document:
+
+- **Its CSG condition is already met, and the answer is still no.**
+  "Only if players start cutting holes in scenery or constructing
+  custom geometry" describes the build system exactly, and phase 2
+  shipped a DOOR FLAT and a WINDOW FLAT the day before. We already
+  ruled on it: RULING AE frames and skins AROUND an opening because a
+  cut must never mint geometry — which is also how a real flat is
+  built, so it reads right at arm's length. And the deeper reason:
+  `buildLoad` persists a world by REPLAYING the functions the hands
+  use, and a boolean result has no such replay, so it would be
+  invisible to the save.
+- **Two of its four recommendations were already done.** Seats have
+  been instanced since the beginning (1,368 Palace, 1,273 Arc); the
+  culling code it noticed IS the r128 instanced-bounding-sphere fix.
+  And its "InstancedMesh: 11 uses" counts constructor sites — one of
+  them is the `instanced()` helper at `p2.txt:359` with **30 call
+  sites**. Geometry reuse is done too, and was learned here as a bug
+  three times over (WOODM, LENSM, GOODSM).
+- **GLTF stays out for now**, and the reason is priority, not purity:
+  it buys visual richness, not frame rate, and the frame-rate question
+  is the open one. (The page already pulls three.js off cdnjs with a
+  unpkg fallback, so the network dependency is precedent, not a
+  blocker — this is a "later", not a "never".)
+
+**Then, costing out the one idea the review did leave open** — merge
+nailed wood into a single mesh and un-merge on the hammer — the real
+finding turned up, and it was in the file all along:
+
+```js
+const mesh = new T.Mesh(WOODG, [m, m, m, m, m, m]);   // the SAME material, six times
+```
+
+`BoxGeometry` has six groups and r128 submits **one render item per
+group** whenever a material is an array — so six identical entries cost
+**six draw calls to draw one bare plank**. 900 for the wood alone at
+`BUILD_CAP`, per eye, doubled for stereo. Only a sheet can ever be
+patchy (`paintWood` coats lumber whole), so #81 gives a piece ONE
+material while its six faces agree and promotes to the six-slot form
+only when one differs: 10 pieces 60 → 10 draw calls, 150 pieces
+900 → 150, painted sheets unchanged. `woodFaces`/`woodSetFaces` are the
+only two functions that know which form a mesh is in, and both COPY
+rather than alias (the shared-temp trap, fourth time). **The save format
+does not change** — `serBody` still writes six hexes either way, so old
+saves load and new saves load on old code.
+
+**THE MERGE ITSELF WAS DEFERRED, deliberately, by the owner** — see the
+next section for the gate and for the design work already done on it, so
+it can be picked up cold.
+
+One false green found and fixed en route, now in TRAPS: the saw test
+painted a face by poking `sheet.mesh.material[2] = red`. On a
+single-material mesh that hangs a stray numeric property on the SHARED
+cache entry both cut pieces point at, so `material[2] === red` read its
+own poke straight back and passed while testing nothing — and polluted
+that material for the rest of the run. Nothing ever went red.
+
 ---
 
 ## THE CARPENTERS BRIEF (2026-08-08 — superseded the same day)
@@ -1137,7 +1203,129 @@ no desktop call, and the mark tool nobody had predicted.)
 
 ---
 
-## NEXT SESSION: **THE HEADSET RUN** (owed since #48)
+## NEXT SESSION: **THE FRAME-RATE ROUND**
+
+The owner's call, 2026-08-09. It runs THROUGH the headset run below —
+you cannot do this one at a desk — so put the headset on, take the
+numbers FIRST while the questions are still unanswered and the room is
+fresh, then work the feel questions in the section below while it is on
+anyway.
+
+**Load `…/the-house.html?v=14` once #81 has merged** (`?v=13` is the
+pre-#81 build — if #81 is still open, you are measuring the OLD wood and
+the numbers are not the ones this round wants). Bump the number either
+way: the Quest Browser caches hard.
+
+### Step zero: read the meter, and let it choose the round
+
+The wrist tag (#22, LEFT WRIST — glance at your watch) has **never met
+hardware**. It reports avg/worst against budget plus the live foveation
+level, and that second number is the diagnostic, because **foveation is
+a FRAGMENT-side knob**: it cuts pixel work at the periphery and does
+nothing whatever for draw calls or vertex work.
+
+| The tag reads | The wall you are hitting | What to do |
+|---|---|---|
+| foveation climbs 0.4 → 1.0, frames recover | fill / fragment | knobs 2, 3, 5 below. **Do not merge.** |
+| foveation pinned at 1.0, still red | not fragment — submission / CPU | knobs 1, 4, then THE MERGE |
+| foveation sits at 0.4, green | headroom | **stop. Ship nothing.** |
+
+Two of the three outcomes say do not build the merge. That is the point
+of measuring first.
+
+### Stand in these four places and write the numbers down
+
+Blank on purpose — fill it in and this section becomes the record:
+
+| Where | avg ms | worst ms | foveation | notes |
+|---|---|---|---|---|
+| centre stage, full rig, haze | | | | |
+| at the locking rail, full hang | | | | |
+| anywhere a rig fills the view (#33's bodies) | | | | |
+| **a real build standing under a lit rig** | | | | THE UNMEASURED ONE |
+
+That last row is the case nobody has ever measured and the reason this
+round exists: wood is one draw call per piece, `BUILD_CAP` is 150 to a
+venue, and r128 draws each eye separately. Stand a full stack of flats
+up and read the tag. Note the piece count when you do.
+
+### What has already been spent on frame rate (do not redo it)
+
+- **#21** — the session is paced at 72Hz, not 90 (13.9ms of budget
+  instead of 11.1). One line to retune if the meter shows headroom.
+- **#22** — the meter itself, plus foveation on a feedback loop:
+  climbs by 0.15 when over budget, relaxes by 0.05 toward a 0.4 base.
+- **#23** — `VR.lightCap = 4`: four real spotlights in VR, not eight.
+  178 `MeshStandardMaterial` uses pay per-pixel for every live light.
+- **#81** — wood holds ONE material until its faces disagree: 6× fewer
+  draw calls on every unpainted piece (900 → 150 at the cap, per eye).
+  **This is already in — the meter reads the world AFTER it.**
+
+### The knobs, in order, gated on what the meter said
+
+One change per PR, retest after each:
+
+1. **Batch the locking rail** — merge its static per-line meshes
+   (housings, number plates via a shared atlas, runs, blocks) into
+   shared geometry or instanced draws in `vrBuildRopes`. Only the
+   lever, knob and grab section actually move per line. ~11 unbatched
+   meshes per line today. Built correctness-first on purpose; this is
+   the deliberate follow-up.
+2. **`VR.beamCap` below 10.** Additive beams in haze are overdraw — the
+   thing a mobile tile GPU hates most. Fragment-side.
+3. **Framebuffer scale below 0.85** (`setFramebufferScaleFactor`, p9
+   wiring). **MUST be set before any session exists** — start-only.
+4. **Merge the lantern bodies' static steel** (gel frame 4→1, shutter
+   handles 4→1, yoke+stem+bolt+safety→1 per yoke radius). Keep the jaw
+   and lens separate — the jaw IS `userData.clamp` and is grabbable.
+   17 meshes → ~8 per profile, zero visual change. Spec'd in #33's
+   quality review.
+5. **Cut `SMOKE.n`; preselect RENDER *low* before entering.**
+
+### THE MERGE — deferred 2026-08-09, gated on row four above
+
+Merge the pieces of a nailed assembly into one mesh; the hammer
+un-merges. Deferred by the owner in favour of #81's cheap half. The
+design work is done, so it can be picked up cold — but **only if the
+meter says submission-bound**, and note the honest arithmetic first:
+after #81 a five-flat scene is ~50 draw calls of wood, and merging takes
+it to ~5. Forty-five draw calls is the whole prize. Do not spend a round
+on it blind.
+
+If it is built, the rule that makes it safe is: **the merge is a
+RENDERING representation, never a model change.** `a.pieces` stays the
+truth — dims, pose, paint, nail count — and the merged mesh is a derived
+artifact rebuilt on any structural change. That is the same discipline
+`buildLoad` already runs on, so un-merging on the hammer is a replay
+that is mostly written. What it constrains:
+
+- **Only rigid pieces merge.** A one-nail piece rides a pivot and swings
+  by hand (RULING G) — it must stay its own mesh. Candidates are
+  2+-nail pieces sharing a material inside one assembly.
+- **`BUILD_CAP` must not move.** The cap counts pieces of wood in the
+  venue — the fiction, not the mesh count. Keep the count on the
+  records or a player quietly builds four times the wood.
+- **`nailRay` needs to know which piece it hit.** It casts the muzzle
+  ray 1.2m; against a merged mesh you get a point but no identity. Map
+  the hit to a piece by its OBB — `snapWood` already does metric
+  surface-gap maths worth borrowing.
+- **Paint and cut both invalidate the merge** and need a rebuild call.
+- **Disposal.** Merging mints a real geometry per assembly. `disposeTree`
+  (p3:168) only ever disposes GEOMETRY, never materials — which is
+  correct here, but it means the merged geometries are the thing that
+  will leak if nobody disposes them.
+- `mergeBufferGeometries` lives in `BufferGeometryUtils`, an examples
+  module **not in the cdnjs `three.min.js` this page loads**. It is ~40
+  lines of hand-written concatenation, not a library call.
+
+### While the headset is on
+
+Everything in the section below is still owed and this is the same trip.
+Take the numbers first, then work those question blocks oldest-first.
+
+---
+
+## NEXT SESSION (cont.): **THE HEADSET RUN** (owed since #48)
 
 Everything from #48 onward — the usability round, all nine build-feel
 PRs, both goods PRs, the carpenters round and now PHASE 2 — has met

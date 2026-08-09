@@ -5,41 +5,56 @@ NOW and is updated as work happens. `HANDOFF.md` is the durable record
 written at session end; this file is the scratchpad between those
 writes. If the two disagree, this file is newer.
 
-Last updated: **2026-08-09** (the first headset findings came back, and
-carpenters phase 2 was specced, built and landed in the same session).
+Last updated: **2026-08-09** (the object system was reviewed from
+outside; the review's own question turned up a 6× draw-call finding in
+the wood, and #81 is open with the fix).
 
 ---
 
 ## Position
 
-- **Carpenters phase 2 is DONE and landed** — spec #77, PRs #78 and #79 (which carried the round's PRs 2–4), plus #76 for the Arc warehouse doors. Every one merged with `base=main`; verified, so the #71–#73 mishap did not repeat.
-- **Suite status: 16/16 GREEN**, boot check `"fatal": null`, `main` rebuilds byte-identical (`built 873188 bytes syntax OK`). Node v24.19.0 at `C:\Program Files\nodejs` — still not on a fresh shell's PATH; prefix with `export PATH="/c/Program Files/nodejs:$PATH"` (Git Bash) or `$env:Path = "C:\Program Files\nodejs;$env:Path"`.
-- Pages is live and already carries all of it — the deployed file is byte-identical to `main` (873188 bytes). **Load with `?v=13`** on the Quest; the game changed twice on 2026-08-08 and `?v=12` will serve the morning build.
-- **This clone is current and clean:** `main` @ `a843af2` = `origin/main`, `main` the only local branch. `origin` now carries three more merged branches (`arc-door-button`, `carp2-spec`, `carp2-turn`) on top of the existing backlog — see Open items. `pr6.json` still untracked.
+- **[PR #81](https://github.com/Jackscreations21/gms-theater-game/pull/81) is OPEN and is the only thing in flight** — a piece of wood holds ONE material until its faces disagree. Every wood mesh was `new T.Mesh(WOODG, [m, m, m, m, m, m])`, the same material six times, and r128 submits a draw call PER GROUP for an array material: six draw calls to draw one bare plank, 900 at `BUILD_CAP`, per eye. Now 150. **Check it merged before building on it.**
+- **Carpenters phase 2 is DONE and landed** — spec #77, PRs #78 and #79 (which carried the round's PRs 2–4), plus #76 for the Arc warehouse doors, and #80 the record. Every one merged with `base=main`.
+- **Suite status: 16/16 GREEN** on the #81 branch, boot check `"fatal": null`. `main` verified byte-identical at `873188` before branching; the #81 build is `874544`. Node v24.19.0 at `C:\Program Files\nodejs` — still not on a fresh shell's PATH; prefix with `export PATH="/c/Program Files/nodejs:$PATH"` (Git Bash) or `$env:Path = "C:\Program Files\nodejs;$env:Path"`.
+- Pages serves `main`, so it carries everything up to #80 — **`?v=13` today, `?v=14` once #81 merges.** Measuring on `?v=13` measures the OLD wood.
+- **This clone:** `main` @ `badfb98` = `origin/main`, plus the open `wood-one-material` branch. `pr6.json` still untracked.
 
-## Current focus: nothing in flight — next is THE HEADSET RUN
+## Current focus: nothing merged in flight — next is THE FRAME-RATE ROUND
 
-Two rounds now stand unverified on hardware. **Phase 2** (rulings
-AD–AH): a built assembly turns in the hand and squares to 45° (the
-`asm` hold only ever wrote `position` — every flat the carpenters had
-ever made was stuck lying face-up on the deck); a 4x8 DOOR FLAT and a
-4x8 WINDOW FLAT, their openings FRAMED and skinned in pieces around
-them because a parametric box can never have a hole in it; a SKIN
-ON/OFF switch on the CALL; and a count per row so one CALL takes a
-LIST, worked in order and STACKED on the one mark. **#76** put a
-physical `[E]` button beside each Arc warehouse door — until it landed,
-the entire Arc shed was unreachable in VR.
+The owner's call. It runs **through** the headset run, not instead of
+it: the numbers can only be taken on hardware, so it is one trip — take
+the meter readings first, then work the feel questions while the headset
+is on. Full protocol in HANDOFF's "NEXT SESSION: THE FRAME-RATE ROUND",
+including a blank table to fill in.
+
+**Step zero is a diagnosis, not a fix.** The wrist tag (#22) has never
+met hardware, and the foveation level it reports is the tell, because
+foveation is a FRAGMENT-side knob — it does nothing for draw calls:
+
+- foveation climbs to 1.0 and frames recover → **fill-bound**; cut
+  beams, framebuffer scale, smoke. Do NOT merge.
+- foveation pinned at 1.0, still red → **submission-bound**; batch the
+  rail, merge the lantern steel, then consider the assembly merge.
+- foveation sits at 0.4, green → **stop, ship nothing.**
+
+Two of the three say do not build the merge. That is why the round opens
+with a measurement.
+
+**The unmeasured worst case is a real build standing under a lit rig** —
+wood is one draw call per piece, `BUILD_CAP` is 150 a venue, r128 draws
+each eye separately, and nobody has ever stood in that room with the
+meter up. Note the piece count alongside the numbers.
 
 **Nothing from #48 onward has met hardware** except the two findings
-that produced #76 and #78. HANDOFF's "NEXT SESSION: THE HEADSET RUN"
-carries the full question list, oldest first, with this round's new
-block at the top. Owner on `?v=13`; **write the wrist-meter numbers
-down** — a 150-piece build under a full rig is the worst case nobody
-has ever measured, and wood is one draw call per piece.
+that produced #76 and #78, so the feel questions are still owed too —
+HANDOFF's headset section carries them, oldest first.
 
 ## Open items (rough order)
 
-- **Headset run owed, and bigger than it was.** Everything from #48 onward (usability round, nine build-feel PRs, both goods PRs, the carpenters round, and now phase 2 + the Arc door button) has met hardware NEVER. Owner on `?v=13`; work the question blocks at the bottom of HANDOFF and **write the wrist-meter numbers down**.
+- **#81 awaiting merge** — the wood material fix. Nothing depends on it, but the frame-rate round wants it in before the meter is read.
+- **The frame-rate round, and the headset run it rides on.** Everything from #48 onward (usability round, nine build-feel PRs, both goods PRs, the carpenters round, phase 2 + the Arc door button) has met hardware NEVER. One trip: numbers first, then the question blocks at the bottom of HANDOFF.
+- **THE ASSEMBLY MERGE is specced-but-deferred** (owner, 2026-08-09) — merge a nailed assembly into one mesh, hammer un-merges. Gated on the meter reading submission-bound. The design constraints are written down in HANDOFF's frame-rate section so it can be picked up cold; the honest arithmetic is there too (after #81 a five-flat scene is ~50 draw calls of wood, and the merge takes it to ~5 — forty-five is the whole prize).
+- **The outside geometry review is answered and closed** (2026-08-09): keep polygon meshes, no voxels, no SDF, no CSG-first. GLTF is a "later, for richness" — not a frame-rate move. If the question comes round again, the reasoning is in HANDOFF's 2026-08-09 Done block.
 - **The other six Arc doors are still DOM-only.** #76 gave the two warehouse rollers a physical `[E]` control; both dock shutters and all four pass doors still open only from the ARC DOORS panel, so a headset cannot work them. One branch on the same `arcDoor:<key>` station id finishes it — owner's call whether it is wanted.
 - **RULING W standing:** the hang and its paint are NOT saved — owner's to revisit; if reversed, save hang + paint together in one versioned blob, its own round.
 - **Housekeeping:** `pr6.json` untracked in repo root (owner never ruled).
@@ -76,4 +91,8 @@ has ever measured, and wood is one draw call per piece.
 - 2026-08-08 — **new session opened on a STALE clone**: it was parked on `handoff-carpenters` with `main` at `4986f25`, 19 commits behind — the whole carpenters round (#65–#74) plus STATE.md and the `docs/guide/` system had landed from elsewhere. Fast-forwarded to `origin/main` @ `b22c299`; verified byte-identical rebuild. **The lesson worth keeping: fetch and compare BEFORE trusting any local checkout or any memory of "what is next" — this clone's idea of the next session was three rounds out of date.**
 - 2026-08-08 — clone hygiene: the three `.claude/worktrees/agent-*` worktrees removed (each verified clean first, then `git worktree prune`), and the sixteen fully-merged local branches deleted with `-d` (safe delete — git refuses anything unmerged; `git branch --no-merged origin/main` was empty first). One local branch left: `main`. `pr6.json` still untracked.
 - 2026-08-08 — **the headset went on, and produced two findings.** (1) "there is no but to open iether of the garages in the arc theaters" — true, and worse than it read: every Arc door opened only from the DOM panel, and those two rollers are the only way into the Arc shed, so the whole shed was unreachable in VR. Fixed by [#76](https://github.com/Jackscreations21/gms-theater-game/pull/76): an `[E]` station on the stage side of each rear door, plus one `arcDoor:<key>` branch in `useStation` keyed off `ARC.doorMap`. Two arc.js tests driving the real `pickAll`→`describe`→`useInfo` chain, which is what the crosshair AND the VR trigger both run. (2) "i cant find the screen for the carpenters in iether warhouse" — the Arc half was finding (1); in the Palace the screen was verified present by probe, 1.7m to the right of the order glass, and the owner confirmed the build was current (the crayon was on his belt).
+- 2026-08-09 — session opened by fetching FIRST (the standing lesson): this clone's `main` was 2 commits behind — #80 had landed the phase-2 record from elsewhere while STATE still said "`main` the only local branch". Fast-forwarded to `badfb98`, verified byte-identical rebuild (873188), 16/16 baseline green.
+- 2026-08-09 — **the owner had the object system reviewed from outside.** Verdict accepted: keep polygon meshes; no voxels, no SDF, no CSG-first; GLTF a "later". Three corrections recorded in HANDOFF — its CSG condition is already MET (phase 2 shipped a door and a window flat; RULING AE frames and skins around an opening, and `buildLoad` replays functions a boolean result has no path through), seats have been instanced since the beginning, and its "11 InstancedMesh uses" misses that `instanced()` at `p2.txt:359` has 30 call sites.
+- 2026-08-09 — **costing the review's one open idea (merge nailed wood) turned up the real finding instead.** Every wood mesh carried the same material six times; r128 submits a draw call per geometry group for an array material, so a bare plank cost six. [#81](https://github.com/Jackscreations21/gms-theater-game/pull/81) opened: one material until the faces disagree, 900 → 150 draw calls at the cap, save format unchanged, 16/16 green, all five new/changed assertions negative-checked against `main`'s build. **The merge itself deferred by the owner** pending the meter. One false green found and fixed en route (a test poked `material[2]` on a single-material mesh and read its own stray property back) — in TRAPS.
+- 2026-08-09 — record updated for the next session: **THE FRAME-RATE ROUND**, with the foveation decision table, the four places to stand, a blank numbers table, the knob order, and the deferred merge's design constraints.
 - 2026-08-08 — **carpenters phase 2 specced and built in one session** off four owner asks (build several at once; a flat with a door hole; one with a window hole; with or without the sheets — plus "it wont let me rotate stuff once it is built"). Shaped live: a LIST worked in order, STACKED on the one mark, and SKIN as a switch rather than eight rows. Spec (RULINGS AD–AH) merged as [#77](https://github.com/Jackscreations21/gms-theater-game/pull/77); [#78](https://github.com/Jackscreations21/gms-theater-game/pull/78) the rotate fix; [#79](https://github.com/Jackscreations21/gms-theater-game/pull/79) the rip, the two new rows and the build list. Every PR `base=main` — the #71–#73 mishap did not repeat. Post-merge verified: `main` tree identical to the tested tip, byte-identical rebuild (873188), 16/16, `"fatal": null`, and Pages already serving the same bytes.
