@@ -352,6 +352,37 @@ pair comes up as one lump when you lift it.
 
 ---
 
+## As built — where the work departed from this plan
+
+Recorded because the next round will read this file, not the diff.
+
+1. **No `skinFrom`, and `flat4x8` was never reordered.** The plan had
+   skin pieces moved to the tail so SKIN OFF could truncate. Better:
+   each skin piece carries `skin:true` and the planner **keeps the
+   original indices**, leaving a hole in the numbering. `CARP_RUN.made`
+   and `.placed` are plain objects keyed by index, so sparse is free —
+   and `flat4x8`'s blueprint, its tests and its save-round-trip poses
+   never had to move. One pure helper, `carpParts(row, skin)`, decides
+   which pieces, nails, cuts and stock units survive, and both the
+   planner and the glass read it.
+2. **A real bug the door flat's own test flushed out.** After the last
+   cut of a schedule entry, `carpCut` cleared the bench unless the
+   *next* job was another cut — so the re-seat that turns a sheet round
+   to rip it found nothing to lift, and both skin strips went missing
+   (8 pieces / 24 nails instead of 10 / 32). The bench now also stays
+   for a re-seat. Nothing in PR 2's own tests could have caught this:
+   it only appears when a crosscut and a rip share one sheet.
+3. **RULING AE's framing was amended** (see the spec): full-height 89"
+   jambs with a 30" header between them, because a jamb meeting a 41"
+   header measures 76.5" and the saw snaps to the inch.
+4. **The list's stock check is done once, not per item.** Planning item
+   by item counts the same shortfall twice when several items are
+   short. `carpPlanList` sums the rows and asks the survey once.
+5. **The cap test proves the accounting, not the boundary.** Filling a
+   venue to 150 pieces inside the suite is expensive and the
+   single-item boundary is already pinned; the list test asserts that
+   two flats count two flats' worth against `BUILD_CAP`.
+
 ## Self-review
 
 - **Spec coverage.** AD → PR 1. AE (framing + the axis) → PR 2 and PR 3
