@@ -14089,17 +14089,38 @@ const M_SHED = {
   conc: new T.MeshStandardMaterial({color:0x8e8b84, roughness:.9})
 };
 
-/* one rack bay: two shelves of slot anchors against a wall */
+/* one rack bay: two shelves of slot anchors against a wall.  The whole
+   bay bakes into ONE M.galv mesh (RULING AK); the eight slot anchors
+   stay Object3Ds the build system addresses by position, so they are
+   pushed in at their old offsets regardless of the merge. Geometry is
+   identical for every call, so it is cached, never re-merged. */
+var SHEDRACKG = null;
 function shedRack(parent, cx, cy, cz, yaw, slots){
   const g = new T.Group(); g.position.set(cx, cy, cz); g.rotation.y = yaw;
   parent.add(g);
-  const frame = new T.Mesh(new T.BoxGeometry(3.6, 2.2, 0.1), M.steel);
-  frame.position.set(0, 1.1, -0.3); frame.castShadow = frame.receiveShadow = true;
-  g.add(frame);
+  const geo = SHEDRACKG || (SHEDRACKG = mergeParts([
+    {geo:new T.BoxGeometry(3.6, 2.2, 0.1), pos:[0, 1.1, -0.3]},
+    {geo:new T.BoxGeometry(3.6, 0.06, 0.62), pos:[0, 0.55, 0]},
+    {geo:new T.BoxGeometry(3.6, 0.06, 0.62), pos:[0, 1.45, 0]},
+    {geo:new T.BoxGeometry(0.08, 2.2, 0.08), pos:[-1.76, 1.1, 0.26]},
+    {geo:new T.BoxGeometry(0.08, 2.2, 0.08), pos:[1.76, 1.1, 0.26]},
+    {geo:new T.BoxGeometry(0.08, 2.2, 0.08), pos:[-1.76, 1.1, -0.26]},
+    {geo:new T.BoxGeometry(0.08, 2.2, 0.08), pos:[1.76, 1.1, -0.26]},
+    {geo:new T.BoxGeometry(3.6, 0.07, 0.05), pos:[0, 0.52, 0.28]},
+    {geo:new T.BoxGeometry(3.6, 0.07, 0.05), pos:[0, 0.52, -0.28]},
+    {geo:new T.BoxGeometry(3.6, 0.07, 0.05), pos:[0, 1.42, 0.28]},
+    {geo:new T.BoxGeometry(3.6, 0.07, 0.05), pos:[0, 1.42, -0.28]},
+    {geo:new T.BoxGeometry(0.04, 2.3, 0.04), pos:[-0.9, 1.1, -0.29], rot:[0, 0, 0.42]},
+    {geo:new T.BoxGeometry(0.04, 2.3, 0.04), pos:[0.9, 1.1, -0.29], rot:[0, 0, 0.42]},
+    {geo:new T.BoxGeometry(0.16, 0.03, 0.16), pos:[-1.76, 0.015, 0.26]},
+    {geo:new T.BoxGeometry(0.16, 0.03, 0.16), pos:[1.76, 0.015, 0.26]},
+    {geo:new T.BoxGeometry(0.16, 0.03, 0.16), pos:[-1.76, 0.015, -0.26]},
+    {geo:new T.BoxGeometry(0.16, 0.03, 0.16), pos:[1.76, 0.015, -0.26]}
+  ]));
+  const bay = new T.Mesh(geo, M.galv);
+  bay.castShadow = bay.receiveShadow = true;
+  g.add(bay);
   [0.55, 1.45].forEach(sy=>{
-    const shelf = new T.Mesh(new T.BoxGeometry(3.6, 0.06, 0.62), M.steel);
-    shelf.position.set(0, sy, 0); shelf.castShadow = shelf.receiveShadow = true;
-    g.add(shelf);
     for(let i=0;i<4;i++){
       const a = new T.Object3D();
       a.position.set(-1.35 + i*0.9, sy + 0.06, 0);
@@ -14109,28 +14130,51 @@ function shedRack(parent, cx, cy, cz, yaw, slots){
   return g;
 }
 
-/* ---- the cart: a two-shelf pushcart with a handle bar on its -z end ---- */
+/* ---- the cart: a two-shelf pushcart with a handle bar on its -z end.
+   Frame, legs, handle and the small hardware bake into ONE M.galv mesh;
+   the four castors (wheel + yoke) into ONE M.castIron mesh; the two deck
+   boards into ONE M.ply mesh (RULING AK) — three meshes where thirteen
+   loose ones stood.  Geometry is identical for every call, cached once. */
+var CARTG = {};
+function cartG(key, mk){ return CARTG[key] || (CARTG[key] = mk()); }
 function buildCart(venue, parent, x, z){
   const g = new T.Group();
   g.userData.moves = true;
   g.userData.cartInfo = true;
-  const frame = new T.Mesh(new T.BoxGeometry(0.74, 0.06, 1.24), M.steel);
-  frame.position.y = 0.26; g.add(frame);
-  const top = new T.Mesh(new T.BoxGeometry(0.74, 0.06, 1.24), M.steel);
-  top.position.y = 0.86; g.add(top);
-  [[-0.35,-0.6],[0.35,-0.6],[-0.35,0.6],[0.35,0.6]].forEach(cn=>{
-    const leg = new T.Mesh(new T.CylinderGeometry(0.02,0.02,0.86,6), M.steel);
-    leg.position.set(cn[0], 0.55, cn[1]); g.add(leg);
-    const wheel = new T.Mesh(new T.CylinderGeometry(0.08,0.08,0.05,10), M.fixture);
-    wheel.rotation.z = Math.PI/2; wheel.position.set(cn[0], 0.08, cn[1]); g.add(wheel);
-  });
   const hz = -0.72;
-  const handle = new T.Mesh(new T.CylinderGeometry(0.022,0.022,0.7,8), M.pipe);
-  handle.rotation.z = Math.PI/2; handle.position.set(0, 1.02, hz); g.add(handle);
-  [-0.33, 0.33].forEach(hx=>{
-    const up = new T.Mesh(new T.CylinderGeometry(0.018,0.018,0.34,6), M.steel);
-    up.position.set(hx, 0.95, hz); g.add(up);
+  const galvGeo = cartG('galv', ()=>{
+    const parts = [
+      {geo:new T.BoxGeometry(0.74, 0.06, 1.24), pos:[0, 0.26, 0]},
+      {geo:new T.BoxGeometry(0.74, 0.06, 1.24), pos:[0, 0.86, 0]},
+      {geo:new T.CylinderGeometry(0.022,0.022,0.7,8), pos:[0, 1.02, hz], rot:[0, 0, Math.PI/2]},
+      {geo:new T.CylinderGeometry(0.018,0.018,0.34,6), pos:[-0.33, 0.95, hz]},
+      {geo:new T.CylinderGeometry(0.018,0.018,0.34,6), pos:[0.33, 0.95, hz]},
+      {geo:new T.BoxGeometry(0.7, 0.03, 0.03), pos:[0, 0.14, 0]}
+    ];
+    [[-0.35,-0.6],[0.35,-0.6],[-0.35,0.6],[0.35,0.6]].forEach(cn=>{
+      parts.push({geo:new T.CylinderGeometry(0.02,0.02,0.86,6), pos:[cn[0], 0.55, cn[1]]});
+      parts.push({geo:new T.BoxGeometry(0.05, 0.05, 0.05), pos:[cn[0], 0.98, cn[1]]});
+    });
+    return mergeParts(parts);
   });
+  const frame = new T.Mesh(galvGeo, M.galv);
+  g.add(frame);
+  const ironGeo = cartG('castIron', ()=>{
+    const parts = [];
+    [[-0.35,-0.6],[0.35,-0.6],[-0.35,0.6],[0.35,0.6]].forEach(cn=>{
+      parts.push({geo:new T.CylinderGeometry(0.08,0.08,0.05,10), pos:[cn[0], 0.08, cn[1]], rot:[0, 0, Math.PI/2]});
+      parts.push({geo:new T.BoxGeometry(0.06, 0.07, 0.03), pos:[cn[0], 0.16, cn[1]]});
+    });
+    return mergeParts(parts);
+  });
+  const castors = new T.Mesh(ironGeo, M.castIron);
+  g.add(castors);
+  const plyGeo = cartG('ply', ()=>mergeParts([
+    {geo:new T.BoxGeometry(0.72, 0.016, 1.22), pos:[0, 0.29, 0]},
+    {geo:new T.BoxGeometry(0.72, 0.016, 1.22), pos:[0, 0.89, 0]}
+  ]));
+  const deck = new T.Mesh(plyGeo, M.ply);
+  g.add(deck);
   g.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
   const cart = {
     venue, group:g, x, z, yaw:0, yBase:0,

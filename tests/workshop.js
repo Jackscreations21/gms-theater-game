@@ -292,6 +292,21 @@ const probe = `
     if(Math.abs(L.handleH - 1.0) > 1e-9) throw new Error('the tiller handle moved');
     return 'handleH ' + L.handleH + ', grabR ' + L.grabR;
   });
+  P('the cart kept its six slots where the snap scan expects them', ()=>{
+    const c = CARTS.palace;
+    if(c.slots.length !== 6) throw new Error('the cart has ' + c.slots.length + ' slots, wanted 6');
+    const ys = c.slots.map(s=>+s.position.y.toFixed(3));
+    if(ys.filter(y=>Math.abs(y-0.32)<1e-6).length !== 3) throw new Error('lower shelf slots moved');
+    if(ys.filter(y=>Math.abs(y-0.92)<1e-6).length !== 3) throw new Error('upper shelf slots moved');
+    return '6 slots, two shelves of three';
+  });
+  P('the plant costs no more meshes than it did', ()=>{
+    const count = o => { let n=0; o.traverse(c=>{ if(c.isMesh) n++; }); return n; };
+    const l = count(LIFTS.palace.group), c = count(CARTS.palace.group);
+    if(l > 12) throw new Error('the lift is ' + l + ' meshes, budget 12');
+    if(c > 13) throw new Error('the cart is ' + c + ' meshes, budget 13');
+    return {lift:l, cart:c};
+  });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
