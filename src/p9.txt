@@ -1235,29 +1235,68 @@ function vrToolGun(){
   g.add(grip);
   return g;
 }
+/* a 20oz framing hammer: forged head with a claw and a waffled face, a
+   tapered neck, a wood haft with a grip wrap.  Two meshes, as before. */
 function vrToolHammer(){
   const g = new T.Group();
-  const handle = new T.Mesh(toolG('hh', ()=>new T.CylinderGeometry(0.014, 0.016, 0.26, 8)), M.wood);
-  handle.rotation.x = Math.PI/2; handle.position.z = 0.04; g.add(handle);
-  const head = new T.Mesh(toolG('hd', ()=>new T.BoxGeometry(0.03, 0.035, 0.09)), M.steel);
-  head.position.set(0, 0, -0.1); g.add(head);
+  const haft = new T.Mesh(toolG('ham:haft', ()=>mergeParts([
+    {geo:new T.CylinderGeometry(0.013, 0.016, 0.20, 8), pos:[0, 0, 0.07], rot:[Math.PI/2, 0, 0]},
+    {geo:new T.CylinderGeometry(0.017, 0.015, 0.07, 8), pos:[0, 0, 0.155], rot:[Math.PI/2, 0, 0]}  // swell at the butt
+  ])), M.rubber);
+  g.add(haft);
+  const head = new T.Mesh(toolG('ham:head', ()=>mergeParts([
+    {geo:new T.CylinderGeometry(0.017, 0.020, 0.045, 10), pos:[0, 0, -0.125], rot:[Math.PI/2, 0, 0]}, // face
+    {geo:new T.BoxGeometry(0.026, 0.030, 0.055),          pos:[0, 0, -0.088]},                        // eye and neck
+    {geo:new T.BoxGeometry(0.020, 0.011, 0.040),          pos:[0, 0.014, -0.052], rot:[-0.55, 0, 0]}, // claw root
+    {geo:new T.BoxGeometry(0.017, 0.009, 0.034),          pos:[0, 0.037, -0.030], rot:[-1.05, 0, 0]}, // claw curve
+    {geo:new T.CylinderGeometry(0.010, 0.014, 0.045, 8),  pos:[0, 0, -0.062], rot:[Math.PI/2, 0, 0]}  // tapered neck
+  ])), M.castIron);
+  g.add(head);
   return g;
 }
+/* a cased 25ft tape: rounded ABS shell, brake button, belt clip, and a
+   hooked blade tip standing proud.  The tab the other hand takes stays at
+   its old offset (RULING AJ) — vrTapeLine reads it. */
 function vrToolTape(){
   const g = new T.Group();
-  const box = new T.Mesh(toolG('tb', ()=>new T.BoxGeometry(0.07, 0.07, 0.05)), M.fixture);
-  g.add(box);
-  const tab = new T.Mesh(toolG('tt', ()=>new T.BoxGeometry(0.03, 0.02, 0.012)), M.steel);
-  tab.position.set(0, -0.03, -0.035); g.add(tab);
+  const shell = new T.Mesh(toolG('tape:shell', ()=>mergeParts([
+    {geo:new T.BoxGeometry(0.066, 0.066, 0.044), pos:[0, 0, 0]},
+    {geo:new T.CylinderGeometry(0.033, 0.033, 0.046, 14), pos:[0, 0.005, 0], rot:[Math.PI/2, 0, 0]}, // the drum bulge
+    {geo:new T.BoxGeometry(0.020, 0.012, 0.014), pos:[0, 0.036, -0.010]},                            // brake button
+    {geo:new T.BoxGeometry(0.016, 0.040, 0.004), pos:[0, -0.012, 0.026]}                             // belt clip
+  ])), M.moulded);
+  g.add(shell);
+  const tab = new T.Mesh(toolG('tape:tab', ()=>mergeParts([
+    {geo:new T.BoxGeometry(0.030, 0.018, 0.010), pos:[0, 0, 0]},                    // the hook
+    {geo:new T.BoxGeometry(0.026, 0.004, 0.022), pos:[0, 0.008, 0.014]}             // the blade standing proud
+  ])), M.galv);
+  tab.position.set(0, -0.03, -0.035);
+  g.add(tab);
   return g;
 }
+/* a carpenter's pencil: flat oval body, chisel tip, printed band.
+   M_CRAYON is the existing declaration from the old line 1237 — it sits
+   INSIDE the replaced range, so it must be carried across, right here. */
 const M_CRAYON = new T.MeshStandardMaterial({color:0x2f6fd6, roughness:.7});
 function vrToolCrayon(){
   const g = new T.Group();
-  const stick = new T.Mesh(toolG('cs', ()=>new T.CylinderGeometry(0.012, 0.008, 0.14, 8)), M_CRAYON);
-  stick.rotation.x = Math.PI/2; stick.position.z = -0.02; g.add(stick);
-  const band = new T.Mesh(toolG('cband', ()=>new T.CylinderGeometry(0.013, 0.013, 0.02, 8)), M.steel);
-  band.rotation.x = Math.PI/2; band.position.z = 0.045; g.add(band);
+  const stick = new T.Mesh(toolG('cray:stick', ()=>{
+    const geo = mergeParts([
+      {geo:new T.CylinderGeometry(0.011, 0.011, 0.125, 8), pos:[0, 0, -0.015], rot:[Math.PI/2, 0, 0]},
+      {geo:new T.ConeGeometry(0.011, 0.028, 8),            pos:[0, 0, -0.091], rot:[-Math.PI/2, 0, 0]}
+    ]);
+    geo.scale(1, 0.55, 1);           // a carpenter's pencil is flat, not round
+    return geo;
+  }), M_CRAYON);
+  g.add(stick);
+  const band = new T.Mesh(toolG('cray:band', ()=>{
+    const geo = mergeParts([
+      {geo:new T.CylinderGeometry(0.0125, 0.0125, 0.018, 8), pos:[0, 0, 0.045], rot:[Math.PI/2, 0, 0]}
+    ]);
+    geo.scale(1, 0.55, 1);
+    return geo;
+  }), M.galv);
+  g.add(band);
   return g;
 }
 function vrBuildBelt(){
