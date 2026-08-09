@@ -1750,6 +1750,112 @@ const probe = `
     BODIES.splice(BODIES.indexOf(b), 1);
     return 'on the grid bare-handed, free under X';
   });
+  /* ---- carpenters phase 2, RULING AD ------------------------------------
+     The asm hold copied POSITION and never touched the root's quaternion,
+     so nothing built could be turned over — and the carpenters assemble
+     lying flat (RULING AC), which left every flat they ever made face-up
+     on the deck for good.  It now carries exactly as a plank does. */
+  const mkAsm = ()=>{
+    const p1 = regWood('s2x4'), p2 = regWood('s2x4');
+    p1.mesh.rotation.set(0, 0, Math.PI/2);     // long axis X, lying level
+    p2.mesh.rotation.set(0, 0, Math.PI/2);
+    p1.mesh.position.set(4, 1.5, 2.0);         // high and downstage: no offer
+    p2.mesh.position.set(4, 1.5, 2.089);       // alongside, faces flush
+    scene.updateMatrixWorld(true);
+    const ax = new THREE.Vector3(0, 0, 1);
+    addNail(p1, {body:p2}, new THREE.Vector3(4.0, 1.5, 2.0445), ax);
+    addNail(p1, {body:p2}, new THREE.Vector3(4.6, 1.5, 2.0445), ax);
+    return {a:p1.asm, p1, p2};
+  };
+  const dropAsm = (a, p1, p2)=>{
+    if(a.root.parent) a.root.parent.remove(a.root);
+    const i = ASSEMBLIES.indexOf(a); if(i >= 0) ASSEMBLIES.splice(i, 1);
+    [p1, p2].forEach(b=>{ const j = BODIES.indexOf(b); if(j >= 0) BODIES.splice(j, 1); });
+  };
+  P('a built assembly turns in the hand, and stays in the palm', ()=>{
+    const {a, p1, p2} = mkAsm();
+    if(!a) throw new Error('the two sticks never became an assembly');
+    if(a.anchor) throw new Error('this test needs an un-anchored assembly');
+    if(a.pieces.length !== 2) throw new Error('pieces: '+a.pieces.length);
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(5.21, 1.5, 2.0);           // 1cm inside the +x END of p1
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'asm' || VR.held.asm !== a)
+      throw new Error('the assembly was not taken: '+(VR.held && VR.held.kind));
+    const q0 = a.root.getWorldQuaternion(new THREE.Quaternion()).clone();
+    const grabL = a.root.worldToLocal(new THREE.Vector3(5.21, 1.5, 2.0));
+    /* move the hand and turn the wrist a quarter round */
+    c0.position.set(4.0, 1.6, 2.5);
+    c0.quaternion.setFromAxisAngle(new THREE.Vector3(0,1,0), Math.PI/2);
+    c0.updateMatrixWorld(true);
+    vrReadSticks();
+    vrUpdateHold(0.016);
+    scene.updateMatrixWorld(true);
+    const q1 = a.root.getWorldQuaternion(new THREE.Quaternion());
+    const turned = 2*Math.acos(Math.min(1, Math.abs(q0.dot(q1))));
+    const wp = a.root.localToWorld(grabL.clone());
+    const d = wp.distanceTo(new THREE.Vector3(4.0, 1.6, 2.5));
+    vrSqueeze(0, false);
+    /* and a nailed-down assembly still refuses the hand entirely */
+    a.anchor = {type:'deck'};
+    c0.position.set(5.21, 1.5, 2.0);
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    const refused = !VR.held;
+    if(VR.held) vrSqueeze(0, false);
+    delete a.anchor;
+    dropAsm(a, p1, p2);
+    if(turned < 1.0)
+      throw new Error('the root only turned '+turned.toFixed(3)+' rad');
+    if(d > 0.06)
+      throw new Error('the grabbed point is '+d.toFixed(2)+'m from the palm');
+    if(!refused) throw new Error('a deck-anchored assembly came away in the hand');
+    return 'turns '+turned.toFixed(2)+' rad about the palm; anchored still refuses';
+  });
+  P('a held assembly squares to the nearest 45 — and X holds it free', ()=>{
+    const {a, p1, p2} = mkAsm();
+    const c0 = VR.controllers[0];
+    c0.quaternion.set(0,0,0,1);
+    c0.position.set(5.21, 1.5, 2.0);
+    c0.updateMatrixWorld(true);
+    vrSqueeze(0, true);
+    if(!VR.held || VR.held.kind !== 'asm')
+      throw new Error('not taken: '+(VR.held && VR.held.kind));
+    const grabL = a.root.worldToLocal(new THREE.Vector3(5.21, 1.5, 2.0));
+    /* a wrist far enough round that the grid lands on a NON-ZERO multiple:
+       an assembly root starts at identity, so a small angle would quantize
+       back to identity and "on the grid" would be true without the code
+       ever running */
+    c0.quaternion.setFromEuler(new THREE.Euler(0.22, 0.95, 0.13, 'YXZ'));
+    c0.updateMatrixWorld(true);
+    vrReadSticks();                            // no X pressed
+    vrUpdateHold(0.016);
+    scene.updateMatrixWorld(true);
+    const off45 = v => Math.abs(v/(Math.PI/4) - Math.round(v/(Math.PI/4)));
+    let e = new THREE.Euler().setFromQuaternion(
+      a.root.getWorldQuaternion(new THREE.Quaternion()), 'YXZ');
+    const onGrid = off45(e.x) <= 1e-3 && off45(e.y) <= 1e-3 && off45(e.z) <= 1e-3
+                   && Math.abs(e.y - Math.PI/4) <= 1e-3;
+    const wp = a.root.localToWorld(grabL.clone());
+    const palm = wp.distanceTo(new THREE.Vector3(5.21, 1.5, 2.0));
+    btns.left[4].pressed = true;
+    vrReadSticks();
+    vrUpdateHold(0.016);
+    btns.left[4].pressed = false;
+    scene.updateMatrixWorld(true);
+    e = new THREE.Euler().setFromQuaternion(
+      a.root.getWorldQuaternion(new THREE.Quaternion()), 'YXZ');
+    const freeUnderX = !(off45(e.x) < 0.02 && off45(e.y) < 0.02 && off45(e.z) < 0.02);
+    vrReadSticks();                            // X back up for the next test
+    vrSqueeze(0, false);
+    dropAsm(a, p1, p2);
+    if(!onGrid) throw new Error('off the grid: '+e.x.toFixed(3)+'/'+e.y.toFixed(3)+'/'+e.z.toFixed(3));
+    if(palm > 0.06) throw new Error('the quantize pulled it out of the palm');
+    if(!freeUnderX) throw new Error('X held, but it is still snapped to the grid');
+    return 'on the grid bare-handed, free under X';
+  });
   P('Y parks the piece exactly where it is, and a grab frees it', ()=>{
     /* build-feel RULING N: Y while wood is in hand releases it FROZEN —
        exact pose, mid-air included, never settles, grab to unfreeze */

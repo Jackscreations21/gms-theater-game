@@ -18514,6 +18514,15 @@ function vrSqueeze(hand, down){
         a.root.getWorldPosition(_vecA);
         VR.held = {hand, kind:'asm', asm:a,
                    offX:_vecA.x - _rayO.x, offY:_vecA.y - _rayO.y, offZ:_vecA.z - _rayO.z};
+        /* it turns in the hand exactly as a plank does (RULING AD): the
+           pose is kept relative to the CONTROLLER and the point you
+           grabbed stays in the palm.  An assembly root is an unscaled
+           Group, so its grab vector is already metric — the wood branch's
+           .multiply(scale) is only there for a scaled unit box. */
+        c.getWorldQuaternion(_tq1);
+        a.root.getWorldQuaternion(_tq2);
+        VR.held.relQ = _tq1.invert().multiply(_tq2).clone();
+        VR.held.grabV = a.root.worldToLocal(_rayO.clone()).clone();
         if(typeof toast === 'function')
           toast('the assembly comes whole — ' + a.pieces.length + ' pieces');
       } else if(typeof toast === 'function')
@@ -18675,7 +18684,26 @@ function vrUpdateHold(dt){
      piece gets (snapAsm), and the gun confirms it */
   if(VR.held.kind === 'asm'){
     const a = VR.held.asm;
-    _vecA.set(_rayO.x + VR.held.offX, _rayO.y + VR.held.offY, _rayO.z + VR.held.offZ);
+    /* orientation first (RULING AD): the wrist turns the whole root, and
+       with no X down it squares to the nearest 45° on every axis the way
+       held wood does (RULING M) — which is how a flat built lying on the
+       deck gets stood up.  The snap below still offers only the drop. */
+    if(VR.held.relQ){
+      c.getWorldQuaternion(_tq1).multiply(VR.held.relQ);
+      if(!VR.btnX){
+        _wristE.setFromQuaternion(_tq1, 'YXZ');
+        _wristE.x = Math.round(_wristE.x/(Math.PI/4))*(Math.PI/4);
+        _wristE.y = Math.round(_wristE.y/(Math.PI/4))*(Math.PI/4);
+        _wristE.z = Math.round(_wristE.z/(Math.PI/4))*(Math.PI/4);
+        _tq1.setFromEuler(_wristE);
+      }
+      a.root.quaternion.copy(_tq1);
+    }
+    /* then the grabbed point keeps the palm; a record with no grabV (one
+       restored from anywhere that did not set it) keeps the old carry */
+    if(VR.held.grabV)
+      _vecA.copy(VR.held.grabV).applyQuaternion(a.root.quaternion).negate().add(_rayO);
+    else _vecA.set(_rayO.x + VR.held.offX, _rayO.y + VR.held.offY, _rayO.z + VR.held.offZ);
     if(a.root.parent) a.root.parent.worldToLocal(_vecA);
     a.root.position.copy(_vecA);
     a.root.updateMatrixWorld(true);
