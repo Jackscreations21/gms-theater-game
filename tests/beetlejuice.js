@@ -37,7 +37,7 @@ const probe = `
   const box = o=>{ SHOW.group.updateMatrixWorld(true); return new THREE.Box3().setFromObject(o); };
   const byName = n=>{ let f=null; SHOW.group.traverse(o=>{ if(!f && o.name===n) f=o; }); return f; };
 
-  console.log('--- BEETLEJUICE is in the book (RULING AO) ---');
+  console.log('--- BEETLEJUICE is in the book (RULING AV) ---');
 
   P('the show is registered, with the four fields a production needs', ()=>{
     if(!SHOWS.beetlejuice) throw new Error('beetlejuice is not in the book');
@@ -49,13 +49,24 @@ const probe = `
     return s.name+' — '+Object.keys(SHOWS).length+' productions in the book';
   });
 
-  /* RULING AO lives or dies here.  All four older shows carry this note and
-     p5c's header says the same in prose; a video makes tracing easy for the
-     first time, so the ruling gets a test rather than good intentions. */
-  P('it says on its record that it is an interpretation, not a copy', ()=>{
+  /* This pinned RULING AO — "an interpretation, not a copy" — until the owner
+     repealed AO in full on 2026-08-10 and asked for the sets to look as close
+     to the real production as they can get.  The assertion is REVERSED rather
+     than removed, because the note is still load-bearing: it is what the
+     record says this show is, and it must not silently drift back.  The other
+     four shows are untouched and still carry the interpretation note, so the
+     second half of this pins that AV's repeal stayed scoped to Beetlejuice. */
+  P('its record says it is MODELLED on the production (RULING AV)', ()=>{
     const n = (SHOWS.beetlejuice.note || '').toLowerCase();
-    if(n.indexOf('interpretation') < 0) throw new Error('the note does not say interpretation: '+n);
-    if(n.indexOf('not a copy') < 0) throw new Error('the note does not disclaim copying: '+n);
+    if(n.indexOf('modelled on the production') < 0)
+      throw new Error('the note does not say what this show is: '+n);
+    if(n.indexOf('not a copy') >= 0)
+      throw new Error('the note still disclaims copying, which AV repealed: '+n);
+    for(const k of ['outsiders','lostboys','hamilton','goeswrong']){
+      const o = (SHOWS[k] && SHOWS[k].note || '').toLowerCase();
+      if(o.indexOf('not a copy') < 0)
+        throw new Error(k+' lost its interpretation note — AV was scoped to beetlejuice');
+    }
     return SHOWS.beetlejuice.note;
   });
 
@@ -413,20 +424,54 @@ const probe = `
     return 'sign at z='+z.toFixed(2)+', curtain line at '+FLY[0].z+', no batten downstage of it';
   });
 
-  P('the sign flies out clear of the opening, and comes back in', ()=>{
+  /* measured on the WHOLE sign, not the panel.  The arrow rakes down off the
+     bottom corner and is the lowest thing on it, so a panel-only check would
+     happily pass with the arrow still hanging in the opening. */
+  P('the sign flies out clear of the opening, arrow and all', ()=>{
     showLoad('beetlejuice');
-    const sc = sceneFind('bjSign'), p = byName('bj:flySign');
-    const inLow = box(p).min.y;
+    const sc = sceneFind('bjSign');
+    const low = ()=>box(sc.group).min.y;
+    const inLow = low();
     if(inLow > D.procH) throw new Error('the sign is masked before it even flies');
+    if(byName('bj:flySignArrow') && box(byName('bj:flySignArrow')).min.y >= box(byName('bj:flySign')).min.y)
+      throw new Error('the arrow is not the lowest thing on the sign — check what this measures');
     sceneMoveTo('bjSign', BJ_SIGN_OUT);
     for(let i=0;i<900;i++) updateStorm(1/60);
-    const outLow = box(p).min.y;
+    const outLow = low();
     if(outLow < D.procH)
       throw new Error('flown out it still hangs into the opening: y='+outLow.toFixed(2));
     sceneMoveTo('bjSign', 0);
     for(let i=0;i<900;i++) updateStorm(1/60);
-    if(Math.abs(box(p).min.y - inLow) > 0.05) throw new Error('it did not come back to its in trim');
+    if(Math.abs(low() - inLow) > 0.05) throw new Error('it did not come back to its in trim');
     return 'in at y='+inLow.toFixed(2)+', out at y='+outLow.toFixed(2)+' over a '+D.procH+' opening';
+  });
+
+  /* What the photograph is: two decks of name in a bulb surround, and an arrow
+     raking off it.  jsdom cannot see a canvas — fillText is a noop in this
+     harness — so the LOOK is not testable here and is not claimed to be.
+     What is testable is that the parts exist, that the arrow rakes rather than
+     sitting square, that it all stays inside the portal it is seen through,
+     and that the bulbs are one merged mesh rather than fifty. */
+  P('the marquee is a panel, a bulb surround and a raking arrow', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('bjSign');
+    const arrow = byName('bj:flySignArrow');
+    if(!arrow) throw new Error('no arrow on the sign');
+    if(Math.abs(arrow.parent.rotation.z) < 0.05)
+      throw new Error('the arrow sits square instead of raking');
+    const face = byName('bj:flySign');
+    if(!face.material.emissiveMap) throw new Error('the marquee face is not lit as neon');
+    if(!arrow.material.emissiveMap) throw new Error('the arrow is not lit as neon');
+    let meshes = 0;
+    sc.group.traverse(o=>{ if(o.isMesh) meshes++; });
+    if(meshes > 8) throw new Error(meshes+' meshes on one sign — the bulbs are not merged');
+    /* and it must read through the portal, like everything else */
+    const b = box(sc.group);
+    const wide = Math.max(Math.abs(b.min.x), Math.abs(b.max.x));
+    if(wide*2 > BJ.opW) throw new Error('the sign is '+(wide*2).toFixed(2)+'m across a '+BJ.opW+' opening');
+    if(b.max.y > D.procH) throw new Error('the sign tops out at '+b.max.y.toFixed(2)+' in a '+D.procH+' opening');
+    return meshes+' meshes, '+(wide*2).toFixed(2)+'m across, raking '+
+           arrow.parent.rotation.z.toFixed(2)+' rad';
   });
 
   P('the sign is not one of the sets you can pick from', ()=>{

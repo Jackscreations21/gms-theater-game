@@ -161,6 +161,37 @@ Two decisions in one:
    three cues come out, and the `sets.js` assertions that pin it come out with
    them.
 
+## RULING AV — AO IS REPEALED. Build it to look like the real thing.
+
+The owner, 2026-08-10, on being shown the sign built to RULING AO:
+
+> "remove the cluase entirely that it has to be our onw shapes. make the sets
+> look as close to the real stuff as you can get it"
+
+**RULING AO is withdrawn in full**, for this production only. The scenery is no
+longer "the show's vocabulary, not its drawing" — it is modelled on the
+production the recording came from, as closely as the tools here allow:
+proportions, colours, lettering, the lot. He supplied a photograph of the show
+curtain and the marquee and asked for those two to match it.
+
+What this changes in practice:
+
+- The `note:` on `SHOWS.beetlejuice` no longer disclaims copying. It says what
+  is true instead — that it is modelled on the production.
+- Every comment in `p5h` that says "ours, not theirs" is wrong and comes out.
+- The sign says what the real sign says. The cloth carries the real cloth's
+  scrollwork.
+- The test that pinned AO is rewritten to pin AV. It is not deleted, because
+  the ruling it guarded is part of the record.
+
+**The other four shows keep their interpretation note.** AO's repeal is scoped
+to Beetlejuice, which is the one taken off a recording and the one the owner
+asked about. Nothing in `p5c`, `p5d`, `p5f` or `p5g` is touched.
+
+AO stays in its own spec, marked superseded — a ruling that got reversed is
+worth more on the record than one quietly deleted, and this is the first
+reversal in the sequence.
+
 ## RULING AT — cloths on lines, structures on movers
 
 The round adds flying scenery in two different ways, and the rule for which is

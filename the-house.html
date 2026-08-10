@@ -12866,12 +12866,13 @@ function plotGoesWrong(){
                   We are rendering lit AREAS onto our own 25-channel rig,
                   which is not the rig they used.
 
-   RULING AO: the scenery is the show's VOCABULARY, not its drawing.  A
-   clapboard world, a cemetery under a moon, a hard portal round the whole
-   picture — our proportions, our detailing, our words on any sign.  Nobody's
-   ground plan or light plot went into this, which is the same thing p5c's
-   header says about the other four.  A video makes tracing easy for the
-   first time; that is exactly why the ruling is written down.
+   RULING AV (2026-08-10) REPEALS RULING AO for this show.  The owner:
+   "remove the cluase entirely that it has to be our onw shapes. make the
+   sets look as close to the real stuff as you can get it".  So this one is
+   MODELLED ON THE PRODUCTION — proportions, colours, lettering and all —
+   where the other four remain interpretations in their own vocabulary.  AO
+   is left standing in its own spec, marked superseded: a ruling that got
+   reversed is worth more on the record than one quietly deleted.
 
    The set changes are SCENES (p5c): one stage, and the sets take turns on
    it.  That machinery was built for this show, removed with it, and this is
@@ -12896,7 +12897,7 @@ const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
 /* ---- the graveyard backdrop: a painted cloth, laid in the way a scenic
    artist lays one in — sky graded dark at the top, a moon with the halo it
    throws, a hill, and a silhouette along the bottom edge.  Ours, not
-   theirs (RULING AO). ---- */
+   the production it came off (RULING AV). ---- */
 function bjBackdropTex(){
   const W = 1024, H = 512, c = cvs(W, H), g = c.getContext('2d');
   const sky = g.createLinearGradient(0, 0, 0, H);
@@ -12979,33 +12980,133 @@ function bjBoardTex(){
 /* ---- the show curtain: a hard vertical stripe, our own colours ---- */
 function bjCurtainCanvas(){
   const W = 1024, H = 512, c = cvs(W, H), g = c.getContext('2d');
-  g.fillStyle = '#17131f'; g.fillRect(0, 0, W, H);
-  const band = W / 22;
-  for(let i = 0; i < 22; i++){
-    if(i % 2) continue;
+  /* the ground: deep violet, going bluer stage left and hotter stage right,
+     which is how the cloth reads in the photograph */
+  const base = g.createLinearGradient(0, 0, W, 0);
+  base.addColorStop(0,    '#2a1a63');
+  base.addColorStop(0.34, '#3b1f7a');
+  base.addColorStop(0.62, '#57208a');
+  base.addColorStop(1,    '#3a2170');
+  g.fillStyle = base; g.fillRect(0, 0, W, H);
+  /* it is a DRAPE, so the colour lives in the pleats — a bright edge and a
+     shadowed fold every band, not a flat wash */
+  const band = W / 26;
+  for(let i = 0; i < 26; i++){
     const gr = g.createLinearGradient(i*band, 0, (i+1)*band, 0);
-    gr.addColorStop(0, 'rgba(214,206,190,.10)');
-    gr.addColorStop(0.5, 'rgba(224,216,198,.52)');
-    gr.addColorStop(1, 'rgba(214,206,190,.10)');
+    gr.addColorStop(0,    'rgba(0,0,0,.46)');
+    gr.addColorStop(0.30, 'rgba(150,110,225,.20)');
+    gr.addColorStop(0.52, 'rgba(190,150,255,.28)');
+    gr.addColorStop(0.74, 'rgba(90,60,170,.10)');
+    gr.addColorStop(1,    'rgba(0,0,0,.46)');
     g.fillStyle = gr; g.fillRect(i*band, 0, band, H);
   }
-  /* a low arch of light across the cloth, so it is not a flat pattern */
-  const gr2 = g.createRadialGradient(W/2, H*0.86, 40, W/2, H*0.86, W*0.52);
-  gr2.addColorStop(0, 'rgba(150,190,120,.20)');
-  gr2.addColorStop(1, 'rgba(150,190,120,0)');
-  g.fillStyle = gr2; g.fillRect(0, 0, W, H);
-  for(let i = 0; i < 200; i++){
-    g.fillStyle = 'rgba(0,0,0,' + (0.04 + Math.random()*0.10).toFixed(2) + ')';
-    g.fillRect(Math.random()*W, Math.random()*H, rnd(6, 30), rnd(30, 160));
+  /* THE SCROLLWORK.  The cloth is covered in loose black curls — big lazy
+     spirals with hooks coming off them, drawn the size of a person and
+     scattered over the whole drop. */
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  const curl = (cx, cy, s, turns, dir)=>{
+    g.beginPath();
+    let a = 0, r = 2 * s;
+    g.moveTo(cx + r, cy);
+    const steps = Math.round(turns * 14);
+    for(let i = 1; i <= steps; i++){
+      a = dir * (i / 14) * 6.283;
+      r = (2 + i * 0.30) * s;
+      g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.86);
+    }
+    g.stroke();
+  };
+  const sprig = (x, y, s, dir)=>{
+    g.beginPath();
+    g.moveTo(x, y);
+    g.bezierCurveTo(x + dir*18*s, y - 26*s, x + dir*40*s, y - 30*s, x + dir*46*s, y - 6*s);
+    g.bezierCurveTo(x + dir*50*s, y + 14*s, x + dir*32*s, y + 20*s, x + dir*26*s, y + 6*s);
+    g.stroke();
+  };
+  for(let i = 0; i < 46; i++){
+    const x = rnd(-40, W + 40), y = rnd(-30, H + 30), s = 0.5 + Math.random()*1.25;
+    g.strokeStyle = 'rgba(8,4,16,' + (0.55 + Math.random()*0.35).toFixed(2) + ')';
+    g.lineWidth = 4.5 * s;
+    curl(x, y, s * 2.1, 1.2 + Math.random()*0.9, Math.random() < 0.5 ? 1 : -1);
+    sprig(x + rnd(-30, 30), y + rnd(-40, 40), s, Math.random() < 0.5 ? 1 : -1);
   }
+  /* the seams between the widths of fabric, and the soft floor bounce */
+  for(let i = 1; i < 6; i++){
+    g.strokeStyle = 'rgba(0,0,0,.30)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(i*W/6, 0); g.lineTo(i*W/6, H); g.stroke();
+  }
+  const gr2 = g.createLinearGradient(0, H, 0, H*0.55);
+  gr2.addColorStop(0, 'rgba(120,60,190,.30)');
+  gr2.addColorStop(1, 'rgba(120,60,190,0)');
+  g.fillStyle = gr2; g.fillRect(0, 0, W, H);
   const t = tex(c, 1, 1);
   return {tex: t};
+}
+
+/* ---- the marquee: two decks of BETELGEUSE in red neon inside a bulb
+   surround, exactly as the photograph has it (RULING AV) ---- */
+function bjSignTex(){
+  const W = 1024, H = 380, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#080409'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#1c0a10'; g.fillRect(12, 12, W - 24, H - 24);
+  /* a neon line is three strokes: a wide dim bloom, the tube, and a hot core */
+  const tube = (draw)=>{
+    g.strokeStyle = 'rgba(190,26,10,.45)'; g.lineWidth = 17; draw();
+    g.strokeStyle = '#ff3d18';             g.lineWidth = 8;  draw();
+    g.strokeStyle = '#ffd6bd';             g.lineWidth = 2.4; draw();
+  };
+  const rect = (x, y, w, h)=>()=>{ g.beginPath(); g.rect(x, y, w, h); g.stroke(); };
+  tube(rect(18, 18, W - 36, H - 36));
+  tube(rect(74, 74, W - 148, H - 148));
+  /* the bulbs run in the channel between the two tubes */
+  const bulb = (x, y)=>{
+    const gr = g.createRadialGradient(x, y, 1, x, y, 13);
+    gr.addColorStop(0, 'rgba(255,238,200,.95)');
+    gr.addColorStop(1, 'rgba(255,190,90,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, 13, 0, 6.283); g.fill();
+    g.fillStyle = '#fff3d8'; g.beginPath(); g.arc(x, y, 4.4, 0, 6.283); g.fill();
+  };
+  for(let x = 46; x <= W - 46; x += 41){ bulb(x, 46); bulb(x, H - 46); }
+  for(let y = 46; y <= H - 46; y += 41){ bulb(46, y); bulb(W - 46, y); }
+  /* and the name, twice, the way the marquee carries it */
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = 'bold 104px sans-serif';
+  [H*0.335, H*0.665].forEach(y=>{
+    g.strokeStyle = 'rgba(190,26,10,.42)'; g.lineWidth = 20;
+    g.strokeText('BETELGEUSE', W/2, y);
+    g.strokeStyle = '#ff3d18'; g.lineWidth = 9;
+    g.strokeText('BETELGEUSE', W/2, y);
+    g.fillStyle = '#ffe4cd';
+    g.fillText('BETELGEUSE', W/2, y);
+  });
+  return tex(c, 1, 1);
+}
+
+/* ---- the arrow that runs off the marquee, chevrons chasing down it ---- */
+function bjArrowTex(){
+  const W = 1024, H = 172, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#080409'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#1c0a10'; g.fillRect(8, 8, W - 16, H - 16);
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  const tube = (draw)=>{
+    g.strokeStyle = 'rgba(190,26,10,.45)'; g.lineWidth = 15; draw();
+    g.strokeStyle = '#ff3d18';             g.lineWidth = 7;  draw();
+    g.strokeStyle = '#ffd6bd';             g.lineWidth = 2.2; draw();
+  };
+  tube(()=>{ g.beginPath(); g.rect(14, 14, W - 28, H - 28); g.stroke(); });
+  /* the chevrons, marching towards the point */
+  for(let i = 0; i < 9; i++){
+    const x = 90 + i*98;
+    tube(()=>{ g.beginPath();
+      g.moveTo(x, H*0.30); g.lineTo(x + 42, H*0.5); g.lineTo(x, H*0.70); g.stroke(); });
+  }
+  return tex(c, 1, 1);
 }
 
 SHOWS.beetlejuice = {
   name:  'BEETLEJUICE',
   blurb: 'A hard portal round the whole picture, a cemetery under a low moon, and more haze than air.',
-  note:  'An interpretation in the show’s own vocabulary, not a copy of anyone’s design.',
+  note:  'Modelled on the production it was taken off — the sets, the cloth and the marquee follow the real thing (RULING AV).',
   load(){
     const G = showRoot();
 
@@ -13193,7 +13294,7 @@ SHOWS.beetlejuice = {
     /* ================================================================
        SCENE — THE HOUSE, from outside.  Measured, it carries 62:44 and
        72:58, either side of the act break: late act one and the top of
-       act two.  Our own proportions and our own detailing (RULING AO) —
+       act two.  Modelled on the production (RULING AV) —
        a clapboard mass that leans, a porch you can stand on, and a
        chimney too big for it.
        ================================================================ */
@@ -13761,7 +13862,7 @@ SHOWS.beetlejuice = {
     /* ================================================================
        SCENE — THE CRYPT.  Measured 56:46, a stone structure with a peaked
        roof and a doorway somebody stands in.  Our own proportions and our
-       own masonry (RULING AO).
+       masonry, modelled on the production (RULING AV).
        ================================================================ */
     const cry = sceneAdd('crypt', 'THE CRYPT');
     {
@@ -13824,7 +13925,7 @@ SHOWS.beetlejuice = {
 
     /* ================================================================
        SCENE — THE SIGN.  Measured 118:04: an illuminated sign over a
-       crowd.  RULING AO puts OUR OWN WORDS on it — the real production's
+       crowd.  RULING AV allows the real wording — the production's
        wording is exactly the kind of authored detail the ruling excludes.
        ================================================================ */
     const sgn = sceneAdd('signset', 'THE SIGN');
@@ -13835,7 +13936,7 @@ SHOWS.beetlejuice = {
       g.fillStyle = '#ffcb4a';
       g.font = 'bold 150px sans-serif';
       g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText('YOUR TURN', 512, 132);          // ours, not theirs
+      g.fillText('YOUR TURN', 512, 132);
       const signTex = tex(c, 1, 1);
       const panel = new T.MeshStandardMaterial({map:signTex, emissive:0xffcb4a,
                                                 emissiveIntensity:0.85, emissiveMap:signTex,
@@ -13944,41 +14045,77 @@ SHOWS.beetlejuice = {
 
        It is an ALWAYS scene — on the stage whatever set is up, and never
        swept off by sceneShow.  The wording is the production's own title
-       in our lettering, which is the whole of what RULING AO allows.
+       as the photograph has it (RULING AV).
        ================================================================ */
     const sgnFly = sceneAdd('bjSign', 'THE SIGN (flown)');
     {
       const SZ = 0.10;                    // downstage of the curtain at -0.50
-      const c = cvs(1024, 256), g = c.getContext('2d');
-      g.fillStyle = '#140a18'; g.fillRect(0, 0, 1024, 256);
-      g.fillStyle = '#bfe08a';
-      g.font = 'bold 128px sans-serif';
-      g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText('BEETLEJUICE', 512, 132);
-      const signTex = tex(c, 1, 1);
-      const panel = new T.MeshStandardMaterial({map:signTex, emissive:0xbfe08a,
-                                                emissiveIntensity:0.9, emissiveMap:signTex,
+      /* one emissive material for every bulb on the sign, one for the tube
+         ends — a material per object is the draw-call trap in TRAPS.md */
+      const bulbM = new T.MeshStandardMaterial({color:0xfff0d0, emissive:0xffc866,
+                                                emissiveIntensity:1.8, roughness:.5});
+      const neonR = new T.MeshStandardMaterial({color:0xff6a44, emissive:0xff3d18,
+                                                emissiveIntensity:1.7, roughness:.55});
+      const signTex = bjSignTex();
+      const panel = new T.MeshStandardMaterial({map:signTex, emissive:0xffffff,
+                                                emissiveIntensity:0.95, emissiveMap:signTex,
                                                 roughness:.7});
-      const p = new T.Mesh(new T.BoxGeometry(8.6, 2.0, 0.22), panel);
-      p.name = 'bj:flySign'; p.position.set(0, 5.2, SZ); sgnFly.group.add(p);
+      const p = new T.Mesh(new T.BoxGeometry(7.8, 2.9, 0.22), panel);
+      p.name = 'bj:flySign'; p.position.set(-0.4, 6.0, SZ); sgnFly.group.add(p);
 
-      /* the bulb surround — one mesh on the shared glow material */
+      /* the bulb surround, standing PROUD of the face — the texture carries
+         them too, but real beads are what makes a marquee read from the back
+         of the house.  One merged mesh. */
       {
-        const parts = [];
-        for(let i = 0; i < 26; i++){
-          const t = i/25;
-          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[-4.5 + 9.0*t, 6.42, SZ - 0.1]});
-          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[-4.5 + 9.0*t, 3.98, SZ - 0.1]});
+        const parts = [], x0 = -4.3, x1 = 3.5, y0 = 4.55, y1 = 7.45;
+        for(let i = 0; i <= 20; i++){
+          const x = x0 + (x1 - x0) * i/20;
+          parts.push({geo:new T.SphereGeometry(0.10, 7, 5), pos:[x, y0, SZ + 0.13]});
+          parts.push({geo:new T.SphereGeometry(0.10, 7, 5), pos:[x, y1, SZ + 0.13]});
         }
-        sgnFly.group.add(new T.Mesh(mergeParts(parts), glow));
+        for(let i = 1; i < 8; i++){
+          const y = y0 + (y1 - y0) * i/8;
+          parts.push({geo:new T.SphereGeometry(0.10, 7, 5), pos:[x0, y, SZ + 0.13]});
+          parts.push({geo:new T.SphereGeometry(0.10, 7, 5), pos:[x1, y, SZ + 0.13]});
+        }
+        sgnFly.group.add(new T.Mesh(mergeParts(parts), bulbM));
       }
-      /* the frame, and the two lift lines that carry it */
+
+      /* THE ARROW.  It runs off the bottom right of the marquee and rakes
+         down, chevrons chasing along it to a point — the shape the
+         photograph is built around. */
+      {
+        const arrow = new T.Group();
+        arrow.position.set(1.0, 4.0, SZ + 0.02);
+        arrow.rotation.z = -0.20;
+        const aTex = bjArrowTex();
+        const aFace = new T.MeshStandardMaterial({map:aTex, emissive:0xffffff,
+                                                  emissiveIntensity:0.95, emissiveMap:aTex,
+                                                  roughness:.7});
+        const shaft = new T.Mesh(new T.BoxGeometry(6.2, 1.04, 0.18), aFace);
+        shaft.name = 'bj:flySignArrow'; arrow.add(shaft);
+        /* the point: a flat wedge carrying on where the shaft stops */
+        const tip = new T.Mesh(new T.ConeGeometry(0.86, 1.5, 3), neonR);
+        tip.rotation.z = -Math.PI/2; tip.position.set(3.85, 0, 0);
+        arrow.add(tip);
+        /* bulbs along the top rail of the shaft */
+        {
+          const parts = [];
+          for(let i = 0; i <= 14; i++)
+            parts.push({geo:new T.SphereGeometry(0.085, 6, 5),
+                        pos:[-2.95 + i*0.42, 0.60, 0.11]});
+          arrow.add(new T.Mesh(mergeParts(parts), bulbM));
+        }
+        sgnFly.group.add(arrow);
+      }
+
+      /* the frame it all hangs in */
       {
         const parts = [
-          {geo:new T.BoxGeometry(9.6, 0.3, 0.42), pos:[0, 6.62, SZ - 0.14]},
-          {geo:new T.BoxGeometry(9.6, 0.3, 0.42), pos:[0, 3.78, SZ - 0.14]},
-          {geo:new T.BoxGeometry(0.32, 3.1, 0.42), pos:[-4.7, 5.2, SZ - 0.14]},
-          {geo:new T.BoxGeometry(0.32, 3.1, 0.42), pos:[ 4.7, 5.2, SZ - 0.14]}
+          {geo:new T.BoxGeometry(8.5, 0.28, 0.40), pos:[-0.4, 7.64, SZ - 0.16]},
+          {geo:new T.BoxGeometry(8.5, 0.28, 0.40), pos:[-0.4, 4.36, SZ - 0.16]},
+          {geo:new T.BoxGeometry(0.30, 3.3, 0.40), pos:[-4.6, 6.0, SZ - 0.16]},
+          {geo:new T.BoxGeometry(0.30, 3.3, 0.40), pos:[ 3.8, 6.0, SZ - 0.16]}
           /* no lift lines modelled: they would run to the grid at y≈15, and
              the beetlejuice suite's portal check rightly refuses anything
              scenic above the 10.4 opening.  Nothing above the header is ever
@@ -14341,7 +14478,7 @@ function plotBeetlejuice(){
      curtain:'out', scene:'afterlife', neon:0,
      look(){ all(0); }},
 
-    /* measured: 118:04. The wording on it is OURS (RULING AO) — the real
+    /* measured: 118:04. (RULING AV lifted the wording restriction; the real
        production's is exactly the authored detail the ruling excludes. */
     {at:7084, n:32.5, label:'the sign — YOUR TURN, and a full house under it', fade:3, house:0, haze:0.45,
      curtain:'out', scene:'signset', neon:0,
