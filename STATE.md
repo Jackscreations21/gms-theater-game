@@ -19,13 +19,49 @@ cost was measured and cut 11×).
 - Pages serves `main`. **Bust the Quest cache with `?v=15`** — the game changed five times on 2026-08-09.
 - **This clone:** `main` @ `10033f2` = `origin/main`. `pr6.json` still untracked.
 
-## Current focus: nothing merged in flight — next is THE FRAME-RATE ROUND
+## Current focus: **NEXT SESSION IS A NEW FEATURE** (owner, 2026-08-09)
 
-The owner's call. It runs **through** the headset run, not instead of
-it: the numbers can only be taken on hardware, so it is one trip — take
-the meter readings first, then work the feel questions while the headset
-is on. Full protocol in HANDOFF's "NEXT SESSION: THE FRAME-RATE ROUND",
-including a blank table to fill in.
+The owner has said the next session adds a **new feature** — which one is
+not yet decided, so **ask before building anything.** Do not assume it is
+the frame-rate round; that is still owed but is not what was asked for
+next.
+
+**How a feature round runs here** (this repo has a shape, and it works):
+
+1. **Shape it with the owner first.** The five-question pattern in
+   HANDOFF's carpenters brief is the model: ask what decides the shape,
+   one question at a time, before any code.
+2. **Spec it** to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+   with numbered RULINGS inline. **The letters continue — the workshop
+   round ended at AN, so the next is AO.** Rulings are how decisions stop
+   being re-litigated; the models question (RULING AI) is the example.
+3. **Plan it** to `docs/superpowers/plans/`, then build it as a **linear
+   chain: one concern per PR, never stacked**, each branch cut after its
+   parent merges, rebased onto fresh `main`, retested before opening.
+4. **Suites green before AND after, every new assertion negative-checked
+   against a WRONG implementation** — not merely an absent one. That
+   distinction cost real time this round; see TRAPS.md.
+
+**What a new feature must respect** (the traps that bite newcomers):
+
+- Anything a headset must reach **needs a physical thing in the room** —
+  a DOM control does not exist in VR. A `station()` is the cheapest.
+- Build through the same functions the player's hands use and **the work
+  rides the save for free**; poke meshes directly and it is invisible to
+  the save.
+- Detail is paid for by **`mergeParts`**, not by adding meshes
+  (ARCHITECTURE.md). Never merge anything grabbed, moved or recoloured.
+- If it can take the ground out from under a resting body, it must call
+  **`wakeBodies`** (BUILD-SYSTEM.md).
+- **Never `setTimeout` for game timing** — time comes off the frame `dt`.
+
+## Still owed, and not superseded: THE FRAME-RATE ROUND
+
+It runs **through** the headset run, not instead of it: the numbers can
+only be taken on hardware, so it is one trip — take the meter readings
+first, then work the feel questions while the headset is on. Full
+protocol in HANDOFF's "NEXT SESSION: THE FRAME-RATE ROUND", including a
+blank table to fill in.
 
 **Step zero is a diagnosis, not a fix.** The wrist tag (#22) has never
 met hardware, and the foveation level it reports is the tell, because

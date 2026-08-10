@@ -23,6 +23,30 @@ before touching any of this.**
 - Lengths display as ft-in via `ftIn()` (RULING S); the MODEL stays
   metric.
 
+## The settle, and the ONE contract a new feature can break
+
+`updateBodies` (p4) drops loose bodies onto whatever is under them. It
+used to test **every** loose body every frame — a recursive `groundAt`
+raycast plus a `tableTopAt` scan of the whole registry — including
+bodies lying perfectly still. At `BUILD_CAP` that measured 1.565 ms a
+frame on a desktop, ~11% of a 72Hz budget, to conclude nothing moved.
+
+Now a body that has come to rest sets `b.rest` and is re-tested only on
+a rota (`REST_ROTA`, spread by body index). Cost at 150 pieces: 0.146 ms.
+
+**The contract: anything that can take the ground out from under a
+resting body must call `wakeBodies(venue)`.** `grabBody` already does,
+which covers carrying off a table, forking away a pallet, and taking the
+plank underneath — every route that exists today. The rota is only a
+backstop, so a piece never visibly hangs.
+
+**If you add a new way for support to disappear — a platform that flies,
+a deck that moves, scenery that strikes, a body removed by something
+other than a grab — call `wakeBodies` or the piece above it will hang
+for up to a rota.** `tools/buildload.js` measures the steady state; time
+pieces while they are still falling and you measure the one case that
+was never the problem.
+
 ## Assemblies, nails, hinges, track
 
 - `addNail(a, target, wp, wax)` joins anything to anything, builds or
