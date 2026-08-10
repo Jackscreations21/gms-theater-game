@@ -284,6 +284,157 @@ SHOWS.beetlejuice = {
       addShowSmoke({name:'UPSTAGE HAZE', kind:'haze', x:0, y:4.0, z:-13.0, yaw:0, tilt:0.2});
     }
 
+    /* ================================================================
+       SCENE — THE HOUSE, from outside.  Measured, it carries 62:44 and
+       72:58, either side of the act break: late act one and the top of
+       act two.  Our own proportions and our own detailing (RULING AO) —
+       a clapboard mass that leans, a porch you can stand on, and a
+       chimney too big for it.
+       ================================================================ */
+    const hse = sceneAdd('house', 'THE HOUSE');
+    {
+      /* it has to read THROUGH the portal, so nothing may exceed the
+         portal's own 13.6 x 9.2 opening */
+      const MW = 6.6, MH = 5.4, MD = 4.2, cx = -1.2, cz = -8.6;
+
+      /* the main mass, with a gable each end — one mesh */
+      {
+        const parts = [{geo:new T.BoxGeometry(MW, MH, MD), pos:[0, MH/2, 0]}];
+        [-1, 1].forEach(sd=>{
+          const g = new T.BufferGeometry();
+          const h = 1.9;
+          g.setAttribute('position', new T.Float32BufferAttribute([
+            -MW/2, 0, 0,  MW/2, 0, 0,  0, h, 0
+          ], 3));
+          g.computeVertexNormals();
+          parts.push({geo:g, pos:[0, MH, sd*MD/2]});
+        });
+        const m = new T.Mesh(mergeParts(parts), board);
+        m.name = 'bj:house'; m.position.set(cx, 0, cz);
+        m.castShadow = true; hse.group.add(m);
+      }
+
+      /* the roof: two slopes, leaning off true because the house does */
+      {
+        const parts = [];
+        [-1, 1].forEach(sd=>{
+          parts.push({geo:new T.BoxGeometry(MW + 0.5, 0.18, MD/2 + 0.55),
+                      pos:[0, MH + 0.95, sd*(MD/4 + 0.12)],
+                      rot:[sd*0.72, 0, 0]});
+        });
+        const m = new T.Mesh(mergeParts(parts), boardD);
+        m.position.set(cx, 0, cz); m.castShadow = true; hse.group.add(m);
+      }
+
+      /* a setback tower, which is where the lean reads from */
+      {
+        /* kept low on purpose: the whole house has to clear the portal's own
+           9.2m opening or the portal crops its own set */
+        const parts = [
+          {geo:new T.BoxGeometry(2.5, 2.4, 2.5), pos:[0, 1.2, 0]},
+          {geo:new T.BoxGeometry(2.8, 0.16, 2.8), pos:[0, 2.48, 0]}
+        ];
+        [-1, 1].forEach(sd=>parts.push({geo:new T.BoxGeometry(2.9, 0.16, 1.7),
+          pos:[0, 2.95, sd*0.72], rot:[sd*0.80, 0, 0]}));
+        const m = new T.Mesh(mergeParts(parts), board);
+        m.position.set(cx + 1.5, MH, cz - 0.2);
+        m.rotation.z = 0.045;                  // the lean, and the only one
+        m.castShadow = true; hse.group.add(m);
+      }
+
+      /* the chimney, deliberately too big */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(1.05, 3.4, 1.05), pos:[0, 1.7, 0]},
+          {geo:new T.BoxGeometry(1.3, 0.24, 1.3),  pos:[0, 3.5, 0]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), stone);
+        m.position.set(cx - 2.3, MH - 0.4, cz + 0.6);
+        m.castShadow = true; hse.group.add(m);
+      }
+
+      /* the porch — and its floor is the one thing here you can stand on,
+         so it goes on the SCENE's walk list, not the show's: it has to
+         leave WALKABLE the moment this set goes off */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(MW + 1.4, 0.16, 2.3), pos:[0, 0.52, 0]}
+        ];
+        for(let i = 0; i < 4; i++)
+          parts.push({geo:new T.BoxGeometry(0.17, 2.5, 0.17),
+                      pos:[-MW/2 - 0.5 + i*(MW + 1.0)/3, 1.85, 1.0]});
+        parts.push({geo:new T.BoxGeometry(MW + 1.6, 0.16, 2.6), pos:[0, 3.18, 0.1]});
+        parts.push({geo:new T.BoxGeometry(MW + 1.6, 0.34, 0.18), pos:[0, 3.34, 1.32]});
+        const m = new T.Mesh(mergeParts(parts), board);
+        m.position.set(cx, 0, cz + MD/2 + 1.0);
+        m.castShadow = true; hse.group.add(m);
+
+        /* the deck of the porch, as its own flat walkable at its own height */
+        const f = new T.Mesh(new T.BoxGeometry(MW + 1.4, 0.12, 2.3), boardD);
+        f.name = 'bj:porchFloor';
+        f.position.set(cx, 0.60, cz + MD/2 + 1.0);
+        f.receiveShadow = true; hse.group.add(f);
+        /* sceneShow owns WALKABLE for scene pieces — it adds this on the way in
+           and splices it out on the way off.  Pushing it by hand here would
+           leave a porch you can stand on while the cemetery is up. */
+        sceneWalk(hse, f);
+      }
+
+      /* the steps up to it */
+      {
+        const parts = [];
+        for(let i = 0; i < 3; i++)
+          parts.push({geo:new T.BoxGeometry(2.4, 0.2, 0.42), pos:[0, 0.1 + i*0.2, -i*0.42]});
+        const m = new T.Mesh(mergeParts(parts), boardD);
+        m.position.set(cx, 0, cz + MD/2 + 2.5); hse.group.add(m);
+      }
+
+      /* windows: two clusters, each merged, each a frame and a sill */
+      [[-1.9, 1.5], [1.7, 1.6], [-1.6, 3.9], [1.9, 4.0]].forEach((wv, i)=>{
+        const parts = [
+          {geo:new T.BoxGeometry(1.05, 1.35, 0.10), pos:[0, 0, 0]},
+          {geo:new T.BoxGeometry(0.10, 1.35, 0.16), pos:[0, 0, 0.04]},
+          {geo:new T.BoxGeometry(1.05, 0.10, 0.16), pos:[0, 0, 0.04]},
+          {geo:new T.BoxGeometry(1.28, 0.14, 0.26), pos:[0, -0.74, 0.04]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), boardD);
+        m.position.set(cx + wv[0], wv[1], cz + MD/2 + 0.02);
+        hse.group.add(m);
+      });
+
+      /* the door, shut */
+      {
+        const m = new T.Mesh(new T.BoxGeometry(1.15, 2.25, 0.12), boardD);
+        m.name = 'bj:houseDoor';
+        m.position.set(cx, 1.72, cz + MD/2 + 0.02);
+        hse.group.add(m);
+      }
+
+      /* a picket run either side, leaning where the ground has moved */
+      [-1, 1].forEach(sd=>{
+        const parts = [];
+        /* the run stops short of the portal edge — everything in this scene has
+           to sit inside the 13.6m opening it is seen through */
+        for(let i = 0; i < 6; i++)
+          parts.push({geo:new T.BoxGeometry(0.11, 1.15, 0.06),
+                      pos:[sd*(3.4 + i*0.52), 0.58, 0], rot:[0, 0, (i%3-1)*0.05]});
+        parts.push({geo:new T.BoxGeometry(2.6, 0.08, 0.05), pos:[sd*4.7, 0.86, 0]});
+        parts.push({geo:new T.BoxGeometry(2.6, 0.08, 0.05), pos:[sd*4.7, 0.34, 0]});
+        const m = new T.Mesh(mergeParts(parts), boardD);
+        m.position.z = cz + MD/2 + 2.9; hse.group.add(m);
+      });
+
+      /* one dead shrub each side, so the ground is not bare board */
+      [[-5.2, -6.0], [4.4, -6.4]].forEach(s=>{
+        const parts = [{geo:new T.CylinderGeometry(0.07, 0.13, 1.0, 7), pos:[0, 0.5, 0]}];
+        for(let i = 0; i < 5; i++)
+          parts.push({geo:new T.CylinderGeometry(0.03, 0.06, 0.8, 5),
+                      pos:[(i%3-1)*0.22, 1.05, 0], rot:[0, 0, (i%3-1)*0.7]});
+        const m = new T.Mesh(mergeParts(parts), bark);
+        m.position.set(s[0], 0, s[1]); hse.group.add(m);
+      });
+    }
+
     /* ---- the show curtain ---- */
     {
       const c = bjCurtainCanvas();
@@ -447,65 +598,65 @@ function plotBeetlejuice(){
      look(){ all(0); }},
 
     {n:15, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
-     curtain:'shut', scene:'cemetery',
+     curtain:'shut', scene:'house',
      look(){ all(0); }},
 
     /* ============ ACT TWO ============
        Its own scenery arrives with the later PRs in this chain; until then act
        two plays in the one scene that exists, and says so. */
     {n:16, label:'act two — colder, and lower', fade:5, house:0, haze:0.65,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0);
        set(CYC, 0.42, '#24507f'); set(BACK, 0.34, '#3f6ea6');
        set(WASH, 0.14, '#4a6a90'); }},
 
     {n:17, label:'a hard green across the boards', fade:2, house:0, haze:0.7,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0);
        set(WASH, 0.52, '#7fc46a'); set(MOVE, 0.44, '#9fd066');
        set(CYC, 0.20, '#1d3f70'); }},
 
     {n:18, label:'the moon again, harder', fade:3, house:0, haze:0.6,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0);
        set(CYC, 0.74, '#2b5896'); set(BACK, 0.22, '#6f8fc0'); }},
 
     {n:19, label:'front and centre', fade:2.2, house:0, haze:0.5,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -4.0);
        set(FRONT, 0.7, '#efe6d2'); set(CYC, 0.16, '#22467c'); }},
 
     {n:20, label:'the whole stage, wide open', fade:3, house:0, haze:0.8,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0);
        set(FRONT, 0.5, '#e6dcc6'); set(WASH, 0.58, '#cfd8e8');
        set(BACK, 0.62, '#5f8fc8'); set(CYC, 0.44, '#2f5f9c');
        set(MOVE, 0.5, '#8fd8f0'); }},
 
     {n:21, label:'down to the gate again', fade:2.5, house:0, haze:0.6,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0); one(SPOT, 0.7, '#f2ecd8'); set(CYC, 0.14, '#1d3f70'); }},
 
     {n:22, label:'the last of the blue', fade:4, house:0, haze:0.55,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0); set(CYC, 0.5, '#2b5896'); set(BOOM, 0.18, '#3a689e'); }},
 
     {n:23, label:'a warm turn, late on', fade:3, house:0, haze:0.6,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0);
        set(WASH, 0.46, '#e0b58a'); set(FRONT, 0.3, '#e8c9a4');
        set(BOOM, 0.24, '#c89a6e'); }},
 
     {n:24, label:'the button — everything, briefly', fade:1, house:0, haze:0.85,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0);
        set(FRONT, 0.8, '#fff4e0'); set(WASH, 0.85, '#ffffff');
        set(BACK, 0.8, '#8fd8f0'); set(CYC, 0.6, '#3f79bf');
        set(MOVE, 0.8, '#ffffff'); set(BOOM, 0.5, '#e8d2a8'); }},
 
     {n:25, label:'out on the measured 2.2', fade:2.2, house:0, haze:0.5,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0); }},
 
     /* measured: the curtain call is unmistakable in the file — 82 events in the
@@ -513,7 +664,7 @@ function plotBeetlejuice(){
        ends with a 7.0s fade down into 7.3s of black at 143:35. Found without
        ever seeing a frame, which is the best evidence the method works. */
     {n:26, label:'curtain call', fade:1.4, house:0, haze:0.4,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'house',
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -3.0);
        set(FRONT, 0.85, '#fff2dc'); set(WASH, 0.7, '#ffffff');
@@ -521,17 +672,17 @@ function plotBeetlejuice(){
 
     /* measured: 7.0s down into the black at 143:35 — the show's last cue */
     {n:27, label:'blackout — the curtain comes in', fade:7, house:0, haze:0.2,
-     curtain:'shut', scene:'cemetery',
+     curtain:'shut', scene:'house',
      look(){ all(0); }},
 
     {n:28, label:'curtain warmers — the cloth, and nothing else', fade:4, house:0, haze:0,
-     curtain:'shut', scene:'cemetery',
+     curtain:'shut', scene:'house',
      look(){ all(0);
        onTheCloth();                     // up at the cloth, never down at the deck
        set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }},
 
     {n:29, label:'house up — the warmers stay', fade:8, house:0.6, haze:0,
-     curtain:'shut', scene:'cemetery',
+     curtain:'shut', scene:'house',
      look(){ all(0);
        onTheCloth();
        set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }}
