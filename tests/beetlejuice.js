@@ -156,6 +156,82 @@ const probe = `
     return 'off: nothing drawn and nothing raycastable; on again: back';
   });
 
+  console.log('--- the house, from outside ---');
+
+  P('the house is its own scene, and a substantial one', ()=>{
+    showLoad('beetlejuice');
+    const h = sceneFind('house');
+    if(!h) throw new Error('there is no house scene');
+    if(h.on) throw new Error('the house is live at the top of the show — the cemetery is');
+    sceneShow('house');
+    let m = 0; h.group.traverse(o=>{ if(o.isMesh) m++; });
+    if(m < 10) throw new Error('the house is only '+m+' pieces');
+    if(!byName('bj:house')) throw new Error('no main mass');
+    return m+' pieces';
+  });
+
+  /* it has to read THROUGH the portal, or the portal crops it */
+  P('the house fits inside the portal opening it is seen through', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('house');
+    const h = sceneFind('house');
+    const b = box(h.group);
+    if(b.max.y > BJ.opH)
+      throw new Error('the house reaches y='+b.max.y.toFixed(2)+', the portal opening is '+BJ.opH);
+    const wide = Math.max(Math.abs(b.min.x), Math.abs(b.max.x));
+    if(wide*2 > BJ.opW + 0.01)
+      throw new Error('the house is '+(wide*2).toFixed(2)+'m wide, the opening is '+BJ.opW);
+    if(b.min.y < -0.01) throw new Error('the house goes below the deck to '+b.min.y.toFixed(2));
+    return (wide*2).toFixed(2)+'m x '+b.max.y.toFixed(2)+'m through a '+BJ.opW+' x '+BJ.opH+' opening';
+  });
+
+  /* sceneWalk's whole point: you cannot stand on a porch that is not on stage */
+  P('the porch is walkable only while the house is on the stage', ()=>{
+    showLoad('beetlejuice');
+    const f = (()=>{ let r=null; SHOW.group.traverse(o=>{ if(!r && o.name==='bj:porchFloor') r=o; }); return r; })();
+    if(!f) throw new Error('no porch floor was built');
+    if(WALKABLE.indexOf(f) >= 0)
+      throw new Error('you can stand on the porch while the cemetery is up');
+    sceneShow('house');
+    if(WALKABLE.indexOf(f) < 0) throw new Error('the porch is not walkable with the house on');
+    const b = box(f);
+    if(b.max.y < 0.3) throw new Error('the porch is at deck level, y='+b.max.y.toFixed(2));
+    sceneShow('cemetery');
+    if(WALKABLE.indexOf(f) >= 0)
+      throw new Error('the porch stayed walkable after the house went off');
+    return 'porch at y='+b.max.y.toFixed(2)+', in WALKABLE only while the house is live';
+  });
+
+  P('the set changes behind a shut cloth, never in view', ()=>{
+    showLoad('beetlejuice');
+    const ls = frontCurtainLineset();
+    const trim = TRIMS[ls.goodsKey] !== undefined ? TRIMS[ls.goodsKey] : TRIMS.house;
+    let changes = 0, inView = [];
+    for(let i = 1; i < CUES.length; i++){
+      if(CUES[i].scene === CUES[i-1].scene) continue;
+      changes++;
+      const r = CUES[i].fly.find(x=>x.id === ls.id);
+      if(!r || r.target > OUT_TRIM - 1) inView.push(CUES[i].n);
+    }
+    if(!changes) throw new Error('no cue changes the set');
+    if(inView.length)
+      throw new Error('the set changes in full view on cue '+inView.join(', '));
+    return changes+' set change(s), every one behind the cloth';
+  });
+
+  P('firing the act two cue actually swaps the set', ()=>{
+    showLoad('beetlejuice');
+    const i = CUES.findIndex(c=>c.scene === 'house');
+    if(i < 0) throw new Error('no cue plays in the house');
+    fireCue(i);
+    if(SHOW.scene !== 'house') throw new Error('the live scene is still '+SHOW.scene);
+    const cem = sceneFind('cemetery');
+    if(cem.on) throw new Error('the cemetery is still on with the house');
+    let lit = 0; cem.group.traverse(o=>{ if(o.layers && o.layers.mask !== 0) lit++; });
+    if(lit) throw new Error(lit+' cemetery pieces still test against a ray');
+    return 'cue '+CUES[i].n+' put the house on and made the cemetery inert';
+  });
+
   console.log('--- the plot: measured times, interpreted levels ---');
 
   P('it stands by at the top with a preset and the house open', ()=>{
