@@ -128,10 +128,12 @@ contents** rather than threading a stage argument through two hundred functions.
 Every existing function carries on working; it just describes a different room.
 `STAGE` names the live one, `STAGES[key]` parks the others.
 
-**Four productions.** THE OUTSIDERS, THE LOST BOYS, HAMILTON (two concentric
+**Five productions.** THE OUTSIDERS, THE LOST BOYS, HAMILTON (two concentric
 revolves that turn), THE PLAY THAT GOES WRONG (seven pieces that fall over under
-their own weight and can be stood back up). All interpretations in each show's
-vocabulary — no reproduction of anyone's drawings.
+their own weight and can be stood back up), and BEETLEJUICE (seven scenes that
+take turns on the one stage, its cue times measured off a recording). All
+interpretations in each show's vocabulary — no reproduction of anyone's
+drawings; **RULING AO** restates that for the one taken off a video.
 
 **A crew.** Six stagehands with a job queue who bring a set in through the dock
 of whichever stage the board is patched to, hang the goods, and strike it again.
@@ -220,6 +222,69 @@ anything below zero" is a useless test of whether a set sits on the deck —
 compare the *same* production across stages instead.
 
 ---
+
+## DONE — 2026-08-10: a fifth show, taken off a recording (#90-#98)
+
+The owner asked: "if i give you a video of a full show can you make the real
+cues and sets for it and make an auto cue feature for it that is timed
+currectley", then supplied a 2h23m47s recording of BEETLEJUICE.
+
+**Phase 1, the measurement (#90).** `tools/video.js` — the one probe that loads
+no harness, only ffmpeg. Five passes: a 16x9 area-averaged grid at 5fps (one
+pass instead of the brief's 24 crops), per-frame scene scores, blackdetect,
+silencedetect, astats. The headline changed the scope: the file is a **bootleg
+compilation, not a locked-off wide shot** — 723 hard cuts at 5.0/min, layout
+stability median r=0.676 where a fixed camera scores ~0.95 — so **per-area
+channel levels are not measurable from it at all**. What survived: CFR
+timestamps, real black at Y=16.8, fixed exposure (+1.1Y drift through a 13.3s
+blackout), 33 blackouts >=1s, fade times median 2.2s, the act break at 71:02,
+and the curtain call located in the last 2.5 minutes — 82 events of lights
+bumping — **without ever seeing a frame**.
+
+**RULING AO (#91).** The scenery is the show's vocabulary, not its drawing:
+our own proportions, our own detailing, our own words on any sign. It restates
+what §3 already ruled for the other four, and it is written down because a
+video makes tracing easy for the first time. All four older shows carry an
+interpretation note on their record; Beetlejuice's is now a tested assertion.
+
+**Beetlejuice was here before, and was removed.** `tests/sets.js` carried an
+assertion since the INITIAL COMMIT that `SHOWS.beetlejuice` must not exist, and
+it appears nowhere in git history under `src/` — so the removal predates the
+repository and **no reason for it was ever recorded**. Reversed deliberately,
+with the old assertion rewritten in place saying what it used to guard and why
+that changed.
+
+**The scene machinery was built for this show and orphaned with it.**
+`sceneAdd`/`sceneShow`, a cue that carries a `scene`, and a p7 panel — recorded
+here as "general machinery that no current show uses". This is the first
+production to use it, and it is what makes seven configurations affordable: a
+scene that is off has its **layers disabled**, so it costs no draw call and no
+raycast. Only `p2d` is genuinely dead — re-read audit item 20 before deleting
+anything near it.
+
+**What shipped.** `src/p5h.txt`, appended after `p5g` (SHOWS is declared in
+p5c). Seven scenes — cemetery, interior, attic, bedroom, house exterior,
+redecorated room, afterlife — and a constant portal, ~80 pieces, one scene ever
+live. 38 cues across a full evening.
+
+**THE AUTO-CUE RUNS, and it cost no new code.** Every cue's `follow` field now
+carries the gap between two measured cue times. The chain spans **8627s = 144
+min** against a 143-minute recording, reaching the act break at exactly
+**71:02** and the curtain call at **141:02**. Show him this before any
+transport is specced.
+
+**Still owed:** **PR 6 of 7**, the remainder scenery (crypt 56:46, sign set
+118:04, bare-stage looks) — purely additive. And **rulings AP onward**: cheap
+`follow` vs a real timecode transport, whether it must be VR-reachable, and
+what a running show does on a stage swap. Two facts for that discussion:
+`follow` uses `setTimeout` and a **stage swap cancels it**, so an unattended
+show dies when you change venue; and chained relative waits drift where
+absolute timecode does not.
+
+**For the headset, as questions and not claims:** does a self-running show read
+as a show, or as a slideshow? Is 144 minutes of it bearable, and is the pace
+right at the act break? Does the portal read as a portal from a seat, or just
+as a frame? None of this has met hardware.
 
 ## 6. Where it stands / what is next
 
