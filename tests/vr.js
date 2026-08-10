@@ -368,7 +368,8 @@ const probe = `
     /* the warehouse PR cut a doorway at x=0: the flyer may now nose right up
        to the wall plane (D.backWall - 0.3) where its shut roller door stops
        him, but never through the wall's thickness into the shed */
-    if(Player.pos.z < D.backWall - 0.35)
+    /* PAL_BACK: the Palace brick is 4.5m deeper than the stage box */
+    if(Player.pos.z < PAL_BACK - 0.35)
       throw new Error('flew through the back wall to z=' + Player.pos.z.toFixed(1));
     tapA(); tapA();                           // back on the ground for the rest
     settle();

@@ -512,9 +512,86 @@ const probe = `
     if(Player.pos.z < BOH.z2 + 0.5) throw new Error('escaped at z='+Player.pos.z.toFixed(1));
     return 'held at z='+Player.pos.z.toFixed(1);
   });
+  /* ---- the Palace is deeper than the box (owner, 2026-08-10) ----
+     The Beetlejuice house is a wagon that tracks upstage and parks behind the
+     last lineset with the backdrop on it.  The deck used to end at D.backWall,
+     which left it standing in the brick.  These four pin the change AND its
+     scoping, because a deeper Palace is a deliberate break of "every stage is
+     the same box" and the danger is that it leaks into the Arc. */
+  P('the Palace deck runs unbroken from the box to its own brick', ()=>{
+    goToView(3);
+    /* the old wall line is 17m; walk the floor from just inside it to just
+       short of the new brick and there must be deck the whole way */
+    for(let z = D.backWall + 0.5; z > PAL_BACK + 0.4; z -= 0.75){
+      const y = groundAt(0, z, 3);
+      if(y === null || y === undefined || Math.abs(y) > 0.05)
+        throw new Error('no deck at z='+z.toFixed(1)+' (got '+y+')');
+    }
+    return 'deck continuous from '+D.backWall+' back to '+PAL_BACK.toFixed(1);
+  });
+
+  P('there is room to park the house behind the last lineset', ()=>{
+    const last = FLY[FLY.length - 1];
+    showLoad('beetlejuice');
+    /* how deep is the set that has to fit back there */
+    const sc = sceneFind('interior');
+    const b = new THREE.Box3();
+    sc.group.traverse(o=>{ if(o.isMesh){ o.updateMatrixWorld(true); b.expandByObject(o); } });
+    const deep = b.max.z - b.min.z;
+    const room = last.z - PAL_BACK;          // stage upstage of the last line
+    /* it has to clear the lineset in front of it and the brick behind it */
+    const need = deep + 0.6 + 1.5;
+    if(room < need)
+      throw new Error(room.toFixed(2)+'m behind the last lineset for a '+deep.toFixed(2)+
+                      'm set needing '+need.toFixed(2));
+    return room.toFixed(2)+'m of stage upstage of line '+(FLY.indexOf(last)+1)+
+           ' for a '+deep.toFixed(2)+'m set';
+  });
+
+  P('the warehouse went back with the wall, not into the stage', ()=>{
+    const sh = SHEDS.palace;
+    if(!sh) throw new Error('no palace shed');
+    /* the roller leaf legitimately hangs IN the wall plane — that is what a
+       door is — so it is excluded by identity rather than by loosening the
+       tolerance until it passes.  Everything else must be behind the brick. */
+    const doorG = sh.door && sh.door.group;
+    const under = o=>{ let p = o; while(p){ if(p === doorG) return true; p = p.parent; } return false; };
+    const b = new THREE.Box3();
+    sh.group.traverse(o=>{ if(o.isMesh && !under(o)){ o.updateMatrixWorld(true); b.expandByObject(o); } });
+    if(b.max.z > PAL_BACK + 0.05)
+      throw new Error('the shed reaches z='+b.max.z.toFixed(2)+', downstage of the brick at '+PAL_BACK);
+    /* and it genuinely MOVED rather than merely being trimmed at the front.
+       Depth, not position: trimming the front would satisfy any test that only
+       looks at where the shed now ENDS, and the shed would quietly lose 4.5m
+       of the floor the racks and saws stand on. */
+    const deep = b.max.z - b.min.z;
+    if(deep < 12)
+      throw new Error('the shed is only '+deep.toFixed(1)+'m deep — it was shortened, not moved');
+    return 'shed z '+b.min.z.toFixed(1)+' .. '+b.max.z.toFixed(1)+', all of it behind '+PAL_BACK;
+  });
+
+  /* the scoping half, and the one that matters most: the deeper Palace must
+     not have moved the number every show and both Arc houses are written to */
+  P('the BOX is unchanged — the Arc did not get deeper too', ()=>{
+    if(D.backWall !== -17) throw new Error('D.backWall moved to '+D.backWall);
+    if(D.stageD !== 17) throw new Error('D.stageD moved to '+D.stageD);
+    if(PAL_BACK >= D.backWall) throw new Error('PAL_BACK is not upstage of the box');
+    /* and the Arc's own deck still stops where the box says, not where the
+       Palace's brick now is */
+    goToView(11);
+    const y = groundAt(ARC.X, D.backWall - 2.0, 3);
+    if(y !== null && y !== undefined && Math.abs(y) < 0.05)
+      throw new Error('the Arc grew a deck at z='+(D.backWall-2.0)+' — the deepening leaked');
+    goToView(3);
+    return 'box still '+D.stageD+'m to '+D.backWall+'; the Palace alone runs to '+PAL_BACK.toFixed(1);
+  });
+
   P('the upstage wall is solid', ()=>{
     for(const x of [0, 6, 11.5, -11.5, 18]){
-      if(!backWallBlocks(x, D.backWall-1, D.backWall+1))
+      /* PAL_BACK, not D.backWall: the Palace deck runs 4.5m deeper than the
+         stage-coordinate box (p2.txt), so probing the old number now probes
+         open stage floor and finds no wall because there is none there. */
+      if(!backWallBlocks(x, PAL_BACK-1, PAL_BACK+1))
         throw new Error('you can walk through the back wall at x='+x);
     }
     if(backWallBlocks(0, -4, -3)) throw new Error('it blocks you out on the stage');

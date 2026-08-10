@@ -39,6 +39,33 @@ const D = {
   domeZ: 11.5, domeRim: 7.4         // the dome, and the chandelier under it
 };
 
+/* ---------------------------------------------------------------------------
+   THE PALACE IS DEEPER THAN THE BOX  (owner, 2026-08-10)
+
+   "make the house set deaper and make it have just enough space to slide back
+   behind the final line set witch will have the backdrop" — the Beetlejuice
+   house is a wagon that tracks upstage, and at the curtain call it parks all
+   the way back with the backdrop flown out and nothing else on stage.  The
+   deck ended at D.backWall, which left the wagon standing in the brick.
+
+   This is a DELIBERATE, SCOPED break of the "every stage is the same box"
+   invariant, and it is scoped by keeping the two numbers apart:
+
+     D.backWall   the STAGE-COORDINATE reference.  Unchanged at -17.  Every
+                  show, every light plot, every drag limit and both Arc
+                  houses are written to it and must go on reading it, or a
+                  production that loads into the Studio lands 4.5m out.
+     PAL_BACK     where the Palace's own brick actually stands.  Only the
+                  Palace's structural geometry — its deck, its back wall, its
+                  room slab, its warehouse — uses this.
+
+   The rule, and it is the whole of the safety of this change: STRUCTURAL
+   PALACE GEOMETRY USES PAL_BACK; ANYTHING STAGE-RELATIVE KEEPS D.backWall.
+   The Arc is built from D and is untouched by design.
+   --------------------------------------------------------------------------- */
+const PAL_DEEP = 4.5;                       // how much deeper the Palace runs
+const PAL_BACK = D.backWall - PAL_DEEP;     // -21.5
+
 /* ============================================================================
    RENDERER / QUALITY
    ========================================================================== */

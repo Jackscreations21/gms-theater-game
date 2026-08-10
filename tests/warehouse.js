@@ -58,10 +58,14 @@ const probe = `
   });
   P('the back wall has a doorway now', ()=>{
     SHEDS.palace.door.open = 1;
-    if(backWallBlocks(0, -18.2, -16.8)) throw new Error('open door still blocks');
-    if(!backWallBlocks(8, -18.2, -16.8)) throw new Error('the wall beside the door is gone');
+    /* straddle the wall wherever it actually stands.  These were -18.2/-16.8
+       when the brick was at -17; the Palace is deeper now, so they are taken
+       off PAL_BACK and cannot go stale again. */
+    const zIn = PAL_BACK - 1.2, zOut = PAL_BACK + 0.2;
+    if(backWallBlocks(0, zIn, zOut)) throw new Error('open door still blocks');
+    if(!backWallBlocks(8, zIn, zOut)) throw new Error('the wall beside the door is gone');
     SHEDS.palace.door.open = 0;
-    if(!backWallBlocks(0, -18.2, -16.8)) throw new Error('a shut door does not block');
+    if(!backWallBlocks(0, zIn, zOut)) throw new Error('a shut door does not block');
     return 'gap at x=0, wall elsewhere';
   });
   P('the shed floor is walkable through the open door', ()=>{

@@ -537,7 +537,8 @@ const probe = `
     if(backWallBlocks(ARC.X, 20, 24)) throw new Error('the palace back wall is in the foyer');
     if(dockWallBlocks(ARC.X, 20, ARC.X + 1)) throw new Error('the palace dock wall is in the foyer');
     goToView(3);
-    if(!backWallBlocks(0, D.backWall - 1, 0)) throw new Error('the palace wall stopped working');
+    /* PAL_BACK: the Palace brick stands deeper than the box it is written to */
+    if(!backWallBlocks(0, PAL_BACK - 1, 0)) throw new Error('the palace wall stopped working');
     return 'off across town, on at home';
   });
 
