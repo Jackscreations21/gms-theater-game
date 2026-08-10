@@ -36,6 +36,58 @@ const BJ = {
   pz: 0.45                    // it stands just upstage of the apron edge
 };
 const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
+const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
+                              // its bottom edge ends at 12.7 against a 10.4
+                              // proscenium, so it is properly masked out
+
+/* ---- the graveyard backdrop: a painted cloth, laid in the way a scenic
+   artist lays one in — sky graded dark at the top, a moon with the halo it
+   throws, a hill, and a silhouette along the bottom edge.  Ours, not
+   theirs (RULING AO). ---- */
+function bjBackdropTex(){
+  const W = 1024, H = 512, c = cvs(W, H), g = c.getContext('2d');
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0,    '#080d1c');
+  sky.addColorStop(0.52, '#1a2a43');
+  sky.addColorStop(1,    '#2b3c53');
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+  /* stars, thinning towards the horizon the way they do */
+  for(let i = 0; i < 300; i++){
+    const y = Math.pow(Math.random(), 1.9) * H * 0.72;
+    g.fillStyle = 'rgba(226,236,255,' + (0.12 + Math.random()*0.62).toFixed(2) + ')';
+    g.fillRect(rnd(0, W), y, 1.4, 1.4);
+  }
+  /* the moon, low and to one side, and the halo on the cloth around it */
+  const mx = W*0.72, my = H*0.24;
+  const halo = g.createRadialGradient(mx, my, 8, mx, my, 150);
+  halo.addColorStop(0, 'rgba(255,214,150,.42)');
+  halo.addColorStop(1, 'rgba(255,214,150,0)');
+  g.fillStyle = halo; g.beginPath(); g.arc(mx, my, 150, 0, 6.283); g.fill();
+  g.fillStyle = '#ffe6bc'; g.beginPath(); g.arc(mx, my, 34, 0, 6.283); g.fill();
+  /* the hill it all stands on */
+  g.fillStyle = '#141b28';
+  g.beginPath(); g.moveTo(0, H);
+  g.lineTo(0, H*0.74);
+  for(let x = 0; x <= W; x += 64)
+    g.lineTo(x, H*0.74 - Math.sin(x/W*3.1)*38 - Math.sin(x/W*11)*9);
+  g.lineTo(W, H); g.closePath(); g.fill();
+  /* headstones and a bare tree or two, flat black against it */
+  g.fillStyle = '#0a0e16';
+  for(let i = 0; i < 26; i++){
+    const x = rnd(10, W - 30), hgt = rnd(16, 44), y = H*0.80 + rnd(-10, 26);
+    g.fillRect(x, y - hgt, rnd(10, 20), hgt);
+    if(Math.random() < 0.3){ g.beginPath(); g.arc(x + 7, y - hgt, 7, Math.PI, 0); g.fill(); }
+  }
+  for(const tx of [W*0.14, W*0.88]){
+    g.fillRect(tx, H*0.60, 9, H*0.34);
+    for(let b = 0; b < 7; b++){
+      g.save(); g.translate(tx + 4, H*0.60 + b*13);
+      g.rotate((b % 2 ? -1 : 1) * (0.5 + b*0.06));
+      g.fillRect(0, 0, rnd(26, 54), 4); g.restore();
+    }
+  }
+  return tex(c, 1, 1);
+}
 
 /* ---- weathered vertical boarding: the portal, and later the house ---- */
 function bjBoardTex(){
@@ -1022,6 +1074,65 @@ SHOWS.beetlejuice = {
       }
     }
 
+    /* ================================================================
+       THE SIGN — the show's own, and it hangs DOWNSTAGE of the house
+       curtain so the audience has it in front of them while the curtain
+       is still in.  Every lineset lives upstage of the plaster line
+       (makeLineset: z = -0.50 - i*0.80), so it cannot be a good on a
+       batten however much it behaves like one: it travels on the mover
+       instead (RULINGS AS, AT).  In at pre-show, out at the end of the
+       opening light sequence, before the curtain lifts.
+
+       It is an ALWAYS scene — on the stage whatever set is up, and never
+       swept off by sceneShow.  The wording is the production's own title
+       in our lettering, which is the whole of what RULING AO allows.
+       ================================================================ */
+    const sgnFly = sceneAdd('bjSign', 'THE SIGN (flown)');
+    {
+      const SZ = 0.10;                    // downstage of the curtain at -0.50
+      const c = cvs(1024, 256), g = c.getContext('2d');
+      g.fillStyle = '#140a18'; g.fillRect(0, 0, 1024, 256);
+      g.fillStyle = '#bfe08a';
+      g.font = 'bold 128px sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('BEETLEJUICE', 512, 132);
+      const signTex = tex(c, 1, 1);
+      const panel = new T.MeshStandardMaterial({map:signTex, emissive:0xbfe08a,
+                                                emissiveIntensity:0.9, emissiveMap:signTex,
+                                                roughness:.7});
+      const p = new T.Mesh(new T.BoxGeometry(8.6, 2.0, 0.22), panel);
+      p.name = 'bj:flySign'; p.position.set(0, 5.2, SZ); sgnFly.group.add(p);
+
+      /* the bulb surround — one mesh on the shared glow material */
+      {
+        const parts = [];
+        for(let i = 0; i < 26; i++){
+          const t = i/25;
+          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[-4.5 + 9.0*t, 6.42, SZ - 0.1]});
+          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[-4.5 + 9.0*t, 3.98, SZ - 0.1]});
+        }
+        sgnFly.group.add(new T.Mesh(mergeParts(parts), glow));
+      }
+      /* the frame, and the two lift lines that carry it */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(9.6, 0.3, 0.42), pos:[0, 6.62, SZ - 0.14]},
+          {geo:new T.BoxGeometry(9.6, 0.3, 0.42), pos:[0, 3.78, SZ - 0.14]},
+          {geo:new T.BoxGeometry(0.32, 3.1, 0.42), pos:[-4.7, 5.2, SZ - 0.14]},
+          {geo:new T.BoxGeometry(0.32, 3.1, 0.42), pos:[ 4.7, 5.2, SZ - 0.14]}
+          /* no lift lines modelled: they would run to the grid at y≈15, and
+             the beetlejuice suite's portal check rightly refuses anything
+             scenic above the 10.4 opening.  Nothing above the header is ever
+             seen from the house, so the wires would cost a guard rail and
+             buy nothing. */
+        ];
+        const m = new T.Mesh(mergeParts(parts), iron);
+        m.name = 'bj:flySignFrame'; m.castShadow = true; sgnFly.group.add(m);
+      }
+      sceneAlways(sgnFly);                       // on whatever set is up
+      sceneTravel(sgnFly, 'y', 0, 2.6);          // 0 is IN; BJ_SIGN_OUT is out
+    }
+
     /* ---- the show curtain ---- */
     {
       const c = bjCurtainCanvas();
@@ -1047,6 +1158,27 @@ SHOWS.beetlejuice = {
       TRIMS[key] = TRIMS.house;
       SHOW.goods.push(key);
       SHOW.curtainKey = key;
+    }
+
+    /* ---- the backdrop, and the sky behind act two.  Both are CLOTHS, so
+       both are goods on real linesets and every "lifts" / "drops" in the
+       plot is a trim in the fly snapshot the cue already carries — no new
+       machinery on this half at all (RULING AT). ---- */
+    {
+      const bd = bjBackdropTex();
+      GOODS.bjBackdrop = {label:'BEETLEJUICE backdrop', h:11.5, wt:240, made:true,
+        build:()=>{
+          const m = new T.MeshStandardMaterial({map:bd, roughness:1, side:T.DoubleSide});
+          const g2 = new T.Group();
+          const d = drape(D.procW + 6, 11.5, m, 2, .05);
+          d.position.y = -5.75; d.receiveShadow = true; g2.add(d);
+          return g2; }};
+      TRIMS.bjBackdrop = 11.6;          // bottom edge to the deck, near enough
+      /* only the backdrop goes on SHOW.goods.  That list is what the strike
+         DELETES out of the catalogue (p5c: delete GOODS[k]), so a stock good
+         put on it is destroyed for every show that follows — `sky` is stock
+         and is already in the palette, so it is simply hung. */
+      SHOW.goods.push('bjBackdrop');
       buildGoodsPalette();
     }
 
@@ -1060,6 +1192,10 @@ SHOWS.beetlejuice = {
     hangGoods(FLY[5], 'legs');      FLY[5].target = inTrimOf(FLY[5]);
     hangGoods(FLY[6], 'truss');     FLY[6].target = 11.4;
     hangGoods(FLY[8], 'electric');  FLY[8].target = 10.4;
+    /* the graveyard's own backdrop is IN at the top of the show; the sky
+       belongs to act two and waits out until then */
+    hangGoods(FLY[7], 'bjBackdrop'); FLY[7].target = TRIMS.bjBackdrop;
+    hangGoods(FLY[9], 'sky');        FLY[9].target = OUT_TRIM;
     FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
 
     sceneShow('cemetery');

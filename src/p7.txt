@@ -839,8 +839,11 @@ $('#fxBars') && ($('#fxBars').oninput = e=>{
 function refreshSceneUI(){
   const list = $('#sceneList');
   if(list){
-    list.innerHTML = SHOW.scenes.length
-      ? SHOW.scenes.map(sc=>{
+    /* an ALWAYS piece is not one of the sets that take turns — it is on the
+       stage whatever is up, so it has no business in a list you pick from */
+    const sets = SHOW.scenes.filter(sc=>!sc.always);
+    list.innerHTML = sets.length
+      ? sets.map(sc=>{
           const on = sc.name === SHOW.scene;
           return '<div class="cue'+(on?' next':'')+'" data-s="'+sc.name+'">'+
             '<div style="flex:1;color:'+(on?'var(--amber)':'var(--fg)')+'">'+sc.label+'</div>'+

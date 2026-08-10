@@ -102,7 +102,7 @@ function sceneAdd(name, label){
   g.visible = false;
   showRoot().add(g);
   const sc = {name, label: label || name.toUpperCase(), group:g, walk:[], on:false,
-              mv:null, mvHide:false};
+              mv:null, mvHide:false, always:false};
   SHOW.scenes.push(sc);
   return sc;
 }
@@ -128,11 +128,25 @@ function sceneApply(sc, on){
     if(!on && i >= 0) WALKABLE.splice(i, 1);
   }
 }
+/* a piece of scenery that is on the stage whatever set is up — the show's
+   own sign, hanging downstage of the house curtain.  It is a scene so that
+   it can carry a travel and be flown; it is ALWAYS so that sceneShow's
+   sweep leaves it alone.  The portal does the same job by not being a
+   scene at all, which works only because the portal never moves. */
+function sceneAlways(sc){
+  if(!sc) return null;
+  sc.always = true;
+  sc.on = true;
+  sceneApply(sc, true);
+  return sc;
+}
 function sceneShow(name){
   if(!SHOW.scenes.length) return null;
   const want = sceneFind(name);
   if(!want) return null;
+  if(want.always) return null;          // it is never the set that is "on"
   for(const sc of SHOW.scenes){
+    if(sc.always) continue;             // and it is never swept off by one
     const on = (sc === want);
     if(sc.on === on && SHOW.scene === name) continue;
     sc.on = on;

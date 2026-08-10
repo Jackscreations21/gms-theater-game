@@ -293,18 +293,124 @@ const probe = `
 
   const SCENES = ['cemetery','house','interior','redecorated','attic','bedroom','afterlife','crypt','signset','bare'];
 
-  P('every scene is registered and exactly one is ever live', ()=>{
+  /* This used to read "exactly one is ever live" and count SHOW.scenes flat.
+     The flown sign broke both halves on purpose: it is a scene so that it can
+     carry a travel and be flown, but it is NOT one of the sets that take
+     turns — it hangs downstage of the house curtain and is on the stage
+     whatever is up (RULING AS, sc.always).  So the count is the sets PLUS the
+     always pieces, and "exactly one live" means exactly one SET live.  The
+     rewrite is also stronger than what it replaces: it now pins that the sign
+     survives every one of the ten changes. */
+  const ALWAYS = ['bjSign'];
+
+  P('every scene is registered and exactly one SET is ever live', ()=>{
     showLoad('beetlejuice');
-    if(SHOW.scenes.length !== SCENES.length)
-      throw new Error(SHOW.scenes.length+' scenes, expected '+SCENES.length);
+    if(SHOW.scenes.length !== SCENES.length + ALWAYS.length)
+      throw new Error(SHOW.scenes.length+' scenes, expected '+(SCENES.length+ALWAYS.length));
+    for(const n of ALWAYS){
+      const a = sceneFind(n);
+      if(!a) throw new Error('no scene called '+n);
+      if(!a.always) throw new Error(n+' is not marked always, so a set change will sweep it off');
+      if(!a.on) throw new Error(n+' is not on at load');
+    }
     for(const n of SCENES){
       if(!sceneFind(n)) throw new Error('no scene called '+n);
       sceneShow(n);
-      const on = SHOW.scenes.filter(s=>s.on);
-      if(on.length !== 1) throw new Error(on.length+' scenes live at once with '+n+' up');
+      const on = SHOW.scenes.filter(s=>s.on && !s.always);
+      if(on.length !== 1) throw new Error(on.length+' sets live at once with '+n+' up');
       if(on[0].name !== n) throw new Error('asked for '+n+', got '+on[0].name);
+      if(!sceneFind('bjSign').on) throw new Error('the sign went off when '+n+' came on');
     }
     return SHOW.scenes.map(s=>s.name);
+  });
+
+  console.log('--- everything that flies ---');
+
+  P('the backdrop and the sky are CLOTHS, on real linesets', ()=>{
+    showLoad('beetlejuice');
+    const bd = FLY[7], sk = FLY[9];
+    if(bd.goodsKey !== 'bjBackdrop') throw new Error('line 8 carries '+bd.goodsKey);
+    if(sk.goodsKey !== 'sky')        throw new Error('line 10 carries '+sk.goodsKey);
+    /* the graveyard's backdrop is IN at the top; act two's sky waits out */
+    if(Math.abs(bd.pos - TRIMS.bjBackdrop) > 0.01)
+      throw new Error('the backdrop is not at its trim: '+bd.pos.toFixed(2));
+    if(Math.abs(sk.pos - OUT_TRIM) > 0.01)
+      throw new Error('the sky is not flown out: '+sk.pos.toFixed(2));
+    /* a cloth trimmed too low hangs through the deck — the standing rule */
+    const foot = TRIMS.bjBackdrop - GOODS.bjBackdrop.h;
+    if(foot < -0.1 || foot > 0.6)
+      throw new Error('the backdrop foots at y='+foot.toFixed(2)+', not on the deck');
+    return 'backdrop in at '+bd.pos.toFixed(2)+' footing at '+foot.toFixed(2)+', sky out at '+sk.pos.toFixed(2);
+  });
+
+  P('lifting and dropping the backdrop is a TRIM, not new machinery', ()=>{
+    showLoad('beetlejuice');
+    const bd = FLY[7];
+    flyTo(bd, OUT_TRIM);                      // "the backdrop lifts up"
+    for(let i=0;i<900;i++) updateFly(1/60);
+    if(Math.abs(bd.pos - OUT_TRIM) > 0.05)
+      throw new Error('it did not fly out: '+bd.pos.toFixed(2));
+    flyTo(bd, TRIMS.bjBackdrop);              // "the backdrop drops down"
+    for(let i=0;i<900;i++) updateFly(1/60);
+    if(Math.abs(bd.pos - TRIMS.bjBackdrop) > 0.05)
+      throw new Error('it did not come back in: '+bd.pos.toFixed(2));
+    return 'out to '+OUT_TRIM.toFixed(2)+' and back in to '+TRIMS.bjBackdrop.toFixed(2)+', on the fly system';
+  });
+
+  P('the sign hangs DOWNSTAGE of the curtain, where no batten can reach', ()=>{
+    showLoad('beetlejuice');
+    const p = byName('bj:flySign');
+    if(!p) throw new Error('no flown sign');
+    const z = box(p).max.z;
+    if(z <= FLY[0].z)
+      throw new Error('the sign is at z='+z.toFixed(2)+', upstage of the curtain at '+FLY[0].z);
+    /* and there is genuinely no line in front of it — that is WHY it moves */
+    const downstage = FLY.filter(ls=>ls.z > FLY[0].z);
+    if(downstage.length) throw new Error(downstage.length+' linesets are downstage of the curtain after all');
+    return 'sign at z='+z.toFixed(2)+', curtain line at '+FLY[0].z+', no batten downstage of it';
+  });
+
+  P('the sign flies out clear of the opening, and comes back in', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('bjSign'), p = byName('bj:flySign');
+    const inLow = box(p).min.y;
+    if(inLow > D.procH) throw new Error('the sign is masked before it even flies');
+    sceneMoveTo('bjSign', BJ_SIGN_OUT);
+    for(let i=0;i<900;i++) updateStorm(1/60);
+    const outLow = box(p).min.y;
+    if(outLow < D.procH)
+      throw new Error('flown out it still hangs into the opening: y='+outLow.toFixed(2));
+    sceneMoveTo('bjSign', 0);
+    for(let i=0;i<900;i++) updateStorm(1/60);
+    if(Math.abs(box(p).min.y - inLow) > 0.05) throw new Error('it did not come back to its in trim');
+    return 'in at y='+inLow.toFixed(2)+', out at y='+outLow.toFixed(2)+' over a '+D.procH+' opening';
+  });
+
+  P('the sign is not one of the sets you can pick from', ()=>{
+    showLoad('beetlejuice');
+    refreshSceneUI();
+    const rows = Array.from(document.querySelectorAll('#sceneList .cue')).map(e=>e.dataset.s);
+    if(rows.indexOf('bjSign') >= 0) throw new Error('the sign is offered as a set to change to');
+    if(rows.length !== SCENES.length) throw new Error(rows.length+' rows for '+SCENES.length+' sets');
+    /* and asking for it directly must not empty the stage */
+    sceneShow('cemetery');
+    sceneShow('bjSign');
+    if(SHOW.scene !== 'cemetery') throw new Error('asking for the sign changed the set to '+SHOW.scene);
+    return rows.length+' sets listed, the sign not among them';
+  });
+
+  P('striking the show takes ITS backdrop and leaves the stock sky alone', ()=>{
+    showLoad('beetlejuice');
+    if(!GOODS.bjBackdrop) throw new Error('the backdrop was never made');
+    showStrike();
+    if(GOODS.bjBackdrop) throw new Error('the made backdrop outlived the show');
+    /* SHOW.goods is the DELETE list on strike, so a stock good put on it is
+       destroyed for every show that follows.  sky is stock: it is hung, never
+       registered.  This cost three suites the first time. */
+    if(!GOODS.sky) throw new Error('the stock sky was deleted with the show');
+    if(!GOODS.cyc || !GOODS.house) throw new Error('the stock catalogue was damaged');
+    showLoad('lostboys');
+    return 'backdrop gone, sky and the rest of the catalogue intact';
   });
 
   console.log('--- the three dressings ---');
