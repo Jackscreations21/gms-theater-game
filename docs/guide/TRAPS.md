@@ -172,6 +172,35 @@ against this list before opening a PR; **add new traps as you hit them.**
   determinant, but baked vertices carry no determinant, so a mirrored
   part vanishes under the default `FrontSide`.
 
+## Measuring a video (`tools/video.js`)
+
+- **Scene detection structurally CANNOT see a fade.** `scdet` (and
+  `select='gt(scene,…)'`) score the difference between *adjacent* frames. A
+  four-second fade barely changes one frame to the next, so it scores near
+  zero — while every camera cut scores huge. Point scene detection at a
+  recording and it hands back the EDIT, not the cue list, and the count
+  looks plausible enough to believe: 723 hits on a file whose defensible
+  cue count was 109. Cues come from `blackdetect` plus brightness slopes
+  measured strictly INSIDE cut-free windows, never across a cut.
+- **Whole-frame brightness is only a lighting measurement if the camera is
+  locked off.** Check that FIRST — compare a frame's normalised layout
+  against the frame five seconds later; a fixed camera scores ~0.95, a
+  re-framing one scored 0.676. On a moving camera a cut to a close-up
+  brightens the frame with no lighting change at all, and frame regions do
+  not map to stage areas, so per-area levels are not measurable at any
+  threshold. Handheld is worse than edited: a smooth zoom inside one held
+  shot moves brightness and no cut detector will flag it.
+- **"Measure the right thing" bites in the selection step too.** A first
+  pass looking for wide shots scored frames for bright EDGES — reasoning
+  that a wide shot fills the frame — and returned nothing but close-ups.
+  From a seat a wide shot is the *opposite*: a lit stage inside a DARK
+  proscenium surround, so the score is centre/edge ratio. The heuristic was
+  backwards, not merely weak, and it looked like it was working.
+- **Nothing off a video is ever committed** — no frame, clip or audio.
+  `tools/video.js` caches extracted numbers to the OS temp dir. Looking at
+  a picture is fine and well-precedented (the locking rail came off a
+  photograph); committing it is the line.
+
 ## Tests / jsdom
 
 - **A test that proves a function EXISTS is not a test that it is
