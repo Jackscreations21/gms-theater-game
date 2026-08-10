@@ -12919,6 +12919,11 @@ const BJ = {
   pz: 0.45                    // it stands just upstage of the apron edge
 };
 const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
+/* where the house wagon parks.  The room is built in its ACTING position, so
+   this is how far upstage it tracks to hide: it puts the set at z -17.10 ..
+   -11.50 — clear of the last lineset (-10.90) that carries the backdrop, and
+   4.4m off the Palace brick at PAL_BACK.  0 is on. */
+const BJ_WAGON_BACK = -7.9;
 const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
                               // its bottom edge ends at 12.7 against a 10.4
                               // proscenium, so it is properly masked out
@@ -13333,7 +13338,7 @@ SHOWS.beetlejuice = {
        act two would have opened with the house behind the sky it is supposed
        to be seen against.  The whole scene comes downstage 0.9m; nothing else
        about it changes, and it is still well clear of the apron. */
-    hse.group.position.z = 0.9;
+    hse.group.position.z = 1.25;
     {
       /* it has to read THROUGH the portal, so nothing may exceed the
          portal's own 13.6 x 9.2 opening */
@@ -13603,6 +13608,25 @@ SHOWS.beetlejuice = {
         m.name = 'bj:innerDoor' + i; inr.group.add(m);
       });
     }
+
+    /* ================================================================
+       THE HOUSE IS A WAGON, and you watch it travel (RULING AP).
+
+       The owner's plot works this room on and off the stage nine times
+       across the evening — "maitlands house slides forward", "house
+       slides back" — and he chose to SEE it happen rather than have it
+       change in the dark.  So the room carries a travel on Z: forward
+       into the acting area, back behind the last lineset, which is where
+       the backdrop hangs and therefore where it hides.
+
+       It starts PARKED, because the show opens on the graveyard.  The
+       Palace was made 4.5m deeper for exactly this (p2.txt, PAL_BACK):
+       parked, the room sits at z -17.10 .. -11.50, which is clear of the
+       last lineset at -10.90 in front of it and 4.4m off the brick
+       behind it.  At the curtain call it parks there in full view with
+       the backdrop flown out and nothing else on the stage.
+       ================================================================ */
+    sceneTravel(inr, 'z', BJ_WAGON_BACK, 2.0);
 
     /* ================================================================
        THREE DRESSINGS on the same room.  Measured: the redecorated
@@ -14225,8 +14249,12 @@ SHOWS.beetlejuice = {
        put the backdrop at z=-6.10, ahead of the interior wall at -9.20 and
        most of every other set — the cloth would have masked the show.
        Line 13 is z=-10.10, line 14 is z=-10.90. */
-    hangGoods(FLY[12], 'bjBackdrop'); FLY[12].target = TRIMS.bjBackdrop;
-    hangGoods(FLY[13], 'sky');        FLY[13].target = OUT_TRIM;
+    /* THE BACKDROP IS ON THE FINAL LINESET (owner: the house parks 'behind
+       the final line set witch will have the backdrop').  The sky takes the
+       one in front of it; the two are never in together, so the order between
+       them is free and the wagon's hiding place is what decides it. */
+    hangGoods(FLY[13], 'bjBackdrop'); FLY[13].target = TRIMS.bjBackdrop;
+    hangGoods(FLY[12], 'sky');        FLY[12].target = OUT_TRIM;
     FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
 
     sceneShow('cemetery');
