@@ -432,6 +432,130 @@ const probe = `
     return 'no errors, '+calls+' draw calls';
   });
 
+  /* ---- the mover: scenery that travels, and you watch it (RULING AP) ---- */
+  console.log('--- the mover: scenery that travels ---');
+
+  /* every one of these builds its own travel.  No show uses the mover yet —
+     that is PR 4's wagon — so the machinery is exercised directly. */
+  /* from the ROOT, not from the object: updateMatrixWorld on a child composes
+     against whatever its parent's matrixWorld happens to hold, and the group
+     the mover just shifted has not recomputed its own yet */
+  const wx = o => { scene.updateMatrixWorld(true); return o.matrixWorld.elements[12]; };
+
+  /* read the WORLD matrix, never position.x.  lockShowStatic freezes the set
+     with matrixAutoUpdate=false, and against a frozen group position.x takes
+     the write and the stage never moves — a test that reads it back is
+     reading its own assignment and will pass on a wagon that stands still. */
+  P('a set crosses the deck off dt, and takes the time it should', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneTravel(sceneFind('attic'), 'x', -14, 2.0);   // 14m out, 2 m/s
+    sceneShow('attic');
+    sceneMoveTo('attic', 0);
+    run(210, 1/60);                        // 3.5s — half of a 7 second crossing
+    const half = wx(sc.group);
+    if(!(half > -8.4 && half < -5.6))
+      throw new Error('half way should be near -7.0, was '+half.toFixed(2));
+    run(240, 1/60);                        // the rest of it, and a little over
+    if(Math.abs(wx(sc.group)) > 0.01)
+      throw new Error('never arrived: '+wx(sc.group).toFixed(3));
+    if(sceneTravelling(sc)) throw new Error('still reports itself travelling');
+    return 'from -14.00, half way '+half.toFixed(2)+', arrived 0.00 — in world space';
+  });
+
+  P('a set still travelling stays drawn, whatever the cue says', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneTravel(sceneFind('attic'), 'x', 0, 2.0);
+    sceneShow('attic');
+    sceneMoveTo('attic', -14);             // send it off into the wing
+    run(60, 1/60);                         // one second into a seven second move
+    sceneShow('cemetery');                 // and the cue moves on while it goes
+    let lit = 0, dark = 0;
+    sc.group.traverse(o=>{ if(o.isMesh) (o.layers.mask === 0 ? dark++ : lit++); });
+    if(dark) throw new Error(dark+' meshes went dark halfway across the deck');
+    if(!lit) throw new Error('the attic has no meshes to test');
+    run(480, 1/60);                        // let it get where it is going
+    let after = 0;
+    sc.group.traverse(o=>{ if(o.isMesh && o.layers.mask !== 0) after++; });
+    if(after) throw new Error(after+' meshes still live after it arrived and hid');
+    if(sc.group.userData.sceneOff !== true) throw new Error('never marked off');
+    return lit+' meshes drawn while travelling, all of them inert on arrival';
+  });
+
+  P('what you can stand on rides the set that is moving', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('bedroom');
+    if(!sc.walk.length) throw new Error('the bedroom files nothing walkable');
+    sceneTravel(sc, 'x', 0, 2.0);
+    sceneShow('bedroom');
+    const o = sc.walk[0], before = wx(o);
+    sceneMoveTo('bedroom', -6);
+    run(400, 1/60);
+    const moved = before - wx(o);
+    if(Math.abs(moved - 6) > 0.05)
+      throw new Error('the floor moved '+moved.toFixed(2)+' where its set moved 6');
+    if(WALKABLE.indexOf(o) < 0)
+      throw new Error('it left WALKABLE while its own set was still on the stage');
+    return 'travelled '+moved.toFixed(2)+'m with the room, still stood on';
+  });
+
+  P('a move fired mid-travel retargets — it does not queue', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneTravel(sceneFind('attic'), 'x', 0, 2.0);
+    sceneShow('attic');
+    sceneMoveTo('attic', -14);
+    run(60, 1/60);
+    const away = sc.group.position.x;
+    sceneMoveTo('attic', 0);               // changed its mind one second in
+    run(400, 1/60);
+    if(Math.abs(sc.mv.off) > 0.01)
+      throw new Error('ended at '+sc.mv.off.toFixed(2)+', so the first move was banked');
+    return 'got to '+away.toFixed(2)+', turned round, ended 0.00';
+  });
+
+  P('a stage swap parks the wagon where it stood', ()=>{
+    showLoad('beetlejuice');
+    sceneTravel(sceneFind('attic'), 'x', 0, 2.0);
+    sceneShow('attic');
+    sceneMoveTo('attic', -5);
+    run(400, 1/60);
+    const parked = sceneFind('attic').mv.off;
+    if(Math.abs(parked + 5) > 0.01) throw new Error('did not get there first');
+    stageSwitch('arcMain', true);
+    stageSwitch('palace', true);
+    const back = sceneFind('attic');
+    if(!back || !back.mv) throw new Error('the travel did not survive the walk');
+    if(Math.abs(back.mv.off - parked) > 1e-6)
+      throw new Error('came back at '+back.mv.off.toFixed(2)+', left at '+parked.toFixed(2));
+    if(Math.abs(back.group.position.x - parked) > 1e-6)
+      throw new Error('the record and the group disagree after the swap');
+    return 'left at '+parked.toFixed(2)+', found at '+back.mv.off.toFixed(2);
+  });
+
+  P('a cue can send scenery travelling — one move, or several at once', ()=>{
+    showLoad('beetlejuice');
+    sceneTravel(sceneFind('attic'), 'x', 0, 3);
+    sceneTravel(sceneFind('bedroom'), 'y', 0, 3);
+    /* act two opens with the exterior flying out WHILE the house slides on,
+       so one cue has to be able to move two things */
+    showCueExtras({move:[{scene:'attic', off:-6}, {scene:'bedroom', off:9}]});
+    if(sceneFind('attic').mv.target !== -6) throw new Error('the list left the first behind');
+    if(sceneFind('bedroom').mv.target !== 9) throw new Error('the list left the second behind');
+    if(sceneFind('bedroom').mv.axis !== 'y') throw new Error('the y axis was not honoured');
+    showCueExtras({move:{scene:'attic', off:0}});
+    if(sceneFind('attic').mv.target !== 0) throw new Error('a single move is not accepted');
+    return 'a list of two and a bare single, both landed';
+  });
+
+  P('the mover runs on dt, and adds no timer of its own', ()=>{
+    const src = document.documentElement.outerHTML;
+    const i = src.indexOf('THE MOVER');
+    if(i < 0) throw new Error('the mover is not in the build');
+    const body = src.slice(i, i + 2600);
+    if(/setTimeout|setInterval/.test(body))
+      throw new Error('the mover reaches for a timer');
+    return 'no setTimeout, no setInterval — it steps off the frame';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

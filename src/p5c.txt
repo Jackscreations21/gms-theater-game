@@ -101,7 +101,8 @@ function sceneAdd(name, label){
   g.userData.sceneOff = true;
   g.visible = false;
   showRoot().add(g);
-  const sc = {name, label: label || name.toUpperCase(), group:g, walk:[], on:false};
+  const sc = {name, label: label || name.toUpperCase(), group:g, walk:[], on:false,
+              mv:null, mvHide:false};
   SHOW.scenes.push(sc);
   return sc;
 }
@@ -110,6 +111,23 @@ function sceneFind(name){ return SHOW.scenes.find(s=>s.name === name) || null; }
    leaves WALKABLE the moment that set goes off — otherwise you would be
    walking on the staircase of a house that is not on the stage */
 function sceneWalk(sc, o){ if(sc) sc.walk.push(o); return o; }
+/* turning one scene on or off — the whole of it, so the mover can reuse it
+   when a travelling set finally arrives and is allowed to disappear */
+function sceneApply(sc, on){
+  sc.group.userData.sceneOff = !on;
+  setPieceVisible(sc.group);
+  /* visible is only a drawing flag — a raycast goes straight through it and
+     hits the set anyway.  A set that is off has to be inert as well as
+     unseen, or you can click on a house that is not there and the picking
+     lands on a wall in the wings.  Clearing the layers does both: nothing
+     renders it and no ray tests it.                                     */
+  sc.group.traverse(o=>{ if(on) o.layers.set(0); else o.layers.disableAll(); });
+  for(const o of sc.walk){
+    const i = WALKABLE.indexOf(o);
+    if(on && i < 0) WALKABLE.push(o);
+    if(!on && i >= 0) WALKABLE.splice(i, 1);
+  }
+}
 function sceneShow(name){
   if(!SHOW.scenes.length) return null;
   const want = sceneFind(name);
@@ -118,19 +136,12 @@ function sceneShow(name){
     const on = (sc === want);
     if(sc.on === on && SHOW.scene === name) continue;
     sc.on = on;
-    sc.group.userData.sceneOff = !on;
-    setPieceVisible(sc.group);
-    /* visible is only a drawing flag — a raycast goes straight through it and
-       hits the set anyway.  A set that is off has to be inert as well as
-       unseen, or you can click on a house that is not there and the picking
-       lands on a wall in the wings.  Clearing the layers does both: nothing
-       renders it and no ray tests it.                                     */
-    sc.group.traverse(o=>{ if(on) o.layers.set(0); else o.layers.disableAll(); });
-    for(const o of sc.walk){
-      const i = WALKABLE.indexOf(o);
-      if(on && i < 0) WALKABLE.push(o);
-      if(!on && i >= 0) WALKABLE.splice(i, 1);
-    }
+    /* a set that is still TRAVELLING stays drawn until it arrives, whatever
+       the cue says — otherwise the house winks out halfway across the deck.
+       sceneMoveStep does the hiding when the move finishes.              */
+    if(!on && sceneTravelling(sc)){ sc.mvHide = true; continue; }
+    sc.mvHide = false;
+    sceneApply(sc, on);
   }
   SHOW.scene = name;
   if(typeof refreshSceneUI === 'function') refreshSceneUI();
@@ -141,6 +152,68 @@ function sceneNext(step){
   const i = SHOW.scenes.findIndex(s=>s.name === SHOW.scene);
   const n = (i < 0 ? 0 : i + (step || 1) + SHOW.scenes.length) % SHOW.scenes.length;
   return sceneShow(SHOW.scenes[n].name);
+}
+
+/* ============================================================================
+   THE MOVER — scenery that travels, and you watch it do it (RULING AP)
+
+   sceneShow is an instant swap, which is the right answer for a set that
+   changes in the dark and the wrong one for a house that slides onto the
+   deck in full view.  So a scene may carry a TRAVEL: one axis, where it is
+   now, and where it is going.  The frame advances it off `dt` from
+   updateStorm — NEVER off a timer, which is the standing rule of this
+   codebase and the reason the `follow` chain is called out as a violation
+   everywhere it appears.
+
+   Three things fall out of "you watch it", and each one is a test:
+     - a travelling set is ON for the whole move, going on or coming off;
+     - its walkables ride the group, so the floor of a house goes with the
+       house rather than staying where the house used to be;
+     - a move fired mid-travel RETARGETS.  It does not queue, because a
+       cue stack that banks moves would run the set to the wrong place
+       several cues later.
+   ========================================================================== */
+const SCENE_MV_EPS = 1e-4;              // closer than this and it has arrived
+
+function sceneTravelling(sc){
+  return !!(sc && sc.mv && Math.abs(sc.mv.target - sc.mv.off) > SCENE_MV_EPS);
+}
+/* give a scene the ability to travel.  `home` is where it sits at load. */
+function sceneTravel(sc, axis, home, speed){
+  if(!sc) return null;
+  const a = axis || 'x', h = home || 0;
+  sc.mv = {axis:a, off:h, target:h, home:h, speed: speed || 2.2};
+  /* both halves of this matter, because lockShowStatic may run either side
+     of it: the flag makes the freeze skip this group, and the assignment
+     undoes a freeze that already happened. */
+  sc.group.userData.sceneTravels = true;
+  sc.group.matrixAutoUpdate = true;
+  sc.group.position[a] = h;
+  return sc;
+}
+function sceneMoveTo(name, target, speed){
+  const sc = (typeof name === 'string') ? sceneFind(name) : name;
+  if(!sc || !sc.mv) return null;
+  sc.mv.target = target || 0;
+  if(speed) sc.mv.speed = speed;
+  return sc;
+}
+function sceneMoveStep(dt){
+  if(!SHOW.scenes || !SHOW.scenes.length) return;
+  for(const sc of SHOW.scenes){
+    const m = sc.mv;
+    if(!m) continue;
+    const d = m.target - m.off;
+    if(Math.abs(d) <= SCENE_MV_EPS){
+      if(m.off !== m.target){ m.off = m.target; sc.group.position[m.axis] = m.off; }
+      /* it has arrived, so a hide that sceneShow deferred can happen now */
+      if(sc.mvHide){ sc.mvHide = false; sceneApply(sc, false); }
+      continue;
+    }
+    const step = m.speed * dt;
+    m.off += Math.abs(d) <= step ? d : (d < 0 ? -step : step);
+    sc.group.position[m.axis] = m.off;
+  }
 }
 function showStrike(){
   if(typeof crewForgetLoads === 'function') crewForgetLoads();
@@ -282,6 +355,13 @@ function lockShowStatic(){
   SHOW.group.traverse(o=>{
     if(o === SHOW.group) return;
     if(o.userData.moves) return;
+    /* a scene that can TRAVEL keeps a live matrix of its own.  Freeze the
+       wagon's group and writing position.x updates the record and moves
+       nothing on the stage — and a test that reads position.x back reads its
+       own write and passes.  Only the GROUP is spared; everything inside it
+       is still static relative to the group, so it stays frozen and rides
+       along.  (RULING AP) */
+    if(o.userData.sceneTravels) return;
     o.updateMatrix();
     o.matrixAutoUpdate = false;
   });
@@ -410,6 +490,7 @@ function updateStorm(dt){
   updateFire(dt);
   if(typeof updateNeon === 'function') updateNeon(dt);
   updateShowStorm(dt);
+  sceneMoveStep(dt);
   if(typeof updateRevolve === 'function') updateRevolve(dt);
   if(typeof updateWrong === 'function') updateWrong(dt);
   if(SHOW.lightning > 0.001){
@@ -1375,6 +1456,13 @@ function showCueExtras(c){
   if(c.neon !== undefined && typeof setNeon === 'function') setNeon(c.neon);
   setFirelight(c.fire ? c.fire.chans : null, c.fire ? c.fire.base : 0.8);
   if(c.scene && SHOW.scenes.length) sceneShow(c.scene);
+  /* a cue can send travelling scenery somewhere.  One cue may move more than
+     one thing — act two opens with the exterior flying out WHILE the house
+     slides on — so this takes a list as readily as a single move. */
+  if(c.move && SHOW.scenes.length){
+    const list = Array.isArray(c.move) ? c.move : [c.move];
+    list.forEach(m=>{ if(m) sceneMoveTo(m.scene, m.off, m.speed); });
+  }
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);
     setRevolve('inner', c.rev.inner || 0);

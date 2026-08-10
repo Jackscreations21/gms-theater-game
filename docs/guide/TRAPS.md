@@ -275,6 +275,21 @@ against this list before opening a PR; **add new traps as you hit them.**
   red. Read and write wood paint through `woodFaces`/`woodSetFaces`; more
   generally, a test that poke-sets state it later reads back proves only
   that assignment works.
+- **The set is FROZEN, so `position.x` on a scene group moves nothing.**
+  `lockShowStatic` walks `SHOW.group` and sets `matrixAutoUpdate = false`
+  on everything in it — scenery does not move on its own. When the mover
+  arrived (RULING AP), writing `sc.group.position.x` therefore updated
+  the record while the house stood perfectly still on the stage, and the
+  first crossing test read `position.x` straight back and passed. The
+  walkable test, which reads a **world matrix**, is what caught it.
+  Anything that must actually travel needs `userData.sceneTravels` (the
+  freeze skips it) *and* `matrixAutoUpdate = true` set on itself, because
+  the freeze can run either side of it. **Assert world matrices, never
+  `position`** — same shape as the `material[2]` false green above.
+- **`updateMatrixWorld(true)` on a CHILD composes against its parent's
+  stale `matrixWorld`.** Call it on the root (`scene`) instead, or a
+  child of a group you just moved reports the position it used to have.
+  This is what made the walkable test read a movement of exactly 0.00.
 
 ## Environment
 
