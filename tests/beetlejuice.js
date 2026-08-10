@@ -302,7 +302,12 @@ const probe = `
     return 'landing at y='+b.max.y.toFixed(2)+', walkable only with the interior live';
   });
 
-  const SCENES = ['cemetery','house','interior','redecorated','attic','bedroom','afterlife','crypt','signset','bare'];
+  /* 'redecorated' is gone from this list and that is the point of RULING AQ:
+     it is no longer a SCENE, it is the Deetz DRESSING of the one room the
+     wagon carries.  The photographs settled it — Maitlands, Deetz and
+     Beetlejuice are the same architecture three times over. */
+  const SCENES = ['cemetery','house','interior','attic','bedroom','afterlife','crypt','signset','bare'];
+  const DRESSINGS = ['maitland','deetz','bj'];
 
   /* This used to read "exactly one is ever live" and count SHOW.scenes flat.
      The flown sign broke both halves on purpose: it is a scene so that it can
@@ -374,7 +379,13 @@ const probe = `
     while(sceneTravelling(sc) && frames < 3600){
       updateStorm(1/60); frames++;
       if(mid === null && sc.mv.off > BJ_WAGON_BACK/2) mid = sc.mv.off;
-      sc.group.traverse(o=>{ if(o.isMesh && o.layers.mask === 0) dark++; });
+      /* a dressing that is NOT being worn is legitimately dark (RULING AQ),
+         so only the room the audience is looking at is counted */
+      sc.group.traverse(o=>{ if(!o.isMesh || o.layers.mask !== 0) return;
+        let p = o, off = false;
+        while(p){ if(p.userData && p.userData.sceneOff && p.name &&
+                     p.name.indexOf('dress:') === 0) off = true; p = p.parent; }
+        if(!off) dark++; });
     }
     const secs = frames/60;
     if(secs < 2)  throw new Error('the house crossed in '+secs.toFixed(2)+'s — nobody can watch that');
@@ -727,7 +738,7 @@ const probe = `
     /* the afterlife appears TWICE on purpose: 118:04 sits between the
        afterlife looks and the chevron at 121:54, so the set goes out to the
        sign and comes back.  That is what the recording says happened. */
-    const want = ['house','redecorated','afterlife','signset','afterlife','bare'];
+    const want = ['house','interior','afterlife','signset','afterlife','bare'];
     if(seq.join('>') !== want.join('>'))
       throw new Error('act two runs '+seq.join(' > ')+', the recording says '+want.join(' > '));
     return seq.join(' > ');
@@ -789,18 +800,49 @@ const probe = `
     return 'act one: '+[...one].join(', ')+' | act two: '+[...two].join(', ');
   });
 
-  P('the redecorated room is the same room, on the same arc', ()=>{
+  /* This used to show two SCENES and compare their walls to argue they were
+     the same room.  Under RULING AQ they are literally the same room, so the
+     assertion is stronger now: the three dressings hang on ONE shell, exactly
+     one is ever lit, and the architecture they share never goes off. */
+  P('the three dressings hang on one room, and one is ever lit', ()=>{
     showLoad('beetlejuice');
     sceneShow('interior');
-    const a = box(byName('bj:innerWall'));
-    sceneShow('redecorated');
-    const b = box(byName('bj:redWall'));
-    /* same footprint, or it is a different room rather than a re-dressing */
+    const sc = sceneFind('interior');
+    if(!sc.dress) throw new Error('the room carries no dressings');
+    for(const d of DRESSINGS) if(!sc.dress[d]) throw new Error('no '+d+' dressing');
+    if(Object.keys(sc.dress).length !== DRESSINGS.length)
+      throw new Error(Object.keys(sc.dress).length+' dressings, expected '+DRESSINGS.length);
+    const lit = key => { let n = 0; sc.dress[key].traverse(o=>{ if(o.isMesh && o.layers.mask !== 0) n++; }); return n; };
+    for(const d of DRESSINGS){
+      bjDress('interior', d);
+      if(!lit(d)) throw new Error(d+' is not lit when it is the one worn');
+      for(const o of DRESSINGS) if(o !== d && lit(o))
+        throw new Error(o+' is still lit with '+d+' on');
+    }
+    /* a SET CHANGE must not light all three on the way back.  sceneShow
+       enables every descendant, so without the sceneApply hook the room comes
+       back wearing all three dressings at once. */
+    bjDress('interior', 'bj');
+    sceneShow('cemetery');
+    sceneShow('interior');
+    for(const o of DRESSINGS) if(o !== 'bj' && lit(o))
+      throw new Error(o+' lit up again when the room came back on');
+    /* and a CUE is what chooses the dressing, the way it chooses the set */
+    showCueExtras({scene:'interior', dress:'deetz'});
+    if(!lit('deetz')) throw new Error('a cue cannot put a dressing on');
+    if(lit('bj')) throw new Error('the old dressing stayed on under the new one');
+
+    /* and the shell — the stairs you climb — belongs to none of them */
+    bjDress('interior', 'deetz');
+    const land = byName('bj:landing');
+    if(!land) throw new Error('the landing went with a dressing');
+    let p = land, inDress = false;
+    while(p){ if(p.name && p.name.indexOf('dress:') === 0) inDress = true; p = p.parent; }
+    if(inDress) throw new Error('the staircase is part of a dressing, not the shell');
+    if(!byName('bj:settee')) throw new Error('the deetz dressing is unfurnished');
+    const b = box(byName('bj:redWall')), a = box(byName('bj:bjWall'));
     if(Math.abs((a.max.x - a.min.x) - (b.max.x - b.min.x)) > 0.4)
-      throw new Error('the two walls are different widths');
-    if(Math.abs((a.max.z - a.min.z) - (b.max.z - b.min.z)) > 0.4)
-      throw new Error('the two walls curve differently');
-    if(!byName('bj:settee')) throw new Error('the redecorated room is unfurnished');
+      throw new Error('the dressings are not the same room');
     return 'both walls '+(b.max.x-b.min.x).toFixed(1)+'m across, '+(b.max.z-b.min.z).toFixed(1)+'m deep';
   });
 

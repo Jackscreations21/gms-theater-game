@@ -127,6 +127,10 @@ function sceneApply(sc, on){
     if(on && i < 0) WALKABLE.push(o);
     if(!on && i >= 0) WALKABLE.splice(i, 1);
   }
+  /* a set that comes on has just had the layers of EVERY descendant enabled,
+     which would light all three of a wagon dressings at once.  The show puts
+     the right one back. (RULING AQ) */
+  if(on && typeof bjRedress === 'function') bjRedress(sc);
 }
 /* a piece of scenery that is on the stage whatever set is up — the show's
    own sign, hanging downstage of the house curtain.  It is a scene so that
@@ -1477,6 +1481,8 @@ function showCueExtras(c){
     const list = Array.isArray(c.move) ? c.move : [c.move];
     list.forEach(m=>{ if(m) sceneMoveTo(m.scene, m.off, m.speed); });
   }
+  /* and which dressing the room is wearing (RULING AQ) */
+  if(c.dress && typeof bjDress === 'function') bjDress(c.scene || SHOW.scene, c.dress);
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);
     setRevolve('inner', c.rev.inner || 0);
