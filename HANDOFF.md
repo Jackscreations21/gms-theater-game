@@ -223,7 +223,55 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **CONFIRMING THE SCENE TIMING** (owner, 2026-08-10)
+## IN FLIGHT — 2026-08-10: the owner's own scene plot (#104–#109 merged)
+
+**This supersedes the "CONFIRMING THE SCENE TIMING" section below.** Nobody is
+confirming the built timing, because the owner watched the recording himself
+and wrote out the set changes with timestamps, and **his list is the
+authority.** Full position, the plot, the rulings and what is left: **STATE.md,
+"THE RE-TIME ROUND"** — read that, not this. What belongs here is what the
+round has already taught.
+
+**The cross-check worth remembering:** his act break, 1:11:02, is second 4262 —
+exactly the built act-break cue taken off the measured 13.3s blackout. The
+owner's timestamps and `tools/video.js` share a time base, so his numbers drop
+straight into `looks[].at` with no offset. That is why a plot written from a
+sofa could be trusted against a probe.
+
+**RULING AV repealed RULING AO** — the first reversal in the sequence. The
+scenery is no longer "our own vocabulary"; Beetlejuice is modelled on the
+production, *scoped to that show alone*. AO is left in its own spec marked
+superseded rather than deleted, and the assertion that guarded it was
+**reversed in place** rather than removed, because the note is still
+load-bearing and must not drift back.
+
+**Four defects this round, and only one was found by a suite:**
+
+1. **The mover moved nothing.** `lockShowStatic` freezes the set with
+   `matrixAutoUpdate = false`, so writing `position.x` on a scene group updates
+   the record while the house stands still. The first crossing test read
+   `position.x` back and passed against a stationary wagon. In TRAPS.
+2. **The cloths were hung in front of the show.** The backdrop went on line 8
+   (z −6.10) with the interior wall at −9.20 and the cemetery at −16.15. Every
+   suite was green: nothing asserted the one structural fact that makes a
+   backdrop a backdrop. **Found by a throwaway probe printing per-scene
+   bounding boxes** — the TRAPS advice working exactly as written.
+3. **`SHOW.goods` is the DELETE list.** Registering the stock `sky` on it
+   destroyed the good for every show that follows. Three suites went down.
+   This one a suite did catch.
+4. **A building moved and its furniture stayed.** The Palace shed shifted 4.5m
+   upstage; `buildCart`, both `buildSaw`s, `buildRack` and `buildTrash` carry
+   hardcoded z, so the fit-out drifted to the front wall and the trash drum
+   ended up standing on the stage, through the brick.
+
+**Two assertions had to be strengthened after their negative check passed** —
+worth noting as a pattern, because both were nearly shipped as false comfort:
+a clearance check that only tested ORDER and accepted 7cm between a cloth and a
+roof, and a shed check that tested POSITION and accepted a shed trimmed from
+13m to 9.4m. **A negative check that does not fail is telling you the assertion
+is weak, not that the code is right.**
+
+## NEXT SESSION: **CONFIRMING THE SCENE TIMING** (owner, 2026-08-10) — SUPERSEDED, see above
 
 The round is built and merged (#90-#100). What has NOT happened is anybody
 watching it run. The next session confirms the timing — and the first thing to

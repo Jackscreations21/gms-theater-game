@@ -5,7 +5,120 @@ NOW and is updated as work happens. `HANDOFF.md` is the durable record
 written at session end; this file is the scratchpad between those
 writes. If the two disagree, this file is newer.
 
-Last updated: **2026-08-10** (the fifth show is DONE and landed — ten PRs,
+Last updated: **2026-08-10, later the same day** — the owner supplied his OWN
+scene plot off the video, with timestamps, and it does not match what the
+fifth show built. A re-time round is IN FLIGHT: six PRs merged
+(#104–#109), two more to go. **Read "THE RE-TIME ROUND" below before
+anything else.**
+
+---
+
+## THE RE-TIME ROUND — in flight, 2026-08-10
+
+The owner watched the recording and wrote out the set changes himself. **That
+list is the authority.** Where it disagrees with what #93–#100 built, the list
+wins. Spec: `docs/superpowers/specs/2026-08-10-beetlejuice-scene-plot-design.md`
+(**RULINGS AP–AV, all binding**). Plan:
+`docs/superpowers/plans/2026-08-10-beetlejuice-scene-plot-prs1-7.md` — the
+chain grew past seven, see below.
+
+**The cross-check that validates the whole thing:** his act break, `1:11:02`,
+is second **4262** — exactly the built act-break cue, taken off the 13.3s
+blackout `blackdetect` found at 71:02. His timestamps and our measurements
+share a time base, so every number he gave drops straight into `looks[].at`
+with no offset.
+
+### The rulings
+
+- **AP** — the wagon is real and you WATCH it travel. A dt-driven mover on the
+  scene group, never `setTimeout`.
+- **AQ** — ONE house, THREE dressings (Maitlands / Deetz / Beetlejuice), not
+  three houses. `interior` and `redecorated` merge into it. **Confirmed off the
+  owner's photographs** — same swooping ceiling, same staircase, same
+  fireplace, redressed three times.
+- **AR** — the show ends at **2:15:00**. The measured tail from 8100s on is
+  dropped: a deliberate override of a measurement by the man who watched it.
+- **AS** — the sign FLIES (in at pre-show, out at the top) and **there is no
+  crypt** — "i dont know what a crypt is but i dont think there is one".
+- **AT** — cloths on real fly lines, structures on movers.
+- **AU** — the two waits are the two GO presses (`follow:null`).
+- **AV** — **RULING AO IS REPEALED.** "remove the cluase entirely that it has
+  to be our onw shapes. make the sets look as close to the real stuff as you
+  can get it." Beetlejuice is now MODELLED ON THE PRODUCTION. **Scoped to this
+  show only** — the other four keep their interpretation note, and there is an
+  assertion pinning that the repeal did not leak.
+
+### Landed so far
+
+| PR | What |
+|---|---|
+| [#104](https://github.com/Jackscreations21/gms-theater-game/pull/104) | the spec + plan (rulings AP–AU) |
+| [#105](https://github.com/Jackscreations21/gms-theater-game/pull/105) | **the mover** — `sceneTravel` / `sceneMoveTo` / `sceneMoveStep(dt)` |
+| [#106](https://github.com/Jackscreations21/gms-theater-game/pull/106) | everything that flies — backdrop, sky, the flown sign |
+| [#107](https://github.com/Jackscreations21/gms-theater-game/pull/107) | **a defect in #106** — the cloths were hung in FRONT of the show |
+| [#108](https://github.com/Jackscreations21/gms-theater-game/pull/108) | RULING AV — the marquee and the cloth follow the photograph |
+| [#109](https://github.com/Jackscreations21/gms-theater-game/pull/109) | **the Palace runs 4.5m deeper**, warehouse moved back with it |
+
+### Still to build
+
+1. **The wagon and its three dressings** (RULING AQ) — the big one. `interior`
+   becomes the wagon, `redecorated` becomes its Deetz dressing, a Beetlejuice
+   dressing is new. Park offset is about **z −7.9** (puts the set at −17.10 ..
+   −11.50, behind the last lineset at −10.90 with 4.4m to spare behind it).
+2. **The closet (42:34) and the roof (56:00)**, delete the crypt, retire the
+   `signset` scene.
+3. **Confetti** (2:15:00) — does not exist; a burst, not a state.
+4. **The re-timed cue list** — every `at` onto the owner's seventeen beats.
+
+### The plot, as the owner gave it
+
+`up` = flies out, `down` = flies in. Act one: pre-show (holds for START) ·
+opening lights, **sign flies out**, curtain up on the graveyard · 9:45 (585)
+stage empties to the backdrop · 10:40 (640) backdrop out, house slides on
+(Maitlands) · 32:16 (1936) house off · 32:50 (1970) backdrop in, attic · 42:34
+(2554) closet · 48:49 (2929) attic · 52:00 (3120) bedroom · 56:00 (3360) roof ·
+1:02:51 (3771) roof off, backdrop out, house on (Deetz) · **1:11:02 (4262)
+blackout, curtain in, end of half**. Act two: holds for a console button ·
+lights, curtain up on the exterior + sky · 1:14:30 (4470) exterior and sky fly
+out, house on (Beetlejuice) · 1:25:25 (5125) house off, backdrop in, attic ·
+1:30:00 (5400) attic off, backdrop out, house on · 1:39:00 (5940) house off,
+netherworld · 1:53:00 (6780) netherworld off, house on · 2:13:05 (7985) house
+slides ALL THE WAY back, backdrop stays out, **curtain call on an empty
+stage** · 2:15:00 (8100) confetti, curtain in, house to half. **END.**
+
+### Reference photographs the owner supplied
+
+Ten so far, and they are the build reference now that AV is in force: the
+graveyard (black tree on a mound, crosses, an enormous cratered moon, painted
+cloud sky), the netherworld (nested blue neon rectangles in forced
+perspective), the Maitlands house warm, the Deetz house grey and modern, the
+Beetlejuice house purple and striped — **all three plainly the same
+architecture** — the attic (two open sheds either side, junk wall centre,
+string lights on a rafter), the roof set, the exterior, the marquee, and **the
+closet (the bright pink one)**.
+
+**Two things they changed:** the show portal is a **blue-green neon tube frame**
+round the whole opening — ours is weathered clapboard and is wrong. And the
+graveyard plainly has a painted cloud sky BEHIND cut hills, which settles an
+open question the other way: the cemetery's three hills need to come downstage
+of the cloth, not the cloth upstage of them.
+
+**Still needed:** the purple photo with the picture frames is unidentified (my
+guess is Lydia's bedroom, unconfirmed). Nothing yet for the Deetz exterior —
+though the owner has since said **the house exterior never changes**.
+
+### The one architectural thing to know
+
+**`D.backWall` and `PAL_BACK` are different numbers and must stay different.**
+`D.backWall` (−17) is the STAGE-COORDINATE reference every show, every plot and
+both Arc houses are written to. `PAL_BACK` (−21.5) is where the Palace's brick
+actually stands. Structural Palace geometry uses `PAL_BACK`; anything
+stage-relative keeps `D.backWall`. This is a deliberate, scoped break of "every
+stage is the same box" (owner: "only do this with the palace theater").
+
+---
+
+Previous entry: **2026-08-10** (the fifth show is DONE and landed — ten PRs,
 ten scenes, forty-six cues. The auto-cue runs on the measured timeline.
 Next session CONFIRMS the scene timing).
 

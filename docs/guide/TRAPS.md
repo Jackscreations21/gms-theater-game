@@ -290,6 +290,32 @@ against this list before opening a PR; **add new traps as you hit them.**
   stale `matrixWorld`.** Call it on the root (`scene`) instead, or a
   child of a group you just moved reports the position it used to have.
   This is what made the walkable test read a movement of exactly 0.00.
+- **`SHOW.goods` is the DELETE list, not the hang list.** `showStrike`
+  runs `delete GOODS[k]` over every key on it, so registering a STOCK
+  good there (`sky`, `cyc`, `house`…) destroys it for every production
+  that loads afterwards. Three suites went down with `Cannot read
+  properties of undefined (reading 'wt')`. Only goods the show MADE go
+  on `SHOW.goods`; stock goods are hung and never registered.
+- **A cloth is the last thing upstage, and nothing asserted it.** The
+  Beetlejuice backdrop was hung on line 8 (z −6.10) while the interior
+  wall stands at −9.20 and the cemetery reaches −16.15 — the thing meant
+  to BACK the show was masking it, and every suite was green. Found by a
+  throwaway probe printing per-scene bounding boxes against the hung
+  linesets. **Order is not enough either:** the first clearance
+  assertion checked only which was upstage and happily accepted 7cm
+  between a cloth and a roof, against a `drape()` that waves ±0.05.
+- **Move a building and its furniture stays behind.** The Palace shed
+  shifted 4.5m upstage with the back wall, but `buildCart`, both
+  `buildSaw`s, `buildRack` and `buildTrash` carry hardcoded `z` measured
+  against the old interior — so the layout drifted to the front wall and
+  the trash drum ended up 0.1m THROUGH the brick, standing on the stage.
+  Anything positioned inside a movable structure must be expressed
+  relative to it.
+- **A negative check that does not fail means the ASSERTION is weak.**
+  Twice in one round the wrong build passed: a shed check that tested
+  position accepted a shed trimmed from 13m to 9.4m (it should test
+  DEPTH), and the clearance check above. Treat a passing negative check
+  as a finding about the test, never as confirmation of the code.
 
 ## Environment
 
