@@ -193,6 +193,7 @@ SHOWS.beetlejuice = {
         sh.lineTo(w, 0); sh.lineTo(-w, 0);
         const geo = new T.ExtrudeGeometry(sh, {depth:0.3, bevelEnabled:false, curveSegments:8});
         const m = new T.Mesh(geo, mat);
+        m.name = "bj:hill";
         m.position.z = z; cem.group.add(m);
         return m;
       };
@@ -205,16 +206,16 @@ SHOWS.beetlejuice = {
          and downstage of the deck edge at -16.6 so nothing clips the wall. */
       {
         const d = new T.Mesh(new T.CircleGeometry(1.75, 40), moonM);
-        d.position.set(3.6, 6.6, -16.0); d.name = 'bj:moon'; cem.group.add(d);
+        d.position.set(3.6, 5.8, -16.0); d.name = 'bj:moon'; cem.group.add(d);
         const h = new T.Mesh(new T.CircleGeometry(3.1, 36), glow);
-        h.position.set(3.6, 6.6, -16.15); cem.group.add(h);
+        h.position.set(3.6, 5.8, -16.15); cem.group.add(h);
       }
 
       /* headstones — distinct objects, so distinct meshes, but each one is
          merged from its own slab, shoulders and base: detail without cost */
-      const stones = [[-7.4,-7.2,0.10],[-5.6,-9.4,-0.14],[-3.4,-6.4,0.06],
+      const stones = [[-6.2,-7.2,0.10],[-5.0,-9.4,-0.14],[-3.4,-6.4,0.06],
                       [-1.5,-10.2,0.20],[1.9,-6.9,-0.09],[3.8,-9.8,0.15],
-                      [6.2,-7.6,-0.18],[8.0,-10.4,0.08]];
+                      [5.4,-7.6,-0.18],[6.3,-10.4,0.08]];
       stones.forEach((s, i)=>{
         const h = 0.82 + (i % 3)*0.26, w = 0.58 + (i % 2)*0.12;
         const parts = [
@@ -229,7 +230,7 @@ SHOWS.beetlejuice = {
       });
 
       /* two crosses, for the shape the slabs do not give */
-      [[-9.0,-8.6,0.22],[9.4,-8.2,-0.26]].forEach(c=>{
+      [[-6.1,-8.6,0.22],[6.1,-8.2,-0.26]].forEach(c=>{
         const parts = [
           {geo:new T.BoxGeometry(0.17, 1.55, 0.17), pos:[0, 0.9, 0]},
           {geo:new T.BoxGeometry(0.86, 0.17, 0.17), pos:[0, 1.32, 0]},
@@ -243,13 +244,13 @@ SHOWS.beetlejuice = {
       /* the railing: two runs, each merged from its own posts and rails */
       [-1, 1].forEach(sd=>{
         const parts = [];
-        for(let i = 0; i < 7; i++){
-          const x = sd*(3.2 + i*1.15);
+        for(let i = 0; i < 4; i++){
+          const x = sd*(3.2 + i*1.10);
           parts.push({geo:new T.BoxGeometry(0.08, 1.32, 0.08), pos:[x, 0.66, 0]});
           parts.push({geo:new T.ConeGeometry(0.07, 0.20, 6), pos:[x, 1.42, 0]});
         }
-        parts.push({geo:new T.BoxGeometry(6.9, 0.07, 0.07), pos:[sd*6.65, 1.16, 0]});
-        parts.push({geo:new T.BoxGeometry(6.9, 0.07, 0.07), pos:[sd*6.65, 0.34, 0]});
+        parts.push({geo:new T.BoxGeometry(3.5, 0.07, 0.07), pos:[sd*4.95, 1.16, 0]});
+        parts.push({geo:new T.BoxGeometry(3.5, 0.07, 0.07), pos:[sd*4.95, 0.34, 0]});
         const m = new T.Mesh(mergeParts(parts), iron);
         m.position.z = -5.4; cem.group.add(m);
       });
@@ -562,6 +563,223 @@ SHOWS.beetlejuice = {
       });
     }
 
+    /* ================================================================
+       THREE DRESSINGS on the same room.  Measured: the redecorated
+       interior carries 67:46, 78:28, 80:39 and 94:02 — four looks either
+       side of the act break; the attic is at 42:22 and the bedroom at
+       54:23, both in act one.  Each is its own scene, because the scene
+       machinery gives exactly one live set and that is the right model
+       for a room that gets re-dressed.
+       ================================================================ */
+    /* the same arc the interior wall follows, so a dressing sits in the
+       same room rather than a different one */
+    const bjArc = (t, R, CZ, SPAN)=>{ const a = -SPAN + 2*SPAN*t;
+      return {x: R*Math.sin(a), z: CZ - R*Math.cos(a), a}; };
+
+    /* ---- the room, redecorated: pale, ornate, and covered in frames ---- */
+    const red = sceneAdd('redecorated', 'THE ROOM, REDECORATED');
+    {
+      const pale = new T.MeshStandardMaterial({color:0xd8cdb8, roughness:.82, metalness:.04});
+      const gilt = new T.MeshStandardMaterial({color:0xb99a52, roughness:.42, metalness:.62});
+      const quiltRed = new T.MeshStandardMaterial({color:0x8f3f4a, roughness:.93});
+      const parts = [];
+      for(let i = 0; i < 11; i++){
+        const p = bjArc(i/10, 7.0, -2.0, 0.90);
+        parts.push({geo:new T.BoxGeometry(1.42, 6.2, 0.22), pos:[p.x, 3.1, p.z], rot:[0, -p.a, 0]});
+        for(const sd of [-1, 1])
+          parts.push({geo:new T.BoxGeometry(0.12, 5.4, 0.32),
+                      pos:[p.x + sd*0.64*Math.cos(p.a), 3.1, p.z + sd*0.64*Math.sin(p.a)],
+                      rot:[0, -p.a, 0]});
+      }
+      const wl = new T.Mesh(mergeParts(parts), pale);
+      wl.name = 'bj:redWall'; wl.castShadow = true; red.group.add(wl);
+
+      /* a cornice run, and a picture rail, both following the arc */
+      {
+        const cp = [];
+        for(let i = 0; i < 11; i++){
+          const p = bjArc(i/10, 7.0, -2.0, 0.90);
+          cp.push({geo:new T.BoxGeometry(1.5, 0.26, 0.44), pos:[p.x, 6.05, p.z], rot:[0, -p.a, 0]});
+          cp.push({geo:new T.BoxGeometry(1.5, 0.12, 0.34), pos:[p.x, 4.30, p.z], rot:[0, -p.a, 0]});
+        }
+        red.group.add(new T.Mesh(mergeParts(cp), gilt));
+      }
+
+      /* the frames — too many of them, all crooked, one mesh */
+      {
+        const fp = [];
+        [[-5.0,3.3,0.11],[-3.4,4.0,-0.08],[-1.8,2.9,0.06],[0,3.9,-0.04],
+         [1.8,3.0,0.10],[3.5,3.9,-0.09],[5.0,3.2,0.05],[-2.6,1.9,-0.12],
+         [2.6,1.9,0.13]].forEach(p=>{
+          const w = 0.78 + ((p[1]*7) % 5)*0.09;
+          fp.push({geo:new T.BoxGeometry(w, w*0.8, 0.10), pos:[p[0], p[1], -7.85], rot:[0, 0, p[2]]});
+          fp.push({geo:new T.BoxGeometry(w*0.84, w*0.64, 0.13), pos:[p[0], p[1], -7.8], rot:[0, 0, p[2]]});
+        });
+        red.group.add(new T.Mesh(mergeParts(fp), gilt));
+      }
+
+      /* a settee, and a standard lamp, so the room is furnished */
+      {
+        const sp = [
+          {geo:new T.BoxGeometry(2.6, 0.44, 0.95), pos:[0, 0.5, 0]},
+          {geo:new T.BoxGeometry(2.6, 0.95, 0.22), pos:[0, 1.0, -0.42]},
+          {geo:new T.BoxGeometry(0.24, 0.7, 0.95), pos:[-1.3, 0.85, 0]},
+          {geo:new T.BoxGeometry(0.24, 0.7, 0.95), pos:[ 1.3, 0.85, 0]}
+        ];
+        for(let i = 0; i < 4; i++)
+          sp.push({geo:new T.CylinderGeometry(0.06, 0.05, 0.3, 6),
+                   pos:[(i%2?1:-1)*1.15, 0.15, (i<2?1:-1)*0.36]});
+        const s = new T.Mesh(mergeParts(sp), boardD);
+        s.name = 'bj:settee'; s.position.set(-0.4, 0, -4.4); red.group.add(s);
+
+        const lp = [
+          {geo:new T.CylinderGeometry(0.30, 0.34, 0.06, 12), pos:[0, 0.03, 0]},
+          {geo:new T.CylinderGeometry(0.04, 0.04, 1.8, 8),   pos:[0, 0.9, 0]},
+          {geo:new T.CylinderGeometry(0.34, 0.24, 0.42, 12), pos:[0, 1.95, 0]}
+        ];
+        const l = new T.Mesh(mergeParts(lp), gilt);
+        l.position.set(3.1, 0, -4.0); red.group.add(l);
+      }
+
+      /* the same chandeliers as the room next door, re-hung in gilt */
+      [-3.0, 3.0].forEach((x, i)=>{
+        const parts = [
+          {geo:new T.TorusGeometry(0.62, 0.05, 6, 18), pos:[0, 0, 0], rot:[Math.PI/2, 0, 0]},
+          {geo:new T.CylinderGeometry(0.03, 0.03, 1.5, 6), pos:[0, 0.75, 0]}
+        ];
+        for(let k = 0; k < 6; k++){
+          const a = k/6 * 6.283;
+          parts.push({geo:new T.CylinderGeometry(0.05, 0.06, 0.34, 7),
+                      pos:[Math.cos(a)*0.62, 0.20, Math.sin(a)*0.62]});
+        }
+        const m = new T.Mesh(mergeParts(parts), gilt);
+        m.name = 'bj:redChandelier' + i;
+        m.position.set(x, 5.0, -5.4); red.group.add(m);
+      });
+
+      /* a rug, because a bare deck reads as a stage and not a room */
+      {
+        const r = new T.Mesh(new T.CylinderGeometry(2.3, 2.3, 0.04, 28), quiltRed);
+        r.name = 'bj:rug'; r.position.set(-0.4, 0.115, -4.8);
+        r.scale.set(1, 1, 1.35); r.receiveShadow = true; red.group.add(r);
+      }
+    }
+
+    /* ---- the attic: rafters, a model of the town, and dust sheets ---- */
+    const att = sceneAdd('attic', 'THE ATTIC');
+    {
+      const sheet = new T.MeshStandardMaterial({color:0xcfc8bc, roughness:.95,
+                                                side:T.DoubleSide});
+      /* the roof, from underneath: rafters meeting at a ridge */
+      {
+        const parts = [];
+        for(let i = 0; i < 9; i++){
+          const z = -3.4 - i*1.05;
+          [-1, 1].forEach(sd=>parts.push({geo:new T.BoxGeometry(0.16, 5.6, 0.16),
+            pos:[sd*2.6, 2.8, z], rot:[0, 0, sd*0.62]}));
+          parts.push({geo:new T.BoxGeometry(0.16, 0.16, 1.0), pos:[0, 4.55, z]});
+        }
+        parts.push({geo:new T.BoxGeometry(0.24, 0.24, 9.6), pos:[0, 4.75, -7.6]});
+        const m = new T.Mesh(mergeParts(parts), bark);
+        m.name = 'bj:rafters'; m.castShadow = true; att.group.add(m);
+      }
+      /* the model of the town, on its table — the table top is standable */
+      {
+        const tp = [
+          {geo:new T.BoxGeometry(3.6, 0.12, 1.9), pos:[0, 0.86, 0]}
+        ];
+        for(let i = 0; i < 4; i++)
+          tp.push({geo:new T.BoxGeometry(0.12, 0.86, 0.12),
+                   pos:[(i%2?1:-1)*1.7, 0.43, (i<2?1:-1)*0.82]});
+        const t2 = new T.Mesh(mergeParts(tp), boardD);
+        t2.position.set(0.6, 0, -6.0); att.group.add(t2);
+
+        /* the little houses on it, one mesh, deliberately toy-sized */
+        const hp = [];
+        for(let i = 0; i < 11; i++){
+          const x = -1.5 + i*0.30, h = 0.26 + (i % 4)*0.10;
+          hp.push({geo:new T.BoxGeometry(0.22, h, 0.22), pos:[x, 0.92 + h/2, ((i%3)-1)*0.5]});
+          hp.push({geo:new T.ConeGeometry(0.18, 0.16, 4), pos:[x, 0.92 + h + 0.08, ((i%3)-1)*0.5], rot:[0, 0.78, 0]});
+        }
+        const hm = new T.Mesh(mergeParts(hp), board);
+        hm.name = 'bj:model'; hm.position.set(0.6, 0, -6.0); att.group.add(hm);
+      }
+      /* dust sheets over things nobody has looked at in years */
+      [[-4.2, -5.0], [4.4, -7.4], [-3.6, -8.6]].forEach(s=>{
+        const g2 = new T.SphereGeometry(0.9, 10, 7, 0, 6.283, 0, 1.5);
+        const m = new T.Mesh(g2, sheet);
+        m.position.set(s[0], 0.05, s[1]); m.scale.set(1, 0.85, 1.15);
+        att.group.add(m);
+      });
+      /* a run of string lights, on the shared glow material */
+      {
+        const parts = [];
+        for(let i = 0; i < 14; i++)
+          parts.push({geo:new T.SphereGeometry(0.075, 7, 5),
+                      pos:[-5.0 + i*0.78, 3.5 - Math.sin(i/13*3.14)*0.55, -4.2]});
+        att.group.add(new T.Mesh(mergeParts(parts), glow));
+      }
+    }
+
+    /* ---- the bedroom: a bed, a lamp, and not much else ---- */
+    const bed = sceneAdd('bedroom', 'THE BEDROOM');
+    {
+      const quilt = new T.MeshStandardMaterial({color:0xb9a2c4, roughness:.92});
+      /* two flats making a corner, so it reads as a room and not a stage */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(8.4, 5.2, 0.22), pos:[0, 2.6, -8.2]},
+          {geo:new T.BoxGeometry(0.22, 5.2, 4.6), pos:[-4.2, 2.6, -6.0]},
+          {geo:new T.BoxGeometry(0.22, 5.2, 4.6), pos:[ 4.2, 2.6, -6.0]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), board);
+        m.name = 'bj:bedWalls'; m.castShadow = true; bed.group.add(m);
+      }
+      /* the bed — and you can sit on it, so its top is a walk surface */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(2.3, 0.34, 3.1), pos:[0, 0.5, 0]},
+          {geo:new T.BoxGeometry(2.5, 1.25, 0.18), pos:[0, 0.95, -1.6]},
+          {geo:new T.BoxGeometry(2.5, 0.6, 0.18),  pos:[0, 0.6, 1.6]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), boardD);
+        m.position.set(-0.6, 0, -6.0); bed.group.add(m);
+
+        const q = new T.Mesh(new T.BoxGeometry(2.34, 0.22, 2.7), quilt);
+        q.name = 'bj:bed'; q.position.set(-0.6, 0.78, -5.85);
+        bed.group.add(q); sceneWalk(bed, q);
+      }
+      /* the hanging lamp, on the shared glow material */
+      {
+        const parts = [
+          {geo:new T.CylinderGeometry(0.02, 0.02, 2.2, 6), pos:[0, 1.1, 0]},
+          {geo:new T.ConeGeometry(0.34, 0.34, 12, 1, true), pos:[0, -0.15, 0]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), glow);
+        m.position.set(-0.6, 3.4, -5.6); bed.group.add(m);
+      }
+      /* a wardrobe, and a chair with clothes on it */
+      {
+        const wp = [
+          {geo:new T.BoxGeometry(1.5, 2.7, 0.7), pos:[0, 1.35, 0]},
+          {geo:new T.BoxGeometry(1.66, 0.18, 0.82), pos:[0, 2.76, 0]},
+          {geo:new T.BoxGeometry(0.08, 2.3, 0.06), pos:[0, 1.4, 0.37]}
+        ];
+        const w2 = new T.Mesh(mergeParts(wp), boardD);
+        w2.position.set(3.0, 0, -7.2); w2.rotation.y = -0.3; bed.group.add(w2);
+
+        const cp = [
+          {geo:new T.BoxGeometry(0.52, 0.09, 0.52), pos:[0, 0.5, 0]},
+          {geo:new T.BoxGeometry(0.52, 0.7, 0.08),  pos:[0, 0.85, -0.24]}
+        ];
+        for(let i = 0; i < 4; i++)
+          cp.push({geo:new T.BoxGeometry(0.07, 0.5, 0.07),
+                   pos:[(i%2?1:-1)*0.21, 0.25, (i<2?1:-1)*0.21]});
+        const c2 = new T.Mesh(mergeParts(cp), bark);
+        c2.position.set(-3.0, 0, -5.4); c2.rotation.y = 0.5; bed.group.add(c2);
+      }
+    }
+
     /* ---- the show curtain ---- */
     {
       const c = bjCurtainCanvas();
@@ -638,9 +856,9 @@ function plotBeetlejuice(){
      curtain:'shut', scene:'cemetery',
      look(){ all(0); onTheCloth(); set(FRONT, 0.5, '#e8d2a8'); }},
 
-    /* ============ ACT ONE — the cemetery ============
-       measured: the first big blackout is at 1:26 and holds 9.0s, and the wide
-       cemetery look is held from 3:09 for 125s — the longest single held shot
+    /* ============ ACT ONE, i — THE CEMETERY ============
+       measured: the first big blackout is at 1:26 and holds 9.0s; the wide
+       cemetery look is held from 3:09 for 125s, the longest single held shot
        in the act. */
     {n:2, label:'act one — the cemetery, low and blue', fade:6, house:0, haze:0.6,
      curtain:'out', scene:'cemetery',
@@ -676,17 +894,16 @@ function plotBeetlejuice(){
        set(BACK, 0.72, '#4f86c8'); set(MOVE, 0.60, '#78c8e8');
        set(CYC, 0.30, '#25497e'); one(SPOT, 0.40, '#f2ecd8'); }},
 
-    /* INTERPRETED, and this one is worth being explicit about. The interior
-       first appears at 15:57, but there is NO measured blackout anywhere
-       between 9:00 and 18:00 — so the recording does not show how that change
-       was covered, and nothing can be inferred about it. Covering it with a
-       blackout of our own is therefore a DECISION, not a measurement. */
+    /* INTERPRETED, and worth being explicit about: the interior first appears
+       at 15:57, but there is NO measured blackout anywhere between 9:00 and
+       18:00. The recording does not show how that change was covered, so
+       covering it with a blackout of our own is a DECISION, not a measurement. */
     {n:7, label:'blackout — the walls come in', fade:1.2, house:0, haze:0.5,
      curtain:'out', scene:'cemetery',
      look(){ all(0); }},
 
-    /* ---- the interior, measured 15:57 to 31:34 under five looks ---- */
-    /* measured: 15:57 is the first interior look, held 15s */
+    /* ============ ACT ONE, ii — INSIDE THE HOUSE ============
+       measured: 15:57 to 31:34 under five looks, which is why the wall curves */
     {n:8, label:'inside — the walls, cold', fade:3, house:0, haze:0.35,
      curtain:'out', scene:'interior',
      look(){ all(0);
@@ -705,120 +922,181 @@ function plotBeetlejuice(){
      curtain:'out', scene:'interior',
      look(){ all(0); set(WASH, 0.10, '#8fa0c0'); }},
 
-    /* measured: 22:14 is the brightest interior frame in the file, and 25:19
-       is held 34s — a long, still, bright scene */
+    /* measured: 22:14 is the brightest interior frame in the file; 25:19 is
+       held 34s — a long, still, bright scene */
     {n:11, label:'the arch, and whoever is standing in it', fade:3, house:0, haze:0.4,
      curtain:'out', scene:'interior',
      look(){ all(0);
        one(SPOT, 0.7, '#f4eede'); set(FRONT, 0.22, '#dfe8f4');
        set(WASH, 0.16, '#8fa0c0'); }},
 
-    /* measured: 31:34 closes the interior sequence, held 15s and darker */
-    {n:12, label:'down to the chandeliers', fade:2.5, house:0, haze:0.45,
+    /* measured: 31:34 closes the interior sequence, held 15s and darker.
+       The blackout that follows is again OUR decision — the recording has no
+       measured blackout before the attic at 42:22 either. */
+    {n:12, label:'blackout — up into the roof', fade:1.6, house:0, haze:0.4,
      curtain:'out', scene:'interior',
+     look(){ all(0); }},
+
+    /* ============ ACT ONE, iii — THE ATTIC ============
+       measured: 42:22, held 54s — one of the longest held shots in the act */
+    {n:13, label:'the attic — one lamp and a lot of roof', fade:4, house:0, haze:0.45,
+     curtain:'out', scene:'attic',
      look(){ all(0);
-       set(BOOM, 0.24, '#e8c9a4'); set(WASH, 0.12, '#c8a882'); }},
+       set(BOOM, 0.30, '#e8c07a'); set(WASH, 0.16, '#c8a882');
+       one(SPOT, 0.35, '#fff0d0'); }},
 
-    /* measured: the act break is the LONGEST blackout in the show — 13.3s at
-       71:02, inside a cluster of eight. It is the strongest single measurement
-       in the file and it is what puts the interval here. */
-    {n:13, label:'act one ends — blackout', fade:4, house:0, haze:0.3,
-     curtain:'shut', scene:'interior',
+    {n:14, label:'the string lights, and the model', fade:3, house:0, haze:0.5,
+     curtain:'out', scene:'attic',
+     look(){ all(0);
+       set(WASH, 0.30, '#bfe08a'); set(FRONT, 0.20, '#d8e8b0');
+       set(BOOM, 0.18, '#9fd066'); }},
+
+    /* MEASURED, and this one is real: there is an 8.6s blackout at 51:56 —
+       the first measured blackout in the show since 1:26. It covers this
+       change, so the cover here is a measurement rather than a decision. */
+    {n:15, label:'blackout — 8.6s, measured at 51:56', fade:2, house:0, haze:0.35,
+     curtain:'out', scene:'attic',
      look(){ all(0); }},
 
-    /* measured, and worth recording as an ABSENCE: the recording contains no
-       interval at all — the longest sustained-bright stretch in 143 minutes is
-       87s, so the house never came up. It was edited out. This cue is the
-       house's own convention, not a measurement. */
-    {n:14, label:'INTERVAL — the house comes up', fade:6, house:1, haze:0,
-     curtain:'shut', scene:'interior',
+    /* ============ ACT ONE, iv — THE BEDROOM ============
+       measured: 54:23, and a further 10.5s blackout at 55:38 just after it */
+    {n:16, label:'the bedroom — the lamp, and the corner', fade:3.5, house:0, haze:0.3,
+     curtain:'out', scene:'bedroom',
+     look(){ all(0);
+       set(WASH, 0.34, '#c8a8d8'); set(BOOM, 0.26, '#9f7fc0');
+       set(FRONT, 0.18, '#d8c8e8'); }},
+
+    {n:17, label:'down to the lamp alone', fade:2.5, house:0, haze:0.3,
+     curtain:'out', scene:'bedroom',
+     look(){ all(0); set(BOOM, 0.22, '#9f7fc0'); }},
+
+    {n:18, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.25,
+     curtain:'out', scene:'bedroom',
+     look(){ all(0); set(BOOM, 0.06, '#9f7fc0'); }},
+
+    /* MEASURED: the act break is the LONGEST blackout in the show — 13.3s at
+       71:02, inside a cluster of eight. The strongest single measurement in
+       the file, and it is what puts the interval here. */
+    {n:19, label:'act one ends — blackout', fade:4, house:0, haze:0.3,
+     curtain:'shut', scene:'bedroom',
      look(){ all(0); }},
 
-    {n:15, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
-     curtain:'shut', scene:'house',
+    /* MEASURED as an ABSENCE: the recording contains no interval at all. The
+       longest sustained-bright stretch in 143 minutes is 87s, so the house
+       never came up — it was edited out. This cue is the house's own
+       convention, not a measurement. */
+    {n:20, label:'INTERVAL — the house comes up', fade:6, house:1, haze:0,
+     curtain:'shut', scene:'bedroom',
      look(){ all(0); }},
 
-    /* ============ ACT TWO ============
-       Its own scenery arrives with the later PRs in this chain; until then act
-       two plays in the one scene that exists, and says so. */
-    {n:16, label:'act two — colder, and lower', fade:5, house:0, haze:0.65,
+    /* the room is re-dressed behind the shut cloth, which is the whole reason
+       an interval exists */
+    {n:21, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
+     curtain:'shut', scene:'redecorated',
+     look(){ all(0); }},
+
+    /* ============ ACT TWO, i — THE ROOM, REDECORATED ============
+       measured: 67:46, 78:28, 80:39 and 94:02 — four looks on the redressed
+       room, the most-measured configuration in the file */
+    {n:22, label:'act two — the room, redecorated', fade:5, house:0, haze:0.4,
+     curtain:'out', scene:'redecorated',
+     look(){ all(0);
+       set(FRONT, 0.5, '#f4e8d0'); set(WASH, 0.54, '#e8d8c0');
+       set(BOOM, 0.24, '#d8c0a0'); }},
+
+    /* measured: 78:28 is paler and flatter than 67:46 */
+    {n:23, label:'pale, and flatter', fade:3, house:0, haze:0.35,
+     curtain:'out', scene:'redecorated',
+     look(){ all(0);
+       set(FRONT, 0.62, '#f8f0e0'); set(WASH, 0.46, '#efe6d2'); }},
+
+    /* measured: 80:39 puts a hard green across it */
+    {n:24, label:'a hard green across the frames', fade:2, house:0, haze:0.5,
+     curtain:'out', scene:'redecorated',
+     look(){ all(0);
+       set(WASH, 0.56, '#7fc46a'); set(MOVE, 0.48, '#9fd066');
+       set(BACK, 0.22, '#5fae52'); }},
+
+    {n:25, label:'the settee, and one lamp', fade:3, house:0, haze:0.3,
+     curtain:'out', scene:'redecorated',
+     look(){ all(0);
+       one(SPOT, 0.6, '#f4eede'); set(BOOM, 0.16, '#d8c0a0'); }},
+
+    /* measured: 94:02 is the last of the redecorated looks, wide and bright */
+    {n:26, label:'the whole room, wide open', fade:3, house:0, haze:0.55,
+     curtain:'out', scene:'redecorated',
+     look(){ all(0);
+       set(FRONT, 0.55, '#f4e8d0'); set(WASH, 0.62, '#efe6d2');
+       set(BACK, 0.5, '#cfd8e8'); set(MOVE, 0.42, '#ffffff');
+       set(BOOM, 0.3, '#d8c0a0'); }},
+
+    {n:27, label:'out on the measured 2.2', fade:2.2, house:0, haze:0.4,
+     curtain:'out', scene:'redecorated',
+     look(){ all(0); set(WASH, 0.08, '#efe6d2'); }},
+
+    /* MEASURED: a 12.4s fade DOWN at 113:18, from Y 97 to 24 — one of the
+       largest clean slopes in the whole file — landing in a 6.6s blackout at
+       113:23. Both numbers are real, and this cue is both of them. */
+    {n:28, label:'blackout — a measured 12.4s down at 113:18', fade:12.4, house:0, haze:0.3,
+     curtain:'out', scene:'redecorated',
+     look(){ all(0); }},
+
+    /* ============ ACT TWO, ii — OUTSIDE AGAIN ============
+       measured: the exterior carries 72:58 in act two (and 62:44 in act one,
+       which our version does not use — we play act one indoors) */
+    {n:29, label:'outside again — the house, colder', fade:5, house:0, haze:0.65,
      curtain:'out', scene:'house',
      look(){ all(0);
        set(CYC, 0.42, '#24507f'); set(BACK, 0.34, '#3f6ea6');
        set(WASH, 0.14, '#4a6a90'); }},
 
-    {n:17, label:'a hard green across the boards', fade:2, house:0, haze:0.7,
-     curtain:'out', scene:'house',
-     look(){ all(0);
-       set(WASH, 0.52, '#7fc46a'); set(MOVE, 0.44, '#9fd066');
-       set(CYC, 0.20, '#1d3f70'); }},
-
-    {n:18, label:'the moon again, harder', fade:3, house:0, haze:0.6,
+    {n:30, label:'the moon again, harder', fade:3, house:0, haze:0.6,
      curtain:'out', scene:'house',
      look(){ all(0);
        set(CYC, 0.74, '#2b5896'); set(BACK, 0.22, '#6f8fc0'); }},
 
-    {n:19, label:'front and centre', fade:2.2, house:0, haze:0.5,
+    {n:31, label:'front and centre', fade:2.2, house:0, haze:0.5,
      curtain:'out', scene:'house',
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -4.0);
        set(FRONT, 0.7, '#efe6d2'); set(CYC, 0.16, '#22467c'); }},
 
-    {n:20, label:'the whole stage, wide open', fade:3, house:0, haze:0.8,
+    {n:32, label:'the whole stage, wide open', fade:3, house:0, haze:0.8,
      curtain:'out', scene:'house',
      look(){ all(0);
        set(FRONT, 0.5, '#e6dcc6'); set(WASH, 0.58, '#cfd8e8');
        set(BACK, 0.62, '#5f8fc8'); set(CYC, 0.44, '#2f5f9c');
        set(MOVE, 0.5, '#8fd8f0'); }},
 
-    {n:21, label:'down to the gate again', fade:2.5, house:0, haze:0.6,
-     curtain:'out', scene:'house',
-     look(){ all(0); one(SPOT, 0.7, '#f2ecd8'); set(CYC, 0.14, '#1d3f70'); }},
-
-    {n:22, label:'the last of the blue', fade:4, house:0, haze:0.55,
-     curtain:'out', scene:'house',
-     look(){ all(0); set(CYC, 0.5, '#2b5896'); set(BOOM, 0.18, '#3a689e'); }},
-
-    {n:23, label:'a warm turn, late on', fade:3, house:0, haze:0.6,
-     curtain:'out', scene:'house',
-     look(){ all(0);
-       set(WASH, 0.46, '#e0b58a'); set(FRONT, 0.3, '#e8c9a4');
-       set(BOOM, 0.24, '#c89a6e'); }},
-
-    {n:24, label:'the button — everything, briefly', fade:1, house:0, haze:0.85,
+    {n:33, label:'the button — everything, briefly', fade:1, house:0, haze:0.85,
      curtain:'out', scene:'house',
      look(){ all(0);
        set(FRONT, 0.8, '#fff4e0'); set(WASH, 0.85, '#ffffff');
        set(BACK, 0.8, '#8fd8f0'); set(CYC, 0.6, '#3f79bf');
        set(MOVE, 0.8, '#ffffff'); set(BOOM, 0.5, '#e8d2a8'); }},
 
-    {n:25, label:'out on the measured 2.2', fade:2.2, house:0, haze:0.5,
-     curtain:'out', scene:'house',
-     look(){ all(0); }},
-
-    /* measured: the curtain call is unmistakable in the file — 82 events in the
-       last 2.5 minutes, lights bumping up and down every 1 to 3 seconds, and it
-       ends with a 7.0s fade down into 7.3s of black at 143:35. Found without
-       ever seeing a frame, which is the best evidence the method works. */
-    {n:26, label:'curtain call', fade:1.4, house:0, haze:0.4,
+    /* MEASURED: the curtain call is unmistakable in the file — 82 events in
+       the last 2.5 minutes, lights bumping up and down every 1 to 3 seconds,
+       starting at 141:02. Found without ever seeing a frame. */
+    {n:34, label:'curtain call', fade:1.4, house:0, haze:0.4,
      curtain:'out', scene:'house',
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -3.0);
        set(FRONT, 0.85, '#fff2dc'); set(WASH, 0.7, '#ffffff');
        set(BACK, 0.5, '#8fd8f0'); set(MOVE, 0.6, '#ffffff'); }},
 
-    /* measured: 7.0s down into the black at 143:35 — the show's last cue */
-    {n:27, label:'blackout — the curtain comes in', fade:7, house:0, haze:0.2,
+    /* MEASURED: 7.0s down into 7.3s of black at 143:35 — the show's last cue */
+    {n:35, label:'blackout — the curtain comes in', fade:7, house:0, haze:0.2,
      curtain:'shut', scene:'house',
      look(){ all(0); }},
 
-    {n:28, label:'curtain warmers — the cloth, and nothing else', fade:4, house:0, haze:0,
+    {n:36, label:'curtain warmers — the cloth, and nothing else', fade:4, house:0, haze:0,
      curtain:'shut', scene:'house',
      look(){ all(0);
        onTheCloth();                     // up at the cloth, never down at the deck
        set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }},
 
-    {n:29, label:'house up — the warmers stay', fade:8, house:0.6, haze:0,
+    {n:37, label:'house up — the warmers stay', fade:8, house:0.6, haze:0,
      curtain:'shut', scene:'house',
      look(){ all(0);
        onTheCloth();
