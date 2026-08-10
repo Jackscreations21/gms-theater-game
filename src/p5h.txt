@@ -915,11 +915,11 @@ function plotBeetlejuice(){
 
   const looks = [
     /* ---- the top of the night ---- */
-    {n:0.5, label:'preset — house open, curtain in', fade:0, house:0.9, haze:0.15,
+    {at:33, n:0.5, label:'preset — house open, curtain in', fade:0, house:0.9, haze:0.15,
      curtain:'shut', scene:'cemetery',
      look(){ all(0); onTheCloth(); set(FRONT, 0.5, '#e8d2a8'); }},
 
-    {n:1, label:'house to half', fade:5, house:0.5, haze:0.2,
+    {at:70, n:1, label:'house to half', fade:5, house:0.5, haze:0.2,
      curtain:'shut', scene:'cemetery',
      look(){ all(0); onTheCloth(); set(FRONT, 0.5, '#e8d2a8'); }},
 
@@ -927,27 +927,27 @@ function plotBeetlejuice(){
        measured: the first big blackout is at 1:26 and holds 9.0s; the wide
        cemetery look is held from 3:09 for 125s, the longest single held shot
        in the act. */
-    {n:2, label:'act one — the cemetery, low and blue', fade:6, house:0, haze:0.6,
+    {at:95, n:2, label:'act one — the cemetery, low and blue', fade:6, house:0, haze:0.6,
      curtain:'out', scene:'cemetery',
      look(){ all(0);
        set(CYC, 0.55, '#2f5f9c'); set(BACK, 0.42, '#4a78b4');
        set(WASH, 0.18, '#5f7fa8'); set(BOOM, 0.30, '#3f6ea6'); }},
 
-    {n:3, label:'the moon takes the upstage', fade:4, house:0, haze:0.62,
+    {at:189, n:3, label:'the moon takes the upstage', fade:4, house:0, haze:0.62,
      curtain:'out', scene:'cemetery',
      look(){ all(0);
        set(CYC, 0.68, '#2b5896'); set(BACK, 0.30, '#6f8fc0');
        set(BOOM, 0.22, '#3a689e'); }},
 
     /* measured: a fade UP of 1.6s — one of the fastest clean slopes in the file */
-    {n:4, label:'the mourners — a hard front, fast', fade:1.6, house:0, haze:0.55,
+    {at:371, n:4, label:'the mourners — a hard front, fast', fade:1.6, house:0, haze:0.55,
      curtain:'out', scene:'cemetery',
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -6.5);
        set(FRONT, 0.62, '#cfd8e8'); set(CYC, 0.34, '#2b5896');
        set(WASH, 0.20, '#7f92ad'); }},
 
-    {n:5, label:'down to the one of them', fade:3, house:0, haze:0.5,
+    {at:480, n:5, label:'down to the one of them', fade:3, house:0, haze:0.5,
      curtain:'out', scene:'cemetery',
      look(){ all(0);
        one(SPOT, 0.85, '#f2ecd8'); set(CYC, 0.18, '#22467c');
@@ -955,7 +955,7 @@ function plotBeetlejuice(){
 
     /* measured: 9:31 is the widest, brightest look of the cemetery sequence —
        centre/edge ratio 4.31, the strongest wide shot in the whole file */
-    {n:6, label:'the beam fan opens over the gate', fade:5, house:0, haze:0.75,
+    {at:571, n:6, label:'the beam fan opens over the gate', fade:5, house:0, haze:0.75,
      curtain:'out', scene:'cemetery',
      look(){ all(0);
        set(BACK, 0.72, '#4f86c8'); set(MOVE, 0.60, '#78c8e8');
@@ -965,33 +965,33 @@ function plotBeetlejuice(){
        at 15:57, but there is NO measured blackout anywhere between 9:00 and
        18:00. The recording does not show how that change was covered, so
        covering it with a blackout of our own is a DECISION, not a measurement. */
-    {n:7, label:'blackout — the walls come in', fade:1.2, house:0, haze:0.5,
+    {at:920, n:7, label:'blackout — the walls come in', fade:1.2, house:0, haze:0.5,
      curtain:'out', scene:'cemetery',
      look(){ all(0); }},
 
     /* ============ ACT ONE, ii — INSIDE THE HOUSE ============
        measured: 15:57 to 31:34 under five looks, which is why the wall curves */
-    {n:8, label:'inside — the walls, cold', fade:3, house:0, haze:0.35,
+    {at:957, n:8, label:'inside — the walls, cold', fade:3, house:0, haze:0.35,
      curtain:'out', scene:'interior',
      look(){ all(0);
        set(WASH, 0.34, '#8fa0c0'); set(FRONT, 0.26, '#cfd8e8');
        set(BACK, 0.20, '#5f7fa8'); }},
 
     /* measured: 16:29 is a held 22s look, warmer and fuller than 15:57 */
-    {n:9, label:'the room, warm and full', fade:4, house:0, haze:0.3,
+    {at:989, n:9, label:'the room, warm and full', fade:4, house:0, haze:0.3,
      curtain:'out', scene:'interior',
      look(){ all(0);
        set(FRONT, 0.62, '#f0d8b0'); set(WASH, 0.66, '#e8c9a4');
        set(BOOM, 0.34, '#d8b184'); }},
 
     /* measured: fades DOWN in this file run a 2.2s median; this is that number */
-    {n:10, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.35,
+    {at:1227, n:10, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.35,
      curtain:'out', scene:'interior',
      look(){ all(0); set(WASH, 0.10, '#8fa0c0'); }},
 
     /* measured: 22:14 is the brightest interior frame in the file; 25:19 is
        held 34s — a long, still, bright scene */
-    {n:11, label:'the arch, and whoever is standing in it', fade:3, house:0, haze:0.4,
+    {at:1334, n:11, label:'the arch, and whoever is standing in it', fade:3, house:0, haze:0.4,
      curtain:'out', scene:'interior',
      look(){ all(0);
        one(SPOT, 0.7, '#f4eede'); set(FRONT, 0.22, '#dfe8f4');
@@ -1000,19 +1000,19 @@ function plotBeetlejuice(){
     /* measured: 31:34 closes the interior sequence, held 15s and darker.
        The blackout that follows is again OUR decision — the recording has no
        measured blackout before the attic at 42:22 either. */
-    {n:12, label:'blackout — up into the roof', fade:1.6, house:0, haze:0.4,
+    {at:1894, n:12, label:'blackout — up into the roof', fade:1.6, house:0, haze:0.4,
      curtain:'out', scene:'interior',
      look(){ all(0); }},
 
     /* ============ ACT ONE, iii — THE ATTIC ============
        measured: 42:22, held 54s — one of the longest held shots in the act */
-    {n:13, label:'the attic — one lamp and a lot of roof', fade:4, house:0, haze:0.45,
+    {at:2542, n:13, label:'the attic — one lamp and a lot of roof', fade:4, house:0, haze:0.45,
      curtain:'out', scene:'attic',
      look(){ all(0);
        set(BOOM, 0.30, '#e8c07a'); set(WASH, 0.16, '#c8a882');
        one(SPOT, 0.35, '#fff0d0'); }},
 
-    {n:14, label:'the string lights, and the model', fade:3, house:0, haze:0.5,
+    {at:2835, n:14, label:'the string lights, and the model', fade:3, house:0, haze:0.5,
      curtain:'out', scene:'attic',
      look(){ all(0);
        set(WASH, 0.30, '#bfe08a'); set(FRONT, 0.20, '#d8e8b0');
@@ -1021,30 +1021,30 @@ function plotBeetlejuice(){
     /* MEASURED, and this one is real: there is an 8.6s blackout at 51:56 —
        the first measured blackout in the show since 1:26. It covers this
        change, so the cover here is a measurement rather than a decision. */
-    {n:15, label:'blackout — 8.6s, measured at 51:56', fade:2, house:0, haze:0.35,
+    {at:3116, n:15, label:'blackout — 8.6s, measured at 51:56', fade:2, house:0, haze:0.35,
      curtain:'out', scene:'attic',
      look(){ all(0); }},
 
     /* ============ ACT ONE, iv — THE BEDROOM ============
        measured: 54:23, and a further 10.5s blackout at 55:38 just after it */
-    {n:16, label:'the bedroom — the lamp, and the corner', fade:3.5, house:0, haze:0.3,
+    {at:3263, n:16, label:'the bedroom — the lamp, and the corner', fade:3.5, house:0, haze:0.3,
      curtain:'out', scene:'bedroom',
      look(){ all(0);
        set(WASH, 0.34, '#c8a8d8'); set(BOOM, 0.26, '#9f7fc0');
        set(FRONT, 0.18, '#d8c8e8'); }},
 
-    {n:17, label:'down to the lamp alone', fade:2.5, house:0, haze:0.3,
+    {at:3338, n:17, label:'down to the lamp alone', fade:2.5, house:0, haze:0.3,
      curtain:'out', scene:'bedroom',
      look(){ all(0); set(BOOM, 0.22, '#9f7fc0'); }},
 
-    {n:18, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.25,
+    {at:3764, n:18, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.25,
      curtain:'out', scene:'bedroom',
      look(){ all(0); set(BOOM, 0.06, '#9f7fc0'); }},
 
     /* MEASURED: the act break is the LONGEST blackout in the show — 13.3s at
        71:02, inside a cluster of eight. The strongest single measurement in
        the file, and it is what puts the interval here. */
-    {n:19, label:'act one ends — blackout', fade:4, house:0, haze:0.3,
+    {at:4262, n:19, label:'act one ends — blackout', fade:4, house:0, haze:0.3,
      curtain:'shut', scene:'bedroom',
      look(){ all(0); }},
 
@@ -1052,7 +1052,7 @@ function plotBeetlejuice(){
        longest sustained-bright stretch in 143 minutes is 87s, so the house
        never came up — it was edited out. This cue is the house's own
        convention, not a measurement. */
-    {n:20, label:'INTERVAL — the house comes up', fade:6, house:1, haze:0,
+    {at:4290, n:20, label:'INTERVAL — the house comes up', fade:6, house:1, haze:0,
      curtain:'shut', scene:'bedroom',
      look(){ all(0); }},
 
@@ -1062,24 +1062,24 @@ function plotBeetlejuice(){
        of act two; the redecorated room runs 78:28 to 94:02; the afterlife
        103:39 to 113:22; the chevron 121:54; the call 141:02.  PR 4 had the
        exterior last, which was the wrong way round. */
-    {n:21, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
+    {at:4350, n:21, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
      curtain:'shut', scene:'house',
      look(){ all(0); }},
 
     /* measured: 72:58 is the exterior's act-two look, held 82s — the longest
        held shot anywhere in the second half */
-    {n:22, label:'act two — outside again, colder', fade:5, house:0, haze:0.65,
+    {at:4378, n:22, label:'act two — outside again, colder', fade:5, house:0, haze:0.65,
      curtain:'out', scene:'house',
      look(){ all(0);
        set(CYC, 0.42, '#24507f'); set(BACK, 0.34, '#3f6ea6');
        set(WASH, 0.14, '#4a6a90'); }},
 
-    {n:23, label:'the moon again, harder', fade:3, house:0, haze:0.6,
+    {at:4471, n:23, label:'the moon again, harder', fade:3, house:0, haze:0.6,
      curtain:'out', scene:'house',
      look(){ all(0);
        set(CYC, 0.74, '#2b5896'); set(BACK, 0.22, '#6f8fc0'); }},
 
-    {n:24, label:'front and centre, on the porch', fade:2.2, house:0, haze:0.5,
+    {at:4560, n:24, label:'front and centre, on the porch', fade:2.2, house:0, haze:0.5,
      curtain:'out', scene:'house',
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -4.0);
@@ -1087,26 +1087,26 @@ function plotBeetlejuice(){
 
     /* INTERPRETED: no measured blackout sits between 94:02 and the exterior
        looks, so this cover is ours */
-    {n:25, label:'blackout — back inside', fade:1.6, house:0, haze:0.4,
+    {at:4680, n:25, label:'blackout — back inside', fade:1.6, house:0, haze:0.4,
      curtain:'out', scene:'house',
      look(){ all(0); }},
 
     /* ---- the room, redecorated: measured 78:28, 80:39, 94:02 ---- */
-    {n:26, label:'the room, redecorated — pale and flat', fade:4, house:0, haze:0.4,
+    {at:4708, n:26, label:'the room, redecorated — pale and flat', fade:4, house:0, haze:0.4,
      curtain:'out', scene:'redecorated',
      look(){ all(0);
        set(FRONT, 0.58, '#f8f0e0'); set(WASH, 0.5, '#efe6d2');
        set(BOOM, 0.22, '#d8c0a0'); }},
 
     /* measured: 80:39 puts a hard green across it */
-    {n:27, label:'a hard green across the frames', fade:2, house:0, haze:0.5,
+    {at:4839, n:27, label:'a hard green across the frames', fade:2, house:0, haze:0.5,
      curtain:'out', scene:'redecorated',
      look(){ all(0);
        set(WASH, 0.56, '#7fc46a'); set(MOVE, 0.48, '#9fd066');
        set(BACK, 0.22, '#5fae52'); }},
 
     /* measured: 94:02 is the last of the redecorated looks, wide and bright */
-    {n:28, label:'the whole room, wide open', fade:3, house:0, haze:0.55,
+    {at:5642, n:28, label:'the whole room, wide open', fade:3, house:0, haze:0.55,
      curtain:'out', scene:'redecorated',
      look(){ all(0);
        set(FRONT, 0.55, '#f4e8d0'); set(WASH, 0.62, '#efe6d2');
@@ -1115,30 +1115,30 @@ function plotBeetlejuice(){
 
     /* MEASURED: a 2.9s blackout at 99:38, which is where the room goes and the
        afterlife arrives */
-    {n:29, label:'blackout — 2.9s, measured at 99:38', fade:2.2, house:0, haze:0.3,
+    {at:5978, n:29, label:'blackout — 2.9s, measured at 99:38', fade:2.2, house:0, haze:0.3,
      curtain:'out', scene:'redecorated',
      look(){ all(0); }},
 
     /* ---- the afterlife: measured 103:39 to 113:22, and the colour changes
        between the looks. The frames are neon, so the CUE fades them. ---- */
-    {n:30, label:'the afterlife — the frames come up', fade:4, house:0, haze:0.7,
+    {at:6219, n:30, label:'the afterlife — the frames come up', fade:4, house:0, haze:0.7,
      curtain:'out', scene:'afterlife', neon:1.1,
      look(){ all(0);
        set(BACK, 0.2, '#5fd8e8'); set(WASH, 0.10, '#4a6a90'); }},
 
     /* measured: 107:45 is a single figure inside the frames, held 22s */
-    {n:31, label:'one of them, inside it', fade:2.5, house:0, haze:0.65,
+    {at:6465, n:31, label:'one of them, inside it', fade:2.5, house:0, haze:0.65,
      curtain:'out', scene:'afterlife', neon:1.25,
      look(){ all(0); one(SPOT, 0.55, '#eaf4ff'); }},
 
     /* measured: 113:18 is a 12.4s fade DOWN from Y 97 to 24 — one of the
        largest clean slopes in the file, and it is this cue's fade time */
-    {n:32, label:'the frames dim — a measured 12.4s at 113:18', fade:12.4, house:0, haze:0.6,
+    {at:6798, n:32, label:'the frames dim — a measured 12.4s at 113:18', fade:12.4, house:0, haze:0.6,
      curtain:'out', scene:'afterlife', neon:0.45,
      look(){ all(0); set(BACK, 0.08, '#5fd8e8'); }},
 
     /* measured: 121:54 is the chevron across the whole opening */
-    {n:33, label:'the chevron, and everything on it', fade:2, house:0, haze:0.8,
+    {at:7314, n:33, label:'the chevron, and everything on it', fade:2, house:0, haze:0.8,
      curtain:'out', scene:'afterlife', neon:1.35,
      look(){ all(0);
        set(WASH, 0.5, '#7fc46a'); set(MOVE, 0.6, '#9fd066');
@@ -1147,7 +1147,7 @@ function plotBeetlejuice(){
     /* MEASURED: the curtain call is unmistakable — 82 events in the last 2.5
        minutes, lights bumping every 1 to 3 seconds, starting at 141:02.
        Found without ever seeing a frame. */
-    {n:34, label:'curtain call', fade:1.4, house:0, haze:0.4,
+    {at:8462, n:34, label:'curtain call', fade:1.4, house:0, haze:0.4,
      curtain:'out', scene:'afterlife', neon:1.4,
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -3.0);
@@ -1155,17 +1155,17 @@ function plotBeetlejuice(){
        set(BACK, 0.5, '#8fd8f0'); set(MOVE, 0.6, '#ffffff'); }},
 
     /* MEASURED: 7.0s down into 7.3s of black at 143:35 — the show's last cue */
-    {n:35, label:'blackout — the curtain comes in', fade:7, house:0, haze:0.2,
+    {at:8615, n:35, label:'blackout — the curtain comes in', fade:7, house:0, haze:0.2,
      curtain:'shut', scene:'afterlife', neon:0,
      look(){ all(0); }},
 
-    {n:36, label:'curtain warmers — the cloth, and nothing else', fade:4, house:0, haze:0,
+    {at:8640, n:36, label:'curtain warmers — the cloth, and nothing else', fade:4, house:0, haze:0,
      curtain:'shut', scene:'afterlife', neon:0,
      look(){ all(0);
        onTheCloth();                     // up at the cloth, never down at the deck
        set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }},
 
-    {n:37, label:'house up — the warmers stay', fade:8, house:0.6, haze:0,
+    {at:8660, n:37, label:'house up — the warmers stay', fade:8, house:0.6, haze:0,
      curtain:'shut', scene:'afterlife', neon:0,
      look(){ all(0);
        onTheCloth();
@@ -1190,6 +1190,32 @@ function plotBeetlejuice(){
       scene:L.scene || null
     });
   });
+  /* ------------------------------------------------------------------
+     THE AUTO-CUE, and it costs no new code at all.
+
+     Every CUES record already has a `follow` field: fire a cue and it arms
+     the next one that many seconds later (p6.txt:180).  All four older
+     shows ship follow:null and are driven by hand, so the field has been
+     built and unused since the beginning.  Filling it with the gap between
+     two MEASURED cue times makes the show run itself, on the timeline the
+     recording actually had.
+
+     Two things about this are honest rather than ideal, and the owner
+     should see it running before anyone specs a transport:
+       - `follow` uses setTimeout, the one surviving violation of "never
+         setTimeout for game timing", and a stage swap CANCELS it — so an
+         unattended show dies if you walk into the other theatre.
+       - chained relative waits drift, because each timer fires a little
+         late and the next is armed from the late fire.  Over 2h23m that
+         accumulates.  Absolute timecode would not, and that is the case
+         for a real transport (rulings AP onward).
+     ------------------------------------------------------------------ */
+  for(let i = 0; i < CUES.length - 1; i++){
+    const gap = looks[i + 1].at - looks[i].at;
+    CUES[i].follow = gap > 0 ? +gap.toFixed(2) : null;
+  }
+  CUES[CUES.length - 1].follow = null;         // the last cue waits for nobody
+
   FIXTURES.forEach(f=>{ f.level = 0; f.gobo = 0; });
   restoreAims(homeAims);
   RIG.haze = savedHaze;

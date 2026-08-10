@@ -593,6 +593,95 @@ const probe = `
     return 'clean: no scenes, no curtain, no pieces';
   });
 
+  console.log('--- the auto-cue: the show runs itself off the measured timeline ---');
+
+  /* the whole point of the round. follow already existed and was unused. */
+  P('every cue but the last arms the next one, off a measured gap', ()=>{
+    showLoad('beetlejuice');
+    const missing = [];
+    for(let i = 0; i < CUES.length - 1; i++)
+      if(!(CUES[i].follow > 0)) missing.push(CUES[i].n);
+    if(missing.length)
+      throw new Error(missing.length+' cue(s) do not arm the next: '+missing.slice(0,6).join(', '));
+    if(CUES[CUES.length-1].follow !== null)
+      throw new Error('the last cue arms something after it');
+    return (CUES.length-1)+' follow gaps set, last one null';
+  });
+
+  P('the follow chain reconstructs the running time of the recording', ()=>{
+    showLoad('beetlejuice');
+    let total = 0;
+    for(const c of CUES) total += (c.follow || 0);
+    /* the file is 8626.7s long and the first cue sits at 33s, so the chain
+       from cue one to the last should span the rest of it */
+    const want = 8660 - 33;
+    if(Math.abs(total - want) > 1)
+      throw new Error('the chain runs '+total.toFixed(1)+'s, the recording is '+want+'s');
+    const mins = total/60;
+    if(mins < 120 || mins > 170) throw new Error('a '+mins.toFixed(0)+' minute show is not this one');
+    return total.toFixed(0)+'s = '+mins.toFixed(0)+' minutes, against a 143 minute recording';
+  });
+
+  /* the act break is the strongest measurement in the file; the chain has to
+     put it where the recording put it, not merely somewhere plausible */
+  P('the measured act break falls at 71:02 along the chain', ()=>{
+    showLoad('beetlejuice');
+    const i = CUES.findIndex(c=>/act one ends/.test(c.label));
+    let t = 33;
+    for(let k = 0; k < i; k++) t += (CUES[k].follow || 0);
+    const want = 71*60 + 2;
+    if(Math.abs(t - want) > 2)
+      throw new Error('the chain reaches the act break at '+(t/60).toFixed(1)+
+                      ' min, measured 71:02');
+    return 'act break at '+Math.floor(t/60)+':'+String(Math.round(t%60)).padStart(2,'0');
+  });
+
+  P('the curtain call falls at 141:02 along the chain', ()=>{
+    showLoad('beetlejuice');
+    const i = CUES.findIndex(c=>/curtain call/.test(c.label));
+    let t = 33;
+    for(let k = 0; k < i; k++) t += (CUES[k].follow || 0);
+    const want = 141*60 + 2;
+    if(Math.abs(t - want) > 2)
+      throw new Error('the chain reaches the call at '+(t/60).toFixed(1)+' min, measured 141:02');
+    return 'call at '+Math.floor(t/60)+':'+String(Math.round(t%60)).padStart(2,'0');
+  });
+
+  /* p5d's plot was audited for this: restoreAims before EVERY look, or one
+     cue's focus leaks into the next. plotOutsiders shipped without it once
+     and that was finding M2. */
+  P('no cue leaks its focus into the next one (audit finding M2)', ()=>{
+    showLoad('beetlejuice');
+    /* the warmers cue throws the front of house UP at the cloth; a later cue
+       that never touches aims must not inherit that */
+    const warm = CUES.find(c=>/warmers/.test(c.label));
+    const up = warm.lx.slice(0, 6).filter(r=>r.aim && r.aim[1] > 5);
+    if(up.length < 4) throw new Error('the warmers cue does not aim the front high');
+    const plain = CUES.find(c=>/the moon takes the upstage/.test(c.label));
+    const leaked = plain.lx.slice(0, 6).filter(r=>r.aim && r.aim[1] > 5);
+    if(leaked.length)
+      throw new Error(leaked.length+' front channels carry the cloth aim into a cue that never set it');
+    return 'the cloth aim stays on the cloth cues';
+  });
+
+  /* if a transport is ever built it must not reintroduce a wall-clock timer,
+     and nothing THIS show added may contain one */
+  P('the show part introduces no setTimeout of its own', ()=>{
+    const src = document.documentElement.outerHTML;
+    const i = src.indexOf('BEETLEJUICE — the fifth production');
+    if(i < 0) throw new Error('cannot find the show part in the build');
+    const j = src.indexOf('function plotBeetlejuice');
+    const end = src.indexOf('SHOW.cues = CUES.length', j);
+    const part = src.slice(i, end > 0 ? end : i + 60000);
+    /* A CALL, not the word — the part's own comments discuss setTimeout at
+       length, because explaining why follow uses one is the point.  Plain
+       indexOf rather than a regex: the probe template eats every backslash,
+       so \\s and \\( would arrive broken (TRAPS.md). */
+    if(part.indexOf('setTimeout(') >= 0 || part.indexOf('setInterval(') >= 0)
+      throw new Error('the show part calls a wall-clock timer');
+    return 'no setTimeout in the show part; the follow field is p6 machinery, not ours';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
