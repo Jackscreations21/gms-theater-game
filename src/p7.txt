@@ -113,7 +113,7 @@ function inPalace(){ return VENUE !== 'arc'; }
    and there the roller door has to be most of the way up to pass */
 function backWallBlocks(x, z, oz){
   if(!inPalace()) return false;
-  const plane = D.backWall - 0.3;
+  const plane = PAL_BACK - 0.3;
   if((oz < plane) === (z < plane)) return false;   // not crossing it
   const S = (typeof SHEDS !== 'undefined') ? SHEDS.palace : null;
   if(S && Math.abs(x - S.door.x) < S.door.halfW - 0.2)
@@ -129,7 +129,7 @@ function shedWallBlocks(nx, nz){
   if(!S) return false;
   if(nz <= S.z1)                                    // inside the shed proper
     return nx < S.x0 + 0.4 || nx > S.x1 - 0.4;
-  if(nz < D.backWall - 0.05)                        // inside the wall's thickness
+  if(nz < PAL_BACK - 0.05)                          // inside the wall's thickness
     return Math.abs(nx - S.door.x) > S.door.halfW - 0.2;
   return false;
 }
@@ -388,7 +388,7 @@ function updatePlayer(dt){
       if(nx < DOCK.x0 - 16 || nx > XL + 0.6) return;
       // upstage it now ends at the warehouse shed's rear wall, not the stage's
       const zFloor = (typeof SHEDS !== 'undefined' && SHEDS.palace)
-        ? SHEDS.palace.z0 + 0.5 : D.backWall + 0.6;
+        ? SHEDS.palace.z0 + 0.5 : PAL_BACK + 0.6;
       if(nz < zFloor || nz > FOH.z1 - 0.9) return;
       if(Player.pos.y < 5 && throughWall(nx, nz, Player.pos.z)) return;
       if(doorBlocks(nx, nz, Player.pos.z, Player.pos.y)) return;

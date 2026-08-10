@@ -16,9 +16,9 @@ FOH.gallY = mezzFloorY(D.houseBack) - 0.2;   // the gallery is level with the me
 
 const DOCK = {};
 const BOH = {
-  z0: D.backWall - 0.7,           // upstage face of the stage-house wall
-  z1: D.backWall - 7.0,           // back of the crossover
-  z2: D.backWall - 18.0,          // back of the dock and workshop
+  z0: PAL_BACK - 0.7,             // upstage face of the stage-house wall
+  z1: PAL_BACK - 7.0,             // back of the crossover
+  z2: PAL_BACK - 18.0,            // back of the dock and workshop
   h: 5.4, dockH: 7.0
 };
 

@@ -1000,6 +1000,33 @@ const D = {
   domeZ: 11.5, domeRim: 7.4         // the dome, and the chandelier under it
 };
 
+/* ---------------------------------------------------------------------------
+   THE PALACE IS DEEPER THAN THE BOX  (owner, 2026-08-10)
+
+   "make the house set deaper and make it have just enough space to slide back
+   behind the final line set witch will have the backdrop" — the Beetlejuice
+   house is a wagon that tracks upstage, and at the curtain call it parks all
+   the way back with the backdrop flown out and nothing else on stage.  The
+   deck ended at D.backWall, which left the wagon standing in the brick.
+
+   This is a DELIBERATE, SCOPED break of the "every stage is the same box"
+   invariant, and it is scoped by keeping the two numbers apart:
+
+     D.backWall   the STAGE-COORDINATE reference.  Unchanged at -17.  Every
+                  show, every light plot, every drag limit and both Arc
+                  houses are written to it and must go on reading it, or a
+                  production that loads into the Studio lands 4.5m out.
+     PAL_BACK     where the Palace's own brick actually stands.  Only the
+                  Palace's structural geometry — its deck, its back wall, its
+                  room slab, its warehouse — uses this.
+
+   The rule, and it is the whole of the safety of this change: STRUCTURAL
+   PALACE GEOMETRY USES PAL_BACK; ANYTHING STAGE-RELATIVE KEEPS D.backWall.
+   The Arc is built from D and is untouched by design.
+   --------------------------------------------------------------------------- */
+const PAL_DEEP = 4.5;                       // how much deeper the Palace runs
+const PAL_BACK = D.backWall - PAL_DEEP;     // -21.5
+
 /* ============================================================================
    RENDERER / QUALITY
    ========================================================================== */
@@ -1583,7 +1610,9 @@ function stageFrontZ(x){
 
 const deck = (function(){
   const sh = new T.Shape();
-  const back = -D.backWall;                       // shape-y is world -z
+  const back = -PAL_BACK;                         // shape-y is world -z; the
+                                                  // Palace deck runs to its own
+                                                  // brick, not to the box
   /* the bowed apron still runs between +/-HALFW; the deck simply carries on
      out past it on the stage-right side */
   sh.moveTo(XR, back); sh.lineTo(XL, back);
@@ -1670,17 +1699,17 @@ const WX = D.houseW/2;                        // inner face of the side walls
   {
     // left of the doorway: from the stage-right edge (-34.2) to x = -1.6
     const bwL = new T.Mesh(new T.BoxGeometry(32.6, 34, 0.7), M.brick);
-    bwL.position.set(-17.9, 17, D.backWall - 0.35);
+    bwL.position.set(-17.9, 17, PAL_BACK - 0.35);
     bwL.castShadow = bwL.receiveShadow = true;
     world.add(bwL); STATIC.push(bwL);
     // right of it: from x = 1.6 to the stage-left edge (23.2)
     const bwR = new T.Mesh(new T.BoxGeometry(21.6, 34, 0.7), M.brick);
-    bwR.position.set(12.4, 17, D.backWall - 0.35);
+    bwR.position.set(12.4, 17, PAL_BACK - 0.35);
     bwR.castShadow = bwR.receiveShadow = true;
     world.add(bwR); STATIC.push(bwR);
     // and the header over the opening, from y = 3.6 to the top
     const bwH = new T.Mesh(new T.BoxGeometry(3.2, 30.4, 0.7), M.brick);
-    bwH.position.set(0, 18.8, D.backWall - 0.35);
+    bwH.position.set(0, 18.8, PAL_BACK - 0.35);
     bwH.castShadow = bwH.receiveShadow = true;
     world.add(bwH); STATIC.push(bwH);
   }
@@ -2104,9 +2133,9 @@ FOH.gallY = mezzFloorY(D.houseBack) - 0.2;   // the gallery is level with the me
 
 const DOCK = {};
 const BOH = {
-  z0: D.backWall - 0.7,           // upstage face of the stage-house wall
-  z1: D.backWall - 7.0,           // back of the crossover
-  z2: D.backWall - 18.0,          // back of the dock and workshop
+  z0: PAL_BACK - 0.7,             // upstage face of the stage-house wall
+  z1: PAL_BACK - 7.0,             // back of the crossover
+  z2: PAL_BACK - 18.0,            // back of the dock and workshop
   h: 5.4, dockH: 7.0
 };
 
@@ -16411,15 +16440,19 @@ function liftDrop(L){
    group to its own room ('shed') and the door station to the stage.
    ========================================================================== */
 (function buildPalaceShed(){
-  const x0 = -12, x1 = 12, z0 = -30.2, z1 = D.backWall - 0.7;   // interior faces
+  /* the whole shed moved PAL_DEEP upstage with the Palace back wall, so the
+     stage could grow into the space it used to occupy.  Its relationship to
+     the wall — doorway, roller, station, racks — is unchanged; it is the same
+     shed, further back.  (owner, 2026-08-10) */
+  const x0 = -12, x1 = 12, z0 = -30.2 - PAL_DEEP, z1 = PAL_BACK - 0.7;
   const g = new T.Group(); g.name = 'shedPalace';
   world.add(g);
 
-  /* the slab — top face exactly at deck height.  It ends at D.backWall,
+  /* the slab — top face exactly at deck height.  It ends at PAL_BACK,
      where the stage deck takes over: run it any further and the two floors
      share the y=0 plane and z-fight on the stage side of the wall */
-  const fl = box(x1 - x0 + 0.8, 0.6, D.backWall - z0, M_SHED.conc,
-                 (x0 + x1)/2, -0.3, (z0 + D.backWall)/2, g);
+  const fl = box(x1 - x0 + 0.8, 0.6, PAL_BACK - z0, M_SHED.conc,
+                 (x0 + x1)/2, -0.3, (z0 + PAL_BACK)/2, g);
   WALKABLE.push(fl);
 
   // the shell: rear wall, side walls, a flat roof
@@ -16466,29 +16499,33 @@ function liftDrop(L){
      with the shed room would vanish the moment the roller door shut behind
      it.  p2i pins it 'shared' — fifteen meshes drawn behind a shut door is
      free. */
-  buildCart('palace', world, 8.5, -27.5);
+  /* every z in the shed's fit-out below was measured against the OLD shed
+     interior.  The shell moved PAL_DEEP upstage, so the furniture moves with
+     it or the layout drifts to the front wall — and the trash drum ended up
+     0.1m THROUGH the brick, standing on the stage. */
+  buildCart('palace', world, 8.5, -27.5 - PAL_DEEP);
 
   /* the forklift parks by the roller door; pallet slots paint the west
      side of the shed, and one waits in each stage wing (top-level world
      children like the cart — a slot on the stage is stage furniture) */
-  buildLift('palace', world, 4.5, D.backWall - 2.5);
+  buildLift('palace', world, 4.5, PAL_BACK - 2.5);
   for(let i = 0; i < 4; i++)
-    palletSlot('palace', -9.8, D.backWall - 3 - i*2.2, world);
+    palletSlot('palace', -9.8, PAL_BACK - 3 - i*2.2, world);
   palletSlot('palace', -16.5, -15.5, world);
   palletSlot('palace',  16.5, -15.5, world);
 
   /* the cut stations, mid-shed, clear of the racks, aprons and slots */
-  buildSaw('palace', 'track', g, 2.0, -24.0);
-  buildSaw('palace', 'chop',  g, -4.5, -24.0);
+  buildSaw('palace', 'track', g, 2.0, -24.0 - PAL_DEEP);
+  buildSaw('palace', 'chop',  g, -4.5, -24.0 - PAL_DEEP);
   /* the paint rack, on the east wall above the cart's beat */
-  buildRack('palace', g, 11.3, -23.0, -Math.PI/2);
+  buildRack('palace', g, 11.3, -23.0 - PAL_DEEP, -Math.PI/2);
   /* and the trash drum beside it (RULING P) */
-  buildTrash('palace', g, 10.9, -21.4);
+  buildTrash('palace', g, 10.9, -21.4 - PAL_DEEP);
 
   /* the door control, an [E] station on the STAGE side of the wall — a
      top-level world child so p2i can pin it to the stage room, never the
      shed's (the shed may be culled while you are looking right at it) */
-  const ctl = box(0.34, 0.5, 0.14, M.fixture, 2.4, 1.25, D.backWall + 0.08);
+  const ctl = box(0.34, 0.5, 0.14, M.fixture, 2.4, 1.25, PAL_BACK + 0.08);
   station(ctl, 'shedP', 'WAREHOUSE DOOR  —  [E] open or shut it');
   SHEDS.palace.ctl = ctl;
 })();
@@ -16776,8 +16813,8 @@ const ROOMS = {
   /* Four rooms.  The warehouse shed (p2m) lives behind the stage house wall;
      the loading dock is off the stage-right wing — same z as the stage, so
      it is part of the stage and culls with it.                            */
-  shed:  {label:'the warehouse',      z0:-Infinity,          z1:D.backWall - 0.7},
-  stage: {label:'the stage',          z0:D.backWall - 0.7,   z1:1.3},
+  shed:  {label:'the warehouse',      z0:-Infinity,          z1:PAL_BACK - 0.7},
+  stage: {label:'the stage',          z0:PAL_BACK - 0.7,     z1:1.3},
   house: {label:'the auditorium',     z0:1.3,                z1:D.houseBack + 0.5},
   lobby: {label:'the front of house', z0:D.houseBack + 0.5,  z1:Infinity}
 };
@@ -17140,7 +17177,7 @@ function inPalace(){ return VENUE !== 'arc'; }
    and there the roller door has to be most of the way up to pass */
 function backWallBlocks(x, z, oz){
   if(!inPalace()) return false;
-  const plane = D.backWall - 0.3;
+  const plane = PAL_BACK - 0.3;
   if((oz < plane) === (z < plane)) return false;   // not crossing it
   const S = (typeof SHEDS !== 'undefined') ? SHEDS.palace : null;
   if(S && Math.abs(x - S.door.x) < S.door.halfW - 0.2)
@@ -17156,7 +17193,7 @@ function shedWallBlocks(nx, nz){
   if(!S) return false;
   if(nz <= S.z1)                                    // inside the shed proper
     return nx < S.x0 + 0.4 || nx > S.x1 - 0.4;
-  if(nz < D.backWall - 0.05)                        // inside the wall's thickness
+  if(nz < PAL_BACK - 0.05)                          // inside the wall's thickness
     return Math.abs(nx - S.door.x) > S.door.halfW - 0.2;
   return false;
 }
@@ -17415,7 +17452,7 @@ function updatePlayer(dt){
       if(nx < DOCK.x0 - 16 || nx > XL + 0.6) return;
       // upstage it now ends at the warehouse shed's rear wall, not the stage's
       const zFloor = (typeof SHEDS !== 'undefined' && SHEDS.palace)
-        ? SHEDS.palace.z0 + 0.5 : D.backWall + 0.6;
+        ? SHEDS.palace.z0 + 0.5 : PAL_BACK + 0.6;
       if(nz < zFloor || nz > FOH.z1 - 0.9) return;
       if(Player.pos.y < 5 && throughWall(nx, nz, Player.pos.z)) return;
       if(doorBlocks(nx, nz, Player.pos.z, Player.pos.y)) return;

@@ -479,15 +479,19 @@ function liftDrop(L){
    group to its own room ('shed') and the door station to the stage.
    ========================================================================== */
 (function buildPalaceShed(){
-  const x0 = -12, x1 = 12, z0 = -30.2, z1 = D.backWall - 0.7;   // interior faces
+  /* the whole shed moved PAL_DEEP upstage with the Palace back wall, so the
+     stage could grow into the space it used to occupy.  Its relationship to
+     the wall — doorway, roller, station, racks — is unchanged; it is the same
+     shed, further back.  (owner, 2026-08-10) */
+  const x0 = -12, x1 = 12, z0 = -30.2 - PAL_DEEP, z1 = PAL_BACK - 0.7;
   const g = new T.Group(); g.name = 'shedPalace';
   world.add(g);
 
-  /* the slab — top face exactly at deck height.  It ends at D.backWall,
+  /* the slab — top face exactly at deck height.  It ends at PAL_BACK,
      where the stage deck takes over: run it any further and the two floors
      share the y=0 plane and z-fight on the stage side of the wall */
-  const fl = box(x1 - x0 + 0.8, 0.6, D.backWall - z0, M_SHED.conc,
-                 (x0 + x1)/2, -0.3, (z0 + D.backWall)/2, g);
+  const fl = box(x1 - x0 + 0.8, 0.6, PAL_BACK - z0, M_SHED.conc,
+                 (x0 + x1)/2, -0.3, (z0 + PAL_BACK)/2, g);
   WALKABLE.push(fl);
 
   // the shell: rear wall, side walls, a flat roof
@@ -534,29 +538,33 @@ function liftDrop(L){
      with the shed room would vanish the moment the roller door shut behind
      it.  p2i pins it 'shared' — fifteen meshes drawn behind a shut door is
      free. */
-  buildCart('palace', world, 8.5, -27.5);
+  /* every z in the shed's fit-out below was measured against the OLD shed
+     interior.  The shell moved PAL_DEEP upstage, so the furniture moves with
+     it or the layout drifts to the front wall — and the trash drum ended up
+     0.1m THROUGH the brick, standing on the stage. */
+  buildCart('palace', world, 8.5, -27.5 - PAL_DEEP);
 
   /* the forklift parks by the roller door; pallet slots paint the west
      side of the shed, and one waits in each stage wing (top-level world
      children like the cart — a slot on the stage is stage furniture) */
-  buildLift('palace', world, 4.5, D.backWall - 2.5);
+  buildLift('palace', world, 4.5, PAL_BACK - 2.5);
   for(let i = 0; i < 4; i++)
-    palletSlot('palace', -9.8, D.backWall - 3 - i*2.2, world);
+    palletSlot('palace', -9.8, PAL_BACK - 3 - i*2.2, world);
   palletSlot('palace', -16.5, -15.5, world);
   palletSlot('palace',  16.5, -15.5, world);
 
   /* the cut stations, mid-shed, clear of the racks, aprons and slots */
-  buildSaw('palace', 'track', g, 2.0, -24.0);
-  buildSaw('palace', 'chop',  g, -4.5, -24.0);
+  buildSaw('palace', 'track', g, 2.0, -24.0 - PAL_DEEP);
+  buildSaw('palace', 'chop',  g, -4.5, -24.0 - PAL_DEEP);
   /* the paint rack, on the east wall above the cart's beat */
-  buildRack('palace', g, 11.3, -23.0, -Math.PI/2);
+  buildRack('palace', g, 11.3, -23.0 - PAL_DEEP, -Math.PI/2);
   /* and the trash drum beside it (RULING P) */
-  buildTrash('palace', g, 10.9, -21.4);
+  buildTrash('palace', g, 10.9, -21.4 - PAL_DEEP);
 
   /* the door control, an [E] station on the STAGE side of the wall — a
      top-level world child so p2i can pin it to the stage room, never the
      shed's (the shed may be culled while you are looking right at it) */
-  const ctl = box(0.34, 0.5, 0.14, M.fixture, 2.4, 1.25, D.backWall + 0.08);
+  const ctl = box(0.34, 0.5, 0.14, M.fixture, 2.4, 1.25, PAL_BACK + 0.08);
   station(ctl, 'shedP', 'WAREHOUSE DOOR  —  [E] open or shut it');
   SHEDS.palace.ctl = ctl;
 })();
