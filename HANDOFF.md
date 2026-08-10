@@ -223,6 +223,80 @@ compare the *same* production across stages instead.
 
 ---
 
+## NEXT SESSION: **CONFIRMING THE SCENE TIMING** (owner, 2026-08-10)
+
+The round is built and merged (#90-#100). What has NOT happened is anybody
+watching it run. The next session confirms the timing — and the first thing to
+know is that **the suites cannot do it for you.**
+
+### Why a suite cannot answer this
+
+`follow` arms the next cue with **setTimeout**, so the chain runs on the wall
+clock. jsdom can assert the follow VALUES (and does — the chain reconstructs
+8627s, the act break at 71:02, the call at 141:02) but it cannot observe the
+cues actually firing without sitting through 144 real minutes. **That gap is
+itself the strongest argument for ruling AP**: a dt-driven transport would be
+testable in a suite, because `stepProgram(dt)` can be stepped 8627 seconds in
+a loop. Worth putting to the owner in exactly those terms.
+
+### What to confirm, in order
+
+1. **Does it start itself?** Load BEETLEJUICE, press GO once. Cue 1 should arm
+   cue 2 twenty-five seconds later with nothing else touched.
+2. **Does DRIFT accumulate?** This is the real question. Each timer fires a
+   little late and the next is armed from the late fire. Note the wall-clock
+   time at the act break (due 71:02) and at the call (due 141:02) and compare
+   against those two. **If the call lands more than a few seconds late, the
+   cheap version has answered ruling AP by itself.**
+3. **Does a stage swap kill it?** Start it, walk into the Arc, come back. It
+   should be dead — `cancelFollow` runs on the swap. Confirm that is what
+   happens, because it is the other half of the AP argument.
+4. **Do the scene changes land in the dark?** Ten scenes, six changes. Every
+   one is covered by a shut cloth or a blackout and a test asserts it, but
+   whether the cover FEELS long enough is a judgement nobody has made.
+5. **Does the pace read?** 46 cues over 144 minutes averages one every three
+   minutes. Cues 8-12 (the interior) and 26-29 (the redecorated room) are the
+   longest stretches; those are where it will feel slow if anywhere does.
+
+### When each scene is due, off the recording
+
+| Scene | Due | Cues |
+|---|---|---|
+| cemetery | 0:33 - 15:20 | 0.5 - 7 |
+| interior | 15:57 - 31:34 | 8 - 12 |
+| attic | 42:22 - 51:56 | 13 - 15 |
+| bedroom | 54:23 - 55:45 | 16 - 17.3 |
+| crypt | 56:46 - 71:30 | 17.5 - 20 |
+| house exterior | 72:30 - 78:00 | 21 - 25 |
+| redecorated | 78:28 - 99:38 | 26 - 29 |
+| afterlife | 103:39 - 115:00 | 30 - 32.3 |
+| the sign | 118:04 - 120:50 | 32.5 - 32.7 |
+| afterlife again | 121:54 - 136:40 | 33 - 33.3 |
+| bare stage | 137:57 - end | 33.5 - 37 |
+
+### The four soft spots — where it is a DECISION, not a measurement
+
+If something feels wrong, look here first. These covers were invented because
+the recording gave nothing to measure, and each says so in its own comment:
+
+- **cue 7**, out to the interior — no measured blackout anywhere 9:00-18:00.
+- **cue 12**, up into the attic — none before 42:22 either.
+- **cue 25**, back inside from the exterior — none between 94:02 and it.
+- **cue 32.3**, out to the sign — none there.
+
+The covers that ARE measured, and should feel right: cue 15 (8.6s at 51:56),
+cue 17.3 (10.5s at 55:38), cue 19 (13.3s at 71:02, the act break), cue 29
+(2.9s at 99:38), cue 32 (a 12.4s fade at 113:18), cue 35 (7.0s into black at
+143:35).
+
+### And the standing one
+
+**None of this has met hardware.** Whether a self-running show reads as a show
+or as a slideshow, whether the portal reads as a portal from a seat, and
+whether ten scenes taking turns reads as one production — those are headset
+questions and they belong in the section at the bottom of this file as
+questions, not asserted here as facts.
+
 ## DONE — 2026-08-10: a fifth show, taken off a recording (#90-#98)
 
 The owner asked: "if i give you a video of a full show can you make the real
