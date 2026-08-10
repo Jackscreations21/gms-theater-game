@@ -1,0 +1,563 @@
+
+/* ============================================================================
+   BEETLEJUICE — the fifth production, and the first taken off a recording
+
+   Two different kinds of work wear one name here, and the line between them
+   matters more than anything else in this file:
+
+     MEASURED     cue times, fade durations, blackouts, the act break.  They
+                  came off a recording of a real performance with
+                  tools/video.js and they are quoted in the cue comments as
+                  the times they actually are.
+     INTERPRETED  every channel level, every focus, and all of this scenery.
+                  We are rendering lit AREAS onto our own 25-channel rig,
+                  which is not the rig they used.
+
+   RULING AO: the scenery is the show's VOCABULARY, not its drawing.  A
+   clapboard world, a cemetery under a moon, a hard portal round the whole
+   picture — our proportions, our detailing, our words on any sign.  Nobody's
+   ground plan or light plot went into this, which is the same thing p5c's
+   header says about the other four.  A video makes tracing easy for the
+   first time; that is exactly why the ruling is written down.
+
+   The set changes are SCENES (p5c): one stage, and the sets take turns on
+   it.  That machinery was built for this show, removed with it, and this is
+   the first production to use it.  A scene that is off has its layers
+   disabled, so it costs no draw call and no raycast while it waits.
+   ========================================================================== */
+
+const BJ = {
+  opW: 13.6, opH: 9.2,        // the scenic portal's opening, INSET inside the
+                              // house's own 15.0 x 10.4 proscenium — frame,
+                              // cornice and trim all stay within it, because a
+                              // false portal that fouls the architecture is
+                              // just a mistake you cannot see from the front
+  frame: 0.62,                // how heavy the portal reads
+  pz: 0.45                    // it stands just upstage of the apron edge
+};
+const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
+
+/* ---- weathered vertical boarding: the portal, and later the house ---- */
+function bjBoardTex(){
+  const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#4a4238'; g.fillRect(0, 0, W, H);
+  for(let x = 0; x < W; x += 32){
+    const w = 30 + Math.round(Math.random()*2);
+    const gr = g.createLinearGradient(x, 0, x + w, 0);
+    gr.addColorStop(0, 'rgba(0,0,0,.42)');
+    gr.addColorStop(0.30, 'rgba(146,132,112,.20)');
+    gr.addColorStop(0.70, 'rgba(96,86,72,.10)');
+    gr.addColorStop(1, 'rgba(0,0,0,.42)');
+    g.fillStyle = gr; g.fillRect(x, 0, w, H);
+    /* the grain, running the length of each board */
+    for(let i = 0; i < 14; i++){
+      g.fillStyle = 'rgba(30,26,20,' + (0.06 + Math.random()*0.10).toFixed(2) + ')';
+      g.fillRect(x + rnd(2, w - 3), rnd(0, H), 1, rnd(30, 190));
+    }
+  }
+  /* nail heads down the board line, and the rust that runs from them */
+  for(let y = 30; y < H; y += 124)
+    for(let x = 16; x < W; x += 32){
+      g.fillStyle = 'rgba(22,18,14,.7)';
+      g.beginPath(); g.arc(x, y, 2, 0, 6.283); g.fill();
+      if(Math.random() < 0.35){
+        const gr = g.createLinearGradient(x, y, x, y + 56);
+        gr.addColorStop(0, 'rgba(104,58,26,.30)'); gr.addColorStop(1, 'rgba(104,58,26,0)');
+        g.fillStyle = gr; g.fillRect(x - 2.5, y, 5, 56);
+      }
+    }
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+
+/* ---- the show curtain: a hard vertical stripe, our own colours ---- */
+function bjCurtainCanvas(){
+  const W = 1024, H = 512, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#17131f'; g.fillRect(0, 0, W, H);
+  const band = W / 22;
+  for(let i = 0; i < 22; i++){
+    if(i % 2) continue;
+    const gr = g.createLinearGradient(i*band, 0, (i+1)*band, 0);
+    gr.addColorStop(0, 'rgba(214,206,190,.10)');
+    gr.addColorStop(0.5, 'rgba(224,216,198,.52)');
+    gr.addColorStop(1, 'rgba(214,206,190,.10)');
+    g.fillStyle = gr; g.fillRect(i*band, 0, band, H);
+  }
+  /* a low arch of light across the cloth, so it is not a flat pattern */
+  const gr2 = g.createRadialGradient(W/2, H*0.86, 40, W/2, H*0.86, W*0.52);
+  gr2.addColorStop(0, 'rgba(150,190,120,.20)');
+  gr2.addColorStop(1, 'rgba(150,190,120,0)');
+  g.fillStyle = gr2; g.fillRect(0, 0, W, H);
+  for(let i = 0; i < 200; i++){
+    g.fillStyle = 'rgba(0,0,0,' + (0.04 + Math.random()*0.10).toFixed(2) + ')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(6, 30), rnd(30, 160));
+  }
+  const t = tex(c, 1, 1);
+  return {tex: t};
+}
+
+SHOWS.beetlejuice = {
+  name:  'BEETLEJUICE',
+  blurb: 'A hard portal round the whole picture, a cemetery under a low moon, and more haze than air.',
+  note:  'An interpretation in the show’s own vocabulary, not a copy of anyone’s design.',
+  load(){
+    const G = showRoot();
+
+    const BOARD = bjBoardTex();
+    const board  = new T.MeshStandardMaterial({map:BOARD, roughness:.86, metalness:.05});
+    const boardD = new T.MeshStandardMaterial({color:0x2b2620, roughness:.9,  metalness:.04});
+    const deckM  = new T.MeshStandardMaterial({color:0x24262b, roughness:.95});
+    const stone  = new T.MeshStandardMaterial({color:0x6e7076, roughness:.88, metalness:.05});
+    const iron   = new T.MeshStandardMaterial({color:0x1d2024, roughness:.55, metalness:.72});
+    const bark   = new T.MeshStandardMaterial({color:0x241d18, roughness:.94, metalness:.03});
+    const hillM  = new T.MeshStandardMaterial({color:0x191d26, roughness:.98});
+    const hillMF = new T.MeshStandardMaterial({color:0x232936, roughness:.98});
+    /* ONE emissive material shared by every trim strip and the moon's halo —
+       a material per object is the draw-call trap in TRAPS.md */
+    const glow   = new T.MeshStandardMaterial({color:0xbfe08a, emissive:0x9fd066,
+                                               emissiveIntensity:1.5, roughness:.6});
+    const moonM  = new T.MeshStandardMaterial({color:0xffd9a0, emissive:0xffb257,
+                                               emissiveIntensity:1.25, roughness:.8});
+
+    /* ---- the deck: dark, and the top stays at y = 0 ---- */
+    {
+      const sh = new T.Shape(), HW = D.stageW/2;
+      /* shape y maps to -z after the rotate, so the back wall is +16.6 here */
+      const usZ = -(D.backWall + 0.4);
+      sh.moveTo(-HW + 0.4, usZ); sh.lineTo(HW - 0.4, usZ);
+      sh.lineTo(HW - 0.4, -D.apron);
+      sh.quadraticCurveTo(0, -(D.apron + 2*D.thrust*0.9), -HW + 0.4, -D.apron);
+      sh.lineTo(-HW + 0.4, usZ);
+      const geo = new T.ExtrudeGeometry(sh, {depth:0.1, bevelEnabled:false, curveSegments:36});
+      geo.rotateX(-Math.PI/2);
+      const m = new T.Mesh(geo, deckM);
+      m.name = 'bj:deck';
+      m.receiveShadow = true; G.add(m); showWalk(m);
+    }
+
+    /* ================================================================
+       THE PORTAL — the one thing that never leaves, in every reference
+       frame of the show.  It sits INSIDE the house proscenium, which is
+       what a false portal is, so it can never foul the architecture.
+       ================================================================ */
+    {
+      const hx = BJ.opW/2 + BJ.frame/2, hy = (BJ.opH + BJ.frame)/2;
+      const legs = [
+        {geo:new T.BoxGeometry(BJ.frame, BJ.opH + BJ.frame, 0.5), pos:[-hx, hy, 0]},
+        {geo:new T.BoxGeometry(BJ.frame, BJ.opH + BJ.frame, 0.5), pos:[ hx, hy, 0]},
+        {geo:new T.BoxGeometry(BJ.opW + 2*BJ.frame, BJ.frame, 0.5),
+         pos:[0, BJ.opH + BJ.frame/2, 0]}
+      ];
+      const f = new T.Mesh(mergeParts(legs), board);
+      f.name = 'bj:portal'; f.position.z = BJ.pz;
+      f.castShadow = true; G.add(f);
+
+      /* a stepped cornice, so the top edge is not one flat board */
+      const corn = [];
+      for(let i = 0; i < 3; i++)
+        corn.push({geo:new T.BoxGeometry(BJ.opW + 2*BJ.frame + 0.10 - i*0.18, 0.16, 0.62 + i*0.12),
+                   pos:[0, BJ.opH + BJ.frame + 0.09 + i*0.16, 0]});
+      const cm = new T.Mesh(mergeParts(corn), boardD);
+      cm.position.z = BJ.pz; cm.castShadow = true; G.add(cm);
+
+      /* the cold line round the opening — three strips, ONE material */
+      const tr = [
+        {geo:new T.BoxGeometry(0.09, BJ.opH, 0.10), pos:[-BJ.opW/2, BJ.opH/2, 0]},
+        {geo:new T.BoxGeometry(0.09, BJ.opH, 0.10), pos:[ BJ.opW/2, BJ.opH/2, 0]},
+        {geo:new T.BoxGeometry(BJ.opW, 0.09, 0.10), pos:[0, BJ.opH, 0]}
+      ];
+      const tm = new T.Mesh(mergeParts(tr), glow);
+      tm.name = 'bj:portalTrim'; tm.position.z = BJ.pz + 0.30; G.add(tm);
+    }
+
+    /* ================================================================
+       SCENE — THE CEMETERY.  The show opens here; measured, the wide
+       looks sit at 3:09, 6:11 and 9:31 and the first big blackout is at
+       1:26 for 9.0s.
+       ================================================================ */
+    const cem = sceneAdd('cemetery', 'THE CEMETERY');
+    {
+      /* three hill layers, silhouetted against the moon.  A profile is a
+         polygon, so the shape carries the read and the mesh stays flat. */
+      const hill = (w, peak, wob, z, mat)=>{
+        const sh = new T.Shape();
+        sh.moveTo(-w, 0);
+        const N = 9;
+        for(let i = 0; i <= N; i++){
+          const t = i/N, x = -w + 2*w*t;
+          const y = peak * (0.42 + 0.58*Math.sin(Math.PI*t)) *
+                    (0.78 + 0.22*Math.sin(t*wob*6.283));
+          if(i === 0) sh.lineTo(x, y); else sh.quadraticCurveTo(x - w/N, y, x, y);
+        }
+        sh.lineTo(w, 0); sh.lineTo(-w, 0);
+        const geo = new T.ExtrudeGeometry(sh, {depth:0.3, bevelEnabled:false, curveSegments:8});
+        const m = new T.Mesh(geo, mat);
+        m.position.z = z; cem.group.add(m);
+        return m;
+      };
+      hill(13.5, 4.4, 1.7, -15.4, hillMF);        // furthest, lightest
+      hill(12.0, 3.2, 2.6, -13.8, hillM);
+      hill(11.0, 2.1, 3.4, -12.2, hillM);         // nearest, darkest read
+
+      /* the moon: a disc, and one faint halo on the SHARED glow material.
+         Both sit upstage of every hill so the profiles read against them,
+         and downstage of the deck edge at -16.6 so nothing clips the wall. */
+      {
+        const d = new T.Mesh(new T.CircleGeometry(1.75, 40), moonM);
+        d.position.set(3.6, 6.6, -16.0); d.name = 'bj:moon'; cem.group.add(d);
+        const h = new T.Mesh(new T.CircleGeometry(3.1, 36), glow);
+        h.position.set(3.6, 6.6, -16.15); cem.group.add(h);
+      }
+
+      /* headstones — distinct objects, so distinct meshes, but each one is
+         merged from its own slab, shoulders and base: detail without cost */
+      const stones = [[-7.4,-7.2,0.10],[-5.6,-9.4,-0.14],[-3.4,-6.4,0.06],
+                      [-1.5,-10.2,0.20],[1.9,-6.9,-0.09],[3.8,-9.8,0.15],
+                      [6.2,-7.6,-0.18],[8.0,-10.4,0.08]];
+      stones.forEach((s, i)=>{
+        const h = 0.82 + (i % 3)*0.26, w = 0.58 + (i % 2)*0.12;
+        const parts = [
+          {geo:new T.BoxGeometry(w, h, 0.16), pos:[0, h/2 + 0.12, 0]},
+          {geo:new T.CylinderGeometry(w/2, w/2, 0.16, 14, 1, false, 0, Math.PI),
+           pos:[0, h + 0.12, 0], rot:[Math.PI/2, 0, 0]},
+          {geo:new T.BoxGeometry(w + 0.26, 0.14, 0.30), pos:[0, 0.07, 0]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), stone);
+        m.position.set(s[0], 0, s[1]); m.rotation.y = s[2];
+        m.castShadow = true; cem.group.add(m);
+      });
+
+      /* two crosses, for the shape the slabs do not give */
+      [[-9.0,-8.6,0.22],[9.4,-8.2,-0.26]].forEach(c=>{
+        const parts = [
+          {geo:new T.BoxGeometry(0.17, 1.55, 0.17), pos:[0, 0.9, 0]},
+          {geo:new T.BoxGeometry(0.86, 0.17, 0.17), pos:[0, 1.32, 0]},
+          {geo:new T.BoxGeometry(0.52, 0.13, 0.36), pos:[0, 0.065, 0]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), stone);
+        m.position.set(c[0], 0, c[1]); m.rotation.y = c[2];
+        m.castShadow = true; cem.group.add(m);
+      });
+
+      /* the railing: two runs, each merged from its own posts and rails */
+      [-1, 1].forEach(sd=>{
+        const parts = [];
+        for(let i = 0; i < 7; i++){
+          const x = sd*(3.2 + i*1.15);
+          parts.push({geo:new T.BoxGeometry(0.08, 1.32, 0.08), pos:[x, 0.66, 0]});
+          parts.push({geo:new T.ConeGeometry(0.07, 0.20, 6), pos:[x, 1.42, 0]});
+        }
+        parts.push({geo:new T.BoxGeometry(6.9, 0.07, 0.07), pos:[sd*6.65, 1.16, 0]});
+        parts.push({geo:new T.BoxGeometry(6.9, 0.07, 0.07), pos:[sd*6.65, 0.34, 0]});
+        const m = new T.Mesh(mergeParts(parts), iron);
+        m.position.z = -5.4; cem.group.add(m);
+      });
+
+      /* the gate, shut, centre — one mesh, merged from its own bars */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(0.11, 2.30, 0.11), pos:[-2.9, 1.15, 0]},
+          {geo:new T.BoxGeometry(0.11, 2.30, 0.11), pos:[ 2.9, 1.15, 0]},
+          {geo:new T.BoxGeometry(5.9, 0.09, 0.09),  pos:[0, 2.24, 0]}
+        ];
+        for(let i = 0; i < 9; i++)
+          parts.push({geo:new T.BoxGeometry(0.06, 1.84, 0.06), pos:[-2.4 + i*0.6, 0.92, 0]});
+        const m = new T.Mesh(mergeParts(parts), iron);
+        m.position.z = -5.4; m.name = 'bj:gate'; cem.group.add(m);
+      }
+
+      /* one bare tree, upstage left, merged from trunk and limbs */
+      {
+        const parts = [{geo:new T.CylinderGeometry(0.16, 0.30, 4.6, 9), pos:[0, 2.3, 0]}];
+        const limbs = [[0.6,3.4,0.5,-0.9],[-0.7,3.0,0.55,0.8],[0.35,4.1,0.42,-0.4],
+                       [-0.4,4.3,0.38,0.5],[0.9,2.6,0.4,-1.2]];
+        limbs.forEach(l=>parts.push({geo:new T.CylinderGeometry(0.05, 0.10, 1.5, 7),
+                                     pos:[l[0], l[1], 0], rot:[0, 0, l[3]]}));
+        const m = new T.Mesh(mergeParts(parts), bark);
+        m.position.set(-9.6, 0, -11.2); m.castShadow = true; cem.group.add(m);
+      }
+
+      /* low mist across the boards: the existing machines, not new geometry */
+      addShowSmoke({name:'CEMETERY SL', kind:'fog', x:-6.0, y:0.2, z:-7.0, yaw:1.571, tilt:0.05});
+      addShowSmoke({name:'CEMETERY SR', kind:'fog', x: 6.0, y:0.2, z:-7.0, yaw:-1.571, tilt:0.05});
+      addShowSmoke({name:'UPSTAGE HAZE', kind:'haze', x:0, y:4.0, z:-13.0, yaw:0, tilt:0.2});
+    }
+
+    /* ---- the show curtain ---- */
+    {
+      const c = bjCurtainCanvas();
+      const key = 'bjCurtain';
+      const halfW = D.procW/2 + 3.0;
+      GOODS[key] = {label:'BEETLEJUICE show curtain', h:13.0, wt:420,
+        traveler:true, made:true, build:()=>{
+          const g = new T.Group();
+          [-1, 1].forEach(sd=>{
+            const t2 = c.tex.clone();
+            t2.needsUpdate = true;
+            t2.wrapS = t2.wrapT = T.ClampToEdgeWrapping;
+            t2.repeat.set(halfW / BJ_CLOTH_W, 1);
+            t2.offset.set(sd < 0 ? 0 : (BJ_CLOTH_W - halfW) / BJ_CLOTH_W, 0);
+            const mat = new T.MeshStandardMaterial({map:t2, roughness:.95,
+              side:T.DoubleSide, color:0xffffff});
+            const d = drape(halfW, 13.0, mat, 9, .22);
+            d.position.set(sd*(D.procW/4 - 0.4), -6.5, 0);
+            d.userData.side = sd;
+            g.add(d);
+          });
+          return g; }};
+      TRIMS[key] = TRIMS.house;
+      SHOW.goods.push(key);
+      SHOW.curtainKey = key;
+      buildGoodsPalette();
+    }
+
+    /* ---- the hang ---- */
+    hangGoods(FLY[0], SHOW.curtainKey);
+    FLY[0].target = TRIMS[SHOW.curtainKey]; FLY[0].travTarget = 0; FLY[0].open = 0;
+    hangGoods(FLY[1], 'border');    FLY[1].target = TRIMS.border;
+    hangGoods(FLY[2], 'legs');      FLY[2].target = inTrimOf(FLY[2]);
+    hangGoods(FLY[3], 'border');    FLY[3].target = TRIMS.border;
+    hangGoods(FLY[4], 'electric');  FLY[4].target = 9.2;
+    hangGoods(FLY[5], 'legs');      FLY[5].target = inTrimOf(FLY[5]);
+    hangGoods(FLY[6], 'truss');     FLY[6].target = 11.4;
+    hangGoods(FLY[8], 'electric');  FLY[8].target = 10.4;
+    FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
+
+    sceneShow('cemetery');
+    RIG.haze = 0.55;                 // the beam fan is in every reference frame
+    plotBeetlejuice();
+    standByAtTheTop();
+  }
+};
+
+/* ============================================================================
+   THE PLOT — the opening sequence.
+
+   Every TIME in these comments is measured off the recording; every LEVEL and
+   every FOCUS is interpreted onto our 25 channels.  Fade durations are the
+   measured ones where a slope was clean inside a single held shot.  The rest
+   of the show's cues arrive with the full measured list.
+   ========================================================================== */
+function plotBeetlejuice(){
+  const FRONT = [1,2,3,4,5,6], BOOM = [7,8], WASH = [9,10,11,12,13,14],
+        BACK = [15,16,17,18], CYC = [19,20,21,22], MOVE = [23,24], SPOT = 25;
+  const all = v => FIXTURES.forEach(f=>{ f.level = v; });
+  const set = (list, v, col)=>list.forEach(n=>{
+    const f = chan(n); if(!f) return; f.level = v; if(col) f.color.set(col); });
+  const one = (n, v, col)=>set([n], v, col);
+
+  /* the front of house, thrown UP onto the cloth for the curtain cues */
+  const onTheCloth = ()=>aimFrontAt(FRONT, 0, 7.4, -1.0);
+
+  const looks = [
+    /* ---- the top of the night ---- */
+    {n:0.5, label:'preset — house open, curtain in', fade:0, house:0.9, haze:0.15,
+     curtain:'shut', scene:'cemetery',
+     look(){ all(0); onTheCloth(); set(FRONT, 0.5, '#e8d2a8'); }},
+
+    {n:1, label:'house to half', fade:5, house:0.5, haze:0.2,
+     curtain:'shut', scene:'cemetery',
+     look(){ all(0); onTheCloth(); set(FRONT, 0.5, '#e8d2a8'); }},
+
+    /* ============ ACT ONE — the cemetery ============
+       measured: the first big blackout is at 1:26 and holds 9.0s, and the wide
+       cemetery look is held from 3:09 for 125s — the longest single held shot
+       in the act. */
+    {n:2, label:'act one — the cemetery, low and blue', fade:6, house:0, haze:0.6,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(CYC, 0.55, '#2f5f9c'); set(BACK, 0.42, '#4a78b4');
+       set(WASH, 0.18, '#5f7fa8'); set(BOOM, 0.30, '#3f6ea6'); }},
+
+    {n:3, label:'the moon takes the upstage', fade:4, house:0, haze:0.62,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(CYC, 0.68, '#2b5896'); set(BACK, 0.30, '#6f8fc0');
+       set(BOOM, 0.22, '#3a689e'); }},
+
+    /* measured: a fade UP of 1.6s — one of the fastest clean slopes in the file */
+    {n:4, label:'the mourners — a hard front, fast', fade:1.6, house:0, haze:0.55,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       aimFrontAt(FRONT, 0, 1.7, -6.5);
+       set(FRONT, 0.62, '#cfd8e8'); set(CYC, 0.34, '#2b5896');
+       set(WASH, 0.20, '#7f92ad'); }},
+
+    {n:5, label:'down to the one of them', fade:3, house:0, haze:0.5,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       one(SPOT, 0.85, '#f2ecd8'); set(CYC, 0.18, '#22467c');
+       set(BOOM, 0.12, '#33608f'); }},
+
+    {n:6, label:'the beam fan opens over the gate', fade:5, house:0, haze:0.75,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(BACK, 0.72, '#4f86c8'); set(MOVE, 0.60, '#78c8e8');
+       set(CYC, 0.30, '#25497e'); one(SPOT, 0.40, '#f2ecd8'); }},
+
+    /* measured: 6:11 sits under a wider, warmer look than 3:09 */
+    {n:7, label:'warmer — the ground gives up its mist', fade:4, house:0, haze:0.8,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(WASH, 0.48, '#d8b184'); set(FRONT, 0.34, '#e8c9a4');
+       set(CYC, 0.22, '#2b5290'); set(BOOM, 0.26, '#c89a6e'); }},
+
+    {n:8, label:'a green under the stones', fade:2.5, house:0, haze:0.7,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(WASH, 0.30, '#7fc46a'); set(BACK, 0.34, '#5fae52');
+       set(CYC, 0.26, '#24507f'); }},
+
+    /* measured: 9:31 is the widest, brightest look of the sequence —
+       centre/edge ratio 4.31, the strongest wide shot in the whole file */
+    {n:9, label:'full stage — the widest of the sequence', fade:3, house:0, haze:0.85,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(FRONT, 0.55, '#e6dcc6'); set(WASH, 0.62, '#cfd8e8');
+       set(BACK, 0.66, '#5f8fc8'); set(CYC, 0.48, '#2f5f9c');
+       set(MOVE, 0.52, '#8fd8f0'); set(BOOM, 0.38, '#4a78b4'); }},
+
+    /* measured: fades DOWN in this file run a 2.2s median; this is that number */
+    {n:10, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.6,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0); set(CYC, 0.08, '#1d3f70'); }},
+
+    {n:11, label:'the gate, alone', fade:3, house:0, haze:0.55,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0); one(SPOT, 0.6, '#dfe8f4'); set(CYC, 0.12, '#1d3f70'); }},
+
+    {n:12, label:'the cold line, the portal only', fade:2.5, house:0, haze:0.45,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0); set(BOOM, 0.10, '#9fd066'); }},
+
+    /* measured: the act break is the LONGEST blackout in the show — 13.3s at
+       71:02, inside a cluster of eight. It is the strongest single measurement
+       in the file and it is what puts the interval here. */
+    {n:13, label:'act one ends — blackout', fade:4, house:0, haze:0.3,
+     curtain:'shut', scene:'cemetery',
+     look(){ all(0); }},
+
+    /* measured, and worth recording as an ABSENCE: the recording contains no
+       interval at all — the longest sustained-bright stretch in 143 minutes is
+       87s, so the house never came up. It was edited out. This cue is the
+       house's own convention, not a measurement. */
+    {n:14, label:'INTERVAL — the house comes up', fade:6, house:1, haze:0,
+     curtain:'shut', scene:'cemetery',
+     look(){ all(0); }},
+
+    {n:15, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
+     curtain:'shut', scene:'cemetery',
+     look(){ all(0); }},
+
+    /* ============ ACT TWO ============
+       Its own scenery arrives with the later PRs in this chain; until then act
+       two plays in the one scene that exists, and says so. */
+    {n:16, label:'act two — colder, and lower', fade:5, house:0, haze:0.65,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(CYC, 0.42, '#24507f'); set(BACK, 0.34, '#3f6ea6');
+       set(WASH, 0.14, '#4a6a90'); }},
+
+    {n:17, label:'a hard green across the boards', fade:2, house:0, haze:0.7,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(WASH, 0.52, '#7fc46a'); set(MOVE, 0.44, '#9fd066');
+       set(CYC, 0.20, '#1d3f70'); }},
+
+    {n:18, label:'the moon again, harder', fade:3, house:0, haze:0.6,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(CYC, 0.74, '#2b5896'); set(BACK, 0.22, '#6f8fc0'); }},
+
+    {n:19, label:'front and centre', fade:2.2, house:0, haze:0.5,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       aimFrontAt(FRONT, 0, 1.7, -4.0);
+       set(FRONT, 0.7, '#efe6d2'); set(CYC, 0.16, '#22467c'); }},
+
+    {n:20, label:'the whole stage, wide open', fade:3, house:0, haze:0.8,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(FRONT, 0.5, '#e6dcc6'); set(WASH, 0.58, '#cfd8e8');
+       set(BACK, 0.62, '#5f8fc8'); set(CYC, 0.44, '#2f5f9c');
+       set(MOVE, 0.5, '#8fd8f0'); }},
+
+    {n:21, label:'down to the gate again', fade:2.5, house:0, haze:0.6,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0); one(SPOT, 0.7, '#f2ecd8'); set(CYC, 0.14, '#1d3f70'); }},
+
+    {n:22, label:'the last of the blue', fade:4, house:0, haze:0.55,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0); set(CYC, 0.5, '#2b5896'); set(BOOM, 0.18, '#3a689e'); }},
+
+    {n:23, label:'a warm turn, late on', fade:3, house:0, haze:0.6,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(WASH, 0.46, '#e0b58a'); set(FRONT, 0.3, '#e8c9a4');
+       set(BOOM, 0.24, '#c89a6e'); }},
+
+    {n:24, label:'the button — everything, briefly', fade:1, house:0, haze:0.85,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       set(FRONT, 0.8, '#fff4e0'); set(WASH, 0.85, '#ffffff');
+       set(BACK, 0.8, '#8fd8f0'); set(CYC, 0.6, '#3f79bf');
+       set(MOVE, 0.8, '#ffffff'); set(BOOM, 0.5, '#e8d2a8'); }},
+
+    {n:25, label:'out on the measured 2.2', fade:2.2, house:0, haze:0.5,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0); }},
+
+    /* measured: the curtain call is unmistakable in the file — 82 events in the
+       last 2.5 minutes, lights bumping up and down every 1 to 3 seconds, and it
+       ends with a 7.0s fade down into 7.3s of black at 143:35. Found without
+       ever seeing a frame, which is the best evidence the method works. */
+    {n:26, label:'curtain call', fade:1.4, house:0, haze:0.4,
+     curtain:'out', scene:'cemetery',
+     look(){ all(0);
+       aimFrontAt(FRONT, 0, 1.7, -3.0);
+       set(FRONT, 0.85, '#fff2dc'); set(WASH, 0.7, '#ffffff');
+       set(BACK, 0.5, '#8fd8f0'); set(MOVE, 0.6, '#ffffff'); }},
+
+    /* measured: 7.0s down into the black at 143:35 — the show's last cue */
+    {n:27, label:'blackout — the curtain comes in', fade:7, house:0, haze:0.2,
+     curtain:'shut', scene:'cemetery',
+     look(){ all(0); }},
+
+    {n:28, label:'curtain warmers — the cloth, and nothing else', fade:4, house:0, haze:0,
+     curtain:'shut', scene:'cemetery',
+     look(){ all(0);
+       onTheCloth();                     // up at the cloth, never down at the deck
+       set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }},
+
+    {n:29, label:'house up — the warmers stay', fade:8, house:0.6, haze:0,
+     curtain:'shut', scene:'cemetery',
+     look(){ all(0);
+       onTheCloth();
+       set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }}
+  ];
+
+  CUES.length = 0;
+  const savedHaze = RIG.haze;
+  const savedFly = snapshotFly();
+  const homeAims = captureAims();
+  looks.forEach(L=>{
+    FIXTURES.forEach(f=>{ f.gobo = 0; });
+    restoreAims(homeAims);            // every look starts from the rig's own focus
+    L.look();
+    setCurtainForCue(L.curtain || 'out');
+    CUES.push({
+      n:L.n, label:L.label, fade:L.fade, follow:null,
+      lx:snapshotLX(), fly:snapshotFly(), sfx:null,
+      house:L.house, work:0, practical:0, haze:L.haze,
+      rain:0, storm:false, fire:null, neon:1,
+      scene:L.scene || null
+    });
+  });
+  FIXTURES.forEach(f=>{ f.level = 0; f.gobo = 0; });
+  restoreAims(homeAims);
+  RIG.haze = savedHaze;
+  savedFly.forEach(r=>{ const ls = FLY[r.id-1]; if(ls){ ls.target = r.target; ls.travTarget = r.open; } });
+  SHOW.cues = CUES.length;
+  nextCue = 0;
+}

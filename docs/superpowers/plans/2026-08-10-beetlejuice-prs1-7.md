@@ -93,6 +93,49 @@ A new suite, `tests/beetlejuice.js`, takes the count **17 → 18**. That number
 appears in `CLAUDE.md`, `docs/guide/TESTING.md` and the runner — all three get
 updated in PR 1, not later.
 
+## Two things PR 1 found that change everything after it
+
+**1. The configurations are SCENES, and the machinery already exists.** p5c
+carries `sceneAdd` / `sceneWalk` / `sceneShow` / `sceneNext`, a cue can carry a
+`scene` and firing it switches the set (`p5c:1377`), and p7 already lists them
+in the UI. Its header says the intent outright: *"A show with eight locations
+does not get eight stages. It gets one, and the sets take turns on it."*
+
+That machinery was built for Beetlejuice, orphaned when the show was removed,
+and recorded in HANDOFF as *"general machinery that no current show uses"*.
+This round is the first production to use it. So **each later PR adds a scene
+via `sceneAdd`, registers its walkables with `sceneWalk`, and points its cues
+at it** — it does not pile every configuration into one load. A scene that is
+off has its layers disabled, so it costs **no draw call and no raycast** while
+it waits, which is why 10–12 configurations is affordable at all.
+
+Only `p2d` is genuinely dead (it is not in `build.sh` at all); audit item 20's
+inventory should be re-read before anyone deletes it, because the scene
+machinery it is grouped with is now load-bearing.
+
+**2. A production here is a whole EVENING, and `show.js` enforces the shape.**
+This is not optional and it is not documented anywhere else, so:
+
+- a cue **`0.5`** (preset) and a cue **`1`**, both with the curtain in
+- **exactly two** cues take the curtain out — the top of each act
+- an interval of three consecutive cues whose labels match `/act one ends/`,
+  `/INTERVAL/`, `/act two/`: the first a true blackout with the house down, the
+  second with the house at ≥ 0.9 and the rig dark, the third with the house at
+  0.1–0.4. It must sit **25–65 %** of the way through the cue list.
+- a **`curtain call`** exactly **four cues from the end**, lit, house down,
+  curtain out; then a `blackout` that brings the curtain in, a
+  `warmers`/`title` cue with the front of house aimed **up** at the cloth
+  (y ≥ 5, ≥ 4 channels over 0.4, ≤ 10 channels lit), then `house up` at ≥ 0.45
+  with a fade of ≥ 5 s and nothing above channel 8 still burning.
+- the curtain may be in **only** for those cues — never mid-act.
+
+PR 1 stands that whole skeleton up, which is why its cue list is 30 cues rather
+than a handful. The measured act break (**71:02**, the show's longest blackout
+at 13.3 s) and the measured curtain call (**141:02**, 82 events of lights
+bumping) land exactly where the convention wants them, which is a good sign for
+both. **Act two currently plays in the cemetery scene and says so in a comment**
+— later PRs reassign those cues as their scenes arrive.
+
 ---
 
 ## PR 1 — the show, the portal, the cemetery

@@ -31,7 +31,7 @@ paint, save).
 
 ```sh
 sh build.sh          # rebuild the-house.html from src/ (syntax-checked)
-cd tests && npm test # all 17 suites; exits non-zero on any failure
+cd tests && npm test # all 18 suites; exits non-zero on any failure
 cd tests && node real.js  # boot the whole file, expect "fatal": null
 ```
 

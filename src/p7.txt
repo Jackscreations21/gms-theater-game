@@ -938,7 +938,7 @@ function refreshVenueUI(){
     list.innerHTML = ['palace','arc'].map(v=>{
       const on = (VENUE === v);
       const where = v === 'palace'
-        ? 'A 1,400-seat Broadway house: fly tower, dock, four productions in the book.'
+        ? 'A 1,400-seat Broadway house: fly tower, dock, five productions in the book.'
         : 'A modern complex: glazed foyer, a 600-seat lyric house and a studio.';
       return '<div class="cue'+(on?' next':'')+'" data-v="'+v+'" style="align-items:flex-start">'+
         '<div style="flex:1"><div style="color:var(--amber);letter-spacing:2px">'+
