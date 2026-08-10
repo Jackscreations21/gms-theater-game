@@ -1122,6 +1122,111 @@ cache entry both cut pieces point at, so `material[2] === red` read its
 own poke straight back and passed while testing nothing — and polluted
 that material for the rest of the run. Nothing ever went red.
 
+**Done 2026-08-09, the workshop round — the belt and the shed made real
+(spec #83, PRs #84–#87), and then the settle fix (#88).**
+
+The owner's ask, verbatim: *"make everthing on the tool belt and in the
+warhouse look mor realistic (saws, nail gun, tape measure, hammer,
+shelves, etc). would it help if i found 3d models for everything and you
+just had to scale them and put it in or do you want to do it all
+yourself"*
+
+**The models question is answered on the record as RULING AI: no
+external assets, ever.** Four reasons, all specific to this repo, so it
+does not have to be re-litigated: all seventeen suites boot the whole
+file in jsdom and assert on geometry SYNCHRONOUSLY, and `.glb` loading
+is async; `GLTFLoader` fetches over XHR, which a `file://` page is
+blocked from doing, so double-click-to-open would die; it ends the
+one-file property; and free models carry licences a repo that may go
+public cannot. What helps instead is **photographs** — the locking rail
+reads well because the owner sent a photo of a real one. For this round
+the owner delegated judgment, so the headset run is the review.
+
+Spec: `docs/superpowers/specs/2026-08-09-workshop-realism-design.md`
+(RULINGS AI–AN). Plan:
+`docs/superpowers/plans/2026-08-09-workshop-realism-prs1-4.md`.
+
+- **#84 — the palette, the merge helper, the belt.** `mergeParts()` in
+  p2 (r128's core ships no `BufferGeometryUtils`): bake each part's
+  transform into its vertices, concatenate, one draw call for a cluster
+  of static detail. Six SHARED canvas textures — galvanised, cast iron,
+  moulded plastic, rubber grip, chipped hazard yellow, ply — plus a
+  cached stencil helper. Then the four tools: a pneumatic framing nailer
+  with an angled magazine, depth-adjust nose, contact tip and hose
+  fitting; a 20oz framing hammer with a claw and a waffled face; a cased
+  tape with a brake button, belt clip and hooked blade; and a
+  carpenter's pencil that is actually flat. New 17th suite,
+  `tests/workshop.js`.
+- **#85 — the cut stations.** A fence, T-slots, stretchers and a real
+  saw head with motor, guard and dust port on the track table; a kerf
+  plate, feed rollers, pivot boss, motor and handle on the chop bench.
+- **#86 — the paint rack, the roller and the drum.** Shelving with
+  uprights, brackets, a back rail and drip-stained ply; a roller with a
+  grip and crank; a ribbed drum with hoop bands.
+- **#87 — the heavy plant.** The forklift becomes a walk-behind pallet
+  stacker (mast channels, tie, hydraulic ram, lift chain, tiller control
+  head, counterweight); the cart gets gussets, a lower rail, castors
+  with yokes and ply deck boards; the racking gets punched uprights,
+  beams, braces and footplates.
+
+**The whole point, and it held: every object gained substantial detail
+and the set costs 40% FEWER draw calls.** Measured by `tools/census.js`
+against the pre-round build, per venue:
+
+| object | before | after |   | object | before | after |
+|---|---|---|---|---|---|---|
+| nail gun | 3 | 3 | | trash drum | 3 | 2 |
+| hammer | 2 | 2 | | track table | 7 | 4 |
+| tape | 2 | 2 | | chop bench | 7 | 4 |
+| crayon | 2 | 2 | | forklift | 12 | 4 |
+| paint rack | 12 | 12 | | pushcart | 13 | 3 |
+| | | | | **total** | **63** | **38** |
+
+**RULING AJ is why a sweep this wide was safe: the round was cosmetic
+and behaviour was frozen, enforced by every pre-existing suite passing
+UNEDITED.** Across all four PRs the only change under `tests/` is the
+new `workshop.js` plus one line in `run-all.js`. RULING AL named four
+things that must never merge, each with an assertion: the saw `cutter`,
+the lift `forks`, the paint `roller.head`, and the cans.
+
+**Then #88, and it is the one that most likely answers "it lags".** The
+owner asked for the build feature to lag less. Measured first with a new
+probe, `tools/buildload.js`: `updateBodies` cast a recursive raycast AND
+scanned the whole body registry for every loose piece every frame —
+**including pieces lying perfectly still.** At `BUILD_CAP` that is 150
+of each per frame; the probe reported 150 loose bodies and 0 moving.
+
+| loose pieces | before | after |
+|---|---|---|
+| 25 | 0.259 ms | 0.027 ms |
+| 100 | 1.044 ms | 0.096 ms |
+| 150 | 1.565 ms | 0.146 ms |
+
+11.3% of a 72Hz budget down to 1.0%, on a desktop; a headset CPU is
+several times slower. A settled piece is re-tested on a rota
+(`REST_ROTA` 12) spread by body index; `grabBody` wakes its venue, so
+the rota is only a backstop and nothing visibly hangs in the air.
+`groundAt` also stopped minting two `Vector3`s a call — GC churn, which
+reads as hitching rather than slowness, and it was hurting the player's
+own movement too.
+
+**Process notes worth keeping.** Three plan defects were found by the
+implementing agents ESCALATING rather than working around them, and each
+would have shipped a lie: the census probe called `vrBuildBelt()` cold
+when `VR.rig` is null outside a session; a muzzle assertion checked
+`mesh.position` for geometry that had just been merged to the origin;
+and an assertion about paint-can materials was simply wrong about the
+data (`canMeshes` holds Groups). The last one is the sharpest — the
+tempting "fix" was to merge the can body with its colour band so the
+assertion became true, which would have made the whole can take the
+paint. **A review of `mergeParts` also found its first four assertions
+passed against five deliberately wrong implementations**, including one
+that drops a `clone()` and mutates a caller's cached geometry. That is
+now a TRAPS entry in its own right: negative-check against a WRONG
+implementation, not merely an absent one.
+
+**None of it has met hardware.** New questions ride the headset section.
+
 ---
 
 ## THE CARPENTERS BRIEF (2026-08-08 — superseded the same day)
@@ -1330,9 +1435,41 @@ Take the numbers first, then work those question blocks oldest-first.
 Everything from #48 onward — the usability round, all nine build-feel
 PRs, both goods PRs, the carpenters round and now PHASE 2 — has met
 hardware NEVER, except the two things the 2026-08-08 run turned up
-(#76, #78).  Put the owner on `…/the-house.html?v=13` (the game changed
-twice on 2026-08-08; `?v=12` serves the morning build) and work the
-question blocks below, oldest first.
+(#76, #78).  Put the owner on `…/the-house.html?v=15` (the game changed
+five times on 2026-08-09) and work the question blocks below, oldest
+first.
+
+**New questions, THE WORKSHOP ROUND (#84–#88) — record the answers here:**
+
+- **Do the tools read as tools?** They are held at arm's length
+  constantly, which is where proportion is unforgiving and texture
+  detail is not. Does the nail gun read as a framing nailer, the hammer
+  as a 20oz framing hammer, the tape as a tape? **No reference photos
+  were used — the owner delegated judgment — so some of this will be
+  wrong, and this is the review.** Naming what is wrong is more useful
+  than a verdict: too big, too small, wrong shape, wrong colour.
+- **Is the muzzle still where your hand expects it?** The gun now has a
+  visible nose, depth adjuster and contact tip. `nailRay` casts from the
+  same place it always did, but a visible muzzle changes where you
+  *think* you are pointing.
+- **Does the shed read as a working scene shop**, or as a room with
+  objects in it? The saws, the racking and the plant all gained the
+  parts that make them identifiable; the question is whether the room
+  now reads as somewhere work happens.
+- **Is the hazard-yellow forklift too loud?** It is the only saturated
+  colour in either shed and it will pull the eye. If it does, the
+  material is one entry in `M` and the fix is a line.
+- **THE LAG QUESTION, the one that matters most.** #88 cut the build
+  system's per-frame CPU 11× (1.565 ms → 0.146 ms at `BUILD_CAP`) and
+  the workshop round cut the shed's draw calls 40% (63 → 38 meshes a
+  venue). **Stand a real build under a lit rig and read the wrist
+  meter.** If it is still red, the remaining suspects are the wood's own
+  draw calls (the assembly merge, specced and deferred) and fill —
+  because the two things measured off hardware are now small.
+- **Does anything hang in the air?** #88 re-tests a settled piece on a
+  rota rather than every frame, with `grabBody` waking the venue. If a
+  piece ever visibly hangs for a beat after losing its support, that is
+  a route to `wakeBodies` nobody found — worth reporting precisely.
 
 **New questions, PHASE 2 — record the answers here:**
 

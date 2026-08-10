@@ -8,7 +8,7 @@ order; **the order is a dependency order and must never be sorted**.
 | Part | What it is | Position notes |
 |---|---|---|
 | `p1` | HTML, CSS, all DOM panels | must be first — opens `<script>` at its end |
-| `p2` | dimensions `D`, `scene`, `camera`, `renderer`, materials `M`, textures `TX` | everything reads `D` |
+| `p2` | dimensions `D`, `scene`, `camera`, `renderer`, materials `M`, textures `TX`, `mergeParts()` | everything reads `D` |
 | `p2b p2c p2e p2g p2h p2f` | auditorium, stage house, FOH, dock, doors, seats | |
 | `p3` | fly system: `FLY`, `GOODS`, `TRIMS`, `drape()`, `minTrimOf`, runaways | `p4` reads `FLY[n].z` when building the rig |
 | `p4` | lighting: `FIXTURES`, light pool, beam shader, `stageToWorld`, `updateRig`, `BODIES`/`updateBodies` | after `p3` |
@@ -72,6 +72,36 @@ behind it (orders, saws, paint, forklift).
   adding job kinds, not an engine** — the carpenters proved it.
 - Carts and the forklift live at venue level on purpose (they leave
   their shed's cull room).
+
+## Building geometry — read this before you add any object
+
+r128's core ships no `BufferGeometryUtils`, so **`mergeParts(parts)` in
+p2 is the house merger**. Each part is `{geo, pos, rot, scale}`; it bakes
+the transforms into the vertices and concatenates them into one
+`BufferGeometry`, so a cluster of static detail costs ONE draw call
+instead of one per part. All parts in a call share the single material
+the merged mesh is given, so group by material.
+
+**Detail is meant to be paid for by merging, not by adding meshes.** The
+workshop round rebuilt eleven objects with far more detail and came out
+at 38 meshes a venue where it had been 63. `tools/census.js` prints the
+count; keep it honest.
+
+Merge only what never moves, is never grabbed and is never recoloured.
+Anything addressed at runtime stays its own mesh — the saw `cutter`, the
+lift `forks`, the paint `roller.head`, the cans. **Merging one of those
+fails silently**, which is why each has a test. See TRAPS.md.
+
+Surfaces come from the shared workshop palette in p2: `M.galv`,
+`M.castIron`, `M.moulded`, `M.rubber`, `M.hazard`, `M.ply`, plus
+`stencilTex(text, bg)` for labels. **Shared — never tint one in place**
+(the shared-material trap, three times over). Every texture in this game
+is drawn on a `<canvas>`; there are no image files and no loader, and
+that is RULING AI, not an accident.
+
+Cache merged geometry the way `TOOLG`/`toolG` (p9) and
+`SAWG`/`RACKG`/`LIFTG`/`CARTG` (p2m) do — builders that run once per
+shed otherwise mint the same buffers twice.
 
 ## The save (game's first)
 

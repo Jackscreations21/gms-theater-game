@@ -123,8 +123,79 @@ against this list before opening a PR; **add new traps as you hit them.**
   cap count and the saw then disagree by one. Leave a fat off-cut or
   honest scrap.
 
+## Per-frame cost in the build system
+
+- **A settled body used to be re-tested every single frame.**
+  `updateBodies` cast a recursive raycast (`groundAt`) AND scanned the
+  whole body registry (`tableTopAt`) for every LOOSE piece each frame —
+  including pieces lying perfectly still. At `BUILD_CAP` that is 150 of
+  each per frame to conclude nothing moved: 1.565 ms on a desktop, 11.3%
+  of a 72Hz budget, and a headset CPU is several times slower. A piece
+  at rest is now re-tested on a rota (`REST_ROTA`), and `grabBody` wakes
+  its venue so the rota is only a backstop. **If you add a way for a
+  resting piece to lose its support that does not go through a grab, it
+  must call `wakeBodies`** — otherwise the piece hangs for up to a rota.
+  Measure with `tools/buildload.js`, which times the STEADY state rather
+  than the fall; timing pieces while they are still settling measures the
+  one case that was never the problem.
+- **Per-frame allocation is a lag source, not a tidiness issue.**
+  `groundAt` minted two `Vector3`s a call — thousands of throwaway
+  objects a second once a build was standing. GC churn shows up as
+  intermittent hitching rather than steady slowness, which is exactly
+  what "it lags" describes and exactly what a frame-average hides.
+
+## Merged geometry (`mergeParts`, p2)
+
+- **A merged mesh sits at the ORIGIN.** `mergeParts` bakes each part's
+  transform into its vertices, so the parts stop existing as objects. Any
+  test that located a feature by `child.position` — "the nose is the mesh
+  at z < −0.1" — silently finds NOTHING once that cluster merges, and
+  reports the feature missing rather than moved. Pin merged features by
+  `geometry.boundingBox` instead. Cost half of Task 4 before anyone
+  noticed the assertion was wrong rather than the gun.
+- **Only merge what never moves, is never grabbed and is never
+  recoloured.** Four things in the shed are deliberately unmerged and a
+  test guards each: the saw `cutter` (slides, is a grab class), the lift
+  `forks` (rides the mast, pallets `attach()` to it), the paint
+  `roller.head` (p9 assigns `ro.head.material = woodMat(...)` to show the
+  last dip — merging it makes every dip invisible and nothing throws),
+  and the cans. Merging any of them fails silently, which is the danger.
+- **Parts in one call must all carry the same attributes.** Normals and
+  UVs are concatenated per part; a part missing one does not pad the
+  buffer, it SHIFTS it, and every subsequent vertex gets a normal
+  belonging to its neighbour. Nothing throws; the object just lights
+  wrong. `mergeParts` computes missing normals per part now — per part,
+  because computing them on the merged result would flatten every
+  cylinder's smooth shading.
+- **No negative scale.** It reverses triangle winding against the shading
+  normals. r128 compensates for mirroring on a live mesh via the matrix
+  determinant, but baked vertices carry no determinant, so a mirrored
+  part vanishes under the default `FrontSide`.
+
 ## Tests / jsdom
 
+- **A test that proves a function EXISTS is not a test that it is
+  RIGHT.** `mergeParts` shipped with four assertions that all passed
+  against FIVE deliberately wrong implementations — including one that
+  drops a `clone()` and mutates the caller's cached geometry, the
+  shared-cache trap this codebase has hit three times. Every input was a
+  fresh `BoxGeometry`, so the non-indexed branch was never exercised and
+  no geometry was ever reused. **Negative-check against a WRONG
+  implementation, not merely an absent one** — "it failed before the
+  function existed" only proves the name resolves. Name the wrong
+  version you are killing, and check it dies.
+- **`canMeshes` holds Groups, not Meshes.** A paint can is a Group: a
+  shared `M.steel` body plus a band coloured from the `woodMat` cache. So
+  `canMeshes[i].material` is `undefined`, and an assertion about "one
+  material per can" has to aim at the BANDS. The tempting fix — merging
+  body and band so the can has one material — would make the whole can
+  take the paint instead of just its band.
+- **`vrBuildBelt()` needs `VR.rig`, which is null outside a session.**
+  `VR.rig` is only built by `vrOnStart`, off a WebXR `sessionstart` that
+  never fires in a probe or a plain suite, so calling the belt builder
+  cold throws `Cannot read properties of null`. Make the rig first (a
+  bare named Group added to `scene` — what `vrOnStart` does with it), or
+  go the full route `tests/vr.js` takes with its `FakeXR`.
 - **jsdom's `MouseEvent` has no `movementX`/`movementY`** — not 0,
   undefined. The game guards to 0, so synthetic hauls do nothing and it
   looks like broken game code. Shim the event (`full14.js` has it).

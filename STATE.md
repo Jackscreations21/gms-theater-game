@@ -5,27 +5,63 @@ NOW and is updated as work happens. `HANDOFF.md` is the durable record
 written at session end; this file is the scratchpad between those
 writes. If the two disagree, this file is newer.
 
-Last updated: **2026-08-09** (the object system was reviewed from
-outside; the review's own question turned up a 6× draw-call finding in
-the wood, and #81 is open with the fix).
+Last updated: **2026-08-09** (the workshop round landed — the belt and
+the shed rebuilt in four PRs — and then the build system's per-frame
+cost was measured and cut 11×).
 
 ---
 
 ## Position
 
-- **[PR #81](https://github.com/Jackscreations21/gms-theater-game/pull/81) is OPEN and is the only thing in flight** — a piece of wood holds ONE material until its faces disagree. Every wood mesh was `new T.Mesh(WOODG, [m, m, m, m, m, m])`, the same material six times, and r128 submits a draw call PER GROUP for an array material: six draw calls to draw one bare plank, 900 at `BUILD_CAP`, per eye. Now 150. **Check it merged before building on it.**
-- **Carpenters phase 2 is DONE and landed** — spec #77, PRs #78 and #79 (which carried the round's PRs 2–4), plus #76 for the Arc warehouse doors, and #80 the record. Every one merged with `base=main`.
-- **Suite status: 16/16 GREEN** on the #81 branch, boot check `"fatal": null`. `main` verified byte-identical at `873188` before branching; the #81 build is `874544`. Node v24.19.0 at `C:\Program Files\nodejs` — still not on a fresh shell's PATH; prefix with `export PATH="/c/Program Files/nodejs:$PATH"` (Git Bash) or `$env:Path = "C:\Program Files\nodejs;$env:Path"`.
-- Pages serves `main`, so it carries everything up to #80 — **`?v=13` today, `?v=14` once #81 merges.** Measuring on `?v=13` measures the OLD wood.
-- **This clone:** `main` @ `badfb98` = `origin/main`, plus the open `wood-one-material` branch. `pr6.json` still untracked.
+- **Nothing in flight.** The workshop round is DONE and landed: spec #83, then #84 (the palette, `mergeParts`, the belt), #85 (the cut stations), #86 (the paint rack and the drum), #87 (the heavy plant). Then #88, the settle fix. All `base=main`.
+- **Suite status: 17/17 GREEN**, boot `"fatal": null`, `main` rebuilds byte-identical at **895034**. The 17th suite is `tests/workshop.js`. Node v24.16.0 at `C:\Program Files\nodejs` — still not on a fresh shell's PATH; prefix with `export PATH="/c/Program Files/nodejs:$PATH"` (Git Bash) or `$env:Path = "C:\Program Files\nodejs;$env:Path"`.
+- **Two things got cheaper, and both are measured, not guessed.** Workshop draw calls per venue **63 → 38 meshes** across eleven objects, while every one of them gained substantial detail (`tools/census.js`). The build system's per-frame CPU at `BUILD_CAP` went **1.565 ms → 0.146 ms**, 11.3% of a 72Hz budget down to 1.0% (`tools/buildload.js`).
+- Pages serves `main`. **Bust the Quest cache with `?v=15`** — the game changed five times on 2026-08-09.
+- **This clone:** `main` @ `10033f2` = `origin/main`. `pr6.json` still untracked.
 
-## Current focus: nothing merged in flight — next is THE FRAME-RATE ROUND
+## Current focus: **NEXT SESSION IS A NEW FEATURE** (owner, 2026-08-09)
 
-The owner's call. It runs **through** the headset run, not instead of
-it: the numbers can only be taken on hardware, so it is one trip — take
-the meter readings first, then work the feel questions while the headset
-is on. Full protocol in HANDOFF's "NEXT SESSION: THE FRAME-RATE ROUND",
-including a blank table to fill in.
+The owner has said the next session adds a **new feature** — which one is
+not yet decided, so **ask before building anything.** Do not assume it is
+the frame-rate round; that is still owed but is not what was asked for
+next.
+
+**How a feature round runs here** (this repo has a shape, and it works):
+
+1. **Shape it with the owner first.** The five-question pattern in
+   HANDOFF's carpenters brief is the model: ask what decides the shape,
+   one question at a time, before any code.
+2. **Spec it** to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+   with numbered RULINGS inline. **The letters continue — the workshop
+   round ended at AN, so the next is AO.** Rulings are how decisions stop
+   being re-litigated; the models question (RULING AI) is the example.
+3. **Plan it** to `docs/superpowers/plans/`, then build it as a **linear
+   chain: one concern per PR, never stacked**, each branch cut after its
+   parent merges, rebased onto fresh `main`, retested before opening.
+4. **Suites green before AND after, every new assertion negative-checked
+   against a WRONG implementation** — not merely an absent one. That
+   distinction cost real time this round; see TRAPS.md.
+
+**What a new feature must respect** (the traps that bite newcomers):
+
+- Anything a headset must reach **needs a physical thing in the room** —
+  a DOM control does not exist in VR. A `station()` is the cheapest.
+- Build through the same functions the player's hands use and **the work
+  rides the save for free**; poke meshes directly and it is invisible to
+  the save.
+- Detail is paid for by **`mergeParts`**, not by adding meshes
+  (ARCHITECTURE.md). Never merge anything grabbed, moved or recoloured.
+- If it can take the ground out from under a resting body, it must call
+  **`wakeBodies`** (BUILD-SYSTEM.md).
+- **Never `setTimeout` for game timing** — time comes off the frame `dt`.
+
+## Still owed, and not superseded: THE FRAME-RATE ROUND
+
+It runs **through** the headset run, not instead of it: the numbers can
+only be taken on hardware, so it is one trip — take the meter readings
+first, then work the feel questions while the headset is on. Full
+protocol in HANDOFF's "NEXT SESSION: THE FRAME-RATE ROUND", including a
+blank table to fill in.
 
 **Step zero is a diagnosis, not a fix.** The wrist tag (#22) has never
 met hardware, and the foveation level it reports is the tell, because
@@ -45,13 +81,20 @@ wood is one draw call per piece, `BUILD_CAP` is 150 a venue, r128 draws
 each eye separately, and nobody has ever stood in that room with the
 meter up. Note the piece count alongside the numbers.
 
+**Two costs have now been measured OFF hardware, which narrows what the
+meter has to explain.** The workshop's own geometry is 38 meshes a venue
+where it was 63 (`tools/census.js`), and the build system's per-frame
+CPU at `BUILD_CAP` is 0.146 ms where it was 1.565 (`tools/buildload.js`).
+So if the headset still reads red with a build standing, it is very
+unlikely to be the shed furniture or the settle loop — which points at
+the wood's own draw calls (the assembly merge) or at fill.
+
 **Nothing from #48 onward has met hardware** except the two findings
 that produced #76 and #78, so the feel questions are still owed too —
 HANDOFF's headset section carries them, oldest first.
 
 ## Open items (rough order)
 
-- **#81 awaiting merge** — the wood material fix. Nothing depends on it, but the frame-rate round wants it in before the meter is read.
 - **The frame-rate round, and the headset run it rides on.** Everything from #48 onward (usability round, nine build-feel PRs, both goods PRs, the carpenters round, phase 2 + the Arc door button) has met hardware NEVER. One trip: numbers first, then the question blocks at the bottom of HANDOFF.
 - **THE ASSEMBLY MERGE is specced-but-deferred** (owner, 2026-08-09) — merge a nailed assembly into one mesh, hammer un-merges. Gated on the meter reading submission-bound. The design constraints are written down in HANDOFF's frame-rate section so it can be picked up cold; the honest arithmetic is there too (after #81 a five-flat scene is ~50 draw calls of wood, and the merge takes it to ~5 — forty-five is the whole prize).
 - **The outside geometry review is answered and closed** (2026-08-09): keep polygon meshes, no voxels, no SDF, no CSG-first. GLTF is a "later, for richness" — not a frame-rate move. If the question comes round again, the reasoning is in HANDOFF's 2026-08-09 Done block.
