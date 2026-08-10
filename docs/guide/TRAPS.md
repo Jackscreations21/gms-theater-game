@@ -172,6 +172,19 @@ against this list before opening a PR; **add new traps as you hit them.**
   determinant, but baked vertices carry no determinant, so a mirrored
   part vanishes under the default `FrontSide`.
 
+## Neon, and curves through corners
+
+- **`neonTube` runs a CatmullRom curve THROUGH its points, so it overshoots a
+  right angle.** Drawing a rectangle as five corner points gave a frame 14.5 m
+  wide from a specified 12.6, dipping 0.53 m through the deck. It is the right
+  tool for an organic run of tube and the wrong one for a hard-edged frame —
+  those are four merged bars, registered on `SHOW.neon` by hand so the fade,
+  the mains hum and the one-in-five flicker still work.
+- **A material per neon tube is REQUIRED, not a draw-call mistake.**
+  `updateNeon` writes a colour into every registered mesh every frame, so
+  sharing one material fades them all together. This is the one place the
+  shared-material rule is inverted, and a test asserts the count.
+
 ## Measuring a video (`tools/video.js`)
 
 - **Scene detection structurally CANNOT see a fade.** `scdet` (and
@@ -235,6 +248,12 @@ against this list before opening a PR; **add new traps as you hit them.**
   the whole probe dies with `missing ) after argument list`, pointing at
   the eval rather than the line. Build regexes from doubled-backslash
   strings, and just reword around apostrophes.
+- **And no BACKTICKS anywhere in a probe — including inside comments.**
+  The probe is one template literal, so a backtick used to quote a field
+  name in a comment closes it early and the suite dies at PARSE time with
+  something unrelated (`SyntaxError: Unexpected identifier`). It is the same
+  family as the backslash and the apostrophe, and it is easier to hit,
+  because quoting an identifier in prose is a natural thing to do.
 - **Test through the DOM, not the model** — a detached row still fires
   its handler perfectly well. Go through `document.querySelectorAll`.
 - **Measure the right thing.** Past tests passed while wrong: a darkness
