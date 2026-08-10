@@ -1574,7 +1574,7 @@ Take the numbers first, then work those question blocks oldest-first.
 Everything from #48 onward — the usability round, all nine build-feel
 PRs, both goods PRs, the carpenters round and now PHASE 2 — has met
 hardware NEVER, except the two things the 2026-08-08 run turned up
-(#76, #78).  Put the owner on `…/the-house.html?v=15` (the game changed
+(#76, #78).  Put the owner on `…/the-house.html?v=16` (the game changed
 five times on 2026-08-09) and work the question blocks below, oldest
 first.
 

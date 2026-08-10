@@ -19,7 +19,7 @@ Next session CONFIRMS the scene timing).
 - **Suite status: 18/18 GREEN**, boot `"fatal": null`. The 18th suite is `tests/beetlejuice.js`. **`main` now rebuilds at 964663** (was 895034 before the fifth show). Node v24.16.0 at `C:\Program Files\nodejs` — still not on a fresh shell's PATH; prefix with `export PATH="/c/Program Files/nodejs:$PATH"` (Git Bash) or `$env:Path = "C:\Program Files\nodejs;$env:Path"`.
 - **`ffmpeg` 9.0 is now on this machine** (`winget install Gyan.FFmpeg`) and has the SAME PATH quirk as Node — it is not on a fresh shell's PATH. `tools/video.js` finds it under `AppData/Local/Microsoft/WinGet/Packages` by itself, so a probe run needs no export. There is still **no Python** (the `python` on PATH is the Store stub) and none is needed.
 - **Two things got cheaper, and both are measured, not guessed.** Workshop draw calls per venue **63 → 38 meshes** across eleven objects, while every one of them gained substantial detail (`tools/census.js`). The build system's per-frame CPU at `BUILD_CAP` went **1.565 ms → 0.146 ms**, 11.3% of a 72Hz budget down to 1.0% (`tools/buildload.js`).
-- Pages serves `main`. **Bust the Quest cache with `?v=15`** — the game changed five times on 2026-08-09.
+- Pages serves `main`. **Bust the Quest cache with `?v=16`** — the build went 895034 → 964663 on 2026-08-10 (the whole fifth show). The Quest Browser caches hard, and confirming the scene timing against a CACHED old build would read as a timing fault that is not there. Bump it again after any further merge.
 - **This clone:** `main` @ `0b73f07` = `origin/main`. `pr6.json` still untracked.
 
 ## Current focus: **NEXT SESSION CONFIRMS THE SCENE TIMING** (owner, 2026-08-10)
