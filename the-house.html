@@ -9549,6 +9549,10 @@ function sceneApply(sc, on){
     if(on && i < 0) WALKABLE.push(o);
     if(!on && i >= 0) WALKABLE.splice(i, 1);
   }
+  /* a set that comes on has just had the layers of EVERY descendant enabled,
+     which would light all three of a wagon dressings at once.  The show puts
+     the right one back. (RULING AQ) */
+  if(on && typeof bjRedress === 'function') bjRedress(sc);
 }
 /* a piece of scenery that is on the stage whatever set is up — the show's
    own sign, hanging downstage of the house curtain.  It is a scene so that
@@ -10899,6 +10903,8 @@ function showCueExtras(c){
     const list = Array.isArray(c.move) ? c.move : [c.move];
     list.forEach(m=>{ if(m) sceneMoveTo(m.scene, m.off, m.speed); });
   }
+  /* and which dressing the room is wearing (RULING AQ) */
+  if(c.dress && typeof bjDress === 'function') bjDress(c.scene || SHOW.scene, c.dress);
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);
     setRevolve('inner', c.rev.inner || 0);
@@ -12921,9 +12927,76 @@ const BJ = {
 const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
 /* where the house wagon parks.  The room is built in its ACTING position, so
    this is how far upstage it tracks to hide: it puts the set at z -17.10 ..
-   -11.50 — clear of the last lineset (-10.90) that carries the backdrop, and
-   4.4m off the Palace brick at PAL_BACK.  0 is on. */
-const BJ_WAGON_BACK = -7.9;
+   -11.70 — clear of the last lineset (-10.90) that carries the backdrop, and
+   2.3m off the Palace brick at PAL_BACK.  0 is on.
+
+   It is measured against the DEEPEST dressing, not the shell: the Deetz
+   dressing reaches 1.9m further downstage than the Maitlands one, so a park
+   that hid the room in its first dressing left it poking past the backdrop in
+   its second. */
+const BJ_WAGON_BACK = -10.0;
+
+/* ---------------------------------------------------------------------------
+   ONE ROOM, THREE DRESSINGS (RULING AQ)
+
+   The owner's photographs settle it: the Maitlands house, the Deetz house and
+   the Beetlejuice house are plainly the SAME ARCHITECTURE — the same swooping
+   ceiling, the same staircase, the same fireplace in the same corner —
+   redressed three times.  So the wagon carries one shell and three dressings
+   that take turns on it.
+
+   A dressing is built exactly the way a scene was, which is why the
+   redecorated room's own code moved across without a line changing: it is
+   handed {group} and goes on calling .group.add().
+   --------------------------------------------------------------------------- */
+/* the hard black-and-white stripe the takeover paints everything in.  Vertical
+   for the walls, horizontal for the furniture and the worm. */
+function bjStripeTex(vertical){
+  const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#efe9dd'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#141018';
+  const band = 44;
+  for(let i = 0; i < W/band; i += 2){
+    if(vertical) g.fillRect(i*band, 0, band, H);
+    else         g.fillRect(0, i*band, W, band);
+  }
+  /* they are painted by hand, so the edges wobble */
+  g.globalAlpha = 0.5;
+  for(let i = 0; i < 90; i++){
+    g.fillStyle = Math.random() < 0.5 ? '#141018' : '#efe9dd';
+    if(vertical) g.fillRect(rnd(0, W), rnd(0, H), 3, rnd(20, 90));
+    else         g.fillRect(rnd(0, W), rnd(0, H), rnd(20, 90), 3);
+  }
+  g.globalAlpha = 1;
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+function bjDressing(sc, key){
+  const g = new T.Group();
+  g.name = 'dress:' + key;
+  sc.group.add(g);
+  (sc.dress || (sc.dress = {}))[key] = g;
+  return {group:g};
+}
+function bjDress(scOrName, key){
+  const sc = (typeof scOrName === 'string') ? sceneFind(scOrName) : scOrName;
+  if(!sc || !sc.dress || !sc.dress[key]) return null;
+  sc.dressOn = key;
+  bjRedress(sc);
+  return key;
+}
+/* sceneShow enables the layers of every descendant when a set comes on, which
+   would light all three dressings at once.  sceneApply calls this after. */
+function bjRedress(sc){
+  if(!sc || !sc.dress) return;
+  for(const k of Object.keys(sc.dress)){
+    const on = (k === sc.dressOn), g = sc.dress[k];
+    g.userData.sceneOff = !on;
+    if(typeof setPieceVisible === 'function') setPieceVisible(g);
+    g.traverse(o=>{ if(on) o.layers.set(0); else o.layers.disableAll(); });
+  }
+}
 const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
                               // its bottom edge ends at 12.7 against a 10.4
                               // proscenium, so it is properly masked out
@@ -13490,6 +13563,10 @@ SHOWS.beetlejuice = {
        takes light across its face instead of flat-on, so it does.
        ================================================================ */
     const inr = sceneAdd('interior', 'THE HOUSE, INSIDE');
+    /* the SHELL — arch, stairs, landing, banister, fireplace, doors — goes on
+       the scene itself and never changes.  Everything that DOES change goes
+       on a dressing. (RULING AQ) */
+    const mai = bjDressing(inr, 'maitland');
     {
       const R = 7.0, CZ = -2.0, WH = 6.2, N = 11, SPAN = 0.90;   // radians each side
       const at = t => { const a = -SPAN + 2*SPAN*t;
@@ -13508,7 +13585,7 @@ SHOWS.beetlejuice = {
                         rot:[0, -p.a, 0]});
         }
         const m = new T.Mesh(mergeParts(parts), board);
-        m.name = 'bj:innerWall'; m.castShadow = true; inr.group.add(m);
+        m.name = 'bj:innerWall'; m.castShadow = true; mai.group.add(m);
       }
 
       /* the dado, following the same arc */
@@ -13520,7 +13597,7 @@ SHOWS.beetlejuice = {
           parts.push({geo:new T.BoxGeometry(1.5, 0.10, 0.30), pos:[p.x, 0.12, p.z], rot:[0, -p.a, 0]});
         }
         const m = new T.Mesh(mergeParts(parts), boardD);
-        inr.group.add(m);
+        mai.group.add(m);
       }
 
       /* the arch upstage centre — where everybody comes in from */
@@ -13574,7 +13651,7 @@ SHOWS.beetlejuice = {
         }
         const m = new T.Mesh(mergeParts(parts), iron);
         m.name = 'bj:chandelier' + i;
-        m.position.set(x, 5.0, -5.4); inr.group.add(m);
+        m.position.set(x, 5.0, -5.4); mai.group.add(m);
       });
 
       /* pictures, hung crooked, one mesh */
@@ -13586,7 +13663,7 @@ SHOWS.beetlejuice = {
           parts.push({geo:new T.BoxGeometry(w*0.82, w*0.62, 0.11), pos:[p[0], p[1], -7.86], rot:[0, 0, p[2]]});
         });
         const m = new T.Mesh(mergeParts(parts), stone);
-        inr.group.add(m);
+        mai.group.add(m);
       }
 
       /* the fireplace, stage right */
@@ -13642,7 +13719,7 @@ SHOWS.beetlejuice = {
       return {x: R*Math.sin(a), z: CZ - R*Math.cos(a), a}; };
 
     /* ---- the room, redecorated: pale, ornate, and covered in frames ---- */
-    const red = sceneAdd('redecorated', 'THE ROOM, REDECORATED');
+    const red = bjDressing(inr, 'deetz');
     {
       const pale = new T.MeshStandardMaterial({color:0xd8cdb8, roughness:.82, metalness:.04});
       const gilt = new T.MeshStandardMaterial({color:0xb99a52, roughness:.42, metalness:.62});
@@ -13729,6 +13806,74 @@ SHOWS.beetlejuice = {
         r.scale.set(1, 1, 1.35); r.receiveShadow = true; red.group.add(r);
       }
     }
+
+    /* ---- the room, taken over: the same walls in hard black and white
+       stripes, striped furniture, and the worm coming through the wall.
+       Third dressing on the one wagon (RULINGS AQ, AV). ---- */
+    const bjd = bjDressing(inr, 'bj');
+    {
+      const stripeT = bjStripeTex();
+      const striped = new T.MeshStandardMaterial({map:stripeT, roughness:.78});
+      const stripeV = new T.MeshStandardMaterial({map:bjStripeTex(true), roughness:.78});
+      const violet  = new T.MeshStandardMaterial({color:0x2e1c46, roughness:.9});
+
+      /* the wall skin, on the room's own arc so it sits where the panelling
+         does rather than in a different room */
+      {
+        const parts = [];
+        for(let i = 0; i < 11; i++){
+          const p = bjArc(i/10, 7.0, -2.0, 0.90);
+          parts.push({geo:new T.BoxGeometry(1.44, 6.2, 0.16), pos:[p.x, 3.1, p.z], rot:[0, -p.a, 0]});
+        }
+        const wl = new T.Mesh(mergeParts(parts), stripeV);
+        wl.name = 'bj:bjWall'; wl.castShadow = true; bjd.group.add(wl);
+      }
+      /* a striped settee and two chairs, the furniture the takeover brings */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(2.9, 0.42, 1.05), pos:[0, 0.52, 0]},
+          {geo:new T.BoxGeometry(2.9, 1.15, 0.24), pos:[0, 0.95, -0.55]},
+          {geo:new T.BoxGeometry(0.24, 0.78, 1.05), pos:[-1.45, 0.75, 0]},
+          {geo:new T.BoxGeometry(0.24, 0.78, 1.05), pos:[ 1.45, 0.75, 0]}
+        ];
+        const s2 = new T.Mesh(mergeParts(parts), striped);
+        s2.name = 'bj:bjSettee'; s2.position.set(-0.4, 0, -4.4);
+        s2.castShadow = true; bjd.group.add(s2);
+      }
+      [[-3.6, -3.4, 0.5], [3.0, -3.6, -0.6]].forEach((c2, i)=>{
+        const parts = [
+          {geo:new T.BoxGeometry(0.9, 0.34, 0.9), pos:[0, 0.5, 0]},
+          {geo:new T.BoxGeometry(0.9, 1.1, 0.2),  pos:[0, 1.1, -0.35]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), striped);
+        m.name = 'bj:bjChair' + i;
+        m.position.set(c2[0], 0, c2[1]); m.rotation.y = c2[2];
+        bjd.group.add(m);
+      });
+      /* THE WORM, through the wall and over the room — one merged tube on the
+         same stripe, tapering to a head */
+      {
+        const parts = [];
+        for(let i = 0; i < 16; i++){
+          const t = i/15;
+          const r = 0.62 * (1 - t*0.45);
+          parts.push({geo:new T.CylinderGeometry(r, r*0.94, 0.86, 10),
+                      pos:[-5.4 + t*7.2, 4.9 - Math.sin(t*2.2)*2.3, -6.4 + t*2.2],
+                      rot:[0, 0, 1.05 - t*0.9]});
+        }
+        const wm = new T.Mesh(mergeParts(parts), striped);
+        wm.name = 'bj:worm'; wm.castShadow = true; bjd.group.add(wm);
+      }
+      /* and the deck goes dark under it */
+      {
+        const r = new T.Mesh(new T.CylinderGeometry(2.4, 2.4, 0.04, 24), violet);
+        r.name = 'bj:bjRug'; r.position.set(-0.4, 0.115, -4.8);
+        r.scale.set(1, 1, 1.35); r.receiveShadow = true; bjd.group.add(r);
+      }
+    }
+
+    /* the room wakes up as the Maitlands' — it is theirs first */
+    bjDress(inr, 'maitland');
 
     /* ---- the attic: rafters, a model of the town, and dust sheets ---- */
     const att = sceneAdd('attic', 'THE ATTIC');
@@ -14342,27 +14487,27 @@ function plotBeetlejuice(){
     /* ============ ACT ONE, ii — INSIDE THE HOUSE ============
        measured: 15:57 to 31:34 under five looks, which is why the wall curves */
     {at:957, n:8, label:'inside — the walls, cold', fade:3, house:0, haze:0.35,
-     curtain:'out', scene:'interior',
+     curtain:'out', scene:'interior', dress:'maitland',
      look(){ all(0);
        set(WASH, 0.34, '#8fa0c0'); set(FRONT, 0.26, '#cfd8e8');
        set(BACK, 0.20, '#5f7fa8'); }},
 
     /* measured: 16:29 is a held 22s look, warmer and fuller than 15:57 */
     {at:989, n:9, label:'the room, warm and full', fade:4, house:0, haze:0.3,
-     curtain:'out', scene:'interior',
+     curtain:'out', scene:'interior', dress:'maitland',
      look(){ all(0);
        set(FRONT, 0.62, '#f0d8b0'); set(WASH, 0.66, '#e8c9a4');
        set(BOOM, 0.34, '#d8b184'); }},
 
     /* measured: fades DOWN in this file run a 2.2s median; this is that number */
     {at:1227, n:10, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.35,
-     curtain:'out', scene:'interior',
+     curtain:'out', scene:'interior', dress:'maitland',
      look(){ all(0); set(WASH, 0.10, '#8fa0c0'); }},
 
     /* measured: 22:14 is the brightest interior frame in the file; 25:19 is
        held 34s — a long, still, bright scene */
     {at:1334, n:11, label:'the arch, and whoever is standing in it', fade:3, house:0, haze:0.4,
-     curtain:'out', scene:'interior',
+     curtain:'out', scene:'interior', dress:'maitland',
      look(){ all(0);
        one(SPOT, 0.7, '#f4eede'); set(FRONT, 0.22, '#dfe8f4');
        set(WASH, 0.16, '#8fa0c0'); }},
@@ -14371,7 +14516,7 @@ function plotBeetlejuice(){
        The blackout that follows is again OUR decision — the recording has no
        measured blackout before the attic at 42:22 either. */
     {at:1894, n:12, label:'blackout — up into the roof', fade:1.6, house:0, haze:0.4,
-     curtain:'out', scene:'interior',
+     curtain:'out', scene:'interior', dress:'maitland',
      look(){ all(0); }},
 
     /* ============ ACT ONE, iii — THE ATTIC ============
@@ -14483,21 +14628,21 @@ function plotBeetlejuice(){
 
     /* ---- the room, redecorated: measured 78:28, 80:39, 94:02 ---- */
     {at:4708, n:26, label:'the room, redecorated — pale and flat', fade:4, house:0, haze:0.4,
-     curtain:'out', scene:'redecorated',
+     curtain:'out', scene:'interior', dress:'deetz',
      look(){ all(0);
        set(FRONT, 0.58, '#f8f0e0'); set(WASH, 0.5, '#efe6d2');
        set(BOOM, 0.22, '#d8c0a0'); }},
 
     /* measured: 80:39 puts a hard green across it */
     {at:4839, n:27, label:'a hard green across the frames', fade:2, house:0, haze:0.5,
-     curtain:'out', scene:'redecorated',
+     curtain:'out', scene:'interior', dress:'deetz',
      look(){ all(0);
        set(WASH, 0.56, '#7fc46a'); set(MOVE, 0.48, '#9fd066');
        set(BACK, 0.22, '#5fae52'); }},
 
     /* measured: 94:02 is the last of the redecorated looks, wide and bright */
     {at:5642, n:28, label:'the whole room, wide open', fade:3, house:0, haze:0.55,
-     curtain:'out', scene:'redecorated',
+     curtain:'out', scene:'interior', dress:'deetz',
      look(){ all(0);
        set(FRONT, 0.55, '#f4e8d0'); set(WASH, 0.62, '#efe6d2');
        set(BACK, 0.5, '#cfd8e8'); set(MOVE, 0.42, '#ffffff');
@@ -14506,7 +14651,7 @@ function plotBeetlejuice(){
     /* MEASURED: a 2.9s blackout at 99:38, which is where the room goes and the
        afterlife arrives */
     {at:5978, n:29, label:'blackout — 2.9s, measured at 99:38', fade:2.2, house:0, haze:0.3,
-     curtain:'out', scene:'redecorated',
+     curtain:'out', scene:'interior', dress:'deetz',
      look(){ all(0); }},
 
     /* ---- the afterlife: measured 103:39 to 113:22, and the colour changes
