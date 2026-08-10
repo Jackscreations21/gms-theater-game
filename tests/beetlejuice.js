@@ -335,6 +335,77 @@ const probe = `
     return SHOW.scenes.map(s=>s.name);
   });
 
+  console.log('--- the house is a wagon (RULING AP) ---');
+
+  const zBox = name => { const sc = sceneFind(name); const b = new THREE.Box3();
+    scene.updateMatrixWorld(true);
+    sc.group.traverse(o=>{ if(o.isMesh) b.expandByObject(o); }); return b; };
+
+  P('the house loads PARKED, hidden behind the last lineset', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('interior');
+    if(!sc.mv) throw new Error('the house does not travel');
+    if(sc.mv.axis !== 'z') throw new Error('it travels on '+sc.mv.axis+', not up and down stage');
+    if(Math.abs(sc.mv.off - BJ_WAGON_BACK) > 1e-6)
+      throw new Error('it loads at '+sc.mv.off+', not parked at '+BJ_WAGON_BACK);
+    const b = zBox('interior'), last = FLY[FLY.length - 1];
+    /* parked, every part of it must be UPSTAGE of the cloth it hides behind */
+    if(b.max.z > last.z)
+      throw new Error('parked it still pokes out to z='+b.max.z.toFixed(2)+
+                      ' past the backdrop at '+last.z.toFixed(2));
+    /* and clear of the brick behind it — this is what the deeper Palace bought */
+    if(b.min.z < PAL_BACK)
+      throw new Error('parked it stands in the brick: z='+b.min.z.toFixed(2)+' against '+PAL_BACK);
+    return 'parked z '+b.min.z.toFixed(2)+' .. '+b.max.z.toFixed(2)+
+           ', behind the backdrop at '+last.z.toFixed(2)+', clear of '+PAL_BACK;
+  });
+
+  P('it slides on, and you can watch it do it', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('interior');
+    const sc = sceneFind('interior');
+    sceneMoveTo('interior', 0);
+    /* TIME the crossing.  The first version of this checked the position half
+       way through a window computed FROM the speed — which is no test at all,
+       because it scales with whatever speed is set and a 400 m/s wagon passed
+       it happily.  What RULING AP actually asks for is that the travel takes
+       long enough to watch, so that is what is measured. */
+    let frames = 0, dark = 0, mid = null;
+    while(sceneTravelling(sc) && frames < 3600){
+      updateStorm(1/60); frames++;
+      if(mid === null && sc.mv.off > BJ_WAGON_BACK/2) mid = sc.mv.off;
+      sc.group.traverse(o=>{ if(o.isMesh && o.layers.mask === 0) dark++; });
+    }
+    const secs = frames/60;
+    if(secs < 2)  throw new Error('the house crossed in '+secs.toFixed(2)+'s — nobody can watch that');
+    if(secs > 12) throw new Error('the house took '+secs.toFixed(1)+'s — the show would wait on it');
+    if(dark) throw new Error(dark+' mesh-frames were dark while it travelled on');
+    if(Math.abs(sc.mv.off) > 0.01) throw new Error('it never arrived: '+sc.mv.off);
+    /* on stage, it plays where it was built */
+    const b = zBox('interior');
+    if(b.max.z < FLY[FLY.length-1].z)
+      throw new Error('it arrived still behind the backdrop');
+    return 'parked '+BJ_WAGON_BACK+' -> on at 0.00 in '+(frames/60).toFixed(1)+'s, lit throughout';
+  });
+
+  P('the landing you can stand on rides the house on and off', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('interior');
+    const sc = sceneFind('interior');
+    const land = sc.walk[0];
+    if(!land) throw new Error('the house files nothing walkable');
+    scene.updateMatrixWorld(true);
+    const parked = land.matrixWorld.elements[14];
+    sceneMoveTo('interior', 0);
+    for(let i=0;i<900;i++) updateStorm(1/60);
+    scene.updateMatrixWorld(true);
+    const on = land.matrixWorld.elements[14];
+    if(Math.abs((on - parked) - Math.abs(BJ_WAGON_BACK)) > 0.05)
+      throw new Error('the landing moved '+(on-parked).toFixed(2)+' where the house moved '+Math.abs(BJ_WAGON_BACK));
+    if(WALKABLE.indexOf(land) < 0) throw new Error('it left WALKABLE while the house was on');
+    return 'the landing travelled '+(on-parked).toFixed(2)+'m with the house, still stood on';
+  });
+
   console.log('--- everything that flies ---');
 
   /* A CLOTH IS THE LAST THING UPSTAGE.  This is the rule the first hang broke:
@@ -356,8 +427,12 @@ const probe = `
 
   P('every set that shares the stage with a cloth stands in FRONT of it', ()=>{
     showLoad('beetlejuice');
+    /* update from the ROOT.  updateMatrixWorld(true) on a child composes
+       against its parent's stale matrixWorld, so a set the mover has just
+       driven reports the position it used to be at (TRAPS.md). */
     const zOf = name => { const sc = sceneFind(name); let z = 0;
-      sc.group.traverse(o=>{ if(o.isMesh){ o.updateMatrixWorld(true);
+      scene.updateMatrixWorld(true);
+      sc.group.traverse(o=>{ if(o.isMesh){
         z = Math.min(z, new THREE.Box3().setFromObject(o).min.z); } }); return z; };
     const bd = FLY.find(ls=>ls.goodsKey === 'bjBackdrop');
     const sk = FLY.find(ls=>ls.goodsKey === 'sky');
@@ -371,7 +446,13 @@ const probe = `
     if(hz - sk.z < CLEAR)
       throw new Error('the house exterior reaches '+hz.toFixed(2)+' against its sky at '+
                       sk.z.toFixed(2)+' — '+(hz - sk.z).toFixed(2)+'m of clearance');
-    /* and the room the wagon carries plays against the backdrop */
+    /* and the room the wagon carries plays against the backdrop — measured
+       where it PLAYS, not where it parks.  The house is a wagon now (RULING
+       AP) and it loads parked upstage of the backdrop, which is the whole
+       point of parking it; asking about its clearance back there answers a
+       question nobody has. */
+    sceneMoveTo('interior', 0);
+    for(let i=0;i<900;i++) updateStorm(1/60);
     const iz = zOf('interior');
     if(iz - bd.z < CLEAR)
       throw new Error('the interior reaches '+iz.toFixed(2)+' against the backdrop at '+
@@ -382,9 +463,12 @@ const probe = `
 
   P('the backdrop and the sky are CLOTHS, on real linesets', ()=>{
     showLoad('beetlejuice');
-    const bd = FLY[12], sk = FLY[13];
-    if(bd.goodsKey !== 'bjBackdrop') throw new Error('line 13 carries '+bd.goodsKey);
-    if(sk.goodsKey !== 'sky')        throw new Error('line 14 carries '+sk.goodsKey);
+    const bd = FLY[13], sk = FLY[12];
+    if(bd.goodsKey !== 'bjBackdrop') throw new Error('line 14 carries '+bd.goodsKey);
+    if(sk.goodsKey !== 'sky')        throw new Error('line 13 carries '+sk.goodsKey);
+    /* the backdrop is on the LAST line, because that is what the wagon hides
+       behind (owner, 2026-08-10) */
+    if(bd !== FLY[FLY.length-1]) throw new Error('the backdrop is not on the final lineset');
     /* the graveyard's backdrop is IN at the top; act two's sky waits out */
     if(Math.abs(bd.pos - TRIMS.bjBackdrop) > 0.01)
       throw new Error('the backdrop is not at its trim: '+bd.pos.toFixed(2));
