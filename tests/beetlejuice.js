@@ -291,7 +291,7 @@ const probe = `
     return 'landing at y='+b.max.y.toFixed(2)+', walkable only with the interior live';
   });
 
-  const SCENES = ['cemetery','house','interior','redecorated','attic','bedroom','afterlife'];
+  const SCENES = ['cemetery','house','interior','redecorated','attic','bedroom','afterlife','crypt','signset','bare'];
 
   P('every scene is registered and exactly one is ever live', ()=>{
     showLoad('beetlejuice');
@@ -446,10 +446,69 @@ const probe = `
     const iv = CUES.findIndex(c=>/INTERVAL/.test(c.label));
     const seq = [];
     CUES.slice(iv + 1).forEach(c=>{ if(seq[seq.length-1] !== c.scene) seq.push(c.scene); });
-    const want = ['house','redecorated','afterlife'];
+    /* the afterlife appears TWICE on purpose: 118:04 sits between the
+       afterlife looks and the chevron at 121:54, so the set goes out to the
+       sign and comes back.  That is what the recording says happened. */
+    const want = ['house','redecorated','afterlife','signset','afterlife','bare'];
     if(seq.join('>') !== want.join('>'))
       throw new Error('act two runs '+seq.join(' > ')+', the recording says '+want.join(' > '));
     return seq.join(' > ');
+  });
+
+  console.log('--- the remainder: the crypt, the sign, the bare stage ---');
+
+  P('the crypt has a doorway you can climb to', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('crypt');
+    if(!byName('bj:crypt')) throw new Error('no crypt');
+    const s = (()=>{ let r=null; SHOW.group.traverse(o=>{ if(!r && o.name==='bj:cryptStep') r=o; }); return r; })();
+    if(!s) throw new Error('no step');
+    if(WALKABLE.indexOf(s) < 0) throw new Error('the step is not walkable with the crypt on');
+    const b = box(s);
+    if(b.max.y < 0.4) throw new Error('the step is at deck level, y='+b.max.y.toFixed(2));
+    sceneShow('cemetery');
+    if(WALKABLE.indexOf(s) >= 0) throw new Error('the step stayed walkable off stage');
+    return 'step at y='+b.max.y.toFixed(2)+', walkable only with the crypt live';
+  });
+
+  /* RULING AO again, and this is where it bites hardest: the real production's
+     signage is precisely the authored detail the ruling excludes. */
+  P('the sign carries OUR wording, lit, over something to stand on', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('signset');
+    const s = byName('bj:sign');
+    if(!s) throw new Error('no sign');
+    if(!s.material.emissive) throw new Error('the sign is not lit');
+    if(!s.material.map) throw new Error('the sign carries no wording');
+    if(!byName('bj:signFrame')) throw new Error('the sign hangs in nothing');
+    const r = (()=>{ let x=null; SHOW.group.traverse(o=>{ if(!x && o.name==='bj:rostrum') x=o; }); return x; })();
+    if(!r) throw new Error('no rostrum');
+    if(WALKABLE.indexOf(r) < 0) throw new Error('the rostrum cannot be stood on');
+    return 'lit panel with a texture, framed, rostrum walkable';
+  });
+
+  P('the bare stage is masking and a ghost light, not an empty group', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('bare');
+    const b = sceneFind('bare');
+    let m = 0; b.group.traverse(o=>{ if(o.isMesh) m++; });
+    if(m < 6) throw new Error('the bare stage is only '+m+' pieces');
+    if(!byName('bj:masking')) throw new Error('no masking — that is an empty stage, not a bare one');
+    if(!byName('bj:ghostLight')) throw new Error('no ghost light');
+    /* the call happens on it, which is the whole reason it exists */
+    const call = CUES.find(c=>/curtain call/.test(c.label));
+    if(call.scene !== 'bare') throw new Error('the call happens in '+call.scene);
+    return m+' pieces, and the call is on it';
+  });
+
+  P('act one runs across five sets and act two across five', ()=>{
+    showLoad('beetlejuice');
+    const iv = CUES.findIndex(c=>/INTERVAL/.test(c.label));
+    const one = new Set(CUES.slice(0, iv).map(c=>c.scene));
+    const two = new Set(CUES.slice(iv + 1).map(c=>c.scene));
+    if(one.size < 5) throw new Error('act one uses only '+one.size+' set(s)');
+    if(two.size < 5) throw new Error('act two uses only '+two.size+' set(s)');
+    return 'act one: '+[...one].join(', ')+' | act two: '+[...two].join(', ');
   });
 
   P('the redecorated room is the same room, on the same arc', ()=>{
@@ -495,16 +554,6 @@ const probe = `
   });
 
   /* act one now plays across four sets; the interval re-dresses for act two */
-  P('act one runs across four sets and act two across two', ()=>{
-    showLoad('beetlejuice');
-    const iv = CUES.findIndex(c=>/INTERVAL/.test(c.label));
-    const one = new Set(CUES.slice(0, iv).map(c=>c.scene));
-    const two = new Set(CUES.slice(iv + 1).map(c=>c.scene));
-    if(one.size < 4) throw new Error('act one uses only '+one.size+' set(s)');
-    if(two.size < 2) throw new Error('act two uses only '+two.size+' set(s)');
-    return 'act one: '+[...one].join(', ')+' | act two: '+[...two].join(', ');
-  });
-
   console.log('--- the plot: measured times, interpreted levels ---');
 
   P('it stands by at the top with a preset and the house open', ()=>{
