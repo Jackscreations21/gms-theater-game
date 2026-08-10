@@ -13531,6 +13531,73 @@ SHOWS.beetlejuice = {
       }
     }
 
+    /* ================================================================
+       SCENE — THE AFTERLIFE.  Measured 103:39 to 113:22, four held looks,
+       and the colour changes between them: red at 103:39, blue at 107:45,
+       cyan at 113:22.  Nested frames receding upstage — the cheapest
+       high-impact geometry in the whole round.
+
+       These are NEON, not emissive meshes, and that is deliberate: the
+       machinery in p5d already fades them off the cue's `neon` field, hums
+       them at mains frequency and lets one in five flicker.  Each tube
+       therefore needs its OWN material, because updateNeon writes a colour
+       per tube every frame — the one place in this file where a material
+       per object is correct rather than the draw-call trap.
+       ================================================================ */
+    const aft = sceneAdd('afterlife', 'THE AFTERLIFE');
+    {
+      /* five frames, biggest downstage, receding — the read is the
+         perspective, so the sizes fall away faster than the spacing */
+      const rings = [
+        {w:12.6, h:8.4, z:-2.2,  c:'#9fd066'},
+        {w: 9.8, h:6.6, z:-5.0,  c:'#5fd8e8'},
+        {w: 7.4, h:5.0, z:-7.6,  c:'#d85fc0'},
+        {w: 5.2, h:3.5, z:-9.9,  c:'#5fd8e8'},
+        {w: 3.4, h:2.3, z:-11.8, c:'#9fd066'}
+      ];
+      /* NOT neonTube: it runs a CatmullRom curve through the corner points,
+         which overshoots a right angle badly — a 12.6m frame came out 14.5m
+         wide and dipped 0.53m through the deck.  Four merged bars give a hard
+         edge, and registering the mesh on SHOW.neon by hand keeps the whole
+         machinery (fade off the cue, mains hum, one in five flickering). */
+      rings.forEach(r=>{
+        const y0 = 0.35, y1 = y0 + r.h, x = r.w/2, t = 0.15;
+        const parts = [
+          {geo:new T.BoxGeometry(r.w + t, t, t), pos:[0, y0, 0]},
+          {geo:new T.BoxGeometry(r.w + t, t, t), pos:[0, y1, 0]},
+          {geo:new T.BoxGeometry(t, r.h, t),     pos:[-x, (y0 + y1)/2, 0]},
+          {geo:new T.BoxGeometry(t, r.h, t),     pos:[ x, (y0 + y1)/2, 0]}
+        ];
+        /* its own MeshBasicMaterial, because updateNeon writes a colour into
+           every registered tube every frame */
+        const m = new T.Mesh(mergeParts(parts), new T.MeshBasicMaterial({color:new T.Color(r.c)}));
+        m.name = 'bj:ring'; m.position.z = r.z;
+        m.raycast = ()=>{};                    // neon is scenery, not a target
+        aft.group.add(m);
+        SHOW.neon.push({mesh:m, base:new T.Color(r.c)});
+      });
+
+      /* the large angular structure measured at 121:54 — a skeletal chevron
+         across the opening, same language as the frames but built as
+         structure, so ONE shared material does for all of it */
+      {
+        const green = new T.MeshStandardMaterial({color:0x4f8f3a, emissive:0x2f6f22,
+                                                  emissiveIntensity:0.9, roughness:.6});
+        const parts = [];
+        for(let i = 0; i < 7; i++){
+          const t = i/6, x = -6.2 + 12.4*t;
+          const y = 2.2 + Math.abs(Math.sin(t*3.1416))*2.6;
+          parts.push({geo:new T.BoxGeometry(2.2, 0.22, 0.22), pos:[x, y, -13.4],
+                      rot:[0, 0, (t - 0.5)*1.1]});
+          if(i < 6)
+            parts.push({geo:new T.BoxGeometry(0.18, 1.9, 0.18), pos:[x + 1.0, y - 0.95, -13.4]});
+        }
+        parts.push({geo:new T.BoxGeometry(12.8, 0.26, 0.26), pos:[0, 1.1, -13.4]});
+        const m = new T.Mesh(mergeParts(parts), green);
+        m.name = 'bj:chevron'; aft.group.add(m);
+      }
+    }
+
     /* ---- the show curtain ---- */
     {
       const c = bjCurtainCanvas();
@@ -13740,97 +13807,99 @@ function plotBeetlejuice(){
      curtain:'shut', scene:'bedroom',
      look(){ all(0); }},
 
-    /* the room is re-dressed behind the shut cloth, which is the whole reason
-       an interval exists */
+    /* ============ ACT TWO ============
+       The order here follows the MEASUREMENT, and it is not the order this
+       chain built the scenes in: the exterior carries 72:58, at the very top
+       of act two; the redecorated room runs 78:28 to 94:02; the afterlife
+       103:39 to 113:22; the chevron 121:54; the call 141:02.  PR 4 had the
+       exterior last, which was the wrong way round. */
     {n:21, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
-     curtain:'shut', scene:'redecorated',
+     curtain:'shut', scene:'house',
      look(){ all(0); }},
 
-    /* ============ ACT TWO, i — THE ROOM, REDECORATED ============
-       measured: 67:46, 78:28, 80:39 and 94:02 — four looks on the redressed
-       room, the most-measured configuration in the file */
-    {n:22, label:'act two — the room, redecorated', fade:5, house:0, haze:0.4,
-     curtain:'out', scene:'redecorated',
+    /* measured: 72:58 is the exterior's act-two look, held 82s — the longest
+       held shot anywhere in the second half */
+    {n:22, label:'act two — outside again, colder', fade:5, house:0, haze:0.65,
+     curtain:'out', scene:'house',
      look(){ all(0);
-       set(FRONT, 0.5, '#f4e8d0'); set(WASH, 0.54, '#e8d8c0');
-       set(BOOM, 0.24, '#d8c0a0'); }},
+       set(CYC, 0.42, '#24507f'); set(BACK, 0.34, '#3f6ea6');
+       set(WASH, 0.14, '#4a6a90'); }},
 
-    /* measured: 78:28 is paler and flatter than 67:46 */
-    {n:23, label:'pale, and flatter', fade:3, house:0, haze:0.35,
+    {n:23, label:'the moon again, harder', fade:3, house:0, haze:0.6,
+     curtain:'out', scene:'house',
+     look(){ all(0);
+       set(CYC, 0.74, '#2b5896'); set(BACK, 0.22, '#6f8fc0'); }},
+
+    {n:24, label:'front and centre, on the porch', fade:2.2, house:0, haze:0.5,
+     curtain:'out', scene:'house',
+     look(){ all(0);
+       aimFrontAt(FRONT, 0, 1.7, -4.0);
+       set(FRONT, 0.7, '#efe6d2'); set(CYC, 0.16, '#22467c'); }},
+
+    /* INTERPRETED: no measured blackout sits between 94:02 and the exterior
+       looks, so this cover is ours */
+    {n:25, label:'blackout — back inside', fade:1.6, house:0, haze:0.4,
+     curtain:'out', scene:'house',
+     look(){ all(0); }},
+
+    /* ---- the room, redecorated: measured 78:28, 80:39, 94:02 ---- */
+    {n:26, label:'the room, redecorated — pale and flat', fade:4, house:0, haze:0.4,
      curtain:'out', scene:'redecorated',
      look(){ all(0);
-       set(FRONT, 0.62, '#f8f0e0'); set(WASH, 0.46, '#efe6d2'); }},
+       set(FRONT, 0.58, '#f8f0e0'); set(WASH, 0.5, '#efe6d2');
+       set(BOOM, 0.22, '#d8c0a0'); }},
 
     /* measured: 80:39 puts a hard green across it */
-    {n:24, label:'a hard green across the frames', fade:2, house:0, haze:0.5,
+    {n:27, label:'a hard green across the frames', fade:2, house:0, haze:0.5,
      curtain:'out', scene:'redecorated',
      look(){ all(0);
        set(WASH, 0.56, '#7fc46a'); set(MOVE, 0.48, '#9fd066');
        set(BACK, 0.22, '#5fae52'); }},
 
-    {n:25, label:'the settee, and one lamp', fade:3, house:0, haze:0.3,
-     curtain:'out', scene:'redecorated',
-     look(){ all(0);
-       one(SPOT, 0.6, '#f4eede'); set(BOOM, 0.16, '#d8c0a0'); }},
-
     /* measured: 94:02 is the last of the redecorated looks, wide and bright */
-    {n:26, label:'the whole room, wide open', fade:3, house:0, haze:0.55,
+    {n:28, label:'the whole room, wide open', fade:3, house:0, haze:0.55,
      curtain:'out', scene:'redecorated',
      look(){ all(0);
        set(FRONT, 0.55, '#f4e8d0'); set(WASH, 0.62, '#efe6d2');
        set(BACK, 0.5, '#cfd8e8'); set(MOVE, 0.42, '#ffffff');
        set(BOOM, 0.3, '#d8c0a0'); }},
 
-    {n:27, label:'out on the measured 2.2', fade:2.2, house:0, haze:0.4,
-     curtain:'out', scene:'redecorated',
-     look(){ all(0); set(WASH, 0.08, '#efe6d2'); }},
-
-    /* MEASURED: a 12.4s fade DOWN at 113:18, from Y 97 to 24 — one of the
-       largest clean slopes in the whole file — landing in a 6.6s blackout at
-       113:23. Both numbers are real, and this cue is both of them. */
-    {n:28, label:'blackout — a measured 12.4s down at 113:18', fade:12.4, house:0, haze:0.3,
+    /* MEASURED: a 2.9s blackout at 99:38, which is where the room goes and the
+       afterlife arrives */
+    {n:29, label:'blackout — 2.9s, measured at 99:38', fade:2.2, house:0, haze:0.3,
      curtain:'out', scene:'redecorated',
      look(){ all(0); }},
 
-    /* ============ ACT TWO, ii — OUTSIDE AGAIN ============
-       measured: the exterior carries 72:58 in act two (and 62:44 in act one,
-       which our version does not use — we play act one indoors) */
-    {n:29, label:'outside again — the house, colder', fade:5, house:0, haze:0.65,
-     curtain:'out', scene:'house',
+    /* ---- the afterlife: measured 103:39 to 113:22, and the colour changes
+       between the looks. The frames are neon, so the CUE fades them. ---- */
+    {n:30, label:'the afterlife — the frames come up', fade:4, house:0, haze:0.7,
+     curtain:'out', scene:'afterlife', neon:1.1,
      look(){ all(0);
-       set(CYC, 0.42, '#24507f'); set(BACK, 0.34, '#3f6ea6');
-       set(WASH, 0.14, '#4a6a90'); }},
+       set(BACK, 0.2, '#5fd8e8'); set(WASH, 0.10, '#4a6a90'); }},
 
-    {n:30, label:'the moon again, harder', fade:3, house:0, haze:0.6,
-     curtain:'out', scene:'house',
+    /* measured: 107:45 is a single figure inside the frames, held 22s */
+    {n:31, label:'one of them, inside it', fade:2.5, house:0, haze:0.65,
+     curtain:'out', scene:'afterlife', neon:1.25,
+     look(){ all(0); one(SPOT, 0.55, '#eaf4ff'); }},
+
+    /* measured: 113:18 is a 12.4s fade DOWN from Y 97 to 24 — one of the
+       largest clean slopes in the file, and it is this cue's fade time */
+    {n:32, label:'the frames dim — a measured 12.4s at 113:18', fade:12.4, house:0, haze:0.6,
+     curtain:'out', scene:'afterlife', neon:0.45,
+     look(){ all(0); set(BACK, 0.08, '#5fd8e8'); }},
+
+    /* measured: 121:54 is the chevron across the whole opening */
+    {n:33, label:'the chevron, and everything on it', fade:2, house:0, haze:0.8,
+     curtain:'out', scene:'afterlife', neon:1.35,
      look(){ all(0);
-       set(CYC, 0.74, '#2b5896'); set(BACK, 0.22, '#6f8fc0'); }},
+       set(WASH, 0.5, '#7fc46a'); set(MOVE, 0.6, '#9fd066');
+       set(BACK, 0.42, '#5fae52'); set(FRONT, 0.3, '#d8e8b0'); }},
 
-    {n:31, label:'front and centre', fade:2.2, house:0, haze:0.5,
-     curtain:'out', scene:'house',
-     look(){ all(0);
-       aimFrontAt(FRONT, 0, 1.7, -4.0);
-       set(FRONT, 0.7, '#efe6d2'); set(CYC, 0.16, '#22467c'); }},
-
-    {n:32, label:'the whole stage, wide open', fade:3, house:0, haze:0.8,
-     curtain:'out', scene:'house',
-     look(){ all(0);
-       set(FRONT, 0.5, '#e6dcc6'); set(WASH, 0.58, '#cfd8e8');
-       set(BACK, 0.62, '#5f8fc8'); set(CYC, 0.44, '#2f5f9c');
-       set(MOVE, 0.5, '#8fd8f0'); }},
-
-    {n:33, label:'the button — everything, briefly', fade:1, house:0, haze:0.85,
-     curtain:'out', scene:'house',
-     look(){ all(0);
-       set(FRONT, 0.8, '#fff4e0'); set(WASH, 0.85, '#ffffff');
-       set(BACK, 0.8, '#8fd8f0'); set(CYC, 0.6, '#3f79bf');
-       set(MOVE, 0.8, '#ffffff'); set(BOOM, 0.5, '#e8d2a8'); }},
-
-    /* MEASURED: the curtain call is unmistakable in the file — 82 events in
-       the last 2.5 minutes, lights bumping up and down every 1 to 3 seconds,
-       starting at 141:02. Found without ever seeing a frame. */
+    /* MEASURED: the curtain call is unmistakable — 82 events in the last 2.5
+       minutes, lights bumping every 1 to 3 seconds, starting at 141:02.
+       Found without ever seeing a frame. */
     {n:34, label:'curtain call', fade:1.4, house:0, haze:0.4,
-     curtain:'out', scene:'house',
+     curtain:'out', scene:'afterlife', neon:1.4,
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -3.0);
        set(FRONT, 0.85, '#fff2dc'); set(WASH, 0.7, '#ffffff');
@@ -13838,17 +13907,17 @@ function plotBeetlejuice(){
 
     /* MEASURED: 7.0s down into 7.3s of black at 143:35 — the show's last cue */
     {n:35, label:'blackout — the curtain comes in', fade:7, house:0, haze:0.2,
-     curtain:'shut', scene:'house',
+     curtain:'shut', scene:'afterlife', neon:0,
      look(){ all(0); }},
 
     {n:36, label:'curtain warmers — the cloth, and nothing else', fade:4, house:0, haze:0,
-     curtain:'shut', scene:'house',
+     curtain:'shut', scene:'afterlife', neon:0,
      look(){ all(0);
        onTheCloth();                     // up at the cloth, never down at the deck
        set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }},
 
     {n:37, label:'house up — the warmers stay', fade:8, house:0.6, haze:0,
-     curtain:'shut', scene:'house',
+     curtain:'shut', scene:'afterlife', neon:0,
      look(){ all(0);
        onTheCloth();
        set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }}
@@ -13867,7 +13936,8 @@ function plotBeetlejuice(){
       n:L.n, label:L.label, fade:L.fade, follow:null,
       lx:snapshotLX(), fly:snapshotFly(), sfx:null,
       house:L.house, work:0, practical:0, haze:L.haze,
-      rain:0, storm:false, fire:null, neon:1,
+      rain:0, storm:false, fire:null,
+      neon:L.neon === undefined ? 1 : L.neon,
       scene:L.scene || null
     });
   });

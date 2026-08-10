@@ -291,7 +291,7 @@ const probe = `
     return 'landing at y='+b.max.y.toFixed(2)+', walkable only with the interior live';
   });
 
-  const SCENES = ['cemetery','house','interior','redecorated','attic','bedroom'];
+  const SCENES = ['cemetery','house','interior','redecorated','attic','bedroom','afterlife'];
 
   P('every scene is registered and exactly one is ever live', ()=>{
     showLoad('beetlejuice');
@@ -379,6 +379,77 @@ const probe = `
     }
     return hills.length+' backings, narrowest '+
            Math.min.apply(null, hills.map(b=>b.max.x-b.min.x)).toFixed(1)+'m across a '+BJ.opW+'m opening';
+  });
+
+  /* The frames are neon, so the existing p5d machinery drives them off each
+     cue's neon field.  A material per tube is REQUIRED here, because
+     updateNeon writes a colour into every tube every frame — this is the one
+     place in this show where sharing one material would be the bug.
+     NOTE: no backticks anywhere in this probe. The whole thing is a template
+     string, so one backtick in a COMMENT ends it and the suite dies at parse
+     time — the same family as the backslash and apostrophe traps. */
+  P('the afterlife frames are registered as neon, and nest', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('afterlife');
+    const rings = [];
+    sceneFind('afterlife').group.traverse(o=>{ if(o.isMesh && o.name === 'bj:ring') rings.push(o); });
+    if(rings.length < 5) throw new Error('only '+rings.length+' frames');
+    if(!SHOW.neon || SHOW.neon.length < 5)
+      throw new Error('the frames are not on SHOW.neon, so no cue can fade them');
+    /* each tube its own material, or updateNeon would drive them all together */
+    const mats = new Set(rings.map(r=>r.material.uuid));
+    if(mats.size !== rings.length)
+      throw new Error(mats.size+' materials for '+rings.length+' tubes — they would fade as one');
+    /* and they must actually nest: narrower the further upstage */
+    const by = rings.map(r=>{ const b = box(r);
+      return {w:b.max.x - b.min.x, z:(b.min.z + b.max.z)/2}; })
+      .sort((a,b)=>b.z - a.z);                    // downstage first
+    for(let i = 1; i < by.length; i++)
+      if(by[i].w >= by[i-1].w)
+        throw new Error('frame '+i+' is '+by[i].w.toFixed(2)+'m, no narrower than the one downstage');
+    return rings.length+' frames, '+by[0].w.toFixed(1)+'m down to '+by[by.length-1].w.toFixed(1)+'m';
+  });
+
+  P('the cue drives the neon, and the level is not stuck at one', ()=>{
+    showLoad('beetlejuice');
+    const lv = CUES.map(c=>c.neon);
+    if(lv.some(v=>v === undefined)) throw new Error('a cue carries no neon level');
+    const distinct = new Set(lv);
+    if(distinct.size < 3)
+      throw new Error('only '+distinct.size+' distinct neon level(s) — the cue field is being ignored');
+    const dark = CUES.filter(c=>/blackout — the curtain/.test(c.label));
+    if(!dark.length) throw new Error('no final blackout to check');
+    if(dark[0].neon > 0.02) throw new Error('the frames are still lit in the final blackout');
+    /* and it actually moves the tubes */
+    const aftCue = CUES.findIndex(c=>c.scene === 'afterlife' && c.neon > 1);
+    fireCue(aftCue);
+    for(let i=0;i<200;i++) updateNeon(0.05);
+    if(SHOW.neonLevel < 0.5) throw new Error('the neon did not come up: '+SHOW.neonLevel.toFixed(2));
+    return distinct.size+' distinct levels, live at '+SHOW.neonLevel.toFixed(2);
+  });
+
+  P('the chevron spans the opening it is seen through', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('afterlife');
+    const c = byName('bj:chevron');
+    if(!c) throw new Error('no chevron');
+    const b = box(c);
+    if(b.max.x - b.min.x < 10)
+      throw new Error('the chevron is only '+(b.max.x-b.min.x).toFixed(2)+'m across');
+    if(b.max.y > BJ.opH) throw new Error('it reaches y='+b.max.y.toFixed(2));
+    return (b.max.x-b.min.x).toFixed(1)+'m across, '+b.max.y.toFixed(1)+'m up';
+  });
+
+  /* act two now follows the MEASURED order, which PR 4 had inverted */
+  P('act two runs in the order the recording puts it in', ()=>{
+    showLoad('beetlejuice');
+    const iv = CUES.findIndex(c=>/INTERVAL/.test(c.label));
+    const seq = [];
+    CUES.slice(iv + 1).forEach(c=>{ if(seq[seq.length-1] !== c.scene) seq.push(c.scene); });
+    const want = ['house','redecorated','afterlife'];
+    if(seq.join('>') !== want.join('>'))
+      throw new Error('act two runs '+seq.join(' > ')+', the recording says '+want.join(' > '));
+    return seq.join(' > ');
   });
 
   P('the redecorated room is the same room, on the same arc', ()=>{
