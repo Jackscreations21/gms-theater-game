@@ -18,4 +18,16 @@ one of these drew it.
 Each is ~40 lines of probe on top of the same jsdom harness the tests use.
 Copy one and change the eye position to look at something else.
 
+One outlier — it measures a video, not the game, so it loads no harness at
+all, only ffmpeg (`winget install Gyan.FFmpeg`, then a FRESH shell):
+
+    node video.js <video> [--skip=SECONDS] [--fresh]
+
+What can be read off a recording of a real show: whether the camera is
+locked off (everything else depends on that), where the blackouts are, how
+long the fades take, and how the acts break. It sorts findings by how much
+they can be trusted, because a camera cut looks exactly like a cue. First
+run takes a few minutes and caches to the OS temp dir; `--fresh` re-measures.
+Nothing from the video is written into the repo — derived numbers only.
+
 Characters are distance bands: `#` nearest … `.` furthest, space = nothing hit.
