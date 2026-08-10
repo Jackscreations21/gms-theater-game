@@ -214,9 +214,14 @@ const probe = `
       changes++;
       const r = CUES[i].fly.find(x=>x.id === ls.id);
       const clothIn = r && r.target < OUT_TRIM - 1;
-      /* the cue BEFORE it must have left the stage dark, because the swap is
-         instant and the incoming cue's fade starts from wherever it starts */
-      const cameFromDark = !CUES[i-1].lx.some(x=>x.lvl > 0.02);
+      /* The cue BEFORE it must have left the stage dark, because the swap is
+         instant and the incoming cue's fade starts from wherever it starts.
+         A dark RIG is not enough: with the house up the audience can see the
+         stage perfectly well, which is why the interval house has to be
+         checked too.  A negative check caught this — narrowing it to the rig
+         alone let an interval re-dress pass with the cloth out. */
+      const prev = CUES[i-1];
+      const cameFromDark = !prev.lx.some(x=>x.lvl > 0.02) && prev.house <= 0.05;
       if(clothIn) how.push(CUES[i].n + ':cloth');
       else if(cameFromDark) how.push(CUES[i].n + ':blackout');
       else inView.push(CUES[i].n);
@@ -286,16 +291,147 @@ const probe = `
     return 'landing at y='+b.max.y.toFixed(2)+', walkable only with the interior live';
   });
 
-  P('all three scenes are registered and exactly one is ever live', ()=>{
+  const SCENES = ['cemetery','house','interior','redecorated','attic','bedroom'];
+
+  P('every scene is registered and exactly one is ever live', ()=>{
     showLoad('beetlejuice');
-    if(SHOW.scenes.length !== 3) throw new Error(SHOW.scenes.length+' scenes, expected 3');
-    for(const n of ['cemetery','house','interior']){
+    if(SHOW.scenes.length !== SCENES.length)
+      throw new Error(SHOW.scenes.length+' scenes, expected '+SCENES.length);
+    for(const n of SCENES){
+      if(!sceneFind(n)) throw new Error('no scene called '+n);
       sceneShow(n);
       const on = SHOW.scenes.filter(s=>s.on);
       if(on.length !== 1) throw new Error(on.length+' scenes live at once with '+n+' up');
       if(on[0].name !== n) throw new Error('asked for '+n+', got '+on[0].name);
     }
     return SHOW.scenes.map(s=>s.name);
+  });
+
+  console.log('--- the three dressings ---');
+
+  /* every scene has to read through the ONE portal, and every scene has to be
+     substantial enough to be worth a change — checked in a single sweep so a
+     new scene cannot be added later without meeting both */
+  /* Two OPPOSITE rules, which is why this is one sweep and not one limit.
+     A piece standing in the acting area sits close to the portal, so it must
+     fit INSIDE the opening or it shows past the frame.  A backing far upstage
+     must be WIDER than the opening, or the portal reveals its edge instead of
+     cropping it — masking a backdrop to the opening exactly is the classic
+     mistake.  Split on the piece's centre, not its near face, so one long
+     rafter does not read as a backing. */
+  const UPSTAGE_OF = -11;
+
+  P('every scene is substantial, and fits what it is seen through', ()=>{
+    showLoad('beetlejuice');
+    const out = [];
+    for(const n of SCENES){
+      const s = sceneFind(n);
+      sceneShow(n);
+      let m = 0, backing = 0;
+      s.group.traverse(o=>{
+        if(!o.isMesh) return;
+        m++;
+        const b = box(o);
+        if(b.min.y < -0.01) throw new Error(n+' has a piece below the deck at '+b.min.y.toFixed(2));
+        const cz = (b.min.z + b.max.z)/2;
+        const wide = (b.max.x - b.min.x);
+        const H = BJ.opW/2;
+        if(cz > UPSTAGE_OF){
+          if(b.max.y > BJ.opH)
+            throw new Error(n+' has an acting-area piece at y='+b.max.y.toFixed(2)+
+                            ' through a '+BJ.opH+' opening');
+          /* it must lie WITHIN the opening, not merely be narrow enough — a
+             piece off to one side hides behind a portal leg and shows from
+             the side seats, which is worse than not building it */
+          if(b.min.x < -H - 0.01 || b.max.x > H + 0.01)
+            throw new Error(n+' has an acting-area piece spanning x '+
+                            b.min.x.toFixed(2)+' to '+b.max.x.toFixed(2)+
+                            ', the opening is +-'+H.toFixed(2));
+        } else if(wide > BJ.opW){
+          backing++;                       // a proper backing: wider than the hole
+        }
+      });
+      if(m < 6) throw new Error(n+' is only '+m+' pieces');
+      out.push(n+':'+m+(backing ? '+'+backing+'backing' : ''));
+    }
+    return out.join(' ');
+  });
+
+  /* The sweep above COUNTS backings; it cannot demand one, because a room with
+     walls does not have a backdrop. So the one scene that is backed by a
+     backdrop gets its own assertion: every hill must be wider than the opening
+     it masks, or the portal reveals its edge. (The sweep alone passed happily
+     with the hills narrowed to 8m — a negative check found that.) */
+  P('the cemetery hills mask the opening rather than sitting inside it', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('cemetery');
+    /* by NAME, not by width — guessing "anything wide and upstage" swept in the
+       moon's halo at 6.2m and reported it as a backdrop with a visible edge */
+    const hills = [];
+    sceneFind('cemetery').group.traverse(o=>{
+      if(o.isMesh && o.name === 'bj:hill') hills.push(box(o));
+    });
+    if(hills.length < 3) throw new Error('only '+hills.length+' upstage backing piece(s)');
+    for(const b of hills){
+      const w = b.max.x - b.min.x;
+      if(w <= BJ.opW)
+        throw new Error('a backing is '+w.toFixed(2)+'m across a '+BJ.opW+'m opening — its edge shows');
+    }
+    return hills.length+' backings, narrowest '+
+           Math.min.apply(null, hills.map(b=>b.max.x-b.min.x)).toFixed(1)+'m across a '+BJ.opW+'m opening';
+  });
+
+  P('the redecorated room is the same room, on the same arc', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('interior');
+    const a = box(byName('bj:innerWall'));
+    sceneShow('redecorated');
+    const b = box(byName('bj:redWall'));
+    /* same footprint, or it is a different room rather than a re-dressing */
+    if(Math.abs((a.max.x - a.min.x) - (b.max.x - b.min.x)) > 0.4)
+      throw new Error('the two walls are different widths');
+    if(Math.abs((a.max.z - a.min.z) - (b.max.z - b.min.z)) > 0.4)
+      throw new Error('the two walls curve differently');
+    if(!byName('bj:settee')) throw new Error('the redecorated room is unfurnished');
+    return 'both walls '+(b.max.x-b.min.x).toFixed(1)+'m across, '+(b.max.z-b.min.z).toFixed(1)+'m deep';
+  });
+
+  P('the bed can be sat on, only while the bedroom is on the stage', ()=>{
+    showLoad('beetlejuice');
+    const q = (()=>{ let r=null; SHOW.group.traverse(o=>{ if(!r && o.name==='bj:bed') r=o; }); return r; })();
+    if(!q) throw new Error('no bed was built');
+    if(WALKABLE.indexOf(q) >= 0) throw new Error('you can sit on the bed during the cemetery');
+    sceneShow('bedroom');
+    if(WALKABLE.indexOf(q) < 0) throw new Error('the bed is not walkable with the bedroom on');
+    sceneShow('attic');
+    if(WALKABLE.indexOf(q) >= 0) throw new Error('the bed stayed walkable in the attic');
+    return 'the bed enters and leaves WALKABLE with its scene';
+  });
+
+  P('the attic has a roof over it and a model under it', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('attic');
+    const r = byName('bj:rafters'), m = byName('bj:model');
+    if(!r) throw new Error('no rafters');
+    if(!m) throw new Error('no model');
+    const rb = box(r), mb = box(m);
+    if(rb.max.y < 4) throw new Error('the roof is only '+rb.max.y.toFixed(2)+'m up');
+    /* on a table means it STARTS at table height and is still model-sized —
+       not sitting on the floor, and not a full-size building */
+    if(mb.min.y < 0.85) throw new Error('the model starts at '+mb.min.y.toFixed(2)+'m — not on a table');
+    if(mb.max.y > 1.8) throw new Error('the model reaches '+mb.max.y.toFixed(2)+'m — too tall to be a model');
+    return 'roof to '+rb.max.y.toFixed(1)+'m, model on a table at '+mb.max.y.toFixed(2)+'m';
+  });
+
+  /* act one now plays across four sets; the interval re-dresses for act two */
+  P('act one runs across four sets and act two across two', ()=>{
+    showLoad('beetlejuice');
+    const iv = CUES.findIndex(c=>/INTERVAL/.test(c.label));
+    const one = new Set(CUES.slice(0, iv).map(c=>c.scene));
+    const two = new Set(CUES.slice(iv + 1).map(c=>c.scene));
+    if(one.size < 4) throw new Error('act one uses only '+one.size+' set(s)');
+    if(two.size < 2) throw new Error('act two uses only '+two.size+' set(s)');
+    return 'act one: '+[...one].join(', ')+' | act two: '+[...two].join(', ');
   });
 
   console.log('--- the plot: measured times, interpreted levels ---');
