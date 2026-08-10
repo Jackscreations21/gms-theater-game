@@ -10,7 +10,7 @@ checklist in HANDOFF.md.
 ```sh
 cd tests
 npm install       # once — jsdom and three@0.128
-npm test          # all 17 suites, exits non-zero if any fail
+npm test          # all 18 suites, exits non-zero if any fail
 node real.js      # boots the whole file, expect "fatal": null
 ```
 
@@ -35,6 +35,7 @@ node real.js      # boots the whole file, expect "fatal": null
 | `vr.js` | WebXR: rig, sticks, desks, ropes, GO, bodies |
 | `carp.js` | the carpenters: catalogue, planner, the lead, the build at the mark, the screen |
 | `workshop.js` | the workshop round: `mergeParts`, the mesh census budget, and the parts that must never be merged |
+| `beetlejuice.js` | the fifth show: RULING AO's interpretation note, the portal inside the house opening, the scene machinery going inert when it is off, and the measured fade times |
 
 All 17 are at `--- failures: 0 ---`. **Keep them there.** Every suite
 exits non-zero on failure, including a failure to boot.

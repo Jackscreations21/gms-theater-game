@@ -44,11 +44,20 @@ const probe = `
 
   console.log('--- the murder at haversham manor ---');
 
-  P('beetlejuice is gone and the play is in', ()=>{
-    if(SHOWS.beetlejuice) throw new Error('beetlejuice is still in the book');
-    if(!SHOWS.goeswrong) throw new Error('the play is not in the book');
+  /* This assertion used to read "beetlejuice is gone and the play is in", and
+     it guarded a removal that predates this repo's first commit — no reason for
+     it was ever recorded anywhere.  The owner has since supplied a recording of
+     a Beetlejuice performance and asked for the show, and RULING AO settles how
+     close its scenery may sit to the real staging.  So the removal is REVERSED,
+     deliberately and on the record, and what is worth guarding changed with it:
+     the play must not have been displaced to make room, and the book must hold
+     all five.  Its own suite is tests/beetlejuice.js. */
+  P('the book holds five, beetlejuice among them, the play still in', ()=>{
+    if(!SHOWS.beetlejuice) throw new Error('beetlejuice is not in the book');
+    if(!SHOWS.goeswrong) throw new Error('the play was displaced to make room');
     const names = Object.keys(SHOWS).map(k=>SHOWS[k].name);
-    if(names.indexOf('BEETLEJUICE') >= 0) throw new Error('still listed');
+    if(names.indexOf('BEETLEJUICE') < 0) throw new Error('not listed');
+    if(names.length !== 5) throw new Error(names.length+' productions, expected 5');
     return names;
   });
 
@@ -333,7 +342,7 @@ const probe = `
     return spun.length+' cues turn them, stopped for the interval';
   });
 
-  console.log('--- the four of them together ---');
+  console.log('--- the five of them together ---');
 
   P('every show still stands on its own', ()=>{
     const out = [];
