@@ -13186,6 +13186,133 @@ SHOWS.beetlejuice = {
       });
     }
 
+    /* ================================================================
+       SCENE — THE HOUSE, from inside.  Measured, the interior carries
+       15:57 to 31:34 in act one under five different looks, which is the
+       thing that shapes it: the shell has to light well from many angles,
+       and that is a geometry decision, not a lighting one.  A curved wall
+       takes light across its face instead of flat-on, so it does.
+       ================================================================ */
+    const inr = sceneAdd('interior', 'THE HOUSE, INSIDE');
+    {
+      const R = 7.0, CZ = -2.0, WH = 6.2, N = 11, SPAN = 0.90;   // radians each side
+      const at = t => { const a = -SPAN + 2*SPAN*t;
+        return {x: R*Math.sin(a), z: CZ - R*Math.cos(a), a}; };
+
+      /* the curved panelled wall, one mesh for eleven panels */
+      {
+        const parts = [];
+        for(let i = 0; i < N; i++){
+          const p = at(i/(N-1));
+          parts.push({geo:new T.BoxGeometry(1.42, WH, 0.22), pos:[p.x, WH/2, p.z], rot:[0, -p.a, 0]});
+          /* a raised stile each side of the panel, so it reads paned */
+          for(const sd of [-1, 1])
+            parts.push({geo:new T.BoxGeometry(0.14, WH, 0.30),
+                        pos:[p.x + sd*0.64*Math.cos(p.a), WH/2, p.z + sd*0.64*Math.sin(p.a)],
+                        rot:[0, -p.a, 0]});
+        }
+        const m = new T.Mesh(mergeParts(parts), board);
+        m.name = 'bj:innerWall'; m.castShadow = true; inr.group.add(m);
+      }
+
+      /* the dado, following the same arc */
+      {
+        const parts = [];
+        for(let i = 0; i < N; i++){
+          const p = at(i/(N-1));
+          parts.push({geo:new T.BoxGeometry(1.5, 0.16, 0.36), pos:[p.x, 1.05, p.z], rot:[0, -p.a, 0]});
+          parts.push({geo:new T.BoxGeometry(1.5, 0.10, 0.30), pos:[p.x, 0.12, p.z], rot:[0, -p.a, 0]});
+        }
+        const m = new T.Mesh(mergeParts(parts), boardD);
+        inr.group.add(m);
+      }
+
+      /* the arch upstage centre — where everybody comes in from */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(0.34, 4.3, 0.5), pos:[-1.55, 2.15, 0]},
+          {geo:new T.BoxGeometry(0.34, 4.3, 0.5), pos:[ 1.55, 2.15, 0]},
+          {geo:new T.BoxGeometry(3.44, 0.36, 0.5), pos:[0, 4.48, 0]},
+          {geo:new T.BoxGeometry(3.9, 0.22, 0.62),  pos:[0, 4.77, 0]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), boardD);
+        m.name = 'bj:arch'; m.position.set(0, 0, CZ - R + 0.35);
+        inr.group.add(m);
+      }
+
+      /* the staircase: treads merged, and a LANDING you can stand on */
+      {
+        const parts = [];
+        for(let i = 0; i < 9; i++){
+          parts.push({geo:new T.BoxGeometry(1.7, 0.14, 0.34), pos:[0, 0.22 + i*0.20, -i*0.34]});
+          parts.push({geo:new T.BoxGeometry(1.7, 0.20, 0.12), pos:[0, 0.12 + i*0.20, -i*0.34 - 0.17]});
+        }
+        const m = new T.Mesh(mergeParts(parts), boardD);
+        m.position.set(-3.3, 0, -5.0); m.castShadow = true; inr.group.add(m);
+
+        const land = new T.Mesh(new T.BoxGeometry(2.6, 0.16, 1.5), board);
+        land.name = 'bj:landing';
+        land.position.set(-3.3, 2.06, -6.6);
+        land.receiveShadow = true; inr.group.add(land);
+        sceneWalk(inr, land);          // and only while this set is on the stage
+
+        /* the banister, one mesh */
+        const b = [];
+        for(let i = 0; i < 9; i++)
+          b.push({geo:new T.BoxGeometry(0.09, 1.0, 0.09), pos:[0.78, 0.75 + i*0.20, -i*0.34]});
+        b.push({geo:new T.BoxGeometry(0.13, 0.13, 3.3), pos:[0.78, 1.55, -1.36], rot:[-0.53, 0, 0]});
+        const bm = new T.Mesh(mergeParts(b), boardD);
+        bm.position.set(-3.3, 0, -5.0); inr.group.add(bm);
+      }
+
+      /* two chandeliers, each its own mesh, each merged from its own parts */
+      [-3.0, 3.0].forEach((x, i)=>{
+        const parts = [
+          {geo:new T.TorusGeometry(0.62, 0.05, 6, 18), pos:[0, 0, 0], rot:[Math.PI/2, 0, 0]},
+          {geo:new T.CylinderGeometry(0.03, 0.03, 1.5, 6), pos:[0, 0.75, 0]}
+        ];
+        for(let k = 0; k < 6; k++){
+          const a = k/6 * 6.283;
+          parts.push({geo:new T.CylinderGeometry(0.05, 0.06, 0.34, 7),
+                      pos:[Math.cos(a)*0.62, 0.20, Math.sin(a)*0.62]});
+        }
+        const m = new T.Mesh(mergeParts(parts), iron);
+        m.name = 'bj:chandelier' + i;
+        m.position.set(x, 5.0, -5.4); inr.group.add(m);
+      });
+
+      /* pictures, hung crooked, one mesh */
+      {
+        const parts = [];
+        [[-4.6, 3.2, 0.10], [-2.2, 3.8, -0.07], [2.4, 3.6, 0.09], [4.7, 3.1, -0.05]].forEach(p=>{
+          const w = 0.9 + (p[1] % 0.4);
+          parts.push({geo:new T.BoxGeometry(w, w*0.78, 0.09), pos:[p[0], p[1], -7.9], rot:[0, 0, p[2]]});
+          parts.push({geo:new T.BoxGeometry(w*0.82, w*0.62, 0.11), pos:[p[0], p[1], -7.86], rot:[0, 0, p[2]]});
+        });
+        const m = new T.Mesh(mergeParts(parts), stone);
+        inr.group.add(m);
+      }
+
+      /* the fireplace, stage right */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(2.3, 0.26, 0.72), pos:[0, 1.62, 0]},
+          {geo:new T.BoxGeometry(0.36, 1.6, 0.62), pos:[-0.97, 0.8, 0]},
+          {geo:new T.BoxGeometry(0.36, 1.6, 0.62), pos:[ 0.97, 0.8, 0]},
+          {geo:new T.BoxGeometry(2.3, 0.9, 0.30),  pos:[0, 2.2, -0.1]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), stone);
+        m.position.set(4.7, 0, -5.6); m.rotation.y = -0.5; inr.group.add(m);
+      }
+
+      /* two doors in the wall, shut */
+      [[-5.2, 0.62], [5.3, -0.62]].forEach((d, i)=>{
+        const m = new T.Mesh(new T.BoxGeometry(1.1, 2.3, 0.14), boardD);
+        m.position.set(d[0], 1.15, -4.0); m.rotation.y = d[1];
+        m.name = 'bj:innerDoor' + i; inr.group.add(m);
+      });
+    }
+
     /* ---- the show curtain ---- */
     {
       const c = bjCurtainCanvas();
@@ -13292,52 +13419,62 @@ function plotBeetlejuice(){
        one(SPOT, 0.85, '#f2ecd8'); set(CYC, 0.18, '#22467c');
        set(BOOM, 0.12, '#33608f'); }},
 
+    /* measured: 9:31 is the widest, brightest look of the cemetery sequence —
+       centre/edge ratio 4.31, the strongest wide shot in the whole file */
     {n:6, label:'the beam fan opens over the gate', fade:5, house:0, haze:0.75,
      curtain:'out', scene:'cemetery',
      look(){ all(0);
        set(BACK, 0.72, '#4f86c8'); set(MOVE, 0.60, '#78c8e8');
        set(CYC, 0.30, '#25497e'); one(SPOT, 0.40, '#f2ecd8'); }},
 
-    /* measured: 6:11 sits under a wider, warmer look than 3:09 */
-    {n:7, label:'warmer — the ground gives up its mist', fade:4, house:0, haze:0.8,
+    /* INTERPRETED, and this one is worth being explicit about. The interior
+       first appears at 15:57, but there is NO measured blackout anywhere
+       between 9:00 and 18:00 — so the recording does not show how that change
+       was covered, and nothing can be inferred about it. Covering it with a
+       blackout of our own is therefore a DECISION, not a measurement. */
+    {n:7, label:'blackout — the walls come in', fade:1.2, house:0, haze:0.5,
      curtain:'out', scene:'cemetery',
-     look(){ all(0);
-       set(WASH, 0.48, '#d8b184'); set(FRONT, 0.34, '#e8c9a4');
-       set(CYC, 0.22, '#2b5290'); set(BOOM, 0.26, '#c89a6e'); }},
+     look(){ all(0); }},
 
-    {n:8, label:'a green under the stones', fade:2.5, house:0, haze:0.7,
-     curtain:'out', scene:'cemetery',
+    /* ---- the interior, measured 15:57 to 31:34 under five looks ---- */
+    /* measured: 15:57 is the first interior look, held 15s */
+    {n:8, label:'inside — the walls, cold', fade:3, house:0, haze:0.35,
+     curtain:'out', scene:'interior',
      look(){ all(0);
-       set(WASH, 0.30, '#7fc46a'); set(BACK, 0.34, '#5fae52');
-       set(CYC, 0.26, '#24507f'); }},
+       set(WASH, 0.34, '#8fa0c0'); set(FRONT, 0.26, '#cfd8e8');
+       set(BACK, 0.20, '#5f7fa8'); }},
 
-    /* measured: 9:31 is the widest, brightest look of the sequence —
-       centre/edge ratio 4.31, the strongest wide shot in the whole file */
-    {n:9, label:'full stage — the widest of the sequence', fade:3, house:0, haze:0.85,
-     curtain:'out', scene:'cemetery',
+    /* measured: 16:29 is a held 22s look, warmer and fuller than 15:57 */
+    {n:9, label:'the room, warm and full', fade:4, house:0, haze:0.3,
+     curtain:'out', scene:'interior',
      look(){ all(0);
-       set(FRONT, 0.55, '#e6dcc6'); set(WASH, 0.62, '#cfd8e8');
-       set(BACK, 0.66, '#5f8fc8'); set(CYC, 0.48, '#2f5f9c');
-       set(MOVE, 0.52, '#8fd8f0'); set(BOOM, 0.38, '#4a78b4'); }},
+       set(FRONT, 0.62, '#f0d8b0'); set(WASH, 0.66, '#e8c9a4');
+       set(BOOM, 0.34, '#d8b184'); }},
 
     /* measured: fades DOWN in this file run a 2.2s median; this is that number */
-    {n:10, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.6,
-     curtain:'out', scene:'cemetery',
-     look(){ all(0); set(CYC, 0.08, '#1d3f70'); }},
+    {n:10, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.35,
+     curtain:'out', scene:'interior',
+     look(){ all(0); set(WASH, 0.10, '#8fa0c0'); }},
 
-    {n:11, label:'the gate, alone', fade:3, house:0, haze:0.55,
-     curtain:'out', scene:'cemetery',
-     look(){ all(0); one(SPOT, 0.6, '#dfe8f4'); set(CYC, 0.12, '#1d3f70'); }},
+    /* measured: 22:14 is the brightest interior frame in the file, and 25:19
+       is held 34s — a long, still, bright scene */
+    {n:11, label:'the arch, and whoever is standing in it', fade:3, house:0, haze:0.4,
+     curtain:'out', scene:'interior',
+     look(){ all(0);
+       one(SPOT, 0.7, '#f4eede'); set(FRONT, 0.22, '#dfe8f4');
+       set(WASH, 0.16, '#8fa0c0'); }},
 
-    {n:12, label:'the cold line, the portal only', fade:2.5, house:0, haze:0.45,
-     curtain:'out', scene:'cemetery',
-     look(){ all(0); set(BOOM, 0.10, '#9fd066'); }},
+    /* measured: 31:34 closes the interior sequence, held 15s and darker */
+    {n:12, label:'down to the chandeliers', fade:2.5, house:0, haze:0.45,
+     curtain:'out', scene:'interior',
+     look(){ all(0);
+       set(BOOM, 0.24, '#e8c9a4'); set(WASH, 0.12, '#c8a882'); }},
 
     /* measured: the act break is the LONGEST blackout in the show — 13.3s at
        71:02, inside a cluster of eight. It is the strongest single measurement
        in the file and it is what puts the interval here. */
     {n:13, label:'act one ends — blackout', fade:4, house:0, haze:0.3,
-     curtain:'shut', scene:'cemetery',
+     curtain:'shut', scene:'interior',
      look(){ all(0); }},
 
     /* measured, and worth recording as an ABSENCE: the recording contains no
@@ -13345,7 +13482,7 @@ function plotBeetlejuice(){
        87s, so the house never came up. It was edited out. This cue is the
        house's own convention, not a measurement. */
     {n:14, label:'INTERVAL — the house comes up', fade:6, house:1, haze:0,
-     curtain:'shut', scene:'cemetery',
+     curtain:'shut', scene:'interior',
      look(){ all(0); }},
 
     {n:15, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
