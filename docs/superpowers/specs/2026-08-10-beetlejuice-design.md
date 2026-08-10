@@ -64,6 +64,15 @@ fades is an optimistic ceiling**, not a count.
 
 ## RULING AO — the scenery is the show's vocabulary, not its drawing
 
+> **SUPERSEDED, same day, by RULING AV** in
+> `2026-08-10-beetlejuice-scene-plot-design.md`. The owner withdrew this clause
+> in full — *"remove the cluase entirely that it has to be our onw shapes. make
+> the sets look as close to the real stuff as you can get it"* — after seeing
+> the sign built to it. Beetlejuice is now modelled on the production it was
+> taken from. The other four shows are unaffected and still follow the rule
+> below. Left standing here because a reversed ruling is worth more on the
+> record than a deleted one.
+
 **Same vocabulary, our own shapes.** Build a world that reads as this show —
 clapboard house, curved panelled interior, a neon afterlife, a cemetery under
 a moon — with **our own proportions, our own detailing, and no attempt to
