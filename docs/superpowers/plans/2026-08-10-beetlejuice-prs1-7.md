@@ -277,3 +277,24 @@ theatre. Chained relative waits also drift where absolute timecode does not.
 - **None of it has met hardware.** Whether a video-derived show reads as a
   show, and whether its pace is right, goes in HANDOFF's headset section as a
   question — not asserted anywhere as a fact.
+
+---
+
+## What actually happened, and the one thing left
+
+Built in the order 1, 2, 3, 4, 5, **7** — then stopped. PR 7 (the cue list and
+the `follow` demonstration) was taken **ahead of** PR 6 on purpose: it is the
+feature the owner asked for in the first place, and PR 6 is additive scenery.
+
+**Outstanding: PR 6, the remainder** — the crypt (measured 56:46), the
+illuminated-sign set (118:04), and the bare-stage ensemble looks. Six scenes
+and all 38 cues are already in, so this adds sets rather than enabling
+anything. Its cues would come out of the existing act structure.
+
+Two departures from the plan as written, both recorded in the PRs that made
+them:
+
+1. **Configurations are SCENES**, not one big load — see the section above.
+2. **Act two was reordered in PR 5** to follow the measurement. PR 4 had the
+   exterior last; the recording puts it at 72:58, at the top of act two. A
+   test now asserts the act-two order against the timestamps.
