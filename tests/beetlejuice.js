@@ -326,11 +326,54 @@ const probe = `
 
   console.log('--- everything that flies ---');
 
+  /* A CLOTH IS THE LAST THING UPSTAGE.  This is the rule the first hang broke:
+     the backdrop went on line 8 (z=-6.10), downstage of the interior wall at
+     -9.20 and of most of every other set, so the thing meant to back the show
+     would have masked it.  Nothing caught that, because nothing asserted the
+     one structural fact that makes a backdrop a backdrop. */
+  P('the cloths are the two DEEPEST hung lines, or they mask the show', ()=>{
+    showLoad('beetlejuice');
+    const hung = FLY.filter(ls=>ls.goodsKey && ls.goodsKey !== 'none');
+    const cloths = hung.filter(ls=>ls.goodsKey === 'bjBackdrop' || ls.goodsKey === 'sky');
+    if(cloths.length !== 2) throw new Error('expected two cloths hung, found '+cloths.length);
+    const deepest = hung.slice().sort((a,b)=>a.z - b.z).slice(0, 2);
+    for(const c of cloths)
+      if(deepest.indexOf(c) < 0)
+        throw new Error(c.goodsKey+' at z='+c.z.toFixed(2)+' is not one of the two deepest hung lines');
+    return cloths.map(c=>c.goodsKey+' at z='+c.z.toFixed(2)).join(', ');
+  });
+
+  P('every set that shares the stage with a cloth stands in FRONT of it', ()=>{
+    showLoad('beetlejuice');
+    const zOf = name => { const sc = sceneFind(name); let z = 0;
+      sc.group.traverse(o=>{ if(o.isMesh){ o.updateMatrixWorld(true);
+        z = Math.min(z, new THREE.Box3().setFromObject(o).min.z); } }); return z; };
+    const bd = FLY.find(ls=>ls.goodsKey === 'bjBackdrop');
+    const sk = FLY.find(ls=>ls.goodsKey === 'sky');
+    /* CLEARANCE, not merely order.  drape() waves the cloth +-0.05 and a
+       lineset is hauled by hand, so a set standing 7cm off its own backing is
+       touching it in practice.  Ask for room to work in. */
+    const CLEAR = 0.35;
+    /* act two opens on the exterior AND its sky together — the pairing the
+       owner's plot makes, and the one that was broken */
+    const hz = zOf('house');
+    if(hz - sk.z < CLEAR)
+      throw new Error('the house exterior reaches '+hz.toFixed(2)+' against its sky at '+
+                      sk.z.toFixed(2)+' — '+(hz - sk.z).toFixed(2)+'m of clearance');
+    /* and the room the wagon carries plays against the backdrop */
+    const iz = zOf('interior');
+    if(iz - bd.z < CLEAR)
+      throw new Error('the interior reaches '+iz.toFixed(2)+' against the backdrop at '+
+                      bd.z.toFixed(2)+' — '+(iz - bd.z).toFixed(2)+'m of clearance');
+    return 'house clears its sky by '+(hz - sk.z).toFixed(2)+'m, interior clears the backdrop by '+
+           (iz - bd.z).toFixed(2)+'m';
+  });
+
   P('the backdrop and the sky are CLOTHS, on real linesets', ()=>{
     showLoad('beetlejuice');
-    const bd = FLY[7], sk = FLY[9];
-    if(bd.goodsKey !== 'bjBackdrop') throw new Error('line 8 carries '+bd.goodsKey);
-    if(sk.goodsKey !== 'sky')        throw new Error('line 10 carries '+sk.goodsKey);
+    const bd = FLY[12], sk = FLY[13];
+    if(bd.goodsKey !== 'bjBackdrop') throw new Error('line 13 carries '+bd.goodsKey);
+    if(sk.goodsKey !== 'sky')        throw new Error('line 14 carries '+sk.goodsKey);
     /* the graveyard's backdrop is IN at the top; act two's sky waits out */
     if(Math.abs(bd.pos - TRIMS.bjBackdrop) > 0.01)
       throw new Error('the backdrop is not at its trim: '+bd.pos.toFixed(2));

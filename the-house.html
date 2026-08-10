@@ -13198,6 +13198,12 @@ SHOWS.beetlejuice = {
        chimney too big for it.
        ================================================================ */
     const hse = sceneAdd('house', 'THE HOUSE');
+    /* the exterior stands in front of its OWN sky.  Its roof and chimney
+       reached z=-10.83, which is upstage of any batten a sky can hang on, so
+       act two would have opened with the house behind the sky it is supposed
+       to be seen against.  The whole scene comes downstage 0.9m; nothing else
+       about it changes, and it is still well clear of the apron. */
+    hse.group.position.z = 0.9;
     {
       /* it has to read THROUGH the portal, so nothing may exceed the
          portal's own 13.6 x 9.2 opening */
@@ -14047,8 +14053,14 @@ SHOWS.beetlejuice = {
     hangGoods(FLY[8], 'electric');  FLY[8].target = 10.4;
     /* the graveyard's own backdrop is IN at the top of the show; the sky
        belongs to act two and waits out until then */
-    hangGoods(FLY[7], 'bjBackdrop'); FLY[7].target = TRIMS.bjBackdrop;
-    hangGoods(FLY[9], 'sky');        FLY[9].target = OUT_TRIM;
+    /* THE TWO DEEPEST LINES IN THE HOUSE, and it has to be that way round: a
+       cloth is the last thing upstage, so anything hung downstage of a set is
+       hanging in FRONT of it.  These went in on lines 8 and 10 first time and
+       put the backdrop at z=-6.10, ahead of the interior wall at -9.20 and
+       most of every other set — the cloth would have masked the show.
+       Line 13 is z=-10.10, line 14 is z=-10.90. */
+    hangGoods(FLY[12], 'bjBackdrop'); FLY[12].target = TRIMS.bjBackdrop;
+    hangGoods(FLY[13], 'sky');        FLY[13].target = OUT_TRIM;
     FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
 
     sceneShow('cemetery');
