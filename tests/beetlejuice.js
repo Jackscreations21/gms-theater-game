@@ -202,21 +202,29 @@ const probe = `
     return 'porch at y='+b.max.y.toFixed(2)+', in WALKABLE only while the house is live';
   });
 
-  P('the set changes behind a shut cloth, never in view', ()=>{
+  /* The real invariant is that the audience never SEES a set change. A shut
+     cloth does that; so does a blackout, which is how a mid-act change is
+     covered in a house that is not going to fly the curtain in every time. */
+  P('the set never changes in view: a shut cloth or a blackout covers every one', ()=>{
     showLoad('beetlejuice');
     const ls = frontCurtainLineset();
-    const trim = TRIMS[ls.goodsKey] !== undefined ? TRIMS[ls.goodsKey] : TRIMS.house;
-    let changes = 0, inView = [];
+    let changes = 0; const inView = [], how = [];
     for(let i = 1; i < CUES.length; i++){
       if(CUES[i].scene === CUES[i-1].scene) continue;
       changes++;
       const r = CUES[i].fly.find(x=>x.id === ls.id);
-      if(!r || r.target > OUT_TRIM - 1) inView.push(CUES[i].n);
+      const clothIn = r && r.target < OUT_TRIM - 1;
+      /* the cue BEFORE it must have left the stage dark, because the swap is
+         instant and the incoming cue's fade starts from wherever it starts */
+      const cameFromDark = !CUES[i-1].lx.some(x=>x.lvl > 0.02);
+      if(clothIn) how.push(CUES[i].n + ':cloth');
+      else if(cameFromDark) how.push(CUES[i].n + ':blackout');
+      else inView.push(CUES[i].n);
     }
     if(!changes) throw new Error('no cue changes the set');
     if(inView.length)
       throw new Error('the set changes in full view on cue '+inView.join(', '));
-    return changes+' set change(s), every one behind the cloth';
+    return changes+' set change(s), covered by — '+how.join(', ');
   });
 
   P('firing the act two cue actually swaps the set', ()=>{
@@ -230,6 +238,64 @@ const probe = `
     let lit = 0; cem.group.traverse(o=>{ if(o.layers && o.layers.mask !== 0) lit++; });
     if(lit) throw new Error(lit+' cemetery pieces still test against a ray');
     return 'cue '+CUES[i].n+' put the house on and made the cemetery inert';
+  });
+
+  console.log('--- the house, from inside ---');
+
+  P('the interior is its own scene, and fits the portal it is seen through', ()=>{
+    showLoad('beetlejuice');
+    const s = sceneFind('interior');
+    if(!s) throw new Error('there is no interior scene');
+    sceneShow('interior');
+    let m = 0; s.group.traverse(o=>{ if(o.isMesh) m++; });
+    if(m < 10) throw new Error('the interior is only '+m+' pieces');
+    if(!byName('bj:innerWall')) throw new Error('no wall');
+    if(!byName('bj:arch')) throw new Error('no arch');
+    const b = box(s.group);
+    if(b.max.y > BJ.opH) throw new Error('it reaches y='+b.max.y.toFixed(2)+' through a '+BJ.opH+' opening');
+    const wide = Math.max(Math.abs(b.min.x), Math.abs(b.max.x));
+    if(wide*2 > BJ.opW + 0.01) throw new Error('it is '+(wide*2).toFixed(2)+'m wide, the opening is '+BJ.opW);
+    if(b.min.y < -0.01) throw new Error('it goes below the deck to '+b.min.y.toFixed(2));
+    return m+' pieces, '+(wide*2).toFixed(2)+'m x '+b.max.y.toFixed(2)+'m';
+  });
+
+  /* the wall is curved so it takes light ACROSS its face — the reference shows
+     the interior under five looks, and a flat wall reads the same in all five */
+  P('the back wall is curved, not flat', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('interior');
+    const wl = byName('bj:innerWall');
+    const b = box(wl);
+    const depth = b.max.z - b.min.z, width = b.max.x - b.min.x;
+    if(depth < 2) throw new Error('the wall is '+depth.toFixed(2)+'m deep — that is flat');
+    if(width < 6) throw new Error('the wall is only '+width.toFixed(2)+'m across');
+    return 'wraps '+width.toFixed(1)+'m across and '+depth.toFixed(1)+'m upstage';
+  });
+
+  P('the landing is walkable only while the interior is on, and it is upstairs', ()=>{
+    showLoad('beetlejuice');
+    const l = (()=>{ let r=null; SHOW.group.traverse(o=>{ if(!r && o.name==='bj:landing') r=o; }); return r; })();
+    if(!l) throw new Error('no landing was built');
+    if(WALKABLE.indexOf(l) >= 0) throw new Error('you can stand upstairs with the cemetery up');
+    sceneShow('interior');
+    if(WALKABLE.indexOf(l) < 0) throw new Error('the landing is not walkable with the interior on');
+    const b = box(l);
+    if(b.max.y < 1.5) throw new Error('the landing is only at y='+b.max.y.toFixed(2)+' — that is not a storey');
+    sceneShow('cemetery');
+    if(WALKABLE.indexOf(l) >= 0) throw new Error('the landing stayed walkable after the interior went off');
+    return 'landing at y='+b.max.y.toFixed(2)+', walkable only with the interior live';
+  });
+
+  P('all three scenes are registered and exactly one is ever live', ()=>{
+    showLoad('beetlejuice');
+    if(SHOW.scenes.length !== 3) throw new Error(SHOW.scenes.length+' scenes, expected 3');
+    for(const n of ['cemetery','house','interior']){
+      sceneShow(n);
+      const on = SHOW.scenes.filter(s=>s.on);
+      if(on.length !== 1) throw new Error(on.length+' scenes live at once with '+n+' up');
+      if(on[0].name !== n) throw new Error('asked for '+n+', got '+on[0].name);
+    }
+    return SHOW.scenes.map(s=>s.name);
   });
 
   console.log('--- the plot: measured times, interpreted levels ---');
