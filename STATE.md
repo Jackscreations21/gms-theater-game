@@ -5,24 +5,59 @@ NOW and is updated as work happens. `HANDOFF.md` is the durable record
 written at session end; this file is the scratchpad between those
 writes. If the two disagree, this file is newer.
 
-Last updated: **2026-08-10** (the new feature is decided: a fifth show
-taken off a video of a real performance. Phase 1 measured the file and
-landed the probe as #90; the spec and RULING AO follow).
+Last updated: **2026-08-10** (the fifth show is DONE and landed — ten PRs,
+ten scenes, forty-six cues. The auto-cue runs on the measured timeline.
+Next session CONFIRMS the scene timing).
 
 ---
 
 ## Position
 
 - **THE AUTO-CUE RUNS.** The thing the owner asked for — "an auto cue feature timed correctly" — is in, and it cost no new code: every cue's `follow` field now carries the gap between two MEASURED cue times, so the show runs itself on the recording's own timeline. The chain spans **8627s = 144 min** against a 143-minute recording, reaching the act break at exactly **71:02** and the curtain call at **141:02**. **Show him this before anything else, and before any transport is specced** — it may be the whole feature. Two honest caveats travel with it, both in the code comments: `follow` uses `setTimeout` (the one surviving violation of the rule) and a **stage swap cancels it**, so an unattended show dies if you change venue; and chained relative waits drift where absolute timecode would not. Rulings **AP onward** are still open and still unguessed.
-- **PR 6 of 7 is the one outstanding item** — the "remainder" scenery (the crypt at 56:46, the illuminated-sign set at 118:04, and the bare-stage ensemble looks). It is purely additive: six scenes and the whole cue list are already in. Taken out of order deliberately, because the auto-cue was worth more than more scenery.
-- **In flight: the BEETLEJUICE round** — a fifth show, cues and timings measured off a video, scenery interpreted. Landed so far: [#90](https://github.com/Jackscreations21/gms-theater-game/pull/90) the probe, [#91](https://github.com/Jackscreations21/gms-theater-game/pull/91) the spec + RULING AO, [#92](https://github.com/Jackscreations21/gms-theater-game/pull/92) the plan, then **PR 1 of 7** (the show part, the portal, the cemetery). Six scenic/cue PRs remain. **The owner asked for this chain to be merged without him watching**, so each link merges only on objective gates — suites green, every new assertion negative-checked against a WRONG implementation, boot clean, byte-identical rebuild — and stops rather than pushing on.
-- **Suite status: 18/18 GREEN**, boot `"fatal": null`. The 18th suite is `tests/beetlejuice.js`. **`main` now rebuilds at 921591** (was 895034 before the fifth show). Node v24.16.0 at `C:\Program Files\nodejs` — still not on a fresh shell's PATH; prefix with `export PATH="/c/Program Files/nodejs:$PATH"` (Git Bash) or `$env:Path = "C:\Program Files\nodejs;$env:Path"`.
+- **NOTHING IN FLIGHT. The BEETLEJUICE round is DONE and landed** — ten PRs, [#90](https://github.com/Jackscreations21/gms-theater-game/pull/90) the probe, [#91](https://github.com/Jackscreations21/gms-theater-game/pull/91) the spec + RULING AO, [#92](https://github.com/Jackscreations21/gms-theater-game/pull/92) the plan, then all seven build PRs (#93–#98, #100) and the record (#99). All `base=main`, each merged only after its gates passed: suites green, every new assertion negative-checked against a WRONG implementation, boot clean, byte-identical rebuild, branch deleted. The owner asked for the chain to be merged without him watching; it was, on those gates and not on judgement.
+- **Ten scenes, forty-six cues, ~110 pieces** — cemetery, interior, attic, bedroom, crypt, house exterior, redecorated room, afterlife, the sign, bare stage, plus a portal that never leaves. One scene is ever live; the rest have their layers disabled, so they cost no draw call and no raycast.
+- **Suite status: 18/18 GREEN**, boot `"fatal": null`. The 18th suite is `tests/beetlejuice.js`. **`main` now rebuilds at 964663** (was 895034 before the fifth show). Node v24.16.0 at `C:\Program Files\nodejs` — still not on a fresh shell's PATH; prefix with `export PATH="/c/Program Files/nodejs:$PATH"` (Git Bash) or `$env:Path = "C:\Program Files\nodejs;$env:Path"`.
 - **`ffmpeg` 9.0 is now on this machine** (`winget install Gyan.FFmpeg`) and has the SAME PATH quirk as Node — it is not on a fresh shell's PATH. `tools/video.js` finds it under `AppData/Local/Microsoft/WinGet/Packages` by itself, so a probe run needs no export. There is still **no Python** (the `python` on PATH is the Store stub) and none is needed.
 - **Two things got cheaper, and both are measured, not guessed.** Workshop draw calls per venue **63 → 38 meshes** across eleven objects, while every one of them gained substantial detail (`tools/census.js`). The build system's per-frame CPU at `BUILD_CAP` went **1.565 ms → 0.146 ms**, 11.3% of a 72Hz budget down to 1.0% (`tools/buildload.js`).
 - Pages serves `main`. **Bust the Quest cache with `?v=15`** — the game changed five times on 2026-08-09.
-- **This clone:** `main` @ `c5ba5b8` = `origin/main`. `pr6.json` still untracked.
+- **This clone:** `main` @ `0b73f07` = `origin/main`. `pr6.json` still untracked.
 
-## Current focus: **THE BEETLEJUICE ROUND** — a fifth show, off a video
+## Current focus: **NEXT SESSION CONFIRMS THE SCENE TIMING** (owner, 2026-08-10)
+
+The round is built and merged. **Nobody has watched it run.** The full protocol
+is in HANDOFF's "NEXT SESSION: CONFIRMING THE SCENE TIMING" — read that first.
+The short version:
+
+**The suites cannot answer this, and that is the finding.** `follow` arms the
+next cue with `setTimeout`, so the chain runs on the wall clock. jsdom asserts
+the follow VALUES — the chain reconstructs 8627s, the act break at 71:02, the
+call at 141:02 — but it cannot watch cues fire without sitting through 144 real
+minutes. **A dt-driven transport would be suite-testable**, because
+`stepProgram(dt)` can be stepped 8627 seconds in a loop. Put that to the owner
+in those words; it is the strongest argument for ruling AP and it was not
+obvious before the cheap version existed.
+
+**Confirm, in order:** does it start itself off one GO; does **drift**
+accumulate (note the wall clock at the act break, due 71:02, and at the call,
+due 141:02 — if the call is more than a few seconds late, the cheap version has
+answered AP by itself); does a stage swap kill it (it should — `cancelFollow`
+runs on the swap); do the six scene changes land in the dark; does the pace read
+over 46 cues in 144 minutes.
+
+**Four soft spots, and they are the ones to distrust** — covers invented because
+the recording gave nothing to measure, each saying so in its own comment: cue 7
+(out to the interior), cue 12 (up into the attic), cue 25 (back inside), cue
+32.3 (out to the sign). The measured covers should feel right; those four are
+guesses.
+
+**Still open: rulings AP–AR** — cheap `follow` versus a real timecode transport,
+whether it must be VR-reachable, and what a running show does on a stage swap.
+Two facts for that discussion: `follow` uses `setTimeout`, the one surviving
+violation of the rule, and a stage swap **cancels** it, so an unattended show
+dies when you change venue; and chained relative waits drift where absolute
+timecode does not.
+
+## The round that produced it: **BEETLEJUICE** — a fifth show, off a video
 
 The new feature is decided. The owner supplied a video of a full
 performance and asked for "the real cues and sets for it and an auto cue
@@ -41,17 +76,16 @@ zoom inside a held shot moves brightness with no lighting change), fade
 times median 2.2 s, the act break at **71:02**, and the curtain call in
 the last 2.5 min.
 
-**The scenery is 10–12 distinct configurations** (surveyed off contact
-sheets, catalogued in the spec) — 80–140 pieces, at or above the existing
-shows' 55–96. `SHOWS` is declared in `p5c`, so the fifth show is a **new
+**The scenery came to 10 configurations, all built** (surveyed off contact
+sheets, catalogued in the spec) — ~110 pieces, at the top of the existing
+shows' 55–114. `SHOWS` is declared in `p5c`, so the fifth show is a **new
 part appended after `p5g`** — never a reorder.
 
-**Still to rule before the auto-cue half is built** (AP onward): cheap
-`follow` chaining vs a real timecode transport, whether it must be
-VR-reachable, and what a running show does on a stage swap. **Demonstrate
-`follow` first** — it exists at `p6.txt:180`, all four shows leave it
-`null`, and filling it with the measured gaps runs the show with no new
-code. It may be the whole feature.
+**The `follow` demonstration is DONE** — that was the instruction and it has
+been carried out. All ten scenes were built, then every cue's `follow` filled
+with the gap between two measured times, and the show runs itself with no new
+code. What is left is for the owner to WATCH it and then rule AP–AR; see
+Current focus above.
 
 **How a feature round runs here** (this repo has a shape, and it works):
 
