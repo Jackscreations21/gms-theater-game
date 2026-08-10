@@ -847,6 +847,181 @@ SHOWS.beetlejuice = {
       }
     }
 
+    /* ================================================================
+       SCENE — THE CRYPT.  Measured 56:46, a stone structure with a peaked
+       roof and a doorway somebody stands in.  Our own proportions and our
+       own masonry (RULING AO).
+       ================================================================ */
+    const cry = sceneAdd('crypt', 'THE CRYPT');
+    {
+      const CW = 4.6, CH = 3.6, CD = 3.4, cz = -8.0;
+      /* the mass, with the doorway left as a gap between two piers */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(CW, CH, 0.34), pos:[0, CH/2, -CD/2]},        // back
+          {geo:new T.BoxGeometry(0.34, CH, CD), pos:[-CW/2, CH/2, 0]},        // sides
+          {geo:new T.BoxGeometry(0.34, CH, CD), pos:[ CW/2, CH/2, 0]},
+          {geo:new T.BoxGeometry(1.35, CH, 0.34), pos:[-1.6, CH/2, CD/2]},    // front piers
+          {geo:new T.BoxGeometry(1.35, CH, 0.34), pos:[ 1.6, CH/2, CD/2]},
+          {geo:new T.BoxGeometry(CW, 0.9, 0.34),  pos:[0, CH - 0.45, CD/2]}   // over the door
+        ];
+        const m = new T.Mesh(mergeParts(parts), stone);
+        m.name = 'bj:crypt'; m.position.set(0, 0, cz);
+        m.castShadow = true; cry.group.add(m);
+      }
+      /* the roof: two slopes and a coping course */
+      {
+        const parts = [];
+        [-1, 1].forEach(sd=>parts.push({geo:new T.BoxGeometry(CW + 0.6, 0.24, CD*0.78),
+          pos:[sd*(CW/4 + 0.1), CH + 0.62, 0], rot:[0, 0, sd*0.62]}));
+        parts.push({geo:new T.BoxGeometry(CW + 0.8, 0.22, CD + 0.5), pos:[0, CH + 0.11, 0]});
+        const m = new T.Mesh(mergeParts(parts), stone);
+        m.position.set(0, 0, cz); m.castShadow = true; cry.group.add(m);
+      }
+      /* three steps up to the door, and the top one is standable */
+      {
+        const parts = [];
+        for(let i = 0; i < 3; i++)
+          parts.push({geo:new T.BoxGeometry(2.9 + i*0.4, 0.2, 0.44), pos:[0, 0.1 + (2-i)*0.2, i*0.44]});
+        const m = new T.Mesh(mergeParts(parts), stone);
+        m.position.set(0, 0, cz + CD/2 + 0.3); cry.group.add(m);
+
+        const top = new T.Mesh(new T.BoxGeometry(2.9, 0.12, 0.44), stone);
+        top.name = 'bj:cryptStep';
+        top.position.set(0, 0.56, cz + CD/2 + 0.3);
+        cry.group.add(top); sceneWalk(cry, top);
+      }
+      /* two urns either side, and a low wall running off each way */
+      [-1, 1].forEach(sd=>{
+        const parts = [
+          {geo:new T.CylinderGeometry(0.34, 0.24, 0.28, 12), pos:[0, 0.9, 0]},
+          {geo:new T.CylinderGeometry(0.18, 0.30, 0.7, 12),  pos:[0, 0.45, 0]},
+          {geo:new T.BoxGeometry(0.56, 0.16, 0.56),          pos:[0, 0.08, 0]}
+        ];
+        const u = new T.Mesh(mergeParts(parts), stone);
+        u.position.set(sd*3.3, 0, cz + CD/2 + 0.4); cry.group.add(u);
+
+        const w = [];
+        /* stops short of the opening edge: a wall half behind a portal leg
+           shows from the side seats */
+        for(let i = 0; i < 3; i++)
+          w.push({geo:new T.BoxGeometry(0.9, 0.7 - (i%2)*0.08, 0.4), pos:[sd*(4.4 + i*0.92), 0.35, 0]});
+        const wm = new T.Mesh(mergeParts(w), stone);
+        wm.position.z = cz - 0.4; cry.group.add(wm);
+      });
+    }
+
+    /* ================================================================
+       SCENE — THE SIGN.  Measured 118:04: an illuminated sign over a
+       crowd.  RULING AO puts OUR OWN WORDS on it — the real production's
+       wording is exactly the kind of authored detail the ruling excludes.
+       ================================================================ */
+    const sgn = sceneAdd('signset', 'THE SIGN');
+    {
+      /* the lit panel, its wording drawn into a canvas the house way */
+      const c = cvs(1024, 256), g = c.getContext('2d');
+      g.fillStyle = '#1b1206'; g.fillRect(0, 0, 1024, 256);
+      g.fillStyle = '#ffcb4a';
+      g.font = 'bold 150px sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('YOUR TURN', 512, 132);          // ours, not theirs
+      const signTex = tex(c, 1, 1);
+      const panel = new T.MeshStandardMaterial({map:signTex, emissive:0xffcb4a,
+                                                emissiveIntensity:0.85, emissiveMap:signTex,
+                                                roughness:.7});
+      {
+        const p = new T.Mesh(new T.BoxGeometry(7.2, 1.8, 0.22), panel);
+        p.name = 'bj:sign'; p.position.set(0, 5.4, -7.6); sgn.group.add(p);
+      }
+      /* the bulb surround, one mesh on the shared glow material */
+      {
+        const parts = [];
+        for(let i = 0; i < 22; i++){
+          const t = i/21;
+          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[-3.8 + 7.6*t, 6.45, -7.5]});
+          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[-3.8 + 7.6*t, 4.35, -7.5]});
+        }
+        for(let i = 0; i < 5; i++){
+          const y = 4.35 + i*0.525;
+          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[-3.8, y, -7.5]});
+          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[ 3.8, y, -7.5]});
+        }
+        sgn.group.add(new T.Mesh(mergeParts(parts), glow));
+      }
+      /* the frame it hangs in, and two posts to the deck */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(8.2, 0.28, 0.4), pos:[0, 6.7, -7.7]},
+          {geo:new T.BoxGeometry(8.2, 0.28, 0.4), pos:[0, 4.1, -7.7]},
+          {geo:new T.BoxGeometry(0.3, 2.9, 0.4),  pos:[-4.0, 5.4, -7.7]},
+          {geo:new T.BoxGeometry(0.3, 2.9, 0.4),  pos:[ 4.0, 5.4, -7.7]},
+          {geo:new T.BoxGeometry(0.28, 4.1, 0.28), pos:[-4.0, 2.05, -7.7]},
+          {geo:new T.BoxGeometry(0.28, 4.1, 0.28), pos:[ 4.0, 2.05, -7.7]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), iron);
+        m.name = 'bj:signFrame'; m.castShadow = true; sgn.group.add(m);
+      }
+      /* a low rostrum for whoever is called forward, standable */
+      {
+        const r = new T.Mesh(new T.BoxGeometry(4.2, 0.4, 2.2), boardD);
+        r.name = 'bj:rostrum'; r.position.set(0, 0.2, -4.6);
+        r.receiveShadow = true; sgn.group.add(r); sceneWalk(sgn, r);
+      }
+      /* two banks of seats facing it, merged, for the crowd to be in */
+      [-1, 1].forEach(sd=>{
+        const parts = [];
+        for(let i = 0; i < 3; i++)
+          for(let k = 0; k < 3; k++)
+            parts.push({geo:new T.BoxGeometry(0.5, 0.5, 0.5),
+                        pos:[sd*(2.4 + k*0.62), 0.25 + i*0.22, -6.4 + i*0.66]});
+        const m = new T.Mesh(mergeParts(parts), boardD);
+        sgn.group.add(m);
+      });
+    }
+
+    /* ================================================================
+       SCENE — THE BARE STAGE.  Measured 137:57: a line of the company
+       across an empty stage, four minutes before the call.  A bare stage
+       in a real house is not nothing — it is the masking, the ghost light
+       and the boards, so that is what this is.
+       ================================================================ */
+    const bare = sceneAdd('bare', 'THE BARE STAGE');
+    {
+      /* four legs of masking, two a side, merged per side */
+      [-1, 1].forEach(sd=>{
+        const parts = [];
+        for(let i = 0; i < 2; i++)
+          parts.push({geo:new T.BoxGeometry(0.16, 8.6, 2.6),
+                      pos:[sd*(6.2 - i*0.5), 4.3, -4.0 - i*4.0]});
+        const m = new T.Mesh(mergeParts(parts), boardD);
+        m.name = 'bj:masking'; bare.group.add(m);
+      });
+      /* a border across the top of the opening */
+      {
+        const b = new T.Mesh(new T.BoxGeometry(13.2, 1.6, 0.16), boardD);
+        b.position.set(0, 8.3, -3.4); bare.group.add(b);
+      }
+      /* the ghost light: a bulb on a stand, centre stage, on the shared glow */
+      {
+        const parts = [
+          {geo:new T.CylinderGeometry(0.34, 0.40, 0.06, 14), pos:[0, 0.03, 0]},
+          {geo:new T.CylinderGeometry(0.045, 0.045, 1.5, 8), pos:[0, 0.78, 0]},
+          {geo:new T.CylinderGeometry(0.14, 0.10, 0.12, 10), pos:[0, 1.58, 0]}
+        ];
+        const s = new T.Mesh(mergeParts(parts), iron);
+        s.position.set(-0.8, 0, -5.2); bare.group.add(s);
+        const bulb = new T.Mesh(new T.SphereGeometry(0.17, 12, 9), glow);
+        bulb.name = 'bj:ghostLight'; bulb.position.set(-0.8, 1.78, -5.2);
+        bare.group.add(bulb);
+      }
+      /* the back wall of the theatre, seen because nothing is masking it */
+      {
+        const w = new T.Mesh(new T.BoxGeometry(15.4, 9.0, 0.2),
+          new T.MeshStandardMaterial({color:0x22242a, roughness:.97}));
+        w.position.set(0, 4.5, -13.6); bare.group.add(w);
+      }
+    }
+
     /* ---- the show curtain ---- */
     {
       const c = bjCurtainCanvas();
@@ -1037,15 +1212,35 @@ function plotBeetlejuice(){
      curtain:'out', scene:'bedroom',
      look(){ all(0); set(BOOM, 0.22, '#9f7fc0'); }},
 
-    {at:3764, n:18, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.25,
+    /* ---- ACT ONE, v — THE CRYPT ----
+       MEASURED: a 10.5s blackout at 55:38, the second-longest in act one,
+       and it is what covers the change out to the crypt at 56:46. */
+    {at:3345, n:17.3, label:'blackout — 10.5s, measured at 55:38', fade:2, house:0, haze:0.3,
      curtain:'out', scene:'bedroom',
+     look(){ all(0); }},
+
+    /* measured: 56:46 — a stone doorway with somebody standing in it */
+    {at:3406, n:17.5, label:'the crypt — cold, and low', fade:4, house:0, haze:0.6,
+     curtain:'out', scene:'crypt',
+     look(){ all(0);
+       set(CYC, 0.34, '#24507f'); set(BACK, 0.26, '#4a78b4');
+       set(BOOM, 0.22, '#6f8fc0'); }},
+
+    {at:3600, n:17.7, label:'a hard side light on the stone', fade:2.5, house:0, haze:0.65,
+     curtain:'out', scene:'crypt',
+     look(){ all(0);
+       set(BOOM, 0.52, '#cfd8e8'); one(SPOT, 0.45, '#f2ecd8');
+       set(CYC, 0.14, '#1d3f70'); }},
+
+    {at:3764, n:18, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.25,
+     curtain:'out', scene:'crypt',
      look(){ all(0); set(BOOM, 0.06, '#9f7fc0'); }},
 
     /* MEASURED: the act break is the LONGEST blackout in the show — 13.3s at
        71:02, inside a cluster of eight. The strongest single measurement in
        the file, and it is what puts the interval here. */
     {at:4262, n:19, label:'act one ends — blackout', fade:4, house:0, haze:0.3,
-     curtain:'shut', scene:'bedroom',
+     curtain:'shut', scene:'crypt',
      look(){ all(0); }},
 
     /* MEASURED as an ABSENCE: the recording contains no interval at all. The
@@ -1053,7 +1248,7 @@ function plotBeetlejuice(){
        never came up — it was edited out. This cue is the house's own
        convention, not a measurement. */
     {at:4290, n:20, label:'INTERVAL — the house comes up', fade:6, house:1, haze:0,
-     curtain:'shut', scene:'bedroom',
+     curtain:'shut', scene:'crypt',
      look(){ all(0); }},
 
     /* ============ ACT TWO ============
@@ -1137,6 +1332,26 @@ function plotBeetlejuice(){
      curtain:'out', scene:'afterlife', neon:0.45,
      look(){ all(0); set(BACK, 0.08, '#5fd8e8'); }},
 
+    /* ---- ACT TWO, iv — THE SIGN ----
+       measured: 118:04 sits BETWEEN the afterlife looks and the chevron at
+       121:54, so the set goes out to the sign and comes back.  Two changes,
+       two covers; that is what the recording says happened. */
+    {at:6900, n:32.3, label:'blackout — out to the sign', fade:1.6, house:0, haze:0.4,
+     curtain:'out', scene:'afterlife', neon:0,
+     look(){ all(0); }},
+
+    /* measured: 118:04. The wording on it is OURS (RULING AO) — the real
+       production's is exactly the authored detail the ruling excludes. */
+    {at:7084, n:32.5, label:'the sign — YOUR TURN, and a full house under it', fade:3, house:0, haze:0.45,
+     curtain:'out', scene:'signset', neon:0,
+     look(){ all(0);
+       set(FRONT, 0.44, '#ffe0a0'); set(WASH, 0.4, '#e8c070');
+       set(BOOM, 0.24, '#c89a4e'); }},
+
+    {at:7250, n:32.7, label:'blackout — back to the frames', fade:1.4, house:0, haze:0.5,
+     curtain:'out', scene:'signset', neon:0,
+     look(){ all(0); }},
+
     /* measured: 121:54 is the chevron across the whole opening */
     {at:7314, n:33, label:'the chevron, and everything on it', fade:2, house:0, haze:0.8,
      curtain:'out', scene:'afterlife', neon:1.35,
@@ -1144,11 +1359,23 @@ function plotBeetlejuice(){
        set(WASH, 0.5, '#7fc46a'); set(MOVE, 0.6, '#9fd066');
        set(BACK, 0.42, '#5fae52'); set(FRONT, 0.3, '#d8e8b0'); }},
 
+    /* ---- ACT TWO, v — THE BARE STAGE ----
+       measured: 137:57, a line of the company across an empty stage, four
+       minutes before the call. Everything goes, and the call happens on it. */
+    {at:8200, n:33.3, label:'blackout — everything goes', fade:2.2, house:0, haze:0.4,
+     curtain:'out', scene:'afterlife', neon:0,
+     look(){ all(0); }},
+
+    {at:8277, n:33.5, label:'the bare stage — masking, and the ghost light', fade:5, house:0, haze:0.3,
+     curtain:'out', scene:'bare', neon:0,
+     look(){ all(0);
+       set(FRONT, 0.34, '#e8dcc4'); set(BOOM, 0.16, '#cfc0a8'); }},
+
     /* MEASURED: the curtain call is unmistakable — 82 events in the last 2.5
        minutes, lights bumping every 1 to 3 seconds, starting at 141:02.
        Found without ever seeing a frame. */
     {at:8462, n:34, label:'curtain call', fade:1.4, house:0, haze:0.4,
-     curtain:'out', scene:'afterlife', neon:1.4,
+     curtain:'out', scene:'bare', neon:1.4,
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -3.0);
        set(FRONT, 0.85, '#fff2dc'); set(WASH, 0.7, '#ffffff');
@@ -1156,17 +1383,17 @@ function plotBeetlejuice(){
 
     /* MEASURED: 7.0s down into 7.3s of black at 143:35 — the show's last cue */
     {at:8615, n:35, label:'blackout — the curtain comes in', fade:7, house:0, haze:0.2,
-     curtain:'shut', scene:'afterlife', neon:0,
+     curtain:'shut', scene:'bare', neon:0,
      look(){ all(0); }},
 
     {at:8640, n:36, label:'curtain warmers — the cloth, and nothing else', fade:4, house:0, haze:0,
-     curtain:'shut', scene:'afterlife', neon:0,
+     curtain:'shut', scene:'bare', neon:0,
      look(){ all(0);
        onTheCloth();                     // up at the cloth, never down at the deck
        set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }},
 
     {at:8660, n:37, label:'house up — the warmers stay', fade:8, house:0.6, haze:0,
-     curtain:'shut', scene:'afterlife', neon:0,
+     curtain:'shut', scene:'bare', neon:0,
      look(){ all(0);
        onTheCloth();
        set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }}
