@@ -5,26 +5,51 @@ NOW and is updated as work happens. `HANDOFF.md` is the durable record
 written at session end; this file is the scratchpad between those
 writes. If the two disagree, this file is newer.
 
-Last updated: **2026-08-09** (the workshop round landed — the belt and
-the shed rebuilt in four PRs — and then the build system's per-frame
-cost was measured and cut 11×).
+Last updated: **2026-08-10** (the new feature is decided: a fifth show
+taken off a video of a real performance. Phase 1 measured the file and
+landed the probe as #90; the spec and RULING AO follow).
 
 ---
 
 ## Position
 
-- **Nothing in flight.** The workshop round is DONE and landed: spec #83, then #84 (the palette, `mergeParts`, the belt), #85 (the cut stations), #86 (the paint rack and the drum), #87 (the heavy plant). Then #88, the settle fix. All `base=main`.
-- **Suite status: 17/17 GREEN**, boot `"fatal": null`, `main` rebuilds byte-identical at **895034**. The 17th suite is `tests/workshop.js`. Node v24.16.0 at `C:\Program Files\nodejs` — still not on a fresh shell's PATH; prefix with `export PATH="/c/Program Files/nodejs:$PATH"` (Git Bash) or `$env:Path = "C:\Program Files\nodejs;$env:Path"`.
+- **In flight: the BEETLEJUICE round** — a fifth show, cues and timings measured off a video, scenery interpreted. Phase 1 is DONE and landed as [#90](https://github.com/Jackscreations21/gms-theater-game/pull/90) (`tools/video.js`). The spec is next; **seven sequential PRs** after it. Nothing else in flight: the workshop round landed earlier (#83–#88, all `base=main`).
+- **Suite status: 17/17 GREEN**, boot `"fatal": null`, `main` rebuilds byte-identical at **895034** (verified after #90). The 17th suite is `tests/workshop.js`. Node v24.16.0 at `C:\Program Files\nodejs` — still not on a fresh shell's PATH; prefix with `export PATH="/c/Program Files/nodejs:$PATH"` (Git Bash) or `$env:Path = "C:\Program Files\nodejs;$env:Path"`.
+- **`ffmpeg` 9.0 is now on this machine** (`winget install Gyan.FFmpeg`) and has the SAME PATH quirk as Node — it is not on a fresh shell's PATH. `tools/video.js` finds it under `AppData/Local/Microsoft/WinGet/Packages` by itself, so a probe run needs no export. There is still **no Python** (the `python` on PATH is the Store stub) and none is needed.
 - **Two things got cheaper, and both are measured, not guessed.** Workshop draw calls per venue **63 → 38 meshes** across eleven objects, while every one of them gained substantial detail (`tools/census.js`). The build system's per-frame CPU at `BUILD_CAP` went **1.565 ms → 0.146 ms**, 11.3% of a 72Hz budget down to 1.0% (`tools/buildload.js`).
 - Pages serves `main`. **Bust the Quest cache with `?v=15`** — the game changed five times on 2026-08-09.
-- **This clone:** `main` @ `10033f2` = `origin/main`. `pr6.json` still untracked.
+- **This clone:** `main` @ `c5ba5b8` = `origin/main`. `pr6.json` still untracked.
 
-## Current focus: **NEXT SESSION IS A NEW FEATURE** (owner, 2026-08-09)
+## Current focus: **THE BEETLEJUICE ROUND** — a fifth show, off a video
 
-The owner has said the next session adds a **new feature** — which one is
-not yet decided, so **ask before building anything.** Do not assume it is
-the frame-rate round; that is still owed but is not what was asked for
-next.
+The new feature is decided. The owner supplied a video of a full
+performance and asked for "the real cues and sets for it and an auto cue
+feature timed correctly". Spec:
+**`docs/superpowers/specs/2026-08-10-beetlejuice-design.md`** — read it
+before touching anything in this round; **RULING AO** is binding.
+
+**What Phase 1 established, and it changed the scope** (`tools/video.js`):
+the file is a **bootleg compilation**, not a locked-off wide shot — 723
+hard cuts at 5.0/min, layout stability median r = 0.676 where a fixed
+camera scores ~0.95. So **per-area channel levels are NOT measurable**
+from it. What survived: CFR timestamps, real black (darkest frame Y =
+16.8), fixed exposure (+1.1 Y drift through a 13.3 s blackout), **33
+blackouts ≥ 1 s**, **76 strong fades** (an optimistic ceiling — a handheld
+zoom inside a held shot moves brightness with no lighting change), fade
+times median 2.2 s, the act break at **71:02**, and the curtain call in
+the last 2.5 min.
+
+**The scenery is 10–12 distinct configurations** (surveyed off contact
+sheets, catalogued in the spec) — 80–140 pieces, at or above the existing
+shows' 55–96. `SHOWS` is declared in `p5c`, so the fifth show is a **new
+part appended after `p5g`** — never a reorder.
+
+**Still to rule before the auto-cue half is built** (AP onward): cheap
+`follow` chaining vs a real timecode transport, whether it must be
+VR-reachable, and what a running show does on a stage swap. **Demonstrate
+`follow` first** — it exists at `p6.txt:180`, all four shows leave it
+`null`, and filling it with the measured gaps runs the show with no new
+code. It may be the whole feature.
 
 **How a feature round runs here** (this repo has a shape, and it works):
 
@@ -32,8 +57,8 @@ next.
    HANDOFF's carpenters brief is the model: ask what decides the shape,
    one question at a time, before any code.
 2. **Spec it** to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
-   with numbered RULINGS inline. **The letters continue — the workshop
-   round ended at AN, so the next is AO.** Rulings are how decisions stop
+   with numbered RULINGS inline. **The letters continue — the Beetlejuice
+   spec used AO, so the next is AP.** Rulings are how decisions stop
    being re-litigated; the models question (RULING AI) is the example.
 3. **Plan it** to `docs/superpowers/plans/`, then build it as a **linear
    chain: one concern per PR, never stacked**, each branch cut after its
@@ -95,6 +120,8 @@ HANDOFF's headset section carries them, oldest first.
 
 ## Open items (rough order)
 
+- **THE BEETLEJUICE ROUND is in flight** — see Current focus. Seven sequential PRs after the spec: the portal + cemetery (stands the plot builder up), the house exterior, the interior shell, its dressings, the afterlife, the remainder, then the cue list. The auto-cue half waits on rulings AP onward.
+- **A video of a real show cannot give per-area levels unless the camera is locked off.** If a fixed-camera capture of anything ever turns up, `tools/video.js` re-runs on it in one command and the region measurement becomes valid. Worth asking for before any future video round.
 - **The frame-rate round, and the headset run it rides on.** Everything from #48 onward (usability round, nine build-feel PRs, both goods PRs, the carpenters round, phase 2 + the Arc door button) has met hardware NEVER. One trip: numbers first, then the question blocks at the bottom of HANDOFF.
 - **THE ASSEMBLY MERGE is specced-but-deferred** (owner, 2026-08-09) — merge a nailed assembly into one mesh, hammer un-merges. Gated on the meter reading submission-bound. The design constraints are written down in HANDOFF's frame-rate section so it can be picked up cold; the honest arithmetic is there too (after #81 a five-flat scene is ~50 draw calls of wood, and the merge takes it to ~5 — forty-five is the whole prize).
 - **The outside geometry review is answered and closed** (2026-08-09): keep polygon meshes, no voxels, no SDF, no CSG-first. GLTF is a "later, for richness" — not a frame-rate move. If the question comes round again, the reasoning is in HANDOFF's 2026-08-09 Done block.
@@ -138,4 +165,10 @@ HANDOFF's headset section carries them, oldest first.
 - 2026-08-09 — **the owner had the object system reviewed from outside.** Verdict accepted: keep polygon meshes; no voxels, no SDF, no CSG-first; GLTF a "later". Three corrections recorded in HANDOFF — its CSG condition is already MET (phase 2 shipped a door and a window flat; RULING AE frames and skins around an opening, and `buildLoad` replays functions a boolean result has no path through), seats have been instanced since the beginning, and its "11 InstancedMesh uses" misses that `instanced()` at `p2.txt:359` has 30 call sites.
 - 2026-08-09 — **costing the review's one open idea (merge nailed wood) turned up the real finding instead.** Every wood mesh carried the same material six times; r128 submits a draw call per geometry group for an array material, so a bare plank cost six. [#81](https://github.com/Jackscreations21/gms-theater-game/pull/81) opened: one material until the faces disagree, 900 → 150 draw calls at the cap, save format unchanged, 16/16 green, all five new/changed assertions negative-checked against `main`'s build. **The merge itself deferred by the owner** pending the meter. One false green found and fixed en route (a test poked `material[2]` on a single-material mesh and read its own stray property back) — in TRAPS.
 - 2026-08-09 — record updated for the next session: **THE FRAME-RATE ROUND**, with the foveation decision table, the four places to stand, a blank numbers table, the knob order, and the deferred merge's design constraints.
+- 2026-08-10 — session opened by fetching FIRST (the standing lesson, and it paid again): this clone sat on the **already-merged** `workshop-record` branch with `main` 3 commits behind — #89 had landed from elsewhere. Any branch cut from this checkout would have been based on a stale `main`.
+- 2026-08-10 — **the new feature is a fifth show taken off a video.** The owner asked "if i give you a video of a full show can you make the real cues and sets for it and make an auto cue feature for it that is timed currectley", then supplied `beetlejuice/videoplayback.mp4` (2 h 23 m 47 s) and "skip the first 33 seconds". `ffmpeg` installed via winget — **same PATH quirk as Node**, not on a fresh shell.
+- 2026-08-10 — **Phase 1: the file measured, and the headline changed the scope.** Five ffmpeg passes (a 16×9 area-averaged grid at 5 fps — one pass instead of the brief's 24 crops — plus per-frame scene scores, `blackdetect`, `silencedetect`, `astats`). Three independent tests agree the camera is **not locked off**: layout stability median r = 0.676 (a fixed camera scores ~0.95), 723 hard cuts at 5.0/min with median shot 6.8 s, and a cut rate steady across all 143 min. Extracted frames confirmed **a bootleg compilation shot from seats**. So the brief's §2.4(c) region measurement — "the one that matters most" — is unavailable from this file. What survived: CFR, real black at Y = 16.8, **fixed exposure** (+1.1 Y through a 13.3 s blackout), 33 blackouts ≥ 1 s, 76 strong fades, fade times median 2.2 s, the act break at 71:02, no interval in the file, and the **curtain call found in the last 2.5 min** — 82 events of lights bumping every 1–3 s, ending in a 7.0 s fade to a 7.3 s black. That last one is the best evidence the method works: the bows were located without seeing a frame.
+- 2026-08-10 — **two measurement lessons worth keeping.** (1) `scdet` is a frame-to-frame difference and therefore **structurally cannot see a fade** — a 4 s fade barely changes adjacent frames — so scene detection finds the EDIT, and cues have to come from `blackdetect` plus slopes measured strictly inside cut-free windows. (2) A first pass at finding wide shots scored for bright frame EDGES and returned close-ups; from a seat a wide shot is the opposite — a bright stage inside a **dark** proscenium surround, so the score is centre/edge ratio. Both are in TRAPS-worthy territory if a second video round happens.
+- 2026-08-10 — `tools/video.js` landed as [#90](https://github.com/Jackscreations21/gms-theater-game/pull/90): the probe, its README entry, and the brief. Post-merge verified on `main` — byte-identical rebuild at **895034**, 17/17, `"fatal": null`, work branch deleted local and remote.
+- 2026-08-10 — **the scenic arc surveyed and RULING AO taken.** 35 held wide frames, one per ~4 min, read as three contact sheets: **10–12 distinct configurations** (cemetery under a moon, the house interior, attic, bedroom, crypt, house exterior, the redecorated interior, a nested-frame afterlife, a sign set, a large angular structure, bare-stage looks), with the portal constant in nearly every frame. Owner's calls: **sets and all**, **the whole scenic arc**, and **RULING AO — same vocabulary, our own shapes**, which is what HANDOFF §3 already ruled for the other four. The tension is real and was put to him rather than decided quietly: a video makes tracing an authored scenic design easy for the first time.
 - 2026-08-08 — **carpenters phase 2 specced and built in one session** off four owner asks (build several at once; a flat with a door hole; one with a window hole; with or without the sheets — plus "it wont let me rotate stuff once it is built"). Shaped live: a LIST worked in order, STACKED on the one mark, and SKIN as a switch rather than eight rows. Spec (RULINGS AD–AH) merged as [#77](https://github.com/Jackscreations21/gms-theater-game/pull/77); [#78](https://github.com/Jackscreations21/gms-theater-game/pull/78) the rotate fix; [#79](https://github.com/Jackscreations21/gms-theater-game/pull/79) the rip, the two new rows and the build list. Every PR `base=main` — the #71–#73 mishap did not repeat. Post-merge verified: `main` tree identical to the tested tip, byte-identical rebuild (873188), 16/16, `"fatal": null`, and Pages already serving the same bytes.
