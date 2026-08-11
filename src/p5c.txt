@@ -1597,18 +1597,51 @@ function showCueExtras(c){
     if(dsc && !dsc.group.userData.sceneOff) SHOW.pendDress = {scene:dn, key:c.dress};
     else bjDress(dn, c.dress);
   }
-  if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
   /* a cue can send travelling scenery somewhere.  One cue may move more than
      one thing — act two opens with the exterior flying out WHILE the house
      slides on — so this takes a list as readily as a single move.  A move
      that names a PART retargets that part's own mover instead of the whole
-     group: scenery moving within a scene, no scene change (RULING AY). */
-  if(c.move && SHOW.scenes.length){
-    const list = Array.isArray(c.move) ? c.move : [c.move];
-    list.forEach(m=>{ if(!m) return;
-      if(m.part) sceneMovePartTo(m.scene, m.part, m.off, m.speed);
-      else sceneMoveTo(m.scene, m.off, m.speed); });
+     group: scenery moving within a scene, no scene change (RULING AY).
+
+     THE SPLIT RULE.  Where a move lands relative to the changeover is
+     load-bearing in BOTH directions, so each move is judged on whose it is:
+
+       - a move on the scene the cue is LEAVING lands BEFORE sceneChangeTo.
+         The changeover hides an outgoing set instantly unless
+         sceneTravelling says it is mid-move, and a whole-group mover only
+         reads as travelling once its target is set — judged the other way
+         round, act two's exterior flew out DARK, an instant hide dressed
+         up as a travel.
+
+       - every other move lands AFTER sceneChangeTo.  The incoming branch
+         SNAPS a hidden set's part movers to OUT and retargets them home —
+         moves applied first are overwritten by that snap: a JUMP to the
+         9:45 cue from another scene sent the hills home to centre, a full
+         graveyard on a cue whose whole point is emptying it.  Same-scene
+         moves (9:45 fired in sequence) are safe on this side too: the
+         changeover no-ops for a scene that is already on.
+
+     The partition is taken against SHOW.scene as the cue FIRES, before the
+     changeover rewrites it.
+
+     A PART move on the leaving scene lands on the before side too, and the
+     changeover then retargets every part of the leaving scene to OUT — the
+     exit choreography wins over the cue's part move, by design; no current
+     cue carries that shape. */
+  const mvList = (c.move && SHOW.scenes.length)
+    ? (Array.isArray(c.move) ? c.move : [c.move]) : [];
+  const mvApply = m => {
+    if(m.part) sceneMovePartTo(m.scene, m.part, m.off, m.speed);
+    else sceneMoveTo(m.scene, m.off, m.speed); };
+  const mvBefore = [], mvAfter = [];
+  for(const m of mvList){
+    if(!m) continue;
+    if(c.scene && m.scene === SHOW.scene && m.scene !== c.scene) mvBefore.push(m);
+    else mvAfter.push(m);
   }
+  mvBefore.forEach(mvApply);
+  if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
+  mvAfter.forEach(mvApply);
   if(c.confetti && typeof fireConfetti === 'function') fireConfetti();
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);
