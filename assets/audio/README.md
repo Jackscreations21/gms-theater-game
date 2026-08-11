@@ -1,14 +1,22 @@
 # assets/audio/
 
-The show's two recorded tracks go here. **They are gitignored on purpose**
-(RULING BA) — see [../../docs/AUDIO.md](../../docs/AUDIO.md), which holds the
-File-column contract and the copy commands.
+The show's three recorded tracks live here, and **they are committed**
+(RULING BI, which amends BA) — see
+[../../docs/AUDIO.md](../../docs/AUDIO.md), which holds the File-column
+contract, the offsets, the split commands and the whole reasoning.
 
-| File | What |
-|---|---|
-| `preshow.mp3` | the pre-show music |
-| `show.m4a` | the show |
+| File | Offset | What |
+|---|---|---|
+| `preshow.mp3` | 0 | the pre-show music, and the interval |
+| `act1.m4a` | 0 | act one — 0:35 to the act break |
+| `act2.m4a` | 4292 | act two — from 1:11:32 |
 
-This README is committed so the directory and the contract survive a clone.
-With the media absent the game runs **silent and complete** — that is the
-designed state, not a fault, and every test suite runs in it.
+**Offset is where that file begins in his whole recording.** It is what lets
+the show be two files without a single timestamp in the plot changing.
+
+Nothing else belongs in this directory: `.gitignore` names these three and
+ignores the rest, so a stray file is still an accident rather than a delivery.
+
+With the media absent the game runs **silent and complete** — that is still a
+designed state, not a fault, and every test suite in this repo runs in it
+because jsdom never fetches media at all.

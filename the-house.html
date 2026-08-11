@@ -15101,7 +15101,7 @@ function plotBeetlejuice(){
        beetlejuice sign go bright red." */
     {at:35, n:1, label:'GO — the proscenium and the sign go red', fade:1.5,
      house:0, lobby:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
-     audio:{play:'show', at:35, stop:'preshow'}, signCol:'#ff1e10',
+     audio:{play:'act1', at:35, stop:'preshow'}, signCol:'#ff1e10',
      look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
 
     /* "From 1:03 to 1:05 have all the lights that are in the audience area be
@@ -15488,7 +15488,7 @@ function plotBeetlejuice(){
     {at:4269, n:23, label:'1:11:09 — house to HALF — INTERVAL (holds for the console)',
      fade:6, house:0.5, lobby:0.9, haze:0, curtain:'shut', scene:'interior', dress:'deetz',
      backdrop:'out', hold:true,
-     audio:{stop:'show', play:'preshow'},
+     audio:{stop:'act1', play:'preshow'},
      look(){ all(0); }},
 
     /* ======================================================================
@@ -15513,7 +15513,7 @@ function plotBeetlejuice(){
     {at:4292, n:24, label:'GO — act two, the show track back at 1:11:32', fade:2,
      house:0.5, lobby:0, haze:0.2, curtain:'shut', scene:'house', backdrop:'out', sky:'in',
      move:{scene:'house', off:0},
-     audio:{play:'show', at:4292, stop:'preshow'},
+     audio:{play:'act2', at:4292, stop:'preshow'},
      look(){ all(0); onTheCloth(); set(FRONT, 0.4, '#bfe08a'); }},
 
     /* "1:11:47 house light black out and audiance blinders flash a bunch for a
@@ -15866,7 +15866,7 @@ function plotBeetlejuice(){
     {at:8100, n:57, label:'2:15:00 — curtain in, house to half, the audio fades out',
      fade:6, house:0.5, haze:0.2, curtain:'shut', scene:'interior', dress:'bj',
      neon:0, backdrop:'out',
-     audio:{fade:'show', secs:10},
+     audio:{fade:'act2', secs:10},
      look(){ all(0);
        onTheCloth();
        set(FRONT, 0.8, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }}
@@ -19882,13 +19882,24 @@ function loadSetModels(){
    Three things live here, and they are together because the middle one joins
    the other two:
 
-     1. RECORDED TRACKS (BA).  Two of them, read out of assets/audio/ by exact
-        filename.  THE FILES ARE NEVER COMMITTED and a missing track is a
-        NORMAL STATE — the show runs silent, every suite runs silent, and a
-        fresh clone runs silent.  This is the model-import pipeline over again
-        (RULING AZ): a manifest, a doc whose File column is the contract, a
-        test that pins the two together both ways, and a fallback so quiet
-        that nothing downstream can tell.
+     1. RECORDED TRACKS (BA, amended by BI).  THREE of them now, read out of
+        assets/audio/ by exact filename: the pre-show music, and his show
+        recording cut in half at the act break.  This is the model-import
+        pipeline over again (RULING AZ): a manifest, a doc whose File column is
+        the contract, a test that pins the two together both ways, and a
+        fallback so quiet that nothing downstream can tell.
+
+        THE FILES ARE COMMITTED NOW, which BA said they never would be.  BA's
+        first reason was that they COULD not be — one 134MB file against
+        GitHub's 100MB hard limit — and splitting the show removed it: the
+        halves are 69.4MB and 70.1MB.  Its other two reasons (off a video; a
+        commercial recording on a repo with Pages on) were the owner's to
+        overrule and he did, with all three in front of him.  See docs/AUDIO.md.
+
+        A MISSING TRACK IS STILL A NORMAL STATE and every line below still
+        assumes it.  That is not vestigial: every suite in this repo runs
+        silent, jsdom never fetches media, and the no-audio path is still the
+        only one a test can walk.
 
      2. THE TRANSPORT (BB).  Every timestamp the owner wrote is a position in
         the show track, so when that track is genuinely playing it IS the cue
@@ -19922,16 +19933,35 @@ function loadSetModels(){
    a misnamed file would otherwise just never play and never say why.
    -------------------------------------------------------------------------- */
 const AUDIO_DIR = 'assets/audio/';
+
+/* OFFSET is what makes the show track splittable (RULING BI).  His recording is
+   one 2h23m file and every timestamp he wrote is a position in it — that is
+   RULING BB and it is not up for revision.  So the file may be cut into pieces
+   as long as each piece SAYS WHERE IT BEGINS, and the plot never learns:
+
+     the clock  = offset + el.currentTime      (so a cue at 5000 fires 708s
+                                                into act2, not 5000s in)
+     a seek to `at` = at - offset              (so {play:'act2', at:4292} asks
+                                                for exactly the number it
+                                                always asked for, and gets 0.0)
+
+   CLOCK is which tracks are allowed to drive the cue stack.  It replaced a
+   hardcoded reach for AUD.tracks.show, and it is the whole reason two files
+   cost no new machinery: whichever clock track is really playing IS the clock.
+   The pre-show music can never be one, which is what makes it underscore. */
 const BJ_AUDIO = {
   /* "Play pre show music i have provided" — and again through the interval,
      because act two says "Play audio number one again till go is pressed". */
-  preshow: {file:'preshow.mp3', loop:true,  vol:0.85,
+  preshow: {file:'preshow.mp3', loop:true,  vol:0.85, offset:0, clock:false,
             label:'the pre-show music (his audio one)'},
-  /* the show itself.  Started at 0:35 on the first GO, resumed at 1:11:32 on
-     the second — his numbers, and every `at` in the plot is a position in
-     THIS file. */
-  show:    {file:'show.m4a',    loop:false, vol:1.0,
-            label:'the show (his audio two)'}
+  /* the show, in two halves — "split the bugger audio in half one for each
+     half".  Cut at 4292.000 exactly, which is FREE: the act-break cue stops
+     the track at 4269 and act two resumes it at 4292, so nothing between those
+     two numbers is ever heard.  Not one `at` in the plot changed. */
+  act1:    {file:'act1.m4a',    loop:false, vol:1.0,  offset:0,    clock:true,
+            label:'act one (his audio two, up to the act break)'},
+  act2:    {file:'act2.m4a',    loop:false, vol:1.0,  offset:4292, clock:true,
+            label:'act two (his audio two, from 1:11:32)'}
 };
 
 var AUD = {
@@ -19962,6 +19992,7 @@ function audTrack(key){
   const spec = BJ_AUDIO[key];
   if(!spec) return null;
   const tr = {key, file:spec.file, loop:!!spec.loop, vol:spec.vol === undefined ? 1 : spec.vol,
+              offset:spec.offset || 0, clock:!!spec.clock,
               el:null, blocked:false, want:false, seek:null, fade:null};
   /* jsdom has an <audio> element but never fetches media, so `el` exists and
      stays at readyState 0 for the whole of every suite — which is exactly the
@@ -20012,7 +20043,9 @@ function audLive(tr){
 function audPlay(key, at){
   const tr = audTrack(key); if(!tr) return false;
   tr.want = true;
-  tr.seek = (at === undefined ? null : at);
+  /* `at` is a position in HIS WHOLE RECORDING, always — the file it happens to
+     live in is this function's problem and nobody else's (RULING BI) */
+  tr.seek = (at === undefined ? null : Math.max(0, at - tr.offset));
   return true;
 }
 
@@ -20099,15 +20132,29 @@ function showCueAudio(a){
    -------------------------------------------------------------------------- */
 const AUD_CATCHUP = 40;        // cues per frame, a runaway backstop only
 
+/* WHICH FILE IS THE CLOCK RIGHT NOW (RULING BI).  Not "which did we ask for" —
+   which is really running, with data.  At most one ever is: act one is stopped
+   by the act-break cue before act two is asked for.  If somehow two were, the
+   manifest order decides, and the console would say so on the next seek. */
+function audClockTrack(){
+  for(const key in BJ_AUDIO){
+    if(!BJ_AUDIO[key].clock) continue;
+    const tr = AUD.tracks[key];
+    if(audLive(tr)) return tr;
+  }
+  return null;
+}
+
 function showAudioTick(dt){
   audFxStep(dt);
   audPump(dt);
-  const tr = AUD.tracks.show;
-  if(!audLive(tr)){ AUD.clock = false; return; }
+  const tr = audClockTrack();
+  if(!tr){ AUD.clock = false; return; }
   try{ tr.el.volume = Math.max(0, Math.min(1, tr.vol * audBusVol())); }catch(e){}
   AUD.clock = true;
   if(typeof CUES === 'undefined' || !CUES.length) return;
-  const t = tr.el.currentTime;
+  /* the position in the WHOLE recording, which is what every `at` means */
+  const t = tr.offset + tr.el.currentTime;
   let n = 0;
   while(nextCue < CUES.length && n++ < AUD_CATCHUP){
     const c = CUES[nextCue];

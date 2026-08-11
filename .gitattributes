@@ -1,1 +1,21 @@
 * text=auto eol=lf
+
+# MEDIA IS BINARY, AND SAYING SO IS NOT OPTIONAL.
+#
+# The line above hands every file to a content HEURISTIC to decide whether it
+# is text.  For source that is what we want — build.sh breaks under CRLF, which
+# is why that rule is there at all.  For a 70MB AAC file it is a coin toss that
+# nothing in this repo could ever call wrong: a media file that lost it would be
+# rewritten on checkout, and there is no test here that can hear, and no suite
+# that fetches media at all.  Name them instead of trusting the guess.
+#
+# .glb is on this list before a single model has arrived (docs/MODELING.md), on
+# the same reasoning: the import fallback is SILENT by design, so a corrupted
+# model would simply never load and never say why.
+*.m4a binary
+*.mp3 binary
+*.ogg binary
+*.wav binary
+*.glb binary
+*.png binary
+*.jpg binary
