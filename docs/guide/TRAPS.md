@@ -342,6 +342,52 @@ against this list before opening a PR; **add new traps as you hit them.**
   non-unref'd watchdog timer that fails the run if the tail never
   reports (see the AZ tail in `tests/beetlejuice.js`).
 
+## Cue plots, sound and the pattern engine
+
+- **A cue that omits `backdrop` does not leave the cloth alone — it flies it
+  OUT.** `plotBeetlejuice` writes `FLY[13].target` on EVERY cue from the
+  `backdrop` field, so a missing field is not "no change", it is a backdrop
+  sailing up mid-scene with nothing in the diff to suggest it. Same for `sky`.
+  Cue fields split into two kinds and it is worth knowing which you are adding:
+  ones read with `=== undefined` (leave alone — `signCol`, `neon`) and ones read
+  unconditionally (`backdrop`, `house`, `haze`). `fireCue` assigns
+  `HOUSE.house = c.house` flat, so a partial cue record writes `undefined` into
+  the masters.
+- **`play()` on a media element in jsdom prints "Not implemented:
+  HTMLMediaElement.prototype.play" onto the console of every suite that fires a
+  cue.** It does not throw, so a try/catch will not silence it. The fix is also
+  the better design: a cue records the *intent* (`want`, `seek`) and a per-frame
+  pump does the talking once `readyState >= 1`. That makes the no-audio path
+  total — with no file, readyState never leaves 0, so nothing is ever asked to
+  play — and it gets slow loading right for nothing.
+- **An effect engine scoped to one group WILL be pointed at the wrong group.**
+  The 9:01 "all lights flash brite to white" was very nearly armed as
+  `fx:{on:'all'}` when the engine only drove the audience rig, which would have
+  flashed eight blinders and left the stage dark — the right effect on the wrong
+  fourteen lamps, and nothing anywhere to say so. Unknown target names now move
+  NOTHING and log it, because a typo that moves the wrong lamps is worse than
+  one that moves none, and a test pins each target to its own channels.
+- **Two clocks must never both drive the cue stack.** When the audio owns the
+  transport it fires cues off `currentTime` AND cancels any follow the firing
+  armed. Miss the cancel and every cue fires twice — once on timecode and once
+  on the stopwatch a few seconds later.
+
+## Tests, again — two more ways to pass while wrong
+
+- **Measuring "fast" by how FAR something travelled.** The pattern test compared
+  total pan travel between the slow and fast effects, and a slow pattern with a
+  wider throw covers more ground than a fast one with a narrow throw — so a
+  "random" effect running at the wander frequencies sailed through on amplitude
+  alone. Fast means OFTEN: count direction changes, not distance.
+- **Grepping `.gitignore` for a pattern proves nothing** — commenting the rule
+  out leaves the pattern text sitting in the line, so `indexOf('assets/audio/*')`
+  passes against a file that ignores nothing. Ask git: `git check-ignore -q
+  <path>` answers the question you actually meant.
+- **And the backtick trap bit again, in a COMMENT.** Quoting a field name in
+  prose inside a probe closes the template literal and the suite dies at parse
+  time pointing somewhere unrelated. It is already listed above; it is listed
+  twice now because it is the easiest one in this file to walk into.
+
 ## Environment
 
 - PowerShell 5.1 mangles `git commit -m` with double quotes — message to
