@@ -1700,16 +1700,113 @@ const probe = `
   });
 
   /* SEEN, NOT SEEING.  There are eight real lights (four in a headset) handed
-     out by level*power, so a bright blinder that outranked a stage lantern
-     would take a real light off the stage at the worst possible moment. */
+     out by level*rank, so a blinder that outranked a stage lantern would take a
+     real light off the stage at the worst possible moment.
+
+     This asserted on the POWER field until RULING BF, when the two jobs it was
+     doing were split.  The GUARANTEE is unchanged and the assertion is the same
+     sentence — it just names the field that now carries it.  BF is why:
+     ranking low and burning dim were the same number, so BC quietly capped the
+     blinders at a fifth of a front-of-house lantern and nothing here could
+     see it.  What BC's EFFECT gives up is in the reserve tests below, which is
+     a stated ceiling of two rather than an accident. */
   P('an audience unit can never outrank a stage lantern for a real light', ()=>{
     let maxAud = 0, minStage = 99;
-    GROUPS.house.forEach(n=>{ maxAud = Math.max(maxAud, chan(n).power); });
-    for(let n = 1; n <= 25; n++) minStage = Math.min(minStage, chan(n).power);
+    GROUPS.house.forEach(n=>{ maxAud = Math.max(maxAud, chan(n).rank); });
+    for(let n = 1; n <= 25; n++) minStage = Math.min(minStage, chan(n).rank);
     if(maxAud >= minStage)
-      throw new Error('an audience unit at power ' + maxAud +
-                      ' can beat a stage lantern at power ' + minStage);
+      throw new Error('an audience unit at rank ' + maxAud +
+                      ' can beat a stage lantern at rank ' + minStage);
     return 'audience tops out at ' + maxAud + ', the dimmest stage lantern is ' + minStage;
+  });
+
+  console.log('--- the audience rig actually lights the audience (BF, BG) ---');
+
+  /* the whole of the owner's "the blinders arent bright enoug", in the units
+     the renderer uses.  Behavioural, not a comparison of two constants: light
+     ONE unit, run a frame, and read what the real light it was handed burns at.
+     Before BF a blinder at FULL burned 0.87 while one FOH lantern at 45% burned
+     1.36 — eight of them "as bright as posible" and every one of them dimmer
+     than half a single front light. */
+  const soloIntensity = (ch)=>{
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    chan(ch).level = 1;
+    updateRig(1/60, 0);
+    let best = 0;
+    for(const l of LIGHT_POOL) best = Math.max(best, l.intensity);
+    return best;
+  };
+  P('a blinder at full now burns brighter than a stage profile at full', ()=>{
+    showLoad('beetlejuice');
+    const blind = soloIntensity(26), prof = soloIntensity(1), foh45 = (()=>{
+      FIXTURES.forEach(f=>{ f.level = 0; }); chan(1).level = 0.45; updateRig(1/60, 0);
+      let b = 0; for(const l of LIGHT_POOL) b = Math.max(b, l.intensity); return b;
+    })();
+    if(blind <= prof)
+      throw new Error('a blinder at full burns ' + blind.toFixed(2) +
+                      ' against a profile at full on ' + prof.toFixed(2));
+    if(blind <= foh45 * 3)
+      throw new Error('a blinder at full is only ' + (blind/foh45).toFixed(1) +
+                      'x one FOH lantern at 45% — that is the fault, not the fix');
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    return 'blinder ' + blind.toFixed(2) + ' vs profile ' + prof.toFixed(2) +
+           ' vs one FOH at 45% ' + foh45.toFixed(2);
+  });
+
+  /* how many of the pool the audience rig is holding right now */
+  const audLive = ()=> GROUPS.house.filter(n=>chan(n)._live).length;
+  const stageLive = ()=>{ let k = 0; for(let n = 1; n <= 25; n++) if(chan(n)._live) k++; return k; };
+
+  /* THE ONE THAT WAS ACTUALLY BROKEN.  In a headset the pool is VR.lightCap —
+     four — and the six FOH lanterns of the pre-show took all four, so the
+     owner's purple sweep ran perfectly and put NOTHING on anybody.  "its not
+     doing the purple light seewps at the start" is this line. */
+  P('the pre-show sweep gets real light, in a headset as well as flat', ()=>{
+    showLoad('beetlejuice');
+    fireCue(0); cancelFollow();
+    for(let i = 0; i < 30; i++){ showAudioTick(1/60); updateRig(1/60, i/60); }
+    const flat = audLive();
+    const wasActive = VR.active, wasCap = VR.lightCap;
+    VR.active = true; VR.lightCap = 4;
+    updateRig(1/60, 0);
+    const headset = audLive(), headsetStage = stageLive();
+    VR.active = wasActive; VR.lightCap = wasCap;
+    if(flat < 2) throw new Error('the sweep holds ' + flat + ' of the 8 flat');
+    if(headset < 2) throw new Error('the sweep holds ' + headset + ' of the 4 in a headset');
+    if(headsetStage < 1) throw new Error('the reserve took the whole headset pool');
+    return flat + ' of 8 flat, ' + headset + ' of 4 in a headset (' +
+           headsetStage + ' left to the stage)';
+  });
+
+  /* A CEILING, NOT A FLOOR — the regression the reserve itself could cause.
+     Fourteen audience units at full must still only ever hold two. */
+  P('the reserve is a ceiling: fourteen audience units at full hold two lights', ()=>{
+    showLoad('beetlejuice');
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    GROUPS.house.forEach(n=>{ chan(n).level = 1; });
+    for(let n = 1; n <= 25; n++) chan(n).level = 1;
+    updateRig(1/60, 0);
+    const a = audLive(), s = stageLive();
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    if(a !== 2) throw new Error('the audience rig holds ' + a + ' of the pool, wanted 2');
+    if(a + s !== LIGHT_POOL.length)
+      throw new Error('the pool handed out ' + (a + s) + ' of ' + LIGHT_POOL.length);
+    return a + ' to the audience, ' + s + ' to the stage, whole rig at full';
+  });
+
+  /* and the other half of that: with the audience rig DARK the reserve claims
+     nothing, so all 94 stage cues in the plot are untouched by any of this */
+  P('a dark audience rig claims no reserve — the stage keeps all eight', ()=>{
+    showLoad('beetlejuice');
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    for(let n = 1; n <= 25; n++) chan(n).level = 1;
+    updateRig(1/60, 0);
+    const a = audLive(), s = stageLive();
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    if(a !== 0) throw new Error(a + ' dark audience units are holding a light');
+    if(s !== LIGHT_POOL.length)
+      throw new Error('the stage got ' + s + ' of ' + LIGHT_POOL.length);
+    return 'all ' + s + ' to the stage, nothing reserved';
   });
 
   console.log('--- the pattern engine (RULING BD) ---');
