@@ -265,10 +265,16 @@ const AUD_WANDER_RATE = 1.0;   // pre-show drift.  Owner: "slowly" — headset t
 const AUD_RANDOM_RATE = 1.0;   // the 1:16 chaos.  Owner: "fast"  — headset tune
 const _afC = new T.Color(), _afD = new T.Color();
 
+/* THE ENGINE ONLY EVER DRIVES THE AUDIENCE RIG.  The stage is cued by hand and
+   stays that way: a plot that wants the stage to flash writes a look with a
+   zero fade, which is what a flash is.  Naming the fall-through 'house' rather
+   than 'all' matters — 'all' reads as "every channel in the game", and a cue
+   that meant the whole rig would have flashed eight blinders and left the stage
+   untouched, with nothing to show it had aimed at the wrong fourteen lamps. */
 function audFxChans(on){
   if(on === 'blind') return GROUPS.blind;
   if(on === 'aud')   return GROUPS.aud;
-  return GROUPS.house;                    // 'all' — the whole audience rig
+  return GROUPS.house;                    // both audience groups, never the stage
 }
 
 /* what a cue's `fx` field means.  One record per target; a cue that says

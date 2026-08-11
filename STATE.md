@@ -21,7 +21,15 @@ plan: `docs/superpowers/plans/2026-08-11-beetlejuice-sound-house-prs1-3.md`.
   show track plays it IS the cue clock, so nothing drifts), the **pattern
   engine** (**RULING BD**: wander/sweep/random/flash off the frame `dt`), and
   the top of the show as he wrote it.
-- **PR 2** — act one's ~30 looks.
+- **PR 2 (this one)** — **act one is his now.** 28 of his timestamps became
+  cues, the ten set changes all stayed on their own seconds, and the invented
+  looks from the measuring round ("the moon takes the upstage", "the mourners",
+  "a hard green across the frames") are gone. His snaps have no fade times, his
+  30-second fade at 30:00 is 30 seconds, and both his mid-act blackouts cover
+  the set change that follows them. **The act break takes the house to HALF** —
+  the second thing he changed; that assertion was reversed in place, not
+  deleted. Measured fade durations from #90 survive only where he gave no time
+  of his own.
 - **PR 3** — act two, plus the set-time diff. **One numeric change found in
   his new set list: the netherworld goes 1:39:00 → 1:39:19.** Everything else
   matches what is built. The second thing he half-remembers changing is in the

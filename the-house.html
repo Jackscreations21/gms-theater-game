@@ -15081,150 +15081,335 @@ function plotBeetlejuice(){
        set(CYC, 0.55, '#2f5f9c'); set(BACK, 0.42, '#4a78b4');
        set(WASH, 0.18, '#5f7fa8'); set(BOOM, 0.30, '#3f6ea6'); }},
 
-    {at:189, n:3, label:'the moon takes the upstage', fade:4, house:0, haze:0.62,
-     curtain:'out', scene:'cemetery', backdrop:'in',
-     look(){ all(0);
-       set(CYC, 0.68, '#2b5896'); set(BACK, 0.30, '#6f8fc0');
-       set(BOOM, 0.22, '#3a689e'); }},
+    /* ======================================================================
+       ACT ONE, AS HE WROTE IT.
 
-    /* measured: a fade UP of 1.6s — one of the fastest clean slopes in the file */
-    {at:371, n:4, label:'the mourners — a hard front, fast', fade:1.6, house:0, haze:0.55,
-     curtain:'out', scene:'cemetery', backdrop:'in',
-     look(){ all(0);
-       aimFrontAt(FRONT, 0, 1.7, -6.5);
-       set(FRONT, 0.62, '#cfd8e8'); set(CYC, 0.34, '#2b5896');
-       set(WASH, 0.20, '#7f92ad'); }},
+       Every look below is one line of his `act one.txt`, and every time is a
+       position in the show track.  Where his plot and the built one disagreed
+       the built one lost — the same rule his set list won under in #104-#113 —
+       so the invented looks from that round ("the moon takes the upstage",
+       "the mourners", "a hard green across the frames") are gone, and the SET
+       cues they were wrapped around are all still on their own timestamps.
 
-    {at:480, n:5, label:'down to the one of them', fade:3, house:0, haze:0.5,
-     curtain:'out', scene:'cemetery', backdrop:'in',
+       He gives colour and area, not levels: "all lights go blue", "just
+       downstage right is lit up white", "purple and yellow".  The areas are
+       read onto our 25 stage channels; the audience rig (26-39) stays dark
+       through the act, because after the opening he never asks for it again.
+       ====================================================================== */
+
+    /* "3:30 . just downstage right is lit up white" */
+    {at:210, n:3, label:'3:30 — just downstage right, white', fade:2.5,
+     house:0, haze:0.55, curtain:'out', scene:'cemetery', backdrop:'in',
      look(){ all(0);
-       one(SPOT, 0.85, '#f2ecd8'); set(CYC, 0.18, '#22467c');
-       set(BOOM, 0.12, '#33608f'); }},
+       aimFrontAt(FRONT, 4.6, 1.7, 2.0);
+       set([5,6], 0.72, '#f4f8ff'); set(CYC, 0.30, '#2f5f9c');
+       set(BACK, 0.16, '#4a78b4'); }},
+
+    /* "3:40. Downstage righ fades and right in front of the coffin gets lit up
+       white the rest is blue." — the coffin is downstage centre in the
+       graveyard, so this is the followspot plus a tight front, over blue */
+    /* he says "fades" and gives no duration, so this one keeps the MEASURED
+       2.2s — the median fade-down across the whole recording (#90).  Where he
+       times a fade his number wins; where he does not, the measurement still
+       stands, and it should not be quietly thrown away. */
+    {at:220, n:3.1, label:'3:40 — off DSR, onto the coffin; the rest blue', fade:2.2,
+     house:0, haze:0.55, curtain:'out', scene:'cemetery', backdrop:'in',
+     look(){ all(0);
+       one(SPOT, 0.85, '#f8fbff');
+       aimFrontAt(FRONT, 0, 1.4, 1.2); set([3,4], 0.55, '#f4f8ff');
+       set(CYC, 0.38, '#2f5f9c'); set(BACK, 0.26, '#4a78b4');
+       set(WASH, 0.14, '#5f7fa8'); }},
+
+    /* "5:26 all lights go white with sum blue" */
+    {at:326, n:4, label:'5:26 — all white, with some blue in it', fade:3,
+     house:0, haze:0.5, curtain:'out', scene:'cemetery', backdrop:'in',
+     look(){ all(0);
+       aimFrontAt(FRONT, 0, 1.7, -1.0);
+       set(FRONT, 0.66, '#f4f8ff'); set(WASH, 0.62, '#eaf0fb');
+       set(BACK, 0.40, '#cfe0ff'); set(CYC, 0.34, '#3f6ea6');
+       set(BOOM, 0.24, '#dfe8f2'); }},
+
+    /* "9:01 all lights flash brite to white" — and this is a LOOK, not an
+       effect.  The pattern engine only ever drives the audience rig (RULING
+       BD), so arming a flash here would have flashed the blinders and left the
+       stage alone, which is the opposite of what he asked for.  A zero fade to
+       full white, with 9:45 fading it away, is the flash. */
+    {at:541, n:5, label:'9:01 — everything flashes hard to white', fade:0,
+     house:0, haze:0.5, curtain:'out', scene:'cemetery', backdrop:'in',
+     look(){ all(0);
+       set(FRONT, 1.0, '#ffffff'); set(WASH, 1.0, '#ffffff');
+       set(BACK, 0.9, '#ffffff'); set(CYC, 0.7, '#eaf2ff');
+       set(BOOM, 0.8, '#ffffff'); }},
 
     /* 9:45 — "Stage empties just has the backdrop for the graveyard".  Not a
        scene change and no longer a dressing (a dress on a drawn set defers,
        which made the old dress:'bare' an invisible no-op): the cue moves the
        cemetery's own PARTS, and the hills run to the wings in view — RULING
-       AY, scenery moving within a scene.  The cloth stays on its line. */
+       AY, scenery moving within a scene.  The cloth stays on its line.
+
+       He gives no colour here, so it comes back down off the flash to the
+       white-with-blue of 5:26, thinned out because there is nothing left on
+       stage to light but the cloth. */
     {at:585, n:6, label:'9:45 — the stage empties to the backdrop', fade:5, house:0, haze:0.7,
      curtain:'out', scene:'cemetery', backdrop:'in',
      move:[{scene:'cemetery', part:'hillR', off:-BJ_HILL_OUT},
            {scene:'cemetery', part:'hillL', off: BJ_HILL_OUT}],
      look(){ all(0);
-       set(BACK, 0.62, '#4f86c8'); set(MOVE, 0.5, '#78c8e8');
-       set(CYC, 0.34, '#25497e'); }},
+       set(BACK, 0.58, '#dfe8f8'); set(CYC, 0.36, '#3f6ea6');
+       set(WASH, 0.16, '#eaf0fb'); }},
 
-    /* 10:40 — "Graveyard backdrop lifts up and maitlands house slides forward" */
-    {at:640, n:7, label:'10:40 — backdrop out, the house slides on', fade:4, house:0, haze:0.4,
-     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+    /* 10:40 — "Graveyard backdrop lifts up and maitlands house slides forward",
+       and "When maitlands house come forward light it up light brown". */
+    {at:640, n:7, label:'10:40 — backdrop out, the house slides on, light brown', fade:4,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
      move:{scene:'interior', off:0},
      look(){ all(0);
-       set(WASH, 0.34, '#8fa0c0'); set(FRONT, 0.26, '#cfd8e8');
-       set(BACK, 0.20, '#5f7fa8'); }},
+       aimFrontAt(FRONT, 0, 1.7, -1.0);
+       set(WASH, 0.62, '#e8c79a'); set(FRONT, 0.52, '#efd3a6');
+       set(BOOM, 0.30, '#d8b184'); }},
 
-    {at:700, n:8, label:'inside — the room, warm and full', fade:4, house:0, haze:0.3,
-     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+    /* "15:51 all lights go blue" */
+    {at:951, n:8, label:'15:51 — all blue', fade:3,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
      look(){ all(0);
-       set(FRONT, 0.62, '#f0d8b0'); set(WASH, 0.66, '#e8c9a4');
-       set(BOOM, 0.34, '#d8b184'); }},
+       set(WASH, 0.52, '#3f6ea6'); set(FRONT, 0.34, '#4a78b4');
+       set(BACK, 0.30, '#2f5f9c'); set(BOOM, 0.22, '#33608f'); }},
 
-    /* measured: fades DOWN in this file run a 2.2s median */
-    {at:989, n:9, label:'the arch, and whoever is standing in it', fade:2.2, house:0, haze:0.35,
-     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+    /* "15:56 they fade to light purple" */
+    {at:956, n:8.1, label:'15:56 — fading to light purple', fade:4,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
      look(){ all(0);
-       one(SPOT, 0.7, '#f4eede'); set(FRONT, 0.22, '#dfe8f4');
-       set(WASH, 0.16, '#8fa0c0'); }},
+       set(WASH, 0.54, '#b79dff'); set(FRONT, 0.34, '#c8a8d8');
+       set(BOOM, 0.24, '#9f7fc0'); }},
 
-    /* measured: 22:14 is the brightest interior frame in the file */
-    {at:1334, n:10, label:'the whole room, wide open', fade:3, house:0, haze:0.4,
-     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+    /* "18:53 lights go blue and green" */
+    {at:1133, n:9, label:'18:53 — blue and green', fade:3,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
      look(){ all(0);
-       set(FRONT, 0.6, '#f4e8d0'); set(WASH, 0.62, '#efe6d2');
-       set(BOOM, 0.3, '#d8c0a0'); }},
+       set(WASH, 0.50, '#37e07a'); set(BACK, 0.34, '#2f5f9c');
+       set(FRONT, 0.26, '#3f8a6e'); set(BOOM, 0.22, '#3f6ea6'); }},
 
-    {at:1700, n:11, label:'down, and the room goes cold', fade:3, house:0, haze:0.4,
-     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
-     look(){ all(0); set(WASH, 0.22, '#8fa0c0'); set(BOOM, 0.14, '#5f7fa8'); }},
+    /* "20:27. Upstage center goes white rest goes blue" */
+    {at:1227, n:10, label:'20:27 — upstage centre white, the rest blue', fade:2.5,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     look(){ all(0);
+       set([11,12], 0.78, '#f4f8ff'); set(BACK, 0.42, '#eaf0fb');
+       set([9,10,13,14], 0.26, '#3f6ea6'); set(FRONT, 0.20, '#4a78b4');
+       set(BOOM, 0.18, '#33608f'); }},
 
-    /* 32:16 — "Maitlands house slide back" */
-    {at:1936, n:12, label:'32:16 — the house slides back', fade:2.5, house:0, haze:0.4,
-     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+    /* "20:41. Fades back to light purple" */
+    {at:1241, n:10.1, label:'20:41 — back to light purple', fade:3.5,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     look(){ all(0);
+       set(WASH, 0.54, '#b79dff'); set(FRONT, 0.34, '#c8a8d8');
+       set(BOOM, 0.24, '#9f7fc0'); }},
+
+    /* "21:51. Goes back to light brown" */
+    {at:1311, n:11, label:'21:51 — back to light brown', fade:3,
+     house:0, haze:0.35, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     look(){ all(0);
+       aimFrontAt(FRONT, 0, 1.7, -1.0);
+       set(WASH, 0.62, '#e8c79a'); set(FRONT, 0.52, '#efd3a6');
+       set(BOOM, 0.30, '#d8b184'); }},
+
+    /* "22:57 lights start fading back to blue and green and by 23:00 they are
+       fully green and blue." — a three-second fade, and he timed it himself */
+    {at:1377, n:11.1, label:'22:57 — fading to green and blue, full by 23:00', fade:3,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     look(){ all(0);
+       set(WASH, 0.52, '#37e07a'); set(BACK, 0.36, '#2f5f9c');
+       set(FRONT, 0.26, '#3f8a6e'); set(BOOM, 0.22, '#3f6ea6'); }},
+
+    /* "23:42 lights fade bak to light brown." */
+    {at:1422, n:11.2, label:'23:42 — back to light brown again', fade:3,
+     house:0, haze:0.35, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     look(){ all(0);
+       set(WASH, 0.62, '#e8c79a'); set(FRONT, 0.52, '#efd3a6');
+       set(BOOM, 0.30, '#d8b184'); }},
+
+    /* "30:00 lights start slowly fading to light blu and white and by 30:30
+       they are all light blue and white." — THIRTY SECONDS, his own number,
+       and the longest fade anywhere in this show. */
+    {at:1800, n:11.3, label:'30:00 — thirty seconds to light blue and white', fade:30,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     look(){ all(0);
+       set(WASH, 0.60, '#dfe8ff'); set(FRONT, 0.46, '#f4f8ff');
+       set(BACK, 0.34, '#cfe0ff'); set(BOOM, 0.22, '#bfd4f0'); }},
+
+    /* 32:16 — "Maitlands house slide back".  He gives no light change, so the
+       light blue and white of 30:30 rides through it. */
+    {at:1936, n:12, label:'32:16 — the house slides back', fade:2.5,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
      move:{scene:'interior', off:BJ_WAGON_BACK},
-     look(){ all(0); set(WASH, 0.06, '#8fa0c0'); }},
-
-    /* 32:50 — "backdrop drops down and attic set comes on" */
-    {at:1970, n:13, label:'32:50 — backdrop in, the attic', fade:4, house:0, haze:0.45,
-     curtain:'out', scene:'attic', backdrop:'in',
      look(){ all(0);
-       set(BOOM, 0.30, '#e8c07a'); set(WASH, 0.16, '#c8a882');
-       one(SPOT, 0.35, '#fff0d0'); }},
+       set(WASH, 0.34, '#dfe8ff'); set(BACK, 0.24, '#cfe0ff');
+       set(FRONT, 0.18, '#f4f8ff'); }},
 
-    {at:2100, n:14, label:'the string lights, and the model', fade:3, house:0, haze:0.5,
-     curtain:'out', scene:'attic', backdrop:'in',
+    /* "32:47 fade to black" — and the set change lands inside it */
+    {at:1967, n:12.1, label:'32:47 — fade to black', fade:3,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     look(){ all(0); }},
+
+    /* 32:50 — "backdrop drops down and attic set comes on", in the black */
+    {at:1970, n:13, label:'32:50 — backdrop in, the attic', fade:1,
+     house:0, haze:0.45, curtain:'out', scene:'attic', backdrop:'in',
+     look(){ all(0); }},
+
+    /* "32:59. (attic set should be fully on by now) light brown" */
+    {at:1979, n:13.1, label:'32:59 — the attic, light brown', fade:4,
+     house:0, haze:0.45, curtain:'out', scene:'attic', backdrop:'in',
      look(){ all(0);
-       set(WASH, 0.30, '#bfe08a'); set(FRONT, 0.20, '#d8e8b0');
-       set(BOOM, 0.18, '#9fd066'); }},
+       set(BOOM, 0.40, '#e8c79a'); set(WASH, 0.46, '#d8b184');
+       set(FRONT, 0.30, '#efd3a6'); one(SPOT, 0.30, '#fff0d0'); }},
+
+    /* "37:30 lights fade purple" */
+    {at:2250, n:14, label:'37:30 — fading purple', fade:4,
+     house:0, haze:0.5, curtain:'out', scene:'attic', backdrop:'in',
+     look(){ all(0);
+       set(WASH, 0.54, '#7a2eff'); set(BOOM, 0.32, '#9f7fc0');
+       set(FRONT, 0.26, '#b79dff'); }},
+
+    /* "38:27 lights snap back to light brown" — snap, so no fade */
+    {at:2307, n:14.1, label:'38:27 — snap back to light brown', fade:0,
+     house:0, haze:0.45, curtain:'out', scene:'attic', backdrop:'in',
+     look(){ all(0);
+       set(BOOM, 0.40, '#e8c79a'); set(WASH, 0.46, '#d8b184');
+       set(FRONT, 0.30, '#efd3a6'); }},
+
+    /* "39:07 lights snap to white" */
+    {at:2347, n:14.2, label:'39:07 — snap to white', fade:0,
+     house:0, haze:0.45, curtain:'out', scene:'attic', backdrop:'in',
+     look(){ all(0);
+       set(FRONT, 0.70, '#f8fbff'); set(WASH, 0.72, '#f4f8ff');
+       set(BACK, 0.44, '#eaf0fb'); set(BOOM, 0.38, '#ffffff'); }},
+
+    /* "Have lights get darker for the closet set change then go back up" — the
+       only cue in his act one given by intent rather than by clock, so it sits
+       either side of the 42:34 change he DID time. */
+    {at:2550, n:14.3, label:'darker for the closet change', fade:2.5,
+     house:0, haze:0.4, curtain:'out', scene:'attic', backdrop:'in',
+     look(){ all(0);
+       set(WASH, 0.10, '#c8c0d8'); set(BOOM, 0.08, '#9f8fb0'); }},
 
     /* 42:34 — "Closet set" */
-    {at:2554, n:15, label:'42:34 — the closet', fade:2.5, house:0, haze:0.35,
-     curtain:'out', scene:'closet', backdrop:'in',
+    {at:2554, n:15, label:'42:34 — the closet', fade:1.5,
+     house:0, haze:0.35, curtain:'out', scene:'closet', backdrop:'in',
+     look(){ all(0);
+       set(WASH, 0.10, '#c8c0d8'); }},
+
+    /* ...and back up.  Untimed by him too, so it takes the measured 1.6s —
+       the fastest clean fade UP anywhere in the recording. */
+    {at:2560, n:15.1, label:'and back up on the closet', fade:1.6,
+     house:0, haze:0.35, curtain:'out', scene:'closet', backdrop:'in',
      look(){ all(0);
        set(FRONT, 0.5, '#ff9ad8'); set(WASH, 0.46, '#e070c0');
        set(BOOM, 0.24, '#a04a8c'); }},
 
-    /* 48:49 — "Attic" */
-    {at:2929, n:16, label:'48:49 — back to the attic', fade:3, house:0, haze:0.45,
-     curtain:'out', scene:'attic', backdrop:'in',
+    /* 48:49 — "Attic".  No colour given, so it wears the attic's light brown. */
+    {at:2929, n:16, label:'48:49 — back to the attic', fade:3,
+     house:0, haze:0.45, curtain:'out', scene:'attic', backdrop:'in',
      look(){ all(0);
-       set(BOOM, 0.34, '#e8c07a'); set(WASH, 0.2, '#c8a882');
-       one(SPOT, 0.4, '#fff0d0'); }},
+       set(BOOM, 0.40, '#e8c79a'); set(WASH, 0.46, '#d8b184');
+       set(FRONT, 0.30, '#efd3a6'); one(SPOT, 0.34, '#fff0d0'); }},
 
     /* 52:00 — "Bedroom" */
-    {at:3120, n:17, label:'52:00 — the bedroom', fade:3.5, house:0, haze:0.3,
-     curtain:'out', scene:'bedroom', backdrop:'in',
+    {at:3120, n:17, label:'52:00 — the bedroom', fade:3.5,
+     house:0, haze:0.3, curtain:'out', scene:'bedroom', backdrop:'in',
      look(){ all(0);
-       set(WASH, 0.34, '#c8a8d8'); set(BOOM, 0.26, '#9f7fc0');
-       set(FRONT, 0.18, '#d8c8e8'); }},
+       set(WASH, 0.42, '#e8c79a'); set(BOOM, 0.26, '#d8b184');
+       set(FRONT, 0.24, '#efd3a6'); }},
+
+    /* "55:54 White on just downstage left" — still the bedroom; the roof is
+       six seconds away */
+    {at:3354, n:17.5, label:'55:54 — white on just downstage left', fade:2,
+     house:0, haze:0.3, curtain:'out', scene:'bedroom', backdrop:'in',
+     look(){ all(0);
+       aimFrontAt(FRONT, -4.6, 1.7, 2.0);
+       set([1,2], 0.76, '#f8fbff'); set(WASH, 0.10, '#cfd8e8'); }},
 
     /* 56:00 — "roof set come on" */
-    {at:3360, n:18, label:'56:00 — the roof', fade:4, house:0, haze:0.6,
-     curtain:'out', scene:'roof', backdrop:'in',
+    {at:3360, n:18, label:'56:00 — the roof', fade:4,
+     house:0, haze:0.6, curtain:'out', scene:'roof', backdrop:'in',
      look(){ all(0);
-       set(CYC, 0.34, '#24507f'); set(BACK, 0.3, '#4a78b4');
-       set(BOOM, 0.24, '#6f8fc0'); }},
+       aimFrontAt(FRONT, 0, 1.7, -1.0);
+       set([1,2], 0.50, '#f8fbff'); set(BOOM, 0.30, '#cfd8e8');
+       set(CYC, 0.22, '#24507f'); }},
 
-    {at:3600, n:19, label:'a hard side light across the slates', fade:2.5, house:0, haze:0.65,
-     curtain:'out', scene:'roof', backdrop:'in',
+    /* "57:08 entire stage fades blue" */
+    {at:3428, n:19, label:'57:08 — the whole stage fades blue', fade:4,
+     house:0, haze:0.65, curtain:'out', scene:'roof', backdrop:'in',
      look(){ all(0);
-       set(BOOM, 0.52, '#cfd8e8'); one(SPOT, 0.45, '#f2ecd8');
-       set(CYC, 0.14, '#1d3f70'); }},
+       set(CYC, 0.46, '#2f5f9c'); set(BACK, 0.38, '#3f6ea6');
+       set(WASH, 0.30, '#4a78b4'); set(BOOM, 0.26, '#33608f');
+       set(FRONT, 0.18, '#5f7fa8'); }},
 
-    /* 1:02:51 — "Roof set comes off backdrop lifts and deetze house slides on" */
-    {at:3771, n:20, label:'1:02:51 — backdrop out, the Deetz house slides on', fade:4,
+    /* "1:02:49 lights snap black." — and 1:02:51's set change lands in it */
+    {at:3769, n:19.5, label:'1:02:49 — snap to black', fade:0,
+     house:0, haze:0.5, curtain:'out', scene:'roof', backdrop:'in',
+     look(){ all(0); }},
+
+    /* 1:02:51 — "Roof set comes off backdrop lifts on and deetze house slides
+       on", two seconds into the blackout */
+    {at:3771, n:20, label:'1:02:51 — backdrop out, the Deetz house slides on', fade:1,
      house:0, haze:0.4, curtain:'out', scene:'interior', dress:'deetz', backdrop:'out',
      move:{scene:'interior', off:0},
-     look(){ all(0);
-       set(FRONT, 0.58, '#f8f0e0'); set(WASH, 0.5, '#efe6d2');
-       set(BOOM, 0.22, '#d8c0a0'); }},
+     look(){ all(0); }},
 
-    /* measured: 80:39 puts a hard green across it */
-    {at:4000, n:21, label:'a hard green across the frames', fade:2, house:0, haze:0.5,
-     curtain:'out', scene:'interior', dress:'deetz', backdrop:'out',
+    /* "1:03:00 all white." */
+    {at:3780, n:20.1, label:'1:03:00 — all white', fade:2.5,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'deetz', backdrop:'out',
      look(){ all(0);
-       set(WASH, 0.56, '#7fc46a'); set(MOVE, 0.48, '#9fd066');
-       set(BACK, 0.22, '#5fae52'); }},
+       set(FRONT, 0.70, '#f8fbff'); set(WASH, 0.74, '#f4f8ff');
+       set(BACK, 0.46, '#eaf0fb'); set(BOOM, 0.36, '#ffffff'); }},
+
+    /* "1:07:13 purple and yellow" */
+    {at:4033, n:21, label:'1:07:13 — purple and yellow', fade:3,
+     house:0, haze:0.5, curtain:'out', scene:'interior', dress:'deetz', backdrop:'out',
+     look(){ all(0);
+       set(WASH, 0.56, '#7a2eff'); set(FRONT, 0.44, '#ffc04a');
+       set(BOOM, 0.30, '#b79dff'); set(BACK, 0.26, '#ffb340'); }},
+
+    /* "1:09:33. All lights snap to green." */
+    {at:4173, n:21.1, label:'1:09:33 — snap to green', fade:0,
+     house:0, haze:0.5, curtain:'out', scene:'interior', dress:'deetz', backdrop:'out',
+     look(){ all(0);
+       set(FRONT, 0.62, '#1ee05a'); set(WASH, 0.70, '#37e07a');
+       set(BACK, 0.40, '#3f8a2e'); set(BOOM, 0.34, '#1ee05a'); }},
+
+    /* "1:10:09 all light fade red and orange" */
+    {at:4209, n:21.2, label:'1:10:09 — fading red and orange', fade:3,
+     house:0, haze:0.5, curtain:'out', scene:'interior', dress:'deetz', backdrop:'out',
+     look(){ all(0);
+       set(WASH, 0.66, '#ff2a1e'); set(FRONT, 0.48, '#ff9c22');
+       set(BOOM, 0.34, '#ff5a2a'); set(BACK, 0.28, '#b00010'); }},
+
+    /* "1:10:16 all light fade green and purple" — seven seconds later */
+    {at:4216, n:21.3, label:'1:10:16 — fading green and purple', fade:3,
+     house:0, haze:0.5, curtain:'out', scene:'interior', dress:'deetz', backdrop:'out',
+     look(){ all(0);
+       set(WASH, 0.62, '#37e07a'); set(FRONT, 0.46, '#7a2eff');
+       set(BOOM, 0.32, '#1ee05a'); set(BACK, 0.28, '#b79dff'); }},
 
     /* MEASURED AND AGREED: 1:11:02 is second 4262, the show's longest
-       blackout at 13.3s, and the owner put the act break in the same place. */
+       blackout at 13.3s, and the owner put the act break in the same place.
+       "blackout main curtain in beetlejuice sign stays out" — the sign has
+       been in the flies since 1:16 and no cue brings it back, so "stays out"
+       is honoured by saying nothing about it. */
     {at:4262, n:22, label:'1:11:02 — blackout, curtain in, END OF HALF', fade:4,
      house:0, haze:0.3, curtain:'shut', scene:'interior', dress:'deetz', backdrop:'out',
      neon:0,
      look(){ all(0); }},
 
-    /* the interval HOLDS: "Second half starts when you press a button on the consol" */
-    {at:4290, n:23, label:'INTERVAL — the house comes up (holds for the console)', fade:6,
-     house:1, haze:0, curtain:'shut', scene:'interior', dress:'deetz', backdrop:'out',
-     hold:true,
+    /* "1:11:09 house lights fade up to half" and "audio two stops" — HALF, not
+       full, which is the second thing he changed and the reason this cue no
+       longer takes the house to 1.  It is also the interval, so it HOLDS:
+       "Second half starts when you press a button on the consol" (RULING AU),
+       and the pre-show music comes back under it — act two opens "Play audio
+       number one again till go is pressed". */
+    {at:4269, n:23, label:'1:11:09 — house to HALF — INTERVAL (holds for the console)',
+     fade:6, house:0.5, haze:0, curtain:'shut', scene:'interior', dress:'deetz',
+     backdrop:'out', hold:true,
+     audio:{stop:'show', play:'preshow'},
      look(){ all(0); }},
 
     /* ============ ACT TWO ============ */
@@ -19602,10 +19787,16 @@ const AUD_WANDER_RATE = 1.0;   // pre-show drift.  Owner: "slowly" — headset t
 const AUD_RANDOM_RATE = 1.0;   // the 1:16 chaos.  Owner: "fast"  — headset tune
 const _afC = new T.Color(), _afD = new T.Color();
 
+/* THE ENGINE ONLY EVER DRIVES THE AUDIENCE RIG.  The stage is cued by hand and
+   stays that way: a plot that wants the stage to flash writes a look with a
+   zero fade, which is what a flash is.  Naming the fall-through 'house' rather
+   than 'all' matters — 'all' reads as "every channel in the game", and a cue
+   that meant the whole rig would have flashed eight blinders and left the stage
+   untouched, with nothing to show it had aimed at the wrong fourteen lamps. */
 function audFxChans(on){
   if(on === 'blind') return GROUPS.blind;
   if(on === 'aud')   return GROUPS.aud;
-  return GROUPS.house;                    // 'all' — the whole audience rig
+  return GROUPS.house;                    // both audience groups, never the stage
 }
 
 /* what a cue's `fx` field means.  One record per target; a cue that says
