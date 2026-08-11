@@ -1491,8 +1491,17 @@ const probe = `
                       down.lx.filter(r=>r.lvl > 0.02)[0].lvl);
     if(down.house > 0.02) throw new Error('the house is up before the cloth is in');
     if(!/INTERVAL/.test(up.label)) throw new Error('no interval after the act break');
-    if(up.house < 0.9) throw new Error('the interval house is only at '+up.house);
-    return 'act break dark at cue '+down.n+', interval house at '+up.house;
+    /* REVERSED IN PLACE, not deleted.  This wanted the interval house at FULL
+       and it was right to, until the owner wrote "1:11:09 house lights fade up
+       to half" in his own act one — the second of the two things he changed.
+       His word beats the guess, and the assertion still has a job: the house
+       must genuinely come up, and it must come up to HALF, so a later round
+       cannot quietly drift it back to full or leave it dark. */
+    if(Math.abs(up.house - 0.5) > 0.001)
+      throw new Error('the interval house is at '+up.house+', and he asked for half');
+    if(up.at - down.at !== 7)
+      throw new Error('the interval is '+(up.at - down.at)+'s after the blackout, he wrote 7');
+    return 'act break dark at cue '+down.n+', interval house at '+up.house+' seven seconds later';
   });
 
   console.log('--- it does not disturb the other four ---');
@@ -1601,13 +1610,18 @@ const probe = `
     showLoad('beetlejuice');
     /* the warmers cue throws the front of house UP at the cloth; a later cue
        that never touches aims must not inherit that */
-    /* the warmers cue went with the re-time; the cue that throws the front UP
-       at the cloth is now the last one of the show, where the curtain is in */
-    const warm = CUES.find(c=>/confetti, curtain in/.test(c.label));
+    /* Anchored on the PRE-SHOW and the cue immediately after it, which is the
+       tightest demonstration in the show and does not move: the pre-show
+       throws the front of house up at the cloth, and GO (at 35s) sets no aim
+       at all, so if aims leaked it would inherit that one.  The old anchor —
+       "the moon takes the upstage" — was an invented look from the measuring
+       round and went when the owner's own act one replaced it. */
+    const warm = CUES.find(c=>/PRE-SHOW/.test(c.label));
     if(!warm) throw new Error('no cue throws the front at the cloth');
     const up = warm.lx.slice(0, 6).filter(r=>r.aim && r.aim[1] > 5);
-    if(up.length < 4) throw new Error('the warmers cue does not aim the front high');
-    const plain = CUES.find(c=>/the moon takes the upstage/.test(c.label));
+    if(up.length < 4) throw new Error('the pre-show does not aim the front up at the cloth');
+    const plain = CUES.filter(c=>c.at === 35)[0];
+    if(!plain) throw new Error('no cue at 35s to inherit it');
     const leaked = plain.lx.slice(0, 6).filter(r=>r.aim && r.aim[1] > 5);
     if(leaked.length)
       throw new Error(leaked.length+' front channels carry the cloth aim into a cue that never set it');
@@ -1919,6 +1933,153 @@ const probe = `
     const up = GROUPS.blind.filter(n=>a.lx[n-1].lvl > 0.9);
     if(up.length !== 8) throw new Error('only ' + up.length + ' blinders are up in the flash cue itself');
     return 'curtain and sign out at 1:16, flash, pattern, flash, gone by 1:26';
+  });
+
+  /* ====================================================================== *
+     ACT ONE, AS HE WROTE IT
+
+     His act one.txt is the authority.  The point of these is that the next
+     round can diff his file against the plot in one command instead of by eye.
+     ====================================================================== */
+  console.log('--- act one, off his own cue sheet ---');
+
+  P('every timestamp in his act one is a cue at that second', ()=>{
+    showLoad('beetlejuice');
+    /* every line of act one.txt that carries a clock, converted: 3:30, 3:40,
+       5:26, 9:01, 15:51, 15:56, 18:53, 20:27, 20:41, 21:51, 22:57, 23:42,
+       30:00, 32:47, 32:59, 37:30, 38:27, 39:07, 55:54, 57:08, 1:02:49,
+       1:03:00, 1:07:13, 1:09:33, 1:10:09, 1:10:16, 1:11:02, 1:11:09 */
+    const his = [210, 220, 326, 541, 951, 956, 1133, 1227, 1241, 1311, 1377,
+                 1422, 1800, 1967, 1979, 2250, 2307, 2347, 3354, 3428, 3769,
+                 3780, 4033, 4173, 4209, 4216, 4262, 4269];
+    const missing = his.filter(t=>!CUES.some(c=>c.at === t));
+    if(missing.length)
+      throw new Error(missing.length + ' of his times have no cue: ' + missing.join(', '));
+    /* and his SET times are all still exactly where his set list puts them */
+    const sets = [585, 640, 1936, 1970, 2554, 2929, 3120, 3360, 3771, 4262];
+    const lostSets = sets.filter(t=>!CUES.some(c=>c.at === t));
+    if(lostSets.length)
+      throw new Error('a set change moved off its timestamp: ' + lostSets.join(', '));
+    return his.length + ' light cues and ' + sets.length + ' set cues, all on his seconds';
+  });
+
+  /* "snap" and "fade" are instructions about TIME, and he uses both words
+     deliberately — four snaps in act one and they must not have fade times. */
+  P('the cues he calls snaps have no fade, and the ones he times keep his number', ()=>{
+    showLoad('beetlejuice');
+    const at = t => CUES.filter(c=>c.at === t)[0];
+    [[2307, '38:27 snap back to light brown'], [2347, '39:07 snap to white'],
+     [4173, '1:09:33 snap to green'], [3769, '1:02:49 snap black'],
+     [541, '9:01 flash bright']].forEach(pair=>{
+      const c = at(pair[0]);
+      if(c.fade !== 0) throw new Error(pair[1] + ' has a ' + c.fade + 's fade on it');
+    });
+    /* "30:00 lights start slowly fading ... and by 30:30" — thirty seconds,
+       his own arithmetic, and the longest fade in the show */
+    if(at(1800).fade !== 30)
+      throw new Error('the 30:00 fade is ' + at(1800).fade + 's, he wrote thirty');
+    /* "22:57 ... and by 23:00 they are fully green and blue" — three */
+    if(at(1377).fade !== 3)
+      throw new Error('the 22:57 fade is ' + at(1377).fade + 's, he wrote three');
+    return 'five snaps at 0s, the long fade at 30s, the 22:57 fade at 3s';
+  });
+
+  /* Both of his mid-act set changes are covered: he snaps to black FIRST and
+     the scenery moves inside it.  That is RULING AY read off his own sheet. */
+  P('his two blackouts cover the set changes that follow them', ()=>{
+    showLoad('beetlejuice');
+    const at = t => CUES.filter(c=>c.at === t)[0];
+    [[1967, 1970, 'the attic'], [3769, 3771, 'the Deetz house']].forEach(trio=>{
+      const dark = at(trio[0]), change = at(trio[1]);
+      const lit = dark.lx.filter(r=>r.lvl > 0.02);
+      if(lit.length)
+        throw new Error('the cover before ' + trio[2] + ' is not dark: ' +
+                        lit.length + ' channels up');
+      const stillLit = change.lx.filter(r=>r.lvl > 0.02);
+      if(stillLit.length)
+        throw new Error(trio[2] + ' comes on into ' + stillLit.length + ' lit channels');
+      if(change.at - dark.at > 3)
+        throw new Error(trio[2] + ' waits ' + (change.at - dark.at) + 's after the blackout');
+    });
+    return 'black at 32:47 then the attic at 32:50; black at 1:02:49 then the house at 1:02:51';
+  });
+
+  /* A cue that forgets to state its backdrop does not leave it alone — the
+     plotter reads the backdrop field on EVERY cue and flies the cloth OUT when
+     it is missing.  So an omission is a cloth sailing up mid-scene, silently. */
+  P('every act one cue states where the backdrop is', ()=>{
+    showLoad('beetlejuice');
+    const ls = FLY[13];
+    const act1 = CUES.filter(c=>c.at >= 88 && c.at <= 4269);
+    /* his set list: the graveyard cloth is IN to 10:40, OUT to 32:50, IN to
+       1:02:51, OUT to the act break */
+    const wantIn = t => (t < 640) || (t >= 1970 && t < 3771);
+    const wrong = act1.filter(c=>{
+      const trg = c.fly.filter(x=>x.id === ls.id)[0].target;
+      const isIn = trg < OUT_TRIM - 1;
+      return isIn !== wantIn(c.at);
+    });
+    if(wrong.length)
+      throw new Error(wrong.length + ' cues have the backdrop on the wrong side: ' +
+                      wrong.map(c=>c.at).join(', '));
+    return act1.length + ' act one cues, the cloth in and out exactly as his set list says';
+  });
+
+  /* After the opening he never mentions the audience rig again, so it stays
+     dark for the whole act — including through his "all lights" cues, which
+     mean the stage. */
+  P('the audience rig stays dark through act one', ()=>{
+    showLoad('beetlejuice');
+    const act1 = CUES.filter(c=>c.at >= 88 && c.at <= 4269);
+    const lit = [];
+    act1.forEach(c=>{
+      GROUPS.house.forEach(n=>{ if(c.lx[n-1].lvl > 0.02) lit.push(c.at + ':ch' + n); });
+    });
+    if(lit.length)
+      throw new Error(lit.length + ' audience channels are up during act one: ' +
+                      lit.slice(0, 4).join(', '));
+    /* and no act one cue arms a pattern on them either */
+    const armed = act1.filter(c=>c.fx);
+    if(armed.length)
+      throw new Error(armed.length + ' act one cues arm an audience pattern');
+    return 'all 14 audience channels dark across ' + act1.length + ' cues, no patterns armed';
+  });
+
+  /* The engine drives the audience rig and NOTHING ELSE.  This exists because
+     the 9:01 "all lights flash" cue was very nearly written as an effect, which
+     would have flashed eight blinders and left the stage dark — an aim at the
+     wrong fourteen lamps, with nothing to show it. */
+  P('the pattern engine can never write to a stage channel', ()=>{
+    showLoad('beetlejuice');
+    const before = [];
+    for(let n = 1; n <= 25; n++) before.push(chan(n).level);
+    ['blind', 'aud', 'house', 'nonsense'].forEach(on=>{
+      showCueFx({on:on, kind:'random', col:'#ffffff'});
+      for(let i = 0; i < 120; i++) audFxStep(1/60);
+    });
+    const moved = [];
+    for(let n = 1; n <= 25; n++)
+      if(Math.abs(chan(n).level - before[n-1]) > 1e-9) moved.push(n);
+    showCueFx(null);
+    if(moved.length)
+      throw new Error('the engine moved stage channels ' + moved.join(', '));
+    return 'four targets, 25 stage channels untouched by all of them';
+  });
+
+  P('the interval stops the show track and brings the pre-show music back', ()=>{
+    showLoad('beetlejuice');
+    const iv = CUES.filter(c=>c.at === 4269)[0];
+    if(!iv.hold) throw new Error('the interval does not hold');
+    if(iv.follow !== null) throw new Error('the interval arms a follow');
+    if(!iv.audio || iv.audio.stop !== 'show')
+      throw new Error('the interval does not stop the show track — he wrote "audio two stops"');
+    if(iv.audio.play !== 'preshow')
+      throw new Error('the interval does not bring back audio one');
+    /* and it really does it, through the cue path */
+    fireCue(CUES.indexOf(iv));
+    if(AUD.tracks.show.want) throw new Error('the show track is still wanted after the interval');
+    if(!AUD.tracks.preshow.want) throw new Error('the pre-show music was not restarted');
+    return 'holds, stops the show, restarts the pre-show music';
   });
 
   showLoad('beetlejuice');       // leave the board where the AZ tail expects it
