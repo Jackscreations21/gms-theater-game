@@ -9444,7 +9444,7 @@ function showBlank(){
     key:null, group:null, effects:[], goods:[], walk:[], cues:0,
     rain:null, fire:null, gyms:null, gymIn:0, tyre:null,
     neon:[], neonLevel:0, neonTarget:1, neonLights:[], neonT:0, smoke:[],
-    scenes:[], scene:null, revolve:null, wrong:[], confetti:null,
+    scenes:[], scene:null, pendDress:null, revolve:null, wrong:[], confetti:null,
     rainSound:false, flicker:null, lightning:0, lightningT:0,
     stormOn:false, stormT:0, porch:null,
     curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
@@ -9524,7 +9524,7 @@ function sceneAdd(name, label){
   g.visible = false;
   showRoot().add(g);
   const sc = {name, label: label || name.toUpperCase(), group:g, walk:[], on:false,
-              mv:null, mvHide:false, always:false};
+              mv:null, pmv:null, mvHide:false, always:false};
   SHOW.scenes.push(sc);
   return sc;
 }
@@ -9536,6 +9536,14 @@ function sceneWalk(sc, o){ if(sc) sc.walk.push(o); return o; }
 /* turning one scene on or off — the whole of it, so the mover can reuse it
    when a travelling set finally arrives and is allowed to disappear */
 function sceneApply(sc, on){
+  /* a dress cue that arrived while this set was up has been waiting for this
+     moment: the set is going off, so the swap is finally invisible (RULING
+     AY).  It lands FIRST, so the layer sweep below leaves the whole scene
+     inert, new dressing included. */
+  if(!on && SHOW.pendDress && SHOW.pendDress.scene === sc.name &&
+     typeof bjDress === 'function'){
+    const pd = SHOW.pendDress; SHOW.pendDress = null; bjDress(pd.scene, pd.key);
+  }
   sc.group.userData.sceneOff = !on;
   setPieceVisible(sc.group);
   /* visible is only a drawing flag — a raycast goes straight through it and
@@ -9591,7 +9599,8 @@ function sceneNext(step){
   if(!SHOW.scenes.length) return null;
   const i = SHOW.scenes.findIndex(s=>s.name === SHOW.scene);
   const n = (i < 0 ? 0 : i + (step || 1) + SHOW.scenes.length) % SHOW.scenes.length;
-  return sceneShow(SHOW.scenes[n].name);
+  /* the prev/next buttons choreograph like everything else (RULING AY) */
+  return sceneChangeTo(SHOW.scenes[n].name);
 }
 
 /* ============================================================================
@@ -9616,7 +9625,14 @@ function sceneNext(step){
 const SCENE_MV_EPS = 1e-4;              // closer than this and it has arrived
 
 function sceneTravelling(sc){
-  return !!(sc && sc.mv && Math.abs(sc.mv.target - sc.mv.off) > SCENE_MV_EPS);
+  if(!sc) return false;
+  if(sc.mv && Math.abs(sc.mv.target - sc.mv.off) > SCENE_MV_EPS) return true;
+  /* the deferred hide waits for the LAST of them — one part still crossing
+     keeps the whole set drawn, exactly as the whole-group mover does */
+  if(sc.pmv) for(const k in sc.pmv){
+    if(Math.abs(sc.pmv[k].target - sc.pmv[k].off) > SCENE_MV_EPS) return true;
+  }
+  return false;
 }
 /* give a scene the ability to travel.  `home` is where it sits at load. */
 function sceneTravel(sc, axis, home, speed){
@@ -9631,6 +9647,24 @@ function sceneTravel(sc, axis, home, speed){
   sc.group.position[a] = h;
   return sc;
 }
+/* a scene may also carry several NAMED movers over child groups, alongside
+   the whole-group travel (RULING AY): the hills part and run to the wings,
+   a flown room drops in, each part its own record.  `home` is the on-stage
+   pose the part is BUILT in; `out` is where it goes to clear the stage. */
+function sceneTravelPart(sc, name, group, axis, home, out, speed){
+  if(!sc || !group) return null;
+  const a = axis || 'x', h = home || 0;
+  const m = {group, axis:a, off:h, target:h, home:h,
+             out:(out === undefined ? h : out), speed: speed || 2.2};
+  (sc.pmv || (sc.pmv = {}))[name] = m;
+  /* the same two-sided freeze guard sceneTravel carries, for the same
+     reason: lockShowStatic may run either side of this call, and a frozen
+     group takes the position write and stands still. */
+  group.userData.sceneTravels = true;
+  group.matrixAutoUpdate = true;
+  group.position[a] = h;
+  return m;
+}
 function sceneMoveTo(name, target, speed){
   const sc = (typeof name === 'string') ? sceneFind(name) : name;
   if(!sc || !sc.mv) return null;
@@ -9638,22 +9672,78 @@ function sceneMoveTo(name, target, speed){
   if(speed) sc.mv.speed = speed;
   return sc;
 }
+/* one mover record, one frame: the same eps and the same clamp whether it is
+   the whole set on its wagon or one part of it on its own track */
+function sceneMvAdvance(m, g, dt){
+  const d = m.target - m.off;
+  if(Math.abs(d) <= SCENE_MV_EPS){
+    if(m.off !== m.target){ m.off = m.target; g.position[m.axis] = m.off; }
+    return;
+  }
+  const step = m.speed * dt;
+  m.off += Math.abs(d) <= step ? d : (d < 0 ? -step : step);
+  g.position[m.axis] = m.off;
+}
 function sceneMoveStep(dt){
   if(!SHOW.scenes || !SHOW.scenes.length) return;
   for(const sc of SHOW.scenes){
-    const m = sc.mv;
-    if(!m) continue;
-    const d = m.target - m.off;
-    if(Math.abs(d) <= SCENE_MV_EPS){
-      if(m.off !== m.target){ m.off = m.target; sc.group.position[m.axis] = m.off; }
-      /* it has arrived, so a hide that sceneShow deferred can happen now */
-      if(sc.mvHide){ sc.mvHide = false; sceneApply(sc, false); }
-      continue;
-    }
-    const step = m.speed * dt;
-    m.off += Math.abs(d) <= step ? d : (d < 0 ? -step : step);
-    sc.group.position[m.axis] = m.off;
+    if(sc.mv) sceneMvAdvance(sc.mv, sc.group, dt);
+    if(sc.pmv) for(const k in sc.pmv) sceneMvAdvance(sc.pmv[k], sc.pmv[k].group, dt);
+    /* everything has arrived, so a hide the changeover deferred can happen —
+       and it waits on the LAST part, not the first */
+    if(sc.mvHide && !sceneTravelling(sc)){ sc.mvHide = false; sceneApply(sc, false); }
   }
+}
+/* ============================================================================
+   THE CHANGEOVER — a scene change you watch happen (RULING AY)
+
+   sceneShow stays the instant swap, and boot and preset paths still use it.
+   Everything cue-driven or hand-driven comes through here instead: the
+   outgoing set sends every part it carries to its OUT and hides only when
+   the last one arrives; the incoming set comes on with its parts AT their
+   OUT — positioned before a single layer is enabled, so no frame ever shows
+   them at home — and they travel in, overlapped with the outgoing.
+
+   The whole-group mover is deliberately NOT sent anywhere: the wagon's
+   z-moves stay cue-authored through the `move:` field.  And a set with no
+   part movers and nothing mid-travel swaps instantly, which keeps the other
+   four productions behaving exactly as they always have.
+
+   Fired mid-changeover it RETARGETS, never queues — a still-drawn set on
+   its way out keeps its place and turns round.
+   ========================================================================== */
+function sceneChangeTo(name){
+  if(!SHOW.scenes.length) return null;
+  const want = sceneFind(name);
+  if(!want) return null;
+  if(want.always) return null;
+  for(const sc of SHOW.scenes){
+    if(sc.always) continue;
+    const on = (sc === want);
+    if(sc.on === on && SHOW.scene === name) continue;
+    sc.on = on;
+    if(on){
+      /* a set that is still drawn — mid-way out of an interrupted changeover
+         — keeps its place and turns round; a genuinely hidden one starts
+         from OUT, so the first visible frame has the parts off and high */
+      const drawn = !sc.group.userData.sceneOff;
+      if(sc.pmv) for(const k in sc.pmv){
+        const m = sc.pmv[k];
+        if(!drawn){ m.off = m.target = m.out; m.group.position[m.axis] = m.off; }
+        m.target = m.home;
+      }
+      sc.mvHide = false;
+      sceneApply(sc, true);
+    } else {
+      if(sc.pmv) for(const k in sc.pmv) sc.pmv[k].target = sc.pmv[k].out;
+      if(sceneTravelling(sc)){ sc.mvHide = true; continue; }
+      sc.mvHide = false;
+      sceneApply(sc, false);
+    }
+  }
+  SHOW.scene = name;
+  if(typeof refreshSceneUI === 'function') refreshSceneUI();
+  return want;
 }
 function showStrike(){
   if(typeof crewForgetLoads === 'function') crewForgetLoads();
@@ -10896,7 +10986,18 @@ function showCueExtras(c){
   if(SHOW.fire) SHOW.fire.target = c.fire ? (c.fire.size === undefined ? 1 : c.fire.size) : 0;
   if(c.neon !== undefined && typeof setNeon === 'function') setNeon(c.neon);
   setFirelight(c.fire ? c.fire.chans : null, c.fire ? c.fire.base : 0.8);
-  if(c.scene && SHOW.scenes.length) sceneShow(c.scene);
+  /* which dressing the room wears (RULING AQ) — judged BEFORE the changeover
+     below, against where the set stands as the cue FIRES.  A swap on a set
+     the audience cannot see is honest and lands now: the parked wagon is
+     dressed in the wings, then called on already wearing it.  A swap on a
+     set they CAN see waits on SHOW.pendDress until the set goes off
+     (RULING AY: nothing ever pops), which sceneApply applies. */
+  if(c.dress && typeof bjDress === 'function' && SHOW.scenes.length){
+    const dn = c.scene || SHOW.scene, dsc = sceneFind(dn);
+    if(dsc && dsc.on) SHOW.pendDress = {scene:dn, key:c.dress};
+    else bjDress(dn, c.dress);
+  }
+  if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
   /* a cue can send travelling scenery somewhere.  One cue may move more than
      one thing — act two opens with the exterior flying out WHILE the house
      slides on — so this takes a list as readily as a single move. */
@@ -10904,8 +11005,6 @@ function showCueExtras(c){
     const list = Array.isArray(c.move) ? c.move : [c.move];
     list.forEach(m=>{ if(m) sceneMoveTo(m.scene, m.off, m.speed); });
   }
-  /* and which dressing the room is wearing (RULING AQ) */
-  if(c.dress && typeof bjDress === 'function') bjDress(c.scene || SHOW.scene, c.dress);
   if(c.confetti && typeof fireConfetti === 'function') fireConfetti();
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);
@@ -18205,7 +18304,7 @@ function refreshSceneUI(){
         }).join('')
       : '<span style="color:var(--dim)">this show has one set</span>';
     $$('#sceneList .cue').forEach(el=>el.onclick = ()=>{
-      sceneShow(el.dataset.s);
+      sceneChangeTo(el.dataset.s);
       const sc = sceneFind(el.dataset.s);
       if(sc) toast(sc.label + ' is on');
     });

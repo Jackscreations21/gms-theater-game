@@ -888,7 +888,10 @@ const probe = `
     sceneShow('interior');
     for(const o of DRESSINGS) if(o !== 'bj' && lit(o))
       throw new Error(o+' lit up again when the room came back on');
-    /* and a CUE is what chooses the dressing, the way it chooses the set */
+    /* and a CUE is what chooses the dressing, the way it chooses the set —
+       fired while the room is OFF, because a dress on a room in view now
+       DEFERS (RULING AY).  The deferral has its own test below. */
+    sceneShow('cemetery');
     showCueExtras({scene:'interior', dress:'deetz'});
     if(!lit('deetz')) throw new Error('a cue cannot put a dressing on');
     if(lit('bj')) throw new Error('the old dressing stayed on under the new one');
@@ -932,6 +935,72 @@ const probe = `
     if(mb.min.y < 0.85) throw new Error('the model starts at '+mb.min.y.toFixed(2)+'m — not on a table');
     if(mb.max.y > 1.8) throw new Error('the model reaches '+mb.max.y.toFixed(2)+'m — too tall to be a model');
     return 'roof to '+rb.max.y.toFixed(1)+'m, model on a table at '+mb.max.y.toFixed(2)+'m';
+  });
+
+  console.log('--- the changeover, and the dress that waits (RULING AY) ---');
+
+  P('a dress on a room in view DEFERS, and lands the moment the room goes off', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('interior');
+    const sc = sceneFind('interior');
+    const lit = key => { let n = 0; sc.dress[key].traverse(o=>{ if(o.isMesh && o.layers.mask !== 0) n++; }); return n; };
+    if(sc.dressOn !== 'maitland') throw new Error('the room starts in '+sc.dressOn);
+    showCueExtras({dress:'bj'});           // no scene: the room in view is the target
+    if(sc.dressOn === 'bj') throw new Error('the dress POPPED in full view');
+    if(!lit('maitland')) throw new Error('the worn dressing went dark on a deferred cue');
+    if(!SHOW.pendDress || SHOW.pendDress.key !== 'bj' || SHOW.pendDress.scene !== 'interior')
+      throw new Error('nothing was parked for later');
+    sceneShow('cemetery');                 // the room goes off — NOW it lands
+    if(sc.dressOn !== 'bj') throw new Error('the parked dress never landed');
+    if(SHOW.pendDress) throw new Error('the parked dress was left on the hook');
+    let live = 0; sc.group.traverse(o=>{ if(o.layers && o.layers.mask !== 0) live++; });
+    if(live) throw new Error(live+' pieces live on an OFF room after the deferred dress');
+    sceneShow('interior');
+    if(!lit('bj')) throw new Error('it came back not wearing the parked dress');
+    return 'deferred in view, landed on going off, inert throughout, worn on the way back';
+  });
+
+  P('a dress on a HIDDEN room lands at once — the wagon is dressed in the wings', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('interior');
+    if(sc.on) throw new Error('the room is on at the top of the show');
+    /* the plot pattern (cue 20): ONE cue re-dresses the parked wagon AND
+       calls it on.  The dress is judged where the set stands as the cue
+       FIRES — parked, hidden — so it lands at once and the room slides on
+       already wearing it.  Judged after the changeover instead, it would
+       defer, and the Deetz house would slide on wearing the Maitlands room. */
+    showCueExtras({scene:'interior', dress:'deetz'});
+    if(sc.dressOn !== 'deetz') throw new Error('the hidden room was not dressed at once');
+    if(SHOW.pendDress) throw new Error('a dress on a hidden room has no business deferring');
+    const lit = key => { let n = 0; sc.dress[key].traverse(o=>{ if(o.isMesh && o.layers.mask !== 0) n++; }); return n; };
+    if(!lit('deetz')) throw new Error('it came on not wearing the cue dress');
+    return 'dressed in the wings, called on already wearing it — nothing parked';
+  });
+
+  P('a stage swap parks the changeover: part offsets and the waiting dress', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('interior');
+    const g = new THREE.Group(); sc.group.add(g);
+    sceneTravelPart(sc, 'probe', g, 'x', 0, -8, 2.0);
+    sceneShow('interior');
+    showCueExtras({dress:'bj'});               // defers — the room is in view
+    sceneChangeTo('cemetery');                 // the room leaves: its part heads out
+    for(let i=0;i<90;i++) updateStorm(1/60);   // 1.5s of a 4 second travel
+    const off = sc.pmv.probe.off;
+    if(!(off < -1 && off > -7)) throw new Error('the part is not mid-travel: '+off);
+    stageSwitch('arcMain', true);
+    if(SHOW.pendDress) throw new Error('the other stage inherited the waiting dress');
+    stageSwitch('palace', true);
+    const back = sceneFind('interior');
+    if(!back.pmv || !back.pmv.probe) throw new Error('the part mover did not park');
+    if(Math.abs(back.pmv.probe.off - off) > 1e-6)
+      throw new Error('came back at '+back.pmv.probe.off.toFixed(2)+', left at '+off.toFixed(2));
+    if(!SHOW.pendDress || SHOW.pendDress.key !== 'bj')
+      throw new Error('the waiting dress was lost in the walk');
+    for(let i=0;i<600;i++) updateStorm(1/60);  // the changeover finishes where it left off
+    if(back.group.userData.sceneOff !== true) throw new Error('the room never finished hiding');
+    if(back.dressOn !== 'bj') throw new Error('the deferred dress never landed after the swap');
+    return 'left mid-travel at '+off.toFixed(2)+', found there, finished, and dressed';
   });
 
   /* act one now plays across four sets; the interval re-dresses for act two */
