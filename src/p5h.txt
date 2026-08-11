@@ -1828,7 +1828,7 @@ function plotBeetlejuice(){
        beetlejuice sign go bright red." */
     {at:35, n:1, label:'GO — the proscenium and the sign go red', fade:1.5,
      house:0, lobby:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
-     audio:{play:'show', at:35, stop:'preshow'}, signCol:'#ff1e10',
+     audio:{play:'act1', at:35, stop:'preshow'}, signCol:'#ff1e10',
      look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
 
     /* "From 1:03 to 1:05 have all the lights that are in the audience area be
@@ -2215,7 +2215,7 @@ function plotBeetlejuice(){
     {at:4269, n:23, label:'1:11:09 — house to HALF — INTERVAL (holds for the console)',
      fade:6, house:0.5, lobby:0.9, haze:0, curtain:'shut', scene:'interior', dress:'deetz',
      backdrop:'out', hold:true,
-     audio:{stop:'show', play:'preshow'},
+     audio:{stop:'act1', play:'preshow'},
      look(){ all(0); }},
 
     /* ======================================================================
@@ -2240,7 +2240,7 @@ function plotBeetlejuice(){
     {at:4292, n:24, label:'GO — act two, the show track back at 1:11:32', fade:2,
      house:0.5, lobby:0, haze:0.2, curtain:'shut', scene:'house', backdrop:'out', sky:'in',
      move:{scene:'house', off:0},
-     audio:{play:'show', at:4292, stop:'preshow'},
+     audio:{play:'act2', at:4292, stop:'preshow'},
      look(){ all(0); onTheCloth(); set(FRONT, 0.4, '#bfe08a'); }},
 
     /* "1:11:47 house light black out and audiance blinders flash a bunch for a
@@ -2593,7 +2593,7 @@ function plotBeetlejuice(){
     {at:8100, n:57, label:'2:15:00 — curtain in, house to half, the audio fades out',
      fade:6, house:0.5, haze:0.2, curtain:'shut', scene:'interior', dress:'bj',
      neon:0, backdrop:'out',
-     audio:{fade:'show', secs:10},
+     audio:{fade:'act2', secs:10},
      look(){ all(0);
        onTheCloth();
        set(FRONT, 0.8, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }}

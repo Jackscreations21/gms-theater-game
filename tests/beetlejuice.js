@@ -1877,7 +1877,7 @@ const probe = `
      and the transport never touches the clock. */
   P('a missing track is silent and harmless, and the follow chain still drives', ()=>{
     showLoad('beetlejuice');
-    const tr = audTrack('show'), pre = audTrack('preshow');
+    const tr = audTrack('act1'), pre = audTrack('preshow');
     if(!tr || !pre) throw new Error('the manifest built no track records');
     if(audLive(tr)) throw new Error('a track with no file reports itself live');
     fireCue(0);
@@ -1903,7 +1903,7 @@ const probe = `
      is the seam — readyState 4 and not paused is all "really playing" means. */
   P('with the track really playing the music is the clock, and no follow is armed', ()=>{
     showLoad('beetlejuice');
-    const tr = audTrack('show'), real = tr.el;
+    const tr = audTrack('act1'), real = tr.el;
     const fake = {paused:false, readyState:4, currentTime:40, volume:1,
                   play(){ return null; }, pause(){ this.paused = true; }};
     tr.el = fake; tr.want = true; tr.blocked = false;
@@ -1932,9 +1932,53 @@ const probe = `
     return 'fired off timecode, caught up, and waited at the interval';
   });
 
+  /* THE JOIN (RULING BI).  The half above proves act one drives; this proves the
+     OFFSET does, which is the only genuinely new arithmetic in the split.  Act
+     two's file starts at zero and his plot counts from 4292, so a transport that
+     forgot to add the offset would sit at second 100 of a two-and-a-quarter-hour
+     show and fire nothing for the rest of the night — silently, because a cue
+     that never comes due looks exactly like a cue that is not due yet. */
+  P('act two drives the stack off its own file, with the offset added back', ()=>{
+    showLoad('beetlejuice');
+    const two = audTrack('act2'), real = two.el;
+    const ivIdx = CUES.findIndex(c=>c.hold && c.at > 4000);
+    /* park the stack where the interval leaves it, then start act two */
+    nextCue = ivIdx + 1;
+    const fake = {paused:false, readyState:4, currentTime:0, volume:1,
+                  play(){ return null; }, pause(){ this.paused = true; }};
+    two.el = fake; two.want = true; two.blocked = false;
+    showAudioTick(0.016);
+    if(!AUD.clock) throw new Error('act two did not take the clock');
+    const firstUp = CUES[nextCue];
+    /* LET THE CUE'S OWN SEEK LAND FIRST.  The act-two cue this just fired says
+       {play:'act2', at:4292}, which the pump turns into currentTime = 0 on the
+       next frame — so a test that writes the playhead before that frame is
+       racing the thing it is testing, and watches its own value get overwritten. */
+    showAudioTick(0.016);
+    if(Math.abs(fake.currentTime) > 0.001)
+      throw new Error('his 4292 did not seek act two to its own 0.0, it is at ' + fake.currentTime);
+    /* 100 seconds into the FILE is 4392 in his numbers */
+    fake.currentTime = 100;
+    showAudioTick(0.016);
+    const fired = CUES.slice(ivIdx + 1, nextCue);
+    if(!fired.length) throw new Error('100s into act two fired nothing at all');
+    const late = fired.filter(c=>c.at > 4392);
+    if(late.length) throw new Error('it fired ' + late.length + ' cues that are not due yet');
+    const due = CUES.slice(ivIdx + 1).filter(c=>c.at <= 4392);
+    if(fired.length !== due.length)
+      throw new Error('fired ' + fired.length + ' of the ' + due.length + ' cues due by 4392');
+    /* the giveaway if the offset were dropped: cue 24 sits at 4292 and would
+       still be waiting, because 100 is not 4292 */
+    if(firstUp.at > 4392)
+      throw new Error('the stack was parked past the join to begin with');
+    two.el = real; two.want = false;
+    showSoundStop();
+    return fired.length + ' cues fired by 100s into act2 (his 4392), none early';
+  });
+
   P('walking to the other theatre stops the sound with the show', ()=>{
     showLoad('beetlejuice');
-    const tr = audTrack('show'), real = tr.el;
+    const tr = audTrack('act1'), real = tr.el;
     let paused = false;
     tr.el = {paused:false, readyState:4, currentTime:100, volume:1,
              play(){ return null; }, pause(){ paused = true; this.paused = true; }};
@@ -2054,7 +2098,7 @@ const probe = `
     showLoad('beetlejuice');
     const c = CUES.filter(x=>x.at === 35)[0];
     if(!c) throw new Error('there is no cue at 35s, which is where the show starts');
-    if(!c.audio || c.audio.play !== 'show' || c.audio.at !== 35)
+    if(!c.audio || c.audio.play !== 'act1' || c.audio.at !== 35)
       throw new Error('GO does not start the show track at 0:35');
     if(c.audio.stop !== 'preshow') throw new Error('GO does not stop the pre-show music');
     if(c.signCol !== '#ff1e10') throw new Error('GO does not turn the sign red');
@@ -2273,13 +2317,13 @@ const probe = `
     const iv = CUES.filter(c=>c.at === 4269)[0];
     if(!iv.hold) throw new Error('the interval does not hold');
     if(iv.follow !== null) throw new Error('the interval arms a follow');
-    if(!iv.audio || iv.audio.stop !== 'show')
+    if(!iv.audio || iv.audio.stop !== 'act1')
       throw new Error('the interval does not stop the show track — he wrote "audio two stops"');
     if(iv.audio.play !== 'preshow')
       throw new Error('the interval does not bring back audio one');
     /* and it really does it, through the cue path */
     fireCue(CUES.indexOf(iv));
-    if(AUD.tracks.show.want) throw new Error('the show track is still wanted after the interval');
+    if(AUD.tracks.act1.want) throw new Error('the show track is still wanted after the interval');
     if(!AUD.tracks.preshow.want) throw new Error('the pre-show music was not restarted');
     return 'holds, stops the show, restarts the pre-show music';
   });
@@ -2386,7 +2430,7 @@ const probe = `
     const iv = CUES.filter(c=>c.at === 4269)[0];
     const go2 = CUES[CUES.indexOf(iv) + 1];
     if(!go2) throw new Error('nothing follows the interval');
-    if(!go2.audio || go2.audio.play !== 'show')
+    if(!go2.audio || go2.audio.play !== 'act2')
       throw new Error('the act two GO does not restart the show track');
     if(go2.audio.at !== 4292)
       throw new Error('it resumes at ' + go2.audio.at + 's, he wrote 1:11:32 (4292)');
@@ -2399,12 +2443,15 @@ const probe = `
     showLoad('beetlejuice');
     const last = CUES[CUES.length - 1];
     if(last.at !== 8100) throw new Error('the show does not end at 2:15:00');
-    if(!last.audio || last.audio.fade !== 'show')
+    if(!last.audio || last.audio.fade !== 'act2')
       throw new Error('the last cue does not fade the audio — he wrote "Audio fades out"');
-    /* and the ramp really runs, on dt, and pauses itself at the bottom */
-    const tr = audTrack('show'), real = tr.el;
+    /* and the ramp really runs, on dt, and pauses itself at the bottom.  It is
+       ACT TWO's element that fades — the last cue is 3808s into that file, and
+       fading the wrong half would be a silent no-op on a track already stopped
+       at the interval (RULING BI). */
+    const tr = audTrack('act2'), real = tr.el;
     let paused = false;
-    tr.el = {paused:false, readyState:4, currentTime:8100, volume:1,
+    tr.el = {paused:false, readyState:4, currentTime:3808, volume:1,
              play(){ return null; }, pause(){ paused = true; this.paused = true; }};
     tr.want = true;
     showCueAudio(last.audio);
@@ -2483,7 +2530,11 @@ const probe = `
      probe, out in node, because GLTFLoader.parse resolves through promise
      microtasks a synchronous probe can never see.  SHOW and WALKABLE are
      consts of this eval program, invisible from outside — hand them out. */
-  window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE, BJ_MODELS:BJ_MODELS, BJ_AUDIO:BJ_AUDIO};
+  /* bjCues() RELOADS rather than handing over whatever stack happened to be
+     live when this ran — the AZ tail leaves another show up, and a captured
+     reference to CUES would silently be the wrong production's. */
+  window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE, BJ_MODELS:BJ_MODELS, BJ_AUDIO:BJ_AUDIO,
+                 bjCues:()=>{ showLoad('beetlejuice'); return CUES.slice(); }};
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
@@ -2595,38 +2646,109 @@ const wd = setTimeout(() => {
     const unwanted = [...manSet].filter(f => !docSet.has(f));
     if(undelivered.length) throw new Error('documented but never played: ' + undelivered.join(', '));
     if(unwanted.length) throw new Error('played but never documented: ' + unwanted.join(', '));
-    if(manSet.size !== 2) throw new Error(manSet.size + ' tracks, the contract lists 2');
-    /* the pre-show loops and the show does not — getting that backwards means
-       the show restarting itself at the curtain call */
+    if(manSet.size !== 3) throw new Error(manSet.size + ' tracks, the contract lists 3');
+    /* the pre-show loops and neither half of the show does — getting that
+       backwards means the show restarting itself at the curtain call */
     if(!man.preshow.loop) throw new Error('the pre-show music does not loop');
-    if(man.show.loop) throw new Error('the show track loops');
-    return [...manSet].join(', ') + ' — both documented, preshow loops, show does not';
+    if(man.act1.loop || man.act2.loop) throw new Error('a half of the show loops');
+    /* and only the show may drive the cue stack (BB, BI) */
+    if(man.preshow.clock) throw new Error('the pre-show music is allowed to be the clock');
+    if(!man.act1.clock || !man.act2.clock) throw new Error('a half of the show is not a clock');
+    return [...manSet].join(', ') + ' — all three documented, preshow loops and is no clock';
   });
 
-  /* The files must NEVER be committed (RULING BA): show.m4a is 134MB, over
-     GitHub's hard limit; it comes off a video, which TRAPS.md already rules
-     out; and it is a commercial recording on a repo with Pages enabled.  A
-     .gitignore that stops covering them would let one ride in on a git add. */
-  await P('the recordings cannot be committed by accident', async () => {
-    /* ASK GIT, do not read the file.  Grepping .gitignore for the pattern was
-       the first version and it was worthless: commenting the rule out leaves
-       the pattern text sitting right there in the line, so the check passed
-       against a .gitignore that ignored nothing.  git check-ignore answers the
-       question actually being asked. */
+  /* THE OFFSETS ARE THE WHOLE OF "make sure the cues still line up" (BI).
+     His timestamps are positions in one 2h23m recording and RULING BB made that
+     literal; cutting the file in half is only safe while each half says where
+     it begins.  Pinned against the PLOT rather than against themselves —
+     asserting offset===4292 twice would prove nothing about the cues. */
+  await P('the split is invisible to the plot: every cue still lands on its own second', async () => {
+    const man = az.BJ_AUDIO;
+    const cues = az.bjCues();
+    /* the act-two cue asks for the same number it always asked for, and that
+       number must land at the very top of its own file */
+    const two = cues.filter(c => c.audio && c.audio.play === 'act2')[0];
+    if(!two) throw new Error('no cue starts act two');
+    if(two.audio.at !== 4292)
+      throw new Error('the act-two cue asks for ' + two.audio.at + ', not his 4292');
+    const seek = two.audio.at - man.act2.offset;
+    if(seek !== 0) throw new Error('act two would open ' + seek + 's into its own file');
+    /* act one likewise, at his 35 */
+    const one = cues.filter(c => c.audio && c.audio.play === 'act1')[0];
+    if(!one || one.audio.at !== 35) throw new Error('act one does not start at his 0:35');
+    if(one.audio.at - man.act1.offset !== 35)
+      throw new Error('act one seeks to the wrong place in its own file');
+    /* EVERY cue after the join must be reachable from act two's own clock, and
+       no cue before it may be — that is what the offset actually buys */
+    const dur2 = 8626.79 - man.act2.offset;
+    const late = cues.filter(c => c.at !== undefined && c.at !== null && c.at > man.act2.offset);
+    const over = late.filter(c => (c.at - man.act2.offset) > dur2);
+    if(!late.length) throw new Error('no cue falls in act two at all');
+    if(over.length)
+      throw new Error(over.length + ' act-two cues fall past the end of act2.m4a');
+    const last = late[late.length - 1];
+    /* and the cut point itself: the track is STOPPED before it and RESUMED
+       after it, so the join sits in a silence the show already had */
+    const stops = cues.filter(c => c.audio && c.audio.stop === 'act1')[0];
+    if(!stops) throw new Error('nothing stops act one');
+    if(!(stops.at <= man.act2.offset))
+      throw new Error('act one is stopped at ' + stops.at + ', after the cut at ' + man.act2.offset);
+    return 'act1 stops at ' + stops.at + ', act2 opens at its 0.0 for his 4292, last cue ' +
+           last.at + ' = ' + (last.at - man.act2.offset).toFixed(0) + 's into act2';
+  });
+
+  /* REVERSED IN PLACE (RULING BI amends BA).  This assertion used to demand the
+     exact opposite — that git REFUSE every recording — because BA said the
+     files could never be committed: 134MB against GitHub's 100MB hard limit,
+     off a video, and a commercial recording on a repo with Pages on.  The first
+     of those stopped being true when the show track was split at the act break
+     (69.4MB and 70.1MB), and the owner overruled the other two with all three
+     in front of him.
+
+     It is turned round rather than deleted, because what it guards did not go
+     away — it inverted.  The three NAMED files must be committable and the
+     directory must still refuse everything else, so a stray recording is an
+     accident and not a silent delivery.  And the reasoning stays on the record
+     where the next session will read it: a reversed ruling is worth more than a
+     deleted one (the AO/AV precedent). */
+  await P('the three named recordings are committed, and nothing else can slip in', async () => {
+    /* ASK GIT, do not read the file.  Grepping .gitignore for a pattern was the
+       first version of this and it was worthless: commenting a rule out leaves
+       the pattern text sitting right there in the line.  git check-ignore
+       answers the question actually being asked — and that is why this survived
+       the reversal unchanged in method while flipping in meaning. */
     const cp = require('child_process'), root = require('path').join(__dirname, '..');
     const ignored = p => {
       try{ cp.execSync('git check-ignore -q ' + p, {cwd:root}); return true; }
       catch(e){ return false; }
     };
-    for(const f of Object.keys(az.BJ_AUDIO).map(k => 'assets/audio/' + az.BJ_AUDIO[k].file))
-      if(!ignored(f)) throw new Error('git would happily commit ' + f);
+    const files = Object.keys(az.BJ_AUDIO).map(k => az.BJ_AUDIO[k].file);
+    for(const f of files)
+      if(ignored('assets/audio/' + f))
+        throw new Error('git still refuses ' + f + ' — BI says it is committed');
     if(ignored('assets/audio/README.md'))
-      throw new Error('the README that carries the contract is ignored too');
-    const tracked = cp.execSync('git ls-files assets/audio', {cwd:root})
-      .toString().trim().split('\n').filter(Boolean);
-    const bad = tracked.filter(f => /\.(mp3|m4a|ogg|wav)$/i.test(f));
-    if(bad.length) throw new Error('a recording is already tracked in git: ' + bad.join(', '));
-    return 'git refuses both recordings, keeps the README, and tracks no media';
+      throw new Error('the README that carries the contract is ignored');
+    /* the directory is still closed to anything the contract does not name */
+    if(!ignored('assets/audio/videoplayback.m4a'))
+      throw new Error('an unnamed recording could ride in on a git add');
+    /* and they must really BE in the index, not merely permitted — a manifest
+       naming a file nobody committed is exactly the silent failure BI inherits
+       from BA, and on Pages it is the difference between sound and no sound */
+    const tracked = new Set(cp.execSync('git ls-files assets/audio', {cwd:root})
+      .toString().trim().split('\n').filter(Boolean).map(f => f.replace('assets/audio/', '')));
+    const missing = files.filter(f => !tracked.has(f));
+    if(missing.length)
+      throw new Error('named in the manifest but not in git: ' + missing.join(', '));
+    /* .gitattributes must call them binary.  The repo pins `* text=auto eol=lf`
+       for build.sh's sake, and text=auto decides by content heuristic — a media
+       file that lost that coin toss would be rewritten on checkout, and there is
+       nothing in this repo that could hear it. */
+    const attrs = fs.readFileSync(require('path').join(root, '.gitattributes'), 'utf8');
+    for(const ext of ['m4a', 'mp3'])
+      if(!new RegExp('^\\*\\.' + ext + '\\s+binary', 'm').test(attrs))
+        throw new Error('.gitattributes does not pin *.' + ext + ' as binary');
+    return files.length + ' tracked (' + files.join(', ') +
+           '), pinned binary, and an unnamed recording still refused';
   });
 
   console.log('--- the model import (RULING AZ): parse, validate, apply, fall back ---');

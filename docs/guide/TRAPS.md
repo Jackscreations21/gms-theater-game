@@ -388,8 +388,29 @@ against this list before opening a PR; **add new traps as you hit them.**
   time pointing somewhere unrelated. It is already listed above; it is listed
   twice now because it is the easiest one in this file to walk into.
 
+## Negative checks — the one that fools you
+
+- **A negative check whose MUTATION does not apply reads exactly like an
+  assertion that does not fire.** Both look like `ok` where you expected `ERR`,
+  and the wrong conclusion ("my assertion is weak") is the same shape as the
+  right one, so you go and strengthen a test that was fine. It happened in the
+  BF/BG round: the mutation was `s/const BLIND_RANK = 0.9/…/`, and the two
+  constants share one statement — `const BLIND_POWER = 4.6, BLIND_RANK = 0.9;`
+  — so sed matched nothing, built an unchanged file, and the suite correctly
+  passed. **Prove the mutation landed before you read the result:** `grep` the
+  built line back, or have the patch step fail loudly when its pattern misses.
+  This is the sibling of "a negative check that does not fail means the
+  ASSERTION is weak" above — and the two are told apart only by looking.
+
 ## Environment
 
+- **`* text=auto eol=lf` decides binary by CONTENT HEURISTIC, and media is a
+  coin toss.** The blanket rule exists because `build.sh` breaks under CRLF, but
+  a `.m4a` or `.glb` that lost that guess would be rewritten on checkout — and
+  nothing in this repo can hear or render, so it would never be caught. Since
+  RULING BI committed the recordings, `.gitattributes` names the extensions
+  `binary` explicitly and a test asserts it. Add new media extensions there
+  before committing the first file, not after.
 - **A commit pushed to a branch whose PR is ALREADY MERGED is stranded, and
   nothing says so.** GitHub does not reopen the PR and does not open a new one;
   the push succeeds, the branch moves ahead of `main`, and the work simply is
