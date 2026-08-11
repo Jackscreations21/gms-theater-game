@@ -977,6 +977,32 @@ const probe = `
     return 'dressed in the wings, called on already wearing it — nothing parked';
   });
 
+  P('a dress fired MID-EXIT defers — a set on its way out is still in view', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('interior');
+    const g = new THREE.Group(); sc.group.add(g);
+    sceneTravelPart(sc, 'probe', g, 'x', 0, -8, 2.0);   // a four second exit
+    sceneShow('interior');
+    sceneChangeTo('cemetery');                  // the room starts on its way out
+    for(let i=0;i<60;i++) updateStorm(1/60);    // one second in: marked off, still drawn
+    if(sc.on) throw new Error('mid-exit the record says on — the gap is not being tested');
+    if(sc.group.userData.sceneOff) throw new Error('already hidden — no gap to test');
+    showCueExtras({dress:'deetz', scene:'interior'});   // a hand-fired redress, mid-exit
+    if(sc.dressOn === 'deetz') throw new Error('the dress POPPED on a set still in view');
+    if(!SHOW.pendDress || SHOW.pendDress.key !== 'deetz')
+      throw new Error('nothing was parked for later');
+    /* the cue also RECALLED the room — it turns round and stays in its old
+       clothes; the parked dress keeps waiting for it to genuinely go off */
+    sceneChangeTo('cemetery');
+    for(let i=0;i<60;i++) updateStorm(1/60);    // on its way out again, not there yet
+    if(sc.dressOn === 'deetz') throw new Error('it landed before the last part arrived');
+    for(let i=0;i<600;i++) updateStorm(1/60);   // the last part lands, and so does the hide
+    if(sc.group.userData.sceneOff !== true) throw new Error('the room never finished hiding');
+    if(sc.dressOn !== 'deetz') throw new Error('the parked dress never landed');
+    if(SHOW.pendDress) throw new Error('the parked dress was left on the hook');
+    return 'deferred mid-exit, held through a recall, landed when the exit finished';
+  });
+
   P('a stage swap parks the changeover: part offsets and the waiting dress', ()=>{
     showLoad('beetlejuice');
     const sc = sceneFind('interior');

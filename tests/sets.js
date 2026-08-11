@@ -664,6 +664,19 @@ const probe = `
     return 'the cue put it on at -10.00, seen at '+mid.toFixed(2)+', home 0.00';
   });
 
+  P('an instant sceneShow snaps parked parts HOME — no hollow set', ()=>{
+    showLoad('beetlejuice');
+    const A = partScene('__sa', [{n:'p', out:-9, speed:3}]);
+    sceneChangeTo('__sa'); run(300, 1/60);       // on, the part home
+    sceneChangeTo('attic'); run(300, 1/60);      // off, the part parked at OUT
+    if(Math.abs(wx(A.g.p) + 9) > 0.01) throw new Error('the part never parked at out');
+    sceneShow('__sa');                           // the instant path: boot and presets
+    if(Math.abs(wx(A.g.p)) > 0.01)
+      throw new Error('sceneShow left a part in the wings at '+wx(A.g.p).toFixed(2));
+    if(sceneTravelling(A.sc)) throw new Error('an instant swap left a travel running');
+    return 'parked at -9.00, sceneShow put it home 0.00 in the same call';
+  });
+
   P('the mover runs on dt, and adds no timer of its own', ()=>{
     const src = document.documentElement.outerHTML;
     const i = src.indexOf('THE MOVER');

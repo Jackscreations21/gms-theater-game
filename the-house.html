@@ -9584,6 +9584,13 @@ function sceneShow(name){
     const on = (sc === want);
     if(sc.on === on && SHOW.scene === name) continue;
     sc.on = on;
+    /* an instant swap has no travel in it: a part parked at OUT comes home
+       in the same frame, or the set would come on hollow, its walls still
+       standing in the wings (RULING AY) */
+    if(on && sc.pmv) for(const k in sc.pmv){
+      const m = sc.pmv[k];
+      m.off = m.target = m.home; m.group.position[m.axis] = m.home;
+    }
     /* a set that is still TRAVELLING stays drawn until it arrives, whatever
        the cue says — otherwise the house winks out halfway across the deck.
        sceneMoveStep does the hiding when the move finishes.              */
@@ -10991,10 +10998,13 @@ function showCueExtras(c){
      the audience cannot see is honest and lands now: the parked wagon is
      dressed in the wings, then called on already wearing it.  A swap on a
      set they CAN see waits on SHOW.pendDress until the set goes off
-     (RULING AY: nothing ever pops), which sceneApply applies. */
+     (RULING AY: nothing ever pops), which sceneApply applies.  Seen is
+     judged on DRAWN-ness, not on sc.on: a set mid-way out of a changeover
+     has already been marked off, but its layers are on and the audience is
+     watching it leave — a swap then is exactly the pop the ruling forbids. */
   if(c.dress && typeof bjDress === 'function' && SHOW.scenes.length){
     const dn = c.scene || SHOW.scene, dsc = sceneFind(dn);
-    if(dsc && dsc.on) SHOW.pendDress = {scene:dn, key:c.dress};
+    if(dsc && !dsc.group.userData.sceneOff) SHOW.pendDress = {scene:dn, key:c.dress};
     else bjDress(dn, c.dress);
   }
   if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
