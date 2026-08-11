@@ -3,7 +3,24 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## IN FLIGHT — his sound and his light plot (rulings BA–BD)
+## THE ROUND IS DONE — his sound and his light plot (rulings BA–BE)
+
+**All three PRs are in: #121, #122 and this one.** The show is now HIS: two
+recorded tracks, an audience rig, and sixty-six of his own timestamped looks
+across both acts. `main` rebuilds at **1,184,074 bytes**, 18/18 suites,
+`real.js` fatal null. Cache-bust for the headset: **`?v=19`**.
+
+**What only hardware can answer** is at the bottom of HANDOFF — and this round
+added a new kind of unanswerable: *nothing about how any of this SOUNDS has been
+tested either, and no suite in this repo can hear.* The lights sitting on the
+music is the whole point of RULING BB and it has never been observed.
+
+**The audio files are not in the repo and never will be** (RULING BA). To hear
+it locally, `docs/AUDIO.md` has the two copy commands. **On Pages the Quest runs
+silent** until the owner hosts the files and a manifest entry points at a URL —
+one line, no code change.
+
+### What the three PRs were
 
 The owner delivered **four hand-written cue files**
 (`C:\Users\patri\Documents\beetlejuice light cues\`: `pre show.txt`,
@@ -12,16 +29,17 @@ lights + the audio + the pre-show, then act one, then act two with the set
 times checked. Spec:
 `docs/superpowers/specs/2026-08-11-beetlejuice-sound-and-house-design.md`;
 plan: `docs/superpowers/plans/2026-08-11-beetlejuice-sound-house-prs1-3.md`.
-**A linear chain — each link opens only after the one before it merges.**
+It was built as a **linear chain** — each link opened only after the one
+before it merged, rebased onto fresh `main` and retested.
 
-- **PR 1 (this one)** — the audience rig (8 blinders round the arch, 6 movers
+- **#121** — the audience rig (8 blinders round the arch, 6 movers
   over the seating; the patch is 25 → **39 channels on every stage**), the
   sound (**RULING BA**: two tracks read from `assets/audio/`, never committed,
   missing = silent), the **audio-locked transport** (**RULING BB**: while the
   show track plays it IS the cue clock, so nothing drifts), the **pattern
   engine** (**RULING BD**: wander/sweep/random/flash off the frame `dt`), and
   the top of the show as he wrote it.
-- **PR 2 (this one)** — **act one is his now.** 28 of his timestamps became
+- **#122** — **act one is his now.** 28 of his timestamps became
   cues, the ten set changes all stayed on their own seconds, and the invented
   looks from the measuring round ("the moon takes the upstage", "the mourners",
   "a hard green across the frames") are gone. His snaps have no fade times, his
@@ -30,11 +48,18 @@ plan: `docs/superpowers/plans/2026-08-11-beetlejuice-sound-house-prs1-3.md`.
   the second thing he changed; that assertion was reversed in place, not
   deleted. Measured fade durations from #90 survive only where he gave no time
   of his own.
-- **PR 3** — act two, plus the set-time diff. **One numeric change found in
-  his new set list: the netherworld goes 1:39:00 → 1:39:19.** Everything else
-  matches what is built. The second thing he half-remembers changing is in the
-  lighting: the act break takes the house to **half**, where the built
-  interval cue takes it to full.
+- **#123** — **act two is his too**, and his set list is now DATA:
+  38 more of his timestamps, the show track resuming at 1:11:32, the confetti
+  moved to his own 2:14:52 (eight seconds ahead of the curtain, where the built
+  plot had it on the same cue), and the audio fading out on the last line he
+  wrote. **The one set-time change landed: the netherworld 1:39:00 → 1:39:19.**
+  A test walks his whole set list end to end — every time, scene, dressing,
+  backdrop side and wagon offset — so the next round diffs it in one command
+  instead of by eye, which is how the 1:39:00 drift survived unnoticed in the
+  first place. **RULING BE** widened the pattern engine off two of his own
+  lines (a purple light crawling on the curtain, and the lights flashing green
+  really fast): an effect names a group, and an unknown name moves nothing and
+  says so on one console line.
 
 **The audio files cannot be committed and that is the ruling, not a TODO:**
 `videoplayback.m4a` is 134 MB (GitHub's hard limit is 100 MB), it comes off a
@@ -108,29 +133,56 @@ showCueExtras and the p5h repaints), retest, review, open.
 
 ## What is next
 
-1. **The owner's models arrive** — one PR per `.glb`: file into `assets/`
-   named per MODELING.md's File column, manifest already fetches it, budgets
+1. **PUT IT ON THE HEADSET — with the sound in place.** `?v=19`, and copy the
+   two files in first (`docs/AUDIO.md`) or the whole point of RULING BB cannot
+   be judged. The full list is at the bottom of HANDOFF; the sharpest ones are
+   whether a blinder flash at FULL hurts from a metre away, whether the
+   audience movers read as slow and the 1:16 pattern as fast, and whether 14
+   extra channels cost frames.
+2. **Getting the sound onto Pages is the owner’s call.** The recordings cannot
+   enter the repo (RULING BA). A manifest entry accepts an absolute URL — one
+   line, no code change — so if he hosts them, say so and point it there.
+3. **The owner’s models arrive** — one PR per `.glb`: file into `assets/` named
+   per MODELING.md’s File column, manifest already fetches it, budgets
    auto-refuse, suites green, done. No code needed unless routing surprises.
-2. **The headset checklist** (below, and in HANDOFF) — the changeovers,
-   the 9:45 empty, the two repainted cloths. `?v=18`.
-3. `tests/smoke.js` flakes intermittently under full-suite load (wall-clock
-   dt sensitivity; ~2 in 9 full runs, never in isolation). A follow-up task
-   chip was left; it is NOT this round's regression.
-4. `pr6.json` in the repo root is still untracked and unruled (pre-dates
-   the round).
+4. `tests/smoke.js` still flakes under full-suite load (wall-clock dt
+   sensitivity; passes alone every time). It flaked twice across this round and
+   is NOT a regression of it. A task chip exists.
+5. `pr6.json` in the repo root is still untracked and unruled (pre-dates all
+   of this).
 
-## Feel constants for the headset (one-line retunes, all in p5h)
+## Feel constants for the headset (one-line retunes)
 
-- `BJ_FLY_SPEED` 1.8 — fly-outs take ~5.8s; on cues 15/16/17/29/34 the
-  outgoing set is still rising 2–3s after the next look is lit. Theatre,
-  unless it reads slow.
+In `p5h` (movement, from the AW–AZ round):
+
+- `BJ_FLY_SPEED` 1.8 — fly-outs take ~5.8s; on the flown-set cues the outgoing
+  set is still rising 2–3s after the next look is lit. Theatre, unless it reads
+  slow.
 - `BJ_HILL_SPEED` 2.0 / `BJ_HILL_OUT` 9.5 — the 9:45 run fits its 5s fade.
 - `BJ_PART_OUT` 10.5 — fly-out clearance over the 9.2m header.
 
+In `p5j` (this round):
+
+- `AUD_WANDER_RATE` 1.0 — the pre-show drift. He asked for "slowly".
+- `AUD_RANDOM_RATE` 1.0 — the 1:16 chaos. He asked for "fast".
+- `AUD_STROBE_HZ` 9.0 — "really fast". **The one constant here with a reason
+  not to raise it:** 15–20Hz is the photosensitive-seizure band, and this one
+  points at the audience.
+- The pre-show house at `0.45` and the blinder flash at `1.0` are both
+  judgements about words he wrote ("low", "as bright as posible").
+
 ## Standing facts
 
-Suite count is 18 (`npm test` in tests/). The show curtain, sign and marquee
-keep their pre-round look by the owner's word. RULING AV (model on the
-production, Beetlejuice only) still governs; AO stays repealed. All work via
-PRs, linear chains, negative-checked assertions — see CLAUDE.md and
+Suite count is 18 (`npm test` in tests/). The patch is **39 channels** on every
+stage since RULING BC. The show curtain, sign and marquee keep their pre-round
+look by the owner's word — the sign's LAMPS go red on a cue, which is a cue
+state and not a repaint. RULING AV (model on the production, Beetlejuice only)
+still governs; AO stays repealed; RULING B still holds (the flown PA boxes are
+rigging, and the show's sound comes out of the browser, not out of them). All
+work via PRs, linear chains, negative-checked assertions — see CLAUDE.md and
 docs/guide/WORKFLOW.md.
+
+**Every timestamp in the Beetlejuice plot is a position in `show.m4a`**, not
+elapsed show time; the two differ by the 35 seconds the track is already into
+itself when the show starts. That is what `at` means, and RULING BB makes it
+literal.

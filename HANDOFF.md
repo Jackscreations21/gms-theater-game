@@ -223,7 +223,117 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **HIS MODELS, AND THE HEADSET** (2026-08-11)
+## NEXT SESSION: **PUT THE SOUND ON THE HEADSET** (2026-08-11)
+
+The show has a soundtrack and a full light plot now, and **not one second of
+either has been seen or heard.** Cache-bust **`?v=19`**.
+
+**Do this first, or most of the list below cannot be answered:** copy the two
+recordings into `assets/audio/` — the commands are in **docs/AUDIO.md**. They
+are NOT in the repo and never will be (RULING BA), so a fresh clone and Pages
+both run silent, by design.
+
+**1. Does it sit on the music?** This is the whole of RULING BB and it has
+never been observed. Load BEETLEJUICE, press GO, and watch whether the cues
+land with the show rather than near it. If they do, the drift question that has
+been open since ruling AP is closed. If they do not, the transport is one
+function (`showAudioTick`) and the fault will be in it, not in the plot.
+
+**2. The blinder flash.** Eight units round the arch, at FULL, a metre from
+your face in a headset. It is the one thing in this round that could genuinely
+hurt, and it wants a verdict before it stays at 1.0. `AUD_STROBE_HZ` is 9Hz
+deliberately — 15-20Hz is the photosensitive band and these point at the
+audience.
+
+**3. Do the patterns read as he described them?** "moving slowly ... slowly
+fading between green and purple" for the pre-show drift; "a random pattern
+fast" at 1:16; "really fast" for the green flashing at 2:01:53. Two constants,
+both one-liners: `AUD_WANDER_RATE`, `AUD_RANDOM_RATE`.
+
+**4. Is the pre-show house right?** He wrote "low"; it is 0.45. And does the
+red arch plus red marquee read at GO, with the stage dark behind the cloth?
+
+**5. Do fourteen new channels cost frames?** The patch went 25 to 39 on every
+stage. Beams only draw in haze and the audience units make no floor pools, so
+most of it should be cheap — but the wrist meter (`VR.perf`) is the only thing
+that actually knows.
+
+**6. And the colour, which is now HIS and not ours.** Sixty-six looks off his
+own cue sheets. The likeliest words to have been read wrong are "light brown"
+(the Maitlands house), and whether the thirty-second fade at 30:00 reads as
+intentional rather than as nothing happening.
+
+**Still owed and unblocked:** his `.glb` models, one small PR each
+(docs/MODELING.md is the contract). **Shelved:** the portal rebuild, unreviewed
+on the local `bj-portal` branch (see STATE).
+
+**Watch:** `tests/smoke.js` flakes under full-suite load and passes alone every
+time. It went twice across this round. Not a regression.
+
+## DONE — 2026-08-11: his sound, his audience rig, his light plot (#121-#123)
+
+The owner wrote the show out by hand — **four text files**, a pre-show sequence,
+both acts of lighting and a revised set list — and asked for three PRs: the new
+lights and the audio and the pre-show, then act one, then act two with the set
+times checked. All three landed as a linear chain.
+
+**His files are the authority, and that is now the second time it has worked.**
+Where his plot disagreed with what #90-#100 measured and #104-#113 built, his
+plot won, and the invented looks went: "the moon takes the upstage", "the
+mourners", "a hard green across the frames". Sixty-six of his timestamps are
+cues at his exact seconds. **The set list is DATA now** — one test walks every
+time, scene, dressing, backdrop side and wagon offset — because the one drift
+in it (the netherworld at 1:39:00, which he re-wrote as **1:39:19**) survived a
+whole round unnoticed for want of exactly that test. The second thing he
+changed was in the lighting: the act break takes the house to **half**.
+
+**Five rulings.** **BA** the show has recorded sound and *the files are never
+committed* — 134MB against GitHub’s 100MB hard limit, off a video, and a
+commercial recording on a repo with Pages on, so it is the model-import
+pipeline again (manifest, doc as contract, bidirectional test, silent
+fallback). **BB** while the show track plays it IS the cue clock, which closes
+the drift half of the question open since AP — every timestamp he wrote is a
+position in that file, so `at` became literal. **BC** the audience is lit: 8
+blinders round the arch and 6 movers over the seating on every stage, 25 to 39
+channels, and they are *seen, not seeing* — power below the dimmest stage
+lantern so they can never steal a real light off the stage. **BD** patterns run
+on the frame, never a timer. **BE** widened BD off two of his own lines, because
+"just a purple light is on the curtain an moving around a bunch" is the stage
+movers, not the audience.
+
+**Forty-four assertions, and every one negative-checked against a WRONG
+implementation rather than an absent one.** Four of them did not fail the first
+time, and all four were weak tests — which is the lesson from #104 working as
+written:
+
+- **"the fast pattern travels further" measured the wrong quantity.** A slow
+  pattern with a wide throw covers more ground than a fast one with a narrow
+  throw, so a random effect running at the wander frequencies sailed through on
+  amplitude alone. Fast means OFTEN: it counts direction changes now.
+- **"a missing track is silent" only looked before anything wanted the track,**
+  so a version that confused "we asked for it" with "it is playing" passed.
+- **the gitignore check grepped for a pattern that is still in the line when the
+  rule is commented out.** It asks `git check-ignore` now.
+- and one stale grep target of my own, which is the same class of thing.
+
+**Three defects the suites caught before the owner could:** a cue that plays in
+the exterior scene without stating the drop’s offset (the wagon convention — a
+goBack would have opened act two on an empty stage), the confetti still hung on
+the curtain cue when he had moved it to 2:14:52, and the netherworld label still
+reading 1:39:00.
+
+**And one I caught by reading rather than by testing:** the 9:01 "all lights
+flash brite to white" was written as a pattern-engine flash while the engine
+only drove the audience rig. It would have flashed eight blinders and left the
+stage dark — the right effect on the wrong fourteen lamps, with nothing
+anywhere to say so. Unknown pattern targets now move NOTHING and log it, and a
+test pins every target to its own channels.
+
+**What no suite in this repo can do is hear.** jsdom has no audio and no GPU:
+nothing about how this sounds, looks or feels has been tested, and none of it
+claims to be.
+
+## NEXT SESSION: **HIS MODELS, AND THE HEADSET** (2026-08-11) — SUPERSEDED, see above
 
 Two threads, either order:
 

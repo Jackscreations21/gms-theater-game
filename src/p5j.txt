@@ -64,7 +64,7 @@ var AUD = {
   armed:  false,       // has a user gesture happened yet?
   pending:null,        // a play the browser refused before that gesture
   clock:  false,       // is the show track driving the cue stack right now?
-  fx:     {blind:null, aud:null},
+  fx:     {},          // target name -> the running effect (RULING BE)
   notes:  {}           // one console line per subject, said once
 };
 
@@ -87,7 +87,7 @@ function audTrack(key){
   const spec = BJ_AUDIO[key];
   if(!spec) return null;
   const tr = {key, file:spec.file, loop:!!spec.loop, vol:spec.vol === undefined ? 1 : spec.vol,
-              el:null, blocked:false, want:false};
+              el:null, blocked:false, want:false, seek:null, fade:null};
   /* jsdom has an <audio> element but never fetches media, so `el` exists and
      stays at readyState 0 for the whole of every suite — which is exactly the
      no-audio path, and why the suites never hear anything and never break. */
@@ -151,10 +151,20 @@ function audStop(key){
 /* the frame's worth of actually talking to the browser.  readyState >= 1 is
    HAVE_METADATA: the file exists and has been opened.  With no file it never
    gets there, so nothing is ever asked to play and the silence is total. */
-function audPump(){
+function audPump(dt){
   for(const key in AUD.tracks){
     const tr = AUD.tracks[key];
     if(!tr.el) continue;
+    /* "Audio fades out" — his last line of act two.  A ramp on the element's
+       own volume, off the frame dt like everything else, and it pauses itself
+       at the bottom rather than cutting. */
+    if(tr.fade){
+      tr.fade.t += (dt || 0);
+      const u = Math.min(1, tr.fade.t / Math.max(0.05, tr.fade.secs));
+      try{ tr.el.volume = Math.max(0, Math.min(1, tr.vol * audBusVol() * (1 - u))); }catch(e){}
+      if(u >= 1){ tr.fade = null; audStop(key); }
+      continue;
+    }
     if(!tr.want){ continue; }
     let rs = 0;
     try{ rs = tr.el.readyState || 0; }catch(e){ rs = 0; }
@@ -195,6 +205,11 @@ function showCueAudio(a){
   if(a.stop) (Array.isArray(a.stop) ? a.stop : [a.stop]).forEach(audStop);
   if(a.stopAll) Object.keys(AUD.tracks).forEach(audStop);
   if(a.play) audPlay(a.play, a.at);
+  /* and a fade-out, which is a stop that takes its time */
+  if(a.fade){
+    const tr = audTrack(a.fade);
+    if(tr) tr.fade = {secs:(a.secs === undefined ? 6 : a.secs), t:0};
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -211,7 +226,7 @@ const AUD_CATCHUP = 40;        // cues per frame, a runaway backstop only
 
 function showAudioTick(dt){
   audFxStep(dt);
-  audPump();
+  audPump(dt);
   const tr = AUD.tracks.show;
   if(!audLive(tr)){ AUD.clock = false; return; }
   try{ tr.el.volume = Math.max(0, Math.min(1, tr.vol * audBusVol())); }catch(e){}
@@ -263,18 +278,37 @@ function showSoundStop(){
    ========================================================================== */
 const AUD_WANDER_RATE = 1.0;   // pre-show drift.  Owner: "slowly" — headset tune
 const AUD_RANDOM_RATE = 1.0;   // the 1:16 chaos.  Owner: "fast"  — headset tune
+const AUD_STROBE_HZ   = 9.0;   // "really fast".  9Hz reads fast and is not a
+                               // seizure risk the way 15-20Hz would be — the
+                               // one constant here with a reason not to raise
 const _afC = new T.Color(), _afD = new T.Color();
 
-/* THE ENGINE ONLY EVER DRIVES THE AUDIENCE RIG.  The stage is cued by hand and
-   stays that way: a plot that wants the stage to flash writes a look with a
-   zero fade, which is what a flash is.  Naming the fall-through 'house' rather
-   than 'all' matters — 'all' reads as "every channel in the game", and a cue
-   that meant the whole rig would have flashed eight blinders and left the stage
-   untouched, with nothing to show it had aimed at the wrong fourteen lamps. */
+/* THE TARGETS (RULING BE).  This started out as the audience rig and nothing
+   else, on the reasoning that the stage is cued by hand.  Act two asked for
+   more and it was right to: "just a purple light is on the curtain an moving
+   around a bunch" is the STAGE movers, and "lights flash green really fast" is
+   the stage.  So an effect names a group, and only these groups exist.
+
+   An unrecognised name moves NOTHING and says so on one console line.  That is
+   deliberate: aiming at the wrong lamps is the failure this engine invites —
+   the 9:01 flash in act one was very nearly armed at 'all', which would have
+   flashed eight blinders and left the stage dark — and a silent typo that
+   moves the wrong fourteen channels is worse than one that moves none. */
+const AUD_FX_TARGETS = {
+  blind:  ()=>GROUPS.blind,     // the 8 round the arch
+  aud:    ()=>GROUPS.aud,       // the 6 over the seating
+  house:  ()=>GROUPS.house,     // both audience groups together
+  movers: ()=>GROUPS.movers,    // the 2 STAGE moving heads
+  stage:  ()=>GROUPS.stage,     // the stage wash and backlight
+  front:  ()=>GROUPS.front      // front of house and booms
+};
 function audFxChans(on){
-  if(on === 'blind') return GROUPS.blind;
-  if(on === 'aud')   return GROUPS.aud;
-  return GROUPS.house;                    // both audience groups, never the stage
+  const g = AUD_FX_TARGETS[on];
+  if(!g){
+    audNote('fxtgt:' + on, 'no pattern target called "' + on + '" — nothing will move');
+    return [];
+  }
+  return g();
 }
 
 /* what a cue's `fx` field means.  One record per target; a cue that says
@@ -283,12 +317,16 @@ function audFxChans(on){
 function showCueFx(fx){
   audFxClear();
   if(!fx) return;
+  /* One effect per TARGET, keyed by the target's own name — so a cue can run a
+     blinder strobe and a mover drift at once, which is exactly what act two
+     opens with: "audiance blinders flash a bunch for a second then just a
+     purple light is on the curtain an moving around a bunch". */
   (Array.isArray(fx) ? fx : [fx]).forEach(e=>{
     if(!e || !e.kind) return;
-    const slot = (e.on === 'blind') ? 'blind' : 'aud';
-    AUD.fx[slot] = {
+    const on = e.on || 'aud';
+    AUD.fx[on] = {
       kind: e.kind,
-      on:   e.on || slot,
+      on:   on,
       rate: e.rate === undefined ? 1 : e.rate,
       secs: e.secs === undefined ? 2 : e.secs,
       cols: (e.cols || (e.col ? [e.col] : null)),
@@ -297,19 +335,19 @@ function showCueFx(fx){
   });
 }
 
-function audFxClear(){ AUD.fx.blind = null; AUD.fx.aud = null; }
+function audFxClear(){ for(const k in AUD.fx) delete AUD.fx[k]; }
 
 function audFxStep(dt){
-  ['blind','aud'].forEach(slot=>{
+  for(const slot in AUD.fx){
     const e = AUD.fx[slot];
-    if(!e) return;
+    if(!e) continue;
     e.t += dt;
     const chans = audFxChans(e.on);
     for(let i = 0; i < chans.length; i++){
       const f = chan(chans[i]); if(!f) continue;
       audFxApply(e, f, i);
     }
-  });
+  }
 }
 
 function audFxApply(e, f, i){
@@ -352,6 +390,17 @@ function audFxApply(e, f, i){
   if(e.kind === 'flash'){
     /* full for a beat, then out and stay out.  "as bright as posible". */
     f.level = (t <= e.secs) ? 1 : 0;
+    f.lvlDur = 0;
+    if(e.cols && e.cols.length){ f.color.set(e.cols[0]); f.colDur = 0; }
+    return;
+  }
+  if(e.kind === 'strobe'){
+    /* hard on, hard off, at a rate: "flash a bunch for a second", "lights
+       flash green really fast".  A strobe with secs runs out and stays out; the
+       square wave comes off the phase, so it is frame-rate independent. */
+    const done = e.secs > 0 && t > e.secs;
+    f.level = done ? 0
+      : (Math.sin(t * AUD_STROBE_HZ * e.rate * Math.PI * 2) > 0 ? 1 : 0);
     f.lvlDur = 0;
     if(e.cols && e.cols.length){ f.color.set(e.cols[0]); f.colDur = 0; }
     return;

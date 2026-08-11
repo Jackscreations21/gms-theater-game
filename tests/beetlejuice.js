@@ -489,10 +489,23 @@ const probe = `
 
   console.log('--- the confetti ---');
 
-  P('the last cue fires confetti, and it falls and clears itself', ()=>{
+  P('the confetti fires on his own second, and it falls and clears itself', ()=>{
     showLoad('beetlejuice');
-    const last = CUES[CUES.length - 1];
-    if(!last.confetti) throw new Error('the last cue does not fire confetti');
+    /* It used to be the LAST cue, because the built plot hung it on 2:15:00
+       with the curtain.  His act 2.txt separates them — "2:14:52 confetti
+       shoots over the audiane" and then "2:15 curtain comes in" — so it goes
+       off eight seconds ahead of the cloth, over a lit house, and the curtain
+       cue is the one that ends the show. */
+    const fired = CUES.filter(c=>c.confetti);
+    if(fired.length !== 1)
+      throw new Error(fired.length + ' cues fire confetti, there is one moment for it');
+    const last = fired[0];
+    if(last.at !== 8092)
+      throw new Error('the confetti is at ' + last.at + 's, he wrote 2:14:52');
+    const after = CUES[CUES.indexOf(last) + 1];
+    if(!after) throw new Error('nothing follows the confetti — the curtain never comes in');
+    if(after.at - last.at !== 8)
+      throw new Error('the curtain is ' + (after.at - last.at) + 's after it, he wrote eight');
     showCueExtras(last);
     const c = SHOW.confetti;
     if(!c) throw new Error('the cue did not fire it');
@@ -1237,7 +1250,7 @@ const probe = `
     fire(at(/56:00/));     step(480);    // the roof
     fire(at(/1:02:51/));   step(480);    // roof out, the Deetz wagon on
     fire(at(/1:25:25/));   step(480);    // the attic again, act two
-    fire(at(/1:39:00/));   step(480);    // the netherworld flies in
+    fire(at(/1:39:19/));   step(480);    // the netherworld flies in (his new time)
     fire(at(/1:53:00/));   step(480);    // and out, the house back on
     return 'eleven changeovers stepped: every entrance from OUT, every part on its track';
   });
@@ -2049,21 +2062,38 @@ const probe = `
      the 9:01 "all lights flash" cue was very nearly written as an effect, which
      would have flashed eight blinders and left the stage dark — an aim at the
      wrong fourteen lamps, with nothing to show it. */
-  P('the pattern engine can never write to a stage channel', ()=>{
+  /* AN EFFECT WRITES ONLY TO THE CHANNELS ITS TARGET NAMES.  This began as
+     "the engine can never touch the stage", which was true until act two asked
+     for a purple mover crawling on the curtain and a fast green strobe
+     (RULING BE).  Containment is the guarantee that survives the widening, and
+     it still catches the mistake that prompted it: an effect spilling onto
+     lamps the cue never named.  An unknown target must move NOTHING. */
+  P('a pattern writes only to the channels its target names', ()=>{
     showLoad('beetlejuice');
-    const before = [];
-    for(let n = 1; n <= 25; n++) before.push(chan(n).level);
-    ['blind', 'aud', 'house', 'nonsense'].forEach(on=>{
+    const groups = {blind:GROUPS.blind, aud:GROUPS.aud, house:GROUPS.house,
+                    movers:GROUPS.movers, stage:GROUPS.stage, front:GROUPS.front,
+                    nonsense:[]};
+    Object.keys(groups).forEach(on=>{
+      FIXTURES.forEach(f=>{ f.level = 0; f.lvlDur = 0; f.panT = 0; });
+      const mine = {};
+      groups[on].forEach(n=>{ mine[n] = 1; });
       showCueFx({on:on, kind:'random', col:'#ffffff'});
       for(let i = 0; i < 120; i++) audFxStep(1/60);
+      const spilled = [];
+      FIXTURES.forEach((f, k)=>{
+        if(mine[k + 1]) return;
+        if(Math.abs(f.level) > 1e-9 || Math.abs(f.panT) > 1e-9) spilled.push(k + 1);
+      });
+      if(spilled.length)
+        throw new Error('a "' + on + '" pattern spilled onto channels ' + spilled.join(', '));
+      if(groups[on].length){
+        const moved = groups[on].filter(n=>Math.abs(chan(n).level) > 1e-9);
+        if(!moved.length) throw new Error('a "' + on + '" pattern moved nothing at all');
+      }
     });
-    const moved = [];
-    for(let n = 1; n <= 25; n++)
-      if(Math.abs(chan(n).level - before[n-1]) > 1e-9) moved.push(n);
     showCueFx(null);
-    if(moved.length)
-      throw new Error('the engine moved stage channels ' + moved.join(', '));
-    return 'four targets, 25 stage channels untouched by all of them';
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    return Object.keys(groups).length + ' targets, every one contained to its own channels';
   });
 
   P('the interval stops the show track and brings the pre-show music back', ()=>{
@@ -2080,6 +2110,199 @@ const probe = `
     if(AUD.tracks.show.want) throw new Error('the show track is still wanted after the interval');
     if(!AUD.tracks.preshow.want) throw new Error('the pre-show music was not restarted');
     return 'holds, stops the show, restarts the pre-show music';
+  });
+
+  /* ====================================================================== *
+     ACT TWO, AND HIS SET LIST PINNED END TO END
+     ====================================================================== */
+  console.log('--- act two, off his own cue sheet ---');
+
+  P('every timestamp in his act two is a cue at that second', ()=>{
+    showLoad('beetlejuice');
+    /* every clock in act 2.txt, converted: 1:11:47 through 2:15 */
+    const his = [4307, 4329, 4336, 4465, 4497, 4498, 4504, 4623, 4843, 5105,
+                 5455, 5471, 5828, 5841, 5904, 5921, 5962, 5981, 6812, 6813,
+                 6818, 6879, 7064, 7187, 7313, 7319, 7559, 7602, 7716, 7748,
+                 7969, 7973, 8047, 8066, 8076, 8081, 8092, 8100];
+    const missing = his.filter(t=>!CUES.some(c=>c.at === t));
+    if(missing.length)
+      throw new Error(missing.length + ' of his act two times have no cue: ' + missing.join(', '));
+    return his.length + ' act two light cues, all on his seconds';
+  });
+
+  /* HIS WHOLE SET LIST, BOTH ACTS, IN ONE PLACE.  set cues.txt transcribed as
+     data so the next round diffs it in one command instead of by eye — which is
+     how the 1:39:00 drift below went unnoticed until he wrote the list out
+     again. */
+  P('his set list is the set list, every time and every action', ()=>{
+    showLoad('beetlejuice');
+    const B = FLY[13];
+    const list = [
+      /* act one */
+      {at:585,  scene:'cemetery', backdrop:'in',  parts:true,  what:'9:45 the graveyard empties'},
+      {at:640,  scene:'interior', dress:'maitland', backdrop:'out', off:0, what:'10:40 backdrop out, house on'},
+      {at:1936, scene:'interior', dress:'maitland', backdrop:'out', off:BJ_WAGON_BACK, what:'32:16 house back'},
+      {at:1970, scene:'attic',    backdrop:'in',  what:'32:50 backdrop in, the attic'},
+      {at:2554, scene:'closet',   backdrop:'in',  what:'42:34 the closet'},
+      {at:2929, scene:'attic',    backdrop:'in',  what:'48:49 the attic'},
+      {at:3120, scene:'bedroom',  backdrop:'in',  what:'52:00 the bedroom'},
+      {at:3360, scene:'roof',     backdrop:'in',  what:'56:00 the roof'},
+      {at:3771, scene:'interior', dress:'deetz', backdrop:'out', off:0, what:'1:02:51 backdrop out, house on'},
+      {at:4262, scene:'interior', dress:'deetz', backdrop:'out', curtain:'shut', what:'1:11:02 end of half'},
+      /* act two */
+      {at:4470, scene:'interior', dress:'bj', backdrop:'out', off:0, flyHouse:BJ_SIGN_OUT,
+       what:'1:14:30 sky out, house on'},
+      {at:5125, scene:'attic',    backdrop:'in',  off:BJ_WAGON_BACK, what:'1:25:25 house back, the attic'},
+      {at:5400, scene:'interior', dress:'bj', backdrop:'out', off:0, what:'1:30:00 backdrop out, house on'},
+      /* THE ONE CHANGE IN HIS NEW LIST: 1:39:00 became 1:39:19 */
+      {at:5959, scene:'afterlife', backdrop:'out', off:BJ_WAGON_BACK, what:'1:39:19 the netherworld'},
+      {at:6780, scene:'interior', dress:'bj', backdrop:'out', off:0, what:'1:53:00 house on again'},
+      {at:7985, scene:'interior', dress:'bj', backdrop:'out', off:BJ_WAGON_BACK,
+       what:'2:13:05 house back, backdrop stays up, the call'},
+      {at:8100, scene:'interior', dress:'bj', backdrop:'out', curtain:'shut', what:'2:15:00 curtain in'}
+    ];
+    list.forEach(e=>{
+      const c = CUES.filter(q=>q.at === e.at)[0];
+      if(!c) throw new Error('no cue at ' + e.at + 's for ' + e.what);
+      if(c.scene !== e.scene)
+        throw new Error(e.what + ': the cue calls on ' + c.scene + ', not ' + e.scene);
+      if(e.dress && c.dress !== e.dress)
+        throw new Error(e.what + ': dressed ' + c.dress + ', not ' + e.dress);
+      const trg = c.fly.filter(x=>x.id === B.id)[0].target;
+      const isIn = trg < OUT_TRIM - 1;
+      if(isIn !== (e.backdrop === 'in'))
+        throw new Error(e.what + ': the backdrop is ' + (isIn ? 'in' : 'out') +
+                        ', his list says ' + e.backdrop);
+      const mv = Array.isArray(c.move) ? c.move : (c.move ? [c.move] : []);
+      if(e.off !== undefined){
+        const m = mv.filter(x=>x && x.scene === 'interior' && !x.part)[0];
+        if(!m) throw new Error(e.what + ': the wagon is never told to move');
+        if(Math.abs(m.off - e.off) > 1e-9)
+          throw new Error(e.what + ': the wagon goes to ' + m.off + ', not ' + e.off);
+      }
+      if(e.flyHouse !== undefined){
+        const m = mv.filter(x=>x && x.scene === 'house' && !x.part)[0];
+        if(!m || Math.abs(m.off - e.flyHouse) > 1e-9)
+          throw new Error(e.what + ': the exterior does not fly to ' + e.flyHouse);
+      }
+      if(e.parts && !mv.some(x=>x && x.part))
+        throw new Error(e.what + ': nothing moves within the scene');
+      if(e.curtain === 'shut'){
+        const ct = c.fly.filter(x=>x.id === frontCurtainLineset().id)[0].target;
+        if(ct > OUT_TRIM - 1) throw new Error(e.what + ': the curtain is not in');
+      }
+    });
+    return list.length + ' set changes, every time and action off his list';
+  });
+
+  /* The one numeric change between the list he wrote in #104 and the list he
+     wrote this round.  Worth its own assertion because it is the whole reason
+     the set list above is now data. */
+  P('the netherworld moved to 1:39:19, and nothing is left at 1:39:00', ()=>{
+    showLoad('beetlejuice');
+    const now = CUES.filter(c=>c.at === 5959)[0];
+    if(!now) throw new Error('there is no cue at 1:39:19');
+    if(now.scene !== 'afterlife')
+      throw new Error('1:39:19 calls on ' + now.scene + ', not the netherworld');
+    if(CUES.some(c=>c.at === 5940))
+      throw new Error('a cue is still sitting on the old 1:39:00');
+    return 'the netherworld at 5959s, and 5940 is empty';
+  });
+
+  P('act two picks the show track back up at 1:11:32', ()=>{
+    showLoad('beetlejuice');
+    const iv = CUES.filter(c=>c.at === 4269)[0];
+    const go2 = CUES[CUES.indexOf(iv) + 1];
+    if(!go2) throw new Error('nothing follows the interval');
+    if(!go2.audio || go2.audio.play !== 'show')
+      throw new Error('the act two GO does not restart the show track');
+    if(go2.audio.at !== 4292)
+      throw new Error('it resumes at ' + go2.audio.at + 's, he wrote 1:11:32 (4292)');
+    if(go2.audio.stop !== 'preshow')
+      throw new Error('the pre-show music plays on into act two');
+    return 'GO resumes the show at 1:11:32 and kills the interval music';
+  });
+
+  P('the last cue fades the audio out rather than cutting it', ()=>{
+    showLoad('beetlejuice');
+    const last = CUES[CUES.length - 1];
+    if(last.at !== 8100) throw new Error('the show does not end at 2:15:00');
+    if(!last.audio || last.audio.fade !== 'show')
+      throw new Error('the last cue does not fade the audio — he wrote "Audio fades out"');
+    /* and the ramp really runs, on dt, and pauses itself at the bottom */
+    const tr = audTrack('show'), real = tr.el;
+    let paused = false;
+    tr.el = {paused:false, readyState:4, currentTime:8100, volume:1,
+             play(){ return null; }, pause(){ paused = true; this.paused = true; }};
+    tr.want = true;
+    showCueAudio(last.audio);
+    const v0 = tr.el.volume;
+    for(let i = 0; i < 60; i++) audPump(1/60);
+    const v1 = tr.el.volume;
+    if(!(v1 < v0 - 0.02)) throw new Error('a second in, the volume is still ' + v1);
+    for(let i = 0; i < 700; i++) audPump(1/60);
+    if(!paused) throw new Error('the fade never reached the bottom');
+    tr.el = real; tr.want = false; tr.fade = null;
+    return 'fades over ' + last.audio.secs + 's and pauses itself at the end';
+  });
+
+  /* "lights flash green really fast" and "then stop flashing" — a strobe has to
+     actually alternate, and it has to stop when he says it stops. */
+  P('the fast green flashing really alternates, and the next cue stops it', ()=>{
+    showLoad('beetlejuice');
+    const on = CUES.filter(c=>c.at === 7313)[0], off = CUES.filter(c=>c.at === 7319)[0];
+    if(!on.fx) throw new Error('2:01:53 arms nothing');
+    const e = Array.isArray(on.fx) ? on.fx[0] : on.fx;
+    if(e.kind !== 'strobe') throw new Error('2:01:53 is a ' + e.kind + ', not a strobe');
+    if(off.fx) throw new Error('2:01:59 leaves the flashing running');
+    showCueFx(on.fx);
+    const f = chan(GROUPS.stage[0]);
+    let hi = 0, lo = 0;
+    for(let i = 0; i < 300; i++){ audFxStep(1/60); if(f.level > 0.5) hi++; else lo++; }
+    if(hi < 40 || lo < 40)
+      throw new Error('over five seconds it was up ' + hi + ' frames and down ' + lo);
+    showCueFx(off.fx || null);
+    audFxStep(1/60);
+    if(AUD.fx.stage) throw new Error('the strobe survived the cue that stops it');
+    return 'up ' + hi + ' frames, down ' + lo + ' over 5s, then stopped';
+  });
+
+  /* "1:53:33 all lights move in a random pattern pointing at the audience" —
+     the one cue in the show where the audience rig is the point, and "1:53:38
+     Lights point at stage" takes it straight back off them. */
+  P('1:53:33 points at the audience and 1:53:38 takes it off them', ()=>{
+    showLoad('beetlejuice');
+    const at = CUES.filter(c=>c.at === 6813)[0], back = CUES.filter(c=>c.at === 6818)[0];
+    if(!at.fx) throw new Error('1:53:33 arms no pattern');
+    const list = Array.isArray(at.fx) ? at.fx : [at.fx];
+    const targets = list.map(e=>e.on).sort().join(',');
+    if(targets !== 'aud,blind')
+      throw new Error('1:53:33 aims at ' + targets + ', and he pointed it at the audience');
+    if(!list.every(e=>e.kind === 'random'))
+      throw new Error('1:53:33 is not a random pattern');
+    const up = GROUPS.house.filter(n=>at.lx[n-1].lvl > 0.5);
+    if(up.length !== 14)
+      throw new Error('only ' + up.length + ' of the 14 audience lamps are up on it');
+    if(back.fx) throw new Error('1:53:38 leaves the audience pattern running');
+    const stillUp = GROUPS.house.filter(n=>back.lx[n-1].lvl > 0.02);
+    if(stillUp.length)
+      throw new Error(stillUp.length + ' audience lamps are still up once it points at the stage');
+    return 'both audience groups random and full at 1:53:33, all 14 dark by 1:53:38';
+  });
+
+  P('the snaps in act two have no fade either', ()=>{
+    showLoad('beetlejuice');
+    const at = t => CUES.filter(c=>c.at === t)[0];
+    /* "1:59:47 lights snap blue", "2:08:36 lights snap blue", "2:14:41 lights
+       snap to white", and the two strobes, which start on the instant */
+    [7187, 7716, 8081, 7313, 8076].forEach(t=>{
+      if(at(t).fade !== 0)
+        throw new Error('the snap at ' + t + 's carries a ' + at(t).fade + 's fade');
+    });
+    /* "1:57:44 lights slowly fade to white" — slowly, so it is not a snap */
+    if(at(7064).fade < 8)
+      throw new Error('the slow fade at 1:57:44 is only ' + at(7064).fade + 's');
+    return 'five snaps at 0s, and the slow one at ' + at(7064).fade + 's';
   });
 
   showLoad('beetlejuice');       // leave the board where the AZ tail expects it
