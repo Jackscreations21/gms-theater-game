@@ -18,8 +18,9 @@ theater_game/
   AUDIT.md           the 2026-08-06 code audit — findings, evidence, line numbers
   VR-SETUP.md        getting it onto a Quest 3 — routes, controls, first-run list
   README.md          the GitHub front page
-  src/               the 26 parts it is built from (build.sh has the order)
-  tests/             fifteen suites — npm install, then node real.js
+  src/               the 30 parts it is built from (build.sh has the order)
+  tests/             eighteen suites — npm install, then npm test
+  assets/audio/      the show's two recordings — GITIGNORED (docs/AUDIO.md)
   tools/             probes that draw pictures — see tools/README.md
 ```
 
