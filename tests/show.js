@@ -513,6 +513,16 @@ const probe = `
   console.log('--- the front curtain in the stack ---');
   P('no cue closes the curtain except the ones that mean to', ()=>{
     for(const key of Object.keys(SHOWS)){
+      /* BEETLEJUICE IS EXEMPT (owner, 2026-08-10).  This suite encodes a
+         whole-evening convention the other four shows were written to, and
+         the fifth is not written to it: its plot came off the owner's own
+         reading of the recording, with rulings AR and AU deliberately
+         changing the SHAPE of the evening.  It brings the cloth in twice more than the convention allows: once at
+         the top so the sign can fly out in front of it, and once at the act
+         break the owner puts at 1:11:02.
+         Exempted by name, in the open, rather than by loosening the rule for
+         everybody — the other four still have to obey it. */
+      if(key === 'beetlejuice') continue;
       showLoad(key);
       const ls = frontCurtainLineset();
       if(!ls) throw new Error(SHOWS[key].name+' has no front curtain');
@@ -574,6 +584,16 @@ const probe = `
      same way either way.                                                    */
   P('the end of the night: call, curtain in, warmers, house', ()=>{
     for(const key of Object.keys(SHOWS)){
+      /* BEETLEJUICE IS EXEMPT (owner, 2026-08-10).  This suite encodes a
+         whole-evening convention the other four shows were written to, and
+         the fifth is not written to it: its plot came off the owner's own
+         reading of the recording, with rulings AR and AU deliberately
+         changing the SHAPE of the evening.  RULING AR ends the show at 2:15:00 — call, then confetti, curtain in and
+         house to half — so the call is two cues from the end, not four.  The
+         blackout and warmers cues the convention counts on were deleted.
+         Exempted by name, in the open, rather than by loosening the rule for
+         everybody — the other four still have to obey it. */
+      if(key === 'beetlejuice') continue;
       showLoad(key);
       const ls = frontCurtainLineset();
       const labels = CUES.map(c=>c.label.toLowerCase());
@@ -710,6 +730,15 @@ const probe = `
   console.log('--- the lost boys ---');
   P('every show has an interval about halfway through', ()=>{
     for(const key of Object.keys(SHOWS)){
+      /* BEETLEJUICE IS EXEMPT (owner, 2026-08-10).  This suite encodes a
+         whole-evening convention the other four shows were written to, and
+         the fifth is not written to it: its plot came off the owner's own
+         reading of the recording, with rulings AR and AU deliberately
+         changing the SHAPE of the evening.  RULING AU makes the interval a HOLD that waits for a button on the
+         console, and the cue that ends act one is labelled END OF HALF.
+         Exempted by name, in the open, rather than by loosening the rule for
+         everybody — the other four still have to obey it. */
+      if(key === 'beetlejuice') continue;
       showLoad(key);
       const ls = frontCurtainLineset();
       const isOut = c=>c.fly.find(x=>x.id === ls.id).target > OUT_TRIM - 1;

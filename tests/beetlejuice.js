@@ -355,6 +355,33 @@ const probe = `
     return SHOW.scenes.map(s=>s.name);
   });
 
+  console.log('--- the confetti ---');
+
+  P('the last cue fires confetti, and it falls and clears itself', ()=>{
+    showLoad('beetlejuice');
+    const last = CUES[CUES.length - 1];
+    if(!last.confetti) throw new Error('the last cue does not fire confetti');
+    showCueExtras(last);
+    const c = SHOW.confetti;
+    if(!c) throw new Error('the cue did not fire it');
+    if(WALKABLE.indexOf(c.mesh) >= 0) throw new Error('you can stand on the confetti');
+    const high = c.bits.filter(b=>b.y > 1).length;
+    if(high < 200) throw new Error('only '+high+' pieces, and they start on the floor');
+    /* it falls off dt, and it is not instant.  Measure the DROP, not how
+       many have landed: a second in they have fallen a metre or two and are
+       all still in the air, which is exactly right for confetti. */
+    const avg = ()=>c.bits.reduce((a2,b2)=>a2+b2.y,0)/c.bits.length;
+    const y0 = avg();
+    for(let i=0;i<60;i++) updateStorm(1/60);
+    const y1 = avg();
+    if(y1 >= y0 - 0.5) throw new Error('a second in it has fallen '+(y0-y1).toFixed(2)+'m');
+    if(y1 < 1) throw new Error('it dropped '+(y0-y1).toFixed(1)+'m in a second — that is a stone, not confetti');
+    /* and it clears itself rather than sitting on the deck for the night */
+    for(let i=0;i<3000;i++) updateStorm(1/60);
+    if(SHOW.confetti) throw new Error('the confetti never cleared');
+    return high+' pieces, fell '+(y0-y1).toFixed(2)+'m in the first second, gone by the end';
+  });
+
   console.log('--- the house is a wagon (RULING AP) ---');
 
   const zBox = name => { const sc = sceneFind(name); const b = new THREE.Box3();
