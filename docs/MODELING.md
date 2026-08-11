@@ -61,6 +61,22 @@ than 30 ft gets cropped by the portal.
 | **Roof** | ~44' | ~20' | ~16' | Blue shingle ridge, dormers, brick chimney. If actors stand on it, name that face `walk_roof`. |
 | **Netherworld** | ~44' | ~30' | ~33' | The nested glowing rectangles receding upstage. The in-game version is already close — model it only if you want it better. |
 
+## How your model is routed
+
+The import keeps the show's choreography working by landing your model inside
+the same machinery the stand-in used:
+
+- A **dressing file** (`bj-dress-maitland.glb` etc.) replaces exactly that
+  dressing on the wagon — the shell and the other two dressings stand.
+- A **flying set** (attic, closet, bedroom, roof, netherworld) lands inside
+  its flyer, so it still travels out through the header on its cue.
+- The **graveyard** routes each top-level node by its side of centre:
+  negative x rides the stage-right hill (the tree side), positive x the
+  stage-left one (the moon side) — unless you name a node with a
+  `part_hillR_` / `part_hillL_` prefix, which routes it explicitly.
+- **Floors stay `walk_*`**: named that, they are standable the moment the set
+  is on and stop being standable the moment it goes off.
+
 ## Handing one over
 
 Put the `.glb` in the repo's `assets/` folder (or just give me the file and

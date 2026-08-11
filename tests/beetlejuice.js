@@ -1628,6 +1628,12 @@ const probe = `
     return 'no setTimeout in the show part; the follow field is p6 machinery, not ours';
   });
 
+  /* RULING AZ (the appended tail): the model-import tests live PAST this
+     probe, out in node, because GLTFLoader.parse resolves through promise
+     microtasks a synchronous probe can never see.  SHOW and WALKABLE are
+     consts of this eval program, invisible from outside — hand them out. */
+  window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE};
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
@@ -1637,4 +1643,235 @@ const probe = `
 const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?script>/g,'');
 try{ w.eval(script + probe); }
 catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
-process.exit((w.__errs||[]).length ? 1 : 0);
+/* =============================================================================
+   RULING AZ — the model-import pipeline.  APPENDED PAST THE PROBE on purpose:
+   GLTFLoader.parse resolves through promise microtasks, which the synchronous
+   probe above can never observe — so these tests run out here in node,
+   awaiting the page's own vendored loader, and the exit moved down with them.
+   (This is plain node code, not a probe template: backslashes survive here.)
+   ========================================================================== */
+(async () => {
+  const errs = w.__errs || (w.__errs = []);
+  const az = w.__AZ || {};
+  const P = async (name, fn) => {
+    try{
+      const v = await fn();
+      console.log('  ok  ' + name + (v !== undefined ? '  -> ' + JSON.stringify(v).slice(0, 180) : ''));
+    }catch(e){
+      console.log('  ERR ' + name + ': ' + e.message);
+      errs.push(name + ': ' + e.message);
+    }
+  };
+  const under = (o, g) => { let p = o; while(p){ if(p === g) return true; p = p.parent; } return false; };
+  const meshCount = g => { let n = 0; g.traverse(o => { if(o.isMesh) n++; }); return n; };
+  const findByName = (g, name) => { let f = null; g.traverse(o => { if(!f && o.name === name) f = o; }); return f; };
+
+  /* a tiny .glb built by hand — glTF 2.0 binary: 12-byte header, a JSON chunk
+     padded with spaces, a BIN chunk padded with zeros.  Every node is its own
+     2-triangle quad mesh (4 verts, 6 indices); matCount > 1 gives each node
+     its own material so the material census is real to a walker. */
+  const makeGlb = (nodes, matCount) => {
+    const pos = new Float32Array([-0.5, 0, -0.5,  0.5, 0, -0.5,  0.5, 0, 0.5,  -0.5, 0, 0.5]);
+    const idx = new Uint16Array([0, 1, 2, 0, 2, 3]);
+    const bin = Buffer.concat([Buffer.from(pos.buffer), Buffer.from(idx.buffer)]);   // 48 + 12
+    const nMat = matCount || 1;
+    const json = {
+      asset: {version: '2.0'}, scene: 0,
+      scenes: [{nodes: nodes.map((_, i) => i)}],
+      nodes: nodes.map((n, i) => ({name: n.name, mesh: i, translation: [n.x, 0, 0]})),
+      meshes: nodes.map((n, i) => ({name: n.name,
+        primitives: [{attributes: {POSITION: 0}, indices: 1, material: (n.mat || 0) % nMat}]})),
+      materials: Array.from({length: nMat}, (_, i) =>
+        ({name: 'm' + i, pbrMetallicRoughness: {baseColorFactor: [1, 1, 1, 1]}})),
+      accessors: [
+        {bufferView: 0, componentType: 5126, count: 4, type: 'VEC3',
+         min: [-0.5, 0, -0.5], max: [0.5, 0, 0.5]},
+        {bufferView: 1, componentType: 5123, count: 6, type: 'SCALAR'}
+      ],
+      bufferViews: [
+        {buffer: 0, byteOffset: 0, byteLength: 48},
+        {buffer: 0, byteOffset: 48, byteLength: 12}
+      ],
+      buffers: [{byteLength: 60}]
+    };
+    let js = Buffer.from(JSON.stringify(json), 'utf8');
+    while(js.length % 4) js = Buffer.concat([js, Buffer.from(' ')]);
+    const binPad = bin.length % 4 ? Buffer.concat([bin, Buffer.alloc(4 - bin.length % 4)]) : bin;
+    const head = Buffer.alloc(12), cj = Buffer.alloc(8), cb = Buffer.alloc(8);
+    head.writeUInt32LE(0x46546C67, 0);                       // 'glTF'
+    head.writeUInt32LE(2, 4);
+    head.writeUInt32LE(12 + 8 + js.length + 8 + binPad.length, 8);
+    cj.writeUInt32LE(js.length, 0);  cj.writeUInt32LE(0x4E4F534A, 4);   // 'JSON'
+    cb.writeUInt32LE(binPad.length, 0); cb.writeUInt32LE(0x004E4942, 4); // 'BIN\0'
+    const all = Buffer.concat([head, cj, js, cb, binPad]);
+    return all.buffer.slice(all.byteOffset, all.byteOffset + all.length);
+  };
+  const parseGlb = buf => new Promise((res, rej) =>
+    new w.THREE.GLTFLoader().parse(buf, '',
+      g => res(g),
+      e => rej(new Error('parse failed: ' + (e && e.message || e)))));
+
+  console.log('--- the model import (RULING AZ): parse, validate, apply, fall back ---');
+
+  await P('with no fetch in the world, loadSetModels resolves and touches nothing', async () => {
+    if(typeof w.fetch === 'function')
+      throw new Error('jsdom grew a fetch — this fallback test needs a rewrite');
+    if(typeof w.loadSetModels !== 'function') throw new Error('loadSetModels is not in the build');
+    w.showLoad('beetlejuice');            // the hook inside showLoad already ran it once, silently
+    const att = w.sceneFind('attic');
+    const before = meshCount(att.group);
+    const r = await w.loadSetModels();    // and calling it cold must not throw either
+    if(!r) throw new Error('it resolved to nothing');
+    if(r.applied.length || r.refused.length)
+      throw new Error('it applied or refused with no fetch to fetch with');
+    if(meshCount(att.group) !== before)
+      throw new Error('the attic changed with no model to change it');
+    return 'no fetch: resolved, nothing applied, ' + before + ' stand-in meshes still playing';
+  });
+
+  await P('a hand-built two-mesh .glb parses through the vendored r128 loader', async () => {
+    const gltf = await parseGlb(makeGlb([{name: 'walk_floor', x: -1}, {name: 'junk', x: 2}]));
+    const kids = gltf.scene.children;
+    if(kids.length !== 2) throw new Error(kids.length + ' top-level nodes, wanted 2');
+    const names = kids.map(k => k.name).sort().join('+');
+    if(names !== 'junk+walk_floor') throw new Error('wrong names: ' + names);
+    if(meshCount(gltf.scene) !== 2) throw new Error('not two meshes');
+    const wf = findByName(gltf.scene, 'walk_floor');
+    if(Math.abs(wf.position.x + 1) > 1e-6) throw new Error('walk_floor lost its translation');
+    return 'THREE.GLTFLoader (vendored, r128): ' + names + ', 2 meshes, 2 tris each';
+  });
+
+  await P('nine materials are refused, and the refusal names the budget and the excess', async () => {
+    const bad = await parseGlb(makeGlb(
+      Array.from({length: 9}, (_, i) => ({name: 'n' + i, x: i - 4, mat: i})), 9));
+    const why = w.bjValidateModel(bad.scene);
+    if(!why) throw new Error('nine materials were accepted against a budget of 8');
+    if(why.indexOf('9 materials') < 0 || why.indexOf('8') < 0)
+      throw new Error('the refusal does not name the budget and the excess: ' + why);
+    const ok = await parseGlb(makeGlb([{name: 'clean', x: 0}]));
+    if(w.bjValidateModel(ok.scene)) throw new Error('a clean model was refused');
+    return why;
+  });
+
+  await P('a refused model leaves the stand-in playing (the full fetch round)', async () => {
+    const badBuf = makeGlb(Array.from({length: 9}, (_, i) => ({name: 'n' + i, x: i - 4, mat: i})), 9);
+    w.fetch = url => (url === 'assets/bj-bedroom.glb')
+      ? Promise.resolve({ok: true, arrayBuffer: () => Promise.resolve(badBuf)})
+      : Promise.reject(new Error('not delivered'));
+    try{
+      const bed = w.sceneFind('bedroom');
+      const before = meshCount(bed.group);
+      const r = await w.loadSetModels();
+      if(r.applied.length) throw new Error('something applied: ' + r.applied.join(','));
+      if(r.refused.length !== 1 || r.refused[0].key !== 'bedroom')
+        throw new Error('the refusal did not land on the bedroom: ' + JSON.stringify(r.refused));
+      if(r.refused[0].why.indexOf('materials') < 0)
+        throw new Error('refused for the wrong reason: ' + r.refused[0].why);
+      if(meshCount(bed.group) !== before)
+        throw new Error('the refused model disturbed the stand-in');
+      if(r.missing !== 9) throw new Error(r.missing + ' missing, wanted the other 9 silent');
+      return 'bedroom refused (' + r.refused[0].why + '), ' + before + ' stand-in meshes intact, 9 absentees silent';
+    } finally { delete w.fetch; }
+  });
+
+  await P('a model swaps INTO the attic flyer, and an OFF attic stays inert', async () => {
+    w.sceneShow('cemetery');                       // the attic is OFF for the swap
+    const att = w.sceneFind('attic');
+    const flyer = att.pmv && att.pmv.all && att.pmv.all.group;
+    if(!flyer) throw new Error('the attic lost its all flyer');
+    const standIns = flyer.children.slice();
+    if(!standIns.length) throw new Error('no stand-in to replace');
+    const gltf = await parseGlb(makeGlb([{name: 'walk_floor', x: -1}, {name: 'junk', x: 2}]));
+    if(!w.bjApplyModel({scene: 'attic', url: 'x'}, gltf.scene))
+      throw new Error('the apply refused a clean model');
+    for(const o of standIns)
+      if(under(o, att.group)) throw new Error('a stand-in survived the swap: ' + (o.name || 'unnamed'));
+    const walk = findByName(flyer, 'walk_floor');
+    if(!walk || meshCount(flyer) !== 2)
+      throw new Error('the model is not inside the flyer: ' + meshCount(flyer) + ' meshes');
+    if(att.walk.indexOf(walk) < 0) throw new Error('walk_floor never reached sc.walk');
+    /* the trap this pins: fresh meshes wake on layer 0, and an OFF scene that
+       skips the sceneApply refresh takes raycasts through a set that is not
+       there.  Negative-checked by removing the refresh from bjApplyModel. */
+    if(walk.layers.mask !== 0)
+      throw new Error('a fresh mesh in an OFF scene takes raycasts (layers mask ' + walk.layers.mask + ')');
+    if(az.WALKABLE.indexOf(walk) >= 0) throw new Error('an OFF floor is standable');
+    w.sceneShow('attic');                          // ON wakes exactly what came in
+    if(walk.layers.mask === 0) throw new Error('the model never wakes with the set on');
+    if(az.WALKABLE.indexOf(walk) < 0) throw new Error('walk_floor missing from WALKABLE with the attic on');
+    /* and the attic still FLIES: the changeover sends the flyer out and the
+       new contents ride it — read the WORLD matrix, never position (TRAPS) */
+    const wy = o => { az.SHOW.group.updateMatrixWorld(true); return o.matrixWorld.elements[13]; };
+    const y0 = wy(walk);
+    w.sceneChangeTo('cemetery');
+    for(let i = 0; i < 3; i++) w.sceneMoveStep(0.5);
+    const y1 = wy(walk);
+    if(y1 - y0 < 2.0) throw new Error('the changeover moved the model only ' + (y1 - y0).toFixed(2) + 'm');
+    if(att.group.userData.sceneOff) throw new Error('the attic went dark mid-travel');
+    for(let i = 0; i < 14; i++) w.sceneMoveStep(0.5);
+    if(!att.group.userData.sceneOff) throw new Error('the attic never hid after arriving out');
+    if(az.WALKABLE.indexOf(walk) >= 0) throw new Error('the floor stayed standable after the set left');
+    return '2 meshes into the flyer, stand-ins gone, inert while off, rode the fly-out ' +
+           (y1 - y0).toFixed(2) + 'm and left WALKABLE once gone';
+  });
+
+  await P('the graveyard routes by side of centre, and a part_ prefix overrides', async () => {
+    const cem = w.sceneFind('cemetery');
+    if(!cem.pmv || !cem.pmv.hillR || !cem.pmv.hillL) throw new Error('the hills lost their movers');
+    const R = cem.pmv.hillR.group, L = cem.pmv.hillL.group;
+    const gltf = await parseGlb(makeGlb([{name: 'walk_floor', x: -1}, {name: 'junk', x: 2}]));
+    w.bjApplyModel({scene: 'cemetery', url: 'x'}, gltf.scene);
+    const wf = findByName(R, 'walk_floor'), jk = findByName(L, 'junk');
+    if(!wf) throw new Error('x -1 did not ride the stage-right hill');
+    if(!jk) throw new Error('x +2 did not ride the stage-left hill');
+    if(findByName(L, 'walk_floor') || findByName(R, 'junk'))
+      throw new Error('a node landed on both hills');
+    if(meshCount(R) !== 1 || meshCount(L) !== 1)
+      throw new Error('stand-ins survived: ' + meshCount(R) + ' SR, ' + meshCount(L) + ' SL');
+    if(cem.walk.indexOf(wf) < 0) throw new Error('the routed floor missed sc.walk');
+    if(az.WALKABLE.indexOf(wf) < 0) throw new Error('the routed floor missed WALKABLE with the set on');
+    /* the explicit prefix beats the sign of x */
+    const g2 = await parseGlb(makeGlb([{name: 'part_hillL_thing', x: -3}]));
+    w.bjApplyModel({scene: 'cemetery', url: 'x'}, g2.scene);
+    if(!findByName(L, 'part_hillL_thing'))
+      throw new Error('part_hillL_ at x -3 did not override the sign of x');
+    /* and the first model, stripped as the stand-in it now was, took its
+       walkable with it — sc.walk and WALKABLE both */
+    if(cem.walk.indexOf(wf) >= 0) throw new Error('a stripped floor stayed on sc.walk');
+    if(az.WALKABLE.indexOf(wf) >= 0) throw new Error('a stripped floor stayed standable');
+    return 'x -1 SR, x +2 SL, part_hillL_ overrode x -3, stripped walkable left both lists';
+  });
+
+  await P('a dressing file replaces exactly that dressing, and bjRedress still rules it', async () => {
+    const inr = w.sceneFind('interior');
+    if(!inr.dress || !inr.dress.maitland) throw new Error('the wagon lost its dressings');
+    const mai = inr.dress.maitland, deetz = inr.dress.deetz, bjd = inr.dress.bj;
+    const dBefore = meshCount(deetz), bBefore = meshCount(bjd);
+    const gBefore = inr.group.children.length;
+    const gltf = await parseGlb(makeGlb([{name: 'm_new', x: 0}]));
+    if(!w.bjApplyModel({scene: 'interior', dress: 'maitland', url: 'x', scale: 0.3048}, gltf.scene))
+      throw new Error('the dressing apply refused');
+    const mNew = findByName(mai, 'm_new');
+    if(!mNew) throw new Error('the model did not land in the maitland dressing');
+    if(meshCount(mai) !== 1) throw new Error('maitland stand-in survived: ' + meshCount(mai) + ' meshes');
+    if(Math.abs(gltf.scene.scale.x - 0.3048) > 1e-9)
+      throw new Error('a model delivered in feet was not scaled: ' + gltf.scene.scale.x);
+    if(meshCount(deetz) !== dBefore || meshCount(bjd) !== bBefore)
+      throw new Error('the other dressings were disturbed');
+    if(inr.group.children.length !== gBefore)
+      throw new Error('the shell was disturbed: ' + inr.group.children.length + ' children, had ' + gBefore);
+    w.sceneShow('interior');
+    w.bjDress(inr, 'maitland');
+    if(mNew.layers.mask === 0) throw new Error('the maitland model stays dark in its own dressing');
+    let deetzMesh = null; deetz.traverse(o => { if(!deetzMesh && o.isMesh) deetzMesh = o; });
+    if(deetzMesh && deetzMesh.layers.mask !== 0)
+      throw new Error('the deetz dressing lit alongside the maitland one');
+    w.bjDress(inr, 'deetz');
+    if(mNew.layers.mask !== 0) throw new Error('the maitland model stays lit under the deetz dressing');
+    return 'maitland replaced (scaled 0.3048), deetz and bj untouched, bjRedress swaps the model like a dressing';
+  });
+
+  console.log(errs.length ? '--- failures: ' + errs.length + ' (with the AZ tail) ---'
+                          : '--- failures: 0 (with the AZ tail) ---');
+  process.exit(errs.length ? 1 : 0);
+})().catch(e => { console.log('AZ TAIL THREW: ' + e.message); process.exit(1); });

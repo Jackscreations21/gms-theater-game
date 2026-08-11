@@ -467,6 +467,12 @@ function showLoad(key){
   if(SHOW_HANGS[key]) applyHang(key);
   SHOW.loadedHang = hangSnapshot();
   if(typeof lockShowStatic === 'function') lockShowStatic();
+  /* the owner's delivered set models replace the stand-ins (RULING AZ) —
+     fetched async per scene, applied when they arrive, silent when absent.
+     p5i defines it and loads later in the build, so the typeof guard is the
+     usual late-part pattern; hooked HERE, after the show's build registered
+     its scenes, so loading the show on the other stage fetches there too. */
+  if(typeof loadSetModels === 'function') loadSetModels();
   if(typeof crewForgetLoads === 'function') crewForgetLoads();
   if(typeof refreshShowUI === 'function') refreshShowUI();
   if(typeof refreshCues === 'function') refreshCues();
