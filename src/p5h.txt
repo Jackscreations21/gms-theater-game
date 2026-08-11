@@ -386,14 +386,45 @@ SHOWS.beetlejuice = {
       const cm = new T.Mesh(mergeParts(corn), boardD);
       cm.position.z = BJ.pz; cm.castShadow = true; G.add(cm);
 
-      /* the cold line round the opening — three strips, ONE material */
+      /* ------------------------------------------------------------------
+         THE NEON, round the opening AND back into the wings.
+
+         It is the most-seen object in the production — a blue-green tube
+         frame surrounding the whole picture, in nearly every photograph
+         the owner sent — and it was a flat green strip here.  Now it is
+         TUBES: four round the opening, and two returns per side running
+         upstage into the wings with a hoop at the end of each, so from a
+         seat the opening is a lit box receding rather than a lit outline.
+
+         Everything is ONE merged mesh on ONE material.  A material per
+         tube is the draw-call trap in TRAPS.md, and an emissive material
+         per object is the expensive version of it.  It also stays inside
+         x +-7.4 on purpose: the portal check refuses anything scenic
+         wider than the house opening, and the wings are no exception.
+         ------------------------------------------------------------------ */
+      const R = 0.075, HW2 = BJ.opW/2, WZ = -5.2;   // how far the wings run
+      const tube = (len, pos, rot) => ({
+        geo:new T.CylinderGeometry(R, R, len, 8), pos:pos, rot:rot || [0,0,0]});
       const tr = [
-        {geo:new T.BoxGeometry(0.09, BJ.opH, 0.10), pos:[-BJ.opW/2, BJ.opH/2, 0]},
-        {geo:new T.BoxGeometry(0.09, BJ.opH, 0.10), pos:[ BJ.opW/2, BJ.opH/2, 0]},
-        {geo:new T.BoxGeometry(BJ.opW, 0.09, 0.10), pos:[0, BJ.opH, 0]}
+        /* the frame: two legs, a header and a sill at the deck */
+        tube(BJ.opH, [-HW2, BJ.opH/2, 0]),
+        tube(BJ.opH, [ HW2, BJ.opH/2, 0]),
+        tube(BJ.opW, [0, BJ.opH, 0], [0, 0, Math.PI/2]),
+        tube(BJ.opW, [0, 0.06, 0],   [0, 0, Math.PI/2])
       ];
-      const tm = new T.Mesh(mergeParts(tr), glow);
-      tm.name = 'bj:portalTrim'; tm.position.z = BJ.pz + 0.30; G.add(tm);
+      [-1, 1].forEach(sd=>{
+        /* the returns, top and bottom, running upstage into the wing */
+        tr.push(tube(Math.abs(WZ), [sd*HW2, BJ.opH, WZ/2], [Math.PI/2, 0, 0]));
+        tr.push(tube(Math.abs(WZ), [sd*HW2, 0.06,   WZ/2], [Math.PI/2, 0, 0]));
+        /* and the hoop that closes the far end of the box */
+        tr.push(tube(BJ.opH, [sd*HW2, BJ.opH/2, WZ]));
+      });
+      tr.push(tube(BJ.opW, [0, BJ.opH, WZ], [0, 0, Math.PI/2]));
+      const neonB = new T.MeshStandardMaterial({color:0x8ff0ff, emissive:0x2fd8e0,
+                                                emissiveIntensity:1.6, roughness:.5});
+      const tm = new T.Mesh(mergeParts(tr), neonB);
+      tm.name = 'bj:portalTrim'; tm.position.z = BJ.pz + 0.30;
+      G.add(tm);
     }
 
     /* ================================================================

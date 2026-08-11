@@ -132,6 +132,30 @@ const probe = `
     return 'one merged mesh, one emissive material';
   });
 
+  P('the neon frames the opening and returns into the wings', ()=>{
+    showLoad('beetlejuice');
+    const t = byName('bj:portalTrim');
+    const b2 = box(t);
+    /* it must SURROUND the picture, not sit across the top of it */
+    if(b2.min.y > 0.4) throw new Error('there is no sill: the neon starts at y='+b2.min.y.toFixed(2));
+    if(b2.max.y < BJ.opH - 0.2) throw new Error('the neon does not reach the header');
+    /* and it must run UPSTAGE — that is the wings half of the ask */
+    const deep = b2.max.z - b2.min.z;
+    if(deep < 4) throw new Error('the neon is '+deep.toFixed(2)+'m deep — it does not go into the wings');
+    /* never wider than the house opening, wings or no wings */
+    const wide = Math.max(Math.abs(b2.min.x), Math.abs(b2.max.x));
+    if(wide > D.procW/2) throw new Error('the neon is '+(wide*2).toFixed(2)+'m across a '+D.procW+' opening');
+    /* blue-green, and one material for the lot */
+    if(Array.isArray(t.material)) throw new Error('the neon uses an array material');
+    const e = t.material.emissive;
+    if(!e) throw new Error('the neon does not glow');
+    if(!(e.b > e.r && e.g > e.r))
+      throw new Error('the neon is not blue-green: r='+e.r.toFixed(2)+' g='+e.g.toFixed(2)+' b='+e.b.toFixed(2));
+    let n = 0; t.traverse(o=>{ if(o.isMesh) n++; });
+    if(n !== 1) throw new Error('the neon is '+n+' meshes, it should be merged to one');
+    return (wide*2).toFixed(1)+'m across, '+deep.toFixed(1)+'m into the wings, one merged mesh';
+  });
+
   console.log('--- the cemetery is a SCENE, and this is the first show to use them ---');
 
   P('the set is registered as a scene and is the live one', ()=>{

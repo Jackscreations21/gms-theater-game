@@ -5,15 +5,67 @@ NOW and is updated as work happens. `HANDOFF.md` is the durable record
 written at session end; this file is the scratchpad between those
 writes. If the two disagree, this file is newer.
 
-Last updated: **2026-08-10, later the same day** — the owner supplied his OWN
-scene plot off the video, with timestamps, and it does not match what the
-fifth show built. A re-time round is IN FLIGHT: six PRs merged
-(#104–#109), two more to go. **Read "THE RE-TIME ROUND" below before
-anything else.**
+Last updated: **2026-08-10, end of session** — the owner supplied his OWN
+scene plot off the video, with timestamps, and it did not match what the
+fifth show built. **The re-time round is DONE: eleven PRs, #104–#113, all
+merged.** The show now runs his plot. **Nothing in it has met hardware —
+read "NEXT SESSION: PUT IT ON THE HEADSET" immediately below.**
 
 ---
 
-## THE RE-TIME ROUND — in flight, 2026-08-10
+## NEXT SESSION: **PUT IT ON THE HEADSET.** Nothing here has met hardware.
+
+The round is BUILT and it is GREEN and **nobody has seen a second of it.**
+Eleven PRs (#104–#113 plus the record) and not one of them has been looked
+at through a Quest. The suites cannot answer any of the questions below,
+and that is not a gap in the suites — it is what jsdom is for and what it
+is not for.
+
+**Bust the Quest cache with `?v=17`** — the build went 964663 → ~1000763
+across this round, and confirming any of this against a CACHED old build
+would read as a fault that is not there.
+
+### What only the headset can answer, in order
+
+1. **Does the wagon read as a house arriving?** It crosses in 4.0s over
+   10m. Too fast and it is a slide; too slow and the show waits on it.
+   The number to change is the speed argument of
+   `sceneTravel(inr, 'z', BJ_WAGON_BACK, 2.0)` in `p5h` — the test allows
+   2–12s, so there is room either way.
+2. **Does the neon portal read?** It is the most-seen object in the
+   production. Four tubes round the opening and returns 5.4m into the
+   wings, so from a seat it should be a lit box receding, not an outline.
+3. **Do the owner's seventeen beats feel like a show?** He wrote the plot;
+   nobody has sat through it. The two GO holds (pre-show, interval) are
+   the places it will feel wrong first if it does.
+4. **The curtain call.** The house parks all the way back in full view
+   with the backdrop out and nothing else on stage. That is the one
+   picture in the round taken entirely from his description.
+5. **The Beetlejuice dressing.** Its stripes came off ONE purple-lit
+   photograph, so how much is paint and how much is light is a guess.
+6. **The marquee and the show cloth** (#108) — built from a photograph,
+   and `fillText` is a noop in the harness, so no suite has ever seen
+   them.
+
+### Still owed, and small
+
+- The **act-two exterior** flies out on a Y mover per RULING AT; it works,
+  but whether a built set flying reads as flying is a headset question.
+- **`pr6.json`** is still untracked in the repo root, as it has been all
+  round. The owner has never ruled on it.
+- **~50 merged branches** still on `origin`; local is pruned every time.
+
+### And the standing one
+
+**THE FRAME-RATE ROUND** has not moved and now matters more: this round
+added a wagon, three dressings, two cloths, a neon box and an instanced
+confetti burst. The foveation decision table in HANDOFF is still the right
+step zero — take the meter readings FIRST, then work the feel questions
+above while the headset is already on. One trip.
+
+---
+
+## THE RE-TIME ROUND — done, 2026-08-10
 
 The owner watched the recording and wrote out the set changes himself. **That
 list is the authority.** Where it disagrees with what #93–#100 built, the list
@@ -48,7 +100,7 @@ with no offset.
   show only** — the other four keep their interpretation note, and there is an
   assertion pinning that the repeal did not leak.
 
-### Landed so far
+### The eleven PRs
 
 | PR | What |
 |---|---|
@@ -58,17 +110,16 @@ with no offset.
 | [#107](https://github.com/Jackscreations21/gms-theater-game/pull/107) | **a defect in #106** — the cloths were hung in FRONT of the show |
 | [#108](https://github.com/Jackscreations21/gms-theater-game/pull/108) | RULING AV — the marquee and the cloth follow the photograph |
 | [#109](https://github.com/Jackscreations21/gms-theater-game/pull/109) | **the Palace runs 4.5m deeper**, warehouse moved back with it |
+| [#110](https://github.com/Jackscreations21/gms-theater-game/pull/110) | the record caught up mid-round |
+| [#111](https://github.com/Jackscreations21/gms-theater-game/pull/111) | **the house is a wagon** — parks behind the last lineset, crosses in 4.0s |
+| [#112](https://github.com/Jackscreations21/gms-theater-game/pull/112) | **one room, three dressings** (RULING AQ) |
+| [#113](https://github.com/Jackscreations21/gms-theater-game/pull/113) | the rest in one PR: closet, roof, crypt+signset gone, confetti, **the re-timed cue list** |
 
-### Still to build
+### All of it is built
 
-1. **The wagon and its three dressings** (RULING AQ) — the big one. `interior`
-   becomes the wagon, `redecorated` becomes its Deetz dressing, a Beetlejuice
-   dressing is new. Park offset is about **z −7.9** (puts the set at −17.10 ..
-   −11.50, behind the last lineset at −10.90 with 4.4m to spare behind it).
-2. **The closet (42:34) and the roof (56:00)**, delete the crypt, retire the
-   `signset` scene.
-3. **Confetti** (2:15:00) — does not exist; a burst, not a state.
-4. **The re-timed cue list** — every `at` onto the owner's seventeen beats.
+The wagon and its three dressings, the closet and the roof, the crypt and
+sign set deleted, confetti, the neon portal, and every cue re-anchored to
+the owner's seventeen beats. 37 cues, two GO holds, ending at 2:15:00.
 
 ### The plot, as the owner gave it
 
@@ -97,11 +148,15 @@ architecture** — the attic (two open sheds either side, junk wall centre,
 string lights on a rafter), the roof set, the exterior, the marquee, and **the
 closet (the bright pink one)**.
 
+**Both things they flagged are now DONE.** The portal is a blue-green neon tube frame — four tubes round the opening and returns 5.2m into the wings — and the cemetery hills and moon came downstage of the cloth. What follows is the note as it stood when they were still open:
+
 **Two things they changed:** the show portal is a **blue-green neon tube frame**
 round the whole opening — ours is weathered clapboard and is wrong. And the
 graveyard plainly has a painted cloud sky BEHIND cut hills, which settles an
 open question the other way: the cemetery's three hills need to come downstage
 of the cloth, not the cloth upstage of them.
+
+**Confirmed since:** the pink photo is the CLOSET, the purple one is LYDIA'S BEDROOM, and **the house exterior never changes**, so there is no Deetz exterior to build. The note as it stood:
 
 **Still needed:** the purple photo with the picture frames is unidentified (my
 guess is Lydia's bedroom, unconfirmed). Nothing yet for the Deetz exterior —
