@@ -1155,11 +1155,32 @@ const probe = `
     for(let k = 0; k < 300; k++) updateStorm(1/60);         // and the rest
     if(Math.abs(wx(gR) - (r0 - BJ_HILL_OUT)) > 0.05 || Math.abs(wx(gL) - (l0 + BJ_HILL_OUT)) > 0.05)
       throw new Error('the hills never reached the wings');
+    /* THE CLEARANCE, read off world boxes, never mover offsets: parked, no
+       cemetery mesh may reach into the opening (+-6.8) below the y=5
+       sightline.  The mover arriving at OUT proves nothing about geometry —
+       a ground row built wider than its own run still lies across the
+       picture with its mover happily at -9.5, which is exactly what the
+       first full-width hills did.  This is the assertion that catches it,
+       and it will catch an over-wide owner model too (RULING AZ). */
+    scene.updateMatrixWorld(true);
+    const EDGE = BJ.opW/2;                                  // 6.8
+    let nearest = 999;
+    sc.group.traverse(o=>{
+      if(!o.isMesh) return;
+      const b = new THREE.Box3().setFromObject(o);
+      if(b.min.y > 5) return;                               // above the sightline
+      if(b.max.x > -EDGE && b.min.x < EDGE)
+        throw new Error((o.name || 'a piece')+' parks INSIDE the opening: x '+
+                        b.min.x.toFixed(2)+' to '+b.max.x.toFixed(2)+' against +-'+EDGE);
+      const e = b.min.x > 0 ? b.min.x : -b.max.x;
+      if(e < nearest) nearest = e;
+    });
     /* the painted cloth is a GOOD on line 14; the beat leaves its trim alone */
     if(Math.abs(bd.target - trim0) > 0.01) throw new Error('the beat moved the backdrop line');
     if(Math.abs(bd.target - TRIMS.bjBackdrop) > 0.01) throw new Error('the backdrop is not in for the beat');
     if(!sc.on || sc.group.userData.sceneOff) throw new Error('the emptied stage went dark');
-    return 'hills out to +-'+BJ_HILL_OUT+' in view over '+(420/60)+'s, cloth still at '+bd.target.toFixed(1);
+    return 'hills out to +-'+BJ_HILL_OUT+' in view, nearest parked edge at x '+
+           nearest.toFixed(2)+' against +-'+EDGE+', cloth still at '+bd.target.toFixed(1);
   });
 
   P('the graveyard never returns in the plot, but a recall brings the hills home', ()=>{
