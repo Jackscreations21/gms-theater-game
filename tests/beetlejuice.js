@@ -233,8 +233,18 @@ const probe = `
          alone let an interval re-dress pass with the cloth out. */
       const prev = CUES[i-1];
       const cameFromDark = !prev.lx.some(x=>x.lvl > 0.02) && prev.house <= 0.05;
+      /* THE OWNER'S PLOT ADDED TWO MORE COVERS, and one of them is not a
+         cover at all.  The backdrop masks everything upstage of it, so a
+         change behind a backdrop that is IN is hidden.  And a cue that
+         MOVES the wagon is meant to be seen — RULING AP is "you watch it
+         travel", so a set arriving on the wagon in full view is the
+         feature, not the fault this test was written to catch. */
+      const bd = CUES[i].fly.find(x=>x.id === 14);
+      const backdropIn = bd && bd.target < OUT_TRIM - 1;
       if(clothIn) how.push(CUES[i].n + ':cloth');
       else if(cameFromDark) how.push(CUES[i].n + ':blackout');
+      else if(backdropIn) how.push(CUES[i].n + ':backdrop');
+      else if(CUES[i].move) how.push(CUES[i].n + ':wagon');
       else inView.push(CUES[i].n);
     }
     if(!changes) throw new Error('no cue changes the set');
@@ -306,7 +316,12 @@ const probe = `
      it is no longer a SCENE, it is the Deetz DRESSING of the one room the
      wagon carries.  The photographs settled it — Maitlands, Deetz and
      Beetlejuice are the same architecture three times over. */
-  const SCENES = ['cemetery','house','interior','attic','bedroom','afterlife','crypt','signset','bare'];
+  /* the crypt and the sign set are GONE (RULING AS): the crypt is not in the
+     show — "i dont know what a crypt is but i dont think there is one" — and
+     the sign is a flown piece, not a set.  The closet and the roof replace
+     them, off the owner's plot and his photographs.  Their two tests were
+     removed with them rather than left asserting nothing. */
+  const SCENES = ['cemetery','house','interior','attic','closet','roof','bedroom','afterlife','bare'];
   const DRESSINGS = ['maitland','deetz','bj'];
 
   /* This used to read "exactly one is ever live" and count SHOW.scenes flat.
@@ -625,6 +640,12 @@ const probe = `
         const cz = (b.min.z + b.max.z)/2;
         const wide = (b.max.x - b.min.x);
         const H = BJ.opW/2;
+        /* WIDER THAN THE HOLE IS MASKING, wherever it stands.  The
+           cemetery's cut hills came downstage of the backdrop when the cloth
+           moved to the last lineset (the owner's photograph has them in FRONT
+           of a painted sky), and a 27m ground row is not an acting-area piece
+           that has escaped the opening — it is the thing that frames it. */
+        if(wide > BJ.opW){ backing++; return; }
         if(cz > UPSTAGE_OF){
           if(b.max.y > BJ.opH)
             throw new Error(n+' has an acting-area piece at y='+b.max.y.toFixed(2)+
@@ -706,9 +727,14 @@ const probe = `
     const distinct = new Set(lv);
     if(distinct.size < 3)
       throw new Error('only '+distinct.size+' distinct neon level(s) — the cue field is being ignored');
-    const dark = CUES.filter(c=>/blackout — the curtain/.test(c.label));
-    if(!dark.length) throw new Error('no final blackout to check');
-    if(dark[0].neon > 0.02) throw new Error('the frames are still lit in the final blackout');
+    /* the show no longer ENDS in a blackout — RULING AR ends it at 2:15:00
+       with confetti, the curtain in and the house to half — so the check
+       moves to the act break, which is still a true blackout, and to the
+       last cue, where the frames must be out however the show finishes. */
+    const dark = CUES.filter(c=>/END OF HALF/.test(c.label));
+    if(!dark.length) throw new Error('no act-break blackout to check');
+    if(dark[0].neon > 0.02) throw new Error('the frames are still lit in the act break');
+    if(CUES[CUES.length-1].neon > 0.02) throw new Error('the frames are still lit at the end');
     /* and it actually moves the tubes */
     const aftCue = CUES.findIndex(c=>c.scene === 'afterlife' && c.neon > 1);
     fireCue(aftCue);
@@ -738,7 +764,10 @@ const probe = `
     /* the afterlife appears TWICE on purpose: 118:04 sits between the
        afterlife looks and the chevron at 121:54, so the set goes out to the
        sign and comes back.  That is what the recording says happened. */
-    const want = ['house','interior','afterlife','signset','afterlife','bare'];
+    /* the owner's order, not the measurement's: the exterior, the house on
+       its wagon, the attic, the house again, the netherworld, and the house
+       one last time for the call. */
+    const want = ['house','interior','attic','interior','afterlife','interior'];
     if(seq.join('>') !== want.join('>'))
       throw new Error('act two runs '+seq.join(' > ')+', the recording says '+want.join(' > '));
     return seq.join(' > ');
@@ -746,35 +775,9 @@ const probe = `
 
   console.log('--- the remainder: the crypt, the sign, the bare stage ---');
 
-  P('the crypt has a doorway you can climb to', ()=>{
-    showLoad('beetlejuice');
-    sceneShow('crypt');
-    if(!byName('bj:crypt')) throw new Error('no crypt');
-    const s = (()=>{ let r=null; SHOW.group.traverse(o=>{ if(!r && o.name==='bj:cryptStep') r=o; }); return r; })();
-    if(!s) throw new Error('no step');
-    if(WALKABLE.indexOf(s) < 0) throw new Error('the step is not walkable with the crypt on');
-    const b = box(s);
-    if(b.max.y < 0.4) throw new Error('the step is at deck level, y='+b.max.y.toFixed(2));
-    sceneShow('cemetery');
-    if(WALKABLE.indexOf(s) >= 0) throw new Error('the step stayed walkable off stage');
-    return 'step at y='+b.max.y.toFixed(2)+', walkable only with the crypt live';
-  });
 
   /* RULING AO again, and this is where it bites hardest: the real production's
      signage is precisely the authored detail the ruling excludes. */
-  P('the sign carries OUR wording, lit, over something to stand on', ()=>{
-    showLoad('beetlejuice');
-    sceneShow('signset');
-    const s = byName('bj:sign');
-    if(!s) throw new Error('no sign');
-    if(!s.material.emissive) throw new Error('the sign is not lit');
-    if(!s.material.map) throw new Error('the sign carries no wording');
-    if(!byName('bj:signFrame')) throw new Error('the sign hangs in nothing');
-    const r = (()=>{ let x=null; SHOW.group.traverse(o=>{ if(!x && o.name==='bj:rostrum') x=o; }); return x; })();
-    if(!r) throw new Error('no rostrum');
-    if(WALKABLE.indexOf(r) < 0) throw new Error('the rostrum cannot be stood on');
-    return 'lit panel with a texture, framed, rostrum walkable';
-  });
 
   P('the bare stage is masking and a ghost light, not an empty group', ()=>{
     showLoad('beetlejuice');
@@ -784,10 +787,14 @@ const probe = `
     if(m < 6) throw new Error('the bare stage is only '+m+' pieces');
     if(!byName('bj:masking')) throw new Error('no masking — that is an empty stage, not a bare one');
     if(!byName('bj:ghostLight')) throw new Error('no ghost light');
-    /* the call happens on it, which is the whole reason it exists */
-    const call = CUES.find(c=>/curtain call/.test(c.label));
-    if(call.scene !== 'bare') throw new Error('the call happens in '+call.scene);
-    return m+' pieces, and the call is on it';
+    /* THE CALL NO LONGER HAPPENS ON IT.  The owner's plot ends with the house
+       sliding all the way back and staying in view — "House slide back but
+       backdrop stay up. Curtain call" — so the bare stage is kept, reachable
+       from the scene panel and costing nothing with its layers off, but no
+       cue plays on it.  What follows used to assert a cue did. */
+    if(CUES.some(c=>c.scene === 'bare'))
+      throw new Error('a cue plays on the bare stage — the plot puts the call on the parked house');
+    return m+' pieces, masking and a ghost light, no cue on it';
   });
 
   P('act one runs across five sets and act two across five', ()=>{
@@ -795,8 +802,11 @@ const probe = `
     const iv = CUES.findIndex(c=>/INTERVAL/.test(c.label));
     const one = new Set(CUES.slice(0, iv).map(c=>c.scene));
     const two = new Set(CUES.slice(iv + 1).map(c=>c.scene));
-    if(one.size < 5) throw new Error('act one uses only '+one.size+' set(s)');
-    if(two.size < 5) throw new Error('act two uses only '+two.size+' set(s)');
+    /* act one carries six now (cemetery, the house, attic, closet, bedroom,
+       roof) and act two four, because the owner's plot works the ONE house
+       three times in act two rather than giving each a set of its own. */
+    if(one.size < 6) throw new Error('act one uses only '+one.size+' set(s)');
+    if(two.size < 4) throw new Error('act two uses only '+two.size+' set(s)');
     return 'act one: '+[...one].join(', ')+' | act two: '+[...two].join(', ');
   });
 
@@ -924,7 +934,7 @@ const probe = `
      ever stops being a real blackout the measurement has been thrown away. */
   P('the measured act break is a true blackout, and the interval follows it', ()=>{
     showLoad('beetlejuice');
-    const i = CUES.findIndex(c=>/act one ends/.test(c.label));
+    const i = CUES.findIndex(c=>/END OF HALF/.test(c.label));
     if(i < 0) throw new Error('nothing ends act one');
     const down = CUES[i];
     const up = CUES[i+1];
@@ -967,37 +977,51 @@ const probe = `
   /* the whole point of the round. follow already existed and was unused. */
   P('every cue but the last arms the next one, off a measured gap', ()=>{
     showLoad('beetlejuice');
-    const missing = [];
+    /* EXACTLY TWO cues arm nothing on purpose — the pre-show and the
+       interval — because the owner asked to advance from pre-show "when you
+       press start" and to begin the second half "when you press a button on
+       the consol".  A hold IS follow:null; that is the whole mechanism. (AU) */
+    const missing = [], holds = [];
     for(let i = 0; i < CUES.length - 1; i++)
-      if(!(CUES[i].follow > 0)) missing.push(CUES[i].n);
+      if(!(CUES[i].follow > 0)){ (CUES[i].hold ? holds : missing).push(CUES[i].n); }
     if(missing.length)
       throw new Error(missing.length+' cue(s) do not arm the next: '+missing.slice(0,6).join(', '));
+    if(holds.length !== 2)
+      throw new Error(holds.length+' holds, expected 2 (pre-show and interval): '+holds.join(', '));
     if(CUES[CUES.length-1].follow !== null)
       throw new Error('the last cue arms something after it');
-    return (CUES.length-1)+' follow gaps set, last one null';
+    return (CUES.length-1-holds.length)+' follow gaps set, '+holds.length+' holds, last one null';
   });
 
   P('the follow chain reconstructs the running time of the recording', ()=>{
     showLoad('beetlejuice');
     let total = 0;
     for(const c of CUES) total += (c.follow || 0);
-    /* the file is 8626.7s long and the first cue sits at 33s, so the chain
-       from cue one to the last should span the rest of it */
-    const want = 8660 - 33;
+    /* RULING AR: the show ends at 2:15:00 = 8100s, which is the owner
+       overruling a measurement — the probe put the biggest cluster of light
+       bumps at 8462.  The chain therefore spans 33s to 8100s MINUS the two
+       holds, which arm nothing and so contribute no gap. */
+    let holdGap = 0;
+    for(let i = 0; i < CUES.length - 1; i++)
+      if(CUES[i].hold) holdGap += CUES[i+1].at - CUES[i].at;
+    const want = (8100 - 33) - holdGap;
     if(Math.abs(total - want) > 1)
-      throw new Error('the chain runs '+total.toFixed(1)+'s, the recording is '+want+'s');
-    const mins = total/60;
+      throw new Error('the chain runs '+total.toFixed(1)+'s, expected '+want.toFixed(1)+'s');
+    const mins = (8100 - 33)/60;
     if(mins < 120 || mins > 170) throw new Error('a '+mins.toFixed(0)+' minute show is not this one');
-    return total.toFixed(0)+'s = '+mins.toFixed(0)+' minutes, against a 143 minute recording';
+    return total.toFixed(0)+'s of armed gaps across a '+mins.toFixed(0)+' minute show';
   });
 
   /* the act break is the strongest measurement in the file; the chain has to
      put it where the recording put it, not merely somewhere plausible */
   P('the measured act break falls at 71:02 along the chain', ()=>{
     showLoad('beetlejuice');
-    const i = CUES.findIndex(c=>/act one ends/.test(c.label));
-    let t = 33;
-    for(let k = 0; k < i; k++) t += (CUES[k].follow || 0);
+    /* from the cue GO starts act one on — the pre-show HOLDS before it, so
+       the clock starts when somebody presses the button, not at 33s */
+    const i = CUES.findIndex(c=>/END OF HALF/.test(c.label));
+    const start = CUES.findIndex(c=>c.hold) + 1;
+    let t = CUES[start].at;
+    for(let k = start; k < i; k++) t += (CUES[k].follow || 0);
     const want = 71*60 + 2;
     if(Math.abs(t - want) > 2)
       throw new Error('the chain reaches the act break at '+(t/60).toFixed(1)+
@@ -1007,12 +1031,18 @@ const probe = `
 
   P('the curtain call falls at 141:02 along the chain', ()=>{
     showLoad('beetlejuice');
-    const i = CUES.findIndex(c=>/curtain call/.test(c.label));
-    let t = 33;
-    for(let k = 0; k < i; k++) t += (CUES[k].follow || 0);
-    const want = 141*60 + 2;
+    /* 2:13:05 = 7985s, the owner's time, not the measured 141:02.  Act two
+       runs on its OWN chain because the interval holds for the console
+       button, so the clock starts at the cue GO fires after it. */
+    const i = CUES.findIndex(c=>/CURTAIN CALL/.test(c.label));
+    if(i < 0) throw new Error('nothing is the curtain call');
+    const holds = CUES.map((c,k)=>c.hold?k:-1).filter(k=>k>=0);
+    const start = holds[holds.length-1] + 1;
+    let t = CUES[start].at;
+    for(let k = start; k < i; k++) t += (CUES[k].follow || 0);
+    const want = 2*3600 + 13*60 + 5;
     if(Math.abs(t - want) > 2)
-      throw new Error('the chain reaches the call at '+(t/60).toFixed(1)+' min, measured 141:02');
+      throw new Error('the chain reaches the call at '+(t/60).toFixed(1)+' min, the plot says 2:13:05');
     return 'call at '+Math.floor(t/60)+':'+String(Math.round(t%60)).padStart(2,'0');
   });
 
@@ -1023,7 +1053,10 @@ const probe = `
     showLoad('beetlejuice');
     /* the warmers cue throws the front of house UP at the cloth; a later cue
        that never touches aims must not inherit that */
-    const warm = CUES.find(c=>/warmers/.test(c.label));
+    /* the warmers cue went with the re-time; the cue that throws the front UP
+       at the cloth is now the last one of the show, where the curtain is in */
+    const warm = CUES.find(c=>/confetti, curtain in/.test(c.label));
+    if(!warm) throw new Error('no cue throws the front at the cloth');
     const up = warm.lx.slice(0, 6).filter(r=>r.aim && r.aim[1] > 5);
     if(up.length < 4) throw new Error('the warmers cue does not aim the front high');
     const plain = CUES.find(c=>/the moon takes the upstage/.test(c.label));
