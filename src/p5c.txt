@@ -1622,7 +1622,12 @@ function showCueExtras(c){
          changeover no-ops for a scene that is already on.
 
      The partition is taken against SHOW.scene as the cue FIRES, before the
-     changeover rewrites it. */
+     changeover rewrites it.
+
+     A PART move on the leaving scene lands on the before side too, and the
+     changeover then retargets every part of the leaving scene to OUT — the
+     exit choreography wins over the cue's part move, by design; no current
+     cue carries that shape. */
   const mvList = (c.move && SHOW.scenes.length)
     ? (Array.isArray(c.move) ? c.move : [c.move]) : [];
   const mvApply = m => {

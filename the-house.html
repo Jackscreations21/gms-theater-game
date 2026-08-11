@@ -11044,7 +11044,12 @@ function showCueExtras(c){
          changeover no-ops for a scene that is already on.
 
      The partition is taken against SHOW.scene as the cue FIRES, before the
-     changeover rewrites it. */
+     changeover rewrites it.
+
+     A PART move on the leaving scene lands on the before side too, and the
+     changeover then retargets every part of the leaving scene to OUT — the
+     exit choreography wins over the cue's part move, by design; no current
+     cue carries that shape. */
   const mvList = (c.move && SHOW.scenes.length)
     ? (Array.isArray(c.move) ? c.move : [c.move]) : [];
   const mvApply = m => {
@@ -13374,15 +13379,21 @@ function bjHouseClothTex(){
     v.addColorStop(0, 'rgba(3,6,12,.55)'); v.addColorStop(1, 'rgba(3,6,12,0)');
     g.fillStyle = v; g.fillRect(0, 0, W, H);
   }
-  /* the pale moon, low, about to be half-lost behind the house */
-  const mx = X(2.5), my = Y(5.1), mr = 1.05*SY;
+  /* the pale moon, low, about to be half-lost behind the house.  The canvas
+     is square and the cloth is not (12.6 x 8.7), so anything meant to read
+     ROUND on the hung drop is drawn under an x-squash — the same trick the
+     backdrop painter's SQX block uses; without it this disc read as a
+     1.52m x 1.05m egg on stage, on the most looked-at element of the cloth */
+  const mx = X(2.5), my = Y(5.1), mr = 1.05*SY, KX = SX/SY;
   const halo = g.createRadialGradient(mx, my, mr*0.5, mx, my, mr*2.4);
   halo.addColorStop(0, 'rgba(210,222,232,.36)'); halo.addColorStop(1, 'rgba(210,222,232,0)');
+  g.save(); g.translate(mx, my); g.scale(KX, 1); g.translate(-mx, -my);
   g.fillStyle = halo; g.beginPath(); g.arc(mx, my, mr*2.4, 0, 6.283); g.fill();
   g.fillStyle = '#ddd8c6'; g.beginPath(); g.arc(mx, my, mr, 0, 6.283); g.fill();
   g.fillStyle = 'rgba(150,148,134,.32)';
   g.beginPath(); g.arc(mx - mr*0.2, my + mr*0.15, mr*0.3, 0, 6.283); g.fill();
   g.beginPath(); g.arc(mx + mr*0.35, my - mr*0.3, mr*0.2, 0, 6.283); g.fill();
+  g.restore();
   /* the ground the whole picture stands on: a near-black rise */
   g.fillStyle = '#0b0d12';
   g.beginPath(); g.moveTo(0, H);
