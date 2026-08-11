@@ -163,7 +163,10 @@ function recordCue(){
     lx: $('#qLx').checked ? snapshotLX() : null,
     fly: $('#qFly').checked ? snapshotFly() : null,
     sfx: $('#qSfx').checked ? $('#qSfxSel').value : null,
-    house: HOUSE.house, work: HOUSE.work, practical: HOUSE.practical, haze: RIG.haze
+    house: HOUSE.house, work: HOUSE.work, practical: HOUSE.practical, haze: RIG.haze,
+    /* the front of house is a circuit like any other, and the board has always
+       had a LOBBY fader — it was simply never in a cue (RULING BH) */
+    lobby: HOUSE.lobby
   };
   const ex = CUES.findIndex(q=>q.n===n);
   if(ex>=0) CUES[ex]=c; else CUES.push(c);
@@ -185,6 +188,14 @@ function fireCue(idx){
   if(c.fly) c.fly.forEach(r=>{ const ls=FLY[r.id-1]; if(ls){ flyTo(ls, r.target); ls.travTarget=r.open; } });
   if(c.sfx) Snd.play(c.sfx);
   HOUSE.house=c.house; HOUSE.work=c.work; HOUSE.practical=c.practical; RIG.haze=c.haze;
+  /* THE FRONT OF HOUSE (RULING BH).  Saying nothing LEAVES IT ALONE — undefined
+     is not 0.  Every cue in the four other shows, and every cue anyone recorded
+     off the board before this existed, keeps the behaviour it has; only a plot
+     that asks gets its foyer worked.  Same bargain `signCol` makes with the
+     sign, and the same reason: a field that defaulted to a value would reach
+     back through five productions and black out four of them.
+     The board's own LOBBY fader re-reads HOUSE every refresh, so it follows. */
+  if(c.lobby !== undefined && c.lobby !== null) HOUSE.lobby = c.lobby;
   if(typeof showCueExtras === 'function') showCueExtras(c);   // rain, storm, firelight
   syncMasters();
   nextCue = idx+1;

@@ -1975,6 +1975,81 @@ const probe = `
     return 'holds, 0 of 8 blinders up, ' + drifting.length + ' movers drifting, house at ' + pre.house;
   });
 
+  /* THE FRONT OF HOUSE (RULING BH).  The owner: "make sure the lobby lights get
+     turned of at the start of a show".  It had never gone out in any of the
+     five productions — HOUSE.lobby sat at 0.9 through every performance,
+     because no cue anywhere had ever carried the field. */
+  P('the foyer is up at the pre-show and out at GO, and comes back at the interval', ()=>{
+    showLoad('beetlejuice');
+    const at = t => CUES.filter(c=>c.at === t)[0];
+    const pre = CUES[0], go = at(35), interval = at(4269), two = at(4292);
+    if(!(pre.lobby > 0.5)) throw new Error('the foyer is not up at the pre-show: ' + pre.lobby);
+    if(go.lobby !== 0) throw new Error('GO leaves the foyer at ' + go.lobby);
+    if(!(interval.lobby > 0.5)) throw new Error('the interval leaves the foyer at ' + interval.lobby);
+    if(two.lobby !== 0) throw new Error('act two leaves the foyer at ' + two.lobby);
+    /* and it must really reach the circuit, not just sit in the record */
+    fireCue(0); cancelFollow();
+    const onAtPre = HOUSE.lobby;
+    fireCue(CUES.indexOf(go)); cancelFollow();
+    const offAtGo = HOUSE.lobby;
+    fireCue(CUES.indexOf(interval)); cancelFollow();
+    const backAtInterval = HOUSE.lobby;
+    if(!(onAtPre > 0.5)) throw new Error('firing the pre-show left the circuit at ' + onAtPre);
+    if(offAtGo !== 0) throw new Error('firing GO left the circuit at ' + offAtGo);
+    if(!(backAtInterval > 0.5))
+      throw new Error('firing the interval left the circuit at ' + backAtInterval);
+    return 'pre-show ' + onAtPre + ' -> GO ' + offAtGo + ' -> interval ' + backAtInterval;
+  });
+
+  /* SAYING NOTHING LEAVES IT ALONE.  A field that defaulted to a value would
+     reach back through four other productions and black out their foyers. */
+  P('a cue that says nothing about the foyer leaves it exactly where it was', ()=>{
+    showLoad('beetlejuice');
+    const bare = CUES.filter(c=>c.lobby === undefined);
+    if(bare.length < 80)
+      throw new Error('only ' + bare.length + ' of ' + CUES.length + ' cues stay silent about it');
+    HOUSE.lobby = 0.37;
+    fireCue(CUES.indexOf(bare[bare.length - 1])); cancelFollow();
+    if(HOUSE.lobby !== 0.37)
+      throw new Error('a silent cue moved the foyer to ' + HOUSE.lobby);
+    /* the four other shows carry the field on no cue at all */
+    const others = [];
+    ['outsiders','lostboys','hamilton','goeswrong'].forEach(k=>{
+      if(!SHOWS[k]) return;
+      showLoad(k);
+      const said = CUES.filter(c=>c.lobby !== undefined).length;
+      if(said) throw new Error(k + ' has ' + said + ' cues touching the foyer');
+      others.push(k + ':' + CUES.length);
+    });
+    showLoad('beetlejuice');
+    HOUSE.lobby = 0.9;
+    return bare.length + ' of ' + (bare.length + 4) + ' beetlejuice cues silent; ' + others.join(' ');
+  });
+
+  /* HOUSE is per-stage state that p2k parks and restores, and the lobby field
+     has always been one of its fields — so a foyer taken out by a cue must
+     still be out when you walk back from the other building.  The trap this
+     guards is the §5 one: state that looks right because you never left. */
+  P('a foyer taken out by a cue survives the walk to the other venue', ()=>{
+    showLoad('beetlejuice');
+    const home = STAGE;
+    fireCue(CUES.filter(c=>c.at === 35)[0] && CUES.findIndex(c=>c.at === 35)); cancelFollow();
+    const outHere = HOUSE.lobby;
+    const other = Object.keys(STAGES).filter(k=>k !== home)[0];
+    stageSwitch(other, true);
+    const overThere = HOUSE.lobby;
+    stageSwitch(home, true);
+    const backHere = HOUSE.lobby;
+    if(outHere !== 0) throw new Error('the cue left this foyer at ' + outHere);
+    if(overThere === 0)
+      throw new Error('walking to ' + other + ' took ITS foyer out too — the swap is leaking');
+    if(backHere !== 0)
+      throw new Error('walking back found the foyer at ' + backHere + ', not out');
+    HOUSE.lobby = 0.9;
+    return 'out here (' + outHere + '), ' + other + ' still at ' + overThere +
+           ', still out on return (' + backHere + ')';
+  });
+
   P('GO starts the show track at 0:35 and turns the arch and the sign red', ()=>{
     showLoad('beetlejuice');
     const c = CUES.filter(x=>x.at === 35)[0];
