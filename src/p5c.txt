@@ -257,6 +257,18 @@ function sceneMoveTo(name, target, speed){
   if(speed) sc.mv.speed = speed;
   return sc;
 }
+/* a cue can also send ONE NAMED PART somewhere — scenery moving WITHIN a
+   scene, with no scene change: the graveyard empties to its backdrop and the
+   set stays on (RULING AY).  Same shape as sceneMoveTo, and the same manners:
+   a scene or part that does not exist is a no-op, not a throw. */
+function sceneMovePartTo(name, part, target, speed){
+  const sc = (typeof name === 'string') ? sceneFind(name) : name;
+  if(!sc || !sc.pmv || !sc.pmv[part]) return null;
+  const m = sc.pmv[part];
+  m.target = target || 0;
+  if(speed) m.speed = speed;
+  return m;
+}
 /* one mover record, one frame: the same eps and the same clamp whether it is
    the whole set on its wagon or one part of it on its own track */
 function sceneMvAdvance(m, g, dt){
@@ -1588,10 +1600,14 @@ function showCueExtras(c){
   if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
   /* a cue can send travelling scenery somewhere.  One cue may move more than
      one thing — act two opens with the exterior flying out WHILE the house
-     slides on — so this takes a list as readily as a single move. */
+     slides on — so this takes a list as readily as a single move.  A move
+     that names a PART retargets that part's own mover instead of the whole
+     group: scenery moving within a scene, no scene change (RULING AY). */
   if(c.move && SHOW.scenes.length){
     const list = Array.isArray(c.move) ? c.move : [c.move];
-    list.forEach(m=>{ if(m) sceneMoveTo(m.scene, m.off, m.speed); });
+    list.forEach(m=>{ if(!m) return;
+      if(m.part) sceneMovePartTo(m.scene, m.part, m.off, m.speed);
+      else sceneMoveTo(m.scene, m.off, m.speed); });
   }
   if(c.confetti && typeof fireConfetti === 'function') fireConfetti();
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){

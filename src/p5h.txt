@@ -49,6 +49,26 @@ const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
 const BJ_WAGON_BACK = -10.0;
 
 /* ---------------------------------------------------------------------------
+   THE CHOREOGRAPHY (RULING AY) — every set change is watchable travel.
+
+   Each scene registers named PART MOVERS (sceneTravelPart) over groups that
+   WRAP the built pieces: everything is built in its home pose and wrapped
+   after the fact, so nothing repositions at build — the wrapper is the thing
+   that travels.  The cemetery splits into two hill groups that run to the
+   wings on x; the enclosed sets fly out on y like the flown pieces they are.
+   The wagon (interior), the exterior and the flown sign keep their existing
+   whole-group movers and cue-authored moves.  The bare stage carries no
+   parts and changes instantly, which the engine allows on purpose.
+
+   The four numbers below are FEEL constants — each is a one-line retune.
+   --------------------------------------------------------------------------- */
+const BJ_HILL_OUT   = 9.5;   // how far each hill group runs into its wing (m)
+const BJ_HILL_SPEED = 2.0;   // m/s — the graveyard empties in ~4.8s
+const BJ_PART_OUT   = 10.5;  // fly-out for the enclosed sets: clears the 9.2m
+                             // header plus a margin, BJ_SIGN_OUT's own logic
+const BJ_FLY_SPEED  = 1.8;   // m/s — a flown room clears in ~5.8s
+
+/* ---------------------------------------------------------------------------
    ONE ROOM, THREE DRESSINGS (RULING AQ)
 
    The owner's photographs settle it: the Maitlands house, the Deetz house and
@@ -108,6 +128,19 @@ function bjRedress(sc){
     if(typeof setPieceVisible === 'function') setPieceVisible(g);
     g.traverse(o=>{ if(on) o.layers.set(0); else o.layers.disableAll(); });
   }
+}
+/* an enclosed set is a flown piece (RULING AY): the whole of it goes out
+   through the header on one named part, 'all'.  Called AFTER the scene is
+   built: every existing child — meshes and dressing groups alike — moves
+   into the wrapper without its transform changing, because both the scene
+   group and the wrapper sit at the origin. */
+function bjFlyWhole(sc){
+  const g = new T.Group();
+  g.name = 'bj:' + sc.name + ':all';
+  while(sc.group.children.length) g.add(sc.group.children[0]);
+  sc.group.add(g);
+  sceneTravelPart(sc, 'all', g, 'y', 0, BJ_PART_OUT, BJ_FLY_SPEED);
+  return g;
 }
 const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
                               // its bottom edge ends at 12.7 against a 10.4
@@ -433,49 +466,74 @@ SHOWS.beetlejuice = {
        1:26 for 9.0s.
        ================================================================ */
     const cem = sceneAdd('cemetery', 'THE CEMETERY');
-    /* "9:45. Stage empties just has the backdrop for the graveyard" — so the
-       graveyard has two states.  The SHELL is its backing: the cut hills and
-       the moon, which is what the owner means by the backdrop for it, and
-       which stays.  The FULL dressing is everything that stands on the deck
-       in front of that, and it is what empties. (RULING AQ machinery) */
-    const cemF = bjDressing(cem, 'full');
-    bjDressing(cem, 'bare');                 // deliberately empty
+    /* "9:45. Stage empties just has the backdrop for the graveyard" — and
+       since the changeover round that is CHOREOGRAPHY, not a dressing swap:
+       the hills split and RUN TO THE WINGS (RULING AY), everything standing
+       on the deck rides its nearer hill, and the painted cloth on line 14 is
+       all that is left.  The old full/bare dressing pair existed only for
+       this beat — a dress on a drawn set now defers, so it could never have
+       played it — and it is gone with it.  Two part groups instead: hillR
+       (stage right, the tree side, runs to -x) and hillL (stage left, the
+       moon side, runs to +x).  Every piece is built in its home pose and
+       merely REPARENTED into its group, which sits at the origin. */
+    const cemR = new T.Group(); cemR.name = 'bj:cemetery:hillR'; cem.group.add(cemR);
+    const cemL = new T.Group(); cemL.name = 'bj:cemetery:hillL'; cem.group.add(cemL);
     {
       /* three hill layers, silhouetted against the moon.  A profile is a
-         polygon, so the shape carries the read and the mesh stays flat. */
-      const hill = (w, peak, wob, z, mat)=>{
-        const sh = new T.Shape();
-        sh.moveTo(-w, 0);
-        const N = 9;
-        for(let i = 0; i <= N; i++){
-          const t = i/N, x = -w + 2*w*t;
-          const y = peak * (0.42 + 0.58*Math.sin(Math.PI*t)) *
-                    (0.78 + 0.22*Math.sin(t*wob*6.283));
-          if(i === 0) sh.lineTo(x, y); else sh.quadraticCurveTo(x - w/N, y, x, y);
-        }
-        sh.lineTo(w, 0); sh.lineTo(-w, 0);
-        const geo = new T.ExtrudeGeometry(sh, {depth:0.3, bevelEnabled:false, curveSegments:8});
-        const m = new T.Mesh(geo, mat);
-        m.name = "bj:hill";
-        m.position.z = z; cem.group.add(m);
-        return m;
+         polygon, so the shape carries the read and the mesh stays flat.
+         Each layer is TWO profiles, one per hill group, meeting in a low
+         seam at centre — because a half that is its own mesh can genuinely
+         CLEAR the opening when its group runs 9.5m to the wing, where a
+         full-width layer still lay ten metres across the picture at its
+         park.  Each half still exceeds the 13.6m opening on its own (the
+         masking rule: an edge inside the opening shows), and its cut ends
+         are never seen — the inner one sits under its partner's overlap at
+         home, the outer one is offstage at home AND at the park. */
+      const HILL_IN  = 0.15;   // how far each half crosses centre at home
+      const HILL_OUT2 = 13.9;  // its offstage edge — past the 13.6m opening
+      const hill = (peak, wob, z, mat)=>{
+        [-1, 1].forEach(sd=>{
+          const sh = new T.Shape();
+          sh.moveTo(sd*-HILL_IN, 0);
+          const N = 9, SPAN = HILL_OUT2 + HILL_IN;
+          for(let i = 0; i <= N; i++){
+            const t = i/N, x = sd*(-HILL_IN + SPAN*t);
+            const y = peak * (0.42 + 0.58*Math.sin(Math.PI*t)) *
+                      (0.78 + 0.22*Math.sin(t*wob*6.283));
+            if(i === 0) sh.lineTo(x, y); else sh.quadraticCurveTo(x - sd*SPAN/N, y, x, y);
+          }
+          sh.lineTo(sd*HILL_OUT2, 0); sh.lineTo(sd*-HILL_IN, 0);
+          const geo = new T.ExtrudeGeometry(sh, {depth:0.3, bevelEnabled:false, curveSegments:8});
+          const m = new T.Mesh(geo, mat);
+          m.name = "bj:hill";
+          /* the halves of one layer sit 0.05 apart in z, so the little seam
+             overlap never z-fights */
+          m.position.z = z + (sd < 0 ? 0 : -0.05);
+          (sd < 0 ? cemR : cemL).add(m);
+        });
       };
       /* all three stand DOWNSTAGE of the backdrop on line 14 (z -10.90):
  a cut ground row in front of a painted sky, which is what the
  photograph shows.  Upstage of the cloth they could not be seen. */
-      hill(13.5, 4.4, 1.7, -10.4, hillMF);        // furthest, lightest
-      hill(12.0, 3.2, 2.6, -10.0, hillM);
-      hill(11.0, 2.1, 3.4, -9.6, hillM);          // nearest, darkest read
+      hill(4.4, 1.7, -10.4, hillMF);              // furthest, lightest
+      hill(3.2, 2.6, -10.0, hillM);
+      hill(2.1, 3.4, -9.6, hillM);                // nearest, darkest read
 
       /* the moon: a disc, and one faint halo on the SHARED glow material.
          Both sit upstage of every hill so the profiles read against them,
-         and downstage of the deck edge at -16.6 so nothing clips the wall. */
+         and downstage of the deck edge at -16.6 so nothing clips the wall.
+         It is free-standing at x 3.6, so it rides the stage-left hill out —
+         the cloth carries a painted moon of its own for the emptied stage. */
       {
         const d = new T.Mesh(new T.CircleGeometry(1.75, 40), moonM);
-        d.position.set(3.6, 5.8, -10.7); d.name = 'bj:moon'; cem.group.add(d);
+        d.position.set(3.6, 5.8, -10.7); d.name = 'bj:moon'; cemL.add(d);
         const h = new T.Mesh(new T.CircleGeometry(3.1, 36), glow);
-        h.position.set(3.6, 5.8, -10.75); cem.group.add(h);
+        h.position.set(3.6, 5.8, -10.75); cemL.add(h);
       }
+
+      /* everything free-standing joins the NEARER hill group, split on the
+         sign of its x — so when the hills run, the whole graveyard runs */
+      const cemSide = x => (x < 0 ? cemR : cemL);
 
       /* headstones — distinct objects, so distinct meshes, but each one is
          merged from its own slab, shoulders and base: detail without cost */
@@ -492,10 +550,11 @@ SHOWS.beetlejuice = {
         ];
         const m = new T.Mesh(mergeParts(parts), stone);
         m.position.set(s[0], 0, s[1]); m.rotation.y = s[2];
-        m.castShadow = true; cemF.group.add(m);
+        m.castShadow = true; cemSide(s[0]).add(m);
       });
 
-      /* two crosses, for the shape the slabs do not give */
+      /* two crosses, for the shape the slabs do not give — one rides each
+         hill, which is what the photograph has */
       [[-6.1,-8.6,0.22],[6.1,-8.2,-0.26]].forEach(c=>{
         const parts = [
           {geo:new T.BoxGeometry(0.17, 1.55, 0.17), pos:[0, 0.9, 0]},
@@ -504,10 +563,11 @@ SHOWS.beetlejuice = {
         ];
         const m = new T.Mesh(mergeParts(parts), stone);
         m.position.set(c[0], 0, c[1]); m.rotation.y = c[2];
-        m.castShadow = true; cemF.group.add(m);
+        m.castShadow = true; cemSide(c[0]).add(m);
       });
 
-      /* the railing: two runs, each merged from its own posts and rails */
+      /* the railing: two runs, each merged from its own posts and rails —
+         each run already lives on one side, so each rides its own hill */
       [-1, 1].forEach(sd=>{
         const parts = [];
         for(let i = 0; i < 4; i++){
@@ -518,10 +578,14 @@ SHOWS.beetlejuice = {
         parts.push({geo:new T.BoxGeometry(3.5, 0.07, 0.07), pos:[sd*4.95, 1.16, 0]});
         parts.push({geo:new T.BoxGeometry(3.5, 0.07, 0.07), pos:[sd*4.95, 0.34, 0]});
         const m = new T.Mesh(mergeParts(parts), iron);
-        m.position.z = -5.4; cemF.group.add(m);
+        m.position.z = -5.4; cemSide(sd).add(m);
       });
 
-      /* the gate, shut, centre — one mesh, merged from its own bars */
+      /* the gate, shut, near centre — one mesh, merged from its own bars.
+         It goes with the tree side, and it sits 0.6m stage right of true
+         centre: it is 5.9m across, so parked at -9.5 a dead-centre gate
+         would leave a sliver inside the 6.8m portal edge.  Nudged, its
+         parked edge clears by 0.35m. */
       {
         const parts = [
           {geo:new T.BoxGeometry(0.11, 2.30, 0.11), pos:[-2.9, 1.15, 0]},
@@ -531,10 +595,11 @@ SHOWS.beetlejuice = {
         for(let i = 0; i < 9; i++)
           parts.push({geo:new T.BoxGeometry(0.06, 1.84, 0.06), pos:[-2.4 + i*0.6, 0.92, 0]});
         const m = new T.Mesh(mergeParts(parts), iron);
-        m.position.z = -5.4; m.name = 'bj:gate'; cemF.group.add(m);
+        m.position.set(-0.6, 0, -5.4); m.name = 'bj:gate'; cemR.add(m);
       }
 
-      /* one bare tree, upstage left, merged from trunk and limbs */
+      /* one bare tree, upstage on the stage-right hill — the black tree of
+         the photograph, and the anchor of that hill group */
       {
         const parts = [{geo:new T.CylinderGeometry(0.16, 0.30, 4.6, 9), pos:[0, 2.3, 0]}];
         const limbs = [[0.6,3.4,0.5,-0.9],[-0.7,3.0,0.55,0.8],[0.35,4.1,0.42,-0.4],
@@ -542,8 +607,17 @@ SHOWS.beetlejuice = {
         limbs.forEach(l=>parts.push({geo:new T.CylinderGeometry(0.05, 0.10, 1.5, 7),
                                      pos:[l[0], l[1], 0], rot:[0, 0, l[3]]}));
         const m = new T.Mesh(mergeParts(parts), bark);
-        m.position.set(-9.6, 0, -11.2); m.castShadow = true; cemF.group.add(m);
+        m.position.set(-9.6, 0, -11.2); m.castShadow = true; cemR.add(m);
       }
+
+      /* the movers: stage right runs to -x, stage left to +x.  A 9.5m run
+         at 2 m/s takes 4.75s — inside the 9:45 cue's own 5s fade — and it
+         genuinely clears the picture: the widest thing in either group
+         reaches only HILL_IN (0.15) past centre, so its parked edge sits at
+         9.35, well outside the 6.8m portal edge.  Pinned by the clearance
+         sweep in the 9:45 test. */
+      sceneTravelPart(cem, 'hillR', cemR, 'x', 0, -BJ_HILL_OUT, BJ_HILL_SPEED);
+      sceneTravelPart(cem, 'hillL', cemL, 'x', 0,  BJ_HILL_OUT, BJ_HILL_SPEED);
 
       /* low mist across the boards: the existing machines, not new geometry */
       addShowSmoke({name:'CEMETERY SL', kind:'fog', x:-6.0, y:0.2, z:-7.0, yaw:1.571, tilt:0.05});
@@ -1083,6 +1157,7 @@ SHOWS.beetlejuice = {
         att.group.add(new T.Mesh(mergeParts(parts), glow));
       }
     }
+    bjFlyWhole(att);              // the attic flies, rafters, model and all
 
     /* ---- the bedroom: a bed, a lamp, and not much else ---- */
     const bed = sceneAdd('bedroom', 'THE BEDROOM');
@@ -1142,6 +1217,7 @@ SHOWS.beetlejuice = {
         c2.position.set(-3.0, 0, -5.4); c2.rotation.y = 0.5; bed.group.add(c2);
       }
     }
+    bjFlyWhole(bed);              // the bedroom flies, bed and quilt riding
 
     /* ================================================================
        SCENE — THE AFTERLIFE.  Measured 103:39 to 113:22, four held looks,
@@ -1209,6 +1285,9 @@ SHOWS.beetlejuice = {
         m.name = 'bj:chevron'; aft.group.add(m);
       }
     }
+    /* the netherworld flies too — the SHOW.neon records hold references to
+       the ring meshes, and a reparent does not disturb a reference */
+    bjFlyWhole(aft);
 
     /* ================================================================
        THE CRYPT IS GONE, and the SIGN SET with it (RULING AS).
@@ -1294,6 +1373,7 @@ SHOWS.beetlejuice = {
         r.receiveShadow = true; clo.group.add(r); sceneWalk(clo, r);
       }
     }
+    bjFlyWhole(clo);              // the closet flies, step and spiral riding
 
     /* ================================================================
        SCENE — THE ROOF.  The owner's plot puts it at 56:00, and it is
@@ -1366,6 +1446,7 @@ SHOWS.beetlejuice = {
         m.castShadow = true; rof.group.add(m);
       }
     }
+    bjFlyWhole(rof);              // the roof flies, its walkable deck riding
 
     /* ================================================================
        SCENE — THE BARE STAGE.  Measured 137:57: a line of the company
@@ -1580,8 +1661,7 @@ SHOWS.beetlejuice = {
     hangGoods(FLY[12], 'sky');        FLY[12].target = OUT_TRIM;
     FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
 
-    sceneShow('cemetery');
-    bjDress(cem, 'full');
+    sceneShow('cemetery');           // instant: boot snaps the hills home
     RIG.haze = 0.55;                 // the beam fan is in every reference frame
     plotBeetlejuice();
     standByAtTheTop();
@@ -1626,50 +1706,56 @@ function plotBeetlejuice(){
   const looks = [
     /* ============ PRE-SHOW ============ */
     {at:33, n:0.5, label:'PRE-SHOW — house open, curtain in, the sign lit', fade:0,
-     house:0.9, haze:0.15, curtain:'shut', scene:'cemetery', dress:'full',
+     house:0.9, haze:0.15, curtain:'shut', scene:'cemetery',
      backdrop:'in', hold:true,
      look(){ all(0); onTheCloth(); set(FRONT, 0.45, '#e8d2a8'); }},
 
     /* ============ THE TOP OF THE SHOW ============ */
     {at:50, n:1, label:'house to half — the show starts', fade:5, house:0.5, haze:0.2,
-     curtain:'shut', scene:'cemetery', dress:'full', backdrop:'in',
+     curtain:'shut', scene:'cemetery', backdrop:'in',
      look(){ all(0); onTheCloth(); set(FRONT, 0.55, '#e8d2a8'); }},
 
     {at:72, n:1.3, label:'the sign flies out', fade:3, house:0.15, haze:0.25,
-     curtain:'shut', scene:'cemetery', dress:'full', backdrop:'in',
+     curtain:'shut', scene:'cemetery', backdrop:'in',
      move:{scene:'bjSign', off:BJ_SIGN_OUT},
      look(){ all(0); onTheCloth(); set(FRONT, 0.7, '#bfe08a'); set(BOOM, 0.2, '#6f9f4a'); }},
 
     /* the curtain lifts and it is the graveyard */
     {at:95, n:2, label:'curtain up — the graveyard, low and blue', fade:6, house:0, haze:0.6,
-     curtain:'out', scene:'cemetery', dress:'full', backdrop:'in',
+     curtain:'out', scene:'cemetery', backdrop:'in',
      look(){ all(0);
        set(CYC, 0.55, '#2f5f9c'); set(BACK, 0.42, '#4a78b4');
        set(WASH, 0.18, '#5f7fa8'); set(BOOM, 0.30, '#3f6ea6'); }},
 
     {at:189, n:3, label:'the moon takes the upstage', fade:4, house:0, haze:0.62,
-     curtain:'out', scene:'cemetery', dress:'full', backdrop:'in',
+     curtain:'out', scene:'cemetery', backdrop:'in',
      look(){ all(0);
        set(CYC, 0.68, '#2b5896'); set(BACK, 0.30, '#6f8fc0');
        set(BOOM, 0.22, '#3a689e'); }},
 
     /* measured: a fade UP of 1.6s — one of the fastest clean slopes in the file */
     {at:371, n:4, label:'the mourners — a hard front, fast', fade:1.6, house:0, haze:0.55,
-     curtain:'out', scene:'cemetery', dress:'full', backdrop:'in',
+     curtain:'out', scene:'cemetery', backdrop:'in',
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -6.5);
        set(FRONT, 0.62, '#cfd8e8'); set(CYC, 0.34, '#2b5896');
        set(WASH, 0.20, '#7f92ad'); }},
 
     {at:480, n:5, label:'down to the one of them', fade:3, house:0, haze:0.5,
-     curtain:'out', scene:'cemetery', dress:'full', backdrop:'in',
+     curtain:'out', scene:'cemetery', backdrop:'in',
      look(){ all(0);
        one(SPOT, 0.85, '#f2ecd8'); set(CYC, 0.18, '#22467c');
        set(BOOM, 0.12, '#33608f'); }},
 
-    /* 9:45 — "Stage empties just has the backdrop for the graveyard" */
+    /* 9:45 — "Stage empties just has the backdrop for the graveyard".  Not a
+       scene change and no longer a dressing (a dress on a drawn set defers,
+       which made the old dress:'bare' an invisible no-op): the cue moves the
+       cemetery's own PARTS, and the hills run to the wings in view — RULING
+       AY, scenery moving within a scene.  The cloth stays on its line. */
     {at:585, n:6, label:'9:45 — the stage empties to the backdrop', fade:5, house:0, haze:0.7,
-     curtain:'out', scene:'cemetery', dress:'bare', backdrop:'in',
+     curtain:'out', scene:'cemetery', backdrop:'in',
+     move:[{scene:'cemetery', part:'hillR', off:-BJ_HILL_OUT},
+           {scene:'cemetery', part:'hillL', off: BJ_HILL_OUT}],
      look(){ all(0);
        set(BACK, 0.62, '#4f86c8'); set(MOVE, 0.5, '#78c8e8');
        set(CYC, 0.34, '#25497e'); }},
