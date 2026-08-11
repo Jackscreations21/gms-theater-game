@@ -9444,7 +9444,7 @@ function showBlank(){
     key:null, group:null, effects:[], goods:[], walk:[], cues:0,
     rain:null, fire:null, gyms:null, gymIn:0, tyre:null,
     neon:[], neonLevel:0, neonTarget:1, neonLights:[], neonT:0, smoke:[],
-    scenes:[], scene:null, revolve:null, wrong:[],
+    scenes:[], scene:null, revolve:null, wrong:[], confetti:null,
     rainSound:false, flicker:null, lightning:0, lightningT:0,
     stormOn:false, stormT:0, porch:null,
     curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
@@ -9930,6 +9930,7 @@ function updateStorm(dt){
   updateFire(dt);
   if(typeof updateNeon === 'function') updateNeon(dt);
   updateShowStorm(dt);
+  updateConfetti(dt);
   sceneMoveStep(dt);
   if(typeof updateRevolve === 'function') updateRevolve(dt);
   if(typeof updateWrong === 'function') updateWrong(dt);
@@ -10905,6 +10906,7 @@ function showCueExtras(c){
   }
   /* and which dressing the room is wearing (RULING AQ) */
   if(c.dress && typeof bjDress === 'function') bjDress(c.scene || SHOW.scene, c.dress);
+  if(c.confetti && typeof fireConfetti === 'function') fireConfetti();
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);
     setRevolve('inner', c.rev.inner || 0);
@@ -10916,6 +10918,68 @@ function showCueExtras(c){
   if(c.storm){
     SHOW.stormOn = true; SHOW.stormT = rnd(0.4, 1.4);
   } else SHOW.stormOn = false;
+}
+/* ----------------------------------------------------------------------
+   CONFETTI — a burst, not a state.  "2:15:00. Confetti goes off".  One
+   instanced batch fired once, falling under gravity off the frame dt and
+   clearing itself when the last piece is down.  It is never walkable and it
+   never raycasts.
+   -------------------------------------------------------------------- */
+const CONFETTI_N = 260;
+function fireConfetti(){
+  if(!SHOW.group) return null;
+  if(SHOW.confetti) clearConfetti();
+  const g = new T.PlaneGeometry(0.13, 0.09);
+  const m = new T.MeshBasicMaterial({color:0xffffff, side:T.DoubleSide,
+                                     vertexColors:true});
+  const mesh = new T.InstancedMesh(g, m, CONFETTI_N);
+  mesh.name = 'bj:confetti';
+  mesh.frustumCulled = false;              // r128 sizes the sphere off ONE plane
+  mesh.raycast = ()=>{};                   // decorative: never in a pick
+  const col = new T.Color(), bits = [];
+  const PAL = [0xff3d18, 0xbfe08a, 0xffd24a, 0x6ad0ff, 0xffffff, 0xb266ff];
+  for(let i = 0; i < CONFETTI_N; i++){
+    bits.push({x:rnd(-7.2, 7.2), y:rnd(11.5, 16.5), z:rnd(-8.5, 1.0),
+               vy:-rnd(1.1, 2.6), sp:rnd(-3.2, 3.2), ph:rnd(0, 6.283),
+               dx:rnd(-0.5, 0.5)});
+    col.setHex(PAL[(Math.random()*PAL.length)|0]);
+    mesh.setColorAt(i, col);
+  }
+  if(mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  showRoot().add(mesh);
+  SHOW.confetti = {mesh, bits, t:0};
+  return SHOW.confetti;
+}
+function clearConfetti(){
+  const c = SHOW.confetti;
+  if(!c) return;
+  if(c.mesh.parent) c.mesh.parent.remove(c.mesh);
+  if(typeof disposeTree === 'function') disposeTree(c.mesh);
+  SHOW.confetti = null;
+}
+function updateConfetti(dt){
+  const c = SHOW.confetti;
+  if(!c) return;
+  c.t += dt;
+  const d = new T.Object3D();
+  let live = 0;
+  for(let i = 0; i < c.bits.length; i++){
+    const b = c.bits[i];
+    if(b.y > 0.02){
+      b.vy -= dt * 1.4;                     // it does not fall like a stone
+      if(b.vy < -2.8) b.vy = -2.8;
+      b.y += b.vy * dt;
+      b.x += Math.sin(c.t * 1.7 + b.ph) * b.dx * dt;
+      if(b.y < 0.02) b.y = 0.02;
+      live++;
+    }
+    d.position.set(b.x, b.y, b.z);
+    d.rotation.set(c.t * b.sp * 0.6, c.t * b.sp, b.ph);
+    d.updateMatrix();
+    c.mesh.setMatrixAt(i, d.matrix);
+  }
+  c.mesh.instanceMatrix.needsUpdate = true;
+  if(!live && c.t > 2) clearConfetti();     // it clears itself once it is down
 }
 function updateShowStorm(dt){
   if(!SHOW.stormOn) return;
@@ -13290,6 +13354,13 @@ SHOWS.beetlejuice = {
        1:26 for 9.0s.
        ================================================================ */
     const cem = sceneAdd('cemetery', 'THE CEMETERY');
+    /* "9:45. Stage empties just has the backdrop for the graveyard" — so the
+       graveyard has two states.  The SHELL is its backing: the cut hills and
+       the moon, which is what the owner means by the backdrop for it, and
+       which stays.  The FULL dressing is everything that stands on the deck
+       in front of that, and it is what empties. (RULING AQ machinery) */
+    const cemF = bjDressing(cem, 'full');
+    bjDressing(cem, 'bare');                 // deliberately empty
     {
       /* three hill layers, silhouetted against the moon.  A profile is a
          polygon, so the shape carries the read and the mesh stays flat. */
@@ -13310,18 +13381,21 @@ SHOWS.beetlejuice = {
         m.position.z = z; cem.group.add(m);
         return m;
       };
-      hill(13.5, 4.4, 1.7, -15.4, hillMF);        // furthest, lightest
-      hill(12.0, 3.2, 2.6, -13.8, hillM);
-      hill(11.0, 2.1, 3.4, -12.2, hillM);         // nearest, darkest read
+      /* all three stand DOWNSTAGE of the backdrop on line 14 (z -10.90):
+ a cut ground row in front of a painted sky, which is what the
+ photograph shows.  Upstage of the cloth they could not be seen. */
+      hill(13.5, 4.4, 1.7, -10.4, hillMF);        // furthest, lightest
+      hill(12.0, 3.2, 2.6, -10.0, hillM);
+      hill(11.0, 2.1, 3.4, -9.6, hillM);          // nearest, darkest read
 
       /* the moon: a disc, and one faint halo on the SHARED glow material.
          Both sit upstage of every hill so the profiles read against them,
          and downstage of the deck edge at -16.6 so nothing clips the wall. */
       {
         const d = new T.Mesh(new T.CircleGeometry(1.75, 40), moonM);
-        d.position.set(3.6, 5.8, -16.0); d.name = 'bj:moon'; cem.group.add(d);
+        d.position.set(3.6, 5.8, -10.7); d.name = 'bj:moon'; cem.group.add(d);
         const h = new T.Mesh(new T.CircleGeometry(3.1, 36), glow);
-        h.position.set(3.6, 5.8, -16.15); cem.group.add(h);
+        h.position.set(3.6, 5.8, -10.75); cem.group.add(h);
       }
 
       /* headstones — distinct objects, so distinct meshes, but each one is
@@ -13339,7 +13413,7 @@ SHOWS.beetlejuice = {
         ];
         const m = new T.Mesh(mergeParts(parts), stone);
         m.position.set(s[0], 0, s[1]); m.rotation.y = s[2];
-        m.castShadow = true; cem.group.add(m);
+        m.castShadow = true; cemF.group.add(m);
       });
 
       /* two crosses, for the shape the slabs do not give */
@@ -13351,7 +13425,7 @@ SHOWS.beetlejuice = {
         ];
         const m = new T.Mesh(mergeParts(parts), stone);
         m.position.set(c[0], 0, c[1]); m.rotation.y = c[2];
-        m.castShadow = true; cem.group.add(m);
+        m.castShadow = true; cemF.group.add(m);
       });
 
       /* the railing: two runs, each merged from its own posts and rails */
@@ -13365,7 +13439,7 @@ SHOWS.beetlejuice = {
         parts.push({geo:new T.BoxGeometry(3.5, 0.07, 0.07), pos:[sd*4.95, 1.16, 0]});
         parts.push({geo:new T.BoxGeometry(3.5, 0.07, 0.07), pos:[sd*4.95, 0.34, 0]});
         const m = new T.Mesh(mergeParts(parts), iron);
-        m.position.z = -5.4; cem.group.add(m);
+        m.position.z = -5.4; cemF.group.add(m);
       });
 
       /* the gate, shut, centre — one mesh, merged from its own bars */
@@ -13378,7 +13452,7 @@ SHOWS.beetlejuice = {
         for(let i = 0; i < 9; i++)
           parts.push({geo:new T.BoxGeometry(0.06, 1.84, 0.06), pos:[-2.4 + i*0.6, 0.92, 0]});
         const m = new T.Mesh(mergeParts(parts), iron);
-        m.position.z = -5.4; m.name = 'bj:gate'; cem.group.add(m);
+        m.position.z = -5.4; m.name = 'bj:gate'; cemF.group.add(m);
       }
 
       /* one bare tree, upstage left, merged from trunk and limbs */
@@ -13389,7 +13463,7 @@ SHOWS.beetlejuice = {
         limbs.forEach(l=>parts.push({geo:new T.CylinderGeometry(0.05, 0.10, 1.5, 7),
                                      pos:[l[0], l[1], 0], rot:[0, 0, l[3]]}));
         const m = new T.Mesh(mergeParts(parts), bark);
-        m.position.set(-9.6, 0, -11.2); m.castShadow = true; cem.group.add(m);
+        m.position.set(-9.6, 0, -11.2); m.castShadow = true; cemF.group.add(m);
       }
 
       /* low mist across the boards: the existing machines, not new geometry */
@@ -14058,135 +14132,160 @@ SHOWS.beetlejuice = {
     }
 
     /* ================================================================
-       SCENE — THE CRYPT.  Measured 56:46, a stone structure with a peaked
-       roof and a doorway somebody stands in.  Our own proportions and our
-       masonry, modelled on the production (RULING AV).
+       THE CRYPT IS GONE, and the SIGN SET with it (RULING AS).
+
+       The owner, given the scene list: "i dont know what a crypt is but i
+       dont think there is one in the show".  He is right — it was built
+       off a 56:46 frame that is the ROOF, which is what stands here now.
+       The sign set went the same way for a different reason: the sign is
+       not a set at all, it is a flown piece that is in at pre-show and out
+       at the top of the show, and it has been one since #106.
        ================================================================ */
-    const cry = sceneAdd('crypt', 'THE CRYPT');
+
+    /* ================================================================
+       SCENE — THE CLOSET.  The owner's plot puts it at 42:34, and his
+       photograph is the reference (RULING AV): a pale room washed hot
+       pink, a door with a spiral on it, and a tall ribbed press of hanging
+       clothes standing beside it.
+       ================================================================ */
+    const clo = sceneAdd('closet', 'THE CLOSET');
     {
-      const CW = 4.6, CH = 3.6, CD = 3.4, cz = -8.0;
-      /* the mass, with the doorway left as a gap between two piers */
+      const wallM = new T.MeshStandardMaterial({color:0xe8d8e0, roughness:.9});
+      const doorM = new T.MeshStandardMaterial({color:0xf0e4ea, roughness:.86});
+      const railM = new T.MeshStandardMaterial({color:0x6b4f7a, roughness:.7, metalness:.35});
+      /* three walls, close in — a closet is a small room and reads as one
+         only if it is tight */
       {
         const parts = [
-          {geo:new T.BoxGeometry(CW, CH, 0.34), pos:[0, CH/2, -CD/2]},        // back
-          {geo:new T.BoxGeometry(0.34, CH, CD), pos:[-CW/2, CH/2, 0]},        // sides
-          {geo:new T.BoxGeometry(0.34, CH, CD), pos:[ CW/2, CH/2, 0]},
-          {geo:new T.BoxGeometry(1.35, CH, 0.34), pos:[-1.6, CH/2, CD/2]},    // front piers
-          {geo:new T.BoxGeometry(1.35, CH, 0.34), pos:[ 1.6, CH/2, CD/2]},
-          {geo:new T.BoxGeometry(CW, 0.9, 0.34),  pos:[0, CH - 0.45, CD/2]}   // over the door
+          {geo:new T.BoxGeometry(9.0, 5.6, 0.22), pos:[0, 2.8, -8.6]},
+          {geo:new T.BoxGeometry(0.22, 5.6, 4.6), pos:[-4.4, 2.8, -6.4]},
+          {geo:new T.BoxGeometry(0.22, 5.6, 4.6), pos:[ 4.4, 2.8, -6.4]}
         ];
-        const m = new T.Mesh(mergeParts(parts), stone);
-        m.name = 'bj:crypt'; m.position.set(0, 0, cz);
-        m.castShadow = true; cry.group.add(m);
+        const m = new T.Mesh(mergeParts(parts), wallM);
+        m.name = 'bj:closetWall'; m.castShadow = true; clo.group.add(m);
       }
-      /* the roof: two slopes and a coping course */
+      /* the door, with the spiral on it */
+      {
+        const d = new T.Mesh(new T.BoxGeometry(1.5, 3.0, 0.16), doorM);
+        d.name = 'bj:closetDoor'; d.position.set(-1.9, 1.5, -8.44);
+        clo.group.add(d);
+        const parts = [];
+        for(let i = 0; i < 26; i++){
+          const a = i/25 * 5.6, r = 0.08 + i*0.014;
+          parts.push({geo:new T.BoxGeometry(0.10, 0.10, 0.05),
+                      pos:[Math.cos(a)*r, Math.sin(a)*r, 0]});
+        }
+        const sp = new T.Mesh(mergeParts(parts), railM);
+        sp.name = 'bj:closetSpiral'; sp.position.set(-1.9, 1.9, -8.34);
+        clo.group.add(sp);
+      }
+      /* the press of hanging clothes: a ribbed drum, one merged mesh */
       {
         const parts = [];
-        [-1, 1].forEach(sd=>parts.push({geo:new T.BoxGeometry(CW + 0.6, 0.24, CD*0.78),
-          pos:[sd*(CW/4 + 0.1), CH + 0.62, 0], rot:[0, 0, sd*0.62]}));
-        parts.push({geo:new T.BoxGeometry(CW + 0.8, 0.22, CD + 0.5), pos:[0, CH + 0.11, 0]});
-        const m = new T.Mesh(mergeParts(parts), stone);
-        m.position.set(0, 0, cz); m.castShadow = true; cry.group.add(m);
+        for(let i = 0; i < 34; i++){
+          const a = i/34 * 6.283;
+          parts.push({geo:new T.BoxGeometry(0.22, 3.4, 0.22),
+                      pos:[Math.cos(a)*1.5, 1.7, Math.sin(a)*1.5], rot:[0, -a, 0]});
+        }
+        parts.push({geo:new T.CylinderGeometry(1.62, 1.62, 0.34, 24), pos:[0, 3.6, 0]});
+        parts.push({geo:new T.CylinderGeometry(1.55, 1.55, 0.16, 24), pos:[0, 0.08, 0]});
+        const m = new T.Mesh(mergeParts(parts), railM);
+        m.name = 'bj:closetPress'; m.position.set(2.6, 0, -6.4);
+        m.castShadow = true; clo.group.add(m);
       }
-      /* three steps up to the door, and the top one is standable */
+      /* a shelf over the door, and the rail the press hangs from */
       {
-        const parts = [];
-        for(let i = 0; i < 3; i++)
-          parts.push({geo:new T.BoxGeometry(2.9 + i*0.4, 0.2, 0.44), pos:[0, 0.1 + (2-i)*0.2, i*0.44]});
-        const m = new T.Mesh(mergeParts(parts), stone);
-        m.position.set(0, 0, cz + CD/2 + 0.3); cry.group.add(m);
-
-        const top = new T.Mesh(new T.BoxGeometry(2.9, 0.12, 0.44), stone);
-        top.name = 'bj:cryptStep';
-        top.position.set(0, 0.56, cz + CD/2 + 0.3);
-        cry.group.add(top); sceneWalk(cry, top);
-      }
-      /* two urns either side, and a low wall running off each way */
-      [-1, 1].forEach(sd=>{
         const parts = [
-          {geo:new T.CylinderGeometry(0.34, 0.24, 0.28, 12), pos:[0, 0.9, 0]},
-          {geo:new T.CylinderGeometry(0.18, 0.30, 0.7, 12),  pos:[0, 0.45, 0]},
-          {geo:new T.BoxGeometry(0.56, 0.16, 0.56),          pos:[0, 0.08, 0]}
+          {geo:new T.BoxGeometry(8.4, 0.18, 0.7), pos:[0, 4.3, -8.3]},
+          {geo:new T.BoxGeometry(0.3, 0.5, 0.7),  pos:[-3.8, 4.0, -8.3]},
+          {geo:new T.BoxGeometry(0.3, 0.5, 0.7),  pos:[ 3.8, 4.0, -8.3]}
         ];
-        const u = new T.Mesh(mergeParts(parts), stone);
-        u.position.set(sd*3.3, 0, cz + CD/2 + 0.4); cry.group.add(u);
-
-        const w = [];
-        /* stops short of the opening edge: a wall half behind a portal leg
-           shows from the side seats */
-        for(let i = 0; i < 3; i++)
-          w.push({geo:new T.BoxGeometry(0.9, 0.7 - (i%2)*0.08, 0.4), pos:[sd*(4.4 + i*0.92), 0.35, 0]});
-        const wm = new T.Mesh(mergeParts(w), stone);
-        wm.position.z = cz - 0.4; cry.group.add(wm);
-      });
+        const m = new T.Mesh(mergeParts(parts), wallM);
+        m.name = 'bj:closetShelf'; m.castShadow = true; clo.group.add(m);
+      }
+      {
+        const r = new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 3.6, 10), railM);
+        r.name = 'bj:closetRail'; r.rotation.z = Math.PI/2;
+        r.position.set(2.6, 3.7, -6.4); clo.group.add(r);
+      }
+      /* something to stand on in front of it */
+      {
+        const r = new T.Mesh(new T.BoxGeometry(3.4, 0.24, 1.8), boardD);
+        r.name = 'bj:closetStep'; r.position.set(-1.2, 0.12, -5.2);
+        r.receiveShadow = true; clo.group.add(r); sceneWalk(clo, r);
+      }
     }
 
     /* ================================================================
-       SCENE — THE SIGN.  Measured 118:04: an illuminated sign over a
-       crowd.  RULING AV allows the real wording — the production's
-       wording is exactly the kind of authored detail the ruling excludes.
+       SCENE — THE ROOF.  The owner's plot puts it at 56:00, and it is
+       what the 56:46 frame actually shows: the blue clapboard house from
+       outside with two of them standing on the roof, a dormer, and the
+       stone chimney stage right.  This is the set the crypt was.
        ================================================================ */
-    const sgn = sceneAdd('signset', 'THE SIGN');
+    const rof = sceneAdd('roof', 'THE ROOF');
     {
-      /* the lit panel, its wording drawn into a canvas the house way */
-      const c = cvs(1024, 256), g = c.getContext('2d');
-      g.fillStyle = '#1b1206'; g.fillRect(0, 0, 1024, 256);
-      g.fillStyle = '#ffcb4a';
-      g.font = 'bold 150px sans-serif';
-      g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText('YOUR TURN', 512, 132);
-      const signTex = tex(c, 1, 1);
-      const panel = new T.MeshStandardMaterial({map:signTex, emissive:0xffcb4a,
-                                                emissiveIntensity:0.85, emissiveMap:signTex,
-                                                roughness:.7});
+      const slate = new T.MeshStandardMaterial({color:0x3d5570, roughness:.92});
+      const clap  = new T.MeshStandardMaterial({color:0x4a6a8c, roughness:.88});
+      /* the roof slope you stand on — the whole point of the set */
       {
-        const p = new T.Mesh(new T.BoxGeometry(7.2, 1.8, 0.22), panel);
-        p.name = 'bj:sign'; p.position.set(0, 5.4, -7.6); sgn.group.add(p);
+        const p = new T.Mesh(new T.BoxGeometry(11.0, 0.4, 5.2), slate);
+        p.name = 'bj:roofDeck'; p.position.set(-0.6, 2.2, -6.4);
+        p.rotation.x = -0.16; p.receiveShadow = true; p.castShadow = true;
+        rof.group.add(p); sceneWalk(rof, p);
       }
-      /* the bulb surround, one mesh on the shared glow material */
-      {
-        const parts = [];
-        for(let i = 0; i < 22; i++){
-          const t = i/21;
-          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[-3.8 + 7.6*t, 6.45, -7.5]});
-          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[-3.8 + 7.6*t, 4.35, -7.5]});
-        }
-        for(let i = 0; i < 5; i++){
-          const y = 4.35 + i*0.525;
-          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[-3.8, y, -7.5]});
-          parts.push({geo:new T.SphereGeometry(0.11, 7, 5), pos:[ 3.8, y, -7.5]});
-        }
-        sgn.group.add(new T.Mesh(mergeParts(parts), glow));
-      }
-      /* the frame it hangs in, and two posts to the deck */
+      /* the gable end and the wall below it */
       {
         const parts = [
-          {geo:new T.BoxGeometry(8.2, 0.28, 0.4), pos:[0, 6.7, -7.7]},
-          {geo:new T.BoxGeometry(8.2, 0.28, 0.4), pos:[0, 4.1, -7.7]},
-          {geo:new T.BoxGeometry(0.3, 2.9, 0.4),  pos:[-4.0, 5.4, -7.7]},
-          {geo:new T.BoxGeometry(0.3, 2.9, 0.4),  pos:[ 4.0, 5.4, -7.7]},
-          {geo:new T.BoxGeometry(0.28, 4.1, 0.28), pos:[-4.0, 2.05, -7.7]},
-          {geo:new T.BoxGeometry(0.28, 4.1, 0.28), pos:[ 4.0, 2.05, -7.7]}
+          {geo:new T.BoxGeometry(11.0, 2.4, 0.3), pos:[-0.6, 1.2, -8.9]},   // sits ON the deck
+          {geo:new T.BoxGeometry(3.0, 2.6, 0.3),  pos:[-0.6, 3.9, -8.7]},
+          {geo:new T.BoxGeometry(0.34, 2.6, 4.0), pos:[-2.1, 3.9, -7.0]},
+          {geo:new T.BoxGeometry(0.34, 2.6, 4.0), pos:[ 0.9, 3.9, -7.0]},
+          {geo:new T.BoxGeometry(3.4, 0.28, 4.2), pos:[-0.6, 5.2, -7.0]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), clap);
+        m.name = 'bj:roofDormer'; m.castShadow = true; rof.group.add(m);
+      }
+      /* the dormer window, lit from inside */
+      {
+        const w = new T.Mesh(new T.BoxGeometry(1.5, 1.4, 0.12),
+          new T.MeshStandardMaterial({color:0xffdba0, emissive:0xffb257,
+                                      emissiveIntensity:0.7, roughness:.5}));
+        w.name = 'bj:roofWindow'; w.position.set(-0.6, 4.0, -8.5);
+        rof.group.add(w);
+      }
+      /* the ridge and the gutter, so the slope reads as a roof and not a ramp */
+      {
+        const parts = [
+          {geo:new T.BoxGeometry(11.2, 0.22, 0.34), pos:[-0.6, 2.62, -8.7]},
+          {geo:new T.BoxGeometry(11.4, 0.18, 0.30), pos:[-0.6, 1.78, -3.9]},
+          {geo:new T.BoxGeometry(0.16, 0.5, 0.16),  pos:[-5.4, 1.5, -3.9]},
+          {geo:new T.BoxGeometry(0.16, 0.5, 0.16),  pos:[ 4.2, 1.5, -3.9]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), slate);
+        m.name = 'bj:roofRidge'; m.castShadow = true; rof.group.add(m);
+      }
+      /* the aerial, because every clapboard roof in this show has one */
+      {
+        const parts = [
+          {geo:new T.CylinderGeometry(0.035, 0.035, 2.2, 6), pos:[0, 1.1, 0]},
+          {geo:new T.BoxGeometry(1.5, 0.05, 0.05),  pos:[0, 2.0, 0]},
+          {geo:new T.BoxGeometry(1.1, 0.05, 0.05),  pos:[0, 1.7, 0]},
+          {geo:new T.BoxGeometry(0.8, 0.05, 0.05),  pos:[0, 1.42, 0]}
         ];
         const m = new T.Mesh(mergeParts(parts), iron);
-        m.name = 'bj:signFrame'; m.castShadow = true; sgn.group.add(m);
+        m.name = 'bj:roofAerial'; m.position.set(-3.9, 2.5, -7.4);
+        m.castShadow = true; rof.group.add(m);
       }
-      /* a low rostrum for whoever is called forward, standable */
+      /* the stone chimney, stage right */
       {
-        const r = new T.Mesh(new T.BoxGeometry(4.2, 0.4, 2.2), boardD);
-        r.name = 'bj:rostrum'; r.position.set(0, 0.2, -4.6);
-        r.receiveShadow = true; sgn.group.add(r); sceneWalk(sgn, r);
+        const parts = [
+          {geo:new T.BoxGeometry(1.7, 6.2, 1.7), pos:[0, 3.1, 0]},
+          {geo:new T.BoxGeometry(2.1, 0.4, 2.1), pos:[0, 6.4, 0]}
+        ];
+        const m = new T.Mesh(mergeParts(parts), stone);
+        m.name = 'bj:roofChimney'; m.position.set(5.4, 0, -6.8);
+        m.castShadow = true; rof.group.add(m);
       }
-      /* two banks of seats facing it, merged, for the crowd to be in */
-      [-1, 1].forEach(sd=>{
-        const parts = [];
-        for(let i = 0; i < 3; i++)
-          for(let k = 0; k < 3; k++)
-            parts.push({geo:new T.BoxGeometry(0.5, 0.5, 0.5),
-                        pos:[sd*(2.4 + k*0.62), 0.25 + i*0.22, -6.4 + i*0.66]});
-        const m = new T.Mesh(mergeParts(parts), boardD);
-        sgn.group.add(m);
-      });
     }
 
     /* ================================================================
@@ -14403,6 +14502,7 @@ SHOWS.beetlejuice = {
     FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
 
     sceneShow('cemetery');
+    bjDress(cem, 'full');
     RIG.haze = 0.55;                 // the beam fan is in every reference frame
     plotBeetlejuice();
     standByAtTheTop();
@@ -14428,315 +14528,285 @@ function plotBeetlejuice(){
   /* the front of house, thrown UP onto the cloth for the curtain cues */
   const onTheCloth = ()=>aimFrontAt(FRONT, 0, 7.4, -1.0);
 
+  /* --------------------------------------------------------------------
+     THE PLOT, AS THE OWNER GAVE IT.
+
+     Every `at` below is one of his timestamps, converted.  He watched the
+     recording and wrote the set changes out himself, and where his list
+     disagreed with what the measurement had built, his list won — which is
+     most of act one.  The one place the two AGREE is the strongest thing
+     here: his act break, 1:11:02, is second 4262, exactly where
+     blackdetect found the show's longest blackout.  The two timelines
+     share a base, so his numbers went straight in.
+
+     `hold:true` is a cue that arms nothing and waits for GO.  There are
+     exactly two — the pre-show and the interval — because he asked for the
+     show to advance from pre-show "when you press start" and for the
+     second half to begin "when you press a button on the consol".
+     -------------------------------------------------------------------- */
   const looks = [
-    /* ---- the top of the night ---- */
-    {at:33, n:0.5, label:'preset — house open, curtain in', fade:0, house:0.9, haze:0.15,
-     curtain:'shut', scene:'cemetery',
-     look(){ all(0); onTheCloth(); set(FRONT, 0.5, '#e8d2a8'); }},
+    /* ============ PRE-SHOW ============ */
+    {at:33, n:0.5, label:'PRE-SHOW — house open, curtain in, the sign lit', fade:0,
+     house:0.9, haze:0.15, curtain:'shut', scene:'cemetery', dress:'full',
+     backdrop:'in', hold:true,
+     look(){ all(0); onTheCloth(); set(FRONT, 0.45, '#e8d2a8'); }},
 
-    {at:70, n:1, label:'house to half', fade:5, house:0.5, haze:0.2,
-     curtain:'shut', scene:'cemetery',
-     look(){ all(0); onTheCloth(); set(FRONT, 0.5, '#e8d2a8'); }},
+    /* ============ THE TOP OF THE SHOW ============ */
+    {at:50, n:1, label:'house to half — the show starts', fade:5, house:0.5, haze:0.2,
+     curtain:'shut', scene:'cemetery', dress:'full', backdrop:'in',
+     look(){ all(0); onTheCloth(); set(FRONT, 0.55, '#e8d2a8'); }},
 
-    /* ============ ACT ONE, i — THE CEMETERY ============
-       measured: the first big blackout is at 1:26 and holds 9.0s; the wide
-       cemetery look is held from 3:09 for 125s, the longest single held shot
-       in the act. */
-    {at:95, n:2, label:'act one — the cemetery, low and blue', fade:6, house:0, haze:0.6,
-     curtain:'out', scene:'cemetery',
+    {at:72, n:1.3, label:'the sign flies out', fade:3, house:0.15, haze:0.25,
+     curtain:'shut', scene:'cemetery', dress:'full', backdrop:'in',
+     move:{scene:'bjSign', off:BJ_SIGN_OUT},
+     look(){ all(0); onTheCloth(); set(FRONT, 0.7, '#bfe08a'); set(BOOM, 0.2, '#6f9f4a'); }},
+
+    /* the curtain lifts and it is the graveyard */
+    {at:95, n:2, label:'curtain up — the graveyard, low and blue', fade:6, house:0, haze:0.6,
+     curtain:'out', scene:'cemetery', dress:'full', backdrop:'in',
      look(){ all(0);
        set(CYC, 0.55, '#2f5f9c'); set(BACK, 0.42, '#4a78b4');
        set(WASH, 0.18, '#5f7fa8'); set(BOOM, 0.30, '#3f6ea6'); }},
 
     {at:189, n:3, label:'the moon takes the upstage', fade:4, house:0, haze:0.62,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'cemetery', dress:'full', backdrop:'in',
      look(){ all(0);
        set(CYC, 0.68, '#2b5896'); set(BACK, 0.30, '#6f8fc0');
        set(BOOM, 0.22, '#3a689e'); }},
 
     /* measured: a fade UP of 1.6s — one of the fastest clean slopes in the file */
     {at:371, n:4, label:'the mourners — a hard front, fast', fade:1.6, house:0, haze:0.55,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'cemetery', dress:'full', backdrop:'in',
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -6.5);
        set(FRONT, 0.62, '#cfd8e8'); set(CYC, 0.34, '#2b5896');
        set(WASH, 0.20, '#7f92ad'); }},
 
     {at:480, n:5, label:'down to the one of them', fade:3, house:0, haze:0.5,
-     curtain:'out', scene:'cemetery',
+     curtain:'out', scene:'cemetery', dress:'full', backdrop:'in',
      look(){ all(0);
        one(SPOT, 0.85, '#f2ecd8'); set(CYC, 0.18, '#22467c');
        set(BOOM, 0.12, '#33608f'); }},
 
-    /* measured: 9:31 is the widest, brightest look of the cemetery sequence —
-       centre/edge ratio 4.31, the strongest wide shot in the whole file */
-    {at:571, n:6, label:'the beam fan opens over the gate', fade:5, house:0, haze:0.75,
-     curtain:'out', scene:'cemetery',
+    /* 9:45 — "Stage empties just has the backdrop for the graveyard" */
+    {at:585, n:6, label:'9:45 — the stage empties to the backdrop', fade:5, house:0, haze:0.7,
+     curtain:'out', scene:'cemetery', dress:'bare', backdrop:'in',
      look(){ all(0);
-       set(BACK, 0.72, '#4f86c8'); set(MOVE, 0.60, '#78c8e8');
-       set(CYC, 0.30, '#25497e'); one(SPOT, 0.40, '#f2ecd8'); }},
+       set(BACK, 0.62, '#4f86c8'); set(MOVE, 0.5, '#78c8e8');
+       set(CYC, 0.34, '#25497e'); }},
 
-    /* INTERPRETED, and worth being explicit about: the interior first appears
-       at 15:57, but there is NO measured blackout anywhere between 9:00 and
-       18:00. The recording does not show how that change was covered, so
-       covering it with a blackout of our own is a DECISION, not a measurement. */
-    {at:920, n:7, label:'blackout — the walls come in', fade:1.2, house:0, haze:0.5,
-     curtain:'out', scene:'cemetery',
-     look(){ all(0); }},
-
-    /* ============ ACT ONE, ii — INSIDE THE HOUSE ============
-       measured: 15:57 to 31:34 under five looks, which is why the wall curves */
-    {at:957, n:8, label:'inside — the walls, cold', fade:3, house:0, haze:0.35,
-     curtain:'out', scene:'interior', dress:'maitland',
+    /* 10:40 — "Graveyard backdrop lifts up and maitlands house slides forward" */
+    {at:640, n:7, label:'10:40 — backdrop out, the house slides on', fade:4, house:0, haze:0.4,
+     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     move:{scene:'interior', off:0},
      look(){ all(0);
        set(WASH, 0.34, '#8fa0c0'); set(FRONT, 0.26, '#cfd8e8');
        set(BACK, 0.20, '#5f7fa8'); }},
 
-    /* measured: 16:29 is a held 22s look, warmer and fuller than 15:57 */
-    {at:989, n:9, label:'the room, warm and full', fade:4, house:0, haze:0.3,
-     curtain:'out', scene:'interior', dress:'maitland',
+    {at:700, n:8, label:'inside — the room, warm and full', fade:4, house:0, haze:0.3,
+     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
      look(){ all(0);
        set(FRONT, 0.62, '#f0d8b0'); set(WASH, 0.66, '#e8c9a4');
        set(BOOM, 0.34, '#d8b184'); }},
 
-    /* measured: fades DOWN in this file run a 2.2s median; this is that number */
-    {at:1227, n:10, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.35,
-     curtain:'out', scene:'interior', dress:'maitland',
-     look(){ all(0); set(WASH, 0.10, '#8fa0c0'); }},
-
-    /* measured: 22:14 is the brightest interior frame in the file; 25:19 is
-       held 34s — a long, still, bright scene */
-    {at:1334, n:11, label:'the arch, and whoever is standing in it', fade:3, house:0, haze:0.4,
-     curtain:'out', scene:'interior', dress:'maitland',
+    /* measured: fades DOWN in this file run a 2.2s median */
+    {at:989, n:9, label:'the arch, and whoever is standing in it', fade:2.2, house:0, haze:0.35,
+     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
      look(){ all(0);
        one(SPOT, 0.7, '#f4eede'); set(FRONT, 0.22, '#dfe8f4');
        set(WASH, 0.16, '#8fa0c0'); }},
 
-    /* measured: 31:34 closes the interior sequence, held 15s and darker.
-       The blackout that follows is again OUR decision — the recording has no
-       measured blackout before the attic at 42:22 either. */
-    {at:1894, n:12, label:'blackout — up into the roof', fade:1.6, house:0, haze:0.4,
-     curtain:'out', scene:'interior', dress:'maitland',
-     look(){ all(0); }},
+    /* measured: 22:14 is the brightest interior frame in the file */
+    {at:1334, n:10, label:'the whole room, wide open', fade:3, house:0, haze:0.4,
+     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     look(){ all(0);
+       set(FRONT, 0.6, '#f4e8d0'); set(WASH, 0.62, '#efe6d2');
+       set(BOOM, 0.3, '#d8c0a0'); }},
 
-    /* ============ ACT ONE, iii — THE ATTIC ============
-       measured: 42:22, held 54s — one of the longest held shots in the act */
-    {at:2542, n:13, label:'the attic — one lamp and a lot of roof', fade:4, house:0, haze:0.45,
-     curtain:'out', scene:'attic',
+    {at:1700, n:11, label:'down, and the room goes cold', fade:3, house:0, haze:0.4,
+     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     look(){ all(0); set(WASH, 0.22, '#8fa0c0'); set(BOOM, 0.14, '#5f7fa8'); }},
+
+    /* 32:16 — "Maitlands house slide back" */
+    {at:1936, n:12, label:'32:16 — the house slides back', fade:2.5, house:0, haze:0.4,
+     curtain:'out', scene:'interior', dress:'maitland', backdrop:'out',
+     move:{scene:'interior', off:BJ_WAGON_BACK},
+     look(){ all(0); set(WASH, 0.06, '#8fa0c0'); }},
+
+    /* 32:50 — "backdrop drops down and attic set comes on" */
+    {at:1970, n:13, label:'32:50 — backdrop in, the attic', fade:4, house:0, haze:0.45,
+     curtain:'out', scene:'attic', backdrop:'in',
      look(){ all(0);
        set(BOOM, 0.30, '#e8c07a'); set(WASH, 0.16, '#c8a882');
        one(SPOT, 0.35, '#fff0d0'); }},
 
-    {at:2835, n:14, label:'the string lights, and the model', fade:3, house:0, haze:0.5,
-     curtain:'out', scene:'attic',
+    {at:2100, n:14, label:'the string lights, and the model', fade:3, house:0, haze:0.5,
+     curtain:'out', scene:'attic', backdrop:'in',
      look(){ all(0);
        set(WASH, 0.30, '#bfe08a'); set(FRONT, 0.20, '#d8e8b0');
        set(BOOM, 0.18, '#9fd066'); }},
 
-    /* MEASURED, and this one is real: there is an 8.6s blackout at 51:56 —
-       the first measured blackout in the show since 1:26. It covers this
-       change, so the cover here is a measurement rather than a decision. */
-    {at:3116, n:15, label:'blackout — 8.6s, measured at 51:56', fade:2, house:0, haze:0.35,
-     curtain:'out', scene:'attic',
-     look(){ all(0); }},
+    /* 42:34 — "Closet set" */
+    {at:2554, n:15, label:'42:34 — the closet', fade:2.5, house:0, haze:0.35,
+     curtain:'out', scene:'closet', backdrop:'in',
+     look(){ all(0);
+       set(FRONT, 0.5, '#ff9ad8'); set(WASH, 0.46, '#e070c0');
+       set(BOOM, 0.24, '#a04a8c'); }},
 
-    /* ============ ACT ONE, iv — THE BEDROOM ============
-       measured: 54:23, and a further 10.5s blackout at 55:38 just after it */
-    {at:3263, n:16, label:'the bedroom — the lamp, and the corner', fade:3.5, house:0, haze:0.3,
-     curtain:'out', scene:'bedroom',
+    /* 48:49 — "Attic" */
+    {at:2929, n:16, label:'48:49 — back to the attic', fade:3, house:0, haze:0.45,
+     curtain:'out', scene:'attic', backdrop:'in',
+     look(){ all(0);
+       set(BOOM, 0.34, '#e8c07a'); set(WASH, 0.2, '#c8a882');
+       one(SPOT, 0.4, '#fff0d0'); }},
+
+    /* 52:00 — "Bedroom" */
+    {at:3120, n:17, label:'52:00 — the bedroom', fade:3.5, house:0, haze:0.3,
+     curtain:'out', scene:'bedroom', backdrop:'in',
      look(){ all(0);
        set(WASH, 0.34, '#c8a8d8'); set(BOOM, 0.26, '#9f7fc0');
        set(FRONT, 0.18, '#d8c8e8'); }},
 
-    {at:3338, n:17, label:'down to the lamp alone', fade:2.5, house:0, haze:0.3,
-     curtain:'out', scene:'bedroom',
-     look(){ all(0); set(BOOM, 0.22, '#9f7fc0'); }},
-
-    /* ---- ACT ONE, v — THE CRYPT ----
-       MEASURED: a 10.5s blackout at 55:38, the second-longest in act one,
-       and it is what covers the change out to the crypt at 56:46. */
-    {at:3345, n:17.3, label:'blackout — 10.5s, measured at 55:38', fade:2, house:0, haze:0.3,
-     curtain:'out', scene:'bedroom',
-     look(){ all(0); }},
-
-    /* measured: 56:46 — a stone doorway with somebody standing in it */
-    {at:3406, n:17.5, label:'the crypt — cold, and low', fade:4, house:0, haze:0.6,
-     curtain:'out', scene:'crypt',
+    /* 56:00 — "roof set come on" */
+    {at:3360, n:18, label:'56:00 — the roof', fade:4, house:0, haze:0.6,
+     curtain:'out', scene:'roof', backdrop:'in',
      look(){ all(0);
-       set(CYC, 0.34, '#24507f'); set(BACK, 0.26, '#4a78b4');
-       set(BOOM, 0.22, '#6f8fc0'); }},
+       set(CYC, 0.34, '#24507f'); set(BACK, 0.3, '#4a78b4');
+       set(BOOM, 0.24, '#6f8fc0'); }},
 
-    {at:3600, n:17.7, label:'a hard side light on the stone', fade:2.5, house:0, haze:0.65,
-     curtain:'out', scene:'crypt',
+    {at:3600, n:19, label:'a hard side light across the slates', fade:2.5, house:0, haze:0.65,
+     curtain:'out', scene:'roof', backdrop:'in',
      look(){ all(0);
        set(BOOM, 0.52, '#cfd8e8'); one(SPOT, 0.45, '#f2ecd8');
        set(CYC, 0.14, '#1d3f70'); }},
 
-    {at:3764, n:18, label:'out, on the measured 2.2', fade:2.2, house:0, haze:0.25,
-     curtain:'out', scene:'crypt',
-     look(){ all(0); set(BOOM, 0.06, '#9f7fc0'); }},
-
-    /* MEASURED: the act break is the LONGEST blackout in the show — 13.3s at
-       71:02, inside a cluster of eight. The strongest single measurement in
-       the file, and it is what puts the interval here. */
-    {at:4262, n:19, label:'act one ends — blackout', fade:4, house:0, haze:0.3,
-     curtain:'shut', scene:'crypt',
-     look(){ all(0); }},
-
-    /* MEASURED as an ABSENCE: the recording contains no interval at all. The
-       longest sustained-bright stretch in 143 minutes is 87s, so the house
-       never came up — it was edited out. This cue is the house's own
-       convention, not a measurement. */
-    {at:4290, n:20, label:'INTERVAL — the house comes up', fade:6, house:1, haze:0,
-     curtain:'shut', scene:'crypt',
-     look(){ all(0); }},
-
-    /* ============ ACT TWO ============
-       The order here follows the MEASUREMENT, and it is not the order this
-       chain built the scenes in: the exterior carries 72:58, at the very top
-       of act two; the redecorated room runs 78:28 to 94:02; the afterlife
-       103:39 to 113:22; the chevron 121:54; the call 141:02.  PR 4 had the
-       exterior last, which was the wrong way round. */
-    {at:4350, n:21, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
-     curtain:'shut', scene:'house',
-     look(){ all(0); }},
-
-    /* measured: 72:58 is the exterior's act-two look, held 82s — the longest
-       held shot anywhere in the second half */
-    {at:4378, n:22, label:'act two — outside again, colder', fade:5, house:0, haze:0.65,
-     curtain:'out', scene:'house',
-     look(){ all(0);
-       set(CYC, 0.42, '#24507f'); set(BACK, 0.34, '#3f6ea6');
-       set(WASH, 0.14, '#4a6a90'); }},
-
-    {at:4471, n:23, label:'the moon again, harder', fade:3, house:0, haze:0.6,
-     curtain:'out', scene:'house',
-     look(){ all(0);
-       set(CYC, 0.74, '#2b5896'); set(BACK, 0.22, '#6f8fc0'); }},
-
-    {at:4560, n:24, label:'front and centre, on the porch', fade:2.2, house:0, haze:0.5,
-     curtain:'out', scene:'house',
-     look(){ all(0);
-       aimFrontAt(FRONT, 0, 1.7, -4.0);
-       set(FRONT, 0.7, '#efe6d2'); set(CYC, 0.16, '#22467c'); }},
-
-    /* INTERPRETED: no measured blackout sits between 94:02 and the exterior
-       looks, so this cover is ours */
-    {at:4680, n:25, label:'blackout — back inside', fade:1.6, house:0, haze:0.4,
-     curtain:'out', scene:'house',
-     look(){ all(0); }},
-
-    /* ---- the room, redecorated: measured 78:28, 80:39, 94:02 ---- */
-    {at:4708, n:26, label:'the room, redecorated — pale and flat', fade:4, house:0, haze:0.4,
-     curtain:'out', scene:'interior', dress:'deetz',
+    /* 1:02:51 — "Roof set comes off backdrop lifts and deetze house slides on" */
+    {at:3771, n:20, label:'1:02:51 — backdrop out, the Deetz house slides on', fade:4,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'deetz', backdrop:'out',
+     move:{scene:'interior', off:0},
      look(){ all(0);
        set(FRONT, 0.58, '#f8f0e0'); set(WASH, 0.5, '#efe6d2');
        set(BOOM, 0.22, '#d8c0a0'); }},
 
     /* measured: 80:39 puts a hard green across it */
-    {at:4839, n:27, label:'a hard green across the frames', fade:2, house:0, haze:0.5,
-     curtain:'out', scene:'interior', dress:'deetz',
+    {at:4000, n:21, label:'a hard green across the frames', fade:2, house:0, haze:0.5,
+     curtain:'out', scene:'interior', dress:'deetz', backdrop:'out',
      look(){ all(0);
        set(WASH, 0.56, '#7fc46a'); set(MOVE, 0.48, '#9fd066');
        set(BACK, 0.22, '#5fae52'); }},
 
-    /* measured: 94:02 is the last of the redecorated looks, wide and bright */
-    {at:5642, n:28, label:'the whole room, wide open', fade:3, house:0, haze:0.55,
-     curtain:'out', scene:'interior', dress:'deetz',
-     look(){ all(0);
-       set(FRONT, 0.55, '#f4e8d0'); set(WASH, 0.62, '#efe6d2');
-       set(BACK, 0.5, '#cfd8e8'); set(MOVE, 0.42, '#ffffff');
-       set(BOOM, 0.3, '#d8c0a0'); }},
-
-    /* MEASURED: a 2.9s blackout at 99:38, which is where the room goes and the
-       afterlife arrives */
-    {at:5978, n:29, label:'blackout — 2.9s, measured at 99:38', fade:2.2, house:0, haze:0.3,
-     curtain:'out', scene:'interior', dress:'deetz',
+    /* MEASURED AND AGREED: 1:11:02 is second 4262, the show's longest
+       blackout at 13.3s, and the owner put the act break in the same place. */
+    {at:4262, n:22, label:'1:11:02 — blackout, curtain in, END OF HALF', fade:4,
+     house:0, haze:0.3, curtain:'shut', scene:'interior', dress:'deetz', backdrop:'out',
+     neon:0,
      look(){ all(0); }},
 
-    /* ---- the afterlife: measured 103:39 to 113:22, and the colour changes
-       between the looks. The frames are neon, so the CUE fades them. ---- */
-    {at:6219, n:30, label:'the afterlife — the frames come up', fade:4, house:0, haze:0.7,
-     curtain:'out', scene:'afterlife', neon:1.1,
+    /* the interval HOLDS: "Second half starts when you press a button on the consol" */
+    {at:4290, n:23, label:'INTERVAL — the house comes up (holds for the console)', fade:6,
+     house:1, haze:0, curtain:'shut', scene:'interior', dress:'deetz', backdrop:'out',
+     hold:true,
+     look(){ all(0); }},
+
+    /* ============ ACT TWO ============ */
+    {at:4310, n:24, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
+     curtain:'shut', scene:'house', backdrop:'out', sky:'in',
+     look(){ all(0); onTheCloth(); set(FRONT, 0.4, '#bfe08a'); }},
+
+    {at:4340, n:25, label:'curtain up — outside the house, sky behind', fade:5,
+     house:0, haze:0.65, curtain:'out', scene:'house', backdrop:'out', sky:'in',
+     look(){ all(0);
+       set(CYC, 0.42, '#24507f'); set(BACK, 0.34, '#3f6ea6');
+       set(WASH, 0.14, '#4a6a90'); }},
+
+    /* 1:14:30 — "Outside of house and sky backdrop fly out and beetlejuice
+       house slides forward" */
+    {at:4470, n:26, label:'1:14:30 — the sky flies out, the house slides on', fade:4,
+     house:0, haze:0.55, curtain:'out', scene:'interior', dress:'bj',
+     backdrop:'out', sky:'out',
+     move:[{scene:'house', off:BJ_SIGN_OUT}, {scene:'interior', off:0}],
+     look(){ all(0);
+       set(WASH, 0.5, '#7fc46a'); set(MOVE, 0.5, '#9fd066');
+       set(FRONT, 0.3, '#d8e8b0'); }},
+
+    {at:4800, n:27, label:'the room, taken over', fade:3, house:0, haze:0.6,
+     curtain:'out', scene:'interior', dress:'bj', backdrop:'out',
+     look(){ all(0);
+       set(FRONT, 0.44, '#e8e0f0'); set(WASH, 0.5, '#a878d8');
+       set(BOOM, 0.3, '#7f4fb0'); }},
+
+    /* 1:25:25 — "House slides back backdrop goes down and attic set comes on" */
+    {at:5125, n:28, label:'1:25:25 — house back, backdrop in, the attic', fade:3.5,
+     house:0, haze:0.45, curtain:'out', scene:'attic', backdrop:'in',
+     move:{scene:'interior', off:BJ_WAGON_BACK},
+     look(){ all(0);
+       set(BOOM, 0.32, '#e8c07a'); set(WASH, 0.18, '#c8a882');
+       one(SPOT, 0.38, '#fff0d0'); }},
+
+    /* 1:30:00 — "Attic set comes off backdrop goes up and beetlejuice house
+       come on" */
+    {at:5400, n:29, label:'1:30:00 — backdrop out, the house slides on', fade:3,
+     house:0, haze:0.6, curtain:'out', scene:'interior', dress:'bj', backdrop:'out',
+     move:{scene:'interior', off:0},
+     look(){ all(0);
+       set(WASH, 0.54, '#a878d8'); set(MOVE, 0.5, '#9fd066');
+       set(FRONT, 0.34, '#e8e0f0'); }},
+
+    {at:5700, n:30, label:'the worm over the room', fade:2.5, house:0, haze:0.75,
+     curtain:'out', scene:'interior', dress:'bj', backdrop:'out',
+     look(){ all(0);
+       set(MOVE, 0.62, '#9fd066'); set(BOOM, 0.4, '#7f4fb0');
+       one(SPOT, 0.5, '#eaf4ff'); }},
+
+    /* 1:39:00 — "house slides back and nether word set come on" */
+    {at:5940, n:31, label:'1:39:00 — house back, the netherworld', fade:4,
+     house:0, haze:0.7, curtain:'out', scene:'afterlife', neon:1.1, backdrop:'out',
+     move:{scene:'interior', off:BJ_WAGON_BACK},
      look(){ all(0);
        set(BACK, 0.2, '#5fd8e8'); set(WASH, 0.10, '#4a6a90'); }},
 
-    /* measured: 107:45 is a single figure inside the frames, held 22s */
-    {at:6465, n:31, label:'one of them, inside it', fade:2.5, house:0, haze:0.65,
-     curtain:'out', scene:'afterlife', neon:1.25,
+    {at:6200, n:32, label:'one of them, inside the frames', fade:2.5, house:0, haze:0.65,
+     curtain:'out', scene:'afterlife', neon:1.25, backdrop:'out',
      look(){ all(0); one(SPOT, 0.55, '#eaf4ff'); }},
 
-    /* measured: 113:18 is a 12.4s fade DOWN from Y 97 to 24 — one of the
-       largest clean slopes in the file, and it is this cue's fade time */
-    {at:6798, n:32, label:'the frames dim — a measured 12.4s at 113:18', fade:12.4, house:0, haze:0.6,
-     curtain:'out', scene:'afterlife', neon:0.45,
+    /* measured: 113:18 is a 12.4s fade DOWN, one of the largest clean slopes
+       in the file, and it is this cue's fade time */
+    {at:6500, n:33, label:'the frames dim — a measured 12.4s', fade:12.4, house:0, haze:0.6,
+     curtain:'out', scene:'afterlife', neon:0.45, backdrop:'out',
      look(){ all(0); set(BACK, 0.08, '#5fd8e8'); }},
 
-    /* ---- ACT TWO, iv — THE SIGN ----
-       measured: 118:04 sits BETWEEN the afterlife looks and the chevron at
-       121:54, so the set goes out to the sign and comes back.  Two changes,
-       two covers; that is what the recording says happened. */
-    {at:6900, n:32.3, label:'blackout — out to the sign', fade:1.6, house:0, haze:0.4,
-     curtain:'out', scene:'afterlife', neon:0,
-     look(){ all(0); }},
-
-    /* measured: 118:04. (RULING AV lifted the wording restriction; the real
-       production's is exactly the authored detail the ruling excludes. */
-    {at:7084, n:32.5, label:'the sign — YOUR TURN, and a full house under it', fade:3, house:0, haze:0.45,
-     curtain:'out', scene:'signset', neon:0,
+    /* 1:53:00 — "Netherworld set goes off beetlejuice house come on" */
+    {at:6780, n:34, label:'1:53:00 — the house slides on again', fade:3.5,
+     house:0, haze:0.55, curtain:'out', scene:'interior', dress:'bj', neon:0, backdrop:'out',
+     move:{scene:'interior', off:0},
      look(){ all(0);
-       set(FRONT, 0.44, '#ffe0a0'); set(WASH, 0.4, '#e8c070');
-       set(BOOM, 0.24, '#c89a4e'); }},
+       set(FRONT, 0.46, '#e8e0f0'); set(WASH, 0.52, '#a878d8');
+       set(MOVE, 0.4, '#9fd066'); }},
 
-    {at:7250, n:32.7, label:'blackout — back to the frames', fade:1.4, house:0, haze:0.5,
-     curtain:'out', scene:'signset', neon:0,
-     look(){ all(0); }},
-
-    /* measured: 121:54 is the chevron across the whole opening */
-    {at:7314, n:33, label:'the chevron, and everything on it', fade:2, house:0, haze:0.8,
-     curtain:'out', scene:'afterlife', neon:1.35,
+    {at:7200, n:35, label:'the whole room, everything up', fade:3, house:0, haze:0.7,
+     curtain:'out', scene:'interior', dress:'bj', neon:0, backdrop:'out',
      look(){ all(0);
-       set(WASH, 0.5, '#7fc46a'); set(MOVE, 0.6, '#9fd066');
-       set(BACK, 0.42, '#5fae52'); set(FRONT, 0.3, '#d8e8b0'); }},
+       set(FRONT, 0.6, '#fff2dc'); set(WASH, 0.66, '#c8a0f0');
+       set(MOVE, 0.6, '#9fd066'); set(BACK, 0.4, '#8fd8f0'); }},
 
-    /* ---- ACT TWO, v — THE BARE STAGE ----
-       measured: 137:57, a line of the company across an empty stage, four
-       minutes before the call. Everything goes, and the call happens on it. */
-    {at:8200, n:33.3, label:'blackout — everything goes', fade:2.2, house:0, haze:0.4,
-     curtain:'out', scene:'afterlife', neon:0,
-     look(){ all(0); }},
-
-    {at:8277, n:33.5, label:'the bare stage — masking, and the ghost light', fade:5, house:0, haze:0.3,
-     curtain:'out', scene:'bare', neon:0,
-     look(){ all(0);
-       set(FRONT, 0.34, '#e8dcc4'); set(BOOM, 0.16, '#cfc0a8'); }},
-
-    /* MEASURED: the curtain call is unmistakable — 82 events in the last 2.5
-       minutes, lights bumping every 1 to 3 seconds, starting at 141:02.
-       Found without ever seeing a frame. */
-    {at:8462, n:34, label:'curtain call', fade:1.4, house:0, haze:0.4,
-     curtain:'out', scene:'bare', neon:1.4,
+    /* 2:13:05 — "House slide back but backdrop stay up. Curtain call".  The
+       house goes ALL THE WAY back and stays in view: nothing else is on. */
+    {at:7985, n:36, label:'2:13:05 — house all the way back — CURTAIN CALL', fade:1.4,
+     house:0, haze:0.4, curtain:'out', scene:'interior', dress:'bj', neon:0, backdrop:'out',
+     move:{scene:'interior', off:BJ_WAGON_BACK},
      look(){ all(0);
        aimFrontAt(FRONT, 0, 1.7, -3.0);
        set(FRONT, 0.85, '#fff2dc'); set(WASH, 0.7, '#ffffff');
        set(BACK, 0.5, '#8fd8f0'); set(MOVE, 0.6, '#ffffff'); }},
 
-    /* MEASURED: 7.0s down into 7.3s of black at 143:35 — the show's last cue */
-    {at:8615, n:35, label:'blackout — the curtain comes in', fade:7, house:0, haze:0.2,
-     curtain:'shut', scene:'bare', neon:0,
-     look(){ all(0); }},
-
-    {at:8640, n:36, label:'curtain warmers — the cloth, and nothing else', fade:4, house:0, haze:0,
-     curtain:'shut', scene:'bare', neon:0,
-     look(){ all(0);
-       onTheCloth();                     // up at the cloth, never down at the deck
-       set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }},
-
-    {at:8660, n:37, label:'house up — the warmers stay', fade:8, house:0.6, haze:0,
-     curtain:'shut', scene:'bare', neon:0,
+    /* 2:15:00 — "Confetti goes off curtain come in and house light fade up to
+       half."  The last cue of the show. */
+    {at:8100, n:37, label:'2:15:00 — confetti, curtain in, house to half', fade:6,
+     house:0.5, haze:0.2, curtain:'shut', scene:'interior', dress:'bj', neon:0,
+     backdrop:'out', confetti:true,
      look(){ all(0);
        onTheCloth();
-       set(FRONT, 0.9, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }}
+       set(FRONT, 0.8, '#bfe08a'); set(BOOM, 0.25, '#6f9f4a'); }}
   ];
 
   CUES.length = 0;
@@ -14748,13 +14818,23 @@ function plotBeetlejuice(){
     restoreAims(homeAims);            // every look starts from the rig's own focus
     L.look();
     setCurtainForCue(L.curtain || 'out');
+    /* THE CLOTHS.  Every "backdrop lifts up" and "backdrop drops down" in the
+       owner's plot is a TRIM, taken into this cue's own fly snapshot — the
+       machinery the fly system already had.  Line 14 is the backdrop, line 13
+       the sky; a cue that says nothing leaves them out. */
+    FLY[13].target = (L.backdrop === 'in') ? TRIMS.bjBackdrop : OUT_TRIM;
+    FLY[12].target = (L.sky === 'in') ? inTrimOf(FLY[12]) : OUT_TRIM;
     CUES.push({
-      n:L.n, label:L.label, fade:L.fade, follow:null,
+      n:L.n, at:L.at, label:L.label, fade:L.fade, follow:null,
       lx:snapshotLX(), fly:snapshotFly(), sfx:null,
       house:L.house, work:0, practical:0, haze:L.haze,
       rain:0, storm:false, fire:null,
       neon:L.neon === undefined ? 1 : L.neon,
-      scene:L.scene || null
+      scene:L.scene || null,
+      dress:L.dress || null,          // which dressing the room wears (AQ)
+      move:L.move || null,            // what travels, and to where (AP)
+      confetti:!!L.confetti,
+      hold:!!L.hold                   // arms nothing; waits for GO (AU)
     });
   });
   /* ------------------------------------------------------------------
@@ -14778,6 +14858,12 @@ function plotBeetlejuice(){
          for a real transport (rulings AP onward).
      ------------------------------------------------------------------ */
   for(let i = 0; i < CUES.length - 1; i++){
+    /* A HOLD ARMS NOTHING.  Exactly two cues carry it — the pre-show and the
+       interval — because the owner asked for the show to advance from
+       pre-show "when you press start" and for the second half to begin "when
+       you press a button on the consol".  follow:null is all that takes:
+       nothing is armed, and the chain waits at that cue until GO.  (AU) */
+    if(CUES[i].hold){ CUES[i].follow = null; continue; }
     const gap = looks[i + 1].at - looks[i].at;
     CUES[i].follow = gap > 0 ? +gap.toFixed(2) : null;
   }
