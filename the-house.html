@@ -7358,7 +7358,10 @@ function recordCue(){
     lx: $('#qLx').checked ? snapshotLX() : null,
     fly: $('#qFly').checked ? snapshotFly() : null,
     sfx: $('#qSfx').checked ? $('#qSfxSel').value : null,
-    house: HOUSE.house, work: HOUSE.work, practical: HOUSE.practical, haze: RIG.haze
+    house: HOUSE.house, work: HOUSE.work, practical: HOUSE.practical, haze: RIG.haze,
+    /* the front of house is a circuit like any other, and the board has always
+       had a LOBBY fader — it was simply never in a cue (RULING BH) */
+    lobby: HOUSE.lobby
   };
   const ex = CUES.findIndex(q=>q.n===n);
   if(ex>=0) CUES[ex]=c; else CUES.push(c);
@@ -7380,6 +7383,14 @@ function fireCue(idx){
   if(c.fly) c.fly.forEach(r=>{ const ls=FLY[r.id-1]; if(ls){ flyTo(ls, r.target); ls.travTarget=r.open; } });
   if(c.sfx) Snd.play(c.sfx);
   HOUSE.house=c.house; HOUSE.work=c.work; HOUSE.practical=c.practical; RIG.haze=c.haze;
+  /* THE FRONT OF HOUSE (RULING BH).  Saying nothing LEAVES IT ALONE — undefined
+     is not 0.  Every cue in the four other shows, and every cue anyone recorded
+     off the board before this existed, keeps the behaviour it has; only a plot
+     that asks gets its foyer worked.  Same bargain `signCol` makes with the
+     sign, and the same reason: a field that defaulted to a value would reach
+     back through five productions and black out four of them.
+     The board's own LOBBY fader re-reads HOUSE every refresh, so it follows. */
+  if(c.lobby !== undefined && c.lobby !== null) HOUSE.lobby = c.lobby;
   if(typeof showCueExtras === 'function') showCueExtras(c);   // rain, storm, firelight
   syncMasters();
   nextCue = idx+1;
@@ -15061,10 +15072,18 @@ function plotBeetlejuice(){
     /* "Play pre show music i have provided and set the house lights low."
        The blinders are built and OFF — "dont have them on they are for later" —
        and the audience movers drift over the seating, slowly, green to purple
-       and back (rulings BC and BD).  The house at 0.3 is a judgement about the
-       word "low" and it is a one-line retune. */
+       and back (rulings BC and BD).  The house at 0.45 is a judgement about the
+       word "low" and it is a one-line retune.
+
+       THE FOYER IS UP HERE AND OUT AT GO (RULING BH) — "make sure the lobby
+       lights get turned of at the start of a show".  It comes back at the
+       interval and goes out again for act two, because the audience walks out
+       into it and then back in.  It is the only circuit in this plot that is
+       ON at the pre-show and OFF for the show, which is what a front of house
+       is.  These four cues are the only ones in all five productions that say
+       anything about it at all; every other cue leaves it exactly alone. */
     {at:33, n:0.5, label:'PRE-SHOW — house low, curtain in, the sign lit', fade:0,
-     house:0.45, haze:0.15, curtain:'shut', scene:'cemetery',
+     house:0.45, lobby:0.9, haze:0.15, curtain:'shut', scene:'cemetery',
      backdrop:'in', hold:true,
      audio:{play:'preshow'},
      fx:{on:'aud', kind:'wander', cols:['#2fbf5f','#7f3fbf']},
@@ -15081,7 +15100,7 @@ function plotBeetlejuice(){
        "The lights around the prosinum all turn red and all the lights on the
        beetlejuice sign go bright red." */
     {at:35, n:1, label:'GO — the proscenium and the sign go red', fade:1.5,
-     house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     house:0, lobby:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
      audio:{play:'show', at:35, stop:'preshow'}, signCol:'#ff1e10',
      look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
 
@@ -15467,7 +15486,7 @@ function plotBeetlejuice(){
        and the pre-show music comes back under it — act two opens "Play audio
        number one again till go is pressed". */
     {at:4269, n:23, label:'1:11:09 — house to HALF — INTERVAL (holds for the console)',
-     fade:6, house:0.5, haze:0, curtain:'shut', scene:'interior', dress:'deetz',
+     fade:6, house:0.5, lobby:0.9, haze:0, curtain:'shut', scene:'interior', dress:'deetz',
      backdrop:'out', hold:true,
      audio:{stop:'show', play:'preshow'},
      look(){ all(0); }},
@@ -15492,7 +15511,7 @@ function plotBeetlejuice(){
        exactly where it already was.
        ====================================================================== */
     {at:4292, n:24, label:'GO — act two, the show track back at 1:11:32', fade:2,
-     house:0.5, haze:0.2, curtain:'shut', scene:'house', backdrop:'out', sky:'in',
+     house:0.5, lobby:0, haze:0.2, curtain:'shut', scene:'house', backdrop:'out', sky:'in',
      move:{scene:'house', off:0},
      audio:{play:'show', at:4292, stop:'preshow'},
      look(){ all(0); onTheCloth(); set(FRONT, 0.4, '#bfe08a'); }},
@@ -15872,6 +15891,7 @@ function plotBeetlejuice(){
       n:L.n, at:L.at, label:L.label, fade:L.fade, follow:null,
       lx:snapshotLX(), fly:snapshotFly(), sfx:null,
       house:L.house, work:0, practical:0, haze:L.haze,
+      lobby:L.lobby,                  // undefined means LEAVE THE FOYER ALONE (BH)
       rain:0, storm:false, fire:null,
       neon:L.neon === undefined ? 1 : L.neon,
       scene:L.scene || null,
