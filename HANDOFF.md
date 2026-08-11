@@ -20,7 +20,7 @@ theater_game/
   README.md          the GitHub front page
   src/               the 30 parts it is built from (build.sh has the order)
   tests/             eighteen suites — npm install, then npm test
-  assets/audio/      the show's two recordings — GITIGNORED (docs/AUDIO.md)
+  assets/audio/      the show's three recordings — COMMITTED (docs/AUDIO.md)
   tools/             probes that draw pictures — see tools/README.md
 ```
 
@@ -224,7 +224,133 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **PUT THE SOUND ON THE HEADSET** (2026-08-11)
+## NEXT SESSION: **THE HEADSET, WITH SOUND THIS TIME** (2026-08-11)
+
+Cache-bust **`?v=20`**. **The recordings are in the repo now** (RULING BI), so
+Pages serves them and the Quest has sound with nothing to copy and nothing to
+host. That closes the setup step every previous list opened with.
+
+**1. Is 4.6 too much?** Eight blinders at FULL, a metre from your face, **five
+times** the light they had (0.866 → 4.427 per unit, measured). This is the one
+change in the round that could genuinely hurt and it wants a verdict before it
+stays. It is one constant: `BLIND_POWER` in `buildRig`. `AUD_STROBE_HZ` stays
+at 9 deliberately — five times the light is a reason to be *more* careful about
+the 15–20Hz photosensitive band, not less.
+
+**2. Does the purple sweep read now?** Two real lights at 1.505 and four
+beams, where before it was two at 0.43 flat and **nothing at all in a headset**.
+If it still reads thin, the answer is already written down and does not need
+rediscovering: the floor pool is clipped to the stage box (`p4`), so the four
+unreserved movers land nothing on the seats. A purple decal crawling over the
+stalls costs no per-pixel light — the right shape for a Quest — but needs a
+seating-floor model per venue (the Palace rakes linearly through
+`houseFloorY`; each Arc house carries a stepped `H.rake`). **First thing to
+build if he says thin.** Spec §2.
+
+**3. Does the foyer going out at GO read from a seat**, or only from the door?
+And does it come back at the interval in time to be useful?
+
+**4. Does the join sound?** Act two resumes at 4292 out of a **different file**
+now. The cut is one AAC frame inside a stretch the show never plays, and
+arithmetic says it is seamless — but no suite in this repo can hear.
+
+**5. Does the sound sit on the music?** Still open from last time and now
+actually answerable: RULING BB has never been observed, because there has never
+been audio on the headset. If the cues land with the show rather than near it,
+the drift question open since AP is closed.
+
+**6. Everything from the last list that hardware still owns** — the colour that
+is HIS not ours, the 30-second fade at 30:00 reading as intentional, "light
+brown" for the Maitlands house, and whether 14 extra channels cost frames
+(`VR.perf` on the wrist is the only thing that knows).
+
+**Still owed and unblocked:** his `.glb` models, one small PR each
+(`docs/MODELING.md` is the contract). **Shelved:** the portal rebuild,
+unreviewed on the local `bj-portal` branch (see STATE).
+
+**Watch:** `tests/smoke.js` still flakes under full-suite load and passes alone
+every time. Not a regression of this round either.
+
+## DONE — 2026-08-11: the first headset verdict, answered (#125–#127, BF–BI)
+
+The owner ran the sound round in the headset and came back with four things in
+one line: the blinders are not bright enough, the purple sweeps at the start
+are not happening, the lobby lights should go out when the show starts, and the
+show audio should be split in half so it fits.
+
+**TWO OF THE FOUR WERE ONE FAULT, AND THE PATTERN ENGINE WAS NOT IN IT.** A
+throwaway probe stepped four seconds of the pre-show cue through the frame loop
+before a line was written, and the sweep was running perfectly — pan 0 → 45.6,
+tilt −64 → −42.9, `#2fbf5f` → `#7e3fbe`. What the audience rig could not do was
+put light on the audience: six movers won 2 of the 8 real lights and **none of
+the 4 a headset hands out**, and eight blinders at "as bright as posible" burned
+**0.866 each against one FOH lantern at 45% on 1.364**. The TRAPS advice —
+*write a probe when you cannot picture it* — turned two vague complaints into
+one measured number, and stopped a session being spent on the pattern engine.
+
+**Four rulings.** **BF**: `power` was doing two jobs — ranking who wins one of
+the eight real lights *and* setting how bright it burns — so RULING BC's very
+sensible 0.9 quietly capped the blinders at a fifth of a front light, and
+nothing here could see it. `rank` and `power` are now separate; rank defaults
+to power, so all 25 stage channels in all three houses are unchanged to the
+byte. **BG**: the audience rig gets a reserved share of the pool —
+`AUD_LIGHT_RESERVE = 2`, a **ceiling and never a floor**, claimed only while an
+audience unit is lit, which across 94 cues is the pre-show, four cues at the
+top and two moments in act two. **BH**: a cue may say `lobby:` and **saying
+nothing leaves it alone** — the foyer had burned through every performance of
+all five shows because no cue had ever carried the field. **BI**: the show
+track is two files and they are **committed**, which amends BA.
+
+**BA is amended rather than repealed, and both sides are kept.** Its first
+reason — 134MB against GitHub's 100MB hard limit — died when the track was
+split (69.4MB + 70.1MB). Its other two were the owner's to overrule and he did.
+The assertion that demanded the opposite was **reversed in place**: it now
+checks the three named files are really in the index and that the directory
+still refuses everything else. The AO/AV precedent, third time.
+
+**The split is invisible to the plot, which was the actual requirement.** The
+cut point is FREE — the act-break cue stops the track at 4269 and act two
+resumes at 4292, so the join sits inside a silence the show already had. Each
+half carries the `offset` where it begins; the clock is `offset + currentTime`
+and a seek is `at - offset`. **Not one of his timestamps changed.** Verified to
+the sample: 4292.023 + 4334.794 against a whole of 8626.794 is a 23ms overlap,
+exactly one AAC frame, inside the unheard stretch.
+
+**Fourteen assertions, every one negative-checked against a WRONG
+implementation** — the reserve at 0 and at 4 and made unconditional, the power
+back at 0.9, the rank raised over a stage lantern, the lobby field removed and
+then applied unconditionally, the stage swap forgetting the foyer, the
+transport reading `currentTime` raw, `audPlay` seeking the raw `at`, the offset
+off by the interval, the pre-show music allowed to be the clock, the binary pin
+commented out, and one manifest file quietly untracked.
+
+**And the negative check that taught something new, now in TRAPS:** one
+mutation **silently matched nothing** — the two power constants share a single
+`const` statement — so it built an unchanged file and the suite correctly
+passed. *A negative check whose mutation does not apply reads exactly like an
+assertion that does not fire*, and the wrong conclusion ("my assertion is
+weak") has the same shape as the right one. Prove the mutation landed before
+reading the result. Its sibling has been in this file since #104: *a negative
+check that does not fail means the ASSERTION is weak.* The two are told apart
+only by looking.
+
+**Also new in TRAPS:** `* text=auto eol=lf` decides binary by **content
+heuristic**, and the repo needs that rule because `build.sh` breaks under CRLF.
+A 70MB AAC file that lost the coin toss would be rewritten on checkout and
+**nothing in this repo can hear**. `.gitattributes` now names the extensions
+`binary` — including `.glb`, before a single model has arrived, because the
+import fallback is silent by design. Checked after committing: all three files
+byte-identical between disk and the index.
+
+**Two decisions taken rather than asked about, both written into the spec so
+they are not rediscovered as bugs:** the lobby is scoped to the **Palace**
+foyer, because the Arc's is a different circuit shared between two auditoria
+and dimming it for one house would black out the other's front of house
+mid-interval; and the house floor pool is **deferred**, because with real light
+now landing on the seats it may not be needed — and if it is, it is the first
+thing to build.
+
+## NEXT SESSION: **PUT THE SOUND ON THE HEADSET** (2026-08-11) — SUPERSEDED, see above
 
 The show has a soundtrack and a full light plot now, and **not one second of
 either has been seen or heard.** Cache-bust **`?v=19`**.
