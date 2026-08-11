@@ -10,7 +10,14 @@ Three findings, verbatim:
 > tubes"
 
 He re-supplied the reference photographs alongside the report. Rulings continue
-the sequence; the last round ended at **AV**. This one takes **AW–AY**.
+the sequence; the last round ended at **AV**. This one takes **AW–AZ**.
+
+**Amended the same evening:** the owner proposed modelling the sets himself —
+"what if i 3d model each set myself then you just have to scale and paint
+them", settled as "make anything that isnt a set like curtain and drops". So
+the division of labour is: **he models the sets, this side builds everything
+that is not a set** — curtains, drops, the sign, the marquee, the portal — and
+all the machinery. RULING AZ carries the import pipeline.
 
 ---
 
@@ -41,10 +48,15 @@ detail costs no extra draw calls. No external assets — the single-file rule
 stands; every texture is painted in a 2D canvas at build time, the way
 `bjBackdropTex`, `bjSignTex` and `bjCurtainCanvas` already work.
 
-Scope is **everything** (owner's pick, 2026-08-10: "Redo everything"):
-the nine scenes, the three house dressings, the flown sign, the show curtain
-and the marquee — the last two were built to photo in #108 and did not read;
-they are redone, which supersedes #108's execution but not AV itself.
+Scope is **everything** (owner's pick, 2026-08-10: "Redo everything") — but
+split (the same evening's amendment): **the owner models the sets himself;
+this ruling now covers only what is not a set** — the show curtain, the
+graveyard sky/backdrop cloth, the house-exterior cloth, the flown sign and the
+marquee. The last two were built to photo in #108 and did not read; they are
+redone, which supersedes #108's execution but not AV itself. The built scenes
+as they stand today remain in place as **stand-ins** until the owner's model
+of each set arrives and replaces it (RULING AZ) — the show is never broken
+while he works.
 
 ### The reference table
 
@@ -149,6 +161,40 @@ family joins them: **no piece reaches the stage except by travelling.** The
 old assertion protects the lighting plot; the new one protects the point of
 this ruling.
 
+## RULING AZ — the owner models the sets; the game learns to import them
+
+The owner's proposal, verbatim: "what if i 3d model each set myself then you
+just have to scale and paint them" — settled to a split where he models
+anything that is a set and this side makes "anything that isnt a set like
+curtain and drops".
+
+This pulls forward what the 2026-08-09 outside review filed under "later, for
+richness": model import. The terms:
+
+- **Format:** `.glb` (binary glTF, textures embedded), one file per set,
+  committed under `assets/` in the repo. Real-world scale in **meters**
+  (Blender's default export), +Y up, origin at the centre of the set's
+  footprint with the floor at 0. The full brief the owner models against —
+  per-set target dimensions, the budgets, the naming rules — lives in
+  **`docs/MODELING.md`** and is part of this round's first PR.
+- **The loader** is three r128's own `GLTFLoader`, vendored into a new `src/`
+  part (the single-file rule holds for CODE; the models are assets, fetched at
+  runtime). **Graceful fallback is mandatory:** if a fetch fails — `file://`,
+  offline, a model not yet delivered — the scene keeps its built stand-in and
+  says nothing. A missing model is a normal state of the world, not an error.
+- **Budgets, enforced at import** (the Quest is the reason: r128 draws every
+  eye separately and every material is a draw call): ≤ 30k triangles per set,
+  ≤ 8 materials per set, textures ≤ 2048px. A model over budget is refused
+  with a console line saying which budget and by how much — never silently
+  accepted.
+- **Naming rules:** meshes named `walk_*` become walkable floors
+  (`sceneWalk`); everything else is scenery. No lights, no cameras, no
+  animations in the export.
+- **The swap-in:** a delivered model replaces the built stand-in inside the
+  same scene group, so it rides the same wagon, the same movers, the same
+  layer discipline and the same choreography (RULING AY) untouched. One PR per
+  delivered set: scale, place, wire walkables, verify budgets, suites green.
+
 ---
 
 ## What this does to the cue list
@@ -180,8 +226,9 @@ stands as re-timed in #104–#113. What changes per cue:
 
 ## Delivery
 
-The usual linear chain, one concern per PR, never stacked: spec+plan first,
-then the changeover engine, then the portal, then the sets photo by photo
-(graveyard; the house and its three dressings; attic and roof; closet and
-bedroom; netherworld; sign, show curtain and marquee), then the re-choreographed
-cue list, then the record. Roughly 8–10 PRs.
+The usual linear chain, one concern per PR, never stacked: spec+plan+modeling
+brief first, then the changeover engine, then the portal, then the soft goods
+(show curtain and backdrop cloth; exterior cloth, sign and marquee), then the
+model-import pipeline, then the choreography data and cue wiring, then the
+record — about 8 PRs. After that, **one PR per set the owner delivers**, for
+as long as the models keep coming.
