@@ -277,7 +277,7 @@ const probe = `
     return changes+' set change(s), covered by — '+how.join(', ');
   });
 
-  P('firing the act two cue actually swaps the set', ()=>{
+  P('firing the act two cue actually swaps the set — through a changeover', ()=>{
     showLoad('beetlejuice');
     const i = CUES.findIndex(c=>c.scene === 'house');
     if(i < 0) throw new Error('no cue plays in the house');
@@ -285,9 +285,15 @@ const probe = `
     if(SHOW.scene !== 'house') throw new Error('the live scene is still '+SHOW.scene);
     const cem = sceneFind('cemetery');
     if(cem.on) throw new Error('the cemetery is still on with the house');
+    /* since the choreography landed the cemetery LEAVES BY TRAVELLING
+       (RULING AY): the moment the cue fires it is marked off but still
+       drawn, its hills on their way to the wings */
     let lit = 0; cem.group.traverse(o=>{ if(o.layers && o.layers.mask !== 0) lit++; });
-    if(lit) throw new Error(lit+' cemetery pieces still test against a ray');
-    return 'cue '+CUES[i].n+' put the house on and made the cemetery inert';
+    if(!lit) throw new Error('the cemetery popped off instead of travelling out');
+    for(let k = 0; k < 600; k++) updateStorm(1/60);
+    lit = 0; cem.group.traverse(o=>{ if(o.layers && o.layers.mask !== 0) lit++; });
+    if(lit) throw new Error(lit+' cemetery pieces still test against a ray after the changeover');
+    return 'cue '+CUES[i].n+' put the house on; the cemetery travelled off and went inert';
   });
 
   console.log('--- the house, from inside ---');
@@ -1027,6 +1033,229 @@ const probe = `
     if(back.group.userData.sceneOff !== true) throw new Error('the room never finished hiding');
     if(back.dressOn !== 'bj') throw new Error('the deferred dress never landed after the swap');
     return 'left mid-travel at '+off.toFixed(2)+', found there, finished, and dressed';
+  });
+
+  console.log('--- the choreography data: every set travels (RULING AY) ---');
+
+  /* the sets that legitimately carry NO part movers: the bare stage changes
+     instantly on purpose, the wagon and the exterior keep their whole-group
+     movers and cue-authored moves, and the sign is an always piece with a
+     travel of its own.  EVERYTHING else must choreograph. */
+  const CHOREO_EXEMPT = ['bare','interior','house','bjSign'];
+
+  P('every set that plays carries a part mover with a real throw', ()=>{
+    showLoad('beetlejuice');
+    const missing = [], has = [];
+    for(const sc of SHOW.scenes){
+      if(CHOREO_EXEMPT.indexOf(sc.name) >= 0) continue;
+      const ks = sc.pmv ? Object.keys(sc.pmv) : [];
+      const real = ks.filter(k=>Math.abs(sc.pmv[k].out - sc.pmv[k].home) > 1);
+      if(!real.length) missing.push(sc.name);
+      else has.push(sc.name+':'+real.join('+'));
+    }
+    if(missing.length)
+      throw new Error(missing.join(', ')+' would POP — no part mover with a real throw');
+    /* swept over SHOW.scenes, so a scene added later cannot ship popless —
+       and the count pins that the sweep is actually sweeping */
+    if(has.length < 6) throw new Error('only '+has.length+' choreographed sets');
+    return has.join(' ');
+  });
+
+  /* the plot's own spine, driven through the REAL cue path — fireCue and
+     showCueExtras, time stepped through updateStorm — with the no-pop
+     invariant read off WORLD matrices at every few frames (the frozen-group
+     trap: position.x reads back your own write) */
+  P('the spine of the plot never pops: every entrance starts at OUT', ()=>{
+    showLoad('beetlejuice');
+    const AX = {x:12, y:13, z:14};
+    const raw = m => m.group.matrixWorld.elements[AX[m.axis]];
+    scene.updateMatrixWorld(true);
+    const base = {};
+    for(const sc of SHOW.scenes){ if(!sc.pmv) continue; base[sc.name] = {};
+      for(const k in sc.pmv) base[sc.name][k] = raw(sc.pmv[k]); }
+    const wOff = (sc, k) => sc.pmv[k].home + raw(sc.pmv[k]) - base[sc.name][k];
+    const check = when => {
+      scene.updateMatrixWorld(true);
+      for(const sc of SHOW.scenes){
+        if(!sc.pmv || CHOREO_EXEMPT.indexOf(sc.name) >= 0) continue;
+        for(const k in sc.pmv){
+          const m = sc.pmv[k], wo = wOff(sc, k);
+          const lo = Math.min(m.home, m.out) - 0.02, hi = Math.max(m.home, m.out) + 0.02;
+          if(wo < lo || wo > hi)
+            throw new Error(sc.name+'.'+k+' is off its track at '+wo.toFixed(2)+' ('+when+')');
+          /* a HIDDEN set may be silently parked toward OUT by a changeover —
+             layers off, nobody sees it — so darkness is not asserted against
+             travel.  What darkness must never show is a lit piece: */
+          if(sc.group.userData.sceneOff && sc.group.visible)
+            throw new Error(sc.name+' draws while marked off ('+when+')');
+        }
+      }
+    };
+    const fire = i => {
+      const c = CUES[i];
+      const sc = c.scene ? sceneFind(c.scene) : null;
+      const wasDrawn = sc ? !sc.group.userData.sceneOff : true;
+      fireCue(i);
+      /* the ruling itself: no piece reaches the stage except by travelling.
+         A hidden set a cue brings on shows its FIRST frame at OUT — never,
+         ever at home. */
+      if(sc && sc.pmv && !wasDrawn && CHOREO_EXEMPT.indexOf(sc.name) < 0){
+        scene.updateMatrixWorld(true);
+        for(const k in sc.pmv){
+          const m = sc.pmv[k], wo = wOff(sc, k);
+          if(Math.abs(wo - m.home) < 0.05)
+            throw new Error(c.label+' brought '+sc.name+' on with '+k+' already HOME — a pop');
+          if(Math.abs(wo - m.out) > 0.05)
+            throw new Error(sc.name+'.'+k+' came on at '+wo.toFixed(2)+', not at OUT '+m.out);
+        }
+      }
+      check('cue '+c.n+' fired');
+    };
+    const step = n => { for(let f = 0; f < n; f++){ updateStorm(1/60); if(f % 10 === 0) check('travelling'); } };
+    const at = re => { const i = CUES.findIndex(c=>re.test(c.label)); if(i < 0) throw new Error('no cue matches '+re); return i; };
+    fire(at(/9:45/));      step(480);    // the graveyard empties to the wings
+    fire(at(/10:40/));     step(480);    // the wagon on; the emptied set hides
+    fire(at(/32:50/));     step(480);    // the attic flies in
+    fire(at(/42:34/));     step(480);    // attic out, closet in, both moving
+    fire(at(/48:49/));     step(480);    // and back to the attic
+    fire(at(/52:00/));     step(480);    // the bedroom
+    fire(at(/56:00/));     step(480);    // the roof
+    fire(at(/1:02:51/));   step(480);    // roof out, the Deetz wagon on
+    fire(at(/1:25:25/));   step(480);    // the attic again, act two
+    fire(at(/1:39:00/));   step(480);    // the netherworld flies in
+    fire(at(/1:53:00/));   step(480);    // and out, the house back on
+    return 'eleven changeovers stepped: every entrance from OUT, every part on its track';
+  });
+
+  P('9:45 — the hills RUN TO THE WINGS and the cloth stays on its line', ()=>{
+    showLoad('beetlejuice');
+    const i = CUES.findIndex(c=>/9:45/.test(c.label));
+    if(i < 0) throw new Error('the 9:45 cue is gone');
+    const c = CUES[i];
+    /* the beat is PART MOVES on the cue — a dress on a drawn set defers
+       (RULING AY), so a dress-only cue here would be an invisible no-op */
+    const mv = Array.isArray(c.move) ? c.move : (c.move ? [c.move] : []);
+    const parts = mv.filter(m=>m && m.scene === 'cemetery' && m.part);
+    if(parts.length < 2)
+      throw new Error('the cue does not move the hills by name — the beat would not play');
+    if(!parts.some(m=>m.off < -5) || !parts.some(m=>m.off > 5))
+      throw new Error('the hills do not split to BOTH wings');
+    if(c.scene !== 'cemetery') throw new Error('the beat became a scene change to '+c.scene);
+    const sc = sceneFind('cemetery');
+    const wx = o => { scene.updateMatrixWorld(true); return o.matrixWorld.elements[12]; };
+    const gR = sc.pmv.hillR.group, gL = sc.pmv.hillL.group;
+    const r0 = wx(gR), l0 = wx(gL);
+    const bd = FLY[13], trim0 = bd.target;
+    fireCue(i);
+    if(sc.group.userData.sceneOff) throw new Error('the set went off — only the scenery leaves');
+    for(let k = 0; k < 120; k++) updateStorm(1/60);         // two seconds in
+    const rMid = wx(gR), lMid = wx(gL);
+    if(!(rMid < r0 - 1)) throw new Error('the right hill has not RUN: '+rMid.toFixed(2));
+    if(!(lMid > l0 + 1)) throw new Error('the left hill has not RUN: '+lMid.toFixed(2));
+    for(let k = 0; k < 300; k++) updateStorm(1/60);         // and the rest
+    if(Math.abs(wx(gR) - (r0 - BJ_HILL_OUT)) > 0.05 || Math.abs(wx(gL) - (l0 + BJ_HILL_OUT)) > 0.05)
+      throw new Error('the hills never reached the wings');
+    /* the painted cloth is a GOOD on line 14; the beat leaves its trim alone */
+    if(Math.abs(bd.target - trim0) > 0.01) throw new Error('the beat moved the backdrop line');
+    if(Math.abs(bd.target - TRIMS.bjBackdrop) > 0.01) throw new Error('the backdrop is not in for the beat');
+    if(!sc.on || sc.group.userData.sceneOff) throw new Error('the emptied stage went dark');
+    return 'hills out to +-'+BJ_HILL_OUT+' in view over '+(420/60)+'s, cloth still at '+bd.target.toFixed(1);
+  });
+
+  P('the graveyard never returns in the plot, but a recall brings the hills home', ()=>{
+    showLoad('beetlejuice');
+    const i945 = CUES.findIndex(c=>/9:45/.test(c.label));
+    /* the plot never plays the cemetery again after 10:40 — the recall path
+       is the MANUAL scene panel, and it must not find a hollow set */
+    for(let k = i945 + 1; k < CUES.length; k++)
+      if(CUES[k].scene === 'cemetery')
+        throw new Error('cue '+CUES[k].n+' recalls the cemetery — this test is out of date');
+    const sc = sceneFind('cemetery');
+    const wx = o => { scene.updateMatrixWorld(true); return o.matrixWorld.elements[12]; };
+    const gR = sc.pmv.hillR.group;
+    const rHome = wx(gR);
+    fireCue(i945);
+    for(let k = 0; k < 400; k++) updateStorm(1/60);        // emptied, parked out
+    fireCue(i945 + 1);                                     // 10:40 — wagon on, cemetery off
+    for(let k = 0; k < 400; k++) updateStorm(1/60);
+    if(!sc.group.userData.sceneOff) throw new Error('the cemetery never went off');
+    if(Math.abs(wx(gR) - (rHome - BJ_HILL_OUT)) > 0.05)
+      throw new Error('the hills are not parked in the wings');
+    /* the choreographed recall: on at OUT, and it travels home */
+    sceneChangeTo('cemetery');
+    if(sc.group.userData.sceneOff) throw new Error('the recall did not bring the set on');
+    if(Math.abs(wx(gR) - rHome) < 0.5) throw new Error('the recall POPPED the hills home');
+    for(let k = 0; k < 400; k++) updateStorm(1/60);
+    if(Math.abs(wx(gR) - rHome) > 0.02)
+      throw new Error('the hills never travelled home: '+wx(gR).toFixed(2));
+    /* and the INSTANT recall — boot and preset path — snaps them home */
+    sceneChangeTo('interior');
+    for(let k = 0; k < 60; k++) updateStorm(1/60);         // a second on its way out
+    sceneShow('cemetery');
+    if(Math.abs(wx(gR) - rHome) > 0.02)
+      throw new Error('sceneShow left a hill at '+wx(gR).toFixed(2));
+    return 'no plot recall; changeTo travelled the hills home, sceneShow snapped them';
+  });
+
+  P('what you stand on rides its part: the roof deck flies with the roof', ()=>{
+    showLoad('beetlejuice');
+    /* structural first: every walkable of a flying set lives INSIDE the part
+       group, so no future piece can be filed outside the thing that moves */
+    for(const n of ['attic','closet','bedroom','roof']){
+      const sc2 = sceneFind(n);
+      for(const o of sc2.walk){
+        let p = o, inside = false;
+        while(p){ if(sc2.pmv && sc2.pmv.all && p === sc2.pmv.all.group) inside = true; p = p.parent; }
+        if(!inside) throw new Error(n+' files a walkable outside its own mover');
+      }
+    }
+    sceneShow('roof');
+    const sc = sceneFind('roof');
+    const deck = sc.walk[0];
+    if(!deck) throw new Error('the roof files nothing walkable');
+    if(WALKABLE.indexOf(deck) < 0) throw new Error('the deck is not walkable with the roof on');
+    const wy = o => { scene.updateMatrixWorld(true); return o.matrixWorld.elements[13]; };
+    const y0 = wy(deck);
+    sceneChangeTo('bare');                                 // the roof flies out
+    for(let k = 0; k < 120; k++) updateStorm(1/60);        // two seconds up
+    const yMid = wy(deck);
+    if(!(yMid > y0 + 1)) throw new Error('the deck did not ride the roof up: '+yMid.toFixed(2));
+    if(WALKABLE.indexOf(deck) < 0) throw new Error('the deck left WALKABLE while the roof was still drawn');
+    for(let k = 0; k < 400; k++) updateStorm(1/60);        // gone
+    if(WALKABLE.indexOf(deck) >= 0) throw new Error('you can stand on a roof that has flown out');
+    sceneShow('roof');
+    if(Math.abs(wy(deck) - y0) > 0.02) throw new Error('the deck came back at '+wy(deck).toFixed(2));
+    if(WALKABLE.indexOf(deck) < 0) throw new Error('the deck did not come back into WALKABLE');
+    return 'deck rode y '+y0.toFixed(2)+' through '+yMid.toFixed(2)+', left WALKABLE only once gone';
+  });
+
+  P('the attic flies OUT through the header before it goes dark', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('attic');
+    const m = sc.pmv && sc.pmv.all;
+    if(!m) throw new Error('the attic carries no all-of-it part');
+    if(m.axis !== 'y') throw new Error('the attic travels on '+m.axis+' — it is a flown piece');
+    if(m.out <= 9.2) throw new Error('out at '+m.out+' does not clear the 9.2m header');
+    sceneShow('attic');
+    const wy = o => { scene.updateMatrixWorld(true); return o.matrixWorld.elements[13]; };
+    const y0 = wy(m.group);
+    sceneChangeTo('closet');                               // the 42:34 change
+    let frames = 0, maxDrawnY = -1;
+    while(!sc.group.userData.sceneOff && frames < 900){
+      updateStorm(1/60); frames++;
+      if(sc.group.userData.sceneOff) break;
+      const y = wy(m.group) - y0;
+      let lit = 0; sc.group.traverse(o=>{ if(o.isMesh && o.layers.mask !== 0) lit++; });
+      if(!lit) throw new Error('dark at y=+'+y.toFixed(2)+' — it vanished mid-flight');
+      if(y > maxDrawnY) maxDrawnY = y;
+    }
+    if(sc.group.userData.sceneOff !== true) throw new Error('it never went dark at all');
+    if(maxDrawnY <= 9.2)
+      throw new Error('it was last seen at y=+'+maxDrawnY.toFixed(2)+' — it went dark inside the opening');
+    const secs = frames/60;
+    if(secs < 3) throw new Error('it cleared in '+secs.toFixed(2)+'s — that is a pop, not a fly');
+    if(secs > 10) throw new Error('it took '+secs.toFixed(1)+'s — the show would wait on it');
+    return 'drawn to y=+'+maxDrawnY.toFixed(2)+' over '+secs.toFixed(1)+'s, dark only past the header';
   });
 
   /* act one now plays across four sets; the interval re-dresses for act two */

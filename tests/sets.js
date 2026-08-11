@@ -640,13 +640,17 @@ const probe = `
 
   P('a set with NO part movers still changes instantly under the changeover', ()=>{
     showLoad('beetlejuice');
-    sceneChangeTo('attic');                  // neither the attic nor the bedroom carries parts
-    const a = sceneFind('attic'), b = sceneFind('bedroom');
-    sceneChangeTo('bedroom');                // no run(): the swap must not wait a frame
-    if(a.group.userData.sceneOff !== true) throw new Error('the attic waited to hide');
-    if(litIn(a.group)) throw new Error('attic pieces still live after an instant change');
-    if(b.group.userData.sceneOff !== false) throw new Error('the bedroom is not on');
-    return 'attic off and inert, bedroom on, in the same call — the other shows keep their swap';
+    /* the attic and the bedroom fly now (the choreography round), so the
+       part-less pair is the exterior and the bare stage — neither carries
+       a part mover, and neither ever should without choreography of its own */
+    sceneChangeTo('house');
+    const a = sceneFind('house'), b = sceneFind('bare');
+    if(a.pmv || b.pmv) throw new Error('this test needs two scenes with no parts');
+    sceneChangeTo('bare');                   // no run(): the swap must not wait a frame
+    if(a.group.userData.sceneOff !== true) throw new Error('the house waited to hide');
+    if(litIn(a.group)) throw new Error('house pieces still live after an instant change');
+    if(b.group.userData.sceneOff !== false) throw new Error('the bare stage is not on');
+    return 'house off and inert, bare on, in the same call — the other shows keep their swap';
   });
 
   P('a cue with scene: runs the changeover, not an instant swap', ()=>{
@@ -662,6 +666,24 @@ const probe = `
     run(300, 1/60);
     if(Math.abs(wx(s.g.p)) > 0.01) throw new Error('never arrived home');
     return 'the cue put it on at -10.00, seen at '+mid.toFixed(2)+', home 0.00';
+  });
+
+  P('a cue move that names a PART retargets that part alone — and misses are no-ops', ()=>{
+    showLoad('beetlejuice');
+    const s = partScene('__pp', [{n:'h', out:-7, speed:2}]);
+    sceneChangeTo('__pp'); run(300, 1/60);       // on, the part home
+    showCueExtras({move:{scene:'__pp', part:'h', off:-7}});
+    if(s.sc.pmv.h.target !== -7)
+      throw new Error('the part move did not land — the move branch ignores part:');
+    if(!litIn(s.sc.group)) throw new Error('a part move must not take the scene off');
+    showCueExtras({move:{scene:'__pp', part:'ghost', off:-3}});   // no such part
+    if(s.sc.pmv.h.target !== -7) throw new Error('a missing part hit the wrong mover');
+    if(sceneMovePartTo('nowhere', 'h', 1) !== null)
+      throw new Error('a missing scene is not a no-op');
+    run(300, 1/60);
+    if(Math.abs(wx(s.g.h) + 7) > 0.01)
+      throw new Error('the part never travelled: '+wx(s.g.h).toFixed(2));
+    return 'part retargeted through the cue, scene stayed on; misses were no-ops';
   });
 
   P('an instant sceneShow snaps parked parts HOME — no hollow set', ()=>{
