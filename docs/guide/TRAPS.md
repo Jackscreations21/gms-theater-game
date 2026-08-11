@@ -390,6 +390,19 @@ against this list before opening a PR; **add new traps as you hit them.**
 
 ## Environment
 
+- **A commit pushed to a branch whose PR is ALREADY MERGED is stranded, and
+  nothing says so.** GitHub does not reopen the PR and does not open a new one;
+  the push succeeds, the branch moves ahead of `main`, and the work simply is
+  not on `main`. It happened to the record corrections at the end of the
+  BA–BE round — merged `#123`, then pushed a follow-up to `bj-act-two`, and the
+  owner spotted the missing PR before the repo did. **After any follow-up push,
+  check it actually landed:**
+  ```sh
+  git fetch && git merge-base --is-ancestor <sha> origin/main && echo on main
+  ```
+  A late correction needs a NEW branch off fresh `main` and its own PR — and
+  its text usually needs rewriting too, because "open as of this writing" stops
+  being true the moment the parent merges.
 - PowerShell 5.1 mangles `git commit -m` with double quotes — message to
   file, `-F` it.
 - Never `git add -A` while agent worktrees exist under `.claude/` —

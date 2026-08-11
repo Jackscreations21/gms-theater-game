@@ -5,10 +5,11 @@ fetch`, compare `origin/main`, then read this.
 
 ## THE ROUND IS DONE — his sound and his light plot (rulings BA–BE)
 
-**All three PRs are in: #121, #122 and this one.** The show is now HIS: two
+**All three PRs are MERGED — #121, #122, #123.** The show is now HIS: two
 recorded tracks, an audience rig, and sixty-six of his own timestamped looks
-across both acts. `main` rebuilds at **1,184,074 bytes**, 18/18 suites,
-`real.js` fatal null. Cache-bust for the headset: **`?v=19`**.
+across both acts. `main` = **f7a30d1**, rebuilds byte-identical at **1,184,074
+bytes**, **94 cues**, 18/18 suites, `real.js` fatal null. Cache-bust for the
+headset: **`?v=19`**.
 
 **What only hardware can answer** is at the bottom of HANDOFF — and this round
 added a new kind of unanswerable: *nothing about how any of this SOUNDS has been
@@ -69,12 +70,13 @@ drops the two files into `assets/audio/` locally. **On Pages the Quest will
 run silent** until he points a manifest entry at a URL he hosts — one line, no
 code change.
 
-## Where things stand
+## The round BEFORE this one — kept for why the sets are his
 
-**The look-and-transition round (rulings AW–AZ) is MERGED — five PRs,
-#115–#119.** `main` = ae45e8f, rebuilds byte-identical at **1,131,737
-bytes**, 18/18 suites, `real.js` fatal null. Cache-bust for the headset:
-**`?v=18`**.
+**The look-and-transition round (rulings AW–AZ) — five PRs, #115–#119.** Its
+headline numbers (`main` = ae45e8f, 1,131,737 bytes, `?v=18`) are **superseded
+by the block at the top of this file**; they are not deleted because this
+section is the record of *why* the owner models the sets himself, which still
+governs.
 
 The owner headset-ran the re-time round and gave three findings (sets look
 nothing like the pictures; every change pops; remove the neon tubes), then
