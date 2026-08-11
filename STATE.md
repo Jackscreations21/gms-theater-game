@@ -5,11 +5,11 @@ NOW and is updated as work happens. `HANDOFF.md` is the durable record
 written at session end; this file is the scratchpad between those
 writes. If the two disagree, this file is newer.
 
-Last updated: **2026-08-10, later the same day** — the owner supplied his OWN
-scene plot off the video, with timestamps, and it does not match what the
-fifth show built. A re-time round is IN FLIGHT: six PRs merged
-(#104–#109), two more to go. **Read "THE RE-TIME ROUND" below before
-anything else.**
+Last updated: **2026-08-10, end of session** — the owner supplied his OWN
+scene plot off the video, with timestamps, and it did not match what the
+fifth show built. **The re-time round is DONE: eleven PRs, #104–#113, all
+merged.** The show now runs his plot. **Nothing in it has met hardware —
+read "NEXT SESSION: PUT IT ON THE HEADSET" immediately below.**
 
 ---
 
@@ -100,7 +100,7 @@ with no offset.
   show only** — the other four keep their interpretation note, and there is an
   assertion pinning that the repeal did not leak.
 
-### Landed so far
+### The eleven PRs
 
 | PR | What |
 |---|---|
@@ -110,17 +110,16 @@ with no offset.
 | [#107](https://github.com/Jackscreations21/gms-theater-game/pull/107) | **a defect in #106** — the cloths were hung in FRONT of the show |
 | [#108](https://github.com/Jackscreations21/gms-theater-game/pull/108) | RULING AV — the marquee and the cloth follow the photograph |
 | [#109](https://github.com/Jackscreations21/gms-theater-game/pull/109) | **the Palace runs 4.5m deeper**, warehouse moved back with it |
+| [#110](https://github.com/Jackscreations21/gms-theater-game/pull/110) | the record caught up mid-round |
+| [#111](https://github.com/Jackscreations21/gms-theater-game/pull/111) | **the house is a wagon** — parks behind the last lineset, crosses in 4.0s |
+| [#112](https://github.com/Jackscreations21/gms-theater-game/pull/112) | **one room, three dressings** (RULING AQ) |
+| [#113](https://github.com/Jackscreations21/gms-theater-game/pull/113) | the rest in one PR: closet, roof, crypt+signset gone, confetti, **the re-timed cue list** |
 
-### Still to build
+### All of it is built
 
-1. **The wagon and its three dressings** (RULING AQ) — the big one. `interior`
-   becomes the wagon, `redecorated` becomes its Deetz dressing, a Beetlejuice
-   dressing is new. Park offset is about **z −7.9** (puts the set at −17.10 ..
-   −11.50, behind the last lineset at −10.90 with 4.4m to spare behind it).
-2. **The closet (42:34) and the roof (56:00)**, delete the crypt, retire the
-   `signset` scene.
-3. **Confetti** (2:15:00) — does not exist; a burst, not a state.
-4. **The re-timed cue list** — every `at` onto the owner's seventeen beats.
+The wagon and its three dressings, the closet and the roof, the crypt and
+sign set deleted, confetti, the neon portal, and every cue re-anchored to
+the owner's seventeen beats. 37 cues, two GO holds, ending at 2:15:00.
 
 ### The plot, as the owner gave it
 
@@ -149,11 +148,15 @@ architecture** — the attic (two open sheds either side, junk wall centre,
 string lights on a rafter), the roof set, the exterior, the marquee, and **the
 closet (the bright pink one)**.
 
+**Both things they flagged are now DONE.** The portal is a blue-green neon tube frame — four tubes round the opening and returns 5.2m into the wings — and the cemetery hills and moon came downstage of the cloth. What follows is the note as it stood when they were still open:
+
 **Two things they changed:** the show portal is a **blue-green neon tube frame**
 round the whole opening — ours is weathered clapboard and is wrong. And the
 graveyard plainly has a painted cloud sky BEHIND cut hills, which settles an
 open question the other way: the cemetery's three hills need to come downstage
 of the cloth, not the cloth upstage of them.
+
+**Confirmed since:** the pink photo is the CLOSET, the purple one is LYDIA'S BEDROOM, and **the house exterior never changes**, so there is no Deetz exterior to build. The note as it stood:
 
 **Still needed:** the purple photo with the picture frames is unidentified (my
 guess is Lydia's bedroom, unconfirmed). Nothing yet for the Deetz exterior —
