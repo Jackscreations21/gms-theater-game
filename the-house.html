@@ -18897,18 +18897,30 @@ function plotBeetlejuice(){
    and any entry may carry `scale`: a model delivered in feet gets 0.3048
    (docs/MODELING.md says meters, but the brief promises to scale on import
    if the owner says feet when he hands one over).
+
+   THE FILENAMES ARE THE OWNER'S VOCABULARY, NOT OURS — docs/MODELING.md
+   calls them the Graveyard, the Netherworld and Beetlejuice, so the files
+   are bj-graveyard.glb, bj-netherworld.glb and bj-dress-beetlejuice.glb,
+   whatever the scenes are keyed in here.  The fallback is SILENT, so a file
+   named to the contract that the manifest never fetches would simply never
+   load, with no feedback to anyone — a test pins the manifest's url list to
+   the doc's, both directions, so the two cannot drift apart.
+
+   bj-house.glb is THE WAGON SHELL (scene: interior — "one shell plus three
+   dressing files"), not the exterior miniature: the exterior is not on the
+   owner's list of sets to model.
    -------------------------------------------------------------------------- */
 const BJ_MODELS = {
-  house:     'assets/bj-house.glb',
-  attic:     'assets/bj-attic.glb',
-  closet:    'assets/bj-closet.glb',
-  bedroom:   'assets/bj-bedroom.glb',
-  roof:      'assets/bj-roof.glb',
-  cemetery:  'assets/bj-cemetery.glb',
-  afterlife: 'assets/bj-afterlife.glb',
-  dressMaitland: {scene:'interior', dress:'maitland', url:'assets/bj-dress-maitland.glb'},
-  dressDeetz:    {scene:'interior', dress:'deetz',    url:'assets/bj-dress-deetz.glb'},
-  dressBj:       {scene:'interior', dress:'bj',       url:'assets/bj-dress-bj.glb'}
+  house:       {scene:'interior', url:'assets/bj-house.glb'},
+  attic:       'assets/bj-attic.glb',
+  closet:      'assets/bj-closet.glb',
+  bedroom:     'assets/bj-bedroom.glb',
+  roof:        'assets/bj-roof.glb',
+  graveyard:   {scene:'cemetery',  url:'assets/bj-graveyard.glb'},
+  netherworld: {scene:'afterlife', url:'assets/bj-netherworld.glb'},
+  dressMaitland:    {scene:'interior', dress:'maitland', url:'assets/bj-dress-maitland.glb'},
+  dressDeetz:       {scene:'interior', dress:'deetz',    url:'assets/bj-dress-deetz.glb'},
+  dressBeetlejuice: {scene:'interior', dress:'bj',       url:'assets/bj-dress-beetlejuice.glb'}
 };
 /* the two manifest shapes, normalised to one */
 function bjModelEntry(key){

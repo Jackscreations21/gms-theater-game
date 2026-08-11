@@ -1632,7 +1632,7 @@ const probe = `
      probe, out in node, because GLTFLoader.parse resolves through promise
      microtasks a synchronous probe can never see.  SHOW and WALKABLE are
      consts of this eval program, invisible from outside — hand them out. */
-  window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE};
+  window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE, BJ_MODELS:BJ_MODELS};
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
@@ -1712,6 +1712,35 @@ catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.spli
       e => rej(new Error('parse failed: ' + (e && e.message || e)))));
 
   console.log('--- the model import (RULING AZ): parse, validate, apply, fall back ---');
+
+  await P('the manifest fetches exactly the files docs/MODELING.md promises, both directions', async () => {
+    /* the fallback is SILENT, so a manifest url the doc never names would rot
+       unnoticed — and a documented file the manifest never fetches would be a
+       correctly-named delivery that simply never loads, with no feedback */
+    const doc = fs.readFileSync(require('path').join(__dirname, '..', 'docs', 'MODELING.md'), 'utf8');
+    const docSet = new Set(doc.match(/bj-[a-z0-9-]+\.glb/g) || []);
+    if(!docSet.size) throw new Error('MODELING.md names no files at all');
+    const manSet = new Set(Object.keys(az.BJ_MODELS).map(k => {
+      const v = az.BJ_MODELS[k];
+      return ((typeof v === 'string') ? v : v.url).replace(/^assets\//, '');
+    }));
+    const undelivered = [...docSet].filter(f => !manSet.has(f));
+    const undocumented = [...manSet].filter(f => !docSet.has(f));
+    if(undelivered.length) throw new Error('documented but never fetched: ' + undelivered.join(', '));
+    if(undocumented.length) throw new Error('fetched but never documented: ' + undocumented.join(', '));
+    if(manSet.size !== 10) throw new Error(manSet.size + ' files, the contract lists 10');
+    /* and the wagon shell is the WAGON: bj-house.glb targets the interior
+       scene (the z-slide with the dressings), never the exterior miniature */
+    const shell = az.BJ_MODELS.house;
+    if(!shell || shell.scene !== 'interior' || shell.dress)
+      throw new Error('bj-house.glb does not target the wagon shell: ' + JSON.stringify(shell));
+    for(const k of Object.keys(az.BJ_MODELS)){
+      const v = az.BJ_MODELS[k];
+      if(typeof v !== 'string' && v.scene === 'house')
+        throw new Error('an entry targets the exterior house scene: ' + k);
+    }
+    return manSet.size + ' files — contract and manifest are provably the same list, shell on the wagon';
+  });
 
   await P('with no fetch in the world, loadSetModels resolves and touches nothing', async () => {
     if(typeof w.fetch === 'function')
@@ -1869,6 +1898,32 @@ catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.spli
     w.bjDress(inr, 'deetz');
     if(mNew.layers.mask !== 0) throw new Error('the maitland model stays lit under the deetz dressing');
     return 'maitland replaced (scaled 0.3048), deetz and bj untouched, bjRedress swaps the model like a dressing';
+  });
+
+  await P('the wagon shell entry replaces the interior scenery and keeps all three dressings', async () => {
+    const inr = w.sceneFind('interior');
+    const dressGroups = [inr.dress.maitland, inr.dress.deetz, inr.dress.bj];
+    const counts = dressGroups.map(g => meshCount(g));
+    const gltf = await parseGlb(makeGlb([{name: 'shell_new', x: 0}, {name: 'walk_floor1', x: 1}]));
+    /* through the REAL manifest entry, so this test also covers the routing
+       the manifest actually declares */
+    if(!w.bjApplyModel(az.BJ_MODELS.house, gltf.scene))
+      throw new Error('the shell apply refused');
+    for(let i = 0; i < 3; i++){
+      if(dressGroups[i].parent !== inr.group)
+        throw new Error('a dressing group was stripped out with the shell');
+      if(meshCount(dressGroups[i]) !== counts[i])
+        throw new Error('a dressing lost meshes to the shell swap');
+    }
+    if(!findByName(inr.group, 'shell_new')) throw new Error('the shell never landed');
+    for(const c of inr.group.children)
+      if(dressGroups.indexOf(c) < 0 && c !== gltf.scene)
+        throw new Error('old shell scenery survived: ' + (c.name || c.type));
+    const wf = findByName(inr.group, 'walk_floor1');
+    if(inr.walk.indexOf(wf) < 0) throw new Error('the shell floor missed sc.walk');
+    if(inr.walk.length !== 1)
+      throw new Error('the stand-in landing stayed on sc.walk (' + inr.walk.length + ' entries)');
+    return 'shell replaced, dressings intact (' + counts.join('+') + ' meshes), floor wired, old landing pruned';
   });
 
   console.log(errs.length ? '--- failures: ' + errs.length + ' (with the AZ tail) ---'

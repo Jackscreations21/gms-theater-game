@@ -51,21 +51,28 @@ triangles is far cheaper than 20 materials at 10k.
 Targets, not straitjackets — but the **height cap is real**: anything taller
 than 30 ft gets cropped by the portal.
 
-| Set | Width | Height | Depth | Notes |
-|---|---|---|---|---|
-| **The house** (the wagon) | ≤ 42' | **≤ 29'** | ~20' | The big one. It SLIDES on and off, so it must clear the 30' opening with air to spare. One architecture, three dressings (Maitlands / Deetz / Beetlejuice): either one shell `bj-house.glb` plus three dressing files (`bj-dress-maitland.glb` etc.), or three complete variants — whichever is easier for you. Floors and stairs named `walk_*`. |
-| **Graveyard** | ~44' | hills ~16' | ~20' | The hills, the mound, the black tree, crosses, small mausoleums. Do NOT model the sky or the moon — the cloud sky with the cratered moon is a painted drop and is made in-game. |
-| **Attic** | ~44' | ~26' | ~16' | Two open-front junk sheds either side, slatted junk wall centre with the double doors, the hung rafter fragment. |
-| **Closet** | ~20' | ~13' | ~10' | The bright pink one, spiral door. |
-| **Bedroom** | ~33' | ~20' | ~13' | Lydia's: purple, bed, doors, picture frames. |
-| **Roof** | ~44' | ~20' | ~16' | Blue shingle ridge, dormers, brick chimney. If actors stand on it, name that face `walk_roof`. |
-| **Netherworld** | ~44' | ~30' | ~33' | The nested glowing rectangles receding upstage. The in-game version is already close — model it only if you want it better. |
+**The File column is the contract**: the import fetches EXACTLY these names
+(and the fallback is silent, so a file named anything else would simply never
+load). A test pins this list to the game's manifest, both directions.
+
+| Set | File | Width | Height | Depth | Notes |
+|---|---|---|---|---|---|
+| **The house** (the wagon) | `bj-house.glb` (the shell) + `bj-dress-maitland.glb`, `bj-dress-deetz.glb`, `bj-dress-beetlejuice.glb` | ≤ 42' | **≤ 29'** | ~20' | The big one. It SLIDES on and off, so it must clear the 30' opening with air to spare. One architecture, three dressings (Maitlands / Deetz / Beetlejuice): one shell file plus three dressing files, the four names at left. Floors and stairs named `walk_*`. |
+| **Graveyard** | `bj-graveyard.glb` | ~44' | hills ~16' | ~20' | The hills, the mound, the black tree, crosses, small mausoleums. Do NOT model the sky or the moon — the cloud sky with the cratered moon is a painted drop and is made in-game. |
+| **Attic** | `bj-attic.glb` | ~44' | ~26' | ~16' | Two open-front junk sheds either side, slatted junk wall centre with the double doors, the hung rafter fragment. |
+| **Closet** | `bj-closet.glb` | ~20' | ~13' | ~10' | The bright pink one, spiral door. |
+| **Bedroom** | `bj-bedroom.glb` | ~33' | ~20' | ~13' | Lydia's: purple, bed, doors, picture frames. |
+| **Roof** | `bj-roof.glb` | ~44' | ~20' | ~16' | Blue shingle ridge, dormers, brick chimney. If actors stand on it, name that face `walk_roof`. |
+| **Netherworld** | `bj-netherworld.glb` | ~44' | ~30' | ~33' | The nested glowing rectangles receding upstage. The in-game version is already close — model it only if you want it better. |
 
 ## How your model is routed
 
 The import keeps the show's choreography working by landing your model inside
 the same machinery the stand-in used:
 
+- The **wagon shell** (`bj-house.glb`) replaces the interior's architecture —
+  wall, arch, stairs, fireplace — and leaves all three dressing groups
+  standing on it.
 - A **dressing file** (`bj-dress-maitland.glb` etc.) replaces exactly that
   dressing on the wagon — the shell and the other two dressings stand.
 - A **flying set** (attic, closet, bedroom, roof, netherworld) lands inside
