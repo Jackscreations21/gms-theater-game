@@ -223,7 +223,77 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **PUT IT ON THE HEADSET** (2026-08-10)
+## NEXT SESSION: **HIS MODELS, AND THE HEADSET** (2026-08-11)
+
+Two threads, either order:
+
+**1. The owner's set models.** The pipeline is live (#119). Each delivery is
+one small PR: the `.glb` goes into `assets/` named exactly per the File
+column in **docs/MODELING.md** (that column is the contract, and a test pins
+manifest↔doc both directions), rebuild nothing, suites green, merge. Budgets
+refuse loudly (tris/materials/textures/stray lights); a missing or refused
+model keeps the stand-in — the show is never broken. Routing inherits the
+choreography: flyers, hill sides, dressings, the wagon shell.
+
+**2. The headset run of THIS round** (cache-bust **`?v=18`**):
+- Do the changeovers READ? The one number most likely to retune is
+  `BJ_FLY_SPEED` (1.8 — a flown set takes ~5.8s; on cues 15/16/17/29/34 it
+  is still rising 2–3s after the next look is lit).
+- Does the 9:45 "graveyard empties" beat land — hills running to the wings
+  inside their 5s fade?
+- Do the two repainted cloths read: the sky's cratered moon and underlit
+  clouds; the exterior drop's wonky house?
+- The dressing swaps now genuinely hide (deferral) — confirm nothing pops
+  anywhere across a full act.
+
+**Shelved, if he asks:** the portal rebuild lives UNREVIEWED on the local
+branch `bj-portal` (see STATE). The sign/marquee repaints were cut; the
+show curtain stays by his word.
+
+**Watch:** `tests/smoke.js` flakes under full-suite load (wall-clock dt);
+a task chip exists. Not a regression of this round.
+
+## DONE — 2026-08-11: the headset verdict round (AW–AZ, #115–#119)
+
+The owner's first headset run of the re-time round came back in one line:
+the sets look nothing like the pictures, every change pops, remove the neon
+tubes. The round that answered it was reshaped by him twice mid-flight —
+**"what if i 3d model each set myself"** became RULING AZ and split the
+labour (he models the sets; this side builds "anything that isnt a set"),
+and a later trim cut the round to the curtains, the set movement and the
+model import. The neon ask was put back to him against his own photographs
+(they show a lit frame as part of the design) and became "rebuild to match"
+— the AO/AV pattern — and then was shelved with the trim: **built, never
+opened, parked on the local `bj-portal` branch.**
+
+**What merged:** the spec/plan/modeling-brief (#115); the changeover engine
+(#116); the movement data (#117); the cloths + the split rule (#118); the
+model importer (#119). Suites 18/18 before and after every link; every new
+assertion negative-checked; the two independent branches (#118/#119) were
+built by parallel worktree agents and seam-checked merged before either
+opened.
+
+**Six defects the reviews caught before the owner ever saw them,** each now
+a test: a dress fired mid-exit popped on a still-drawn set (judged by the
+wrong flag); the full-width hill layers "ran off" and stayed in the picture
+(the clearance is now a world-box assertion); **the exterior had never
+actually flown** — `sceneMoveTo` on a mover that was never wired is a silent
+null no-op, masked for two rounds by tests that read state instead of
+watching motion; the cue engine's move-vs-changeover order was load-bearing
+in BOTH directions (the split rule in p5c's `showCueExtras` is the writeup:
+outgoing-scene moves before, everything else after — each plain order fails
+a different test); the importer's async test tail could hang and exit 0
+(watchdog now guards the suite's core guarantee); and imported models
+escaped the RULING AP static freeze, quietly spending the Quest budget the
+import budgets exist to protect.
+
+**The modeling contract:** docs/MODELING.md — dimensions off the real `D`
+(picture opening 13.6 x 9.2m = 44'7" x 30'2", hard cap 14.8m), budgets, glb
+export rules, `walk_*` floors, and a File column of exact deliverable names
+that a test keeps provably in sync with the manifest, because the fallback
+is silent by design and a misnamed file would otherwise just never load.
+
+## NEXT SESSION: **PUT IT ON THE HEADSET** (2026-08-10) — SUPERSEDED, see above
 
 The re-time round is BUILT, GREEN and **entirely unseen**. Eleven PRs, and
 nobody has looked at a second of it through a Quest. The full list of what

@@ -317,6 +317,31 @@ against this list before opening a PR; **add new traps as you hit them.**
   DEPTH), and the clearance check above. Treat a passing negative check
   as a finding about the test, never as confirmation of the code.
 
+- **`sceneMoveTo` on a scene that never got `sceneTravel` is a silent
+  null no-op.** The act-two exterior's "flies out" cue shipped and stayed
+  green for two full rounds while the drop never moved — the mover was
+  never wired, and the tests read cue *state* instead of watching
+  *motion*. A cue that commands movement needs a test that observes
+  world-space movement over stepped `dt`. Corollary from the same round:
+  a mover parked at OUT proves nothing about the geometry — the hills
+  "ran off" while their full-width meshes still crossed the picture;
+  assert clearance from world bounding boxes, never from mover offsets.
+- **Move-vs-changeover order in `showCueExtras` is load-bearing in BOTH
+  directions.** Moves applied after the changeover hide an outgoing
+  whole-mover set instantly (it flies out dark); moves applied before are
+  clobbered by the incoming branch's snap-to-OUT-then-home (a cue jump
+  refills the stage the cue says to empty). The SPLIT RULE comment in
+  `p5c` is the canonical writeup: outgoing-scene moves land before,
+  everything else after — and each plain ordering fails a different
+  behavioural test, which is how it must stay pinned.
+- **An async test tail that hangs makes node exit 0 — a vacuous green.**
+  When every remaining promise is unresolved, the event loop drains and
+  the process exits cleanly without reaching the exit-code logic, and a
+  runner that reads exit codes reports a pass for a suite that never
+  finished. Any suite that moves its exit into async code needs a
+  non-unref'd watchdog timer that fails the run if the tail never
+  reports (see the AZ tail in `tests/beetlejuice.js`).
+
 ## Environment
 
 - PowerShell 5.1 mangles `git commit -m` with double quotes — message to
