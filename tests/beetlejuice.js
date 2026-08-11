@@ -1464,7 +1464,11 @@ const probe = `
     /* the top of the night is behind the cloth, with the warmers on it */
     if(ls.pos > OUT_TRIM - 1) throw new Error('the preset does not have the cloth in');
     let guard = 0;
-    while(CUES[nextCue] && CUES[nextCue].n <= 2 && guard++ < 6){
+    /* the top of the show is ten cues now, not four — RULING BD split his
+       opening into its separate beats (two purple sweeps, the blinder flash,
+       the fast pattern, the second flash) — so the walk needs the headroom to
+       actually reach cue 2, which is the one that brings the stage up blue. */
+    while(CUES[nextCue] && CUES[nextCue].n <= 2 && guard++ < 14){
       go(); for(let i=0;i<500;i++){ updateFades(0.05); updateFly(0.05); }
     }
     if(ls.pos < OUT_TRIM - 1) throw new Error('the cloth never flew out, it is at '+ls.pos.toFixed(1));
@@ -1628,11 +1632,302 @@ const probe = `
     return 'no setTimeout in the show part; the follow field is p6 machinery, not ours';
   });
 
+  /* ====================================================================== *
+     THE AUDIENCE RIG, THE SOUND AND THE TOP OF THE SHOW (rulings BA-BD)
+     ====================================================================== */
+  console.log('--- the audience rig (RULING BC) ---');
+
+  P('the patch is 39 channels on every board, and every channel knows its number', ()=>{
+    const home = STAGE, seen = [];
+    Object.keys(STAGES).forEach(k=>{
+      stageSwitch(k, true);
+      seen.push(k + ':' + FIXTURES.length);
+      if(FIXTURES.length !== 39)
+        throw new Error(k + ' has ' + FIXTURES.length + ' channels, wanted 39');
+      for(let i = 0; i < FIXTURES.length; i++)
+        if(FIXTURES[i].ch !== i + 1)
+          throw new Error(k + ' index ' + i + ' carries ch ' + FIXTURES[i].ch);
+    });
+    stageSwitch(home, true);
+    if(GROUPS.all.length !== 39)
+      throw new Error('GROUPS.all still covers ' + GROUPS.all.length + ' channels');
+    return seen.join('  ');
+  });
+
+  /* The first fixtures in this game that point the other way.  Worth pinning in
+     both directions: it is the whole of what makes them the AUDIENCE rig, and
+     an aim typo would simply light the stage twice and never look wrong. */
+  P('the audience rig aims at the audience, and the original 25 never do', ()=>{
+    showLoad('beetlejuice');
+    const tmp = new THREE.Vector3();
+    const az = f => { worldToStage(f.aim, tmp); return tmp.z; };
+    let worstOld = -99;
+    for(let n = 1; n <= 25; n++) worstOld = Math.max(worstOld, az(chan(n)));
+    let nearestNew = 99;
+    GROUPS.house.forEach(n=>{ nearestNew = Math.min(nearestNew, az(chan(n))); });
+    if(worstOld >= 8)
+      throw new Error('one of the original 25 aims into the house at z ' + worstOld.toFixed(1));
+    if(nearestNew < 8)
+      throw new Error('an audience unit still aims at the stage, z ' + nearestNew.toFixed(1));
+    return 'the 25 reach z ' + worstOld.toFixed(1) + ' at most, the 14 start at z ' + nearestNew.toFixed(1);
+  });
+
+  /* SEEN, NOT SEEING.  There are eight real lights (four in a headset) handed
+     out by level*power, so a bright blinder that outranked a stage lantern
+     would take a real light off the stage at the worst possible moment. */
+  P('an audience unit can never outrank a stage lantern for a real light', ()=>{
+    let maxAud = 0, minStage = 99;
+    GROUPS.house.forEach(n=>{ maxAud = Math.max(maxAud, chan(n).power); });
+    for(let n = 1; n <= 25; n++) minStage = Math.min(minStage, chan(n).power);
+    if(maxAud >= minStage)
+      throw new Error('an audience unit at power ' + maxAud +
+                      ' can beat a stage lantern at power ' + minStage);
+    return 'audience tops out at ' + maxAud + ', the dimmest stage lantern is ' + minStage;
+  });
+
+  console.log('--- the pattern engine (RULING BD) ---');
+
+  /* A cue cannot say "drift slowly and fade between two colours".  This is the
+     test that the ENGINE runs rather than that the field parses: ten seconds
+     stepped off dt, watching pan actually move. */
+  P('a wander really moves, and really crossfades between the two colours', ()=>{
+    showLoad('beetlejuice');
+    showCueFx({on:'aud', kind:'wander', cols:['#2fbf5f','#7f3fbf']});
+    const f = chan(GROUPS.aud[0]);
+    const pan0 = f.panT, shades = {};
+    let moved = 0;
+    for(let i = 0; i < 600; i++){
+      audFxStep(1/60);
+      moved = Math.max(moved, Math.abs(f.panT - pan0));
+      shades[f.color.getHexString()] = 1;
+    }
+    const n = Object.keys(shades).length;
+    if(moved < 5)
+      throw new Error('ten seconds of wander moved pan by ' + moved.toFixed(2) + ' degrees');
+    if(n < 20) throw new Error('the colour did not crossfade: only ' + n + ' shades in 10s');
+    return 'pan moved ' + moved.toFixed(0) + ' degrees through ' + n + ' shades';
+  });
+
+  /* FAST MEANS OFTEN, NOT FAR.  Total pan travel was the first measurement
+     here and it was the wrong one: a slow pattern with a wider throw covers
+     more ground than a fast one with a narrow throw, so the wrong build — a
+     random effect running at the wander frequencies — sailed straight through
+     it on amplitude alone.  Count direction changes instead. */
+  P('the fast pattern changes direction far more often than the slow one', ()=>{
+    const reversals = kind => {
+      showCueFx({on:'aud', kind:kind, cols:['#2fbf5f','#7f3fbf']});
+      const f = chan(GROUPS.aud[0]);
+      let last = f.panT, dir = 0, n = 0;
+      for(let i = 0; i < 600; i++){
+        audFxStep(1/60);
+        const d = f.panT - last;
+        if(Math.abs(d) > 1e-6){
+          const s = d > 0 ? 1 : -1;
+          if(dir !== 0 && s !== dir) n++;
+          dir = s;
+        }
+        last = f.panT;
+      }
+      return n;
+    };
+    const slow = reversals('wander'), fast = reversals('random');
+    if(fast < 8)
+      throw new Error('the fast pattern only turned round ' + fast + ' times in ten seconds');
+    if(!(fast > slow * 3))
+      throw new Error('random turned round ' + fast + ' times against wander ' + slow);
+    return 'wander turns ' + slow + ' times in 10s, random turns ' + fast;
+  });
+
+  P('a cue that says nothing about the audience rig clears a running effect', ()=>{
+    showCueFx({on:'blind', kind:'random'});
+    if(!AUD.fx.blind) throw new Error('the effect never armed');
+    showCueFx(null);
+    if(AUD.fx.blind || AUD.fx.aud) throw new Error('an effect outlived the cue that wanted it');
+    return 'armed, then cleared by the next cue';
+  });
+
+  console.log('--- the sound (rulings BA, BB) ---');
+
+  /* THE STATE EVERY SUITE RUNS IN.  jsdom never fetches media, so this is the
+     no-audio path end to end: the show plots, holds, GOes and never throws,
+     and the transport never touches the clock. */
+  P('a missing track is silent and harmless, and the follow chain still drives', ()=>{
+    showLoad('beetlejuice');
+    const tr = audTrack('show'), pre = audTrack('preshow');
+    if(!tr || !pre) throw new Error('the manifest built no track records');
+    if(audLive(tr)) throw new Error('a track with no file reports itself live');
+    fireCue(0);
+    showAudioTick(0.016);
+    if(AUD.clock) throw new Error('the transport took the clock with no audio');
+    if(!pre.want) throw new Error('the pre-show cue did not ask for the pre-show music');
+    go();
+    if(nextCue !== 2) throw new Error('GO off the hold did not advance: nextCue ' + nextCue);
+    if(CUES[1].follow === null) throw new Error('the follow chain is not driving either');
+    /* WANTED IS NOT PLAYING, and that distinction is the whole silent fallback.
+       The GO above asked for the show track by name; with no file behind it the
+       transport must still refuse the clock.  Checking this only BEFORE anything
+       wanted the track let an audLive that believed intent pass. */
+    if(!tr.want) throw new Error('GO did not ask for the show track at all');
+    if(audLive(tr)) throw new Error('a wanted-but-absent track reports itself live');
+    showAudioTick(0.016);
+    if(AUD.clock) throw new Error('the transport took the clock off a track with no file');
+    if(followTimer === null) throw new Error('nothing is driving the show: no clock and no follow');
+    return 'silent, wanted, refused the clock, still driven by follow at ' + CUES[1].follow + 's';
+  });
+
+  /* and the other half: when it IS playing it owns the clock.  A fake element
+     is the seam — readyState 4 and not paused is all "really playing" means. */
+  P('with the track really playing the music is the clock, and no follow is armed', ()=>{
+    showLoad('beetlejuice');
+    const tr = audTrack('show'), real = tr.el;
+    const fake = {paused:false, readyState:4, currentTime:40, volume:1,
+                  play(){ return null; }, pause(){ this.paused = true; }};
+    tr.el = fake; tr.want = true; tr.blocked = false;
+    showAudioTick(0.016);
+    if(!AUD.clock) throw new Error('the transport did not take the clock');
+    if(nextCue !== 2) throw new Error('the 35s cue did not fire off currentTime: nextCue ' + nextCue);
+    if(followTimer !== null) throw new Error('a follow timer was armed while the music is the clock');
+    /* and that cue really did SEEK — "start the audio at time stamp 35
+       seconds" is a move of the playhead, not a note in a comment.  It lands on
+       the next frame, because the cue states the intent and the pump does the
+       talking to the browser. */
+    showAudioTick(0.016);
+    if(Math.abs(fake.currentTime - 35) > 0.001)
+      throw new Error('the GO cue did not seek the track to 0:35, it is at ' + fake.currentTime);
+    fake.currentTime = 70;
+    showAudioTick(0.016);
+    if(nextCue !== 6) throw new Error('the transport did not catch up to 70s: nextCue ' + nextCue);
+    if(followTimer !== null) throw new Error('a follow timer is armed while the music is the clock');
+    /* and it stops dead at a hold rather than running through the interval */
+    const iv = CUES.findIndex(c=>c.hold && c.at > 4000);
+    if(iv < 0) throw new Error('the interval hold is missing');
+    nextCue = iv; fake.currentTime = 8200;
+    showAudioTick(0.016);
+    if(nextCue !== iv) throw new Error('the transport ran straight through the interval hold');
+    tr.el = real; tr.want = false;
+    return 'fired off timecode, caught up, and waited at the interval';
+  });
+
+  P('walking to the other theatre stops the sound with the show', ()=>{
+    showLoad('beetlejuice');
+    const tr = audTrack('show'), real = tr.el;
+    let paused = false;
+    tr.el = {paused:false, readyState:4, currentTime:100, volume:1,
+             play(){ return null; }, pause(){ paused = true; this.paused = true; }};
+    tr.want = true; tr.blocked = false;
+    showAudioTick(0.016);
+    if(!AUD.clock) throw new Error('the transport never took the clock');
+    showCueFx({on:'blind', kind:'random'});
+    const home = STAGE, other = Object.keys(STAGES).filter(k=>k !== home)[0];
+    stageSwitch(other, true);
+    if(!paused) throw new Error('the track played on into the other theatre');
+    if(AUD.clock) throw new Error('the transport still holds the clock on the other stage');
+    if(tr.want) throw new Error('the track is still wanted on the other stage');
+    if(AUD.fx.blind) throw new Error('a pattern followed the board into the other theatre');
+    stageSwitch(home, true);
+    tr.el = real;
+    return 'paused, clock dropped, pattern cleared at the boundary';
+  });
+
+  console.log('--- the top of the show, as he wrote it ---');
+
+  P('the pre-show holds, the blinders are dark on it, and the music is asked for', ()=>{
+    showLoad('beetlejuice');
+    const pre = CUES[0];
+    if(!pre.hold) throw new Error('the pre-show does not hold');
+    if(pre.follow !== null) throw new Error('the pre-show arms a follow');
+    const lit = GROUPS.blind.filter(n=>pre.lx[n-1].lvl > 0.01);
+    if(lit.length)
+      throw new Error(lit.length + ' blinders are up at the pre-show — they are for later');
+    const drifting = GROUPS.aud.filter(n=>pre.lx[n-1].lvl > 0.01);
+    if(!drifting.length) throw new Error('no audience mover is up at the pre-show');
+    if(!pre.fx || pre.fx.kind !== 'wander') throw new Error('the pre-show drifts nothing');
+    if(!pre.fx.cols || pre.fx.cols.length !== 2)
+      throw new Error('the pre-show does not fade between two colours');
+    if(!pre.audio || pre.audio.play !== 'preshow')
+      throw new Error('the pre-show does not start the pre-show music');
+    if(!(pre.house > 0.02 && pre.house < 0.6))
+      throw new Error('the house is not LOW at the pre-show, it is at ' + pre.house);
+    return 'holds, 0 of 8 blinders up, ' + drifting.length + ' movers drifting, house at ' + pre.house;
+  });
+
+  P('GO starts the show track at 0:35 and turns the arch and the sign red', ()=>{
+    showLoad('beetlejuice');
+    const c = CUES.filter(x=>x.at === 35)[0];
+    if(!c) throw new Error('there is no cue at 35s, which is where the show starts');
+    if(!c.audio || c.audio.play !== 'show' || c.audio.at !== 35)
+      throw new Error('GO does not start the show track at 0:35');
+    if(c.audio.stop !== 'preshow') throw new Error('GO does not stop the pre-show music');
+    if(c.signCol !== '#ff1e10') throw new Error('GO does not turn the sign red');
+    const red = GROUPS.blind.filter(n=>c.lx[n-1].lvl > 0.5);
+    if(red.length !== 8) throw new Error('only ' + red.length + ' of 8 blinders come up red');
+    const stage = GROUPS.stage.filter(n=>c.lx[n-1].lvl > 0.02);
+    if(stage.length) throw new Error(stage.length + ' stage channels are up behind a shut curtain');
+    return 'track from 0:35, 8 blinders red, the stage dark behind the cloth';
+  });
+
+  /* "make sure the beetljuice sign still stays lit up red" — which is a
+     statement about the cues in BETWEEN saying nothing about it. */
+  P('the sign keeps its red without being told again, and gets its own back at the end', ()=>{
+    showLoad('beetlejuice');
+    [63, 65, 66, 69, 76, 77, 86].forEach(t=>{
+      const c = CUES.filter(x=>x.at === t)[0];
+      if(!c) throw new Error('no cue at ' + t + 's');
+      if(c.signCol !== undefined)
+        throw new Error('the cue at ' + t + 's restates the sign colour instead of leaving it alone');
+    });
+    const blue = CUES.filter(x=>x.at === 88)[0];
+    if(blue.signCol !== null) throw new Error('the sign never gets its own colour back');
+    if(!SHOW.signLamps || !SHOW.signLamps.length) throw new Error('the sign registered no lamps');
+    setSignLamps('#ff1e10');
+    const lit = SHOW.signLamps[0].mat.color.getHexString();
+    setSignLamps(null);
+    const back = SHOW.signLamps[0].mat.color.getHexString();
+    if(lit === back) throw new Error('setSignLamps changed nothing on the lamp material');
+    return 'red ' + lit + ', restored ' + back;
+  });
+
+  P('the two purple sweeps are there, and each goes dark after itself', ()=>{
+    showLoad('beetlejuice');
+    [[63, 65], [66, 69]].forEach(pair=>{
+      const up = CUES.filter(x=>x.at === pair[0])[0], out = CUES.filter(x=>x.at === pair[1])[0];
+      if(!up || !out) throw new Error('the sweep at ' + pair[0] + 's is not a pair');
+      if(!up.fx || up.fx.kind !== 'sweep') throw new Error(pair[0] + 's does not sweep');
+      if(out.fx) throw new Error(pair[1] + 's leaves the sweep running');
+      const lit = GROUPS.aud.filter(n=>out.lx[n-1].lvl > 0.01);
+      if(lit.length) throw new Error(lit.length + ' audience movers are still up at ' + pair[1] + 's');
+    });
+    return 'up at 1:03 and 1:06, dark at 1:05 and 1:09';
+  });
+
+  P('1:16 sends the curtain and the sign out under a white flash, and 1:26 finds them gone', ()=>{
+    showLoad('beetlejuice');
+    const ls = frontCurtainLineset();
+    const trg = c => c.fly.filter(x=>x.id === ls.id)[0].target;
+    const a = CUES.filter(x=>x.at === 76)[0], mid = CUES.filter(x=>x.at === 77)[0],
+          b = CUES.filter(x=>x.at === 86)[0];
+    if(!a || !mid || !b) throw new Error('the 1:16, 1:17 and 1:26 beats are not all there');
+    if(!a.move || a.move.scene !== 'bjSign') throw new Error('1:16 does not send the sign out');
+    if(!(trg(a) > OUT_TRIM - 1)) throw new Error('1:16 does not take the curtain out');
+    if(!(trg(b) > OUT_TRIM - 1)) throw new Error('the curtain came back in by 1:26');
+    if(!a.fx || a.fx.kind !== 'flash') throw new Error('1:16 is not a flash');
+    if(!b.fx || b.fx.kind !== 'flash') throw new Error('1:26 is not a flash');
+    if(!mid.fx || mid.fx.kind !== 'random') throw new Error('nothing runs the fast pattern between them');
+    if(b.at - a.at !== 10) throw new Error('the two flashes are not ten seconds apart');
+    /* and the flash is not a blackout dressed up as one: the cue state itself
+       has the blinders up, so the moment reads even if the effect never steps */
+    const up = GROUPS.blind.filter(n=>a.lx[n-1].lvl > 0.9);
+    if(up.length !== 8) throw new Error('only ' + up.length + ' blinders are up in the flash cue itself');
+    return 'curtain and sign out at 1:16, flash, pattern, flash, gone by 1:26';
+  });
+
+  showLoad('beetlejuice');       // leave the board where the AZ tail expects it
+
   /* RULING AZ (the appended tail): the model-import tests live PAST this
      probe, out in node, because GLTFLoader.parse resolves through promise
      microtasks a synchronous probe can never see.  SHOW and WALKABLE are
      consts of this eval program, invisible from outside — hand them out. */
-  window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE, BJ_MODELS:BJ_MODELS};
+  window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE, BJ_MODELS:BJ_MODELS, BJ_AUDIO:BJ_AUDIO};
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
@@ -1720,6 +2015,63 @@ const wd = setTimeout(() => {
     new w.THREE.GLTFLoader().parse(buf, '',
       g => res(g),
       e => rej(new Error('parse failed: ' + (e && e.message || e)))));
+
+  /* RULING BA — the same contract shape as the models, and out here in node
+     for the same reason the models one is: it reads a doc off the disk. */
+  await P('the audio manifest names exactly the files docs/AUDIO.md promises, both directions', async () => {
+    /* The fallback is silent BY DESIGN, so neither half of a mismatch can ever
+       announce itself: a manifest file the doc does not name is a delivery
+       instruction nobody was given, and a documented file the manifest does not
+       want is a correctly-named file sitting in assets/audio/ that never plays. */
+    const doc = fs.readFileSync(require('path').join(__dirname, '..', 'docs', 'AUDIO.md'), 'utf8');
+    /* the CONTRACT is the table, so only table rows count.  Scanning the whole
+       document swept up the owner's own source filenames out of the copy
+       commands and reported them as undelivered — the doc talks about more
+       files than it promises. */
+    const rows = doc.split('\n').filter(l => l.trim().charAt(0) === '|').join('\n');
+    const docSet = new Set((rows.match(/[a-z0-9_-]+\.(?:mp3|m4a|ogg|wav)/gi) || [])
+                           .map(s => s.toLowerCase()));
+    if(!docSet.size) throw new Error('AUDIO.md names no files at all');
+    const man = az.BJ_AUDIO;
+    if(!man) throw new Error('the build handed out no audio manifest');
+    const manSet = new Set(Object.keys(man).map(k => man[k].file.toLowerCase()));
+    const undelivered = [...docSet].filter(f => !manSet.has(f));
+    const unwanted = [...manSet].filter(f => !docSet.has(f));
+    if(undelivered.length) throw new Error('documented but never played: ' + undelivered.join(', '));
+    if(unwanted.length) throw new Error('played but never documented: ' + unwanted.join(', '));
+    if(manSet.size !== 2) throw new Error(manSet.size + ' tracks, the contract lists 2');
+    /* the pre-show loops and the show does not — getting that backwards means
+       the show restarting itself at the curtain call */
+    if(!man.preshow.loop) throw new Error('the pre-show music does not loop');
+    if(man.show.loop) throw new Error('the show track loops');
+    return [...manSet].join(', ') + ' — both documented, preshow loops, show does not';
+  });
+
+  /* The files must NEVER be committed (RULING BA): show.m4a is 134MB, over
+     GitHub's hard limit; it comes off a video, which TRAPS.md already rules
+     out; and it is a commercial recording on a repo with Pages enabled.  A
+     .gitignore that stops covering them would let one ride in on a git add. */
+  await P('the recordings cannot be committed by accident', async () => {
+    /* ASK GIT, do not read the file.  Grepping .gitignore for the pattern was
+       the first version and it was worthless: commenting the rule out leaves
+       the pattern text sitting right there in the line, so the check passed
+       against a .gitignore that ignored nothing.  git check-ignore answers the
+       question actually being asked. */
+    const cp = require('child_process'), root = require('path').join(__dirname, '..');
+    const ignored = p => {
+      try{ cp.execSync('git check-ignore -q ' + p, {cwd:root}); return true; }
+      catch(e){ return false; }
+    };
+    for(const f of Object.keys(az.BJ_AUDIO).map(k => 'assets/audio/' + az.BJ_AUDIO[k].file))
+      if(!ignored(f)) throw new Error('git would happily commit ' + f);
+    if(ignored('assets/audio/README.md'))
+      throw new Error('the README that carries the contract is ignored too');
+    const tracked = cp.execSync('git ls-files assets/audio', {cwd:root})
+      .toString().trim().split('\n').filter(Boolean);
+    const bad = tracked.filter(f => /\.(mp3|m4a|ogg|wav)$/i.test(f));
+    if(bad.length) throw new Error('a recording is already tracked in git: ' + bad.join(', '));
+    return 'git refuses both recordings, keeps the README, and tracks no media';
+  });
 
   console.log('--- the model import (RULING AZ): parse, validate, apply, fall back ---');
 

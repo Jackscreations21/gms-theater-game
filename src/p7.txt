@@ -1488,6 +1488,11 @@ function tick(now){
   updateArc(dt);              // the other building's foyer
   updateStageFromPosition();  // the board is patched to the room you are in
   updateStageHouseLights();   // and every auditorium answers its own master
+  /* the show's sound is the cue clock while it is playing (BB), and the
+     audience rig's patterns step here too (BD).  AFTER updateFades on purpose:
+     an effect overwrites the fade for its own channels while it runs, the way
+     firelight does, and hands them back when the cue clears it. */
+  if(typeof showAudioTick === 'function') showAudioTick(dt);
   if(typeof vrUpdate === 'function') vrUpdate(dt);
   if(VENUE !== lastVenue){ lastVenue = VENUE; refreshVenueUI(); }
   if(followTarget){
@@ -1649,6 +1654,9 @@ function init(){
   }, 260);
   $('#startBtn').onclick = ()=>{
     Snd.init();
+    /* the one gesture every route through the game passes through, flat or
+       headset — so it is where a track the browser refused gets to start (BA) */
+    if(typeof audArm === 'function') audArm();
     $('#veil').style.opacity=0;
     setTimeout(()=>$('#veil').style.display='none', 800);
     if(Player.mode==='walk') lock();

@@ -127,6 +127,10 @@ function stageSwitch(key, quiet){
   }
   /* same rule for the one-shot cue follow: cancelled, not carried */
   if(typeof cancelFollow === 'function') cancelFollow();
+  /* and for the sound, which is the cue clock while it runs (BB).  TRAPS lists
+     audio among the things that have driven the wrong stage's rig after a
+     walk: a show you walked out on goes quiet, it does not play on. */
+  if(typeof showSoundStop === 'function') showSoundStop();
   /* the crew work the stage they were called on.  Rather than let a live job
      queue mix this stage's plan with the next stage's rail and doors (H2) or
      restore the work-light snapshot onto the wrong board when they finish

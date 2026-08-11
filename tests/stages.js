@@ -1279,12 +1279,17 @@ const probe = `
     goToView(3);
     const hungFix = BODIES.filter(b=>b.kind!=='speaker' && b.state==='hung');
     const hungSpk = BODIES.filter(b=>b.kind==='speaker' && b.state==='hung');
-    if(hungFix.length !== 75) throw new Error(hungFix.length+' lantern bodies, wanted 75 (25 x 3 stages)');
+    /* 39 a stage since RULING BC put the audience rig on every board: the 25
+       that point at the stage, 8 blinders round the arch and 6 movers over the
+       seating.  It was 75 (25 x 3) before that. */
+    if(hungFix.length !== 117) throw new Error(hungFix.length+' lantern bodies, wanted 117 (39 x 3 stages)');
     if(hungSpk.length !== 36) throw new Error(hungSpk.length+' PA boxes, wanted 36 (12 x 3 stages)');
     const pal = BODIES.filter(b=>b.venue==='palace').length;
     const arc = BODIES.filter(b=>b.venue==='arc').length;
-    if(pal !== 37 || arc !== 74) throw new Error('venue split '+pal+'/'+arc+', wanted 37 palace / 74 arc');
-    return '111 bodies: 37 palace, 74 arc, all hung';
+    /* 51 a stage: 39 lanterns + 12 PA boxes.  It was 37 before the audience
+       rig, and the arc carries two stages' worth. */
+    if(pal !== 51 || arc !== 102) throw new Error('venue split '+pal+'/'+arc+', wanted 51 palace / 102 arc');
+    return '153 bodies: 51 palace, 102 arc, all hung';
   });
   P('an empty point is a dead channel — killed on the level path, never with visible', ()=>{
     goToView(3);

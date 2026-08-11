@@ -1,0 +1,353 @@
+
+/* ============================================================================
+   THE SHOW'S SOUND, AND THE AUDIENCE RIG'S PATTERNS      (rulings BA, BB, BD)
+
+   Spec: docs/superpowers/specs/2026-08-11-beetlejuice-sound-and-house-design.md
+
+   Three things live here, and they are together because the middle one joins
+   the other two:
+
+     1. RECORDED TRACKS (BA).  Two of them, read out of assets/audio/ by exact
+        filename.  THE FILES ARE NEVER COMMITTED and a missing track is a
+        NORMAL STATE — the show runs silent, every suite runs silent, and a
+        fresh clone runs silent.  This is the model-import pipeline over again
+        (RULING AZ): a manifest, a doc whose File column is the contract, a
+        test that pins the two together both ways, and a fallback so quiet
+        that nothing downstream can tell.
+
+     2. THE TRANSPORT (BB).  Every timestamp the owner wrote is a position in
+        the show track, so when that track is genuinely playing it IS the cue
+        clock: a cue fires when its `at` has passed.  Absolute timecode, so it
+        cannot drift, and a seek drags the lights to the music.  With no audio
+        the `follow` chain drives exactly as it always has — untouched, and
+        still the only path a suite exercises.
+
+     3. THE PATTERN ENGINE (BD).  "moving slowly doing random patterns",
+        "slowly fading between green and purple", "sweep up", "a random
+        pattern fast", "flash white as bright as posible" — none of which the
+        cue system can say, because a cue is a static look plus a fade time.
+        So a cue may ARM a named effect and this steps it off the frame `dt`.
+        Never setTimeout: the standing rule, and the reason a suite can watch
+        ten seconds of a pattern in 600 stepped calls.
+
+   Why this is not folded into `Snd` (p5): `Snd` is synthesised WebAudio with
+   no assets, and `Snd.play(name)` TOGGLES looping names — a cue needs
+   set-to-a-state, never toggle.  A track also needs `currentTime`, which is
+   the whole of (2).  It does route through Snd's `music` bus level, so the
+   existing fader still means something.
+
+   RULING B is untouched: the flown PA boxes are still rigging with no audio
+   wired to them.  This comes out of the browser, not out of the modelled
+   speakers.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   THE MANIFEST — docs/AUDIO.md's File column IS this table.  A test pins them
+   to each other in BOTH directions, because the fallback is silent by design:
+   a misnamed file would otherwise just never play and never say why.
+   -------------------------------------------------------------------------- */
+const AUDIO_DIR = 'assets/audio/';
+const BJ_AUDIO = {
+  /* "Play pre show music i have provided" — and again through the interval,
+     because act two says "Play audio number one again till go is pressed". */
+  preshow: {file:'preshow.mp3', loop:true,  vol:0.85,
+            label:'the pre-show music (his audio one)'},
+  /* the show itself.  Started at 0:35 on the first GO, resumed at 1:11:32 on
+     the second — his numbers, and every `at` in the plot is a position in
+     THIS file. */
+  show:    {file:'show.m4a',    loop:false, vol:1.0,
+            label:'the show (his audio two)'}
+};
+
+var AUD = {
+  tracks: {},          // key -> the runtime record
+  armed:  false,       // has a user gesture happened yet?
+  pending:null,        // a play the browser refused before that gesture
+  clock:  false,       // is the show track driving the cue stack right now?
+  fx:     {blind:null, aud:null},
+  notes:  {}           // one console line per subject, said once
+};
+
+/* say a thing once.  A missing track is normal, so it must not scroll. */
+function audNote(key, msg){
+  if(AUD.notes[key]) return;
+  AUD.notes[key] = true;
+  if(typeof console !== 'undefined' && console.log) console.log('AUDIO: ' + msg);
+}
+
+/* An entry may be a bare filename (assets/audio/) or an absolute URL.  The URL
+   form is the only way the owner gets sound on the headset over Pages without
+   the recordings entering the repo, and it costs one line. */
+function audioSrc(file){
+  return /^(https?:)?\/\//.test(file) ? file : AUDIO_DIR + file;
+}
+
+function audTrack(key){
+  if(AUD.tracks[key]) return AUD.tracks[key];
+  const spec = BJ_AUDIO[key];
+  if(!spec) return null;
+  const tr = {key, file:spec.file, loop:!!spec.loop, vol:spec.vol === undefined ? 1 : spec.vol,
+              el:null, blocked:false, want:false};
+  /* jsdom has an <audio> element but never fetches media, so `el` exists and
+     stays at readyState 0 for the whole of every suite — which is exactly the
+     no-audio path, and why the suites never hear anything and never break. */
+  try{
+    if(typeof document !== 'undefined' && document.createElement){
+      const el = document.createElement('audio');
+      el.preload = 'auto';
+      el.loop = tr.loop;
+      el.src = audioSrc(spec.file);
+      el.addEventListener('error', ()=>{
+        audNote('miss'+key, spec.label + ' is not in ' + AUDIO_DIR +
+                ' (wanted "' + spec.file + '") — the show runs silent, which is fine');
+      });
+      tr.el = el;
+    }
+  }catch(e){ tr.el = null; }
+  AUD.tracks[key] = tr;
+  return tr;
+}
+
+/* the master this track answers to: Snd's `music` bus, so one fader moves both
+   the synthesised world and the recordings */
+function audBusVol(){
+  let m = 1;
+  try{ if(typeof Snd !== 'undefined' && Snd.level) m = Snd.level('music') * Snd.level('master'); }
+  catch(e){ m = 1; }
+  return (isFinite(m) ? m : 1);
+}
+
+/* IS THIS TRACK REALLY RUNNING?  Not "did we ask it to" — really running, with
+   data.  Everything downstream keys off this, which is what makes the silent
+   fallback total: with no file, readyState never leaves 0, `live` is never
+   true, the transport never takes the clock and the follow chain drives. */
+function audLive(tr){
+  return !!(tr && tr.el && !tr.el.paused && tr.el.readyState >= 2);
+}
+
+/* A CUE ONLY EVER STATES AN INTENT.  It does not call play(), and that is
+   deliberate rather than tidy: play() on a track the browser has not found yet
+   is meaningless, and in jsdom — which never fetches media at all — it raises
+   "Not implemented: HTMLMediaElement.prototype.play" straight onto the console
+   of every suite that fires a cue.  So the wanting is recorded here and
+   audPump() does the playing, once the media is actually there.
+
+   It also gets slow loading right for free: a track wanted before it has
+   buffered simply starts the moment it can. */
+function audPlay(key, at){
+  const tr = audTrack(key); if(!tr) return false;
+  tr.want = true;
+  tr.seek = (at === undefined ? null : at);
+  return true;
+}
+
+function audStop(key){
+  const tr = AUD.tracks[key]; if(!tr) return;
+  tr.want = false; tr.seek = null;
+  if(!tr.el) return;
+  try{ if(!tr.el.paused) tr.el.pause(); }catch(e){}
+}
+
+/* the frame's worth of actually talking to the browser.  readyState >= 1 is
+   HAVE_METADATA: the file exists and has been opened.  With no file it never
+   gets there, so nothing is ever asked to play and the silence is total. */
+function audPump(){
+  for(const key in AUD.tracks){
+    const tr = AUD.tracks[key];
+    if(!tr.el) continue;
+    if(!tr.want){ continue; }
+    let rs = 0;
+    try{ rs = tr.el.readyState || 0; }catch(e){ rs = 0; }
+    if(rs < 1) continue;                       // not found yet — try again next frame
+    if(tr.seek !== null && tr.seek !== undefined){
+      try{ tr.el.currentTime = tr.seek; }catch(e){}
+      tr.seek = null;
+    }
+    try{ tr.el.volume = Math.max(0, Math.min(1, tr.vol * audBusVol())); }catch(e){}
+    if(!tr.el.paused || tr.blocked) continue;
+    let p = null;
+    try{ p = tr.el.play(); }catch(e){ p = null; tr.blocked = true; }
+    /* AUTOPLAY.  There is no gesture between loading the page and the pre-show
+       cue, so the first play may well be refused.  Remember it and start it on
+       the first gesture that reaches the game — the same bargain Snd.init()
+       already makes with the browser. */
+    if(p && p.catch) p.catch(()=>{
+      tr.blocked = true;
+      AUD.pending = {key, at:null};
+      audNote('block', 'the browser refused to start ' + key +
+              ' before a click — it will start on the first one');
+    });
+  }
+}
+
+/* the first gesture anywhere in the game.  p7 calls this beside Snd.init(). */
+function audArm(){
+  AUD.armed = true;
+  AUD.pending = null;
+  /* clear every refusal: the pump will try again next frame, and anything
+     still `want`ed picks up where the cue asked for it */
+  for(const key in AUD.tracks) AUD.tracks[key].blocked = false;
+}
+
+/* WHAT A CUE SAYS ABOUT SOUND.  `audio:{play:'show', at:35, stop:'preshow'}` */
+function showCueAudio(a){
+  if(!a) return;
+  if(a.stop) (Array.isArray(a.stop) ? a.stop : [a.stop]).forEach(audStop);
+  if(a.stopAll) Object.keys(AUD.tracks).forEach(audStop);
+  if(a.play) audPlay(a.play, a.at);
+}
+
+/* --------------------------------------------------------------------------
+   THE TRANSPORT (RULING BB)
+
+   Called every frame.  If the show track is really running it owns the cue
+   stack: fire everything whose `at` has gone by, and cancel any follow the
+   firing armed — two clocks must never both drive.
+
+   A cue carrying `hold` stops the sweep dead and waits for GO, which is what
+   makes the interval work with the music still the clock (RULING AU).
+   -------------------------------------------------------------------------- */
+const AUD_CATCHUP = 40;        // cues per frame, a runaway backstop only
+
+function showAudioTick(dt){
+  audFxStep(dt);
+  audPump();
+  const tr = AUD.tracks.show;
+  if(!audLive(tr)){ AUD.clock = false; return; }
+  try{ tr.el.volume = Math.max(0, Math.min(1, tr.vol * audBusVol())); }catch(e){}
+  AUD.clock = true;
+  if(typeof CUES === 'undefined' || !CUES.length) return;
+  const t = tr.el.currentTime;
+  let n = 0;
+  while(nextCue < CUES.length && n++ < AUD_CATCHUP){
+    const c = CUES[nextCue];
+    if(c.at === undefined || c.at === null) break;   // an unplotted stack: not ours
+    if(c.hold) break;                                // waits for GO
+    if(c.at > t) break;
+    fireCue(nextCue);
+    if(typeof cancelFollow === 'function') cancelFollow();
+  }
+}
+
+/* the stage swap, and anything else that ends a performance.  TRAPS lists
+   audio among the things that have driven the WRONG stage's rig after a walk,
+   so the sound stops with the show the same way cancelFollow kills the chain. */
+function showSoundStop(){
+  Object.keys(AUD.tracks).forEach(audStop);
+  AUD.pending = null;
+  AUD.clock = false;
+  audFxClear();
+}
+
+/* ==========================================================================
+   THE PATTERN ENGINE (RULING BD)
+
+   A cue arms an effect per target; this steps it off dt.  Targets are the two
+   audience groups and nothing else — the stage is cued by hand, as it should
+   be.  An effect writes ONLY the properties it must, so everything it leaves
+   alone stays under the cue's own control:
+
+     wander   pan, tilt, colour     the pre-show: slow drift, slow green<->purple
+     sweep    level, tilt           "purple and sweep up"
+     random   pan, tilt, level      "a random pattern fast"
+     flash    level, colour         "flash white as bright as posible"
+
+   Levels written here overwrite the fade for those channels while the effect
+   runs — the firelight precedent (SHOW.flicker does the same).  It heals
+   itself on the way out: setLevel captures lvlFrom from the LIVE level, so
+   the cue that clears an effect fades from wherever the effect left it.
+
+   Motion is a sum of sines on an accumulating phase, offset per fixture, so
+   there is no per-fixture state to park, nothing to reseed, and a suite can
+   step ten seconds and watch pan actually change.
+   ========================================================================== */
+const AUD_WANDER_RATE = 1.0;   // pre-show drift.  Owner: "slowly" — headset tune
+const AUD_RANDOM_RATE = 1.0;   // the 1:16 chaos.  Owner: "fast"  — headset tune
+const _afC = new T.Color(), _afD = new T.Color();
+
+function audFxChans(on){
+  if(on === 'blind') return GROUPS.blind;
+  if(on === 'aud')   return GROUPS.aud;
+  return GROUPS.house;                    // 'all' — the whole audience rig
+}
+
+/* what a cue's `fx` field means.  One record per target; a cue that says
+   nothing CLEARS both, because an effect that outlived the cue that wanted it
+   is exactly the pop RULING AY forbids. */
+function showCueFx(fx){
+  audFxClear();
+  if(!fx) return;
+  (Array.isArray(fx) ? fx : [fx]).forEach(e=>{
+    if(!e || !e.kind) return;
+    const slot = (e.on === 'blind') ? 'blind' : 'aud';
+    AUD.fx[slot] = {
+      kind: e.kind,
+      on:   e.on || slot,
+      rate: e.rate === undefined ? 1 : e.rate,
+      secs: e.secs === undefined ? 2 : e.secs,
+      cols: (e.cols || (e.col ? [e.col] : null)),
+      t:    0
+    };
+  });
+}
+
+function audFxClear(){ AUD.fx.blind = null; AUD.fx.aud = null; }
+
+function audFxStep(dt){
+  ['blind','aud'].forEach(slot=>{
+    const e = AUD.fx[slot];
+    if(!e) return;
+    e.t += dt;
+    const chans = audFxChans(e.on);
+    for(let i = 0; i < chans.length; i++){
+      const f = chan(chans[i]); if(!f) continue;
+      audFxApply(e, f, i);
+    }
+  });
+}
+
+function audFxApply(e, f, i){
+  const t = e.t;
+  if(e.kind === 'wander'){
+    const r = AUD_WANDER_RATE * e.rate;
+    if(f.mover){
+      f.panT  =  62 * Math.sin(t*0.31*r + i*1.7) * Math.cos(t*0.17*r + i*0.9);
+      f.tiltT = -62 + 24 * Math.sin(t*0.23*r + i*2.3);
+    }
+    if(e.cols && e.cols.length > 1){
+      const m = 0.5 + 0.5*Math.sin(t*0.42*r + i*0.4);
+      _afC.set(e.cols[0]); _afD.set(e.cols[1]);
+      f.color.copy(_afC).lerp(_afD, m);
+      f.colDur = 0;                       // the effect owns the colour now
+    }
+    return;
+  }
+  if(e.kind === 'sweep'){
+    /* "purple and sweep up": levels and tilt run up together over the cue's
+       own window, then hold at the top until the next cue takes them out. */
+    const u = Math.min(1, t / Math.max(0.05, e.secs));
+    f.level = u;
+    if(f.mover) f.tiltT = -84 + 74*u;
+    if(e.cols && e.cols.length){ f.color.set(e.cols[0]); f.colDur = 0; }
+    f.lvlDur = 0;
+    return;
+  }
+  if(e.kind === 'random'){
+    /* fast, and every unit on its own beat.  Stepping the phase rather than
+       rolling dice per frame keeps it frame-rate independent and steppable. */
+    const r = AUD_RANDOM_RATE * e.rate;
+    const s = Math.sin(t*7.3*r + i*2.9), c = Math.cos(t*5.1*r + i*1.3);
+    if(f.mover){ f.panT = 150*s; f.tiltT = -70 + 55*c; }
+    f.level = 0.35 + 0.65 * (0.5 + 0.5*Math.sin(t*11.0*r + i*4.1));
+    f.lvlDur = 0;
+    if(e.cols && e.cols.length){ f.color.set(e.cols[0]); f.colDur = 0; }
+    return;
+  }
+  if(e.kind === 'flash'){
+    /* full for a beat, then out and stay out.  "as bright as posible". */
+    f.level = (t <= e.secs) ? 1 : 0;
+    f.lvlDur = 0;
+    if(e.cols && e.cols.length){ f.color.set(e.cols[0]); f.colDur = 0; }
+    return;
+  }
+}

@@ -3,6 +3,39 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
+## IN FLIGHT — his sound and his light plot (rulings BA–BD)
+
+The owner delivered **four hand-written cue files**
+(`C:\Users\patri\Documents\beetlejuice light cues\`: `pre show.txt`,
+`act one.txt`, `act 2.txt`, `set cues.txt`) and asked for three PRs: the new
+lights + the audio + the pre-show, then act one, then act two with the set
+times checked. Spec:
+`docs/superpowers/specs/2026-08-11-beetlejuice-sound-and-house-design.md`;
+plan: `docs/superpowers/plans/2026-08-11-beetlejuice-sound-house-prs1-3.md`.
+**A linear chain — each link opens only after the one before it merges.**
+
+- **PR 1 (this one)** — the audience rig (8 blinders round the arch, 6 movers
+  over the seating; the patch is 25 → **39 channels on every stage**), the
+  sound (**RULING BA**: two tracks read from `assets/audio/`, never committed,
+  missing = silent), the **audio-locked transport** (**RULING BB**: while the
+  show track plays it IS the cue clock, so nothing drifts), the **pattern
+  engine** (**RULING BD**: wander/sweep/random/flash off the frame `dt`), and
+  the top of the show as he wrote it.
+- **PR 2** — act one's ~30 looks.
+- **PR 3** — act two, plus the set-time diff. **One numeric change found in
+  his new set list: the netherworld goes 1:39:00 → 1:39:19.** Everything else
+  matches what is built. The second thing he half-remembers changing is in the
+  lighting: the act break takes the house to **half**, where the built
+  interval cue takes it to full.
+
+**The audio files cannot be committed and that is the ruling, not a TODO:**
+`videoplayback.m4a` is 134 MB (GitHub's hard limit is 100 MB), it comes off a
+video (TRAPS forbids committing that), and it is a commercial recording on a
+repo with Pages on. `docs/AUDIO.md` is the File-column contract; the owner
+drops the two files into `assets/audio/` locally. **On Pages the Quest will
+run silent** until he points a manifest entry at a URL he hosts — one line, no
+code change.
+
 ## Where things stand
 
 **The look-and-transition round (rulings AW–AZ) is MERGED — five PRs,
