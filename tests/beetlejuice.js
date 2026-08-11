@@ -1649,7 +1649,17 @@ catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.spli
    probe above can never observe — so these tests run out here in node,
    awaiting the page's own vendored loader, and the exit moved down with them.
    (This is plain node code, not a probe template: backslashes survive here.)
+
+   THE WATCHDOG: this tail carries the whole suite's exit, and an await on a
+   promise that never settles would DRAIN the loop and exit 0 — a hang that
+   silences everything, vacuously green.  A non-unref'd timer keeps the
+   process alive and turns a hung tail into a loud non-zero exit.  (setTimeout
+   is fine in TESTS — the standing ban is on game timing.)
    ========================================================================== */
+const wd = setTimeout(() => {
+  console.log('AZ tail never finished — a promise hung; failing the suite');
+  process.exit(1);
+}, 60000);
 (async () => {
   const errs = w.__errs || (w.__errs = []);
   const az = w.__AZ || {};
@@ -1739,7 +1749,19 @@ catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.spli
       if(typeof v !== 'string' && v.scene === 'house')
         throw new Error('an entry targets the exterior house scene: ' + k);
     }
-    return manSet.size + ' files — contract and manifest are provably the same list, shell on the wagon';
+    /* filenames are not enough: a typo in a scene or dress key is the same
+       silent never-loads.  Every entry must resolve against the loaded show. */
+    w.showLoad('beetlejuice');
+    for(const k of Object.keys(az.BJ_MODELS)){
+      const v = az.BJ_MODELS[k];
+      const sceneName = (typeof v === 'string') ? k : v.scene;
+      const sc = w.sceneFind(sceneName);
+      if(!sc) throw new Error('entry ' + k + ' names a scene that does not exist: ' + sceneName);
+      if(typeof v !== 'string' && v.dress && (!sc.dress || !sc.dress[v.dress]))
+        throw new Error('entry ' + k + ' names a dressing that does not exist: ' + v.dress);
+    }
+    return manSet.size + ' files — contract and manifest are provably the same list, ' +
+           'every scene and dress key resolves, shell on the wagon';
   });
 
   await P('with no fetch in the world, loadSetModels resolves and touches nothing', async () => {
@@ -1779,7 +1801,16 @@ catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.spli
       throw new Error('the refusal does not name the budget and the excess: ' + why);
     const ok = await parseGlb(makeGlb([{name: 'clean', x: 0}]));
     if(w.bjValidateModel(ok.scene)) throw new Error('a clean model was refused');
-    return why;
+    /* and a stray light is refused out loud, not applied silently against
+       the no-lights rule (MODELING.md: lighting is the rig's job) */
+    const lit = new w.THREE.Group();
+    const lamp = new w.THREE.PointLight(0xffffff, 1);
+    lamp.name = 'sun';
+    lit.add(lamp);
+    const whyLit = w.bjValidateModel(lit);
+    if(!whyLit || whyLit.indexOf('no-lights') < 0 || whyLit.indexOf('sun') < 0)
+      throw new Error('a light in the export was not refused by name: ' + whyLit);
+    return why + ' / ' + whyLit;
   });
 
   await P('a refused model leaves the stand-in playing (the full fetch round)', async () => {
@@ -1819,6 +1850,13 @@ catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.spli
     if(!walk || meshCount(flyer) !== 2)
       throw new Error('the model is not inside the flyer: ' + meshCount(flyer) + ' meshes');
     if(att.walk.indexOf(walk) < 0) throw new Error('walk_floor never reached sc.walk');
+    /* the landed subtree is FROZEN scenery (RULING AP): lockShowStatic ran
+       before the model could arrive, so the apply must freeze what it lands
+       — and must NOT reach the flyer above it, whose matrix stays live */
+    let live = 0;
+    flyer.traverse(o => { if(o !== flyer && o.matrixAutoUpdate) live++; });
+    if(live) throw new Error(live + ' landed nodes escaped the static freeze (RULING AP)');
+    if(!flyer.matrixAutoUpdate) throw new Error('the freeze reached the flyer itself');
     /* the trap this pins: fresh meshes wake on layer 0, and an OFF scene that
        skips the sceneApply refresh takes raycasts through a set that is not
        there.  Negative-checked by removing the refresh from bjApplyModel. */
@@ -1928,5 +1966,6 @@ catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.spli
 
   console.log(errs.length ? '--- failures: ' + errs.length + ' (with the AZ tail) ---'
                           : '--- failures: 0 (with the AZ tail) ---');
+  clearTimeout(wd);
   process.exit(errs.length ? 1 : 0);
-})().catch(e => { console.log('AZ TAIL THREW: ' + e.message); process.exit(1); });
+})().catch(e => { console.log('AZ TAIL THREW: ' + e.message); clearTimeout(wd); process.exit(1); });

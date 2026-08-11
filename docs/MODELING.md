@@ -78,9 +78,10 @@ the same machinery the stand-in used:
 - A **flying set** (attic, closet, bedroom, roof, netherworld) lands inside
   its flyer, so it still travels out through the header on its cue.
 - The **graveyard** routes each top-level node by its side of centre:
-  negative x rides the stage-right hill (the tree side), positive x the
-  stage-left one (the moon side) — unless you name a node with a
-  `part_hillR_` / `part_hillL_` prefix, which routes it explicitly.
+  negative x rides the stage-right hill (the tree side), positive x — and a
+  piece centred at exactly x 0 — the stage-left one (the moon side), unless
+  you name a node with a `part_hillR_` / `part_hillL_` prefix, which routes
+  it explicitly.
 - **Floors stay `walk_*`**: named that, they are standable the moment the set
   is on and stop being standable the moment it goes off.
 

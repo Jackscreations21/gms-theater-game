@@ -3704,9 +3704,13 @@ function bjModelEntry(key){
 const BJ_TRI_BUDGET = 30000, BJ_MAT_BUDGET = 8, BJ_TEX_BUDGET = 2048;
 function bjNum(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 function bjValidateModel(root){
-  let tris = 0, texMax = 0;
+  let tris = 0, texMax = 0, light = null;
   const mats = new Set();
   root.traverse(o=>{
+    /* MODELING.md: no lights, no cameras, no animations — lighting is the
+       rig's job.  A stray light would fight the plot silently, so it is
+       refused out loud like a blown budget, not stripped and forgiven. */
+    if(o.isLight && !light) light = o;
     if(!o.isMesh || !o.geometry) return;
     const g = o.geometry;
     if(g.index) tris += g.index.count / 3;
@@ -3722,6 +3726,9 @@ function bjValidateModel(root){
       }
     }
   });
+  if(light)
+    return 'a light in the export (' + (light.name || light.type) +
+           ') against the no-lights rule';
   tris = Math.round(tris);
   if(tris > BJ_TRI_BUDGET)
     return bjNum(tris) + ' triangles against the ' + bjNum(BJ_TRI_BUDGET) + ' budget';
@@ -3762,6 +3769,14 @@ function bjPruneWalk(sc){
   }
 }
 
+/* the set is FROZEN scenery (RULING AP): lockShowStatic ran at showLoad,
+   BEFORE any fetch resolved, so a landed model would otherwise keep every
+   node recomposing its matrix every frame for the whole session — spending
+   the exact Quest budget the validator protects.  Freeze what landed; the
+   travelling containers (flyer, hills, wagon) sit ABOVE the landed root and
+   keep their live matrices, exactly as lockShowStatic spares them. */
+function bjFreeze(o){ o.traverse(c=>{ c.updateMatrix(); c.matrixAutoUpdate = false; }); }
+
 function bjApplyModel(entry, root, scGiven){
   const sc = scGiven || sceneFind(entry.scene);
   if(!sc) return false;
@@ -3776,6 +3791,7 @@ function bjApplyModel(entry, root, scGiven){
   const walks = [];
   root.traverse(o=>{ if(o.isMesh && o.name && o.name.indexOf('walk_') === 0) walks.push(o); });
 
+  const landed = [];                  // what actually went in, for the freeze
   const pmvKeys = sc.pmv ? Object.keys(sc.pmv) : [];
   if(entry.dress){
     /* a dressing file replaces exactly that dressing — bjDressing keeps the
@@ -3784,12 +3800,14 @@ function bjApplyModel(entry, root, scGiven){
     if(!g) return false;
     bjStrip(g);
     g.add(root);
+    landed.push(root);
   } else if(pmvKeys.length === 1){
     /* one part mover is an 'all'-wrapped flying set (bjFlyWhole): the model
        goes INSIDE the flyer, so it keeps flying (RULING AY) */
     const g = sc.pmv[pmvKeys[0]].group;
     bjStrip(g);
     g.add(root);
+    landed.push(root);
   } else if(pmvKeys.length > 1){
     /* several part movers (the cemetery's hills): each top-level node routes
        by the sign of its x — negative rides the group that runs stage right
@@ -3809,6 +3827,7 @@ function bjApplyModel(entry, root, scGiven){
       if(!g) g = (n.position.x < 0 ? right : left) || sc.group;
       if(s !== 1){ n.position.multiplyScalar(s); n.scale.multiplyScalar(s); }
       g.add(n);
+      landed.push(n);
     }
   } else {
     /* whole-scene mover or none (the exterior house): replace the scene
@@ -3821,14 +3840,24 @@ function bjApplyModel(entry, root, scGiven){
       if(keep.indexOf(c) < 0) sc.group.remove(c);
     }
     sc.group.add(root);
+    landed.push(root);
   }
 
+  for(const o of landed) bjFreeze(o);
   bjPruneWalk(sc);
   for(const o of walks) sceneWalk(sc, o);
   /* fresh meshes wake on layer 0 and would take raycasts through a set that
      is OFF — the refresh puts the whole scene back into whatever state it is
-     supposed to be in, walkables and dressings included */
-  sceneApply(sc, sc.on);
+     supposed to be in, walkables and dressings included.  ONE exception: a
+     model can land MID-CHANGEOVER, and an outgoing set still travelling is
+     deliberately drawn until it arrives (mvHide) — refreshing it as off here
+     would hide it in view.  Skip it: the deferred hide sweeps the fresh
+     meshes the moment the travel lands, exactly as it sweeps the rest. */
+  if(!sc.on && typeof sceneTravelling === 'function' && sceneTravelling(sc)){
+    /* the deferred hide owns this one */
+  } else {
+    sceneApply(sc, sc.on);
+  }
   return true;
 }
 
