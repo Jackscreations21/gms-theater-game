@@ -1935,12 +1935,19 @@ function plotBeetlejuice(){
      look(){ all(0); }},
 
     /* ============ ACT TWO ============ */
+    /* Both house cues state the exterior's offset — the wagon convention:
+       the engine never homes a whole-group mover on its own, so a scene
+       that flies out on a cue move can only come BACK by cue move.  Without
+       these, a goBack from 1:14:30 played the top of act two on an empty
+       stage, the drop still parked in the flies at +9. */
     {at:4310, n:24, label:'act two — beginners, please', fade:5, house:0.25, haze:0.2,
      curtain:'shut', scene:'house', backdrop:'out', sky:'in',
+     move:{scene:'house', off:0},
      look(){ all(0); onTheCloth(); set(FRONT, 0.4, '#bfe08a'); }},
 
     {at:4340, n:25, label:'curtain up — outside the house, sky behind', fade:5,
      house:0, haze:0.65, curtain:'out', scene:'house', backdrop:'out', sky:'in',
+     move:{scene:'house', off:0},
      look(){ all(0);
        set(CYC, 0.42, '#24507f'); set(BACK, 0.34, '#3f6ea6');
        set(WASH, 0.14, '#4a6a90'); }},

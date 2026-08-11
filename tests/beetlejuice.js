@@ -250,7 +250,18 @@ const probe = `
     if(!me) throw new Error('the cue no longer flies the exterior');
     if(Math.abs(me.off - BJ_SIGN_OUT) > 1e-9)
       throw new Error('it flies to '+me.off+', not to BJ_SIGN_OUT');
-    return 'y mover, home 0, flown to +'+me.off+' by cue '+CUES[i].n;
+    /* and the WAGON CONVENTION: the engine never homes a whole-group mover
+       on its own, so every cue that plays in the house must state the
+       exterior's offset — or a goBack after 1:14:30 opens act two on an
+       empty stage, the drop still parked in the flies */
+    for(const q of CUES){
+      if(q.scene !== 'house') continue;
+      const l = Array.isArray(q.move) ? q.move : (q.move ? [q.move] : []);
+      if(!l.some(m=>m && m.scene === 'house' && !m.part && m.off === 0))
+        throw new Error('cue '+q.n+' plays in the house without homing the drop');
+    }
+    return 'y mover, home 0, flown to +'+me.off+' by cue '+CUES[i].n+
+           ', homed by every house cue';
   });
 
   /* the behavioural half, through the REAL cue path: the act-two cue names a
@@ -292,6 +303,40 @@ const probe = `
     if(SHOW.scene !== 'interior') throw new Error('the cue never changed the scene');
     return 'in view at +'+yMid.toFixed(2)+' after 2s, dark at +'+yEnd.toFixed(2)+
            ' after '+((frames + 120)/60).toFixed(1)+'s';
+  });
+
+  /* the way BACK: goBack is a first-class board control, and the engine
+     never homes a whole-group mover on its own — the recall is cue 24's
+     own move:{scene:'house', off:0}, and the drop must be seen coming
+     down, not found parked in the flies */
+  P('goBack to the top of act two brings the flown drop back to the deck', ()=>{
+    showLoad('beetlejuice');
+    const h = sceneFind('house');
+    const i24 = CUES.findIndex(c=>c.scene === 'house');
+    const i26 = CUES.findIndex(c=>/1:14:30/.test(c.label));
+    fireCue(i24);
+    for(let k = 0; k < 360; k++) updateStorm(1/60);
+    fireCue(i26);
+    for(let k = 0; k < 600; k++) updateStorm(1/60);          // flown, arrived, dark
+    if(Math.abs(h.mv.off - BJ_SIGN_OUT) > 0.01)
+      throw new Error('the exterior never flew out: '+h.mv.off.toFixed(2));
+    const wy = ()=>{ scene.updateMatrixWorld(true);
+      return byName('bj:house').matrixWorld.elements[13]; };
+    const yOut = wy();
+    fireCue(i24);                        // the operator goes BACK to cue 24
+    if(h.group.userData.sceneOff) throw new Error('the recall did not bring the house on');
+    for(let k = 0; k < 120; k++) updateStorm(1/60);          // 2s of a 5s fly-in
+    const yMid = wy();
+    if(h.group.userData.sceneOff) throw new Error('it went dark on the way down');
+    if(!(yMid < yOut - 0.5))
+      throw new Error('not descending — still at +'+(yMid - yOut + BJ_SIGN_OUT).toFixed(2));
+    for(let k = 0; k < 600; k++) updateStorm(1/60);
+    if(Math.abs(h.mv.off) > 0.01) throw new Error('never came home: '+h.mv.off.toFixed(2));
+    if(Math.abs(wy() - (yOut - BJ_SIGN_OUT)) > 0.05)
+      throw new Error('the world disagrees: cloth centre at '+wy().toFixed(2));
+    if(h.group.userData.sceneOff) throw new Error('home, and hidden anyway');
+    return 'recalled from +9.00, seen at +'+(yMid - yOut + BJ_SIGN_OUT).toFixed(2)+
+           ' on the way down, footed on the deck and lit';
   });
 
   /* The real invariant is that the audience never SEES a set change. A shut
@@ -1251,6 +1296,39 @@ const probe = `
     if(!sc.on || sc.group.userData.sceneOff) throw new Error('the emptied stage went dark');
     return 'hills out to +-'+BJ_HILL_OUT+' in view, nearest parked edge at x '+
            nearest.toFixed(2)+' against +-'+EDGE+', cloth still at '+bd.target.toFixed(1);
+  });
+
+  /* a JUMP lands the cue's OWN picture, not a half-cue: fired from another
+     scene, 9:45 must end with the graveyard on and EMPTIED — the split rule
+     in showCueExtras exists for this.  Moves applied before the changeover
+     get overwritten by the incoming branch's snap-to-OUT-then-home, which
+     sent the hills back to centre: a full graveyard on the emptying cue. */
+  P('a JUMP to 9:45 from another scene still lands an EMPTIED graveyard', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('cemetery');
+    const wx = o => { scene.updateMatrixWorld(true); return o.matrixWorld.elements[12]; };
+    const gR = sc.pmv.hillR.group, gL = sc.pmv.hillL.group;
+    const r0 = wx(gR), l0 = wx(gL);                    // home, read at load
+    const i945  = CUES.findIndex(c=>/9:45/.test(c.label));
+    const i1040 = CUES.findIndex(c=>/10:40/.test(c.label));
+    fireCue(i1040);                                    // the wagon cue first
+    for(let k = 0; k < 600; k++) updateStorm(1/60);
+    if(SHOW.scene !== 'interior') throw new Error('the wagon cue did not land');
+    fireCue(i945);                                     // the operator JUMPS back
+    for(let k = 0; k < 600; k++) updateStorm(1/60);
+    if(!sc.on || sc.group.userData.sceneOff)
+      throw new Error('the jump did not bring the graveyard on');
+    if(Math.abs(wx(gR) - (r0 - BJ_HILL_OUT)) > 0.05)
+      throw new Error('the right hill ended at '+(wx(gR) - r0).toFixed(2)+
+                      ', not parked at -'+BJ_HILL_OUT);
+    if(Math.abs(wx(gL) - (l0 + BJ_HILL_OUT)) > 0.05)
+      throw new Error('the left hill ended at '+(wx(gL) - l0).toFixed(2)+
+                      ', not parked at +'+BJ_HILL_OUT);
+    /* and the cue's own fly snapshot holds: the cloth is in at its trim */
+    if(Math.abs(FLY[13].target - TRIMS.bjBackdrop) > 0.01)
+      throw new Error('the backdrop is not at its trim after the jump');
+    return 'jumped from the wagon: graveyard on, hills parked at +-'+BJ_HILL_OUT+
+           ', cloth at trim';
   });
 
   P('the graveyard never returns in the plot, but a recall brings the hills home', ()=>{
