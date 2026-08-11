@@ -375,7 +375,12 @@ const probe = `
     return 'fader shows '+Math.round(SECTIONS[1].level*100)+'%';
   });
   P('house + work sections drive the house circuits', ()=>{
-    setSection(SECTIONS[6], 0.5, 0); setSection(SECTIONS[7], 0.25, 0);
+    /* by ID, not by position.  This read SECTIONS[6]/[7] until RULING BC added
+       the two audience-rig faders ahead of them on the board and it started
+       driving the blinders instead — the assertion is about the HOUSE and WORK
+       circuits, so it should say so. */
+    const secOf = id => SECTIONS[SECTIONS.findIndex(s=>s.id===id)];
+    setSection(secOf('house'), 0.5, 0); setSection(secOf('work'), 0.25, 0);
     if(Math.abs(HOUSE.house-0.5)>0.001 || Math.abs(HOUSE.work-0.25)>0.001) throw new Error('house not following');
     return 'house 50% / work 25%';
   });

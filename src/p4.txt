@@ -217,6 +217,32 @@ function bodyMover(){
   g.userData.clamp = base;   // movers clamp through their base
   g.userData.yoke = yoke; g.userData.head = head; g.userData.lens = lens; return g;
 }
+/* A BLINDER — the audience-facing unit, two rows of four open cells in one
+   shell (RULING BC).  The cell rings are ONE merged geometry cached like every
+   other fixture part, so all eight blinders on all three stages share it and a
+   blinder costs three draw calls rather than ten.
+
+   It is meant to be LOOKED AT rather than to light anything, which is why the
+   patch gives it a low `power`: `_active` sorts on level*power against only
+   eight real lights, so a blinder that outranked a stage lantern would pull a
+   real light off the stage at the exact moment the stage matters. */
+function bodyBlinder(){
+  const g = new T.Group();
+  const shell = new T.Mesh(fixG('blindShell', ()=>new T.BoxGeometry(.94,.52,.28)), M.fixture);
+  g.add(shell);
+  const cells = new T.Mesh(fixG('blindCells', ()=>{
+    const parts = [];
+    for(let i=0;i<4;i++) for(let j=0;j<2;j++)
+      parts.push({geo:new T.CylinderGeometry(.1,.105,.13,10,1,true),
+                  pos:[-.33+i*.22, .11-j*.22, .15], rot:[Math.PI/2,0,0]});
+    return mergeParts(parts);
+  }), M.fixture);
+  g.add(cells);
+  const lens = new T.Mesh(fixG('blindLens', ()=>new T.PlaneGeometry(.88,.46)), lensMat(0x161616));
+  lens.position.z = .16; g.add(lens);
+  addHang(g, .3);
+  g.userData.lens = lens; return g;
+}
 function bodySpeaker(){
   const g = new T.Group();
   const box = new T.Mesh(fixG('spkBox', ()=>new T.BoxGeometry(.62,.46,.54)), M.fixture);
@@ -246,7 +272,8 @@ function bodySpeaker(){
 var BODIES = [];
 var BUILD_VENUE = 'palace';   // buildArcStage flips this while it builds (p2k)
 const BODY_LABEL = {profile:'PROFILE SPOT', fresnel:'FRESNEL', par:'PAR CAN',
-                    cyc:'CYC UNIT', mover:'MOVING HEAD', speaker:'PA BOX',
+                    cyc:'CYC UNIT', mover:'MOVING HEAD', blinder:'BLINDER',
+                    speaker:'PA BOX',
                     wood:'WOOD', hinge:'HINGE', track:'TRACK', carriage:'CARRIAGE',
                     paint:'PAINT CAN', table:'WORK TABLE'};
 function makeBodyMesh(kind, color){
@@ -256,6 +283,7 @@ function makeBodyMesh(kind, color){
   if(BUILD_KINDS && BUILD_KINDS[kind]) return makeBuildMesh(kind, color);
   return kind==='fresnel'?bodyFresnel(): kind==='par'?bodyPar():
          kind==='cyc'?bodyCyc(): kind==='mover'?bodyMover():
+         kind==='blinder'?bodyBlinder():
          kind==='speaker'?bodySpeaker(): bodyProfile();
 }
 /* register a body that is already sitting hung on its point */
@@ -685,6 +713,43 @@ function buildRig(){
   addFixture({name:'FOLLOWSPOT', type:'profile', follow:true,
     pos:V(0, balcFloorY(D.houseBack-3.4)+1.8, D.houseBack-3.4), aim:V(0, 1.6, 0),
     angle:8, beamLen:32, beamRad:2.0, power:4.2, color:new T.Color(0xfff4e2)});
+
+  /* ==== THE AUDIENCE RIG (RULING BC) ==================================== *
+     The owner asked for "audience blinders all around the proscenium" and
+     "more moving lights to the seating area".  Both go in HERE, in buildRig,
+     which is the FOH-bar and speaker-bar precedent: one builder, so all three
+     theatres get them and "every stage is the same box" stays true.
+
+     They are APPENDED.  chan(n) is FIXTURES[n-1], so inserting anywhere else
+     renumbers the whole patch and every plot, section and group with it.
+
+     Everything here aims INTO THE HOUSE — the first fixtures in the game that
+     do; all 25 above aim at or upstage of the arch.  Two consequences fall out
+     of that for free: the floor pool is clipped to the stage box so an
+     audience unit draws none at all, and the beam only draws while there is
+     haze to catch it.  What is NOT free is `power`, and it is deliberately
+     below every stage lantern's — see bodyBlinder.                          */
+
+  // 26-33 BLINDERS — round the arch, on the downstage face of the proscenium
+  const bz = 1.35;                            // just clear of the 1.2 deep wall
+  const arch = D.procW/2 + 0.62;              // outboard of the 15m opening
+  [[-5.4, D.procH+0.55],[-1.8, D.procH+0.55],[1.8, D.procH+0.55],[5.4, D.procH+0.55],
+   [-arch, 6.4],[-arch, 3.0],[arch, 6.4],[arch, 3.0]
+  ].forEach(([x,y],i)=>{
+    addFixture({name:'BLINDER '+(i+1), type:'blinder',
+      pos:V(x, y, bz), aim:V(x*0.45, 2.2, 15.0),
+      angle:60, beamLen:16, beamRad:7.0, power:0.9,
+      color:new T.Color(0xfff2e0)});
+  });
+
+  // 34-39 AUDIENCE MOVERS — two bars over the seating, pointing down into it
+  [[-6.4, 9.0],[0, 9.0],[6.4, 9.0],[-6.4, 19.0],[0, 19.0],[6.4, 19.0]
+  ].forEach(([x,z],i)=>{
+    addFixture({name:'AUD MOVER '+(i+1), type:'mover', mover:true,
+      pos:V(x, 17.5, z), aim:V(x*0.6, D.houseY, z + 4),
+      angle:16, beamLen:22, beamRad:3.0, power:0.8,
+      color:new T.Color(0x7fd06a), tilt:-64, tiltT:-64});
+  });
 }
 buildRig();
 /* the focus each lamp was rigged with — a cue may re-aim one, but this is

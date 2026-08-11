@@ -1588,6 +1588,9 @@ function showCueExtras(c){
   if(SHOW.rain) SHOW.rain.target = c.rain || 0;
   if(SHOW.fire) SHOW.fire.target = c.fire ? (c.fire.size === undefined ? 1 : c.fire.size) : 0;
   if(c.neon !== undefined && typeof setNeon === 'function') setNeon(c.neon);
+  /* the marquee's own lamps.  `undefined` means LEAVE IT — one cue turns the
+     sign red and the cues after it keep it red without saying so again. */
+  if(c.signCol !== undefined && typeof setSignLamps === 'function') setSignLamps(c.signCol);
   setFirelight(c.fire ? c.fire.chans : null, c.fire ? c.fire.base : 0.8);
   /* which dressing the room wears (RULING AQ) — judged BEFORE the changeover
      below, against where the set stands as the cue FIRES.  A swap on a set
@@ -1649,6 +1652,12 @@ function showCueExtras(c){
   if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
   mvAfter.forEach(mvApply);
   if(c.confetti && typeof fireConfetti === 'function') fireConfetti();
+  /* the sound (BA) and the audience rig's patterns (BD).  Both are p5j, which
+     loads after this part, so both are typeof-guarded the way showCueExtras
+     itself is guarded from p6.  `fx` is called even when the cue has none —
+     that is what CLEARS a running effect. */
+  if(typeof showCueAudio === 'function') showCueAudio(c.audio || null);
+  if(typeof showCueFx === 'function') showCueFx(c.fx || null);
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);
     setRevolve('inner', c.rev.inner || 0);

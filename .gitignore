@@ -1,3 +1,9 @@
 tests/node_modules/
 .claude/settings.local.json
 .claude/
+
+# The show's recorded audio — RULING BA, see docs/AUDIO.md.  Never committed:
+# show.m4a is 134MB (over GitHub's hard limit), it comes off a video, and it is
+# a commercial recording on a repo with Pages enabled.  The README stays.
+assets/audio/*
+!assets/audio/README.md

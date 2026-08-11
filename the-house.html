@@ -4364,6 +4364,32 @@ function bodyMover(){
   g.userData.clamp = base;   // movers clamp through their base
   g.userData.yoke = yoke; g.userData.head = head; g.userData.lens = lens; return g;
 }
+/* A BLINDER — the audience-facing unit, two rows of four open cells in one
+   shell (RULING BC).  The cell rings are ONE merged geometry cached like every
+   other fixture part, so all eight blinders on all three stages share it and a
+   blinder costs three draw calls rather than ten.
+
+   It is meant to be LOOKED AT rather than to light anything, which is why the
+   patch gives it a low `power`: `_active` sorts on level*power against only
+   eight real lights, so a blinder that outranked a stage lantern would pull a
+   real light off the stage at the exact moment the stage matters. */
+function bodyBlinder(){
+  const g = new T.Group();
+  const shell = new T.Mesh(fixG('blindShell', ()=>new T.BoxGeometry(.94,.52,.28)), M.fixture);
+  g.add(shell);
+  const cells = new T.Mesh(fixG('blindCells', ()=>{
+    const parts = [];
+    for(let i=0;i<4;i++) for(let j=0;j<2;j++)
+      parts.push({geo:new T.CylinderGeometry(.1,.105,.13,10,1,true),
+                  pos:[-.33+i*.22, .11-j*.22, .15], rot:[Math.PI/2,0,0]});
+    return mergeParts(parts);
+  }), M.fixture);
+  g.add(cells);
+  const lens = new T.Mesh(fixG('blindLens', ()=>new T.PlaneGeometry(.88,.46)), lensMat(0x161616));
+  lens.position.z = .16; g.add(lens);
+  addHang(g, .3);
+  g.userData.lens = lens; return g;
+}
 function bodySpeaker(){
   const g = new T.Group();
   const box = new T.Mesh(fixG('spkBox', ()=>new T.BoxGeometry(.62,.46,.54)), M.fixture);
@@ -4393,7 +4419,8 @@ function bodySpeaker(){
 var BODIES = [];
 var BUILD_VENUE = 'palace';   // buildArcStage flips this while it builds (p2k)
 const BODY_LABEL = {profile:'PROFILE SPOT', fresnel:'FRESNEL', par:'PAR CAN',
-                    cyc:'CYC UNIT', mover:'MOVING HEAD', speaker:'PA BOX',
+                    cyc:'CYC UNIT', mover:'MOVING HEAD', blinder:'BLINDER',
+                    speaker:'PA BOX',
                     wood:'WOOD', hinge:'HINGE', track:'TRACK', carriage:'CARRIAGE',
                     paint:'PAINT CAN', table:'WORK TABLE'};
 function makeBodyMesh(kind, color){
@@ -4403,6 +4430,7 @@ function makeBodyMesh(kind, color){
   if(BUILD_KINDS && BUILD_KINDS[kind]) return makeBuildMesh(kind, color);
   return kind==='fresnel'?bodyFresnel(): kind==='par'?bodyPar():
          kind==='cyc'?bodyCyc(): kind==='mover'?bodyMover():
+         kind==='blinder'?bodyBlinder():
          kind==='speaker'?bodySpeaker(): bodyProfile();
 }
 /* register a body that is already sitting hung on its point */
@@ -4832,6 +4860,43 @@ function buildRig(){
   addFixture({name:'FOLLOWSPOT', type:'profile', follow:true,
     pos:V(0, balcFloorY(D.houseBack-3.4)+1.8, D.houseBack-3.4), aim:V(0, 1.6, 0),
     angle:8, beamLen:32, beamRad:2.0, power:4.2, color:new T.Color(0xfff4e2)});
+
+  /* ==== THE AUDIENCE RIG (RULING BC) ==================================== *
+     The owner asked for "audience blinders all around the proscenium" and
+     "more moving lights to the seating area".  Both go in HERE, in buildRig,
+     which is the FOH-bar and speaker-bar precedent: one builder, so all three
+     theatres get them and "every stage is the same box" stays true.
+
+     They are APPENDED.  chan(n) is FIXTURES[n-1], so inserting anywhere else
+     renumbers the whole patch and every plot, section and group with it.
+
+     Everything here aims INTO THE HOUSE — the first fixtures in the game that
+     do; all 25 above aim at or upstage of the arch.  Two consequences fall out
+     of that for free: the floor pool is clipped to the stage box so an
+     audience unit draws none at all, and the beam only draws while there is
+     haze to catch it.  What is NOT free is `power`, and it is deliberately
+     below every stage lantern's — see bodyBlinder.                          */
+
+  // 26-33 BLINDERS — round the arch, on the downstage face of the proscenium
+  const bz = 1.35;                            // just clear of the 1.2 deep wall
+  const arch = D.procW/2 + 0.62;              // outboard of the 15m opening
+  [[-5.4, D.procH+0.55],[-1.8, D.procH+0.55],[1.8, D.procH+0.55],[5.4, D.procH+0.55],
+   [-arch, 6.4],[-arch, 3.0],[arch, 6.4],[arch, 3.0]
+  ].forEach(([x,y],i)=>{
+    addFixture({name:'BLINDER '+(i+1), type:'blinder',
+      pos:V(x, y, bz), aim:V(x*0.45, 2.2, 15.0),
+      angle:60, beamLen:16, beamRad:7.0, power:0.9,
+      color:new T.Color(0xfff2e0)});
+  });
+
+  // 34-39 AUDIENCE MOVERS — two bars over the seating, pointing down into it
+  [[-6.4, 9.0],[0, 9.0],[6.4, 9.0],[-6.4, 19.0],[0, 19.0],[6.4, 19.0]
+  ].forEach(([x,z],i)=>{
+    addFixture({name:'AUD MOVER '+(i+1), type:'mover', mover:true,
+      pos:V(x, 17.5, z), aim:V(x*0.6, D.houseY, z + 4),
+      angle:16, beamLen:22, beamRad:3.0, power:0.8,
+      color:new T.Color(0x7fd06a), tilt:-64, tiltT:-64});
+  });
 }
 buildRig();
 /* the focus each lamp was rigged with — a cue may re-aim one, but this is
@@ -7114,6 +7179,12 @@ const SECTIONS = [
   {id:'cyc',    name:'CYC<br>WASH',    chans:[19,20,21,22],      color:'#2f6bff', gobo:0, gel:true},
   {id:'movers', name:'MOVING<br>HEADS',chans:[23,24],            color:'#66ccff', gobo:0, gel:true, mover:true},
   {id:'spot',   name:'FOLLOW<br>SPOT', chans:[25],               color:'#fff4e2', gobo:0, gel:true},
+  /* the audience rig (RULING BC) — its own two faders, because it is the one
+     part of the board that is not pointing at the stage */
+  {id:'blind',  name:'BLINDERS',      chans:[26,27,28,29,30,31,32,33],
+                                     color:'#fff2e0', gobo:0, gel:true},
+  {id:'aud',    name:'AUDIENCE<br>MOVERS', chans:[34,35,36,37,38,39],
+                                     color:'#7fd06a', gobo:0, gel:true, mover:true},
   {id:'house',  name:'HOUSE<br>LIGHTS',sys:'house',              color:'#ffb877'},
   {id:'work',   name:'WORK<br>LIGHT',  sys:'work',               color:'#f4f8ff'},
   {id:'lobby',  name:'LOBBY',           sys:'lobby',              color:'#ffce96'},
@@ -7152,12 +7223,18 @@ function syncSections(){
   }
 }
 
+/* `all` is taken off the patch rather than written down: the audience rig
+   (RULING BC) took it from 25 to 39, and a hardcoded length silently stops
+   covering the last channels the moment the rig grows again. */
 const GROUPS = {
-  all:  Array.from({length:25},(_,i)=>i+1),
+  all:  Array.from({length:FIXTURES.length},(_,i)=>i+1),
   foh:  [1,2,3,4,5,6], booms:[7,8], front:[1,2,3,4,5,6,7,8],
   wash: [9,10,11,12,13,14], warm:[9,10], cool:[13,14],
   back: [15,16,17,18], cyc:[19,20,21,22], movers:[23,24], spot:[25],
-  stage:[9,10,11,12,13,14,15,16,17,18]
+  stage:[9,10,11,12,13,14,15,16,17,18],
+  /* the audience rig — pointed the other way, and never part of `stage` */
+  blind:[26,27,28,29,30,31,32,33], aud:[34,35,36,37,38,39],
+  house:[26,27,28,29,30,31,32,33,34,35,36,37,38,39]
 };
 const COLORS = {
   white:'#ffffff', warm:'#ffd6a8', cool:'#cfe0ff', red:'#ff2a1e', deepred:'#b00010',
@@ -11010,6 +11087,9 @@ function showCueExtras(c){
   if(SHOW.rain) SHOW.rain.target = c.rain || 0;
   if(SHOW.fire) SHOW.fire.target = c.fire ? (c.fire.size === undefined ? 1 : c.fire.size) : 0;
   if(c.neon !== undefined && typeof setNeon === 'function') setNeon(c.neon);
+  /* the marquee's own lamps.  `undefined` means LEAVE IT — one cue turns the
+     sign red and the cues after it keep it red without saying so again. */
+  if(c.signCol !== undefined && typeof setSignLamps === 'function') setSignLamps(c.signCol);
   setFirelight(c.fire ? c.fire.chans : null, c.fire ? c.fire.base : 0.8);
   /* which dressing the room wears (RULING AQ) — judged BEFORE the changeover
      below, against where the set stands as the cue FIRES.  A swap on a set
@@ -11071,6 +11151,12 @@ function showCueExtras(c){
   if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
   mvAfter.forEach(mvApply);
   if(c.confetti && typeof fireConfetti === 'function') fireConfetti();
+  /* the sound (BA) and the audience rig's patterns (BD).  Both are p5j, which
+     loads after this part, so both are typeof-guarded the way showCueExtras
+     itself is guarded from p6.  `fx` is called even when the cue has none —
+     that is what CLEARS a running effect. */
+  if(typeof showCueAudio === 'function') showCueAudio(c.audio || null);
+  if(typeof showCueFx === 'function') showCueFx(c.fx || null);
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);
     setRevolve('inner', c.rev.inner || 0);
@@ -13199,6 +13285,20 @@ const BJ_FLY_SPEED  = 1.8;   // m/s — a flown room clears in ~5.8s
    --------------------------------------------------------------------------- */
 /* the hard black-and-white stripe the takeover paints everything in.  Vertical
    for the walls, horizontal for the furniture and the worm. */
+/* THE SIGN'S LAMPS ON A CUE.  `signCol:'#ff1e10'` throws every bulb and tube
+   on the marquee over to one colour; `signCol:null` restores what it was built
+   with.  A cue that says nothing leaves it alone, which is what lets one cue
+   turn it red and eight later cues keep it red without repeating themselves. */
+function setSignLamps(hex){
+  if(!SHOW.signLamps) return;
+  SHOW.signLamps.forEach(r=>{
+    if(hex){
+      r.mat.color.set(hex); r.mat.emissive.set(hex); r.mat.emissiveIntensity = 2.1;
+    } else {
+      r.mat.color.copy(r.c); r.mat.emissive.copy(r.e); r.mat.emissiveIntensity = r.ei;
+    }
+  });
+}
 function bjStripeTex(vertical){
   const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');
   g.fillStyle = '#efe9dd'; g.fillRect(0, 0, W, H);
@@ -14765,6 +14865,13 @@ SHOWS.beetlejuice = {
         const m = new T.Mesh(mergeParts(parts), iron);
         m.name = 'bj:flySignFrame'; m.castShadow = true; sgnFly.group.add(m);
       }
+      /* "all the lights on the beetlejuice sign go bright red."  The sign's
+         lamps are two of its OWN materials (the bulb beads and the tube ends),
+         not global shared ones, so a cue may tint them — and it is a cue
+         state, not a repaint: the sign's look stays the one he kept.  The
+         originals are remembered here so `signCol:null` puts them back. */
+      SHOW.signLamps = [bulbM, neonR].map(mat=>({
+        mat, c:mat.color.clone(), e:mat.emissive.clone(), ei:mat.emissiveIntensity}));
       sceneAlways(sgnFly);                       // on whatever set is up
       sceneTravel(sgnFly, 'y', 0, 2.6);          // 0 is IN; BJ_SIGN_OUT is out
     }
@@ -14862,6 +14969,9 @@ SHOWS.beetlejuice = {
 function plotBeetlejuice(){
   const FRONT = [1,2,3,4,5,6], BOOM = [7,8], WASH = [9,10,11,12,13,14],
         BACK = [15,16,17,18], CYC = [19,20,21,22], MOVE = [23,24], SPOT = 25;
+  /* the audience rig (RULING BC).  Named AUDM, not AUD — AUD is p5j's audio
+     state object, and shadowing it in here would be a quiet disaster. */
+  const BLIND = [26,27,28,29,30,31,32,33], AUDM = [34,35,36,37,38,39];
   const all = v => FIXTURES.forEach(f=>{ f.level = v; });
   const set = (list, v, col)=>list.forEach(n=>{
     const f = chan(n); if(!f) return; f.level = v; if(col) f.color.set(col); });
@@ -14888,24 +14998,85 @@ function plotBeetlejuice(){
      -------------------------------------------------------------------- */
   const looks = [
     /* ============ PRE-SHOW ============ */
-    {at:33, n:0.5, label:'PRE-SHOW — house open, curtain in, the sign lit', fade:0,
-     house:0.9, haze:0.15, curtain:'shut', scene:'cemetery',
+    /* "Play pre show music i have provided and set the house lights low."
+       The blinders are built and OFF — "dont have them on they are for later" —
+       and the audience movers drift over the seating, slowly, green to purple
+       and back (rulings BC and BD).  The house at 0.3 is a judgement about the
+       word "low" and it is a one-line retune. */
+    {at:33, n:0.5, label:'PRE-SHOW — house low, curtain in, the sign lit', fade:0,
+     house:0.45, haze:0.15, curtain:'shut', scene:'cemetery',
      backdrop:'in', hold:true,
-     look(){ all(0); onTheCloth(); set(FRONT, 0.45, '#e8d2a8'); }},
+     audio:{play:'preshow'},
+     fx:{on:'aud', kind:'wander', cols:['#2fbf5f','#7f3fbf']},
+     look(){ all(0); onTheCloth(); set(FRONT, 0.45, '#e8d2a8');
+       set(AUDM, 0.55, '#2fbf5f'); }},
 
     /* ============ THE TOP OF THE SHOW ============ */
-    {at:50, n:1, label:'house to half — the show starts', fade:5, house:0.5, haze:0.2,
-     curtain:'shut', scene:'cemetery', backdrop:'in',
-     look(){ all(0); onTheCloth(); set(FRONT, 0.55, '#e8d2a8'); }},
+    /* GO.  "have it stop the first audio and start the second (start the audio
+       at time stamp 35 seconds)" — so this cue's own `at` IS 35, and from here
+       on the music is the clock: every cue below fires when the track reaches
+       its `at` (RULING BB).  With no audio present the follow chain runs it on
+       the same numbers.
 
-    {at:72, n:1.3, label:'the sign flies out', fade:3, house:0.15, haze:0.25,
-     curtain:'shut', scene:'cemetery', backdrop:'in',
+       "The lights around the prosinum all turn red and all the lights on the
+       beetlejuice sign go bright red." */
+    {at:35, n:1, label:'GO — the proscenium and the sign go red', fade:1.5,
+     house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     audio:{play:'show', at:35, stop:'preshow'}, signCol:'#ff1e10',
+     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
+
+    /* "From 1:03 to 1:05 have all the lights that are in the audience area be
+       purple and sweep up then at 1:05 they go dark (make sure the beetljuice
+       sign still stays lit up red)."  The sweep IS the effect — a cue cannot
+       say "up over two seconds while tilting"; `fx` can (BD).  The sign keeps
+       its red by saying nothing about it. */
+    {at:63, n:1.1, label:'1:03 — the house sweeps up, purple', fade:0,
+     house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     fx:{on:'aud', kind:'sweep', col:'#8a2fe0', secs:2},
+     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); set(AUDM, 1.0, '#8a2fe0'); }},
+
+    {at:65, n:1.2, label:'1:05 — the house goes dark, the sign stays red', fade:0.4,
+     house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
+
+    /* "Then from 1:06 to 1:09 do the same as last cue." */
+    {at:66, n:1.3, label:'1:06 — and again', fade:0,
+     house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     fx:{on:'aud', kind:'sweep', col:'#8a2fe0', secs:3},
+     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); set(AUDM, 1.0, '#8a2fe0'); }},
+
+    {at:69, n:1.4, label:'1:09 — dark again', fade:0.4,
+     house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
+
+    /* "at 1:16 all the blinders around the proscenium flash white as bright as
+       posible then do a random pattern fast while the curtain and beetlejuice
+       sign go out".  The flash and the pattern are two cues a second apart
+       because they are two things; the curtain and the sign start travelling
+       under the flash and have ten seconds to clear. */
+    {at:76, n:1.5, label:'1:16 — blinders flash white; the curtain and the sign go out',
+     fade:0, house:0, haze:0.25, curtain:'out', scene:'cemetery', backdrop:'in',
      move:{scene:'bjSign', off:BJ_SIGN_OUT},
-     look(){ all(0); onTheCloth(); set(FRONT, 0.7, '#bfe08a'); set(BOOM, 0.2, '#6f9f4a'); }},
+     fx:{on:'blind', kind:'flash', col:'#ffffff', secs:0.7},
+     look(){ all(0); set(BLIND, 1.0, '#ffffff'); }},
 
-    /* the curtain lifts and it is the graveyard */
-    {at:95, n:2, label:'curtain up — the graveyard, low and blue', fade:6, house:0, haze:0.6,
-     curtain:'out', scene:'cemetery', backdrop:'in',
+    {at:77, n:1.6, label:'the blinders run fast and random', fade:0,
+     house:0, haze:0.25, curtain:'out', scene:'cemetery', backdrop:'in',
+     fx:{on:'blind', kind:'random', col:'#ffffff'},
+     look(){ all(0); set(BLIND, 0.9, '#ffffff'); }},
+
+    /* "then at 1:26 they stop the random pattern and all flash white one more
+       time (by now the curtain and beetlejuice sign shou be fully flown out)" */
+    {at:86, n:1.7, label:'1:26 — the pattern stops, one more white flash', fade:0,
+     house:0, haze:0.3, curtain:'out', scene:'cemetery', backdrop:'in',
+     fx:{on:'blind', kind:'flash', col:'#ffffff', secs:0.8},
+     look(){ all(0); set(BLIND, 1.0, '#ffffff'); }},
+
+    /* "then after a second thestage lights fade on to blue" — and the sign's
+       lamps go back to their own colour, out in the flies where nobody sees it */
+    {at:88, n:2, label:'the stage fades up blue — the graveyard', fade:6,
+     house:0, haze:0.6, curtain:'out', scene:'cemetery', backdrop:'in',
+     signCol:null,
      look(){ all(0);
        set(CYC, 0.55, '#2f5f9c'); set(BACK, 0.42, '#4a78b4');
        set(WASH, 0.18, '#5f7fa8'); set(BOOM, 0.30, '#3f6ea6'); }},
@@ -15189,6 +15360,9 @@ function plotBeetlejuice(){
       dress:L.dress || null,          // which dressing the room wears (AQ)
       move:L.move || null,            // what travels, and to where (AP)
       confetti:!!L.confetti,
+      audio:L.audio || null,          // what the sound does here (BA/BB)
+      fx:L.fx || null,                // the audience rig's pattern (BD)
+      signCol:L.signCol,              // undefined means LEAVE THE SIGN ALONE
       hold:!!L.hold                   // arms nothing; waits for GO (AU)
     });
   });
@@ -19163,6 +19337,359 @@ function loadSetModels(){
 }
 
 /* ============================================================================
+   THE SHOW'S SOUND, AND THE AUDIENCE RIG'S PATTERNS      (rulings BA, BB, BD)
+
+   Spec: docs/superpowers/specs/2026-08-11-beetlejuice-sound-and-house-design.md
+
+   Three things live here, and they are together because the middle one joins
+   the other two:
+
+     1. RECORDED TRACKS (BA).  Two of them, read out of assets/audio/ by exact
+        filename.  THE FILES ARE NEVER COMMITTED and a missing track is a
+        NORMAL STATE — the show runs silent, every suite runs silent, and a
+        fresh clone runs silent.  This is the model-import pipeline over again
+        (RULING AZ): a manifest, a doc whose File column is the contract, a
+        test that pins the two together both ways, and a fallback so quiet
+        that nothing downstream can tell.
+
+     2. THE TRANSPORT (BB).  Every timestamp the owner wrote is a position in
+        the show track, so when that track is genuinely playing it IS the cue
+        clock: a cue fires when its `at` has passed.  Absolute timecode, so it
+        cannot drift, and a seek drags the lights to the music.  With no audio
+        the `follow` chain drives exactly as it always has — untouched, and
+        still the only path a suite exercises.
+
+     3. THE PATTERN ENGINE (BD).  "moving slowly doing random patterns",
+        "slowly fading between green and purple", "sweep up", "a random
+        pattern fast", "flash white as bright as posible" — none of which the
+        cue system can say, because a cue is a static look plus a fade time.
+        So a cue may ARM a named effect and this steps it off the frame `dt`.
+        Never setTimeout: the standing rule, and the reason a suite can watch
+        ten seconds of a pattern in 600 stepped calls.
+
+   Why this is not folded into `Snd` (p5): `Snd` is synthesised WebAudio with
+   no assets, and `Snd.play(name)` TOGGLES looping names — a cue needs
+   set-to-a-state, never toggle.  A track also needs `currentTime`, which is
+   the whole of (2).  It does route through Snd's `music` bus level, so the
+   existing fader still means something.
+
+   RULING B is untouched: the flown PA boxes are still rigging with no audio
+   wired to them.  This comes out of the browser, not out of the modelled
+   speakers.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   THE MANIFEST — docs/AUDIO.md's File column IS this table.  A test pins them
+   to each other in BOTH directions, because the fallback is silent by design:
+   a misnamed file would otherwise just never play and never say why.
+   -------------------------------------------------------------------------- */
+const AUDIO_DIR = 'assets/audio/';
+const BJ_AUDIO = {
+  /* "Play pre show music i have provided" — and again through the interval,
+     because act two says "Play audio number one again till go is pressed". */
+  preshow: {file:'preshow.mp3', loop:true,  vol:0.85,
+            label:'the pre-show music (his audio one)'},
+  /* the show itself.  Started at 0:35 on the first GO, resumed at 1:11:32 on
+     the second — his numbers, and every `at` in the plot is a position in
+     THIS file. */
+  show:    {file:'show.m4a',    loop:false, vol:1.0,
+            label:'the show (his audio two)'}
+};
+
+var AUD = {
+  tracks: {},          // key -> the runtime record
+  armed:  false,       // has a user gesture happened yet?
+  pending:null,        // a play the browser refused before that gesture
+  clock:  false,       // is the show track driving the cue stack right now?
+  fx:     {blind:null, aud:null},
+  notes:  {}           // one console line per subject, said once
+};
+
+/* say a thing once.  A missing track is normal, so it must not scroll. */
+function audNote(key, msg){
+  if(AUD.notes[key]) return;
+  AUD.notes[key] = true;
+  if(typeof console !== 'undefined' && console.log) console.log('AUDIO: ' + msg);
+}
+
+/* An entry may be a bare filename (assets/audio/) or an absolute URL.  The URL
+   form is the only way the owner gets sound on the headset over Pages without
+   the recordings entering the repo, and it costs one line. */
+function audioSrc(file){
+  return /^(https?:)?\/\//.test(file) ? file : AUDIO_DIR + file;
+}
+
+function audTrack(key){
+  if(AUD.tracks[key]) return AUD.tracks[key];
+  const spec = BJ_AUDIO[key];
+  if(!spec) return null;
+  const tr = {key, file:spec.file, loop:!!spec.loop, vol:spec.vol === undefined ? 1 : spec.vol,
+              el:null, blocked:false, want:false};
+  /* jsdom has an <audio> element but never fetches media, so `el` exists and
+     stays at readyState 0 for the whole of every suite — which is exactly the
+     no-audio path, and why the suites never hear anything and never break. */
+  try{
+    if(typeof document !== 'undefined' && document.createElement){
+      const el = document.createElement('audio');
+      el.preload = 'auto';
+      el.loop = tr.loop;
+      el.src = audioSrc(spec.file);
+      el.addEventListener('error', ()=>{
+        audNote('miss'+key, spec.label + ' is not in ' + AUDIO_DIR +
+                ' (wanted "' + spec.file + '") — the show runs silent, which is fine');
+      });
+      tr.el = el;
+    }
+  }catch(e){ tr.el = null; }
+  AUD.tracks[key] = tr;
+  return tr;
+}
+
+/* the master this track answers to: Snd's `music` bus, so one fader moves both
+   the synthesised world and the recordings */
+function audBusVol(){
+  let m = 1;
+  try{ if(typeof Snd !== 'undefined' && Snd.level) m = Snd.level('music') * Snd.level('master'); }
+  catch(e){ m = 1; }
+  return (isFinite(m) ? m : 1);
+}
+
+/* IS THIS TRACK REALLY RUNNING?  Not "did we ask it to" — really running, with
+   data.  Everything downstream keys off this, which is what makes the silent
+   fallback total: with no file, readyState never leaves 0, `live` is never
+   true, the transport never takes the clock and the follow chain drives. */
+function audLive(tr){
+  return !!(tr && tr.el && !tr.el.paused && tr.el.readyState >= 2);
+}
+
+/* A CUE ONLY EVER STATES AN INTENT.  It does not call play(), and that is
+   deliberate rather than tidy: play() on a track the browser has not found yet
+   is meaningless, and in jsdom — which never fetches media at all — it raises
+   "Not implemented: HTMLMediaElement.prototype.play" straight onto the console
+   of every suite that fires a cue.  So the wanting is recorded here and
+   audPump() does the playing, once the media is actually there.
+
+   It also gets slow loading right for free: a track wanted before it has
+   buffered simply starts the moment it can. */
+function audPlay(key, at){
+  const tr = audTrack(key); if(!tr) return false;
+  tr.want = true;
+  tr.seek = (at === undefined ? null : at);
+  return true;
+}
+
+function audStop(key){
+  const tr = AUD.tracks[key]; if(!tr) return;
+  tr.want = false; tr.seek = null;
+  if(!tr.el) return;
+  try{ if(!tr.el.paused) tr.el.pause(); }catch(e){}
+}
+
+/* the frame's worth of actually talking to the browser.  readyState >= 1 is
+   HAVE_METADATA: the file exists and has been opened.  With no file it never
+   gets there, so nothing is ever asked to play and the silence is total. */
+function audPump(){
+  for(const key in AUD.tracks){
+    const tr = AUD.tracks[key];
+    if(!tr.el) continue;
+    if(!tr.want){ continue; }
+    let rs = 0;
+    try{ rs = tr.el.readyState || 0; }catch(e){ rs = 0; }
+    if(rs < 1) continue;                       // not found yet — try again next frame
+    if(tr.seek !== null && tr.seek !== undefined){
+      try{ tr.el.currentTime = tr.seek; }catch(e){}
+      tr.seek = null;
+    }
+    try{ tr.el.volume = Math.max(0, Math.min(1, tr.vol * audBusVol())); }catch(e){}
+    if(!tr.el.paused || tr.blocked) continue;
+    let p = null;
+    try{ p = tr.el.play(); }catch(e){ p = null; tr.blocked = true; }
+    /* AUTOPLAY.  There is no gesture between loading the page and the pre-show
+       cue, so the first play may well be refused.  Remember it and start it on
+       the first gesture that reaches the game — the same bargain Snd.init()
+       already makes with the browser. */
+    if(p && p.catch) p.catch(()=>{
+      tr.blocked = true;
+      AUD.pending = {key, at:null};
+      audNote('block', 'the browser refused to start ' + key +
+              ' before a click — it will start on the first one');
+    });
+  }
+}
+
+/* the first gesture anywhere in the game.  p7 calls this beside Snd.init(). */
+function audArm(){
+  AUD.armed = true;
+  AUD.pending = null;
+  /* clear every refusal: the pump will try again next frame, and anything
+     still `want`ed picks up where the cue asked for it */
+  for(const key in AUD.tracks) AUD.tracks[key].blocked = false;
+}
+
+/* WHAT A CUE SAYS ABOUT SOUND.  `audio:{play:'show', at:35, stop:'preshow'}` */
+function showCueAudio(a){
+  if(!a) return;
+  if(a.stop) (Array.isArray(a.stop) ? a.stop : [a.stop]).forEach(audStop);
+  if(a.stopAll) Object.keys(AUD.tracks).forEach(audStop);
+  if(a.play) audPlay(a.play, a.at);
+}
+
+/* --------------------------------------------------------------------------
+   THE TRANSPORT (RULING BB)
+
+   Called every frame.  If the show track is really running it owns the cue
+   stack: fire everything whose `at` has gone by, and cancel any follow the
+   firing armed — two clocks must never both drive.
+
+   A cue carrying `hold` stops the sweep dead and waits for GO, which is what
+   makes the interval work with the music still the clock (RULING AU).
+   -------------------------------------------------------------------------- */
+const AUD_CATCHUP = 40;        // cues per frame, a runaway backstop only
+
+function showAudioTick(dt){
+  audFxStep(dt);
+  audPump();
+  const tr = AUD.tracks.show;
+  if(!audLive(tr)){ AUD.clock = false; return; }
+  try{ tr.el.volume = Math.max(0, Math.min(1, tr.vol * audBusVol())); }catch(e){}
+  AUD.clock = true;
+  if(typeof CUES === 'undefined' || !CUES.length) return;
+  const t = tr.el.currentTime;
+  let n = 0;
+  while(nextCue < CUES.length && n++ < AUD_CATCHUP){
+    const c = CUES[nextCue];
+    if(c.at === undefined || c.at === null) break;   // an unplotted stack: not ours
+    if(c.hold) break;                                // waits for GO
+    if(c.at > t) break;
+    fireCue(nextCue);
+    if(typeof cancelFollow === 'function') cancelFollow();
+  }
+}
+
+/* the stage swap, and anything else that ends a performance.  TRAPS lists
+   audio among the things that have driven the WRONG stage's rig after a walk,
+   so the sound stops with the show the same way cancelFollow kills the chain. */
+function showSoundStop(){
+  Object.keys(AUD.tracks).forEach(audStop);
+  AUD.pending = null;
+  AUD.clock = false;
+  audFxClear();
+}
+
+/* ==========================================================================
+   THE PATTERN ENGINE (RULING BD)
+
+   A cue arms an effect per target; this steps it off dt.  Targets are the two
+   audience groups and nothing else — the stage is cued by hand, as it should
+   be.  An effect writes ONLY the properties it must, so everything it leaves
+   alone stays under the cue's own control:
+
+     wander   pan, tilt, colour     the pre-show: slow drift, slow green<->purple
+     sweep    level, tilt           "purple and sweep up"
+     random   pan, tilt, level      "a random pattern fast"
+     flash    level, colour         "flash white as bright as posible"
+
+   Levels written here overwrite the fade for those channels while the effect
+   runs — the firelight precedent (SHOW.flicker does the same).  It heals
+   itself on the way out: setLevel captures lvlFrom from the LIVE level, so
+   the cue that clears an effect fades from wherever the effect left it.
+
+   Motion is a sum of sines on an accumulating phase, offset per fixture, so
+   there is no per-fixture state to park, nothing to reseed, and a suite can
+   step ten seconds and watch pan actually change.
+   ========================================================================== */
+const AUD_WANDER_RATE = 1.0;   // pre-show drift.  Owner: "slowly" — headset tune
+const AUD_RANDOM_RATE = 1.0;   // the 1:16 chaos.  Owner: "fast"  — headset tune
+const _afC = new T.Color(), _afD = new T.Color();
+
+function audFxChans(on){
+  if(on === 'blind') return GROUPS.blind;
+  if(on === 'aud')   return GROUPS.aud;
+  return GROUPS.house;                    // 'all' — the whole audience rig
+}
+
+/* what a cue's `fx` field means.  One record per target; a cue that says
+   nothing CLEARS both, because an effect that outlived the cue that wanted it
+   is exactly the pop RULING AY forbids. */
+function showCueFx(fx){
+  audFxClear();
+  if(!fx) return;
+  (Array.isArray(fx) ? fx : [fx]).forEach(e=>{
+    if(!e || !e.kind) return;
+    const slot = (e.on === 'blind') ? 'blind' : 'aud';
+    AUD.fx[slot] = {
+      kind: e.kind,
+      on:   e.on || slot,
+      rate: e.rate === undefined ? 1 : e.rate,
+      secs: e.secs === undefined ? 2 : e.secs,
+      cols: (e.cols || (e.col ? [e.col] : null)),
+      t:    0
+    };
+  });
+}
+
+function audFxClear(){ AUD.fx.blind = null; AUD.fx.aud = null; }
+
+function audFxStep(dt){
+  ['blind','aud'].forEach(slot=>{
+    const e = AUD.fx[slot];
+    if(!e) return;
+    e.t += dt;
+    const chans = audFxChans(e.on);
+    for(let i = 0; i < chans.length; i++){
+      const f = chan(chans[i]); if(!f) continue;
+      audFxApply(e, f, i);
+    }
+  });
+}
+
+function audFxApply(e, f, i){
+  const t = e.t;
+  if(e.kind === 'wander'){
+    const r = AUD_WANDER_RATE * e.rate;
+    if(f.mover){
+      f.panT  =  62 * Math.sin(t*0.31*r + i*1.7) * Math.cos(t*0.17*r + i*0.9);
+      f.tiltT = -62 + 24 * Math.sin(t*0.23*r + i*2.3);
+    }
+    if(e.cols && e.cols.length > 1){
+      const m = 0.5 + 0.5*Math.sin(t*0.42*r + i*0.4);
+      _afC.set(e.cols[0]); _afD.set(e.cols[1]);
+      f.color.copy(_afC).lerp(_afD, m);
+      f.colDur = 0;                       // the effect owns the colour now
+    }
+    return;
+  }
+  if(e.kind === 'sweep'){
+    /* "purple and sweep up": levels and tilt run up together over the cue's
+       own window, then hold at the top until the next cue takes them out. */
+    const u = Math.min(1, t / Math.max(0.05, e.secs));
+    f.level = u;
+    if(f.mover) f.tiltT = -84 + 74*u;
+    if(e.cols && e.cols.length){ f.color.set(e.cols[0]); f.colDur = 0; }
+    f.lvlDur = 0;
+    return;
+  }
+  if(e.kind === 'random'){
+    /* fast, and every unit on its own beat.  Stepping the phase rather than
+       rolling dice per frame keeps it frame-rate independent and steppable. */
+    const r = AUD_RANDOM_RATE * e.rate;
+    const s = Math.sin(t*7.3*r + i*2.9), c = Math.cos(t*5.1*r + i*1.3);
+    if(f.mover){ f.panT = 150*s; f.tiltT = -70 + 55*c; }
+    f.level = 0.35 + 0.65 * (0.5 + 0.5*Math.sin(t*11.0*r + i*4.1));
+    f.lvlDur = 0;
+    if(e.cols && e.cols.length){ f.color.set(e.cols[0]); f.colDur = 0; }
+    return;
+  }
+  if(e.kind === 'flash'){
+    /* full for a beat, then out and stay out.  "as bright as posible". */
+    f.level = (t <= e.secs) ? 1 : 0;
+    f.lvlDur = 0;
+    if(e.cols && e.cols.length){ f.color.set(e.cols[0]); f.colDur = 0; }
+    return;
+  }
+}
+
+/* ============================================================================
    THE ARC CENTRE — the second venue
 
    A modern complex a long way across town: a glazed foyer with a bar and a
@@ -20277,6 +20804,10 @@ function stageSwitch(key, quiet){
   }
   /* same rule for the one-shot cue follow: cancelled, not carried */
   if(typeof cancelFollow === 'function') cancelFollow();
+  /* and for the sound, which is the cue clock while it runs (BB).  TRAPS lists
+     audio among the things that have driven the wrong stage's rig after a
+     walk: a show you walked out on goes quiet, it does not play on. */
+  if(typeof showSoundStop === 'function') showSoundStop();
   /* the crew work the stage they were called on.  Rather than let a live job
      queue mix this stage's plan with the next stage's rail and doors (H2) or
      restore the work-light snapshot onto the wrong board when they finish
@@ -23096,6 +23627,11 @@ function tick(now){
   updateArc(dt);              // the other building's foyer
   updateStageFromPosition();  // the board is patched to the room you are in
   updateStageHouseLights();   // and every auditorium answers its own master
+  /* the show's sound is the cue clock while it is playing (BB), and the
+     audience rig's patterns step here too (BD).  AFTER updateFades on purpose:
+     an effect overwrites the fade for its own channels while it runs, the way
+     firelight does, and hands them back when the cue clears it. */
+  if(typeof showAudioTick === 'function') showAudioTick(dt);
   if(typeof vrUpdate === 'function') vrUpdate(dt);
   if(VENUE !== lastVenue){ lastVenue = VENUE; refreshVenueUI(); }
   if(followTarget){
@@ -23257,6 +23793,9 @@ function init(){
   }, 260);
   $('#startBtn').onclick = ()=>{
     Snd.init();
+    /* the one gesture every route through the game passes through, flat or
+       headset — so it is where a track the browser refused gets to start (BA) */
+    if(typeof audArm === 'function') audArm();
     $('#veil').style.opacity=0;
     setTimeout(()=>$('#veil').style.display='none', 800);
     if(Player.mode==='walk') lock();
