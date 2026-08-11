@@ -1597,18 +1597,26 @@ function showCueExtras(c){
     if(dsc && !dsc.group.userData.sceneOff) SHOW.pendDress = {scene:dn, key:c.dress};
     else bjDress(dn, c.dress);
   }
-  if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
   /* a cue can send travelling scenery somewhere.  One cue may move more than
      one thing — act two opens with the exterior flying out WHILE the house
      slides on — so this takes a list as readily as a single move.  A move
      that names a PART retargets that part's own mover instead of the whole
-     group: scenery moving within a scene, no scene change (RULING AY). */
+     group: scenery moving within a scene, no scene change (RULING AY).
+
+     THE MOVES LAND BEFORE THE CHANGEOVER, and the order is load-bearing:
+     sceneChangeTo hides an outgoing set instantly unless sceneTravelling
+     says it is mid-move, and a whole-group mover only reads as travelling
+     once its target is set.  Judged the other way round, a cue that both
+     changes scene and flies its outgoing set — act two's opening, exactly —
+     hides the set in the same call and then flies it dark, which is the
+     pop RULING AY forbids dressed up as a travel. */
   if(c.move && SHOW.scenes.length){
     const list = Array.isArray(c.move) ? c.move : [c.move];
     list.forEach(m=>{ if(!m) return;
       if(m.part) sceneMovePartTo(m.scene, m.part, m.off, m.speed);
       else sceneMoveTo(m.scene, m.off, m.speed); });
   }
+  if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
   if(c.confetti && typeof fireConfetti === 'function') fireConfetti();
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);

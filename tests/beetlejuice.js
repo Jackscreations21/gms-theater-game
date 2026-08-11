@@ -193,16 +193,28 @@ const probe = `
 
   console.log('--- the house, from outside ---');
 
-  P('the house is its own scene, and a substantial one', ()=>{
+  /* RULING AW: in the production photograph the exterior is a painted CLOTH —
+     so the scene is one drop, not a modelled house.  jsdom cannot see paint
+     (likeness is a headset question); what is pinned is that it IS a drop:
+     one cloth, painted at full size, and nothing you could stand on. */
+  P('the exterior is a painted DROP, one cloth and nothing walkable (RULING AW)', ()=>{
     showLoad('beetlejuice');
     const h = sceneFind('house');
     if(!h) throw new Error('there is no house scene');
     if(h.on) throw new Error('the house is live at the top of the show — the cemetery is');
     sceneShow('house');
     let m = 0; h.group.traverse(o=>{ if(o.isMesh) m++; });
-    if(m < 10) throw new Error('the house is only '+m+' pieces');
-    if(!byName('bj:house')) throw new Error('no main mass');
-    return m+' pieces';
+    if(m !== 1) throw new Error('a drop is ONE cloth — the house is '+m+' pieces');
+    const d = byName('bj:house');
+    if(!d) throw new Error('the cloth is not named bj:house');
+    if(!d.material.map || !d.material.map.image)
+      throw new Error('the drop carries no painted canvas');
+    const img = d.material.map.image;
+    if(img.width !== 1024 || img.height !== 1024)
+      throw new Error('painted at '+img.width+'x'+img.height+', pinned at 1024x1024');
+    /* the modelled porch went with the model, and a cloth is not a floor */
+    if(h.walk.length) throw new Error('a painted drop filed '+h.walk.length+' walkable(s)');
+    return 'one painted cloth, 1024x1024, nothing walkable';
   });
 
   /* it has to read THROUGH the portal, or the portal crops it */
@@ -220,21 +232,66 @@ const probe = `
     return (wide*2).toFixed(2)+'m x '+b.max.y.toFixed(2)+'m through a '+BJ.opW+' x '+BJ.opH+' opening';
   });
 
-  /* sceneWalk's whole point: you cannot stand on a porch that is not on stage */
-  P('the porch is walkable only while the house is on the stage', ()=>{
+  /* RULING AT promised the exterior flies out on a whole-group Y mover, and
+     for two rounds that was never true: sceneTravel was never called on the
+     house, so the plot cue's move:{scene:'house'} hit sceneMoveTo's null
+     branch and did NOTHING — a silent no-op the suites never noticed.  The
+     structural half pins the mover exists and the cue still names it. */
+  P('the exterior carries the whole-group Y mover RULING AT promised', ()=>{
     showLoad('beetlejuice');
-    const f = (()=>{ let r=null; SHOW.group.traverse(o=>{ if(!r && o.name==='bj:porchFloor') r=o; }); return r; })();
-    if(!f) throw new Error('no porch floor was built');
-    if(WALKABLE.indexOf(f) >= 0)
-      throw new Error('you can stand on the porch while the cemetery is up');
-    sceneShow('house');
-    if(WALKABLE.indexOf(f) < 0) throw new Error('the porch is not walkable with the house on');
-    const b = box(f);
-    if(b.max.y < 0.3) throw new Error('the porch is at deck level, y='+b.max.y.toFixed(2));
-    sceneShow('cemetery');
-    if(WALKABLE.indexOf(f) >= 0)
-      throw new Error('the porch stayed walkable after the house went off');
-    return 'porch at y='+b.max.y.toFixed(2)+', in WALKABLE only while the house is live';
+    const h = sceneFind('house');
+    if(!h.mv) throw new Error('the exterior does not travel — the AT mover is unwired again');
+    if(h.mv.axis !== 'y') throw new Error('it travels on '+h.mv.axis+', not up through the header');
+    if(h.mv.home !== 0) throw new Error('its home is '+h.mv.home+', not the deck');
+    const i = CUES.findIndex(c=>/1:14:30/.test(c.label));
+    if(i < 0) throw new Error('the 1:14:30 cue is gone');
+    const mv = Array.isArray(CUES[i].move) ? CUES[i].move : [CUES[i].move];
+    const me = mv.find(m=>m && m.scene === 'house' && !m.part);
+    if(!me) throw new Error('the cue no longer flies the exterior');
+    if(Math.abs(me.off - BJ_SIGN_OUT) > 1e-9)
+      throw new Error('it flies to '+me.off+', not to BJ_SIGN_OUT');
+    return 'y mover, home 0, flown to +'+me.off+' by cue '+CUES[i].n;
+  });
+
+  /* the behavioural half, through the REAL cue path: the act-two cue names a
+     new scene AND flies the exterior — the whole-group mover must read as
+     travelling when the changeover judges it, so the drop stays DRAWN all the
+     way up and goes dark only once it arrives at BJ_SIGN_OUT.  World-matrix
+     reads, never mover offsets (the frozen-group trap). */
+  P('1:14:30 — the exterior flies out IN VIEW, dark only past the header', ()=>{
+    showLoad('beetlejuice');
+    const h = sceneFind('house');
+    const i24 = CUES.findIndex(c=>c.scene === 'house');
+    const i26 = CUES.findIndex(c=>/1:14:30/.test(c.label));
+    if(i24 < 0 || i26 < 0 || i24 >= i26) throw new Error('the act-two cues moved');
+    fireCue(i24);
+    for(let k = 0; k < 360; k++) updateStorm(1/60);        // the changeover lands
+    if(h.group.userData.sceneOff) throw new Error('act two never put the exterior on');
+    const wy = ()=>{ scene.updateMatrixWorld(true);
+      return byName('bj:house').matrixWorld.elements[13]; };
+    const y0 = wy();
+    fireCue(i26);                       // sky out, wagon on — and the drop FLIES
+    for(let k = 0; k < 120; k++) updateStorm(1/60);        // 2s of a 5s fly
+    const yMid = wy() - y0;
+    if(h.group.userData.sceneOff)
+      throw new Error('hidden two seconds into the fly — the instant swap is back');
+    if(!(yMid > 0.5 && yMid < BJ_SIGN_OUT - 0.5))
+      throw new Error('not mid-flight at 2s: y=+'+yMid.toFixed(2));
+    let frames = 0;
+    while(sceneTravelling(h) && frames < 900){
+      updateStorm(1/60); frames++;
+      if(frames % 10 === 0 && h.group.userData.sceneOff && (wy() - y0) < BJ_SIGN_OUT - 0.05)
+        throw new Error('went dark mid-flight at y=+'+(wy() - y0).toFixed(2));
+    }
+    if(frames >= 900) throw new Error('still travelling after 17s');
+    if(h.group.userData.sceneOff !== true)
+      throw new Error('it arrived and never went dark');
+    const yEnd = wy() - y0;
+    if(Math.abs(yEnd - BJ_SIGN_OUT) > 0.05)
+      throw new Error('it stopped at +'+yEnd.toFixed(2)+', not at BJ_SIGN_OUT');
+    if(SHOW.scene !== 'interior') throw new Error('the cue never changed the scene');
+    return 'in view at +'+yMid.toFixed(2)+' after 2s, dark at +'+yEnd.toFixed(2)+
+           ' after '+((frames + 120)/60).toFixed(1)+'s';
   });
 
   /* The real invariant is that the audience never SEES a set change. A shut
@@ -561,7 +618,16 @@ const probe = `
     const foot = TRIMS.bjBackdrop - GOODS.bjBackdrop.h;
     if(foot < -0.1 || foot > 0.6)
       throw new Error('the backdrop foots at y='+foot.toFixed(2)+', not on the deck');
-    return 'backdrop in at '+bd.pos.toFixed(2)+' footing at '+foot.toFixed(2)+', sky out at '+sk.pos.toFixed(2);
+    /* RULING AW repainted it to the photograph, and the moon a third the
+       cloth height wants pixels: pinned so a later repaint cannot silently
+       ship the sky at postage-stamp resolution */
+    let img = null;
+    bd.goods.traverse(o=>{ if(!img && o.isMesh && o.material.map) img = o.material.map.image; });
+    if(!img) throw new Error('the backdrop carries no painted canvas');
+    if(img.width !== 2048 || img.height !== 1024)
+      throw new Error('the backdrop canvas is '+img.width+'x'+img.height+', pinned at 2048x1024');
+    return 'backdrop in at '+bd.pos.toFixed(2)+' footing at '+foot.toFixed(2)+', sky out at '+sk.pos.toFixed(2)+
+           ', painted at '+img.width+'x'+img.height;
   });
 
   P('lifting and dropping the backdrop is a TRIM, not new machinery', ()=>{
@@ -718,7 +784,11 @@ const probe = `
           backing++;                       // a proper backing: wider than the hole
         }
       });
-      if(m < 6) throw new Error(n+' is only '+m+' pieces');
+      /* the exterior is a painted DROP now (RULING AW): one cloth IS the
+         whole scene, and that is the point of it — every other set still
+         has to be worth a change */
+      const need = (n === 'house') ? 1 : 6;
+      if(m < need) throw new Error(n+' is only '+m+' piece(s)');
       out.push(n+':'+m+(backing ? '+'+backing+'backing' : ''));
     }
     return out.join(' ');

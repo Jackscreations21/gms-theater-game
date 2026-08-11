@@ -11019,18 +11019,26 @@ function showCueExtras(c){
     if(dsc && !dsc.group.userData.sceneOff) SHOW.pendDress = {scene:dn, key:c.dress};
     else bjDress(dn, c.dress);
   }
-  if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
   /* a cue can send travelling scenery somewhere.  One cue may move more than
      one thing — act two opens with the exterior flying out WHILE the house
      slides on — so this takes a list as readily as a single move.  A move
      that names a PART retargets that part's own mover instead of the whole
-     group: scenery moving within a scene, no scene change (RULING AY). */
+     group: scenery moving within a scene, no scene change (RULING AY).
+
+     THE MOVES LAND BEFORE THE CHANGEOVER, and the order is load-bearing:
+     sceneChangeTo hides an outgoing set instantly unless sceneTravelling
+     says it is mid-move, and a whole-group mover only reads as travelling
+     once its target is set.  Judged the other way round, a cue that both
+     changes scene and flies its outgoing set — act two's opening, exactly —
+     hides the set in the same call and then flies it dark, which is the
+     pop RULING AY forbids dressed up as a travel. */
   if(c.move && SHOW.scenes.length){
     const list = Array.isArray(c.move) ? c.move : [c.move];
     list.forEach(m=>{ if(!m) return;
       if(m.part) sceneMovePartTo(m.scene, m.part, m.off, m.speed);
       else sceneMoveTo(m.scene, m.off, m.speed); });
   }
+  if(c.scene && SHOW.scenes.length) sceneChangeTo(c.scene);
   if(c.confetti && typeof fireConfetti === 'function') fireConfetti();
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);
@@ -13223,56 +13231,243 @@ const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
                               // its bottom edge ends at 12.7 against a 10.4
                               // proscenium, so it is properly masked out
 
-/* ---- the graveyard backdrop: a painted cloth, laid in the way a scenic
-   artist lays one in — sky graded dark at the top, a moon with the halo it
-   throws, a hill, and a silhouette along the bottom edge.  Ours, not
-   the production it came off (RULING AV). ---- */
+/* ---- the graveyard backdrop, repainted to the production photograph
+   (RULING AW): a deep teal-to-indigo night sky, an ENORMOUS pale moon
+   upper-stage-left-of-centre with painted grey craters and the halo it
+   throws, and banks of blue-grey cloud streaked horizontally around and
+   behind it, lit pale from below.  No painted ground row any more — the
+   hills, stones and trees are CUT pieces downstage of this cloth now, so
+   painting them here would double every silhouette. ---- */
 function bjBackdropTex(){
-  const W = 1024, H = 512, c = cvs(W, H), g = c.getContext('2d');
+  const W = 2048, H = 1024, c = cvs(W, H), g = c.getContext('2d');
+  /* the cloth hangs (D.procW + 6) x 11.5, the canvas is 2:1 — anything meant
+     to read ROUND on the cloth is drawn wider by this much in canvas space */
+  const SQX = (W * 11.5) / (H * (D.procW + 6));
+  /* the sky: teal at the horizon climbing into indigo-black */
   const sky = g.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0,    '#080d1c');
-  sky.addColorStop(0.52, '#1a2a43');
-  sky.addColorStop(1,    '#2b3c53');
+  sky.addColorStop(0,    '#050e18');
+  sky.addColorStop(0.40, '#0d2436');
+  sky.addColorStop(0.72, '#1a2a52');
+  sky.addColorStop(1,    '#283462');
   g.fillStyle = sky; g.fillRect(0, 0, W, H);
-  /* stars, thinning towards the horizon the way they do */
-  for(let i = 0; i < 300; i++){
-    const y = Math.pow(Math.random(), 1.9) * H * 0.72;
-    g.fillStyle = 'rgba(226,236,255,' + (0.12 + Math.random()*0.62).toFixed(2) + ')';
-    g.fillRect(rnd(0, W), y, 1.4, 1.4);
+  /* the field darkens into both top corners, the way the photo has it */
+  for(const cx of [0, W]){
+    const v = g.createRadialGradient(cx, 0, 40, cx, 0, W*0.55);
+    v.addColorStop(0, 'rgba(2,6,12,.62)');
+    v.addColorStop(1, 'rgba(2,6,12,0)');
+    g.fillStyle = v; g.fillRect(0, 0, W, H);
   }
-  /* the moon, low and to one side, and the halo on the cloth around it */
-  const mx = W*0.72, my = H*0.24;
-  const halo = g.createRadialGradient(mx, my, 8, mx, my, 150);
-  halo.addColorStop(0, 'rgba(255,214,150,.42)');
-  halo.addColorStop(1, 'rgba(255,214,150,0)');
-  g.fillStyle = halo; g.beginPath(); g.arc(mx, my, 150, 0, 6.283); g.fill();
-  g.fillStyle = '#ffe6bc'; g.beginPath(); g.arc(mx, my, 34, 0, 6.283); g.fill();
-  /* the hill it all stands on */
-  g.fillStyle = '#141b28';
-  g.beginPath(); g.moveTo(0, H);
-  g.lineTo(0, H*0.74);
-  for(let x = 0; x <= W; x += 64)
-    g.lineTo(x, H*0.74 - Math.sin(x/W*3.1)*38 - Math.sin(x/W*11)*9);
-  g.lineTo(W, H); g.closePath(); g.fill();
-  /* headstones and a bare tree or two, flat black against it */
-  g.fillStyle = '#0a0e16';
-  for(let i = 0; i < 26; i++){
-    const x = rnd(10, W - 30), hgt = rnd(16, 44), y = H*0.80 + rnd(-10, 26);
-    g.fillRect(x, y - hgt, rnd(10, 20), hgt);
-    if(Math.random() < 0.3){ g.beginPath(); g.arc(x + 7, y - hgt, 7, Math.PI, 0); g.fill(); }
-  }
-  for(const tx of [W*0.14, W*0.88]){
-    g.fillRect(tx, H*0.60, 9, H*0.34);
-    for(let b = 0; b < 7; b++){
-      g.save(); g.translate(tx + 4, H*0.60 + b*13);
-      g.rotate((b % 2 ? -1 : 1) * (0.5 + b*0.06));
-      g.fillRect(0, 0, rnd(26, 54), 4); g.restore();
+  /* one cloud bank: a run of flat overlapping lumps with a pale underside —
+     the banks are LIT FROM BELOW by the moon, so the light edge hangs under
+     the dark body, not over it */
+  const bank = (bx, by, bw, lump, body, under)=>{
+    for(let i = 0; i < lump; i++){
+      const x = bx + (i/(lump-1) - 0.5)*bw + rnd(-30, 30);
+      const y = by + rnd(-14, 14);
+      const rx = rnd(90, 170)*SQX, ry = rnd(22, 42);
+      g.fillStyle = body;
+      g.save(); g.translate(x, y); g.scale(rx, ry);
+      g.beginPath(); g.arc(0, 0, 1, 0, 6.283); g.fill(); g.restore();
+      g.fillStyle = under;
+      g.save(); g.translate(x, y + ry*0.72); g.scale(rx*0.86, ry*0.34);
+      g.beginPath(); g.arc(0, 0, 1, 0, 6.283); g.fill(); g.restore();
     }
+  };
+  /* the banks behind the moon, working down the cloth */
+  bank(W*0.30, H*0.22, W*0.52, 7, 'rgba(38,52,72,.55)',  'rgba(150,172,196,.20)');
+  bank(W*0.72, H*0.34, W*0.50, 7, 'rgba(44,60,82,.58)',  'rgba(168,190,212,.26)');
+  bank(W*0.24, H*0.48, W*0.60, 8, 'rgba(50,66,88,.60)',  'rgba(176,198,218,.30)');
+  bank(W*0.66, H*0.62, W*0.58, 8, 'rgba(42,56,76,.55)',  'rgba(160,182,204,.26)');
+  bank(W*0.32, H*0.76, W*0.72, 9, 'rgba(34,46,64,.50)',  'rgba(140,160,182,.20)');
+  /* horizontal streaking through the banks — it is scenic paint, laid
+     sideways with a wide brush */
+  for(let i = 0; i < 70; i++){
+    const y = rnd(H*0.14, H*0.86);
+    g.fillStyle = Math.random() < 0.5 ? 'rgba(180,200,220,.05)' : 'rgba(8,14,24,.07)';
+    g.fillRect(rnd(-60, W*0.7), y, rnd(W*0.2, W*0.55), rnd(2, 6));
+  }
+  /* THE MOON — enormous, a third the height of the cloth, hung upper-stage-
+     left-of-centre (stage left is canvas right: u=1 lands at world +x). */
+  const mx = W*0.60, my = H*0.30, mr = H*0.167;      // ry: diameter ~ H/3
+  const halo = g.createRadialGradient(mx, my, mr*0.6, mx, my, mr*2.8);
+  halo.addColorStop(0,    'rgba(214,228,238,.42)');
+  halo.addColorStop(0.45, 'rgba(190,208,224,.16)');
+  halo.addColorStop(1,    'rgba(190,208,224,0)');
+  g.save(); g.translate(mx, my); g.scale(SQX, 1); g.translate(-mx, -my);
+  g.fillStyle = halo;
+  g.beginPath(); g.arc(mx, my, mr*2.8, 0, 6.283); g.fill();
+  /* the disc, pale and bone-coloured */
+  g.fillStyle = '#e7e3d3';
+  g.beginPath(); g.arc(mx, my, mr, 0, 6.283); g.fill();
+  /* the craters, painted grey and clearly meant — each a soft-edged pool
+     with a darker rim on its lower side, the way a scenic artist shades one */
+  const craters = [[-0.34,-0.30,0.20],[0.22,-0.42,0.13],[0.44,0.06,0.17],
+                   [-0.08,0.16,0.24],[-0.52,0.28,0.12],[0.18,0.44,0.15],
+                   [-0.24,-0.02,0.10],[0.50,-0.28,0.09]];
+  for(const cr of craters){
+    const x = mx + cr[0]*mr, y = my + cr[1]*mr, r = cr[2]*mr;
+    g.fillStyle = 'rgba(148,146,132,.42)';
+    g.beginPath(); g.arc(x, y, r, 0, 6.283); g.fill();
+    g.fillStyle = 'rgba(112,110,98,.30)';
+    g.beginPath(); g.arc(x, y + r*0.28, r*0.72, 0, 6.283); g.fill();
+  }
+  /* the shading that keeps the disc a body, not a plate */
+  const sh = g.createRadialGradient(mx - mr*0.3, my - mr*0.3, mr*0.2, mx, my, mr);
+  sh.addColorStop(0, 'rgba(255,255,246,.16)');
+  sh.addColorStop(0.75, 'rgba(120,124,120,0)');
+  sh.addColorStop(1, 'rgba(96,100,104,.28)');
+  g.fillStyle = sh;
+  g.beginPath(); g.arc(mx, my, mr, 0, 6.283); g.fill();
+  g.restore();
+  /* and two thin streaks crossing the lower quarter of the disc — the banks
+     run AROUND the moon, and one of them runs in front */
+  for(const st of [[my + mr*0.55, 0.42], [my + mr*0.85, 0.34]]){
+    g.fillStyle = 'rgba(40,54,74,' + st[1] + ')';
+    g.fillRect(mx - mr*SQX*1.7, st[0] - 12, mr*SQX*3.4, 24);
+    g.fillStyle = 'rgba(170,192,214,.18)';
+    g.fillRect(mx - mr*SQX*1.5, st[0] + 10, mr*SQX*3.0, 6);
   }
   return tex(c, 1, 1);
 }
 
-/* ---- weathered vertical boarding: the portal, and later the house ---- */
+/* ---- the house-exterior DROP, painted to the production photograph
+   (RULING AW): a deliberately wonky grey-brown clapboard house, tall and
+   narrow, steep gable and a small tower, crooked dark windows, a dark
+   porch with steps at its base, spindly bare black trees flanking it and
+   a pale moon low behind.  Storybook-crooked on purpose: the verticals
+   lean and the boards waver, because the cloth in the photo does.
+   Painted for a 12.6 x 8.7 cloth — X()/Y() convert cloth-metres to
+   pixels, so every measurement below is a stage measurement. ---- */
+function bjHouseClothTex(){
+  const W = 1024, H = 1024, c = cvs(W, H), g = c.getContext('2d');
+  const X = mtr => W/2 + mtr*(W/12.6);       // metres off centre -> px
+  const Y = mtr => H - mtr*(H/8.7);          // metres above the deck -> px
+  const SX = W/12.6, SY = H/8.7;             // px per metre, each way
+  /* the drop's own night sky, darker than the sky cloth it plays against */
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0,    '#080f1d');
+  sky.addColorStop(0.55, '#152238');
+  sky.addColorStop(1,    '#20304c');
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+  for(const cx of [0, W]){
+    const v = g.createRadialGradient(cx, 0, 30, cx, 0, W*0.5);
+    v.addColorStop(0, 'rgba(3,6,12,.55)'); v.addColorStop(1, 'rgba(3,6,12,0)');
+    g.fillStyle = v; g.fillRect(0, 0, W, H);
+  }
+  /* the pale moon, low, about to be half-lost behind the house */
+  const mx = X(2.5), my = Y(5.1), mr = 1.05*SY;
+  const halo = g.createRadialGradient(mx, my, mr*0.5, mx, my, mr*2.4);
+  halo.addColorStop(0, 'rgba(210,222,232,.36)'); halo.addColorStop(1, 'rgba(210,222,232,0)');
+  g.fillStyle = halo; g.beginPath(); g.arc(mx, my, mr*2.4, 0, 6.283); g.fill();
+  g.fillStyle = '#ddd8c6'; g.beginPath(); g.arc(mx, my, mr, 0, 6.283); g.fill();
+  g.fillStyle = 'rgba(150,148,134,.32)';
+  g.beginPath(); g.arc(mx - mr*0.2, my + mr*0.15, mr*0.3, 0, 6.283); g.fill();
+  g.beginPath(); g.arc(mx + mr*0.35, my - mr*0.3, mr*0.2, 0, 6.283); g.fill();
+  /* the ground the whole picture stands on: a near-black rise */
+  g.fillStyle = '#0b0d12';
+  g.beginPath(); g.moveTo(0, H);
+  g.lineTo(0, Y(0.45));
+  for(let i = 0; i <= 12; i++)
+    g.lineTo(i*W/12, Y(0.45 + Math.sin(i*1.7)*0.14));
+  g.lineTo(W, H); g.closePath(); g.fill();
+  /* one spindly bare black tree each side — a trunk that wanders and
+     limbs that fork off it, drawn as strokes */
+  g.lineCap = 'round';
+  const tree = (bx, top, dir)=>{
+    g.strokeStyle = '#0a0908';
+    g.lineWidth = 0.16*SX;
+    g.beginPath(); g.moveTo(X(bx), Y(0.3));
+    g.quadraticCurveTo(X(bx + dir*0.35), Y(top*0.45), X(bx + dir*0.15), Y(top));
+    g.stroke();
+    for(let i = 0; i < 6; i++){
+      const yy = top*0.35 + i*(top*0.55)/5, sd = (i % 2 ? -1 : 1);
+      g.lineWidth = (0.07 - i*0.006)*SX;
+      g.beginPath(); g.moveTo(X(bx + dir*0.22*(1 - yy/top)), Y(yy));
+      g.quadraticCurveTo(X(bx + sd*0.9), Y(yy + 0.5), X(bx + sd*(1.3 + i*0.12)), Y(yy + 1.1 + i*0.1));
+      g.stroke();
+    }
+  };
+  tree(-4.7, 5.4,  1);
+  tree( 4.5, 4.8, -1);
+  /* THE HOUSE.  The whole thing leans a couple of degrees, and every
+     element leans a little more on its own account. */
+  g.save();
+  g.translate(X(-0.3), Y(0)); g.rotate(-0.025); g.translate(-X(-0.3), -Y(0));
+  const quad = (pts, fill)=>{ g.fillStyle = fill; g.beginPath();
+    g.moveTo(X(pts[0][0]), Y(pts[0][1]));
+    for(let i = 1; i < pts.length; i++) g.lineTo(X(pts[i][0]), Y(pts[i][1]));
+    g.closePath(); g.fill(); };
+  /* the clapboard body — a quadrilateral whose verticals do not agree */
+  const BL = [-2.15, 0.85], BR = [1.55, 0.80], TR = [1.78, 5.30], TL = [-2.42, 5.55];
+  quad([BL, BR, TR, TL], '#5c5346');
+  /* the boards: wavering horizontal strokes, clipped to the body */
+  g.save();
+  g.beginPath(); g.moveTo(X(BL[0]), Y(BL[1])); g.lineTo(X(BR[0]), Y(BR[1]));
+  g.lineTo(X(TR[0]), Y(TR[1])); g.lineTo(X(TL[0]), Y(TL[1])); g.closePath(); g.clip();
+  for(let b = 0; b < 19; b++){
+    const yy = 0.95 + b*0.25;
+    g.strokeStyle = (b % 4 === 2) ? 'rgba(190,178,156,.10)' : 'rgba(16,13,10,.38)';
+    g.lineWidth = 2.2;
+    g.beginPath(); g.moveTo(X(-2.5), Y(yy + rnd(-0.03, 0.03)));
+    g.quadraticCurveTo(X(rnd(-1.2, 0.6)), Y(yy + rnd(-0.09, 0.09)), X(1.9), Y(yy + rnd(-0.04, 0.04)));
+    g.stroke();
+  }
+  /* the wall darkens toward the ground, lived-in and damp */
+  const dg = g.createLinearGradient(0, Y(0.8), 0, Y(3.2));
+  dg.addColorStop(0, 'rgba(10,9,8,.45)'); dg.addColorStop(1, 'rgba(10,9,8,0)');
+  g.fillStyle = dg; g.fillRect(0, 0, W, H);
+  g.restore();
+  /* the steep gable, its ridge off-centre because everything here is */
+  quad([TL, TR, [-0.42, 8.05]], '#554c40');
+  /* the roof: two slopes in two darks, overhanging the walls */
+  quad([[-2.75, 5.42], [-0.42, 8.28], [-0.10, 8.20], [-2.35, 5.30]], '#2a2320');
+  quad([[-0.42, 8.28], [2.10, 5.18], [1.72, 5.08], [-0.12, 7.95]], '#1c1815');
+  /* the small tower, right of the gable, leaning harder than the house */
+  quad([[0.95, 4.9], [2.15, 4.85], [2.38, 6.85], [1.05, 6.95]], '#524940');
+  quad([[0.82, 6.80], [2.55, 6.72], [1.85, 8.35]], '#1e1a17');
+  /* crooked dark windows: a hole, a pale warped frame, a sill */
+  const win = (wx, wy, ww, wh, lean)=>{
+    g.save();
+    g.translate(X(wx), Y(wy)); g.rotate(lean);
+    g.fillStyle = '#0c0b10';
+    g.fillRect(-ww/2*SX, -wh/2*SY, ww*SX, wh*SY);
+    g.strokeStyle = 'rgba(196,184,162,.55)'; g.lineWidth = 3;
+    g.strokeRect(-ww/2*SX, -wh/2*SY, ww*SX, wh*SY);
+    g.beginPath(); g.moveTo(0, -wh/2*SY); g.lineTo(0, wh/2*SY);
+    g.moveTo(-ww/2*SX, 0); g.lineTo(ww/2*SX, 0); g.stroke();
+    g.fillStyle = 'rgba(196,184,162,.35)';
+    g.fillRect(-ww/2*SX - 3, wh/2*SY, ww*SX + 6, 5);
+    g.restore();
+  };
+  win(-1.35, 4.35, 0.70, 1.05, -0.07);
+  win( 0.85, 4.20, 0.62, 0.95,  0.06);
+  win(-1.30, 2.60, 0.72, 1.05,  0.05);
+  win( 1.65, 5.85, 0.50, 0.72,  0.09);      // the tower's own window
+  win(-0.45, 6.55, 0.46, 0.62, -0.06);      // up in the gable
+  /* the porch, dark across the base: deck, posts, its own low roof */
+  quad([[-2.55, 0.62], [2.05, 0.58], [2.05, 0.92], [-2.55, 0.98]], '#15110d');
+  [-2.25, -0.95, 0.45, 1.75].forEach((px, i)=>{
+    g.save(); g.translate(X(px), Y(0.95)); g.rotate((i % 2 ? 1 : -1)*0.04);
+    g.fillStyle = '#100d0a'; g.fillRect(-0.07*SX, -1.55*SY, 0.14*SX, 1.55*SY);
+    g.restore();
+  });
+  quad([[-2.72, 2.42], [2.22, 2.30], [2.22, 2.62], [-2.72, 2.80]], '#0e0b09');
+  /* the door in the shadow of it, and three steps falling to the deck */
+  g.fillStyle = '#080709'; g.fillRect(X(-0.75), Y(2.32), 1.1*SX, 1.45*SY);
+  g.fillStyle = '#12100d';
+  g.fillRect(X(-1.00), Y(0.62), 1.55*SX, 0.22*SY);
+  g.fillRect(X(-1.15), Y(0.42), 1.85*SX, 0.22*SY);
+  g.fillRect(X(-1.30), Y(0.22), 2.15*SX, 0.22*SY);
+  g.restore();
+  /* scenic-paint streaking over the lot, very faint */
+  for(let i = 0; i < 40; i++){
+    g.fillStyle = Math.random() < 0.5 ? 'rgba(200,206,214,.03)' : 'rgba(6,8,12,.05)';
+    g.fillRect(rnd(-40, W*0.8), rnd(0, H), rnd(120, 420), rnd(2, 5));
+  }
+  return tex(c, 1, 1);
+}
+
+/* ---- weathered vertical boarding: the portal and the interior shell ---- */
 function bjBoardTex(){
   const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');
   g.fillStyle = '#4a4238'; g.fillRect(0, 0, W, H);
@@ -13705,159 +13900,33 @@ SHOWS.beetlejuice = {
     /* ================================================================
        SCENE — THE HOUSE, from outside.  Measured, it carries 62:44 and
        72:58, either side of the act break: late act one and the top of
-       act two.  Modelled on the production (RULING AV) —
-       a clapboard mass that leans, a porch you can stand on, and a
-       chimney too big for it.
+       act two.  In the production photograph it is a PAINTED CLOTH —
+       the schoolgirl stands in front of it — so that is what it is here
+       (RULING AW): one drop, the house painted on, nothing modelled and
+       nothing walkable.  The modelled house this replaces had a porch
+       you could stand on; a cloth is not a floor, so the scene files
+       no walkables at all now.
        ================================================================ */
     const hse = sceneAdd('house', 'THE HOUSE');
-    /* the exterior stands in front of its OWN sky.  Its roof and chimney
-       reached z=-10.83, which is upstage of any batten a sky can hang on, so
-       act two would have opened with the house behind the sky it is supposed
-       to be seen against.  The whole scene comes downstage 0.9m; nothing else
-       about it changes, and it is still well clear of the apron. */
-    hse.group.position.z = 1.25;
     {
-      /* it has to read THROUGH the portal, so nothing may exceed the
-         portal's own 13.6 x 9.2 opening */
-      const MW = 6.6, MH = 5.4, MD = 4.2, cx = -1.2, cz = -8.6;
-
-      /* the main mass, with a gable each end — one mesh */
-      {
-        const parts = [{geo:new T.BoxGeometry(MW, MH, MD), pos:[0, MH/2, 0]}];
-        [-1, 1].forEach(sd=>{
-          const g = new T.BufferGeometry();
-          const h = 1.9;
-          g.setAttribute('position', new T.Float32BufferAttribute([
-            -MW/2, 0, 0,  MW/2, 0, 0,  0, h, 0
-          ], 3));
-          g.computeVertexNormals();
-          parts.push({geo:g, pos:[0, MH, sd*MD/2]});
-        });
-        const m = new T.Mesh(mergeParts(parts), board);
-        m.name = 'bj:house'; m.position.set(cx, 0, cz);
-        m.castShadow = true; hse.group.add(m);
-      }
-
-      /* the roof: two slopes, leaning off true because the house does */
-      {
-        const parts = [];
-        [-1, 1].forEach(sd=>{
-          parts.push({geo:new T.BoxGeometry(MW + 0.5, 0.18, MD/2 + 0.55),
-                      pos:[0, MH + 0.95, sd*(MD/4 + 0.12)],
-                      rot:[sd*0.72, 0, 0]});
-        });
-        const m = new T.Mesh(mergeParts(parts), boardD);
-        m.position.set(cx, 0, cz); m.castShadow = true; hse.group.add(m);
-      }
-
-      /* a setback tower, which is where the lean reads from */
-      {
-        /* kept low on purpose: the whole house has to clear the portal's own
-           9.2m opening or the portal crops its own set */
-        const parts = [
-          {geo:new T.BoxGeometry(2.5, 2.4, 2.5), pos:[0, 1.2, 0]},
-          {geo:new T.BoxGeometry(2.8, 0.16, 2.8), pos:[0, 2.48, 0]}
-        ];
-        [-1, 1].forEach(sd=>parts.push({geo:new T.BoxGeometry(2.9, 0.16, 1.7),
-          pos:[0, 2.95, sd*0.72], rot:[sd*0.80, 0, 0]}));
-        const m = new T.Mesh(mergeParts(parts), board);
-        m.position.set(cx + 1.5, MH, cz - 0.2);
-        m.rotation.z = 0.045;                  // the lean, and the only one
-        m.castShadow = true; hse.group.add(m);
-      }
-
-      /* the chimney, deliberately too big */
-      {
-        const parts = [
-          {geo:new T.BoxGeometry(1.05, 3.4, 1.05), pos:[0, 1.7, 0]},
-          {geo:new T.BoxGeometry(1.3, 0.24, 1.3),  pos:[0, 3.5, 0]}
-        ];
-        const m = new T.Mesh(mergeParts(parts), stone);
-        m.position.set(cx - 2.3, MH - 0.4, cz + 0.6);
-        m.castShadow = true; hse.group.add(m);
-      }
-
-      /* the porch — and its floor is the one thing here you can stand on,
-         so it goes on the SCENE's walk list, not the show's: it has to
-         leave WALKABLE the moment this set goes off */
-      {
-        const parts = [
-          {geo:new T.BoxGeometry(MW + 1.4, 0.16, 2.3), pos:[0, 0.52, 0]}
-        ];
-        for(let i = 0; i < 4; i++)
-          parts.push({geo:new T.BoxGeometry(0.17, 2.5, 0.17),
-                      pos:[-MW/2 - 0.5 + i*(MW + 1.0)/3, 1.85, 1.0]});
-        parts.push({geo:new T.BoxGeometry(MW + 1.6, 0.16, 2.6), pos:[0, 3.18, 0.1]});
-        parts.push({geo:new T.BoxGeometry(MW + 1.6, 0.34, 0.18), pos:[0, 3.34, 1.32]});
-        const m = new T.Mesh(mergeParts(parts), board);
-        m.position.set(cx, 0, cz + MD/2 + 1.0);
-        m.castShadow = true; hse.group.add(m);
-
-        /* the deck of the porch, as its own flat walkable at its own height */
-        const f = new T.Mesh(new T.BoxGeometry(MW + 1.4, 0.12, 2.3), boardD);
-        f.name = 'bj:porchFloor';
-        f.position.set(cx, 0.60, cz + MD/2 + 1.0);
-        f.receiveShadow = true; hse.group.add(f);
-        /* sceneShow owns WALKABLE for scene pieces — it adds this on the way in
-           and splices it out on the way off.  Pushing it by hand here would
-           leave a porch you can stand on while the cemetery is up. */
-        sceneWalk(hse, f);
-      }
-
-      /* the steps up to it */
-      {
-        const parts = [];
-        for(let i = 0; i < 3; i++)
-          parts.push({geo:new T.BoxGeometry(2.4, 0.2, 0.42), pos:[0, 0.1 + i*0.2, -i*0.42]});
-        const m = new T.Mesh(mergeParts(parts), boardD);
-        m.position.set(cx, 0, cz + MD/2 + 2.5); hse.group.add(m);
-      }
-
-      /* windows: two clusters, each merged, each a frame and a sill */
-      [[-1.9, 1.5], [1.7, 1.6], [-1.6, 3.9], [1.9, 4.0]].forEach((wv, i)=>{
-        const parts = [
-          {geo:new T.BoxGeometry(1.05, 1.35, 0.10), pos:[0, 0, 0]},
-          {geo:new T.BoxGeometry(0.10, 1.35, 0.16), pos:[0, 0, 0.04]},
-          {geo:new T.BoxGeometry(1.05, 0.10, 0.16), pos:[0, 0, 0.04]},
-          {geo:new T.BoxGeometry(1.28, 0.14, 0.26), pos:[0, -0.74, 0.04]}
-        ];
-        const m = new T.Mesh(mergeParts(parts), boardD);
-        m.position.set(cx + wv[0], wv[1], cz + MD/2 + 0.02);
-        hse.group.add(m);
-      });
-
-      /* the door, shut */
-      {
-        const m = new T.Mesh(new T.BoxGeometry(1.15, 2.25, 0.12), boardD);
-        m.name = 'bj:houseDoor';
-        m.position.set(cx, 1.72, cz + MD/2 + 0.02);
-        hse.group.add(m);
-      }
-
-      /* a picket run either side, leaning where the ground has moved */
-      [-1, 1].forEach(sd=>{
-        const parts = [];
-        /* the run stops short of the portal edge — everything in this scene has
-           to sit inside the 13.6m opening it is seen through */
-        for(let i = 0; i < 6; i++)
-          parts.push({geo:new T.BoxGeometry(0.11, 1.15, 0.06),
-                      pos:[sd*(3.4 + i*0.52), 0.58, 0], rot:[0, 0, (i%3-1)*0.05]});
-        parts.push({geo:new T.BoxGeometry(2.6, 0.08, 0.05), pos:[sd*4.7, 0.86, 0]});
-        parts.push({geo:new T.BoxGeometry(2.6, 0.08, 0.05), pos:[sd*4.7, 0.34, 0]});
-        const m = new T.Mesh(mergeParts(parts), boardD);
-        m.position.z = cz + MD/2 + 2.9; hse.group.add(m);
-      });
-
-      /* one dead shrub each side, so the ground is not bare board */
-      [[-5.2, -6.0], [4.4, -6.4]].forEach(s=>{
-        const parts = [{geo:new T.CylinderGeometry(0.07, 0.13, 1.0, 7), pos:[0, 0.5, 0]}];
-        for(let i = 0; i < 5; i++)
-          parts.push({geo:new T.CylinderGeometry(0.03, 0.06, 0.8, 5),
-                      pos:[(i%3-1)*0.22, 1.05, 0], rot:[0, 0, (i%3-1)*0.7]});
-        const m = new T.Mesh(mergeParts(parts), bark);
-        m.position.set(s[0], 0, s[1]); hse.group.add(m);
-      });
+      /* the drop reads THROUGH the portal, so the cloth stays inside the
+         13.6 x 9.2 opening — and it plays against its OWN sky on line 13
+         (z=-10.10), so it hangs well downstage of that, with room between
+         the two cloths to light the sky */
+      const m = new T.MeshStandardMaterial({map:bjHouseClothTex(),
+        roughness:1, side:T.DoubleSide});
+      const d = drape(12.6, 8.7, m, 2, .05);
+      d.name = 'bj:house';
+      d.position.set(0, 4.35, -7.35);        // foots on the deck at y=0
+      hse.group.add(d);
     }
+    /* THE MOVER RULING AT PROMISED AND NOBODY WIRED.  The plot cue at
+       1:14:30 has always carried move:{scene:'house', off:BJ_SIGN_OUT} —
+       and sceneTravel was never called here, so sceneMoveTo returned null
+       and the exterior left by the instant swap every night while the
+       record said it flew.  Wired now: a whole-group Y travel in the same
+       speed family as the flown sets (BJ_FLY_SPEED — one-line retune). */
+    sceneTravel(hse, 'y', 0, BJ_FLY_SPEED);
 
     /* ================================================================
        SCENE — THE HOUSE, from inside.  Measured, the interior carries
