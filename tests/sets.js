@@ -546,6 +546,137 @@ const probe = `
     return 'a list of two and a bare single, both landed';
   });
 
+  /* ---- the changeover: every change is choreographed travel (RULING AY) ---- */
+  console.log('--- the changeover: parts travel, nothing pops ---');
+
+  /* a synthetic scene with named PART movers, because no shipped show carries
+     them yet — that is the choreography PR.  Each part gets a mesh of its own
+     so the layer discipline can be read straight off it. */
+  const partScene = (name, parts)=>{
+    const sc = sceneAdd(name, name.toUpperCase());
+    const gs = {};
+    for(const p of parts){
+      const g = new THREE.Group();
+      g.add(new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshBasicMaterial()));
+      sc.group.add(g);
+      sceneTravelPart(sc, p.n, g, 'x', 0, p.out, p.speed);
+      gs[p.n] = g;
+    }
+    return {sc, g:gs};
+  };
+  const litIn = g=>{ let n = 0; g.traverse(o=>{ if(o.isMesh && o.layers.mask !== 0) n++; }); return n; };
+
+  P('a PART crosses off dt, and takes the time it should', ()=>{
+    showLoad('beetlejuice');
+    const s = partScene('__pm', [{n:'hill', out:-12, speed:2}]);
+    sceneChangeTo('__pm');                 // on at OUT, and it travels home
+    run(180, 1/60);                        // 3s of a 6 second travel
+    const half = wx(s.g.hill);
+    if(!(half > -7.4 && half < -4.6))
+      throw new Error('half way should be near -6.0, was '+half.toFixed(2));
+    run(240, 1/60);                        // the rest of it, and a little over
+    if(Math.abs(wx(s.g.hill)) > 0.01) throw new Error('never arrived: '+wx(s.g.hill).toFixed(3));
+    if(sceneTravelling(s.sc)) throw new Error('still reports itself travelling');
+    return 'from -12.00, half way '+half.toFixed(2)+', arrived 0.00 — in world space';
+  });
+
+  P('a set the changeover brings on NEVER pops: at OUT first, never home at once', ()=>{
+    showLoad('beetlejuice');
+    const s = partScene('__np', [{n:'wall', out:9, speed:3}]);
+    sceneChangeTo('__np');
+    /* the FIRST visible frame: layers on, and the part at OUT, not at home */
+    if(!litIn(s.sc.group)) throw new Error('it came on with no layers');
+    if(Math.abs(wx(s.g.wall) - 9) > 0.01)
+      throw new Error('first frame at '+wx(s.g.wall).toFixed(2)+', not at OUT 9.00');
+    run(60, 1/60);                          // one second of a three second travel
+    const mid = wx(s.g.wall);
+    if(!(mid > 0.01 && mid < 8.99)) throw new Error('not strictly between: '+mid.toFixed(2));
+    run(240, 1/60);
+    if(Math.abs(wx(s.g.wall)) > 0.01) throw new Error('never made home: '+wx(s.g.wall).toFixed(3));
+    return 'on at 9.00, seen at '+mid.toFixed(2)+', home 0.00 — no pop';
+  });
+
+  P('mid-changeover BOTH sets are drawn, and the outgoing waits for its LAST part', ()=>{
+    showLoad('beetlejuice');
+    const A = partScene('__ca', [{n:'fast', out:-6, speed:2}, {n:'slow', out:-6, speed:1}]);
+    const B = partScene('__cb', [{n:'only', out:6, speed:2}]);
+    sceneChangeTo('__ca'); run(500, 1/60);   // A is home and settled
+    sceneChangeTo('__cb');                   // the changeover: A goes, B comes, together
+    run(60, 1/60);                           // one second in
+    if(!litIn(A.sc.group)) throw new Error('the outgoing went dark mid-move');
+    if(!litIn(B.sc.group)) throw new Error('the incoming is not drawn mid-move');
+    run(150, 1/60);                          // t=3.5s: the fast part is out, the slow is not
+    if(Math.abs(wx(A.g.fast) + 6) > 0.01) throw new Error('the fast part never got out');
+    if(!litIn(A.sc.group)) throw new Error('it hid on the FIRST part arriving, not the last');
+    run(180, 1/60);                          // t=6.5s: the slow part lands, and so does the hide
+    if(litIn(A.sc.group)) throw new Error('the outgoing never went inert');
+    if(A.sc.group.userData.sceneOff !== true) throw new Error('never marked off');
+    if(Math.abs(wx(B.g.only)) > 0.01) throw new Error('the incoming never arrived home');
+    return 'both drawn in the same frames; the hide waited 6s for the slow part, not 3s';
+  });
+
+  P('a changeover fired mid-changeover RETARGETS — nothing queues', ()=>{
+    showLoad('beetlejuice');
+    const A = partScene('__ra', [{n:'p', out:-8, speed:2}]);
+    const B = partScene('__rb', [{n:'p', out:8, speed:2}]);
+    sceneChangeTo('__ra'); run(400, 1/60);    // A home
+    sceneChangeTo('__rb');                    // A -> out, B in from out
+    run(60, 1/60);                            // one second: A near -2, B near 6
+    const aAt = wx(A.g.p);
+    sceneChangeTo('__ra');                    // changed its mind mid-move
+    if(Math.abs(wx(A.g.p) - aAt) > 0.01)
+      throw new Error('the reversal SNAPPED a still-drawn set to '+wx(A.g.p).toFixed(2));
+    if(A.sc.pmv.p.target !== 0) throw new Error('A is not headed home');
+    if(B.sc.pmv.p.target !== 8) throw new Error('B is not headed back out');
+    run(400, 1/60);                           // let everything land
+    if(Math.abs(wx(A.g.p)) > 0.01) throw new Error('A ended at '+wx(A.g.p).toFixed(2));
+    if(litIn(B.sc.group)) throw new Error('B never went inert after turning back');
+    run(120, 1/60);                           // and nothing banked a second move
+    if(sceneTravelling(A.sc) || sceneTravelling(B.sc))
+      throw new Error('something is still travelling — a move was queued');
+    if(Math.abs(wx(A.g.p)) > 0.01) throw new Error('a banked move ran A out to '+wx(A.g.p).toFixed(2));
+    return 'A turned round at '+aAt.toFixed(2)+' and came home; B went back out and hid';
+  });
+
+  P('a set with NO part movers still changes instantly under the changeover', ()=>{
+    showLoad('beetlejuice');
+    sceneChangeTo('attic');                  // neither the attic nor the bedroom carries parts
+    const a = sceneFind('attic'), b = sceneFind('bedroom');
+    sceneChangeTo('bedroom');                // no run(): the swap must not wait a frame
+    if(a.group.userData.sceneOff !== true) throw new Error('the attic waited to hide');
+    if(litIn(a.group)) throw new Error('attic pieces still live after an instant change');
+    if(b.group.userData.sceneOff !== false) throw new Error('the bedroom is not on');
+    return 'attic off and inert, bedroom on, in the same call — the other shows keep their swap';
+  });
+
+  P('a cue with scene: runs the changeover, not an instant swap', ()=>{
+    showLoad('beetlejuice');
+    const s = partScene('__cue', [{n:'p', out:-10, speed:2}]);
+    showCueExtras({scene:'__cue'});
+    if(!litIn(s.sc.group)) throw new Error('the cue did not bring it on');
+    if(Math.abs(wx(s.g.p) + 10) > 0.01)
+      throw new Error('the cue POPPED the part to '+wx(s.g.p).toFixed(2)+' — an instant swap, not the changeover');
+    run(120, 1/60);                          // two seconds of a five second travel
+    const mid = wx(s.g.p);
+    if(!(mid > -9.99 && mid < -0.01)) throw new Error('not travelling in: '+mid.toFixed(2));
+    run(300, 1/60);
+    if(Math.abs(wx(s.g.p)) > 0.01) throw new Error('never arrived home');
+    return 'the cue put it on at -10.00, seen at '+mid.toFixed(2)+', home 0.00';
+  });
+
+  P('an instant sceneShow snaps parked parts HOME — no hollow set', ()=>{
+    showLoad('beetlejuice');
+    const A = partScene('__sa', [{n:'p', out:-9, speed:3}]);
+    sceneChangeTo('__sa'); run(300, 1/60);       // on, the part home
+    sceneChangeTo('attic'); run(300, 1/60);      // off, the part parked at OUT
+    if(Math.abs(wx(A.g.p) + 9) > 0.01) throw new Error('the part never parked at out');
+    sceneShow('__sa');                           // the instant path: boot and presets
+    if(Math.abs(wx(A.g.p)) > 0.01)
+      throw new Error('sceneShow left a part in the wings at '+wx(A.g.p).toFixed(2));
+    if(sceneTravelling(A.sc)) throw new Error('an instant swap left a travel running');
+    return 'parked at -9.00, sceneShow put it home 0.00 in the same call';
+  });
+
   P('the mover runs on dt, and adds no timer of its own', ()=>{
     const src = document.documentElement.outerHTML;
     const i = src.indexOf('THE MOVER');

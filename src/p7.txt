@@ -851,7 +851,7 @@ function refreshSceneUI(){
         }).join('')
       : '<span style="color:var(--dim)">this show has one set</span>';
     $$('#sceneList .cue').forEach(el=>el.onclick = ()=>{
-      sceneShow(el.dataset.s);
+      sceneChangeTo(el.dataset.s);
       const sc = sceneFind(el.dataset.s);
       if(sc) toast(sc.label + ' is on');
     });
