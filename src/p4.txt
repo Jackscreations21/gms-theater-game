@@ -222,10 +222,12 @@ function bodyMover(){
    other fixture part, so all eight blinders on all three stages share it and a
    blinder costs three draw calls rather than ten.
 
-   It is meant to be LOOKED AT rather than to light anything, which is why the
-   patch gives it a low `power`: `_active` sorts on level*power against only
-   eight real lights, so a blinder that outranked a stage lantern would pull a
-   real light off the stage at the exact moment the stage matters. */
+   It is meant to be LOOKED AT, which is why the patch gives it a low `rank`:
+   `_active` sorts on level*rank against only eight real lights, so a blinder
+   that outranked a stage lantern would pull a real light off the stage at the
+   exact moment the stage matters.  That was `power` until RULING BF, and doing
+   both jobs with one number is what left it too dim to read — being looked at
+   is not the same as being dim (see BLIND_POWER in buildRig). */
 function bodyBlinder(){
   const g = new T.Group();
   const shell = new T.Mesh(fixG('blindShell', ()=>new T.BoxGeometry(.94,.52,.28)), M.fixture);
@@ -497,8 +499,18 @@ function addFixture(o){
   const f = Object.assign({
     ch:FIXTURES.length+1, name:'', type:'profile', pos:new T.Vector3(), aim:new T.Vector3(),
     angle:20, level:0, color:new T.Color(0xffffff), gobo:0, ls:-1, lsOffset:-0.4, lsX:0,
-    beamLen:22, beamRad:2.2, power:2.6, mover:false, pan:0, tilt:-45, panT:0, tiltT:-45, follow:false
+    beamLen:22, beamRad:2.2, power:2.6, rank:null, audience:false,
+    mover:false, pan:0, tilt:-45, panT:0, tiltT:-45, follow:false
   }, o);
+  /* RANK AND BRIGHTNESS ARE TWO DIFFERENT NUMBERS (RULING BF).  `power` used to
+     do both jobs: it decided WHO got one of the eight real lights and HOW
+     BRIGHT that light burned.  RULING BC then pushed the blinders down to 0.9
+     for the first job — rightly, so an audience unit can never pull a light off
+     the stage — and capped their brightness at 0.9 as a side effect nobody
+     could see, because nothing in this repo has eyes.  `rank` is the sort key;
+     `power` is the intensity.  It defaults to `power`, so every stage channel
+     in all three houses is unchanged to the byte. */
+  if(f.rank === null || f.rank === undefined) f.rank = f.power;
 
   const grp = new T.Group(); grp.position.copy(f.pos); rigGroup.add(grp);
   // the plot gave the aim in stage coordinates; from here on it is world
@@ -727,8 +739,28 @@ function buildRig(){
      do; all 25 above aim at or upstage of the arch.  Two consequences fall out
      of that for free: the floor pool is clipped to the stage box so an
      audience unit draws none at all, and the beam only draws while there is
-     haze to catch it.  What is NOT free is `power`, and it is deliberately
-     below every stage lantern's — see bodyBlinder.                          */
+     haze to catch it.  What is NOT free is the power, and it is split in two —
+     see BLIND_POWER below and RULING BF.                                     */
+
+  /* THE FOUR NUMBERS THAT SAY HOW HARD THE AUDIENCE RIG HITS (rulings BC, BF).
+     Headset retunes, like BJ_FLY_SPEED — one line each.
+
+     RANK is RULING BC, unchanged and still load-bearing: 0.9 and 0.8 sit under
+     every stage lantern (2.4 … 4.2), so no audience unit at any level can take
+     one of the eight real lights off a lit stage.
+
+     POWER is how bright it burns once it HAS one, and it is new.  At 0.9 a
+     blinder at FULL put 0.866 of light into the room while one FOH lantern at
+     45% put 1.364 — the owner's "the blinders arent bright enoug", measured.
+     4.6 is above the followspot's 4.2 on purpose: a blinder is a 66° flood at
+     38m and a profile is 8° of the same intensity landing on a body, so a wide
+     unit needs MORE power to read bright, not less.
+
+     If the headset says this hurts, these are the two numbers to drop.  Note
+     that AUD_STROBE_HZ stays at 9: five times the light is a reason to be more
+     careful about the photosensitive band, not less.                         */
+  const BLIND_POWER = 4.6, BLIND_RANK = 0.9;
+  const AUDM_POWER  = 2.8, AUDM_RANK  = 0.8;
 
   // 26-33 BLINDERS — round the arch, on the downstage face of the proscenium
   const bz = 1.35;                            // just clear of the 1.2 deep wall
@@ -736,18 +768,18 @@ function buildRig(){
   [[-5.4, D.procH+0.55],[-1.8, D.procH+0.55],[1.8, D.procH+0.55],[5.4, D.procH+0.55],
    [-arch, 6.4],[-arch, 3.0],[arch, 6.4],[arch, 3.0]
   ].forEach(([x,y],i)=>{
-    addFixture({name:'BLINDER '+(i+1), type:'blinder',
+    addFixture({name:'BLINDER '+(i+1), type:'blinder', audience:true,
       pos:V(x, y, bz), aim:V(x*0.45, 2.2, 15.0),
-      angle:60, beamLen:16, beamRad:7.0, power:0.9,
+      angle:60, beamLen:16, beamRad:7.0, power:BLIND_POWER, rank:BLIND_RANK,
       color:new T.Color(0xfff2e0)});
   });
 
   // 34-39 AUDIENCE MOVERS — two bars over the seating, pointing down into it
   [[-6.4, 9.0],[0, 9.0],[6.4, 9.0],[-6.4, 19.0],[0, 19.0],[6.4, 19.0]
   ].forEach(([x,z],i)=>{
-    addFixture({name:'AUD MOVER '+(i+1), type:'mover', mover:true,
+    addFixture({name:'AUD MOVER '+(i+1), type:'mover', mover:true, audience:true,
       pos:V(x, 17.5, z), aim:V(x*0.6, D.houseY, z + 4),
-      angle:16, beamLen:22, beamRad:3.0, power:0.8,
+      angle:16, beamLen:22, beamRad:3.0, power:AUDM_POWER, rank:AUDM_RANK,
       color:new T.Color(0x7fd06a), tilt:-64, tiltT:-64});
   });
 }
@@ -773,7 +805,9 @@ const hemi = new T.HemisphereLight(0x3a4a6a, 0x181410, 0); scene.add(hemi);
 
 /* ---- rig update ---- */
 const _v = new T.Vector3(), _v2 = new T.Vector3(), _glowCam = new T.Vector3();
-const _active = [];
+const _active = [], _handout = [];
+/* how many of the real lights the audience rig may ever hold at once (BG) */
+const AUD_LIGHT_RESERVE = 2;
 function updateRig(dt, t){
   const master = RIG.blackout ? 0 : RIG.grand;
   _active.length = 0;
@@ -875,13 +909,39 @@ function updateRig(dt, t){
   /* hand the real lights to the fixtures currently doing the most work.
      In a VR session only VR.lightCap of them (p9): every live SpotLight is
      per-pixel work in every material, and a headset draws the room twice.
-     `VR` is a var and this guard is safe before p9 has run. */
-  _active.sort((a,b)=> (b._lvl*b.power) - (a._lvl*a.power));
+     `VR` is a var and this guard is safe before p9 has run.
+
+     The sort key is RANK, not power (RULING BF) — who deserves a light and how
+     bright it burns are different questions now. */
+  _active.sort((a,b)=> (b._lvl*b.rank) - (a._lvl*a.rank));
   FIXTURES.forEach(f=>f._live=false);
   const nLights = (VR && VR.active && VR.lightCap)
     ? Math.min(VR.lightCap, LIGHT_POOL.length) : LIGHT_POOL.length;
+
+  /* THE AUDIENCE RIG IS GUARANTEED A SHARE (RULING BG).  Rank alone leaves the
+     audience units last by design, and last means nothing: six movers against
+     six FOH lanterns took 2 of 8 in the pre-show and NONE of the 4 a headset
+     hands out, so the owner's purple sweep ran perfectly and lit nobody.
+
+     So up to AUD_LIGHT_RESERVE of the pool go to the best-ranked lit fixtures
+     aimed into the house.  It is a ceiling and not a floor — two, never three,
+     however many are lit — and it claims nothing at all when the audience rig
+     is dark, which across the 94-cue plot is almost every cue.  No new lights:
+     the pool is the size it always was, this is only who stands in it. */
+  _handout.length = 0;
+  {
+    let nAud = 0;
+    for(const f of _active){
+      if(!f.audience || nAud >= AUD_LIGHT_RESERVE || _handout.length >= nLights) continue;
+      _handout.push(f); nAud++;
+    }
+    for(const f of _active){
+      if(_handout.length >= nLights) break;
+      if(_handout.indexOf(f) === -1) _handout.push(f);
+    }
+  }
   for(let i=0;i<LIGHT_POOL.length;i++){
-    const l = LIGHT_POOL[i], f = i < nLights ? _active[i] : null;
+    const l = LIGHT_POOL[i], f = _handout[i] || null;
     if(!f){ l.intensity = 0; continue; }
     f._live = true;
     l.position.copy(f._org);
