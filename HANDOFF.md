@@ -223,7 +223,67 @@ compare the *same* production across stages instead.
 
 ---
 
-## IN FLIGHT — 2026-08-10: the owner's own scene plot (#104–#109 merged)
+## NEXT SESSION: **PUT IT ON THE HEADSET** (2026-08-10)
+
+The re-time round is BUILT, GREEN and **entirely unseen**. Eleven PRs, and
+nobody has looked at a second of it through a Quest. The full list of what
+only hardware can answer is in **STATE.md** — read that. What belongs here
+is why the suites stop where they do, and it is not a shortcoming: jsdom
+has no GPU and `fillText` is a noop, so *nothing about how any of this
+looks has ever been tested, and no test in this repo claims otherwise.*
+
+**Cache-bust `?v=17`.** The build went 964663 → ~1000763 across the round.
+Confirming a timing or a look against a cached old build reads as a fault
+that is not there, and this repo has been caught by that before.
+
+**The one number most likely to be wrong** is the wagon's crossing time:
+4.0 seconds over 10 metres. It is a guess. The assertion allows 2–12s
+precisely so it can be retuned without a fight.
+
+## DONE — 2026-08-10: the owner's own scene plot (#104–#113)
+
+The owner watched the recording and wrote the set changes out himself with
+timestamps, and **his list became the authority.** Where it disagreed with
+what #93–#100 had measured, his list won — which was most of act one.
+
+**The cross-check that made it trustworthy:** his act break, 1:11:02, is
+second 4262, exactly where `blackdetect` found the show's longest blackout.
+His timestamps and `tools/video.js` share a time base, so a plot written
+from a sofa dropped straight into `looks[].at` with no offset.
+
+**Eight rulings, and the first REVERSAL in the sequence.** AP the wagon is
+real and seen; AQ one house three dressings; AR the show ends at 2:15:00
+(the owner overruling a measurement); AS the sign flies and there is no
+crypt; AT cloths on lines, structures on movers; AU the two waits are the
+two GO presses; **AV repeals AO** — the scenery is no longer "our own
+vocabulary", Beetlejuice is modelled on the production, scoped to that
+show alone. AO is left in its own spec marked superseded, because a
+reversed ruling is worth more on the record than a deleted one.
+
+**The Palace is now deeper than the box.** `D.backWall` (−17) stays the
+STAGE-COORDINATE reference every show and both Arc houses are written to;
+`PAL_BACK` (−21.5) is where the Palace's brick actually stands. Structural
+Palace geometry uses `PAL_BACK`, anything stage-relative keeps
+`D.backWall`. A deliberate, scoped break of "every stage is the same box",
+at the owner's instruction — "only do this with the palace theater".
+
+**Six defects, and the suites caught two of them.** The mover that moved
+nothing (a frozen group takes the write and stands still); the cloths hung
+in FRONT of the show; `SHOW.goods` being the delete list; a building that
+moved while its furniture stayed; a park offset measured against the
+shallowest dressing; and a test helper that tripped the stale-parent trap
+recorded three PRs earlier. **Two were found by throwaway probes** — the
+TRAPS.md advice working exactly as written.
+
+**And the lesson that outranks the rest, now in TRAPS.md:** *a negative
+check that does not fail means the ASSERTION is weak.* It happened FIVE
+times in one round — a clearance test that checked order and accepted 7cm,
+a shed test that checked position and accepted a shed trimmed by a third,
+a travel test whose window scaled with the speed it was testing, a
+dressing test that never exercised its own hooks, and a confetti feature
+with no test at all. Every one was about to ship as false comfort.
+
+## SUPERSEDED — the in-flight block (#104–#109)
 
 **This supersedes the "CONFIRMING THE SCENE TIMING" section below.** Nobody is
 confirming the built timing, because the owner watched the recording himself

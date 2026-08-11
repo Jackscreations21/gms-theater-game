@@ -13,7 +13,59 @@ anything else.**
 
 ---
 
-## THE RE-TIME ROUND — in flight, 2026-08-10
+## NEXT SESSION: **PUT IT ON THE HEADSET.** Nothing here has met hardware.
+
+The round is BUILT and it is GREEN and **nobody has seen a second of it.**
+Eleven PRs (#104–#113 plus the record) and not one of them has been looked
+at through a Quest. The suites cannot answer any of the questions below,
+and that is not a gap in the suites — it is what jsdom is for and what it
+is not for.
+
+**Bust the Quest cache with `?v=17`** — the build went 964663 → ~1000763
+across this round, and confirming any of this against a CACHED old build
+would read as a fault that is not there.
+
+### What only the headset can answer, in order
+
+1. **Does the wagon read as a house arriving?** It crosses in 4.0s over
+   10m. Too fast and it is a slide; too slow and the show waits on it.
+   The number to change is the speed argument of
+   `sceneTravel(inr, 'z', BJ_WAGON_BACK, 2.0)` in `p5h` — the test allows
+   2–12s, so there is room either way.
+2. **Does the neon portal read?** It is the most-seen object in the
+   production. Four tubes round the opening and returns 5.4m into the
+   wings, so from a seat it should be a lit box receding, not an outline.
+3. **Do the owner's seventeen beats feel like a show?** He wrote the plot;
+   nobody has sat through it. The two GO holds (pre-show, interval) are
+   the places it will feel wrong first if it does.
+4. **The curtain call.** The house parks all the way back in full view
+   with the backdrop out and nothing else on stage. That is the one
+   picture in the round taken entirely from his description.
+5. **The Beetlejuice dressing.** Its stripes came off ONE purple-lit
+   photograph, so how much is paint and how much is light is a guess.
+6. **The marquee and the show cloth** (#108) — built from a photograph,
+   and `fillText` is a noop in the harness, so no suite has ever seen
+   them.
+
+### Still owed, and small
+
+- The **act-two exterior** flies out on a Y mover per RULING AT; it works,
+  but whether a built set flying reads as flying is a headset question.
+- **`pr6.json`** is still untracked in the repo root, as it has been all
+  round. The owner has never ruled on it.
+- **~50 merged branches** still on `origin`; local is pruned every time.
+
+### And the standing one
+
+**THE FRAME-RATE ROUND** has not moved and now matters more: this round
+added a wagon, three dressings, two cloths, a neon box and an instanced
+confetti burst. The foveation decision table in HANDOFF is still the right
+step zero — take the meter readings FIRST, then work the feel questions
+above while the headset is already on. One trip.
+
+---
+
+## THE RE-TIME ROUND — done, 2026-08-10
 
 The owner watched the recording and wrote out the set changes himself. **That
 list is the authority.** Where it disagrees with what #93–#100 built, the list
