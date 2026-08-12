@@ -421,7 +421,104 @@ against this list before opening a PR; **add new traps as you hit them.**
   reading the plot. Assert on the value the ENGINE produces: fire the cue, run a
   frame, read the uniform off a real beam.
 
+- **A mutation can land in the TEXT and not in the BEHAVIOUR, and that reads
+  exactly like a weak assertion too.** The BY/CB round's distortion check
+  replaced `root.scale.multiplyScalar(s)` with a version that stretched x by
+  `(targetW / size.x) / s` — and for a width-filling set `s` already IS
+  `targetW / size.x`, so the factor was 1.0 and the "mutant" was the original
+  program. The harness proved the literal was replaced (the fix for the sibling
+  trap above) and still told you nothing. **Make the mutation change an
+  OBSERVABLE**, and sanity-check that the mutant's own numbers differ from the
+  clean build's before believing an `ok`.
+
+- **A bound that nothing in the delivery exercises cannot be negative-checked at
+  all.** Deleting the back-wall clamp from `bjFitAndSeat` changed no number
+  anywhere, because his deepest set reaches 12.98m against 16.70m of stage. The
+  clamp was unobservable, not sound. **A guard whose limit is never approached
+  needs a fixture that approaches it** — a deliberately 6m-deep box, which
+  measures 42.95m without the clamp and 16.70m with it.
+
+- **`undefined` in a comparison passes the test and says nothing.**
+  `box.max.z > -az.BJ_FIT_AIR + 0.01` where the constant does not exist yet is
+  `5.45 > NaN`, which is `false` — so an assertion written to catch a set
+  hanging five metres over the audience passed against the build that did
+  exactly that. Every comparison against a constant fetched out of the build
+  needs an explicit `=== undefined` guard first, or the whole test is decoration
+  until the feature exists.
+
+## Tests — stepping the frame, and state that carries
+
+- **The real frame is `updateFades` → `updateRig` → `updateStorm`, and stepping
+  only the last one measures a rig that never moves.** `updateFades` walks
+  `f.level` along the cue's fade and `updateRig` turns that into `f._lvl`, which
+  is what everything downstream reads. A loop of `updateStorm(1/60)` after
+  `fireCue` therefore leaves the fixtures wherever the PREVIOUS test left them —
+  which made a correct RULING CC build fail its own blackout assertion at 0.550.
+  Step all three, and carry a clock: `updateRig` takes `(dt, t)`.
+
+- **A test that reloads the show proves nothing about per-frame state.** The
+  first CC blackout check called `showLoad` and then asserted `SHOW.bjFillNow`
+  was low — but a fresh load has nothing registered, `bjUpdateSetFill` returns
+  on its first line, and `undefined > 0.02` is false. It passed against a
+  mutation that made the fill a fixed level and would have lit every blackout in
+  the show. **If a per-frame system needs registered state, register it inside
+  the test**, then assert.
+
+- **Deriving "which scenes are still stand-in" is not the same as knowing.** Two
+  attempts at the shared-material assertion both reported a leak that was not
+  there: naming four scenes as "the ones he never modelled" (earlier tests in
+  the same file land fixtures INTO the cemetery), then deriving the list from
+  `userData.bjApplied` (which `loadSetModels` sets and `bjApplyModel` does not,
+  so a suite calling the apply directly leaves every scene looking untouched).
+  **A test about "ours versus theirs" should build its own state**: reload,
+  snapshot, land exactly one thing, compare.
+
+- **Snapshot the property, not a pattern that resembles it.** "No stand-in
+  material has a white emissive" flagged two — the sign's panel and its arrow
+  are BUILT with `emissive:0xffffff` and an `emissiveMap`. What mattered was
+  that nothing CHANGED, so record `{emissive, emissiveIntensity, emissiveMap}`
+  before and diff after.
+
+## Probes
+
+- **A probe that reports a ruling as a fault is worse than no probe.**
+  `tools/models.js` was written before RULINGS CA/CB/CD and went on calling
+  their deliberate results defects: "OVER the opening by 3.56m" for a set the
+  owner ruled may overrun the border, "DOWNSTAGE of the arch" for a sign that
+  hangs there on purpose. Three false faults in a five-row table is enough to
+  stop trusting the two real ones. **A probe that judges has to read the same
+  declaration the code does** — it consults the manifest now and prints "3.56m
+  masked by the border (CB)".
+
+- **Measure a set in its CONTAINER's frame, not the world's.** The same probe
+  read the three houses at z −24.8..−11.8 and called them 2.98m too deep,
+  because the wagon parks at `BJ_WAGON_BACK` −10 and a world box reports the
+  parked offset as the set's position. On stage they sit −14.8..−1.8.
+  `box.applyMatrix4(inv(container.matrixWorld))` — and `updateWorldMatrix(true,
+  …)` first, because the landed subtree is frozen and its ancestors may be
+  stale.
+
+- **The number you would have guessed is not the number.** RULING BY's cost went
+  into a spec as "~0.031ms, affordable" and measured at **4.29ms — 38.6% of a
+  90Hz frame**, a factor of 100 out, against 0.0018ms for the 12-triangle
+  stand-in it replaced. `groundAt` raycasts every `WALKABLE` entry once for the
+  player *plus once per settling body*, and three.js `intersectObjects` collects
+  and sorts EVERY intersection, so **there is no early exit and a miss costs the
+  same as a hit.** A 99k-triangle mesh cannot go on `WALKABLE`. The estimate
+  would have shipped a frame-rate cliff onto the one platform the whole budget
+  system exists to protect. `tools/walkcost.js` keeps the number.
+
 ## Environment
+
+- **A `const` in its temporal dead zone throws on a PLAIN reference, not just
+  through `typeof`.** The `typeof` half is recorded above; this is the same trap
+  reached the ordinary way. `BJ_HOUSE_UPSTAGE` was declared with the other fit
+  constants, ~300 lines BELOW the `const BJ_MODELS = {…}` that reads it — and
+  because a manifest is an initialiser rather than a function body, it runs at
+  load, in the dead zone, and took the entire build down with "Cannot access
+  BJ_HOUSE_UPSTAGE before initialization". Function declarations hoist and
+  `const`s do not: **anything a top-level object literal reads must be declared
+  above it**, not merely somewhere in the same part.
 
 - **`* text=auto eol=lf` decides binary by CONTENT HEURISTIC, and media is a
   coin toss.** The blanket rule exists because `build.sh` breaks under CRLF, but

@@ -224,7 +224,166 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **THE NEON PROSCENIUM, AND HIS MODELS INTO `assets/`** (2026-08-12)
+## NEXT SESSION: **PUT HIS SEVEN SETS ON THE HEADSET** (2026-08-12, evening)
+
+Cache-bust **`?v=22`**. **Read STATE.md — it carries the full left-to-do list
+with the rulings written out.** What belongs here is the shape of it.
+
+**FIRST, MERGE THE CHAIN: #141 → #142 → #143 → #144, in that order.** They were
+built on each other and opened ahead of merging, at his instruction ("dont wait
+for me to merge pr's to keep going just keep going"). #136–#140 are already in.
+
+**ALL SEVEN OF HIS MODELS ARE IN THE GAME.** Every one passes every budget —
+93k–99.5k triangles, one material, one draw call. They were verified loading,
+applying, fitting and shrinking their textures **in a real browser**, not just in
+jsdom. What has NOT happened is anybody seeing a frame of it: the browser pane
+never composited, so **nothing about how any of it LOOKS has been observed.**
+That is the whole of the next session.
+
+**The questions, in the order they will bite:**
+
+1. **Do the houses read at 13.6 × 12.76, with 3.56m of them behind the border?**
+   His ruling, and his cost — "its fine if the house is a little taller than the
+   prosinium" — but the biggest single unknown in the round.
+2. **Is `BJ_FILL_MAX` 0.55 lit, or glowing?** RULING CC makes an imported set
+   light itself off its own texture, because the rig aims where our stand-ins
+   were and his houses are 12.98m deep. One line in `p5i`.
+3. **Is `BJ_HOUSE_UPSTAGE` 1.5m right** — and **was "slide up" upstage at all?**
+   Read as upstage, the theatre sense. If he meant the wagon should PARK further
+   off, that is `BJ_WAGON_BACK`.
+4. **The exterior lands 8.63m wide** in a 13.6m opening. Deliberately not
+   filled: nearly a cube, so filling it masks **28.5%** of its surface, and for a
+   house seen from outside that is the roofline. His call. The attic (13.06) and
+   roof (12.30) are within 0.6m of flush.
+5. **Does the netherworld read as his picture** — tilted trapezoids, all blue,
+   over a dark ground?
+6. **Everything hardware still owns from the last two lists** — `BLIND_POWER`
+   4.6, the audio join at 4292, the colour that is HIS not ours.
+
+**Two things that are his to decide, both with numbers attached:**
+
+- **181MB, and ~70MB of it is thrown away on arrival.** Every file carries a
+  4096 normal map that RULING BP shrinks to 2048 at load. Re-encoding to 2048
+  JPEG takes each from ~27MB to a few MB. Same class as the texture shrink, but
+  it rewrites HIS asset, so it was flagged and not taken.
+- **RULING BY is measured and deferred.** Standing on his geometry costs
+  **4.29ms — 38.6% of a 90Hz frame** against 0.0018ms for the stand-in it
+  replaces (`tools/walkcost.js`). So **the roof and the house landing are not
+  standable while his models are loaded.** Three ways out, none free: leave it, a
+  collision proxy sampled at import (~0.6s hitch), or a `walk_` node in the file.
+
+**A false alarm worth not repeating:** the show OPENS in the cemetery, which he
+never modelled, and stays there until **10:40**. Load, press GO, and the first
+ten minutes are OURS. His work starts at cue 7 (10:40, the interior, 56 cues),
+then 32:50 attic, 56:00 roof, 1:11:32 exterior. And 165MB takes minutes over
+wifi with the stand-ins playing until each lands — **looking too early shows
+ours.**
+
+**Still unbuilt and still wanted:** the neon proscenium (**BR/BS/BT/BU**) on the
+unopened local `bj-portal`, with its one unconfirmed number (`at:60` vs 95);
+**BW**, TOP firing the first cue; and **BQ**, a struck set parking backstage,
+which is still the biggest item on the list.
+
+## DONE — 2026-08-12 (evening): his seven sets into the house (#136–#144, BX–CD)
+
+He delivered all seven models and said "start with adding the sets in" — and
+**adding them in turned out not to be a file copy.**
+
+**A NEW PROBE FOUND THAT EVERY SET WOULD HAVE LANDED WRONG, AND NONE OF IT WAS
+HIS FAULT.** `tools/models.js` scans the glb bytes for the things budgets care
+about, then serves his files to the real `loadSetModels` and measures what lands
+**in world space against the frame it has to be seen through** — which nothing in
+the repo had ever checked, because every budget is about cost. It found the
+houses standing **12.01m tall in a 9.20m opening**, every set deeper than the
+stage, and both flying sets **centred on z = 0 where the proscenium stands**, so
+5.13m and 5.45m of set hung out over the audience. One root cause: `bjFitAndSeat`
+fitted WIDTH and seated only Y (**RULING BX**).
+
+**HE THEN OVERRULED THE FIX, AND WAS RIGHT.** Capped by height, his houses landed
+9.49m wide in a 13.6m opening — two metres of bare stage each side. "make the
+houses wide enought to stretch from one side of the prosinium to the other …
+its fine if the house is a little taller than the prosinium." Measured before
+choosing, by binning triangle **area** by height: filling the width puts **7.1%
+of the surface behind the border**, and the bottom 0.6m alone holds 26.8% — the
+profile of a roof tapering away, which is what a border is for (**RULING CB**).
+Uniform scale throughout: 43% of horizontal stretch would have distorted every
+door in the house.
+
+**WHICH HOUSE IS WHICH WAS VERIFIED, NOT TRUSTED.** All three are geometrically
+identical and all three came out of a tool called `deetz_house`, so the
+base-colour PNG was decoded out of each: warmth (mean R−B) **+15.3 / −4.4 /
+−10.9** orders them Maitland / Deetz / Beetlejuice unambiguously.
+
+**Nine rulings.** **BX** a set is fitted to the room, not just its width.
+**BZ** the exterior is a model, with **two assertions reversed in place** (the
+AO/AV/BA precedent, fourth time). **CA** the sign is his geometry and OUR
+lamps — and the lamps are two **materials**, so without re-fitting geometry to
+them both would have survived registered, tintable and used by nothing, with
+every `signCol` cue in the plot tinting a sign that never changes colour.
+**BV** the netherworld is his photograph: tilted trapezoids, all blue,
+brightening upstage, over a dark ground the scene never had — and his measured
+colour changes survive because `neon` on a cue is a **level, not a colour**.
+**CB** the houses fill the picture. **CD** they sit 1.5m further upstage.
+**CC** the whole set is lit unless the cue says otherwise. **BY** measured and
+deferred.
+
+**RULING CC IS NOT AN AMBIENT LIFT, deliberately.** `p4` already took the rig
+almost out of the ambient bed and says why: *"a bright stage lit the whole
+auditorium … stage light belongs on the stage."* And it is not new lights, which
+BC/BG/BL ration to 8 (4 in a headset). So the set lights **itself** — each
+imported material takes its own texture as an emissive map, keeping his painted
+detail — with two guards that each have a test: **imported materials only**
+(stand-in materials are shared across shows, so an emissive on one lights four
+other productions), and **a blackout stays black** (the default is the STAGE
+rig's own output, audience units excluded — dark rig 0.000, full rig 0.550).
+
+**RULING BY WAS WRITTEN, MEASURED, AND TAKEN BACK OUT** — and that is the most
+useful thing in the round. His exports name no `walk_` node and *cannot* (one
+primitive), so the roof silently lost "the roof slope you stand on, the whole
+point of the set". Putting the landed mesh on `WALKABLE` costs **4.29ms per
+`groundAt` against 0.0018ms** for the 12-triangle stand-in — **38.6% of a 90Hz
+frame**, once for the player plus once per settling body, with **no early exit**
+because three.js collects and sorts every intersection, so a miss costs the same
+as a hit. **The estimate written into the spec before measuring was 0.031ms:
+wrong by 100×**, and it would have shipped a frame-rate cliff onto the one
+platform the entire budget system exists to protect.
+
+**SEVEN OF MY OWN ASSERTIONS DIED TO NEGATIVE CHECKS**, the highest count yet,
+and four of them taught something new:
+
+- **A mutation that lands in the TEXT but not the BEHAVIOUR reads exactly like an
+  assertion that does not fire.** A distortion mutation scaled x by
+  `(targetW/size.x)/s` — and for a filling set `s` already IS that, so the factor
+  was 1.0. Prove the mutation *changed something*.
+- **A bound nothing exercises cannot be negative-checked.** Deleting the
+  back-wall clamp changed nothing, because nothing he delivered makes it bind.
+- **`undefined` arithmetic passes an assertion silently.**
+  `box.max.z > -undefined + 0.01` is `5.45 > NaN` — false — so a set hanging five
+  metres over the audience sailed through its own test.
+- **The real frame is three calls, not one:** `updateFades` → `updateRig` →
+  `updateStorm`. Stepping only the last left the rig where the previous test put
+  it, which made a correct build look broken.
+- And **proving a function while never proving its wiring, for the fourth time**:
+  the cue field was written by hand in the test, so a mutation making
+  `showCueExtras` ignore it entirely passed.
+
+**Two existing assertions were rewritten in place** because BX made their
+fixtures impossible — both fitted a 1.9 **cube** and demanded 13.40m of width,
+which is 13.40m of height in a 9.20m opening. The width was never reachable for
+that shape; the old expectation only held because nothing looked up.
+
+**And a probe that reported three rulings as faults** — `tools/models.js` called
+CB's masked overflow and CA's downstage sign defects until it was taught to read
+the manifest before judging. A probe that calls a ruling a fault is worse than no
+probe.
+
+**New in TRAPS:** the guessed number vs the measured one; a mutation that lands
+textually but not behaviourally; `undefined` arithmetic silently passing a
+comparison; and `const` in its temporal dead zone throwing on a plain reference,
+not just via `typeof` — `BJ_HOUSE_UPSTAGE` declared below the manifest that reads
+it took the whole build down at load.
+
+## NEXT SESSION: **THE NEON PROSCENIUM, AND HIS MODELS INTO `assets/`** (2026-08-12) — SUPERSEDED, see above
 
 Cache-bust **`?v=21`**. **Read STATE.md — it carries the full left-to-do list
 with the rulings written out.** What belongs here is the shape of it.
