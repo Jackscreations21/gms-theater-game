@@ -1,4 +1,4 @@
-# The balcony, the beams, and the cue clock — rulings BJ–BO
+# The balcony, the beams, and the cue clock — rulings BJ–BW
 
 **Date:** 2026-08-11
 **Owner's brief, verbatim:**
@@ -304,6 +304,114 @@ Three things this has to answer, and each is a test:
 - **What you can stand on.** A parked set stays off `WALKABLE`. You can see the
   attic in the dock; you cannot climb it there, because a set that flies in
   with a player standing on it is a bug with no good ending.
+
+## 10. RULINGS BR–BW — the neon proscenium round (SPECIFIED, NOT BUILT)
+
+His instructions, verbatim, across two messages:
+
+> thsi si what the neon prosinium should look like and just use this as a
+> backdrop for the netherworld. make it so the only times the lights in the neon
+> tube are in pre show when it is blue at the start sequec it should be red and
+> in the nether world it should be blue. put the blinders inside of the
+> prosinium.
+
+> number 1 and its not supposed to go red as soon as i press go its supposed to
+> go red at 1 minuet into the audio (not acounting for the 32 seconds or
+> whaterver it was) befor that it should be blue and make the house lights start
+> at 12 in preshow and go out right when it turns red. and make it so when you
+> press top of show it automaticall puts it on first cue instead of making you
+> press go to get to first cue
+
+He supplied two photographs of the production: nested tilted trapezoid frames
+receding upstage, blue with bright white edges, over a dark blue textured
+backing. **RULING AV already permits modelling Beetlejuice on the production,
+and the locking rail came off a photograph, so building to them is well
+precedented. The images are never committed** — TRAPS draws that line at looking
+versus committing.
+
+### Start from the shelved branch
+
+**`bj-portal` (RULING AX, commit a22bd36) already built this engine** and was
+never reviewed or opened, because he trimmed it out of the AW–AZ round. It has:
+`bj:portalFrame` as concentric tube runs hugging the opening, ONE merged mesh on
+ONE material, **built dark** (the tubes physically exist unlit, like real neon);
+`SHOW.bjPortal` registered in `showBlank()` so the stage swap parks it for free;
+a `portal:{col,lvl}` cue field applied by `showCueExtras` on **every** cue, so a
+cue that says nothing **darkens the frame**; and a fade on the frame `dt` at
+1.2/s riding `updateStorm` beside `updateNeon`, never a timer.
+
+That default-dark behaviour is *exactly* what "the only times the lights in the
+neon tube are…" asks for. **The engine is right and only the plot changes.**
+Expect conflicts rebasing it: the split rule in `showCueExtras`, the p5h
+repaints, and now BJ's edits to cues 1.1–1.4.
+
+### The rulings
+
+- **BR — the frame is rebuilt to his photographs.** What AX built is two thin
+  concentric tube runs; the photographs read as **broad flat bands with bright
+  edges**. Widen it. It must stay inside x ±7.4, because the portal check
+  refuses anything scenic wider than the house opening.
+
+- **BS — the tube is lit at exactly three times, and dark otherwise.**
+
+  | when | colour |
+  |---|---|
+  | the pre-show | blue |
+  | from GO until 1:00 | blue (his "befor that it should be blue") |
+  | **at 1:00** | **red** |
+  | the netherworld | blue |
+  | everything else | dark |
+
+  This also **reinterprets a line of his own act-one sheet.** "The lights around
+  the prosinum all turn red" was built as the eight blinders going red at GO; he
+  has now ruled that the *neon tube* is what he meant, and that it happens at
+  1:00 rather than at GO. Recorded here because it changes a cue previously
+  taken from his own text.
+
+- **BT — the house starts at 0.12 and goes out with the red.** Not at GO, which
+  is where it goes out today. **This supersedes the 0.30 that RULING BM set**, a
+  few hours after BM set it — and it is consistent with BM's own finding, that at
+  0.45 the house lights were twice as bright as the audience rig running in
+  them. 0.12 is dark enough that the beams are the picture.
+
+- **BU — the blinders go inside the proscenium.** They sit on the downstage face
+  at z = 1.35, above and outboard of the arch (RULING BC's positions). This
+  became **affordable only because of BS**: with the neon carrying the red at GO,
+  no cue needs the blinders visible through a closed house curtain any more.
+  **Check the curtain's z before moving them** — the 1:16 white flash must still
+  read from a seat, and RULING BJ already took them out of 1:03–1:09.
+
+- **BV — the netherworld is skewed to the photographs.** Today `aft` (p5h ~1316)
+  is five nested **axis-aligned** rectangles in green/cyan/magenta. His picture
+  is nested **tilted trapezoids**, all blue, bright-edged, over a dark blue
+  backing — and "just use this as a backdrop for the netherworld" makes the
+  picture the look rather than a new set. Two constraints there are already
+  load-bearing and must survive: **not `neonTube`** (its CatmullRom overshoots a
+  right angle — a 12.6m frame came out 14.5m wide and dipped 0.53m through the
+  deck), and **a material per tube is required, not a draw-call mistake**,
+  because `updateNeon` writes a colour into every registered mesh every frame.
+
+- **BW — TOP fires the first cue.** `vrPageCues`'s TOP button does
+  `nextCue = 0` and stops, so the operator has to press GO as well. It should
+  fire. It composes with RULING BO correctly for free: cue 0 carries its own
+  `audio`, so firing it starts the pre-show music and the jump-seek declines.
+
+### The one unresolved number
+
+**"1 minute into the audio (not acounting for the 32 seconds or whaterver it
+was)"** is genuinely ambiguous, and it is one line either way.
+
+Read as **`at:60`** — the 1:00 mark of the recording, i.e. *do not add* the 35s
+pre-roll. The alternative reading (35 + 60 = 95, which is **1:35** in his own
+labelling) would put the red **after** the 1:16 white blinder flash and the 1:28
+stage-blue, by which point the opening sequence is over and the graveyard is lit.
+`at:60` gives blue from GO at 0:35, red at 1:00, and the purple sweeps at
+1:03–1:09 playing over a red tube, which hangs together.
+
+**He has not confirmed it.** Every timestamp in this plot is a position in his
+whole recording, and the two readings differ by exactly the 35 seconds that
+`offset` exists to keep straight — which is why this is a real question and not
+a typo.
 
 ---
 
