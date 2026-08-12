@@ -23,16 +23,28 @@ the portal legs and unseen; anything past 48'6" fails the build.
 - **Format:** `.glb` (binary glTF, textures embedded). One file per set,
   named `bj-<set>.glb` — e.g. `bj-attic.glb`.
 - **Scale: real-world meters** is still ideal — **but if it comes out
-  normalised, that is fine now.** Every set is **scaled to the Width in the
-  table below**, measured off the model's own bounding box, so a file that
-  arrives 1.9 units across and one that arrives 13.4 m across end up the same
-  size on stage. Your Meshy exports are the former; nothing needs re-exporting
-  for it.
+  normalised, that is fine now.** Every set is **scaled to fit the table
+  below**, measured off the model's own bounding box, so a file that arrives
+  1.9 units across and one that arrives 13.4 m across end up the same size on
+  stage. Your Meshy exports are the former; nothing needs re-exporting for it.
+- **It is scaled to fit ALL THREE dimensions, not just the width** (RULING BX).
+  The scale is one number — nothing is ever stretched — and it is the smallest
+  of what the width allows, what the **9.2 m picture opening** allows, and what
+  the **~10 m of stage depth** allows. **A set drawn to the proportions in the
+  table is limited by its width and lands at exactly the width it asks for**,
+  so this never bites a set built to this page. What it catches is a set that
+  is proportionally taller or deeper than its target: that one lands smaller
+  than the Width column says, because the alternative is a third of it above
+  the picture and the rest of it through the back wall.
+  **If a set arrives narrower than you expected, it was too tall or too deep** —
+  flatten it or shallow it and the width comes back.
 - **Origin:** centre of the set's footprint, **floor at height 0** — and this
-  is **fixed up on import too**: the model's lowest point is put on the deck
-  and its footprint centred, because the deck is y = 0 on every stage. Getting
-  it right in the file is still better, but a set centred on the origin will no
-  longer arrive half-buried under the stage.
+  is **fixed up on import too**: the model's lowest point is put on the deck,
+  its footprint centred left-to-right, and its **downstage face set just
+  upstage of the proscenium**, because the deck is y = 0 and the arch is z = 0
+  on every stage. Getting it right in the file is still better, but a set
+  centred on the origin will no longer arrive half-buried under the stage or
+  hanging out over the audience.
 - **Facing:** the audience is +Z. Build the set facing you in front view.
 - **No lights, no cameras, no animations** in the export. Lighting is the
   rig's job; movement is the wagon's and the flies' job.
@@ -66,8 +78,16 @@ triangles is far cheaper than 20 materials at 10k.
 
 ## The sets, with target sizes
 
-Targets, not straitjackets — but the **height cap is real**: anything taller
-than 30 ft gets cropped by the portal.
+Targets, not straitjackets — but the **height cap is real and now enforced**:
+rather than let anything taller than 30 ft get cropped by the portal, the
+import shrinks the whole set until it fits (RULING BX). The Width column is
+what you get *if* the height and depth allow it.
+
+Measured against what you delivered, that means: the attic and the roof are
+limited by their **depth** and land 13.06 m and 12.30 m wide; the three houses
+are limited by their **height** and land 9.49 m wide (31 ft) rather than 42 ft.
+Flattening the houses — they came out nearly as tall as they are wide, where
+this table asks for roughly 42 × 29 — is what would win that width back.
 
 **The File column is the contract**: the import fetches EXACTLY these names
 (and the fallback is silent, so a file named anything else would simply never

@@ -3030,6 +3030,10 @@ const probe = `
      reference to CUES would silently be the wrong production's. */
   window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE, BJ_MODELS:BJ_MODELS, BJ_AUDIO:BJ_AUDIO,
                  BJ_TRI_BUDGET:BJ_TRI_BUDGET, BJ_TEX_BUDGET:BJ_TEX_BUDGET,
+                 /* RULING BX — the room a set is fitted INTO, not just its width */
+                 BJ:BJ,
+                 BJ_FIT_AIR:typeof BJ_FIT_AIR === 'undefined' ? undefined : BJ_FIT_AIR,
+                 BJ_SET_DEPTH:typeof BJ_SET_DEPTH === 'undefined' ? undefined : BJ_SET_DEPTH,
                  bjCues:()=>{ showLoad('beetlejuice'); return CUES.slice(); }};
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
@@ -3568,12 +3572,28 @@ const wd = setTimeout(() => {
      normalised to a ~1.9-unit box centred on the origin, which is what the
      export tool emits and not what MODELING.md asks for.  Straight in, a set
      would stand a seventh of its size with half of it under the deck. */
+  /* REWRITTEN IN PLACE FOR RULING BX, not replaced — the AO/AV/BA precedent.
+     It used to fit a 1.9 CUBE and demand exactly 13.40m of width, and it used
+     to demand the footprint be CENTRED on z.  Both were correct under BP and
+     are wrong now, for reasons worth keeping on the record:
+
+       - a cube fitted to 13.40m wide is 13.40m TALL, in a 9.20m opening.  The
+         width was never reachable for that shape; the old expectation only
+         held because nothing looked up.
+       - centring the footprint on z centres it on the PROSCENIUM, which
+         stands at z = 0.
+
+     So the fixture is now doc-shaped — wide, low, shallow, the proportions
+     MODELING.md actually asks for — which is what makes the width the binding
+     ratio and keeps this test about what it was always about: that a unit-box
+     delivery is scaled up to the declared width and seated on the deck. The
+     new caps get their own tests below. */
   await P('a unit-box model is fitted to its declared width and seated on the deck', async () => {
-    /* a 1.9-unit box, and deliberately OFF-CENTRE and OFF-DECK.  The first
-       version of this test used a box centred on the origin, which made the
-       centring unobservable — a negative check that removed the centring
-       entirely passed, because a centred box is already centred. */
-    const g = new THREE.BoxGeometry(1.9, 1.9, 1.9);
+    /* deliberately OFF-CENTRE and OFF-DECK.  The first version of this test
+       used a box centred on the origin, which made the centring unobservable
+       — a negative check that removed the centring entirely passed, because a
+       centred box is already centred. */
+    const g = new THREE.BoxGeometry(1.9, 0.9, 1.2);
     const root = new THREE.Group();
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial());
     m.position.set(0.7, -0.4, -1.1);
@@ -3589,10 +3609,14 @@ const wd = setTimeout(() => {
     if(Math.abs(box.min.y) > 0.01)
       throw new Error('seated with its base at y=' + box.min.y.toFixed(3) + ', wanted 0');
     const c = box.getCenter(new THREE.Vector3());
-    if(Math.abs(c.x) > 0.01 || Math.abs(c.z) > 0.01)
-      throw new Error('footprint centred at x=' + c.x.toFixed(2) + ' z=' + c.z.toFixed(2));
+    if(Math.abs(c.x) > 0.01)
+      throw new Error('footprint off centre at x=' + c.x.toFixed(2));
+    /* and its downstage face is upstage of the arch, which is BX's half of it */
+    if(box.max.z > 0)
+      throw new Error('it reaches z=' + box.max.z.toFixed(2) + ', downstage of the arch');
     if(Math.abs(s - 13.4/1.9) > 0.01) throw new Error('reported a scale of ' + s);
-    return '1.9 units -> 13.40m wide (x' + s.toFixed(2) + '), base on the deck, centred';
+    return '1.9 units -> 13.40m wide (x' + s.toFixed(2) + '), base on the deck, ' +
+           'centred on x, downstage face at z=' + box.max.z.toFixed(2);
   });
 
   await P('a model already in metres is left near enough alone, and scale still wins', async () => {
@@ -3621,8 +3645,13 @@ const wd = setTimeout(() => {
      the third time this session that a function was proved and its wiring was
      not.  Through the REAL manifest entry, at the real scale his files are. */
   await P('a real manifest entry fits and seats through the apply path', async () => {
+    /* the fixture went 1.9 x 1.6 x 1.4 -> 1.9 x 0.9 x 1.2 for RULING BX: at
+       1.6 units tall the HEIGHT cap binds first and the set lands 10.57m wide,
+       which is correct behaviour and makes this test's subject (does the apply
+       path reach fit-and-seat at all?) unobservable.  Doc-shaped, so width
+       binds. */
     const root = new THREE.Group();
-    const m = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.6, 1.4),
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.9, 1.2),
                              new THREE.MeshStandardMaterial());
     m.position.set(0.5, 0.9, 0);          // off-centre and floating
     root.add(m);
@@ -3653,6 +3682,156 @@ const wd = setTimeout(() => {
     if(doc.indexOf('fit') < 0 && doc.indexOf('scaled to') < 0)
       throw new Error('MODELING.md never explains that models are scaled to a declared width');
     return Object.keys(az.BJ_MODELS).length + ' entries, every one with a width inside the cap';
+  });
+
+  /* ══ RULING BX — A SET IS FITTED TO THE ROOM, NOT JUST TO ITS WIDTH ═══════
+     BP's fit-and-seat was right about the width and silent about the other two
+     dimensions, and his models are proportionally much taller and deeper than
+     the targets in MODELING.md.  Measured through the real importer
+     (tools/models.js, and these are the numbers those tests use):
+
+       attic   1.898 x 0.916 x 1.454  ->  13.40 x  6.47 x 10.26   0.26m too deep
+       roof    1.898 x 1.227 x 1.544  ->  13.40 x  8.66 x 10.90   0.90m too deep
+       house   1.911 x 1.793 x 1.824  ->  12.80 x 12.01 x 12.22   2.81m ABOVE a
+                                                                  9.20m opening
+
+     and every one of them centred on z = 0, where the proscenium also stands,
+     so the two flying sets landed with over five metres of set downstage of
+     the arch — out over the audience.                                       */
+  const HIS = {                      // his real boxes, off the glb containers
+    attic: [1.898, 0.916, 1.454],
+    roof:  [1.898, 1.227, 1.544],
+    house: [1.911, 1.793, 1.824]
+  };
+  const hisRoot = k => {
+    const r = new THREE.Group();
+    r.add(new THREE.Mesh(new THREE.BoxGeometry(HIS[k][0], HIS[k][1], HIS[k][2]),
+                         new THREE.MeshStandardMaterial()));
+    return r;
+  };
+  const boxOf = o => { o.updateMatrixWorld(true); return new THREE.Box3().setFromObject(o); };
+
+  await P('a set taller than the picture is fitted to the OPENING, not to its width', async () => {
+    if(az.BJ_FIT_AIR === undefined)
+      throw new Error('BJ_FIT_AIR is not in the build — RULING BX is unbuilt');
+    const root = hisRoot('house');
+    const s = w.bjFitAndSeat(root, 12.8);
+    const box = boxOf(root), size = box.getSize(new THREE.Vector3());
+    const cap = az.BJ.opH - az.BJ_FIT_AIR;
+    if(size.y > cap + 0.01)
+      throw new Error('his house stands ' + size.y.toFixed(2) + 'm in a ' +
+                      az.BJ.opH + 'm opening');
+    if(size.x > 12.8 + 0.01)
+      throw new Error('it grew past its declared width to ' + size.x.toFixed(2) + 'm');
+    /* UNIFORM, so nothing is ever distorted: the one scale is the height ratio,
+       which is the binding one for this set */
+    const want = cap / HIS.house[1];
+    if(Math.abs(s - want) > 0.01)
+      throw new Error('scaled x' + s.toFixed(3) + ', wanted the height ratio x' + want.toFixed(3));
+    if(Math.abs(size.z - HIS.house[2] * s) > 0.02)
+      throw new Error('the depth did not ride the same scale — it is distorted');
+    return 'his house ' + size.x.toFixed(2) + ' x ' + size.y.toFixed(2) + ' x ' +
+           size.z.toFixed(2) + ' inside a ' + az.BJ.opW + ' x ' + az.BJ.opH + ' opening';
+  });
+
+  await P('a set deeper than the stage is fitted to the stage depth', async () => {
+    if(az.BJ_SET_DEPTH === undefined)
+      throw new Error('BJ_SET_DEPTH is not in the build — RULING BX is unbuilt');
+    /* his attic is the shallow-but-wide one: on width alone it came out
+       10.26m deep against the ~10m MODELING.md declares available */
+    const root = hisRoot('attic');
+    const s = w.bjFitAndSeat(root, 13.4);
+    const size = boxOf(root).getSize(new THREE.Vector3());
+    if(size.z > az.BJ_SET_DEPTH + 0.01)
+      throw new Error('his attic is ' + size.z.toFixed(2) + 'm deep on a ' +
+                      az.BJ_SET_DEPTH + 'm stage');
+    const want = az.BJ_SET_DEPTH / HIS.attic[2];
+    if(Math.abs(s - want) > 0.01)
+      throw new Error('scaled x' + s.toFixed(3) + ', wanted the depth ratio x' + want.toFixed(3));
+    return 'his attic ' + size.x.toFixed(2) + ' x ' + size.y.toFixed(2) + ' x ' +
+           size.z.toFixed(2) + ' on a ' + az.BJ_SET_DEPTH + 'm stage';
+  });
+
+  await P('a set is seated UPSTAGE of the arch, never centred on it', async () => {
+    /* UPSTAGE IS -z (INVARIANTS) and the proscenium stands at z = 0, so
+       centring the footprint on the origin puts half of every set in the
+       auditorium.  His roof did it by 5.45m.
+
+       THE GUARD IS NOT DECORATION: without it this assertion PASSED against
+       the pre-change build.  `box.max.z > -undefined + 0.01` is
+       `5.45 > NaN`, which is false, so a set hanging five metres over the
+       audience sailed through — the weak-assertion trap arriving by way of
+       arithmetic on an undefined constant rather than by a lazy comparison. */
+    if(az.BJ_FIT_AIR === undefined || az.BJ_SET_DEPTH === undefined)
+      throw new Error('BJ_FIT_AIR/BJ_SET_DEPTH are not in the build — RULING BX is unbuilt');
+    const root = hisRoot('roof');
+    w.bjFitAndSeat(root, 13.4);
+    const box = boxOf(root);
+    if(box.max.z > -az.BJ_FIT_AIR + 0.01)
+      throw new Error('it reaches z=' + box.max.z.toFixed(2) +
+                      ' — downstage of the arch, over the audience');
+    /* and it must not have been shoved so far up it is through the back wall */
+    if(box.min.z < -az.BJ_SET_DEPTH - az.BJ_FIT_AIR - 0.01)
+      throw new Error('it starts at z=' + box.min.z.toFixed(2) + ', past the stage depth');
+    /* the deck and the centring are BP's and must survive */
+    if(Math.abs(box.min.y) > 0.01)
+      throw new Error('base at y=' + box.min.y.toFixed(3));
+    const c = box.getCenter(new THREE.Vector3());
+    if(Math.abs(c.x) > 0.01) throw new Error('footprint off centre at x=' + c.x.toFixed(2));
+    return 'his roof sits z ' + box.min.z.toFixed(1) + '..' + box.max.z.toFixed(1) +
+           ', wholly upstage of an arch at z=0';
+  });
+
+  await P('a set drawn to the doc\'s own ratios is untouched by any of the caps', async () => {
+    /* THE CLAUSE THAT KEEPS BX INVISIBLE.  A model that obeys MODELING.md is
+       limited by its width and lands at exactly the width it asks for — so
+       this rule only ever bites a set that would not have fitted anyway. */
+    const r = new THREE.Group();
+    r.add(new THREE.Mesh(new THREE.BoxGeometry(13.4, 6.0, 5.0), new THREE.MeshStandardMaterial()));
+    const s = w.bjFitAndSeat(r, 13.4);
+    if(Math.abs(s - 1) > 1e-6)
+      throw new Error('a conforming set was rescaled by ' + s);
+    const size = boxOf(r).getSize(new THREE.Vector3());
+    if(Math.abs(size.x - 13.4) > 0.01)
+      throw new Error('it landed ' + size.x.toFixed(2) + 'm wide, not its declared 13.40');
+    return 'a doc-shaped set: x1.00, 13.40m wide, caps never engaged';
+  });
+
+  /* AND THE WIRING, through the REAL manifest entry — the lesson from BP's own
+     round, where three separate functions were proved while nothing proved
+     bjApplyModel ever called them. */
+  await P('his house fits the opening through the real apply path', async () => {
+    if(az.BJ_FIT_AIR === undefined || az.BJ_SET_DEPTH === undefined)
+      throw new Error('BJ_FIT_AIR/BJ_SET_DEPTH are not in the build — RULING BX is unbuilt');
+    const inr = w.sceneFind('interior');
+    const root = hisRoot('house');
+    if(!w.bjApplyModel(az.BJ_MODELS.houseMaitland, root))
+      throw new Error('the apply refused');
+    /* measure in the DRESSING's own frame: the wagon is parked at
+       BJ_WAGON_BACK, so a world box would be reading the wagon's offset and
+       calling it the set's position */
+    const par = root.parent;
+    if(par !== inr.dress.maitland)
+      throw new Error('it did not land in the maitland dressing');
+    /* updateWorldMatrix walks the PARENTS, which updateMatrixWorld does not —
+       and the landed subtree is frozen (matrixAutoUpdate false), so a stale
+       ancestor would be read as the set's own position */
+    root.updateWorldMatrix(true, true);
+    const inv = new THREE.Matrix4().copy(par.matrixWorld).invert();
+    const box = new THREE.Box3().setFromObject(root).applyMatrix4(inv);
+    const size = box.getSize(new THREE.Vector3());
+    if(size.y > az.BJ.opH - az.BJ_FIT_AIR + 0.01)
+      throw new Error('through the apply path it stands ' + size.y.toFixed(2) +
+                      'm in a ' + az.BJ.opH + 'm opening');
+    if(size.z > az.BJ_SET_DEPTH + 0.01)
+      throw new Error('through the apply path it is ' + size.z.toFixed(2) + 'm deep');
+    if(box.max.z > -az.BJ_FIT_AIR + 0.01)
+      throw new Error('through the apply path it reaches z=' + box.max.z.toFixed(2));
+    if(Math.abs(box.min.y) > 0.01)
+      throw new Error('through the apply path its base is at y=' + box.min.y.toFixed(3));
+    return 'the houseMaitland entry landed ' + size.x.toFixed(2) + ' x ' +
+           size.y.toFixed(2) + ' x ' + size.z.toFixed(2) + ', base on the deck, z up to ' +
+           box.max.z.toFixed(2);
   });
 
   /* THE BUDGET NUMBER ITSELF (RULING BP).  A negative check putting it back to

@@ -3891,14 +3891,50 @@ function bjFreeze(o){ o.traverse(c=>{ c.updateMatrix(); c.matrixAutoUpdate = fal
    `scale` is still honoured and still wins — an explicit number beats a
    measurement, which is what you want the moment a set is deliberately not
    full width.
+
+   RULING BX — AND THE WIDTH IS ONLY ONE OF THREE DIMENSIONS.
+
+   Fitting on width alone was right about the width and silent about the rest,
+   and his models are proportionally much taller and deeper than the targets
+   MODELING.md declares.  Measured through this very function
+   (`tools/models.js`): his house landed 12.80 x 12.01 x 12.22 — 2.81m of it
+   above a 9.20m picture opening and 2.22m past the stage depth — and both
+   flying sets landed centred on z = 0, which is where the proscenium stands,
+   so over five metres of each hung out over the audience.
+
+   So the scale is the SMALLEST of the three ratios the room allows, and it
+   stays uniform, because a set stretched to fit is worse than a small one:
+
+     - width  against the `fit` the doc declares for that set
+     - height against the picture opening, less a little air
+     - depth  against the stage depth the doc declares available
+
+   A set drawn to the doc's own ratios is limited by its WIDTH and lands at
+   exactly the width it asks for, so this only ever bites a set that would not
+   have fitted anyway.  His houses come out 9.49m wide (31ft) instead of 42ft,
+   which is the deliberate trade: a set you can see all of, narrower than
+   intended, beats one with a third of it above the picture.
+
+   Seating gains its third axis for the same reason.  UPSTAGE IS -z: centring
+   the footprint on the origin centres it on the arch, so the DOWNSTAGE FACE
+   goes just upstage of the arch instead.
    -------------------------------------------------------------------------- */
+/* the air above a fitted set and its clearance downstage of the arch, and the
+   stage depth MODELING.md declares available to a set.  Both are one-line
+   tunes; `BJ.opH` is not — it is the picture opening itself. */
+const BJ_FIT_AIR = 0.30, BJ_SET_DEPTH = 10.0;
+
 function bjFitAndSeat(root, targetW){
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root);
   if(!isFinite(box.min.x) || box.isEmpty()) return 1;
   const size = box.getSize(new THREE.Vector3());
   if(!(size.x > 1e-6)) return 1;
-  const s = targetW / size.x;
+  /* p5h declares BJ and loads before this part (build.sh's order is a
+     dependency order — see ARCHITECTURE.md), so the opening is readable here */
+  let s = targetW / size.x;
+  if(size.y > 1e-6) s = Math.min(s, (BJ.opH - BJ_FIT_AIR) / size.y);
+  if(size.z > 1e-6) s = Math.min(s, BJ_SET_DEPTH / size.z);
   root.scale.multiplyScalar(s);
   /* re-measure AFTER scaling rather than multiplying the old box: a child
      transform inside the model makes the two disagree, and this is cheap */
@@ -3906,8 +3942,8 @@ function bjFitAndSeat(root, targetW){
   const b2 = new THREE.Box3().setFromObject(root);
   const c2 = b2.getCenter(new THREE.Vector3());
   root.position.x -= c2.x;
-  root.position.z -= c2.z;
   root.position.y -= b2.min.y;          // the deck is y = 0, on every stage
+  root.position.z -= b2.max.z + BJ_FIT_AIR;   // and the arch is at z = 0
   return s;
 }
 
