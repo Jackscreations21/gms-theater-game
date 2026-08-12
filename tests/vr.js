@@ -577,6 +577,42 @@ const probe = `
     return 'bar '+y0.toFixed(2)+'m, down 1.2 and home again, six lanterns riding';
   });
 
+  /* ══ RULING CM — AND IT EXISTS IN THE HEADSET ═════════════════════════
+     "A control that exists only in the DOM does not exist in VR" is in TRAPS
+     with four rounds of unreachable Arc doors behind it.  Found by its META and
+     not by its pixel, which is what TRAPS says new screens should do — the
+     RAISE/LOWER finds above are the counter-example, and the reason this button
+     went at the foot of the column rather than under ALL OUT. */
+  P('the fly rail START OF SHOW call is reachable in a headset too', ()=>{
+    showLoad('beetlejuice');
+    VR.page = 'fly'; vrDrawConsole(true);
+    const btn = VR.hits.find(h=>h.railCall === 'startOfShow');
+    if(!btn) throw new Error('no start-of-show call on the VR fly page');
+    if(!CUES.length || !CUES[0].fly) throw new Error('no fly snapshot on cue 0');
+    const want = CUES[0].fly.slice();
+    /* off cue 0 first — see the writeup in tests/show.js: the board stands AT
+       cue 0 after a load, so "it did not fire cue 0" is unobservable there */
+    const mid = CUES.findIndex(c=>c.lx && c.lx.some(x=>x.lvl > 0.5) && c.n > 3);
+    if(mid < 0) throw new Error('no lit mid-show cue to run the board on to');
+    fireCue(mid);
+    FLY.forEach(l=>{ l.locked = false; l.target = l.pos = OUT_TRIM; l.travTarget = l.open = 1; });
+    const pointer = nextCue, house = HOUSE.house;
+    btn.fn();
+    if(HOUSE.house !== house) throw new Error('the VR call moved the house master to '+HOUSE.house);
+    for(const r of want){
+      const ls = FLY[r.id-1]; if(!ls) continue;
+      if(Math.abs(ls.target - r.target) > 1e-6)
+        throw new Error('lineset '+r.id+' at '+ls.target.toFixed(2)+', the show says '+r.target.toFixed(2));
+    }
+    if(nextCue !== pointer) throw new Error('the VR call fired the cue as well');
+    const moved = want.filter(r=>Math.abs(r.target - OUT_TRIM) > 0.01).length;
+    if(!moved) throw new Error('cue 0 hangs everything out — this proves nothing');
+    /* and it did not shift the pixel-pinned pairs above it */
+    if(!VR.hits.find(h=>h.w === 116 && h.h === 46 && h.y === 86 + 136))
+      throw new Error('the FOH RAISE row moved — the new button pushed the column down');
+    return moved+' linesets preset from the desk in VR, nothing fired';
+  });
+
   P('the speaker bars are on the VR fly page', ()=>{
     VR.page = 'fly'; vrDrawConsole(true);
     if(typeof SPKBARS === 'undefined' || !SPKBARS) throw new Error('no speaker bars');

@@ -556,6 +556,7 @@ table.ls tr.sel td{background:#1c2230}
             <button class="b" id="flyAllOut">ALL OUT</button>
             <button class="b" id="flyStop">STOP ALL</button>
             <button class="b" id="flyPreset">SHOW LOOK</button>
+            <button class="b" id="flyShowTop">START OF SHOW</button>
           </div>
           <div class="mini" style="margin-top:7px">Trim 0 = deck. Heavier goods travel slower &mdash;
           the rail is only as fast as the operator. <b style="color:var(--red)">LOCK</b> a lineset to keep it from moving in a cue.</div>
