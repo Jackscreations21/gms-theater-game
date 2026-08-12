@@ -14636,56 +14636,126 @@ SHOWS.beetlejuice = {
     bjFlyWhole(bed);              // the bedroom flies, bed and quilt riding
 
     /* ================================================================
-       SCENE — THE AFTERLIFE.  Measured 103:39 to 113:22, four held looks,
-       and the colour changes between them: red at 103:39, blue at 107:45,
-       cyan at 113:22.  Nested frames receding upstage — the cheapest
-       high-impact geometry in the whole round.
+       SCENE — THE AFTERLIFE, rebuilt to HIS PHOTOGRAPH (RULING BV).
 
-       These are NEON, not emissive meshes, and that is deliberate: the
-       machinery in p5d already fades them off the cue's `neon` field, hums
-       them at mains frequency and lets one in five flicker.  Each tube
-       therefore needs its OWN material, because updateNeon writes a colour
-       per tube every frame — the one place in this file where a material
-       per object is correct rather than the draw-call trap.
+       The owner: "just use this as a backdrop for the netherworld" — which
+       makes the picture the LOOK, not a new set, so this is a repaint and a
+       reshape of what was already here rather than a scene rebuild.
+
+       What changed, and it is three things:
+
+         - the five frames were axis-aligned RECTANGLES; his are TILTED
+           TRAPEZOIDS, narrower at the top and each canted a little further
+           than the last, so the tunnel twists as it recedes instead of
+           telescoping straight;
+         - they were green / cyan / magenta; his are ALL BLUE, brightening
+           upstage so the eye is drawn down the tunnel to the far frame;
+         - and they now stand against a DARK BLUE BACKING, which the scene
+           never had — the frames used to read against whatever was behind
+           them, and his picture has them over a flat dark ground.
+
+       The measured colour changes (red at 103:39, blue at 107:45, cyan at
+       113:22) are NOT lost by going all-blue, because `neon` on a cue is a
+       LEVEL and not a colour: updateNeon multiplies each tube's own `base`
+       by it.  His plot still dims and lifts them exactly as written; the
+       hue is ours and is now his.
+
+       TWO CONSTRAINTS FROM THE ORIGINAL SURVIVE UNTOUCHED, and both are
+       load-bearing:
+
+         - NOT neonTube.  It runs a CatmullRom through the corner points and
+           overshoots a right angle badly — a 12.6m frame came out 14.5m wide
+           and dipped 0.53m through the deck.  Merged bars give a hard edge.
+         - A MATERIAL PER TUBE is required, because updateNeon writes a colour
+           into every registered mesh every frame.  This is the one place in
+           this file where a material per object is correct rather than the
+           draw-call trap.  The BACKING is not a tube and is not registered:
+           it must not be tinted, hummed or flickered.
        ================================================================ */
     const aft = sceneAdd('afterlife', 'THE AFTERLIFE');
     {
+      /* the dark blue ground his frames stand against.  MeshBasic on purpose:
+         the netherworld plays in a blackout with the neon as the only light,
+         and a lit material would go black with the rig. */
+      {
+        const back = new T.Mesh(new T.PlaneGeometry(BJ.opW, BJ.opH),
+                                new T.MeshBasicMaterial({color:0x071c40}));
+        back.name = 'bj:aftBacking';
+        back.position.set(0, BJ.opH/2, -14.6);
+        back.raycast = ()=>{};
+        aft.group.add(back);
+      }
       /* five frames, biggest downstage, receding — the read is the
-         perspective, so the sizes fall away faster than the spacing */
+         perspective, so the sizes fall away faster than the spacing.  `wT` is
+         the TOP width and `tilt` the cant; both are what make it his picture
+         rather than a stack of rectangles. */
+      /* THE WIDEST FRAME IS 7.9m TALL AND CANTED LEAST, and both numbers are
+         the cant's doing rather than taste.  A rectangle W wide and H tall,
+         canted by t, stands H*cos(t) + W*sin(t) — so the more it is tilted the
+         TALLER its footprint gets, and at 8.4m with 0.045 the biggest frame
+         came out 9.46m through a 9.2m opening.  Two assertions caught it.  The
+         cant also shrinks as the frames widen for the same reason: a small
+         angle on a 12.6m span costs more height than a large one on 3.4m.
+
+         The blues brighten upstage, which is what draws the eye down the
+         tunnel — and they stay unambiguously BLUE while doing it.  The first
+         pass ended on #dcf6ff, which is near enough white that the "all blue"
+         assertion refused it, and was right to. */
       const rings = [
-        {w:12.6, h:8.4, z:-2.2,  c:'#9fd066'},
-        {w: 9.8, h:6.6, z:-5.0,  c:'#5fd8e8'},
-        {w: 7.4, h:5.0, z:-7.6,  c:'#d85fc0'},
-        {w: 5.2, h:3.5, z:-9.9,  c:'#5fd8e8'},
-        {w: 3.4, h:2.3, z:-11.8, c:'#9fd066'}
+        {wB:12.6, wT:10.6, h:7.9, z:-2.2,  tilt:-0.035, x: 0.0,  c:'#2f7fd0'},
+        {wB: 9.8, wT: 8.0, h:6.6, z:-5.0,  tilt: 0.065, x: 0.30, c:'#4f9fe0'},
+        {wB: 7.4, wT: 5.9, h:5.0, z:-7.6,  tilt:-0.090, x:-0.35, c:'#6fb8ee'},
+        {wB: 5.2, wT: 4.0, h:3.5, z:-9.9,  tilt: 0.115, x: 0.40, c:'#8fd0f8'},
+        {wB: 3.4, wT: 2.5, h:2.3, z:-11.8, tilt:-0.140, x:-0.25, c:'#a8e0ff'}
       ];
-      /* NOT neonTube: it runs a CatmullRom curve through the corner points,
-         which overshoots a right angle badly — a 12.6m frame came out 14.5m
-         wide and dipped 0.53m through the deck.  Four merged bars give a hard
-         edge, and registering the mesh on SHOW.neon by hand keeps the whole
-         machinery (fade off the cue, mains hum, one in five flickering). */
       rings.forEach(r=>{
-        const y0 = 0.35, y1 = y0 + r.h, x = r.w/2, t = 0.15;
+        const y0 = 0.35, t = 0.15;
+        /* built about its OWN centre so the cant rotates the frame in place;
+           rotating about the deck would swing the whole thing sideways and
+           put a bottom corner through the floor */
+        const hy = r.h/2;
+        const dx = (r.wB - r.wT)/2;           // how far each side leans in
+        const L  = Math.hypot(dx, r.h);       // so a leg still meets both rails
+        const th = Math.atan2(dx, r.h);
+        /* a box's long axis is local Y and rotateZ maps local +Y to
+           (-sin, cos) — hence the sign on each leg (TRAPS: orientation) */
         const parts = [
-          {geo:new T.BoxGeometry(r.w + t, t, t), pos:[0, y0, 0]},
-          {geo:new T.BoxGeometry(r.w + t, t, t), pos:[0, y1, 0]},
-          {geo:new T.BoxGeometry(t, r.h, t),     pos:[-x, (y0 + y1)/2, 0]},
-          {geo:new T.BoxGeometry(t, r.h, t),     pos:[ x, (y0 + y1)/2, 0]}
+          {geo:new T.BoxGeometry(r.wB + t, t, t), pos:[0, -hy, 0]},
+          {geo:new T.BoxGeometry(r.wT + t, t, t), pos:[0,  hy, 0]},
+          {geo:new T.BoxGeometry(t, L, t), pos:[-(r.wB + r.wT)/4, 0, 0], rot:[0, 0, -th]},
+          {geo:new T.BoxGeometry(t, L, t), pos:[ (r.wB + r.wT)/4, 0, 0], rot:[0, 0,  th]}
         ];
         /* its own MeshBasicMaterial, because updateNeon writes a colour into
            every registered tube every frame */
         const m = new T.Mesh(mergeParts(parts), new T.MeshBasicMaterial({color:new T.Color(r.c)}));
-        m.name = 'bj:ring'; m.position.z = r.z;
+        m.name = 'bj:ring';
+        m.position.set(r.x, y0 + hy, r.z);
+        m.rotation.z = r.tilt;
         m.raycast = ()=>{};                    // neon is scenery, not a target
+        /* THE CANT DROPS ONE BOTTOM CORNER, and by enough to matter: the widest
+           frame went 7mm under the stage on the first build, which two separate
+           assertions caught.  Rather than hand-pick a foot height that happens
+           to clear it — and re-derive it every time a tilt is retuned — measure
+           the rotated frame and lift it until it sits on the deck.  The box is
+           taken in the PARENT's frame (geometry box through the mesh's own
+           matrix), never the world's, because the scene group flies. */
+        m.geometry.computeBoundingBox();
+        m.updateMatrix();
+        const bb = m.geometry.boundingBox.clone().applyMatrix4(m.matrix);
+        if(bb.min.y < y0) m.position.y += y0 - bb.min.y;
         aft.group.add(m);
         SHOW.neon.push({mesh:m, base:new T.Color(r.c)});
       });
 
       /* the large angular structure measured at 121:54 — a skeletal chevron
          across the opening, same language as the frames but built as
-         structure, so ONE shared material does for all of it */
+         structure, so ONE shared material does for all of it.
+
+         RECOLOURED BLUE with the frames (RULING BV): it was green, and a green
+         chevron standing in front of a dark blue ground among five blue frames
+         is the one thing in the picture that would not be in the picture. */
       {
-        const green = new T.MeshStandardMaterial({color:0x4f8f3a, emissive:0x2f6f22,
+        const green = new T.MeshStandardMaterial({color:0x2f5f9f, emissive:0x1f4f8f,
                                                   emissiveIntensity:0.9, roughness:.6});
         const parts = [];
         for(let i = 0; i < 7; i++){
