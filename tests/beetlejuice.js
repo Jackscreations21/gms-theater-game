@@ -278,7 +278,7 @@ const probe = `
      travelling when the changeover judges it, so the drop stays DRAWN all the
      way up and goes dark only once it arrives at BJ_SIGN_OUT.  World-matrix
      reads, never mover offsets (the frozen-group trap). */
-  P('1:14:30 — the exterior flies out IN VIEW, dark only past the header', ()=>{
+  P('1:14:30 — the exterior flies out IN VIEW, and parks instead of vanishing', ()=>{
     showLoad('beetlejuice');
     const h = sceneFind('house');
     const i24 = CUES.findIndex(c=>c.scene === 'house');
@@ -304,8 +304,18 @@ const probe = `
         throw new Error('went dark mid-flight at y=+'+(wy() - y0).toFixed(2));
     }
     if(frames >= 900) throw new Error('still travelling after 17s');
-    if(h.group.userData.sceneOff !== true)
-      throw new Error('it arrived and never went dark');
+    /* REVERSED IN PLACE BY RULING BQ.  This used to demand it went dark on
+       arrival.  The exterior declares a park, so it arrives and stands there —
+       and everything above is untouched, which is the point of keeping this
+       assertion: it still proves the cue at 1:14:30 FLIES it (his own plot line,
+       kept deliberately through RULING CE) and still proves nothing winks out
+       mid-flight.  What changed is only what happens at the end of the move. */
+    if(h.group.userData.sceneOff !== false)
+      throw new Error('the exterior vanished on arrival instead of parking');
+    let live = 0;
+    h.group.traverse(o=>{ if(o.isMesh && o.layers.mask !== 0) live++; });
+    if(!live)
+      throw new Error('the parked exterior has no live meshes — BQ says it stands backstage');
     const yEnd = wy() - y0;
     if(Math.abs(yEnd - BJ_SIGN_OUT) > 0.05)
       throw new Error('it stopped at +'+yEnd.toFixed(2)+', not at BJ_SIGN_OUT');
@@ -969,15 +979,19 @@ const probe = `
            byZ[0].lum.toFixed(2) + ' -> ' + byZ[byZ.length-1].lum.toFixed(2) + ' upstage';
   });
 
-  P('the netherworld stands against a dark blue backing that is NOT neon', ()=>{
+  P('the netherworld stands against a BLACK backing that is NOT neon', ()=>{
     showLoad('beetlejuice');
     sceneShow('afterlife');
     const back = byName('bj:aftBacking');
     if(!back) throw new Error('there is no backing — his picture has the frames over a dark ground');
     const c = back.material.color;
-    if(!(c.b > c.r && c.b > c.g)) throw new Error('the backing is '+c.getHexString()+', not blue');
-    if(c.r + c.g + c.b > 0.9)
-      throw new Error('the backing is '+c.getHexString()+' — too bright to be a dark ground');
+    /* REVERSED IN PLACE, and only half of it.  RULING BV read a dark blue ground
+       off his photograph and this demanded blue; he has since said "makes its
+       backdrop black", so the colour half flips — but every other clause below is
+       untouched and load-bearing, which is exactly why the assertion is turned
+       round rather than deleted. */
+    if(c.r + c.g + c.b > 0.03)
+      throw new Error('the backing is '+c.getHexString()+', and he asked for black');
     /* it must NOT be a tube: updateNeon writes a colour into every registered
        mesh every frame, so a registered backing would hum and flicker with them */
     if(SHOW.neon.some(n=>n.mesh === back))
@@ -1182,11 +1196,21 @@ const probe = `
     sceneShow('cemetery');                 // the room goes off — NOW it lands
     if(sc.dressOn !== 'bj') throw new Error('the parked dress never landed');
     if(SHOW.pendDress) throw new Error('the parked dress was left on the hook');
-    let live = 0; sc.group.traverse(o=>{ if(o.layers && o.layers.mask !== 0) live++; });
-    if(live) throw new Error(live+' pieces live on an OFF room after the deferred dress');
+    /* REVERSED IN PLACE BY RULING BQ.  This demanded the room be INERT once it
+       went off; it is PARKED now, so its pieces are live by design.  What replaces
+       that clause is the thing BQ actually put at risk here — a parked room is
+       drawn with every descendant's layers enabled, so without the bjRedress hook
+       in sceneApply it would stand in the wings wearing ALL THREE dressings at
+       once.  A stronger assertion than the one it replaces. */
+    let live = 0; sc.group.traverse(o=>{ if(o.isMesh && o.layers.mask !== 0) live++; });
+    if(!live) throw new Error('the parked room went dark — BQ says it stands in the wings');
+    if(!lit('bj')) throw new Error('the parked room is not wearing the dress that just landed');
+    for(const d of DRESSINGS) if(d !== 'bj' && lit(d))
+      throw new Error(d+' is lit on the parked room too — it is wearing more than one');
     sceneShow('interior');
     if(!lit('bj')) throw new Error('it came back not wearing the parked dress');
-    return 'deferred in view, landed on going off, inert throughout, worn on the way back';
+    return 'deferred in view, landed on going off, parked wearing exactly one of '+
+           DRESSINGS.length+', worn on the way back';
   });
 
   P('a dress on a HIDDEN room lands at once — the wagon is dressed in the wings', ()=>{
@@ -1225,8 +1249,14 @@ const probe = `
     sceneChangeTo('cemetery');
     for(let i=0;i<60;i++) updateStorm(1/60);    // on its way out again, not there yet
     if(sc.dressOn === 'deetz') throw new Error('it landed before the last part arrived');
-    for(let i=0;i<600;i++) updateStorm(1/60);   // the last part lands, and so does the hide
-    if(sc.group.userData.sceneOff !== true) throw new Error('the room never finished hiding');
+    for(let i=0;i<600;i++) updateStorm(1/60);   // the last part lands, and so does the dress
+    /* REVERSED IN PLACE BY RULING BQ: it parks rather than hides.  What this line
+       was really standing in for is that the exit FINISHED, so it says that
+       directly now — and the clauses either side, which are the actual subject of
+       the test, are untouched. */
+    if(sc.group.userData.sceneOff !== false)
+      throw new Error('the room vanished instead of parking');
+    if(sceneTravelling(sc)) throw new Error('still travelling after ten seconds');
     if(sc.dressOn !== 'deetz') throw new Error('the parked dress never landed');
     if(SHOW.pendDress) throw new Error('the parked dress was left on the hook');
     return 'deferred mid-exit, held through a recall, landed when the exit finished';
@@ -1253,7 +1283,11 @@ const probe = `
     if(!SHOW.pendDress || SHOW.pendDress.key !== 'bj')
       throw new Error('the waiting dress was lost in the walk');
     for(let i=0;i<600;i++) updateStorm(1/60);  // the changeover finishes where it left off
-    if(back.group.userData.sceneOff !== true) throw new Error('the room never finished hiding');
+    /* REVERSED IN PLACE BY RULING BQ, same as its neighbour: parks rather than
+       hides, and "finished" is asserted directly instead of through sceneOff. */
+    if(back.group.userData.sceneOff !== false)
+      throw new Error('the room vanished instead of parking');
+    if(sceneTravelling(back)) throw new Error('the changeover never finished after the walk');
     if(back.dressOn !== 'bj') throw new Error('the deferred dress never landed after the swap');
     return 'left mid-travel at '+off.toFixed(2)+', found there, finished, and dressed';
   });
@@ -1282,6 +1316,143 @@ const probe = `
        and the count pins that the sweep is actually sweeping */
     if(has.length < 6) throw new Error('only '+has.length+' choreographed sets');
     return has.join(' ');
+  });
+
+  /* ==========================================================================
+     RULING CE — AS FEW SETS FLY AS POSSIBLE, and RULING BQ — a struck set parks
+     ========================================================================== */
+
+  P('RULING CE: only the sets he named fly; the rest come on from the side or back', ()=>{
+    showLoad('beetlejuice');
+    /* his words: "just like roof and the bedroom and closet should eb flown the
+       otheres should come on from the sides or back".  The netherworld is the one
+       addition and it is measured, not chosen: 14.4m wide and 12.5m deep fits no
+       wing and cannot hide upstage, so it is named here to keep the exception
+       HONEST — if it ever tracks, this list is what says so. */
+    const FLY_OK = ['roof', 'bedroom', 'closet', 'afterlife'];
+    const flying = [], tracking = [];
+    for(const sc of SHOW.scenes){
+      const ks = sc.pmv ? Object.keys(sc.pmv) : [];
+      const ax = ks.map(k=>sc.pmv[k].axis);
+      if(!ax.length) continue;
+      if(ax.indexOf('y') >= 0) flying.push(sc.name);
+      else tracking.push(sc.name + ':' + ax.join(''));
+    }
+    for(const n of flying) if(FLY_OK.indexOf(n) < 0)
+      throw new Error(n + ' still flies, and he asked for it from the side or back');
+    for(const n of FLY_OK) if(flying.indexOf(n) < 0)
+      throw new Error(n + ' stopped flying, and he asked for that one to fly');
+    /* and the ones he moved really did move, on a HORIZONTAL axis */
+    for(const n of ['attic', 'house', 'interior']){
+      const sc = sceneFind(n), ks = sc.pmv ? Object.keys(sc.pmv) : [];
+      const ax = ks.map(k=>sc.pmv[k].axis);
+      if(!ax.length) throw new Error(n + ' carries no mover at all');
+      if(ax.indexOf('y') >= 0) throw new Error(n + ' is still flown on y');
+      if(!ax.some(a=>a === 'x' || a === 'z'))
+        throw new Error(n + ' travels on ' + ax.join('') + ', which is neither a side nor the back');
+    }
+    return 'flown: ' + flying.join(', ') + '  |  tracked: ' + tracking.join(' ');
+  });
+
+  P('RULING CE: the exterior goes out to the FLY-RAIL side, and leaves the rail clear', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('house'), m = sc.pmv && sc.pmv.all;
+    if(!m) throw new Error('the exterior carries no mover');
+    if(m.axis !== 'x') throw new Error('the exterior tracks on ' + m.axis + ', not to a side');
+    /* the fly rail is STAGE RIGHT: p9 builds the locking rail at
+       -D.stageW/2 + 2.8, and the traveler hand line hangs stage right of the
+       arch.  His instruction was the side WITH the rail, so -x. */
+    const railX = -D.stageW/2 + 2.8;
+    if(m.out > 0)
+      throw new Error('it tracks to +x, the side away from the fly rail at ' + railX.toFixed(1));
+    sceneShow('house');
+    sceneChangeTo('bare');
+    for(let i = 0; i < 900 && sceneTravelling(sc); i++) updateStorm(1/60);
+    const b = box(sc.group);
+    /* CLEAR OF THE PICTURE is the hard one, and it is what this assertion found:
+       sized to his 8.6m house alone, the 12.6m STAND-IN drop parked at x -4.70 and
+       sat in the middle of the opening.  The stand-in is the bigger case and the
+       one that plays whenever a file has not landed, so it sets the number. */
+    if(b.max.x > -BJ.opW/2)
+      throw new Error('parked at x ' + b.max.x.toFixed(2) + ', still inside the picture');
+    if(b.min.x < -D.stageW/2)
+      throw new Error('parked through the stage-right wall at ' + b.min.x.toFixed(2));
+    /* the rail is NOT asserted as clear, deliberately: a painted drop that fills
+       the opening cannot park in a wing and still clear a rail 2.8m off the wall.
+       His fitted house clears it by 1.4m; the full-width stand-in reaches 0.6m
+       past it, which is accepted and recorded rather than asserted away. */
+    const railGap = b.min.x - railX;
+    return 'parked x ' + b.min.x.toFixed(2) + '..' + b.max.x.toFixed(2) +
+           ', picture edge ' + (-BJ.opW/2).toFixed(2) + ' clear, rail at ' +
+           railX.toFixed(1) + (railGap >= 0 ? ' clear by ' + railGap.toFixed(2)
+                                            : ' reached by ' + (-railGap).toFixed(2)) + 'm';
+  });
+
+  P('RULING BQ: a parked set is drawn, unpickable, and cannot be stood on', ()=>{
+    showLoad('beetlejuice');
+    /* the roof, because it is the one with a deck you climb — the whole reason a
+       parked set must stay off WALKABLE is that a set flying in with a player on
+       it is a bug with no good ending */
+    const sc = sceneFind('roof');
+    if(!sc.parks) throw new Error('the roof declares no park');
+    if(!sc.walk.length) throw new Error('the roof files nothing walkable, so half of this proves nothing');
+    sceneShow('roof');
+    const deck = sc.walk[0];
+    if(WALKABLE.indexOf(deck) < 0) throw new Error('the deck is not walkable with the roof on');
+    sceneChangeTo('bare');
+    for(let i = 0; i < 900 && sceneTravelling(sc); i++) updateStorm(1/60);
+    let live = 0, pickable = 0;
+    sc.group.traverse(o=>{
+      if(!o.isMesh) return;
+      if(o.layers.mask !== 0) live++;
+      if(o.raycast === THREE.Mesh.prototype.raycast) pickable++;
+    });
+    if(!live) throw new Error('the parked roof went dark — it is meant to be standing backstage');
+    if(pickable) throw new Error(pickable + ' parked meshes are still in front of the crosshair');
+    if(WALKABLE.indexOf(deck) >= 0) throw new Error('you can still stand on the parked roof');
+    /* and it all comes back when it is called */
+    sceneChangeTo('roof');
+    for(let i = 0; i < 900 && sceneTravelling(sc); i++) updateStorm(1/60);
+    if(WALKABLE.indexOf(deck) < 0) throw new Error('the deck never came back into WALKABLE');
+    let stillOff = 0;
+    sc.group.traverse(o=>{ if(o.isMesh && o.raycast !== THREE.Mesh.prototype.raycast) stillOff++; });
+    if(stillOff) throw new Error(stillOff + ' meshes are still unpickable with the set back on');
+    return live + ' meshes parked and drawn, none pickable, deck off WALKABLE and back';
+  });
+
+  P('RULING BQ: every park is clear of the brick, the grid and both walls', ()=>{
+    showLoad('beetlejuice');
+    const bad = [], boxes = {};
+    for(const sc of SHOW.scenes){
+      if(sc.always || !sc.parks) continue;
+      sceneShow(sc.name);
+      sceneChangeTo('bare');
+      for(let i = 0; i < 1200 && sceneTravelling(sc); i++) updateStorm(1/60);
+      const b = box(sc.group);
+      boxes[sc.name] = b;
+      if(b.min.z < PAL_BACK) bad.push(sc.name + ' is ' + (PAL_BACK - b.min.z).toFixed(2) + 'm through the brick');
+      if(b.max.y > D.gridY) bad.push(sc.name + ' is ' + (b.max.y - D.gridY).toFixed(2) + 'm through the grid');
+      if(b.min.x < -D.stageW/2) bad.push(sc.name + ' is past the stage-right wall');
+      if(b.max.x > D.stageW/2) bad.push(sc.name + ' is past the stage-left wall');
+    }
+    if(bad.length) throw new Error(bad.join('; '));
+    if(Object.keys(boxes).length < 7)
+      throw new Error('only ' + Object.keys(boxes).length + ' parks measured — the sweep is not sweeping');
+    /* the three TRACKED sets each get their own floor space.  The flown four
+       share the grid and always will: flying preserves x and z, and four sets
+       5.6-9.2m tall cannot stack under a 25m grid.  Measured, documented, and
+       deliberately not asserted away. */
+    const TRACKED = ['interior', 'attic', 'house'];
+    for(let i = 0; i < TRACKED.length; i++) for(let j = i+1; j < TRACKED.length; j++){
+      const a = boxes[TRACKED[i]], b = boxes[TRACKED[j]];
+      if(!a || !b) throw new Error('a tracked set has no measured park');
+      if(!a.intersectsBox(b)) continue;
+      const o = a.clone().intersect(b), d = o.getSize(new THREE.Vector3());
+      if(Math.min(d.x, d.y, d.z) > 0.05)
+        throw new Error(TRACKED[i] + ' and ' + TRACKED[j] + ' park inside each other by ' +
+                        d.x.toFixed(2) + ' x ' + d.y.toFixed(2) + ' x ' + d.z.toFixed(2) + 'm');
+    }
+    return Object.keys(boxes).length + ' parks all clear, and the three tracked sets do not overlap';
   });
 
   /* the plot's own spine, driven through the REAL cue path — fireCue and
@@ -1506,33 +1677,59 @@ const probe = `
     return 'deck rode y '+y0.toFixed(2)+' through '+yMid.toFixed(2)+', left WALKABLE only once gone';
   });
 
-  P('the attic flies OUT through the header before it goes dark', ()=>{
+  P('the attic TRACKS out of the picture in view, and parks where it lands', ()=>{
     showLoad('beetlejuice');
     const sc = sceneFind('attic');
     const m = sc.pmv && sc.pmv.all;
     if(!m) throw new Error('the attic carries no all-of-it part');
-    if(m.axis !== 'y') throw new Error('the attic travels on '+m.axis+' — it is a flown piece');
-    if(m.out <= 9.2) throw new Error('out at '+m.out+' does not clear the 9.2m header');
+    /* REVERSED IN PLACE TWICE OVER.  It demanded axis 'y' and a clearance of the
+       9.2m header, because the attic used to fly — RULING CE tracks it UPSTAGE
+       instead ("the otheres should come on from the sides or back"), and RULING BQ
+       stops it going dark at the end.
+
+       Neither of those specifics was ever the guarantee.  The guarantee is that a
+       set LEAVES THE PICTURE IN VIEW, over a time the show can wear, without ever
+       being seen to vanish while it is still inside the opening — so it is written
+       on whatever axis the set uses now, and the next re-routing will not need the
+       test rewritten a third time. */
+    if(m.axis !== 'z') throw new Error('the attic tracks on '+m.axis+', not upstage');
     sceneShow('attic');
-    const wy = o => { scene.updateMatrixWorld(true); return o.matrixWorld.elements[13]; };
-    const y0 = wy(m.group);
+    const acting = box(sc.group);
     sceneChangeTo('closet');                               // the 42:34 change
-    let frames = 0, maxDrawnY = -1;
-    while(!sc.group.userData.sceneOff && frames < 900){
+    let frames = 0;
+    while(sceneTravelling(sc) && frames < 900){
       updateStorm(1/60); frames++;
-      if(sc.group.userData.sceneOff) break;
-      const y = wy(m.group) - y0;
       let lit = 0; sc.group.traverse(o=>{ if(o.isMesh && o.layers.mask !== 0) lit++; });
-      if(!lit) throw new Error('dark at y=+'+y.toFixed(2)+' — it vanished mid-flight');
-      if(y > maxDrawnY) maxDrawnY = y;
+      if(!lit) throw new Error('it vanished mid-move, '+frames+' frames in');
     }
-    if(sc.group.userData.sceneOff !== true) throw new Error('it never went dark at all');
-    if(maxDrawnY <= 9.2)
-      throw new Error('it was last seen at y=+'+maxDrawnY.toFixed(2)+' — it went dark inside the opening');
+    if(frames >= 900) throw new Error('still travelling after 15s');
+    if(sc.group.userData.sceneOff !== false)
+      throw new Error('it vanished on arrival instead of parking');
+    /* AND IT IS BEHIND THE THING THAT MASKS IT.  "Vacated its own acting box" was
+       the first proxy here and it is the wrong one: the brick at PAL_BACK bounds
+       the upstage offset to 8.8m against a 9.6m-deep stand-in, so 0.8m of the old
+       footprint is still occupied — and that is harmless, because what hides an
+       upstage park is the BACKDROP in front of it, not the ground it used to
+       stand on.  -10.90 is the last lineset, the one that carries the cloth, and
+       p5h's own wagon comment is written to the same number. */
+    const parked = box(sc.group), a = m.axis;
+    const BACKDROP_Z = -10.90;
+    if(a === 'z'){
+      if(parked.max.z > BACKDROP_Z)
+        throw new Error('parked with its face at z '+parked.max.z.toFixed(2)+
+                        ', downstage of the backdrop at '+BACKDROP_Z);
+    } else {
+      const gap = (m.out < 0) ? acting.min[a] - parked.max[a] : parked.min[a] - acting.max[a];
+      if(gap < -0.01)
+        throw new Error('parked still overlaps its acting position by '+(-gap).toFixed(2)+'m on '+a);
+    }
+    const moved = Math.abs(parked.min[a] - acting.min[a]);
+    if(moved < 5) throw new Error('it only travelled '+moved.toFixed(2)+'m on '+a);
     const secs = frames/60;
-    if(secs < 3) throw new Error('it cleared in '+secs.toFixed(2)+'s — that is a pop, not a fly');
+    if(secs < 3) throw new Error('it cleared in '+secs.toFixed(2)+'s — that is a pop, not a track');
     if(secs > 10) throw new Error('it took '+secs.toFixed(1)+'s — the show would wait on it');
-    return 'drawn to y=+'+maxDrawnY.toFixed(2)+' over '+secs.toFixed(1)+'s, dark only past the header';
+    return 'tracked '+moved.toFixed(2)+'m on '+a+' to z '+parked.max.z.toFixed(2)+
+           ', behind the backdrop, over '+secs.toFixed(1)+'s, drawn the whole way';
   });
 
   /* act one now plays across four sets; the interval re-dresses for act two */
@@ -3674,29 +3871,42 @@ const wd = setTimeout(() => {
     flyer.traverse(o => { if(o !== flyer && o.matrixAutoUpdate) live++; });
     if(live) throw new Error(live + ' landed nodes escaped the static freeze (RULING AP)');
     if(!flyer.matrixAutoUpdate) throw new Error('the freeze reached the flyer itself');
-    /* the trap this pins: fresh meshes wake on layer 0, and an OFF scene that
-       skips the sceneApply refresh takes raycasts through a set that is not
-       there.  Negative-checked by removing the refresh from bjApplyModel. */
-    if(walk.layers.mask !== 0)
-      throw new Error('a fresh mesh in an OFF scene takes raycasts (layers mask ' + walk.layers.mask + ')');
-    if(az.WALKABLE.indexOf(walk) >= 0) throw new Error('an OFF floor is standable');
+    /* the trap this pins: fresh meshes wake on layer 0, and a scene that skips
+       the sceneApply refresh takes raycasts through a set that is not on.
+       REVERSED IN PLACE BY RULING BQ — the trap is identical, the answer moved:
+       a parked set is DRAWN on purpose, so what must be true of a fresh mesh
+       landing in one is the RAYCAST OPT-OUT, not a cleared layer.  Still
+       negative-checked by removing the refresh from bjApplyModel. */
+    if(walk.layers.mask === 0)
+      throw new Error('the parked attic went dark — BQ says it stands backstage');
+    if(walk.raycast === w.THREE.Mesh.prototype.raycast)
+      throw new Error('a fresh mesh in a PARKED scene is still in front of the crosshair');
+    if(az.WALKABLE.indexOf(walk) >= 0) throw new Error('a parked floor is standable');
     w.sceneShow('attic');                          // ON wakes exactly what came in
     if(walk.layers.mask === 0) throw new Error('the model never wakes with the set on');
     if(az.WALKABLE.indexOf(walk) < 0) throw new Error('walk_floor missing from WALKABLE with the attic on');
-    /* and the attic still FLIES: the changeover sends the flyer out and the
-       new contents ride it — read the WORLD matrix, never position (TRAPS) */
-    const wy = o => { az.SHOW.group.updateMatrixWorld(true); return o.matrixWorld.elements[13]; };
-    const y0 = wy(walk);
+    /* and the landed model RIDES THE MOVER OUT with the set, whichever way that
+       set goes — read the WORLD matrix, never position (TRAPS).  It used to read
+       y, because the attic flew; RULING CE tracks it upstage, so this asks the
+       mover which axis it is on rather than assuming.  The guarantee was never
+       "it goes up", it is "what came in through the importer travels with the
+       set it landed in". */
+    const axis = {x: 12, y: 13, z: 14}[att.pmv.all.axis];
+    const wp = o => { az.SHOW.group.updateMatrixWorld(true); return o.matrixWorld.elements[axis]; };
+    const p0 = wp(walk);
     w.sceneChangeTo('cemetery');
     for(let i = 0; i < 3; i++) w.sceneMoveStep(0.5);
-    const y1 = wy(walk);
-    if(y1 - y0 < 2.0) throw new Error('the changeover moved the model only ' + (y1 - y0).toFixed(2) + 'm');
+    const moved = Math.abs(wp(walk) - p0);
+    if(moved < 2.0)
+      throw new Error('the changeover moved the model only ' + moved.toFixed(2) + 'm on ' + att.pmv.all.axis);
     if(att.group.userData.sceneOff) throw new Error('the attic went dark mid-travel');
     for(let i = 0; i < 14; i++) w.sceneMoveStep(0.5);
-    if(!att.group.userData.sceneOff) throw new Error('the attic never hid after arriving out');
+    /* and it PARKS rather than hiding (RULING BQ) — but the floor still leaves
+       WALKABLE, which is the half that matters for a set you could stand on */
+    if(att.group.userData.sceneOff) throw new Error('the attic vanished instead of parking');
     if(az.WALKABLE.indexOf(walk) >= 0) throw new Error('the floor stayed standable after the set left');
-    return '2 meshes into the flyer, stand-ins gone, inert while off, rode the fly-out ' +
-           (y1 - y0).toFixed(2) + 'm and left WALKABLE once gone';
+    return '2 meshes into the flyer, stand-ins gone, unpickable while parked, rode the ' +
+           att.pmv.all.axis + '-track ' + moved.toFixed(2) + 'm and left WALKABLE once gone';
   });
 
   await P('the graveyard routes by side of centre, and a part_ prefix overrides', async () => {
