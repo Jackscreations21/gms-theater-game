@@ -497,7 +497,16 @@ const probe = `
         throw new Error(SHOWS[key].name+' stands by at cue index '+nextCue+', not the top');
       if(CUES[0].n > 1)
         throw new Error('the first cue is '+CUES[0].n+', that is not a preset');
-      if(HOUSE.house < 0.4)
+      /* this read "below 0.4" and had Beetlejuice's old pre-show 0.45 baked
+         into it by accident, so RULING BM's retune to 0.30 tripped it — a feel
+         constant with a test hanging off it.  What it MEANS is "the preset it
+         loaded is a standing-by look, not a mid-show one", so say that: the
+         masters came from the preset itself, and the house is up rather than
+         in a blackout (a mid-show cue carries house:0). */
+      if(HOUSE.house !== CUES[0].house)
+        throw new Error(SHOWS[key].name+' loads at house '+HOUSE.house+
+                        ', which is not its own preset value '+CUES[0].house);
+      if(HOUSE.house <= 0.1)
         throw new Error(SHOWS[key].name+' loads with the house lights down — that is mid-show');
     }
     return 'every show stands by at cue '+CUES[1].n+', preset up, house open';

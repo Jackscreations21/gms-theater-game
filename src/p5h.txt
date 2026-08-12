@@ -1799,8 +1799,26 @@ function plotBeetlejuice(){
     /* "Play pre show music i have provided and set the house lights low."
        The blinders are built and OFF — "dont have them on they are for later" —
        and the audience movers drift over the seating, slowly, green to purple
-       and back (rulings BC and BD).  The house at 0.45 is a judgement about the
-       word "low" and it is a one-line retune.
+       and back (rulings BC and BD).
+
+       RULING BM — THE HAZE AND THE HOUSE, so the beams read.  "make it so in
+       pre show and the start of show light stuff you can see the actual beams
+       better."  Two numbers, both OURS and neither of them his: his four text
+       files say nothing about haze anywhere, and 0.45 was our reading of the
+       word "low".
+
+       HAZE 0.15 -> 0.50.  A beam draws at uHaze = 0.25 + haze*1.15, so 0.15
+       was 0.42 against a mid-show 0.88-1.06 — the LEAST haze in the whole
+       94-cue plot, in the one stretch that is nothing BUT beams, because the
+       curtain is in and there is no stage picture to light.  The show's own
+       blurb is "more haze than air".  It costs no draw call: the beam is
+       rasterised whenever it is lit at all, and haze only sets its opacity.
+
+       HOUSE 0.45 -> 0.30, which is the other half of the same problem and was
+       measured, not guessed: at 0.45 the house lights put ~2.0-2.4 on a seat
+       while the whole audience rig peaked at ~1.0.  The room was twice as
+       bright as the effect in it.  0.30 is still "low" and still his word;
+       if he wants the foyer feel back it is one line.
 
        THE FOYER IS UP HERE AND OUT AT GO (RULING BH) — "make sure the lobby
        lights get turned of at the start of a show".  It comes back at the
@@ -1810,7 +1828,7 @@ function plotBeetlejuice(){
        is.  These four cues are the only ones in all five productions that say
        anything about it at all; every other cue leaves it exactly alone. */
     {at:33, n:0.5, label:'PRE-SHOW — house low, curtain in, the sign lit', fade:0,
-     house:0.45, lobby:0.9, haze:0.15, curtain:'shut', scene:'cemetery',
+     house:0.30, lobby:0.9, haze:0.50, curtain:'shut', scene:'cemetery',
      backdrop:'in', hold:true,
      audio:{play:'preshow'},
      fx:{on:'aud', kind:'wander', cols:['#2fbf5f','#7f3fbf']},
@@ -1827,7 +1845,7 @@ function plotBeetlejuice(){
        "The lights around the prosinum all turn red and all the lights on the
        beetlejuice sign go bright red." */
     {at:35, n:1, label:'GO — the proscenium and the sign go red', fade:1.5,
-     house:0, lobby:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     house:0, lobby:0, haze:0.60, curtain:'shut', scene:'cemetery', backdrop:'in',
      audio:{play:'act1', at:35, stop:'preshow'}, signCol:'#ff1e10',
      look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
 
@@ -1855,22 +1873,22 @@ function plotBeetlejuice(){
        opening statement (0:35 to 1:03) and the next thing on those units is
        the white flash at 1:16. */
     {at:63, n:1.1, label:'1:03 — the house sweeps up, purple', fade:0,
-     house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     house:0, haze:0.65, curtain:'shut', scene:'cemetery', backdrop:'in',
      fx:{on:'aud', kind:'sweep', col:'#8a2fe0', secs:2},
      look(){ all(0); set(AUDM, 1.0, '#8a2fe0'); }},
 
     {at:65, n:1.2, label:'1:05 — the house goes dark, the sign stays red', fade:0.4,
-     house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     house:0, haze:0.65, curtain:'shut', scene:'cemetery', backdrop:'in',
      look(){ all(0); }},
 
     /* "Then from 1:06 to 1:09 do the same as last cue." */
     {at:66, n:1.3, label:'1:06 — and again', fade:0,
-     house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     house:0, haze:0.65, curtain:'shut', scene:'cemetery', backdrop:'in',
      fx:{on:'aud', kind:'sweep', col:'#8a2fe0', secs:3},
      look(){ all(0); set(AUDM, 1.0, '#8a2fe0'); }},
 
     {at:69, n:1.4, label:'1:09 — dark again', fade:0.4,
-     house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
+     house:0, haze:0.65, curtain:'shut', scene:'cemetery', backdrop:'in',
      look(){ all(0); }},
 
     /* "at 1:16 all the blinders around the proscenium flash white as bright as
@@ -1879,20 +1897,20 @@ function plotBeetlejuice(){
        because they are two things; the curtain and the sign start travelling
        under the flash and have ten seconds to clear. */
     {at:76, n:1.5, label:'1:16 — blinders flash white; the curtain and the sign go out',
-     fade:0, house:0, haze:0.25, curtain:'out', scene:'cemetery', backdrop:'in',
+     fade:0, house:0, haze:0.65, curtain:'out', scene:'cemetery', backdrop:'in',
      move:{scene:'bjSign', off:BJ_SIGN_OUT},
      fx:{on:'blind', kind:'flash', col:'#ffffff', secs:0.7},
      look(){ all(0); set(BLIND, 1.0, '#ffffff'); }},
 
     {at:77, n:1.6, label:'the blinders run fast and random', fade:0,
-     house:0, haze:0.25, curtain:'out', scene:'cemetery', backdrop:'in',
+     house:0, haze:0.65, curtain:'out', scene:'cemetery', backdrop:'in',
      fx:{on:'blind', kind:'random', col:'#ffffff'},
      look(){ all(0); set(BLIND, 0.9, '#ffffff'); }},
 
     /* "then at 1:26 they stop the random pattern and all flash white one more
        time (by now the curtain and beetlejuice sign shou be fully flown out)" */
     {at:86, n:1.7, label:'1:26 — the pattern stops, one more white flash', fade:0,
-     house:0, haze:0.3, curtain:'out', scene:'cemetery', backdrop:'in',
+     house:0, haze:0.65, curtain:'out', scene:'cemetery', backdrop:'in',
      fx:{on:'blind', kind:'flash', col:'#ffffff', secs:0.8},
      look(){ all(0); set(BLIND, 1.0, '#ffffff'); }},
 

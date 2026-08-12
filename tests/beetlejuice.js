@@ -1448,8 +1448,18 @@ const probe = `
     if(CUES.length < 12) throw new Error('only '+CUES.length+' cues');
     if(nextCue !== 1) throw new Error('stands by at '+nextCue);
     if(CUES[0].n > 1) throw new Error('the first cue is '+CUES[0].n+', not a preset');
-    if(HOUSE.house < 0.4) throw new Error('loads with the house down, that is mid-show');
-    return CUES.length+' cues, standing by at '+CUES[1].label;
+    /* this read "house below 0.4" and was quietly pinned to the pre-show 0.45,
+       so RULING BM's retune to 0.30 tripped it — a feel constant had a test
+       hanging off it by accident.  What it MEANS is "it loaded the pre-show,
+       not a mid-show look", so say that: the masters are the preset's own
+       values, and the house is up rather than in a blackout (every mid-show
+       cue in the plot carries house:0). */
+    const pre = CUES.filter(c=>c.n === 0.5)[0];
+    if(!pre) throw new Error('there is no pre-show cue to stand by on');
+    if(HOUSE.house !== pre.house)
+      throw new Error('loads at house '+HOUSE.house+', not the pre-show preset '+pre.house);
+    if(HOUSE.house <= 0.1) throw new Error('loads with the house down, that is mid-show');
+    return CUES.length+' cues, standing by at '+CUES[1].label+', house '+HOUSE.house;
   });
 
   /* the numbers that came off the recording, not out of anyone's head */
@@ -2187,6 +2197,59 @@ const probe = `
      them, and the red the owner asked to keep is the SIGN.  The mechanical
      half of why: the blinders outrank the movers, so eight red lamps took all
      eight real lights and the purple rendered on none. */
+  /* RULING BM.  "make it so in pre show and the start of show light stuff you
+     can see the actual beams better."  Pinned to the quantity the SHADER
+     actually reads, not to the plotted number — a beam's opacity is
+     uHaze = 0.25 + hazeNow()*1.15, so asserting on the plotted haze alone
+     would pass a build where the shader had stopped reading it. */
+  P('RULING BM: the top of the show draws beams as strongly as mid-show does', ()=>{
+    showLoad('beetlejuice');
+    /* READ THE UNIFORM THE SHADER IS ACTUALLY GIVEN, not a copy of its formula.
+       The first version of this test recomputed 0.25 + haze*1.15 itself, and a
+       negative check that replaced the whole uHaze line with a constant sailed
+       straight through it — a test that reimplements the thing it is testing
+       agrees with itself no matter what the code does.  Fire the cue, run a
+       frame, ask a beam how bright it is. */
+    const beamOf = idx => {
+      fireCue(idx); cancelFollow();
+      updateRig(1/60, 0);
+      return chan(34).beam.material.uniforms.uHaze.value;
+    };
+    /* what a beam is worth once the show is properly running */
+    const midIdx = CUES.map((c,i)=>[c,i]).filter(p=>p[0].at >= 88 && p[0].at < 4269);
+    const midAvg = midIdx.map(p=>beamOf(p[1])).reduce((a,b)=>a+b, 0)/midIdx.length;
+    /* every cue from the pre-show to the graveyard: the stretch he named, and
+       the one stretch with no stage picture in it at all */
+    const top = CUES.map((c,i)=>[c,i]).filter(p=>p[0].at !== undefined && p[0].at <= 88);
+    if(top.length < 9) throw new Error('only found ' + top.length + ' cues at the top of the show');
+    let worst = null, worstU = 99;
+    for(const p of top){ const u = beamOf(p[1]); if(u < worstU){ worstU = u; worst = p[0]; } }
+    const ratio = worstU/midAvg;
+    /* it was 0.42 against a mid-show 0.94 — 45% — and the pre-show, the one
+       cue that is nothing but beams for minutes on end, was the worst of them */
+    if(ratio < 0.85)
+      throw new Error('the faintest beam at the top of the show is ' +
+                      Math.round(ratio*100) + '% of a mid-show beam (Q' + worst.n +
+                      ', haze ' + worst.haze + ', uHaze ' + worstU.toFixed(2) + ')');
+    /* and the shader has to be the thing reading it: a build that ignores the
+       plotted haze reports the same uHaze for the pre-show and the graveyard */
+    if(Math.abs(beamOf(CUES.findIndex(c=>c.n === 0.5)) - midAvg) < 1e-6)
+      throw new Error('every cue draws beams identically — the shader is not reading the plot');
+    /* and the pre-show in particular, by name, because that is where he sits */
+    const pre = CUES.filter(c=>c.n === 0.5)[0];
+    const preU = beamOf(CUES.findIndex(c=>c.n === 0.5));
+    if(!(preU >= 0.75))
+      throw new Error('the pre-show draws beams at ' + preU.toFixed(2) + ' (was 0.42)');
+    /* the house must not be brighter than the effect running in it: 0.45 put
+       ~2.0-2.4 on a seat against the audience rig's ~1.0 peak */
+    if(!(pre.house <= 0.35))
+      throw new Error('the pre-show house is ' + pre.house + ' — it washes the beams out');
+    if(!(pre.house > 0))
+      throw new Error('the pre-show house went out entirely; he asked for low, not off');
+    return 'faintest top-of-show beam ' + worstU.toFixed(2) + ' = ' + Math.round(ratio*100) + '% of mid-show (was 45%), ' +
+           'pre-show house ' + pre.house;
+  });
+
   P('RULING BJ: the arch is dark through both sweeps and both blackouts', ()=>{
     showLoad('beetlejuice');
     const cue = t => CUES.filter(x=>x.at === t)[0];
