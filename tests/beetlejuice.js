@@ -2250,6 +2250,63 @@ const probe = `
            'pre-show house ' + pre.house;
   });
 
+  /* ---- RULING BN: a cue is labelled by where it falls in the show ---- */
+
+  P('RULING BN: the timestamp is written the way he writes it', ()=>{
+    const t = at => cueTimeText({at});
+    const want = {33:'0:33', 63:'1:03', 585:'9:45', 4262:'1:11:02', 8092:'2:14:52'};
+    for(const k in want)
+      if(t(+k) !== want[k])
+        throw new Error(k + 's rendered as ' + t(+k) + ', wanted ' + want[k]);
+    /* and a cue with no place in a show says nothing, so the caller keeps the
+       fade — four of five productions, and every cue recorded off the board */
+    if(cueTimeText({}) !== null) throw new Error('a cue with no timecode invented a timestamp');
+    if(cueTimeText({at:null}) !== null) throw new Error('a null timecode invented a timestamp');
+    if(cueTimeText(null) !== null) throw new Error('cueTimeText(null) threw or answered');
+    return Object.keys(want).map(k=>k+'s = '+want[k]).join(', ');
+  });
+
+  /* THROUGH THE DOM, not the model — a detached row fires its handler
+     perfectly well, and this is a test about what the operator READS */
+  P('RULING BN: every Beetlejuice row shows its place in the show, not its fade', ()=>{
+    showLoad('beetlejuice');
+    refreshCues();
+    const rows = document.querySelectorAll('#cuelist .cue');
+    if(rows.length !== CUES.length)
+      throw new Error(rows.length + ' rows drawn for ' + CUES.length + ' cues');
+    let checked = 0;
+    for(let i = 0; i < rows.length; i++){
+      const meta = rows[i].querySelector('.mt');
+      if(!meta) throw new Error('row ' + i + ' has no meta cell');
+      const txt = meta.textContent, want = cueTimeText(CUES[i]);
+      if(!want) throw new Error('Beetlejuice cue ' + CUES[i].n + ' has no timecode');
+      if(txt.indexOf(want) !== 0)
+        throw new Error('Q' + CUES[i].n + ' reads "' + txt + '", wanted it to open with ' + want);
+      /* the fade must be GONE, which is the actual ask — "not by how long it
+         is".  Only checked where the fade could not be mistaken for a time. */
+      if(CUES[i].fade > 0 && txt.indexOf(CUES[i].fade + 's') >= 0)
+        throw new Error('Q' + CUES[i].n + ' still shows its ' + CUES[i].fade + 's fade');
+      checked++;
+    }
+    return checked + ' rows, every one labelled by its timestamp';
+  });
+
+  P('RULING BN: a show with no timecode keeps its fades', ()=>{
+    showLoad('outsiders');
+    refreshCues();
+    if(CUES.some(c=>c.at !== undefined && c.at !== null))
+      throw new Error('THE OUTSIDERS has timecoded cues now — pick another show for this test');
+    const rows = document.querySelectorAll('#cuelist .cue');
+    if(!rows.length) throw new Error('no rows drawn');
+    for(let i = 0; i < rows.length; i++){
+      const txt = rows[i].querySelector('.mt').textContent;
+      if(txt.indexOf(CUES[i].fade + 's') !== 0)
+        throw new Error('row ' + i + ' reads "' + txt + '", wanted the fade ' + CUES[i].fade + 's');
+    }
+    showLoad('beetlejuice');
+    return rows.length + ' rows still showing fades, as they must';
+  });
+
   P('RULING BJ: the arch is dark through both sweeps and both blackouts', ()=>{
     showLoad('beetlejuice');
     const cue = t => CUES.filter(x=>x.at === t)[0];
