@@ -3253,6 +3253,55 @@ const wd = setTimeout(() => {
 
   console.log('--- the model import (RULING AZ): parse, validate, apply, fall back ---');
 
+  /* HIS DELIVERED SETS ARE COMMITTED, and this is the assertion that says so.
+     Same reasoning as the recordings (RULING BI) and the same method: ASK GIT,
+     do not read the directory.  A model sitting on disk and missing from the
+     index works perfectly on this machine and is simply absent on Pages, where
+     the fallback is silent BY DESIGN — so the failure would be "the sets never
+     arrived" with nothing anywhere saying why.
+
+     It deliberately does NOT demand all nine.  A set he has not modelled is a
+     normal state that the stand-in covers; what must never happen is a file
+     that is there-but-untracked, or a file in assets/ that no manifest entry
+     ever fetches. */
+  await P('every delivered .glb is in the index, and assets/ holds nothing the manifest ignores', async () => {
+    const cp = require('child_process'), root = require('path').join(__dirname, '..');
+    const manifest = new Set(Object.keys(az.BJ_MODELS).map(k => {
+      const v = az.BJ_MODELS[k];
+      return ((typeof v === 'string') ? v : v.url).replace(/^assets\//, '');
+    }));
+    const onDisk = fs.readdirSync(require('path').join(root, 'assets')).filter(f => /\.glb$/.test(f));
+    if(!onDisk.length) throw new Error('no models delivered yet — this assertion has nothing to guard');
+    const tracked = new Set(cp.execSync('git ls-files assets', {cwd: root})
+      .toString().trim().split('\n').filter(Boolean).map(f => f.replace('assets/', '')));
+
+    const untracked = onDisk.filter(f => !tracked.has(f));
+    if(untracked.length)
+      throw new Error('on disk but not in git, so silently absent on Pages: ' + untracked.join(', '));
+    const unfetched = onDisk.filter(f => !manifest.has(f));
+    if(unfetched.length)
+      throw new Error('committed but no manifest entry fetches them: ' + unfetched.join(', '));
+
+    /* and the bytes have to survive a checkout.  `* text=auto eol=lf` decides
+       binary by CONTENT HEURISTIC, and a glb that lost that coin toss would be
+       rewritten on checkout into something that never parses — against a
+       silent fallback.  .gitattributes names the extension; this checks the
+       result, by asking git whether the blob it stored still matches the file. */
+    if(!/^\*\.glb\s+binary/m.test(fs.readFileSync(require('path').join(root, '.gitattributes'), 'utf8')))
+      throw new Error('.gitattributes does not pin *.glb as binary');
+    /* porcelain is `XY path`: X is index-vs-HEAD, Y is WORKTREE-vs-index, and
+       only Y answers this question.  Filtering on the whole line instead would
+       fail on a freshly staged file (`A `), where the worktree and the index
+       agree perfectly — which is the state this very commit was made from. */
+    const dirty = cp.execSync('git status --porcelain -- assets', {cwd: root}).toString()
+      .split('\n').filter(l => /\.glb$/.test(l) && l[1] !== ' ');
+    if(dirty.length)
+      throw new Error('the worktree and the index disagree about ' + dirty.length +
+                      ' model(s) — a checkout rewrote them: ' + dirty.join(' | '));
+    return onDisk.length + ' of ' + manifest.size + ' delivered and tracked (' +
+           onDisk.join(', ') + '), byte-identical to the index, pinned binary';
+  });
+
   await P('the manifest fetches exactly the files docs/MODELING.md promises, both directions', async () => {
     /* the fallback is SILENT, so a manifest url the doc never names would rot
        unnoticed — and a documented file the manifest never fetches would be a
