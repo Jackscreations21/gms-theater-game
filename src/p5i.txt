@@ -3673,21 +3673,31 @@
    load, with no feedback to anyone — a test pins the manifest's url list to
    the doc's, both directions, so the two cannot drift apart.
 
-   bj-house.glb is THE WAGON SHELL (scene: interior — "one shell plus three
-   dressing files"), not the exterior miniature: the exterior is not on the
-   owner's list of sets to model.
+   The three bj-house-*.glb are WHOLE INTERIORS, one per dressing (RULING BP),
+   not exterior miniatures: the exterior is not on the owner's list of sets to
+   model.  There is no shell file any more — see the `whole` flag below.
    -------------------------------------------------------------------------- */
 const BJ_MODELS = {
-  house:       {scene:'interior', url:'assets/bj-house.glb'},
   attic:       'assets/bj-attic.glb',
   closet:      'assets/bj-closet.glb',
   bedroom:     'assets/bj-bedroom.glb',
   roof:        'assets/bj-roof.glb',
   graveyard:   {scene:'cemetery',  url:'assets/bj-graveyard.glb'},
   netherworld: {scene:'afterlife', url:'assets/bj-netherworld.glb'},
-  dressMaitland:    {scene:'interior', dress:'maitland', url:'assets/bj-dress-maitland.glb'},
-  dressDeetz:       {scene:'interior', dress:'deetz',    url:'assets/bj-dress-deetz.glb'},
-  dressBeetlejuice: {scene:'interior', dress:'bj',       url:'assets/bj-dress-beetlejuice.glb'}
+  /* THE HOUSE IS THREE WHOLE HOUSES (RULING BP).  It used to be a shell
+     (bj-house.glb) plus three dressing files that stood on it, which is how a
+     real production builds one.  The owner modelled it the other way — three
+     complete interiors, one per dressing — and it is his call.
+
+     `whole` says so: the file is the entire interior for that dressing, so it
+     lands in the dressing's own group AND the shared shell stand-in comes out,
+     because otherwise our architecture would stand inside his. */
+  houseMaitland:    {scene:'interior', dress:'maitland', whole:true,
+                     url:'assets/bj-house-maitland.glb'},
+  houseDeetz:       {scene:'interior', dress:'deetz',    whole:true,
+                     url:'assets/bj-house-deetz.glb'},
+  houseBeetlejuice: {scene:'interior', dress:'bj',       whole:true,
+                     url:'assets/bj-house-beetlejuice.glb'}
 };
 /* the two manifest shapes, normalised to one */
 function bjModelEntry(key){
@@ -3701,8 +3711,80 @@ function bjModelEntry(key){
    model over budget is REFUSED with a line naming the budget and the excess,
    never silently accepted; a clean one returns null.
    -------------------------------------------------------------------------- */
-const BJ_TRI_BUDGET = 30000, BJ_MAT_BUDGET = 8, BJ_TEX_BUDGET = 2048;
+/* 150,000 TRIANGLES (RULING BP).  It was 30,000, set for the Quest before a
+   single model existed, and it was conservative for the shape these turned out
+   to be: one material, one primitive, ONE DRAW CALL each.  What actually hurts
+   a headset is draw calls and per-pixel light — r128 draws the room twice and
+   every live SpotLight costs in every material — and a single-call 100k mesh is
+   a very different proposition from 100k spread over twenty materials.  One set
+   is on the deck at a time.  The other two budgets do not move.
+
+   His re-export came in at 93k-99.5k, which is what this number was raised to
+   accommodate; the headroom above that is deliberate and small. */
+const BJ_TRI_BUDGET = 150000, BJ_MAT_BUDGET = 8, BJ_TEX_BUDGET = 2048;
 function bjNum(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+const BJ_TEX_KEYS = ['map','normalMap','roughnessMap','metalnessMap','aoMap',
+                     'emissiveMap','alphaMap','bumpMap','displacementMap'];
+
+/* --------------------------------------------------------------------------
+   AN OVERSIZED TEXTURE IS SHRUNK, NOT REFUSED (RULING BP).
+
+   Triangles and materials are the modeller's business and a blown budget is
+   his to fix — that is why they are refusals.  A texture is not: every one of
+   his exports carries a single 4096 map because that is what the tool emits,
+   and sending him back to re-export a seventh time to change a number he did
+   not choose is a waste of his evening.
+
+   It has to come down, though, and the reason is memory rather than speed.
+   4096 x 4096 RGBA is 67MB on the GPU before mipmaps.  One set is on the deck
+   at a time TODAY, but RULING BQ is about to park all seven backstage where
+   they stay resident, and seven of those maps is most of a Quest's browser
+   budget spent on texture nobody is looking at.  2048 is a quarter of the
+   memory for a set seen from fifteen metres.
+
+   Done on the CPU with a canvas because r128 has no resize: draw the image
+   into a smaller one and hand the texture the canvas.  A canvas is a
+   first-class texture source, so nothing downstream knows the difference.
+   -------------------------------------------------------------------------- */
+function bjShrinkTexture(t, cap){
+  const im = t && t.image;
+  if(!im || !im.width || !im.height) return false;
+  const big = Math.max(im.width, im.height);
+  if(big <= cap) return false;
+  const k = cap / big;
+  let c = null;
+  try{
+    c = document.createElement('canvas');
+    c.width  = Math.max(1, Math.round(im.width  * k));
+    c.height = Math.max(1, Math.round(im.height * k));
+    const ctx = c.getContext('2d');
+    if(!ctx) return false;
+    ctx.drawImage(im, 0, 0, c.width, c.height);
+  }catch(e){ return false; }
+  t.image = c;
+  t.needsUpdate = true;
+  return true;
+}
+
+/* every map on every material under a root.  Materials are shared inside one
+   glb, so a Set keeps a shared map from being redrawn once per mesh. */
+function bjShrinkTextures(root, cap){
+  const seen = new Set();
+  let n = 0, from = 0;
+  root.traverse(o=>{
+    if(!o.isMesh || !o.material) return;
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    for(const m of list) for(const k of BJ_TEX_KEYS){
+      const t = m[k];
+      if(!t || seen.has(t)) continue;
+      seen.add(t);
+      if(t.image && t.image.width) from = Math.max(from, t.image.width, t.image.height || 0);
+      if(bjShrinkTexture(t, cap === undefined ? BJ_TEX_BUDGET : cap)) n++;
+    }
+  });
+  return {shrunk:n, from:from};
+}
 function bjValidateModel(root){
   let tris = 0, texMax = 0, light = null;
   const mats = new Set();
@@ -3801,6 +3883,29 @@ function bjApplyModel(entry, root, scGiven){
     bjStrip(g);
     g.add(root);
     landed.push(root);
+    /* A WHOLE HOUSE BRINGS ITS OWN ARCHITECTURE (RULING BP), so the shared
+       shell stand-in — wall, arch, stairs, fireplace — comes out, or ours
+       stands inside his.  The dressing groups themselves are machinery and
+       stay: each holds one of the three houses, and bjRedress goes on
+       choosing between them exactly as it did between three dressings.
+
+       It strips on the FIRST whole house to land, not on the third.  With all
+       three delivered that is the same moment; with a partial delivery it
+       means an unmodelled dressing shows its stand-in furniture with no walls
+       around it, which is obviously unfinished — and obviously unfinished
+       beats our shell standing inside his house, which would just look like a
+       bug.  The console says which are still stand-ins. */
+    if(entry.whole && !sc.group.userData.bjShellOut){
+      sc.group.userData.bjShellOut = true;
+      const keep = [];
+      for(const k of Object.keys(sc.dress)) keep.push(sc.dress[k]);
+      if(sc.mv && sc.mv.group) keep.push(sc.mv.group);
+      if(sc.pmv) for(const k of Object.keys(sc.pmv)) keep.push(sc.pmv[k].group);
+      for(let i = sc.group.children.length - 1; i >= 0; i--){
+        const c = sc.group.children[i];
+        if(keep.indexOf(c) < 0) sc.group.remove(c);
+      }
+    }
   } else if(pmvKeys.length === 1){
     /* one part mover is an 'all'-wrapped flying set (bjFlyWhole): the model
        goes INSIDE the flyer, so it keeps flying (RULING AY) */
@@ -3899,6 +4004,14 @@ function loadSetModels(){
             /* struck or re-loaded while the fetch was out — nowhere honest
                to land, so the (new) stand-in keeps playing */
             if(SHOW.scenes !== scenes){ res(); return; }
+            /* textures come down BEFORE the validator sees them, so the
+               oversize check below is a backstop for a map the shrink could
+               not touch rather than a gate the owner has to satisfy (BP) */
+            const sh = bjShrinkTextures(gltf.scene);
+            if(sh.shrunk)
+              console.log('[models] ' + entry.url + ': ' + sh.shrunk + ' texture' +
+                          (sh.shrunk > 1 ? 's' : '') + ' brought down from ' + sh.from +
+                          'px to ' + BJ_TEX_BUDGET + 'px');
             const bad = bjValidateModel(gltf.scene);
             if(bad){
               console.log('[models] ' + entry.url + ' refused: ' + bad + ' — the stand-in stays');

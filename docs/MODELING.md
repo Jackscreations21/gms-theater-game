@@ -36,11 +36,23 @@ the portal legs and unseen; anything past 48'6" fails the build.
 
 ## Budgets (the Quest is why — every material is a draw call, twice)
 
-| Budget | Cap |
-|---|---|
-| Triangles per set | 30,000 |
-| Materials per set | 8 |
-| Texture size | 2048 × 2048 max |
+| Budget | Cap | |
+|---|---|---|
+| Triangles per set | **150,000** | refused above this |
+| Materials per set | 8 | refused above this |
+| Texture size | 2048 × 2048 | **shrunk on import, not refused** |
+
+**Triangles went 30,000 → 150,000 (RULING BP).** The old number was set before
+a single model existed and was conservative for the shape these turned out to
+be — one material, one primitive, **one draw call** each. What costs a headset
+is draw calls and per-pixel light, not raw triangles, and only one set is on
+the deck at a time. Aim at ~100k.
+
+**A texture over 2048 is brought down to 2048 at load rather than refused**,
+so a 4096 map the export tool chose for you is not your problem. Do not read
+that as "size does not matter": 4096 × 4096 RGBA is 67 MB of GPU memory before
+mipmaps, and every set stays resident once struck sets park backstage. Smaller
+is still better; it just will not fail the build.
 
 A model over budget is refused at import with a message saying which budget
 and by how much. Fewer materials beats fewer triangles: 8 materials at 30k
@@ -57,7 +69,7 @@ load). A test pins this list to the game's manifest, both directions.
 
 | Set | File | Width | Height | Depth | Notes |
 |---|---|---|---|---|---|
-| **The house** (the wagon) | `bj-house.glb` (the shell) + `bj-dress-maitland.glb`, `bj-dress-deetz.glb`, `bj-dress-beetlejuice.glb` | ≤ 42' | **≤ 29'** | ~20' | The big one. It SLIDES on and off, so it must clear the 30' opening with air to spare. One architecture, three dressings (Maitlands / Deetz / Beetlejuice): one shell file plus three dressing files, the four names at left. Floors and stairs named `walk_*`. |
+| **The house** (the wagon) | `bj-house-maitland.glb`, `bj-house-deetz.glb`, `bj-house-beetlejuice.glb` | ≤ 42' | **≤ 29'** | ~20' | The big one. It SLIDES on and off, so it must clear the 30' opening with air to spare. **Three WHOLE houses** — architecture and dressing together, one file per state (Maitlands / Deetz / Beetlejuice), which is how you built them (RULING BP). Each replaces the entire interior; the first one to load takes the built-in shell out. Floors and stairs named `walk_*`. |
 | **Graveyard** | `bj-graveyard.glb` | ~44' | hills ~16' | ~20' | The hills, the mound, the black tree, crosses, small mausoleums. Do NOT model the sky or the moon — the cloud sky with the cratered moon is a painted drop and is made in-game. |
 | **Attic** | `bj-attic.glb` | ~44' | ~26' | ~16' | Two open-front junk sheds either side, slatted junk wall centre with the double doors, the hung rafter fragment. |
 | **Closet** | `bj-closet.glb` | ~20' | ~13' | ~10' | The bright pink one, spiral door. |
@@ -70,11 +82,11 @@ load). A test pins this list to the game's manifest, both directions.
 The import keeps the show's choreography working by landing your model inside
 the same machinery the stand-in used:
 
-- The **wagon shell** (`bj-house.glb`) replaces the interior's architecture —
-  wall, arch, stairs, fireplace — and leaves all three dressing groups
-  standing on it.
-- A **dressing file** (`bj-dress-maitland.glb` etc.) replaces exactly that
-  dressing on the wagon — the shell and the other two dressings stand.
+- A **whole house** (`bj-house-maitland.glb` etc.) lands in that dressing's
+  own group on the wagon and the built-in shell — wall, arch, stairs,
+  fireplace — is taken out, so your architecture is the only architecture.
+  The other two dressing groups stand; the show goes on choosing between the
+  three exactly as it chose between three dressings.
 - A **flying set** (attic, closet, bedroom, roof, netherworld) lands inside
   its flyer, so it still travels out through the header on its cue.
 - The **graveyard** routes each top-level node by its side of centre:
