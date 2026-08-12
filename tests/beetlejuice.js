@@ -1493,6 +1493,74 @@ const probe = `
            ' over a ' + BJ.opH + 'm picture, under a ' + D.gridY + 'm grid, wing clear';
   });
 
+  P('RULING CU: the marquee goes dark as it flies, and keeps what the cue said', ()=>{
+    showLoad('beetlejuice');
+    const sg = sceneFind('bjSign');
+    if(!sg || !sg.mv) throw new Error('the sign does not travel, so it can never go up');
+    if(!SHOW.signLamps || !SHOW.signLamps.length) throw new Error('the sign has no lamps');
+    const lamp = SHOW.signLamps[0];
+    const lit = ()=>lamp.mat.emissive ? lamp.mat.emissiveIntensity
+                                      : (lamp.mat.color.r + lamp.mat.color.g + lamp.mat.color.b)/3;
+    /* home, and the sign is lit — this is the pre-show, "the sign lit" */
+    updateStorm(1/60);
+    const home = lit();
+    if(!(home > 0.1)) throw new Error('the sign is dark before it has gone anywhere: ' + home.toFixed(3));
+    /* a cue turns it red.  The gate must not lose that. */
+    setSignLamps('#ff1e10');
+    const redHome = lit();
+    if(!(redHome > 0.1)) throw new Error('the red cue left it dark on the deck');
+    /* UP IT GOES.  The lamps start going out as it rises, and are out well
+       before it has finished travelling — a marquee switched off, not dimmed. */
+    sceneMoveTo('bjSign', BJ_SIGN_OUT);
+    let frames = 0, midLit = null;
+    while(sceneTravelling(sg) && frames < 900){
+      updateStorm(1/60); frames++;
+      if(frames === 6) midLit = lit();       // a tenth of a second into the rise
+    }
+    if(frames >= 900) throw new Error('the sign never arrived');
+    if(!(lit() < 0.02))
+      throw new Error('it is up at ' + sg.mv.off.toFixed(2) + 'm and still lit at ' + lit().toFixed(3));
+    /* IT IS A FADE, NOT A SNAP, and that is what the intermediate frame is for:
+       strictly between full and out a tenth of a second in.  A snap would read
+       as a lamp failing rather than a marquee being switched off. */
+    if(midLit === null || !(midLit > 0.02 && midLit < redHome - 0.02))
+      throw new Error('the lamps snapped rather than faded: ' +
+                      (midLit === null ? 'never sampled' : midLit.toFixed(3)));
+    /* AND THE CUE STATE SURVIVED UNDERNEATH.  Bring it back in and it is still
+       the colour the cue asked for — the gate multiplies, it does not repaint. */
+    if(SHOW.signWant !== '#ff1e10')
+      throw new Error('the cue colour was forgotten while the sign was up');
+    sceneMoveTo('bjSign', 0);
+    for(let i = 0; i < 900 && sceneTravelling(sg); i++) updateStorm(1/60);
+    for(let i = 0; i < 60; i++) updateStorm(1/60);
+    if(!(lit() > 0.1)) throw new Error('it came home dark at ' + lit().toFixed(3));
+    if(lamp.mat.emissive && Math.abs(lamp.mat.emissive.getHex() - 0xff1e10) > 0)
+      throw new Error('it came home the wrong colour: #' + lamp.mat.emissive.getHexString());
+    setSignLamps(null);
+    for(let i = 0; i < 60; i++) updateStorm(1/60);
+    return 'home ' + home.toFixed(2) + ' -> red ' + redHome.toFixed(2) +
+           ' -> rising ' + midLit.toFixed(2) + ' -> up 0.00 -> home again still red';
+  });
+
+  P('RULING CU: a sign with no mover is left alone, not switched off', ()=>{
+    showLoad('beetlejuice');
+    const sg = sceneFind('bjSign');
+    if(!SHOW.signLamps || !SHOW.signLamps.length) throw new Error('the sign has no lamps');
+    const lamp = SHOW.signLamps[0];
+    const lit = ()=>lamp.mat.emissive ? lamp.mat.emissiveIntensity
+                                      : (lamp.mat.color.r + lamp.mat.color.g + lamp.mat.color.b)/3;
+    /* DECLARED, NEVER ASSUMED, the habit of this whole file: a production whose
+       sign cannot fly — or a sign built before its travel is wired — must keep
+       its lamps rather than have them switched off for ever by a missing field. */
+    const keep = sg.mv;
+    sg.mv = null;
+    for(let i = 0; i < 120; i++) updateStorm(1/60);
+    const out = lit();
+    sg.mv = keep;
+    if(!(out > 0.1)) throw new Error('a sign that cannot fly was switched off anyway: ' + out.toFixed(3));
+    return 'no mover, still lit at ' + out.toFixed(2) + ' after two seconds';
+  });
+
   P('RULING CN: only one house is in the world, and it switches when called', ()=>{
     showLoad('beetlejuice');
     const sc = sceneFind('interior');

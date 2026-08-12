@@ -9778,6 +9778,7 @@ function showBlank(){
     rainSound:false, flicker:null, lightning:0, lightningT:0,
     stormOn:false, stormT:0, porch:null, bjPortal:null,
     pendMoves:[], houseWait:null, offstage:[],
+    signLamps:null, signWant:null, signGate:1,      // RULING CU
     curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
   };
 }
@@ -10622,6 +10623,7 @@ function updateStorm(dt){
   updateFire(dt);
   if(typeof updateNeon === 'function') updateNeon(dt);
   if(typeof updatePortal === 'function') updatePortal(dt);   // RULING CH
+  if(typeof updateSignLamps === 'function') updateSignLamps(dt);   // RULING CU
   updateHouseWait();                                          // RULING CJ
   if(typeof bjUpdateSetFill === 'function') bjUpdateSetFill(dt);   // RULING CC
   updateShowStorm(dt);
@@ -14034,19 +14036,71 @@ const BJ_SIGN_GLOW = 0.95, BJ_SIGN_LIT = 2.1;
    ring hung round it (bjSignLamps, p5i).  Nothing here needs to know which —
    except that an imported material may be a MeshBasic with no emissive at all,
    which is why both halves are guarded. */
-function setSignLamps(hex){
+/* ============================================================================
+   RULING CU — THE MARQUEE GOES DARK AS IT FLIES
+
+   "Also make it so the lights on the bj sign turn off when it goes up."
+
+   The sign is an ALWAYS scene on its own y mover (RULINGS AS, AT).  It goes out
+   at BJ_SIGN_OUT at the end of the opening sequence and its lamps have burned
+   all night up in the grid ever since it was built.
+
+   A GATE, not a repaint.  What a cue asked for is REMEMBERED (SHOW.signWant) and
+   the gate multiplies it, so the signCol state survives underneath: a cue that
+   turned the sign red keeps it red, the sign simply is not lit while it is up,
+   and it comes back red if it comes back in.  Writing final values into the
+   materials — which is what this function used to do — cannot express "red, but
+   currently switched off" at all.
+
+   IT RIDES THE SIGN'S OWN MOVER AND THE FRAME dt, never a timer (CLAUDE.md).
+   The lamps start going out the moment the sign starts to rise, over about half
+   a second, which is a marquee being switched off rather than a lamp dimming.
+
+   AND AN IMPORTED MATERIAL MAY HAVE NO EMISSIVE AT ALL — RULING CF guards for
+   it, because his file could land as a MeshBasic — so the gate falls back to
+   driving the COLOUR toward black, which is the one thing such a material can
+   do.  Both halves are exercised: the stand-in is emissive, his is not
+   guaranteed to be. */
+const BJ_SIGN_LAMP_FADE = 2.5;   // per second: out in ~0.4s
+const BJ_SIGN_LAMP_CUT  = 0.05;  // metres of travel that count as "it went up"
+
+function bjSignApply(){
   if(!SHOW.signLamps) return;
+  const hex = SHOW.signWant;
+  const g = (SHOW.signGate === undefined) ? 1 : SHOW.signGate;
   SHOW.signLamps.forEach(r=>{
     if(hex){
       r.mat.color.set(hex);
-      if(r.mat.emissive) r.mat.emissive.set(hex);
-      r.mat.emissiveIntensity = BJ_SIGN_LIT;
+      if(r.mat.emissive){
+        r.mat.emissive.set(hex);
+        r.mat.emissiveIntensity = BJ_SIGN_LIT * g;
+      } else r.mat.color.multiplyScalar(g);
     } else {
       r.mat.color.copy(r.c);
-      if(r.mat.emissive && r.e) r.mat.emissive.copy(r.e);
-      r.mat.emissiveIntensity = r.ei;
+      if(r.mat.emissive && r.e){
+        r.mat.emissive.copy(r.e);
+        r.mat.emissiveIntensity = r.ei * g;
+      } else r.mat.color.multiplyScalar(g);
     }
   });
+}
+function setSignLamps(hex){
+  SHOW.signWant = hex || null;
+  bjSignApply();
+}
+function updateSignLamps(dt){
+  if(!SHOW.signLamps) return;
+  const sc = (typeof sceneFind === 'function') ? sceneFind('bjSign') : null;
+  /* NO MOVER IS NOT "IT IS UP".  A production whose sign cannot fly, or a sign
+     built before its travel is wired, must leave the lamps alone rather than
+     switching them off for ever. */
+  const up = !!(sc && sc.mv && sc.mv.off > BJ_SIGN_LAMP_CUT);
+  const was = (SHOW.signGate === undefined) ? 1 : SHOW.signGate;
+  const want = up ? 0 : 1;
+  const g = clamp(was + clamp(want - was, -dt*BJ_SIGN_LAMP_FADE, dt*BJ_SIGN_LAMP_FADE), 0, 1);
+  if(Math.abs(g - was) < 1e-5) return;
+  SHOW.signGate = g;
+  bjSignApply();
 }
 function bjStripeTex(vertical){
   const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');

@@ -26,6 +26,7 @@ function showBlank(){
     rainSound:false, flicker:null, lightning:0, lightningT:0,
     stormOn:false, stormT:0, porch:null, bjPortal:null,
     pendMoves:[], houseWait:null, offstage:[],
+    signLamps:null, signWant:null, signGate:1,      // RULING CU
     curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
   };
 }
@@ -870,6 +871,7 @@ function updateStorm(dt){
   updateFire(dt);
   if(typeof updateNeon === 'function') updateNeon(dt);
   if(typeof updatePortal === 'function') updatePortal(dt);   // RULING CH
+  if(typeof updateSignLamps === 'function') updateSignLamps(dt);   // RULING CU
   updateHouseWait();                                          // RULING CJ
   if(typeof bjUpdateSetFill === 'function') bjUpdateSetFill(dt);   // RULING CC
   updateShowStorm(dt);
