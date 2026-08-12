@@ -239,27 +239,46 @@ window.__done = (async function(){
     if(!window.__served[name]) continue;
     const sc = sceneFind(e.scene);
     /* measure the LANDED subtree — the dressing group for a whole house, the
-       scene group otherwise — in WORLD space after a matrix update, because
-       a frozen group makes .position a liar (TRAPS) */
+       scene group otherwise.  In the CONTAINER's own frame, not the world's:
+       the wagon parks at BJ_WAGON_BACK and its mover carries the dressings, so
+       a world box reports the parked offset as the set's position and every
+       depth verdict below is then measuring the wrong thing.  A frozen group
+       also makes .position a liar, hence the matrix walk (TRAPS). */
     const root = e.dress ? sc.dress[e.dress] : sc.group;
-    scene.updateMatrixWorld(true);
+    root.updateWorldMatrix(true, true);
     const box = new THREE.Box3();
     root.traverse(o=>{ if(o.isMesh) box.expandByObject(o); });
     if(box.isEmpty()){ P(key.padEnd(24) + 'nothing landed'); continue; }
+    if(e.dress) box.applyMatrix4(new THREE.Matrix4().copy(root.matrixWorld).invert());
     const s = box.getSize(new THREE.Vector3());
     landed++;
-    const over = [];
-    if(s.y > BJ.opH + 0.01) over.push('OVER the opening by ' + (s.y-BJ.opH).toFixed(2) + 'm');
+    /* THE VERDICT HAS TO KNOW WHAT WAS ASKED FOR.  A probe that calls a ruling
+       a fault is worse than no probe: it reported CB's masked overflow and CA's
+       downstage sign as three faults each until it was taught the manifest. */
+    const over = [], why = [];
     if(s.x > BJ.opW + 0.01) over.push('wider than the opening by ' + (s.x-BJ.opW).toFixed(2) + 'm');
-    if(s.z > 10.01)         over.push('deeper than the stage by ' + (s.z-10).toFixed(2) + 'm');
     if(box.min.y < -0.01)   over.push('BELOW the deck by ' + (-box.min.y).toFixed(2) + 'm');
-    if(box.max.z > 0.01)    over.push('DOWNSTAGE of the arch by ' + box.max.z.toFixed(2) + 'm');
+    if(s.y > BJ.opH + 0.01){
+      if(e.fillWidth) why.push((s.y-BJ.opH).toFixed(2) + 'm masked by the border (CB)');
+      else over.push('OVER the opening by ' + (s.y-BJ.opH).toFixed(2) + 'm');
+    }
+    const depthCap = e.fillWidth ? (Math.abs(D.backWall) - 0.30 - (e.upstage||0)) : 10.0;
+    if(s.z > depthCap + 0.01)
+      over.push('deeper than its ' + depthCap.toFixed(1) + 'm allowance by ' + (s.z-depthCap).toFixed(2) + 'm');
+    if(box.min.z < D.backWall - 0.01)
+      over.push('THROUGH the back wall by ' + (D.backWall - box.min.z).toFixed(2) + 'm');
+    if(box.max.z > 0.01){
+      if(e.centre) why.push('hangs ' + box.max.z.toFixed(2) + 'm downstage of the arch (CA)');
+      else over.push('DOWNSTAGE of the arch by ' + box.max.z.toFixed(2) + 'm');
+    }
+    if(e.upstage) why.push(e.upstage + 'm further upstage (CD)');
+    if(e.centre && box.min.y > 1.0) why.push('flown, not seated');
     if(over.length) bad++;
     P(key.padEnd(24) +
       (s.x.toFixed(2)+' x '+s.y.toFixed(2)+' x '+s.z.toFixed(2)).padEnd(27) +
       box.min.y.toFixed(2).padStart(6) + '   ' +
       (box.min.z.toFixed(1)+'..'+box.max.z.toFixed(1)).padEnd(13) +
-      (over.length ? over.join('; ') : 'fits'));
+      (over.length ? over.join('; ') : ('fits' + (why.length ? ' — ' + why.join(', ') : ''))));
 
     const now = sc.walk.map(o=>o.name||'(unnamed)');
     const lost = (before[e.scene]||[]).filter(n=>now.indexOf(n) < 0);

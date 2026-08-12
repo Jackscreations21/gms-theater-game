@@ -19794,6 +19794,19 @@ function plotBeetlejuice(){
    NOT one of them: `bj-house-exterior.glb` targets the `house` scene, the
    others the `interior` wagon.
    -------------------------------------------------------------------------- */
+/* RULING CD, and a one-line retune: how much further upstage than the arch
+   clearance the three whole houses are seated.  "make it so the houses slide up
+   a little further" — 1.5m of a 17m stage, which puts their downstage face at
+   z -1.80 and their upstage face at -14.78, still 2.22m clear of the brick.
+
+   DECLARED ABOVE THE MANIFEST ON PURPOSE.  Sitting it with the other fit
+   constants further down read fine and threw at load: "Cannot access
+   BJ_HOUSE_UPSTAGE before initialization", because BJ_MODELS is a const
+   initialised earlier in the same script and a const in its temporal dead zone
+   throws rather than reading undefined.  TRAPS records that for `typeof`; this
+   is the same trap reached by a plain reference. */
+const BJ_HOUSE_UPSTAGE = 1.5;
+
 /* `fit` IS docs/MODELING.md's Width column, in metres — the width the set is
    scaled to arrive at (RULING BP).  It is not decoration: what turned up is
    normalised to a ~1.9-unit box, so without this every set stands a seventh of
@@ -19852,11 +19865,14 @@ const BJ_MODELS = {
      ruled fine ("its fine if the house is a little taller than the
      prosinium") — and it is what a border is for. */
   houseMaitland:    {scene:'interior', dress:'maitland', whole:true, fit:13.6,
-                     fillWidth:true, url:'assets/bj-house-maitland.glb'},
+                     fillWidth:true, upstage:BJ_HOUSE_UPSTAGE,
+                     url:'assets/bj-house-maitland.glb'},
   houseDeetz:       {scene:'interior', dress:'deetz',    whole:true, fit:13.6,
-                     fillWidth:true, url:'assets/bj-house-deetz.glb'},
+                     fillWidth:true, upstage:BJ_HOUSE_UPSTAGE,
+                     url:'assets/bj-house-deetz.glb'},
   houseBeetlejuice: {scene:'interior', dress:'bj',       whole:true, fit:13.6,
-                     fillWidth:true, url:'assets/bj-house-beetlejuice.glb'}
+                     fillWidth:true, upstage:BJ_HOUSE_UPSTAGE,
+                     url:'assets/bj-house-beetlejuice.glb'}
 };
 /* the two manifest shapes, normalised to one */
 function bjModelEntry(key){
@@ -20112,7 +20128,17 @@ const BJ_FIT_AIR = 0.30, BJ_SET_DEPTH = 10.0;
    rather than by MODELING.md's ~10m of comfortable depth.  His house comes out
    12.98m deep and reaches z -13.28 against brick at -17: it clears.
    -------------------------------------------------------------------------- */
-function bjFitAndSeat(root, targetW, fill){
+/* RULING CD — "make it so the houses slide up a little further".  UP is
+   UPSTAGE, which is -z (INVARIANTS), so an entry may ask to be seated further
+   back than the arch clearance every other set gets.  It is scoped per entry
+   like CB, because it is his houses that are the deep ones: at 12.98m front to
+   back with their faces 0.30m off the arch they stood right on top of the
+   audience, where the shell they replaced kept its landing at z -6.6.
+
+   The brick still outranks it — the extra push comes out of the depth a
+   filling set is allowed, not out of the back wall. */
+function bjFitAndSeat(root, targetW, fill, upstage){
+  const up = upstage || 0;
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root);
   if(!isFinite(box.min.x) || box.isEmpty()) return 1;
@@ -20122,9 +20148,10 @@ function bjFitAndSeat(root, targetW, fill){
      dependency order — see ARCHITECTURE.md), so the opening is readable here */
   let s = targetW / size.x;
   if(fill){
-    /* the width is the whole point; only the brick still binds */
+    /* the width is the whole point; only the brick still binds — and the push
+       upstage (CD) comes out of the depth available, never out of the wall */
     if(size.z > 1e-6)
-      s = Math.min(s, (Math.abs(D.backWall) - BJ_FIT_AIR) / size.z);
+      s = Math.min(s, (Math.abs(D.backWall) - BJ_FIT_AIR - up) / size.z);
   } else {
     if(size.y > 1e-6) s = Math.min(s, (BJ.opH - BJ_FIT_AIR) / size.y);
     if(size.z > 1e-6) s = Math.min(s, BJ_SET_DEPTH / size.z);
@@ -20137,7 +20164,7 @@ function bjFitAndSeat(root, targetW, fill){
   const c2 = b2.getCenter(new THREE.Vector3());
   root.position.x -= c2.x;
   root.position.y -= b2.min.y;          // the deck is y = 0, on every stage
-  root.position.z -= b2.max.z + BJ_FIT_AIR;   // and the arch is at z = 0
+  root.position.z -= b2.max.z + BJ_FIT_AIR + up;   // and the arch is at z = 0
   return s;
 }
 
@@ -20261,7 +20288,7 @@ function bjApplyModel(entry, root, scGiven){
   let s = entry.scale || 1;
   if(s !== 1) root.scale.multiplyScalar(s);
   else if(entry.centre) s = bjFitAndCentre(root, entry.fit, entry.centre);
-  else if(entry.fit) s = bjFitAndSeat(root, entry.fit, entry.fillWidth);
+  else if(entry.fit) s = bjFitAndSeat(root, entry.fit, entry.fillWidth, entry.upstage);
 
   /* collect the model's walkables BEFORE routing — the split route detaches
      the top-level nodes from the root, and a traverse after that sees none */

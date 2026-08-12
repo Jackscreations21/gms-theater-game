@@ -4032,6 +4032,15 @@ const wd = setTimeout(() => {
     if(box.min.z < az.D.backWall)
       throw new Error('it reaches z=' + box.min.z.toFixed(2) +
                       ', through the back wall at ' + az.D.backWall);
+    /* 4. RULING CD — IT SITS FURTHER UPSTAGE than the arch clearance every
+          other set gets: "make it so the houses slide up a little further".
+          At 12.98m deep with its face 0.30m off the arch it stood on top of the
+          audience, where the shell it replaced kept its landing at z -6.6. */
+    if(!e.upstage) throw new Error('the house entry asks for no upstage push — RULING CD is unbuilt');
+    const want = -(az.BJ_FIT_AIR + e.upstage);
+    if(Math.abs(box.max.z - want) > 0.02)
+      throw new Error('its face is at z=' + box.max.z.toFixed(2) + ', wanted ' + want.toFixed(2) +
+                      ' (' + e.upstage + 'm upstage of the usual clearance)');
     /* and BX's seating survives untouched */
     if(box.max.z > -az.BJ_FIT_AIR + 0.01)
       throw new Error('through the apply path it reaches z=' + box.max.z.toFixed(2));
