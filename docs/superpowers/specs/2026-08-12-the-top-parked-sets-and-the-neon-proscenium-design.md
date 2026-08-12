@@ -246,6 +246,55 @@ construction. The pick path is the one to watch.
 
 ---
 
+## 2b. RULING CE — as few sets fly as possible
+
+> make it so as little sets as posible are flown just like roof and the bedroom
+> and closet should eb flown the otheres should come on from the sides or back
+
+Six of the nine flew. He names three that should. `bjFlyWhole` becomes
+`bjTrackWhole(sc, axis, out, speed)` and flying is just the **y** case of it —
+nothing else about the choreography changes, because `sceneChangeTo` already
+drives the `all` mover to its `out` on strike and back to `home` on entry, so a
+set that tracks on from stage left is the same machinery pointed sideways.
+
+**And it makes the parking better, which was not the reason for it.** Flying
+preserves x and z, so every flown set wants the same volume in the one grid.
+Measured, the four that still fly stand *inside each other* there:
+
+```
+bedroom x afterlife  overlap 8.62 x 5.60 x 4.61m
+afterlife x roof     overlap 12.30 x 7.95 x 8.18m      ... six pairs in all
+```
+
+Tracking gives each set its own floor space instead, and **the three tracked sets
+each have theirs, with no overlap at all.**
+
+### The building allows exactly three horizontal slots
+
+A wing is 14.5m (`D.stageW` 44 less the 15m proscenium, halved) and there is 6.7m
+between the acting area and the brick. So:
+
+| set | where it goes | parked, measured |
+|---|---|---|
+| interior (13.6m wide) | wing, stage right | x −20.80..−7.20 |
+| attic (13.06m wide) | wing, stage left | x 7.47..20.53 |
+| exterior (8.6m wide, 8.8m deep) | **upstage** | z −18.07..−9.30 |
+| roof, bedroom, closet | flown, as he asked | y 10.50 |
+| **netherworld** | **flown — and he did not name it** | y 10.50 |
+
+**The netherworld is the one exception and measurement forced it.** It is 14.4m
+wide and 12.5m deep: wider than a whole wing, far too deep to hide upstage, and
+both wings are already holding a house. So "as little as possible" comes out at
+**four of nine**, not three. His call whether that is close enough.
+
+**One thing left alone deliberately.** The cue at 1:14:30 carries
+`move:{scene:'house', off:BJ_SIGN_OUT}` — *"the exterior flies out"*, **his own
+plot line**. The exterior now enters and parks upstage, but that cue still flies
+it out, because re-pointing a cue he wrote is his call and not a side effect of
+this ruling. If CE is meant to supersede that line too, it is one field.
+
+---
+
 ## 3. RULINGS BR/BS/BT/BU — the neon proscenium
 
 > thsi si what the neon prosinium should look like and just use this as a

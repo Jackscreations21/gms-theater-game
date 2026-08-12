@@ -297,6 +297,32 @@ function firstHits(from){
     else console.log('  ' + r.name.padEnd(11) + 'clear');
   }
 
+  /* ----------------------------------- and they all stand there AT THE SAME TIME */
+  /* one set is on; the other eight are parked TOGETHER.  Nothing checked that they
+     do not stand inside each other, and two houses in one wing is the obvious way
+     for this ruling to go wrong. */
+  console.log('');
+  console.log('DO THE PARKS COLLIDE?  eight sets stand backstage at once');
+  let clashes = 0;
+  /* only sets that actually DECLARE a park stand there drawn.  Filtering on "did
+     it move" instead counted the cemetery, which parts its hills but declares no
+     park and is therefore switched off — an overlap with something nobody can see
+     is not an overlap, and reporting it would be the probe calling a ruling a
+     fault again. */
+  const parked = rows.filter(r => !r.note && g.sceneFind(r.name).parks);
+  for(let i = 0; i < parked.length; i++) for(let j = i+1; j < parked.length; j++){
+    const a = parked[i], b = parked[j];
+    if(!a.offBox.intersectsBox(b.offBox)) continue;
+    const o = a.offBox.clone().intersect(b.offBox);
+    const d = o.getSize(new T.Vector3());
+    /* a graze along one face is not two sets in the same place */
+    if(Math.min(d.x, d.y, d.z) < 0.05) continue;
+    clashes++;
+    console.log('  ' + a.name + ' x ' + b.name + '  overlap ' +
+                d.x.toFixed(2) + ' x ' + d.y.toFixed(2) + ' x ' + d.z.toFixed(2) + 'm');
+  }
+  if(!clashes) console.log('  none — every parked set has its own space');
+
   /* ------------------------------------------- can you see it from a seat */
   console.log('');
   console.log('SEEN FROM A SEAT?  ' + (NX*NY) + ' rays from a stalls eye across the whole');

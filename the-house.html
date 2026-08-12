@@ -13533,6 +13533,18 @@ const BJ_WAGON_BACK = -10.0;
    his house 3.28m through the Palace brick. */
 const BJ_HOUSE_PARK_X = -14.0;
 
+/* RULING CE — the sets that track on instead of flying, and from where.  Both
+   measured against the room rather than chosen: a wing is 14.5m (D.stageW 44 less
+   the 15m proscenium, halved) and the brick is 6.7m behind the acting area.
+
+   THE ATTIC GOES TO A WING, stage LEFT, because stage right is where the house
+   wagon parks and two ~13m sets do not fit in one 14.5m wing.
+   THE EXTERIOR GOES UPSTAGE: it is only 8.6m wide but 8.8m deep, and upstage is
+   the one direction with room left once both wings hold a house. */
+const BJ_ATTIC_SIDE = 14.0;    // +x, stage left
+const BJ_EXT_BACK   = -9.0;    // upstage, clear of the brick at PAL_BACK
+const BJ_TRACK_SPEED = 2.0;    // m/s — a tracked set crosses in ~7s
+
 /* ---------------------------------------------------------------------------
    THE CHOREOGRAPHY (RULING AY) — every set change is watchable travel.
 
@@ -13633,21 +13645,35 @@ function bjRedress(sc){
    built: every existing child — meshes and dressing groups alike — moves
    into the wrapper without its transform changing, because both the scene
    group and the wrapper sit at the origin. */
-function bjFlyWhole(sc){
+/* RULING CE — AS FEW SETS FLY AS POSSIBLE.
+
+   "make it so as little sets as posible are flown just like roof and the bedroom
+   and closet should eb flown the otheres should come on from the sides or back"
+
+   So the wrapper travels on whatever AXIS the set arrives along, and flying is
+   just the y case of it.  Nothing else about the choreography changes: the
+   changeover already drives `all` to its `out` on strike and back to `home` on
+   entry, so a set that tracks on from stage left is the same machinery pointed
+   sideways.  Flown: the roof, the bedroom, the closet — and the netherworld,
+   which measurement forced and which is argued at its own call. */
+function bjTrackWhole(sc, axis, out, speed){
   const g = new T.Group();
   g.name = 'bj:' + sc.name + ':all';
   while(sc.group.children.length) g.add(sc.group.children[0]);
   sc.group.add(g);
-  sceneTravelPart(sc, 'all', g, 'y', 0, BJ_PART_OUT, BJ_FLY_SPEED);
-  /* RULING BQ — AND THAT IS ALREADY A PARK.  A set flown out on `all` is standing
-     in the grid, which is exactly where a real flown set lives between its
-     scenes, so it only has to be DECLARED: no second mover, no new number.
-     Measured (tools/parked.js): all five land at y 10.50 with their tops between
-     15.63 and 19.70 against a grid at 25, clear of the brick and both wing walls,
-     and NOT ONE RAY of 1025 from a stalls eye reaches any of them. */
+  sceneTravelPart(sc, 'all', g, axis, 0, out, speed);
+  /* RULING BQ — AND WHERE IT TRAVELS TO IS ALREADY A PARK.  A set sent out on
+     `all` is standing in the grid or in a wing, which is exactly where a real set
+     lives between its scenes, so it only has to be DECLARED: no second mover, no
+     new number.  Measured (tools/parked.js): the flown ones land at y 10.50 with
+     their tops between 15.63 and 19.70 against a grid at 25, clear of the brick
+     and both wing walls, and NOT ONE RAY of 1025 from a stalls eye reaches any of
+     them. */
   scenePark(sc);
   return g;
 }
+/* the three he named, plus the netherworld: out through the header on y */
+function bjFlyWhole(sc){ return bjTrackWhole(sc, 'y', BJ_PART_OUT, BJ_FLY_SPEED); }
 const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
                               // its bottom edge ends at 12.7 against a 10.4
                               // proscenium, so it is properly masked out
@@ -14367,11 +14393,17 @@ SHOWS.beetlejuice = {
        CUE-authored: sceneChangeTo deliberately never drives it (the split-rule
        comment says why), so a plain scene change left the exterior standing in
        the acting position — measured at 20.0% of a stalls eye, the worst of the
-       nine.  A park mover on y takes it into the grid with the rest of the flown
-       stock, and the two compose: the group carries the cue's fly, the wrapper
-       carries the park.  It parks ON that mover rather than growing a second one:
-       up is where a flown drop goes, and that mover is the thing that goes up. */
-    scenePark(hse, undefined, undefined, undefined, {mv: BJ_PART_OUT});
+       nine.
+
+       RULING CE — AND IT COMES ON FROM UPSTAGE, not from the grid.  8.6m wide but
+       8.8m deep, and upstage is the only room left once both wings hold a house.
+       The wrapper carries the entrance and the park on z; the whole-group Y mover
+       above is left exactly as it is, because the cue at 1:14:30 is HIS OWN plot
+       line — "the exterior flies out" — and re-pointing a cue he wrote is his
+       call, not a side effect of this ruling.  So the drop still flies out on that
+       one cue and lives upstage the rest of the night.  FLAGGED: if CE is meant to
+       supersede that line too, it is one field in one cue. */
+    bjTrackWhole(hse, 'z', BJ_EXT_BACK, BJ_TRACK_SPEED);
 
     /* ================================================================
        SCENE — THE HOUSE, from inside.  Measured, the interior carries
@@ -14771,7 +14803,9 @@ SHOWS.beetlejuice = {
         att.group.add(new T.Mesh(mergeParts(parts), glow));
       }
     }
-    bjFlyWhole(att);              // the attic flies, rafters, model and all
+    /* RULING CE — the attic TRACKS ON from stage left; it used to fly.  It is
+       13.06m wide, so it needs a whole wing, and stage right is the wagon's. */
+    bjTrackWhole(att, 'x', BJ_ATTIC_SIDE, BJ_TRACK_SPEED);
 
     /* ---- the bedroom: a bed, a lamp, and not much else ---- */
     const bed = sceneAdd('bedroom', 'THE BEDROOM');
@@ -14971,6 +15005,13 @@ SHOWS.beetlejuice = {
     }
     /* the netherworld flies too — the SHOW.neon records hold references to
        the ring meshes, and a reparent does not disturb a reference */
+    /* RULING CE — AND THE NETHERWORLD IS THE ONE THAT STILL HAS TO FLY, which he
+       did not name and measurement forced.  It is 14.4m wide and 12.5m deep:
+       wider than the 14.5m wing it would have to share with nothing, and far too
+       deep to hide upstage, where 12.5m of set has 6.7m between the acting area
+       and the brick at PAL_BACK.  Both wings are already spoken for by the 13.6m
+       wagon and the 13.06m attic.  So it flies, and "as little as possible" comes
+       out at four of nine rather than three.  Flagged for him. */
     bjFlyWhole(aft);
 
     /* ================================================================
