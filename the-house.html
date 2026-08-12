@@ -13565,15 +13565,34 @@ const BJ_ATTIC_BACK = -10.0;   // upstage, clear of the brick at PAL_BACK
 const BJ_TRACK_SPEED = 2.0;    // m/s — a tracked set crosses in ~7s
 
 /* THE NETHERWORLD, to his three words (RULING BV amended).
-   `thinner`: the frame members were 0.15m square, which reads as a girder rather
-   than a tube.  A one-line retune, and the only number in the set that is about
-   how heavy the neon looks.
+
+   `thinner` MEANT THE SET, NOT THE TUBES: "i meant the set shouldnt be as deep."
+   It was read as the frame members first and that was wrong, so the members are
+   back at the 0.15 BV built them at — the constant stays because it is a genuine
+   one-line retune if he ever does want slimmer neon, but it is not what he asked
+   for and it is not changed.
+
+   What he asked for is DEPTH.  The set ran 12.45m front to back: five frames from
+   z -2.2 to -11.8, the chevron at -13.4, the backing at -14.6.  BJ_AFT_DEEP
+   squashes the RECESSION about the downstage frame, which stays exactly where it
+   is — so the picture starts in the same place and simply does not reach as far
+   upstage.  The authored z values below are left as the full-depth layout so the
+   perspective intent stays readable; bjAftZ is what puts them on the stage.
+
+   0.55 takes it to 6.82m from the front frame to the backing.  The read is the
+   perspective, so this is the number to move if the tunnel stops reading — and
+   the sizes still fall away faster than the spacing, which is what does most of
+   the work.
+
    `all blue`: already true — BV made every frame and the chevron blue, and an
    assertion refuses a near-white one.  Nothing to do, recorded so it is not
    re-litigated.
    `backdrop black`: it was a dark blue ground. */
-const BJ_AFT_TUBE = 0.09;
+const BJ_AFT_TUBE = 0.15;
 const BJ_AFT_BACK = 0x000000;
+const BJ_AFT_DEEP = 0.55;
+const BJ_AFT_Z0   = -2.2;      // the downstage frame: the one thing that stays put
+function bjAftZ(z){ return BJ_AFT_Z0 + (z - BJ_AFT_Z0) * BJ_AFT_DEEP; }
 
 /* ---------------------------------------------------------------------------
    THE CHOREOGRAPHY (RULING AY) — every set change is watchable travel.
@@ -14955,7 +14974,7 @@ SHOWS.beetlejuice = {
         const back = new T.Mesh(new T.PlaneGeometry(BJ.opW, BJ.opH),
                                 new T.MeshBasicMaterial({color:BJ_AFT_BACK}));
         back.name = 'bj:aftBacking';
-        back.position.set(0, BJ.opH/2, -14.6);
+        back.position.set(0, BJ.opH/2, bjAftZ(-14.6));
         back.raycast = ()=>{};
         aft.group.add(back);
       }
@@ -15003,7 +15022,7 @@ SHOWS.beetlejuice = {
            every registered tube every frame */
         const m = new T.Mesh(mergeParts(parts), new T.MeshBasicMaterial({color:new T.Color(r.c)}));
         m.name = 'bj:ring';
-        m.position.set(r.x, y0 + hy, r.z);
+        m.position.set(r.x, y0 + hy, bjAftZ(r.z));
         m.rotation.z = r.tilt;
         m.raycast = ()=>{};                    // neon is scenery, not a target
         /* THE CANT DROPS ONE BOTTOM CORNER, and by enough to matter: the widest
@@ -15035,12 +15054,12 @@ SHOWS.beetlejuice = {
         for(let i = 0; i < 7; i++){
           const t = i/6, x = -6.2 + 12.4*t;
           const y = 2.2 + Math.abs(Math.sin(t*3.1416))*2.6;
-          parts.push({geo:new T.BoxGeometry(2.2, 0.22, 0.22), pos:[x, y, -13.4],
+          parts.push({geo:new T.BoxGeometry(2.2, 0.22, 0.22), pos:[x, y, bjAftZ(-13.4)],
                       rot:[0, 0, (t - 0.5)*1.1]});
           if(i < 6)
-            parts.push({geo:new T.BoxGeometry(0.18, 1.9, 0.18), pos:[x + 1.0, y - 0.95, -13.4]});
+            parts.push({geo:new T.BoxGeometry(0.18, 1.9, 0.18), pos:[x + 1.0, y - 0.95, bjAftZ(-13.4)]});
         }
-        parts.push({geo:new T.BoxGeometry(12.8, 0.26, 0.26), pos:[0, 1.1, -13.4]});
+        parts.push({geo:new T.BoxGeometry(12.8, 0.26, 0.26), pos:[0, 1.1, bjAftZ(-13.4)]});
         const m = new T.Mesh(mergeParts(parts), green);
         m.name = 'bj:chevron'; aft.group.add(m);
       }
