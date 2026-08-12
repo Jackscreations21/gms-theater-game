@@ -450,16 +450,27 @@ const probe = `
     return 'foyer '+lob.toFixed(1)+' / gallery '+gal.toFixed(1)+' / dock '+dock.toFixed(2);
   });
   P('nothing is left behind the stage but the warehouse', ()=>{
-    /* the warehouse PR: a shed now stands behind the back wall (x -12..12,
-       z -30.2..-17.7) — floor inside it, and still nothing anywhere else */
-    if(groundAt(0, -25, 2) === null) throw new Error('the warehouse shed has no floor');
-    for(const z of [D.backWall - 18, D.backWall - 28])       // beyond its rear wall
+    /* the warehouse PR: a shed stands behind the back wall — floor inside it,
+       and still nothing anywhere else.
+
+       EVERY z HERE COMES OFF THE SHED rather than being typed.  This wall has
+       now moved twice — PAL_DEEP 4.5 for the wagon, 8.5 for his house (RULING
+       CL) — and the -25 / -35 written against the first move had quietly become
+       "probe the shed floor and the stage deck", so the assertion failed on a
+       building that was perfectly correct.  Same rule as the shed's own
+       furniture: anything positioned inside a movable structure is expressed
+       relative to it (TRAPS). */
+    const sh = SHEDS.palace;
+    if(!sh) throw new Error('no palace shed');
+    const mid = (sh.z0 + sh.z1)/2;
+    if(groundAt(0, mid, 2) === null) throw new Error('the warehouse shed has no floor');
+    for(const z of [sh.z0 - 4, sh.z0 - 14])                   // beyond its rear wall
       for(const x of [-12, 0, 12])
         if(groundAt(x, z, 2) !== null)
-          throw new Error('still a floor behind the warehouse at '+x+','+z);
-    for(const x of [-16, 18])                                 // and beside it
-      if(groundAt(x, -25, 2) !== null)
-        throw new Error('a floor beside the shed at '+x+',-25');
+          throw new Error('still a floor behind the warehouse at '+x+','+z.toFixed(1));
+    for(const x of [sh.x0 - 4, sh.x1 + 6])                    // and beside it
+      if(groundAt(x, mid, 2) !== null)
+        throw new Error('a floor beside the shed at '+x.toFixed(1)+','+mid.toFixed(1));
     // and the old rooms are not in the room list any more
     if(ROOM_ORDER.indexOf('boh') !== -1 || ROOM_ORDER.indexOf('shop') !== -1)
       throw new Error('the culling still thinks there are rooms back there');

@@ -1561,7 +1561,11 @@ const probe = `
     }
     if(!(cart.z > z0 + 1.2)) throw new Error('cart stayed at z='+cart.z.toFixed(2));
     vrSqueeze(0, false);
-    cart.x = SHEDS.palace.x0 + 1.0; cart.z = -25; cart.yaw = 0; cartPose(cart);
+    /* INSIDE the shed, taken off the shed: the side wall it is meant to be
+       stopped by only exists between z0 and z1, and a literal -25 is out on the
+       stage since RULING CL moved the brick (PAL_DEEP 4.5 -> 8.5) */
+    cart.x = SHEDS.palace.x0 + 1.0; cart.z = SHEDS.palace.z1 - 2.0;
+    cart.yaw = 0; cartPose(cart);
     c.position.set(cart.x, cart.handleH, cart.z + cart.handleZ);
     c.updateMatrixWorld(true);
     vrSqueeze(0, true);

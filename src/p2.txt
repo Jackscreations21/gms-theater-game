@@ -62,9 +62,39 @@ const D = {
    The rule, and it is the whole of the safety of this change: STRUCTURAL
    PALACE GEOMETRY USES PAL_BACK; ANYTHING STAGE-RELATIVE KEEPS D.backWall.
    The Arc is built from D and is untouched by design.
+
+   RULING CL — AND 4.5m WAS THE STAND-IN'S ANSWER (owner, 2026-08-13)
+
+   "Make the back wall of the palace go a little farther back to fit the entir
+   hous set."
+
+   4.5 was measured in 2026-08-10 against the stand-in interior, and it was
+   right for it: parked at BJ_WAGON_BACK the stand-in measures z -19.24 ..
+   -11.56 and clears -21.5 by 2.26m.  HIS house is 12.98m deep and measures
+   -24.78 .. -11.80 — 3.28m of it standing out in the street, and that is the
+   set he is watching slide back at the curtain call with nothing else on stage.
+
+   THE STAND-IN IS THE COMFORTABLE CASE HERE, which is the exact inverse of the
+   RULING BQ trap ("a position fitted to HIS model parks the STAND-IN in the
+   picture") and the reason nothing caught it: the assertion that guards this
+   runs in the synchronous probe, which fetches nothing, so it has only ever
+   measured the stand-in.  The new one is in the AZ tail and runs his geometry.
+
+   4.5 -> 8.5, so the brick goes -21.5 -> -25.5 and his house clears by 0.72m.
+   It is also already a KNOWN number: RULING BQ's writeup at the interior's own
+   sceneTravel says "the house stands 3.28m THROUGH the back wall" in as many
+   words, and parked the room stage LEFT instead because upstage did not fit.
+   He has now chosen the other answer.
+
+   EVERYTHING STRUCTURAL ALREADY FOLLOWS, and that is not luck — the first move
+   of this wall left the trash drum 0.1m through the brick and it is in TRAPS.
+   The deck, the stage-house wall, the dock and crossover (p2c), the cull rooms
+   (p2i), the shed and every piece of furniture standing in it (p2m) and the
+   walk block (p7) are all expressed off PAL_BACK or PAL_DEEP, so they move
+   together.  This change is the test of whether that lesson took.
    --------------------------------------------------------------------------- */
-const PAL_DEEP = 4.5;                       // how much deeper the Palace runs
-const PAL_BACK = D.backWall - PAL_DEEP;     // -21.5
+const PAL_DEEP = 8.5;                       // how much deeper the Palace runs
+const PAL_BACK = D.backWall - PAL_DEEP;     // -25.5
 
 /* ============================================================================
    RENDERER / QUALITY
