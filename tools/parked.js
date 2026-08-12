@@ -102,7 +102,7 @@ const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?scr
    become properties of the window the way a function declaration does.  Hand
    them out explicitly — the same thing tests/beetlejuice.js does for its tail. */
 w.eval(script + ';window.__P = {SHOW:SHOW, D:D, PAL_BACK:PAL_BACK, scene:scene,' +
-       ' WALKABLE:WALKABLE, FLY:FLY, GOODS:GOODS};');
+       ' WALKABLE:WALKABLE, FLY:FLY, GOODS:GOODS, CUES:CUES};');
 for(let i = 0; i < 90; i++){ const cb = w.__raf; w.__raf = null; if(cb) cb(1000 + i*16); }
 
 const g = w, P = w.__P, T = REAL;
@@ -261,17 +261,43 @@ function firstHits(from){
   console.log('');
 
   /* -------------------------------------------------------------- the parks */
+  /* WHERE A SET ACTS IS NOT ALWAYS WHERE sceneChangeTo LEAVES IT, and reading it
+     that way made this probe measure the house wagon PARKED TWICE and then call
+     its own reading "NO PARK" (RULING CO).  sceneChangeTo drives the part movers
+     and deliberately never drives a whole-group one — the split rule says why —
+     so a scene whose acting position is cue-authored has to be asked for it.
+
+     ASKED OF THE PLOT, not assumed to be zero: the first cue that plays in this
+     scene and states its offset is where the set acts.  A scene no cue moves
+     keeps whatever the changeover gave it, which is right for every other set. */
+  function actingOff(name){
+    /* LOUD, not silent.  This whole helper exists because a probe read a field
+       that was not there and printed a confident wrong answer; reading CUES off
+       a handout that never carried it would be the same mistake one level up. */
+    if(!P.CUES) throw new Error('the probe cannot see CUES — add it to the __P handout');
+    for(const c of P.CUES){
+      if(c.scene !== name) continue;
+      const l = Array.isArray(c.move) ? c.move : (c.move ? [c.move] : []);
+      const m = l.filter(x => x && x.scene === name && !x.part)[0];
+      if(m) return m.off;
+    }
+    return null;
+  }
   const rows = [];
   for(const name of NAMES){
     const sc = g.sceneFind(name);
     if(sc.always){ rows.push({name, note: 'ALWAYS — never struck'}); continue; }
-    g.sceneChangeTo(name); settle();
+    g.sceneChangeTo(name);
+    const act = actingOff(name);
+    if(act !== null && sc.mv) g.sceneMoveTo(name, act);
+    settle();
     const onBox = box(sc.group);
     const cost = tris(sc.group);
     g.sceneChangeTo(name === 'bare' ? 'cemetery' : 'bare');
     settle(); unhide(sc);
     const offBox = box(sc.group);
-    rows.push({name, onBox, offBox, cost, shift: boxShift(onBox, offBox)});
+    rows.push({name, onBox, offBox, cost, parks: !!sc.parks,
+               shift: boxShift(onBox, offBox)});
   }
 
   console.log('SET           acting z            ->  parked x            parked y            parked z          moved');
@@ -288,7 +314,12 @@ function firstHits(from){
   for(const r of rows){
     if(r.note) continue;
     const b = r.offBox, bad = [];
-    if(r.shift < 0.01) bad.push('NO PARK — it is struck where it acts, and BQ would leave it there');
+    /* DECLARING a park and MOVING are two different failures and they used to be
+       reported as one.  A scene with no park is the ruling working as written
+       (the cemetery is 46.8m wide and has nowhere to go); a scene that declares
+       one and then stands still is a wiring fault. */
+    if(!r.parks) bad.push('NO PARK — it is struck where it acts, and BQ would leave it there');
+    else if(r.shift < 0.01) bad.push('DECLARES A PARK AND NEVER MOVES — the mover is not wired');
     if(b.min.z < PAL_BACK) bad.push('through the Palace brick by ' + (PAL_BACK - b.min.z).toFixed(2) + 'm');
     if(b.max.y > D.gridY) bad.push('through the grid by ' + (b.max.y - D.gridY).toFixed(2) + 'm');
     if(b.min.x < -D.stageW/2) bad.push('past the stage-right wall by ' + (-D.stageW/2 - b.min.x).toFixed(2) + 'm');

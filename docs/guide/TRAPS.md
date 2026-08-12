@@ -641,6 +641,34 @@ against this list before opening a PR; **add new traps as you hit them.**
   the field that names a park is exactly the one that misses them. **A section
   that prints nothing needs a line saying so** — and then you notice.
 
+- **And the sibling of that, one field further out: a probe reading a game
+  `const` that was never in its handout gets `undefined` and prints a confident
+  wrong answer.** `tools/parked.js` reaches the game through `window.__P`,
+  because `SHOW`, `D`, `FLY` and friends are `const`s of the eval program and
+  never become window properties. A new helper read `P.CUES` — a `const` too,
+  and **not** in the handout — so `for(const c of P.CUES || [])` iterated
+  nothing, returned null, and the probe reported the house wagon as "DECLARES A
+  PARK AND NEVER MOVES" about a wagon that moves ten metres. The `|| []` is what
+  turns a missing handout into a silent lie. **Throw on a handout that is not
+  there**, and add the name to the `__P` list the moment you first read it.
+
+- **A comment that says something is IMPOSSIBLE is a fact with a date on it.**
+  RULING BQ parked the house wagon sideways and wrote down why it could not go
+  upstage: "12.98m does not fit between the backdrop at -10.90 and the brick at
+  -21.5". True when written. RULING CL then moved the brick to -25.5 **for a
+  completely unrelated reason** — his house stood in the street at the curtain
+  call — and the gap became 14.60m. Nothing connected the two, because the
+  impossibility was recorded as prose rather than as an assertion, and the set
+  went on parking in a wing for a reason that had stopped being true. **When a
+  comment rules something out on a number, name the number** — the next person
+  to move it then has something to grep for.
+
+- **The escaped apostrophe in a probe bit for a fourth time**, and it is written
+  up twice already. Worth only the frequency note, and one detail: it dies at
+  EVAL with `missing ) after argument list` pointing at the eval CALL SITE, so
+  the stack reads `tests/beetlejuice.js:<the eval line>` and looks like a fault
+  in the game source rather than in the assertion you just typed.
+
 ## Environment
 
 - **A `const` in its temporal dead zone throws on a PLAIN reference, not just
