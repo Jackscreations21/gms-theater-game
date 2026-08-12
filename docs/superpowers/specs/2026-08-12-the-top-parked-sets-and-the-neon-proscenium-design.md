@@ -182,7 +182,54 @@ house. Measured in the probe before a number is chosen.
 - **The dressings stay switched off.** `bjRedress` is layer-based and must keep
   working: a parked interior shows ONE dressing, not three.
 
+### MEASURED — `tools/parked.js`, with his real models loaded
+
+| set | where it parks | seen from a stalls eye | verdict |
+|---|---|---|---|
+| attic, bedroom, afterlife, closet, roof | y 10.50, flown, tops 15.63–19.70 vs a grid at 25 | **0 of 1025 rays** | the park already existed; declare it |
+| interior | **x −20.80..−7.20, a wing**, at acting depth | 0 | needed a new park — see below |
+| house (exterior) | y 10.50..19.40, flown | 0 | had **no park at all**: 20.0% visible |
+| cemetery | hills to ±9.5 → x −23.40..23.40 | 8.4% | **cannot park** — see below |
+| bare | does not move | 15.1% | no park; it *is* the masking |
+
+**The interior could not park upstage, and it is his own models that decided
+it.** `BJ_WAGON_BACK` −10 was measured against the stand-in dressings. His
+interior is 12.98m deep, so parked there it measures **z −24.78..−11.80 against
+the Palace brick at −21.5 — 3.28m through the back wall, out in the street.**
+Invisible today only because a struck set is switched off. And there is no depth
+that works: it must clear the backdrop at −10.90 in front and stay downstage of
+the brick at −21.5 behind, and 12.98m does not fit between them. **So it tracks
+into a wing** (`BJ_HOUSE_PARK_X` −14.0) and the strike puts the wagon back to its
+acting offset, which is what takes the brick out of the question.
+
+**The cemetery cannot park, and the ruling has to allow that.** Parted to the
+wings it measures x −23.40..23.40 — **wider than the 44m stage**, already 1.40m
+past both side walls — and 8.4% of a stalls eye still lands on it. There is no
+wing wide enough and it cannot fly, because it is ground rows. It keeps the old
+behaviour, and *a set with nowhere to go is a fact about the building, not a bug.*
+
 ### What it costs, measured and not assumed
+
+**582,736 triangles** across 54 meshes if all nine stand parked (his models:
+interior 280,540, roof 99,568, attic 99,446, exterior 97,920).
+
+**And the pick is where it would have hurt — RULING BY's shape exactly.** One
+crosshair ray, 200 calls:
+
+| | from a seat, straight upstage | **from the wings, at the parked house** |
+|---|---|---|
+| parked with the raycast opt-out | 1.63 ms | **1.11 ms** |
+| parked and left pickable | 1.65 ms (1.0×) | **9.23 ms — 8.3×, 83% of a 90Hz frame** |
+
+`layers.disableAll()` was doing **two** jobs — not drawn *and* not raycast — and
+BQ only wants the first one back. So a parked mesh gets `raycast = NOOP`, the
+trick TRAPS already records for decorative instanced batches, restored only for
+meshes this put it on (a decorative batch carries its own deliberately).
+
+Note **where you point is the whole cost**: off-axis the bounding sphere rejects
+for nothing, which is why the seat figure barely moves and the wings figure is
+8.3×. Walking backstage to look at the parked set is the case BQ *invites*.
+Parked sets stay off `WALKABLE`, so `groundAt` never sees them at all.
 
 RULING BY is the precedent — a guess of 0.031ms measured at 4.29ms. The layer
 trick being removed is load-bearing, so this needs a number:

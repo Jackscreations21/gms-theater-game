@@ -9773,6 +9773,87 @@ function sceneFind(name){ return SHOW.scenes.find(s=>s.name === name) || null; }
 function sceneWalk(sc, o){ if(sc) sc.walk.push(o); return o; }
 /* turning one scene on or off — the whole of it, so the mover can reuse it
    when a travelling set finally arrives and is allowed to disappear */
+/* ============================================================================
+   RULING BQ — A SET THAT COMES OFF IS NEVER GONE
+
+   "make it so when i set comes off it is never gone it is always somewhere
+   backstage."
+
+   A scene may declare a PARK: somewhere backstage it stands, solid and visible,
+   for the rest of the run.  The stage is empty because the set is somewhere else
+   rather than because it has been switched off.
+
+   DECLARED, NEVER ASSUMED.  A scene with no park keeps the old behaviour exactly
+   — switched off on strike — which is what leaves the other four productions
+   byte-identical, and what lets a set with nowhere to go say so.  Two of
+   Beetlejuice's own cannot park and the reasons are in p5h.
+
+   THE PARK IS A PART MOVER called `park`, over a wrapper group holding all the
+   scene's children (the bjFlyWhole pattern, so nothing repositions at build).
+   sceneChangeTo already drives every part mover to its `out` on strike and back
+   to `home` on entry, so declaring one is all the travel this needs.  Scenes
+   already flown out by a mover of their own just set the flag.
+
+   AND A PARKED SET IS DRAWN BUT NOT PICKED, which is measured and not a
+   preference.  layers.disableAll() was doing two jobs — not drawn AND not
+   raycast — and keeping his models drawn puts 582,736 triangles in front of the
+   crosshair: one pick went from 1.34ms to 7.70ms, 5.7x, 69% of a 90Hz frame
+   (tools/parked.js).  That is RULING BY's shape exactly: three.js collects and
+   sorts every intersection, so there is no early exit and a miss costs the same
+   as a hit.  So a parked mesh gets `raycast = NOOP` — the trick TRAPS already
+   records for decorative instanced batches — and its walkables still come off
+   WALKABLE, so groundAt never sees it at all.
+   ========================================================================== */
+const SCENE_PARK_SPEED = 2.0;
+function sceneParkNoop(){}
+/* declare a park.  With an axis it builds the wrapper and its mover; with none
+   it only marks the scene as having somewhere to go, for a set whose own mover
+   already takes it off (the flown rooms). */
+function scenePark(sc, axis, out, speed, opt){
+  if(!sc) return null;
+  sc.parks = true;
+  /* a park may also drive the whole-group mover to a stated offset as it goes.
+     The wagon is the case: its z is cue-authored and its upstage park no longer
+     fits his 12.98m room, so the strike puts the depth back to the ACTING offset
+     and lets the wing do the hiding.  Stated, not `home` — the wagon's home IS
+     BJ_WAGON_BACK, the very number that stands the house in the brick.  Absent by
+     default: a flown set keeps whatever the cue said about its own mover. */
+  if(opt && opt.mvAt !== undefined) sc.parkMvAt = opt.mvAt;
+  /* a scene whose OWN whole-group mover already points the right way parks on
+     that, rather than growing a second one (the flown exterior) */
+  if(opt && opt.mv !== undefined) sc.parkMv = opt.mv;
+  if(axis === undefined) return sc;
+  /* THE PARK MOVER DRIVES THE SCENE GROUP ITSELF, on an axis its whole-group
+     mover is not using — NOT a wrapper group.
+
+     Wrapping the children was the first attempt and it broke two things that
+     read a scene's structure: the model importer strips the built-in shell out of
+     sc.group before landing a whole house, and with a wrapper in the way the
+     shell survived and his house landed on top of it.  sceneMvAdvance writes
+     g.position[axis] and nothing else, so two movers over the same group are
+     free as long as the axes differ — the wagon keeps z, the park takes x. */
+  sceneTravelPart(sc, 'park', sc.group, axis, 0, out, speed || SCENE_PARK_SPEED);
+  if(sc.mv && sc.mv.axis === axis)
+    console.warn('scenePark: ' + sc.name + ' parks on ' + axis +
+                 ', which its own mover already drives — they will fight');
+  return sc;
+}
+/* drawn, but never in front of the crosshair.  Only ever undone for meshes this
+   put a raycast ON: a decorative instanced batch carries its own `raycast` noop
+   deliberately (TRAPS), and deleting that would put 1,400 seats back on every
+   pick. */
+function sceneParkPick(sc, off){
+  sc.group.traverse(o=>{
+    if(!o.isMesh) return;
+    if(off){
+      if(!Object.prototype.hasOwnProperty.call(o, 'raycast')){
+        o.raycast = sceneParkNoop; o.userData.parkRc = true;
+      }
+    } else if(o.userData.parkRc){
+      delete o.raycast; delete o.userData.parkRc;
+    }
+  });
+}
 function sceneApply(sc, on){
   /* a dress cue that arrived while this set was up has been waiting for this
      moment: the set is going off, so the swap is finally invisible (RULING
@@ -9782,14 +9863,22 @@ function sceneApply(sc, on){
      typeof bjDress === 'function'){
     const pd = SHOW.pendDress; SHOW.pendDress = null; bjDress(pd.scene, pd.key);
   }
-  sc.group.userData.sceneOff = !on;
+  /* RULING BQ — a set that declared a park is STANDING BACKSTAGE, not gone, so
+     coming off leaves it drawn.  A scene with no park is switched off exactly as
+     it always was, which is what keeps the other four productions unchanged. */
+  const park = !on && !!sc.parks;
+  sc.group.userData.sceneOff = park ? false : !on;
   setPieceVisible(sc.group);
   /* visible is only a drawing flag — a raycast goes straight through it and
      hits the set anyway.  A set that is off has to be inert as well as
      unseen, or you can click on a house that is not there and the picking
      lands on a wall in the wings.  Clearing the layers does both: nothing
      renders it and no ray tests it.                                     */
-  sc.group.traverse(o=>{ if(on) o.layers.set(0); else o.layers.disableAll(); });
+  sc.group.traverse(o=>{ if(on || park) o.layers.set(0); else o.layers.disableAll(); });
+  /* which leaves the SECOND of those two jobs to be done by hand for a parked
+     set: drawn, but never in front of the crosshair.  Measured, not preferred —
+     582,736 triangles of his models took one pick from 1.34ms to 7.70ms. */
+  sceneParkPick(sc, park);
   for(const o of sc.walk){
     const i = WALKABLE.indexOf(o);
     if(on && i < 0) WALKABLE.push(o);
@@ -9797,8 +9886,10 @@ function sceneApply(sc, on){
   }
   /* a set that comes on has just had the layers of EVERY descendant enabled,
      which would light all three of a wagon dressings at once.  The show puts
-     the right one back. (RULING AQ) */
-  if(on && typeof bjRedress === 'function') bjRedress(sc);
+     the right one back. (RULING AQ)  A PARKED set has just had exactly the same
+     thing done to it, so it needs the same correction — or the house standing in
+     the wing wears all three dressings at once. */
+  if((on || park) && typeof bjRedress === 'function') bjRedress(sc);
 }
 /* a piece of scenery that is on the stage whatever set is up — the show's
    own sign, hanging downstage of the house curtain.  It is a scene so that
@@ -9989,10 +10080,23 @@ function sceneChangeTo(name){
         if(!drawn){ m.off = m.target = m.out; m.group.position[m.axis] = m.off; }
         m.target = m.home;
       }
+      /* a set parked ON its own mover has to be recalled by it too (RULING BQ).
+         A cue that authors this scene's move still wins: the split rule applies
+         an incoming scene's moves AFTER the changeover. */
+      if(sc.parkMv !== undefined && sc.mv) sc.mv.target = sc.mv.home;
       sc.mvHide = false;
       sceneApply(sc, true);
     } else {
       if(sc.pmv) for(const k in sc.pmv) sc.pmv[k].target = sc.pmv[k].out;
+      /* RULING BQ — a park that owns the depth as well (the wagon).  This runs
+         AFTER the outgoing scene's cue-authored move, which the SPLIT RULE puts
+         before the changeover, so it deliberately wins: "the house slides back"
+         becomes "the house tracks off", because 12.98m of his room does not fit
+         between the backdrop and the brick.  Only for a scene that asked. */
+      if(sc.parkMvAt !== undefined && sc.mv) sc.mv.target = sc.parkMvAt;
+      /* and the flown exterior parks ON its own mover, because up is where it
+         goes and its mover is the thing that goes up */
+      if(sc.parkMv !== undefined && sc.mv) sc.mv.target = sc.parkMv;
       if(sceneTravelling(sc)){ sc.mvHide = true; continue; }
       sc.mvHide = false;
       sceneApply(sc, false);
@@ -13418,6 +13522,17 @@ const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
    its second. */
 const BJ_WAGON_BACK = -10.0;
 
+/* WHERE THE HOUSE WAGON TRACKS TO STAND BACKSTAGE (RULING BQ).  Stage right, far
+   enough that the whole 13.6m room clears the 13.6m picture: at -14.0 his
+   interior parks at x -20.8 .. -7.2, which is 1.2m off the stage-right wall at
+   -22 and 0.4m outside the opening edge at -6.8 — behind the legs, which start
+   masking at 6.6.  A feel constant like the rest of this family, and the one to
+   move if the room is ever seen from a seat while it is parked.
+
+   NOT upstage: see the writeup at the interior's own scenePark call.  Upstage put
+   his house 3.28m through the Palace brick. */
+const BJ_HOUSE_PARK_X = -14.0;
+
 /* ---------------------------------------------------------------------------
    THE CHOREOGRAPHY (RULING AY) — every set change is watchable travel.
 
@@ -13524,6 +13639,13 @@ function bjFlyWhole(sc){
   while(sc.group.children.length) g.add(sc.group.children[0]);
   sc.group.add(g);
   sceneTravelPart(sc, 'all', g, 'y', 0, BJ_PART_OUT, BJ_FLY_SPEED);
+  /* RULING BQ — AND THAT IS ALREADY A PARK.  A set flown out on `all` is standing
+     in the grid, which is exactly where a real flown set lives between its
+     scenes, so it only has to be DECLARED: no second mover, no new number.
+     Measured (tools/parked.js): all five land at y 10.50 with their tops between
+     15.63 and 19.70 against a grid at 25, clear of the brick and both wing walls,
+     and NOT ONE RAY of 1025 from a stalls eye reaches any of them. */
+  scenePark(sc);
   return g;
 }
 const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
@@ -14195,6 +14317,15 @@ SHOWS.beetlejuice = {
          sweep in the 9:45 test. */
       sceneTravelPart(cem, 'hillR', cemR, 'x', 0, -BJ_HILL_OUT, BJ_HILL_SPEED);
       sceneTravelPart(cem, 'hillL', cemL, 'x', 0,  BJ_HILL_OUT, BJ_HILL_SPEED);
+      /* RULING BQ — AND THE GRAVEYARD DECLARES NO PARK, DELIBERATELY.  It is a
+         full-width landscape: parted to the wings it measures x -23.40 .. 23.40,
+         which is WIDER THAN THE 44m STAGE, so it already reaches 1.40m past both
+         side walls, and 8.4% of a stalls eye still lands on it (tools/parked.js).
+         There is no wing wide enough to hide it in and it cannot fly, because it
+         is ground rows.  So it keeps the old behaviour — switched off on strike —
+         and the ruling has to allow that: a set with nowhere to go is a fact
+         about the building, not a bug.  His graveyard model is still to come, and
+         this is the first thing to re-measure when it arrives. */
 
       /* low mist across the boards: the existing machines, not new geometry */
       addShowSmoke({name:'CEMETERY SL', kind:'fog', x:-6.0, y:0.2, z:-7.0, yaw:1.571, tilt:0.05});
@@ -14232,6 +14363,15 @@ SHOWS.beetlejuice = {
        record said it flew.  Wired now: a whole-group Y travel in the same
        speed family as the flown sets (BJ_FLY_SPEED — one-line retune). */
     sceneTravel(hse, 'y', 0, BJ_FLY_SPEED);
+    /* RULING BQ — AND IT NEEDED A PARK OF ITS OWN.  That whole-group mover is
+       CUE-authored: sceneChangeTo deliberately never drives it (the split-rule
+       comment says why), so a plain scene change left the exterior standing in
+       the acting position — measured at 20.0% of a stalls eye, the worst of the
+       nine.  A park mover on y takes it into the grid with the rest of the flown
+       stock, and the two compose: the group carries the cue's fly, the wrapper
+       carries the park.  It parks ON that mover rather than growing a second one:
+       up is where a flown drop goes, and that mover is the thing that goes up. */
+    scenePark(hse, undefined, undefined, undefined, {mv: BJ_PART_OUT});
 
     /* ================================================================
        SCENE — THE HOUSE, from inside.  Measured, the interior carries
@@ -14382,6 +14522,13 @@ SHOWS.beetlejuice = {
        the backdrop flown out and nothing else on the stage.
        ================================================================ */
     sceneTravel(inr, 'z', BJ_WAGON_BACK, 2.0);
+    /* RULING BQ — AND THE UPSTAGE PARK DESCRIBED ABOVE IS NOT A PARK ANY MORE.
+       Every number in that comment was measured against the STAND-IN dressings.
+       HIS interior is 12.98m deep, and parked at BJ_WAGON_BACK it measures
+       z -24.78 .. -11.80 against the Palace brick at PAL_BACK -21.5 — the house
+       stands 3.28m THROUGH the back wall, out in the street.  Today that is
+       invisible only because a struck set is switched off.  (tools/parked.js)
+       Where it parks instead is declared after the dressings are built, below. */
 
     /* ================================================================
        THREE DRESSINGS on the same room.  Measured: the redecorated
@@ -14552,6 +14699,22 @@ SHOWS.beetlejuice = {
 
     /* the room wakes up as the Maitlands' — it is theirs first */
     bjDress(inr, 'maitland');
+
+    /* RULING BQ — THE WAGON TRACKS INTO A WING, and this call has to come HERE,
+       after all three dressings are built.  scenePark wraps the children that
+       exist WHEN IT RUNS: registered up beside sceneTravel it wrapped the shell
+       only, and the parked room measured x -20.80 .. 6.80 — 27.6m wide, the shell
+       in the wing and three dressings still standing in the acting area.  Same
+       rule bjFlyWhole states for itself: called AFTER the scene is built.
+
+       `homeMv` because the wing is what hides it, not depth.  His interior is
+       12.98m deep and there is NO upstage offset that works: it must clear the
+       backdrop at z -10.90 in front of it and stay downstage of the brick at
+       -21.5 behind it, and 12.98m does not fit between them.  So the strike sends
+       the wagon to its ACTING offset — 0, stated, because the wagon's own `home`
+       is BJ_WAGON_BACK, the number that stands the house in the brick — and the
+       room goes sideways instead. */
+    scenePark(inr, 'x', BJ_HOUSE_PARK_X, 2.0, {mvAt: 0});
 
     /* ---- the attic: rafters, a model of the town, and dust sheets ---- */
     const att = sceneAdd('attic', 'THE ATTIC');

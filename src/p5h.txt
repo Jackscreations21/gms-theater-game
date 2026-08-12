@@ -48,6 +48,17 @@ const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
    its second. */
 const BJ_WAGON_BACK = -10.0;
 
+/* WHERE THE HOUSE WAGON TRACKS TO STAND BACKSTAGE (RULING BQ).  Stage right, far
+   enough that the whole 13.6m room clears the 13.6m picture: at -14.0 his
+   interior parks at x -20.8 .. -7.2, which is 1.2m off the stage-right wall at
+   -22 and 0.4m outside the opening edge at -6.8 — behind the legs, which start
+   masking at 6.6.  A feel constant like the rest of this family, and the one to
+   move if the room is ever seen from a seat while it is parked.
+
+   NOT upstage: see the writeup at the interior's own scenePark call.  Upstage put
+   his house 3.28m through the Palace brick. */
+const BJ_HOUSE_PARK_X = -14.0;
+
 /* ---------------------------------------------------------------------------
    THE CHOREOGRAPHY (RULING AY) — every set change is watchable travel.
 
@@ -154,6 +165,13 @@ function bjFlyWhole(sc){
   while(sc.group.children.length) g.add(sc.group.children[0]);
   sc.group.add(g);
   sceneTravelPart(sc, 'all', g, 'y', 0, BJ_PART_OUT, BJ_FLY_SPEED);
+  /* RULING BQ — AND THAT IS ALREADY A PARK.  A set flown out on `all` is standing
+     in the grid, which is exactly where a real flown set lives between its
+     scenes, so it only has to be DECLARED: no second mover, no new number.
+     Measured (tools/parked.js): all five land at y 10.50 with their tops between
+     15.63 and 19.70 against a grid at 25, clear of the brick and both wing walls,
+     and NOT ONE RAY of 1025 from a stalls eye reaches any of them. */
+  scenePark(sc);
   return g;
 }
 const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
@@ -825,6 +843,15 @@ SHOWS.beetlejuice = {
          sweep in the 9:45 test. */
       sceneTravelPart(cem, 'hillR', cemR, 'x', 0, -BJ_HILL_OUT, BJ_HILL_SPEED);
       sceneTravelPart(cem, 'hillL', cemL, 'x', 0,  BJ_HILL_OUT, BJ_HILL_SPEED);
+      /* RULING BQ — AND THE GRAVEYARD DECLARES NO PARK, DELIBERATELY.  It is a
+         full-width landscape: parted to the wings it measures x -23.40 .. 23.40,
+         which is WIDER THAN THE 44m STAGE, so it already reaches 1.40m past both
+         side walls, and 8.4% of a stalls eye still lands on it (tools/parked.js).
+         There is no wing wide enough to hide it in and it cannot fly, because it
+         is ground rows.  So it keeps the old behaviour — switched off on strike —
+         and the ruling has to allow that: a set with nowhere to go is a fact
+         about the building, not a bug.  His graveyard model is still to come, and
+         this is the first thing to re-measure when it arrives. */
 
       /* low mist across the boards: the existing machines, not new geometry */
       addShowSmoke({name:'CEMETERY SL', kind:'fog', x:-6.0, y:0.2, z:-7.0, yaw:1.571, tilt:0.05});
@@ -862,6 +889,15 @@ SHOWS.beetlejuice = {
        record said it flew.  Wired now: a whole-group Y travel in the same
        speed family as the flown sets (BJ_FLY_SPEED — one-line retune). */
     sceneTravel(hse, 'y', 0, BJ_FLY_SPEED);
+    /* RULING BQ — AND IT NEEDED A PARK OF ITS OWN.  That whole-group mover is
+       CUE-authored: sceneChangeTo deliberately never drives it (the split-rule
+       comment says why), so a plain scene change left the exterior standing in
+       the acting position — measured at 20.0% of a stalls eye, the worst of the
+       nine.  A park mover on y takes it into the grid with the rest of the flown
+       stock, and the two compose: the group carries the cue's fly, the wrapper
+       carries the park.  It parks ON that mover rather than growing a second one:
+       up is where a flown drop goes, and that mover is the thing that goes up. */
+    scenePark(hse, undefined, undefined, undefined, {mv: BJ_PART_OUT});
 
     /* ================================================================
        SCENE — THE HOUSE, from inside.  Measured, the interior carries
@@ -1012,6 +1048,13 @@ SHOWS.beetlejuice = {
        the backdrop flown out and nothing else on the stage.
        ================================================================ */
     sceneTravel(inr, 'z', BJ_WAGON_BACK, 2.0);
+    /* RULING BQ — AND THE UPSTAGE PARK DESCRIBED ABOVE IS NOT A PARK ANY MORE.
+       Every number in that comment was measured against the STAND-IN dressings.
+       HIS interior is 12.98m deep, and parked at BJ_WAGON_BACK it measures
+       z -24.78 .. -11.80 against the Palace brick at PAL_BACK -21.5 — the house
+       stands 3.28m THROUGH the back wall, out in the street.  Today that is
+       invisible only because a struck set is switched off.  (tools/parked.js)
+       Where it parks instead is declared after the dressings are built, below. */
 
     /* ================================================================
        THREE DRESSINGS on the same room.  Measured: the redecorated
@@ -1182,6 +1225,22 @@ SHOWS.beetlejuice = {
 
     /* the room wakes up as the Maitlands' — it is theirs first */
     bjDress(inr, 'maitland');
+
+    /* RULING BQ — THE WAGON TRACKS INTO A WING, and this call has to come HERE,
+       after all three dressings are built.  scenePark wraps the children that
+       exist WHEN IT RUNS: registered up beside sceneTravel it wrapped the shell
+       only, and the parked room measured x -20.80 .. 6.80 — 27.6m wide, the shell
+       in the wing and three dressings still standing in the acting area.  Same
+       rule bjFlyWhole states for itself: called AFTER the scene is built.
+
+       `homeMv` because the wing is what hides it, not depth.  His interior is
+       12.98m deep and there is NO upstage offset that works: it must clear the
+       backdrop at z -10.90 in front of it and stay downstage of the brick at
+       -21.5 behind it, and 12.98m does not fit between them.  So the strike sends
+       the wagon to its ACTING offset — 0, stated, because the wagon's own `home`
+       is BJ_WAGON_BACK, the number that stands the house in the brick — and the
+       room goes sideways instead. */
+    scenePark(inr, 'x', BJ_HOUSE_PARK_X, 2.0, {mvAt: 0});
 
     /* ---- the attic: rafters, a model of the town, and dust sheets ---- */
     const att = sceneAdd('attic', 'THE ATTIC');
