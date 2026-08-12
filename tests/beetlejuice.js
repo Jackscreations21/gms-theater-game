@@ -3329,7 +3329,7 @@ const wd = setTimeout(() => {
     /* 9 -> 10 with the exterior (RULING BZ).  The number is pinned rather than
        derived so that a file quietly appearing in, or vanishing from, BOTH the
        doc and the manifest still has to be a deliberate edit here. */
-    if(manSet.size !== 10) throw new Error(manSet.size + ' files, the contract lists 10');
+    if(manSet.size !== 11) throw new Error(manSet.size + ' files, the contract lists 11');
     /* THE HOUSE IS THREE WHOLE HOUSES (RULING BP), not a shell plus three
        dressings.  Each targets the interior — the z-slide wagon, never the
        exterior miniature — names its own dressing, and declares `whole`, which
@@ -3954,6 +3954,100 @@ const wd = setTimeout(() => {
     return 'houseMaitland fills the ' + az.BJ.opW + 'm picture: ' + size.x.toFixed(2) + ' x ' +
            size.y.toFixed(2) + ' x ' + size.z.toFixed(2) + ', undistorted, ' +
            (size.y - az.BJ.opH).toFixed(2) + 'm behind the border, base on the deck';
+  });
+
+  /* ══ RULING CA — HIS SIGN, OUR LAMPS ════════════════════════════════════ */
+  await P('his sign is HUNG, not seated on the deck at the arch', async () => {
+    const e = az.BJ_MODELS.sign;
+    if(!e) throw new Error('there is no sign entry — RULING CA is unbuilt');
+    if(!e.centre) throw new Error('the sign entry names no centre, so it would be seated like a set');
+    const sc = w.sceneFind('bjSign');
+    const root = new THREE.Group();
+    /* his sign, to the millimetre: a flat face, 1.898 x 0.899 x 0.024 */
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(1.898, 0.899, 0.024),
+                            new THREE.MeshStandardMaterial()));
+    if(!w.bjApplyModel(e, root)) throw new Error('the apply refused');
+    root.updateWorldMatrix(true, true);
+    sc.group.updateWorldMatrix(true, false);
+    const inv = new THREE.Matrix4().copy(sc.group.matrixWorld).invert();
+    const b = new THREE.Box3().setFromObject(root).applyMatrix4(inv);
+    const size = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+    if(Math.abs(size.x - e.fit) > 0.02)
+      throw new Error('it landed ' + size.x.toFixed(2) + 'm wide, wanted ' + e.fit);
+    for(const [i, ax] of [[0,'x'],[1,'y'],[2,'z']])
+      if(Math.abs(c[ax] - e.centre[i]) > 0.02)
+        throw new Error('hung at ' + ax + '=' + c[ax].toFixed(2) + ', wanted ' + e.centre[i]);
+    /* THE TWO THINGS THAT WOULD BE WRONG IF IT WERE TREATED AS A SET: it would
+       be sitting on the deck, and it would be shoved upstage of the arch —
+       where it would be behind the house curtain it is meant to hang in front
+       of (RULING AS). */
+    if(b.min.y < 1.0)
+      throw new Error('the sign is on the floor (base y=' + b.min.y.toFixed(2) + ') — it was seated, not hung');
+    if(b.max.z < 0)
+      throw new Error('the sign is upstage of the arch at z=' + b.max.z.toFixed(2) +
+                      ' — it hangs DOWNSTAGE of the curtain');
+    return 'hung ' + size.x.toFixed(2) + 'm wide, centred ' +
+           c.x.toFixed(2) + '/' + c.y.toFixed(2) + '/' + c.z.toFixed(2) + ', clear of the deck';
+  });
+
+  await P('BOTH of the sign\'s lamp materials still have geometry after the swap (CA)', async () => {
+    /* THE WHOLE POINT OF RULING CA.  The sign's lamps are two MATERIALS, not
+       objects, and our stand-in geometry is what used them.  His file replaces
+       that geometry, so without re-fitting lamps both materials survive
+       registered, tintable, and used by nothing — and every signCol cue in the
+       plot would tint a sign that never changes colour, silently.  This is the
+       assertion that would have caught that. */
+    const reg = az.SHOW.signLamps;
+    if(!reg || reg.length < 2) throw new Error('the sign registered fewer than two lamp materials');
+    const sc = w.sceneFind('bjSign');
+    const users = reg.map(() => 0);
+    sc.group.traverse(o => {
+      if(!o.isMesh) return;
+      const list = Array.isArray(o.material) ? o.material : [o.material];
+      reg.forEach((r, i) => { if(list.indexOf(r.mat) >= 0) users[i]++; });
+    });
+    reg.forEach((r, i) => {
+      if(!users[i])
+        throw new Error('lamp material ' + i + ' is used by NO mesh after the swap — ' +
+                        'every signCol cue would tint nothing');
+    });
+    /* and a signCol cue really does move them, through the real cue path */
+    const before = reg.map(r => r.mat.color.getHexString());
+    w.setSignLamps('#ff1e10');
+    const after = reg.map(r => r.mat.color.getHexString());
+    if(after.join() === before.join())
+      throw new Error('setSignLamps moved neither lamp');
+    w.setSignLamps(null);
+    if(reg.map(r => r.mat.color.getHexString()).join() !== before.join())
+      throw new Error('the lamps never got their own colour back');
+    /* ONE MERGED MESH EACH — a material per object is the draw-call trap */
+    if(users[0] > 1 || users[1] > 1)
+      throw new Error('the lamps are split across meshes: ' + users.join('/') + ' draw calls');
+    return 'both lamp materials live on his sign (' + users.join(' + ') +
+           ' mesh each), tint and restore through setSignLamps';
+  });
+
+  await P('the sign\'s new lamps travel with it when it flies out', async () => {
+    /* they are added to the scene GROUP, which is what the y mover moves — a
+       lamp left behind in the air would be the frozen-group trap by another
+       route (TRAPS: read the world matrix, never position) */
+    const bulbs = w.byName ? w.byName('bj:signBulbs') : null;
+    const sc = w.sceneFind('bjSign');
+    let found = null;
+    sc.group.traverse(o => { if(o.name === 'bj:signBulbs') found = o; });
+    if(!found) throw new Error('no bj:signBulbs inside the sign scene');
+    const wy = () => { found.updateWorldMatrix(true, false); return found.matrixWorld.elements[13]; };
+    const y0 = wy();
+    w.sceneMoveTo('bjSign', 9.0);
+    for(let i = 0; i < 40; i++) w.sceneMoveStep(0.25);
+    const y1 = wy();
+    if(y1 - y0 < 4.0)
+      throw new Error('the lamps moved ' + (y1 - y0).toFixed(2) + 'm while the sign flew 9m');
+    w.sceneMoveTo('bjSign', 0);
+    for(let i = 0; i < 40; i++) w.sceneMoveStep(0.25);
+    if(Math.abs(wy() - y0) > 0.05)
+      throw new Error('they did not come back with it');
+    return 'the bulbs rode the sign out ' + (y1 - y0).toFixed(2) + 'm and back';
   });
 
   await P('a filling set is still stopped by the back wall', async () => {

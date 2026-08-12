@@ -2,9 +2,14 @@
 
 You model the sets; the game imports them (RULING AZ,
 `docs/superpowers/specs/2026-08-10-beetlejuice-look-transitions-design.md`).
-This page is everything a model needs to obey to drop straight in. Everything
-that is NOT a set — curtains, drops, the sign, the marquee, the portal — is
-built in-game and is not your problem.
+This page is everything a model needs to obey to drop straight in. Curtains,
+drops, the portal and the *lighting* are built in-game and are not your problem.
+
+**Two things on this page used to say "not yours" and no longer do**, because you
+modelled them and sent them anyway — which is your call to make: the **house from
+outside** (RULING BZ) and the **sign** (RULING CA). The sign is the one split
+job here: your geometry, our lamps, exactly as your note asked —
+*"you just have to add the lights"*.
 
 ## The stage, in real numbers
 
@@ -113,6 +118,7 @@ load). A test pins this list to the game's manifest, both directions.
 | **Bedroom** | `bj-bedroom.glb` | ~33' | ~20' | ~13' | Lydia's: purple, bed, doors, picture frames. |
 | **Roof** | `bj-roof.glb` | ~44' | ~20' | ~16' | Blue shingle ridge, dormers, brick chimney. If actors stand on it, name that face `walk_roof`. |
 | **Netherworld** | `bj-netherworld.glb` | ~44' | ~30' | ~33' | The nested glowing rectangles receding upstage. The in-game version is already close — model it only if you want it better. |
+| **The SIGN** | `bj-sign.glb` | ~28' | ~13' | flat | Added after you delivered it (RULING CA). **Not a set** — it hangs in the air downstage of the house curtain on its own mover, so it is not seated on the deck and not pushed upstage like the rows above; it is hung where the frame it replaces hung. **Model the sign face only; do not model bulbs or tubes.** Our lamps are fitted to your geometry's own outline on import — beads round the perimeter, a tube just inside — because the plot tints them by cue (`signCol`, "all the lights on the beetlejuice sign go bright red") and that needs materials we own. |
 | **The house, from OUTSIDE** | `bj-house-exterior.glb` | ~44' | **≤ 29'** | ~20' | Added after you delivered it (RULING BZ). This page used to say the exterior was not yours to model — RULING AW read the production photograph as a painted cloth, and the in-game version still is one. Your model replaces that cloth in the same scene, so it keeps the whole-group fly-out at 1:14:30 with nothing else touched. It came out nearly as deep and tall as it is wide, so the opening caps it: it lands 8.63 m wide. |
 
 ## How your model is routed

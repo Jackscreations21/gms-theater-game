@@ -19748,6 +19748,22 @@ const BJ_MODELS = {
      tool is very nearly a cube, so BX's opening cap binds first and it lands
      8.63m wide whatever this number says. */
   houseExterior: {scene:'house',   fit:13.4, url:'assets/bj-house-exterior.glb'},
+  /* THE SIGN IS HIS GEOMETRY AND OUR LAMPS (RULING CA).  His note with the file
+     is the whole brief: "you just have to add the lights".
+
+     It is the one delivery that is not a SET, and it is placed differently for
+     that reason.  A set is seated — base on the deck, downstage face at the
+     arch — but the sign hangs in the air DOWNSTAGE of the house curtain on its
+     own y mover (RULINGS AS, AT), so `centre` says where to hang it instead and
+     the seating is skipped entirely.  8.5m is the frame it replaces; -0.4/6.0
+     is where that frame hung, and z 0.10 keeps it downstage of the curtain at
+     -0.50.
+
+     `lamps:'sign'` is the other half — see bjSignLamps.  Without it the two
+     lamp MATERIALS survive with no geometry using them, and every `signCol`
+     cue in the plot would tint nothing at all, silently. */
+  sign: {scene:'bjSign', fit:8.5, centre:[-0.4, 6.0, 0.10], lamps:'sign',
+         url:'assets/bj-sign.glb'},
   /* THE HOUSE IS THREE WHOLE HOUSES (RULING BP).  It used to be a shell
      (bj-house.glb) plus three dressing files that stood on it, which is how a
      real production builds one.  The owner modelled it the other way — three
@@ -20055,6 +20071,113 @@ function bjFitAndSeat(root, targetW, fill){
   return s;
 }
 
+/* --------------------------------------------------------------------------
+   A FLOWN PIECE IS HUNG, NOT SEATED (RULING CA).
+
+   bjFitAndSeat exists because a SET stands on the deck inside the picture.  The
+   sign does neither: it hangs in the air, downstage of the house curtain, on its
+   own y mover.  Seating it would drop it on the floor at the arch, which is
+   nowhere near where a marquee goes — so an entry may name a `centre` instead
+   and get scaled to width and hung there, with no cap and no seat.
+
+   Uniform, like everything else here, and measured off the model's own box so a
+   re-export at any scale hangs in the same place.
+   -------------------------------------------------------------------------- */
+function bjFitAndCentre(root, targetW, centre){
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  if(!isFinite(box.min.x) || box.isEmpty()) return 1;
+  const size = box.getSize(new THREE.Vector3());
+  if(!(size.x > 1e-6)) return 1;
+  const s = targetW / size.x;
+  root.scale.multiplyScalar(s);
+  root.updateMatrixWorld(true);
+  const c = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3());
+  root.position.x += centre[0] - c.x;
+  root.position.y += centre[1] - c.y;
+  root.position.z += centre[2] - c.z;
+  return s;
+}
+
+/* --------------------------------------------------------------------------
+   OUR LAMPS ON HIS SIGN (RULING CA).
+
+   "you just have to add the lights" — and the reason this needs code rather
+   than a manifest line is that the sign's lamps are not objects, they are two
+   MATERIALS.  `SHOW.signLamps` holds the bulb-bead material and the tube
+   material with their original colours, and a cue carrying `signCol` tints them
+   (p5c).  Our stand-in geometry is what used those materials, and his file
+   replaces it — so after the swap both materials would still be registered,
+   still tintable, and used by NOTHING.  Every signCol cue in the plot would go
+   through the motions over a sign that never changes colour, and nothing
+   anywhere would say so.  That is the silent-failure shape this project keeps
+   writing down, so the fix is to give both materials new geometry.
+
+   It has to be GEOMETRIC, not by node name: his export is a single mesh called
+   `Mesh1.0` and we do not control what is in it.  So the lamps are placed
+   against the landed model's own measured box — beads around the perimeter of
+   its downstage face, a tube outline just inside them — which means a re-export
+   at any scale puts them in the same place relative to the sign.
+
+   Both materials get geometry on purpose.  Beads alone would leave the tube
+   material dark forever, which is half a bug and much harder to see than a
+   whole one.  One merged mesh each: a material per object is the draw-call trap.
+   -------------------------------------------------------------------------- */
+function bjSignLamps(sc, root){
+  const reg = (typeof SHOW !== 'undefined') && SHOW.signLamps;
+  if(!reg || reg.length < 2) return 0;
+  const bulbM = reg[0].mat, neonM = reg[1].mat;
+  /* his box in the SCENE GROUP's frame — the group carries the y mover, so a
+     world box would be reading the mover's offset as the sign's position */
+  sc.group.updateWorldMatrix(true, false);
+  root.updateWorldMatrix(true, true);
+  const inv = new THREE.Matrix4().copy(sc.group.matrixWorld).invert();
+  const b = new THREE.Box3().setFromObject(root).applyMatrix4(inv);
+  if(b.isEmpty()) return 0;
+
+  const x0 = b.min.x + 0.12, x1 = b.max.x - 0.12;
+  const y0 = b.min.y + 0.12, y1 = b.max.y - 0.12;
+  const z  = b.max.z + 0.13;               // standing PROUD of the face
+  if(!(x1 > x0 && y1 > y0)) return 0;
+
+  const beads = [];
+  const nx = Math.max(6, Math.round((x1 - x0) / 0.39));
+  for(let i = 0; i <= nx; i++){
+    const x = x0 + (x1 - x0) * i / nx;
+    beads.push({geo:new THREE.SphereGeometry(0.10, 7, 5), pos:[x, y0, z]});
+    beads.push({geo:new THREE.SphereGeometry(0.10, 7, 5), pos:[x, y1, z]});
+  }
+  const ny = Math.max(3, Math.round((y1 - y0) / 0.39));
+  for(let i = 1; i < ny; i++){
+    const y = y0 + (y1 - y0) * i / ny;
+    beads.push({geo:new THREE.SphereGeometry(0.10, 7, 5), pos:[x0, y, z]});
+    beads.push({geo:new THREE.SphereGeometry(0.10, 7, 5), pos:[x1, y, z]});
+  }
+  const bulbs = new THREE.Mesh(mergeParts(beads), bulbM);
+  bulbs.name = 'bj:signBulbs';
+  sc.group.add(bulbs);
+
+  const t = 0.07, ax0 = x0 + 0.26, ax1 = x1 - 0.26, ay0 = y0 + 0.26, ay1 = y1 - 0.26;
+  const tubes = (ax1 > ax0 && ay1 > ay0) ? [
+    {geo:new THREE.BoxGeometry(ax1 - ax0, t, t), pos:[(ax0 + ax1)/2, ay0, z]},
+    {geo:new THREE.BoxGeometry(ax1 - ax0, t, t), pos:[(ax0 + ax1)/2, ay1, z]},
+    {geo:new THREE.BoxGeometry(t, ay1 - ay0, t), pos:[ax0, (ay0 + ay1)/2, z]},
+    {geo:new THREE.BoxGeometry(t, ay1 - ay0, t), pos:[ax1, (ay0 + ay1)/2, z]}
+  ] : [];
+  let neon = null;
+  if(tubes.length){
+    neon = new THREE.Mesh(mergeParts(tubes), neonM);
+    neon.name = 'bj:signNeon';
+    sc.group.add(neon);
+  }
+  /* frozen like the model they hang on (RULING AP) */
+  bjFreeze(bulbs);
+  if(neon) bjFreeze(neon);
+  console.log('[models] the sign: ' + beads.length + ' bulbs and ' + tubes.length +
+              ' tubes fitted to his geometry, both lamp materials live');
+  return beads.length + tubes.length;
+}
+
 function bjApplyModel(entry, root, scGiven){
   const sc = scGiven || sceneFind(entry.scene);
   if(!sc) return false;
@@ -20067,6 +20190,7 @@ function bjApplyModel(entry, root, scGiven){
      conform (RULING BP).  A model that is already in metres fits at ~1.0. */
   let s = entry.scale || 1;
   if(s !== 1) root.scale.multiplyScalar(s);
+  else if(entry.centre) s = bjFitAndCentre(root, entry.fit, entry.centre);
   else if(entry.fit) s = bjFitAndSeat(root, entry.fit, entry.fillWidth);
 
   /* collect the model's walkables BEFORE routing — the split route detaches
@@ -20150,6 +20274,9 @@ function bjApplyModel(entry, root, scGiven){
   }
 
   for(const o of landed) bjFreeze(o);
+  /* BEFORE the sceneApply below, not after: fresh meshes wake on layer 0, and
+     the refresh is what puts them into whatever state the scene is in */
+  if(entry.lamps === 'sign') bjSignLamps(sc, root);
   bjPruneWalk(sc);
   for(const o of walks) sceneWalk(sc, o);
   /* fresh meshes wake on layer 0 and would take raycasts through a set that
