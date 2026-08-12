@@ -4593,52 +4593,109 @@ const wd = setTimeout(() => {
            c.x.toFixed(2) + '/' + c.y.toFixed(2) + '/' + c.z.toFixed(2) + ', clear of the deck';
   });
 
-  await P('BOTH of the sign\'s lamp materials still have geometry after the swap (CA)', async () => {
-    /* THE WHOLE POINT OF RULING CA.  The sign's lamps are two MATERIALS, not
-       objects, and our stand-in geometry is what used them.  His file replaces
-       that geometry, so without re-fitting lamps both materials survive
-       registered, tintable, and used by nothing — and every signCol cue in the
-       plot would tint a sign that never changes colour, silently.  This is the
-       assertion that would have caught that. */
+  /* ══ RULING CF — AND THE LAMPS COME OFF THE BOX AND ONTO THE SIGN ═══════
+     REVERSED IN PLACE, the AO/AV/BA/BI/BQ precedent, sixth time.  RULING CA's
+     assertion demanded TWO lamp materials, each with its own merged mesh, and it
+     was right about the thing it was guarding: two materials registered, tintable
+     and used by nothing is a silent failure and every signCol cue in the plot
+     would have tinted a sign that never changes colour.
+
+     What has changed is WHOSE geometry answers for them.  "The lights for the
+     beetlejuice sign arent on the sign they are just a box around it" — and they
+     were: bjSignLamps measured his 99k-triangle marquee's bounding box and hung a
+     bead ring and a tube outline round its perimeter.  The lamps are HIS OWN
+     MATERIAL now, so the guard has to check the registry points at geometry his
+     file actually uses, and that no ring is hung round it.  The tint-and-restore
+     half is untouched and still load-bearing. */
+  await P('the sign\'s lamps are HIS OWN sign, and nothing is hung round it (CF)', async () => {
     const reg = az.SHOW.signLamps;
-    if(!reg || reg.length < 2) throw new Error('the sign registered fewer than two lamp materials');
+    if(!reg || !reg.length) throw new Error('the sign registered no lamp materials at all');
     const sc = w.sceneFind('bjSign');
+
+    /* NOT A RING.  The two names are the geometry CA minted; CF stops minting it,
+       and a mesh by either name means the box is back. */
+    for(const n of ['bj:signBulbs', 'bj:signNeon'])
+      if(findByName(sc.group, n))
+        throw new Error(n + ' is still hung round the sign — that is the box he objected to');
+
+    /* every registered lamp is used by a mesh in the scene, and that mesh is one
+       his file landed rather than one of ours */
     const users = reg.map(() => 0);
+    let hisMeshes = 0;
     sc.group.traverse(o => {
       if(!o.isMesh) return;
       const list = Array.isArray(o.material) ? o.material : [o.material];
-      reg.forEach((r, i) => { if(list.indexOf(r.mat) >= 0) users[i]++; });
+      let mine = false;
+      reg.forEach((r, i) => { if(list.indexOf(r.mat) >= 0){ users[i]++; mine = true; } });
+      if(mine && !(o.name || '').startsWith('bj:')) hisMeshes++;
     });
     reg.forEach((r, i) => {
       if(!users[i])
-        throw new Error('lamp material ' + i + ' is used by NO mesh after the swap — ' +
+        throw new Error('lamp material ' + i + ' is used by NO mesh — ' +
                         'every signCol cue would tint nothing');
     });
-    /* and a signCol cue really does move them, through the real cue path */
+    if(!hisMeshes)
+      throw new Error('the lamps are on OUR geometry, not on his sign');
+
+    /* SELF-LIT.  A marquee hanging in front of the curtain has to read at the
+       pre-show, where the stage rig is at zero — so it carries its own glow
+       rather than borrowing the rig's (that is the other half of CF). */
+    for(const r of reg)
+      if(!(r.mat.emissiveIntensity > 0))
+        throw new Error('a lamp material sits at emissiveIntensity ' +
+                        r.mat.emissiveIntensity + ' — the sign is dark of itself');
+
+    /* and a signCol cue really does move them, and give them back */
     const before = reg.map(r => r.mat.color.getHexString());
     w.setSignLamps('#ff1e10');
     const after = reg.map(r => r.mat.color.getHexString());
     if(after.join() === before.join())
-      throw new Error('setSignLamps moved neither lamp');
+      throw new Error('setSignLamps moved no lamp');
     w.setSignLamps(null);
     if(reg.map(r => r.mat.color.getHexString()).join() !== before.join())
       throw new Error('the lamps never got their own colour back');
-    /* ONE MERGED MESH EACH — a material per object is the draw-call trap */
-    if(users[0] > 1 || users[1] > 1)
-      throw new Error('the lamps are split across meshes: ' + users.join('/') + ' draw calls');
-    return 'both lamp materials live on his sign (' + users.join(' + ') +
-           ' mesh each), tint and restore through setSignLamps';
+    return reg.length + ' lamp material(s), all on his own ' + hisMeshes +
+           ' mesh(es), self-lit and tinting through setSignLamps';
   });
 
-  await P('the sign\'s new lamps travel with it when it flies out', async () => {
-    /* they are added to the scene GROUP, which is what the y mover moves — a
-       lamp left behind in the air would be the frozen-group trap by another
-       route (TRAPS: read the world matrix, never position) */
-    const bulbs = w.byName ? w.byName('bj:signBulbs') : null;
+  await P('the sign is lit while the stage rig is dark (CF)', async () => {
+    /* bjApplyModel registers everything it lands for the RULING CC set fill,
+       which drives emissiveIntensity from the STAGE RIG's own output — and the
+       plot's first cue is "PRE-SHOW ... the sign lit" with the rig at zero.  So
+       the sign on that list is dark for the whole pre-show and the only lit thing
+       on it is the ring.  CF takes it off the list. */
+    const reg = az.SHOW.signLamps || [];
+    if(!reg.length) throw new Error('no lamp materials to check');
+    const fill = az.SHOW.bjFill || [];
+    for(const r of reg)
+      if(fill.indexOf(r.mat) >= 0)
+        throw new Error('the sign is on the RULING CC fill list — it goes dark whenever the rig does');
+    /* measured, not reasoned: black the rig out through the real frame and read
+       the marquee back */
+    az.FIXTURES.forEach(f => { f.level = 0; f._lvl = 0; });
+    let clock = 0;
+    const step = dt => { clock += dt; w.updateFades(dt); w.updateRig(dt, clock); w.updateStorm(dt); };
+    for(let k = 0; k < 300; k++) step(1/60);
+    const lit = Math.min.apply(null, reg.map(r => r.mat.emissiveIntensity));
+    if(!(lit > 0.05))
+      throw new Error('with the rig black the sign sits at ' + lit.toFixed(3) + ' — it went out with the stage');
+    return 'rig at 0, the marquee still lit at ' + lit.toFixed(2) + ', and off the fill list';
+  });
+
+  await P('the sign\'s lamps travel with it when it flies out', async () => {
+    /* they ride HIS mesh now rather than a minted ring, and the mesh is under the
+       scene GROUP, which is what the y mover moves — a lamp left behind in the air
+       would be the frozen-group trap by another route (TRAPS: read the world
+       matrix, never position) */
+    const reg = az.SHOW.signLamps || [];
     const sc = w.sceneFind('bjSign');
     let found = null;
-    sc.group.traverse(o => { if(o.name === 'bj:signBulbs') found = o; });
-    if(!found) throw new Error('no bj:signBulbs inside the sign scene');
+    sc.group.traverse(o => {
+      if(found || !o.isMesh) return;
+      const list = Array.isArray(o.material) ? o.material : [o.material];
+      if(reg.some(r => list.indexOf(r.mat) >= 0)) found = o;
+    });
+    if(!found) throw new Error('no mesh inside the sign scene carries a lamp material');
     const wy = () => { found.updateWorldMatrix(true, false); return found.matrixWorld.elements[13]; };
     const y0 = wy();
     w.sceneMoveTo('bjSign', 9.0);
@@ -4650,7 +4707,7 @@ const wd = setTimeout(() => {
     for(let i = 0; i < 40; i++) w.sceneMoveStep(0.25);
     if(Math.abs(wy() - y0) > 0.05)
       throw new Error('they did not come back with it');
-    return 'the bulbs rode the sign out ' + (y1 - y0).toFixed(2) + 'm and back';
+    return 'his lit sign rode out ' + (y1 - y0).toFixed(2) + 'm and back';
   });
 
   await P('a filling set is still stopped by the back wall', async () => {
