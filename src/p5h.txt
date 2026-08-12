@@ -1835,25 +1835,43 @@ function plotBeetlejuice(){
        purple and sweep up then at 1:05 they go dark (make sure the beetljuice
        sign still stays lit up red)."  The sweep IS the effect — a cue cannot
        say "up over two seconds while tilting"; `fx` can (BD).  The sign keeps
-       its red by saying nothing about it. */
+       its red by saying nothing about it.
+
+       RULING BJ — THE ARCH DROPS OUT FOR THE PURPLE.  These four cues used to
+       hold the eight blinders at red 0.85 underneath, and two things were
+       wrong with that.  The owner's ruling, asked because it changes his plot:
+       "all the lights that are in the audience area" includes the eight round
+       the arch, and the thing that stays red is the SIGN, which is `signCol`.
+       And the mechanical half — measured, not reasoned: the blinders outrank
+       the movers (0.85 x 0.9 against 0.75 x 0.8), so all eight real lights
+       went to the red arch and the purple sweep rendered on NONE.  What he
+       was looking at was the red.
+
+       Q1.2 and Q1.4 follow rather than being separately ruled: "at 1:05 they
+       go dark" covers the blinders once the blinders are audience-area lights,
+       their own labels already SAID the house goes dark while their looks held
+       eight red lamps on it, and the alternative is the arch returning red for
+       exactly one second between two sweeps.  The red arch is now his 28-second
+       opening statement (0:35 to 1:03) and the next thing on those units is
+       the white flash at 1:16. */
     {at:63, n:1.1, label:'1:03 — the house sweeps up, purple', fade:0,
      house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
      fx:{on:'aud', kind:'sweep', col:'#8a2fe0', secs:2},
-     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); set(AUDM, 1.0, '#8a2fe0'); }},
+     look(){ all(0); set(AUDM, 1.0, '#8a2fe0'); }},
 
     {at:65, n:1.2, label:'1:05 — the house goes dark, the sign stays red', fade:0.4,
      house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
-     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
+     look(){ all(0); }},
 
     /* "Then from 1:06 to 1:09 do the same as last cue." */
     {at:66, n:1.3, label:'1:06 — and again', fade:0,
      house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
      fx:{on:'aud', kind:'sweep', col:'#8a2fe0', secs:3},
-     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); set(AUDM, 1.0, '#8a2fe0'); }},
+     look(){ all(0); set(AUDM, 1.0, '#8a2fe0'); }},
 
     {at:69, n:1.4, label:'1:09 — dark again', fade:0.4,
      house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
-     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
+     look(){ all(0); }},
 
     /* "at 1:16 all the blinders around the proscenium flash white as bright as
        posible then do a random pattern fast while the curtain and beetlejuice

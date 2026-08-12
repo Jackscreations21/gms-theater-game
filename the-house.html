@@ -5075,12 +5075,38 @@ function updateRig(dt, t){
      however many are lit — and it claims nothing at all when the audience rig
      is dark, which across the 94-cue plot is almost every cue.  No new lights:
      the pool is the size it always was, this is only who stands in it. */
+  /* AND IT DIVIDES THE RIG RATHER THAN CAPPING IT (RULING BL).  BG handed the
+     reserve out by rank, first come — and the blinders ARE audience units, at
+     rank 0.9 against the movers' 0.8.  So at 1:03, where eight blinders sit red
+     and six movers sweep purple, the two reserved slots went to blinders, the
+     other six went to blinders, and the purple sweep the owner asked about
+     rendered on ZERO real lights.  In a headset, four blinders and no movers.
+     Measured; the probe is tools/audience-balcony.js.
+
+     So the share goes round the audience GROUPS a lap at a time — the best-lit
+     blinder, then the best-lit mover, then round again — instead of down one
+     rank list.  Grouped by `type`, which is the only thing that distinguishes
+     an audience unit from another kind of audience unit.  With one group lit it
+     is exactly what it was; with two it can no longer starve one of them.
+
+     BG's own invariant is untouched: still at most AUD_LIGHT_RESERVE, still a
+     ceiling and never a floor, still nothing at all claimed when the rig is
+     dark.  This decides WHICH of the two, not how many.                      */
   _handout.length = 0;
   {
     let nAud = 0;
-    for(const f of _active){
-      if(!f.audience || nAud >= AUD_LIGHT_RESERVE || _handout.length >= nLights) continue;
-      _handout.push(f); nAud++;
+    const _lap = [];
+    while(nAud < AUD_LIGHT_RESERVE && _handout.length < nLights){
+      let took = false;
+      for(const f of _active){
+        if(!f.audience || _handout.indexOf(f) !== -1) continue;
+        if(_lap.indexOf(f.type) !== -1) continue;   // this group has had its turn
+        _lap.push(f.type);
+        _handout.push(f); nAud++; took = true;
+        if(nAud >= AUD_LIGHT_RESERVE || _handout.length >= nLights) break;
+      }
+      if(!took) break;                              // no audience unit left lit
+      _lap.length = 0;                              // next lap round the groups
     }
     for(const f of _active){
       if(_handout.length >= nLights) break;
@@ -15108,25 +15134,43 @@ function plotBeetlejuice(){
        purple and sweep up then at 1:05 they go dark (make sure the beetljuice
        sign still stays lit up red)."  The sweep IS the effect — a cue cannot
        say "up over two seconds while tilting"; `fx` can (BD).  The sign keeps
-       its red by saying nothing about it. */
+       its red by saying nothing about it.
+
+       RULING BJ — THE ARCH DROPS OUT FOR THE PURPLE.  These four cues used to
+       hold the eight blinders at red 0.85 underneath, and two things were
+       wrong with that.  The owner's ruling, asked because it changes his plot:
+       "all the lights that are in the audience area" includes the eight round
+       the arch, and the thing that stays red is the SIGN, which is `signCol`.
+       And the mechanical half — measured, not reasoned: the blinders outrank
+       the movers (0.85 x 0.9 against 0.75 x 0.8), so all eight real lights
+       went to the red arch and the purple sweep rendered on NONE.  What he
+       was looking at was the red.
+
+       Q1.2 and Q1.4 follow rather than being separately ruled: "at 1:05 they
+       go dark" covers the blinders once the blinders are audience-area lights,
+       their own labels already SAID the house goes dark while their looks held
+       eight red lamps on it, and the alternative is the arch returning red for
+       exactly one second between two sweeps.  The red arch is now his 28-second
+       opening statement (0:35 to 1:03) and the next thing on those units is
+       the white flash at 1:16. */
     {at:63, n:1.1, label:'1:03 — the house sweeps up, purple', fade:0,
      house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
      fx:{on:'aud', kind:'sweep', col:'#8a2fe0', secs:2},
-     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); set(AUDM, 1.0, '#8a2fe0'); }},
+     look(){ all(0); set(AUDM, 1.0, '#8a2fe0'); }},
 
     {at:65, n:1.2, label:'1:05 — the house goes dark, the sign stays red', fade:0.4,
      house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
-     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
+     look(){ all(0); }},
 
     /* "Then from 1:06 to 1:09 do the same as last cue." */
     {at:66, n:1.3, label:'1:06 — and again', fade:0,
      house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
      fx:{on:'aud', kind:'sweep', col:'#8a2fe0', secs:3},
-     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); set(AUDM, 1.0, '#8a2fe0'); }},
+     look(){ all(0); set(AUDM, 1.0, '#8a2fe0'); }},
 
     {at:69, n:1.4, label:'1:09 — dark again', fade:0.4,
      house:0, haze:0.2, curtain:'shut', scene:'cemetery', backdrop:'in',
-     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
+     look(){ all(0); }},
 
     /* "at 1:16 all the blinders around the proscenium flash white as bright as
        posible then do a random pattern fast while the curtain and beetlejuice
@@ -20200,6 +20244,11 @@ function showSoundStop(){
    ========================================================================== */
 const AUD_WANDER_RATE = 1.0;   // pre-show drift.  Owner: "slowly" — headset tune
 const AUD_RANDOM_RATE = 1.0;   // the 1:16 chaos.  Owner: "fast"  — headset tune
+/* WHERE A SWEEP STARTS AND ENDS (RULING BK).  A head sits at tilt + 90 degrees
+   below horizontal, so -15 is 75 deg down — the stalls floor — and -98 is 8 deg
+   UP, out over the balcony heads.  Both ends are headset tunes; the sign of the
+   travel is not, because "sweep up" is his word for it. */
+const AUD_SWEEP_LO = -15, AUD_SWEEP_HI = -98;
 const AUD_STROBE_HZ   = 9.0;   // "really fast".  9Hz reads fast and is not a
                                // seizure risk the way 15-20Hz would be — the
                                // one constant here with a reason not to raise
@@ -20254,6 +20303,19 @@ function showCueFx(fx){
       cols: (e.cols || (e.col ? [e.col] : null)),
       t:    0
     };
+    /* A SWEEP STARTS AT ITS START (RULING BK).  Every other effect is a
+       continuous function of t and may pick the rig up wherever it finds it,
+       but a sweep is a journey with two ends and it is the only one whose
+       FIRST frame is part of the point.  Tilt slews at dt*3.2 — a ~0.3s time
+       constant — so without this the head spends the first third of a
+       two-second sweep still travelling to the bottom, and the stalls never
+       get the beginning of it.  Measured: the stalls went from purple 62% of
+       the cue to never, purely from the slew.  So snap to the low end once,
+       here, and let the slew smooth everything after that. */
+    if(e.kind === 'sweep') audFxChans(on).forEach(c=>{
+      const f = chan(c);
+      if(f && f.mover) f.tilt = f.tiltT = AUD_SWEEP_LO;
+    });
   });
 }
 
@@ -20277,8 +20339,23 @@ function audFxApply(e, f, i){
   if(e.kind === 'wander'){
     const r = AUD_WANDER_RATE * e.rate;
     if(f.mover){
-      f.panT  =  62 * Math.sin(t*0.31*r + i*1.7) * Math.cos(t*0.17*r + i*0.9);
-      f.tiltT = -62 + 24 * Math.sin(t*0.23*r + i*2.3);
+      /* PAN STAYS IN THE ROOM, AND THAT IS THE BALCONY FIX (RULING BK).  At
+         ±62° a third of the drift was aimed through the brick — the probe
+         caught a beam tip at x = 22.0 with the side wall at 15, and another at
+         z = 37.8 with the back wall at 30.  Keeping it inside the auditorium
+         is what puts it round the house, balcony included: measured, the back
+         of the balcony went from 7% of a cycle to 56%.                      */
+      f.panT  =  34 * Math.sin(t*0.31*r + i*1.7) * Math.cos(t*0.17*r + i*0.9);
+      /* AND THE TILT RANGE IS WHAT KEEPS THE STALLS.  -62 ± 24 is 4°..52°
+         below horizontal (a head sits at tilt + 90) — a narrow band that,
+         once the pan was reined in, left the drift working the upper house
+         and skipping the lower: the stalls fell to 20% of a cycle.  -55 ± 42
+         runs 7° above horizontal down to 77° below and puts them back at 80%.
+
+         The two do DIFFERENT jobs and it took a negative check to find that
+         out — the first version of this comment credited the tilt with the
+         balcony, and the tilt mutation sailed through the balcony test.    */
+      f.tiltT = -55 + 42 * Math.sin(t*0.23*r + i*2.3);
     }
     if(e.cols && e.cols.length > 1){
       const m = 0.5 + 0.5*Math.sin(t*0.42*r + i*0.4);
@@ -20290,10 +20367,19 @@ function audFxApply(e, f, i){
   }
   if(e.kind === 'sweep'){
     /* "purple and sweep up": levels and tilt run up together over the cue's
-       own window, then hold at the top until the next cue takes them out. */
+       own window, then hold at the top until the next cue takes them out.
+
+       AND IT REALLY GOES UP NOW (RULING BK).  It used to read -84 -> -10, and
+       because the head sits at tilt + 90 that is 6° below horizontal down to
+       80° below: the number went up and the light went DOWN, ending on the
+       stalls floor.  It now starts steeply down on the stalls and rises — the
+       rake, the mezzanine front, the balcony front, and out over the balcony
+       heads, which is the first time anything in this rig has been aimed at
+       them.  -98 is 8° ABOVE horizontal, and a balcony head at z=26 sits 6°
+       above the upstage bar's lens; real moving heads tilt well past level. */
     const u = Math.min(1, t / Math.max(0.05, e.secs));
     f.level = u;
-    if(f.mover) f.tiltT = -84 + 74*u;
+    if(f.mover) f.tiltT = AUD_SWEEP_LO + (AUD_SWEEP_HI - AUD_SWEEP_LO)*u;
     if(e.cols && e.cols.length){ f.color.set(e.cols[0]); f.colDur = 0; }
     f.lvlDur = 0;
     return;
