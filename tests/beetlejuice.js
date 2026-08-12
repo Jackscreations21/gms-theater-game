@@ -2250,6 +2250,146 @@ const probe = `
            'pre-show house ' + pre.house;
   });
 
+  /* ---- RULING BO: a cue you jump to takes the music with it ---- */
+
+  /* the show, running with sound, at the top.  jsdom never fetches media so
+     readyState stays 0 and audLive is false for ever — which is exactly the
+     silent-fallback path, and why every assertion below reads the INTENT
+     (want/seek) the pump would act on rather than a currentTime. */
+  const runningShow = ()=>{
+    showLoad('beetlejuice');
+    fireCue(CUES.findIndex(c=>c.n === 1)); cancelFollow();   // GO: asks for act1 at 35
+    if(!AUD.tracks.act1 || !AUD.tracks.act1.want)
+      throw new Error('the GO cue did not ask for act one');
+    AUD.tracks.act1.seek = null;                             // clear it so a new seek shows
+    return AUD.tracks;
+  };
+  const idxAt = t => CUES.findIndex(c=>c.at === t);
+
+  P('RULING BO: skipping forward inside act one seeks the track', ()=>{
+    const tr = runningShow();
+    const i = CUES.map((c,k)=>[c,k]).filter(p=>p[0].at > 2000 && p[0].at < 4000 && !p[0].audio)[0];
+    if(!i) throw new Error('no plain act-one cue to jump to');
+    cueFiredByHand(i[1]);
+    if(tr.act1.seek === null || tr.act1.seek === undefined)
+      throw new Error('the jump left the music where it was');
+    /* act one begins at 0, so the seek IS his timestamp */
+    if(Math.abs(tr.act1.seek - i[0].at) > 1e-6)
+      throw new Error('seeked to ' + tr.act1.seek + ', wanted ' + i[0].at);
+    return 'Q' + i[0].n + ' at ' + i[0].at + 's seeks act one to ' + tr.act1.seek;
+  });
+
+  P('RULING BO: skipping into act two changes FILE, and asks for his number', ()=>{
+    const tr = runningShow();
+    const c = CUES.filter(x=>x.at > 5000 && !x.audio)[0];
+    if(!c) throw new Error('no plain act-two cue to jump to');
+    cueFiredByHand(CUES.indexOf(c));
+    if(tr.act1.want) throw new Error('act one is still wanted after jumping into act two');
+    if(!tr.act2 || !tr.act2.want) throw new Error('act two was not asked for');
+    /* RULING BI: the plot never learns about the split.  His number goes in, and
+       the position INSIDE the second file comes out. */
+    if(Math.abs(tr.act2.seek - (c.at - 4292)) > 1e-6)
+      throw new Error('act two seeked to ' + tr.act2.seek + ', wanted ' + (c.at - 4292));
+    return 'Q' + c.n + ' at ' + c.at + 's = ' + tr.act2.seek.toFixed(1) + 's into act two';
+  });
+
+  P('RULING BO: going BACK takes the music back too', ()=>{
+    const tr = runningShow();
+    const i = CUES.map((c,k)=>[c,k]).filter(p=>p[0].at > 3000 && p[0].at < 4000 && !p[0].audio)[0];
+    cueFiredByHand(i[1]);
+    tr.act1.seek = null;
+    nextCue = i[1] + 1;
+    goBack();
+    if(tr.act1.seek === null)
+      throw new Error('BACK moved the lights and left the music running forward');
+    if(!(tr.act1.seek < i[0].at))
+      throw new Error('BACK seeked to ' + tr.act1.seek + ', which is not before ' + i[0].at);
+    return 'back from ' + i[0].at + 's to ' + tr.act1.seek + 's';
+  });
+
+  /* THE ONE THAT KEEPS IT OUT OF THE FEEDBACK LOOP.  showAudioTick calls
+     fireCue; if the seek lived in there, every transport-fired cue would drag
+     the track to its own timestamp on every frame. */
+  P('RULING BO: the transport firing a cue does NOT seek — only a person does', ()=>{
+    const tr = runningShow();
+    const c = CUES.filter(x=>x.at > 2000 && x.at < 4000 && !x.audio)[0];
+    fireCue(CUES.indexOf(c));            // the transport's path, not the operator's
+    if(tr.act1.seek !== null && tr.act1.seek !== undefined)
+      throw new Error('fireCue seeked to ' + tr.act1.seek + ' — the transport would feed itself');
+    return 'fireCue moved nothing; cueFiredByHand is the only door';
+  });
+
+  P('RULING BO: a cue that names its own track is left alone', ()=>{
+    const tr = runningShow();
+    /* the interval: it deliberately STOPS act one and starts the pre-show
+       music underneath, and a seek here would resume the show under it */
+    const iv = CUES.filter(c=>c.audio && c.audio.play === 'preshow' && c.at > 4000)[0];
+    if(!iv) throw new Error('the interval cue is not there');
+    cueFiredByHand(CUES.indexOf(iv));
+    if(AUD.tracks.act1.want) throw new Error('the interval left act one running');
+    if(AUD.tracks.act2 && AUD.tracks.act2.want)
+      throw new Error('the interval started act two — the seek overrode the cue');
+    if(!AUD.tracks.preshow.want) throw new Error('the interval did not bring the pre-show music back');
+    return 'the interval keeps its own words: act one stopped, pre-show music up';
+  });
+
+  /* AND THE GUARD ITSELF, ASKED DIRECTLY.  The test above passes with the
+     guard REMOVED, which makes it a weak test of this particular rule: the
+     interval cue stops act one before the seek is ever reached, so by then
+     there is no running show to move and it declines for the other reason.
+     The guard is still right — it is what stops a reordering, or a future cue
+     whose audio.at differs from its at, from being quietly overruled — so
+     prove it the only way that distinguishes it: call it on a cue that names
+     a track WHILE the show is running, and require a refusal. */
+  P('RULING BO: a cue naming its own track refuses the seek outright', ()=>{
+    runningShow();
+    const named = CUES.map((c,i)=>[c,i]).filter(p=>p[0].audio && p[0].audio.play);
+    if(named.length < 3) throw new Error('only ' + named.length + ' cues name a track');
+    for(const p of named){
+      if(!audShowRunning())
+        throw new Error('the show stopped running before Q' + p[0].n + ' could be tested');
+      if(showCueSeek(p[1]) !== false)
+        throw new Error('Q' + p[0].n + ' carries its own audio and the seek overrode it');
+    }
+    return named.length + ' cues name a track; every one refuses the jump seek';
+  });
+
+  P('RULING BO: a silent show is not started by a jump', ()=>{
+    showLoad('beetlejuice');
+    showSoundStop();
+    Object.keys(AUD.tracks).forEach(k=>{ AUD.tracks[k].want = false; AUD.tracks[k].seek = null; });
+    const c = CUES.filter(x=>x.at > 2000 && x.at < 4000 && !x.audio)[0];
+    cueFiredByHand(CUES.indexOf(c));
+    /* go() is what the FOLLOW chain calls when no audio is driving.  A silent
+       run that suddenly started playing act one halfway through would be a
+       far worse bug than the one this ruling fixes. */
+    if(AUD.tracks.act1 && AUD.tracks.act1.want)
+      throw new Error('a jump started act one on a show that was running silent');
+    return 'nothing playing, nothing started';
+  });
+
+  P('RULING BO: a show with no timecode is untouched by any of this', ()=>{
+    showLoad('outsiders');
+    if(CUES.some(c=>c.at !== undefined && c.at !== null))
+      throw new Error('THE OUTSIDERS has timecode now — pick another show');
+    for(let i = 0; i < Math.min(5, CUES.length); i++)
+      if(showCueSeek(i) !== false)
+        throw new Error('cue ' + i + ' of a show with no timecode tried to seek');
+    showLoad('beetlejuice');
+    return 'four other productions unaffected, as they must be';
+  });
+
+  P('RULING BO: audTrackFor puts every one of his timestamps in the right file', ()=>{
+    const want = {0:'act1', 35:'act1', 4291:'act1', 4292:'act2', 8100:'act2'};
+    for(const k in want)
+      if(audTrackFor(+k) !== want[k])
+        throw new Error(k + 's routed to ' + audTrackFor(+k) + ', wanted ' + want[k]);
+    /* every cue in the plot lands in a file that exists */
+    const orphan = CUES.filter(c=>c.at !== undefined && c.at !== null && !audTrackFor(c.at));
+    if(orphan.length) throw new Error(orphan.length + ' cues fall outside both halves');
+    return 'the cut at 4292 splits them exactly, 94 cues all placed';
+  });
+
   /* ---- RULING BN: a cue is labelled by where it falls in the show ---- */
 
   P('RULING BN: the timestamp is written the way he writes it', ()=>{

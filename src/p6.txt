@@ -210,13 +210,21 @@ function fireCue(idx){
     }, c.follow*1000);
   }
 }
+/* FIRING A CUE BY HAND TAKES THE MUSIC WITH IT (RULING BO).  Never inside
+   fireCue — the transport calls that, and a seek there would feed it its own
+   output every frame.  Only here, where a person did it.  showCueSeek decides
+   whether there is anything to move; see the writeup in p5j. */
+function cueFiredByHand(idx){
+  fireCue(idx);
+  if(typeof showCueSeek === 'function') showCueSeek(idx);
+}
 function go(){
   if(nextCue >= CUES.length){ toast('End of cue stack'); return; }
   const c = CUES[nextCue];
   toast('GO  ▸  Q'+c.n+'  '+c.label+'   ('+(cueTimeText(c) || c.fade+'s')+')');
-  fireCue(nextCue);
+  cueFiredByHand(nextCue);
 }
-function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) fireCue(nextCue); }
+function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) cueFiredByHand(nextCue); }
 
 /* ============================================================================
    SHOW SCRIPT — the light-show programming language
@@ -846,8 +854,10 @@ function refreshCues(){
     '<span class="mt">'+(cueTimeText(c) || (c.fade+'s'+(c.follow!=null?' ▸'+c.follow+'s':'')))+
     (c.sfx?' ♪'+c.sfx:'')+(c.fly?' ⇅':'')+'</span></div>').join('');
   $$('#cuelist .cue').forEach(d=>{
+    /* a single click SELECTS — it says where GO will start and fires nothing,
+       so it moves no music either (RULING BO) */
     d.onclick=()=>{ selCue=+d.dataset.i; nextCue=selCue; refreshCues(); };
-    d.ondblclick=()=>{ fireCue(+d.dataset.i); };
+    d.ondblclick=()=>{ cueFiredByHand(+d.dataset.i); };
   });
   $('#cueTxt').textContent = CUES[nextCue] ? ('Q'+CUES[nextCue].n) : 'END';
 }
