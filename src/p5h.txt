@@ -48,16 +48,22 @@ const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
    its second. */
 const BJ_WAGON_BACK = -10.0;
 
-/* WHERE THE HOUSE WAGON TRACKS TO STAND BACKSTAGE (RULING BQ).  Stage right, far
-   enough that the whole 13.6m room clears the 13.6m picture: at -14.0 his
-   interior parks at x -20.8 .. -7.2, which is 1.2m off the stage-right wall at
-   -22 and 0.4m outside the opening edge at -6.8 — behind the legs, which start
-   masking at 6.6.  A feel constant like the rest of this family, and the one to
-   move if the room is ever seen from a seat while it is parked.
+/* WHERE THE HOUSE WAGON TRACKS TO STAND BACKSTAGE (RULING BQ).  STAGE LEFT, far
+   enough that the whole 13.6m room clears the 13.6m picture: at +14.0 his interior
+   parks at x 7.2 .. 20.8, which is 1.2m off the stage-left wall at +22 and 0.4m
+   outside the opening edge at 6.8 — behind the legs, which start masking at 6.6.
+   A feel constant like the rest of this family, and the one to move if the room is
+   ever seen from a seat while it is parked.
+
+   IT WAS STAGE RIGHT UNTIL HE PUT THE EXTERIOR ON THE FLY-RAIL SIDE.  A 13.6m room
+   parked stage right reaches x -20.8, and the locking rail stands at -19.2 — so the
+   wagon was standing ON the pin rail and the flyman's working space, which nothing
+   had checked.  The exterior is 8.6m wide and parks inside the rail; the wagon
+   cannot, so the wagon is the one that moved.
 
    NOT upstage: see the writeup at the interior's own scenePark call.  Upstage put
    his house 3.28m through the Palace brick. */
-const BJ_HOUSE_PARK_X = -14.0;
+const BJ_HOUSE_PARK_X = 14.0;
 
 /* RULING CE — the sets that track on instead of flying, and from where.  Both
    measured against the room rather than chosen: a wing is 14.5m (D.stageW 44 less
@@ -67,9 +73,33 @@ const BJ_HOUSE_PARK_X = -14.0;
    wagon parks and two ~13m sets do not fit in one 14.5m wing.
    THE EXTERIOR GOES UPSTAGE: it is only 8.6m wide but 8.8m deep, and upstage is
    the one direction with room left once both wings hold a house. */
-const BJ_ATTIC_SIDE = 14.0;    // +x, stage left
-const BJ_EXT_BACK   = -9.0;    // upstage, clear of the brick at PAL_BACK
+/* HIS WORD ON THE EXTERIOR: "make the extiriot go out towards the side of the
+   stage with the fly rale."  The fly rail is STAGE RIGHT — p9's rope builder puts
+   the locking rail at -D.stageW/2 + 2.8, which is x -19.2, and the traveler hand
+   line is "stage right, just offstage of the arch".  So the exterior goes to -x.
+
+   IT FITS THERE WITHOUT STANDING ON THE RAIL, which is the only reason this works:
+   it is 8.6m wide, so at -11.0 it parks at x -15.3 .. -6.7 and leaves the flyman
+   his rail at -19.2 and his working space behind it.  A 13.6m set could not.
+
+   WHICH IS WHY THE OTHER TWO MOVED.  Stage right was the wagon's, and only one
+   ~13m set fits in a wing, so: the wagon takes stage LEFT and the attic — 10m
+   deep and 13.06m wide — goes UPSTAGE, where 10m of depth clears the brick at
+   PAL_BACK by 1.2m.  Three sets, three slots, and the fly rail kept clear. */
+const BJ_EXT_SIDE   = -11.0;   // -x, stage right: the fly-rail side, inside the rail
+const BJ_ATTIC_BACK = -10.0;   // upstage, clear of the brick at PAL_BACK
 const BJ_TRACK_SPEED = 2.0;    // m/s — a tracked set crosses in ~7s
+
+/* THE NETHERWORLD, to his three words (RULING BV amended).
+   `thinner`: the frame members were 0.15m square, which reads as a girder rather
+   than a tube.  A one-line retune, and the only number in the set that is about
+   how heavy the neon looks.
+   `all blue`: already true — BV made every frame and the chevron blue, and an
+   assertion refuses a near-white one.  Nothing to do, recorded so it is not
+   re-litigated.
+   `backdrop black`: it was a dark blue ground. */
+const BJ_AFT_TUBE = 0.09;
+const BJ_AFT_BACK = 0x000000;
 
 /* ---------------------------------------------------------------------------
    THE CHOREOGRAPHY (RULING AY) — every set change is watchable travel.
@@ -921,15 +951,18 @@ SHOWS.beetlejuice = {
        the acting position — measured at 20.0% of a stalls eye, the worst of the
        nine.
 
-       RULING CE — AND IT COMES ON FROM UPSTAGE, not from the grid.  8.6m wide but
-       8.8m deep, and upstage is the only room left once both wings hold a house.
-       The wrapper carries the entrance and the park on z; the whole-group Y mover
+       RULING CE — AND IT COMES ON FROM STAGE RIGHT, the fly-rail side, at his
+       word: "make the extiriot go out towards the side of the stage with the fly
+       rale."  At 8.6m wide it parks inside the locking rail at x -19.2 rather than
+       on top of it, which is the whole reason the fly-rail side is available to
+       it — and why the 13.6m wagon had to give that wing up and take stage left.
+       The wrapper carries the entrance and the park on x; the whole-group Y mover
        above is left exactly as it is, because the cue at 1:14:30 is HIS OWN plot
        line — "the exterior flies out" — and re-pointing a cue he wrote is his
        call, not a side effect of this ruling.  So the drop still flies out on that
        one cue and lives upstage the rest of the night.  FLAGGED: if CE is meant to
        supersede that line too, it is one field in one cue. */
-    bjTrackWhole(hse, 'z', BJ_EXT_BACK, BJ_TRACK_SPEED);
+    bjTrackWhole(hse, 'x', BJ_EXT_SIDE, BJ_TRACK_SPEED);
 
     /* ================================================================
        SCENE — THE HOUSE, from inside.  Measured, the interior carries
@@ -1329,9 +1362,11 @@ SHOWS.beetlejuice = {
         att.group.add(new T.Mesh(mergeParts(parts), glow));
       }
     }
-    /* RULING CE — the attic TRACKS ON from stage left; it used to fly.  It is
-       13.06m wide, so it needs a whole wing, and stage right is the wagon's. */
-    bjTrackWhole(att, 'x', BJ_ATTIC_SIDE, BJ_TRACK_SPEED);
+    /* RULING CE — the attic comes on FROM UPSTAGE; it used to fly.  It wanted a
+       wing at first, and then he put the exterior on the fly-rail side and there
+       were only two wings for three sets: it is 10m deep, which clears the brick
+       at PAL_BACK by 1.2m, so upstage is the slot it can actually use. */
+    bjTrackWhole(att, 'z', BJ_ATTIC_BACK, BJ_TRACK_SPEED);
 
     /* ---- the bedroom: a bed, a lamp, and not much else ---- */
     const bed = sceneAdd('bedroom', 'THE BEDROOM');
@@ -1432,12 +1467,19 @@ SHOWS.beetlejuice = {
        ================================================================ */
     const aft = sceneAdd('afterlife', 'THE AFTERLIFE');
     {
-      /* the dark blue ground his frames stand against.  MeshBasic on purpose:
-         the netherworld plays in a blackout with the neon as the only light,
-         and a lit material would go black with the rig. */
+      /* the ground his frames stand against — BLACK, at his word: "makes its
+         backdrop black".  It was 0x071c40, a dark blue, which is what RULING BV
+         read off the photograph; he has now called it, and black is the stronger
+         choice anyway because it is the only thing behind the tubes and a blue
+         ground robs blue neon of its contrast.
+
+         MeshBasic on purpose: the netherworld plays in a blackout with the neon
+         as the only light, and a lit material would go black with the rig — which
+         for THIS colour would be invisible either way, but the reason still holds
+         if he ever puts a colour back. */
       {
         const back = new T.Mesh(new T.PlaneGeometry(BJ.opW, BJ.opH),
-                                new T.MeshBasicMaterial({color:0x071c40}));
+                                new T.MeshBasicMaterial({color:BJ_AFT_BACK}));
         back.name = 'bj:aftBacking';
         back.position.set(0, BJ.opH/2, -14.6);
         back.raycast = ()=>{};
@@ -1467,7 +1509,7 @@ SHOWS.beetlejuice = {
         {wB: 3.4, wT: 2.5, h:2.3, z:-11.8, tilt:-0.140, x:-0.25, c:'#a8e0ff'}
       ];
       rings.forEach(r=>{
-        const y0 = 0.35, t = 0.15;
+        const y0 = 0.35, t = BJ_AFT_TUBE;
         /* built about its OWN centre so the cant rotates the frame in place;
            rotating about the deck would swing the whole thing sideways and
            put a bottom corner through the floor */
