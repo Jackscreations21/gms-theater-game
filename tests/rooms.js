@@ -106,8 +106,10 @@ const probe = `
   });
 
   console.log('--- what it saves ---');
-  // shed added by the warehouse PR — its slab runs upstage of the back wall
-  const zOf = {shed:-25, stage:-4, house:13, lobby:FOH.z0+5};
+  // shed added by the warehouse PR — its slab runs upstage of the back wall.
+  // TAKEN OFF THE ROOM, not typed: the brick has moved twice (PAL_DEEP 4.5 then
+  // 8.5, RULING CL) and a literal -25 ends up standing on the stage instead.
+  const zOf = {shed:ROOMS.shed.z1 - 4, stage:-4, house:13, lobby:FOH.z0+5};
   QUALITY.rooms = false; updateRooms(true);
   const before = submitted();
   P('with culling off, the whole building is submitted', ()=> before);

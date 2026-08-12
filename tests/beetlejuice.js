@@ -3417,6 +3417,9 @@ const probe = `
                  BJ_TRI_BUDGET:BJ_TRI_BUDGET, BJ_TEX_BUDGET:BJ_TEX_BUDGET,
                  /* RULING BX — the room a set is fitted INTO, not just its width */
                  BJ:BJ, D:D, FIXTURES:FIXTURES,
+                 /* RULING CL — where the Palace brick really stands, and how far
+                    upstage the wagon tracks to hide */
+                 PAL_BACK:PAL_BACK, PAL_DEEP:PAL_DEEP, BJ_WAGON_BACK:BJ_WAGON_BACK,
                  BJ_FIT_AIR:typeof BJ_FIT_AIR === 'undefined' ? undefined : BJ_FIT_AIR,
                  BJ_SET_DEPTH:typeof BJ_SET_DEPTH === 'undefined' ? undefined : BJ_SET_DEPTH,
                  bjCues:()=>{ showLoad('beetlejuice'); return CUES.slice(); }};
@@ -4708,6 +4711,61 @@ const wd = setTimeout(() => {
     if(Math.abs(wy() - y0) > 0.05)
       throw new Error('they did not come back with it');
     return 'his lit sign rode out ' + (y1 - y0).toFixed(2) + 'm and back';
+  });
+
+  /* ══ RULING CL — THE PALACE HOLDS THE WHOLE HOUSE SET ═══════════════════ */
+  await P('his house fits behind the brick when the wagon slides back (CL)', async () => {
+    /* "Make the back wall of the palace go a little farther back to fit the
+       entir hous set."
+
+       THE STAND-IN IS THE COMFORTABLE CASE HERE, which is the inverse of the
+       RULING BQ trap and the reason this went unseen: the stand-in interior
+       parked at BJ_WAGON_BACK measures z -19.24..-11.56 and clears a brick at
+       -21.50 by 2.26m, so the existing synchronous assertion ("parked it stands
+       in the brick") passes and always would.  HIS house is 12.98m deep and
+       measures -24.78..-11.80 — 3.28m of it out in the street.
+
+       Built from his own normalised box through the REAL manifest entry, so it
+       carries CB's fill and CD's upstage seat rather than a number typed here. */
+    const inr = w.sceneFind('interior');
+    if(!inr || !inr.mv) throw new Error('the interior does not travel');
+    if(az.PAL_BACK === undefined || az.BJ_WAGON_BACK === undefined)
+      throw new Error('PAL_BACK / BJ_WAGON_BACK are not in the build');
+
+    const root = hisRoot('house');
+    if(!w.bjApplyModel(az.BJ_MODELS.houseMaitland, root))
+      throw new Error('the whole-house apply refused');
+    w.bjDress(inr, 'maitland');
+
+    /* WORLD BOX, after stepping the mover — never mv.off.  A mover parked at its
+       target proves nothing about the geometry (TRAPS), and the set is frozen, so
+       reading position back would report the record rather than the room. */
+    const zbox = () => {
+      const b = new THREE.Box3();
+      az.SHOW.group.updateMatrixWorld(true);
+      inr.group.traverse(o => { if(o.isMesh) b.expandByObject(o); });
+      return b;
+    };
+    const home = zbox();
+    w.sceneMoveTo('interior', az.BJ_WAGON_BACK);
+    for(let i = 0; i < 4000 && w.sceneTravelling(inr); i++) w.sceneMoveStep(1/60);
+    const back = zbox();
+    const deep = home.max.z - home.min.z;
+    if(!(deep > 11))
+      throw new Error('the fixture is only ' + deep.toFixed(2) + 'm deep — his house is 12.98, ' +
+                      'so this would pass on a set that was never the problem');
+    if(back.min.z < az.PAL_BACK)
+      throw new Error('parked back it reaches z=' + back.min.z.toFixed(2) +
+                      ', ' + (az.PAL_BACK - back.min.z).toFixed(2) + 'm through the brick at ' + az.PAL_BACK);
+    /* and the deepening is the PALACE's alone — D.backWall is the stage
+       coordinate every plot and both Arc houses are written to */
+    if(az.D.backWall !== -17)
+      throw new Error('D.backWall moved to ' + az.D.backWall + ' — the deepening leaked into the box');
+    w.sceneMoveTo('interior', 0);
+    for(let i = 0; i < 4000 && w.sceneTravelling(inr); i++) w.sceneMoveStep(1/60);
+    return 'his ' + deep.toFixed(2) + 'm house parks at z ' + back.min.z.toFixed(2) +
+           '..' + back.max.z.toFixed(2) + ', clear of the brick at ' + az.PAL_BACK +
+           ' by ' + (back.min.z - az.PAL_BACK).toFixed(2) + 'm';
   });
 
   await P('a filling set is still stopped by the back wall', async () => {

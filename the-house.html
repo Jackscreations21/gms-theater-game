@@ -1023,9 +1023,39 @@ const D = {
    The rule, and it is the whole of the safety of this change: STRUCTURAL
    PALACE GEOMETRY USES PAL_BACK; ANYTHING STAGE-RELATIVE KEEPS D.backWall.
    The Arc is built from D and is untouched by design.
+
+   RULING CL — AND 4.5m WAS THE STAND-IN'S ANSWER (owner, 2026-08-13)
+
+   "Make the back wall of the palace go a little farther back to fit the entir
+   hous set."
+
+   4.5 was measured in 2026-08-10 against the stand-in interior, and it was
+   right for it: parked at BJ_WAGON_BACK the stand-in measures z -19.24 ..
+   -11.56 and clears -21.5 by 2.26m.  HIS house is 12.98m deep and measures
+   -24.78 .. -11.80 — 3.28m of it standing out in the street, and that is the
+   set he is watching slide back at the curtain call with nothing else on stage.
+
+   THE STAND-IN IS THE COMFORTABLE CASE HERE, which is the exact inverse of the
+   RULING BQ trap ("a position fitted to HIS model parks the STAND-IN in the
+   picture") and the reason nothing caught it: the assertion that guards this
+   runs in the synchronous probe, which fetches nothing, so it has only ever
+   measured the stand-in.  The new one is in the AZ tail and runs his geometry.
+
+   4.5 -> 8.5, so the brick goes -21.5 -> -25.5 and his house clears by 0.72m.
+   It is also already a KNOWN number: RULING BQ's writeup at the interior's own
+   sceneTravel says "the house stands 3.28m THROUGH the back wall" in as many
+   words, and parked the room stage LEFT instead because upstage did not fit.
+   He has now chosen the other answer.
+
+   EVERYTHING STRUCTURAL ALREADY FOLLOWS, and that is not luck — the first move
+   of this wall left the trash drum 0.1m through the brick and it is in TRAPS.
+   The deck, the stage-house wall, the dock and crossover (p2c), the cull rooms
+   (p2i), the shed and every piece of furniture standing in it (p2m) and the
+   walk block (p7) are all expressed off PAL_BACK or PAL_DEEP, so they move
+   together.  This change is the test of whether that lesson took.
    --------------------------------------------------------------------------- */
-const PAL_DEEP = 4.5;                       // how much deeper the Palace runs
-const PAL_BACK = D.backWall - PAL_DEEP;     // -21.5
+const PAL_DEEP = 8.5;                       // how much deeper the Palace runs
+const PAL_BACK = D.backWall - PAL_DEEP;     // -25.5
 
 /* ============================================================================
    RENDERER / QUALITY
@@ -13522,9 +13552,11 @@ const BJ = {
 };
 const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
 /* where the house wagon parks.  The room is built in its ACTING position, so
-   this is how far upstage it tracks to hide: it puts the set at z -17.10 ..
-   -11.70 — clear of the last lineset (-10.90) that carries the backdrop, and
-   2.3m off the Palace brick at PAL_BACK.  0 is on.
+   this is how far upstage it tracks to hide: the stand-in lands at z -19.24 ..
+   -11.56 and HIS 12.98m house at -24.78 .. -11.80 — both clear of the last
+   lineset (-10.90) that carries the backdrop, and both inside the Palace brick
+   since RULING CL took PAL_BACK to -25.5.  His clears it by 0.72m and is the
+   binding case; before CL it stood 3.28m out in the street.  0 is on.
 
    It is measured against the DEEPEST dressing, not the shell: the Deetz
    dressing reaches 1.9m further downstage than the Maitlands one, so a park
@@ -13591,10 +13623,14 @@ const BJ_EXT_SIDE   = -13.5;   /* -x, the fly-rail side.  13.5 clears the pictur
                                   rail is better than the fallback standing in the
                                   picture.  Both are well inside the wall at -22. */
 const BJ_ATTIC_BACK = -8.8;    /* upstage.  Bounded by the STAND-IN attic, which
-                                  reaches z -12.40 and so parks at -21.20 against
-                                  the brick at PAL_BACK -21.5 — 0.3m to spare.
+                                  reaches z -12.40 and so parks at -21.20.
                                   -10.0 was measured against his model alone and
-                                  put the stand-in 0.90m into the brick. */
+                                  put the stand-in 0.90m into the brick.
+                                  RULING CL then took PAL_BACK to -25.5, so the
+                                  0.3m this used to have has become 4.3m and the
+                                  brick is no longer what bounds it — the number
+                                  stays because the reason it was chosen (the
+                                  stand-in, not his model) has not changed. */
 const BJ_TRACK_SPEED = 2.0;    // m/s — a tracked set crosses in ~7s
 
 /* THE NETHERWORLD, to his three words (RULING BV amended).
@@ -14649,20 +14685,25 @@ SHOWS.beetlejuice = {
        the backdrop hangs and therefore where it hides.
 
        It starts PARKED, because the show opens on the graveyard.  The
-       Palace was made 4.5m deeper for exactly this (p2.txt, PAL_BACK):
-       parked, the room sits at z -17.10 .. -11.50, which is clear of the
-       last lineset at -10.90 in front of it and 4.4m off the brick
-       behind it.  At the curtain call it parks there in full view with
-       the backdrop flown out and nothing else on the stage.
+       Palace was made deeper for exactly this (p2.txt, PAL_BACK): slid
+       back the room stands clear of the last lineset at -10.90 in front
+       of it and clear of the brick behind it.  At the curtain call it
+       parks there in full view with the backdrop flown out and nothing
+       else on the stage.
        ================================================================ */
     sceneTravel(inr, 'z', BJ_WAGON_BACK, 2.0);
-    /* RULING BQ — AND THE UPSTAGE PARK DESCRIBED ABOVE IS NOT A PARK ANY MORE.
-       Every number in that comment was measured against the STAND-IN dressings.
-       HIS interior is 12.98m deep, and parked at BJ_WAGON_BACK it measures
-       z -24.78 .. -11.80 against the Palace brick at PAL_BACK -21.5 — the house
-       stands 3.28m THROUGH the back wall, out in the street.  Today that is
-       invisible only because a struck set is switched off.  (tools/parked.js)
-       Where it parks instead is declared after the dressings are built, below. */
+    /* RULING BQ — AND THIS WAS NOT A PARK FOR HIS HOUSE UNTIL RULING CL.
+       The 4.5m of extra depth was measured against the STAND-IN dressings, which
+       slide back to z -19.24 .. -11.56.  HIS interior is 12.98m deep and lands
+       at -24.78 .. -11.80 — against the old brick at -21.5 that was 3.28m of
+       house standing out in the street, invisible only because a struck set was
+       switched off (tools/parked.js, tools/deeper.js).
+
+       BQ's answer was to park the room STAGE LEFT instead, which is still where
+       a STRUCK room goes and is declared after the dressings are built, below.
+       CL is the owner's answer to the other half — the cue-authored "house
+       slides back" that plays in full view at the curtain call — and it is the
+       brick that moved: PAL_DEEP 4.5 -> 8.5, PAL_BACK -25.5, 0.72m to spare. */
 
     /* ================================================================
        THREE DRESSINGS on the same room.  Measured: the redecorated

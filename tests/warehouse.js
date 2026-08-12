@@ -42,7 +42,10 @@ const probe = `
   P('the shed exists and is a room', ()=>{
     if(typeof SHEDS === 'undefined' || !SHEDS.palace) throw new Error('no palace shed');
     if(!ROOMS.shed) throw new Error('no shed room slab');
-    if(roomAt(-25) !== 'shed') throw new Error('z=-25 files as '+roomAt(-25));
+    /* off the room's own boundary, not a literal: the brick has moved twice
+       (PAL_DEEP 4.5 then 8.5, RULING CL) and -25 is out on the stage now */
+    const zin = ROOMS.shed.z1 - 1;
+    if(roomAt(zin) !== 'shed') throw new Error('z='+zin.toFixed(1)+' files as '+roomAt(zin));
     if(roomAt(-10) !== 'stage') throw new Error('the stage slab moved');
     return 'room at z<'+ROOMS.shed.z1;
   });

@@ -60,3 +60,17 @@ run takes a few minutes and caches to the OS temp dir; `--fresh` re-measures.
 Nothing from the video is written into the repo — derived numbers only.
 
 Characters are distance bands: `#` nearest … `.` furthest, space = nothing hit.
+
+## `deeper.js` — does the Palace hold what slides back into it? (RULING CL)
+
+Every dressing of the interior wagon at its most upstage cue target, as a world
+box, against the Palace brick — plus every part mover that travels upstage, and
+where the shed and its furniture ended up when the wall moved. Run it both ways:
+his house is 12.98m deep and the stand-in 7.68m, so **his model is the binding
+case here**, the inverse of the RULING BQ trap.
+
+```sh
+export NODE_PATH=../tests/node_modules
+node deeper.js                    # his files
+PROBE_STANDIN=1 node deeper.js    # the fallback that plays on a fresh clone
+```
