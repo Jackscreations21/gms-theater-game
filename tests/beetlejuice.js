@@ -3040,7 +3040,7 @@ const probe = `
   window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE, BJ_MODELS:BJ_MODELS, BJ_AUDIO:BJ_AUDIO,
                  BJ_TRI_BUDGET:BJ_TRI_BUDGET, BJ_TEX_BUDGET:BJ_TEX_BUDGET,
                  /* RULING BX — the room a set is fitted INTO, not just its width */
-                 BJ:BJ,
+                 BJ:BJ, D:D,
                  BJ_FIT_AIR:typeof BJ_FIT_AIR === 'undefined' ? undefined : BJ_FIT_AIR,
                  BJ_SET_DEPTH:typeof BJ_SET_DEPTH === 'undefined' ? undefined : BJ_SET_DEPTH,
                  bjCues:()=>{ showLoad('beetlejuice'); return CUES.slice(); }};
@@ -3894,14 +3894,25 @@ const wd = setTimeout(() => {
 
   /* AND THE WIRING, through the REAL manifest entry — the lesson from BP's own
      round, where three separate functions were proved while nothing proved
-     bjApplyModel ever called them. */
-  await P('his house fits the opening through the real apply path', async () => {
+     bjApplyModel ever called them.
+
+     REWRITTEN IN PLACE FOR RULING CB.  It used to demand the house fit UNDER
+     the opening height, which is what BX did and what the owner then overruled:
+     "make the houses wide enought to stretch from one side of the prosinium to
+     the other ... its fine if the house is a little taller than the prosinium".
+     So the expectation flips — the house must FILL the picture side to side and
+     is allowed to overrun the border — and the assertion that replaces it is
+     stronger than the one it replaces, because the thing that can now go wrong
+     is not "too tall" but "stretched", "through the brick", or "no longer
+     filling". It pins all three. */
+  await P('his house FILLS the picture through the real apply path (CB)', async () => {
     if(az.BJ_FIT_AIR === undefined || az.BJ_SET_DEPTH === undefined)
       throw new Error('BJ_FIT_AIR/BJ_SET_DEPTH are not in the build — RULING BX is unbuilt');
+    const e = az.BJ_MODELS.houseMaitland;
+    if(!e.fillWidth) throw new Error('the house entry does not declare fillWidth — CB is unbuilt');
     const inr = w.sceneFind('interior');
     const root = hisRoot('house');
-    if(!w.bjApplyModel(az.BJ_MODELS.houseMaitland, root))
-      throw new Error('the apply refused');
+    if(!w.bjApplyModel(e, root)) throw new Error('the apply refused');
     /* measure in the DRESSING's own frame: the wagon is parked at
        BJ_WAGON_BACK, so a world box would be reading the wagon's offset and
        calling it the set's position */
@@ -3915,18 +3926,78 @@ const wd = setTimeout(() => {
     const inv = new THREE.Matrix4().copy(par.matrixWorld).invert();
     const box = new THREE.Box3().setFromObject(root).applyMatrix4(inv);
     const size = box.getSize(new THREE.Vector3());
-    if(size.y > az.BJ.opH - az.BJ_FIT_AIR + 0.01)
-      throw new Error('through the apply path it stands ' + size.y.toFixed(2) +
-                      'm in a ' + az.BJ.opH + 'm opening');
-    if(size.z > az.BJ_SET_DEPTH + 0.01)
-      throw new Error('through the apply path it is ' + size.z.toFixed(2) + 'm deep');
+
+    /* 1. IT FILLS THE PICTURE, which is the whole instruction.  Landing short
+          leaves bare stage and open wings either side of it. */
+    if(Math.abs(size.x - az.BJ.opW) > 0.02)
+      throw new Error('it landed ' + size.x.toFixed(2) + 'm wide in a ' + az.BJ.opW +
+                      'm opening — ' + ((az.BJ.opW - size.x)/2).toFixed(2) +
+                      'm of bare stage each side');
+    /* 2. AND IT IS NOT STRETCHED.  Reaching that width by scaling x alone would
+          have distorted every door and window by 43%; the ratios must survive. */
+    const raw = HIS.house;
+    for(const [i, got, name] of [[1, size.y, 'height'], [2, size.z, 'depth']]){
+      const want = raw[i] / raw[0] * size.x;
+      if(Math.abs(got - want) > 0.03)
+        throw new Error('the ' + name + ' is ' + got.toFixed(2) + 'm where a uniform scale ' +
+                        'gives ' + want.toFixed(2) + 'm — the set is distorted');
+    }
+    /* 3. THE BORDER MAY MASK IT; THE BRICK MAY NOT BE WALKED THROUGH. */
+    if(box.min.z < az.D.backWall)
+      throw new Error('it reaches z=' + box.min.z.toFixed(2) +
+                      ', through the back wall at ' + az.D.backWall);
+    /* and BX's seating survives untouched */
     if(box.max.z > -az.BJ_FIT_AIR + 0.01)
       throw new Error('through the apply path it reaches z=' + box.max.z.toFixed(2));
     if(Math.abs(box.min.y) > 0.01)
       throw new Error('through the apply path its base is at y=' + box.min.y.toFixed(3));
-    return 'the houseMaitland entry landed ' + size.x.toFixed(2) + ' x ' +
-           size.y.toFixed(2) + ' x ' + size.z.toFixed(2) + ', base on the deck, z up to ' +
-           box.max.z.toFixed(2);
+    return 'houseMaitland fills the ' + az.BJ.opW + 'm picture: ' + size.x.toFixed(2) + ' x ' +
+           size.y.toFixed(2) + ' x ' + size.z.toFixed(2) + ', undistorted, ' +
+           (size.y - az.BJ.opH).toFixed(2) + 'm behind the border, base on the deck';
+  });
+
+  await P('a filling set is still stopped by the back wall', async () => {
+    /* The border may mask the top; the brick may not be walked through.  This
+       needs a FIXTURE rather than his geometry: his houses reach z -13.28
+       against a wall at -17, so the bound never binds for them, and a negative
+       check that deleted it passed for exactly that reason — the bound was
+       unobservable, not sound.  A deliberately deep set makes it observable. */
+    const r = new THREE.Group();
+    r.add(new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.0, 6.0), new THREE.MeshStandardMaterial()));
+    w.bjFitAndSeat(r, 13.6, true);
+    const box = boxOf(r), size = box.getSize(new THREE.Vector3());
+    const avail = Math.abs(az.D.backWall) - az.BJ_FIT_AIR;
+    if(size.z > avail + 0.01)
+      throw new Error('a filling set came out ' + size.z.toFixed(2) +
+                      'm deep with only ' + avail.toFixed(2) + 'm of stage behind the arch');
+    if(box.min.z < az.D.backWall - 0.01)
+      throw new Error('it reaches z=' + box.min.z.toFixed(2) + ', past the brick at ' + az.D.backWall);
+    /* and it gave up WIDTH to do it, uniformly — the brick outranks the picture */
+    if(size.x > az.BJ.opW - 0.01)
+      throw new Error('it kept its full width AND its depth: ' + size.x.toFixed(2) + 'm');
+    if(Math.abs(size.z / size.x - 6.0 / 1.9) > 0.02)
+      throw new Error('it was squashed rather than scaled to fit the depth');
+    return 'a 6-deep fixture filled to ' + size.x.toFixed(2) + 'm wide, stopped at ' +
+           size.z.toFixed(2) + 'm deep by brick at ' + az.D.backWall + ', undistorted';
+  });
+
+  await P('a set that does NOT ask to fill is still capped by the opening (BX survives CB)', async () => {
+    /* CB is opt-in per entry and that is the load-bearing half of it: the attic
+       and the roof are depth-limited, not height-limited, and must not quietly
+       start overrunning the border because the houses were allowed to. */
+    for(const k of ['attic', 'roof', 'closet', 'bedroom', 'graveyard', 'netherworld', 'houseExterior'])
+      if(az.BJ_MODELS[k].fillWidth)
+        throw new Error(k + ' declares fillWidth; CB was scoped to the three interiors');
+    const root = hisRoot('house');            // the tallest thing he sent
+    w.bjFitAndSeat(root, 13.6);               // no fill flag
+    const size = boxOf(root).getSize(new THREE.Vector3());
+    if(size.y > az.BJ.opH - az.BJ_FIT_AIR + 0.01)
+      throw new Error('an unflagged set stands ' + size.y.toFixed(2) + 'm in a ' +
+                      az.BJ.opH + 'm opening — the cap is gone for everyone');
+    if(size.z > az.BJ_SET_DEPTH + 0.01)
+      throw new Error('an unflagged set is ' + size.z.toFixed(2) + 'm deep — the depth cap is gone');
+    return 'unflagged: ' + size.x.toFixed(2) + ' x ' + size.y.toFixed(2) + ' x ' +
+           size.z.toFixed(2) + ', still inside the opening and the stage depth';
   });
 
   /* THE BUDGET NUMBER ITSELF (RULING BP).  A negative check putting it back to
