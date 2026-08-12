@@ -10254,6 +10254,7 @@ function updateStorm(dt){
   updateRain(dt);
   updateFire(dt);
   if(typeof updateNeon === 'function') updateNeon(dt);
+  if(typeof bjUpdateSetFill === 'function') bjUpdateSetFill(dt);   // RULING CC
   updateShowStorm(dt);
   updateConfetti(dt);
   sceneMoveStep(dt);
@@ -11223,6 +11224,12 @@ function showCueExtras(c){
   /* the marquee's own lamps.  `undefined` means LEAVE IT — one cue turns the
      sign red and the cues after it keep it red without saying so again. */
   if(c.signCol !== undefined && typeof setSignLamps === 'function') setSignLamps(c.signCol);
+  /* THE WHOLE SET IS LIT UNLESS THIS CUE SAYS OTHERWISE (RULING CC).  Read per
+     cue and NOT remembered, which is the opposite of `signCol` two lines up —
+     the owner's words draw that distinction: "unless i said otherwise IN THE
+     CUE".  What it scales is the stage rig's own output, so a blackout cue still
+     lights nothing (bjUpdateSetFill). */
+  SHOW.bjFillCue = (c.fill === undefined) ? 1 : c.fill;
   setFirelight(c.fire ? c.fire.chans : null, c.fire ? c.fire.base : 0.8);
   /* which dressing the room wears (RULING AQ) — judged BEFORE the changeover
      below, against where the set stands as the cue FIRES.  A swap on a set
@@ -20275,6 +20282,89 @@ function bjSignLamps(sc, root){
   return beads.length + tubes.length;
 }
 
+/* --------------------------------------------------------------------------
+   RULING CC — THE WHOLE SET IS LIT UNLESS THE CUE SAYS OTHERWISE.
+
+   The owner: "do something to make sure that unless i said otherwise in the cue
+   that the entire set is lit up."
+
+   WHY THIS IS NEEDED NOW and was not before: the rig aims fixtures at stage
+   positions chosen when the sets were our stand-ins, and his are far bigger —
+   the houses run 12.98m front to back where the shell they replaced was a wall
+   and a staircase.  Nothing reaches the upstage half, so a set stands half in
+   darkness with no cue anywhere saying it should.
+
+   WHAT THIS IS NOT.  It is NOT a global ambient lift.  p4 already deliberately
+   took the rig almost out of the ambient bed, and says why in its own comment:
+   "a bright stage lit the whole auditorium — every seat and every inch of
+   plaster came up with it.  Stage light belongs on the stage."  Raising the bed
+   would undo that.  It is also not a set of new lights: RULINGS BC/BG/BL share
+   a pool of 8 real ones (4 in a headset) very carefully, and per-pixel light is
+   what a Quest cannot afford.
+
+   So the set lights ITSELF: each imported material gets its own texture as an
+   emissive map, and the intensity of that is what a cue drives.  It costs no
+   draw call, no light and no shadow, and because the emissive follows the map
+   the set keeps its painted detail instead of going flat.
+
+   TWO GUARDS THAT MAKE IT SAFE.
+
+   1. IMPORTED MATERIALS ONLY.  Stand-in materials are shared across scenes and
+      shows (TRAPS, the shared-material trap: freeing one would strip another) —
+      so writing an emissive onto one would quietly light the same material in
+      four other productions.  Only what bjApplyModel actually landed is
+      registered, which is also exactly the geometry that has the problem.
+
+   2. A BLACKOUT STAYS BLACK.  "Unless I said otherwise" cannot mean a lit set
+      in the dark: the show has real blackouts, and the act break is one.  So the
+      default is not a fixed level, it is the STAGE rig's own output — audience
+      units excluded, because eight blinders pointed at the house are not
+      lighting the set.  Every cue lights the whole set in proportion to how lit
+      that cue is, and a cue with the rig at zero lights nothing.
+
+   `fill` on a cue overrides it, 0 for none: "unless i said otherwise IN THE
+   CUE", so it is read per cue and not remembered — unlike `signCol`, where
+   saying nothing deliberately leaves the last one standing (RULING BH's
+   pattern).  His words draw the distinction and the two fields differ on it.
+   -------------------------------------------------------------------------- */
+/* one-line retunes: how self-lit a fully-lit set gets, and how fast it follows */
+const BJ_FILL_MAX = 0.55, BJ_FILL_RATE = 1.6;
+
+function bjFillRegister(root){
+  if(typeof SHOW === 'undefined' || !root) return 0;
+  const list = SHOW.bjFill || (SHOW.bjFill = []);
+  root.traverse(o=>{
+    if(!o.isMesh || !o.material) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for(const m of mats){
+      /* MeshBasic has no emissive at all, and a material already registered
+         must not be primed twice */
+      if(!m || !m.emissive || list.indexOf(m) >= 0) continue;
+      m.emissive.setRGB(1, 1, 1);
+      if(m.map && !m.emissiveMap) m.emissiveMap = m.map;   // keep his detail
+      m.emissiveIntensity = 0;                             // dark until a cue says
+      m.needsUpdate = true;
+      list.push(m);
+    }
+  });
+  return list.length;
+}
+
+/* off the frame dt, never a timer (CLAUDE.md) */
+function bjUpdateSetFill(dt){
+  if(typeof SHOW === 'undefined' || !SHOW.bjFill || !SHOW.bjFill.length) return;
+  let stage = 0;
+  for(const f of FIXTURES) if(!f.audience) stage += f._lvl * f.power;
+  /* the same yardstick p4 uses for its own rig bed, so "lit" means here what it
+     means there rather than being a second opinion about the same rig */
+  const lit = clamp(stage / 16, 0, 1);
+  const asked = (SHOW.bjFillCue === undefined) ? 1 : clamp(SHOW.bjFillCue, 0, 1);
+  const want = asked * lit * BJ_FILL_MAX;
+  const now = (SHOW.bjFillNow === undefined) ? 0 : SHOW.bjFillNow;
+  SHOW.bjFillNow = now + clamp(want - now, -dt * BJ_FILL_RATE, dt * BJ_FILL_RATE);
+  for(const m of SHOW.bjFill) m.emissiveIntensity = SHOW.bjFillNow;
+}
+
 function bjApplyModel(entry, root, scGiven){
   const sc = scGiven || sceneFind(entry.scene);
   if(!sc) return false;
@@ -20370,7 +20460,10 @@ function bjApplyModel(entry, root, scGiven){
     landed.push(root);
   }
 
-  for(const o of landed) bjFreeze(o);
+  /* frozen, and registered for the set fill (RULING CC) — from `landed` rather
+     than from `root`, because the split route detaches the root's children and
+     a traverse of the root after that sees nothing */
+  for(const o of landed){ bjFreeze(o); bjFillRegister(o); }
   /* BEFORE the sceneApply below, not after: fresh meshes wake on layer 0, and
      the refresh is what puts them into whatever state the scene is in */
   if(entry.lamps === 'sign') bjSignLamps(sc, root);

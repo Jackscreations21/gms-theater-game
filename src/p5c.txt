@@ -622,6 +622,7 @@ function updateStorm(dt){
   updateRain(dt);
   updateFire(dt);
   if(typeof updateNeon === 'function') updateNeon(dt);
+  if(typeof bjUpdateSetFill === 'function') bjUpdateSetFill(dt);   // RULING CC
   updateShowStorm(dt);
   updateConfetti(dt);
   sceneMoveStep(dt);
@@ -1591,6 +1592,12 @@ function showCueExtras(c){
   /* the marquee's own lamps.  `undefined` means LEAVE IT — one cue turns the
      sign red and the cues after it keep it red without saying so again. */
   if(c.signCol !== undefined && typeof setSignLamps === 'function') setSignLamps(c.signCol);
+  /* THE WHOLE SET IS LIT UNLESS THIS CUE SAYS OTHERWISE (RULING CC).  Read per
+     cue and NOT remembered, which is the opposite of `signCol` two lines up —
+     the owner's words draw that distinction: "unless i said otherwise IN THE
+     CUE".  What it scales is the stage rig's own output, so a blackout cue still
+     lights nothing (bjUpdateSetFill). */
+  SHOW.bjFillCue = (c.fill === undefined) ? 1 : c.fill;
   setFirelight(c.fire ? c.fire.chans : null, c.fire ? c.fire.base : 0.8);
   /* which dressing the room wears (RULING AQ) — judged BEFORE the changeover
      below, against where the set stands as the cue FIRES.  A swap on a set

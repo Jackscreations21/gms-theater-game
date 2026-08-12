@@ -3126,7 +3126,7 @@ const probe = `
   window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE, BJ_MODELS:BJ_MODELS, BJ_AUDIO:BJ_AUDIO,
                  BJ_TRI_BUDGET:BJ_TRI_BUDGET, BJ_TEX_BUDGET:BJ_TEX_BUDGET,
                  /* RULING BX — the room a set is fitted INTO, not just its width */
-                 BJ:BJ, D:D,
+                 BJ:BJ, D:D, FIXTURES:FIXTURES,
                  BJ_FIT_AIR:typeof BJ_FIT_AIR === 'undefined' ? undefined : BJ_FIT_AIR,
                  BJ_SET_DEPTH:typeof BJ_SET_DEPTH === 'undefined' ? undefined : BJ_SET_DEPTH,
                  bjCues:()=>{ showLoad('beetlejuice'); return CUES.slice(); }};
@@ -4049,6 +4049,211 @@ const wd = setTimeout(() => {
     return 'houseMaitland fills the ' + az.BJ.opW + 'm picture: ' + size.x.toFixed(2) + ' x ' +
            size.y.toFixed(2) + ' x ' + size.z.toFixed(2) + ', undistorted, ' +
            (size.y - az.BJ.opH).toFixed(2) + 'm behind the border, base on the deck';
+  });
+
+  /* ══ RULING CC — THE WHOLE SET IS LIT UNLESS THE CUE SAYS OTHERWISE ═════
+     "do something to make sure that unless i said otherwise in the cue that the
+     entire set is lit up."  His sets run 12.98m front to back where our shell
+     was a wall and a staircase, and the rig aims at positions chosen for the
+     shell, so the upstage half stood dark with no cue saying so.            */
+  await P('an imported set lights itself, and follows the rig rather than a fixed level (CC)', async () => {
+    if(typeof w.bjUpdateSetFill !== 'function')
+      throw new Error('bjUpdateSetFill is not in the build — RULING CC is unbuilt');
+    const root = hisRoot('house');
+    const mat = new THREE.MeshStandardMaterial({map:new THREE.Texture()});
+    root.children[0].material = mat;
+    if(!w.bjApplyModel(az.BJ_MODELS.houseMaitland, root)) throw new Error('the apply refused');
+    if((az.SHOW.bjFill || []).indexOf(mat) < 0)
+      throw new Error('the landed material was never registered for the fill');
+    /* HIS DETAIL SURVIVES: the emissive follows his own map, so a lit set is not
+       a flat glowing block */
+    if(mat.emissiveMap !== mat.map)
+      throw new Error('the emissive does not follow his texture — the set would go flat');
+
+    /* A BLACKOUT STAYS BLACK.  This is the guard that keeps his instruction from
+       meaning "a lit set in the dark": the show has real blackouts and the act
+       break is one. */
+    az.SHOW.bjFillCue = 1;
+    for(const f of az.FIXTURES) f._lvl = 0;
+    az.SHOW.bjFillNow = 0.5;                          // start it LIT, so the
+    for(let i = 0; i < 120; i++) w.bjUpdateSetFill(1/60);   // fade down is real
+    if(mat.emissiveIntensity > 0.02)
+      throw new Error('the set is lit at ' + mat.emissiveIntensity.toFixed(3) +
+                      ' with every fixture at zero — a blackout would not be black');
+
+    /* AND A LIT CUE LIGHTS THE WHOLE SET, without the cue saying anything */
+    let stage = 0;
+    for(const f of az.FIXTURES){ if(!f.audience){ f._lvl = 1; stage += f.power; } }
+    if(!stage) throw new Error('no stage fixtures to light with');
+    for(let i = 0; i < 240; i++) w.bjUpdateSetFill(1/60);
+    if(mat.emissiveIntensity < 0.3)
+      throw new Error('a fully lit rig only got the set to ' + mat.emissiveIntensity.toFixed(3));
+    const full = mat.emissiveIntensity;
+
+    /* THE AUDIENCE RIG IS NOT SET LIGHT.  Eight blinders pointed at the house
+       are not lighting the scenery, and counting them would light the set in
+       cues whose only lit channels point the other way. */
+    for(const f of az.FIXTURES) f._lvl = f.audience ? 1 : 0;
+    for(let i = 0; i < 240; i++) w.bjUpdateSetFill(1/60);
+    if(mat.emissiveIntensity > 0.02)
+      throw new Error('the audience rig alone lit the set to ' + mat.emissiveIntensity.toFixed(3));
+
+    /* AND A CUE THAT SAYS OTHERWISE WINS */
+    for(const f of az.FIXTURES) f._lvl = f.audience ? 0 : 1;
+    az.SHOW.bjFillCue = 0;
+    for(let i = 0; i < 240; i++) w.bjUpdateSetFill(1/60);
+    if(mat.emissiveIntensity > 0.02)
+      throw new Error('fill:0 was ignored — the set is at ' + mat.emissiveIntensity.toFixed(3));
+    az.SHOW.bjFillCue = 1;
+    return 'dark rig -> 0.000, full rig -> ' + full.toFixed(3) +
+           ', audience rig alone -> 0.000, fill:0 -> 0.000';
+  });
+
+  await P('the fill NEVER touches a stand-in material (the shared-material trap)', async () => {
+    /* Stand-in materials are shared across scenes AND shows (TRAPS: freeing one
+       would strip another), so an emissive written onto one would quietly light
+       the same material in four other productions.  Only what bjApplyModel
+       landed may be registered. */
+    /* THIS TEST BUILDS ITS OWN STATE, and two earlier attempts at it did not,
+       which is worth recording because both looked like real leaks:
+
+         1. naming cemetery/bedroom/closet/afterlife as "the scenes he did not
+            model" — but earlier tests in this file land hand-built models INTO
+            the cemetery, so by here its materials really are imported;
+         2. deriving the same list from sc.group.userData.bjApplied — which is
+            set by loadSetModels and NOT by bjApplyModel, so a suite that calls
+            the apply directly leaves every scene looking like a stand-in.
+
+       Both reported "1 material in the cemetery is registered" and both were
+       measuring the suite rather than the code.  So: reload the show, snapshot
+       what our OWN build made, land exactly one model, and compare. */
+    w.showLoad('beetlejuice');
+    const ours = [];
+    for(const sc of az.SHOW.scenes)
+      sc.group.traverse(o=>{
+        if(!o.isMesh || !o.material) return;
+        const l = Array.isArray(o.material) ? o.material : [o.material];
+        for(const m of l) if(ours.indexOf(m) < 0) ours.push(m);
+      });
+    if(!ours.length) throw new Error('the fresh build has no stand-in materials at all');
+    if((az.SHOW.bjFill || []).length)
+      throw new Error('a freshly loaded show already has ' + az.SHOW.bjFill.length +
+                      ' materials registered, before anything was imported');
+
+    /* their emissive state BEFORE, because several of ours are BUILT with a
+       white emissive on purpose — the sign's panel and its arrow face carry
+       emissiveMap textures.  Pattern-matching "has a white emissive" flagged
+       those two and was a false positive; what matters is that nothing CHANGED. */
+    const was = ours.filter(m => m.emissive).map(m => ({m,
+      e: m.emissive.getHex(), ei: m.emissiveIntensity, em: m.emissiveMap}));
+
+    const root = hisRoot('attic');
+    const mine = new THREE.MeshStandardMaterial();
+    root.children[0].material = mine;
+    if(!w.bjApplyModel(az.BJ_MODELS.attic, root)) throw new Error('the apply refused');
+
+    const reg = az.SHOW.bjFill || [];
+    if(reg.indexOf(mine) < 0) throw new Error('the imported material was not registered');
+    const leaked = reg.filter(m => ours.indexOf(m) >= 0);
+    if(leaked.length)
+      throw new Error(leaked.length + ' of our own shared materials were registered for the ' +
+                      'fill — the same material is used by other productions');
+    if(reg.length !== 1)
+      throw new Error(reg.length + ' materials registered by one imported set, wanted 1');
+    /* and not one of ours was ALTERED — colour, intensity or map */
+    const moved = was.filter(r => r.m.emissive.getHex() !== r.e ||
+                                  r.m.emissiveIntensity !== r.ei ||
+                                  r.m.emissiveMap !== r.em);
+    if(moved.length)
+      throw new Error(moved.length + ' of our own shared materials had their emissive ' +
+                      'changed by the import — that would light them in other shows too');
+    /* the fill really does drive the imported one, so the comparison above is
+       between a material that moved and materials that did not */
+    az.SHOW.bjFillCue = 1;
+    for(const f of az.FIXTURES) f._lvl = f.audience ? 0 : 1;
+    for(let i = 0; i < 240; i++) w.bjUpdateSetFill(1/60);
+    if(!(mine.emissiveIntensity > 0.3))
+      throw new Error('the imported material never lit, so nothing was being compared');
+    return '1 imported material registered and lit to ' + mine.emissiveIntensity.toFixed(2) +
+           '; ' + was.length + ' of our own shared materials unchanged';
+  });
+
+  await P('every cue lights the set unless it says otherwise, and the plot still has its dark', async () => {
+    /* bjCues() RELOADS the show and hands back the LIVE array, so it is called
+       once and not followed by another showLoad — a second load rebuilds CUES
+       and would leave this holding the previous load's objects while fireCue
+       fired the new ones (the stale-reference trap, already in this file's own
+       notes about captured CUES). */
+    const cues = az.bjCues();
+    const stated = cues.filter(c => c.fill !== undefined);
+    /* A MODEL HAS TO BE IN, or this whole test is free.  bjUpdateSetFill returns
+       immediately when nothing is registered, so the act-break check below read
+       an undefined SHOW.bjFillNow and passed — a negative check that replaced
+       the rig term with a fixed level sailed straight through it.  The fill has
+       to have something to drive before "it stays dark" means anything. */
+    const root = hisRoot('attic');
+    const mat = new THREE.MeshStandardMaterial();
+    root.children[0].material = mat;
+    if(!w.bjApplyModel(az.BJ_MODELS.attic, root)) throw new Error('the apply refused');
+    if(!(az.SHOW.bjFill || []).length) throw new Error('nothing registered — the test would be vacuous');
+
+    /* THE REAL FRAME IS THREE CALLS, not one.  updateStorm alone does not move
+       the rig: updateFades drives f.level off the cue's fade and updateRig turns
+       that into f._lvl, which is what the set fill reads.  Stepping only
+       updateStorm left the fixtures wherever the previous test had put them —
+       which is how this assertion first "failed" against correct code. */
+    let clock = 0;
+    const step = dt => { clock += dt; w.updateFades(dt); w.updateRig(dt, clock); w.updateStorm(dt); };
+
+    const i = cues.findIndex(c => c.fill === undefined && c.lx && c.lx.some(x => x.lvl > 0.5));
+    if(i < 0) throw new Error('no lit cue that leaves fill unstated — nothing to check');
+    w.fireCue(i);
+    if(az.SHOW.bjFillCue !== 1)
+      throw new Error('a cue that says nothing set the fill to ' + az.SHOW.bjFillCue + ', not 1');
+    /* it really lights the set through the REAL frame path, not just the field */
+    for(let k = 0; k < 300; k++) step(1/60);
+    const onLit = mat.emissiveIntensity;
+    if(!(onLit > 0.05))
+      throw new Error('a lit cue that says nothing left the set at ' + onLit.toFixed(3));
+
+    /* and the act break, a real blackout, still puts nothing on it */
+    const dark = cues.findIndex(c => /END OF HALF/.test(c.label));
+    if(dark < 0) throw new Error('no act-break blackout to check');
+    w.fireCue(dark);
+    for(let k = 0; k < 600; k++) step(1/60);
+    if(mat.emissiveIntensity > 0.02)
+      throw new Error('the act-break blackout leaves the set lit at ' +
+                      mat.emissiveIntensity.toFixed(3));
+
+    /* AND `fill` ON A CUE REALLY REACHES IT, through fireCue rather than by
+       writing SHOW.bjFillCue here.  A negative check that made showCueExtras
+       ignore the field entirely passed against the version of this suite that
+       set the field itself — proving the function while never proving its
+       wiring, which is the fourth time that has happened in this project.
+       The plot states no fill anywhere, so one is put on a cue and fired. */
+    cues[i].fill = 0;
+    try{
+      w.fireCue(i);
+      if(az.SHOW.bjFillCue !== 0)
+        throw new Error('fill:0 on a cue never reached the show (bjFillCue is ' +
+                        az.SHOW.bjFillCue + ')');
+      for(let k = 0; k < 300; k++) step(1/60);
+      if(mat.emissiveIntensity > 0.02)
+        throw new Error('a cue saying fill:0 still lit the set to ' +
+                        mat.emissiveIntensity.toFixed(3));
+      /* and taking it off again brings the set back, so the field is read per
+         cue and not latched */
+      delete cues[i].fill;
+      w.fireCue(i);
+      for(let k = 0; k < 300; k++) step(1/60);
+      if(!(mat.emissiveIntensity > 0.05))
+        throw new Error('removing fill left the set dark at ' +
+                        mat.emissiveIntensity.toFixed(3) + ' — the field latched');
+    } finally { delete cues[i].fill; }
+
+    return cues.length + ' cues, ' + stated.length + ' stating a fill; an unstated lit cue ' +
+           'lit the set to ' + onLit.toFixed(2) + ', the act break took it to 0.000, ' +
+           'and fill:0 on that cue took it to 0.000 through fireCue';
   });
 
   /* ══ RULING CA — HIS SIGN, OUR LAMPS ════════════════════════════════════ */
