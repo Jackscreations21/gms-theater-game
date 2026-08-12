@@ -18,7 +18,20 @@ one of these drew it.
 Each is ~40 lines of probe on top of the same jsdom harness the tests use.
 Copy one and change the eye position to look at something else.
 
-One that measures FILES rather than a view:
+One that measures TIME, and refused a feature:
+
+    node walkcost.js
+
+What it costs to stand on an imported set. RULING BY was going to put the
+landed mesh straight onto `WALKABLE`, since his exports name no `walk_` node
+and cannot. Measured: **4.29 ms per `groundAt` against his 99k-triangle roof
+against 0.0018 ms for the 12-triangle stand-in it replaces** — 38.6% of a 90 Hz
+frame, once for the player plus once per settling body, with no early exit
+because three.js collects and sorts every intersection. The flag was written,
+measured, and taken back out; the number lives here so nobody has to
+rediscover it.
+
+Two that measure FILES rather than a view:
 
     node models.js [--from <dir of his raw Meshy exports>]
 
