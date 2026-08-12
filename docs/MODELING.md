@@ -84,10 +84,21 @@ import shrinks the whole set until it fits (RULING BX). The Width column is
 what you get *if* the height and depth allow it.
 
 Measured against what you delivered, that means: the attic and the roof are
-limited by their **depth** and land 13.06 m and 12.30 m wide; the three houses
-are limited by their **height** and land 9.49 m wide (31 ft) rather than 42 ft.
-Flattening the houses — they came out nearly as tall as they are wide, where
-this table asks for roughly 42 × 29 — is what would win that width back.
+limited by their **depth** and land 13.06 m and 12.30 m wide.
+
+**The three interiors are the exception, by your ruling (RULING CB).** They came
+out nearly as tall as they are wide, so the height cap bound first and they
+landed 9.49 m wide — two metres of bare stage each side. You asked for them to
+"stretch from one side of the prosinium to the other", and that a house a little
+taller than the proscenium was fine. So those three **fill the picture width
+(13.6 m / 44'7") and are allowed to overrun the border**, which is what a border
+is for: they stand 12.76 m and 3.56 m of that is masked. Measured, that is
+**7.1% of the surface area** — the tapering roof, where the bottom 0.6 m alone
+holds 27%. The scale stays uniform; nothing is stretched.
+
+The one thing that still binds a filling set is the **back wall**: it may hide
+behind the border, it may not stand in the brick. Yours reach 12.98 m deep
+against 17 m of stage, so they clear.
 
 **The File column is the contract**: the import fetches EXACTLY these names
 (and the fallback is silent, so a file named anything else would simply never
@@ -95,7 +106,7 @@ load). A test pins this list to the game's manifest, both directions.
 
 | Set | File | Width | Height | Depth | Notes |
 |---|---|---|---|---|---|
-| **The house** (the wagon) | `bj-house-maitland.glb`, `bj-house-deetz.glb`, `bj-house-beetlejuice.glb` | ≤ 42' | **≤ 29'** | ~20' | The big one. It SLIDES on and off, so it must clear the 30' opening with air to spare. **Three WHOLE houses** — architecture and dressing together, one file per state (Maitlands / Deetz / Beetlejuice), which is how you built them (RULING BP). Each replaces the entire interior; the first one to load takes the built-in shell out. Floors and stairs named `walk_*`. |
+| **The house** (the wagon) | `bj-house-maitland.glb`, `bj-house-deetz.glb`, `bj-house-beetlejuice.glb` | **44'7" — the full picture** | taller than 30' is fine | ~20'–42' | The big one. **Three WHOLE houses** — architecture and dressing together, one file per state (Maitlands / Deetz / Beetlejuice), which is how you built them (RULING BP). Each replaces the entire interior; the first one to load takes the built-in shell out. These three **fill the opening side to side and are allowed to run above the border** (RULING CB, your call) — so unlike every other row here, height is not a cap for them, and whatever you put above 30' is simply masked. Floors and stairs named `walk_*`. |
 | **Graveyard** | `bj-graveyard.glb` | ~44' | hills ~16' | ~20' | The hills, the mound, the black tree, crosses, small mausoleums. Do NOT model the sky or the moon — the cloud sky with the cratered moon is a painted drop and is made in-game. |
 | **Attic** | `bj-attic.glb` | ~44' | ~26' | ~16' | Two open-front junk sheds either side, slatted junk wall centre with the double doors, the hung rafter fragment. |
 | **Closet** | `bj-closet.glb` | ~20' | ~13' | ~10' | The bright pink one, spiral door. |

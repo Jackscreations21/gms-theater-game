@@ -3712,13 +3712,22 @@ const BJ_MODELS = {
 
      `whole` says so: the file is the entire interior for that dressing, so it
      lands in the dressing's own group AND the shared shell stand-in comes out,
-     because otherwise our architecture would stand inside his. */
-  houseMaitland:    {scene:'interior', dress:'maitland', whole:true, fit:12.8,
-                     url:'assets/bj-house-maitland.glb'},
-  houseDeetz:       {scene:'interior', dress:'deetz',    whole:true, fit:12.8,
-                     url:'assets/bj-house-deetz.glb'},
-  houseBeetlejuice: {scene:'interior', dress:'bj',       whole:true, fit:12.8,
-                     url:'assets/bj-house-beetlejuice.glb'}
+     because otherwise our architecture would stand inside his.
+
+     `fillWidth` is RULING CB and `fit` went 12.8 -> 13.6 with it: 13.6 IS
+     BJ.opW, the picture opening, so the house stretches from one leg to the
+     other with no bare stage at the sides — his instruction.  At 12.8 they
+     landed 9.49m wide, because these three arrived nearly as tall as they are
+     wide and BX's height cap bound first, leaving 2m of empty stage each side.
+     Filling the width puts 7.1% of the surface behind the border, which he has
+     ruled fine ("its fine if the house is a little taller than the
+     prosinium") — and it is what a border is for. */
+  houseMaitland:    {scene:'interior', dress:'maitland', whole:true, fit:13.6,
+                     fillWidth:true, url:'assets/bj-house-maitland.glb'},
+  houseDeetz:       {scene:'interior', dress:'deetz',    whole:true, fit:13.6,
+                     fillWidth:true, url:'assets/bj-house-deetz.glb'},
+  houseBeetlejuice: {scene:'interior', dress:'bj',       whole:true, fit:13.6,
+                     fillWidth:true, url:'assets/bj-house-beetlejuice.glb'}
 };
 /* the two manifest shapes, normalised to one */
 function bjModelEntry(key){
@@ -3940,7 +3949,41 @@ function bjFreeze(o){ o.traverse(c=>{ c.updateMatrix(); c.matrixAutoUpdate = fal
    tunes; `BJ.opH` is not — it is the picture opening itself. */
 const BJ_FIT_AIR = 0.30, BJ_SET_DEPTH = 10.0;
 
-function bjFitAndSeat(root, targetW){
+/* --------------------------------------------------------------------------
+   RULING CB — A SET MAY BE ASKED TO FILL THE PICTURE SIDE TO SIDE, and then
+   its WIDTH is what must be satisfied.
+
+   The owner, on seeing his houses land 9.49m wide in a 13.6m opening: "make
+   the houses wide enought to stretch from one side of the prosinium to the
+   other" — and, when told what it would cost, "its fine if the house is a
+   little taller than the prosinium".
+
+   That is the right call and it is what a portal is FOR.  A set wider than the
+   picture is hidden behind the legs; a set taller than it is hidden behind the
+   border; and a real box set is routinely both.  RULING BX capped the height
+   because nothing had said otherwise and a cropped set looked like a fault —
+   with this said out loud it is a masking job, not a fault.
+
+   MEASURED before it was chosen, on his real geometry (a throwaway probe that
+   binned triangle AREA by height, because a vertex count over-weights a
+   densely-tessellated chimney).  His house filling the width stands 12.76m in
+   a 9.20m picture, and what goes behind the border is:
+
+     surface area above the line   7.1%   (4.3% of triangles)
+     the bottom 0.6m alone         26.8%
+     the top three bands           0.2%, 0.7%, 0.6%
+
+   — the profile of a roof tapering away, which is exactly what a border is
+   there to hide.  The scale stays UNIFORM: 43% of horizontal stretch to reach
+   the same width would have distorted every door and window in the house, and
+   the whole reason fit-and-seat measures rather than assumes is to avoid that.
+
+   ONE THING IS NOT NEGOTIABLE.  The picture may mask the top, but the BUILDING
+   cannot be walked through, so a filling set is still bounded by the back wall
+   rather than by MODELING.md's ~10m of comfortable depth.  His house comes out
+   12.98m deep and reaches z -13.28 against brick at -17: it clears.
+   -------------------------------------------------------------------------- */
+function bjFitAndSeat(root, targetW, fill){
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root);
   if(!isFinite(box.min.x) || box.isEmpty()) return 1;
@@ -3949,8 +3992,14 @@ function bjFitAndSeat(root, targetW){
   /* p5h declares BJ and loads before this part (build.sh's order is a
      dependency order — see ARCHITECTURE.md), so the opening is readable here */
   let s = targetW / size.x;
-  if(size.y > 1e-6) s = Math.min(s, (BJ.opH - BJ_FIT_AIR) / size.y);
-  if(size.z > 1e-6) s = Math.min(s, BJ_SET_DEPTH / size.z);
+  if(fill){
+    /* the width is the whole point; only the brick still binds */
+    if(size.z > 1e-6)
+      s = Math.min(s, (Math.abs(D.backWall) - BJ_FIT_AIR) / size.z);
+  } else {
+    if(size.y > 1e-6) s = Math.min(s, (BJ.opH - BJ_FIT_AIR) / size.y);
+    if(size.z > 1e-6) s = Math.min(s, BJ_SET_DEPTH / size.z);
+  }
   root.scale.multiplyScalar(s);
   /* re-measure AFTER scaling rather than multiplying the old box: a child
      transform inside the model makes the two disagree, and this is cheap */
@@ -3975,7 +4024,7 @@ function bjApplyModel(entry, root, scGiven){
      conform (RULING BP).  A model that is already in metres fits at ~1.0. */
   let s = entry.scale || 1;
   if(s !== 1) root.scale.multiplyScalar(s);
-  else if(entry.fit) s = bjFitAndSeat(root, entry.fit);
+  else if(entry.fit) s = bjFitAndSeat(root, entry.fit, entry.fillWidth);
 
   /* collect the model's walkables BEFORE routing — the split route detaches
      the top-level nodes from the root, and a traverse after that sees none */
