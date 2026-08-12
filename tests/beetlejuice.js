@@ -914,6 +914,92 @@ const probe = `
     return rings.length+' frames, '+by[0].w.toFixed(1)+'m down to '+by[by.length-1].w.toFixed(1)+'m';
   });
 
+  /* RULING BV — the netherworld skewed to HIS PHOTOGRAPH.  "just use this as a
+     backdrop for the netherworld", so the picture is the LOOK: nested TILTED
+     TRAPEZOIDS receding upstage, all blue with bright edges, over a dark blue
+     backing.  The photograph itself is never committed (TRAPS draws the line at
+     looking versus committing), so what is testable is the three things it
+     changed, and those are all measurable. */
+  P('the netherworld frames are TRAPEZOIDS, tilted, and all blue (RULING BV)', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('afterlife');
+    const rings = [];
+    sceneFind('afterlife').group.traverse(o=>{ if(o.isMesh && o.name === 'bj:ring') rings.push(o); });
+    if(rings.length < 5) throw new Error('only '+rings.length+' frames');
+
+    for(const r of rings){
+      /* TRAPEZOID: narrower at the top than the bottom.  Measured off the
+         geometry rather than off the numbers that built it — a test that
+         re-reads its own input agrees with itself whatever the code does. */
+      r.geometry.computeBoundingBox();
+      const p = r.geometry.attributes.position;
+      let topX = 0, botX = 0;
+      const bb = r.geometry.boundingBox;
+      const hiY = bb.max.y - (bb.max.y - bb.min.y)*0.1;
+      const loY = bb.min.y + (bb.max.y - bb.min.y)*0.1;
+      for(let i = 0; i < p.count; i++){
+        const y = p.getY(i), x = Math.abs(p.getX(i));
+        if(y >= hiY) topX = Math.max(topX, x);
+        if(y <= loY) botX = Math.max(botX, x);
+      }
+      if(!(botX - topX > 0.30))
+        throw new Error('a frame is '+(2*botX).toFixed(2)+'m at the foot and '+
+                        (2*topX).toFixed(2)+'m at the head — that is a rectangle, not a trapezoid');
+      /* TILTED: a canted frame, not an axis-aligned one */
+      if(Math.abs(r.rotation.z) < 0.02)
+        throw new Error('a frame is not canted at all (rotation.z '+r.rotation.z.toFixed(3)+')');
+      /* ALL BLUE: blue dominant over both other channels, by a clear margin */
+      const c = SHOW.neon.find(n=>n.mesh === r);
+      if(!c) throw new Error('a frame is not registered on SHOW.neon');
+      const {r:cr, g:cg, b:cb} = c.base;
+      if(!(cb > cg + 0.05 && cb > cr + 0.20))
+        throw new Error('a frame base is '+c.base.getHexString()+' — not blue');
+      /* and NOTHING through the deck: the cant rotates the frame about its own
+         centre precisely so a bottom corner does not go under the stage */
+      const b = box(r);
+      if(b.min.y < 0)
+        throw new Error('a canted frame dips '+b.min.y.toFixed(3)+'m through the deck');
+    }
+    /* BRIGHTENING UPSTAGE, which is what draws the eye down the tunnel */
+    const byZ = rings.map(r=>({z:box(r).min.z, lum:(()=>{ const c = SHOW.neon.find(n=>n.mesh===r).base;
+      return c.r + c.g + c.b; })()})).sort((a,b)=>b.z - a.z);
+    if(!(byZ[byZ.length-1].lum > byZ[0].lum + 0.3))
+      throw new Error('the furthest frame is not brighter than the nearest — the tunnel has no draw');
+    return rings.length + ' blue trapezoids, canted, brightening ' +
+           byZ[0].lum.toFixed(2) + ' -> ' + byZ[byZ.length-1].lum.toFixed(2) + ' upstage';
+  });
+
+  P('the netherworld stands against a dark blue backing that is NOT neon', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('afterlife');
+    const back = byName('bj:aftBacking');
+    if(!back) throw new Error('there is no backing — his picture has the frames over a dark ground');
+    const c = back.material.color;
+    if(!(c.b > c.r && c.b > c.g)) throw new Error('the backing is '+c.getHexString()+', not blue');
+    if(c.r + c.g + c.b > 0.9)
+      throw new Error('the backing is '+c.getHexString()+' — too bright to be a dark ground');
+    /* it must NOT be a tube: updateNeon writes a colour into every registered
+       mesh every frame, so a registered backing would hum and flicker with them */
+    if(SHOW.neon.some(n=>n.mesh === back))
+      throw new Error('the backing is registered as neon — it would flicker');
+    /* MeshBasic, because the netherworld plays in a blackout and a lit
+       material would go black with the rig, taking the ground with it */
+    if(back.material.type !== 'MeshBasicMaterial')
+      throw new Error('the backing is a ' + back.material.type + ' — it would go dark with the rig');
+    /* upstage of every frame, and inside the picture it is seen through */
+    const bb = box(back);
+    const rings = [];
+    sceneFind('afterlife').group.traverse(o=>{ if(o.isMesh && o.name === 'bj:ring') rings.push(o); });
+    for(const r of rings)
+      if(box(r).min.z <= bb.max.z)
+        throw new Error('a frame is level with or behind the backing');
+    if(bb.max.x - bb.min.x > BJ.opW + 0.01)
+      throw new Error('the backing is '+(bb.max.x - bb.min.x).toFixed(2)+'m across a '+BJ.opW+' opening');
+    return 'a ' + c.getHexString() + ' MeshBasic ground, ' +
+           (bb.max.x - bb.min.x).toFixed(1) + 'm x ' + (bb.max.y - bb.min.y).toFixed(1) +
+           'm at z=' + bb.max.z.toFixed(1) + ', upstage of all ' + rings.length + ' frames, unregistered';
+  });
+
   P('the cue drives the neon, and the level is not stuck at one', ()=>{
     showLoad('beetlejuice');
     const lv = CUES.map(c=>c.neon);
