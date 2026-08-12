@@ -520,7 +520,9 @@ function vrPageCues(g, P){
     g.fillStyle = on ? '#ffffff' : '#aab4c0';
     g.fillText(c.label, P.x + 96, y + rowH/2 - 2);
     g.fillStyle = '#5d6874';
-    g.fillText(c.fade + 's', P.x + P.w - 360, y + rowH/2 - 2);
+    /* the same string the desktop list shows (RULING BN) — a control that
+       exists only in the DOM does not exist in VR, and neither does a label */
+    g.fillText(cueTimeText(c) || (c.fade + 's'), P.x + P.w - 360, y + rowH/2 - 2);
     vrHit(P.x, y, P.w - 300, rowH - 4, ((k)=>()=>{ nextCue = k; vrDrawConsole(true); })(start+i));
   }
   const bx = P.x + P.w - 280;

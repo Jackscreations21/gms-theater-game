@@ -213,7 +213,7 @@ function fireCue(idx){
 function go(){
   if(nextCue >= CUES.length){ toast('End of cue stack'); return; }
   const c = CUES[nextCue];
-  toast('GO  ▸  Q'+c.n+'  '+c.label+'   ('+c.fade+'s)');
+  toast('GO  ▸  Q'+c.n+'  '+c.label+'   ('+(cueTimeText(c) || c.fade+'s')+')');
   fireCue(nextCue);
 }
 function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) fireCue(nextCue); }
@@ -809,6 +809,32 @@ function buildSoundUI(){
   });
 }
 
+/* WHERE A CUE FALLS IN THE SHOW (RULING BN).  "label each cue not by how long
+   it is but by what timestamp in the show it is."
+
+   Written the way the OWNER writes them on his cue sheets — 1:03, 9:45,
+   1:39:19, 2:14:52 — so a row in the list reads as the same string he typed,
+   and minutes-and-seconds until there is an hour to show.
+
+   A cue with no `at` returns null and the caller keeps the fade.  That is
+   every cue in four of the five productions, and every cue anyone records off
+   the board with RECORD LIVE STATE: they have no place in a show to be
+   labelled by, so there is nothing to say.  Same bargain `signCol` and `lobby`
+   make — the field decides, and saying nothing leaves it alone.
+
+   Both cue lists call it: the DOM one below and the VR desk page in p9.  A
+   control that exists only in the DOM does not exist in VR, and that goes for
+   what a control SAYS as much as for whether it is there.                  */
+function cueTimeText(c){
+  if(!c) return null;
+  const at = c.at;
+  if(at === undefined || at === null || isNaN(at)) return null;
+  const t = Math.max(0, Math.round(at));
+  const h = Math.floor(t/3600), m = Math.floor(t/60) % 60, s = t % 60;
+  const p2 = n => (n < 10 ? '0' : '') + n;
+  return h ? (h + ':' + p2(m) + ':' + p2(s)) : (m + ':' + p2(s));
+}
+
 /* ---- cues ---- */
 function refreshCues(){
   const w=$('#cuelist');
@@ -817,7 +843,7 @@ function refreshCues(){
   w.innerHTML = CUES.map((c,i)=>
     '<div class="cue '+(i===nextCue?'next':(i<nextCue?'done':''))+'" data-i="'+i+'">'+
     '<span class="q">Q'+c.n+'</span><span class="lb">'+c.label+'</span>'+
-    '<span class="mt">'+c.fade+'s'+(c.follow!=null?' ▸'+c.follow+'s':'')+
+    '<span class="mt">'+(cueTimeText(c) || (c.fade+'s'+(c.follow!=null?' ▸'+c.follow+'s':'')))+
     (c.sfx?' ♪'+c.sfx:'')+(c.fly?' ⇅':'')+'</span></div>').join('');
   $$('#cuelist .cue').forEach(d=>{
     d.onclick=()=>{ selCue=+d.dataset.i; nextCue=selCue; refreshCues(); };
