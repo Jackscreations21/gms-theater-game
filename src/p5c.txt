@@ -25,6 +25,7 @@ function showBlank(){
     scenes:[], scene:null, pendDress:null, revolve:null, wrong:[], confetti:null,
     rainSound:false, flicker:null, lightning:0, lightningT:0,
     stormOn:false, stormT:0, porch:null, bjPortal:null,
+    pendMoves:[], houseWait:null,
     curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
   };
 }
@@ -372,7 +373,95 @@ function sceneMvAdvance(m, g, dt){
   m.off += Math.abs(d) <= step ? d : (d < 0 ? -step : step);
   g.position[m.axis] = m.off;
 }
+/* ============================================================================
+   RULING CI — A MOVE MAY WAIT FOR THE FLY LINE IT NEEDS
+
+   "make it so the house cant start sliding till the backdrop is fully up"
+
+   Cue 7 flies the backdrop out and slides the Maitlands house on in the same
+   breath.  The backdrop is line 14 and the wagon travels 10m; today they simply
+   both start, and he has watched the house set off into a cloth still on its way
+   up.
+
+   A cue move may name a lineset it waits on: move:{scene:'interior', off:0,
+   after:14}.  It is a GATE ON THE MOVE, not a delay on the cue — the cue fires,
+   the changeover happens, the lights change, and the one thing that would
+   collide holds until the pipe has arrived.
+
+   It rides the frame, never a timer (CLAUDE.md), and it is the same shape as
+   sc.mvHide, which already defers a hide until the last part has landed.
+
+   DECLARED, NEVER ASSUMED.  A move with no `after` behaves exactly as it always
+   has, which is what leaves the other four productions and the other eight moves
+   in this plot untouched.
+
+   AND A CUE NEVER BANKS MOVES.  sceneMoveTo's own rule is that a move fired
+   mid-travel RETARGETS rather than queueing, "because a cue stack that banked
+   moves would run the set to the wrong place several cues later" — so the
+   pending list is cleared by the next cue that fires, whatever it says.
+   ========================================================================== */
+function flyArrived(id){
+  const ls = FLY[id - 1];
+  if(!ls) return true;               // no such line: never wait for nothing
+  return Math.abs(ls.target - ls.pos) < 0.02;
+}
+function sceneMoveApply(m){
+  if(!m) return;
+  if(m.part) sceneMovePartTo(m.scene, m.part, m.off, m.speed);
+  else sceneMoveTo(m.scene, m.off, m.speed);
+}
+function scenePendingStep(){
+  const q = SHOW.pendMoves;
+  if(!q || !q.length) return;
+  for(let i = q.length - 1; i >= 0; i--){
+    if(!flyArrived(q[i].after)) continue;
+    const m = q[i];
+    q.splice(i, 1);
+    sceneMoveApply(m);
+  }
+}
+
+/* ============================================================================
+   RULING CJ — THE HOUSE LIGHTS WAIT FOR THE CURTAIN
+
+   "the house lights dont come up to 15 until the main curtain is closed"
+   "the lights dont come back up to 15 at the end till the curtain is fully
+    closed"
+
+   He says it twice, at the two places the house comes up, and both are the same
+   fault: the front curtain is a traveler that FLIES, so it takes
+   (OUT_TRIM - trim) / speed seconds to come in — while the interval cue fires
+   seven seconds after the blackout and the final cue closes the curtain and
+   raises the house in the same breath.  Either way the audience gets the house
+   up on a stage that is still open.
+
+   A cue may say houseAfterCurtain:true.  The master is held at 0 and goes to the
+   cue's own level the frame the cloth is really in.  HOUSE.house is read live by
+   updateRig every frame and has never faded, so holding and then setting is
+   exactly what the cue did before, one condition later.
+
+   FULLY CLOSED IS TWO THINGS, and it is judged on the LINESET rather than on a
+   cue field: the pipe home at its in trim AND the halves together.  This show's
+   curtain flies rather than draws, so `open` is 0 throughout and the trim is
+   what moves — but a production that parts its curtain would need both, and a
+   test that only checked the trim would pass a stage standing wide open.
+   ========================================================================== */
+function frontCurtainShut(){
+  const ls = (typeof frontCurtainLineset === 'function') ? frontCurtainLineset() : null;
+  if(!ls) return true;               // no traveler hung: nothing to wait for
+  const trim = TRIMS[ls.goodsKey] !== undefined ? TRIMS[ls.goodsKey] : TRIMS.house;
+  return Math.abs(ls.pos - trim) < 0.05 && (ls.open || 0) < 0.02;
+}
+function updateHouseWait(){
+  if(SHOW.houseWait === null || SHOW.houseWait === undefined) return;
+  if(!frontCurtainShut()) return;
+  HOUSE.house = SHOW.houseWait;
+  SHOW.houseWait = null;
+  if(typeof syncMasters === 'function') syncMasters();
+}
+
 function sceneMoveStep(dt){
+  scenePendingStep();
   if(!SHOW.scenes || !SHOW.scenes.length) return;
   for(const sc of SHOW.scenes){
     if(sc.mv) sceneMvAdvance(sc.mv, sc.group, dt);
@@ -727,6 +816,7 @@ function updateStorm(dt){
   updateFire(dt);
   if(typeof updateNeon === 'function') updateNeon(dt);
   if(typeof updatePortal === 'function') updatePortal(dt);   // RULING CH
+  updateHouseWait();                                          // RULING CJ
   if(typeof bjUpdateSetFill === 'function') bjUpdateSetFill(dt);   // RULING CC
   updateShowStorm(dt);
   updateConfetti(dt);
@@ -1702,6 +1792,15 @@ function showCueExtras(c){
      ninety-five say `portal:` and the frame is out for the other ninety-one
      without any of them having to say so. */
   if(typeof setPortal === 'function') setPortal(c.portal);
+  /* RULING CJ — the house master waits for the cloth.  fireCue has already
+     written HOUSE.house from the cue; this takes it back to 0 and hands it over
+     once the curtain is really in.  Declared per cue, so every cue that says
+     nothing behaves exactly as it always did. */
+  if(c.houseAfterCurtain && !frontCurtainShut()){
+    SHOW.houseWait = c.house;
+    HOUSE.house = 0;
+    if(typeof syncMasters === 'function') syncMasters();
+  } else SHOW.houseWait = null;
   /* the marquee's own lamps.  `undefined` means LEAVE IT — one cue turns the
      sign red and the cues after it keep it red without saying so again. */
   if(c.signCol !== undefined && typeof setSignLamps === 'function') setSignLamps(c.signCol);
@@ -1769,9 +1868,16 @@ function showCueExtras(c){
      cue carries that shape. */
   const mvList = (c.move && SHOW.scenes.length)
     ? (Array.isArray(c.move) ? c.move : [c.move]) : [];
+  /* THIS CUE SUPERSEDES ANY MOVE STILL WAITING ON A LINE (RULING CI).  Cleared
+     before the list below is built, so a cue may gate a fresh one. */
+  if(SHOW.pendMoves) SHOW.pendMoves.length = 0;
   const mvApply = m => {
-    if(m.part) sceneMovePartTo(m.scene, m.part, m.off, m.speed);
-    else sceneMoveTo(m.scene, m.off, m.speed); };
+    /* a move that names a line waits for it, unless the line is already there */
+    if(m.after !== undefined && !flyArrived(m.after)){
+      (SHOW.pendMoves || (SHOW.pendMoves = [])).push(m);
+      return;
+    }
+    sceneMoveApply(m); };
   const mvBefore = [], mvAfter = [];
   for(const m of mvList){
     if(!m) continue;
