@@ -1066,7 +1066,7 @@ let SAVED_SET = [];
 
 $('#btnGo').onclick=go;
 $('#btnBack').onclick=goBack;
-$('#btnTop').onclick=()=>{ nextCue=0; refreshCues(); toast('Standing by at the top'); };
+$('#btnTop').onclick=cueTop;                 // it FIRES the first cue (RULING BW)
 $('#btnStopFade').onclick=()=>{ FIXTURES.forEach(f=>{ f.lvlDur=0; f.colDur=0; }); toast('Fades held'); };
 $('#btnRec').onclick=recordCue;
 $('#btnDelQ').onclick=()=>{ if(selCue>=0){ CUES.splice(selCue,1); selCue=-1; nextCue=clamp(nextCue,0,CUES.length); refreshCues(); } };

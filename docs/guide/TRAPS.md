@@ -311,6 +311,18 @@ against this list before opening a PR; **add new traps as you hit them.**
   the trash drum ended up 0.1m THROUGH the brick, standing on the stage.
   Anything positioned inside a movable structure must be expressed
   relative to it.
+- **A probe-scope `const` SHADOWS the game function of the same name, for every
+  assertion below it, whatever arguments you pass.** `tests/beetlejuice.js`
+  declared `const audLive = ()=> GROUPS.house.filter(n=>chan(n)._live).length` —
+  "how many lights the audience rig holds" — 165 lines above two assertions that
+  call the GAME's `audLive(tr)`, "is this track really playing". The argument is
+  simply ignored, so `if(audLive(tr)) throw …` was reading the number of lit
+  audience lamps and **passing because the lamps happened to be dark**. Both
+  assertions were decoration for a whole round, and the only symptom was a *later*
+  test failing with "act one is still playing" against a build where act one was
+  provably paused. The probe is one long scope and the game is in the same scope:
+  **a helper in a suite must not take a name the game already uses** — grep the
+  built file before naming one, the same rule the duplicate-function trap states.
 - **A negative check that does not fail means the ASSERTION is weak.**
   Twice in one round the wrong build passed: a shed check that tested
   position accepted a shed trimmed from 13m to 9.4m (it should test
@@ -371,6 +383,19 @@ against this list before opening a PR; **add new traps as you hit them.**
   transport it fires cues off `currentTime` AND cancels any follow the firing
   armed. Miss the cancel and every cue fires twice — once on timecode and once
   on the stopwatch a few seconds later.
+- **Firing a cue by hand does not take the transport with it, and a jump-seek is
+  not the same thing as a stop.** RULING BO makes an operator jump seek the music
+  to the cue, and the previous round's spec therefore predicted that TOP firing
+  cue 0 "composes with BO for free". It does not, and the seek is not what bites:
+  the pre-show cue declares `audio:{play:'preshow'}` and **nothing in it stops act
+  one** (only the GO cue does, via `stop:'preshow'`). So a hand-fired cue 0 leaves
+  a `clock:true` track live, `showAudioTick` keeps the clock, and on the very NEXT
+  FRAME it fires the GO cue off a playhead already past 0:35 — up to `AUD_CATCHUP`
+  (40) cues at a time. Measured: TOP then GO put the board back at Q1.1 with the
+  house at 0 **in two frames**, which is exactly what "when i try to press go to
+  go to top os show it starts the show" describes. **Any operator action that
+  means "go somewhere the music is not" has to stop the transport first** — and
+  before the fire, not after, or it kills the music the cue itself asks for.
 
 ## Tests, again — two more ways to pass while wrong
 

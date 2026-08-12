@@ -7446,6 +7446,34 @@ function go(){
   cueFiredByHand(nextCue);
 }
 function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) cueFiredByHand(nextCue); }
+/* THE TOP OF THE SHOW FIRES THE FIRST CUE (RULING BW).  "make it so when you
+   press top of show it automaticall sets it to cue one instead of making you
+   press go to get to first cue."
+
+   TOP used to move the pointer and nothing else, so the look on stage stayed
+   whatever was up and GO was the only way forward — which is how asking for the
+   top of the show ended up starting it: "when i try to press go to go to top os
+   show it starts the show".
+
+   AND IT HAS TO LET GO OF THE TRANSPORT, which is the half the spec did not
+   predict.  The pre-show cue does not stop the show track — only the GO cue
+   does — so firing cue 0 while a clock track is live leaves showAudioTick
+   holding the clock, and on the NEXT FRAME it fires the GO cue off a playhead
+   already past 0:35, up to AUD_CATCHUP cues at a time.  Measured on the built
+   file: TOP then GO put the board back at Q1.1 in two frames with the house at
+   0.  So the sound stops FIRST and the cue fires second — that order, or the
+   stop would kill the pre-show music the cue itself asks for.
+
+   Generic on purpose: it fires index 0 of whatever stack is loaded, which is
+   what TOP has always meant, and showCueSeek declines for a cue with no `at`. */
+function cueTop(){
+  if(!CUES.length){ toast('No cue stack to go to the top of'); return; }
+  cancelFollow();
+  if(typeof showSoundStop === 'function') showSoundStop();
+  const c = CUES[0];
+  toast('TOP  ▸  Q'+c.n+'  '+c.label);
+  cueFiredByHand(0);
+}
 
 /* ============================================================================
    SHOW SCRIPT — the light-show programming language
@@ -24654,7 +24682,7 @@ let SAVED_SET = [];
 
 $('#btnGo').onclick=go;
 $('#btnBack').onclick=goBack;
-$('#btnTop').onclick=()=>{ nextCue=0; refreshCues(); toast('Standing by at the top'); };
+$('#btnTop').onclick=cueTop;                 // it FIRES the first cue (RULING BW)
 $('#btnStopFade').onclick=()=>{ FIXTURES.forEach(f=>{ f.lvlDur=0; f.colDur=0; }); toast('Fades held'); };
 $('#btnRec').onclick=recordCue;
 $('#btnDelQ').onclick=()=>{ if(selCue>=0){ CUES.splice(selCue,1); selCue=-1; nextCue=clamp(nextCue,0,CUES.length); refreshCues(); } };
@@ -25756,7 +25784,7 @@ function vrDrawConsole(force){
   if(VR.tex) VR.tex.needsUpdate = true;
 }
 /* ---- little drawing helpers ---- */
-function vrBtnBox(g, x, y, w, h, label, fn, style){
+function vrBtnBox(g, x, y, w, h, label, fn, style, meta){
   const s = style || {};
   g.fillStyle = s.bg || '#1b232d';
   g.fillRect(x, y, w, h);
@@ -25767,7 +25795,7 @@ function vrBtnBox(g, x, y, w, h, label, fn, style){
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText(label, x + w/2, y + h/2);
   g.textAlign = 'left';
-  if(fn) vrHit(x, y, w, h, fn);
+  if(fn) vrHit(x, y, w, h, fn, meta);
 }
 function vrBar(g, x, y, w, h, v, col){
   g.fillStyle = '#151b22'; g.fillRect(x, y, w, h);
@@ -25798,8 +25826,13 @@ function vrPageCues(g, P){
   vrBtnBox(g, bx, P.y, 280, 120, 'GO', ()=>{ go(); vrDrawConsole(true); },
            {bg:'#1f6b2e', fg:'#ffffff', font:'700 48px Helvetica, Arial, sans-serif'});
   vrBtnBox(g, bx, P.y + 132, 134, 56, 'BACK', ()=>{ goBack(); vrDrawConsole(true); });
+  /* RULING BW — TOP fires the first cue here too.  A control that exists only
+     in the DOM does not exist in VR, and this one is reached from the headset
+     far more often than from the desk.  The meta tag is so a test can find it
+     by MEANING: BACK and TOP are the same 134x56 box, so the pixel hunt the GO
+     test uses cannot tell them apart. */
   vrBtnBox(g, bx + 146, P.y + 132, 134, 56, 'TOP',
-           ()=>{ nextCue = 0; vrDrawConsole(true); });
+           ()=>{ cueTop(); vrDrawConsole(true); }, null, {btn:'top'});
   vrBtnBox(g, bx, P.y + 200, 280, 52, 'HOLD FADES',
            ()=>{ FIXTURES.forEach(f=>{ f.lvlDur=0; f.colDur=0; }); });
   g.fillStyle = '#5d6874';
