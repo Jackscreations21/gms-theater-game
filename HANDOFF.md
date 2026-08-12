@@ -224,7 +224,139 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **THE HEADSET, WITH SOUND THIS TIME** (2026-08-11)
+## NEXT SESSION: **THE NEON PROSCENIUM, AND HIS MODELS INTO `assets/`** (2026-08-12)
+
+Cache-bust **`?v=21`**. **Read STATE.md — it carries the full left-to-do list
+with the rulings written out.** What belongs here is the shape of it.
+
+**Nothing of his newest round is built.** Six rulings, BQ–BW, all specified and
+none started. In the order he asked for them:
+
+**1. His seven `.glb` files are STILL NOT COMMITTED.** The plumbing is all
+merged (#133 and #134) and the files sit in
+`C:\Users\patri\Documents\beetlejuice sets`.
+Five are straight swaps. **Two are not:** the exterior has no manifest slot —
+and `tests/beetlejuice.js` actively *forbids* an entry targeting the `house`
+scene, so that assertion gets reversed in place, the AO/AV/BA precedent for the
+fourth time — and the sign is his geometry needing *our* lamps re-attached to
+node names we do not control. The three houses are told apart by **texture
+palette, not filename** (all three came out of the tool named `deetz_house`), so
+if Maitland and Deetz are swapped it is a rename, not a rebuild.
+
+**2. The neon proscenium (BR–BT). START FROM `bj-portal`.** RULING AX already
+built this engine — a dark-by-default tube frame, `SHOW.bjPortal`, a
+`portal:{col,lvl}` cue field applied on every cue, a `dt` fade — and it was
+never reviewed or opened because he trimmed it out of the AW–AZ round. He now
+wants exactly it. **Only the plot changes:** blue at the pre-show, blue from GO,
+**red at 1:00**, blue in the netherworld, dark everywhere else. Widen the frame
+to the broad bright bands his photographs show. His house-light instruction
+rides along: **0.12 in the pre-show, still up through GO, out when the tube
+turns red** — which supersedes the 0.30 #130 set and rewrites the GO cue.
+
+**One number is unconfirmed and it is one line.** "1 minute into the audio (not
+acounting for the 32 seconds)" was read as `at:60`, because the alternative
+(95, his 1:35) would put the red after the 1:16 blinder flash and the 1:28
+stage-blue. Ask him if it matters.
+
+**3. Blinders inside the proscenium (BU)** — free now that the neon, not the
+blinders, is what goes red. Check the curtain's z first: the 1:16 white flash
+must still read.
+
+**4. The netherworld skewed to his photographs (BV)**, all blue. Keep both
+existing constraints: **not `neonTube`** (CatmullRom overshoots a right angle),
+and **a material per tube is required**, because `updateNeon` writes a colour
+into every registered mesh every frame.
+
+**5. TOP fires the first cue (BW)** instead of selecting it. Small.
+
+**6. A struck set parks backstage (BQ)** — the biggest item, two to three times
+the models PR, and the one that spends the layer-disabling trick that makes
+seven configurations affordable. **Measure the cost; do not assume it.** Splits
+into "park them and prove they are there" then "measure and optimise".
+
+**His photographs are never committed** — TRAPS draws the line at looking versus
+committing, and this round looked at two.
+
+## DONE — 2026-08-12: the second headset verdict, and his models (#129–#134, BJ–BP)
+
+Four asks in one line: he still could not see the purple sweeps from the
+balcony, the beams at the top of the show were too faint, cues should be
+labelled by their timestamp rather than their fade, and skipping a cue should
+skip the music with it. Mid-round he delivered **all seven set models**, twice.
+
+**THE BALCONY WAS GETTING 7.1 OF LIGHT AND EVERY BIT OF IT WAS THE WRONG
+COLOUR.** A new probe (`tools/audience-balcony.js`) measures light arriving at a
+head on all three levels **split by which kind of audience unit emitted it**,
+and that second part is what turned the round — a brightness number that does
+not say what colour it is answers the wrong question. At 1:03 all eight real
+lights (four in a headset) went to the eight RED blinders and the six purple
+movers held **none**. RULING BG's reserve is a ceiling on the audience rig *as a
+whole*, and the blinders are audience units outranking the movers 0.9 to 0.8.
+
+**Seven rulings.** **BJ** the arch drops out for both purple sweeps and both
+blackouts after them — his ruling, and *his own cue labels already said "the
+house goes dark" while their looks held eight red lamps on it*. **BK** a sweep
+sweeps UP: it read −84 → −10, which because a head sits at tilt+90 is 6° below
+horizontal down to 80° below, so the number went up while the light went down.
+**BL** the reserve divides the audience rig a group at a time. **BM** the
+pre-show carried the lowest haze of all 94 cues, in the one stretch that is
+nothing but beams. **BN** a cue is labelled by where it falls in the show, and
+one with no `at` keeps its fade. **BO** a cue you jump to takes the music with
+it — never inside `fireCue`, because the transport calls that. **BP** the
+triangle budget goes to 150,000, an oversized texture is shrunk rather than
+refused, and the house is three whole houses.
+
+Measured, purple only, at a balcony head: **0.000 / 0% of the cue → 5.93 peak /
+37% flat, 3.97 in a headset**. The pre-show drift at the back of the balcony went
+**7% of a cycle → 57%**, stalls held at 80%. The faintest beam at the top of the
+show went **45% of a mid-show beam → 108%**.
+
+**AND HIS MODELS WOULD HAVE LOOKED BROKEN, TWICE OVER, FOR REASONS THAT WERE NOT
+HIS FAULT.** The first export was 1.9M triangles against a 30k budget; he
+re-exported at ~100k. Then measurement found every file normalised to a
+**~1.9-unit box centred on the origin** — straight in, each set would have stood
+a *seventh* of its size with half of it buried under the deck. Both are numbers
+the export tool chose, not him, so both are handled on our side now: budgets
+raised where his ruling said to, textures shrunk rather than refused, and **fit
+and seat** — scale to the width MODELING.md already declares, put the lowest
+point on the deck, centre the footprint. A re-export at any scale now lands
+identically.
+
+**FOUR OF MY OWN CLAIMS DIED TO NEGATIVE CHECKS**, the highest count in any round
+so far and the most useful thing in it:
+
+- **"The pre-show puts exactly zero on the balcony"** was one frame of a slow
+  drift. Over a cycle it was 7–20%. It was already in a spec.
+- **The tilt range was credited with reaching the balcony.** The tilt mutation
+  sailed through the balcony assertion — which reads as a weak test, and the
+  test *was* weak, but strengthening it showed the tilt had never been that fix.
+  It is the **pan** narrowing that reaches the balcony (a third of the effect was
+  aimed through the side wall); the tilt is what keeps the stalls, 20% against
+  80%.
+- **The BM assertion recomputed the beam formula instead of reading the
+  uniform**, so replacing the whole `uHaze` line with a constant did not move it.
+- **Three separate functions were proved while their wiring was not** — the
+  shader formula, the texture shrink, and fit and seat.
+
+**Two existing assertions had a feel constant baked into them by accident** —
+`house < 0.4` in two suites, pinned to a pre-show 0.45 nobody remembered
+depending on. Neither was testing the threshold; both meant "it loaded a
+standing-by preset, not a mid-show look". They say that now, and do not move
+again when a level does.
+
+**New in TRAPS:** a probe can measure the wrong thing as confidently as no probe
+at all (measure a periodic effect over a cycle, never one frame); a test that
+reimplements what it tests agrees with itself whatever the code does; and a
+negative-check harness that restores `src/` without rebuilding leaves every
+later run measuring the mutant — it presented as `uHaze` frozen at 0.42 while
+`hazeNow()` returned 0.7, which reads exactly like a bug in the rig.
+
+**And one already in TRAPS that bit anyway:** the fit-and-seat commit was pushed
+to `bj-models` *after* #133 merged and was **stranded**, with nothing to say so.
+#134 is the recovery — a new branch off fresh `main`. The owner spotted the merge
+before the repo did, again.
+
+## NEXT SESSION: **THE HEADSET, WITH SOUND THIS TIME** (2026-08-11) — SUPERSEDED, see above
 
 Cache-bust **`?v=20`**. **The recordings are in the repo now** (RULING BI), so
 Pages serves them and the Quest has sound with nothing to copy and nothing to
