@@ -178,17 +178,34 @@ const BJ_FLY_SPEED  = 1.8;   // m/s — a flown room clears in ~5.8s
    --------------------------------------------------------------------------- */
 /* the hard black-and-white stripe the takeover paints everything in.  Vertical
    for the walls, horizontal for the furniture and the worm. */
-/* THE SIGN'S LAMPS ON A CUE.  `signCol:'#ff1e10'` throws every bulb and tube
-   on the marquee over to one colour; `signCol:null` restores what it was built
-   with.  A cue that says nothing leaves it alone, which is what lets one cue
-   turn it red and eight later cues keep it red without repeating themselves. */
+/* HOW LIT THE MARQUEE SITS OF ITS OWN ACCORD, and how hard a signCol cue drives
+   it (RULING CF).  Declared here because p5h builds the stand-in sign that uses
+   them and p5i's import path reads them back — p5i loads after this, so there is
+   no dead zone either way round. */
+const BJ_SIGN_GLOW = 0.95, BJ_SIGN_LIT = 2.1;
+
+/* THE SIGN'S LAMPS ON A CUE.  `signCol:'#ff1e10'` throws every lamp on the
+   marquee over to one colour; `signCol:null` restores what it was built with.
+   A cue that says nothing leaves it alone, which is what lets one cue turn it
+   red and eight later cues keep it red without repeating themselves.
+
+   RULING CF: which materials those are depends on whose sign is standing there.
+   With the stand-in up they are its bulb beads and its tube ends; with HIS file
+   landed they are HIS OWN materials, so the sign itself goes red rather than a
+   ring hung round it (bjSignLamps, p5i).  Nothing here needs to know which —
+   except that an imported material may be a MeshBasic with no emissive at all,
+   which is why both halves are guarded. */
 function setSignLamps(hex){
   if(!SHOW.signLamps) return;
   SHOW.signLamps.forEach(r=>{
     if(hex){
-      r.mat.color.set(hex); r.mat.emissive.set(hex); r.mat.emissiveIntensity = 2.1;
+      r.mat.color.set(hex);
+      if(r.mat.emissive) r.mat.emissive.set(hex);
+      r.mat.emissiveIntensity = BJ_SIGN_LIT;
     } else {
-      r.mat.color.copy(r.c); r.mat.emissive.copy(r.e); r.mat.emissiveIntensity = r.ei;
+      r.mat.color.copy(r.c);
+      if(r.mat.emissive && r.e) r.mat.emissive.copy(r.e);
+      r.mat.emissiveIntensity = r.ei;
     }
   });
 }
