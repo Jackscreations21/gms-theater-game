@@ -402,6 +402,25 @@ against this list before opening a PR; **add new traps as you hit them.**
   This is the sibling of "a negative check that does not fail means the
   ASSERTION is weak" above — and the two are told apart only by looking.
 
+- **A negative-check harness that restores `src/` but not the BUILD leaves
+  every later run testing the mutant.** The suites run against
+  `the-house.html`, so `cp` -ing the backup over `src/p4.txt` at the end of a
+  case restores the source and leaves the built file carrying the last
+  mutation. The next thing you run is then measuring the wrong program, and it
+  does not announce itself: it showed up as `uHaze` frozen at 0.42 for every
+  cue while `hazeNow()` correctly returned 0.7, which reads exactly like a real
+  bug in the rig and cost a round of instrumenting `updateRig` before anyone
+  checked what was in the build. **Rebuild in the restore step, not just in the
+  mutate step.**
+
+- **A test that reimplements the thing it is testing agrees with itself
+  whatever the code does.** The first RULING BM assertion recomputed the beam
+  formula (`0.25 + haze*1.15`) in the test and compared cue records to each
+  other. Replacing the whole `uHaze` line in the shader with a constant did not
+  move it one bit — the plot still said what it said, and the test was only ever
+  reading the plot. Assert on the value the ENGINE produces: fire the cue, run a
+  frame, read the uniform off a real beam.
+
 ## Environment
 
 - **`* text=auto eol=lf` decides binary by CONTENT HEURISTIC, and media is a
