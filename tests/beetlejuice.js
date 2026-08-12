@@ -106,8 +106,8 @@ const probe = `
     const all = new THREE.Box3();
     SHOW.group.traverse(o=>{ if(o.isMesh && o.name && o.name.indexOf('bj:portal') === 0)
       all.union(box(o)); });
-    const t = byName('bj:portalTrim');
-    if(!t) throw new Error('no portal trim');
+    const t = byName('bj:portalFrame');
+    if(!t) throw new Error('no portal frame');
     /* the cornice carries no name, so take the widest thing near the top */
     let topY = all.max.y, wide = Math.max(Math.abs(all.min.x), Math.abs(all.max.x));
     SHOW.group.traverse(o=>{ if(!o.isMesh || o.name === 'bj:deck') return;
@@ -119,41 +119,83 @@ const probe = `
     return 'portal '+(wide*2).toFixed(2)+'m x '+topY.toFixed(2)+'m inside a '+D.procW+' x '+D.procH+' opening';
   });
 
-  /* one material for every trim strip: a material per object is the
-     draw-call trap, and an array material is worse (TRAPS.md) */
-  P('the cold trim is ONE shared material, not one per strip', ()=>{
+  /* one material for the whole frame: a material per object is the
+     draw-call trap, and an array material is worse (TRAPS.md).
+
+     THIS IS THE ONE PLACE THAT RULE IS NOT INVERTED.  "A material per tube is
+     REQUIRED" belongs to updateNeon, which writes a colour into every mesh
+     registered on SHOW.neon every frame — the netherworld's tubes.  The
+     proscenium frame is not on that list: updatePortal writes ONE colour into
+     ONE material, so merging is correct here and the two must not be confused. */
+  P('the proscenium frame is ONE merged mesh on ONE material', ()=>{
     showLoad('beetlejuice');
-    const t = byName('bj:portalTrim');
-    if(Array.isArray(t.material)) throw new Error('the trim uses an array material');
+    const t = byName('bj:portalFrame');
+    if(!t) throw new Error('no portal frame');
+    if(Array.isArray(t.material)) throw new Error('the frame uses an array material');
     let strips = 0;
     t.traverse(o=>{ if(o.isMesh) strips++; });
-    if(strips !== 1) throw new Error('the trim is '+strips+' meshes, it should be merged to one');
-    if(!t.material.emissive) throw new Error('the trim does not glow');
-    return 'one merged mesh, one emissive material';
+    if(strips !== 1) throw new Error('the frame is '+strips+' meshes, it should be merged to one');
+    if(!t.material.emissive) throw new Error('the frame does not glow');
+    /* and it is NOT one of the netherworld's tubes, which are the ones that
+       genuinely need a material each */
+    if((SHOW.neon||[]).some(r=>r.mesh === t))
+      throw new Error('the frame is registered on SHOW.neon — updateNeon would fight updatePortal for it');
+    return 'one merged mesh, one emissive material, off SHOW.neon';
   });
 
-  P('the neon frames the opening and returns into the wings', ()=>{
+  /* ══ RULING CH — REVERSED IN PLACE ══════════════════════════════════════
+     This asserted a blue-green tube frame that RETURNS INTO THE WINGS and is
+     always lit, which is what RULING AX read off his photographs.  He has now
+     said what he wants in his own words:
+
+       "remove the current neon stuff and replace it with a thicker bar going all
+        the way around ... For the rest it is off."
+
+     So the wings, the hoops and the permanent blue-green all go, and what the
+     assertion has to guard changes with them: a CLOSED loop, THICKER than the
+     tube it replaces, and DARK when no cue has spoken.  Two clauses survive
+     untouched and are still load-bearing — a sill on the deck (it surrounds the
+     picture, it does not sit across the top of it) and never wider than the
+     house opening. */
+  P('the proscenium neon is a thick closed bar, and it is built DARK (CH)', ()=>{
     showLoad('beetlejuice');
-    const t = byName('bj:portalTrim');
+    const t = byName('bj:portalFrame');
     const b2 = box(t);
     /* it must SURROUND the picture, not sit across the top of it */
     if(b2.min.y > 0.4) throw new Error('there is no sill: the neon starts at y='+b2.min.y.toFixed(2));
     if(b2.max.y < BJ.opH - 0.2) throw new Error('the neon does not reach the header');
-    /* and it must run UPSTAGE — that is the wings half of the ask */
-    const deep = b2.max.z - b2.min.z;
-    if(deep < 4) throw new Error('the neon is '+deep.toFixed(2)+'m deep — it does not go into the wings');
-    /* never wider than the house opening, wings or no wings */
+    /* CLOSED, and that is measured rather than counted: a loop missing a leg
+       would still be four bars and still pass a mesh count.  Cast a box at each
+       of the four sides of the opening and demand geometry in all four. */
+    const pos = t.geometry.attributes.position;
+    const side = {left:0, right:0, top:0, bottom:0};
+    for(let i = 0; i < pos.count; i++){
+      const x = pos.getX(i), y = pos.getY(i);
+      if(x < -BJ.opW/2 + 0.5) side.left++;
+      if(x >  BJ.opW/2 - 0.5) side.right++;
+      if(y >  BJ.opH   - 0.5) side.top++;
+      if(y <  0.5)            side.bottom++;
+    }
+    for(const k in side)
+      if(!side[k]) throw new Error('the loop is open: no bar on the '+k+' side');
+    /* THICKER than the 0.075-radius tube it replaces — his one adjective */
+    const thick = b2.max.z - b2.min.z;
+    if(thick < 0.2)
+      throw new Error('the bar is '+thick.toFixed(2)+'m thick; the tube it replaces was 0.15');
+    /* and the wings are GONE — a frame that still ran upstage would be 5m deep */
+    if(thick > 1.0)
+      throw new Error('the frame is '+thick.toFixed(2)+'m deep — the wing returns are still there');
+    /* never wider than the house opening, and inside the portal check's own +-7.4 */
     const wide = Math.max(Math.abs(b2.min.x), Math.abs(b2.max.x));
     if(wide > D.procW/2) throw new Error('the neon is '+(wide*2).toFixed(2)+'m across a '+D.procW+' opening');
-    /* blue-green, and one material for the lot */
-    if(Array.isArray(t.material)) throw new Error('the neon uses an array material');
-    const e = t.material.emissive;
-    if(!e) throw new Error('the neon does not glow');
-    if(!(e.b > e.r && e.g > e.r))
-      throw new Error('the neon is not blue-green: r='+e.r.toFixed(2)+' g='+e.g.toFixed(2)+' b='+e.b.toFixed(2));
-    let n = 0; t.traverse(o=>{ if(o.isMesh) n++; });
-    if(n !== 1) throw new Error('the neon is '+n+' meshes, it should be merged to one');
-    return (wide*2).toFixed(1)+'m across, '+deep.toFixed(1)+'m into the wings, one merged mesh';
+    if(wide > 7.4) throw new Error('the neon is '+wide.toFixed(2)+' from centre; the portal check refuses past 7.4');
+    /* BUILT DARK.  "For the rest it is off" — so the frame exists unlit, and a
+       cue is the only thing that ever lights it. */
+    if(t.material.emissiveIntensity > 0.001)
+      throw new Error('the frame is built lit at '+t.material.emissiveIntensity+' — it must be dark until a cue says');
+    if(!SHOW.bjPortal) throw new Error('the frame is not registered on SHOW.bjPortal — the stage swap would lose it');
+    if(SHOW.bjPortal.mesh !== t) throw new Error('SHOW.bjPortal points at something else');
+    return (wide*2).toFixed(2)+'m across, a '+thick.toFixed(2)+'m bar closed on all four sides, built dark';
   });
 
   console.log('--- the cemetery is a SCENE, and this is the first show to use them ---');
@@ -1806,14 +1848,15 @@ const probe = `
                       down.lx.filter(r=>r.lvl > 0.02)[0].lvl);
     if(down.house > 0.02) throw new Error('the house is up before the cloth is in');
     if(!/INTERVAL/.test(up.label)) throw new Error('no interval after the act break');
-    /* REVERSED IN PLACE, not deleted.  This wanted the interval house at FULL
-       and it was right to, until the owner wrote "1:11:09 house lights fade up
-       to half" in his own act one — the second of the two things he changed.
-       His word beats the guess, and the assertion still has a job: the house
-       must genuinely come up, and it must come up to HALF, so a later round
-       cannot quietly drift it back to full or leave it dark. */
-    if(Math.abs(up.house - 0.5) > 0.001)
-      throw new Error('the interval house is at '+up.house+', and he asked for half');
+    /* REVERSED IN PLACE TWICE OVER, and neither time deleted.  It wanted FULL,
+       then HALF when he wrote "1:11:09 house lights fade up to half" in his own
+       act one; RULING CG now says "the house light shouldn only be at 15 at the
+       start, intermission and the end" and this is the intermission.  The job
+       has never changed: the house must genuinely come up, and it must come up
+       to the number HE last gave, so a later round cannot drift it back or leave
+       it dark. */
+    if(Math.abs(up.house - 0.15) > 0.001)
+      throw new Error('the interval house is at '+up.house+', and RULING CG says 15');
     if(up.at - down.at !== 7)
       throw new Error('the interval is '+(up.at - down.at)+'s after the blackout, he wrote 7');
     return 'act break dark at cue '+down.n+', interval house at '+up.house+' seven seconds later';
@@ -1925,18 +1968,29 @@ const probe = `
     showLoad('beetlejuice');
     /* the warmers cue throws the front of house UP at the cloth; a later cue
        that never touches aims must not inherit that */
-    /* Anchored on the PRE-SHOW and the cue immediately after it, which is the
-       tightest demonstration in the show and does not move: the pre-show
-       throws the front of house up at the cloth, and GO (at 35s) sets no aim
-       at all, so if aims leaked it would inherit that one.  The old anchor —
-       "the moon takes the upstage" — was an invented look from the measuring
-       round and went when the owner's own act one replaced it. */
-    const warm = CUES.find(c=>/PRE-SHOW/.test(c.label));
-    if(!warm) throw new Error('no cue throws the front at the cloth');
+    /* Anchored on the cue that throws the front of house UP at the cloth and
+       the first cue after it that sets no aim at all.
+
+       THE ANCHOR MOVED ONE CUE LATER under RULING CG.  It used to be the
+       pre-show and GO, because GO set no aim; CG makes GO hold the pre-show
+       picture — the same cloth aim — and puts the first no-aim cue at 1:00.  The
+       demonstration is identical and if anything tighter: two cues in a row aim
+       at the cloth, the third says nothing, and it must not inherit.  Written
+       against "the last cue with a cloth aim" rather than a timestamp, so the
+       next retiming does not silently un-anchor it.
+
+       AND THE PAIR IS TAKEN BY POSITION, NOT BY AIM.  Selecting the second cue
+       as "the next one whose aims are not up" and then asserting its aims are
+       not up is a test agreeing with itself — the shape TRAPS records for a test
+       that reimplements what it tests.  The anchor is the cue that throws the
+       front up, and the subject is literally THE NEXT CUE IN THE STACK, whatever
+       it turns out to hold. */
+    const warm = CUES.find(c=>/GO — the show track starts/.test(c.label));
+    if(!warm) throw new Error('no GO cue to anchor on');
     const up = warm.lx.slice(0, 6).filter(r=>r.aim && r.aim[1] > 5);
-    if(up.length < 4) throw new Error('the pre-show does not aim the front up at the cloth');
-    const plain = CUES.filter(c=>c.at === 35)[0];
-    if(!plain) throw new Error('no cue at 35s to inherit it');
+    if(up.length < 4) throw new Error('GO does not aim the front up at the cloth');
+    const plain = CUES[CUES.indexOf(warm) + 1];
+    if(!plain) throw new Error('nothing follows GO to inherit it');
     const leaked = plain.lx.slice(0, 6).filter(r=>r.aim && r.aim[1] > 5);
     if(leaked.length)
       throw new Error(leaked.length+' front channels carry the cloth aim into a cue that never set it');
@@ -2267,7 +2321,14 @@ const probe = `
       throw new Error('the GO cue did not seek the track to 0:35, it is at ' + fake.currentTime);
     fake.currentTime = 70;
     showAudioTick(0.016);
-    if(nextCue !== 6) throw new Error('the transport did not catch up to 70s: nextCue ' + nextCue);
+    /* DERIVED, NOT TYPED.  This was a literal 6, and RULING CG's new cue at 1:00 made
+       it 7 — a literal that goes stale every time the plot grows a cue at the
+       top of the show, and whose failure reads like a broken transport.  The
+       thing under test is the TRANSPORT, so the plot is allowed to say how many
+       cues are due and the transport has to have fired exactly those. */
+    const due = CUES.filter(c=>c.at !== undefined && c.at <= 70).length;
+    if(nextCue !== due)
+      throw new Error('the transport is at nextCue ' + nextCue + ' with ' + due + ' cues due by 70s');
     if(followTimer !== null) throw new Error('a follow timer is armed while the music is the clock');
     /* and it stops dead at a hold rather than running through the interval */
     const iv = CUES.findIndex(c=>c.hold && c.at > 4000);
@@ -2441,19 +2502,199 @@ const probe = `
            ', still out on return (' + backHere + ')';
   });
 
-  P('GO starts the show track at 0:35 and turns the arch and the sign red', ()=>{
+  /* ══ RULING CG — REVERSED IN PLACE ══════════════════════════════════════
+     This demanded eight red blinders and a red sign ON GO, off his own act-one
+     line: "The lights around the prosinum all turn red and all the lights on the
+     beetlejuice sign go bright red."  He has watched it and moved both halves:
+
+       "the red lights shouldnt come on as soon as you press go and the house
+        light shouldnt go don when you press go.  They should both happen at time
+        stamp 1:00 in the audio."
+
+     So GO keeps only the half that was never in question — the transport — and
+     the red moves to its own cue.  The audio clauses are untouched. */
+  P('GO starts the show track at 0:35 and changes NO light (CG)', ()=>{
     showLoad('beetlejuice');
     const c = CUES.filter(x=>x.at === 35)[0];
     if(!c) throw new Error('there is no cue at 35s, which is where the show starts');
     if(!c.audio || c.audio.play !== 'act1' || c.audio.at !== 35)
       throw new Error('GO does not start the show track at 0:35');
     if(c.audio.stop !== 'preshow') throw new Error('GO does not stop the pre-show music');
-    if(c.signCol !== '#ff1e10') throw new Error('GO does not turn the sign red');
-    const red = GROUPS.blind.filter(n=>c.lx[n-1].lvl > 0.5);
-    if(red.length !== 8) throw new Error('only ' + red.length + ' of 8 blinders come up red');
+    /* nothing red anywhere: not the arch, not the sign, not the frame */
+    const lit = GROUPS.blind.filter(n=>c.lx[n-1].lvl > 0.02);
+    if(lit.length) throw new Error(lit.length + ' blinders are still up at GO');
+    if(c.signCol !== undefined)
+      throw new Error('GO still speaks about the sign (' + c.signCol + ')');
+    if(c.portal && /ff1e10|ff0000/i.test(String(c.portal.col)))
+      throw new Error('GO still turns the proscenium red');
+    /* and the house does NOT go out — it is one of the three moments at 15 */
+    if(Math.abs(c.house - 0.15) > 0.001)
+      throw new Error('GO takes the house to ' + c.house + ', and CG says it stays at 15');
     const stage = GROUPS.stage.filter(n=>c.lx[n-1].lvl > 0.02);
     if(stage.length) throw new Error(stage.length + ' stage channels are up behind a shut curtain');
-    return 'track from 0:35, 8 blinders red, the stage dark behind the cloth';
+    return 'track from 0:35, nothing red, house still at 0.15, the stage dark behind the cloth';
+  });
+
+  P('1:00 is where the red comes on and the house goes out (CG)', ()=>{
+    showLoad('beetlejuice');
+    const c = CUES.filter(x=>x.at === 60)[0];
+    if(!c) throw new Error('there is no cue at 60s — "time stamp 1:00 in the audio"');
+    if(Math.abs(c.house) > 0.001)
+      throw new Error('the house is at ' + c.house + ' at 1:00, he asked for it to go down here');
+    if(c.signCol !== '#ff1e10') throw new Error('1:00 does not turn the sign red');
+    if(!c.portal) throw new Error('1:00 does not light the proscenium at all');
+    const col = new THREE.Color(c.portal.col);
+    if(!(col.r > 0.5 && col.g < 0.4 && col.b < 0.4))
+      throw new Error('the proscenium is not red at 1:00: ' + col.getHexString());
+    if(!(c.portal.lvl > 0.5)) throw new Error('the proscenium comes up to only ' + c.portal.lvl);
+    /* "red at the start when the blinders WOULD HAVE BEEN red" — so the neon
+       takes the moment and the eight blinders stay dark.  That is also what
+       RULING BJ measured: the blinders outrank the movers, so red on the arch
+       ate every real light in the room. */
+    const arch = GROUPS.blind.filter(n=>c.lx[n-1].lvl > 0.02);
+    if(arch.length) throw new Error(arch.length + ' blinders are red at 1:00 — the frame takes that now');
+    /* it is 25 seconds after GO, and it is the first cue that darkens the house */
+    const go = CUES.filter(x=>x.at === 35)[0];
+    if(c.at - go.at !== 25) throw new Error('1:00 is ' + (c.at - go.at) + 's after GO');
+    return 'red on the frame at 60s, house 0.15 -> 0, the arch dark';
+  });
+
+  /* ══ RULING CH — THE FRAME IS LIT AT FOUR MOMENTS AND OUT THE REST ══════
+     "blue at pre show intermission and after the show ... red at the start ...
+     and blue for the netherworld ... For the rest it is off."
+
+     READ OFF THE MATERIAL, NOT OFF THE PLOT.  A version of this that walked
+     CUES and checked the portal field would agree with itself whatever
+     setPortal and updatePortal did — the shape TRAPS records for the RULING BM
+     assertion that recomputed the beam formula.  So every cue is FIRED and the
+     frame is run out through the real three-call frame, and what is measured is
+     the emissive the renderer would actually see. */
+  P('the proscenium frame is lit at exactly four kinds of moment (CH)', ()=>{
+    showLoad('beetlejuice');
+    const b = SHOW.bjPortal;
+    if(!b) throw new Error('there is no portal frame registered');
+    let clock = 0;
+    const settle = ()=>{ for(let k = 0; k < 240; k++){
+      clock += 1/60; updateFades(1/60); updateRig(1/60, clock); updateStorm(1/60); } };
+
+    const lit = [];
+    for(let i = 0; i < CUES.length; i++){
+      fireCue(i); cancelFollow();
+      settle();
+      if(b.mat.emissiveIntensity > 0.05)
+        lit.push({n:CUES[i].n, at:CUES[i].at, label:CUES[i].label,
+                  hex:b.mat.emissive.getHexString(),
+                  red:b.mat.emissive.r > 0.5 && b.mat.emissive.g < 0.4});
+    }
+    if(!lit.length) throw new Error('the frame never lights at all');
+
+    /* the four moments, by what the cue IS rather than by its number.
+
+       THE PRE-SHOW RUNS THROUGH GO.  RULING CG leaves GO holding the pre-show
+       picture — house at 15, nothing red, the music the only thing that changed
+       — so the frame stays blue for those twenty-five seconds and 1:00 is where
+       it turns.  Both cues before the red count as the pre-show here. */
+    const isPre  = c => /PRE-SHOW/.test(c.label) || /GO — the show track starts/.test(c.label);
+    const isRed  = c => c.at === 60;
+    const isIntv = c => /INTERVAL/.test(c.label);
+    const isEnd  = c => c.at === 8100;
+    const isAft  = c => /netherworld|1:39|1:39:22|1:39:41/.test(c.label) ||
+                        CUES.filter(x=>x.n === c.n)[0].scene === 'afterlife';
+    for(const L of lit){
+      const c = CUES.filter(x=>x.n === L.n)[0];
+      if(!(isPre(c) || isRed(c) || isIntv(c) || isEnd(c) || isAft(c)))
+        throw new Error('the frame is lit on a cue that is none of his four: Q' +
+                        L.n + ' ' + L.label);
+    }
+    /* each of the four really happens — a frame stuck off would pass the loop */
+    for(const [nm, fn] of [['the pre-show', isPre], ['1:00', isRed],
+                           ['the interval', isIntv], ['after the show', isEnd],
+                           ['the netherworld', isAft]])
+      if(!lit.some(L=>fn(CUES.filter(x=>x.n === L.n)[0])))
+        throw new Error('the frame is never lit for ' + nm);
+
+    /* and only 1:00 is RED; everything else he named is blue */
+    for(const L of lit){
+      const c = CUES.filter(x=>x.n === L.n)[0];
+      if(isRed(c) && !L.red) throw new Error('1:00 lights the frame ' + L.hex + ', not red');
+      if(!isRed(c) && L.red) throw new Error('Q' + L.n + ' lights the frame red: ' + L.hex);
+    }
+    /* THE DARK IS THE POINT.  Ninety-odd cues say nothing and the frame is out
+       for all of them; if that number ever collapses the default has inverted. */
+    const dark = CUES.length - lit.length;
+    if(dark < CUES.length * 0.8)
+      throw new Error('only ' + dark + ' of ' + CUES.length + ' cues leave the frame dark');
+    return lit.length + ' cues light it, ' + dark + ' leave it out; red only at 1:00';
+  });
+
+  P('a cue that says nothing about the frame puts it OUT (CH)', ()=>{
+    showLoad('beetlejuice');
+    const b = SHOW.bjPortal;
+    let clock = 0;
+    const settle = n=>{ for(let k = 0; k < n; k++){
+      clock += 1/60; updateFades(1/60); updateRig(1/60, clock); updateStorm(1/60); } };
+    /* light it from a cue that asks */
+    const on = CUES.findIndex(c=>c.portal && c.portal.lvl > 0.5);
+    if(on < 0) throw new Error('no cue lights the frame — nothing to darken');
+    fireCue(on); cancelFollow(); settle(240);
+    if(!(b.mat.emissiveIntensity > 0.5))
+      throw new Error('the frame did not come up: ' + b.mat.emissiveIntensity.toFixed(3));
+    /* now a cue that carries no portal field at all */
+    const off = CUES.findIndex(c=>!c.portal);
+    if(off < 0) throw new Error('every cue carries a portal field — the default cannot be tested');
+    fireCue(off); cancelFollow(); settle(240);
+    if(b.mat.emissiveIntensity > 0.02)
+      throw new Error('a cue that says nothing left the frame at ' +
+                      b.mat.emissiveIntensity.toFixed(3) + ' — it must go out');
+    return 'up to 1.00 on a cue that asks, out to 0.000 on the very next that does not';
+  });
+
+  /* ══ RULING CG — THE HOUSE IS AT 15 AT EXACTLY THREE MOMENTS ════════════ */
+  P('the house sits at 15 at the start, the interval and the end, and nowhere else (CG)', ()=>{
+    showLoad('beetlejuice');
+    const up = CUES.filter(c=>c.house > 0.02);
+    for(const c of up)
+      if(Math.abs(c.house - 0.15) > 0.001)
+        throw new Error('Q' + c.n + ' takes the house to ' + c.house + ', and CG says 15');
+    /* which cues those are: the pre-show, GO (the house has not gone out yet),
+       the interval and the final cue.  Named by what they are. */
+    /* FIVE, not four, and an assertion is what found the fifth: act two's own GO
+       sat at 0.5 — the tail of the interval, with the audience coming back in —
+       and "the intermission" covers the whole of it, not just the cue that starts
+       it. */
+    const want = ['PRE-SHOW', 'GO — the show track starts', 'INTERVAL',
+                  'GO — act two', '2:15:00'];
+    for(const w of want)
+      if(!up.some(c=>c.label.indexOf(w) >= 0))
+        throw new Error('the house is not at 15 for ' + w);
+    if(up.length !== want.length)
+      throw new Error('the house is up on ' + up.length + ' cues, and CG names ' + want.length);
+    /* and it goes OUT at 1:00 and stays out through the act */
+    const red = CUES.filter(c=>c.at === 60)[0];
+    if(red.house > 0.001) throw new Error('1:00 does not take the house out');
+    return up.length + ' cues at 0.15 (' + up.map(c=>c.n).join(', ') + '), 0 everywhere else';
+  });
+
+  /* ══ RULING CH — THE BLINDERS MOVED INSIDE IT ═══════════════════════════ */
+  P('the blinders sit INSIDE the neon frame, and downstage of it (CH)', ()=>{
+    showLoad('beetlejuice');
+    const f = byName('bj:portalFrame');
+    if(!f) throw new Error('no portal frame');
+    const fb = box(f);
+    let outside = 0, behind = 0;
+    GROUPS.blind.forEach(n=>{
+      const p = chan(n).pos;
+      if(Math.abs(p.x) > Math.abs(fb.max.x) || p.y > fb.max.y || p.y < fb.min.y) outside++;
+      if(p.z <= fb.max.z) behind++;
+    });
+    if(outside) throw new Error(outside + ' of 8 blinders are outside the neon rectangle');
+    if(behind) throw new Error(behind + ' of 8 blinders are upstage of the frame they should sit in front of');
+    /* and the 1:16 white flash still has the shut curtain behind it to read on */
+    const curt = frontCurtainLineset();
+    if(curt && chan(GROUPS.blind[0]).pos.z <= curt.z)
+      throw new Error('the blinders are upstage of the house curtain at z=' + curt.z);
+    return '8 blinders inside a ' + (fb.max.x*2).toFixed(2) + ' x ' + fb.max.y.toFixed(2) +
+           ' frame, all of them downstage of it at z=' + chan(GROUPS.blind[0]).pos.z;
   });
 
   /* "make sure the beetljuice sign still stays lit up red" — which is a
@@ -2754,18 +2995,27 @@ const probe = `
       if(up.length)
         throw new Error(up.length + ' blinders are still lit at ' + t + 's (RULING BJ takes the arch out)');
     });
-    /* and the two that are NOT part of it keep their red / their flash */
-    const go = cue(35), flash = cue(76);
-    if(!GROUPS.blind.some(n=>go.lx[n-1].lvl > 0.5))
-      throw new Error('BJ went too far: the arch is no longer red at GO');
+    /* THE RED HALF OF THIS IS GONE, AND RULING CH IS WHY.  It used to demand the
+       arch still be red at GO — the thing BJ was scoped NOT to take — and "red at
+       the start when the blinders WOULD HAVE BEEN red" takes exactly that off
+       them and gives it to the proscenium frame.  So BJ's remaining job is the
+       one that was always its own: the sweeps and blackouts are dark, and the
+       1:16 white flash it must NOT have eaten is still there.  A blinder lit
+       anywhere at the top of the show now would be the regression. */
+    const flash = cue(76);
     if(!GROUPS.blind.some(n=>flash.lx[n-1].lvl > 0.9))
       throw new Error('BJ went too far: the 1:16 white flash is gone');
+    for(const t of [35, 60]){
+      const c = cue(t);
+      if(c && GROUPS.blind.some(n=>c.lx[n-1].lvl > 0.02))
+        throw new Error('a blinder is lit at ' + t + 's — CH moved that red onto the frame');
+    }
     /* the sign is what stays red, and it stays red by saying nothing */
     [63, 65, 66, 69].forEach(t=>{
       if(cue(t).signCol !== undefined)
         throw new Error(t + 's speaks about the sign; it must leave it alone so it stays red');
     });
-    return 'arch out at 1:03/1:05/1:06/1:09, red at GO, white at 1:16, sign untouched';
+    return 'arch out at 1:03/1:05/1:06/1:09 and at GO and 1:00, white at 1:16, sign untouched';
   });
 
   /* RULING BK — and this is the assertion that pins the owner's actual

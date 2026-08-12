@@ -115,7 +115,14 @@ It supersedes RULINGS BM (pre-show house 0.30) and BT (house 0.12).
 | GO (cue 1, `at:35`) | house 0, eight blinders red 0.85 | **house 0.15**, nothing red |
 | **1:00 (cue 1.05, `at:60`) — NEW** | — | **house 0, the proscenium goes red** |
 | interval (cue 23, `at:4269`) | house 0.5 | **house 0.15** |
+| **act two's GO (cue 24, `at:4292`)** | house 0.5 | **house 0.15** |
 | the end (cue 57, `at:8100`) | house 0.5 | **house 0.15** |
+
+**Cue 24 was missed in the first pass and an assertion found it.** "The
+intermission" is not only the cue that starts the interval — the audience is
+still coming back in at act two's GO, and the house does not go out until his
+own 1:11:47 line fifteen seconds later. Five cues carry the house at 15; every
+other cue in the plot has it at 0.
 
 "15" is read as 15% — `house:0.15` — because every other level he has given in
 this project is a percentage and the master runs 0..1.

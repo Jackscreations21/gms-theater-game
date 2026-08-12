@@ -762,11 +762,32 @@ function buildRig(){
   const BLIND_POWER = 4.6, BLIND_RANK = 0.9;
   const AUDM_POWER  = 2.8, AUDM_RANK  = 0.8;
 
-  // 26-33 BLINDERS — round the arch, on the downstage face of the proscenium
+  /* 26-33 BLINDERS — INSIDE the scenic portal, on the downstage face of it.
+
+     RULING CH: "move the blinders to inside of the neon thing."  They were
+     OUTBOARD of the 15m house opening (x +-8.12) with the top four above the
+     header at y 10.95, which is round the architectural arch — where RULING BC
+     put them, and where a real blinder ladder goes.  The Beetlejuice neon frame
+     runs inside a 13.6 x 9.2 scenic portal, so "outboard of the arch" is outside
+     it in every direction and he has watched that and said so.
+
+     BLIND_X and BLIND_TOP_Y are what bring them in.  They are chosen against the
+     scenic portal Beetlejuice builds (BJ.opW/opH, 13.6 x 9.2) with clearance for
+     the bar itself, but they are written as plain numbers because p4 builds
+     before any show exists and every stage gets this rig — the FOH-bar and
+     speaker-bar precedent.  This moves them in all five productions, which is
+     the honest consequence of a rig change and is one line to undo.
+
+     z stays at 1.35: the neon frame stands at BJ.pz + BJ_NEON_Z = 0.75, so the
+     blinders sit 0.60m DOWNSTAGE of it — inside its rectangle and in front of its
+     plane, never fouling it.  It is also still clear of the 1.2m deep wall, which
+     is what the number was originally for.  The 1:16 white flash still has the
+     house curtain (z -0.50) behind it, so it reads on the cloth as it always
+     did. */
   const bz = 1.35;                            // just clear of the 1.2 deep wall
-  const arch = D.procW/2 + 0.62;              // outboard of the 15m opening
-  [[-5.4, D.procH+0.55],[-1.8, D.procH+0.55],[1.8, D.procH+0.55],[5.4, D.procH+0.55],
-   [-arch, 6.4],[-arch, 3.0],[arch, 6.4],[arch, 3.0]
+  const BLIND_X = 6.2, BLIND_TOP_Y = 8.5;     // inside a 13.6 x 9.2 scenic portal
+  [[-5.4, BLIND_TOP_Y],[-1.8, BLIND_TOP_Y],[1.8, BLIND_TOP_Y],[5.4, BLIND_TOP_Y],
+   [-BLIND_X, 6.4],[-BLIND_X, 3.0],[BLIND_X, 6.4],[BLIND_X, 3.0]
   ].forEach(([x,y],i)=>{
     addFixture({name:'BLINDER '+(i+1), type:'blinder', audience:true,
       pos:V(x, y, bz), aim:V(x*0.45, 2.2, 15.0),

@@ -24,7 +24,7 @@ function showBlank(){
     neon:[], neonLevel:0, neonTarget:1, neonLights:[], neonT:0, smoke:[],
     scenes:[], scene:null, pendDress:null, revolve:null, wrong:[], confetti:null,
     rainSound:false, flicker:null, lightning:0, lightningT:0,
-    stormOn:false, stormT:0, porch:null,
+    stormOn:false, stormT:0, porch:null, bjPortal:null,
     curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
   };
 }
@@ -726,6 +726,7 @@ function updateStorm(dt){
   updateRain(dt);
   updateFire(dt);
   if(typeof updateNeon === 'function') updateNeon(dt);
+  if(typeof updatePortal === 'function') updatePortal(dt);   // RULING CH
   if(typeof bjUpdateSetFill === 'function') bjUpdateSetFill(dt);   // RULING CC
   updateShowStorm(dt);
   updateConfetti(dt);
@@ -1693,6 +1694,14 @@ function showCueExtras(c){
   if(SHOW.rain) SHOW.rain.target = c.rain || 0;
   if(SHOW.fire) SHOW.fire.target = c.fire ? (c.fire.size === undefined ? 1 : c.fire.size) : 0;
   if(c.neon !== undefined && typeof setNeon === 'function') setNeon(c.neon);
+  /* THE PROSCENIUM NEON, ON EVERY CUE AND NOT JUST THE ONES THAT CARRY IT
+     (RULING CH).  "For the rest it is off" — so a cue saying nothing about the
+     frame DARKENS it, which is the opposite bargain from `signCol` two lines
+     down and from `neon` one line up, and it is the owner's own words that draw
+     the distinction.  It is also what makes the plot readable: four cues in
+     ninety-five say `portal:` and the frame is out for the other ninety-one
+     without any of them having to say so. */
+  if(typeof setPortal === 'function') setPortal(c.portal);
   /* the marquee's own lamps.  `undefined` means LEAVE IT — one cue turns the
      sign red and the cues after it keep it red without saying so again. */
   if(c.signCol !== undefined && typeof setSignLamps === 'function') setSignLamps(c.signCol);
