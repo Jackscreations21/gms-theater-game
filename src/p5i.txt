@@ -3674,8 +3674,12 @@
    the doc's, both directions, so the two cannot drift apart.
 
    The three bj-house-*.glb are WHOLE INTERIORS, one per dressing (RULING BP),
-   not exterior miniatures: the exterior is not on the owner's list of sets to
-   model.  There is no shell file any more — see the `whole` flag below.
+   and they are told apart in the delivery by TEXTURE PALETTE and nothing else:
+   all three came out of the tool named `deetz_house`, geometrically identical
+   to three decimal places.  There is no shell file any more — see the `whole`
+   flag below.  The exterior is a fourth, separate file (RULING BZ) and it is
+   NOT one of them: `bj-house-exterior.glb` targets the `house` scene, the
+   others the `interior` wagon.
    -------------------------------------------------------------------------- */
 /* `fit` IS docs/MODELING.md's Width column, in metres — the width the set is
    scaled to arrive at (RULING BP).  It is not decoration: what turned up is
@@ -3689,6 +3693,18 @@ const BJ_MODELS = {
   roof:        {scene:'roof',      fit:13.4, url:'assets/bj-roof.glb'},
   graveyard:   {scene:'cemetery',  fit:13.4, url:'assets/bj-graveyard.glb'},
   netherworld: {scene:'afterlife', fit:13.4, url:'assets/bj-netherworld.glb'},
+  /* THE EXTERIOR IS A MODEL NOW (RULING BZ).  RULING AW read the production
+     photograph as a painted CLOTH and MODELING.md said the exterior was not his
+     to model, so this slot did not exist and a test actively forbade it.  He
+     modelled it and delivered it anyway, which is his call to make.
+
+     It targets the `house` scene, which carries a whole-group Y mover (RULING
+     AT) rather than dressings or part movers, so the apply lands it in the
+     scene group and the 1:14:30 fly-out keeps working untouched.  Its own
+     height is what limits it, not this width: 1.846 x 1.903 x 1.876 out of the
+     tool is very nearly a cube, so BX's opening cap binds first and it lands
+     8.63m wide whatever this number says. */
+  houseExterior: {scene:'house',   fit:13.4, url:'assets/bj-house-exterior.glb'},
   /* THE HOUSE IS THREE WHOLE HOUSES (RULING BP).  It used to be a shell
      (bj-house.glb) plus three dressing files that stood on it, which is how a
      real production builds one.  The owner modelled it the other way — three

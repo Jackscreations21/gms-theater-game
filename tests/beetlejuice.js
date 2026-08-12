@@ -193,11 +193,20 @@ const probe = `
 
   console.log('--- the house, from outside ---');
 
-  /* RULING AW: in the production photograph the exterior is a painted CLOTH —
-     so the scene is one drop, not a modelled house.  jsdom cannot see paint
-     (likeness is a headset question); what is pinned is that it IS a drop:
-     one cloth, painted at full size, and nothing you could stand on. */
-  P('the exterior is a painted DROP, one cloth and nothing walkable (RULING AW)', ()=>{
+  /* REWRITTEN IN PLACE FOR RULING BZ.  It used to assert flatly that the
+     exterior IS a painted drop — one cloth, RULING AW, because the production
+     photograph showed a cloth and MODELING.md said the exterior was not the
+     owner's to model.  He has now modelled and delivered it, so that is no
+     longer the whole truth.
+
+     It is still HALF of it, and the half that matters most, because the model
+     import falls back SILENTLY by design: until the file is actually fetched —
+     a fresh clone with no assets, a failed request, a refused budget — the drop
+     is what plays, so the drop has to stay correct.  What is pinned now is that
+     the STAND-IN is one cloth painted at full size with nothing walkable on it,
+     exactly as before.  jsdom has no fetch and loads no model, so this measures
+     the stand-in, which is precisely the state it now exists to guard. */
+  P('the exterior STAND-IN is a painted drop, one cloth and nothing walkable (AW, BZ)', ()=>{
     showLoad('beetlejuice');
     const h = sceneFind('house');
     if(!h) throw new Error('there is no house scene');
@@ -3317,14 +3326,22 @@ const wd = setTimeout(() => {
     const undocumented = [...manSet].filter(f => !docSet.has(f));
     if(undelivered.length) throw new Error('documented but never fetched: ' + undelivered.join(', '));
     if(undocumented.length) throw new Error('fetched but never documented: ' + undocumented.join(', '));
-    if(manSet.size !== 9) throw new Error(manSet.size + ' files, the contract lists 9');
+    /* 9 -> 10 with the exterior (RULING BZ).  The number is pinned rather than
+       derived so that a file quietly appearing in, or vanishing from, BOTH the
+       doc and the manifest still has to be a deliberate edit here. */
+    if(manSet.size !== 10) throw new Error(manSet.size + ' files, the contract lists 10');
     /* THE HOUSE IS THREE WHOLE HOUSES (RULING BP), not a shell plus three
        dressings.  Each targets the interior — the z-slide wagon, never the
        exterior miniature — names its own dressing, and declares `whole`, which
        is what takes the built-in shell out from under it. */
     if(az.BJ_MODELS.house) throw new Error('the shell entry is back; BP replaced it with three houses');
-    const houses = Object.keys(az.BJ_MODELS).filter(k=>k.indexOf('house') === 0);
-    if(houses.length !== 3) throw new Error(houses.length + ' house entries, wanted 3');
+    /* SELECTED BY WHAT THEY TARGET, NOT BY THEIR KEY.  This used to filter on
+       `k.indexOf('house') === 0`, which was fine until RULING BZ added
+       `houseExterior` — a fourth key starting with "house" that is not one of
+       these at all, and it turned this assertion into a false alarm the moment
+       the exterior landed.  The interior wagon is the real discriminator. */
+    const houses = Object.keys(az.BJ_MODELS).filter(k=>az.BJ_MODELS[k].scene === 'interior');
+    if(houses.length !== 3) throw new Error(houses.length + ' whole-house entries, wanted 3');
     const dressSeen = {};
     for(const k of houses){
       const h = az.BJ_MODELS[k];
@@ -3336,11 +3353,33 @@ const wd = setTimeout(() => {
     }
     for(const d of ['maitland','deetz','bj'])
       if(!dressSeen[d]) throw new Error('no whole house for the ' + d + ' dressing');
-    for(const k of Object.keys(az.BJ_MODELS)){
+    /* REVERSED IN PLACE FOR RULING BZ — the AO/AV/BA precedent, fourth time.
+       This block used to read:
+
+         if(typeof v !== 'string' && v.scene === 'house')
+           throw new Error('an entry targets the exterior house scene: ' + k);
+
+       and it was right at the time: RULING AW read the production photograph as
+       a painted CLOTH, MODELING.md said the exterior was not the owner's to
+       model, and an entry pointed at the `house` scene would have been a
+       mistake — three whole interiors accidentally aimed at the exterior
+       miniature instead of the wagon.  He then modelled the exterior and
+       delivered it, which is his to decide, so the thing to guard flipped:
+       there must be EXACTLY ONE such entry, it must be the exterior file, and
+       the three interiors must still not be it. */
+    const ext = Object.keys(az.BJ_MODELS).filter(k => {
       const v = az.BJ_MODELS[k];
-      if(typeof v !== 'string' && v.scene === 'house')
-        throw new Error('an entry targets the exterior house scene: ' + k);
-    }
+      return typeof v !== 'string' && v.scene === 'house';
+    });
+    if(ext.length !== 1)
+      throw new Error(ext.length + ' entries target the exterior house scene, wanted exactly 1: ' +
+                      ext.join(', '));
+    if(az.BJ_MODELS[ext[0]].url !== 'assets/bj-house-exterior.glb')
+      throw new Error('the exterior slot fetches ' + az.BJ_MODELS[ext[0]].url);
+    /* and it is NOT a whole-house interior wearing the wrong scene key, which
+       is the mistake the old assertion existed to catch */
+    if(az.BJ_MODELS[ext[0]].dress || az.BJ_MODELS[ext[0]].whole)
+      throw new Error('the exterior entry claims a dressing — it is aimed at the wagon, not the drop');
     /* filenames are not enough: a typo in a scene or dress key is the same
        silent never-loads.  Every entry must resolve against the loaded show. */
     w.showLoad('beetlejuice');
@@ -3421,8 +3460,15 @@ const wd = setTimeout(() => {
         throw new Error('refused for the wrong reason: ' + r.refused[0].why);
       if(meshCount(bed.group) !== before)
         throw new Error('the refused model disturbed the stand-in');
-      if(r.missing !== 8) throw new Error(r.missing + ' missing, wanted the other 8 silent');
-      return 'bedroom refused (' + r.refused[0].why + '), ' + before + ' stand-in meshes intact, 9 absentees silent';
+      /* DERIVED from the manifest rather than hardcoded: it was 8, and RULING
+         BZ's tenth entry made it 9.  What this is actually asserting is "every
+         entry but the one I served came back silently", and saying that in terms
+         of the manifest means the next delivery does not edit a number here. */
+      const others = Object.keys(az.BJ_MODELS).length - 1;
+      if(r.missing !== others)
+        throw new Error(r.missing + ' missing, wanted the other ' + others + ' silent');
+      return 'bedroom refused (' + r.refused[0].why + '), ' + before +
+             ' stand-in meshes intact, ' + others + ' absentees silent';
     } finally { delete w.fetch; }
   });
 
