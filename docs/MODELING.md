@@ -22,11 +22,17 @@ the portal legs and unseen; anything past 48'6" fails the build.
 
 - **Format:** `.glb` (binary glTF, textures embedded). One file per set,
   named `bj-<set>.glb` — e.g. `bj-attic.glb`.
-- **Scale: real-world meters** (Blender's default glb export). If you model
-  in feet, say so when you hand the file over and it gets scaled on import.
-- **Origin:** centre of the set's footprint, **floor at height 0**. The game
-  puts the origin on the deck; if your floor is at 0, the set stands on the
-  stage.
+- **Scale: real-world meters** is still ideal — **but if it comes out
+  normalised, that is fine now.** Every set is **scaled to the Width in the
+  table below**, measured off the model's own bounding box, so a file that
+  arrives 1.9 units across and one that arrives 13.4 m across end up the same
+  size on stage. Your Meshy exports are the former; nothing needs re-exporting
+  for it.
+- **Origin:** centre of the set's footprint, **floor at height 0** — and this
+  is **fixed up on import too**: the model's lowest point is put on the deck
+  and its footprint centred, because the deck is y = 0 on every stage. Getting
+  it right in the file is still better, but a set centred on the origin will no
+  longer arrive half-buried under the stage.
 - **Facing:** the audience is +Z. Build the set facing you in front view.
 - **No lights, no cameras, no animations** in the export. Lighting is the
   rig's job; movement is the wagon's and the flies' job.

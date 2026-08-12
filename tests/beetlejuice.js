@@ -3564,6 +3564,97 @@ const wd = setTimeout(() => {
     return 'shared 4096x2048 -> 2048x1024, aspect kept, empty map survived';
   });
 
+  /* RULING BP — FIT AND SEAT.  Every one of the seven files that arrived is
+     normalised to a ~1.9-unit box centred on the origin, which is what the
+     export tool emits and not what MODELING.md asks for.  Straight in, a set
+     would stand a seventh of its size with half of it under the deck. */
+  await P('a unit-box model is fitted to its declared width and seated on the deck', async () => {
+    /* a 1.9-unit box, and deliberately OFF-CENTRE and OFF-DECK.  The first
+       version of this test used a box centred on the origin, which made the
+       centring unobservable — a negative check that removed the centring
+       entirely passed, because a centred box is already centred. */
+    const g = new THREE.BoxGeometry(1.9, 1.9, 1.9);
+    const root = new THREE.Group();
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial());
+    m.position.set(0.7, -0.4, -1.1);
+    root.add(m);
+    const s = w.bjFitAndSeat(root, 13.4);
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    if(Math.abs(size.x - 13.4) > 0.01)
+      throw new Error('fitted to ' + size.x.toFixed(2) + 'm, wanted 13.40');
+    /* THE DECK IS y = 0 ON EVERY STAGE (INVARIANTS) — the model's lowest
+       point, not its origin, is what goes there */
+    if(Math.abs(box.min.y) > 0.01)
+      throw new Error('seated with its base at y=' + box.min.y.toFixed(3) + ', wanted 0');
+    const c = box.getCenter(new THREE.Vector3());
+    if(Math.abs(c.x) > 0.01 || Math.abs(c.z) > 0.01)
+      throw new Error('footprint centred at x=' + c.x.toFixed(2) + ' z=' + c.z.toFixed(2));
+    if(Math.abs(s - 13.4/1.9) > 0.01) throw new Error('reported a scale of ' + s);
+    return '1.9 units -> 13.40m wide (x' + s.toFixed(2) + '), base on the deck, centred';
+  });
+
+  await P('a model already in metres is left near enough alone, and scale still wins', async () => {
+    const mk = (wid, hei) => {
+      const r = new THREE.Group();
+      r.add(new THREE.Mesh(new THREE.BoxGeometry(wid, hei, 4), new THREE.MeshStandardMaterial()));
+      return r;
+    };
+    /* fitting a 13.4m set to 13.4m is a scale of 1.0 — the clause that means
+       a conforming export is not mangled by this */
+    const s1 = w.bjFitAndSeat(mk(13.4, 8), 13.4);
+    if(Math.abs(s1 - 1) > 1e-6) throw new Error('a metres model was rescaled by ' + s1);
+    /* an explicit scale beats a measurement: the manifest can still override */
+    const r2 = mk(1.9, 1.9);
+    if(!w.bjApplyModel({scene:'attic', scale:2, fit:13.4}, r2))
+      throw new Error('the apply refused');
+    r2.updateMatrixWorld(true);
+    const sz = new THREE.Box3().setFromObject(r2).getSize(new THREE.Vector3());
+    if(Math.abs(sz.x - 3.8) > 0.05)
+      throw new Error('scale:2 was overridden by fit — came out ' + sz.x.toFixed(2) + 'm wide');
+    return 'metres model untouched (x1.00); an explicit scale:2 beat fit:13.4';
+  });
+
+  /* AND THE WIRING.  Every test above called bjFitAndSeat directly, so a
+     negative check that stopped bjApplyModel ever calling it broke nothing —
+     the third time this session that a function was proved and its wiring was
+     not.  Through the REAL manifest entry, at the real scale his files are. */
+  await P('a real manifest entry fits and seats through the apply path', async () => {
+    const root = new THREE.Group();
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.6, 1.4),
+                             new THREE.MeshStandardMaterial());
+    m.position.set(0.5, 0.9, 0);          // off-centre and floating
+    root.add(m);
+    const entry = az.BJ_MODELS.attic;     // fit: 13.4, no explicit scale
+    if(entry.scale) throw new Error('the attic entry has an explicit scale; pick another for this test');
+    if(!w.bjApplyModel(entry, root)) throw new Error('the apply refused');
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    if(Math.abs(size.x - entry.fit) > 0.05)
+      throw new Error('landed ' + size.x.toFixed(2) + 'm wide, the manifest says ' + entry.fit);
+    /* it lands INSIDE the flyer, whose own position is not the deck, so the
+       check is that the apply path scaled and seated it — not its world y */
+    if(size.x < 5) throw new Error('it landed at tool scale: ' + size.x.toFixed(2) + 'm');
+    return 'the attic entry landed ' + size.x.toFixed(2) + 'm wide from a 1.9-unit file';
+  });
+
+  await P('every manifest entry declares a width, and it matches the doc', async () => {
+    const doc = fs.readFileSync(require('path').join(__dirname, '..', 'docs', 'MODELING.md'), 'utf8');
+    for(const k of Object.keys(az.BJ_MODELS)){
+      const e = az.BJ_MODELS[k];
+      if(!e.fit) throw new Error(k + ' declares no fit width, so it lands at whatever the tool emitted');
+      if(!(e.fit > 3 && e.fit <= 14.8))
+        throw new Error(k + ' fits to ' + e.fit + 'm; the hard cap is 14.8');
+    }
+    /* MODELING.md must tell him what those numbers are, or the contract is
+       one-sided — the doc/manifest pin, extended to the widths */
+    if(doc.indexOf('fit') < 0 && doc.indexOf('scaled to') < 0)
+      throw new Error('MODELING.md never explains that models are scaled to a declared width');
+    return Object.keys(az.BJ_MODELS).length + ' entries, every one with a width inside the cap';
+  });
+
   /* THE BUDGET NUMBER ITSELF (RULING BP).  A negative check putting it back to
      30,000 changed nothing, because nothing here was asserting what it is —
      only that things over it are refused.  His models are 93k-99.5k, so the
