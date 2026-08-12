@@ -37,6 +37,26 @@ const BJ = {
   pz: 0.45                    // it stands just upstage of the apron edge
 };
 const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
+
+/* THE PROSCENIUM NEON (RULING CH) — one-line retunes, the BJ_ family's habit.
+
+   BAR is "a thicker bar" in metres, and it is the one to move if it reads thin
+   or heavy from a seat.  Everything else about the frame is derived from BJ.opW
+   and BJ.opH, so widening the picture widens the neon with it.
+
+   FADE is how fast it comes up and goes out, per second, off the frame dt —
+   never a timer (CLAUDE.md).  1.2 puts a full up or a full out just under a
+   second, which is a neon transformer striking rather than a lamp dimming.
+
+   The two colours are the only two the plot ever asks for.  DARK is the unlit
+   glass, not black: a bar that goes to pure black in a lit scene reads as a
+   hole cut in the proscenium. */
+const BJ_NEON_BAR  = 0.34;
+const BJ_NEON_Z    = 0.30;        // downstage of the portal's own face
+const BJ_NEON_FADE = 1.2;
+const BJ_NEON_BLUE = 0x4fa8ff;
+const BJ_NEON_RED  = 0xff1e10;    // his own act-one red, the same hex as signCol
+const BJ_NEON_DARK = 0x0d1116;
 /* where the house wagon parks.  The room is built in its ACTING position, so
    this is how far upstage it tracks to hide: the stand-in lands at z -19.24 ..
    -11.56 and HIS 12.98m house at -24.78 .. -11.80 — both clear of the last
@@ -766,44 +786,58 @@ SHOWS.beetlejuice = {
       cm.position.z = BJ.pz; cm.castShadow = true; G.add(cm);
 
       /* ------------------------------------------------------------------
-         THE NEON, round the opening AND back into the wings.
+         THE PROSCENIUM NEON — RULING CH.
 
-         It is the most-seen object in the production — a blue-green tube
-         frame surrounding the whole picture, in nearly every photograph
-         the owner sent — and it was a flat green strip here.  Now it is
-         TUBES: four round the opening, and two returns per side running
-         upstage into the wings with a hoop at the end of each, so from a
-         seat the opening is a lit box receding rather than a lit outline.
+         "remove the current neon stuff and replace it with a thicker bar
+         going all the way around that lights up red at the start when the
+         blinders would have been red and blue for the netherworld and blue
+         at pre show intermission and after the show.  For the rest it is
+         off."
 
-         Everything is ONE merged mesh on ONE material.  A material per
-         tube is the draw-call trap in TRAPS.md, and an emissive material
-         per object is the expensive version of it.  It also stays inside
-         x +-7.4 on purpose: the portal check refuses anything scenic
-         wider than the house opening, and the wings are no exception.
+         WHAT WENT.  A blue-green tube frame read off his photographs, plus
+         two returns per side running upstage into the wings and three
+         hoops, ALWAYS LIT, at a fixed colour nothing could change.  He has
+         now said what he wants instead, and it is simpler in every
+         direction: one bar, closed, cue-driven, dark by default.
+
+         ONE CLOSED RECTANGLE hugging the opening — two legs, a header, a
+         sill at the deck — four boxes merged into one mesh on one material.
+         The corners overlap rather than mitre, which costs nothing on an
+         emissive bar and keeps the loop unbroken from any angle.
+
+         THREE THINGS THAT DO NOT MOVE, all of them scars:
+
+           - NOT neonTube.  Its CatmullRom runs THROUGH the corner points and
+             overshoots a right angle: a rectangle drawn as five points came
+             out 14.5m wide from a specified 12.6 and dipped 0.53m through the
+             deck (TRAPS).  Four straight bars.
+           - INSIDE x +-7.4.  The beetlejuice suite's portal check refuses
+             anything scenic wider than the house opening.  Outer edge here is
+             +-BJ.opW/2 = +-6.80.
+           - ONE MATERIAL.  "A material per tube is REQUIRED" is updateNeon's
+             rule, and this frame is not on SHOW.neon — updatePortal writes one
+             colour into one material, so one merged mesh is right here and the
+             netherworld's tubes are untouched by any of it.
+
+         BUILT DARK.  emissiveIntensity 0 and a near-black glass body: the bar
+         physically exists when it is not lit, like real neon does, and the cue
+         is the only thing that ever lights it (setPortal, below).
          ------------------------------------------------------------------ */
-      const R = 0.075, HW2 = BJ.opW/2, WZ = -5.2;   // how far the wings run
-      const tube = (len, pos, rot) => ({
-        geo:new T.CylinderGeometry(R, R, len, 8), pos:pos, rot:rot || [0,0,0]});
+      const HW2 = BJ.opW/2, BAR = BJ_NEON_BAR;
+      const bar = (w, h, pos) => ({geo:new T.BoxGeometry(w, h, BAR), pos:pos});
       const tr = [
-        /* the frame: two legs, a header and a sill at the deck */
-        tube(BJ.opH, [-HW2, BJ.opH/2, 0]),
-        tube(BJ.opH, [ HW2, BJ.opH/2, 0]),
-        tube(BJ.opW, [0, BJ.opH, 0], [0, 0, Math.PI/2]),
-        tube(BJ.opW, [0, 0.06, 0],   [0, 0, Math.PI/2])
+        bar(BAR, BJ.opH, [-(HW2 - BAR/2), BJ.opH/2, 0]),   // stage-right leg
+        bar(BAR, BJ.opH, [  HW2 - BAR/2,  BJ.opH/2, 0]),   // stage-left leg
+        bar(BJ.opW, BAR, [0, BJ.opH - BAR/2, 0]),          // the header
+        bar(BJ.opW, BAR, [0, BAR/2, 0])                    // the sill, on the deck
       ];
-      [-1, 1].forEach(sd=>{
-        /* the returns, top and bottom, running upstage into the wing */
-        tr.push(tube(Math.abs(WZ), [sd*HW2, BJ.opH, WZ/2], [Math.PI/2, 0, 0]));
-        tr.push(tube(Math.abs(WZ), [sd*HW2, 0.06,   WZ/2], [Math.PI/2, 0, 0]));
-        /* and the hoop that closes the far end of the box */
-        tr.push(tube(BJ.opH, [sd*HW2, BJ.opH/2, WZ]));
-      });
-      tr.push(tube(BJ.opW, [0, BJ.opH, WZ], [0, 0, Math.PI/2]));
-      const neonB = new T.MeshStandardMaterial({color:0x8ff0ff, emissive:0x2fd8e0,
-                                                emissiveIntensity:1.6, roughness:.5});
-      const tm = new T.Mesh(mergeParts(tr), neonB);
-      tm.name = 'bj:portalTrim'; tm.position.z = BJ.pz + 0.30;
+      const frameM = new T.MeshStandardMaterial({color:BJ_NEON_DARK,
+        emissive:BJ_NEON_BLUE, emissiveIntensity:0, roughness:.5});
+      const tm = new T.Mesh(mergeParts(tr), frameM);
+      tm.name = 'bj:portalFrame'; tm.position.z = BJ.pz + BJ_NEON_Z;
       G.add(tm);
+      SHOW.bjPortal = {mesh:tm, mat:frameM, lvl:0, tLvl:0,
+                       col:new T.Color(BJ_NEON_BLUE), tCol:new T.Color(BJ_NEON_BLUE)};
     }
 
     /* ================================================================
@@ -2039,6 +2073,43 @@ SHOWS.beetlejuice = {
 };
 
 /* ============================================================================
+   THE PROSCENIUM NEON'S COLOUR AND LEVEL, CUE-DRIVEN (RULING CH).
+
+   A cue carries `portal:{col:'#hex', lvl:N}`.  MISSING FIELD = DARK:
+   showCueExtras calls setPortal on EVERY cue, so a cue that says nothing about
+   the frame fades it to nothing, which is his "For the rest it is off" exactly.
+
+   The fade rides the frame dt like the netherworld neon and everything else in
+   this file — never a timer (CLAUDE.md).
+
+   THE COLOUR SNAPS WHILE THE BAR IS DARK, and only then.  Lerping it would be
+   invisible at zero anyway, but a cue that lights the frame red straight out of
+   a dark stretch that was last blue would spend its whole rise crossfading, and
+   the first thing seen would be the wrong colour coming up.  Lit, it crossfades,
+   because a neon transformer changing colour under the audience's eyes is a
+   thing that should take a moment.
+   ========================================================================== */
+function setPortal(p){
+  const b = SHOW.bjPortal; if(!b) return;
+  b.tLvl = (p && p.lvl !== undefined) ? p.lvl : 0;
+  if(p && p.col !== undefined){
+    b.tCol.set(p.col);
+    if(b.lvl <= 0.02) b.col.copy(b.tCol);      // dark: come up in the new colour
+  }
+}
+function updatePortal(dt){
+  const b = SHOW.bjPortal; if(!b) return;
+  b.lvl += clamp(b.tLvl - b.lvl, -dt*BJ_NEON_FADE, dt*BJ_NEON_FADE);  // clamps AT the target
+  b.col.lerp(b.tCol, Math.min(1, dt*BJ_NEON_FADE));
+  b.mat.emissiveIntensity = b.lvl;
+  b.mat.emissive.copy(b.col);
+  /* the bar's own face: unlit glass when dark, lifted toward the emissive when
+     lit, so it reads as a lit thing rather than a black rod with a halo */
+  b.mat.color.setHex(BJ_NEON_DARK);
+  if(b.lvl > 0.02) b.mat.color.lerp(b.col, clamp(b.lvl, 0, 1)*0.8);
+}
+
+/* ============================================================================
    THE PLOT — the opening sequence.
 
    Every TIME in these comments is measured off the recording; every LEVEL and
@@ -2083,24 +2154,22 @@ function plotBeetlejuice(){
        and the audience movers drift over the seating, slowly, green to purple
        and back (rulings BC and BD).
 
-       RULING BM — THE HAZE AND THE HOUSE, so the beams read.  "make it so in
-       pre show and the start of show light stuff you can see the actual beams
-       better."  Two numbers, both OURS and neither of them his: his four text
-       files say nothing about haze anywhere, and 0.45 was our reading of the
-       word "low".
+       RULING BM — THE HAZE, so the beams read.  "make it so in pre show and the
+       start of show light stuff you can see the actual beams better."  HAZE 0.15
+       -> 0.50.  A beam draws at uHaze = 0.25 + haze*1.15, so 0.15 was 0.42
+       against a mid-show 0.88-1.06 — the LEAST haze in the whole plot, in the one
+       stretch that is nothing BUT beams, because the curtain is in and there is
+       no stage picture to light.  The show's own blurb is "more haze than air".
+       It costs no draw call: the beam is rasterised whenever it is lit at all,
+       and haze only sets its opacity.
 
-       HAZE 0.15 -> 0.50.  A beam draws at uHaze = 0.25 + haze*1.15, so 0.15
-       was 0.42 against a mid-show 0.88-1.06 — the LEAST haze in the whole
-       94-cue plot, in the one stretch that is nothing BUT beams, because the
-       curtain is in and there is no stage picture to light.  The show's own
-       blurb is "more haze than air".  It costs no draw call: the beam is
-       rasterised whenever it is lit at all, and haze only sets its opacity.
-
-       HOUSE 0.45 -> 0.30, which is the other half of the same problem and was
-       measured, not guessed: at 0.45 the house lights put ~2.0-2.4 on a seat
-       while the whole audience rig peaked at ~1.0.  The room was twice as
-       bright as the effect in it.  0.30 is still "low" and still his word;
-       if he wants the foyer feel back it is one line.
+       THE HOUSE IS 0.15, AND IT IS HIS NUMBER NOW (RULING CG).  "the house light
+       shouldn only be at 15 at the start, intermission and the end."  It was
+       0.45 (our reading of his word "low"), then 0.30 (RULING BM, measured — at
+       0.45 the house put ~2.0-2.4 on a seat while the whole audience rig peaked
+       at ~1.0, so the room was twice as bright as the effect in it), then 0.12
+       was specified under RULING BT and never built.  0.15 supersedes all three
+       and is not an interpretation of anything.
 
        THE FOYER IS UP HERE AND OUT AT GO (RULING BH) — "make sure the lobby
        lights get turned of at the start of a show".  It comes back at the
@@ -2108,10 +2177,15 @@ function plotBeetlejuice(){
        into it and then back in.  It is the only circuit in this plot that is
        ON at the pre-show and OFF for the show, which is what a front of house
        is.  These four cues are the only ones in all five productions that say
-       anything about it at all; every other cue leaves it exactly alone. */
-    {at:33, n:0.5, label:'PRE-SHOW — house low, curtain in, the sign lit', fade:0,
-     house:0.30, lobby:0.9, haze:0.50, curtain:'shut', scene:'cemetery',
+       anything about it at all; every other cue leaves it exactly alone.
+
+       AND THE PROSCENIUM NEON IS BLUE (RULING CH) — "blue at pre show
+       intermission and after the show".  One of the frame's four lit moments in
+       the whole evening; every cue that does not say `portal:` puts it out. */
+    {at:33, n:0.5, label:'PRE-SHOW — house at 15, curtain in, the sign lit', fade:0,
+     house:0.15, lobby:0.9, haze:0.50, curtain:'shut', scene:'cemetery',
      backdrop:'in', hold:true,
+     portal:{col:BJ_NEON_BLUE, lvl:1.0},
      audio:{play:'preshow'},
      fx:{on:'aud', kind:'wander', cols:['#2fbf5f','#7f3fbf']},
      look(){ all(0); onTheCloth(); set(FRONT, 0.45, '#e8d2a8');
@@ -2124,12 +2198,48 @@ function plotBeetlejuice(){
        its `at` (RULING BB).  With no audio present the follow chain runs it on
        the same numbers.
 
-       "The lights around the prosinum all turn red and all the lights on the
-       beetlejuice sign go bright red." */
-    {at:35, n:1, label:'GO — the proscenium and the sign go red', fade:1.5,
+       RULING CG — AND NOTHING HAPPENS TO THE LIGHT HERE ANY MORE.
+
+       "the red lights shouldnt come on as soon as you press go and the house
+       light shouldnt go don when you press go.  They should both happen at time
+       stamp 1:00 in the audio."
+
+       This cue used to carry his whole act-one opening line — "The lights around
+       the prosinum all turn red and all the lights on the beetlejuice sign go
+       bright red" — on eight blinders at red 0.85, with the house snapped to 0.
+       He has watched it and moved both halves twenty-five seconds later.  So GO
+       is now the music, the foyer and nothing else: the pre-show picture stands,
+       the house stays at 15, and the frame stays blue.
+
+       THE SIGN'S RED GOES WITH THE PROSCENIUM'S, and that is a judgement call
+       rather than his words.  His original line was ONE sentence about both, and
+       leaving the sign red at GO would put the only red thing in the house on a
+       stage he has just said should not be red yet.  One line back if he meant
+       otherwise. */
+    {at:35, n:1, label:'GO — the show track starts, the house stays at 15', fade:1.5,
+     house:0.15, lobby:0, haze:0.60, curtain:'shut', scene:'cemetery', backdrop:'in',
+     portal:{col:BJ_NEON_BLUE, lvl:1.0},
+     audio:{play:'act1', at:35, stop:'preshow'},
+     look(){ all(0); onTheCloth(); set(FRONT, 0.45, '#e8d2a8'); }},
+
+    /* 1:00 — RULINGS CG AND CH TOGETHER, and it is the cue this round exists for.
+
+       "They should both happen at time stamp 1:00 in the audio."
+
+       THE NUMBER IS SETTLED.  "1 minute into the audio (not acounting for the 32
+       seconds or whaterver it was)" has been carried as an unresolved reading of
+       `at:60` through three handoffs; "time stamp 1:00 in the audio" is the same
+       number said plainly, and it is his now rather than ours.
+
+       THE RED IS THE FRAME, NOT THE BLINDERS — "red at the start when the
+       blinders WOULD HAVE BEEN red" (RULING CH).  Two words of his do the whole
+       job: the neon takes the moment and the eight blinders stay dark, which
+       also settles the mechanical half RULING BJ measured — blinders outrank the
+       movers, so red on the arch used to eat every real light in the room. */
+    {at:60, n:1.05, label:'1:00 — the proscenium goes red, the house goes out', fade:1.5,
      house:0, lobby:0, haze:0.60, curtain:'shut', scene:'cemetery', backdrop:'in',
-     audio:{play:'act1', at:35, stop:'preshow'}, signCol:'#ff1e10',
-     look(){ all(0); set(BLIND, 0.85, '#ff1e10'); }},
+     portal:{col:BJ_NEON_RED, lvl:1.0}, signCol:'#ff1e10',
+     look(){ all(0); }},
 
     /* "From 1:03 to 1:05 have all the lights that are in the audience area be
        purple and sweep up then at 1:05 they go dark (make sure the beetljuice
@@ -2530,9 +2640,17 @@ function plotBeetlejuice(){
        "Second half starts when you press a button on the consol" (RULING AU),
        and the pre-show music comes back under it — act two opens "Play audio
        number one again till go is pressed". */
-    {at:4269, n:23, label:'1:11:09 — house to HALF — INTERVAL (holds for the console)',
-     fade:6, house:0.5, lobby:0.9, haze:0, curtain:'shut', scene:'interior', dress:'deetz',
+    /* RULING CG supersedes the HALF: "the house light shouldn only be at 15 at
+       the start, intermission and the end", and this is the intermission.  His
+       set list's "house light fade up to half" was the old number and this is the
+       new one; the rest of the cue — the hold, the pre-show music underneath, the
+       foyer coming back — is untouched.
+       RULING CH: blue on the frame, "blue at pre show intermission and after the
+       show". */
+    {at:4269, n:23, label:'1:11:09 — house to 15 — INTERVAL (holds for the console)',
+     fade:6, house:0.15, lobby:0.9, haze:0, curtain:'shut', scene:'interior', dress:'deetz',
      backdrop:'out', hold:true,
+     portal:{col:BJ_NEON_BLUE, lvl:1.0},
      audio:{stop:'act1', play:'preshow'},
      look(){ all(0); }},
 
@@ -2555,8 +2673,14 @@ function plotBeetlejuice(){
        which the old list put at 1:39:00.  Everything else in his set list is
        exactly where it already was.
        ====================================================================== */
+    /* RULING CG reaches this cue too, and an assertion is what found it.  The
+       house was at 0.5 here — the tail of the interval, with the audience coming
+       back in — and "the house light shouldn only be at 15 at the start,
+       intermission and the end" covers the whole of the interval, not just the
+       cue that starts it.  It goes out fifteen seconds later at 1:11:47, which is
+       his own line and is untouched. */
     {at:4292, n:24, label:'GO — act two, the show track back at 1:11:32', fade:2,
-     house:0.5, lobby:0, haze:0.2, curtain:'shut', scene:'house', backdrop:'out', sky:'in',
+     house:0.15, lobby:0, haze:0.2, curtain:'shut', scene:'house', backdrop:'out', sky:'in',
      move:{scene:'house', off:0},
      audio:{play:'act2', at:4292, stop:'preshow'},
      look(){ all(0); onTheCloth(); set(FRONT, 0.4, '#bfe08a'); }},
@@ -2714,20 +2838,20 @@ function plotBeetlejuice(){
        says 1:39:19 (5959).  It also puts the change nineteen seconds closer to
        his own 1:39:22 blackout, which now covers its tail. */
     {at:5959, n:39, label:'1:39:19 — house back, the netherworld', fade:2,
-     house:0, haze:0.7, curtain:'out', scene:'afterlife', neon:1.1, backdrop:'out',
+     house:0, haze:0.7, curtain:'out', scene:'afterlife', portal:{col:BJ_NEON_BLUE, lvl:1.0}, neon:1.1, backdrop:'out',
      move:{scene:'interior', off:BJ_WAGON_BACK},
      look(){ all(0);
        set(WASH, 0.30, '#2f6bff'); set(BACK, 0.20, '#5fd8e8'); }},
 
     /* "1:39:22 all light fade to black and do a white flash" */
     {at:5962, n:39.1, label:'1:39:22 — out to black, and a white flash', fade:2.5,
-     house:0, haze:0.7, curtain:'out', scene:'afterlife', neon:1.1, backdrop:'out',
+     house:0, haze:0.7, curtain:'out', scene:'afterlife', portal:{col:BJ_NEON_BLUE, lvl:1.0}, neon:1.1, backdrop:'out',
      fx:{on:'front', kind:'flash', col:'#ffffff', secs:0.4},
      look(){ all(0); set(FRONT, 1.0, '#ffffff'); }},
 
     /* "1:39:41 blue lights fade on." */
     {at:5981, n:39.2, label:'1:39:41 — blue fading on', fade:5,
-     house:0, haze:0.7, curtain:'out', scene:'afterlife', neon:1.25, backdrop:'out',
+     house:0, haze:0.7, curtain:'out', scene:'afterlife', portal:{col:BJ_NEON_BLUE, lvl:1.0}, neon:1.25, backdrop:'out',
      look(){ all(0);
        set(BACK, 0.30, '#5fd8e8'); set(WASH, 0.26, '#2f6bff');
        set(CYC, 0.20, '#22467c'); }},
@@ -2906,11 +3030,14 @@ function plotBeetlejuice(){
        set(FRONT, 0.85, '#ffffff'); set(WASH, 0.78, '#ffffff');
        set(BACK, 0.50, '#eaf0fb'); }},
 
-    /* "2:15 curtain comes in house lights fade up" plus his set list's "house
-       light fade up to half", and "Audio fades out" — the last line he wrote. */
-    {at:8100, n:57, label:'2:15:00 — curtain in, house to half, the audio fades out',
-     fade:6, house:0.5, haze:0.2, curtain:'shut', scene:'interior', dress:'bj',
+    /* "2:15 curtain comes in house lights fade up" and "Audio fades out" — the
+       last line he wrote.  His set list said "house light fade up to half"; RULING
+       CG has since said 15 at the start, the intermission and the end, and this
+       is the end.  RULING CH puts the frame back to blue for "after the show". */
+    {at:8100, n:57, label:'2:15:00 — curtain in, house to 15, the audio fades out',
+     fade:6, house:0.15, haze:0.2, curtain:'shut', scene:'interior', dress:'bj',
      neon:0, backdrop:'out',
+     portal:{col:BJ_NEON_BLUE, lvl:1.0},
      audio:{fade:'act2', secs:10},
      look(){ all(0);
        onTheCloth();
@@ -2939,6 +3066,7 @@ function plotBeetlejuice(){
       lobby:L.lobby,                  // undefined means LEAVE THE FOYER ALONE (BH)
       rain:0, storm:false, fire:null,
       neon:L.neon === undefined ? 1 : L.neon,
+      portal:L.portal || null,        // the proscenium frame's colour and level (CH)
       scene:L.scene || null,
       dress:L.dress || null,          // which dressing the room wears (AQ)
       move:L.move || null,            // what travels, and to where (AP)
