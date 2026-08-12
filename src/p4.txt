@@ -928,12 +928,38 @@ function updateRig(dt, t){
      however many are lit — and it claims nothing at all when the audience rig
      is dark, which across the 94-cue plot is almost every cue.  No new lights:
      the pool is the size it always was, this is only who stands in it. */
+  /* AND IT DIVIDES THE RIG RATHER THAN CAPPING IT (RULING BL).  BG handed the
+     reserve out by rank, first come — and the blinders ARE audience units, at
+     rank 0.9 against the movers' 0.8.  So at 1:03, where eight blinders sit red
+     and six movers sweep purple, the two reserved slots went to blinders, the
+     other six went to blinders, and the purple sweep the owner asked about
+     rendered on ZERO real lights.  In a headset, four blinders and no movers.
+     Measured; the probe is tools/audience-balcony.js.
+
+     So the share goes round the audience GROUPS a lap at a time — the best-lit
+     blinder, then the best-lit mover, then round again — instead of down one
+     rank list.  Grouped by `type`, which is the only thing that distinguishes
+     an audience unit from another kind of audience unit.  With one group lit it
+     is exactly what it was; with two it can no longer starve one of them.
+
+     BG's own invariant is untouched: still at most AUD_LIGHT_RESERVE, still a
+     ceiling and never a floor, still nothing at all claimed when the rig is
+     dark.  This decides WHICH of the two, not how many.                      */
   _handout.length = 0;
   {
     let nAud = 0;
-    for(const f of _active){
-      if(!f.audience || nAud >= AUD_LIGHT_RESERVE || _handout.length >= nLights) continue;
-      _handout.push(f); nAud++;
+    const _lap = [];
+    while(nAud < AUD_LIGHT_RESERVE && _handout.length < nLights){
+      let took = false;
+      for(const f of _active){
+        if(!f.audience || _handout.indexOf(f) !== -1) continue;
+        if(_lap.indexOf(f.type) !== -1) continue;   // this group has had its turn
+        _lap.push(f.type);
+        _handout.push(f); nAud++; took = true;
+        if(nAud >= AUD_LIGHT_RESERVE || _handout.length >= nLights) break;
+      }
+      if(!took) break;                              // no audience unit left lit
+      _lap.length = 0;                              // next lap round the groups
     }
     for(const f of _active){
       if(_handout.length >= nLights) break;

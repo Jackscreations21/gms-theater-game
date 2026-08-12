@@ -1794,6 +1794,46 @@ const probe = `
     return a + ' to the audience, ' + s + ' to the stage, whole rig at full';
   });
 
+  /* RULING BL — AND IT DIVIDES THE RIG.  The line above has always passed and
+     was never enough: BG handed the reserve out by rank, and the blinders ARE
+     audience units at rank 0.9 against the movers' 0.8, so "two" meant "two
+     blinders" every time.  At 1:03 that spent all eight real lights on eight
+     red lamps and left the purple sweep with none, which is half of the reason
+     the owner could not see it.  Both groups lit means one of each. */
+  P('RULING BL: the reserve divides the audience rig — one of each, not two of one', ()=>{
+    showLoad('beetlejuice');
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    GROUPS.house.forEach(n=>{ chan(n).level = 1; });
+    for(let n = 1; n <= 25; n++) chan(n).level = 1;
+    updateRig(1/60, 0);
+    const held = GROUPS.house.filter(n=>chan(n)._live).map(n=>chan(n).type);
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    if(held.length !== 2)
+      throw new Error('the audience rig holds ' + held.length + ' of the pool, wanted 2');
+    if(held.indexOf('blinder') < 0 || held.indexOf('mover') < 0)
+      throw new Error('both reserved lights went to ' + held.join(' and ') +
+                      ' — one group starved the other');
+    return 'one ' + held[0] + ' and one ' + held[1];
+  });
+
+  /* the same thing where it actually bites hardest: a headset hands out FOUR
+     lights, and act two's 1:53:33 puts all fourteen audience units up at once */
+  P('RULING BL: at 1:53:33 in a headset the movers are not shut out', ()=>{
+    showLoad('beetlejuice');
+    fireCue(CUES.findIndex(c=>c.at === 6813)); cancelFollow();
+    const wasActive = VR.active, wasCap = VR.lightCap;
+    VR.active = true; VR.lightCap = 4;
+    let sawMover = false;
+    for(let i = 0; i < 120; i++){
+      audFxStep(1/60); updateRig(1/60, i/60);
+      if(GROUPS.aud.some(n=>chan(n)._live)) sawMover = true;
+    }
+    VR.active = wasActive; VR.lightCap = wasCap;
+    if(!sawMover)
+      throw new Error('two seconds of the red-and-orange chaos and not one mover ever held a light');
+    return 'the movers get a share of the four';
+  });
+
   /* and the other half of that: with the audience rig DARK the reserve claims
      nothing, so all 94 stage cues in the plot are untouched by any of this */
   P('a dark audience rig claims no reserve — the stage keeps all eight', ()=>{
@@ -2141,6 +2181,201 @@ const probe = `
       if(lit.length) throw new Error(lit.length + ' audience movers are still up at ' + pair[1] + 's');
     });
     return 'up at 1:03 and 1:06, dark at 1:05 and 1:09';
+  });
+
+  /* RULING BJ.  The arch is out for both sweeps and for both blackouts after
+     them, and the red the owner asked to keep is the SIGN.  The mechanical
+     half of why: the blinders outrank the movers, so eight red lamps took all
+     eight real lights and the purple rendered on none. */
+  P('RULING BJ: the arch is dark through both sweeps and both blackouts', ()=>{
+    showLoad('beetlejuice');
+    const cue = t => CUES.filter(x=>x.at === t)[0];
+    [63, 65, 66, 69].forEach(t=>{
+      const c = cue(t);
+      if(!c) throw new Error('no cue at ' + t + 's');
+      const up = GROUPS.blind.filter(n=>c.lx[n-1].lvl > 0.01);
+      if(up.length)
+        throw new Error(up.length + ' blinders are still lit at ' + t + 's (RULING BJ takes the arch out)');
+    });
+    /* and the two that are NOT part of it keep their red / their flash */
+    const go = cue(35), flash = cue(76);
+    if(!GROUPS.blind.some(n=>go.lx[n-1].lvl > 0.5))
+      throw new Error('BJ went too far: the arch is no longer red at GO');
+    if(!GROUPS.blind.some(n=>flash.lx[n-1].lvl > 0.9))
+      throw new Error('BJ went too far: the 1:16 white flash is gone');
+    /* the sign is what stays red, and it stays red by saying nothing */
+    [63, 65, 66, 69].forEach(t=>{
+      if(cue(t).signCol !== undefined)
+        throw new Error(t + 's speaks about the sign; it must leave it alone so it stays red');
+    });
+    return 'arch out at 1:03/1:05/1:06/1:09, red at GO, white at 1:16, sign untouched';
+  });
+
+  /* RULING BK — and this is the assertion that pins the owner's actual
+     complaint.  "i still cant see the purple sweeps when im on the balcony":
+     a balcony head sits ABOVE the lens, and the sweep used to run downward
+     into the stalls, so no part of it could ever arrive. */
+  P('RULING BK: a sweep starts on the stalls and finishes ABOVE the balcony', ()=>{
+    showLoad('beetlejuice');
+    const idx = CUES.findIndex(c=>c.at === 63);
+    fireCue(idx); cancelFollow();
+    /* the first frame: pointing DOWN, hard, at the stalls floor */
+    audFxStep(1/60); updateRig(1/60, 0);
+    const start = GROUPS.aud.map(n=>chan(n)._dir.y);
+    if(start.some(y=>y > -0.9))
+      throw new Error('a sweep does not begin aimed at the stalls (worst dir.y ' +
+                      Math.max.apply(null, start).toFixed(3) + ', wanted below -0.9)');
+    /* run it out: every mover must finish pointing ABOVE horizontal */
+    for(let i = 0; i < 200; i++){ audFxStep(1/60); updateRig(1/60, i/60); }
+    const end = GROUPS.aud.map(n=>chan(n)._dir.y);
+    if(end.some(y=>y <= 0))
+      throw new Error('a sweep finishes below horizontal (worst dir.y ' +
+                      Math.min.apply(null, end).toFixed(3) + ') — it is sweeping DOWN');
+    return 'starts at dir.y ' + start[0].toFixed(2) + ', ends at ' + end[0].toFixed(2);
+  });
+
+  /* the balcony, measured the way the probe measures it — the only assertion
+     in this file that answers the complaint rather than the mechanism */
+  P('RULING BK: purple really lands on a balcony head, flat and in a headset', ()=>{
+    showLoad('beetlejuice');
+    /* A ROW OF HEADS ACROSS THE BACK HALF OF THE BALCONY, not one chair.  A
+       sweep writes tilt and never pan, so pan is wherever the pre-show drift
+       left it (+/-34 deg) — which chair is dead centre of a beam is a phase
+       accident, and asking about one chair measures the phase.  The question
+       is whether the purple gets to the balcony at all. */
+    const ROW = [[-6.5, 26], [-3, 24], [0, 26], [3, 28], [6.5, 26]];
+    const smooth = (a,b,x)=>{ const t = Math.min(1, Math.max(0, (x-a)/(b-a))); return t*t*(3-2*t); };
+    /* the brightest head in the row, this frame, counting ONLY light that came
+       out of an audience mover — the colour he asked about, not the total */
+    const purpleAt = ()=>{
+      let best = 0;
+      for(const seat of ROW){
+        let s = 0;
+        for(const l of LIGHT_POOL){
+          if(l.intensity <= 0) continue;
+          const f = FIXTURES.filter(q=>q._live && q._org.distanceTo(l.position) < 0.01)[0];
+          if(!f || !f.audience || f.type !== 'mover') continue;
+          const d = new THREE.Vector3(seat[0], balcFloorY(seat[1]) + 1.15, seat[1]).sub(l.position);
+          const dist = d.length();
+          if(l.distance > 0 && dist > l.distance) continue;
+          const axis = l.target.position.clone().sub(l.position).normalize();
+          const cone = smooth(Math.cos(l.angle), Math.cos(l.angle*(1-l.penumbra)),
+                              d.clone().normalize().dot(axis));
+          if(cone > 0) s += l.intensity * cone * Math.max(0, 1 - dist/l.distance);
+        }
+        if(s > best) best = s;
+      }
+      return best;
+    };
+    const run = ()=>{
+      /* RUN IT THE WAY THE SHOW RUNS IT.  A sweep writes tilt and deliberately
+         never touches pan, so pan is wherever the last effect left it — and in
+         the show that is the pre-show drift.  Setting pan to 0 by hand is NOT
+         the home position either: a mover's group is built already turned
+         toward its rigged focus, so pan 0 is "as hung", not "straight ahead".
+         Two seconds of the real drift first, and the state is the real state. */
+      fireCue(CUES.findIndex(c=>c.n === 0.5)); cancelFollow();
+      for(let i = 0; i < 120; i++){ audFxStep(1/60); updateRig(1/60, i/60); }
+      const idx = CUES.findIndex(c=>c.at === 63);
+      fireCue(idx); cancelFollow();
+      let hit = 0, peak = 0, live = 0;
+      for(let i = 0; i < 150; i++){
+        audFxStep(1/60); updateRig(1/60, i/60);
+        live = Math.max(live, GROUPS.aud.filter(n=>chan(n)._live).length);
+        const v = purpleAt();
+        if(v > peak) peak = v;
+        if(v > 0.05) hit++;
+      }
+      return {peak, share: hit/150, live};
+    };
+    const flat = run();
+    const wasActive = VR.active, wasCap = VR.lightCap;
+    VR.active = true; VR.lightCap = 4;
+    const vr = run();
+    VR.active = wasActive; VR.lightCap = wasCap;
+    /* it was a FLAT ZERO before this round, on every balcony row, both flat
+       and in a headset — the blinders held all eight (all four) real lights */
+    if(!(flat.peak > 0.5))
+      throw new Error('the balcony gets ' + flat.peak.toFixed(3) + ' of purple flat');
+    if(!(vr.peak > 0.5))
+      throw new Error('the balcony gets ' + vr.peak.toFixed(3) + ' of purple in a headset');
+    if(!(flat.share > 0.25))
+      throw new Error('the balcony is in the purple only ' +
+                      Math.round(flat.share*100) + '% of the sweep');
+    return 'flat peak ' + flat.peak.toFixed(2) + ' for ' + Math.round(flat.share*100) +
+           '% of it; headset peak ' + vr.peak.toFixed(2);
+  });
+
+  /* the pre-show drift has the same job and the same failure mode: its tilt
+     used to live 4..52 deg BELOW horizontal, which is the stalls and nothing
+     else, and its pan threw a third of the effect through the side wall */
+  /* THE FIRST VERSION OF THIS COUNTED FRAMES WITH dir.y > 0.02 AND WAS WEAK —
+     it survived the old -62 +/- 24 range untouched.  A mover's group is built
+     already turned toward its rigged focus, so panning a tilted yoke moves
+     dir.y all by itself, and "some frame pointed slightly up" happens whatever
+     the tilt range is.  What the owner asked about is whether the drift ARRIVES
+     somewhere, so measure arrival: does it put light on a balcony head, and
+     does it still come down into the stalls. */
+  P('RULING BK: the pre-show drift reaches the balcony AND still works the stalls', ()=>{
+    showLoad('beetlejuice');
+    fireCue(CUES.findIndex(c=>c.n === 0.5)); cancelFollow();
+    const smooth = (a,b,x)=>{ const t = Math.min(1, Math.max(0, (x-a)/(b-a))); return t*t*(3-2*t); };
+    const litAt = seats=>{
+      let best = 0;
+      for(const seat of seats){
+        let s = 0;
+        for(const l of LIGHT_POOL){
+          if(l.intensity <= 0) continue;
+          const f = FIXTURES.filter(q=>q._live && q._org.distanceTo(l.position) < 0.01)[0];
+          if(!f || !f.audience) continue;
+          const d = new THREE.Vector3(seat[0], seat[1], seat[2]).sub(l.position);
+          const dist = d.length();
+          if(dist > l.distance) continue;
+          const axis = l.target.position.clone().sub(l.position).normalize();
+          const cone = smooth(Math.cos(l.angle), Math.cos(l.angle*(1-l.penumbra)),
+                              d.clone().normalize().dot(axis));
+          if(cone > 0) s += l.intensity * cone * Math.max(0, 1 - dist/l.distance);
+        }
+        if(s > best) best = s;
+      }
+      return best;
+    };
+    const balc   = [-6.5, -3, 0, 3, 6.5].map(x=>[x, balcFloorY(26) + 1.15, 26]);
+    const stalls = [-6.5, 0, 6.5].map(x=>[x, houseFloorY(16) + 1.15, 16]);
+    let onBalc = 0, onStalls = 0, outOfRoom = 0;
+    const N = 800;
+    for(let i = 0; i < N; i++){
+      audFxStep(1/20); updateRig(1/20, i/20);
+      if(litAt(balc)   > 0.05) onBalc++;
+      if(litAt(stalls) > 0.05) onStalls++;
+      for(const n of GROUPS.aud){
+        const f = chan(n);
+        if(f._dir.z > 0.05){        // where the axis crosses the back of the house
+          const t = (D.houseBack - f._org.z)/f._dir.z;
+          if(t > 0 && Math.abs(f._org.x + f._dir.x*t) > D.houseW/2) outOfRoom++;
+        }
+      }
+    }
+    /* it was 7% of a 40-second cycle at the back of the balcony before this
+       round — three seconds in forty, which is what "i cant see it" looks like */
+    if(onBalc < N*0.15)
+      throw new Error('the balcony is in the drift only ' + Math.round(100*onBalc/N) +
+                      '% of a cycle — the owner will not see it');
+    /* AND THE STALLS ARE WHAT THE TILT RANGE IS FOR, which took a negative
+       check to learn: narrowing the PAN from +/-62 to +/-34 is what put the
+       drift on the balcony (56% either way, because the old pan was spraying
+       a third of the effect through the side wall rather than round the
+       house), and widening the TILT from -62+/-24 to -55+/-42 is what keeps
+       the stalls in it while it does — 20% of a cycle against 80%.  Two
+       changes, two different jobs, and the first draft of this test credited
+       the wrong one. */
+    if(onStalls < N*0.50)
+      throw new Error('reaching the balcony cost the stalls: only ' +
+                      Math.round(100*onStalls/N) + '% of a cycle');
+    if(outOfRoom > N*GROUPS.aud.length*0.10)
+      throw new Error(outOfRoom + ' frame-fixtures of the drift are aimed outside the auditorium');
+    return 'balcony ' + Math.round(100*onBalc/N) + '% of a cycle, stalls ' +
+           Math.round(100*onStalls/N) + '%, out of the room ' + outOfRoom;
   });
 
   P('1:16 sends the curtain and the sign out under a white flash, and 1:26 finds them gone', ()=>{
