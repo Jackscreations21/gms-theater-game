@@ -574,6 +574,73 @@ against this list before opening a PR; **add new traps as you hit them.**
   would have shipped a frame-rate cliff onto the one platform the whole budget
   system exists to protect. `tools/walkcost.js` keeps the number.
 
+## The CF–CM round — six more ways to be wrong
+
+- **A BACKTICK IN A PROBE COMMENT BIT THREE TIMES IN ONE ROUND.** It is listed
+  twice above already and it is listed a third time because frequency is the
+  finding: quoting an identifier in prose (`` `portal` ``, `` `follow > 0` ``,
+  `` `open` ``) is the single most natural thing to type in a comment, and the
+  probe is one template literal, so it closes the string and the suite dies at
+  PARSE time pointing at an unrelated line. **Sweep for it mechanically** rather
+  than trusting care — find the `const probe = ` line and its closing backtick
+  and grep every line between:
+  ```sh
+  node -e "s=require('fs').readFileSync('tests/beetlejuice.js','utf8').split('\n');
+           /* ...report any line between the probe delimiters containing a backtick */"
+  ```
+  Three parse failures in one round is three round-trips that a five-second check
+  removes.
+
+- **`null >= 0` is TRUE in JavaScript.** A follow-chain assertion read
+  `!(CUES[i].follow > 0)`, and RULING CK introduced a legitimate follow of ZERO
+  (two cues on the same second), so it was loosened to `>= 0` — which silently
+  reclassified the two deliberate `follow:null` holds as cues that arm the next
+  one. The suite said "0 holds, expected 2" and the *code* was right. Loosening a
+  strictly-positive test to non-negative is never a safe edit where `null` is a
+  meaningful value: test the type first.
+
+- **A negative check against a state the assertion already satisfies proves
+  nothing, and reads as a weak assertion.** "The START OF SHOW rail call fires
+  nothing" was written straight after `showLoad`, which leaves the board standing
+  **at** cue 0 — so a mutant that called `cueFiredByHand(0)` moved the pointer
+  from 1 to 1 and the house from 0.30 to 0.30, and every check passed against a
+  build where the fly rail started the show. **Move the system away from the
+  state you are asserting it does not reach**, then assert. Sibling of "a test
+  that reloads the show proves nothing about per-frame state".
+
+- **A test that picks its subject by the property it then asserts agrees with
+  itself.** The re-anchored focus-leak test first selected "the next cue whose
+  aims are not up" and then checked its aims were not up. Take the subject **by
+  position** (the next cue in the stack, whatever it holds), never by the
+  measurement. Same family as the test that reimplemented the beam formula.
+
+- **The furniture trap, one level up: it is the TESTS that go stale.** Moving
+  `PAL_DEEP` 4.5 → 8.5 took the shed and every piece of furniture in it correctly,
+  because they are all expressed off `PAL_BACK`/`PAL_DEEP` — that lesson had
+  taken. What broke was **four suites** still probing literal `-25` and `-35`,
+  numbers measured against the FIRST position of this wall, which are now shed
+  floor and open stage. Anything a test probes inside a movable structure has to
+  be expressed off the structure (`SHEDS.palace`, `ROOMS.shed`) or it fails on a
+  building that is perfectly correct.
+
+- **A wall fitted to the STAND-IN leaves HIS model in the street** — the exact
+  inverse of the RULING BQ trap, and it hid for the same reason in reverse. The
+  Palace was made 4.5m deeper for the wagon in 2026-08-10, measured against the
+  stand-in interior (7.68m deep, clears by 2.26m). His house is **12.98m** and
+  stood **3.28m through the brick**. The assertion that guards it lives in the
+  synchronous probe, which fetches nothing, so it had only ever measured the
+  stand-in and always passed. **Whichever is bigger is the case the number has to
+  hold** — check both, every time, and put the assertion where the model
+  actually loads.
+
+- **A probe reading the wrong field prints an empty section, which is a probe
+  lying quietly.** `tools/deeper.js` looked for `sc.park` (does not exist) and
+  then `sc.pmv.park` (exists only for a set that grew a SECOND mover) and
+  reported "nothing travels upstage" about a building with a 13m attic parked
+  8.8m up it. RULING CE's tracked sets park on the mover they already have, so
+  the field that names a park is exactly the one that misses them. **A section
+  that prints nothing needs a line saying so** — and then you notice.
+
 ## Environment
 
 - **A `const` in its temporal dead zone throws on a PLAIN reference, not just
