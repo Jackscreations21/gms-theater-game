@@ -7431,13 +7431,21 @@ function fireCue(idx){
     }, c.follow*1000);
   }
 }
+/* FIRING A CUE BY HAND TAKES THE MUSIC WITH IT (RULING BO).  Never inside
+   fireCue — the transport calls that, and a seek there would feed it its own
+   output every frame.  Only here, where a person did it.  showCueSeek decides
+   whether there is anything to move; see the writeup in p5j. */
+function cueFiredByHand(idx){
+  fireCue(idx);
+  if(typeof showCueSeek === 'function') showCueSeek(idx);
+}
 function go(){
   if(nextCue >= CUES.length){ toast('End of cue stack'); return; }
   const c = CUES[nextCue];
   toast('GO  ▸  Q'+c.n+'  '+c.label+'   ('+(cueTimeText(c) || c.fade+'s')+')');
-  fireCue(nextCue);
+  cueFiredByHand(nextCue);
 }
-function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) fireCue(nextCue); }
+function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) cueFiredByHand(nextCue); }
 
 /* ============================================================================
    SHOW SCRIPT — the light-show programming language
@@ -8067,8 +8075,10 @@ function refreshCues(){
     '<span class="mt">'+(cueTimeText(c) || (c.fade+'s'+(c.follow!=null?' ▸'+c.follow+'s':'')))+
     (c.sfx?' ♪'+c.sfx:'')+(c.fly?' ⇅':'')+'</span></div>').join('');
   $$('#cuelist .cue').forEach(d=>{
+    /* a single click SELECTS — it says where GO will start and fires nothing,
+       so it moves no music either (RULING BO) */
     d.onclick=()=>{ selCue=+d.dataset.i; nextCue=selCue; refreshCues(); };
-    d.ondblclick=()=>{ fireCue(+d.dataset.i); };
+    d.ondblclick=()=>{ cueFiredByHand(+d.dataset.i); };
   });
   $('#cueTxt').textContent = CUES[nextCue] ? ('Q'+CUES[nextCue].n) : 'END';
 }
@@ -20252,6 +20262,87 @@ function showAudioTick(dt){
     fireCue(nextCue);
     if(typeof cancelFollow === 'function') cancelFollow();
   }
+}
+
+/* ==========================================================================
+   RULING BO — A CUE YOU JUMP TO TAKES THE MUSIC WITH IT
+
+   "make it so if you skip a cue it skips to the correct spot in the music."
+
+   Before this, a jump desynchronised the show and there was no way back.
+   Skip FORWARD to a cue at 5000 while the track is at 100 and the lights snap
+   to that look while the transport sits and waits eighty minutes for the music
+   to catch up.  Skip BACKWARD and the transport rush-fires every cue in
+   between, forty a frame.
+
+   Which half of the recording an `at` lives in is audPlay's problem and
+   nobody else's — RULING BI already made the plot blind to the split, and this
+   rides the same arithmetic rather than adding any of its own.
+
+   THREE THINGS HOLD THIS UP, and each one is a test:
+
+   1. IT IS NOT IN fireCue.  showAudioTick calls fireCue, so a seek in there
+      would feed the transport its own output every frame — the "two clocks"
+      trap in TRAPS, wearing the other hat.  It lives in the OPERATOR paths:
+      go, goBack, and a double-click on a row.  Selecting a row does not seek,
+      because selecting does not fire; it only says where GO will start.
+
+   2. A CUE CARRYING ITS OWN `audio` HAS ALREADY SPOKEN.  Exactly four do — the
+      pre-show, the top of the show, the interval and act two's GO — and they
+      say precisely what they want.  It matters most at the interval, whose cue
+      deliberately stops act one and starts the pre-show music underneath:
+      seeking the show track there would resume the performance under the
+      interval.  Third outing for the signCol bargain.
+
+   3. IT ONLY MOVES A SHOW THAT IS ALREADY RUNNING WITH SOUND.  With nothing
+      playing and nothing asked for, a jump does nothing — because `go` is also
+      what the FOLLOW CHAIN calls when there is no audio driving, and a silent
+      run that suddenly started playing act one halfway through would be a
+      genuinely alarming bug.  Once GO has been pressed the show track is
+      wanted, and from then on every jump takes the music along.
+   ========================================================================== */
+
+/* which file holds a position in his WHOLE recording: the clock track with the
+   greatest offset at or below it.  One entry today would answer everything;
+   two is why this is a search and not an `if`. */
+function audTrackFor(at){
+  let best = null;
+  for(const key in BJ_AUDIO){
+    const s = BJ_AUDIO[key];
+    if(!s.clock || s.offset > at) continue;
+    if(best === null || s.offset > BJ_AUDIO[best].offset) best = key;
+  }
+  return best;
+}
+
+/* is the show running with sound at all?  Not "is a file present" — has a
+   clock track been asked for.  audLive alone is not enough: a track wanted
+   but still buffering is a running show, and in jsdom it is the only state
+   there is. */
+function audShowRunning(){
+  for(const key in BJ_AUDIO){
+    if(!BJ_AUDIO[key].clock) continue;
+    const tr = AUD.tracks[key];
+    if(tr && (tr.want || audLive(tr))) return true;
+  }
+  return false;
+}
+
+function showCueSeek(idx){
+  if(typeof CUES === 'undefined' || !CUES.length) return false;
+  const c = CUES[idx];
+  if(!c) return false;
+  const at = c.at;
+  if(at === undefined || at === null || isNaN(at)) return false;  // no place in a show
+  if(c.audio) return false;                                       // it has said its piece
+  if(!audShowRunning()) return false;                             // nothing to move
+  const key = audTrackFor(at);
+  if(!key) return false;
+  /* the other half stops, or two clock tracks would be live and audClockTrack
+     would have to guess which one the plot meant */
+  for(const k in BJ_AUDIO) if(BJ_AUDIO[k].clock && k !== key) audStop(k);
+  audPlay(key, at);
+  return true;
 }
 
 /* the stage swap, and anything else that ends a performance.  TRAPS lists
