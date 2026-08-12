@@ -344,9 +344,26 @@ function bjRedress(sc){
   if(!sc || !sc.dress) return;
   for(const k of Object.keys(sc.dress)){
     const on = (k === sc.dressOn), g = sc.dress[k];
+    /* RULING CN — ONE HOUSE IN THE WORLD.  "Make it so only one house exist in
+       the world at a time and it switches between them when needed."
+
+       The dressing that is up is a child of the scene; the other two are held
+       out of the graph entirely (showHoldOffstage, p5c) and come back whole when
+       they are called.  That is the ruling: three complete houses of his standing
+       in the same 13.6m of stage, two of them switched off inside the third, is
+       what he watched and what he has ruled on.
+
+       THE LAYER WORK STAYS, and it is not redundant.  It is what makes a dressing
+       inert for the frame it IS attached — the one between these two calls — and
+       it is the guard that catches a detach that failed: a dressing that somehow
+       stayed in the graph is still dark and still unpickable rather than standing
+       inside its neighbour. */
     g.userData.sceneOff = !on;
     if(typeof setPieceVisible === 'function') setPieceVisible(g);
     g.traverse(o=>{ if(on) o.layers.set(0); else o.layers.disableAll(); });
+    if(typeof showHoldOffstage !== 'function') continue;
+    if(on) showBringOnstage(g, sc.group);
+    else showHoldOffstage(g);
   }
 }
 /* an enclosed set is a flown piece (RULING AY): the whole of it goes out

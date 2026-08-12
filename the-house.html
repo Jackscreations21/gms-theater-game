@@ -9777,7 +9777,7 @@ function showBlank(){
     scenes:[], scene:null, pendDress:null, revolve:null, wrong:[], confetti:null,
     rainSound:false, flicker:null, lightning:0, lightningT:0,
     stormOn:false, stormT:0, porch:null, bjPortal:null,
-    pendMoves:[], houseWait:null,
+    pendMoves:[], houseWait:null, offstage:[],
     curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
   };
 }
@@ -9860,6 +9860,47 @@ function sceneAdd(name, label){
   return sc;
 }
 function sceneFind(name){ return SHOW.scenes.find(s=>s.name === name) || null; }
+/* ============================================================================
+   RULING CN — ONLY ONE HOUSE IS IN THE WORLD AT A TIME
+
+   "Make it so only one house exist in the world at a time and it switches
+    between them when needed."
+
+   RULING AQ already said this and the code did not do it.  AQ built one room
+   with three dressings that take turns, and bjRedress turned the other two off
+   by clearing their layers — which stops them drawing and stops them being
+   picked, and leaves them IN THE WORLD.  Fair while a dressing was a few hundred
+   triangles of our own furniture; RULING BP then made each one a whole 93k
+   house of his, and tools/parked.js measures the result: 280,540 triangles in
+   the interior, three complete houses standing in the same 13.6m of stage with
+   two of them switched off inside the third.
+
+   SO A SET THE SHOW OWNS MAY BE HELD OFFSTAGE: out of the scene graph entirely,
+   still whole, put back when it is called for.
+
+   IT IS NOT A DISPOSE, deliberately.  Freeing the buffers would mean re-fetching
+   a 27MB file every time the plot changes dressing — nine times an evening, over
+   the wifi that already makes 165MB take minutes.  "In the world" is the scene
+   graph, and that is what this ruling reads it as.
+
+   TWO THINGS SWEEP THE SHOW AND BOTH HAVE TO KNOW.  lockShowStatic freezes every
+   matrix under SHOW.group, and showStrike disposes that tree — a group held out
+   of the graph is invisible to both, so it would come back unfrozen and it would
+   LEAK a house per show change.  SHOW.offstage is the list they read.
+   ========================================================================== */
+function showHoldOffstage(g){
+  if(!g) return g;
+  if(g.parent) g.parent.remove(g);
+  if(SHOW.offstage.indexOf(g) < 0) SHOW.offstage.push(g);
+  return g;
+}
+function showBringOnstage(g, parent){
+  if(!g) return g;
+  const i = SHOW.offstage.indexOf(g);
+  if(i >= 0) SHOW.offstage.splice(i, 1);
+  if(parent && g.parent !== parent) parent.add(g);
+  return g;
+}
 /* anything you can stand on inside a scene goes on the scene's own list, so it
    leaves WALKABLE the moment that set goes off — otherwise you would be
    walking on the staircase of a house that is not on the stage */
@@ -10298,6 +10339,12 @@ function showStrike(){
     disposeTree(SHOW.group);
     SHOW.group = null;
   }
+  /* RULING CN — and the sets held OUT of the graph, which this sweep would
+     otherwise walk straight past.  Two of his three houses are offstage at any
+     moment, at ~93k triangles each: leaving them undisposed leaks a house and a
+     half of geometry every time a show is struck. */
+  for(const g of (SHOW.offstage || [])) disposeTree(g);
+  SHOW.offstage = [];
   LIGHTNING.intensity = 0; LIGHTNING_AMB.intensity = 0;
   SHOW.stormOn = false; SHOW.porch = null;
   // a show curtain gets the house's own curtain back, not a bare pipe
@@ -10430,7 +10477,13 @@ function showLoad(key){
 function lockShowStatic(){
   if(!SHOW.group) return;
   SHOW.group.updateMatrixWorld(true);
-  SHOW.group.traverse(o=>{
+  /* RULING CN — and the sets being held out of the graph, which this sweep
+     cannot reach through SHOW.group and which would otherwise come back with
+     live matrices while everything around them is frozen */
+  const roots = [SHOW.group].concat(SHOW.offstage || []);
+  for(const root of roots){
+  root.updateMatrixWorld(true);
+  root.traverse(o=>{
     if(o === SHOW.group) return;
     if(o.userData.moves) return;
     /* a scene that can TRAVEL keeps a live matrix of its own.  Freeze the
@@ -10443,6 +10496,7 @@ function lockShowStatic(){
     o.updateMatrix();
     o.matrixAutoUpdate = false;
   });
+  }
 }
 
 /* ---------------------------------------------------------------- helpers */
@@ -14035,9 +14089,26 @@ function bjRedress(sc){
   if(!sc || !sc.dress) return;
   for(const k of Object.keys(sc.dress)){
     const on = (k === sc.dressOn), g = sc.dress[k];
+    /* RULING CN — ONE HOUSE IN THE WORLD.  "Make it so only one house exist in
+       the world at a time and it switches between them when needed."
+
+       The dressing that is up is a child of the scene; the other two are held
+       out of the graph entirely (showHoldOffstage, p5c) and come back whole when
+       they are called.  That is the ruling: three complete houses of his standing
+       in the same 13.6m of stage, two of them switched off inside the third, is
+       what he watched and what he has ruled on.
+
+       THE LAYER WORK STAYS, and it is not redundant.  It is what makes a dressing
+       inert for the frame it IS attached — the one between these two calls — and
+       it is the guard that catches a detach that failed: a dressing that somehow
+       stayed in the graph is still dark and still unpickable rather than standing
+       inside its neighbour. */
     g.userData.sceneOff = !on;
     if(typeof setPieceVisible === 'function') setPieceVisible(g);
     g.traverse(o=>{ if(on) o.layers.set(0); else o.layers.disableAll(); });
+    if(typeof showHoldOffstage !== 'function') continue;
+    if(on) showBringOnstage(g, sc.group);
+    else showHoldOffstage(g);
   }
 }
 /* an enclosed set is a flown piece (RULING AY): the whole of it goes out

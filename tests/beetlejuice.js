@@ -1207,7 +1207,20 @@ const probe = `
     while(p){ if(p.name && p.name.indexOf('dress:') === 0) inDress = true; p = p.parent; }
     if(inDress) throw new Error('the staircase is part of a dressing, not the shell');
     if(!byName('bj:settee')) throw new Error('the deetz dressing is unfurnished');
-    const b = box(byName('bj:redWall')), a = box(byName('bj:bjWall'));
+    /* REVERSED IN PLACE BY RULING CN.  This read both walls out of the WORLD with
+       byName, which worked only because all three dressings stood in the scene at
+       once — the very thing he has ruled against.  The dressing that is not worn
+       is not in the world to be found, so the walls are read out of the dressing
+       groups themselves.  What the assertion means is untouched: the three
+       dressings are the same room, measured. */
+    /* NOT called inDress — this function already has a local of that name eleven
+       lines up, and a duplicate const inside the probe template dies at PARSE
+       time pointing at the eval.  Sibling of the shadowing trap in TRAPS. */
+    const fromDress = (key, nm)=>{ let r = null;
+      sc.dress[key].traverse(o=>{ if(!r && o.name === nm) r = o; }); return r; };
+    const rw = fromDress('deetz', 'bj:redWall'), bw = fromDress('bj', 'bj:bjWall');
+    if(!rw || !bw) throw new Error('a dressing lost its wall');
+    const b = box(rw), a = box(bw);
     if(Math.abs((a.max.x - a.min.x) - (b.max.x - b.min.x)) > 0.4)
       throw new Error('the dressings are not the same room');
     return 'both walls '+(b.max.x-b.min.x).toFixed(1)+'m across, '+(b.max.z-b.min.z).toFixed(1)+'m deep';
@@ -1433,9 +1446,10 @@ const probe = `
       if(sc.mv) ax.push(sc.mv.axis);
       if(sc.pmv) for(const k in sc.pmv) if(k === 'all') ax.push(sc.pmv[k].axis);
       if(ax.indexOf('z') >= 0)
-        /* NO ESCAPED QUOTE IN HERE.  The probe is a template literal, so \' is
-           consumed by IT and the eval sees a bare apostrophe closing a
-           single-quoted string.  Same family as the backtick trap in TRAPS. */
+        /* NO ESCAPED QUOTE IN HERE.  The probe is a template literal, so a
+           singly-escaped quote is consumed by IT and the eval sees a bare
+           apostrophe closing a single-quoted string.  Same family as the
+           backtick trap in TRAPS, and tests/probe-lint.js sweeps for both. */
         throw new Error(sc.name + ' arrives on z, and upstage is the door of the house alone');
     }
     return 'flown: ' + flying.join(', ') + '  |  tracked: ' + tracking.join(' ');
@@ -1477,6 +1491,82 @@ const probe = `
       throw new Error('it is still standing out in the stage-right wing at x ' + b.min.x.toFixed(2));
     return 'flown, parked y ' + b.min.y.toFixed(2) + '..' + b.max.y.toFixed(2) +
            ' over a ' + BJ.opH + 'm picture, under a ' + D.gridY + 'm grid, wing clear';
+  });
+
+  P('RULING CN: only one house is in the world, and it switches when called', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('interior');
+    const groups = DRESSINGS.map(d=>sc.dress[d]);
+    const inWorld = ()=>groups.filter(g=>g.parent === sc.group);
+    const held = ()=>groups.filter(g=>SHOW.offstage.indexOf(g) >= 0);
+    /* "Make it so only one house exist in the world at a time and it switches
+        between them when needed."  RULING AQ said this and the code darkened the
+        other two instead of removing them — which was fair while a dressing was
+        our own furniture, and became three complete 93k houses of his standing in
+        the same 13.6m of stage when RULING BP landed. */
+    if(inWorld().length !== 1)
+      throw new Error(inWorld().length + ' houses are in the world at once');
+    if(held().length !== DRESSINGS.length - 1)
+      throw new Error(held().length + ' held offstage, expected ' + (DRESSINGS.length - 1));
+    /* AND IT SWITCHES.  Each in turn: the one worn is the one in the world, the
+       other two are held, and nothing is lost on the way round. */
+    const counts = {};
+    for(const d of DRESSINGS){
+      let n = 0; sc.dress[d].traverse(o=>{ if(o.isMesh) n++; });
+      counts[d] = n;
+      if(!n) throw new Error(d + ' has no meshes to begin with');
+    }
+    for(const d of DRESSINGS){
+      bjDress('interior', d);
+      const on = inWorld();
+      if(on.length !== 1) throw new Error(on.length + ' houses in the world with ' + d + ' called');
+      if(on[0] !== sc.dress[d]) throw new Error('the house in the world is not ' + d);
+      for(const o of DRESSINGS){
+        let n = 0; sc.dress[o].traverse(x=>{ if(x.isMesh) n++; });
+        if(n !== counts[o]) throw new Error(o + ' lost meshes being held offstage');
+      }
+    }
+    /* a SET CHANGE must not put all three back, the way it once lit all three */
+    bjDress('interior', 'bj');
+    sceneShow('cemetery');
+    sceneShow('interior');
+    if(inWorld().length !== 1)
+      throw new Error(inWorld().length + ' houses came back on with the room');
+    /* and a held house is not merely invisible — it is not there to be hit */
+    let reach = 0;
+    SHOW.group.traverse(o=>{ if(o.isMesh && groups.some(g=>{
+      for(let k = o; k; k = k.parent) if(k === g) return true; return false; })) reach++; });
+    let mine = 0; sc.dress[sc.dressOn].traverse(o=>{ if(o.isMesh) mine++; });
+    if(reach !== mine)
+      throw new Error(reach + ' dressing meshes are reachable from the show, and the worn one has ' + mine);
+    return 'one of ' + DRESSINGS.length + ' in the world (' + sc.dressOn + '), ' +
+           held().length + ' held offstage, ' + mine + ' meshes reachable';
+  });
+
+  P('RULING CN: a held house is frozen with the rest, and disposed with it', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('interior');
+    const held = sc.dress[DRESSINGS.find(d=>d !== sc.dressOn)];
+    if(!held) throw new Error('every dressing is being worn at once');
+    if(SHOW.offstage.indexOf(held) < 0) throw new Error('nothing is being held offstage');
+    /* THE FREEZE.  lockShowStatic sweeps SHOW.group, which a held set is not
+       under — so without the offstage list it comes back with live matrices
+       while everything around it is frozen. */
+    let live = 0, n = 0;
+    held.traverse(o=>{ if(o === held) return; n++; if(o.matrixAutoUpdate) live++; });
+    if(!n) throw new Error('the held dressing is empty, so this proves nothing');
+    if(live) throw new Error(live + ' of ' + n + ' held objects were never frozen');
+    /* THE DISPOSE.  showStrike disposes SHOW.group's tree; a held set is not in
+       it, so two of his houses would leak per show change. */
+    const geos = [];
+    held.traverse(o=>{ if(o.isMesh && o.geometry) geos.push(o.geometry); });
+    if(!geos.length) throw new Error('the held dressing has no geometry, so this proves nothing');
+    let disposed = 0;
+    for(const g of geos){ const f = g.dispose; g.dispose = function(){ disposed++; return f.apply(this, arguments); }; }
+    showStrike();
+    if(!disposed)
+      throw new Error('a held house survived the strike undisposed — that leaks a house per show');
+    return n + ' held objects frozen, ' + disposed + ' of ' + geos.length + ' geometries disposed on strike';
   });
 
   P('RULING CT: a flown set is thin, and its downstage face does not move', ()=>{
@@ -4612,12 +4702,25 @@ const wd = setTimeout(() => {
         throw new Error('built-in shell scenery survived a whole house: ' + (c.name || c.type));
     /* the other two dressing GROUPS stand, with their stand-ins untouched:
        they are machinery, and bjRedress still has to choose between three */
-    for(let i = 1; i < 3; i++){
-      if(dressGroups[i].parent !== inr.group)
-        throw new Error('a dressing group was stripped out with the shell');
+    /* REVERSED IN PLACE BY RULING CN.  It demanded all three dressing groups
+       stay children of the scene, which was right when the other two were merely
+       darkened; "only one house exist in the world at a time" makes exactly one a
+       child and holds the rest OUT of the graph.  The thing this line is for —
+       an unmodelled dressing must not be destroyed by a house landing next to it
+       — is unchanged and is what the mesh count still proves. */
+    const inWorld = inr.group.children.filter(c => dressGroups.indexOf(c) >= 0);
+    if(inWorld.length !== 1)
+      throw new Error(inWorld.length + ' dressings are in the world at once (RULING CN says one)');
+    if(inWorld[0] !== inr.dress[inr.dressOn])
+      throw new Error('the dressing in the world is not the one being worn');
+    for(const g of dressGroups){
+      if(g === inWorld[0]) continue;
+      if(az.SHOW.offstage.indexOf(g) < 0)
+        throw new Error('a dressing group vanished instead of being held offstage');
+    }
+    for(let i = 1; i < 3; i++)
       if(meshCount(dressGroups[i]) !== otherCounts[i-1])
         throw new Error('an unmodelled dressing lost meshes to the house swap');
-    }
     const wf = findByName(inr.dress.maitland, 'walk_stairs');
     if(inr.walk.indexOf(wf) < 0) throw new Error('the house stairs missed sc.walk');
     return 'maitland house in, ' + shellBefore + ' shell objects out, deetz and bj dressings intact';
