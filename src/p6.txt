@@ -225,6 +225,34 @@ function go(){
   cueFiredByHand(nextCue);
 }
 function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) cueFiredByHand(nextCue); }
+/* THE TOP OF THE SHOW FIRES THE FIRST CUE (RULING BW).  "make it so when you
+   press top of show it automaticall sets it to cue one instead of making you
+   press go to get to first cue."
+
+   TOP used to move the pointer and nothing else, so the look on stage stayed
+   whatever was up and GO was the only way forward — which is how asking for the
+   top of the show ended up starting it: "when i try to press go to go to top os
+   show it starts the show".
+
+   AND IT HAS TO LET GO OF THE TRANSPORT, which is the half the spec did not
+   predict.  The pre-show cue does not stop the show track — only the GO cue
+   does — so firing cue 0 while a clock track is live leaves showAudioTick
+   holding the clock, and on the NEXT FRAME it fires the GO cue off a playhead
+   already past 0:35, up to AUD_CATCHUP cues at a time.  Measured on the built
+   file: TOP then GO put the board back at Q1.1 in two frames with the house at
+   0.  So the sound stops FIRST and the cue fires second — that order, or the
+   stop would kill the pre-show music the cue itself asks for.
+
+   Generic on purpose: it fires index 0 of whatever stack is loaded, which is
+   what TOP has always meant, and showCueSeek declines for a cue with no `at`. */
+function cueTop(){
+  if(!CUES.length){ toast('No cue stack to go to the top of'); return; }
+  cancelFollow();
+  if(typeof showSoundStop === 'function') showSoundStop();
+  const c = CUES[0];
+  toast('TOP  ▸  Q'+c.n+'  '+c.label);
+  cueFiredByHand(0);
+}
 
 /* ============================================================================
    SHOW SCRIPT — the light-show programming language

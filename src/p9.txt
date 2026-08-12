@@ -487,7 +487,7 @@ function vrDrawConsole(force){
   if(VR.tex) VR.tex.needsUpdate = true;
 }
 /* ---- little drawing helpers ---- */
-function vrBtnBox(g, x, y, w, h, label, fn, style){
+function vrBtnBox(g, x, y, w, h, label, fn, style, meta){
   const s = style || {};
   g.fillStyle = s.bg || '#1b232d';
   g.fillRect(x, y, w, h);
@@ -498,7 +498,7 @@ function vrBtnBox(g, x, y, w, h, label, fn, style){
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText(label, x + w/2, y + h/2);
   g.textAlign = 'left';
-  if(fn) vrHit(x, y, w, h, fn);
+  if(fn) vrHit(x, y, w, h, fn, meta);
 }
 function vrBar(g, x, y, w, h, v, col){
   g.fillStyle = '#151b22'; g.fillRect(x, y, w, h);
@@ -529,8 +529,13 @@ function vrPageCues(g, P){
   vrBtnBox(g, bx, P.y, 280, 120, 'GO', ()=>{ go(); vrDrawConsole(true); },
            {bg:'#1f6b2e', fg:'#ffffff', font:'700 48px Helvetica, Arial, sans-serif'});
   vrBtnBox(g, bx, P.y + 132, 134, 56, 'BACK', ()=>{ goBack(); vrDrawConsole(true); });
+  /* RULING BW — TOP fires the first cue here too.  A control that exists only
+     in the DOM does not exist in VR, and this one is reached from the headset
+     far more often than from the desk.  The meta tag is so a test can find it
+     by MEANING: BACK and TOP are the same 134x56 box, so the pixel hunt the GO
+     test uses cannot tell them apart. */
   vrBtnBox(g, bx + 146, P.y + 132, 134, 56, 'TOP',
-           ()=>{ nextCue = 0; vrDrawConsole(true); });
+           ()=>{ cueTop(); vrDrawConsole(true); }, null, {btn:'top'});
   vrBtnBox(g, bx, P.y + 200, 280, 52, 'HOLD FADES',
            ()=>{ FIXTURES.forEach(f=>{ f.lvlDur=0; f.colDur=0; }); });
   g.fillStyle = '#5d6874';

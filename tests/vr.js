@@ -513,6 +513,32 @@ const probe = `
            (CUES[nextCue] ? CUES[nextCue].n : '—');
   });
 
+  /* RULING BW — and a control that exists only in the DOM does not exist in VR.
+     The headset reaches this button far more often than the desk does, so the
+     wiring is pinned on BOTH paths: proving cueTop while never proving what
+     calls it is the mistake this file has made four times. */
+  P('pressing TOP on the console fires the first cue (RULING BW)', ()=>{
+    goToView(3);
+    showLoad('beetlejuice');
+    VR.page = 'cues'; vrDrawConsole(true);
+    /* found by MEANING, not by pixel: BACK and TOP are the same 134x56 box, so
+       the dimension hunt the GO test uses cannot tell them apart */
+    const topHit = VR.hits.find(h=>h.btn === 'top');
+    if(!topHit) throw new Error('no TOP button on the cue page');
+    const mid = CUES.findIndex(c=>c.at >= 640);
+    if(mid < 1) throw new Error('no cue at or past 10:40 to stand on');
+    fireCue(mid);
+    const midHouse = HOUSE.house;
+    if(midHouse === CUES[0].house)
+      throw new Error('the mid-show house matches the pre-show, so this proves nothing');
+    topHit.fn(topHit.x + 10, topHit.y + 10);
+    if(nextCue !== 1)
+      throw new Error('the headset TOP left the stack at index ' + nextCue);
+    if(HOUSE.house !== CUES[0].house)
+      throw new Error('the pre-show look never landed from the headset: house ' + HOUSE.house);
+    return 'one press, the first cue fired, house ' + midHouse + ' to ' + HOUSE.house;
+  });
+
   P('the fly page on the desk moves this stage rail', ()=>{
     VR.page = 'fly'; vrDrawConsole(true);
     const ls = FLY[4];

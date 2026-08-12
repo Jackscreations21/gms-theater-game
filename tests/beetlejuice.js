@@ -1858,8 +1858,13 @@ const probe = `
            ' vs one FOH at 45% ' + foh45.toFixed(2);
   });
 
-  /* how many of the pool the audience rig is holding right now */
-  const audLive = ()=> GROUPS.house.filter(n=>chan(n)._live).length;
+  /* how many of the pool the audience rig is holding right now.
+     NAMED audLampsLive AND NOT audLive ON PURPOSE: the game has its own
+     audLive(tr) — "is this TRACK really playing" — and a probe-scope const of
+     that name shadows it for every assertion below, whatever the argument.  It
+     did: the two "reports itself live" checks in the audio block were reading
+     the number of lit audience lamps and passing because the lamps were dark. */
+  const audLampsLive = ()=> GROUPS.house.filter(n=>chan(n)._live).length;
   const stageLive = ()=>{ let k = 0; for(let n = 1; n <= 25; n++) if(chan(n)._live) k++; return k; };
 
   /* THE ONE THAT WAS ACTUALLY BROKEN.  In a headset the pool is VR.lightCap —
@@ -1870,11 +1875,11 @@ const probe = `
     showLoad('beetlejuice');
     fireCue(0); cancelFollow();
     for(let i = 0; i < 30; i++){ showAudioTick(1/60); updateRig(1/60, i/60); }
-    const flat = audLive();
+    const flat = audLampsLive();
     const wasActive = VR.active, wasCap = VR.lightCap;
     VR.active = true; VR.lightCap = 4;
     updateRig(1/60, 0);
-    const headset = audLive(), headsetStage = stageLive();
+    const headset = audLampsLive(), headsetStage = stageLive();
     VR.active = wasActive; VR.lightCap = wasCap;
     if(flat < 2) throw new Error('the sweep holds ' + flat + ' of the 8 flat');
     if(headset < 2) throw new Error('the sweep holds ' + headset + ' of the 4 in a headset');
@@ -1891,7 +1896,7 @@ const probe = `
     GROUPS.house.forEach(n=>{ chan(n).level = 1; });
     for(let n = 1; n <= 25; n++) chan(n).level = 1;
     updateRig(1/60, 0);
-    const a = audLive(), s = stageLive();
+    const a = audLampsLive(), s = stageLive();
     FIXTURES.forEach(f=>{ f.level = 0; });
     if(a !== 2) throw new Error('the audience rig holds ' + a + ' of the pool, wanted 2');
     if(a + s !== LIGHT_POOL.length)
@@ -1946,7 +1951,7 @@ const probe = `
     FIXTURES.forEach(f=>{ f.level = 0; });
     for(let n = 1; n <= 25; n++) chan(n).level = 1;
     updateRig(1/60, 0);
-    const a = audLive(), s = stageLive();
+    const a = audLampsLive(), s = stageLive();
     FIXTURES.forEach(f=>{ f.level = 0; });
     if(a !== 0) throw new Error(a + ' dark audience units are holding a light');
     if(s !== LIGHT_POOL.length)
@@ -3112,6 +3117,94 @@ const probe = `
     if(at(7064).fade < 8)
       throw new Error('the slow fade at 1:57:44 is only ' + at(7064).fade + 's');
     return 'five snaps at 0s, and the slow one at ' + at(7064).fade + 's';
+  });
+
+  /* ==========================================================================
+     RULING BW — THE TOP OF THE SHOW FIRES THE FIRST CUE
+
+     His words: "make it so when you press top of show it automaticall sets it to
+     cue one beuase when i try to press go to go to top os show it starts the
+     show."  Two halves, and the second one was not in the spec: TOP has to FIRE
+     the cue, and it has to LET GO OF THE TRANSPORT, or a live clock track drags
+     the stack straight back to where the music is.
+     ========================================================================== */
+  console.log('--- RULING BW: the top of the show ---');
+
+  P('TOP fires the first cue rather than only selecting it', ()=>{
+    showLoad('beetlejuice');
+    /* stand the board somewhere in the middle of act one, the way an operator
+       who has been running the show for ten minutes would have it */
+    const mid = CUES.findIndex(c=>c.at >= 640);
+    if(mid < 1) throw new Error('no cue at or past 10:40 to stand on');
+    /* through the GO cue on the way, because that is what takes the foyer out
+       (RULING BH) — otherwise the lobby check below reads 0.9 both sides and
+       passes against a button that does nothing */
+    fireCue(1);
+    fireCue(mid);
+    const midHouse = HOUSE.house, midLobby = HOUSE.lobby;
+    const top = CUES[0];
+    /* a fixture that cannot tell the two looks apart would pass whatever the
+       button did, which is the whole lesson of this file */
+    if(midHouse === top.house)
+      throw new Error('the mid-show house matches the pre-show, so this proves nothing');
+    if(midLobby === top.lobby)
+      throw new Error('the foyer is already at the pre-show level, so that half proves nothing');
+    const btn = document.getElementById('btnTop');
+    if(!btn) throw new Error('there is no TOP OF SHOW button in the DOM');
+    btn.onclick();
+    if(nextCue !== 1)
+      throw new Error('TOP left the stack at index ' + nextCue + ' instead of standing after the first cue');
+    if(HOUSE.house !== top.house)
+      throw new Error('the pre-show look never landed: house ' + HOUSE.house + ' against a cue that says ' + top.house);
+    if(HOUSE.lobby !== top.lobby)
+      throw new Error('the foyer did not come back up: lobby ' + HOUSE.lobby + ' was ' + midLobby);
+    if(RIG.haze !== top.haze)
+      throw new Error('the haze is still the mid-show value: ' + RIG.haze);
+    /* the whole cue, not just its masters — cue 0 arms the wander pattern */
+    if(!AUD.fx || !AUD.fx.aud)
+      throw new Error('the pre-show pattern was never armed, so only part of the cue fired');
+    return 'fired Q' + top.n + ' — house ' + midHouse + ' to ' + HOUSE.house +
+           ', lobby ' + midLobby + ' to ' + HOUSE.lobby + ', standing at Q' + CUES[1].n;
+  });
+
+  /* THE HALF THE SPEC GOT WRONG.  It predicted this composed with RULING BO for
+     free because cue 0 carries its own audio and the jump-seek declines.  The
+     seek does decline — and it is not the seek that bites, it is the transport:
+     the pre-show cue does not stop act one, so showAudioTick keeps the clock and
+     fires the GO cue one frame later off a playhead already past 0:35. */
+  P('TOP lets go of the transport, so the pre-show actually holds', ()=>{
+    showLoad('beetlejuice');
+    const tr = audTrack('act1'), real = tr.el;
+    const fake = {paused:false, readyState:4, currentTime:40, volume:1,
+                  play(){ return null; }, pause(){ this.paused = true; }};
+    tr.el = fake; tr.want = true; tr.blocked = false;
+    showAudioTick(0.016);
+    if(!AUD.clock) throw new Error('the transport never took the clock, so this fixture proves nothing');
+    document.getElementById('btnTop').onclick();
+    if(nextCue !== 1)
+      throw new Error('TOP did not leave the board standing after the first cue: index ' + nextCue);
+    const preHouse = HOUSE.house;
+    /* five frames of the real transport.  If a clock track is still live, the
+       cue at 35 is already due at a playhead of 40 and goes on the first one. */
+    for(let i = 0; i < 5; i++) showAudioTick(0.016);
+    if(nextCue !== 1)
+      throw new Error('the transport dragged the stack to index ' + nextCue +
+                      ' — the show started by itself');
+    if(HOUSE.house !== preHouse)
+      throw new Error('the pre-show look was overwritten: house ' + HOUSE.house + ' was ' + preHouse);
+    if(AUD.clock) throw new Error('a clock track still holds the stack after TOP');
+    if(tr.want) throw new Error('act one is still wanted after TOP');
+    if(audLive(tr)) throw new Error('act one is still playing after TOP');
+    /* and the pre-show music IS asked for, because the cue says so */
+    if(!audTrack('preshow').want)
+      throw new Error('the pre-show music was not asked for by the cue TOP fired');
+    /* RULING BO still declines: the cue has already spoken about its own audio */
+    if(tr.seek !== null)
+      throw new Error('TOP seeked the show track behind the back of a cue that names its own');
+    tr.el = real; tr.want = false;
+    showSoundStop();
+    return 'five frames of transport later, still standing at Q' + CUES[1].n +
+           ' with the pre-show up and act one stopped';
   });
 
   showLoad('beetlejuice');       // leave the board where the AZ tail expects it
