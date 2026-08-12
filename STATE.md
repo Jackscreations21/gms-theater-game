@@ -1,284 +1,229 @@
-# STATE — 2026-08-12 (late)
+# STATE — 2026-08-13
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## THE SETS STAND BACKSTAGE NOW — rulings BW, BQ, CE
+## THIRTEEN THINGS IN ONE MESSAGE — rulings CF–CM
 
-Three asks in one evening, each revising the last. He named the order himself:
+He watched it and came back with thirteen items. Two are features, one is a
+fault report against RULING CA, one is a piece of building, and the other nine
+are corrections to his own plot. He also gave the reading order himself, and it
+is load-bearing:
 
-> do the sturck sets still stay backstage first. then add the neon prosinium like
-> the piture that chages colors at the right time. then fix the lighting cues at
-> the start(the red lights coming on to soon and the house lights bieng to bright
-> and going out too soon)
+> (all of these are in order od there appearance)
 
-> dont do the lights once you finnish the sets and prosinium just wait
+**ALL FIVE MERGED: #149, #150, #151, #152, #153.** `main` is at `ce79daf`.
+Nothing is open. Verified after the merge: `main` rebuilds **byte-identical**
+and the full suite is green on the merged result.
 
-> first make it so when you press top of show it automaticall sets it to cue one
-
-**MERGED: #146, #147.** `main` is at `2199623`. Nothing is open.
-
-Cache-bust for the next headset run: **`?v=23`**. Suites 18/18.
-
-Spec: `docs/superpowers/specs/2026-08-12-the-top-parked-sets-and-the-neon-proscenium-design.md`.
-**Rulings are at CE.**
-
-### RULING BW — TOP fires the first cue, and lets go of the transport
-
-His symptom: *"when i try to press go to go to top os show it starts the show."*
-Both TOP buttons moved the pointer and nothing else, so the look on stage stayed
-whatever was up and GO was the only way forward.
-
-**The spec predicted this composed with RULING BO for free and it did not.** The
-seek does decline — and the seek is not what bites, the **transport** is. The
-pre-show cue does not stop act one (only the GO cue does), so a hand-fired cue 0
-leaves a `clock:true` track live and on the **next frame** `showAudioTick` fires
-the GO cue off a playhead already past 0:35. Measured: TOP then GO put the board
-back at **Q1.1 with the house at 0 in two frames.** So `cueTop()` stops the sound
-FIRST and fires second — that order, or the stop kills the pre-show music the cue
-itself asks for.
-
-### RULING BQ — a set that comes off is never gone
-
-A scene may **declare a park** and stands there struck, solid and visible.
-Declared, never assumed: a scene with no park is switched off exactly as before,
-which is what leaves the other four productions untouched.
-
-**A parked set is drawn but NOT PICKED, and that is measured.**
-`layers.disableAll()` was doing two jobs — not drawn *and* not raycast — and BQ
-only wants the first back. One crosshair ray, 200 calls, his models loaded:
-
-| | from a seat, straight upstage | **from the wings, at the parked house** |
+| PR | What | His items |
 |---|---|---|
-| with the raycast opt-out | 1.63 ms | **1.11 ms** |
-| left pickable | 1.65 ms (1.0×) | **9.23 ms — 8.3×, 83% of a 90Hz frame** |
+| **#149** | the sign's lights come off the box and onto the sign (**CF**) | 1 |
+| **#150** | the Palace goes deeper again (**CL**) | 10 |
+| **#151** | a START OF SHOW call on the fly rail (**CM**) | 12 |
+| **#152** | the neon proscenium, and nothing happens at GO (**CH**, **CG**) | 13, 2 |
+| **#153** | his nine retimings, and two gates (**CK**, **CI**, **CJ**) | 3–9, 11 |
 
-RULING BY's shape exactly. **Where you point is the whole cost**: off-axis the
-bounding sphere rejects for nothing, so the seat figure is the misleading one —
-and walking backstage to look at the parked set is the case the ruling *invites*.
-Parked sets stay off `WALKABLE`, so `groundAt` never sees them. **582,736
-triangles** across 54 meshes stand parked with his models in.
+Cache-bust for the next headset run: **`?v=24`**. Suites 18/18.
 
-### RULING CE — as few sets fly as possible
+Spec: `docs/superpowers/specs/2026-08-13-the-neon-proscenium-and-his-corrections-design.md`.
+**Rulings are at CM.**
 
-> just like roof and the bedroom and closet should eb flown the otheres should
-> come on from the sides or back
+### RULING CF — the sign's lights are HIS OWN sign, lit
 
-`bjFlyWhole` became `bjTrackWhole(sc, axis, out, speed)`; flying is the **y**
-case of it. The changeover already drives that mover out on a strike and home on
-an entry, so a set tracking on from stage left is the same machinery pointed
-sideways.
+*"The lights for the beetlejuice sign arent on the sign they are just a box
+around it."* **He was describing what the code did, exactly.** With his file in:
 
-**The fly rail is stage right** — read, not assumed: `p9` builds the locking rail
-at `-D.stageW/2 + 2.8` = x −19.2, and the traveler hand line hangs stage right of
-the arch.
+```
+  Mesh10        98,984 tris   x [-4.65.. 3.85]  y [3.99..8.01]  z [0.05..0.15]
+  bj:signBulbs   3,472 tris   x [-4.63.. 3.82]  y [4.01..7.99]  z [0.19..0.38]
+  bj:signNeon       48 tris   x [-4.30.. 3.51]  y [4.33..7.67]  z [0.25..0.32]
+```
 
-| set | comes on from | parked, measured |
+RULING CA read *"you just have to add the lights"* as new geometry and hung a
+bead ring and a tube outline round his model's **bounding box**.
+
+**And the sign was dark underneath them**, which is the half nothing was looking
+at: `bjApplyModel` registered it for the RULING CC set fill, which drives
+`emissiveIntensity` off the **stage rig's** output — and the plot's first cue is
+*"PRE-SHOW … the sign lit"* with the rig at zero. His marquee sat at 0.000 for
+the whole pre-show while our ring burned at 1.8.
+
+His own materials are the lamps now, self-lit at `BJ_SIGN_GLOW` 0.95 off his
+painted detail. CA's silent-failure guard is kept: a file with no usable material
+leaves the stand-in registry alone.
+
+### RULING CG — nothing is red at GO, and the house is at 15 five times
+
+**THE ONE NUMBER THREE HANDOFFS CARRIED AS UNRESOLVED IS SETTLED.** *"1 minute
+into the audio (not acounting for the 32 seconds or whaterver it was)"* was read
+as `at:60` and never confirmed; *"time stamp 1:00 in the audio"* is the same
+number said plainly. **It is his now, not our reading.**
+
+| | before | after |
 |---|---|---|
-| exterior | **stage right, the fly-rail side** | x −19.80..−7.20 |
-| interior | stage left | x 7.20..20.80 |
-| attic | upstage | z −21.20..−11.60, behind the backdrop |
-| roof, bedroom, closet | flown, as he asked | y 10.50 |
-| **netherworld** | **flown — not one he named** | y 10.50 |
+| pre-show | house 0.30 | **0.15**, frame blue (supersedes BM and BT) |
+| GO 0:35 | house 0, eight red blinders | **0.15**, nothing red — the music only |
+| **1:00 — new** | — | house out, the **frame** goes red, the sign goes red |
+| interval | house 0.5 | **0.15**, frame blue |
+| act two's GO | house 0.5 | **0.15** |
+| the end | house 0.5 | **0.15**, frame blue |
 
-**The building has exactly three horizontal slots** — two wings of 14.5m and
-6.7m of depth behind the acting area. That is why four of nine still fly.
+**An assertion found the fifth one** — act two's GO, the tail of the interval
+with the audience coming back in. "The intermission" covers the whole of it.
 
-**And CE improved the parking, which was not the reason for it.** Flying
-preserves x and z, so every flown set wants the same volume in the one grid: the
-four that fly overlap in **six pairs**, worst 12.30 × 7.95 × 8.15m. Four sets
-5.6–9.2m tall cannot stack under a 25m grid, so that is inherent and is recorded
-rather than asserted away. The three tracked sets each have their own floor space
-and an assertion pins it.
+**THE SIGN'S RED MOVED WITH THE PROSCENIUM'S, and that is a judgement call.**
+His original act-one line was ONE sentence about both. Leaving the sign red at GO
+would put the only red thing in the house on a stage he has just said should not
+be red yet. **One line back if he meant otherwise.**
 
-### The netherworld
+### RULING CH — the proscenium neon
 
-- **Not as deep** (his correction: *"i meant the set shouldnt be as deep"*).
-  **12.45m → 6.90m.** `BJ_AFT_DEEP` squashes the *recession* about the downstage
-  frame, which does not move, so the picture starts in the same place and simply
-  does not reach as far upstage. The authored z values stay in the `rings` table
-  as the full-depth layout; `bjAftZ` puts them on the stage.
-- **Backdrop black**, `0x071c40` → `0x000000`.
-- **All blue** was already true and its assertion still passes — five blue
-  trapezoids brightening 1.50 → 2.54 upstage. Recorded so it is not re-litigated.
-- The frame thickness was changed first on a misreading of "thinner" and **put
-  back** to the 0.15 BV built it at.
+*"remove the current neon stuff and replace it with a thicker bar going all the
+way around … For the rest it is off. And move the blinders to inside of the neon
+thing."*
 
-### Two real defects the tests found, and they were mine
+`bj:portalTrim` (a blue-green tube frame with wing returns and hoops, **always
+lit**) is gone. `bj:portalFrame` is one closed rectangle of **0.34m bar**,
+13.60m across, four boxes merged to one mesh on one material, **built dark**, and
+driven by a `portal:{col,lvl}` cue field applied on **every** cue. Measured:
+**8 cues light it, 87 leave it out, red only at 1:00.** The engine is the shelved
+`bj-portal` branch (`a22bd36`) rebased — after three handoffs of "start from
+there", it was right and only the geometry and the plot changed.
 
-**The dress deferral broke on a parked room.** `showCueExtras` judged "can the
-audience see this set" as `!sceneOff` — and its own comment says why: a set
-mid-way out of a changeover is marked off while its layers are still on. BQ makes
-a parked set drawn *on purpose*, so that test inverted. A dress cue on the parked
-wagon **deferred for ever** and the room was called on still wearing the old
-dressing — the exact pop RULING AY exists to prevent. Now: drawn **and** (`sc.on`
-or still travelling).
+The blinders moved from x ±8.12 / y up to 10.95 (round the architectural arch) to
+**x ±6.2, top row y 8.5**, still at z 1.35 and so 0.60m downstage of the frame.
+**It moves them in all five productions** — the honest consequence of a rig
+change, and two named constants (`BLIND_X`, `BLIND_TOP_Y`) to undo.
 
-**The parks were sized to his models and the stand-ins did not fit.** The
-exterior's wing park was measured against his fitted 8.6m house; the stand-in is
-a **12.6m painted drop** — a drop fills the opening, which is why it used to fly —
-so the same offset parked the fallback at x −4.70, in the middle of a 13.6m
-picture. The attic went the other way and put the stand-in **0.90m through the
-Palace brick**. **The stand-in is the bigger case and the one that plays** on a
-fresh clone, over slow wifi before a 27MB file lands, and in every suite, because
-jsdom fetches nothing.
+### RULING CI — a move waits for the fly line it needs
+
+*"make it so the house cant start sliding till the backdrop is fully up."*
+`move:{scene:'interior', off:0, after:14}`. A gate on the **move**, not a delay
+on the cue. Declared, never assumed — the other eight moves in this plot and all
+four other productions are untouched. Measured: the wagon holds **716 frames**
+while the cloth flies and sets off on 717.
+
+### RULING CJ — the house lights wait for the curtain
+
+He says it twice. `houseAfterCurtain:true` holds the master at 0 until the front
+traveler is home **and** its halves are together. This show's curtain flies, so
+the halves clause is never exercised by the delivery — **it has its own fixture**
+(pipe home, halves held wide) after a negative check found the guard unobservable.
+
+### RULING CK — his nine retimings, and a set change never moves a light cue
+
+Six of the nine carry *"(dont change any light cues just the set change)"* in his
+own parentheses. That is a rule: where a cue does both, retiming **splits** it.
+
+| his ask | before | after |
+|---|---|---|
+| maitlands house 2s earlier | 10:40 | **10:38** (whole cue — CI is the rest of that sentence) |
+| the roof 5s earlier | 56:00 | **55:55** set / 56:00 light |
+| act-one blackout instant | fade 4 | **fade 0** |
+| bj house → attic 25s earlier | 1:25:25 | **1:25:00** set / 1:25:25 light |
+| attic → bj house 55s later | 1:30:00 | **1:30:55** |
+| the house slides back on 15s later | 1:53:00 | **1:53:15** |
+| that blackout 10s earlier | 1:53:32 | **1:53:22** |
+
+**Item 7 lands on his own blackout and that is the point** — 1:30:00 + 55 is
+1:30:55, his *"Lights blackout"*, so the house comes on and the stage goes black
+over it. **Item 8 is the one his ordering line resolves** ("slide back **on**" is
+1:53:00, not 1:39:19; and against 1:39:19 the following blackout is 3s later, so
+moving it 10s earlier would put it before the change it covers).
+
+### RULING CL — the Palace goes deeper again
+
+`PAL_DEEP` **4.5 → 8.5**, `PAL_BACK` −21.5 → **−25.5**. His interior slid back
+measured **z −24.78 .. −11.80** against a brick at −21.50: **3.28m out in the
+street**, in the cue that plays in full view at the curtain call. The stand-in
+(7.68m deep) cleared by 2.26m, which is why nothing saw it — **his model is the
+binding case here**, the inverse of the RULING BQ trap. `D.backWall` stays at
+−17. New probe: `tools/deeper.js`.
+
+### RULING CM — the fly rail has a START OF SHOW call
+
+The loaded show's **own first cue** — `CUES[0]` already carries a full fly
+snapshot — applied through `flyTo`. A rail call, not a cue: it fires nothing.
+On the desk **and** the VR fly page, at the foot of the column so the
+pixel-pinned FOH/speaker rows do not move.
 
 ## WHAT IS LEFT
 
-### 1. THE NEON PROSCENIUM — BR/BS/BT/BU, and it is next
+### 1. THE HEADSET RUN — `?v=24`, and it is now the ONLY thing left
 
-He asked for it second and it is the only part of his three-item list not built.
-**Start from the shelved local branch `bj-portal` (commit `a22bd36`, RULING AX)**,
-which already built the engine and was never opened: `bj:portalFrame` as one
-merged mesh on one material, **built dark**, `SHOW.bjPortal` registered in
-`showBlank()` so the stage swap parks it, a `portal:{col,lvl}` cue field applied
-on **every** cue so a cue that says nothing darkens the frame, and a fade on the
-frame `dt` at 1.2/s riding `updateStorm`. That default-dark behaviour is exactly
-what *"the only times the lights in the neon tube are…"* asks for. **The engine
-is right and only the plot changes.** Expect conflicts rebasing it: the split
-rule in `showCueExtras`, the p5h repaints, BJ's edits to cues 1.1–1.4, and now
-BQ/CE's own p5c/p5h work.
-
-- **BR** — widen the frame to the broad bright bands his photographs show. It
-  must stay inside x ±7.4, because the portal check refuses anything scenic wider
-  than the house opening.
-- **BS** — lit at exactly three times, dark otherwise: blue in the pre-show, blue
-  from GO, **red at 1:00**, blue in the netherworld. This **takes the red off the
-  eight blinders at GO**, which was a misreading of his own act-one line.
-- **BT** — the house starts at **0.12** and goes out with the red, superseding the
-  0.30 RULING BM set.
-- **BU** — the blinders go inside the proscenium, downstage face at z 1.35.
-  **Check the curtain's z first** — the 1:16 white flash must still read.
-
-Two constraints from TRAPS must survive: **not `neonTube`** (its CatmullRom
-overshoots a right angle), and **a material per tube is required**, because
-`updateNeon` writes a colour into every registered mesh every frame.
-
-**The one unresolved number, still unresolved.** *"1 minute into the audio (not
-acounting for the 32 seconds or whaterver it was)"* is read as **`at:60`**. His
-"the red lights coming on to soon" does **not** settle it, because the red he saw
-is the blinders at 0:35 and both readings are later than that. One line either
-way, and he has never confirmed it.
-
-### 2. The start-of-show lighting — deferred at his instruction
-
-*"dont do the lights once you finnish the sets and prosinium just wait."* Worth
-knowing that **BS and BT, both his own rulings, already answer both halves of his
-complaint**: BS takes the red off GO, BT is the house at 0.12 out with the red.
-Whatever he still sees after the proscenium is the real lighting round.
-
-### 3. THE HEADSET RUN — `?v=23`, and it is still the whole point
-
-**Nothing about how ANY of this looks has been observed** — not the sets from the
-last round, not the parks, not the netherworld. The full list of open looking
-questions is in HANDOFF's NEXT SESSION block. The biggest single unknown is still
-whether the houses read at 13.6 × 12.76 with 3.56m behind the border.
+**Nothing about how any of this looks has been observed** — not the sets from two
+rounds ago, not the parks, not the netherworld, and now not the neon frame.
 
 New with this round:
-- **Do the tracked entrances read?** A set sliding in from a wing instead of
-  flying is a different piece of stagecraft, and `BJ_TRACK_SPEED` 2.0 is a guess.
-- **Can you see a parked set from a seat?** Measured at 0 rays of 1025 for every
-  park with the masking in, but that is geometry, not a look.
-- **Is the netherworld right at 6.90m** with a black ground?
+- **Does the neon bar read at 0.34m?** `BJ_NEON_BAR` is a guess against "thicker";
+  `BJ_NEON_BLUE` 0x4fa8ff and the 1.2/s fade are guesses too.
+- **Are the blinders right inside the portal?** They are 2m further inboard in
+  every production now, and the 1:16 white flash still has to read on the cloth.
+- **Does 25 seconds of nothing at the top play?** GO now starts the music and
+  changes no light until 1:00. On paper it is a held pre-show; in the room it may
+  read as a dead patch.
+- **Is the house at 15 low enough to see the beams, and high enough to be a
+  house?** 0.45 → 0.30 → (0.12, never built) → 0.15, and this one is his.
 
-### 4. Four decisions that are his, all with numbers attached
+Carried from before: do the houses read at 13.6 × 12.76 with 3.56m behind the
+border; do the tracked entrances read; is `BJ_FILL_MAX` 0.55 lit or glowing; is
+the netherworld right at 6.90m over black; is `BLIND_POWER` 4.6 too much.
 
-- **The netherworld is the one flown set he did not name.** 14.4m wide fits no
-  wing and 12.5m — now 6.90m — was too deep to hide upstage; both wings hold a
-  house. Making it *narrower* is what would buy it a slot.
-- **The cue at 1:14:30 still flies the exterior out.** That is his own plot line
-  and re-pointing a cue he wrote is his call. One field.
-- **The cemetery declares no park.** Parted to the wings it measures x
-  −23.40..23.40 — wider than the 44m stage, 1.40m past both side walls — and 8.4%
-  of a stalls eye still lands on it. No wing is wide enough and ground rows cannot
-  fly. Re-measure when his graveyard model arrives.
-- **His files are 181MB and ~70MB is discarded on arrival** — each carries a 4096
-  normal map that RULING BP shrinks to 2048 at load. Re-encoding to 2048 JPEG
-  takes each from ~27MB to a few MB, but it rewrites HIS asset.
+### 2. Still his to decide
 
-### 5. Still owed from earlier rounds
+- **The sign's red at GO** — moved to 1:00 with the proscenium's on a judgement
+  call. One line back.
+- **The cue at 1:14:30 still flies the exterior out.** His own plot line.
+- **The cemetery declares no park** (46.8m parted against a 44m stage).
+- **His files are 181MB and ~70MB is discarded at load** — re-encoding to 2048
+  JPEG would rewrite HIS asset.
+- **The netherworld is the one flown set he did not name.** Narrower is what
+  would buy it a wing.
+
+### 3. Still owed from earlier rounds
 
 - **RULING BY** — standing on his geometry costs **4.29ms, 38.6% of a 90Hz
-  frame** (`tools/walkcost.js`). Deferred. Three ways out, none free: leave it, a
-  collision proxy sampled at import (~0.6s hitch), or a `walk_` node in the file.
-- **The graveyard.** He has supplied none, and the show OPENS in it and stays
-  there until 10:40. Load, press GO, and the first ten minutes are OURS.
-- **Is `BLIND_POWER` 4.6 too much?** Still unanswered, still the one change that
-  could genuinely hurt. `AUD_STROBE_HZ` stays at 9 deliberately.
-- **Does the join at 4292 sound?** Act two resumes out of a different file.
+  frame** (`tools/walkcost.js`). Deferred, three ways out, none free.
+- **The graveyard.** He has supplied none and the show OPENS in it until 10:40.
+- **Is `BLIND_POWER` 4.6 too much?** Still the one change that could hurt.
+- **Does the join at 4292 sound?**
 - **The house floor pool** stays deferred.
-- `tests/smoke.js` still flakes under full-suite load (wall-clock dt; passes alone
-  every time). Not a regression.
+- `tests/smoke.js` still flakes under full-suite load. Not a regression.
 - `pr6.json` in the repo root is still untracked and unruled.
-
-## WHERE HIS SETS APPEAR, because this caused a false alarm
-
-The show opens in the cemetery, which is ours. His work starts at **10:40**.
-
-| his set | first cue |
-|---|---|
-| **the interior** (all three houses) | **10:40, cue 7** — then 56 cues |
-| the attic | 32:50, cue 13 |
-| the roof | 56:00, cue 18 |
-| the exterior | 1:11:32, cue 24 |
-
-And 165MB takes minutes over wifi with the stand-ins playing until each lands —
-**looking too early shows ours.**
-
-## What this round taught, beyond the features
-
-- **A flag that means two things will eventually mean the wrong one — again.**
-  `sceneOff` meant *not drawn* AND *not seen*, which were the same thing until a
-  parked set was drawn on purpose. Every test of "can they see it" written as
-  `!sceneOff` silently inverted.
-- **Fit a fallback, not the delivery.** A park sized to his measured geometry put
-  the stand-in in the middle of the picture. The stand-in is the BIGGER case and
-  the one that plays whenever a file has not landed — including in every suite.
-- **A wrapper group inserted to carry a mover breaks whatever reads the scene's
-  structure.** The importer strips the built-in shell out of `sc.group`; with a
-  wrapper in the way his house landed on top of ours. Two movers over the same
-  group are free if the axes differ.
-- **A probe got four things wrong before it got them right**, and each is in its
-  header: travel measured from the CENTRE said the cemetery never moves (its
-  hills go to opposite wings, so the BOX is what changed); visibility cast against
-  the set alone said every flown set is in the picture (a ray through the top of
-  the opening rises 0.65m per metre upstage — but the border is in the way); it
-  measured a shut house curtain for four runs; and an `unhide` that restored only
-  layers left every "parked" set undrawn, so the pick read 1.0× because nothing
-  had been parked.
-- **A helper in a suite must not take a name the game already uses.** A
-  probe-scope `const audLive` shadowed the game's `audLive(tr)` for 165 lines, so
-  two assertions were reading the number of lit audience lamps and passing because
-  the lamps were dark.
-- **My own proxy was the wrong one.** "It has vacated its acting box" is not "out
-  of the picture": the brick bounds the attic to 8.8m against a 9.6m stand-in, so
-  0.8m of the old footprint stays occupied, harmlessly. What hides an upstage park
-  is the backdrop at −10.90 in front of it.
 
 ## Feel constants for the headset (one-line retunes)
 
-In `p4` (`buildRig`): `BLIND_POWER` 4.6 / `BLIND_RANK` 0.9, `AUDM_POWER` 2.8 /
-`AUDM_RANK` 0.8, `AUD_LIGHT_RESERVE` 2. **Rank is RULING BC and load-bearing.**
+In `p4` (`buildRig`): `BLIND_POWER` 4.6 / `BLIND_RANK` 0.9, **`BLIND_X` 6.2 /
+`BLIND_TOP_Y` 8.5 (CH — where the blinders sit inside the portal)**,
+`AUDM_POWER` 2.8 / `AUDM_RANK` 0.8, `AUD_LIGHT_RESERVE` 2. **Rank is RULING BC
+and load-bearing.**
 
 In `p5j`: `AUD_WANDER_RATE` 1.0, `AUD_RANDOM_RATE` 1.0, `AUD_STROBE_HZ` 9.0,
 `AUD_SWEEP_LO` −15 / `AUD_SWEEP_HI` −98.
 
+In `p5h` (the neon, CH): **`BJ_NEON_BAR` 0.34, `BJ_NEON_FADE` 1.2,
+`BJ_NEON_BLUE` 0x4fa8ff, `BJ_NEON_RED` 0xff1e10, `BJ_NEON_Z` 0.30,
+`BJ_NEON_DARK` 0x0d1116**.
+
+In `p5h` (the sign, CF): **`BJ_SIGN_GLOW` 0.95, `BJ_SIGN_LIT` 2.1**.
+
 In `p5h` (AW–AZ, CE): `BJ_FLY_SPEED` 1.8, `BJ_HILL_SPEED` 2.0 / `BJ_HILL_OUT`
-9.5, `BJ_PART_OUT` 10.5, **`BJ_TRACK_SPEED` 2.0**.
+9.5, `BJ_PART_OUT` 10.5, `BJ_TRACK_SPEED` 2.0.
 
-In `p5h` (BQ/CE — where a struck set stands): **`BJ_HOUSE_PARK_X` 14.0** (stage
-left), **`BJ_EXT_SIDE` −13.5** (stage right, the fly-rail side), **`BJ_ATTIC_BACK`
-−8.8** (upstage). All three are sized by the STAND-IN, not by his model.
+In `p5h` (BQ/CE — where a struck set stands): `BJ_HOUSE_PARK_X` 14.0,
+`BJ_EXT_SIDE` −13.5, `BJ_ATTIC_BACK` −8.8. All three sized by the STAND-IN.
 
-In `p5h` (the netherworld, BV amended): **`BJ_AFT_DEEP` 0.55**, `BJ_AFT_TUBE`
-0.15, `BJ_AFT_BACK` 0x000000.
+In `p5h` (the netherworld, BV amended): `BJ_AFT_DEEP` 0.55, `BJ_AFT_TUBE` 0.15,
+`BJ_AFT_BACK` 0x000000.
+
+In `p2` (CL): **`PAL_DEEP` 8.5** — how much deeper the Palace runs than the box.
 
 In `p5c`: `SCENE_PARK_SPEED` 2.0.
 
 In `p5i` (BP, BX, CB, CC, CD): `BJ_TRI_BUDGET` 150000, `BJ_MAT_BUDGET` 8,
 `BJ_TEX_BUDGET` 2048, `BJ_FIT_AIR` 0.30, `BJ_SET_DEPTH` 10.0,
-`BJ_HOUSE_UPSTAGE` 1.5, `BJ_FILL_MAX` 0.55, `BJ_FILL_RATE` 1.6, and each
-manifest entry's `fit`.
+`BJ_HOUSE_UPSTAGE` 1.5, `BJ_FILL_MAX` 0.55, `BJ_FILL_RATE` 1.6.
 
 ## Standing facts
 
@@ -288,15 +233,33 @@ stays repealed; RULING B still holds. RULING BB is untouched: while a **clock
 track** is really playing it IS the cue clock.
 
 **Every timestamp in the Beetlejuice plot is a position in his WHOLE recording**
-— not elapsed show time, and not a position in whichever half is playing. The two
-differ by the 35 seconds the track is already into itself when the show starts.
-`offset` is what keeps that true across two files.
+— not elapsed show time, and not a position in whichever half is playing.
 
-**His photographs are never committed.** TRAPS draws the line at looking versus
-committing.
+**His photographs are never committed.**
 
-## Shelved — but still WANTED
+## What this round taught, beyond the features
 
-**The portal rebuild (RULING AX) on the LOCAL branch `bj-portal`** (commit
-`a22bd36`) is still unopened and is the next thing to build. **RULING BW is now
-done**, so the only unbuilt rulings are BR/BS/BT/BU.
+- **A backtick in a probe COMMENT bit three times in one round.** It is already
+  in TRAPS twice; the finding is the frequency. Sweep for it mechanically.
+- **`null >= 0` is TRUE in JavaScript.** Loosening a strictly-positive test to
+  non-negative silently reclassified two deliberate `follow:null` holds as cues
+  that arm the next one — and the code was right.
+- **A negative check against a state the assertion already satisfies proves
+  nothing.** "It fires nothing" written straight after `showLoad` passed against
+  a build where the fly rail started the show, because the board was already at
+  cue 0 and firing it moved nothing.
+- **A test that picks its subject by the property it then asserts agrees with
+  itself.** Take the subject by POSITION.
+- **The furniture trap, one level up: it is the TESTS that go stale.** The shed
+  and everything in it rode `PAL_DEEP` correctly; four suites still probing
+  literal −25 and −35 did not.
+- **A wall fitted to the STAND-IN leaves HIS model in the street** — the exact
+  inverse of the RULING BQ trap, hidden because the assertion that guards it
+  lives in the probe that fetches nothing.
+- **A probe reading the wrong field prints an empty section.** `sc.park` does not
+  exist and `sc.pmv.park` misses exactly the sets RULING CE gave a single mover.
+
+## Shelved
+
+**Nothing.** The portal rebuild (RULING AX) has landed inside #152 and the
+`bj-portal` branch is spent.
