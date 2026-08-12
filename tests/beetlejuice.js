@@ -1550,7 +1550,7 @@ const probe = `
     const step = n => { for(let f = 0; f < n; f++){ updateStorm(1/60); if(f % 10 === 0) check('travelling'); } };
     const at = re => { const i = CUES.findIndex(c=>re.test(c.label)); if(i < 0) throw new Error('no cue matches '+re); return i; };
     fire(at(/9:45/));      step(480);    // the graveyard empties to the wings
-    fire(at(/10:40/));     step(480);    // the wagon on; the emptied set hides
+    fire(at(/10:38/));     step(480);    // the wagon on; the emptied set hides
     fire(at(/32:50/));     step(480);    // the attic flies in
     fire(at(/42:34/));     step(480);    // attic out, closet in, both moving
     fire(at(/48:49/));     step(480);    // and back to the attic
@@ -1559,7 +1559,7 @@ const probe = `
     fire(at(/1:02:51/));   step(480);    // roof out, the Deetz wagon on
     fire(at(/1:25:25/));   step(480);    // the attic again, act two
     fire(at(/1:39:19/));   step(480);    // the netherworld flies in (his new time)
-    fire(at(/1:53:00/));   step(480);    // and out, the house back on
+    fire(at(/1:53:15/));   step(480);    // and out, the house back on (CK: 15s later)
     return 'eleven changeovers stepped: every entrance from OUT, every part on its track';
   });
 
@@ -1631,7 +1631,7 @@ const probe = `
     const gR = sc.pmv.hillR.group, gL = sc.pmv.hillL.group;
     const r0 = wx(gR), l0 = wx(gL);                    // home, read at load
     const i945  = CUES.findIndex(c=>/9:45/.test(c.label));
-    const i1040 = CUES.findIndex(c=>/10:40/.test(c.label));
+    const i1040 = CUES.findIndex(c=>/10:38/.test(c.label));
     fireCue(i1040);                                    // the wagon cue first
     for(let k = 0; k < 600; k++) updateStorm(1/60);
     if(SHOW.scene !== 'interior') throw new Error('the wagon cue did not land');
@@ -1650,6 +1650,73 @@ const probe = `
       throw new Error('the backdrop is not at its trim after the jump');
     return 'jumped from the wagon: graveyard on, hills parked at +-'+BJ_HILL_OUT+
            ', cloth at trim';
+  });
+
+  /* ══ RULING CI — A MOVE WAITS FOR THE LINE IT NEEDS ═════════════════════ */
+  P('the house cannot start sliding until the backdrop is out (CI)', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('interior'), cloth = FLY[13];
+    /* WORLD MATRIX, never position: the set is frozen and writing position on a
+       frozen group updates the record while the room stands still (TRAPS) */
+    const wz = () => { scene.updateMatrixWorld(true); return sc.group.matrixWorld.elements[14]; };
+    const i = CUES.findIndex(c=>/10:38/.test(c.label));
+    if(i < 0) throw new Error('no cue at 10:38 to fire');
+    const m = (Array.isArray(CUES[i].move) ? CUES[i].move : [CUES[i].move])
+                .filter(x=>x && x.scene === 'interior')[0];
+    if(!m) throw new Error('the cue does not move the wagon at all');
+    if(m.after === undefined) throw new Error('the wagon move names no line to wait for');
+
+    /* the cloth starts IN, so the gate is really shut when the cue fires */
+    if(!(cloth.pos < OUT_TRIM - 1))
+      throw new Error('the backdrop is already out before the cue; nothing to wait for');
+    fireCue(i); cancelFollow();
+    const z0 = wz();
+
+    /* STEP THE FLY AS WELL AS THE MOVERS.  updateStorm alone never moves a pipe,
+       so a version of this that stepped only the movers would watch a gate that
+       could never open and call it a pass. */
+    let held = 0, clothOut = -1, moved = -1;
+    for(let f = 0; f < 3000; f++){
+      updateFly(1/60); updateStorm(1/60);
+      const out = Math.abs(cloth.target - cloth.pos) < 0.02;
+      if(out && clothOut < 0) clothOut = f;
+      if(!out){
+        if(Math.abs(wz() - z0) > 0.02)
+          throw new Error('the wagon set off at frame ' + f + ' with the cloth still ' +
+                          Math.abs(cloth.target - cloth.pos).toFixed(2) + 'm from its trim');
+        held++;
+      }
+      if(moved < 0 && Math.abs(wz() - z0) > 0.05) moved = f;
+      if(clothOut >= 0 && Math.abs(sc.mv.off) < 1e-4) break;
+    }
+    if(clothOut < 0) throw new Error('the backdrop never got out — this proves nothing');
+    if(!held) throw new Error('the cloth was already out on the first frame; the gate never bound');
+    if(moved < 0) throw new Error('the wagon never moved at all, even once the cloth was clear');
+    if(moved < clothOut)
+      throw new Error('the wagon moved at frame ' + moved + ', before the cloth arrived at ' + clothOut);
+    if(Math.abs(sc.mv.off) > 1e-3)
+      throw new Error('it never finished its travel: mover at ' + sc.mv.off.toFixed(2));
+    return 'held ' + held + ' frames while the cloth flew, set off at frame ' + moved +
+           ' (cloth clear at ' + clothOut + '), home at 0.00';
+  });
+
+  P('a move with no line to wait for still goes at once (CI stays declared)', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('interior');
+    const wz = () => { scene.updateMatrixWorld(true); return sc.group.matrixWorld.elements[14]; };
+    /* 1:02:51 slides the Deetz house on and names no line — the eight other moves
+       in this plot must behave exactly as they always have */
+    const i = CUES.findIndex(c=>/1:02:51/.test(c.label));
+    if(i < 0) throw new Error('no 1:02:51 cue');
+    const m = (Array.isArray(CUES[i].move) ? CUES[i].move : [CUES[i].move])
+                .filter(x=>x && x.scene === 'interior')[0];
+    if(m.after !== undefined) throw new Error('this cue gates its move; pick an ungated one');
+    fireCue(i); cancelFollow();
+    const z0 = wz();
+    for(let f = 0; f < 30; f++) updateStorm(1/60);
+    if(Math.abs(wz() - z0) < 0.01)
+      throw new Error('an ungated move did not start on its own cue');
+    return 'ungated moves are untouched: away inside half a second';
   });
 
   P('the graveyard never returns in the plot, but a recall brings the hills home', ()=>{
@@ -1859,7 +1926,110 @@ const probe = `
       throw new Error('the interval house is at '+up.house+', and RULING CG says 15');
     if(up.at - down.at !== 7)
       throw new Error('the interval is '+(up.at - down.at)+'s after the blackout, he wrote 7');
-    return 'act break dark at cue '+down.n+', interval house at '+up.house+' seven seconds later';
+    /* RULING CK: "Make it so the blackout at the end of act one happens
+       instantly."  Four seconds was OURS — the measured median fade-down standing
+       in for a number he never gave — and he has now given one. */
+    if(down.fade !== 0)
+      throw new Error('the act break has a '+down.fade+'s fade on it; he asked for instant');
+    return 'act break snaps dark at cue '+down.n+', interval house at '+up.house+' seven seconds later';
+  });
+
+  /* ══ RULING CJ — THE HOUSE LIGHTS WAIT FOR THE CURTAIN ══════════════════ */
+  P('the house does not come up until the curtain is really in (CJ)', ()=>{
+    for(const which of ['INTERVAL', '2:15:00']){
+      showLoad('beetlejuice');
+      const i = CUES.findIndex(c=>c.label.indexOf(which) >= 0);
+      if(i < 0) throw new Error('no ' + which + ' cue');
+      const c = CUES[i];
+      if(!c.houseAfterCurtain) throw new Error(which + ' does not declare the gate');
+      if(!(c.house > 0.02)) throw new Error(which + ' brings no house up, so nothing is gated');
+
+      /* OPEN THE PICTURE FIRST.  Both of these cues follow a stage that is in
+         view, and if the cloth were already in the gate would pass on frame one
+         and the assertion would be measuring nothing. */
+      const ls = frontCurtainLineset();
+      if(!ls) throw new Error('no front traveler hung');
+      ls.target = ls.pos = OUT_TRIM;
+      ls.open = ls.travTarget = 0;
+      HOUSE.house = 0;
+
+      fireCue(i); cancelFollow();
+      if(HOUSE.house > 0.001)
+        throw new Error(which + ': the house came up on the same frame, with the cloth ' +
+                        Math.abs(ls.pos - TRIMS.bjCurtain).toFixed(1) + 'm out');
+
+      let up = -1;
+      for(let f = 0; f < 3000; f++){
+        updateFly(1/60); updateStorm(1/60);
+        if(up < 0 && HOUSE.house > 0.001){
+          up = f;
+          const trim = TRIMS[ls.goodsKey] !== undefined ? TRIMS[ls.goodsKey] : TRIMS.house;
+          if(Math.abs(ls.pos - trim) > 0.05)
+            throw new Error(which + ': the house came up at frame ' + f + ' with the cloth ' +
+                            Math.abs(ls.pos - trim).toFixed(2) + 'm off its trim');
+          if((ls.open || 0) > 0.02)
+            throw new Error(which + ': the house came up with the halves ' +
+                            ls.open.toFixed(2) + ' apart');
+        }
+      }
+      if(up < 0) throw new Error(which + ': the house never came up at all');
+      if(!up) throw new Error(which + ': it came up on frame 0 — the gate never bound');
+      if(Math.abs(HOUSE.house - c.house) > 1e-9)
+        throw new Error(which + ': it settled at ' + HOUSE.house + ', not the cue own ' + c.house);
+    }
+    return 'both cues held the master at 0 until the cloth was home, then went to 0.15';
+  });
+
+  /* FULLY CLOSED IS TWO THINGS, AND THIS SHOW ONLY EXERCISES ONE OF THEM.
+     The Beetlejuice curtain FLIES rather than draws, so its halves sit together
+     the whole time and their open value is 0 throughout — so a version of the gate
+     that judged the trim ALONE passes every other assertion in this file.  A
+     negative check deleting the halves clause changed nothing at all, which is
+     the "a bound that nothing in the delivery exercises cannot be negative-checked"
+     trap.  So this builds the fixture that approaches it: pipe home, halves held
+     wide, and the gate must stay shut. */
+  P('fully closed means the halves too, not just the trim (CJ)', ()=>{
+    showLoad('beetlejuice');
+    const i = CUES.findIndex(c=>c.label.indexOf('INTERVAL') >= 0);
+    const ls = frontCurtainLineset();
+    const trim = TRIMS[ls.goodsKey] !== undefined ? TRIMS[ls.goodsKey] : TRIMS.house;
+    /* the pipe is exactly where a shut curtain hangs — and the halves are parted */
+    ls.target = ls.pos = trim;
+    ls.open = ls.travTarget = 1;
+    HOUSE.house = 0;
+    fireCue(i); cancelFollow();
+    /* the cue itself asks for them to close, so hold them open to keep the
+       fixture standing while the frames run */
+    for(let f = 0; f < 400; f++){
+      ls.travTarget = 1; ls.open = 1;
+      updateFly(1/60); updateStorm(1/60);
+      if(HOUSE.house > 0.001)
+        throw new Error('the house came up at frame ' + f + ' with the pipe home but the ' +
+                        'halves wide open — the gate is reading the trim alone');
+    }
+    /* let them shut, and it comes up */
+    ls.travTarget = 0;
+    let up = -1;
+    for(let f = 0; f < 600 && up < 0; f++){
+      updateFly(1/60); updateStorm(1/60);
+      if(HOUSE.house > 0.001) up = f;
+    }
+    if(up < 0) throw new Error('the halves closed and the house still never came up');
+    return 'held 400 frames on a parted curtain at its trim, up ' + up + ' frames after they shut';
+  });
+
+  P('a cue that does not ask for the gate raises the house at once (CJ stays declared)', ()=>{
+    showLoad('beetlejuice');
+    const i = CUES.findIndex(c=>/PRE-SHOW/.test(c.label));
+    const c = CUES[i];
+    if(c.houseAfterCurtain) throw new Error('the pre-show gates its house; pick an ungated cue');
+    const ls = frontCurtainLineset();
+    ls.target = ls.pos = OUT_TRIM; ls.open = ls.travTarget = 0;
+    HOUSE.house = 0;
+    fireCue(i); cancelFollow();
+    if(Math.abs(HOUSE.house - c.house) > 1e-9)
+      throw new Error('an ungated cue held the house at ' + HOUSE.house + ' instead of ' + c.house);
+    return 'ungated cues are untouched: the master takes the cue value on the frame it fires';
   });
 
   console.log('--- it does not disturb the other four ---');
@@ -1896,9 +2066,22 @@ const probe = `
        interval — because the owner asked to advance from pre-show "when you
        press start" and to begin the second half "when you press a button on
        the consol".  A hold IS follow:null; that is the whole mechanism. (AU) */
+    /* A FOLLOW OF ZERO IS ARMING, NOT FAILING TO ARM.  RULING CK puts the
+       attic-to-house change on the same second as his own 1:30:55 blackout, so
+       one pair in the plot has a zero gap — and a strictly-positive test counted
+       that as a cue that arms nothing, which is exactly what a silent run would
+       then do.  Only null is a stop.
+
+       AND THE TEST FOR IT HAS TO BE EXPLICIT, because null >= 0 is TRUE in
+       JavaScript — a straight swap to a non-negative test made both holds look
+       like cues that arm the next one, and the suite said "0 holds, expected 2".
+       A cue arms the next one when its follow is a real number. */
     const missing = [], holds = [];
-    for(let i = 0; i < CUES.length - 1; i++)
-      if(!(CUES[i].follow > 0)){ (CUES[i].hold ? holds : missing).push(CUES[i].n); }
+    for(let i = 0; i < CUES.length - 1; i++){
+      const f = CUES[i].follow;
+      const arms = (typeof f === 'number') && !isNaN(f) && f >= 0;
+      if(!arms){ (CUES[i].hold ? holds : missing).push(CUES[i].n); }
+    }
     if(missing.length)
       throw new Error(missing.length+' cue(s) do not arm the next: '+missing.slice(0,6).join(', '));
     if(holds.length !== 2)
@@ -3227,7 +3410,7 @@ const probe = `
     if(missing.length)
       throw new Error(missing.length + ' of his times have no cue: ' + missing.join(', '));
     /* and his SET times are all still exactly where his set list puts them */
-    const sets = [585, 640, 1936, 1970, 2554, 2929, 3120, 3360, 3771, 4262];
+    const sets = [585, 638, 1936, 1970, 2554, 2929, 3120, 3355, 3771, 4262];
     const lostSets = sets.filter(t=>!CUES.some(c=>c.at === t));
     if(lostSets.length)
       throw new Error('a set change moved off its timestamp: ' + lostSets.join(', '));
@@ -3284,7 +3467,7 @@ const probe = `
     const act1 = CUES.filter(c=>c.at >= 88 && c.at <= 4269);
     /* his set list: the graveyard cloth is IN to 10:40, OUT to 32:50, IN to
        1:02:51, OUT to the act break */
-    const wantIn = t => (t < 640) || (t >= 1970 && t < 3771);
+    const wantIn = t => (t < 638) || (t >= 1970 && t < 3771);
     const wrong = act1.filter(c=>{
       const trg = c.fly.filter(x=>x.id === ls.id)[0].target;
       const isIn = trg < OUT_TRIM - 1;
@@ -3379,7 +3562,7 @@ const probe = `
     showLoad('beetlejuice');
     /* every clock in act 2.txt, converted: 1:11:47 through 2:15 */
     const his = [4307, 4329, 4336, 4465, 4497, 4498, 4504, 4623, 4843, 5105,
-                 5455, 5471, 5828, 5841, 5904, 5921, 5962, 5981, 6812, 6813,
+                 5455, 5471, 5828, 5841, 5904, 5921, 5962, 5981, 6802, 6813,
                  6818, 6879, 7064, 7187, 7313, 7319, 7559, 7602, 7716, 7748,
                  7969, 7973, 8047, 8066, 8076, 8081, 8092, 8100];
     const missing = his.filter(t=>!CUES.some(c=>c.at === t));
@@ -3397,24 +3580,33 @@ const probe = `
     const B = FLY[13];
     const list = [
       /* act one */
+      /* FIVE OF THESE ARE HIS 2026-08-13 REVISIONS (RULING CK), marked so the
+         next round can tell a number he moved from a number that drifted — which
+         is the whole reason this list is data.  Each is the SET change; where the
+         cue also carried a look, his "dont change any light cues" split it and
+         the light cue keeps its own second. */
       {at:585,  scene:'cemetery', backdrop:'in',  parts:true,  what:'9:45 the graveyard empties'},
-      {at:640,  scene:'interior', dress:'maitland', backdrop:'out', off:0, what:'10:40 backdrop out, house on'},
+      {at:638,  scene:'interior', dress:'maitland', backdrop:'out', off:0,
+       what:'10:38 backdrop out, house on (CK: 2s earlier, and gated on the cloth)'},
       {at:1936, scene:'interior', dress:'maitland', backdrop:'out', off:BJ_WAGON_BACK, what:'32:16 house back'},
       {at:1970, scene:'attic',    backdrop:'in',  what:'32:50 backdrop in, the attic'},
       {at:2554, scene:'closet',   backdrop:'in',  what:'42:34 the closet'},
       {at:2929, scene:'attic',    backdrop:'in',  what:'48:49 the attic'},
       {at:3120, scene:'bedroom',  backdrop:'in',  what:'52:00 the bedroom'},
-      {at:3360, scene:'roof',     backdrop:'in',  what:'56:00 the roof'},
+      {at:3355, scene:'roof',     backdrop:'in',  what:'55:55 the roof (CK: 5s earlier, set only)'},
       {at:3771, scene:'interior', dress:'deetz', backdrop:'out', off:0, what:'1:02:51 backdrop out, house on'},
       {at:4262, scene:'interior', dress:'deetz', backdrop:'out', curtain:'shut', what:'1:11:02 end of half'},
       /* act two */
       {at:4470, scene:'interior', dress:'bj', backdrop:'out', off:0, flyHouse:BJ_SIGN_OUT,
        what:'1:14:30 sky out, house on'},
-      {at:5125, scene:'attic',    backdrop:'in',  off:BJ_WAGON_BACK, what:'1:25:25 house back, the attic'},
-      {at:5400, scene:'interior', dress:'bj', backdrop:'out', off:0, what:'1:30:00 backdrop out, house on'},
-      /* THE ONE CHANGE IN HIS NEW LIST: 1:39:00 became 1:39:19 */
+      {at:5100, scene:'attic',    backdrop:'in',  off:BJ_WAGON_BACK,
+       what:'1:25:00 house back, the attic (CK: 25s earlier, set only)'},
+      {at:5455, scene:'interior', dress:'bj', backdrop:'out', off:0,
+       what:'1:30:55 backdrop out, house on (CK: 55s later, onto his own blackout)'},
+      /* THE ONE CHANGE IN HIS PREVIOUS LIST: 1:39:00 became 1:39:19 */
       {at:5959, scene:'afterlife', backdrop:'out', off:BJ_WAGON_BACK, what:'1:39:19 the netherworld'},
-      {at:6780, scene:'interior', dress:'bj', backdrop:'out', off:0, what:'1:53:00 house on again'},
+      {at:6795, scene:'interior', dress:'bj', backdrop:'out', off:0,
+       what:'1:53:15 house on again (CK: 15s later)'},
       {at:7985, scene:'interior', dress:'bj', backdrop:'out', off:BJ_WAGON_BACK,
        what:'2:13:05 house back, backdrop stays up, the call'},
       {at:8100, scene:'interior', dress:'bj', backdrop:'out', curtain:'shut', what:'2:15:00 curtain in'}
