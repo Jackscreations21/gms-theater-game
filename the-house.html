@@ -556,6 +556,7 @@ table.ls tr.sel td{background:#1c2230}
             <button class="b" id="flyAllOut">ALL OUT</button>
             <button class="b" id="flyStop">STOP ALL</button>
             <button class="b" id="flyPreset">SHOW LOOK</button>
+            <button class="b" id="flyShowTop">START OF SHOW</button>
           </div>
           <div class="mini" style="margin-top:7px">Trim 0 = deck. Heavier goods travel slower &mdash;
           the rail is only as fast as the operator. <b style="color:var(--red)">LOCK</b> a lineset to keep it from moving in a cue.</div>
@@ -7503,6 +7504,46 @@ function cueTop(){
   const c = CUES[0];
   toast('TOP  ▸  Q'+c.n+'  '+c.label);
   cueFiredByHand(0);
+}
+
+/* ============================================================================
+   RULING CM — THE FLY RAIL'S OWN START-OF-SHOW CALL
+
+   "Add a button in the flys that puts into start of show position with is just
+   where everything needs to be for the start of the show."
+
+   THE LOADED SHOW'S OWN FIRST CUE, AND NOTHING INVENTED.  CUES[0] already
+   carries a full fly snapshot — every lineset's target and the traveler's open —
+   recorded by the plot from that cue's own declared state (`backdrop`, `sky`,
+   `curtain`), so "where everything needs to be for the start of the show" is a
+   thing the show already says rather than a list anyone has to keep in step with
+   it.  The rail's existing SHOW LOOK button is the opposite: a hardcoded set of
+   lineset indices from before there were productions, and it is left alone.
+
+   IT IS A RAIL CALL, NOT A CUE.  It moves the fly system and nothing else — not
+   the lights, not the sound, not the cue pointer.  cueTop is what fires the cue
+   (RULING BW) and doing both from one button would make the fly rail start the
+   show, which is the fault BW was written to fix.
+
+   Through flyTo, like every other board move: it works the lock and clamps to
+   the deck, so a rail call can no more hang a cloth through the floor than a cue
+   can (INVARIANTS, minTrimOf).
+   ========================================================================== */
+function flyStartOfShow(){
+  if(!CUES.length || !CUES[0].fly){
+    toast('No show loaded — nothing to preset the rail to');
+    return false;
+  }
+  let n = 0;
+  CUES[0].fly.forEach(r=>{
+    const ls = FLY[r.id-1];
+    if(!ls) return;
+    flyTo(ls, r.target);
+    ls.travTarget = r.open;
+    n++;
+  });
+  toast('Fly rail set to the start of the show ('+n+' linesets)');
+  return true;
 }
 
 /* ============================================================================
@@ -25030,6 +25071,10 @@ $('#flyAllOut').onclick=()=>FLY.forEach(flyOut);
 $('#flyStop').onclick  =()=>FLY.forEach(ls=>ls.target=ls.pos);
 $('#flyPreset').onclick=()=>{ [0,2,3,5,6,10,11].forEach(i=>flyIn(FLY[i]));
   flyTo(FLY[13],10.6); flyTo(FLY[9],20.5); flyTo(FLY[7],20.5); FLY[1].travTarget=1; toast('Show look set'); };
+/* RULING CM — and it is deliberately NOT the SHOW LOOK button above.  That one
+   is a hardcoded list of lineset indices from before there were productions;
+   this one is the loaded show's own first cue (p6, flyStartOfShow). */
+$('#flyShowTop').onclick=()=>flyStartOfShow();
 
 $('#setRot').onclick=()=>{ if(selPiece){ selPiece.rot+=15*DEG; selPiece.group.rotation.y=selPiece.rot; refreshSetUI(); } };
 $('#setDel').onclick=()=>{ if(selPiece) strikePiece(selPiece); };
@@ -26305,6 +26350,23 @@ function vrPageFly(g, P){
     vrBtnBox(g, bx, P.y + 502, 116, 46, 'LOWER',
              ()=>{ spkBarStep('R',-1); vrDrawConsole(true); });
   }
+  /* RULING CM — THE START-OF-SHOW CALL, and it has to be HERE as well as in the
+     DOM.  "A control that exists only in the DOM does not exist in VR" is in
+     TRAPS with four rounds of unreachable Arc doors behind it, and the fly rail
+     is somewhere he stands in a headset.
+
+     PLACED AT THE FOOT OF THE COLUMN so that nothing above it moves.  The
+     natural spot is under ALL OUT with the other rail calls, and taking it would
+     push the FOH and speaker-bar pairs down 54px — which tests/vr.js finds BY
+     LITERAL PIXEL (`h.y === 86 + 136`), the trap this file's own header records.
+     A layout that reads slightly worse beats silently unhooking four buttons.
+
+     And it carries a `railCall` meta so the suite can find it by MEANING rather
+     than by pixel, which is what TRAPS says new screens should do. */
+  vrBtnBox(g, P.x + P.w - 120, P.y + 560, 116, 46, 'SHOW TOP',
+           ()=>{ flyStartOfShow(); vrDrawConsole(true); },
+           {font:'600 15px Helvetica, Arial, sans-serif'},
+           {railCall:'startOfShow'});
 }
 /* ---------------------------------------------------------- THE GOODS
    What is on a pipe, chosen from inside the headset (RULING U).  Reached

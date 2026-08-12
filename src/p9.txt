@@ -647,6 +647,23 @@ function vrPageFly(g, P){
     vrBtnBox(g, bx, P.y + 502, 116, 46, 'LOWER',
              ()=>{ spkBarStep('R',-1); vrDrawConsole(true); });
   }
+  /* RULING CM — THE START-OF-SHOW CALL, and it has to be HERE as well as in the
+     DOM.  "A control that exists only in the DOM does not exist in VR" is in
+     TRAPS with four rounds of unreachable Arc doors behind it, and the fly rail
+     is somewhere he stands in a headset.
+
+     PLACED AT THE FOOT OF THE COLUMN so that nothing above it moves.  The
+     natural spot is under ALL OUT with the other rail calls, and taking it would
+     push the FOH and speaker-bar pairs down 54px — which tests/vr.js finds BY
+     LITERAL PIXEL (`h.y === 86 + 136`), the trap this file's own header records.
+     A layout that reads slightly worse beats silently unhooking four buttons.
+
+     And it carries a `railCall` meta so the suite can find it by MEANING rather
+     than by pixel, which is what TRAPS says new screens should do. */
+  vrBtnBox(g, P.x + P.w - 120, P.y + 560, 116, 46, 'SHOW TOP',
+           ()=>{ flyStartOfShow(); vrDrawConsole(true); },
+           {font:'600 15px Helvetica, Arial, sans-serif'},
+           {railCall:'startOfShow'});
 }
 /* ---------------------------------------------------------- THE GOODS
    What is on a pipe, chosen from inside the headset (RULING U).  Reached

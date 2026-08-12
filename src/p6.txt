@@ -255,6 +255,46 @@ function cueTop(){
 }
 
 /* ============================================================================
+   RULING CM — THE FLY RAIL'S OWN START-OF-SHOW CALL
+
+   "Add a button in the flys that puts into start of show position with is just
+   where everything needs to be for the start of the show."
+
+   THE LOADED SHOW'S OWN FIRST CUE, AND NOTHING INVENTED.  CUES[0] already
+   carries a full fly snapshot — every lineset's target and the traveler's open —
+   recorded by the plot from that cue's own declared state (`backdrop`, `sky`,
+   `curtain`), so "where everything needs to be for the start of the show" is a
+   thing the show already says rather than a list anyone has to keep in step with
+   it.  The rail's existing SHOW LOOK button is the opposite: a hardcoded set of
+   lineset indices from before there were productions, and it is left alone.
+
+   IT IS A RAIL CALL, NOT A CUE.  It moves the fly system and nothing else — not
+   the lights, not the sound, not the cue pointer.  cueTop is what fires the cue
+   (RULING BW) and doing both from one button would make the fly rail start the
+   show, which is the fault BW was written to fix.
+
+   Through flyTo, like every other board move: it works the lock and clamps to
+   the deck, so a rail call can no more hang a cloth through the floor than a cue
+   can (INVARIANTS, minTrimOf).
+   ========================================================================== */
+function flyStartOfShow(){
+  if(!CUES.length || !CUES[0].fly){
+    toast('No show loaded — nothing to preset the rail to');
+    return false;
+  }
+  let n = 0;
+  CUES[0].fly.forEach(r=>{
+    const ls = FLY[r.id-1];
+    if(!ls) return;
+    flyTo(ls, r.target);
+    ls.travTarget = r.open;
+    n++;
+  });
+  toast('Fly rail set to the start of the show ('+n+' linesets)');
+  return true;
+}
+
+/* ============================================================================
    SHOW SCRIPT — the light-show programming language
    ========================================================================== */
 const Prog = {

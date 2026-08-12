@@ -1053,6 +1053,10 @@ $('#flyAllOut').onclick=()=>FLY.forEach(flyOut);
 $('#flyStop').onclick  =()=>FLY.forEach(ls=>ls.target=ls.pos);
 $('#flyPreset').onclick=()=>{ [0,2,3,5,6,10,11].forEach(i=>flyIn(FLY[i]));
   flyTo(FLY[13],10.6); flyTo(FLY[9],20.5); flyTo(FLY[7],20.5); FLY[1].travTarget=1; toast('Show look set'); };
+/* RULING CM — and it is deliberately NOT the SHOW LOOK button above.  That one
+   is a hardcoded list of lineset indices from before there were productions;
+   this one is the loaded show's own first cue (p6, flyStartOfShow). */
+$('#flyShowTop').onclick=()=>flyStartOfShow();
 
 $('#setRot').onclick=()=>{ if(selPiece){ selPiece.rot+=15*DEG; selPiece.group.rotation.y=selPiece.rot; refreshSetUI(); } };
 $('#setDel').onclick=()=>{ if(selPiece) strikePiece(selPiece); };

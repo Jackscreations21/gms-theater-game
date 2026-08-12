@@ -1107,6 +1107,69 @@ const probe = `
       throw new Error('the readout still claims a saved hang');
     return "back to the designer's hang";
   });
+  /* ══ RULING CM — THE FLY RAIL'S START-OF-SHOW CALL ════════════════════ */
+  P('START OF SHOW puts the rail where the show says, and fires nothing', ()=>{
+    showLoad('beetlejuice');
+    if(!CUES.length || !CUES[0].fly) throw new Error('the plot recorded no fly snapshot on cue 0');
+    const want = CUES[0].fly.slice();
+
+    /* RUN THE BOARD ON FIRST, and this is what the negative check taught.
+       showLoad leaves it standing AT cue 0 (standByAtTheTop), so "it did not
+       fire cue 0" is unobservable from there: a mutant that called
+       cueFiredByHand(0) moved the pointer from 1 to 1 and the house from 0.30 to
+       0.30, and every assertion below sailed through against a build that
+       started the show off the fly rail.  Fired from a mid-show look the same
+       mutation is loud. */
+    const mid = CUES.findIndex(c=>c.lx && c.lx.some(x=>x.lvl > 0.5) && c.n > 3);
+    if(mid < 0) throw new Error('no lit mid-show cue to run the board on to');
+    fireCue(mid);
+    if(Math.abs(HOUSE.house - CUES[0].house) < 1e-9 &&
+       nextCue === 1) throw new Error('the board did not actually move off cue 0');
+
+    /* put the rail somewhere it definitely is not supposed to be, INCLUDING the
+       traveler, so a call that only moved trims would be caught */
+    FLY.forEach(l=>{ l.locked = false; l.target = l.pos = OUT_TRIM; l.travTarget = l.open = 1; });
+    /* and note where everything the call must NOT touch stands */
+    const pointer = nextCue, house = HOUSE.house;
+    const lvl0 = FIXTURES.map(f=>f.level);
+
+    /* THROUGH THE DOM (TRAPS: a detached handler fires perfectly well) */
+    const btn = document.querySelector('#flyShowTop');
+    if(!btn) throw new Error('there is no START OF SHOW button on the fly page');
+    btn.click();
+
+    for(const r of want){
+      const ls = FLY[r.id-1];
+      if(!ls) continue;
+      if(Math.abs(ls.target - r.target) > 1e-6)
+        throw new Error('lineset '+r.id+' went to '+ls.target.toFixed(2)+', the show says '+r.target.toFixed(2));
+      if(Math.abs(ls.travTarget - r.open) > 1e-6)
+        throw new Error('lineset '+r.id+' traveler is at '+ls.travTarget+', the show says '+r.open);
+    }
+    /* it really MOVED something — a call that no-oped would pass the loop above
+       if the snapshot happened to be all-out */
+    const moved = want.filter(r=>Math.abs(r.target - OUT_TRIM) > 0.01).length;
+    if(!moved) throw new Error('cue 0 hangs everything out, so this proves nothing — check the plot');
+
+    /* A RAIL CALL, NOT A CUE.  cueTop fires the cue (RULING BW); this must not,
+       or the fly rail starts the show, which is the fault BW exists to fix. */
+    if(nextCue !== pointer) throw new Error('it moved the cue pointer to '+nextCue);
+    if(HOUSE.house !== house) throw new Error('it moved the house master to '+HOUSE.house);
+    if(FIXTURES.some((f,i)=>f.level !== lvl0[i])) throw new Error('it moved the lights');
+    return moved+' of '+want.length+' linesets set from the show own first cue, nothing fired';
+  });
+
+  P('START OF SHOW declines when there is no show to preset to', ()=>{
+    showStrike();
+    CUES.length = 0;
+    const before = FLY.map(l=>l.target);
+    document.querySelector('#flyShowTop').click();
+    if(FLY.some((l,i)=>Math.abs(l.target - before[i]) > 1e-6))
+      throw new Error('it moved the rail with no cue stack loaded');
+    showLoad('outsiders');
+    return 'empty stack: nothing moved';
+  });
+
   P('a hang referring to goods that have gone is survivable', ()=>{
     showLoad('outsiders');
     const spare = FLY.find(l=>l.goodsKey === 'none');
