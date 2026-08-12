@@ -18,6 +18,22 @@ one of these drew it.
 Each is ~40 lines of probe on top of the same jsdom harness the tests use.
 Copy one and change the eye position to look at something else.
 
+One that measures FILES rather than a view:
+
+    node models.js [--from <dir of his raw Meshy exports>]
+
+What a delivered `.glb` actually does when the real importer lands it. Two
+halves on purpose: a container scan straight off the glb bytes (triangles,
+materials, texture sizes, stray lights, the raw box — exact, because jsdom
+decodes no PNG and anything measured through the loader would be guessing),
+then a real import run that serves the files to the actual `loadSetModels`
+fetch and measures what lands **in world space against the frame it has to be
+seen through**. The second half is the point: the budgets are all about cost,
+and nothing else in the repo checks that a fitted set is SEEABLE. It is what
+found RULING BX — five sets landing over the audience, three of them a third
+taller than the picture — and it reports walkables lost to a file that names
+no `walk_` mesh.
+
 One outlier — it measures a video, not the game, so it loads no harness at
 all, only ffmpeg (`winget install Gyan.FFmpeg`, then a FRESH shell):
 
