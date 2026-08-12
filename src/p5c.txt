@@ -1708,13 +1708,23 @@ function showCueExtras(c){
      the audience cannot see is honest and lands now: the parked wagon is
      dressed in the wings, then called on already wearing it.  A swap on a
      set they CAN see waits on SHOW.pendDress until the set goes off
-     (RULING AY: nothing ever pops), which sceneApply applies.  Seen is
+     (RULING AY: nothing ever pops), which sceneApply applies.  Seen was
      judged on DRAWN-ness, not on sc.on: a set mid-way out of a changeover
      has already been marked off, but its layers are on and the audience is
-     watching it leave — a swap then is exactly the pop the ruling forbids. */
+     watching it leave — a swap then is exactly the pop the ruling forbids.
+
+     RULING BQ BROKE THAT EQUIVALENCE AND THE SUITE CAUGHT IT.  Drawn no longer
+     means seen: a parked set is drawn precisely so that it goes on existing
+     backstage.  Judged on drawn-ness alone, a dress cue on a parked wagon
+     deferred FOR EVER — and the room was then called on still wearing the old
+     dressing, which is the opposite of what AY wants.  So the test is drawn AND
+     (on, or still travelling): on is seen, mid-exit is seen, parked is not.  The
+     original reasoning above is intact — it is the third state that is new. */
   if(c.dress && typeof bjDress === 'function' && SHOW.scenes.length){
     const dn = c.scene || SHOW.scene, dsc = sceneFind(dn);
-    if(dsc && !dsc.group.userData.sceneOff) SHOW.pendDress = {scene:dn, key:c.dress};
+    const seen = dsc && !dsc.group.userData.sceneOff &&
+                 (dsc.on || (typeof sceneTravelling === 'function' && sceneTravelling(dsc)));
+    if(seen) SHOW.pendDress = {scene:dn, key:c.dress};
     else bjDress(dn, c.dress);
   }
   /* a cue can send travelling scenery somewhere.  One cue may move more than

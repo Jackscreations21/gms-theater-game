@@ -462,7 +462,7 @@ const probe = `
     return 'from -14.00, half way '+half.toFixed(2)+', arrived 0.00 — in world space';
   });
 
-  P('a set still travelling stays drawn, whatever the cue says', ()=>{
+  P('a set still travelling stays drawn, and then PARKS rather than vanishing', ()=>{
     showLoad('beetlejuice');
     const sc = sceneTravel(sceneFind('attic'), 'x', 0, 2.0);
     sceneShow('attic');
@@ -474,11 +474,25 @@ const probe = `
     if(dark) throw new Error(dark+' meshes went dark halfway across the deck');
     if(!lit) throw new Error('the attic has no meshes to test');
     run(480, 1/60);                        // let it get where it is going
-    let after = 0;
-    sc.group.traverse(o=>{ if(o.isMesh && o.layers.mask !== 0) after++; });
-    if(after) throw new Error(after+' meshes still live after it arrived and hid');
-    if(sc.group.userData.sceneOff !== true) throw new Error('never marked off');
-    return lit+' meshes drawn while travelling, all of them inert on arrival';
+    /* RULING BQ REVERSED THE SECOND HALF OF THIS ASSERTION IN PLACE.  It used to
+       demand that every mesh went inert the moment the travel landed.  The attic
+       declares a park, so it arrives and STANDS THERE, drawn — that is the whole
+       of the ruling, and the first half above (drawn while travelling, RULING AY)
+       is untouched.  What must still be true of a parked set is the other half of
+       the job layers.disableAll() used to do: it is not in front of the
+       crosshair.  Measured at 8.3x a frame if it is (tools/parked.js). */
+    let after = 0, pickable = 0;
+    sc.group.traverse(o=>{
+      if(!o.isMesh) return;
+      if(o.layers.mask !== 0) after++;
+      if(o.raycast === THREE.Mesh.prototype.raycast) pickable++;
+    });
+    if(!after) throw new Error('the parked attic went dark — BQ says it stands backstage');
+    if(sc.group.userData.sceneOff !== false)
+      throw new Error('a parked set is still marked sceneOff');
+    if(pickable)
+      throw new Error(pickable+' parked meshes are still in front of the crosshair');
+    return lit+' drawn while travelling, all '+after+' still standing once parked, none pickable';
   });
 
   P('what you can stand on rides the set that is moving', ()=>{
@@ -640,17 +654,24 @@ const probe = `
 
   P('a set with NO part movers still changes instantly under the changeover', ()=>{
     showLoad('beetlejuice');
-    /* the attic and the bedroom fly now (the choreography round), so the
-       part-less pair is the exterior and the bare stage — neither carries
-       a part mover, and neither ever should without choreography of its own */
-    sceneChangeTo('house');
-    const a = sceneFind('house'), b = sceneFind('bare');
-    if(a.pmv || b.pmv) throw new Error('this test needs two scenes with no parts');
+    /* THE FIXTURE IS BUILT HERE NOW, and that is the point of the change.  This
+       used to borrow the exterior and the bare stage as "the two with no parts",
+       and RULING CE gave the exterior a tracked entrance — so after it there was
+       exactly ONE part-less scene in the whole production and the test could only
+       report that it had nothing to work with.  Borrowing a show's scenery to test
+       an ENGINE rule dates the test to that show's choreography; this makes its
+       own pair, and neither has a park either, so both take the old path. */
+    const a = sceneAdd('__flat', 'FLAT');
+    a.group.add(new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshBasicMaterial()));
+    const b = sceneFind('bare');
+    if(a.pmv || b.pmv) throw new Error('this fixture needs two scenes with no parts');
+    if(a.parks || b.parks) throw new Error('this fixture needs two scenes with no park');
+    sceneChangeTo('__flat');
     sceneChangeTo('bare');                   // no run(): the swap must not wait a frame
-    if(a.group.userData.sceneOff !== true) throw new Error('the house waited to hide');
-    if(litIn(a.group)) throw new Error('house pieces still live after an instant change');
+    if(a.group.userData.sceneOff !== true) throw new Error('the part-less set waited to hide');
+    if(litIn(a.group)) throw new Error('its pieces are still live after an instant change');
     if(b.group.userData.sceneOff !== false) throw new Error('the bare stage is not on');
-    return 'house off and inert, bare on, in the same call — the other shows keep their swap';
+    return 'off and inert, bare on, in the same call — a set with no park still vanishes';
   });
 
   P('a cue with scene: runs the changeover, not an instant swap', ()=>{

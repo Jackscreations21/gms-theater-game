@@ -11368,13 +11368,23 @@ function showCueExtras(c){
      the audience cannot see is honest and lands now: the parked wagon is
      dressed in the wings, then called on already wearing it.  A swap on a
      set they CAN see waits on SHOW.pendDress until the set goes off
-     (RULING AY: nothing ever pops), which sceneApply applies.  Seen is
+     (RULING AY: nothing ever pops), which sceneApply applies.  Seen was
      judged on DRAWN-ness, not on sc.on: a set mid-way out of a changeover
      has already been marked off, but its layers are on and the audience is
-     watching it leave — a swap then is exactly the pop the ruling forbids. */
+     watching it leave — a swap then is exactly the pop the ruling forbids.
+
+     RULING BQ BROKE THAT EQUIVALENCE AND THE SUITE CAUGHT IT.  Drawn no longer
+     means seen: a parked set is drawn precisely so that it goes on existing
+     backstage.  Judged on drawn-ness alone, a dress cue on a parked wagon
+     deferred FOR EVER — and the room was then called on still wearing the old
+     dressing, which is the opposite of what AY wants.  So the test is drawn AND
+     (on, or still travelling): on is seen, mid-exit is seen, parked is not.  The
+     original reasoning above is intact — it is the third state that is new. */
   if(c.dress && typeof bjDress === 'function' && SHOW.scenes.length){
     const dn = c.scene || SHOW.scene, dsc = sceneFind(dn);
-    if(dsc && !dsc.group.userData.sceneOff) SHOW.pendDress = {scene:dn, key:c.dress};
+    const seen = dsc && !dsc.group.userData.sceneOff &&
+                 (dsc.on || (typeof sceneTravelling === 'function' && sceneTravelling(dsc)));
+    if(seen) SHOW.pendDress = {scene:dn, key:c.dress};
     else bjDress(dn, c.dress);
   }
   /* a cue can send travelling scenery somewhere.  One cue may move more than
@@ -13560,8 +13570,31 @@ const BJ_HOUSE_PARK_X = 14.0;
    ~13m set fits in a wing, so: the wagon takes stage LEFT and the attic — 10m
    deep and 13.06m wide — goes UPSTAGE, where 10m of depth clears the brick at
    PAL_BACK by 1.2m.  Three sets, three slots, and the fly rail kept clear. */
-const BJ_EXT_SIDE   = -11.0;   // -x, stage right: the fly-rail side, inside the rail
-const BJ_ATTIC_BACK = -10.0;   // upstage, clear of the brick at PAL_BACK
+/* BOTH OF THESE ARE SIZED BY THE STAND-IN, NOT BY HIS MODEL, and two new
+   assertions found that the hard way.  The stand-ins are the BIGGER case and they
+   are what plays whenever a file has not landed — on a fresh clone, over slow
+   wifi, and in every suite, because jsdom fetches nothing.  Fitting a park to his
+   measured geometry alone parks the fallback in the picture.
+
+     the exterior   stand-in 12.6m wide (a painted drop FILLS the opening, which
+                    is why it used to fly), his model 8.6m fitted
+     the attic      stand-in reaches z -12.40, his model -10.30 */
+const BJ_EXT_SIDE   = -13.5;   /* -x, the fly-rail side.  13.5 clears the picture
+                                  edge at -6.8 for the 12.6m stand-in (parking it
+                                  at -19.80..-7.20) as well as for his house
+                                  (-17.82..-9.18).  The locking rail is at -19.2:
+                                  his fitted house clears it by 1.4m, and the
+                                  full-width stand-in drop reaches 0.6m past it.
+                                  That overlap is accepted rather than hidden — a
+                                  drop that fills the opening cannot park in a
+                                  wing at all, and the fallback standing near the
+                                  rail is better than the fallback standing in the
+                                  picture.  Both are well inside the wall at -22. */
+const BJ_ATTIC_BACK = -8.8;    /* upstage.  Bounded by the STAND-IN attic, which
+                                  reaches z -12.40 and so parks at -21.20 against
+                                  the brick at PAL_BACK -21.5 — 0.3m to spare.
+                                  -10.0 was measured against his model alone and
+                                  put the stand-in 0.90m into the brick. */
 const BJ_TRACK_SPEED = 2.0;    // m/s — a tracked set crosses in ~7s
 
 /* THE NETHERWORLD, to his three words (RULING BV amended).

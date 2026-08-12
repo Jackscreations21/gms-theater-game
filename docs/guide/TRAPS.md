@@ -504,6 +504,47 @@ against this list before opening a PR; **add new traps as you hit them.**
   that nothing CHANGED, so record `{emissive, emissiveIntensity, emissiveMap}`
   before and diff after.
 
+## Parked sets, and stand-ins (RULINGS BQ / CE)
+
+- **A position fitted to HIS model parks the STAND-IN in the picture.** The
+  exterior's wing park was sized off his fitted 8.6m house and measured clear;
+  the stand-in it replaces is a **12.6m painted drop** — a drop fills the opening,
+  which is why it used to fly — so the same offset parked the fallback at x −4.70,
+  in the middle of a 13.6m picture. The attic went the same way in the other
+  direction: sized to his model it put the stand-in **0.90m through the Palace
+  brick**. **The stand-in is the BIGGER case and it is the one that plays** on a
+  fresh clone, over slow wifi before a 27MB file lands, and in **every suite**,
+  because jsdom fetches nothing. Size a park to the stand-in and let his model be
+  the comfortable case. Two new assertions caught both, and only because they
+  measured world boxes rather than reading the constants back.
+- **`sceneOff` meant two things and BQ split them.** It meant *not drawn* AND
+  *not seen*, and those were the same thing while a struck set was switched off.
+  A parked set is drawn ON PURPOSE, so every test of "can the audience see it"
+  written as `!sceneOff` silently inverted: the dress deferral (RULING AY) decided
+  a parked wagon was in full view and **deferred the swap for ever**, so the room
+  was called on still wearing the old dressing — the exact pop AY exists to
+  prevent. The condition is now drawn **and** (`sc.on` or still travelling): on is
+  seen, mid-exit is seen, parked is not. Same family as `userData.moves` meaning
+  both "don't freeze" and "crew keep off".
+- **Layers were doing two jobs too** — not drawn and not raycast — and BQ only
+  wants the first back. A parked mesh gets `raycast = NOOP` instead, restored only
+  for meshes that did not already carry their own (a decorative instanced batch
+  does, deliberately, and deleting it would put 1,400 seats back on every pick).
+  Measured: leaving parked sets pickable costs **9.23ms — 83% of a 90Hz frame —
+  from the wings looking at the parked house**, against 1.11ms with the opt-out,
+  and only 1.0x from a seat, because off-axis the bounding sphere rejects for
+  nothing. Where you point is the whole cost; the seat figure is the misleading
+  one. `tools/parked.js` keeps both.
+- **A wrapper group inserted to carry a park breaks whatever reads the scene's
+  structure.** The first version wrapped each scene's children and the model
+  importer — which strips the built-in shell out of `sc.group` before landing a
+  whole house — found the wrapper instead of the shell, so his house landed **on
+  top of** ours. `sceneMvAdvance` writes one axis and nothing else, so two movers
+  over the SAME group are free as long as the axes differ: the wagon keeps z and
+  the park takes x. And if you do wrap, wrap **after** the scene is fully built —
+  registered beside `sceneTravel`, the interior's park wrapped the shell only and
+  the parked room measured 27.6m wide, three dressings still standing on stage.
+
 ## Probes
 
 - **A probe that reports a ruling as a fault is worse than no probe.**
