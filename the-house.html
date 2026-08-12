@@ -13837,6 +13837,67 @@ const BJ_SIDE_ROOM   = -11.6;
 const BJ_CLOSET_BACK = -6.0;
 const BJ_TRACK_SPEED = 2.0;    // m/s — a tracked set crosses in ~7s
 
+/* ============================================================================
+   RULING CT — A FLOWN SET IS THIN
+
+   "But make the house exterior and roof set really thin to fit up in the fly
+    area."
+
+   He is right, and the measurement is the argument:
+
+     the roof         10.00m deep      a set that does not hang on a batten
+     the exterior      8.77m deep      the same
+     the netherworld   6.90m deep      already squashed once, by RULING BV
+
+   Same fault BV fixed and the same fix: SQUASH THE RECESSION ABOUT THE
+   DOWNSTAGE FACE, which does not move — so the picture starts exactly where it
+   started and simply does not reach as far upstage.
+
+   AND IT IS A NON-UNIFORM SCALE, WHICH THIS FILE OTHERWISE REFUSES.  RULING CB
+   kept the fit uniform on purpose ("43% of horizontal stretch would have
+   distorted every door and window in the house").  A thinned roof IS a squashed
+   roof: its slope steepens and its dormer shortens.  That is what "really thin"
+   asks for on a piece that has to live on a batten, and it is his call —
+   BJ_THIN is one line back to 1.0 if the squash reads worse than the depth.
+
+   BOTH THE STAND-IN AND HIS MODEL, because the stand-in is the bigger case and
+   the one that plays on a fresh clone, over slow wifi, and IN EVERY SUITE —
+   jsdom fetches nothing, so thinning only the imported file would leave this
+   ruling untestable in the only place anything tests it. */
+const BJ_THIN = 0.28;          // 10.00m -> 2.80m, 8.77m -> 2.46m
+
+/* THE THREE FLOWN SETS STILL SHARE THE TOWER, AND THAT WAS TRIED AND MEASURED
+   RATHER THAN ASSUMED.  Flying preserves x and z, so every flown set wants the
+   same volume above the stage; RULING CE recorded the overlap as inherent, and
+   the obvious payoff of thinning is that they should now hang on separate lines
+   like real scenery.  They cannot, and the reason is worth keeping:
+
+     THE STAND-IN EXTERIOR IS NOT WHERE HIS EXTERIOR IS.  Ours is a painted cloth
+     hanging at z -7.35 — deliberately, so it plays against its own sky on line
+     13 at -10.10 with room between the two to light the sky.  His model seats
+     against the arch at z -2.76 .. -0.30.  That is 7m apart, and a park is an
+     OFFSET, so no single number puts both on the same line.  Every set of
+     offsets that separated his three left the stand-ins standing in each other,
+     and the reverse.
+
+     AND THE DEPTH IS NOT THERE EITHER.  Thinned, the three are 2.46 + 3.05 +
+     6.90 = 12.41m of set against 11.50m of tower downstage of the stored wagon's
+     face at z -11.80 (RULING CO).  Separating them needs one to reach over the
+     house, and a set that reaches over the house has to clear a 12.76m roofline
+     to do it.
+
+   So they go on sharing it, exactly as CE said, and the honest gain is the size
+   of the overlap rather than its absence.  Measured, on the axis the thinning
+   acts on: the deepest set-inside-set was 8.77m and is 2.46m, and the worst pair
+   overall went 12.30 x 7.95 x 8.77m to 8.63 x 8.66 x 2.46m.  Nothing sees any of
+   it — it is all above a 9.2m picture, and 0 rays of 1025 from a stalls eye
+   reach any of them.
+
+   WHAT WOULD ACTUALLY FIX IT is a park stated as an absolute LINE rather than an
+   offset, measured off whichever geometry is standing there — and models land
+   asynchronously, long after the park is declared, so that is an engine change
+   and not a number.  Flagged, not smuggled in. */
+
 /* THE NETHERWORLD, to his three words (RULING BV amended).
 
    `thinner` MEANT THE SET, NOT THE TUBES: "i meant the set shouldnt be as deep."
@@ -14019,6 +14080,38 @@ function bjTrackWhole(sc, axis, out, speed){
 }
 /* the three he named, plus the netherworld: out through the header on y */
 function bjFlyWhole(sc){ return bjTrackWhole(sc, 'y', BJ_PART_OUT, BJ_FLY_SPEED); }
+
+/* RULING CT — squash a built set in DEPTH about its own downstage face.
+
+   The wrapper does the whole job: a point at the front face maps to itself
+   (front*f + front*(1-f) = front) and a point d metres upstage of it maps to
+   d*f upstage.  So the picture starts where it started, exactly as BJ_AFT_DEEP
+   does for the netherworld's authored z values — the difference is that this
+   one squashes the PIECES too, which is the point.  A 5.2m roof deck has to
+   become a 1.5m one or the set is still 5.2m deep however close together its
+   parts stand.
+
+   CALLED BEFORE bjFlyWhole, like everything else that wraps: it takes the
+   children that exist when it runs.
+
+   The box is read in the scene group's own space — the group is added to
+   showRoot(), which is at the origin for the Palace and need not be for another
+   stage, and a front face measured in world coordinates would put the squash
+   plane in the wrong building. */
+function bjThinWhole(sc, f){
+  if(!sc || !(f > 0) || f === 1) return null;
+  const g = new T.Group();
+  g.name = 'bj:' + sc.name + ':thin';
+  sc.group.updateMatrixWorld(true);
+  const b = new T.Box3().setFromObject(sc.group);
+  if(b.isEmpty() || !isFinite(b.max.z)) return null;
+  const front = b.max.z - sc.group.getWorldPosition(new T.Vector3()).z;
+  while(sc.group.children.length) g.add(sc.group.children[0]);
+  g.scale.z = f;
+  g.position.z = front * (1 - f);
+  sc.group.add(g);
+  return g;
+}
 const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
                               // its bottom edge ends at 12.7 against a 10.4
                               // proscenium, so it is properly masked out
@@ -15428,6 +15521,8 @@ SHOWS.beetlejuice = {
        and the brick at PAL_BACK.  Both wings are already spoken for by the 13.6m
        wagon and the 13.06m attic.  So it flies, and "as little as possible" comes
        out at four of nine rather than three.  Flagged for him. */
+    /* RULING CT — NOT thinned: he named the roof and the exterior, and RULING BV
+       already took this one from 12.45m to 6.90m on his own word. */
     bjFlyWhole(aft);
 
     /* ================================================================
@@ -15596,6 +15691,11 @@ SHOWS.beetlejuice = {
         m.castShadow = true; rof.group.add(m);
       }
     }
+    /* RULING CT — thinned first, so the wrapper the fly-out uses wraps the
+       squashed set: 5.00m of stand-in roof becomes 1.40m, and the deck you stand
+       on comes with it.  The slope steepens; that is what "really thin" does to
+       a roof and it is his call (see BJ_THIN). */
+    bjThinWhole(rof, BJ_THIN);
     bjFlyWhole(rof);              // the roof flies, its walkable deck riding
 
     /* ================================================================
@@ -20675,7 +20775,12 @@ const BJ_MODELS = {
   attic:       {scene:'attic',     fit:13.4, url:'assets/bj-attic.glb'},
   closet:      {scene:'closet',    fit:6.1,  url:'assets/bj-closet.glb'},
   bedroom:     {scene:'bedroom',   fit:10.1, url:'assets/bj-bedroom.glb'},
-  roof:        {scene:'roof',      fit:13.4, url:'assets/bj-roof.glb'},
+  /* RULING CT — `thin` is the one distortion this file allows, and only on the
+     two he named: "make the house exterior and roof set really thin to fit up in
+     the fly area."  His roof lands 10.00m deep and does not hang on a batten;
+     at BJ_THIN it lands 2.80m.  The stand-in is squashed by the same number in
+     p5h, because it is what plays whenever a file has not landed. */
+  roof:        {scene:'roof',      fit:13.4, thin:BJ_THIN, url:'assets/bj-roof.glb'},
   graveyard:   {scene:'cemetery',  fit:13.4, url:'assets/bj-graveyard.glb'},
   netherworld: {scene:'afterlife', fit:13.4, url:'assets/bj-netherworld.glb'},
   /* THE EXTERIOR IS A MODEL NOW (RULING BZ).  RULING AW read the production
@@ -20689,7 +20794,8 @@ const BJ_MODELS = {
      height is what limits it, not this width: 1.846 x 1.903 x 1.876 out of the
      tool is very nearly a cube, so BX's opening cap binds first and it lands
      8.63m wide whatever this number says. */
-  houseExterior: {scene:'house',   fit:13.4, url:'assets/bj-house-exterior.glb'},
+  houseExterior: {scene:'house',   fit:13.4, thin:BJ_THIN,
+                  url:'assets/bj-house-exterior.glb'},
   /* THE SIGN IS HIS GEOMETRY AND OUR LAMPS (RULING CA).  His note with the file
      is the whole brief: "you just have to add the lights".
 
@@ -20996,8 +21102,24 @@ const BJ_FIT_AIR = 0.30, BJ_SET_DEPTH = 10.0;
 
    The brick still outranks it — the extra push comes out of the depth a
    filling set is allowed, not out of the back wall. */
-function bjFitAndSeat(root, targetW, fill, upstage){
+/* RULING CT — an entry may ask to be THINNED, and the depth cap has to know.
+   "make the house exterior and roof set really thin to fit up in the fly area."
+
+   The squash is a z-only scale on the landed root, applied after the uniform fit
+   and BEFORE the seat — so the seat, which puts the downstage face a fixed
+   distance off the arch, keeps the picture starting exactly where it started.
+   Everything RULING CB says about uniform scale still holds for width and
+   height; this is the one axis he has asked to be distorted, and it is the axis
+   nobody looks down.
+
+   AND THE DEPTH CAP IS MEASURED ON WHAT LANDS, not on what arrived.  BJ_SET_DEPTH
+   binds first for a set that is nearly a cube — his roof came out 13.05m wide
+   because 10m of stage depth capped it — and a set that is about to be squashed
+   to 28% of its depth is not the set that cap is for.  Reading it after the thin
+   lets the WIDTH bind instead, which is what a flown piece wants. */
+function bjFitAndSeat(root, targetW, fill, upstage, thin){
   const up = upstage || 0;
+  const th = (thin > 0) ? thin : 1;
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root);
   if(!isFinite(box.min.x) || box.isEmpty()) return 1;
@@ -21010,12 +21132,13 @@ function bjFitAndSeat(root, targetW, fill, upstage){
     /* the width is the whole point; only the brick still binds — and the push
        upstage (CD) comes out of the depth available, never out of the wall */
     if(size.z > 1e-6)
-      s = Math.min(s, (Math.abs(D.backWall) - BJ_FIT_AIR - up) / size.z);
+      s = Math.min(s, (Math.abs(D.backWall) - BJ_FIT_AIR - up) / (size.z * th));
   } else {
     if(size.y > 1e-6) s = Math.min(s, (BJ.opH - BJ_FIT_AIR) / size.y);
-    if(size.z > 1e-6) s = Math.min(s, BJ_SET_DEPTH / size.z);
+    if(size.z > 1e-6) s = Math.min(s, BJ_SET_DEPTH / (size.z * th));
   }
   root.scale.multiplyScalar(s);
+  if(th !== 1) root.scale.z *= th;
   /* re-measure AFTER scaling rather than multiplying the old box: a child
      transform inside the model makes the two disagree, and this is cheap */
   root.updateMatrixWorld(true);
@@ -21226,7 +21349,7 @@ function bjApplyModel(entry, root, scGiven){
   let s = entry.scale || 1;
   if(s !== 1) root.scale.multiplyScalar(s);
   else if(entry.centre) s = bjFitAndCentre(root, entry.fit, entry.centre);
-  else if(entry.fit) s = bjFitAndSeat(root, entry.fit, entry.fillWidth, entry.upstage);
+  else if(entry.fit) s = bjFitAndSeat(root, entry.fit, entry.fillWidth, entry.upstage, entry.thin);
 
   /* collect the model's walkables BEFORE routing — the split route detaches
      the top-level nodes from the root, and a traverse after that sees none */
@@ -21266,9 +21389,23 @@ function bjApplyModel(entry, root, scGiven){
         if(keep.indexOf(c) < 0) sc.group.remove(c);
       }
     }
+  } else if(sc.pmv && sc.pmv.all){
+    /* an 'all'-wrapped set (bjTrackWhole, and bjFlyWhole through it): the model
+       goes INSIDE the wrapper, so it keeps travelling (RULING AY).
+
+       ROUTED BY THE WRAPPER'S NAME, NOT BY HOW MANY MOVERS THERE ARE.  This read
+       `pmvKeys.length === 1`, and RULING CT gives the flown sets a second mover
+       for the line they hang on — so his 99k-triangle roof took the CEMETERY's
+       route, which strips every part group and deals the top-level nodes out by
+       the sign of their x.  The roof measured as an empty box: one mesh, dealt
+       into a group, with the stand-in stripped out from under it.  A count is not
+       a kind; `all` is the name that means "the whole set travels on this one",
+       and it is what the question was always asking. */
+    const g = sc.pmv.all.group;
+    bjStrip(g);
+    g.add(root);
+    landed.push(root);
   } else if(pmvKeys.length === 1){
-    /* one part mover is an 'all'-wrapped flying set (bjFlyWhole): the model
-       goes INSIDE the flyer, so it keeps flying (RULING AY) */
     const g = sc.pmv[pmvKeys[0]].group;
     bjStrip(g);
     g.add(root);

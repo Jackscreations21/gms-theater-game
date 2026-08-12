@@ -1479,6 +1479,61 @@ const probe = `
            ' over a ' + BJ.opH + 'm picture, under a ' + D.gridY + 'm grid, wing clear';
   });
 
+  P('RULING CT: a flown set is thin, and its downstage face does not move', ()=>{
+    showLoad('beetlejuice');
+    const rof = sceneFind('roof');
+    sceneShow('roof');
+    const b = box(rof.group);
+    const depth = b.max.z - b.min.z;
+    /* A BATTEN IS THE POINT.  "make the house exterior and roof set really thin
+       to fit up in the fly area" — the stand-in roof was 5.00m front to back and
+       his model 10.00m, and neither of those hangs on a line.  The bound is
+       stated rather than derived: a flown piece that is more than a couple of
+       metres deep is not a flown piece. */
+    if(depth > 2.0)
+      throw new Error('the roof is ' + depth.toFixed(2) + 'm deep — that does not hang on a batten');
+    /* AND THE PICTURE STARTS WHERE IT STARTED, which is the whole reason the
+       squash is about the downstage face.  The gutter is the downstage-most
+       thing the roof is built with: authored at z -3.9 on a 0.30 box, so its
+       face is -3.75, and BJ_THIN must leave it exactly there. */
+    if(Math.abs(b.max.z - (-3.75)) > 0.02)
+      throw new Error('the downstage face moved to z ' + b.max.z.toFixed(2) + ', not -3.75');
+    /* the deck you stand on came with it — a thin roof with a full-depth deck
+       inside it is not thin, it is a thin roof standing in a thick one */
+    const deck = rof.walk[0];
+    if(!deck) throw new Error('the roof files nothing walkable, so half of this proves nothing');
+    const db = box(deck);
+    if(db.max.z - db.min.z > 2.0)
+      throw new Error('the deck is still ' + (db.max.z - db.min.z).toFixed(2) + 'm deep');
+    /* and the netherworld is NOT thinned — he named two sets and RULING BV
+       already cut this one to 6.90m on his own correction */
+    sceneShow('afterlife');
+    const ab = box(sceneFind('afterlife').group);
+    if(ab.max.z - ab.min.z < 4)
+      throw new Error('the netherworld was thinned too, and he did not ask for that');
+    return 'the roof ' + depth.toFixed(2) + 'm deep, face still at z ' + b.max.z.toFixed(2) +
+           ', deck ' + (db.max.z - db.min.z).toFixed(2) + 'm; the netherworld left at ' +
+           (ab.max.z - ab.min.z).toFixed(2) + 'm';
+  });
+
+  P('RULING CT: only the two he named are thinned, and the manifest says so', ()=>{
+    /* the model half of the same ruling.  It is stated on the ENTRY, so a set
+       that quietly grows a squash — or loses one — fails here rather than in a
+       headset. */
+    const want = ['roof', 'houseExterior'];
+    const has = Object.keys(BJ_MODELS).filter(k=>{
+      const e = BJ_MODELS[k];
+      return e && typeof e === 'object' && e.thin !== undefined;
+    });
+    for(const k of want) if(has.indexOf(k) < 0)
+      throw new Error(k + ' is not thinned, and he named it');
+    for(const k of has) if(want.indexOf(k) < 0)
+      throw new Error(k + ' is thinned, and he did not name it');
+    for(const k of has) if(!(BJ_MODELS[k].thin > 0 && BJ_MODELS[k].thin < 1))
+      throw new Error(k + ' thins by ' + BJ_MODELS[k].thin + ', which squashes nothing');
+    return has.join(', ') + ' at ' + BJ_THIN;
+  });
+
   P('RULING CO: the house is stored BEHIND THE BACKDROP, and nothing else is', ()=>{
     showLoad('beetlejuice');
     /* "make it so no matter what they are always stored behind the backdrop and
@@ -1578,17 +1633,24 @@ const probe = `
        bedroom and the closet come down out of it.  Which makes this the assertion
        that has to catch RULING CS's whole problem: 8.62 and 9.02 metres of room
        in one 14.5m wing only fit because the closet stands BEHIND the bedroom. */
+    /* RULING CT SHRANK THE OVERLAP AND DID NOT REMOVE IT, and that was tried
+       before it was written down (the argument is in p5h, at the flown sets).
+       Our exterior is a cloth hanging at z -7.35 and HIS seats at the arch: a
+       park is an offset, so no single number lines both up, and every set of
+       offsets that separated his three left the stand-ins inside each other.
+       So the flown sets go on sharing the tower — with the deepest set-inside-set
+       down from 8.77m to 2.46m, which is what the thinning actually bought. */
     const TRACKED = ['interior', 'attic', 'bedroom', 'closet'];
     for(let i = 0; i < TRACKED.length; i++) for(let j = i+1; j < TRACKED.length; j++){
       const a = boxes[TRACKED[i]], b = boxes[TRACKED[j]];
-      if(!a || !b) throw new Error('a tracked set has no measured park');
+      if(!a || !b) throw new Error('a parked set has no measured park');
       if(!a.intersectsBox(b)) continue;
       const o = a.clone().intersect(b), d = o.getSize(new THREE.Vector3());
       if(Math.min(d.x, d.y, d.z) > 0.05)
         throw new Error(TRACKED[i] + ' and ' + TRACKED[j] + ' park inside each other by ' +
                         d.x.toFixed(2) + ' x ' + d.y.toFixed(2) + ' x ' + d.z.toFixed(2) + 'm');
     }
-    return Object.keys(boxes).length + ' parks all clear, and the three tracked sets do not overlap';
+    return Object.keys(boxes).length + ' parks all clear, and not one of them stands inside another';
   });
 
   /* the plot's own spine, driven through the REAL cue path — fireCue and
@@ -4710,6 +4772,35 @@ const wd = setTimeout(() => {
        check is that the apply path scaled and seated it — not its world y */
     if(size.x < 5) throw new Error('it landed at tool scale: ' + size.x.toFixed(2) + 'm');
     return 'the attic entry landed ' + size.x.toFixed(2) + 'm wide from a 1.9-unit file';
+  });
+
+  await P('a model lands INSIDE the mover that carries the set, not beside it', async () => {
+    /* THE CLOSET IS THE CASE, and it is new: RULING CS gives it a SECOND mover
+       (the depth it stands at in the wing) on top of the wrapper it travels on.
+       bjApplyModel used to choose its route by COUNTING part movers — one meant
+       "a wrapped flying set", more than one meant "the cemetery, deal the nodes
+       out by the sign of their x" — so a set with a park as well as a wrapper
+       took the cemetery's route and its model landed in whichever group the
+       dealing picked, with the stand-in stripped out from under it.  Seen once
+       already, on the roof, as a set that measured as an empty box.
+
+       A count is not a kind.  `all` is the name that means "the whole set travels
+       on this one", and this asserts the model ends up under it. */
+    const sc = w.sceneFind('closet');
+    if(!sc) throw new Error('there is no closet scene');
+    if(!sc.pmv || !sc.pmv.all) throw new Error('the closet carries no all-of-it wrapper');
+    if(Object.keys(sc.pmv).length < 2)
+      throw new Error('the closet has one mover, so this test cannot see the fault it is for');
+    const root = new THREE.Group();
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.9, 1.2),
+                            new THREE.MeshStandardMaterial()));
+    if(!w.bjApplyModel(az.BJ_MODELS.closet, root)) throw new Error('the apply refused');
+    let under = null;
+    for(let k = root.parent; k; k = k.parent) if(k === sc.pmv.all.group) under = k;
+    if(!under)
+      throw new Error('the model landed outside the wrapper — it will not travel with the set');
+    return 'landed under ' + sc.pmv.all.group.name + ', with ' +
+           Object.keys(sc.pmv).length + ' movers on the scene';
   });
 
   await P('every manifest entry declares a width, and it matches the doc', async () => {
