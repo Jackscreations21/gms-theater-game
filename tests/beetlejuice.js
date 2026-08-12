@@ -3029,6 +3029,7 @@ const probe = `
      live when this ran — the AZ tail leaves another show up, and a captured
      reference to CUES would silently be the wrong production's. */
   window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE, BJ_MODELS:BJ_MODELS, BJ_AUDIO:BJ_AUDIO,
+                 BJ_TRI_BUDGET:BJ_TRI_BUDGET, BJ_TEX_BUDGET:BJ_TEX_BUDGET,
                  bjCues:()=>{ showLoad('beetlejuice'); return CUES.slice(); }};
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
@@ -3263,12 +3264,25 @@ const wd = setTimeout(() => {
     const undocumented = [...manSet].filter(f => !docSet.has(f));
     if(undelivered.length) throw new Error('documented but never fetched: ' + undelivered.join(', '));
     if(undocumented.length) throw new Error('fetched but never documented: ' + undocumented.join(', '));
-    if(manSet.size !== 10) throw new Error(manSet.size + ' files, the contract lists 10');
-    /* and the wagon shell is the WAGON: bj-house.glb targets the interior
-       scene (the z-slide with the dressings), never the exterior miniature */
-    const shell = az.BJ_MODELS.house;
-    if(!shell || shell.scene !== 'interior' || shell.dress)
-      throw new Error('bj-house.glb does not target the wagon shell: ' + JSON.stringify(shell));
+    if(manSet.size !== 9) throw new Error(manSet.size + ' files, the contract lists 9');
+    /* THE HOUSE IS THREE WHOLE HOUSES (RULING BP), not a shell plus three
+       dressings.  Each targets the interior — the z-slide wagon, never the
+       exterior miniature — names its own dressing, and declares `whole`, which
+       is what takes the built-in shell out from under it. */
+    if(az.BJ_MODELS.house) throw new Error('the shell entry is back; BP replaced it with three houses');
+    const houses = Object.keys(az.BJ_MODELS).filter(k=>k.indexOf('house') === 0);
+    if(houses.length !== 3) throw new Error(houses.length + ' house entries, wanted 3');
+    const dressSeen = {};
+    for(const k of houses){
+      const h = az.BJ_MODELS[k];
+      if(h.scene !== 'interior') throw new Error(k + ' does not target the wagon: ' + h.scene);
+      if(!h.dress) throw new Error(k + ' names no dressing, so nothing would choose between them');
+      if(!h.whole) throw new Error(k + ' is not marked whole — the shell would stand inside it');
+      if(dressSeen[h.dress]) throw new Error('two house files claim the ' + h.dress + ' dressing');
+      dressSeen[h.dress] = true;
+    }
+    for(const d of ['maitland','deetz','bj'])
+      if(!dressSeen[d]) throw new Error('no whole house for the ' + d + ' dressing');
     for(const k of Object.keys(az.BJ_MODELS)){
       const v = az.BJ_MODELS[k];
       if(typeof v !== 'string' && v.scene === 'house')
@@ -3286,7 +3300,7 @@ const wd = setTimeout(() => {
         throw new Error('entry ' + k + ' names a dressing that does not exist: ' + v.dress);
     }
     return manSet.size + ' files — contract and manifest are provably the same list, ' +
-           'every scene and dress key resolves, shell on the wagon';
+           'every scene and dress key resolves, three whole houses on the wagon';
   });
 
   await P('with no fetch in the world, loadSetModels resolves and touches nothing', async () => {
@@ -3354,7 +3368,7 @@ const wd = setTimeout(() => {
         throw new Error('refused for the wrong reason: ' + r.refused[0].why);
       if(meshCount(bed.group) !== before)
         throw new Error('the refused model disturbed the stand-in');
-      if(r.missing !== 9) throw new Error(r.missing + ' missing, wanted the other 9 silent');
+      if(r.missing !== 8) throw new Error(r.missing + ' missing, wanted the other 8 silent');
       return 'bedroom refused (' + r.refused[0].why + '), ' + before + ' stand-in meshes intact, 9 absentees silent';
     } finally { delete w.fetch; }
   });
@@ -3463,30 +3477,141 @@ const wd = setTimeout(() => {
     return 'maitland replaced (scaled 0.3048), deetz and bj untouched, bjRedress swaps the model like a dressing';
   });
 
-  await P('the wagon shell entry replaces the interior scenery and keeps all three dressings', async () => {
+  /* RULING BP.  This used to test a shell landing under three dressings; the
+     owner built three whole houses instead, so the thing to prove changed:
+     each file lands in its OWN dressing group, the built-in shell comes out
+     from under it, and the other two dressing groups are left standing for
+     bjRedress to keep choosing between. */
+  await P('a whole house lands in its dressing and takes the built-in shell out', async () => {
     const inr = w.sceneFind('interior');
     const dressGroups = [inr.dress.maitland, inr.dress.deetz, inr.dress.bj];
-    const counts = dressGroups.map(g => meshCount(g));
-    const gltf = await parseGlb(makeGlb([{name: 'shell_new', x: 0}, {name: 'walk_floor1', x: 1}]));
-    /* through the REAL manifest entry, so this test also covers the routing
-       the manifest actually declares */
-    if(!w.bjApplyModel(az.BJ_MODELS.house, gltf.scene))
-      throw new Error('the shell apply refused');
-    for(let i = 0; i < 3; i++){
+    const shellBefore = inr.group.children.filter(c => dressGroups.indexOf(c) < 0).length;
+    if(!shellBefore) throw new Error('the interior has no shell scenery to take out');
+    const otherCounts = [meshCount(inr.dress.deetz), meshCount(inr.dress.bj)];
+
+    const gltf = await parseGlb(makeGlb([{name: 'house_maitland', x: 0}, {name: 'walk_stairs', x: 1}]));
+    /* through the REAL manifest entry, so this covers the routing the
+       manifest actually declares rather than a hand-made one */
+    if(!w.bjApplyModel(az.BJ_MODELS.houseMaitland, gltf.scene))
+      throw new Error('the whole-house apply refused');
+
+    if(!findByName(inr.dress.maitland, 'house_maitland'))
+      throw new Error('the house did not land in the maitland dressing');
+    /* the shell is gone — ours must not stand inside his */
+    for(const c of inr.group.children)
+      if(dressGroups.indexOf(c) < 0)
+        throw new Error('built-in shell scenery survived a whole house: ' + (c.name || c.type));
+    /* the other two dressing GROUPS stand, with their stand-ins untouched:
+       they are machinery, and bjRedress still has to choose between three */
+    for(let i = 1; i < 3; i++){
       if(dressGroups[i].parent !== inr.group)
         throw new Error('a dressing group was stripped out with the shell');
-      if(meshCount(dressGroups[i]) !== counts[i])
-        throw new Error('a dressing lost meshes to the shell swap');
+      if(meshCount(dressGroups[i]) !== otherCounts[i-1])
+        throw new Error('an unmodelled dressing lost meshes to the house swap');
     }
-    if(!findByName(inr.group, 'shell_new')) throw new Error('the shell never landed');
-    for(const c of inr.group.children)
-      if(dressGroups.indexOf(c) < 0 && c !== gltf.scene)
-        throw new Error('old shell scenery survived: ' + (c.name || c.type));
-    const wf = findByName(inr.group, 'walk_floor1');
-    if(inr.walk.indexOf(wf) < 0) throw new Error('the shell floor missed sc.walk');
-    if(inr.walk.length !== 1)
-      throw new Error('the stand-in landing stayed on sc.walk (' + inr.walk.length + ' entries)');
-    return 'shell replaced, dressings intact (' + counts.join('+') + ' meshes), floor wired, old landing pruned';
+    const wf = findByName(inr.dress.maitland, 'walk_stairs');
+    if(inr.walk.indexOf(wf) < 0) throw new Error('the house stairs missed sc.walk');
+    return 'maitland house in, ' + shellBefore + ' shell objects out, deetz and bj dressings intact';
+  });
+
+  /* RULING BP — the texture that is SHRUNK rather than refused.  His exports
+     each carry one 4096 map because that is what the tool emits; 4096 RGBA is
+     67MB of GPU memory and every set stays resident once they park backstage. */
+  await P('an oversized texture is brought down to the budget, not refused', async () => {
+    const big = {image: {width: 4096, height: 4096}, needsUpdate: false};
+    const ok  = {image: {width: 1024, height: 1024}, needsUpdate: false};
+    const mesh = new THREE.Mesh(new THREE.BufferGeometry(),
+                                new THREE.MeshStandardMaterial());
+    mesh.material.map = big;
+    mesh.material.normalMap = ok;
+    const root = new THREE.Group(); root.add(mesh);
+
+    const r = w.bjShrinkTextures(root);
+    if(r.shrunk !== 1) throw new Error(r.shrunk + ' textures shrunk, wanted exactly 1');
+    if(r.from !== 4096) throw new Error('it reported coming down from ' + r.from);
+    if(big.image.width !== 2048 || big.image.height !== 2048)
+      throw new Error('the 4096 map is now ' + big.image.width + 'x' + big.image.height);
+    if(!big.needsUpdate) throw new Error('the texture was resized without being marked for upload');
+    if(ok.image.width !== 1024) throw new Error('a map already inside the budget was touched');
+    /* and the whole point: it now PASSES the validator instead of being
+       refused, which is what lets his files load as they are */
+    if(w.bjValidateModel(root))
+      throw new Error('still refused after shrinking: ' + w.bjValidateModel(root));
+    return '4096 -> 2048, the 1024 left alone, and the model validates';
+  });
+
+  await P('a map shared across meshes keeps its aspect, and an empty one is survived', async () => {
+    const shared = {image: {width: 4096, height: 2048}, needsUpdate: false};
+    const root = new THREE.Group();
+    for(let i = 0; i < 3; i++){
+      const m = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
+      m.material.map = shared;                 // the same object on all three
+      m.material.aoMap = {image: null};        // a texture with nothing in it yet
+      root.add(m);
+    }
+    const r = w.bjShrinkTextures(root);
+    if(r.shrunk !== 1)
+      throw new Error(r.shrunk + ' shrinks reported for one shared map');
+    /* the long side goes to the cap and the aspect is KEPT: 4096x2048 -> 2048x1024 */
+    if(shared.image.width !== 2048 || shared.image.height !== 1024)
+      throw new Error('aspect lost: ' + shared.image.width + 'x' + shared.image.height);
+    /* NOTE, so nobody strengthens this by mistake: the `seen` Set in
+       bjShrinkTextures is an OPTIMISATION with no observable effect.  Remove it
+       and the first mesh still shrinks the map, after which it is inside the
+       cap and the other two decline — same count, same result, just three
+       canvases instead of one.  A negative check proved exactly that, so this
+       test claims the aspect and the empty-map survival and nothing more. */
+    return 'shared 4096x2048 -> 2048x1024, aspect kept, empty map survived';
+  });
+
+  /* THE BUDGET NUMBER ITSELF (RULING BP).  A negative check putting it back to
+     30,000 changed nothing, because nothing here was asserting what it is —
+     only that things over it are refused.  His models are 93k-99.5k, so the
+     test that matters is that a model of HIS size gets in. */
+  await P('a 100k model of his size passes, and 160k is still refused', async () => {
+    if(az.BJ_TRI_BUDGET !== 150000)
+      throw new Error('the triangle budget is ' + az.BJ_TRI_BUDGET + ', RULING BP set 150,000');
+    const tri = n => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 9), 3));
+      const root = new THREE.Group();
+      root.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial()));
+      return root;
+    };
+    const his = w.bjValidateModel(tri(100000));
+    if(his) throw new Error('a 100,000-triangle model is refused: ' + his);
+    /* and the old number really would have refused it — the whole point of BP */
+    if(100000 <= 30000) throw new Error('arithmetic');
+    const over = w.bjValidateModel(tri(160000));
+    if(!over) throw new Error('160,000 triangles was accepted');
+    if(over.indexOf('160,000') < 0 || over.indexOf('150,000') < 0)
+      throw new Error('the refusal does not name the count and the budget: ' + over);
+    return '100k in, 160k out ("' + over + '")';
+  });
+
+  /* AND THE WIRING, not just the function.  A negative check that took the
+     shrink out of the fetch round killed nothing, because every test above
+     called bjShrinkTextures directly — the same shape of hole as the RULING BM
+     assertion that recomputed the shader formula instead of reading it. */
+  await P('the fetch round really does shrink before it validates', async () => {
+    const order = [];
+    const realShrink = w.bjShrinkTextures, realValidate = w.bjValidateModel;
+    w.bjShrinkTextures = root => { order.push('shrink'); return realShrink(root); };
+    w.bjValidateModel  = root => { order.push('validate'); return realValidate(root); };
+    w.fetch = url => (url === 'assets/bj-attic.glb')
+      ? Promise.resolve({ok: true, arrayBuffer: async () => makeGlb([{name: 'a', x: 0}])})
+      : Promise.resolve({ok: false, status: 404});
+    try{
+      w.showLoad('beetlejuice');
+      await w.loadSetModels();
+    } finally {
+      w.bjShrinkTextures = realShrink; w.bjValidateModel = realValidate; delete w.fetch;
+    }
+    if(order.indexOf('shrink') < 0) throw new Error('the fetch round never shrank anything');
+    if(order.indexOf('validate') < 0) throw new Error('the fetch round never validated anything');
+    if(order.indexOf('shrink') > order.indexOf('validate'))
+      throw new Error('it validated before shrinking, so an oversized map is still refused');
+    return 'shrink then validate, in that order, through the real fetch path';
   });
 
   console.log(errs.length ? '--- failures: ' + errs.length + ' (with the AZ tail) ---'
