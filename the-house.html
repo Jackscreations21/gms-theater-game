@@ -19720,13 +19720,18 @@ function plotBeetlejuice(){
    not exterior miniatures: the exterior is not on the owner's list of sets to
    model.  There is no shell file any more — see the `whole` flag below.
    -------------------------------------------------------------------------- */
+/* `fit` IS docs/MODELING.md's Width column, in metres — the width the set is
+   scaled to arrive at (RULING BP).  It is not decoration: what turned up is
+   normalised to a ~1.9-unit box, so without this every set stands a seventh of
+   its size with half of it under the deck.  Keep these two in step; the test
+   that pins the File column pins these as well. */
 const BJ_MODELS = {
-  attic:       'assets/bj-attic.glb',
-  closet:      'assets/bj-closet.glb',
-  bedroom:     'assets/bj-bedroom.glb',
-  roof:        'assets/bj-roof.glb',
-  graveyard:   {scene:'cemetery',  url:'assets/bj-graveyard.glb'},
-  netherworld: {scene:'afterlife', url:'assets/bj-netherworld.glb'},
+  attic:       {scene:'attic',     fit:13.4, url:'assets/bj-attic.glb'},
+  closet:      {scene:'closet',    fit:6.1,  url:'assets/bj-closet.glb'},
+  bedroom:     {scene:'bedroom',   fit:10.1, url:'assets/bj-bedroom.glb'},
+  roof:        {scene:'roof',      fit:13.4, url:'assets/bj-roof.glb'},
+  graveyard:   {scene:'cemetery',  fit:13.4, url:'assets/bj-graveyard.glb'},
+  netherworld: {scene:'afterlife', fit:13.4, url:'assets/bj-netherworld.glb'},
   /* THE HOUSE IS THREE WHOLE HOUSES (RULING BP).  It used to be a shell
      (bj-house.glb) plus three dressing files that stood on it, which is how a
      real production builds one.  The owner modelled it the other way — three
@@ -19735,11 +19740,11 @@ const BJ_MODELS = {
      `whole` says so: the file is the entire interior for that dressing, so it
      lands in the dressing's own group AND the shared shell stand-in comes out,
      because otherwise our architecture would stand inside his. */
-  houseMaitland:    {scene:'interior', dress:'maitland', whole:true,
+  houseMaitland:    {scene:'interior', dress:'maitland', whole:true, fit:12.8,
                      url:'assets/bj-house-maitland.glb'},
-  houseDeetz:       {scene:'interior', dress:'deetz',    whole:true,
+  houseDeetz:       {scene:'interior', dress:'deetz',    whole:true, fit:12.8,
                      url:'assets/bj-house-deetz.glb'},
-  houseBeetlejuice: {scene:'interior', dress:'bj',       whole:true,
+  houseBeetlejuice: {scene:'interior', dress:'bj',       whole:true, fit:12.8,
                      url:'assets/bj-house-beetlejuice.glb'}
 };
 /* the two manifest shapes, normalised to one */
@@ -19902,14 +19907,66 @@ function bjPruneWalk(sc){
    keep their live matrices, exactly as lockShowStatic spares them. */
 function bjFreeze(o){ o.traverse(c=>{ c.updateMatrix(); c.matrixAutoUpdate = false; }); }
 
+/* --------------------------------------------------------------------------
+   FIT AND SEAT (RULING BP).
+
+   MODELING.md asks for real-world metres with the floor at 0 and the origin at
+   the centre of the footprint.  What actually arrived is normalised to a unit
+   box — every one of the seven files is ~1.9 units across and centred on the
+   origin, so straight in they would stand a seventh of their size with half
+   the set buried under the deck.  That is not the owner being careless; it is
+   what the tool emits, and it is the same class of thing as the 4096 texture:
+   a number he did not choose.
+
+   So the import measures the model and makes it conform, using the width the
+   doc already declares for that set — `fit` on the manifest entry IS the doc's
+   Width column in metres.  Two consequences worth stating:
+
+     - a re-export at any scale lands identically, because nothing is
+       hardcoded to 1.9;
+     - a model that IS in metres is left alone, near enough, because fitting a
+       13.4m set to 13.4m is a scale of 1.0.
+
+   Seating is the other half and it is the one that would have looked like a
+   bug: the deck is y = 0 on every stage (INVARIANTS), so the model's LOWEST
+   point goes to 0, not its origin.  Footprint centre goes to x = 0, z = 0.
+
+   `scale` is still honoured and still wins — an explicit number beats a
+   measurement, which is what you want the moment a set is deliberately not
+   full width.
+   -------------------------------------------------------------------------- */
+function bjFitAndSeat(root, targetW){
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  if(!isFinite(box.min.x) || box.isEmpty()) return 1;
+  const size = box.getSize(new THREE.Vector3());
+  if(!(size.x > 1e-6)) return 1;
+  const s = targetW / size.x;
+  root.scale.multiplyScalar(s);
+  /* re-measure AFTER scaling rather than multiplying the old box: a child
+     transform inside the model makes the two disagree, and this is cheap */
+  root.updateMatrixWorld(true);
+  const b2 = new THREE.Box3().setFromObject(root);
+  const c2 = b2.getCenter(new THREE.Vector3());
+  root.position.x -= c2.x;
+  root.position.z -= c2.z;
+  root.position.y -= b2.min.y;          // the deck is y = 0, on every stage
+  return s;
+}
+
 function bjApplyModel(entry, root, scGiven){
   const sc = scGiven || sceneFind(entry.scene);
   if(!sc) return false;
   /* the scale rides the model ROOT, so it survives whichever container the
      root lands in; the split-route branch below detaches the root's children
-     instead, and scales each as it goes */
-  const s = entry.scale || 1;
+     instead, and scales each as it goes.
+
+     `scale` is an explicit instruction and beats a measurement; `fit` measures
+     the model against the width MODELING.md declares for that set and makes it
+     conform (RULING BP).  A model that is already in metres fits at ~1.0. */
+  let s = entry.scale || 1;
   if(s !== 1) root.scale.multiplyScalar(s);
+  else if(entry.fit) s = bjFitAndSeat(root, entry.fit);
 
   /* collect the model's walkables BEFORE routing — the split route detaches
      the top-level nodes from the root, and a traverse after that sees none */
