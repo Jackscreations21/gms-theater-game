@@ -173,10 +173,45 @@ raycasting it, and these are ~99k triangles apiece. **The cost is measured in
 the PR, not assumed** — that is the RULING BQ discipline applied early, and if
 the number is bad the flag comes off the houses and stays on the roof.
 
-The alternative considered and rejected: keep the stand-in's `walk_*` meshes as
-invisible collision. Cheaper and predictable, but it leaves an invisible ledge
-at our co-ordinates inside his geometry — standing in mid-air or inside the
-slate — which is the "quietly wrong" failure this project keeps writing down.
+### The measurement refused it — BY is DEFERRED
+
+`tools/walkcost.js` is the probe and the number is not close:
+
+```
+the stand-in deck (12 tris), over it          0.0018 ms/call
+HIS ROOF (99,568 tris), over it               4.2867 ms/call     2400x
+HIS ROOF, ray 40m away (bounding-box reject)  0.0001 ms/call
+```
+
+**4.29 ms is 38.6% of a 90 Hz frame**, and `groundAt` runs once for the player
+*plus once per settling body* — so a standing build with loose pieces would
+spend several frames' worth of time per frame deciding where the floor is.
+There is no early exit either: three.js collects every intersection and sorts,
+so a ray that **misses** costs the same as one that lands, and the figure above
+is a miss. The bounding box rejects cheaply, which only helps when you are
+nowhere near the set.
+
+**So the flag was written, measured, and taken back out.** The estimate that
+went into this spec before measuring was 0.031 ms — wrong by a factor of 100,
+and it would have shipped a frame-rate cliff onto the one platform the whole
+budget system exists to protect. This is the same lesson as the BP round's
+probe, from the other side: *the number you would have guessed is not the
+number.*
+
+Neither cheap fallback is correct either, which is why nothing ships instead of
+it. Keeping the stand-in's `walk_*` meshes as invisible collision costs
+0.0018 ms, but `bj:roofDeck` sits at y 2.06–2.2 in **our** co-ordinates, and his
+roof is a different shape at a different height — so you would stand inside the
+slate, or on air. A floor plane at the model's own `min.y` is right for the
+interior and useless for the roof, whose whole point is the pitch.
+
+**What would actually fix it**, for whoever picks this up: a coarse collision
+proxy generated at import (sample a heightfield off the mesh once at load — 12×12
+rays is ~0.6 s of one-off cost, which is a visible hitch and needs thought), or
+a `walk_` node in the file, or a raycaster with a BVH, which r128 does not have.
+Until then **the roof and the house landing are not standable while his models
+are loaded**, and that is now a known, measured, recorded state rather than a
+silent one.
 
 ---
 
