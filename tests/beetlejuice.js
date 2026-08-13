@@ -299,8 +299,17 @@ const probe = `
     const mv = Array.isArray(CUES[i].move) ? CUES[i].move : [CUES[i].move];
     const me = mv.find(m=>m && m.scene === 'house' && !m.part);
     if(!me) throw new Error('the cue no longer flies the exterior');
-    if(Math.abs(me.off - BJ_SIGN_OUT) > 1e-9)
-      throw new Error('it flies to '+me.off+', not to BJ_SIGN_OUT');
+    /* REVERSED IN PLACE BY RULING CR.  It read BJ_SIGN_OUT — the number the SIGN
+       flies to, borrowed by a set — and 9.0 leaves the foot of an 8.7m cloth at
+       y 9.0 in a 9.2m picture.  That was invisible while a struck set went dark
+       on arrival and stopped being invisible when RULING BQ made a parked set
+       stand there drawn.  BJ_PART_OUT is the flown family's own out and clears
+       the header with a margin.  What this line MEANS is unchanged: the cue at
+       1:14:30 flies the exterior, and it flies it far enough. */
+    if(Math.abs(me.off - BJ_PART_OUT) > 1e-9)
+      throw new Error('it flies to '+me.off+', not to BJ_PART_OUT');
+    if(!(BJ_PART_OUT >= BJ.opH))
+      throw new Error('the fly-out at '+BJ_PART_OUT+' does not clear the '+BJ.opH+'m picture');
     /* and the WAGON CONVENTION: the engine never homes a whole-group mover
        on its own, so every cue that plays in the house must state the
        exterior's offset — or a goBack after 1:14:30 opens act two on an
@@ -337,12 +346,12 @@ const probe = `
     const yMid = wy() - y0;
     if(h.group.userData.sceneOff)
       throw new Error('hidden two seconds into the fly — the instant swap is back');
-    if(!(yMid > 0.5 && yMid < BJ_SIGN_OUT - 0.5))
+    if(!(yMid > 0.5 && yMid < BJ_PART_OUT - 0.5))
       throw new Error('not mid-flight at 2s: y=+'+yMid.toFixed(2));
     let frames = 0;
     while(sceneTravelling(h) && frames < 900){
       updateStorm(1/60); frames++;
-      if(frames % 10 === 0 && h.group.userData.sceneOff && (wy() - y0) < BJ_SIGN_OUT - 0.05)
+      if(frames % 10 === 0 && h.group.userData.sceneOff && (wy() - y0) < BJ_PART_OUT - 0.05)
         throw new Error('went dark mid-flight at y=+'+(wy() - y0).toFixed(2));
     }
     if(frames >= 900) throw new Error('still travelling after 17s');
@@ -359,8 +368,15 @@ const probe = `
     if(!live)
       throw new Error('the parked exterior has no live meshes — BQ says it stands backstage');
     const yEnd = wy() - y0;
-    if(Math.abs(yEnd - BJ_SIGN_OUT) > 0.05)
-      throw new Error('it stopped at +'+yEnd.toFixed(2)+', not at BJ_SIGN_OUT');
+    /* REVERSED IN PLACE BY RULING CR, with its sibling above: BJ_PART_OUT, and
+       the drop's own foot is what the number has to clear now that it stands
+       there drawn. */
+    if(Math.abs(yEnd - BJ_PART_OUT) > 0.05)
+      throw new Error('it stopped at +'+yEnd.toFixed(2)+', not at BJ_PART_OUT');
+    const foot = box(h.group).min.y;
+    if(foot < BJ.opH)
+      throw new Error('parked, the foot of the drop hangs at y '+foot.toFixed(2)+
+                      ' inside a '+BJ.opH+'m picture');
     if(SHOW.scene !== 'interior') throw new Error('the cue never changed the scene');
     return 'in view at +'+yMid.toFixed(2)+' after 2s, dark at +'+yEnd.toFixed(2)+
            ' after '+((frames + 120)/60).toFixed(1)+'s';
@@ -379,7 +395,8 @@ const probe = `
     for(let k = 0; k < 360; k++) updateStorm(1/60);
     fireCue(i26);
     for(let k = 0; k < 600; k++) updateStorm(1/60);          // flown, arrived, dark
-    if(Math.abs(h.mv.off - BJ_SIGN_OUT) > 0.01)
+    /* REVERSED IN PLACE BY RULING CR: BJ_PART_OUT is where a flown SET goes */
+    if(Math.abs(h.mv.off - BJ_PART_OUT) > 0.01)
       throw new Error('the exterior never flew out: '+h.mv.off.toFixed(2));
     const wy = ()=>{ scene.updateMatrixWorld(true);
       return byName('bj:house').matrixWorld.elements[13]; };
@@ -390,13 +407,14 @@ const probe = `
     const yMid = wy();
     if(h.group.userData.sceneOff) throw new Error('it went dark on the way down');
     if(!(yMid < yOut - 0.5))
-      throw new Error('not descending — still at +'+(yMid - yOut + BJ_SIGN_OUT).toFixed(2));
+      throw new Error('not descending — still at +'+(yMid - yOut + BJ_PART_OUT).toFixed(2));
     for(let k = 0; k < 600; k++) updateStorm(1/60);
     if(Math.abs(h.mv.off) > 0.01) throw new Error('never came home: '+h.mv.off.toFixed(2));
-    if(Math.abs(wy() - (yOut - BJ_SIGN_OUT)) > 0.05)
+    if(Math.abs(wy() - (yOut - BJ_PART_OUT)) > 0.05)
       throw new Error('the world disagrees: cloth centre at '+wy().toFixed(2));
     if(h.group.userData.sceneOff) throw new Error('home, and hidden anyway');
-    return 'recalled from +9.00, seen at +'+(yMid - yOut + BJ_SIGN_OUT).toFixed(2)+
+    return 'recalled from +'+BJ_PART_OUT.toFixed(2)+', seen at +'+
+           (yMid - yOut + BJ_PART_OUT).toFixed(2)+
            ' on the way down, footed on the deck and lit';
   });
 
@@ -1364,70 +1382,139 @@ const probe = `
      RULING CE — AS FEW SETS FLY AS POSSIBLE, and RULING BQ — a struck set parks
      ========================================================================== */
 
-  P('RULING CE: only the sets he named fly; the rest come on from the side or back', ()=>{
+  /* REVERSED IN PLACE BY RULINGS CQ, CR AND CS — the AO/AV/BA/BI/BZ precedent,
+     sixth time.  RULING CE's list was his and it lasted a day: "Make the roof
+     nethereworld and house exterior flown ... Make the bedroom and the closet
+     come in from one side."  Three of the four names in FLY_OK swap out.
+
+     WHAT THIS ASSERTION MEANS DOES NOT CHANGE, which is why it turns rather than
+     going: every set is on exactly one list, the lists are stated rather than
+     derived, and a set that quietly changes how it arrives fails here.  Turning
+     it also keeps the half CE got right — flying is the y case of tracking, so
+     the axis is still what the test reads. */
+  P('RULINGS CQ/CR/CS: every set arrives the way he asked, and only that way', ()=>{
     showLoad('beetlejuice');
-    /* his words: "just like roof and the bedroom and closet should eb flown the
-       otheres should come on from the sides or back".  The netherworld is the one
-       addition and it is measured, not chosen: 14.4m wide and 12.5m deep fits no
-       wing and cannot hide upstage, so it is named here to keep the exception
-       HONEST — if it ever tracks, this list is what says so. */
-    const FLY_OK = ['roof', 'bedroom', 'closet', 'afterlife'];
+    /* the exterior joins the flown three (CR) and it flies on its own WHOLE-GROUP
+       mover, not on a wrapper — a second y mover over the same scene would apply
+       on top of the first and put an 8.9m drop through the 25m grid. */
+    const FLY_OK = ['roof', 'afterlife', 'house'];
     const flying = [], tracking = [];
     for(const sc of SHOW.scenes){
       const ks = sc.pmv ? Object.keys(sc.pmv) : [];
       const ax = ks.map(k=>sc.pmv[k].axis);
+      if(sc.mv && sc.parkMv !== undefined) ax.push(sc.mv.axis);
       if(!ax.length) continue;
       if(ax.indexOf('y') >= 0) flying.push(sc.name);
       else tracking.push(sc.name + ':' + ax.join(''));
     }
     for(const n of flying) if(FLY_OK.indexOf(n) < 0)
-      throw new Error(n + ' still flies, and he asked for it from the side or back');
+      throw new Error(n + ' flies, and he asked for it from a side or the back');
     for(const n of FLY_OK) if(flying.indexOf(n) < 0)
       throw new Error(n + ' stopped flying, and he asked for that one to fly');
-    /* and the ones he moved really did move, on a HORIZONTAL axis */
-    for(const n of ['attic', 'house', 'interior']){
-      const sc = sceneFind(n), ks = sc.pmv ? Object.keys(sc.pmv) : [];
-      const ax = ks.map(k=>sc.pmv[k].axis);
-      if(!ax.length) throw new Error(n + ' carries no mover at all');
-      if(ax.indexOf('y') >= 0) throw new Error(n + ' is still flown on y');
-      if(!ax.some(a=>a === 'x' || a === 'z'))
-        throw new Error(n + ' travels on ' + ax.join('') + ', which is neither a side nor the back');
+    /* and the four that travel on the deck do it on the axis he named.  The
+       bedroom and the closet come in from a SIDE (x) — the closet's second mover
+       is the z it stands at in that wing, and that is a park, not an entrance. */
+    const SIDE = ['attic', 'bedroom', 'closet'];
+    for(const n of SIDE){
+      const sc = sceneFind(n), m = sc.pmv && sc.pmv.all;
+      if(!m) throw new Error(n + ' carries no whole-set mover at all');
+      if(m.axis !== 'x')
+        throw new Error(n + ' comes in on ' + m.axis + ', and he asked for a side');
+    }
+    /* RULING CP — and the house is the ONE set that travels through the backdrop
+       line.  This is the whole of "they are the only one that can come in from
+       behind the backdrop", stated over the scenes rather than over the engine. */
+    const inr = sceneFind('interior');
+    if(!inr.mv || inr.mv.axis !== 'z')
+      throw new Error('the house no longer comes in from upstage');
+    for(const sc of SHOW.scenes){
+      if(sc.name === 'interior' || sc.always) continue;
+      const ax = [];
+      if(sc.mv) ax.push(sc.mv.axis);
+      if(sc.pmv) for(const k in sc.pmv) if(k === 'all') ax.push(sc.pmv[k].axis);
+      if(ax.indexOf('z') >= 0)
+        /* NO ESCAPED QUOTE IN HERE.  The probe is a template literal, so \' is
+           consumed by IT and the eval sees a bare apostrophe closing a
+           single-quoted string.  Same family as the backtick trap in TRAPS. */
+        throw new Error(sc.name + ' arrives on z, and upstage is the door of the house alone');
     }
     return 'flown: ' + flying.join(', ') + '  |  tracked: ' + tracking.join(' ');
   });
 
-  P('RULING CE: the exterior goes out to the FLY-RAIL side, and leaves the rail clear', ()=>{
+  /* REVERSED IN PLACE BY RULING CR.  This pinned RULING CE's routing — the
+     exterior into the stage-right wing, off his line about the fly rail — and CE's
+     own comment left the 1:14:30 cue FLAGGED as the thing to change if he ever
+     meant to supersede it.  He has: "Make the roof nethereworld and house exterior
+     flown."
+
+     THE THING THIS ASSERTION IS FOR SURVIVES WHOLE and is why it turns rather than
+     goes: a struck exterior must end up OUT OF THE PICTURE, and it was this test
+     that caught the 12.6m stand-in drop parking at x -4.70 in the middle of the
+     opening while his 8.6m house cleared fine.  The stand-in is still the bigger
+     case; only the direction it clears in has changed, from sideways to up. */
+  P('RULING CR: the exterior FLIES, on the mover it already had, and clears the picture', ()=>{
     showLoad('beetlejuice');
-    const sc = sceneFind('house'), m = sc.pmv && sc.pmv.all;
-    if(!m) throw new Error('the exterior carries no mover');
-    if(m.axis !== 'x') throw new Error('the exterior tracks on ' + m.axis + ', not to a side');
-    /* the fly rail is STAGE RIGHT: p9 builds the locking rail at
-       -D.stageW/2 + 2.8, and the traveler hand line hangs stage right of the
-       arch.  His instruction was the side WITH the rail, so -x. */
-    const railX = -D.stageW/2 + 2.8;
-    if(m.out > 0)
-      throw new Error('it tracks to +x, the side away from the fly rail at ' + railX.toFixed(1));
+    const sc = sceneFind('house');
+    if(!sc.mv) throw new Error('the exterior carries no whole-group mover');
+    if(sc.mv.axis !== 'y') throw new Error('the exterior travels on ' + sc.mv.axis + ', not up');
+    /* it parks ON that mover rather than growing a wrapper: two y movers over one
+       scene both apply, and 21m of travel puts an 8.9m drop through the 25m grid */
+    if(sc.pmv && sc.pmv.all)
+      throw new Error('the exterior grew a second whole-set mover — the two would compound');
+    if(sc.parkMv === undefined) throw new Error('the exterior declares no park on its own mover');
     sceneShow('house');
     sceneChangeTo('bare');
     for(let i = 0; i < 900 && sceneTravelling(sc); i++) updateStorm(1/60);
     const b = box(sc.group);
-    /* CLEAR OF THE PICTURE is the hard one, and it is what this assertion found:
-       sized to his 8.6m house alone, the 12.6m STAND-IN drop parked at x -4.70 and
-       sat in the middle of the opening.  The stand-in is the bigger case and the
-       one that plays whenever a file has not landed, so it sets the number. */
-    if(b.max.x > -BJ.opW/2)
-      throw new Error('parked at x ' + b.max.x.toFixed(2) + ', still inside the picture');
-    if(b.min.x < -D.stageW/2)
-      throw new Error('parked through the stage-right wall at ' + b.min.x.toFixed(2));
-    /* the rail is NOT asserted as clear, deliberately: a painted drop that fills
-       the opening cannot park in a wing and still clear a rail 2.8m off the wall.
-       His fitted house clears it by 1.4m; the full-width stand-in reaches 0.6m
-       past it, which is accepted and recorded rather than asserted away. */
-    const railGap = b.min.x - railX;
-    return 'parked x ' + b.min.x.toFixed(2) + '..' + b.max.x.toFixed(2) +
-           ', picture edge ' + (-BJ.opW/2).toFixed(2) + ' clear, rail at ' +
-           railX.toFixed(1) + (railGap >= 0 ? ' clear by ' + railGap.toFixed(2)
-                                            : ' reached by ' + (-railGap).toFixed(2)) + 'm';
+    if(b.min.y < BJ.opH)
+      throw new Error('parked with its foot at y ' + b.min.y.toFixed(2) +
+                      ', inside the ' + BJ.opH + 'm picture');
+    if(b.max.y > D.gridY)
+      throw new Error('parked ' + (b.max.y - D.gridY).toFixed(2) + 'm through the grid');
+    /* AND THE WING IT USED TO STAND IN IS EMPTY, which is what pays for RULING CS:
+       the bedroom and the closet take stage right now, and two sets cannot have it */
+    if(b.min.x < -BJ.opW/2 - 0.01)
+      throw new Error('it is still standing out in the stage-right wing at x ' + b.min.x.toFixed(2));
+    return 'flown, parked y ' + b.min.y.toFixed(2) + '..' + b.max.y.toFixed(2) +
+           ' over a ' + BJ.opH + 'm picture, under a ' + D.gridY + 'm grid, wing clear';
+  });
+
+  P('RULING CO: the house is stored BEHIND THE BACKDROP, and nothing else is', ()=>{
+    showLoad('beetlejuice');
+    /* "make it so no matter what they are always stored behind the backdrop and
+        never anywher else" — and RULING BQ parked it in the stage-left wing
+        because, at the brick of the day, 12.98m of his room did not fit between
+        the cloth and the wall.  RULING CL took PAL_BACK to -25.5 for an unrelated
+        reason and the gap went 10.60m -> 14.60m. */
+    const BACKDROP_Z = -10.90;             // line 14: z = -0.50 - 13*0.80
+    const inr = sceneFind('interior');
+    if(!inr.parks) throw new Error('the house declares no park at all');
+    if(inr.pmv && inr.pmv.park)
+      throw new Error('the house parks on a second mover — CO parks it on its own z');
+    sceneShow('interior');
+    sceneMoveTo('interior', 0);            // called on, the way every cue calls it
+    for(let i = 0; i < 900 && sceneTravelling(inr); i++) updateStorm(1/60);
+    const on = box(inr.group);
+    if(on.max.z < BACKDROP_Z)
+      throw new Error('it never came downstage of the cloth: z ' + on.max.z.toFixed(2));
+    sceneChangeTo('bare');
+    for(let i = 0; i < 1200 && sceneTravelling(inr); i++) updateStorm(1/60);
+    const b = box(inr.group);
+    if(b.max.z > BACKDROP_Z)
+      throw new Error('stored with its face at z ' + b.max.z.toFixed(2) +
+                      ', downstage of the backdrop at ' + BACKDROP_Z);
+    if(b.min.z < PAL_BACK)
+      throw new Error('stored ' + (PAL_BACK - b.min.z).toFixed(2) + 'm through the brick');
+    /* "and never anywher else" is the other half, and it is the half that has a
+       number in it: BQ's wing park moved the room 14m sideways, so a room that
+       still slid sideways would satisfy every line above and break the ruling. */
+    if(Math.abs(b.min.x - on.min.x) > 0.05 || Math.abs(b.max.x - on.max.x) > 0.05)
+      throw new Error('it moved sideways to store: x ' + on.min.x.toFixed(2) + '..' +
+                      on.max.x.toFixed(2) + ' -> ' + b.min.x.toFixed(2) + '..' + b.max.x.toFixed(2));
+    return 'acting z ' + on.min.z.toFixed(2) + '..' + on.max.z.toFixed(2) +
+           ' -> stored ' + b.min.z.toFixed(2) + '..' + b.max.z.toFixed(2) +
+           ', ' + (BACKDROP_Z - b.max.z).toFixed(2) + 'm behind the cloth and ' +
+           (b.min.z - PAL_BACK).toFixed(2) + 'm off the brick, and it never left its own x';
   });
 
   P('RULING BQ: a parked set is drawn, unpickable, and cannot be stood on', ()=>{
@@ -1480,11 +1567,18 @@ const probe = `
     if(bad.length) throw new Error(bad.join('; '));
     if(Object.keys(boxes).length < 7)
       throw new Error('only ' + Object.keys(boxes).length + ' parks measured — the sweep is not sweeping');
-    /* the three TRACKED sets each get their own floor space.  The flown four
-       share the grid and always will: flying preserves x and z, and four sets
-       5.6-9.2m tall cannot stack under a 25m grid.  Measured, documented, and
-       deliberately not asserted away. */
-    const TRACKED = ['interior', 'attic', 'house'];
+    /* the sets that stand ON THE DECK each get their own floor space.  The flown
+       ones share the grid and always will: flying preserves x and z, so every
+       flown set wants the same volume.  Measured, documented, and deliberately
+       not asserted away.
+
+       REVERSED IN PLACE BY THE TRAFFIC PLAN: the list was interior/attic/house
+       and it is now the four that RULINGS CO, CQ and CS put on the floor — the
+       exterior flies (CR) and joins the ones that share the tower, and the
+       bedroom and the closet come down out of it.  Which makes this the assertion
+       that has to catch RULING CS's whole problem: 8.62 and 9.02 metres of room
+       in one 14.5m wing only fit because the closet stands BEHIND the bedroom. */
+    const TRACKED = ['interior', 'attic', 'bedroom', 'closet'];
     for(let i = 0; i < TRACKED.length; i++) for(let j = i+1; j < TRACKED.length; j++){
       const a = boxes[TRACKED[i]], b = boxes[TRACKED[j]];
       if(!a || !b) throw new Error('a tracked set has no measured park');
@@ -1800,8 +1894,13 @@ const probe = `
        set LEAVES THE PICTURE IN VIEW, over a time the show can wear, without ever
        being seen to vanish while it is still inside the opening — so it is written
        on whatever axis the set uses now, and the next re-routing will not need the
-       test rewritten a third time. */
-    if(m.axis !== 'z') throw new Error('the attic tracks on '+m.axis+', not upstage');
+       test rewritten a third time.
+
+       THIRD TIME, AND THE GENERIC HALF HELD.  RULING CQ sends it to a WING —
+       "make the attic come i n from one of the sides" — so the axis moves from z
+       to x and everything below this line is untouched, which is what the last
+       round wrote it that way for. */
+    if(m.axis !== 'x') throw new Error('the attic tracks on '+m.axis+', not to a side');
     sceneShow('attic');
     const acting = box(sc.group);
     sceneChangeTo('closet');                               // the 42:34 change
@@ -1827,6 +1926,18 @@ const probe = `
       if(parked.max.z > BACKDROP_Z)
         throw new Error('parked with its face at z '+parked.max.z.toFixed(2)+
                         ', downstage of the backdrop at '+BACKDROP_Z);
+    } else if(a === 'x'){
+      /* a WING park has a stronger thing to clear than its own footprint: the
+         PICTURE.  A set standing in the wing at x 6.5 has vacated its acting box
+         and is still in the opening, so this asks the question the audience asks
+         (RULING CQ). */
+      const edge = BJ.opW/2;
+      if(m.out > 0 ? parked.min.x < edge : parked.max.x > -edge)
+        throw new Error('parked at x '+parked.min.x.toFixed(2)+'..'+parked.max.x.toFixed(2)+
+                        ', still inside the +-'+edge.toFixed(2)+' picture');
+      if(parked.max.x > D.stageW/2 || parked.min.x < -D.stageW/2)
+        throw new Error('parked through a side wall at x '+
+                        parked.min.x.toFixed(2)+'..'+parked.max.x.toFixed(2));
     } else {
       const gap = (m.out < 0) ? acting.min[a] - parked.max[a] : parked.min[a] - acting.max[a];
       if(gap < -0.01)
@@ -1837,8 +1948,9 @@ const probe = `
     const secs = frames/60;
     if(secs < 3) throw new Error('it cleared in '+secs.toFixed(2)+'s — that is a pop, not a track');
     if(secs > 10) throw new Error('it took '+secs.toFixed(1)+'s — the show would wait on it');
-    return 'tracked '+moved.toFixed(2)+'m on '+a+' to z '+parked.max.z.toFixed(2)+
-           ', behind the backdrop, over '+secs.toFixed(1)+'s, drawn the whole way';
+    return 'tracked '+moved.toFixed(2)+'m on '+a+' to '+a+' '+
+           parked.min[a].toFixed(2)+'..'+parked.max[a].toFixed(2)+
+           ', out of the picture, over '+secs.toFixed(1)+'s, drawn the whole way';
   });
 
   /* act one now plays across four sets; the interval re-dresses for act two */
@@ -3597,7 +3709,9 @@ const probe = `
       {at:3771, scene:'interior', dress:'deetz', backdrop:'out', off:0, what:'1:02:51 backdrop out, house on'},
       {at:4262, scene:'interior', dress:'deetz', backdrop:'out', curtain:'shut', what:'1:11:02 end of half'},
       /* act two */
-      {at:4470, scene:'interior', dress:'bj', backdrop:'out', off:0, flyHouse:BJ_SIGN_OUT,
+      /* flyHouse: BJ_PART_OUT since RULING CR — a SET flying out takes the flown
+         family's own out, not the number the SIGN travels (see the scene's park) */
+      {at:4470, scene:'interior', dress:'bj', backdrop:'out', off:0, flyHouse:BJ_PART_OUT,
        what:'1:14:30 sky out, house on'},
       {at:5100, scene:'attic',    backdrop:'in',  off:BJ_WAGON_BACK,
        what:'1:25:00 house back, the attic (CK: 25s earlier, set only)'},

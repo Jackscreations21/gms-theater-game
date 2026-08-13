@@ -70,73 +70,80 @@ const BJ_NEON_DARK = 0x0d1116;
    its second. */
 const BJ_WAGON_BACK = -10.0;
 
-/* WHERE THE HOUSE WAGON TRACKS TO STAND BACKSTAGE (RULING BQ).  STAGE LEFT, far
-   enough that the whole 13.6m room clears the 13.6m picture: at +14.0 his interior
-   parks at x 7.2 .. 20.8, which is 1.2m off the stage-left wall at +22 and 0.4m
-   outside the opening edge at 6.8 — behind the legs, which start masking at 6.6.
-   A feel constant like the rest of this family, and the one to move if the room is
-   ever seen from a seat while it is parked.
+/* ============================================================================
+   THE TRAFFIC PLAN (RULINGS CO, CP, CQ, CR, CS) — where every set comes from
+   and where it stands when it is off.
 
-   IT WAS STAGE RIGHT UNTIL HE PUT THE EXTERIOR ON THE FLY-RAIL SIDE.  A 13.6m room
-   parked stage right reaches x -20.8, and the locking rail stands at -19.2 — so the
-   wagon was standing ON the pin rail and the flyman's working space, which nothing
-   had checked.  The exterior is 8.6m wide and parks inside the rail; the wagon
-   cannot, so the wagon is the one that moved.
+   "Make it so no matter what they are always stored behind the backdrop and
+    never anywher else.  Also make it so they are the only one that can come in
+    from behind the backdrop.  Make the attic come i n from one of the sides.
+    Make the roof nethereworld and house exterior flown.  Make the bedroom and
+    the closet come in from one side."
 
-   NOT upstage: see the writeup at the interior's own scenePark call.  Upstage put
-   his house 3.28m through the Palace brick. */
-const BJ_HOUSE_PARK_X = 14.0;
+   THIS REVISES RULING CE, WHICH IS HIS OWN AND WAS A DAY OLD.  CE routed the
+   exterior into the stage-right wing and the attic upstage because both wings
+   held a house; he has watched that and re-cut it.  What survives of CE is the
+   machinery — bjTrackWhole, and flying being the y case of tracking — and it is
+   what makes this a change of four arguments rather than a rewrite.
 
-/* RULING CE — the sets that track on instead of flying, and from where.  Both
-   measured against the room rather than chosen: a wing is 14.5m (D.stageW 44 less
-   the 15m proscenium, halved) and the brick is 6.7m behind the acting area.
+   FOUR SLOTS, AND EACH SET HAS EXACTLY ONE:
 
-   THE ATTIC GOES TO A WING, stage LEFT, because stage right is where the house
-   wagon parks and two ~13m sets do not fit in one 14.5m wing.
-   THE EXTERIOR GOES UPSTAGE: it is only 8.6m wide but 8.8m deep, and upstage is
-   the one direction with room left once both wings hold a house. */
-/* HIS WORD ON THE EXTERIOR: "make the extiriot go out towards the side of the
-   stage with the fly rale."  The fly rail is STAGE RIGHT — p9's rope builder puts
-   the locking rail at -D.stageW/2 + 2.8, which is x -19.2, and the traveler hand
-   line is "stage right, just offstage of the arch".  So the exterior goes to -x.
+     upstage, behind the backdrop   the house wagon, and nothing else (CO, CP)
+     stage left                     the attic                          (CQ)
+     stage right                    the bedroom and the closet         (CS)
+     the fly tower                  the roof, the netherworld, the exterior (CR)
 
-   IT FITS THERE WITHOUT STANDING ON THE RAIL, which is the only reason this works:
-   it is 8.6m wide, so at -11.0 it parks at x -15.3 .. -6.7 and leaves the flyman
-   his rail at -19.2 and his working space behind it.  A 13.6m set could not.
+   The room they are measured against: the backdrop hangs on line 14 at z -10.90
+   (makeLineset: z = -0.50 - i*0.80), the Palace brick is at PAL_BACK -25.5, the
+   side walls at x +-22, the flyman's locking rail at x -19.2 (p9), and the
+   picture is 13.6 wide, so its edges are x +-6.80 with the legs masking from
+   6.6.
+   ========================================================================== */
+/* RULING CQ — THE ATTIC TAKES A WING, and it is stage LEFT.
 
-   WHICH IS WHY THE OTHER TWO MOVED.  Stage right was the wagon's, and only one
-   ~13m set fits in a wing, so: the wagon takes stage LEFT and the attic — 10m
-   deep and 13.06m wide — goes UPSTAGE, where 10m of depth clears the brick at
-   PAL_BACK by 1.2m.  Three sets, three slots, and the fly rail kept clear. */
-/* BOTH OF THESE ARE SIZED BY THE STAND-IN, NOT BY HIS MODEL, and two new
-   assertions found that the hard way.  The stand-ins are the BIGGER case and they
-   are what plays whenever a file has not landed — on a fresh clone, over slow
-   wifi, and in every suite, because jsdom fetches nothing.  Fitting a park to his
-   measured geometry alone parks the fallback in the picture.
+   He left the side to us ("one of the sides"), so it is measured rather than
+   chosen.  The attic is 13.06m wide with his file in and 12.40m as the stand-in;
+   parked stage right, a 13m set reaches past the flyman's locking rail at -19.2,
+   which is the exact fault CE found and fixed once already when the wagon stood
+   there.  Stage left has a wall at +22 and no rail.
 
-     the exterior   stand-in 12.6m wide (a painted drop FILLS the opening, which
-                    is why it used to fly), his model 8.6m fitted
-     the attic      stand-in reaches z -12.40, his model -10.30 */
-const BJ_EXT_SIDE   = -13.5;   /* -x, the fly-rail side.  13.5 clears the picture
-                                  edge at -6.8 for the 12.6m stand-in (parking it
-                                  at -19.80..-7.20) as well as for his house
-                                  (-17.82..-9.18).  The locking rail is at -19.2:
-                                  his fitted house clears it by 1.4m, and the
-                                  full-width stand-in drop reaches 0.6m past it.
-                                  That overlap is accepted rather than hidden — a
-                                  drop that fills the opening cannot park in a
-                                  wing at all, and the fallback standing near the
-                                  rail is better than the fallback standing in the
-                                  picture.  Both are well inside the wall at -22. */
-const BJ_ATTIC_BACK = -8.8;    /* upstage.  Bounded by the STAND-IN attic, which
-                                  reaches z -12.40 and so parks at -21.20.
-                                  -10.0 was measured against his model alone and
-                                  put the stand-in 0.90m into the brick.
-                                  RULING CL then took PAL_BACK to -25.5, so the
-                                  0.3m this used to have has become 4.3m and the
-                                  brick is no longer what bounds it — the number
-                                  stays because the reason it was chosen (the
-                                  stand-in, not his model) has not changed. */
+   +13.9 parks his attic at x 7.37 .. 20.43 and the stand-in at 7.70 .. 20.10:
+   both clear of the picture edge at 6.80, both behind the legs, both 1.5m off
+   the wall.  Sized by the STAND-IN as well as by his model, which is the habit
+   two assertions taught this file the hard way — the stand-in is the bigger case
+   and the one that plays whenever a file has not landed, including in every
+   suite, because jsdom fetches nothing.
+
+   THE WING IS FREE BECAUSE THE WAGON LEFT IT (RULING CO).  It was the wagon's
+   until this round, and only one ~13m set fits in a 14.5m wing. */
+const BJ_ATTIC_SIDE = 13.9;
+
+/* RULING CS — THE BEDROOM AND THE CLOSET SHARE THE OTHER WING, and they cannot
+   stand abreast in it.
+
+     bedroom   8.62m wide      together   17.64m
+     closet    9.02m wide      the wing   14.50m
+
+   So they stand ONE BEHIND THE OTHER, which is how a wing is really packed: both
+   track in on x to the same offset, and the closet additionally parks upstage
+   within that wing on a mover of its own.  Its z then reads -14.71 .. -10.10
+   against the bedroom's -8.31 .. -3.70 — no overlap on z, and therefore no
+   overlap at all.
+
+   THAT SECOND MOVER IS FREE.  sceneMvAdvance writes one axis and nothing else,
+   so the wrapper can carry x while the scene group carries z — the same
+   two-movers-one-scene trick the wagon has always used, pointed the other way.
+
+   AND IT IS NOT AN ENTRANCE FROM UPSTAGE (RULING CP).  The closet comes in from
+   the side, as he asked; the depth offset only says where in the wing it stands,
+   and x -16 .. -7 is nine metres outside the picture the backdrop covers.
+
+   -11.6 parks the bedroom at x -15.91 .. -7.29 and the closet at -16.11 ..
+   -7.09: both clear of the picture edge at -6.80 and both 3.1m clear of the
+   locking rail at -19.2.  THE WING IS FREE BECAUSE THE EXTERIOR FLIES AGAIN
+   (RULING CR). */
+const BJ_SIDE_ROOM   = -11.6;
+const BJ_CLOSET_BACK = -6.0;
 const BJ_TRACK_SPEED = 2.0;    // m/s — a tracked set crosses in ~7s
 
 /* THE NETHERWORLD, to his three words (RULING BV amended).
@@ -295,8 +302,14 @@ function bjRedress(sc){
    just the y case of it.  Nothing else about the choreography changes: the
    changeover already drives `all` to its `out` on strike and back to `home` on
    entry, so a set that tracks on from stage left is the same machinery pointed
-   sideways.  Flown: the roof, the bedroom, the closet — and the netherworld,
-   which measurement forced and which is argued at its own call. */
+   sideways.
+
+   THE LIST OF WHICH SET GOES WHERE HAS SINCE BEEN RE-CUT BY RULINGS CQ, CR AND
+   CS — "make the roof nethereworld and house exterior flown ... make the bedroom
+   and the closet come in from one side" — so it is deliberately no longer written
+   out here.  It lives at each scene's own call, where the measurement that
+   chooses the number lives too, and in the traffic-plan block at the top of this
+   file.  This function is the part of CE that did not move. */
 function bjTrackWhole(sc, axis, out, speed){
   const g = new T.Group();
   g.name = 'bj:' + sc.name + ':all';
@@ -1050,18 +1063,35 @@ SHOWS.beetlejuice = {
        the acting position — measured at 20.0% of a stalls eye, the worst of the
        nine.
 
-       RULING CE — AND IT COMES ON FROM STAGE RIGHT, the fly-rail side, at his
-       word: "make the extiriot go out towards the side of the stage with the fly
-       rale."  At 8.6m wide it parks inside the locking rail at x -19.2 rather than
-       on top of it, which is the whole reason the fly-rail side is available to
-       it — and why the 13.6m wagon had to give that wing up and take stage left.
-       The wrapper carries the entrance and the park on x; the whole-group Y mover
-       above is left exactly as it is, because the cue at 1:14:30 is HIS OWN plot
-       line — "the exterior flies out" — and re-pointing a cue he wrote is his
-       call, not a side effect of this ruling.  So the drop still flies out on that
-       one cue and lives upstage the rest of the night.  FLAGGED: if CE is meant to
-       supersede that line too, it is one field in one cue. */
-    bjTrackWhole(hse, 'x', BJ_EXT_SIDE, BJ_TRACK_SPEED);
+       RULING CR — AND IT FLIES AGAIN.  "Make the roof nethereworld and house
+       exterior flown."  RULING CE had tracked it into the stage-right wing off
+       his own earlier line ("make the extiriot go out towards the side of the
+       stage with the fly rale"), and CE's own comment left this FLAGGED as the
+       thing to change if he ever meant to supersede it.  He has.
+
+       IT PARKS ON THE MOVER IT ALREADY HAS, rather than growing a second one:
+       scenePark's `mv` option exists for exactly this shape — a scene whose own
+       whole-group mover already points where the park wants to go.  Up is where
+       it goes and that mover is the thing that goes up, so a strike flies it out
+       to BJ_PART_OUT and an entry brings it back to its home at 0.  A wrapper on
+       y would fight it: two y movers over the same scene both apply, and 21m of
+       travel puts an 8.9m drop through the 25m grid.
+
+       AND THE PARK IS BJ_PART_OUT, NOT BJ_SIGN_OUT, WHICH IS A REAL DEFECT THE
+       SUITE FOUND ON THE WAY PAST.  The cue at 1:14:30 has always flown this drop
+       to BJ_SIGN_OUT 9.0 — the SIGN's number, borrowed by a set — and 9.0 puts
+       the foot of an 8.7m cloth at y 9.0 against a 9.2m picture: two tenths of a
+       metre of it hanging in the opening.  It never showed, because until RULING
+       BQ a struck set went DARK on arrival.  BQ made a parked set stand there
+       drawn, and nothing re-measured this one: the probe reports "not one ray of
+       1025" for the flown sets at 10.50, and the exterior was not among them
+       because CE had it tracking sideways.  BJ_PART_OUT is the number the flown
+       family uses and it exists for exactly this ("clears the 9.2m header plus a
+       margin"), so the cue takes it too — otherwise the park would silently
+       override the plot line every night.
+
+       AND IT FREES STAGE RIGHT, which is what pays for RULING CS. */
+    scenePark(hse, undefined, undefined, undefined, {mv: BJ_PART_OUT});
 
     /* ================================================================
        SCENE — THE HOUSE, from inside.  Measured, the interior carries
@@ -1395,21 +1425,40 @@ SHOWS.beetlejuice = {
     /* the room wakes up as the Maitlands' — it is theirs first */
     bjDress(inr, 'maitland');
 
-    /* RULING BQ — THE WAGON TRACKS INTO A WING, and this call has to come HERE,
-       after all three dressings are built.  scenePark wraps the children that
-       exist WHEN IT RUNS: registered up beside sceneTravel it wrapped the shell
-       only, and the parked room measured x -20.80 .. 6.80 — 27.6m wide, the shell
-       in the wing and three dressings still standing in the acting area.  Same
-       rule bjFlyWhole states for itself: called AFTER the scene is built.
+    /* RULING CO — THE HOUSE IS STORED BEHIND THE BACKDROP, AND NOWHERE ELSE.
 
-       `homeMv` because the wing is what hides it, not depth.  His interior is
-       12.98m deep and there is NO upstage offset that works: it must clear the
-       backdrop at z -10.90 in front of it and stay downstage of the brick at
-       -21.5 behind it, and 12.98m does not fit between them.  So the strike sends
-       the wagon to its ACTING offset — 0, stated, because the wagon's own `home`
-       is BJ_WAGON_BACK, the number that stands the house in the brick — and the
-       room goes sideways instead. */
-    scenePark(inr, 'x', BJ_HOUSE_PARK_X, 2.0, {mvAt: 0});
+       "make it so no matter what they are always stored behind the backdrop and
+        never anywher else"
+
+       RULING BQ parked the wagon in the stage-left wing instead, and its comment
+       said why it could not go upstage:
+
+         "His interior is 12.98m deep and there is NO upstage offset that works:
+          it must clear the backdrop at z -10.90 in front of it and stay
+          downstage of the brick at -21.5 behind it, and 12.98m does not fit
+          between them."
+
+       THAT WAS TRUE WHEN IT WAS WRITTEN AND RULING CL MADE IT FALSE.  CL took
+       PAL_BACK from -21.5 to -25.5 for an unrelated reason — his house stood
+       3.28m out in the street at the curtain call — and the gap between the
+       backdrop and the brick went from 10.60m to 14.60m.  12.98m fits inside it
+       with 1.62m to spare.
+
+       AND THE OFFSET IT FITS AT IS THE ONE THE WAGON ALREADY HAS.  At
+       BJ_WAGON_BACK -10.0 his room stands z -24.78 .. -11.80 — 0.90m upstage of
+       the cloth and 0.72m off the brick — and the stand-in -19.24 .. -11.56.
+       The window on the offset is -10.72 .. -9.10 for his model and -10.0 sits
+       inside it, so this ruling changes WHICH MOVER PARKS THE HOUSE and not one
+       number.
+
+       So the park declares no axis of its own: `mvAt` sends the wagon's own z
+       mover upstage on a strike, and the cue-authored moves that call the room on
+       are untouched.  The wagon's `home` IS BJ_WAGON_BACK, which is why the
+       offset is stated rather than left to `home` — sceneChangeTo's entry branch
+       never drives a scene that only asked for `mvAt`.
+
+       AND IT FREES STAGE LEFT, which is what pays for RULING CQ. */
+    scenePark(inr, undefined, undefined, undefined, {mvAt: BJ_WAGON_BACK});
 
     /* ---- the attic: rafters, a model of the town, and dust sheets ---- */
     const att = sceneAdd('attic', 'THE ATTIC');
@@ -1466,11 +1515,11 @@ SHOWS.beetlejuice = {
         att.group.add(new T.Mesh(mergeParts(parts), glow));
       }
     }
-    /* RULING CE — the attic comes on FROM UPSTAGE; it used to fly.  It wanted a
-       wing at first, and then he put the exterior on the fly-rail side and there
-       were only two wings for three sets: it is 10m deep, which clears the brick
-       at PAL_BACK by 1.2m, so upstage is the slot it can actually use. */
-    bjTrackWhole(att, 'z', BJ_ATTIC_BACK, BJ_TRACK_SPEED);
+    /* RULING CQ — the attic comes on FROM STAGE LEFT.  RULING CE sent it upstage
+       and RULING CP takes that door away: "they are the only one that can come in
+       from behind the backdrop", and `they` is the house.  CE only put it there
+       because both wings held a house; CO has emptied this one. */
+    bjTrackWhole(att, 'x', BJ_ATTIC_SIDE, BJ_TRACK_SPEED);
 
     /* ---- the bedroom: a bed, a lamp, and not much else ---- */
     const bed = sceneAdd('bedroom', 'THE BEDROOM');
@@ -1530,7 +1579,11 @@ SHOWS.beetlejuice = {
         c2.position.set(-3.0, 0, -5.4); c2.rotation.y = 0.5; bed.group.add(c2);
       }
     }
-    bjFlyWhole(bed);              // the bedroom flies, bed and quilt riding
+    /* RULING CS — the bedroom comes on FROM STAGE RIGHT; it used to fly.  "Make
+       the bedroom and the closet come in from one side."  It is the downstage
+       half of that wing: the closet stands behind it (see the closet's own
+       call), because 8.62 and 9.02 do not stand abreast in 14.5m. */
+    bjTrackWhole(bed, 'x', BJ_SIDE_ROOM, BJ_TRACK_SPEED);
 
     /* ================================================================
        SCENE — THE AFTERLIFE, rebuilt to HIS PHOTOGRAPH (RULING BV).
@@ -1770,7 +1823,16 @@ SHOWS.beetlejuice = {
         r.receiveShadow = true; clo.group.add(r); sceneWalk(clo, r);
       }
     }
-    bjFlyWhole(clo);              // the closet flies, step and spiral riding
+    /* RULING CS — the closet comes on FROM STAGE RIGHT, the same side as the
+       bedroom, and stands BEHIND it in that wing.  The x mover is the entrance he
+       asked for; the z park is where in the wing it ends up, and it is a second
+       mover over the scene group rather than the wrapper, so the two axes never
+       touch each other (sceneMvAdvance writes one axis and nothing else).
+
+       Without it the two rooms park inside each other by 8.6 x 5.6 x 4.2m: they
+       are 17.64m of set for a 14.5m wing, and no x offset fixes that. */
+    bjTrackWhole(clo, 'x', BJ_SIDE_ROOM, BJ_TRACK_SPEED);
+    scenePark(clo, 'z', BJ_CLOSET_BACK, BJ_TRACK_SPEED);
 
     /* ================================================================
        SCENE — THE ROOF.  The owner's plot puts it at 56:00, and it is
@@ -2764,7 +2826,10 @@ function plotBeetlejuice(){
     {at:4470, n:29, label:'1:14:30 — the sky flies out, the house slides on', fade:1,
      house:0, haze:0.55, curtain:'out', scene:'interior', dress:'bj',
      backdrop:'out', sky:'out',
-     move:[{scene:'house', off:BJ_SIGN_OUT}, {scene:'interior', off:0}],
+     /* RULING CR — BJ_PART_OUT, not BJ_SIGN_OUT.  A SET flying out takes the
+        flown family's out; 9.0 is how far the SIGN goes and it left the foot of
+        this cloth 0.2m inside the picture (the writeup is at the scene's park). */
+     move:[{scene:'house', off:BJ_PART_OUT}, {scene:'interior', off:0}],
      look(){ all(0); }},
 
     /* "1:14:57 purple lights start fading on." */
