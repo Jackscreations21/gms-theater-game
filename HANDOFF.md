@@ -224,7 +224,135 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **PUT IT ON THE HEADSET** (2026-08-13, late)
+## NEXT SESSION: **THE GOLD, THE NEON, AND THE SIGN** (2026-08-13, his headset run)
+
+Cache-bust **`?v=26`**. **Read STATE.md — it carries both remaining items
+specified end to end, with the numbers already measured.** Rulings are at **DF**.
+
+**HE FINALLY LOOKED AT IT, AND CAME BACK WITH NINE THINGS.** Seven are built and
+**all of them are on `main`** — #164, #165, #166, #167, each based on `main` and
+naming its dependency, four clean merges and no recovery PR. **Two items are not
+built**, and both are specified in STATE.md with their numbers worked out:
+
+1. **ITEM 4 — remove the gold proscenium for Beetlejuice and put the neon on the
+   black portal.** He confirmed which black (`bj:portal`, not the masking) and
+   confirmed the blinders follow it in, in all five productions. Legs ±7.75 →
+   **±7.11**, top raked → **flat at 9.51**, z 1.26 → **0.87**. It partly repeals
+   RULING CX and **supersedes his own CY rake**, because the portal's top is
+   flat — keep `BJ_NEON_RAKE` live and say so.
+2. **ITEM 9 — the sign to pre-show, the floor, or all the way up.** `flyExtras`
+   is a two-state haul and needs three named stops. **The floor offset is not
+   written down anywhere — measure it.** And `tests/vr.js` pins fly-page rows by
+   LITERAL PIXEL, so three buttons will not fit where two did; use `vrHit` META.
+
+**THE PROBE WAS THE BUG, AND IT HAD BEEN TRUSTED FOR TWO ROUNDS.**
+`tools/parked.js` cast from ONE eye at the middle of the stalls — the kindest
+seat in the house — aimed at the picture opening rather than at the sets, and
+sampled bounding-box CORNERS, which gave his one-mesh houses nine sample points
+with eight in mid-air. It printed a confident `0/450 UNSEEN`. Fifty eyes and real
+surface points now.
+
+**AND ITEM 3 WENT WRONG BEFORE IT WENT RIGHT.** Read strictly, "no set should be
+parked in a wing" leaves only the fly tower, so three sets went into the air —
+six of seven flying, inverting his own RULING CE and losing the CQ/CS side
+entrances. One sentence of correction killed it. The space was BEHIND the sets:
+the bedroom cleared the masking by 0.49m with six metres of wing unused.
+
+**Still his to decide:** the cemetery's missing park (and the probe now prices
+it — running the hills further does NOT hide it), the sign's red at GO, 181MB of
+models, whether the netherworld at 4.42m is right.
+
+**Still owed:** **BY**, the graveyard, the audio join at 4292, the house floor
+pool, a park stated as an absolute LINE, `BLIND_BODY`, and `pr6.json`.
+
+## DONE — 2026-08-13: his headset run, nine things (#164–#167, CZ–DF)
+
+The first time anybody had looked at any of it. Nine items; seven built as four
+PRs, all merged.
+
+**RULING CZ — THE INTERVAL ASSEMBLES IN ORDER.** *"at the end of the half the
+neon light around the proscenium and the intermission music dont come on till the
+curtain is fully done and the house lights are on."* RULING CJ already held the
+house master for the cloth; this queues the frame and the interval music behind
+CJ's own per-frame handover, so the break goes cloth home → house up → neon
+strikes → music in. A chain, not a second clock.
+
+**AND THE `stop` HALF IS NOT HELD, WHICH IS THE PART THAT WOULD HAVE BITTEN.**
+The interval cue says `audio:{stop:'act1', play:'preshow'}` and **act one is the
+CLOCK track** — holding the whole field would have left it running while the
+curtain flew in, with `showAudioTick` firing act two's cues off it, straight past
+RULING AU. The stop lands on the firing frame and only the `play` waits.
+
+**RULING DA — THE SECOND HALF STARTS WITH THE FRAME STILL LIT.** The portal is
+the one cue field applied unconditionally (CH), so act two's GO saying nothing
+about it was what put the frame out: the audience walked back in to a blue frame
+and it snapped dark as the show restarted. The GO says it now and the flash cue
+says nothing, so **that** is what takes it out. One assertion reversed in place,
+and the reasoning was already in the file for act one's GO — the pre-show runs
+through one GO for the identical reason the interval now runs through the other.
+
+**RULINGS DB, DC — HIS TWO RETIMINGS, AND HIS NUMBERING SURVIVED.** Q39 and Q39.1
+both land on 1:39:19, so the netherworld comes on UNDER the black and the white
+flash. Q40 now fires **after** Q41: the blackout comes first and the house slides
+on inside it, because he watched it travel in full view. **The plot pushes cues in
+array order with no sort and `showAudioTick` walks by INDEX, so the firing order
+IS the array order and the cue number is only a label** — swapping the two entries
+made "Q40 right after Q41" literally true without renumbering anything, which
+would have silently changed the language he uses about his own plot.
+
+**AN ASSERTION TAUGHT ME SOMETHING I HAD WRONG THERE.** With Q40 moved behind it,
+the BLACKOUT became the first cue after the netherworld to declare
+`scene:'interior'` — so the blackout carried the changeover and the room appeared
+while its own one-second fade was still going down. "The set never changes in
+view" named the cue. The blackout is still the netherworld now, merely dark.
+**And Q40 lost its blue look**, which is a real change to his plot and is flagged
+rather than buried: a set that slides on in the dark cannot also be lit.
+
+**RULINGS DD, DE — TWO NUMBERS, AND BOTH WERE COMPLETELY UNGUARDED.** The
+netherworld 6.82m → 4.42m (his second ask), his exterior 1.5m further upstage.
+**Changing both left all nineteen suites green**, which is the finding. One
+negative check earned its assertion outright: squashing the recession about the
+ORIGIN instead of the downstage frame gives an identical depth, so the arithmetic
+passes perfectly while the whole set walks 1.5m into the audience — only the
+face clause catches it.
+
+**RULING DF — SETS PARK PAST THE WING, AND ESTABLISHING WHAT IT WAS NOT WAS MOST
+OF THE WORK.** Fifty eyes at ~12,000 rays proved every park already invisible from
+every seat, so any assertion on visibility would have passed against the build he
+objected to. The fault was the OFFSET: parks were sized to just clear the masking
+and stopped. `BJ_SIDE_ROOM` −11.6 → −14.0 and `BJ_ATTIC_SIDE` 13.9 → 14.4 —
+bedroom 0.49m → 2.89m clear, closet → 2.69m. **Stage right stops at the LOCKING
+RAIL (x −19.2), not at its wall**, because CE was written when the wagon was
+parked on the flyman's working space. Only the netherworld, exterior and roof fly,
+which is his correction.
+
+**AND I BUILT THE WRONG ANSWER FIRST AND THREW IT AWAY.** Read strictly, "no set
+in a wing" leaves only the fly tower, so three sets went up — six of seven flying,
+inverting his own CE, losing the CQ/CS side entrances, four assertion reversals.
+He corrected it in one sentence. **When a request collides with an existing
+ruling, the collision is the thing to ask about**, and I asked two questions
+before the one that mattered.
+
+**THE PROBE WAS LYING IN THREE WAYS AT ONCE.** One eye at the middle of the
+stalls; rays aimed at the opening rather than at the sets; and bounding-box
+corners for sampling, which gave his one-mesh houses eight samples in mid-air and
+a confident `0/450 UNSEEN`. It also now prices the open cemetery question:
+**running the hills further does NOT hide it** — 186 rays → 45 → and back up,
+because `bj:hill`, `bj:gate` and `bj:moon` return to view as the hills clear.
+
+**EIGHTEEN NEGATIVE CHECKS FIRED**, every mutation proved present in the BUILT
+file **and proved to have changed it** before the result was read. Two taught
+something: a mutation can prove the wrong clause (giving the flash cue a portal
+field trips the guard and never reaches the emissive check), and a clause that
+cannot fire should say so in the file rather than look live.
+
+**New in TRAPS:** the one-eyed sightline probe; aiming at the opening instead of
+at the subject; a box having corners only, wearing its other hat; establishing
+what a complaint is NOT; the request-versus-ruling collision; the mutation that
+proves the wrong clause; a literal measured from a constant becoming a tripwire
+for it; and the backtick in a probe comment, sixth time.
+
+## NEXT SESSION: **PUT IT ON THE HEADSET** (2026-08-13, late) — SUPERSEDED, see above
 
 Cache-bust **`?v=25`**. **Read STATE.md — it carries the full left-to-do list
 with the rulings written out.** What belongs here is the shape of it.
