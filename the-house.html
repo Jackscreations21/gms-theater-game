@@ -1084,6 +1084,189 @@ renderer.shadowMap.autoUpdate = false;      // shadows refreshed on demand, not 
 renderer.outputEncoding = T.sRGBEncoding;
 renderer.toneMapping = T.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.35;
+
+/* ============================================================================
+   RULING DK — THE ROOM HAS AN ENVIRONMENT.
+
+   Nothing set scene.environment, and every material arriving from a GLTF is a
+   MeshStandardMaterial carrying envMapIntensity 1 with nothing to sample — so
+   every metal surface in the 181MB of imported models rendered near-black.
+   This is the diffuse-and-specular ambience Roblox calls EnvironmentDiffuseScale
+   / EnvironmentSpecularScale.
+
+   NOT RoomEnvironment.  That lives in examples/jsm and the CDN UMD bundle has
+   no addons at all — verified: examples/js is 404 from r148, and the UMD build
+   itself is 404 from r161.  PMREMGenerator is CORE, so a hand-made box of
+   emissive greys is the whole source: an interior's ambience is a dark ceiling,
+   a mid floor and dim walls, and PMREM only ever sees it blurred.
+
+   AND IT IS A CLOSED BOX WITH THE CAMERA INSIDE IT, WHICH IS NOT A DETAIL.
+   PMREM's cube camera sits at the ORIGIN.  The first version stood the floor at
+   y 0 — through the camera — so it was exactly edge-on and contributed NOTHING,
+   and the share it should have carried reached the BACKGROUND instead.  The
+   background is in a different encoding from the faces: _sceneToCubeUV runs
+   convertSRGBToLinear over the background colour and leaves a MeshBasicMaterial
+   raw, so what arrived under the room was far darker than the walls and nothing
+   below a bar, a border or a set overhang got any bounce at all.  ENV_HALF puts
+   all six faces equidistant from the origin, so every ray lands on one of them
+   and the background is unreachable — which is what makes the encoding mismatch
+   moot rather than merely unlikely.  ENV_SRC is kept rather than disposed so
+   the box can be MEASURED (six quads).
+
+   THE NUMBERS, MEASURED ON THE BOX AS BUILT, because a comment that rules on a
+   figure is a fact with a date on it (TRAPS) and the first draft of this one
+   said the missing floor cost 50% — which cannot be true of a cube, and would
+   send the next person retuning ENV_HALF after a hole three times too big.
+   4,000 evenly spread directions: 16.68 / 16.68 / 16.68 / 16.64 / 16.65 / 16.67
+   percent, nothing escaping.  One missing face of a cube centred on the camera
+   is ONE SIXTH of the sphere, ~16.7%, not a half.
+
+   ONE KNOB, NOT TWO.  r128's standard material scales environment diffuse and
+   specular together through envMapIntensity, so Roblox's two scales collapse
+   to one row.  Splitting them is a shader-chunk patch and is DEFERRED rather
+   than faked (spec 7.4).
+
+   IT FOLLOWS THE BED, AND THAT GOVERNS THE WHOLE BUILDING.  A fixed environment
+   lights a blackout as brightly as a full stage — the exact fault RULING BH
+   fixed for the ambient.  r128 hands scene.environment to EVERY standard
+   material, so this clause is not about the imports: the theatre is built out
+   of standard materials too, and left undriven at the default 1 the building
+   was 1.8x the imported sets at full bed and 7.27x at blackout.
+
+   ONE REGISTRY, ONE WALK, AND NO PER-FRAME TRAVERSAL.  ENV_MATS is a Set, so
+   registering twice is free and nothing can be on it twice.  It is rebuilt at
+   the FIVE moments the world changes shape, and the list is the point — each
+   one was found by measuring, not by reasoning:
+     - the END of init()          the building, both venues, all three stages
+     - showLoad                   the set, stand-ins included
+     - showStrike                 and letting the struck set go again
+     - vrOnStart                  ~142 materials, mostly the rope rail you
+                                  stand at, minted by five builders p9 runs
+                                  long after init
+     - stageSwitch                each Arc stage's fogger rack, which
+                                  smokeRestore builds the FIRST time the board
+                                  is patched there, plus whatever
+                                  vrOnStageChange just rebuilt
+   and topped up per subtree, as it is made, by the model importer and by the
+   four things that mint a material at the moment they need it: goodsMat and
+   woodMat (the keyed caches INVARIANTS names), carpLead's seventh figure, and
+   the dummy crewPickUp mints per carry.
+
+   ANYTHING NEW THAT BUILDS GEOMETRY AFTER BOOT SHOULD CALL envRegister ON WHAT
+   IT BUILT — or envTrack, if it minted a bare material — and it is then right
+   on the very next frame.  The tell that it was forgotten is a surface that
+   stays bright through a blackout.  A sliced rota backstop was considered, so
+   that a missed site would be wrong for at most one rota instead of for ever;
+   it is DEFERRED, not rejected.  envRecollect costs 1.09ms over 3,399 objects
+   unsliced (against 0.0018ms for envDrive, which is noise), and this build is
+   already 1.8x over its VR frame budget, so new per-frame machinery is the
+   owner's call and not an environment PR's to slip in.
+
+   REBUILT FROM THE LIVE SCENE, NOT PRUNED BY A TAG.  The first version marked
+   show materials with userData and deleted them at the strike, and it was
+   wrong twice over: the M table is SHARED, so a material the building and the
+   show both use got tagged by the show and then dropped from under the
+   building (140 entries down to 108, measured).  And disposeTree disposes
+   GEOMETRY ONLY — no material is ever disposed, precisely because they are
+   shared — so "what the strike threw away" is not a set anything can name.
+   What CAN be named is what is in the scene afterwards.  Rebuilding from it
+   is self-healing, needs no bookkeeping, and is the thing that stops the
+   registry growing by an imported set per load (which would also pin those
+   materials and their textures against GC).  SHOW.offstage is added by hand
+   because RULING CN holds those sets OUT of the graph on purpose, and the two
+   keyed caches because a wood paint or a dyed drape is minted on demand and
+   outlives the mesh that asked for it.
+   ========================================================================== */
+const ENV_INTENSITY = 0.55;     // one-line retune: how much room ambience there is
+let ENV_LIVE = ENV_INTENSITY;   // what the room actually has right now
+let ENV_SRC = null;             // the source box, kept so it can be measured
+const ENV_HALF = 10;            // the box is 2 x ENV_HALF every way, camera dead centre
+/* the box as data, so what is measured is what was built */
+const ENV_FACES = [
+  {col:0x0a0c12, pos:[0,  ENV_HALF, 0], rot:[ Math.PI/2, 0, 0], why:'ceiling, darkest'},
+  {col:0x24262b, pos:[0, -ENV_HALF, 0], rot:[-Math.PI/2, 0, 0], why:'floor, mid'},
+  {col:0x14171d, pos:[0, 0, -ENV_HALF], rot:[0, 0, 0],          why:'walls, dim'},
+  {col:0x14171d, pos:[0, 0,  ENV_HALF], rot:[0, Math.PI, 0],    why:'walls, dim'},
+  {col:0x11141a, pos:[-ENV_HALF, 0, 0], rot:[0,  Math.PI/2, 0], why:'walls, dimmer'},
+  {col:0x11141a, pos:[ ENV_HALF, 0, 0], rot:[0, -Math.PI/2, 0], why:'walls, dimmer'}
+];
+function envBuild(){
+  const es = new T.Scene();
+  for(const f of ENV_FACES){
+    const m = new T.Mesh(new T.PlaneGeometry(2*ENV_HALF, 2*ENV_HALF),
+      new T.MeshBasicMaterial({color:f.col, side:T.DoubleSide}));
+    m.position.set(f.pos[0], f.pos[1], f.pos[2]);
+    m.rotation.set(f.rot[0], f.rot[1], f.rot[2]);
+    es.add(m);
+  }
+  /* NO es.background, and be exact about why that is safe.  Leaving it off
+     sends _sceneToCubeUV down its ELSE branch, which DOES read the renderer's
+     clear colour, paints backgroundMaterial from it and draws backgroundBox on
+     all six faces before the scene.  Two things make that harmless and BOTH are
+     load-bearing: the box above is closed, so every one of those pixels is
+     overdrawn; and the clear colour is black — in a browser by default, and in
+     the suites only because the jsdom stub's getClearColor was fixed to MUTATE
+     its target the way the real one does.  A stub that returned the argument
+     left PMREM reading its own module-level Color, which is WHITE.  Take the
+     closed box away and the harness would build a white environment while the
+     browser built a black one, and every suite would report success. */
+  const pm = new T.PMREMGenerator(renderer);
+  const rt = pm.fromScene(es, 0.04);
+  pm.dispose();
+  ENV_SRC = es;
+  scene.environment = rt.texture;
+}
+/* THE one registry.  envTrack takes a single material — the guard is the whole
+   membership test: MeshBasic and the raw ShaderMaterials have no envMapIntensity
+   and asking them would only hang a stray property on them.  It RETURNS the
+   material so a cache can mint straight through it (goodsMat, woodMat). */
+const ENV_MATS = new Set();
+function envTrack(m){
+  if(!m || !('envMapIntensity' in m)) return m;
+  m.envMapIntensity = ENV_LIVE;
+  ENV_MATS.add(m);
+  return m;
+}
+function envRegister(root){
+  if(!root) return ENV_MATS.size;
+  root.traverse(o=>{
+    if(!o.isMesh || !o.material) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for(const m of mats) envTrack(m);
+  });
+  return ENV_MATS.size;
+}
+/* Rebuild from what is actually there.  MUST NOT RUN BEFORE p5c HAS EXECUTED:
+   SHOW is a `const` of this one concatenated program, and a `const` in its
+   temporal dead zone throws on a plain reference AND through `typeof` (TRAPS,
+   twice) — so there is no guard that would make this safe to call from p2..p5c
+   and it does not pretend to have one.  Every call site is post-boot.
+   (`typeof WOODM` below is a different case and is sound: WOODM and GOODSM are
+   both declared `var` in p4c, which hoists.) */
+function envRecollect(){
+  ENV_MATS.clear();
+  envRegister(scene);
+  /* RULING CN holds two of the three houses OUT of the graph at any moment, so
+     a walk of the scene cannot see them */
+  if(SHOW && SHOW.offstage)
+    for(const g of SHOW.offstage) envRegister(g);
+  /* the keyed caches INVARIANTS names: a wood paint and a dyed drape are minted
+     on demand and outlive the mesh that asked for them, so a rebuild from the
+     scene alone would strand one the moment nothing is currently wearing it.
+     LENSM is not here on purpose — it holds MeshBasicMaterial, which has no
+     envMapIntensity to drive. */
+  if(typeof WOODM !== 'undefined')
+    for(const k in WOODM) envTrack(WOODM[k]);
+  if(typeof GOODSM !== 'undefined')
+    for(const k in GOODSM) envTrack(GOODSM[k]);
+  return ENV_MATS.size;
+}
+/* the per-frame walk — one Set, one pass, no traversal */
+function envDrive(){
+  for(const m of ENV_MATS) m.envMapIntensity = ENV_LIVE;
+}
+envBuild();
+
 $('#app').appendChild(renderer.domElement);
 
 const camera = new T.PerspectiveCamera(60, innerWidth/innerHeight, 0.08, 300);
@@ -5363,6 +5546,21 @@ function updateRig(dt, t){
   hemi.intensity    = bedHouse * 0.28 + bedRig * 0.04;
   M.exit.color.setRGB(0.02+bed*0.10, 0.10+bed*0.76, 0.05+bed*0.30);
   scene.fog.color.setRGB(bed*0.02, bed*0.024, bed*0.034);
+  /* RULING DK — the environment is ambience, so it follows the light bed.  ONE
+     bed, for the whole world: `bed` is deliberately the AUDITORIUM's, excluding
+     the lobby and the dock (RULING BH again, a few lines up), while
+     scene.environment is a single texture every standard material in both
+     buildings samples — so the shed and the lobby now ride the auditorium's
+     level.  Never worse than before DK, when there was no environment at all,
+     but it is not a per-room claim and must not be written as one.
+     A fixed environment lights a blackout as brightly as a full
+     stage, which is the exact fault RULING BH fixed for the ambient.  r128 has
+     NO scene-level environment intensity — scene.environment reaches every
+     standard material and there is no one number that scales it — so the drive
+     is per material, and envDrive walks the ONE registry p2 collected: the
+     building once at init, the show and its models as they arrive. */
+  ENV_LIVE = ENV_INTENSITY * (0.25 + 0.75*bed);
+  envDrive();
   scene.background.setRGB(bed*0.014, bed*0.017, bed*0.028);
   FLY.forEach(ls=>{ if(ls.practical){ ls.practical.light.intensity = HOUSE.practical*3.2;
     ls.practical.bulbs.forEach(b=>b.material.color.setRGB(
@@ -5414,8 +5612,11 @@ const WOOD_COL = {ply:0xc8ab7a, pine:0xd8c193};
 const WOODG = new T.BoxGeometry(1, 1, 1);
 var WOODM = {};                 // color -> ONE MeshStandardMaterial, shared
 function woodMat(color){
+  /* RULING DK — a paint colour is minted on demand, long after the boot walk
+     that collected the building, so it joins the environment registry as it is
+     made rather than waiting for the next rebuild to notice it. */
   return WOODM[color] || (WOODM[color] =
-    new T.MeshStandardMaterial({color, roughness:.85}));
+    envTrack(new T.MeshStandardMaterial({color, roughness:.85})));
 }
 /* the two accessors the header describes: every reader gets six faces
    whatever form the mesh is in, and every writer collapses back to one
@@ -6382,7 +6583,12 @@ function goodsMat(base, color){
   m.color = new T.Color(color);
   m.userData = m.userData || {};
   m.userData.goodsBase = src;
-  return GOODSM[k] = m;
+  /* RULING DK — and it must be TRACKED, not merely correct once.  clone()
+     copies envMapIntensity, so a dyed drape comes out carrying whatever the
+     room happened to be at the moment it was pulled and then never moves
+     again — right at the instant it is made, and quietly wrong from the next
+     cue onwards, which is the worst shape a fault can have. */
+  return GOODSM[k] = envTrack(m);
 }
 /* the nearest lineset whose GOODS come within reach of a world point.
    Measured to the bounding BOX: a house curtain is thirteen metres of
@@ -8533,6 +8739,13 @@ function makeHand(i){
   g.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
   g.visible = false;
   crewRoot().add(g);
+  /* RULING DK — EVERY figure is minted lazily, not just the lead: crewSpawn(6)
+     runs on the first call that needs hands, which may be a carpenter call long
+     after boot.  Hooked HERE rather than in crewSpawn or carpLead because this
+     is the one place a figure's cloth and hat are made, and both paths come
+     through it.  (carpLead registers again after adding its apron — a Set, so
+     saying it twice is free.) */
+  if(typeof envRegister === 'function') envRegister(g);
 
   return {
     group:g, armL, armR, legL, legR, hands, torso, cap,
@@ -8565,6 +8778,11 @@ function carpLead(){
   apron.castShadow = apron.receiveShadow = true;
   lead.group.add(apron);
   CREW.people.push(lead);
+  /* RULING DK — the seventh figure is built LAZILY, the first time a carpenter
+     call needs a lead, so the boot walk never saw his cloth, his hat or this
+     apron.  Undriven that is a man standing in the shed at 7.27x the room's
+     ambience through a blackout. */
+  if(typeof envRegister === 'function') envRegister(lead.group);
   return lead;
 }
 
@@ -8652,6 +8870,12 @@ function crewPickUp(h, kind){
   }
   g.traverse(o=>{ if(o.isMesh) o.castShadow = true; });
   h.hands.add(g);
+  /* RULING DK — a 'flat' and a 'prop' each mint their own standard material,
+     and this runs once PER PICKUP: a changeover is a stream of them, and a
+     changeover is exactly when the stage is dark.  Registering a dummy is safe
+     even though crewPutDown disposes it — the drive only writes a number, and
+     the next recollect drops it with the rest of what has left the scene. */
+  if(typeof envRegister === 'function') envRegister(g);
   h.carry = g;
   return g;
 }
@@ -10750,6 +10974,13 @@ function showStrike(){
   for(const k of Object.keys(SHOW)) delete SHOW[k];
   Object.assign(SHOW, showBlank());
   if(typeof removeShowSmoke === 'function') removeShowSmoke();
+  /* RULING DK — and the environment registry lets go of the show.  It is rebuilt
+     from the live scene, which the show has just left, so its materials fall off
+     without anything having to name them — and they become collectable, which a
+     registry still holding them would prevent.  LAST, after removeShowSmoke:
+     one line higher and the registry kept 8-12 smoke materials that had already
+     gone, which is bounded and harmless and still not what it says it does. */
+  if(typeof envRecollect === 'function') envRecollect();
   if(typeof buildGoodsPalette === 'function') buildGoodsPalette();
   if(typeof refreshShowUI === 'function') refreshShowUI();
   if(typeof refreshFlyUI === 'function') refreshFlyUI();
@@ -10845,6 +11076,11 @@ function showLoad(key){
   if(SHOW_HANGS[key]) applyHang(key);
   SHOW.loadedHang = hangSnapshot();
   if(typeof lockShowStatic === 'function') lockShowStatic();
+  /* RULING DK — the show's own geometry samples the environment too, stand-ins
+     included.  One rebuild from the live scene rather than a subtree walk, so
+     nothing here depends on this being the only thing that changed.  The models
+     the importer lands are asynchronous and register themselves as they land. */
+  if(typeof envRecollect === 'function') envRecollect();
   /* the owner's delivered set models replace the stand-ins (RULING AZ) —
      fetched async per scene, applied when they arrive, silent when absent.
      p5i defines it and loads later in the build, so the typeof guard is the
@@ -22470,8 +22706,20 @@ function bjApplyModel(entry, root, scGiven){
      the one cue that names it — "PRE-SHOW ... the sign lit" — has the rig at
      zero.  Registered, his marquee was dark for the whole pre-show.  It carries
      its own glow instead (bjSignLamps). */
+  /* RULING DK — AND THE SIGN GETS THE ENVIRONMENT, which is a DIFFERENT question
+     from the one CF answered.  CF keeps the marquee off the fill list because CC
+     drives an EMISSIVE off the stage rig and the sign hangs downstage of a rig
+     that is at zero when the pre-show cue names it.  None of that reasoning is
+     about how much room ambience a metal surface reflects, and DK's scope is
+     every metal surface in his models — the sign included.  So the two
+     registrations are separate calls: env for everything that landed, CC's fill
+     for everything except the sign, exactly as before. */
   const isSign = entry.lamps === 'sign';
-  for(const o of landed){ bjFreeze(o); if(!isSign) bjFillRegister(o); }
+  for(const o of landed){
+    bjFreeze(o);
+    if(typeof envRegister === 'function') envRegister(o);
+    if(!isSign) bjFillRegister(o);
+  }
   /* BEFORE the sceneApply below, not after: fresh meshes wake on layer 0, and
      the refresh is what puts them into whatever state the scene is in */
   if(isSign) bjSignLamps(sc, root);
@@ -24304,6 +24552,15 @@ function stageSwitch(key, quiet){
   if(typeof refreshStageNames === 'function') refreshStageNames();
   if(typeof buildGoodsPalette === 'function') buildGoodsPalette();
   if(typeof vrOnStageChange === 'function') vrOnStageChange();
+  /* RULING DK — a stage this board has never been patched to builds its fogger
+     rack HERE, not at init(): smokeRestore() calls buildSmoke() the first time
+     the board arrives, so each Arc stage's metalness-0.7 grilles are minted
+     after the boot walk and would sit at the default 1 for ever.  Recollect at
+     the SWAP rather than patching smokeRestore, because the swap is the place
+     that knows the world has changed shape — and it also catches the ropes and
+     desks vrOnStageChange has just rebuilt, which would otherwise need a second
+     hook saying the same thing.  Last, after everything above has built. */
+  if(typeof envRecollect === 'function') envRecollect();
   if(!quiet && typeof toast === 'function')
     toast('The board is patched to ' + STAGES[key].label);
   return STAGES[key];
@@ -27203,6 +27460,14 @@ function init(){
   selectSection(0);
   syncMasters();
   goToView(1);
+  /* RULING DK — collect the building's environment materials HERE, and here
+     rather than beside buildRooms() for the same reason buildRooms() is itself
+     late: this is the first moment everything that exists at boot exists.  Both
+     venues, all three stages and the smoke are up (buildSmoke() is fifteen lines
+     above and the first attempt at this call sat ABOVE it, which left 21 smoke
+     materials undriven).  Walking `scene` rather than `world` is deliberate —
+     the Arc is hung off the scene so the room sorter never files it. */
+  envRecollect();
 
   // a starting look so the room reads on entry
   HOUSE.house = 0.75; HOUSE.work = 0;
@@ -27556,6 +27821,14 @@ function vrOnStart(){
   vrBuildRopes();
   vrBuildBelt();
   vrDrawConsole(true);
+  /* RULING DK — AND THE SESSION'S OWN GEOMETRY SAMPLES THE ENVIRONMENT.  The
+     five builders above mint ~142 standard materials long after init() ran, and
+     the biggest block of them is the hemp rope rail you stand at.  Left
+     unregistered they sit at the default 1: 1.8x the driven value at full bed
+     and 7.27x in a blackout, in the one place the spec says it has to match
+     ("It has to match in VR").  The normal order is to load a show on the desk
+     and then put the headset on, so nothing downstream would have healed it. */
+  if(typeof envRecollect === 'function') envRecollect();
   const app = $('#app'); if(app) app.classList.add('inVR');
   if(typeof toast === 'function') toast('Walk with the left stick, turn with the right');
 }

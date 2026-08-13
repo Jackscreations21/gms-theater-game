@@ -164,6 +164,15 @@ function stageSwitch(key, quiet){
   if(typeof refreshStageNames === 'function') refreshStageNames();
   if(typeof buildGoodsPalette === 'function') buildGoodsPalette();
   if(typeof vrOnStageChange === 'function') vrOnStageChange();
+  /* RULING DK — a stage this board has never been patched to builds its fogger
+     rack HERE, not at init(): smokeRestore() calls buildSmoke() the first time
+     the board arrives, so each Arc stage's metalness-0.7 grilles are minted
+     after the boot walk and would sit at the default 1 for ever.  Recollect at
+     the SWAP rather than patching smokeRestore, because the swap is the place
+     that knows the world has changed shape — and it also catches the ropes and
+     desks vrOnStageChange has just rebuilt, which would otherwise need a second
+     hook saying the same thing.  Last, after everything above has built. */
+  if(typeof envRecollect === 'function') envRecollect();
   if(!quiet && typeof toast === 'function')
     toast('The board is patched to ' + STAGES[key].label);
   return STAGES[key];

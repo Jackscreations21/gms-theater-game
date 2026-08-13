@@ -94,6 +94,13 @@ function makeHand(i){
   g.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
   g.visible = false;
   crewRoot().add(g);
+  /* RULING DK — EVERY figure is minted lazily, not just the lead: crewSpawn(6)
+     runs on the first call that needs hands, which may be a carpenter call long
+     after boot.  Hooked HERE rather than in crewSpawn or carpLead because this
+     is the one place a figure's cloth and hat are made, and both paths come
+     through it.  (carpLead registers again after adding its apron — a Set, so
+     saying it twice is free.) */
+  if(typeof envRegister === 'function') envRegister(g);
 
   return {
     group:g, armL, armR, legL, legR, hands, torso, cap,
@@ -126,6 +133,11 @@ function carpLead(){
   apron.castShadow = apron.receiveShadow = true;
   lead.group.add(apron);
   CREW.people.push(lead);
+  /* RULING DK — the seventh figure is built LAZILY, the first time a carpenter
+     call needs a lead, so the boot walk never saw his cloth, his hat or this
+     apron.  Undriven that is a man standing in the shed at 7.27x the room's
+     ambience through a blackout. */
+  if(typeof envRegister === 'function') envRegister(lead.group);
   return lead;
 }
 
@@ -213,6 +225,12 @@ function crewPickUp(h, kind){
   }
   g.traverse(o=>{ if(o.isMesh) o.castShadow = true; });
   h.hands.add(g);
+  /* RULING DK — a 'flat' and a 'prop' each mint their own standard material,
+     and this runs once PER PICKUP: a changeover is a stream of them, and a
+     changeover is exactly when the stage is dark.  Registering a dummy is safe
+     even though crewPutDown disposes it — the drive only writes a number, and
+     the next recollect drops it with the rest of what has left the scene. */
+  if(typeof envRegister === 'function') envRegister(g);
   h.carry = g;
   return g;
 }
