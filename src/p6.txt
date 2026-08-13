@@ -776,19 +776,37 @@ function buildFlyExtrasUI(){
        swap or a re-load builds a new SHOW, and a button holding the old entry
        would haul a sign that is not in this building (§5, how the rail
        "stopped working"). */
-    const mk = (t, out)=>{
+    const mk = (t, go)=>{
       const b = document.createElement('button'); b.className = 'b';
       b.style.padding = '2px 6px'; b.style.fontSize = '10px'; b.textContent = t;
       b.addEventListener('click', e=>{
         e.stopPropagation();
         const live = (SHOW.flyExtras || []).find(y=>y.key === x.key);
-        if(live) flyExtraTo(live, out);
+        if(live) go(live);
         syncFlyExtraRows();
       });
       cell.appendChild(b); return b;
     };
-    mk('IN', false);
-    mk('OUT', true);
+    /* RULING DH — A HAUL WITH NAMED STOPS GETS A BUTTON EACH.  "make it so i can
+       make the beeltjuice sign got to pre show postion to the floor or all the way
+       up" — three places, so three buttons, named the way he named them.
+
+       A haul that declares no stops draws IN and OUT exactly as it always did,
+       which is what leaves the other four productions and every future two-state
+       haul alone.  The stops are declared low to high and drawn TOP DOWN, because a
+       fly rail button column reads like the travel it commands: UP at the top.
+
+       The entry is still looked up BY KEY at click time (see above) — a stage swap
+       or a re-load builds a new SHOW, and a button holding a captured stop would
+       haul against an offset from a building the operator has left. */
+    const stops = (typeof flyExtraStops === 'function') ? flyExtraStops(x) : null;
+    if(stops){
+      for(let s = stops.length - 1; s >= 0; s--)
+        mk(stops[s].name, ((k)=>live=>flyExtraToStop(live, k))(s));
+    } else {
+      mk('IN',  live=>flyExtraTo(live, false));
+      mk('OUT', live=>flyExtraTo(live, true));
+    }
     flyExtraUI.push({key:x.key, row:tr, bar:tr.querySelector('.pipbar i'),
                      ht:tr.querySelector('.ht'), dot:tr.querySelector('.dot')});
     tf.appendChild(tr);
@@ -802,7 +820,16 @@ function syncFlyExtraRows(){
     if(!x) continue;
     const f = flyExtraFrac(x);
     u.bar.style.width = ((1 - f)*100).toFixed(1)+'%';    // full bar = in, like a pipe at its trim
-    u.ht.textContent = f < 0.02 ? 'IN' : (f > 0.98 ? 'OUT' : Math.round(f*100)+'% out');
+    /* RULING DH — say WHICH STOP it is at, when it has stops.  "IN" and "% out"
+       cannot describe a sign standing on the deck: the floor is BELOW what the
+       two-state haul called in, so the fraction goes negative and clamps to 0,
+       and the row would read "IN" for two different places. */
+    const at = (typeof flyExtraAtStop === 'function') ? flyExtraAtStop(x) : -1;
+    const stops = (typeof flyExtraStops === 'function') ? flyExtraStops(x) : null;
+    if(stops)
+      u.ht.textContent = at >= 0 ? stops[at].name : 'moving';
+    else
+      u.ht.textContent = f < 0.02 ? 'IN' : (f > 0.98 ? 'OUT' : Math.round(f*100)+'% out');
     u.dot.className = 'dot '+(flyExtraMoving(x) ? 'mv' : '');
   }
 }

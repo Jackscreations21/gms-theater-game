@@ -170,6 +170,43 @@ function flyExtraTo(x, out){
   if(!x) return null;
   return sceneMoveTo(x.scene, out ? x.outOff : x.inOff, x.speed);
 }
+/* ============================================================================
+   RULING DH — A HAUL MAY HAVE MORE THAN TWO PLACES TO BE
+
+   "make it so i can make the beeltjuice sign got to pre show postion to the floor
+   or all the way up."  Three, not two — and the third is DOWN, past the position
+   the two-state haul called IN, which is the thing the old shape could not say at
+   all: `inOff`/`outOff` is a boolean dressed as two numbers.
+
+   DECLARED AND OPTIONAL, exactly as RULING CW made flyExtras itself.  A haul with
+   no `stops` behaves precisely as it did — which is what leaves the desk row, the
+   headset row and the other four productions alone — and one WITH stops keeps its
+   inOff/outOff too, so flyExtraTo, flyExtraFrac and every existing caller go on
+   working without knowing this exists.  Two shapes, one record, no branch anywhere
+   except in the two places that draw buttons.
+
+   THE STOPS ARE ORDERED LOW TO HIGH and nothing enforces it, because a haul is a
+   line and the operator reads it as one: bottom of the list is bottom of the
+   travel.  It is the show's job to declare them that way.
+   ========================================================================== */
+function flyExtraStops(x){
+  return (x && x.stops && x.stops.length) ? x.stops : null;
+}
+function flyExtraToStop(x, i){
+  const st = flyExtraStops(x);
+  if(!st || !st[i]) return null;
+  return sceneMoveTo(x.scene, st[i].off, x.speed);
+}
+/* which stop the haul is AT, or -1 while it is between them.  Read off the
+   mover's own offset, never off what was last asked for — a haul that was
+   commanded somewhere and is still travelling is at no stop at all. */
+function flyExtraAtStop(x){
+  const st = flyExtraStops(x), m = flyExtraMover(x);
+  if(!st || !m) return -1;
+  for(let i = 0; i < st.length; i++)
+    if(Math.abs(m.off - st[i].off) < 0.05) return i;
+  return -1;
+}
 /* 0 is IN and 1 is OUT, whichever direction the offsets run in */
 function flyExtraFrac(x){
   const m = flyExtraMover(x);
