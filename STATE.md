@@ -126,8 +126,21 @@ Declared, never assumed.
 The gold band runs at **x ±7.75**, springing **8.6**, **z 1.26**, and its arch
 **peaks at 10.375** — a quadratic sits at a quarter/half/quarter of its three
 points, not at the control point, and reading the control point as the apex would
-have put the neon a metre and a half too high. The frame traces it: two legs to
-the deck, two straight chords to the peak, **no sill**.
+have put the neon a metre and a half too high.
+
+**AND THE TOP IS RAKED ONE WAY, WHICH IS HIS CORRECTION.** *"can you make it
+slanted just one way not from the center."* It was built as two chords meeting at
+the centre and flagged as the open reading; it is now **one bar right across**,
+low at the springing on one side and high at the peak on the other, so **the two
+legs are different heights**. It rakes down toward **stage left**, the way the
+marquee's own arrow rakes (`rotation.z −0.20` toward +x) — `BJ_NEON_RAKE` is one
+sign to mirror it, and the blinders read the same line. **No sill.**
+
+**A sign error in that line got through the blinders and their own assertion**,
+because both carried it and agreed with each other. What caught it was the check
+that measures the BUILT GEOMETRY against the line instead of re-computing the
+line: *"the top stands 1.79m above its line at x=−7.92"*. Sibling of the test
+that reimplemented the beam formula.
 
 The blinders have **no body at all** — the point, the beam and the lens glow, and
 nothing between them — sitting **on** the frame at z 1.45, the bar's own
@@ -154,9 +167,10 @@ downstage face.
 
 **Nothing about how any of this looks has been observed.** New with this round:
 
-- **Does the neon read on the gold?** It is 15.91m across now with a straight
-  slanted top and nothing across the deck — a completely different shape from
-  what CH built yesterday.
+- **Does the neon read on the gold?** It is 15.88m across now with a straight top
+  **raked one way** — high stage right at 10.72, low stage left at 8.6 — and
+  nothing across the deck. A completely different shape from what CH built
+  yesterday, and the rake is his own correction.
 - **Do bodiless blinders read as light coming out of the bar**, or as light
   coming out of nowhere?
 - **Is a thinned roof a roof?** `BJ_THIN` 0.28 steepens its slope. One line.
@@ -171,8 +185,8 @@ house at 0.15; 25 seconds of nothing at the top.
 
 ### 2. Still his to decide
 
-- **The neon's top has a second reading** — one bar slanting right across the
-  opening, rather than two slanting down to each side. Four numbers.
+- **Which way the neon rakes.** It leans down toward stage left, off the arrow on
+  his own marquee. `BJ_NEON_RAKE` is one sign, and the blinders follow it.
 - **The sign's red at GO**, moved to 1:00 with the proscenium's. One line.
 - **The cemetery declares no park** (46.8m parted against a 44m stage).
 - **His files are 181MB and ~70MB is discarded at load.**
@@ -201,7 +215,8 @@ In `p5j`: `AUD_WANDER_RATE` 1.0, `AUD_RANDOM_RATE` 1.0, `AUD_STROBE_HZ` 9.0,
 `AUD_SWEEP_LO` −15 / `AUD_SWEEP_HI` −98.
 
 In `p5h` (the neon, CH amended by CX): `BJ_NEON_BAR` 0.34, **`BJ_NEON_Z` 0.81**
-(+ `BJ.pz` = 1.26, the gold's own z), `BJ_NEON_FADE` 1.2, `BJ_NEON_BLUE`
+(+ `BJ.pz` = 1.26, the gold's own z), **`BJ_NEON_RAKE` −1 (which way the top
+leans; `BLIND_RAKE` in p4 mirrors it)**, `BJ_NEON_FADE` 1.2, `BJ_NEON_BLUE`
 0x4fa8ff, `BJ_NEON_RED` 0xff1e10, `BJ_NEON_DARK` 0x0d1116.
 
 In `p5h` (the sign, CF and CU): `BJ_SIGN_GLOW` 0.95, `BJ_SIGN_LIT` 2.1,
@@ -252,6 +267,11 @@ untouched.
   call is choreographed" picked the exterior, which carries no part movers at
   all, so a mutant that replaced the choreographed change with an instant swap
   had nothing to travel and sailed through.
+- **And so does a test that shares a formula with the thing it tests.** The
+  neon's rake line had its sign inverted, and the BLINDERS and their assertion
+  both carried the same wrong line — so they agreed perfectly and passed. Only
+  the check that measures the BUILT GEOMETRY against the line, rather than
+  re-computing it, disagreed.
 - **The probe template ate an escaped quote for the fourth time**, and a backtick
   in a comment for the fifth. `tests/probe-lint.js` is the mechanical sweep TRAPS
   has been asking for.

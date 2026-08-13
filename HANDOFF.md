@@ -244,9 +244,10 @@ every parked set has its own space`**.
 parks, not the netherworld, not the neon frame from yesterday, and certainly not
 this round's. The questions, in the order they will bite:
 
-1. **Does the neon read on the gold?** 15.91m across with a straight slanted top
-   and nothing across the deck — a completely different shape from the closed
-   13.6m rectangle RULING CH built the day before.
+1. **Does the neon read on the gold?** 15.88m across with a straight top **raked
+   one way** — high stage right at 10.72, low stage left at 8.6 — and nothing
+   across the deck. A completely different shape from the closed 13.6m rectangle
+   RULING CH built the day before, and the rake is his own correction.
 2. **Do bodiless blinders read as light out of the bar**, or light out of
    nowhere? `BLIND_BODY` is one line back.
 3. **Is a thinned roof a roof?** `BJ_THIN` 0.28 steepens its slope, and that is a
@@ -265,8 +266,8 @@ parked with its foot 0.2m inside the picture, on the SIGN's fly-out number
 borrowed by a set; and `bjApplyModel` routed by **counting** part movers, so a
 set with a park as well as a wrapper landed its model outside its own mover.
 
-**Still his to decide:** the neon's top has a second reading (one bar slanting
-right across, not two down to each side — four numbers); the sign's red at GO;
+**Still his to decide:** which way the neon rakes (`BJ_NEON_RAKE`, one sign, and
+the blinders follow it); the sign's red at GO;
 the cemetery's missing park; 181MB of models; and whether the netherworld should
 be narrower.
 
