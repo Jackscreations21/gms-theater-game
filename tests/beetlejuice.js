@@ -1780,18 +1780,60 @@ const probe = `
     const label = rows[0].querySelectorAll('td')[1];
     if(!label || label.textContent.indexOf('BEETLEJUICE') < 0)
       throw new Error('the haul row is not the sign: ' + (label ? label.textContent : 'no cell'));
+    /* REVERSED IN PLACE BY RULING DH: IN and OUT became three NAMED stops, so the
+       buttons are found by their names.  Still THROUGH THE DOM, which is the half of
+       this test that matters and is untouched. */
     const btns = rows[0].querySelectorAll('button');
-    const out = Array.prototype.filter.call(btns, b=>b.textContent === 'OUT')[0];
-    const inn = Array.prototype.filter.call(btns, b=>b.textContent === 'IN')[0];
-    if(!out || !inn) throw new Error('the haul row has no IN/OUT');
+    const byText = t => Array.prototype.filter.call(btns, b=>b.textContent === t)[0];
+    const x = (SHOW.flyExtras || []).find(y=>y.key === 'bjSign');
+    const stops = flyExtraStops(x);
+    if(!stops || stops.length !== 3)
+      throw new Error('the sign declares ' + (stops ? stops.length : 0) + ' stops, not three');
+    if(btns.length !== 3)
+      throw new Error(btns.length + ' buttons on the haul row, one expected per stop');
+    for(const s of stops)
+      if(!byText(s.name)) throw new Error('the desk haul row has no ' + s.name + ' button');
+    /* TOP DOWN, because a fly rail button column reads like the travel it commands */
+    if(btns[0].textContent !== stops[stops.length - 1].name)
+      throw new Error('the first button is ' + btns[0].textContent +
+                      '; the column should read top down, highest first');
     const sg = sceneFind('bjSign');
-    out.click();
-    for(let i = 0; i < 600 && sceneTravelling(sg); i++) updateStorm(1/60);
-    if(Math.abs(sg.mv.off - BJ_SIGN_OUT) > 0.05)
-      throw new Error('OUT left the sign at ' + sg.mv.off.toFixed(2));
-    inn.click();
-    for(let i = 0; i < 600 && sceneTravelling(sg); i++) updateStorm(1/60);
-    if(Math.abs(sg.mv.off) > 0.05) throw new Error('IN left the sign at ' + sg.mv.off.toFixed(2));
+    const want = nm => stops.find(s=>s.name === nm).off;
+    for(const nm of ['UP', 'FLOOR', 'PRE-SHOW']){
+      byText(nm).click();
+      for(let i = 0; i < 900 && sceneTravelling(sg); i++) updateStorm(1/60);
+      if(Math.abs(sg.mv.off - want(nm)) > 0.05)
+        throw new Error(nm + ' left the sign at ' + sg.mv.off.toFixed(2) +
+                        ', not ' + want(nm).toFixed(2));
+      /* and the row SAYS where it is, which the old percentage readout could not:
+         the floor is below what the two-state haul called in, so the fraction
+         clamps to 0 and two different places both read IN.
+
+         SYNCED FIRST, because the desk row is refreshed off the FRAME (syncFlyUI)
+         and stepping updateStorm on its own moves the sign without redrawing the
+         table — the row would read wherever the last click left it, which is
+         exactly the stale-DOM shape this file already warns about. */
+      syncFlyExtraRows();
+      const ht = rows[0].querySelector('.ht');
+      if(ht && ht.textContent !== nm)
+        throw new Error('at ' + nm + ' the row reads "' + ht.textContent + '"');
+    }
+    /* AND IT IS AT NO STOP WHILE IT IS STILL GOING, which a negative check said was
+       unasserted: every clause above steps the travel to completion first, so a
+       flyExtraAtStop that read the mover TARGET instead of its live offset passed
+       everything — the row would name the place it was heading for the whole way
+       there.  Caught by stepping only a few frames. */
+    byText('UP').click();
+    for(let i = 0; i < 8; i++) updateStorm(1/60);
+    if(!sceneTravelling(sg))
+      throw new Error('the sign arrived in 8 frames — too fast to observe the travel');
+    syncFlyExtraRows();
+    const mid = rows[0].querySelector('.ht').textContent;
+    if(mid !== 'moving')
+      throw new Error('mid-travel the row reads "' + mid + '" — it is at no stop yet');
+    for(let i = 0; i < 900 && sceneTravelling(sg); i++) updateStorm(1/60);
+    byText('PRE-SHOW').click();
+    for(let i = 0; i < 900 && sceneTravelling(sg); i++) updateStorm(1/60);
     /* and it does not survive into a production that declares none */
     showLoad('outsiders');
     refreshFlyUI();

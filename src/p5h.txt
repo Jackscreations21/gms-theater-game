@@ -2431,8 +2431,33 @@ SHOWS.beetlejuice = {
          flyman is who works it.  It cannot be a lineset (every lineset is
          upstage of the plaster line and this hangs downstage of the curtain —
          RULINGS AS, AT), so the rail carries it as a declared extra. */
+      /* RULING DH — AND IT HAS THREE PLACES TO BE.  "make it so i can make the
+         beeltjuice sign got to pre show postion to the floor or all the way up."
+
+         PRE-SHOW is offset 0, which is simply where it is built and where the plot
+         starts it.  ALL THE WAY UP is BJ_SIGN_OUT, the number the 1:16 cue already
+         flies it to.  THE FLOOR is the new one, and it is MEASURED rather than
+         guessed: the sign is a panel, a bulb surround, a raked arrow that runs off
+         the bottom of it and a frame, so where its foot actually is depends on the
+         arrow's rotation and is not a number anybody has written down.
+
+         Ask the geometry.  The drop that puts the lowest thing on the sign onto the
+         deck is exactly -min.y of its own world box, so the constant cannot drift
+         from the model: re-rake the arrow or re-cut the frame and the floor stop
+         follows on the next build.  Measured at build time, once, on a group that is
+         still at its home offset — before sceneTravel is asked to move anything.
+
+         The two-state fields are KEPT beside the stops, so every existing caller —
+         the cue at 1:16, flyExtraTo, flyExtraFrac, the desk row, the headset row —
+         goes on working without knowing the stops are there (RULING DH). */
+      sgnFly.group.updateMatrixWorld(true);
+      const sgnBox = new T.Box3().setFromObject(sgnFly.group);
+      const sgnFloor = -sgnBox.min.y;      // negative: the sign travels DOWN to it
       SHOW.flyExtras.push({key:'bjSign', label:'BEETLEJUICE SIGN', scene:'bjSign',
-                           inOff:0, outOff:BJ_SIGN_OUT, speed:2.6});
+                           inOff:0, outOff:BJ_SIGN_OUT, speed:2.6,
+                           stops:[{name:'FLOOR',    off:sgnFloor},
+                                  {name:'PRE-SHOW', off:0},
+                                  {name:'UP',       off:BJ_SIGN_OUT}]});
     }
 
     /* ---- the show curtain ---- */

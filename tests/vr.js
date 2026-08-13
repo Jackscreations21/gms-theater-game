@@ -621,20 +621,55 @@ const probe = `
   P('RULING CW: the sign is a haul on the VR fly rail, and it flies from there', ()=>{
     showLoad('beetlejuice');
     VR.page = 'fly'; vrDrawConsole(true);
-    const out = VR.hits.find(h=>h.flyExtra === 'bjSign' && h.dir === 'out');
-    const inn = VR.hits.find(h=>h.flyExtra === 'bjSign' && h.dir === 'in');
-    if(!out || !inn) throw new Error('the sign has no IN/OUT on the VR fly page');
+    /* REVERSED IN PLACE BY RULING DH — "make it so i can make the beeltjuice sign
+       got to pre show postion to the floor or all the way up."  IN and OUT became
+       three NAMED stops, so the buttons are found by their stop rather than by a
+       direction.  Everything below — that it really travels, that it lands on the
+       number, that it took nothing from the numbered lines — is untouched, which is
+       what asking by META rather than by pixel bought.
+
+       AND THE FLOOR IS THE ONE THE OLD SHAPE COULD NOT EXPRESS: it is BELOW the
+       offset the two-state haul called IN, so a direction had no word for it. */
+    const x = (SHOW.flyExtras || []).find(y=>y.key === 'bjSign');
+    if(!x) throw new Error('the sign is not a declared haul');
+    const stops = flyExtraStops(x);
+    if(!stops || stops.length !== 3)
+      throw new Error('the sign declares ' + (stops ? stops.length : 0) +
+                      ' stops; he asked for three — the floor, pre-show, and all the way up');
+    const btn = nm => VR.hits.find(h=>h.flyExtra === 'bjSign' && h.stopName === nm);
+    for(const nm of ['FLOOR', 'PRE-SHOW', 'UP'])
+      if(!btn(nm)) throw new Error('the VR fly page has no ' + nm + ' button for the sign');
     const sg = sceneFind('bjSign');
     if(!sg || !sg.mv) throw new Error('the sign does not travel');
     if(Math.abs(sg.mv.off) > 0.01) throw new Error('it does not start in');
-    out.fn();
-    for(let i = 0; i < 600 && sceneTravelling(sg); i++) updateStorm(1/60);
-    if(Math.abs(sg.mv.off - BJ_SIGN_OUT) > 0.05)
-      throw new Error('OUT left it at ' + sg.mv.off.toFixed(2) + ', not ' + BJ_SIGN_OUT);
-    inn.fn();
-    for(let i = 0; i < 600 && sceneTravelling(sg); i++) updateStorm(1/60);
-    if(Math.abs(sg.mv.off) > 0.05)
-      throw new Error('IN left it at ' + sg.mv.off.toFixed(2));
+    /* each stop, driven from the headset button and watched all the way there */
+    const go = nm => {
+      btn(nm).fn();
+      for(let i = 0; i < 900 && sceneTravelling(sg); i++) updateStorm(1/60);
+      return sg.mv.off;
+    };
+    const want = nm => stops.find(s=>s.name === nm).off;
+    for(const nm of ['UP', 'FLOOR', 'PRE-SHOW']){
+      const got = go(nm);
+      if(Math.abs(got - want(nm)) > 0.05)
+        throw new Error(nm + ' left the sign at ' + got.toFixed(2) + ', not ' + want(nm).toFixed(2));
+    }
+    if(Math.abs(want('UP') - BJ_SIGN_OUT) > 0.01)
+      throw new Error('UP is ' + want('UP') + ', not the plot own BJ_SIGN_OUT ' + BJ_SIGN_OUT);
+    if(Math.abs(want('PRE-SHOW')) > 0.01)
+      throw new Error('PRE-SHOW is ' + want('PRE-SHOW') + ', not the home offset the plot starts at');
+    /* THE FLOOR REALLY PUTS IT ON THE DECK, measured off the geometry rather than
+       off the constant — which is the whole reason that offset is derived from the
+       sign own bounding box instead of typed in. */
+    go('FLOOR');
+    scene.updateMatrixWorld(true);
+    const fb = new THREE.Box3().setFromObject(sg.group);
+    if(Math.abs(fb.min.y) > 0.15)
+      throw new Error('at FLOOR the sign lowest point is y ' + fb.min.y.toFixed(2) +
+                      ', not on the deck');
+    if(!(want('FLOOR') < -1))
+      throw new Error('FLOOR is ' + want('FLOOR') + ' — it has to travel DOWN, below the pre-show');
+    go('PRE-SHOW');
     /* AND IT TOOK NOTHING FROM THE NUMBERED LINES.  The fourteen rows and the
        pixel-pinned right-hand column are exactly where they were — this row
        lives in the 36px strip the fourteen leave at the bottom. */

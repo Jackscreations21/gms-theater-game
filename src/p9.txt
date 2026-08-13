@@ -698,20 +698,47 @@ function vrPageFly(g, P){
       g.fillStyle = '#c6d0dc'; g.textBaseline = 'middle';
       g.fillText(x.label, P.x + 16, y + exH/2 - 2);
       const f = flyExtraFrac(x);
-      vrBar(g, P.x + 420, y + 9, 260, 14, 1 - f, '#ffb347');
+      const stops = (typeof flyExtraStops === 'function') ? flyExtraStops(x) : null;
+      /* RULING DH — the bar and the readout give up 40px so three buttons fit in the
+         same envelope the two used (790..966).  A HEADSET MUST BE ABLE TO REACH IT:
+         "a control that exists only in the DOM does not exist in VR" is in TRAPS
+         because the Arc shed was unreachable for four rounds, and the sign's three
+         positions would have gone the same way if only the desk had grown them. */
+      vrBar(g, P.x + 400, y + 9, 200, 14, 1 - f, '#ffb347');
       g.fillStyle = '#8f9aa7';
-      g.fillText(f < 0.02 ? 'IN' : (f > 0.98 ? 'OUT' : Math.round(f*100) + '% out'),
-                 P.x + 700, y + exH/2 - 2);
+      const at = (typeof flyExtraAtStop === 'function') ? flyExtraAtStop(x) : -1;
+      g.fillText(stops ? (at >= 0 ? stops[at].name : 'moving')
+                       : (f < 0.02 ? 'IN' : (f > 0.98 ? 'OUT' : Math.round(f*100) + '% out')),
+                 P.x + 614, y + exH/2 - 2);
       /* by KEY at press time, never the captured entry: a stage swap or a
-         re-load builds a new SHOW (the same rule the desk row is written to) */
-      vrBtnBox(g, P.x + 790, y + 2, 84, exH - 7, 'IN',
-               ((k)=>()=>{ const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
-                           if(l) flyExtraTo(l, false); vrDrawConsole(true); })(x.key),
-               {font:'600 15px Helvetica, Arial, sans-serif'}, {flyExtra:x.key, dir:'in'});
-      vrBtnBox(g, P.x + 882, y + 2, 84, exH - 7, 'OUT',
-               ((k)=>()=>{ const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
-                           if(l) flyExtraTo(l, true); vrDrawConsole(true); })(x.key),
-               {font:'600 15px Helvetica, Arial, sans-serif'}, {flyExtra:x.key, dir:'out'});
+         re-load builds a new SHOW (the same rule the desk row is written to).
+
+         FOUND BY META, NOT BY PIXEL — `{flyExtra, stop}` for a named stop and the
+         old `{flyExtra, dir}` for a two-state haul, so a suite asks for the thing it
+         means rather than for a coordinate.  TRAPS says vr.js pins some fly-page
+         rows by LITERAL PIXEL and that new screens should prefer META; this row
+         already did, which is the only reason three buttons cost nothing here. */
+      const FB = {font:'600 13px Helvetica, Arial, sans-serif'};
+      if(stops){
+        /* drawn TOP DOWN, like the travel: the last stop is the highest */
+        for(let s = 0; s < stops.length && s < 3; s++){
+          const bx = P.x + 700 + s*92;
+          vrBtnBox(g, bx, y + 2, 84, exH - 7, stops[stops.length - 1 - s].name,
+                   ((k, j)=>()=>{ const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
+                                  if(l) flyExtraToStop(l, j); vrDrawConsole(true); })(x.key, stops.length - 1 - s),
+                   FB, {flyExtra:x.key, stop:stops.length - 1 - s,
+                        stopName:stops[stops.length - 1 - s].name});
+        }
+      } else {
+        vrBtnBox(g, P.x + 790, y + 2, 84, exH - 7, 'IN',
+                 ((k)=>()=>{ const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
+                             if(l) flyExtraTo(l, false); vrDrawConsole(true); })(x.key),
+                 {font:'600 15px Helvetica, Arial, sans-serif'}, {flyExtra:x.key, dir:'in'});
+        vrBtnBox(g, P.x + 882, y + 2, 84, exH - 7, 'OUT',
+                 ((k)=>()=>{ const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
+                             if(l) flyExtraTo(l, true); vrDrawConsole(true); })(x.key),
+                 {font:'600 15px Helvetica, Arial, sans-serif'}, {flyExtra:x.key, dir:'out'});
+      }
     }
     if(shown < extras.length){
       g.fillStyle = '#7f8b99';
