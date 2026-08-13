@@ -27073,7 +27073,14 @@ function frame(now){
 }
 let hoverT = 0, frameNo = 0;
 function tick(now){
-  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  /* RULING DJ — THE GAME CLOCK STAYS CLAMPED; THE METER DOES NOT.
+     Every mover, fade and cue rides this dt, and the clamp is what stops a
+     model load teleporting the show.  But it also meant the wrist meter
+     (p9) could never report a frame worse than 50ms — and the first headset
+     readings ever taken came back at 48, two off a ceiling nobody knew was
+     there.  So the raw figure travels alongside, for the meter only. */
+  const rawDt = (now-last)/1000;
+  const dt = Math.min(0.05, rawDt); last = now;
   const t = now/1000;
   frameNo++;
 
@@ -27099,7 +27106,7 @@ function tick(now){
      an effect overwrites the fade for its own channels while it runs, the way
      firelight does, and hands them back when the cue clears it. */
   if(typeof showAudioTick === 'function') showAudioTick(dt);
-  if(typeof vrUpdate === 'function') vrUpdate(dt);
+  if(typeof vrUpdate === 'function') vrUpdate(dt, rawDt);
   if(VENUE !== lastVenue){ lastVenue = VENUE; refreshVenueUI(); }
   if(followTarget){
     if(Player.mode==='walk') followTarget.set(Player.pos.x, Player.pos.y+1.2, Player.pos.z);
@@ -27411,13 +27418,28 @@ function vrCapBeams(){
    quality tier asks for.  Climbing is fast and relaxing is slow on purpose:
    a dropped frame is felt, a soft edge is not.
 
-   dt arrives clamped to 50ms (p7), so `worst` saturates at 50 — by which
-   point the number is no longer the interesting part.
+   RULING DJ — THE METER DOES NOT READ THE GAME'S CLAMPED dt.
+   p7 clamps dt to 50ms so a model load cannot teleport the show, and for
+   two rounds this meter read that clamped figure — so it could not report a
+   frame worse than 50ms however bad the frame was.  The first headset
+   readings ever taken came back at 25ms in an empty house and 48ms in
+   Beetlejuice, TWO OFF A CEILING NOBODY KNEW WAS THERE: every frame past 50
+   had been recorded as exactly 50, so the average was a floor and not a
+   measurement.  p7 now hands the raw figure over beside the clamped one.
+
+   PERF_CEIL is the meter's OWN ceiling and it is deliberately far higher.
+   A 20ms frame is a frame rate and must be told the truth; a three-second
+   model load is a hitch, and left uncapped it would sit in the 120-frame
+   window poisoning the average for two seconds after it ended.
    ========================================================================== */
-function vrPerf(dt){
+const PERF_CEIL = 200;
+function vrPerf(dt, rawDt){
   let P = VR.perf;
-  if(!P) P = VR.perf = {buf:new Float32Array(120), i:0, n:0, avg:0, worst:0, t:0, fov:0.4};
-  P.buf[P.i] = dt*1000;
+  if(!P) P = VR.perf = {buf:new Float32Array(120), i:0, n:0, avg:0, worst:0, t:0, fov:0.4,
+                        calls:0, tris:0};
+  /* the unclamped frame time where p7 offers one, falling back to dt for any
+     caller that has none — the suites drive vrUpdate directly */
+  P.buf[P.i] = Math.min(PERF_CEIL, (rawDt > 0 ? rawDt : dt) * 1000);
   P.i = (P.i+1) % P.buf.length;
   if(P.n < P.buf.length) P.n++;
   P.t += dt;
@@ -27426,6 +27448,16 @@ function vrPerf(dt){
   let sum = 0, worst = 0;
   for(let i=0;i<P.n;i++){ const v = P.buf[i]; sum += v; if(v > worst) worst = v; }
   P.avg = sum/P.n; P.worst = worst;
+  /* RULING DJ — three.js has NO MULTIVIEW at any version (checked against
+     the published r128, r160, r162 and r170 builds, not against a
+     changelog), so both eyes cost two passes and the only lever left on
+     draw calls is our own batching.  Nothing reported the count where it
+     could be read.  renderer.info costs nothing to ask.
+     These are the PREVIOUS frame's counts — renderer.render runs at the end
+     of tick (p7) and vrUpdate runs before it — which for a number averaged
+     twice a second is not worth a frame of latency to correct. */
+  P.calls = renderer.info.render.calls;
+  P.tris  = renderer.info.render.triangles;
   const budget = 1000/(VR.targetHz || 90);
   let f = P.fov;
   if(P.avg > budget*1.06)      f = Math.min(1.0, f + 0.15);
@@ -27441,9 +27473,12 @@ function vrDrawMeter(){
   const P = VR.perf;
   if(!VR.meter){
     if(!VR.grips.length) return;        // no hands yet, no wrist to sit on
-    const c = cvs(256, 96);
+    /* 256x128 against a 0.08 x 0.04 plane — RULING DJ's two numbers need a
+       third line, and the canvas and the plane must keep the same aspect or
+       the wrist plate skews */
+    const c = cvs(256, 128);
     const tex = new T.CanvasTexture(c);
-    const m = new T.Mesh(new T.PlaneGeometry(0.08, 0.03),
+    const m = new T.Mesh(new T.PlaneGeometry(0.08, 0.04),
       new T.MeshBasicMaterial({map:tex, transparent:true, depthTest:false}));
     m.name = 'vr:meter';
     m.renderOrder = 30;
@@ -27453,8 +27488,8 @@ function vrDrawMeter(){
     VR.meter = {mesh:m, g:c.getContext('2d'), tex:tex};
   }
   const g = VR.meter.g, budget = 1000/(VR.targetHz || 90);
-  g.clearRect(0,0,256,96);
-  g.fillStyle = 'rgba(8,10,13,0.78)'; g.fillRect(0,0,256,96);
+  g.clearRect(0,0,256,128);
+  g.fillStyle = 'rgba(8,10,13,0.78)'; g.fillRect(0,0,256,128);
   g.textBaseline = 'middle'; g.textAlign = 'left';
   g.font = '600 40px Helvetica, Arial, sans-serif';
   g.fillStyle = P.avg > budget ? '#ff7a6b' : '#9fe8a9';
@@ -27463,6 +27498,10 @@ function vrDrawMeter(){
   g.fillStyle = '#8b95a3';
   g.fillText('ms', 108, 32);
   g.fillText('pk ' + P.worst.toFixed(0) + ' · fov ' + P.fov.toFixed(2), 10, 72);
+  /* RULING DJ — the batching numbers, on their own line under the timing */
+  g.font = '500 22px Helvetica, Arial, sans-serif';
+  g.fillStyle = '#8b95a3';
+  g.fillText((P.calls|0) + ' calls · ' + Math.round((P.tris|0)/1000) + 'k tri', 10, 104);
   VR.meter.tex.needsUpdate = true;
 }
 
@@ -30375,7 +30414,7 @@ function vrPaintLabel(dt){
   }
 }
 
-function vrUpdate(dt){
+function vrUpdate(dt, rawDt){
   if(!VR || !VR.active) return;      // may be called before this file has run
   vrReadSticks();
   vrButtonJump(dt);
@@ -30390,7 +30429,7 @@ function vrUpdate(dt){
   vrUpdateRopes(dt);
   vrUpdateButtons(dt);
   vrCapBeams();
-  vrPerf(dt);
+  vrPerf(dt, rawDt);
   VR.drawT += dt;
   if(VR.drawT > 0.2){ VR.drawT = 0; vrDrawConsole(); }
 }

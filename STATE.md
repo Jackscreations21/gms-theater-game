@@ -1,13 +1,109 @@
-# STATE — 2026-08-13 (past the legs — #172 MERGED)
+# STATE — 2026-08-13 (THE FIRST FRAME TIMES EVER MEASURED, and they are bad)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## MERGED: #172, RULING DI — THE SETS PARK PAST THE LEGS
+## READ THIS FIRST: THE HEADSET HAS A NUMBER NOW AND IT CHANGES THE ROUND
 
-**`main` is at `9c555aa`.** Verified after the merge: `main` rebuilds
-**byte-identical** and the full suite is green on the merged result. **Nothing is
-open and nothing is shelved.** Rulings are at **DI**.
+**He took the wrist-meter readings at `?v=27`. Cache-bust is `?v=28` from here.**
+
+| Moment | avg ms | vs the 13.9ms budget | ≈ fps |
+|---|---|---|---|
+| Empty Palace, nothing loaded | **25** | **1.8× over** | 40 |
+| Beetlejuice | **48**, and it was *clamped* | **3.5× over** | ≤21 |
+
+**The 48 was a floor, not a measurement.** `p7` clamps `dt` to 50ms so a model load
+cannot teleport the show, and `vrPerf` was reading that clamped figure — so every
+frame worse than 50ms was recorded as exactly 50 and the meter could not report below
+20Hz however bad it got. He was reading two off a ceiling nobody knew was there.
+**RULING DJ fixes it** and proves it: drive 120ms frames against the pre-change build
+and the average reads **exactly 50.0**.
+
+**Three things follow, and all three are structural:**
+
+1. **Foveation is spent, not standing by.** It pegs at **1.00 within ~2s of
+   entering** and never relaxes. RULING DN rejected the composer route to *preserve
+   the only mid-session lever* — the lever has **no travel left**. DN's conclusion
+   survives and is stronger: we cannot afford to give up the fill-rate saving
+   foveation is already delivering flat out.
+2. **25ms with NOTHING LOADED is the building, not his models.** The leading suspect
+   is that this file's instanced batches are never culled — **26 sites across 7
+   files** carry the r128 bounding-sphere workaround. DJ's new draw-call number
+   settles it. **A performance investigation belongs before PRs 2–5** and is not in
+   the plan.
+3. **PR 10 is CUT.** Its only surviving justification did not need the upgrade
+   (meshopt already works on r128 — the decoder is there and `p5i`'s vendored loader
+   already has `setMeshoptDecoder`) and could not have fixed an empty house anyway.
+   See the spec's §7.1. **The one live question** is r160's per-instance
+   `computeBoundingSphere` — decide it on the draw-call number, not before.
+
+## THE PLAN BEHIND THIS, AND WHAT IS BUILT OF IT
+
+**`origin/main` is at `32c6a1a` — #173 merged** (the DI record). The branch
+`bj-di-record` is fully contained in it and can be deleted.
+
+**RULING DJ is built** (branch `lighting-meter-info`): the wrist meter now reports
+draw calls and triangles, and its average reports past the game clock's 50ms clamp.
+Rulings **DK–DQ** are still only planned; the plan reserves them.
+
+| File | What |
+|---|---|
+| [docs/superpowers/specs/2026-08-13-roblox-lighting-design.md](docs/superpowers/specs/2026-08-13-roblox-lighting-design.md) | **the reasoning** — rulings DJ–DQ, the four findings, why route 1 and Unity were rejected. **Read first; the rulings are binding.** |
+| [docs/superpowers/plans/2026-08-13-roblox-lighting-prs1-10.md](docs/superpowers/plans/2026-08-13-roblox-lighting-prs1-10.md) | **the steps** — PRs 1–10, one concern each, full code and negative checks |
+
+**Both files are UNTRACKED.** PR 1 commits them. Nothing else in the tree changed.
+
+**He chose subagent-driven execution in a fresh session.** Start there:
+`superpowers:subagent-driven-development`, one subagent per task, review between.
+
+### What he asked for
+
+*"rebuild the lighting engine to look and work like the one roblox uses"* →
+layers **1 (the look)** and **2 (the authoring model)**, and when asked whether a
+desktop-only graded look would do: **"It has to match in VR."** Then route 2 over
+route 1, and a plan covering the three.js upgrade as well.
+
+### FOUR FINDINGS, and two of them corrected advice given in the same conversation
+
+1. **three.js has NO MULTIVIEW at any version** — zero occurrences of `multiview`
+   in the published r128, r160, r162 *and* r170 builds. That was the whole
+   frame-rate case for the upgrade. **It does not exist.**
+2. **The UMD build dies after r160.** `build/three.min.js` is HTTP 200 through
+   r160.1 and **404 from r161**. The game loads `THREE` as a CDN global and needs
+   cross-part function hoisting, so **r160.1 is the ceiling** unless the
+   single-file architecture goes.
+3. **The wrist meter already existed.** `vrPerf`/`vrDrawMeter` (`p9.txt:130`) has
+   drawn avg ms, peak ms and live foveation on the left wrist since the VR perf
+   round. Advice to "put the frame time in the headset" described something
+   already built.
+4. **The budget is 13.9ms, not 11.1ms, and VR HAS a governor.** `vrOnStart`
+   negotiates to the lowest rate ≥72Hz because *"the first headset run could not
+   hold [90]"*, and `vrPerf` runs a foveation feedback loop. Desktop `autoTune`
+   is inert in a session; foveation is not.
+
+**Finding 4 settles route 1 for good:** foveation is the only mid-session lever,
+and a stereo composer forfeits it. Bloom would be bought by removing the safety
+net. Route 1 is not in the plan.
+
+**And RULING BY was miscited twice in that conversation.** Its 4.29ms is a CPU
+`groundAt` **raycast** for a feature that was **measured and taken back out** —
+not render cost, and not in the frame. **There is no measured VR frame time at
+all.** Task 0 of the plan is his: four wrist-meter readings.
+
+### The one thing to put to him
+
+**The upgrade's case collapsed after he asked for it.** What survives is KTX2 +
+meshopt for the 181MB and 32 releases of fixes — load time and memory, not frame
+rate — against a bill that invalidates every intensity he ruled on in a headset
+(`useLegacyLights` flips at r155: `BLIND_POWER`, `AUDM_POWER`, **`BLIND_RANK`
+0.9 / `AUDM_RANK` 0.8 (BC)**, `BJ_FILL_MAX`, the house at 0.15). It is PR 10,
+last and optional. **He was offered the cut and has not answered.**
+
+## STILL TRUE IN THE CODE: #172, RULING DI — THE SETS PARK PAST THE LEGS
+
+Verified after the merge: `main` rebuilds **byte-identical** and the full suite is
+green on the merged result. **Nothing is open and nothing is shelved.** Rulings
+are at **DI** — and **the DI headset run has still never happened.**
 
 **Cache-bust for the next headset run: `?v=27`.**
 
@@ -84,10 +180,18 @@ result was read.
 
 Cache-bust at the time: `?v=26`. **It is `?v=27` now — DI changed the build.**
 
-## WHAT IS LEFT: ANOTHER HEADSET RUN
+## WHAT IS LEFT: ONE HEADSET RUN THAT NOW SERVES TWO PURPOSES
 
 **Nothing of his is unbuilt.** What has not happened is anybody seeing this
-round. The questions, in the order they will bite:
+round — and the lighting plan needs a baseline off the same run.
+
+**Do both in one session at `?v=27`:** answer the DI questions below, *and* read
+the left-wrist meter (`avg ms`, `pk`, `fov`) at the four moments named in Task 0
+of the plan — empty Palace, Beetlejuice pre-show, the 1:00 cue with eight
+blinders in, and standing at the proscenium looking up into the neon. Without
+those four numbers every cost figure in the plan stays modelled.
+
+The DI questions, in the order they will bite:
 
 1. **Does the neon read on the black portal?** It came in from ±7.75 to **±7.11**
    and its top went from a rake to **flat at 9.51** — a different shape again from

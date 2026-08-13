@@ -224,7 +224,93 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **THE PARKS ARE PAST THE LEGS — LOOK AT THE WING** (2026-08-13, DI)
+## NEXT SESSION: **EXECUTE THE ROBLOX LIGHTING PLAN** (2026-08-13, DJ–DQ reserved)
+
+**A spec and a plan are on disk and NO SOURCE WAS TOUCHED.** `origin/main` is at
+`32c6a1a` (#173, the DI record). Rulings are still at **DI** in the code; the plan
+reserves **DJ–DQ**. `bj-di-record` is contained in `main` and can be deleted.
+
+**Read in this order:**
+
+1. [docs/superpowers/specs/2026-08-13-roblox-lighting-design.md](docs/superpowers/specs/2026-08-13-roblox-lighting-design.md)
+   — **the reasoning.** Rulings DJ–DQ (binding), the four findings, why route 1 and
+   why Unity were both rejected, and what is still open for him.
+2. [docs/superpowers/plans/2026-08-13-roblox-lighting-prs1-10.md](docs/superpowers/plans/2026-08-13-roblox-lighting-prs1-10.md)
+   — **the steps.** PRs 1–10, one concern each, real code, negative check per PR.
+3. STATE.md — the live picture.
+
+**Both files are UNTRACKED. PR 1 commits them.**
+
+**He chose subagent-driven execution and wanted it in a fresh session.** Use
+`superpowers:subagent-driven-development` — one subagent per task, reviewed between.
+
+**What he asked for:** *"rebuild the lighting engine to look and work like the one
+roblox uses"* → layers **1 (the look)** and **2 (the authoring model)**; and asked
+whether a desktop-only graded look would do, **"It has to match in VR."**
+
+### The four findings — two of them correct advice given in the same conversation
+
+1. **three.js has NO MULTIVIEW at any version.** Zero occurrences of `multiview`
+   in the published r128, r160, r162 and r170 builds. **That was the entire
+   frame-rate case for the upgrade.**
+2. **The UMD build dies after r160.** `build/three.min.js` is 200 through r160.1,
+   **404 from r161**. `THREE` is a CDN global and the file needs cross-part
+   hoisting, so **r160.1 is the ceiling.**
+3. **The wrist meter already existed** (`vrPerf`/`vrDrawMeter`, `p9.txt:130`) —
+   avg ms, peak ms and live foveation on the left wrist. "Put the frame time in
+   the headset" was describing something already built.
+4. **The budget is 13.9ms, not 11.1ms, and foveation is a live governor**
+   (`p9.txt:199` — *"the first headset run could not hold [90]"*). Desktop
+   `autoTune` is inert in a session; foveation is not.
+
+**Finding 4 settles the bloom question.** Foveation is the only mid-session lever,
+a stereo composer forfeits it, so route 1 would buy bloom by removing the safety
+net. **Route 2 — capped additive instanced glow planes — is the plan.**
+
+**RULING BY was miscited twice.** Its 4.29ms is a CPU `groundAt` **raycast** for a
+feature **measured and taken back out** — not render cost, not in the frame.
+**There is no measured VR frame time at all.**
+
+### THE READINGS ARE IN, AND THEY RESHAPE THE ROUND
+
+**Taken 2026-08-13 at `?v=27`. Cache-bust is `?v=28` from here.**
+
+| Moment | avg ms | vs the 13.9ms budget | ≈ fps |
+|---|---|---|---|
+| Empty Palace, nothing loaded | **25** | **1.8× over** | 40 |
+| Beetlejuice | **48**, and *clamped* | **3.5× over** | ≤21 |
+
+**"There is no measured VR frame time at all" is no longer true — and the first
+number it produced was a lie.** `p7` clamps `dt` to 50ms and `vrPerf` was reading the
+clamped figure, so every frame worse than 50ms recorded as exactly 50. He was reading
+two off a ceiling nobody knew was there. **RULING DJ fixes it** and proves it: 120ms
+frames average exactly 50.0 against the pre-change build.
+
+**Three consequences, all structural — read the spec's §7.2 before Task 2:**
+foveation is **pegged at 1.00** with no travel left, so DN's "preserve the lever"
+reasoning needs restating (the conclusion holds, for a stronger reason); **25ms with
+nothing loaded is the building, not his models**, and a performance investigation
+belongs before PRs 2–5, which all add per-pixel cost to a build that cannot afford
+it; and **PR 10 is cut** — meshopt already works on r128 and KTX2 costs the same at
+either version, so the upgrade's last justification was never gated on the upgrade.
+
+The DI questions in the block below are still unanswered and still want a headset run.
+
+### The one thing to put to him
+
+**The upgrade's case collapsed after he asked for it.** What survives is KTX2 +
+meshopt for the 181MB and 32 releases of fixes — load time and memory, not frame
+rate — against a bill that resets every intensity he ruled on in a headset
+(`useLegacyLights` flips at r155: `BLIND_POWER` 4.6, `AUDM_POWER` 2.8,
+**`BLIND_RANK` 0.9 / `AUDM_RANK` 0.8 (BC, load-bearing)**, `BJ_FILL_MAX` 0.55, the
+house at 0.15). PR 10, last, optional, mitigated by `useLegacyLights = true` as
+its own commit first. **He was offered the cut and has not answered.**
+
+**Still owed, unchanged:** the graveyard, the audio join at 4292, the house floor
+pool, a park stated as an absolute LINE, `BLIND_BODY`, the cemetery's park, the
+sign's red at GO, 181MB of models, and `pr6.json`.
+
+## NEXT SESSION: **THE PARKS ARE PAST THE LEGS — LOOK AT THE WING** (2026-08-13, DI) — STILL LIVE, fold into the run above
 
 Cache-bust **`?v=27`**. **Read STATE.md — it carries the full list with the
 rulings written out.** Rulings are at **DI**.

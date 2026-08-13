@@ -1471,7 +1471,14 @@ function frame(now){
 }
 let hoverT = 0, frameNo = 0;
 function tick(now){
-  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  /* RULING DJ — THE GAME CLOCK STAYS CLAMPED; THE METER DOES NOT.
+     Every mover, fade and cue rides this dt, and the clamp is what stops a
+     model load teleporting the show.  But it also meant the wrist meter
+     (p9) could never report a frame worse than 50ms — and the first headset
+     readings ever taken came back at 48, two off a ceiling nobody knew was
+     there.  So the raw figure travels alongside, for the meter only. */
+  const rawDt = (now-last)/1000;
+  const dt = Math.min(0.05, rawDt); last = now;
   const t = now/1000;
   frameNo++;
 
@@ -1497,7 +1504,7 @@ function tick(now){
      an effect overwrites the fade for its own channels while it runs, the way
      firelight does, and hands them back when the cue clears it. */
   if(typeof showAudioTick === 'function') showAudioTick(dt);
-  if(typeof vrUpdate === 'function') vrUpdate(dt);
+  if(typeof vrUpdate === 'function') vrUpdate(dt, rawDt);
   if(VENUE !== lastVenue){ lastVenue = VENUE; refreshVenueUI(); }
   if(followTarget){
     if(Player.mode==='walk') followTarget.set(Player.pos.x, Player.pos.y+1.2, Player.pos.z);
