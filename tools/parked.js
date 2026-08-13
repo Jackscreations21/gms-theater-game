@@ -102,7 +102,11 @@ const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?scr
    become properties of the window the way a function declaration does.  Hand
    them out explicitly — the same thing tests/beetlejuice.js does for its tail. */
 w.eval(script + ';window.__P = {SHOW:SHOW, D:D, PAL_BACK:PAL_BACK, scene:scene,' +
-       ' WALKABLE:WALKABLE, FLY:FLY, GOODS:GOODS, CUES:CUES};');
+       ' WALKABLE:WALKABLE, FLY:FLY, GOODS:GOODS, CUES:CUES,' +
+       /* added the moment it was first read — a const missing from this handout
+          arrives as undefined and the probe prints a confident wrong answer */
+       ' BJ_HILL_OUT:BJ_HILL_OUT, BJ_ATTIC_SIDE:BJ_ATTIC_SIDE,' +
+       ' BJ_SIDE_ROOM:BJ_SIDE_ROOM, BJ_CLOSET_BACK:BJ_CLOSET_BACK};');
 for(let i = 0; i < 90; i++){ const cb = w.__raf; w.__raf = null; if(cb) cb(1000 + i*16); }
 
 const g = w, P = w.__P, T = REAL;
@@ -388,6 +392,210 @@ function firstHits(from){
     console.log('  ' + r.name.padEnd(11) + String(mine).padStart(4) + ' / ' + n + '  ' +
                 (100*mine/n).toFixed(1).padStart(5) + '%   ' +
                 (mine === 0 ? 'MASKED — a real park' : 'VISIBLE IN THE PICTURE'));
+  }
+
+  /* ------------------------------------- can you see it from ANY seat, not one
+     RULING DF, AND THE REASON THIS SECTION EXISTS.  The pass above casts from ONE
+     eye at (0, 1.35, 12) — the middle of the stalls — and it reported every park
+     MASKED while the owner, sitting in a headset, could see sets in the wings.
+     Both are true.  A theatre has hundreds of seats and the middle one is the
+     KINDEST: the extreme side seats look diagonally across the picture and
+     straight into the OPPOSITE wing, which is the whole reason real masking is
+     set to the worst sightline in the house rather than to the axis.
+
+     AND IT AIMS AT THE SET, NOT AT THE OPENING.  Aiming a grid across the picture
+     asks "what is in the picture"; it can only find a park by accident, and it
+     reports 0% for a set that is plainly visible three metres to the side of
+     where the rays were pointed.  This casts from every eye toward sample points
+     ON the parked set and asks whether the set is the FIRST thing the ray meets.
+
+     It is a SAMPLE and says so: mesh world-box corners and centres, not every
+     vertex, so a thin set seen edge-on through a small gap can slip between the
+     samples.  A count of 0 here means "no sampled ray reached it", which is
+     weaker than a proof and much stronger than one eye on the axis. */
+  console.log('');
+  const eyes = [];
+  {
+    const at = (x, y, z, where) => eyes.push({p:new T.Vector3(x, y, z), where});
+    /* THE STALLS.  Front row close enough to the plaster line to have the widest
+       angle across it, back row at the rear of the orchestra.  x runs out to
+       within a metre of the side walls at +-D.houseW/2. */
+    const sx = D.houseW/2 - 1;
+    for(const z of [2.5, 6, 10, 14])
+      for(const x of [-sx, -sx*0.6, 0, sx*0.6, sx])
+        at(x, 1.35, z, 'stalls');
+    /* THE TWO BALCONIES.  Higher, further back, and they see DOWN into a wing
+       past the top of a masking leg rather than round the side of it. */
+    for(const z of [D.mezzZ + 0.5, D.mezzZ + 4, D.mezzZ + 7])
+      for(const x of [-sx*0.85, -sx*0.5, 0, sx*0.5, sx*0.85])
+        at(x, D.mezzY + 0.9, z, 'mezzanine');
+    for(const z of [D.balcZ + 0.5, D.balcZ + 4, D.balcZ + 7])
+      for(const x of [-sx*0.75, -sx*0.45, 0, sx*0.45, sx*0.75])
+        at(x, D.balcY + 0.9, z, 'balcony');
+  }
+  console.log('SEEN FROM ANY SEAT IN THE HOUSE?  ' + eyes.length +
+              ' eyes (stalls, mezzanine, balcony),');
+  console.log('each casting at sample points ON the parked set — first hit wins.');
+  /* AND SAY WHAT THIS PASS IS FORCING, because a probe that reports a state the
+     show never reaches is the "probe that calls a ruling a fault" trap.  unhide()
+     sets sceneOff false and turns every layer on, which is exactly right for a set
+     that DECLARES a park — RULING BQ keeps those drawn on purpose.  For a scene
+     with NO park, BQ switches it off entirely, so the row below measures a
+     hypothetical: what you WOULD see if it were left standing.  cemetery and bare
+     are both in that class and neither is a defect. */
+  console.log('NOTE: this pass forces every set DRAWN.  For a set that declares a');
+  console.log('park that is what the show really does (BQ); for one that does not,');
+  console.log('the row is a hypothetical, because BQ switches those off outright.');
+
+  /* SAMPLE THE REAL SURFACE, NOT THE BOUNDING BOX, and the first version of this
+     probe got it wrong in the way TRAPS predicts.  Sampling each mesh's world-box
+     corners plus its centre gave the sets that matter most — his imported houses,
+     which are ONE merged mesh each — exactly NINE points: eight box corners, all
+     of them in mid-air metres away from any geometry, plus a centre buried inside.
+     Every ray missed the set and hit the room behind it, and the probe reported a
+     confident 0/450 UNSEEN.  Walking the position attribute instead puts every
+     sample ON the set, which is the only place a sample is worth casting at. */
+  const SAMPLE_CAP = 240;
+  const samplesOf = sc => {
+    const pts = [], meshes = [];
+    sc.group.updateWorldMatrix(true, true);
+    sc.group.traverse(o => { if(o.isMesh && o.visible && !SKIP.has(o)) meshes.push(o); });
+    let total = 0;
+    for(const m of meshes){
+      const a = m.geometry && m.geometry.attributes && m.geometry.attributes.position;
+      if(a) total += a.count;
+    }
+    if(!total) return pts;
+    const stride = Math.max(1, Math.floor(total / SAMPLE_CAP));
+    const v = new T.Vector3();
+    let k = 0;
+    for(const m of meshes){
+      const a = m.geometry && m.geometry.attributes && m.geometry.attributes.position;
+      if(!a) continue;
+      for(let i = 0; i < a.count; i++, k++){
+        if(k % stride) continue;
+        v.fromBufferAttribute(a, i).applyMatrix4(m.matrixWorld);
+        pts.push(v.clone());
+      }
+    }
+    return pts;
+  };
+
+  const seenRows = [];
+  for(const r of rows){
+    if(r.note) continue;
+    const sc = g.sceneFind(r.name);
+    g.sceneChangeTo(r.name); settle();
+    g.sceneChangeTo(r.name === 'bare' ? 'cemetery' : 'bare'); settle();
+    for(const o of P.SHOW.scenes) if(!o.always && o !== sc && !o.on) g.sceneApply(o, false);
+    unhide(sc);
+    const pts = samplesOf(sc);
+    const list = drawn();
+    const rc = new T.Raycaster(); rc.far = 200;
+    const byWhere = {};
+    let hits = 0, shots = 0, worst = null;
+    for(const e of eyes){
+      let mine = 0;
+      for(const p of pts){
+        const d = new T.Vector3().subVectors(p, e.p);
+        const len = d.length(); if(len < 0.01) continue;
+        rc.set(e.p, d.normalize());
+        shots++;
+        const hit = rc.intersectObjects(list, false)[0];
+        if(hit && ownerScene(hit.object) === r.name){ mine++; hits++; }
+      }
+      byWhere[e.where] = (byWhere[e.where] || 0) + mine;
+      if(mine && (!worst || mine > worst.n))
+        worst = {n:mine, where:e.where, x:e.p.x, z:e.p.z};
+    }
+    seenRows.push({name:r.name, hits, shots, pts:pts.length, byWhere, worst});
+  }
+  for(const s of seenRows){
+    const where = Object.keys(s.byWhere).filter(k => s.byWhere[k] > 0)
+                    .map(k => k + ':' + s.byWhere[k]).join(' ');
+    console.log('  ' + s.name.padEnd(11) + String(s.hits).padStart(5) + ' / ' +
+                String(s.shots).padStart(5) + ' rays  ' +
+                (s.hits === 0 ? 'UNSEEN from every sampled seat'
+                              : 'SEEN — worst eye ' + s.worst.where + ' at x ' +
+                                s.worst.x.toFixed(1) + ' z ' + s.worst.z.toFixed(1) +
+                                '   [' + where + ']'));
+  }
+  {
+    const bad = seenRows.filter(s => s.hits > 0 && s.name !== 'bare' && s.name !== 'cemetery');
+    console.log('  ' + (bad.length
+      ? bad.length + ' park(s) visible from a real seat: ' + bad.map(s => s.name).join(', ')
+      : 'none — every park is out of sight from every sampled seat'));
+    console.log('  (bare and cemetery declare NO park and are expected here: the bare');
+    console.log('   stage IS the picture, and the cemetery is struck where it acts.)');
+  }
+
+  /* --------------------------------- HOW FAR WOULD THE HILLS HAVE TO RUN?
+     The cemetery is the one set with no park: RULING CE ran its two hills to
+     opposite wings and left them struck where they act, and the section above
+     measures them still SEEN from the stalls.  So sweep the offset and find the
+     first one that is not.
+
+     Driven through sceneMoveApply — the very call a cue makes — so this measures
+     the engine's own travel and not an idea of it, and no rebuild is needed to try
+     a number.  BJ_HILL_OUT is the constant it is pricing. */
+  console.log('');
+  console.log('HOW FAR WOULD THE CEMETERY HILLS HAVE TO RUN?  BJ_HILL_OUT is ' +
+              (P.BJ_HILL_OUT === undefined ? '(not in the handout)' : P.BJ_HILL_OUT) + 'm today.');
+  console.log('This PRICES THE OPEN QUESTION of giving the cemetery a park — it is');
+  console.log('switched off in the real show, so none of this is a live defect.');
+  console.log('The answer is the useful part: running them further does NOT hide it.');
+  {
+    const cem = g.sceneFind('cemetery');
+    const wall = D.stageW/2;
+    for(const off of [9.5, 12, 14, 16, 18, 20, 22, 24]){
+      g.sceneChangeTo('cemetery'); settle();
+      g.sceneChangeTo('bare'); settle();
+      for(const o of P.SHOW.scenes) if(!o.always && o !== cem && !o.on) g.sceneApply(o, false);
+      unhide(cem);
+      g.sceneMoveApply({scene:'cemetery', part:'hillR', off:-off});
+      g.sceneMoveApply({scene:'cemetery', part:'hillL', off: off});
+      for(let i = 0; i < 2400; i++) g.updateStorm(1/60);      // let it finish travelling
+      const pts = samplesOf(cem);
+      const list = drawn();
+      const rc = new T.Raycaster(); rc.far = 200;
+      let mine = 0, worst = null;
+      const culprit = {};
+      for(const e of eyes){
+        let n = 0;
+        for(const p of pts){
+          const d = new T.Vector3().subVectors(p, e.p);
+          const len = d.length(); if(len < 0.01) continue;
+          rc.set(e.p, d.normalize());
+          const hit = rc.intersectObjects(list, false)[0];
+          if(hit && ownerScene(hit.object) === 'cemetery'){
+            n++; mine++;
+            /* WHICH PIECE.  Running the hills further did not empty the picture, and
+               a count alone cannot say why — the answer turned out to be that not
+               everything in this scene is ON a hill mover, so some of it never
+               travels however big the offset gets. */
+            let nm = null;
+            for(let k = hit.object; k && !nm; k = k.parent) if(k.name) nm = k.name;
+            culprit[nm || 'unnamed'] = (culprit[nm || 'unnamed'] || 0) + 1;
+          }
+        }
+        if(n && (!worst || n > worst.n)) worst = {n, where:e.where, x:e.p.x, z:e.p.z};
+      }
+      cem.group.updateWorldMatrix(true, true);
+      const b = new T.Box3().setFromObject(cem.group);
+      console.log('  ' + String(off).padStart(5) + 'm  ->  ' + String(mine).padStart(5) +
+                  ' rays  x [' + b.min.x.toFixed(2).padStart(7) + '..' + b.max.x.toFixed(2).padStart(7) + ']' +
+                  '  through the wall by ' +
+                  Math.max(0, Math.max(-wall - b.min.x, b.max.x - wall)).toFixed(2) + 'm  ' +
+                  (mine === 0 ? 'UNSEEN'
+                              : 'seen from ' + worst.where + ' x ' + worst.x.toFixed(1)));
+      if(mine){
+        const top = Object.keys(culprit).sort((a,b)=>culprit[b]-culprit[a]).slice(0, 4);
+        console.log('           what is showing: ' +
+                    top.map(k => k + ' x' + culprit[k]).join(', '));
+      }
+    }
+    console.log('  the outer ends going THROUGH the side wall is not the problem — the');
+    console.log('  wall masks them.  What matters is the INNER end clearing the sightline.');
   }
 
   /* -------------------------------------------------- what it costs to draw */

@@ -14128,8 +14128,33 @@ const BJ_WAGON_BACK = -10.0;
    suite, because jsdom fetches nothing.
 
    THE WING IS FREE BECAUSE THE WAGON LEFT IT (RULING CO).  It was the wagon's
-   until this round, and only one ~13m set fits in a 14.5m wing. */
-const BJ_ATTIC_SIDE = 13.9;
+   until this round, and only one ~13m set fits in a 14.5m wing.
+
+   RULING DF — "just make it so the sets go past the wings.  no set should be parke
+   in a wing … there is plenty of room for the sets to go", and "the nether world
+   extirior and roof should be the only things that fly."
+
+   THE SETS STAY ON THE DECK AND GO FURTHER OUT.  What was wrong was not the slot,
+   it was the OFFSET: the parks were sized to just clear the picture edge and then
+   stopped, leaving the sets crammed against the masking with most of the wing empty
+   behind them.  The bedroom sat at x -15.91 .. -7.29 — its inner edge 0.49m outside
+   a 6.80 masking line, with SIX METRES of unused wing between its outer edge and
+   the wall.  That is the "plenty of room" he means, and clearing an edge by half a
+   metre is what makes a set read as standing in the wing rather than stored past it.
+
+   SO EACH PARK NOW RUNS TO THE LIMIT OF ITS OWN WING, and the limits are different
+   on the two sides:
+
+     stage left   the wall at x +22, and nothing else
+     stage right  THE LOCKING RAIL AT x -19.2, which is the flyman working space
+                  RULING CE found the wagon standing on — so this side stops short
+                  of its wall on purpose and always will
+
+   14.4 parks the attic at x 7.87 .. 20.93: 1.07m clear of the masking and 1.07m off
+   the wall, which is as central in its wing as a 13.06m set gets in a 15.20m one —
+   it is the set with no slack, not the one that had it.
+   ============================================================================ */
+const BJ_ATTIC_SIDE = 14.4;
 
 /* RULING CS — THE BEDROOM AND THE CLOSET SHARE THE OTHER WING, and they cannot
    stand abreast in it.
@@ -14151,11 +14176,26 @@ const BJ_ATTIC_SIDE = 13.9;
    the side, as he asked; the depth offset only says where in the wing it stands,
    and x -16 .. -7 is nine metres outside the picture the backdrop covers.
 
-   -11.6 parks the bedroom at x -15.91 .. -7.29 and the closet at -16.11 ..
-   -7.09: both clear of the picture edge at -6.80 and both 3.1m clear of the
-   locking rail at -19.2.  THE WING IS FREE BECAUSE THE EXTERIOR FLIES AGAIN
-   (RULING CR). */
-const BJ_SIDE_ROOM   = -11.6;
+   THE WING IS FREE BECAUSE THE EXTERIOR FLIES AGAIN (RULING CR).
+
+   RULING DF PUSHES IT OUT TO THE RAIL.  -11.6 left both rooms hugging the masking
+   — the bedroom's inner edge 0.49m outside it and 3.29m of wing standing empty
+   outboard — which is the whole of his complaint.  -14.0 spends that slack:
+
+     bedroom  x -18.31 .. -9.69    2.89m clear of the masking, 0.89m off the rail
+     closet   x -18.51 .. -9.49    2.69m clear of the masking, 0.69m off the rail
+
+   IT STOPS AT THE RAIL AND NOT AT THE WALL, which is why this side cannot simply
+   run out to +-22 the way stage left does.  x -19.2 is the locking rail, and RULING
+   CE was written because the wagon had been parked standing on it and on the
+   flyman's working space.  0.69m is the thinnest of the two and it is deliberate:
+   the closet is the wider room, so it is the one that runs out of wing first.
+
+   AND THE Z SEPARATION IS STILL DOING ITS JOB.  Moving both further out does not
+   make 8.62 and 9.02 fit abreast in 15.20m — it never will — so the closet still
+   stands BEHIND the bedroom on its own mover.  Pushing them out changed which part
+   of the wing they occupy, not the arithmetic that stacks them. */
+const BJ_SIDE_ROOM   = -14.0;
 const BJ_CLOSET_BACK = -6.0;
 const BJ_TRACK_SPEED = 2.0;    // m/s — a tracked set crosses in ~7s
 

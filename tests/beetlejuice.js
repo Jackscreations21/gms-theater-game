@@ -2057,6 +2057,66 @@ const probe = `
     return Object.keys(boxes).length + ' parks all clear, and not one of them stands inside another';
   });
 
+  /* ══ RULING DF — A PARK GOES PAST THE WING, NOT JUST OUTSIDE THE PICTURE ═══
+     "just make it so the sets go past the wings. no set should be parke in a wing
+     … there is plenty of room for the sets to go", and "the nether world extirior
+     and roof should be the only things that fly."
+
+     IT IS NOT A SIGHTLINE TEST, AND THAT WAS ESTABLISHED BEFORE ANY NUMBER MOVED.
+     tools/parked.js now casts from FIFTY eyes — stalls, mezzanine and balcony,
+     including the extreme side seats — at sample points on the real SURFACE of each
+     park, and every one came back 0 rays of ~12,000.  From an audience seat they
+     were already invisible, so a visibility assertion would have passed against the
+     very build he objected to.  What was wrong was the OFFSET: every park was sized
+     to just clear the masking and then stopped.  The bedroom's inner edge sat 0.49m
+     outside a 6.80 line with SIX METRES of wing standing empty behind it, which is
+     what makes a set read as standing in the wing rather than stored past it.
+
+     SO THIS MEASURES THE MARGIN, off world boxes, and in this suite that is always
+     the STAND-IN, because jsdom fetches nothing — the case RULING BQ was bitten by
+     twice, and the one that plays on a fresh clone.
+
+     AND FOR THE ATTIC THAT IS THE LOOSER CASE, WHICH IS WORTH SAYING.  At the old
+     offset his 13.06m attic cleared the masking by 0.57m and the 10.40m stand-in by
+     2.00m — so this assertion could not have caught the attic on its own, and a
+     negative check confirms it does not.  What catches HIS attic is tools/parked.js,
+     which serves the real files.  The bedroom and the closet have no model of their
+     own, so for those two the stand-in IS the case, and DF-1 fires on them at 0.49m. */
+  P('RULING DF: a side park clears the masking by a real margin, and stops at its own limit', ()=>{
+    showLoad('beetlejuice');
+    const EDGE = BJ.opW/2;          // the masking line the picture is cut to
+    const RAIL_X = -19.2;           // stage right stops at the LOCKING RAIL (CE)
+    const WALL = D.stageW/2;        // stage left has only the wall
+    const MARGIN = 1.0;             // past the wing, not 0.49m outside the masking
+    const seen = [];
+    for(const sc of SHOW.scenes){
+      if(sc.always || !sc.parks) continue;
+      sceneShow(sc.name);
+      sceneChangeTo('bare');
+      for(let i = 0; i < 1200 && sceneTravelling(sc); i++) updateStorm(1/60);
+      const b = box(sc.group);
+      if(b.min.y >= BJ.opH) continue;                 // flown: the tower is not a wing
+      const side = b.min.x > EDGE ? 1 : (b.max.x < -EDGE ? -1 : 0);
+      if(!side) continue;                             // upstage park (the wagon)
+      const inner = side > 0 ? b.min.x - EDGE : -EDGE - b.max.x;
+      if(inner < MARGIN)
+        throw new Error(sc.name + ' parks only ' + inner.toFixed(2) +
+                        'm outside the ' + EDGE + 'm masking — that is standing IN the wing');
+      /* and it has not been pushed out THROUGH the thing that bounds its own wing */
+      if(side < 0 && b.min.x < RAIL_X)
+        throw new Error(sc.name + ' reaches x ' + b.min.x.toFixed(2) +
+                        ', onto the locking rail at ' + RAIL_X);
+      if(side > 0 && b.max.x > WALL)
+        throw new Error(sc.name + ' reaches x ' + b.max.x.toFixed(2) +
+                        ', through the stage-left wall at ' + WALL);
+      seen.push(sc.name + ' ' + inner.toFixed(2) + 'm clear');
+    }
+    if(seen.length < 3)
+      throw new Error('only ' + seen.length + ' side parks measured; the attic, the ' +
+                      'bedroom and the closet all park to a side and none of them fly');
+    return seen.join(', ');
+  });
+
   /* the plot's own spine, driven through the REAL cue path — fireCue and
      showCueExtras, time stepped through updateStorm — with the no-pop
      invariant read off WORLD matrices at every few frames (the frozen-group
