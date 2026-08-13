@@ -9905,7 +9905,7 @@ function showBlank(){
     scenes:[], scene:null, pendDress:null, revolve:null, wrong:[], confetti:null,
     rainSound:false, flicker:null, lightning:0, lightningT:0,
     stormOn:false, stormT:0, porch:null, bjPortal:null,
-    pendMoves:[], houseWait:null, offstage:[],
+    pendMoves:[], houseWait:null, houseAfter:null, offstage:[],
     signLamps:null, signWant:null, signGate:1,      // RULING CU
     flyExtras:[],                                   // RULING CW
     curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
@@ -10448,12 +10448,43 @@ function frontCurtainShut(){
   const trim = TRIMS[ls.goodsKey] !== undefined ? TRIMS[ls.goodsKey] : TRIMS.house;
   return Math.abs(ls.pos - trim) < 0.05 && (ls.open || 0) < 0.02;
 }
+/* ============================================================================
+   RULING CZ — AND THE FRAME AND THE INTERVAL MUSIC COME IN BEHIND THE HOUSE
+
+   "at the end of the half the neon light around the proscenium and the
+   intermission music dont come on till the curtain is fully done and the house
+   lights are on."
+
+   RULING CJ already held the HOUSE master until the cloth was really in.  This
+   is the same act break one beat further on: the frame and the music wait for
+   the house, which itself waits for the curtain, so the interval assembles in
+   the order a real one does — cloth home, house up, then the neon strikes and
+   the interval music comes in under it.
+
+   A CHAIN, NOT A SECOND CLOCK.  There is no timer anywhere in it: CJ's own
+   per-frame handover below is the trigger, so the whole sequence rides the
+   frame exactly as everything else does (CLAUDE.md).
+
+   AND THE `stop` HALF IS NOT DELAYED, WHICH IS THE PART THAT WOULD HAVE BITTEN.
+   The interval cue says `audio:{stop:'act1', play:'preshow'}`, and act one is
+   the CLOCK track.  Holding the whole field would have left act one running
+   while the curtain flew in — and showAudioTick would have gone on firing act
+   two's cues off it, straight past RULING AU's "second half starts when you
+   press a button on the consol".  So the stop lands the instant the cue fires
+   and only the `play` waits.  Splitting the field is the whole trick.
+   ========================================================================== */
 function updateHouseWait(){
   if(SHOW.houseWait === null || SHOW.houseWait === undefined) return;
   if(!frontCurtainShut()) return;
   HOUSE.house = SHOW.houseWait;
   SHOW.houseWait = null;
   if(typeof syncMasters === 'function') syncMasters();
+  /* the house is up now, so whatever was queued behind it goes */
+  const a = SHOW.houseAfter;
+  if(!a) return;
+  SHOW.houseAfter = null;
+  if(a.portal && typeof setPortal === 'function') setPortal(a.portal);
+  if(a.audio && typeof showCueAudio === 'function') showCueAudio(a.audio);
 }
 
 function sceneMoveStep(dt){
@@ -11801,7 +11832,13 @@ function showCueExtras(c){
      the distinction.  It is also what makes the plot readable: four cues in
      ninety-five say `portal:` and the frame is out for the other ninety-one
      without any of them having to say so. */
-  if(typeof setPortal === 'function') setPortal(c.portal);
+  /* RULING CZ — is this cue's frame and music queued behind the house?  Decided
+     ONCE, here, because the portal is applied on this line and the audio two
+     hundred lines down, and both have to make the same decision.  Declared per
+     cue (`afterHouse`), so every cue that says nothing behaves exactly as it
+     always did — the houseAfterCurtain bargain, one ruling on. */
+  const holdForHouse = !!(c.afterHouse && c.houseAfterCurtain && !frontCurtainShut());
+  if(typeof setPortal === 'function') setPortal(holdForHouse ? null : c.portal);
   /* RULING CJ — the house master waits for the cloth.  fireCue has already
      written HOUSE.house from the cue; this takes it back to 0 and hands it over
      once the curtain is really in.  Declared per cue, so every cue that says
@@ -11811,6 +11848,12 @@ function showCueExtras(c){
     HOUSE.house = 0;
     if(typeof syncMasters === 'function') syncMasters();
   } else SHOW.houseWait = null;
+  /* what the house is holding back (CZ).  Cleared on every cue that is not
+     holding, so a stale queue can never fire under a later look. */
+  SHOW.houseAfter = holdForHouse
+    ? {portal: c.portal || null,
+       audio: (c.audio && c.audio.play) ? {play:c.audio.play, at:c.audio.at} : null}
+    : null;
   /* the marquee's own lamps.  `undefined` means LEAVE IT — one cue turns the
      sign red and the cues after it keep it red without saying so again. */
   if(c.signCol !== undefined && typeof setSignLamps === 'function') setSignLamps(c.signCol);
@@ -11902,7 +11945,17 @@ function showCueExtras(c){
      loads after this part, so both are typeof-guarded the way showCueExtras
      itself is guarded from p6.  `fx` is called even when the cue has none —
      that is what CLEARS a running effect. */
-  if(typeof showCueAudio === 'function') showCueAudio(c.audio || null);
+  /* RULING CZ — the STOP lands now and the PLAY waits for the house.  Act one is
+     the clock track, so a held stop would leave the transport firing act two's
+     cues while the curtain was still flying in; see the writeup at
+     updateHouseWait.  A copy, never a mutation: `c` is the plot's own record and
+     the show is reloaded from it. */
+  let cueAudio = c.audio || null;
+  if(holdForHouse && cueAudio && cueAudio.play){
+    cueAudio = Object.assign({}, cueAudio);
+    delete cueAudio.play; delete cueAudio.at;
+  }
+  if(typeof showCueAudio === 'function') showCueAudio(cueAudio);
   if(typeof showCueFx === 'function') showCueFx(c.fx || null);
   if(c.rev && SHOW.revolve && typeof setRevolve === 'function'){
     setRevolve('outer', c.rev.outer || 0);
@@ -16945,10 +16998,19 @@ function plotBeetlejuice(){
        closed."  The curtain is a traveler that FLIES and this cue fires seven
        seconds after the one that sends it in, so the house was coming up on a
        stage that could still be open.  The master holds at 0 until the cloth is
-       really home. */
+       really home.
+
+       RULING CZ: "at the end of the half the neon light around the proscenium
+       and the intermission music dont come on till the curtain is fully done and
+       the house lights are on."  So the frame and the interval music queue up
+       behind CJ's own handover — `afterHouse` — and the act break assembles in
+       the order a real one does: cloth home, house up, neon strikes, music in.
+       The `stop` half of the audio is NOT held; only the `play` is, because act
+       one is the clock track and holding it would run the transport on into act
+       two.  The whole of that is at updateHouseWait in p5c. */
     {at:4269, n:23, label:'1:11:09 — house to 15 behind the cloth — INTERVAL (holds for the console)',
      fade:6, house:0.15, lobby:0.9, haze:0, curtain:'shut', scene:'interior', dress:'deetz',
-     backdrop:'out', hold:true, houseAfterCurtain:true,
+     backdrop:'out', hold:true, houseAfterCurtain:true, afterHouse:true,
      portal:{col:BJ_NEON_BLUE, lvl:1.0},
      audio:{stop:'act1', play:'preshow'},
      look(){ all(0); }},
@@ -16978,9 +17040,21 @@ function plotBeetlejuice(){
        intermission and the end" covers the whole of the interval, not just the
        cue that starts it.  It goes out fifteen seconds later at 1:11:47, which is
        his own line and is untouched. */
+    /* RULING DA — AND THE FRAME IS STILL LIT WHEN THE SECOND HALF STARTS.  "at
+       the start of the second half the proscenium lights dont go out till the
+       flash."
+
+       The portal is the one cue field applied UNCONDITIONALLY (RULING CH: "for
+       the rest it is off"), so this cue saying nothing about it was what put the
+       frame out on the GO — the audience walks back in to a blue frame and it
+       snapped dark the instant the show restarted.  Saying it here keeps the
+       interval's blue burning through the GO, and the flash cue below says
+       nothing, so THAT is what takes it out.  The default did the work; the only
+       change is which cue it lands on. */
     {at:4292, n:24, label:'GO — act two, the show track back at 1:11:32', fade:2,
      house:0.15, lobby:0, haze:0.2, curtain:'shut', scene:'house', backdrop:'out', sky:'in',
      move:{scene:'house', off:0},
+     portal:{col:BJ_NEON_BLUE, lvl:1.0},
      audio:{play:'act2', at:4292, stop:'preshow'},
      look(){ all(0); onTheCloth(); set(FRONT, 0.4, '#bfe08a'); }},
 
@@ -16988,7 +17062,13 @@ function plotBeetlejuice(){
        second then just a purple light is on the curtain an moving around a
        bunch" — three things at once, and two of them are patterns: the blinder
        strobe runs out after its second, the mover drift carries on (RULING BE,
-       which widened the engine off this very line). */
+       which widened the engine off this very line).
+
+       AND THIS IS "THE FLASH" IN RULING DA, so its SILENCE about the portal is
+       load-bearing: saying nothing puts the frame out (CH), which is exactly what
+       "the proscenium lights dont go out till the flash" asks for.  Do not give
+       this cue a `portal` field to be tidy — the frame would then stay lit into
+       act two and DA would have no cue to go out on. */
     {at:4307, n:25, label:'1:11:47 — house out, blinders flash, purple crawling on the cloth',
      fade:0, house:0, haze:0.3, curtain:'shut', scene:'house', backdrop:'out', sky:'in',
      move:{scene:'house', off:0},
@@ -17424,6 +17504,8 @@ function plotBeetlejuice(){
       move:L.move || null,            // what travels, and to where (AP), and
                                       // which line it waits for if it says (CI)
       houseAfterCurtain:!!L.houseAfterCurtain,   // the house waits for the cloth (CJ)
+      afterHouse:!!L.afterHouse,      // and the frame and the music wait for the
+                                      // house, which waits for the cloth (CZ)
       confetti:!!L.confetti,
       audio:L.audio || null,          // what the sound does here (BA/BB)
       fx:L.fx || null,                // the audience rig's pattern (BD)

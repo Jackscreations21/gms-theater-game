@@ -3316,7 +3316,14 @@ const probe = `
        it turns.  Both cues before the red count as the pre-show here. */
     const isPre  = c => /PRE-SHOW/.test(c.label) || /GO — the show track starts/.test(c.label);
     const isRed  = c => c.at === 60;
-    const isIntv = c => /INTERVAL/.test(c.label);
+    /* AND THE INTERVAL RUNS THROUGH ACT TWO'S GO, exactly as the pre-show runs
+       through act one's (RULING DA).  "at the start of the second half the
+       proscenium lights dont go out till the flash" — so the audience walks back
+       in to a blue frame and it is still blue when the show restarts, which is
+       the same shape as the twenty-five seconds above and reversed here for the
+       same reason.  What takes it out is the flash cue, and THAT is pinned by its
+       own assertion below rather than by this classification. */
+    const isIntv = c => /INTERVAL/.test(c.label) || /GO — act two/.test(c.label);
     const isEnd  = c => c.at === 8100;
     const isAft  = c => /netherworld|1:39|1:39:22|1:39:41/.test(c.label) ||
                         CUES.filter(x=>x.n === c.n)[0].scene === 'afterlife';
@@ -3367,6 +3374,125 @@ const probe = `
       throw new Error('a cue that says nothing left the frame at ' +
                       b.mat.emissiveIntensity.toFixed(3) + ' — it must go out');
     return 'up to 1.00 on a cue that asks, out to 0.000 on the very next that does not';
+  });
+
+  /* ══ RULING CZ — THE FRAME AND THE INTERVAL MUSIC QUEUE BEHIND THE HOUSE ═══
+     "at the end of the half the neon light around the proscenium and the
+     intermission music dont come on till the curtain is fully done and the house
+     lights are on."
+
+     OPEN THE PICTURE FIRST, for exactly the reason the CJ assertion states: fired
+     against a cloth already home the gate passes on frame one and this measures
+     nothing.  It is not a hypothetical — the RULING BO interval test two hundred
+     lines down fires this same cue with the curtain already in, and it went on
+     passing unchanged through this whole change, correctly.
+
+     AND THE STOP HALF IS ASSERTED SEPARATELY, because that is the half that would
+     have bitten: act one is the CLOCK track, so a gate that held the whole audio
+     field would leave the transport firing act two off a running act one, straight
+     past RULING AU.  Everything is read off the INTENT the pump acts on (want),
+     never off a currentTime — jsdom fetches no media and readyState never leaves 0. */
+  P('the frame and the interval music wait for the house, and the STOP does not (CZ)', ()=>{
+    showLoad('beetlejuice');
+    const i = CUES.findIndex(c=>c.label.indexOf('INTERVAL') >= 0);
+    if(i < 0) throw new Error('no INTERVAL cue');
+    const c = CUES[i];
+    if(!c.afterHouse) throw new Error('the interval does not declare the CZ gate');
+    if(!c.houseAfterCurtain) throw new Error('the interval does not declare the CJ gate it queues behind');
+    if(!c.portal || !(c.portal.lvl > 0.5))
+      throw new Error('the interval brings no frame up, so nothing is gated');
+    if(!c.audio || c.audio.play !== 'preshow')
+      throw new Error('the interval asks for no music, so nothing is gated');
+    if(!c.audio.stop) throw new Error('the interval stops nothing, so the split cannot be observed');
+
+    /* act one running, the picture open, and the frame and the music both down */
+    fireCue(CUES.findIndex(x=>x.n === 1)); cancelFollow();
+    if(!AUD.tracks.act1 || !AUD.tracks.act1.want) throw new Error('act one is not running');
+    if(AUD.tracks.preshow && AUD.tracks.preshow.want)
+      throw new Error('the pre-show music is already up — there is nothing to observe');
+    const ls = frontCurtainLineset();
+    if(!ls) throw new Error('no front traveler hung');
+    ls.target = ls.pos = OUT_TRIM; ls.open = ls.travTarget = 0;
+    HOUSE.house = 0;
+    const b = SHOW.bjPortal;
+    if(!b) throw new Error('there is no portal frame registered');
+    b.tLvl = 0; b.lvl = 0;
+
+    fireCue(i); cancelFollow();
+    /* the STOP lands on the firing frame — act one is the clock */
+    if(AUD.tracks.act1.want)
+      throw new Error('act one is still running: the stop was held along with the play');
+    /* and nothing else has been asked for yet */
+    if(b.tLvl > 0.001)
+      throw new Error('the frame was asked for at ' + b.tLvl.toFixed(3) + ' with the cloth ' +
+                      Math.abs(ls.pos - TRIMS.bjCurtain).toFixed(1) + 'm out');
+    if(AUD.tracks.preshow && AUD.tracks.preshow.want)
+      throw new Error('the interval music started with the cloth still out');
+    if(HOUSE.house > 0.001) throw new Error('the house came up with the cloth still out (CJ)');
+
+    let up = -1, frame = -1, music = -1;
+    for(let f = 0; f < 3000; f++){
+      updateFly(1/60); updateStorm(1/60);
+      if(up < 0 && HOUSE.house > 0.001) up = f;
+      if(frame < 0 && b.tLvl > 0.5) frame = f;
+      if(music < 0 && AUD.tracks.preshow && AUD.tracks.preshow.want) music = f;
+    }
+    if(up < 0) throw new Error('the house never came up at all');
+    if(frame < 0) throw new Error('the frame was never asked for at all');
+    if(music < 0) throw new Error('the interval music never came in at all');
+    if(!frame || !music)
+      throw new Error('the frame or the music landed on frame 0 — the gate never bound');
+    /* CANNOT CURRENTLY FIRE, AND THAT IS WORTH SAYING rather than leaving it
+       looking like a live check (the "bound nothing exercises" trap).  The
+       handover is ONE call, so the house, the frame and the music all land on the
+       same frame index and this can only ever be equal.  It is here as a guard for
+       whoever splits updateHouseWait into stages later; the clauses above are the
+       ones the negative checks actually fire. */
+    if(frame < up || music < up)
+      throw new Error('the frame came in at ' + frame + ' and the music at ' + music +
+                      ', ahead of the house at ' + up);
+    return 'act one stopped at once; house up at frame ' + up +
+           ', the frame and the music behind it at ' + frame + ' and ' + music;
+  });
+
+  /* ══ RULING DA — THE SECOND HALF STARTS WITH THE FRAME STILL LIT ═══════════
+     "at the start of the second half the proscenium lights dont go out till the
+     flash."
+
+     THE CUE AFTER THE GO IS TAKEN BY POSITION, never by the property being
+     asserted — the trap TRAPS records for the re-anchored focus test that picked
+     "the next cue whose aims are not up" and then checked its aims were not up.
+     What it IS gets checked as a guard afterwards, which is a different thing. */
+  P('the frame is still lit when the second half starts, and the flash takes it out (DA)', ()=>{
+    showLoad('beetlejuice');
+    const b = SHOW.bjPortal;
+    if(!b) throw new Error('there is no portal frame registered');
+    let clock = 0;
+    const settle = n=>{ for(let k = 0; k < n; k++){
+      clock += 1/60; updateFades(1/60); updateRig(1/60, clock); updateStorm(1/60); } };
+
+    const iGo = CUES.findIndex(c=>/GO — act two/.test(c.label));
+    if(iGo < 0) throw new Error('act two has no GO cue');
+    const iFl = iGo + 1, fl = CUES[iFl];
+    if(!fl) throw new Error('nothing follows act two GO');
+    if(JSON.stringify(fl.fx || null).indexOf('strobe') < 0)
+      throw new Error('the cue after act two GO is not the flash: Q' + fl.n + ' ' + fl.label);
+    if(fl.portal)
+      throw new Error('the flash cue carries a portal field — DA needs its silence to put the frame out');
+
+    fireCue(iGo); cancelFollow(); settle(240);
+    const lit = b.mat.emissiveIntensity;
+    if(!(lit > 0.5))
+      throw new Error('the frame is out when the second half starts: ' + lit.toFixed(3));
+    if(b.mat.emissive.r > 0.5 && b.mat.emissive.g < 0.4)
+      throw new Error('the frame is RED at act two GO; the interval blue should carry through');
+
+    fireCue(iFl); cancelFollow(); settle(240);
+    if(b.mat.emissiveIntensity > 0.02)
+      throw new Error('the flash left the frame at ' + b.mat.emissiveIntensity.toFixed(3) +
+                      ' — that is the cue it goes out on');
+    return 'lit at ' + lit.toFixed(2) + ' through the GO in ' +
+           b.mat.emissive.getHexString() + ', out to 0.000 on the flash';
   });
 
   /* ══ RULING CG — THE HOUSE IS AT 15 AT EXACTLY THREE MOMENTS ════════════ */
