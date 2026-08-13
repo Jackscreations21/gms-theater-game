@@ -745,7 +745,14 @@ const probe = `
     for(let i = 0; i < 900 && sceneTravelling(sceneFind('interior')); i++) updateStorm(1/60);
     if(vrSetWhere(sceneFind('interior')) !== 'ON STAGE')
       throw new Error('the set that is on does not read as on: ' + vrSetWhere(sceneFind('interior')));
-    const CHECK = {interior:'upstage', attic:'stage left', bedroom:'stage right', roof:'flown'};
+    /* THE ATTIC CHANGED SIDES (RULING DI) and this is the third place the old
+       side was written down — the park, the suite, and this menu fixture.  It
+       stays a stated expectation rather than being derived from the mover it is
+       checking, which would make it agree with anything; what it is worth is
+       exactly that it had to be changed by hand when the traffic changed.  The
+       closet joins it, so all three of the wing sets are named here now. */
+    const CHECK = {interior:'upstage', attic:'stage right', bedroom:'stage right',
+                   closet:'stage right', roof:'flown'};
     sceneChangeTo('cemetery');
     for(let i = 0; i < 1500; i++) updateStorm(1/60);
     const said = {};

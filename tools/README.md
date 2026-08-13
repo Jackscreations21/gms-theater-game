@@ -14,6 +14,9 @@ one of these drew it.
     node buildload.js      what a standing build costs per frame — times
                            updateBodies at 0/25/50/100/150 loose pieces
     node census.js         the mesh count of every tool and shed fixture
+    node wing.js           how wide a wing REALLY is — the leg edge off the
+                           built goods, the rail off crewFrame(), and a sweep
+                           of the strip between them
 
 Each is ~40 lines of probe on top of the same jsdom harness the tests use.
 Copy one and change the eye position to look at something else.
@@ -60,6 +63,24 @@ run takes a few minutes and caches to the OS temp dir; `--fresh` re-measures.
 Nothing from the video is written into the repo — derived numbers only.
 
 Characters are distance bands: `#` nearest … `.` furthest, space = nothing hit.
+
+## `wing.js` — how wide is a wing, really? (RULING DI)
+
+Written because three rulings sized parks against a rail that is not there.
+CE, CS and DF all state the flyman's locking rail at **x −19.2** and all three
+cite `p9` for it. What `p9` says is `fr ? fr.rail : -D.stageW/2 + 2.8` — and
+−19.2 is the **fallback**. There is always a crew frame, and it gives
+`XR + 2.8` = **−30.2**, because `D.wingSR` runs stage right 11m further out
+than stage left. So the gap between the legs and the rail is **18.00m**, not
+7.00m, and a 13.06m set fits in it with room to spare.
+
+It measures rather than argues: the leg edge off the **built** `GOODS.legs`
+(one leg, not the pair — measuring the pair gives a box whose |x| min and max
+are both the outboard edge, and it printed `0.00m of cloth` on the first run),
+the rail off `crewFrame()`, and then rays through the strip between them at
+four heights. That sweep is what found the **auditorium side wall** — a
+1.0 × 22.0 × 32.0 box at x −15.50 whose upstage face reaches z −1.00, straight
+through the middle of the wing, which no park had ever been measured against.
 
 ## `deeper.js` — does the Palace hold what slides back into it? (RULING CL)
 

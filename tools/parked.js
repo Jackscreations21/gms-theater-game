@@ -105,8 +105,14 @@ w.eval(script + ';window.__P = {SHOW:SHOW, D:D, PAL_BACK:PAL_BACK, scene:scene,'
        ' WALKABLE:WALKABLE, FLY:FLY, GOODS:GOODS, CUES:CUES,' +
        /* added the moment it was first read — a const missing from this handout
           arrives as undefined and the probe prints a confident wrong answer */
-       ' BJ_HILL_OUT:BJ_HILL_OUT, BJ_ATTIC_SIDE:BJ_ATTIC_SIDE,' +
-       ' BJ_SIDE_ROOM:BJ_SIDE_ROOM, BJ_CLOSET_BACK:BJ_CLOSET_BACK};');
+       ' BJ_HILL_OUT:BJ_HILL_OUT, LEG_IN:LEG_IN, LEG_OUT:LEG_OUT,' +
+       /* RULING DI replaced BJ_ATTIC_SIDE, BJ_SIDE_ROOM and BJ_CLOSET_BACK — the
+          three typed offsets — with a measured pack, and the probe threw on the
+          spot when they went.  Which is the handout doing its job: a const that
+          disappears is a loud failure here and a silent wrong answer anywhere it
+          is read without being handed out. */
+       ' BJ_PARK_PAST:BJ_PARK_PAST, BJ_WING_Z0:BJ_WING_Z0,' +
+       ' BJ_WING_GAP:BJ_WING_GAP, XL:XL, XR:XR};');
 for(let i = 0; i < 90; i++){ const cb = w.__raf; w.__raf = null; if(cb) cb(1000 + i*16); }
 
 const g = w, P = w.__P, T = REAL;
@@ -326,8 +332,18 @@ function firstHits(from){
     else if(r.shift < 0.01) bad.push('DECLARES A PARK AND NEVER MOVES — the mover is not wired');
     if(b.min.z < PAL_BACK) bad.push('through the Palace brick by ' + (PAL_BACK - b.min.z).toFixed(2) + 'm');
     if(b.max.y > D.gridY) bad.push('through the grid by ' + (b.max.y - D.gridY).toFixed(2) + 'm');
-    if(b.min.x < -D.stageW/2) bad.push('past the stage-right wall by ' + (-D.stageW/2 - b.min.x).toFixed(2) + 'm');
-    if(b.max.x > D.stageW/2) bad.push('past the stage-left wall by ' + (b.max.x - D.stageW/2).toFixed(2) + 'm');
+    /* THE TWO WALLS ARE NOT AT THE SAME |x|, AND THIS SAID THEY WERE.  XL is
+       D.stageW/2 = 22; XR is -(D.stageW/2 + D.wingSR) = -33, because stage right
+       runs 11m further out.  Measuring both sides against 22 called an 11m-wide
+       strip of real deck "past the wall" — the same mistake RULING DI found in
+       CE, CS and DF, which all sized a park against a rail 11m in from the one
+       p9 actually builds. */
+    if(b.min.x < P.XR) bad.push('past the stage-right wall by ' + (P.XR - b.min.x).toFixed(2) + 'm');
+    if(b.max.x > P.XL) bad.push('past the stage-left wall by ' + (b.max.x - P.XL).toFixed(2) + 'm');
+    /* and the RAIL, which is the working limit on that side rather than the wall */
+    const rail = g.crewFrame().rail;
+    if(b.min.x < rail && b.min.y < OPEN_H)
+      bad.push('onto the flyman at x ' + b.min.x.toFixed(2) + ' (rail ' + rail.toFixed(2) + ')');
     if(bad.length){ faults++; console.log('  ' + r.name.padEnd(11) + bad.join('; ')); }
     else console.log('  ' + r.name.padEnd(11) + 'clear');
   }
@@ -357,6 +373,39 @@ function firstHits(from){
                 d.x.toFixed(2) + ' x ' + d.y.toFixed(2) + ' x ' + d.z.toFixed(2) + 'm');
   }
   if(!clashes) console.log('  none — every parked set has its own space');
+
+  /* ------------------------------------------------- RULING DI: PAST THE LEGS?
+     His complaint twice over — "the attic, bedrrom and closet sets are still in
+     the wings … i meant past the physical legs. past the black curtains".  The
+     margin every earlier ruling measured was against the PICTURE edge at 6.80,
+     which a set can clear while standing in the middle of a 5.6m leg.  This is
+     the line he actually named: LEG_OUT, the outboard edge of the cloth. */
+  console.log('');
+  console.log('IS EACH PARK PAST THE LEGS?  the cloth spans |x| ' +
+              P.LEG_IN.toFixed(2) + ' .. ' + P.LEG_OUT.toFixed(2) +
+              ', and past means |x| > ' + P.LEG_OUT.toFixed(2));
+  let inLegs = 0;
+  for(const r of rows){
+    if(r.note || !r.parks) continue;
+    const b = r.offBox;
+    /* FLOWN IS "ABOVE THE PICTURE", NOT "NEAR THE GRID".  D.gridY - 6 is 19.0 and
+       the flown sets have their FEET at 10.50, so it called all three of them
+       upstage parks and measured them against a leg they are nine metres above. */
+    if(b.min.y >= OPEN_H){ console.log('  ' + r.name.padEnd(11) + 'flown — the tower is not a wing'); continue; }
+    const side = b.min.x > P.LEG_IN ? 1 : (b.max.x < -P.LEG_IN ? -1 : 0);
+    if(!side){ console.log('  ' + r.name.padEnd(11) + 'upstage — behind the backdrop, not beside a leg'); continue; }
+    const inner = side > 0 ? b.min.x : -b.max.x;      // its inboard face, as |x|
+    const clear = inner - P.LEG_OUT;
+    const wall  = side > 0 ? P.XL - b.max.x : b.min.x - P.XR;
+    if(clear < 0) inLegs++;
+    console.log('  ' + r.name.padEnd(11) +
+                (side > 0 ? 'stage left  ' : 'stage right ') +
+                (clear < 0 ? ('IN THE LEGS by ' + (-clear).toFixed(2) + 'm')
+                           : (clear.toFixed(2) + 'm past the cloth')) +
+                '   ' + wall.toFixed(2) + 'm off its wall');
+  }
+  console.log(inLegs ? ('  ' + inLegs + ' park(s) still standing among the legs')
+                     : '  none — every side park is outboard of the cloth');
 
   /* ------------------------------------------- can you see it from a seat */
   console.log('');

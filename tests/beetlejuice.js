@@ -2171,8 +2171,15 @@ const probe = `
       boxes[sc.name] = b;
       if(b.min.z < PAL_BACK) bad.push(sc.name + ' is ' + (PAL_BACK - b.min.z).toFixed(2) + 'm through the brick');
       if(b.max.y > D.gridY) bad.push(sc.name + ' is ' + (b.max.y - D.gridY).toFixed(2) + 'm through the grid');
-      if(b.min.x < -D.stageW/2) bad.push(sc.name + ' is past the stage-right wall');
-      if(b.max.x > D.stageW/2) bad.push(sc.name + ' is past the stage-left wall');
+      /* REVERSED IN PLACE BY RULING DI — THE TWO WALLS ARE NOT AT THE SAME |x|.
+         XL is D.stageW/2 = 22; XR is -(D.stageW/2 + D.wingSR) = -33, because
+         D.wingSR exists precisely to say that stage right runs further out.
+         Measuring both sides against 22 declared an 11m strip of real deck to be
+         outside the building — the same substitution that had CE, CS and DF
+         sizing parks against a rail 11m in from the one p9 builds.  What the
+         assertion is FOR is untouched: a park may not stand through a wall. */
+      if(b.min.x < XR) bad.push(sc.name + ' is past the stage-right wall');
+      if(b.max.x > XL) bad.push(sc.name + ' is past the stage-left wall');
     }
     if(bad.length) throw new Error(bad.join('; '));
     if(Object.keys(boxes).length < 7)
@@ -2232,13 +2239,36 @@ const probe = `
      2.00m — so this assertion could not have caught the attic on its own, and a
      negative check confirms it does not.  What catches HIS attic is tools/parked.js,
      which serves the real files.  The bedroom and the closet have no model of their
-     own, so for those two the stand-in IS the case, and DF-1 fires on them at 0.49m. */
-  P('RULING DF: a side park clears the masking by a real margin, and stops at its own limit', ()=>{
+     own, so for those two the stand-in IS the case, and DF-1 fires on them at 0.49m.
+
+     ══ REVERSED IN PLACE BY RULING DI, AND ON BOTH OF ITS NUMBERS ═══════════════
+     "i meant past the physical legs. past the black curtains", and "there is
+     plenty of room between the fly rail and the legs to fit all three sets."
+
+     1. THE LINE IS THE LEG, NOT THE PICTURE.  This measured the margin outboard of
+        BJ.opW/2 = 6.80, and a leg is 5.6m of cloth spanning |x| 6.60 .. 12.20.  So
+        every park it passed at "1.07m clear" was standing four metres deep in the
+        masking, which is exactly what he was looking at.  It measures off LEG_OUT
+        now — the outboard edge of the cloth, named in p3 so this and the parks
+        cannot drift apart.
+
+     2. AND RAIL_X = -19.2 WAS NOT THE RAIL.  It is p9's FALLBACK expression,
+        -D.stageW/2 + 2.8, taken only when there is no crew frame; the live value
+        is crewFrame().rail = XR + 2.8 = -30.2, because D.wingSR runs stage right
+        11m further out than stage left.  A literal copied out of a conditional
+        cost three rulings the wider half of a wing — so the rail is READ here,
+        and the same literal is gone from the code it was guarding.
+
+     THE THING THIS ASSERTION IS FOR SURVIVES WHOLE, which is why it turns rather
+     than goes: a park has to stand clear of the masking by a margin you can see,
+     and it must not be pushed out through whatever bounds its own side.  Both
+     halves are still here.  Only the two lines moved. */
+  P('RULING DI: a side park stands past the LEG CLOTH, and stops at its own limit', ()=>{
     showLoad('beetlejuice');
-    const EDGE = BJ.opW/2;          // the masking line the picture is cut to
-    const RAIL_X = -19.2;           // stage right stops at the LOCKING RAIL (CE)
-    const WALL = D.stageW/2;        // stage left has only the wall
-    const MARGIN = 1.0;             // past the wing, not 0.49m outside the masking
+    /* the cloth, not the picture: 6.60 .. 12.20 for a 13.6m picture cut at 6.80 */
+    const CLOTH = LEG_OUT;
+    const RAIL_X = crewFrame().rail;   // READ. -30.2, and -19.2 is the fallback
+    const MARGIN = 1.0;                // past the cloth, not 1.07m outside 6.80
     const seen = [];
     for(const sc of SHOW.scenes){
       if(sc.always || !sc.parks) continue;
@@ -2247,25 +2277,128 @@ const probe = `
       for(let i = 0; i < 1200 && sceneTravelling(sc); i++) updateStorm(1/60);
       const b = box(sc.group);
       if(b.min.y >= BJ.opH) continue;                 // flown: the tower is not a wing
-      const side = b.min.x > EDGE ? 1 : (b.max.x < -EDGE ? -1 : 0);
+      const side = b.min.x > LEG_IN ? 1 : (b.max.x < -LEG_IN ? -1 : 0);
       if(!side) continue;                             // upstage park (the wagon)
-      const inner = side > 0 ? b.min.x - EDGE : -EDGE - b.max.x;
+      const inner = (side > 0 ? b.min.x : -b.max.x) - CLOTH;
       if(inner < MARGIN)
-        throw new Error(sc.name + ' parks only ' + inner.toFixed(2) +
-                        'm outside the ' + EDGE + 'm masking — that is standing IN the wing');
+        throw new Error(sc.name + ' parks ' + inner.toFixed(2) +
+                        'm outboard of the ' + CLOTH.toFixed(2) +
+                        ' leg edge — that is standing IN the black curtains');
       /* and it has not been pushed out THROUGH the thing that bounds its own wing */
       if(side < 0 && b.min.x < RAIL_X)
         throw new Error(sc.name + ' reaches x ' + b.min.x.toFixed(2) +
-                        ', onto the locking rail at ' + RAIL_X);
-      if(side > 0 && b.max.x > WALL)
+                        ', onto the locking rail at ' + RAIL_X.toFixed(2));
+      if(side > 0 && b.max.x > XL)
         throw new Error(sc.name + ' reaches x ' + b.max.x.toFixed(2) +
-                        ', through the stage-left wall at ' + WALL);
-      seen.push(sc.name + ' ' + inner.toFixed(2) + 'm clear');
+                        ', through the stage-left wall at ' + XL);
+      if(side < 0 && b.min.x < XR)
+        throw new Error(sc.name + ' reaches x ' + b.min.x.toFixed(2) +
+                        ', through the stage-right wall at ' + XR);
+      seen.push(sc.name + ' ' + inner.toFixed(2) + 'm past the cloth');
     }
     if(seen.length < 3)
       throw new Error('only ' + seen.length + ' side parks measured; the attic, the ' +
                       'bedroom and the closet all park to a side and none of them fly');
     return seen.join(', ');
+  });
+
+  /* ══ RULING DI — AND THE THREE OF THEM SHARE ONE WING ════════════════════════
+     The attic has crossed to stage right, so all three side parks are in the same
+     15.2m-plus-11m of wing, one behind another, and the thing that keeps them
+     apart is a PACK rather than three numbers.  Two failures are worth pinning
+     separately from the margin above, because neither shows up in it:
+
+       - two of them standing in each other, which is what RULING CS spent its
+         whole argument on when there were only two;
+       - a park reaching downstage into the AUDITORIUM SIDE WALL, which is a
+         1.0 x 22.0 x 32.0 box at x -15.50 whose upstage face is z -1.00
+         (tools/wing.js).  His attic acts at z -0.30, so the old park — which
+         simply left the set at its acting z — stood 0.70m inside it, and nothing
+         in this suite or in tools/parked.js was looking at that wall at all. */
+  P('RULING DI: the three side parks stack, clear of each other and of the house wall', ()=>{
+    showLoad('beetlejuice');
+    const WING = ['attic', 'bedroom', 'closet'];
+    const bs = {};
+    for(const n of WING){
+      const sc = sceneFind(n);
+      sceneShow(n);
+      sceneChangeTo('bare');
+      for(let i = 0; i < 1200 && sceneTravelling(sc); i++) updateStorm(1/60);
+      bs[n] = box(sc.group);
+    }
+    for(let i = 0; i < WING.length; i++) for(let j = i+1; j < WING.length; j++){
+      const a = bs[WING[i]], b = bs[WING[j]];
+      if(!a.intersectsBox(b)) continue;
+      const o = a.clone().intersect(b), d = o.getSize(new THREE.Vector3());
+      if(Math.min(d.x, d.y, d.z) < 0.05) continue;        // a graze along one face
+      throw new Error(WING[i] + ' and ' + WING[j] + ' park inside each other by ' +
+                      d.x.toFixed(2) + ' x ' + d.y.toFixed(2) + ' x ' + d.z.toFixed(2) + 'm');
+    }
+    /* the auditorium wall, found rather than assumed: the widest box in the
+       shared room whose x straddles the wing and whose z reaches onto the stage */
+    const WALL_Z = -1.0, WALL_X = -15.0;
+    for(const n of WING){
+      const b = bs[n];
+      if(b.max.x < WALL_X - 1.5) continue;               // outboard of the wall entirely
+      if(b.max.z > WALL_Z)
+        throw new Error(n + ' parks with its downstage face at z ' + b.max.z.toFixed(2) +
+                        ', inside the auditorium side wall which reaches z ' + WALL_Z);
+    }
+    return WING.map(n => n + ' z ' + bs[n].max.z.toFixed(2) + '..' + bs[n].min.z.toFixed(2)).join(', ');
+  });
+
+  /* ══ RULING DI — A PARK IS MEASURED, AND RE-MEASURED WHEN A FILE LANDS ═══════
+     The whole reason the three typed offsets had to go.  His attic is 13.06m wide
+     by 10.00m deep and the stand-in is 10.40 by 9.60, sitting at a different z as
+     well as a different size — so ONE number cannot put both of them 2m past the
+     cloth, and DF proved it by leaving the stand-in 2.00m clear and his own file
+     0.57m clear off the same offset.
+
+     SO THIS LANDS A BIGGER SET THROUGH bjApplyModel — the real path a file takes —
+     and asks whether the park followed.  Synthetic, deliberately: jsdom fetches
+     nothing, so a test that waited for a real .glb would measure the stand-in and
+     pass whatever the code did.  This is the same reasoning as RULING DH measuring
+     the sign floor stop off the sign own box instead of typing it. */
+  P('RULING DI: landing a bigger model re-packs the wing rather than keeping the offset', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('attic');
+    const before = sc.pmv.all.out;
+    /* a set two metres wider and two deeper than the stand-in, landed the way a
+       file lands: inside the all-wrapper, through bjApplyModel */
+    const root = new THREE.Group();
+    const m = new THREE.Mesh(new THREE.BoxGeometry(14.4, 4.0, 11.6),
+                             new THREE.MeshBasicMaterial());
+    m.position.set(0, 2.0, -6.0);
+    root.add(m);
+    const ok = bjApplyModel({scene:'attic'}, root, sc);
+    if(!ok) throw new Error('bjApplyModel refused the synthetic set, so nothing was measured');
+    const after = sc.pmv.all.out;
+    if(Math.abs(after - before) < 0.01)
+      throw new Error('the park did not move when the set grew: still ' + before.toFixed(2));
+    sceneShow('attic');
+    sceneChangeTo('bare');
+    for(let i = 0; i < 1200 && sceneTravelling(sc); i++) updateStorm(1/60);
+    const b = box(sc.group);
+    const inner = -b.max.x - LEG_OUT;
+    if(inner < 1.0)
+      throw new Error('after growing, the attic parks ' + inner.toFixed(2) +
+                      'm past the cloth — the pack did not re-measure it');
+    if(b.min.x < crewFrame().rail)
+      throw new Error('after growing it reaches x ' + b.min.x.toFixed(2) +
+                      ', onto the rail at ' + crewFrame().rail.toFixed(2));
+    /* AND THE ONES BEHIND IT MOVED TOO, which is the half a per-set offset could
+       never do: the bedroom stands behind the attic, so a deeper attic pushes it
+       upstage or they end up in each other. */
+    const bed = sceneFind('bedroom');
+    sceneShow('bedroom');
+    sceneChangeTo('bare');
+    for(let i = 0; i < 1200 && sceneTravelling(bed); i++) updateStorm(1/60);
+    const bb = box(bed.group);
+    if(bb.max.z > b.min.z)
+      throw new Error('the bedroom did not move back for a deeper attic: its face ' +
+                      bb.max.z.toFixed(2) + ' against the attic at ' + b.min.z.toFixed(2));
+    return 'attic out ' + before.toFixed(2) + ' -> ' + after.toFixed(2) +
+           ', ' + inner.toFixed(2) + 'm past the cloth, bedroom behind at ' + bb.max.z.toFixed(2);
   });
 
   /* the plot's own spine, driven through the REAL cue path — fireCue and
@@ -2622,7 +2755,8 @@ const probe = `
       if(m.out > 0 ? parked.min.x < edge : parked.max.x > -edge)
         throw new Error('parked at x '+parked.min.x.toFixed(2)+'..'+parked.max.x.toFixed(2)+
                         ', still inside the +-'+edge.toFixed(2)+' picture');
-      if(parked.max.x > D.stageW/2 || parked.min.x < -D.stageW/2)
+      /* the two walls, each at its own x (RULING DI) — see the sweep above */
+      if(parked.max.x > XL || parked.min.x < XR)
         throw new Error('parked through a side wall at x '+
                         parked.min.x.toFixed(2)+'..'+parked.max.x.toFixed(2));
     } else {

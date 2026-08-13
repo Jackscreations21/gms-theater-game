@@ -23,6 +23,28 @@ function drape(w,h,mat,pleats,amp){
   return m;
 }
 
+/* ============================================================================
+   WHERE A LEG ACTUALLY IS  (RULING DI)
+
+   A leg was three repeated literals — a 5.6m cloth hung 1.9m outboard of the
+   opening edge — and something outside the fly system now needs the line they
+   add up to: RULING DI parks sets PAST the legs, off his "i meant past the
+   physical legs. past the black curtains".
+
+   So the two numbers are named once and the two edges fall out of them.  Named
+   rather than copied because a park measured against a literal repeated at the
+   build site is a tripwire for the build site (TRAPS): re-hang the legs wider
+   and every park that quotes 12.2 goes on quoting it.
+
+     LEG_IN    6.60   the masking edge — just inside the 6.80 picture edge
+     LEG_OUT  12.20   the outboard edge, which is what "past the legs" means
+   ========================================================================== */
+const LEG_OFF = 1.9;                            // outboard of the opening edge
+const LEG_W   = 5.6;                            // the cloth
+const LEG_MID = D.procW/2 + LEG_OFF;            // x 9.40, where it hangs
+const LEG_IN  = LEG_MID - LEG_W/2;              // x 6.60
+const LEG_OUT = LEG_MID + LEG_W/2;              // x 12.20
+
 const GOODS = {
   none:     {label:'— empty —', h:0, wt:0, build:()=>new T.Group()},
   pipe:     {label:'bare pipe', h:0, wt:60, build:()=>new T.Group()},
@@ -33,21 +55,21 @@ const GOODS = {
               // sit just inside the opening and run well off into the wings,
               // so they mask the wings without eating the stage picture
               const g=new T.Group();
-              [-1,1].forEach(s=>{ const d=drape(5.6,11.0,M.serge,9,.2);
-                d.position.set(s*(D.procW/2+1.9),-5.5,0); g.add(d); });
+              [-1,1].forEach(s=>{ const d=drape(LEG_W,11.0,M.serge,9,.2);
+                d.position.set(s*LEG_MID,-5.5,0); g.add(d); });
               return g; }},
   /* Half legs: one leg, one side.  You want these when a set runs out past
      the opening on one side and you only need to mask the other — hanging a
      pair would put a leg straight through the scenery.                    */
   legSL:    {label:'half leg (SL)', h:11.0, wt:96, half:'SL', build:()=>{
               const g=new T.Group();
-              const d=drape(5.6,11.0,M.serge,9,.2);
-              d.position.set(-(D.procW/2+1.9),-5.5,0); g.add(d);
+              const d=drape(LEG_W,11.0,M.serge,9,.2);
+              d.position.set(-LEG_MID,-5.5,0); g.add(d);
               return g; }},
   legSR:    {label:'half leg (SR)', h:11.0, wt:96, half:'SR', build:()=>{
               const g=new T.Group();
-              const d=drape(5.6,11.0,M.serge,9,.2);
-              d.position.set(  D.procW/2+1.9, -5.5,0); g.add(d);
+              const d=drape(LEG_W,11.0,M.serge,9,.2);
+              d.position.set(  LEG_MID, -5.5,0); g.add(d);
               return g; }},
   valance:  {label:'gold valance', h:3.6, wt:150, build:()=>{
               const g=new T.Group();
