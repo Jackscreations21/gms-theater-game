@@ -1266,8 +1266,20 @@ const probe = `
     return 'all under 700 tris';
   });
   P('the lens contract survives', ()=>{
-    const bad = FIXTURES.filter(f=>!f.body.userData.lens);
+    /* REVERSED IN PLACE BY RULING CY.  "Remove the body for the blinders just
+       maek it basically comu out of the neon thing" — a blinder body is now an
+       empty group, so it has no lens to carry, and it cannot: a lens is a mesh
+       and there are no meshes.  Named as the exception rather than the rule
+       loosened, so every body that HAS geometry still owes a lens. */
+    const NO_BODY = ['blinder'];
+    const bad = FIXTURES.filter(f=>NO_BODY.indexOf(f.type) < 0 && !f.body.userData.lens);
     if(bad.length) throw new Error(bad.length+' bodies lost userData.lens');
+    /* and the exemption is not a licence to quietly empty another one */
+    const empties = FIXTURES.filter(f=>{
+      let m = 0; f.body.traverse(o=>{ if(o.isMesh) m++; }); return !m; });
+    for(const f of empties) if(NO_BODY.indexOf(f.type) < 0)
+      throw new Error(f.type + ' has no body geometry at all, and only ' + NO_BODY.join('/') + ' may');
+    if(!empties.length) throw new Error('nothing is bodiless — RULING CY did not land');
     const m = FIXTURES.find(f=>f.type==='mover');
     if(!m.body.userData.base || !m.body.userData.yoke || !m.body.userData.head)
       throw new Error('mover lost base/yoke/head');

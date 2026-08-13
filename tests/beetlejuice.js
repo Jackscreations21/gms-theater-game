@@ -109,14 +109,52 @@ const probe = `
     const t = byName('bj:portalFrame');
     if(!t) throw new Error('no portal frame');
     /* the cornice carries no name, so take the widest thing near the top */
+    /* REVERSED IN PLACE BY RULING CX — the AO/AV/BA/BI/BZ precedent, seventh
+       time, and the exemption is NAMED rather than the rule loosened.
+
+       "The neon proscenium should be basically where the gold is right now."
+       p2b's gold band runs at x +-(D.procW/2 + 0.25) and arches to 10.375 —
+       OUTSIDE and ABOVE the 15.0 x 10.4 opening, because it is the moulding
+       ROUND the opening rather than something seen through it.  So the frame
+       that traces it is outside too, by design.
+
+       WHAT THIS ASSERTION IS FOR SURVIVES WHOLE, which is why it turns rather
+       than goes: SCENERY wider or taller than the house opening is a fault and
+       stays one — a false portal that fouls the architecture is a mistake you
+       cannot see from the front.  The neon is not scenery seen through the
+       opening; it is the house's own proscenium, lit.  One name. */
+    const EXEMPT = ['bj:portalFrame'];
     let topY = all.max.y, wide = Math.max(Math.abs(all.min.x), Math.abs(all.max.x));
+    {
+      const nb = box(byName('bj:portalFrame'));
+      if(Math.abs(all.min.x) >= Math.abs(nb.min.x) - 1e-6 ||
+         Math.abs(all.max.x) >= Math.abs(nb.max.x) - 1e-6){
+        /* recompute the union WITHOUT the exempted frame — otherwise the
+           exemption would be decoration and the rule would test nothing */
+        const un = new THREE.Box3();
+        SHOW.group.traverse(o=>{ if(o.isMesh && o.name && o.name.indexOf('bj:portal') === 0 &&
+          EXEMPT.indexOf(o.name) < 0) un.union(box(o)); });
+        if(!un.isEmpty()){
+          topY = un.max.y;
+          wide = Math.max(Math.abs(un.min.x), Math.abs(un.max.x));
+        }
+      }
+    }
     SHOW.group.traverse(o=>{ if(!o.isMesh || o.name === 'bj:deck') return;
+      if(EXEMPT.indexOf(o.name) >= 0) return;
       const b = box(o);
       if(b.max.y > 6 && b.max.z > -2){ topY = Math.max(topY, b.max.y);
         wide = Math.max(wide, Math.abs(b.min.x), Math.abs(b.max.x)); } });
     if(wide > D.procW/2) throw new Error('the portal is '+(wide*2).toFixed(2)+'m wide, the opening is '+D.procW);
     if(topY > D.procH) throw new Error('the portal reaches y='+topY.toFixed(2)+', the opening is '+D.procH);
-    return 'portal '+(wide*2).toFixed(2)+'m x '+topY.toFixed(2)+'m inside a '+D.procW+' x '+D.procH+' opening';
+    /* and the exemption is not a licence: the neon must still trace the GOLD,
+       not wander off into the auditorium */
+    const nb = box(byName('bj:portalFrame'));
+    const gold = D.procW/2 + 0.25;
+    if(Math.abs(Math.abs(nb.max.x) - gold) > 0.4)
+      throw new Error('the neon runs at x '+nb.max.x.toFixed(2)+', and the gold is at '+gold.toFixed(2));
+    return 'portal '+(wide*2).toFixed(2)+'m x '+topY.toFixed(2)+'m inside a '+D.procW+' x '+D.procH+
+           ' opening, with the neon out on the gold at +-'+nb.max.x.toFixed(2);
   });
 
   /* one material for the whole frame: a material per object is the
@@ -157,27 +195,95 @@ const probe = `
      untouched and are still load-bearing — a sill on the deck (it surrounds the
      picture, it does not sit across the top of it) and never wider than the
      house opening. */
-  P('the proscenium neon is a thick closed bar, and it is built DARK (CH)', ()=>{
+  /* REVERSED IN PLACE BY RULING CX.  RULING CH's frame was a closed rectangle
+     13.60m across inside the picture, with a sill on the deck.  His three
+     corrections — "basically where the gold is ... the top is straitgs and
+     slaantted down ... it does not go across the floor" — change all three of
+     the things this assertion pinned, and leave everything else about the frame
+     exactly as CH built it: one merged mesh, one material, built dark, thicker
+     than the tube it replaced, no wing returns.  Those are what stay. */
+  P('the proscenium neon traces the gold, straight-topped and open at the deck (CX)', ()=>{
     showLoad('beetlejuice');
     const t = byName('bj:portalFrame');
     const b2 = box(t);
-    /* it must SURROUND the picture, not sit across the top of it */
-    if(b2.min.y > 0.4) throw new Error('there is no sill: the neon starts at y='+b2.min.y.toFixed(2));
-    if(b2.max.y < BJ.opH - 0.2) throw new Error('the neon does not reach the header');
+    /* NO SILL — his own line, and it is the one that needs measuring rather than
+       reading, because a missing bottom bar and a frame that never reached the
+       deck look the same from a mesh count.  The LEGS must run to the deck and
+       there must be nothing crossing between them. */
+    if(b2.min.y > 0.4) throw new Error('the legs do not reach the deck: the neon starts at y='+b2.min.y.toFixed(2));
+    {
+      /* BY TRIANGLE, NOT BY VERTEX, and that is the whole point of this block.
+         A BoxGeometry carries vertices at its CORNERS only, so a sill running
+         the full width has no vertex anywhere near the middle of the deck — the
+         first version of this check counted vertices under y 0.5 between the
+         legs, found none, and passed against a build with the sill put back.
+         The negative check is what said so.  A triangle that SPANS the centre
+         line low down is a sill whatever its corners are doing. */
+      const p0 = t.geometry.attributes.position, idx = t.geometry.index;
+      const nTri = (idx ? idx.count : p0.count)/3;
+      let sill = 0;
+      for(let i = 0; i < nTri; i++){
+        let minY = 1e9, minX = 1e9, maxX = -1e9;
+        for(let k = 0; k < 3; k++){
+          const a = idx ? idx.getX(i*3 + k) : i*3 + k;
+          minY = Math.min(minY, p0.getY(a));
+          minX = Math.min(minX, p0.getX(a));
+          maxX = Math.max(maxX, p0.getX(a));
+        }
+        if(minY < 0.6 && minX < -1 && maxX > 1) sill++;
+      }
+      if(sill)
+        throw new Error(sill + ' triangles cross the deck between the legs — the sill is still there');
+    }
     /* CLOSED, and that is measured rather than counted: a loop missing a leg
        would still be four bars and still pass a mesh count.  Cast a box at each
        of the four sides of the opening and demand geometry in all four. */
     const pos = t.geometry.attributes.position;
-    const side = {left:0, right:0, top:0, bottom:0};
+    const gold = D.procW/2 + 0.25, spring = D.procH - 1.8;
+    const side = {left:0, right:0, apex:0};
     for(let i = 0; i < pos.count; i++){
       const x = pos.getX(i), y = pos.getY(i);
-      if(x < -BJ.opW/2 + 0.5) side.left++;
-      if(x >  BJ.opW/2 - 0.5) side.right++;
-      if(y >  BJ.opH   - 0.5) side.top++;
-      if(y <  0.5)            side.bottom++;
+      if(x < -gold + 0.5) side.left++;
+      if(x >  gold - 0.5) side.right++;
+      if(Math.abs(x) < 0.6 && y > spring) side.apex++;
     }
     for(const k in side)
-      if(!side[k]) throw new Error('the loop is open: no bar on the '+k+' side');
+      if(!side[k]) throw new Error('the frame is open: nothing on the '+k+' side');
+    /* A STRAIGHT SLANTED TOP, and this is what tells it from an arch: NOTHING
+       ABOVE THE CHORD from the springing to the apex.  A quadratic sweep like
+       the gold's own bows above that line by about a fifth of a metre at the
+       quarters, so it fails; two straight bars sit on it, so they pass.
+
+       WRITTEN AS "NOTHING ABOVE" RATHER THAN "SAMPLE THE TOP EDGE AT X" on
+       purpose.  A box carries vertices at its CORNERS only, so sampling the top
+       edge at the quarter points of a straight bar finds nothing there at all —
+       the first version of this check threw "no top edge over x=-6" against a
+       perfectly correct frame. */
+    {
+      const peak = 0.25*spring + 0.5*(D.procH + 1.75) + 0.25*spring;
+      let worst = 0, worstAt = 0;
+      for(let i = 0; i < pos.count; i++){
+        const x = pos.getX(i), y = pos.getY(i);
+        if(y <= spring) continue;
+        const chordY = peak - Math.abs(x)*(peak - spring)/gold;
+        const over = y - chordY - BJ_NEON_BAR;      // the bar has thickness of its own
+        if(over > worst){ worst = over; worstAt = x; }
+      }
+      if(worst > 0.15)
+        throw new Error('the top bows '+worst.toFixed(2)+'m above its chord at x='+worstAt.toFixed(2)+
+                        ' — that is an arch, not a straight slant');
+      if(Math.abs(b2.max.y - peak) > 0.4)
+        throw new Error('the apex is at y '+b2.max.y.toFixed(2)+', and the gold peaks at '+peak.toFixed(2));
+      /* and it really does SLANT — a flat header would also sit under the chord */
+      const legTop = (()=>{ let lo = 99;
+        for(let i = 0; i < pos.count; i++)
+          if(Math.abs(Math.abs(pos.getX(i)) - gold) < 0.4) lo = Math.min(lo, Math.abs(pos.getY(i) - spring));
+        return lo; })();
+      if(!(b2.max.y - spring > 1.0))
+        throw new Error('the top is flat at y '+b2.max.y.toFixed(2)+', not slanted up to '+peak.toFixed(2));
+      if(legTop > 0.6)
+        throw new Error('the slant does not meet the legs at the springing');
+    }
     /* THICKER than the 0.075-radius tube it replaces — his one adjective */
     const thick = b2.max.z - b2.min.z;
     if(thick < 0.2)
@@ -185,17 +291,20 @@ const probe = `
     /* and the wings are GONE — a frame that still ran upstage would be 5m deep */
     if(thick > 1.0)
       throw new Error('the frame is '+thick.toFixed(2)+'m deep — the wing returns are still there');
-    /* never wider than the house opening, and inside the portal check's own +-7.4 */
+    /* ON THE GOLD — the number that replaces "inside the picture".  It is the
+       moulding round the opening, so it is outside it, and it must not wander
+       past it either: half a metre of tolerance either way and no more. */
     const wide = Math.max(Math.abs(b2.min.x), Math.abs(b2.max.x));
-    if(wide > D.procW/2) throw new Error('the neon is '+(wide*2).toFixed(2)+'m across a '+D.procW+' opening');
-    if(wide > 7.4) throw new Error('the neon is '+wide.toFixed(2)+' from centre; the portal check refuses past 7.4');
+    if(Math.abs(wide - gold) > 0.5)
+      throw new Error('the neon runs at x '+wide.toFixed(2)+' and the gold is at '+gold.toFixed(2));
     /* BUILT DARK.  "For the rest it is off" — so the frame exists unlit, and a
        cue is the only thing that ever lights it. */
     if(t.material.emissiveIntensity > 0.001)
       throw new Error('the frame is built lit at '+t.material.emissiveIntensity+' — it must be dark until a cue says');
     if(!SHOW.bjPortal) throw new Error('the frame is not registered on SHOW.bjPortal — the stage swap would lose it');
     if(SHOW.bjPortal.mesh !== t) throw new Error('SHOW.bjPortal points at something else');
-    return (wide*2).toFixed(2)+'m across, a '+thick.toFixed(2)+'m bar closed on all four sides, built dark';
+    return (wide*2).toFixed(2)+'m across on the gold at +-'+gold.toFixed(2)+', a '+thick.toFixed(2)+
+           'm bar, straight top to y '+b2.max.y.toFixed(2)+', nothing across the deck, built dark';
   });
 
   console.log('--- the cemetery is a SCENE, and this is the first show to use them ---');
@@ -3263,25 +3372,55 @@ const probe = `
   });
 
   /* ══ RULING CH — THE BLINDERS MOVED INSIDE IT ═══════════════════════════ */
-  P('the blinders sit INSIDE the neon frame, and downstage of it (CH)', ()=>{
+  /* REVERSED IN PLACE BY RULING CY.  RULING CH asked for the blinders INSIDE the
+     scenic rectangle; he has now watched eight lantern boxes hanging in his
+     picture and asked for the opposite of a box: "Remove the body for the
+     blinders just maek it basically comu out of the neon thing."  So they are ON
+     the frame rather than inside it, and the frame is out on the gold (CX).
+     What survives untouched is the half about the white flash. */
+  P('RULING CY: the blinders sit ON the neon, with no body between (CY/CX)', ()=>{
     showLoad('beetlejuice');
     const f = byName('bj:portalFrame');
     if(!f) throw new Error('no portal frame');
     const fb = box(f);
-    let outside = 0, behind = 0;
+    /* NO BODY AT ALL — the point, the beam and the lens glow, and nothing to
+       look at between them.  Measured as geometry, because "the body is gone"
+       and "the body is invisible" are different things and only one of them
+       stops a lantern box being drawn in his picture. */
+    let bodies = 0, meshes = 0;
+    GROUPS.blind.forEach(n=>{
+      const f2 = chan(n);
+      if(!f2.body) return;
+      bodies++;
+      f2.body.traverse(o=>{ if(o.isMesh && o.geometry) meshes++; });
+    });
+    if(bodies !== GROUPS.blind.length)
+      throw new Error('only ' + bodies + ' of ' + GROUPS.blind.length + ' blinders carry a body record');
+    if(meshes)
+      throw new Error(meshes + ' blinder body meshes are still drawn — he asked for none');
+    /* and the beam still leaves the point, or removing the body would have
+       removed the light with it */
+    if(!chan(GROUPS.blind[0]).beam) throw new Error('the blinder lost its beam with its body');
+    /* ON THE BAR: each unit within half a metre of the frame's own line, and
+       downstage of its face so the light comes out of it rather than through it */
+    let offLine = 0, behind = 0;
+    const gold = D.procW/2 + 0.25, spring = D.procH - 1.8;
+    const peak = 0.25*spring + 0.5*(D.procH + 1.75) + 0.25*spring;
     GROUPS.blind.forEach(n=>{
       const p = chan(n).pos;
-      if(Math.abs(p.x) > Math.abs(fb.max.x) || p.y > fb.max.y || p.y < fb.min.y) outside++;
-      if(p.z <= fb.max.z) behind++;
+      const onLeg = Math.abs(Math.abs(p.x) - gold) < 0.5 && p.y <= spring + 0.5;
+      const onTop = Math.abs(p.y - (peak - Math.abs(p.x)*(peak - spring)/gold)) < 0.5;
+      if(!onLeg && !onTop) offLine++;
+      if(p.z < fb.max.z - 0.01) behind++;
     });
-    if(outside) throw new Error(outside + ' of 8 blinders are outside the neon rectangle');
-    if(behind) throw new Error(behind + ' of 8 blinders are upstage of the frame they should sit in front of');
+    if(offLine) throw new Error(offLine + ' of 8 blinders are not on the neon line');
+    if(behind) throw new Error(behind + ' of 8 blinders are inside the bar rather than coming out of it');
     /* and the 1:16 white flash still has the shut curtain behind it to read on */
     const curt = frontCurtainLineset();
     if(curt && chan(GROUPS.blind[0]).pos.z <= curt.z)
       throw new Error('the blinders are upstage of the house curtain at z=' + curt.z);
-    return '8 blinders inside a ' + (fb.max.x*2).toFixed(2) + ' x ' + fb.max.y.toFixed(2) +
-           ' frame, all of them downstage of it at z=' + chan(GROUPS.blind[0]).pos.z;
+    return '8 bodiless blinders on a ' + (fb.max.x*2).toFixed(2) + ' x ' + fb.max.y.toFixed(2) +
+           ' frame, all coming out of its face at z=' + chan(GROUPS.blind[0]).pos.z;
   });
 
   /* "make sure the beetljuice sign still stays lit up red" — which is a

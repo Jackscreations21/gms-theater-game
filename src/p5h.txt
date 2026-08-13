@@ -52,7 +52,13 @@ const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
    glass, not black: a bar that goes to pure black in a lit scene reads as a
    hole cut in the proscenium. */
 const BJ_NEON_BAR  = 0.34;
-const BJ_NEON_Z    = 0.30;        // downstage of the portal's own face
+/* RULING CX — WHERE THE GOLD IS.  "The neon proscenium should be basically where
+   the gold is right now."  p2b's proscenium() sweeps its moulded band along
+   x = +-(D.procW/2 + 0.25) at z = 0.6 + 0.66 = 1.26, so the frame stands on the
+   ARCHITECTURAL proscenium rather than inside the scenic one.  0.81 + BJ.pz is
+   1.26; the offset is kept in this form because everything else about the frame
+   is written off BJ. */
+const BJ_NEON_Z    = 0.81;
 const BJ_NEON_FADE = 1.2;
 const BJ_NEON_BLUE = 0x4fa8ff;
 const BJ_NEON_RED  = 0xff1e10;    // his own act-one red, the same hex as signCol
@@ -998,13 +1004,58 @@ SHOWS.beetlejuice = {
          physically exists when it is not lit, like real neon does, and the cue
          is the only thing that ever lights it (setPortal, below).
          ------------------------------------------------------------------ */
-      const HW2 = BJ.opW/2, BAR = BJ_NEON_BAR;
-      const bar = (w, h, pos) => ({geo:new T.BoxGeometry(w, h, BAR), pos:pos});
+      /* ------------------------------------------------------------------
+         RULING CX — AND IT MOVES OUT TO THE GOLD, with a straight slanted top
+         and nothing across the deck.
+
+         "The neon proscenium should be basically where the gold is right now
+          but the top is straitgs and slaantted down and it does not go across
+          the floor."
+
+         Three changes to RULING CH's rectangle, and they are his three.
+
+         1. OUT TO THE GOLD.  p2b's proscenium() sweeps its moulded band along
+            x = +-(D.procW/2 + 0.25) — +-7.75 — from y 0.20 to the springing at
+            D.procH - 1.8, and its z is 0.6 + 0.66 = 1.26.  So the numbers below
+            are read off the architecture rather than chosen, and they follow D
+            the way every stage does (INVARIANTS: change D and all three change).
+
+         2. A STRAIGHT SLANTED TOP.  The gold's own top is a quadratic from
+            (+-7.75, spring) through a control point at (0, procH + 1.75), which
+            PEAKS AT 10.375 — a quadratic sits at a quarter/half/quarter of its
+            three points, not at the control point, and reading it as 12.15 would
+            put the neon a metre and a half above the arch it is meant to trace.
+            Two straight bars from the springing to that peak are its chords:
+            straight, as he said, and slanting down to each side, which is the
+            direction the arch goes.  A single bar slanting right across the
+            opening is the other reading of that sentence and it is four numbers.
+
+         3. NO SILL.  "it does not go across the floor" — the bottom bar is gone
+            and the legs run to the deck.
+
+         THE FRAME IS NOW WIDER THAN THE PICTURE, ON PURPOSE, and an assertion in
+         tests/beetlejuice.js is reversed in place to say so: scenery wider than
+         the opening is still a fault, and this is not scenery — it is the
+         house's own proscenium, lit.
+         ------------------------------------------------------------------ */
+      const BAR = BJ_NEON_BAR;
+      const NX = D.procW/2 + 0.25;          // where p2b's gold band runs
+      const NSPRING = D.procH - 1.8;        // where its arch springs
+      const NPEAK = 0.25*NSPRING + 0.5*(D.procH + 1.75) + 0.25*NSPRING;
+      const bar = (w, h, pos, rot) => ({geo:new T.BoxGeometry(w, h, BAR), pos:pos, rot:rot});
+      /* each slanted bar is the chord from the springing to the peak, run long
+         by a bar's width at each end so the corners OVERLAP rather than mitre —
+         the same trick the rectangle used, and it costs nothing on an emissive
+         bar while keeping the line unbroken from any angle */
+      const rise = NPEAK - NSPRING, run = NX;
+      const chord = Math.sqrt(run*run + rise*rise) + BAR;
+      const ang = Math.atan2(rise, run);
       const tr = [
-        bar(BAR, BJ.opH, [-(HW2 - BAR/2), BJ.opH/2, 0]),   // stage-right leg
-        bar(BAR, BJ.opH, [  HW2 - BAR/2,  BJ.opH/2, 0]),   // stage-left leg
-        bar(BJ.opW, BAR, [0, BJ.opH - BAR/2, 0]),          // the header
-        bar(BJ.opW, BAR, [0, BAR/2, 0])                    // the sill, on the deck
+        bar(BAR, NSPRING + BAR, [-NX, (NSPRING + BAR)/2, 0]),   // stage-right leg
+        bar(BAR, NSPRING + BAR, [ NX, (NSPRING + BAR)/2, 0]),   // stage-left leg
+        bar(chord, BAR, [-NX/2, (NSPRING + NPEAK)/2, 0], [0, 0,  ang]),
+        bar(chord, BAR, [ NX/2, (NSPRING + NPEAK)/2, 0], [0, 0, -ang])
+        /* and NO SILL — his own line, and the reason the legs run to y 0 */
       ];
       const frameM = new T.MeshStandardMaterial({color:BJ_NEON_DARK,
         emissive:BJ_NEON_BLUE, emissiveIntensity:0, roughness:.5});
