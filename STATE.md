@@ -11,33 +11,41 @@ off**, which is a traffic plan, and traffic plans have to be settled all at once
 or the sets stand inside each other. The other two are the neon and the
 blinders.
 
-**ALL SEVEN PRs ARE MERGED — AND ONLY #155 REACHED `main`.**
+**ALL OF IT IS ON `main`**, at `d89144f`. Verified after the merge: `main`
+rebuilds **byte-identical** and the full suite is green on the merged result; all
+seven work branches are deleted, local and remote.
 
-| PR | What | His items | on `main`? |
-|---|---|---|---|
-| **#155** | the traffic plan (**CO CP CQ CR CS**) | 2, 3, 4, 5, 6 | **yes** |
-| **#156** | a flown set is thin (**CT**) | 7 | merged into `bj-traffic-plan` |
-| **#157** | one house in the world (**CN**) | 1 | merged into `bj-thin-flown` |
-| **#158** | the marquee goes dark as it flies (**CU**) | 8 | merged into `bj-one-house` |
-| **#159** | the two menus (**CV CW**) | 9 | merged into `bj-sign-lamps` |
-| **#160** | the neon on the gold, the blinders out of it (**CX CY**) | 10, 11 | merged into `bj-menus` |
-| **#161** | the record | — | merged into `bj-neon-gold` |
+| PR | What | His items |
+|---|---|---|
+| **#155** | the traffic plan (**CO CP CQ CR CS**) | 2, 3, 4, 5, 6 |
+| **#156** | a flown set is thin (**CT**) | 7 |
+| **#157** | one house in the world (**CN**) | 1 |
+| **#158** | the marquee goes dark as it flies (**CU**) | 8 |
+| **#159** | the two menus (**CV CW**) | 9 |
+| **#160** | the neon on the gold, the blinders out of it (**CX CY**) | 10, 11 |
+| **#161** | the record | — |
+| **#162** | the recovery — see below | — |
 
-**A STACKED CHAIN MERGES INTO ITS BASE, NOT INTO `main`.** Each PR was opened
-with the previous branch as its base — that is what keeps a stacked diff
-readable — and pressing Merge on all seven collapsed them **up the stack** rather
-than down onto `main`. `main` carries the traffic plan and nothing else;
-`bj-eleven-record` carries all of it, and against `main` it is **18 files, 2,415
-insertions**.
+**AND IT TOOK AN EIGHTH PR TO GET THERE, WHICH IS THE WORKFLOW LESSON OF THE
+ROUND.** The six PRs after the first were **stacked**: each was opened with the
+previous branch as its base, which is what keeps a stacked diff readable. **A
+stacked PR merges into ITS BASE.** So pressing Merge on all seven collapsed them
+*up the stack* into their own base branches, and only #155 reached `main` —
+`main` had the traffic plan and nothing else, while `bj-eleven-record` held the
+whole round (18 files, 2,415 insertions against it). **#162 was one clean merge
+from the stack tip to `main`** and closed it; the merge base was #155's own
+commit and nothing had moved on `main` since.
 
-**ONE PR CLOSES IT: `bj-eleven-record` → `main`.** No conflicts — the merge base
-is #155's own commit and nothing has moved on `main` since. Verified on the stack
-tip: rebuilds **byte-identical**, suites **19/19**.
+**NOTHING WAS LOST AND THAT IS MEASURED, not assumed:** after #162, `main`'s tree
+hash and the stack tip's are **identical**, and every one of the round's nine
+commits is an ancestor of `main`. The six leftover branches held **zero** commits
+`main` lacked — only older copies of the record files — which is what was checked
+before deleting them.
 
-**The lesson, and it is a workflow one:** CLAUDE.md's "never stack PRs" exists
-for exactly this. When his standing instruction is to keep going without waiting
-for merges, the base of every PR after the first should still be **`main`**, with
-the dependency named in the body — a wider diff to read, but a chain that lands
+**CLAUDE.md's "never stack PRs" exists for exactly this.** His standing
+instruction to keep going without waiting for merges is compatible with the rule:
+build the chain sequentially, but **base every PR on `main`** and name the
+dependency in the body. A wider diff to read beats a chain that does not land
 where it is pointed.
 
 Cache-bust for the next headset run: **`?v=25`**. Suites **19/19** — the
