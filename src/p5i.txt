@@ -4412,6 +4412,12 @@ function bjApplyModel(entry, root, scGiven){
   if(isSign) bjSignLamps(sc, root);
   bjPruneWalk(sc);
   for(const o of walks) sceneWalk(sc, o);
+  /* RULING DI — AND RE-PACK THE STAGE-RIGHT WING, because a park is measured off
+     the set's own box and the box has just changed.  His attic is 13.06 x 10.00
+     against a 10.40 x 9.60 stand-in, so a file landing moves both where that set
+     stands and where the two BEHIND it stand.  Unconditional and cheap: the pack
+     walks three scenes, and a scene that is not in the queue is skipped. */
+  if(typeof bjWingPack === 'function') bjWingPack();
   /* fresh meshes wake on layer 0 and would take raycasts through a set that
      is OFF — the refresh puts the whole scene back into whatever state it is
      supposed to be in, walkables and dressings included.  ONE exception: a

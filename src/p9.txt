@@ -772,9 +772,18 @@ function vrSetWhere(sc){
   const b = new T.Box3().setFromObject(sc.group);
   if(b.isEmpty()) return 'parked';
   if(b.min.y > 9.5) return 'flown';
-  if(b.max.z < -10.9) return 'upstage';
+  /* THE SIDE IS ASKED BEFORE THE DEPTH, and RULING DI is why.  These three tests
+     are not exclusive — a set can be in a wing AND upstage of the backdrop at
+     once, and the packed stage-right parks are exactly that: the bedroom stands
+     at x -14.20 .. -22.82, z -12.90 .. -17.51.  Asking about z first answered
+     "upstage" for it, which is true and useless — it sends a man in a headset
+     behind the cloth to look for a set that is out in the wing beside him.
+     "Which wing" is the answer that walks you to it, so it goes first, and
+     upstage keeps what it was always for: the house wagon, which parks within
+     the width of the picture and really is only findable behind the backdrop. */
   if(b.min.x > 6.8) return 'stage left';
   if(b.max.x < -6.8) return 'stage right';
+  if(b.max.z < -10.9) return 'upstage';
   return 'parked';
 }
 function vrPageSets(g, P){

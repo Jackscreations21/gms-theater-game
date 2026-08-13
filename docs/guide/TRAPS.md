@@ -797,6 +797,35 @@ against this list before opening a PR; **add new traps as you hit them.**
   A late correction needs a NEW branch off fresh `main` and its own PR — and
   its text usually needs rewriting too, because "open as of this writing" stops
   being true the moment the parent merges.
+- **A literal copied out of a conditional's FALLBACK branch, and quoted for
+  three rulings as if it were the value.** `p9` builds the fly ropes at
+  `const railX = fr ? fr.rail : -D.stageW/2 + 2.8`. Someone read that line,
+  wrote down **x −19.2**, and RULINGS CE, CS and DF each sized a park against
+  it and each cited `p9` for it. There is always a crew frame, so the branch
+  that runs is `fr.rail` = `XR + 2.8` = **−30.2** — an 11m error, because `XR`
+  carries `D.wingSR` and `-D.stageW/2` does not. It cost the wider half of a
+  wing: the gap between the legs and the rail was believed to be 7.00m and is
+  **18.00m**, so a 13.06m set that "obviously did not fit" fits with 2.94m to
+  spare. **A number read out of a `?:` is only the number if you also checked
+  which branch runs.** Read the value, don't read the expression — and if a
+  ruling turns on it, have a probe print it (`tools/wing.js` does).
+- **The two side walls are NOT at the same |x|, and four places assumed they
+  were.** `XL` is `D.stageW/2` = 22; `XR` is `-(D.stageW/2 + D.wingSR)` = −33.
+  Two suite sweeps and `tools/parked.js` all tested both sides against
+  `±D.stageW/2`, which declares an 11m strip of real deck to be outside the
+  building. `D.wingSR` exists precisely to say the stage is not symmetric, and
+  every one of those checks was written as though it did not.
+- **Measuring a symmetric PAIR gives you the same edge twice.** `tools/wing.js`
+  measured `GOODS.legs` — both cloths — and reported `0.00m of cloth` and a leg
+  masking from 12.20, because the pair's box has |x| min and max both equal to
+  the *outboard* edge. Measure ONE of them. Same family as the box-has-corners
+  trap: the geometry answered honestly and the question was wrong.
+- **A classifier whose tests are not mutually exclusive answers with whichever
+  it asks first.** `vrSetWhere` asked "is it upstage of the backdrop" before
+  "which wing", and a park can be both — so a set standing in the stage-right
+  wing at z −12.90 read as `upstage`, sending a man in a headset behind the
+  cloth to look for something beside him. When the buckets overlap, order them
+  by which answer is *useful*, and say so in the file.
 - PowerShell 5.1 mangles `git commit -m` with double quotes — message to
   file, `-F` it.
 - Never `git add -A` while agent worktrees exist under `.claude/` —

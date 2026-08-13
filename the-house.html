@@ -3955,6 +3955,28 @@ function drape(w,h,mat,pleats,amp){
   return m;
 }
 
+/* ============================================================================
+   WHERE A LEG ACTUALLY IS  (RULING DI)
+
+   A leg was three repeated literals — a 5.6m cloth hung 1.9m outboard of the
+   opening edge — and something outside the fly system now needs the line they
+   add up to: RULING DI parks sets PAST the legs, off his "i meant past the
+   physical legs. past the black curtains".
+
+   So the two numbers are named once and the two edges fall out of them.  Named
+   rather than copied because a park measured against a literal repeated at the
+   build site is a tripwire for the build site (TRAPS): re-hang the legs wider
+   and every park that quotes 12.2 goes on quoting it.
+
+     LEG_IN    6.60   the masking edge — just inside the 6.80 picture edge
+     LEG_OUT  12.20   the outboard edge, which is what "past the legs" means
+   ========================================================================== */
+const LEG_OFF = 1.9;                            // outboard of the opening edge
+const LEG_W   = 5.6;                            // the cloth
+const LEG_MID = D.procW/2 + LEG_OFF;            // x 9.40, where it hangs
+const LEG_IN  = LEG_MID - LEG_W/2;              // x 6.60
+const LEG_OUT = LEG_MID + LEG_W/2;              // x 12.20
+
 const GOODS = {
   none:     {label:'— empty —', h:0, wt:0, build:()=>new T.Group()},
   pipe:     {label:'bare pipe', h:0, wt:60, build:()=>new T.Group()},
@@ -3965,21 +3987,21 @@ const GOODS = {
               // sit just inside the opening and run well off into the wings,
               // so they mask the wings without eating the stage picture
               const g=new T.Group();
-              [-1,1].forEach(s=>{ const d=drape(5.6,11.0,M.serge,9,.2);
-                d.position.set(s*(D.procW/2+1.9),-5.5,0); g.add(d); });
+              [-1,1].forEach(s=>{ const d=drape(LEG_W,11.0,M.serge,9,.2);
+                d.position.set(s*LEG_MID,-5.5,0); g.add(d); });
               return g; }},
   /* Half legs: one leg, one side.  You want these when a set runs out past
      the opening on one side and you only need to mask the other — hanging a
      pair would put a leg straight through the scenery.                    */
   legSL:    {label:'half leg (SL)', h:11.0, wt:96, half:'SL', build:()=>{
               const g=new T.Group();
-              const d=drape(5.6,11.0,M.serge,9,.2);
-              d.position.set(-(D.procW/2+1.9),-5.5,0); g.add(d);
+              const d=drape(LEG_W,11.0,M.serge,9,.2);
+              d.position.set(-LEG_MID,-5.5,0); g.add(d);
               return g; }},
   legSR:    {label:'half leg (SR)', h:11.0, wt:96, half:'SR', build:()=>{
               const g=new T.Group();
-              const d=drape(5.6,11.0,M.serge,9,.2);
-              d.position.set(  D.procW/2+1.9, -5.5,0); g.add(d);
+              const d=drape(LEG_W,11.0,M.serge,9,.2);
+              d.position.set(  LEG_MID, -5.5,0); g.add(d);
               return g; }},
   valance:  {label:'gold valance', h:3.6, wt:150, build:()=>{
               const g=new T.Group();
@@ -14267,53 +14289,21 @@ const BJ_WAGON_BACK = -10.0;
 
    The room they are measured against: the backdrop hangs on line 14 at z -10.90
    (makeLineset: z = -0.50 - i*0.80), the Palace brick is at PAL_BACK -25.5, the
-   side walls at x +-22, the flyman's locking rail at x -19.2 (p9), and the
-   picture is 13.6 wide, so its edges are x +-6.80 with the legs masking from
-   6.6.
+   stage-LEFT wall at XL +22 and the stage-RIGHT one at XR -33, the flyman's
+   locking rail at crewFrame().rail -30.2, and the picture is 13.6 wide, so its
+   edges are x +-6.80 with the legs spanning |x| 6.60 .. 12.20 (LEG_IN, LEG_OUT).
+
+   AND TWO OF THOSE NUMBERS ARE CORRECTIONS OF WHAT THIS BLOCK USED TO SAY.  See
+   RULING DI below: the rail is at -30.2, not -19.2, and stage right is 11m wider
+   than stage left.  CE, CS and DF were all measured against -19.2.
    ========================================================================== */
-/* RULING CQ — THE ATTIC TAKES A WING, and it is stage LEFT.
-
-   He left the side to us ("one of the sides"), so it is measured rather than
-   chosen.  The attic is 13.06m wide with his file in and 12.40m as the stand-in;
-   parked stage right, a 13m set reaches past the flyman's locking rail at -19.2,
-   which is the exact fault CE found and fixed once already when the wagon stood
-   there.  Stage left has a wall at +22 and no rail.
-
-   +13.9 parks his attic at x 7.37 .. 20.43 and the stand-in at 7.70 .. 20.10:
-   both clear of the picture edge at 6.80, both behind the legs, both 1.5m off
-   the wall.  Sized by the STAND-IN as well as by his model, which is the habit
-   two assertions taught this file the hard way — the stand-in is the bigger case
-   and the one that plays whenever a file has not landed, including in every
-   suite, because jsdom fetches nothing.
-
-   THE WING IS FREE BECAUSE THE WAGON LEFT IT (RULING CO).  It was the wagon's
-   until this round, and only one ~13m set fits in a 14.5m wing.
-
-   RULING DF — "just make it so the sets go past the wings.  no set should be parke
-   in a wing … there is plenty of room for the sets to go", and "the nether world
-   extirior and roof should be the only things that fly."
-
-   THE SETS STAY ON THE DECK AND GO FURTHER OUT.  What was wrong was not the slot,
-   it was the OFFSET: the parks were sized to just clear the picture edge and then
-   stopped, leaving the sets crammed against the masking with most of the wing empty
-   behind them.  The bedroom sat at x -15.91 .. -7.29 — its inner edge 0.49m outside
-   a 6.80 masking line, with SIX METRES of unused wing between its outer edge and
-   the wall.  That is the "plenty of room" he means, and clearing an edge by half a
-   metre is what makes a set read as standing in the wing rather than stored past it.
-
-   SO EACH PARK NOW RUNS TO THE LIMIT OF ITS OWN WING, and the limits are different
-   on the two sides:
-
-     stage left   the wall at x +22, and nothing else
-     stage right  THE LOCKING RAIL AT x -19.2, which is the flyman working space
-                  RULING CE found the wagon standing on — so this side stops short
-                  of its wall on purpose and always will
-
-   14.4 parks the attic at x 7.87 .. 20.93: 1.07m clear of the masking and 1.07m off
-   the wall, which is as central in its wing as a 13.06m set gets in a 15.20m one —
-   it is the set with no slack, not the one that had it.
-   ============================================================================ */
-const BJ_ATTIC_SIDE = 14.4;
+/* RULING CQ — THE ATTIC TAKES A WING.  He left the side to us ("one of the
+   sides"), and RULING DI has moved it: CQ picked stage LEFT because a 13m set
+   would have reached past a locking rail at -19.2, and that rail is at -30.2.
+   Stage left is the narrower wing and the one wing a 13.06m set cannot stand past
+   the legs in; it is stage right now, with the bedroom and the closet, packed one
+   behind another by bjWingPack.  See the DI block above.  Nothing about the
+   ENTRANCE changed: it still tracks on x, from a side, which is all he asked. */
 
 /* RULING CS — THE BEDROOM AND THE CLOSET SHARE THE OTHER WING, and they cannot
    stand abreast in it.
@@ -14353,10 +14343,73 @@ const BJ_ATTIC_SIDE = 14.4;
    AND THE Z SEPARATION IS STILL DOING ITS JOB.  Moving both further out does not
    make 8.62 and 9.02 fit abreast in 15.20m — it never will — so the closet still
    stands BEHIND the bedroom on its own mover.  Pushing them out changed which part
-   of the wing they occupy, not the arithmetic that stacks them. */
-const BJ_SIDE_ROOM   = -14.0;
-const BJ_CLOSET_BACK = -6.0;
+   of the wing they occupy, not the arithmetic that stacks them.
+
+   ==== SUPERSEDED BY RULING DI, AND ALL THREE OF THESE NUMBERS ARE GONE ========
+
+   "the attic, bedrrom and closet sets are still in the wings", then "i meant past
+   the physical legs. past the black curtains", then "what is the problem there is
+   plenty of room between the fly rail and the legs to fit all three sets".
+
+   HE WAS RIGHT THREE TIMES AND THE CODE WAS WRONG ABOUT THE BUILDING.  DF moved
+   each park to what it believed was the far end of its wing, and measured the
+   margin against the PICTURE edge at 6.80 — so all three still began inside the
+   legs, which span |x| 6.60 .. 12.20:
+
+     attic     x  7.87 .. 20.93     4.33m of it standing among the legs
+     bedroom   x -9.69 .. -18.31    2.51m
+     closet    x -9.49 .. -18.51    2.71m
+
+   THE ROOM HE MEANS IS THERE, AND THREE RULINGS COULD NOT SEE IT.  CE, CS and DF
+   all state the flyman's locking rail at x -19.2 and all three cite p9 for it.
+   What p9 says is
+
+     const railX = fr ? fr.rail : -D.stageW/2 + 2.8;
+
+   and -19.2 is the FALLBACK, taken only when there is no crew frame.  There always
+   is one: crewPalaceFrame gives XR + 2.8, and XR is -(D.stageW/2 + D.wingSR),
+   because D.wingSR says stage right runs 11m further out than stage left.  The
+   rail is at -30.2.  So the gap between the legs and the rail is not 7.00m, it is
+   18.00m, and his 13.06m attic fits in it with 2.94m to spare (tools/wing.js).
+
+   SO ALL THREE PARK STAGE RIGHT, PAST THE LEGS, ONE BEHIND ANOTHER.  Not "past
+   the wing" — the wing is where scenery belongs — past the CLOTH, which is what he
+   asked for both times.
+
+   THE ATTIC CHANGES SIDES, AND THAT IS OURS TO CHANGE, NOT HIS.  RULING CQ put it
+   stage left, and his words were only "one of the sides"; CQ chose left BECAUSE a
+   13m set would not clear a rail at -19.2.  That reason was never true.  Stage
+   left is the narrower wing (LEG_OUT to the wall is 9.80m — a 13.06m set cannot
+   stand past the legs there at all, turned or not), so the side that was picked
+   for a wrong reason turns out to be the only one that cannot hold it.
+
+   AND THE OFFSETS ARE MEASURED, NEVER TYPED, which is what these three constants
+   could not do.  His file and the stand-in are different sizes AND differently
+   centred — the attic is 13.06m wide by 10.00m deep with his model and 10.40 by
+   9.60 without it, sitting at z -10.30 .. -0.30 against z -12.40 .. -2.80.  One
+   typed offset cannot place both: it is why DF left the stand-in 2.00m clear and
+   his own file 0.57m clear off the same number.  bjWingPack measures each set's
+   own box and packs the three of them, and bjApplyModel packs again when a file
+   lands, the way RULING DH measures the sign's floor stop off its own box rather
+   than typing it.
+   ============================================================================ */
 const BJ_TRACK_SPEED = 2.0;    // m/s — a tracked set crosses in ~7s
+
+/* how far outboard of the leg's own edge a park stands.  DF's lesson is the
+   argument for the size of it: 0.49m outside a masking line reads as standing in
+   the wing, so this is deliberately a distance you can see, and there is 18.00m
+   of wing to spend it out of. */
+const BJ_PARK_PAST = 2.00;
+/* the downstage limit of a stage-right park, and it is not the plaster line: the
+   AUDITORIUM side wall is a 1.0 x 22.0 x 32.0 box at x -15.50 whose upstage face
+   reaches z -1.00, straight through the middle of the wing (tools/wing.js).  A
+   park at z -0.30 — which is where his attic acts — would stand inside it. */
+const BJ_WING_Z0  = -1.80;
+const BJ_WING_GAP =  1.50;     // between one parked set and the next
+/* the order they stand in, downstage to upstage.  Registered by the build so the
+   pack does not have to know the names, and read in this order so a set that
+   grows only pushes the ones BEHIND it further upstage. */
+const BJ_WING_ORDER = [];
 
 /* ============================================================================
    RULING CT — A FLOWN SET IS THIN
@@ -14678,6 +14731,90 @@ function bjTrackWhole(sc, axis, out, speed){
 }
 /* the three he named, plus the netherworld: out through the header on y */
 function bjFlyWhole(sc){ return bjTrackWhole(sc, 'y', BJ_PART_OUT, BJ_FLY_SPEED); }
+
+/* ============================================================================
+   RULING DI — THE STAGE-RIGHT WING, PACKED AND MEASURED
+
+   bjWingPark declares the two movers a wing park needs and puts the scene in the
+   queue; bjWingPack measures all of them and fills in the offsets.  Split in two
+   because the offsets cannot be known at the build site: a set's park depends on
+   how deep the set IN FRONT OF IT turned out to be, and every one of them changes
+   size when one of his files lands.
+
+   THE MOVERS ARE THE TWO THE CLOSET ALREADY HAD (RULING CS): the wrapper carries
+   x, which is the entrance, and the scene group carries z, which is where in the
+   wing it stands.  sceneMvAdvance writes one axis and nothing else, so the two are
+   free.  All three sets have both now, where before only the closet did — the
+   attic and the bedroom parked at whatever z they happened to act at, which is
+   what left the attic's downstage face at z -0.30, inside the auditorium wall.
+   ========================================================================== */
+function bjWingPark(sc){
+  if(!sc) return null;
+  bjTrackWhole(sc, 'x', 0, BJ_TRACK_SPEED);   // offset filled in by bjWingPack
+  scenePark(sc, 'z', 0, BJ_TRACK_SPEED);
+  if(BJ_WING_ORDER.indexOf(sc.name) < 0) BJ_WING_ORDER.push(sc.name);
+  return sc;
+}
+/* the set's own box with both of its park movers at HOME.  Measured rather than
+   remembered, and zeroed rather than assumed: the pack runs again when a model
+   lands, and by then the set may be standing AT its park, so reading the box
+   where it is would fold the old offset into the new one and walk the set out of
+   the building a wing at a time. */
+function bjWingBox(sc){
+  const ms = [];
+  if(sc.pmv) for(const k in sc.pmv) ms.push(sc.pmv[k]);
+  const was = ms.map(m => m.off);
+  for(const m of ms){ m.off = m.home; m.group.position[m.axis] = m.off; }
+  sc.group.updateMatrixWorld(true);
+  const b = new T.Box3().setFromObject(sc.group);
+  ms.forEach((m, i)=>{ m.off = was[i]; m.group.position[m.axis] = m.off; });
+  sc.group.updateMatrixWorld(true);
+  return b;
+}
+function bjWingPack(){
+  if(typeof LEG_OUT === 'undefined') return;
+  /* the inboard face every park lines up on, and the rail it must not reach.
+     BOTH READ RATHER THAN TYPED — the rail off the crew frame, because the number
+     three rulings typed instead was p9's fallback and was 11m out. */
+  const face = -(LEG_OUT + BJ_PARK_PAST);
+  const rail = (typeof crewFrame === 'function' && crewFrame().rail) || -30.2;
+  let z = BJ_WING_Z0;
+  const out = [];
+  for(const name of BJ_WING_ORDER){
+    const sc = (typeof sceneFind === 'function') ? sceneFind(name) : null;
+    if(!sc || !sc.pmv || !sc.pmv.all || !sc.pmv.park) continue;
+    const b = bjWingBox(sc);
+    if(!isFinite(b.max.x) || b.max.x < b.min.x) continue;    // an empty set measures nothing
+    const xOff = face - b.max.x;                 // its inboard face onto the line
+    const zOff = z    - b.max.z;                 // its downstage face onto the cursor
+    /* AND A SET THAT IS NOT THE LIVE ONE IS RE-SEATED THERE AND THEN.  Writing
+       `out` alone would leave a parked set at the PREVIOUS offset until its next
+       changeover, and when the pack is re-run because one of his files has just
+       landed, the next changeover may be an act away — a set standing in the
+       wrong place for the rest of it.  The live set is left alone: it is at home
+       on the stage, and home is not what this changes.  (At build nothing is
+       live yet, so all three seat straight into the wing, which is what RULING
+       BQ's load-state assertion asks for anyway.) */
+    sc.pmv.all.out  = xOff;
+    sc.pmv.park.out = zOff;
+    if(!sc.on) for(const m of [sc.pmv.all, sc.pmv.park]){
+      m.off = m.target = m.out;
+      m.group.position[m.axis] = m.off;
+    }
+    out.push(name + ' x ' + (b.min.x + xOff).toFixed(2) + '..' + (b.max.x + xOff).toFixed(2) +
+             ' z ' + (b.min.z + zOff).toFixed(2) + '..' + (b.max.z + zOff).toFixed(2));
+    z = z - (b.max.z - b.min.z) - BJ_WING_GAP;
+    /* LOUD, not silent.  A wing that has run out of room is a set standing in
+       the brick or on the rail, and both of those have happened here before. */
+    if(b.min.x + xOff < rail)
+      console.warn('bjWingPack: ' + name + ' reaches x ' +
+                   (b.min.x + xOff).toFixed(2) + ', past the locking rail at ' + rail.toFixed(2));
+    if(typeof PAL_BACK === 'number' && b.min.z + zOff < PAL_BACK)
+      console.warn('bjWingPack: ' + name + ' reaches z ' +
+                   (b.min.z + zOff).toFixed(2) + ', through the brick at ' + PAL_BACK.toFixed(2));
+  }
+  return out;
+}
 
 /* RULING CT — squash a built set in DEPTH about its own downstage face.
 
@@ -16017,11 +16154,12 @@ SHOWS.beetlejuice = {
         att.group.add(new T.Mesh(mergeParts(parts), glow));
       }
     }
-    /* RULING CQ — the attic comes on FROM STAGE LEFT.  RULING CE sent it upstage
-       and RULING CP takes that door away: "they are the only one that can come in
-       from behind the backdrop", and `they` is the house.  CE only put it there
-       because both wings held a house; CO has emptied this one. */
-    bjTrackWhole(att, 'x', BJ_ATTIC_SIDE, BJ_TRACK_SPEED);
+    /* RULING CQ — the attic comes on FROM A SIDE.  RULING CE sent it upstage and
+       RULING CP takes that door away: "they are the only one that can come in
+       from behind the backdrop", and it is the house.  CQ read the side as stage
+       left off a locking rail that is not where it was thought to be; RULING DI
+       puts it stage right with the other two, and bjWingPack chooses how far. */
+    bjWingPark(att);
 
     /* ---- the bedroom: a bed, a lamp, and not much else ---- */
     const bed = sceneAdd('bedroom', 'THE BEDROOM');
@@ -16082,10 +16220,11 @@ SHOWS.beetlejuice = {
       }
     }
     /* RULING CS — the bedroom comes on FROM STAGE RIGHT; it used to fly.  "Make
-       the bedroom and the closet come in from one side."  It is the downstage
-       half of that wing: the closet stands behind it (see the closet's own
-       call), because 8.62 and 9.02 do not stand abreast in 14.5m. */
-    bjTrackWhole(bed, 'x', BJ_SIDE_ROOM, BJ_TRACK_SPEED);
+       the bedroom and the closet come in from one side."  It stands second in
+       that wing, behind the attic and in front of the closet — 8.62 and 9.02 do
+       not stand abreast in it, and RULING DI adds a third set to the queue
+       rather than a third column. */
+    bjWingPark(bed);
 
     /* ================================================================
        SCENE — THE AFTERLIFE, rebuilt to HIS PHOTOGRAPH (RULING BV).
@@ -16334,9 +16473,12 @@ SHOWS.beetlejuice = {
        touch each other (sceneMvAdvance writes one axis and nothing else).
 
        Without it the two rooms park inside each other by 8.6 x 5.6 x 4.2m: they
-       are 17.64m of set for a 14.5m wing, and no x offset fixes that. */
-    bjTrackWhole(clo, 'x', BJ_SIDE_ROOM, BJ_TRACK_SPEED);
-    scenePark(clo, 'z', BJ_CLOSET_BACK, BJ_TRACK_SPEED);
+       are 17.64m of set for a 14.5m wing, and no x offset fixes that.
+
+       RULING DI GAVE THE OTHER TWO THE SAME PAIR OF MOVERS.  This scene had them
+       first and was the pattern; it is now the third in the queue rather than the
+       one exception, and its z is packed rather than the typed -6.0. */
+    bjWingPark(clo);
 
     /* ================================================================
        SCENE — THE ROOF.  The owner's plot puts it at 56:00, and it is
@@ -16666,6 +16808,12 @@ SHOWS.beetlejuice = {
     hangGoods(FLY[13], 'bjBackdrop'); FLY[13].target = TRIMS.bjBackdrop;
     hangGoods(FLY[12], 'sky');        FLY[12].target = OUT_TRIM;
     FLY.forEach(ls=>{ ls.pos = ls.target; ls.group.position.y = ls.pos; });
+
+    /* RULING DI — pack the stage-right wing, now that all three of its sets
+       exist and before anything is shown.  It has to be here and not at the
+       build sites: where the bedroom stands depends on how deep the attic turned
+       out to be, and that is not known until the attic is finished. */
+    bjWingPack();
 
     sceneShow('cemetery');           // instant: boot snaps the hills home
     RIG.haze = 0.55;                 // the beam fan is in every reference frame
@@ -22329,6 +22477,12 @@ function bjApplyModel(entry, root, scGiven){
   if(isSign) bjSignLamps(sc, root);
   bjPruneWalk(sc);
   for(const o of walks) sceneWalk(sc, o);
+  /* RULING DI — AND RE-PACK THE STAGE-RIGHT WING, because a park is measured off
+     the set's own box and the box has just changed.  His attic is 13.06 x 10.00
+     against a 10.40 x 9.60 stand-in, so a file landing moves both where that set
+     stands and where the two BEHIND it stand.  Unconditional and cheap: the pack
+     walks three scenes, and a scene that is not in the queue is skipped. */
+  if(typeof bjWingPack === 'function') bjWingPack();
   /* fresh meshes wake on layer 0 and would take raycasts through a set that
      is OFF — the refresh puts the whole scene back into whatever state it is
      supposed to be in, walkables and dressings included.  ONE exception: a
@@ -27905,9 +28059,18 @@ function vrSetWhere(sc){
   const b = new T.Box3().setFromObject(sc.group);
   if(b.isEmpty()) return 'parked';
   if(b.min.y > 9.5) return 'flown';
-  if(b.max.z < -10.9) return 'upstage';
+  /* THE SIDE IS ASKED BEFORE THE DEPTH, and RULING DI is why.  These three tests
+     are not exclusive — a set can be in a wing AND upstage of the backdrop at
+     once, and the packed stage-right parks are exactly that: the bedroom stands
+     at x -14.20 .. -22.82, z -12.90 .. -17.51.  Asking about z first answered
+     "upstage" for it, which is true and useless — it sends a man in a headset
+     behind the cloth to look for a set that is out in the wing beside him.
+     "Which wing" is the answer that walks you to it, so it goes first, and
+     upstage keeps what it was always for: the house wagon, which parks within
+     the width of the picture and really is only findable behind the backdrop. */
   if(b.min.x > 6.8) return 'stage left';
   if(b.max.x < -6.8) return 'stage right';
+  if(b.max.z < -10.9) return 'upstage';
   return 'parked';
 }
 function vrPageSets(g, P){
