@@ -734,6 +734,32 @@ against this list before opening a PR; **add new traps as you hit them.**
   0.34m from tripping a bound that was never about depth at all. Express the
   check against the constant it is really about (`BJ_AFT_DEEP`, `BJ_THIN`), or
   the next retune fights an unrelated literal.
+- **HIDING ARCHITECTURE FOR ONE PRODUCTION: THE RESTORE DOES NOT BELONG TO THE
+  SHOW THAT HID IT.** RULING DG takes the gold proscenium down for Beetlejuice.
+  The obvious place to put it back is the show — and that leaves the arch down
+  the first time a strike happens by another path, which the **stage swap** is.
+  `prosGoldSet(true)` lives in `showStrike`, unconditionally, so it runs for a
+  production that never touched it and costs four visibility flags. The negative
+  check fires from the other side: with the restore removed, the next show finds
+  0 of 4 pieces up. Also **collect, do not reparent** — `p2i`'s `buildRooms()`
+  sorts `world.children` and files whatever exists at that moment, and these are
+  all on `STATIC`; a group slipped in between changes what both see for five
+  productions to serve one. And **visible-false is not hidden**: the layers have
+  to go off too, or the arch is still in every raycast.
+- **A TEST CAN BLOCK THE SWITCH ITS OWN COMMENT ADVERTISES.** DG keeps the CY
+  rake as a one-line switch — and flipping it failed the suite with "nothing on
+  the top side", because a fixed ±0.6 window round a flat header cannot contain
+  a bar whose ends move ±0.887. The escape hatch was nominal until a negative
+  check tried it. **If a comment says "one line to undo", spend the build
+  proving that.** The same check also showed it is one line in `p5h` AND one in
+  `p4`: leaning the frame alone leaves the blinders on a flat line, which is CY's
+  own assertion doing its job.
+- **A CHECK THAT ALWAYS STEPS TO COMPLETION CANNOT SEE A MID-TRAVEL BUG.** Every
+  clause of the sign-stops test drove a haul and then stepped until it arrived,
+  so `flyExtraAtStop` reading the mover's **target** instead of its live offset
+  passed all of them — the desk row would have named the place it was heading for
+  the whole way there. Assert the in-between state explicitly: eight frames in,
+  the row must read "moving".
 - **AND THE BACKTICK IN A PROBE COMMENT BIT A SIXTH TIME.** `probe-lint.js`,
   written last round for exactly this, caught it in five seconds — it had simply
   not been re-run after the probe was edited. The rule is not "be careful", it
