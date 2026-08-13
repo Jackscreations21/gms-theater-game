@@ -59,6 +59,11 @@ const BJ_NEON_BAR  = 0.34;
    1.26; the offset is kept in this form because everything else about the frame
    is written off BJ. */
 const BJ_NEON_Z    = 0.81;
+/* WHICH WAY THE TOP RAKES (RULING CX, his correction: "can you make it slanted
+   just one way not from the center").  -1 puts the HIGH end stage right and
+   slants down toward stage left, which is the way the marquee's own arrow rakes;
+   +1 mirrors it.  One sign, and the blinders follow the same line. */
+const BJ_NEON_RAKE = -1;
 const BJ_NEON_FADE = 1.2;
 const BJ_NEON_BLUE = 0x4fa8ff;
 const BJ_NEON_RED  = 0xff1e10;    // his own act-one red, the same hex as signCol
@@ -1020,15 +1025,31 @@ SHOWS.beetlejuice = {
             are read off the architecture rather than chosen, and they follow D
             the way every stage does (INVARIANTS: change D and all three change).
 
-         2. A STRAIGHT SLANTED TOP.  The gold's own top is a quadratic from
-            (+-7.75, spring) through a control point at (0, procH + 1.75), which
-            PEAKS AT 10.375 — a quadratic sits at a quarter/half/quarter of its
-            three points, not at the control point, and reading it as 12.15 would
-            put the neon a metre and a half above the arch it is meant to trace.
-            Two straight bars from the springing to that peak are its chords:
-            straight, as he said, and slanting down to each side, which is the
-            direction the arch goes.  A single bar slanting right across the
-            opening is the other reading of that sentence and it is four numbers.
+         2. A STRAIGHT TOP, SLANTED ONE WAY.  "can you make it slanted just one
+            way not from the center" — his correction, and it settles the reading
+            this file had flagged as open.  ONE bar, right across the opening,
+            high at one side and low at the other.  It is not the arch's shape
+            any more and it is not meant to be: an arch is symmetric and this is
+            a rake.
+
+            THE TWO HEIGHTS ARE STILL THE ARCH'S, which is what keeps "basically
+            where the gold is" true.  The low end sits at the SPRINGING, where
+            the gold leaves the leg, and the high end at the arch's own PEAK —
+            0.25*spring + 0.5*(procH + 1.75) + 0.25*spring = 10.375.  A quadratic
+            sits at a quarter/half/quarter of its three points, not at the
+            control point, and reading the control point as the apex would put
+            the neon a metre and a half above the arch it is tracing.
+
+            IT RAKES DOWN TOWARD STAGE LEFT, and that is read off his own set
+            rather than chosen: the marquee's arrow (bjSignTex / the arrow group
+            below) runs off the bottom of the sign and rakes DOWN toward +x at
+            rotation.z -0.20.  The frame now leans the same way the show's own
+            graphic does.  BJ_NEON_RAKE is one sign flip to send it the other
+            way, and nothing else moves — the blinders read the same line.
+
+            THE LEGS ARE NO LONGER THE SAME HEIGHT, which is the honest
+            consequence: the high side runs to the peak, the low side to the
+            springing, or the bar would float off one of them.
 
          3. NO SILL.  "it does not go across the floor" — the bottom bar is gone
             and the legs run to the deck.
@@ -1042,19 +1063,22 @@ SHOWS.beetlejuice = {
       const NX = D.procW/2 + 0.25;          // where p2b's gold band runs
       const NSPRING = D.procH - 1.8;        // where its arch springs
       const NPEAK = 0.25*NSPRING + 0.5*(D.procH + 1.75) + 0.25*NSPRING;
+      /* which way it leans: -1 puts the HIGH end stage right and rakes down
+         toward stage left, with the sign's own arrow.  +1 mirrors it. */
+      const RAKE = BJ_NEON_RAKE;
+      const hiX = RAKE * NX, loX = -RAKE * NX;
       const bar = (w, h, pos, rot) => ({geo:new T.BoxGeometry(w, h, BAR), pos:pos, rot:rot});
-      /* each slanted bar is the chord from the springing to the peak, run long
-         by a bar's width at each end so the corners OVERLAP rather than mitre —
-         the same trick the rectangle used, and it costs nothing on an emissive
-         bar while keeping the line unbroken from any angle */
-      const rise = NPEAK - NSPRING, run = NX;
-      const chord = Math.sqrt(run*run + rise*rise) + BAR;
-      const ang = Math.atan2(rise, run);
+      /* the bar is the chord from one springing to the other side's peak, run
+         long by a bar's width so the corners OVERLAP rather than mitre — the
+         same trick the rectangle used, and it costs nothing on an emissive bar
+         while keeping the line unbroken from any angle */
+      const chord = Math.sqrt(4*NX*NX + (NPEAK - NSPRING)*(NPEAK - NSPRING)) + BAR;
+      const ang = Math.atan2(NSPRING - NPEAK, loX - hiX);
       const tr = [
-        bar(BAR, NSPRING + BAR, [-NX, (NSPRING + BAR)/2, 0]),   // stage-right leg
-        bar(BAR, NSPRING + BAR, [ NX, (NSPRING + BAR)/2, 0]),   // stage-left leg
-        bar(chord, BAR, [-NX/2, (NSPRING + NPEAK)/2, 0], [0, 0,  ang]),
-        bar(chord, BAR, [ NX/2, (NSPRING + NPEAK)/2, 0], [0, 0, -ang])
+        /* the tall leg is under the high end, the short one under the low end */
+        bar(BAR, NPEAK   + BAR, [hiX, (NPEAK   + BAR)/2, 0]),
+        bar(BAR, NSPRING + BAR, [loX, (NSPRING + BAR)/2, 0]),
+        bar(chord, BAR, [0, (NSPRING + NPEAK)/2, 0], [0, 0, ang])
         /* and NO SILL — his own line, and the reason the legs run to y 0 */
       ];
       const frameM = new T.MeshStandardMaterial({color:BJ_NEON_DARK,

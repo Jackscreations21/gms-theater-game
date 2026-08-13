@@ -240,49 +240,73 @@ const probe = `
        of the four sides of the opening and demand geometry in all four. */
     const pos = t.geometry.attributes.position;
     const gold = D.procW/2 + 0.25, spring = D.procH - 1.8;
-    const side = {left:0, right:0, apex:0};
+    const peak = 0.25*spring + 0.5*(D.procH + 1.75) + 0.25*spring;
+    /* CLOSED, and measured rather than counted: a loop missing a leg would still
+       be three bars and still pass a mesh count.  With RULING CX's rake the two
+       legs are DIFFERENT HEIGHTS, so this asks for one of each — a tall side
+       reaching the peak and a short side stopping at the springing. */
+    const side = {left:0, right:0, high:0, low:0};
     for(let i = 0; i < pos.count; i++){
       const x = pos.getX(i), y = pos.getY(i);
       if(x < -gold + 0.5) side.left++;
       if(x >  gold - 0.5) side.right++;
-      if(Math.abs(x) < 0.6 && y > spring) side.apex++;
+      if(Math.abs(x) > gold - 0.5 && Math.abs(y - peak) < 0.5) side.high++;
+      if(Math.abs(x) > gold - 0.5 && Math.abs(y - spring) < 0.5) side.low++;
     }
     for(const k in side)
       if(!side[k]) throw new Error('the frame is open: nothing on the '+k+' side');
-    /* A STRAIGHT SLANTED TOP, and this is what tells it from an arch: NOTHING
-       ABOVE THE CHORD from the springing to the apex.  A quadratic sweep like
-       the gold's own bows above that line by about a fifth of a metre at the
-       quarters, so it fails; two straight bars sit on it, so they pass.
+    /* A STRAIGHT TOP RAKED ONE WAY, and this is what tells it from both an arch
+       and from the symmetric pair CX first built: NOTHING ABOVE THE ONE LINE
+       that runs from the low springing to the high peak, right across.  A
+       quadratic sweep bows above it; two chords meeting at the centre stand
+       above it by nearly a metre at the middle; one raked bar sits on it.
+
+       "can you make it slanted just one way not from the center" — so the line
+       is not symmetric and Math.abs(x) is exactly the thing that must NOT appear
+       in it.
 
        WRITTEN AS "NOTHING ABOVE" RATHER THAN "SAMPLE THE TOP EDGE AT X" on
        purpose.  A box carries vertices at its CORNERS only, so sampling the top
        edge at the quarter points of a straight bar finds nothing there at all —
-       the first version of this check threw "no top edge over x=-6" against a
+       an earlier version of this check threw "no top edge over x=-6" against a
        perfectly correct frame. */
     {
-      const peak = 0.25*spring + 0.5*(D.procH + 1.75) + 0.25*spring;
+      const rake = BJ_NEON_RAKE;
+      const lineY = x => peak - (gold - rake*x)*(peak - spring)/(2*gold);
       let worst = 0, worstAt = 0;
       for(let i = 0; i < pos.count; i++){
         const x = pos.getX(i), y = pos.getY(i);
-        if(y <= spring) continue;
-        const chordY = peak - Math.abs(x)*(peak - spring)/gold;
-        const over = y - chordY - BJ_NEON_BAR;      // the bar has thickness of its own
+        if(y <= spring - 0.5) continue;
+        const over = y - lineY(x) - BJ_NEON_BAR;    // the bar has thickness of its own
         if(over > worst){ worst = over; worstAt = x; }
       }
       if(worst > 0.15)
-        throw new Error('the top bows '+worst.toFixed(2)+'m above its chord at x='+worstAt.toFixed(2)+
-                        ' — that is an arch, not a straight slant');
+        throw new Error('the top stands '+worst.toFixed(2)+'m above its line at x='+worstAt.toFixed(2)+
+                        ' — that is an arch or a centre peak, not one straight rake');
       if(Math.abs(b2.max.y - peak) > 0.4)
-        throw new Error('the apex is at y '+b2.max.y.toFixed(2)+', and the gold peaks at '+peak.toFixed(2));
-      /* and it really does SLANT — a flat header would also sit under the chord */
-      const legTop = (()=>{ let lo = 99;
-        for(let i = 0; i < pos.count; i++)
-          if(Math.abs(Math.abs(pos.getX(i)) - gold) < 0.4) lo = Math.min(lo, Math.abs(pos.getY(i) - spring));
-        return lo; })();
+        throw new Error('the high end is at y '+b2.max.y.toFixed(2)+', and the gold peaks at '+peak.toFixed(2));
+      /* AND IT REALLY IS RAKED ONE WAY: the high corner is over ONE side of the
+         opening, not over the middle.  A centre peak would satisfy every line
+         above and is the shape he has just ruled out. */
+      let hiX = 0, hiY = -99;
+      for(let i = 0; i < pos.count; i++)
+        if(pos.getY(i) > hiY){ hiY = pos.getY(i); hiX = pos.getX(i); }
+      if(Math.abs(hiX) < gold - 1.0)
+        throw new Error('the top peaks at x='+hiX.toFixed(2)+
+                        ', over the middle — he asked for it slanted one way, not from the centre');
+      if(Math.sign(hiX) !== Math.sign(rake))
+        throw new Error('it rakes the wrong way: high end at x='+hiX.toFixed(2)+
+                        ' with BJ_NEON_RAKE '+rake);
       if(!(b2.max.y - spring > 1.0))
-        throw new Error('the top is flat at y '+b2.max.y.toFixed(2)+', not slanted up to '+peak.toFixed(2));
-      if(legTop > 0.6)
-        throw new Error('the slant does not meet the legs at the springing');
+        throw new Error('the top is flat at y '+b2.max.y.toFixed(2)+', not raked up to '+peak.toFixed(2));
+      /* and the LOW side really does come down to the springing, or it is a
+         header sitting on two tall legs rather than a rake */
+      let loTop = -99;
+      for(let i = 0; i < pos.count; i++)
+        if(Math.sign(pos.getX(i)) === -Math.sign(rake) && Math.abs(pos.getX(i)) > gold - 0.5)
+          loTop = Math.max(loTop, pos.getY(i));
+      if(Math.abs(loTop - spring) > 0.6)
+        throw new Error('the low side tops out at y '+loTop.toFixed(2)+', not at the springing '+spring.toFixed(2));
     }
     /* THICKER than the 0.075-radius tube it replaces — his one adjective */
     const thick = b2.max.z - b2.min.z;
@@ -3406,10 +3430,14 @@ const probe = `
     let offLine = 0, behind = 0;
     const gold = D.procW/2 + 0.25, spring = D.procH - 1.8;
     const peak = 0.25*spring + 0.5*(D.procH + 1.75) + 0.25*spring;
+    /* the ONE raked line, the same one the frame is built on — not a symmetric
+       pair, which is what he ruled out ("slanted just one way not from the
+       center").  Math.abs(x) must not appear here. */
+    const lineY = x => peak - (gold - BJ_NEON_RAKE*x)*(peak - spring)/(2*gold);
     GROUPS.blind.forEach(n=>{
       const p = chan(n).pos;
       const onLeg = Math.abs(Math.abs(p.x) - gold) < 0.5 && p.y <= spring + 0.5;
-      const onTop = Math.abs(p.y - (peak - Math.abs(p.x)*(peak - spring)/gold)) < 0.5;
+      const onTop = Math.abs(p.y - lineY(p.x)) < 0.5;
       if(!onLeg && !onTop) offLine++;
       if(p.z < fb.max.z - 0.01) behind++;
     });

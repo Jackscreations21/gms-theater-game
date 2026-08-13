@@ -814,13 +814,25 @@ function buildRig(){
      did. */
   /* RULING CY — AND THEY SIT ON THE NEON, because that is where the light is now
      meant to come from.  RULING CX takes the frame out to the architectural
-     proscenium: legs at x +-(D.procW/2 + 0.25) = +-7.75 running up to the
-     springing at D.procH - 1.8 = 8.6, then two straight bars slanting to a peak
-     at 10.375 (the quadratic in p2b sits at a quarter/half/quarter of its three
-     points).  Two units on each leg and four along the slant, each one ON the
-     line rather than beside it:
+     proscenium: legs at x +-(D.procW/2 + 0.25) = +-7.75, and ONE straight bar
+     raked right across the opening — high at stage right (the arch's own peak,
+     10.375) and low at stage left (the springing, D.procH - 1.8 = 8.6).  His
+     correction: "can you make it slanted just one way not from the center."
 
-       y on the slant  =  10.375 - |x| * (10.375 - 8.6) / 7.75
+     So the line the units sit on runs the whole width, and it is not symmetric.
+     Written from the HIGH end, which is the side BLIND_RAKE names:
+
+       y  =  10.375  -  (7.75 - rake*x) * (10.375 - 8.6) / 15.5
+
+     with rake -1 that is 10.375 at x -7.75 and 8.6 at x +7.75.  THE SIGN OF THIS
+     WAS WRONG ONCE and both the fixtures and their own assertion carried the
+     same wrong line, so they agreed with each other perfectly — it was the
+     FRAME's assertion, which measures the built geometry rather than
+     re-computing the formula, that caught it.
+
+     Two units on each leg and four along the rake, each one ON the line rather
+     than beside it.  BJ_NEON_RAKE is the sign that flips it in p5h and this
+     mirrors with it.
 
      Plain numbers, like BLIND_X was, because p4 builds before any show exists
      and every stage gets this rig — the FOH-bar and speaker-bar precedent — with
@@ -835,7 +847,9 @@ function buildRig(){
      house curtain (z -0.50) behind it to read on. */
   const bz = 1.45;                            // the neon bar's own downstage face
   const BLIND_X = 7.75;                       // ON the gold, where the neon runs
-  const BLIND_SLANT = x => 10.375 - Math.abs(x)*(10.375 - 8.6)/BLIND_X;
+  const BLIND_RAKE = -1;                      // matches BJ_NEON_RAKE in p5h
+  const BLIND_SLANT = x =>
+    10.375 - (BLIND_X - BLIND_RAKE*x)*(10.375 - 8.6)/(2*BLIND_X);
   [[-5.3, BLIND_SLANT(-5.3)],[-2.2, BLIND_SLANT(-2.2)],
    [ 2.2, BLIND_SLANT( 2.2)],[ 5.3, BLIND_SLANT( 5.3)],
    [-BLIND_X, 6.4],[-BLIND_X, 3.0],[BLIND_X, 6.4],[BLIND_X, 3.0]
