@@ -3253,8 +3253,23 @@ function plotBeetlejuice(){
      look(){ all(0);
        set(WASH, 0.30, '#2f6bff'); set(BACK, 0.20, '#5fd8e8'); }},
 
-    /* "1:39:22 all light fade to black and do a white flash" */
-    {at:5962, n:39.1, label:'1:39:22 — out to black, and a white flash', fade:2.5,
+    /* "1:39:22 all light fade to black and do a white flash"
+
+       RULING DB — "make it so q39 and 39.1 both happen at 1:39:19."  So his own
+       1:39:22 is superseded by his own 1:39:19 and the two land together: the
+       house slides back and the netherworld comes on UNDER the black and the
+       white flash, rather than three seconds before it.
+
+       TWO CUES ON ONE SECOND, which RULING CK already made legal and which the
+       transport already handles — showAudioTick fires everything whose `at` has
+       gone by, so both go in the same frame.  The ORDER inside that frame is the
+       array order, and it matters: Q39 carries the move and the scene change and
+       Q39.1 carries the look, so Q39.1's white has to be the one left standing.
+       Q39's own blue therefore never plays, which is the point of the note rather
+       than an oversight — he asked for them together and a flash is what covers a
+       change.  The move survives because Q39.1 declares the same scene and no
+       move of its own, so the changeover no-ops and nothing retargets the wagon. */
+    {at:5959, n:39.1, label:'1:39:19 — out to black, and a white flash', fade:2.5,
      house:0, haze:0.7, curtain:'out', scene:'afterlife', portal:{col:BJ_NEON_BLUE, lvl:1.0}, neon:1.1, backdrop:'out',
      fx:{on:'front', kind:'flash', col:'#ffffff', secs:0.4},
      look(){ all(0); set(FRONT, 1.0, '#ffffff'); }},
@@ -3279,21 +3294,73 @@ function plotBeetlejuice(){
        next item is a blackout ten seconds earlier, and against 1:39:19 the next
        blackout is 1:39:22, three seconds later, so moving it ten seconds earlier
        would put the blackout before the change it is meant to cover. */
-    {at:6795, n:40, label:'1:53:15 — the house slides on again', fade:3.5,
+    /* "1:53:32 blackout" — RULING CK, ten seconds earlier: 1:53:22.
+
+       RULING DC — "make it so q40 happens right after q41", so THE BLACKOUT NOW
+       COMES FIRST and the house slides on underneath it.  He watched the house
+       travel in full view; a set change goes in the dark.
+
+       HIS NUMBERING SURVIVES UNTOUCHED, and that is a fact about the engine
+       rather than a liberty.  The plot does `CUES.length = 0` and pushes in this
+       array order with NO sort — recordCue sorts by `n`, a plot does not — and
+       showAudioTick walks CUES by INDEX, breaking on `c.at > t`.  So the firing
+       order IS the array order and `n` is only a label.  Swapping these two
+       entries makes "Q40 right after Q41" literally true on the desk, and the
+       only invariant that matters is that `at` still ascends down the array:
+       6802, 6804, 6813.  Renumbering them would have been the alternative and it
+       would have silently changed the language he uses to talk about his own
+       plot.
+
+       AND THE OLD COMMENT'S REASONING INVERTS, which is why it is rewritten
+       rather than moved.  It used to argue that the wagon left at 1:53:15 and
+       crossed its 10m at BJ_TRACK_SPEED 2.0 in time for the blackout to land on a
+       set that had ARRIVED.  Now the blackout lands first and covers the travel:
+       the wagon leaves at 1:53:24 and is home about 1:53:29, comfortably before
+       his 1:53:33 audience pattern below, and nobody sees it move.
+
+       AND THE BLACKOUT STAYS IN THE NETHERWORLD, which an assertion had to teach
+       me.  This cue used to declare scene:'interior' because Q40 had ALREADY
+       changed it; with Q40 moved behind it, declaring the interior here made the
+       BLACKOUT the cue that carries the changeover — so the netherworld vanished
+       and the room appeared while this cue's own one-second fade was still on its
+       way down, a pop in full view.  "The set never changes in view" caught it and
+       named this cue.  So the blackout is still the netherworld, merely dark, and
+       the change belongs to Q40 underneath it.  `dress:'bj'` goes with it for the
+       same reason: on this cue it would have dressed the AFTERLIFE. */
+    {at:6802, n:41, label:'1:53:22 — blackout', fade:1,
+     house:0, haze:0.55, curtain:'out', scene:'afterlife', neon:0,
+     backdrop:'out',
+     look(){ all(0); }},
+
+    /* 1:53:00 — "Netherworld set goes off beetlejuice house come on".
+
+       RULING CK — "Make the hous set slide back on 15 seconds later than it
+       currently does".  1:53:00 -> 1:53:15.
+
+       THIS IS THE ONE HIS ORDERING LINE RESOLVES.  "Slide back ON" could have
+       named 1:39:19, where the house slides BACK and the netherworld comes on,
+       and two things say it does not: "on" is coming on rather than going off,
+       and his own set list for THIS cue reads "beetlejuice house come on".  The
+       other half is his "(all of these are in order od there appearance)" — the
+       next item is a blackout ten seconds earlier, and against 1:39:19 the next
+       blackout is 1:39:22, three seconds later, so moving it ten seconds earlier
+       would put the blackout before the change it is meant to cover.
+
+       RULING DC MOVED IT BEHIND THAT BLACKOUT: 1:53:15 -> 1:53:24, two seconds
+       after the blackout is fully home.  It keeps its number and loses its place
+       in the array; see the writeup on the blackout above.
+
+       AND IT LOSES ITS LOOK, WHICH IS A REAL CHANGE TO HIS PLOT AND NOT A TIDY-UP.
+       This cue used to carry the blue wash that lit the change, because the change
+       used to happen in light.  A set that slides on in the dark cannot also be
+       lit, so the look is now `all(0)` and the stage stays black from his 1:53:22
+       blackout until his own 1:53:38 brings light red back — by which time the
+       wagon has been home for nine seconds.  The blue is one line to restore if he
+       wants to see it travel after all. */
+    {at:6804, n:40, label:'1:53:24 — the house slides on again, under the black', fade:3.5,
      house:0, haze:0.55, curtain:'out', scene:'interior', dress:'bj', neon:0,
      backdrop:'out',
      move:{scene:'interior', off:0},
-     look(){ all(0);
-       set(WASH, 0.30, '#2f6bff'); set(BACK, 0.22, '#3f6ea6');
-       set(FRONT, 0.20, '#4a78b4'); }},
-
-    /* "1:53:32 blackout" — RULING CK, ten seconds earlier: 1:53:22.  The wagon
-       leaves at 1:53:15 and crosses its 10m at BJ_TRACK_SPEED-ish 2.0 m/s, so it
-       is home with a couple of seconds to spare and the blackout lands on a set
-       that has arrived. */
-    {at:6802, n:41, label:'1:53:22 — blackout', fade:1,
-     house:0, haze:0.55, curtain:'out', scene:'interior', dress:'bj', neon:0,
-     backdrop:'out',
      look(){ all(0); }},
 
     /* "1:53:33 all lights move in a random pattern pointing at the audience and
