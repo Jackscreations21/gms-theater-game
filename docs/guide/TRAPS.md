@@ -826,6 +826,36 @@ against this list before opening a PR; **add new traps as you hit them.**
   wing at z −12.90 read as `upstage`, sending a man in a headset behind the
   cloth to look for something beside him. When the buckets overlap, order them
   by which answer is *useful*, and say so in the file.
+- **AN INSTRUMENT THAT BORROWS A CLAMP INHERITS ITS CEILING.** `vrPerf` recorded
+  the game's `dt`, which `p7` clamps to 50ms so a model load cannot teleport the
+  show. Correct for the movers; fatal for a meter — **every frame worse than 50ms
+  was recorded as exactly 50**, so it could not report below 20Hz however bad the
+  frame was. Two rounds of readings were taken through it. The tell was there in
+  the number: **48ms is two off a ceiling**, and a reading that lands just under a
+  known limit should be suspected of *being* the limit before it is believed. The
+  meter now takes the raw figure and carries its own, far higher, ceiling.
+- **A capability can already be sitting in a vendored file.** The lighting plan
+  justified a three.js upgrade partly on `EXT_meshopt_compression`, dated "r132+"
+  from the upstream changelog. The GLTFLoader vendored in `p5i` **already has
+  `setMeshoptDecoder`, the extension constant and its full handler**, and the
+  decoder script is published for r128. An upstream version number tells you when
+  a feature appeared upstream, not whether this repo has it. Grep the repo first.
+- **A published addon FOLDER can vanish, not just a build.** three.js's
+  non-module `examples/js/` is 200 through **r147** and 404 from **r148** — so the
+  version the UMD ceiling points at has no drop-in addons at all. And
+  `KTX2Loader` was **never** in `examples/js` at any version, only ESM: a thing
+  can be missing from every version rather than added in a later one, which reads
+  identically to "not found yet" until you check two versions instead of one.
+- **Test code inside a PLAN is prose until somebody runs it.** The lighting plan's
+  assertions were written against a `boot()` / `assert(W.thing)` harness that
+  exists in neither `vr.js` nor `full14.js` — both use `P(name, fn)`, which throws
+  on failure, and reach game globals bare because they eval the script in their
+  own scope. Read the neighbouring cases and copy their shape; a plan's code block
+  is a statement of intent about what to assert.
+- **A cache-buster can live nowhere at all.** `?v=N` is typed onto the URL by
+  hand — it is not a string in `src/`. A plan step saying "bump it in `p1.txt`"
+  sends you looking for something that was never there; bumping it means writing
+  the new number into STATE.md and HANDOFF.md.
 - PowerShell 5.1 mangles `git commit -m` with double quotes — message to
   file, `-F` it.
 - Never `git add -A` while agent worktrees exist under `.claude/` —

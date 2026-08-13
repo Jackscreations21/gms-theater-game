@@ -38,7 +38,14 @@ THREE.WebGLRenderer = class {
   constructor(){ const c = w.document.createElement('canvas');
     c.requestPointerLock = ()=>{};
     this.domElement = c; this.shadowMap = {enabled:false, type:0};
-    this.renderCount = 0; this.xr = new FakeXR(); this._loop = null; this._pr = 1; }
+    this.renderCount = 0; this.xr = new FakeXR(); this._loop = null; this._pr = 1;
+    /* the real WebGLRenderer carries render statistics and this stub did not,
+       so vrPerf (RULING DJ) had nothing to read.  Left plainly settable: the
+       meter's job is to report whatever the renderer says, and a test that
+       sets a distinctive number and looks for it on the wrist is testing the
+       wiring rather than three.js's counting. */
+    this.info = {render:{calls:0, triangles:0, frame:0, lines:0, points:0},
+                 memory:{geometries:0, textures:0}}; }
   setPixelRatio(v){ this._pr = v; } getPixelRatio(){ return this._pr; }
   setSize(){}
   setAnimationLoop(fn){ this._loop = fn; }
@@ -2986,6 +2993,55 @@ const probe = `
     if(CREW.running) throw new Error('a refused call left the crew running');
     exitVR();
     return 'PICK A PIECE / NO MARK / OTHER HOUSE / NEED list / PIECES FULL / CREW BUSY';
+  });
+
+  console.log('--- vr: the meter tells the truth (RULING DJ) ---');
+
+  P('the wrist meter reports draw calls and triangles', ()=>{
+    /* multiview does not exist at any three.js version, so both eyes cost
+       two passes and our own batching is the only lever left on the draw
+       call count.  Nothing reported it where it could be read. */
+    enterVR();
+    renderer.info.render.calls = 137;
+    renderer.info.render.triangles = 24000;
+    for(let i=0;i<160;i++) vrUpdate(0.016, 0.016);
+    const Pm = VR.perf;
+    if(!Pm) throw new Error('nothing was recorded');
+    if(Pm.calls !== 137)
+      throw new Error('the meter reads ' + Pm.calls + ' draw calls, the renderer says 137');
+    if(Pm.tris !== 24000)
+      throw new Error('the meter reads ' + Pm.tris + ' triangles, the renderer says 24000');
+    return '137 calls and 24k triangles reached the wrist';
+  });
+
+  P('the average reports PAST the game clock clamp of 50ms', ()=>{
+    /* p7 clamps dt to 50ms so a model load cannot teleport the show, and
+       the meter used to read that clamped figure — so every frame worse
+       than 50 was recorded as exactly 50.  The first headset readings came
+       back at 48ms, two off a ceiling nobody knew was there, which made
+       them a floor rather than a measurement.  p7 hands the raw frame time
+       over beside the clamped one now: a 120ms frame must read 120. */
+    for(let i=0;i<160;i++) vrUpdate(0.05, 0.120);
+    const Pm = VR.perf;
+    if(Math.abs(Pm.avg - 120) > 1)
+      throw new Error('120ms frames average ' + Pm.avg.toFixed(1) + 'ms');
+    if(Pm.worst < 119)
+      throw new Error('the peak saturated at ' + Pm.worst.toFixed(1) + 'ms');
+    return 'a 120ms frame reads ' + Pm.avg.toFixed(0) + ', not 50';
+  });
+
+  P('a load hitch is capped so it cannot poison the window', ()=>{
+    /* the meter has its OWN ceiling, four times the game clamp.  Uncapped,
+       one three-second stall sits in the 120-frame ring and adds 25ms to
+       the average for two seconds after it ended. */
+    for(let i=0;i<160;i++) vrUpdate(0.05, 3.0);
+    const Pm = VR.perf;
+    if(Pm.worst > PERF_CEIL + 0.001)
+      throw new Error('a 3000ms hitch recorded as ' + Pm.worst.toFixed(0) + 'ms');
+    if(Pm.worst < PERF_CEIL - 0.001)
+      throw new Error('the ceiling reads ' + Pm.worst.toFixed(0) + ', not ' + PERF_CEIL);
+    exitVR();
+    return 'capped at the meter ceiling of ' + PERF_CEIL + 'ms';
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
