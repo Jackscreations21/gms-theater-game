@@ -699,6 +699,14 @@ function showStrike(){
      half of geometry every time a show is struck. */
   for(const g of (SHOW.offstage || [])) disposeTree(g);
   SHOW.offstage = [];
+  /* RULING DG — AND THE HOUSE GETS ITS GOLD BACK.  Beetlejuice takes the gold
+     proscenium down (the neon stands where the black portal is instead), and this
+     is what stops that leaking into the next production or onto the next stage:
+     the restore is unconditional and lives in the strike, so it runs for a show
+     that never touched it and costs four visibility flags.  A show that hid
+     something and restored it ITSELF would leave the arch down the first time a
+     strike happened by another path — and the stage swap is one of those paths. */
+  if(typeof prosGoldSet === 'function') prosGoldSet(true);
   LIGHTNING.intensity = 0; LIGHTNING_AMB.intensity = 0;
   SHOW.stormOn = false; SHOW.porch = null;
   // a show curtain gets the house's own curtain back, not a bare pipe

@@ -845,11 +845,29 @@ function buildRig(){
      that reads as the bar itself.  Still clear of the 1.2m deep wall, which is
      what the number was originally for, and the 1:16 white flash still has the
      house curtain (z -0.50) behind it to read on. */
-  const bz = 1.45;                            // the neon bar's own downstage face
-  const BLIND_X = 7.75;                       // ON the gold, where the neon runs
-  const BLIND_RAKE = -1;                      // matches BJ_NEON_RAKE in p5h
-  const BLIND_SLANT = x =>
-    10.375 - (BLIND_X - BLIND_RAKE*x)*(10.375 - 8.6)/(2*BLIND_X);
+  /* RULING DG MOVES THE LINE AGAIN, AND THE BLINDERS COME WITH IT, because CY's
+     rule is that the light comes out of the BAR and the bar has moved.  The neon
+     no longer traces the gold — it traces the black false portal — so:
+
+       BLIND_X   7.75 -> 7.11    the portal legs' centreline (BJ.opW/2 + BJ.frame/2)
+       the top   raked -> FLAT   at 9.51 (BJ.opH + BJ.frame/2)
+       bz        1.45 -> 1.04    the bar's new downstage face (0.87 + BAR/2)
+
+     THE RAKE IS GONE BECAUSE THE PORTAL'S TOP IS FLAT, and the writeup for that —
+     including why it argues with his own CY correction, and the one switch that
+     puts it back — is at BJ_NEON_RAKE_ON in p5h.  If that switch is flipped, this
+     line has to lean with it; the numbers are deliberately in one shape so the
+     edit is obvious rather than hidden in a formula.
+
+     STILL PLAIN NUMBERS, not reads of BJ: p4 builds before any show exists and
+     every stage gets this rig — the FOH-bar and speaker-bar precedent — with the
+     derivation written down so it can be re-cut when the frame moves again.  The
+     owner confirmed this moves them in all five productions, which is the honest
+     consequence of a rig change and is still one line to undo. */
+  const bz = 1.04;                            // the neon bar's own downstage face
+  const BLIND_X = 7.11;                       // ON the black portal, where the neon runs
+  const BLIND_TOP = 9.51;                     // its flat header, not an arch
+  const BLIND_SLANT = () => BLIND_TOP;        // flat: the rake is off (DG)
   [[-5.3, BLIND_SLANT(-5.3)],[-2.2, BLIND_SLANT(-2.2)],
    [ 2.2, BLIND_SLANT( 2.2)],[ 5.3, BLIND_SLANT( 5.3)],
    [-BLIND_X, 6.4],[-BLIND_X, 3.0],[BLIND_X, 6.4],[BLIND_X, 3.0]

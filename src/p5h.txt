@@ -58,12 +58,41 @@ const BJ_NEON_BAR  = 0.34;
    ARCHITECTURAL proscenium rather than inside the scenic one.  0.81 + BJ.pz is
    1.26; the offset is kept in this form because everything else about the frame
    is written off BJ. */
-const BJ_NEON_Z    = 0.81;
+/* RULING DG SUPERSEDES THAT.  The gold is coming down for this show, so "where the
+   gold is" has stopped being a place, and the frame traces the BLACK false portal
+   instead: legs at BJ.opW/2 + BJ.frame/2 = +-7.11, a FLAT top at BJ.opH +
+   BJ.frame/2 = 9.51.  0.42 + BJ.pz is 0.87, which is a hair proud of the portal's
+   own downstage face at 0.70 (its boxes are 0.5 deep, centred on BJ.pz) — close
+   enough that the light reads as coming out of the portal, clear enough that the
+   bar is not buried inside it.  CX's measurement of the gold is kept above,
+   because it is still true about the gold. */
+const BJ_NEON_Z    = 0.42;
 /* WHICH WAY THE TOP RAKES (RULING CX, his correction: "can you make it slanted
    just one way not from the center").  -1 puts the HIGH end stage right and
    slants down toward stage left, which is the way the marquee's own arrow rakes;
    +1 mirrors it.  One sign, and the blinders follow the same line. */
 const BJ_NEON_RAKE = -1;
+/* AND RULING DG TURNS IT OFF, which is the one place this round argues with him.
+   CY's rake was his own correction and it was right about the GOLD: that top is a
+   quadratic arch, so a straight bar across it must lean one way or the other and
+   leaning beats fighting the curve.  The black portal's top is FLAT — a raked bar
+   would cut diagonally across a horizontal member instead of tracing it, and the
+   legs would come out different heights against a frame whose legs match.
+
+   So the rake is a SWITCH rather than a deletion: BJ_NEON_RAKE_ON true puts it
+   back on the square frame, leaning about the centre (which the arch version could
+   not do, because its two ends were pinned to the springing and the peak).  FALL is
+   how far the low end drops across the full width — 1.775 is CY's own 10.375 - 8.6,
+   so flipping the switch reproduces the lean he saw, on the new line.
+
+   IT IS ONE LINE HERE AND ONE IN p4, NOT ONE LINE ALTOGETHER, and that was measured
+   rather than assumed: flipping this alone leans the frame and leaves the eight
+   blinders on a flat line, floating off the bar they are supposed to be the light
+   from.  RULING CY's own assertion catches it and names the frame — which is the
+   test doing its job, so the pair is left coupled deliberately rather than made
+   independent.  Lean BLIND_SLANT in p4 with it. */
+const BJ_NEON_RAKE_ON   = false;
+const BJ_NEON_RAKE_FALL = 1.775;
 const BJ_NEON_FADE = 1.2;
 const BJ_NEON_BLUE = 0x4fa8ff;
 const BJ_NEON_RED  = 0xff1e10;    // his own act-one red, the same hex as signCol
@@ -1107,26 +1136,76 @@ SHOWS.beetlejuice = {
          the opening is still a fault, and this is not scenery — it is the
          house's own proscenium, lit.
          ------------------------------------------------------------------ */
+      /* ------------------------------------------------------------------
+         RULING DG — IT TRACES THE BLACK PORTAL, NOT THE GOLD.  "just for
+         beetlejuice remove the gold prosinium and put the neon where the black
+         is right now."
+
+         WHICH BLACK WAS ASKED AND ANSWERED rather than guessed, because there
+         are two dark frames inside the arch and they are 0.95m apart: this is
+         `bj:portal`, the board false portal built ~150 lines above, and NOT the
+         masking legs at +-6.80.  He picked it off the two readings drawn out.
+
+         SO THE FRAME COMES IN AND SQUARES UP.  Everything is now derived from
+         BJ, which is what the CH comment always wanted and what CX took away by
+         sending it out to D.procW:
+
+           legs   x +-(BJ.opW/2 + BJ.frame/2) = +-7.11   the portal legs' centreline
+           top    y  BJ.opH + BJ.frame/2      =   9.51   the header's centreline
+           width  BJ.opW + 2*BJ.frame         =  14.84   the header's own span
+           z      BJ.pz + BJ_NEON_Z           =   0.87   a hair proud of the
+                                                         portal's 0.70 face
+
+         THIS PARTLY REPEALS RULING CX.  "The neon proscenium should be basically
+         where the gold is right now" was answered by moving the frame out to the
+         architectural arch — and the gold is being taken down, so "where the gold
+         is" has stopped being a place.  Its measurement stands and is kept above.
+
+         AND IT SUPERSEDES HIS OWN RULING CY RAKE, WHICH IS THE ONE THING HERE
+         WORTH ARGUING WITH.  CY was his correction — "can you make it slanted
+         just one way not from the center" — and it was right about the GOLD,
+         whose top is a quadratic arch: a straight bar across it has to lean one
+         way or the other, and leaning is better than fighting the curve.  The
+         portal's top is FLAT, so a raked bar would cut diagonally across a
+         horizontal member instead of tracing it, and the two legs would come out
+         different heights against a frame whose legs are the same.  BJ_NEON_RAKE
+         is kept LIVE below and puts the rake back in one line if he wants it on
+         the square frame too.
+
+         NO SILL either way — his own line, and the reason the legs run to y 0.
+         ------------------------------------------------------------------ */
       const BAR = BJ_NEON_BAR;
-      const NX = D.procW/2 + 0.25;          // where p2b's gold band runs
-      const NSPRING = D.procH - 1.8;        // where its arch springs
-      const NPEAK = 0.25*NSPRING + 0.5*(D.procH + 1.75) + 0.25*NSPRING;
-      /* which way it leans: -1 puts the HIGH end stage right and rakes down
-         toward stage left, with the sign's own arrow.  +1 mirrors it. */
-      const RAKE = BJ_NEON_RAKE;
-      const hiX = RAKE * NX, loX = -RAKE * NX;
+      const NX = BJ.opW/2 + BJ.frame/2;     // the portal legs' own centreline
+      const NTOP = BJ.opH + BJ.frame/2;     // its header's centreline
+      const NW = BJ.opW + 2*BJ.frame;       // and the header's own width
+      /* the rake, kept as a switch and OFF by default now the top is flat: 0
+         leaves the bar horizontal, -1 or +1 leans it the way CY asked on the
+         arch.  Written as a lean about the centre so either sign is symmetric on
+         a square frame, which the arch version could not be. */
+      const RAKE = BJ_NEON_RAKE_ON ? BJ_NEON_RAKE : 0;
+      const drop = RAKE * BJ_NEON_RAKE_FALL;      // how far the low end falls
+      const hiY = NTOP + drop/2, loY = NTOP - drop/2;
       const bar = (w, h, pos, rot) => ({geo:new T.BoxGeometry(w, h, BAR), pos:pos, rot:rot});
-      /* the bar is the chord from one springing to the other side's peak, run
-         long by a bar's width so the corners OVERLAP rather than mitre — the
-         same trick the rectangle used, and it costs nothing on an emissive bar
-         while keeping the line unbroken from any angle */
-      const chord = Math.sqrt(4*NX*NX + (NPEAK - NSPRING)*(NPEAK - NSPRING)) + BAR;
-      const ang = Math.atan2(NSPRING - NPEAK, loX - hiX);
+      /* run the top long by a bar's width so the corners OVERLAP rather than
+         mitre — the same trick the rectangle and the chord both used, and it
+         costs nothing on an emissive bar while keeping the line unbroken from
+         any angle */
+      /* THE TOP RUNS TO THE LEGS, NOT TO THE HEADER'S FULL WIDTH, and the
+         difference is worth naming because the first cut got it wrong and an
+         assertion caught it.  The portal's header box spans BJ.opW + 2*BJ.frame =
+         14.84 (its outer faces), while its LEGS are centred at +-7.11.  Running the
+         neon's top bar to 14.84 left it overhanging each leg by 0.31m, so the frame
+         measured 7.59 wide against a gold band at 7.75 — 0.16m of daylight, when
+         the whole point of the ruling is that it comes IN by 0.64m.  Run to the leg
+         centreline, as the chord version did, and the corners overlap exactly. */
+      const W2 = 2*NX;
+      const span = Math.sqrt(W2*W2 + drop*drop) + BAR;
+      const ang = Math.atan2(loY - hiY, W2);
       const tr = [
-        /* the tall leg is under the high end, the short one under the low end */
-        bar(BAR, NPEAK   + BAR, [hiX, (NPEAK   + BAR)/2, 0]),
-        bar(BAR, NSPRING + BAR, [loX, (NSPRING + BAR)/2, 0]),
-        bar(chord, BAR, [0, (NSPRING + NPEAK)/2, 0], [0, 0, ang])
+        /* each leg runs from the deck to its own end of the top bar */
+        bar(BAR, hiY + BAR/2, [-NX, (hiY + BAR/2)/2, 0]),
+        bar(BAR, loY + BAR/2, [ NX, (loY + BAR/2)/2, 0]),
+        bar(span, BAR, [0, (hiY + loY)/2, 0], [0, 0, ang])
         /* and NO SILL — his own line, and the reason the legs run to y 0 */
       ];
       const frameM = new T.MeshStandardMaterial({color:BJ_NEON_DARK,
@@ -1134,6 +1213,12 @@ SHOWS.beetlejuice = {
       const tm = new T.Mesh(mergeParts(tr), frameM);
       tm.name = 'bj:portalFrame'; tm.position.z = BJ.pz + BJ_NEON_Z;
       G.add(tm);
+      /* RULING DG — AND THE GOLD GOES, for this production only.  It is taken down
+         HERE, beside the thing that replaces it, so the two halves of his sentence
+         live in one place.  showStrike puts it back unconditionally, so nothing
+         leaks into another show or onto another stage; and this runs on every
+         showLoad, so a reload re-hides it. */
+      if(typeof prosGoldSet === 'function') prosGoldSet(false);
       SHOW.bjPortal = {mesh:tm, mat:frameM, lvl:0, tLvl:0,
                        col:new T.Color(BJ_NEON_BLUE), tCol:new T.Color(BJ_NEON_BLUE)};
     }
