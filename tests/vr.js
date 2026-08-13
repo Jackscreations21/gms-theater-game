@@ -613,6 +613,115 @@ const probe = `
     return moved+' linesets preset from the desk in VR, nothing fired';
   });
 
+  /* ══ RULING CW — THE SIGN IS ON THE FLY MENU ══════════════════════════════
+     "add the beetlejuice sign to the fly menu."  It is not a lineset and cannot
+     be one — every lineset lives upstage of the plaster line and the sign hangs
+     downstage of the house curtain (RULINGS AS, AT) — so the rail carries it as
+     a haul the SHOW declares.  Found by META, like the START OF SHOW call. */
+  P('RULING CW: the sign is a haul on the VR fly rail, and it flies from there', ()=>{
+    showLoad('beetlejuice');
+    VR.page = 'fly'; vrDrawConsole(true);
+    const out = VR.hits.find(h=>h.flyExtra === 'bjSign' && h.dir === 'out');
+    const inn = VR.hits.find(h=>h.flyExtra === 'bjSign' && h.dir === 'in');
+    if(!out || !inn) throw new Error('the sign has no IN/OUT on the VR fly page');
+    const sg = sceneFind('bjSign');
+    if(!sg || !sg.mv) throw new Error('the sign does not travel');
+    if(Math.abs(sg.mv.off) > 0.01) throw new Error('it does not start in');
+    out.fn();
+    for(let i = 0; i < 600 && sceneTravelling(sg); i++) updateStorm(1/60);
+    if(Math.abs(sg.mv.off - BJ_SIGN_OUT) > 0.05)
+      throw new Error('OUT left it at ' + sg.mv.off.toFixed(2) + ', not ' + BJ_SIGN_OUT);
+    inn.fn();
+    for(let i = 0; i < 600 && sceneTravelling(sg); i++) updateStorm(1/60);
+    if(Math.abs(sg.mv.off) > 0.05)
+      throw new Error('IN left it at ' + sg.mv.off.toFixed(2));
+    /* AND IT TOOK NOTHING FROM THE NUMBERED LINES.  The fourteen rows and the
+       pixel-pinned right-hand column are exactly where they were — this row
+       lives in the 36px strip the fourteen leave at the bottom. */
+    const rows = VR.hits.filter(h=>h.w === 84 && h.h === 34);
+    if(rows.length < 10) throw new Error('only ' + rows.length + ' numbered row buttons left');
+    if(!VR.hits.find(h=>h.w === 116 && h.h === 46 && h.y === 86 + 136))
+      throw new Error('the FOH RAISE row moved — the sign row pushed the column down');
+    if(!VR.hits.find(h=>h.railCall === 'startOfShow'))
+      throw new Error('the START OF SHOW call was pushed off the page');
+    return 'the sign hauled out to ' + BJ_SIGN_OUT + ' and back from the headset rail';
+  });
+
+  P('RULING CW: a show that declares no hauls draws none', ()=>{
+    showLoad('outsiders');
+    VR.page = 'fly'; vrDrawConsole(true);
+    if(VR.hits.some(h=>h.flyExtra))
+      throw new Error('a show with no flyExtras drew a haul row anyway');
+    if(SHOW.flyExtras && SHOW.flyExtras.length)
+      throw new Error('the outsiders declares ' + SHOW.flyExtras.length + ' hauls');
+    showLoad('beetlejuice');
+    return 'declared, never assumed — the other productions are untouched';
+  });
+
+  /* ══ RULING CV — A MENU FOR THE SETS, IN THE HEADSET ══════════════════════
+     "Make a menu to control what sets are on."  The desk has had one all along
+     (#sceneList); VR_TABS did not, and he works this show on a Quest. */
+  P('RULING CV: the SETS page calls a set on, choreographed', ()=>{
+    showLoad('beetlejuice');
+    if(!VR_TABS.some(t=>t.id === 'sets')) throw new Error('there is no SETS tab');
+    VR.page = 'sets'; vrDrawConsole(true);
+    const calls = VR.hits.filter(h=>h.setCall);
+    const sets = SHOW.scenes.filter(sc=>!sc.always);
+    if(calls.length < 2) throw new Error('only ' + calls.length + ' sets on the page');
+    /* an ALWAYS piece is not one of the sets that take turns — the sign is on
+       the stage whatever is up, so it has no business in a list you pick from */
+    if(calls.some(c=>c.setCall === 'bjSign'))
+      throw new Error('the sign is in the set list, and it is never the set that is on');
+    /* THE SUBJECT IS PICKED FOR THE FAULT THIS TEST IS FOR, not for convenience.
+       The first non-current set happened to be the exterior, which parks on its
+       own whole-group mover and carries no part movers at all — so a mutant that
+       replaced sceneChangeTo with the instant sceneShow swap sailed through,
+       because there was nothing to watch travel.  Take a set with an all-of-it
+       wrapper: that is the one a pop is visible on. */
+    const want = sets.find(sc=>sc.name !== SHOW.scene && sc.pmv && sc.pmv.all);
+    if(!want) throw new Error('no set with a whole-set mover to watch');
+    const btn = calls.find(c=>c.setCall === want.name);
+    if(!btn) throw new Error('no call for ' + want.name);
+    btn.fn();
+    /* CHOREOGRAPHED, not swapped: it goes through sceneChangeTo, so the set
+       travels on and is drawn the whole way (RULING AY) */
+    if(SHOW.scene !== want.name) throw new Error('the call did not change the set');
+    if(!sceneTravelling(want))
+      throw new Error(want.name + ' was already home the frame it was called — that is a pop');
+    let frames = 0;
+    while(sceneTravelling(want) && frames < 900){
+      updateStorm(1/60); frames++;
+      if(want.group.userData.sceneOff)
+        throw new Error('it went dark mid-travel, ' + frames + ' frames in');
+    }
+    if(frames >= 900) throw new Error('still travelling after 15s');
+    if(frames < 30) throw new Error('it arrived in ' + frames + ' frames — that is a pop, not a travel');
+    if(want.group.userData.sceneOff) throw new Error('it never came on');
+    return calls.length + ' sets on the headset page, ' + want.name + ' called on over ' +
+           (frames/60).toFixed(1) + 's, drawn the whole way';
+  });
+
+  P('RULING CV: the set menu says WHERE each struck set is standing', ()=>{
+    showLoad('beetlejuice');
+    /* RULING BQ made that a real question, and it is what this menu is for now:
+       a struck set is in a wing, or upstage behind the backdrop, or in the tower. */
+    sceneChangeTo('interior');
+    sceneMoveTo('interior', 0);
+    for(let i = 0; i < 900 && sceneTravelling(sceneFind('interior')); i++) updateStorm(1/60);
+    if(vrSetWhere(sceneFind('interior')) !== 'ON STAGE')
+      throw new Error('the set that is on does not read as on: ' + vrSetWhere(sceneFind('interior')));
+    const CHECK = {interior:'upstage', attic:'stage left', bedroom:'stage right', roof:'flown'};
+    sceneChangeTo('cemetery');
+    for(let i = 0; i < 1500; i++) updateStorm(1/60);
+    const said = {};
+    for(const n of Object.keys(CHECK)){
+      said[n] = vrSetWhere(sceneFind(n));
+      if(said[n] !== CHECK[n])
+        throw new Error(n + ' reads as "' + said[n] + '", and it is parked ' + CHECK[n]);
+    }
+    return Object.keys(said).map(k=>k + ': ' + said[k]).join(', ');
+  });
+
   P('the speaker bars are on the VR fly page', ()=>{
     VR.page = 'fly'; vrDrawConsole(true);
     if(typeof SPKBARS === 'undefined' || !SPKBARS) throw new Error('no speaker bars');

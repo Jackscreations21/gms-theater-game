@@ -52,7 +52,18 @@ const BJ_CLOTH_W = 17.2;      // the show curtain, both halves together
    glass, not black: a bar that goes to pure black in a lit scene reads as a
    hole cut in the proscenium. */
 const BJ_NEON_BAR  = 0.34;
-const BJ_NEON_Z    = 0.30;        // downstage of the portal's own face
+/* RULING CX — WHERE THE GOLD IS.  "The neon proscenium should be basically where
+   the gold is right now."  p2b's proscenium() sweeps its moulded band along
+   x = +-(D.procW/2 + 0.25) at z = 0.6 + 0.66 = 1.26, so the frame stands on the
+   ARCHITECTURAL proscenium rather than inside the scenic one.  0.81 + BJ.pz is
+   1.26; the offset is kept in this form because everything else about the frame
+   is written off BJ. */
+const BJ_NEON_Z    = 0.81;
+/* WHICH WAY THE TOP RAKES (RULING CX, his correction: "can you make it slanted
+   just one way not from the center").  -1 puts the HIGH end stage right and
+   slants down toward stage left, which is the way the marquee's own arrow rakes;
+   +1 mirrors it.  One sign, and the blinders follow the same line. */
+const BJ_NEON_RAKE = -1;
 const BJ_NEON_FADE = 1.2;
 const BJ_NEON_BLUE = 0x4fa8ff;
 const BJ_NEON_RED  = 0xff1e10;    // his own act-one red, the same hex as signCol
@@ -146,6 +157,67 @@ const BJ_SIDE_ROOM   = -11.6;
 const BJ_CLOSET_BACK = -6.0;
 const BJ_TRACK_SPEED = 2.0;    // m/s — a tracked set crosses in ~7s
 
+/* ============================================================================
+   RULING CT — A FLOWN SET IS THIN
+
+   "But make the house exterior and roof set really thin to fit up in the fly
+    area."
+
+   He is right, and the measurement is the argument:
+
+     the roof         10.00m deep      a set that does not hang on a batten
+     the exterior      8.77m deep      the same
+     the netherworld   6.90m deep      already squashed once, by RULING BV
+
+   Same fault BV fixed and the same fix: SQUASH THE RECESSION ABOUT THE
+   DOWNSTAGE FACE, which does not move — so the picture starts exactly where it
+   started and simply does not reach as far upstage.
+
+   AND IT IS A NON-UNIFORM SCALE, WHICH THIS FILE OTHERWISE REFUSES.  RULING CB
+   kept the fit uniform on purpose ("43% of horizontal stretch would have
+   distorted every door and window in the house").  A thinned roof IS a squashed
+   roof: its slope steepens and its dormer shortens.  That is what "really thin"
+   asks for on a piece that has to live on a batten, and it is his call —
+   BJ_THIN is one line back to 1.0 if the squash reads worse than the depth.
+
+   BOTH THE STAND-IN AND HIS MODEL, because the stand-in is the bigger case and
+   the one that plays on a fresh clone, over slow wifi, and IN EVERY SUITE —
+   jsdom fetches nothing, so thinning only the imported file would leave this
+   ruling untestable in the only place anything tests it. */
+const BJ_THIN = 0.28;          // 10.00m -> 2.80m, 8.77m -> 2.46m
+
+/* THE THREE FLOWN SETS STILL SHARE THE TOWER, AND THAT WAS TRIED AND MEASURED
+   RATHER THAN ASSUMED.  Flying preserves x and z, so every flown set wants the
+   same volume above the stage; RULING CE recorded the overlap as inherent, and
+   the obvious payoff of thinning is that they should now hang on separate lines
+   like real scenery.  They cannot, and the reason is worth keeping:
+
+     THE STAND-IN EXTERIOR IS NOT WHERE HIS EXTERIOR IS.  Ours is a painted cloth
+     hanging at z -7.35 — deliberately, so it plays against its own sky on line
+     13 at -10.10 with room between the two to light the sky.  His model seats
+     against the arch at z -2.76 .. -0.30.  That is 7m apart, and a park is an
+     OFFSET, so no single number puts both on the same line.  Every set of
+     offsets that separated his three left the stand-ins standing in each other,
+     and the reverse.
+
+     AND THE DEPTH IS NOT THERE EITHER.  Thinned, the three are 2.46 + 3.05 +
+     6.90 = 12.41m of set against 11.50m of tower downstage of the stored wagon's
+     face at z -11.80 (RULING CO).  Separating them needs one to reach over the
+     house, and a set that reaches over the house has to clear a 12.76m roofline
+     to do it.
+
+   So they go on sharing it, exactly as CE said, and the honest gain is the size
+   of the overlap rather than its absence.  Measured, on the axis the thinning
+   acts on: the deepest set-inside-set was 8.77m and is 2.46m, and the worst pair
+   overall went 12.30 x 7.95 x 8.77m to 8.63 x 8.66 x 2.46m.  Nothing sees any of
+   it — it is all above a 9.2m picture, and 0 rays of 1025 from a stalls eye
+   reach any of them.
+
+   WHAT WOULD ACTUALLY FIX IT is a park stated as an absolute LINE rather than an
+   offset, measured off whichever geometry is standing there — and models land
+   asynchronously, long after the park is declared, so that is an engine change
+   and not a number.  Flagged, not smuggled in. */
+
 /* THE NETHERWORLD, to his three words (RULING BV amended).
 
    `thinner` MEANT THE SET, NOT THE TUBES: "i meant the set shouldnt be as deep."
@@ -228,19 +300,71 @@ const BJ_SIGN_GLOW = 0.95, BJ_SIGN_LIT = 2.1;
    ring hung round it (bjSignLamps, p5i).  Nothing here needs to know which —
    except that an imported material may be a MeshBasic with no emissive at all,
    which is why both halves are guarded. */
-function setSignLamps(hex){
+/* ============================================================================
+   RULING CU — THE MARQUEE GOES DARK AS IT FLIES
+
+   "Also make it so the lights on the bj sign turn off when it goes up."
+
+   The sign is an ALWAYS scene on its own y mover (RULINGS AS, AT).  It goes out
+   at BJ_SIGN_OUT at the end of the opening sequence and its lamps have burned
+   all night up in the grid ever since it was built.
+
+   A GATE, not a repaint.  What a cue asked for is REMEMBERED (SHOW.signWant) and
+   the gate multiplies it, so the signCol state survives underneath: a cue that
+   turned the sign red keeps it red, the sign simply is not lit while it is up,
+   and it comes back red if it comes back in.  Writing final values into the
+   materials — which is what this function used to do — cannot express "red, but
+   currently switched off" at all.
+
+   IT RIDES THE SIGN'S OWN MOVER AND THE FRAME dt, never a timer (CLAUDE.md).
+   The lamps start going out the moment the sign starts to rise, over about half
+   a second, which is a marquee being switched off rather than a lamp dimming.
+
+   AND AN IMPORTED MATERIAL MAY HAVE NO EMISSIVE AT ALL — RULING CF guards for
+   it, because his file could land as a MeshBasic — so the gate falls back to
+   driving the COLOUR toward black, which is the one thing such a material can
+   do.  Both halves are exercised: the stand-in is emissive, his is not
+   guaranteed to be. */
+const BJ_SIGN_LAMP_FADE = 2.5;   // per second: out in ~0.4s
+const BJ_SIGN_LAMP_CUT  = 0.05;  // metres of travel that count as "it went up"
+
+function bjSignApply(){
   if(!SHOW.signLamps) return;
+  const hex = SHOW.signWant;
+  const g = (SHOW.signGate === undefined) ? 1 : SHOW.signGate;
   SHOW.signLamps.forEach(r=>{
     if(hex){
       r.mat.color.set(hex);
-      if(r.mat.emissive) r.mat.emissive.set(hex);
-      r.mat.emissiveIntensity = BJ_SIGN_LIT;
+      if(r.mat.emissive){
+        r.mat.emissive.set(hex);
+        r.mat.emissiveIntensity = BJ_SIGN_LIT * g;
+      } else r.mat.color.multiplyScalar(g);
     } else {
       r.mat.color.copy(r.c);
-      if(r.mat.emissive && r.e) r.mat.emissive.copy(r.e);
-      r.mat.emissiveIntensity = r.ei;
+      if(r.mat.emissive && r.e){
+        r.mat.emissive.copy(r.e);
+        r.mat.emissiveIntensity = r.ei * g;
+      } else r.mat.color.multiplyScalar(g);
     }
   });
+}
+function setSignLamps(hex){
+  SHOW.signWant = hex || null;
+  bjSignApply();
+}
+function updateSignLamps(dt){
+  if(!SHOW.signLamps) return;
+  const sc = (typeof sceneFind === 'function') ? sceneFind('bjSign') : null;
+  /* NO MOVER IS NOT "IT IS UP".  A production whose sign cannot fly, or a sign
+     built before its travel is wired, must leave the lamps alone rather than
+     switching them off for ever. */
+  const up = !!(sc && sc.mv && sc.mv.off > BJ_SIGN_LAMP_CUT);
+  const was = (SHOW.signGate === undefined) ? 1 : SHOW.signGate;
+  const want = up ? 0 : 1;
+  const g = clamp(was + clamp(want - was, -dt*BJ_SIGN_LAMP_FADE, dt*BJ_SIGN_LAMP_FADE), 0, 1);
+  if(Math.abs(g - was) < 1e-5) return;
+  SHOW.signGate = g;
+  bjSignApply();
 }
 function bjStripeTex(vertical){
   const W = 512, H = 512, c = cvs(W, H), g = c.getContext('2d');
@@ -283,9 +407,26 @@ function bjRedress(sc){
   if(!sc || !sc.dress) return;
   for(const k of Object.keys(sc.dress)){
     const on = (k === sc.dressOn), g = sc.dress[k];
+    /* RULING CN — ONE HOUSE IN THE WORLD.  "Make it so only one house exist in
+       the world at a time and it switches between them when needed."
+
+       The dressing that is up is a child of the scene; the other two are held
+       out of the graph entirely (showHoldOffstage, p5c) and come back whole when
+       they are called.  That is the ruling: three complete houses of his standing
+       in the same 13.6m of stage, two of them switched off inside the third, is
+       what he watched and what he has ruled on.
+
+       THE LAYER WORK STAYS, and it is not redundant.  It is what makes a dressing
+       inert for the frame it IS attached — the one between these two calls — and
+       it is the guard that catches a detach that failed: a dressing that somehow
+       stayed in the graph is still dark and still unpickable rather than standing
+       inside its neighbour. */
     g.userData.sceneOff = !on;
     if(typeof setPieceVisible === 'function') setPieceVisible(g);
     g.traverse(o=>{ if(on) o.layers.set(0); else o.layers.disableAll(); });
+    if(typeof showHoldOffstage !== 'function') continue;
+    if(on) showBringOnstage(g, sc.group);
+    else showHoldOffstage(g);
   }
 }
 /* an enclosed set is a flown piece (RULING AY): the whole of it goes out
@@ -328,6 +469,38 @@ function bjTrackWhole(sc, axis, out, speed){
 }
 /* the three he named, plus the netherworld: out through the header on y */
 function bjFlyWhole(sc){ return bjTrackWhole(sc, 'y', BJ_PART_OUT, BJ_FLY_SPEED); }
+
+/* RULING CT — squash a built set in DEPTH about its own downstage face.
+
+   The wrapper does the whole job: a point at the front face maps to itself
+   (front*f + front*(1-f) = front) and a point d metres upstage of it maps to
+   d*f upstage.  So the picture starts where it started, exactly as BJ_AFT_DEEP
+   does for the netherworld's authored z values — the difference is that this
+   one squashes the PIECES too, which is the point.  A 5.2m roof deck has to
+   become a 1.5m one or the set is still 5.2m deep however close together its
+   parts stand.
+
+   CALLED BEFORE bjFlyWhole, like everything else that wraps: it takes the
+   children that exist when it runs.
+
+   The box is read in the scene group's own space — the group is added to
+   showRoot(), which is at the origin for the Palace and need not be for another
+   stage, and a front face measured in world coordinates would put the squash
+   plane in the wrong building. */
+function bjThinWhole(sc, f){
+  if(!sc || !(f > 0) || f === 1) return null;
+  const g = new T.Group();
+  g.name = 'bj:' + sc.name + ':thin';
+  sc.group.updateMatrixWorld(true);
+  const b = new T.Box3().setFromObject(sc.group);
+  if(b.isEmpty() || !isFinite(b.max.z)) return null;
+  const front = b.max.z - sc.group.getWorldPosition(new T.Vector3()).z;
+  while(sc.group.children.length) g.add(sc.group.children[0]);
+  g.scale.z = f;
+  g.position.z = front * (1 - f);
+  sc.group.add(g);
+  return g;
+}
 const BJ_SIGN_OUT = 9.0;      // how far the sign travels to clear the header:
                               // its bottom edge ends at 12.7 against a 10.4
                               // proscenium, so it is properly masked out
@@ -836,13 +1009,77 @@ SHOWS.beetlejuice = {
          physically exists when it is not lit, like real neon does, and the cue
          is the only thing that ever lights it (setPortal, below).
          ------------------------------------------------------------------ */
-      const HW2 = BJ.opW/2, BAR = BJ_NEON_BAR;
-      const bar = (w, h, pos) => ({geo:new T.BoxGeometry(w, h, BAR), pos:pos});
+      /* ------------------------------------------------------------------
+         RULING CX — AND IT MOVES OUT TO THE GOLD, with a straight slanted top
+         and nothing across the deck.
+
+         "The neon proscenium should be basically where the gold is right now
+          but the top is straitgs and slaantted down and it does not go across
+          the floor."
+
+         Three changes to RULING CH's rectangle, and they are his three.
+
+         1. OUT TO THE GOLD.  p2b's proscenium() sweeps its moulded band along
+            x = +-(D.procW/2 + 0.25) — +-7.75 — from y 0.20 to the springing at
+            D.procH - 1.8, and its z is 0.6 + 0.66 = 1.26.  So the numbers below
+            are read off the architecture rather than chosen, and they follow D
+            the way every stage does (INVARIANTS: change D and all three change).
+
+         2. A STRAIGHT TOP, SLANTED ONE WAY.  "can you make it slanted just one
+            way not from the center" — his correction, and it settles the reading
+            this file had flagged as open.  ONE bar, right across the opening,
+            high at one side and low at the other.  It is not the arch's shape
+            any more and it is not meant to be: an arch is symmetric and this is
+            a rake.
+
+            THE TWO HEIGHTS ARE STILL THE ARCH'S, which is what keeps "basically
+            where the gold is" true.  The low end sits at the SPRINGING, where
+            the gold leaves the leg, and the high end at the arch's own PEAK —
+            0.25*spring + 0.5*(procH + 1.75) + 0.25*spring = 10.375.  A quadratic
+            sits at a quarter/half/quarter of its three points, not at the
+            control point, and reading the control point as the apex would put
+            the neon a metre and a half above the arch it is tracing.
+
+            IT RAKES DOWN TOWARD STAGE LEFT, and that is read off his own set
+            rather than chosen: the marquee's arrow (bjSignTex / the arrow group
+            below) runs off the bottom of the sign and rakes DOWN toward +x at
+            rotation.z -0.20.  The frame now leans the same way the show's own
+            graphic does.  BJ_NEON_RAKE is one sign flip to send it the other
+            way, and nothing else moves — the blinders read the same line.
+
+            THE LEGS ARE NO LONGER THE SAME HEIGHT, which is the honest
+            consequence: the high side runs to the peak, the low side to the
+            springing, or the bar would float off one of them.
+
+         3. NO SILL.  "it does not go across the floor" — the bottom bar is gone
+            and the legs run to the deck.
+
+         THE FRAME IS NOW WIDER THAN THE PICTURE, ON PURPOSE, and an assertion in
+         tests/beetlejuice.js is reversed in place to say so: scenery wider than
+         the opening is still a fault, and this is not scenery — it is the
+         house's own proscenium, lit.
+         ------------------------------------------------------------------ */
+      const BAR = BJ_NEON_BAR;
+      const NX = D.procW/2 + 0.25;          // where p2b's gold band runs
+      const NSPRING = D.procH - 1.8;        // where its arch springs
+      const NPEAK = 0.25*NSPRING + 0.5*(D.procH + 1.75) + 0.25*NSPRING;
+      /* which way it leans: -1 puts the HIGH end stage right and rakes down
+         toward stage left, with the sign's own arrow.  +1 mirrors it. */
+      const RAKE = BJ_NEON_RAKE;
+      const hiX = RAKE * NX, loX = -RAKE * NX;
+      const bar = (w, h, pos, rot) => ({geo:new T.BoxGeometry(w, h, BAR), pos:pos, rot:rot});
+      /* the bar is the chord from one springing to the other side's peak, run
+         long by a bar's width so the corners OVERLAP rather than mitre — the
+         same trick the rectangle used, and it costs nothing on an emissive bar
+         while keeping the line unbroken from any angle */
+      const chord = Math.sqrt(4*NX*NX + (NPEAK - NSPRING)*(NPEAK - NSPRING)) + BAR;
+      const ang = Math.atan2(NSPRING - NPEAK, loX - hiX);
       const tr = [
-        bar(BAR, BJ.opH, [-(HW2 - BAR/2), BJ.opH/2, 0]),   // stage-right leg
-        bar(BAR, BJ.opH, [  HW2 - BAR/2,  BJ.opH/2, 0]),   // stage-left leg
-        bar(BJ.opW, BAR, [0, BJ.opH - BAR/2, 0]),          // the header
-        bar(BJ.opW, BAR, [0, BAR/2, 0])                    // the sill, on the deck
+        /* the tall leg is under the high end, the short one under the low end */
+        bar(BAR, NPEAK   + BAR, [hiX, (NPEAK   + BAR)/2, 0]),
+        bar(BAR, NSPRING + BAR, [loX, (NSPRING + BAR)/2, 0]),
+        bar(chord, BAR, [0, (NSPRING + NPEAK)/2, 0], [0, 0, ang])
+        /* and NO SILL — his own line, and the reason the legs run to y 0 */
       ];
       const frameM = new T.MeshStandardMaterial({color:BJ_NEON_DARK,
         emissive:BJ_NEON_BLUE, emissiveIntensity:0, roughness:.5});
@@ -1737,6 +1974,8 @@ SHOWS.beetlejuice = {
        and the brick at PAL_BACK.  Both wings are already spoken for by the 13.6m
        wagon and the 13.06m attic.  So it flies, and "as little as possible" comes
        out at four of nine rather than three.  Flagged for him. */
+    /* RULING CT — NOT thinned: he named the roof and the exterior, and RULING BV
+       already took this one from 12.45m to 6.90m on his own word. */
     bjFlyWhole(aft);
 
     /* ================================================================
@@ -1905,6 +2144,11 @@ SHOWS.beetlejuice = {
         m.castShadow = true; rof.group.add(m);
       }
     }
+    /* RULING CT — thinned first, so the wrapper the fly-out uses wraps the
+       squashed set: 5.00m of stand-in roof becomes 1.40m, and the deck you stand
+       on comes with it.  The slope steepens; that is what "really thin" does to
+       a roof and it is his call (see BJ_THIN). */
+    bjThinWhole(rof, BJ_THIN);
     bjFlyWhole(rof);              // the roof flies, its walkable deck riding
 
     /* ================================================================
@@ -2050,6 +2294,12 @@ SHOWS.beetlejuice = {
         mat, c:mat.color.clone(), e:mat.emissive.clone(), ei:mat.emissiveIntensity}));
       sceneAlways(sgnFly);                       // on whatever set is up
       sceneTravel(sgnFly, 'y', 0, 2.6);          // 0 is IN; BJ_SIGN_OUT is out
+      /* RULING CW — and it goes on the fly rail, because it is a haul and the
+         flyman is who works it.  It cannot be a lineset (every lineset is
+         upstage of the plaster line and this hangs downstage of the curtain —
+         RULINGS AS, AT), so the rail carries it as a declared extra. */
+      SHOW.flyExtras.push({key:'bjSign', label:'BEETLEJUICE SIGN', scene:'bjSign',
+                           inOff:0, outOff:BJ_SIGN_OUT, speed:2.6});
     }
 
     /* ---- the show curtain ---- */

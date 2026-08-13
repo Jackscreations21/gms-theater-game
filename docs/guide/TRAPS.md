@@ -663,6 +663,18 @@ against this list before opening a PR; **add new traps as you hit them.**
   comment rules something out on a number, name the number** — the next person
   to move it then has something to grep for.
 
+- **A BOX HAS VERTICES ONLY AT ITS CORNERS, so sampling a merged frame per
+  vertex measures nothing between them.** It bit twice in one PR, in opposite
+  directions. Sampling "the top edge over x = −6" of a straight bar running from
+  −7.9 to +0.2 found **no vertex at all** and threw against a perfectly correct
+  frame. Then a sill test counting vertices under y 0.5 *between the legs* found
+  none either — because the sill's four corners are at x ±7.75 — and **passed
+  against a build with the sill put back**, which the negative check caught and
+  nothing else would have. `mergeParts` output is boxes: 8 vertices each,
+  wherever the geometry visually is. Ask a question a corner can answer —
+  "is any vertex above this line", "does any TRIANGLE span the centre low
+  down" — or walk the index buffer.
+
 - **The escaped apostrophe in a probe bit for a fourth time**, and it is written
   up twice already. Worth only the frequency note, and one detail: it dies at
   EVAL with `missing ) after argument list` pointing at the eval CALL SITE, so

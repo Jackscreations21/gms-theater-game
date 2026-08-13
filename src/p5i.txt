@@ -3703,7 +3703,12 @@ const BJ_MODELS = {
   attic:       {scene:'attic',     fit:13.4, url:'assets/bj-attic.glb'},
   closet:      {scene:'closet',    fit:6.1,  url:'assets/bj-closet.glb'},
   bedroom:     {scene:'bedroom',   fit:10.1, url:'assets/bj-bedroom.glb'},
-  roof:        {scene:'roof',      fit:13.4, url:'assets/bj-roof.glb'},
+  /* RULING CT — `thin` is the one distortion this file allows, and only on the
+     two he named: "make the house exterior and roof set really thin to fit up in
+     the fly area."  His roof lands 10.00m deep and does not hang on a batten;
+     at BJ_THIN it lands 2.80m.  The stand-in is squashed by the same number in
+     p5h, because it is what plays whenever a file has not landed. */
+  roof:        {scene:'roof',      fit:13.4, thin:BJ_THIN, url:'assets/bj-roof.glb'},
   graveyard:   {scene:'cemetery',  fit:13.4, url:'assets/bj-graveyard.glb'},
   netherworld: {scene:'afterlife', fit:13.4, url:'assets/bj-netherworld.glb'},
   /* THE EXTERIOR IS A MODEL NOW (RULING BZ).  RULING AW read the production
@@ -3717,7 +3722,8 @@ const BJ_MODELS = {
      height is what limits it, not this width: 1.846 x 1.903 x 1.876 out of the
      tool is very nearly a cube, so BX's opening cap binds first and it lands
      8.63m wide whatever this number says. */
-  houseExterior: {scene:'house',   fit:13.4, url:'assets/bj-house-exterior.glb'},
+  houseExterior: {scene:'house',   fit:13.4, thin:BJ_THIN,
+                  url:'assets/bj-house-exterior.glb'},
   /* THE SIGN IS HIS GEOMETRY AND OUR LAMPS (RULING CA).  His note with the file
      is the whole brief: "you just have to add the lights".
 
@@ -4024,8 +4030,24 @@ const BJ_FIT_AIR = 0.30, BJ_SET_DEPTH = 10.0;
 
    The brick still outranks it — the extra push comes out of the depth a
    filling set is allowed, not out of the back wall. */
-function bjFitAndSeat(root, targetW, fill, upstage){
+/* RULING CT — an entry may ask to be THINNED, and the depth cap has to know.
+   "make the house exterior and roof set really thin to fit up in the fly area."
+
+   The squash is a z-only scale on the landed root, applied after the uniform fit
+   and BEFORE the seat — so the seat, which puts the downstage face a fixed
+   distance off the arch, keeps the picture starting exactly where it started.
+   Everything RULING CB says about uniform scale still holds for width and
+   height; this is the one axis he has asked to be distorted, and it is the axis
+   nobody looks down.
+
+   AND THE DEPTH CAP IS MEASURED ON WHAT LANDS, not on what arrived.  BJ_SET_DEPTH
+   binds first for a set that is nearly a cube — his roof came out 13.05m wide
+   because 10m of stage depth capped it — and a set that is about to be squashed
+   to 28% of its depth is not the set that cap is for.  Reading it after the thin
+   lets the WIDTH bind instead, which is what a flown piece wants. */
+function bjFitAndSeat(root, targetW, fill, upstage, thin){
   const up = upstage || 0;
+  const th = (thin > 0) ? thin : 1;
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root);
   if(!isFinite(box.min.x) || box.isEmpty()) return 1;
@@ -4038,12 +4060,13 @@ function bjFitAndSeat(root, targetW, fill, upstage){
     /* the width is the whole point; only the brick still binds — and the push
        upstage (CD) comes out of the depth available, never out of the wall */
     if(size.z > 1e-6)
-      s = Math.min(s, (Math.abs(D.backWall) - BJ_FIT_AIR - up) / size.z);
+      s = Math.min(s, (Math.abs(D.backWall) - BJ_FIT_AIR - up) / (size.z * th));
   } else {
     if(size.y > 1e-6) s = Math.min(s, (BJ.opH - BJ_FIT_AIR) / size.y);
-    if(size.z > 1e-6) s = Math.min(s, BJ_SET_DEPTH / size.z);
+    if(size.z > 1e-6) s = Math.min(s, BJ_SET_DEPTH / (size.z * th));
   }
   root.scale.multiplyScalar(s);
+  if(th !== 1) root.scale.z *= th;
   /* re-measure AFTER scaling rather than multiplying the old box: a child
      transform inside the model makes the two disagree, and this is cheap */
   root.updateMatrixWorld(true);
@@ -4254,7 +4277,7 @@ function bjApplyModel(entry, root, scGiven){
   let s = entry.scale || 1;
   if(s !== 1) root.scale.multiplyScalar(s);
   else if(entry.centre) s = bjFitAndCentre(root, entry.fit, entry.centre);
-  else if(entry.fit) s = bjFitAndSeat(root, entry.fit, entry.fillWidth, entry.upstage);
+  else if(entry.fit) s = bjFitAndSeat(root, entry.fit, entry.fillWidth, entry.upstage, entry.thin);
 
   /* collect the model's walkables BEFORE routing — the split route detaches
      the top-level nodes from the root, and a traverse after that sees none */
@@ -4294,9 +4317,23 @@ function bjApplyModel(entry, root, scGiven){
         if(keep.indexOf(c) < 0) sc.group.remove(c);
       }
     }
+  } else if(sc.pmv && sc.pmv.all){
+    /* an 'all'-wrapped set (bjTrackWhole, and bjFlyWhole through it): the model
+       goes INSIDE the wrapper, so it keeps travelling (RULING AY).
+
+       ROUTED BY THE WRAPPER'S NAME, NOT BY HOW MANY MOVERS THERE ARE.  This read
+       `pmvKeys.length === 1`, and RULING CT gives the flown sets a second mover
+       for the line they hang on — so his 99k-triangle roof took the CEMETERY's
+       route, which strips every part group and deals the top-level nodes out by
+       the sign of their x.  The roof measured as an empty box: one mesh, dealt
+       into a group, with the stand-in stripped out from under it.  A count is not
+       a kind; `all` is the name that means "the whole set travels on this one",
+       and it is what the question was always asking. */
+    const g = sc.pmv.all.group;
+    bjStrip(g);
+    g.add(root);
+    landed.push(root);
   } else if(pmvKeys.length === 1){
-    /* one part mover is an 'all'-wrapped flying set (bjFlyWhole): the model
-       goes INSIDE the flyer, so it keeps flying (RULING AY) */
     const g = sc.pmv[pmvKeys[0]].group;
     bjStrip(g);
     g.add(root);

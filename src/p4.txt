@@ -99,10 +99,17 @@ function makeBeam(len, rad){
    Real lanterns, not primitives.  Every geometry is built ONCE via fixG and
    shared across all instances — three stages hang ~25 channels each, so
    per-body geometry would be ~900 duplicate buffers.  Contracts the rest of
-   p4 reads and must survive any edit here: userData.lens on every body,
-   userData.base/yoke/head on movers.  New for the detach system (PR 5):
+   p4 reads and must survive any edit here: userData.lens on every body THAT HAS
+   ONE, userData.base/yoke/head on movers.  New for the detach system (PR 5):
    userData.clamp is the C-clamp that meets the pipe.  Budget: each body
-   stays well under 700 triangles — these are drawn ~75x in a headset.     */
+   stays well under 700 triangles — these are drawn ~75x in a headset.
+
+   RULING CY MADE ONE BODY EMPTY.  The blinder has no geometry at all — no
+   shell, no cells, no lens — because he asked for the light to come out of the
+   neon rather than out of a box hanging in his picture.  So "userData.lens on
+   every body" is now "on every body that has a mesh", which is the same
+   contract for everything with something to look at.  A test in
+   tests/stages.js names the exception and refuses a second one.               */
 const FIXG = {};
 function fixG(k, make){ return FIXG[k] || (FIXG[k] = make()); }
 /* lens materials are cached by colour and SHARED — never tint one per
@@ -228,8 +235,29 @@ function bodyMover(){
    exact moment the stage matters.  That was `power` until RULING BF, and doing
    both jobs with one number is what left it too dim to read — being looked at
    is not the same as being dim (see BLIND_POWER in buildRig). */
+/* RULING CY — AND IT HAS NO BODY AT ALL.
+
+   "Remove the body for the blinders just maek it basically comu out of the neon
+    thing."
+
+   RULING CH moved the eight blinders inside the scenic frame and he has watched
+   eight lantern boxes hanging in his picture.  So the body is nothing: the POINT
+   stays, the beam stays, the hot-lens glow stays, and there is no shell, no
+   cells and no yoke between them.  The light leaves the neon bar, which is where
+   the points now sit (BLIND_X / BLIND_TOP, below).
+
+   WHAT IT COSTS, stated rather than discovered: a body with no mesh cannot be
+   raycast, so a blinder can no longer be taken off its point and carried.
+   Nothing in the plot or the crew does that, and the point, the patch and the
+   level path are all untouched — but it is a real capability spent, and
+   BLIND_BODY is the one line that puts it back.
+
+   IT MOVES THEM IN ALL FIVE PRODUCTIONS, exactly as CH did and for the same
+   reason: this is the rig, and the rig is shared. */
+const BLIND_BODY = false;
 function bodyBlinder(){
   const g = new T.Group();
+  if(!BLIND_BODY) return g;          // RULING CY — it comes out of the neon
   const shell = new T.Mesh(fixG('blindShell', ()=>new T.BoxGeometry(.94,.52,.28)), M.fixture);
   g.add(shell);
   const cells = new T.Mesh(fixG('blindCells', ()=>{
@@ -784,9 +812,46 @@ function buildRig(){
      is what the number was originally for.  The 1:16 white flash still has the
      house curtain (z -0.50) behind it, so it reads on the cloth as it always
      did. */
-  const bz = 1.35;                            // just clear of the 1.2 deep wall
-  const BLIND_X = 6.2, BLIND_TOP_Y = 8.5;     // inside a 13.6 x 9.2 scenic portal
-  [[-5.4, BLIND_TOP_Y],[-1.8, BLIND_TOP_Y],[1.8, BLIND_TOP_Y],[5.4, BLIND_TOP_Y],
+  /* RULING CY — AND THEY SIT ON THE NEON, because that is where the light is now
+     meant to come from.  RULING CX takes the frame out to the architectural
+     proscenium: legs at x +-(D.procW/2 + 0.25) = +-7.75, and ONE straight bar
+     raked right across the opening — high at stage right (the arch's own peak,
+     10.375) and low at stage left (the springing, D.procH - 1.8 = 8.6).  His
+     correction: "can you make it slanted just one way not from the center."
+
+     So the line the units sit on runs the whole width, and it is not symmetric.
+     Written from the HIGH end, which is the side BLIND_RAKE names:
+
+       y  =  10.375  -  (7.75 - rake*x) * (10.375 - 8.6) / 15.5
+
+     with rake -1 that is 10.375 at x -7.75 and 8.6 at x +7.75.  THE SIGN OF THIS
+     WAS WRONG ONCE and both the fixtures and their own assertion carried the
+     same wrong line, so they agreed with each other perfectly — it was the
+     FRAME's assertion, which measures the built geometry rather than
+     re-computing the formula, that caught it.
+
+     Two units on each leg and four along the rake, each one ON the line rather
+     than beside it.  BJ_NEON_RAKE is the sign that flips it in p5h and this
+     mirrors with it.
+
+     Plain numbers, like BLIND_X was, because p4 builds before any show exists
+     and every stage gets this rig — the FOH-bar and speaker-bar precedent — with
+     the derivation written down so it can be re-cut if the frame moves again.
+
+     z GOES TO THE BAR'S DOWNSTAGE FACE.  The frame stands at BJ.pz + BJ_NEON_Z =
+     1.26 and the bar is BJ_NEON_BAR 0.34 thick, so its face is 1.43 — and the
+     old 1.35 put the units INSIDE the bar rather than coming out of it, which an
+     assertion caught.  1.45 is a hair proud of the face: with no body at all
+     that reads as the bar itself.  Still clear of the 1.2m deep wall, which is
+     what the number was originally for, and the 1:16 white flash still has the
+     house curtain (z -0.50) behind it to read on. */
+  const bz = 1.45;                            // the neon bar's own downstage face
+  const BLIND_X = 7.75;                       // ON the gold, where the neon runs
+  const BLIND_RAKE = -1;                      // matches BJ_NEON_RAKE in p5h
+  const BLIND_SLANT = x =>
+    10.375 - (BLIND_X - BLIND_RAKE*x)*(10.375 - 8.6)/(2*BLIND_X);
+  [[-5.3, BLIND_SLANT(-5.3)],[-2.2, BLIND_SLANT(-2.2)],
+   [ 2.2, BLIND_SLANT( 2.2)],[ 5.3, BLIND_SLANT( 5.3)],
    [-BLIND_X, 6.4],[-BLIND_X, 3.0],[BLIND_X, 6.4],[BLIND_X, 3.0]
   ].forEach(([x,y],i)=>{
     addFixture({name:'BLINDER '+(i+1), type:'blinder', audience:true,

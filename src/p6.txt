@@ -747,13 +747,76 @@ function syncFlyRow(ls){
   if(trav) u.trav.textContent = ls.travTarget > .5 ? 'CLOSE' : 'OPEN';
   u.row.classList.toggle('sel', ls === selLineset);
 }
-function syncFlyUI(){ FLY.forEach(syncFlyRow); syncFohBarRow(); syncSpkBarRows(); }
+/* ---- RULING CW — the hauls that are not linesets -------------------------
+   Same tfoot and the same rules as the FOH and speaker rows, with one
+   difference that matters: those two are rail furniture and are built ONCE,
+   and these belong to the SHOW, so they are rebuilt whenever the show changes.
+   The rows are appended after the fixed furniture, so nothing above them moves
+   when a show with none is loaded. */
+let flyExtraUI = [];
+function buildFlyExtrasUI(){
+  const table = $('#lsTable'); if(!table) return;
+  const tf = table.querySelector('tfoot'); if(!tf) return;   // the FOH row built it
+  for(const u of flyExtraUI) if(u.row.parentNode) u.row.parentNode.removeChild(u.row);
+  flyExtraUI = [];
+  const list = (typeof SHOW !== 'undefined' && SHOW.flyExtras) ? SHOW.flyExtras : [];
+  list.forEach((x, i)=>{
+    const tr = document.createElement('tr'); tr.className = 'flyextra';
+    tr.innerHTML =
+      '<td style="color:var(--amber)">X'+(i+1)+'</td>'+
+      '<td class="mini">'+x.label+'</td>'+
+      '<td class="goods">flown on its own line</td>'+
+      '<td><div class="pipbar"><i></i></div></td>'+
+      '<td class="mini ht"></td>'+
+      '<td class="mini"></td>'+
+      '<td><span class="dot"></span></td>'+
+      '<td></td>';
+    const cell = tr.lastElementChild;
+    /* READ THE ENTRY BY KEY AT CLICK TIME, never the captured object: a stage
+       swap or a re-load builds a new SHOW, and a button holding the old entry
+       would haul a sign that is not in this building (§5, how the rail
+       "stopped working"). */
+    const mk = (t, out)=>{
+      const b = document.createElement('button'); b.className = 'b';
+      b.style.padding = '2px 6px'; b.style.fontSize = '10px'; b.textContent = t;
+      b.addEventListener('click', e=>{
+        e.stopPropagation();
+        const live = (SHOW.flyExtras || []).find(y=>y.key === x.key);
+        if(live) flyExtraTo(live, out);
+        syncFlyExtraRows();
+      });
+      cell.appendChild(b); return b;
+    };
+    mk('IN', false);
+    mk('OUT', true);
+    flyExtraUI.push({key:x.key, row:tr, bar:tr.querySelector('.pipbar i'),
+                     ht:tr.querySelector('.ht'), dot:tr.querySelector('.dot')});
+    tf.appendChild(tr);
+  });
+  syncFlyExtraRows();
+}
+function syncFlyExtraRows(){
+  for(const u of flyExtraUI){
+    const x = (typeof SHOW !== 'undefined' && SHOW.flyExtras)
+      ? SHOW.flyExtras.find(y=>y.key === u.key) : null;
+    if(!x) continue;
+    const f = flyExtraFrac(x);
+    u.bar.style.width = ((1 - f)*100).toFixed(1)+'%';    // full bar = in, like a pipe at its trim
+    u.ht.textContent = f < 0.02 ? 'IN' : (f > 0.98 ? 'OUT' : Math.round(f*100)+'% out');
+    u.dot.className = 'dot '+(flyExtraMoving(x) ? 'mv' : '');
+  }
+}
+function syncFlyUI(){ FLY.forEach(syncFlyRow); syncFohBarRow(); syncSpkBarRows(); syncFlyExtraRows(); }
 /* kept for the callers that change what's hanging */
 function refreshFlyUI(){
   const tb = $('#lsTable tbody');
   const stale = !FLY.length || !FLY[0].ui ||
                 (tb && tb.dataset.stage !== ((typeof STAGE !== 'undefined') ? STAGE : 'palace'));
   if(stale) buildFlyUI(); else syncFlyUI();
+  /* RULING CW — the show's own hauls, rebuilt every refresh because they belong
+     to the SHOW rather than to the rail.  It is cheap: one row per entry, and
+     four of the five productions declare none. */
+  buildFlyExtrasUI();
   syncRailGroups();
 }
 

@@ -109,14 +109,52 @@ const probe = `
     const t = byName('bj:portalFrame');
     if(!t) throw new Error('no portal frame');
     /* the cornice carries no name, so take the widest thing near the top */
+    /* REVERSED IN PLACE BY RULING CX — the AO/AV/BA/BI/BZ precedent, seventh
+       time, and the exemption is NAMED rather than the rule loosened.
+
+       "The neon proscenium should be basically where the gold is right now."
+       p2b's gold band runs at x +-(D.procW/2 + 0.25) and arches to 10.375 —
+       OUTSIDE and ABOVE the 15.0 x 10.4 opening, because it is the moulding
+       ROUND the opening rather than something seen through it.  So the frame
+       that traces it is outside too, by design.
+
+       WHAT THIS ASSERTION IS FOR SURVIVES WHOLE, which is why it turns rather
+       than goes: SCENERY wider or taller than the house opening is a fault and
+       stays one — a false portal that fouls the architecture is a mistake you
+       cannot see from the front.  The neon is not scenery seen through the
+       opening; it is the house's own proscenium, lit.  One name. */
+    const EXEMPT = ['bj:portalFrame'];
     let topY = all.max.y, wide = Math.max(Math.abs(all.min.x), Math.abs(all.max.x));
+    {
+      const nb = box(byName('bj:portalFrame'));
+      if(Math.abs(all.min.x) >= Math.abs(nb.min.x) - 1e-6 ||
+         Math.abs(all.max.x) >= Math.abs(nb.max.x) - 1e-6){
+        /* recompute the union WITHOUT the exempted frame — otherwise the
+           exemption would be decoration and the rule would test nothing */
+        const un = new THREE.Box3();
+        SHOW.group.traverse(o=>{ if(o.isMesh && o.name && o.name.indexOf('bj:portal') === 0 &&
+          EXEMPT.indexOf(o.name) < 0) un.union(box(o)); });
+        if(!un.isEmpty()){
+          topY = un.max.y;
+          wide = Math.max(Math.abs(un.min.x), Math.abs(un.max.x));
+        }
+      }
+    }
     SHOW.group.traverse(o=>{ if(!o.isMesh || o.name === 'bj:deck') return;
+      if(EXEMPT.indexOf(o.name) >= 0) return;
       const b = box(o);
       if(b.max.y > 6 && b.max.z > -2){ topY = Math.max(topY, b.max.y);
         wide = Math.max(wide, Math.abs(b.min.x), Math.abs(b.max.x)); } });
     if(wide > D.procW/2) throw new Error('the portal is '+(wide*2).toFixed(2)+'m wide, the opening is '+D.procW);
     if(topY > D.procH) throw new Error('the portal reaches y='+topY.toFixed(2)+', the opening is '+D.procH);
-    return 'portal '+(wide*2).toFixed(2)+'m x '+topY.toFixed(2)+'m inside a '+D.procW+' x '+D.procH+' opening';
+    /* and the exemption is not a licence: the neon must still trace the GOLD,
+       not wander off into the auditorium */
+    const nb = box(byName('bj:portalFrame'));
+    const gold = D.procW/2 + 0.25;
+    if(Math.abs(Math.abs(nb.max.x) - gold) > 0.4)
+      throw new Error('the neon runs at x '+nb.max.x.toFixed(2)+', and the gold is at '+gold.toFixed(2));
+    return 'portal '+(wide*2).toFixed(2)+'m x '+topY.toFixed(2)+'m inside a '+D.procW+' x '+D.procH+
+           ' opening, with the neon out on the gold at +-'+nb.max.x.toFixed(2);
   });
 
   /* one material for the whole frame: a material per object is the
@@ -157,27 +195,119 @@ const probe = `
      untouched and are still load-bearing — a sill on the deck (it surrounds the
      picture, it does not sit across the top of it) and never wider than the
      house opening. */
-  P('the proscenium neon is a thick closed bar, and it is built DARK (CH)', ()=>{
+  /* REVERSED IN PLACE BY RULING CX.  RULING CH's frame was a closed rectangle
+     13.60m across inside the picture, with a sill on the deck.  His three
+     corrections — "basically where the gold is ... the top is straitgs and
+     slaantted down ... it does not go across the floor" — change all three of
+     the things this assertion pinned, and leave everything else about the frame
+     exactly as CH built it: one merged mesh, one material, built dark, thicker
+     than the tube it replaced, no wing returns.  Those are what stay. */
+  P('the proscenium neon traces the gold, straight-topped and open at the deck (CX)', ()=>{
     showLoad('beetlejuice');
     const t = byName('bj:portalFrame');
     const b2 = box(t);
-    /* it must SURROUND the picture, not sit across the top of it */
-    if(b2.min.y > 0.4) throw new Error('there is no sill: the neon starts at y='+b2.min.y.toFixed(2));
-    if(b2.max.y < BJ.opH - 0.2) throw new Error('the neon does not reach the header');
+    /* NO SILL — his own line, and it is the one that needs measuring rather than
+       reading, because a missing bottom bar and a frame that never reached the
+       deck look the same from a mesh count.  The LEGS must run to the deck and
+       there must be nothing crossing between them. */
+    if(b2.min.y > 0.4) throw new Error('the legs do not reach the deck: the neon starts at y='+b2.min.y.toFixed(2));
+    {
+      /* BY TRIANGLE, NOT BY VERTEX, and that is the whole point of this block.
+         A BoxGeometry carries vertices at its CORNERS only, so a sill running
+         the full width has no vertex anywhere near the middle of the deck — the
+         first version of this check counted vertices under y 0.5 between the
+         legs, found none, and passed against a build with the sill put back.
+         The negative check is what said so.  A triangle that SPANS the centre
+         line low down is a sill whatever its corners are doing. */
+      const p0 = t.geometry.attributes.position, idx = t.geometry.index;
+      const nTri = (idx ? idx.count : p0.count)/3;
+      let sill = 0;
+      for(let i = 0; i < nTri; i++){
+        let minY = 1e9, minX = 1e9, maxX = -1e9;
+        for(let k = 0; k < 3; k++){
+          const a = idx ? idx.getX(i*3 + k) : i*3 + k;
+          minY = Math.min(minY, p0.getY(a));
+          minX = Math.min(minX, p0.getX(a));
+          maxX = Math.max(maxX, p0.getX(a));
+        }
+        if(minY < 0.6 && minX < -1 && maxX > 1) sill++;
+      }
+      if(sill)
+        throw new Error(sill + ' triangles cross the deck between the legs — the sill is still there');
+    }
     /* CLOSED, and that is measured rather than counted: a loop missing a leg
        would still be four bars and still pass a mesh count.  Cast a box at each
        of the four sides of the opening and demand geometry in all four. */
     const pos = t.geometry.attributes.position;
-    const side = {left:0, right:0, top:0, bottom:0};
+    const gold = D.procW/2 + 0.25, spring = D.procH - 1.8;
+    const peak = 0.25*spring + 0.5*(D.procH + 1.75) + 0.25*spring;
+    /* CLOSED, and measured rather than counted: a loop missing a leg would still
+       be three bars and still pass a mesh count.  With RULING CX's rake the two
+       legs are DIFFERENT HEIGHTS, so this asks for one of each — a tall side
+       reaching the peak and a short side stopping at the springing. */
+    const side = {left:0, right:0, high:0, low:0};
     for(let i = 0; i < pos.count; i++){
       const x = pos.getX(i), y = pos.getY(i);
-      if(x < -BJ.opW/2 + 0.5) side.left++;
-      if(x >  BJ.opW/2 - 0.5) side.right++;
-      if(y >  BJ.opH   - 0.5) side.top++;
-      if(y <  0.5)            side.bottom++;
+      if(x < -gold + 0.5) side.left++;
+      if(x >  gold - 0.5) side.right++;
+      if(Math.abs(x) > gold - 0.5 && Math.abs(y - peak) < 0.5) side.high++;
+      if(Math.abs(x) > gold - 0.5 && Math.abs(y - spring) < 0.5) side.low++;
     }
     for(const k in side)
-      if(!side[k]) throw new Error('the loop is open: no bar on the '+k+' side');
+      if(!side[k]) throw new Error('the frame is open: nothing on the '+k+' side');
+    /* A STRAIGHT TOP RAKED ONE WAY, and this is what tells it from both an arch
+       and from the symmetric pair CX first built: NOTHING ABOVE THE ONE LINE
+       that runs from the low springing to the high peak, right across.  A
+       quadratic sweep bows above it; two chords meeting at the centre stand
+       above it by nearly a metre at the middle; one raked bar sits on it.
+
+       "can you make it slanted just one way not from the center" — so the line
+       is not symmetric and Math.abs(x) is exactly the thing that must NOT appear
+       in it.
+
+       WRITTEN AS "NOTHING ABOVE" RATHER THAN "SAMPLE THE TOP EDGE AT X" on
+       purpose.  A box carries vertices at its CORNERS only, so sampling the top
+       edge at the quarter points of a straight bar finds nothing there at all —
+       an earlier version of this check threw "no top edge over x=-6" against a
+       perfectly correct frame. */
+    {
+      const rake = BJ_NEON_RAKE;
+      const lineY = x => peak - (gold - rake*x)*(peak - spring)/(2*gold);
+      let worst = 0, worstAt = 0;
+      for(let i = 0; i < pos.count; i++){
+        const x = pos.getX(i), y = pos.getY(i);
+        if(y <= spring - 0.5) continue;
+        const over = y - lineY(x) - BJ_NEON_BAR;    // the bar has thickness of its own
+        if(over > worst){ worst = over; worstAt = x; }
+      }
+      if(worst > 0.15)
+        throw new Error('the top stands '+worst.toFixed(2)+'m above its line at x='+worstAt.toFixed(2)+
+                        ' — that is an arch or a centre peak, not one straight rake');
+      if(Math.abs(b2.max.y - peak) > 0.4)
+        throw new Error('the high end is at y '+b2.max.y.toFixed(2)+', and the gold peaks at '+peak.toFixed(2));
+      /* AND IT REALLY IS RAKED ONE WAY: the high corner is over ONE side of the
+         opening, not over the middle.  A centre peak would satisfy every line
+         above and is the shape he has just ruled out. */
+      let hiX = 0, hiY = -99;
+      for(let i = 0; i < pos.count; i++)
+        if(pos.getY(i) > hiY){ hiY = pos.getY(i); hiX = pos.getX(i); }
+      if(Math.abs(hiX) < gold - 1.0)
+        throw new Error('the top peaks at x='+hiX.toFixed(2)+
+                        ', over the middle — he asked for it slanted one way, not from the centre');
+      if(Math.sign(hiX) !== Math.sign(rake))
+        throw new Error('it rakes the wrong way: high end at x='+hiX.toFixed(2)+
+                        ' with BJ_NEON_RAKE '+rake);
+      if(!(b2.max.y - spring > 1.0))
+        throw new Error('the top is flat at y '+b2.max.y.toFixed(2)+', not raked up to '+peak.toFixed(2));
+      /* and the LOW side really does come down to the springing, or it is a
+         header sitting on two tall legs rather than a rake */
+      let loTop = -99;
+      for(let i = 0; i < pos.count; i++)
+        if(Math.sign(pos.getX(i)) === -Math.sign(rake) && Math.abs(pos.getX(i)) > gold - 0.5)
+          loTop = Math.max(loTop, pos.getY(i));
+      if(Math.abs(loTop - spring) > 0.6)
+        throw new Error('the low side tops out at y '+loTop.toFixed(2)+', not at the springing '+spring.toFixed(2));
+    }
     /* THICKER than the 0.075-radius tube it replaces — his one adjective */
     const thick = b2.max.z - b2.min.z;
     if(thick < 0.2)
@@ -185,17 +315,20 @@ const probe = `
     /* and the wings are GONE — a frame that still ran upstage would be 5m deep */
     if(thick > 1.0)
       throw new Error('the frame is '+thick.toFixed(2)+'m deep — the wing returns are still there');
-    /* never wider than the house opening, and inside the portal check's own +-7.4 */
+    /* ON THE GOLD — the number that replaces "inside the picture".  It is the
+       moulding round the opening, so it is outside it, and it must not wander
+       past it either: half a metre of tolerance either way and no more. */
     const wide = Math.max(Math.abs(b2.min.x), Math.abs(b2.max.x));
-    if(wide > D.procW/2) throw new Error('the neon is '+(wide*2).toFixed(2)+'m across a '+D.procW+' opening');
-    if(wide > 7.4) throw new Error('the neon is '+wide.toFixed(2)+' from centre; the portal check refuses past 7.4');
+    if(Math.abs(wide - gold) > 0.5)
+      throw new Error('the neon runs at x '+wide.toFixed(2)+' and the gold is at '+gold.toFixed(2));
     /* BUILT DARK.  "For the rest it is off" — so the frame exists unlit, and a
        cue is the only thing that ever lights it. */
     if(t.material.emissiveIntensity > 0.001)
       throw new Error('the frame is built lit at '+t.material.emissiveIntensity+' — it must be dark until a cue says');
     if(!SHOW.bjPortal) throw new Error('the frame is not registered on SHOW.bjPortal — the stage swap would lose it');
     if(SHOW.bjPortal.mesh !== t) throw new Error('SHOW.bjPortal points at something else');
-    return (wide*2).toFixed(2)+'m across, a '+thick.toFixed(2)+'m bar closed on all four sides, built dark';
+    return (wide*2).toFixed(2)+'m across on the gold at +-'+gold.toFixed(2)+', a '+thick.toFixed(2)+
+           'm bar, straight top to y '+b2.max.y.toFixed(2)+', nothing across the deck, built dark';
   });
 
   console.log('--- the cemetery is a SCENE, and this is the first show to use them ---');
@@ -1207,7 +1340,20 @@ const probe = `
     while(p){ if(p.name && p.name.indexOf('dress:') === 0) inDress = true; p = p.parent; }
     if(inDress) throw new Error('the staircase is part of a dressing, not the shell');
     if(!byName('bj:settee')) throw new Error('the deetz dressing is unfurnished');
-    const b = box(byName('bj:redWall')), a = box(byName('bj:bjWall'));
+    /* REVERSED IN PLACE BY RULING CN.  This read both walls out of the WORLD with
+       byName, which worked only because all three dressings stood in the scene at
+       once — the very thing he has ruled against.  The dressing that is not worn
+       is not in the world to be found, so the walls are read out of the dressing
+       groups themselves.  What the assertion means is untouched: the three
+       dressings are the same room, measured. */
+    /* NOT called inDress — this function already has a local of that name eleven
+       lines up, and a duplicate const inside the probe template dies at PARSE
+       time pointing at the eval.  Sibling of the shadowing trap in TRAPS. */
+    const fromDress = (key, nm)=>{ let r = null;
+      sc.dress[key].traverse(o=>{ if(!r && o.name === nm) r = o; }); return r; };
+    const rw = fromDress('deetz', 'bj:redWall'), bw = fromDress('bj', 'bj:bjWall');
+    if(!rw || !bw) throw new Error('a dressing lost its wall');
+    const b = box(rw), a = box(bw);
     if(Math.abs((a.max.x - a.min.x) - (b.max.x - b.min.x)) > 0.4)
       throw new Error('the dressings are not the same room');
     return 'both walls '+(b.max.x-b.min.x).toFixed(1)+'m across, '+(b.max.z-b.min.z).toFixed(1)+'m deep';
@@ -1433,9 +1579,10 @@ const probe = `
       if(sc.mv) ax.push(sc.mv.axis);
       if(sc.pmv) for(const k in sc.pmv) if(k === 'all') ax.push(sc.pmv[k].axis);
       if(ax.indexOf('z') >= 0)
-        /* NO ESCAPED QUOTE IN HERE.  The probe is a template literal, so \' is
-           consumed by IT and the eval sees a bare apostrophe closing a
-           single-quoted string.  Same family as the backtick trap in TRAPS. */
+        /* NO ESCAPED QUOTE IN HERE.  The probe is a template literal, so a
+           singly-escaped quote is consumed by IT and the eval sees a bare
+           apostrophe closing a single-quoted string.  Same family as the
+           backtick trap in TRAPS, and tests/probe-lint.js sweeps for both. */
         throw new Error(sc.name + ' arrives on z, and upstage is the door of the house alone');
     }
     return 'flown: ' + flying.join(', ') + '  |  tracked: ' + tracking.join(' ');
@@ -1477,6 +1624,271 @@ const probe = `
       throw new Error('it is still standing out in the stage-right wing at x ' + b.min.x.toFixed(2));
     return 'flown, parked y ' + b.min.y.toFixed(2) + '..' + b.max.y.toFixed(2) +
            ' over a ' + BJ.opH + 'm picture, under a ' + D.gridY + 'm grid, wing clear';
+  });
+
+  P('an INSTANT swap strikes as instantly as it calls on: the stage is clear at load', ()=>{
+    /* FOUND BY THE SETS MENU, AND IT PREDATES THIS ROUND.  RULING BQ made a
+       struck set stay DRAWN, and sceneShow — the instant swap, which is what
+       showLoad uses — drove the movers of the set coming ON and nothing at all
+       for the sets going off.  So every parked set stood, visible, in its ACTING
+       position the moment the show loaded: the exterior drop hanging at z -7.4
+       right across the picture, the attic in the acting area, all of them on the
+       deck at once.
+
+       NOTHING CAUGHT IT because the probe and every assertion drive a CHANGE
+       first, and a change parks them correctly.  This one asserts the state
+       nobody had looked at: straight after the load, before a frame is stepped. */
+    showLoad('beetlejuice');
+    const pic = new THREE.Box3(new THREE.Vector3(-BJ.opW/2, 0, -10.90),
+                               new THREE.Vector3( BJ.opW/2, BJ.opH, 1.0));
+    const bad = [], stood = [];
+    for(const sc of SHOW.scenes){
+      if(sc.always || sc.name === SHOW.scene) continue;
+      if(sc.group.userData.sceneOff) continue;          // switched off, not parked
+      const b = box(sc.group);
+      if(b.isEmpty()) continue;
+      stood.push(sc.name);
+      if(!b.intersectsBox(pic)) continue;
+      const o = b.clone().intersect(pic), d = o.getSize(new THREE.Vector3());
+      if(Math.min(d.x, d.y, d.z) > 0.05)
+        bad.push(sc.name + ' stands in the picture by ' + d.x.toFixed(2) + ' x ' +
+                 d.y.toFixed(2) + ' x ' + d.z.toFixed(2) + 'm');
+    }
+    if(bad.length) throw new Error(bad.join('; '));
+    if(stood.length < 3)
+      throw new Error('only ' + stood.length + ' sets are parked at load — this proves little');
+    return stood.length + ' sets standing backstage at load, none of them in the picture';
+  });
+
+  P('RULING CW: the sign is a row on the DESK fly table, and it hauls', ()=>{
+    showLoad('beetlejuice');
+    refreshFlyUI();
+    /* THROUGH THE DOM, NOT THE MODEL — a detached row still fires its handler
+       perfectly well, which is how the fly rail "stopped working" once. */
+    const rows = document.querySelectorAll('#lsTable tfoot tr.flyextra');
+    if(rows.length !== 1)
+      throw new Error(rows.length + ' haul rows on the desk, expected 1');
+    const label = rows[0].querySelectorAll('td')[1];
+    if(!label || label.textContent.indexOf('BEETLEJUICE') < 0)
+      throw new Error('the haul row is not the sign: ' + (label ? label.textContent : 'no cell'));
+    const btns = rows[0].querySelectorAll('button');
+    const out = Array.prototype.filter.call(btns, b=>b.textContent === 'OUT')[0];
+    const inn = Array.prototype.filter.call(btns, b=>b.textContent === 'IN')[0];
+    if(!out || !inn) throw new Error('the haul row has no IN/OUT');
+    const sg = sceneFind('bjSign');
+    out.click();
+    for(let i = 0; i < 600 && sceneTravelling(sg); i++) updateStorm(1/60);
+    if(Math.abs(sg.mv.off - BJ_SIGN_OUT) > 0.05)
+      throw new Error('OUT left the sign at ' + sg.mv.off.toFixed(2));
+    inn.click();
+    for(let i = 0; i < 600 && sceneTravelling(sg); i++) updateStorm(1/60);
+    if(Math.abs(sg.mv.off) > 0.05) throw new Error('IN left the sign at ' + sg.mv.off.toFixed(2));
+    /* and it does not survive into a production that declares none */
+    showLoad('outsiders');
+    refreshFlyUI();
+    if(document.querySelectorAll('#lsTable tfoot tr.flyextra').length)
+      throw new Error('the sign row survived into a show that has no sign');
+    showLoad('beetlejuice');
+    return 'one haul row on the desk, out to ' + BJ_SIGN_OUT + ' and back, gone with the show';
+  });
+
+  P('RULING CU: the marquee goes dark as it flies, and keeps what the cue said', ()=>{
+    showLoad('beetlejuice');
+    const sg = sceneFind('bjSign');
+    if(!sg || !sg.mv) throw new Error('the sign does not travel, so it can never go up');
+    if(!SHOW.signLamps || !SHOW.signLamps.length) throw new Error('the sign has no lamps');
+    const lamp = SHOW.signLamps[0];
+    const lit = ()=>lamp.mat.emissive ? lamp.mat.emissiveIntensity
+                                      : (lamp.mat.color.r + lamp.mat.color.g + lamp.mat.color.b)/3;
+    /* home, and the sign is lit — this is the pre-show, "the sign lit" */
+    updateStorm(1/60);
+    const home = lit();
+    if(!(home > 0.1)) throw new Error('the sign is dark before it has gone anywhere: ' + home.toFixed(3));
+    /* a cue turns it red.  The gate must not lose that. */
+    setSignLamps('#ff1e10');
+    const redHome = lit();
+    if(!(redHome > 0.1)) throw new Error('the red cue left it dark on the deck');
+    /* UP IT GOES.  The lamps start going out as it rises, and are out well
+       before it has finished travelling — a marquee switched off, not dimmed. */
+    sceneMoveTo('bjSign', BJ_SIGN_OUT);
+    let frames = 0, midLit = null;
+    while(sceneTravelling(sg) && frames < 900){
+      updateStorm(1/60); frames++;
+      if(frames === 6) midLit = lit();       // a tenth of a second into the rise
+    }
+    if(frames >= 900) throw new Error('the sign never arrived');
+    if(!(lit() < 0.02))
+      throw new Error('it is up at ' + sg.mv.off.toFixed(2) + 'm and still lit at ' + lit().toFixed(3));
+    /* IT IS A FADE, NOT A SNAP, and that is what the intermediate frame is for:
+       strictly between full and out a tenth of a second in.  A snap would read
+       as a lamp failing rather than a marquee being switched off. */
+    if(midLit === null || !(midLit > 0.02 && midLit < redHome - 0.02))
+      throw new Error('the lamps snapped rather than faded: ' +
+                      (midLit === null ? 'never sampled' : midLit.toFixed(3)));
+    /* AND THE CUE STATE SURVIVED UNDERNEATH.  Bring it back in and it is still
+       the colour the cue asked for — the gate multiplies, it does not repaint. */
+    if(SHOW.signWant !== '#ff1e10')
+      throw new Error('the cue colour was forgotten while the sign was up');
+    sceneMoveTo('bjSign', 0);
+    for(let i = 0; i < 900 && sceneTravelling(sg); i++) updateStorm(1/60);
+    for(let i = 0; i < 60; i++) updateStorm(1/60);
+    if(!(lit() > 0.1)) throw new Error('it came home dark at ' + lit().toFixed(3));
+    if(lamp.mat.emissive && Math.abs(lamp.mat.emissive.getHex() - 0xff1e10) > 0)
+      throw new Error('it came home the wrong colour: #' + lamp.mat.emissive.getHexString());
+    setSignLamps(null);
+    for(let i = 0; i < 60; i++) updateStorm(1/60);
+    return 'home ' + home.toFixed(2) + ' -> red ' + redHome.toFixed(2) +
+           ' -> rising ' + midLit.toFixed(2) + ' -> up 0.00 -> home again still red';
+  });
+
+  P('RULING CU: a sign with no mover is left alone, not switched off', ()=>{
+    showLoad('beetlejuice');
+    const sg = sceneFind('bjSign');
+    if(!SHOW.signLamps || !SHOW.signLamps.length) throw new Error('the sign has no lamps');
+    const lamp = SHOW.signLamps[0];
+    const lit = ()=>lamp.mat.emissive ? lamp.mat.emissiveIntensity
+                                      : (lamp.mat.color.r + lamp.mat.color.g + lamp.mat.color.b)/3;
+    /* DECLARED, NEVER ASSUMED, the habit of this whole file: a production whose
+       sign cannot fly — or a sign built before its travel is wired — must keep
+       its lamps rather than have them switched off for ever by a missing field. */
+    const keep = sg.mv;
+    sg.mv = null;
+    for(let i = 0; i < 120; i++) updateStorm(1/60);
+    const out = lit();
+    sg.mv = keep;
+    if(!(out > 0.1)) throw new Error('a sign that cannot fly was switched off anyway: ' + out.toFixed(3));
+    return 'no mover, still lit at ' + out.toFixed(2) + ' after two seconds';
+  });
+
+  P('RULING CN: only one house is in the world, and it switches when called', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('interior');
+    const groups = DRESSINGS.map(d=>sc.dress[d]);
+    const inWorld = ()=>groups.filter(g=>g.parent === sc.group);
+    const held = ()=>groups.filter(g=>SHOW.offstage.indexOf(g) >= 0);
+    /* "Make it so only one house exist in the world at a time and it switches
+        between them when needed."  RULING AQ said this and the code darkened the
+        other two instead of removing them — which was fair while a dressing was
+        our own furniture, and became three complete 93k houses of his standing in
+        the same 13.6m of stage when RULING BP landed. */
+    if(inWorld().length !== 1)
+      throw new Error(inWorld().length + ' houses are in the world at once');
+    if(held().length !== DRESSINGS.length - 1)
+      throw new Error(held().length + ' held offstage, expected ' + (DRESSINGS.length - 1));
+    /* AND IT SWITCHES.  Each in turn: the one worn is the one in the world, the
+       other two are held, and nothing is lost on the way round. */
+    const counts = {};
+    for(const d of DRESSINGS){
+      let n = 0; sc.dress[d].traverse(o=>{ if(o.isMesh) n++; });
+      counts[d] = n;
+      if(!n) throw new Error(d + ' has no meshes to begin with');
+    }
+    for(const d of DRESSINGS){
+      bjDress('interior', d);
+      const on = inWorld();
+      if(on.length !== 1) throw new Error(on.length + ' houses in the world with ' + d + ' called');
+      if(on[0] !== sc.dress[d]) throw new Error('the house in the world is not ' + d);
+      for(const o of DRESSINGS){
+        let n = 0; sc.dress[o].traverse(x=>{ if(x.isMesh) n++; });
+        if(n !== counts[o]) throw new Error(o + ' lost meshes being held offstage');
+      }
+    }
+    /* a SET CHANGE must not put all three back, the way it once lit all three */
+    bjDress('interior', 'bj');
+    sceneShow('cemetery');
+    sceneShow('interior');
+    if(inWorld().length !== 1)
+      throw new Error(inWorld().length + ' houses came back on with the room');
+    /* and a held house is not merely invisible — it is not there to be hit */
+    let reach = 0;
+    SHOW.group.traverse(o=>{ if(o.isMesh && groups.some(g=>{
+      for(let k = o; k; k = k.parent) if(k === g) return true; return false; })) reach++; });
+    let mine = 0; sc.dress[sc.dressOn].traverse(o=>{ if(o.isMesh) mine++; });
+    if(reach !== mine)
+      throw new Error(reach + ' dressing meshes are reachable from the show, and the worn one has ' + mine);
+    return 'one of ' + DRESSINGS.length + ' in the world (' + sc.dressOn + '), ' +
+           held().length + ' held offstage, ' + mine + ' meshes reachable';
+  });
+
+  P('RULING CN: a held house is frozen with the rest, and disposed with it', ()=>{
+    showLoad('beetlejuice');
+    const sc = sceneFind('interior');
+    const held = sc.dress[DRESSINGS.find(d=>d !== sc.dressOn)];
+    if(!held) throw new Error('every dressing is being worn at once');
+    if(SHOW.offstage.indexOf(held) < 0) throw new Error('nothing is being held offstage');
+    /* THE FREEZE.  lockShowStatic sweeps SHOW.group, which a held set is not
+       under — so without the offstage list it comes back with live matrices
+       while everything around it is frozen. */
+    let live = 0, n = 0;
+    held.traverse(o=>{ if(o === held) return; n++; if(o.matrixAutoUpdate) live++; });
+    if(!n) throw new Error('the held dressing is empty, so this proves nothing');
+    if(live) throw new Error(live + ' of ' + n + ' held objects were never frozen');
+    /* THE DISPOSE.  showStrike disposes SHOW.group's tree; a held set is not in
+       it, so two of his houses would leak per show change. */
+    const geos = [];
+    held.traverse(o=>{ if(o.isMesh && o.geometry) geos.push(o.geometry); });
+    if(!geos.length) throw new Error('the held dressing has no geometry, so this proves nothing');
+    let disposed = 0;
+    for(const g of geos){ const f = g.dispose; g.dispose = function(){ disposed++; return f.apply(this, arguments); }; }
+    showStrike();
+    if(!disposed)
+      throw new Error('a held house survived the strike undisposed — that leaks a house per show');
+    return n + ' held objects frozen, ' + disposed + ' of ' + geos.length + ' geometries disposed on strike';
+  });
+
+  P('RULING CT: a flown set is thin, and its downstage face does not move', ()=>{
+    showLoad('beetlejuice');
+    const rof = sceneFind('roof');
+    sceneShow('roof');
+    const b = box(rof.group);
+    const depth = b.max.z - b.min.z;
+    /* A BATTEN IS THE POINT.  "make the house exterior and roof set really thin
+       to fit up in the fly area" — the stand-in roof was 5.00m front to back and
+       his model 10.00m, and neither of those hangs on a line.  The bound is
+       stated rather than derived: a flown piece that is more than a couple of
+       metres deep is not a flown piece. */
+    if(depth > 2.0)
+      throw new Error('the roof is ' + depth.toFixed(2) + 'm deep — that does not hang on a batten');
+    /* AND THE PICTURE STARTS WHERE IT STARTED, which is the whole reason the
+       squash is about the downstage face.  The gutter is the downstage-most
+       thing the roof is built with: authored at z -3.9 on a 0.30 box, so its
+       face is -3.75, and BJ_THIN must leave it exactly there. */
+    if(Math.abs(b.max.z - (-3.75)) > 0.02)
+      throw new Error('the downstage face moved to z ' + b.max.z.toFixed(2) + ', not -3.75');
+    /* the deck you stand on came with it — a thin roof with a full-depth deck
+       inside it is not thin, it is a thin roof standing in a thick one */
+    const deck = rof.walk[0];
+    if(!deck) throw new Error('the roof files nothing walkable, so half of this proves nothing');
+    const db = box(deck);
+    if(db.max.z - db.min.z > 2.0)
+      throw new Error('the deck is still ' + (db.max.z - db.min.z).toFixed(2) + 'm deep');
+    /* and the netherworld is NOT thinned — he named two sets and RULING BV
+       already cut this one to 6.90m on his own correction */
+    sceneShow('afterlife');
+    const ab = box(sceneFind('afterlife').group);
+    if(ab.max.z - ab.min.z < 4)
+      throw new Error('the netherworld was thinned too, and he did not ask for that');
+    return 'the roof ' + depth.toFixed(2) + 'm deep, face still at z ' + b.max.z.toFixed(2) +
+           ', deck ' + (db.max.z - db.min.z).toFixed(2) + 'm; the netherworld left at ' +
+           (ab.max.z - ab.min.z).toFixed(2) + 'm';
+  });
+
+  P('RULING CT: only the two he named are thinned, and the manifest says so', ()=>{
+    /* the model half of the same ruling.  It is stated on the ENTRY, so a set
+       that quietly grows a squash — or loses one — fails here rather than in a
+       headset. */
+    const want = ['roof', 'houseExterior'];
+    const has = Object.keys(BJ_MODELS).filter(k=>{
+      const e = BJ_MODELS[k];
+      return e && typeof e === 'object' && e.thin !== undefined;
+    });
+    for(const k of want) if(has.indexOf(k) < 0)
+      throw new Error(k + ' is not thinned, and he named it');
+    for(const k of has) if(want.indexOf(k) < 0)
+      throw new Error(k + ' is thinned, and he did not name it');
+    for(const k of has) if(!(BJ_MODELS[k].thin > 0 && BJ_MODELS[k].thin < 1))
+      throw new Error(k + ' thins by ' + BJ_MODELS[k].thin + ', which squashes nothing');
+    return has.join(', ') + ' at ' + BJ_THIN;
   });
 
   P('RULING CO: the house is stored BEHIND THE BACKDROP, and nothing else is', ()=>{
@@ -1578,17 +1990,24 @@ const probe = `
        bedroom and the closet come down out of it.  Which makes this the assertion
        that has to catch RULING CS's whole problem: 8.62 and 9.02 metres of room
        in one 14.5m wing only fit because the closet stands BEHIND the bedroom. */
+    /* RULING CT SHRANK THE OVERLAP AND DID NOT REMOVE IT, and that was tried
+       before it was written down (the argument is in p5h, at the flown sets).
+       Our exterior is a cloth hanging at z -7.35 and HIS seats at the arch: a
+       park is an offset, so no single number lines both up, and every set of
+       offsets that separated his three left the stand-ins inside each other.
+       So the flown sets go on sharing the tower — with the deepest set-inside-set
+       down from 8.77m to 2.46m, which is what the thinning actually bought. */
     const TRACKED = ['interior', 'attic', 'bedroom', 'closet'];
     for(let i = 0; i < TRACKED.length; i++) for(let j = i+1; j < TRACKED.length; j++){
       const a = boxes[TRACKED[i]], b = boxes[TRACKED[j]];
-      if(!a || !b) throw new Error('a tracked set has no measured park');
+      if(!a || !b) throw new Error('a parked set has no measured park');
       if(!a.intersectsBox(b)) continue;
       const o = a.clone().intersect(b), d = o.getSize(new THREE.Vector3());
       if(Math.min(d.x, d.y, d.z) > 0.05)
         throw new Error(TRACKED[i] + ' and ' + TRACKED[j] + ' park inside each other by ' +
                         d.x.toFixed(2) + ' x ' + d.y.toFixed(2) + ' x ' + d.z.toFixed(2) + 'm');
     }
-    return Object.keys(boxes).length + ' parks all clear, and the three tracked sets do not overlap';
+    return Object.keys(boxes).length + ' parks all clear, and not one of them stands inside another';
   });
 
   /* the plot's own spine, driven through the REAL cue path — fireCue and
@@ -1600,10 +2019,16 @@ const probe = `
     const AX = {x:12, y:13, z:14};
     const raw = m => m.group.matrixWorld.elements[AX[m.axis]];
     scene.updateMatrixWorld(true);
+    /* THE BASELINE IS THE MOVER'S ZERO, not "wherever it was at load".  This
+       read the world matrix at load and treated it as HOME, which was true only
+       while an instant swap left every parked set standing in its acting
+       position — the defect the load-state assertion above now pins.  Subtract
+       the mover's own offset and the baseline is the axis origin, whatever the
+       show happens to be doing when this runs. */
     const base = {};
     for(const sc of SHOW.scenes){ if(!sc.pmv) continue; base[sc.name] = {};
-      for(const k in sc.pmv) base[sc.name][k] = raw(sc.pmv[k]); }
-    const wOff = (sc, k) => sc.pmv[k].home + raw(sc.pmv[k]) - base[sc.name][k];
+      for(const k in sc.pmv) base[sc.name][k] = raw(sc.pmv[k]) - sc.pmv[k].off; }
+    const wOff = (sc, k) => raw(sc.pmv[k]) - base[sc.name][k];
     const check = when => {
       scene.updateMatrixWorld(true);
       for(const sc of SHOW.scenes){
@@ -2971,25 +3396,59 @@ const probe = `
   });
 
   /* ══ RULING CH — THE BLINDERS MOVED INSIDE IT ═══════════════════════════ */
-  P('the blinders sit INSIDE the neon frame, and downstage of it (CH)', ()=>{
+  /* REVERSED IN PLACE BY RULING CY.  RULING CH asked for the blinders INSIDE the
+     scenic rectangle; he has now watched eight lantern boxes hanging in his
+     picture and asked for the opposite of a box: "Remove the body for the
+     blinders just maek it basically comu out of the neon thing."  So they are ON
+     the frame rather than inside it, and the frame is out on the gold (CX).
+     What survives untouched is the half about the white flash. */
+  P('RULING CY: the blinders sit ON the neon, with no body between (CY/CX)', ()=>{
     showLoad('beetlejuice');
     const f = byName('bj:portalFrame');
     if(!f) throw new Error('no portal frame');
     const fb = box(f);
-    let outside = 0, behind = 0;
+    /* NO BODY AT ALL — the point, the beam and the lens glow, and nothing to
+       look at between them.  Measured as geometry, because "the body is gone"
+       and "the body is invisible" are different things and only one of them
+       stops a lantern box being drawn in his picture. */
+    let bodies = 0, meshes = 0;
+    GROUPS.blind.forEach(n=>{
+      const f2 = chan(n);
+      if(!f2.body) return;
+      bodies++;
+      f2.body.traverse(o=>{ if(o.isMesh && o.geometry) meshes++; });
+    });
+    if(bodies !== GROUPS.blind.length)
+      throw new Error('only ' + bodies + ' of ' + GROUPS.blind.length + ' blinders carry a body record');
+    if(meshes)
+      throw new Error(meshes + ' blinder body meshes are still drawn — he asked for none');
+    /* and the beam still leaves the point, or removing the body would have
+       removed the light with it */
+    if(!chan(GROUPS.blind[0]).beam) throw new Error('the blinder lost its beam with its body');
+    /* ON THE BAR: each unit within half a metre of the frame's own line, and
+       downstage of its face so the light comes out of it rather than through it */
+    let offLine = 0, behind = 0;
+    const gold = D.procW/2 + 0.25, spring = D.procH - 1.8;
+    const peak = 0.25*spring + 0.5*(D.procH + 1.75) + 0.25*spring;
+    /* the ONE raked line, the same one the frame is built on — not a symmetric
+       pair, which is what he ruled out ("slanted just one way not from the
+       center").  Math.abs(x) must not appear here. */
+    const lineY = x => peak - (gold - BJ_NEON_RAKE*x)*(peak - spring)/(2*gold);
     GROUPS.blind.forEach(n=>{
       const p = chan(n).pos;
-      if(Math.abs(p.x) > Math.abs(fb.max.x) || p.y > fb.max.y || p.y < fb.min.y) outside++;
-      if(p.z <= fb.max.z) behind++;
+      const onLeg = Math.abs(Math.abs(p.x) - gold) < 0.5 && p.y <= spring + 0.5;
+      const onTop = Math.abs(p.y - lineY(p.x)) < 0.5;
+      if(!onLeg && !onTop) offLine++;
+      if(p.z < fb.max.z - 0.01) behind++;
     });
-    if(outside) throw new Error(outside + ' of 8 blinders are outside the neon rectangle');
-    if(behind) throw new Error(behind + ' of 8 blinders are upstage of the frame they should sit in front of');
+    if(offLine) throw new Error(offLine + ' of 8 blinders are not on the neon line');
+    if(behind) throw new Error(behind + ' of 8 blinders are inside the bar rather than coming out of it');
     /* and the 1:16 white flash still has the shut curtain behind it to read on */
     const curt = frontCurtainLineset();
     if(curt && chan(GROUPS.blind[0]).pos.z <= curt.z)
       throw new Error('the blinders are upstage of the house curtain at z=' + curt.z);
-    return '8 blinders inside a ' + (fb.max.x*2).toFixed(2) + ' x ' + fb.max.y.toFixed(2) +
-           ' frame, all of them downstage of it at z=' + chan(GROUPS.blind[0]).pos.z;
+    return '8 bodiless blinders on a ' + (fb.max.x*2).toFixed(2) + ' x ' + fb.max.y.toFixed(2) +
+           ' frame, all coming out of its face at z=' + chan(GROUPS.blind[0]).pos.z;
   });
 
   /* "make sure the beetljuice sign still stays lit up red" — which is a
@@ -4550,12 +5009,25 @@ const wd = setTimeout(() => {
         throw new Error('built-in shell scenery survived a whole house: ' + (c.name || c.type));
     /* the other two dressing GROUPS stand, with their stand-ins untouched:
        they are machinery, and bjRedress still has to choose between three */
-    for(let i = 1; i < 3; i++){
-      if(dressGroups[i].parent !== inr.group)
-        throw new Error('a dressing group was stripped out with the shell');
+    /* REVERSED IN PLACE BY RULING CN.  It demanded all three dressing groups
+       stay children of the scene, which was right when the other two were merely
+       darkened; "only one house exist in the world at a time" makes exactly one a
+       child and holds the rest OUT of the graph.  The thing this line is for —
+       an unmodelled dressing must not be destroyed by a house landing next to it
+       — is unchanged and is what the mesh count still proves. */
+    const inWorld = inr.group.children.filter(c => dressGroups.indexOf(c) >= 0);
+    if(inWorld.length !== 1)
+      throw new Error(inWorld.length + ' dressings are in the world at once (RULING CN says one)');
+    if(inWorld[0] !== inr.dress[inr.dressOn])
+      throw new Error('the dressing in the world is not the one being worn');
+    for(const g of dressGroups){
+      if(g === inWorld[0]) continue;
+      if(az.SHOW.offstage.indexOf(g) < 0)
+        throw new Error('a dressing group vanished instead of being held offstage');
+    }
+    for(let i = 1; i < 3; i++)
       if(meshCount(dressGroups[i]) !== otherCounts[i-1])
         throw new Error('an unmodelled dressing lost meshes to the house swap');
-    }
     const wf = findByName(inr.dress.maitland, 'walk_stairs');
     if(inr.walk.indexOf(wf) < 0) throw new Error('the house stairs missed sc.walk');
     return 'maitland house in, ' + shellBefore + ' shell objects out, deetz and bj dressings intact';
@@ -4710,6 +5182,35 @@ const wd = setTimeout(() => {
        check is that the apply path scaled and seated it — not its world y */
     if(size.x < 5) throw new Error('it landed at tool scale: ' + size.x.toFixed(2) + 'm');
     return 'the attic entry landed ' + size.x.toFixed(2) + 'm wide from a 1.9-unit file';
+  });
+
+  await P('a model lands INSIDE the mover that carries the set, not beside it', async () => {
+    /* THE CLOSET IS THE CASE, and it is new: RULING CS gives it a SECOND mover
+       (the depth it stands at in the wing) on top of the wrapper it travels on.
+       bjApplyModel used to choose its route by COUNTING part movers — one meant
+       "a wrapped flying set", more than one meant "the cemetery, deal the nodes
+       out by the sign of their x" — so a set with a park as well as a wrapper
+       took the cemetery's route and its model landed in whichever group the
+       dealing picked, with the stand-in stripped out from under it.  Seen once
+       already, on the roof, as a set that measured as an empty box.
+
+       A count is not a kind.  `all` is the name that means "the whole set travels
+       on this one", and this asserts the model ends up under it. */
+    const sc = w.sceneFind('closet');
+    if(!sc) throw new Error('there is no closet scene');
+    if(!sc.pmv || !sc.pmv.all) throw new Error('the closet carries no all-of-it wrapper');
+    if(Object.keys(sc.pmv).length < 2)
+      throw new Error('the closet has one mover, so this test cannot see the fault it is for');
+    const root = new THREE.Group();
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.9, 1.2),
+                            new THREE.MeshStandardMaterial()));
+    if(!w.bjApplyModel(az.BJ_MODELS.closet, root)) throw new Error('the apply refused');
+    let under = null;
+    for(let k = root.parent; k; k = k.parent) if(k === sc.pmv.all.group) under = k;
+    if(!under)
+      throw new Error('the model landed outside the wrapper — it will not travel with the set');
+    return 'landed under ' + sc.pmv.all.group.name + ', with ' +
+           Object.keys(sc.pmv).length + ' movers on the scene';
   });
 
   await P('every manifest entry declares a width, and it matches the doc', async () => {

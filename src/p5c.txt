@@ -25,7 +25,9 @@ function showBlank(){
     scenes:[], scene:null, pendDress:null, revolve:null, wrong:[], confetti:null,
     rainSound:false, flicker:null, lightning:0, lightningT:0,
     stormOn:false, stormT:0, porch:null, bjPortal:null,
-    pendMoves:[], houseWait:null,
+    pendMoves:[], houseWait:null, offstage:[],
+    signLamps:null, signWant:null, signGate:1,      // RULING CU
+    flyExtras:[],                                   // RULING CW
     curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
   };
 }
@@ -108,6 +110,90 @@ function sceneAdd(name, label){
   return sc;
 }
 function sceneFind(name){ return SHOW.scenes.find(s=>s.name === name) || null; }
+/* ============================================================================
+   RULING CN — ONLY ONE HOUSE IS IN THE WORLD AT A TIME
+
+   "Make it so only one house exist in the world at a time and it switches
+    between them when needed."
+
+   RULING AQ already said this and the code did not do it.  AQ built one room
+   with three dressings that take turns, and bjRedress turned the other two off
+   by clearing their layers — which stops them drawing and stops them being
+   picked, and leaves them IN THE WORLD.  Fair while a dressing was a few hundred
+   triangles of our own furniture; RULING BP then made each one a whole 93k
+   house of his, and tools/parked.js measures the result: 280,540 triangles in
+   the interior, three complete houses standing in the same 13.6m of stage with
+   two of them switched off inside the third.
+
+   SO A SET THE SHOW OWNS MAY BE HELD OFFSTAGE: out of the scene graph entirely,
+   still whole, put back when it is called for.
+
+   IT IS NOT A DISPOSE, deliberately.  Freeing the buffers would mean re-fetching
+   a 27MB file every time the plot changes dressing — nine times an evening, over
+   the wifi that already makes 165MB take minutes.  "In the world" is the scene
+   graph, and that is what this ruling reads it as.
+
+   TWO THINGS SWEEP THE SHOW AND BOTH HAVE TO KNOW.  lockShowStatic freezes every
+   matrix under SHOW.group, and showStrike disposes that tree — a group held out
+   of the graph is invisible to both, so it would come back unfrozen and it would
+   LEAK a house per show change.  SHOW.offstage is the list they read.
+   ========================================================================== */
+/* ============================================================================
+   RULING CW — THE FLY RAIL MAY CARRY A HAUL THAT IS NOT A LINESET
+
+   "...and add the beetlejuice sign to the fly menu."
+
+   The sign is NOT a lineset and cannot be one.  Every lineset lives upstage of
+   the plaster line (makeLineset: z = -0.50 - i*0.80) and the sign hangs
+   DOWNSTAGE of the house curtain; RULINGS AS and AT settled that and it does not
+   move.  It travels on a scene mover instead.
+
+   So a show may DECLARE hauls the rail can call, and the fly page — desk and
+   headset both — draws them under the numbered lines.  One entry names the
+   scene, the two offsets and a label:
+
+     SHOW.flyExtras.push({key, label, scene, inOff, outOff, speed})
+
+   DECLARED, NEVER ASSUMED: a show with no flyExtras draws exactly what it draws
+   today, which is what leaves the other four productions alone.
+
+   It is the same idiom the FOH bar and the speaker bars already use — rail
+   furniture that is not a lineset lives in the table's footer — and the same
+   rule those rows are written to: READ THE GLOBAL AT CLICK TIME, cache nothing
+   per-stage on the DOM, because that is how the rail "stopped working" once.
+   ========================================================================== */
+function flyExtraMover(x){
+  const sc = x && sceneFind(x.scene);
+  return (sc && sc.mv) ? sc.mv : null;
+}
+function flyExtraTo(x, out){
+  if(!x) return null;
+  return sceneMoveTo(x.scene, out ? x.outOff : x.inOff, x.speed);
+}
+/* 0 is IN and 1 is OUT, whichever direction the offsets run in */
+function flyExtraFrac(x){
+  const m = flyExtraMover(x);
+  if(!m) return 0;
+  const span = x.outOff - x.inOff;
+  return span ? clamp((m.off - x.inOff)/span, 0, 1) : 0;
+}
+function flyExtraMoving(x){
+  const m = flyExtraMover(x);
+  return !!(m && Math.abs(m.target - m.off) > SCENE_MV_EPS);
+}
+function showHoldOffstage(g){
+  if(!g) return g;
+  if(g.parent) g.parent.remove(g);
+  if(SHOW.offstage.indexOf(g) < 0) SHOW.offstage.push(g);
+  return g;
+}
+function showBringOnstage(g, parent){
+  if(!g) return g;
+  const i = SHOW.offstage.indexOf(g);
+  if(i >= 0) SHOW.offstage.splice(i, 1);
+  if(parent && g.parent !== parent) parent.add(g);
+  return g;
+}
 /* anything you can stand on inside a scene goes on the scene's own list, so it
    leaves WALKABLE the moment that set goes off — otherwise you would be
    walking on the staircase of a house that is not on the stage */
@@ -260,6 +346,36 @@ function sceneShow(name){
     if(on && sc.pmv) for(const k in sc.pmv){
       const m = sc.pmv[k];
       m.off = m.target = m.home; m.group.position[m.axis] = m.home;
+    }
+    /* and a set that parks ON ITS OWN whole-group mover comes back on it — the
+       exterior, which flies.  Only `parkMv`: the wagon parks with `parkMvAt` and
+       its acting position is cue-authored, so its home IS the parked place and
+       homing it here would drive it upstage on the way in. */
+    if(on && sc.parkMv !== undefined && sc.mv){
+      sc.mv.off = sc.mv.target = sc.mv.home;
+      sc.group.position[sc.mv.axis] = sc.mv.home;
+    }
+    /* AND THE OTHER HALF OF THAT, WHICH WAS MISSING AND SHOWED AT LOAD.
+       RULING BQ made a struck set stay DRAWN — and an instant swap never drove
+       its movers anywhere, so every parked set stood, visible, in its ACTING
+       position.  Measured on a freshly loaded Beetlejuice, before a frame was
+       stepped: the exterior drop hanging at z -7.4 across the picture, the attic
+       in the acting area, all of them on the deck at once.  Nothing caught it
+       because the probe and every assertion drive a CHANGE first, and a change
+       parks them correctly.
+
+       So an instant swap strikes as instantly as it calls on: a parked set snaps
+       to where it parks.  Symmetry with the branch above, and the same rule —
+       an instant swap has no travel in it, in either direction. */
+    if(!on && sc.parks){
+      if(sc.pmv) for(const k in sc.pmv){
+        const m = sc.pmv[k];
+        m.off = m.target = m.out; m.group.position[m.axis] = m.off;
+      }
+      const at = (sc.parkMvAt !== undefined) ? sc.parkMvAt : sc.parkMv;
+      if(at !== undefined && sc.mv){
+        sc.mv.off = sc.mv.target = at; sc.group.position[sc.mv.axis] = at;
+      }
     }
     /* a set that is still TRAVELLING stays drawn until it arrives, whatever
        the cue says — otherwise the house winks out halfway across the deck.
@@ -546,6 +662,12 @@ function showStrike(){
     disposeTree(SHOW.group);
     SHOW.group = null;
   }
+  /* RULING CN — and the sets held OUT of the graph, which this sweep would
+     otherwise walk straight past.  Two of his three houses are offstage at any
+     moment, at ~93k triangles each: leaving them undisposed leaks a house and a
+     half of geometry every time a show is struck. */
+  for(const g of (SHOW.offstage || [])) disposeTree(g);
+  SHOW.offstage = [];
   LIGHTNING.intensity = 0; LIGHTNING_AMB.intensity = 0;
   SHOW.stormOn = false; SHOW.porch = null;
   // a show curtain gets the house's own curtain back, not a bare pipe
@@ -678,7 +800,13 @@ function showLoad(key){
 function lockShowStatic(){
   if(!SHOW.group) return;
   SHOW.group.updateMatrixWorld(true);
-  SHOW.group.traverse(o=>{
+  /* RULING CN — and the sets being held out of the graph, which this sweep
+     cannot reach through SHOW.group and which would otherwise come back with
+     live matrices while everything around them is frozen */
+  const roots = [SHOW.group].concat(SHOW.offstage || []);
+  for(const root of roots){
+  root.updateMatrixWorld(true);
+  root.traverse(o=>{
     if(o === SHOW.group) return;
     if(o.userData.moves) return;
     /* a scene that can TRAVEL keeps a live matrix of its own.  Freeze the
@@ -691,6 +819,7 @@ function lockShowStatic(){
     o.updateMatrix();
     o.matrixAutoUpdate = false;
   });
+  }
 }
 
 /* ---------------------------------------------------------------- helpers */
@@ -816,6 +945,7 @@ function updateStorm(dt){
   updateFire(dt);
   if(typeof updateNeon === 'function') updateNeon(dt);
   if(typeof updatePortal === 'function') updatePortal(dt);   // RULING CH
+  if(typeof updateSignLamps === 'function') updateSignLamps(dt);   // RULING CU
   updateHouseWait();                                          // RULING CJ
   if(typeof bjUpdateSetFill === 'function') bjUpdateSetFill(dt);   // RULING CC
   updateShowStorm(dt);

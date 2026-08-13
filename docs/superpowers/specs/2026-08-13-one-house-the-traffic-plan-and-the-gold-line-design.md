@@ -342,11 +342,17 @@ Three changes, and they are his three:
 
 1. **OUT TO THE GOLD.** Legs at `BJ_NEON_X` **±7.75**, z `BJ_NEON_GOLD_Z`
    **1.26** — on the architectural proscenium, not inside the scenic one.
-2. **A STRAIGHT SLANTED TOP.** The gold's arc is a quadratic that peaks at
-   **y 10.375**; two straight bars from (±7.75, 8.60) to (0, 10.375) are its
-   chords. Straight, as he said, and slanting down to each side, which is what
-   the arch does. *(If he meant one bar slanting across the whole opening, that
-   is the shape to change and it is four numbers.)*
+2. **A STRAIGHT TOP, RAKED ONE WAY.** The gold's arc is a quadratic that peaks at
+   **y 10.375**. It was first built as two chords from (±7.75, 8.60) meeting at
+   (0, 10.375) — straight, and slanting down to each side, which is what the arch
+   does — and the other reading of that sentence was flagged here as open.
+
+   **He corrected it:** *"can you make it slanted just one way not from the
+   center."* So it is **one bar right across**, from (+7.75, 8.60) to (−7.75,
+   10.375): the two heights are still the arch's, and the shape is a rake rather
+   than an arch. The legs are consequently different heights. It leans down
+   toward **stage left**, the way the marquee's own arrow rakes; `BJ_NEON_RAKE`
+   mirrors it and the blinders follow the same line.
 3. **NO SILL.** The bottom bar goes. Nothing crosses the deck.
 
 **THIS BREAKS AN ASSERTION AND THE ASSERTION IS REVERSED IN PLACE** — the
