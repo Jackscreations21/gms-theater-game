@@ -14235,10 +14235,18 @@ const BJ_THIN = 0.28;          // 10.00m -> 2.80m, 8.77m -> 2.46m
    upstage.  The authored z values below are left as the full-depth layout so the
    perspective intent stays readable; bjAftZ is what puts them on the stage.
 
-   0.55 takes it to 6.82m from the front frame to the backing.  The read is the
-   perspective, so this is the number to move if the tunnel stops reading — and
-   the sizes still fall away faster than the spacing, which is what does most of
-   the work.
+   RULING DD — "the netherworld hast to be less deep."  SECOND TIME HE HAS ASKED,
+   which is why this is not a timid cut: RULING CE already took it 12.45m -> 6.90m
+   on his "i meant the set shouldnt be as deep", he has watched that in a headset
+   and said it again.  0.55 -> 0.35 takes it from 6.82m to 4.34m, a further 36%.
+
+   THE RISK IS NAMED RATHER THAN HEDGED AGAINST.  The read of this set IS the
+   perspective, and there is a depth below which a tunnel stops being a tunnel and
+   becomes a flat wall with small shapes painted on it.  4.34m still has four
+   frames of recession in it and the sizes still fall away faster than the spacing,
+   which is what does most of the work — but this is the number to move, in either
+   direction, and it is one line.  Going shallower again would be a third round on
+   one constant, so it went further than half-way rather than not far enough.
 
    `all blue`: already true — BV made every frame and the chevron blue, and an
    assertion refuses a near-white one.  Nothing to do, recorded so it is not
@@ -14246,7 +14254,7 @@ const BJ_THIN = 0.28;          // 10.00m -> 2.80m, 8.77m -> 2.46m
    `backdrop black`: it was a dark blue ground. */
 const BJ_AFT_TUBE = 0.15;
 const BJ_AFT_BACK = 0x000000;
-const BJ_AFT_DEEP = 0.55;
+const BJ_AFT_DEEP = 0.35;      // RULING DD, his second ask: 6.82m -> 4.34m
 const BJ_AFT_Z0   = -2.2;      // the downstage frame: the one thing that stays put
 function bjAftZ(z){ return BJ_AFT_Z0 + (z - BJ_AFT_Z0) * BJ_AFT_DEEP; }
 
@@ -21322,6 +21330,26 @@ function plotBeetlejuice(){
    throws rather than reading undefined.  TRAPS records that for `typeof`; this
    is the same trap reached by a plain reference. */
 const BJ_HOUSE_UPSTAGE = 1.5;
+/* RULING DE — "move the house extirior a little back on the stage."  The same
+   thing BJ_HOUSE_UPSTAGE does for the three interiors, pointed at the exterior,
+   and the same number: he called 1.5m of a 17m stage "a little further" once
+   already, so it is the size of a little.
+
+   IT MOVES HIS MODEL AND NOT THE STAND-IN, DELIBERATELY, and the reason is worth
+   writing down because the BQ trap runs the other way.  bjFitAndSeat seats his
+   exterior with its downstage face at the arch (z -0.30), and thinned by BJ_THIN
+   it is 2.46m deep, so 1.5m back puts it at -1.80 .. -4.26 with the whole stage
+   behind it.  The stand-in it replaces is a 12.6m painted DROP hanging at z -7.35
+   — already five metres upstage of where his house stands, and a flat cloth moved
+   1.5m upstage looks exactly like a flat cloth.  Moving it would buy nothing and
+   would walk it toward the sky cloth this scene deliberately plays against.
+
+   So the assertion for this belongs where the MODEL loads — the fetch-path test,
+   not the synchronous probe, which fetches nothing and would measure the drop and
+   pass for ever.  That is the RULING CL lesson exactly: a wall fitted to the
+   stand-in left his model in the street, and the guard had only ever seen the
+   stand-in.  Declared here, above BJ_MODELS, for the dead-zone reason above. */
+const BJ_EXT_UPSTAGE = 1.5;
 
 /* `fit` IS docs/MODELING.md's Width column, in metres — the width the set is
    scaled to arrive at (RULING BP).  It is not decoration: what turned up is
@@ -21352,6 +21380,7 @@ const BJ_MODELS = {
      tool is very nearly a cube, so BX's opening cap binds first and it lands
      8.63m wide whatever this number says. */
   houseExterior: {scene:'house',   fit:13.4, thin:BJ_THIN,
+                  upstage:BJ_EXT_UPSTAGE,        // RULING DE
                   url:'assets/bj-house-exterior.glb'},
   /* THE SIGN IS HIS GEOMETRY AND OUR LAMPS (RULING CA).  His note with the file
      is the whole brief: "you just have to add the lights".
