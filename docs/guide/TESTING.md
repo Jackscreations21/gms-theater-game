@@ -10,7 +10,7 @@ checklist in HANDOFF.md.
 ```sh
 cd tests
 npm install       # once — jsdom and three@0.128
-npm test          # all 18 suites, exits non-zero if any fail
+npm test          # all 19 suites, exits non-zero if any fail
 node real.js      # boots the whole file, expect "fatal": null
 ```
 
@@ -18,6 +18,7 @@ node real.js      # boots the whole file, expect "fatal": null
 
 | Suite | Covers |
 |---|---|
+| `probe-lint.js` | **the suites themselves** — the three characters that break a probe template. Runs first, before anything boots. |
 | `real.js` | the whole file boots |
 | `full14.js` | the building (has the pointer-lock/MouseEvent shims) |
 | `rooms.js` | portal culling |
@@ -37,7 +38,7 @@ node real.js      # boots the whole file, expect "fatal": null
 | `workshop.js` | the workshop round: `mergeParts`, the mesh census budget, and the parts that must never be merged |
 | `beetlejuice.js` | the fifth show: RULING AO's interpretation note, the portal inside the house opening, the scene machinery going inert when it is off, and the measured fade times |
 
-All 17 are at `--- failures: 0 ---`. **Keep them there.** Every suite
+All 19 are at `--- failures: 0 ---`. **Keep them there.** Every suite
 exits non-zero on failure, including a failure to boot.
 
 ## The discipline
@@ -51,6 +52,11 @@ exits non-zero on failure, including a failure to boot.
 - **Seam check for multi-branch work**: before opening PRs from several
   branches, merge them all into a throwaway branch, rebuild, run the
   full suite. Branches that pass alone have failed together twice.
+- **Run `node probe-lint.js` before wondering why a suite died at parse time.**
+  A backtick anywhere inside a probe template — *including in a comment* — and a
+  singly-escaped quote both close or corrupt the template, and the failure points
+  at the eval rather than at the line you typed. It is in TRAPS three times; the
+  lint is the mechanical sweep, and it runs first in `npm test`.
 - Tests that synthesize mouse movement need the `MouseEvent` shim
   (jsdom drops `movementX/Y` — see `full14.js` top), or belong in
   `full14.js`.

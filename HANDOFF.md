@@ -19,7 +19,7 @@ theater_game/
   VR-SETUP.md        getting it onto a Quest 3 — routes, controls, first-run list
   README.md          the GitHub front page
   src/               the 30 parts it is built from (build.sh has the order)
-  tests/             eighteen suites — npm install, then npm test
+  tests/             nineteen suites — npm install, then npm test
   assets/audio/      the show's three recordings — COMMITTED (docs/AUDIO.md)
   tools/             probes that draw pictures — see tools/README.md
 ```
@@ -78,7 +78,7 @@ wiring, and cannot catch anything about how it looks or how fast it runs.
 ```sh
 cd tests
 npm install       # once — jsdom and three@0.128
-npm test          # all fourteen suites, exits non-zero if any fail
+npm test          # all nineteen suites, exits non-zero if any fail
 node real.js      # boots the whole file, reports "fatal": null
 node full14.js    # the building
 node rooms.js     # portal culling
@@ -96,7 +96,7 @@ node build.js     # the build system: wood stock, the tabbed screen, caps
 node vr.js        # WebXR: rig, sticks, desks, ropes, GO, bodies
 ```
 
-All fifteen are at `--- failures: 0 ---`. Keep them there. Every suite exits
+All nineteen are at `--- failures: 0 ---`. Keep them there. Every suite exits
 non-zero on failure (including a failure to boot), and `npm test` runs the lot.
 
 `full14.js` wraps `window.MouseEvent` at the top of its harness: jsdom has no
@@ -224,7 +224,57 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **PUT IT ON THE HEADSET** (2026-08-13)
+## NEXT SESSION: **MERGE THE CHAIN, THEN LOOK AT IT** (2026-08-13, late)
+
+Cache-bust **`?v=25`**. **Read STATE.md — it carries the full left-to-do list
+with the rulings written out.** What belongs here is the shape of it.
+
+**FIRST, MERGE #155 → #156 → #157 → #158 → #159 → #160, IN THAT ORDER.** They
+are a linear chain built on each other and opened ahead of merging, at his
+standing instruction ("dont wiat for me to merge to keep going just keep
+going"). Each is based on the one before, so GitHub retargets the next to `main`
+as its parent merges. Rulings are at **CY**.
+
+**HE ASKED FOR ELEVEN THINGS AND ALL ELEVEN ARE BUILT.** Nine of them were one
+subject — a traffic plan — and it is settled: four slots, every set in exactly
+one, and `tools/parked.js` reports what it has never reported before, **`none —
+every parked set has its own space`**.
+
+**NOBODY HAS LOOKED AT ANY OF IT.** Not the sets from three rounds ago, not the
+parks, not the netherworld, not the neon frame from yesterday, and certainly not
+this round's. The questions, in the order they will bite:
+
+1. **Does the neon read on the gold?** 15.91m across with a straight slanted top
+   and nothing across the deck — a completely different shape from the closed
+   13.6m rectangle RULING CH built the day before.
+2. **Do bodiless blinders read as light out of the bar**, or light out of
+   nowhere? `BLIND_BODY` is one line back.
+3. **Is a thinned roof a roof?** `BJ_THIN` 0.28 steepens its slope, and that is a
+   non-uniform scale this file otherwise refuses.
+4. **Do the new entrances read** — the attic from stage left, the bedroom and
+   closet from stage right, the house from behind the backdrop?
+5. **Is the SETS page useful in a headset**, and is "where it is standing" the
+   right thing for it to say?
+6. Carried: the houses at 13.6 × 12.76, `BJ_FILL_MAX`, the netherworld at 6.90m,
+   `BLIND_POWER` 4.6, the house at 0.15, 25 seconds of nothing at the top.
+
+**THREE DEFECTS NOBODY ASKED ABOUT, all found on the way past.** Every parked set
+stood **visible in its acting position the moment the show loaded** (RULING BQ
+made a struck set stay drawn, and the instant swap struck nothing); the exterior
+parked with its foot 0.2m inside the picture, on the SIGN's fly-out number
+borrowed by a set; and `bjApplyModel` routed by **counting** part movers, so a
+set with a park as well as a wrapper landed its model outside its own mover.
+
+**Still his to decide:** the neon's top has a second reading (one bar slanting
+right across, not two down to each side — four numbers); the sign's red at GO;
+the cemetery's missing park; 181MB of models; and whether the netherworld should
+be narrower.
+
+**Still owed:** **BY**, the graveyard, the audio join at 4292, the house floor
+pool, **a park stated as an absolute LINE rather than an offset** (which is what
+would let the flown sets stop sharing the tower), and `pr6.json`.
+
+## NEXT SESSION: **PUT IT ON THE HEADSET** (2026-08-13) — SUPERSEDED, see above
 
 Cache-bust **`?v=24`**. **Read STATE.md — it carries the full left-to-do list
 with the rulings written out.** What belongs here is the shape of it.
