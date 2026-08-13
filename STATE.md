@@ -1,12 +1,15 @@
-# STATE — 2026-08-13 (past the legs — #172 OPEN)
+# STATE — 2026-08-13 (past the legs — #172 MERGED)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## OPEN RIGHT NOW: #172, RULING DI — THE SETS PARK PAST THE LEGS
+## MERGED: #172, RULING DI — THE SETS PARK PAST THE LEGS
 
-Branch `bj-past-the-legs`, based on `main` at `05374fc`, **one commit, base
-verified `main`, mergeable clean**. Nothing else is open. He has not merged it.
+**`main` is at `9c555aa`.** Verified after the merge: `main` rebuilds
+**byte-identical** and the full suite is green on the merged result. **Nothing is
+open and nothing is shelved.** Rulings are at **DI**.
+
+**Cache-bust for the next headset run: `?v=27`.**
 
 He looked at the DF parks in the headset and said the attic, bedroom and closet
 were **still in the wings**; then **"i meant past the physical legs. past the
@@ -45,16 +48,19 @@ Suites **19/19** before and after; **7 mutations negative-checked**, each proved
 present in the BUILT file and proved to have changed it, revert byte-identical.
 New probe **`tools/wing.js`**.
 
-**What is still his to answer here:** all three sets now enter from stage right
-and stage left is empty. That is a real change to the traffic and it was ours to
-make (his words were only "one of the sides"), but he may want the attic back on
-its own side — which, past the legs, it cannot be.
+**WHAT IS STILL HIS TO ANSWER HERE, and it is the first thing to look at on the
+headset:** all three sets now enter from **stage right** and stage left is
+**empty**. That is a real change to the traffic and it was ours to make — his
+words were only "one of the sides" — but he may want the attic back on its own
+side, and past the legs it cannot be: stage left is 9.80m from the leg edge to
+the wall and the attic is 13.06m wide. If he wants it there, something else has
+to give (fly it, thin it, or narrow the legs).
 
-## HE DID THE HEADSET RUN, ASKED FOR NINE THINGS, AND ALL NINE ARE BUILT
+## THE ROUND BEFORE: HE ASKED FOR NINE THINGS AND ALL NINE ARE BUILT
 
-The first time anybody had looked at any of it. Rulings are at **DH**.
+The first time anybody had looked at any of it. Rulings were at **DH** here.
 
-**EVERYTHING IS ON `main`**, at `65de73f`. Verified after the merges: `main`
+**All of it is on `main`**, at `65de73f`. Verified after the merges: `main`
 rebuilds **byte-identical** and the full suite is green on the merged result.
 
 | PR | What | His items |
@@ -76,7 +82,7 @@ Suites **19/19**. **31 negative checks fired** across the round, every mutation
 proved present in the BUILT file *and* proved to have changed it before the
 result was read.
 
-Cache-bust for the next headset run: **`?v=26`**.
+Cache-bust at the time: `?v=26`. **It is `?v=27` now — DI changed the build.**
 
 ## WHAT IS LEFT: ANOTHER HEADSET RUN
 
@@ -284,4 +290,4 @@ untouched.
 
 ## Shelved
 
-**Nothing.** One PR open: **#172 (RULING DI)**, above.
+**Nothing.**
