@@ -224,7 +224,126 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **PUT THIS ROUND ON THE HEADSET** (2026-08-13, all nine landed)
+## NEXT SESSION: **THE PARKS ARE PAST THE LEGS — LOOK AT THE WING** (2026-08-13, DI)
+
+Cache-bust **`?v=27`**. **Read STATE.md — it carries the full list with the
+rulings written out.** Rulings are at **DI**.
+
+**`main` is at `9c555aa`, #172 is merged, and NOTHING IS OPEN OR SHELVED.**
+Verified after the merge: `main` rebuilds **byte-identical** and the full suite is
+green on the merged result. One PR, one clean merge, based on `main` and verified
+after opening.
+
+**HE REJECTED THE DF PARKS FROM THE HEADSET AND HE WAS RIGHT THREE TIMES.** "the
+attic, bedrrom and closet sets are still in the wings", then "i meant past the
+physical legs. past the black curtains", then "what is the problem there is plenty
+of room between the fly rail and the legs to fit all three sets". All three parks
+were standing *inside* the masking, and the wing he was pointing at was **11m
+wider than three rulings believed**. See the Done block below.
+
+**THE FIRST THING TO LOOK AT is the stage-right wing**, because the whole traffic
+plan now lives in it:
+
+1. **Do the three read as stored rather than standing about?** They are 2.00m
+   past the leg cloth, 5.74m / 10.18m / 9.78m off the wall, packed 1.50m apart.
+2. **Is stage left being EMPTY right?** All three enter from stage right now.
+   That was ours to change, not his — his words were only "one of the sides" —
+   and **it is the one thing in this round he might want back**. Past the legs it
+   cannot go back: stage left is 9.80m from the leg edge to the wall and the attic
+   is 13.06m wide, so putting it there means flying it, thinning it, or narrowing
+   the legs. **Raise it rather than wait on it.**
+3. **Does the attic crossing the whole stage read as travel or as a trek?**
+   It tracks from x −14.20 at `BJ_TRACK_SPEED` 2.0.
+4. Carried and still unseen: the neon on the black portal, the arch with no gold,
+   the netherworld at 4.42m, FLOOR / PRE-SHOW / UP on the sign, the houses at
+   13.6 × 12.76, 25 seconds of nothing at the top.
+
+**Still his to decide:** which way the neon rakes if at all (**DG turns his own CY
+rake off** — `BJ_NEON_RAKE_ON`, one line in `p5h` AND one in `p4`), the sign's red
+at GO, the cemetery's missing park, and 181MB of models.
+
+**Still owed:** **BY**, the graveyard, the audio join at 4292, the house floor
+pool, a park stated as an absolute LINE, `BLIND_BODY`, and `pr6.json`.
+
+## DONE — 2026-08-13: the parks go past the legs, and the rail was never there (#172, DI)
+
+He put the DF parks on the headset and said the attic, bedroom and closet were
+still in the wings. Two clarifications later — "i meant past the physical legs.
+past the black curtains", and "what is the problem there is plenty of room between
+the fly rail and the legs to fit all three sets" — he was right three times, and
+the third one was a fault in the building rather than in the parks.
+
+**DF MEASURED THE WRONG LINE.** It sized every park against the PICTURE edge at
+x 6.80. A leg is 5.6m of cloth hung 1.9m outboard of the opening, spanning
+|x| **6.60 .. 12.20** — so every park began *inside* the masking: the attic
+4.33m deep in it, the bedroom 2.51m, the closet 2.71m. "1.07m clear" was 1.07m
+clear of the picture and four metres inside the black.
+
+**AND THE FLY RAIL WAS NEVER AT −19.2 — THREE RULINGS QUOTED A FALLBACK BRANCH.**
+CE, CS and DF all state the flyman's locking rail at x −19.2 and all three cite
+`p9`, which says `const railX = fr ? fr.rail : -D.stageW/2 + 2.8`. **−19.2 is the
+`else`.** There is always a crew frame; `crewPalaceFrame` gives `XR + 2.8`, and
+`XR` is `-(D.stageW/2 + D.wingSR)` because `D.wingSR` exists precisely to say
+stage right runs 11m further out than stage left. **The rail is at −30.2.** The
+gap between the legs and the rail is **18.00m, not 7.00m**, and his 13.06m attic
+fits in it with 2.94m to spare. A number read out of a `?:` is only the number if
+you also checked which branch runs — now in TRAPS, and `tools/wing.js` prints it.
+
+**SO ALL THREE PARK STAGE RIGHT, 2.00m PAST THE CLOTH, ONE BEHIND ANOTHER**, and
+the attic changes sides. **That was ours to change and not his:** RULING CQ picked
+stage left *because* a 13m set would have reached past a rail at −19.2, and stage
+left turns out to be the one wing (9.80m past the legs) that cannot hold it at
+all. The side that was chosen for a wrong reason was the only wrong side.
+
+**THE THREE TYPED OFFSETS ARE GONE, AND THAT IS THE ENGINE HALF.**
+`BJ_ATTIC_SIDE`, `BJ_SIDE_ROOM` and `BJ_CLOSET_BACK` could not place his file and
+the stand-in at once — the attic is 13.06 × 10.00 with his model against
+10.40 × 9.60 without it, and **differently centred as well as differently sized**,
+so one offset that puts his 2m past the cloth puts the stand-in somewhere else
+entirely. DF proved it without noticing: the same number left the stand-in 2.00m
+clear and his own file 0.57m clear. `bjWingPack` measures each set's own box and
+packs the queue downstage-to-upstage; `bjApplyModel` packs **again** when a file
+lands, because a set growing moves the two behind it. Both cases now land at
+exactly 2.00m past the cloth, checked both ways round.
+
+**TWO THINGS NOBODY HAD ASKED ABOUT, both found by the new probe.** The
+**auditorium side wall** is a 1.0 × 22.0 × 32.0 box at x −15.50 whose upstage face
+reaches **z −1.00**, straight through the middle of the stage-right wing — his
+attic acts at z −0.30 and the old park simply left it at its acting z, so it stood
+0.70m inside the wall and nothing in the suite or in `tools/parked.js` was looking
+at that wall at all. And **the VR set menu asked about depth before side**, so a
+park that is both in a wing and upstage of the backdrop read as "upstage" — true,
+and it sends a man in a headset behind the cloth to look for a set standing in the
+wing beside him. The tests are not exclusive; order them by which answer is useful.
+
+**AND THE WRONG-WALL BELIEF WAS IN FOUR PLACES.** `XL` is +22 and `XR` is −33, and
+two suite sweeps plus `tools/parked.js` all tested *both* sides against
+`±D.stageW/2` — declaring an 11m strip of real deck to be outside the building.
+Same substitution as the rail, one level down.
+
+**ASSERTIONS: DF-1 REVERSED IN PLACE, ON BOTH OF ITS NUMBERS** — it measures off
+`LEG_OUT` (named in `p3` so the parks and the assertion cannot drift apart) and
+**reads** the rail off `crewFrame()` instead of copying a literal out of a
+conditional. What it was for survives whole. Three new: the pack, the stack
+(collision *and* the auditorium wall), and the re-pack when a bigger model lands
+through the real `bjApplyModel` path. **Seven mutations negative-checked**, every
+one proved present in the BUILT file *and* proved to have changed it, with the
+revert byte-identical to the baseline.
+
+**AND I BUILT AN ENGINE FEATURE AND THREW IT AWAY BEFORE COMMITTING.** Believing
+the gap was 7.00m, the only way to fit an 8.62m bedroom into it was to turn the
+sets end-on, so `p5c` grew a yaw mover — an `'ry'` axis with every mover write
+routed through one `sceneMvWrite`. Then the probe said the gap was 18.00m and the
+whole feature was unnecessary. It went back out: an engine concept with no caller
+is worse than the problem it solved. **Measure before building the clever thing.**
+
+**New in TRAPS:** a literal copied out of a conditional's fallback branch and
+quoted by three rulings; the two side walls not being at the same |x|; measuring a
+symmetric pair and getting the same edge twice (the probe printed "0.00m of
+cloth"); and a classifier whose buckets overlap answering with whichever it asks
+first.
+
+## NEXT SESSION: **PUT THIS ROUND ON THE HEADSET** (2026-08-13, all nine landed) — SUPERSEDED, see above
 
 Cache-bust **`?v=26`**. **Read STATE.md — it carries the full list with the
 rulings written out.** Rulings are at **DH**.
