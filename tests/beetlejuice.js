@@ -1862,15 +1862,62 @@ const probe = `
     const db = box(deck);
     if(db.max.z - db.min.z > 2.0)
       throw new Error('the deck is still ' + (db.max.z - db.min.z).toFixed(2) + 'm deep');
-    /* and the netherworld is NOT thinned — he named two sets and RULING BV
-       already cut this one to 6.90m on his own correction */
+    /* and the netherworld is NOT thinned — he named two sets, and this one has its
+       OWN depth control (BJ_AFT_DEEP).
+
+       RE-ANCHORED OFF THE CONSTANT (RULING DD).  This used to read "deeper than
+       4m", a literal measured when BJ_AFT_DEEP was 0.55 and the set was 6.82m.
+       DD takes it to 4.34m, which is 0.34m off tripping a bound that was never
+       about depth at all — it is about whether BJ_THIN also got applied here. So
+       ask that question instead: thinned as well, it would be BJ_THIN of whatever
+       BJ_AFT_DEEP asks for, which is about 1.2m and nowhere near it.  Now the next
+       cut to BJ_AFT_DEEP does not have to fight an unrelated literal. */
     sceneShow('afterlife');
     const ab = box(sceneFind('afterlife').group);
-    if(ab.max.z - ab.min.z < 4)
-      throw new Error('the netherworld was thinned too, and he did not ask for that');
+    const aDepth = ab.max.z - ab.min.z;
+    const aWant = Math.abs(-14.6 - BJ_AFT_Z0) * BJ_AFT_DEEP;
+    if(aDepth < aWant * 0.6)
+      throw new Error('the netherworld is ' + aDepth.toFixed(2) + 'm deep where BJ_AFT_DEEP ' +
+                      'asks for ' + aWant.toFixed(2) + 'm — it looks thinned as well');
     return 'the roof ' + depth.toFixed(2) + 'm deep, face still at z ' + b.max.z.toFixed(2) +
            ', deck ' + (db.max.z - db.min.z).toFixed(2) + 'm; the netherworld left at ' +
-           (ab.max.z - ab.min.z).toFixed(2) + 'm';
+           aDepth.toFixed(2) + 'm';
+  });
+
+  /* ══ RULING DD — THE NETHERWORLD IS SHALLOWER, AND ITS FACE HAS NOT MOVED ═══
+     "the netherworld hast to be less deep."  His SECOND ask: RULING CE already cut
+     it 12.45m -> 6.90m on "i meant the set shouldnt be as deep", and he has now
+     watched that in a headset and said it again.
+
+     THIS NUMBER WAS COMPLETELY UNGUARDED until now, which is how it changed from
+     6.82m to 4.34m with all nineteen suites green.  Two things are pinned: the
+     depth agrees with what the constant claims, and — the invariant that actually
+     matters — the DOWNSTAGE FACE has not moved.  bjAftZ squashes the recession
+     about the front frame precisely so the picture keeps starting in the same
+     place; squash it about the origin instead and the whole set walks downstage
+     into the audience while the depth number looks perfect. */
+  P('RULING DD: the netherworld is shallower, and its downstage face stays put', ()=>{
+    showLoad('beetlejuice');
+    sceneShow('afterlife');
+    const nb = box(sceneFind('afterlife').group);
+    const depth = nb.max.z - nb.min.z;
+    const authored = Math.abs(-14.6 - BJ_AFT_Z0);
+    const want = authored * BJ_AFT_DEEP;
+    if(Math.abs(depth - want) > 0.7)
+      throw new Error('it is ' + depth.toFixed(2) + 'm deep and BJ_AFT_DEEP ' + BJ_AFT_DEEP +
+                      ' of ' + authored.toFixed(1) + 'm asks for ' + want.toFixed(2) + 'm');
+    /* the DIRECTION, because he has asked twice and a third round on one constant
+       is what this pins against */
+    if(!(depth < 5.5))
+      throw new Error('it is still ' + depth.toFixed(2) + 'm deep; CE left it at 6.90 ' +
+                      'and he asked for less again');
+    /* and the picture still starts on the front frame */
+    if(Math.abs(nb.max.z - BJ_AFT_Z0) > 0.5)
+      throw new Error('the downstage face is at z ' + nb.max.z.toFixed(2) +
+                      ' and the front frame is at ' + BJ_AFT_Z0 +
+                      ' — the squash is not about the frame any more');
+    return depth.toFixed(2) + 'm deep at BJ_AFT_DEEP ' + BJ_AFT_DEEP +
+           ', face still on the front frame at z ' + nb.max.z.toFixed(2);
   });
 
   P('RULING CT: only the two he named are thinned, and the manifest says so', ()=>{
@@ -4680,6 +4727,11 @@ const probe = `
                  PAL_BACK:PAL_BACK, PAL_DEEP:PAL_DEEP, BJ_WAGON_BACK:BJ_WAGON_BACK,
                  BJ_FIT_AIR:typeof BJ_FIT_AIR === 'undefined' ? undefined : BJ_FIT_AIR,
                  BJ_SET_DEPTH:typeof BJ_SET_DEPTH === 'undefined' ? undefined : BJ_SET_DEPTH,
+                 /* RULING DE — how far back his exterior seats.  Added to the
+                    handout the moment it was first read, which is the rule TRAPS
+                    states: a const missing from the handout arrives as undefined
+                    and the assertion reading it prints a confident wrong answer. */
+                 BJ_EXT_UPSTAGE:typeof BJ_EXT_UPSTAGE === 'undefined' ? undefined : BJ_EXT_UPSTAGE,
                  bjCues:()=>{ showLoad('beetlejuice'); return CUES.slice(); }};
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
@@ -5488,7 +5540,8 @@ const wd = setTimeout(() => {
   const HIS = {                      // his real boxes, off the glb containers
     attic: [1.898, 0.916, 1.454],
     roof:  [1.898, 1.227, 1.544],
-    house: [1.911, 1.793, 1.824]
+    house: [1.911, 1.793, 1.824],
+    exterior: [1.846, 1.903, 1.876]  // very nearly a cube, so the HEIGHT cap binds
   };
   const hisRoot = k => {
     const r = new THREE.Group();
@@ -5597,6 +5650,52 @@ const wd = setTimeout(() => {
      stronger than the one it replaces, because the thing that can now go wrong
      is not "too tall" but "stretched", "through the brick", or "no longer
      filling". It pins all three. */
+  /* ══ RULING DE — HIS EXTERIOR STANDS FURTHER BACK ═════════════════════════
+     "move the house extirior a little back on the stage."
+
+     THIS ASSERTION IS IN THE FETCH TAIL AND NOT IN THE SYNCHRONOUS PROBE, and
+     that placement is the whole point.  DE moves HIS MODEL — the stand-in it
+     replaces is a flat painted drop already five metres upstage of where his
+     house seats, and moving a cloth back looks like a cloth.  jsdom fetches
+     nothing, so a synchronous check would measure the drop and pass for ever
+     whatever the manifest said.  That is the RULING CL trap exactly: a wall
+     fitted to the stand-in left his 12.98m house three metres out in the street,
+     and the guard had only ever seen the stand-in. */
+  await P('RULING DE: his exterior seats further upstage than the arch clearance', async () => {
+    if(az.BJ_FIT_AIR === undefined || az.BJ_SET_DEPTH === undefined)
+      throw new Error('BJ_FIT_AIR/BJ_SET_DEPTH are not in the build');
+    if(az.BJ_EXT_UPSTAGE === undefined)
+      throw new Error('BJ_EXT_UPSTAGE is not in the build — RULING DE is unbuilt');
+    if(!(az.BJ_EXT_UPSTAGE > 0))
+      throw new Error('BJ_EXT_UPSTAGE is ' + az.BJ_EXT_UPSTAGE + ', which moves it nowhere');
+    const e = az.BJ_MODELS.houseExterior;
+    if(e.upstage === undefined)
+      throw new Error('the exterior entry declares no upstage, so nothing carries DE');
+    if(e.upstage !== az.BJ_EXT_UPSTAGE)
+      throw new Error('the entry says ' + e.upstage + ' and the constant says ' +
+                      az.BJ_EXT_UPSTAGE + ' — they have drifted apart');
+    const root = hisRoot('exterior');
+    if(!w.bjApplyModel(e, root)) throw new Error('the apply refused');
+    root.updateWorldMatrix(true, true);
+    const box = new THREE.Box3().setFromObject(root);
+
+    /* ITS DOWNSTAGE FACE, which is what "back on the stage" moves.  Without DE
+       it seats at exactly the arch clearance; with it, that much further up. */
+    const want = -(az.BJ_FIT_AIR + az.BJ_EXT_UPSTAGE);
+    if(Math.abs(box.max.z - want) > 0.05)
+      throw new Error('its downstage face is at z ' + box.max.z.toFixed(2) +
+                      ', not the ' + want.toFixed(2) + ' that BJ_FIT_AIR plus BJ_EXT_UPSTAGE asks for');
+    /* AND IT HAS NOT WALKED OFF THE BACK GETTING THERE.  Thinned by BJ_THIN it is
+       shallow, so there is room — but the number is a number and the stage is not
+       infinite, which is the guard a future larger value needs. */
+    const back = -(az.BJ_SET_DEPTH + az.BJ_FIT_AIR);
+    if(box.min.z < back - 0.01)
+      throw new Error('it now reaches z ' + box.min.z.toFixed(2) +
+                      ', past the ' + back.toFixed(2) + ' the stage allows');
+    return 'his exterior seats z ' + box.max.z.toFixed(2) + ' .. ' + box.min.z.toFixed(2) +
+           ', ' + az.BJ_EXT_UPSTAGE + 'm upstage of the arch clearance';
+  });
+
   await P('his house FILLS the picture through the real apply path (CB)', async () => {
     if(az.BJ_FIT_AIR === undefined || az.BJ_SET_DEPTH === undefined)
       throw new Error('BJ_FIT_AIR/BJ_SET_DEPTH are not in the build — RULING BX is unbuilt');

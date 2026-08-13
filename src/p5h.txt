@@ -233,10 +233,18 @@ const BJ_THIN = 0.28;          // 10.00m -> 2.80m, 8.77m -> 2.46m
    upstage.  The authored z values below are left as the full-depth layout so the
    perspective intent stays readable; bjAftZ is what puts them on the stage.
 
-   0.55 takes it to 6.82m from the front frame to the backing.  The read is the
-   perspective, so this is the number to move if the tunnel stops reading — and
-   the sizes still fall away faster than the spacing, which is what does most of
-   the work.
+   RULING DD — "the netherworld hast to be less deep."  SECOND TIME HE HAS ASKED,
+   which is why this is not a timid cut: RULING CE already took it 12.45m -> 6.90m
+   on his "i meant the set shouldnt be as deep", he has watched that in a headset
+   and said it again.  0.55 -> 0.35 takes it from 6.82m to 4.34m, a further 36%.
+
+   THE RISK IS NAMED RATHER THAN HEDGED AGAINST.  The read of this set IS the
+   perspective, and there is a depth below which a tunnel stops being a tunnel and
+   becomes a flat wall with small shapes painted on it.  4.34m still has four
+   frames of recession in it and the sizes still fall away faster than the spacing,
+   which is what does most of the work — but this is the number to move, in either
+   direction, and it is one line.  Going shallower again would be a third round on
+   one constant, so it went further than half-way rather than not far enough.
 
    `all blue`: already true — BV made every frame and the chevron blue, and an
    assertion refuses a near-white one.  Nothing to do, recorded so it is not
@@ -244,7 +252,7 @@ const BJ_THIN = 0.28;          // 10.00m -> 2.80m, 8.77m -> 2.46m
    `backdrop black`: it was a dark blue ground. */
 const BJ_AFT_TUBE = 0.15;
 const BJ_AFT_BACK = 0x000000;
-const BJ_AFT_DEEP = 0.55;
+const BJ_AFT_DEEP = 0.35;      // RULING DD, his second ask: 6.82m -> 4.34m
 const BJ_AFT_Z0   = -2.2;      // the downstage frame: the one thing that stays put
 function bjAftZ(z){ return BJ_AFT_Z0 + (z - BJ_AFT_Z0) * BJ_AFT_DEEP; }
 
