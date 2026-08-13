@@ -1,223 +1,169 @@
-# STATE — 2026-08-13 (late)
+# STATE — 2026-08-13 (his headset run)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## ELEVEN THINGS IN ONE MESSAGE — rulings CN–CY
+## HE DID THE HEADSET RUN AND CAME BACK WITH NINE THINGS — rulings CZ–DF
 
-He watched the parked-sets round and came back with eleven items. Nine of them
-are one subject — **where every set comes from and where it stands when it is
-off**, which is a traffic plan, and traffic plans have to be settled all at once
-or the sets stand inside each other. The other two are the neon and the
-blinders.
+The first time anybody has looked at any of it. Nine items, **seven built and
+ALL OF THEM ON `main`, two still to build.** Rulings are at **DF**.
 
-**ALL OF IT IS ON `main`**, at `d89144f`. Verified after the merge: `main`
-rebuilds **byte-identical** and the full suite is green on the merged result; all
-seven work branches are deleted, local and remote.
+**#164, #165, #166 and #167 are all merged.** Each was based on `main` and named
+its dependency in the body, which is the CLAUDE.md rule and the lesson of the
+#155–#162 round — four PRs, four clean merges, no recovery PR this time.
 
-| PR | What | His items |
-|---|---|---|
-| **#155** | the traffic plan (**CO CP CQ CR CS**) | 2, 3, 4, 5, 6 |
-| **#156** | a flown set is thin (**CT**) | 7 |
-| **#157** | one house in the world (**CN**) | 1 |
-| **#158** | the marquee goes dark as it flies (**CU**) | 8 |
-| **#159** | the two menus (**CV CW**) | 9 |
-| **#160** | the neon on the gold, the blinders out of it (**CX CY**) | 10, 11 |
-| **#161** | the record | — |
-| **#162** | the recovery — see below | — |
+| PR | What | His items | State |
+|---|---|---|---|
+| **#164** | the interval assembles in order; act two keeps its neon (**CZ DA**) | 1, 2 | **merged** |
+| **#165** | his two retimings (**DB DC**) | 7, 8 | **merged** |
+| **#166** | the netherworld shallower, the exterior back (**DD DE**) | 5, 6 | **merged** |
+| **#167** | sets park PAST the wing (**DF**) | 3 | **merged** |
+| — | the gold goes, the neon onto the black portal | 4 | **NOT BUILT** |
+| — | the sign gets three positions | 9 | **NOT BUILT** |
 
-**AND IT TOOK AN EIGHTH PR TO GET THERE, WHICH IS THE WORKFLOW LESSON OF THE
-ROUND.** The six PRs after the first were **stacked**: each was opened with the
-previous branch as its base, which is what keeps a stacked diff readable. **A
-stacked PR merges into ITS BASE.** So pressing Merge on all seven collapsed them
-*up the stack* into their own base branches, and only #155 reached `main` —
-`main` had the traffic plan and nothing else, while `bj-eleven-record` held the
-whole round (18 files, 2,415 insertions against it). **#162 was one clean merge
-from the stack tip to `main`** and closed it; the merge base was #155's own
-commit and nothing had moved on `main` since.
+Suites **19/19** green on every one. **18 negative checks fired**, each mutation
+proved present in the BUILT file *and* proved to have changed it before the
+result was read. Cache-bust for the next run: **`?v=26`**.
 
-**NOTHING WAS LOST AND THAT IS MEASURED, not assumed:** after #162, `main`'s tree
-hash and the stack tip's are **identical**, and every one of the round's nine
-commits is an ancestor of `main`. The six leftover branches held **zero** commits
-`main` lacked — only older copies of the record files — which is what was checked
-before deleting them.
+## WHAT IS LEFT — TWO ITEMS, BOTH SPECIFIED
 
-**CLAUDE.md's "never stack PRs" exists for exactly this.** His standing
-instruction to keep going without waiting for merges is compatible with the rule:
-build the chain sequentially, but **base every PR on `main`** and name the
-dependency in the body. A wider diff to read beats a chain that does not land
-where it is pointed.
+### 1. ITEM 4 — the gold goes, the neon moves onto the black portal
 
-Cache-bust for the next headset run: **`?v=25`**. Suites **19/19** — the
-nineteenth is `tests/probe-lint.js`, new this round.
+*"just for beetlejuice remove the gold prosinium and put the neon where the
+black is right now."*
 
-Spec: `docs/superpowers/specs/2026-08-13-one-house-the-traffic-plan-and-the-gold-line-design.md`.
-**Rulings are at CY.**
+**HE CONFIRMED WHICH BLACK, so this is not open:** `bj:portal`, the dark board
+false portal, **not** the masking legs. Asked and answered with the two
+readings drawn out; he also confirmed the blinders follow the neon in, in all
+five productions.
 
-### THE TRAFFIC PLAN — CO, CP, CQ, CR, CS
+Three parts, and the third is the one with a trap in it:
 
-Four slots, and every set has exactly one:
+- **p2b `proscenium()`** — the gold has to become findable and hideable. Today
+  it is `moulding(pts, 0.26, M.gold, g, 130)` plus a `goldDk` inner, a keystone
+  box and its `head` sphere, all pushed to `STATIC` and never named. Give them
+  a named sub-group, expose it, hide it for BJ on load and **restore it on
+  `showStrike`** — the precedent is `SHOW.offstage` (RULING CN): detach or
+  hide, never dispose. **It must not touch the other four productions**, and
+  the stage swap must not leave a hidden gold arch on a stage BJ has left.
+- **p5h, the frame geometry** (`bj:portalFrame`, ~line 1110). Re-cut to trace
+  the portal instead of the gold band:
 
-| slot | what stands there | measured |
-|---|---|---|
-| upstage, behind the backdrop | **the house wagon, and nothing else** | z −24.78..−11.80 |
-| stage left | the attic | x 7.37..20.43 |
-| stage right | the bedroom and the closet | x −16.11..−7.09 |
-| the fly tower | the roof, the netherworld, the exterior | y 10.50..19.40 |
+  | | today (the gold) | wanted (the black portal) |
+  |---|---|---|
+  | legs x | ±7.75 (`D.procW/2 + 0.25`) | **±7.11** (`BJ.opW/2 + BJ.frame/2`) |
+  | top | raked, 10.375 → 8.6 | **flat at y 9.51** (`BJ.opH + BJ.frame/2`) |
+  | width | chord across ±7.75 | **14.84** (`BJ.opW + 2*BJ.frame`) |
+  | z | `BJ.pz + 0.81` = 1.26 | **`BJ.pz + 0.42`** = 0.87, a hair proud of the portal's 0.70 face |
 
-**RULING CO turns on a comment that stopped being true.** RULING BQ parked the
-wagon in a wing and wrote down why it could not go upstage: *"12.98m does not fit
-between the backdrop at −10.90 and the brick at −21.5."* True when written.
-**RULING CL moved the brick to −25.5 for a completely unrelated reason** — his
-house was standing 3.28m out in the street at the curtain call — and the gap went
-**10.60m → 14.60m**. His room fits with 1.62m to spare, at the offset the wagon
-already has, so CO changes *which mover parks the house* and not one number.
+  Still **no sill** (his own line), still **one merged mesh on one material**
+  (`updateNeon`'s per-tube rule does not apply — this is not on `SHOW.neon`),
+  still **built dark**.
+- **p4 `buildRig`** — `BLIND_X` 7.75 → **7.11**, and `BLIND_SLANT` becomes the
+  portal's **flat** top so RULING CY still holds (the light comes out of the
+  bar). He confirmed this moves them in all five shows.
 
-**RULING CS needed measuring rather than choosing.** The bedroom is 8.62m wide
-and the closet 9.02m: **17.64m of room for a 14.5m wing.** They do not fit
-abreast and no number makes them, so they stand one behind the other — both
-track in on x, and the closet parks 6m further upstage on a second mover. Without
-it they park inside each other by 8.6 × 5.6 × 4.2m.
+**THIS PARTLY REPEALS RULING CX** (*"basically where the gold is"*) — the gold
+is going, so "where the gold is" has stopped being a place. **And it supersedes
+his own CY rake:** the portal's top is flat, so a raked bar would cut across it
+instead of tracing it. Keep `BJ_NEON_RAKE` and `BLIND_RAKE` live as one-line
+switches and **say so in the PR** — reversing his own correction on the
+strength of a chosen option needs to be visible.
 
-**And `tools/parked.js` now reports what it has never reported: `none — every
-parked set has its own space`.**
+**Assertions to reverse in place** (the AO/AV/BA/BI/BZ precedent, ninth time),
+each exemption NAMED rather than the rule loosened:
+`the proscenium neon traces the gold, straight-topped and open at the deck (CX)`
+— currently asserts ±7.75 and a top at 10.72 — plus the CY rake check and the
+blinder-line check. **Measure the BUILT GEOMETRY against the line, never
+re-compute the line:** that is the whole CY lesson, where the blinders and
+their own assertion carried the same wrong sign and agreed perfectly.
 
-### RULING CT — a flown set is thin
+### 2. ITEM 9 — the sign to pre-show, the floor, or all the way up
 
-His roof lands **10.00m deep** and his exterior **8.77m**, and neither hangs on a
-batten. `BJ_THIN` **0.28** squashes the recession about the **downstage face**,
-which does not move — the BV fix, pointed at two more sets. Roof → 2.80m,
-exterior → 2.46m, the stand-in roof 5.00 → 1.50m with its walkable deck coming
-with it.
+*"make it so i can make the beeltjuice sign got to pre show postion to the
+floor or all the way up."*
 
-**It is a non-uniform scale, which this file otherwise refuses** (RULING CB kept
-the fit uniform to avoid distorting every door in the house). A thinned roof IS a
-squashed roof: its slope steepens. That is what "really thin" asks for on a piece
-that lives on a batten, and `BJ_THIN` is one line back to 1.0.
+`SHOW.flyExtras` (RULING CW) is a **two-state** haul today —
+`{key, label, scene, inOff, outOff, speed}` with IN/OUT buttons on the desk
+(`p6`, `refreshFlyExtraRows`/`syncFlyExtraRows`) and in the headset (`p9`,
+`vrBtnBox` at literal x 790 and 882). It needs **three named stops**:
 
-**What the thinning did NOT buy, tried before it was written down.** Thin sets
-should hang on separate lines instead of inside each other. They cannot:
+- **pre-show** — its home in the picture, offset 0
+- **the floor** — down onto the deck. **MEASURE IT:** the sign hangs centred
+  at y 6.00 and is 8.5m wide; the offset is whatever puts its bottom edge on
+  y 0, and that number is not written down anywhere yet.
+- **all the way up** — `BJ_SIGN_OUT` 9.0, or higher if 9.0 does not read as
+  "all the way" once it is measured against the header.
 
-- **our exterior is not where his is** — ours is a cloth at z −7.35 (deliberately,
-  so it plays against its own sky on line 13), his seats at the arch at −2.76.
-  A park is an OFFSET, so no single number lines both up: every set of offsets
-  that separated his three left the stand-ins inside each other, and the reverse;
-- **the depth is not there** — thinned, the three are 12.41m of set against
-  11.50m of tower downstage of the stored wagon.
+Keep it **declared** (a show with no `flyExtras` draws exactly what it draws
+today — that is what leaves the other four productions alone), and keep the
+two-stop form working so nothing else has to change.
 
-So they go on sharing it, as RULING CE said. The honest gain is the SIZE: the
-deepest set-inside-set went **8.77m → 2.46m**. **What would fix it is a park
-stated as an absolute LINE measured off whichever geometry is standing there** —
-and models land asynchronously, long after a park is declared, so that is an
-engine change and not a number. Flagged, not smuggled in.
-
-### RULING CN — one house in the world
-
-RULING AQ already said this and the code did not do it: `bjRedress` darkened the
-other two dressings and left them **in the world**, which was fair while a
-dressing was our own furniture and became **280,540 triangles — three complete
-houses of his in the same 13.6m of stage** once RULING BP landed.
-
-A dressing that is not worn is **detached from the scene graph** and held on
-`SHOW.offstage`. **Not a dispose**: re-fetching a 27MB file nine times an evening
-is worse. Two sweeps had to learn about it and both would have failed silently —
-`lockShowStatic` would have left a held house unfrozen, and `showStrike` would
-have **leaked a house and a half of geometry per show change**.
-
-### RULING CU — the marquee goes dark as it flies
-
-A **gate**, not a repaint: what a cue asked for is remembered and the gate
-multiplies it, so a `signCol` red survives underneath and comes back when the
-sign does. Rides the sign's own mover offset and the frame `dt`. Measured 1.80 →
-2.10 red → 1.75 a tenth of a second into the rise → 0.00 up → still red coming
-down. A sign with **no** mover is left alone rather than switched off for ever.
-
-### RULINGS CV, CW — the two menus
-
-**CV: the desk has had a set menu all along and the headset has not.** A SETS
-page on the VR console, calling sets on through `sceneChangeTo` so the change is
-choreographed — and it says **where** each struck set is standing, because BQ
-made that a real question. The tab strip moved from x 380 to 300: eight tabs at
-112 would have drawn SCRIPT off a 1200-wide canvas.
-
-**CW: the sign cannot be a lineset** (every lineset is upstage of the plaster
-line; the sign hangs downstage of the curtain — AS, AT). So the rail carries
-hauls the show declares, `SHOW.flyExtras`, drawn on the desk and in the headset.
-Declared, never assumed.
-
-### RULINGS CX, CY — the neon and the blinders
-
-The gold band runs at **x ±7.75**, springing **8.6**, **z 1.26**, and its arch
-**peaks at 10.375** — a quadratic sits at a quarter/half/quarter of its three
-points, not at the control point, and reading the control point as the apex would
-have put the neon a metre and a half too high.
-
-**AND THE TOP IS RAKED ONE WAY, WHICH IS HIS CORRECTION.** *"can you make it
-slanted just one way not from the center."* It was built as two chords meeting at
-the centre and flagged as the open reading; it is now **one bar right across**,
-low at the springing on one side and high at the peak on the other, so **the two
-legs are different heights**. It rakes down toward **stage left**, the way the
-marquee's own arrow rakes (`rotation.z −0.20` toward +x) — `BJ_NEON_RAKE` is one
-sign to mirror it, and the blinders read the same line. **No sill.**
-
-**A sign error in that line got through the blinders and their own assertion**,
-because both carried it and agreed with each other. What caught it was the check
-that measures the BUILT GEOMETRY against the line instead of re-computing the
-line: *"the top stands 1.79m above its line at x=−7.92"*. Sibling of the test
-that reimplemented the beam formula.
-
-The blinders have **no body at all** — the point, the beam and the lens glow, and
-nothing between them — sitting **on** the frame at z 1.45, the bar's own
-downstage face.
+**TRAP: `tests/vr.js` pins some fly-page rows by LITERAL PIXEL** and three
+buttons will not fit where two did. Prefer `vrHit` META so regions are found by
+meaning rather than by pixel — the goods picker already does this and TRAPS says
+to prefer it.
 
 ## WHAT THIS ROUND FOUND THAT NOBODY ASKED ABOUT
 
-- **Every parked set stood, visible, in its acting position the moment the show
-  loaded.** RULING BQ made a struck set stay DRAWN and `sceneShow` — the instant
-  swap, which is what `showLoad` uses — drove the movers of the set coming ON and
-  **nothing at all** for the sets going off. Nothing caught it because the probe
-  and every assertion drive a CHANGE first. Found by the sets menu, fixed in
-  #159, and there is now an assertion on the state nobody had looked at.
-- **The exterior parked with its foot 0.2m inside the picture.** The cue at
-  1:14:30 flew it to `BJ_SIGN_OUT` 9.0 — the SIGN's number, borrowed by a set —
-  against a 9.2m opening. Invisible until BQ made a parked set stand there drawn.
-- **`bjApplyModel` chose its route by COUNTING part movers**, so a set with a
-  park as well as a wrapper took the cemetery's route. It showed up as the roof
-  measuring as an **empty box**. A count is not a kind.
+- **`tools/parked.js` was lying in three ways at once, and it had been trusted
+  for two rounds.** It cast from **ONE** eye at (0, 1.35, 12) — the middle of
+  the stalls, the kindest seat in the house, when the extreme side seats are
+  what look diagonally into the opposite wing. It **aimed at the picture
+  opening** rather than at the sets, so it could only find a park by accident.
+  And its first surface sampling used **bounding-box corners**, which gave his
+  imported houses — ONE merged mesh each — exactly nine sample points with
+  eight of them in mid-air metres from any geometry: every ray missed and it
+  printed a confident `0/450 UNSEEN`. Fifty eyes and real surface points now.
+- **Neither the netherworld's depth nor the exterior's seating was pinned by
+  anything.** A 36% depth change and a 1.5m move both passed with all nineteen
+  suites green. Both have assertions now.
+- **An assertion caught the act-two blackout carrying a changeover.** With Q40
+  moved behind Q41, the *blackout* became the first cue to declare
+  `scene:'interior'`, so the netherworld vanished and the room appeared while
+  the blackout's own one-second fade was still going down.
 
-## WHAT IS LEFT
+## WHAT THE ROUND TAUGHT
 
-### 1. THE HEADSET RUN — `?v=25`, and it is still the only thing left
+- **When a request collides with an existing ruling, the collision is the thing
+  to ask about — and I asked one question too late.** Read strictly, "no set
+  should be parked in a wing" leaves only the fly tower, so I moved three sets
+  into it: six of seven flying, inverting his own RULING CE and throwing away
+  the CQ/CS side entrances. He corrected it in one sentence
+  (*"the nether world extirior and roof should be the only things that fly"*,
+  *"there is plenty of room for the sets to go"*). Four assertion reversals
+  built and reverted. **The empty space was BEHIND the sets, not in front of
+  them** — the bedroom cleared the masking by 0.49m with six metres of wing
+  standing unused outboard.
+- **Establishing what a complaint is NOT can be most of the work.** Fifty eyes
+  at ~12,000 rays proved every park already invisible from every seat, so any
+  assertion written on visibility would have passed against the very build he
+  objected to. He was asking for the wings to be clear, not for a sightline.
+- **A mutation can prove the wrong clause.** The first DA-2 check gave the
+  flash cue a portal field, which trips the assertion's own guard and never
+  reaches the emissive check underneath it. Re-aimed at the mechanism, it fires.
+- **`updateHouseWait` splitting an audio field is the whole of CZ.** Act one is
+  the CLOCK track, so holding the `stop` along with the `play` would have left
+  the transport firing act two's cues while the curtain was still flying in.
+- **The backtick trap bit for the sixth time** and `probe-lint.js` caught it in
+  five seconds — I had simply not re-run it after editing the probe. The lesson
+  is not care, it is **run the lint after every probe edit**.
+- **A box has vertices only at its corners, wearing its other hat.** The old
+  trap measured nothing BETWEEN the corners; this one aimed at nothing BUT the
+  corners.
 
-**Nothing about how any of this looks has been observed.** New with this round:
+## Still his to decide
 
-- **Does the neon read on the gold?** It is 15.88m across now with a straight top
-  **raked one way** — high stage right at 10.72, low stage left at 8.6 — and
-  nothing across the deck. A completely different shape from what CH built
-  yesterday, and the rake is his own correction.
-- **Do bodiless blinders read as light coming out of the bar**, or as light
-  coming out of nowhere?
-- **Is a thinned roof a roof?** `BJ_THIN` 0.28 steepens its slope. One line.
-- **Do the new entrances read** — the attic from stage left, the bedroom and
-  closet from stage right, the house from behind the backdrop?
-- **Is the SETS page useful in a headset**, and is "where it is standing" the
-  right thing for it to say?
-
-Carried: the houses at 13.6 × 12.76 with 3.56m behind the border; `BJ_FILL_MAX`
-0.55 lit or glowing; the netherworld at 6.90m over black; `BLIND_POWER` 4.6; the
-house at 0.15; 25 seconds of nothing at the top.
-
-### 2. Still his to decide
-
-- **Which way the neon rakes.** It leans down toward stage left, off the arrow on
-  his own marquee. `BJ_NEON_RAKE` is one sign, and the blinders follow it.
+- **The cemetery still declares no park** (46.8m parted against a 44m stage),
+  and the probe now prices it: **running the hills further does NOT hide it** —
+  visibility falls 186 rays → 45 and then RISES again, because `bj:hill`,
+  `bj:gate` and `bj:moon` come back into view from the far side. Not a live
+  defect: it is switched off outright when struck.
 - **The sign's red at GO**, moved to 1:00 with the proscenium's. One line.
-- **The cemetery declares no park** (46.8m parted against a 44m stage).
 - **His files are 181MB and ~70MB is discarded at load.**
-- **The netherworld is the one flown set he did not name.** Narrower would buy
-  it a wing; he has not asked.
+- **The netherworld is the one flown set he never named.** Now 4.42m deep.
 
-### 3. Still owed from earlier rounds
+## Still owed from earlier rounds
 
 - **RULING BY** — standing on his geometry costs 4.29ms, 38.6% of a 90Hz frame.
 - **The graveyard.** He has supplied none and the show OPENS in it until 10:38.
@@ -230,40 +176,54 @@ house at 0.15; 25 seconds of nothing at the top.
 
 ## Feel constants for the headset (one-line retunes)
 
-In `p4` (`buildRig`): `BLIND_POWER` 4.6 / `BLIND_RANK` 0.9, **`BLIND_X` 7.75 and
-the slant line (CY — the blinders on the neon), `BLIND_BODY` false**,
-`AUDM_POWER` 2.8 / `AUDM_RANK` 0.8, `AUD_LIGHT_RESERVE` 2. **Rank is RULING BC
-and load-bearing.**
+In `p4` (`buildRig`): `BLIND_POWER` 4.6 / `BLIND_RANK` 0.9, `BLIND_X` **7.75
+(→ 7.11 when item 4 lands)**, `BLIND_BODY` false, `AUDM_POWER` 2.8 /
+`AUDM_RANK` 0.8, `AUD_LIGHT_RESERVE` 2. **Rank is RULING BC and load-bearing.**
 
 In `p5j`: `AUD_WANDER_RATE` 1.0, `AUD_RANDOM_RATE` 1.0, `AUD_STROBE_HZ` 9.0,
 `AUD_SWEEP_LO` −15 / `AUD_SWEEP_HI` −98.
 
-In `p5h` (the neon, CH amended by CX): `BJ_NEON_BAR` 0.34, **`BJ_NEON_Z` 0.81**
-(+ `BJ.pz` = 1.26, the gold's own z), **`BJ_NEON_RAKE` −1 (which way the top
-leans; `BLIND_RAKE` in p4 mirrors it)**, `BJ_NEON_FADE` 1.2, `BJ_NEON_BLUE`
-0x4fa8ff, `BJ_NEON_RED` 0xff1e10, `BJ_NEON_DARK` 0x0d1116.
+In `p5h` (the neon): `BJ_NEON_BAR` 0.34, `BJ_NEON_Z` **0.81 (→ 0.42 with item
+4)**, `BJ_NEON_RAKE` −1 (**superseded by item 4's flat portal top; kept as a
+one-line switch**), `BJ_NEON_FADE` 1.2, `BJ_NEON_BLUE` 0x4fa8ff, `BJ_NEON_RED`
+0xff1e10, `BJ_NEON_DARK` 0x0d1116.
 
-In `p5h` (the sign, CF and CU): `BJ_SIGN_GLOW` 0.95, `BJ_SIGN_LIT` 2.1,
-**`BJ_SIGN_LAMP_FADE` 2.5, `BJ_SIGN_LAMP_CUT` 0.05**.
+In `p5h` (the sign): `BJ_SIGN_GLOW` 0.95, `BJ_SIGN_LIT` 2.1,
+`BJ_SIGN_LAMP_FADE` 2.5, `BJ_SIGN_LAMP_CUT` 0.05, `BJ_SIGN_OUT` 9.0.
 
 In `p5h` (AW–AZ, CE): `BJ_FLY_SPEED` 1.8, `BJ_HILL_SPEED` 2.0 / `BJ_HILL_OUT`
 9.5, `BJ_PART_OUT` 10.5, `BJ_TRACK_SPEED` 2.0.
 
-In `p5h` (the traffic plan, CO–CT): **`BJ_ATTIC_SIDE` 13.9, `BJ_SIDE_ROOM` −11.6,
-`BJ_CLOSET_BACK` −6.0, `BJ_THIN` 0.28**, `BJ_WAGON_BACK` −10.0. All sized by the
-STAND-IN as well as by his model.
+In `p5h` (the traffic plan, CO–CS amended by **DF**): **`BJ_ATTIC_SIDE` 14.4,
+`BJ_SIDE_ROOM` −14.0**, `BJ_CLOSET_BACK` −6.0, `BJ_THIN` 0.28, `BJ_WAGON_BACK`
+−10.0. All sized by the STAND-IN as well as by his model.
 
-In `p5h` (the netherworld, BV amended): `BJ_AFT_DEEP` 0.55, `BJ_AFT_TUBE` 0.15,
+In `p5h` (the netherworld, **DD**): **`BJ_AFT_DEEP` 0.35**, `BJ_AFT_TUBE` 0.15,
 `BJ_AFT_BACK` 0x000000.
 
-In `p2` (CL): `PAL_DEEP` 8.5.
+In `p2` (CL): `PAL_DEEP` 8.5.  In `p5c`: `SCENE_PARK_SPEED` 2.0.
 
-In `p5c`: `SCENE_PARK_SPEED` 2.0.
+In `p5i` (BP, BX, CB, CC, CD, CT, **DE**): `BJ_TRI_BUDGET` 150000,
+`BJ_MAT_BUDGET` 8, `BJ_TEX_BUDGET` 2048, `BJ_FIT_AIR` 0.30, `BJ_SET_DEPTH`
+10.0, `BJ_HOUSE_UPSTAGE` 1.5, **`BJ_EXT_UPSTAGE` 1.5**, `BJ_FILL_MAX` 0.55,
+`BJ_FILL_RATE` 1.6, and each manifest entry's `fit` and `thin`.
 
-In `p5i` (BP, BX, CB, CC, CD, CT): `BJ_TRI_BUDGET` 150000, `BJ_MAT_BUDGET` 8,
-`BJ_TEX_BUDGET` 2048, `BJ_FIT_AIR` 0.30, `BJ_SET_DEPTH` 10.0,
-`BJ_HOUSE_UPSTAGE` 1.5, `BJ_FILL_MAX` 0.55, `BJ_FILL_RATE` 1.6, and each
-manifest entry's `fit` and `thin`.
+## The park layout after DF
+
+| set | parks | slot |
+|---|---|---|
+| interior (his 3 houses) | z −24.78..−11.80, x ±6.80 | **upstage, alone** (CO) |
+| attic | x 7.87..20.93 | stage left, 1.07m clear of masking, 1.07m off the wall |
+| bedroom | x −18.31..−9.69 | stage right, 2.89m clear, 0.89m off the **locking rail** |
+| closet | x −18.51..−9.49, z −6.0 back | stage right behind the bedroom, 2.69m clear |
+| house (exterior) | y 10.50..19.40 | **flown** |
+| afterlife | y 10.50..19.70 | **flown** |
+| roof | y 10.50..19.16 | **flown** |
+| cemetery | — | no park; switched off outright |
+
+**Only three sets fly, which is his correction.** Stage right stops at the
+locking rail (x −19.2), not at the wall — RULING CE was written because the
+wagon had been parked standing on the flyman's working space.
 
 ## Standing facts
 
@@ -275,33 +235,6 @@ untouched.
 **Every timestamp in the Beetlejuice plot is a position in his WHOLE recording.**
 
 **His photographs are never committed.**
-
-## What this round taught, beyond the features
-
-- **A comment that says something is IMPOSSIBLE is a fact with a date on it.**
-  BQ's "12.98m does not fit" was true, and CL made it false for an unrelated
-  reason, and nothing connected the two because the impossibility was prose
-  rather than an assertion.
-- **A BoxGeometry has vertices only at its CORNERS**, so per-vertex sampling of a
-  merged frame measures nothing between them. It bit twice in one PR, once
-  throwing against a correct build and once **passing against a broken one**.
-- **A count is not a kind.** Routing by "how many part movers" broke the moment a
-  set had a park as well as a wrapper.
-- **A test that picks its subject for convenience agrees with itself.** "The set
-  call is choreographed" picked the exterior, which carries no part movers at
-  all, so a mutant that replaced the choreographed change with an instant swap
-  had nothing to travel and sailed through.
-- **And so does a test that shares a formula with the thing it tests.** The
-  neon's rake line had its sign inverted, and the BLINDERS and their assertion
-  both carried the same wrong line — so they agreed perfectly and passed. Only
-  the check that measures the BUILT GEOMETRY against the line, rather than
-  re-computing it, disagreed.
-- **The probe template ate an escaped quote for the fourth time**, and a backtick
-  in a comment for the fifth. `tests/probe-lint.js` is the mechanical sweep TRAPS
-  has been asking for.
-- **A probe reading a game `const` that was never in its handout** gets
-  `undefined` and prints a confident wrong answer — `|| []` is what turns a
-  missing handout into a silent lie.
 
 ## Shelved
 

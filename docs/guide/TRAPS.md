@@ -681,6 +681,64 @@ against this list before opening a PR; **add new traps as you hit them.**
   the stack reads `tests/beetlejuice.js:<the eval line>` and looks like a fault
   in the game source rather than in the assertion you just typed.
 
+## The CZ–DF round — the probe was the bug
+
+- **A SIGHTLINE PROBE THAT CASTS FROM ONE EYE MEASURES THE KINDEST SEAT IN THE
+  HOUSE.** `tools/parked.js` cast from `(0, 1.35, 12)` — the middle of the
+  stalls — and reported every park MASKED for two rounds. The binding case is
+  the **extreme side seat**, which looks diagonally across the picture and
+  straight into the OPPOSITE wing; that is why real masking is set to the worst
+  sightline in the house rather than to the axis. Fifty eyes (stalls, mezzanine,
+  balcony) now, and the answer still held — but it was luck that it did.
+- **AND IT AIMED AT THE OPENING RATHER THAN AT THE SET.** A grid of rays across
+  the picture answers "what is in the picture"; it can only find a parked set by
+  accident, and it reports a confident 0% for a set standing three metres to the
+  side of where the rays were pointed. Cast from each eye **at sample points on
+  the thing you are asking about**, and ask whether it is the FIRST hit.
+- **A BOX HAS VERTICES ONLY AT ITS CORNERS, WEARING ITS OTHER HAT.** The known
+  trap is that per-vertex sampling measures nothing BETWEEN the corners. This is
+  the inverse: sampling each mesh's world-box corners plus its centre gave the
+  imported houses — **ONE merged mesh each** — exactly nine sample points, eight
+  of them in mid-air metres from any geometry. Every ray missed and the probe
+  printed `0/450 UNSEEN`. Walk the **position attribute**, strided to a budget,
+  so every sample is ON the surface.
+- **ESTABLISHING WHAT A COMPLAINT IS *NOT* CAN BE MOST OF THE WORK, and it is
+  what stops a wrong fix.** "Sets go fully out past the wings so they cant be
+  seen" reads as a sightline fault. Twelve thousand rays from fifty seats proved
+  every park already invisible, so **any assertion written on visibility would
+  have passed against the very build he objected to.** He wanted the WINGS clear
+  — working space, crew, entrances, the locking rail — which is a question about
+  where a set stands, not about who can see it.
+- **WHEN A REQUEST COLLIDES WITH AN EXISTING RULING, THE COLLISION IS THE THING
+  TO ASK ABOUT.** Read strictly, "no set should be parked in a wing" leaves only
+  the fly tower, because the wings ARE the sides of a 44m stage. Acting on that
+  put six of seven sets in the air, inverted RULING CE ("as few sets fly as
+  possible"), threw away the CQ/CS side entrances, and cost four assertion
+  reversals — all reverted by one sentence of correction. Two questions had
+  already been asked; the third was the one that mattered and it came last.
+  **The empty space was BEHIND the sets, not in front of them:** the bedroom
+  cleared the masking by 0.49m with six metres of wing standing unused outboard.
+- **A MUTATION CAN PROVE THE WRONG CLAUSE.** A negative check that gives the
+  flash cue a `portal` field trips the assertion's own *guard* clause and never
+  reaches the emissive check underneath it — so it reads as a fired check while
+  leaving the real one unexercised. Aim a mutation at the MECHANISM (here,
+  breaking "a cue that says nothing puts it out"), and confirm which clause
+  spoke.
+- **A CLAUSE THAT CANNOT FIRE SHOULD SAY SO IN THE FILE.** CZ's ordering check
+  compares the frame and the music against the house, and all three land in ONE
+  call — so it can only ever be equal. It is kept as a guard for whoever splits
+  `updateHouseWait` later, and labelled, rather than left looking live.
+- **A LITERAL MEASURED FROM A CONSTANT BECOMES A TRIPWIRE FOR THAT CONSTANT.**
+  "The netherworld is not thinned as well" was written as "deeper than 4m", a
+  number taken when `BJ_AFT_DEEP` was 0.55. RULING DD took the set to 4.42m —
+  0.34m from tripping a bound that was never about depth at all. Express the
+  check against the constant it is really about (`BJ_AFT_DEEP`, `BJ_THIN`), or
+  the next retune fights an unrelated literal.
+- **AND THE BACKTICK IN A PROBE COMMENT BIT A SIXTH TIME.** `probe-lint.js`,
+  written last round for exactly this, caught it in five seconds — it had simply
+  not been re-run after the probe was edited. The rule is not "be careful", it
+  is **run the lint after every probe edit**.
+
 ## Environment
 
 - **A `const` in its temporal dead zone throws on a PLAIN reference, not just
