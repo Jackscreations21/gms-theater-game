@@ -224,16 +224,25 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **MERGE THE CHAIN, THEN LOOK AT IT** (2026-08-13, late)
+## NEXT SESSION: **LAND THE REST OF THE CHAIN, THEN LOOK AT IT** (2026-08-13, late)
 
 Cache-bust **`?v=25`**. **Read STATE.md — it carries the full left-to-do list
 with the rulings written out.** What belongs here is the shape of it.
+Rulings are at **CY**.
 
-**FIRST, MERGE #155 → #156 → #157 → #158 → #159 → #160, IN THAT ORDER.** They
-are a linear chain built on each other and opened ahead of merging, at his
-standing instruction ("dont wiat for me to merge to keep going just keep
-going"). Each is based on the one before, so GitHub retargets the next to `main`
-as its parent merges. Rulings are at **CY**.
+**FIRST: `main` HAS ONE OF THE SEVEN PRs.** All seven were merged and only #155
+reached `main`; the other six were stacked, each based on the branch before it,
+so pressing Merge collapsed them **up the stack** into their own bases instead of
+down onto `main`. `bj-eleven-record` carries the whole round — 18 files, 2,415
+insertions against `main` — and **one PR from it to `main` closes it**, with no
+conflicts, because the merge base is #155's own commit and nothing has moved on
+`main` since. The stack tip rebuilds byte-identical and is 19/19 green.
+
+**AND THE WORKFLOW LESSON IS THE POINT.** CLAUDE.md's "never stack PRs" is
+written for exactly this. His standing instruction is to keep going without
+waiting for merges, and that is compatible — but the base of every PR after the
+first must still be **`main`**, with the dependency stated in the body. A wider
+diff to read beats a chain that does not land where it is pointed.
 
 **HE ASKED FOR ELEVEN THINGS AND ALL ELEVEN ARE BUILT.** Nine of them were one
 subject — a traffic plan — and it is settled: four slots, every set in exactly
@@ -274,6 +283,126 @@ be narrower.
 **Still owed:** **BY**, the graveyard, the audio join at 4292, the house floor
 pool, **a park stated as an absolute LINE rather than an offset** (which is what
 would let the flown sets stop sharing the tower), and `pr6.json`.
+
+## DONE — 2026-08-13 (late): eleven things in one message (#155–#161, CN–CY)
+
+He watched the parked-sets round and came back with eleven items. **Nine of them
+were one subject** — where every set comes from and where it stands when it is
+off — which is a traffic plan, and traffic plans have to be settled all at once
+or the sets stand inside each other.
+
+**THE TRAFFIC PLAN (CO–CS): four slots, and every set in exactly one.** The house
+upstage behind the backdrop and nothing else there; the attic stage left; the
+bedroom and the closet stage right; the roof, netherworld and exterior flown.
+`tools/parked.js` now reports what it has never reported: **`none — every parked
+set has its own space`**.
+
+**RULING CO TURNS ON A COMMENT THAT STOPPED BEING TRUE.** RULING BQ parked the
+wagon in a wing and wrote down why it could not go upstage: *"12.98m does not fit
+between the backdrop at −10.90 and the brick at −21.5."* True when written.
+**RULING CL moved the brick to −25.5 for a completely unrelated reason** — his
+house was standing 3.28m out in the street at the curtain call — and the gap went
+**10.60m → 14.60m**. His room fits with 1.62m to spare at the offset the wagon
+already had, so CO changed *which mover parks the house* and not one number. **A
+comment that rules something out on a number is a fact with a date on it**, and
+that is now in TRAPS.
+
+**RULING CS is the one that needed measuring rather than choosing.** The bedroom
+is 8.62m wide and the closet 9.02m: 17.64m of room for a 14.5m wing. They do not
+fit abreast and no number makes them, so they stand one behind the other — both
+track in from the side, and the closet parks 6m further upstage on a second
+mover. Without it they park inside each other by 8.6 × 5.6 × 4.2m.
+
+**RULING CT — a flown set is thin**, and it is a **non-uniform scale, which this
+file otherwise refuses** (CB kept the fit uniform to avoid distorting every door
+in the house). His roof 10.00 → 2.80m, his exterior 8.77 → 2.46m, our stand-in
+roof 5.00 → 1.50m with its walkable deck coming with it. **What the thinning did
+NOT buy was tried before it was written down:** thin sets should hang on separate
+lines, and they cannot — our exterior is a cloth at z −7.35 and his seats at the
+arch, a park is an OFFSET, and no single number lines both up. The honest gain is
+the SIZE: the deepest set-inside-set went **8.77m → 2.46m**. **A park stated as an
+absolute LINE** is what would fix it, and that is an engine change, so it went on
+the owed list rather than into the PR.
+
+**RULING CN — one house in the world.** RULING AQ already said this and the code
+did not do it: `bjRedress` darkened the other two dressings and left them in the
+world, which was fair while a dressing was our own furniture and became **280,540
+triangles — three complete houses of his in the same 13.6m of stage** once BP
+landed. A dressing that is not worn is detached from the scene graph now and held
+on `SHOW.offstage`. **Not a dispose** — re-fetching a 27MB file nine times an
+evening is worse. Two sweeps had to learn about it and **both would have failed
+silently**: `lockShowStatic` would have left a held house unfrozen, and
+`showStrike` would have leaked a house and a half of geometry per show change.
+
+**RULING CU — the marquee goes dark as it flies**, as a GATE rather than a
+repaint: what a cue asked for is remembered and the gate multiplies it, so a red
+survives underneath and comes back when the sign does. A sign with **no** mover is
+left alone rather than switched off for ever.
+
+**RULINGS CV, CW — the two menus.** The desk has had a set menu all along and the
+headset has not, so the VR console grew a SETS page that says **where** each
+struck set is standing. The sign cannot be a lineset — every lineset is upstage
+of the plaster line and the sign hangs downstage of the curtain — so the rail
+carries hauls the show declares, drawn on the desk and in the headset both.
+
+**RULINGS CX, CY — the neon and the blinders.** The frame moved out to the
+architectural proscenium, tracing p2b's gold band at x ±7.75 and z 1.26, with no
+sill. **And the peak is 10.375, not 12.15**: a quadratic sits at a
+quarter/half/quarter of its three points, not at its control point, and reading
+the control point as the apex would have put the neon a metre and a half too
+high. Built first as two chords meeting at the centre and **flagged as the open
+reading of his sentence** — he corrected it (*"slanted just one way not from the
+center"*), so it is one bar raked right across, high stage right and low stage
+left, the way the marquee's own arrow leans. The blinders have **no body at all**
+and sit on that same line.
+
+**THREE DEFECTS NOBODY ASKED ABOUT, all found on the way past:**
+
+- **Every parked set stood visible in its acting position the moment the show
+  loaded.** RULING BQ made a struck set stay DRAWN and `sceneShow` — the instant
+  swap, which is what `showLoad` uses — drove the movers of the set coming ON and
+  **nothing at all** for the sets going off. Nothing caught it because the probe
+  and every assertion drive a CHANGE first. Found by the sets menu.
+- **The exterior parked with its foot 0.2m inside the picture**, flown to the
+  SIGN's number borrowed by a set.
+- **`bjApplyModel` chose its route by COUNTING part movers**, so a set with a
+  park as well as a wrapper took the cemetery's route. It showed up as the roof
+  measuring as an **empty box**. A count is not a kind.
+
+**TWENTY-SEVEN MUTATIONS NEGATIVE-CHECKED**, every one proved present in the
+BUILT file before the result was read — and **two of them said an assertion was
+weak, which is what they are for**. "The set call is choreographed" had picked
+the exterior, which carries no part movers at all, so an instant-swap mutant had
+nothing to travel and sailed through. And the neon's rake line had its sign
+inverted while the **blinders and their own assertion both carried the same wrong
+line** — they agreed with each other perfectly and passed; only the check that
+measures the BUILT GEOMETRY against the line, instead of re-computing it,
+disagreed.
+
+**Seven assertions reversed in place** (the AO/AV/BA/BI/BZ precedent, seventh
+time), each exemption **named** rather than the rule loosened — and the attic's
+was reversed for the *third* time and needed one line, because the last round had
+written its clearance check on whatever axis the mover uses.
+
+**A NINETEENTH SUITE, AND IT TESTS THE TESTS.** `tests/probe-lint.js` sweeps every
+probe template for the three characters that break it — a backtick anywhere
+including in a comment, and a singly-escaped quote. TRAPS records that trap three
+times and says *"sweep for it mechanically rather than trusting care"*; I walked
+into it twice in this round before writing the sweep. It runs first in `npm test`
+and deliberately does not flag doubled escapes or deliberate interpolations,
+because a lint that cries wolf is a lint nobody runs.
+
+**New in TRAPS:** a comment that says something is impossible is a fact with a
+date on it; a probe reading a game `const` that was never in its handout prints a
+confident wrong answer; and **a BoxGeometry has vertices only at its CORNERS**, so
+per-vertex sampling of a merged frame measures nothing between them — it bit
+twice in one PR, once throwing against a correct build and once **passing against
+a broken one**.
+
+**AND THE MERGE DID NOT LAND WHERE IT WAS POINTED.** The six PRs after the first
+were stacked, each based on the branch before it, so merging all seven collapsed
+them **up the stack** and only #155 reached `main`. CLAUDE.md's "never stack PRs"
+is written for exactly this.
 
 ## NEXT SESSION: **PUT IT ON THE HEADSET** (2026-08-13) — SUPERSEDED, see above
 

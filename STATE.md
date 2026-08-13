@@ -11,18 +11,34 @@ off**, which is a traffic plan, and traffic plans have to be settled all at once
 or the sets stand inside each other. The other two are the neon and the
 blinders.
 
-**SIX PRs, OPEN AS A LINEAR CHAIN AND NOT YET MERGED.** They must go in **this
-order**; each is built on the one before, so GitHub retargets the next to `main`
-as its parent merges.
+**ALL SEVEN PRs ARE MERGED — AND ONLY #155 REACHED `main`.**
 
-| PR | What | His items |
-|---|---|---|
-| **#155** | the traffic plan (**CO CP CQ CR CS**) | 2, 3, 4, 5, 6 |
-| **#156** | a flown set is thin (**CT**) | 7 |
-| **#157** | one house in the world (**CN**) | 1 |
-| **#158** | the marquee goes dark as it flies (**CU**) | 8 |
-| **#159** | the two menus (**CV CW**) | 9 |
-| **#160** | the neon on the gold, the blinders out of it (**CX CY**) | 10, 11 |
+| PR | What | His items | on `main`? |
+|---|---|---|---|
+| **#155** | the traffic plan (**CO CP CQ CR CS**) | 2, 3, 4, 5, 6 | **yes** |
+| **#156** | a flown set is thin (**CT**) | 7 | merged into `bj-traffic-plan` |
+| **#157** | one house in the world (**CN**) | 1 | merged into `bj-thin-flown` |
+| **#158** | the marquee goes dark as it flies (**CU**) | 8 | merged into `bj-one-house` |
+| **#159** | the two menus (**CV CW**) | 9 | merged into `bj-sign-lamps` |
+| **#160** | the neon on the gold, the blinders out of it (**CX CY**) | 10, 11 | merged into `bj-menus` |
+| **#161** | the record | — | merged into `bj-neon-gold` |
+
+**A STACKED CHAIN MERGES INTO ITS BASE, NOT INTO `main`.** Each PR was opened
+with the previous branch as its base — that is what keeps a stacked diff
+readable — and pressing Merge on all seven collapsed them **up the stack** rather
+than down onto `main`. `main` carries the traffic plan and nothing else;
+`bj-eleven-record` carries all of it, and against `main` it is **18 files, 2,415
+insertions**.
+
+**ONE PR CLOSES IT: `bj-eleven-record` → `main`.** No conflicts — the merge base
+is #155's own commit and nothing has moved on `main` since. Verified on the stack
+tip: rebuilds **byte-identical**, suites **19/19**.
+
+**The lesson, and it is a workflow one:** CLAUDE.md's "never stack PRs" exists
+for exactly this. When his standing instruction is to keep going without waiting
+for merges, the base of every PR after the first should still be **`main`**, with
+the dependency named in the body — a wider diff to read, but a chain that lands
+where it is pointed.
 
 Cache-bust for the next headset run: **`?v=25`**. Suites **19/19** — the
 nineteenth is `tests/probe-lint.js`, new this round.
