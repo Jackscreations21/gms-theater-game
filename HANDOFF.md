@@ -224,25 +224,23 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **LAND THE REST OF THE CHAIN, THEN LOOK AT IT** (2026-08-13, late)
+## NEXT SESSION: **PUT IT ON THE HEADSET** (2026-08-13, late)
 
 Cache-bust **`?v=25`**. **Read STATE.md — it carries the full left-to-do list
 with the rulings written out.** What belongs here is the shape of it.
 Rulings are at **CY**.
 
-**FIRST: `main` HAS ONE OF THE SEVEN PRs.** All seven were merged and only #155
-reached `main`; the other six were stacked, each based on the branch before it,
-so pressing Merge collapsed them **up the stack** into their own bases instead of
-down onto `main`. `bj-eleven-record` carries the whole round — 18 files, 2,415
-insertions against `main` — and **one PR from it to `main` closes it**, with no
-conflicts, because the merge base is #155's own commit and nothing has moved on
-`main` since. The stack tip rebuilds byte-identical and is 19/19 green.
+**EVERYTHING IS MERGED AND `main` IS AT `d89144f`.** #155–#162, verified after
+the merge: `main` rebuilds byte-identical, the full suite is green on the merged
+result, and all seven work branches are deleted. **Nothing is open.**
 
-**AND THE WORKFLOW LESSON IS THE POINT.** CLAUDE.md's "never stack PRs" is
-written for exactly this. His standing instruction is to keep going without
-waiting for merges, and that is compatible — but the base of every PR after the
-first must still be **`main`**, with the dependency stated in the body. A wider
-diff to read beats a chain that does not land where it is pointed.
+**IT TOOK AN EIGHTH PR, AND THAT IS THE WORKFLOW LESSON.** #156–#161 were stacked
+— each based on the branch before it — and **a stacked PR merges into ITS BASE**,
+so merging all seven collapsed them up the stack and only #155 reached `main`.
+#162 was one clean merge from the stack tip. Nothing was lost, and that was
+measured rather than assumed: `main`'s tree hash equals the stack tip's, and the
+six leftover branches held zero commits `main` lacked. **Base every PR on `main`
+even when building a chain** — CLAUDE.md says so and this is why.
 
 **HE ASKED FOR ELEVEN THINGS AND ALL ELEVEN ARE BUILT.** Nine of them were one
 subject — a traffic plan — and it is settled: four slots, every set in exactly
@@ -401,8 +399,12 @@ a broken one**.
 
 **AND THE MERGE DID NOT LAND WHERE IT WAS POINTED.** The six PRs after the first
 were stacked, each based on the branch before it, so merging all seven collapsed
-them **up the stack** and only #155 reached `main`. CLAUDE.md's "never stack PRs"
-is written for exactly this.
+them **up the stack** and only #155 reached `main`. **#162** was the recovery: one
+clean merge from the stack tip, no conflicts, and nothing lost — `main`'s tree
+hash equals the stack tip's and every commit of the round is an ancestor of it,
+both checked rather than assumed. CLAUDE.md's "never stack PRs" is written for
+exactly this: build a chain sequentially if you must, but base every PR on
+`main`.
 
 ## NEXT SESSION: **PUT IT ON THE HEADSET** (2026-08-13) — SUPERSEDED, see above
 
