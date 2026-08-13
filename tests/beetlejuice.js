@@ -1493,6 +1493,72 @@ const probe = `
            ' over a ' + BJ.opH + 'm picture, under a ' + D.gridY + 'm grid, wing clear';
   });
 
+  P('an INSTANT swap strikes as instantly as it calls on: the stage is clear at load', ()=>{
+    /* FOUND BY THE SETS MENU, AND IT PREDATES THIS ROUND.  RULING BQ made a
+       struck set stay DRAWN, and sceneShow — the instant swap, which is what
+       showLoad uses — drove the movers of the set coming ON and nothing at all
+       for the sets going off.  So every parked set stood, visible, in its ACTING
+       position the moment the show loaded: the exterior drop hanging at z -7.4
+       right across the picture, the attic in the acting area, all of them on the
+       deck at once.
+
+       NOTHING CAUGHT IT because the probe and every assertion drive a CHANGE
+       first, and a change parks them correctly.  This one asserts the state
+       nobody had looked at: straight after the load, before a frame is stepped. */
+    showLoad('beetlejuice');
+    const pic = new THREE.Box3(new THREE.Vector3(-BJ.opW/2, 0, -10.90),
+                               new THREE.Vector3( BJ.opW/2, BJ.opH, 1.0));
+    const bad = [], stood = [];
+    for(const sc of SHOW.scenes){
+      if(sc.always || sc.name === SHOW.scene) continue;
+      if(sc.group.userData.sceneOff) continue;          // switched off, not parked
+      const b = box(sc.group);
+      if(b.isEmpty()) continue;
+      stood.push(sc.name);
+      if(!b.intersectsBox(pic)) continue;
+      const o = b.clone().intersect(pic), d = o.getSize(new THREE.Vector3());
+      if(Math.min(d.x, d.y, d.z) > 0.05)
+        bad.push(sc.name + ' stands in the picture by ' + d.x.toFixed(2) + ' x ' +
+                 d.y.toFixed(2) + ' x ' + d.z.toFixed(2) + 'm');
+    }
+    if(bad.length) throw new Error(bad.join('; '));
+    if(stood.length < 3)
+      throw new Error('only ' + stood.length + ' sets are parked at load — this proves little');
+    return stood.length + ' sets standing backstage at load, none of them in the picture';
+  });
+
+  P('RULING CW: the sign is a row on the DESK fly table, and it hauls', ()=>{
+    showLoad('beetlejuice');
+    refreshFlyUI();
+    /* THROUGH THE DOM, NOT THE MODEL — a detached row still fires its handler
+       perfectly well, which is how the fly rail "stopped working" once. */
+    const rows = document.querySelectorAll('#lsTable tfoot tr.flyextra');
+    if(rows.length !== 1)
+      throw new Error(rows.length + ' haul rows on the desk, expected 1');
+    const label = rows[0].querySelectorAll('td')[1];
+    if(!label || label.textContent.indexOf('BEETLEJUICE') < 0)
+      throw new Error('the haul row is not the sign: ' + (label ? label.textContent : 'no cell'));
+    const btns = rows[0].querySelectorAll('button');
+    const out = Array.prototype.filter.call(btns, b=>b.textContent === 'OUT')[0];
+    const inn = Array.prototype.filter.call(btns, b=>b.textContent === 'IN')[0];
+    if(!out || !inn) throw new Error('the haul row has no IN/OUT');
+    const sg = sceneFind('bjSign');
+    out.click();
+    for(let i = 0; i < 600 && sceneTravelling(sg); i++) updateStorm(1/60);
+    if(Math.abs(sg.mv.off - BJ_SIGN_OUT) > 0.05)
+      throw new Error('OUT left the sign at ' + sg.mv.off.toFixed(2));
+    inn.click();
+    for(let i = 0; i < 600 && sceneTravelling(sg); i++) updateStorm(1/60);
+    if(Math.abs(sg.mv.off) > 0.05) throw new Error('IN left the sign at ' + sg.mv.off.toFixed(2));
+    /* and it does not survive into a production that declares none */
+    showLoad('outsiders');
+    refreshFlyUI();
+    if(document.querySelectorAll('#lsTable tfoot tr.flyextra').length)
+      throw new Error('the sign row survived into a show that has no sign');
+    showLoad('beetlejuice');
+    return 'one haul row on the desk, out to ' + BJ_SIGN_OUT + ' and back, gone with the show';
+  });
+
   P('RULING CU: the marquee goes dark as it flies, and keeps what the cue said', ()=>{
     showLoad('beetlejuice');
     const sg = sceneFind('bjSign');
@@ -1820,10 +1886,16 @@ const probe = `
     const AX = {x:12, y:13, z:14};
     const raw = m => m.group.matrixWorld.elements[AX[m.axis]];
     scene.updateMatrixWorld(true);
+    /* THE BASELINE IS THE MOVER'S ZERO, not "wherever it was at load".  This
+       read the world matrix at load and treated it as HOME, which was true only
+       while an instant swap left every parked set standing in its acting
+       position — the defect the load-state assertion above now pins.  Subtract
+       the mover's own offset and the baseline is the axis origin, whatever the
+       show happens to be doing when this runs. */
     const base = {};
     for(const sc of SHOW.scenes){ if(!sc.pmv) continue; base[sc.name] = {};
-      for(const k in sc.pmv) base[sc.name][k] = raw(sc.pmv[k]); }
-    const wOff = (sc, k) => sc.pmv[k].home + raw(sc.pmv[k]) - base[sc.name][k];
+      for(const k in sc.pmv) base[sc.name][k] = raw(sc.pmv[k]) - sc.pmv[k].off; }
+    const wOff = (sc, k) => raw(sc.pmv[k]) - base[sc.name][k];
     const check = when => {
       scene.updateMatrixWorld(true);
       for(const sc of SHOW.scenes){

@@ -428,6 +428,7 @@ const VR_TABS = [
   {id:'cues',   label:'CUES'},
   {id:'lights', label:'LIGHTS'},
   {id:'fly',    label:'FLY RAIL'},
+  {id:'sets',   label:'SETS'},       // RULING CV
   {id:'shows',  label:'SHOWS'},
   {id:'venues', label:'VENUES'},
   {id:'smoke',  label:'SMOKE'},
@@ -459,8 +460,13 @@ function vrDrawConsole(force){
   const board = (typeof STAGES !== 'undefined' && STAGES[STAGE]) ? STAGES[STAGE].label : '';
   g.fillText(board, 22, 32);
 
-  // tabs
-  let tx = 380;
+  /* tabs.  The strip starts at 300 rather than 380 because RULING CV makes it
+     EIGHT: at 112 each, eight from 380 would end at 1276 on a 1200-wide canvas
+     and SCRIPT would be drawn off the edge with a hit region nobody can reach.
+     From 300 the last box ends at 1190.  Nothing pins a tab by pixel —
+     tests/vr.js sets VR.page directly — so the strip is free to move and the
+     rows below it, which ARE pinned by pixel, are not. */
+  let tx = 300;
   for(const t of VR_TABS){
     const w = 112, on = (VR.page === t.id);
     g.fillStyle = on ? '#26313e' : '#161b22';
@@ -478,6 +484,7 @@ function vrDrawConsole(force){
   if(VR.page === 'cues')   vrPageCues(g, P);
   if(VR.page === 'lights') vrPageLights(g, P);
   if(VR.page === 'fly')    vrPageFly(g, P);
+  if(VR.page === 'sets')   vrPageSets(g, P);    // RULING CV
   if(VR.page === 'goods')  vrPageGoods(g, P);   // a sub-page of the fly rail
   if(VR.page === 'shows')  vrPageShows(g, P);
   if(VR.page === 'venues') vrPageVenues(g, P);
@@ -664,6 +671,118 @@ function vrPageFly(g, P){
            ()=>{ flyStartOfShow(); vrDrawConsole(true); },
            {font:'600 15px Helvetica, Arial, sans-serif'},
            {railCall:'startOfShow'});
+
+  /* RULING CW — THE SHOW'S OWN HAULS, under the numbered lines.
+
+     "add the beetlejuice sign to the fly menu."  It is not a lineset and cannot
+     be one (RULINGS AS, AT), so the rail carries it as a declared extra and this
+     is where the flyman finds it in a headset.
+
+     IT FITS IN THE STRIP THE FOURTEEN ROWS LEAVE and takes nothing from them.
+     14 lines at 44px is 616 of the 652 the page has, so an extra row is 36px
+     high and starts where row 14 ends — which means every numbered row keeps its
+     pixel, and tests/vr.js pins those BY PIXEL (the trap this file records).
+
+     NO SILENT CAP: a show declaring more than fits says how many were dropped
+     rather than quietly showing the first one. */
+  const extras = (typeof SHOW !== 'undefined' && SHOW.flyExtras) ? SHOW.flyExtras : [];
+  if(extras.length){
+    const top = P.y + n*rowH, exH = 34;
+    const room = Math.max(0, Math.floor((P.h - n*rowH)/exH));
+    const shown = Math.min(extras.length, room);
+    for(let i = 0; i < shown; i++){
+      const x = extras[i], y = top + i*exH;
+      g.fillStyle = '#141c26'; g.fillRect(P.x, y, P.w - 130, exH - 3);
+      g.fillStyle = '#ffb347'; g.fillRect(P.x, y, 4, exH - 3);
+      g.font = '600 15px Helvetica, Arial, sans-serif';
+      g.fillStyle = '#c6d0dc'; g.textBaseline = 'middle';
+      g.fillText(x.label, P.x + 16, y + exH/2 - 2);
+      const f = flyExtraFrac(x);
+      vrBar(g, P.x + 420, y + 9, 260, 14, 1 - f, '#ffb347');
+      g.fillStyle = '#8f9aa7';
+      g.fillText(f < 0.02 ? 'IN' : (f > 0.98 ? 'OUT' : Math.round(f*100) + '% out'),
+                 P.x + 700, y + exH/2 - 2);
+      /* by KEY at press time, never the captured entry: a stage swap or a
+         re-load builds a new SHOW (the same rule the desk row is written to) */
+      vrBtnBox(g, P.x + 790, y + 2, 84, exH - 7, 'IN',
+               ((k)=>()=>{ const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
+                           if(l) flyExtraTo(l, false); vrDrawConsole(true); })(x.key),
+               {font:'600 15px Helvetica, Arial, sans-serif'}, {flyExtra:x.key, dir:'in'});
+      vrBtnBox(g, P.x + 882, y + 2, 84, exH - 7, 'OUT',
+               ((k)=>()=>{ const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
+                           if(l) flyExtraTo(l, true); vrDrawConsole(true); })(x.key),
+               {font:'600 15px Helvetica, Arial, sans-serif'}, {flyExtra:x.key, dir:'out'});
+    }
+    if(shown < extras.length){
+      g.fillStyle = '#7f8b99';
+      g.font = '600 13px Helvetica, Arial, sans-serif';
+      g.fillText('+' + (extras.length - shown) + ' more not shown', P.x + 16, top + shown*exH + 10);
+    }
+  }
+}
+/* ---------------------------------------------------------------- THE SETS
+   RULING CV — A MENU TO CONTROL WHAT SETS ARE ON.
+
+   "Make a menu to control what sets are on..."
+
+   THE DESK HAS HAD ONE ALL ALONG (#sceneList) AND THE HEADSET HAS NOT, which is
+   the whole of this: VR_TABS was CUES, LIGHTS, FLY RAIL, SHOWS, VENUES, SMOKE,
+   SCRIPT, and he works this show on a Quest.  "A control that exists only in the
+   DOM does not exist in VR" is in TRAPS with four rounds of unreachable Arc
+   doors behind it.
+
+   It changes the set through sceneChangeTo, so the change is CHOREOGRAPHED
+   exactly as a cue's would be — the sets travel, they do not pop (RULING AY).
+
+   AND IT SAYS WHERE EACH SET IS, not just which one is on, because RULING BQ
+   made that a real question: a struck set is standing in a wing, or upstage
+   behind the backdrop, or up in the tower, and that is the thing this menu is
+   actually for now. */
+function vrSetWhere(sc){
+  if(sc.on) return 'ON STAGE';
+  if(!sc.parks) return 'struck';
+  if(sceneTravelling(sc)) return 'travelling';
+  const b = new T.Box3().setFromObject(sc.group);
+  if(b.isEmpty()) return 'parked';
+  if(b.min.y > 9.5) return 'flown';
+  if(b.max.z < -10.9) return 'upstage';
+  if(b.min.x > 6.8) return 'stage left';
+  if(b.max.x < -6.8) return 'stage right';
+  return 'parked';
+}
+function vrPageSets(g, P){
+  const sets = (typeof SHOW !== 'undefined' && SHOW.scenes)
+    ? SHOW.scenes.filter(sc=>!sc.always) : [];
+  g.textBaseline = 'middle';
+  if(!sets.length){
+    g.fillStyle = '#7f8b99';
+    g.font = '600 20px Helvetica, Arial, sans-serif';
+    g.fillText('this show has one set', P.x + 16, P.y + 30);
+    g.textAlign = 'left';
+    return;
+  }
+  const rowH = 52;
+  for(let i = 0; i < sets.length && P.y + i*rowH < P.y + P.h - rowH; i++){
+    const sc = sets[i], y = P.y + i*rowH, on = (sc.name === SHOW.scene);
+    g.fillStyle = on ? '#243447' : (i%2 ? '#0f1319' : '#121821');
+    g.fillRect(P.x, y, P.w - 130, rowH - 5);
+    if(on){ g.fillStyle = '#ffb347'; g.fillRect(P.x, y, 5, rowH - 5); }
+    g.font = '600 19px Helvetica, Arial, sans-serif';
+    g.fillStyle = on ? '#ffffff' : '#aab4c0';
+    g.fillText(sc.label, P.x + 20, y + rowH/2 - 3);
+    g.font = '600 15px Helvetica, Arial, sans-serif';
+    g.fillStyle = on ? '#7fe08a' : '#5d6874';
+    g.fillText(vrSetWhere(sc), P.x + P.w - 420, y + rowH/2 - 3);
+    vrBtnBox(g, P.x + P.w - 250, y + 3, 110, rowH - 11, on ? 'ON' : 'CALL ON',
+             ((nm)=>()=>{ sceneChangeTo(nm); vrDrawConsole(true); })(sc.name),
+             on ? {bg:'#1f6b2e', fg:'#ffffff'} : null,
+             {setCall: sc.name});
+  }
+  g.fillStyle = '#5d6874';
+  g.font = '400 16px Helvetica, Arial, sans-serif';
+  g.fillText(sets.length + ' sets  ·  on: ' + (SHOW.scene || '—'),
+             P.x + 16, P.y + P.h - 16);
+  g.textAlign = 'left';
 }
 /* ---------------------------------------------------------- THE GOODS
    What is on a pipe, chosen from inside the headset (RULING U).  Reached

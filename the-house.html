@@ -8020,13 +8020,76 @@ function syncFlyRow(ls){
   if(trav) u.trav.textContent = ls.travTarget > .5 ? 'CLOSE' : 'OPEN';
   u.row.classList.toggle('sel', ls === selLineset);
 }
-function syncFlyUI(){ FLY.forEach(syncFlyRow); syncFohBarRow(); syncSpkBarRows(); }
+/* ---- RULING CW — the hauls that are not linesets -------------------------
+   Same tfoot and the same rules as the FOH and speaker rows, with one
+   difference that matters: those two are rail furniture and are built ONCE,
+   and these belong to the SHOW, so they are rebuilt whenever the show changes.
+   The rows are appended after the fixed furniture, so nothing above them moves
+   when a show with none is loaded. */
+let flyExtraUI = [];
+function buildFlyExtrasUI(){
+  const table = $('#lsTable'); if(!table) return;
+  const tf = table.querySelector('tfoot'); if(!tf) return;   // the FOH row built it
+  for(const u of flyExtraUI) if(u.row.parentNode) u.row.parentNode.removeChild(u.row);
+  flyExtraUI = [];
+  const list = (typeof SHOW !== 'undefined' && SHOW.flyExtras) ? SHOW.flyExtras : [];
+  list.forEach((x, i)=>{
+    const tr = document.createElement('tr'); tr.className = 'flyextra';
+    tr.innerHTML =
+      '<td style="color:var(--amber)">X'+(i+1)+'</td>'+
+      '<td class="mini">'+x.label+'</td>'+
+      '<td class="goods">flown on its own line</td>'+
+      '<td><div class="pipbar"><i></i></div></td>'+
+      '<td class="mini ht"></td>'+
+      '<td class="mini"></td>'+
+      '<td><span class="dot"></span></td>'+
+      '<td></td>';
+    const cell = tr.lastElementChild;
+    /* READ THE ENTRY BY KEY AT CLICK TIME, never the captured object: a stage
+       swap or a re-load builds a new SHOW, and a button holding the old entry
+       would haul a sign that is not in this building (§5, how the rail
+       "stopped working"). */
+    const mk = (t, out)=>{
+      const b = document.createElement('button'); b.className = 'b';
+      b.style.padding = '2px 6px'; b.style.fontSize = '10px'; b.textContent = t;
+      b.addEventListener('click', e=>{
+        e.stopPropagation();
+        const live = (SHOW.flyExtras || []).find(y=>y.key === x.key);
+        if(live) flyExtraTo(live, out);
+        syncFlyExtraRows();
+      });
+      cell.appendChild(b); return b;
+    };
+    mk('IN', false);
+    mk('OUT', true);
+    flyExtraUI.push({key:x.key, row:tr, bar:tr.querySelector('.pipbar i'),
+                     ht:tr.querySelector('.ht'), dot:tr.querySelector('.dot')});
+    tf.appendChild(tr);
+  });
+  syncFlyExtraRows();
+}
+function syncFlyExtraRows(){
+  for(const u of flyExtraUI){
+    const x = (typeof SHOW !== 'undefined' && SHOW.flyExtras)
+      ? SHOW.flyExtras.find(y=>y.key === u.key) : null;
+    if(!x) continue;
+    const f = flyExtraFrac(x);
+    u.bar.style.width = ((1 - f)*100).toFixed(1)+'%';    // full bar = in, like a pipe at its trim
+    u.ht.textContent = f < 0.02 ? 'IN' : (f > 0.98 ? 'OUT' : Math.round(f*100)+'% out');
+    u.dot.className = 'dot '+(flyExtraMoving(x) ? 'mv' : '');
+  }
+}
+function syncFlyUI(){ FLY.forEach(syncFlyRow); syncFohBarRow(); syncSpkBarRows(); syncFlyExtraRows(); }
 /* kept for the callers that change what's hanging */
 function refreshFlyUI(){
   const tb = $('#lsTable tbody');
   const stale = !FLY.length || !FLY[0].ui ||
                 (tb && tb.dataset.stage !== ((typeof STAGE !== 'undefined') ? STAGE : 'palace'));
   if(stale) buildFlyUI(); else syncFlyUI();
+  /* RULING CW — the show's own hauls, rebuilt every refresh because they belong
+     to the SHOW rather than to the rail.  It is cheap: one row per entry, and
+     four of the five productions declare none. */
+  buildFlyExtrasUI();
   syncRailGroups();
 }
 
@@ -9779,6 +9842,7 @@ function showBlank(){
     stormOn:false, stormT:0, porch:null, bjPortal:null,
     pendMoves:[], houseWait:null, offstage:[],
     signLamps:null, signWant:null, signGate:1,      // RULING CU
+    flyExtras:[],                                   // RULING CW
     curtainKey:null, dropKey:null, wall:null, window:null, loadedHang:null
   };
 }
@@ -9889,6 +9953,49 @@ function sceneFind(name){ return SHOW.scenes.find(s=>s.name === name) || null; }
    of the graph is invisible to both, so it would come back unfrozen and it would
    LEAK a house per show change.  SHOW.offstage is the list they read.
    ========================================================================== */
+/* ============================================================================
+   RULING CW — THE FLY RAIL MAY CARRY A HAUL THAT IS NOT A LINESET
+
+   "...and add the beetlejuice sign to the fly menu."
+
+   The sign is NOT a lineset and cannot be one.  Every lineset lives upstage of
+   the plaster line (makeLineset: z = -0.50 - i*0.80) and the sign hangs
+   DOWNSTAGE of the house curtain; RULINGS AS and AT settled that and it does not
+   move.  It travels on a scene mover instead.
+
+   So a show may DECLARE hauls the rail can call, and the fly page — desk and
+   headset both — draws them under the numbered lines.  One entry names the
+   scene, the two offsets and a label:
+
+     SHOW.flyExtras.push({key, label, scene, inOff, outOff, speed})
+
+   DECLARED, NEVER ASSUMED: a show with no flyExtras draws exactly what it draws
+   today, which is what leaves the other four productions alone.
+
+   It is the same idiom the FOH bar and the speaker bars already use — rail
+   furniture that is not a lineset lives in the table's footer — and the same
+   rule those rows are written to: READ THE GLOBAL AT CLICK TIME, cache nothing
+   per-stage on the DOM, because that is how the rail "stopped working" once.
+   ========================================================================== */
+function flyExtraMover(x){
+  const sc = x && sceneFind(x.scene);
+  return (sc && sc.mv) ? sc.mv : null;
+}
+function flyExtraTo(x, out){
+  if(!x) return null;
+  return sceneMoveTo(x.scene, out ? x.outOff : x.inOff, x.speed);
+}
+/* 0 is IN and 1 is OUT, whichever direction the offsets run in */
+function flyExtraFrac(x){
+  const m = flyExtraMover(x);
+  if(!m) return 0;
+  const span = x.outOff - x.inOff;
+  return span ? clamp((m.off - x.inOff)/span, 0, 1) : 0;
+}
+function flyExtraMoving(x){
+  const m = flyExtraMover(x);
+  return !!(m && Math.abs(m.target - m.off) > SCENE_MV_EPS);
+}
 function showHoldOffstage(g){
   if(!g) return g;
   if(g.parent) g.parent.remove(g);
@@ -10054,6 +10161,36 @@ function sceneShow(name){
     if(on && sc.pmv) for(const k in sc.pmv){
       const m = sc.pmv[k];
       m.off = m.target = m.home; m.group.position[m.axis] = m.home;
+    }
+    /* and a set that parks ON ITS OWN whole-group mover comes back on it — the
+       exterior, which flies.  Only `parkMv`: the wagon parks with `parkMvAt` and
+       its acting position is cue-authored, so its home IS the parked place and
+       homing it here would drive it upstage on the way in. */
+    if(on && sc.parkMv !== undefined && sc.mv){
+      sc.mv.off = sc.mv.target = sc.mv.home;
+      sc.group.position[sc.mv.axis] = sc.mv.home;
+    }
+    /* AND THE OTHER HALF OF THAT, WHICH WAS MISSING AND SHOWED AT LOAD.
+       RULING BQ made a struck set stay DRAWN — and an instant swap never drove
+       its movers anywhere, so every parked set stood, visible, in its ACTING
+       position.  Measured on a freshly loaded Beetlejuice, before a frame was
+       stepped: the exterior drop hanging at z -7.4 across the picture, the attic
+       in the acting area, all of them on the deck at once.  Nothing caught it
+       because the probe and every assertion drive a CHANGE first, and a change
+       parks them correctly.
+
+       So an instant swap strikes as instantly as it calls on: a parked set snaps
+       to where it parks.  Symmetry with the branch above, and the same rule —
+       an instant swap has no travel in it, in either direction. */
+    if(!on && sc.parks){
+      if(sc.pmv) for(const k in sc.pmv){
+        const m = sc.pmv[k];
+        m.off = m.target = m.out; m.group.position[m.axis] = m.off;
+      }
+      const at = (sc.parkMvAt !== undefined) ? sc.parkMvAt : sc.parkMv;
+      if(at !== undefined && sc.mv){
+        sc.mv.off = sc.mv.target = at; sc.group.position[sc.mv.axis] = at;
+      }
     }
     /* a set that is still TRAVELLING stays drawn until it arrives, whatever
        the cue says — otherwise the house winks out halfway across the deck.
@@ -15966,6 +16103,12 @@ SHOWS.beetlejuice = {
         mat, c:mat.color.clone(), e:mat.emissive.clone(), ei:mat.emissiveIntensity}));
       sceneAlways(sgnFly);                       // on whatever set is up
       sceneTravel(sgnFly, 'y', 0, 2.6);          // 0 is IN; BJ_SIGN_OUT is out
+      /* RULING CW — and it goes on the fly rail, because it is a haul and the
+         flyman is who works it.  It cannot be a lineset (every lineset is
+         upstage of the plaster line and this hangs downstage of the curtain —
+         RULINGS AS, AT), so the rail carries it as a declared extra. */
+      SHOW.flyExtras.push({key:'bjSign', label:'BEETLEJUICE SIGN', scene:'bjSign',
+                           inOff:0, outOff:BJ_SIGN_OUT, speed:2.6});
     }
 
     /* ---- the show curtain ---- */
@@ -26820,6 +26963,7 @@ const VR_TABS = [
   {id:'cues',   label:'CUES'},
   {id:'lights', label:'LIGHTS'},
   {id:'fly',    label:'FLY RAIL'},
+  {id:'sets',   label:'SETS'},       // RULING CV
   {id:'shows',  label:'SHOWS'},
   {id:'venues', label:'VENUES'},
   {id:'smoke',  label:'SMOKE'},
@@ -26851,8 +26995,13 @@ function vrDrawConsole(force){
   const board = (typeof STAGES !== 'undefined' && STAGES[STAGE]) ? STAGES[STAGE].label : '';
   g.fillText(board, 22, 32);
 
-  // tabs
-  let tx = 380;
+  /* tabs.  The strip starts at 300 rather than 380 because RULING CV makes it
+     EIGHT: at 112 each, eight from 380 would end at 1276 on a 1200-wide canvas
+     and SCRIPT would be drawn off the edge with a hit region nobody can reach.
+     From 300 the last box ends at 1190.  Nothing pins a tab by pixel —
+     tests/vr.js sets VR.page directly — so the strip is free to move and the
+     rows below it, which ARE pinned by pixel, are not. */
+  let tx = 300;
   for(const t of VR_TABS){
     const w = 112, on = (VR.page === t.id);
     g.fillStyle = on ? '#26313e' : '#161b22';
@@ -26870,6 +27019,7 @@ function vrDrawConsole(force){
   if(VR.page === 'cues')   vrPageCues(g, P);
   if(VR.page === 'lights') vrPageLights(g, P);
   if(VR.page === 'fly')    vrPageFly(g, P);
+  if(VR.page === 'sets')   vrPageSets(g, P);    // RULING CV
   if(VR.page === 'goods')  vrPageGoods(g, P);   // a sub-page of the fly rail
   if(VR.page === 'shows')  vrPageShows(g, P);
   if(VR.page === 'venues') vrPageVenues(g, P);
@@ -27056,6 +27206,118 @@ function vrPageFly(g, P){
            ()=>{ flyStartOfShow(); vrDrawConsole(true); },
            {font:'600 15px Helvetica, Arial, sans-serif'},
            {railCall:'startOfShow'});
+
+  /* RULING CW — THE SHOW'S OWN HAULS, under the numbered lines.
+
+     "add the beetlejuice sign to the fly menu."  It is not a lineset and cannot
+     be one (RULINGS AS, AT), so the rail carries it as a declared extra and this
+     is where the flyman finds it in a headset.
+
+     IT FITS IN THE STRIP THE FOURTEEN ROWS LEAVE and takes nothing from them.
+     14 lines at 44px is 616 of the 652 the page has, so an extra row is 36px
+     high and starts where row 14 ends — which means every numbered row keeps its
+     pixel, and tests/vr.js pins those BY PIXEL (the trap this file records).
+
+     NO SILENT CAP: a show declaring more than fits says how many were dropped
+     rather than quietly showing the first one. */
+  const extras = (typeof SHOW !== 'undefined' && SHOW.flyExtras) ? SHOW.flyExtras : [];
+  if(extras.length){
+    const top = P.y + n*rowH, exH = 34;
+    const room = Math.max(0, Math.floor((P.h - n*rowH)/exH));
+    const shown = Math.min(extras.length, room);
+    for(let i = 0; i < shown; i++){
+      const x = extras[i], y = top + i*exH;
+      g.fillStyle = '#141c26'; g.fillRect(P.x, y, P.w - 130, exH - 3);
+      g.fillStyle = '#ffb347'; g.fillRect(P.x, y, 4, exH - 3);
+      g.font = '600 15px Helvetica, Arial, sans-serif';
+      g.fillStyle = '#c6d0dc'; g.textBaseline = 'middle';
+      g.fillText(x.label, P.x + 16, y + exH/2 - 2);
+      const f = flyExtraFrac(x);
+      vrBar(g, P.x + 420, y + 9, 260, 14, 1 - f, '#ffb347');
+      g.fillStyle = '#8f9aa7';
+      g.fillText(f < 0.02 ? 'IN' : (f > 0.98 ? 'OUT' : Math.round(f*100) + '% out'),
+                 P.x + 700, y + exH/2 - 2);
+      /* by KEY at press time, never the captured entry: a stage swap or a
+         re-load builds a new SHOW (the same rule the desk row is written to) */
+      vrBtnBox(g, P.x + 790, y + 2, 84, exH - 7, 'IN',
+               ((k)=>()=>{ const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
+                           if(l) flyExtraTo(l, false); vrDrawConsole(true); })(x.key),
+               {font:'600 15px Helvetica, Arial, sans-serif'}, {flyExtra:x.key, dir:'in'});
+      vrBtnBox(g, P.x + 882, y + 2, 84, exH - 7, 'OUT',
+               ((k)=>()=>{ const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
+                           if(l) flyExtraTo(l, true); vrDrawConsole(true); })(x.key),
+               {font:'600 15px Helvetica, Arial, sans-serif'}, {flyExtra:x.key, dir:'out'});
+    }
+    if(shown < extras.length){
+      g.fillStyle = '#7f8b99';
+      g.font = '600 13px Helvetica, Arial, sans-serif';
+      g.fillText('+' + (extras.length - shown) + ' more not shown', P.x + 16, top + shown*exH + 10);
+    }
+  }
+}
+/* ---------------------------------------------------------------- THE SETS
+   RULING CV — A MENU TO CONTROL WHAT SETS ARE ON.
+
+   "Make a menu to control what sets are on..."
+
+   THE DESK HAS HAD ONE ALL ALONG (#sceneList) AND THE HEADSET HAS NOT, which is
+   the whole of this: VR_TABS was CUES, LIGHTS, FLY RAIL, SHOWS, VENUES, SMOKE,
+   SCRIPT, and he works this show on a Quest.  "A control that exists only in the
+   DOM does not exist in VR" is in TRAPS with four rounds of unreachable Arc
+   doors behind it.
+
+   It changes the set through sceneChangeTo, so the change is CHOREOGRAPHED
+   exactly as a cue's would be — the sets travel, they do not pop (RULING AY).
+
+   AND IT SAYS WHERE EACH SET IS, not just which one is on, because RULING BQ
+   made that a real question: a struck set is standing in a wing, or upstage
+   behind the backdrop, or up in the tower, and that is the thing this menu is
+   actually for now. */
+function vrSetWhere(sc){
+  if(sc.on) return 'ON STAGE';
+  if(!sc.parks) return 'struck';
+  if(sceneTravelling(sc)) return 'travelling';
+  const b = new T.Box3().setFromObject(sc.group);
+  if(b.isEmpty()) return 'parked';
+  if(b.min.y > 9.5) return 'flown';
+  if(b.max.z < -10.9) return 'upstage';
+  if(b.min.x > 6.8) return 'stage left';
+  if(b.max.x < -6.8) return 'stage right';
+  return 'parked';
+}
+function vrPageSets(g, P){
+  const sets = (typeof SHOW !== 'undefined' && SHOW.scenes)
+    ? SHOW.scenes.filter(sc=>!sc.always) : [];
+  g.textBaseline = 'middle';
+  if(!sets.length){
+    g.fillStyle = '#7f8b99';
+    g.font = '600 20px Helvetica, Arial, sans-serif';
+    g.fillText('this show has one set', P.x + 16, P.y + 30);
+    g.textAlign = 'left';
+    return;
+  }
+  const rowH = 52;
+  for(let i = 0; i < sets.length && P.y + i*rowH < P.y + P.h - rowH; i++){
+    const sc = sets[i], y = P.y + i*rowH, on = (sc.name === SHOW.scene);
+    g.fillStyle = on ? '#243447' : (i%2 ? '#0f1319' : '#121821');
+    g.fillRect(P.x, y, P.w - 130, rowH - 5);
+    if(on){ g.fillStyle = '#ffb347'; g.fillRect(P.x, y, 5, rowH - 5); }
+    g.font = '600 19px Helvetica, Arial, sans-serif';
+    g.fillStyle = on ? '#ffffff' : '#aab4c0';
+    g.fillText(sc.label, P.x + 20, y + rowH/2 - 3);
+    g.font = '600 15px Helvetica, Arial, sans-serif';
+    g.fillStyle = on ? '#7fe08a' : '#5d6874';
+    g.fillText(vrSetWhere(sc), P.x + P.w - 420, y + rowH/2 - 3);
+    vrBtnBox(g, P.x + P.w - 250, y + 3, 110, rowH - 11, on ? 'ON' : 'CALL ON',
+             ((nm)=>()=>{ sceneChangeTo(nm); vrDrawConsole(true); })(sc.name),
+             on ? {bg:'#1f6b2e', fg:'#ffffff'} : null,
+             {setCall: sc.name});
+  }
+  g.fillStyle = '#5d6874';
+  g.font = '400 16px Helvetica, Arial, sans-serif';
+  g.fillText(sets.length + ' sets  ·  on: ' + (SHOW.scene || '—'),
+             P.x + 16, P.y + P.h - 16);
+  g.textAlign = 'left';
 }
 /* ---------------------------------------------------------- THE GOODS
    What is on a pipe, chosen from inside the headset (RULING U).  Reached

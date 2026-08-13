@@ -2219,6 +2219,12 @@ SHOWS.beetlejuice = {
         mat, c:mat.color.clone(), e:mat.emissive.clone(), ei:mat.emissiveIntensity}));
       sceneAlways(sgnFly);                       // on whatever set is up
       sceneTravel(sgnFly, 'y', 0, 2.6);          // 0 is IN; BJ_SIGN_OUT is out
+      /* RULING CW — and it goes on the fly rail, because it is a haul and the
+         flyman is who works it.  It cannot be a lineset (every lineset is
+         upstage of the plaster line and this hangs downstage of the curtain —
+         RULINGS AS, AT), so the rail carries it as a declared extra. */
+      SHOW.flyExtras.push({key:'bjSign', label:'BEETLEJUICE SIGN', scene:'bjSign',
+                           inOff:0, outOff:BJ_SIGN_OUT, speed:2.6});
     }
 
     /* ---- the show curtain ---- */
