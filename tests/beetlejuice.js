@@ -2077,8 +2077,12 @@ const probe = `
     fire(at(/56:00/));     step(480);    // the roof
     fire(at(/1:02:51/));   step(480);    // roof out, the Deetz wagon on
     fire(at(/1:25:25/));   step(480);    // the attic again, act two
+    /* 1:39:19 now labels TWO cues (RULING DB put the flash on the same second),
+       and findIndex takes the first — which is Q39, the one carrying the move.
+       That is the cue this walk wants; the flash has nothing to travel. */
     fire(at(/1:39:19/));   step(480);    // the netherworld flies in (his new time)
-    fire(at(/1:53:15/));   step(480);    // and out, the house back on (CK: 15s later)
+    fire(at(/1:53:24/));   step(480);    // and out, the house back on, under the
+                                         // black (CK 15s later, DC behind it)
     return 'eleven changeovers stepped: every entrance from OUT, every part on its track';
   });
 
@@ -3495,6 +3499,107 @@ const probe = `
            b.mat.emissive.getHexString() + ', out to 0.000 on the flash';
   });
 
+  /* ══ RULING DB — HIS TWO 1:39 CUES LAND ON ONE SECOND ═════════════════════
+     "make it so q39 and 39.1 both happen at 1:39:19."  Which look survives is
+     decided by the ARRAY ORDER, so that is asserted rather than assumed: Q39
+     carries the move and the scene change, Q39.1 carries the white, and the white
+     has to be what is left standing or the flash he asked for never happens. */
+  P('Q39 and Q39.1 are on one second, and the flash is the look left standing (DB)', ()=>{
+    showLoad('beetlejuice');
+    const q39 = CUES.filter(c=>c.n === 39)[0], q391 = CUES.filter(c=>c.n === 39.1)[0];
+    if(!q39 || !q391) throw new Error('Q39 or Q39.1 is gone');
+    if(q39.at !== q391.at)
+      throw new Error('Q39 is at ' + q39.at + ' and Q39.1 at ' + q391.at + ', not both on one second');
+    if(q39.at !== 5959) throw new Error('they agree at ' + q39.at + ', which is not his 1:39:19');
+    const i39 = CUES.indexOf(q39), i391 = CUES.indexOf(q391);
+    if(!(i39 < i391))
+      throw new Error('Q39.1 fires first, so its white is overwritten by Q39 blue');
+    if(!q39.move) throw new Error('Q39 no longer carries the move this flash is covering');
+    if(q391.move) throw new Error('Q39.1 has grown a move — the changeover would fight Q39');
+
+    /* fired in sequence off the one timecode, as the transport does */
+    fireCue(i39); cancelFollow(); fireCue(i391); cancelFollow();
+    let clock = 0;
+    for(let k = 0; k < 240; k++){
+      clock += 1/60; updateFades(1/60); updateRig(1/60, clock); updateStorm(1/60); }
+    const white = GROUPS.front.filter(n=>chan(n)._lvl > 0.5);
+    if(!white.length) throw new Error('the white flash look never came up at all');
+    return 'both on 5959, Q39 first with the move, ' + white.length + ' front channels left in white';
+  });
+
+  /* ══ RULING DC — THE BLACKOUT FIRST, AND THE HOUSE TRAVELS INSIDE IT ══════
+     "make it so q40 happens right after q41."
+
+     THE TRAVEL IS WATCHED, not read off the plot.  TRAPS records a cue whose
+     "flies out" shipped green for two rounds while the drop never moved, because
+     the test read cue STATE instead of motion — so this steps dt, measures a world
+     bounding box, and counts how many frames the stage was lit while the wagon was
+     moving.  The answer has to be zero.
+
+     AND IT PINS THE INVARIANT THE REORDER RISKS.  The transport walks CUES by
+     INDEX and breaks when a cue is still in the future, so the seconds must never
+     run backwards down the array however the cue NUMBERS read. */
+  P('the blackout fires before the house slides on, and it travels in the dark (DC)', ()=>{
+    showLoad('beetlejuice');
+    const iBlack = CUES.findIndex(c=>c.n === 41), iOn = CUES.findIndex(c=>c.n === 40);
+    if(iBlack < 0 || iOn < 0) throw new Error('Q40 or Q41 is gone');
+    if(!(iBlack < iOn))
+      throw new Error('Q40 sits at index ' + iOn + ' and Q41 at ' + iBlack +
+                      ' — the blackout has to fire first');
+    if(!(CUES[iOn].at > CUES[iBlack].at))
+      throw new Error('the house slides on at ' + CUES[iOn].at +
+                      ', which is not after the blackout at ' + CUES[iBlack].at);
+    if(!CUES[iOn].move) throw new Error('Q40 carries no move, so nothing slides on');
+    if(CUES[iBlack].scene === 'interior')
+      throw new Error('the blackout declares the interior, so IT carries the changeover ' +
+                      'and the room appears while its own fade is still going down');
+
+    for(let i = 1; i < CUES.length; i++){
+      const a = CUES[i-1].at, b = CUES[i].at;
+      if(a === undefined || a === null || b === undefined || b === null) continue;
+      if(b < a) throw new Error('index ' + i + ' (Q' + CUES[i].n + ' at ' + b +
+                               ') runs back in time from Q' + CUES[i-1].n + ' at ' + a);
+    }
+
+    const h = sceneFind('interior');
+    if(!h) throw new Error('there is no interior scene');
+    let clock = 0;
+    const step = n=>{ for(let k = 0; k < n; k++){
+      clock += 1/60; updateFades(1/60); updateRig(1/60, clock); updateStorm(1/60); } };
+    const upNow = ()=>GROUPS.stage.filter(n=>chan(n)._lvl > 0.02).length;
+    const zc = ()=>{ scene.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(h.group); return (b.min.z + b.max.z)/2; };
+
+    /* get into the netherworld first, with the room parked off */
+    fireCue(CUES.findIndex(c=>c.n === 39)); cancelFollow(); step(900);
+    fireCue(iBlack); cancelFollow(); step(120);
+    if(upNow()) throw new Error(upNow() + ' stage channels still up two seconds into the blackout');
+
+    const z0 = zc();
+    fireCue(iOn); cancelFollow();
+    if(!sceneTravelling(h))
+      throw new Error('the wagon is not travelling on the frame Q40 fires — the mover is not wired');
+    let framesOn = 0, litFrames = 0;
+    while(sceneTravelling(h) && framesOn < 1800){
+      step(1); framesOn++;
+      if(upNow()) litFrames++;
+    }
+    if(framesOn >= 1800) throw new Error('the wagon never finished its travel');
+    const dist = Math.abs(zc() - z0);
+    if(!(dist > 1))
+      throw new Error('the wagon moved ' + dist.toFixed(2) + 'm — it is not travelling anywhere');
+    if(litFrames)
+      throw new Error('the stage was lit on ' + litFrames + ' of ' + framesOn +
+                      ' frames while the wagon was moving — he asked for it to slide on in the dark');
+    /* and it is home before his own next cue asks for anything */
+    const nxt = CUES[iOn + 1], secs = framesOn/60;
+    if(nxt && nxt.at !== undefined && nxt.at !== null && CUES[iOn].at + secs > nxt.at)
+      throw new Error('it takes ' + secs.toFixed(1) + 's to arrive and the next cue is only ' +
+                      (nxt.at - CUES[iOn].at) + 's later');
+    return 'blackout at index ' + iBlack + ', house on at ' + iOn + '; travelled ' +
+           dist.toFixed(2) + 'm in ' + secs.toFixed(1) + 's with the stage dark on every frame';
+  });
+
   /* ══ RULING CG — THE HOUSE IS AT 15 AT EXACTLY THREE MOMENTS ════════════ */
   P('the house sits at 15 at the start, the interval and the end, and nowhere else (CG)', ()=>{
     showLoad('beetlejuice');
@@ -4257,9 +4362,17 @@ const probe = `
 
   P('every timestamp in his act two is a cue at that second', ()=>{
     showLoad('beetlejuice');
-    /* every clock in act 2.txt, converted: 1:11:47 through 2:15 */
+    /* every clock in act 2.txt, converted: 1:11:47 through 2:15.
+
+       5962 IS HIS OWN NUMBER SUPERSEDED BY HIS OWN NUMBER (RULING DB).  act 2.txt
+       says "1:39:22 all light fade to black and do a white flash"; he has since
+       said "make it so q39 and 39.1 both happen at 1:39:19", so the flash moved
+       back three seconds onto 5959 and sits on the same second as the set change
+       it covers.  The exemption is NAMED here rather than the list loosened to
+       "near enough", because the whole point of this list is that it diffs against
+       his sheet in one command. */
     const his = [4307, 4329, 4336, 4465, 4497, 4498, 4504, 4623, 4843, 5105,
-                 5455, 5471, 5828, 5841, 5904, 5921, 5962, 5981, 6802, 6813,
+                 5455, 5471, 5828, 5841, 5904, 5921, 5959, 5981, 6802, 6813,
                  6818, 6879, 7064, 7187, 7313, 7319, 7559, 7602, 7716, 7748,
                  7969, 7973, 8047, 8066, 8076, 8081, 8092, 8100];
     const missing = his.filter(t=>!CUES.some(c=>c.at === t));
@@ -4304,8 +4417,12 @@ const probe = `
        what:'1:30:55 backdrop out, house on (CK: 55s later, onto his own blackout)'},
       /* THE ONE CHANGE IN HIS PREVIOUS LIST: 1:39:00 became 1:39:19 */
       {at:5959, scene:'afterlife', backdrop:'out', off:BJ_WAGON_BACK, what:'1:39:19 the netherworld'},
-      {at:6795, scene:'interior', dress:'bj', backdrop:'out', off:0,
-       what:'1:53:15 house on again (CK: 15s later)'},
+      /* RULING DC moved this behind his own blackout: "make it so q40 happens
+         right after q41".  1:53:00 -> 1:53:15 (CK) -> 1:53:24 (DC), and it keeps
+         cue number 40 while sitting after 41 in the array, because the plot's
+         firing order IS the array order and the cue number is only a label. */
+      {at:6804, scene:'interior', dress:'bj', backdrop:'out', off:0,
+       what:'1:53:24 house on again, under the black (CK 15s later, DC behind the blackout)'},
       {at:7985, scene:'interior', dress:'bj', backdrop:'out', off:BJ_WAGON_BACK,
        what:'2:13:05 house back, backdrop stays up, the call'},
       {at:8100, scene:'interior', dress:'bj', backdrop:'out', curtain:'shut', what:'2:15:00 curtain in'}
