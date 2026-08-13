@@ -1,7 +1,54 @@
-# STATE — 2026-08-13 (his headset run, all nine landed)
+# STATE — 2026-08-13 (past the legs — #172 OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## OPEN RIGHT NOW: #172, RULING DI — THE SETS PARK PAST THE LEGS
+
+Branch `bj-past-the-legs`, based on `main` at `05374fc`, **one commit, base
+verified `main`, mergeable clean**. Nothing else is open. He has not merged it.
+
+He looked at the DF parks in the headset and said the attic, bedroom and closet
+were **still in the wings**; then **"i meant past the physical legs. past the
+black curtains"**; then **"there is plenty of room between the fly rail and the
+legs to fit all three sets"**. Right all three times.
+
+**DF measured the wrong line.** It sized every park against the PICTURE edge at
+6.80. A leg is 5.6m of cloth spanning |x| **6.60 .. 12.20**, so all three parks
+started inside the masking — the attic 4.33m deep in it.
+
+**AND THE RAIL WAS NEVER AT −19.2.** CE, CS and DF all quote it and all cite
+`p9`, which says `fr ? fr.rail : -D.stageW/2 + 2.8` — and −19.2 is the
+**fallback**. The live value is `crewFrame().rail` = `XR + 2.8` = **−30.2**,
+because `XR` carries `D.wingSR`. The gap between the legs and the rail is
+**18.00m, not 7.00m**. His 13.06m attic fits with 2.94m to spare.
+
+So all three park **stage right, 2.00m past the cloth, one behind another**, and
+the attic crosses from stage left — CQ picked that side *because* of the rail
+that is not there, and stage left (9.80m past the legs) is the one wing that
+cannot hold it.
+
+**The three typed offsets are gone.** `BJ_ATTIC_SIDE`, `BJ_SIDE_ROOM` and
+`BJ_CLOSET_BACK` could not place his file and the stand-in at once — the attic
+is 13.06 × 10.00 with his model against 10.40 × 9.60 without it, and differently
+centred, which is why DF left one 2.00m clear and the other 0.57m. `bjWingPack`
+measures each set's own box; `bjApplyModel` packs again when a file lands. Both
+cases now land at exactly 2.00m past the cloth.
+
+**Found on the way past:** the **auditorium side wall** is a 1.0 × 22.0 × 32.0
+box at x −15.50 reaching **z −1.00**, through the middle of the stage-right wing
+— his attic acts at z −0.30 and its old park left it at its acting z, 0.70m
+inside the wall. And the VR set menu asked about depth before side, so a park
+both in a wing and upstage of the backdrop read as "upstage".
+
+Suites **19/19** before and after; **7 mutations negative-checked**, each proved
+present in the BUILT file and proved to have changed it, revert byte-identical.
+New probe **`tools/wing.js`**.
+
+**What is still his to answer here:** all three sets now enter from stage right
+and stage left is empty. That is a real change to the traffic and it was ours to
+make (his words were only "one of the sides"), but he may want the attic back on
+its own side — which, past the legs, it cannot be.
 
 ## HE DID THE HEADSET RUN, ASKED FOR NINE THINGS, AND ALL NINE ARE BUILT
 
@@ -43,8 +90,11 @@ round. The questions, in the order they will bite:
    Beetlejuice: the moulded band, the goldDk inner, the keystone and its head.
    The ivory wall, the sounding board and the lyre all stay.
 3. **Is the netherworld right at 4.42m?** Third number on that constant.
-4. **Do the parks read as out of the way?** The wings are clear to 2.89m
-   (bedroom), 2.69m (closet), 1.07m (attic).
+4. ~~**Do the parks read as out of the way?**~~ **ANSWERED, AND HE SAID NO** —
+   twice. That is RULING DI and #172: they were standing among the legs, and the
+   wing they were being squeezed into was 11m wider than three rulings thought.
+   The new question is whether **2.00m past the cloth** reads as stored, and
+   whether all three coming from stage right is right.
 5. **Is FLOOR / PRE-SHOW / UP the right set of three for the sign**, and does the
    desk row naming the stop read better than a percentage?
 6. Carried: the houses at 13.6 × 12.76, `BJ_FILL_MAX` 0.55, `BLIND_POWER` 4.6,
@@ -142,22 +192,28 @@ catches it. The pair is left coupled deliberately.
 - `tests/smoke.js` still flakes under full-suite load. Not a regression.
 - `pr6.json` in the repo root is still untracked and unruled.
 
-## The park layout after DF
+## The park layout after DI (#172, his models — the stand-in packs differently
+## and correctly, which is the point)
 
 | set | parks | slot |
 |---|---|---|
 | interior (his 3 houses) | z −24.78..−11.80, x ±6.80 | **upstage, alone** (CO) |
-| attic | x 7.87..20.93 | stage left, 1.07m clear of masking, 1.07m off the wall |
-| bedroom | x −18.31..−9.69 | stage right, 2.89m clear, 0.89m off the **locking rail** |
-| closet | x −18.51..−9.49, z −6.0 back | stage right behind the bedroom, 2.69m clear |
+| attic | x −27.26..−14.20, z −11.80..−1.80 | stage right, **2.00m past the cloth**, first in the queue |
+| bedroom | x −22.82..−14.20, z −17.91..−13.30 | stage right, second |
+| closet | x −23.22..−14.20, z −24.02..−19.41 | stage right, third |
 | house (exterior) | y 10.50..19.40 | **flown** |
 | afterlife | y 10.50..19.70 | **flown** |
 | roof | y 10.50..19.16 | **flown** |
 | cemetery | — | no park; switched off outright |
 
-**Only three sets fly, which is his correction.** Stage right stops at the
-locking rail (x −19.2), not at the wall — RULING CE was written because the
-wagon had been parked standing on the flyman's working space.
+**Only three sets fly, which is his correction.** All three deck parks are in the
+**stage-right** wing now, packed downstage-to-upstage by `bjWingPack` and every
+offset measured off the set's own box. Stage left is empty.
+
+**The limits they are packed against**, all read rather than typed: the leg's
+outboard edge **LEG_OUT 12.20** (p3), the flyman's rail **crewFrame().rail
+−30.20** (not −19.2 — see DI), the stage-right wall **XR −33**, the brick
+**PAL_BACK −25.5**, and the auditorium side wall reaching **z −1.00** at x −15.50.
 
 ## Feel constants for the headset (one-line retunes)
 
@@ -183,9 +239,14 @@ The floor is derived from the sign's own bounding box, never typed.
 In `p5h` (AW–AZ, CE): `BJ_FLY_SPEED` 1.8, `BJ_HILL_SPEED` 2.0 / `BJ_HILL_OUT`
 9.5, `BJ_PART_OUT` 10.5, `BJ_TRACK_SPEED` 2.0.
 
-In `p5h` (the traffic plan, CO–CS amended by **DF**): **`BJ_ATTIC_SIDE` 14.4,
-`BJ_SIDE_ROOM` −14.0**, `BJ_CLOSET_BACK` −6.0, `BJ_THIN` 0.28, `BJ_WAGON_BACK`
-−10.0. All sized by the STAND-IN as well as by his model.
+In `p5h` (the traffic plan, CO–CS amended by **DF** and re-cut by **DI**):
+**`BJ_ATTIC_SIDE`, `BJ_SIDE_ROOM` and `BJ_CLOSET_BACK` ARE GONE** — a typed
+offset cannot place his file and the stand-in at once, which is what DI is
+about. What is left to tune is **`BJ_PARK_PAST` 2.00** (how far past the leg
+cloth a park stands), **`BJ_WING_Z0` −1.80** (the downstage limit, set by the
+auditorium wall at z −1.00) and **`BJ_WING_GAP` 1.50** (between one parked set
+and the next). Everything else falls out of `bjWingPack` measuring the boxes.
+Still typed and still his: `BJ_THIN` 0.28, `BJ_WAGON_BACK` −10.0.
 
 In `p5h` (the netherworld, **DD**): **`BJ_AFT_DEEP` 0.35**, `BJ_AFT_TUBE` 0.15,
 `BJ_AFT_BACK` 0x000000.
@@ -223,4 +284,4 @@ untouched.
 
 ## Shelved
 
-**Nothing.**
+**Nothing.** One PR open: **#172 (RULING DI)**, above.
