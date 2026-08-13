@@ -147,14 +147,75 @@ const probe = `
         wide = Math.max(wide, Math.abs(b.min.x), Math.abs(b.max.x)); } });
     if(wide > D.procW/2) throw new Error('the portal is '+(wide*2).toFixed(2)+'m wide, the opening is '+D.procW);
     if(topY > D.procH) throw new Error('the portal reaches y='+topY.toFixed(2)+', the opening is '+D.procH);
-    /* and the exemption is not a licence: the neon must still trace the GOLD,
-       not wander off into the auditorium */
+    /* and the exemption is not a licence: the neon must trace something real, not
+       wander off into the auditorium.
+
+       REVERSED IN PLACE BY RULING DG.  This demanded the neon be out on the GOLD
+       (CX), and the gold is taken down for this show — so what it now demands is the
+       BLACK FALSE PORTAL's own leg line.  Note this is the assertion that made the
+       CX exemption necessary in the first place: the frame was wider than the
+       opening and had to be excused.  DG brings it back INSIDE, so the exemption is
+       no longer load-bearing for the frame — it is kept because the cornice still
+       needs it, and because removing an exemption is a separate change. */
     const nb = box(byName('bj:portalFrame'));
-    const gold = D.procW/2 + 0.25;
-    if(Math.abs(Math.abs(nb.max.x) - gold) > 0.4)
-      throw new Error('the neon runs at x '+nb.max.x.toFixed(2)+', and the gold is at '+gold.toFixed(2));
+    const portalX = BJ.opW/2 + BJ.frame/2;
+    if(Math.abs(Math.abs(nb.max.x) - (portalX + BJ_NEON_BAR/2)) > 0.4)
+      throw new Error('the neon runs at x '+nb.max.x.toFixed(2)+
+                      ', and the black portal leg is at '+portalX.toFixed(2));
     return 'portal '+(wide*2).toFixed(2)+'m x '+topY.toFixed(2)+'m inside a '+D.procW+' x '+D.procH+
-           ' opening, with the neon out on the gold at +-'+nb.max.x.toFixed(2);
+           ' opening, with the neon on the black portal at +-'+nb.max.x.toFixed(2);
+  });
+
+  /* ══ RULING DG — AND THE GOLD COMES DOWN, FOR THIS SHOW ONLY ══════════════
+     "just for beetlejuice remove the gold prosinium and put the neon where the
+     black is right now."  The neon half is above; this is the other half, and it is
+     the one with a way to go quietly wrong: hiding architecture is easy, and
+     LEAVING it hidden for the next production is what nobody would notice until a
+     Hamilton load-in came up with no proscenium.
+
+     THREE THINGS, AND THE THIRD IS THE ONE THAT MATTERS:
+       - the gold is really down while Beetlejuice is on;
+       - it is down properly — the visible flag alone lets a raycast straight
+         through, so the layers have to be off too (TRAPS, three.js r128);
+       - and STRIKING PUTS IT BACK, whatever struck it.  The restore lives in
+         showStrike rather than in the show, because the stage swap strikes too and
+         a show that tidied up after itself would miss that path. */
+  P('RULING DG: the gold proscenium comes down for Beetlejuice and the strike puts it back', ()=>{
+    if(typeof PROS_GOLD === 'undefined' || !PROS_GOLD.length)
+      throw new Error('PROS_GOLD is empty — the gold is not collected, so nothing can take it down');
+    const n = PROS_GOLD.length;
+    /* start from a show that does NOT touch it, so the fixture is not already in
+       the state being asserted (the "negative check against a state the assertion
+       already satisfies" trap) */
+    showLoad('outsiders');
+    let up = PROS_GOLD.filter(m=>m.visible && m.layers.mask !== 0).length;
+    if(up !== n)
+      throw new Error('only ' + up + ' of ' + n + ' gold pieces are up under a show that never hid them');
+
+    showLoad('beetlejuice');
+    const hidden = PROS_GOLD.filter(m=>!m.visible).length;
+    const dark = PROS_GOLD.filter(m=>m.layers.mask === 0).length;
+    if(hidden !== n)
+      throw new Error('only ' + hidden + ' of ' + n + ' gold pieces are hidden under Beetlejuice');
+    if(dark !== n)
+      throw new Error(dark + ' of ' + n + ' have their layers off — a visible=false mesh is ' +
+                      'still in every raycast, so the arch is still pickable');
+
+    /* and the strike hands the building back */
+    showStrike();
+    up = PROS_GOLD.filter(m=>m.visible && m.layers.mask !== 0).length;
+    if(up !== n)
+      throw new Error('after the strike only ' + up + ' of ' + n + ' gold pieces came back — ' +
+                      'Beetlejuice has left the house altered for the next production');
+
+    /* the real path a person takes: load another show straight over the top */
+    showLoad('beetlejuice');
+    showLoad('hamilton');
+    up = PROS_GOLD.filter(m=>m.visible && m.layers.mask !== 0).length;
+    if(up !== n)
+      throw new Error('loading Hamilton over Beetlejuice left ' + (n - up) +
+                      ' gold pieces down');
+    return n + ' gold pieces: up by default, all down for Beetlejuice, all back on the strike';
   });
 
   /* one material for the whole frame: a material per object is the
@@ -202,7 +263,7 @@ const probe = `
      the things this assertion pinned, and leave everything else about the frame
      exactly as CH built it: one merged mesh, one material, built dark, thicker
      than the tube it replaced, no wing returns.  Those are what stay. */
-  P('the proscenium neon traces the gold, straight-topped and open at the deck (CX)', ()=>{
+  P('the proscenium neon traces the BLACK PORTAL, level-topped and open at the deck (DG)', ()=>{
     showLoad('beetlejuice');
     const t = byName('bj:portalFrame');
     const b2 = box(t);
@@ -239,19 +300,49 @@ const probe = `
        would still be four bars and still pass a mesh count.  Cast a box at each
        of the four sides of the opening and demand geometry in all four. */
     const pos = t.geometry.attributes.position;
-    const gold = D.procW/2 + 0.25, spring = D.procH - 1.8;
-    const peak = 0.25*spring + 0.5*(D.procH + 1.75) + 0.25*spring;
+    /* REVERSED IN PLACE BY RULING DG — the frame traces the BLACK FALSE PORTAL now,
+       not the gold band, because the gold is taken down for this show and "where
+       the gold is" has stopped being a place.  Everything below is re-anchored on
+       BJ rather than on D.procW, which is where the CH comment always wanted it.
+       The gold's own numbers are still correct about the gold and are still written
+       up in p5h; they are simply no longer what the neon is on. */
+    const portalX = BJ.opW/2 + BJ.frame/2;      // 7.11 — the portal legs' centreline
+    const portalTop = BJ.opH + BJ.frame/2;      // 9.51 — its header's centreline
+    const gold = D.procW/2 + 0.25;              // 7.75 — where it USED to run
+    /* AND IT REALLY CAME IN, which is the whole of the ruling and the one thing a
+       re-anchored test could quietly stop checking.  Measured off the built box,
+       not off the constants. */
+    if(!(b2.max.x < gold - 0.3))
+      throw new Error('the frame still reaches x '+b2.max.x.toFixed(2)+
+                      ', out on the gold at '+gold.toFixed(2)+' — DG brings it in to '+portalX.toFixed(2));
+    /* the outer edge is the leg centreline plus half a bar, because the top runs to
+       the LEG rather than to the portal header's full 14.84 — running it to the
+       header left the frame 7.59 wide against a gold band at 7.75, which is 0.16m
+       of daylight for a ruling whose whole point is coming in by 0.64m.  This
+       clause is what caught that. */
+    if(Math.abs(b2.max.x - (portalX + BJ_NEON_BAR/2)) > 0.2)
+      throw new Error('its outer edge is at x '+b2.max.x.toFixed(2)+', not on the portal leg at '+
+                      (portalX + BJ_NEON_BAR/2).toFixed(2));
     /* CLOSED, and measured rather than counted: a loop missing a leg would still
-       be three bars and still pass a mesh count.  With RULING CX's rake the two
-       legs are DIFFERENT HEIGHTS, so this asks for one of each — a tall side
-       reaching the peak and a short side stopping at the springing. */
-    const side = {left:0, right:0, high:0, low:0};
+       be two bars and still pass a mesh count.  DG squares the frame up, so both
+       legs are the SAME height now and the old tall/short pair is gone — what
+       replaces it is a top that spans the whole width. */
+    /* the rake switch is read HERE, above the closed check, and a negative check is
+       why.  Turning BJ_NEON_RAKE_ON on made this test fail with "nothing on the top
+       side" — because a fixed +-0.6 window round the flat header cannot contain a
+       bar whose ends move +-0.887 — so the switch DG advertises as one line would
+       have broken the suite instead of working.  The window widens with the drop. */
+    const rakeDrop = BJ_NEON_RAKE_ON ? BJ_NEON_RAKE * BJ_NEON_RAKE_FALL : 0;
+    const topWin = 0.6 + Math.abs(rakeDrop)/2;
+    const side = {left:0, right:0, top:0, spanL:0, spanR:0};
     for(let i = 0; i < pos.count; i++){
       const x = pos.getX(i), y = pos.getY(i);
-      if(x < -gold + 0.5) side.left++;
-      if(x >  gold - 0.5) side.right++;
-      if(Math.abs(x) > gold - 0.5 && Math.abs(y - peak) < 0.5) side.high++;
-      if(Math.abs(x) > gold - 0.5 && Math.abs(y - spring) < 0.5) side.low++;
+      if(x < -portalX + 0.5) side.left++;
+      if(x >  portalX - 0.5) side.right++;
+      if(Math.abs(y - portalTop) < topWin) side.top++;
+      /* the top must REACH both sides, or it is a stub over the middle */
+      if(Math.abs(y - portalTop) < topWin && x < -portalX + 0.9) side.spanL++;
+      if(Math.abs(y - portalTop) < topWin && x >  portalX - 0.9) side.spanR++;
     }
     for(const k in side)
       if(!side[k]) throw new Error('the frame is open: nothing on the '+k+' side');
@@ -271,42 +362,54 @@ const probe = `
        an earlier version of this check threw "no top edge over x=-6" against a
        perfectly correct frame. */
     {
-      const rake = BJ_NEON_RAKE;
-      const lineY = x => peak - (gold - rake*x)*(peak - spring)/(2*gold);
+      /* REVERSED IN PLACE BY RULING DG, and the "nothing above the line" SHAPE is
+         what survives — which is the point of having written it that way.  The line
+         itself changes from CY's rake to the portal's flat top; the reason for not
+         sampling the top edge at chosen x values is unchanged, and is still the
+         reason: a box carries vertices at its CORNERS only, so sampling the middle
+         of a straight bar finds nothing there at all.
+
+         DG TURNS THE RAKE OFF because the portal's top is flat and a raked bar
+         would cut across a horizontal member instead of tracing it.  That argues
+         with CY, which was HIS correction, so the switch is honoured here rather
+         than assumed away: with BJ_NEON_RAKE_ON true this expects the lean back. */
+      const drop = rakeDrop;
+      const hiEndY = portalTop + drop/2, loEndY = portalTop - drop/2;
+      const lineY = x => hiEndY + (x + portalX)*(loEndY - hiEndY)/(2*portalX);
       let worst = 0, worstAt = 0;
       for(let i = 0; i < pos.count; i++){
         const x = pos.getX(i), y = pos.getY(i);
-        if(y <= spring - 0.5) continue;
-        const over = y - lineY(x) - BJ_NEON_BAR;    // the bar has thickness of its own
+        if(y <= portalTop - 1.5) continue;              // legs, not the top bar
+        const over = y - lineY(x) - BJ_NEON_BAR;        // the bar has thickness of its own
         if(over > worst){ worst = over; worstAt = x; }
       }
       if(worst > 0.15)
         throw new Error('the top stands '+worst.toFixed(2)+'m above its line at x='+worstAt.toFixed(2)+
-                        ' — that is an arch or a centre peak, not one straight rake');
-      if(Math.abs(b2.max.y - peak) > 0.4)
-        throw new Error('the high end is at y '+b2.max.y.toFixed(2)+', and the gold peaks at '+peak.toFixed(2));
-      /* AND IT REALLY IS RAKED ONE WAY: the high corner is over ONE side of the
-         opening, not over the middle.  A centre peak would satisfy every line
-         above and is the shape he has just ruled out. */
-      let hiX = 0, hiY = -99;
-      for(let i = 0; i < pos.count; i++)
-        if(pos.getY(i) > hiY){ hiY = pos.getY(i); hiX = pos.getX(i); }
-      if(Math.abs(hiX) < gold - 1.0)
-        throw new Error('the top peaks at x='+hiX.toFixed(2)+
-                        ', over the middle — he asked for it slanted one way, not from the centre');
-      if(Math.sign(hiX) !== Math.sign(rake))
-        throw new Error('it rakes the wrong way: high end at x='+hiX.toFixed(2)+
-                        ' with BJ_NEON_RAKE '+rake);
-      if(!(b2.max.y - spring > 1.0))
-        throw new Error('the top is flat at y '+b2.max.y.toFixed(2)+', not raked up to '+peak.toFixed(2));
-      /* and the LOW side really does come down to the springing, or it is a
-         header sitting on two tall legs rather than a rake */
-      let loTop = -99;
-      for(let i = 0; i < pos.count; i++)
-        if(Math.sign(pos.getX(i)) === -Math.sign(rake) && Math.abs(pos.getX(i)) > gold - 0.5)
-          loTop = Math.max(loTop, pos.getY(i));
-      if(Math.abs(loTop - spring) > 0.6)
-        throw new Error('the low side tops out at y '+loTop.toFixed(2)+', not at the springing '+spring.toFixed(2));
+                        ' — that is an arch or a centre peak, not the portal header');
+      if(Math.abs(b2.max.y - (Math.max(hiEndY, loEndY) + BJ_NEON_BAR/2)) > 0.3)
+        throw new Error('the top is at y '+b2.max.y.toFixed(2)+
+                        ', and the portal header is at '+portalTop.toFixed(2));
+      /* AND IT IS LEVEL, which is the DG-specific claim and the exact inverse of
+         what CY asserted here.  Both legs must top out at the same height: a rake
+         left in by accident would satisfy every line above, because a raked bar is
+         still "nothing above its own line". */
+      const topOf = sgn => {
+        let hi = -99;
+        for(let i = 0; i < pos.count; i++)
+          if(Math.sign(pos.getX(i)) === sgn && Math.abs(pos.getX(i)) > portalX - 0.5)
+            hi = Math.max(hi, pos.getY(i));
+        return hi;
+      };
+      const tl = topOf(-1), tr = topOf(1);
+      if(tl < 0 || tr < 0) throw new Error('one side of the frame has no leg at all');
+      if(!BJ_NEON_RAKE_ON){
+        if(Math.abs(tl - tr) > 0.2)
+          throw new Error('the legs top out at y '+tl.toFixed(2)+' and '+tr.toFixed(2)+
+                          ' — the frame is still raked, and the portal top is flat');
+      } else if(Math.abs(Math.abs(tl - tr) - Math.abs(drop)) > 0.3){
+        throw new Error('the rake switch is on but the legs differ by '+
+                        Math.abs(tl - tr).toFixed(2)+', not '+Math.abs(drop).toFixed(2));
+      }
     }
     /* THICKER than the 0.075-radius tube it replaces — his one adjective */
     const thick = b2.max.z - b2.min.z;
@@ -315,20 +418,26 @@ const probe = `
     /* and the wings are GONE — a frame that still ran upstage would be 5m deep */
     if(thick > 1.0)
       throw new Error('the frame is '+thick.toFixed(2)+'m deep — the wing returns are still there');
-    /* ON THE GOLD — the number that replaces "inside the picture".  It is the
-       moulding round the opening, so it is outside it, and it must not wander
-       past it either: half a metre of tolerance either way and no more. */
+    /* ON THE BLACK PORTAL (DG), which is the number that replaced "inside the
+       picture" and has now replaced "on the gold".  It traces the false portal's leg
+       line, so it sits just OUTSIDE the 13.6m picture and well INSIDE the gold at
+       7.75 — and it must not wander either way. */
     const wide = Math.max(Math.abs(b2.min.x), Math.abs(b2.max.x));
-    if(Math.abs(wide - gold) > 0.5)
-      throw new Error('the neon runs at x '+wide.toFixed(2)+' and the gold is at '+gold.toFixed(2));
+    if(Math.abs(wide - (portalX + BJ_NEON_BAR/2)) > 0.3)
+      throw new Error('the neon runs at x '+wide.toFixed(2)+
+                      ' and the black portal leg is at '+portalX.toFixed(2));
+    if(!(wide > BJ.opW/2))
+      throw new Error('the neon runs at x '+wide.toFixed(2)+
+                      ', inside the '+BJ.opW+'m picture — it would be scenery, not a frame');
     /* BUILT DARK.  "For the rest it is off" — so the frame exists unlit, and a
        cue is the only thing that ever lights it. */
     if(t.material.emissiveIntensity > 0.001)
       throw new Error('the frame is built lit at '+t.material.emissiveIntensity+' — it must be dark until a cue says');
     if(!SHOW.bjPortal) throw new Error('the frame is not registered on SHOW.bjPortal — the stage swap would lose it');
     if(SHOW.bjPortal.mesh !== t) throw new Error('SHOW.bjPortal points at something else');
-    return (wide*2).toFixed(2)+'m across on the gold at +-'+gold.toFixed(2)+', a '+thick.toFixed(2)+
-           'm bar, straight top to y '+b2.max.y.toFixed(2)+', nothing across the deck, built dark';
+    return (wide*2).toFixed(2)+'m across on the BLACK PORTAL at +-'+wide.toFixed(2)+
+           ' (the gold was '+gold.toFixed(2)+'), a '+thick.toFixed(2)+
+           'm bar, level top to y '+b2.max.y.toFixed(2)+', nothing across the deck, built dark';
   });
 
   console.log('--- the cemetery is a SCENE, and this is the first show to use them ---');
@@ -3766,15 +3875,28 @@ const probe = `
     /* ON THE BAR: each unit within half a metre of the frame's own line, and
        downstage of its face so the light comes out of it rather than through it */
     let offLine = 0, behind = 0;
-    const gold = D.procW/2 + 0.25, spring = D.procH - 1.8;
-    const peak = 0.25*spring + 0.5*(D.procH + 1.75) + 0.25*spring;
-    /* the ONE raked line, the same one the frame is built on — not a symmetric
-       pair, which is what he ruled out ("slanted just one way not from the
-       center").  Math.abs(x) must not appear here. */
-    const lineY = x => peak - (gold - BJ_NEON_RAKE*x)*(peak - spring)/(2*gold);
+    /* REVERSED IN PLACE BY RULING DG, and CY's actual rule is what survives: the
+       light comes out of the BAR, so the units sit on whatever line the bar is on.
+       That line moved from the gold's raked chord to the black portal's flat header,
+       so the formula goes with it — and Math.abs(x) is allowed back, because a flat
+       top IS symmetric and the thing CY forbade was faking symmetry on an arch.
+
+       MEASURED AGAINST THE BUILT FRAME, not against a re-computed line, which is
+       the CY lesson itself: the sign of the old rake was inverted once and the
+       blinders AND this assertion both carried the same wrong formula, so they
+       agreed perfectly and passed.  The line here is checked against the frame's own
+       measured box (fb) as well as against the constants. */
+    const portalX = BJ.opW/2 + BJ.frame/2;
+    const portalTop = BJ.opH + BJ.frame/2;
+    if(Math.abs(fb.max.y - (portalTop + BJ_NEON_BAR/2)) > 0.3)
+      throw new Error('the frame tops out at y '+fb.max.y.toFixed(2)+
+                      ' and the portal header is at '+portalTop.toFixed(2)+
+                      ' — the blinder line below is measured off the wrong thing');
+    const drop = BJ_NEON_RAKE_ON ? BJ_NEON_RAKE * BJ_NEON_RAKE_FALL : 0;
+    const lineY = x => (portalTop + drop/2) + (x + portalX)*(-drop)/(2*portalX);
     GROUPS.blind.forEach(n=>{
       const p = chan(n).pos;
-      const onLeg = Math.abs(Math.abs(p.x) - gold) < 0.5 && p.y <= spring + 0.5;
+      const onLeg = Math.abs(Math.abs(p.x) - portalX) < 0.5 && p.y <= portalTop - 1.0;
       const onTop = Math.abs(p.y - lineY(p.x)) < 0.5;
       if(!onLeg && !onTop) offLine++;
       if(p.z < fb.max.z - 0.01) behind++;
