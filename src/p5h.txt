@@ -2996,10 +2996,19 @@ function plotBeetlejuice(){
        closed."  The curtain is a traveler that FLIES and this cue fires seven
        seconds after the one that sends it in, so the house was coming up on a
        stage that could still be open.  The master holds at 0 until the cloth is
-       really home. */
+       really home.
+
+       RULING CZ: "at the end of the half the neon light around the proscenium
+       and the intermission music dont come on till the curtain is fully done and
+       the house lights are on."  So the frame and the interval music queue up
+       behind CJ's own handover — `afterHouse` — and the act break assembles in
+       the order a real one does: cloth home, house up, neon strikes, music in.
+       The `stop` half of the audio is NOT held; only the `play` is, because act
+       one is the clock track and holding it would run the transport on into act
+       two.  The whole of that is at updateHouseWait in p5c. */
     {at:4269, n:23, label:'1:11:09 — house to 15 behind the cloth — INTERVAL (holds for the console)',
      fade:6, house:0.15, lobby:0.9, haze:0, curtain:'shut', scene:'interior', dress:'deetz',
-     backdrop:'out', hold:true, houseAfterCurtain:true,
+     backdrop:'out', hold:true, houseAfterCurtain:true, afterHouse:true,
      portal:{col:BJ_NEON_BLUE, lvl:1.0},
      audio:{stop:'act1', play:'preshow'},
      look(){ all(0); }},
@@ -3029,9 +3038,21 @@ function plotBeetlejuice(){
        intermission and the end" covers the whole of the interval, not just the
        cue that starts it.  It goes out fifteen seconds later at 1:11:47, which is
        his own line and is untouched. */
+    /* RULING DA — AND THE FRAME IS STILL LIT WHEN THE SECOND HALF STARTS.  "at
+       the start of the second half the proscenium lights dont go out till the
+       flash."
+
+       The portal is the one cue field applied UNCONDITIONALLY (RULING CH: "for
+       the rest it is off"), so this cue saying nothing about it was what put the
+       frame out on the GO — the audience walks back in to a blue frame and it
+       snapped dark the instant the show restarted.  Saying it here keeps the
+       interval's blue burning through the GO, and the flash cue below says
+       nothing, so THAT is what takes it out.  The default did the work; the only
+       change is which cue it lands on. */
     {at:4292, n:24, label:'GO — act two, the show track back at 1:11:32', fade:2,
      house:0.15, lobby:0, haze:0.2, curtain:'shut', scene:'house', backdrop:'out', sky:'in',
      move:{scene:'house', off:0},
+     portal:{col:BJ_NEON_BLUE, lvl:1.0},
      audio:{play:'act2', at:4292, stop:'preshow'},
      look(){ all(0); onTheCloth(); set(FRONT, 0.4, '#bfe08a'); }},
 
@@ -3039,7 +3060,13 @@ function plotBeetlejuice(){
        second then just a purple light is on the curtain an moving around a
        bunch" — three things at once, and two of them are patterns: the blinder
        strobe runs out after its second, the mover drift carries on (RULING BE,
-       which widened the engine off this very line). */
+       which widened the engine off this very line).
+
+       AND THIS IS "THE FLASH" IN RULING DA, so its SILENCE about the portal is
+       load-bearing: saying nothing puts the frame out (CH), which is exactly what
+       "the proscenium lights dont go out till the flash" asks for.  Do not give
+       this cue a `portal` field to be tidy — the frame would then stay lit into
+       act two and DA would have no cue to go out on. */
     {at:4307, n:25, label:'1:11:47 — house out, blinders flash, purple crawling on the cloth',
      fade:0, house:0, haze:0.3, curtain:'shut', scene:'house', backdrop:'out', sky:'in',
      move:{scene:'house', off:0},
@@ -3475,6 +3502,8 @@ function plotBeetlejuice(){
       move:L.move || null,            // what travels, and to where (AP), and
                                       // which line it waits for if it says (CI)
       houseAfterCurtain:!!L.houseAfterCurtain,   // the house waits for the cloth (CJ)
+      afterHouse:!!L.afterHouse,      // and the frame and the music wait for the
+                                      // house, which waits for the cloth (CZ)
       confetti:!!L.confetti,
       audio:L.audio || null,          // what the sound does here (BA/BB)
       fx:L.fx || null,                // the audience rig's pattern (BD)
