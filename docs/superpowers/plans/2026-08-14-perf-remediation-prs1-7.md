@@ -77,8 +77,7 @@ are gated. Desk and VR both.
 - **This PR also commits this plan file** (house precedent: the plan lands with
   PR 1).
 
-## PR 2 — RULING DS: `castShadow` is written only when it changes, and shadow
-slots prefer the fixtures that asked
+## PR 2 — RULING DS: `castShadow` is written only on change; shadow slots prefer the fixtures that asked
 
 The hand-out (~p4:1470) currently assigns `l.castShadow` unconditionally every
 frame. Two changes, one concern (defusing the recompile churn):
@@ -188,8 +187,7 @@ a shut door has bitten a test before — TRAPS), the Arc/Palace venue swap, VR's
   how HOUSE/venue lighting is driven — the rule must be stated in the PR body.
 - Negative check per protocol.
 
-## PR 7 — RULING DX: the empty house submits fewer draws, and the number is
-measured before and after
+## PR 7 — RULING DX: the empty house submits fewer draws, measured before and after
 
 **Investigation + first scoped fix, evidence-first.** The census script
 (scratchpad `census.js` from the audit session — copy it into `tools/` as a

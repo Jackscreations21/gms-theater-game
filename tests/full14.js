@@ -2393,8 +2393,9 @@ const probe = `
 
   P('every lens quad in a dark rig is out of the frame, and one fader draws one', ()=>{
     /* AN ADDITIVE QUAD AT OPACITY ZERO STILL RASTERISES AND STILL COSTS A DRAW
-       CALL.  RULING DN says exactly this about the halo — which is why the batch
-       truncates count instead of fading instances away — and the 39 per-fixture
+       CALL.  RULING DN makes the rasterise half of that point about the halo —
+       which is why the batch truncates count instead of fading instances away —
+       the draw-call half is DR's own.  The 39 per-fixture
        LENS quads were the one thing in the rig that had never been told: their
        opacity was driven every frame and their visible flag was never written
        once, so a blackout submitted the whole rig's lenses for nothing.  The
