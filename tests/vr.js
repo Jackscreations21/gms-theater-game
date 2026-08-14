@@ -3061,13 +3061,22 @@ const probe = `
 
   console.log('--- vr: RULING DK, the session samples the environment ---');
 
-  P('a session mints geometry, and every bit of it follows the light bed', ()=>{
+  P('a session mints geometry, and its metals follow the light bed (DK, DT)', ()=>{
     /* THE GAP THIS EXISTS FOR.  vrOnStart runs five builders — controllers,
        desks, ropes, belt, console — long after init(), so a session mints ~142
        standard materials that the boot walk could never have seen.  Left alone
        they sit at the default 1: 1.8x the driven value at full bed and 7.27x in
        a blackout, and the largest block of them is the rope rail.  The desktop
-       assertion in full14 cannot see this, because it never enters a session. */
+       assertion in full14 cannot see this, because it never enters a session.
+
+       REVERSED BY RULING DT, and the reversal is the point of the case as much
+       as the drive is.  DK read every one of the ~142; DT hands the environment
+       to the metals alone, and the session is mostly HEMP, CLOTH AND WOOD — the
+       rope rail you stand at is the largest block and gets NOTHING now.  So
+       both halves are asserted here: the session METALS (p9 mints iron and trim
+       at metalness .5-.6) carry the texture and follow the bed, and the ropes
+       carry no environment at all.  DT has to hold in a headset as well as on
+       the desk, which is exactly what this suite is for. */
     const ours = ()=>{
       const out = [], seen = [];
       scene.traverse(o=>{
@@ -3103,12 +3112,32 @@ const probe = `
     let clock = 0;
     const step = dt=>{ clock += dt; updateFades(dt); updateRig(dt, clock); };
     for(let i=0;i<30;i++) step(1/72);
-    const stray = after.filter(m=>m.envMapIntensity !== ENV_LIVE);
+    const carriers = after.filter(m=>m.metalness >= ENV_METAL_MIN);
+    if(carriers.length < 5){
+      exitVR();
+      throw new Error('only ' + carriers.length + ' metals standing in a session — ' +
+        'the drive clauses below would be measuring nothing');
+    }
+    const stray = carriers.filter(m=>m.envMapIntensity !== ENV_LIVE || m.envMap !== ENV_TEX);
+    /* RULING DT, the other direction, and the rail is named because it is the
+       biggest block and the one a headset stands at */
+    const leak = after.filter(m=>m.envMap && !(m.metalness >= ENV_METAL_MIN));
+    const ropeLeak = ropeMats.filter(m=>m.envMap);
     if(stray.length){
       exitVR();
-      throw new Error(stray.length + ' of ' + after.length +
-        ' standard materials read ' + stray[0].envMapIntensity +
+      throw new Error(stray.length + ' of ' + carriers.length +
+        ' session metals read ' + stray[0].envMapIntensity +
         ' in a session against ENV_LIVE ' + ENV_LIVE);
+    }
+    if(leak.length){
+      exitVR();
+      throw new Error(leak.length + ' non-metals in a session carry an envMap (first at metalness ' +
+        leak[0].metalness + ') — a headset is fill-bound and pays for every tap twice');
+    }
+    if(ropeLeak.length){
+      exitVR();
+      throw new Error(ropeLeak.length + ' of ' + ropeMats.length +
+        ' rope materials carry an envMap — hemp is not a metal');
     }
     /* and they MOVE: a session held at a fixed value is the BH fault wearing
        a headset */
@@ -3118,17 +3147,18 @@ const probe = `
     FIXTURES.forEach(f=>{ f.level = 0; });
     for(let i=0;i<90;i++) step(1/72);
     const dark = ENV_LIVE;
-    const darkStray = after.filter(m=>m.envMapIntensity !== dark);
+    const darkStray = carriers.filter(m=>m.envMapIntensity !== dark);
     HOUSE.house = keepH; HOUSE.work = keepW; HOUSE.practical = keepP;
     exitVR();
     if(darkStray.length)
-      throw new Error(darkStray.length + ' session materials stuck at ' +
+      throw new Error(darkStray.length + ' session metals stuck at ' +
                       darkStray[0].envMapIntensity + ' through a blackout');
     if(!(lit > dark + 0.01))
       throw new Error('the session does not follow the bed: lit ' + lit.toFixed(4) +
                       ' against a blackout ' + dark.toFixed(4));
-    return ropeMats.length + ' rope materials among ' + after.length +
-           ' in a session, all driven, blackout ' + dark.toFixed(3) + ' -> lit ' + lit.toFixed(3);
+    return ropeMats.length + ' rope materials (no environment) among ' + after.length +
+           ' in a session, ' + carriers.length + ' metals driven, blackout ' +
+           dark.toFixed(3) + ' -> lit ' + lit.toFixed(3);
   });
 
   console.log('--- RULING DN: the glow is capped in a session ---');

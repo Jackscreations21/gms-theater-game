@@ -313,12 +313,10 @@ renderer.toneMappingExposure = 1.35;
    to one row.  Splitting them is a shader-chunk patch and is DEFERRED rather
    than faked (spec 7.4).
 
-   IT FOLLOWS THE BED, AND THAT GOVERNS THE WHOLE BUILDING.  A fixed environment
-   lights a blackout as brightly as a full stage — the exact fault RULING BH
-   fixed for the ambient.  r128 hands scene.environment to EVERY standard
-   material, so this clause is not about the imports: the theatre is built out
-   of standard materials too, and left undriven at the default 1 the building
-   was 1.8x the imported sets at full bed and 7.27x at blackout.
+   IT FOLLOWS THE BED.  A fixed environment lights a blackout as brightly as a
+   full stage — the exact fault RULING BH fixed for the ambient.  So the drive
+   is per material and envDrive walks the ONE registry: the building once at
+   init, the show and its models as they arrive.
 
    ONE REGISTRY, ONE WALK, AND NO PER-FRAME TRAVERSAL.  ENV_MATS is a Set, so
    registering twice is free and nothing can be on it twice.  It is rebuilt at
@@ -364,13 +362,93 @@ renderer.toneMappingExposure = 1.35;
    keyed caches because a wood paint or a dyed drape is minted on demand and
    outlives the mesh that asked for it.
    ========================================================================== */
+
+/* ============================================================================
+   RULING DT — THE ENVIRONMENT BELONGS TO THE METALS, NOT TO EVERY PIXEL.
+
+   DK assigned scene.environment, and r128 hands scene.environment to EVERY
+   MeshStandardMaterial: setProgram reads (material.envMap || environment)
+   (three.js :18170), so a global environment puts USE_ENVMAP and
+   ENVMAP_TYPE_CUBE_UV into the program of every standard material in the
+   building.  That is PMREM cube-UV sampling in every one of those fragments —
+   up to 16 dependent texture taps plus ~100 ALU, per pixel, PER EYE, and the
+   Quest has no multiview.  envMapIntensity only scales the RESULT: THE TAPS RUN
+   AT INTENSITY 0, so a blackout paid full price for a reflection of nothing.
+   Measured on hardware either side of the lighting round, an EMPTY house went
+   25ms -> 47ms against a 13.9ms budget; the audit of 2026-08-14 puts most of
+   that here.
+
+   So the texture stops being global and becomes material.envMap on the
+   materials that visibly need a reflection, and on nothing else.  DK's PURPOSE
+   survives whole — metal does not render near-black, and it matches in VR
+   because the rule is ONE function that every registration path already runs
+   through — while the deck, the walls, the seats, the brick and 99 of the
+   building's 120 standard materials stop paying for a reflection nobody could
+   see.
+
+   THE MATERIAL PATH IS THE SAME PATH, VERIFIED IN THE ARTIFACT AND NOT IN A
+   CHANGELOG.  r128 resolves the two identically — cubemaps.get(material.envMap
+   || environment) in WebGLPrograms.getParameters (:13106) and in setProgram
+   (:18170), and WebGLCubeMaps.get returns a CubeUV texture untouched (:11292) —
+   so envMapMode is the texture's own mapping either way, PMREMGenerator stamps
+   CubeUVReflectionMapping on its output (:33867), and ENVMAP_TYPE_CUBE_UV is
+   emitted from that (:12840, :12916).  maxMipLevel comes off
+   properties.get(envMap).__maxMipLevel (:16810) through the same
+   materialProperties.envMap slot.  If anything, material.envMap is the
+   better-supported of the two: it takes PRECEDENCE, and setProgram re-acquires
+   a program on its own when materialProperties.envMap changes (:18197), which
+   is why no needsUpdate is written anywhere below — every assignment here lands
+   before that material's first render, and atmTrack's own one-time
+   needsUpdate rides in the same call besides.
+
+   THE RULE IS METALNESS, AND IT IS READ RATHER THAN LISTED.  r128's standard
+   material does diffuseColor *= (1 - metalness) and
+   specularColor = mix(vec3(0.04), diffuseColor, metalness), so metalness is
+   exactly the axis DK is about: at 1 the diffuse is gone and an unlit specular
+   lobe is all that is left, which IS the near-black DK fixed.  At
+   ENV_METAL_MIN half the diffuse still survives and the 4% dielectric Fresnel
+   underneath is what every non-metal in the world has anyway.  A THRESHOLD AND
+   NOT A HAND-LIST, because a list written here could not see the metals p2b,
+   p2c, p2g, p2j, p5c, p5d, p5f, p5g, p5h and p9 mint for themselves, nor a
+   single material out of a .glb — and the four registration paths (the M table
+   at init, the model importer, the two keyed caches, and the ~142 materials p9
+   mints in a session) then share one rule instead of four that can drift apart.
+
+   0.5 SITS IN A GAP, WHICH IS WHY IT IS NOT A KNIFE-EDGE.  Censused on the
+   built file, the metalness values standing in the scene at boot are
+   0, .02, .04, .05, .10, .15, .20, .25, .30, then .50, .55, .60, .70, .80,
+   .85, .90 — NOTHING between .31 and .49.  A threshold of 0.4 selects the same
+   21 materials, so this number is not being tuned against a cliff.
+
+   AND A MISSING metalness MEANS YES, NOT NO.  The vendored GLTFLoader's
+   KHR_materials_pbrSpecularGlossiness branch DELETES metalness off the material
+   it makes (p5i, GLTFMeshStandardSGMaterial), so a chrome arriving that way has
+   no number to read.  Err toward the environment there: a wrong NO is the
+   near-black metal this ruling exists to keep a fix for, while a wrong YES
+   costs pixels on at most BJ_MAT_BUDGET (8) materials per set — and his exports
+   carry ONE material each.  A metalnessMap does not change the test either: the
+   shader multiplies the map INTO the scalar, so the scalar is the ceiling and a
+   ceiling under 0.5 can never render as metal.
+
+   WHAT DOES *NOT* NARROW: the atmosphere and the colour grade.  envTrack calls
+   atmTrack for EVERY material before it asks about metalness (RULINGS DL and
+   DM, and the INVARIANT that names it) — a material that lost the environment
+   keeps the fog and the grade exactly as it had them.  Only the envMap
+   assignment and the ENV_MATS registry narrow, and ENV_MATS is envDrive's list,
+   which is what ENV_INTENSITY and the LIGHTING page's env row reach.
+   ========================================================================== */
 /* `let`, not `const`, because RULING DO's LIGHTING panel assigns it — this is
    the row Roblox calls EnvironmentSpecularScale.  ONE knob and not two: r128
-   scales environment diffuse and specular together (DK). */
+   scales environment diffuse and specular together (DK).  It drives the envMap
+   CARRIERS now, which is every material that has one (DT). */
 let ENV_INTENSITY = 0.55;       // one-line retune: how much room ambience there is
 let ENV_LIVE = ENV_INTENSITY;   // what the room actually has right now
 let ENV_SRC = null;             // the source box, kept so it can be measured
+let ENV_TEX = null;             // the PMREM — handed to the carriers, never to the scene (DT)
 const ENV_HALF = 10;            // the box is 2 x ENV_HALF every way, camera dead centre
+/* RULING DT — the one number that decides who samples the room.  See the gap
+   census above before moving it. */
+const ENV_METAL_MIN = 0.5;
 /* the box as data, so what is measured is what was built */
 const ENV_FACES = [
   {col:0x0a0c12, pos:[0,  ENV_HALF, 0], rot:[ Math.PI/2, 0, 0], why:'ceiling, darkest'},
@@ -404,20 +482,35 @@ function envBuild(){
   const rt = pm.fromScene(es, 0.04);
   pm.dispose();
   ENV_SRC = es;
-  scene.environment = rt.texture;
+  /* RULING DT — kept HERE and not on the scene.  envBuild() runs at the top of
+     this part, so ENV_TEX is standing by the time the M table below exists and
+     long before any other part can call envTrack. */
+  ENV_TEX = rt.texture;
 }
-/* THE one registry.  envTrack takes a single material — the guard is the whole
-   membership test: MeshBasic and the raw ShaderMaterials have no envMapIntensity
-   and asking them would only hang a stray property on them.  It RETURNS the
-   material so a cache can mint straight through it (goodsMat, woodMat). */
+/* RULING DT — WHO SAMPLES THE ROOM.  Two guards, and they are different
+   questions.  envMapIntensity is the MEMBERSHIP test: MeshBasic and the raw
+   ShaderMaterials do not have one, and writing to them would only hang a stray
+   property.  metalness is the DT test, and a material that has no metalness at
+   all is the spec-gloss import — see the header for why that answers yes. */
+function envCarrier(m){
+  if(!m || !('envMapIntensity' in m)) return false;
+  if(typeof m.metalness !== 'number') return true;
+  return m.metalness >= ENV_METAL_MIN;
+}
+/* THE one registry.  envTrack takes a single material and RETURNS it, so a
+   keyed cache can mint straight through it (goodsMat, woodMat). */
 const ENV_MATS = new Set();
 function envTrack(m){
   if(!m) return m;
-  /* RULING DL rides this same walk, and it must run BEFORE the guard below:
-     fog reaches MeshBasic, points and sprites too, and every one of those is
-     turned away by the envMapIntensity test. */
+  /* RULINGS DL and DM ride this same walk and reach EVERY material, which is
+     why this runs before either guard below: fog reaches MeshBasic, points and
+     sprites too, and DT's metalness test turns away five materials in six. */
   atmTrack(m);
-  if(!('envMapIntensity' in m)) return m;
+  if(!envCarrier(m)) return m;
+  /* the environment itself, on the metals alone (DT).  Assigned here rather
+     than left to the scene, so a deck and a drape compile with no USE_ENVMAP
+     in them at all. */
+  m.envMap = ENV_TEX;
   m.envMapIntensity = ENV_LIVE;
   ENV_MATS.add(m);
   return m;
