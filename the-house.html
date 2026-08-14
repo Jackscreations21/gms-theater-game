@@ -6115,11 +6115,14 @@ function updateRig(dt, t){
   /* RULING DS — THE SHADOW-CAPABLE SLOTS GO TO THE FIXTURES THAT ASKED.
      In r128 the VALUE of a light's castShadow is part of the lights-state hash,
      so flipping one re-acquires a program for every lit material and the first
-     flip COMPILES the new NUM_SPOT_SHADOWS variant — a multi-ms hitch.  RULING
-     DQ's drops can ask for no shadow, so a refuser churning in and out of a
-     shadow-capable slot flips that hash over and over.  Two things defuse it:
-     the write below happens only on a real change, and this reorder keeps
-     refusers out of the three casting slots in the first place.
+     flip COMPILES the new NUM_SPOT_LIGHT_SHADOWS variant — a multi-ms hitch.
+     RULING DQ's drops can ask for no shadow, so a refuser churning in and out
+     of a shadow-capable slot flips that hash over and over.  What defuses it is
+     THIS REORDER, keeping refusers out of the three casting slots in the first
+     place; the change-only write below is not the defusal (a same-value
+     assignment was always engine-free) — it exists so "a steady rig writes
+     nothing" is a pinnable invariant, and survives castShadow ever growing a
+     setter.
 
      IT IS A PERMUTATION AND NOTHING MORE.  The hand-out list is untouched in
      length and membership — RANK still decides who gets a light at all (RULING
@@ -6164,12 +6167,13 @@ function updateRig(dt, t){
        shadowGranted is then the plain truth — is this fixture casting? — which
        is false for every slot past the third, and false for the whole rig at a
        quality level with shadows switched off. */
-    /* RULING DS — AND IT IS WRITTEN ONLY WHEN IT CHANGES.  This ran every frame
-       for every shadow-capable slot, and in r128 an ASSIGNMENT of the same value
-       is free while a CHANGE is not: the lights-state hash carries castShadow,
-       so a flip re-acquires a program for every lit material.  A steady rig now
-       writes nothing at all here.  Coerced to a boolean because the stored value
-       is one and QUALITY.shadows need not be. */
+    /* RULING DS — AND IT IS WRITTEN ONLY WHEN IT CHANGES.  In r128 a CHANGE is
+       what costs (the lights-state hash carries castShadow, so a flip
+       re-acquires a program for every lit material) while a same-value
+       assignment is free — the guard is here so "a steady rig writes nothing"
+       can be pinned by a test, not because the old write cost anything.
+       Coerced to a boolean because the stored value is one and QUALITY.shadows
+       need not be. */
     if(l.userData.canShadow){
       const cast = !!(QUALITY.shadows && f.shadowWanted !== false);
       if(l.castShadow !== cast) l.castShadow = cast;
