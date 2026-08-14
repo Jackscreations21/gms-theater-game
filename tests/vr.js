@@ -3386,6 +3386,152 @@ const probe = `
     return Object.keys(LK).length + ' rows on both surfaces';
   });
 
+  console.log('--- vr: the console upload (RULING DV) ---');
+
+  /* HOW AN UPLOAD IS OBSERVED.  Not by reading VR.tex.needsUpdate: on a
+     three.js Texture that is a SET-ONLY accessor (r128 :1327 — set
+     needsUpdate(value) does no more than version++ when value is true), so
+     reading it back hands you undefined for ever and every clause written on it
+     passes vacuously whatever the code does.  What the uploader really consults
+     is texture.version (WebGLTextures :15317 uploads when version > 0 and its
+     own __version differs), so one bump of VR.tex.version IS one 1200x760
+     upload asked for.  The stub renderer never consumes it, which is what makes
+     counting the bumps a true count rather than a race. */
+  const uploads = ()=>VR.tex.version;
+  const dvKeepCam = camera.position.clone();
+  /* put the head exactly somewhere: the rig carries the player and the camera
+     carries the headset pose, so head = rig + pose (once the camera is in the
+     rig its own position is no longer world — TRAPS) */
+  const headAt = (x, y, z)=>{
+    VR.rig.position.set(x, 0, z); VR.rig.rotation.set(0, 0, 0);
+    camera.position.set(0, y, 0);
+    scene.updateMatrixWorld(true);
+  };
+  const nearestFace = ()=>{
+    scene.updateMatrixWorld(true);
+    const h = camera.getWorldPosition(new THREE.Vector3());
+    let m = 1e9;
+    for(const d of VR.desks)
+      m = Math.min(m, d.face.getWorldPosition(new THREE.Vector3()).distanceTo(h));
+    return m;
+  };
+  /* a grip touching a GO cylinder forces a redraw of its own (vrUpdateButtons),
+     so park both hands out of the building before timing a cadence */
+  const handsAway = ()=>{
+    for(const g of VR.grips){ g.position.set(0, 400, 0); g.updateMatrixWorld(true); }
+    for(const c of VR.controllers){
+      c.position.set(0, 400, 0); c.quaternion.set(0, 0, 0, 1); c.updateMatrixWorld(true);
+    }
+  };
+
+  P('far from every console the texture is never re-uploaded (RULING DV)', ()=>{
+    enterVR();
+    handsAway();
+    if(typeof VR_SEE_CONSOLE !== 'number')
+      throw new Error('no VR_SEE_CONSOLE in the build — the whole case is decoration');
+    const out = [];
+    /* two places a session really stands: the fly floor over the stage, and
+       the deck itself.  The stalls are NOT among them — a stalls seat runs
+       5.5-10m from the Palace balcony desk's glass depending on the seat,
+       which is the band the 12m threshold was chosen to cover (RULING DV's
+       block in p9 carries the derivation). */
+    for(const spot of [['the fly floor', 0, 8, -8], ['downstage centre', 0, 1.6, -2]]){
+      headAt(spot[1], spot[2], spot[3]);
+      const far = nearestFace();
+      if(!(far > VR_SEE_CONSOLE + 3))
+        throw new Error(spot[0] + ' is ' + far.toFixed(1) + 'm from a console against a ' +
+                        VR_SEE_CONSOLE + 'm gate — that is not a far test');
+      VR.drawT = 0;
+      const v0 = uploads();
+      for(let i=0;i<30;i++) vrUpdate(0.05);        // 1.5s — seven cadence windows
+      if(uploads() !== v0)
+        throw new Error('the 1200x760 console texture was uploaded ' + (uploads() - v0) +
+                        ' times from ' + spot[0] + ', ' + far.toFixed(1) +
+                        'm from the nearest desk');
+      out.push(spot[0] + ' ' + far.toFixed(1) + 'm: 0 uploads in 30 frames');
+    }
+    return out;
+  });
+
+  P('coming back to a desk repaints at once, however long you were away', ()=>{
+    /* straight on from the case above, which left the head on the deck with
+       drawT running — a board that changed while nobody was looking must not
+       stay stale, and the cadence resuming on the first frame is the cover */
+    const d = VR.desks[0];
+    scene.updateMatrixWorld(true);
+    const p = d.face.getWorldPosition(new THREE.Vector3());
+    headAt(p.x, p.y, p.z + 1.2);                   // standing at it, reading it
+    handsAway();
+    const near = nearestFace();
+    if(!(near < VR_SEE_CONSOLE))
+      throw new Error('the reading position measures ' + near.toFixed(1) + 'm, outside the gate');
+    const v0 = uploads();
+    vrUpdate(0.05);
+    if(uploads() === v0)
+      throw new Error('back at the desk from ' + near.toFixed(2) +
+                      'm and the first frame did not repaint the glass');
+    return 'repainted on the first frame in range, at ' + near.toFixed(2) + 'm';
+  });
+
+  P('and beside a console the 0.2s cadence runs exactly as it always did', ()=>{
+    handsAway();
+    VR.drawT = 0;
+    const v0 = uploads();
+    let frames = 0;
+    for(let i=0;i<12 && uploads() === v0;i++){ vrUpdate(0.05); frames++; }
+    if(uploads() === v0)
+      throw new Error('twelve frames (0.6s) at the desk and the console never repainted');
+    /* 0.2s of 0.05 frames is four or five depending on which way the float
+       lands (TRAPS: cadences that exactly consume a window are a knife edge) —
+       what is being pinned is that it is a fifth of a second, not a frame and
+       not a second */
+    if(frames < 3 || frames > 6)
+      throw new Error('it repainted after ' + frames + ' frames (' +
+                      (frames*0.05).toFixed(2) + 's) — that is not the 0.2s cadence');
+    return 'repainted after ' + frames + ' frames of 0.05s';
+  });
+
+  P('a press still redraws immediately from outside the gate (the force path)', ()=>{
+    /* the LIGHTING page rows are the one interaction region findable by MEANING
+       rather than by pixel (RULING DP), and each row's handler ends in
+       vrDrawConsole(true) — so this is a real press through vrHit, not a poke.
+       The pose is deliberately impossible: aim() puts the rig at the origin, so
+       the HEAD is on the stage while the hand is at the balcony desk.  That is
+       the point — the force path must not consult the gate at all. */
+    VR.page = 'lighting'; vrDrawConsole(true);
+    const row = VR.hits.find(h=>h.lk === 'sat' && h.d > 0);
+    const back = VR.hits.find(h=>h.lk === 'sat' && h.d < 0);
+    if(!row || !back) throw new Error('no saturation row found by meta on the lighting page');
+    const face = VR.desks[0].face;
+    scene.updateMatrixWorld(true);
+    /* the region's centre, canvas pixels to face-local: u across, and the
+       v = 1 - uv.y flip means canvas y counts DOWN from the top of the plane */
+    const u = (row.x + row.w/2)/1200, v = (row.y + row.h/2)/760;
+    const at = face.localToWorld(new THREE.Vector3(1.42*(u - 0.5), 0.9*(0.5 - v), 0));
+    const n = face.getWorldDirection(new THREE.Vector3());
+    aim(1, at.clone().add(n.clone().multiplyScalar(1.2)), at);
+    camera.position.set(0, 1.6, 0);                // the head, left on the deck
+    scene.updateMatrixWorld(true);
+    const far = nearestFace();
+    if(!(far > VR_SEE_CONSOLE))
+      throw new Error('the head is ' + far.toFixed(1) + 'm from a desk — inside the gate, so this proves nothing');
+    if(!vrPointAt()) throw new Error('the ray is not on the saturation row');
+    const was = GRADE.sat;
+    VR.drawT = 0;
+    const v0 = uploads();
+    vrSelect(1, true);
+    if(!(GRADE.sat > was))
+      throw new Error('the press did not reach the row: GRADE.sat is still ' + GRADE.sat);
+    if(uploads() === v0)
+      throw new Error('a press ' + far.toFixed(1) + 'm from the desk changed the board and ' +
+                      'left the old picture on the glass — the gate is on the force path');
+    back.fn(); GRADE.sat = was; lkSync();          // leave the desk as it was
+    handsAway();
+    camera.position.copy(dvKeepCam);
+    exitVR();
+    return 'pressed from ' + far.toFixed(1) + 'm and the glass redrew at once';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

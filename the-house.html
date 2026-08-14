@@ -31715,6 +31715,60 @@ function vrPaintLabel(dt){
   }
 }
 
+/* ============================================================================
+   RULING DV — THE CONSOLE TEXTURE UPLOADS ONLY WHEN SOMEONE COULD SEE IT
+   ONE 1200x760 canvas serves ALL FIVE desk faces (vrMakeDesk maps the same
+   VR.tex on every one), and the cadence at the foot of vrUpdate redrew it and
+   re-uploaded ~3.6MB of RGBA five times a second for the whole session — on
+   the fly floor, in the shed, in a venue with no desk in it.  It is the
+   largest recurring texture upload a session pays and it showed up in the
+   frame-time peaks.  So the CADENCE asks first whether a console is plausibly
+   being looked at.  INTERACTION does not ask: every vrDrawConsole(true) call
+   site — a tab, a row, a fly button, the GO cylinder — stays immediate and
+   unconditional, which is why the gate lives here at the cadence and not
+   inside vrDrawConsole.
+
+   THE NUMBER: 12m, head to the nearest console face, and deliberately loose.
+   The glass is 1.42 x 0.90m carrying 1200 x 760 pixels — 1.2mm a pixel — so
+   the smallest type on it (17px, ~2cm tall) has stopped resolving on a Quest 3
+   (~20 pixels a degree) by about 4m, the 26px board name (~3cm) by 5-6m, and
+   the biggest (the 48px GO lettering, ~6cm) by about 9m; at 12m the whole
+   1.42m width of it is 6.8 degrees of view.  What actually set the number is
+   not legibility but the PALACE: its raked face looks back UP the house (+z,
+   the build comment above vrMakeDesk), so the sightlines that read it are the
+   rear stalls and the balcony — and those run 5.5-10m from the glass depending
+   on the seat (head at the mid-bank centreline 5.5m, a mid-depth side seat
+   ~8m, the reviewers' re-derivation 8-10m).  Every one of them must be inside
+   the gate with room to spare.  A gate that freezes a screen someone is
+   reading is far worse than one that pays for an upload nobody needed.
+
+   STALENESS ON RETURN is covered by leaving drawT RUNNING while out of range:
+   it is already well past 0.2 when the head comes back, so the FIRST frame in
+   range repaints and every frame after it keeps the old 5Hz.  Nothing has to
+   know whether the board changed while nobody was looking — coming back is
+   itself the trigger.
+
+   In a session only: vrUpdate returns on !VR.active, so the desktop is
+   untouched (the desks do not exist until a session builds them; after a
+   session ends they remain, harmlessly carrying the last picture).  Before
+   the desks exist the gate below fails CLOSED — safe, because vrOnStart runs
+   vrBuildDesks() and then a forced vrDrawConsole(true) before the first
+   vrUpdate frame, so no session ever sees a blank board. */
+const VR_SEE_CONSOLE = 12;
+const _dvHead = new T.Vector3(), _dvFace = new T.Vector3();
+function vrConsoleSeen(){
+  if(!VR.desks.length) return false;         // nothing carries the texture yet
+  /* the head, not the rig: once the camera is inside the rig its own position
+     stops being world (TRAPS), and it is the head the distance is about */
+  camera.getWorldPosition(_dvHead);
+  for(const d of VR.desks){
+    d.face.getWorldPosition(_dvFace);
+    if(_dvFace.distanceToSquared(_dvHead) < VR_SEE_CONSOLE*VR_SEE_CONSOLE)
+      return true;
+  }
+  return false;
+}
+
 function vrUpdate(dt, rawDt){
   if(!VR || !VR.active) return;      // may be called before this file has run
   vrReadSticks();
@@ -31732,7 +31786,11 @@ function vrUpdate(dt, rawDt){
   vrCapBeams();
   vrPerf(dt, rawDt);
   VR.drawT += dt;
-  if(VR.drawT > 0.2){ VR.drawT = 0; vrDrawConsole(); }
+  /* RULING DV: the 5Hz repaint only happens where it could be seen.  drawT is
+     deliberately NOT reset when it could not — it stays past the window, so
+     walking back to a desk repaints on the first frame rather than up to 0.2s
+     later, and a board that changed while nobody was there is never stale. */
+  if(VR.drawT > 0.2 && vrConsoleSeen()){ VR.drawT = 0; vrDrawConsole(); }
 }
 /* the ropes belong to the stage you are standing on */
 function vrOnStageChange(){ if(VR && VR.active) vrBuildRopes(); }
