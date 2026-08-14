@@ -1073,7 +1073,93 @@ const QUALITY = {
 
 const scene = new T.Scene();
 scene.background = new T.Color(0x05060a);
-scene.fog = new T.FogExp2(0x07080e, 0.0055);
+/* ============================================================================
+   RULING DL — THE ATMOSPHERE IS HEIGHT-BASED, WITH HAZE AND GLARE.
+
+   A flat FogExp2 fogs the grid as heavily as the deck.  Roblox's Atmosphere is
+   height-banded with a haze lift and a glare term, and a theatre wants exactly
+   that: haze pools low over the deck and the fly tower stays clear.
+
+   THE FogExp2 STAYS.  It is what makes three.js define USE_FOG and emit the fog
+   code path at all; delete it and none of the chunks below are ever compiled.
+
+   TWO THINGS THE PLAN GOT WRONG HERE, both checked against the r128 artifact
+   rather than the changelog, and both would have produced a shader that fails
+   to compile while every suite stayed green (jsdom stubs WebGLRenderer, so no
+   assertion in this repo can see a shader body — TRAPS):
+
+     1. r128's fog varying is `fogDepth`, NOT `vFogDepth`.  The renamed one
+        arrived in a later release.
+     2. Extending T.UniformsLib.fog reaches NOTHING.  ShaderLib merged and
+        CLONED its uniforms at module load — ShaderLib.standard.uniforms.fogColor
+        is not even the same object as UniformsLib.fog.fogColor — and
+        WebGLPrograms.getUniforms clones again per material.  The only seam that
+        can hand a material a SHARED uniform object is onBeforeCompile, which
+        the renderer calls with `parameters` immediately before acquiring the
+        program (three.js r128, getProgram).
+
+   So the three atmosphere uniforms travel as ONE shared object each, injected
+   per material by atmTrack, which rides RULING DK's registry walk — one
+   traversal serving both rulings rather than a second one.  Because they are
+   shared, the per-frame drive is THREE writes total, not one per material.
+
+   atmMix EXISTS SO A MISS IS HARMLESS.  A fogged material that never reached
+   atmTrack gets uniforms defaulting to 0, and at atmMix 0 the two lines below
+   collapse to exactly the fog three.js already drew.  The failure mode of an
+   incomplete registry is therefore "unchanged", not "quietly less fog".
+   ========================================================================== */
+const ATM = { density:0.0055, height:9.0, haze:1.8, glare:0.4, mix:0.75 };
+scene.fog = new T.FogExp2(0x07080e, ATM.density);
+ATM.u = { atmHeight:{value:ATM.height}, atmHaze:{value:ATM.haze},
+          atmGlare:{value:ATM.glare},   atmMix:{value:ATM.mix} };
+
+T.ShaderChunk.fog_pars_vertex += '\n#ifdef USE_FOG\n varying float vAtmY;\n#endif\n';
+/* `position` and not `transformed`: the SPRITE shader includes fog_vertex but
+   includes neither begin_vertex nor project_vertex, so `transformed` does not
+   exist there and naming it would fail to compile the moment anything used a
+   sprite.  `position` is declared for every non-raw shader.  Instancing is
+   applied the same way project_vertex applies it. */
+T.ShaderChunk.fog_vertex +=
+  '\n#ifdef USE_FOG\n' +
+  ' vec4 atmW = vec4( position, 1.0 );\n' +
+  ' #ifdef USE_INSTANCING\n' +
+  '  atmW = instanceMatrix * atmW;\n' +
+  ' #endif\n' +
+  ' vAtmY = ( modelMatrix * atmW ).y;\n' +
+  '#endif\n';
+T.ShaderChunk.fog_pars_fragment +=
+  '\n#ifdef USE_FOG\n varying float vAtmY;\n uniform float atmHeight;\n' +
+  ' uniform float atmHaze;\n uniform float atmGlare;\n uniform float atmMix;\n#endif\n';
+T.ShaderChunk.fog_fragment =
+  '#ifdef USE_FOG\n' +
+  ' #ifdef FOG_EXP2\n' +
+  '  float fogFactor = 1.0 - exp( - fogDensity * fogDensity * fogDepth * fogDepth );\n' +
+  ' #else\n' +
+  '  float fogFactor = smoothstep( fogNear, fogFar, fogDepth );\n' +
+  ' #endif\n' +
+  ' float atmBand = 1.0 - clamp( vAtmY / max( atmHeight, 0.001 ), 0.0, 1.0 );\n' +
+  ' fogFactor *= mix( 1.0, atmBand * atmHaze, atmMix );\n' +
+  ' fogFactor = clamp( fogFactor, 0.0, 1.0 );\n' +
+  ' vec3 atmCol = fogColor * ( 1.0 + atmGlare * fogFactor );\n' +
+  ' gl_FragColor.rgb = mix( gl_FragColor.rgb, atmCol, fogFactor );\n' +
+  '#endif\n';
+
+/* one hook per material, ever.  needsUpdate because a material that has already
+   compiled keeps its program until it is told otherwise. */
+function atmTrack(m){
+  if(!m || m.userData.atmHooked) return m;
+  const prev = m.onBeforeCompile;
+  m.onBeforeCompile = function(sh, rn){
+    if(prev) prev.call(this, sh, rn);
+    sh.uniforms.atmHeight = ATM.u.atmHeight;   // the SAME objects, never copies —
+    sh.uniforms.atmHaze   = ATM.u.atmHaze;     // a copy would freeze at first
+    sh.uniforms.atmGlare  = ATM.u.atmGlare;    // compile and never move again
+    sh.uniforms.atmMix    = ATM.u.atmMix;
+  };
+  m.userData.atmHooked = true;
+  m.needsUpdate = true;
+  return m;
+}
 
 const renderer = new T.WebGLRenderer({antialias:true, powerPreference:'high-performance', stencil:false});
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
@@ -1222,7 +1308,12 @@ function envBuild(){
    material so a cache can mint straight through it (goodsMat, woodMat). */
 const ENV_MATS = new Set();
 function envTrack(m){
-  if(!m || !('envMapIntensity' in m)) return m;
+  if(!m) return m;
+  /* RULING DL rides this same walk, and it must run BEFORE the guard below:
+     fog reaches MeshBasic, points and sprites too, and every one of those is
+     turned away by the envMapIntensity test. */
+  atmTrack(m);
+  if(!('envMapIntensity' in m)) return m;
   m.envMapIntensity = ENV_LIVE;
   ENV_MATS.add(m);
   return m;
@@ -5561,6 +5652,14 @@ function updateRig(dt, t){
      building once at init, the show and its models as they arrive. */
   ENV_LIVE = ENV_INTENSITY * (0.25 + 0.75*bed);
   envDrive();
+  /* RULING DL — the haze thickens as the room darkens, and the glare rides the
+     RIG rather than the bed, so a full stage in smoke blooms at its edges and a
+     blackout does not.  The uniform objects are shared by every fogged material
+     (p2), so these are three writes for the whole world, not three per
+     material — which is why this sits beside envDrive rather than inside it. */
+  ATM.u.atmHaze.value  = ATM.haze * (1.35 - 0.35*bed);
+  ATM.u.atmGlare.value = ATM.glare * Math.min(1, bedRig*1.4);
+  ATM.u.atmHeight.value = ATM.height;
   scene.background.setRGB(bed*0.014, bed*0.017, bed*0.028);
   FLY.forEach(ls=>{ if(ls.practical){ ls.practical.light.intensity = HOUSE.practical*3.2;
     ls.practical.bulbs.forEach(b=>b.material.color.setRGB(

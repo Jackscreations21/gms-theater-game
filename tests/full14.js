@@ -1984,6 +1984,124 @@ const probe = `
     return '6 faces, no escapes, shares ' + share.map(s=>(s*100).toFixed(1)).join('/') + '%';
   });
 
+  console.log('--- RULING DL: the atmosphere is height-based ---');
+
+  P('ATM is a live constant block', ()=>{
+    if(!ATM || !(ATM.density > 0) || !(ATM.height > 0))
+      throw new Error('ATM reads ' + JSON.stringify(ATM && {d:ATM.density, h:ATM.height}));
+    if(scene.fog.density !== ATM.density)
+      throw new Error('the fog density ' + scene.fog.density + ' drifted from ATM ' + ATM.density);
+    return 'density ' + ATM.density + ', height ' + ATM.height + 'm';
+  });
+
+  P('the fog chunks carry the height band, and still name r128 fogDepth', ()=>{
+    /* THE TRIPWIRE.  r128's varying is named fogDepth; a later release renamed
+       it vFogDepth, and the plan for this ruling was written against the newer
+       name.  A patched chunk that names the wrong varying is a shader that will
+       not compile, and NO suite in this repo can see that — jsdom stubs
+       WebGLRenderer, so a broken shader body passes all nineteen.  This is the
+       cheapest thing that fires if three.js ever moves under us. */
+    const frag = THREE.ShaderChunk.fog_fragment;
+    if(!/fogDepth/.test(frag))
+      throw new Error('the patched fog_fragment no longer names fogDepth at all');
+    if(/vFogDepth/.test(frag))
+      throw new Error('the patched fog_fragment names vFogDepth, which r128 does not have');
+    if(!/atmBand/.test(frag)) throw new Error('fog_fragment carries no height band');
+    if(!/vAtmY/.test(THREE.ShaderChunk.fog_vertex))
+      throw new Error('fog_vertex never computes the world height');
+    if(!/vAtmY/.test(THREE.ShaderChunk.fog_pars_vertex))
+      throw new Error('fog_pars_vertex never declares the varying');
+    if(!/atmHeight/.test(THREE.ShaderChunk.fog_pars_fragment))
+      throw new Error('fog_pars_fragment never declares atmHeight');
+    /* the sprite shader has fog_vertex but no begin_vertex, so the local
+       transformed does not exist there — naming it would break the moment
+       anything is a sprite, and that too is invisible to every suite */
+    if(/transformed/.test(THREE.ShaderChunk.fog_vertex))
+      throw new Error('fog_vertex names transformed, which the sprite shader does not define');
+    return 'fogDepth kept, vAtmY added, band and glare in the fragment';
+  });
+
+  P('atmTrack hands a material the SAME uniform objects, never copies', ()=>{
+    /* a copied uniform looks identical on the first frame and then never moves
+       again — the failure this whole mechanism exists to avoid, and the reason
+       UniformsLib could not be used: ShaderLib cloned it at module load. */
+    const m = new THREE.MeshStandardMaterial();
+    atmTrack(m);
+    if(typeof m.onBeforeCompile !== 'function')
+      throw new Error('atmTrack did not hook the compile');
+    const sh = { uniforms:{} };
+    m.onBeforeCompile(sh, renderer);
+    if(sh.uniforms.atmHeight !== ATM.u.atmHeight)
+      throw new Error('atmHeight is a COPY, so it would freeze at first compile');
+    if(sh.uniforms.atmHaze !== ATM.u.atmHaze) throw new Error('atmHaze is a copy');
+    if(sh.uniforms.atmGlare !== ATM.u.atmGlare) throw new Error('atmGlare is a copy');
+    if(sh.uniforms.atmMix !== ATM.u.atmMix) throw new Error('atmMix is a copy');
+    return 'four shared uniform objects reach the shader';
+  });
+
+  P('atmTrack does not throw away a hook the material already had', ()=>{
+    /* RULING DK may have hooked it first, and a later ruling will hook it
+       again — the chain has to survive, or whichever ran first is silently lost */
+    const m = new THREE.MeshStandardMaterial();
+    let ran = 0;
+    m.onBeforeCompile = function(){ ran++; };
+    atmTrack(m);
+    const sh = { uniforms:{} };
+    m.onBeforeCompile(sh, renderer);
+    if(ran !== 1) throw new Error('the previous onBeforeCompile ran ' + ran + ' times');
+    if(sh.uniforms.atmHeight !== ATM.u.atmHeight)
+      throw new Error('chaining lost the atmosphere uniforms');
+    return 'the earlier hook still runs, and the uniforms still land';
+  });
+
+  P('every fogged material in the live scene was hooked', ()=>{
+    /* the coverage clause.  atmMix makes a miss render exactly as it did
+       before this ruling, which is the right failure mode and also a SILENT
+       one — so it has to be asserted rather than noticed. */
+    const missed = [], seen = [];
+    scene.traverse(o=>{
+      if(!o.isMesh || !o.material) return;
+      const list = Array.isArray(o.material) ? o.material : [o.material];
+      for(const m of list){
+        if(!m || m.fog !== true || m.isRawShaderMaterial) continue;
+        if(seen.indexOf(m) >= 0) continue;
+        seen.push(m);
+        if(!m.userData.atmHooked) missed.push(m);
+      }
+    });
+    if(seen.length < 50)
+      throw new Error('only ' + seen.length + ' fogged materials found in the scene');
+    if(missed.length)
+      throw new Error(missed.length + ' of ' + seen.length +
+        ' fogged materials were never hooked, first is a ' + missed[0].type);
+    return seen.length + ' fogged materials, all hooked';
+  });
+
+  P('the haze and the glare ride the room, and it is THREE writes not one each', ()=>{
+    const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+    const keepH = HOUSE.house, keepW = HOUSE.work, keepP = HOUSE.practical,
+          keepB = RIG.blackout, keepL = FIXTURES.map(f=>f.level);
+    RIG.blackout = true; HOUSE.house = 0; HOUSE.work = 0; HOUSE.practical = 0;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    for(let i=0;i<60;i++) step();
+    const darkHaze = ATM.u.atmHaze.value, darkGlare = ATM.u.atmGlare.value;
+    RIG.blackout = false; HOUSE.house = 1; HOUSE.work = 1; HOUSE.practical = 1;
+    FIXTURES.forEach(f=>{ f.level = 1; });
+    for(let i=0;i<60;i++) step();
+    const litHaze = ATM.u.atmHaze.value, litGlare = ATM.u.atmGlare.value;
+    HOUSE.house = keepH; HOUSE.work = keepW; HOUSE.practical = keepP;
+    RIG.blackout = keepB; FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+    for(let i=0;i<40;i++) step();
+    if(!(darkHaze > litHaze + 0.001))
+      throw new Error('the haze does not thicken as the room darkens: blackout ' +
+        darkHaze.toFixed(3) + ' against lit ' + litHaze.toFixed(3));
+    if(!(litGlare > darkGlare + 0.001))
+      throw new Error('the glare does not ride the rig: blackout ' +
+        darkGlare.toFixed(3) + ' against lit ' + litGlare.toFixed(3));
+    return 'haze ' + darkHaze.toFixed(2) + ' -> ' + litHaze.toFixed(2) +
+           ', glare ' + darkGlare.toFixed(2) + ' -> ' + litGlare.toFixed(2);
+  });
+
   window.__out = { fatal: window.__fatal||null,
     frames:n,
     cameraPos:[+camera.position.x.toFixed(2),+camera.position.y.toFixed(2),+camera.position.z.toFixed(2)],
