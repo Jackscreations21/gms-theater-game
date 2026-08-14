@@ -110,6 +110,12 @@ InstancedMesh in the building (r128's constructor sets `frustumCulled = false`
 on all of them — the bounding-sphere workaround; 15 are visible in the empty
 Palace).
 
+**Re-measuring (the before/after the next perf PR needs):** the probe reads the
+BUILT `the-house.html`, so it is `sh build.sh && NODE_PATH=../tests/node_modules
+node draws.js` — an src/-only edit re-measures stale bytes. The first output
+line prints the built file's byte size, so a stale build shows itself; compare
+the summary table and the ONE LANTERN section.
+
 Measured on `a55bfcd`, empty Palace, per eye (double it for the frame):
 
 | view | draws/eye | ×2 eyes | tris/eye |

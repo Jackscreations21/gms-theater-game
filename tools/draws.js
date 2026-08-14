@@ -26,9 +26,11 @@
    the wrong thing and said so firmly.  The culling walk here is parameterised
    by its frustum test, and two self-checks run before any view is measured:
 
-     with a test that always PASSES, the walk must agree exactly with a second,
-       independently written count (traverseVisible plus the layer and material
-       rules).  A walk that loses or double-counts a branch fails here.
+     with a test that always PASSES, the walk must agree exactly with a second
+       count over an independent traversal (traverseVisible plus the layer and
+       material rules).  A walk that loses or double-counts a branch fails
+       here.  Honestly stated: the traversal is independent, the push-counting
+       (pushesOf/trisOf/isDrawable) is shared — a bug THERE passes both checks.
      with a test that always FAILS, the walk must submit exactly the drawables
        that carry frustumCulled === false, counted independently.  This is the
        one that catches the honest mistake: r128's InstancedMesh constructor
@@ -489,26 +491,35 @@ console.log('');
    how many draws ONE lantern is worth, and which part of a lantern they are.
    ------------------------------------------------------------------------- */
 console.log('ONE LANTERN, ITEMISED  (' + P.FIXTURES.length + ' fixtures in the Palace rig)');
-const PART = {};
-let rigDraws = 0;
+const PART = {}, PARTVIS = {};
+let rigDraws = 0, rigVis = 0;
 for(const f of P.FIXTURES){
   for(const key of ['body','beam','glow','pool','yoke']){
     const sub = f[key];
     if(!sub || !sub.isObject3D) continue;
-    let n = 0;
+    let n = 0, nv = 0;
+    /* raw traverse (hidden beams/glows in) AND visible-only, so the ratio
+       printed below is like-for-like — the scene denominator is visible-only,
+       and a raw numerator over it once printed a confident 62% where the
+       honest figure was 54% */
     sub.traverse(c => { if(isDrawable(c)) n += pushesOf(c); });
+    sub.traverseVisible(c => { if(isDrawable(c)) nv += pushesOf(c); });
     PART[key] = (PART[key] || 0) + n;
-    rigDraws += n;
+    PARTVIS[key] = (PARTVIS[key] || 0) + nv;
+    rigDraws += n; rigVis += nv;
   }
 }
 const partKeys = Object.keys(PART).sort((a, b)=>PART[b] - PART[a]);
 for(const k of partKeys)
   console.log('  ' + k.padEnd(10) + String(PART[k]).padStart(5) + ' draws over the rig   ' +
-              (PART[k]/P.FIXTURES.length).toFixed(1) + ' per fixture');
+              (PART[k]/P.FIXTURES.length).toFixed(1) + ' per fixture' +
+              (PART[k] !== PARTVIS[k] ? '   (' + PARTVIS[k] + ' visible now)' : ''));
 console.log('  ' + 'TOTAL'.padEnd(10) + String(rigDraws).padStart(5) + ' draws           ' +
-            (rigDraws/P.FIXTURES.length).toFixed(1) + ' per fixture');
-console.log('  the whole scene is ' + refDraws + ' drawables, so the rig alone is ' +
-            (100*rigDraws/refDraws).toFixed(0) + '% of everything in the building');
+            (rigDraws/P.FIXTURES.length).toFixed(1) + ' per fixture   (' + rigVis + ' visible now)');
+console.log('  the whole scene is ' + refDraws + ' VISIBLE drawables, so the lantern parts' +
+            ' itemised above are ' + (100*rigVis/refDraws).toFixed(0) +
+            '% of everything in the building (' + rigVis + ' visible of ' + rigDraws +
+            ' by raw traverse; the FULL rig block, bars and all, is in the scene table above)');
 console.log('');
 
 console.log('READING IT');
