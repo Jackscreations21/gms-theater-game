@@ -39,7 +39,7 @@ and the average reads **exactly 50.0**.
 
 ## THE ROBLOX LIGHTING ROUND: ALL OF IT MERGED, RULINGS AT DQ
 
-**`origin/main` is at `0e3c85c`.** Rulings are at **DQ**. Cache-bust **`?v=28`**.
+**`origin/main` is at `78f627a`.** Rulings are at **DQ**. Cache-bust **`?v=28`**.
 
 | PR | Ruling | What |
 |---|---|---|
@@ -51,6 +51,7 @@ and the average reads **exactly 50.0**.
 | **#179** | **DO** | the LIGHTING page on the desk |
 | **#180** | **DP** | the LIGHTING page in the headset |
 | **#182** | **DQ** | you can drop a light, and the slot count is told the truth |
+| **#181**, **#183** | — | the record |
 
 **LAYER 1 IS COMPLETE** (the look: environment, atmosphere, grade, glow) and
 **layer 2 is built on both surfaces** (the property panel). Every merge verified:
@@ -382,7 +383,12 @@ catches it. The pair is left coupled deliberately.
 
 ## Still owed from earlier rounds
 
-- **RULING BY** — standing on his geometry costs 4.29ms, 38.6% of a 90Hz frame.
+- **RULING BY — AND THE FIGURE CARRIED WITH IT IS WRONG.** It has been quoted
+  for rounds as "4.29ms, 38.6% of a 90Hz frame". It is neither: the 4.29ms is a
+  CPU `groundAt` **raycast**, for a feature that was measured and **taken back
+  out**, so it is not render cost and not in the frame at all. And the budget is
+  **13.9ms**, not 11.1 — the session negotiates to 72Hz. What is actually owed is
+  standing on his geometry; the cost of doing it is unmeasured.
 - **The graveyard.** He has supplied none and the show OPENS in it until 10:38.
 - **Does the join at 4292 sound?**
 - **The house floor pool** stays deferred.
@@ -390,6 +396,11 @@ catches it. The pair is left coupled deliberately.
 - **A blinder can no longer be carried** (CY). `BLIND_BODY` puts it back.
 - `tests/smoke.js` still flakes under full-suite load. Not a regression.
 - `pr6.json` in the repo root is still untracked and unruled.
+- **The performance work itself.** The spec asks for an investigation between DJ
+  and DK; it did not happen, and DK–DN each added per-pixel cost on top. **25ms
+  in an empty house** is the building, not his models, and the leading suspect is
+  that the instanced batches never cull. DJ put the draw-call number on his wrist
+  precisely so this stops being a guess.
 
 ## The park layout after DI (#172, his models — the stand-in packs differently
 ## and correctly, which is the point)
