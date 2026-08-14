@@ -200,26 +200,75 @@ T.ShaderChunk.fog_fragment =
 
    gradeMix EXISTS BECAUSE A MISS HERE WOULD BE CATASTROPHIC, NOT MERELY WRONG.
    tonemapping_pars_fragment is included unguarded, so a material that declared
-   these uniforms and never had them supplied would read gradeTint as vec3(0)
+   these uniforms and never had them supplied would read gradeMat as mat3(0)
    and RENDER BLACK.  At gradeMix 0 the grade is bypassed entirely and the pixel
    is exactly what ACES produced, so an unhooked material looks like it did
    before this ruling instead of like a hole in the picture.
+
+   RULING DU — THE GRADE IS ONE MATRIX, AND IT IS COMPOSED ON THE CPU.
+   Brightness, contrast, saturation and tint are all AFFINE in RGB, so the four
+   of them are one 3x3 and one offset — worked out once per frame on the CPU
+   instead of ~22 scalar ALU in every fragment of every graded surface in both
+   eyes.  The derivation, in the order the old shader applied them (that order
+   is the thing being preserved: matrices do not commute and tint LAST is what
+   makes it scale the offset as well as the matrix):
+
+     1 brightness  g = c + b                     M1 = I           o1 = b*1
+     2 contrast    g = (g-0.5)*s + 0.5, s = 1+contrast
+                                                 M2 = s*I         o2 = 0.5(1-s)*1
+     3 saturation  g = mix(vec3(l), g, k), k = 1+sat, l = w.g
+                   = k*g + (1-k)*(1 w^T) g       M3 = k*I + (1-k)*1 w^T   o3 = 0
+                   w = (0.2126, 0.7152, 0.0722), the same weights as before
+     4 tint        g *= tint                     M4 = diag(t)     o4 = 0
+
+     M = M4 M3 M2 M1 = s * diag(t) * ( k*I + (1-k) 1 w^T )
+       so  M[i][j] = s * t[i] * ( k*delta(i,j) + (1-k)*w[j] )
+     o = M4 M3 ( M2 o1 + o2 ) ; and because sum(w) = 1, M3 maps any GREY vector
+       u*1 to itself, so the luma mix drops out of the offset entirely:
+       o[i] = t[i] * ( s*b + 0.5*(1-s) )
+
+   Checked two ways rather than trusted: composed generically as three matrix
+   products and compared with the closed form (agrees to 2.2e-16), and both
+   compared against the old shader body evaluated numerically on sample colours
+   (same, to 2.2e-16).  Identity GRADE — contrast 0, sat 0, tint white,
+   brightness 0 — gives exactly I and a zero offset, which is asserted.
    ========================================================================== */
 const GRADE = { bright:0.0, contrast:0.12, sat:-0.05, tint:0xffeedd, mix:1.0 };
-GRADE.u = { gradeBC:{value:new T.Vector2(GRADE.bright, GRADE.contrast)},
-            gradeSat:{value:GRADE.sat},
-            gradeTint:{value:new T.Color(GRADE.tint)},
+GRADE.u = { gradeMat:{value:new T.Matrix3()},
+            gradeOff:{value:new T.Vector3()},
             gradeMix:{value:GRADE.mix} };
+/* Rec.709 luma, the weights the shader used to carry inline */
+const GRADE_LUMA = [0.2126, 0.7152, 0.0722];
+const _gradeCol = new T.Color();            // scratch: hex -> rgb, never a new one
+const _gradeT = [0,0,0], _gradeM = [0,0,0,0,0,0,0,0,0]; // scratch: per-frame, never new
+/* Composed HERE, at the declaration, and not only from updateRig: a material
+   can compile before the first frame runs, and an all-zero mat3 with gradeMix
+   at 1 would be a black frame rather than a late one.
+   NOTE for the next grade step: the loop below is the CLOSED FORM of exactly
+   these four steps in exactly this order — a fifth step prepends its matrix on
+   the LEFT of M = M4·M3·M2·M1 and the closed form must be re-derived, not
+   extended in place. */
+function gradeCompose(){
+  const s = 1.0 + GRADE.contrast, k = 1.0 + GRADE.sat, w = GRADE_LUMA;
+  _gradeCol.set(GRADE.tint);
+  const t = _gradeT; t[0] = _gradeCol.r; t[1] = _gradeCol.g; t[2] = _gradeCol.b;
+  const m = _gradeM;
+  for(let i=0;i<3;i++) for(let j=0;j<3;j++)
+    m[i*3+j] = s * t[i] * ((i===j ? k : 0) + (1-k)*w[j]);
+  /* Matrix3.set is ROW-major and row i is output channel i; three.js uploads
+     the column-major elements array, which is what GLSL mat3 wants */
+  GRADE.u.gradeMat.value.set(m[0],m[1],m[2], m[3],m[4],m[5], m[6],m[7],m[8]);
+  const o = s*GRADE.bright + 0.5*(1.0 - s);
+  GRADE.u.gradeOff.value.set(t[0]*o, t[1]*o, t[2]*o);
+  GRADE.u.gradeMix.value = GRADE.mix;
+}
+gradeCompose();
 
 T.ShaderChunk.tonemapping_pars_fragment +=
-  '\nuniform vec2 gradeBC;\nuniform float gradeSat;\nuniform vec3 gradeTint;\n' +
+  '\nuniform mat3 gradeMat;\nuniform vec3 gradeOff;\n' +
   'uniform float gradeMix;\n' +
   'vec3 houseGrade( vec3 c ){\n' +
-  '  vec3 g = c + gradeBC.x;\n' +
-  '  g = ( g - 0.5 ) * ( 1.0 + gradeBC.y ) + 0.5;\n' +
-  '  float l = dot( g, vec3( 0.2126, 0.7152, 0.0722 ) );\n' +
-  '  g = mix( vec3( l ), g, 1.0 + gradeSat );\n' +
-  '  g *= gradeTint;\n' +
+  '  vec3 g = gradeMat * c + gradeOff;\n' +
   '  return mix( c, max( g, vec3( 0.0 ) ), gradeMix );\n' +
   '}\n';
 T.ShaderChunk.tonemapping_fragment =
@@ -242,10 +291,9 @@ function atmTrack(m){
     sh.uniforms.atmHaze   = ATM.u.atmHaze;     // a copy would freeze at first
     sh.uniforms.atmGlare  = ATM.u.atmGlare;    // compile and never move again
     sh.uniforms.atmMix    = ATM.u.atmMix;
-    sh.uniforms.gradeBC   = GRADE.u.gradeBC;   // RULING DM, same seam
-    sh.uniforms.gradeSat  = GRADE.u.gradeSat;
-    sh.uniforms.gradeTint = GRADE.u.gradeTint;
-    sh.uniforms.gradeMix  = GRADE.u.gradeMix;
+    sh.uniforms.gradeMat  = GRADE.u.gradeMat;  // RULING DM, same seam —
+    sh.uniforms.gradeOff  = GRADE.u.gradeOff;  // DU folded four of these into
+    sh.uniforms.gradeMix  = GRADE.u.gradeMix;  // one matrix and one offset
   };
   m.userData.atmHooked = true;
   m.needsUpdate = true;

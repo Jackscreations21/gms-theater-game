@@ -1620,11 +1620,16 @@ function updateRig(dt, t){
   ATM.u.atmHeight.value = ATM.height;
   /* RULING DM — nothing animates the grade today; it is his to tune from the
      LIGHTING panel (DO).  The write lives HERE anyway so that when a cue does
-     reach for it there is one place it is applied, not a second one to find. */
-  GRADE.u.gradeBC.value.set(GRADE.bright, GRADE.contrast);
-  GRADE.u.gradeSat.value = GRADE.sat;
-  GRADE.u.gradeTint.value.set(GRADE.tint);
-  GRADE.u.gradeMix.value = GRADE.mix;
+     reach for it there is one place it is applied, not a second one to find.
+     RULING DU — the four writes are now one call that composes the matrix
+     (p2).  Once per FRAME rather than on change, deliberately: the LIGHTING
+     rows (p7) and their headset twins (DP) set GRADE.sat and GRADE.contrast
+     straight onto the object with no notification of any kind, so change-driven
+     recomposition would mean a hook on every surface that can move a grade
+     value — three today and one more each time a cue or a page reaches for it,
+     with a silently stale picture as the failure.  Per frame it is one 3x3 for
+     the whole world, ~30 flops, against the ~22 ALU PER PIXEL it removes. */
+  gradeCompose();
   scene.background.setRGB(bed*0.014, bed*0.017, bed*0.028);
   FLY.forEach(ls=>{ if(ls.practical){ ls.practical.light.intensity = HOUSE.practical*3.2;
     ls.practical.bulbs.forEach(b=>b.material.color.setRGB(
