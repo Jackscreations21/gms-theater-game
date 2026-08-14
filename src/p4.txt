@@ -1333,7 +1333,16 @@ function updateRig(dt, t){
   workLights.forEach(l=>{ l.intensity = HOUSE.work*2.6; });
 
   /* front of house and back of house are their own circuits */
-  const fo = HOUSE.lobby, bo = HOUSE.backstage;
+  /* RULING DO — ClockTime is kept from Roblox's Lighting because the ARC CENTRE
+     has a GLAZED FOYER, a room you can stand in where the hour means something.
+     The Palace is a windowless Broadway house and is deliberately untouched.
+     It MULTIPLIES the foyer's own level rather than replacing it, so a cue that
+     sets HOUSE.lobby still wins the argument about how bright the room is and
+     the clock only says how much of that is daylight.  It is a LEVEL, not a sun
+     position: there is no sun in this engine to angle, and the panel says so
+     rather than implying one. */
+  const fo = HOUSE.lobby * (VENUE === 'arc' ? houseDaylight(HOUSE.clock) : 1),
+        bo = HOUSE.backstage;
   if(FOH.lamps) FOH.lamps.forEach(l=>l.intensity = fo*2.4);
   M.bulbFoh.color.setRGB(0.10+fo*0.90, 0.07+fo*0.74, 0.04+fo*0.55);
   if(BOH.light){ BOH.light.intensity = bo*2.0; BOH.light2.intensity = bo*1.7; }
@@ -1416,5 +1425,16 @@ function updateRig(dt, t){
      error, and it is on the headset checklist as one. */
   glowUpdate(camera);
 }
-const HOUSE = { house:0.7, work:0.0, practical:0.0, lobby:0.9, backstage:0.7 };
+const HOUSE = { house:0.7, work:0.0, practical:0.0, lobby:0.9, backstage:0.7,
+                clock:19.33 };   // RULING DO — 19:20, a curtain-up evening
+/* RULING DO — a daylight LEVEL from the hour, for the Arc's glazed foyer.  Full
+   between 08:00 and 16:00, out by 20:00 and before 06:00, and it never reaches
+   zero because the foyer's own lamps are what HOUSE.lobby already means — this
+   only says how much daylight is added to them. */
+function houseDaylight(h){
+  const t = ((h === undefined ? 19.33 : h) % 24 + 24) % 24;
+  if(t >= 8 && t <= 16) return 1;
+  if(t < 6 || t > 20) return 0.35;
+  return t < 8 ? 0.35 + 0.65*(t-6)/2 : 0.35 + 0.65*(20-t)/4;
+}
 let followTarget = null;

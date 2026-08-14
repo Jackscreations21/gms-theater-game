@@ -364,7 +364,10 @@ renderer.toneMappingExposure = 1.35;
    keyed caches because a wood paint or a dyed drape is minted on demand and
    outlives the mesh that asked for it.
    ========================================================================== */
-const ENV_INTENSITY = 0.55;     // one-line retune: how much room ambience there is
+/* `let`, not `const`, because RULING DO's LIGHTING panel assigns it — this is
+   the row Roblox calls EnvironmentSpecularScale.  ONE knob and not two: r128
+   scales environment diffuse and specular together (DK). */
+let ENV_INTENSITY = 0.55;       // one-line retune: how much room ambience there is
 let ENV_LIVE = ENV_INTENSITY;   // what the room actually has right now
 let ENV_SRC = null;             // the source box, kept so it can be measured
 const ENV_HALF = 10;            // the box is 2 x ENV_HALF every way, camera dead centre

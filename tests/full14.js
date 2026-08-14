@@ -2336,6 +2336,115 @@ const probe = `
            (near*100).toFixed(1) + '% against a declared ' + (GLOW_MAX_FRAC*100).toFixed(1) + '%';
   });
 
+  console.log('--- RULING DO: the LIGHTING page on the desk ---');
+
+  P('the page and its nav button exist, and it is NOT the LIGHTS page', ()=>{
+    const page = document.querySelector('#p-lighting');
+    if(!page) throw new Error('there is no LIGHTING page');
+    if(!document.querySelector('[data-p="lighting"]'))
+      throw new Error('the LIGHTING page has no nav button, so it cannot be opened');
+    if(!document.querySelector('#p-lights'))
+      throw new Error('the LIGHTS page vanished');
+    if(page === document.querySelector('#p-lights'))
+      throw new Error('LIGHTING and LIGHTS are the same page');
+    const rows = page.querySelectorAll('input[type="range"]');
+    if(rows.length < 8)
+      throw new Error('the panel has only ' + rows.length + ' property rows');
+    return rows.length + ' rows, on its own page';
+  });
+
+  P('moving a row moves the REAL constant, driven through the DOM', ()=>{
+    /* through the DOM and not the model: a detached row fires its handler
+       perfectly well, and that is exactly how the fly rail once "worked"
+       while nobody could see it (TRAPS) */
+    const drive = (sel, raw)=>{
+      const inp = document.querySelector(sel);
+      if(!inp) throw new Error('no row at ' + sel);
+      inp.value = String(raw);
+      inp.oninput({target:inp});
+    };
+    const keepSat = GRADE.sat, keepExp = renderer.toneMappingExposure,
+          keepEnv = ENV_INTENSITY, keepHaze = ATM.haze, keepH = HOUSE.house;
+    drive('#lkSat', 40);
+    if(Math.abs(GRADE.sat - 0.4) > 1e-6)
+      throw new Error('saturation row left GRADE.sat at ' + GRADE.sat);
+    drive('#lkExp', 180);
+    if(Math.abs(renderer.toneMappingExposure - 1.8) > 1e-6)
+      throw new Error('exposure row left the renderer at ' + renderer.toneMappingExposure);
+    drive('#lkEnv', 120);
+    if(Math.abs(ENV_INTENSITY - 1.2) > 1e-6)
+      throw new Error('environment row left ENV_INTENSITY at ' + ENV_INTENSITY);
+    drive('#lkHaze', 300);
+    if(Math.abs(ATM.haze - 3.0) > 1e-6)
+      throw new Error('haze row left ATM.haze at ' + ATM.haze);
+    drive('#lkBright', 40);
+    if(Math.abs(HOUSE.house - 0.4) > 1e-6)
+      throw new Error('brightness row left HOUSE.house at ' + HOUSE.house);
+    GRADE.sat = keepSat; renderer.toneMappingExposure = keepExp;
+    ENV_INTENSITY = keepEnv; ATM.haze = keepHaze; HOUSE.house = keepH;
+    lkSync();
+    return 'five rows reach five real constants';
+  });
+
+  P('lkSet is the ONE clamp, so the headset cannot outrun the desk', ()=>{
+    /* RULING DP will call this same function.  A VR row that can drive a
+       constant past the desk's own range is two controls wearing one name. */
+    const keep = GRADE.sat;
+    lkSet('sat', 99);
+    if(GRADE.sat !== LK.sat.max)
+      throw new Error('a huge value left GRADE.sat at ' + GRADE.sat + ', not ' + LK.sat.max);
+    lkSet('sat', -99);
+    if(GRADE.sat !== LK.sat.min)
+      throw new Error('a huge negative left GRADE.sat at ' + GRADE.sat);
+    lkSet('sat', NaN);
+    if(GRADE.sat !== LK.sat.min)
+      throw new Error('NaN moved the constant to ' + GRADE.sat);
+    GRADE.sat = keep; lkSync();
+    return 'clamped both ways, and NaN is refused';
+  });
+
+  P('ClockTime drives the ARC foyer and leaves the Palace alone', ()=>{
+    /* the row exists because the Arc has a GLAZED foyer.  If it moved nothing
+       it would be the silently-dead control RULING DQ argues against. */
+    if(typeof houseDaylight !== 'function')
+      throw new Error('there is no daylight term at all');
+    const noon = houseDaylight(12), night = houseDaylight(2);
+    if(!(noon > night + 0.2))
+      throw new Error('noon ' + noon.toFixed(2) + ' is not brighter than 02:00 ' + night.toFixed(2));
+    const keepVen = VENUE, keepClock = HOUSE.clock, keepLobby = HOUSE.lobby;
+    HOUSE.lobby = 1;
+    const read = ()=>{ updateRig(0.05, 1); return FOH.lamps ? FOH.lamps[0].intensity : null; };
+    VENUE = 'palace';
+    HOUSE.clock = 12; const palaceNoon = read();
+    HOUSE.clock = 2;  const palaceNight = read();
+    VENUE = 'arc';
+    HOUSE.clock = 12; const arcNoon = read();
+    HOUSE.clock = 2;  const arcNight = read();
+    VENUE = keepVen; HOUSE.clock = keepClock; HOUSE.lobby = keepLobby;
+    updateRig(0.05, 1); lkSync();
+    if(palaceNoon === null) throw new Error('no FOH lamps to measure');
+    if(Math.abs(palaceNoon - palaceNight) > 1e-6)
+      throw new Error('the windowless Palace changed with the clock: ' +
+        palaceNoon.toFixed(3) + ' against ' + palaceNight.toFixed(3));
+    if(!(arcNoon > arcNight + 1e-3))
+      throw new Error('the Arc foyer ignored the clock: noon ' +
+        arcNoon.toFixed(3) + ' against 02:00 ' + arcNight.toFixed(3));
+    return 'Arc ' + arcNight.toFixed(2) + ' at 02:00 -> ' + arcNoon.toFixed(2) +
+           ' at noon, Palace unmoved';
+  });
+
+  P('the desk redraws itself when a constant moves underneath it', ()=>{
+    /* the headset will drive these too (DP), so the desk cannot cache what it
+       last wrote — it has to read the constant back */
+    const keep = ATM.haze;
+    ATM.haze = 2.5; lkSync();
+    const shown = document.querySelector('#lkHazeV').textContent;
+    if(shown.indexOf('2.5') !== 0)
+      throw new Error('the row still reads ' + shown + ' after the constant moved');
+    ATM.haze = keep; lkSync();
+    return 'the row follows the constant, not the last click';
+  });
+
   window.__out = { fatal: window.__fatal||null,
     frames:n,
     cameraPos:[+camera.position.x.toFixed(2),+camera.position.y.toFixed(2),+camera.position.z.toFixed(2)],
