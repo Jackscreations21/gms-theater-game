@@ -3131,6 +3131,160 @@ const probe = `
            ' in a session, all driven, blackout ' + dark.toFixed(3) + ' -> lit ' + lit.toFixed(3);
   });
 
+  console.log('--- RULING DN: the glow is capped in a session ---');
+
+  P('a session caps the glow instances, and leaving lifts the cap', ()=>{
+    if(typeof GLOW === 'undefined' || !GLOW || !GLOW.mesh)
+      throw new Error('there is no GLOW at all');
+    const keepB = RIG.blackout, keepG = RIG.grand, keepL = FIXTURES.map(f=>f.level);
+    let clock = 0;
+    const step = dt=>{ clock += dt; updateFades(dt); updateRig(dt, clock); };
+    const put = ()=>{ RIG.blackout = keepB; RIG.grand = keepG;
+                      FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+                      for(let i=0;i<20;i++) step(1/72); };
+    RIG.blackout = false; RIG.grand = 1;
+    FIXTURES.forEach(f=>{ f.level = 1; });
+    enterVR();
+    const cap = VR.glowCap;
+    if(!(cap > 0 && cap <= GLOW.max)){
+      exitVR(); put();
+      throw new Error('a session does not cap the glow: VR.glowCap is ' + cap);
+    }
+    /* a cap nothing reaches cannot be observed at all (TRAPS) — the whole rig
+       is lit above, so this only fails if the rig is smaller than the cap */
+    if(!(FIXTURES.length > cap)){
+      exitVR(); put();
+      throw new Error(FIXTURES.length + ' fixtures against a cap of ' + cap +
+                      ' — the cap is never approached');
+    }
+    for(let i=0;i<20;i++) step(1/72);
+    const inside = GLOW.mesh.count;
+    exitVR();
+    for(let i=0;i<20;i++) step(1/72);
+    const outside = GLOW.mesh.count;
+    put();
+    if(inside !== cap)
+      throw new Error('a session drew ' + inside + ' glow instances against a cap of ' + cap);
+    if(VR.glowCap)
+      throw new Error('leaving the session left the cap standing at ' + VR.glowCap);
+    if(outside !== FIXTURES.length)
+      throw new Error('out of the session a fully lit rig drew ' + outside +
+                      ' of ' + FIXTURES.length);
+    return 'capped at ' + cap + ' in a session, ' + outside + ' out of it';
+  });
+
+  P('a capped session spends its twelve slots on glows you can actually see', ()=>{
+    /* THE CLAUSE ABOVE COUNTS AND THIS ONE LOOKS, and it took two goes.
+       Truncating FIXTURES in RIG ORDER keeps twelve lanterns off the FOH bar,
+       which is BEHIND a player at downstage centre facing upstage: the halo
+       drew nothing you could see while still paying for twelve instances, and
+       count === cap was perfectly happy about it (2.6% of screen uncapped,
+       0.0% capped, tools/glow.js).  Then NEAREST-FIRST alone moved the blind
+       spot to the stalls, where the twelve nearest lanterns are that same FOH
+       bar directly overhead: 1.7% uncapped, 0.0% capped.  So both seats are
+       measured here, and the measurement is projected screen area rather than
+       a restatement of the ranking rule. */
+    const keepB = RIG.blackout, keepG = RIG.grand, keepL = FIXTURES.map(f=>f.level);
+    let clock = 0;
+    const step = dt=>{ clock += dt; updateFades(dt); updateRig(dt, clock); };
+    const put = ()=>{ RIG.blackout = keepB; RIG.grand = keepG;
+                      FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+                      for(let i=0;i<20;i++) step(1/72); };
+    const corners = [[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[-0.5,0.5]];
+    /* the share of the viewport the drawn instances really cover, projected and
+       clipped — the viewport is 2 x 2 NDC units, hence the /4.  Also hands back
+       which fixtures were kept: the batch seats a halo GLOW_LENS_OUT down
+       f._dir from f._org, so the drawn centre identifies one exactly. */
+    const look = (from, at, capNow)=>{
+      VR.glowCap = capNow;
+      camera.position.copy(from); camera.lookAt(at);
+      camera.updateMatrixWorld(true);
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+      for(let i=0;i<20;i++) step(1/72);
+      camera.updateMatrixWorld(true);
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+      const eye = camera.getWorldPosition(new THREE.Vector3());
+      const fwd = camera.getWorldDirection(new THREE.Vector3());
+      let area = 0;
+      const at3 = [];
+      for(let i=0;i<GLOW.mesh.count;i++){
+        const m4 = new THREE.Matrix4().fromArray(GLOW.mesh.instanceMatrix.array, i*16);
+        at3.push(new THREE.Vector3().setFromMatrixPosition(m4));
+        let x0 = 9e9, x1 = -9e9, y0 = 9e9, y1 = -9e9, seen = 0;
+        for(const c of corners){
+          const wv = new THREE.Vector3(c[0], c[1], 0).applyMatrix4(m4);
+          if(wv.clone().sub(eye).dot(fwd) > camera.near) seen++;
+          const v = wv.project(camera);
+          x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x);
+          y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
+        }
+        if(!seen) continue;
+        x0 = Math.max(-1, x0); x1 = Math.min(1, x1);
+        y0 = Math.max(-1, y0); y1 = Math.min(1, y1);
+        if(x1 > x0 && y1 > y0) area += ((x1-x0)*(y1-y0))/4;
+      }
+      const mine = new THREE.Vector3();
+      let drawnBehind = 0, droppedAhead = 0, kept = 0;
+      for(const f of FIXTURES){
+        if((f._lvl || 0) < GLOW_MIN_LVL) continue;
+        mine.copy(f._org).addScaledVector(f._dir, GLOW_LENS_OUT);
+        let on = false;
+        for(const p of at3) if(p.distanceToSquared(mine) < 1e-6){ on = true; break; }
+        const ahead = f._org.clone().sub(eye).dot(fwd) > 0.05;
+        if(on){ kept++; if(!ahead) drawnBehind++; }
+        else if(ahead) droppedAhead++;
+      }
+      return {area:area, kept:kept, drawnBehind:drawnBehind, droppedAhead:droppedAhead};
+    };
+    RIG.blackout = false; RIG.grand = 1;
+    FIXTURES.forEach(f=>{ f.level = 1; });
+    enterVR();
+    const keepPos = camera.position.clone(), keepQ = camera.quaternion.clone();
+    VR.rig.position.set(0, 0, 0); VR.rig.rotation.set(0, 0, 0);
+    VR.rig.updateMatrixWorld(true);
+    const cap = VR.glowCap;
+    const seats = [
+      ['downstage centre', new THREE.Vector3(0, 1.65, -1.0), new THREE.Vector3(0, 6.0, -8.0)],
+      ['stalls row H',     new THREE.Vector3(0, 2.10, 12.0), new THREE.Vector3(0, 5.0, -4.0)]
+    ];
+    /* each seat measured TWICE from the same pose — with the cap, and with it
+       lifted.  The ruling's claim is not "the cap draws something", it is that
+       spending 12 slots of 39 keeps most of what the eye can see, and a ratio
+       against the same seat uncapped is the only way to say that.  Rig order
+       scores 4 of 22 visible from downstage centre; nearest-with-no-facing
+       scores nothing at all from the stalls. */
+    const got = seats.map(s=>[s[0], look(s[1], s[2], cap), look(s[1], s[2], 0)]);
+    VR.glowCap = cap;
+    camera.position.copy(keepPos); camera.quaternion.copy(keepQ);
+    camera.updateMatrixWorld(true);
+    exitVR();
+    put();
+    for(const [where, r, all] of got){
+      if(r.kept !== cap)
+        throw new Error('from ' + where + ' only ' + r.kept + ' of ' + cap +
+                        ' drawn instances matched back to a fixture');
+      if(!(all.kept > cap))
+        throw new Error('from ' + where + ' lifting the cap drew ' + all.kept +
+                        ' against a cap of ' + cap + ' — nothing is being dropped to measure');
+      if(!(r.area > 0))
+        throw new Error('from ' + where + ' a capped session drew ' + cap +
+                        ' instances covering 0% of the screen — the cap kept the wrong ones');
+      if(!(r.area >= all.area*0.5))
+        throw new Error('from ' + where + ' the cap keeps only ' +
+                        (r.area/all.area*100).toFixed(0) + '% of the glow the eye can see (' +
+                        (r.area*100).toFixed(2) + '% of screen against ' + (all.area*100).toFixed(2) + '%)');
+      /* and the property behind it, rather than a copy of the comparator: a
+         slot must never go to something behind the head while something in
+         front of it went without */
+      if(r.drawnBehind && r.droppedAhead)
+        throw new Error('from ' + where + ' the cap drew ' + r.drawnBehind +
+                        ' glows behind the head while dropping ' + r.droppedAhead + ' in front of it');
+    }
+    return got.map(g=>g[0] + ' ' + (g[1].area*100).toFixed(1) + '% of ' +
+                      (g[2].area*100).toFixed(1) + '%').join(', ') +
+           ', on ' + cap + ' slots of ' + got[0][2].kept;
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

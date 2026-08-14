@@ -499,6 +499,238 @@ for(let i=0;i<POOL_SIZE;i++){
 }
 
 /* ============================================================================
+   RULING DN — GLOW PLANES INSTEAD OF SCREEN-SPACE BLOOM (route 2).
+
+   True bloom needs an EffectComposer; a composer needs its own render target;
+   and rendering into our own target forfeits driver FIXED-FOVEATED RENDERING,
+   which is the only governor vrPerf has mid-session (p9).  His first headset
+   readings came back with foveation already pegged at 1.00 and no travel left,
+   so it cannot be spent: bloom would be bought by removing the safety net.  So
+   this is an additive camera-facing plane per lit emitter instead — the idiom
+   this file already speaks in the beam shader and the two gobo flares below.
+
+   THREE THINGS MAKE IT CHEAP AND ALL THREE ARE LOAD-BEARING:
+
+     - ONE InstancedMesh, one material, one geometry.  ONE DRAW CALL.
+     - `count` is TRUNCATED to the lit fixtures.  An additive quad at opacity
+       zero still rasterises and still blends, so fading one to nothing saves
+       nothing at all; only not drawing it does.  Across a 94-cue plot most of
+       the rig is out, so this is most of the saving.
+     - A SCREEN-SPACE CLAMP.  World size alone is unbounded: a source a metre
+       from the face fills the display, and that is exactly where he stands to
+       look at the neon.  §3 of the spec sizes the uncapped case at 1.5–3ms,
+       which is the whole cost of route 1 for one lantern.
+
+   Capped again in a session by VR.glowCap, beside VR.beamCap (p9), because
+   additive geometry in haze is overdraw and a mobile tile renderer hates
+   overdraw most.  Same knob family, same reason — and, like vrCapBeams, the
+   cap has to decide WHICH ones and not merely how many.
+
+   TWO THINGS IN THIS FILE ARE CALLED A GLOW, AND THEY ARE NOT THE SAME THING.
+   `f.glow` (in addFixture, below) is the hot LENS on the lantern: a 0.55m quad
+   parented to the fixture, sitting at local z 0.4 so it clears the housing,
+   one mesh per fixture.  `GLOW` here is the HALO: one batch, drawn in front of
+   every lit lens, sized in screen space.  Core and halo.  The halo carries the
+   same 0.45m offset down the beam for the same reason the lens carries its
+   local z — see GLOW_LENS_OUT.
+
+   FOG YES, GRADE NO, AND BOTH DELIBERATELY (INVARIANTS).  The material goes
+   through envTrack like every other, which is what hands it the shared
+   atmosphere uniforms: a glow seen across a hazy stage should be eaten by the
+   haze the same way the lantern behind it is, and that is what the fog chunk
+   does.  It is then gradeExempt — a glow plane IS the light, and the surfaces
+   it falls on are graded already, so grading the source tints the same photon
+   twice (RULING DM, the note beside the two gobo flares says the same).
+   ========================================================================== */
+const GLOW_MAX_FRAC = 0.22;   // most of the view HEIGHT one glow may ever cover
+const GLOW_MIN_LVL  = 0.04;   // below this the fixture is not drawn at all
+const GLOW_SIZE     = 1.9;    // world metres at full level, before the clamp
+/* OUT OF THE HOUSING, DOWN THE BEAM.  f._org is f.group's world position and
+   that point is INSIDE the lantern body — measured, for the first eight
+   profiles the body AABB is 0.45-0.89 x 0.79 x 0.70-0.93m and _org is inside
+   every one of them.  depthTest is left ON (an additive quad that ignores
+   depth hangs in front of the scenery), so a halo centred on _org is occluded
+   by the housing it belongs to, and the brightest part of a radial gradient is
+   its core — exactly the part that would be buried.  It bites hardest in the
+   case this ruling exists for: at a metre the clamp takes the quad down to
+   0.30m, well inside a body whose half-diagonal is 0.65m, and the halo would
+   simply disappear behind the lantern.  0.45m down f._dir clears it.  This is
+   the same fix, for the same reason, as f.glow's local z of 0.4 below. */
+const GLOW_LENS_OUT = 0.45;
+/* the penalty that sends anything outside the view cone to the back of the
+   session cap's queue.  It has to beat any squared distance this world can
+   produce: the two buildings together span under 500m, so 250,000 is the whole
+   of it and 1e9 is comfortably past. */
+const GLOW_BEHIND = 1e9;
+/* how much wider than the camera's own vertical half-angle that cone runs —
+   see the note in glowUpdate for why it is deliberately generous. */
+const GLOW_CONE = 2.2;
+/* the allocation, once.  NOT FIXTURES.length: this runs at load, before
+   buildRig has put a single fixture in the array, and the array is swapped
+   whole by p2k when you walk to another stage — the three rigs are 39 points
+   each today and a dropped light (DQ) will make that grow.  An instance costs
+   19 floats of buffer whether it is drawn or not; only `count` costs a pixel. */
+const GLOW_CAP      = 64;
+const GLOW = { mesh:null, max:0 };
+function glowBuild(){
+  const c = cvs(64, 64), g = c.getContext('2d');
+  const rg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  rg.addColorStop(0.0, 'rgba(255,255,255,1)');
+  rg.addColorStop(0.35, 'rgba(255,255,255,0.42)');
+  rg.addColorStop(1.0, 'rgba(255,255,255,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+  const mat = new T.MeshBasicMaterial({
+    map: new T.CanvasTexture(c), transparent: true,
+    blending: T.AdditiveBlending, depthWrite: false, side: T.FrontSide });
+  envTrack(mat);                   // RULING DL — the haze reaches the glow too
+  gradeExempt(mat);                // RULING DM — additive light, graded once
+  GLOW.max = GLOW_CAP;
+  const mesh = new T.InstancedMesh(new T.PlaneGeometry(1, 1), mat, GLOW.max);
+  mesh.name = 'glow';
+  /* r128's InstancedMesh CONSTRUCTOR already sets frustumCulled = false
+     (three.js :19632), so this line changes nothing today and no test can make
+     it fail.  It is written out anyway because the reason has to survive: r128
+     sizes an instanced bounding sphere from the BASE geometry, so a batch whose
+     instances move every frame would look like one quad at the origin and be
+     culled wholesale (TRAPS, first entry), and later three.js versions dropped
+     that constructor default.  Stated here so a future frustumCulled = true is
+     a deliberate act rather than an inherited one.  The raycast opt-out is the
+     other half of the same rule and IS load-bearing. */
+  mesh.frustumCulled = false;
+  mesh.raycast = ()=>{};           // never a grab, never a ground hit
+  /* PER-INSTANCE COLOUR WORKS ON r128, BUT ONLY BECAUSE THE TWO SHADER
+     PREFIXES DISAGREE, AND IT IS WORTH WRITING DOWN.  color_pars_fragment in
+     r128 declares vColor for USE_COLOR only — it has never heard of
+     USE_INSTANCING_COLOR — so on the chunk text alone this could not reach a
+     fragment.  What saves it is WebGLProgram's FRAGMENT prefix, which defines
+     USE_COLOR when EITHER vertexColors or instancingColor is set, while the
+     VERTEX prefix defines it for vertexColors alone.  Net effect: leave
+     vertexColors OFF.  Turning it on would declare the `color` attribute in
+     the vertex shader, the geometry has none, WebGL supplies (0,0,0,1) for a
+     missing generic attribute, and every glow would render BLACK. */
+  mesh.instanceColor = new T.InstancedBufferAttribute(
+    new Float32Array(GLOW.max*3), 3);
+  /* both buffers are rewritten every frame, so both say so.  r128 does not set
+     a usage hint on instanceMatrix itself and the driver hint costs nothing
+     either way — but declaring it on one buffer and not the other invites the
+     reader to conclude the other one is static, which it is not. */
+  mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
+  mesh.instanceColor.setUsage(T.DynamicDrawUsage);
+  mesh.renderOrder = 20;
+  mesh.count = 0;                  // nothing is lit until updateRig says so
+  GLOW.mesh = mesh;
+  scene.add(mesh);
+}
+/* THE VERTICAL HALF-ANGLE, READ OFF THE PROJECTION AND NOT OFF `fov`.
+   element 5 of a perspective projection is 1/tan(fovY/2), which for the desk
+   camera is exactly Math.tan(camera.fov*DEG/2) and for an ArrayCamera is the
+   only honest answer there is — a session's ArrayCamera inherits a `fov` field
+   that nothing ever writes.  The fallback is for a camera with no projection
+   set up at all, which is a boot-order fault rather than a state to serve. */
+function glowTanHalf(cam){
+  const e = cam.projectionMatrix && cam.projectionMatrix.elements;
+  const p = e ? e[5] : 0;
+  return (p > 0.0001 && isFinite(p)) ? 1/p : Math.tan((cam.fov || 60)*Math.PI/360);
+}
+const _gwm = new T.Matrix4(), _gwp = new T.Vector3(), _gwq = new T.Quaternion(),
+      _gws = new T.Vector3(), _gwc = new T.Vector3(), _gwf = new T.Vector3(),
+      _gwd = new T.Vector3(), _glit = [];
+function glowUpdate(cam){
+  const mesh = GLOW.mesh;
+  if(!mesh || !cam) return;
+  /* the session cap, read the way vrCapBeams reads VR.beamCap — 0 or absent
+     means no cap, which is what vrQualityOff leaves behind.  `VR` is a var and
+     this guard is safe before p9 has run, the same as the light pool's. */
+  const cap = (VR && VR.active && VR.glowCap)
+    ? Math.min(VR.glowCap, GLOW.max) : GLOW.max;
+  /* WORLD pose, both of them.  camera.position stops being a world point the
+     moment VR.rig holds the camera (TRAPS), and camera.quaternion is then the
+     head's rotation INSIDE the rig — turning with the right stick spins the
+     rig, so a plane built from the local quaternion would swing away from the
+     face by exactly the player's yaw.  Asked once, outside the loop. */
+  cam.getWorldPosition(_gwc);
+  cam.getWorldQuaternion(_gwq);
+  const tanHalf = glowTanHalf(cam);
+  /* who is lit at all.  One reused array — this runs every frame and a fresh
+     one here is thousands of throwaway objects a second (TRAPS, per-frame
+     allocation is a lag source rather than a tidiness question). */
+  _glit.length = 0;
+  for(const f of FIXTURES)
+    if((f._lvl || 0) >= GLOW_MIN_LVL) _glit.push(f);
+  /* WHICH ONES THE CAP KEEPS, AND NOT MERELY HOW MANY.  vrCapBeams learned
+     this the hard way and its comment is the whole lesson: truncating in rig
+     order keeps the wrong N.  FIXTURES is in rig order, which starts at the
+     FOH bar — so a session cap of 12 taken off the top keeps twelve lanterns
+     that are BEHIND a player at downstage centre facing upstage, and the halo
+     delivers nothing at all while still paying twelve matrix composes and a
+     buffer upload.  Measured with tools/glow.js: 2.6% of screen uncapped,
+     0.0% capped, from the one position this ruling exists to serve.
+
+     AND NEAREST ALONE IS NOT THE ANSWER EITHER — it moves the blind spot
+     rather than closing it.  From a stalls seat the twelve NEAREST lanterns
+     are that same FOH bar, directly overhead and behind the head: pure
+     proximity scored 0.0% there where rig order had scored 0.7%.  A halo is a
+     screen effect and the cap bounds FILL, so a slot spent on something the
+     eye cannot see is spent twice over.
+
+     NOR IS "IN FRONT OF THE EYE PLANE" ENOUGH, which is what this was first
+     written as.  A half-space test keeps a lantern 80 degrees off the axis —
+     ahead, and comfortably off the screen.  At downstage centre looking up at
+     the electrics that is most of the near rig, and the capped session kept
+     4% of the glow the eye could actually see.  The test that caught it is in
+     tests/vr.js and it is a RATIO against the same seat uncapped, because
+     "the cap draws something" is not the claim; "the cap keeps most of what
+     you can see" is.
+
+     So the rank is: inside a generous view cone first, nearest of those first,
+     everything else last however close.  Nearest is right INSIDE the cone
+     because a near halo is clamped and covers GLOW_MAX_FRAC of the height flat
+     out, while a far one falls away with distance.  Behind the head is a
+     subset of outside-the-cone and needs no separate test.  Two dot products
+     and a square root per lit fixture, and only when something has to be
+     dropped at all — the desktop path has 39 lit against an allocation of 64
+     and never sorts. */
+  if(_glit.length > cap){
+    _gwf.set(0, 0, -1).applyQuaternion(_gwq);
+    /* THE CONE IS DELIBERATELY WIDER THAN THE FRUSTUM WE CAN SEE, for the two
+       reasons this file cannot measure its way out of.  The screen's DIAGONAL
+       half-angle is about 2.04x the vertical one at 16:9, and a Quest 3's
+       vertical is about 2.06x the desk camera's 60 degrees — which is the only
+       projection reachable in a session (see the note at the end of updateRig).
+       2.2 covers both.  Erring wide costs a slot; erring narrow drops a halo
+       the headset can see, and that is the failure with no tell. */
+    const cosCone = 1/Math.sqrt(1 + tanHalf*tanHalf*GLOW_CONE*GLOW_CONE);
+    for(const f of _glit){
+      _gwd.copy(f._org).sub(_gwc);
+      const d2 = _gwd.lengthSq();
+      const inCone = d2 < 0.0001 ||
+        _gwd.dot(_gwf) > cosCone*Math.sqrt(d2);
+      f._glowRank = d2 + (inCone ? 0 : GLOW_BEHIND);
+    }
+    _glit.sort((a,b)=>a._glowRank - b._glowRank);
+  }
+  const n = Math.min(_glit.length, cap);
+  for(let i = 0; i < n; i++){
+    const f = _glit[i], lvl = f._lvl;
+    /* out of the housing and down the beam — see GLOW_LENS_OUT.  _org and
+       _dir are both world and both refreshed at the top of this function. */
+    _gwp.copy(f._org).addScaledVector(f._dir, GLOW_LENS_OUT);
+    const dist = _gwc.distanceTo(_gwp);
+    /* the clamp: GLOW_MAX_FRAC of the view height at THIS distance */
+    const lim = dist * tanHalf * 2 * GLOW_MAX_FRAC;
+    const sz  = Math.min(GLOW_SIZE * (0.45 + 0.55*lvl), lim);
+    _gws.set(sz, sz, 1);
+    _gwm.compose(_gwp, _gwq, _gws);
+    mesh.setMatrixAt(i, _gwm);
+    mesh.instanceColor.setXYZ(i, f.color.r*lvl, f.color.g*lvl, f.color.b*lvl);
+  }
+  mesh.count = n;
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.instanceColor.needsUpdate = true;
+}
+glowBuild();
+
+/* ============================================================================
    A fixture's AIM is stored in WORLD space.  It has to be: lookAt takes a
    world point, the light pool lives on the scene, and the cue stack snapshots
    the aim and puts it back.  A light plot, on the other hand, is written in
@@ -1164,6 +1396,25 @@ function updateRig(dt, t){
   FLY.forEach(ls=>{ if(ls.practical){ ls.practical.light.intensity = HOUSE.practical*3.2;
     ls.practical.bulbs.forEach(b=>b.material.color.setRGB(
       0.2+HOUSE.practical*0.8, 0.12+HOUSE.practical*0.65, 0.05+HOUSE.practical*0.45)); } });
+  /* RULING DN — the glow planes, LAST, off the _org and _lvl this function has
+     just finished refreshing for every fixture.
+
+     `camera` and not some session camera, and that is a decision rather than a
+     default.  In an XR frame r128's WebXRManager writes the head pose into the
+     game camera's matrix (getCamera copies cameraVR.matrix into it and
+     decomposes) but it never touches camera.fov and never touches
+     camera.projectionMatrix — only the ArrayCamera's, and the ArrayCamera is
+     built inside the manager and is not reachable from here without calling
+     into it mid-frame.  So the clamp is computed against the DESK frustum in a
+     session too, and the size of that is worth writing down rather than waving
+     at: the desk camera is 60 degrees, tanHalf 0.577, against a Quest 3 per-eye
+     vertical of roughly 90-96 degrees, tanHalf 1.00-1.19.  The applied limit is
+     therefore 48-58% of the intended one and a clamped halo is 42-52% SMALLER
+     in the headset than on the monitor.  Direction is safe — it binds harder in
+     the place it exists to protect, and VR.glowCap is the session's real
+     governor — but it is a visible difference at close range, not a rounding
+     error, and it is on the headset checklist as one. */
+  glowUpdate(camera);
 }
 const HOUSE = { house:0.7, work:0.0, practical:0.0, lobby:0.9, backstage:0.7 };
 let followTarget = null;

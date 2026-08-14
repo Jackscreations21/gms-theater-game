@@ -2180,6 +2180,162 @@ const probe = `
     return Object.keys(M).length + ' shared materials hooked';
   });
 
+  console.log('--- RULING DN: glow planes instead of bloom ---');
+
+  P('the glow is ONE additive instanced draw, and it is never culled', ()=>{
+    if(typeof GLOW === 'undefined' || !GLOW || !GLOW.mesh)
+      throw new Error('there is no GLOW at all');
+    const gm = GLOW.mesh;
+    if(!gm.isInstancedMesh)
+      throw new Error('the glow is a ' + gm.type + ', not an InstancedMesh');
+    /* ONE draw call is the whole performance argument, so it is the thing
+       asserted: one batch in the scene, one material, one geometry.  A second
+       glow mesh doubles exactly the cost this ruling exists to bound. */
+    let batches = 0;
+    scene.traverse(o=>{ if(o.isInstancedMesh && o.name === 'glow') batches++; });
+    if(batches !== 1) throw new Error(batches + ' glow batches in the scene, not one');
+    if(Array.isArray(gm.material)) throw new Error('the glow carries a material array');
+    const mat = gm.material;
+    if(mat.blending !== THREE.AdditiveBlending) throw new Error('the glow is not additive');
+    if(mat.depthWrite !== false) throw new Error('the glow writes depth');
+    if(mat.side !== THREE.FrontSide)
+      throw new Error('a camera-facing plane needs one face, side is ' + mat.side);
+    if(mat.toneMapped !== false)
+      throw new Error('RULING DM: additive light is left out of the grade, and this is in');
+    /* fogged, and that is a decision: a glow seen across a hazy stage should be
+       eaten by the haze the way the lantern behind it is.  Stated here rather
+       than left implied — init calls envRecollect, which walks the scene and
+       would reach this material even if glowBuild forgot to, so this clause
+       records the intent and the DL coverage clause above is the real guard. */
+    if(!mat.userData.atmHooked)
+      throw new Error('the glow material never reached envTrack, so it is fogged by nothing');
+    /* the geometry is one quad and nothing else — 4 vertices, 2 triangles */
+    const pos = gm.geometry.attributes.position;
+    if(!pos || pos.count !== 4)
+      throw new Error('the glow geometry has ' + (pos ? pos.count : 0) + ' vertices, not a quad');
+    /* r128's InstancedMesh constructor already sets this, so the clause can
+       only fail against a build that turns culling back ON.  That is what it
+       is for: a batch whose instances move every frame must never be culled
+       from a base-geometry bounding sphere (TRAPS, first entry), and later
+       three.js dropped the constructor default. */
+    if(gm.frustumCulled !== false) throw new Error('the glow batch is still frustum culled');
+    const rays = [];
+    gm.raycast(new THREE.Raycaster(), rays);
+    if(rays.length) throw new Error('the glow answers raycasts — it is a grab and a ground hit');
+    if(!gm.instanceColor)
+      throw new Error('the glow carries no instanceColor, so every emitter is white');
+    if(!(GLOW.max >= FIXTURES.length))
+      throw new Error('the batch holds ' + GLOW.max + ' instances for ' + FIXTURES.length + ' fixtures');
+    /* THE HALO CLEARS THE HOUSING, PINNED TO THE THING THAT ALREADY DOES.
+       f._org is f.group's world position and it sits inside the lantern body;
+       depthTest is on, so a halo centred there is occluded by its own housing,
+       and the brightest part of a radial gradient is the part that gets buried.
+       f.glow — the per-fixture LENS quad — already solves this with a local z of
+       0.4 (0.24 on a cyc), a number that has been through a headset.  Whether a
+       given offset is really unoccluded is a rasteriser question and jsdom has
+       no rasteriser, so what is asserted is the RELATIONSHIP the comment in p4
+       claims: the halo goes no closer in than the lens flare does, on any
+       fixture.  Move f.glow.position.z out and this fires. */
+    if(typeof GLOW_LENS_OUT === 'undefined')
+      throw new Error('GLOW_LENS_OUT is not in the build at all');
+    const tight = FIXTURES.filter(f=>f.glow && f.glow.position.z > GLOW_LENS_OUT);
+    if(tight.length)
+      throw new Error(tight.length + ' fixtures carry a lens flare further out (' +
+        tight[0].glow.position.z + ') than the halo at ' + GLOW_LENS_OUT);
+    return GLOW.max + ' instances, one draw call, ' + pos.count + ' vertices, halo at ' +
+           GLOW_LENS_OUT + 'm';
+  });
+
+  P('a dark rig draws no glow at all, and a lit one draws its lit fixtures only', ()=>{
+    /* driven through the REAL frame — updateFades then updateRig — because the
+       claim is that the ENGINE truncates, not that a plot says so (TRAPS) */
+    const keepB = RIG.blackout, keepG = RIG.grand, keepL = FIXTURES.map(f=>f.level);
+    let clock = 0;
+    const step = ()=>{ clock += 0.05; updateFades(0.05); updateRig(0.05, clock); };
+    RIG.blackout = true; RIG.grand = 1;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    for(let i=0;i<30;i++) step();
+    const dark = GLOW.mesh.count;
+    RIG.blackout = false;
+    FIXTURES[0].level = 1; FIXTURES[1].level = 1; FIXTURES[2].level = 1;
+    for(let i=0;i<30;i++) step();
+    const lit = GLOW.mesh.count;
+    RIG.blackout = keepB; RIG.grand = keepG;
+    FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+    for(let i=0;i<20;i++) step();
+    if(dark !== 0)
+      throw new Error('a blacked-out rig still draws ' + dark + ' glow instances of ' + FIXTURES.length);
+    if(lit !== 3)
+      throw new Error('three lit fixtures drew ' + lit + ' glow instances');
+    return 'blackout 0, three lit 3, of ' + FIXTURES.length + ' fixtures';
+  });
+
+  P('the glow clamps AT the declared share of the screen, measured not restated', ()=>{
+    if(typeof GLOW_MAX_FRAC === 'undefined')
+      throw new Error('GLOW_MAX_FRAC is not in the build at all');
+    /* THE FIRST VERSION OF THIS CASE RECOMPUTED dist*tanHalf*2*GLOW_MAX_FRAC —
+       the production line character for character — so dropping the *2 from the
+       engine dropped it from the test too and both clauses stayed green.  It
+       proved the clamp BOUND without proving what it bound to.  So: project the
+       quad the batch will really draw and measure the share of the viewport it
+       covers.  The viewport spans 2 NDC units top to bottom, hence the /2.
+       Names the game does not use — a probe-scope helper that shadows a game
+       function is silently wrong for every case below it. */
+    const dnMat = (i)=> new THREE.Matrix4().fromArray(GLOW.mesh.instanceMatrix.array, i*16);
+    const dnFrac = (i)=>{
+      const m4 = dnMat(i);
+      let lo = 9e9, hi = -9e9;
+      const corners = [[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[-0.5,0.5]];
+      for(const c of corners){
+        const v = new THREE.Vector3(c[0], c[1], 0).applyMatrix4(m4).project(camera);
+        lo = Math.min(lo, v.y); hi = Math.max(hi, v.y);
+      }
+      return (hi - lo)/2;
+    };
+    const dnAim = (from, at)=>{
+      camera.position.copy(from); camera.lookAt(at);
+      camera.updateMatrixWorld(true);
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+    };
+    const keepB = RIG.blackout, keepG = RIG.grand, keepL = FIXTURES.map(f=>f.level),
+          keepPos = camera.position.clone(), keepQ = camera.quaternion.clone();
+    let clock = 0;
+    const step = ()=>{ clock += 0.05; updateFades(0.05); updateRig(0.05, clock); };
+    RIG.blackout = false; RIG.grand = 1;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    FIXTURES[0].level = 1;
+    for(let i=0;i<20;i++) step();
+    /* where the batch put it — read off the drawn matrix, so the lens offset
+       is not restated here either */
+    const gp = new THREE.Vector3().setFromMatrixPosition(dnMat(0));
+    /* far off, dead on axis: the clamp must NOT be biting, or a build that
+       simply drew a fixed small quad would satisfy the clause below */
+    dnAim(gp.clone().add(new THREE.Vector3(0, 0, 40)), gp);
+    for(let i=0;i<3;i++) step();
+    dnAim(gp.clone().add(new THREE.Vector3(0, 0, 40)), gp);
+    const far = dnFrac(0);
+    /* and up against the lens, which is where he stands to look at the neon */
+    dnAim(gp.clone().add(new THREE.Vector3(0, 0, 0.9)), gp);
+    for(let i=0;i<3;i++) step();
+    dnAim(gp.clone().add(new THREE.Vector3(0, 0, 0.9)), gp);
+    const near = dnFrac(0);
+    camera.position.copy(keepPos); camera.quaternion.copy(keepQ);
+    camera.updateMatrixWorld(true);
+    camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+    RIG.blackout = keepB; RIG.grand = keepG;
+    FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+    for(let i=0;i<20;i++) step();
+    if(!(far < GLOW_MAX_FRAC*0.5))
+      throw new Error('40m away the glow already covers ' + (far*100).toFixed(1) +
+        '% of the view against a limit of ' + (GLOW_MAX_FRAC*100).toFixed(1) +
+        '% — the clamp is on everywhere, so it is a shrink and not a clamp');
+    if(Math.abs(near - GLOW_MAX_FRAC) > 0.004)
+      throw new Error('at 0.90m the glow covers ' + (near*100).toFixed(1) +
+        '% of the view height, not the declared ' + (GLOW_MAX_FRAC*100).toFixed(1) + '%');
+    return 'far ' + (far*100).toFixed(1) + '% of the view, near ' +
+           (near*100).toFixed(1) + '% against a declared ' + (GLOW_MAX_FRAC*100).toFixed(1) + '%';
+  });
+
   window.__out = { fatal: window.__fatal||null,
     frames:n,
     cameraPos:[+camera.position.x.toFixed(2),+camera.position.y.toFixed(2),+camera.position.z.toFixed(2)],
