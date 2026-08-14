@@ -224,7 +224,66 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **NOBODY HAS SEEN ANY OF THIS** (2026-08-14, DQ)
+## NEXT SESSION: **THE FRAME RATE GOT A ROUND OF ITS OWN — PUT IT ON THE HEADSET** (2026-08-14, DR–DY)
+
+Cache-bust **`?v=29`**. Rulings at **DY**. **Read STATE.md — it carries the
+full picture, the probe numbers and the four-moment checklist.**
+
+**EIGHT PRs, #185–#192, EIGHT CLEAN MERGES, NO RECOVERY PR.** His second
+headset run read **47ms avg EMPTY / 57 avg, 70 pk with Beetlejuice**; a
+four-agent audit found the causes and the round fixed everything it found:
+the dark lens quads (DR), the castShadow churn (DS), **the environment moved
+off every pixel and onto the metals** (DT — intensity 0 never removed the
+taps; that is in TRAPS now), the grade folded to one matrix (DU), the console
+upload gated by distance (DV), the lights that served no one gated (DW), the
+draw census probe committed (DX), and **the lantern bodies merged — 10.8 →
+3.2 draws each, the scene 878 → 580 submitted drawables** (DY).
+
+**TWO OF THE AUDIT'S CLAIMS DIED ON INVESTIGATION, and that is the round's
+finding**: the venue gate for lights already existed (DW pinned it and gated
+the two real strays), and the architecture was already merged — the draw cost
+was the RIG all along (DX measured it; DY took it). The audit's own census
+misread the gathered set and quoted a workaround-site count that was never
+real. **Count the gathered set, not the object census** — in TRAPS.
+
+**THE ONE THING TO DO IS A HEADSET RUN AT `?v=29`** — read all four wrist
+lines (`avg`, `pk`, `fov`, `calls · tri`) at the four moments. Predictions:
+~590 calls empty at the boot view; avg well under 47 empty (how far is the
+question). The DT/DU look questions and the carried DJ–DQ questions are in
+STATE.md. **Ask for the calls · tri numbers with every report.**
+
+## DONE — 2026-08-14 (later): the performance round, #185–#192 (DR–DY)
+
+The audit ran four agents over the DJ–DQ diff plus a jsdom census; the round
+ran eight implementer agents with two-stage review each, merges in-session
+(owner delegated, "ok can you merge them yourself"), every merge verified
+byte-identical + 19/19 + branches deleted. Review fixes landed on-branch
+before every merge — the reviews caught, among others: the DS header crediting
+the wrong half of its own defusal; the DV comment's flat "7.7m" that was
+really a 5.5–10m band (and the desk faces UP the house, so the sightlines
+that read it are rear stalls and balcony); the DW census numbers going stale
+on arrival (the PR's own gate changed them — both now stand side by side);
+the DX probe printing a mixed-denominator 62% its own prose had corrected to
+54.2%; and the DY merge's one blind spot (a mirrored piece survives every
+tri/box assertion — the scale refusal guard exists because the test net
+cannot see that failure).
+
+**Findings worth keeping** (all in TRAPS now): a tunable uniform is not a
+kill switch; opacity 0 and intensity 0 are not hidden; the lights-state hash
+carries castShadow's VALUE and the light COUNT (write on change, gate on
+membership); r128 `Texture.needsUpdate` is SET-ONLY — observe
+`texture.version` (the DV tests' first draft passed vacuously against an
+ungated build); count the gathered set, not the census; mixed denominators
+print confident lies, and a probe that reads the built file measures stale
+bytes after an src-only edit.
+
+**Negative checks across the round: 30+, all by sha**, each mutation proved
+present in the BUILT file AND proved to have changed it, every restore proved
+byte-identical. The DY reviewer added a fourth check of its own (per-body
+mint → the restated sharing test fires), which is the two-stage review
+earning its keep on the last PR of the chain.
+
+## SUPERSEDED: **NOBODY HAS SEEN ANY OF THIS** (2026-08-14, DQ) — the DR–DY round above landed on top; its headset questions are CARRIED in STATE.md
 
 Cache-bust **`?v=28`**. Rulings at **DQ**. `main` is at **`78f627a`**.
 **Read STATE.md — it carries the full picture.**

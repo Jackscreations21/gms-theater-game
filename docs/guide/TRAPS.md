@@ -942,3 +942,39 @@ against this list before opening a PR; **add new traps as you hit them.**
 - The Quest Browser caches HARD — bust Pages with `?v=N` (bump N) or
   clear site data before deciding a fix "didn't work".
 - `.gitattributes` pins LF because `build.sh` breaks under CRLF.
+- **A tunable uniform is not a kill switch.** `scene.environment` put cube-UV
+  sampling — up to 16 dependent texture taps — into every standard fragment,
+  and `ENV_INTENSITY`/`envMapIntensity` only scale the RESULT: the taps run
+  identically at intensity 0, so a blackout paid full price and the LIGHTING
+  page's knob could not recover a microsecond. If the cost is in the shader,
+  the off-switch must change what compiles or what is bound (RULING DT), not
+  what a uniform multiplies by.
+- **Opacity 0 is not hidden, and neither is intensity 0.** An additive quad at
+  opacity 0 still submits a draw call and still rasterises (39 of them did,
+  every frame, for two rounds — RULING DR), and a light at intensity 0 is
+  still a full per-fragment iteration in every standard material (a yard lamp
+  nothing ever drove — RULING DW). `visible = false` is the only gate the
+  renderer respects, on meshes and on lights.
+- **The r128 lights-state hash carries `castShadow`'s VALUE and the light
+  COUNT.** A same-value assignment is free; a flip re-acquires a program for
+  every lit material (a compile the first time). So write `castShadow` only on
+  change, keep churn out of the shadow slots (RULING DS's permutation), and
+  gate lights on MEMBERSHIP — a venue walk — never on a driven number that
+  fades through zero (RULING DW).
+- **r128 `Texture.needsUpdate` is SET-ONLY.** Reading it returns `undefined`
+  forever, so a test that observes it passes vacuously against any build — the
+  DV assertions' first draft passed against a build with no gate at all.
+  Observe `texture.version`, which is what `WebGLTextures` actually compares
+  before uploading.
+- **Count the GATHERED set, not the object census.** A light whose own
+  `visible` is true under a switched-off root is not in any fragment loop —
+  `projectObject` returns above both the push and the recursion. The audit
+  read "13 always-on PointLights from both buildings" out of a census; all 13
+  were one building's, and the venue gate had existed all along (RULING DW).
+  Walk ancestors the way the renderer does before declaring anything on.
+- **A ratio with mixed denominators prints a confident lie, and a probe that
+  reads the BUILT file measures stale bytes.** A raw `traverse` numerator over
+  a `traverseVisible` denominator printed "62%" where like-for-like was 54%
+  (tools/draws.js, caught in review); and an src-only edit leaves the probe
+  measuring the previous build — `sh build.sh` before every re-measure, and
+  the probe prints the built file's byte size so a stale build shows itself.

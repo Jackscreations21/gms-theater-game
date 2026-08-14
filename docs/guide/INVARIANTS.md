@@ -55,7 +55,10 @@
   the one registration: it hands the material the shared atmosphere and
   colour-grade uniform objects through a single `onBeforeCompile` (DL,
   DM), and — **if `envCarrier(m)` says so, which since RULING DT means
-  `metalness >= ENV_METAL_MIN`** — gives it the room PMREM as
+  `metalness >= ENV_METAL_MIN` OR no `metalness` at all (the spec-gloss
+  import path deletes the property, and a missing number means YES —
+  `envCarrier` in p2 is the rule; a hand-rolled `>=` test answers NO for
+  exactly the chrome that motivated DK)** — gives it the room PMREM as
   `material.envMap` and drives its `envMapIntensity` off the light bed
   (DK). `scene.environment` is deliberately never set: it would put
   cube-UV sampling into every standard material's fragment, which is the
