@@ -1594,17 +1594,20 @@ function updateRig(dt, t){
   scene.fog.color.setRGB(bed*0.02, bed*0.024, bed*0.034);
   /* RULING DK — the environment is ambience, so it follows the light bed.  ONE
      bed, for the whole world: `bed` is deliberately the AUDITORIUM's, excluding
-     the lobby and the dock (RULING BH again, a few lines up), while
-     scene.environment is a single texture every standard material in both
-     buildings samples — so the shed and the lobby now ride the auditorium's
-     level.  Never worse than before DK, when there was no environment at all,
-     but it is not a per-room claim and must not be written as one.
-     A fixed environment lights a blackout as brightly as a full
-     stage, which is the exact fault RULING BH fixed for the ambient.  r128 has
-     NO scene-level environment intensity — scene.environment reaches every
-     standard material and there is no one number that scales it — so the drive
-     is per material, and envDrive walks the ONE registry p2 collected: the
-     building once at init, the show and its models as they arrive. */
+     the lobby and the dock (RULING BH again, a few lines up), while the PMREM
+     is a single texture shared by every metal in both buildings — so the shed
+     and the lobby ride the auditorium's level.  Never worse than before DK,
+     when there was no environment at all, but it is not a per-room claim and
+     must not be written as one.  A fixed environment lights a blackout as
+     brightly as a full stage, which is the exact fault RULING BH fixed for the
+     ambient.  r128 has no one number that scales an environment, so the drive
+     is per material and envDrive walks the ONE registry p2 collected.
+     RULING DT narrowed that registry to the METALS — the texture is
+     material.envMap now rather than scene.environment, so a deck and a drape
+     have no environment to scale and are not on the list.  This write is
+     unchanged: it is still one number for the whole world, and it still has to
+     follow the bed, because a blackout must not leave a gold proscenium bright
+     (BH's principle, on the surfaces that still sample). */
   ENV_LIVE = ENV_INTENSITY * (0.25 + 0.75*bed);
   envDrive();
   /* RULING DL — the haze thickens as the room darkens, and the glare rides the

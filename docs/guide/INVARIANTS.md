@@ -52,9 +52,17 @@
   stage swap.
 
 - **Every material must reach `envTrack` (RULINGS DK, DL, DM).** It is
-  the one registration: it drives `envMapIntensity` off the light bed
-  (DK) and hands the material the shared atmosphere and colour-grade
-  uniform objects through a single `onBeforeCompile` (DL, DM). A
+  the one registration: it hands the material the shared atmosphere and
+  colour-grade uniform objects through a single `onBeforeCompile` (DL,
+  DM), and — **if `envCarrier(m)` says so, which since RULING DT means
+  `metalness >= ENV_METAL_MIN`** — gives it the room PMREM as
+  `material.envMap` and drives its `envMapIntensity` off the light bed
+  (DK). `scene.environment` is deliberately never set: it would put
+  cube-UV sampling into every standard material's fragment, which is the
+  22ms DT removed. **The narrowing is BELOW `atmTrack` and must stay
+  there** — a non-metal keeps the fog and the grade exactly as it had
+  them, and only the envMap and the `ENV_MATS`/`envDrive` registry stop
+  at the metals. A
   material that misses it renders with the fog and grade **bypassed**
   rather than broken — `atmMix` and `gradeMix` default to 0 for exactly
   that reason — so the failure is silent and is asserted in

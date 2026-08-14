@@ -1437,10 +1437,17 @@ const probe = `
   P('DQ: a dropped light reaches the registries the invariant names', ()=>{
     const l = lightAdd({kind:'SpotLight', pos:{x:1, y:6, z:-3}});
     const miss = [];
+    /* RULING DT narrowed the environment to the metals, and a lantern is metal
+       throughout — M.fixture at .55 and M.steel at .85 — so this claim is
+       unchanged today.  It is written against envCarrier rather than against
+       every material with an envMapIntensity so that a lantern given a plastic
+       or a painted part later fails for a REASON rather than for the narrowing.
+       The atm/grade half stays universal, which is the DL/DM seam. */
     const look = m=>{
       if(!m) return;
       if(m.fog === true && !m.userData.atmHooked) miss.push('unhooked '+m.type);
-      if(('envMapIntensity' in m) && !ENV_MATS.has(m)) miss.push('unregistered '+m.type);
+      if(envCarrier(m) && !ENV_MATS.has(m)) miss.push('unregistered '+m.type);
+      if(envCarrier(m) && m.envMap !== ENV_TEX) miss.push('no environment on '+m.type);
     };
     l.group.traverse(o=>{
       if(!o.isMesh || !o.material) return;

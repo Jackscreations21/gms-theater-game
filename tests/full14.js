@@ -1736,14 +1736,115 @@ const probe = `
   P('master sliders', ()=>{ ['#gm','#hz','#hl','#wl'].forEach(s=>{ const el=document.querySelector(s); el.value=42; el.oninput({target:el}); }); return 'ok'; });
   P('120 more frames', ()=>{ for(let i=0;i<120;i++){ const cb=window.__raf; window.__raf=null; if(cb) cb(Date.now()+i*16);} return 'ok'; });
 
-  console.log('--- RULING DK: the room has an environment ---');
-  P('the room has an environment for a metal surface to sample', ()=>{
-    /* nothing set scene.environment, so every imported MeshStandardMaterial
-       carried envMapIntensity 1 with nothing to reflect and rendered near-black */
-    if(!scene.environment) throw new Error('scene.environment is ' + scene.environment);
-    if(!scene.environment.isTexture)
-      throw new Error('scene.environment is not a texture: ' + scene.environment.constructor.name);
-    return 'environment texture, mapping ' + scene.environment.mapping;
+  console.log('--- RULING DK: the room has an environment / DT: the metals hold it ---');
+  /* REVERSED IN PLACE (the DF-1 precedent).  DK asserted the GLOBAL — a texture
+     on scene.environment — because that is how it gave a metal something to
+     sample.  RULING DT keeps the purpose and reverses the mechanism: r128 hands
+     scene.environment to EVERY MeshStandardMaterial, so the global put PMREM
+     cube-UV sampling into every fragment in the building at up to 16 dependent
+     texture taps a pixel, per eye, and envMapIntensity only scaled the RESULT.
+     The texture is material.envMap on the metals now.  What DK protects — metal
+     does not render near-black, and it is driven off the bed — is asserted on
+     the carriers instead, here and in the four cases below. */
+  P('DT: the scene carries no environment, and the PMREM is standing by', ()=>{
+    if(scene.environment)
+      throw new Error('scene.environment is set (' + scene.environment.constructor.name +
+                      ') — every standard material in the building is paying cube-UV taps');
+    if(!ENV_TEX) throw new Error('ENV_TEX is ' + ENV_TEX + ' — the PMREM was not kept');
+    if(!ENV_TEX.isTexture)
+      throw new Error('ENV_TEX is not a texture: ' + ENV_TEX.constructor.name);
+    /* the mapping is what makes it usable as material.envMap at all: r128 reads
+       envMapMode off the texture (WebGLPrograms.getParameters) and emits
+       ENVMAP_TYPE_CUBE_UV from CubeUVReflectionMapping.  Assert the name so the
+       tripwire fires if three.js ever moves under us. */
+    if(ENV_TEX.mapping !== THREE.CubeUVReflectionMapping)
+      throw new Error('the PMREM texture maps as ' + ENV_TEX.mapping + ', not CubeUVReflectionMapping (' +
+                      THREE.CubeUVReflectionMapping + ') — no ENVMAP_TYPE_CUBE_UV would be emitted');
+    return 'no scene environment; ENV_TEX mapping ' + ENV_TEX.mapping;
+  });
+  P('DT: every metal in the M table holds the environment, and no non-metal does', ()=>{
+    if(typeof ENV_METAL_MIN !== 'number')
+      throw new Error('ENV_METAL_MIN is ' + (typeof ENV_METAL_MIN));
+    /* NAMED, not derived — the eight the ruling was decided on.  A derived list
+       would agree with envCarrier whatever envCarrier did. */
+    const metals = ['gold','goldDk','steel','pipe','fixture','bronze','galv','castIron'];
+    const cloth  = ['deck','velour','serge','brick','carpet','seat','ivory','wood',
+                    'crimson','marble','marbleK','mahog','rope','plaster','ply','rubber'];
+    for(const k of metals){
+      const m = M[k];
+      if(!m) throw new Error('M.' + k + ' does not exist');
+      if(!(m.metalness >= ENV_METAL_MIN))
+        throw new Error('M.' + k + ' reads metalness ' + m.metalness +
+                        ' — it is named as a carrier but the rule would not take it');
+      if(m.envMap !== ENV_TEX)
+        throw new Error('M.' + k + ' (metalness ' + m.metalness + ') carries envMap ' +
+                        m.envMap + ' — a metal with nothing to sample renders near-black');
+      if(!ENV_MATS.has(m))
+        throw new Error('M.' + k + ' holds the environment but is not on the registry, ' +
+                        'so nothing drives it off the bed');
+    }
+    for(const k of cloth){
+      const m = M[k];
+      if(!m) throw new Error('M.' + k + ' does not exist');
+      if(m.metalness >= ENV_METAL_MIN)
+        throw new Error('M.' + k + ' reads metalness ' + m.metalness + ' — it is not the non-metal ' +
+                        'this clause takes it for');
+      if(m.envMap)
+        throw new Error('M.' + k + ' carries an envMap — a ' + m.metalness +
+                        '-metalness surface is paying cube-UV taps for nothing');
+      if(ENV_MATS.has(m))
+        throw new Error('M.' + k + ' is on the environment registry with no envMap to drive');
+    }
+    return metals.length + ' metals carrying the PMREM, ' + cloth.length + ' non-metals carrying none';
+  });
+  P('DT narrowed the environment and NOT the atmosphere hook (the DL/DM seam)', ()=>{
+    /* THE SEAM, AND THE ONE THING IN THIS RULING THAT COULD BREAK THE PICTURE.
+       envTrack does double duty: it hooks atmTrack — the ONE seam that hands a
+       material the shared fog and grade uniform OBJECTS (INVARIANTS) — and it
+       registers the envMap carriers.  DT narrows the second and must not touch
+       the first.  Put the metalness test above atmTrack and five materials in six
+       reach the grade with gradeTint unsupplied, which reads vec3(0) and renders
+       BLACK: a hole in the picture, not a subtlety.
+
+       MEASURED AS THE COVERAGE OF THE WALK, not as a pinned count and not off a
+       scene that has drifted.  envRecollect IS the walk, so it is run first and
+       then every material standing in the scene must be hooked.  A count would
+       go stale the first time the building grows a wall; and reading the scene
+       cold would measure something else entirely — the confetti and three show
+       materials minted by the cue cases above have not been re-collected yet,
+       which is the known and deliberate "anything new calls envRegister" gap in
+       p2 whose failure mode is the bypass the case below asserts, and not this
+       ruling business. */
+    envRecollect();
+    const seen = [], hooked = [], carriers = [], plain = [];
+    scene.traverse(o=>{
+      if(!o.isMesh || !o.material) return;
+      const list = Array.isArray(o.material) ? o.material : [o.material];
+      for(const m of list){
+        if(!m || seen.indexOf(m) >= 0) continue;
+        seen.push(m);
+        if(m.userData && m.userData.atmHooked) hooked.push(m);
+        if(!m.isMeshStandardMaterial) continue;
+        (m.envMap ? carriers : plain).push(m);
+      }
+    });
+    const unhooked = seen.filter(m=>!(m.userData && m.userData.atmHooked));
+    if(seen.length < 100)
+      throw new Error('only ' + seen.length + ' materials in the scene — measuring nothing');
+    if(unhooked.length)
+      throw new Error(unhooked.length + ' of ' + seen.length + ' materials in the scene never ' +
+        'reached atmTrack across a full envRecollect (first: ' + unhooked[0].type +
+        ') — the fog and grade are bypassed on them');
+    /* and the narrowing really happened: most standard materials have no envMap */
+    if(!carriers.length) throw new Error('no standard material in the scene carries an envMap at all');
+    if(!(plain.length > carriers.length * 2))
+      throw new Error(carriers.length + ' carriers against ' + plain.length +
+        ' plain standard materials — the environment did not narrow');
+    for(const m of carriers)
+      if(m.envMap !== ENV_TEX)
+        throw new Error('a carrier holds an envMap that is not the house PMREM');
+    return seen.length + ' materials, all hooked; ' + carriers.length +
+           ' of ' + (carriers.length + plain.length) + ' standard materials carry the environment';
   });
   P('ENV_INTENSITY is a live positive number', ()=>{
     if(typeof ENV_INTENSITY !== 'number')
@@ -1764,23 +1865,84 @@ const probe = `
       throw new Error('envTrack left it at ' + m.envMapIntensity + ', ENV_LIVE is ' + ENV_LIVE);
     if(!(m.envMapIntensity > 0))
       throw new Error('the house intensity is ' + m.envMapIntensity);
+    /* RULING DT — and it is handed the TEXTURE, not merely a number.  An
+       intensity on a material with no envMap scales nothing at all, which is
+       precisely the near-black DK was fixing. */
+    if(m.envMap !== ENV_TEX)
+      throw new Error('envTrack left a metalness-1 material carrying envMap ' + m.envMap);
     ENV_MATS.delete(m);                     // leave the registry as we found it
-    return 'envMapIntensity ' + m.envMapIntensity.toFixed(4);
+    return 'envMapIntensity ' + m.envMapIntensity.toFixed(4) + ', PMREM attached';
   });
-  P('a dyed drape is TRACKED, not just correct at the moment it is dyed', ()=>{
-    /* goodsMat CLONES M.serge, and clone() copies envMapIntensity — so an
-       untracked drape carries whatever the room happened to be when it was
-       pulled and then never moves again.  It looks right at the instant it is
-       made and is silently wrong from the next cue on, which is the one shape
-       none of the other cases here can see. */
-    const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+  P('DT: a spec-gloss import, which has no metalness at all, still gets it', ()=>{
+    /* THE FIXTURE THAT APPROACHES THE BOUND (TRAPS: a guard nothing exercises
+       cannot be negative-checked).  The vendored GLTFLoader's
+       KHR_materials_pbrSpecularGlossiness branch DELETES metalness off the
+       material it makes, so nothing that arrives that way has a number to read
+       and a plain >= test would answer NO for every chrome in such a file.  The
+       rule errs toward the environment there; this is the only material in the
+       suites shaped like one. */
+    const m = new THREE.MeshStandardMaterial({roughness:0.3});
+    delete m.metalness;
+    if('metalness' in m)
+      throw new Error('metalness survived the delete, so this fixture is not the spec-gloss shape');
+    envTrack(m);
+    if(m.envMap !== ENV_TEX)
+      throw new Error('a material with no metalness got no environment — a spec-gloss chrome ' +
+                      'would render near-black');
+    if(!ENV_MATS.has(m)) throw new Error('it holds the environment but nothing drives it');
+    ENV_MATS.delete(m);
+    return 'no metalness, environment given';
+  });
+  P('DT: a dyed drape is serge, so it comes out carrying NO environment', ()=>{
+    /* REVERSED IN PLACE.  DK asserted the dye was on the registry, and the trap
+       it guarded is real: goodsMat CLONES its base and clone() copies
+       envMapIntensity, so an untracked drape froze at whatever the room happened
+       to be when it was pulled.  Under DT a serge clone has no envMap at all, so
+       the frozen number scales nothing and the trap is DEFUSED rather than
+       merely unguarded — which is a different claim and is the one asserted
+       here.  The mechanism half lives in the metal-clone case below. */
     const base = M.serge || M.velour;
     if(!base) throw new Error('no stock cloth material to dye');
+    if(base.metalness >= ENV_METAL_MIN)
+      throw new Error('the stock cloth reads metalness ' + base.metalness + ' — it is not a non-metal');
+    if(base.envMap) throw new Error('the stock cloth itself carries an envMap');
+    const drape = goodsMat(base, 0x8b1a2b);
+    try{
+      if(!drape || drape === base) throw new Error('goodsMat handed back the base material');
+      if(drape.envMap)
+        throw new Error('a dyed serge drape came out carrying an envMap — cloth is paying cube-UV taps');
+      if(ENV_MATS.has(drape))
+        throw new Error('a dyed drape with no envMap is on the environment registry');
+      /* and DL/DM still reach it: the hook is above the narrowing */
+      if(!(drape.userData && drape.userData.atmHooked))
+        throw new Error('the dyed clone never reached atmTrack, so the fog and grade bypass it');
+      return 'dyed serge: no environment, still hooked for the fog and grade';
+    } finally {
+      for(const k in GOODSM) if(GOODSM[k] === drape) delete GOODSM[k];
+      ENV_MATS.delete(drape);
+    }
+  });
+  P('DT: a dyed METAL clone is TRACKED, not just correct at the moment it is dyed', ()=>{
+    /* THE OTHER HALF, AND THE MECHANISM DK'S CASE WAS REALLY GUARDING.  clone()
+       copies envMap AND envMapIntensity, so a clone of a CARRIER comes out
+       holding the texture and whatever the room happened to be at that instant.
+       It looks right when it is made and is silently wrong from the next cue on,
+       which is the worst shape a fault can have — so it has to be on the
+       registry, not merely correct once.  Nothing in the game dyes a metal
+       today, which is exactly why the fixture is built here: a guard nothing
+       exercises cannot be negative-checked (TRAPS). */
+    const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+    const base = M.steel;
+    if(!base) throw new Error('no metal to dye');
+    if(!(base.metalness >= ENV_METAL_MIN))
+      throw new Error('M.steel reads metalness ' + base.metalness + ' — not a carrier');
     const drape = goodsMat(base, 0x8b1a2b);
     /* leave neither cache holding this dye, or the registry-size case below
        counts a material that only exists because this one ran */
     try{
     if(!drape || drape === base) throw new Error('goodsMat handed back the base material');
+    if(drape.envMap !== ENV_TEX)
+      throw new Error('a clone of a carrier lost the environment: envMap is ' + drape.envMap);
     if(!ENV_MATS.has(drape)) throw new Error('the dyed clone never reached the registry');
     const born = ENV_LIVE;
     /* move the room a long way, so a frozen clone cannot pass by luck */
@@ -1858,23 +2020,46 @@ const probe = `
     return 'registered, driven to ' + ENV_LIVE.toFixed(4) + ', and rebuilt away';
   });
   P('the BUILDING follows the bed too, not only the imported sets', ()=>{
-    /* THE ASSERTION THAT WAS MISSING.  r128 hands scene.environment to EVERY
-       standard material, so the bed clause governs the theatre itself — and a
-       test that builds its own material or reads the ENV_LIVE global can never
-       see 120 live materials sitting at the default 1.  Reach into the scene. */
+    /* THE ASSERTION THAT WAS MISSING, NARROWED BY RULING DT.  DK's version read
+       EVERY standard material in the scene, because scene.environment reached
+       every one of them.  DT hands the texture to the metals alone, so the bed
+       clause is asserted on the building's own metals — the gold proscenium, the
+       steelwork, the pipes, the lanterns — and the same walk pins that the
+       narrowing really happened in the building rather than only in the M table.
+
+       The subject is taken by metalness, which is the RULE'S INPUT, and the
+       claim is about envMap and the drive, which are its OUTPUT — never the
+       other way round (TRAPS: a test that picks its subject by the property it
+       then asserts agrees with itself).  ENV_METAL_MIN and not a literal 0.5, or
+       the next retune fights this test instead of reading it. */
     const imports = SHOW.bjFill || [];
-    const mats = [], seen = [];
+    const mats = [], plain = [], seen = [];
     scene.traverse(o=>{
       if(!o.isMesh || !o.material) return;
       const list = Array.isArray(o.material) ? o.material : [o.material];
       for(const m of list){
         if(!m || !m.isMeshStandardMaterial) continue;
         if(imports.indexOf(m) >= 0 || seen.indexOf(m) >= 0) continue;
-        seen.push(m); mats.push(m);
+        seen.push(m);
+        (m.metalness >= ENV_METAL_MIN ? mats : plain).push(m);
       }
     });
-    if(mats.length < 50)
-      throw new Error('only ' + mats.length + ' of our own standard materials found in the scene');
+    if(seen.length < 50)
+      throw new Error('only ' + seen.length + ' of our own standard materials found in the scene');
+    if(mats.length < 15)
+      throw new Error('only ' + mats.length + ' of the building own metals found — measuring nothing');
+    /* the narrowing, in the building and not just in p2 table */
+    const leak = plain.filter(m=>m.envMap);
+    if(leak.length)
+      throw new Error(leak.length + ' of ' + plain.length + ' non-metals in the building carry an ' +
+        'envMap (first at metalness ' + leak[0].metalness + ') — they are paying cube-UV taps');
+    if(!(plain.length > mats.length))
+      throw new Error(plain.length + ' non-metals against ' + mats.length +
+        ' metals — the environment did not narrow');
+    const noTex = mats.filter(m=>m.envMap !== ENV_TEX);
+    if(noTex.length)
+      throw new Error(noTex.length + ' of ' + mats.length + ' of the building own metals hold ' +
+        'no environment (first at metalness ' + noTex[0].metalness + ') — they render near-black');
     const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
     const keepH = HOUSE.house, keepW = HOUSE.work, keepP = HOUSE.practical,
           keepB = RIG.blackout, keepL = FIXTURES.map(f=>f.level);
@@ -1900,11 +2085,21 @@ const probe = `
     return mats.length + ' of our own materials, blackout ' + darkLive.toFixed(3) +
            ' -> lit ' + litLive.toFixed(3);
   });
-  P('a figure minted after boot, and the dummy it carries, follow the bed', ()=>{
+  P('a figure minted after boot, and the dummy it carries, reach the walk', ()=>{
     /* two lazy paths the boot walk cannot see.  makeHand mints a cloth and a
        hat the first time anything asks for crew — which may be a carpenter call
        hours in — and crewPickUp mints a fresh material PER CARRY, which recurs
-       right through a changeover, which is when the stage is dark. */
+       right through a changeover, which is when the stage is dark.
+
+       REVERSED BY RULING DT, and the measurement is now the SHARPER of the two.
+       DK read envMapIntensity, which was universal because scene.environment
+       was; the crew are cloth and a hat and hold no envMap under DT, so the
+       thing that is universal — and the thing whose absence is a HOLE IN THE
+       PICTURE rather than a shading nuance, because an unsupplied gradeTint
+       reads vec3(0) and renders black — is the atmTrack hook.  So that is what
+       is asserted, and the bed clause is kept for whichever of them is a metal.
+       TODAY NONE OF THEM IS, so that clause cannot fire and says so; it is here
+       because a hi-vis vest or a steel-toe cap would make it live. */
     const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
     const matsUnder = root=>{
       const out = [];
@@ -1933,19 +2128,34 @@ const probe = `
     const carried = hand.carry ? matsUnder(hand.carry) : [];
     if(!carried.length) throw new Error('the carried dummy has no standard material');
     for(let i=0;i<20;i++) step();
-    const figStray = figure.filter(m=>m.envMapIntensity !== ENV_LIVE);
-    const carStray = carried.filter(m=>m.envMapIntensity !== ENV_LIVE);
+    const hooked = m=>!!(m.userData && m.userData.atmHooked);
+    const figLoose = figure.filter(m=>!hooked(m));
+    const carLoose = carried.filter(m=>!hooked(m));
+    /* the clause DT leaves live only for a metal, and there is none today */
+    const figMetal = figure.filter(m=>m.metalness >= ENV_METAL_MIN);
+    const carMetal = carried.filter(m=>m.metalness >= ENV_METAL_MIN);
+    const metalStray = figMetal.concat(carMetal)
+      .filter(m=>m.envMap !== ENV_TEX || m.envMapIntensity !== ENV_LIVE);
+    /* and nothing that is NOT a metal came away holding one */
+    const figLeak = figure.concat(carried)
+      .filter(m=>m.envMap && !(m.metalness >= ENV_METAL_MIN));
     if(hand.carry){ hand.hands.remove(hand.carry); hand.carry = null; }
-    if(figStray.length)
-      throw new Error(figStray.length + ' of ' + figure.length +
-        ' materials on the lazily-minted crew read ' + figStray[0].envMapIntensity +
-        ', against ENV_LIVE ' + ENV_LIVE);
-    if(carStray.length)
-      throw new Error(carStray.length + ' of ' + carried.length +
-        ' materials on a carried dummy read ' + carStray[0].envMapIntensity +
-        ', against ENV_LIVE ' + ENV_LIVE);
+    if(figLoose.length)
+      throw new Error(figLoose.length + ' of ' + figure.length +
+        ' materials on the lazily-minted crew never reached atmTrack — the fog and grade ' +
+        'bypass them and an unsupplied grade renders black');
+    if(carLoose.length)
+      throw new Error(carLoose.length + ' of ' + carried.length +
+        ' materials on a carried dummy never reached atmTrack');
+    if(metalStray.length)
+      throw new Error(metalStray.length + ' metal materials on the crew hold ' +
+        metalStray[0].envMapIntensity + ' against ENV_LIVE ' + ENV_LIVE);
+    if(figLeak.length)
+      throw new Error(figLeak.length + ' non-metal crew materials carry an envMap (first at ' +
+        'metalness ' + figLeak[0].metalness + ')');
     return figure.length + ' across ' + CREW.people.length + ' figures and ' +
-           carried.length + ' on the dummy, all at ' + ENV_LIVE.toFixed(4);
+           carried.length + ' on the dummy, all hooked; ' +
+           (figMetal.length + carMetal.length) + ' of them metal';
   });
   P('the environment box encloses the camera, floor included', ()=>{
     /* PMREM's cube camera sits at the ORIGIN, so a floor standing AT y 0 is

@@ -1381,7 +1381,14 @@ const probe = `
        metalness-0.7 grilles long after init() collected the building.  A
        metallic grille is exactly what RULING DK is about, and nothing else
        would have healed it: only a show load or a strike rebuilds the registry,
-       and patching the board to another stage is neither. */
+       and patching the board to another stage is neither.
+
+       RULING DT narrowed the environment to the metals, and this case was
+       already about a metal: the vent grille is metalness .7 and stays a
+       carrier, while the fogger body (.3) and its feet (0) do not — so the
+       reachability half below still sweeps EVERY standard material and only the
+       drive clauses take the carriers.  metals() reads ENV_METAL_MIN rather
+       than a literal, so a retune of the threshold moves the test with it. */
     const ours = ()=>{
       const out = [], seen = [];
       scene.traverse(o=>{
@@ -1394,6 +1401,7 @@ const probe = `
       });
       return out;
     };
+    const metals = list=>list.filter(m=>m.metalness >= ENV_METAL_MIN);
     const home = STAGE;
     /* both Arc stages, because each builds its own rack the first time.  The
        guard is that the racks are STANDING and measurable, not a before/after
@@ -1418,14 +1426,28 @@ const probe = `
     for(const m of rackMats)
       if(after.indexOf(m) < 0)
         throw new Error('a rack material is not reachable from the scene — the sweep would miss it');
+    /* the grille is the subject, so prove one of the rack materials really is a
+       carrier — otherwise the clauses below would be measuring the feet */
+    if(!metals(rackMats).length)
+      throw new Error('no rack material reads metalness ' + ENV_METAL_MIN + ' or over — ' +
+                      'this case would measure the fogger body and prove nothing about DK');
     let clock = 0;
     const step = dt=>{ clock += dt; updateFades(dt); updateRig(dt, clock); };
     for(let i=0;i<30;i++) step(1/60);
-    const stray = after.filter(m=>m.envMapIntensity !== ENV_LIVE);
+    const carriers = metals(after);
+    const stray = carriers.filter(m=>m.envMapIntensity !== ENV_LIVE || m.envMap !== ENV_TEX);
+    /* and DT's other half at the same seam: a stage patch must not hand the
+       environment to the fogger body or its feet */
+    const leak = after.filter(m=>m.envMap && !(m.metalness >= ENV_METAL_MIN));
     if(stray.length){
       stageSwitch(home, true);
-      throw new Error(stray.length + ' of ' + after.length + ' standard materials read ' +
+      throw new Error(stray.length + ' of ' + carriers.length + ' metals read ' +
                       stray[0].envMapIntensity + ' after a stage patch, against ENV_LIVE ' + ENV_LIVE);
+    }
+    if(leak.length){
+      stageSwitch(home, true);
+      throw new Error(leak.length + ' non-metals carry an envMap after a stage patch (first at ' +
+                      'metalness ' + leak[0].metalness + ')');
     }
     /* AND THE CLAUSE THAT CAN ACTUALLY FAIL.  The racks above state the OUTCOME,
        but they cannot pin the swap: every case in this suite that loads a show
@@ -1440,7 +1462,7 @@ const probe = `
     scene.add(probeMesh);
     stageSwitch('arcMain', true);
     const missed = !ENV_MATS.has(probeMat);
-    const value = probeMat.envMapIntensity;
+    const value = probeMat.envMapIntensity, probeTex = probeMat.envMap;
     scene.remove(probeMesh);
     probeMesh.geometry.dispose(); probeMat.dispose();
     envRecollect();
@@ -1450,22 +1472,25 @@ const probe = `
     if(value !== ENV_LIVE)
       throw new Error('the swap registered it but left it at ' + value +
                       ', against ENV_LIVE ' + ENV_LIVE);
+    if(probeTex !== ENV_TEX)
+      throw new Error('the swap registered it but handed it envMap ' + probeTex + ' (DT)');
     const lit = ENV_LIVE;
     const keepH = HOUSE.house, keepW = HOUSE.work, keepP = HOUSE.practical;
     HOUSE.house = 0; HOUSE.work = 0; HOUSE.practical = 0;
     FIXTURES.forEach(f=>{ f.level = 0; });
     for(let i=0;i<90;i++) step(1/60);
     const dark = ENV_LIVE;
-    const darkStray = after.filter(m=>m.envMapIntensity !== dark);
+    const darkStray = carriers.filter(m=>m.envMapIntensity !== dark);
     HOUSE.house = keepH; HOUSE.work = keepW; HOUSE.practical = keepP;
     stageSwitch(home, true);
     if(darkStray.length)
-      throw new Error(darkStray.length + ' materials stuck at ' + darkStray[0].envMapIntensity +
+      throw new Error(darkStray.length + ' metals stuck at ' + darkStray[0].envMapIntensity +
                       ' through a blackout after a stage patch');
     if(!(lit > dark + 0.01))
       throw new Error('nothing moves: lit ' + lit.toFixed(4) + ' against a blackout ' + dark.toFixed(4));
-    return rackMats.length + ' Arc rack materials among ' + after.length +
-           ', all driven, blackout ' + dark.toFixed(3) + ' -> lit ' + lit.toFixed(3);
+    return rackMats.length + ' Arc rack materials among ' + after.length + ' (' + carriers.length +
+           ' carrying the environment), all driven, blackout ' + dark.toFixed(3) +
+           ' -> lit ' + lit.toFixed(3);
   });
 
   console.log('--- RULING DQ: a dropped light belongs to ONE stage ---');

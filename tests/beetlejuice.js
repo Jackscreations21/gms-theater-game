@@ -5113,6 +5113,14 @@ const probe = `
                     stale figure.  Hand out the read, not the reading. */
                  ENV_MATS:typeof ENV_MATS === 'undefined' ? undefined : ENV_MATS,
                  envLive:()=>ENV_LIVE,
+                 /* RULING DT — the texture the carriers hold and the one number
+                    that decides who is a carrier.  Both are read below, so both
+                    go in the handout, which is the rule TRAPS states. */
+                 ENV_TEX:typeof ENV_TEX === 'undefined' ? undefined : ENV_TEX,
+                 ENV_METAL_MIN:typeof ENV_METAL_MIN === 'undefined' ? undefined : ENV_METAL_MIN,
+                 /* the house masters, because moving the RIG alone barely moves
+                    the bed: it enters as bedRig*0.18 against bedHouse flat */
+                 HOUSE:typeof HOUSE === 'undefined' ? undefined : HOUSE,
                  bjCues:()=>{ showLoad('beetlejuice'); return CUES.slice(); }};
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
@@ -6465,13 +6473,25 @@ const wd = setTimeout(() => {
     return 'rig at 0, the marquee still lit at ' + lit.toFixed(2) + ', and off the fill list';
   });
 
-  await P('the sign samples the environment, and CF still keeps it off the fill (DK)', async () => {
+  await P('the importer registers the sign, and CF still keeps it off the fill (DK, DT)', async () => {
     /* TWO DIFFERENT QUESTIONS WEARING ONE EXCLUSION.  CF keeps the marquee off
        the CC fill list because CC drives an EMISSIVE off the stage rig, and the
-       one cue that names the sign has the rig at zero.  How much room ambience
-       a metal surface reflects is not that question, and DK's scope is every
-       metal surface in his models.  Hanging DK off CC's list inherited CF's
-       carve-out silently, and this is the assertion that says so out loud. */
+       one cue that names the sign has the rig at zero.  What the importer
+       registers is not that question, and hanging DK off CC's list inherited
+       CF's carve-out silently — this is the assertion that says so out loud.
+
+       REVERSED IN PLACE BY RULING DT.  DK's version required every sign material
+       to be on the environment REGISTRY, on the reasoning that DK's scope is
+       every metal surface in his models.  Read what the sign material actually
+       is: his marquee face lands as a plain MeshStandardMaterial at metalness 0,
+       so under DT it is NOT a metal and carries no environment — and its self-lit
+       look never came from the environment in the first place, it comes from
+       bjSignLamps writing an emissive (the CF case above measures exactly that,
+       with the rig black).  So the claim reverses to its true shape: the importer
+       registration reaches it — provably, through the atmTrack hook, which is
+       what a material needs for the fog and the grade and is universal — while
+       the environment does not, and CF's carve-out is still not inherited.  The
+       metal-versus-non-metal half of DT at this same seam is the case below. */
     const sc = w.sceneFind('bjSign');
     if(!sc) throw new Error('no sign scene to check');
     const mats = [], seen = [];
@@ -6502,26 +6522,121 @@ const wd = setTimeout(() => {
       throw new Error('every measured material is on OUR geometry — the import never landed, ' +
                       'so this case would prove nothing about the importer');
     if(!az.ENV_MATS) throw new Error('ENV_MATS is not in the handout');
-    const off = mats.filter(m => !az.ENV_MATS.has(m));
-    if(off.length)
-      throw new Error(off.length + ' of ' + mats.length +
-                      ' sign materials never reached the environment registry');
-    /* driven, not merely registered: run the real frame and read them back */
+    if(az.ENV_METAL_MIN === undefined)
+      throw new Error('ENV_METAL_MIN is not in the handout, so every comparison below is against NaN');
+    /* THE REGISTRATION REALLY REACHED THEM.  atmTrack is the universal half of
+       the walk and it is what the negative check bites: take envRegister out of
+       the landed loop and nothing here is hooked. */
+    const loose = mats.filter(m => !(m.userData && m.userData.atmHooked));
+    if(loose.length)
+      throw new Error(loose.length + ' of ' + mats.length + ' sign materials never reached the ' +
+                      'importer registration walk — the fog and the grade bypass them');
+    /* AND THE ENVIRONMENT DID NOT, because the sign is not a metal (DT) */
+    const metal = mats.filter(m => m.metalness >= az.ENV_METAL_MIN);
+    if(metal.length)
+      throw new Error(metal.length + ' sign materials read metalness ' + metal[0].metalness +
+                      ' — this case is written for the non-metal marquee it lands as');
+    const held = mats.filter(m => m.envMap);
+    if(held.length)
+      throw new Error(held.length + ' of ' + mats.length + ' sign materials at metalness ' +
+                      mats[0].metalness + ' carry an envMap — a flat painted marquee is ' +
+                      'paying cube-UV taps in both eyes');
+    const on = mats.filter(m => az.ENV_MATS.has(m));
+    if(on.length)
+      throw new Error(on.length + ' sign materials are on the environment registry with no ' +
+                      'envMap to drive');
+    /* it is still LIT, and by the emissive rather than by the environment: run
+       the real frame with the rig where the pre-show leaves it and read it back */
     let clock = 0;
     const step = dt => { clock += dt; w.updateFades(dt); w.updateRig(dt, clock); w.updateStorm(dt); };
     for(let k = 0; k < 60; k++) step(1/60);
-    const live = az.envLive();
-    const stray = mats.filter(m => m.envMapIntensity !== live);
-    if(stray.length)
-      throw new Error(stray.length + ' sign materials read ' +
-                      stray[0].envMapIntensity + ' against ENV_LIVE ' + live);
+    const dim = mats.filter(m => !(m.emissiveIntensity > 0));
+    if(dim.length === mats.length)
+      throw new Error('no sign material is self-lit at all — with no environment either, ' +
+                      'the marquee is dark');
     /* and CF is untouched — none of them may be on the emissive fill list */
     const fill = az.SHOW.bjFill || [];
     for(const m of mats)
       if(fill.indexOf(m) >= 0)
         throw new Error('a sign material is on the CC fill list — CF has been weakened');
-    return mats.length + ' sign materials in the registry at ' + live.toFixed(3) +
-           ', none of them on the CC fill list';
+    return mats.length + ' sign materials at metalness ' + mats[0].metalness +
+           ': hooked for the fog and grade, no environment, self-lit, and off the CC fill list';
+  });
+
+  await P('an imported METAL gets the environment at land and a non-metal does not (DT)', async () => {
+    /* THE IMPORT SIDE OF RULING DT, THROUGH THE REAL PATH.  bjApplyModel is what
+       a .glb goes through, and the registration it runs is the only thing that
+       can hand an imported material the environment — nothing else ever sees it.
+       The stand-ins have no metalness variance to measure (every one of them is
+       cloth, paint or timber), so the fixture is built here: ONE root, TWO
+       materials, one metal and one not, landed through the real apply.  A model
+       may carry up to BJ_MAT_BUDGET (8) materials and his exports carry one, so
+       two is the shape of a real file.
+
+       Landed into the CLOSET, which is a small set nothing else in this suite
+       measures afterwards, and the registry is rebuilt at the end so the sizes
+       the earlier cases quote are not disturbed. */
+    if(az.ENV_METAL_MIN === undefined)
+      throw new Error('ENV_METAL_MIN is not in the handout, so every comparison here is against NaN');
+    if(!az.ENV_TEX) throw new Error('ENV_TEX is not in the handout');
+    if(!az.ENV_MATS) throw new Error('ENV_MATS is not in the handout');
+    if(!az.HOUSE) throw new Error('HOUSE is not in the handout, so the bed cannot be moved');
+    const chrome = new THREE.MeshStandardMaterial({metalness: 0.95, roughness: 0.15});
+    const paint  = new THREE.MeshStandardMaterial({metalness: 0.0,  roughness: 0.85});
+    if(chrome.envMap || paint.envMap)
+      throw new Error('a fresh MeshStandardMaterial already carries an envMap, so this case ' +
+                      'would pass without the importer doing anything');
+    const root = new THREE.Group();
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), chrome));
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), paint));
+    if(!w.bjApplyModel(az.BJ_MODELS.closet, root))
+      throw new Error('the apply refused the two-material fixture, so nothing was measured');
+    try{
+      if(chrome.envMap !== az.ENV_TEX)
+        throw new Error('an imported metal at metalness ' + chrome.metalness + ' landed carrying ' +
+                        'envMap ' + chrome.envMap + ' — every metal in his models renders near-black');
+      if(!az.ENV_MATS.has(chrome))
+        throw new Error('the imported metal holds the environment but is not on the registry, so ' +
+                        'a blackout would leave it bright (the RULING BH fault)');
+      if(paint.envMap)
+        throw new Error('an imported material at metalness ' + paint.metalness + ' landed carrying ' +
+                        'an envMap — that is the per-pixel tax DT removes');
+      if(az.ENV_MATS.has(paint))
+        throw new Error('the imported non-metal is on the environment registry');
+      /* both of them reached the DL/DM hook, metal or not — the seam */
+      for(const m of [chrome, paint])
+        if(!(m.userData && m.userData.atmHooked))
+          throw new Error('an imported material at metalness ' + m.metalness + ' never reached ' +
+                          'atmTrack, so the fog and the grade bypass it');
+      /* AND THE METAL IS DRIVEN OFF THE BED, not merely handed a texture.  The
+         house masters go with the rig: bed is max(bedHouse, bedRig*0.18), so
+         moving the FIXTURES alone leaves bedHouse holding the number up and the
+         swing came out at 0.016 — inside a hair of the 0.01 this clause needs,
+         which would make a frozen material pass on rounding. */
+      let clock = 0;
+      const step = dt => { clock += dt; w.updateFades(dt); w.updateRig(dt, clock); w.updateStorm(dt); };
+      const keepH = az.HOUSE.house, keepW = az.HOUSE.work, keepP = az.HOUSE.practical;
+      az.HOUSE.house = 1; az.HOUSE.work = 1; az.HOUSE.practical = 1;
+      az.FIXTURES.forEach(f => { f.level = 1; });
+      for(let k = 0; k < 90; k++) step(1/60);
+      const lit = az.envLive(), litOn = chrome.envMapIntensity;
+      az.HOUSE.house = 0; az.HOUSE.work = 0; az.HOUSE.practical = 0;
+      az.FIXTURES.forEach(f => { f.level = 0; });
+      for(let k = 0; k < 200; k++) step(1/60);
+      const dark = az.envLive(), darkOn = chrome.envMapIntensity;
+      az.HOUSE.house = keepH; az.HOUSE.work = keepW; az.HOUSE.practical = keepP;
+      if(!(lit > dark + 0.2))
+        throw new Error('the room did not move between the two readings (' + lit.toFixed(4) +
+                        ' / ' + dark.toFixed(4) + '), so a frozen material would pass');
+      if(litOn !== lit || darkOn !== dark)
+        throw new Error('the imported metal read ' + litOn + ' / ' + darkOn + ' against ENV_LIVE ' +
+                        lit.toFixed(4) + ' / ' + dark.toFixed(4) + ' — it is not being driven');
+      return 'metal at ' + chrome.metalness + ' landed with the PMREM and rode the bed ' +
+             lit.toFixed(3) + ' -> ' + dark.toFixed(3) + '; the ' + paint.metalness +
+             '-metalness material landed with none';
+    } finally {
+      az.ENV_MATS.delete(chrome); az.ENV_MATS.delete(paint);
+    }
   });
 
   await P('the sign\'s lamps travel with it when it flies out', async () => {
