@@ -2102,6 +2102,84 @@ const probe = `
            ', glare ' + darkGlare.toFixed(2) + ' -> ' + litGlare.toFixed(2);
   });
 
+  console.log('--- RULING DM: the colour grade ---');
+
+  P('GRADE is a live constant block and the chunk carries houseGrade', ()=>{
+    if(!GRADE || !GRADE.u || !GRADE.u.gradeSat) throw new Error('GRADE holds no uniforms');
+    const pars = THREE.ShaderChunk.tonemapping_pars_fragment;
+    if(!/houseGrade/.test(pars)) throw new Error('the tonemapping chunk has no houseGrade');
+    if(!/gradeMix/.test(pars)) throw new Error('the grade has no bypass term');
+    /* substring, not regex: this file is a template literal, so a backslash in
+       a pattern is eaten before the RegExp ever sees it and probe-lint does not
+       sweep for that — it looks for backticks and singly-escaped quotes */
+    if(THREE.ShaderChunk.tonemapping_fragment.indexOf('houseGrade( toneMapping') < 0)
+      throw new Error('the grade is not applied AFTER toneMapping');
+    return 'contrast ' + GRADE.contrast + ', sat ' + GRADE.sat;
+  });
+
+  P('the grade shares its uniform objects, and rides the SAME hook as the fog', ()=>{
+    /* one hook carrying both rulings: two wrappers per material would be two
+       chances for a later one to drop the earlier */
+    const m = new THREE.MeshStandardMaterial();
+    atmTrack(m);
+    const sh = { uniforms:{} };
+    m.onBeforeCompile(sh, renderer);
+    if(sh.uniforms.gradeBC !== GRADE.u.gradeBC) throw new Error('gradeBC is a copy');
+    if(sh.uniforms.gradeSat !== GRADE.u.gradeSat) throw new Error('gradeSat is a copy');
+    if(sh.uniforms.gradeTint !== GRADE.u.gradeTint) throw new Error('gradeTint is a copy');
+    if(sh.uniforms.gradeMix !== GRADE.u.gradeMix) throw new Error('gradeMix is a copy');
+    if(sh.uniforms.atmHaze !== ATM.u.atmHaze)
+      throw new Error('the grade hook displaced the atmosphere hook');
+    return 'both rulings, one hook, four shared objects each';
+  });
+
+  P('an UNHOOKED material is bypassed, not rendered black', ()=>{
+    /* THE ONE THAT MATTERS.  tonemapping_pars_fragment is included unguarded,
+       so a material that declares these uniforms and never has them supplied
+       reads gradeTint as vec3(0).  Without the bypass that multiply turns the
+       surface BLACK — a miss would not be subtly wrong, it would be a hole in
+       the picture.  GLSL defaults an unsupplied uniform to 0, so gradeMix 0
+       must return the colour untouched. */
+    const src = THREE.ShaderChunk.tonemapping_pars_fragment;
+    const body = src.slice(src.indexOf('vec3 houseGrade'));
+    if(body.indexOf('return mix( c,') < 0)
+      throw new Error('houseGrade does not return a mix from the ORIGINAL colour');
+    if(body.indexOf('gradeMix );') < 0)
+      throw new Error('the mix is not driven by gradeMix, so 0 would not bypass');
+    /* and the tint must sit inside the graded branch, never on the source */
+    if(body.indexOf('c *= gradeTint') >= 0)
+      throw new Error('gradeTint multiplies the source colour, so 0 would blacken it');
+    return 'gradeMix 0 returns the ACES pixel untouched';
+  });
+
+  P('additive light is exempt from the grade, on purpose', ()=>{
+    /* a beam and a gobo flare ARE the light; the surfaces they fall on are
+       graded already, so grading the source too tints the same photon twice */
+    const beams = [], flares = [];
+    scene.traverse(o=>{
+      if(!o.isMesh || !o.material || Array.isArray(o.material)) return;
+      const m = o.material;
+      if(m.isShaderMaterial && m.blending === THREE.AdditiveBlending) beams.push(m);
+      else if(m.blending === THREE.AdditiveBlending && m.isMeshBasicMaterial) flares.push(m);
+    });
+    if(!beams.length) throw new Error('no beam materials found at all');
+    if(!flares.length) throw new Error('no additive flare materials found at all');
+    const litBeam = beams.filter(m=>m.toneMapped !== false);
+    const litFlare = flares.filter(m=>m.toneMapped !== false);
+    if(litBeam.length)
+      throw new Error(litBeam.length + ' of ' + beams.length + ' beams are still toneMapped');
+    if(litFlare.length)
+      throw new Error(litFlare.length + ' of ' + flares.length + ' additive flares are still toneMapped');
+    return beams.length + ' beams and ' + flares.length + ' flares exempt';
+  });
+
+  P('the shared M table went through the hook', ()=>{
+    const missed = Object.keys(M).filter(k=>M[k] && M[k].isMaterial && !M[k].userData.atmHooked);
+    if(missed.length)
+      throw new Error(missed.length + ' M materials were never hooked, first is ' + missed[0]);
+    return Object.keys(M).length + ' shared materials hooked';
+  });
+
   window.__out = { fatal: window.__fatal||null,
     frames:n,
     cameraPos:[+camera.position.x.toFixed(2),+camera.position.y.toFixed(2),+camera.position.z.toFixed(2)],

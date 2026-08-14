@@ -89,6 +89,11 @@ function makeBeam(len, rad){
                uTime:{value:0}, uSoft:{value:2.4}, uGobo:{value:GOBOS[0]}, uUseGobo:{value:0} },
     transparent:true, blending:T.AdditiveBlending, depthWrite:false, side:T.DoubleSide
   });
+  /* RULING DM — the beam is the light itself, not a surface the light falls on,
+     so it stays out of the grade (see gradeExempt in p2).  A raw ShaderMaterial
+     never includes the tonemapping chunk in any case; saying it here makes the
+     intent explicit rather than incidental to which material class was used. */
+  gradeExempt(mat);
   const m = new T.Mesh(geo, mat);
   m.frustumCulled = true;          // a beam behind you costs nothing
   m.raycast = ()=>{};              // beams are air — never pickable
@@ -565,6 +570,7 @@ function addFixture(o){
       depthWrite:false, opacity:0}));
   pool.rotation.x = -Math.PI/2; pool.position.y = 0.012;
   pool.raycast = ()=>{};
+  gradeExempt(pool.material);      // RULING DM — additive light, graded once not twice
   poolGroup.add(pool); f.pool = pool;
 
   // hot lens glow
@@ -572,6 +578,7 @@ function addFixture(o){
     map:GOBOS[0], transparent:true, blending:T.AdditiveBlending, depthWrite:false, opacity:0}));
   glow.position.z = f.type==='cyc'?.24:.4;
   glow.raycast = ()=>{};
+  gradeExempt(glow.material);      // RULING DM — additive light, graded once not twice
   (f.type==='mover'?body.userData.head:grp).add(glow); f.glow = glow;
 
   FIXTURES.push(f);
@@ -1146,6 +1153,13 @@ function updateRig(dt, t){
   ATM.u.atmHaze.value  = ATM.haze * (1.35 - 0.35*bed);
   ATM.u.atmGlare.value = ATM.glare * Math.min(1, bedRig*1.4);
   ATM.u.atmHeight.value = ATM.height;
+  /* RULING DM — nothing animates the grade today; it is his to tune from the
+     LIGHTING panel (DO).  The write lives HERE anyway so that when a cue does
+     reach for it there is one place it is applied, not a second one to find. */
+  GRADE.u.gradeBC.value.set(GRADE.bright, GRADE.contrast);
+  GRADE.u.gradeSat.value = GRADE.sat;
+  GRADE.u.gradeTint.value.set(GRADE.tint);
+  GRADE.u.gradeMix.value = GRADE.mix;
   scene.background.setRGB(bed*0.014, bed*0.017, bed*0.028);
   FLY.forEach(ls=>{ if(ls.practical){ ls.practical.light.intensity = HOUSE.practical*3.2;
     ls.practical.bulbs.forEach(b=>b.material.color.setRGB(

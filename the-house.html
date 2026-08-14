@@ -1144,8 +1144,57 @@ T.ShaderChunk.fog_fragment =
   ' gl_FragColor.rgb = mix( gl_FragColor.rgb, atmCol, fogFactor );\n' +
   '#endif\n';
 
-/* one hook per material, ever.  needsUpdate because a material that has already
-   compiled keeps its program until it is told otherwise. */
+/* ============================================================================
+   RULING DM — THE COLOUR GRADE RIDES THE TONEMAPPING STAGE.
+
+   Roblox's ColorCorrectionEffect is a post-tonemap curve — brightness,
+   contrast, saturation, tint — and ACES already sits at exactly that point in
+   the pipeline.  So this is a chunk patch and not a composer pass: it costs
+   nothing, it works in BOTH eyes, and it keeps driver fixed-foveated rendering,
+   which a hand-rolled stereo composer would forfeit.  Foveation is the only
+   governor vrPerf has mid-session (p9) — and the first headset readings show it
+   already pegged at 1.00 with no travel left, so it cannot be spent on bloom.
+
+   Same seam as RULING DL, for the same reason: there is no UniformsLib for
+   tonemapping at all, and even where there is one it does not work (ShaderLib
+   clones at module load).  ONE shared uniform object each, injected through
+   onBeforeCompile, riding DK's registry walk.
+
+   gradeMix EXISTS BECAUSE A MISS HERE WOULD BE CATASTROPHIC, NOT MERELY WRONG.
+   tonemapping_pars_fragment is included unguarded, so a material that declared
+   these uniforms and never had them supplied would read gradeTint as vec3(0)
+   and RENDER BLACK.  At gradeMix 0 the grade is bypassed entirely and the pixel
+   is exactly what ACES produced, so an unhooked material looks like it did
+   before this ruling instead of like a hole in the picture.
+   ========================================================================== */
+const GRADE = { bright:0.0, contrast:0.12, sat:-0.05, tint:0xffeedd, mix:1.0 };
+GRADE.u = { gradeBC:{value:new T.Vector2(GRADE.bright, GRADE.contrast)},
+            gradeSat:{value:GRADE.sat},
+            gradeTint:{value:new T.Color(GRADE.tint)},
+            gradeMix:{value:GRADE.mix} };
+
+T.ShaderChunk.tonemapping_pars_fragment +=
+  '\nuniform vec2 gradeBC;\nuniform float gradeSat;\nuniform vec3 gradeTint;\n' +
+  'uniform float gradeMix;\n' +
+  'vec3 houseGrade( vec3 c ){\n' +
+  '  vec3 g = c + gradeBC.x;\n' +
+  '  g = ( g - 0.5 ) * ( 1.0 + gradeBC.y ) + 0.5;\n' +
+  '  float l = dot( g, vec3( 0.2126, 0.7152, 0.0722 ) );\n' +
+  '  g = mix( vec3( l ), g, 1.0 + gradeSat );\n' +
+  '  g *= gradeTint;\n' +
+  '  return mix( c, max( g, vec3( 0.0 ) ), gradeMix );\n' +
+  '}\n';
+T.ShaderChunk.tonemapping_fragment =
+  '#if defined( TONE_MAPPING )\n' +
+  '  gl_FragColor.rgb = houseGrade( toneMapping( gl_FragColor.rgb ) );\n' +
+  '#endif\n';
+
+/* ONE hook per material, ever, carrying BOTH rulings.  needsUpdate because a
+   material that has already compiled keeps its program until it is told
+   otherwise.  DL and DM share the hook rather than taking one each: two
+   onBeforeCompile wrappers per material is two closures and two chances for a
+   later one to drop the earlier — and the chain below is asserted precisely
+   because that is the failure it would cause. */
 function atmTrack(m){
   if(!m || m.userData.atmHooked) return m;
   const prev = m.onBeforeCompile;
@@ -1155,9 +1204,23 @@ function atmTrack(m){
     sh.uniforms.atmHaze   = ATM.u.atmHaze;     // a copy would freeze at first
     sh.uniforms.atmGlare  = ATM.u.atmGlare;    // compile and never move again
     sh.uniforms.atmMix    = ATM.u.atmMix;
+    sh.uniforms.gradeBC   = GRADE.u.gradeBC;   // RULING DM, same seam
+    sh.uniforms.gradeSat  = GRADE.u.gradeSat;
+    sh.uniforms.gradeTint = GRADE.u.gradeTint;
+    sh.uniforms.gradeMix  = GRADE.u.gradeMix;
   };
   m.userData.atmHooked = true;
   m.needsUpdate = true;
+  return m;
+}
+/* RULING DM — ADDITIVE LIGHT IS LEFT OUT OF THE GRADE ON PURPOSE, and this is
+   the note that stops someone "fixing" it later as an omission.  A beam, a gobo
+   flare or a glow plane is the LIGHT ITSELF; the surfaces it falls on are
+   already graded, so grading the source as well applies the tint twice to the
+   same photon.  toneMapped=false is what takes a material out, and it also
+   drops the TONE_MAPPING define so the chunk above is never reached. */
+function gradeExempt(m){
+  if(m) m.toneMapped = false;
   return m;
 }
 
@@ -1350,6 +1413,12 @@ function envRecollect(){
     for(const k in WOODM) envTrack(WOODM[k]);
   if(typeof GOODSM !== 'undefined')
     for(const k in GOODSM) envTrack(GOODSM[k]);
+  /* the shared M table, for RULINGS DL and DM rather than DK: a paint that is
+     not on a mesh at this instant still compiles the moment something wears it,
+     and an unhooked material would reach the fog and grade chunks with their
+     uniforms unsupplied.  M is a const of p2, so it exists by the time any call
+     site here can run — see the dead-zone note above. */
+  for(const k in M) envTrack(M[k]);
   return ENV_MATS.size;
 }
 /* the per-frame walk — one Set, one pass, no traversal */
@@ -4603,6 +4672,11 @@ function makeBeam(len, rad){
                uTime:{value:0}, uSoft:{value:2.4}, uGobo:{value:GOBOS[0]}, uUseGobo:{value:0} },
     transparent:true, blending:T.AdditiveBlending, depthWrite:false, side:T.DoubleSide
   });
+  /* RULING DM — the beam is the light itself, not a surface the light falls on,
+     so it stays out of the grade (see gradeExempt in p2).  A raw ShaderMaterial
+     never includes the tonemapping chunk in any case; saying it here makes the
+     intent explicit rather than incidental to which material class was used. */
+  gradeExempt(mat);
   const m = new T.Mesh(geo, mat);
   m.frustumCulled = true;          // a beam behind you costs nothing
   m.raycast = ()=>{};              // beams are air — never pickable
@@ -5079,6 +5153,7 @@ function addFixture(o){
       depthWrite:false, opacity:0}));
   pool.rotation.x = -Math.PI/2; pool.position.y = 0.012;
   pool.raycast = ()=>{};
+  gradeExempt(pool.material);      // RULING DM — additive light, graded once not twice
   poolGroup.add(pool); f.pool = pool;
 
   // hot lens glow
@@ -5086,6 +5161,7 @@ function addFixture(o){
     map:GOBOS[0], transparent:true, blending:T.AdditiveBlending, depthWrite:false, opacity:0}));
   glow.position.z = f.type==='cyc'?.24:.4;
   glow.raycast = ()=>{};
+  gradeExempt(glow.material);      // RULING DM — additive light, graded once not twice
   (f.type==='mover'?body.userData.head:grp).add(glow); f.glow = glow;
 
   FIXTURES.push(f);
@@ -5660,6 +5736,13 @@ function updateRig(dt, t){
   ATM.u.atmHaze.value  = ATM.haze * (1.35 - 0.35*bed);
   ATM.u.atmGlare.value = ATM.glare * Math.min(1, bedRig*1.4);
   ATM.u.atmHeight.value = ATM.height;
+  /* RULING DM — nothing animates the grade today; it is his to tune from the
+     LIGHTING panel (DO).  The write lives HERE anyway so that when a cue does
+     reach for it there is one place it is applied, not a second one to find. */
+  GRADE.u.gradeBC.value.set(GRADE.bright, GRADE.contrast);
+  GRADE.u.gradeSat.value = GRADE.sat;
+  GRADE.u.gradeTint.value.set(GRADE.tint);
+  GRADE.u.gradeMix.value = GRADE.mix;
   scene.background.setRGB(bed*0.014, bed*0.017, bed*0.028);
   FLY.forEach(ls=>{ if(ls.practical){ ls.practical.light.intensity = HOUSE.practical*3.2;
     ls.practical.bulbs.forEach(b=>b.material.color.setRGB(
