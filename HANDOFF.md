@@ -226,7 +226,7 @@ compare the *same* production across stages instead.
 
 ## NEXT SESSION: **NOBODY HAS SEEN ANY OF THIS** (2026-08-14, DQ)
 
-Cache-bust **`?v=28`**. Rulings at **DQ**. `main` is at **`0e3c85c`**.
+Cache-bust **`?v=28`**. Rulings at **DQ**. `main` is at **`78f627a`**.
 **Read STATE.md — it carries the full picture.**
 
 **EIGHT PRs, #174–#182, EIGHT CLEAN MERGES, NO RECOVERY PR.** Each based on
