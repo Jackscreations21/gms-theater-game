@@ -50,3 +50,23 @@
 
 - **New per-stage state gets parked in `p2k`**, or it leaks across the
   stage swap.
+
+- **Every material must reach `envTrack` (RULINGS DK, DL, DM).** It is
+  the one registration: it drives `envMapIntensity` off the light bed
+  (DK) and hands the material the shared atmosphere and colour-grade
+  uniform objects through a single `onBeforeCompile` (DL, DM). A
+  material that misses it renders with the fog and grade **bypassed**
+  rather than broken — `atmMix` and `gradeMix` default to 0 for exactly
+  that reason — so the failure is silent and is asserted in
+  `tests/full14.js` rather than left to be noticed. Anything that mints
+  geometry after boot calls `envRegister(root)`; anything that mints a
+  bare material calls `envTrack(m)`, which returns it so a keyed cache
+  can mint straight through. **A copied uniform is the failure mode to
+  fear**: `sh.uniforms.x = {value: v}` looks identical on the first
+  frame and never moves again — share the object.
+
+- **Additive light is exempt from the grade on purpose** (DM). A beam, a
+  gobo flare or a lens glow *is* the light; the surfaces it falls on are
+  graded already, so grading the source too tints the same photon twice.
+  `gradeExempt(m)` sets `toneMapped = false`. This is not an omission to
+  be tidied up later.

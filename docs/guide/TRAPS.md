@@ -856,6 +856,44 @@ against this list before opening a PR; **add new traps as you hit them.**
   hand — it is not a string in `src/`. A plan step saying "bump it in `p1.txt`"
   sends you looking for something that was never there; bumping it means writing
   the new number into STATE.md and HANDOFF.md.
+- **A BACKSLASH IN A REGEX INSIDE A PROBE TEMPLATE IS EATEN BEFORE `RegExp`
+  EVER SEES IT, AND `probe-lint` DOES NOT SWEEP FOR IT.** The suites and probes
+  are template literals, so `/houseGrade\(\s*x/` reaches the evaluator as
+  `/houseGrade(s*x/` — *"Unterminated group"*, at parse time, taking the whole
+  file down before a single case runs. The lint catches backticks and singly
+  escaped *quotes*; this is a third member of that family it does not know
+  about. Either double the backslash or, better for asserting generated text,
+  use `indexOf` — exact and immune.
+- **`UniformsLib` cannot be extended after load, and the test that checks it
+  will pass anyway.** `ShaderLib` merges and **clones** its uniforms at module
+  load — `ShaderLib.standard.uniforms.fogColor` is not the same object as
+  `UniformsLib.fog.fogColor` — and `WebGLPrograms.getUniforms` clones again per
+  material. Adding `UniformsLib.fog.myThing` reaches nothing, while an assertion
+  that reads `UniformsLib` directly goes green over a shader that will not
+  compile. The only seam that hands a material a **shared** uniform object is
+  `onBeforeCompile`.
+- **A shader chunk names r128's varying, not the one in the docs.** r128 calls
+  it `fogDepth`; a later release renamed it `vFogDepth`. Getting it wrong is a
+  compile error that **passes all nineteen suites**, because jsdom stubs
+  `WebGLRenderer`. Read the chunk out of the vendored artifact
+  (`T.ShaderChunk.fog_fragment`) and assert the name, so the tripwire fires if
+  three.js ever moves under you.
+- **`transformed` does not exist in every shader that includes `fog_vertex`.**
+  The SPRITE shader includes `fog_vertex` but neither `begin_vertex` nor
+  `project_vertex`. Read world position off `position` (always declared) and
+  apply `instanceMatrix` under `#ifdef USE_INSTANCING` the way `project_vertex`
+  does.
+- **An unsupplied uniform is 0, and 0 is rarely neutral.** A material that
+  declares `gradeTint` and never receives it reads `vec3(0)` and renders
+  **black** — a hole in the picture, not a subtle drift. Give every injected
+  effect a `mix` term that defaults to 0 = bypass, so an incomplete registry
+  degrades to "exactly as before" instead of to a fault. Then assert the
+  coverage, because that failure is now silent.
+- **A byte count is a proxy; the hash is the proof.** A negative check that
+  swaps two strings of EQUAL LENGTH leaves `the-house.html` the same size, so
+  "prove the mutation changed the build" stays silent while the build really did
+  change. Compare the sha, and prove the ORIGINAL string absent as well as the
+  mutant present.
 - PowerShell 5.1 mangles `git commit -m` with double quotes — message to
   file, `-F` it.
 - Never `git add -A` while agent worktrees exist under `.claude/` —
