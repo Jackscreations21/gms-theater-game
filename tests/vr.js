@@ -52,6 +52,21 @@ THREE.WebGLRenderer = class {
   render(scene, camera){ this.renderCount++;
     // walk the graph the way the renderer would, to catch bad matrices
     scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); }
+  /* PMREMGenerator is CORE three.js, not an addon, and RULING DK builds the
+     room environment with it at load — so fromScene runs in every suite.  It
+     asks the renderer for exactly these four things and this stub had none of
+     them.  An incomplete stub is a fault in the harness, not a reason to make
+     the game degrade: with them, fromScene completes and scene.environment is
+     a real texture here as well as in a browser.
+     getClearColor MUTATES ITS TARGET and does not merely return it (r128
+     three.js :17534 does target.copy).  A version that returns the argument
+     untouched leaves PMREM reading its own module-level Color, which is WHITE,
+     while a real renderer clears BLACK — so a stubbed run would build a white
+     environment from a scene with no background and report success. */
+  compile(){}
+  getRenderTarget(){ return this._rt || null; }
+  setRenderTarget(t){ this._rt = t || null; }
+  getClearColor(c){ return c.set(0x000000); }
 };
 w.navigator.xr = {
   isSessionSupported: ()=>Promise.resolve(true),
@@ -3042,6 +3057,78 @@ const probe = `
       throw new Error('the ceiling reads ' + Pm.worst.toFixed(0) + ', not ' + PERF_CEIL);
     exitVR();
     return 'capped at the meter ceiling of ' + PERF_CEIL + 'ms';
+  });
+
+  console.log('--- vr: RULING DK, the session samples the environment ---');
+
+  P('a session mints geometry, and every bit of it follows the light bed', ()=>{
+    /* THE GAP THIS EXISTS FOR.  vrOnStart runs five builders — controllers,
+       desks, ropes, belt, console — long after init(), so a session mints ~142
+       standard materials that the boot walk could never have seen.  Left alone
+       they sit at the default 1: 1.8x the driven value at full bed and 7.27x in
+       a blackout, and the largest block of them is the rope rail.  The desktop
+       assertion in full14 cannot see this, because it never enters a session. */
+    const ours = ()=>{
+      const out = [], seen = [];
+      scene.traverse(o=>{
+        if(!o.isMesh || !o.material) return;
+        const list = Array.isArray(o.material) ? o.material : [o.material];
+        for(const m of list){
+          if(!m || !m.isMeshStandardMaterial || seen.indexOf(m) >= 0) continue;
+          seen.push(m); out.push(m);
+        }
+      });
+      return out;
+    };
+    enterVR();
+    if(!VR.active) throw new Error('sessionstart did not take');
+    /* the guard is that the session's OWN geometry is standing and measurable —
+       not a before/after delta, because earlier cases in this suite have already
+       been in and out of a session and the builders all return early the second
+       time */
+    if(!VR.ropes || !VR.ropes.length) throw new Error('the session built no ropes to measure');
+    if(!VR.rig) throw new Error('the session built no rig to measure');
+    const ropeMats = [];
+    for(const r of VR.ropes){
+      const m = r.mesh && r.mesh.material;
+      if(m && m.isMeshStandardMaterial && ropeMats.indexOf(m) < 0) ropeMats.push(m);
+    }
+    if(!ropeMats.length) throw new Error('no rope carries a standard material');
+    const after = ours();
+    for(const m of ropeMats)
+      if(after.indexOf(m) < 0)
+        throw new Error('a rope material is not reachable from the scene — the sweep would miss it');
+    /* run the real frame so ENV_LIVE is whatever the room says, then read the
+       session's own geometry back off it */
+    let clock = 0;
+    const step = dt=>{ clock += dt; updateFades(dt); updateRig(dt, clock); };
+    for(let i=0;i<30;i++) step(1/72);
+    const stray = after.filter(m=>m.envMapIntensity !== ENV_LIVE);
+    if(stray.length){
+      exitVR();
+      throw new Error(stray.length + ' of ' + after.length +
+        ' standard materials read ' + stray[0].envMapIntensity +
+        ' in a session against ENV_LIVE ' + ENV_LIVE);
+    }
+    /* and they MOVE: a session held at a fixed value is the BH fault wearing
+       a headset */
+    const lit = ENV_LIVE;
+    const keepH = HOUSE.house, keepW = HOUSE.work, keepP = HOUSE.practical;
+    HOUSE.house = 0; HOUSE.work = 0; HOUSE.practical = 0;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    for(let i=0;i<90;i++) step(1/72);
+    const dark = ENV_LIVE;
+    const darkStray = after.filter(m=>m.envMapIntensity !== dark);
+    HOUSE.house = keepH; HOUSE.work = keepW; HOUSE.practical = keepP;
+    exitVR();
+    if(darkStray.length)
+      throw new Error(darkStray.length + ' session materials stuck at ' +
+                      darkStray[0].envMapIntensity + ' through a blackout');
+    if(!(lit > dark + 0.01))
+      throw new Error('the session does not follow the bed: lit ' + lit.toFixed(4) +
+                      ' against a blackout ' + dark.toFixed(4));
+    return ropeMats.length + ' rope materials among ' + after.length +
+           ' in a session, all driven, blackout ' + dark.toFixed(3) + ' -> lit ' + lit.toFixed(3);
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'

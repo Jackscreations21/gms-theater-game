@@ -42,8 +42,11 @@ const WOOD_COL = {ply:0xc8ab7a, pine:0xd8c193};
 const WOODG = new T.BoxGeometry(1, 1, 1);
 var WOODM = {};                 // color -> ONE MeshStandardMaterial, shared
 function woodMat(color){
+  /* RULING DK — a paint colour is minted on demand, long after the boot walk
+     that collected the building, so it joins the environment registry as it is
+     made rather than waiting for the next rebuild to notice it. */
   return WOODM[color] || (WOODM[color] =
-    new T.MeshStandardMaterial({color, roughness:.85}));
+    envTrack(new T.MeshStandardMaterial({color, roughness:.85})));
 }
 /* the two accessors the header describes: every reader gets six faces
    whatever form the mesh is in, and every writer collapses back to one
@@ -1010,7 +1013,12 @@ function goodsMat(base, color){
   m.color = new T.Color(color);
   m.userData = m.userData || {};
   m.userData.goodsBase = src;
-  return GOODSM[k] = m;
+  /* RULING DK — and it must be TRACKED, not merely correct once.  clone()
+     copies envMapIntensity, so a dyed drape comes out carrying whatever the
+     room happened to be at the moment it was pulled and then never moves
+     again — right at the instant it is made, and quietly wrong from the next
+     cue onwards, which is the worst shape a fault can have. */
+  return GOODSM[k] = envTrack(m);
 }
 /* the nearest lineset whose GOODS come within reach of a world point.
    Measured to the bounding BOX: a house curtain is thirteen metres of

@@ -262,6 +262,14 @@ function vrOnStart(){
   vrBuildRopes();
   vrBuildBelt();
   vrDrawConsole(true);
+  /* RULING DK — AND THE SESSION'S OWN GEOMETRY SAMPLES THE ENVIRONMENT.  The
+     five builders above mint ~142 standard materials long after init() ran, and
+     the biggest block of them is the hemp rope rail you stand at.  Left
+     unregistered they sit at the default 1: 1.8x the driven value at full bed
+     and 7.27x in a blackout, in the one place the spec says it has to match
+     ("It has to match in VR").  The normal order is to load a show on the desk
+     and then put the headset on, so nothing downstream would have healed it. */
+  if(typeof envRecollect === 'function') envRecollect();
   const app = $('#app'); if(app) app.classList.add('inVR');
   if(typeof toast === 'function') toast('Walk with the left stick, turn with the right');
 }

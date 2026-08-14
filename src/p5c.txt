@@ -763,6 +763,13 @@ function showStrike(){
   for(const k of Object.keys(SHOW)) delete SHOW[k];
   Object.assign(SHOW, showBlank());
   if(typeof removeShowSmoke === 'function') removeShowSmoke();
+  /* RULING DK — and the environment registry lets go of the show.  It is rebuilt
+     from the live scene, which the show has just left, so its materials fall off
+     without anything having to name them — and they become collectable, which a
+     registry still holding them would prevent.  LAST, after removeShowSmoke:
+     one line higher and the registry kept 8-12 smoke materials that had already
+     gone, which is bounded and harmless and still not what it says it does. */
+  if(typeof envRecollect === 'function') envRecollect();
   if(typeof buildGoodsPalette === 'function') buildGoodsPalette();
   if(typeof refreshShowUI === 'function') refreshShowUI();
   if(typeof refreshFlyUI === 'function') refreshFlyUI();
@@ -858,6 +865,11 @@ function showLoad(key){
   if(SHOW_HANGS[key]) applyHang(key);
   SHOW.loadedHang = hangSnapshot();
   if(typeof lockShowStatic === 'function') lockShowStatic();
+  /* RULING DK — the show's own geometry samples the environment too, stand-ins
+     included.  One rebuild from the live scene rather than a subtree walk, so
+     nothing here depends on this being the only thing that changed.  The models
+     the importer lands are asynchronous and register themselves as they land. */
+  if(typeof envRecollect === 'function') envRecollect();
   /* the owner's delivered set models replace the stand-ins (RULING AZ) —
      fetched async per scene, applied when they arrive, silent when absent.
      p5i defines it and loads later in the build, so the typeof guard is the

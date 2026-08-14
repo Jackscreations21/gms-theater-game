@@ -4405,8 +4405,20 @@ function bjApplyModel(entry, root, scGiven){
      the one cue that names it — "PRE-SHOW ... the sign lit" — has the rig at
      zero.  Registered, his marquee was dark for the whole pre-show.  It carries
      its own glow instead (bjSignLamps). */
+  /* RULING DK — AND THE SIGN GETS THE ENVIRONMENT, which is a DIFFERENT question
+     from the one CF answered.  CF keeps the marquee off the fill list because CC
+     drives an EMISSIVE off the stage rig and the sign hangs downstage of a rig
+     that is at zero when the pre-show cue names it.  None of that reasoning is
+     about how much room ambience a metal surface reflects, and DK's scope is
+     every metal surface in his models — the sign included.  So the two
+     registrations are separate calls: env for everything that landed, CC's fill
+     for everything except the sign, exactly as before. */
   const isSign = entry.lamps === 'sign';
-  for(const o of landed){ bjFreeze(o); if(!isSign) bjFillRegister(o); }
+  for(const o of landed){
+    bjFreeze(o);
+    if(typeof envRegister === 'function') envRegister(o);
+    if(!isSign) bjFillRegister(o);
+  }
   /* BEFORE the sceneApply below, not after: fresh meshes wake on layer 0, and
      the refresh is what puts them into whatever state the scene is in */
   if(isSign) bjSignLamps(sc, root);

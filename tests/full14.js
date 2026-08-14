@@ -37,6 +37,21 @@ THREE.WebGLRenderer = class {
   render(scene, camera){ this.renderCount++;
     // walk the graph the way the renderer would, to catch bad matrices
     scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); }
+  /* PMREMGenerator is CORE three.js, not an addon, and RULING DK builds the
+     room environment with it at load — so fromScene runs in every suite.  It
+     asks the renderer for exactly these four things and this stub had none of
+     them.  An incomplete stub is a fault in the harness, not a reason to make
+     the game degrade: with them, fromScene completes and scene.environment is
+     a real texture here as well as in a browser.
+     getClearColor MUTATES ITS TARGET and does not merely return it (r128
+     three.js :17534 does target.copy).  A version that returns the argument
+     untouched leaves PMREM reading its own module-level Color, which is WHITE,
+     while a real renderer clears BLACK — so a stubbed run would build a white
+     environment from a scene with no background and report success. */
+  compile(){}
+  getRenderTarget(){ return this._rt || null; }
+  setRenderTarget(t){ this._rt = t || null; }
+  getClearColor(c){ return c.set(0x000000); }
 };
 w.THREE = THREE;
 w.AudioContext = undefined;
@@ -1720,6 +1735,254 @@ const probe = `
   P('click cue buttons', ()=>{ ['#btnGo','#btnBack','#btnTop','#btnStopFade'].forEach(s=>document.querySelector(s).click()); return 'ok'; });
   P('master sliders', ()=>{ ['#gm','#hz','#hl','#wl'].forEach(s=>{ const el=document.querySelector(s); el.value=42; el.oninput({target:el}); }); return 'ok'; });
   P('120 more frames', ()=>{ for(let i=0;i<120;i++){ const cb=window.__raf; window.__raf=null; if(cb) cb(Date.now()+i*16);} return 'ok'; });
+
+  console.log('--- RULING DK: the room has an environment ---');
+  P('the room has an environment for a metal surface to sample', ()=>{
+    /* nothing set scene.environment, so every imported MeshStandardMaterial
+       carried envMapIntensity 1 with nothing to reflect and rendered near-black */
+    if(!scene.environment) throw new Error('scene.environment is ' + scene.environment);
+    if(!scene.environment.isTexture)
+      throw new Error('scene.environment is not a texture: ' + scene.environment.constructor.name);
+    return 'environment texture, mapping ' + scene.environment.mapping;
+  });
+  P('ENV_INTENSITY is a live positive number', ()=>{
+    if(typeof ENV_INTENSITY !== 'number')
+      throw new Error('ENV_INTENSITY is ' + (typeof ENV_INTENSITY));
+    if(!(ENV_INTENSITY > 0)) throw new Error('ENV_INTENSITY reads ' + ENV_INTENSITY);
+    return 'ENV_INTENSITY ' + ENV_INTENSITY;
+  });
+  P('envTrack sets an imported-style standard material to the house intensity', ()=>{
+    const m = new THREE.MeshStandardMaterial({metalness:1, roughness:0.2});
+    /* the default is 1: an assertion that the field merely EXISTS would pass
+       against a build where envTrack does nothing at all */
+    if(m.envMapIntensity !== 1)
+      throw new Error('three.js no longer defaults envMapIntensity to 1: ' + m.envMapIntensity);
+    if(typeof envTrack !== 'function') throw new Error('envTrack is ' + (typeof envTrack));
+    if(envTrack(m) !== m) throw new Error('envTrack does not hand the material back');
+    if(typeof ENV_LIVE !== 'number') throw new Error('ENV_LIVE is ' + (typeof ENV_LIVE));
+    if(m.envMapIntensity !== ENV_LIVE)
+      throw new Error('envTrack left it at ' + m.envMapIntensity + ', ENV_LIVE is ' + ENV_LIVE);
+    if(!(m.envMapIntensity > 0))
+      throw new Error('the house intensity is ' + m.envMapIntensity);
+    ENV_MATS.delete(m);                     // leave the registry as we found it
+    return 'envMapIntensity ' + m.envMapIntensity.toFixed(4);
+  });
+  P('a dyed drape is TRACKED, not just correct at the moment it is dyed', ()=>{
+    /* goodsMat CLONES M.serge, and clone() copies envMapIntensity — so an
+       untracked drape carries whatever the room happened to be when it was
+       pulled and then never moves again.  It looks right at the instant it is
+       made and is silently wrong from the next cue on, which is the one shape
+       none of the other cases here can see. */
+    const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+    const base = M.serge || M.velour;
+    if(!base) throw new Error('no stock cloth material to dye');
+    const drape = goodsMat(base, 0x8b1a2b);
+    /* leave neither cache holding this dye, or the registry-size case below
+       counts a material that only exists because this one ran */
+    try{
+    if(!drape || drape === base) throw new Error('goodsMat handed back the base material');
+    if(!ENV_MATS.has(drape)) throw new Error('the dyed clone never reached the registry');
+    const born = ENV_LIVE;
+    /* move the room a long way, so a frozen clone cannot pass by luck */
+    const keepH = HOUSE.house, keepW = HOUSE.work, keepP = HOUSE.practical,
+          keepB = RIG.blackout, keepL = FIXTURES.map(f=>f.level);
+    RIG.blackout = true; HOUSE.house = 0; HOUSE.work = 0; HOUSE.practical = 0;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    for(let i=0;i<60;i++) step();
+    const now = ENV_LIVE, got = drape.envMapIntensity;
+    HOUSE.house = keepH; HOUSE.work = keepW; HOUSE.practical = keepP;
+    RIG.blackout = keepB; FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+    for(let i=0;i<40;i++) step();
+    if(!(born > now + 0.01))
+      throw new Error('the room did not move, so a frozen clone would pass: ' +
+                      born.toFixed(4) + ' -> ' + now.toFixed(4));
+    if(got !== now)
+      throw new Error('the drape reads ' + got + ' after the room went to ' +
+                      now.toFixed(4) + ' — it froze at ' + born.toFixed(4));
+    return 'dyed at ' + born.toFixed(3) + ', followed the room down to ' + now.toFixed(3);
+    } finally {
+      for(const k in GOODSM) if(GOODSM[k] === drape) delete GOODSM[k];
+      ENV_MATS.delete(drape);
+    }
+  });
+  P('the environment follows the bed, so a blackout is not lit like a full stage', ()=>{
+    /* RULING BH fixed exactly this fault for the ambient.  Step the real frame
+       (updateFades then updateRig), never updateRig alone (TRAPS). */
+    const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+    const keepH = HOUSE.house, keepW = HOUSE.work, keepP = HOUSE.practical,
+          keepB = RIG.blackout, keepL = FIXTURES.map(f=>f.level);
+    RIG.blackout = true; HOUSE.house = 0; HOUSE.work = 0; HOUSE.practical = 0;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    for(let i=0;i<60;i++) step();
+    const dark = ENV_LIVE;
+    RIG.blackout = false; HOUSE.house = 1; HOUSE.work = 1; HOUSE.practical = 1;
+    for(let i=0;i<60;i++) step();
+    const lit = ENV_LIVE;
+    HOUSE.house = keepH; HOUSE.work = keepW; HOUSE.practical = keepP;
+    RIG.blackout = keepB; FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+    for(let i=0;i<40;i++) step();
+    if(typeof dark !== 'number' || typeof lit !== 'number')
+      throw new Error('ENV_LIVE is not a number: ' + dark + ' / ' + lit);
+    if(!(lit > dark + 0.01))
+      throw new Error('a blackout reads ' + dark.toFixed(4) + ' and a lit room ' + lit.toFixed(4));
+    if(!(dark < ENV_INTENSITY))
+      throw new Error('a blackout still sits at the full house intensity: ' + dark.toFixed(4));
+    return 'blackout ' + dark.toFixed(3) + ' -> lit room ' + lit.toFixed(3);
+  });
+  P('a registered subtree is driven every frame, and a rebuild lets it go', ()=>{
+    /* one registry, one walk.  envRegister collects a subtree; envDrive writes
+       the whole Set each frame; envRecollect rebuilds from what is really in the
+       scene, which is what stops an imported set per load piling up for ever. */
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({metalness:1, roughness:0.25});
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(1,1,1), mat));
+    const before = ENV_MATS.size;
+    envRegister(g);                         // g is NOT in the scene
+    if(!ENV_MATS.has(mat)) throw new Error('envRegister did not put the material on the registry');
+    if(ENV_MATS.size !== before + 1)
+      throw new Error('the registry moved from ' + before + ' to ' + ENV_MATS.size + ' for one material');
+    envRegister(g);                         // a Set, so registering twice is free
+    if(ENV_MATS.size !== before + 1)
+      throw new Error('registering the same subtree twice grew the registry to ' + ENV_MATS.size);
+    if(mat.envMapIntensity !== ENV_LIVE)
+      throw new Error('registration left it at ' + mat.envMapIntensity + ', ENV_LIVE is ' + ENV_LIVE);
+    mat.envMapIntensity = 99;               // something no drive would produce
+    updateFades(0.05); updateRig(0.05, 1);
+    if(mat.envMapIntensity !== ENV_LIVE)
+      throw new Error('one frame left it at ' + mat.envMapIntensity + ', ENV_LIVE is ' + ENV_LIVE);
+    envRecollect();
+    if(ENV_MATS.has(mat))
+      throw new Error('a rebuild kept a material that is in no scene');
+    if(ENV_MATS.size !== before)
+      throw new Error('after the rebuild the registry reads ' + ENV_MATS.size + ', not ' + before);
+    return 'registered, driven to ' + ENV_LIVE.toFixed(4) + ', and rebuilt away';
+  });
+  P('the BUILDING follows the bed too, not only the imported sets', ()=>{
+    /* THE ASSERTION THAT WAS MISSING.  r128 hands scene.environment to EVERY
+       standard material, so the bed clause governs the theatre itself — and a
+       test that builds its own material or reads the ENV_LIVE global can never
+       see 120 live materials sitting at the default 1.  Reach into the scene. */
+    const imports = SHOW.bjFill || [];
+    const mats = [], seen = [];
+    scene.traverse(o=>{
+      if(!o.isMesh || !o.material) return;
+      const list = Array.isArray(o.material) ? o.material : [o.material];
+      for(const m of list){
+        if(!m || !m.isMeshStandardMaterial) continue;
+        if(imports.indexOf(m) >= 0 || seen.indexOf(m) >= 0) continue;
+        seen.push(m); mats.push(m);
+      }
+    });
+    if(mats.length < 50)
+      throw new Error('only ' + mats.length + ' of our own standard materials found in the scene');
+    const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+    const keepH = HOUSE.house, keepW = HOUSE.work, keepP = HOUSE.practical,
+          keepB = RIG.blackout, keepL = FIXTURES.map(f=>f.level);
+    RIG.blackout = true; HOUSE.house = 0; HOUSE.work = 0; HOUSE.practical = 0;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    for(let i=0;i<60;i++) step();
+    const darkLive = ENV_LIVE, darkOff = mats.filter(m=>m.envMapIntensity !== darkLive);
+    RIG.blackout = false; HOUSE.house = 1; HOUSE.work = 1; HOUSE.practical = 1;
+    for(let i=0;i<60;i++) step();
+    const litLive = ENV_LIVE, litOff = mats.filter(m=>m.envMapIntensity !== litLive);
+    HOUSE.house = keepH; HOUSE.work = keepW; HOUSE.practical = keepP;
+    RIG.blackout = keepB; FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+    for(let i=0;i<40;i++) step();
+    if(darkOff.length)
+      throw new Error('in a blackout ' + darkOff.length + ' of ' + mats.length +
+        ' of our standard materials read ' + darkOff[0].envMapIntensity + ', not ' + darkLive.toFixed(4));
+    if(litOff.length)
+      throw new Error('with the room lit ' + litOff.length + ' of ' + mats.length +
+        ' read ' + litOff[0].envMapIntensity + ', not ' + litLive.toFixed(4));
+    if(!(litLive > darkLive + 0.01))
+      throw new Error('the building does not move: blackout ' + darkLive.toFixed(4) +
+        ' against a lit room ' + litLive.toFixed(4));
+    return mats.length + ' of our own materials, blackout ' + darkLive.toFixed(3) +
+           ' -> lit ' + litLive.toFixed(3);
+  });
+  P('a figure minted after boot, and the dummy it carries, follow the bed', ()=>{
+    /* two lazy paths the boot walk cannot see.  makeHand mints a cloth and a
+       hat the first time anything asks for crew — which may be a carpenter call
+       hours in — and crewPickUp mints a fresh material PER CARRY, which recurs
+       right through a changeover, which is when the stage is dark. */
+    const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+    const matsUnder = root=>{
+      const out = [];
+      root.traverse(o=>{
+        if(!o.isMesh || !o.material) return;
+        const list = Array.isArray(o.material) ? o.material : [o.material];
+        for(const m of list)
+          if(m && m.isMeshStandardMaterial && out.indexOf(m) < 0) out.push(m);
+      });
+      return out;
+    };
+    const lead = carpLead();
+    if(!lead || !lead.group) throw new Error('no lead carpenter to measure');
+    /* EVERY figure, not just the lead.  carpLead spawns the six show hands
+       before minting the seventh, and each of those gets its own cloth and hat
+       out of makeHand — so a version measuring only the lead is blind to the
+       hook that matters most, which is what the negative check found. */
+    const figure = [];
+    for(const h of CREW.people)
+      for(const m of matsUnder(h.group)) if(figure.indexOf(m) < 0) figure.push(m);
+    if(figure.length < 8)
+      throw new Error('the crew carry ' + figure.length + ' standard materials across ' +
+                      CREW.people.length + ' figures — too few to be measuring the hands');
+    const hand = CREW.people[0];
+    crewPickUp(hand, 'flat');
+    const carried = hand.carry ? matsUnder(hand.carry) : [];
+    if(!carried.length) throw new Error('the carried dummy has no standard material');
+    for(let i=0;i<20;i++) step();
+    const figStray = figure.filter(m=>m.envMapIntensity !== ENV_LIVE);
+    const carStray = carried.filter(m=>m.envMapIntensity !== ENV_LIVE);
+    if(hand.carry){ hand.hands.remove(hand.carry); hand.carry = null; }
+    if(figStray.length)
+      throw new Error(figStray.length + ' of ' + figure.length +
+        ' materials on the lazily-minted crew read ' + figStray[0].envMapIntensity +
+        ', against ENV_LIVE ' + ENV_LIVE);
+    if(carStray.length)
+      throw new Error(carStray.length + ' of ' + carried.length +
+        ' materials on a carried dummy read ' + carStray[0].envMapIntensity +
+        ', against ENV_LIVE ' + ENV_LIVE);
+    return figure.length + ' across ' + CREW.people.length + ' figures and ' +
+           carried.length + ' on the dummy, all at ' + ENV_LIVE.toFixed(4);
+  });
+  P('the environment box encloses the camera, floor included', ()=>{
+    /* PMREM's cube camera sits at the ORIGIN, so a floor standing AT y 0 is
+       edge-on and contributes nothing while half the sphere falls through to a
+       background in a different encoding.  Sample directions, do not eye it. */
+    if(!ENV_SRC) throw new Error('the environment source box was not kept');
+    const faces = ENV_SRC.children.filter(o=>o.isMesh);
+    if(faces.length !== 6) throw new Error(faces.length + ' faces in the box, not 6');
+    ENV_SRC.updateMatrixWorld(true);
+    const rc = new THREE.Raycaster(), org = new THREE.Vector3(0,0,0),
+          dir = new THREE.Vector3();
+    const hits = faces.map(()=>0);
+    let miss = 0;
+    const N = 4000;
+    for(let i=0;i<N;i++){
+      /* an even sphere: z uniform, longitude by the golden angle */
+      const z = 1 - 2*(i + 0.5)/N, r = Math.sqrt(Math.max(0, 1 - z*z)),
+            a = i * 2.399963229728653;
+      dir.set(r*Math.cos(a), z, r*Math.sin(a));
+      rc.set(org, dir);
+      const hit = rc.intersectObjects(faces, false);
+      if(!hit.length){ miss++; continue; }
+      hits[faces.indexOf(hit[0].object)]++;
+    }
+    if(miss) throw new Error(miss + ' of ' + N + ' directions escaped the box to the background');
+    const share = hits.map(h=>h/N);
+    const worst = Math.min.apply(null, share);
+    if(worst < 0.10)
+      throw new Error('a face takes only ' + (worst*100).toFixed(2) + '% of the sphere: ' +
+        share.map(s=>(s*100).toFixed(1)).join('/'));
+    /* the floor is the face that was broken, so name it rather than trusting
+       the minimum to have been it */
+    const lowest = faces.indexOf(faces.slice().sort((a,b)=>a.position.y - b.position.y)[0]);
+    if(share[lowest] < 0.10)
+      throw new Error('the floor takes ' + (share[lowest]*100).toFixed(2) + '% of the sphere');
+    return '6 faces, no escapes, shares ' + share.map(s=>(s*100).toFixed(1)).join('/') + '%';
+  });
 
   window.__out = { fatal: window.__fatal||null,
     frames:n,

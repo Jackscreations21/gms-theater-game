@@ -57,6 +57,21 @@ THREE.WebGLRenderer = class {
     this.domElement = c; this.shadowMap = {enabled:false, type:0}; }
   setPixelRatio(){} setSize(){}
   render(scene, camera){ scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); }
+  /* PMREMGenerator is CORE three.js, not an addon, and RULING DK builds the
+     room environment with it at load — so fromScene runs in every suite.  It
+     asks the renderer for exactly these four things and this stub had none of
+     them.  An incomplete stub is a fault in the harness, not a reason to make
+     the game degrade: with them, fromScene completes and scene.environment is
+     a real texture here as well as in a browser.
+     getClearColor MUTATES ITS TARGET and does not merely return it (r128
+     three.js :17534 does target.copy).  A version that returns the argument
+     untouched leaves PMREM reading its own module-level Color, which is WHITE,
+     while a real renderer clears BLACK — so a stubbed run would build a white
+     environment from a scene with no background and report success. */
+  compile(){}
+  getRenderTarget(){ return this._rt || null; }
+  setRenderTarget(t){ this._rt = t || null; }
+  getClearColor(c){ return c.set(0x000000); }
 };
 /* jsdom decodes no images, so an honest TextureLoader never fires onLoad and
    GLTFLoader.parse hangs for ever — the import then falls back SILENTLY BY

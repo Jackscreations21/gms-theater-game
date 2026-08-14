@@ -1123,6 +1123,21 @@ function updateRig(dt, t){
   hemi.intensity    = bedHouse * 0.28 + bedRig * 0.04;
   M.exit.color.setRGB(0.02+bed*0.10, 0.10+bed*0.76, 0.05+bed*0.30);
   scene.fog.color.setRGB(bed*0.02, bed*0.024, bed*0.034);
+  /* RULING DK — the environment is ambience, so it follows the light bed.  ONE
+     bed, for the whole world: `bed` is deliberately the AUDITORIUM's, excluding
+     the lobby and the dock (RULING BH again, a few lines up), while
+     scene.environment is a single texture every standard material in both
+     buildings samples — so the shed and the lobby now ride the auditorium's
+     level.  Never worse than before DK, when there was no environment at all,
+     but it is not a per-room claim and must not be written as one.
+     A fixed environment lights a blackout as brightly as a full
+     stage, which is the exact fault RULING BH fixed for the ambient.  r128 has
+     NO scene-level environment intensity — scene.environment reaches every
+     standard material and there is no one number that scales it — so the drive
+     is per material, and envDrive walks the ONE registry p2 collected: the
+     building once at init, the show and its models as they arrive. */
+  ENV_LIVE = ENV_INTENSITY * (0.25 + 0.75*bed);
+  envDrive();
   scene.background.setRGB(bed*0.014, bed*0.017, bed*0.028);
   FLY.forEach(ls=>{ if(ls.practical){ ls.practical.light.intensity = HOUSE.practical*3.2;
     ls.practical.bulbs.forEach(b=>b.material.color.setRGB(

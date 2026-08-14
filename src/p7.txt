@@ -1601,6 +1601,14 @@ function init(){
   selectSection(0);
   syncMasters();
   goToView(1);
+  /* RULING DK — collect the building's environment materials HERE, and here
+     rather than beside buildRooms() for the same reason buildRooms() is itself
+     late: this is the first moment everything that exists at boot exists.  Both
+     venues, all three stages and the smoke are up (buildSmoke() is fifteen lines
+     above and the first attempt at this call sat ABOVE it, which left 21 smoke
+     materials undriven).  Walking `scene` rather than `world` is deliberate —
+     the Arc is hung off the scene so the room sorter never files it. */
+  envRecollect();
 
   // a starting look so the room reads on entry
   HOUSE.house = 0.75; HOUSE.work = 0;

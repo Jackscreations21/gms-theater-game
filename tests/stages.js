@@ -26,6 +26,21 @@ THREE.WebGLRenderer = class {
   render(scene, camera){ this.renderCount++;
     // walk the graph the way the renderer would, to catch bad matrices
     scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); }
+  /* PMREMGenerator is CORE three.js, not an addon, and RULING DK builds the
+     room environment with it at load — so fromScene runs in every suite.  It
+     asks the renderer for exactly these four things and this stub had none of
+     them.  An incomplete stub is a fault in the harness, not a reason to make
+     the game degrade: with them, fromScene completes and scene.environment is
+     a real texture here as well as in a browser.
+     getClearColor MUTATES ITS TARGET and does not merely return it (r128
+     three.js :17534 does target.copy).  A version that returns the argument
+     untouched leaves PMREM reading its own module-level Color, which is WHITE,
+     while a real renderer clears BLACK — so a stubbed run would build a white
+     environment from a scene with no background and report success. */
+  compile(){}
+  getRenderTarget(){ return this._rt || null; }
+  setRenderTarget(t){ this._rt = t || null; }
+  getClearColor(c){ return c.set(0x000000); }
 };
 w.THREE = THREE;
 w.AudioContext = undefined;
@@ -1356,6 +1371,101 @@ const probe = `
     if(hangBody(boomB, spkP)) throw new Error('a lantern hung itself on the speaker bar');
     if(!hangBody(spkB, spkP) || !hangBody(boomB, boom)) throw new Error('putting them back failed');
     return 'the clamps know their own';
+  });
+
+  console.log('--- RULING DK: patching the board to a new stage ---');
+
+  P('a stage the board has never been patched to still follows the light bed', ()=>{
+    /* THE GAP THIS EXISTS FOR.  smokeRestore builds a stage fogger rack the
+       FIRST time the board is patched there, so each Arc stage mints its own
+       metalness-0.7 grilles long after init() collected the building.  A
+       metallic grille is exactly what RULING DK is about, and nothing else
+       would have healed it: only a show load or a strike rebuilds the registry,
+       and patching the board to another stage is neither. */
+    const ours = ()=>{
+      const out = [], seen = [];
+      scene.traverse(o=>{
+        if(!o.isMesh || !o.material) return;
+        const list = Array.isArray(o.material) ? o.material : [o.material];
+        for(const m of list){
+          if(!m || !m.isMeshStandardMaterial || seen.indexOf(m) >= 0) continue;
+          seen.push(m); out.push(m);
+        }
+      });
+      return out;
+    };
+    const home = STAGE;
+    /* both Arc stages, because each builds its own rack the first time.  The
+       guard is that the racks are STANDING and measurable, not a before/after
+       delta: earlier cases in this suite have already walked the board round
+       the building, and smokeRestore only builds once. */
+    stageSwitch('arcMain', true);
+    stageSwitch('arcStudio', true);
+    const racks = [], rackMats = [];
+    scene.traverse(o=>{ if(o.name === 'smoke') racks.push(o); });
+    if(racks.length < 3)
+      throw new Error(racks.length + ' fogger racks standing — the Palace and both Arc stages ' +
+                      'should each have built one, so this test is measuring nothing');
+    for(const g of racks) g.traverse(o=>{
+      if(!o.isMesh || !o.material) return;
+      const list = Array.isArray(o.material) ? o.material : [o.material];
+      for(const m of list)
+        if(m && m.isMeshStandardMaterial && rackMats.indexOf(m) < 0) rackMats.push(m);
+    });
+    if(!rackMats.length)
+      throw new Error('the racks carry no standard material — this test is measuring nothing');
+    const after = ours();
+    for(const m of rackMats)
+      if(after.indexOf(m) < 0)
+        throw new Error('a rack material is not reachable from the scene — the sweep would miss it');
+    let clock = 0;
+    const step = dt=>{ clock += dt; updateFades(dt); updateRig(dt, clock); };
+    for(let i=0;i<30;i++) step(1/60);
+    const stray = after.filter(m=>m.envMapIntensity !== ENV_LIVE);
+    if(stray.length){
+      stageSwitch(home, true);
+      throw new Error(stray.length + ' of ' + after.length + ' standard materials read ' +
+                      stray[0].envMapIntensity + ' after a stage patch, against ENV_LIVE ' + ENV_LIVE);
+    }
+    /* AND THE CLAUSE THAT CAN ACTUALLY FAIL.  The racks above state the OUTCOME,
+       but they cannot pin the swap: every case in this suite that loads a show
+       rebuilds the registry, so by the time this runs the racks are driven
+       whether the swap registered them or not — the negative check proved
+       exactly that, which is a finding about the test and not about the code.
+       So mint one material into the scene the way a first patch mints a rack,
+       patch the board, and require the swap to have picked it up. */
+    const probeMat = new THREE.MeshStandardMaterial({metalness:0.7, roughness:0.5});
+    const probeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), probeMat);
+    probeMesh.name = 'dk:swapProbe';
+    scene.add(probeMesh);
+    stageSwitch('arcMain', true);
+    const missed = !ENV_MATS.has(probeMat);
+    const value = probeMat.envMapIntensity;
+    scene.remove(probeMesh);
+    probeMesh.geometry.dispose(); probeMat.dispose();
+    envRecollect();
+    if(missed)
+      throw new Error('geometry standing in the scene at the moment of a stage patch ' +
+                      'never reached the registry');
+    if(value !== ENV_LIVE)
+      throw new Error('the swap registered it but left it at ' + value +
+                      ', against ENV_LIVE ' + ENV_LIVE);
+    const lit = ENV_LIVE;
+    const keepH = HOUSE.house, keepW = HOUSE.work, keepP = HOUSE.practical;
+    HOUSE.house = 0; HOUSE.work = 0; HOUSE.practical = 0;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    for(let i=0;i<90;i++) step(1/60);
+    const dark = ENV_LIVE;
+    const darkStray = after.filter(m=>m.envMapIntensity !== dark);
+    HOUSE.house = keepH; HOUSE.work = keepW; HOUSE.practical = keepP;
+    stageSwitch(home, true);
+    if(darkStray.length)
+      throw new Error(darkStray.length + ' materials stuck at ' + darkStray[0].envMapIntensity +
+                      ' through a blackout after a stage patch');
+    if(!(lit > dark + 0.01))
+      throw new Error('nothing moves: lit ' + lit.toFixed(4) + ' against a blackout ' + dark.toFixed(4));
+    return rackMats.length + ' Arc rack materials among ' + after.length +
+           ', all driven, blackout ' + dark.toFixed(3) + ' -> lit ' + lit.toFixed(3);
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'

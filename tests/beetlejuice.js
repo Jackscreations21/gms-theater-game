@@ -23,6 +23,21 @@ THREE.WebGLRenderer = class {
   setPixelRatio(){} setSize(){}
   render(scene, camera){ this.renderCount++;
     scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); }
+  /* PMREMGenerator is CORE three.js, not an addon, and RULING DK builds the
+     room environment with it at load — so fromScene runs in every suite.  It
+     asks the renderer for exactly these four things and this stub had none of
+     them.  An incomplete stub is a fault in the harness, not a reason to make
+     the game degrade: with them, fromScene completes and scene.environment is
+     a real texture here as well as in a browser.
+     getClearColor MUTATES ITS TARGET and does not merely return it (r128
+     three.js :17534 does target.copy).  A version that returns the argument
+     untouched leaves PMREM reading its own module-level Color, which is WHITE,
+     while a real renderer clears BLACK — so a stubbed run would build a white
+     environment from a scene with no background and report success. */
+  compile(){}
+  getRenderTarget(){ return this._rt || null; }
+  setRenderTarget(t){ this._rt = t || null; }
+  getClearColor(c){ return c.set(0x000000); }
 };
 w.THREE = THREE;
 w.AudioContext = undefined;
@@ -5090,6 +5105,14 @@ const probe = `
                     states: a const missing from the handout arrives as undefined
                     and the assertion reading it prints a confident wrong answer. */
                  BJ_EXT_UPSTAGE:typeof BJ_EXT_UPSTAGE === 'undefined' ? undefined : BJ_EXT_UPSTAGE,
+                 /* RULING DK — the environment registry, and a LIVE read of the
+                    driven value.  ENV_MATS is a Set and travels by reference, but
+                    ENV_LIVE is a number that updateRig rewrites every frame, so
+                    handing the value over would freeze it at whatever it was when
+                    this line ran and every later comparison would be against a
+                    stale figure.  Hand out the read, not the reading. */
+                 ENV_MATS:typeof ENV_MATS === 'undefined' ? undefined : ENV_MATS,
+                 envLive:()=>ENV_LIVE,
                  bjCues:()=>{ showLoad('beetlejuice'); return CUES.slice(); }};
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
@@ -6440,6 +6463,65 @@ const wd = setTimeout(() => {
     if(!(lit > 0.05))
       throw new Error('with the rig black the sign sits at ' + lit.toFixed(3) + ' — it went out with the stage');
     return 'rig at 0, the marquee still lit at ' + lit.toFixed(2) + ', and off the fill list';
+  });
+
+  await P('the sign samples the environment, and CF still keeps it off the fill (DK)', async () => {
+    /* TWO DIFFERENT QUESTIONS WEARING ONE EXCLUSION.  CF keeps the marquee off
+       the CC fill list because CC drives an EMISSIVE off the stage rig, and the
+       one cue that names the sign has the rig at zero.  How much room ambience
+       a metal surface reflects is not that question, and DK's scope is every
+       metal surface in his models.  Hanging DK off CC's list inherited CF's
+       carve-out silently, and this is the assertion that says so out loud. */
+    const sc = w.sceneFind('bjSign');
+    if(!sc) throw new Error('no sign scene to check');
+    const mats = [], seen = [];
+    sc.group.traverse(o => {
+      if(!o.isMesh || !o.material) return;
+      const list = Array.isArray(o.material) ? o.material : [o.material];
+      for(const m of list){
+        if(!m || !('envMapIntensity' in m) || seen.indexOf(m) >= 0) continue;
+        seen.push(m); mats.push(m);
+      }
+    });
+    if(!mats.length) throw new Error('the sign carries no material with an envMapIntensity at all');
+    /* SAY OUT LOUD WHAT IS BEING MEASURED.  This tail lands a synthetic root
+       through the real bjApplyModel, so the sign scene holds HIS geometry by
+       now — but nothing above states that, and a reader could reasonably take
+       these for the stand-in materials showLoad already swept up, in which case
+       the whole case would pass with the importer registration deleted.  It
+       does not: the same test the CF case uses says the mesh carrying them is
+       not one of ours (our own are named bj:), and the negative check confirms
+       it fails when envRegister comes out of the landed loop. */
+    let hisMeshes = 0;
+    sc.group.traverse(o => {
+      if(!o.isMesh || !o.material) return;
+      const list = Array.isArray(o.material) ? o.material : [o.material];
+      if(list.some(m => mats.indexOf(m) >= 0) && !(o.name || '').startsWith('bj:')) hisMeshes++;
+    });
+    if(!hisMeshes)
+      throw new Error('every measured material is on OUR geometry — the import never landed, ' +
+                      'so this case would prove nothing about the importer');
+    if(!az.ENV_MATS) throw new Error('ENV_MATS is not in the handout');
+    const off = mats.filter(m => !az.ENV_MATS.has(m));
+    if(off.length)
+      throw new Error(off.length + ' of ' + mats.length +
+                      ' sign materials never reached the environment registry');
+    /* driven, not merely registered: run the real frame and read them back */
+    let clock = 0;
+    const step = dt => { clock += dt; w.updateFades(dt); w.updateRig(dt, clock); w.updateStorm(dt); };
+    for(let k = 0; k < 60; k++) step(1/60);
+    const live = az.envLive();
+    const stray = mats.filter(m => m.envMapIntensity !== live);
+    if(stray.length)
+      throw new Error(stray.length + ' sign materials read ' +
+                      stray[0].envMapIntensity + ' against ENV_LIVE ' + live);
+    /* and CF is untouched — none of them may be on the emissive fill list */
+    const fill = az.SHOW.bjFill || [];
+    for(const m of mats)
+      if(fill.indexOf(m) >= 0)
+        throw new Error('a sign material is on the CC fill list — CF has been weakened');
+    return mats.length + ' sign materials in the registry at ' + live.toFixed(3) +
+           ', none of them on the CC fill list';
   });
 
   await P('the sign\'s lamps travel with it when it flies out', async () => {
