@@ -817,6 +817,153 @@ function addFixture(o){
   return f;
 }
 
+/* ============================================================================
+   RULING DQ — DROPPABLE LIGHTS, AND THE SLOT COUNT IS TOLD THE TRUTH.
+
+   Roblox lets you drop unlimited PointLight / SpotLight / SurfaceLight.  This
+   engine has POOL_SIZE 8 real lights, SHADOW_LIGHTS 3 of them shadow-capable,
+   fewer still in a headset (VR.lightCap), and RANK decides who gets one
+   (RULING BC, load-bearing).  So a dropped light is a REAL FIXTURE that joins
+   the rank queue like any lantern — not a second lighting system with its own
+   rules — and every promise this facade makes is one the pool can keep:
+
+     * `shadows` IS A REQUEST.  shadowWanted is what was asked for;
+       shadowGranted is what the pool did, written where the pool actually
+       hands out (updateRig) and cleared with the slot.  A checkbox that
+       silently does nothing is worse than no checkbox, so it is answered in
+       BOTH directions: a light that asks for no shadow stops the slot casting
+       while it holds it, and a light that asked for one is TOLD when it did
+       not get it.
+     * THE CONE ANGLES ARE WHAT ACTUALLY RENDERS.  updateRig clamps a pool
+       light's cone at 1.15 rad (65.9 degrees), so a table quoting Roblox's
+       360-degree point light would be the same silent lie in another place.
+       A SurfaceLight is a wide-angle spot for a related reason: r128 has no
+       area light in the standard material, and faking one with four spots
+       would eat half the pool.
+     * NO NEW SORT KEY.  RULING BF's default stands — rank falls out of power
+       — so a dropped light competes on how bright it is, exactly like every
+       lantern in the rig.  DROP_POWER 2.0 is chosen for that: it sits at the
+       bottom of the stage rig's range (the cyc units burn 2.0) and well over
+       the audience rig's 0.9 / 0.8, so a default drop can never pull a real
+       light off a lit stage — BC untouched — while turning it up is a
+       deliberate act with a cost lightSlots() reports.
+       (The plan proposed per-kind ranks of 0.45-0.6.  That is BELOW the
+       audience rig, which would have made a dropped light the last thing in
+       the building to get a real light — a checkbox that does nothing, by
+       another road.  Rejected for that reason.)
+
+   POSITION AND AIM ARE IN STAGE COORDINATES, like a light plot and like every
+   addFixture call in buildRig: the group goes into rigGroup and addFixture
+   runs the aim through stageToWorld itself.  With three stages that is the
+   difference between lighting the Arc and aiming back across town (INVARIANTS).
+
+   AND NOTHING PARKS IN p2k.  A dropped light rides FIXTURES, its group rides
+   rigGroup and its floor pool rides poolGroup — all three already swap per
+   stage — so this facade deliberately keeps NO registry of its own.  `dropped`
+   on the record is what identifies one; never a count and never an index
+   (TRAPS).  tests/stages.js holds the swap to it.
+   ========================================================================== */
+const DROP_POWER = 2.0;                    // see the rank note above
+const LIGHT_KINDS = {
+  PointLight:   {type:'par',     angle:65, beamRad:5.2, beamLen:12},
+  SpotLight:    {type:'profile', angle:32, beamRad:2.4, beamLen:20},
+  SurfaceLight: {type:'fresnel', angle:58, beamRad:4.6, beamLen:14}
+};
+function lightAdd(o){
+  o = o || {};
+  const kind = LIGHT_KINDS[o.kind] ? o.kind : 'SpotLight';
+  const k = LIGHT_KINDS[kind];
+  /* BOTH VECTORS ARE MINTED FRESH, and it is not tidiness: addFixture TAKES
+     OWNERSHIP of the pos and aim it is handed — Object.assign copies the
+     reference and stageToWorld then rewrites the aim IN PLACE — so a caller
+     that passes a Vector3 it still holds finds its own vector silently turned
+     into world coordinates.  (A negative check that copied the local aim back
+     over f.aim proved to be a no-op for exactly this reason: they were the
+     same object all along.) */
+  const p = o.pos || {}, a = o.aim || {};
+  const pos = new T.Vector3(p.x || 0, p.y === undefined ? 6 : p.y, p.z || 0);
+  /* with no aim given it points at the deck under itself, which is where a
+     light dropped in mid-air is looking */
+  const aim = new T.Vector3(a.x === undefined ? pos.x : a.x, a.y || 0,
+                            a.z === undefined ? pos.z : a.z);
+  // lookAt of a zero-length direction is a coin toss; never hand it one
+  if(aim.distanceToSquared(pos) < 1e-6) aim.z -= 1;
+  /* a body built while the board stands in the Arc is Arc property — the same
+     flip buildArcStage does (p2k), because the venue tag is what decides where
+     the lantern stands if it is ever taken off its point */
+  const keepVen = BUILD_VENUE;
+  const st = (typeof STAGES !== 'undefined') ? STAGES[STAGE] : null;
+  if(st && st.venue) BUILD_VENUE = st.venue;
+  const f = addFixture({
+    name: o.name || (kind + ' ' + (FIXTURES.length + 1)),
+    type: k.type, pos, aim,
+    angle:   o.angle   === undefined ? k.angle   : o.angle,
+    beamLen: o.beamLen === undefined ? k.beamLen : o.beamLen,
+    beamRad: o.beamRad === undefined ? k.beamRad : o.beamRad,
+    power:   o.power   === undefined ? DROP_POWER : o.power,
+    rank:    o.rank    === undefined ? null : o.rank,      // null => power (BF)
+    /* dropped ON, the way a Roblox light is Enabled when you make one */
+    level:   o.level   === undefined ? 1 : clamp(o.level, 0, 1),
+    color:   o.color   === undefined ? new T.Color(0xffffff) : new T.Color(o.color)
+  });
+  BUILD_VENUE = keepVen;
+  f.dropped = true;
+  f.kind = kind;
+  f.shadowWanted  = !!o.shadows;
+  f.shadowGranted = false;          // only the hand-out in updateRig can grant it
+  f.homeAim = f.aim.clone();        // the focus it was rigged with, as buildRig gives
+  /* this mints geometry and materials after boot, so it registers itself —
+     INVARIANTS, and the failure would be silent (atmMix and gradeMix are 0 on
+     a material that missed the walk, so it renders as if nothing had changed) */
+  if(typeof envRegister === 'function'){ envRegister(f.group); envRegister(f.pool); }
+  return f;
+}
+/* the facade strikes what the facade dropped: the rig is the building's, and
+   a UI that can delete channel 1 is a UI that will */
+function lightRemove(f){
+  if(!f || !f.dropped) return false;
+  const i = FIXTURES.indexOf(f);
+  if(i === -1) return false;
+  FIXTURES.splice(i, 1);
+  f._live = false; f.shadowGranted = false;
+  /* its lantern is filed in BODIES like every other; removeBody unpicks the
+     filing with the machinery that owns it (p4c).  A body already taken OFF
+     the point is loose gear standing in the room by then — it stays. */
+  const b = BODIES.find(x=>x.point === f);
+  if(b) removeBody(b);
+  if(f.group && f.group.parent) f.group.parent.remove(f.group);
+  if(f.pool && f.pool.parent) f.pool.parent.remove(f.pool);
+  /* beam, glow and floor pool are minted per fixture, not shared like the
+     body geometry — so these are ours to let go of */
+  [f.beam, f.pool, f.glow].forEach(m=>{
+    if(!m) return;
+    if(m.geometry) m.geometry.dispose();
+    if(m.material){ ENV_MATS.delete(m.material); m.material.dispose(); }
+  });
+  /* chan(n) is FIXTURES[n-1], so a hole in the middle would leave every drop
+     after it answering to a number that is not its own */
+  FIXTURES.forEach((x, n)=>{ x.ch = n + 1; });
+  return true;
+}
+/* how many of the pool are in play THIS FRAME — the headset caps it (p9).
+   updateRig hands out against this same function, so the report cannot drift
+   away from the hand-out. */
+function lightCapNow(){
+  return (VR && VR.active && VR.lightCap)
+    ? Math.min(VR.lightCap, LIGHT_POOL.length) : LIGHT_POOL.length;
+}
+/* the pool, counted rather than promised */
+function lightSlots(){
+  let granted = 0, shadowed = 0, dropped = 0;
+  for(const f of FIXTURES){
+    if(f._live) granted++;
+    if(f.shadowGranted) shadowed++;
+    if(f.dropped) dropped++;
+  }
+  return {total: LIGHT_POOL.length, shadow: SHADOW_LIGHTS, inSession: lightCapNow(),
+          granted, shadowed, dropped};
+}
+
 /* ---- the FOH bar --------------------------------------------------------
    The six FOH lanterns hang on a bar the board can raise and lower, not on
    air.  One bar per stage: buildRig puts it up inside whichever rigGroup is
@@ -1257,9 +1404,9 @@ function updateRig(dt, t){
      The sort key is RANK, not power (RULING BF) — who deserves a light and how
      bright it burns are different questions now. */
   _active.sort((a,b)=> (b._lvl*b.rank) - (a._lvl*a.rank));
-  FIXTURES.forEach(f=>f._live=false);
-  const nLights = (VR && VR.active && VR.lightCap)
-    ? Math.min(VR.lightCap, LIGHT_POOL.length) : LIGHT_POOL.length;
+  /* RULING DQ — the shadow flag goes out with the slot it was granted for */
+  FIXTURES.forEach(f=>{ f._live = false; f.shadowGranted = false; });
+  const nLights = lightCapNow();
 
   /* THE AUDIENCE RIG IS GUARANTEED A SHARE (RULING BG).  Rank alone leaves the
      audience units last by design, and last means nothing: six movers against
@@ -1313,6 +1460,15 @@ function updateRig(dt, t){
     const l = LIGHT_POOL[i], f = _handout[i] || null;
     if(!f){ l.intensity = 0; continue; }
     f._live = true;
+    /* RULING DQ — THE SHADOW IS ANSWERED HERE, where the pool actually hands
+       out, and nowhere else.  A rigged lantern has no shadowWanted at all and
+       keeps the pool's own casting (the quality preset owns that, p2); a
+       dropped light that asked for none gets none while it holds this slot.
+       shadowGranted is then the plain truth — is this fixture casting? — which
+       is false for every slot past the third, and false for the whole rig at a
+       quality level with shadows switched off. */
+    if(l.userData.canShadow) l.castShadow = QUALITY.shadows && f.shadowWanted !== false;
+    f.shadowGranted = !!l.castShadow;
     l.position.copy(f._org);
     l.target.position.copy(f._org).addScaledVector(f._dir, Math.max(4, f.beamLen));
     l.target.updateMatrixWorld();

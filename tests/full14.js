@@ -2336,6 +2336,59 @@ const probe = `
            (near*100).toFixed(1) + '% against a declared ' + (GLOW_MAX_FRAC*100).toFixed(1) + '%';
   });
 
+  P('dropped lights past GLOW_CAP truncate by rank, not by array order (DN+DQ)', ()=>{
+    /* THE SEAM NEITHER RULING TESTED.  DN sized the halo buffer at GLOW_CAP 64
+       against a 39-point rig; DQ lets you drop as many lights as you like, and
+       every drop eats that headroom.  DQ was built before DN existed and its
+       author flagged the risk that overflow would truncate in FIXTURES order —
+       which would mean the halo you dropped last never glows however bright it
+       is, while a dark rig lantern keeps a slot.
+
+       It does not, and this is the clause that says so: the same rank DN uses
+       for the session cap governs the buffer limit too, because the guard is
+       a length-against-cap test and cap falls back to GLOW.max.  A near,
+       bright drop must keep its halo when the batch is over-subscribed. */
+    if(typeof lightAdd !== 'function') throw new Error('RULING DQ is not in this build');
+    const before = FIXTURES.length, keepLvl = FIXTURES.map(f=>f._lvl);
+    camera.position.set(0, 1.6, 6); camera.lookAt(0, 5, 0);
+    camera.updateMatrixWorld(true);
+    const drops = [];
+    const need = (GLOW_CAP - before) + 6;      // over-subscribe, whatever the rig is
+    /* THE PLACEMENT IS THE WHOLE TEST, and the first version of it proved
+       nothing.  Spread evenly, the nearest drop landed EARLY in FIXTURES and
+       survived array-order truncation too — so the assertion passed against
+       the very build it was written to catch, and only the negative check
+       said so.  The near one is therefore appended LAST, out past the buffer
+       limit, where rig order is guaranteed to cut it and rank is guaranteed
+       to keep it. */
+    for(let i=0;i<need-1;i++)
+      drops.push(lightAdd({kind:'PointLight', pos:new THREE.Vector3(-30 + i*0.3, 14, -22)}));
+    const near = lightAdd({kind:'PointLight', pos:new THREE.Vector3(0, 2.2, 4.2)});
+    drops.push(near);
+    if(FIXTURES.length <= GLOW_CAP)
+      throw new Error('only ' + FIXTURES.length + ' fixtures, never over-subscribed');
+    if(FIXTURES.indexOf(near) < GLOW_CAP)
+      throw new Error('the near drop sits at index ' + FIXTURES.indexOf(near) +
+                      ', inside the cap, so rig order would keep it anyway');
+    /* light everything, so the cap is choosing rather than the levels */
+    FIXTURES.forEach(f=>{ f._lvl = 0.9; });
+    glowUpdate(camera);
+    const drawn = GLOW.mesh.count;
+    if(drawn > GLOW_CAP)
+      throw new Error('the batch drew ' + drawn + ', past its own buffer of ' + GLOW_CAP);
+    if(drawn !== GLOW_CAP)
+      throw new Error('over-subscribed, the batch drew ' + drawn + ' of ' + GLOW_CAP);
+    const kept = _glit.slice(0, drawn);
+    if(kept.indexOf(near) === -1)
+      throw new Error('the nearest dropped light lost its halo to something further away');
+    drops.forEach(f=>lightRemove(f));
+    FIXTURES.forEach((f,i)=>{ f._lvl = keepLvl[i]; });
+    if(FIXTURES.length !== before)
+      throw new Error('removing the drops left ' + FIXTURES.length + ', not ' + before);
+    glowUpdate(camera);
+    return need + ' drops over the cap, ' + drawn + ' drawn, the nearest kept';
+  });
+
   console.log('--- RULING DO: the LIGHTING page on the desk ---');
 
   P('the page and its nav button exist, and it is NOT the LIGHTS page', ()=>{

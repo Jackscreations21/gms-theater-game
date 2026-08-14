@@ -1288,6 +1288,171 @@ const probe = `
     return r.drops.length+' drops in 1 draw call, '+calls+' draw calls for the whole set';
   });
 
+  /* ==== RULING DQ — droppable lights, and the slot count is told the truth ====
+     A dropped light is a REAL fixture in the rank queue (BC/BF), and the shadow
+     checkbox is a REQUEST: shadowWanted is what was asked, shadowGranted is what
+     the pool did.  These cases hold the facade to both halves of that.        */
+  console.log('--- RULING DQ: droppable lights ---');
+
+  P('DQ: a dropped light is a real fixture in the rank queue', ()=>{
+    if(typeof lightAdd !== 'function') throw new Error('there is no lightAdd');
+    if(!LIGHT_KINDS) throw new Error('there is no LIGHT_KINDS table');
+    for(const k of ['PointLight','SpotLight','SurfaceLight'])
+      if(!LIGHT_KINDS[k]) throw new Error('LIGHT_KINDS offers no '+k);
+    const before = FIXTURES.length;
+    const l = lightAdd({kind:'PointLight', pos:{x:0.5, y:6, z:-4}, shadows:true});
+    if(FIXTURES.length !== before+1) throw new Error('it did not join FIXTURES');
+    if(FIXTURES[FIXTURES.length-1] !== l) throw new Error('it did not go on the END of the patch');
+    if(l.dropped !== true) throw new Error('nothing on the record says it was dropped');
+    if(chan(l.ch) !== l) throw new Error('chan('+l.ch+') is not the light it numbered');
+    if(!(l.rank > 0)) throw new Error('rank '+l.rank+' — it is not in the rank queue at all');
+    if(l.rank !== l.power)
+      throw new Error('rank '+l.rank+' is not power '+l.power+' — DQ mints no new sort key (BF)');
+    if(!(l.rank < 2.4))
+      throw new Error('a default drop ranks '+l.rank+', over the stage rig — BC says it may not');
+    if(!(l.rank > 0.9))
+      throw new Error('a default drop ranks '+l.rank+', under the audience rig — it would never light');
+    if(l.group.parent !== rigGroup) throw new Error('it was not built into the LIVE stage rig');
+    if(l.pool.parent !== poolGroup) throw new Error('its floor pool is not in the live poolGroup');
+    if(l.shadowWanted !== true) throw new Error('the shadow request was not recorded');
+    if(l.shadowGranted !== false)
+      throw new Error('the shadow was granted at creation — only the pool hand-out can grant it');
+    lightRemove(l);
+    return 'channel '+l.ch+' at rank '+l.rank;
+  });
+
+  P('DQ: every kind quotes a cone the pool can actually render', ()=>{
+    const bad = [];
+    for(const k in LIGHT_KINDS){
+      const a = LIGHT_KINDS[k].angle * DEG;
+      if(clamp(a, 0.06, 1.15) !== a)
+        bad.push(k+' asks for '+LIGHT_KINDS[k].angle+' degrees and renders at '+(1.15/DEG).toFixed(1));
+      if(!LIGHT_KINDS[k].type) bad.push(k+' names no fixture type');
+    }
+    if(bad.length) throw new Error(bad.join('; '));
+    return Object.keys(LIGHT_KINDS).length+' kinds, every cone inside the pool clamp';
+  });
+
+  P('DQ: the pool grants the shadow, and it is cleared with the slot', ()=>{
+    const keep = FIXTURES.map(f=>f.level);
+    const dark = ()=>FIXTURES.forEach(f=>{ f.level = 0; f.lvlDur = 0; });
+    const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+    const l = lightAdd({kind:'SpotLight', pos:{x:0,y:7,z:-2}, aim:{x:0,y:0,z:-2}, shadows:true});
+    dark(); l.level = 1; step();
+    if(!l._live) throw new Error('the only lit fixture in the house got no real light');
+    if(l.shadowGranted !== true)
+      throw new Error('it holds a shadow-capable slot and the grant was never written');
+    /* and it loses the flag with the slot */
+    dark(); step();
+    if(l._live) throw new Error('a dark fixture is still holding a real light');
+    if(l.shadowGranted !== false) throw new Error('it lost the slot and kept the shadow flag');
+    /* asked for, and refused: the whole rig lit puts a rank-2 drop nowhere near
+       the eight, and the honest answer is wanted-but-not-granted */
+    FIXTURES.forEach(f=>{ f.level = 1; f.lvlDur = 0; }); step();
+    if(l._live) throw new Error('a rank '+l.rank+' drop took a slot off the lit rig');
+    if(l.shadowWanted !== true) throw new Error('the request was forgotten');
+    if(l.shadowGranted !== false) throw new Error('a light with no slot at all reports a shadow');
+    let granted = 0;
+    FIXTURES.forEach(f=>{ if(f.shadowGranted) granted++; });
+    if(granted > SHADOW_LIGHTS)
+      throw new Error(granted+' fixtures report a shadow against '+SHADOW_LIGHTS+' shadow slots');
+    lightRemove(l);
+    FIXTURES.forEach((f,i)=>{ f.level = keep[i]; f.lvlDur = 0; });
+    step();
+    return granted+' of '+SHADOW_LIGHTS+' shadow slots granted with the rig at full';
+  });
+
+  P('DQ: a light that asks for NO shadow does not cast one', ()=>{
+    const keep = FIXTURES.map(f=>f.level);
+    const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+    const l = lightAdd({kind:'SpotLight', pos:{x:0,y:7,z:-2}, aim:{x:0,y:0,z:-2}, shadows:false});
+    FIXTURES.forEach(f=>{ f.level = 0; f.lvlDur = 0; });
+    l.level = 1; step();
+    if(!l._live) throw new Error('the only lit fixture got no real light');
+    const held = LIGHT_POOL[0];
+    if(!held.userData.canShadow) throw new Error('slot 0 is not shadow-capable — the test is wrong');
+    if(held.castShadow) throw new Error('it asked for no shadow and the pool light is still casting');
+    if(l.shadowGranted !== false) throw new Error('it reports a shadow it asked not to have');
+    /* and the slot goes back to casting for the next fixture that says nothing */
+    lightRemove(l);
+    FIXTURES.forEach((f,i)=>{ f.level = keep[i]; f.lvlDur = 0; });
+    chan(1).level = 1; step();
+    if(!held.castShadow) throw new Error('the drop turned slot 0 off for the whole rig');
+    FIXTURES.forEach((f,i)=>{ f.level = keep[i]; f.lvlDur = 0; }); step();
+    return 'off on request, on again for the rig';
+  });
+
+  P('DQ: lightSlots reports the REAL pool, not a promise', ()=>{
+    if(typeof lightSlots !== 'function') throw new Error('there is no lightSlots');
+    const s = lightSlots();
+    if(s.total !== LIGHT_POOL.length)
+      throw new Error('it reports '+s.total+' slots against a pool of '+LIGHT_POOL.length);
+    if(s.total !== POOL_SIZE) throw new Error('POOL_SIZE is '+POOL_SIZE+' and it says '+s.total);
+    if(s.shadow !== SHADOW_LIGHTS)
+      throw new Error('it reports '+s.shadow+' shadow slots against '+SHADOW_LIGHTS);
+    if(s.inSession !== LIGHT_POOL.length)
+      throw new Error('outside a session the whole pool is in play, not '+s.inSession);
+    let live = 0;
+    FIXTURES.forEach(f=>{ if(f._live) live++; });
+    if(s.granted !== live) throw new Error('it says '+s.granted+' granted against '+live+' live fixtures');
+    if(s.granted > s.inSession) throw new Error('more granted than there are slots');
+    const keepA = VR.active, keepC = VR.lightCap;
+    VR.active = true; VR.lightCap = 4;
+    const v = lightSlots();
+    VR.active = keepA; VR.lightCap = keepC;
+    if(v.inSession !== 4)
+      throw new Error('a headset hands out 4 of the 8 and the report still says '+v.inSession);
+    return s.total+' slots, '+s.shadow+' shadow, '+s.granted+' granted, 4 in a session';
+  });
+
+  P('DQ: removing a dropped light leaves nothing behind', ()=>{
+    const before = FIXTURES.length, bodies = BODIES.length;
+    const l = lightAdd({kind:'SurfaceLight', pos:{x:-2, y:5, z:-3}});
+    /* a SECOND drop, struck in the other order: pulling one out of the middle
+       is the case that renumbers, and the only case that can catch it */
+    const l2 = lightAdd({kind:'PointLight', pos:{x:2, y:5, z:-3}});
+    if(BODIES.length !== bodies+2) throw new Error('a lantern body was never filed in BODIES');
+    if(lightRemove(l) !== true) throw new Error('lightRemove refused its own light');
+    if(chan(l2.ch) !== l2)
+      throw new Error('after the strike chan('+l2.ch+') is somebody else');
+    if(lightRemove(l2) !== true) throw new Error('lightRemove refused the second light');
+    if(FIXTURES.length !== before) throw new Error('the fixture is still on the patch');
+    if(BODIES.length !== bodies) throw new Error('the body record outlived the fixture');
+    /* drawn or not drawn is the question, so ask the scene rather than the
+       parent pointer: a detached group still owns its own children */
+    const drawn = o=>{ let p = o; while(p){ if(p === scene) return true; p = p.parent; } return false; };
+    if(drawn(l.group)) throw new Error('its group is still hanging in the rig');
+    if(drawn(l.pool)) throw new Error('its floor pool is still in the poolGroup');
+    if(drawn(l.glow)) throw new Error('its lens glow is still drawn');
+    if(drawn(l.beam)) throw new Error('its beam is still drawn');
+    if(drawn(l.body)) throw new Error('its lantern is still drawn');
+    let mismatched = 0;
+    FIXTURES.forEach((f,i)=>{ if(f.ch !== i+1) mismatched++; });
+    if(mismatched) throw new Error(mismatched+' fixtures carry a channel number that is not theirs');
+    if(lightRemove(chan(1)) !== false) throw new Error('the facade struck a RIGGED lantern');
+    if(FIXTURES.length !== before) throw new Error('and it took it off the patch');
+    return 'patch back to '+FIXTURES.length+', bodies back to '+BODIES.length;
+  });
+
+  P('DQ: a dropped light reaches the registries the invariant names', ()=>{
+    const l = lightAdd({kind:'SpotLight', pos:{x:1, y:6, z:-3}});
+    const miss = [];
+    const look = m=>{
+      if(!m) return;
+      if(m.fog === true && !m.userData.atmHooked) miss.push('unhooked '+m.type);
+      if(('envMapIntensity' in m) && !ENV_MATS.has(m)) miss.push('unregistered '+m.type);
+    };
+    l.group.traverse(o=>{
+      if(!o.isMesh || !o.material) return;
+      const list = Array.isArray(o.material) ? o.material : [o.material];
+      for(const m of list) look(m);
+    });
+    look(l.pool.material);
+    lightRemove(l);
+    if(miss.length) throw new Error(miss.length+' materials missed the walk: '+miss.join(', '));
+    return 'body, beam, glow and floor pool all registered';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
