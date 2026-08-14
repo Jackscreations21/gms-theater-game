@@ -481,8 +481,23 @@ const DOCKDOORS = [];
   BOH.light.position.set(DOCK.inner + dir*4, DOCK.y + DOCK.h - 1.2, cz + 3); world.add(BOH.light);
   BOH.light2 = new T.PointLight(0xbfd0e0, 0, 30, 1);
   BOH.light2.position.set(DOCK.inner + dir*4, DOCK.y + DOCK.h - 1.2, cz - 4); world.add(BOH.light2);
+  /* RULING DW — the yard light out over the road, and the one light in this
+     building that serves NO ONE.  It was minted at intensity 0 and nothing has
+     ever written it: `updateRig` (p4) drives BOH.light and BOH.light2 off
+     HOUSE.backstage and stops there, and nothing anywhere writes light3's
+     intensity.  Intensity 0 is NOT out of the loop — r128
+     gathers every visible light in `projectObject` (three.js r128:17954: the
+     `visible === false` return sits ABOVE the pushLight) and then every
+     standard material's fragment runs a full point-light iteration for it, both
+     eyes, every frame, for a lamp nobody has ever seen.  So it leaves the loop.
+     If the yard should light one day the fix is to drive it off `bo` beside the
+     other two and delete this flag — and the price of that picture is one
+     point-light slot in every lit fragment in the Palace, which is worth
+     stating rather than discovering. */
   BOH.light3 = new T.PointLight(0xd8e4f0, 0, 26, 1);
-  BOH.light3.position.set(DOCK.outer + dir*4, 6.0, cz); world.add(BOH.light3);
+  BOH.light3.position.set(DOCK.outer + dir*4, 6.0, cz);
+  BOH.light3.visible = false;
+  world.add(BOH.light3);
 })();
 
 /* the shutters run like the pass doors do */

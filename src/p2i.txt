@@ -216,7 +216,38 @@ function updateRooms(force){
   if(!ROOMS_BUILT) return curRoom;
   /* Two buildings.  Whichever one you are standing in, the other is switched
      off at the root — geometry, lights and all — so the far venue costs
-     nothing while you are not in it.                                       */
+     nothing while you are not in it.
+
+     RULING DW put a number and a citation on "lights and all", because the
+     2026-08-14 audit read the census as thirteen point lights from BOTH
+     buildings at once and proposed a venue gate that is already right here.
+     The mechanism: r128 walks the graph in `projectObject` and its very first
+     line is `if (object.visible === false) return;` — ABOVE the `pushLight`
+     and above the recursion into children (three.js r128:17954-17974).  So one
+     false flag on a root prunes every light beneath it, and these three lines
+     are that flag for a whole venue: `ARC.group.visible` for the Arc's, and
+     `SHARED.visible` for the Palace's, since `buildRooms` files every
+     light-carrying child of `world` into SHARED and `liftLights` pulls the
+     lights out of the ones it does not.  Measured, both ways round, over the
+     real `goToView` walk, BEFORE this same ruling's p2c gate landed: standing
+     in the Palace 25 of 32 lights were gathered — 13 point lights, all of them
+     the Palace's — and the Arc's 5 point lights plus its ambient and
+     hemisphere were pruned; standing in the Arc it was 19 of 32, and the
+     Palace's 13 were the ones pruned.  Neither building has ever paid for the
+     other.  (Re-measure on this build and the Palace reads 24 of 32 and 12
+     points — the yard light p2c gates out is the difference.  Both numbers
+     are right; mind which build you are counting.)
+
+     What is NOT gated, and is the honest remaining bite: within the Palace the
+     house's own points live in SHARED and are never room-culled, deliberately
+     (the comment at the top of this file — a hidden light is a dark room),
+     while the Arc's own lamps were built into their room groups and therefore
+     DO cull with them, so the Arc pays for 3 point lights on a stage where the
+     Palace pays 12 (13 before p2c took the yard light).
+     Closing that means deciding what a light may spill through, room by room —
+     the stage work lights carry 40m of range across the whole auditorium —
+     and it changes the picture, so it is not a free gate and it is not this
+     ruling's.                                                              */
   if(typeof ARC !== 'undefined' && ARC.built){
     const px = (Player.mode === 'walk') ? Player.pos.x : camera.position.x;
     const ven = venueAt(px);

@@ -3215,8 +3215,23 @@ const DOCKDOORS = [];
   BOH.light.position.set(DOCK.inner + dir*4, DOCK.y + DOCK.h - 1.2, cz + 3); world.add(BOH.light);
   BOH.light2 = new T.PointLight(0xbfd0e0, 0, 30, 1);
   BOH.light2.position.set(DOCK.inner + dir*4, DOCK.y + DOCK.h - 1.2, cz - 4); world.add(BOH.light2);
+  /* RULING DW — the yard light out over the road, and the one light in this
+     building that serves NO ONE.  It was minted at intensity 0 and nothing has
+     ever written it: `updateRig` (p4) drives BOH.light and BOH.light2 off
+     HOUSE.backstage and stops there, and nothing anywhere writes light3's
+     intensity.  Intensity 0 is NOT out of the loop — r128
+     gathers every visible light in `projectObject` (three.js r128:17954: the
+     `visible === false` return sits ABOVE the pushLight) and then every
+     standard material's fragment runs a full point-light iteration for it, both
+     eyes, every frame, for a lamp nobody has ever seen.  So it leaves the loop.
+     If the yard should light one day the fix is to drive it off `bo` beside the
+     other two and delete this flag — and the price of that picture is one
+     point-light slot in every lit fragment in the Palace, which is worth
+     stating rather than discovering. */
   BOH.light3 = new T.PointLight(0xd8e4f0, 0, 26, 1);
-  BOH.light3.position.set(DOCK.outer + dir*4, 6.0, cz); world.add(BOH.light3);
+  BOH.light3.position.set(DOCK.outer + dir*4, 6.0, cz);
+  BOH.light3.visible = false;
+  world.add(BOH.light3);
 })();
 
 /* the shutters run like the pass doors do */
@@ -25203,6 +25218,25 @@ function updateArc(dt){
      work there anyway.                                                     */
   const inHouse = (ARC.cur !== 'lobby');
   const bed = inHouse ? 0 : v;
+  /* RULING DW — and inside a house the two of them leave the LIGHT LOOP as
+     well, rather than merely going to zero.  A hemisphere light at intensity 0
+     is still a full iteration of the hemisphere block in every standard
+     material's fragment, both eyes, every frame; only `visible = false` takes
+     it out, because that is the flag r128 tests in `projectObject` before it
+     pushes a light (three.js r128:17954).
+
+     The predicate is `inHouse` and nothing else — ROOM membership, the very
+     test that writes the 0 on the two lines below.  Sharing the test is the
+     whole point: the flag and the intensity cannot drift apart, there is no new
+     ordering to get wrong, and it flips when the player walks through the foyer
+     doorway rather than with cue traffic.  That matters because a change in the
+     light COUNTS is the one thing that bumps WebGLLights' state version
+     (r128:13791) and makes every lit material re-acquire its program
+     (r128:18189) — a cached lookup after the first time, a real GLSL compile
+     the first time.  Gating on the intensity instead would flap all the way
+     down every bed fade and pay that on a run of consecutive frames, which is
+     why this reads the room and not the number. */
+  ARC.amb.visible = ARC.hemi.visible = !inHouse;
   ARC.amb.intensity  = bed * 0.30;
   ARC.hemi.intensity = bed * 0.26;
 
@@ -26690,7 +26724,38 @@ function updateRooms(force){
   if(!ROOMS_BUILT) return curRoom;
   /* Two buildings.  Whichever one you are standing in, the other is switched
      off at the root — geometry, lights and all — so the far venue costs
-     nothing while you are not in it.                                       */
+     nothing while you are not in it.
+
+     RULING DW put a number and a citation on "lights and all", because the
+     2026-08-14 audit read the census as thirteen point lights from BOTH
+     buildings at once and proposed a venue gate that is already right here.
+     The mechanism: r128 walks the graph in `projectObject` and its very first
+     line is `if (object.visible === false) return;` — ABOVE the `pushLight`
+     and above the recursion into children (three.js r128:17954-17974).  So one
+     false flag on a root prunes every light beneath it, and these three lines
+     are that flag for a whole venue: `ARC.group.visible` for the Arc's, and
+     `SHARED.visible` for the Palace's, since `buildRooms` files every
+     light-carrying child of `world` into SHARED and `liftLights` pulls the
+     lights out of the ones it does not.  Measured, both ways round, over the
+     real `goToView` walk, BEFORE this same ruling's p2c gate landed: standing
+     in the Palace 25 of 32 lights were gathered — 13 point lights, all of them
+     the Palace's — and the Arc's 5 point lights plus its ambient and
+     hemisphere were pruned; standing in the Arc it was 19 of 32, and the
+     Palace's 13 were the ones pruned.  Neither building has ever paid for the
+     other.  (Re-measure on this build and the Palace reads 24 of 32 and 12
+     points — the yard light p2c gates out is the difference.  Both numbers
+     are right; mind which build you are counting.)
+
+     What is NOT gated, and is the honest remaining bite: within the Palace the
+     house's own points live in SHARED and are never room-culled, deliberately
+     (the comment at the top of this file — a hidden light is a dark room),
+     while the Arc's own lamps were built into their room groups and therefore
+     DO cull with them, so the Arc pays for 3 point lights on a stage where the
+     Palace pays 12 (13 before p2c took the yard light).
+     Closing that means deciding what a light may spill through, room by room —
+     the stage work lights carry 40m of range across the whole auditorium —
+     and it changes the picture, so it is not a free gate and it is not this
+     ruling's.                                                              */
   if(typeof ARC !== 'undefined' && ARC.built){
     const px = (Player.mode === 'walk') ? Player.pos.x : camera.position.x;
     const ven = venueAt(px);

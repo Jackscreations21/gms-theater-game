@@ -917,6 +917,25 @@ function updateArc(dt){
      work there anyway.                                                     */
   const inHouse = (ARC.cur !== 'lobby');
   const bed = inHouse ? 0 : v;
+  /* RULING DW — and inside a house the two of them leave the LIGHT LOOP as
+     well, rather than merely going to zero.  A hemisphere light at intensity 0
+     is still a full iteration of the hemisphere block in every standard
+     material's fragment, both eyes, every frame; only `visible = false` takes
+     it out, because that is the flag r128 tests in `projectObject` before it
+     pushes a light (three.js r128:17954).
+
+     The predicate is `inHouse` and nothing else — ROOM membership, the very
+     test that writes the 0 on the two lines below.  Sharing the test is the
+     whole point: the flag and the intensity cannot drift apart, there is no new
+     ordering to get wrong, and it flips when the player walks through the foyer
+     doorway rather than with cue traffic.  That matters because a change in the
+     light COUNTS is the one thing that bumps WebGLLights' state version
+     (r128:13791) and makes every lit material re-acquire its program
+     (r128:18189) — a cached lookup after the first time, a real GLSL compile
+     the first time.  Gating on the intensity instead would flap all the way
+     down every bed fade and pay that on a run of consecutive frames, which is
+     why this reads the room and not the number. */
+  ARC.amb.visible = ARC.hemi.visible = !inHouse;
   ARC.amb.intensity  = bed * 0.30;
   ARC.hemi.intensity = bed * 0.26;
 
