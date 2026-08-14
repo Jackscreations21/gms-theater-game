@@ -31,9 +31,11 @@
        rules).  A walk that loses or double-counts a branch fails here.
      with a test that always FAILS, the walk must submit exactly the drawables
        that carry frustumCulled === false, counted independently.  This is the
-       one that catches the honest mistake: 26 sites in this file carry the
-       r128 instanced-bounding-sphere workaround, and a simulation that forgets
-       frustumCulled would quietly under-report every one of them.
+       one that catches the honest mistake: r128's InstancedMesh constructor
+       sets frustumCulled = false on every instance (the bounding-sphere
+       workaround — 71 InstancedMesh at runtime, 15 of them visible in the
+       empty Palace), and a simulation that forgets frustumCulled would
+       quietly under-report every one of them.
 
    Both self-checks throw.  A probe that judges has to be checkable.  The first
    run of this file failed SELF-CHECK 2 against its own author: the walk asked
@@ -49,11 +51,14 @@
    — 124 separate blocks account for 136 draws between them, about 1.1 draws a
    block, which is mergeParts working exactly as ARCHITECTURE.md describes.
 
-   It is the LIGHTING RIG.  39 fixtures, 540 drawables, 62% of everything in
-   the building, and 423 of those 540 are the lantern BODIES at 10.8 draws
-   each.  From the boot camera the rig is 135 of 350 draws an eye (38.6%);
-   from downstage centre facing upstage it is 213 of 321 (66.4%).  The fly
-   system is second at 109, and the whole rest of the building is noise.
+   It is the LIGHTING RIG.  39 fixtures; counted like-for-like against the
+   scene's visible drawables it is 476 of 878 — 54.2% of everything in the
+   building — and 423 of those are the lantern BODIES at 10.8 draws each.
+   (Counting by traverse, hidden beams and glows included, the rig is 540
+   drawables; mind which denominator you are quoting.)  From the boot camera
+   the rig is 135 of 350 draws an eye (38.6%); from downstage centre facing
+   upstage its block is 158 of 321 (49.2%).  The fly system is second at 109,
+   and the whole rest of the building is noise.
 
    So the next bite is a lantern, not a wall — and it is a real bite, because a
    body's ten pieces are barrel, knobs, colour frame, hook clamp and cable,
@@ -221,8 +226,9 @@ if(all.draws !== refDraws || all.tris !== refTris)
                   ' — the graph walk is wrong, so no number below can be trusted');
 
 /* (2) nothing passes the frustum — only the uncullable may survive.  This is
-   the check that catches a simulation which forgets frustumCulled === false,
-   which is exactly the 26 instanced-bounding-sphere workaround sites. */
+   the check that catches a simulation which forgets frustumCulled === false —
+   every InstancedMesh in the building (r128's constructor default, the
+   bounding-sphere workaround), 15 of them visible in the empty Palace. */
 const none = walk(P.scene, CAM_LAYERS, ()=>false);
 if(none.draws !== refCulledOff)
   throw new Error('SELF-CHECK 2 FAILED: with every frustum test failing the walk still submits ' +

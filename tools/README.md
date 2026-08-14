@@ -105,8 +105,10 @@ frustum test that always passes, the walk must agree exactly with an
 independently written count; with one that always fails, it must submit exactly
 the drawables carrying `frustumCulled === false`. The second one caught this
 probe's author on the first run — the walk was asking its frustum test about
-`frustumCulled` instead of asking above it, which silently under-reports all 26
-bounding-sphere workaround sites.
+`frustumCulled` instead of asking above it, which silently under-reports every
+InstancedMesh in the building (r128's constructor sets `frustumCulled = false`
+on all of them — the bounding-sphere workaround; 15 are visible in the empty
+Palace).
 
 Measured on `a55bfcd`, empty Palace, per eye (double it for the frame):
 
@@ -121,10 +123,12 @@ Measured on `a55bfcd`, empty Palace, per eye (double it for the frame):
 balcony fronts, per-baluster pieces in p2b/p2c/p2e/p2g. Those are already
 merged and the merger did its job: 124 separate blocks account for 136 draws
 between them, ~1.1 draws a block. It is the **lighting rig** — 39 fixtures,
-540 drawables, **62% of everything in the building**, of which **423 are the
-lantern bodies at 10.8 draws each**. From the boot camera the rig is 135 of
-350 draws an eye; from downstage centre facing upstage, 213 of 321 (66%). The
-fly system is second at 109. Everything else is noise.
+**476 of the scene's 878 visible drawables (54.2%)**, of which **423 are the
+lantern bodies at 10.8 draws each**. (By raw traverse, hidden beams and glows
+included, the rig is 540 drawables — mind which denominator you quote.) From
+the boot camera the rig is 135 of 350 draws an eye; from downstage centre
+facing upstage its block is 158 of 321 (49.2%). The fly system is second at
+109. Everything else is noise.
 
 So the next bite is a lantern, not a wall — and a body's ten pieces (barrel,
 knobs, colour frame, hook clamp, cable) are not individually addressed. What
