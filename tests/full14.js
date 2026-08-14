@@ -2213,9 +2213,11 @@ const probe = `
     const pos = gm.geometry.attributes.position;
     if(!pos || pos.count !== 4)
       throw new Error('the glow geometry has ' + (pos ? pos.count : 0) + ' vertices, not a quad');
-    /* r128 sizes an InstancedMesh bounding sphere from the BASE geometry, so a
-       batch whose instances move every frame looks like one quad at the origin
-       and is culled away entirely (TRAPS, first entry) */
+    /* r128's InstancedMesh constructor already sets this, so the clause can
+       only fail against a build that turns culling back ON.  That is what it
+       is for: a batch whose instances move every frame must never be culled
+       from a base-geometry bounding sphere (TRAPS, first entry), and later
+       three.js dropped the constructor default. */
     if(gm.frustumCulled !== false) throw new Error('the glow batch is still frustum culled');
     const rays = [];
     gm.raycast(new THREE.Raycaster(), rays);
@@ -2224,7 +2226,24 @@ const probe = `
       throw new Error('the glow carries no instanceColor, so every emitter is white');
     if(!(GLOW.max >= FIXTURES.length))
       throw new Error('the batch holds ' + GLOW.max + ' instances for ' + FIXTURES.length + ' fixtures');
-    return GLOW.max + ' instances, one draw call, ' + pos.count + ' vertices';
+    /* THE HALO CLEARS THE HOUSING, PINNED TO THE THING THAT ALREADY DOES.
+       f._org is f.group's world position and it sits inside the lantern body;
+       depthTest is on, so a halo centred there is occluded by its own housing,
+       and the brightest part of a radial gradient is the part that gets buried.
+       f.glow — the per-fixture LENS quad — already solves this with a local z of
+       0.4 (0.24 on a cyc), a number that has been through a headset.  Whether a
+       given offset is really unoccluded is a rasteriser question and jsdom has
+       no rasteriser, so what is asserted is the RELATIONSHIP the comment in p4
+       claims: the halo goes no closer in than the lens flare does, on any
+       fixture.  Move f.glow.position.z out and this fires. */
+    if(typeof GLOW_LENS_OUT === 'undefined')
+      throw new Error('GLOW_LENS_OUT is not in the build at all');
+    const tight = FIXTURES.filter(f=>f.glow && f.glow.position.z > GLOW_LENS_OUT);
+    if(tight.length)
+      throw new Error(tight.length + ' fixtures carry a lens flare further out (' +
+        tight[0].glow.position.z + ') than the halo at ' + GLOW_LENS_OUT);
+    return GLOW.max + ' instances, one draw call, ' + pos.count + ' vertices, halo at ' +
+           GLOW_LENS_OUT + 'm';
   });
 
   P('a dark rig draws no glow at all, and a lit one draws its lit fixtures only', ()=>{
@@ -2251,57 +2270,70 @@ const probe = `
     return 'blackout 0, three lit 3, of ' + FIXTURES.length + ' fixtures';
   });
 
-  P('the glow is clamped in SCREEN space, not just in world size', ()=>{
-    if(typeof GLOW_MAX_FRAC === 'undefined' || typeof GLOW_SIZE === 'undefined')
-      throw new Error('the glow clamp constants are not in the build at all');
-    /* dnSize: the x scale of one instance, read back off the matrix the batch
-       will actually draw.  A name the game does not use — a probe-scope helper
-       that shadows a game function is silently wrong for every case below it. */
-    const dnSize = (i)=>{
-      const s = new THREE.Vector3();
-      new THREE.Matrix4().fromArray(GLOW.mesh.instanceMatrix.array, i*16)
-        .decompose(new THREE.Vector3(), new THREE.Quaternion(), s);
-      return s.x;
+  P('the glow clamps AT the declared share of the screen, measured not restated', ()=>{
+    if(typeof GLOW_MAX_FRAC === 'undefined')
+      throw new Error('GLOW_MAX_FRAC is not in the build at all');
+    /* THE FIRST VERSION OF THIS CASE RECOMPUTED dist*tanHalf*2*GLOW_MAX_FRAC —
+       the production line character for character — so dropping the *2 from the
+       engine dropped it from the test too and both clauses stayed green.  It
+       proved the clamp BOUND without proving what it bound to.  So: project the
+       quad the batch will really draw and measure the share of the viewport it
+       covers.  The viewport spans 2 NDC units top to bottom, hence the /2.
+       Names the game does not use — a probe-scope helper that shadows a game
+       function is silently wrong for every case below it. */
+    const dnMat = (i)=> new THREE.Matrix4().fromArray(GLOW.mesh.instanceMatrix.array, i*16);
+    const dnFrac = (i)=>{
+      const m4 = dnMat(i);
+      let lo = 9e9, hi = -9e9;
+      const corners = [[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[-0.5,0.5]];
+      for(const c of corners){
+        const v = new THREE.Vector3(c[0], c[1], 0).applyMatrix4(m4).project(camera);
+        lo = Math.min(lo, v.y); hi = Math.max(hi, v.y);
+      }
+      return (hi - lo)/2;
+    };
+    const dnAim = (from, at)=>{
+      camera.position.copy(from); camera.lookAt(at);
+      camera.updateMatrixWorld(true);
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
     };
     const keepB = RIG.blackout, keepG = RIG.grand, keepL = FIXTURES.map(f=>f.level),
-          keepCam = camera.position.clone();
+          keepPos = camera.position.clone(), keepQ = camera.quaternion.clone();
     let clock = 0;
     const step = ()=>{ clock += 0.05; updateFades(0.05); updateRig(0.05, clock); };
     RIG.blackout = false; RIG.grand = 1;
     FIXTURES.forEach(f=>{ f.level = 0; });
-    const f0 = FIXTURES[0];
-    f0.level = 1;
+    FIXTURES[0].level = 1;
     for(let i=0;i<20;i++) step();
-    const want = GLOW_SIZE * (0.45 + 0.55*f0._lvl);
-    /* far off: the clamp must NOT be biting, or it is not a clamp, it is a
-       shrink — and every reading below would be meaningless */
-    camera.position.copy(f0._org).add(new THREE.Vector3(0, 0, 40));
-    camera.updateMatrixWorld(true);
+    /* where the batch put it — read off the drawn matrix, so the lens offset
+       is not restated here either */
+    const gp = new THREE.Vector3().setFromMatrixPosition(dnMat(0));
+    /* far off, dead on axis: the clamp must NOT be biting, or a build that
+       simply drew a fixed small quad would satisfy the clause below */
+    dnAim(gp.clone().add(new THREE.Vector3(0, 0, 40)), gp);
     for(let i=0;i<3;i++) step();
-    const far = dnSize(0);
+    dnAim(gp.clone().add(new THREE.Vector3(0, 0, 40)), gp);
+    const far = dnFrac(0);
     /* and up against the lens, which is where he stands to look at the neon */
-    camera.position.copy(f0._org).add(new THREE.Vector3(0, 0, 0.9));
-    camera.updateMatrixWorld(true);
+    dnAim(gp.clone().add(new THREE.Vector3(0, 0, 0.9)), gp);
     for(let i=0;i<3;i++) step();
-    const near = dnSize(0);
-    const dist = camera.getWorldPosition(new THREE.Vector3()).distanceTo(f0._org);
-    const tanHalf = 1/camera.projectionMatrix.elements[5];
-    const lim = dist * tanHalf * 2 * GLOW_MAX_FRAC;
-    camera.position.copy(keepCam); camera.updateMatrixWorld(true);
+    dnAim(gp.clone().add(new THREE.Vector3(0, 0, 0.9)), gp);
+    const near = dnFrac(0);
+    camera.position.copy(keepPos); camera.quaternion.copy(keepQ);
+    camera.updateMatrixWorld(true);
+    camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
     RIG.blackout = keepB; RIG.grand = keepG;
     FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
     for(let i=0;i<20;i++) step();
-    if(!(want > lim + 0.05))
-      throw new Error('at ' + dist.toFixed(2) + 'm the world size ' + want.toFixed(3) +
-        ' is already inside the screen limit ' + lim.toFixed(3) + ' — the clamp is never approached');
-    if(Math.abs(far - want) > 1e-4)
-      throw new Error('40m away the glow measures ' + far.toFixed(3) +
-        ' against a world size of ' + want.toFixed(3) + ' — something else is resizing it');
-    if(!(near <= lim + 1e-4))
-      throw new Error('at ' + dist.toFixed(2) + 'm the glow measures ' + near.toFixed(3) +
-        ', over the screen-space limit of ' + lim.toFixed(3));
-    return 'far ' + far.toFixed(2) + 'm unclamped, near ' + near.toFixed(2) +
-           'm against a limit of ' + lim.toFixed(2) + 'm';
+    if(!(far < GLOW_MAX_FRAC*0.5))
+      throw new Error('40m away the glow already covers ' + (far*100).toFixed(1) +
+        '% of the view against a limit of ' + (GLOW_MAX_FRAC*100).toFixed(1) +
+        '% — the clamp is on everywhere, so it is a shrink and not a clamp');
+    if(Math.abs(near - GLOW_MAX_FRAC) > 0.004)
+      throw new Error('at 0.90m the glow covers ' + (near*100).toFixed(1) +
+        '% of the view height, not the declared ' + (GLOW_MAX_FRAC*100).toFixed(1) + '%');
+    return 'far ' + (far*100).toFixed(1) + '% of the view, near ' +
+           (near*100).toFixed(1) + '% against a declared ' + (GLOW_MAX_FRAC*100).toFixed(1) + '%';
   });
 
   window.__out = { fatal: window.__fatal||null,

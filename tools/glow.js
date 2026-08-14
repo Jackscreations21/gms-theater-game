@@ -69,11 +69,13 @@ const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?scr
    confident wrong answer (TRAPS), so the sweep below throws instead. */
 w.eval(script + ';window.__P = {GLOW:GLOW, FIXTURES:FIXTURES, CUES:CUES,' +
        ' camera:camera, scene:scene, VR:VR, RIG:RIG, D:D,' +
-       ' GLOW_MAX_FRAC:GLOW_MAX_FRAC, GLOW_SIZE:GLOW_SIZE, GLOW_MIN_LVL:GLOW_MIN_LVL};');
+       ' GLOW_MAX_FRAC:GLOW_MAX_FRAC, GLOW_SIZE:GLOW_SIZE, GLOW_MIN_LVL:GLOW_MIN_LVL,' +
+       ' GLOW_LENS_OUT:GLOW_LENS_OUT};');
 for(let i = 0; i < 60; i++){ const cb = w.__raf; w.__raf = null; if(cb) cb(1000 + i*16); }
 
 const P = w.__P, T = REAL;
-for(const k of ['GLOW','FIXTURES','CUES','camera','scene','GLOW_MAX_FRAC','GLOW_SIZE','GLOW_MIN_LVL'])
+for(const k of ['GLOW','FIXTURES','CUES','camera','scene','GLOW_MAX_FRAC','GLOW_SIZE',
+                'GLOW_MIN_LVL','GLOW_LENS_OUT'])
   if(P[k] === undefined) throw new Error('the probe cannot see ' + k + ' — add it to the __P handout');
 
 w.showLoad('beetlejuice');
@@ -140,11 +142,17 @@ function instanceArea(i){
   return ((x1 - x0)*(y1 - y0))/4;
 }
 /* which fixture an instance belongs to — matched by its world position, so the
-   label comes off the drawn matrix and not off a re-run of the loop */
+   label comes off the drawn matrix and not off a re-run of the loop.  The halo
+   is seated GLOW_LENS_OUT down f._dir to clear the lantern body, so that is
+   where the centre is; matching against a bare f._org finds nothing. */
+const _wp = new T.Vector3();
 function whose(i){
   _im.fromArray(glow.instanceMatrix.array, i*16);
   const p = new T.Vector3().setFromMatrixPosition(_im);
-  for(const f of P.FIXTURES) if(f._org.distanceToSquared(p) < 1e-6) return f;
+  for(const f of P.FIXTURES){
+    _wp.copy(f._org).addScaledVector(f._dir, P.GLOW_LENS_OUT);
+    if(_wp.distanceToSquared(p) < 1e-6) return f;
+  }
   return null;
 }
 function sizeOf(i){

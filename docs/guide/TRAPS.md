@@ -864,6 +864,31 @@ against this list before opening a PR; **add new traps as you hit them.**
   escaped *quotes*; this is a third member of that family it does not know
   about. Either double the backslash or, better for asserting generated text,
   use `indexOf` — exact and immune.
+- **A CAP THAT DECIDES *HOW MANY* WITHOUT DECIDING *WHICH* KEEPS THE WRONG
+  ONES — AND THE TWO OBVIOUS REPAIRS ARE BOTH ALSO WRONG.** `vrCapBeams`
+  already records half of this ("sorting that against a world camera kept the
+  wrong 14 beams"); RULING DN's glow cap walked into all three versions of it
+  in one round, and only a *ratio* test found any of them.
+  1. **List order.** `FIXTURES` is in rig order and rig order starts at the FOH
+     bar, so a cap of 12 taken off the top keeps twelve lanterns *behind* a
+     player at downstage centre facing upstage: 2.6% of screen uncapped,
+     **0.0% capped**, while still paying for twelve instances.
+  2. **Nearest-first** moves the blind spot instead of closing it. From a
+     stalls seat the nearest twelve are that same FOH bar directly overhead:
+     1.7% uncapped, **0.0% capped** — *worse* than the bug it replaced.
+  3. **"In front of the eye plane"** keeps a lantern 80° off axis, which is
+     ahead and comfortably off the screen. At downstage centre that is most of
+     the near rig: the capped session kept **4% of the glow the eye could
+     see**, and every clause of the test was green, because they all asked
+     "did it draw something" rather than "did it draw what is there".
+  The rule that works is a generous view **cone** then nearest-within-it, and
+  the cone is deliberately wider than the frustum you can measure — the desk
+  projection is the only one reachable in an XR session, a Quest's vertical is
+  ~2.06× it and the screen diagonal ~2.04×, so erring wide costs a slot while
+  erring narrow drops a halo the headset can see, with no tell. **The
+  assertion that finds all three is the same seat measured twice, capped and
+  uncapped, compared as a ratio.** "It drew something" is not the claim.
+
 - **`instanceColor` REACHES A FRAGMENT ON r128 ONLY BECAUSE THE TWO SHADER
   PREFIXES DISAGREE — and the obvious "fix" makes every instance BLACK.**
   `T.ShaderChunk.color_pars_fragment` in r128 declares `vColor` for
