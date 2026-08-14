@@ -224,7 +224,119 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **EXECUTE THE ROBLOX LIGHTING PLAN** (2026-08-13, DJ–DQ reserved)
+## NEXT SESSION: **RQ IS IN A WORKTREE, AND NOBODY HAS SEEN ANY OF THIS** (2026-08-14, DP)
+
+Cache-bust **`?v=28`**. Rulings at **DP**. `main` is at **`e84e2e6`**.
+**Read STATE.md — it carries the full picture.**
+
+**SEVEN PRs, #174–#180, SEVEN CLEAN MERGES, NO RECOVERY PR.** Each based on
+`main` and verified after opening; `main` rebuilds byte-identical and the suite
+is green on every merged result. Layer 1 of what he asked for is **complete** —
+environment, atmosphere, colour grade, and glow planes instead of bloom — and
+layer 2's property panel is on **both** surfaces.
+
+**TWO THINGS TO DO FIRST, IN THIS ORDER:**
+
+1. **RULING DQ IS COMMITTED BUT NOT MERGED, AND IT LIVES ONLY IN A WORKTREE** —
+   `4d9254f` on `lighting-objects` in `.claude/worktrees/agent-a47840c5a83c1de1c`.
+   **Do not delete that worktree.** Green in isolation with 21 negative checks,
+   independently verified. It branched from `f4e2628`, four PRs ago, so it needs
+   a **rebase onto fresh `main` and a full re-verify**, and the rebase must settle
+   DN's `GLOW_CAP` (a fixed 64 against a 39-fixture rig; dropped lights eat the
+   headroom). Sort the glow batch by `_lvl` and drop the dimmest — array order is
+   wrong independent of DQ.
+2. **A HEADSET RUN, because not one thing in this round has been looked at.**
+   Every number is reasoned and none is evidence. The questions are in STATE's
+   feel-constants block; the one to expect trouble from is that in a session the
+   glow clamp uses the **desk** frustum, so close-up halos are 42–52% smaller in
+   the headset than on the monitor.
+
+**AND THE PERFORMANCE PROBLEM IS STILL THERE AND IS NOW WORSE ON PAPER.** His
+readings were **25ms empty / 48ms in Beetlejuice** against a 13.9ms budget, with
+foveation pegged at 1.00 and no travel left. The spec says a performance
+investigation belongs *between* DJ and DK. It did not happen — he was told, and
+chose to carry on with the lighting. DK through DN each add per-pixel cost to
+that frame. **The 25ms is the BUILDING, not his models**, and the leading suspect
+is still that the instanced batches never cull.
+
+**Four things are his to decide** and they are written out in STATE: `f.glow`
+drawing all 39 in a blackout, the `envTrack` rota backstop, the `GLOW_CAP`
+ordering, and whether the performance investigation now goes first.
+
+## DONE — 2026-08-14: the Roblox lighting round, #174–#180 (DJ–DP)
+
+*"rebuild the lighting engine to look and work like the one roblox uses"* →
+layers **1 (the look)** and **2 (the authoring model)**, and **"It has to match
+in VR."** Seven PRs, seven clean merges.
+
+**THE PLAN WAS WRONG IN SIX PLACES AND FIVE OF THEM WOULD HAVE PASSED A GREEN
+SUITE.** That is the finding of the round, and it is a finding about *this
+repo*: jsdom stubs `WebGLRenderer`, so nothing here can compile a shader, and
+every shader mistake ships silently.
+
+- **`UniformsLib` cannot be extended after load.** `ShaderLib` merges and
+  **clones** at module init and `getUniforms` clones again per material, so the
+  planned fog uniforms would have been declared and never supplied — **and the
+  plan's own assertion would have passed**, because it read `UniformsLib`
+  directly. A green test over a broken shader.
+- **r128's fog varying is `fogDepth`, not `vFogDepth`.**
+- **`VR.cam` does not exist**, so the glow's camera branch was permanently dead —
+  and `camera.fov` is never written in a session either, so the screen-space
+  clamp would have run off a stale desk value in the one place it exists to
+  protect. It reads `projectionMatrix.elements[5]` and `getWorldQuaternion`,
+  because the *local* quaternion misses the rig yaw the right stick applies.
+- The plan's **test code, panel markup and cache-bust step** were all invented.
+
+**THE REVIEWS CAUGHT SEVEN THINGS THAT WERE GREEN WHEN HANDED OVER**, and they
+are the argument for the two-stage review: DK reaching only imported models
+(**120 of 120** of the building's own at 7.27× in a blackout); ~142 more minted
+by a VR session, the largest block being the rope rail you stand at; the Arc's
+smoke racks building after the collect point; `goodsMat` cloning
+`envMapIntensity` so a dyed drape froze at the moment it was pulled; the
+"six-plane" box being five, with the floor edge-on to PMREM's camera at
+**0.00%**; DN's cap keeping twelve halos behind your head and none in front; and
+**two assertions that passed against builds they should have failed**.
+
+**AND MY OWN SUGGESTED FIX WAS WRONG, AND WAS PROVED WRONG BY MEASUREMENT.**
+Nearest-first only moved the halo blind spot — from the stalls the nearest twelve
+*are* that same FOH bar overhead. So is an eye-plane half-space. The rule is a
+**generous view cone, then nearest within it**, and the assertion that finds all
+three wrong answers is the same seat measured **capped and uncapped as a ratio**;
+"it drew something" passes for every one of them.
+
+**TWO PATTERNS WORTH KEEPING.** Every injected effect got a **`mix` term that
+defaults to 0 = bypass**, so a material the registry misses renders exactly as it
+did before the ruling — without it, a missed material reads `gradeTint` as
+`vec3(0)` and renders **black**, a hole in the picture rather than a drift. And
+the **stub was fixed rather than the game weakened**: `PMREMGenerator` would have
+taken the boot of all nineteen suites down, so the four renderer methods it
+actually calls went onto the stub, the way DJ added the missing `renderer.info`.
+One of them — `getClearColor` — was found **lying**: the real one mutates its
+target and PMREM's default clear is white, so the harness would have built a
+white environment while the browser built black, and the suites would have
+reported success.
+
+**Negative checks: 17 (DK), 5 (DL), 5 (DM), 9 (DN), 5 (DO), 4 (DP), 21 (DQ).**
+Every mutation proved present in the BUILT file and proved to have changed it —
+**by sha, not byte count**, after one equal-length swap left the size identical
+and the usual check went silently green. **Two did not fire and are recorded as
+not firing** rather than quietly dropped.
+
+**PR 10, the three.js upgrade, was CUT** and the reasoning is in the spec: the
+non-module addon folder died at r148, **meshopt already works on r128** (the
+decoder is published for it and `p5i`'s vendored loader already carries
+`setMeshoptDecoder`), and `KTX2Loader` was ESM-only at every version — so the
+asset pipeline, its last surviving justification, was never gated on the upgrade
+at all.
+
+**New in TRAPS:** a backslash in a regex inside a probe template (which
+`probe-lint` does *not* sweep for); `UniformsLib` being un-extendable while the
+test passes anyway; the r128 fog varying name; `transformed` not existing in the
+sprite shader; an unsupplied uniform defaulting to 0 where 0 is not neutral; a
+byte count being a proxy where the sha is the proof; `instanceColor` reaching the
+fragment only through the prefix's OR; and the three-wrong-answers glow cap.
+
+## SUPERSEDED: **EXECUTE THE ROBLOX LIGHTING PLAN** (2026-08-13, DJ–DQ reserved)
 
 **A spec and a plan are on disk and NO SOURCE WAS TOUCHED.** `origin/main` is at
 `32c6a1a` (#173, the DI record). Rulings are still at **DI** in the code; the plan

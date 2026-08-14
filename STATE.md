@@ -37,24 +37,91 @@ and the average reads **exactly 50.0**.
    See the spec's §7.1. **The one live question** is r160's per-instance
    `computeBoundingSphere` — decide it on the draw-call number, not before.
 
-## THE PLAN BEHIND THIS, AND WHAT IS BUILT OF IT
+## THE ROBLOX LIGHTING ROUND: SEVEN OF NINE MERGED, RULINGS AT DP
 
-**`origin/main` is at `32c6a1a` — #173 merged** (the DI record). The branch
-`bj-di-record` is fully contained in it and can be deleted.
+**`origin/main` is at `e84e2e6`.** Rulings are at **DP**. Cache-bust **`?v=28`**.
 
-**RULING DJ is built** (branch `lighting-meter-info`): the wrist meter now reports
-draw calls and triangles, and its average reports past the game clock's 50ms clamp.
-Rulings **DK–DQ** are still only planned; the plan reserves them.
+| PR | Ruling | What |
+|---|---|---|
+| **#174** | **DJ** | the wrist meter reports draw calls and triangles, and its average stops lying above 50ms |
+| **#175** | **DK** | `scene.environment` — imported metal stops rendering near-black |
+| **#176** | **DL** | the atmosphere is height-based, with haze and glare |
+| **#177** | **DM** | the colour grade rides the tonemapping stage |
+| **#178** | **DN** | additive glow planes instead of screen-space bloom |
+| **#179** | **DO** | the LIGHTING page on the desk |
+| **#180** | **DP** | the LIGHTING page in the headset |
+
+**LAYER 1 IS COMPLETE** (the look: environment, atmosphere, grade, glow) and
+**layer 2 is built on both surfaces** (the property panel). Every merge verified:
+`main` rebuilds **byte-identical**, 20 lines of `failures: 0`, `real.js` fatal
+null. Every branch deleted local and remote.
+
+### NOT MERGED, AND IT ONLY EXISTS IN A WORKTREE
+
+**RULING DQ (droppable lights) is committed at `4d9254f` on `lighting-objects`,
+inside `.claude/worktrees/agent-a47840c5a83c1de1c`.** Green in isolation with 21
+negative checks — verified independently, not just self-reported. **DO NOT DELETE
+THAT WORKTREE: the work exists nowhere else.**
+
+It branched from `f4e2628` and `main` has moved four PRs since, so it needs a
+**rebase onto fresh `main` and a full re-verify** before it can open. One real
+interaction to settle in that rebase: **DN's `GLOW_CAP` is a fixed 64** against a
+39-fixture rig, and every dropped light eats that headroom. Its own advice, which
+is sound: truncating the glow batch in array order is wrong *independent* of DQ —
+sort by `_lvl` and drop the dimmest, report the count from `lightSlots()`, and
+never refuse the drop.
+
+**Task 9 (this record) is the last one. Nothing else is planned.**
 
 | File | What |
 |---|---|
-| [docs/superpowers/specs/2026-08-13-roblox-lighting-design.md](docs/superpowers/specs/2026-08-13-roblox-lighting-design.md) | **the reasoning** — rulings DJ–DQ, the four findings, why route 1 and Unity were rejected. **Read first; the rulings are binding.** |
-| [docs/superpowers/plans/2026-08-13-roblox-lighting-prs1-10.md](docs/superpowers/plans/2026-08-13-roblox-lighting-prs1-10.md) | **the steps** — PRs 1–10, one concern each, full code and negative checks |
+| [docs/superpowers/specs/2026-08-13-roblox-lighting-design.md](docs/superpowers/specs/2026-08-13-roblox-lighting-design.md) | **the reasoning** — rulings DJ–DQ, the findings, why route 1 and Unity were rejected, and why PR 10 was cut. **Binding.** |
+| [docs/superpowers/plans/2026-08-13-roblox-lighting-prs1-10.md](docs/superpowers/plans/2026-08-13-roblox-lighting-prs1-10.md) | the steps — **and read its "TEST CODE IS PSEUDOCODE" warning before trusting any code block in it** |
 
-**Both files are UNTRACKED.** PR 1 commits them. Nothing else in the tree changed.
+### THE PLAN WAS WRONG IN SIX PLACES, AND FIVE WOULD HAVE PASSED A GREEN SUITE
 
-**He chose subagent-driven execution in a fresh session.** Start there:
-`superpowers:subagent-driven-development`, one subagent per task, review between.
+This is the finding of the round. The suites cannot see a shader, so every one of
+these ships silently:
+
+1. **`UniformsLib` cannot be extended after load.** `ShaderLib` merges and
+   **clones** at module init, and `getUniforms` clones again per material. The
+   plan's fog uniforms would have been declared and never supplied — **and its
+   own assertion would have passed**, because it read `UniformsLib` directly.
+2. **r128's fog varying is `fogDepth`, not `vFogDepth`.** The rename came later.
+   A compile error, invisible to all nineteen suites.
+3. **`VR.cam` does not exist anywhere in the repo.** The glow's
+   `VR.active && VR.cam ? VR.cam : camera` was a permanently dead branch — and
+   `camera.fov` is never written in a session either, so the screen-space clamp
+   would have used a stale desk value in the headset, inert in exactly the case
+   it exists to protect.
+4. **The test code is pseudocode.** `assert(W.x)` and `boot()` exist in neither
+   suite; both use `P(name, fn)` and reach globals bare.
+5. **`?v=N` is not in `src/`** — it is typed onto the URL.
+6. **The panel markup was invented** — the house idiom is a `page`/`card`/
+   `label.f` shape, not `panel`/`prow`/`data-lk`.
+
+### WHAT THE REVIEWS CAUGHT THAT THE AUTHOR DID NOT
+
+Every one of these was green when it was handed over:
+
+- **DK reached only imported models.** 120 of 120 of the building's own standard
+  materials sat at `envMapIntensity` 1 — **7.27× the driven value in a blackout**,
+  which is RULING BH's exact fault on all the geometry you stand inside.
+- **A VR session mints ~142 more that nothing registered**, the largest block
+  being the rope rail you stand at.
+- **The Arc's smoke racks build lazily on stage switch**, after the collect point.
+- **`goodsMat` clones `M.serge`, and `clone()` copies `envMapIntensity`** — a
+  dyed drape froze at whatever the room was when it was pulled and drifted from
+  the next cue on. *Right at the instant it is made, and quietly wrong after.*
+- **The "six-plane box" was five planes.** The floor sat at `y = 0` and so does
+  PMREM's camera, so it was edge-on and contributed **0.00%**.
+- **DN's session cap kept the wrong twelve.** In rig order, at downstage centre,
+  **all twelve drawn halos scored zero screen area** — the first twelve fixtures
+  are the FOH bar behind you. Nearest-first only moved the blind spot. The rule
+  that works is a generous view cone, then nearest within it.
+- **Two assertions passed against builds they should have failed.** A
+  stage-switch case healed by other suites' show loads, and a crew case that
+  measured only the lead, whose materials a second hook already covered.
 
 ### What he asked for
 
@@ -280,6 +347,26 @@ catches it. The pair is left coupled deliberately.
   `probe-lint.js` was run BEFORE the suite each time. The rule is not care, it
   is **run the lint after every probe edit**.
 
+## Still his to decide — the four this round raised
+
+1. **`f.glow` always draws.** A 0.55m additive lens quad per fixture whose
+   opacity is driven but whose `visible` is never set, so **39 keep rasterising
+   in a blackout**. That is verbatim what RULING DN's own comment argues against,
+   which makes "one draw call" really 1 + 39. One line
+   (`f.glow.visible = lvl > 0.004`), deliberately not taken because it is a
+   separate concern from the halo batch.
+2. **The `envTrack` rota backstop.** Nine call sites is an enumeration, not a
+   guarantee — three review rounds each found sites the previous one had missed.
+   The structural answer is a **sliced** rota (`REST_ROTA` is the precedent in
+   TRAPS), costed at **1.09ms over 3,399 objects unsliced** against 0.0018ms for
+   `envDrive`. Deferred deliberately: new per-frame machinery on a build already
+   1.8× over budget is his call, not something to slip into an environment PR.
+3. **`GLOW_CAP` ordering**, to be settled in the DQ rebase — see above.
+4. **The performance investigation the spec asks for and nobody has done.**
+   §7.2 says it belongs *between* DJ and DK; it did not happen, and DK–DN all
+   added per-pixel cost on top. He was told and chose to carry on with the
+   lighting, which is recorded here as his decision rather than an oversight.
+
 ## Still his to decide
 
 - **The cemetery still declares no park** (46.8m parted against a 44m stage),
@@ -326,6 +413,32 @@ outboard edge **LEG_OUT 12.20** (p3), the flyman's rail **crewFrame().rail
 **PAL_BACK −25.5**, and the auditorium side wall reaching **z −1.00** at x −15.50.
 
 ## Feel constants for the headset (one-line retunes)
+
+**THE ROBLOX-LIGHTING ONES ARE ALL REASONED AND NONE HAVE BEEN SEEN.** Nothing in
+jsdom has eyes, so every number below is an argument, not evidence — and all of
+them are now on the **LIGHTING page**, on the desk *and* in the headset, so they
+can be tuned live rather than rebuilt.
+
+In `p2`: **`ENV_INTENSITY` 0.55** (DK — one knob, not two: r128 scales
+environment diffuse and specular together), the six-plane box at **`ENV_HALF`
+10**; **`ATM`** `density` 0.0055 / **`height` 9.0** / `haze` 1.8 / `glare` 0.4 /
+`mix` 0.75 (DL); **`GRADE`** `contrast` 0.12 / `sat` −0.05 / `tint` 0xffeedd /
+`mix` 1.0 (DM). In `p4`: **`GLOW_MAX_FRAC` 0.22**, `GLOW_SIZE` 1.9,
+`GLOW_MIN_LVL` 0.04, `GLOW_LENS_OUT` 0.45, `GLOW_CONE` 2.2, `GLOW_CAP` 64 (DN);
+`HOUSE.clock` 19.33 (DO). In `p9`: **`VR.glowCap` 12** (DN).
+
+**`atmMix` and `gradeMix` are not feel constants — they are safety.** At 0 each
+bypasses its effect entirely, so a material that misses the registry renders
+*exactly as it did before the ruling* instead of losing its fog or, in the
+grade's case, **rendering black**. Do not "tidy them away".
+
+**The questions this round opens, none of them answerable without a headset:**
+does the environment read as ambience or as a wash; is height fog right at 9.0m;
+does the grade's tint read on the ivory wall; do the halos read as bloom or as
+sprites; is `GLOW_MAX_FRAC` 0.22 enough at the proscenium — and note that in a
+session the clamp uses the **desk** frustum, so close-up halos are **42–52%
+smaller in the headset than on the monitor** (bounded, safe direction, written
+into the comment).
 
 In `p4` (`buildRig`): `BLIND_POWER` 4.6 / `BLIND_RANK` 0.9, **`BLIND_X` 7.11 and
 `BLIND_TOP` 9.51 (DG — on the black portal, flat)**, `BLIND_BODY` false,
