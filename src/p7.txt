@@ -713,6 +713,69 @@ $('#smkClear')  && ($('#smkClear').onclick  = ()=>{ smokeClear(); syncSmokeUI();
   Array.from(document.querySelectorAll('#smokeRack .smkFader')).forEach(f=>f.value = 0); });
 $('#smkMaster') && ($('#smkMaster').oninput = e=>{ SMOKE.master = (+e.target.value)/100; });
 
+/* ----------------------------------------------- the LIGHTING page (DO/DP)
+   Roblox Studio's property grid over constants this file already has: every
+   row is a pointer at something real, and nothing here is a new engine.
+
+   ONE MAP, TWO SURFACES.  RULING DP puts the same page in the headset, and it
+   calls the SAME LK[k].set through the SAME lkSet — so the clamp lives in one
+   place.  A headset row that can drive a constant outside the desk's range is
+   two different controls wearing one name, and that is the whole reason this
+   is a table rather than nine oninput handlers.
+
+   Each row carries its own min/max/step and a formatter, because the VR page
+   has no <input type=range> to read them off.                              */
+const LK = {
+  bright:   {min:0,   max:1,   step:0.02, get:()=>HOUSE.house,
+             set:v=>{ HOUSE.house = v; }, fmt:v=>v.toFixed(2)},
+  exposure: {min:0.2, max:3,   step:0.05, get:()=>renderer.toneMappingExposure,
+             set:v=>{ renderer.toneMappingExposure = v; }, fmt:v=>v.toFixed(2)},
+  env:      {min:0,   max:2,   step:0.05, get:()=>ENV_INTENSITY,
+             set:v=>{ ENV_INTENSITY = v; }, fmt:v=>v.toFixed(2)},
+  clock:    {min:0,   max:24,  step:0.25, get:()=>HOUSE.clock,
+             set:v=>{ HOUSE.clock = v; },
+             fmt:v=>Math.floor(v) + ':' + String(Math.round((v%1)*60)).padStart(2,'0')},
+  haze:     {min:0,   max:4,   step:0.05, get:()=>ATM.haze,
+             set:v=>{ ATM.haze = v; }, fmt:v=>v.toFixed(2)},
+  height:   {min:0.1, max:30,  step:0.5,  get:()=>ATM.height,
+             set:v=>{ ATM.height = v; }, fmt:v=>v.toFixed(1)},
+  glare:    {min:0,   max:2,   step:0.05, get:()=>ATM.glare,
+             set:v=>{ ATM.glare = v; }, fmt:v=>v.toFixed(2)},
+  sat:      {min:-1,  max:1,   step:0.02, get:()=>GRADE.sat,
+             set:v=>{ GRADE.sat = v; }, fmt:v=>v.toFixed(2)},
+  contrast: {min:-1,  max:1,   step:0.02, get:()=>GRADE.contrast,
+             set:v=>{ GRADE.contrast = v; }, fmt:v=>v.toFixed(2)}
+};
+/* the ONE clamp.  Both surfaces go through it; neither clamps for itself. */
+function lkSet(k, v){
+  const r = LK[k];
+  if(!r || !isFinite(v)) return;
+  r.set(Math.max(r.min, Math.min(r.max, v)));
+  lkSync();
+}
+const LK_ROWS = [['bright','#lkBright',100], ['exposure','#lkExp',100],
+  ['env','#lkEnv',100], ['clock','#lkClock',10], ['haze','#lkHaze',100],
+  ['height','#lkHeight',10], ['glare','#lkGlare',100], ['sat','#lkSat',100],
+  ['contrast','#lkCon',100]];
+function lkSync(){
+  for(const [k, sel, scale] of LK_ROWS){
+    const inp = $(sel), out = $(sel + 'V');
+    if(!inp) continue;
+    const v = LK[k].get();
+    if(document.activeElement !== inp) inp.value = Math.round(v*scale);
+    if(out) out.textContent = LK[k].fmt(v);
+  }
+  /* SHADOW_LIGHTS is a const of p4, which build.sh runs BEFORE p7 — so it is
+     initialised by the time this does, and no `typeof` guard is wanted here
+     (TRAPS: `typeof` does not protect a const declared LATER, and writing one
+     against a const declared EARLIER just teaches the wrong lesson). */
+  const sh = $('#lkShadow');
+  if(sh) sh.textContent = SHADOW_LIGHTS;
+}
+for(const [k, sel, scale] of LK_ROWS)
+  $(sel) && ($(sel).oninput = e=>{ lkSet(k, (+e.target.value)/scale); });
+lkSync();
+
 /* ---------------------------------------------------------- the crew */
 function refreshCrewUI(){
   const st = $('#crewStat'); if(!st) return;

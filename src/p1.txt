@@ -269,6 +269,7 @@ table.ls tr.sel td{background:#1c2230}
     <button data-p="shop">WORKSHOP</button>
     <button data-p="mach">MACHINES</button>
     <button data-p="smoke">SMOKE</button>
+    <button data-p="lighting">LIGHTING</button><!-- RULING DO — the room, not the rig -->
     <button data-p="sound">SOUND</button>
     <button data-p="cues">CUES</button>
     <button data-p="code">CODE</button>
@@ -512,6 +513,64 @@ table.ls tr.sel td{background:#1c2230}
         <div class="mini" style="color:var(--dim);margin-top:6px;line-height:1.45">
           What the machines put in the air feeds the haze the beams read
           through, so the rig thickens up as the stage fills.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RULING DO — the LIGHTING page: Roblox Studio's property grid, drawn as a
+       console page.  Every row is a pointer at a constant that already exists;
+       nothing here is a new engine.  It is NOT the LIGHTS page: that one is the
+       rig, this one is the room, and the heading says so because "lights" and
+       "lighting" are one letter apart and mean different things in a theatre. -->
+  <div class="page" id="p-lighting">
+    <div class="row">
+      <div class="card" style="flex:1;min-width:0">
+        <h4>LIGHTING &mdash; <span style="color:var(--dim)">the room, not the rig</span></h4>
+        <label class="f">Brightness
+          <input type="range" id="lkBright" min="0" max="100" value="70" style="flex:1">
+          <span class="mini" id="lkBrightV" style="width:52px;text-align:right">0.70</span></label>
+        <label class="f">ExposureCompensation
+          <input type="range" id="lkExp" min="20" max="300" value="135" style="flex:1">
+          <span class="mini" id="lkExpV" style="width:52px;text-align:right">1.35</span></label>
+        <label class="f">EnvironmentSpecularScale
+          <input type="range" id="lkEnv" min="0" max="200" value="55" style="flex:1">
+          <span class="mini" id="lkEnvV" style="width:52px;text-align:right">0.55</span></label>
+        <label class="f">ClockTime
+          <input type="range" id="lkClock" min="0" max="240" value="193" style="flex:1">
+          <span class="mini" id="lkClockV" style="width:52px;text-align:right">19:18</span></label>
+        <div class="mini" style="color:var(--dim);margin-top:8px;line-height:1.45">
+          A Broadway house has no windows, so ClockTime drives the ARC CENTRE's
+          glazed foyer and nothing on this stage. It is a daylight LEVEL, not a
+          sun position &mdash; there is no sun in this engine to angle.
+        </div>
+      </div>
+      <div class="card" style="width:280px;flex:none">
+        <h4>ATMOSPHERE</h4>
+        <label class="f">Haze
+          <input type="range" id="lkHaze" min="0" max="400" value="180" style="flex:1">
+          <span class="mini" id="lkHazeV" style="width:52px;text-align:right">1.80</span></label>
+        <label class="f">Height
+          <input type="range" id="lkHeight" min="1" max="300" value="90" style="flex:1">
+          <span class="mini" id="lkHeightV" style="width:52px;text-align:right">9.0</span></label>
+        <label class="f">Glare
+          <input type="range" id="lkGlare" min="0" max="200" value="40" style="flex:1">
+          <span class="mini" id="lkGlareV" style="width:52px;text-align:right">0.40</span></label>
+        <h4 style="margin-top:12px">COLOR CORRECTION</h4>
+        <label class="f">Saturation
+          <input type="range" id="lkSat" min="-100" max="100" value="-5" style="flex:1">
+          <span class="mini" id="lkSatV" style="width:52px;text-align:right">-0.05</span></label>
+        <label class="f">Contrast
+          <input type="range" id="lkCon" min="-100" max="100" value="12" style="flex:1">
+          <span class="mini" id="lkConV" style="width:52px;text-align:right">0.12</span></label>
+        <div class="row" style="margin-top:10px;gap:6px;align-items:center">
+          <span class="mini" style="color:var(--dim);flex:1">Technology</span>
+          <span class="mini" id="lkTech" style="color:var(--dim)">ShadowMap &mdash; fixed</span>
+        </div>
+        <div class="mini" style="color:var(--dim);margin-top:6px;line-height:1.45">
+          Voxel and Future are not built. The row is shown rather than hidden so
+          the model is not misrepresented: 8 light slots, <span id="lkShadow">3</span>
+          of them shadow-capable, and RANK decides who gets one.
         </div>
       </div>
     </div>
