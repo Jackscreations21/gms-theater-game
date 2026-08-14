@@ -179,9 +179,12 @@ function lensMat(c){ return LENSM[c] || (LENSM[c] = new T.MeshBasicMaterial({col
 
    WHAT IT COSTS, stated rather than discovered: mergeParts emits NON-INDEXED
    geometry, so a merged shell processes about three vertices per triangle
-   where an indexed cylinder shared them.  Triangles are unchanged (that is
-   asserted), the buffers are per TYPE rather than per body, and the budget
-   this ruling is about is draw calls.
+   where an indexed cylinder shared them.  Triangles are unchanged per
+   geometry (that is asserted) — but the wrist meter's tri line counts
+   SUBMITTED triangles, and one merged bounding sphere culls less finely than
+   seventeen small ones, so a body half out of frustum now submits whole:
+   measured +0.5% on the boot view.  The buffers are per TYPE rather than per
+   body, and the budget this ruling is about is draw calls.
 
    BODY_MERGE is the one line that puts the pieces back, and it is what the
    draw-ceiling assertion in tests/stages.js is negative-checked against.     */
@@ -214,12 +217,21 @@ function mergeShell(key, frame, root){
   for(const c of frame.children){
     if(!c.isMesh || !c.geometry) continue;        // a live sub-frame is a Group, and stays one
     if(Array.isArray(c.material)) continue;       // nothing in a body has one; not ours to guess at
+    /* noMerge is an opt-out with NO LIVE CASE today, same disclosure as the
+       lens guard above: it exists so a future builder can keep a piece its
+       own draw without learning this function's internals. */
     if(lensMatted(c.material) || c.userData.noMerge) continue;
     /* mergeParts composes an XYZ Euler, which is a Mesh's default and what
        every body piece uses.  A piece that ever carries another order costs a
        DRAW here rather than being baked with the wrong rotation — err toward a
        draw, never toward wrong geometry.  Nothing takes this branch today. */
     if(c.rotation.order !== 'XYZ') continue;
+    /* and the same refusal for a negative scale: mergeParts' own header
+       forbids the mirrored part (flipped winding vanishes under FrontSide),
+       and a flipped piece is the ONE failure the test net cannot see — the
+       tri count and the box both survive a winding flip.  Nothing sets any
+       scale on a body piece today; if it ever does, it costs a draw. */
+    if(c.scale.x < 0 || c.scale.y < 0 || c.scale.z < 0) continue;
     let e = byMat.get(c.material);
     if(!e){ e = {mat:c.material, parts:[], meshes:[]}; byMat.set(c.material, e); groups.push(e); }
     e.parts.push({geo:c.geometry,

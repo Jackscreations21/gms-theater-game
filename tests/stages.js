@@ -118,6 +118,10 @@ const probe = `
     let draws = 0, all = 0;
     (function rec(o){
       if(o.visible === false) return;
+      /* the GAME camera's layer mask, deliberately: the renderer tests every
+         object against the render camera's mask, and the synthetic eye only
+         borrows a world transform — giving it its own mask would diverge from
+         what r128 actually asks */
       if(o.layers.test(camera.layers) && (o.isMesh || o.isLine || o.isPoints || o.isSprite)){
         all += pushes(o);
         if(o.frustumCulled === false || inFr(o)) draws += pushes(o);
@@ -1474,13 +1478,17 @@ const probe = `
     const was = lens.material, red = lensMat(0xcc2211);
     if(red === was) throw new Error('the premise is broken: the test colour is already the lens colour');
     lens.material = red;
-    if(lens.material !== red) throw new Error('the lens would not take a new material');
-    if(lensMat(0xcc2211) !== red) throw new Error('the keyed cache minted a second material for one colour');
+    /* read everything, RESTORE, then judge — a throw below must not leave a
+       live-rig lens red for the rest of the suite */
+    const took = lens.material === red;
+    const cacheHit = lensMat(0xcc2211) === red;
     const others = FIXTURES.filter(x=>x.type==='profile' && x !== f);
-    if(!others.length) throw new Error('the premise is broken: only one profile, so bleed cannot be seen');
-    for(const o of others) if(o.body.userData.lens.material !== was)
-      throw new Error('repainting one lens moved another body');
+    const bled = others.find(o=>o.body.userData.lens.material !== was);
     lens.material = was;
+    if(!took) throw new Error('the lens would not take a new material');
+    if(!cacheHit) throw new Error('the keyed cache minted a second material for one colour');
+    if(!others.length) throw new Error('the premise is broken: only one profile, so bleed cannot be seen');
+    if(bled) throw new Error('repainting one lens moved another body');
     /* HALF TWO: THE GUARD, WITH THE FIXTURE THE RIG DOES NOT HAVE.  Every real
        body carries exactly one keyed-cache piece, so it is already alone in its
        material group and a group of one is never merged — meaning the
