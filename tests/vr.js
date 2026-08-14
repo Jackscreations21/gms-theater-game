@@ -3431,9 +3431,10 @@ const probe = `
       throw new Error('no VR_SEE_CONSOLE in the build — the whole case is decoration');
     const out = [];
     /* two places a session really stands: the fly floor over the stage, and
-       the deck itself.  Mid-stalls is NOT one of them — the Palace balcony
-       desk is only 7.7m from the middle of its own house, which is the
-       measurement the threshold was chosen against. */
+       the deck itself.  The stalls are NOT among them — a stalls seat runs
+       5.5-10m from the Palace balcony desk's glass depending on the seat,
+       which is the band the 12m threshold was chosen to cover (RULING DV's
+       block in p9 carries the derivation). */
     for(const spot of [['the fly floor', 0, 8, -8], ['downstage centre', 0, 1.6, -2]]){
       headAt(spot[1], spot[2], spot[3]);
       const far = nearestFace();

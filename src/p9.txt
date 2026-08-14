@@ -3224,14 +3224,16 @@ function vrPaintLabel(dt){
    THE NUMBER: 12m, head to the nearest console face, and deliberately loose.
    The glass is 1.42 x 0.90m carrying 1200 x 760 pixels — 1.2mm a pixel — so
    the smallest type on it (17px, ~2cm tall) has stopped resolving on a Quest 3
-   (~20 pixels a degree) by about 4m, and the biggest (the 26px board name,
-   the GO lettering, ~5cm) by about 9m; at 12m the whole 1.42m width of it is
-   6.8 degrees of view.  What actually set the number is not legibility but the
-   PALACE: its desk is on the balcony rail looking down the house, and the
-   middle of the stalls measures 7.7m from the glass, so a man standing in his
-   own auditorium watching the board must be inside the gate with room to
-   spare.  A gate that freezes a screen someone is reading is far worse than
-   one that pays for an upload nobody needed.
+   (~20 pixels a degree) by about 4m, the 26px board name (~3cm) by 5-6m, and
+   the biggest (the 48px GO lettering, ~6cm) by about 9m; at 12m the whole
+   1.42m width of it is 6.8 degrees of view.  What actually set the number is
+   not legibility but the PALACE: its raked face looks back UP the house (+z,
+   the build comment above vrMakeDesk), so the sightlines that read it are the
+   rear stalls and the balcony — and those run 5.5-10m from the glass depending
+   on the seat (head at the mid-bank centreline 5.5m, a mid-depth side seat
+   ~8m, the reviewers' re-derivation 8-10m).  Every one of them must be inside
+   the gate with room to spare.  A gate that freezes a screen someone is
+   reading is far worse than one that pays for an upload nobody needed.
 
    STALENESS ON RETURN is covered by leaving drawT RUNNING while out of range:
    it is already well past 0.2 when the head comes back, so the FIRST frame in
@@ -3240,7 +3242,11 @@ function vrPaintLabel(dt){
    itself the trigger.
 
    In a session only: vrUpdate returns on !VR.active, so the desktop is
-   untouched (and on the desktop the desk faces are not drawn at all). */
+   untouched (the desks do not exist until a session builds them; after a
+   session ends they remain, harmlessly carrying the last picture).  Before
+   the desks exist the gate below fails CLOSED — safe, because vrOnStart runs
+   vrBuildDesks() and then a forced vrDrawConsole(true) before the first
+   vrUpdate frame, so no session ever sees a blank board. */
 const VR_SEE_CONSOLE = 12;
 const _dvHead = new T.Vector3(), _dvFace = new T.Vector3();
 function vrConsoleSeen(){
