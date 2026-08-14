@@ -3131,6 +3131,48 @@ const probe = `
            ' in a session, all driven, blackout ' + dark.toFixed(3) + ' -> lit ' + lit.toFixed(3);
   });
 
+  console.log('--- RULING DN: the glow is capped in a session ---');
+
+  P('a session caps the glow instances, and leaving lifts the cap', ()=>{
+    if(typeof GLOW === 'undefined' || !GLOW || !GLOW.mesh)
+      throw new Error('there is no GLOW at all');
+    const keepB = RIG.blackout, keepG = RIG.grand, keepL = FIXTURES.map(f=>f.level);
+    let clock = 0;
+    const step = dt=>{ clock += dt; updateFades(dt); updateRig(dt, clock); };
+    const put = ()=>{ RIG.blackout = keepB; RIG.grand = keepG;
+                      FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+                      for(let i=0;i<20;i++) step(1/72); };
+    RIG.blackout = false; RIG.grand = 1;
+    FIXTURES.forEach(f=>{ f.level = 1; });
+    enterVR();
+    const cap = VR.glowCap;
+    if(!(cap > 0 && cap <= GLOW.max)){
+      exitVR(); put();
+      throw new Error('a session does not cap the glow: VR.glowCap is ' + cap);
+    }
+    /* a cap nothing reaches cannot be observed at all (TRAPS) — the whole rig
+       is lit above, so this only fails if the rig is smaller than the cap */
+    if(!(FIXTURES.length > cap)){
+      exitVR(); put();
+      throw new Error(FIXTURES.length + ' fixtures against a cap of ' + cap +
+                      ' — the cap is never approached');
+    }
+    for(let i=0;i<20;i++) step(1/72);
+    const inside = GLOW.mesh.count;
+    exitVR();
+    for(let i=0;i<20;i++) step(1/72);
+    const outside = GLOW.mesh.count;
+    put();
+    if(inside !== cap)
+      throw new Error('a session drew ' + inside + ' glow instances against a cap of ' + cap);
+    if(VR.glowCap)
+      throw new Error('leaving the session left the cap standing at ' + VR.glowCap);
+    if(outside !== FIXTURES.length)
+      throw new Error('out of the session a fully lit rig drew ' + outside +
+                      ' of ' + FIXTURES.length);
+    return 'capped at ' + cap + ' in a session, ' + outside + ' out of it';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

@@ -864,6 +864,21 @@ against this list before opening a PR; **add new traps as you hit them.**
   escaped *quotes*; this is a third member of that family it does not know
   about. Either double the backslash or, better for asserting generated text,
   use `indexOf` — exact and immune.
+- **`instanceColor` REACHES A FRAGMENT ON r128 ONLY BECAUSE THE TWO SHADER
+  PREFIXES DISAGREE — and the obvious "fix" makes every instance BLACK.**
+  `T.ShaderChunk.color_pars_fragment` in r128 declares `vColor` for
+  `USE_COLOR` alone; it has never heard of `USE_INSTANCING_COLOR`, so on the
+  chunk text alone a per-instance colour could not survive into a fragment.
+  What saves it is `WebGLProgram`: the **fragment** prefix emits `#define
+  USE_COLOR` when *either* `vertexColors` **or** `instancingColor` is set,
+  while the **vertex** prefix emits it for `vertexColors` only. Read the chunk,
+  conclude it is broken, and set `vertexColors = true` to "repair" it, and the
+  vertex shader then declares `attribute vec3 color`, the geometry has none,
+  WebGL supplies `(0,0,0,1)` for a missing generic attribute, `vColor *= color`
+  zeroes it, and the whole batch renders black — with no error anywhere.
+  RULING DN's glow leaves `vertexColors` off for exactly this reason. **Check
+  the prefix, not just the chunk**; the two are not the same source of truth.
+
 - **`UniformsLib` cannot be extended after load, and the test that checks it
   will pass anyway.** `ShaderLib` merges and **clones** its uniforms at module
   load — `ShaderLib.standard.uniforms.fogColor` is not the same object as

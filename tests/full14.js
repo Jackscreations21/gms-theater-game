@@ -2180,6 +2180,130 @@ const probe = `
     return Object.keys(M).length + ' shared materials hooked';
   });
 
+  console.log('--- RULING DN: glow planes instead of bloom ---');
+
+  P('the glow is ONE additive instanced draw, and it is never culled', ()=>{
+    if(typeof GLOW === 'undefined' || !GLOW || !GLOW.mesh)
+      throw new Error('there is no GLOW at all');
+    const gm = GLOW.mesh;
+    if(!gm.isInstancedMesh)
+      throw new Error('the glow is a ' + gm.type + ', not an InstancedMesh');
+    /* ONE draw call is the whole performance argument, so it is the thing
+       asserted: one batch in the scene, one material, one geometry.  A second
+       glow mesh doubles exactly the cost this ruling exists to bound. */
+    let batches = 0;
+    scene.traverse(o=>{ if(o.isInstancedMesh && o.name === 'glow') batches++; });
+    if(batches !== 1) throw new Error(batches + ' glow batches in the scene, not one');
+    if(Array.isArray(gm.material)) throw new Error('the glow carries a material array');
+    const mat = gm.material;
+    if(mat.blending !== THREE.AdditiveBlending) throw new Error('the glow is not additive');
+    if(mat.depthWrite !== false) throw new Error('the glow writes depth');
+    if(mat.side !== THREE.FrontSide)
+      throw new Error('a camera-facing plane needs one face, side is ' + mat.side);
+    if(mat.toneMapped !== false)
+      throw new Error('RULING DM: additive light is left out of the grade, and this is in');
+    /* fogged, and that is a decision: a glow seen across a hazy stage should be
+       eaten by the haze the way the lantern behind it is.  Stated here rather
+       than left implied — init calls envRecollect, which walks the scene and
+       would reach this material even if glowBuild forgot to, so this clause
+       records the intent and the DL coverage clause above is the real guard. */
+    if(!mat.userData.atmHooked)
+      throw new Error('the glow material never reached envTrack, so it is fogged by nothing');
+    /* the geometry is one quad and nothing else — 4 vertices, 2 triangles */
+    const pos = gm.geometry.attributes.position;
+    if(!pos || pos.count !== 4)
+      throw new Error('the glow geometry has ' + (pos ? pos.count : 0) + ' vertices, not a quad');
+    /* r128 sizes an InstancedMesh bounding sphere from the BASE geometry, so a
+       batch whose instances move every frame looks like one quad at the origin
+       and is culled away entirely (TRAPS, first entry) */
+    if(gm.frustumCulled !== false) throw new Error('the glow batch is still frustum culled');
+    const rays = [];
+    gm.raycast(new THREE.Raycaster(), rays);
+    if(rays.length) throw new Error('the glow answers raycasts — it is a grab and a ground hit');
+    if(!gm.instanceColor)
+      throw new Error('the glow carries no instanceColor, so every emitter is white');
+    if(!(GLOW.max >= FIXTURES.length))
+      throw new Error('the batch holds ' + GLOW.max + ' instances for ' + FIXTURES.length + ' fixtures');
+    return GLOW.max + ' instances, one draw call, ' + pos.count + ' vertices';
+  });
+
+  P('a dark rig draws no glow at all, and a lit one draws its lit fixtures only', ()=>{
+    /* driven through the REAL frame — updateFades then updateRig — because the
+       claim is that the ENGINE truncates, not that a plot says so (TRAPS) */
+    const keepB = RIG.blackout, keepG = RIG.grand, keepL = FIXTURES.map(f=>f.level);
+    let clock = 0;
+    const step = ()=>{ clock += 0.05; updateFades(0.05); updateRig(0.05, clock); };
+    RIG.blackout = true; RIG.grand = 1;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    for(let i=0;i<30;i++) step();
+    const dark = GLOW.mesh.count;
+    RIG.blackout = false;
+    FIXTURES[0].level = 1; FIXTURES[1].level = 1; FIXTURES[2].level = 1;
+    for(let i=0;i<30;i++) step();
+    const lit = GLOW.mesh.count;
+    RIG.blackout = keepB; RIG.grand = keepG;
+    FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+    for(let i=0;i<20;i++) step();
+    if(dark !== 0)
+      throw new Error('a blacked-out rig still draws ' + dark + ' glow instances of ' + FIXTURES.length);
+    if(lit !== 3)
+      throw new Error('three lit fixtures drew ' + lit + ' glow instances');
+    return 'blackout 0, three lit 3, of ' + FIXTURES.length + ' fixtures';
+  });
+
+  P('the glow is clamped in SCREEN space, not just in world size', ()=>{
+    if(typeof GLOW_MAX_FRAC === 'undefined' || typeof GLOW_SIZE === 'undefined')
+      throw new Error('the glow clamp constants are not in the build at all');
+    /* dnSize: the x scale of one instance, read back off the matrix the batch
+       will actually draw.  A name the game does not use — a probe-scope helper
+       that shadows a game function is silently wrong for every case below it. */
+    const dnSize = (i)=>{
+      const s = new THREE.Vector3();
+      new THREE.Matrix4().fromArray(GLOW.mesh.instanceMatrix.array, i*16)
+        .decompose(new THREE.Vector3(), new THREE.Quaternion(), s);
+      return s.x;
+    };
+    const keepB = RIG.blackout, keepG = RIG.grand, keepL = FIXTURES.map(f=>f.level),
+          keepCam = camera.position.clone();
+    let clock = 0;
+    const step = ()=>{ clock += 0.05; updateFades(0.05); updateRig(0.05, clock); };
+    RIG.blackout = false; RIG.grand = 1;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    const f0 = FIXTURES[0];
+    f0.level = 1;
+    for(let i=0;i<20;i++) step();
+    const want = GLOW_SIZE * (0.45 + 0.55*f0._lvl);
+    /* far off: the clamp must NOT be biting, or it is not a clamp, it is a
+       shrink — and every reading below would be meaningless */
+    camera.position.copy(f0._org).add(new THREE.Vector3(0, 0, 40));
+    camera.updateMatrixWorld(true);
+    for(let i=0;i<3;i++) step();
+    const far = dnSize(0);
+    /* and up against the lens, which is where he stands to look at the neon */
+    camera.position.copy(f0._org).add(new THREE.Vector3(0, 0, 0.9));
+    camera.updateMatrixWorld(true);
+    for(let i=0;i<3;i++) step();
+    const near = dnSize(0);
+    const dist = camera.getWorldPosition(new THREE.Vector3()).distanceTo(f0._org);
+    const tanHalf = 1/camera.projectionMatrix.elements[5];
+    const lim = dist * tanHalf * 2 * GLOW_MAX_FRAC;
+    camera.position.copy(keepCam); camera.updateMatrixWorld(true);
+    RIG.blackout = keepB; RIG.grand = keepG;
+    FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; });
+    for(let i=0;i<20;i++) step();
+    if(!(want > lim + 0.05))
+      throw new Error('at ' + dist.toFixed(2) + 'm the world size ' + want.toFixed(3) +
+        ' is already inside the screen limit ' + lim.toFixed(3) + ' — the clamp is never approached');
+    if(Math.abs(far - want) > 1e-4)
+      throw new Error('40m away the glow measures ' + far.toFixed(3) +
+        ' against a world size of ' + want.toFixed(3) + ' — something else is resizing it');
+    if(!(near <= lim + 1e-4))
+      throw new Error('at ' + dist.toFixed(2) + 'm the glow measures ' + near.toFixed(3) +
+        ', over the screen-space limit of ' + lim.toFixed(3));
+    return 'far ' + far.toFixed(2) + 'm unclamped, near ' + near.toFixed(2) +
+           'm against a limit of ' + lim.toFixed(2) + 'm';
+  });
+
   window.__out = { fatal: window.__fatal||null,
     frames:n,
     cameraPos:[+camera.position.x.toFixed(2),+camera.position.y.toFixed(2),+camera.position.z.toFixed(2)],

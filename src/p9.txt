@@ -70,6 +70,17 @@ function vrQualityOn(){
   VR.beamCap = 10;                            /* beams alight at once — was 14;
                                                  the first Quest 3 run reported
                                                  the frame rate a little low */
+  VR.glowCap = 12;                            /* RULING DN — glow planes drawn
+                                                 at once.  Additive geometry in
+                                                 haze is overdraw, exactly like
+                                                 the beams above it, and this is
+                                                 the same knob for the same
+                                                 reason.  A shade above the beam
+                                                 count because a glow is one
+                                                 screen-clamped quad against a
+                                                 volumetric cone, and it is the
+                                                 thing that reads as brightness
+                                                 when the beams are capped out */
   VR.lightCap = 4;                            /* real SpotLights handed out by
                                                  p4 — half the desktop pool.
                                                  Every material pays for every
@@ -92,6 +103,7 @@ function vrQualityOff(){
   camera.updateProjectionMatrix();
   VR.beamCap = 0;
   VR.lightCap = 0;
+  VR.glowCap = 0;                             // RULING DN — 0 lifts it, as above
   VR.saved = null;
 }
 /* called from the rig update: keep only the nearest N beams alive */
