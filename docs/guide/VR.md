@@ -1,8 +1,22 @@
 # VR (p9)
 
 Quest 3, WebXR, auto-detected — **the desktop is untouched by design**;
-every VR feature is gated on the session. Session paced at 72Hz
-(`VR.targetHz`).
+every VR feature is gated on the session.
+
+**The frame rate is NEGOTIATED, not set.** `vrOnStart` asks for `VR.targetHz`
+90 and then takes the **lowest supported rate at or above 72** — never below,
+because under 72 the display flickers — so on a Quest 3 it settles at 72 and
+the budget is **13.9ms**, not 11.1. Where the API is missing, 90 stands. The
+comment in `p9` says why: *"the first headset run could not hold it; a held 72
+beats a 90 that drops."*
+
+**The first real readings, 2026-08-13, and they are bad:** **25ms** in an empty
+Palace with nothing loaded and **48ms** in Beetlejuice — 1.8× and 3.5× over
+budget. Foveation pegs at **1.00 within about two seconds** of entering and
+never relaxes, so the one mid-session governor is spent, not standing by. And
+the 48 was a **floor, not a measurement**: `p7` clamps `dt` to 50ms and the
+meter used to read that clamped figure, so every frame worse than 50 recorded
+as exactly 50 (RULING DJ fixed it).
 
 ## Movement
 
@@ -68,13 +82,25 @@ new pipes get ropes and locks.
 ## Performance
 
 The wrist meter (`vrPerf`, left wrist): 120-frame ring buffer, avg/worst
-in `VR.perf`, green under budget / red over. Foveation on a feedback
+in `VR.perf`, green under budget / red over, plus **draw calls and
+triangles** off `renderer.info` (RULING DJ — three.js has no multiview at
+any version, so both eyes cost two passes and our own batching is the only
+lever left on that number). It records the **raw** frame time `p7` hands it
+alongside the clamped game `dt`, with its own far higher ceiling
+(`PERF_CEIL` 200ms) — a 20ms frame is a frame rate and must be told the
+truth, while a three-second model load is a hitch that would otherwise
+poison the window. Foveation on a feedback
 loop: base 0.4, steps +0.15 toward 1.0 when over budget, relaxes −0.05
 with headroom — climb fast, relax slow. Other knobs, in order (one per
 PR, retest after each — full list in HANDOFF "still owed"):
 
 1. Batch the locking rail's static per-line meshes (`vrBuildRopes`)
 2. `VR.beamCap` (10 today) — additive beams in haze are overdraw
+2b. `VR.glowCap` (12 today, RULING DN) — the additive halo batch, same knob
+   family and the same reason. Capped by NEAREST-WITHIN-A-CONE, never by
+   array order: rig order drew twelve halos behind your head and none you
+   could see. `f.glow`, the per-fixture lens core, is a **different** thing
+   and still draws all 39 in a blackout — an open one-line follow-up.
 3. Framebuffer scale below 0.85 (**must be set before any session exists**)
 4. Merge lantern-body steel clusters (spec'd in #33's review; keep the
    jaw — it IS `userData.clamp` — and the lens separate)
