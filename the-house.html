@@ -4915,13 +4915,146 @@ function makeBeam(len, rad){
    neon rather than out of a box hanging in his picture.  So "userData.lens on
    every body" is now "on every body that has a mesh", which is the same
    contract for everything with something to look at.  A test in
-   tests/stages.js names the exception and refuses a second one.               */
+   tests/stages.js names the exception and refuses a second one.
+
+   RULING DY MERGED THE SHELL, so the piece list below is a DESCRIPTION of the
+   geometry and no longer a list of objects.  mergeShell (just under lensMat)
+   runs at the bottom of every builder and collapses a frame's static mesh
+   children into one Mesh per material.  What that changes for a reader of the
+   builders: after the merge a profile is three drawables (fixture shell, steel
+   shell, lens) where it was seventeen, and userData.clamp names the STEEL
+   SHELL the C-clamp is now part of rather than a jaw of its own.  The clamp is
+   a declaration that a body meets a pipe, and nothing reads its transform;
+   if something ever needs to, it needs its own unmerged mesh and the draw
+   that costs.  Everything else in the contract is untouched: the body ROOT is
+   still the Group that BODIES holds, the mover's yoke and head are still live
+   Groups merged separately from the shell above them, and the lens is still
+   its own mesh on its own keyed material.                                    */
 const FIXG = {};
 function fixG(k, make){ return FIXG[k] || (FIXG[k] = make()); }
 /* lens materials are cached by colour and SHARED — never tint one per
    fixture (userData.lens is write-only today; detach/order work, take note) */
 const LENSM = {};
 function lensMat(c){ return LENSM[c] || (LENSM[c] = new T.MeshBasicMaterial({color:c})); }
+
+/* ---- RULING DY — A BODY'S STATIC SHELL IS ONE DRAW PER MATERIAL -----------
+   MEASURED, not guessed (tools/draws.js, on a55bfcd): the empty Palace submits
+   350 draws an eye at the boot view — 700 a frame, because there is no
+   multiview and each eye is a full projectObject pass — against a Quest
+   comfort band of roughly 100-200.  The architecture is not the problem; it is
+   already merged and runs at ~1.1 draws a block.  The LIGHTING RIG is 476 of
+   the scene's 878 visible drawables, and 423 of those are the lantern BODIES
+   at 10.8 draws each: a barrel, a gate, a lamp housing, four shutter handles,
+   four colour-frame bars and five pieces of hanging iron, every one of them its
+   own Mesh and therefore its own draw call, thirty-nine times over.
+
+   None of those pieces is addressed by anything.  Three things in a body ARE,
+   and the merge stops at all three:
+
+     THE BODY ROOT.  It is a BODIES.mesh — detachable (unhangBody), carried,
+       slotted, hovered, raycast through pickAll.  The merge happens INSIDE one
+       body and produces 39 merged bodies, never one; the root Group keeps its
+       identity, its children live where they always did, and hangBody /
+       unhangBody / slotBody move exactly what they moved before.
+     THE YOKE AND THE HEAD.  updateRig writes userData.yoke.rotation.y and
+       userData.head.rotation.x every frame, so a mover has THREE frames that
+       move independently and each is merged on its own.  Baking a head into
+       the shell above it would weld a moving light solid.
+     THE LENS.  It is painted through the LENSM keyed cache, which is how a
+       thing gets REPAINTED in this codebase (INVARIANTS).  Merging it freezes
+       its colour with nothing thrown — the paint-roller-head failure mode in
+       TRAPS.  So no mesh wearing a keyed-cache material is ever merged, which
+       also spares the speaker grille (same cache, same reason, and it is what
+       tests/stages.js counts to prove one grille material across twelve boxes).
+
+   MATERIALS ARE NOT TOUCHED.  A merged shell wears the same shared M.fixture /
+   M.steel object its pieces wore, so the envTrack / envCarrier / atmTrack
+   registrations behind INVARIANTS are unaffected: there is nothing new to
+   register and nothing cloned per fixture to drift.
+
+   AND THE GEOMETRY IS CACHED LIKE EVERY OTHER PIECE.  The merged result goes
+   into FIXG under the body's own key, so all 117 lantern bodies across three
+   stages share one buffer per material per type — the same argument the
+   per-piece cache was built on, and mergeParts CLONES its inputs, so the
+   cached pieces it reads are not mutated (the shared-cache trap, TRAPS).
+
+   WHAT IT COSTS, stated rather than discovered: mergeParts emits NON-INDEXED
+   geometry, so a merged shell processes about three vertices per triangle
+   where an indexed cylinder shared them.  Triangles are unchanged per
+   geometry (that is asserted) — but the wrist meter's tri line counts
+   SUBMITTED triangles, and one merged bounding sphere culls less finely than
+   seventeen small ones, so a body half out of frustum now submits whole:
+   measured +0.5% on the boot view.  The buffers are per TYPE rather than per
+   body, and the budget this ruling is about is draw calls.
+
+   BODY_MERGE is the one line that puts the pieces back, and it is what the
+   draw-ceiling assertion in tests/stages.js is negative-checked against.     */
+const BODY_MERGE = true;
+/* a material minted by the LENSM keyed cache.  Four entries, so a scan is
+   cheaper and harder to get wrong than a parallel Set.
+
+   AND IT IS A GUARD WITH NO LIVE CASE IN THE RIG TODAY, which is worth saying
+   rather than leaving to look load-bearing (TRAPS).  A merge is per material,
+   and every body carries exactly ONE keyed-cache piece — its lens, or the PA
+   box's grille — so a lens is already alone in its group and a group of one is
+   never merged.  What this line protects against is the SECOND one: a body
+   with two lens-cache pieces (two cells, a lens and a filter) would otherwise
+   merge them into one frozen mesh and every repaint after that would be
+   invisible with nothing thrown, which is the paint-roller-head trap exactly.
+   tests/stages.js builds the two-piece frame the rig does not have, because a
+   guard nothing approaches cannot be negative-checked (TRAPS again). */
+function lensMatted(m){ for(const k in LENSM) if(LENSM[k] === m) return true; return false; }
+/* Merge ONE frame: the static mesh children of `frame`, grouped by material,
+   each group becoming a single Mesh whose geometry is cached under `key`.
+   Child Groups are left alone — that is how the mover's yoke and head survive,
+   and they are merged by their own calls.  `root` is the node whose userData
+   publishes handles; any handle that named a swallowed mesh is re-pointed at
+   the shell that swallowed it, so a contract cannot silently start naming an
+   orphan. */
+function mergeShell(key, frame, root){
+  if(!BODY_MERGE) return frame;
+  root = root || frame;
+  const groups = [], byMat = new Map();
+  for(const c of frame.children){
+    if(!c.isMesh || !c.geometry) continue;        // a live sub-frame is a Group, and stays one
+    if(Array.isArray(c.material)) continue;       // nothing in a body has one; not ours to guess at
+    /* noMerge is an opt-out with NO LIVE CASE today, same disclosure as the
+       lens guard above: it exists so a future builder can keep a piece its
+       own draw without learning this function's internals. */
+    if(lensMatted(c.material) || c.userData.noMerge) continue;
+    /* mergeParts composes an XYZ Euler, which is a Mesh's default and what
+       every body piece uses.  A piece that ever carries another order costs a
+       DRAW here rather than being baked with the wrong rotation — err toward a
+       draw, never toward wrong geometry.  Nothing takes this branch today. */
+    if(c.rotation.order !== 'XYZ') continue;
+    /* and the same refusal for a negative scale: mergeParts' own header
+       forbids the mirrored part (flipped winding vanishes under FrontSide),
+       and a flipped piece is the ONE failure the test net cannot see — the
+       tri count and the box both survive a winding flip.  Nothing sets any
+       scale on a body piece today; if it ever does, it costs a draw. */
+    if(c.scale.x < 0 || c.scale.y < 0 || c.scale.z < 0) continue;
+    let e = byMat.get(c.material);
+    if(!e){ e = {mat:c.material, parts:[], meshes:[]}; byMat.set(c.material, e); groups.push(e); }
+    e.parts.push({geo:c.geometry,
+                  pos:[c.position.x, c.position.y, c.position.z],
+                  rot:[c.rotation.x, c.rotation.y, c.rotation.z],
+                  scale:[c.scale.x, c.scale.y, c.scale.z]});
+    e.meshes.push(c);
+  }
+  groups.forEach((e, i)=>{
+    /* one piece is already one draw, and merging it would trade a shared
+       cached buffer for a non-indexed copy of itself */
+    if(e.parts.length < 2) return;
+    const shell = new T.Mesh(fixG(key + '#' + i, ()=>mergeParts(e.parts)), e.mat);
+    for(const m of e.meshes){
+      frame.remove(m);
+      for(const k in root.userData) if(root.userData[k] === m) root.userData[k] = shell;
+    }
+    frame.add(shell);
+  });
+  return frame;
+}
+
 /* yoke + C-clamp + safety loop, shared by every hanging body */
 function addHang(g, yokeR){
   const yoke = new T.Mesh(fixG('yoke'+yokeR, ()=>new T.TorusGeometry(yokeR,.022,5,14,Math.PI)), M.steel);
@@ -4934,6 +5067,10 @@ function addHang(g, yokeR){
   bolt.rotation.x = Math.PI/2; bolt.position.set(0, yokeR + .11, .06); g.add(bolt);
   const safety = new T.Mesh(fixG('safety', ()=>new T.TorusGeometry(.085,.008,4,10)), M.steel);
   safety.position.set(.06, yokeR + .1, 0); safety.rotation.x = .6; g.add(safety);
+  /* RULING DY re-points this at the merged steel shell the jaw becomes part of
+     (mergeShell does the re-pointing, so the handle can never name an orphan).
+     It is a declaration that this body meets a pipe; nothing reads its
+     transform, and something that needed to would have to keep its own mesh. */
   g.userData.clamp = jaw;
   return g;
 }
@@ -4966,7 +5103,7 @@ function bodyProfile(){ // ellipsoidal — the Source Four silhouette
   const lens = new T.Mesh(fixG('proLens', ()=>new T.CircleGeometry(.115,14)), lensMat(0x111111));
   lens.position.z = .615; g.add(lens);
   addHang(g, .24);
-  g.userData.lens = lens; return g;
+  g.userData.lens = lens; return mergeShell('profile', g);
 }
 function bodyFresnel(){
   const g = new T.Group();
@@ -4982,7 +5119,7 @@ function bodyFresnel(){
   const lens = new T.Mesh(fixG('freLens', ()=>new T.CircleGeometry(.155,14)), lensMat(0x161616));
   lens.position.z = .305; g.add(lens);
   addHang(g, .26);
-  g.userData.lens = lens; return g;
+  g.userData.lens = lens; return mergeShell('fresnel', g);
 }
 function bodyPar(){
   const g = new T.Group();
@@ -4994,7 +5131,7 @@ function bodyPar(){
   const lens = new T.Mesh(fixG('parLens', ()=>new T.CircleGeometry(.15,14)), lensMat(0x141414));
   lens.position.z = .406; g.add(lens);
   addHang(g, .23);
-  g.userData.lens = lens; return g;
+  g.userData.lens = lens; return mergeShell('par', g);
 }
 function bodyCyc(){
   const g = new T.Group();
@@ -5005,7 +5142,7 @@ function bodyCyc(){
   const lens = new T.Mesh(fixG('cycLens', ()=>new T.PlaneGeometry(.5,.24)), lensMat(0x141414));
   lens.position.z = .205; g.add(lens);
   addHang(g, .28);
-  g.userData.lens = lens; return g;
+  g.userData.lens = lens; return mergeShell('cyc', g);
 }
 function bodyMover(){
   const g = new T.Group();
@@ -5028,7 +5165,15 @@ function bodyMover(){
   const lens = new T.Mesh(fixG('movLens', ()=>new T.CircleGeometry(.15,16)), lensMat(0x101010));
   lens.position.z = .253; head.add(lens);
   g.userData.clamp = base;   // movers clamp through their base
-  g.userData.yoke = yoke; g.userData.head = head; g.userData.lens = lens; return g;
+  g.userData.yoke = yoke; g.userData.head = head; g.userData.lens = lens;
+  /* THREE FRAMES, THREE MERGES (RULING DY).  The head tilts inside the yoke
+     and the yoke pans inside the body, so each is merged on its own and the
+     two Groups stay live Groups.  The base is the only M.fixture piece at the
+     body level and so stays a mesh of its own, which is why userData.base and
+     userData.clamp still name what they always named. */
+  mergeShell('mover.head', head, g);
+  mergeShell('mover.yoke', yoke, g);
+  return mergeShell('mover', g);
 }
 /* A BLINDER — the audience-facing unit, two rows of four open cells in one
    shell (RULING BC).  The cell rings are ONE merged geometry cached like every
@@ -5077,7 +5222,7 @@ function bodyBlinder(){
   const lens = new T.Mesh(fixG('blindLens', ()=>new T.PlaneGeometry(.88,.46)), lensMat(0x161616));
   lens.position.z = .16; g.add(lens);
   addHang(g, .3);
-  g.userData.lens = lens; return g;
+  g.userData.lens = lens; return mergeShell('blinder', g);
 }
 function bodySpeaker(){
   const g = new T.Group();
@@ -5089,7 +5234,10 @@ function bodySpeaker(){
   const bkt = new T.Mesh(fixG('spkBkt', ()=>new T.BoxGeometry(.5,.06,.1)), M.steel);
   bkt.position.y = .26; g.add(bkt);
   g.userData.clamp = bkt;
-  return g;
+  /* NOTHING MERGES IN A PA BOX and that is the correct result, not an omission:
+     the shell and the bracket are one piece each and the grille wears a keyed
+     cache material.  A box is three draws before RULING DY and three after. */
+  return mergeShell('speaker', g);
 }
 
 /* ---- bodies off the pipe -------------------------------------------------
