@@ -602,6 +602,106 @@ const probe = `
     return 'no errors, '+m+' pieces in the building';
   });
 
+  console.log('--- RULING DW: a light that serves no one leaves the loop ---');
+
+  /* Every clause below reads GATHERED visibility, never a light own flag.
+     r128 walks the graph in projectObject and its first line returns on
+     visible === false, above both the pushLight and the recursion into
+     children (three.js r128:17954-17974) — so a light whose own flag is true
+     under a switched-off root is not in any material light loop, and a test
+     that read light.visible would call the Arc lit while standing in the
+     Palace.  seen() up at the top of this file is that same ancestor walk.  */
+  const dwLights = (root)=>{ const out = []; root.traverse(o=>{ if(o.isLight) out.push(o); }); return out; };
+  const dwOn = (root)=>dwLights(root).filter(seen).length;
+  /* The Palace own lights hang off world (buildRooms files every light-carrying
+     child into SHARED); the pool, the two beds and the lightning sit on scene
+     itself because they are machinery shared by whichever stage is live, and
+     are deliberately not part of either venue set. */
+  const dwPalace = ()=>dwLights(world);
+  const dwArc = ()=>dwLights(ARC.group);
+
+  P('the venue you are not standing in gathers not one light, both ways round', ()=>{
+    /* Established away first and then walked back, rather than read where the
+       suite happens to have left the player: an assertion made in the state it
+       claims is never reached proves nothing (TRAPS).  goToView is the real
+       crossing — it is what the VENUES panel and the number keys call. */
+    if(VENUE !== 'palace') throw new Error('this block wanted to start at home, VENUE is '+VENUE);
+    goToView(11); run(4, 0.016); updateRooms(); run(4, 0.016);
+    if(VENUE !== 'arc') throw new Error('goToView(11) did not cross town');
+    const arcHere = dwOn(ARC.group), palThere = dwOn(world);
+    if(arcHere === 0) throw new Error('standing in the arc, not one of its own lights is gathered');
+    if(palThere !== 0)
+      throw new Error(palThere+' of the palace '+dwPalace().length+
+        ' lights are still gathered from four hundred metres away');
+    goToView(1); run(4, 0.016); updateRooms(); run(4, 0.016);
+    if(VENUE !== 'palace') throw new Error('goToView(1) did not come home');
+    const arcThere = dwOn(ARC.group), palHere = dwOn(world);
+    if(arcThere !== 0)
+      throw new Error(arcThere+' of the arc '+dwArc().length+
+        ' lights are gathered while standing in the palace');
+    if(palHere === 0) throw new Error('back home and the palace gathers nothing');
+    return 'in the arc '+arcHere+'/'+dwArc().length+' arc and '+palThere+' palace; '+
+           'at home '+palHere+'/'+dwPalace().length+' palace and '+arcThere+' arc';
+  });
+
+  P('the palace house circuits are all in the loop, and the yard light is not', ()=>{
+    /* The other half of the gate: being right about what is OFF is worth
+       nothing if the gate also took something the room needs.  Named by
+       circuit, not by count, so moving a lamp does not fail this. */
+    const want = [];
+    if(CHANDELIER) want.push(['the chandelier', CHANDELIER.light]);
+    houseLights.forEach((l,i)=>want.push(['house cove '+(i+1), l]));
+    workLights.forEach((l,i)=>want.push(['work light '+(i+1), l]));
+    FOH.lamps.forEach((l,i)=>want.push(['foyer chandelier '+(i+1), l]));
+    want.push(['the dock light', BOH.light], ['the second dock light', BOH.light2]);
+    for(const [name, l] of want)
+      if(!seen(l)) throw new Error(name+' is not gathered, so its circuit cannot light anything');
+    /* RULING DW: BOH.light3 is the yard light over the road and nothing has
+       ever driven it — intensity 0 since the day it was minted.  At intensity 0
+       it was still a full point-light iteration in every standard fragment.  If
+       somebody drives it off HOUSE.backstage one day, this clause is the thing
+       that will tell them to move it up into the list above. */
+    if(BOH.light3.visible)
+      throw new Error('the yard light is back in the light loop and still driven by nothing');
+    if(seen(BOH.light3)) throw new Error('the yard light is gathered');
+    return want.length+' circuits gathered, the undriven yard light out of the loop';
+  });
+
+  P('the arc bed leaves the loop on a stage, on the same test that zeroes it', ()=>{
+    /* p2j drives the foyer bed to EXACTLY 0 inside a house (RULING BH), by
+       room and with no fade, so the flag rides that same predicate.  Asserted
+       as a pair: the intensity and the flag must agree in both rooms, because
+       the failure this guards against is one of them being changed alone. */
+    goToView(11); run(30, 0.05);
+    if(ARC.cur !== 'lobby') throw new Error('view 11 is not the foyer, it is '+ARC.cur);
+    setArcHouse(1); run(60, 0.05);
+    if(!seen(ARC.hemi)) throw new Error('the foyer bed is out of the loop in the foyer');
+    if(!(ARC.hemi.intensity > 0.01)) throw new Error('the foyer bed is dark in the foyer');
+    const inFoyer = dwOn(ARC.group);
+    let stage = null, stageRoom = null;
+    for(const k of ['15','19','16','20','12','13','14','17','18']){
+      if(!VIEWS[k]) continue;
+      goToView(k); run(6, 0.05);
+      if(ARC.cur !== 'lobby'){ stage = k; stageRoom = ARC.cur; break; }
+    }
+    if(stage === null) throw new Error('no arc view stands inside a house');
+    run(20, 0.05);
+    if(ARC.hemi.intensity > 0.0001)
+      throw new Error('inside a house the bed reads '+ARC.hemi.intensity.toFixed(4));
+    if(seen(ARC.hemi))
+      throw new Error('inside a house the bed is at zero and still in the light loop');
+    if(seen(ARC.amb))
+      throw new Error('inside a house the ambient bed is at zero and still gathered');
+    const onStage = dwOn(ARC.group);
+    if(!(onStage < inFoyer))
+      throw new Error('a stage gathers '+onStage+' lights and the foyer '+inFoyer);
+    // and back out to the foyer it returns, or the building goes dark for good
+    goToView(11); run(30, 0.05);
+    if(!seen(ARC.hemi)) throw new Error('back in the foyer the bed never came back');
+    setArcHouse(0.85); goToView(1); run(4, 0.016); updateRooms();
+    return 'foyer gathers '+inFoyer+', the '+stageRoom+' stage '+onStage+' (view '+stage+')';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
