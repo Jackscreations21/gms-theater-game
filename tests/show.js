@@ -1453,6 +1453,137 @@ const probe = `
     return 'body, beam, glow and floor pool all registered';
   });
 
+  /* ==== RULING DS — castShadow is written only on change, and the shadow slots
+     prefer the fixtures that asked ====
+     In r128 the VALUE of castShadow rides the lights-state hash, so a flip
+     re-acquires a program for every lit material and the first one compiles a
+     new shader variant.  DQ made drops able to refuse a shadow, which is what
+     gives that flag something to churn on.  These cases hold the two halves:
+     nothing is written while the rig is steady, and a refuser does not sit in a
+     casting slot while an asker sits in a plain one.  DQ's own assertions above
+     are untouched and stay green.                                            */
+  console.log('--- RULING DS: the castShadow churn ---');
+
+  const dsStep = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+  /* which pool light is holding this fixture?  There is no back-pointer, so ask
+     the geometry: the hand-out copies the fixture origin into its slot.  An
+     unoccupied slot keeps the pose it last held, hence the intensity guard. */
+  const dsSlotOf = f=>{
+    for(let i=0;i<LIGHT_POOL.length;i++){
+      const l = LIGHT_POOL[i];
+      if(l.intensity > 0 && l.position.distanceToSquared(f._org) < 1e-8) return i;
+    }
+    return -1;
+  };
+
+  P('DS: a steady rig writes castShadow on no frame at all', ()=>{
+    const keep = FIXTURES.map(f=>f.level);
+    FIXTURES.forEach(f=>{ f.level = 1; f.lvlDur = 0; });
+    dsStep(); dsStep();                 // let the hand-out settle before watching
+    const l = LIGHT_POOL[0];
+    if(!l.userData.canShadow) throw new Error('slot 0 is not shadow-capable - the test is wrong');
+    if(!(l.intensity > 0)) throw new Error('slot 0 is holding nobody, so nothing would write to it anyway');
+    /* observed rather than counted in the game: the flag is watched with an
+       accessor, which is the only honest way to see an assignment that has no
+       effect on the value */
+    let writes = 0, held = l.castShadow;
+    Object.defineProperty(l, 'castShadow', {configurable:true, enumerable:true,
+      get(){ return held; }, set(v){ writes++; held = v; }});
+    for(let i=0;i<20;i++) dsStep();
+    delete l.castShadow;
+    l.castShadow = held;
+    FIXTURES.forEach((f,i)=>{ f.level = keep[i]; f.lvlDur = 0; }); dsStep();
+    if(writes) throw new Error(writes+' castShadow writes across 20 steady frames - every one of them re-acquires a program for every lit material');
+    return '20 steady frames, 0 writes, slot 0 still casting '+held;
+  });
+
+  P('DS: the shadow-capable slots go to the fixture that ASKED for one', ()=>{
+    const keep = FIXTURES.map(f=>f.level);
+    /* two rigged lanterns with no opinion at all, and two drops that have one.
+       The powers are chosen so RANK ALONE seats them the wrong way round: the
+       refuser outranks the whole stage rig and the asker sits under it, so a
+       build with no preference puts the refuser in shadow slot 0 and the asker
+       in a plain one.  Four fixtures lit means slots 0-2 casting and slot 3
+       plain, so both kinds of slot are free. */
+    const plain = FIXTURES.filter(f=>!f.audience && !f.dropped && f.body).slice(0,2);
+    if(plain.length < 2) throw new Error('the rig has fewer than two plain lanterns to lend');
+    const asks = lightAdd({kind:'SpotLight', pos:{x:-3,y:7,z:-2}, aim:{x:-3,y:0,z:-2}, shadows:true,  power:0.95});
+    const nope = lightAdd({kind:'SpotLight', pos:{x:3, y:7,z:-2}, aim:{x:3, y:0,z:-2}, shadows:false, power:9.0});
+    const fail = m=>{ lightRemove(asks); lightRemove(nope);
+      FIXTURES.forEach((f,i)=>{ f.level = keep[i]; f.lvlDur = 0; }); dsStep();
+      throw new Error(m); };
+    if(!(nope.rank > plain[0].rank && nope.rank > plain[1].rank))
+      fail('the premise is broken: the refuser at rank '+nope.rank+' does not outrank the lanterns');
+    if(!(asks.rank < plain[0].rank && asks.rank < plain[1].rank))
+      fail('the premise is broken: the asker at rank '+asks.rank+' does not sit under the lanterns');
+    FIXTURES.forEach(f=>{ f.level = 0; f.lvlDur = 0; });
+    plain.forEach(f=>{ f.level = 1; });
+    asks.level = 1; nope.level = 1;
+    dsStep();
+    const sa = dsSlotOf(asks), sn = dsSlotOf(nope);
+    if(sa === -1) fail('the asker got no real light at all');
+    if(sn === -1) fail('the refuser got no real light at all');
+    if(sa === sn) fail('both drops were found in slot '+sa+' - the test cannot tell them apart');
+    if(!LIGHT_POOL[sa].userData.canShadow)
+      fail('the fixture that asked for a shadow sits in plain slot '+sa+' while a shadow slot stood free');
+    if(LIGHT_POOL[sn].userData.canShadow)
+      fail('the fixture that asked for NO shadow took shadow slot '+sn+' while a plain slot stood free');
+    if(asks.shadowGranted !== true) fail('it holds a shadow-capable slot and the grant was never written');
+    if(nope.shadowGranted !== false) fail('it reports a shadow it asked not to have');
+    /* and nobody lost a light to the reorder: rank still decides WHO gets one */
+    if(!plain[0]._live || !plain[1]._live) fail('a lit lantern lost its real light to the reorder');
+    const live = lightSlots().granted;
+    if(live !== 4) fail(live+' fixtures live where 4 were lit - the hand-out changed size');
+    lightRemove(asks); lightRemove(nope);
+    FIXTURES.forEach((f,i)=>{ f.level = keep[i]; f.lvlDur = 0; }); dsStep();
+    return 'asker in shadow slot '+sa+', refuser in plain slot '+sn;
+  });
+
+  P('DS: shadowGranted still reports exactly what the pool did', ()=>{
+    const keep = FIXTURES.map(f=>f.level);
+    const asks = lightAdd({kind:'SpotLight', pos:{x:-4,y:7,z:-3}, aim:{x:-4,y:0,z:-3}, shadows:true,  power:9.0});
+    const nope = lightAdd({kind:'SpotLight', pos:{x:4, y:7,z:-3}, aim:{x:4, y:0,z:-3}, shadows:false, power:8.0});
+    const truth = where=>{
+      let granted = 0, casting = 0;
+      FIXTURES.forEach(f=>{
+        if(f.shadowGranted) granted++;
+        if(f.shadowGranted && !f._live)
+          throw new Error(where+': a fixture holding no slot at all reports a shadow');
+      });
+      LIGHT_POOL.forEach(l=>{ if(l.intensity > 0 && l.castShadow) casting++; });
+      if(granted !== casting)
+        throw new Error(where+': '+granted+' fixtures report a shadow against '+casting+' occupied pool lights actually casting');
+      if(granted > SHADOW_LIGHTS)
+        throw new Error(where+': '+granted+' granted against '+SHADOW_LIGHTS+' shadow slots');
+      return granted;
+    };
+    let a = 0, b = 0;
+    try{
+      // the whole rig plus both drops: eight slots full, the refuser pushed clear
+      FIXTURES.forEach(f=>{ f.level = 1; f.lvlDur = 0; }); dsStep();
+      a = truth('rig at full');
+      if(asks.shadowGranted !== true)
+        throw new Error('the top-ranked asker was refused a shadow slot with the rig at full');
+      if(nope.shadowGranted !== false) throw new Error('the refuser reports a shadow');
+      /* and the case where the preference CANNOT be honoured: only the two drops
+         lit, so the only slots in play are shadow-capable and the refuser has to
+         hold one.  The grant is still the plain truth about that slot. */
+      FIXTURES.forEach(f=>{ f.level = 0; f.lvlDur = 0; });
+      asks.level = 1; nope.level = 1; dsStep();
+      const sn = dsSlotOf(nope);
+      if(sn === -1) throw new Error('one of two lit fixtures got no light');
+      if(!LIGHT_POOL[sn].userData.canShadow)
+        throw new Error('with two lit fixtures the refuser found a plain slot, which the pool does not have in play');
+      if(LIGHT_POOL[sn].castShadow) throw new Error('it holds a shadow slot and the slot is still casting');
+      b = truth('two drops alone');
+      if(nope.shadowGranted !== false) throw new Error('it reports a shadow it asked not to have');
+    } finally {
+      lightRemove(asks); lightRemove(nope);
+      FIXTURES.forEach((f,i)=>{ f.level = keep[i]; f.lvlDur = 0; }); dsStep();
+    }
+    return a+' granted with the rig at full, '+b+' with the two drops alone';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

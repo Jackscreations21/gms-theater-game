@@ -1295,7 +1295,7 @@ const hemi = new T.HemisphereLight(0x3a4a6a, 0x181410, 0); scene.add(hemi);
 
 /* ---- rig update ---- */
 const _v = new T.Vector3(), _v2 = new T.Vector3(), _glowCam = new T.Vector3();
-const _active = [], _handout = [];
+const _active = [], _handout = [], _shadowSort = [];
 /* how many of the real lights the audience rig may ever hold at once (BG) */
 const AUD_LIGHT_RESERVE = 2;
 function updateRig(dt, t){
@@ -1467,6 +1467,47 @@ function updateRig(dt, t){
       if(_handout.indexOf(f) === -1) _handout.push(f);
     }
   }
+  /* RULING DS — THE SHADOW-CAPABLE SLOTS GO TO THE FIXTURES THAT ASKED.
+     In r128 the VALUE of a light's castShadow is part of the lights-state hash,
+     so flipping one re-acquires a program for every lit material and the first
+     flip COMPILES the new NUM_SPOT_SHADOWS variant — a multi-ms hitch.  RULING
+     DQ's drops can ask for no shadow, so a refuser churning in and out of a
+     shadow-capable slot flips that hash over and over.  Two things defuse it:
+     the write below happens only on a real change, and this reorder keeps
+     refusers out of the three casting slots in the first place.
+
+     IT IS A PERMUTATION AND NOTHING MORE.  The hand-out list is untouched in
+     length and membership — RANK still decides who gets a light at all (RULING
+     BC, load-bearing), and the reserve above still decides how many go to the
+     audience rig (BG/BL) — so exactly the same slot INDICES stay occupied and
+     only who sits in them changes.  It deliberately does not push a refuser out
+     into a slot the hand-out was not already using: that would leave an idle
+     shadow slot casting for nobody, and DQ's own case (one refusing drop alone
+     in a dark house, holding slot 0 and stopping it casting) is pinned by a
+     test.  So the hash still moves when it genuinely must — more askers than
+     shadow slots, or nothing but shadow slots in play — and not otherwise.
+
+     Three classes, in this order: asked for one (shadowWanted true), no opinion
+     at all (a rigged lantern, undefined — the quality preset owns its casting),
+     asked for none (false).  Stable inside each class, so rank order survives.
+     The whole thing is skipped unless somebody in the hand-out has an opinion,
+     which is to say unless a dropped light is holding a slot: the rig on its own
+     runs exactly the code it ran before.                                     */
+  if(_handout.length > 1){
+    let opinion = false;
+    for(let i=0;i<_handout.length;i++)
+      if(_handout[i].shadowWanted !== undefined){ opinion = true; break; }
+    if(opinion){
+      _shadowSort.length = 0;
+      for(let pass=0; pass<3; pass++)
+        for(let i=0;i<_handout.length;i++){
+          const f = _handout[i];
+          const cls = f.shadowWanted === true ? 0 : f.shadowWanted === undefined ? 1 : 2;
+          if(cls === pass) _shadowSort.push(f);
+        }
+      for(let i=0;i<_handout.length;i++) _handout[i] = _shadowSort[i];
+    }
+  }
   for(let i=0;i<LIGHT_POOL.length;i++){
     const l = LIGHT_POOL[i], f = _handout[i] || null;
     if(!f){ l.intensity = 0; continue; }
@@ -1478,7 +1519,16 @@ function updateRig(dt, t){
        shadowGranted is then the plain truth — is this fixture casting? — which
        is false for every slot past the third, and false for the whole rig at a
        quality level with shadows switched off. */
-    if(l.userData.canShadow) l.castShadow = QUALITY.shadows && f.shadowWanted !== false;
+    /* RULING DS — AND IT IS WRITTEN ONLY WHEN IT CHANGES.  This ran every frame
+       for every shadow-capable slot, and in r128 an ASSIGNMENT of the same value
+       is free while a CHANGE is not: the lights-state hash carries castShadow,
+       so a flip re-acquires a program for every lit material.  A steady rig now
+       writes nothing at all here.  Coerced to a boolean because the stored value
+       is one and QUALITY.shadows need not be. */
+    if(l.userData.canShadow){
+      const cast = !!(QUALITY.shadows && f.shadowWanted !== false);
+      if(l.castShadow !== cast) l.castShadow = cast;
+    }
     f.shadowGranted = !!l.castShadow;
     l.position.copy(f._org);
     l.target.position.copy(f._org).addScaledVector(f._dir, Math.max(4, f.beamLen));
