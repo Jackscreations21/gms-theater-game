@@ -1484,10 +1484,13 @@ renderer.toneMappingExposure = 1.35;
    mints in a session) then share one rule instead of four that can drift apart.
 
    0.5 SITS IN A GAP, WHICH IS WHY IT IS NOT A KNIFE-EDGE.  Censused on the
-   built file, the metalness values standing in the scene at boot are
+   built file, the metalness values standing in the scene AT BOOT are
    0, .02, .04, .05, .10, .15, .20, .25, .30, then .50, .55, .60, .70, .80,
    .85, .90 — NOTHING between .31 and .49.  A threshold of 0.4 selects the same
-   21 materials, so this number is not being tuned against a cliff.
+   21 materials, so this number is not being tuned against a cliff.  (Boot is
+   the scope: show-time mints can land inside the band — p5h's netherworld
+   rail sits at .35 — and land on the dull side of 0.5, which is the point of
+   a threshold rather than a list.)
 
    AND A MISSING metalness MEANS YES, NOT NO.  The vendored GLTFLoader's
    KHR_materials_pbrSpecularGlossiness branch DELETES metalness off the material

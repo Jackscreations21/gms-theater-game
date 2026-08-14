@@ -1803,8 +1803,9 @@ const probe = `
        material the shared fog and grade uniform OBJECTS (INVARIANTS) — and it
        registers the envMap carriers.  DT narrows the second and must not touch
        the first.  Put the metalness test above atmTrack and five materials in six
-       reach the grade with gradeTint unsupplied, which reads vec3(0) and renders
-       BLACK: a hole in the picture, not a subtlety.
+       reach the grade with gradeMat unsupplied, which reads mat3(0) and renders
+       BLACK (post-DU; it was gradeTint/vec3(0) then): a hole in the picture,
+       not a subtlety.
 
        MEASURED AS THE COVERAGE OF THE WALK, not as a pinned count and not off a
        scene that has drifted.  envRecollect IS the walk, so it is run first and
@@ -2047,7 +2048,7 @@ const probe = `
     if(seen.length < 50)
       throw new Error('only ' + seen.length + ' of our own standard materials found in the scene');
     if(mats.length < 15)
-      throw new Error('only ' + mats.length + ' of the building own metals found — measuring nothing');
+      throw new Error('only ' + mats.length + ' of the building metals (its own) found — measuring nothing');
     /* the narrowing, in the building and not just in p2 table */
     const leak = plain.filter(m=>m.envMap);
     if(leak.length)
@@ -2058,7 +2059,7 @@ const probe = `
         ' metals — the environment did not narrow');
     const noTex = mats.filter(m=>m.envMap !== ENV_TEX);
     if(noTex.length)
-      throw new Error(noTex.length + ' of ' + mats.length + ' of the building own metals hold ' +
+      throw new Error(noTex.length + ' of ' + mats.length + ' building metals (its own) hold ' +
         'no environment (first at metalness ' + noTex[0].metalness + ') — they render near-black');
     const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
     const keepH = HOUSE.house, keepW = HOUSE.work, keepP = HOUSE.practical,
@@ -2095,8 +2096,9 @@ const probe = `
        DK read envMapIntensity, which was universal because scene.environment
        was; the crew are cloth and a hat and hold no envMap under DT, so the
        thing that is universal — and the thing whose absence is a HOLE IN THE
-       PICTURE rather than a shading nuance, because an unsupplied gradeTint
-       reads vec3(0) and renders black — is the atmTrack hook.  So that is what
+       PICTURE rather than a shading nuance, because an unsupplied gradeMat
+       reads mat3(0) and renders black (post-DU; gradeTint/vec3(0) then) — is
+       the atmTrack hook.  So that is what
        is asserted, and the bed clause is kept for whichever of them is a metal.
        TODAY NONE OF THEM IS, so that clause cannot fire and says so; it is here
        because a hi-vis vest or a steel-toe cap would make it live. */

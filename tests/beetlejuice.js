@@ -6574,8 +6574,9 @@ const wd = setTimeout(() => {
        two is the shape of a real file.
 
        Landed into the CLOSET, which is a small set nothing else in this suite
-       measures afterwards, and the registry is rebuilt at the end so the sizes
-       the earlier cases quote are not disturbed. */
+       measures afterwards, and the finally below DELETES this case's two
+       materials from ENV_MATS (no full rebuild — deletion is enough) so the
+       sizes the earlier cases quote are not disturbed. */
     if(az.ENV_METAL_MIN === undefined)
       throw new Error('ENV_METAL_MIN is not in the handout, so every comparison here is against NaN');
     if(!az.ENV_TEX) throw new Error('ENV_TEX is not in the handout');
