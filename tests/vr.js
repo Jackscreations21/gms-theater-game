@@ -3285,6 +3285,77 @@ const probe = `
            ', on ' + cap + ' slots of ' + got[0][2].kept;
   });
 
+  console.log('--- vr: the LIGHTING page (RULING DP) ---');
+
+  P('the headset has a LIGHTING page, and reaching it moves nothing else', ()=>{
+    enterVR();
+    const tab = VR_TABS.find(t=>t.id === 'lighting');
+    if(!tab) throw new Error('there is no LIGHTING tab');
+    if(VR_TABS[VR_TABS.length-1] !== tab)
+      throw new Error('the LIGHTING tab is not last, so it shifts the tabs before it');
+    /* the older rows are pinned at literal y in this very file; adding a page
+       must not move them (VR.md: this has been a trap twice) */
+    VR.page = 'fly'; vrDrawConsole(true);
+    const pinned = [86+312, 86+366, 86+448, 86+502]
+      .map(y=>VR.hits.find(h=>h.w === 116 && h.h === 46 && h.y === y));
+    if(pinned.some(h=>!h))
+      throw new Error('a pinned fly row moved: ' + pinned.map(h=>!!h).join(','));
+    VR.page = 'lighting'; vrDrawConsole(true);
+    const rows = VR.hits.filter(h=>h.lk);
+    if(rows.length < 18)
+      throw new Error('only ' + rows.length + ' up/down regions on the page');
+    return rows.length + ' regions, tab last, fly rows unmoved';
+  });
+
+  P('a row is found by META and moves the SAME constant the desk moves', ()=>{
+    VR.page = 'lighting'; vrDrawConsole(true);
+    const up = VR.hits.find(h=>h.lk === 'sat' && h.d > 0);
+    const dn = VR.hits.find(h=>h.lk === 'sat' && h.d < 0);
+    if(!up || !dn) throw new Error('no saturation up/down region found by meta');
+    const before = GRADE.sat;
+    up.fn();
+    if(!(GRADE.sat > before))
+      throw new Error('pressing + left GRADE.sat at ' + GRADE.sat);
+    if(Math.abs((GRADE.sat - before) - LK.sat.step) > 1e-9)
+      throw new Error('the headset stepped ' + (GRADE.sat - before) +
+                      ', the desk steps ' + LK.sat.step);
+    dn.fn();
+    if(Math.abs(GRADE.sat - before) > 1e-9)
+      throw new Error('down did not undo up: ' + GRADE.sat + ' against ' + before);
+    return 'the same constant, in the desk-sized step';
+  });
+
+  P('the headset cannot drive a constant past the desk range', ()=>{
+    /* one clamp, in p7, for both surfaces — otherwise they are two controls
+       wearing one name and nothing says which you used */
+    VR.page = 'lighting'; vrDrawConsole(true);
+    const up = VR.hits.find(h=>h.lk === 'sat' && h.d > 0);
+    const keep = GRADE.sat;
+    for(let i=0;i<400;i++){ up.fn(); }
+    if(GRADE.sat !== LK.sat.max)
+      throw new Error('400 presses reached ' + GRADE.sat + ', not the desk max ' + LK.sat.max);
+    const dn = VR.hits.find(h=>h.lk === 'sat' && h.d < 0);
+    for(let i=0;i<400;i++){ dn.fn(); }
+    if(GRADE.sat !== LK.sat.min)
+      throw new Error('400 presses down reached ' + GRADE.sat + ', not ' + LK.sat.min);
+    GRADE.sat = keep; lkSync();
+    return 'clamped to the desk range at both ends';
+  });
+
+  P('every desk row has a headset row, so neither surface is a superset', ()=>{
+    VR.page = 'lighting'; vrDrawConsole(true);
+    const shown = {};
+    VR.hits.forEach(h=>{ if(h.lk) shown[h.lk] = true; });
+    const missing = Object.keys(LK).filter(k=>!shown[k]);
+    if(missing.length)
+      throw new Error('the headset has no row for: ' + missing.join(', '));
+    const extra = Object.keys(shown).filter(k=>!LK[k]);
+    if(extra.length)
+      throw new Error('the headset has rows the desk does not: ' + extra.join(', '));
+    exitVR();
+    return Object.keys(LK).length + ' rows on both surfaces';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

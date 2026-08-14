@@ -28621,7 +28621,20 @@ const VR_TABS = [
   {id:'shows',  label:'SHOWS'},
   {id:'venues', label:'VENUES'},
   {id:'smoke',  label:'SMOKE'},
-  {id:'script', label:'SCRIPT'}
+  {id:'script', label:'SCRIPT'},
+  {id:'lighting', label:'LIGHTING'}   // RULING DP — the room, not the rig
+];
+/* RULING DP — WHICH ROWS, AND IN WHAT ORDER.  The same nine the desk shows, in
+   the same order, because a man who has learnt the desk should not have to
+   re-learn it with a headset on.  The KEYS are LK's (p7) — this table only says
+   how to label them, and every press goes through lkSet so the clamp is the
+   desk's clamp and not a second one. */
+const VR_LK_ROWS = [
+  ['bright',   'Brightness'],       ['exposure', 'ExposureComp'],
+  ['env',      'EnvSpecular'],      ['clock',    'ClockTime'],
+  ['haze',     'Haze'],             ['height',   'Height'],
+  ['glare',    'Glare'],            ['sat',      'Saturation'],
+  ['contrast', 'Contrast']
 ];
 /* meta rides the hit record: the goods picker tags its regions so the row
    that opens it and the entry that hangs are findable by what they MEAN,
@@ -28679,6 +28692,7 @@ function vrDrawConsole(force){
   if(VR.page === 'venues') vrPageVenues(g, P);
   if(VR.page === 'smoke')  vrPageSmoke(g, P);
   if(VR.page === 'script') vrPageScript(g, P);
+  if(VR.page === 'lighting') vrPageLighting(g, P);   // RULING DP
 
   if(VR.tex) VR.tex.needsUpdate = true;
 }
@@ -29091,6 +29105,60 @@ function vrPageVenues(g, P){
   });
 }
 /* --------------------------------------------------------------- SMOKE */
+/* ============================================================================
+   RULING DP — THE LIGHTING PAGE IN THE HEADSET.
+   A control that exists only in the DOM does not exist in VR (CV/CW), and the
+   desk grew this page one ruling ago (DO).  This is the same page, same rows,
+   same order.
+
+   IT DRIVES THE DESK'S OWN HANDLERS.  Every press is lkSet(key, ...) — p7's
+   one map, p7's one clamp.  A headset row that could push a constant past the
+   desk's range would be two different controls wearing one name, and nothing
+   would ever tell you which one you had used.  The step is LK[k].step, so the
+   two surfaces move by the same amount as well as to the same limits.
+
+   FOUND BY META, NEVER BY PIXEL.  vrHit copies the meta flat onto the record,
+   so a test asks for {lk:'sat', d:+1} rather than for a coordinate.  vr.js
+   pins some older rows at literal y (86+312, +366, +448, +502) and VR.md
+   records that this has been a trap twice; adding a tab cannot move them
+   because tabs lay out left to right and this one is appended last.
+   ========================================================================== */
+function vrPageLighting(g, P){
+  g.font = '600 17px Helvetica, Arial, sans-serif';
+  g.textBaseline = 'middle';
+  VR_LK_ROWS.forEach(([k, label], i)=>{
+    const r = LK[k];
+    if(!r) return;
+    const y = P.y + i*62;
+    if(y > P.y + P.h - 70) return;
+    g.fillStyle = i%2 ? '#0f1319' : '#121821';
+    g.fillRect(P.x, y, P.w - 20, 54);
+    g.fillStyle = '#c6d0dc';
+    g.textAlign = 'left';
+    g.fillText(label, P.x + 14, y + 27);
+    const v = r.get(), span = r.max - r.min;
+    vrBar(g, P.x + 250, y + 19, 240, 16, span ? (v - r.min)/span : 0, '#9fb6cc');
+    g.fillStyle = '#ffd08a';
+    g.textAlign = 'right';
+    g.fillText(r.fmt(v), P.x + 610, y + 27);
+    g.textAlign = 'left';
+    vrBtnBox(g, P.x + 640, y + 4, 96, 46, '-',
+      ((key)=>()=>{ lkSet(key, LK[key].get() - LK[key].step); vrDrawConsole(true); })(k),
+      null, {lk:k, d:-1});
+    vrBtnBox(g, P.x + 744, y + 4, 96, 46, '+',
+      ((key)=>()=>{ lkSet(key, LK[key].get() + LK[key].step); vrDrawConsole(true); })(k),
+      null, {lk:k, d:1});
+  });
+  /* the honest slot count, the same one the desk prints (DO/DQ) */
+  const by = P.y + P.h - 54;
+  g.fillStyle = '#8b95a3';
+  g.font = '500 15px Helvetica, Arial, sans-serif';
+  g.textAlign = 'left';
+  g.fillText('Technology  ShadowMap - fixed   ·   ' + LIGHT_POOL.length +
+             ' light slots, ' + SHADOW_LIGHTS + ' shadow-capable, RANK decides',
+             P.x + 14, by + 20);
+}
+
 function vrPageSmoke(g, P){
   g.font = '600 17px Helvetica, Arial, sans-serif';
   SMOKE.units.forEach((u, i)=>{
