@@ -54,6 +54,89 @@ const probe = `
     catch(e){ console.log('  ERR '+name+': '+e.message); if(e.stack) console.log('      '+e.stack.split('\\n').slice(1,4).join(' | ')); window.__errs.push(name+': '+e.message); } };
   const run = (n, dt)=>{ for(let i=0;i<n;i++){ updateArc(dt); updateFades(dt); updateFly(dt); updateStorm(dt); } };
 
+  console.log('--- RULING DY: what the empty house submits ---');
+  /* THE PIECE tools/draws.js DELIBERATELY WITHHELD.  RULING DX measured the
+     empty Palace and could not pin it: a probe prints, it does not fail.  This
+     is the ceiling, and it runs FIRST in this suite on purpose — nothing has
+     switched a stage or loaded a production yet, so the scene is in the state
+     the probe measures and the number is comparable to the one in tools/.
+
+     WHY IT IS NOT A CALL INTO THE PROBE.  A pin that shares its counting code
+     with the instrument it pins agrees with itself whatever either of them
+     does (TRAPS, twice).  This is an independent re-implementation of r128
+     projectObject (three.js r128:17954-18024): visible false prunes above the
+     recursion, layers gate the node, a drawable is submitted when
+     frustumCulled is false OR its geometry sphere hits the frustum, and an
+     array material pushes once per group.
+
+     PER EYE, at 90 degrees on a square panel, which is the Quest figure and
+     the WIDER frustum — the desk camera at 60 degrees on a letterbox window
+     is the flattering one, and there is no multiview, so a frame costs two of
+     these passes. */
+  P('RULING DY: the empty Palace stays under its submitted-draw ceiling', ()=>{
+    /* MEASURED 294 an eye on this build; 350 with RULING DY backed out
+       (BODY_MERGE false), which is what the ceiling has to be able to say.
+       26 of slack — about 9% — is room for a bar of lanterns or a wing of
+       architecture without a fight, and still 30 clear of the piece-built
+       number, so an un-merge cannot hide inside the tolerance. */
+    const DY_CEIL = 320;
+    Player.mode = 'walk';
+    Player.pos.set(0, 0, 13); Player.yaw = 0; Player.pitch = 0.02; Player.vel.set(0, 0, 0);
+    updateRooms(true);
+    const tick = n=>{ for(let i=0;i<n;i++){ const cb=window.__raf; window.__raf=null; if(cb) cb(Date.now()+i*16); } };
+    tick(8);
+    /* re-seat the player after the frames, because updatePlayer moves it */
+    Player.pos.set(0, 0, 13); Player.yaw = 0; Player.pitch = 0.02; Player.vel.set(0, 0, 0);
+    tick(2);
+    scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
+    const eye = new THREE.PerspectiveCamera(90, 1.0, 0.08, 300);
+    eye.matrixWorld.copy(camera.matrixWorld);
+    eye.matrixWorldInverse.copy(eye.matrixWorld).invert();
+    eye.updateProjectionMatrix();
+    const fr = new THREE.Frustum().setFromProjectionMatrix(
+      new THREE.Matrix4().multiplyMatrices(eye.projectionMatrix, eye.matrixWorldInverse));
+    const sph = new THREE.Sphere();
+    const pushes = o=>{
+      const m = o.material;
+      if(Array.isArray(m)){
+        let n = 0;
+        const grs = (o.geometry && o.geometry.groups) || [];
+        for(const gr of grs){ const gm = m[gr.materialIndex]; if(gm && gm.visible) n++; }
+        return n;
+      }
+      return (m && m.visible) ? 1 : 0;
+    };
+    const inFr = o=>{
+      if(o.isSprite) return fr.intersectsSprite(o);
+      const g = o.geometry;
+      if(!g) return false;
+      if(!g.boundingSphere) g.computeBoundingSphere();
+      if(!g.boundingSphere) return false;
+      sph.copy(g.boundingSphere).applyMatrix4(o.matrixWorld);
+      return fr.intersectsSphere(sph);
+    };
+    let draws = 0, all = 0;
+    (function rec(o){
+      if(o.visible === false) return;
+      if(o.layers.test(camera.layers) && (o.isMesh || o.isLine || o.isPoints || o.isSprite)){
+        all += pushes(o);
+        if(o.frustumCulled === false || inFr(o)) draws += pushes(o);
+      }
+      for(const c of o.children) rec(c);
+    })(scene);
+    /* A CEILING THAT NOTHING REACHES IS NOT A MEASUREMENT (TRAPS).  If the walk
+       ever finds nothing, or finds the whole building, it is the walk that
+       broke and the ceiling would pass or fail for the wrong reason. */
+    if(draws < 100) throw new Error('only ' + draws + ' draws an eye — the walk is measuring nothing');
+    if(draws >= all) throw new Error('the frustum rejected nothing at all (' + draws + ' of ' + all + ')');
+    if(draws > DY_CEIL)
+      throw new Error(draws + ' draws an eye at the boot view against a ceiling of ' + DY_CEIL +
+        ' — a lantern body is meant to be one draw per material group (RULING DY, BODY_MERGE); ' +
+        'run tools/draws.js against the built file to see which block grew');
+    return draws + ' draws/eye, ' + (draws*2) + ' a frame, ceiling ' + DY_CEIL +
+           ' (of ' + all + ' visible in the building)';
+  });
+
   console.log('--- the fly rail, through its own buttons ---');
 
   const rows = ()=>Array.prototype.slice.call(
@@ -1245,11 +1328,24 @@ const probe = `
   P('every fixture type hangs from a real clamp', ()=>{
     // par is stocked, not hung — no rig hangs one today, but the order
     // screen (a later PR) sells them, so the builder must carry the clamp
+    /* RULING DY: the clamp is a mesh the body still OWNS, but on four of the
+       five it is now the merged steel shell the jaw became part of rather than
+       a jaw of its own.  So the question the truthful version asks is not
+       "is there an object here" — an orphan removed from the body would pass
+       that — but "is it a mesh, and is it still under this body". */
     const missing = ['profile','fresnel','cyc','mover'].filter(t=>{
       const f = FIXTURES.find(x=>x.type===t);
-      return !f || !f.body.userData.clamp;
+      if(!f) return true;
+      const c = f.body.userData.clamp;
+      if(!c || !c.isMesh) return true;
+      let p = c; while(p){ if(p === f.body) return false; p = p.parent; }
+      return true;
     });
-    if(typeof bodyPar !== 'function' || !bodyPar().userData.clamp) missing.push('par');
+    if(typeof bodyPar !== 'function') missing.push('par');
+    else { const pb = bodyPar(), pc = pb.userData.clamp;
+      let ok = !!(pc && pc.isMesh), p = pc;
+      while(ok && p){ if(p === pb) break; p = p.parent; if(!p) ok = false; }
+      if(!ok) missing.push('par'); }
     if(missing.length) throw new Error('no clamp on: '+missing.join(', '));
     return '4 hung types + the stocked par, all clamped';
   });
@@ -1258,9 +1354,22 @@ const probe = `
     if(profs.length < 2) throw new Error('need two profiles to compare');
     const geoms = b=>{ const s=new Set(); b.traverse(o=>{ if(o.isMesh) s.add(o.geometry); }); return s; };
     const a = geoms(profs[0].body), bb = geoms(profs[1].body);
+    /* RESTATED BY RULING DY, because the old form counted PIECES.  A profile
+       held seventeen geometries and the test asked for ten or more shared;
+       merged it holds three, so the threshold stopped saying anything about
+       the cache and started saying something about the piece count.  The claim
+       was never "many" — it is that NOTHING is minted per instance, which is
+       what makes 117 bodies across three stages affordable.  So assert that
+       instead: the same number of geometries on both, and every one of them
+       the same object.  A merge that built its shell per body would fail this
+       with three shared geometries out of three, which the old threshold could
+       not have distinguished from success. */
+    if(a.size !== bb.size)
+      throw new Error('two profiles hold '+a.size+' and '+bb.size+' geometries — they are not built the same way');
     let shared = 0; a.forEach(g=>{ if(bb.has(g)) shared++; });
-    if(shared < 10) throw new Error('only '+shared+' geometries shared, 10+ expected — cache not working');
-    return shared+' shared geometries';
+    if(shared !== a.size)
+      throw new Error((a.size - shared)+' of '+a.size+' geometries are minted per body — the cache is not working');
+    return a.size+' geometries, every one shared';
   });
   P('bodies stay inside the VR triangle budget', ()=>{
     const over = [];
@@ -1279,6 +1388,121 @@ const probe = `
     if(pt > 700) over.push('par:'+Math.round(pt));
     if(over.length) throw new Error('over budget: '+over.join(' '));
     return 'all under 700 tris';
+  });
+  P('RULING DY: the merged shell loses no geometry and moves none', ()=>{
+    /* THE ONE THING BETWEEN THESE NUMBERS AND THE BUILD IS THE MERGE, and a
+       merge is the kind of change that fails SILENTLY: a lantern that came out
+       of it without its colour frame, or with a shutter handle baked at the
+       wrong rotation, looks like a lantern and throws nothing.  Nothing else in
+       nineteen suites would notice.
+
+       Every figure below was measured on 274b267 — the piece-built build
+       BEFORE this ruling — by walking each builder in isolation, with no beam
+       and no glow attached.  Triangles are conserved by a correct merge
+       (mergeParts expands an index, it does not drop a face), so a dropped
+       piece shows up as a triangle deficit; a piece baked with the wrong
+       transform moves the box.  The two together are what make it hard to lose
+       something quietly.
+
+       IF A BODY'S GEOMETRY IS DELIBERATELY CHANGED, re-measure and update the
+       row.  This is a tripwire on the merge, not an opinion about the design —
+       and it holds for the un-merged build too, which is the point: it tests
+       losslessness, never merged-ness.  The draw ceiling at the top of this
+       file is what tests merged-ness. */
+    const WAS = {
+      profile: {tris:514, min:[-0.222500, -0.222500, -0.262000], max:[0.222500, 0.485000, 0.615000]},
+      fresnel: {tris:402, min:[-0.381586, -0.338931, -0.282000], max:[0.381586, 0.505000, 0.405890]},
+      par:     {tris:454, min:[-0.180000, -0.180000, -0.252000], max:[0.180000, 0.475000, 0.420000]},
+      cyc:     {tris:306, min:[-0.275000, -0.150000, -0.302000], max:[0.275000, 0.525000, 0.302000]},
+      mover:   {tris:292, min:[-0.344000, -0.665000, -0.250000], max:[0.344000, 0.284000, 0.253000]},
+      speaker: {tris: 26, min:[-0.310000, -0.230000, -0.270000], max:[0.310000, 0.290000, 0.271000]}
+    };
+    const MAKE = {profile:bodyProfile, fresnel:bodyFresnel, par:bodyPar, cyc:bodyCyc,
+                  mover:bodyMover, speaker:bodySpeaker};
+    const bad = [], shape = [];
+    for(const k in WAS){
+      if(typeof MAKE[k] !== 'function'){ bad.push(k+': no builder called body'+k); continue; }
+      const g = MAKE[k]();
+      g.updateMatrixWorld(true);
+      let tris = 0, meshes = 0;
+      g.traverse(o=>{ if(o.isMesh && o.geometry){ meshes++;
+        const p = o.geometry;
+        tris += p.index ? p.index.count/3 : p.attributes.position.count/3; }});
+      tris = Math.round(tris);
+      if(!meshes){ bad.push(k+' built nothing at all'); continue; }
+      if(tris !== WAS[k].tris) bad.push(k+' is '+tris+' tris where the pieces were '+WAS[k].tris);
+      const box = new THREE.Box3().setFromObject(g);
+      ['x','y','z'].forEach((ax, i)=>{
+        if(Math.abs(box.min[ax] - WAS[k].min[i]) > 1e-4)
+          bad.push(k+' min.'+ax+' is '+box.min[ax].toFixed(6)+' where the pieces reached '+WAS[k].min[i]);
+        if(Math.abs(box.max[ax] - WAS[k].max[i]) > 1e-4)
+          bad.push(k+' max.'+ax+' is '+box.max[ax].toFixed(6)+' where the pieces reached '+WAS[k].max[i]);
+      });
+      shape.push(k+':'+meshes+'/'+tris);
+    }
+    if(bad.length) throw new Error('the merge is not lossless — '+bad.join('; '));
+    /* and the handles still name meshes that are IN the body, so a re-pointed
+       clamp can never be an orphan the merge left behind */
+    for(const k of ['profile','fresnel','par','cyc','mover','speaker']){
+      const g = MAKE[k]();
+      for(const h of ['clamp','lens','base','yoke','head']){
+        const v = g.userData[h];
+        if(!v) continue;
+        let p = v, inBody = false;
+        while(p){ if(p === g){ inBody = true; break; } p = p.parent; }
+        if(!inBody) throw new Error(k+' userData.'+h+' names something outside its own body');
+      }
+    }
+    return 'meshes/tris ' + shape.join(' ');
+  });
+  P('RULING DY: the lens is still its own mesh and still repaints', ()=>{
+    /* THE FAILURE THIS IS HERE FOR IS SILENT.  A lens merged into the shell
+       keeps looking like a lens and never takes a colour again — the
+       paint-roller head in TRAPS, which shipped once and threw nothing.
+       Two halves, because the mechanism has two halves. */
+    const f = FIXTURES.find(x=>x.type==='profile');
+    if(!f) throw new Error('no profile in the rig to look at');
+    const lens = f.body.userData.lens;
+    if(!lens || !lens.isMesh) throw new Error('the profile has no lens mesh at all');
+    if(lens.material === M.fixture || lens.material === M.steel)
+      throw new Error('the lens is wearing a shell material — it went into the merge');
+    if(!lens.geometry || lens.geometry.type !== 'CircleGeometry')
+      throw new Error('the profile lens is no longer its own CircleGeometry');
+    /* HALF ONE: a repaint is a pointer swap through the keyed cache, it takes,
+       and it does not reach the next lantern along (INVARIANTS: shared
+       materials are never tinted in place). */
+    const was = lens.material, red = lensMat(0xcc2211);
+    if(red === was) throw new Error('the premise is broken: the test colour is already the lens colour');
+    lens.material = red;
+    if(lens.material !== red) throw new Error('the lens would not take a new material');
+    if(lensMat(0xcc2211) !== red) throw new Error('the keyed cache minted a second material for one colour');
+    const others = FIXTURES.filter(x=>x.type==='profile' && x !== f);
+    if(!others.length) throw new Error('the premise is broken: only one profile, so bleed cannot be seen');
+    for(const o of others) if(o.body.userData.lens.material !== was)
+      throw new Error('repainting one lens moved another body');
+    lens.material = was;
+    /* HALF TWO: THE GUARD, WITH THE FIXTURE THE RIG DOES NOT HAVE.  Every real
+       body carries exactly one keyed-cache piece, so it is already alone in its
+       material group and a group of one is never merged — meaning the
+       exclusion in mergeShell has no live case and cannot be negative-checked
+       against the rig (TRAPS: a bound nothing exercises is not a sound bound).
+       Build the case it exists for: two lens-cache pieces and two
+       shared-material pieces in one frame.  The two boxes must merge, or this
+       proves nothing; the two lens planes must not. */
+    const fr = new THREE.Group();
+    const l1 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), lensMat(0x223344));
+    const l2 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), lensMat(0x223344));
+    l2.position.x = 2;
+    const b1 = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), M.steel);
+    const b2 = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), M.steel);
+    b2.position.x = 2;
+    fr.add(l1); fr.add(l2); fr.add(b1); fr.add(b2);
+    mergeShell('probeLensGuard', fr);
+    if(fr.children.indexOf(b1) >= 0 || fr.children.indexOf(b2) >= 0)
+      throw new Error('the premise is broken: mergeShell did not merge two shared-material boxes, so the lens half says nothing');
+    if(fr.children.indexOf(l1) < 0 || fr.children.indexOf(l2) < 0)
+      throw new Error('mergeShell merged two keyed-cache pieces — a repaint through the cache would be invisible');
+    return 'lens separate, repaint took, and the cache guard holds against a two-piece frame';
   });
   P('the lens contract survives', ()=>{
     /* REVERSED IN PLACE BY RULING CY.  "Remove the body for the blinders just
