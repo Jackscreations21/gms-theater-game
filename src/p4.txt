@@ -1138,6 +1138,14 @@ function updateRig(dt, t){
      building once at init, the show and its models as they arrive. */
   ENV_LIVE = ENV_INTENSITY * (0.25 + 0.75*bed);
   envDrive();
+  /* RULING DL — the haze thickens as the room darkens, and the glare rides the
+     RIG rather than the bed, so a full stage in smoke blooms at its edges and a
+     blackout does not.  The uniform objects are shared by every fogged material
+     (p2), so these are three writes for the whole world, not three per
+     material — which is why this sits beside envDrive rather than inside it. */
+  ATM.u.atmHaze.value  = ATM.haze * (1.35 - 0.35*bed);
+  ATM.u.atmGlare.value = ATM.glare * Math.min(1, bedRig*1.4);
+  ATM.u.atmHeight.value = ATM.height;
   scene.background.setRGB(bed*0.014, bed*0.017, bed*0.028);
   FLY.forEach(ls=>{ if(ls.practical){ ls.practical.light.intensity = HOUSE.practical*3.2;
     ls.practical.bulbs.forEach(b=>b.material.color.setRGB(
