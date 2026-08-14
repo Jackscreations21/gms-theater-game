@@ -604,13 +604,15 @@ const probe = `
 
   console.log('--- RULING DW: a light that serves no one leaves the loop ---');
 
-  /* Every clause below reads GATHERED visibility, never a light own flag.
-     r128 walks the graph in projectObject and its first line returns on
-     visible === false, above both the pushLight and the recursion into
-     children (three.js r128:17954-17974) — so a light whose own flag is true
-     under a switched-off root is not in any material light loop, and a test
-     that read light.visible would call the Arc lit while standing in the
-     Palace.  seen() up at the top of this file is that same ancestor walk.  */
+  /* Every clause that asks whether a light is IN THE LOOP reads GATHERED
+     visibility, never the light's own flag.  r128 walks the graph in
+     projectObject and its first line returns on visible === false, above both
+     the pushLight and the recursion into children (three.js r128:17954-17974)
+     — so a light whose own flag is true under a switched-off root is not in
+     any material light loop, and a test that read light.visible would call the
+     Arc lit while standing in the Palace.  seen() up at the top of this file
+     is that same ancestor walk.  (The yard-light case below reads its OWN flag
+     once, deliberately — there it is the gate itself under test, not litness.) */
   const dwLights = (root)=>{ const out = []; root.traverse(o=>{ if(o.isLight) out.push(o); }); return out; };
   const dwOn = (root)=>dwLights(root).filter(seen).length;
   /* The Palace own lights hang off world (buildRooms files every light-carrying

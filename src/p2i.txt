@@ -229,17 +229,21 @@ function updateRooms(force){
      `SHARED.visible` for the Palace's, since `buildRooms` files every
      light-carrying child of `world` into SHARED and `liftLights` pulls the
      lights out of the ones it does not.  Measured, both ways round, over the
-     real `goToView` walk: standing in the Palace 25 of 32 lights are gathered
-     — 13 point lights, all of them the Palace's — and the Arc's 5 point lights
-     plus its ambient and hemisphere are pruned; standing in the Arc it is 19
-     of 32, and the Palace's 13 are the ones pruned.  Neither building has ever
-     paid for the other.
+     real `goToView` walk, BEFORE this same ruling's p2c gate landed: standing
+     in the Palace 25 of 32 lights were gathered — 13 point lights, all of them
+     the Palace's — and the Arc's 5 point lights plus its ambient and
+     hemisphere were pruned; standing in the Arc it was 19 of 32, and the
+     Palace's 13 were the ones pruned.  Neither building has ever paid for the
+     other.  (Re-measure on this build and the Palace reads 24 of 32 and 12
+     points — the yard light p2c gates out is the difference.  Both numbers
+     are right; mind which build you are counting.)
 
-     What is NOT gated, and is the honest remaining bite: within the Palace all
-     13 live in SHARED and are never room-culled, deliberately (the comment at
-     the top of this file — a hidden light is a dark room), while the Arc's own
-     lamps were built into their room groups and therefore DO cull with them,
-     so the Arc pays for 3 point lights on a stage where the Palace pays 13.
+     What is NOT gated, and is the honest remaining bite: within the Palace the
+     house's own points live in SHARED and are never room-culled, deliberately
+     (the comment at the top of this file — a hidden light is a dark room),
+     while the Arc's own lamps were built into their room groups and therefore
+     DO cull with them, so the Arc pays for 3 point lights on a stage where the
+     Palace pays 12 (13 before p2c took the yard light).
      Closing that means deciding what a light may spill through, room by room —
      the stage work lights carry 40m of range across the whole auditorium —
      and it changes the picture, so it is not a free gate and it is not this

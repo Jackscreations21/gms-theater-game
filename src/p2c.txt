@@ -484,8 +484,8 @@ const DOCKDOORS = [];
   /* RULING DW — the yard light out over the road, and the one light in this
      building that serves NO ONE.  It was minted at intensity 0 and nothing has
      ever written it: `updateRig` (p4) drives BOH.light and BOH.light2 off
-     HOUSE.backstage and stops there, and a grep of the whole repo finds the two
-     lines below and no third.  Intensity 0 is NOT out of the loop — r128
+     HOUSE.backstage and stops there, and nothing anywhere writes light3's
+     intensity.  Intensity 0 is NOT out of the loop — r128
      gathers every visible light in `projectObject` (three.js r128:17954: the
      `visible === false` return sits ABOVE the pushLight) and then every
      standard material's fragment runs a full point-light iteration for it, both
