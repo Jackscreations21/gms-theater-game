@@ -1468,6 +1468,40 @@ const probe = `
            ', all driven, blackout ' + dark.toFixed(3) + ' -> lit ' + lit.toFixed(3);
   });
 
+  console.log('--- RULING DQ: a dropped light belongs to ONE stage ---');
+
+  P('DQ: a dropped light parks with its stage and never follows the board', ()=>{
+    const home = STAGE;
+    stageSwitch('palace', true);
+    const before = FIXTURES.length;
+    const p = lightAdd({kind:'SpotLight', pos:{x:0, y:7, z:-2}, aim:{x:0, y:7.2, z:-1}});
+    stageSwitch('arcMain', true);
+    if(FIXTURES.indexOf(p) !== -1) throw new Error('the Palace drop followed the board to the Arc');
+    if(p.group.parent === rigGroup) throw new Error('and it is hanging in the Arc rig as well');
+    /* landmine 2: the plot is in STAGE coordinates and the aim is in WORLD.  A
+       light dropped in the Arc must be aimed at the Arc, not back at the Palace */
+    const st = STAGES.arcMain;
+    const a = lightAdd({kind:'SpotLight', pos:{x:0, y:7, z:-2}, aim:{x:0, y:7.2, z:-1}});
+    const wantX = ARC.X + st.cx, wantZ = st.zPros - 1;
+    if(Math.abs(a.aim.x - wantX) > 0.02)
+      throw new Error('an Arc drop is aimed at x '+a.aim.x.toFixed(2)+', not the Arc at '+wantX.toFixed(2));
+    if(Math.abs(a.aim.z - wantZ) > 0.02)
+      throw new Error('an Arc drop is aimed at z '+a.aim.z.toFixed(2)+', not '+wantZ.toFixed(2));
+    const ab = BODIES.filter(b=>b.point === a);
+    if(ab.length !== 1) throw new Error('an Arc drop filed '+ab.length+' bodies');
+    if(ab[0].venue !== 'arc')
+      throw new Error('a lantern dropped in the Arc is filed as '+ab[0].venue+' property');
+    lightRemove(a);
+    stageSwitch('palace', true);
+    if(FIXTURES.indexOf(p) === -1) throw new Error('the Palace drop did not come home with its stage');
+    if(FIXTURES.length !== before+1) throw new Error('the patch came back '+FIXTURES.length+' long, not '+(before+1));
+    if(p.group.parent !== rigGroup) throw new Error('it came back off its own rig');
+    lightRemove(p);
+    if(FIXTURES.length !== before) throw new Error('it would not come off again');
+    stageSwitch(home, true);
+    return 'the Palace drop stayed at the Palace, the Arc drop aimed at the Arc';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
