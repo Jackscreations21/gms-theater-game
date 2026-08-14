@@ -224,32 +224,26 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **RQ IS IN A WORKTREE, AND NOBODY HAS SEEN ANY OF THIS** (2026-08-14, DP)
+## NEXT SESSION: **NOBODY HAS SEEN ANY OF THIS** (2026-08-14, DQ)
 
-Cache-bust **`?v=28`**. Rulings at **DP**. `main` is at **`e84e2e6`**.
+Cache-bust **`?v=28`**. Rulings at **DQ**. `main` is at **`0e3c85c`**.
 **Read STATE.md — it carries the full picture.**
 
-**SEVEN PRs, #174–#180, SEVEN CLEAN MERGES, NO RECOVERY PR.** Each based on
+**EIGHT PRs, #174–#182, EIGHT CLEAN MERGES, NO RECOVERY PR.** Each based on
 `main` and verified after opening; `main` rebuilds byte-identical and the suite
 is green on every merged result. Layer 1 of what he asked for is **complete** —
 environment, atmosphere, colour grade, and glow planes instead of bloom — and
-layer 2's property panel is on **both** surfaces.
+layer 2 is complete: the property panel on **both** surfaces, and droppable lights.
 
-**TWO THINGS TO DO FIRST, IN THIS ORDER:**
+**RULING DQ LANDED TOO — #182, and the round is finished.** Droppable lights are
+in, the DN/DQ seam is asserted, the worktree is gone and every branch is deleted.
+**Nothing is open and nothing is shelved.**
 
-1. **RULING DQ IS COMMITTED BUT NOT MERGED, AND IT LIVES ONLY IN A WORKTREE** —
-   `4d9254f` on `lighting-objects` in `.claude/worktrees/agent-a47840c5a83c1de1c`.
-   **Do not delete that worktree.** Green in isolation with 21 negative checks,
-   independently verified. It branched from `f4e2628`, four PRs ago, so it needs
-   a **rebase onto fresh `main` and a full re-verify**, and the rebase must settle
-   DN's `GLOW_CAP` (a fixed 64 against a 39-fixture rig; dropped lights eat the
-   headroom). Sort the glow batch by `_lvl` and drop the dimmest — array order is
-   wrong independent of DQ.
-2. **A HEADSET RUN, because not one thing in this round has been looked at.**
-   Every number is reasoned and none is evidence. The questions are in STATE's
-   feel-constants block; the one to expect trouble from is that in a session the
-   glow clamp uses the **desk** frustum, so close-up halos are 42–52% smaller in
-   the headset than on the monitor.
+**THE ONE THING TO DO IS A HEADSET RUN, because not one thing in this round has
+been looked at.** Every number is reasoned and none of it is evidence. The
+questions are in the feel-constants block of STATE.md; the one to expect trouble
+from is that in a session the glow clamp uses the **desk** frustum, so close-up
+halos are 42–52% smaller in the headset than on the monitor.
 
 **AND THE PERFORMANCE PROBLEM IS STILL THERE AND IS NOW WORSE ON PAPER.** His
 readings were **25ms empty / 48ms in Beetlejuice** against a 13.9ms budget, with
@@ -259,15 +253,16 @@ chose to carry on with the lighting. DK through DN each add per-pixel cost to
 that frame. **The 25ms is the BUILDING, not his models**, and the leading suspect
 is still that the instanced batches never cull.
 
-**Four things are his to decide** and they are written out in STATE: `f.glow`
-drawing all 39 in a blackout, the `envTrack` rota backstop, the `GLOW_CAP`
-ordering, and whether the performance investigation now goes first.
+**Three things are his to decide** and they are written out in STATE: `f.glow`
+drawing all 39 in a blackout, the `envTrack` rota backstop, and whether the
+performance investigation now goes first. The `GLOW_CAP` ordering question is
+settled — DN’s rank already governs the buffer limit and #182 asserts it.
 
-## DONE — 2026-08-14: the Roblox lighting round, #174–#180 (DJ–DP)
+## DONE — 2026-08-14: the Roblox lighting round, #174–#182 (DJ–DQ)
 
 *"rebuild the lighting engine to look and work like the one roblox uses"* →
 layers **1 (the look)** and **2 (the authoring model)**, and **"It has to match
-in VR."** Seven PRs, seven clean merges.
+in VR."** Eight PRs, eight clean merges, no recovery PR.
 
 **THE PLAN WAS WRONG IN SIX PLACES AND FIVE OF THEM WOULD HAVE PASSED A GREEN
 SUITE.** That is the finding of the round, and it is a finding about *this
