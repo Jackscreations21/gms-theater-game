@@ -2315,7 +2315,7 @@ const probe = `
   console.log('--- RULING DM: the colour grade ---');
 
   P('GRADE is a live constant block and the chunk carries houseGrade', ()=>{
-    if(!GRADE || !GRADE.u || !GRADE.u.gradeSat) throw new Error('GRADE holds no uniforms');
+    if(!GRADE || !GRADE.u || !GRADE.u.gradeMat) throw new Error('GRADE holds no uniforms');
     const pars = THREE.ShaderChunk.tonemapping_pars_fragment;
     if(!/houseGrade/.test(pars)) throw new Error('the tonemapping chunk has no houseGrade');
     if(!/gradeMix/.test(pars)) throw new Error('the grade has no bypass term');
@@ -2324,7 +2324,19 @@ const probe = `
        sweep for that — it looks for backticks and singly-escaped quotes */
     if(THREE.ShaderChunk.tonemapping_fragment.indexOf('houseGrade( toneMapping') < 0)
       throw new Error('the grade is not applied AFTER toneMapping');
-    return 'contrast ' + GRADE.contrast + ', sat ' + GRADE.sat;
+    /* RULING DU — the shader carries ONE matrix and ONE offset, and the four
+       scalar terms they replaced are GONE from it rather than merely unused: a
+       leftover uniform declaration is another unsupplied uniform reading 0 */
+    if(pars.indexOf('uniform mat3 gradeMat') < 0)
+      throw new Error('the chunk declares no gradeMat, so the grade is not one matrix');
+    if(pars.indexOf('uniform vec3 gradeOff') < 0)
+      throw new Error('the chunk declares no gradeOff');
+    ['gradeBC','gradeSat','gradeTint'].forEach(k=>{
+      if(pars.indexOf(k) >= 0)
+        throw new Error(k + ' is still in the chunk after RULING DU folded it into gradeMat');
+      if(GRADE.u[k]) throw new Error(k + ' is still a uniform slot on GRADE.u');
+    });
+    return 'contrast ' + GRADE.contrast + ', sat ' + GRADE.sat + ', one mat3';
   });
 
   P('the grade shares its uniform objects, and rides the SAME hook as the fog', ()=>{
@@ -2334,32 +2346,161 @@ const probe = `
     atmTrack(m);
     const sh = { uniforms:{} };
     m.onBeforeCompile(sh, renderer);
-    if(sh.uniforms.gradeBC !== GRADE.u.gradeBC) throw new Error('gradeBC is a copy');
-    if(sh.uniforms.gradeSat !== GRADE.u.gradeSat) throw new Error('gradeSat is a copy');
-    if(sh.uniforms.gradeTint !== GRADE.u.gradeTint) throw new Error('gradeTint is a copy');
+    if(sh.uniforms.gradeMat !== GRADE.u.gradeMat) throw new Error('gradeMat is a copy');
+    if(sh.uniforms.gradeOff !== GRADE.u.gradeOff) throw new Error('gradeOff is a copy');
     if(sh.uniforms.gradeMix !== GRADE.u.gradeMix) throw new Error('gradeMix is a copy');
+    /* and the matrix must be the same OBJECT too, not merely the same slot —
+       a per-frame recompose writes into it in place */
+    if(sh.uniforms.gradeMat.value !== GRADE.u.gradeMat.value)
+      throw new Error('the shared slot holds a different Matrix3 than GRADE composes into');
     if(sh.uniforms.atmHaze !== ATM.u.atmHaze)
       throw new Error('the grade hook displaced the atmosphere hook');
-    return 'both rulings, one hook, four shared objects each';
+    return 'both rulings, one hook, four shared objects and three';
   });
 
   P('an UNHOOKED material is bypassed, not rendered black', ()=>{
     /* THE ONE THAT MATTERS.  tonemapping_pars_fragment is included unguarded,
        so a material that declares these uniforms and never has them supplied
-       reads gradeTint as vec3(0).  Without the bypass that multiply turns the
-       surface BLACK — a miss would not be subtly wrong, it would be a hole in
-       the picture.  GLSL defaults an unsupplied uniform to 0, so gradeMix 0
-       must return the colour untouched. */
+       reads gradeMat as mat3(0) (it was gradeTint as vec3(0) before RULING DU
+       folded the four terms into one matrix, and a zero matrix is the same
+       hazard).  Without the bypass that multiply turns the surface BLACK — a
+       miss would not be subtly wrong, it would be a hole in the picture.  GLSL
+       defaults an unsupplied uniform to 0, so gradeMix 0 must return the colour
+       untouched. */
     const src = THREE.ShaderChunk.tonemapping_pars_fragment;
     const body = src.slice(src.indexOf('vec3 houseGrade'));
     if(body.indexOf('return mix( c,') < 0)
       throw new Error('houseGrade does not return a mix from the ORIGINAL colour');
     if(body.indexOf('gradeMix );') < 0)
       throw new Error('the mix is not driven by gradeMix, so 0 would not bypass');
-    /* and the tint must sit inside the graded branch, never on the source */
-    if(body.indexOf('c *= gradeTint') >= 0)
-      throw new Error('gradeTint multiplies the source colour, so 0 would blacken it');
+    /* RULING DU — the matrix result must land in g and the max must stay INSIDE
+       the mix, exactly as the four-step version had it; an unsupplied mat3 is
+       mat3(0), which is only harmless while c itself is never overwritten */
+    if(body.indexOf('gradeMat * c') < 0)
+      throw new Error('the graded colour is not gradeMat * c');
+    if(body.indexOf('c = gradeMat') >= 0)
+      throw new Error('the matrix is written back over c, so gradeMix 0 could not bypass');
+    if(body.indexOf('max( g, vec3( 0.0 ) ), gradeMix );') < 0)
+      throw new Error('the max is not inside the mix, so the bypass is not exact');
     return 'gradeMix 0 returns the ACES pixel untouched';
+  });
+
+  P('RULING DU: the composed matrix is the hand-computed one, and identity is identity', ()=>{
+    /* jsdom compiles no shaders (spec s6), so what IS assertable here is the
+       arithmetic — and it is the part that can be wrong.  The wanted numbers
+       below were composed OUTSIDE this file as three generic 3x3 products and
+       are hard literals on purpose: a test that recomputes the formula it is
+       testing agrees with itself whatever the code does. */
+    const keep = {bright:GRADE.bright, contrast:GRADE.contrast, sat:GRADE.sat,
+                  tint:GRADE.tint, mix:GRADE.mix};
+    try{
+      GRADE.bright = 0.0; GRADE.contrast = 0.12; GRADE.sat = -0.05; GRADE.tint = 0xffeedd;
+      gradeCompose();
+      const wantM = [1.075905600, 0.040051200, 0.004043200,
+                     0.011111893, 1.030447787, 0.003773653,
+                     0.010318187, 0.034711040, 0.925637440];
+      /* Matrix3.elements is COLUMN-major — read it back the way it is stored,
+         which is also the way GLSL reads a mat3 uniform */
+      const e = GRADE.u.gradeMat.value.elements;
+      for(let i=0;i<3;i++) for(let j=0;j<3;j++){
+        const got = e[j*3+i];
+        if(Math.abs(got - wantM[i*3+j]) > 1e-6)
+          throw new Error('matrix row ' + i + ' col ' + j + ' is ' + got.toFixed(6) +
+            ', wanted ' + wantM[i*3+j].toFixed(6));
+      }
+      const off = GRADE.u.gradeOff.value, wantO = [-0.06, -0.056, -0.052];
+      [off.x, off.y, off.z].forEach((v,i)=>{ if(Math.abs(v - wantO[i]) > 1e-6)
+        throw new Error('offset ' + i + ' is ' + v.toFixed(6) + ', wanted ' + wantO[i].toFixed(6)); });
+      /* the property check: a grade that asks for nothing must compose to
+         nothing at all, EXACTLY — no drift for a picture nobody is grading */
+      GRADE.bright = 0; GRADE.contrast = 0; GRADE.sat = 0; GRADE.tint = 0xffffff;
+      gradeCompose();
+      const id = GRADE.u.gradeMat.value.elements;
+      for(let i=0;i<9;i++){
+        const want = (i % 4 === 0) ? 1 : 0;
+        if(id[i] !== want)
+          throw new Error('identity GRADE composed element ' + i + ' as ' + id[i]);
+      }
+      const io = GRADE.u.gradeOff.value;
+      if(io.x !== 0 || io.y !== 0 || io.z !== 0)
+        throw new Error('identity GRADE composed a non-zero offset');
+      return 'nine entries and three offsets to 1e-6, identity exact';
+    } finally {
+      GRADE.bright = keep.bright; GRADE.contrast = keep.contrast; GRADE.sat = keep.sat;
+      GRADE.tint = keep.tint; GRADE.mix = keep.mix;
+      gradeCompose();
+    }
+  });
+
+  P('RULING DU: a frame recomposes the matrix, so the LIGHTING rows still drive it', ()=>{
+    /* the per-frame recompose is what replaces the four uniform writes, and the
+       desk rows (DO) and their headset twins (DP) set GRADE.contrast straight
+       onto the object with no notification — so this asserts the value the
+       ENGINE produces after a frame, not what a helper returns */
+    const step = ()=>{ updateFades(0.05); updateRig(0.05, 1); };
+    const keep = GRADE.contrast;
+    try{
+      step();
+      const before = GRADE.u.gradeMat.value.elements[0];
+      GRADE.contrast = keep + 0.5;                 // what the LIGHTING row does
+      step();
+      const after = GRADE.u.gradeMat.value.elements[0];
+      if(!(after > before + 0.1))
+        throw new Error('a frame did not recompose the matrix: ' + before.toFixed(4) +
+          ' then ' + after.toFixed(4) + ' after contrast moved 0.5');
+      return 'contrast +0.5 moved m11 ' + before.toFixed(3) + ' -> ' + after.toFixed(3);
+    } finally {
+      GRADE.contrast = keep;
+      step();
+    }
+  });
+
+  P('RULING DU: the matrix reproduces the OLD four-step grade, colour for colour', ()=>{
+    /* the whole claim of DU is the same picture for a ninth of the ALU, so the
+       old shader body is written out here in JS and the matrix is asked to
+       agree with it.  This is not a reimplementation of the thing under test —
+       it is the behaviour being preserved, which is what needs pinning; the
+       composition ORDER is exactly what it catches, because matrices do not
+       commute and tint last is what makes it scale the offset too. */
+    const keep = {bright:GRADE.bright, contrast:GRADE.contrast, sat:GRADE.sat,
+                  tint:GRADE.tint, mix:GRADE.mix};
+    const fourStep = (b, contrast, sat, tint, col)=>{
+      const t = new THREE.Color(tint);
+      let g = col.map(v=>v + b);                              // 1 brightness
+      g = g.map(v=>(v - 0.5)*(1 + contrast) + 0.5);            // 2 contrast
+      const l = g[0]*0.2126 + g[1]*0.7152 + g[2]*0.0722;       // 3 saturation
+      g = g.map(v=>l + (v - l)*(1 + sat));
+      return [g[0]*t.r, g[1]*t.g, g[2]*t.b];                   // 4 tint, LAST
+    };
+    const cols = [[0,0,0],[1,1,1],[0.2,0.5,0.9],[0.8,0.1,0.35]];
+    const sets = [[0.0, 0.12, -0.05, 0xffeedd], [0.07, -0.3, 0.4, 0x88aaff]];
+    let worst = 0;
+    try{
+      sets.forEach(s=>{
+        GRADE.bright = s[0]; GRADE.contrast = s[1]; GRADE.sat = s[2]; GRADE.tint = s[3];
+        gradeCompose();
+        cols.forEach(col=>{
+          const want = fourStep(s[0], s[1], s[2], s[3], col);
+          /* applyMatrix3 reads the elements column-major, the same way a GLSL
+             mat3 * vec3 does — so this checks the storage convention as well */
+          const got = new THREE.Vector3(col[0], col[1], col[2])
+            .applyMatrix3(GRADE.u.gradeMat.value).add(GRADE.u.gradeOff.value);
+          [got.x, got.y, got.z].forEach((v,i)=>{
+            const d = Math.abs(v - want[i]);
+            if(d > worst) worst = d;
+            if(d > 1e-6)
+              throw new Error('contrast ' + s[1] + ' sat ' + s[2] + ' on ' + JSON.stringify(col) +
+                ' channel ' + i + ': matrix gives ' + v.toFixed(6) + ', the old grade gave ' +
+                want[i].toFixed(6));
+          });
+        });
+      });
+      return 'two grades x four colours, worst delta ' + worst.toExponential(1);
+    } finally {
+      GRADE.bright = keep.bright; GRADE.contrast = keep.contrast; GRADE.sat = keep.sat;
+      GRADE.tint = keep.tint; GRADE.mix = keep.mix;
+      gradeCompose();
+    }
   });
 
   P('additive light is exempt from the grade, on purpose', ()=>{
