@@ -1,4 +1,4 @@
-# STATE — 2026-08-13 (THE FIRST FRAME TIMES EVER MEASURED, and they are bad)
+# STATE — 2026-08-14 (THE ROBLOX LIGHTING ROUND IS COMPLETE, DJ–DQ)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
@@ -37,9 +37,9 @@ and the average reads **exactly 50.0**.
    See the spec's §7.1. **The one live question** is r160's per-instance
    `computeBoundingSphere` — decide it on the draw-call number, not before.
 
-## THE ROBLOX LIGHTING ROUND: SEVEN OF NINE MERGED, RULINGS AT DP
+## THE ROBLOX LIGHTING ROUND: ALL OF IT MERGED, RULINGS AT DQ
 
-**`origin/main` is at `e84e2e6`.** Rulings are at **DP**. Cache-bust **`?v=28`**.
+**`origin/main` is at `0e3c85c`.** Rulings are at **DQ**. Cache-bust **`?v=28`**.
 
 | PR | Ruling | What |
 |---|---|---|
@@ -50,28 +50,29 @@ and the average reads **exactly 50.0**.
 | **#178** | **DN** | additive glow planes instead of screen-space bloom |
 | **#179** | **DO** | the LIGHTING page on the desk |
 | **#180** | **DP** | the LIGHTING page in the headset |
+| **#182** | **DQ** | you can drop a light, and the slot count is told the truth |
 
 **LAYER 1 IS COMPLETE** (the look: environment, atmosphere, grade, glow) and
 **layer 2 is built on both surfaces** (the property panel). Every merge verified:
 `main` rebuilds **byte-identical**, 20 lines of `failures: 0`, `real.js` fatal
 null. Every branch deleted local and remote.
 
-### NOT MERGED, AND IT ONLY EXISTS IN A WORKTREE
+### RULING DQ IS MERGED TOO — #182, AND THE ROUND IS COMPLETE
 
-**RULING DQ (droppable lights) is committed at `4d9254f` on `lighting-objects`,
-inside `.claude/worktrees/agent-a47840c5a83c1de1c`.** Green in isolation with 21
-negative checks — verified independently, not just self-reported. **DO NOT DELETE
-THAT WORKTREE: the work exists nowhere else.**
+**Droppable lights landed.** A dropped `PointLight`/`SpotLight`/`SurfaceLight` is
+a **real fixture in the rank queue** (BC), and `shadows` is a **request**:
+`shadowWanted` is what was asked, `shadowGranted` is what the pool did. **Nothing
+parks in `p2k`** — a drop rides `FIXTURES`, its group rides `rigGroup`, its pool
+rides `poolGroup`, and it is identified by `f.dropped` and never by a count.
 
-It branched from `f4e2628` and `main` has moved four PRs since, so it needs a
-**rebase onto fresh `main` and a full re-verify** before it can open. One real
-interaction to settle in that rebase: **DN's `GLOW_CAP` is a fixed 64** against a
-39-fixture rig, and every dropped light eats that headroom. Its own advice, which
-is sound: truncating the glow batch in array order is wrong *independent* of DQ —
-sort by `_lvl` and drop the dimmest, report the count from `lightSlots()`, and
-never refuse the drop.
+**The DN/DQ seam turned out already correct, and is now asserted.** Every drop
+eats `GLOW_CAP`'s 64-instance headroom, but DN's guard is a length-against-cap
+test whose `cap` falls back to `GLOW.max` — so the same rank that picks the
+session's twelve (view cone first, nearest within it) governs the buffer limit
+too. No code change was needed; what was missing was anything that said so.
 
-**Task 9 (this record) is the last one. Nothing else is planned.**
+**RULINGS ARE AT DQ. THE PLAN IS FINISHED — Task 10 was cut, everything else is
+merged. Nothing is open and nothing is shelved.**
 
 | File | What |
 |---|---|
@@ -361,7 +362,8 @@ catches it. The pair is left coupled deliberately.
    TRAPS), costed at **1.09ms over 3,399 objects unsliced** against 0.0018ms for
    `envDrive`. Deferred deliberately: new per-frame machinery on a build already
    1.8× over budget is his call, not something to slip into an environment PR.
-3. **`GLOW_CAP` ordering**, to be settled in the DQ rebase — see above.
+3. ~~`GLOW_CAP` ordering~~ — **settled**: DN’s rank already governs the buffer
+   limit and #182 asserts it. Nothing left here.
 4. **The performance investigation the spec asks for and nobody has done.**
    §7.2 says it belongs *between* DJ and DK; it did not happen, and DK–DN all
    added per-pixel cost on top. He was told and chose to carry on with the
