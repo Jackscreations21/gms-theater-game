@@ -1372,6 +1372,17 @@ function updateRig(dt, t){
     f.beam.visible = lvl > 0.004 && hazeNow() > 0.005;
     // lens glow — camera.position stops being a world point once the VR rig
     // holds the camera, so ask for the world pose
+    /* RULING DR — AND A LENS QUAD THAT IS DARK DOES NOT DRAW.  Opacity was the
+       only thing this quad was ever told: an additive plane at opacity 0 still
+       rasterises and still costs a draw call, so only `visible` skips it, and
+       the whole rig's lenses were being submitted through every blackout — 39
+       draws an eye to blend nothing.  RULING DN made the same point about the
+       halo, which is why that batch truncates `count` rather than fading
+       instances away.  Same threshold and same idiom as the beam above and the
+       floor pool below; one gate, so desk and VR both get it (updateRig is the
+       only place either one runs).  This is a DRAWING flag on a decal that is
+       already raycast-opted-out, not a channel gate — §5's rule stands. */
+    f.glow.visible = lvl > 0.004;
     f.glow.material.opacity = Math.min(1, lvl*1.3);
     f.glow.material.color.copy(f.color);
     if(lvl > 0.004) f.glow.lookAt(camera.getWorldPosition(_glowCam));

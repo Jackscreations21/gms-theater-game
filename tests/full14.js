@@ -2389,6 +2389,71 @@ const probe = `
     return need + ' drops over the cap, ' + drawn + ' drawn, the nearest kept';
   });
 
+  console.log('--- RULING DR: a lens quad that is dark does not draw ---');
+
+  P('every lens quad in a dark rig is out of the frame, and one fader draws one', ()=>{
+    /* AN ADDITIVE QUAD AT OPACITY ZERO STILL RASTERISES AND STILL COSTS A DRAW
+       CALL.  RULING DN makes the rasterise half of that point about the halo —
+       which is why the batch truncates count instead of fading instances away —
+       the draw-call half is DR's own.  The 39 per-fixture
+       LENS quads were the one thing in the rig that had never been told: their
+       opacity was driven every frame and their visible flag was never written
+       once, so a blackout submitted the whole rig's lenses for nothing.  The
+       beam beside them and the floor pool below them are both gated on the same
+       0.004, and now so is this.
+
+       Driven through the REAL fader path — setSection/setLevel, then the frame
+       updateFades -> updateRig — because the claim is that the ENGINE stops
+       drawing them.  Poking f._lvl would test the line and not the rig, and a
+       test that reads back what it wrote proves only that assignment works
+       (TRAPS).  Names the game does not use, for the shadowing trap. */
+    const keepB = RIG.blackout, keepG = RIG.grand,
+          keepL = FIXTURES.map(f=>f.level),
+          keepS = SECTIONS.map(s=>s.level);
+    let clock = 0;
+    const drStep = ()=>{ clock += 0.05; updateFades(0.05); updateRig(0.05, clock); };
+    /* the blackout is taken on the FADERS, the desk's own road to nothing.  The
+       sys sections (house, work, lobby, backstage) are left alone on purpose:
+       setSection writes HOUSE and calls syncMasters, and this case has no
+       business turning the building's lights off behind the later ones. */
+    RIG.blackout = false; RIG.grand = 1;
+    SECTIONS.filter(s=>!s.sys).forEach(s=>setSection(s, 0, 0));
+    for(let i=0;i<20;i++) drStep();
+    const drDrawn = FIXTURES.filter(f=>f.glow && f.glow.visible);
+    /* the sample is taken HERE, in the blackout — read at the throw below it
+       would report the opacity of the restored rig and name a level nobody in
+       this case ever set */
+    const drSample = drDrawn.length
+      ? drDrawn[0].name + ' at opacity ' + drDrawn[0].glow.material.opacity : '';
+    /* one channel up, on its fader, well past the gate's threshold */
+    const drUp = chan(1), drOther = chan(FIXTURES.length);
+    setLevel(1, 0.5, 0);
+    for(let i=0;i<20;i++) drStep();
+    const drLit = drUp.glow.visible, drDark = drOther.glow.visible, drLvl = drUp._lvl;
+    /* and back down the way it came up, so the gate is a gate in both
+       directions rather than a flag written once */
+    setLevel(1, 0, 0);
+    for(let i=0;i<20;i++) drStep();
+    const drBack = drUp.glow.visible;
+    RIG.blackout = keepB; RIG.grand = keepG;
+    SECTIONS.forEach((s,i)=>{ s.level = keepS[i]; });
+    FIXTURES.forEach((f,i)=>{ f.level = keepL[i]; f.lvlDur = 0; });
+    for(let i=0;i<20;i++) drStep();
+    if(drDrawn.length)
+      throw new Error(drDrawn.length + ' of ' + FIXTURES.length + ' lens quads are still ' +
+        'drawn with every rig fader at zero (' + drSample + ')');
+    if(!(drLvl > 0.004))
+      throw new Error('the fader never reached the rig: channel 1 reads ' + drLvl);
+    if(!drLit)
+      throw new Error('channel 1 is up at ' + drLvl.toFixed(2) + ' and its lens quad is not drawn');
+    if(drDark)
+      throw new Error('channel ' + FIXTURES.length + ' stayed dark and its lens quad is drawn anyway');
+    if(drBack)
+      throw new Error('channel 1 came back to zero and its lens quad is still drawn');
+    return FIXTURES.length + ' quads dark and undrawn, one fader at ' +
+           drLvl.toFixed(2) + ' drew exactly its own';
+  });
+
   console.log('--- RULING DO: the LIGHTING page on the desk ---');
 
   P('the page and its nav button exist, and it is NOT the LIGHTS page', ()=>{
