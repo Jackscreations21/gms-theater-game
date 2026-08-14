@@ -240,23 +240,27 @@ GRADE.u = { gradeMat:{value:new T.Matrix3()},
 /* Rec.709 luma, the weights the shader used to carry inline */
 const GRADE_LUMA = [0.2126, 0.7152, 0.0722];
 const _gradeCol = new T.Color();            // scratch: hex -> rgb, never a new one
+const _gradeT = [0,0,0], _gradeM = [0,0,0,0,0,0,0,0,0]; // scratch: per-frame, never new
 /* Composed HERE, at the declaration, and not only from updateRig: a material
    can compile before the first frame runs, and an all-zero mat3 with gradeMix
-   at 1 would be a black frame rather than a late one. */
+   at 1 would be a black frame rather than a late one.
+   NOTE for the next grade step: the loop below is the CLOSED FORM of exactly
+   these four steps in exactly this order — a fifth step prepends its matrix on
+   the LEFT of M = M4·M3·M2·M1 and the closed form must be re-derived, not
+   extended in place. */
 function gradeCompose(){
   const s = 1.0 + GRADE.contrast, k = 1.0 + GRADE.sat, w = GRADE_LUMA;
   _gradeCol.set(GRADE.tint);
-  const t = [_gradeCol.r, _gradeCol.g, _gradeCol.b];
-  const m = [];
+  const t = _gradeT; t[0] = _gradeCol.r; t[1] = _gradeCol.g; t[2] = _gradeCol.b;
+  const m = _gradeM;
   for(let i=0;i<3;i++) for(let j=0;j<3;j++)
-    m.push(s * t[i] * ((i===j ? k : 0) + (1-k)*w[j]));
+    m[i*3+j] = s * t[i] * ((i===j ? k : 0) + (1-k)*w[j]);
   /* Matrix3.set is ROW-major and row i is output channel i; three.js uploads
      the column-major elements array, which is what GLSL mat3 wants */
   GRADE.u.gradeMat.value.set(m[0],m[1],m[2], m[3],m[4],m[5], m[6],m[7],m[8]);
   const o = s*GRADE.bright + 0.5*(1.0 - s);
   GRADE.u.gradeOff.value.set(t[0]*o, t[1]*o, t[2]*o);
   GRADE.u.gradeMix.value = GRADE.mix;
-  return GRADE.u;
 }
 gradeCompose();
 
