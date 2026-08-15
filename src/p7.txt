@@ -64,7 +64,34 @@ const VIEWS = {
       orbit:[new T.Vector3(ARC.X + 26, 6, -36), 26, 0, -0.12]},
   20:{name:'ARC — STUDIO DOCK', venue:'arc',
       pos:new T.Vector3(ARC.X + 26 + AS.W/2 + 6, 1.1, -39.4), yaw:-Math.PI/2, pitch:0,
-      orbit:[new T.Vector3(ARC.X + 26 + AS.W/2 + 6, 4, -39.4), 16, -Math.PI/2, -0.14]}
+      orbit:[new T.Vector3(ARC.X + 26 + AS.W/2 + 6, 4, -39.4), 16, -Math.PI/2, -0.14]},
+
+  /* GMS STUDIOS.  21 is the venue's home view (VENUE_HOME) — the door you come
+     in at, looking down the length of reception at the studio corridor. */
+  21:{name:'GMS — RECEPTION', venue:'studio',
+      pos:new T.Vector3(STU.X, 0, 10), yaw:Math.PI, pitch:-0.04,
+      orbit:[new T.Vector3(STU.X, 4, 2), 26, Math.PI, -0.16]},
+  22:{name:'GMS — STUDIO 1', venue:'studio',
+      pos:new T.Vector3(STU.X + STU_CX[0], 0, -10), yaw:Math.PI, pitch:0.04,
+      orbit:[new T.Vector3(STU.X + STU_CX[0], 3, -14), 18, Math.PI, -0.14]},
+  23:{name:'GMS — STUDIO 2', venue:'studio',
+      pos:new T.Vector3(STU.X + STU_CX[1], 0, -10), yaw:Math.PI, pitch:0.04,
+      orbit:[new T.Vector3(STU.X + STU_CX[1], 3, -14), 18, Math.PI, -0.14]},
+  24:{name:'GMS — STUDIO 3', venue:'studio',
+      pos:new T.Vector3(STU.X + STU_CX[2], 0, -10), yaw:Math.PI, pitch:0.04,
+      orbit:[new T.Vector3(STU.X + STU_CX[2], 3, -14), 18, Math.PI, -0.14]},
+  25:{name:'GMS — STUDIO 4', venue:'studio',
+      pos:new T.Vector3(STU.X + STU_CX[3], 0, -10), yaw:Math.PI, pitch:0.04,
+      orbit:[new T.Vector3(STU.X + STU_CX[3], 3, -14), 18, Math.PI, -0.14]},
+  26:{name:'GMS — OFFICES', venue:'studio',
+      pos:new T.Vector3(STU.X + 20, SS.OFF_Y, 0), yaw:Math.PI/2, pitch:-0.04,
+      orbit:[new T.Vector3(STU.X, SS.OFF_Y + 2, -1), 30, Math.PI/2, -0.12]},
+  27:{name:'GMS — THE FILM STAGE', venue:'studio',
+      pos:new T.Vector3(STU.X, 0, -38), yaw:Math.PI, pitch:0.02,
+      orbit:[new T.Vector3(STU.X, 7, -53), 44, Math.PI, -0.14]},
+  28:{name:'GMS — THE YARD', venue:'studio',
+      pos:new T.Vector3(STU.X, 0, -26), yaw:Math.PI, pitch:0.03,
+      orbit:[new T.Vector3(STU.X, 6, -26), 30, Math.PI, -0.2]}
 };
 let curView = 1;
 let lastVenue = 'palace';
@@ -80,7 +107,9 @@ function goToView(n){
      would be a frame behind. */
   VENUE = venueAt(v.pos.x);
   if(ARC.built) ARC.group.visible = (VENUE === 'arc');
+  if(STU.built) STU.group.visible = (VENUE === 'studio');
   updateArcRooms(true);
+  updateStuRooms(true);
   if(typeof updateStageFromPosition === 'function') updateStageFromPosition();
   // land on whatever floor is actually there, rather than falling through it
   const g = groundAt(v.pos.x, v.pos.z, v.pos.y + 2.5);
@@ -105,10 +134,17 @@ function groundAt(x,z,fromY){
   return hits.length ? hits[0].point.y : null;
 }
 /* Every rule below describes a wall of the Palace, in the Palace's own
-   coordinates.  None of them mean anything in the other building — and left
+   coordinates.  None of them mean anything in the other buildings — and left
    ungated they would follow you across town and stop you walking through
-   thin air at the Arc.                                                     */
-function inPalace(){ return VENUE !== 'arc'; }
+   thin air at the Arc.
+
+   THIS IS AN EQUALITY, NOT AN INEQUALITY, and the difference is a third
+   venue.  It read `VENUE !== 'arc'` while there were two buildings, which was
+   the same statement; with GMS Studios standing it would have answered YES in
+   the studios and hung the Palace's proscenium, dock and shed walls across a
+   television studio four hundred metres away.  A predicate that names what it
+   means cannot rot the next time the town grows. */
+function inPalace(){ return VENUE === 'palace'; }
 /* the upstage wall — solid except for the warehouse doorway at x = 0 (p2m),
    and there the roller door has to be most of the way up to pass */
 function backWallBlocks(x, z, oz){
@@ -379,10 +415,17 @@ function updatePlayer(dt){
   // horizontal with step check
   const tryMove=(ax,az)=>{
     const nx = Player.pos.x + ax*dt, nz = Player.pos.z + az*dt;
-    if(!inPalace()){
+    if(VENUE === 'arc'){
       // the other building has its own edges, walls and doors
       if(!arcBounds(nx, nz)) return;
       if(arcWallBlocks(nx, nz, Player.pos.x, Player.pos.z, Player.pos.y)) return;
+    } else if(VENUE === 'studio'){
+      /* and the third has its own again — plus a height, which neither of the
+         others needs: the office floor's edge is a wall at 5.0 and open air at
+         0 on the same plane (RULING EC), so the studios' wall rule is the only
+         one in the game that reads y. */
+      if(!stuBounds(nx, Player.pos.y, nz)) return;
+      if(stuWallBlocks(nx, nz, Player.pos.x, Player.pos.z, Player.pos.y)) return;
     } else {
       // the world runs from the street beyond the dock across to the stage-left wall
       if(nx < DOCK.x0 - 16 || nx > XL + 0.6) return;
@@ -444,7 +487,9 @@ function updatePlayer(dt){
   }
 
   // where am I?
-  const zone = !inPalace() ? arcZone(Player.pos.x, Player.pos.y, Player.pos.z) :
+  const zone =
+      VENUE === 'arc'    ? arcZone(Player.pos.x, Player.pos.y, Player.pos.z) :
+      VENUE === 'studio' ? stuZone(Player.pos.x, Player.pos.y, Player.pos.z) :
       Player.pos.z < D.apron+0.4 ?
       (Player.pos.y > 15 ? 'THE GRID' : Player.pos.y > 5 ? 'FLY RAIL' :
        Math.abs(Player.pos.x) > D.procW/2 ? 'THE WINGS' : 'ON DECK') :
@@ -985,7 +1030,16 @@ $('#fxFire')  && ($('#fxFire').onclick  = ()=>{
 });
 
 /* ---------------------------------------------------------------- VENUES */
-const VENUE_LABEL = {palace:'THE PALACE', arc:'THE ARC CENTRE'};
+const VENUE_LABEL = {palace:'THE PALACE', arc:'THE ARC CENTRE', studio:'GMS STUDIOS'};
+/* the view each venue's row takes you to, so the list is data rather than a
+   ternary that has to grow a branch every time the town does */
+const VENUE_HOME = {palace:1, arc:11, studio:21};
+const VENUE_BLURB = {
+  palace:'A 1,400-seat Broadway house: fly tower, dock, five productions in the book.',
+  arc:   'A modern complex: glazed foyer, a 600-seat lyric house and a studio.',
+  studio:'A television and film plant: four studios under a fixed grid, offices over, '+
+         'and a warehouse film stage whose bars fly. Everything in it is yours to build.'
+};
 function refreshStageChip(){
   const el = $('#stageChip');
   if(el && typeof STAGES !== 'undefined' && STAGES[STAGE])
@@ -1001,19 +1055,16 @@ function refreshStageNames(){
 function refreshVenueUI(){
   const list = $('#venueList');
   if(list){
-    list.innerHTML = ['palace','arc'].map(v=>{
+    list.innerHTML = ['palace','arc','studio'].map(v=>{
       const on = (VENUE === v);
-      const where = v === 'palace'
-        ? 'A 1,400-seat Broadway house: fly tower, dock, five productions in the book.'
-        : 'A modern complex: glazed foyer, a 600-seat lyric house and a studio.';
+      const where = VENUE_BLURB[v];
       return '<div class="cue'+(on?' next':'')+'" data-v="'+v+'" style="align-items:flex-start">'+
         '<div style="flex:1"><div style="color:var(--amber);letter-spacing:2px">'+
         VENUE_LABEL[v]+(on?' &nbsp;<span style="color:var(--green)">YOU ARE HERE</span>':'')+
         '</div><div class="mt">'+where+'</div></div></div>';
     }).join('');
     $$('#venueList .cue').forEach(el=>el.onclick = ()=>{
-      const v = el.dataset.v;
-      goToView(v === 'arc' ? 11 : 1);
+      goToView(VENUE_HOME[el.dataset.v] || 1);
       refreshVenueUI();
     });
   }
@@ -1031,8 +1082,10 @@ function refreshVenueUI(){
   const info = $('#venueInfo');
   if(info) info.innerHTML =
     'You are in <b style="color:var(--amber)">'+VENUE_LABEL[VENUE]+'</b>'+
-    (VENUE === 'arc' ? ', in the '+ARC.cur+'.' : ', in the '+ROOMS[curRoom].label+'.')+
-    '<br>Anything greyed out is in the other building — pressing it takes you there.';
+    (VENUE === 'arc'    ? ', in the '+ARC.cur+'.' :
+     VENUE === 'studio' ? ', in the '+STU.cur+'.' :
+                          ', in the '+ROOMS[curRoom].label+'.')+
+    '<br>Anything greyed out is in one of the other buildings — pressing it takes you there.';
   const st = $('#arcStat');
   if(st && ARC.built) st.innerHTML =
     'house at '+Math.round(ARC.level*100)+'%<br>'+
@@ -1513,6 +1566,14 @@ function useStation(st){
     if(typeof arcDoorToggle === 'function') arcDoorToggle(st.id.slice(8));
     return;
   }
+  /* and the same for GMS Studios.  Every door in that venue carries one of
+     these: a headset has no DOM, and the ARC DOORS panel is the only other way
+     a door in this game opens — so a studio you could not get into is exactly
+     what a missing branch here would build. */
+  if(st.id.indexOf('stuDoor:') === 0){
+    if(typeof stuDoorToggle === 'function') stuDoorToggle(st.id.slice(8));
+    return;
+  }
   if(st.id.indexOf('dock') === 0){
     toggleDockDoor(DOCKDOORS[(+st.id.slice(4) || 1) - 1]);
     return;
@@ -1560,6 +1621,7 @@ function tick(now){
   updateCrew(dt);             // the stagehands, if they have been called
   updateSmoke(dt);            // the fog machines
   updateArc(dt);              // the other building's foyer
+  updateStu(dt);              // and the third building's work light and doors
   updateStageFromPosition();  // the board is patched to the room you are in
   updateStageHouseLights();   // and every auditorium answers its own master
   /* the show's sound is the cue clock while it is playing (BB), and the
@@ -1641,7 +1703,8 @@ function init(){
   roomForce(poolGroup, 'shared');
   buildRooms();
   buildArc();       // the second venue, hung off the scene so the sorter never sees it
-  buildStages();    // three stages, one board — see p2k
+  buildStudios();   // the third — GMS Studios, p2n, hung off the scene for the same reason
+  buildStages();    // the stages, one board — see p2k
   refreshVenueUI();
   refreshStageChip();
   updateRooms(true);

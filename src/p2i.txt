@@ -253,10 +253,20 @@ function updateRooms(force){
     const ven = venueAt(px);
     if(ven !== VENUE){ VENUE = ven; force = true; roomsShown = ''; shadowsDirty = true; }
     ARC.group.visible = (ven === 'arc');
+    /* the third building, switched off at the group the same way — and it is
+       switched off HERE rather than inside its own branch, so that walking out
+       of it cannot leave it drawn behind you */
+    if(STU.built) STU.group.visible = (ven === 'studio');
     if(ven === 'arc'){
       for(const n of ROOM_ORDER) ROOM_GROUP[n].visible = false;
       SHARED.visible = false;
       updateArcRooms(force);
+      return curRoom;
+    }
+    if(ven === 'studio'){
+      for(const n of ROOM_ORDER) ROOM_GROUP[n].visible = false;
+      SHARED.visible = false;
+      updateStuRooms(force);
       return curRoom;
     }
     SHARED.visible = true;
@@ -279,6 +289,8 @@ function updateRooms(force){
 function roomsLive(){
   if(typeof VENUE !== 'undefined' && VENUE === 'arc')
     return ARC.order.filter(n=>ARC.rooms[n].visible).map(n=>'arc:'+n);
+  if(typeof VENUE !== 'undefined' && VENUE === 'studio' && STU.built)
+    return STU.order.filter(n=>STU.rooms[n].visible).map(n=>'stu:'+n);
   if(!ROOMS_BUILT) return ROOM_ORDER.concat(['shared']);
   const out = ['shared'];
   for(const n of ROOM_ORDER) if(ROOM_GROUP[n].visible) out.push(n);

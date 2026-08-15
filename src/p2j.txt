@@ -872,7 +872,25 @@ function buildArc(){
 /* ============================================================================
    WHICH ROOM, WHICH BUILDING
    ========================================================================== */
-function venueAt(x){ return x > ARC.X - 140 ? 'arc' : 'palace'; }
+/* Three buildings across one town, and which one you are in is one comparison
+   per side.  GMS Studios sits at STU.X = -420 and the Arc at +420, so the
+   Palace keeps the middle, and the 140m margins are equal on both sides so
+   neither building can claim ground the other stands on.
+
+   STU IS REFERENCED BARE, exactly as ARC is, and that is deliberate.  It is a
+   `const` declared in p2n — a LATER part of the same concatenated program — so
+   a caller that ran before p2n's line had executed would find it in its
+   temporal dead zone.  There is no guard for that: a `const` in TDZ throws on
+   a plain reference AND through `typeof` (TRAPS, twice), so a
+   `typeof STU !== 'undefined'` test here would not protect the call, it would
+   BE the crash while looking like the fix.  What makes it safe is that nothing
+   calls venueAt at parse time — every call site is the frame loop, init(), or
+   a test that has already booted the file.  Do not add a guard; fix the call
+   site instead. */
+function venueAt(x){
+  if(x < STU.X + 140) return 'studio';
+  return x > ARC.X - 140 ? 'arc' : 'palace';
+}
 function arcRoomAt(x, z){
   const lx = x - ARC.X;
   if(z > 7.6) return 'lobby';

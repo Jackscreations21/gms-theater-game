@@ -1,0 +1,1091 @@
+
+/* ============================================================================
+   GMS STUDIOS — the third venue
+
+   A television and film plant on the far side of town: a two-storey production
+   block with FOUR studios on the ground floor and a floor of offices over the
+   front of it, one big warehouse film stage behind, and a construction shed
+   off the warehouse's flank.
+
+   It is built the way the Arc Centre is built and for the same reasons.  The
+   whole thing hangs off the SCENE rather than off `world`, so the Palace's
+   room sorter never sees it and the three buildings can never file each
+   other's walls.  Whichever venue you are standing in, the other two are
+   switched off entirely.
+
+   THE FOUR STUDIOS ARE ONE FUNCTION CALLED FOUR TIMES.  Build a room twice by
+   hand and the two drift apart within a week; the Arc's two houses are one
+   builder called twice for exactly that reason, and four is four times the
+   argument.  What differs between them is the centre line and the name.
+
+   WHAT IS DELIBERATELY NOT HERE (spec RULING EA): nothing is hung, nothing is
+   flown, no set stands in any of it and no production loads into it.  The
+   rooms are structure and work light.  A set in this venue is wood, cut on the
+   shed's saws and nailed together — the build system, which is the rest of the
+   brief.  An empty room is the feature, not an unfinished one.
+
+   Spec: docs/superpowers/specs/2026-08-14-gms-studios-design.md (DZ-EK).
+   ========================================================================== */
+const STU = {
+  X: -420,                      // the other side of town from the Arc
+  group: null, rooms: {},
+  order: ['recep','off','s1','s2','s3','s4','ware','shed'],
+  walk: [], glow: [], lights: [], studios: {}, doors: [], doorMap: {}, walls: [],
+  house: 0.9, level: 0.9,
+  built: false, cur: 'recep'
+};
+
+/* ----------------------------------------------------------------------------
+   THE STUDIO BOX — `AS` is the theatre stage box shared by all three stages;
+   this is its opposite number, and the two have nothing to do with each other.
+   A television studio has no proscenium, no fly tower and no rake.  It has a
+   flat floor, a hard ceiling and a grid welded under it.
+
+   SS.GRID IS A CONSEQUENCE, NOT A CHOICE (RULING EK).  It is the height a hand
+   reaches from the top platform of the orderable ladder — 3.05 of platform plus
+   about 2.15 of standing reach.  A bar you cannot get a hand to is a bar you
+   cannot hang from, and hanging from it is the whole brief.  If the headset
+   says the grid is too low for the room, THE LADDER MOVES FIRST and this
+   follows it.
+   -------------------------------------------------------------------------- */
+const SS = {
+  W:      20,        // a studio, wall to wall
+  DEPTH:  16,        // front wall to back wall
+  CEIL:   7.4,       // the underside of the studio roof
+  GRID:   5.2,       // the lighting bars — see RULING EK above
+  PITCH:  22,        // centre to centre: 20 of studio, 2 of wall
+  OFF_Y:  5.0,       // the office slab, TOP face — what you stand on
+  OFF_H:  3.4,       // office clear height
+  DOORH:  3.6,       // a studio's roller door off the corridor
+  /* THE DECK IS y = 0.  It is at the Palace, it is at the Arc, and it is here.
+     Nothing loads a production into these rooms, but the build system's settle
+     (updateBodies), the nail snap and every trim in p3 are all written to it. */
+  DECK:   0,
+  /* where the block sits, in studio-local z */
+  ZBACK: -22,        // the back wall of the studio range
+  ZFRONT: -6,        // the studios' front wall, off the cross corridor
+  ZCORR:  -1,        // the corridor's front edge, where reception begins
+  ZGLAZE: 14,        // the glazed front of the building
+  /* THE OFFICE SLAB'S TWO EDGES, NAMED ONCE.  The stair is built in the
+     reception block and lands on a slab built in the office block, and the two
+     have to agree to the centimetre — a literal repeated at both build sites is
+     the tripwire p3's LEG_OFF/LEG_W exist to avoid.  OFF_Z1 in particular is
+     the STAIR's number: it sets how much open void the flight has to climb in,
+     and pushing it forward puts the stair back under the floor it is trying to
+     reach (which is the bug the suite caught the first time round). */
+  OFF_Z0: -6,        // the back of the office floor, over the studios' front wall
+  OFF_Z1:  4         // its open front edge, looking down into reception
+};
+const STU_CX = [-33, -11, 11, 33];      // the four centre lines
+
+/* THE FILM STAGE.  A different room again: no ceiling grid at all, because its
+   bars FLY (RULING DZ).  OUT is where a bar sits when it is flown out. */
+const SW = {
+  W: 60, DEPTH: 46, H: 18, GRID: 14, OUT: 12.4, BARS: 10, DECK: 0,
+  Z0: -76, Z1: -30                     // the room, in studio-local z
+};
+
+/* ============================================================================
+   SURFACES
+   Every texture in this game is drawn on a canvas; there are no image files and
+   no loader, and that is RULING AI rather than an accident.
+   ========================================================================== */
+/* ---- the sealed screed a studio floor actually is: poured, ground, matt ---- */
+function screedTex(){
+  const W = 256, H = 256, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#3c3f44'; g.fillRect(0,0,W,H);
+  for(let i=0;i<1800;i++){
+    g.fillStyle = 'rgba(255,255,255,'+(0.01+Math.random()*0.05).toFixed(3)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(1,3), rnd(1,3));
+  }
+  for(let i=0;i<40;i++){
+    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = rnd(0.5, 1.4);
+    g.beginPath();
+    const x = Math.random()*W, y = Math.random()*H;
+    g.moveTo(x, y); g.lineTo(x + rnd(-40,40), y + rnd(-40,40)); g.stroke();
+  }
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+/* ---- profiled industrial cladding, for the warehouse and the shed ---- */
+function cladTex(){
+  const W = 128, H = 128, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#6d7278'; g.fillRect(0,0,W,H);
+  for(let x=0; x<W; x+=16){
+    const gr = g.createLinearGradient(x, 0, x+16, 0);
+    gr.addColorStop(0,    'rgba(0,0,0,.42)');
+    gr.addColorStop(0.5,  'rgba(200,208,216,.3)');
+    gr.addColorStop(1,    'rgba(0,0,0,.42)');
+    g.fillStyle = gr; g.fillRect(x, 0, 16, H);
+  }
+  for(let i=0;i<120;i++){
+    g.fillStyle = 'rgba(90,70,40,'+(0.03+Math.random()*0.09).toFixed(2)+')';
+    g.fillRect(Math.random()*W, Math.random()*H, rnd(2,10), rnd(6,40));
+  }
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+/* ---- acoustic wall treatment: perforated board, studio grey ---- */
+function perfTex(){
+  const W = 128, H = 128, c = cvs(W, H), g = c.getContext('2d');
+  g.fillStyle = '#43474d'; g.fillRect(0,0,W,H);
+  g.fillStyle = 'rgba(0,0,0,.55)';
+  for(let y=4; y<H; y+=8)
+    for(let x=4; x<W; x+=8){
+      g.beginPath(); g.arc(x + (y/8%2?4:0), y, 1.6, 0, 6.283); g.fill();
+    }
+  const t = tex(c, 1, 1);
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  return t;
+}
+
+/* ---------------------------------------------------------------- helpers */
+/* A fitting belongs to a ROOM and answers that room's master.  Left on one
+   global master, every lit fitting in all eight rooms stays at full through a
+   blackout — which is exactly why the Arc could never get as dark as the
+   Palace until aGlow learned about rooms.  `keep` is a safety fitting: exit
+   signs and dock lights stay on when everything else goes out, because they
+   do.  (RULING EH.)                                                        */
+function sGlow(mesh, colour, power, room, keep){
+  STU.glow.push({mesh, base:new T.Color(colour),
+                 power:power === undefined ? 1 : power,
+                 room:room || 'recep', keep:!!keep});
+  return mesh;
+}
+function stuWalk(o){ STU.walk.push(o); WALKABLE.push(o); return o; }
+
+/* ============================================================================
+   DOORS
+   Studio doors roll straight up, like the Arc's dock shutters; the office and
+   reception leaves swing.  Both stop you walking through them while shut.
+   A registry of its own rather than the Arc's: a studio door filed in
+   ARC.doorMap would be swung by arcDoorsAll from across town.
+   ========================================================================== */
+function stuDoor(o){
+  const d = {
+    key:o.key, label:o.label, kind:o.kind || 'roll',
+    room:o.room, group:o.group, leaves:o.leaves || [],
+    axis:o.axis, plane:o.plane, at:o.at, halfW:o.halfW, H:o.H,
+    open:0, target:0, travel:o.travel || 0, swing:o.swing || 1.9,
+    y0:o.group ? o.group.position.y : 0
+  };
+  STU.doors.push(d);
+  STU.doorMap[d.key] = d;
+  return d;
+}
+function stuDoorSet(key, open){
+  const d = STU.doorMap[key]; if(!d) return null;
+  d.target = open ? 1 : 0;
+  if(typeof toast === 'function') toast(d.label + (open ? ' opening' : ' closing'));
+  return d;
+}
+function stuDoorToggle(key){
+  const d = STU.doorMap[key]; if(!d) return null;
+  return stuDoorSet(key, d.target < 0.5);
+}
+function updateStuDoors(dt){
+  for(const d of STU.doors){
+    if(Math.abs(d.target - d.open) < 0.001){ d.open = d.target; continue; }
+    d.open += clamp(d.target - d.open, -dt*0.55, dt*0.55);
+    if(d.kind === 'roll') d.group.position.y = d.y0 + d.open * d.travel;
+    else d.leaves.forEach(l=>{ l.group.rotation.y = l.sign * d.open * d.swing; });
+  }
+}
+
+/* ============================================================================
+   ONE STUDIO
+   Called four times.  Only the centre line, the room key and the name differ.
+   ========================================================================== */
+function stuBuildStudio(o, MAT){
+  const R = STU.rooms[o.room], cx = o.cx;
+  const S = {
+    key:o.key, label:o.label, room:o.room, cx,
+    z0:SS.ZBACK, z1:SS.ZFRONT,
+    x0:cx - SS.W/2, x1:cx + SS.W/2,
+    lamps:[], bars:[], walk:[]
+  };
+  STU.studios[o.key] = S;
+  const zMid = (SS.ZBACK + SS.ZFRONT)/2;
+  const {conc, screed, perf, steel, blackM, shutterM, plastD} = MAT;
+
+  /* ------------------------------------------------------------- the floor
+     Flat, sealed and at y = 0 — the deck, same as every other room in the game.
+     Its top face is the slab's top, so the box is sunk by half its height. */
+  {
+    const fl = aBox(SS.W, 1.0, SS.DEPTH, screed, cx, SS.DECK - 0.5, zMid, R);
+    stuWalk(fl); S.walk.push(fl);
+    S.deck = fl;
+    S.deckY = SS.DECK;
+  }
+
+  /* ------------------------------------------------------- walls and ceiling
+     Side walls run the full clear height; the pair between two studios is two
+     walls with the 2m service void of SS.PITCH between them, which is where a
+     real plant runs its cable and its air.
+
+     THE TWO END WALLS ARE THE SAME WALL BUILT TWICE, so they are one local
+     function called twice rather than forty lines copied.  Each is a solid wall
+     with a roller doorway on the centre line, a leaf that rolls up, a wall rule
+     with that doorway as its only gap, and an [E] control on the STUDIO side.
+
+     A studio needs BOTH.  The front door is the way people come in, off the
+     corridor.  THE BACK DOOR IS THE WAY SCENERY COMES IN, off the yard — and
+     without it this venue has no route to the film stage or the shed at all
+     except through a wall, which is exactly what the first cut of this had:
+     a solid back wall with no rule behind it, so you walked through it into
+     the yard and the only way to the film stage was that hole. */
+  {
+    [-1,1].forEach(sd=>
+      aBox(0.5, SS.CEIL, SS.DEPTH + 0.6, conc, cx + sd*SS.W/2, SS.CEIL/2, zMid, R));
+
+    const roller = (zPlane, into, atX, ctlSide, suffix, what)=>{
+      const DW = 4.0, DH = SS.DOORH, x0 = cx - (SS.W + 1.0)/2, x1 = cx + (SS.W + 1.0)/2;
+      // the two piers either side of the opening, each as wide as its own gap
+      [[x0, atX - DW/2], [atX + DW/2, x1]].forEach(p=>{
+        if(p[1] - p[0] < 0.01) return;
+        aBox(p[1] - p[0], SS.CEIL, 0.5, conc, (p[0] + p[1])/2, SS.CEIL/2, zPlane, R);
+      });
+      aBox(DW, SS.CEIL - DH, 0.5, conc, atX, DH + (SS.CEIL - DH)/2, zPlane, R);
+      /* the leaf.  `into` is the direction the studio lies in from this wall,
+         so the leaf and its control sit on the studio's own side of it. */
+      const sg = new T.Group();
+      sg.position.set(atX, SS.DECK, zPlane + into*0.14);
+      sg.userData.moves = true;
+      R.add(sg);
+      const leaf = new T.Mesh(new T.BoxGeometry(DW + 0.1, DH - 0.1, 0.12), shutterM);
+      leaf.position.y = (DH - 0.1)/2;
+      leaf.castShadow = leaf.receiveShadow = true;
+      sg.add(leaf);
+      aBox(DW + 0.6, 0.34, 0.28, steel, 0, DH + 0.1, 0, sg);
+      const key = o.key + suffix;
+      stuDoor({key, label:S.label + ' ' + what, kind:'roll',
+               room:o.room, group:sg,
+               axis:'z', plane:zPlane, at:atX, halfW:DW/2, H:DH - 0.1,
+               travel:DH - 0.4});
+      /* the control, an [E] station you can walk up to on the STUDIO side.
+         A headset has no DOM: every door in this venue needs one of these or
+         it can only be opened from a panel VR does not have.  A child of the
+         studio room, so it culls with the room you press it from. */
+      const ctl = aBox(0.32, 0.48, 0.13, M.fixture, atX + ctlSide*(DW/2 + 0.9), 1.25,
+                       zPlane + into*0.42, R);
+      station(ctl, 'stuDoor:' + key, S.label + ' ' + what.toUpperCase() +
+              '  —  [E] open or shut it');
+      /* the wall this end adds to the collision set.  Each studio states the
+         span of its OWN wall — the four of them sit on two planes, and a wall
+         that did not say how far along itself it reached would close its
+         neighbours' doorways (the Arc's lesson, where the main house's
+         proscenium wall closed the studio's opening). */
+      STU.walls.push({axis:'z', plane:zPlane, lo:S.x0 - 1, hi:S.x1 + 1, yMax:SS.CEIL,
+                      gaps:[{at:atX, halfW:DW/2, door:key}]});
+      return ctl;
+    };
+    /* The front door is on the centre line, off the corridor.  THE SCENE DOCK
+       IS IN THE CORNER, and that is the cyc's doing: a hard cyclorama runs
+       across the back wall, and a dock on the centre line would open straight
+       into the middle of it.  Every studio in the world solves this the same
+       way — cyc across most of the back, dock in the corner beside it — so the
+       cyc below is narrowed and offset to clear exactly this opening.  The two
+       numbers are related and they are stated together for that reason. */
+    S.dockX   = cx + SS.W/2 - 3.0;
+    S.ctl     = roller(SS.ZFRONT, -1, cx,       +1, 'Door', 'studio door');
+    S.dockCtl = roller(SS.ZBACK,  +1, S.dockX,  -1, 'Dock', 'scene dock door');
+
+    // the hard ceiling, and the roof slab over it
+    aBox(SS.W + 1.0, 0.4, SS.DEPTH + 0.6, plastD, cx, SS.CEIL + 0.2, zMid, R);
+  }
+
+  /* ------------------------------------------------- acoustic treatment
+     Perforated board up the side walls to head height and a little over —
+     what a studio is actually lined with, and what stops it reading as a
+     concrete box. */
+  {
+    const pans = [];
+    for(let z = SS.ZBACK + 1.6; z < SS.ZFRONT - 1.0; z += 2.0)
+      [-1,1].forEach(sd=>pans.push({x:cx + sd*(SS.W/2 - 0.3), y:2.6,
+                                    z:+z.toFixed(2), ry:sd*Math.PI/2}));
+    aBatch(new T.BoxGeometry(1.9, 4.4, 0.08), perf, pans, R);
+    // and a black surround band above them, so the walls go away under light
+    [-1,1].forEach(sd=>
+      aBox(0.1, SS.CEIL - 5.0, SS.DEPTH - 0.8, blackM,
+           cx + sd*(SS.W/2 - 0.28), 5.0 + (SS.CEIL - 5.0)/2, zMid, R));
+  }
+
+  /* ------------------------------------------------------------- the cyc
+     A hard plaster cyclorama wrapping the back corners — the one piece of
+     permanent scenery a television studio really does have built in, and the
+     thing that makes an empty studio read as a studio rather than as a garage.
+     It is STRUCTURE, not goods: it does not fly and it is not in GOODS. */
+  {
+    /* it runs from the stage-right wall to 0.4m short of the dock opening,
+       which is what decides its width and its centre — both fall out of
+       S.dockX rather than being chosen and then defended */
+    const xL = cx - SS.W/2 + 0.6, xR = S.dockX - 2.0 - 0.4;
+    const cw = xR - xL, ccx = (xL + xR)/2, ch = SS.CEIL - 1.2;
+    aBox(cw, ch, 0.24, MAT.cyc, ccx, ch/2, SS.ZBACK + 0.6, R);
+    // the return down the stage-right wall, so the corner has no seam in it
+    aBox(0.24, ch, 4.2, MAT.cyc, xL, ch/2, SS.ZBACK + 2.6, R);
+    /* the coved skirt that takes the corner out of the floor-to-wall joint —
+       a quarter cylinder lying along the foot of the cloth.  It is what makes
+       a cyc read as infinite rather than as a wall with a floor in front. */
+    const cove = new T.Mesh(new T.CylinderGeometry(0.9, 0.9, cw, 12, 1, false,
+                                                   0, Math.PI/2), MAT.cyc);
+    cove.rotation.z = Math.PI/2; cove.rotation.y = Math.PI;
+    cove.position.set(ccx, 0.9, SS.ZBACK + 1.4);
+    cove.castShadow = cove.receiveShadow = true;
+    R.add(cove);
+  }
+
+  /* -------------------------------------------------------- the work lights
+     RULING EA — a room with nothing hung in it and no house lights is unlit
+     black, in which you cannot find the saw, let alone hang anything.  These
+     are the ROOM's lighting, not the show's: they answer HOUSE.work of the
+     stage that owns this studio (updateStu), they never enter FIXTURES and
+     they never compete for the real-light pool.  Blue-white, in a row, the
+     way a working studio's are. */
+  {
+    const bulbs = [];
+    for(let z = SS.ZBACK + 3.4; z < SS.ZFRONT - 2.0; z += 4.0)
+      [-1,1].forEach(sd=>bulbs.push({x:cx + sd*5.0, y:SS.CEIL - 0.45,
+                                     z:+z.toFixed(2)}));
+    aBatch(new T.BoxGeometry(1.5, 0.14, 0.34), steel, bulbs, R);
+    const lit = aBatch(new T.BoxGeometry(1.4, 0.05, 0.26), MAT.workLamp,
+                       bulbs.map(p=>Object.assign({}, p, {y:p.y - 0.1})), R);
+    sGlow(lit, 0xdfe8ff, 1.0, o.room);
+    S.workGlow = lit;
+    /* one real light for the room, driven off the same master.  ONE, not one
+       per fitting: a studio with eight PointLights in it would cost eight
+       iterations of the point block in every standard material's fragment,
+       both eyes, every frame, for a flat wash a single light gives. */
+    const l = new T.PointLight(0xdfe8ff, 0, 34, 1.5);
+    l.position.set(cx, SS.CEIL - 0.8, zMid);
+    R.add(l);
+    S.lamps.push({light:l, power:2.4});
+  }
+
+  /* a lit EXIT over the door, and it is a `keep` fitting */
+  {
+    const m = new T.Mesh(new T.PlaneGeometry(1.0, 0.38),
+      new T.MeshBasicMaterial({color:0x2fd84a}));
+    m.position.set(cx, SS.DOORH + 0.5, SS.ZFRONT - 0.32);
+    m.rotation.y = Math.PI;
+    R.add(m); sGlow(m, 0x2fd84a, 1, o.room, true);
+  }
+
+  /* the name, stencilled on the corridor side of the door — you should be able
+     to tell which studio you are walking into from the corridor */
+  {
+    const c = cvs(512, 128), g2 = c.getContext('2d');
+    g2.fillStyle = '#0b0c0e'; g2.fillRect(0,0,512,128);
+    g2.textAlign = 'center'; g2.textBaseline = 'middle';
+    g2.font = '700 54px Helvetica, Arial, sans-serif';
+    g2.fillStyle = '#ffd27a';
+    g2.fillText(S.label, 256, 64);
+    const m = new T.Mesh(new T.PlaneGeometry(3.2, 0.8),
+                         new T.MeshBasicMaterial({map:tex(c,1,1)}));
+    m.position.set(cx, SS.DOORH + 0.9, SS.ZFRONT + 0.28);
+    R.add(m); sGlow(m, 0xffffff, 1, 'recep');
+  }
+
+  /* its two end walls are pushed by roller(), one each.  Its SIDE walls have no
+     way through at all: the 2m between two studios is a service void, not a
+     route, so the only way from one studio to the next is out to the corridor.  */
+  [-1,1].forEach(sd=>STU.walls.push({axis:'x', plane:cx + sd*SS.W/2,
+                                     lo:SS.ZBACK, hi:SS.ZFRONT, yMax:SS.CEIL, gaps:[]}));
+
+  return S;
+}
+
+/* ============================================================================
+   BUILD
+   ========================================================================== */
+function buildStudios(){
+  if(STU.built) return STU;
+  const G = new T.Group();
+  G.name = 'studios';
+  G.position.x = STU.X;
+  scene.add(G);                   // NOT world — the Palace's sorter must not see it
+  STU.group = G;
+  for(const n of STU.order){
+    const g = new T.Group(); g.name = 'stu:' + n;
+    G.add(g); STU.rooms[n] = g;
+  }
+
+  /* ---------------------------------------------------------- materials
+     Every one of these reaches envTrack, via the envRegister(STU.group) at the
+     tail of this function (RULING EI).  A material that misses it renders with
+     the fog and the grade BYPASSED rather than broken, which is a silent
+     failure — hence the assertion in the suite rather than trust.          */
+  const SCR = screedTex(); SCR.repeat.set(8, 7);
+  const CLD = cladTex();   CLD.repeat.set(10, 4);
+  const PRF = perfTex();   PRF.repeat.set(4, 6);
+  const MAT = {
+    screed:  new T.MeshStandardMaterial({map:SCR, roughness:.86, metalness:.03}),
+    conc:    new T.MeshStandardMaterial({color:0x8a8782, roughness:.92}),
+    plastD:  new T.MeshStandardMaterial({color:0xb2ada4, roughness:.93}),
+    perf:    new T.MeshStandardMaterial({map:PRF, roughness:.88}),
+    clad:    new T.MeshStandardMaterial({map:CLD, roughness:.6, metalness:.45}),
+    steel:   new T.MeshStandardMaterial({color:0x565b64, roughness:.42, metalness:.85}),
+    blackM:  new T.MeshStandardMaterial({color:0x0a0b0d, roughness:.96}),
+    blackS:  new T.MeshStandardMaterial({color:0x121317, roughness:.9}),
+    /* the cyc is the whitest surface in the game on purpose: it is what a
+       studio bounces its light off */
+    cyc:     new T.MeshStandardMaterial({color:0xf2f0ea, roughness:.97}),
+    glassM:  new T.MeshStandardMaterial({color:0x9fc6d8, roughness:.06, metalness:.2,
+                                          transparent:true, opacity:0.24, side:T.DoubleSide}),
+    mull:    new T.MeshStandardMaterial({color:0x2a2d32, roughness:.4, metalness:.7}),
+    carpet:  new T.MeshStandardMaterial({map:TX.carpet, color:0x3a4048, roughness:1}),
+    timber:  new T.MeshStandardMaterial({map:TX.deck, color:0x9c7a4e, roughness:.72}),
+    doorM:   new T.MeshStandardMaterial({color:0x2a2d33, roughness:.7}),
+    shutterM:new T.MeshStandardMaterial({map:cladTex(), roughness:.55, metalness:.6}),
+    workLamp:new T.MeshBasicMaterial({color:0xdfe8ff}),
+    tarmac:  new T.MeshStandardMaterial({color:0x2e3033, roughness:.99})
+  };
+  MAT.shutterM.map.repeat.set(1, 3);
+
+  /* ======================================================================
+     THE FOUR STUDIOS — same builder, same box, four times
+     ================================================================== */
+  const NAMES = ['STUDIO 1', 'STUDIO 2', 'STUDIO 3', 'STUDIO 4'];
+  STU_CX.forEach((cx, i)=>{
+    stuBuildStudio({key:'s' + (i+1), label:NAMES[i], room:'s' + (i+1), cx}, MAT);
+  });
+
+  /* ======================================================================
+     THE CROSS CORRIDOR AND RECEPTION — the ground floor of the front band
+     ================================================================== */
+  {
+    const L = STU.rooms.recep;
+    const X0 = -44, X1 = 44;
+    const {conc, screed, carpet, glassM, mull, timber, steel, plastD, doorM} = MAT;
+
+    /* the floor of the whole front band, corridor and reception together */
+    const fl = aBox(X1 - X0, 0.4, SS.ZGLAZE - SS.ZFRONT, screed, 0, SS.DECK - 0.2,
+                    (SS.ZFRONT + SS.ZGLAZE)/2, L);
+    stuWalk(fl);
+    // a carpet runner over the reception half of it
+    const rug = aBox(X1 - X0 - 4, 0.03, SS.ZGLAZE - SS.ZCORR - 1, carpet, 0,
+                     SS.DECK + 0.015, (SS.ZCORR + SS.ZGLAZE)/2 + 0.5, L);
+    stuWalk(rug);
+
+    /* the side walls of the block, full height */
+    [-1,1].forEach(sd=>
+      aBox(0.5, SS.OFF_Y + SS.OFF_H + 0.8, SS.ZGLAZE - SS.ZFRONT + 0.5, conc,
+           sd*X1, (SS.OFF_Y + SS.OFF_H + 0.8)/2, (SS.ZFRONT + SS.ZGLAZE)/2, L));
+
+    /* THE GLAZED FRONT, with the way in at the centre */
+    {
+      const H = SS.OFF_Y + SS.OFF_H;
+      const posts = [], panes = [];
+      for(let x = X0; x <= X1 + 0.01; x += 2.75){
+        posts.push({x:+x.toFixed(2), y:H/2, z:SS.ZGLAZE});
+        if(x < X1 && Math.abs(x + 1.375) > 3.2)
+          panes.push({x:+(x + 1.375).toFixed(2), y:H/2, z:SS.ZGLAZE});
+      }
+      aBatch(new T.BoxGeometry(0.2, H, 0.5), mull, posts, L);
+      aBatch(new T.BoxGeometry(2.5, H - 0.3, 0.06), glassM, panes, L);
+      [2.8, 5.6].forEach(y=>aBox(X1 - X0, 0.12, 0.28, mull, 0, y, SS.ZGLAZE, L));
+      // the head over the entrance gap, so the wall reads as continuous above it
+      aBox(6.6, H - 3.0, 0.06, glassM, 0, 3.0 + (H - 3.0)/2, SS.ZGLAZE, L);
+      aBox(7.0, 0.3, 0.5, mull, 0, 3.05, SS.ZGLAZE, L);
+    }
+
+    /* THE SIGN */
+    {
+      const c = cvs(1024, 256), g2 = c.getContext('2d');
+      g2.clearRect(0,0,1024,256);
+      g2.textAlign = 'center'; g2.textBaseline = 'middle';
+      g2.font = '700 132px Helvetica, Arial, sans-serif';
+      g2.fillStyle = '#f2efe8';
+      g2.fillText('GMS STUDIOS', 512, 108);
+      g2.font = '400 38px Helvetica, Arial, sans-serif';
+      g2.fillStyle = '#ff9b3d';
+      g2.fillText('T E L E V I S I O N   ·   F I L M', 512, 202);
+      const m = new T.Mesh(new T.PlaneGeometry(14, 3.5),
+        new T.MeshBasicMaterial({map:tex(c,1,1), transparent:true}));
+      m.position.set(0, 6.6, SS.ZGLAZE + 0.34);
+      L.add(m); sGlow(m, 0xffffff, 1, 'recep', true);
+    }
+
+    /* the reception desk */
+    {
+      const dz = SS.ZCORR + 6;
+      aBox(7.0, 1.1, 1.4, plastD, -12, 0.55, dz, L);
+      aBox(7.4, 0.12, 1.7, timber, -12, 1.16, dz, L);
+      const rev = aBox(7.0, 0.08, 0.1, new T.MeshBasicMaterial({color:0xff9b3d}),
+                       -12, 0.16, dz + 0.75, L);
+      sGlow(rev, 0xff9b3d, 0.8, 'recep');
+      // the wall behind it
+      aBox(9.0, 4.2, 0.3, plastD, -12, 2.1, dz - 1.6, L);
+    }
+
+    /* a couple of benches, so it is a room somebody waits in */
+    {
+      const b = [];
+      for(const p of [[10, SS.ZCORR + 4],[16, SS.ZCORR + 4],
+                      [10, SS.ZCORR + 9],[16, SS.ZCORR + 9]])
+        b.push({x:p[0], y:0.44, z:p[1]});
+      aBatch(new T.BoxGeometry(2.6, 0.14, 0.8), timber, b, L);
+      aBatch(new T.BoxGeometry(2.2, 0.42, 0.5), steel,
+             b.map(p=>Object.assign({}, p, {y:0.21})), L);
+    }
+
+    /* THE STAIR UP, in the double-height slot at the front of reception.
+       Batched treads, and the batch goes on WALKABLE with walk = true so its
+       bounding sphere is never culled out from under you mid-climb — the Arc's
+       feature stair, exactly (RULING EC: a second storey needs no new
+       machinery, it needs a slab and a stair on WALKABLE).                  */
+    {
+      /* It climbs as z DECREASES, from the glazed front back to the slab edge,
+         and it lands ON the slab rather than beside it.  N and RUN are chosen
+         together so the rise per tread (OFF_Y/N = 0.25) clears the player's
+         0.62m step limit in tryMove with room to spare — a stair the player
+         cannot climb is a floor that does not exist.  Asserted tread by tread
+         in tests/studios.js. */
+      const sx = 30, N = 20, RUN = 0.42;
+      const zBot = SS.ZGLAZE - 1.0;                 // the foot, just inside the glass
+      const treads = [];
+      for(let i=0;i<N;i++)
+        treads.push({x:sx, y:+(SS.OFF_Y*(i+1)/N).toFixed(3),
+                     z:+(zBot - i*RUN).toFixed(2)});
+      stuWalk(aBatch(new T.BoxGeometry(3.2, 0.12, RUN + 0.04), MAT.steel, treads, L, true));
+      /* the landing bridges the top tread to the slab edge.  Without it there
+         is a clear metre of nothing between the last step and the floor, which
+         reads as a stair and behaves as a hole. */
+      const zTop = zBot - (N - 1)*RUN, zEdge = SS.OFF_Z1;
+      stuWalk(aBox(3.4, 0.3, (zTop + 0.3) - zEdge + 0.4, MAT.steel, sx, SS.OFF_Y - 0.15,
+                   (zEdge - 0.4 + zTop + 0.3)/2, L));
+      // stringers and a handrail down each side, raked with the flight
+      {
+        const run = (N - 1)*RUN, len = Math.hypot(run, SS.OFF_Y);
+        const zc = (zBot + zTop)/2, ang = Math.atan2(SS.OFF_Y, run);
+        [-1,1].forEach(sd=>{
+          const s2 = aBox(0.1, 0.3, len, steel, sx + sd*1.7, SS.OFF_Y/2, zc, L);
+          s2.rotation.x = ang;
+          const r2 = aBox(0.05, 0.05, len, steel, sx + sd*1.7, SS.OFF_Y/2 + 1.05, zc, L);
+          r2.rotation.x = ang;
+          const posts = [];
+          for(let i=1;i<N;i+=3)
+            posts.push({x:sx + sd*1.7, y:SS.OFF_Y*(i+1)/N + 0.55,
+                        z:+(zBot - i*RUN).toFixed(2)});
+          aBatch(new T.BoxGeometry(0.05, 1.1, 0.05), steel, posts, L);
+        });
+      }
+    }
+
+    /* corridor and reception lighting: recessed strips, on the venue master */
+    {
+      const strips = [];
+      for(let x = X0 + 6; x < X1 - 4; x += 7)
+        strips.push({x:+x.toFixed(2), y:SS.OFF_Y - 0.14, z:SS.ZFRONT + 2.5});
+      const s1 = aBatch(new T.BoxGeometry(4.4, 0.08, 0.28), MAT.workLamp, strips, L);
+      sGlow(s1, 0xf4f6ff, 0.9, 'recep');
+      const pend = [];
+      for(let x = -30; x <= 30; x += 6)
+        for(const z of [SS.ZCORR + 4, SS.ZCORR + 10])
+          pend.push({x, y:4.4, z});
+      const p1 = aBatch(new T.SphereGeometry(0.22, 8, 6), MAT.workLamp, pend, L);
+      sGlow(p1, 0xffe9c8, 0.9, 'recep');
+    }
+
+    /* the corridor's own EXIT signs, and a real light for the band */
+    [[X0 + 3, SS.ZFRONT + 1.2], [X1 - 3, SS.ZFRONT + 1.2]].forEach(p=>{
+      const m = new T.Mesh(new T.PlaneGeometry(1.1, 0.42),
+        new T.MeshBasicMaterial({color:0x2fd84a}));
+      m.position.set(p[0], 2.9, p[1]);
+      L.add(m); sGlow(m, 0x2fd84a, 1, 'recep', true);
+    });
+    const rl = new T.PointLight(0xffeed6, 0, 80, 1.4);
+    rl.position.set(0, 4.4, SS.ZCORR + 6);
+    L.add(rl);
+    STU.lights.push({light:rl, power:2.6, room:'recep'});
+    const rl2 = new T.PointLight(0xdfe8ff, 0, 60, 1.5);
+    rl2.position.set(0, SS.OFF_Y - 0.6, SS.ZFRONT + 2.5);
+    L.add(rl2);
+    STU.lights.push({light:rl2, power:1.8, room:'recep'});
+
+    /* the walls of the front band that stop you: the glazed front (one way in
+       at the centre) and the two flanks.  The studios' own front wall is
+       pushed by stuBuildStudio, one entry per studio. */
+    STU.walls.push({axis:'z', plane:SS.ZGLAZE, lo:X0, hi:X1, yMax:99,
+                    gaps:[{at:0, halfW:3.2}]});
+    [-1,1].forEach(sd=>STU.walls.push({axis:'x', plane:sd*X1,
+                                       lo:SS.ZFRONT, hi:SS.ZGLAZE, yMax:99, gaps:[]}));
+  }
+
+  /* ======================================================================
+     THE OFFICE FLOOR — the second storey, over the front band only
+     The four studios run double-height beside it, which is why the offices
+     stop at SS.ZFRONT and do not sit on top of them.
+     ================================================================== */
+  {
+    const O = STU.rooms.off;
+    /* the slab's two edges come off SS, where the stair can see them too — see
+       the note there.  The void in front of it is 10m deep, which is 8.4m of
+       run for a 5m rise: about 31 degrees, every rise inside the player's
+       0.62m step. */
+    const X0 = -44, X1 = 44, Z0 = SS.OFF_Z0, Z1 = SS.OFF_Z1;
+    const {conc, carpet, glassM, mull, plastD, doorM, timber} = MAT;
+
+    /* the slab.  Its TOP face is SS.OFF_Y — what you stand on — so the box is
+       sunk by half its thickness.  Getting this the wrong way up is how you
+       build a floor you sink into. */
+    const fl = aBox(X1 - X0, 0.4, Z1 - Z0, carpet, 0, SS.OFF_Y - 0.2,
+                    (Z0 + Z1)/2, O);
+    stuWalk(fl);
+    // the soffit under it, which is the corridor's ceiling
+    aBox(X1 - X0, 0.12, Z1 - Z0, plastD, 0, SS.OFF_Y - 0.46, (Z0 + Z1)/2, O);
+
+    /* THE EDGE IS A WALL, NOT A HOPE (RULING EC).  The open side of the slab
+       looks down into reception; a balustrade you can see and a wall rule you
+       cannot cross, and the rule carries a yMin so it stops you at 5.0 and is
+       silent at ground level where the same plane is open floor. */
+    {
+      const rails = [];
+      for(let x = X0 + 0.75; x <= X1 - 0.75; x += 1.5)
+        rails.push({x:+x.toFixed(2), y:SS.OFF_Y + 0.6, z:Z1});
+      aBatch(new T.BoxGeometry(1.42, 1.1, 0.05), glassM, rails, O);
+      aBox(X1 - X0, 0.07, 0.09, MAT.steel, 0, SS.OFF_Y + 1.2, Z1, O);
+      aBox(X1 - X0, 0.4, 0.12, plastD, 0, SS.OFF_Y - 0.2, Z1, O);
+    }
+    STU.walls.push({axis:'z', plane:Z1, lo:X0, hi:X1, yMin:SS.OFF_Y - 1.0, yMax:99,
+                    gaps:[{at:30, halfW:1.7}]});     // the head of the stair
+
+    /* the back wall of the floor, over the studios' front wall, with a window
+       down into each studio.  An office with a view of the room it is an
+       office for; four panes, and it is what tells you from up here which
+       studio is which. */
+    {
+      aBox(X1 - X0, SS.OFF_H, 0.4, plastD, 0, SS.OFF_Y + SS.OFF_H/2, Z0, O);
+      STU_CX.forEach(cx=>{
+        const w = aBox(4.4, 1.5, 0.5, glassM, cx, SS.OFF_Y + 1.5, Z0, O);
+        w.castShadow = false;
+        aBox(4.8, 0.14, 0.6, mull, cx, SS.OFF_Y + 2.32, Z0, O);
+        aBox(4.8, 0.14, 0.6, mull, cx, SS.OFF_Y + 0.72, Z0, O);
+      });
+    }
+
+    /* the offices themselves: a row of glazed boxes off a corridor, with a
+       desk and a chair in each.  Partitions rather than rooms — the floor is
+       one cull room and one open plan, which is what an office floor is. */
+    {
+      const zPart = Z0 + 5.0;
+      // the partition line, with a doorway into each office bay
+      for(let i=0;i<7;i++){
+        const cx = -36 + i*12;
+        aBox(0.14, SS.OFF_H - 0.4, 5.0, plastD, cx - 6, SS.OFF_Y + (SS.OFF_H - 0.4)/2,
+             (Z0 + zPart)/2, O);
+        // the glazed front of the bay, with a 1.1m gap at its left for the door
+        aBox(9.0, SS.OFF_H - 0.4, 0.1, glassM, cx + 1.4,
+             SS.OFF_Y + (SS.OFF_H - 0.4)/2, zPart, O);
+      }
+      // desks, screens and chairs
+      const desks = [], screens = [], chairs = [];
+      for(let i=0;i<7;i++){
+        const cx = -36 + i*12;
+        desks.push({x:cx, y:SS.OFF_Y + 0.74, z:Z0 + 2.0});
+        desks.push({x:cx + 4.4, y:SS.OFF_Y + 0.74, z:Z0 + 2.0});
+        screens.push({x:cx, y:SS.OFF_Y + 1.18, z:Z0 + 1.5});
+        screens.push({x:cx + 4.4, y:SS.OFF_Y + 1.18, z:Z0 + 1.5});
+        chairs.push({x:cx, y:SS.OFF_Y + 0.44, z:Z0 + 3.0});
+        chairs.push({x:cx + 4.4, y:SS.OFF_Y + 0.44, z:Z0 + 3.0});
+      }
+      aBatch(new T.BoxGeometry(2.0, 0.06, 1.0), timber, desks, O);
+      aBatch(new T.BoxGeometry(1.8, 0.7, 0.06), plastD,
+             desks.map(p=>Object.assign({}, p, {y:p.y - 0.37})), O);
+      const sc = aBatch(new T.BoxGeometry(0.9, 0.52, 0.04),
+                        new T.MeshBasicMaterial({color:0x2f6fa8}), screens, O);
+      sGlow(sc, 0x2f6fa8, 0.75, 'off');
+      aBatch(new T.BoxGeometry(0.5, 0.08, 0.5), MAT.blackS, chairs, O);
+      aBatch(new T.BoxGeometry(0.5, 0.6, 0.08), MAT.blackS,
+             chairs.map(p=>Object.assign({}, p, {y:p.y + 0.34, z:p.z + 0.22})), O);
+    }
+
+    /* the ceiling and its lighting */
+    aBox(X1 - X0, 0.3, Z1 - Z0, plastD, 0, SS.OFF_Y + SS.OFF_H + 0.15,
+         (Z0 + Z1)/2, O);
+    {
+      const strips = [];
+      for(let x = X0 + 4; x < X1 - 2; x += 5.5)
+        for(const z of [Z0 + 2.2, Z0 + 6.4])
+          strips.push({x:+x.toFixed(2), y:SS.OFF_Y + SS.OFF_H - 0.08, z});
+      const s = aBatch(new T.BoxGeometry(3.4, 0.06, 0.3), MAT.workLamp, strips, O);
+      sGlow(s, 0xf4f6ff, 0.95, 'off');
+    }
+    const ol = new T.PointLight(0xf0f4ff, 0, 70, 1.5);
+    ol.position.set(0, SS.OFF_Y + SS.OFF_H - 0.5, (Z0 + Z1)/2);
+    O.add(ol);
+    STU.lights.push({light:ol, power:2.2, room:'off'});
+  }
+
+  /* ======================================================================
+     THE WAREHOUSE — the film stage.  One big clear-span box.
+     Its bars are NOT built here: they fly, and a flown bar is a lineset built
+     by p3's own makeLineset into this stage's flyGroup (RULING DZ).  That is
+     the stage builder's job, in p2k.
+     ================================================================== */
+  {
+    const W = STU.rooms.ware;
+    const {conc, screed, clad, steel, blackM, shutterM, plastD} = MAT;
+    const zMid = (SW.Z0 + SW.Z1)/2;
+
+    /* the stage floor — flat, sealed, at y = 0 */
+    const fl = aBox(SW.W, 1.0, SW.DEPTH, screed, 0, SW.DECK - 0.5, zMid, W);
+    stuWalk(fl);
+    STU.wareDeck = fl;
+
+    /* the shell: four walls and a roof, clad outside, black inside */
+    [-1,1].forEach(sd=>{
+      aBox(0.6, SW.H, SW.DEPTH + 1.0, clad, sd*SW.W/2, SW.H/2, zMid, W);
+      aBox(0.12, SW.H - 1.0, SW.DEPTH, blackM, sd*(SW.W/2 - 0.34), SW.H/2, zMid, W);
+    });
+    aBox(SW.W + 1.2, SW.H, 0.6, clad, 0, SW.H/2, SW.Z0, W);
+    aBox(SW.W, SW.H - 1.0, 0.12, blackM, 0, SW.H/2, SW.Z0 + 0.34, W);
+    aBox(SW.W + 1.2, 0.7, SW.DEPTH + 1.4, clad, 0, SW.H + 0.35, zMid, W);
+
+    /* the front wall, with the elephant door in it — a lorry's worth of
+       opening onto the yard, and the only way through from the block */
+    {
+      const DW = 8.0, DH = 6.4, half = (SW.W + 1.2)/2, pier = half - DW/2;
+      [-1,1].forEach(sd=>aBox(pier, SW.H, 0.6, clad,
+        sd*(DW/2 + pier/2), SW.H/2, SW.Z1, W));
+      aBox(DW, SW.H - DH, 0.6, clad, 0, DH + (SW.H - DH)/2, SW.Z1, W);
+      const sg = new T.Group();
+      sg.position.set(0, SW.DECK, SW.Z1 - 0.16);
+      sg.userData.moves = true;
+      W.add(sg);
+      const leaf = new T.Mesh(new T.BoxGeometry(DW + 0.2, DH - 0.1, 0.14), shutterM);
+      leaf.position.y = (DH - 0.1)/2;
+      leaf.castShadow = leaf.receiveShadow = true;
+      sg.add(leaf);
+      aBox(DW + 0.8, 0.4, 0.34, steel, 0, DH + 0.15, 0, sg);
+      stuDoor({key:'wareDoor', label:'the film stage elephant door', kind:'roll',
+               room:'ware', group:sg,
+               axis:'z', plane:SW.Z1, at:0, halfW:DW/2, H:DH - 0.1,
+               travel:DH - 0.5});
+      const ctl = aBox(0.32, 0.48, 0.13, M.fixture, DW/2 + 1.0, 1.25,
+                       SW.Z1 - 0.1, W);
+      station(ctl, 'stuDoor:wareDoor',
+              'FILM STAGE ELEPHANT DOOR  —  [E] open or shut it');
+      STU.wareCtl = ctl;
+      STU.walls.push({axis:'z', plane:SW.Z1, lo:-SW.W/2, hi:SW.W/2, yMax:SW.H,
+                      gaps:[{at:0, halfW:4.0, door:'wareDoor'}]});
+    }
+
+    /* the roof steel, seen from below: portal frames across, purlins along.
+       It is what tells you the room is 18m high, and it is where the flown
+       bars will hang from. */
+    {
+      const frames = [], purlins = [];
+      for(let z = SW.Z0 + 3; z <= SW.Z1 - 3; z += 4.0)
+        frames.push({x:0, y:SW.GRID + 2.2, z:+z.toFixed(2), rz:Math.PI/2});
+      for(let x = -SW.W/2 + 4; x <= SW.W/2 - 4; x += 5.0)
+        purlins.push({x:+x.toFixed(2), y:SW.GRID + 2.9, z:zMid, rx:Math.PI/2});
+      aBatch(new T.CylinderGeometry(0.16,0.16,SW.W - 1,6), steel, frames, W);
+      aBatch(new T.CylinderGeometry(0.09,0.09,SW.DEPTH - 2,6), steel, purlins, W);
+    }
+
+    /* a gantry down the stage-left flank, at the out trim, so the head blocks
+       and the flown bars can be got at.  Walkable, and railed. */
+    {
+      const gx = SW.W/2 - 2.4, gy = SW.OUT + 1.2;
+      stuWalk(aBox(3.6, 0.22, SW.DEPTH - 4, steel, gx, gy, zMid, W));
+      const rails = [];
+      for(let z = SW.Z0 + 4; z < SW.Z1 - 3; z += 1.5)
+        rails.push({x:gx - 1.8, y:gy + 0.6, z:+z.toFixed(2)});
+      aBatch(new T.CylinderGeometry(0.04,0.04,1.2,6), steel, rails, W);
+      aCyl(0.045,0.045,SW.DEPTH - 4,8, steel, gx - 1.8, gy + 1.2, zMid, W)
+        .rotation.x = Math.PI/2;
+      // the ladder up to it — decorative; you reach the gantry by the stair
+      const rungs = [];
+      for(let y=0.6; y<gy; y+=0.42)
+        rungs.push({x:gx + 1.2, y, z:SW.Z1 - 4.0, rz:Math.PI/2});
+      aBatch(new T.CylinderGeometry(0.028,0.028,0.66,6), steel, rungs, W);
+      [-1,1].forEach(sd=>aCyl(0.045,0.045,gy,6, steel, gx + 1.2 + sd*0.33,
+                              gy/2, SW.Z1 - 4.0, W));
+      // and a stair you can actually climb, at the back corner
+      const sx = SW.W/2 - 6.5, N = 26, RUN = 0.6;
+      const treads = [];
+      for(let i=0;i<N;i++)
+        treads.push({x:sx, y:gy*(i+1)/N, z:+(SW.Z0 + 2.5 + i*RUN).toFixed(2)});
+      stuWalk(aBatch(new T.BoxGeometry(1.4, 0.1, RUN + 0.02), steel, treads, W, true));
+      stuWalk(aBox(3.0, 0.24, 1.8, steel, sx + 1.1, gy - 0.12,
+                   SW.Z0 + 2.5 + N*RUN + 0.6, W));
+    }
+
+    /* work light, on this stage's own work master (RULING EA/EH) */
+    {
+      const bulbs = [];
+      for(let z = SW.Z0 + 6; z < SW.Z1 - 4; z += 8.0)
+        for(const x of [-18, 0, 18])
+          bulbs.push({x, y:SW.H - 1.2, z:+z.toFixed(2)});
+      aBatch(new T.BoxGeometry(1.1, 0.3, 1.1), steel, bulbs, W);
+      const lit = aBatch(new T.BoxGeometry(0.9, 0.06, 0.9), MAT.workLamp,
+                         bulbs.map(p=>Object.assign({}, p, {y:p.y - 0.18})), W);
+      sGlow(lit, 0xdfe8ff, 1.0, 'ware');
+      STU.wareGlow = lit;
+      const l = new T.PointLight(0xdfe8ff, 0, 90, 1.4);
+      l.position.set(0, SW.H - 2.5, zMid);
+      W.add(l);
+      STU.wareLamps = [{light:l, power:3.0}];
+    }
+
+    /* EXIT over the elephant door, and one at the back */
+    [[0, SW.Z1 - 0.5, Math.PI], [-SW.W/2 + 2.5, SW.Z0 + 0.7, 0]].forEach(p=>{
+      const m = new T.Mesh(new T.PlaneGeometry(1.2, 0.46),
+        new T.MeshBasicMaterial({color:0x2fd84a}));
+      m.position.set(p[0], 3.2, p[1]); m.rotation.y = p[2];
+      W.add(m); sGlow(m, 0x2fd84a, 1, 'ware', true);
+    });
+
+    /* the flanks and the back, so you cannot walk out through the cladding */
+    [-1,1].forEach(sd=>STU.walls.push({axis:'x', plane:sd*SW.W/2,
+                                       lo:SW.Z0, hi:SW.Z1, yMax:SW.H, gaps:[]}));
+    STU.walls.push({axis:'z', plane:SW.Z0, lo:-SW.W/2, hi:SW.W/2, yMax:SW.H, gaps:[]});
+  }
+
+  /* ======================================================================
+     THE YARD — the tarmac between the block and the film stage.  A lorry
+     turns here; you cross it to get from the offices to the stage.
+     ================================================================== */
+  {
+    const Y = STU.rooms.recep;      // it is outside; it draws with the front
+    const yz0 = SW.Z1, yz1 = SS.ZBACK;
+    stuWalk(aBox(96, 0.3, yz1 - yz0, MAT.tarmac, 0, SS.DECK - 0.15,
+                 (yz0 + yz1)/2, Y));
+    /* The block's back elevation, seen from the yard — BUILT ONLY IN THE GAPS
+       BETWEEN THE STUDIOS.  A single 90m slab here is the obvious line and it
+       seals all four scene dock doors behind it: the studios' own back walls
+       already stand on this plane with their openings cut, and a second
+       unbroken wall a third of a metre in front of them turns every dock into
+       a door that opens onto concrete.  So the cladding fills the service
+       voids and the two ends, and stops where a studio starts. */
+    const H = SS.CEIL + 1.2;
+    let edge = -45;
+    for(const cx of STU_CX){
+      const a = cx - SS.W/2;
+      if(a > edge) aBox(a - edge, H, 0.4, MAT.clad, (edge + a)/2, H/2, SS.ZBACK - 0.3, Y);
+      edge = cx + SS.W/2;
+    }
+    if(edge < 45) aBox(45 - edge, H, 0.4, MAT.clad, (edge + 45)/2, H/2, SS.ZBACK - 0.3, Y);
+    // the parapet across the top, which ties the elevation together
+    aBox(90, 0.6, 0.5, MAT.clad, 0, H + 0.3, SS.ZBACK - 0.3, Y);
+    // hazard paint where the lorries swing
+    const bays = [];
+    for(let x = -24; x <= 24; x += 8) bays.push({x, y:SS.DECK + 0.005, z:(yz0 + yz1)/2});
+    aBatch(new T.BoxGeometry(0.16, 0.01, 6.0), M.hazard, bays, Y);
+    // a yard lamp on the block wall, a `keep` fitting
+    const lamp = aBox(0.8, 0.26, 0.5, new T.MeshBasicMaterial({color:0xffd9a0}),
+                      0, 6.2, SS.ZBACK - 0.6, Y);
+    sGlow(lamp, 0xffd9a0, 0.9, 'recep', true);
+  }
+
+  /* the bed light for the whole plant */
+  {
+    STU.amb  = new T.AmbientLight(0xdde3ee, 0);
+    STU.hemi = new T.HemisphereLight(0xdfe8ff, 0x26241f, 0);
+    STU.group.add(STU.amb, STU.hemi);
+  }
+
+  /* the construction shed off the warehouse flank — p2m, which needs the room
+     groups and the warehouse standing first.  Function declarations hoist
+     across the concatenated file, which is how buildArcShed already works. */
+  if(typeof buildStudioShed === 'function') buildStudioShed(MAT);
+
+  /* RULING EI — every material minted above reaches envTrack, and THERE IS NO
+     CALL HERE ON PURPOSE.  The obvious line is `envRegister(STU.group)` and it
+     was written, and it is dead: `envRecollect()` runs at the tail of p7's
+     init() — after buildRooms, buildArc, buildStudios and buildStages, which is
+     the first moment everything that exists at boot exists — and it walks the
+     whole SCENE, of which this venue is a child.  Every material above is
+     hooked by that walk before a frame is drawn.
+
+     It is recorded rather than quietly deleted because the call PASSED the
+     suite and removing it changed nothing: the negative check failed to fail,
+     which is the tell for a line that looks load-bearing and is not.  The Arc
+     has no such call either.  What holds the invariant up is the assertion in
+     tests/studios.js, and anything this venue mints AFTER boot must go through
+     envTrack itself — envRegister(root) for geometry, envTrack(m) for a bare
+     material, and share the uniform object rather than copying it. */
+
+  STU.built = true;
+  STU.group.visible = false;
+  return STU;
+}
+
+/* ============================================================================
+   WHICH ROOM, WHICH BUILDING
+   ========================================================================== */
+function stuRoomAt(x, y, z){
+  const lx = x - STU.X;
+  if(z < SW.Z0 - 0.5) return 'shed';           // beyond the film stage's back wall
+  if(lx > SW.W/2 + 2 && z < SW.Z1 + 2) return 'shed';
+  if(z < SW.Z1 + 0.5) return 'ware';
+  if(z < SS.ZBACK) return 'recep';             // the yard draws with the front
+  if(z < SS.ZFRONT){
+    /* the studio range.  Which one is a matter of the centre lines, and the
+       2m of wall between them belongs to whichever is nearer — nothing stands
+       in there. */
+    let best = 0, bd = 1e9;
+    for(let i=0;i<STU_CX.length;i++){
+      const d = Math.abs(lx - STU_CX[i]);
+      if(d < bd){ bd = d; best = i; }
+    }
+    return 's' + (best + 1);
+  }
+  /* the front band: the office floor is a room of its own, and which one you
+     are in is a question of HEIGHT rather than of plan */
+  return (y > SS.OFF_Y - 1.2 && z < SS.ZGLAZE - 5) ? 'off' : 'recep';
+}
+function stuStudioAt(x, y, z){
+  const n = stuRoomAt(x, y, z);
+  return STU.studios[n] || null;
+}
+/* What each room may see out to.  A studio sees the corridor it opens off and
+   nothing else — four sealed boxes off one spine is what the plan actually is,
+   and it is why this venue culls as well as it does. */
+const STU_SEES = {
+  recep: ['recep','off','s1','s2','s3','s4','ware'],
+  off:   ['off','recep'],
+  s1:    ['s1','recep'],
+  s2:    ['s2','recep'],
+  s3:    ['s3','recep'],
+  s4:    ['s4','recep'],
+  ware:  ['ware','recep','shed'],
+  shed:  ['shed','ware']
+};
+function updateStuRooms(force){
+  if(!STU.built) return;
+  const px = (Player.mode === 'walk') ? Player.pos.x : camera.position.x;
+  const py = (Player.mode === 'walk') ? Player.pos.y : camera.position.y;
+  const pz = (Player.mode === 'walk') ? Player.pos.z : camera.position.z;
+  const now = stuRoomAt(px, py, pz);
+  if(now === STU.cur && !force) return;
+  STU.cur = now;
+  const on = QUALITY.rooms ? STU_SEES[now] : STU.order;
+  for(const n of STU.order) STU.rooms[n].visible = on.indexOf(n) !== -1;
+}
+function setStuHouse(v){ STU.house = clamp(v, 0, 1); return STU.house; }
+
+function updateStu(dt){
+  if(!STU.built) return;
+  STU.level += clamp(STU.house - STU.level, -dt*0.9, dt*0.9);
+  const v = STU.level;
+
+  /* which master a room answers.  A studio's work light is the WORK master of
+     the stage that owns it (RULING EH) — so Studio 3's work lights do not come
+     up when you take Studio 1's up.  Until the stages exist (they are built in
+     p2k, after this part), every room falls back to the venue level, which is
+     what makes this part standalone. */
+  const roomLevel = (r)=>{
+    const S = STU.studios[r];
+    if(S && S.stage && typeof stageWorkLevel === 'function') return stageWorkLevel(S.stage);
+    if(r === 'ware' && STU.filmStage && typeof stageWorkLevel === 'function')
+      return stageWorkLevel(STU.filmStage);
+    return v;
+  };
+
+  for(const l of STU.lights) l.light.intensity = roomLevel(l.room) * l.power;
+  for(const k in STU.studios){
+    const S = STU.studios[k];
+    const lv = roomLevel(k);
+    for(const l of S.lamps) l.light.intensity = lv * l.power;
+  }
+  if(STU.wareLamps){
+    const lv = roomLevel('ware');
+    for(const l of STU.wareLamps) l.light.intensity = lv * l.power;
+  }
+
+  /* RULING EH, and RULING DW's finding underneath it.  Ambient is global —
+     there is no way to bed one room and not the next — so inside a studio or
+     the film stage the bed goes off ENTIRELY, and off means `visible = false`
+     rather than intensity 0: a hemisphere light at 0 is still a full iteration
+     of the hemisphere block in every standard material's fragment, both eyes,
+     every frame, and only the flag takes it out (r128 projectObject).
+
+     The predicate is ROOM MEMBERSHIP and nothing else.  Sharing the test with
+     the number below is the whole point: the flag and the intensity cannot
+     drift apart, and it flips when you walk through a doorway rather than
+     part-way down a fade.  A change in the light COUNT is the one thing that
+     bumps WebGLLights' state version and makes every lit material re-acquire
+     its program — gating on the faded number instead would pay that on a run
+     of consecutive frames. */
+  const inDark = (STU.cur !== 'recep' && STU.cur !== 'off' && STU.cur !== 'shed');
+  const bed = inDark ? 0 : v;
+  STU.amb.visible = STU.hemi.visible = !inDark;
+  STU.amb.intensity  = bed * 0.30;
+  STU.hemi.intensity = bed * 0.24;
+
+  /* the fittings are unlit surfaces: they have to be dimmed by hand or the
+     plant goes dark with every lamp in it still blazing */
+  for(const g of STU.glow){
+    const lv = roomLevel(g.room);
+    const k = (g.keep ? Math.max(0.55, lv) : lv) * g.power;
+    g.mesh.material.color.copy(g.base).multiplyScalar(k);
+  }
+  updateStuDoors(dt);
+}
+
+/* ---- where you may walk, and what stops you ---- */
+function stuBounds(x, y, z){
+  const lx = x - STU.X;
+  /* the construction shed (p2m builds it; until it does, its footprint is not
+     walkable, which is correct — there is nothing there yet) */
+  if(typeof SHEDS !== 'undefined' && SHEDS.studio){
+    const S = SHEDS.studio;
+    if(lx > S.x0 + 0.4 && lx < S.x1 - 0.4 && z > S.z0 + 0.4 && z < S.z1 - 0.4)
+      return true;
+  }
+  // the film stage
+  if(z < SW.Z1 - 0.05)
+    return z > SW.Z0 + 0.5 && Math.abs(lx) < SW.W/2 - 0.5;
+  // the yard between the buildings
+  if(z < SS.ZBACK + 0.05) return Math.abs(lx) < 44.6;
+  // the studio range
+  if(z < SS.ZFRONT + 0.05){
+    for(const cx of STU_CX)
+      if(Math.abs(lx - cx) < SS.W/2 - 0.5) return true;
+    return false;
+  }
+  // the front band, on either floor
+  return lx > -43.4 && lx < 43.4 && z < SS.ZGLAZE - 0.4;
+}
+/* The walls, with the holes in them.  Each entry names the plane it is on, how
+   far along ITSELF it reaches, and — new here — the band of HEIGHT it occupies:
+   the office floor's balustrade is a wall at 5.0 and open air at 0, on the same
+   plane, and a rule with no yMin would stop you walking across reception.  */
+function stuWallBlocks(x, z, ox, oz, y){
+  const lx = x - STU.X, olx = ox - STU.X;
+  for(const w of STU.walls){
+    if(w.yMin !== undefined && y < w.yMin) continue;
+    if(w.yMax !== undefined && y > w.yMax) continue;
+    const from = w.axis === 'z' ? oz : olx, to = w.axis === 'z' ? z : lx;
+    if((from < w.plane) === (to < w.plane)) continue;        // not crossing this one
+    const along = w.axis === 'z' ? lx : z;
+    if(w.lo !== undefined && (along < w.lo || along > w.hi)) continue;
+    const gap = w.gaps.find(g=>Math.abs(along - g.at) < g.halfW - 0.25);
+    if(!gap) return true;
+    if(gap.door){
+      const d = STU.doorMap[gap.door];
+      if(d && d.open < 0.5 && y < d.H) return true;
+    }
+  }
+  return false;
+}
+/* where you are standing, for the readout */
+function stuZone(x, y, z){
+  const n = stuRoomAt(x, y, z);
+  if(n === 'shed') return 'THE CONSTRUCTION SHED';
+  if(n === 'ware') return y > SW.OUT ? 'FILM STAGE GANTRY' : 'THE FILM STAGE';
+  if(n === 'off')  return 'GMS OFFICES';
+  if(n === 'recep'){
+    /* three places share one cull room: the yard is outside and draws with the
+       front, but it is not reception and should not say so */
+    if(z < SS.ZBACK) return 'THE YARD';
+    if(z < SS.ZCORR) return 'THE STUDIO CORRIDOR';
+    return 'GMS RECEPTION';
+  }
+  const S = STU.studios[n];
+  return S ? S.label : 'GMS STUDIOS';
+}

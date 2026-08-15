@@ -10,7 +10,7 @@ checklist in HANDOFF.md.
 ```sh
 cd tests
 npm install       # once — jsdom and three@0.128
-npm test          # all 19 suites, exits non-zero if any fail
+npm test          # all 20 suites, exits non-zero if any fail
 node real.js      # boots the whole file, expect "fatal": null
 ```
 
@@ -28,6 +28,7 @@ node real.js      # boots the whole file, expect "fatal": null
 | `show.js` | productions, cue stacks, the saved hang |
 | `sets.js` | scene changes, the collapsing set, the revolves |
 | `arc.js` | the Arc Centre |
+| `studios.js` | GMS Studios: the third venue, the four-studios-one-builder box, the two floors and the stair, the empty-by-design rooms, the room cull and the bed leaving the light loop |
 | `stages.js` | three stages, one board |
 | `legs.js` | goods, including the half legs |
 | `warehouse.js` | sheds, doors, carts, slots |
@@ -38,7 +39,7 @@ node real.js      # boots the whole file, expect "fatal": null
 | `workshop.js` | the workshop round: `mergeParts`, the mesh census budget, and the parts that must never be merged |
 | `beetlejuice.js` | the fifth show: RULING AO's interpretation note, the portal inside the house opening, the scene machinery going inert when it is off, and the measured fade times |
 
-All 19 are at `--- failures: 0 ---`. **Keep them there.** Every suite
+All 20 are at `--- failures: 0 ---`. **Keep them there.** Every suite
 exits non-zero on failure, including a failure to boot.
 
 ## The discipline
