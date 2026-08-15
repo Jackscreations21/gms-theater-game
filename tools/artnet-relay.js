@@ -106,13 +106,24 @@ function serveFile(req, res){
      path: realpath collapses the alias, and it collapses a symlink or a
      junction out of the repo at the same time, which the lexical test above
      cannot see either. */
+  /* THE SPELLED NAME IS REFUSED BEFORE ANYTHING TOUCHES THE DISK.  The
+     resolved-path test below is the one that catches 8.3 aliases and
+     symlinks, but it can only run on a path that EXISTS — so a dotfile that
+     happens to be absent fell through to a 404, and "forbidden" and "not
+     there" are different answers.  It is not academic: inside a git worktree
+     `.git` is a FILE, so `.git/config` does not resolve at all and the
+     refusal silently became a 404. Refuse the spelling first, resolve second. */
+  const dotted = s=>s.length > 1 && s.charAt(0) === '.';
+  if(rel.split(/[\\/]/).some(dotted)){
+    res.writeHead(403); res.end('forbidden'); return;
+  }
   let real;
   try{ real = fs.realpathSync.native(file); }
   catch(e){ res.writeHead(404); res.end('not found'); return; }   // no such file
   if(real !== ROOT && !real.startsWith(ROOT + path.sep)){
     res.writeHead(403); res.end('forbidden'); return;
   }
-  if(path.relative(ROOT, real).split(/[\\/]/).some(s=>s.length > 1 && s.charAt(0) === '.')){
+  if(path.relative(ROOT, real).split(/[\\/]/).some(dotted)){
     res.writeHead(403); res.end('forbidden'); return;
   }
   fs.stat(real, (err, st)=>{

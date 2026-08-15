@@ -139,7 +139,15 @@ const P = async (name, fn)=>{
     }
     FakeWS.made = 0; FakeWS.refused = 0; FakeWS.last = null; FakeWS.refuse = false;
     window.WebSocket = FakeWS;
-    const frame512 = (mark)=>{ const b = new Uint8Array(512); b[0] = mark; return b; };
+    /* THE MARKER LIVES ON AN UNUSED CHANNEL.  Byte 0 is fixture 1's
+       intensity, so a marker there is a rig write — which is invisible while
+       nothing applies the bytes and becomes a blackout the moment something
+       does.  511 is past everything the map uses today. */
+    const frame512 = (mark)=>{ const b = new Uint8Array(512); b[511] = mark; return b; };
+    /* a frame that actually lights the rig, for the cases that need one */
+    const frameLit = (v)=>{ const b = new Uint8Array(512);
+      for(let i = 0; i < FIXTURES.length; i++){ b[i*ART_CH_FIX] = v; b[i*ART_CH_FIX + 1] = 255; }
+      return b; };
     /* run the game's frame until cond, off dt, the way the loop does */
     const run = (cond, cap)=>{ let n = 0; while(!cond() && n++ < (cap || 20000)) artnetTick(1/60); return n; };
 
@@ -203,12 +211,15 @@ const P = async (name, fn)=>{
       artnetTick(1/60);
       if(artDriving() !== true) throw new Error('a frame arrived and artDriving() is still false');
       if(f.lvlDur !== 0) throw new Error('lvlDur survived the handover at ' + f.lvlDur);
+      /* the level is the DESK's now — what must not happen is the game's fade
+         engine carrying on underneath it */
+      const held = f.level;
       updateFades(1);
-      if(Math.abs(f.level - caught) > 1e-9)
-        throw new Error('the fade kept running through the handover: ' + caught + ' -> ' + f.level);
+      if(Math.abs(f.level - held) > 1e-9)
+        throw new Error('the fade kept running under the desk: ' + held + ' -> ' + f.level);
       const dur = FIXTURES.filter(x=>x.lvlDur > 0 || x.colDur > 0).length;
       if(dur) throw new Error(dur + ' fixtures still carry a fade duration');
-      return 'the desk started talking and a fade at ' + caught.toFixed(3) + ' halted there instead of fighting it';
+      return 'a fade caught at ' + caught.toFixed(3) + ' stopped dead at the handover and did not run on under the desk';
     });
 
     P('the handover halts the PALACE, never the stage you happen to be on (RULING EN)', ()=>{
@@ -238,7 +249,7 @@ const P = async (name, fn)=>{
       ws.deliver(frame512(11));
       ws.deliver(frame512(22));          // a second frame before the tick
       if(!ART.buf) throw new Error('onmessage did not store anything');
-      if(ART.buf[0] !== 22) throw new Error('the buffer holds ' + ART.buf[0] + ' — the FIRST frame won');
+      if(ART.buf[511] !== 22) throw new Error('the buffer holds ' + ART.buf[511] + ' — the FIRST frame won');
       artnetTick(1/60);
       if(ART.frames !== f0 + 1) throw new Error('more than one frame was taken in one tick');
       if(ART.buf !== null) throw new Error('the buffer was not cleared');
@@ -271,12 +282,9 @@ const P = async (name, fn)=>{
 
     P('signal loss goes stale, and the look is NOT touched', ()=>{
       if(typeof ART_STALE === 'undefined') throw new Error('ART_STALE does not exist');
-      /* LIGHT IT FIRST.  Taken on a dark rig with default colours, the
+      /* LIGHT IT FIRST, and light it FROM THE DESK — taken on a dark rig the
          comparison below passes against a build that blacks the house out. */
-      setLevel(1, 0.77, 0); setColorCh(1, '#3366ff', 0);
-      setLevel(2, 0.42, 0); setColorCh(2, '#ff8800', 0);
-      setLevel(3, 0.91, 0);
-      FakeWS.last.deliver(frame512(3));
+      FakeWS.last.deliver(frameLit(200));
       artnetTick(1/60);
       if(ART.live !== true) throw new Error('this case must start LIVE, and it is not');
       const lit = FIXTURES.filter(f=>f.level > 0.01).length;
@@ -440,6 +448,223 @@ const P = async (name, fn)=>{
       if(FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',') !== before)
         throw new Error('the rig moved when the operator took it back');
       return 'a rig with ' + lit + ' channels up held every level and colour, and the old socket cannot write again';
+    });
+
+    /* ---- RULING EP: the lights are raw writes, and EN: the Palace only --- */
+
+    P('the channel map is COMPUTED off the rig, never written down (RULING EO)', ()=>{
+      if(artFixBase() !== 1) throw new Error('the fixtures do not start at channel 1');
+      const wantFly = 1 + ART_CH_FIX * FIXTURES.length;
+      if(artFlyBase() !== wantFly) throw new Error('the fly block starts at ' + artFlyBase() + ', not ' + wantFly);
+      if(artHouseBase() !== wantFly + 2 * FLY.length) throw new Error('the house block is misplaced');
+      /* the numbers the map file will print, today */
+      if(FIXTURES.length !== 39 || FLY.length !== 14)
+        throw new Error('the rig is ' + FIXTURES.length + ' by ' + FLY.length + ' — the bases move WITH it, which is the point');
+      if(artFlyBase() !== 274 || artHouseBase() !== 302 || artSelBase() !== 307 || artMoverBase() !== 310)
+        throw new Error('bases read ' + [artFlyBase(), artHouseBase(), artSelBase(), artMoverBase()].join(','));
+      /* AND THE DERIVATION IS THE CLAIM, not the numbers.  Everything above
+         is satisfied by four literals, because 274 IS 1 + 7*39 today — so
+         grow the rig by one lantern and watch every base after it move. */
+      FIXTURES.push({name:'a lantern that is not there', mover:false});
+      try{
+        if(artFlyBase() !== 281) throw new Error('a 40th fixture left the fly block at ' + artFlyBase());
+        if(artHouseBase() !== 309) throw new Error('a 40th fixture left the house block at ' + artHouseBase());
+        if(artMoverBase() !== 317) throw new Error('a 40th fixture left the movers at ' + artMoverBase());
+      } finally { FIXTURES.pop(); }
+      if(artFlyBase() !== 274) throw new Error('the rig did not go back to 39');
+      return '39 x 7 = 1-273, flys 274, house 302, selectors 307, movers 310 — and a 40th lantern moves all four';
+    });
+
+    P('a frame lands on intensity, colour and gobo, at the right channels (RULING EP)', ()=>{
+      artSetOn(false); artSetOn(true);
+      const ws = FakeWS.last; ws.open();
+      const b = new Uint8Array(512);
+      /* channel 1 is fixture 1 intensity; 2,3,4 its colour; 5 its gobo */
+      b[0] = 255; b[1] = 0; b[2] = 128; b[3] = 255; b[4] = 43 * 3;
+      /* and fixture 7, to prove the stride is really seven and not six or eight */
+      const o = 6 * ART_CH_FIX;
+      b[o] = 51; b[o + 1] = 255; b[o + 2] = 255; b[o + 3] = 0;
+      ws.deliver(b); artnetTick(1/60);
+      const f1 = FIXTURES[0], f7 = FIXTURES[6];
+      if(Math.abs(f1.level - 1) > 1e-6) throw new Error('channel 1 gave level ' + f1.level);
+      if(Math.abs(f1.color.r) > 1e-6 || Math.abs(f1.color.b - 1) > 1e-6)
+        throw new Error('channel 1 colour is ' + f1.color.getHexString());
+      if(Math.abs(f1.color.g - 128/255) > 1e-6) throw new Error('green landed at ' + f1.color.g);
+      if(f1.gobo !== 3) throw new Error('gobo byte 129 gave index ' + f1.gobo);
+      /* read fixture 7 BEFORE the gobo sweep below: every frame it sends is a
+         full 512 bytes, so it zeroes fixture 7 on the way past */
+      if(Math.abs(f7.level - 51/255) > 1e-6) throw new Error('fixture 7 read ' + f7.level + ' — the stride is wrong');
+      if(Math.abs(f7.color.r - 1) > 1e-6 || Math.abs(f7.color.b) > 1e-6)
+        throw new Error('fixture 7 colour is ' + f7.color.getHexString());
+      /* THE BOUNDARIES, because byte 129 alone cannot tell 43 from 42 — and
+         the clamp, because an index past the last gobo is a black texture and
+         no error anywhere. */
+      const goboOf = (byte)=>{ const g = new Uint8Array(512); g[4] = byte;
+        ws.deliver(g); artnetTick(1/60); return FIXTURES[0].gobo; };
+      const edges = [[0,0],[42,0],[43,1],[85,1],[86,2],[214,4],[215,5],[255,5]];
+      for(const [byte, want] of edges){
+        const got = goboOf(byte);
+        if(got !== want) throw new Error('gobo byte ' + byte + ' gave ' + got + ', wanted ' + want);
+      }
+      if(GOBOS.length !== 6) throw new Error('there are ' + GOBOS.length + ' gobos; the /43 divisor is sized for six');
+      return 'ch1 full blue-ish with gobo 3, ch43-49 lands on fixture 7 at 0.20 yellow, and gobo edges 42/43 and 214/215 land right';
+    });
+
+    P('the desk fades and the game does NOT — durations stay at zero (RULING EP)', ()=>{
+      /* QLC+ fades by sending a value every frame.  Stacking the game's fade
+         engine on top would make every fade mushy: the desk asks for 0.4 and
+         the rig sets off towards it, arriving as the desk asks for 0.45. */
+      const ws = FakeWS.last;
+      const seen = [];
+      for(let n = 0; n <= 10; n++){
+        /* ARM A GAME FADE EVERY STEP, or this proves nothing: the handover
+           already left every duration at zero, so a version that never
+           zeroed them again would sail through a rig that had none to begin
+           with.  Give the fade engine something to fight with. */
+        setLevel(1, n % 2 ? 0 : 1, 5);
+        setColorCh(1, n % 2 ? '#ff0000' : '#00ff00', 5);
+        if(FIXTURES[0].lvlDur !== 5) throw new Error('step ' + n + ': the game fade did not arm');
+        const b = new Uint8Array(512);
+        b[0] = Math.round(255 * n / 10);          // the desk's own ten-step fade
+        ws.deliver(b); artnetTick(1/60);
+        if(FIXTURES[0].lvlDur !== 0) throw new Error('step ' + n + ': the desk write left a duration of ' + FIXTURES[0].lvlDur);
+        if(FIXTURES[0].colDur !== 0) throw new Error('step ' + n + ': the desk write left a COLOUR duration of ' + FIXTURES[0].colDur);
+        const col = FIXTURES[0].color.getHexString();
+        updateFades(1/60);                        // the engine gets its chance every frame
+        if(FIXTURES[0].color.getHexString() !== col)
+          throw new Error('step ' + n + ': the colour fade ran on under the desk, ' + col + ' -> ' + FIXTURES[0].color.getHexString());
+        seen.push(Math.round(FIXTURES[0].level * 100) / 100);
+      }
+      const want = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1].join(',');
+      if(seen.join(',') !== want) throw new Error('the desk fade read ' + seen.join(',') + ', wanted ' + want);
+      return 'ten desk steps arrived as ten exact levels, with a five-second level AND colour fade armed against each one';
+    });
+
+    P('a mover takes pan and tilt; a fixed lantern ignores them (RULING EP)', ()=>{
+      const ws = FakeWS.last;
+      const mover = FIXTURES.findIndex(f=>f.mover);
+      const fixed = FIXTURES.findIndex(f=>!f.mover);
+      if(mover < 0 || fixed < 0) throw new Error('the rig has no mover or no fixed lantern to compare');
+      const f0 = FIXTURES[fixed];
+      /* PIN THE FIXED LANTERN AGAINST ITS PLOT, NOT AGAINST A SNAPSHOT.  A
+         snapshot taken here is already whatever the previous case's frame
+         left it — so against a build that writes pan/tilt on everything, the
+         value it is compared to has itself been written, and a later frame
+         that happens to repeat it makes the whole comparison agree.  The
+         plotted rest values are what a fixed lantern must still have. */
+      const PLOT_PAN = 0, PLOT_TILT = -45;
+      if(f0.panT !== PLOT_PAN || f0.tiltT !== PLOT_TILT)
+        throw new Error('the fixed lantern starts at ' + f0.panT + '/' + f0.tiltT +
+          ', not its plotted ' + PLOT_PAN + '/' + PLOT_TILT + ' — something has already written it');
+      const aim0 = f0.aim.clone();
+      const b = new Uint8Array(512);
+      b[mover * ART_CH_FIX + 5] = 255; b[mover * ART_CH_FIX + 6] = 0;
+      b[fixed * ART_CH_FIX + 5] = 255; b[fixed * ART_CH_FIX + 6] = 0;
+      ws.deliver(b); artnetTick(1/60);
+      /* read the fixed lantern NOW, before the tilt sweep below sends more
+         full frames past it */
+      if(f0.panT !== PLOT_PAN || f0.tiltT !== PLOT_TILT)
+        throw new Error('a fixed lantern took the pan/tilt bytes: ' + f0.panT + '/' + f0.tiltT);
+      if(!f0.aim.equals(aim0)) throw new Error('a fixed lantern had its aim moved by the desk');
+      const m = FIXTURES[mover];
+      /* THE SPEC'S OWN NUMBERS, not the build's.  Reading ART_PAN back and
+         comparing against it is a test that agrees with itself whatever the
+         constant says — RULING EP names plus-or-minus 170 degrees, so that is
+         what gets asserted. */
+      if(Math.abs(m.panT - 170) > 0.01) throw new Error('pan 255 gave ' + m.panT + ', and RULING EP says 170');
+      /* TILT IS NOT SYMMETRIC, and that is the point.  updateRig poses a head
+         as rotation.x = (tilt + 90), so tilt 0 is straight down and anything
+         positive folds it over backwards — a +/-135 range made the top half of
+         the channel unusable and put "50%" straight down. */
+      if(Math.abs(m.tiltT + 180) > 0.01) throw new Error('tilt byte 0 gave ' + m.tiltT + ', wanted -180 (straight up)');
+      if(ART_PAN !== 170 || ART_TILT_LO !== -180 || ART_TILT_HI !== 0)
+        throw new Error('the constants read ' + ART_PAN + '/' + ART_TILT_LO + '..' + ART_TILT_HI + ' — the map file would print a lie');
+      const tiltOf = (byte)=>{ const t = new Uint8Array(512);
+        t[mover * ART_CH_FIX + 6] = byte; ws.deliver(t); artnetTick(1/60); return FIXTURES[mover].tiltT; };
+      if(Math.abs(tiltOf(255) - 0) > 0.01) throw new Error('tilt byte 255 gave ' + m.tiltT + ', wanted 0 (straight down)');
+      if(Math.abs(tiltOf(128) + 90) > 0.5) throw new Error('tilt byte 128 gave ' + m.tiltT + ', wanted about -90 (horizontal)');
+      /* and every byte lands somewhere a head can actually go */
+      for(let byte = 0; byte <= 255; byte += 17){
+        const t = tiltOf(byte);
+        if(t > 0.01 || t < -180.01) throw new Error('tilt byte ' + byte + ' aims at ' + t + ', outside the head travel');
+      }
+      const c = new Uint8Array(512);
+      c[mover * ART_CH_FIX + 5] = 128; c[mover * ART_CH_FIX + 6] = 128;
+      ws.deliver(c); artnetTick(1/60);
+      if(Math.abs(m.panT) > 1.5)
+        throw new Error('pan byte 128 gave ' + m.panT.toFixed(2) + ', which is not the centre of the pan');
+      return 'pan +/-170 centred at byte 128; tilt -180..0 with 128 horizontal and every byte on the head travel; the fixed lantern keeps its plotted aim';
+    });
+
+    P('the five house circuits land where the map says (RULING EP)', ()=>{
+      const ws = FakeWS.last;
+      const h = artHouseBase() - 1;
+      const b = new Uint8Array(512);
+      b[h] = 255; b[h + 1] = 204; b[h + 2] = 153; b[h + 3] = 102; b[h + 4] = 51;
+      ws.deliver(b); artnetTick(1/60);
+      const got = [HOUSE.house, HOUSE.work, HOUSE.lobby, HOUSE.backstage, HOUSE.practical]
+        .map(v=>Math.round(v * 100) / 100).join(',');
+      if(got !== '1,0.8,0.6,0.4,0.2') throw new Error('the house circuits read ' + got);
+      return 'house/work/lobby/backstage/practicals at channels ' + (h+1) + '-' + (h+5) + ' read 1,0.8,0.6,0.4,0.2';
+    });
+
+    P('the grand master still outranks the desk (RULING EM)', ()=>{
+      /* deliberately NOT gated: the in-game grand is the safety, the same as
+         a house console's grand over a remote desk. */
+      const ws = FakeWS.last;
+      ws.deliver(frameLit(255)); artnetTick(1/60);
+      const g0 = RIG.grand, bo = RIG.blackout;
+      try{
+        /* KEEP THE DESK TALKING THROUGH IT.  Setting the grand and then
+           reading updateRig with no frame in between proves nothing about
+           whether an Art-Net frame could take the grand — it would simply
+           never get the chance.  A frame lands before every read. */
+        const step = ()=>{ ws.deliver(frameLit(255)); artnetTick(1/60); updateRig(1/60, 0); };
+        RIG.grand = 1; RIG.blackout = false;
+        step();
+        const full = FIXTURES[0]._lvl;
+        if(!(full > 0.9)) throw new Error('the desk did not light the rig at all: ' + full);
+        RIG.grand = 0.25;
+        step();
+        if(RIG.grand !== 0.25) throw new Error('an Art-Net frame moved the grand master to ' + RIG.grand);
+        const quarter = FIXTURES[0]._lvl;
+        if(Math.abs(quarter - full * 0.25) > 1e-6)
+          throw new Error('the grand at 0.25 gave ' + quarter + ' against ' + full);
+        RIG.blackout = true;
+        step();
+        if(RIG.blackout !== true) throw new Error('an Art-Net frame cleared the blackout');
+        if(FIXTURES[0]._lvl !== 0) throw new Error('blackout left ' + FIXTURES[0]._lvl + ' on a desk-driven rig');
+        return 'a desk-driven rig at ' + full.toFixed(2) + ' rode the grand to ' + quarter.toFixed(2) + ' and the blackout to 0';
+      } finally { RIG.grand = g0; RIG.blackout = bo; }
+    });
+
+    P('an Art-Net frame writes NOTHING on another stage (RULING EN)', ()=>{
+      const home = STAGE;
+      const ws = FakeWS.last;
+      try{
+        ws.deliver(frameLit(255)); artnetTick(1/60);
+        stageSwitch('arcMain');
+        if(STAGE !== 'arcMain') throw new Error('could not get to the Arc');
+        /* put the Arc rig somewhere the frame below would obviously move */
+        setLevel(1, 0.5, 0); setColorCh(1, '#00ff00', 0);
+        setLevel(2, 0.5, 0);
+        const before = FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',');
+        const houseBefore = [HOUSE.house, HOUSE.work, HOUSE.lobby, HOUSE.backstage, HOUSE.practical].join(',');
+        const f0 = ART.frames;
+        ws.deliver(frameLit(255)); artnetTick(1/60);
+        if(ART.frames !== f0 + 1) throw new Error('the packet was not even received — the indicator must stay live');
+        if(ART.live !== true) throw new Error('the row would read stale while a desk is talking');
+        if(FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',') !== before)
+          throw new Error('a full-on Art-Net frame lit the ARC rig');
+        if([HOUSE.house, HOUSE.work, HOUSE.lobby, HOUSE.backstage, HOUSE.practical].join(',') !== houseBefore)
+          throw new Error('a full-on Art-Net frame moved the house circuits at the Arc');
+        return 'a full frame at the Arc: counted and live, and not one level, colour or circuit moved';
+      } finally {
+        /* put the Arc back dark before leaving it — the next case appended
+           after this one would otherwise inherit a lit rig it never set */
+        setLevel(1, 0, 0); setColorCh(1, '#ffffff', 0); setLevel(2, 0, 0);
+        stageSwitch(home);
+      }
     });
 
     P('the part introduces no setTimeout of its own — game timing is the frame', ()=>{
@@ -738,10 +963,13 @@ function getUrl(port, url, headers){
   });
 
   await P('the repo is served but .git is not, by any of its names', async ()=>{
-    /* .git/HEAD, not .git/refs/heads/main: a FRESH CLONE packs its refs, so
-       the loose file is honestly absent and the relay 404s it — the case
-       would then be green only in a repo with loose refs. */
-    for(const u of ['/.git/config', '/.git/HEAD', '/.gitignore', '/%2Egit/config']){
+    /* THESE ARE REFUSED WHETHER OR NOT THEY EXIST, which is the point: a
+       fresh clone packs its refs away and a git WORKTREE has `.git` as a
+       FILE, so several of these resolve to nothing at all in a perfectly
+       ordinary checkout.  Forbidden and not-there are different answers, and
+       a dot-segment gets the first one either way. */
+    for(const u of ['/.git/config', '/.git/HEAD', '/.git/refs/heads/main',
+                    '/.gitignore', '/%2Egit/config', '/.env']){
       const r = await getUrl(httpPort, u);
       if(r.status !== 403) throw new Error(u + ' answered ' + r.status + ', expected 403');
     }
