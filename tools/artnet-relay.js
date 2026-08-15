@@ -45,9 +45,22 @@ function argOf(name, dflt){
   const v = parseInt(process.argv[i + 1], 10);
   return isNaN(v) ? dflt : v;
 }
+function strArg(name, dflt){
+  const i = process.argv.indexOf('--' + name);
+  return (i < 0 || i + 1 >= process.argv.length) ? dflt : process.argv[i + 1];
+}
 const PORT     = argOf('port', 8080);
 const UNIVERSE = argOf('universe', 0);
 const ART_PORT = argOf('art-port', 6454);
+/* LOOPBACK BY DEFAULT.  The web half serves the whole working directory, and
+   the working directory is not the published site — it is the repo, with .git
+   in it.  Route B (adb reverse) forwards the headset's own localhost to this
+   machine's localhost, so nothing that this tool exists for needs a LAN
+   listener.  --host 0.0.0.0 is there for the person who genuinely wants to
+   open the game from another machine, and it is their decision to make.
+   The Art-Net socket is NOT affected: a desk on another machine still
+   reaches UDP here either way. */
+const HOST = strArg('host', '127.0.0.1');
 
 /* ---- the static half ---------------------------------------------------- */
 const TYPES = {
@@ -59,19 +72,65 @@ const TYPES = {
   '.wasm':'application/wasm', '.ico':'image/x-icon'
 };
 function serveFile(req, res){
-  let rel = decodeURIComponent((req.url || '/').split('?')[0]);
+  let rel;
+  /* decodeURIComponent THROWS on a malformed escape, and this handler runs
+     inside http's request event where an uncaught throw takes the process
+     down.  One GET /% from a LAN scanner would kill the desk feed mid-show,
+     and it would not come back. */
+  try{ rel = decodeURIComponent((req.url || '/').split('?')[0]); }
+  catch(e){ res.writeHead(400); res.end('bad request'); return; }
   if(rel === '/' || rel === '') rel = '/index.html';
+  /* AND A DECODED NUL IS THE SAME BUG WEARING A DISGUISE.  %00 decodes
+     perfectly — the try/catch above never fires — and then fs.stat validates
+     its path SYNCHRONOUSLY and throws ERR_INVALID_ARG_VALUE before the
+     callback exists, straight back out through this handler and into the same
+     dead process.  Guard the decoded string, not the decoder. */
+  if(rel.indexOf('\0') >= 0){ res.writeHead(400); res.end('bad request'); return; }
   /* path.join collapses ../ before we compare, so a traversal cannot escape
      the repo by spelling it differently */
   const file = path.join(ROOT, rel);
   if(file !== ROOT && !file.startsWith(ROOT + path.sep)){
     res.writeHead(403); res.end('forbidden'); return;
   }
+  /* THE REPO IS NOT ALL PUBLISHABLE.  The root here is the working directory,
+     which is not the set of files that goes to Pages: .git carries the whole
+     history and the remote's config.  Every dot-segment is refused rather
+     than just .git, because .env and friends are the same mistake wearing
+     another name.  --host defends the same ground from the other side. */
+  if(rel.split(/[\\/]/).some(s=>s.length > 1 && s.charAt(0) === '.')){
+    res.writeHead(403); res.end('forbidden'); return;
+  }
   fs.stat(file, (err, st)=>{
     if(err || !st.isFile()){ res.writeHead(404); res.end('not found'); return; }
+    const type = TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    /* RANGE, BECAUSE THE SHOW SEEKS ITS OWN AUDIO.  The banner tells the
+       operator to load the game from here, and the recordings in
+       assets/audio are tens of megabytes that RULING BO seeks into.  A server
+       that answers every request with the whole file makes a seek re-download
+       the recording, which reads as an audio fault rather than a server one.
+       One range, the only form a media element asks for. */
+    const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if(m && st.size){
+      let start = m[1] === '' ? st.size - parseInt(m[2], 10) : parseInt(m[1], 10);
+      let end   = (m[1] === '' || m[2] === '') ? st.size - 1 : parseInt(m[2], 10);
+      if(isNaN(start) || isNaN(end) || start < 0) start = 0;
+      if(end >= st.size) end = st.size - 1;
+      if(start > end){
+        res.writeHead(416, {'Content-Range':'bytes */' + st.size}); res.end(); return;
+      }
+      res.writeHead(206, {
+        'Content-Type': type,
+        'Content-Range': 'bytes ' + start + '-' + end + '/' + st.size,
+        'Content-Length': end - start + 1,
+        'Accept-Ranges': 'bytes', 'Cache-Control':'no-cache'
+      });
+      fs.createReadStream(file, {start, end}).pipe(res);
+      return;
+    }
     res.writeHead(200, {
-      'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
+      'Content-Type': type,
       'Content-Length': st.size,
+      'Accept-Ranges': 'bytes',
       'Cache-Control': 'no-cache'
     });
     fs.createReadStream(file).pipe(res);
@@ -153,6 +212,15 @@ server.on('upgrade', (req, sock, head)=>{
   sock.setNoDelay(true);
   clients.add(sock);
   say('a client is on /artnet  (' + clients.size + ' connected)');
+  /* A CONNECTED GAME AND A SILENT DESK IS THE COMMONEST WAY THIS GOES WRONG,
+     and every other symptom of it is indistinguishable from a broken game.
+     Say it once, with the two things worth checking. */
+  if(!quietWarned) setTimeout(()=>{
+    if(packets || quietWarned) return;
+    quietWarned = true;
+    say('a client is connected but NO ArtDmx has arrived on UDP ' + ART_PORT + ' yet —');
+    say('      check the desk is outputting Art-Net, and that it is on universe ' + UNIVERSE + '.');
+  }, 5000).unref();
 
   let pending = head && head.length ? Buffer.from(head) : Buffer.alloc(0);
   sock.on('data', d=>{ pending = readFrames(sock, Buffer.concat([pending, d])); });
@@ -168,19 +236,40 @@ const OP_DMX = 0x5000;
 /* Returns the packet's 512 channel bytes, or null if this is not an ArtDmx
    packet for our universe.  Every rejection is silent by ruling: a network
    with other Art-Net traffic on it must not print a line per packet.        */
+let lastSeq = 0;
 function parseArtDmx(msg, universe){
   if(msg.length < 18) return null;
   if(msg.compare(ART_ID, 0, 8, 0, 8) !== 0) return null;
   if(msg.readUInt16LE(8) !== OP_DMX) return null;
   if(msg.readUInt16LE(14) !== universe) return null;
   const len = msg.readUInt16BE(16);
+  /* ART-NET'S LENGTH IS 2..512, AND A HEADER-ONLY PACKET IS NOT A BLACKOUT.
+     Without this line an 18-byte packet — which passes all four checks above
+     — copies nothing into a zeroed buffer and forwards 512 bytes of zero: one
+     stray packet from anything on the network takes the rig to black on the
+     next tick, and the game has no way to know it was not asked for. */
+  if(len < 2 || len > 512) return null;
+  /* AND AN OLD PACKET MUST NOT OVERWRITE A NEW ONE.  UDP reorders; Art-Net
+     carries Sequence for exactly this.  0 means the desk has the feature
+     switched off, and a DUPLICATE sequence is deliberately accepted — some
+     desks send a constant, and dropping those would silently forward nothing
+     at all.  Only a strictly older packet is refused. */
+  const seq = msg[12];
+  if(seq !== 0 && lastSeq !== 0 && ((seq - lastSeq) & 0xff) > 128) return null;
+  lastSeq = seq;
   const data = Buffer.alloc(512);                  // pad short, truncate long
   msg.copy(data, 0, 18, 18 + Math.min(len, 512, msg.length - 18));
   return data;
 }
 
-let packets = 0, lastLog = 0;
-const udp = dgram.createSocket({type:'udp4', reuseAddr:true});
+let packets = 0, lastLog = 0, quietWarned = false;
+/* NO reuseAddr.  It looks like politeness and it is a trap: on Windows a
+   second bind to a port QLC+ (or another relay) already holds SUCCEEDS, the
+   first binder keeps receiving everything, and this process prints a banner
+   claiming it is listening while no packet ever arrives.  Without it the
+   collision is a loud EADDRINUSE, which is the one diagnostic that saves the
+   evening. */
+const udp = dgram.createSocket({type:'udp4'});
 udp.on('message', msg=>{
   const data = parseArtDmx(msg, UNIVERSE);
   if(!data) return;
@@ -197,14 +286,25 @@ udp.on('error', e=>{ say('UDP error: ' + e.message); process.exit(1); });
 /* ---- go ------------------------------------------------------------------ */
 function say(s){ console.log('[artnet] ' + s); }
 
+/* the UDP half already says its errors in one line; the web half was left to
+   print a raw stack, and 8080 is a commonly occupied port */
+server.on('error', e=>{
+  say('cannot serve on ' + HOST + ':' + PORT + ' — ' + e.code + '. Try --port <other>.');
+  process.exit(1);
+});
+
 udp.bind(ART_PORT, ()=>{
-  server.listen(PORT, ()=>{
-    say('serving ' + ROOT);
+  server.listen(PORT, HOST, ()=>{
+    say('serving ' + ROOT + '  on ' + HOST + ':' + PORT);
     say('http://localhost:' + PORT + '/the-house.html');
     say('ArtDmx on UDP ' + ART_PORT + ', universe ' + UNIVERSE + ' -> ws://localhost:' + PORT + '/artnet');
     say('');
     say('QLC+: output Art-Net to 127.0.0.1, universe ' + UNIVERSE + '. The channel');
-    say('      map is docs/ARTNET.md, generated from the build.');
+    /* the map is generated by tools/artnet-map.js later in this chain; do not
+       send anybody to a file that is not there yet */
+    say(fs.existsSync(path.join(ROOT, 'docs', 'ARTNET.md'))
+      ? '      map is docs/ARTNET.md, generated from the build.'
+      : '      map (docs/ARTNET.md) is not generated yet on this build.');
     say('');
     say('VR (Quest 3), Route B — the headset loads the game FROM HERE:');
     say('      adb reverse tcp:' + PORT + ' tcp:' + PORT);
