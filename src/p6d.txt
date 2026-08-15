@@ -46,6 +46,48 @@ const ART_CONNECT_MAX = 10;
    23ms of traffic carries a frame.  A link has to hold up to be believed. */
 const ART_PROVE = 44;
 
+/* ============================================================================
+   THE CHANNEL MAP (RULING EO)
+
+   Universe 0, one universe, 512 channels:
+
+     1 .. 273    the fixtures, patch order, SEVEN each:
+                 intensity, red, green, blue, gobo, pan, tilt
+     274 .. 301  the linesets, two each: target, speed        (RULING EQ)
+     302 .. 306  house, work, lobby, backstage, practicals
+     307         BEETLEJUICE house selector                   (RULING ER)
+     308         BEETLEJUICE sign position                    (RULING ES)
+     309         traveler open
+     310 ..      the loaded show's set movers                 (RULING ET)
+
+   EVERY BASE IS COMPUTED, NEVER WRITTEN DOWN.  The rig is 39 channels on
+   every stage today and the fly rail is 14 lines, which is where 274 and 302
+   come from — but a rig that grew by one lantern would silently repoint every
+   channel after it if these were literals, and `docs/ARTNET.md` is generated
+   off these same functions so the map cannot drift from the code.
+
+   They are FUNCTIONS rather than constants because FIXTURES and FLY are
+   filled by p4 and p3 at load and swapped wholesale by the stage walk; a
+   const evaluated as this part loads would be measuring whatever existed at
+   that instant.
+   ========================================================================== */
+const ART_CH_FIX = 7;                 // channels per fixture, uniform
+/* a uniform footprint so QLC+ needs exactly ONE generic fixture definition.
+   Pan and tilt are ignored on anything that cannot move (channels 23, 24 and
+   34-39 are the movers today) — the bytes are still THERE, because a desk
+   patching 39 identical 7-channel heads is what makes this workable by hand. */
+function artFixBase(){ return 1; }
+function artFlyBase(){ return artFixBase() + ART_CH_FIX * FIXTURES.length; }
+function artHouseBase(){ return artFlyBase() + 2 * FLY.length; }
+function artSelBase(){ return artHouseBase() + 5; }     // 307 selector, 308 sign, 309 traveler
+function artMoverBase(){ return artSelBase() + 3; }
+
+/* a mover's travel, in degrees either side of centre.  Nothing in the rig
+   declares its own range, so this is the range every head gets, and the map
+   probe prints it per fixture rather than leaving it to be read out of here */
+const ART_PAN = 170;
+const ART_TILT = 135;
+
 const ART = {
   on:     false,   // the switch (RULING EM).  Off on every boot, by ruling.
   ws:     null,    // the socket, while there is one
@@ -185,6 +227,53 @@ function artHandover(){
   return true;
 }
 
+/* ============================================================================
+   RULING EP — THE LIGHTS ARE RAW WRITES, AND THE FADE ENGINE NEVER FIGHTS
+
+   A desk fades by SENDING A VALUE EVERY FRAME.  Stacking the game's own fade
+   engine on top of that would make every fade mushy — the desk would ask for
+   0.4 and the rig would set off towards it over half a second, arriving just
+   as the desk asked for 0.45.  So every write here sets `lvlDur`/`colDur` to
+   zero: `updateFades` (p6) only engages while a duration is pending, so the
+   desk's own fades stream straight through untouched.
+
+   The desk fades.  The game obeys.
+   ========================================================================== */
+function artLights(b){
+  const nGobo = (typeof GOBOS !== 'undefined' && GOBOS.length) ? GOBOS.length : 6;
+  const base = artFixBase() - 1;                 // to a 0-based index into the frame
+  for(let i = 0; i < FIXTURES.length; i++){
+    const o = base + i * ART_CH_FIX;
+    if(o + ART_CH_FIX > b.length) break;         // a rig wider than one universe
+    const f = FIXTURES[i];
+    f.level = b[o] / 255;
+    f.lvlDur = 0;
+    f.color.setRGB(b[o + 1] / 255, b[o + 2] / 255, b[o + 3] / 255);
+    f.colDur = 0;
+    /* byte / 43 lands 0..255 on the six gobos, with the top slot getting the
+       ragged end (255/43 = 5.9).  Clamped rather than trusted, because a
+       seventh gobo would otherwise be a black texture and no error. */
+    f.gobo = Math.min(nGobo - 1, Math.floor(b[o + 4] / 43));
+    /* movers only: a fixed lantern's pan and tilt bytes are ignored, and its
+       `aim` is left exactly where the plot put it */
+    if(f.mover){
+      f.panT  = (b[o + 5] / 127.5 - 1) * ART_PAN;
+      f.tiltT = (b[o + 6] / 127.5 - 1) * ART_TILT;
+    }
+  }
+  /* the house circuits.  `syncMasters` is NOT called here: the panel re-reads
+     HOUSE on its own 10Hz refresh (p7), and calling it 44 times a second
+     would write four DOM values a frame for a board nobody may be looking at. */
+  const h = artHouseBase() - 1;
+  if(h + 4 < b.length){
+    HOUSE.house     = b[h]     / 255;
+    HOUSE.work      = b[h + 1] / 255;
+    HOUSE.lobby     = b[h + 2] / 255;
+    HOUSE.backstage = b[h + 3] / 255;
+    HOUSE.practical = b[h + 4] / 255;
+  }
+}
+
 /* ONE WRITER, ONE PLACE IN THE FRAME (RULING EU).  Called from p7's tick,
    once, after input and before every system that reads the rig. */
 function artnetTick(dt){
@@ -237,4 +326,14 @@ function artnetTick(dt){
      later.  See ART_PROVE. */
   if(ART.got >= ART_PROVE) ART.step = 0;
   artHandover();
+
+  /* RULING EN — THE PALACE ONLY, EVER.  A packet is still RECEIVED on another
+     stage, and everything above this line has already run, so the row keeps
+     reading live and an operator can see the desk is talking.  It simply
+     writes nothing.  No per-stage universes, and nothing is ever written into
+     a parked stage's captured state — that machinery is not built, and this
+     ruling says it never is without a new one. */
+  if(typeof STAGE !== 'undefined' && STAGE !== 'palace') return;
+
+  artLights(b);
 }
