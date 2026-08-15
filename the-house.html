@@ -11556,6 +11556,10 @@ function carpStart(key, mark, opts){
 const ART_STALE = 2.0;
 /* RULING EU — 1s, 2s, 4s, then 8s for ever.  Seconds, counted off `dt`. */
 const ART_BACKOFF = [1, 2, 4, 8];
+/* how long a socket may sit in CONNECTING before we give up on it */
+const ART_CONNECT_MAX = 10;
+/* the age the row prints stops counting here; it means "long ago" either way */
+const ART_SEEN_CAP = 3600;
 
 const ART = {
   on:     false,   // the switch (RULING EM).  Off on every boot, by ruling.
@@ -11568,7 +11572,9 @@ const ART = {
   seen:   0,       // seconds since the last frame landed
   frames: 0,       // frames taken since the switch went on (the row prints it)
   step:   0,       // which backoff we are on
-  retry:  0        // seconds until the next attempt, 0 = not waiting
+  retry:  0,       // seconds until the next attempt, 0 = not waiting
+  opening:0,       // seconds this socket has spent in CONNECTING
+  took:   false    // the handover has been done for this spell of driving
 };
 
 /* Same origin, always.  The relay serves the game, so the game's own origin
@@ -11587,6 +11593,13 @@ function artUrl(loc){
   return (l.protocol === 'https:' ? 'wss://' : 'ws://') + l.host + '/artnet';
 }
 
+/* Returns the socket, or null if one could not be made.  IT NEVER ARMS THE
+   BACKOFF ITSELF — every caller already asks `if(!ART.ws) artBackoff()`, and
+   a version that also backed off inside the catch advanced the ladder TWICE
+   per failure: 2, 8, 8, 8 instead of 1, 2, 4, 8.  A throwing constructor is
+   not exotic — a blocked port, a malformed host and a mixed-content refusal
+   all throw — so the doubling was reachable from a browser and invisible to
+   a suite that only exercised the no-origin path. */
 function artOpen(){
   if(ART.ws) return null;
   const url = artUrl();
@@ -11594,10 +11607,18 @@ function artOpen(){
   ART.retry = 0;
   let ws;
   try{ ws = new WebSocket(url); }
-  catch(e){ artBackoff(); return null; }
+  catch(e){ return null; }
   ws.binaryType = 'arraybuffer';
   ART.ws = ws;
-  ws.onopen = ()=>{ ART.step = 0; };          // a good connection forgets the backoff
+  ART.opening = 0;
+  /* A CONNECTION IS NOT A CONNECTION UNTIL A FRAME COMES OUT OF IT, so the
+     backoff is NOT forgiven here.  A relay restarting under a watcher, a
+     proxy that accepts then resets, a headset whose wifi flaps — all of them
+     complete the handshake and drop it, and forgiving the ladder on `onopen`
+     turned that into a permanent 1Hz reconnect storm, which is the exact
+     hammering the backoff exists to prevent.  The first real FRAME is what
+     proves the wire, and that is where the step resets (artnetTick). */
+  ws.onopen = ()=>{};
   /* THE ONLY THING onmessage DOES IS PUT THE BYTES DOWN.  Applying them here
      would write the rig from an event, mid-frame, between an update and the
      render that reads it — so the frame loop picks them up instead, once,
@@ -11631,12 +11652,7 @@ function artSetOn(on){
   if(on === ART.on) return ART.on;
   ART.on = on;
   if(on){
-    /* SWITCH-ON HYGIENE (RULING EM): a cue fade caught mid-flight halts where
-       it is instead of fighting the desk.  updateFades only engages while a
-       duration is pending, so zeroing the durations freezes the fade without
-       moving a single level. */
-    for(const f of FIXTURES){ f.lvlDur = 0; f.colDur = 0; }
-    ART.step = 0; ART.retry = 0; ART.frames = 0;
+    ART.step = 0; ART.retry = 0; ART.frames = 0; ART.took = false;
     ART.seen = ART_STALE + 1; ART.live = false; ART.buf = null;
     artOpen();
     if(!ART.ws) artBackoff();      // nothing to connect to yet: try again shortly
@@ -11644,7 +11660,7 @@ function artSetOn(on){
     /* SWITCH-OFF: NOTHING SNAPS (RULING EM).  The rig holds its last Art-Net
        look and the board resumes writing from there — which is exactly what
        happens when an operator takes a rig back off a remote desk. */
-    ART.live = false; ART.buf = null; ART.retry = 0; ART.step = 0;
+    ART.live = false; ART.buf = null; ART.retry = 0; ART.step = 0; ART.took = false;
     artClose();
   }
   if(typeof artSyncRow === 'function') artSyncRow();
@@ -11658,18 +11674,53 @@ function artSetOn(on){
    from a broken game. */
 function artDriving(){ return ART.on && ART.live; }
 
+/* THE HANDOVER (RULINGS EM and EV together).  EM says a cue fade caught
+   mid-flight halts where it is INSTEAD OF FIGHTING THE DESK; EV says throwing
+   the switch with no desk connected changes NOTHING.  Both are satisfied by
+   asking when, rather than which: the halt belongs to the moment a desk
+   actually starts driving, not to the moment somebody presses a button.
+   Running it on the switch froze a five-second cue fade at 10% for an
+   operator who had no relay running at all, which is precisely the
+   indistinguishable-from-broken that EV exists to prevent.
+
+   AND IT IS THE PALACE'S FADES, NEVER ANOTHER STAGE'S (RULING EN).  FIXTURES
+   is swapped wholesale by the stage walk (p2k), so a sweep taken from the Arc
+   halted the ARC's fades and left the Palace's running — the one rig it was
+   for.  `took` is per handover rather than per switch, so walking INTO the
+   Palace while a desk is already talking still gets the halt. */
+function artHandover(){
+  const driving = artDriving() && (typeof STAGE === 'undefined' || STAGE === 'palace');
+  if(!driving){ ART.took = false; return false; }
+  if(ART.took) return false;
+  ART.took = true;
+  for(const f of FIXTURES){ f.lvlDur = 0; f.colDur = 0; }
+  return true;
+}
+
 /* ONE WRITER, ONE PLACE IN THE FRAME (RULING EU).  Called from p7's tick,
    once, after input and before every system that reads the rig. */
 function artnetTick(dt){
   if(!ART.on){ ART.buf = null; return; }
 
-  ART.seen += dt;
-  if(ART.seen > ART_STALE) ART.live = false;
+  /* capped, because the ARTNET row prints this as an age and a machine left
+     switched on overnight should not report five digits of seconds */
+  if(ART.seen < ART_SEEN_CAP) ART.seen += dt;
+  if(ART.seen > ART_STALE){ ART.live = false; ART.took = false; }
 
   /* the reconnect, counted in seconds off the frame — never a timer */
   if(!ART.ws && ART.retry > 0){
     ART.retry -= dt;
     if(ART.retry <= 0){ artOpen(); if(!ART.ws) artBackoff(); }
+  }
+  /* A SOCKET STUCK IN CONNECTING IS NOT A SOCKET, AND IT STALLS THE LADDER —
+     `ART.ws` is truthy the instant the constructor returns, so the retry
+     branch above never runs while a connection hangs.  A blackholed relay
+     (a host that drops rather than refuses) would otherwise wait on the
+     browser's own TCP timeout, which is over a minute, and longer on a
+     headset.  Give up on it and rejoin the ladder. */
+  else if(ART.ws && ART.ws.readyState === 0){
+    ART.opening += dt;
+    if(ART.opening > ART_CONNECT_MAX){ artClose(); artBackoff(); }
   }
 
   /* THE LATEST FRAME WINS AND THE REST ARE DROPPED.  Taking the buffer is not
@@ -11680,10 +11731,16 @@ function artnetTick(dt){
   const b = ART.buf;
   ART.buf = null;
   if(!b) return;
+  /* the relay pads and truncates to exactly 512 (RULING EL), so anything else
+     did not come from it and has no channel numbering we can trust */
+  if(b.length !== 512) return;
 
   ART.frames++;
   ART.seen = 0;
   ART.live = true;
+  /* A FRAME IS WHAT PROVES THE WIRE, not a handshake — see artOpen */
+  ART.step = 0;
+  artHandover();
 }
 
 /* ============================================================================
