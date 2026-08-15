@@ -96,13 +96,32 @@ function serveFile(req, res){
      which is not the set of files that goes to Pages: .git carries the whole
      history and the remote's config.  Every dot-segment is refused rather
      than just .git, because .env and friends are the same mistake wearing
-     another name.  --host defends the same ground from the other side. */
-  if(rel.split(/[\\/]/).some(s=>s.length > 1 && s.charAt(0) === '.')){
+     another name.  --host defends the same ground from the other side.
+
+     AND THE NAME IN THE URL IS NOT THE ONLY NAME THE FILE HAS.  NTFS keeps
+     8.3 aliases — .git is also GIT~1, .gitignore is also GITIGN~1 — and they
+     are resolved by the filesystem at stat time, long after a test on the
+     spelling has passed.  /GIT~1/config served the remote's config with a
+     dot-guard sitting right here.  So the judgement is made on the RESOLVED
+     path: realpath collapses the alias, and it collapses a symlink or a
+     junction out of the repo at the same time, which the lexical test above
+     cannot see either. */
+  let real;
+  try{ real = fs.realpathSync.native(file); }
+  catch(e){ res.writeHead(404); res.end('not found'); return; }   // no such file
+  if(real !== ROOT && !real.startsWith(ROOT + path.sep)){
     res.writeHead(403); res.end('forbidden'); return;
   }
-  fs.stat(file, (err, st)=>{
+  if(path.relative(ROOT, real).split(/[\\/]/).some(s=>s.length > 1 && s.charAt(0) === '.')){
+    res.writeHead(403); res.end('forbidden'); return;
+  }
+  fs.stat(real, (err, st)=>{
     if(err || !st.isFile()){ res.writeHead(404); res.end('not found'); return; }
-    const type = TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    const type = TYPES[path.extname(real).toLowerCase()] || 'application/octet-stream';
+    /* a media element seeking a 70MB recording ABORTS the response it is
+       already reading, on every seek.  A piped stream whose destination goes
+       away is not closed by the pipe, so each seek leaks a file handle. */
+    const pipe = s=>{ res.on('close', ()=>s.destroy()); s.pipe(res); };
     /* RANGE, BECAUSE THE SHOW SEEKS ITS OWN AUDIO.  The banner tells the
        operator to load the game from here, and the recordings in
        assets/audio are tens of megabytes that RULING BO seeks into.  A server
@@ -124,7 +143,7 @@ function serveFile(req, res){
         'Content-Length': end - start + 1,
         'Accept-Ranges': 'bytes', 'Cache-Control':'no-cache'
       });
-      fs.createReadStream(file, {start, end}).pipe(res);
+      pipe(fs.createReadStream(real, {start, end}));
       return;
     }
     res.writeHead(200, {
@@ -133,7 +152,7 @@ function serveFile(req, res){
       'Accept-Ranges': 'bytes',
       'Cache-Control': 'no-cache'
     });
-    fs.createReadStream(file).pipe(res);
+    pipe(fs.createReadStream(real));
   });
 }
 const server = http.createServer((req, res)=>{
@@ -214,11 +233,13 @@ server.on('upgrade', (req, sock, head)=>{
   say('a client is on /artnet  (' + clients.size + ' connected)');
   /* A CONNECTED GAME AND A SILENT DESK IS THE COMMONEST WAY THIS GOES WRONG,
      and every other symptom of it is indistinguishable from a broken game.
-     Say it once, with the two things worth checking. */
+     The question is "is the desk talking NOW", not "has it ever talked" — a
+     desk that dies mid-show is exactly the case this describes, and a
+     cumulative count would have gone quiet for good after the first packet. */
   if(!quietWarned) setTimeout(()=>{
-    if(packets || quietWarned) return;
+    if(quietWarned || Date.now() - lastPacketAt < 5000) return;
     quietWarned = true;
-    say('a client is connected but NO ArtDmx has arrived on UDP ' + ART_PORT + ' yet —');
+    say('a client is connected but NO ArtDmx has arrived on UDP ' + ART_PORT + ' for 5s —');
     say('      check the desk is outputting Art-Net, and that it is on universe ' + UNIVERSE + '.');
   }, 5000).unref();
 
@@ -236,7 +257,7 @@ const OP_DMX = 0x5000;
 /* Returns the packet's 512 channel bytes, or null if this is not an ArtDmx
    packet for our universe.  Every rejection is silent by ruling: a network
    with other Art-Net traffic on it must not print a line per packet.        */
-let lastSeq = 0;
+let lastSeq = 0, lastPacketAt = 0;
 function parseArtDmx(msg, universe){
   if(msg.length < 18) return null;
   if(msg.compare(ART_ID, 0, 8, 0, 8) !== 0) return null;
@@ -244,16 +265,31 @@ function parseArtDmx(msg, universe){
   if(msg.readUInt16LE(14) !== universe) return null;
   const len = msg.readUInt16BE(16);
   /* ART-NET'S LENGTH IS 2..512, AND A HEADER-ONLY PACKET IS NOT A BLACKOUT.
-     Without this line an 18-byte packet — which passes all four checks above
-     — copies nothing into a zeroed buffer and forwards 512 bytes of zero: one
+     Without this an 18-byte packet — which passes all four checks above —
+     copies nothing into a zeroed buffer and forwards 512 bytes of zero: one
      stray packet from anything on the network takes the rig to black on the
-     next tick, and the game has no way to know it was not asked for. */
-  if(len < 2 || len > 512) return null;
+     next tick, and the game has no way to know it was not asked for.
+
+     BOUNDING THE DECLARED LENGTH IS ONLY HALF OF IT.  A header-only packet
+     that CLAIMS Length 2 satisfies a 2..512 test and then copies nothing,
+     because the copy is clamped by `msg.length - 18` — the same blackout,
+     reached by declaring a number instead of by declaring zero.  The packet
+     must actually CARRY what it says it carries. */
+  if(len < 2 || len > 512 || msg.length - 18 < len) return null;
   /* AND AN OLD PACKET MUST NOT OVERWRITE A NEW ONE.  UDP reorders; Art-Net
      carries Sequence for exactly this.  0 means the desk has the feature
      switched off, and a DUPLICATE sequence is deliberately accepted — some
      desks send a constant, and dropping those would silently forward nothing
-     at all.  Only a strictly older packet is refused. */
+     at all.  Only a strictly older packet is refused.
+
+     A GAP MEANS THE BASELINE IS MEANINGLESS.  A desk sends ~44 packets a
+     second, so a second of silence is a desk that stopped — and one that
+     restarts its count at 1 against a stale `lastSeq` of 128 would have up
+     to 127 packets (nearly three seconds) refused as "old" before it caught
+     up.  A gap forgets the baseline instead. */
+  const now = Date.now();
+  if(now - lastPacketAt > 1000) lastSeq = 0;
+  lastPacketAt = now;
   const seq = msg[12];
   if(seq !== 0 && lastSeq !== 0 && ((seq - lastSeq) & 0xff) > 128) return null;
   lastSeq = seq;
@@ -274,6 +310,7 @@ udp.on('message', msg=>{
   const data = parseArtDmx(msg, UNIVERSE);
   if(!data) return;
   packets++;
+  quietWarned = false;          // a desk that comes back may go away again
   /* no batching and no rate logic: Art-Net's own refresh (~44Hz) is the rate,
      and the game keeps only the latest frame per render tick anyway. */
   const f = frame(0x2, data);

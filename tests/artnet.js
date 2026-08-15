@@ -80,8 +80,10 @@ function artDmx(universe, data, opts){
 
    TCP AND UDP PORT SPACES ARE SEPARATE, so the Art-Net one has to be reserved
    with a UDP socket.  Proving a TCP port free says nothing about the UDP port
-   of the same number, and the relay binds with reuseAddr — so a collision
-   would not throw, it would show up as "nothing arrived" with no clue why. */
+   of the same number — and while the relay now refuses a collision loudly
+   (EADDRINUSE, since it dropped reuseAddr), a suite that walked into one
+   would fail at startRelay with a port message rather than at the assertion
+   it meant to make. */
 function freePort(kind){
   return new Promise((res, rej)=>{
     if(kind === 'udp'){
@@ -316,14 +318,28 @@ function getUrl(port, url, headers){
     return 'GET /% -> 400, and both the file server and the desk feed carried on';
   });
 
-  await P('the repo is served but .git is not, whatever --host is set to', async ()=>{
-    const git = await getUrl(httpPort, '/.git/config');
-    if(git.status !== 403) throw new Error('/.git/config answered ' + git.status + ', expected 403');
-    const deep = await getUrl(httpPort, '/.git/refs/heads/main');
-    if(deep.status !== 403) throw new Error('a path INSIDE .git answered ' + deep.status);
+  await P('the repo is served but .git is not, by any of its names', async ()=>{
+    for(const u of ['/.git/config', '/.git/refs/heads/main', '/.gitignore', '/%2Egit/config']){
+      const r = await getUrl(httpPort, u);
+      if(r.status !== 403) throw new Error(u + ' answered ' + r.status + ', expected 403');
+    }
+    /* AND THE NAME IN THE URL IS NOT THE ONLY NAME THE FILE HAS.  NTFS keeps
+       8.3 aliases, so .git is also GIT~1 and .gitignore is also GITIGN~1 —
+       resolved by the filesystem at stat time, long after any test on the
+       spelling has passed.  A guard that reads the URL alone served the
+       remote's config to anything that asked for /GIT~1/config. */
+    for(const u of ['/GIT~1/config', '/git~1/head', '/GIT~1/refs/heads/main', '/GITIGN~1']){
+      const r = await getUrl(httpPort, u);
+      if(r.status === 200) throw new Error(u + ' served ' + r.body.length +
+        ' bytes — the 8.3 alias walks straight past a guard that reads the URL');
+      if(r.status !== 403 && r.status !== 404)
+        throw new Error(u + ' answered ' + r.status);
+    }
     const ok = await getUrl(httpPort, '/build.sh');
-    if(ok.status !== 200) throw new Error('the dot-segment refusal ate an ordinary file');
-    return '.git refused at 403, build.sh still served — the refusal is per segment, not a blanket';
+    if(ok.status !== 200) throw new Error('the refusal ate an ordinary file');
+    const deep = await getUrl(httpPort, '/docs/guide/TRAPS.md');
+    if(deep.status !== 200) throw new Error('the refusal ate a nested ordinary file');
+    return '.git refused as .git, as %2Egit and as GIT~1; build.sh and docs/guide still served';
   });
 
   await P('a NUL in the URL is refused too — decodeURIComponent is not the only way in', async ()=>{
@@ -368,23 +384,47 @@ function getUrl(port, url, headers){
     return 'Length 0 is outside Art-Net 2..512 and goes no further — the rig keeps its look';
   });
 
+  await P('a packet that LIES about its length is refused too', async ()=>{
+    /* bounding the DECLARED length is only half of it: a header-only packet
+       claiming Length 2 satisfies a 2..512 test, and the copy is then clamped
+       by what actually arrived — so it copies nothing and forwards the same
+       512 bytes of blackout, reached by declaring a number instead of zero. */
+    const lit = Buffer.alloc(512, 255);
+    await udpSend(artDmx(0, lit));
+    const on = await nextFrame(ws, 4000);
+    if(!on || on[0] !== 255) throw new Error('the setup frame never landed');
+    for(const claim of [2, 512]){
+      const pkt = artDmx(0, Buffer.alloc(0));
+      pkt.writeUInt16BE(claim, 16);          // 18 bytes long, claiming `claim`
+      await udpSend(pkt);
+      const f = await nextFrame(ws, 1200);
+      if(f) throw new Error('a header-only packet claiming Length ' + claim + ' was forwarded as ' +
+        (Array.prototype.every.call(f, b=>b === 0) ? '512 bytes of BLACKOUT' : 'a frame'));
+    }
+    return 'Length 2 and Length 512 with no payload both refused — the packet must carry what it declares';
+  });
+
   await P('an OLDER packet does not overwrite a newer one', async ()=>{
     /* UDP reorders, and Art-Net carries Sequence for exactly this.  Run LAST
        of the DMX cases on this relay: it deliberately leaves the sequence
        high, and a later packet at seq 1 would look like the stale one. */
-    const newer = Buffer.alloc(512, 100);
-    await udpSend(artDmx(0, newer, {seq:40}));
+    /* ORDER MATTERS HERE.  A gap of a second means the desk stopped, and the
+       relay then forgets its baseline on purpose — so the duplicate has to be
+       proved BEFORE the case that waits out a timeout, or it would be
+       accepted by the gap rule rather than by the duplicate rule and the
+       assertion would be measuring the wrong thing. */
+    await udpSend(artDmx(0, Buffer.alloc(512, 100), {seq:40}));
     const a = await nextFrame(ws, 4000);
     if(!a || a[0] !== 100) throw new Error('the seq-40 frame never landed');
-    await udpSend(artDmx(0, Buffer.alloc(512, 7), {seq:5}));
-    const b = await nextFrame(ws, 1200);
-    if(b) throw new Error('a packet 35 sequence numbers OLD was forwarded on top of the newer one');
-    /* and a duplicate sequence is still accepted — some desks send a constant,
-       and refusing those would forward nothing at all */
+    /* a duplicate sequence is accepted — some desks send a constant, and
+       refusing those would forward nothing at all */
     await udpSend(artDmx(0, Buffer.alloc(512, 55), {seq:40}));
     const c = await nextFrame(ws, 4000);
     if(!c || c[0] !== 55) throw new Error('a repeated sequence number was refused; a constant-seq desk would go dead');
-    return 'seq 5 after seq 40 refused, seq 40 after seq 40 accepted';
+    await udpSend(artDmx(0, Buffer.alloc(512, 7), {seq:5}));
+    const b = await nextFrame(ws, 1200);
+    if(b) throw new Error('a packet 35 sequence numbers OLD was forwarded on top of the newer one');
+    return 'seq 40 then 40 accepted, then seq 5 refused — both inside the one-second window';
   });
 
   /* ---- the two RFC 6455 clauses RULING EL names by hand ------------------ */
