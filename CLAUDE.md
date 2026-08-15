@@ -11,7 +11,11 @@ paint, save).
 1. **STATE.md** — where things stand right now (live file, newest truth).
 2. **HANDOFF.md** — the durable record; at minimum the last two "Done"
    blocks and the NEXT SESSION section.
-3. **docs/guide/** — topical deep dives, listed below. Read the ones your
+3. **FUTURE.md** — the other direction: what is wanted and NOT built yet,
+   plus anything mid-build and paused. Read it before starting new work, so
+   you do not build something that is half-built already, and write any new
+   idea into it. It is not binding — a spec in `docs/superpowers/specs/` is.
+4. **docs/guide/** — topical deep dives, listed below. Read the ones your
    task touches. If your task touches a recent feature, its spec in
    `docs/superpowers/specs/` has binding RULINGS — read it.
 
