@@ -508,6 +508,131 @@ function bodySpeaker(){
   return mergeShell('speaker', g);
 }
 
+/* ============================================================================
+   THE STEPLADDER (RULING EK) — the one body you CLIMB.
+
+   There is no climbing code in this game and this adds none.  What the game
+   has is `groundAt` (p7): a downward raycast over WALKABLE, called
+   `intersectObjects(WALKABLE, true)` — RECURSIVE — and a player who steps up
+   onto whatever it finds, up to 0.62m at a time (`tryMove`).  So the ladder
+   climbs by BEING walkable, the way the Arc's feature stair does, and its
+   0.44m treads clear that step-up with 0.18m in hand.
+
+   IT IS THE ROOT GROUP THAT GOES ON `WALKABLE`, NOT THE TREADS, and that is
+   the load-bearing choice:
+     - the raycast is recursive, so one entry tests every tread;
+     - the children move with the group for free, so a carried ladder carries
+       its footholds;
+     - it survives `mergeShell` below, which REMOVES each tread mesh from the
+       group and puts a merged shell back.  Tread meshes registered
+       individually would still be in WALKABLE afterwards while no longer
+       being children of anything — a set of frozen footholds hanging at the
+       world origin, and no ladder to climb;
+     - and it is ONE splice to unpick when the body is destroyed (removeBody).
+
+   THE GOING IS WHAT MAKES IT CLIMBABLE, AND IT IS NOT A LOOK.  `groundAt`
+   answers with the HIGHEST surface in a column, from 1.40m above the feet
+   down — and the ground-follow in p7 snaps the player straight onto whatever
+   it says.  So if two treads overlap in PLAN, standing on the lower one puts
+   the higher one in your own column and you are teleported up it; three of
+   them overlap and the step is 1.32m, which `tryMove` then refuses in every
+   direction, and the ladder is a wall you cannot get on or off.  Measured
+   that way on the first build of this body: a near-vertical rake put treads
+   2, 3 and 4 all over tread 1.
+
+   The fix is the shape the Arc's feature stair already has — its 0.62m treads
+   go 0.62m per step, so the columns TILE — and it is why the going here is
+   exactly the tread depth: 0.16m of z per 0.44m of rise, no overlap to
+   teleport up and no gap to fall through, from the deck to the platform.
+   A 70-degree pitch, which is what a platform stepladder is.
+
+   THE LADDER MUST NOT STAND ON ITSELF.  `updateBodies` settles this body with
+   `groundAt(x, z, y + 0.5)`, and groundAt starts its ray another 1.4 up — so
+   any of the ladder's own geometry over its OWN ORIGIN COLUMN below local
+   y = 1.90 would be found as this ladder's floor, and it would climb itself
+   until it ran out of rungs.  Nothing is, and the numbers are named so the
+   next person to re-rake it has something to check: the lowest tread that
+   reaches back toward the origin is the fourth, whose near edge is z +0.2255,
+   and the rear legs and their spreader stand at x +/- 0.30 and never cross
+   the x = 0 column at all.  The two pieces that DO cross it — the platform at
+   3.05 and the cap at 3.90 — are both above 1.90.  A test drops one from six
+   metres and watches it land on the deck.
+   ========================================================================== */
+const LADDER = {
+  H:3.90,             // overall — RULING EK, and it is what sets SS.GRID
+  PLAT:3.05,          // the top platform: the surface you stand on
+  TREADS:6, RISE:0.44,// six treads, 0.44 apart (tryMove steps up 0.62)
+  GOING:0.16,         // z per tread — AND the tread depth, so the plan tiles
+  W:0.68,             // tread width; the stiles stand at +/- 0.34
+  ZTOP:-0.46,         // the front frame's z where it meets the cap
+  BZ0:-0.85, BZ1:-0.20// rear legs, foot to platform
+};
+/* one raked member: a box whose LOCAL Y runs from (y0,z0) to (y1,z1).  The
+   sign is the one TRAPS warns about — rotating (0, L/2, 0) by rx puts the top
+   at z = (L/2) sin(rx), so rx is atan2(dz, dy) and NOT its negative. */
+function ladMember(g, key, x, y0, z0, y1, z1, w, t, mat){
+  const L = Math.hypot(y1 - y0, z1 - z0);
+  const m = new T.Mesh(fixG(key, ()=>new T.BoxGeometry(w, L, t)), mat);
+  m.position.set(x, (y0 + y1)/2, (z0 + z1)/2);
+  m.rotation.x = Math.atan2(z1 - z0, y1 - y0);
+  g.add(m);
+  return m;
+}
+/* the front frame's z at a height y, and the rear legs' — the rake is the
+   going over the rise, so fz() IS the tiling rule the header describes */
+const LAD_TOPY = LADDER.H - 0.035;                    // where the stiles end
+function ladFZ(y){
+  return LADDER.ZTOP + (LADDER.GOING / LADDER.RISE) * (LAD_TOPY - y);
+}
+function ladBZ(y){
+  return LADDER.BZ0 + (LADDER.BZ1 - LADDER.BZ0) * (y / LADDER.PLAT);
+}
+function bodyLadder(){
+  const g = new T.Group();
+  const G = LADDER.GOING;
+  [-1, 1].forEach(s=>{
+    ladMember(g, 'ladStile', s*0.34, 0, ladFZ(0), LAD_TOPY, LADDER.ZTOP,
+              0.06, 0.04, M.galv);
+    ladMember(g, 'ladRear',  s*0.30, 0, LADDER.BZ0, LADDER.PLAT, LADDER.BZ1,
+              0.05, 0.05, M.galv);
+  });
+  /* the treads: the TOP of each is the step height, so a tread meant to be
+     stood on at 0.44 sits its own thickness below it */
+  for(let i = 1; i <= LADDER.TREADS; i++){
+    const top = i * LADDER.RISE;
+    const tr = new T.Mesh(fixG('ladTread',
+      ()=>new T.BoxGeometry(LADDER.W, 0.035, G)), M.galv);
+    tr.position.set(0, top - 0.0175, ladFZ(top));
+    g.add(tr);
+  }
+  /* the spreader sits ABOVE 1.40 on purpose: lower, and a floor-level ground
+     ray finds it and walls off the space under the ladder */
+  const spr = new T.Mesh(fixG('ladSpreader',
+    ()=>new T.BoxGeometry(0.60, 0.05, 0.05)), M.galv);
+  spr.position.set(0, 1.55, ladBZ(1.55)); g.add(spr);
+  /* the platform's TOP is 3.05, and in plan it takes up exactly where the
+     sixth tread leaves off and runs back over the legs — tiled, like the
+     treads, so stepping onto it is one 0.41m rise and nothing else */
+  const pz1 = ladFZ(LADDER.TREADS * LADDER.RISE) - G/2;   // the sixth tread's back edge
+  const pz0 = LADDER.BZ1 - 0.10;
+  const plat = new T.Mesh(fixG('ladPlatform',
+    ()=>new T.BoxGeometry(LADDER.W + 0.04, 0.05, pz1 - pz0)), M.hazard);
+  plat.position.set(0, LADDER.PLAT - 0.025, (pz0 + pz1)/2); g.add(plat);
+  /* the cap is the tool tray at the very top, and it stands clear of the
+     platform's own column so nobody is snapped up onto it */
+  const cap = new T.Mesh(fixG('ladCap',
+    ()=>new T.BoxGeometry(LADDER.W + 0.06, 0.06, 0.26)), M.hazard);
+  cap.position.set(0, LADDER.H - 0.03, LADDER.ZTOP); g.add(cap);
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow = o.receiveShadow = true; } });
+  /* two merged shells, one per material — the galv frame and the marked
+     surfaces — where twelve meshes would have been twelve draws (RULING DY's
+     rule, applied to a body that is not a lantern) */
+  mergeShell('ladder', g);
+  /* and THIS is the climb: the root group, for every reason in the header */
+  WALKABLE.push(g);
+  return g;
+}
+
 /* ---- bodies off the pipe -------------------------------------------------
    The detach system.  Every lantern and PA box is a BODY that can come off
    its hanging POINT.  The point is per-stage state and parks with the board
@@ -528,12 +653,18 @@ const BODY_LABEL = {profile:'PROFILE SPOT', fresnel:'FRESNEL', par:'PAR CAN',
                     speaker:'PA BOX',
                     soft:'SOFTLIGHT', panel:'LED PANEL', hmi:'HMI FRESNEL',
                     wood:'WOOD', hinge:'HINGE', track:'TRACK', carriage:'CARRIAGE',
-                    paint:'PAINT CAN', table:'WORK TABLE'};
+                    paint:'PAINT CAN', table:'WORK TABLE', ladder:'STEPLADDER'};
 function makeBodyMesh(kind, color){
   /* BUILD_KINDS is p4c's hoisted var — undefined while the Palace rig builds
      during THIS part's parse-time run, so factory stock never takes this
      branch (and a typeof guard is unnecessary: var, not const) */
   if(BUILD_KINDS && BUILD_KINDS[kind]) return makeBuildMesh(kind, color);
+  /* the stepladder is gear, not build stock: it never nails into an assembly
+     and never counts against BUILD_CAP, so it is NOT in BUILD_KINDS and it is
+     named here.  Without this line it would fall through to the lantern chain
+     and every delivered ladder — and every ladder off the SAVE — would come
+     back a profile spot, silently. */
+  if(kind === 'ladder') return bodyLadder();
   return kind==='fresnel'?bodyFresnel(): kind==='par'?bodyPar():
          kind==='cyc'?bodyCyc(): kind==='mover'?bodyMover():
          kind==='blinder'?bodyBlinder():
@@ -573,10 +704,18 @@ function unhangBody(b){
 /* hang a body on an empty point.  RULING A: the circuit lives in the pipe —
    any lantern body answers whatever the point is patched as.  Speaker points
    are rigging and take only PA boxes (and vice versa). */
+/* KIT THAT IS CARRIED BUT NEVER RIGGED.  The last line of canHang is
+   PERMISSIVE — "anything that is not a speaker answers a lighting point" —
+   which was true while every non-build body was a lantern.  It stopped being
+   true with the stepladder (RULING EK): left alone, canHang would happily
+   clamp a 3.9m ladder to a lighting bar and fly it out.  A new gear kind that
+   is not a lantern goes on this list, deliberately, by name. */
+const NO_HANG = {ladder:1};
 function canHang(b, p){
   if(p.body) return false;
   /* build stock (p4c) nails to assemblies, never hangs on a patch point */
   if(BUILD_KINDS && BUILD_KINDS[b.kind]) return false;
+  if(NO_HANG[b.kind]) return false;
   return p.spk ? b.kind === 'speaker' : b.kind !== 'speaker';
 }
 function hangBody(b, p){
@@ -677,8 +816,13 @@ function updateBodies(dt){
       const tt = tableTopAt(_bodyV.x, _bodyV.y, _bodyV.z, b.venue, b);
       if(tt !== null && tt > g) g = tt;
     }
-    /* a table's group origin is its feet: it stands, never floats at 0.25 */
-    const want = g + (b.restH !== undefined ? b.restH : (b.kind === 'table' ? 0 : 0.25));
+    /* a table's group origin is its feet: it stands, never floats at 0.25 —
+       and a stepladder's origin is its feet too (RULING EK), so it joins the
+       table here rather than inventing a second rule.  Doing it in the DEFAULT
+       means every route that mints one — the delivery, the save, a test —
+       stands it on the deck without having to remember to set restH. */
+    const want = g + (b.restH !== undefined ? b.restH
+                      : ((b.kind === 'table' || b.kind === 'ladder') ? 0 : 0.25));
     /* both venue roots stand at y=0 unrotated, so local y IS world y */
     if(Math.abs(_bodyV.y - want) > 0.005){
       b.mesh.position.y += clamp(want - _bodyV.y, -3*dt, 3*dt);

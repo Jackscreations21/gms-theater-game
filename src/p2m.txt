@@ -753,9 +753,11 @@ function spawnPallet(which, items){
       a.position.set(0, 0.21 + nSheet*0.024, 0);
       a.rotation.x = -Math.PI/2;                    // thickness up: it lies flat
       nSheet++;
-    } else if(u.kind === 'wood' || u.kind === 'track'){
+    } else if(u.kind === 'wood' || u.kind === 'track' || u.kind === 'ladder'){
+      /* a stepladder is long stock and lies down like it: 3.9m stood upright
+         in a smalls seat is a mast through the shed roof (RULING EK) */
       a.position.set(0, 0.24 + Math.floor(nLong/2)*0.1, nLong%2 ? 0.3 : -0.3);
-      if(u.kind === 'wood') a.rotation.z = -Math.PI/2;   // long axis along the boards
+      if(u.kind !== 'track') a.rotation.z = -Math.PI/2;  // long axis along the boards
       nLong++;
     } else {
       a.position.set(-0.55 + (nSmall%3)*0.55, 0.42 + Math.floor(nSmall/6)*0.34,

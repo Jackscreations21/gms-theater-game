@@ -292,6 +292,45 @@ const probe = `
     return out;
   });
 
+  /* ---- the stepladder (RULING EK) ------------------------------------------
+     Appended at the END of this probe on purpose, so parallel branches taking
+     the top or the middle of this file never collide with it. */
+  console.log('--- the stepladder ---');
+  P('a stepladder is ordered off the HDWE tab and delivered lying down', ()=>{
+    const sc = VR.orders.palace;
+    const tabs = sc.hits.filter(h=>h.w===122 && h.h===40);
+    tabs[2].fn();                                     // HDWE
+    const ri = orderRows(2).findIndex(r=>r.key === 'ladder');
+    if(ri < 0) throw new Error('no stepladder on the hardware tab');
+    const plus = sc.hits.find(h=>h.x===440 && h.y===112 + ri*48);
+    if(!plus) throw new Error('the stepladder row has no + button on the screen');
+    plus.fn();
+    sc.hits.find(h=>h.w===300 && h.h===56).fn();      // ORDER
+    if(sc.status) throw new Error('the screen refused the slip: '+sc.status);
+    const o = ORDERS.palace;
+    const pend = o.pending[o.pending.length - 1];
+    if(!pend || pend.items.length !== 1 || pend.items[0].kind !== 'ladder')
+      throw new Error('the slip did not say ladder');
+    const before = BODIES.length;
+    for(let k=0;k<620;k++) updateSheds(0.05);         // 31 seconds of game time
+    if(BODIES.length !== before + 1)
+      throw new Error((BODIES.length-before)+' bodies delivered, wanted 1');
+    const lad = BODIES[BODIES.length - 1];
+    if(lad.kind !== 'ladder') throw new Error('a '+lad.kind+' turned up instead');
+    if(lad.venue !== 'palace') throw new Error('tagged for '+lad.venue);
+    if(lad.state !== 'slotted') throw new Error('it is '+lad.state+', not on the pallet');
+    /* 3.9m of stepladder lies DOWN with the long stock — stood upright in a
+       smalls seat it is a mast through the shed roof */
+    scene.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(lad.mesh);
+    if(bb.max.y > 2.0)
+      throw new Error('it stands '+bb.max.y.toFixed(2)+'m up off the pallet');
+    if(bb.max.x - bb.min.x < 3.0)
+      throw new Error('it is not lying along the boards: '+(bb.max.x-bb.min.x).toFixed(2)+'m of x');
+    tabs[0].fn();
+    return 'one stepladder, ordered and delivered flat, '+(bb.max.x-bb.min.x).toFixed(2)+'m along the pallet';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));

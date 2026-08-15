@@ -1185,7 +1185,11 @@ function orderRows(tab){
     {key:'hinge',    label:'HINGE',       unit:{kind:'hinge'}},
     {key:'track',    label:'TRACK - 4FT', unit:{kind:'track'}},
     {key:'carriage', label:'CARRIAGE',    unit:{kind:'carriage'}},
-    {key:'table',    label:'WORK TABLE',  unit:{kind:'table'}}];
+    {key:'table',    label:'WORK TABLE',  unit:{kind:'table'}},
+    /* RULING EK — beside the work table, on the same precedent: an orderable
+       body, carried like wood, that lands square.  One unit, and it is GEAR,
+       so it books against STOCK_CAP and never against BUILD_CAP. */
+    {key:'ladder',   label:'STEPLADDER',  unit:{kind:'ladder'}}];
   return PAINT_COLORS.map((pc, i)=>({key:'p'+i, label:pc.name, swatch:pc.c,
                                      unit:{kind:'paint', color:pc.c}}));
 }
@@ -2539,8 +2543,11 @@ function vrSqueeze(hand, down){
         } else {
           b.state = 'loose';
           if(b.kind === 'wood' && typeof woodRestH === 'function') b.restH = woodRestH(b);
-          /* a let-go table lands square: upright, yaw to the nearest 45 */
-          if(b.kind === 'table'){
+          /* a let-go table lands square: upright, yaw to the nearest 45 —
+             and so does a let-go stepladder, which is RULING EK's brief in
+             its own words ("RULING K's precedent exactly ... that lands
+             square").  A ladder set down leaning is a ladder you fall off. */
+          if(b.kind === 'table' || b.kind === 'ladder'){
             b.restH = 0;
             b.mesh.getWorldQuaternion(_tq1);
             const e = new T.Euler().setFromQuaternion(_tq1, 'YXZ');
@@ -2695,6 +2702,19 @@ function vrSqueeze(hand, down){
         const gx = Math.max(0, Math.abs(_vecA.x) - 0.8),
               gy = Math.max(0, Math.abs(_vecA.y - TABLE_TOP/2) - TABLE_TOP/2),
               gz = Math.max(0, Math.abs(_vecA.z) - 0.4);
+        d = Math.sqrt(gx*gx + gy*gy + gz*gz);
+        if(d >= GRAB_WOOD) continue;
+      } else if(b.kind === 'ladder'){
+        /* the same problem as the table (RULING Q), one storey up: a
+           stepladder's origin is its FEET, so the point a hand is nearest is
+           never within GRAB_WOOD of it.  Gap to its frame box instead — the
+           mesh is a Group at scale 1, so local IS metric. */
+        b.mesh.updateWorldMatrix(true, false);
+        _vecA.copy(_rayO);
+        b.mesh.worldToLocal(_vecA);
+        const gx = Math.max(0, Math.abs(_vecA.x) - 0.37),
+              gy = Math.max(0, Math.abs(_vecA.y - LADDER.H/2) - LADDER.H/2),
+              gz = Math.max(0, Math.abs(_vecA.z + 0.12) - 0.48);
         d = Math.sqrt(gx*gx + gy*gy + gz*gz);
         if(d >= GRAB_WOOD) continue;
       } else {

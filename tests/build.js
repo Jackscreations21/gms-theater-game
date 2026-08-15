@@ -864,6 +864,189 @@ const probe = `
     return j.bodies.length+' bodies, '+j.asms.length+' assemblies to storage';
   });
 
+  /* ---- the stepladder (RULING EK) ------------------------------------------
+     Appended at the END of this probe on purpose: parallel branches take the
+     top and the middle, so nothing here can textually collide with them. */
+  console.log('--- the stepladder ---');
+  P('the HDWE tab carries a stepladder, beside the work table', ()=>{
+    vrBuildOrderScreens();
+    const sc = VR.orders.palace;
+    const tabs = sc.hits.filter(h=>h.w===122 && h.h===40);
+    tabs[2].fn();                                     // HDWE
+    if(sc.tab !== 2) throw new Error('the hardware tab never came up');
+    const rows = orderRows(2);
+    const ri = rows.findIndex(r=>r.key === 'ladder');
+    if(ri < 0) throw new Error('no stepladder on the hardware tab: '+rows.map(r=>r.key).join(','));
+    if(rows[ri].unit.kind !== 'ladder') throw new Error('the row orders a '+rows[ri].unit.kind);
+    if(rows[ri].unit.prof !== undefined) throw new Error('the ladder row carries a wood profile');
+    /* through the glass: the row has its own pair of buttons on the canvas */
+    const plus = sc.hits.find(h=>h.x===440 && h.y===112 + ri*48);
+    if(!plus) throw new Error('the stepladder row has no + button on the screen');
+    plus.fn();
+    if(sc.counts.ladder !== 1) throw new Error('the + button did not count it');
+    sc.counts = {};
+    tabs[0].fn();
+    return 'HDWE: ' + rows.map(r=>r.key).join(' / ');
+  });
+  P('a stepladder is GEAR — the piece book and the gear book are two books', ()=>{
+    if(BUILD_KINDS.ladder) throw new Error('the stepladder joined BUILD_KINDS');
+    const b0 = venueBuildCount('palace'), l0 = venueLooseCount('palace');
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const lad = regBody('ladder', makeBodyMesh('ladder'), null); lad.state = 'loose';
+    BUILD_VENUE = keep;
+    venueRoot('palace').add(lad.mesh);
+    /* and it is a REAL stepladder being counted.  Without this clause the
+       whole test passes against a build with no ladder in it at all: the two
+       cap books are pre-existing machinery and count a body of any kind, so
+       a profile spot wearing the name would satisfy every line below. */
+    lad.mesh.position.set(0, 0, 0); scene.updateMatrixWorld(true);
+    const hb = new THREE.Box3().setFromObject(lad.mesh);
+    if(Math.abs(hb.max.y - 3.90) > 0.02)
+      throw new Error('what the gear book counted is '+hb.max.y.toFixed(3)+'m tall, not a 3.90m stepladder');
+    if(venueBuildCount('palace') !== b0)
+      throw new Error('a stepladder counted against BUILD_CAP');
+    if(venueLooseCount('palace') !== l0 + 1)
+      throw new Error('a stepladder did not count against the 24 loose gear');
+    /* and the refusal lands at the order screen, which is the enforcement point */
+    const held = ORDERS.palace.pending.splice(0, ORDERS.palace.pending.length);
+    const fakes = [];
+    for(let i = venueLooseCount('palace'); i < 24; i++){
+      const f = {kind:'par', venue:'palace', mesh:new THREE.Object3D(),
+                 state:'loose', point:null, slot:null};
+      fakes.push(f); BODIES.push(f);
+    }
+    const r = orderPlace('palace', [{kind:'ladder'}]);
+    fakes.forEach(f=>{ BODIES.splice(BODIES.indexOf(f), 1); });
+    ORDERS.palace.pending.length = 0;
+    held.forEach(h=>ORDERS.palace.pending.push(h));
+    if(r !== 'STOCK FULL') throw new Error('STOCK FULL did not refuse a stepladder: '+r);
+    window.__lad = lad;
+    return 'gear book +1, piece book +0, and STOCK FULL at twenty-four';
+  });
+  P('you climb it by walking up it: six treads at 0.44 to a platform at 3.05', ()=>{
+    const lad = window.__lad;
+    lad.mesh.position.set(0, 0, 0); lad.mesh.rotation.set(0, 0, 0);
+    scene.updateMatrixWorld(true);
+    /* the ROOT GROUP is the walkable entry, and only the root: groundAt is
+       recursive, the children ride the group, and mergeShell replaces the
+       tread meshes — a tread registered on its own would be a foothold
+       hanging at the world origin the moment the shell was merged */
+    if(WALKABLE.indexOf(lad.mesh) < 0) throw new Error('the stepladder is not on WALKABLE');
+    if(lad.mesh.children.some(c=>WALKABLE.indexOf(c) >= 0))
+      throw new Error('a child of the ladder was registered as well as the group');
+    let stand = 0;
+    for(let i = 1; i <= LADDER.TREADS; i++){
+      const want = i * LADDER.RISE;
+      const gg = groundAt(0, ladFZ(want), stand);
+      if(gg === null) throw new Error('nothing to stand on at tread '+i);
+      if(Math.abs(gg - want) > 0.02)
+        throw new Error('tread '+i+' reads '+gg.toFixed(3)+', wanted '+want.toFixed(2));
+      if(gg - stand > 0.62)
+        throw new Error('tread '+i+' is a '+(gg-stand).toFixed(2)+'m step and tryMove stops at 0.62');
+      stand = gg;
+    }
+    /* find the platform by walking backwards off the top tread, rather than
+       recomputing where it was built — a test that rebuilds the geometry
+       agrees with itself whatever the geometry does */
+    let platZ = null;
+    for(let z = ladFZ(LADDER.TREADS*LADDER.RISE); z > -0.6; z -= 0.005){
+      const gg = groundAt(0, z, stand);
+      if(gg !== null && Math.abs(gg - LADDER.PLAT) < 0.02){ platZ = z; break; }
+    }
+    if(platZ === null) throw new Error('there is no platform at '+LADDER.PLAT+' to step onto');
+    if(LADDER.PLAT - stand > 0.62)
+      throw new Error('the step onto the platform is '+(LADDER.PLAT-stand).toFixed(2)+'m');
+    const bb = new THREE.Box3().setFromObject(lad.mesh);
+    if(Math.abs(bb.max.y - LADDER.H) > 0.02) throw new Error('it stands '+bb.max.y.toFixed(3)+'m');
+    if(bb.min.y < -0.02) throw new Error('its feet are '+bb.min.y.toFixed(3)+' through the deck');
+    window.__ladPlatZ = platZ;
+    return 'six 0.44 steps, then '+(LADDER.PLAT-stand).toFixed(2)+'m onto a 3.05 platform, 3.90 overall';
+  });
+  P('a dropped stepladder lands on the deck, not on its own treads', ()=>{
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const l2 = regBody('ladder', makeBodyMesh('ladder'), null); l2.state = 'loose';
+    BUILD_VENUE = keep;
+    venueRoot('palace').add(l2.mesh);
+    l2.mesh.position.set(4, 6, 0);
+    for(let i=0;i<900;i++){ scene.updateMatrixWorld(true); updateBodies(0.05); }
+    scene.updateMatrixWorld(true);
+    if(Math.abs(l2.mesh.position.y) > 0.02)
+      throw new Error('it settled at y='+l2.mesh.position.y.toFixed(3)+', standing on itself');
+    window.__lad2 = l2;
+    return 'six metres down, feet on the deck at 0.000';
+  });
+  P('carrying it out from under a lantern wakes the lantern', ()=>{
+    const lad = window.__lad;
+    lad.mesh.position.set(0, 0, 0); lad.state = 'loose';
+    const keep = BUILD_VENUE; BUILD_VENUE = 'palace';
+    const lan = regBody('par', makeBodyMesh('par'), null); lan.state = 'loose';
+    BUILD_VENUE = keep;
+    venueRoot('palace').add(lan.mesh);
+    lan.mesh.position.set(0, 4.0, window.__ladPlatZ);
+    for(let i=0;i<600;i++){ scene.updateMatrixWorld(true); updateBodies(0.05); }
+    scene.updateMatrixWorld(true);
+    if(Math.abs(lan.mesh.position.y - (LADDER.PLAT + 0.25)) > 0.02)
+      throw new Error('the lantern never came to rest on the platform: y='+lan.mesh.position.y.toFixed(3));
+    if(!lan.rest) throw new Error('it is not at rest, so there is nothing for the wake to do');
+    /* the contract BUILD-SYSTEM.md states: anything that can take the ground
+       out from under a resting body calls wakeBodies.  A grab is that route */
+    grabBody(lad);
+    if(lan.rest) throw new Error('the grab left the lantern asleep on a floor that had gone');
+    lad.mesh.position.set(14, 0, 0); lad.state = 'loose';
+    for(let i=0;i<900;i++){ scene.updateMatrixWorld(true); updateBodies(0.05); }
+    if(Math.abs(lan.mesh.position.y - 0.25) > 0.02)
+      throw new Error('the lantern is still hanging at y='+lan.mesh.position.y.toFixed(3));
+    return 'rested at 3.30, woken by the grab, back on the deck at 0.25';
+  });
+  P('a lighting bar refuses a stepladder', ()=>{
+    const f = FIXTURES.find(x=>x.body);
+    const lantern = BODIES.find(x=>x.mesh === f.body);
+    unhangBody(lantern);
+    const lad = window.__lad;
+    if(canHang(lad, f)) throw new Error('canHang said yes to a stepladder');
+    if(hangBody(lad, f)) throw new Error('a 3.9m stepladder clamped itself to a lighting bar');
+    if(!hangBody(lantern, f)) throw new Error('re-hanging the lantern failed');
+    return 'the point refused it, and the lantern went back on';
+  });
+  P('a destroyed stepladder leaves no raycast target hanging in mid-air', ()=>{
+    const l2 = window.__lad2;
+    l2.mesh.position.set(4, 0, 0); l2.mesh.rotation.set(0, 0, 0);
+    scene.updateMatrixWorld(true);
+    if(groundAt(4, window.__ladPlatZ, 2.6) === null)
+      throw new Error('there was no platform there to begin with');
+    const n = WALKABLE.length;
+    if(!removeBody(l2)) throw new Error('removeBody refused it');
+    if(WALKABLE.indexOf(l2.mesh) >= 0)
+      throw new Error('the destroyed stepladder is still on WALKABLE');
+    if(WALKABLE.length !== n - 1)
+      throw new Error('WALKABLE went '+n+' to '+WALKABLE.length+' on one removal');
+    const gg = groundAt(4, window.__ladPlatZ, 2.6);
+    if(gg !== null && gg > 0.02)
+      throw new Error('you can still stand at '+gg.toFixed(3)+' on a ladder that is gone');
+    return 'spliced off WALKABLE, and the platform is thin air again';
+  });
+  P('a delivered stepladder is written into the save', ()=>{
+    deliverOrder('palace', [{kind:'ladder'}]);
+    const lad = BODIES[BODIES.length - 1];
+    if(lad.kind !== 'ladder' || lad.state !== 'slotted')
+      throw new Error('the delivery gave a '+lad.kind+', '+lad.state);
+    /* what was delivered has to BE a stepladder before the save is worth
+       anything: serBody writes the kind whatever mesh is under it, so a
+       JSON-only assertion goes green against a delivered profile spot */
+    scene.updateMatrixWorld(true);
+    const db = new THREE.Box3().setFromObject(lad.mesh);
+    if(Math.max(db.max.x-db.min.x, db.max.y-db.min.y, db.max.z-db.min.z) < 3.5)
+      throw new Error('what was delivered is only '+(db.max.x-db.min.x).toFixed(2)+'m long');
+    buildSave();
+    const raw = localStorage.getItem('house.build');
+    if(!raw) throw new Error('nothing landed in storage');
+    const j = JSON.parse(raw);
+    if(!j.pallets.some(p=>p.slots.some(s=>s.d && s.d.k === 'ladder')))
+      throw new Error('no stepladder among the saved pallets');
+    window.__saveJson = raw;      // the second boot reads this one
+    return 'delivered, palleted, and on the wire as k:ladder';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
@@ -942,6 +1125,27 @@ const probe2 = `
     buildLoad();
     if(localStorage.getItem('house.build')) throw new Error('the alien version survived');
     return 'bad JSON gone, wrong version gone, no throw';
+  });
+  /* ---- the stepladder, second boot (RULING EK), at the end of this probe too */
+  P('the stepladder came back a stepladder, on its pallet and climbable', ()=>{
+    const lad = BODIES.find(b=>b.kind === 'ladder');
+    if(!lad) throw new Error('no stepladder came back through the reload');
+    if(lad.state !== 'slotted') throw new Error('it came back '+lad.state+', not on its pallet');
+    /* it must come back a LADDER.  makeSerBody rebuilds through makeBodyMesh,
+       and a kind that function does not name falls through to the lantern
+       chain and reloads as a profile spot with nothing thrown anywhere. */
+    unslotBody(lad);
+    lad.mesh.position.set(0, 0, 0); lad.mesh.rotation.set(0, 0, 0);
+    scene.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(lad.mesh);
+    if(Math.abs(bb.max.y - LADDER.H) > 0.02)
+      throw new Error('it reloaded '+bb.max.y.toFixed(3)+'m tall, so it is not a stepladder');
+    if(WALKABLE.indexOf(lad.mesh) < 0)
+      throw new Error('the reloaded stepladder is not on WALKABLE');
+    const gg = groundAt(0, ladFZ(LADDER.RISE), 0);
+    if(gg === null || Math.abs(gg - LADDER.RISE) > 0.02)
+      throw new Error('the first tread reloaded at '+gg);
+    return 'back off the pallet at 3.90m, and its treads still answer groundAt';
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'

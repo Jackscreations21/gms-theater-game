@@ -155,8 +155,21 @@ function removeBody(b){
   if(b.slot){ b.slot.userData.body = null; b.slot = null; }
   if(b.point){ b.point.body = null; b.point = null; }
   if(b.mesh.parent) b.mesh.parent.remove(b.mesh);   // shared geometry, no dispose
+  /* A BODY THAT WAS WALKABLE MUST COME OFF `WALKABLE` (RULING EK).  Taking the
+     mesh out of the scene graph does not take it out of the raycast list —
+     `groundAt` would go on finding a destroyed stepladder's treads for ever,
+     at whatever world matrix they last held, and you could climb thin air.
+     Same splice-off shape as p5g's stand-in swap and p5i's model landing. */
+  if(typeof WALKABLE !== 'undefined'){
+    const wi = WALKABLE.indexOf(b.mesh);
+    if(wi >= 0) WALKABLE.splice(wi, 1);
+  }
   const i = BODIES.indexOf(b);
   if(i >= 0) BODIES.splice(i, 1);
+  /* and destroying a body takes the ground out from under whatever was
+     resting on it — the contract BUILD-SYSTEM.md states.  grabBody covers
+     every route that goes through a hand; this is the one that does not. */
+  if(typeof wakeBodies === 'function') wakeBodies(b.venue);
   if(typeof buildDirty === 'function') buildDirty();
   return true;
 }
