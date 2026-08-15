@@ -4,7 +4,7 @@
 cd "$(dirname "$0")"
 cat src/p1.txt  src/p2.txt  src/p2b.txt src/p2c.txt src/p2e.txt src/p2g.txt \
     src/p2h.txt src/p2f.txt src/p3.txt  src/p4.txt  src/p4c.txt src/p5.txt  src/p5e.txt \
-    src/p6.txt  src/p6b.txt src/p6c.txt src/p5c.txt src/p5d.txt src/p5f.txt src/p5g.txt \
+    src/p6.txt  src/p6b.txt src/p6c.txt src/p6d.txt src/p5c.txt src/p5d.txt src/p5f.txt src/p5g.txt \
     src/p5h.txt \
     src/p5i.txt \
     src/p5j.txt \

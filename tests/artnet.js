@@ -1,15 +1,21 @@
 /* ============================================================================
-   ART-NET — the suite for RULINGS EL..EU.
+   ART-NET — the suite for RULINGS EL..EV.  Two halves, and they are different
+   KINDS of test, which is why they look nothing like each other.
 
-   THIS PR COVERS RULING EL: the relay, tested FOR REAL.  There is no way to
-   unit-test a relay: the whole of it is two sockets and a protocol, so this
-   spawns tools/artnet-relay.js as a child process on free ports, connects to
-   it with Node v24's own global WebSocket, sends a genuine ArtDmx packet over
-   UDP, and reads the bytes out the other end.
+   PART ONE boots the BUILT file under jsdom and drives src/p6d.txt — with a
+   REAL ORIGIN (url: below) and a hand-driven fake WebSocket, so the whole
+   connection path (open, message, close, the backoff ladder, the teardown)
+   is exercised rather than skipped.  An earlier draft booted at about:blank,
+   where artUrl() is null and no socket is ever built, and three of its cases
+   went green against implementations doing the OPPOSITE of what they claimed.
+   If you are tempted to describe this harness as hermetic-because-it-cannot-
+   connect: that premise is what hid them.
 
-   This file is plain node, not a probe template — the game is not booted here
-   at all, because nothing in RULING EL is in the game.  Later PRs in this
-   chain append a jsdom probe above this section for the parts that are.
+   PART TWO tests the relay FOR REAL.  There is no way to unit-test a relay:
+   the whole of it is two sockets and a protocol, so it spawns
+   tools/artnet-relay.js as a child process on free ports, connects with Node
+   v24's own global WebSocket, sends a genuine ArtDmx packet over UDP and
+   reads the bytes out the other end.
 
    THE WATCHDOG.  This suite's exit lives in an async tail, and an await on a
    promise that never settles DRAINS the event loop and exits 0 — a hang that
@@ -58,6 +64,419 @@ const P = async (name, fn)=>{
     errs.push(name + ': ' + e.message);
   }
 };
+
+/* ==========================================================================
+   PART ONE — THE GAME SIDE (RULING EM's state, EN, EU, EV)
+
+   Boots the BUILT file under jsdom the way the other suites do, and drives
+   src/p6d.txt directly.  The page is given an origin so the socket path is
+   real, and `window.WebSocket` is replaced with a fake one that is driven by
+   hand — so nothing here touches the network, and nothing here is skipped
+   either.  The two halves of this file never meet: part two spawns the relay
+   and never boots the game.
+   ========================================================================== */
+{
+  const {JSDOM} = require('jsdom');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'the-house.html'), 'utf8');
+  const dom = new JSDOM(html.replace(/<script src=.*?<\/script>/, ''),
+    /* WITH AN ORIGIN, on purpose.  jsdom's default about:blank has no host,
+       so artUrl() returns null and artOpen() never builds a socket — which
+       meant the entire connection path (open, message, close, the backoff
+       ladder, the teardown) was unreachable, and assertions about it passed
+       against implementations that did the opposite.  A fake WebSocket is
+       installed below, so nothing here touches the network. */
+    {runScripts:'outside-only', pretendToBeVisual:true, url:'http://localhost:8080/'});
+  const w = dom.window;
+  w.HTMLCanvasElement.prototype.getContext = function(){
+    const noop = ()=>{};
+    if(this.__ctx) return this.__ctx;
+    return this.__ctx = {fillRect:noop, fillStyle:'', strokeStyle:'', lineWidth:1, font:'',
+      beginPath:noop, moveTo:noop, lineTo:noop, arc:noop, ellipse:noop, stroke:noop, fill:noop,
+      save:noop, restore:noop, translate:noop, rotate:noop, scale:noop, drawImage:noop,
+      clearRect:noop, createPattern:()=>null, fillText:noop, strokeText:noop, strokeRect:noop,
+      rect:noop, arcTo:noop, setLineDash:noop, measureText:()=>({width:100}), bezierCurveTo:noop,
+      quadraticCurveTo:noop, closePath:noop, clip:noop, setTransform:noop,
+      globalAlpha:1, globalCompositeOperation:'',
+      createLinearGradient:()=>({addColorStop:noop}), createRadialGradient:()=>({addColorStop:noop}),
+      getImageData:(x, y, ww, hh)=>({data:new Uint8ClampedArray(Math.max(4, ww*hh*4))}), putImageData:noop};
+  };
+  const REAL = require('three');
+  const THREE = Object.create(REAL);
+  THREE.WebGLRenderer = class {
+    constructor(){ const c = w.document.createElement('canvas');
+      c.requestPointerLock = ()=>{};
+      this.domElement = c; this.shadowMap = {enabled:false, type:0}; this.renderCount = 0; }
+    setPixelRatio(){} setSize(){}
+    render(scene, camera){ this.renderCount++; scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); }
+    compile(){}
+    getRenderTarget(){ return this._rt || null; }
+    setRenderTarget(t){ this._rt = t || null; }
+    getClearColor(c){ return c.set(0x000000); }
+  };
+  w.THREE = THREE;
+
+  const probe = `
+  (()=>{
+    window.__errs = [];
+    const P = (name, fn)=>{ try{ const v=fn(); console.log('  ok  '+name+(v!==undefined?'  -> '+JSON.stringify(v).slice(0,210):'')); }
+      catch(e){ console.log('  ERR '+name+': '+e.message); if(e.stack) console.log('      '+e.stack.split('\\n').slice(1,4).join(' | ')); window.__errs.push(name+': '+e.message); } };
+
+    /* A FAKE SOCKET, because the real path is the part worth testing and it
+       cannot be reached over a real network from a suite.  It is driven by
+       hand: open() completes the handshake, deliver() fires a message, drop()
+       closes it the way a relay going away does. */
+    class FakeWS {
+      constructor(url){
+        if(FakeWS.refuse){ FakeWS.refused++; throw new Error('connection refused'); }
+        this.url = url; this.readyState = 0; this.binaryType = '';
+        this.closeCalls = 0;
+        FakeWS.made++; FakeWS.last = this;
+      }
+      close(){ this.closeCalls++; this.readyState = 3; }
+      open(){ this.readyState = 1; if(this.onopen) this.onopen(); }
+      deliver(bytes){ if(this.onmessage) this.onmessage({data: bytes.buffer}); }
+      drop(){ this.readyState = 3; if(this.onclose) this.onclose(); }
+    }
+    FakeWS.made = 0; FakeWS.refused = 0; FakeWS.last = null; FakeWS.refuse = false;
+    window.WebSocket = FakeWS;
+    const frame512 = (mark)=>{ const b = new Uint8Array(512); b[0] = mark; return b; };
+    /* run the game's frame until cond, off dt, the way the loop does */
+    const run = (cond, cap)=>{ let n = 0; while(!cond() && n++ < (cap || 20000)) artnetTick(1/60); return n; };
+
+    P('the switch is OFF on every boot, and there is no socket', ()=>{
+      if(typeof ART === 'undefined') throw new Error('there is no ART state at all');
+      if(ART.on !== false) throw new Error('ART.on booted ' + ART.on);
+      if(ART.ws !== null) throw new Error('a socket exists before anybody asked for one');
+      if(ART.live !== false) throw new Error('ART.live booted true');
+      if(ART.buf !== null) throw new Error('there is a frame buffered before any frame arrived');
+      return 'ART.on false and no socket — the built file is unchanged in behaviour until somebody throws it';
+    });
+
+    P('the socket is SAME-ORIGIN, and follows the page scheme', ()=>{
+      if(artUrl() !== 'ws://localhost:8080/artnet')
+        throw new Error('this page gave ' + artUrl());
+      const tls = artUrl({protocol:'https:', host:'desk.local:9000'});
+      if(tls !== 'wss://desk.local:9000/artnet') throw new Error('https gave ' + tls);
+      const none = artUrl({protocol:'http:', host:''});
+      if(none !== null) throw new Error('a page with no host gave ' + none);
+      return 'ws:// here, wss:// on an https page, and null where there is no origin at all';
+    });
+
+    P('the tick does nothing at all while the switch is off', ()=>{
+      const before = FIXTURES.map(f=>f.level).join(',');
+      ART.buf = frame512(255);
+      artnetTick(1/60);
+      if(ART.buf !== null) throw new Error('a buffer survived a tick');
+      if(ART.frames !== 0) throw new Error('a frame was counted with the switch off');
+      if(ART.live !== false) throw new Error('the switch is off and the row would read live');
+      if(FIXTURES.map(f=>f.level).join(',') !== before) throw new Error('a level moved');
+      return 'buffer dropped, nothing counted, nothing written';
+    });
+
+    P('the switch ALONE changes nothing — a running fade carries on (RULING EV)', ()=>{
+      /* the case that made this ruling: an operator throws ARTNET to see what
+         it does, with no relay running.  Freezing his cue here is exactly the
+         indistinguishable-from-broken EV forbids. */
+      artSetOn(false);
+      const f = chan(1);
+      f.level = 0;
+      setLevel(1, 1.0, 5);
+      updateFades(1);
+      const caught = f.level;
+      if(!(caught > 0.02 && caught < 0.9)) throw new Error('the fade was not mid-flight: ' + caught);
+      artSetOn(true);
+      if(artDriving() !== false) throw new Error('no desk is talking and artDriving() is true');
+      if(f.lvlDur !== 5) throw new Error('the fade duration was taken by the switch alone: ' + f.lvlDur);
+      updateFades(1);
+      if(!(f.level > caught + 0.05)) throw new Error('the fade stopped running: ' + caught + ' -> ' + f.level);
+      return 'switch on, no relay: the cue fade ran on from ' + caught.toFixed(3) + ' to ' + f.level.toFixed(3);
+    });
+
+    P('the HANDOVER halts a running fade — when a desk actually starts (RULING EM)', ()=>{
+      const f = chan(1);
+      if(!(f.lvlDur > 0)) throw new Error('this case needs the fade from the case above still running');
+      const caught = f.level;
+      const ws = FakeWS.last;
+      if(!ws) throw new Error('no socket was built when the switch went on');
+      ws.open();
+      ws.deliver(frame512(1));
+      artnetTick(1/60);
+      if(artDriving() !== true) throw new Error('a frame arrived and artDriving() is still false');
+      if(f.lvlDur !== 0) throw new Error('lvlDur survived the handover at ' + f.lvlDur);
+      updateFades(1);
+      if(Math.abs(f.level - caught) > 1e-9)
+        throw new Error('the fade kept running through the handover: ' + caught + ' -> ' + f.level);
+      const dur = FIXTURES.filter(x=>x.lvlDur > 0 || x.colDur > 0).length;
+      if(dur) throw new Error(dur + ' fixtures still carry a fade duration');
+      return 'the desk started talking and a fade at ' + caught.toFixed(3) + ' halted there instead of fighting it';
+    });
+
+    P('the handover halts the PALACE, never the stage you happen to be on (RULING EN)', ()=>{
+      /* FIXTURES is swapped wholesale by the stage walk, so a sweep taken
+         from the Arc halts the ARC's fades and leaves the Palace's running —
+         the one rig this is for. */
+      const home = STAGE;
+      try{
+        stageSwitch('arcMain');
+        if(STAGE !== 'arcMain') throw new Error('could not get to the Arc to test this');
+        ART.took = false;
+        setLevel(1, 1.0, 5);
+        const f = chan(1);
+        if(f.lvlDur !== 5) throw new Error('the Arc fade did not arm');
+        FakeWS.last.deliver(frame512(2));
+        artnetTick(1/60);
+        if(f.lvlDur !== 5)
+          throw new Error('an Art-Net frame took the ARC rig at ' + f.lvlDur + ' — EN says the Palace only');
+        if(ART.live !== true) throw new Error('the packet was not even counted; the indicator must stay live');
+        return 'a frame received at the Arc: counted, indicator live, and not one Arc fade touched';
+      } finally { stageSwitch(home); }
+    });
+
+    P('the LATEST frame wins, through the socket that really delivers it', ()=>{
+      const ws = FakeWS.last;
+      const f0 = ART.frames;
+      ws.deliver(frame512(11));
+      ws.deliver(frame512(22));          // a second frame before the tick
+      if(!ART.buf) throw new Error('onmessage did not store anything');
+      if(ART.buf[0] !== 22) throw new Error('the buffer holds ' + ART.buf[0] + ' — the FIRST frame won');
+      artnetTick(1/60);
+      if(ART.frames !== f0 + 1) throw new Error('more than one frame was taken in one tick');
+      if(ART.buf !== null) throw new Error('the buffer was not cleared');
+      return 'two frames between ticks: the newer is what the tick takes, and the tick takes one';
+    });
+
+    P('a frame that is not 512 bytes is not a frame, and it is COUNTED', ()=>{
+      const ws = FakeWS.last;
+      if(ws !== ART.ws) throw new Error('this case is driving a socket the game is not using');
+      const f0 = ART.frames, b0 = ART.bad;
+      ws.deliver(new Uint8Array(64));
+      artnetTick(1/60);
+      if(ART.frames !== f0) throw new Error('a 64-byte frame was counted as DMX');
+      if(ART.bad !== b0 + 1) throw new Error('a wrong-sized frame was dropped without being counted');
+      ws.onmessage({data:'hello'});
+      if(ART.buf !== null) throw new Error('a text frame was stored as if it were channel data');
+      return 'a short frame counted as bad and a text frame refused — a silent drop would read as connected-but-stale';
+    });
+
+    P('the socket asks for ARRAYBUFFER, or every frame arrives empty', ()=>{
+      /* the regression the 512 guard will really catch: a socket left on the
+         default binaryType delivers Blobs, new Uint8Array(blob) is length 0,
+         and every frame is refused for ever with the row reading connected.
+         Assert the cause, not just the symptom. */
+      if(!ART.ws) throw new Error('this case needs a live socket');
+      if(ART.ws.binaryType !== 'arraybuffer')
+        throw new Error('binaryType is ' + JSON.stringify(ART.ws.binaryType) + ' — frames would arrive as Blobs');
+      return 'binaryType arraybuffer, set before the handler is attached';
+    });
+
+    P('signal loss goes stale, and the look is NOT touched', ()=>{
+      if(typeof ART_STALE === 'undefined') throw new Error('ART_STALE does not exist');
+      /* LIGHT IT FIRST.  Taken on a dark rig with default colours, the
+         comparison below passes against a build that blacks the house out. */
+      setLevel(1, 0.77, 0); setColorCh(1, '#3366ff', 0);
+      setLevel(2, 0.42, 0); setColorCh(2, '#ff8800', 0);
+      setLevel(3, 0.91, 0);
+      FakeWS.last.deliver(frame512(3));
+      artnetTick(1/60);
+      if(ART.live !== true) throw new Error('this case must start LIVE, and it is not');
+      const lit = FIXTURES.filter(f=>f.level > 0.01).length;
+      if(lit < 3) throw new Error('this case needs a lit rig to mean anything; only ' + lit + ' are up');
+      const before = FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',');
+      let t = 0;
+      while(t < ART_STALE + 0.2){ artnetTick(1/60); t += 1/60; }
+      if(ART.live !== false) throw new Error('still live ' + t.toFixed(2) + 's after the last frame');
+      if(artDriving() !== false) throw new Error('artDriving() still true on a dead desk');
+      if(FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',') !== before)
+        throw new Error('the rig moved when the desk went quiet — it must HOLD its last look');
+      return 'stale after ' + ART_STALE + 's with ' + lit + ' channels up: board has it back, not one level or colour moved';
+    });
+
+    P('a refused connection backs off 1-2-4-8, counted off the frame dt', ()=>{
+      FakeWS.refuse = true;
+      artSetOn(false); artSetOn(true);
+      const seen = [Math.round(ART.retry * 100) / 100];
+      let last = ART.step, guard = 0, ticks = 0;
+      while(seen.length < 5 && guard++ < 20000){
+        artnetTick(1/60); ticks++;
+        if(ART.step !== last){ last = ART.step; seen.push(Math.round(ART.retry * 100) / 100); }
+      }
+      FakeWS.refuse = false;
+      if(guard >= 20000) throw new Error('the ladder stopped advancing off dt at ' + seen.join(','));
+      const want = [1, 2, 4, 8, 8].join(',');
+      if(seen.join(',') !== want) throw new Error('the ladder read ' + seen.join(',') + ', wanted ' + want);
+      if(ticks < 15 * 60 * 0.9) throw new Error('the whole ladder took only ' + ticks + ' frames; it is not counting seconds');
+      if(FakeWS.refused < 4) throw new Error('only ' + FakeWS.refused + ' attempts were actually made');
+      return 'waits of ' + seen.join('s, ') + 's over ' + ticks + ' frames, and ' + FakeWS.refused + ' real attempts';
+    });
+
+    P('a connection that OPENS and drops still escalates (RULING EU)', ()=>{
+      /* a relay restarting under a watcher, a proxy that accepts then resets,
+         a headset whose wifi flaps: forgiving the ladder on the handshake
+         turns all three into a permanent 1Hz reconnect storm. */
+      artSetOn(false); artSetOn(true);
+      const waits = [];
+      for(let n = 0; n < 4; n++){
+        const ws = FakeWS.last;
+        if(!ws || ws.readyState === 3) throw new Error('no live socket to open at step ' + n);
+        ws.open();
+        ws.drop();
+        waits.push(Math.round(ART.retry * 100) / 100);
+        run(()=>ART.ws !== null, 3000);
+      }
+      if(waits.join(',') !== '1,2,4,8')
+        throw new Error('open-then-drop gave ' + waits.join(',') + ' — a handshake is not a working wire');
+      return 'four opens that dropped: ' + waits.join('s, ') + 's — it escalates instead of hammering';
+    });
+
+    P('a wire that HOLDS UP forgives the backoff — a handshake and one frame do not', ()=>{
+      /* self-arming rather than leaning on the case above: a flap that
+         carries 23ms of traffic carries a frame, so "one frame forgives"
+         would put the 1Hz storm back one frame later. */
+      artSetOn(false); artSetOn(true);
+      const a = FakeWS.last; a.open(); a.drop();
+      if(ART.step === 0) throw new Error('a socket that opened and dropped left the ladder forgiven');
+      run(()=>ART.ws !== null, 3000);
+      const ws = FakeWS.last;
+      ws.open();
+      const held = ART.step;
+      if(held === 0) throw new Error('the handshake alone reset the ladder');
+      if(typeof ART_PROVE === 'undefined') throw new Error('ART_PROVE does not exist');
+      ws.deliver(frame512(9));
+      artnetTick(1/60);
+      if(ART.step !== held)
+        throw new Error('ONE frame forgave the ladder; a flap carrying one frame would storm at 1Hz');
+      for(let i = 1; i < ART_PROVE; i++){ ws.deliver(frame512(9)); artnetTick(1/60); }
+      if(ART.step !== 0) throw new Error(ART_PROVE + ' frames did not forgive the ladder; step is ' + ART.step);
+      return 'step held through the handshake and through one frame, and cleared after ' + ART_PROVE + ' of them';
+    });
+
+    P('the desk dying and coming back gets its own handover (RULING EM)', ()=>{
+      const ws = FakeWS.last;
+      const f = chan(4);
+      const stale = ()=>{ let t = 0; while(t < ART_STALE + 0.2){ artnetTick(1/60); t += 1/60; } };
+      /* START FROM A DEAD DESK.  The handover is once per SPELL of driving,
+         so a case that begins mid-spell would arm a fade the handover is not
+         due to take and would read as a bug in the code. */
+      stale();
+      if(ART.live !== false) throw new Error('this case must begin with the desk quiet');
+      const halts = [];
+      for(let round = 0; round < 2; round++){
+        setLevel(4, round ? 0.0 : 1.0, 5);
+        if(f.lvlDur !== 5) throw new Error('round ' + round + ': the board could not arm a fade');
+        ws.deliver(frame512(5 + round)); artnetTick(1/60);
+        if(f.lvlDur !== 0) throw new Error('round ' + round + ': the desk spoke and did not take the rig; lvlDur ' + f.lvlDur);
+        halts.push(round);
+        stale();
+        if(ART.live !== false) throw new Error('round ' + round + ': the desk did not go quiet again');
+      }
+      if(halts.length !== 2) throw new Error('only ' + halts.length + ' handover(s)');
+      return 'desk speaks and halts, dies, board fades again, desk returns and halts again — per spell, not per switch';
+    });
+
+    P('walking out of the Palace and back gets the handover AGAIN (RULINGS EN, EM)', ()=>{
+      /* the desk stays live the whole way — the walk is the only thing that
+         changes.  A version that begins with the handover already cleared
+         would pass against an implementation that never clears it on leaving,
+         which is exactly what the negative check caught. */
+      const home = STAGE;
+      const ws = FakeWS.last;
+      try{
+        if(STAGE !== 'palace') stageSwitch('palace');
+        ws.deliver(frame512(7)); artnetTick(1/60);
+        if(!ART.took) throw new Error('the handover never happened on the Palace to begin with');
+        stageSwitch('arcMain');
+        ws.deliver(frame512(7)); artnetTick(1/60);       // still talking, just not to this stage
+        if(ART.live !== true) throw new Error('the desk stopped being live during the walk');
+        if(ART.took) throw new Error('walking out of the Palace left the handover marked done');
+        stageSwitch('palace');
+        setLevel(5, 1.0, 5);
+        const f = chan(5);
+        if(f.lvlDur !== 5) throw new Error('the Palace fade did not arm');
+        ws.deliver(frame512(8)); artnetTick(1/60);
+        if(f.lvlDur !== 0)
+          throw new Error('walked back into the Palace with the desk still talking and it never took the rig');
+        return 'handover on the Palace, cleared by the walk to the Arc, taken again on the frame you walk back in';
+      } finally { stageSwitch(home); }
+    });
+
+    P('a socket stuck in CONNECTING is given up on, not waited on for ever', ()=>{
+      artSetOn(false); artSetOn(true);
+      const ws = FakeWS.last;
+      if(!ws || ws.readyState !== 0) throw new Error('this case needs a socket that never opens');
+      if(typeof ART_CONNECT_MAX === 'undefined') throw new Error('ART_CONNECT_MAX does not exist');
+      const n = run(()=>ART.ws === null, 20000);
+      if(ART.ws !== null) throw new Error('the relay waited out ' + (n/60).toFixed(0) + 's on a socket that never opened');
+      if(ws.closeCalls < 1) throw new Error('it let go of the socket without closing it');
+      if(!(ART.retry > 0)) throw new Error('it gave up and then did not rejoin the ladder');
+      /* BOUND IT TO THE CONSTANT.  "It eventually gave up" was never in
+         doubt, and a build that aborts every socket on the first frame — one
+         that could never connect in a browser at all, because a real socket
+         is in CONNECTING for at least a frame — passed this case and printed
+         "gave up after 0.0s" while doing it. */
+      const secs = n/60;
+      if(secs < ART_CONNECT_MAX*0.9 || secs > ART_CONNECT_MAX*1.3)
+        throw new Error('gave up after ' + secs.toFixed(2) + 's against an ART_CONNECT_MAX of ' + ART_CONNECT_MAX);
+      return 'waited ' + secs.toFixed(1) + 's of frames against a limit of ' + ART_CONNECT_MAX + ', then closed and armed a ' + ART.retry.toFixed(0) + 's retry';
+    });
+
+    P('switching OFF closes the socket and snaps nothing (RULING EM)', ()=>{
+      artSetOn(false); artSetOn(true);
+      const ws = FakeWS.last;
+      ws.open();
+      ws.deliver(frame512(4));
+      artnetTick(1/60);
+      setLevel(1, 0.77, 0); setColorCh(1, '#3366ff', 0);
+      setLevel(2, 0.42, 0); setLevel(3, 0.91, 0);
+      const lit = FIXTURES.filter(f=>f.level > 0.01).length;
+      if(lit < 3) throw new Error('this case needs a lit rig; only ' + lit + ' channels are up');
+      const before = FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',');
+      artSetOn(false);
+      if(ART.live !== false) throw new Error('live survived the switch going off');
+      if(ART.ws !== null) throw new Error('a socket survived the switch going off');
+      if(ws.closeCalls < 1) throw new Error('the socket was dropped without being closed');
+      if(ws.onmessage !== null) throw new Error('the old socket can still write into ART.buf');
+      ws.deliver(frame512(200));
+      if(ART.buf !== null) throw new Error('a closed socket still delivered a frame into the buffer');
+      if(FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',') !== before)
+        throw new Error('the rig moved when the operator took it back');
+      return 'a rig with ' + lit + ' channels up held every level and colour, and the old socket cannot write again';
+    });
+
+    P('the part introduces no setTimeout of its own — game timing is the frame', ()=>{
+      /* delimited by the two part HEADERS either side of it in build order,
+         so this reads exactly p6d and cannot quietly grow to cover its
+         neighbours the way a fixed slice length would. */
+      const src = document.documentElement.outerHTML;
+      const a = src.indexOf('ART-NET — THE DESK DRIVES THE PALACE');
+      if(a < 0) throw new Error('cannot find the part in the built file');
+      const b = src.indexOf('SHOWS — a whole production', a);
+      if(b < 0) throw new Error('cannot find the part AFTER it, so the slice has no end');
+      const part = src.slice(a, b);
+      if(part.length < 2000) throw new Error('the slice is only ' + part.length + ' chars; the markers moved');
+      if(part.indexOf('setTimeout(') >= 0 || part.indexOf('setInterval(') >= 0)
+        throw new Error('the part sets a timer; reconnect must ride the frame dt');
+      return 'no timer call in the ' + part.length + ' chars of the part — the backoff is seconds off dt';
+    });
+
+    console.log(window.__errs.length ? '--- part one failures: '+window.__errs.length+' ---'
+                                     : '--- part one failures: 0 ---');
+    window.__errs.forEach(e=>console.log('  '+e));
+  })();
+`;
+
+  const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?script>/g, '');
+  try{ w.eval(script + probe); }
+  catch(e){
+    console.log('PART ONE THREW: ' + e.message);
+    if(e.stack) console.log(e.stack.split('\n').slice(0, 6).join('\n'));
+    errs.push('part one threw: ' + e.message);
+  }
+  for(const e of (w.__errs || [])) errs.push(e);
+}
+
+/* ==========================================================================
+   PART TWO — THE RELAY (RULING EL), tested for real over sockets
+   ========================================================================== */
 
 /* ---- a real ArtDmx packet, built the way a console builds one ------------ */
 function artDmx(universe, data, opts){
@@ -319,7 +738,10 @@ function getUrl(port, url, headers){
   });
 
   await P('the repo is served but .git is not, by any of its names', async ()=>{
-    for(const u of ['/.git/config', '/.git/refs/heads/main', '/.gitignore', '/%2Egit/config']){
+    /* .git/HEAD, not .git/refs/heads/main: a FRESH CLONE packs its refs, so
+       the loose file is honestly absent and the relay 404s it — the case
+       would then be green only in a repo with loose refs. */
+    for(const u of ['/.git/config', '/.git/HEAD', '/.gitignore', '/%2Egit/config']){
       const r = await getUrl(httpPort, u);
       if(r.status !== 403) throw new Error(u + ' answered ' + r.status + ', expected 403');
     }

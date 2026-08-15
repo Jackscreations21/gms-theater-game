@@ -16,6 +16,7 @@ order; **the order is a dependency order and must never be sorted**.
 | `p5 p5e` | scenic stock, smoke | |
 | `p6 p6b` | cue engine + console UI; the crew (`CREW`, job queue; the lead carpenter + carp job kinds) | |
 | `p6c` | **the carpenters**: `CARP_CAT` (5 rows), `carpSurvey`/`carpParts`/`carpPlan`/`carpPlanList`/`carpStackH` (all pure), `carpStart`/`CARP_RUN` | after `p6b` (extends the crew), before `p5c` |
+| `p6d` | **Art-Net** (RULINGS EL–EV): `ART`, the WebSocket client, the reconnect off frame `dt`, `artnetTick` — the one place a desk byte may touch the rig. `artDriving()` is the gate everything else asks | after `p6c`, before `p5c`; its references to `FIXTURES`/`STAGE` are all inside function bodies, never in an initialiser (TDZ) |
 | `p5c` | `SHOWS`/`SHOW`, scenes, rain/fire, helpers | after the crew (`crewForgetLoads`) |
 | `p5d p5f p5g` | Lost Boys, Hamilton, The Play That Goes Wrong | `p5f`/`p5g` reuse `LB_CLOTH_W` from `p5d` |
 | `p2j` | the Arc Centre (second venue) | after the shows, before the stages |
