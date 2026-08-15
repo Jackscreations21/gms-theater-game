@@ -39,8 +39,12 @@ const ART_STALE = 2.0;
 const ART_BACKOFF = [1, 2, 4, 8];
 /* how long a socket may sit in CONNECTING before we give up on it */
 const ART_CONNECT_MAX = 10;
-/* the age the row prints stops counting here; it means "long ago" either way */
-const ART_SEEN_CAP = 3600;
+/* HOW MUCH WIRE PROVES A WIRE.  A desk sends ~44 frames a second, so this is
+   about a second of real traffic.  Forgiving the backoff on the handshake
+   turned a flapping link into a 1Hz reconnect storm — and forgiving it on the
+   FIRST frame only moved the storm one frame later, since a flap that carries
+   23ms of traffic carries a frame.  A link has to hold up to be believed. */
+const ART_PROVE = 44;
 
 const ART = {
   on:     false,   // the switch (RULING EM).  Off on every boot, by ruling.
@@ -55,6 +59,8 @@ const ART = {
   step:   0,       // which backoff we are on
   retry:  0,       // seconds until the next attempt, 0 = not waiting
   opening:0,       // seconds this socket has spent in CONNECTING
+  got:    0,       // frames out of THIS socket — what proves the wire
+  bad:    0,       // frames that were not 512 bytes; the row prints it
   took:   false    // the handover has been done for this spell of driving
 };
 
@@ -92,6 +98,7 @@ function artOpen(){
   ws.binaryType = 'arraybuffer';
   ART.ws = ws;
   ART.opening = 0;
+  ART.got = 0;
   /* A CONNECTION IS NOT A CONNECTION UNTIL A FRAME COMES OUT OF IT, so the
      backoff is NOT forgiven here.  A relay restarting under a watcher, a
      proxy that accepts then resets, a headset whose wifi flaps — all of them
@@ -183,9 +190,7 @@ function artHandover(){
 function artnetTick(dt){
   if(!ART.on){ ART.buf = null; return; }
 
-  /* capped, because the ARTNET row prints this as an age and a machine left
-     switched on overnight should not report five digits of seconds */
-  if(ART.seen < ART_SEEN_CAP) ART.seen += dt;
+  ART.seen += dt;
   if(ART.seen > ART_STALE){ ART.live = false; ART.took = false; }
 
   /* the reconnect, counted in seconds off the frame — never a timer */
@@ -212,14 +217,24 @@ function artnetTick(dt){
   const b = ART.buf;
   ART.buf = null;
   if(!b) return;
-  /* the relay pads and truncates to exactly 512 (RULING EL), so anything else
-     did not come from it and has no channel numbering we can trust */
-  if(b.length !== 512) return;
+  /* The relay pads and truncates to exactly 512 (RULING EL), so anything else
+     did not come from it and has no channel numbering we can trust.
+
+     COUNTED, NOT MERELY DROPPED.  The mismatch this really catches is not a
+     relay of the wrong vintage — the relay serves the game, so the two cannot
+     disagree — it is a client-side fault like a socket left on its default
+     binaryType, where every frame arrives as an empty view and a silent drop
+     would read as connected-but-stale with nothing anywhere to say why. */
+  if(b.length !== 512){ ART.bad++; return; }
 
   ART.frames++;
+  ART.got++;
   ART.seen = 0;
   ART.live = true;
-  /* A FRAME IS WHAT PROVES THE WIRE, not a handshake — see artOpen */
-  ART.step = 0;
+  /* A WIRE THAT HELD UP IS WHAT FORGIVES THE LADDER — not a handshake, and
+     not one frame either: a flap that carries 23ms of traffic carries a
+     frame, so forgiving on the first one just moves the storm one frame
+     later.  See ART_PROVE. */
+  if(ART.got >= ART_PROVE) ART.step = 0;
   artHandover();
 }
