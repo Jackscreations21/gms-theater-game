@@ -60,10 +60,13 @@ const probe = `
     if(!VR.orders || !VR.orders.palace || !VR.orders.arc) throw new Error('screens missing');
     ['palace','arc'].forEach(k=>{
       const sc = VR.orders[k];
-      const minus = sc.hits.filter(h=>h.w===56 && h.x===300);
-      const plus  = sc.hits.filter(h=>h.w===56 && h.x===440);
+      /* RULING EG took GEAR from six kinds to nine, which is past the six a
+         48px pitch fits, so the rows draw at the PAINT tab's small pitch and
+         its button geometry (40 wide, at 340 and 460) */
+      const minus = sc.hits.filter(h=>h.w===40 && h.x===340);
+      const plus  = sc.hits.filter(h=>h.w===40 && h.x===460);
       const order = sc.hits.filter(h=>h.w===300 && h.h===56);
-      if(minus.length !== 6 || plus.length !== 6) throw new Error(k+': '+minus.length+'/'+plus.length+' count buttons');
+      if(minus.length !== 9 || plus.length !== 9) throw new Error(k+': '+minus.length+'/'+plus.length+' count buttons');
       if(order.length !== 1) throw new Error(k+': no ORDER button');
     });
     /* on the wall of its own shed, so it culls with the room */
@@ -76,7 +79,7 @@ const probe = `
   console.log('--- the delivery ---');
   P('an order becomes a loaded pallet on the apron, thirty seconds later', ()=>{
     const sc = VR.orders.palace;
-    const plusOf = row => sc.hits.find(h=>h.x===440 && h.y===112 + row*48);
+    const plusOf = row => sc.hits.find(h=>h.x===460 && h.y===112 + row*28);
     plusOf(0).fn(); plusOf(0).fn();          // two profiles
     plusOf(5).fn();                          // one PA box
     sc.hits.find(h=>h.w===300 && h.h===56).fn();   // ORDER
@@ -168,6 +171,125 @@ const probe = `
     for(let i=0;i<130;i++) updateSheds(0.05);
     if(ORDERS.arc.pallets.length) throw new Error('the arc pallet never cleared');
     return 'a cyc unit, delivered 420m from the palace';
+  });
+
+  /* ---- RULING EG — the studio kit, ordered and delivered ------------------
+     Appended at the END of this file on purpose: parallel branches of the same
+     round take the top and the middle, and three anchors never conflict.     */
+  console.log('--- RULING EG — the lights you can order ---');
+  P('the three studio kinds are the last three GEAR rows, labelled and orderable', ()=>{
+    const rows = orderRows(0);
+    if(rows.length !== 9) throw new Error(rows.length + ' gear rows, wanted 9');
+    /* the six that were there have not MOVED — the row order is what a hand
+       learns and what four suites press by index, so a new kind goes last */
+    const head = rows.slice(0, 6).map(r=>r.key).join(',');
+    if(head !== 'profile,fresnel,par,cyc,mover,speaker')
+      throw new Error('the old rows moved: ' + head);
+    const want = [['soft','SOFTLIGHT'], ['panel','LED PANEL'], ['hmi','HMI FRESNEL']];
+    rows.slice(6).forEach((r, i)=>{
+      if(r.key !== want[i][0]) throw new Error('row ' + (6+i) + ' is ' + r.key);
+      if(r.label !== want[i][1]) throw new Error(r.key + ' is labelled ' + JSON.stringify(r.label));
+      if(!r.unit || r.unit.kind !== want[i][0]) throw new Error(r.key + ' orders ' + JSON.stringify(r.unit));
+    });
+    return rows.slice(6).map(r=>r.label).join(' / ');
+  });
+  P('a softlight, a panel and an HMI pressed off the glass arrive as hangable bodies', ()=>{
+    const sc = VR.orders.palace;
+    sc.tab = 0; sc.counts = {}; sc.status = ''; vrDrawOrder(sc);
+    const plusOf = row => sc.hits.find(h=>h.x===460 && h.y===112 + row*28);
+    [6, 7, 8].forEach(r=>{
+      const b = plusOf(r);
+      if(!b) throw new Error('no + button on gear row ' + r);
+      b.fn();
+    });
+    sc.hits.find(h=>h.w===300 && h.h===56).fn();          // ORDER
+    if(ORDERS.palace.pending.length !== 1) throw new Error('the slip did not take: ' + sc.status);
+    const before = BODIES.length;
+    for(let i=0;i<620;i++) updateSheds(0.05);             // 31 seconds of game time
+    if(BODIES.length !== before + 3) throw new Error((BODIES.length - before) + ' bodies delivered');
+    const fresh = BODIES.slice(-3);
+    const kinds = fresh.map(b=>b.kind).sort().join(',');
+    if(kinds !== 'hmi,panel,soft') throw new Error('delivered: ' + kinds);
+    /* each is its OWN lantern, not the profile makeBodyMesh falls back to.
+       Measured on the body's own box, because a merged shell sits at the
+       ORIGIN and its pieces have stopped existing as objects (TRAPS). */
+    const sizeOf = m => { const b = new THREE.Box3().setFromObject(m);
+      return [b.max.x-b.min.x, b.max.y-b.min.y, b.max.z-b.min.z].map(n=>n.toFixed(2)).join('x'); };
+    const pro = sizeOf(makeBodyMesh('profile'));
+    const got = {};
+    fresh.forEach(b=>{
+      got[b.kind] = sizeOf(b.mesh);
+      if(got[b.kind] === pro)
+        throw new Error(b.kind + ' is the profile body: both ' + pro);
+      if(!b.mesh.userData.lens) throw new Error(b.kind + ' has no lens to repaint');
+      if(!b.mesh.userData.clamp) throw new Error(b.kind + ' has no clamp — it never meets a pipe');
+      /* RULING A: any lantern body hangs on any lantern point, and none of
+         them is rigging — canHang reads only these two fields */
+      if(!canHang(b, {body:null, spk:false})) throw new Error(b.kind + ' cannot hang on a lantern point');
+      if(canHang(b, {body:null, spk:true})) throw new Error(b.kind + ' was taken for a PA box');
+    });
+    if(new Set(Object.keys(got).map(k=>got[k])).size !== 3)
+      throw new Error('two of the three are the same body: ' + JSON.stringify(got));
+    return got;
+  });
+  P('rank and power are two numbers, and the HMI is ranked above what it burns (BF/EG)', ()=>{
+    const at = x => ({pos:new THREE.Vector3(x, 8, -2), aim:new THREE.Vector3(x, 0, 0)});
+    const soft = addFixture(Object.assign({name:'EG SOFT', type:'soft'}, at(-14)));
+    const panel = addFixture(Object.assign({name:'EG PANEL', type:'panel'}, at(-15)));
+    const hmi = addFixture(Object.assign({name:'EG HMI', type:'hmi'}, at(-16)));
+    const pro = addFixture(Object.assign({name:'EG PRO', type:'profile'}, at(-17)));
+    const table = {soft:[70, 5.0, 12, 2.2, 2.2], panel:[60, 4.2, 11, 1.8, 1.8], hmi:[24, 2.0, 26, 3.4, 3.6]};
+    [soft, panel, hmi].forEach(f=>{
+      const w = table[f.type];
+      ['angle','beamRad','beamLen','power','rank'].forEach((k, i)=>{
+        if(Math.abs(f[k] - w[i]) > 1e-9)
+          throw new Error(f.type + '.' + k + ' is ' + f[k] + ', the ruling says ' + w[i]);
+      });
+    });
+    /* the one place they must NOT agree — a rank that fell out of power would
+       read 3.4 here and nothing else in the record would look wrong */
+    if(hmi.rank === hmi.power) throw new Error('the HMI rank defaulted to its power, ' + hmi.rank);
+    if(!(hmi.rank > pro.rank)) throw new Error('the HMI (' + hmi.rank + ') does not outrank a profile (' + pro.rank + ')');
+    if(!(hmi.rank > soft.rank && hmi.rank > panel.rank)) throw new Error('the key light does not outrank the wash');
+    /* and the glow sits at the LENS of a flat body, not a hand's width in front */
+    if(!(panel.glow.position.z < 0.12)) throw new Error('the panel glow floats at z ' + panel.glow.position.z);
+    if(Math.abs(pro.glow.position.z - 0.4) > 1e-9) throw new Error('a profile glow moved to ' + pro.glow.position.z);
+    [soft, panel, hmi, pro].forEach(f=>{ f.level = 0; });
+    return {hmi:{power:hmi.power, rank:hmi.rank}, profileRank:pro.rank, panelGlowZ:panel.glow.position.z};
+  });
+  P('a diffuse source gets the soft edge and the wash; the HMI keeps its shaft', ()=>{
+    const was = FIXTURES.map(f=>f.level), g0 = RIG.grand, b0 = RIG.blackout;
+    FIXTURES.forEach(f=>{ f.level = 0; });
+    RIG.grand = 1; RIG.blackout = false;
+    const named = n => FIXTURES.filter(f=>f.name === n).pop();
+    const soft = named('EG SOFT'), panel = named('EG PANEL'), hmi = named('EG HMI'), pro = named('EG PRO');
+    if(!soft || !panel || !hmi || !pro) throw new Error('the last test left no fixtures to drive');
+    [soft, panel, hmi, pro].forEach(f=>{ f.level = 1; });
+    updateRig(1/60, 0);
+    /* read what the ENGINE produced, never the formula: the beam uniform off a
+       real beam and the penumbra off the pool light that actually took it */
+    const beamOf = f => f.beam.material.uniforms.uInt.value;
+    const lightOf = f => LIGHT_POOL.find(l=>l.intensity > 0 && l.position.distanceTo(f._org) < 0.01);
+    const shaft = beamOf(pro);
+    if(!(shaft > 0)) throw new Error('nothing is lit — the rig never ran');
+    if(Math.abs(beamOf(hmi) - shaft) > 1e-9) throw new Error('the HMI beam is not a shaft: ' + beamOf(hmi) + ' against ' + shaft);
+    [soft, panel].forEach(f=>{
+      if(!(beamOf(f) < shaft * 0.6)) throw new Error(f.type + ' burns a shaft in haze: ' + beamOf(f) + ' against ' + shaft);
+      const l = lightOf(f);
+      if(!l) throw new Error(f.type + ' never took a real light');
+      if(Math.abs(l.penumbra - 0.85) > 1e-9) throw new Error(f.type + ' has a hard edge: penumbra ' + l.penumbra);
+    });
+    const lh = lightOf(hmi);
+    if(!lh) throw new Error('the HMI never took a real light');
+    if(Math.abs(lh.penumbra - 0.45) > 1e-9) throw new Error('the HMI went soft: penumbra ' + lh.penumbra);
+    /* read the numbers BEFORE the restore — the rig is re-run below, and a
+       report line taken after it prints the dark rig */
+    const out = {wash:+beamOf(soft).toFixed(3), shaft:+shaft.toFixed(3),
+                 softEdge:lightOf(soft).penumbra, hardEdge:lh.penumbra};
+    FIXTURES.forEach((f, i)=>{ f.level = was[i] === undefined ? 0 : was[i]; });
+    RIG.grand = g0; RIG.blackout = b0;
+    updateRig(1/60, 0);
+    return out;
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'

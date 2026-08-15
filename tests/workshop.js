@@ -53,6 +53,82 @@ const probe = `
   const P = (name, fn)=>{ try{ const v=fn(); console.log('  ok  '+name+(v!==undefined?'  -> '+JSON.stringify(v).slice(0,210):'')); }
     catch(e){ console.log('  ERR '+name+': '+e.message); if(e.stack) console.log('      '+e.stack.split('\\n').slice(1,4).join(' | ')); window.__errs.push(name+': '+e.message); } };
 
+  /* ---- RULING EG — the three new lantern bodies ---------------------------
+     Anchored at the TOP of this file on purpose: the merge helper, the shed
+     palette and the plant own the middle and the end, so parallel branches of
+     the same round never touch the same lines.                              */
+  console.log('--- RULING EG — the studio kit pays RULING DY like everything else ---');
+  P('a softlight, a panel and an HMI are three draws each, exactly like a par can', ()=>{
+    const meshes = m => { let n = 0; m.traverse(c=>{ if(c.isMesh) n++; }); return n; };
+    const got = {par:meshes(makeBodyMesh('par'))};
+    ['soft','panel','hmi'].forEach(k=>{ got[k] = meshes(makeBodyMesh(k)); });
+    /* one M.fixture shell, one M.steel shell, one lens.  A body that skipped
+       mergeShell is 9-14 meshes here, which is the 10.8 draws a lantern cost
+       before RULING DY put back three kinds at a time. */
+    ['soft','panel','hmi'].forEach(k=>{
+      if(got[k] > 3) throw new Error(k + ' is ' + got[k] + ' meshes — it did not merge (budget 3)');
+      if(got[k] < 3) throw new Error(k + ' is only ' + got[k] + ' meshes — it lost a part');
+    });
+    if(got.par !== 3) throw new Error('the reference par is ' + got.par + ' meshes, not 3');
+    return got;
+  });
+  P('each keeps exactly ONE lens, unmerged and on the shared keyed cache', ()=>{
+    ['soft','panel','hmi'].forEach(k=>{
+      const b = makeBodyMesh(k);
+      const lensy = [];
+      b.traverse(c=>{ if(c.isMesh && lensMatted(c.material)) lensy.push(c); });
+      if(lensy.length !== 1)
+        throw new Error(k + ' carries ' + lensy.length + ' keyed-cache pieces — two would merge into one frozen mesh and every repaint after that is invisible (the roller-head trap)');
+      if(b.userData.lens !== lensy[0]) throw new Error(k + ' publishes a userData.lens that is not its lens');
+      /* and it is the SAME material object on the next one built — a lens
+         tinted in place would take every lantern of that kind with it */
+      const b2 = makeBodyMesh(k);
+      if(b2.userData.lens.material !== lensy[0].material)
+        throw new Error(k + ' mints a lens material per body');
+      if(b.userData.clamp === undefined) throw new Error(k + ' never declared a clamp — it cannot meet a pipe');
+    });
+    return 'one lens each, shared and repaintable';
+  });
+  P('every buffer is cached per TYPE, so four hundred bodies share them', ()=>{
+    /* TWO CLAUSES, BECAUSE THE MERGE HIDES HALF THE QUESTION.  mergeParts
+       CLONES its inputs and mergeShell caches the RESULT under its own key, so
+       after the merge a piece built from an uncached BoxGeometry call has
+       already been thrown away and a walk of the finished body cannot see it —
+       the first draft of this assertion passed against exactly that mutation.
+       So: (a) what the body still RENDERS is shared, which is the lens and
+       every shell; (b) every piece the builder makes is registered in FIXG by
+       name, which is the only place an uncached piece is still visible.      */
+    const geos = m => { const g = []; m.traverse(c=>{ if(c.isMesh) g.push(c.geometry); }); return g; };
+    const out = {};
+    ['soft','panel','hmi'].forEach(k=>{
+      const a = geos(makeBodyMesh(k)), b = geos(makeBodyMesh(k));
+      if(!a.length || a.length !== b.length) throw new Error(k + ' built two different bodies');
+      a.forEach((g, i)=>{ if(g !== b[i])
+        throw new Error(k + ' renders a buffer minted per body (index ' + i + ') — 400 of them on a grid'); });
+      out[k] = a.length + ' rendered buffers, shared';
+    });
+    const keys = ['softBox','softCrateV','softCrateH','softLens',
+                  'panSlab','panDrv','panFlap','panLens',
+                  'hmiBody','hmiRing','hmiBallast','hmiLens'];
+    keys.forEach(kk=>{ if(!FIXG[kk])
+      throw new Error(kk + ' is not in FIXG — that piece is built fresh for every body'); });
+    out.cached = keys.length + ' pieces named in FIXG';
+    return out;
+  });
+  P('and not one new material between them (RULING EI, by construction)', ()=>{
+    const palette = new Set(Object.keys(M).map(k=>M[k]));
+    ['soft','panel','hmi'].forEach(k=>{
+      makeBodyMesh(k).traverse(c=>{
+        if(!c.isMesh) return;
+        if(!palette.has(c.material) && !lensMatted(c.material))
+          throw new Error(k + ' mints a material of its own (' + c.material.type + ') — it is outside the shared palette and the lens cache');
+        if(!(c.material.userData && c.material.userData.atmHooked))
+          throw new Error(k + ' wears a material that never reached envTrack — it would render with the fog and the grade BYPASSED, which throws nothing');
+      });
+    });
+    return 'shared palette and the LENSM cache only, every one already hooked';
+  });
+
   console.log('--- the merge helper (RULING AK) ---');
   P('mergeParts bakes a translation into the vertices', ()=>{
     const g = mergeParts([{geo:new THREE.BoxGeometry(1,1,1), pos:[5,0,0]}]);
