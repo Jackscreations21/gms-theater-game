@@ -1,6 +1,6 @@
 # Art-Net control of the Palace — design (2026-08-15)
 
-**BINDING. Rulings EL–EV.** The next spec starts at **EW**.
+**BINDING. Rulings EL–EW.** The next spec starts at **EX**.
 
 ## The brief, verbatim
 
@@ -237,6 +237,46 @@ arrived within `ART_STALE` (2s, RULING EU's window).
 - The one thing this costs: a desk that stutters for two seconds hands the
   board back and takes it again. That is the right trade — the alternative is
   a rig nobody can touch because a laptop went to sleep.
+
+### RULING EW — EM's list of writers was incomplete, and one of the gaps runs for ever
+
+Added 2026-08-15, from the PR 5 review. RULING EM named the writers to gate
+by listing them. The list was written from the board's controls, and it
+missed every writer that is not a control — which is most of the dangerous
+ones, because a control writes when a hand moves and these write every frame.
+
+**The gate is now the RULE, not the list**: *nothing inside the game may write
+a fixture's level, colour, gobo, pan or tilt, or a HOUSE circuit, while
+`artDriving()` is true.* Named because each was found by measurement:
+
+- **`standByAtTheTop` (p5c)** — calls `fireCue(0)`, which refuses, and then
+  writes all 39 fixtures itself anyway. A half-refusal is worse than either
+  whole answer: the operator got a toast saying the board had yielded, a frame
+  of the wrong look, and a cue pointer that had moved.
+- **The firelight (`updateStorm`, p5c)** and **`audFxStep` (p5j)** — both run
+  AFTER `artnetTick` in the frame and win every frame. Not a flicker or a
+  fight: a **silent total override on a subset of channels**, with the ARTNET
+  row still reading LIVE and nothing anywhere to say why.
+- **And the part that makes it a ruling rather than a patch:** `SHOW.flicker`
+  and `AUD.fx` are only ever cleared by `showCueExtras`/`showCueFx`, which
+  only `fireCue` reaches — and EM gates `fireCue`. **So an effect armed in the
+  last cue before the desk takes over could never be turned off again.**
+  Gating the effects themselves fixes this: they stop writing while the desk
+  drives and resume when it stops, which is what handing a rig back means.
+- **The pan/tilt and house sliders (p7)** — `#panR`, `#tiltR`, `#hl`, `#wl`
+  write `f.panT`/`f.tiltT`/`HOUSE` directly, bypassing `setSection*`. Art-Net
+  owns those bytes (fixture channels 6–7; house 302–303), so ungated they are
+  the mover swinging under the operator's hand and snapping back 44 times a
+  second — the exact fight this round exists to stop.
+- **The script engine's rig ops (`stepProgram`, p6)** — `at`, `color`, `gobo`,
+  `pan`, `tilt`, `bo`, `sys`. Only its `cue` and `sub` ops passed through
+  gated functions, so a running show script kept writing against the desk, and
+  its faded writes set `lvlDur`, which `updateFades` then carried for the
+  whole fade.
+
+`RIG.grand` and `RIG.blackout` remain ungated (EM), and the transport keeps
+its clock and its audio (EM). This ruling adds no new surface: it is the same
+gate, applied where the list forgot to look.
 
 ---
 

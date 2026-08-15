@@ -689,16 +689,24 @@ $('#gelSel').onchange  = e=>{ setSectionColor(SECTIONS[selSec], e.target.value, 
 $('#goboSel').onchange = e=>{ setSectionGobo(SECTIONS[selSec], +e.target.value); };
 $('#btnFocus').onclick = ()=>{ focusMode=!focusMode; $('#btnFocus').classList.toggle('on',focusMode);
   toast(focusMode?'FOCUS — click the deck to aim '+SECTIONS[selSec].name.replace('<br>',' '):'focus cancelled'); };
+/* RULING EW — these four write the rig DIRECTLY, bypassing setSection*, so
+   EM's gates never saw them.  Art-Net owns those bytes (a fixture's pan and
+   tilt are its channels 6 and 7; house and work are 302 and 303), and ungated
+   they are the mover swinging under the operator's hand and snapping back 44
+   times a second.  They are dragged controls, so they refuse in silence: a
+   toast per mousemove is noise, not a message. */
 $('#panR').oninput = e=>{ const s=SECTIONS[selSec]; if(!s.mover) return;
+  if(artDriving()) return;
   s.chans.forEach((c,i)=>{ const f=chan(c); if(f) f.panT = (+e.target.value)*(i%2?-1:1); });
   $('#panV').textContent=e.target.value; };
 $('#tiltR').oninput= e=>{ const s=SECTIONS[selSec]; if(!s.mover) return;
+  if(artDriving()) return;
   s.chans.forEach(c=>{ const f=chan(c); if(f) f.tiltT=+e.target.value; });
   $('#tiltV').textContent=e.target.value; };
 $('#gm').oninput = e=>{ RIG.grand=e.target.value/100; $('#gmV').textContent=e.target.value; };
 $('#hz').oninput = e=>{ RIG.haze=e.target.value/100; $('#hzV').textContent=e.target.value; };
-$('#hl').oninput = e=>{ HOUSE.house=e.target.value/100; $('#hlV').textContent=e.target.value; };
-$('#wl').oninput = e=>{ HOUSE.work=e.target.value/100; $('#wlV').textContent=e.target.value; };
+$('#hl').oninput = e=>{ if(artDriving()) return; HOUSE.house=e.target.value/100; $('#hlV').textContent=e.target.value; };
+$('#wl').oninput = e=>{ if(artDriving()) return; HOUSE.work=e.target.value/100; $('#wlV').textContent=e.target.value; };
 $('#btnBO').onclick=()=>{ RIG.blackout=!RIG.blackout; $('#btnBO').classList.toggle('on',RIG.blackout); };
 $('#shopGoto') && ($('#shopGoto').onclick = ()=>{ closeBench(); goToView(9); });
 $('#doorsOpen').onclick = ()=>setAllDoors(true);
@@ -1164,10 +1172,15 @@ $('#qual').onchange = e=>{
 };
 $('#btnAll').onclick=()=>{ SECTIONS.forEach(s=>{ if(!s.sys) setSection(s,1,1.5); }); };
 
-$('#flyAllIn').onclick =()=>FLY.forEach(flyIn);
-$('#flyAllOut').onclick=()=>FLY.forEach(flyOut);
+/* RULING EM — the rail calls are the fly board's UI, so they stand down while
+   a desk is driving the lines.  STOP ALL is left alone on purpose: it writes
+   ls.target = ls.pos and nothing else, which is a hand arresting a load, and
+   the desk's next frame commands the line again anyway. */
+$('#flyAllIn').onclick =()=>{ if(artYields('the fly rail')) return; FLY.forEach(flyIn); };
+$('#flyAllOut').onclick=()=>{ if(artYields('the fly rail')) return; FLY.forEach(flyOut); };
 $('#flyStop').onclick  =()=>FLY.forEach(ls=>ls.target=ls.pos);
-$('#flyPreset').onclick=()=>{ [0,2,3,5,6,10,11].forEach(i=>flyIn(FLY[i]));
+$('#flyPreset').onclick=()=>{ if(artYields('the fly rail')) return;
+  [0,2,3,5,6,10,11].forEach(i=>flyIn(FLY[i]));
   flyTo(FLY[13],10.6); flyTo(FLY[9],20.5); flyTo(FLY[7],20.5); FLY[1].travTarget=1; toast('Show look set'); };
 /* RULING CM — and it is deliberately NOT the SHOW LOOK button above.  That one
    is a hardcoded list of lineset indices from before there were productions;
@@ -1656,6 +1669,11 @@ function tick(now){
   if(uiT > 0.1){
     uiT = 0;
     refreshChannelStrip();
+    /* RULING EU — the ARTNET row prints the AGE of the last packet, so it has
+       to be re-read rather than only written when somebody presses something.
+       Two textContent writes at 10Hz; the headset's copy of the row redraws
+       with the console. */
+    artSyncRow();
     if($('#p-fly').classList.contains('on')){ syncFlyUI(); syncRailGroups(); refreshHangUI(); }
     const m = Math.floor(showClock/60), s = Math.floor(showClock%60);
     $('#clockTxt').textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');

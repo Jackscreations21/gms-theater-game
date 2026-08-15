@@ -277,6 +277,14 @@ function showAudioTick(dt){
   if(!tr){ AUD.clock = false; return; }
   try{ tr.el.volume = Math.max(0, Math.min(1, tr.vol * audBusVol())); }catch(e){}
   AUD.clock = true;
+  /* RULING EM — SOUND IS NOT ART-NET'S; LIGHT IS.  The transport above this
+     line keeps running: the file plays, the volume follows the bus and the
+     clock stays the show's clock.  Only the cue-firing sweep below stands
+     down, because a cue is a rig write and the desk owns the rig while it is
+     really talking (artDriving, RULING EV — the switch alone does nothing).
+     Gate one line higher and the music stops with the lights, which is the
+     one failure nobody in a house would forgive. */
+  if(artDriving()) return;
   if(typeof CUES === 'undefined' || !CUES.length) return;
   /* the position in the WHOLE recording, which is what every `at` means */
   const t = tr.offset + tr.el.currentTime;
@@ -484,6 +492,14 @@ function showCueFx(fx){
 function audFxClear(){ for(const k in AUD.fx) delete AUD.fx[k]; }
 
 function audFxStep(dt){
+  /* RULING EW — the audience effects run AFTER artnetTick and win every frame
+     on channels 26-39, writing level, colour, pan AND tilt and zeroing the
+     durations, so not even a desk fade got through.  Worse, AUD.fx is only
+     ever cleared by showCueFx, which only fireCue reaches — and RULING EM
+     gates fireCue — so an effect armed in the last cue before the handover
+     could never be turned off again.  It stands down instead, keeps nothing
+     ticking that would jump when it resumes, and resumes when the desk stops. */
+  if(typeof artDriving === 'function' && artDriving()) return;
   for(const slot in AUD.fx){
     const e = AUD.fx[slot];
     if(!e) continue;

@@ -544,6 +544,16 @@ table.ls tr.sel td{background:#1c2230}
           glazed foyer and nothing on this stage. It is a daylight LEVEL, not a
           sun position &mdash; there is no sun in this engine to angle.
         </div>
+        <!-- RULING EM — THE ARTNET ROW.  The same row is on the VR console's
+             LIGHTING page (p9) and both press the same artSetOn(): a control
+             that exists only in the DOM does not exist in VR.  live/stale is
+             not decoration — it is the gate itself (RULING EV): the board only
+             stands down while a desk is really talking. -->
+        <div class="row" style="margin-top:12px;gap:6px;align-items:center">
+          <span class="mini" style="color:var(--dim);flex:1">ART-NET</span>
+          <span class="mini" id="artState" style="color:var(--dim)">OFF</span>
+          <button class="b" id="artOn">OFF</button>
+        </div>
       </div>
       <div class="card" style="width:280px;flex:none">
         <h4>ATMOSPHERE</h4>

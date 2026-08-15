@@ -114,6 +114,11 @@ const P = async (name, fn)=>{
     getClearColor(c){ return c.set(0x000000); }
   };
   w.THREE = THREE;
+  /* the frame loop, pumped by hand — the same shim stages.js uses.  Without
+     it jsdom's own rAF runs the loop on a timer, which means the loop cannot
+     be STEPPED, and anything that only happens on the frame (p7's 10Hz UI
+     block, for one) is untestable and gets written off as untestable. */
+  w.requestAnimationFrame = cb => { w.__raf = cb; return 1; };
 
   const probe = `
   (()=>{
@@ -681,6 +686,653 @@ const P = async (name, fn)=>{
       if(part.indexOf('setTimeout(') >= 0 || part.indexOf('setInterval(') >= 0)
         throw new Error('the part sets a timer; reconnect must ride the frame dt');
       return 'no timer call in the ' + part.length + ' chars of the part — the backoff is seconds off dt';
+    });
+
+    /* ======================================================================
+       THE BOARD YIELDS, ON BOTH SURFACES (RULINGS EM and EV)
+
+       Every case below drives the game through the DOM or through a vrHit
+       region, never by calling the setter under test — a detached row fires
+       its handler perfectly well, and a model poke proves nothing about the
+       thing an operator actually presses (TRAPS).
+
+       And every one of them proves the OTHER half too: with the switch on and
+       no desk talking, the board works exactly as it does today.  That is
+       RULING EV, and it is the case nobody should need a headset to trust.
+       ====================================================================== */
+
+    /* a real desk on the wire: switch on, hand the socket its handshake, put a
+       frame through it and take that frame on the tick.  artDriving() after. */
+    /* A DESK LOOK, because a desk that says nothing is indistinguishable from
+       a board that cannot write.  RULING EP means every frame writes all 39
+       fixtures, so a frame of zeros blacks the rig — and then "the fader was
+       refused" and "the desk set it to 0" produce the same reading.  Every
+       look here is deliberately UNLIKE whatever the board set before it. */
+    const deskLook = (lvl, r, g, b, goboIx)=>{
+      const f = new Uint8Array(512);
+      for(let i = 0; i < FIXTURES.length; i++){
+        const o = i * ART_CH_FIX;
+        f[o] = lvl; f[o + 1] = r; f[o + 2] = g; f[o + 3] = b; f[o + 4] = goboIx * 43;
+      }
+      return f;
+    };
+    const DESK_DEFAULT = ()=>deskLook(255, 0, 0, 255, 2);   // full, blue, gobo 2
+    /* and a desk holding the rig DARK, for the cases that detect a cue firing
+       by something lighting up.  Refused reads as the desk's 0, fired reads
+       as the cue's 1 — still two different numbers. */
+    const DESK_DARK = ()=>deskLook(0, 0, 0, 0, 0);
+    const deskOn = (look)=>{
+      artSetOn(false); artSetOn(true);
+      const ws = FakeWS.last;
+      if(!ws) throw new Error('the switch built no socket for this case');
+      ws.open();
+      ws.deliver(look || DESK_DEFAULT());
+      artnetTick(1/60);
+      if(artDriving() !== true) throw new Error('the desk would not come up for this case');
+      return ws;
+    };
+    /* the desk stops talking and NOBODY TOUCHES THE SWITCH — RULING EV's other
+       half.  The board simply has it back. */
+    const deskQuiet = ()=>{
+      let t = 0;
+      while(t < ART_STALE + 0.2){ artnetTick(1/60); t += 1/60; }
+      if(ART.on !== true) throw new Error('this case wanted the switch left ON');
+      if(artDriving() !== false) throw new Error('the desk would not go quiet');
+    };
+    const at = sel => document.querySelector(sel);
+
+    P('the ARTNET row is on the LIGHTING panel, and its button IS the switch', ()=>{
+      artSetOn(false);
+      const page = at('#p-lighting');
+      if(!page) throw new Error('there is no LIGHTING panel to put it on');
+      const btn = page.querySelector('#artOn'), st = page.querySelector('#artState');
+      if(!btn) throw new Error('no ARTNET switch inside #p-lighting');
+      if(!st)  throw new Error('no ARTNET readout inside #p-lighting');
+      artSyncRow();
+      if(btn.textContent !== 'OFF') throw new Error('the button reads ' + btn.textContent + ' with the switch off');
+      btn.click();
+      if(ART.on !== true) throw new Error('pressing the row did not throw artSetOn');
+      if(btn.textContent !== 'ON') throw new Error('the button still reads ' + btn.textContent);
+      btn.click();
+      if(ART.on !== false) throw new Error('pressing it again did not put the board back');
+      if(btn.textContent !== 'OFF') throw new Error('the button reads ' + btn.textContent + ' after the second press');
+      return 'a row inside the LIGHTING panel whose button drives artSetOn, both ways, through a real click';
+    });
+
+    P('both rows read the SWITCH, the LIVE/STALE gate and the age of the last packet', ()=>{
+      deskOn();
+      artSyncRow();
+      const live = at('#artState').textContent;
+      if(live.indexOf('LIVE') < 0) throw new Error('a driving desk reads ' + JSON.stringify(live));
+      /* the AGE, matched against the state it is printed from rather than
+         against a pattern that resembles one */
+      if(live.indexOf(ART.seen.toFixed(1) + 's') < 0)
+        throw new Error('no packet age in ' + JSON.stringify(live));
+      deskQuiet();
+      artSyncRow();
+      const stale = at('#artState').textContent;
+      if(stale.indexOf('STALE') < 0) throw new Error('a desk that stopped reads ' + JSON.stringify(stale));
+      if(!(ART.seen > ART_STALE)) throw new Error('the age did not grow: ' + ART.seen);
+      if(stale.indexOf(ART.seen.toFixed(1) + 's') < 0)
+        throw new Error('the age is not the age: ' + JSON.stringify(stale));
+      if(stale === live) throw new Error('the row said the same thing live and stale');
+      /* AND THE HEADSET PRINTS THE SAME SENTENCE.  Not a paraphrase of it —
+         one function, both surfaces, or they drift the first time either is
+         edited.  The canvas is a stub, so the drawing is read by catching
+         what the page asks it to write. */
+      VR.page = 'lighting';
+      vrCanvas();
+      const said = [], ctx = VR.ctx, realText = ctx.fillText;
+      ctx.fillText = function(s){ said.push(String(s)); };
+      try{ vrDrawConsole(true); } finally { ctx.fillText = realText; }
+      if(said.indexOf('ART-NET') < 0)
+        throw new Error('the headset LIGHTING page draws no ART-NET row');
+      if(said.indexOf(stale) < 0)
+        throw new Error('the headset prints something else: ' + JSON.stringify(said.slice(-6)));
+      artSetOn(false);
+      return 'LIVE with an age, STALE with a bigger one, and the headset printing the very same string';
+    });
+
+    P('the headset carries the SAME switch, found by META, and moves no row above it', ()=>{
+      artSetOn(false);
+      VR.page = 'lighting'; vrDrawConsole(true);
+      const lk = VR.hits.filter(h=>h.lk);
+      if(lk.length !== VR_LK_ROWS.length*2)
+        throw new Error(lk.length + ' LK regions against ' + VR_LK_ROWS.length + ' rows — the ARTNET row displaced them');
+      const sw = VR.hits.find(h=>h.artnet === 'switch');
+      if(!sw) throw new Error('no region tagged artnet on the headset LIGHTING page');
+      const lowest = Math.max.apply(null, lk.map(h=>h.y + h.h));
+      if(sw.y < lowest) throw new Error('the ARTNET row sits at y ' + sw.y + ', over rows that end at ' + lowest);
+      sw.fn();
+      if(ART.on !== true) throw new Error('the headset switch does not drive artSetOn');
+      const sw2 = VR.hits.find(h=>h.artnet === 'switch');
+      if(!sw2) throw new Error('the row vanished from the redrawn page');
+      sw2.fn();
+      if(ART.on !== false) throw new Error('the headset switch will not put the board back');
+      return 'one artnet region under ' + lk.length + ' untouched LK regions, driving the same artSetOn both ways';
+    });
+
+    P('GO, BACK and TOP fire nothing while a desk drives — and everything when it stops', ()=>{
+      const savedCues = CUES.slice(), savedNext = nextCue;
+      try{
+        CUES.length = 0;
+        setLevel(1, 1.0, 0); setLevel(2, 1.0, 0);
+        const mk = n=>({n, label:'gate ' + n, fade:0, follow:null, lx:snapshotLX(), fly:null,
+                        sfx:null, house:HOUSE.house, work:HOUSE.work,
+                        practical:HOUSE.practical, haze:RIG.haze, lobby:HOUSE.lobby});
+        const up = mk(1);
+        setLevel(1, 0.0, 0); setLevel(2, 0.0, 0);
+        const down = mk(2);
+        CUES.push(up, down);
+        nextCue = 0;
+        refreshCues();
+        const f = chan(1);
+        /* a clock track that a show would be running on, so the two things
+           only the OPERATOR paths do — TOP letting go of the transport and
+           GO seeking it (RULING BO) — can be watched.  fireCue never touches
+           either, which is exactly why its guard cannot stand in for theirs. */
+        const key = audTrackFor(90);
+        if(!key) throw new Error('no clock track in the manifest to seek');
+        const tr = audTrack(key);          // minted on demand; AUD.tracks is empty until asked
+        if(!tr) throw new Error('the clock track ' + key + ' has no record');
+        /* MOVE AWAY FROM THE ASSERTED STATE FIRST.  Starting with the rig
+           already dark and the pointer already at 0 would pass against a
+           build with no gate at all (TRAPS). */
+        if(f.level !== 0) throw new Error('this case needs channel 1 dark to begin with');
+        deskOn(DESK_DARK());
+        at('#btnGo').click();
+        if(nextCue !== 0) throw new Error('GO moved the pointer to ' + nextCue + ' with a desk driving');
+        if(f.level !== 0) throw new Error('GO put channel 1 up to ' + f.level + ' with a desk driving');
+        tr.want = true;
+        at('#btnTop').click();
+        if(nextCue !== 0 || f.level !== 0) throw new Error('TOP fired its cue with a desk driving');
+        /* TOP stops the show's sound BEFORE it fires (RULING BW), so a guard
+           only in fireCue would silence the music and light nothing. */
+        if(tr.want !== true) throw new Error('TOP stopped the show sound for a cue it never fired');
+        deskQuiet();
+        at('#btnGo').click();
+        if(nextCue !== 1) throw new Error('the desk went quiet and GO still will not fire: pointer ' + nextCue);
+        if(!(f.level > 0.9)) throw new Error('the desk went quiet and the cue did not light: ' + f.level);
+        at('#btnTop').click();
+        if(tr.want !== false) throw new Error('the desk went quiet and TOP no longer lets go of the transport');
+        /* BACK is the one that needed its own guard rather than fireCue's: it
+           rewinds the pointer BEFORE it ever gets there. */
+        /* ENTER AT 2, NOT 1.  A working BACK rewinds by two and fireCue then
+           advances by one, so from a pointer of 1 both "refused" and "worked"
+           leave it at 1 — and a goBack that did nothing at all passed this
+           clause.  From 2 the two answers are 2 and 1. */
+        nextCue = 2;
+        deskOn(DESK_DARK());
+        at('#btnBack').click();
+        if(nextCue !== 2) throw new Error('BACK rewound the pointer to ' + nextCue + ' with a desk driving');
+        deskQuiet();
+        at('#btnBack').click();
+        if(nextCue !== 1) throw new Error('the desk went quiet and BACK did nothing: pointer ' + nextCue);
+        /* AND THE PATH THAT REACHES fireCue WITHOUT ANY OF THE THREE: a
+           double-click on a cue row.  GO, BACK and TOP guard themselves, so
+           without this clause fireCue's own guard — the one that also covers
+           the script engine and an armed follow — would be unasserted. */
+        deskOn();
+        const rows = document.querySelectorAll('#cuelist .cue');
+        if(rows.length !== 2) throw new Error('the cue list shows ' + rows.length + ' rows for a two-cue stack');
+        setLevel(1, 0.0, 0);
+        rows[0].dispatchEvent(new MouseEvent('dblclick'));
+        if(f.level !== 0) throw new Error('a double-click on a cue row fired it with a desk driving: ' + f.level);
+        deskQuiet();
+        rows[0].dispatchEvent(new MouseEvent('dblclick'));
+        if(!(f.level > 0.9)) throw new Error('the desk went quiet and a cue row will not fire: ' + f.level);
+        /* AND WHY GO NEEDS A GUARD OF ITS OWN rather than inheriting fireCue's:
+           cueFiredByHand SEEKS THE MUSIC to the cue (RULING BO) after fireCue
+           has already refused it, so a guard only downstream would jump the
+           show's sound to a cue that never fired.  The pointer and the rig
+           cannot see that; the transport can. */
+        CUES[1].at = 90;
+        nextCue = 1;
+        deskOn();
+        tr.want = true; tr.seek = null;
+        at('#btnGo').click();
+        if(tr.seek !== null)
+          throw new Error('GO seeked the music to ' + tr.seek + ' for a cue that never fired');
+        deskQuiet();
+        tr.want = true; tr.seek = null;
+        at('#btnGo').click();
+        if(tr.seek === null)
+          throw new Error('the desk went quiet and GO no longer takes the music with it');
+        artSetOn(false);
+        return 'with a desk driving: pointer, rig and the MUSIC unmoved by GO, BACK, TOP and a cue row; with it quiet, all four work';
+      } finally {
+        CUES.length = 0;
+        savedCues.forEach(c=>CUES.push(c));
+        nextCue = savedNext;
+        for(const k in BJ_AUDIO) audStop(k);
+        artSetOn(false);
+        refreshCues();
+      }
+    });
+
+    P('a section fader and a submaster write nothing while a desk drives', ()=>{
+      artSetOn(false);
+      const strip = document.querySelectorAll('#chStrip .fx');
+      if(!strip.length) throw new Error('the channel strip was never built');
+      const btns = strip[0].querySelectorAll('button');      // 0 and FL
+      const subs = document.querySelectorAll('#subs .sub');
+      if(!subs.length) throw new Error('the submasters were never built');
+      const rec = subs[0].querySelector('button'), fader = subs[0].querySelector('input');
+      const f = chan(1);
+      /* the board doing it, so the case starts somewhere it is not going */
+      btns[1].click(); updateFades(2);
+      if(!(f.level > 0.9)) throw new Error('the FL button does not work at all: ' + f.level);
+      rec.click();                                            // sub 1 holds this look
+      btns[0].click(); updateFades(2);
+      if(f.level > 0.01) throw new Error('the 0 button does not work at all: ' + f.level);
+      fader.value = 100; fader.dispatchEvent(new Event('input'));
+      if(!(f.level > 0.9)) throw new Error('the submaster does not work at all: ' + f.level);
+      /* the desk takes it, at FULL — so a refused 0 button and a refused
+         submaster both read as "still the desk's 1.0", which is a different
+         number from either thing the board was trying to do */
+      deskOn();
+      if(!(f.level > 0.99)) throw new Error('the desk did not take channel 1 to full: ' + f.level);
+      btns[0].click(); updateFades(2);
+      if(!(f.level > 0.99)) throw new Error('a fader button took channel 1 to ' + f.level + ' with a desk driving');
+      fader.value = 20; fader.dispatchEvent(new Event('input'));
+      if(!(f.level > 0.99)) throw new Error('the submaster took channel 1 to ' + f.level + ' with a desk driving');
+      deskQuiet();
+      btns[0].click(); updateFades(2);
+      if(f.level > 0.01) throw new Error('the desk went quiet and the fader still cannot write: ' + f.level);
+      artSetOn(false);
+      return 'fader and submaster both refused mid-drive and both working again the moment the desk stopped';
+    });
+
+    P('the gel and the gobo are refused too — a section has three writers, not one', ()=>{
+      artSetOn(false);
+      const strip = document.querySelectorAll('#chStrip .fx');
+      strip[0].dispatchEvent(new MouseEvent('mousedown', {bubbles:true}));
+      if(selSec !== 0) throw new Error('the strip would not select section 0: ' + selSec);
+      const col = at('#selColor'), gob = at('#goboSel'), f = chan(1);
+      col.value = '#ff0000'; col.dispatchEvent(new Event('input'));
+      if(f.color.getHexString() !== 'ff0000') throw new Error('the gel picker does not work at all: ' + f.color.getHexString());
+      gob.value = '4'; gob.dispatchEvent(new Event('change'));
+      if(f.gobo !== 4) throw new Error('the gobo picker does not work at all: ' + f.gobo);
+      /* the desk gels it BLUE with gobo 2 — neither the red/4 the board just
+         set nor the green/1 it is about to try, so a refusal cannot be
+         confused with either of them */
+      deskOn();
+      if(f.color.getHexString() !== '0000ff' || f.gobo !== 2)
+        throw new Error('the desk did not take the gel and gobo: ' + f.color.getHexString() + ' / ' + f.gobo);
+      col.value = '#00ff00'; col.dispatchEvent(new Event('input'));
+      if(f.color.getHexString() !== '0000ff')
+        throw new Error('the gel picker recoloured a desk-driven fixture to ' + f.color.getHexString());
+      gob.value = '1'; gob.dispatchEvent(new Event('change'));
+      if(f.gobo !== 2) throw new Error('the gobo picker moved a desk-driven wheel to ' + f.gobo);
+      deskQuiet();
+      col.value = '#00ff00'; col.dispatchEvent(new Event('input'));
+      gob.value = '1'; gob.dispatchEvent(new Event('change'));
+      if(f.color.getHexString() !== '00ff00' || f.gobo !== 1)
+        throw new Error('the desk went quiet and the board cannot gel or gobo: ' +
+                        f.color.getHexString() + ' / ' + f.gobo);
+      artSetOn(false);
+      return 'gel and gobo both refused mid-drive and both working the moment the desk stopped';
+    });
+
+    P('the faders still MOVE while the desk drives — they stop writing, not reading', ()=>{
+      /* the half of RULING EM that is easy to break by gating one function too
+         many: syncSections is the read-back, and without it the strip freezes
+         at whatever the board last set while the rig does something else. */
+      artSetOn(false);
+      const sec = SECTIONS[0];
+      const cell = document.querySelectorAll('#chStrip .fx')[0].querySelector('.v');
+      sec.chans.forEach(c=>setLevel(c, 1.0, 0));
+      refreshChannelStrip();
+      if(cell.textContent !== '100') throw new Error('the strip reads ' + cell.textContent + ' on a rig at full');
+      deskOn();
+      /* what an Art-Net frame will do to the rig, done the way it will do it */
+      sec.chans.forEach(c=>setLevel(c, 0.33, 0));
+      refreshChannelStrip();
+      if(cell.textContent !== '33')
+        throw new Error('the desk took the rig to 33 and the fader reads ' + cell.textContent);
+      if(Math.abs(sec.level - 0.33) > 0.001) throw new Error('the section model reads ' + sec.level);
+      artSetOn(false);
+      return 'the desk moved the rig 100 -> 33 and the strip followed it down, with the board locked out of writing';
+    });
+
+    P('the transport keeps its clock and its music; only its cue-firing stands down', ()=>{
+      /* jsdom media never leaves readyState 0, so audClockTrack can never
+         return a running track here and the whole branch this ruling is about
+         would be unreachable — the case would be decoration.  Stand one in. */
+      const savedCues = CUES.slice(), savedNext = nextCue, realClock = audClockTrack;
+      try{
+        const fake = {el:{currentTime:100, volume:0, paused:false, readyState:4}, offset:0, vol:1};
+        audClockTrack = ()=>fake;
+        CUES.length = 0;
+        setLevel(1, 1.0, 0);
+        CUES.push({n:1, label:'transport', fade:0, follow:null, at:0, lx:snapshotLX(), fly:null,
+                   sfx:null, house:HOUSE.house, work:HOUSE.work, practical:HOUSE.practical,
+                   haze:RIG.haze, lobby:HOUSE.lobby});
+        setLevel(1, 0.0, 0);
+        nextCue = 0;
+        const f = chan(1);
+        deskOn(DESK_DARK());
+        AUD.clock = false;
+        /* THE SWEEP MUST NOT RUN AT ALL, not merely fail to land.  fireCue
+           refuses on its own account, so a transport left ungated still walks
+           into it AUD_CATCHUP times a frame and the operator gets forty
+           refusals a frame for nothing — which the pointer and the rig cannot
+           see, and this can. */
+        const said = [], realToast = toast;
+        toast = m=>{ said.push(String(m)); };
+        try{ showAudioTick(1/60); } finally { toast = realToast; }
+        if(said.length)
+          throw new Error('the transport walked into the cue engine ' + said.length +
+                          ' times in one frame: ' + JSON.stringify(said[0]));
+        if(AUD.clock !== true) throw new Error('the transport stopped keeping time when the desk took the rig');
+        if(nextCue !== 0) throw new Error('the transport fired a cue with a desk driving: pointer ' + nextCue);
+        if(f.level !== 0) throw new Error('the transport lit channel 1 with a desk driving: ' + f.level);
+        deskQuiet();
+        showAudioTick(1/60);
+        if(nextCue !== 1) throw new Error('the desk went quiet and the transport still will not fire: ' + nextCue);
+        if(!(f.level > 0.9)) throw new Error('the desk went quiet and the transport cue did not light: ' + f.level);
+        artSetOn(false);
+        return 'clock kept, music kept, cue held back while the desk drove and fired the moment it stopped';
+      } finally {
+        audClockTrack = realClock;
+        CUES.length = 0;
+        savedCues.forEach(c=>CUES.push(c));
+        nextCue = savedNext;
+        artSetOn(false);
+      }
+    });
+
+    P('the fly rail yields on BOTH surfaces, and the engine is left alone', ()=>{
+      const home = STAGE;
+      try{
+        if(STAGE !== 'palace') stageSwitch('palace');
+        artSetOn(false);
+        const ls = FLY[0];
+        flyOut(ls);
+        const out = ls.target;
+        at('#flyAllIn').click();
+        if(!(ls.target < out - 0.5)) throw new Error('ALL IN does not work at all: ' + ls.target);
+        deskOn();
+        flyOut(ls);                       // the engine, which is NOT gated
+        if(!(ls.target > out - 0.001))
+          throw new Error('the ENGINE flyOut was gated too; a cue could not move a line: ' + ls.target);
+        at('#flyAllIn').click();
+        if(ls.target < out - 0.001) throw new Error('the desk-side ALL IN hauled a driven line to ' + ls.target);
+        /* the headset's rail, found by META rather than by pixel (RULING DP) */
+        VR.page = 'fly'; vrDrawConsole(true);
+        const inBtn = VR.hits.find(h=>h.fly === ls.id && h.rail === 'in');
+        if(!inBtn) throw new Error('the headset fly page has no IN region for lineset ' + ls.id);
+        inBtn.fn();
+        if(ls.target < out - 0.001) throw new Error('the headset hauled a driven line to ' + ls.target);
+        deskQuiet();
+        VR.page = 'fly'; vrDrawConsole(true);
+        const in2 = VR.hits.find(h=>h.fly === ls.id && h.rail === 'in');
+        in2.fn();
+        if(!(ls.target < out - 0.5))
+          throw new Error('the desk went quiet and the headset rail still will not haul: ' + ls.target);
+        artSetOn(false);
+        return 'desk rail and headset rail both refused mid-drive, both hauling again after, and flyOut itself untouched';
+      } finally { artSetOn(false); if(STAGE !== home) stageSwitch(home); }
+    });
+
+    P('a hand on a rope is refused, and the refusal names ART-NET', ()=>{
+      const home = STAGE;
+      const said = [];
+      const realToast = toast;
+      try{
+        if(STAGE !== 'palace') stageSwitch('palace');
+        artSetOn(false);
+        /* the grab path needs a controller and the ropes; it does not need a
+           session, and the whole FakeXR rig would be a suite of its own */
+        VR.controllers[0] = new T.Group();
+        scene.add(VR.controllers[0]);
+        vrBuildRopes();
+        if(!VR.ropes.length) throw new Error('the stage built no ropes to take hold of');
+        const r = VR.ropes[0];
+        const put = ()=>{
+          scene.updateMatrixWorld(true);
+          const p = r.mesh.getWorldPosition(new T.Vector3());
+          VR.controllers[0].position.copy(p);
+          VR.controllers[0].updateMatrixWorld(true);
+        };
+        put(); vrSqueeze(0, true);
+        if(!VR.held || VR.held.rope !== r) throw new Error('a hand cannot take this rope at all');
+        vrSqueeze(0, false);
+        if(VR.held) throw new Error('the hand would not let go before the case proper');
+        deskOn();
+        toast = m=>{ said.push(String(m)); };
+        put(); vrSqueeze(0, true);
+        toast = realToast;
+        if(VR.held) throw new Error('a hand took hold of a desk-driven line');
+        if(!said.length) throw new Error('the rope said nothing at all');
+        if(said[said.length-1].indexOf('on ART-NET') < 0)
+          throw new Error('the rope said ' + JSON.stringify(said[said.length-1]));
+        deskQuiet();
+        put(); vrSqueeze(0, true);
+        if(!VR.held || VR.held.rope !== r)
+          throw new Error('the desk went quiet and the rope still cannot be taken');
+        vrSqueeze(0, false);
+        artSetOn(false);
+        return 'the rope refused the hand while the desk drove, said ' + JSON.stringify(said[said.length-1]) + ', and came back after';
+      } finally {
+        toast = realToast;
+        VR.held = null;
+        VR.controllers.length = 0;
+        artSetOn(false);
+        if(STAGE !== home) stageSwitch(home);
+      }
+    });
+
+    P('the in-game GRAND still outranks the desk — what is NOT gated (RULING EM)', ()=>{
+      const f = chan(1);
+      const g0 = RIG.grand, b0 = RIG.blackout;
+      try{
+        deskOn();
+        RIG.blackout = false; RIG.grand = 1;
+        f.level = 1; f.lvlDur = 0;
+        updateRig(1/60, 1);
+        if(!(f._lvl > 0.5)) throw new Error('the fixture is not up to begin with: ' + f._lvl);
+        RIG.grand = 0;
+        updateRig(1/60, 1);
+        if(f._lvl > 0.001) throw new Error('the grand did not take a desk-driven fixture out: ' + f._lvl);
+        RIG.grand = 1; RIG.blackout = true;
+        updateRig(1/60, 1);
+        if(f._lvl > 0.001) throw new Error('blackout did not take a desk-driven fixture out: ' + f._lvl);
+        return 'with a desk driving, the grand and the blackout still multiply the output to nothing — the safety outranks the desk';
+      } finally { RIG.grand = g0; RIG.blackout = b0; artSetOn(false); }
+    });
+
+    /* ---- RULING EW: the writers EM's list forgot ------------------------- */
+
+    P('standing by at the top does not half-refuse (RULING EW)', ()=>{
+      const savedCues = CUES.slice(), savedNext = nextCue;
+      try{
+        CUES.length = 0;
+        setLevel(1, 1.0, 0); setColorCh(1, '#00ff00', 0);
+        CUES.push({n:0, label:'preset', fade:0, follow:null, lx:snapshotLX(), fly:null, sfx:null,
+                   house:HOUSE.house, work:HOUSE.work, practical:HOUSE.practical,
+                   haze:RIG.haze, lobby:HOUSE.lobby});
+        nextCue = 0;
+        const f = chan(1);
+        deskOn();                       // full blue: unlike the green preset above
+        if(f.color.getHexString() !== '0000ff') throw new Error('the desk did not take the colour');
+        const said = [], realToast = toast;
+        toast = m=>{ said.push(String(m)); };
+        try{ standByAtTheTop(); } finally { toast = realToast; }
+        /* it refused fireCue and then wrote all 39 fixtures itself: a toast
+           saying the board had yielded, a frame of the wrong look, and a cue
+           pointer that had moved */
+        if(f.color.getHexString() !== '0000ff')
+          throw new Error('the preset wrote a desk-driven fixture to ' + f.color.getHexString());
+        if(Math.abs(f.level - 1) > 1e-6) throw new Error('the preset wrote a desk-driven level: ' + f.level);
+        if(nextCue !== 0) throw new Error('the preset moved the cue pointer to ' + nextCue + ' with a desk driving');
+        if(said.length) throw new Error('it refused and told the operator, then wrote anyway: ' + said[0]);
+        deskQuiet();
+        standByAtTheTop();
+        if(nextCue !== 1 || f.color.getHexString() !== '00ff00')
+          throw new Error('the desk went quiet and the preset will not stand by: ' + nextCue + '/' + f.color.getHexString());
+        return 'refused whole with a desk driving — no write, no pointer move, no toast — and works the moment it stops';
+      } finally { CUES.length = 0; CUES.push(...savedCues); nextCue = savedNext; artSetOn(false); }
+    });
+
+    P('the firelight stands down and comes back (RULING EW)', ()=>{
+      const saved = SHOW.flicker;
+      try{
+        SHOW.flicker = {t:0, v:1, base:0.8, chans:[1]};
+        const f = chan(1);
+        updateStorm(1/60);
+        if(!(f.level > 0.4)) throw new Error('the firelight does not drive channel 1 at all: ' + f.level);
+        deskOn(DESK_DARK());
+        if(f.level !== 0) throw new Error('the desk did not take channel 1 to 0');
+        updateStorm(1/60); updateStorm(1/60);
+        if(f.level !== 0) throw new Error('the firelight overrode a desk-driven channel to ' + f.level);
+        deskQuiet();
+        updateStorm(1/60);
+        if(!(f.level > 0.4)) throw new Error('the desk went quiet and the firelight never came back: ' + f.level);
+        return 'the flame stops writing while the desk drives and picks up again when it stops';
+      } finally { SHOW.flicker = saved; artSetOn(false); }
+    });
+
+    P('an audience effect stands down, and can still be cleared afterwards (RULING EW)', ()=>{
+      /* the sharp half: AUD.fx is only ever cleared by showCueFx, which only
+         fireCue reaches — and RULING EM gates fireCue.  So an effect armed in
+         the last cue before the handover could never be turned off again. */
+      const saved = JSON.stringify(Object.keys(AUD.fx || {}));
+      try{
+        showCueFx({on:'blind', kind:'strobe', rate:6});
+        const chans = audFxChans('blind');
+        if(!chans.length) throw new Error('the blinder target names no channels');
+        const lit = ()=>chans.some(c=>{ const x = chan(c); return x && x.level > 0.01; });
+        let armed = false;
+        for(let i = 0; i < 40 && !armed; i++){ audFxStep(0.05); armed = lit(); }
+        if(!armed) throw new Error('the audience effect does not drive the blinders at all');
+        deskOn(DESK_DARK());
+        if(lit()) throw new Error('the desk did not take the blinders to 0');
+        for(let i = 0; i < 40; i++){
+          audFxStep(0.05);
+          if(lit()) throw new Error('the audience effect overrode a desk-driven channel');
+        }
+        for(const c of chans){ const x = chan(c);
+          if(x && x.colDur !== 0) throw new Error('it also armed a colour fade on a desk-driven fixture'); }
+        deskQuiet();
+        let back = false;
+        for(let i = 0; i < 40 && !back; i++){ audFxStep(0.05); back = lit(); }
+        if(!back) throw new Error('the desk went quiet and the effect never came back');
+        /* and the thing that made this a ruling: it can still be turned off,
+           because showCueFx is reachable without going through fireCue */
+        showCueFx(null);
+        if(Object.keys(AUD.fx).length) throw new Error('the effect could not be cleared after the handover');
+        return 'the effect stood down under the desk, resumed when it stopped, and could still be cleared afterwards';
+      } finally { artSetOn(false); if(saved === '[]') for(const k in AUD.fx) delete AUD.fx[k]; }
+    });
+
+    P('the pan, tilt and house sliders are refused too (RULING EW)', ()=>{
+      /* these four write the rig DIRECTLY, bypassing setSection*, so EM's
+         gates never saw them */
+      const movers = SECTIONS.findIndex(s=>s.mover && s.chans);
+      const saved = selSec;
+      try{
+        selSec = movers;
+        const pan = at('#panR'), tilt = at('#tiltR'), hl = at('#hl'), wl = at('#wl');
+        const f = chan(SECTIONS[movers].chans[0]);
+        pan.value = 40; pan.dispatchEvent(new Event('input'));
+        if(Math.abs(f.panT - 40) > 1e-6) throw new Error('the pan slider does not work at all: ' + f.panT);
+        deskOn();                                  // full blue, pan byte 0 -> -170
+        const dPan = f.panT, dTilt = f.tiltT, dHouse = HOUSE.house, dWork = HOUSE.work;
+        if(Math.abs(dPan + 170) > 0.01) throw new Error('the desk did not take pan: ' + dPan);
+        pan.value = 70;  pan.dispatchEvent(new Event('input'));
+        tilt.value = -20; tilt.dispatchEvent(new Event('input'));
+        hl.value = 80; hl.dispatchEvent(new Event('input'));
+        wl.value = 60; wl.dispatchEvent(new Event('input'));
+        if(f.panT !== dPan) throw new Error('the pan slider moved a desk-driven head to ' + f.panT);
+        if(f.tiltT !== dTilt) throw new Error('the tilt slider moved a desk-driven head to ' + f.tiltT);
+        if(HOUSE.house !== dHouse) throw new Error('the house slider wrote a desk-driven circuit: ' + HOUSE.house);
+        if(HOUSE.work !== dWork) throw new Error('the work slider wrote a desk-driven circuit: ' + HOUSE.work);
+        deskQuiet();
+        pan.value = 70; pan.dispatchEvent(new Event('input'));
+        if(Math.abs(f.panT - 70) > 1e-6) throw new Error('the desk stopped and the pan slider still cannot write');
+        return 'pan, tilt, house and work all refused mid-drive and all working again the moment the desk stopped';
+      } finally { selSec = saved; artSetOn(false); }
+    });
+
+    P('a running script HOLDS rather than fighting the desk (RULING EW)', ()=>{
+      const wasRunning = Prog.running;
+      try{
+        /* DOUBLED backslashes: this is inside a probe template, which eats a
+           single one, and a real newline in a quoted string is a parse error
+           pointing at the eval rather than at this line (TRAPS). */
+        runProgram('at 1 @ 100\\nwait 10\\nat 1 @ 0');
+        stepProgram(1/60);
+        const f = chan(1);
+        if(!(f.level > 0.9)) throw new Error('the script does not drive channel 1 at all: ' + f.level);
+        const pc = Prog.pc, wait = Prog.wait;
+        deskOn(DESK_DARK());
+        if(f.level !== 0) throw new Error('the desk did not take channel 1');
+        const said = [], realToast = toast;
+        toast = m=>{ said.push(String(m)); };
+        try{ stepProgram(1/60); stepProgram(1/60); } finally { toast = realToast; }
+        if(f.level !== 0) throw new Error('the script wrote a desk-driven channel to ' + f.level);
+        if(Prog.pc !== pc) throw new Error('the script ran on invisibly: pc ' + pc + ' -> ' + Prog.pc);
+        if(Math.abs(Prog.wait - wait) > 1e-9) throw new Error('the script burned its wait while held');
+        if(said.length) throw new Error('the script raised ' + said.length + ' refusals in two frames');
+        deskQuiet();
+        stepProgram(1/60);
+        if(Prog.wait >= wait) throw new Error('the desk stopped and the script did not pick up again');
+        return 'held at pc ' + pc + ' with its wait intact, silent, and stepping again the moment the desk stopped';
+      } finally { haltProgram(); Prog.running = false; artSetOn(false); }
+    });
+
+    /* ---- the gates and the row that had no assertions at all ------------- */
+
+    P('every fly UI path is refused, not just the two that were tested', ()=>{
+      const rows = document.querySelectorAll('#lsTable tbody tr');
+      if(!rows.length) throw new Error('the fly table was never built');
+      const ls = FLY[0];
+      const btnOf = (row, label)=>{
+        const bs = row.querySelectorAll('button');
+        for(const b of bs) if(b.textContent.trim() === label) return b;
+        return null;
+      };
+      const rowIn = btnOf(rows[0], 'IN');
+      if(!rowIn) throw new Error('no IN button on the first lineset row');
+      artSetOn(false);
+      flyTo(ls, OUT_TRIM, true);
+      rowIn.click();
+      if(Math.abs(ls.target - OUT_TRIM) < 0.01) throw new Error('the row IN button does not work at all');
+      deskOn();
+      flyTo(ls, OUT_TRIM, true);
+      const t0 = ls.target;
+      rowIn.click();
+      if(ls.target !== t0) throw new Error('a row IN button hauled a desk-driven line to ' + ls.target);
+      at('#flyPreset').click();
+      if(ls.target !== t0) throw new Error('the show-look preset hauled a desk-driven line to ' + ls.target);
+      if(typeof flyStartOfShow === 'function'){ flyStartOfShow();
+        if(ls.target !== t0) throw new Error('START OF SHOW hauled a desk-driven line to ' + ls.target); }
+      if(typeof railCall === 'function'){ railCall('in');
+        if(ls.target !== t0) throw new Error('a rail call hauled a desk-driven line to ' + ls.target); }
+      deskQuiet();
+      rowIn.click();
+      if(ls.target === t0) throw new Error('the desk went quiet and the row IN button still will not haul');
+      artSetOn(false);
+      return 'row IN, the show-look preset, START OF SHOW and the rail call all refused, and hauling again once the desk stopped';
+    });
+
+    P('the ARTNET row really is refreshed by the frame loop, not only by hand', ()=>{
+      /* the 10Hz call in p7's UI block.  The suite CAN drive the real loop —
+         stages.js pumps window.__raf — so this does not have to go untested. */
+      const el = at('#artState');
+      if(!el) throw new Error('the DOM row has no state element');
+      artSetOn(false);
+      artSyncRow();
+      const off = el.textContent;
+      const tick = n=>{ for(let i = 0; i < n; i++){ const cb = window.__raf; window.__raf = null; if(cb) cb(Date.now() + i * 120); } };
+      /* move the state WITHOUT touching the row, then let the loop find it */
+      ART.on = true;
+      if(el.textContent !== off) throw new Error('this case must change the state behind the row');
+      tick(12);
+      if(el.textContent === off)
+        throw new Error('twelve frames of the real loop and the row still reads ' + JSON.stringify(off));
+      return 'the row moved from ' + JSON.stringify(off) + ' to ' + JSON.stringify(el.textContent) + ' without anybody calling artSyncRow';
     });
 
     console.log(window.__errs.length ? '--- part one failures: '+window.__errs.length+' ---'
