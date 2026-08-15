@@ -140,13 +140,51 @@ scene still 580 drawables.
 is in that same function, so expect a conflict there.** `src/p4c.txt` two hunks,
 not near `removeBody`, so #196 is textually clean. `src/p2k.txt` is the bulk.
 
-### `gms-studios-shed` — PR 2, state UNKNOWN
+### `gms-studios-shed` — PR 2, commit `bd16a56`, **COMPLETE**
 
-Its final report had not arrived when this was written. **Read it before
-touching the branch, and do not assume it is complete.** Expected conflicts:
-`src/p9.txt` (#195 changed the order-screen layout for lists over six rows) and
-`tests/orders.js` (three branches have now appended at the END anchor; two have
-already collided once).
+The full concern, not WIP. `SHEDS.studio`, `CARTS.studio`, `LIFTS.studio`,
+`TRASH.studio`, `SAWS.studio` (track + chop), `RACKS.studio` (+ roller),
+`ORDERS.studio`; racking (32 slots), forklift, 4 painted pallet slots in the
+shed plus 2 in the film-stage wings, the wall order screen with all four tabs;
+`venueRoot('studio')` → `STU.group`; every cap on the studio's own book.
+Footprint x 34…58, z −76…−36 as the spec's plan says.
+
+**20/20 green**, tree clean, rebuilds byte-identical. **Nine new assertions,
+sixteen mutations**, each proved to land in the BUILT file (mutant present,
+original absent, sha moved) and each restore proved byte-identical back to
+clean. The cap mutations deliberately aim at the **mechanism** rather than the
+constant — mutating `ORDER_MAX` proves nothing, because the test reads the
+constant out of the build.
+
+**Two things to review first:**
+
+1. **It modifies PR 1's warehouse wall, and had to.** The spec's x 34 is four
+   metres off the film stage's flank at x 30, so there is no shared wall to
+   punch. The opening is cut through the film stage's own stage-left flank *in
+   `p2n`, where that wall is built* (`SW_SHED_DOOR` names z/W/H/key once, both
+   files read it), with a floored and roofed **link bay** between. `stuBounds`
+   gained a clause for the bay — the film stage's walkable stops at 29.5 and
+   the shed's starts at 34.4, so without it the door opens onto three metres of
+   nothing.
+2. **The link slab runs wall-centre to wall-centre, not the clear span.** Cut
+   to the clear span it leaves a strip of nothing *under* each wall and the
+   ground probe drops through — in the one place the player must cross. Its own
+   test caught this (`floor@33.75`).
+
+**One existing assertion was moved:** `tests/studios.js` "the shell holds you
+in" probed `STU.X + SW.W/2 + 6` as *"through the film stage flank"*. **That
+point is shed floor now.** It moved to the stage-**right** flank, which still
+means what it meant, and the new block tests the stage-left flank away from the
+doorway. Coverage is not lost, but see it with your own eyes.
+
+**Known to break on rebase:** its `orders.js` O1 asserts exactly **6**
+minus/plus buttons on GEAR with hit rects at `x===300`/`x===440`, `w===56`.
+**#195 makes that 9 at `x===340`/`x===460`, `w===40`** — whatever #195 did to
+the existing screen test needs doing to this one. Files touched: `p2n` (the
+flank + `SW_SHED_DOOR` + the bounds clause), `p2m` (biggest diff; `venueOX()`
+replaces six copies of the venue-offset ternary), `p4` (`venueRoot` only),
+`p4c` (three `var` lines — **`var TRASH` sits directly above `removeBody`,
+which #196 changed: likely conflict**), `p9`, `p7` (view 29).
 
 ### Both
 
@@ -196,7 +234,48 @@ Nothing here has been seen on hardware. jsdom has no eyes and no GPU.
 ---
 ---
 
-# PART 1a — A BUG THAT EATS SAVES, found by the grids branch
+# PART 1a — TWO BUGS ON `main` RIGHT NOW
+
+Both were found by the paused branches, and both are **live in merged code**.
+Neither is fixed on `main`.
+
+## 1. The venue's work lights all share ONE material — the shared-material trap
+
+**This is a defect in PR #194 and it is mine.** `p2n`'s `MAT.workLamp` is a
+single `MeshBasicMaterial` used behind **every** work light in GMS Studios —
+all four studios, reception, the offices and the warehouse — and `updateStu`
+does `g.mesh.material.color.copy(g.base).multiplyScalar(k)` once per glow
+entry. Last write wins, so every fitting in the venue reads back whichever
+room was tinted last.
+
+**RULING EH's per-room masters cannot actually reach the fittings.** It is
+INVARIANTS' named trap — *shared materials are never tinted in place* — which
+has now bitten four times (`M.serge`/`M.velour`, `LENSM`, `WOODM`, this).
+
+**It is invisible today** only because every room still falls back to the venue
+level (the studio stages do not exist until PR 3 lands). **The moment PR 3
+lands with per-studio work masters, this goes wrong on screen.** Fix it before
+or with PR 3.
+
+The Arc does not have this bug: `p2j` mints a fresh `MeshBasicMaterial` inline
+at each fitting. The shed branch dodged it by minting its own lamp material
+rather than joining the pile. The fix is to give each glow entry its own
+material — or to drive the tint per-material rather than per-mesh.
+
+## 2. The order and carpenter screens never reach `envTrack` — in any venue
+
+`vrBuildOrderScreens` runs **after** `envRecollect`, so its two materials per
+screen stay unhooked: four in the Palace's `world` today, plus two under
+`STU.group` once the studio screen is built. They render with the fog and the
+grade **bypassed rather than broken**, which is the silent failure INVARIANTS
+describes.
+
+**And it is a tripwire under the new suite:** `tests/studios.js`'s RULING EI
+assertion passes only because that suite never calls `vrBuildOrderScreens`.
+**The day anything calls it at boot, that assertion goes red for a
+pre-existing reason** — and whoever sees it will go looking in the wrong place.
+
+## 3. A bug that eats saves, found by the grids branch
 
 **This is not a studio problem and it should probably be lifted out into a PR
 of its own, ahead of the rest of the round.**
@@ -220,6 +299,12 @@ feature branch.
 
 **Decide:** cherry-pick it into its own PR now, or let it ride with PR 3. It
 belongs in `TRAPS.md` either way.
+
+---
+
+**Suggested order on resuming**, given the above: fix (1) and (3) as their own
+small PRs first — they are live defects and both are cheap — then rebase the
+shed, then the grids, then PRs 4, 7, 8.
 
 ---
 ---
@@ -331,6 +416,12 @@ anything that marks the save dirty during construction flushes an empty world
 over the player's saved build seconds before the load reads it. Latent since the
 save shipped because nothing at boot called `buildDirty`; the grids branch
 called it 100 times and it fired at once. See Part 1a.
+
+**The shared-material trap bit a FOURTH time** (`M.serge`/`M.velour`, `LENSM`,
+`WOODM`, and now `p2n`'s `MAT.workLamp`). A `MeshBasicMaterial` reused as "the
+lamp look" across eight rooms is one object, and per-mesh tinting writes it
+eight times a frame with only the last surviving. **If a thing is tinted at
+runtime it needs its own material, or a keyed cache — never a shared constant.**
 
 **A mutation can change a file without changing its length.** One negative check
 in the grids branch left the built file at exactly 1539949 bytes. **Verify a
