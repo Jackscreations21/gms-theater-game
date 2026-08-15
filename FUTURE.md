@@ -106,14 +106,52 @@ Both based on `359e212` (**before** #195 and #196) and therefore need
 **rebasing and a seam check** before they go near `main`. **Do not assume
 either is complete — they were interrupted.**
 
-| Branch | Concern | Expected conflicts |
-|---|---|---|
-| `gms-studios-shed` | **PR 2** — `SHEDS.studio`, `CARTS.studio`, `ORDERS.studio`, `TRASH.studio`; saws, paint rack, trash drum, racking, forklift, order screen. Re-implements nothing: every registry already takes a venue key | `src/p9.txt` (#195 changed the order-screen layout), `tests/orders.js` (three branches have now appended at the END anchor) |
-| `gms-studio-grids` | **PR 3** — the ceiling bars, **empty** hanging points (RULING EB), the four studio boards, `stageWorkLevel` | `src/p4.txt` (#195 and #196 both edited near `addFixture` / `makeBodyMesh` / `canHang`), `src/p2n.txt`, `tests/stages.js` |
+### `gms-studio-grids` — PR 3, commit `71a675d`, **NOT ready to merge**
 
-**First job on resuming:** read both agents' final reports, fold the honest
-state in here — including anything half-done or not yet negative-checked —
-then rebase, seam-check, review, merge.
+The ceiling bars, the empty hanging points (RULING EB), the four studio boards.
+**20/20 on its own build**, tree clean, rebuilds byte-identical. Four new
+assertions, each negative-checked with the mutation proved present in the BUILT
+file and proved to move its sha. *(One mutation left the byte count identical at
+1539949 — the hash caught it. **Byte count is not a check.**)*
+
+**Why it is not ready:** five designed assertions in `tests/stages.js` were never
+written — `stageAt` across every room plus the keep-the-board walk, the empty
+rail through the DOM, the per-studio work master, `FOHBAR`/`SPKBARS` null on a
+studio board, `stageOrigin`/`stageDeck` naming the studio. The behaviour is
+implemented and was exercised by hand, **but it is only pinned indirectly.**
+Next step: append that block after the last `P(...)` in `tests/stages.js` and
+negative-check each.
+
+Two *existing* assertions were **edited**, not added, so they carry no negative
+check: `stages.js` "there are three of them" → seven, and `beetlejuice.js`
+"39 channels on every board" now names the three theatre boards instead of
+walking `Object.keys(STAGES)`. **Review both by eye before merging** — the
+second was also leaving the board parked on a studio when it threw, taking 60
+further cases down with it.
+
+**What it built:** 5 bars on 3 m centres × 5 points on 4 m centres = 25 points a
+studio, 100 across the venue; bars 17 m in a 20 m room; lanterns hang 0.35 m
+under the pipe at `SS.GRID` 5.2; bars merged 13 tubes to one mesh, cached across
+all four studios. **`DY_CEIL` did not move** — still 320, still 294 draws/eye,
+scene still 580 drawables.
+
+**Rebase notes:** `src/p2n.txt` **untouched**. `src/p4.txt` is ONE hunk (the
+`_sx/_sz` init at the top of `updateRig`) — **#195's `DIFFUSE_FIX`/`GLOW_Z` work
+is in that same function, so expect a conflict there.** `src/p4c.txt` two hunks,
+not near `removeBody`, so #196 is textually clean. `src/p2k.txt` is the bulk.
+
+### `gms-studios-shed` — PR 2, state UNKNOWN
+
+Its final report had not arrived when this was written. **Read it before
+touching the branch, and do not assume it is complete.** Expected conflicts:
+`src/p9.txt` (#195 changed the order-screen layout for lists over six rows) and
+`tests/orders.js` (three branches have now appended at the END anchor; two have
+already collided once).
+
+### Both
+
+Rebase, rebuild (**do not trust a clean text-merge of `the-house.html`**),
+seam-check, review, merge — in that order.
 
 ## ⬜ NOT STARTED
 
@@ -158,9 +196,69 @@ Nothing here has been seen on hardware. jsdom has no eyes and no GPU.
 ---
 ---
 
+# PART 1a — A BUG THAT EATS SAVES, found by the grids branch
+
+**This is not a studio problem and it should probably be lifted out into a PR
+of its own, ahead of the rest of the round.**
+
+`p7`'s boot runs **one eager frame before `buildLoad()`**, and that frame runs
+`buildTick`. So anything that marks the save dirty during construction gets its
+**empty world flushed over the player's saved build**, moments before
+`buildLoad` goes to read it — and the load then faithfully restores the nothing
+it just wrote. Every piece of wood the player had built is gone.
+
+It has been latent since the save shipped, because **nothing at boot had ever
+called `buildDirty`**. The grids branch called it 100 times (through
+`removeBody`, stripping each grid point per RULING EB) and the trap sprang
+immediately: `build.js` and `carp.js` both fell over with *"the nailed pair
+never returned"*.
+
+**The fix on `gms-studio-grids`:** `buildTick` refuses to write until
+`buildLoad` has been called, whatever it found (`var _buildLoaded` in `p4c`).
+That is two lines and it is right, but it is currently buried in an unmerged
+feature branch.
+
+**Decide:** cherry-pick it into its own PR now, or let it ride with PR 3. It
+belongs in `TRAPS.md` either way.
+
+---
+---
+
 # PART 2 — QUEUED: things wanted, not yet specced
 
 Rough is fine. Add to this freely.
+
+### Rulings the grids branch needs before it can be finished
+
+- **The floor-pool footprint is still the Palace's shape.** `updateRig` clamps a
+  pool to `|hit.x − _sx| < 16` and a z band taken from `D.apron`/`D.backWall`.
+  In a studio (local z −8…+8) that suppresses pools over the downstage ~4 m.
+  It is strictly better than before — there were *no* pools in a studio at all
+  until `stageOrigin()` was wired in — but the proper fix is a **per-stage
+  footprint, which is new per-stage state and collides head-on with RULING EE's
+  "no new per-stage state".** *That collision is the thing to rule on.* It only
+  bites once a lantern can actually be hung there.
+- **Patching the board to a studio mints a fogger rack in it.** `stageRestore` →
+  `smokeRestore(null)` → `buildSmoke()`, first visit only. That is the existing
+  per-stage design and the Arc does it too — but RULING EA says these rooms are
+  structure and work light, and the puffs `InstancedMesh` carries
+  `frustumCulled = false`, so it always submits: ~16 draws a studio once
+  visited, up to 64 seen from reception. Do studios get foggers at all?
+- **What should a studio grid point default to?** It is `fresnel` today. #195
+  landed `panel` after that choice was made, and **an LED panel is arguably the
+  more honest default for a television grid.** One word.
+- **`S.bars` holds the hanging POINTS, not the bars.** It was named by PR 1 and
+  filled by PR 3, and `tests/studios.js` already ships `S.bars.some(b => b.body)`
+  — "has a lantern on its grid at boot" — so filling it with bar records would
+  have made that assertion vacuous. `S.points` is the better name; renaming
+  means touching that line too.
+- **Spec §10 names the wrong function.** It says work lights answer `HOUSE.work`
+  "through `stageHouseLevel`". `stageHouseLevel` returns `.house`. The grids
+  branch added `stageWorkLevel`, which is what `p2n` already called. Fix the
+  spec when PR 3 lands.
+- **`vrBuildRopes` files a studio venue's rope holder into the PALACE's
+  `ROOM_GROUP.stage`** — it only knows `st.venue === 'arc'`. The holder is empty
+  so nothing draws, but it is wrong. **PR 7's ground.**
 
 ### From the studios round, for Jack to decide
 
@@ -227,6 +325,16 @@ registered, not the treads: `mergeShell` removes each tread mesh and puts
 merged shells back, so individually-registered treads stay in `WALKABLE` while
 no longer being children of anything. Measured: a test lantern rests at 0.268
 instead of 3.30.
+
+**One eager frame runs before `buildLoad()`, and `buildTick` is in it** — so
+anything that marks the save dirty during construction flushes an empty world
+over the player's saved build seconds before the load reads it. Latent since the
+save shipped because nothing at boot called `buildDirty`; the grids branch
+called it 100 times and it fired at once. See Part 1a.
+
+**A mutation can change a file without changing its length.** One negative check
+in the grids branch left the built file at exactly 1539949 bytes. **Verify a
+mutation landed by SHA, never by byte count.**
 
 **A negative check that does not fail is a finding about the TEST.**
 `envRegister(STU.group)` was written, passed the suite, and removing it
