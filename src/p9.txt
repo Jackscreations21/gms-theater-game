@@ -1165,7 +1165,12 @@ function vrBuildDesks(){
    vrSelect branch).  State and delivery live in p2m (ORDERS/orderPlace);
    this is only the glass.
    ========================================================================== */
-const ORDER_KINDS = ['profile','fresnel','par','cyc','mover','speaker'];
+/* RULING EG added the studio kit at the END of the list on purpose: the row
+   ORDER is what a player's hand learns and what four suites press by index,
+   so a new kind goes after the ones that were there rather than beside the
+   lantern it resembles. */
+const ORDER_KINDS = ['profile','fresnel','par','cyc','mover','speaker',
+                     'soft','panel','hmi'];
 const ORDER_TABS = ['GEAR','WOOD','HDWE','PAINT'];
 /* the rows of each tab: a key into sc.counts, a label, and the order UNIT
    a count of it turns into (p2m orderPlace) */
@@ -1236,26 +1241,33 @@ function vrDrawOrder(sc){
     sc.hits.push({x, y:56, w:122, h:40, fn:()=>{ sc.tab = i; vrDrawOrder(sc); }});
   });
   const rows = orderRows(sc.tab);
-  const paint = sc.tab === 3;              // ten rows only fit drawn small
+  const paint = sc.tab === 3;              // the swatch — a PAINT row is a colour
+  /* SMALL ROWS ARE A ROW-COUNT DECISION, NOT A TAB.  Ten paint colours only
+     ever fitted drawn small, and that was written as "is this the paint tab"
+     because it was the only long list.  RULING EG made GEAR nine kinds: at the
+     tall pitch its last three rows would be drawn at y 400-536, over the ORDER
+     button and off the bottom of a 520px canvas, with a minus button sharing
+     pixels with ORDER — a press that could do either. */
+  const tight = rows.length > 6;
   rows.forEach((r, i)=>{
-    const y = 112 + i*(paint ? 28 : 48);
-    const h = paint ? 24 : 40;
-    const bx1 = paint ? 340 : 300, bx2 = paint ? 460 : 440, bw = paint ? 40 : 56;
+    const y = 112 + i*(tight ? 28 : 48);
+    const h = tight ? 24 : 40;
+    const bx1 = tight ? 340 : 300, bx2 = tight ? 460 : 440, bw = tight ? 40 : 56;
     if(paint){
       g.fillStyle = '#' + ('00000' + r.swatch.toString(16)).slice(-6);
       g.fillRect(24, y + 2, 28, 20);
       g.fillStyle = '#cfd8e3'; g.font = '16px monospace';
       g.fillText(r.label, 60, y + 18);
     } else {
-      g.fillStyle = '#cfd8e3'; g.font = '20px monospace';
-      g.fillText(r.label, 24, y + 27);
+      g.fillStyle = '#cfd8e3'; g.font = tight ? '16px monospace' : '20px monospace';
+      g.fillText(r.label, 24, y + (tight ? 18 : 27));
     }
     g.fillStyle = '#232b35'; g.fillRect(bx1, y, bw, h); g.fillRect(bx2, y, bw, h);
-    g.fillStyle = '#ffd08a'; g.font = paint ? 'bold 18px monospace' : 'bold 26px monospace';
-    g.fillText('-', bx1 + bw/2 - 5, y + h - (paint ? 6 : 12));
-    g.fillText('+', bx2 + bw/2 - 7, y + h - (paint ? 6 : 12));
+    g.fillStyle = '#ffd08a'; g.font = tight ? 'bold 18px monospace' : 'bold 26px monospace';
+    g.fillText('-', bx1 + bw/2 - 5, y + h - (tight ? 6 : 12));
+    g.fillText('+', bx2 + bw/2 - 7, y + h - (tight ? 6 : 12));
     g.fillStyle = '#eef3f8';
-    g.fillText('' + (sc.counts[r.key] || 0), (bx1 + bx2 + bw)/2 - 8, y + h - (paint ? 6 : 12));
+    g.fillText('' + (sc.counts[r.key] || 0), (bx1 + bx2 + bw)/2 - 8, y + h - (tight ? 6 : 12));
     sc.hits.push({x:bx1, y, w:bw, h, fn:()=>{
       if(sc.counts[r.key] > 0){ sc.counts[r.key]--; sc.status = ''; }
       vrDrawOrder(sc);

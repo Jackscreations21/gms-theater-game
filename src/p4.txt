@@ -343,6 +343,75 @@ function bodyCyc(){
   addHang(g, .28);
   g.userData.lens = lens; return mergeShell('cyc', g);
 }
+/* ---- RULING EG — THE STUDIO KIT ------------------------------------------
+   Three kinds a television studio and a film stage light with, and they go in
+   the ONE catalogue: a Palace that can order a softlight is not a problem worth
+   a second list.  They are built to the letter of bodyFresnel and bodyPar above
+   — every geometry through fixG so four hundred bodies share one buffer per
+   TYPE, addHang for the yoke / C-clamp / safety, addFrame where a gel frame
+   belongs (the panel has none: a bi-colour LED is gelled by dialling it), and
+   exactly ONE lensMat piece each so the lens stays repaintable through the
+   keyed cache.
+
+   EACH CLOSES WITH mergeShell, WHICH IS NOT OPTIONAL FOR A NEW BODY.  423
+   lantern bodies were 54% of the scene's visible drawables at 10.8 draws each
+   before RULING DY; three new kinds that skipped the merge would put that
+   straight back, one grid at a time.  Merged, each of these is THREE draws —
+   one M.fixture shell, one M.steel shell, one lens — which is exactly what a
+   par can costs, and tests/workshop.js holds the budget.
+
+   AND NOT ONE NEW MATERIAL BETWEEN THEM.  Every piece wears M.fixture, M.steel
+   or a LENSM colour the rig already mints, so RULING EI (every material reaches
+   envTrack) is satisfied by CONSTRUCTION rather than by a registration someone
+   has to remember — and a missed registration renders with the fog and the
+   grade bypassed rather than broken, which is the silent failure INVARIANTS
+   names.  The same assertion in tests/workshop.js is what keeps it true.      */
+function bodySoft(){ // SOFTLIGHT — the studio softbox, a big shallow diffused box
+  const g = new T.Group();
+  const box = new T.Mesh(fixG('softBox', ()=>new T.BoxGeometry(.64,.52,.2)), M.fixture);
+  g.add(box);
+  // the egg-crate over the face: three uprights and two rails, two buffers
+  [-.19,0,.19].forEach(x=>{
+    const b = new T.Mesh(fixG('softCrateV', ()=>new T.BoxGeometry(.018,.44,.07)), M.fixture);
+    b.position.set(x, 0, .14); g.add(b);
+  });
+  [-.15,.15].forEach(y=>{
+    const b = new T.Mesh(fixG('softCrateH', ()=>new T.BoxGeometry(.56,.018,.07)), M.fixture);
+    b.position.set(0, y, .14); g.add(b);
+  });
+  addFrame(g, .28, .19);
+  const lens = new T.Mesh(fixG('softLens', ()=>new T.PlaneGeometry(.56,.44)), lensMat(0x161616));
+  lens.position.z = .101; g.add(lens);
+  addHang(g, .34);
+  g.userData.lens = lens; return mergeShell('soft', g);
+}
+function bodyPanel(){ // LED PANEL — flat, thin, one flap over the top edge
+  const g = new T.Group();
+  const slab = new T.Mesh(fixG('panSlab', ()=>new T.BoxGeometry(.54,.38,.06)), M.fixture);
+  g.add(slab);
+  const drv = new T.Mesh(fixG('panDrv', ()=>new T.BoxGeometry(.22,.16,.06)), M.fixture);
+  drv.position.z = -.06; g.add(drv);           // the driver, on the back
+  const flap = new T.Mesh(fixG('panFlap', ()=>new T.BoxGeometry(.54,.17,.012)), M.fixture);
+  flap.position.set(0,.21,.05); flap.rotation.x = -.5; g.add(flap);
+  const lens = new T.Mesh(fixG('panLens', ()=>new T.PlaneGeometry(.48,.32)), lensMat(0x141414));
+  lens.position.z = .031; g.add(lens);
+  addHang(g, .25);                             // barely a body to carry
+  g.userData.lens = lens; return mergeShell('panel', g);
+}
+function bodyHmi(){ // HMI FRESNEL — the film stage's hard daylight unit
+  const g = new T.Group();
+  const shell = new T.Mesh(fixG('hmiBody', ()=>new T.BoxGeometry(.56,.6,.5)), M.fixture);
+  shell.position.z = .04; g.add(shell);
+  const ring = new T.Mesh(fixG('hmiRing', ()=>new T.CylinderGeometry(.29,.29,.07,16)), M.fixture);
+  ring.rotation.x = Math.PI/2; ring.position.z = .3; g.add(ring);
+  const bal = new T.Mesh(fixG('hmiBallast', ()=>new T.BoxGeometry(.34,.28,.2)), M.fixture);
+  bal.position.z = -.31; g.add(bal);           // the ballast, where the cable goes
+  addFrame(g, .3, .4);
+  const lens = new T.Mesh(fixG('hmiLens', ()=>new T.CircleGeometry(.275,16)), lensMat(0x111111));
+  lens.position.z = .336; g.add(lens);
+  addHang(g, .42);                             // chunky — the heaviest thing on a grid
+  g.userData.lens = lens; return mergeShell('hmi', g);
+}
 function bodyMover(){
   const g = new T.Group();
   const base = new T.Mesh(fixG('movBase', ()=>new T.BoxGeometry(.44,.24,.44)), M.fixture);
@@ -457,6 +526,7 @@ var BUILD_VENUE = 'palace';   // buildArcStage flips this while it builds (p2k)
 const BODY_LABEL = {profile:'PROFILE SPOT', fresnel:'FRESNEL', par:'PAR CAN',
                     cyc:'CYC UNIT', mover:'MOVING HEAD', blinder:'BLINDER',
                     speaker:'PA BOX',
+                    soft:'SOFTLIGHT', panel:'LED PANEL', hmi:'HMI FRESNEL',
                     wood:'WOOD', hinge:'HINGE', track:'TRACK', carriage:'CARRIAGE',
                     paint:'PAINT CAN', table:'WORK TABLE'};
 function makeBodyMesh(kind, color){
@@ -467,6 +537,7 @@ function makeBodyMesh(kind, color){
   return kind==='fresnel'?bodyFresnel(): kind==='par'?bodyPar():
          kind==='cyc'?bodyCyc(): kind==='mover'?bodyMover():
          kind==='blinder'?bodyBlinder():
+         kind==='soft'?bodySoft(): kind==='panel'?bodyPanel(): kind==='hmi'?bodyHmi():
          kind==='speaker'?bodySpeaker(): bodyProfile();
 }
 /* register a body that is already sitting hung on its point */
@@ -908,13 +979,42 @@ function worldToStage(v, out){
   return o;
 }
 
+/* ---- RULING EG — WHAT THE THREE NEW KINDS ARE, OPTICALLY ------------------
+   Every addFixture call in this file spells its five numbers out, because a
+   theatre plot is written unit by unit.  The studio kit is ordered from a
+   catalogue instead, so the numbers belong to the KIND and are stated here once
+   rather than copied into four studio rigs — and RANK AND POWER ARE TWO
+   DIFFERENT NUMBERS (RULING BF), so both are written even where they agree.
+   Neither is left to default: `hmi`'s rank 3.6 sits deliberately ABOVE the
+   profile's 3.1-4.2 band's middle and above its own power 3.4, so a film
+   stage's key light wins one of the eight real lights off a background unit,
+   which is the whole reason a film stage looks like a film stage.
+   A caller still wins: these are defaults under `o`, not an override of it.  */
+const STUDIO_OPTICS = {
+  soft:  {angle:70, beamRad:5.0, beamLen:12, power:2.2, rank:2.2},
+  panel: {angle:60, beamRad:4.2, beamLen:11, power:1.8, rank:1.8},
+  hmi:   {angle:24, beamRad:2.0, beamLen:26, power:3.4, rank:3.6}
+};
+/* A DIFFUSE SOURCE IS A DIFFERENT LIGHT, and the cyc unit has always been the
+   one exception in the two lines below: a flood has no hard edge to give, and
+   its beam in haze is a wash rather than a shaft.  A softbox and an LED panel
+   are the same kind of source, so they join the exception rather than each
+   growing a ternary of its own.  The HMI is a FRESNEL — hard daylight, a
+   shadow you can read — and is deliberately not here. */
+const DIFFUSE_FIX = {cyc:1, soft:1, panel:1};
+/* the hot-lens glow sits AT the lens, and the lens is not in the same place on
+   every kind: a cyc unit's face is at .24 and the flat studio sources are
+   nearer still (a panel is six centimetres deep, so a glow at .4 would hang in
+   the air a hand's width in front of it).  Anything not named here keeps the
+   .4 the deep-barrelled lanterns were built with. */
+const GLOW_Z = {cyc:.24, soft:.16, panel:.09, hmi:.40};
 function addFixture(o){
   const f = Object.assign({
     ch:FIXTURES.length+1, name:'', type:'profile', pos:new T.Vector3(), aim:new T.Vector3(),
     angle:20, level:0, color:new T.Color(0xffffff), gobo:0, ls:-1, lsOffset:-0.4, lsX:0,
     beamLen:22, beamRad:2.2, power:2.6, rank:null, audience:false,
     mover:false, pan:0, tilt:-45, panT:0, tiltT:-45, follow:false
-  }, o);
+  }, STUDIO_OPTICS[o && o.type], o);
   /* RANK AND BRIGHTNESS ARE TWO DIFFERENT NUMBERS (RULING BF).  `power` used to
      do both jobs: it decided WHO got one of the eight real lights and HOW
      BRIGHT that light burned.  RULING BC then pushed the blinders down to 0.9
@@ -956,7 +1056,7 @@ function addFixture(o){
   // hot lens glow
   const glow = new T.Mesh(new T.PlaneGeometry(.55,.55), new T.MeshBasicMaterial({
     map:GOBOS[0], transparent:true, blending:T.AdditiveBlending, depthWrite:false, opacity:0}));
-  glow.position.z = f.type==='cyc'?.24:.4;
+  glow.position.z = GLOW_Z[f.type] !== undefined ? GLOW_Z[f.type] : .4;
   glow.raycast = ()=>{};
   gradeExempt(glow.material);      // RULING DM — additive light, graded once not twice
   (f.type==='mover'?body.userData.head:grp).add(glow); f.glow = glow;
@@ -1512,7 +1612,7 @@ function updateRig(dt, t){
     // beam
     const u = f.beam.material.uniforms;
     u.uColor.value.copy(f.color);
-    u.uInt.value = lvl * (f.type==='cyc'?0.30:0.62);
+    u.uInt.value = lvl * (DIFFUSE_FIX[f.type] ? 0.30 : 0.62);
     u.uHaze.value = 0.25 + hazeNow()*1.15;
     u.uTime.value = t;
     u.uUseGobo.value = f.gobo>0 ? 1 : 0;
@@ -1687,7 +1787,7 @@ function updateRig(dt, t){
     l.target.updateMatrixWorld();
     l.color.copy(f.color);
     l.angle = clamp(f.angle*DEG, 0.06, 1.15);
-    l.penumbra = f.type === 'cyc' ? 0.85 : 0.45;
+    l.penumbra = DIFFUSE_FIX[f.type] ? 0.85 : 0.45;
     l.distance = f.beamLen*2.4;
     l.intensity = f._lvl * f.power * (0.7 + 0.3*(1-hazeNow()*0.5));
   }
