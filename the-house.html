@@ -11601,11 +11601,23 @@ function artHouseBase(){ return artFlyBase() + 2 * FLY.length; }
 function artSelBase(){ return artHouseBase() + 5; }     // 307 selector, 308 sign, 309 traveler
 function artMoverBase(){ return artSelBase() + 3; }
 
-/* a mover's travel, in degrees either side of centre.  Nothing in the rig
-   declares its own range, so this is the range every head gets, and the map
-   probe prints it per fixture rather than leaving it to be read out of here */
+/* A MOVER'S TRAVEL.  Nothing in the rig declares its own range, so this is
+   the range every head gets, and the map probe prints it per fixture rather
+   than leaving it to be read out of here.
+
+   PAN is symmetric: plus or minus 170 degrees about the plotted centre.
+
+   TILT IS NOT, AND A SYMMETRIC ONE WASTED HALF THE CHANNEL.  `updateRig`
+   poses a head as `rotation.x = (tilt + 90) * DEG` (p4), so tilt −90 is
+   horizontal, 0 is straight down, and anything positive folds the head over
+   backwards — while the rig's own plotted rest tilts are −45, −55 and −64.
+   A range of ±135 therefore made bytes ~129 upwards unusable and put "tilt at
+   50%" straight down, which is not what any operator means by the middle of a
+   fader.  −180..0 is the real sweep: byte 0 straight up, 128 horizontal, 255
+   straight down, and every byte in between lands somewhere a head can go. */
 const ART_PAN = 170;
-const ART_TILT = 135;
+const ART_TILT_LO = -180;
+const ART_TILT_HI = 0;
 
 const ART = {
   on:     false,   // the switch (RULING EM).  Off on every boot, by ruling.
@@ -11777,12 +11789,16 @@ function artLights(b){
        `aim` is left exactly where the plot put it */
     if(f.mover){
       f.panT  = (b[o + 5] / 127.5 - 1) * ART_PAN;
-      f.tiltT = (b[o + 6] / 127.5 - 1) * ART_TILT;
+      f.tiltT = ART_TILT_LO + (b[o + 6] / 255) * (ART_TILT_HI - ART_TILT_LO);
     }
   }
-  /* the house circuits.  `syncMasters` is NOT called here: the panel re-reads
-     HOUSE on its own 10Hz refresh (p7), and calling it 44 times a second
-     would write four DOM values a frame for a board nobody may be looking at. */
+  /* The house circuits.  `syncMasters` is NOT called here — writing four DOM
+     values 44 times a second for a board nobody may be looking at is not what
+     this is for.  The SECTION faders recover on their own (refreshChannelStrip
+     -> syncSections reads HOUSE at 10Hz, p7); the `#hl`/`#wl` master sliders
+     do NOT, because syncMasters is not on that path, so they read stale while
+     a desk drives the house.  That is a row for the ARTNET UI to solve, not a
+     reason to repaint the DOM at packet rate. */
   const h = artHouseBase() - 1;
   if(h + 4 < b.length){
     HOUSE.house     = b[h]     / 255;
@@ -11851,8 +11867,13 @@ function artnetTick(dt){
      reading live and an operator can see the desk is talking.  It simply
      writes nothing.  No per-stage universes, and nothing is ever written into
      a parked stage's captured state — that machinery is not built, and this
-     ruling says it never is without a new one. */
-  if(typeof STAGE !== 'undefined' && STAGE !== 'palace') return;
+     ruling says it never is without a new one.
+
+     The test REQUIRES the Palace rather than exempting the undefined: a
+     "never write unless" ruling should fail shut.  `STAGE` is unconditionally
+     defined in p2k so this cannot bite today, but the safe polarity costs
+     nothing. */
+  if(typeof STAGE === 'undefined' || STAGE !== 'palace') return;
 
   artLights(b);
 }

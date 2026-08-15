@@ -491,10 +491,23 @@ const P = async (name, fn)=>{
         throw new Error('channel 1 colour is ' + f1.color.getHexString());
       if(Math.abs(f1.color.g - 128/255) > 1e-6) throw new Error('green landed at ' + f1.color.g);
       if(f1.gobo !== 3) throw new Error('gobo byte 129 gave index ' + f1.gobo);
+      /* read fixture 7 BEFORE the gobo sweep below: every frame it sends is a
+         full 512 bytes, so it zeroes fixture 7 on the way past */
       if(Math.abs(f7.level - 51/255) > 1e-6) throw new Error('fixture 7 read ' + f7.level + ' — the stride is wrong');
       if(Math.abs(f7.color.r - 1) > 1e-6 || Math.abs(f7.color.b) > 1e-6)
         throw new Error('fixture 7 colour is ' + f7.color.getHexString());
-      return 'ch1 full blue-ish with gobo 3, ch43-49 lands on fixture 7 at 0.20 yellow — stride 7 confirmed';
+      /* THE BOUNDARIES, because byte 129 alone cannot tell 43 from 42 — and
+         the clamp, because an index past the last gobo is a black texture and
+         no error anywhere. */
+      const goboOf = (byte)=>{ const g = new Uint8Array(512); g[4] = byte;
+        ws.deliver(g); artnetTick(1/60); return FIXTURES[0].gobo; };
+      const edges = [[0,0],[42,0],[43,1],[85,1],[86,2],[214,4],[215,5],[255,5]];
+      for(const [byte, want] of edges){
+        const got = goboOf(byte);
+        if(got !== want) throw new Error('gobo byte ' + byte + ' gave ' + got + ', wanted ' + want);
+      }
+      if(GOBOS.length !== 6) throw new Error('there are ' + GOBOS.length + ' gobos; the /43 divisor is sized for six');
+      return 'ch1 full blue-ish with gobo 3, ch43-49 lands on fixture 7 at 0.20 yellow, and gobo edges 42/43 and 214/215 land right';
     });
 
     P('the desk fades and the game does NOT — durations stay at zero (RULING EP)', ()=>{
@@ -515,12 +528,16 @@ const P = async (name, fn)=>{
         b[0] = Math.round(255 * n / 10);          // the desk's own ten-step fade
         ws.deliver(b); artnetTick(1/60);
         if(FIXTURES[0].lvlDur !== 0) throw new Error('step ' + n + ': the desk write left a duration of ' + FIXTURES[0].lvlDur);
+        if(FIXTURES[0].colDur !== 0) throw new Error('step ' + n + ': the desk write left a COLOUR duration of ' + FIXTURES[0].colDur);
+        const col = FIXTURES[0].color.getHexString();
         updateFades(1/60);                        // the engine gets its chance every frame
+        if(FIXTURES[0].color.getHexString() !== col)
+          throw new Error('step ' + n + ': the colour fade ran on under the desk, ' + col + ' -> ' + FIXTURES[0].color.getHexString());
         seen.push(Math.round(FIXTURES[0].level * 100) / 100);
       }
       const want = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1].join(',');
       if(seen.join(',') !== want) throw new Error('the desk fade read ' + seen.join(',') + ', wanted ' + want);
-      return 'ten desk steps arrived as ten exact levels with a five-second game fade armed against each one';
+      return 'ten desk steps arrived as ten exact levels, with a five-second level AND colour fade armed against each one';
     });
 
     P('a mover takes pan and tilt; a fixed lantern ignores them (RULING EP)', ()=>{
@@ -529,29 +546,54 @@ const P = async (name, fn)=>{
       const fixed = FIXTURES.findIndex(f=>!f.mover);
       if(mover < 0 || fixed < 0) throw new Error('the rig has no mover or no fixed lantern to compare');
       const f0 = FIXTURES[fixed];
-      const aim0 = f0.aim.clone(), pan0 = f0.panT, tilt0 = f0.tiltT;
+      /* PIN THE FIXED LANTERN AGAINST ITS PLOT, NOT AGAINST A SNAPSHOT.  A
+         snapshot taken here is already whatever the previous case's frame
+         left it — so against a build that writes pan/tilt on everything, the
+         value it is compared to has itself been written, and a later frame
+         that happens to repeat it makes the whole comparison agree.  The
+         plotted rest values are what a fixed lantern must still have. */
+      const PLOT_PAN = 0, PLOT_TILT = -45;
+      if(f0.panT !== PLOT_PAN || f0.tiltT !== PLOT_TILT)
+        throw new Error('the fixed lantern starts at ' + f0.panT + '/' + f0.tiltT +
+          ', not its plotted ' + PLOT_PAN + '/' + PLOT_TILT + ' — something has already written it');
+      const aim0 = f0.aim.clone();
       const b = new Uint8Array(512);
       b[mover * ART_CH_FIX + 5] = 255; b[mover * ART_CH_FIX + 6] = 0;
       b[fixed * ART_CH_FIX + 5] = 255; b[fixed * ART_CH_FIX + 6] = 0;
       ws.deliver(b); artnetTick(1/60);
+      /* read the fixed lantern NOW, before the tilt sweep below sends more
+         full frames past it */
+      if(f0.panT !== PLOT_PAN || f0.tiltT !== PLOT_TILT)
+        throw new Error('a fixed lantern took the pan/tilt bytes: ' + f0.panT + '/' + f0.tiltT);
+      if(!f0.aim.equals(aim0)) throw new Error('a fixed lantern had its aim moved by the desk');
       const m = FIXTURES[mover];
       /* THE SPEC'S OWN NUMBERS, not the build's.  Reading ART_PAN back and
          comparing against it is a test that agrees with itself whatever the
          constant says — RULING EP names plus-or-minus 170 degrees, so that is
          what gets asserted. */
       if(Math.abs(m.panT - 170) > 0.01) throw new Error('pan 255 gave ' + m.panT + ', and RULING EP says 170');
-      if(Math.abs(m.tiltT + 135) > 0.01) throw new Error('tilt 0 gave ' + m.tiltT + ', and the tilt range is 135');
-      if(ART_PAN !== 170 || ART_TILT !== 135)
-        throw new Error('the constants read ' + ART_PAN + '/' + ART_TILT + ' — the map file would print a lie');
-      if(f0.panT !== pan0 || f0.tiltT !== tilt0)
-        throw new Error('a fixed lantern took the pan/tilt bytes');
-      if(!f0.aim.equals(aim0)) throw new Error('a fixed lantern had its aim moved by the desk');
+      /* TILT IS NOT SYMMETRIC, and that is the point.  updateRig poses a head
+         as rotation.x = (tilt + 90), so tilt 0 is straight down and anything
+         positive folds it over backwards — a +/-135 range made the top half of
+         the channel unusable and put "50%" straight down. */
+      if(Math.abs(m.tiltT + 180) > 0.01) throw new Error('tilt byte 0 gave ' + m.tiltT + ', wanted -180 (straight up)');
+      if(ART_PAN !== 170 || ART_TILT_LO !== -180 || ART_TILT_HI !== 0)
+        throw new Error('the constants read ' + ART_PAN + '/' + ART_TILT_LO + '..' + ART_TILT_HI + ' — the map file would print a lie');
+      const tiltOf = (byte)=>{ const t = new Uint8Array(512);
+        t[mover * ART_CH_FIX + 6] = byte; ws.deliver(t); artnetTick(1/60); return FIXTURES[mover].tiltT; };
+      if(Math.abs(tiltOf(255) - 0) > 0.01) throw new Error('tilt byte 255 gave ' + m.tiltT + ', wanted 0 (straight down)');
+      if(Math.abs(tiltOf(128) + 90) > 0.5) throw new Error('tilt byte 128 gave ' + m.tiltT + ', wanted about -90 (horizontal)');
+      /* and every byte lands somewhere a head can actually go */
+      for(let byte = 0; byte <= 255; byte += 17){
+        const t = tiltOf(byte);
+        if(t > 0.01 || t < -180.01) throw new Error('tilt byte ' + byte + ' aims at ' + t + ', outside the head travel');
+      }
       const c = new Uint8Array(512);
       c[mover * ART_CH_FIX + 5] = 128; c[mover * ART_CH_FIX + 6] = 128;
       ws.deliver(c); artnetTick(1/60);
-      if(Math.abs(m.panT) > 1.5 || Math.abs(m.tiltT) > 1.5)
-        throw new Error('the middle of the range is ' + m.panT.toFixed(2) + '/' + m.tiltT.toFixed(2) + ', not centre');
-      return 'pan 0-255 spans +/-' + ART_PAN + ' and tilt +/-' + ART_TILT + ', centred at 128; the fixed lantern keeps its plotted aim';
+      if(Math.abs(m.panT) > 1.5)
+        throw new Error('pan byte 128 gave ' + m.panT.toFixed(2) + ', which is not the centre of the pan');
+      return 'pan +/-170 centred at byte 128; tilt -180..0 with 128 horizontal and every byte on the head travel; the fixed lantern keeps its plotted aim';
     });
 
     P('the five house circuits land where the map says (RULING EP)', ()=>{
@@ -617,7 +659,12 @@ const P = async (name, fn)=>{
         if([HOUSE.house, HOUSE.work, HOUSE.lobby, HOUSE.backstage, HOUSE.practical].join(',') !== houseBefore)
           throw new Error('a full-on Art-Net frame moved the house circuits at the Arc');
         return 'a full frame at the Arc: counted and live, and not one level, colour or circuit moved';
-      } finally { stageSwitch(home); }
+      } finally {
+        /* put the Arc back dark before leaving it — the next case appended
+           after this one would otherwise inherit a lit rig it never set */
+        setLevel(1, 0, 0); setColorCh(1, '#ffffff', 0); setLevel(2, 0, 0);
+        stageSwitch(home);
+      }
     });
 
     P('the part introduces no setTimeout of its own — game timing is the frame', ()=>{
@@ -916,10 +963,13 @@ function getUrl(port, url, headers){
   });
 
   await P('the repo is served but .git is not, by any of its names', async ()=>{
-    /* .git/HEAD, not .git/refs/heads/main: a FRESH CLONE packs its refs, so
-       the loose file is honestly absent and the relay 404s it — the case
-       would then be green only in a repo with loose refs. */
-    for(const u of ['/.git/config', '/.git/HEAD', '/.gitignore', '/%2Egit/config']){
+    /* THESE ARE REFUSED WHETHER OR NOT THEY EXIST, which is the point: a
+       fresh clone packs its refs away and a git WORKTREE has `.git` as a
+       FILE, so several of these resolve to nothing at all in a perfectly
+       ordinary checkout.  Forbidden and not-there are different answers, and
+       a dot-segment gets the first one either way. */
+    for(const u of ['/.git/config', '/.git/HEAD', '/.git/refs/heads/main',
+                    '/.gitignore', '/%2Egit/config', '/.env']){
       const r = await getUrl(httpPort, u);
       if(r.status !== 403) throw new Error(u + ' answered ' + r.status + ', expected 403');
     }
