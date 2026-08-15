@@ -358,3 +358,51 @@ function artnetTick(dt){
 
   artLights(b);
 }
+
+/* ============================================================================
+   THE BOARD YIELDS, AND THE ROW THAT SAYS SO      RULINGS EM and EV together
+
+   EVERY GATE IN THE GAME ASKS artDriving(), NEVER ART.on.  That is RULING EV
+   in one line: the switch alone must never take the board away, because
+   throwing it with no relay running is the first thing anybody will do, and a
+   board that went dead would be indistinguishable from a broken game.  Switch
+   on, no desk: every cue, sub, fader, fly and rope works exactly as it does
+   today.
+
+   WHAT IS NOT GATED, DELIBERATELY: RIG.grand and RIG.blackout still multiply
+   the final output in updateRig.  The in-game grand outranks the desk the way
+   a house console's grand outranks a remote one — it is the safety.
+   ========================================================================== */
+
+/* The one sentence the board says when it will not move, in the one place, so
+   the four operator paths cannot drift apart on the wording.  Returns true
+   when the caller should stand down.  Faders and submasters do NOT use it:
+   they are dragged, and a toast per frame of a drag is not a message, it is
+   noise — they simply ignore the write, and the row says why. */
+function artYields(what){
+  if(!artDriving()) return false;
+  if(typeof toast === 'function') toast((what || 'board') + ' is on ART-NET');
+  return true;
+}
+
+/* WHAT BOTH ROWS PRINT, FROM ONE FUNCTION.  live/stale is not decoration here:
+   it IS the gate (RULING EV), so the row has to say which side of it we are on
+   and how old the reading is.  `seen` is seconds since the last frame landed,
+   aged in artnetTick off the frame dt. */
+function artRowText(){
+  if(!ART.on) return 'OFF — the board has it';
+  if(!ART.frames) return 'ON — no desk yet, the board has it';
+  return (ART.live ? 'LIVE' : 'STALE') + ' — ' + ART.seen.toFixed(1) +
+         's since the last packet' + (ART.live ? '' : ', the board has it back');
+}
+
+/* THE DESK'S FACE OF THE ROW (the markup is p1's, on the LIGHTING page).  The
+   headset's face is vrPageLighting (p9) and it presses the same artSetOn — a
+   control that exists only in the DOM does not exist in VR. */
+function artSyncRow(){
+  const st = $('#artState'), b = $('#artOn');
+  if(st) st.textContent = artRowText();
+  if(b){ b.textContent = ART.on ? 'ON' : 'OFF'; b.classList.toggle('on', ART.on); }
+}
+if($('#artOn')) $('#artOn').onclick = ()=>{ artSetOn(!ART.on); };
+artSyncRow();

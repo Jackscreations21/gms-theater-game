@@ -544,6 +544,16 @@ table.ls tr.sel td{background:#1c2230}
           glazed foyer and nothing on this stage. It is a daylight LEVEL, not a
           sun position &mdash; there is no sun in this engine to angle.
         </div>
+        <!-- RULING EM — THE ARTNET ROW.  The same row is on the VR console's
+             LIGHTING page (p9) and both press the same artSetOn(): a control
+             that exists only in the DOM does not exist in VR.  live/stale is
+             not decoration — it is the gate itself (RULING EV): the board only
+             stands down while a desk is really talking. -->
+        <div class="row" style="margin-top:12px;gap:6px;align-items:center">
+          <span class="mini" style="color:var(--dim);flex:1">ART-NET</span>
+          <span class="mini" id="artState" style="color:var(--dim)">OFF</span>
+          <button class="b" id="artOn">OFF</button>
+        </div>
       </div>
       <div class="card" style="width:280px;flex:none">
         <h4>ATMOSPHERE</h4>
@@ -8994,21 +9004,28 @@ function sectionOfChannel(ch){
   return Math.max(0, SECTIONS.findIndex(s=>s.chans && s.chans.includes(ch)));
 }
 function setSection(s, v, fade){
+  if(artDriving()) return;                       // RULING EM — the desk owns the rig
   s.level = clamp(v,0,1);
   if(s.sys){ HOUSE[s.sys] = s.level; syncMasters(); return; }
   s.chans.forEach(c=>setLevel(c, s.level, fade||0));
 }
 function setSectionColor(s, hex, fade){
+  if(artDriving()) return;                       // RULING EM
   s.color = hex;
   if(s.sys) return;
   s.chans.forEach(c=>setColorCh(c, hex, fade||0));
 }
 function setSectionGobo(s, g){
+  if(artDriving()) return;                       // RULING EM
   s.gobo = g;
   if(s.sys) return;
   s.chans.forEach(c=>{ const f=chan(c); if(f) f.gobo = g; });
 }
-/* read the live rig back into the faders */
+/* read the live rig back into the faders.  NOT GATED, on purpose (RULING EM):
+   while a desk is driving the three setters above ignore their writes, and
+   this is what keeps the faders MOVING — refreshChannelStrip calls it ten
+   times a second, so the strip shows what the desk is doing.  Gate this as
+   well and the board goes not just quiet but blind. */
 function syncSections(){
   for(const s of SECTIONS){
     if(s.sys){ s.level = HOUSE[s.sys]; continue; }
@@ -9059,6 +9076,7 @@ function recordSub(s){
   refreshSubs();
 }
 function runSub(s){
+  if(artDriving()) return;                       // RULING EM — the desk owns the rig
   if(!s.rec) return;
   s.rec.forEach((r,i)=>{ if(r.lvl>0.001){ setLevel(i+1, r.lvl*s.val, 0); setColorCh(i+1, r.col, 0); } });
 }
@@ -9107,7 +9125,14 @@ function recordCue(){
   toast('Recorded cue '+n);
   refreshCues();
 }
+/* RULING EM — THE ONE GATE EVERY CUE PASSES THROUGH.  GO, BACK and TOP have
+   their own guards below (they each do something on the way here that fireCue
+   never sees — a pointer rewind, a seek, a sound stop), so this one is what
+   catches the rest: the script engine's `cue` op, an armed follow, and any
+   caller written after this line.  It is on artDriving(), not on ART.on, so
+   the switch with no desk behind it changes nothing (RULING EV). */
 function fireCue(idx){
+  if(artYields()) return;
   const c = CUES[idx]; if(!c) return;
   if(c.lx) c.lx.forEach((r,i)=>{
     setLevel(i+1, r.lvl, c.fade); setColorCh(i+1, r.col, c.fade);
@@ -9150,13 +9175,22 @@ function cueFiredByHand(idx){
   fireCue(idx);
   if(typeof showCueSeek === 'function') showCueSeek(idx);
 }
+/* THE THREE OPERATOR PATHS GUARD THEMSELVES RATHER THAN INHERITING fireCue's
+   GUARD, because each of them does something before it gets there that the
+   guard downstream could not undo: goBack has already rewound the pointer,
+   cueTop has already stopped the show's sound, and both of them (through
+   cueFiredByHand) would seek the music to a cue that never fired.  Refusing
+   the whole act as one thing is the only version that leaves nothing half
+   done, and it is what makes the toast read once. */
 function go(){
+  if(artYields()) return;
   if(nextCue >= CUES.length){ toast('End of cue stack'); return; }
   const c = CUES[nextCue];
   toast('GO  ▸  Q'+c.n+'  '+c.label+'   ('+(cueTimeText(c) || c.fade+'s')+')');
   cueFiredByHand(nextCue);
 }
-function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) cueFiredByHand(nextCue); }
+function goBack(){ if(artYields()) return;
+  nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) cueFiredByHand(nextCue); }
 /* THE TOP OF THE SHOW FIRES THE FIRST CUE (RULING BW).  "make it so when you
    press top of show it automaticall sets it to cue one instead of making you
    press go to get to first cue."
@@ -9178,6 +9212,7 @@ function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) cueFiredB
    Generic on purpose: it fires index 0 of whatever stack is loaded, which is
    what TOP has always meant, and showCueSeek declines for a cue with no `at`. */
 function cueTop(){
+  if(artYields()) return;                        // before the sound stop, not after
   if(!CUES.length){ toast('No cue stack to go to the top of'); return; }
   cancelFollow();
   if(typeof showSoundStop === 'function') showSoundStop();
@@ -9210,6 +9245,10 @@ function cueTop(){
    can (INVARIANTS, minTrimOf).
    ========================================================================== */
 function flyStartOfShow(){
+  /* RULING EM — a rail call is a hand on the rail, and a desk-driven line is
+     not also hand-hauled.  Both surfaces reach this one function (the desk's
+     START OF SHOW button and the headset's), so one guard covers both. */
+  if(artYields('the fly rail')) return false;
   if(!CUES.length || !CUES[0].fly){
     toast('No show loaded — nothing to preset the rail to');
     return false;
@@ -9561,8 +9600,12 @@ function buildFlyUI(){
       b.addEventListener('click', e=>{ e.stopPropagation(); fn(); syncFlyRow(ls); });
       cell.appendChild(b); return b;
     };
-    mk('IN',  ()=>{ flyIn(ls);  selLineset=ls; });
-    mk('OUT', ()=>{ flyOut(ls); selLineset=ls; });
+    /* RULING EM — the rail's own IN/OUT are a hand on the rail; a desk-driven
+       line is not also hand-hauled.  The engine's flyIn/flyOut are NOT gated:
+       a cue's fly moves pass the fireCue guard already, and the crew's hauls
+       are a job in progress rather than an operator reaching for a button. */
+    mk('IN',  ()=>{ if(artYields('lineset '+ls.id)) return; flyIn(ls);  selLineset=ls; });
+    mk('OUT', ()=>{ if(artYields('lineset '+ls.id)) return; flyOut(ls); selLineset=ls; });
     mk('■', ()=>{ ls.target = ls.pos; });
     ls.ui = {
       row:tr, bar:tr.querySelector('.pipbar i'), ht:tr.querySelector('.ht'),
@@ -9805,6 +9848,7 @@ function railGroup(id){
   });
 }
 function railCall(id, what){
+  if(artYields('the fly rail')) return {moved:0, total:railGroup(id).length};   // RULING EM
   const list = railGroup(id);
   const g = RAIL_GROUPS.find(x=>x.id === id);
   const name = g ? g.label.toLowerCase() : id;
@@ -11877,6 +11921,54 @@ function artnetTick(dt){
 
   artLights(b);
 }
+
+/* ============================================================================
+   THE BOARD YIELDS, AND THE ROW THAT SAYS SO      RULINGS EM and EV together
+
+   EVERY GATE IN THE GAME ASKS artDriving(), NEVER ART.on.  That is RULING EV
+   in one line: the switch alone must never take the board away, because
+   throwing it with no relay running is the first thing anybody will do, and a
+   board that went dead would be indistinguishable from a broken game.  Switch
+   on, no desk: every cue, sub, fader, fly and rope works exactly as it does
+   today.
+
+   WHAT IS NOT GATED, DELIBERATELY: RIG.grand and RIG.blackout still multiply
+   the final output in updateRig.  The in-game grand outranks the desk the way
+   a house console's grand outranks a remote one — it is the safety.
+   ========================================================================== */
+
+/* The one sentence the board says when it will not move, in the one place, so
+   the four operator paths cannot drift apart on the wording.  Returns true
+   when the caller should stand down.  Faders and submasters do NOT use it:
+   they are dragged, and a toast per frame of a drag is not a message, it is
+   noise — they simply ignore the write, and the row says why. */
+function artYields(what){
+  if(!artDriving()) return false;
+  if(typeof toast === 'function') toast((what || 'board') + ' is on ART-NET');
+  return true;
+}
+
+/* WHAT BOTH ROWS PRINT, FROM ONE FUNCTION.  live/stale is not decoration here:
+   it IS the gate (RULING EV), so the row has to say which side of it we are on
+   and how old the reading is.  `seen` is seconds since the last frame landed,
+   aged in artnetTick off the frame dt. */
+function artRowText(){
+  if(!ART.on) return 'OFF — the board has it';
+  if(!ART.frames) return 'ON — no desk yet, the board has it';
+  return (ART.live ? 'LIVE' : 'STALE') + ' — ' + ART.seen.toFixed(1) +
+         's since the last packet' + (ART.live ? '' : ', the board has it back');
+}
+
+/* THE DESK'S FACE OF THE ROW (the markup is p1's, on the LIGHTING page).  The
+   headset's face is vrPageLighting (p9) and it presses the same artSetOn — a
+   control that exists only in the DOM does not exist in VR. */
+function artSyncRow(){
+  const st = $('#artState'), b = $('#artOn');
+  if(st) st.textContent = artRowText();
+  if(b){ b.textContent = ART.on ? 'ON' : 'OFF'; b.classList.toggle('on', ART.on); }
+}
+if($('#artOn')) $('#artOn').onclick = ()=>{ artSetOn(!ART.on); };
+artSyncRow();
 
 /* ============================================================================
    SHOWS — a whole production, loaded in one go
@@ -24768,6 +24860,14 @@ function showAudioTick(dt){
   if(!tr){ AUD.clock = false; return; }
   try{ tr.el.volume = Math.max(0, Math.min(1, tr.vol * audBusVol())); }catch(e){}
   AUD.clock = true;
+  /* RULING EM — SOUND IS NOT ART-NET'S; LIGHT IS.  The transport above this
+     line keeps running: the file plays, the volume follows the bus and the
+     clock stays the show's clock.  Only the cue-firing sweep below stands
+     down, because a cue is a rig write and the desk owns the rig while it is
+     really talking (artDriving, RULING EV — the switch alone does nothing).
+     Gate one line higher and the music stops with the lights, which is the
+     one failure nobody in a house would forgive. */
+  if(artDriving()) return;
   if(typeof CUES === 'undefined' || !CUES.length) return;
   /* the position in the WHOLE recording, which is what every `at` means */
   const t = tr.offset + tr.el.currentTime;
@@ -29864,10 +29964,15 @@ $('#qual').onchange = e=>{
 };
 $('#btnAll').onclick=()=>{ SECTIONS.forEach(s=>{ if(!s.sys) setSection(s,1,1.5); }); };
 
-$('#flyAllIn').onclick =()=>FLY.forEach(flyIn);
-$('#flyAllOut').onclick=()=>FLY.forEach(flyOut);
+/* RULING EM — the rail calls are the fly board's UI, so they stand down while
+   a desk is driving the lines.  STOP ALL is left alone on purpose: it writes
+   ls.target = ls.pos and nothing else, which is a hand arresting a load, and
+   the desk's next frame commands the line again anyway. */
+$('#flyAllIn').onclick =()=>{ if(artYields('the fly rail')) return; FLY.forEach(flyIn); };
+$('#flyAllOut').onclick=()=>{ if(artYields('the fly rail')) return; FLY.forEach(flyOut); };
 $('#flyStop').onclick  =()=>FLY.forEach(ls=>ls.target=ls.pos);
-$('#flyPreset').onclick=()=>{ [0,2,3,5,6,10,11].forEach(i=>flyIn(FLY[i]));
+$('#flyPreset').onclick=()=>{ if(artYields('the fly rail')) return;
+  [0,2,3,5,6,10,11].forEach(i=>flyIn(FLY[i]));
   flyTo(FLY[13],10.6); flyTo(FLY[9],20.5); flyTo(FLY[7],20.5); FLY[1].travTarget=1; toast('Show look set'); };
 /* RULING CM — and it is deliberately NOT the SHOW LOOK button above.  That one
    is a hardcoded list of lineset indices from before there were productions;
@@ -30356,6 +30461,11 @@ function tick(now){
   if(uiT > 0.1){
     uiT = 0;
     refreshChannelStrip();
+    /* RULING EU — the ARTNET row prints the AGE of the last packet, so it has
+       to be re-read rather than only written when somebody presses something.
+       Two textContent writes at 10Hz; the headset's copy of the row redraws
+       with the console. */
+    artSyncRow();
     if($('#p-fly').classList.contains('on')){ syncFlyUI(); syncRailGroups(); refreshHangUI(); }
     const m = Math.floor(showClock/60), s = Math.floor(showClock%60);
     $('#clockTxt').textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
@@ -31131,6 +31241,8 @@ function vrPageCues(g, P){
     vrHit(P.x, y, P.w - 300, rowH - 4, ((k)=>()=>{ nextCue = k; vrDrawConsole(true); })(start+i));
   }
   const bx = P.x + P.w - 280;
+  /* GO, BACK and TOP guard themselves in p6 (RULING EM), so the headset's
+     buttons need nothing of their own — one refusal, both surfaces. */
   vrBtnBox(g, bx, P.y, 280, 120, 'GO', ()=>{ go(); vrDrawConsole(true); },
            {bg:'#1f6b2e', fg:'#ffffff', font:'700 48px Helvetica, Arial, sans-serif'});
   vrBtnBox(g, bx, P.y + 132, 134, 56, 'BACK', ()=>{ goBack(); vrDrawConsole(true); });
@@ -31207,17 +31319,23 @@ function vrPageFly(g, P){
     vrBar(g, P.x + 420, y + 12, 260, 16, (ls.pos - 0.6)/(OUT_TRIM - 0.6), '#ffb347');
     g.fillStyle = '#8f9aa7';
     g.fillText(ftIn(ls.pos), P.x + 700, y + rowH/2 - 2);
+    /* RULING EM — the headset's rail is the same rail: a desk-driven line is
+       not hand-hauled from here either.  Tagged with meta so a suite can find
+       these by MEANING rather than by pixel (RULING DP); the boxes have not
+       moved, so the rows vr.js pins at literal y are untouched. */
     vrBtnBox(g, P.x + 790, y + 3, 84, rowH - 10, 'IN',
-             ((l)=>()=>{ flyIn(l); vrDrawConsole(true); })(ls));
+             ((l)=>()=>{ if(artYields('lineset '+l.id)) return; flyIn(l); vrDrawConsole(true); })(ls),
+             null, {fly:ls.id, rail:'in'});
     vrBtnBox(g, P.x + 882, y + 3, 84, rowH - 10, 'OUT',
-             ((l)=>()=>{ flyOut(l); vrDrawConsole(true); })(ls));
+             ((l)=>()=>{ if(artYields('lineset '+l.id)) return; flyOut(l); vrDrawConsole(true); })(ls),
+             null, {fly:ls.id, rail:'out'});
     vrBtnBox(g, P.x + 974, y + 3, 84, rowH - 10, '■',
              ((l)=>()=>{ l.target = l.pos; })(ls));
   }
   vrBtnBox(g, P.x + P.w - 120, P.y, 116, 46, 'ALL IN',
-           ()=>{ FLY.forEach(flyIn); vrDrawConsole(true); });
+           ()=>{ if(artYields('the fly rail')) return; FLY.forEach(flyIn); vrDrawConsole(true); });
   vrBtnBox(g, P.x + P.w - 120, P.y + 54, 116, 46, 'ALL OUT',
-           ()=>{ FLY.forEach(flyOut); vrDrawConsole(true); });
+           ()=>{ if(artYields('the fly rail')) return; FLY.forEach(flyOut); vrDrawConsole(true); });
   /* the FOH bar, on this board like everything else over this stage —
      the same idiom as the desktop row: one press is one step of travel */
   if(FOHBAR){
@@ -31544,6 +31662,28 @@ function vrPageLighting(g, P){
       ((key)=>()=>{ lkSet(key, LK[key].get() + LK[key].step); vrDrawConsole(true); })(k),
       null, {lk:k, d:1});
   });
+  /* RULING EM — THE ARTNET ROW, THE SAME ONE THE DESK CARRIES (p1), pressing
+     the same artSetOn().  It sits BELOW the nine LK rows and above the slot
+     count, so nothing already on this page moves, and it is found by META
+     rather than by pixel (RULING DP) — vr.js pins other pages' rows at
+     literal y and this page has never been in that list.
+     What it prints is artRowText(), the desk's own string: the switch state,
+     live or stale, and how old the last packet is.  That reading is the GATE
+     (RULING EV), not decoration — the board only stands down while a desk is
+     really talking. */
+  const ay = P.y + VR_LK_ROWS.length*62;
+  g.fillStyle = '#121821';
+  g.fillRect(P.x, ay, P.w - 20, 44);
+  g.textAlign = 'left'; g.textBaseline = 'middle';
+  g.font = '600 17px Helvetica, Arial, sans-serif';
+  g.fillStyle = '#c6d0dc';
+  g.fillText('ART-NET', P.x + 14, ay + 22);
+  g.fillStyle = artDriving() ? '#7fd06a' : '#8b95a3';
+  g.fillText(artRowText(), P.x + 250, ay + 22);
+  vrBtnBox(g, P.x + 640, ay + 2, 96, 40, ART.on ? 'ON' : 'OFF',
+           ()=>{ artSetOn(!ART.on); vrDrawConsole(true); },
+           ART.on ? {bg:'#26313e', fg:'#ffd08a'} : null, {artnet:'switch'});
+
   /* the honest slot count, the same one the desk prints (DO/DQ) */
   const by = P.y + P.h - 54;
   g.fillStyle = '#8b95a3';
@@ -33370,6 +33510,12 @@ function vrSqueeze(hand, down){
   }
   if(best){
     const ls = best.ls;
+    /* RULING EM — A DESK-DRIVEN LINE IS NOT ALSO HAND-HAULED.  Refused at the
+       GRAB rather than in the haul: taking hold arrests a runaway, drops the
+       relock and writes ls.target = ls.pos, so a hand that closed and then
+       could not pull would still have taken the line off the desk.  The
+       traveler is refused with it — channel 309 works that curtain too. */
+    if(artYields(best.traveler ? 'the traveler' : 'lineset '+ls.id)) return;
     if(best.traveler){
       /* the traveler's hand line: nothing on it to arrest and nothing that
          can run away — the hand simply takes the curtain.  The rope lock

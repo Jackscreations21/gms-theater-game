@@ -1164,10 +1164,15 @@ $('#qual').onchange = e=>{
 };
 $('#btnAll').onclick=()=>{ SECTIONS.forEach(s=>{ if(!s.sys) setSection(s,1,1.5); }); };
 
-$('#flyAllIn').onclick =()=>FLY.forEach(flyIn);
-$('#flyAllOut').onclick=()=>FLY.forEach(flyOut);
+/* RULING EM — the rail calls are the fly board's UI, so they stand down while
+   a desk is driving the lines.  STOP ALL is left alone on purpose: it writes
+   ls.target = ls.pos and nothing else, which is a hand arresting a load, and
+   the desk's next frame commands the line again anyway. */
+$('#flyAllIn').onclick =()=>{ if(artYields('the fly rail')) return; FLY.forEach(flyIn); };
+$('#flyAllOut').onclick=()=>{ if(artYields('the fly rail')) return; FLY.forEach(flyOut); };
 $('#flyStop').onclick  =()=>FLY.forEach(ls=>ls.target=ls.pos);
-$('#flyPreset').onclick=()=>{ [0,2,3,5,6,10,11].forEach(i=>flyIn(FLY[i]));
+$('#flyPreset').onclick=()=>{ if(artYields('the fly rail')) return;
+  [0,2,3,5,6,10,11].forEach(i=>flyIn(FLY[i]));
   flyTo(FLY[13],10.6); flyTo(FLY[9],20.5); flyTo(FLY[7],20.5); FLY[1].travTarget=1; toast('Show look set'); };
 /* RULING CM — and it is deliberately NOT the SHOW LOOK button above.  That one
    is a hardcoded list of lineset indices from before there were productions;
@@ -1656,6 +1661,11 @@ function tick(now){
   if(uiT > 0.1){
     uiT = 0;
     refreshChannelStrip();
+    /* RULING EU — the ARTNET row prints the AGE of the last packet, so it has
+       to be re-read rather than only written when somebody presses something.
+       Two textContent writes at 10Hz; the headset's copy of the row redraws
+       with the console. */
+    artSyncRow();
     if($('#p-fly').classList.contains('on')){ syncFlyUI(); syncRailGroups(); refreshHangUI(); }
     const m = Math.floor(showClock/60), s = Math.floor(showClock%60);
     $('#clockTxt').textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');

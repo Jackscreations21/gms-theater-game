@@ -277,6 +277,14 @@ function showAudioTick(dt){
   if(!tr){ AUD.clock = false; return; }
   try{ tr.el.volume = Math.max(0, Math.min(1, tr.vol * audBusVol())); }catch(e){}
   AUD.clock = true;
+  /* RULING EM — SOUND IS NOT ART-NET'S; LIGHT IS.  The transport above this
+     line keeps running: the file plays, the volume follows the bus and the
+     clock stays the show's clock.  Only the cue-firing sweep below stands
+     down, because a cue is a rig write and the desk owns the rig while it is
+     really talking (artDriving, RULING EV — the switch alone does nothing).
+     Gate one line higher and the music stops with the lights, which is the
+     one failure nobody in a house would forgive. */
+  if(artDriving()) return;
   if(typeof CUES === 'undefined' || !CUES.length) return;
   /* the position in the WHOLE recording, which is what every `at` means */
   const t = tr.offset + tr.el.currentTime;

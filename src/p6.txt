@@ -62,21 +62,28 @@ function sectionOfChannel(ch){
   return Math.max(0, SECTIONS.findIndex(s=>s.chans && s.chans.includes(ch)));
 }
 function setSection(s, v, fade){
+  if(artDriving()) return;                       // RULING EM — the desk owns the rig
   s.level = clamp(v,0,1);
   if(s.sys){ HOUSE[s.sys] = s.level; syncMasters(); return; }
   s.chans.forEach(c=>setLevel(c, s.level, fade||0));
 }
 function setSectionColor(s, hex, fade){
+  if(artDriving()) return;                       // RULING EM
   s.color = hex;
   if(s.sys) return;
   s.chans.forEach(c=>setColorCh(c, hex, fade||0));
 }
 function setSectionGobo(s, g){
+  if(artDriving()) return;                       // RULING EM
   s.gobo = g;
   if(s.sys) return;
   s.chans.forEach(c=>{ const f=chan(c); if(f) f.gobo = g; });
 }
-/* read the live rig back into the faders */
+/* read the live rig back into the faders.  NOT GATED, on purpose (RULING EM):
+   while a desk is driving the three setters above ignore their writes, and
+   this is what keeps the faders MOVING — refreshChannelStrip calls it ten
+   times a second, so the strip shows what the desk is doing.  Gate this as
+   well and the board goes not just quiet but blind. */
 function syncSections(){
   for(const s of SECTIONS){
     if(s.sys){ s.level = HOUSE[s.sys]; continue; }
@@ -127,6 +134,7 @@ function recordSub(s){
   refreshSubs();
 }
 function runSub(s){
+  if(artDriving()) return;                       // RULING EM — the desk owns the rig
   if(!s.rec) return;
   s.rec.forEach((r,i)=>{ if(r.lvl>0.001){ setLevel(i+1, r.lvl*s.val, 0); setColorCh(i+1, r.col, 0); } });
 }
@@ -175,7 +183,14 @@ function recordCue(){
   toast('Recorded cue '+n);
   refreshCues();
 }
+/* RULING EM — THE ONE GATE EVERY CUE PASSES THROUGH.  GO, BACK and TOP have
+   their own guards below (they each do something on the way here that fireCue
+   never sees — a pointer rewind, a seek, a sound stop), so this one is what
+   catches the rest: the script engine's `cue` op, an armed follow, and any
+   caller written after this line.  It is on artDriving(), not on ART.on, so
+   the switch with no desk behind it changes nothing (RULING EV). */
 function fireCue(idx){
+  if(artYields()) return;
   const c = CUES[idx]; if(!c) return;
   if(c.lx) c.lx.forEach((r,i)=>{
     setLevel(i+1, r.lvl, c.fade); setColorCh(i+1, r.col, c.fade);
@@ -218,13 +233,22 @@ function cueFiredByHand(idx){
   fireCue(idx);
   if(typeof showCueSeek === 'function') showCueSeek(idx);
 }
+/* THE THREE OPERATOR PATHS GUARD THEMSELVES RATHER THAN INHERITING fireCue's
+   GUARD, because each of them does something before it gets there that the
+   guard downstream could not undo: goBack has already rewound the pointer,
+   cueTop has already stopped the show's sound, and both of them (through
+   cueFiredByHand) would seek the music to a cue that never fired.  Refusing
+   the whole act as one thing is the only version that leaves nothing half
+   done, and it is what makes the toast read once. */
 function go(){
+  if(artYields()) return;
   if(nextCue >= CUES.length){ toast('End of cue stack'); return; }
   const c = CUES[nextCue];
   toast('GO  ▸  Q'+c.n+'  '+c.label+'   ('+(cueTimeText(c) || c.fade+'s')+')');
   cueFiredByHand(nextCue);
 }
-function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) cueFiredByHand(nextCue); }
+function goBack(){ if(artYields()) return;
+  nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) cueFiredByHand(nextCue); }
 /* THE TOP OF THE SHOW FIRES THE FIRST CUE (RULING BW).  "make it so when you
    press top of show it automaticall sets it to cue one instead of making you
    press go to get to first cue."
@@ -246,6 +270,7 @@ function goBack(){ nextCue = Math.max(0, nextCue-2); if(CUES[nextCue]) cueFiredB
    Generic on purpose: it fires index 0 of whatever stack is loaded, which is
    what TOP has always meant, and showCueSeek declines for a cue with no `at`. */
 function cueTop(){
+  if(artYields()) return;                        // before the sound stop, not after
   if(!CUES.length){ toast('No cue stack to go to the top of'); return; }
   cancelFollow();
   if(typeof showSoundStop === 'function') showSoundStop();
@@ -278,6 +303,10 @@ function cueTop(){
    can (INVARIANTS, minTrimOf).
    ========================================================================== */
 function flyStartOfShow(){
+  /* RULING EM — a rail call is a hand on the rail, and a desk-driven line is
+     not also hand-hauled.  Both surfaces reach this one function (the desk's
+     START OF SHOW button and the headset's), so one guard covers both. */
+  if(artYields('the fly rail')) return false;
   if(!CUES.length || !CUES[0].fly){
     toast('No show loaded — nothing to preset the rail to');
     return false;
@@ -629,8 +658,12 @@ function buildFlyUI(){
       b.addEventListener('click', e=>{ e.stopPropagation(); fn(); syncFlyRow(ls); });
       cell.appendChild(b); return b;
     };
-    mk('IN',  ()=>{ flyIn(ls);  selLineset=ls; });
-    mk('OUT', ()=>{ flyOut(ls); selLineset=ls; });
+    /* RULING EM — the rail's own IN/OUT are a hand on the rail; a desk-driven
+       line is not also hand-hauled.  The engine's flyIn/flyOut are NOT gated:
+       a cue's fly moves pass the fireCue guard already, and the crew's hauls
+       are a job in progress rather than an operator reaching for a button. */
+    mk('IN',  ()=>{ if(artYields('lineset '+ls.id)) return; flyIn(ls);  selLineset=ls; });
+    mk('OUT', ()=>{ if(artYields('lineset '+ls.id)) return; flyOut(ls); selLineset=ls; });
     mk('■', ()=>{ ls.target = ls.pos; });
     ls.ui = {
       row:tr, bar:tr.querySelector('.pipbar i'), ht:tr.querySelector('.ht'),
@@ -873,6 +906,7 @@ function railGroup(id){
   });
 }
 function railCall(id, what){
+  if(artYields('the fly rail')) return {moved:0, total:railGroup(id).length};   // RULING EM
   const list = railGroup(id);
   const g = RAIL_GROUPS.find(x=>x.id === id);
   const name = g ? g.label.toLowerCase() : id;
