@@ -698,12 +698,30 @@ const P = async (name, fn)=>{
 
     /* a real desk on the wire: switch on, hand the socket its handshake, put a
        frame through it and take that frame on the tick.  artDriving() after. */
-    const deskOn = ()=>{
+    /* A DESK LOOK, because a desk that says nothing is indistinguishable from
+       a board that cannot write.  RULING EP means every frame writes all 39
+       fixtures, so a frame of zeros blacks the rig — and then "the fader was
+       refused" and "the desk set it to 0" produce the same reading.  Every
+       look here is deliberately UNLIKE whatever the board set before it. */
+    const deskLook = (lvl, r, g, b, goboIx)=>{
+      const f = new Uint8Array(512);
+      for(let i = 0; i < FIXTURES.length; i++){
+        const o = i * ART_CH_FIX;
+        f[o] = lvl; f[o + 1] = r; f[o + 2] = g; f[o + 3] = b; f[o + 4] = goboIx * 43;
+      }
+      return f;
+    };
+    const DESK_DEFAULT = ()=>deskLook(255, 0, 0, 255, 2);   // full, blue, gobo 2
+    /* and a desk holding the rig DARK, for the cases that detect a cue firing
+       by something lighting up.  Refused reads as the desk's 0, fired reads
+       as the cue's 1 — still two different numbers. */
+    const DESK_DARK = ()=>deskLook(0, 0, 0, 0, 0);
+    const deskOn = (look)=>{
       artSetOn(false); artSetOn(true);
       const ws = FakeWS.last;
       if(!ws) throw new Error('the switch built no socket for this case');
       ws.open();
-      ws.deliver(frame512(1));
+      ws.deliver(look || DESK_DEFAULT());
       artnetTick(1/60);
       if(artDriving() !== true) throw new Error('the desk would not come up for this case');
       return ws;
@@ -816,7 +834,7 @@ const P = async (name, fn)=>{
            already dark and the pointer already at 0 would pass against a
            build with no gate at all (TRAPS). */
         if(f.level !== 0) throw new Error('this case needs channel 1 dark to begin with');
-        deskOn();
+        deskOn(DESK_DARK());
         at('#btnGo').click();
         if(nextCue !== 0) throw new Error('GO moved the pointer to ' + nextCue + ' with a desk driving');
         if(f.level !== 0) throw new Error('GO put channel 1 up to ' + f.level + ' with a desk driving');
@@ -834,7 +852,7 @@ const P = async (name, fn)=>{
         if(tr.want !== false) throw new Error('the desk went quiet and TOP no longer lets go of the transport');
         /* BACK is the one that needed its own guard rather than fireCue's: it
            rewinds the pointer BEFORE it ever gets there. */
-        deskOn();
+        deskOn(DESK_DARK());
         at('#btnBack').click();
         if(nextCue !== 1) throw new Error('BACK rewound the pointer to ' + nextCue + ' with a desk driving');
         deskQuiet();
@@ -899,11 +917,15 @@ const P = async (name, fn)=>{
       if(f.level > 0.01) throw new Error('the 0 button does not work at all: ' + f.level);
       fader.value = 100; fader.dispatchEvent(new Event('input'));
       if(!(f.level > 0.9)) throw new Error('the submaster does not work at all: ' + f.level);
+      /* the desk takes it, at FULL — so a refused 0 button and a refused
+         submaster both read as "still the desk's 1.0", which is a different
+         number from either thing the board was trying to do */
       deskOn();
+      if(!(f.level > 0.99)) throw new Error('the desk did not take channel 1 to full: ' + f.level);
       btns[0].click(); updateFades(2);
-      if(!(f.level > 0.9)) throw new Error('a fader button took channel 1 to ' + f.level + ' with a desk driving');
+      if(!(f.level > 0.99)) throw new Error('a fader button took channel 1 to ' + f.level + ' with a desk driving');
       fader.value = 20; fader.dispatchEvent(new Event('input'));
-      if(!(f.level > 0.9)) throw new Error('the submaster took channel 1 to ' + f.level + ' with a desk driving');
+      if(!(f.level > 0.99)) throw new Error('the submaster took channel 1 to ' + f.level + ' with a desk driving');
       deskQuiet();
       btns[0].click(); updateFades(2);
       if(f.level > 0.01) throw new Error('the desk went quiet and the fader still cannot write: ' + f.level);
@@ -921,12 +943,17 @@ const P = async (name, fn)=>{
       if(f.color.getHexString() !== 'ff0000') throw new Error('the gel picker does not work at all: ' + f.color.getHexString());
       gob.value = '4'; gob.dispatchEvent(new Event('change'));
       if(f.gobo !== 4) throw new Error('the gobo picker does not work at all: ' + f.gobo);
+      /* the desk gels it BLUE with gobo 2 — neither the red/4 the board just
+         set nor the green/1 it is about to try, so a refusal cannot be
+         confused with either of them */
       deskOn();
+      if(f.color.getHexString() !== '0000ff' || f.gobo !== 2)
+        throw new Error('the desk did not take the gel and gobo: ' + f.color.getHexString() + ' / ' + f.gobo);
       col.value = '#00ff00'; col.dispatchEvent(new Event('input'));
-      if(f.color.getHexString() !== 'ff0000')
+      if(f.color.getHexString() !== '0000ff')
         throw new Error('the gel picker recoloured a desk-driven fixture to ' + f.color.getHexString());
       gob.value = '1'; gob.dispatchEvent(new Event('change'));
-      if(f.gobo !== 4) throw new Error('the gobo picker moved a desk-driven wheel to ' + f.gobo);
+      if(f.gobo !== 2) throw new Error('the gobo picker moved a desk-driven wheel to ' + f.gobo);
       deskQuiet();
       col.value = '#00ff00'; col.dispatchEvent(new Event('input'));
       gob.value = '1'; gob.dispatchEvent(new Event('change'));
@@ -974,7 +1001,7 @@ const P = async (name, fn)=>{
         setLevel(1, 0.0, 0);
         nextCue = 0;
         const f = chan(1);
-        deskOn();
+        deskOn(DESK_DARK());
         AUD.clock = false;
         /* THE SWEEP MUST NOT RUN AT ALL, not merely fail to land.  fireCue
            refuses on its own account, so a transport left ungated still walks
