@@ -480,6 +480,16 @@ function haltProgram(){ Prog.running=false; $('#runState').textContent='HALTED';
 
 function stepProgram(dt){
   if(!Prog.running) return;
+  /* RULING EW — A RUNNING SCRIPT IS A WRITER TOO.  Only its `cue` and `sub`
+     ops pass through gated functions; `at`, `color`, `gobo`, `pan`, `tilt`,
+     `bo` and `sys` write the rig directly, and a faded write sets lvlDur,
+     which updateFades then carries for the whole fade against the desk.  The
+     script HOLDS rather than runs on: it keeps its program counter and its
+     wait, and picks up where it stood when the desk lets go — running it on
+     invisibly would land it somewhere nobody could account for.  (It also
+     stops the 4000-ops-a-frame toast storm every `cue` op would otherwise
+     raise through fireCue's refusal.) */
+  if(typeof artDriving === 'function' && artDriving()) return;
   if(Prog.wait > 0){ Prog.wait -= dt; return; }
   let guard = 0;
   while(Prog.running && Prog.wait<=0 && guard++ < 4000){

@@ -9422,6 +9422,16 @@ function haltProgram(){ Prog.running=false; $('#runState').textContent='HALTED';
 
 function stepProgram(dt){
   if(!Prog.running) return;
+  /* RULING EW — A RUNNING SCRIPT IS A WRITER TOO.  Only its `cue` and `sub`
+     ops pass through gated functions; `at`, `color`, `gobo`, `pan`, `tilt`,
+     `bo` and `sys` write the rig directly, and a faded write sets lvlDur,
+     which updateFades then carries for the whole fade against the desk.  The
+     script HOLDS rather than runs on: it keeps its program counter and its
+     wait, and picks up where it stood when the desk lets go — running it on
+     invisibly would land it somewhere nobody could account for.  (It also
+     stops the 4000-ops-a-frame toast storm every `cue` op would otherwise
+     raise through fireCue's refusal.) */
+  if(typeof artDriving === 'function' && artDriving()) return;
   if(Prog.wait > 0){ Prog.wait -= dt; return; }
   let guard = 0;
   while(Prog.running && Prog.wait<=0 && guard++ < 4000){
@@ -13030,7 +13040,11 @@ function updateStorm(dt){
     const want = SHOW.rain.target > 0.05;
     if(want !== SHOW.rainSound){ Snd.play('rain'); SHOW.rainSound = want; }
   }
-  if(SHOW.flicker){
+  /* RULING EW — the firelight runs AFTER artnetTick in the frame, so ungated
+     it wins every frame: a silent total override on its own channels with the
+     ARTNET row still reading LIVE.  It keeps its clock (the flame does not
+     restart when the desk lets go) and simply stops writing. */
+  if(SHOW.flicker && !(typeof artDriving === 'function' && artDriving())){
     const f = SHOW.flicker;
     f.t += dt;
     // two detuned waves plus a little noise reads as firelight, not a sine
@@ -13958,6 +13972,11 @@ function setCurtainForCue(state){
 /* Put the board where a show starts: preset up, next GO is the first real cue. */
 function standByAtTheTop(){
   if(!CUES.length) return;
+  /* RULING EW — A HALF-REFUSAL IS WORSE THAN EITHER WHOLE ANSWER.  fireCue
+     below refuses while a desk drives, and the sweep after it used to write
+     all 39 fixtures anyway: the operator got a toast saying the board had
+     yielded, one frame of the wrong look, and a cue pointer that had moved. */
+  if(typeof artDriving === 'function' && artDriving()) return;
   fireCue(0);
   CUES[0].lx.forEach((r,i)=>{
     const f = chan(i+1); if(!f) return;
@@ -25075,6 +25094,14 @@ function showCueFx(fx){
 function audFxClear(){ for(const k in AUD.fx) delete AUD.fx[k]; }
 
 function audFxStep(dt){
+  /* RULING EW — the audience effects run AFTER artnetTick and win every frame
+     on channels 26-39, writing level, colour, pan AND tilt and zeroing the
+     durations, so not even a desk fade got through.  Worse, AUD.fx is only
+     ever cleared by showCueFx, which only fireCue reaches — and RULING EM
+     gates fireCue — so an effect armed in the last cue before the handover
+     could never be turned off again.  It stands down instead, keeps nothing
+     ticking that would jump when it resumes, and resumes when the desk stops. */
+  if(typeof artDriving === 'function' && artDriving()) return;
   for(const slot in AUD.fx){
     const e = AUD.fx[slot];
     if(!e) continue;
@@ -29489,16 +29516,24 @@ $('#gelSel').onchange  = e=>{ setSectionColor(SECTIONS[selSec], e.target.value, 
 $('#goboSel').onchange = e=>{ setSectionGobo(SECTIONS[selSec], +e.target.value); };
 $('#btnFocus').onclick = ()=>{ focusMode=!focusMode; $('#btnFocus').classList.toggle('on',focusMode);
   toast(focusMode?'FOCUS — click the deck to aim '+SECTIONS[selSec].name.replace('<br>',' '):'focus cancelled'); };
+/* RULING EW — these four write the rig DIRECTLY, bypassing setSection*, so
+   EM's gates never saw them.  Art-Net owns those bytes (a fixture's pan and
+   tilt are its channels 6 and 7; house and work are 302 and 303), and ungated
+   they are the mover swinging under the operator's hand and snapping back 44
+   times a second.  They are dragged controls, so they refuse in silence: a
+   toast per mousemove is noise, not a message. */
 $('#panR').oninput = e=>{ const s=SECTIONS[selSec]; if(!s.mover) return;
+  if(artDriving()) return;
   s.chans.forEach((c,i)=>{ const f=chan(c); if(f) f.panT = (+e.target.value)*(i%2?-1:1); });
   $('#panV').textContent=e.target.value; };
 $('#tiltR').oninput= e=>{ const s=SECTIONS[selSec]; if(!s.mover) return;
+  if(artDriving()) return;
   s.chans.forEach(c=>{ const f=chan(c); if(f) f.tiltT=+e.target.value; });
   $('#tiltV').textContent=e.target.value; };
 $('#gm').oninput = e=>{ RIG.grand=e.target.value/100; $('#gmV').textContent=e.target.value; };
 $('#hz').oninput = e=>{ RIG.haze=e.target.value/100; $('#hzV').textContent=e.target.value; };
-$('#hl').oninput = e=>{ HOUSE.house=e.target.value/100; $('#hlV').textContent=e.target.value; };
-$('#wl').oninput = e=>{ HOUSE.work=e.target.value/100; $('#wlV').textContent=e.target.value; };
+$('#hl').oninput = e=>{ if(artDriving()) return; HOUSE.house=e.target.value/100; $('#hlV').textContent=e.target.value; };
+$('#wl').oninput = e=>{ if(artDriving()) return; HOUSE.work=e.target.value/100; $('#wlV').textContent=e.target.value; };
 $('#btnBO').onclick=()=>{ RIG.blackout=!RIG.blackout; $('#btnBO').classList.toggle('on',RIG.blackout); };
 $('#shopGoto') && ($('#shopGoto').onclick = ()=>{ closeBench(); goToView(9); });
 $('#doorsOpen').onclick = ()=>setAllDoors(true);

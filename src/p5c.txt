@@ -1059,7 +1059,11 @@ function updateStorm(dt){
     const want = SHOW.rain.target > 0.05;
     if(want !== SHOW.rainSound){ Snd.play('rain'); SHOW.rainSound = want; }
   }
-  if(SHOW.flicker){
+  /* RULING EW — the firelight runs AFTER artnetTick in the frame, so ungated
+     it wins every frame: a silent total override on its own channels with the
+     ARTNET row still reading LIVE.  It keeps its clock (the flame does not
+     restart when the desk lets go) and simply stops writing. */
+  if(SHOW.flicker && !(typeof artDriving === 'function' && artDriving())){
     const f = SHOW.flicker;
     f.t += dt;
     // two detuned waves plus a little noise reads as firelight, not a sine
@@ -1987,6 +1991,11 @@ function setCurtainForCue(state){
 /* Put the board where a show starts: preset up, next GO is the first real cue. */
 function standByAtTheTop(){
   if(!CUES.length) return;
+  /* RULING EW — A HALF-REFUSAL IS WORSE THAN EITHER WHOLE ANSWER.  fireCue
+     below refuses while a desk drives, and the sweep after it used to write
+     all 39 fixtures anyway: the operator got a toast saying the board had
+     yielded, one frame of the wrong look, and a cue pointer that had moved. */
+  if(typeof artDriving === 'function' && artDriving()) return;
   fireCue(0);
   CUES[0].lx.forEach((r,i)=>{
     const f = chan(i+1); if(!f) return;

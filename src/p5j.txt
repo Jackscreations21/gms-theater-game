@@ -492,6 +492,14 @@ function showCueFx(fx){
 function audFxClear(){ for(const k in AUD.fx) delete AUD.fx[k]; }
 
 function audFxStep(dt){
+  /* RULING EW — the audience effects run AFTER artnetTick and win every frame
+     on channels 26-39, writing level, colour, pan AND tilt and zeroing the
+     durations, so not even a desk fade got through.  Worse, AUD.fx is only
+     ever cleared by showCueFx, which only fireCue reaches — and RULING EM
+     gates fireCue — so an effect armed in the last cue before the handover
+     could never be turned off again.  It stands down instead, keeps nothing
+     ticking that would jump when it resumes, and resumes when the desk stops. */
+  if(typeof artDriving === 'function' && artDriving()) return;
   for(const slot in AUD.fx){
     const e = AUD.fx[slot];
     if(!e) continue;
