@@ -341,12 +341,32 @@ extension ladder. A studio uses a stepladder, and above that a tallescope.
 **The trap, written down before it bites:** the ladder is a body that MOVES,
 and `updateBodies` settles other bodies onto whatever is under them. A ladder
 carried out from under a lantern resting on its platform takes that lantern's
-floor away. `grabBody` already calls `wakeBodies`, which covers it — but this
-is precisely the contract BUILD-SYSTEM.md warns about (*anything that can take
-the ground out from under a resting body must call `wakeBodies`*), and a
-ladder is the first orderable body whose top surface other things stand on
-besides the work table. The `tableTopAt` scan is the mechanism; the ladder's
-platform joins it.
+floor away. This is precisely the contract BUILD-SYSTEM.md warns about
+(*anything that can take the ground out from under a resting body must call
+`wakeBodies`*).
+
+> **Corrected at implementation, and the correction is the interesting part.**
+> This paragraph originally ended "the `tableTopAt` scan is the mechanism; the
+> ladder's platform joins it." **That is wrong.** `tableTopAt` exists precisely
+> *because* the work table is NOT on `WALKABLE`; the ladder is, so `groundAt`
+> already serves the settling body and the player from the same list, and
+> adding the ladder to `tableTopAt` would be a redundant second answer to a
+> question already answered. `tableTopAt` is left alone.
+>
+> The same pass found the real gap the paragraph was groping at: `grabBody`
+> calls `wakeBodies` and covers every route through a hand, but **`removeBody`
+> did not** — destroying a body is the one way to lose your floor that goes
+> through no hand, and it was a live hole for the work table before there was a
+> ladder. `removeBody` now calls it, and splices the body off `WALKABLE`.
+
+**A second trap, found only by building it:** `groundAt` answers with the
+HIGHEST surface in a column, and p7 snaps the player straight onto it. A real
+stepladder's treads overlap in PLAN — so standing on tread one puts treads two,
+three and four in your own column and you are teleported 1.32 m up, which
+`tryMove` then refuses in every direction: a wall you can neither get onto nor
+off. **The going must equal the tread depth so the plan TILES**, which is the
+shape the Arc's feature stair already has and the reason its 0.62 m treads go
+0.62 m per step. Rake is not a look here; it is the mechanism.
 
 **And it is what sets `SS.GRID`.** A bar you cannot get a hand to is a bar you
 cannot hang from, and hanging from it is the whole brief. The numbers:
