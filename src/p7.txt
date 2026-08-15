@@ -1608,6 +1608,12 @@ function tick(now){
 
   updatePlayer(dt);
   updateOrbit();
+  /* RULING EU — ONE WRITER, ONE PLACE IN THE FRAME.  After input, and above
+     everything that reads the rig: the fades, the fly motors and updateRig
+     all run below this line, so a desk frame lands on the same frame it
+     arrived for.  A called-bare on purpose — p6d is unconditionally in the
+     build, and a missing part should fail loudly rather than go quiet. */
+  artnetTick(dt);
   updateRooms(false);         // switch off the rooms you cannot see into
   updateFades(dt);
   stepProgram(dt);

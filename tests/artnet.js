@@ -59,6 +59,230 @@ const P = async (name, fn)=>{
   }
 };
 
+/* ==========================================================================
+   PART ONE — THE GAME SIDE (RULING EM's state, EN, EU, EV)
+
+   Boots the BUILT file under jsdom the way the other suites do, and drives
+   src/p6d.txt directly.  The relay half below never touches the game and the
+   game half never opens a socket: in jsdom `location.host` is empty, so
+   artUrl() is null and artOpen() is a silent no-op — which is asserted rather
+   than assumed, because it is what keeps this section hermetic.
+   ========================================================================== */
+{
+  const {JSDOM} = require('jsdom');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'the-house.html'), 'utf8');
+  const dom = new JSDOM(html.replace(/<script src=.*?<\/script>/, ''),
+    {runScripts:'outside-only', pretendToBeVisual:true});
+  const w = dom.window;
+  w.HTMLCanvasElement.prototype.getContext = function(){
+    const noop = ()=>{};
+    if(this.__ctx) return this.__ctx;
+    return this.__ctx = {fillRect:noop, fillStyle:'', strokeStyle:'', lineWidth:1, font:'',
+      beginPath:noop, moveTo:noop, lineTo:noop, arc:noop, ellipse:noop, stroke:noop, fill:noop,
+      save:noop, restore:noop, translate:noop, rotate:noop, scale:noop, drawImage:noop,
+      clearRect:noop, createPattern:()=>null, fillText:noop, strokeText:noop, strokeRect:noop,
+      rect:noop, arcTo:noop, setLineDash:noop, measureText:()=>({width:100}), bezierCurveTo:noop,
+      quadraticCurveTo:noop, closePath:noop, clip:noop, setTransform:noop,
+      globalAlpha:1, globalCompositeOperation:'',
+      createLinearGradient:()=>({addColorStop:noop}), createRadialGradient:()=>({addColorStop:noop}),
+      getImageData:(x, y, ww, hh)=>({data:new Uint8ClampedArray(Math.max(4, ww*hh*4))}), putImageData:noop};
+  };
+  const REAL = require('three');
+  const THREE = Object.create(REAL);
+  THREE.WebGLRenderer = class {
+    constructor(){ const c = w.document.createElement('canvas');
+      c.requestPointerLock = ()=>{};
+      this.domElement = c; this.shadowMap = {enabled:false, type:0}; this.renderCount = 0; }
+    setPixelRatio(){} setSize(){}
+    render(scene, camera){ this.renderCount++; scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); }
+    compile(){}
+    getRenderTarget(){ return this._rt || null; }
+    setRenderTarget(t){ this._rt = t || null; }
+    getClearColor(c){ return c.set(0x000000); }
+  };
+  w.THREE = THREE;
+
+  const probe = `
+  (()=>{
+    window.__errs = [];
+    const P = (name, fn)=>{ try{ const v=fn(); console.log('  ok  '+name+(v!==undefined?'  -> '+JSON.stringify(v).slice(0,210):'')); }
+      catch(e){ console.log('  ERR '+name+': '+e.message); if(e.stack) console.log('      '+e.stack.split('\\n').slice(1,4).join(' | ')); window.__errs.push(name+': '+e.message); } };
+
+    P('the switch is OFF on every boot, and there is no socket', ()=>{
+      if(typeof ART === 'undefined') throw new Error('there is no ART state at all');
+      if(ART.on !== false) throw new Error('ART.on booted ' + ART.on);
+      if(ART.ws !== null) throw new Error('a socket exists before anybody asked for one');
+      if(ART.live !== false) throw new Error('ART.live booted true');
+      if(ART.buf !== null) throw new Error('there is a frame buffered before any frame arrived');
+      return 'ART.on false, no socket, nothing live — the built file is unchanged in behaviour until somebody throws it';
+    });
+
+    P('a page with no origin has nothing to connect to, and says so', ()=>{
+      if(artUrl() !== null) throw new Error('artUrl() returned ' + artUrl() + ' from a page with no host');
+      artOpen();
+      if(ART.ws !== null) throw new Error('artOpen built a socket with nowhere to point it');
+      return 'artUrl() null and artOpen() a no-op here — which is what keeps this suite off the network';
+    });
+
+    P('the socket is SAME-ORIGIN, and follows the page scheme', ()=>{
+      const plain = artUrl({protocol:'http:', host:'localhost:8080'});
+      const tls   = artUrl({protocol:'https:', host:'desk.local:9000'});
+      if(plain !== 'ws://localhost:8080/artnet') throw new Error('http gave ' + plain);
+      if(tls !== 'wss://desk.local:9000/artnet') throw new Error('https gave ' + tls);
+      return plain + '  and  ' + tls;
+    });
+
+    P('the tick does nothing at all while the switch is off', ()=>{
+      const before = FIXTURES.map(f=>f.level).join(',');
+      ART.buf = new Uint8Array(512);
+      ART.buf[0] = 255;
+      artnetTick(1/60);
+      if(ART.buf !== null) throw new Error('a buffer survived a tick');
+      if(ART.frames !== 0) throw new Error('a frame was counted with the switch off');
+      if(ART.live !== false) throw new Error('the switch is off and the row would read live');
+      if(FIXTURES.map(f=>f.level).join(',') !== before) throw new Error('a level moved');
+      return 'buffer dropped, nothing counted, nothing written';
+    });
+
+    P('switching ON halts a running fade where it stands (RULING EM)', ()=>{
+      artSetOn(false);
+      const f = chan(1);
+      f.level = 0;
+      setLevel(1, 1.0, 5);                  // a five-second fade to full
+      updateFades(1);                       // one second in
+      const caught = f.level;
+      if(!(caught > 0.02 && caught < 0.9)) throw new Error('the fade was not mid-flight: ' + caught);
+      artSetOn(true);
+      if(f.lvlDur !== 0) throw new Error('lvlDur survived the switch at ' + f.lvlDur);
+      updateFades(1);                       // the fade must not carry on
+      if(Math.abs(f.level - caught) > 1e-9)
+        throw new Error('the fade kept running: ' + caught + ' -> ' + f.level);
+      const dur = FIXTURES.filter(x=>x.lvlDur > 0 || x.colDur > 0).length;
+      if(dur) throw new Error(dur + ' fixtures still carry a fade duration');
+      return 'a fade caught at ' + caught.toFixed(3) + ' halted there instead of fighting the desk';
+    });
+
+    P('the switch alone does NOT take the board away (RULING EV)', ()=>{
+      if(ART.on !== true) throw new Error('this case needs the switch on');
+      if(ART.live !== false) throw new Error('nothing has been received, so live must be false');
+      if(artDriving() !== false)
+        throw new Error('artDriving() is true with the switch on and no desk talking — the board would go dead');
+      return 'switch on, no relay, no desk: artDriving() false, so every gate behind it stays open';
+    });
+
+    P('a frame makes it live, and the tick is the only thing that applies one', ()=>{
+      ART.buf = new Uint8Array(512);
+      const f0 = ART.frames;
+      artnetTick(1/60);
+      if(ART.frames !== f0 + 1) throw new Error('the frame was not counted');
+      if(ART.live !== true) throw new Error('a frame arrived and live stayed false');
+      if(ART.seen !== 0) throw new Error('the age was not reset');
+      if(artDriving() !== true) throw new Error('a desk is talking and artDriving() is still false');
+      return 'one frame in: live, age 0, and artDriving() true — the gate opens on SIGNAL, not on the switch';
+    });
+
+    P('the LATEST frame wins and the rest are dropped', ()=>{
+      ART.buf = new Uint8Array(512); ART.buf[0] = 11;
+      ART.buf = new Uint8Array(512); ART.buf[0] = 22;   // a second frame before the tick
+      const f0 = ART.frames;
+      artnetTick(1/60);
+      if(ART.frames !== f0 + 1) throw new Error('more than one frame was taken in one tick');
+      if(ART.buf !== null) throw new Error('the buffer was not cleared');
+      return 'a 44Hz desk against a 90Hz eye: one frame a tick, the newest';
+    });
+
+    P('signal loss goes stale after ART_STALE and the look is NOT touched', ()=>{
+      if(typeof ART_STALE === 'undefined') throw new Error('ART_STALE does not exist');
+      const before = FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',');
+      let t = 0;
+      while(t < ART_STALE + 0.2){ artnetTick(1/60); t += 1/60; }
+      if(ART.live !== false) throw new Error('still live ' + t.toFixed(2) + 's after the last frame');
+      if(artDriving() !== false) throw new Error('artDriving() still true on a dead desk');
+      if(FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',') !== before)
+        throw new Error('the rig moved when the desk went quiet — it must HOLD its last look');
+      return 'stale after ' + ART_STALE + 's, board has it back, and not one level or colour moved';
+    });
+
+    P('the reconnect is counted off the frame dt, and backs off 1-2-4-8', ()=>{
+      artSetOn(false); artSetOn(true);
+      /* artOpen cannot succeed here, so every expiry immediately re-arms the
+         NEXT wait — which means ART.retry is never observed at zero and a
+         loop waiting for it to reach zero never ends.  Watch the step index
+         instead, and read the wait it armed. */
+      const seen = [Math.round(ART.retry * 100) / 100];
+      let last = ART.step, guard = 0, ticks = 0;
+      while(seen.length < 5 && guard++ < 20000){
+        artnetTick(1/60); ticks++;
+        if(ART.step !== last){ last = ART.step; seen.push(Math.round(ART.retry * 100) / 100); }
+      }
+      if(guard >= 20000) throw new Error('the ladder stopped advancing off dt at ' + seen.join(','));
+      /* and the waits really were WAITS — 1+2+4+8 seconds of frames, not a
+         ladder that raced through on the first tick */
+      if(ticks < 15 * 60 * 0.9) throw new Error('the whole ladder took only ' + ticks + ' frames; it is not counting seconds');
+      const want = [1, 2, 4, 8, 8].join(',');
+      if(seen.join(',') !== want) throw new Error('the ladder read ' + seen.join(',') + ', wanted ' + want);
+      return 'waits of ' + seen.join('s, ') + 's, every one of them counted down by the frame';
+    });
+
+    P('switching OFF snaps nothing (RULING EM)', ()=>{
+      artSetOn(true);
+      ART.buf = new Uint8Array(512);
+      artnetTick(1/60);
+      /* LIGHT THE RIG FIRST.  Everything above leaves it nearly dark, and a
+         comparison taken on a dark rig passes against a switch-off that
+         blacks the whole house out — the negative check caught exactly that
+         and it is the reason this looks laboured. */
+      setLevel(1, 0.77, 0); setColorCh(1, '#3366ff', 0);
+      setLevel(2, 0.42, 0); setLevel(3, 0.91, 0);
+      const lit = FIXTURES.filter(f=>f.level > 0.01).length;
+      if(lit < 3) throw new Error('this case needs a lit rig to mean anything; only ' + lit + ' channels are up');
+      const before = FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',');
+      artSetOn(false);
+      if(ART.live !== false) throw new Error('live survived the switch going off');
+      if(ART.ws !== null) throw new Error('a socket survived the switch going off');
+      if(FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',') !== before)
+        throw new Error('the rig moved when the operator took it back');
+      return 'a rig with ' + lit + ' channels up held every level and colour through the switch going off';
+    });
+
+    P('the part introduces no setTimeout of its own — game timing is the frame', ()=>{
+      /* the standing hard rule.  A CALL, not the word: the part talks ABOUT
+         timers in its own comments, deliberately. */
+      /* delimited by the two part HEADERS either side of it in build order,
+         so this reads exactly p6d and cannot quietly grow to cover its
+         neighbours the way a fixed slice length would. */
+      const src = document.documentElement.outerHTML;
+      const a = src.indexOf('ART-NET — THE DESK DRIVES THE PALACE');
+      if(a < 0) throw new Error('cannot find the part in the built file');
+      const b = src.indexOf('SHOWS — a whole production', a);
+      if(b < 0) throw new Error('cannot find the part AFTER it, so the slice has no end');
+      const part = src.slice(a, b);
+      if(part.length < 2000) throw new Error('the slice is only ' + part.length + ' chars; the markers moved');
+      if(part.indexOf('setTimeout(') >= 0 || part.indexOf('setInterval(') >= 0)
+        throw new Error('the part sets a timer; reconnect must ride the frame dt');
+      return 'no timer call in the ' + part.length + ' chars of the part — the backoff is seconds off dt';
+    });
+
+    console.log(window.__errs.length ? '--- part one failures: '+window.__errs.length+' ---'
+                                     : '--- part one failures: 0 ---');
+    window.__errs.forEach(e=>console.log('  '+e));
+  })();
+`;
+
+  const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?script>/g, '');
+  try{ w.eval(script + probe); }
+  catch(e){
+    console.log('PART ONE THREW: ' + e.message);
+    if(e.stack) console.log(e.stack.split('\n').slice(0, 6).join('\n'));
+    errs.push('part one threw: ' + e.message);
+  }
+  for(const e of (w.__errs || [])) errs.push(e);
+}
+
+/* ==========================================================================
+   PART TWO — THE RELAY (RULING EL), tested for real over sockets
+   ========================================================================== */
+
 /* ---- a real ArtDmx packet, built the way a console builds one ------------ */
 function artDmx(universe, data, opts){
   const o = opts || {};
