@@ -827,7 +827,7 @@ function buildFlyExtrasUI(){
         /* RULINGS EM and ES — a desk-driven haul is not also hand-hauled.
            These rows were ungated because nothing drove them; ES gave the
            sign channel 308, and without this the operator hauls it and the
-           desk never takes it back, because a band writes only on change. */
+           desk never takes it back, because this block writes EVERY FRAME and would overwrite a hand-haul on the very next packet. */
         if(typeof artYields === 'function' && artYields('the sign')) return;
         const live = (SHOW.flyExtras || []).find(y=>y.key === x.key);
         if(live) go(live);

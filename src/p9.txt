@@ -2878,7 +2878,7 @@ function vrSqueeze(hand, down){
        GRAB rather than in the haul: taking hold arrests a runaway, drops the
        relock and writes ls.target = ls.pos, so a hand that closed and then
        could not pull would still have taken the line off the desk.  The
-       traveler is refused with it — channel 309 works that curtain too. */
+       traveler is refused with it — the traveler channel works that curtain too. */
     if(artYields(best.traveler ? 'the traveler' : 'lineset '+ls.id)) return;
     if(best.traveler){
       /* the traveler's hand line: nothing on it to arrest and nothing that

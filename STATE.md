@@ -1,4 +1,4 @@
-# STATE — 2026-08-16 (ART-NET: THE CHAIN IS FINISHED, RULINGS EL–EY)
+# STATE — 2026-08-16 (ART-NET: THE CHAIN LANDED, THEN A REAL DESK RAN IT — RULINGS EL–EZ)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
@@ -8,7 +8,7 @@ fetch`, compare `origin/main`, then read this.
 The desk drives the Palace, and the nine-PR chain is **done** — ten merges in
 all, #200 to #209, because #206 is an extra written mid-round. `main` is
 **`44688eb`** as this was written, with its own PR landing on top. The suite
-count is **21**, rulings are at **EY**, and the cache-bust is **`?v=31`** from
+count is **21**, rulings are at **EZ**, and the cache-bust is **`?v=31`** from
 here.
 
 **Nothing in this round has been seen on hardware, and nothing has been seen
@@ -26,23 +26,28 @@ against a real desk.** Every number below came out of jsdom.
 | **#207** | **ET, EX** | the set movers — parked unless driven |
 | **#208** | **EO** | `tools/artnet-map.js` and the generated `docs/ARTNET.md` |
 | **#209** | **EY** | the record: the QLC+ recipe, the rulings, the one bug left standing |
+| **#210** | **EZ** | the sign is a fly — target and speed, and it retires EY’s sign half |
 
 Every merge verified: `main` rebuilds **byte-identical**, 21/21 suites on the
 merged result, branches deleted local and remote. Two-stage review on every
 PR — and on #207 that review was the first the mover code had ever had.
 
-## THE ONE THING LEFT, AND IT IS RULED BUT NOT BUILT
+## THE ONE THING LEFT, AND IT IS RULED BUT NOT BUILT (and it is smaller than it was)
 
-**RULING EY — a dead universe still hauls the BEETLEJUICE sign 11.36m.**
-Jack ruled the fix and ruled that it waits: *"Don't fix it — just record it."*
-It is written up in the spec, and the work is **PART 1a item 4 of FUTURE.md**.
+**RULING EY — a dead universe still redresses the HOUSE.** Jack ruled the fix
+and ruled that it waits: *"Don't fix it — just record it."* The work is
+**PART 1a item 4 of FUTURE.md**.
 
-`artBands` writes channels 307 and 308 on a band CHANGE only, and the two band
-memories start at **-1**. A change from -1 is a change — so the FIRST frame of
-an unpatched universe reads band 0 and acts on it: channel 308 hauls the sign
-to its FLOOR stop (**11.356m of world travel**, measured from its UP stop, in
-full view), and channel 307 redresses whichever house is standing back to the
-Maitlands.
+**THE SIGN HALF IS FIXED.** As first written EY was mostly about the sign,
+which a dead universe hauled 11.36m to the deck in full view. **RULING EZ
+retired that** by taking the sign off a band and onto its own target/speed
+pair — a zero speed byte parks it. What is left is channel 307 alone.
+
+`artBands` writes channel 307 on a band CHANGE only and `ART.houseBand` starts
+at **-1**. A change from -1 is a change — so the FIRST frame of an unpatched
+universe reads band 0 and redresses whichever house is standing back to the
+Maitlands. A dress swap rather than a move, and band 0 is also the load
+default, so usually a no-op — but "usually" is doing real work there.
 
 **The third time the same collision was found in one round.** EQ gave the flys
 a speed byte; 309 was parked by its own lineset's speed byte after an unpatched
@@ -50,13 +55,14 @@ desk ran the house curtain shut in front of the audience; EX made byte 0 "no
 command" on the set movers. The bands were the only ones left, and they were
 left because nobody had measured them.
 
-**AND THE SUITE READS GREEN ON IT BECAUSE OF CASE ORDERING** — which is the
-finding worth keeping. The round's own safety case for the sign calls
-`deskOn()` (which delivers a frame, which establishes band 0) BEFORE it puts
-the sign on its stop, so its 120 measured frames are a no-change band. The
-assertion written to prove the sign safe is the thing concealing the hole.
-Move it BELOW `flyExtraToStop` and the settle loop after it — seven lines, not
-two — and it fails with the sign commanded to -2.36m.
+**IT WAS HIDDEN BY CASE ORDERING**, and that is the finding worth keeping even
+though the case that carried it is gone. The round's safety case for the sign
+called `deskOn()` — which delivers a frame, which established band 0 — BEFORE
+it put the sign on its stop, so its 120 measured frames were a no-change band
+and it passed. The assertion written to prove the sign safe was the thing
+concealing the hole. **That reproduction no longer fires**, because EZ took
+the sign off the band; the lesson is in TRAPS, and 307 has no equivalent case
+to reorder.
 
 ## HOW TO ACTUALLY RUN IT
 

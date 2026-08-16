@@ -139,7 +139,8 @@ for(const k of ['FIXTURES','FLY','GOODS','SECTIONS','SHOW','HOUSE','OUT_TRIM',
   if(P[k] === undefined) throw new Error('the probe cannot see ' + k + ' — add it to the __P handout');
 for(const fn of ['artFixBase','artFlyBase','artHouseBase','artSelBase','artMoverBase',
                  'artBandOf','artLights','artFlys','artMovers','artMoverSet','artMoverOut',
-                 'artMoverHauled','artBands','minTrimOf','showLoad','flyExtraStops',
+                 'artMoverHauled','artBands','artSign','artSignRange',
+                 'minTrimOf','showLoad','flyExtraStops',
                  'flyExtraMover','flyTo','updateFly','bjRedress','bjWingPack'])
   if(typeof w[fn] !== 'function')
     throw new Error('the probe cannot see ' + fn + '() on the window');
@@ -205,19 +206,19 @@ function travelerNow(where){
     throw new Error('SELF-CHECK 2 FAILED: ' + declared.length + ' linesets on ' + where +
       ' hang goods that declare themselves a traveler (lines ' + declared.map(x=>x.id).join(', ') +
       ') — artFlys takes FLY.findIndex and would drive line ' + declared[0].id +
-      ' alone, so channel ' + (SELB + 2) + ' cannot be printed as belonging to one line');
+      ' alone, so channel ' + (SELB + 3) + ' cannot be printed as belonging to one line');
   const was = flySnapOf();
   let hit = null, usedByte = null;
   for(const byte of TRAV_BYTES){
     const b = frame();
     for(let j = 0; j < FLY.length; j++) put(b, FLYB + j * 2 + 1, 255);   // every line driven
-    put(b, SELB + 2, byte);
+    put(b, SELB + 3, byte);
     w.artFlys(b);
     const moved = FLY.map((ls, i)=>({i: i, id: ls.id, key: ls.goodsKey}))
                      .filter(x=>FLY[x.i].travTarget !== was[x.i].travTarget);
     flyPutBack(was);
     if(moved.length > 1)
-      throw new Error('SELF-CHECK 2 FAILED: channel ' + (SELB + 2) + ' moved ' + moved.length +
+      throw new Error('SELF-CHECK 2 FAILED: channel ' + (SELB + 3) + ' moved ' + moved.length +
         ' travelers on ' + where + ' — the map claims it belongs to exactly one line');
     if(moved.length === 1){ hit = moved[0]; usedByte = byte; break; }
   }
@@ -225,13 +226,13 @@ function travelerNow(where){
      printed and the other trusted */
   if(declared.length === 1 && !hit)
     throw new Error('SELF-CHECK 2 FAILED: line ' + declared[0].id + ' on ' + where +
-      ' hangs goods that declare `traveler` and no byte on channel ' + (SELB + 2) +
+      ' hangs goods that declare `traveler` and no byte on channel ' + (SELB + 3) +
       ' moved it — the channel and the declaration disagree');
   if(!declared.length && hit)
-    throw new Error('SELF-CHECK 2 FAILED: channel ' + (SELB + 2) + ' moved line ' + hit.id +
+    throw new Error('SELF-CHECK 2 FAILED: channel ' + (SELB + 3) + ' moved line ' + hit.id +
       ' on ' + where + ' and no lineset there declares a traveler');
   if(hit && declared.length && hit.i !== declared[0].i)
-    throw new Error('SELF-CHECK 2 FAILED: channel ' + (SELB + 2) + ' moved line ' + hit.id +
+    throw new Error('SELF-CHECK 2 FAILED: channel ' + (SELB + 3) + ' moved line ' + hit.id +
       ' on ' + where + ' and the declaring lineset is line ' + declared[0].id);
   return hit ? Object.assign({byte: usedByte}, hit) : null;
 }
@@ -559,7 +560,7 @@ const travDriven = travelerNow('the ' + SHOW_KEY.toUpperCase() + ' hang');
 const travParked = travDriven ? (()=>{
   const b = frame();
   for(let j = 0; j < FLY.length; j++) put(b, FLYB + j * 2 + 1, 0);      // every line parked
-  put(b, SELB + 2, travDriven.byte);
+  put(b, SELB + 3, travDriven.byte);
   w.artFlys(b);
   const moved = FLY.filter((ls, i)=>ls.travTarget !== flyWas[i].travTarget).length;
   flyRestore();
@@ -626,13 +627,19 @@ const dressScenes = (P.SHOW.scenes || []).filter(s=>s.dress);
 const bandWas = {
   dress: dressScenes.map(s=>s.dressOn),
   pend: P.SHOW.pendDress,
-  sign: signMv ? {target: signMv.target, off: signMv.off, speed: signMv.speed} : null,
-  art: {bandSc: P.ART.bandSc, houseBand: P.ART.houseBand,
-        bandSign: P.ART.bandSign, signBand: P.ART.signBand}
+  sign: signMv ? {target: signMv.target, off: signMv.off, speed: signMv.speed,
+                  artSpeed: signMv.artSpeed} : null,
+  art: {bandSc: P.ART.bandSc, houseBand: P.ART.houseBand}
 };
-function bandFrame(v307, v308){
+function bandFrame(v307){
   const b = frame();
-  put(b, SELB, v307); put(b, SELB + 1, v308);
+  put(b, SELB, v307);
+  return b;
+}
+/* RULING EZ - the sign is two channels of its own now, driven through artSign */
+function signFrame(tv, sv){
+  const b = frame();
+  put(b, SELB + 1, tv); put(b, SELB + 2, sv);
   return b;
 }
 /* drive 307 at one byte and read back WHICH scene took WHICH dressing.  Every
@@ -641,25 +648,36 @@ function bandFrame(v307, v308){
 function driveHouse(byte){
   for(const s of dressScenes) s.dressOn = DRESS_NOBODY;
   P.ART.bandSc = null; P.ART.houseBand = -1;         // make the band say itself again
-  w.artBands(bandFrame(byte, 0));
+  w.artBands(bandFrame(byte));
   const wrote = dressScenes.filter(s=>s.dressOn !== DRESS_NOBODY);
   return {n: wrote.length, scene: wrote.length ? wrote[0].name : null,
           dress: wrote.length ? wrote[0].dressOn : null, sc: wrote[0] || null};
 }
-/* drive 308 at one byte and read back the metre the sign was COMMANDED to,
-   then look for a declared stop at that offset.  The stop's own name is read
-   off the record; which band reaches it is measured. */
-function driveSign(byte){
-  if(!signMv) return {target: null, stop: -1};
+/* RULING EZ — drive the sign's TARGET channel at one byte, with a speed byte
+   alongside, and read back the metre it was COMMANDED to and the speed it was
+   given.  Both come out of `artSign` itself; nothing here restates the range,
+   which is the whole warrant for this file. */
+function driveSign(byte, sp){
+  if(!signMv) return {target: null, stop: -1, speed: null};
   signMv.target = SIGN_NOBODY;
-  P.ART.bandSign = null; P.ART.signBand = -1;
-  w.artBands(bandFrame(0, byte));
+  signMv.artSpeed = SIGN_NOBODY;
+  w.artSign(signFrame(byte, sp === undefined ? 255 : sp));
   const t = signMv.target;
-  if(t === SIGN_NOBODY) return {target: null, stop: -1};
+  if(t === SIGN_NOBODY) return {target: null, stop: -1, speed: null};
   let stop = -1;
+  /* 0.005m, not 1e-6: a stop is reachable if a BYTE lands on it, and 255
+     steps across an 11.36m travel is 4.5cm a byte. An exact-equality test
+     would report every named stop unreachable and be believed. */
   if(signStops) for(let i = 0; i < signStops.length; i++)
-    if(Math.abs(t - signStops[i].off) < 1e-6){ stop = i; break; }
-  return {target: t, stop: stop};
+    if(Math.abs(t - signStops[i].off) < 0.005){ stop = i; break; }
+  return {target: t, stop: stop,
+          speed: signMv.artSpeed === SIGN_NOBODY ? null : signMv.artSpeed};
+}
+/* the byte that lands nearest each declared stop, computed off the MEASURED
+   ends rather than off artSignRange, so the two have to agree */
+function signByteFor(off, lo, hi){
+  if(!(hi - lo)) return null;
+  return Math.round(((off - lo) / (hi - lo)) * 255);
 }
 /* every band, at BOTH ends of its byte range, so a boundary that disagreed
    with artBandOf would show up as two different answers inside one band */
@@ -669,12 +687,42 @@ const houseBands = bands.map(bd=>{
           same: ends[0].dress === ends[1].dress && ends[0].scene === ends[1].scene,
           scene: ends[0].scene, dress: ends[0].dress, n: ends[0].n};
 });
-const signBands = bands.map(bd=>{
-  const ends = [bd.from, bd.to].map(v=>Object.assign({byte: v}, driveSign(v)));
-  return {band: bd.band, from: bd.from, to: bd.to,
-          same: ends[0].stop === ends[1].stop && ends[0].target === ends[1].target,
-          stop: ends[0].stop, target: ends[0].target};
-});
+/* RULING EZ — the sign's own travel, measured at the two ends and the middle,
+   plus the byte each declared stop answers to, plus the two things that make
+   it a FLY: a speed byte of 0 writes nothing at all, and 255 is the haul's own
+   declared speed. */
+const signDrive = signMv ? (()=>{
+  const lo = driveSign(0).target, hi = driveSign(255).target;
+  const mid = driveSign(128).target;
+  const parked = (()=>{ const r = driveSign(255, 0); return r.target === null; })();
+  const full = driveSign(255).speed;
+  const half = driveSign(255, 128).speed;
+  const stops = (signStops || []).map(s=>({name: s.name, off: s.off,
+                  byte: signByteFor(s.off, lo, hi),
+                  hits: Math.abs((driveSign(signByteFor(s.off, lo, hi)).target) - s.off) < 0.005}));
+  return {lo: lo, hi: hi, mid: mid, parked: parked, full: full, half: half,
+          declared: signX ? signX.speed : null, stops: stops};
+})() : null;
+/* SELF-CHECK 4 — the sign must be a real travel driven by a real speed byte.
+   Every one of these can fail: a build that dropped the parked branch, one
+   that wrote `speed` instead of `artSpeed`, one that used inOff/outOff (which
+   would put the floor out of reach), or one whose range collapsed. */
+if(signDrive){
+  if(!(Math.abs(signDrive.hi - signDrive.lo) > 0.5))
+    throw new Error('SELF-CHECK 4 FAILED: the sign channel spans ' +
+      (signDrive.hi - signDrive.lo).toFixed(3) + 'm — that is not a travel');
+  if(!signDrive.parked)
+    throw new Error('SELF-CHECK 4 FAILED: a speed byte of 0 still commanded the sign');
+  if(!(signDrive.full > 0) || Math.abs(signDrive.full - signDrive.declared) > 1e-6)
+    throw new Error('SELF-CHECK 4 FAILED: speed 255 gave ' + signDrive.full +
+      ', not the haul\'s declared ' + signDrive.declared);
+  if(Math.abs(signDrive.half - signDrive.declared * (128 / 255)) > 1e-6)
+    throw new Error('SELF-CHECK 4 FAILED: the speed byte does not scale');
+  for(const s of signDrive.stops)
+    if(!s.hits)
+      throw new Error('SELF-CHECK 4 FAILED: no byte reaches the stop ' + s.name +
+        ' at ' + s.off.toFixed(2) + 'm — RULING EZ says all three are reachable');
+}
 /* AND "ON A BAND CHANGE ONLY" IS ITSELF MEASURED: hold the same byte with the
    memory left alone and nothing may be written a second time. */
 const changeOnly = (()=>{
@@ -682,13 +730,13 @@ const changeOnly = (()=>{
   let house = null, sign = null;
   const h = driveHouse(top.from);
   if(h.sc){ h.sc.dressOn = DRESS_NOBODY;
-    w.artBands(bandFrame(top.from, 0));             // same byte, memory untouched
+    w.artBands(bandFrame(top.from));             // same byte, memory untouched
     house = h.sc.dressOn === DRESS_NOBODY; }
-  const s = driveSign(top.from);
-  if(signMv && s.target !== null){ signMv.target = SIGN_NOBODY;
-    w.artBands(bandFrame(0, top.from));
-    sign = signMv.target === SIGN_NOBODY; }
-  return {house: house, sign: sign};
+  /* RULING EZ - the sign is no longer band-change-only; it is a per-frame
+     fly write like every other, so there is nothing change-only left to
+     measure on it and saying otherwise would be the file restating a rule
+     the code stopped having. */
+  return {house: house, sign: null};
 })();
 /* put the stage back: the dressing through the show's own mechanism, the
    sign's mover by hand, and the band memory to what it was */
@@ -697,7 +745,7 @@ P.SHOW.pendDress = bandWas.pend;
 if(signMv && bandWas.sign){ signMv.target = bandWas.sign.target; signMv.off = bandWas.sign.off;
                             signMv.speed = bandWas.sign.speed; }
 P.ART.bandSc = bandWas.art.bandSc; P.ART.houseBand = bandWas.art.houseBand;
-P.ART.bandSign = bandWas.art.bandSign; P.ART.signBand = bandWas.art.signBand;
+if(signMv) signMv.artSpeed = bandWas.sign ? bandWas.sign.artSpeed : undefined;
 
 const dressScene = houseBands.find(h=>h.scene) || null;
 
@@ -843,7 +891,7 @@ out('## Which show is loaded, and why it matters');
 out();
 out('This map was generated with **' + SHOW_KEY.toUpperCase() + ' loaded**. Two blocks below depend on that:');
 out();
-out('- **the set movers (310+)** — the block is derived every frame from `SHOW.scenes`,');
+out('- **the set movers (' + MVB + '+)** — the block is derived every frame from `SHOW.scenes`,');
 out('  and Beetlejuice is the only production that carries scene movers at all;');
 out('- **the goods on each lineset (274..301)** — a production hangs its own cloths, so');
 out('  the lineset LABELS are this show\'s. The channel numbers are not: they are');
@@ -869,9 +917,14 @@ out('| ' + FIXB + '..' + (FLYB - 1) + ' | ' + FIX.length + ' fixtures, ' + CH_FI
 out('| ' + FLYB + '..' + (HOUB - 1) + ' | ' + FLY.length +
     ' linesets, 2 each (target, speed) | `artFixBase() + ' + CH_FIX + ' * FIXTURES.length` | ' + FLYB + ' |');
 out('| ' + HOUB + '..' + (HOUB + 4) + ' | the five house circuits | `artFlyBase() + 2 * FLY.length` | ' + HOUB + ' |');
-out('| ' + SELB + ', ' + (SELB + 1) + ', ' + (SELB + 2) +
-    ' | house selector, sign, traveler | `artHouseBase() + 5` | ' + SELB + ' |');
-out('| ' + MVB + '..' + (MVB + mvRows.length - 1) + ' | the loaded show\'s set movers | `artSelBase() + 3` | ' + MVB + ' |');
+out('| ' + SELB + ', ' + (SELB + 1) + ', ' + (SELB + 2) + ', ' + (SELB + 3) +
+    ' | house selector, sign target, sign speed, traveler | `artHouseBase() + 5` | ' + SELB + ' |');
+/* THE OFFSET IS COMPUTED, NOT TYPED.  It was typed once, as `artSelBase() + 3`,
+   and RULING EZ made it 4 — so the column whose whole job is to be the warrant
+   for the table stated a derivation that gave 310 beside a measured 311, and a
+   build mutated back to +3 printed a table that agreed with itself. */
+out('| ' + MVB + '..' + (MVB + mvRows.length - 1) + ' | the loaded show\'s set movers | `artSelBase() + ' +
+    (MVB - SELB) + '` | ' + MVB + ' |');
 out('| ' + (MVB + mvRows.length) + '..512 | nothing — unpatched | | |');
 out();
 out('A fortieth lantern moves every base after it by ' + CH_FIX + '. Measured, by pushing');
@@ -993,7 +1046,7 @@ out('- **AND THE TARGET CHANNEL IS PARKED BY THE SPEED CHANNEL TOO.** Byte 0 on 
 out('  only reaches `minTrimOf` if that line\'s speed byte is non-zero: `artFlys` takes the');
 out('  park branch and never reaches `flyTo` at all. The target column above was measured');
 out('  with every speed byte at 255. It is the same dependency spelled out on channel ' +
-    (SELB + 2) + '.');
+    (SELB + 3) + '.');
 out();
 out('| ch | lineset | goods | this channel |');
 out('|---|---|---|---|');
@@ -1019,7 +1072,7 @@ for(const h of houseChan) out('| ' + h.ch + ' | `HOUSE.' + h.key + '` |');
 out();
 
 /* ---- the three selector channels ---------------------------------------- */
-out('## ' + SELB + ', ' + (SELB + 1) + ', ' + (SELB + 2) + ' — the selector channels');
+out('## ' + SELB + ', ' + (SELB + 1) + ', ' + (SELB + 2) + ', ' + (SELB + 3) + ' — the selector channels');
 out();
 out('### ' + SELB + ' — the BEETLEJUICE house (RULING ER)');
 out();
@@ -1050,35 +1103,45 @@ out((dressScene ? 'The scene it dresses is `' + dressScene.scene +
   : 'NO LOADED SCENE CARRIES ALL THREE DRESSINGS, so this channel does nothing right now.'));
 out('A production with no such scenery ignores this channel entirely.');
 out();
-out('### ' + (SELB + 1) + ' — the BEETLEJUICE sign (RULING ES)');
+out('### ' + (SELB + 1) + ', ' + (SELB + 2) + ' — the BEETLEJUICE sign (RULING EZ)');
 out();
-if(signStops){
-  out('The same three splits, driving the sign\'s own named stops (RULING DH) through');
-  out('`flyExtraToStop`, on a band change only. **Driven, like 307**: the channel is sent a');
-  out('byte in each band and the metre the sign\'s mover was COMMANDED to is read back, then');
-  out('matched against the stops the show declares.');
+if(signDrive){
+  out('**A fly, not three buttons.** ' + (SELB + 1) + ' is TARGET and ' + (SELB + 2) +
+      ' is SPEED, the same idiom as every');
+  out('lineset. This SUPERSEDES the sign half of RULING ES; the three named stops are still');
+  out('the show\'s own (RULING DH) and still on both surfaces, but the DESK is no longer a');
+  out('three-position switch. Everything below was driven through `artSign` and read back.');
   out();
-  out('| bytes | band | commanded to | which declared stop that is |');
-  out('|---|---|---|---|');
-  for(const s of signBands){
-    const st = s.stop >= 0 ? signStops[s.stop] : null;
-    out('| ' + s.from + '..' + s.to + ' | ' + s.band + ' | ' +
-        (s.target === null ? 'NOTHING — this band commanded no move' : f2(s.target) + 'm') + ' | ' +
-        (st ? 'stop ' + s.stop + ', `' + st.name + '`' : s.target === null ? '' : 'NO DECLARED STOP IS THERE') +
-        (s.same ? '' : ' — AND THE TWO ENDS OF THIS BAND DISAGREED') + ' |');
+  out('| ' + (SELB + 1) + ' target | commanded to |');
+  out('|---|---|');
+  out('| 0 | ' + f2(signDrive.lo) + 'm |');
+  out('| 128 | ' + f2(signDrive.mid) + 'm |');
+  out('| 255 | ' + f2(signDrive.hi) + 'm |');
+  out();
+  if(signDrive.stops.length){
+    out('The named stops, and the byte that reaches each:');
+    out();
+    out('| stop | metres | ' + (SELB + 1) + ' byte |');
+    out('|---|---|---|');
+    for(const s of signDrive.stops)
+      out('| `' + s.name + '` | ' + f2(s.off) + 'm | ' + s.byte + ' |');
+    out();
   }
+  out('**' + (SELB + 2) + ' SPEED, and byte 0 is PARKED.** Measured: a speed byte of 0 wrote ' +
+      (signDrive.parked ? 'NOTHING at all' : '**A TARGET ANYWAY**'));
+  out('— so an unpatched universe cannot haul the sign. Byte 255 is ' + signDrive.full +
+      'm/s, the haul\'s');
+  out('OWN declared speed, and 128 gives ' + signDrive.half.toFixed(3) + 'm/s, so it scales.');
   out();
-  out('Band-change-only, measured the same way: a second frame at the same byte ' +
-      (changeOnly.sign === null ? 'could not be taken.'
-       : changeOnly.sign ? 'commanded nothing.'
-       : '**RE-COMMANDED THE HAUL**, which restarts it every packet.'));
+  out('Parked here means SILENCE, not a stop: the sign is a SCENE mover, so a haul the show');
+  out('started runs on to its stop rather than freezing where it stands (RULINGS EX, EZ).');
   out();
-  out('The sign is hauled by the rail, not by a mover channel — see the mover block.');
+  out('The sign is hauled by the rail, so it takes no mover channel — see the mover block.');
 } else {
-  out('NO SIGN IS DECLARED BY THE LOADED SHOW, so this channel does nothing.');
+  out('NO SIGN IS DECLARED BY THE LOADED SHOW, so these two channels do nothing.');
 }
 out();
-out('### ' + (SELB + 2) + ' — the traveler');
+out('### ' + (SELB + 3) + ' — the traveler');
 out();
 out('0 = shut, 255 = open, written as `travTarget` on whichever lineset carries goods');
 out('that declare themselves a traveler. WHICH LINE THAT IS was not counted off a list:');
@@ -1094,7 +1157,7 @@ if(travDriven){
   out('  target channel is ' + row.base + ' and its speed channel is ' + (row.base + 1) + '.');
 } else {
   out('- NO LINE ANSWERED IT. Nothing hung on this rail declares itself a traveler, so');
-  out('  channel ' + (SELB + 2) + ' does nothing in this production.');
+  out('  channel ' + (SELB + 3) + ' does nothing in this production.');
 }
 out('- **AND IT IS A PROPERTY OF THE HANG, NOT OF THE RAIL.** Measured again before any');
 out('  production was loaded, on the Palace\'s own standing hang, ' + (travBare
@@ -1104,10 +1167,10 @@ out('  ' + ((travBare && travDriven && travBare.i !== travDriven.i)
     ? 'A production that hangs its own show curtain therefore MOVES this channel\'s effect'
       : 'It is the same line either way today, and nothing guarantees it stays that way'));
 out('  ' + ((travBare && travDriven && travBare.i !== travDriven.i)
-    ? 'onto a different lineset — patch 309 against the show that is playing.'
-      : '— patch ' + (SELB + 2) + ' against the show that is playing.'));
+    ? 'onto a different lineset — patch ' + (SELB + 3) + ' against the show that is playing.'
+      : '— patch ' + (SELB + 3) + ' against the show that is playing.'));
 out('- **It is PARKED BY THAT LINE\'S OWN SPEED BYTE.** Measured: with every speed byte at');
-out('  0, byte ' + (travDriven ? travDriven.byte : '?') + ' on ' + (SELB + 2) + ' — the same byte that DID move it above — moved');
+out('  0, byte ' + (travDriven ? travDriven.byte : '?') + ' on ' + (SELB + 3) + ' — the same byte that DID move it above — moved');
 out('  ' + (travParked === null ? 'nothing, because no line carries a traveler here'
      : travParked ? 'nothing at all' :
     'the traveler anyway, which contradicts the note under RULING EO') + '.');
@@ -1125,7 +1188,7 @@ if(travRate)
       (travBare ? travBare.id : '?') + ',');
 if(travRate)
   out('  the house curtain — which is where the story comes from.');
-out('  Patch that line\'s speed byte and ' + (SELB + 2) + ' does exactly what the table says.');
+out('  Patch that line\'s speed byte and ' + (SELB + 3) + ' does exactly what the table says.');
 out();
 
 /* ---- the movers --------------------------------------------------------- */
@@ -1155,10 +1218,13 @@ if(!zeroIsNoCommand){
 if(hauled.length){
   out('**Scenes the rail hauls are not on this map at all** (RULINGS CW, ES): ' +
       hauled.map(n=>'`' + n + '`').join(', ') + '.');
-  out('That scenery is addressed by channel ' + (SELB + 1) + ', which writes on a band change only —');
-  out('and this block writes EVERY FRAME. A mover channel there would not merely duplicate');
-  out((SELB + 1) + ', it would make it dead on arrival: the stop lands and the next packet hauls');
-  out('it back.');
+  out('That scenery is addressed by channels ' + (SELB + 1) + ' and ' + (SELB + 2) +
+      ' — its own target and speed (RULING EZ) —');
+  out('and a mover channel here would be a SECOND per-frame writer on the same record. Whichever');
+  out('ran later in artnetTick would win silently, so the rail keeps what the rail hauls.');
+  out('(Under RULING ES this reasoning was different: ' + (SELB + 1) + ' wrote on a band change');
+  out('only, so a mover channel would have hauled it straight back off its stop. EZ replaced the');
+  out('mechanism; the exclusion survives it, for the reason above rather than that one.)');
   out();
 }
 /* THE NEAR END GETS ITS OWN COLUMN WHEN BYTE 0 STOPS BEING A POSITION.  With
