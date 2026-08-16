@@ -370,10 +370,21 @@ const P = async (name, fn)=>{
         if(t > HANDBACK_MAX)
           throw new Error('a dead desk held the rig for ' + t.toFixed(1) + 's, past the ' +
             HANDBACK_MAX + 's this case pins');
+        /* AND THE WRITER WAS ALIVE ALL ALONG, which the refusals above do not
+           prove on their own.  A review disabled setSection's WRITE while
+           leaving its gate intact and this case stayed green — every refusal
+           reads identically to a writer that is broken for an unrelated
+           reason.  So the same call has to MOVE the fader now the desk has
+           gone, and it needs a value the refusals cannot already have left. */
+        const proof = held > 0.5 ? 0.1 : 0.9;
+        setSection(sec, proof, 0);
+        if(Math.abs(sec.level - proof) > 1e-9)
+          throw new Error('the board still would not write after the handback — ' +
+            'the refusals above prove nothing about the gate');
         setSection(sec, held, 0);
         return 'held the rig across 4 gaps of ' + DESK_GAP.toFixed(2) + 's (ages ' + ages.join('s, ') +
-               's) with the board refused throughout, and handed back ' + t.toFixed(1) +
-               's after the desk really stopped';
+               's) with the board refused throughout, handed back ' + t.toFixed(1) +
+               's after the desk really stopped, and the same writer moved the fader once it had';
       } finally { sec.level = held; }
     });
 

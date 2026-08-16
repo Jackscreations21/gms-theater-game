@@ -243,7 +243,7 @@ Nothing here has been seen on hardware. jsdom has no eyes and no GPU.
 ---
 ---
 
-# PART 1a — FIVE THINGS WRONG ON `main` RIGHT NOW
+# PART 1a — SIX THINGS WRONG ON `main` RIGHT NOW
 
 All five are **live in merged code** and none is fixed on `main`. Three came
 out of the paused GMS Studios branches — this heading said "two" while it
@@ -374,7 +374,41 @@ with the fix.
 
 ---
 
-## 5. A flake in `tests/smoke.js`, about 1 run in 12
+## 5. Two more numbers sized off Art-Net's NOMINAL rate, both still live — found by RULING FB
+
+RULING FB fixed `ART_STALE` after a real QLC+ was measured idling at ~1.8s
+between packets. **Two other constants were sized off the same wrong
+assumption and are unchanged**, deliberately — one concern per PR, and each
+wants its own ruling. Recorded here because a flag that lives only in a PR
+description is not a record.
+
+**`ART_PROVE` (`src/p6d.txt`).** Its comment says *"a desk sends ~44 frames a
+second, so this is about a second of real traffic"*. At the measured idle
+cadence, 44 packets is about **79 seconds**, and `ART.got` resets per socket —
+so a fresh socket needs ~79 idle seconds before the backoff ladder resets.
+**It is less bad than that sounds and the note should say so:** `ART.step` is
+also reset by throwing the switch, and the ladder is capped at 8s, so the whole
+realised cost is that repeated flaps against an idle desk retry at 8s instead
+of 1s. Bounded, self-correcting, and arguably what an anti-storm backoff is
+for. Not a show-stopper — but the sentence in the comment is false.
+
+**The relay's sequence guard (`tools/artnet-relay.js`).** *"A desk sends ~44
+packets a second, so a second of silence is a desk that stopped"* — and then
+`if(now - lastPacketAt > 1000) lastSeq = 0;`. A real desk goes silent for
+~1.8s routinely and has **not** stopped, so against an idle QLC+ `lastSeq` is
+cleared before essentially every packet and the Art-Net ordering guard is
+effectively off while the desk idles. Impact is low — idle packets carry the
+same values, and during an active cue packets are well under a second apart —
+but it is the same bug, in the same feature, and the relay suite even names
+the one-second window.
+
+**The lesson both share** is already in TRAPS: a timeout sized off a
+datasheet number rather than a measurement is the same bug waiting. These are
+the two that are left.
+
+---
+
+## 6. A flake in `tests/smoke.js`, about 1 run in 12
 
 *"the puffs drift, spread and die"* fails intermittently — a puff whose random
 drift stays under the case's 0.3m threshold. Found during the Art-Net round on
