@@ -11935,14 +11935,25 @@ function artFlys(b){
     flyTo(ls, lo + (b[o] / 255) * (OUT_TRIM - lo));
   }
   /* THE TRAVELER, one channel: 0 shut, 255 open.  It belongs to whichever
-     line is carrying goods that declare themselves a traveler — the house
-     curtain today — and the map probe prints which line that is rather than
-     leaving it to be counted off this comment.
+     line is carrying goods that declare themselves a traveler, and the map
+     probe prints which line that is rather than leaving it to be counted off
+     this comment.
+
+     AND IT IS NOT THE SAME LINE IN EVERY SHOW, which is what this comment
+     used to get wrong: it said "the house curtain today", and that is only
+     true of the Palace's STANDING HANG, where the traveler is line 2.  Load
+     Beetlejuice and it is LINE 1 — the show hangs its own `bjCurtain`, which
+     also declares `traveler`, and `findIndex` takes the first; the Palace
+     house curtain is not on the rail at all.  docs/ARTNET.md measures and
+     prints both hangs, because an operator patching 309 needs to know its
+     target line moves with the production.
 
      AND IT IS PARKED BY ITS OWN LINE'S SPEED BYTE.  Written unconditionally,
      this was the one piece of scenery a dead universe DID move: the instant
      the switch went on with nothing patched to 309, the house curtain ran
-     itself shut at 0.42/s in front of the audience.  RULING EQ's principle is
+     itself shut at 0.42 of its full draw a second — about 2.4 seconds end to
+     end, and `ls.open` is a FRACTION, never metres — in front of the
+     audience.  docs/ARTNET.md measures it.  RULING EQ's principle is
      that a dead universe moves no scenery, and a curtain is scenery; EO's
      table says 0 is shut, and it still is, once somebody is actually driving
      that line.  The traveler hangs on a lineset, so the lineset's own speed

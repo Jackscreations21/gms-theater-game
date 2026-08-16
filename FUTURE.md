@@ -31,8 +31,9 @@ commitment and nothing in here is binding — **a spec in
 ```
 
 The lettered rulings are one continuous sequence across the whole project.
-**The last one used is `EW`** (Art-Net, the writers EM's list forgot). The next
-spec starts at `EX`.
+**The last one used is `EY`** (Art-Net, the band channels on a dead universe —
+ruled 2026-08-16 and NOT built; see PART 1a item 4). The next spec starts at
+`EZ`.
 
 When something in here ships, **delete it from this file** — this is a list of
 what is *not* done. It stops being useful the moment it becomes a history.
@@ -49,8 +50,9 @@ flight, three PRs never started.
   — **RULINGS DZ–EK**. Read it before touching any of this.
 - **`main` is `ce1de31`.** Suite count is **20** (`tests/studios.js` is new),
   all 20 green.
-- **Cache-bust is still `?v=29`.** Nothing in this round has been on hardware.
-  **Bump to `?v=30` before judging any of it in the headset.**
+- **Cache-bust is `?v=31`** as of the Art-Net round (`?v=30` is spent). Nothing
+  in THIS round has been on hardware. **Bump before judging any of it in the
+  headset.**
 
 ## The brief, verbatim, because the round is answering it
 
@@ -235,10 +237,12 @@ Nothing here has been seen on hardware. jsdom has no eyes and no GPU.
 ---
 ---
 
-# PART 1a — TWO BUGS ON `main` RIGHT NOW
+# PART 1a — FOUR BUGS ON `main` RIGHT NOW
 
-Both were found by the paused branches, and both are **live in merged code**.
-Neither is fixed on `main`.
+All four are **live in merged code** and none is fixed on `main`. Three came
+out of the paused GMS Studios branches — the heading said "two" while it
+already carried three. The fourth came out of the Art-Net round's own review
+and is **RULED but deliberately not built**.
 
 ## 1. The venue's work lights all share ONE material — the shared-material trap
 
@@ -303,9 +307,66 @@ belongs in `TRAPS.md` either way.
 
 ---
 
+## 4. A dead universe still hauls the BEETLEJUICE sign 11.36m — RULING EY, ruled and NOT built
+
+**Binding ruling:** `docs/superpowers/specs/2026-08-15-artnet-control-design.md`,
+RULING EY. Jack ruled the fix and ruled that it waits — *"Don't fix it — just
+record it."* This entry is the work.
+
+`artBands` writes channels 307 and 308 on a band **change** only, and
+`ART.signBand` / `ART.houseBand` start at **-1**. A change from -1 is a change.
+So the **first frame of an unpatched universe reads band 0 and acts on it**:
+
+- **308, the sign.** Band 0 is the FLOOR stop. Measured from its UP stop:
+  **11.356m of world travel, in full view** (2.36m at the natural top of the
+  show). The instant the ARTNET switch goes on with a desk patched only for the
+  273 light channels, the sign comes down. `docs/ARTNET.md` prints the measured
+  metre for that band, so the map already shows it.
+- **307, the house.** Band 0 is the Maitlands house, so 512 zeros redress
+  whichever house is standing. A dress swap rather than a move, and band 0 is
+  also the load default, so usually a no-op — same mechanism though.
+
+**This is the same collision for the third time in one round**: RULING EQ gave
+the flys a speed byte; channel 309 was parked by its own lineset's speed byte
+after an unpatched desk ran the house curtain shut in front of the audience;
+RULING EX made byte 0 "no command" on the set movers. The bands were the only
+ones left, and they were left **because nobody had measured them**.
+
+**AND THE SUITE READS GREEN ON IT BECAUSE OF CASE ORDERING**, which is the part
+worth keeping. The round's own safety case for the sign — `tests/artnet.js`,
+*"a scene the RAIL hauls takes no mover channel at all"* — calls `deskOn()`
+(which delivers a frame, which establishes band 0) **before** it puts the sign
+on its stop, so its 120 measured frames are a no-change band. The assertion
+written to prove the sign safe is the thing concealing the hole. Move that
+`deskOn()` two lines down and it fails.
+
+**The fix:** byte 0 on a band channel is NO COMMAND, exactly as EX made it on a
+mover channel. Bands become 1–85 / 86–170 / 171–255. The two band memories stay
+at -1 so the first real command still registers as a change. It costs one byte
+off the bottom of Jack's stated 0–85 band — the same price EX and EQ paid.
+
+**And the test has to be rebuilt, not extended:** its `deskOn()` must stop
+establishing the band before the measurement. The negative check is to put the
+sign on its UP stop FIRST and then connect a dead desk; against today's `main`
+that must fire. `docs/ARTNET.md` must be regenerated afterwards — it measures
+these two channels now, so the map moves with the fix.
+
+---
+
+## 5. A flake in `tests/smoke.js`, about 1 run in 12
+
+*"the puffs drift, spread and die"* fails intermittently — a puff whose random
+drift stays under the case's 0.3m threshold. Found during the Art-Net round on
+a build that does not touch it; a re-run is clean. Not fixed, and worth knowing
+before it wastes somebody's afternoon: **a lone red `smoke` after an unrelated
+change is probably this.**
+
+---
+
 **Suggested order on resuming**, given the above: fix (1) and (3) as their own
 small PRs first — they are live defects and both are cheap — then rebase the
-shed, then the grids, then PRs 4, 7, 8.
+shed, then the grids, then PRs 4, 7, 8. **RULING EY (4) is independent of the
+GMS round entirely** and can go at any time.
 
 ---
 ---

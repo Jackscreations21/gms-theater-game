@@ -1,6 +1,10 @@
 # Art-Net control of the Palace — design (2026-08-15)
 
-**BINDING. Rulings EL–EW.** The next spec starts at **EX**.
+**BINDING. Rulings EL–EY.** The next spec starts at **EZ**.
+
+**EX and EY were added on 2026-08-16**, after the round began, and both came
+from measuring what an UNPATCHED universe does. EX is built; **EY is ruled and
+deliberately NOT built** — see FUTURE.md PART 1a.
 
 ## The brief, verbatim
 
@@ -170,7 +174,9 @@ The two sliders per line map onto machinery that already exists:
 says byte 0 is shut, and EQ says *"a dead universe moves no scenery."* Written
 unconditionally the two collide, and the collision is not academic: the moment
 the switch went on with nothing patched to 309, the house curtain ran itself
-shut at 0.42/s in front of the audience — measured, the one piece of scenery a
+shut at 0.42 of its full draw a second (about 2.4 seconds end to end — `ls.open`
+is a FRACTION, not metres; corrected 2026-08-16 when the map measured it) in
+front of the audience — measured, the one piece of scenery a
 dead universe did move. The safer reading is in force: the traveler is parked
 by its own lineset's speed byte, exactly as that lineset is. Patch the line and
 309 does what the table says. **If Jack wants 309 live regardless of the line,
@@ -288,6 +294,107 @@ a fixture's level, colour, gobo, pan or tilt, or a HOUSE circuit, while
 `RIG.grand` and `RIG.blackout` remain ungated (EM), and the transport keeps
 its clock and its audio (EM). This ruling adds no new surface: it is the same
 gate, applied where the list forgot to look.
+
+### RULING EX — a set mover is parked unless something is really driving it
+
+Added 2026-08-16, from PR 7's own measurement, before it landed. **This
+narrows RULING ET**, and it is the third time this round that measuring what
+an UNPATCHED universe does has changed a ruling — the flys (EQ) and the house
+curtain on channel 309 were the first two.
+
+ET gave set movers no speed byte, so byte 0 meant `home`. Measured on the
+built file: a frame of 512 zeros commanded **every mover in the loaded show
+home** — on Beetlejuice it walked the parked attic **19.50m onto the deck
+while it is drawn** and flew the exterior cloth in. A desk patched only for
+the 273 light channels sends exactly that frame, which is the likeliest first
+real use, and RULING EQ says in as many words that a dead universe moves no
+scenery. A set is scenery.
+
+Put to Jack with both answers written out. His choice:
+
+> Parked unless driven — byte 0 means "no command", 1–255 spans home→out.
+
+So:
+
+- **Byte 0 is not a position.** It is the absence of a command, and the mover
+  keeps whatever target the show gave it.
+- **1..255 spans `m.home`..`m.out`.** Byte 1 is home, byte 255 is out.
+- It costs commanding exact home by one byte — byte 1 is home to within
+  1/254 of the travel — and it puts the movers on the same footing as the
+  flys and channel 309, both of which a zero leaves standing still.
+
+**AND IT IS NOT THE SAME KIND OF PARK AS THE FLYS.** RULING EQ makes a fly
+line's zero a **stop**: the target is rewritten to the position, because a
+line that kept a target it was not at left `ls.moving` set and the rail motor
+loop playing for the rest of the session. A set mover has no such loop and no
+such flag — `sceneMvAdvance` simply walks its offset towards its target — so a
+zero here is **silence**, and a move the show started runs on to the end. A
+build that copied the fly rule across would freeze the show mid-changeover
+every frame a dead desk was connected.
+
+**The degenerate channel is defused rather than fixed.** A whole-group travel
+declaring `home` 0 and no `out` has both at 0, so every byte from 1 to 255
+commands it where byte 1 does. Under ET as written that channel was worse than
+useless — it wrote 0 every frame a dead universe was connected, so the set
+could never fly out at all. It now does nothing until somebody drives it.
+Widening the range would mean consulting `sc.parkMv`, which the plan's
+correction #2 forbids; if it is to be widened it wants a ruling, not a guess.
+
+**A CORRECTION TO ET'S OWN TEXT, because the map reads the records and the
+sentence will not match them.** ET says "the attic tracking in from x −14.20".
+The built record is home 0, out −19.50 — the number in the parenthetical is
+from RULING CQ's placement, which RULING DI moved. `docs/ARTNET.md` prints
+what the records actually say, and that is the authority.
+
+### RULING EY — the band channels read a zero the same way, and it is RULED BUT NOT BUILT
+
+Added 2026-08-16, from PR 7's stage-1 review. **Ruled by Jack and deliberately
+NOT implemented in this round** — his words on where it goes: *"Don't fix it —
+just record it."* The code on `main` still does what EO and ES say. This
+section is the ruling; `FUTURE.md` carries the work.
+
+**The fault.** `artBands` writes channels 307 and 308 on a band CHANGE only,
+and `ART.signBand` / `ART.houseBand` start at `-1`. A change from `-1` is a
+change. So **the first frame of an unpatched universe reads band 0** and acts
+on it:
+
+- **Channel 308, the sign.** Band 0 is the FLOOR stop, so `flyExtraToStop`
+  hauls the BEETLEJUICE sign down. Measured from its UP stop: **11.356m of
+  world travel, in full view.** At the natural top of the show it is 2.36m.
+- **Channel 307, the house.** Band 0 is the Maitlands house, so 512 zeros
+  redress whichever house is standing back to the Maitlands. Less serious —
+  it is a dress swap rather than a move, and band 0 is also the load default,
+  so it is usually a no-op — but it is the same mechanism.
+
+**This is the third time the same collision has been found in one round**, and
+that is what makes it a ruling rather than a patch. RULING EQ's principle is
+that a dead universe moves no scenery. The flys got a speed byte. Channel 309
+got its own lineset's speed byte after an unpatched desk ran the house curtain
+shut in front of the audience. RULING EX gave the set movers "0 is no
+command". **Only the bands were left, and they were left because nobody had
+measured them** — the round's own safety case for the sign
+(`tests/artnet.js`, "a scene the RAIL hauls takes no mover channel at all")
+reads green *because of case ordering*: `deskOn()` establishes band 0 before
+the sign is put on its stop, so the measured frames are a no-change band.
+**The assertion that was supposed to prove the sign safe is the thing that
+concealed the hole.** Move that `deskOn()` call two lines down and it fails.
+
+**The ruling.** Byte 0 on a band channel is NO COMMAND, exactly as RULING EX
+made it on a mover channel. The bands become **1–85 / 86–170 / 171–255**, and
+`artBands` does nothing at all until a non-zero byte arrives.
+
+**What it costs, said plainly, because it narrows Jack's own brief.** His
+words were *"if it is between 0 and 85 it is the maitlands house"*. This takes
+one byte off the bottom of that band. That is the same price EX paid on the
+movers and the same price EQ paid on the flys, and it buys the same thing: a
+desk that has never been patched past the 273 light channels cannot touch a
+single piece of scenery.
+
+**Not built.** When it is, it wants: the guard in `artBands`, the two band
+memories left at `-1` so the first real command still registers as a change,
+and — the part that matters — **the sign case rewritten so its `deskOn()` no
+longer establishes the band before the measurement.** Its negative check is to
+put the sign on its UP stop FIRST and then connect a dead desk.
 
 ---
 
