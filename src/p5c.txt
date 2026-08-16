@@ -522,7 +522,15 @@ function sceneMvAdvance(m, g, dt){
     if(m.off !== m.target){ m.off = m.target; g.position[m.axis] = m.off; }
     return;
   }
-  const step = m.speed * dt;
+  /* RULING EZ — ONE GUARDED READ, exactly as RULING EQ does in `updateFly`.
+     A desk driving a haul on its own speed channel writes `artSpeed`, never
+     `speed`: the record the show declared has to survive being driven, or the
+     first desk to touch the sign would leave it hauling at whatever the fader
+     happened to be on for the rest of the session.  Set movers have no speed
+     channel (ET) and never carry `artSpeed`, so they fall straight through. */
+  const sp = (typeof artDriving === 'function' && artDriving() && m.artSpeed)
+    ? m.artSpeed : m.speed;
+  const step = sp * dt;
   m.off += Math.abs(d) <= step ? d : (d < 0 ? -step : step);
   g.position[m.axis] = m.off;
 }

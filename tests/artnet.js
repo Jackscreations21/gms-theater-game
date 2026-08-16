@@ -465,7 +465,7 @@ const P = async (name, fn)=>{
       /* the numbers the map file will print, today */
       if(FIXTURES.length !== 39 || FLY.length !== 14)
         throw new Error('the rig is ' + FIXTURES.length + ' by ' + FLY.length + ' — the bases move WITH it, which is the point');
-      if(artFlyBase() !== 274 || artHouseBase() !== 302 || artSelBase() !== 307 || artMoverBase() !== 310)
+      if(artFlyBase() !== 274 || artHouseBase() !== 302 || artSelBase() !== 307 || artMoverBase() !== 311)
         throw new Error('bases read ' + [artFlyBase(), artHouseBase(), artSelBase(), artMoverBase()].join(','));
       /* AND THE DERIVATION IS THE CLAIM, not the numbers.  Everything above
          is satisfied by four literals, because 274 IS 1 + 7*39 today — so
@@ -474,10 +474,10 @@ const P = async (name, fn)=>{
       try{
         if(artFlyBase() !== 281) throw new Error('a 40th fixture left the fly block at ' + artFlyBase());
         if(artHouseBase() !== 309) throw new Error('a 40th fixture left the house block at ' + artHouseBase());
-        if(artMoverBase() !== 317) throw new Error('a 40th fixture left the movers at ' + artMoverBase());
+        if(artMoverBase() !== 318) throw new Error('a 40th fixture left the movers at ' + artMoverBase());
       } finally { FIXTURES.pop(); }
       if(artFlyBase() !== 274) throw new Error('the rig did not go back to 39');
-      return '39 x 7 = 1-273, flys 274, house 302, selectors 307, movers 310 — and a 40th lantern moves all four';
+      return '39 x 7 = 1-273, flys 274, house 302, selectors 307, movers 311 — and a 40th lantern moves all four';
     });
 
     P('a frame lands on intensity, colour and gobo, at the right channels (RULING EP)', ()=>{
@@ -1278,7 +1278,7 @@ const P = async (name, fn)=>{
       if(trav !== all[0]) throw new Error('the traveler channel found line ' + trav.id + ', not the first of ' + all.length);
       const speedByte = artFlyBase() - 1 + (trav.id - 1) * 2 + 1;
       const frame = (open, spd)=>{ const b = new Uint8Array(512);
-        b[artSelBase() + 1] = open; b[speedByte] = spd; return b; };
+        b[artSelBase() + 2] = open; b[speedByte] = spd; return b; };   // channel 310 (EZ)
       /* A DEAD UNIVERSE MOVES NO SCENERY, AND A CURTAIN IS SCENERY.  Written
          unconditionally this was the one thing 512 zeros DID move: the house
          curtain ran itself shut in front of the audience the instant the
@@ -1423,7 +1423,12 @@ const P = async (name, fn)=>{
       return 'five identical packets rebuilt nothing; the next different one dressed the maitlands';
     });
 
-    P('the sign takes the same three splits, band-change only (RULING ES)', ()=>{
+    P('the sign is a FLY: target and speed, across its whole travel (RULING EZ)', ()=>{
+      /* Jack: "make it so with aretnet the beetljuice sign moves like any
+         other fly not just up floor and mid."  So it is two channels in the
+         RULING EQ idiom and this SUPERSEDES the sign half of ES.  The three
+         named stops (DH) survive as the SHOW's stops and stay reachable — the
+         desk simply stops being a three-position switch. */
       const ws = deskOn();
       const x = SHOW.flyExtras.find(e=>e.key === 'bjSign');
       if(!x) throw new Error('the sign is not registered after a load');
@@ -1431,18 +1436,113 @@ const P = async (name, fn)=>{
       if(!st || st.length !== 3) throw new Error('the sign declares ' + (st ? st.length : 0) + ' stops, not 3');
       const m = flyExtraMover(x);
       if(!m) throw new Error('the sign has no mover');
-      const sign = (byte)=>{ const b = new Uint8Array(512); b[artSelBase()] = byte;
+      /* THE ENDS ARE THE STOPS' OWN EXTENT, and it matters that they are not
+         inOff/outOff: the FLOOR is BELOW what the two-state field calls IN
+         (RULING DH found exactly that), so a build using the pair puts the
+         deck out of reach and byte 0 lands on PRE-SHOW instead. */
+      let lo = st[0].off, hi = st[0].off;
+      for(const s of st){ if(s.off < lo) lo = s.off; if(s.off > hi) hi = s.off; }
+      if(!(hi - lo > 1)) throw new Error('the sign has no travel to drive');
+      const sign = (byte, sp)=>{ const b = new Uint8Array(512);
+        b[artSelBase()] = byte; b[artSelBase() + 1] = (sp === undefined ? 255 : sp);
         ws.deliver(b); artnetTick(1/60); return m.target; };
-      for(const [byte, i] of [[0,0], [85,0], [86,1], [170,1], [171,2], [255,2]]){
+      /* CONTINUOUS, not three positions: the middle of the fader is a place
+         no stop is, which is the whole of what he asked for */
+      for(const byte of [0, 53, 96, 128, 200, 255]){
+        const want = lo + (byte / 255) * (hi - lo);
         const got = sign(byte);
-        if(Math.abs(got - st[i].off) > 1e-6)
-          throw new Error('byte ' + byte + ' aimed the sign at ' + got + ', and stop ' + i + ' (' + st[i].name + ') is ' + st[i].off);
+        if(Math.abs(got - want) > 1e-6)
+          throw new Error('byte ' + byte + ' aimed the sign at ' + got.toFixed(3) + ', not ' + want.toFixed(3));
       }
-      /* band-change only: re-commanding every frame would restart the haul */
-      m.target = m.off = 99;
-      for(let i = 0; i < 5; i++) sign(255);
-      if(m.target !== 99) throw new Error('an unchanged band re-commanded the sign to ' + m.target);
-      return 'FLOOR/PRE-SHOW/UP on 0-85, 86-170, 171-255, and five identical packets commanded nothing';
+      /* and every named stop is still reachable, to within a byte */
+      const step = (hi - lo) / 255;
+      for(let i = 0; i < st.length; i++){
+        const byte = Math.round(((st[i].off - lo) / (hi - lo)) * 255);
+        const got = sign(byte);
+        if(Math.abs(got - st[i].off) > step)
+          throw new Error('no byte reaches ' + st[i].name + ' at ' + st[i].off.toFixed(2) +
+            ' — byte ' + byte + ' gave ' + got.toFixed(2));
+      }
+      artSetOn(false);
+      return 'the sign spans ' + lo.toFixed(2) + '..' + hi.toFixed(2) +
+             'm continuously, and FLOOR/PRE-SHOW/UP are still reachable at bytes 0/' +
+             Math.round(((st[1].off - lo) / (hi - lo)) * 255) + '/255';
+    });
+
+    P('the sign SPEED byte scales, and 0 is PARKED (RULING EZ)', ()=>{
+      /* THIS IS THE HALF THAT RETIRES RULING EY's SIGN CASE.  Under ES the
+         sign was banded and band 0 was the FLOOR, so the first frame of an
+         unpatched universe hauled it 11.36m to the deck in full view.  With a
+         speed byte, zeros park it and a desk patched only for the 273 light
+         channels cannot touch it at all. */
+      showLoad('beetlejuice');
+      const ws = deskOn();
+      const x = SHOW.flyExtras.find(e=>e.key === 'bjSign');
+      const m = flyExtraMover(x);
+      if(!m) throw new Error('the sign has no mover');
+      /* PUT IT SOMEWHERE THAT IS NOT WHERE A ZERO FRAME WOULD SEND IT, or the
+         case is satisfied by the state it starts in.  Byte 0 on the target
+         channel means the FLOOR, so the sign goes UP first. */
+      const st = flyExtraStops(x), top = st.length - 1;
+      flyExtraToStop(x, top);
+      for(let k = 0; k < 20000 && Math.abs(m.off - st[top].off) > 1e-4; k++) sceneMoveStep(1/60);
+      if(Math.abs(m.off - st[top].off) > 1e-3) throw new Error('the setup could not put the sign up');
+      const up = m.off, wasT = m.target;
+      /* 512 ZEROS, for two seconds of frames, with the scene tick running */
+      for(let f = 0; f < 120; f++){
+        ws.deliver(new Uint8Array(512)); artnetTick(1/60); sceneMoveStep(1/60);
+      }
+      if(Math.abs(m.target - wasT) > 1e-6)
+        throw new Error('a dead universe commanded the sign to ' + m.target.toFixed(2) + 'm');
+      if(Math.abs(m.off - up) > 1e-6)
+        throw new Error('a dead universe hauled the sign ' + Math.abs(m.off - up).toFixed(2) + 'm');
+      /* AND THE SPEED IS A FRACTION OF THE HAUL'S OWN DECLARED SPEED, read
+         off the record rather than off ART_FLY_MAX, which is the linesets' */
+      const spd = (sp)=>{ const b = new Uint8Array(512);
+        b[artSelBase()] = 255; b[artSelBase() + 1] = sp;
+        ws.deliver(b); artnetTick(1/60); return m.artSpeed; };
+      if(Math.abs(spd(255) - x.speed) > 1e-6)
+        throw new Error('speed 255 gave ' + m.artSpeed + ', not the declared ' + x.speed);
+      if(Math.abs(spd(128) - x.speed * (128 / 255)) > 1e-6)
+        throw new Error('the speed byte does not scale: 128 gave ' + m.artSpeed);
+      /* THE DECLARED SPEED SURVIVES BEING DRIVEN.  It is written to artSpeed,
+         never to speed, exactly as RULING EQ does on the linesets — otherwise
+         one touch of the fader would leave the show hauling at the desk's
+         speed for the rest of the session. */
+      if(m.speed !== x.speed)
+        throw new Error('the desk overwrote the sign\\u2019s own speed with ' + m.speed);
+      /* AND IT HAS TO REACH THE WALK, which is the clause the record cannot
+         prove.  Writing artSpeed is worth nothing unless sceneMvAdvance reads
+         it — and the first draft of this case asserted only the record, so
+         dropping the guarded read in p5c left every assertion above GREEN.
+         Measure the distance the set covers in world space against the DESK's
+         speed, which is deliberately nothing like the declared one. */
+      /* sc.mv RECORDS CARRY NO 'group' FIELD while sc.pmv records do —
+         which is one of the two things docs/ARTNET.md exists to say, and it
+         bit here first go. A whole-group travel moves the SCENE's group. */
+      const AXI = {x:12, y:13, z:14};
+      const sgn = sceneFind(x.scene);
+      if(!sgn || !sgn.group) throw new Error('the sign scene has no group to watch');
+      const world = ()=>{ scene.updateMatrixWorld(true);
+                          return sgn.group.matrixWorld.elements[AXI[m.axis]]; };
+      const slow = 26;                              // ~1/10 of the declared speed
+      const bDrive = new Uint8Array(512);
+      bDrive[artSelBase()] = 0; bDrive[artSelBase() + 1] = slow;   // FLOOR, slowly
+      ws.deliver(bDrive); artnetTick(1/60);
+      const from = world(), N = 60;
+      for(let f = 0; f < N; f++){ ws.deliver(bDrive); artnetTick(1/60); sceneMoveStep(1/60); }
+      const went = Math.abs(world() - from);
+      const wantDesk = (slow / 255) * x.speed * (N / 60);
+      const wantShow = x.speed * (N / 60);
+      if(Math.abs(went - wantShow) < Math.abs(went - wantDesk))
+        throw new Error('the sign walked ' + went.toFixed(3) + 'm in a second, which is the SHOW\\u2019s ' +
+          wantShow.toFixed(3) + ' rather than the desk\\u2019s ' + wantDesk.toFixed(3) +
+          ' — artSpeed never reached sceneMvAdvance');
+      if(Math.abs(went - wantDesk) > 0.02)
+        throw new Error('the sign walked ' + went.toFixed(3) + 'm, not the desk\\u2019s ' + wantDesk.toFixed(3));
+      artSetOn(false);
+      return 'zeros held the sign at ' + up.toFixed(2) + 'm through 120 frames, 255 gave ' +
+             x.speed + 'm/s and 128 gave half of it, and the declared speed survived';
     });
 
     P('the desk taking the rig back re-asserts both bands (RULINGS ER, ES)', ()=>{
@@ -1484,15 +1584,17 @@ const P = async (name, fn)=>{
       return 'the desk dressed bj and the cue\\u2019s owed deetz went with it — the newer instruction wins';
     });
 
-    P('the sign is desk-owned now, so it is not also hand-hauled (RULINGS EM, ES)', ()=>{
-      /* the X-rows were ungated because nothing drove them; RULING ES gave the
-         sign channel 308, and a band writes only on CHANGE — so a hand-haul
-         mid-drive would never be taken back. */
+    P('the sign is desk-owned now, so it is not also hand-hauled (RULINGS EM, EZ)', ()=>{
+      /* the X-rows were ungated because nothing drove them.  RULING EZ gives
+         the sign a TARGET and a SPEED channel and writes them every frame, so
+         a hand-haul mid-drive is overwritten on the very next packet — which
+         is a half-refusal, and the row has to yield instead. */
       showLoad('beetlejuice');
       const ws = deskOn();
       const x = SHOW.flyExtras.find(e=>e.key === 'bjSign');
       const st = flyExtraStops(x), m = flyExtraMover(x);
-      const b = new Uint8Array(512); b[artSelBase()] = 255;      // UP
+      const b = new Uint8Array(512);
+      b[artSelBase()] = 255; b[artSelBase() + 1] = 255;          // UP, at full speed
       ws.deliver(b); artnetTick(1/60);
       if(Math.abs(m.target - st[2].off) > 1e-6) throw new Error('the desk did not aim the sign UP');
       /* the desk row, through the DOM */
@@ -1521,7 +1623,7 @@ const P = async (name, fn)=>{
       return 'the sign refused the desk row AND the headset row mid-drive, and hauled again the moment the desk stopped';
     });
 
-    P('neither banded channel touches a show that has no such scenery (RULING ER, ES)', ()=>{
+    P('neither selector channel touches a show that has no such scenery (RULINGS ER, EZ)', ()=>{
       showLoad('lostboys');
       const ws = deskOn();
       const sel = artSelBase() - 1;
@@ -1538,7 +1640,9 @@ const P = async (name, fn)=>{
       } finally { SHOW.scenes.splice(SHOW.scenes.indexOf(fake), 1); }
       const before = SHOW.scenes.map(s=>s.dressOn === undefined ? '-' : String(s.dressOn)).join(',');
       const mv = SHOW.scenes.map(s=>s.mv ? s.mv.target : '-').join(',');
-      const b = new Uint8Array(512); b[sel] = 200; b[sel + 1] = 200;
+      const b = new Uint8Array(512);
+      b[sel] = 200;                       // the house band
+      b[sel + 1] = 200; b[sel + 2] = 255; // the sign, target AND speed (EZ)
       for(let i = 0; i < 5; i++){ ws.deliver(b); artnetTick(1/60); }
       if(SHOW.scenes.map(s=>s.dressOn === undefined ? '-' : String(s.dressOn)).join(',') !== before)
         throw new Error('the house selector dressed something in a show with no dressings');
@@ -1564,13 +1668,21 @@ const P = async (name, fn)=>{
       const x2 = SHOW.flyExtras.find(e=>e.key === 'bjSign');
       const st2 = x2 && flyExtraStops(x2), m2 = x2 && flyExtraMover(x2);
       if(!m2 || !st2) throw new Error('the reloaded sign has no mover or no stops');
-      if(Math.abs(m2.target - st2[2].off) < 1e-6)
-        throw new Error('the reloaded sign is already at UP, so this clause cannot see the re-command');
+      /* RULING EZ: the sign has no band memory at all any more — it is a
+         per-frame fly write — so what this clause now proves is that the
+         write finds the RELOADED record.  Byte 200 is a metre, not a band,
+         and it is computed off the reloaded sign's OWN declared stops. */
+      let lo2 = st2[0].off, hi2 = st2[0].off;
+      for(const s of st2){ if(s.off < lo2) lo2 = s.off; if(s.off > hi2) hi2 = s.off; }
+      const want2 = lo2 + (200 / 255) * (hi2 - lo2);
+      if(Math.abs(m2.target - want2) < 1e-6)
+        throw new Error('the reloaded sign already reads ' + want2.toFixed(2) + ', so this clause proves nothing');
       ws.deliver(b); artnetTick(1/60);
       if(!fresh.dress.bj.parent)
         throw new Error('the same show reloaded under an unmoved fader never dressed — the band memory outlived its scenery');
-      if(Math.abs(m2.target - st2[2].off) > 1e-6)
-        throw new Error('the reloaded SIGN was never re-commanded: ' + m2.target + ', and UP is ' + st2[2].off);
+      if(Math.abs(m2.target - want2) > 1e-6)
+        throw new Error('the reloaded SIGN was never re-commanded: ' + m2.target.toFixed(3) +
+          ', and byte 200 on its own travel is ' + want2.toFixed(3));
       artSetOn(false);
       return 'a show with neither scenery took nothing from either channel; the band was not banked while unusable, and a reload re-dressed under an unmoved fader';
     });
@@ -2028,7 +2140,7 @@ const P = async (name, fn)=>{
                      colDur:0, gobo:0, color:new T.Color()};
       FIXTURES.push(ghost);
       try{
-        if(artMoverBase() !== 317)
+        if(artMoverBase() !== 318)
           throw new Error('a 40th fixture left the mover block at ' + artMoverBase());
         const bytes = []; for(let k = 0; k < i + 1; k++) bytes.push(k === i ? 255 : 0);
         ws.deliver(mvFrame(bytes)); artnetTick(1/60);

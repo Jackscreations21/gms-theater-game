@@ -1,6 +1,6 @@
 # Art-Net control of the Palace — design (2026-08-15)
 
-**BINDING. Rulings EL–EY.** The next spec starts at **EZ**.
+**BINDING. Rulings EL–EZ.** The next spec starts at **FA**.
 
 **EX and EY were added on 2026-08-16**, after the round began, and both came
 from measuring what an UNPATCHED universe does. EX is built; **EY is ruled and
@@ -352,6 +352,16 @@ what the records actually say, and that is the authority.
 
 ### RULING EY — the band channels read a zero the same way, and it is RULED BUT NOT BUILT
 
+**NARROWED BY RULING EZ, 2026-08-16, the same day.** EZ took the sign off a
+band and onto a target/speed pair, and a speed byte of 0 parks it — so the
+sign half of this ruling is **fixed, not outstanding**, and the 11.36m haul
+described below can no longer happen. **What remains is channel 307 alone**,
+the house dressing: 512 zeros still redress whichever house is standing back
+to the Maitlands on the first frame. That is a dress swap rather than a move,
+and band 0 is also the load default, so it is usually a no-op — but it is the
+same mechanism and it is still unbuilt. Read the rest of this ruling with the
+sign struck out of it.
+
 Added 2026-08-16, from PR 7's stage-1 review. **Ruled by Jack and deliberately
 NOT implemented in this round** — his words on where it goes: *"Don't fix it —
 just record it."* The code on `main` still does what EO and ES say. This
@@ -405,6 +415,59 @@ memories left at `-1` so the first real command still registers as a change,
 and — the part that matters — **the sign case rewritten so its `deskOn()` no
 longer establishes the band before the measurement.** Its negative check is to
 put the sign on its UP stop FIRST and then connect a dead desk.
+
+### RULING EZ — the sign is a fly, not three buttons
+
+Added 2026-08-16. Jack, after reading the map:
+
+> make it so with aretnet the beetljuice sign moves like any other fly not
+> just up floor and mid.
+
+**This supersedes the sign half of RULING ES.** Channel 308 is the sign's
+TARGET and 309 is its SPEED, the RULING EQ idiom, and the three bands are gone
+from the wire. Worth being clear that ES was never his ask: his brief banded
+the HOUSE DRESSING, and ES extended that idiom to the sign on its own
+initiative. **RULING DH's three named stops are untouched** — still the show's
+stops, still on both surfaces, still what a cue drives. It is only the DESK
+that stops being a three-position switch.
+
+- **The range is the stops' own extent, read off the record** — lowest
+  declared stop to highest, today FLOOR −2.36m to UP 9.00m. **Not
+  `inOff`/`outOff`:** the floor is BELOW what the two-state field calls IN
+  (RULING DH found exactly that), so the pair would put the deck out of reach,
+  and the deck is one of the three places he asked the sign to be able to go.
+  A haul declaring no stops falls back to its two ends, which is all it has.
+- **Every named stop stays reachable to within a byte.** 255 steps across an
+  11.36m travel is 4.5cm each. The map prints the byte for each stop; today
+  FLOOR is 0, PRE-SHOW is 53, UP is 255.
+- **Speed is a fraction of the haul's OWN declared speed**, not of a constant.
+  Byte 255 is `x.speed` — 2.6m/s for the sign — so full is the speed the show
+  itself hauls at, off the record rather than out of a table. `ART_FLY_MAX` is
+  the linesets' ceiling and has no business here.
+- **The speed is written to `artSpeed`, never to `speed`**, and
+  `sceneMvAdvance` gets ONE guarded read — exactly what RULING EQ does in
+  `updateFly`. Without it, one touch of the fader would leave the show hauling
+  the sign at the desk's speed for the rest of the session.
+
+**AND BYTE 0 ON THE SPEED CHANNEL IS PARKED, WHICH RETIRES RULING EY's SIGN
+CASE.** A desk patched only for the 273 light channels sends zeros, and this
+block then writes nothing at all — so an unpatched universe can no longer haul
+the sign 11.36m to the deck. **EY now covers only the house dressing on 307**,
+which is a dress swap rather than a move and whose band 0 is also the load
+default. The whole reason EY had to be recorded rather than fixed was that a
+banded channel has no speed byte to be parked by; giving the sign one is the
+fix, arrived at from the other direction.
+
+**Parked means SILENCE, not a stop**, and that is the one place the fly analogy
+breaks. RULING EQ makes a fly line's zero rewrite `target` to `pos`, because a
+lineset holding a target it has not reached leaves `ls.moving` set and the rail
+motor loop playing. The sign is a SCENE mover — `sceneMvAdvance` walks it, with
+no such loop and no such flag — so a zero leaves it entirely alone and a haul
+the show started runs on to its stop. Same reasoning as RULING EX.
+
+**It renumbers what follows**, and nothing had to be edited to say so: the
+traveler goes 309 → 310 and the mover block 310 → 311, because every base is
+computed. `docs/ARTNET.md` regenerates and the suite pins it.
 
 ---
 

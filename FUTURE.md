@@ -314,24 +314,30 @@ belongs in `TRAPS.md` either way.
 
 ---
 
-## 4. A dead universe still hauls the BEETLEJUICE sign 11.36m — RULING EY, ruled and NOT built
+## 4. A dead universe still redresses the house — RULING EY, ruled and NOT built
+
+**HALF OF THIS IS ALREADY FIXED.** As first written this item was about the
+BEETLEJUICE SIGN, which a dead universe hauled 11.36m to the deck in full
+view. **RULING EZ retired that** on 2026-08-16 by moving the sign off a band
+and onto a target/speed pair — a speed byte of 0 parks it, so an unpatched
+desk cannot touch the sign at all. What is left is channel 307.
 
 **Binding ruling:** `docs/superpowers/specs/2026-08-15-artnet-control-design.md`,
 RULING EY. Jack ruled the fix and ruled that it waits — *"Don't fix it — just
 record it."* This entry is the work.
 
-`artBands` writes channels 307 and 308 on a band **change** only, and
-`ART.signBand` / `ART.houseBand` start at **-1**. A change from -1 is a change.
-So the **first frame of an unpatched universe reads band 0 and acts on it**:
+`artBands` writes channel 307 on a band **change** only, and `ART.houseBand`
+starts at **-1**. A change from -1 is a change. So the **first frame of an
+unpatched universe reads band 0 and acts on it**: band 0 is the Maitlands
+house, so 512 zeros redress whichever house is standing. A dress swap rather
+than a move, and band 0 is also the load default, so usually a no-op — but it
+is the same mechanism, and "usually" is doing real work in that sentence.
 
-- **308, the sign.** Band 0 is the FLOOR stop. Measured from its UP stop:
-  **11.356m of world travel, in full view** (2.36m at the natural top of the
-  show). The instant the ARTNET switch goes on with a desk patched only for the
-  273 light channels, the sign comes down. `docs/ARTNET.md` prints the measured
-  metre for that band, so the map already shows it.
-- **307, the house.** Band 0 is the Maitlands house, so 512 zeros redress
-  whichever house is standing. A dress swap rather than a move, and band 0 is
-  also the load default, so usually a no-op — same mechanism though.
+*(The sign was the other half and was the serious one — 11.356m of world
+travel from its UP stop, in full view. RULING EZ fixed it by giving the sign a
+speed byte, which is what a banded channel does not have. That is also the
+shape of the fix here, if a fourth way of saying "0 means nobody is driving
+this" is ever wanted.)*
 
 **This is the same collision for the third time in one round**: RULING EQ gave
 the flys a speed byte; channel 309 was parked by its own lineset's speed byte
@@ -339,27 +345,29 @@ after an unpatched desk ran the house curtain shut in front of the audience;
 RULING EX made byte 0 "no command" on the set movers. The bands were the only
 ones left, and they were left **because nobody had measured them**.
 
-**AND THE SUITE READS GREEN ON IT BECAUSE OF CASE ORDERING**, which is the part
-worth keeping. The round's own safety case for the sign — `tests/artnet.js`,
-*"a scene the RAIL hauls takes no mover channel at all"* — calls `deskOn()`
-(which delivers a frame, which establishes band 0) **before** it puts the sign
-on its stop, so its 120 measured frames are a no-change band. The assertion
-written to prove the sign safe is the thing concealing the hole. Move that
-`deskOn()` call BELOW `flyExtraToStop(x, top)` AND below the settle loop that
-follows it — seven lines, not two — and it fails with the sign commanded to
--2.36m. Moved only past the two lines that compute the stop it still passes, so
-be precise about this or the check reads as a refutation.
+**IT WAS HIDDEN BY CASE ORDERING, and that lesson is the part worth keeping**
+even though the case that carried it is gone. The round's safety case for the
+sign — `tests/artnet.js`, *"a scene the RAIL hauls takes no mover channel at
+all"* — called `deskOn()`, which delivers a frame, which established band 0,
+**before** it put the sign on its stop; so its 120 measured frames were a
+no-change band and it passed. The assertion written to prove the sign safe was
+the thing concealing the hole. **That reproduction no longer fires**, because
+RULING EZ took the sign off the band entirely — moving `deskOn()` now changes
+nothing, and anyone who tries it as a check on this item will wrongly conclude
+the item is imaginary. The lesson lives in `docs/guide/TRAPS.md`; only 307 is
+left here, and 307 has no equivalent case to reorder.
 
-**The fix:** byte 0 on a band channel is NO COMMAND, exactly as EX made it on a
-mover channel. Bands become 1–85 / 86–170 / 171–255. The two band memories stay
-at -1 so the first real command still registers as a change. It costs one byte
-off the bottom of Jack's stated 0–85 band — the same price EX and EQ paid.
+**The fix:** byte 0 on a band channel is NO COMMAND, exactly as RULING EX made
+it on a mover channel and RULING EZ made it on the sign's speed. Band 307
+becomes 1–85 / 86–170 / 171–255, and `ART.houseBand` stays at -1 so the first
+real command still registers as a change. It costs one byte off the bottom of
+Jack's stated 0–85 band — the same price EX, EQ and EZ all paid.
 
-**And the test has to be rebuilt, not extended:** its `deskOn()` must stop
-establishing the band before the measurement. The negative check is to put the
-sign on its UP stop FIRST and then connect a dead desk; against today's `main`
-that must fire. `docs/ARTNET.md` must be regenerated afterwards — it measures
-these two channels now, so the map moves with the fix.
+**The negative check** is a Beetlejuice loaded on the deetz or bj house, then a
+dead desk connected: against today's `main` the house must snap back to the
+Maitlands on the first frame, and after the fix it must not. Regenerate
+`docs/ARTNET.md` afterwards — it measures 307 by driving it, so the map moves
+with the fix.
 
 ---
 
