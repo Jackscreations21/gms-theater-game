@@ -370,14 +370,28 @@ function artFlys(b){
 }
 
 /* ============================================================================
-   RULING ET — THE SET MOVERS, ONE TARGET CHANNEL EACH, AT THEIR OWN SPEED
+   RULINGS ET AND EX — THE SET MOVERS, ONE TARGET CHANNEL EACH, AT THEIR OWN
+   SPEED, AND PARKED UNLESS SOMETHING IS REALLY DRIVING THEM
 
    From artMoverBase(), SHOW.scenes in DECLARATION ORDER, and inside a scene
    its whole-group travel `sc.mv` FIRST and then its part movers `sc.pmv` in
    the order they were declared.  One channel each and no speed channel —
    Jack asked for speed on the flys only.
 
-   THE RANGE IS READ OFF THE RECORD, NEVER OFF A TABLE.  Byte 0 is `m.home`.
+   RULING EX — BYTE 0 IS NOT A POSITION, IT IS THE ABSENCE OF A COMMAND.  ET
+   as first written made byte 0 mean `home`, and the consequence was measured
+   before it landed: a desk patched only for the 273 light channels sends
+   zeros on everything else, so 512 zeros commanded EVERY mover in the loaded
+   show home — on Beetlejuice that walks the parked attic 19.50m onto the deck
+   while it is drawn and flies the exterior cloth in.  RULING EQ's stated
+   principle is that a dead universe moves no scenery, and a set is scenery.
+   Jack ruled it PARKED UNLESS DRIVEN: 0 is no command and the mover stays
+   wherever the show left it, 1..255 spans home..out.  It costs commanding
+   exact home by one byte — byte 1 is home to within 1/254 of the travel —
+   and it puts the movers on the same footing as the flys (EQ) and the house
+   curtain on channel 309, both of which a zero leaves standing still.
+
+   THE RANGE IS READ OFF THE RECORD, NEVER OFF A TABLE.  Byte 1 is `m.home`.
    Byte 255 is `m.out` WHEN THE RECORD DECLARES A NUMERIC ONE — every part
    mover does, because sceneTravelPart fills the field in whether the caller
    passed it or not, and no whole-group travel ever does — and 0 on the
@@ -403,11 +417,16 @@ function artFlys(b){
    one ever grows parts they will need a ruling rather than a silent channel.
 
    WHICH LEAVES ONE CHANNEL THAT CANNOT MOVE ANYTHING, AND IT IS NOT A BUG IN
-   THIS FUNCTION.  Beetlejuice's exterior is a whole-group travel with `home`
-   0 and no declared out, so "home at 0, and 0 at 255" is the whole of its
-   range.  The ruling is read literally on purpose — the numbers come off the
-   records and docs/ARTNET.md prints them — and the fix, if it is one, is a
-   ruling rather than a guess made here.
+   THIS FUNCTION.  A whole-group travel that declares `home` 0 and no `out`
+   has `home` and `out` both 0, so every byte from 1 to 255 commands it to
+   exactly where byte 1 does.  Under ET as first written that channel was
+   worse than useless — it wrote 0 every frame a dead universe was connected,
+   so the set could never fly out at all — and RULING EX is what defuses it:
+   a degenerate channel now does nothing until somebody drives it, and then
+   it commands home, which is at least what its own record says.  The ruling
+   is read literally on purpose — the numbers come off the records and
+   docs/ARTNET.md prints them — and widening the range would mean consulting
+   `sc.parkMv`, which the plan's correction #2 forbids.
 
    THE WRITE IS `m.target` AND NOTHING ELSE.  `m.off` and the group's own
    position belong to sceneMvAdvance, which walks the record at `m.speed` on
@@ -420,26 +439,30 @@ function artFlys(b){
    list cached at first use would go on writing into a struck show's movers
    for ever while the loaded one stood still.
 
-   AND WHAT 512 ZEROS DO, SAID OUT LOUD RATHER THAN LEFT TO BE FOUND: byte 0
-   is `home`, so an unpatched universe commands EVERY mover in the loaded
-   show home — which on Beetlejuice walks the parked sets back onto the deck,
-   flies the exterior cloth in and brings the sign down.  RULING EQ's stated
-   principle is that a dead universe moves no scenery, and this collides with
-   it head on; the flys and channel 309 are parked by a SPEED byte and ET
-   gives a set mover none to be parked by.  Built as written, flagged in the
-   report, and it is Jack's to reverse — it is one condition (a mover takes
-   its channel only where something is really driving it), not a rewrite.
+   AND WHAT 512 ZEROS DO, SAID OUT LOUD RATHER THAN LEFT TO BE FOUND: under
+   EX, nothing whatever.  Every mover keeps the target the show gave it, the
+   parked sets stay parked, and a desk that has never been patched past the
+   273 light channels cannot touch a single piece of scenery — which is the
+   likeliest first real use, and is what EQ said all along.
    ========================================================================== */
 
 /* the far end of the travel: what the record declares, or 0 on its own axis */
 function artMoverOut(m){ return (typeof m.out === 'number') ? m.out : 0; }
 function artMoverSet(m, byte){
+  /* RULING EX.  0 is NOT a position — it is the absence of a command, and the
+     mover is left exactly as the show left it.  Unlike a fly line there is
+     nothing to stop: sceneMvAdvance walks `off` towards `target` and a mover
+     caught mid-travel simply finishes the move the show asked for, which is
+     what "the desk is not driving this" should look like. */
+  if(!byte) return;
   const out = artMoverOut(m);
   /* target ONLY.  Writing `off` here would be the teleport RULING ET forbids,
      and writing the group's position would be worse than useless — the set is
      frozen (lockShowStatic) and only sceneMvAdvance's own write goes through
-     a mover's live matrix. */
-  m.target = m.home + (byte / 255) * (out - m.home);
+     a mover's live matrix.
+
+     1..255, not 0..255: byte 1 is home and byte 255 is out. */
+  m.target = m.home + ((byte - 1) / 254) * (out - m.home);
 }
 /* is this scene hauled by the rail as a fly extra?  Then it is ES's, not
    ours — and it is asked of SHOW.flyExtras at the moment of the frame, never
