@@ -24,6 +24,13 @@ one of these drew it.
 Each is ~40 lines of probe on top of the same jsdom harness the tests use.
 Copy one and change the eye position to look at something else.
 
+One that draws no picture — it writes a FILE, and a suite checks it:
+
+    node artnet-map.js > ../docs/ARTNET.md
+
+Every Art-Net channel with its real label (RULING EO). See the section at the
+foot of this file.
+
 One that measures TIME, and refused a feature:
 
     node walkcost.js
@@ -155,3 +162,37 @@ export NODE_PATH=../tests/node_modules
 node deeper.js                    # his files
 PROBE_STANDIN=1 node deeper.js    # the fallback that plays on a fresh clone
 ```
+
+## `artnet-map.js` — the channel map that cannot drift (RULING EO)
+
+The one probe here whose output is COMMITTED: it writes `docs/ARTNET.md`, and
+`tests/artnet.js` fails if the committed file is not what the probe emits
+against the current build.
+
+```sh
+node artnet-map.js > ../docs/ARTNET.md     # NODE_PATH optional — it finds
+                                           # tests/node_modules on its own
+```
+
+It boots the BUILT `the-house.html` under jsdom the way `draws.js` does, loads
+**Beetlejuice** (the only production with set movers, and the show whose own
+cloths hang on the rail), and emits every channel with its real label: fixture
+name and board section, lineset id and goods, the 307/308 band tables, each
+mover's name and its metre range.
+
+**Nothing in it is typed from a table.** Where a fact could be read two ways it
+is MEASURED — a 512-byte frame is synthesised, the game's own `artLights` /
+`artFlys` / `artMovers` / `artMoverSet` are called, and what moved is written
+down. That is how it knows which lanterns really answer a pan byte, which
+lineset the traveler channel belongs to (**it is a property of the HANG: line 2
+on the Palace's standing hang, line 1 once Beetlejuice hangs its own show
+curtain**), and what byte 0 means to a set mover.
+
+**Three self-checks throw** before anything is printed — each block's channels
+are driven one at a time and exactly one record may answer. Reversing the mover
+walk in `p6d` makes it exit non-zero rather than print a plausible wrong map,
+which is the whole difference between a generated file and a hand-written one.
+
+The first line is the built file's byte size, per the probe rule, and it is the
+one line the suite does not diff — the reasoning is written beside the
+assertion in `tests/artnet.js`.
