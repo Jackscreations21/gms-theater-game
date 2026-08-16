@@ -199,6 +199,7 @@ function artSetOn(on){
   ART.on = on;
   if(on){
     ART.step = 0; ART.retry = 0; ART.frames = 0; ART.took = false;
+    ART.houseBand = -1; ART.signBand = -1;      // the bands say themselves again
     ART.seen = ART_STALE + 1; ART.live = false; ART.buf = null;
     artOpen();
     if(!ART.ws) artBackoff();      // nothing to connect to yet: try again shortly
@@ -240,6 +241,14 @@ function artHandover(){
   if(ART.took) return false;
   ART.took = true;
   for(const f of FIXTURES){ f.lvlDur = 0; f.colDur = 0; }
+  /* AND THE BANDED CHANNELS ARE RE-ASSERTED (RULINGS ER, ES).  Every light
+     channel says itself again every frame; the two band channels speak only
+     on a CHANGE, so without this a desk that stuttered — which RULING EV says
+     WILL happen, and hands the board back when it does — came back to find a
+     cue had redressed the house, and never corrected it, because the fader
+     had not moved across a boundary.  The fader and the stage then disagreed
+     for the rest of the show with nothing anywhere to say why. */
+  ART.houseBand = -1; ART.signBand = -1;
   return true;
 }
 
@@ -404,20 +413,37 @@ function artBands(b){
       ART.houseBand = hb;
       sc.dressOn = ART_HOUSES[hb];
       bjRedress(sc);
+      /* AND A CUE'S DEFERRED DRESS IS NOT STILL OWED.  RULING AY holds a
+         dress until the set is out of sight, and a cue that armed one before
+         the desk took over would fire it at the next changeover — silently
+         overwriting the desk's most recent word with an older one.  The band
+         is the newer instruction; the pending one is spent. */
+      if(SHOW.pendDress && sceneFind(SHOW.pendDress.scene) === sc) SHOW.pendDress = null;
     }
+  } else if(ART.bandSc){
+    /* NOTHING TO DRESS ANY MORE.  Without this the reference outlives the
+       production: showStrike disposes the scenery and empties SHOW.offstage,
+       and a held dressing group keeps its meshes and their attribute arrays
+       alive for the rest of the session. */
+    ART.bandSc = null; ART.houseBand = -1;
   }
 
   /* RULING ES — the sign, the same idiom and the same splits: 0-85 FLOOR,
      86-170 PRE-SHOW, 171-255 UP, which are the stops the show declares */
   const x = SHOW.flyExtras && SHOW.flyExtras.find(e=>e.key === 'bjSign');
   const st = x && flyExtraStops(x);
-  if(st && st.length === ART_HOUSES.length){
+  const sb = artBandOf(b[sel + 1]);
+  /* `sb < st.length` says what is meant.  Comparing the STOP COUNT against
+     the number of houses was a coincidental coupling: a fourth house dressing
+     would have silently switched channel 308 off. */
+  if(st && sb < st.length){
     if(x !== ART.bandSign){ ART.bandSign = x; ART.signBand = -1; }
-    const sb = artBandOf(b[sel + 1]);
     if(sb !== ART.signBand){
       ART.signBand = sb;
       flyExtraToStop(x, sb);
     }
+  } else if(ART.bandSign && !st){
+    ART.bandSign = null; ART.signBand = -1;
   }
 }
 

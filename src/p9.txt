@@ -798,7 +798,9 @@ function vrPageFly(g, P){
         for(let s = 0; s < stops.length && s < 3; s++){
           const bx = P.x + 700 + s*92;
           vrBtnBox(g, bx, y + 2, 84, exH - 7, stops[stops.length - 1 - s].name,
-                   ((k, j)=>()=>{ const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
+                   /* RULINGS EM and ES — the headset's half of the same gate */
+                   ((k, j)=>()=>{ if(artYields('the sign')){ vrDrawConsole(true); return; }
+                                  const l = (SHOW.flyExtras||[]).find(z=>z.key === k);
                                   if(l) flyExtraToStop(l, j); vrDrawConsole(true); })(x.key, stops.length - 1 - s),
                    FB, {flyExtra:x.key, stop:stops.length - 1 - s,
                         stopName:stops[stops.length - 1 - s].name});
