@@ -5,9 +5,11 @@ fetch`, compare `origin/main`, then read this.
 
 ## READ THIS FIRST
 
-The desk drives the Palace, and the nine-PR chain is **done**. `main` is
-**`<the PR 9 merge>`**, the suite count is **21**, rulings are at **EY**, and the
-cache-bust is **`?v=31`** from here.
+The desk drives the Palace, and the nine-PR chain is **done** — ten merges in
+all, #200 to #209, because #206 is an extra written mid-round. `main` is
+**`44688eb`** as this was written, with its own PR landing on top. The suite
+count is **21**, rulings are at **EY**, and the cache-bust is **`?v=31`** from
+here.
 
 **Nothing in this round has been seen on hardware, and nothing has been seen
 against a real desk.** Every number below came out of jsdom.
@@ -20,6 +22,7 @@ against a real desk.** Every number below came out of jsdom.
 | **#203** | **EM gates, EV, EW** | the board yields; the ARTNET row on both surfaces |
 | **#204** | **EQ** | the flys, through their own motor |
 | **#205** | **ER, ES** | the Beetlejuice house selector and the sign |
+| **#206** | — | the mid-round record, written when the chain paused at six |
 | **#207** | **ET, EX** | the set movers — parked unless driven |
 | **#208** | **EO** | `tools/artnet-map.js` and the generated `docs/ARTNET.md` |
 | **#209** | **EY** | the record: the QLC+ recipe, the rulings, the one bug left standing |
@@ -52,7 +55,8 @@ finding worth keeping. The round's own safety case for the sign calls
 `deskOn()` (which delivers a frame, which establishes band 0) BEFORE it puts
 the sign on its stop, so its 120 measured frames are a no-change band. The
 assertion written to prove the sign safe is the thing concealing the hole.
-Move that `deskOn()` two lines down and it fails.
+Move it BELOW `flyExtraToStop` and the settle loop after it — seven lines, not
+two — and it fails with the sign commanded to -2.36m.
 
 ## HOW TO ACTUALLY RUN IT
 
@@ -78,7 +82,10 @@ from the script's own location, so you cannot redirect it by `cd`-ing
 elsewhere. `--host 0.0.0.0` opens the LAN; the UDP socket is unaffected either
 way, so a desk on another machine still reaches it.
 
-## STILL HIS TO DECIDE
+## STILL HIS TO DECIDE — two, and one to know about
+
+(1 and 2 want an answer. 3 does not — it is here because it will otherwise be
+found at a desk.)
 
 1. **Audio from QLC+ — asked and unanswered, twice now.** Art-Net carries DMX
    only. A QLC+ audio function plays on the PC's own sound card, outside the
@@ -92,9 +99,12 @@ way, so a desk on another machine still reaches it.
    back out — and it hangs a 12.6m drop dead centre of a 15m opening. Widening
    it means consulting `sc.parkMv`, which the plan's correction #2 forbids.
    `docs/ARTNET.md` prints it rather than hiding it.
-3. **Channel 309's traveler moves with the production, and the spec has it
-   wrong.** EO and STATE both said "the house curtain". On the Palace standing
-   hang that is right (line 2). **With Beetlejuice loaded it is line 1**,
+3. **Channel 309's traveler moves with the production — nothing to rule on,
+   but worth knowing before you patch it.** RULING EO always said "the first
+   lineset whose hung goods declare `traveler:true`, and the map probe prints
+   which line that is", and was right; the loose sentences were `p6d`'s comment
+   and this file's, and both are corrected. On the Palace standing hang it is
+   line 2, the house curtain. **With Beetlejuice loaded it is line 1**,
    because the show hangs its own `bjCurtain` and `FLY.findIndex` takes the
    first — the Palace house curtain is not hung at all under Beetlejuice. The
    map measures and prints both. Nothing is broken; the DOCUMENT was wrong.

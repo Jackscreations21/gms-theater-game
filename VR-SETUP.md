@@ -169,7 +169,8 @@ own. `tools/artnet-relay.js` is the wire:
 QLC+ ──ArtDmx/UDP 6454──▶ artnet-relay ──WebSocket──▶ the-house.html
 ```
 
-It has zero npm dependencies (Node's own `dgram`, `http`, `net`, `crypto`) and
+It has zero npm dependencies (Node's own `dgram`, `http`, `crypto`, `fs`,
+`path`) and
 does three jobs on one port: it **serves the repo** as static files, it upgrades
 `GET /artnet` to a WebSocket, and it listens on **UDP 6454** for ArtDmx. The
 game itself comes from the relay, which is the whole trick — that is what makes
@@ -184,7 +185,8 @@ the WebSocket same-origin, so there is no certificate and no mixed content.
    node tools/artnet-relay.js
    ```
 
-   It prints where it is serving, the URL to open, and the two warnings below.
+   It prints where it is serving, the URL to open, the `adb reverse` recipe for
+   the headset, and the Pages refusal in §8.2.
    `--port` moves the web half off 8080; `--universe` changes which universe it
    accepts. Leave `--art-port` alone — 6454 is Art-Net's own port and no
    console will send anywhere else.
@@ -233,8 +235,10 @@ an HTTPS page — so from Pages it tries `wss://jackscreations21.github.io/artne
 and there is no WebSocket endpoint there. **The console error will not say
 "mixed content."** Mixed content is what kills the obvious workaround: an HTTPS
 page may not open a plain `ws://` to your LAN either. No flag and no
-certificate fixes Pages; if you want the desk, you want Route B. The relay says
-so in its own startup banner so nobody rediscovers it in a tech rehearsal.
+certificate fixes Pages; if you want the desk, you want Route B. The relay
+refuses it in its own startup banner so nobody rediscovers it in a tech
+rehearsal — note the banner gives the mixed-content reason, which is the
+*workaround's* failure rather than this one's. Same conclusion either way.
 
 ### 8.3 Who else can reach it
 

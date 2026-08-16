@@ -318,10 +318,14 @@ So:
 
 - **Byte 0 is not a position.** It is the absence of a command, and the mover
   keeps whatever target the show gave it.
-- **1..255 spans `m.home`..`m.out`.** Byte 1 is home, byte 255 is out.
-- It costs commanding exact home by one byte — byte 1 is home to within
-  1/254 of the travel — and it puts the movers on the same footing as the
-  flys and channel 309, both of which a zero leaves standing still.
+- **1..255 spans `m.home`..`m.out`.** Byte 1 is home and byte 255 is out, both
+  EXACTLY — `(1-1)/254` is 0 and `(255-1)/254` is 1.
+- **What it costs is one lost code point**, 254 steps across the travel instead
+  of 255. (An earlier draft of this bullet said "byte 1 is home to within 1/254
+  of the travel", which contradicted the bullet above it and was wrong.)
+- And it puts the movers on the same footing as the flys and channel 309: on
+  all three, a zero is a channel nobody is driving. **What that then MEANS is
+  not the same on all three** — see the next paragraph.
 
 **AND IT IS NOT THE SAME KIND OF PARK AS THE FLYS.** RULING EQ makes a fly
 line's zero a **stop**: the target is rewritten to the position, because a
@@ -377,7 +381,13 @@ measured them** — the round's own safety case for the sign
 reads green *because of case ordering*: `deskOn()` establishes band 0 before
 the sign is put on its stop, so the measured frames are a no-change band.
 **The assertion that was supposed to prove the sign safe is the thing that
-concealed the hole.** Move that `deskOn()` call two lines down and it fails.
+concealed the hole.**
+
+**The reproduction, stated precisely, because a vague one reads as a refutation:**
+move that `deskOn()` call BELOW `flyExtraToStop(x, top)` AND below the settle
+loop that follows it — seven lines, not two. Moved only past the two lines that
+compute the stop, the case still passes, and somebody following the instruction
+literally would conclude EY is not real.
 
 **The ruling.** Byte 0 on a band channel is NO COMMAND, exactly as RULING EX
 made it on a mover channel. The bands become **1–85 / 86–170 / 171–255**, and

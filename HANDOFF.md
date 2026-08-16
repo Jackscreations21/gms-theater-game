@@ -227,12 +227,14 @@ compare the *same* production across stages instead.
 ## NEXT SESSION: **THE ART-NET CHAIN IS FINISHED — PUT IT IN FRONT OF A DESK** (2026-08-16, EL–EY)
 
 Cache-bust **`?v=31`**. Rulings at **EY**. Suite count **21**. `main` is at
-**`<the PR 9 merge>`**. **Read STATE.md — it carries the run instructions, the one bug
-left standing and the three things that are his to decide.**
+**`44688eb`** as this was written, with its own PR landing on top. **Read
+STATE.md — it carries the run instructions, the one bug left standing, and the
+two things that are his to decide.**
 
-**NINE PRs, #200–#207 and the two that finished it, NINE CLEAN MERGES, NO
-RECOVERY PR.** Every merge verified byte-identical, 21/21 on the merged
-result, branches deleted local and remote.
+**TEN PRs — #200 to #209 with no gaps, TEN CLEAN MERGES, NO RECOVERY PR.**
+Nine of them are the planned chain; **#206 is the extra**, the mid-round record
+written when the chain paused at six. Every merge verified byte-identical,
+21/21 on the merged result, branches deleted local and remote.
 
 **THE ONE THING TO DO IS PUT A DESK ON IT**, because not one byte of this
 round has been seen against real hardware. `node tools/artnet-relay.js`, QLC+

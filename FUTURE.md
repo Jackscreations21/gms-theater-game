@@ -48,11 +48,14 @@ flight, three PRs never started.
 
 - **Binding spec:** `docs/superpowers/specs/2026-08-14-gms-studios-design.md`
   — **RULINGS DZ–EK**. Read it before touching any of this.
-- **`main` is `ce1de31`.** Suite count is **20** (`tests/studios.js` is new),
-  all 20 green.
-- **Cache-bust is `?v=31`** as of the Art-Net round (`?v=30` is spent). Nothing
-  in THIS round has been on hardware. **Bump before judging any of it in the
-  headset.**
+- **`main` was `ce1de31` when this round paused**, with a suite count of 20
+  (`tests/studios.js` was new). Both have moved since — the Art-Net round took
+  `main` well past it and the suite to **21** — so **rebase and re-count before
+  trusting either of the two in-flight branches below.**
+- **Cache-bust is `?v=31`** from here. `?v=30` was allocated by the Art-Net
+  round and never loaded on hardware, so nothing is cached under it; `?v=31`
+  is simply the next unused value. Nothing in THIS round has been on a headset.
+  **Bump before judging any of it there.**
 
 ## The brief, verbatim, because the round is answering it
 
@@ -237,12 +240,16 @@ Nothing here has been seen on hardware. jsdom has no eyes and no GPU.
 ---
 ---
 
-# PART 1a — FOUR BUGS ON `main` RIGHT NOW
+# PART 1a — FIVE THINGS WRONG ON `main` RIGHT NOW
 
-All four are **live in merged code** and none is fixed on `main`. Three came
-out of the paused GMS Studios branches — the heading said "two" while it
-already carried three. The fourth came out of the Art-Net round's own review
-and is **RULED but deliberately not built**.
+All five are **live in merged code** and none is fixed on `main`. Three came
+out of the paused GMS Studios branches — this heading said "two" while it
+already carried three, and then said "four" while it carried five, which is
+the second time the same off-by-one has been committed in this file and is
+why the number is now checked against the list before this file is saved.
+Item 4 came out of the Art-Net round's own review and is **RULED but
+deliberately not built**; item 5 is a test flake rather than a bug in the
+game, and is here because it will otherwise be diagnosed from scratch.
 
 ## 1. The venue's work lights all share ONE material — the shared-material trap
 
@@ -338,7 +345,10 @@ worth keeping. The round's own safety case for the sign — `tests/artnet.js`,
 (which delivers a frame, which establishes band 0) **before** it puts the sign
 on its stop, so its 120 measured frames are a no-change band. The assertion
 written to prove the sign safe is the thing concealing the hole. Move that
-`deskOn()` two lines down and it fails.
+`deskOn()` call BELOW `flyExtraToStop(x, top)` AND below the settle loop that
+follows it — seven lines, not two — and it fails with the sign commanded to
+-2.36m. Moved only past the two lines that compute the stop it still passes, so
+be precise about this or the check reads as a refutation.
 
 **The fix:** byte 0 on a band channel is NO COMMAND, exactly as EX made it on a
 mover channel. Bands become 1–85 / 86–170 / 171–255. The two band memories stay
@@ -366,7 +376,8 @@ change is probably this.**
 **Suggested order on resuming**, given the above: fix (1) and (3) as their own
 small PRs first — they are live defects and both are cheap — then rebase the
 shed, then the grids, then PRs 4, 7, 8. **RULING EY (4) is independent of the
-GMS round entirely** and can go at any time.
+GMS round entirely** and can go at any time; **(5) is a flake, not a blocker,
+and wants fixing only when a red `smoke` is costing somebody time.**
 
 ---
 ---

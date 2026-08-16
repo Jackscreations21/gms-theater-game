@@ -48,8 +48,11 @@ editing `src/`, regenerate and commit them with it.**
   which bytes it read, and a suite case fails if it has drifted. So *any*
   `src/` change needs the map regenerated, not only an Art-Net one. The
   failure message tells you the command.
-- **Regenerate from `sh`, never PowerShell** — PS 5.1 redirects as UTF-16LE
-  with a BOM and the suite then fails at line 2 with an unreadable diff.
+- **Regenerate from `sh`, never PowerShell.** PS 5.1's `>` writes a BOM
+  (UTF-8 with `EF BB BF` on this machine), which lands in front of the map's
+  first character; the suite then fails at line 1 with
+  `docs/ARTNET.md no longer opens with the built file size`. Recoverable, and
+  easy to waste a round on.
 
 ## Hard rules (non-negotiable, owner's or learned the hard way)
 

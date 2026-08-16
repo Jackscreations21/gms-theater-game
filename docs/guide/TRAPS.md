@@ -859,11 +859,17 @@ against this list before opening a PR; **add new traps as you hit them.**
   write anyway.
 - **AN UNPATCHED UNIVERSE IS THE LIKELIEST FIRST REAL USE, AND ZERO IS A
   COMMAND.** A desk patched only for the light channels sends zeros on
-  everything else. Zeros shut the house curtain at 0.42/s in front of the
-  audience (channel 309) and command every set mover home — walking a parked
-  19.5m attic onto the deck while it is drawn. Anything that reads a byte as a
+  everything else. Zeros shut the house curtain in front of the audience
+  (channel 309) at **0.42 of its full draw a second** — about 2.4s end to end;
+  `ls.open` is a FRACTION and "0.42/s" read as metres for two rounds — and, as
+  ET was first written, commanded every set mover home, walking a parked 19.5m
+  attic onto the deck while it is drawn. Anything that reads a byte as a
   POSITION needs an answer to "what does 0 mean when nobody is driving this",
   and the flys' answer (a speed byte, where 0 is parked) is the pattern.
+  **Updated 2026-08-16:** 309 and the movers are both answered now (309 by its
+  lineset's speed byte, the movers by RULING EX making 0 no command). **The
+  band channels 307/308 are NOT** — RULING EY rules the fix and FUTURE.md
+  carries the work, so a dead universe still hauls the sign 11.36m today.
 - **A BUILT ARTIFACT IN A MERGE CONFLICT HAS EXACTLY ONE CORRECT RESOLUTION:
   REBUILD IT.** `the-house.html` is committed built, so two branches touching
   `src/` always conflict in it too. Never resolve it by hand or by taking a
