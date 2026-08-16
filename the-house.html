@@ -12185,7 +12185,8 @@ function artMovers(b){
    false portal, the neon bar, the eight blinders on its line, and the Arc's
    own black piers.  EXACTLY ONE of them has a colour and a brightness:
    `bj:portalFrame`, whose record is `SHOW.bjPortal`.  The gold has no
-   emissive and `M.gold` is shared by 65 meshes; the black portal's `board`
+   emissive and `M.gold` is shared by 47 reachable meshes — 58 ever built, and
+   the 65 first written here was not reproducible — while the black portal's `board`
    material is shared by 5.  Tinting either in place is the shared-material
    trap INVARIANTS names, and this repo has paid for it three times.  The
    blinders are FIXTURES 26-33 and already on channels 176..231 — putting
@@ -13138,24 +13139,50 @@ function frontCurtainShut(){
    press a button on the consol".  So the stop lands the instant the cue fires
    and only the `play` waits.  Splitting the field is the whole trick.
    ========================================================================== */
+/* RULING FC — THE DESK OWNS THE HOUSE AND THE FRAME WHILE IT IS DRIVING THIS
+   RIG.  Everything this function writes is one-shot, from a queue armed
+   BEFORE the desk took over (RULING CZ holds the interval behind the curtain
+   landing), and it all fires from inside updateStorm — so it is exactly the
+   shape RULING EW's list missed, because none of it is a control.  Ungated it
+   stomps the desk with an older instruction the moment the cloth arrives:
+   measured, a desk holding the frame red had it dressed blue, and a desk
+   holding the house at 0 had it written to 0.5.
+
+   AND THE GATE CARRIES THE STAGE TEST, WHICH `artDriving()` DOES NOT.  A
+   review caught the first version failing OPEN: `artnetTick` refuses to write
+   anything unless `STAGE === 'palace'` (RULING EN), but `artDriving()` is
+   true on any stage — so with the board walked to an Arc house and a desk
+   live and writing NOTHING, the interval's neon was discarded and never
+   struck again for the rest of the session.  The question a writer needs
+   answered is not "is a desk talking" but "is a desk talking TO THIS RIG".
+
+   THE QUEUE IS SPENT EITHER WAY, and that is deliberate.  RULING EM already
+   says nothing snaps on hand-back and the rig holds the desk's last look, so
+   the neon holding the desk's colour is the same bargain the 39 lanterns
+   get — and `showCueExtras` calls `setPortal` on EVERY cue, so the next GO
+   corrects it.  Deferring instead would fire a stale interval look minutes
+   later, which is worse.
+
+   THE AUDIO IS NOT GATED, which splits RULING CZ and is worth saying out
+   loud: under a live desk the interval music comes in under a frame that
+   never strikes.  That follows EM — the transport keeps its clock and its
+   audio, light is Art-Net's — but CZ's own sentence was about the two
+   arriving together, and they no longer do. */
 function updateHouseWait(){
   if(SHOW.houseWait === null || SHOW.houseWait === undefined) return;
   if(!frontCurtainShut()) return;
-  HOUSE.house = SHOW.houseWait;
+  const deskOwnsIt = typeof artDriving === 'function' && artDriving() &&
+                     typeof STAGE !== 'undefined' && STAGE === 'palace';
+  if(!deskOwnsIt){
+    HOUSE.house = SHOW.houseWait;
+    if(typeof syncMasters === 'function') syncMasters();
+  }
   SHOW.houseWait = null;
-  if(typeof syncMasters === 'function') syncMasters();
   /* the house is up now, so whatever was queued behind it goes */
   const a = SHOW.houseAfter;
   if(!a) return;
   SHOW.houseAfter = null;
-  /* RULING FC — THE DESK OWNS THE FRAME WHILE IT IS DRIVING.  This is a
-     one-shot write from a queue armed BEFORE the desk took over (RULING CZ
-     holds the interval's portal behind the curtain landing), and ungated it
-     stomps the desk with an older instruction the moment the cloth arrives.
-     RULING EW's exact shape, and a writer its list would have missed because
-     it is not a control — it fires from inside updateStorm. */
-  if(a.portal && typeof setPortal === 'function' &&
-     !(typeof artDriving === 'function' && artDriving())) setPortal(a.portal);
+  if(!deskOwnsIt && a.portal && typeof setPortal === 'function') setPortal(a.portal);
   if(a.audio && typeof showCueAudio === 'function') showCueAudio(a.audio);
 }
 

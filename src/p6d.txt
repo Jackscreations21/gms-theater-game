@@ -599,7 +599,8 @@ function artMovers(b){
    false portal, the neon bar, the eight blinders on its line, and the Arc's
    own black piers.  EXACTLY ONE of them has a colour and a brightness:
    `bj:portalFrame`, whose record is `SHOW.bjPortal`.  The gold has no
-   emissive and `M.gold` is shared by 65 meshes; the black portal's `board`
+   emissive and `M.gold` is shared by 47 reachable meshes — 58 ever built, and
+   the 65 first written here was not reproducible — while the black portal's `board`
    material is shared by 5.  Tinting either in place is the shared-material
    trap INVARIANTS names, and this repo has paid for it three times.  The
    blinders are FIXTURES 26-33 and already on channels 176..231 — putting

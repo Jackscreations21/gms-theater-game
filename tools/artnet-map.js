@@ -897,15 +897,22 @@ function drivePros(i, r, g, bl){
           tr: p.tCol.r, tg: p.tCol.g, tb: p.tCol.b};
 }
 const prosDrive = P.SHOW.bjPortal ? (()=>{
-  const at0   = drivePros(0, 0, 0, 0);
+  const off   = drivePros(0, 0, 0, 0);
+  const at0   = off;
   const at128 = drivePros(128, 0, 0, 0);
   const at255 = drivePros(255, 0, 0, 0);
   const red   = drivePros(255, 255, 0, 0);
   const green = drivePros(255, 0, 255, 0);
   const blue  = drivePros(255, 0, 0, 255);
+  /* each colour byte driven ALONE, at both ends, and its OWN component read
+     back — so the three lines in the list are measurements like every other */
+  const colLo = [drivePros(255, 0, 255, 255).r,
+                 drivePros(255, 255, 0, 255).g,
+                 drivePros(255, 255, 255, 0).b];
+  const colHi = [red.r, green.g, blue.b];
   return {lo: at0.lvl, mid: at128.lvl, hi: at255.lvl,
           raw: at255.lvl === at255.tLvl && red.r === red.tr,
-          red: red, green: green, blue: blue};
+          red: red, green: green, blue: blue, colLo: colLo, colHi: colHi};
 })() : null;
 if(prosWas){ const p = P.SHOW.bjPortal;
   p.lvl = prosWas.lvl; p.tLvl = prosWas.tLvl;
@@ -1205,7 +1212,10 @@ for(const h of houseChan)
     row(PROSB + i, 'proscenium neon', prosNames[i],
         prosDrive ? (i === 0 ? '0=' + f2(prosDrive.lo) + ' 128=' + f2(prosDrive.mid) +
                                ' 255=' + f2(prosDrive.hi)
-                             : '0=0.00 255=1.00')
+                             /* MEASURED, not typed: each colour byte is driven
+                                alone and its own component read back */
+                             : '0=' + f2(prosDrive.colLo[i - 1]) +
+                               ' 255=' + f2(prosDrive.colHi[i - 1]))
                   : 'no lit proscenium in this production — four dead channels',
         prosDrive ? (i === 0 ? [prosNote, 'RAW: the fader tracks, it does not crossfade (RULING EP)']
                              : [])

@@ -1521,10 +1521,20 @@ const P = async (name, fn)=>{
         f[artProsBase() - 1] = i; f[artProsBase()] = r;
         f[artProsBase() + 1] = g; f[artProsBase() + 2] = b;
         ws.deliver(f); artnetTick(1/60); return p; };
-      /* START SOMEWHERE THE FRAME WILL NOT SEND IT, or the case is satisfied
-         by the state it begins in — the show comes up blue at level 1. */
+      /* A SENTINEL, BECAUSE "START SOMEWHERE ELSE" IS NOT ENOUGH HERE AND THE
+         FIRST DRAFT OF THIS CASE GOT IT WRONG.  deskOn() delivers a full 512
+         frame whose proscenium bytes are ZERO, and artnetTick applies it — so
+         by the time the case runs the neon is already at 0, and asserting
+         that byte 0 blacks it asserted the state the setup left.  A review
+         proved it with the mutation this ruling itself invites: make the
+         intensity a takeover byte (if(b[o]) ...) and all three cases stayed
+         green.  Plant a value no byte can produce, and byte 0 has to overwrite
+         it. */
+      p.lvl = p.tLvl = -1;
       pros(0, 0, 0, 0);
-      if(p.lvl !== 0) throw new Error('byte 0 left the neon at ' + p.lvl);
+      if(p.lvl !== 0)
+        throw new Error('byte 0 left the neon at ' + p.lvl +
+          ' — a zero must BLACK it, not decline to write (RULING FC has no takeover byte)');
       pros(255, 255, 0, 0);
       if(p.lvl !== 1) throw new Error('byte 255 gave ' + p.lvl + ', not full');
       if(!(p.col.r === 1 && p.col.g === 0 && p.col.b === 0))
@@ -1590,8 +1600,35 @@ const P = async (name, fn)=>{
         throw new Error('the setup did not land the curtain, so nothing was queued to fire');
       if(Math.abs(p.tCol.g - 1) < 1e-9 && Math.abs(p.tCol.r) < 1e-9)
         throw new Error('a cue queued before the desk took over dressed the frame green over the desk');
+      /* AND THE GATE HAS TO ASK WHICH RIG, NOT JUST WHETHER A DESK IS TALKING.
+         artDriving() is true on ANY stage, but artnetTick refuses to write
+         unless STAGE is the Palace (RULING EN) — so a gate on artDriving()
+         alone fails OPEN: walked to an Arc house with a desk live and writing
+         NOTHING, the interval's neon was discarded and never struck again for
+         the rest of the session.  A review found that; nothing caught it. */
+      const home = STAGE;
+      try{
+        stageSwitch('arcMain');
+        if(STAGE !== 'arcMain') throw new Error('could not get to the Arc to test this');
+        showLoad('beetlejuice');
+        const p2 = SHOW.bjPortal;
+        if(!p2) throw new Error('Beetlejuice on the Arc has no lit frame to queue for');
+        setPortal({lvl:0, col:0x000000});
+        SHOW.houseWait = 0.5;
+        SHOW.houseAfter = {portal:{lvl:1, col:0x00ff00}};
+        FLY[0].pos = FLY[0].target = TRIMS[SHOW.curtainKey];
+        FLY[0].open = FLY[0].travTarget = 0;
+        if(!artDriving())
+          throw new Error('the desk stopped driving, so this clause cannot tell the stages apart');
+        updateHouseWait();
+        if(!(Math.abs(p2.tCol.g - 1) < 1e-9 && Math.abs(p2.tCol.r) < 1e-9))
+          throw new Error('on the Arc, with the desk writing nothing, the queued portal was ' +
+            'discarded anyway — the gate asked whether a desk is talking, not whether it is ' +
+            'talking to THIS rig');
+      } finally { stageSwitch(home); }
       artSetOn(false);
-      return 'the interval\\u2019s queued portal fired while the desk held the frame, and did not take it';
+      return 'the interval\\u2019s queued portal fired while the desk held the Palace frame and did not take it, ' +
+             'and still struck on a stage the desk cannot write to';
     });
 
     P('the sign is a FLY: target and speed, across its whole travel (RULING EZ)', ()=>{
@@ -2329,7 +2366,7 @@ const P = async (name, fn)=>{
              held.toFixed(2) + 'm';
     });
 
-    P('the mover block is where the RIG puts it, not at 310 (RULINGS EO, ET)', ()=>{
+    P('the mover block is where the RIG puts it, not written down (RULINGS EO, ET)', ()=>{
       showLoad('beetlejuice');
       const ws = deskOn();
       const m = sceneFind('attic').pmv.all, i = mvAll().findIndex(x=>x.m === m);
@@ -2348,11 +2385,11 @@ const P = async (name, fn)=>{
         const bytes = []; for(let k = 0; k < i + 1; k++) bytes.push(k === i ? 255 : 0);
         ws.deliver(mvFrame(bytes)); artnetTick(1/60);
         if(Math.abs(m.target - m.out) > 1e-6)
-          throw new Error('with the block at 317 the attic read ' + m.target.toFixed(2) +
+          throw new Error('with the block moved by a 40th lantern the attic read ' + m.target.toFixed(2) +
             'm — the base is written down somewhere, not computed');
       } finally { FIXTURES.pop(); }
       artSetOn(false);
-      return 'a 40th lantern moved the mover block to 317 and the desk still found the attic';
+      return 'a 40th lantern moved the mover block to ' + artMoverBase() + ' and the desk still found the attic';
     });
 
     P('a scene the RAIL hauls takes no mover channel at all (RULINGS CW, ES, ET)', ()=>{

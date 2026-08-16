@@ -132,10 +132,11 @@ ruling.
 | 308 | BEETLEJUICE sign TARGET (**RULING EZ supersedes ES here** — it was one banded channel) | 1 |
 | 309 | BEETLEJUICE sign SPEED, 0 = parked (RULING EZ) | 1 |
 | 310 | traveler open (0=shut, 255=open) — applies to the first lineset whose hung goods declare `traveler:true`; the map probe prints which line that is. **Parked by that lineset's own speed byte** — see the note below | 1 |
-| 311+ | set movers of the loaded show (RULINGS ET, EX) | 1 each |
+| 311..314 | the proscenium neon: intensity, R, G, B (RULING FC) | 4 |
+| 315+ | set movers of the loaded show (RULINGS ET, EX) | 1 each |
 
 **THIS TABLE WAS RENUMBERED BY RULING EZ** (2026-08-16): the sign took a second
-channel, so the traveler moved 309 → 310 and the movers 310 → 311. Every base
+channel, so the traveler moved 309 → 310 and the movers 310 → 311, and then RULING FC put four proscenium channels after the traveler and moved the movers again, 311 → 315. Every base
 is computed, so no code changed to say so — but this table is prose, and prose
 has to be told. `docs/ARTNET.md` is the authority; it is generated.
 
@@ -216,7 +217,7 @@ like ER. No Beetlejuice loaded: ignored.
 
 ### RULING ET — set movers: one target channel each, walking at their own speed
 
-From channel 310: iterate `SHOW.scenes` in declaration order; for each
+From `artMoverBase()` — 315 today, and it has moved twice since this was written, which is why it is named as a function: iterate `SHOW.scenes` in declaration order; for each
 scene, its travel mover `sc.mv` first, then its part movers in declaration
 order. Each mover gets ONE channel:
 
@@ -645,7 +646,9 @@ four collected pieces, the ivory wall behind them, the black false portal
 `bj:portal`, the neon bar `bj:portalFrame`, the eight blinders on its line,
 and the Arc houses' own black piers. **Exactly one has a colour and a
 brightness** — the neon bar, whose record is `SHOW.bjPortal`. The gold has no
-emissive at all and `M.gold` is shared by **65 meshes**; the black portal's
+emissive at all and `M.gold` is shared by **47 reachable meshes** (58 ever
+built; the 65 first written here was not reproducible, and a round whose ethos
+is measured-not-typed should not carry a typed number). The black portal's
 `board` material is shared by 5. Tinting either in place is the shared-material
 trap INVARIANTS names and this repo has paid for three times. The blinders are
 FIXTURES 26–33, already on channels 176..231; putting them here as well would
