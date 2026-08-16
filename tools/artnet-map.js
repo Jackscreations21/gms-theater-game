@@ -760,20 +760,37 @@ if(hauled.length){
   out('it back.');
   out();
 }
-out('| ch | scene | mover | axis | byte 0 | byte 255 | out declared |');
-out('|---|---|---|---|---|---|---|');
+/* THE NEAR END GETS ITS OWN COLUMN WHEN BYTE 0 STOPS BEING A POSITION.  With
+   RULING EX in the build, printing only bytes 0 and 255 says "no command" and
+   the far end and NOWHERE says where the mover starts — an operator would
+   have the top of every fader's travel and not the bottom.  Byte 1 is the
+   bottom, and it is measured off artMoverSet like every other cell here. */
+out('| ch | scene | mover | axis | byte 0 |' + (zeroIsNoCommand ? ' byte 1 |' : '') +
+    ' byte 255 | out declared |');
+out('|---|---|---|---|---|' + (zeroIsNoCommand ? '---|' : '') + '---|---|');
 for(const r of mvRows)
   out('| ' + r.ch + ' | ' + r.scene + ' | ' + r.part + ' | ' + r.axis + ' | ' +
-      (r.at[0] === SENTINEL ? 'no command' : f2(r.at[0]) + 'm') + ' | ' + f2(r.at[255]) + 'm | ' +
+      (r.at[0] === SENTINEL ? 'no command' : f2(r.at[0]) + 'm') + ' | ' +
+      (zeroIsNoCommand ? f2(r.at[1]) + 'm | ' : '') + f2(r.at[255]) + 'm | ' +
       (r.declaresOut ? 'yes, ' + f2(r.out) + 'm' : 'NO — so 255 is 0 on its own axis') + ' |');
 out();
 if(mvUncheckable.length){
-  out('**' + mvUncheckable.length + ' of these cannot move anything, and it is not a fault in the block:**');
+  out('**' + mvUncheckable.length + ' of these is ONE-WAY, and it is not a fault in the block:**');
   out(mvUncheckable.map(r=>r.ch + ' `' + r.scene + ':' + r.part + '` (' +
       f2(r.home) + 'm -> ' + f2(r.out) + 'm)').join(', ') + '. A whole-group travel declares no');
-  out('`out`, so where its home is 0 the whole of its range is 0. Dead is not inert: while a');
-  out('desk drives, that channel writes its one value every frame, so nothing else may move');
-  out('that scene either. Self-check 3 drives every OTHER mover alone and proves its channel;');
+  out('`out`, so where its home is 0 the whole of its range is 0.');
+  if(zeroIsNoCommand){
+    out('**It is not inert and calling it dead would be the more dangerous mistake:** every byte');
+    out('from 1 to 255 commands that set HOME, and no byte sends it back out. If it is flown or');
+    out('parked when you touch that fader it comes in, and the desk cannot put it back. Hold any');
+    out('non-zero byte and nothing else may move that scene either, because this block writes');
+    out('every frame. Byte 0 leaves it entirely alone (RULING EX), so an unpatched universe');
+    out('cannot reach it at all.');
+  } else {
+    out('Dead is not inert: while a desk drives, that channel writes its one value every frame,');
+    out('so nothing else may move that scene either.');
+  }
+  out('Self-check 3 drives every OTHER mover alone and proves its channel;');
   out('these are the ones no measurement can tell apart, so they are named rather than');
   out('quietly asserted.');
   out();
