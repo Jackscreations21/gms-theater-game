@@ -379,6 +379,15 @@ function artFlys(b){
    docs/ARTNET.md prints them — and the fix, if it is one, is a ruling rather
    than a guess made here.
 
+   AND THE SIGN ONE IS A COLLISION WITH RULING ES, WAITING FOR WHOEVER LANDS
+   IT.  Dead is not inert: a degenerate channel still writes `target` 0 every
+   frame, and the sign's mover is exactly what ES drives through
+   flyExtraToStop.  Whichever of the two runs LATER in artnetTick wins every
+   frame, so with the band decoder in front of this call the sign can never
+   leave its stop 0 while a desk is talking.  Read the collision before
+   choosing the order — the honest answers are ES after ET, or the sign left
+   off this block by a new ruling.
+
    THE WRITE IS `m.target` AND NOTHING ELSE.  `m.off` and the group's own
    position belong to sceneMvAdvance, which walks the record at `m.speed` on
    the scene tick that already exists — so a desk move looks exactly like a
