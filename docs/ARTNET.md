@@ -9,9 +9,11 @@ BUILT `the-house.html` — booted under jsdom, driven with synthesised frames,
 and the answers copied down. Nothing here is typed from a table, because the
 rulings' own prose has already been wrong about this data once.
 
-The first line is the size of the built file this was read from: a probe that
-reads the BUILT artifact measures the last build, so an `src/`-only edit would
-otherwise leave the map describing bytes nobody is running.
+The first line is the size of the built file this was read from, and the suite
+compares it: this map and `the-house.html` must have been generated together. It
+does NOT catch a stale BUILD — an `src/`-only edit leaves a stale `the-house.html`,
+the probe reads it and the suite stats the same stale file, and everything agrees.
+`sh build.sh` first, always.
 
 Universe **0**, one universe, 512 channels, **the Palace only** (RULING EN). A
 desk patched to any other stage is received and ignored.
@@ -26,8 +28,12 @@ This map was generated with **BEETLEJUICE loaded**. Two blocks below depend on t
   the lineset LABELS are this show's. The channel numbers are not: they are
   `FLY.length` and never move with a show.
 
-The 273 light channels and the five house circuits are the same in every
-production, on the Palace.
+The 273 light channels and the five house circuits belong to the STAGE, not to the
+show. Measured rather than reasoned: a signature of the whole light block — the
+three bases, and every fixture's board channel, name, type and mover flag, and the
+five circuit names — was taken before any production was loaded and again with
+BEETLEJUICE up, and the two are IDENTICAL. That is two productions, not five
+— what this file can say is that loading one did not move them.
 
 ## The blocks — every base is COMPUTED, never written down
 
@@ -48,23 +54,35 @@ one onto `FIXTURES`: the fly block would start at **281** instead of 274.
 One uniform 7-channel footprint, so a desk needs exactly ONE generic
 fixture definition for the whole rig. The writes are RAW: every one of them zeroes
 the fixture's fade durations, so the desk's own fades stream through and the
-game's fade engine never fights them.
+game's fade engine never fights them. Measured: with every fixture's `lvlDur` and
+`colDur` set to nine seconds first, one applied frame left 39 of 39 `lvlDur` and
+39 of 39 `colDur` at zero.
 
-The seven, and what each one did when it was driven — the right-hand column is a
-count of records that MOVED under a byte of 255, across all 39 fixtures:
+The seven, and what each one did when it was driven. **EACH OFFSET IS NAMED AFTER
+THE ONE RECORD FIELD THAT ANSWERED IT** — red, green and blue are driven alone and
+counted separately, so this table cannot survive two components being swapped. The
+right-hand column is a count of records that MOVED under a byte of 255, across all
+39 fixtures:
 
 | offset | channel of fixture *n* | what it writes | what a byte of 255 moved |
 |---|---|---|---|
 | +0 | 1, 8, 15 ... | `f.level` = byte/255, `f.lvlDur` = 0 | 39 levels |
-| +1 | 2, 9, 16 ... | `f.color` red = byte/255, `f.colDur` = 0 | 39 colours |
-| +2 | 3, 10, 17 ... | `f.color` green = byte/255, `f.colDur` = 0 | 39 colours |
-| +3 | 4, 11, 18 ... | `f.color` blue = byte/255, `f.colDur` = 0 | 39 colours |
+| +1 | 2, 9, 16 ... | `f.color` red = byte/255, `f.colDur` = 0 | 39 reds |
+| +2 | 3, 10, 17 ... | `f.color` green = byte/255, `f.colDur` = 0 | 39 greens |
+| +3 | 4, 11, 18 ... | `f.color` blue = byte/255, `f.colDur` = 0 | 39 blues |
 | +4 | 5, 12, 19 ... | `f.gobo`, clamped to the gobo count | 39 gobos |
-| +5 | 6, 13, 20 ... | `f.panT` degrees — MOVERS ONLY | 8 pans |
-| +6 | 7, 14, 21 ... | `f.tiltT` degrees — MOVERS ONLY | 8 tilts |
+| +5 | 6, 13, 20 ... | `f.panT` degrees — 8 OF THE 39 ONLY | 8 pans |
+| +6 | 7, 14, 21 ... | `f.tiltT` degrees — 8 OF THE 39 ONLY | 8 tilts |
 
-Intensity is linear: byte 0 -> 0.00, 128 -> 0.50, 255 -> 1.00
-(measured). Colour the same, per component.
+Intensity is linear: byte 0 -> 0.00, 128 -> 0.50, 255 -> 1.00 (measured).
+Colour is the same, and it is measured PER COMPONENT — each of the three bytes
+driven on its own and the matching component of `f.color` read back:
+
+| byte | red (+1) | green (+2) | blue (+3) |
+|---|---|---|---|
+| 0 | 0.00 | 0.00 | 0.00 |
+| 128 | 0.50 | 0.50 | 0.50 |
+| 255 | 1.00 | 1.00 | 1.00 |
 
 **Gobo** — the byte is divided down onto the 6 gobos, swept here byte by byte:
 
@@ -394,7 +412,14 @@ CLAMPS, so a desk cannot drive a cloth through the stage any more than a cue can
   column below is byte 128, measured.
 - **Speed** (the next channel) — byte 0 is **PARKED**: the line is stopped where it
   stands, whatever its target says, and 255 is `ART_FLY_MAX` = 2.00 m/s.
-  Measured: with every speed byte at 0, every line held its own position.
+  Measured, and the measurement starts by breaking the thing it is proving: 14 of the
+  14 lines were first driven off their own position through `flyTo`, so every one of
+  them was mid-travel with a target it was not at. Then, with every speed byte at 0, every
+  one of them snapped its target back to where it stood.
+- **AND THE TARGET CHANNEL IS PARKED BY THE SPEED CHANNEL TOO.** Byte 0 on a target
+  only reaches `minTrimOf` if that line's speed byte is non-zero: `artFlys` takes the
+  park branch and never reaches `flyTo` at all. The target column above was measured
+  with every speed byte at 255. It is the same dependency spelled out on channel 309.
 
 | ch | lineset | goods | this channel |
 |---|---|---|---|
@@ -444,30 +469,39 @@ order is the code's and not a list copied from the ruling.
 
 ### 307 — the BEETLEJUICE house (RULING ER)
 
-His bands exactly, swept out of `artBandOf` byte by byte:
+His splits come out of `artBandOf`, swept byte by byte. **What each band then DOES
+is not read off `ART_HOUSES` here — the channel is DRIVEN through `artBands` at both
+ends of every band and the dressing the scene actually took is read back off the
+scene.** Re-indexing the same const the game indexes would print a plausible table
+for a build with 307 and 308 crossed over, or the bands reversed.
 
-| bytes | band | dressing |
-|---|---|---|
-| 0..85 | 0 | `maitland` |
-| 86..170 | 1 | `deetz` |
-| 171..255 | 2 | `bj` |
+| bytes | band | the scene that answered | the dressing it took |
+|---|---|---|---|
+| 0..85 | 0 | `interior` | `maitland` |
+| 86..170 | 1 | `interior` | `deetz` |
+| 171..255 | 2 | `interior` | `bj` |
 
 Applied by setting `sc.dressOn` and calling `bjRedress` — the show's own mechanism,
 which holds two of the three houses out of the graph (RULING CN). **On a band CHANGE
 only**: that call detaches and re-attaches scene-graph nodes and must not run 44
-times a second. The scene it dresses is `interior`, which is the one carrying all 3 dressings.
+times a second. Measured, by holding the same byte with the band memory left alone: a second frame at the same byte wrote nothing.
+The scene it dresses is `interior`, which is the one carrying all 3 dressings.
 A production with no such scenery ignores this channel entirely.
 
 ### 308 — the BEETLEJUICE sign (RULING ES)
 
 The same three splits, driving the sign's own named stops (RULING DH) through
-`flyExtraToStop`, on a band change only:
+`flyExtraToStop`, on a band change only. **Driven, like 307**: the channel is sent a
+byte in each band and the metre the sign's mover was COMMANDED to is read back, then
+matched against the stops the show declares.
 
-| bytes | band | stop | offset |
+| bytes | band | commanded to | which declared stop that is |
 |---|---|---|---|
-| 0..85 | 0 | FLOOR | -2.36m |
-| 86..170 | 1 | PRE-SHOW | 0.00m |
-| 171..255 | 2 | UP | 9.00m |
+| 0..85 | 0 | -2.36m | stop 0, `FLOOR` |
+| 86..170 | 1 | 0.00m | stop 1, `PRE-SHOW` |
+| 171..255 | 2 | 9.00m | stop 2, `UP` |
+
+Band-change-only, measured the same way: a second frame at the same byte commanded nothing.
 
 The sign is hauled by the rail, not by a mover channel — see the mover block.
 
@@ -476,6 +510,10 @@ The sign is hauled by the rail, not by a mover channel — see the mover block.
 0 = shut, 255 = open, written as `travTarget` on whichever lineset carries goods
 that declare themselves a traveler. WHICH LINE THAT IS was not counted off a list:
 the channel was driven half-open and the line that answered is the one named here.
+The two answers are then checked against each other — the line that ANSWERED against
+the linesets whose goods DECLARE `traveler` — because `artFlys` resolves it with
+`FLY.findIndex` and would drive the first of two silently. The count that matters is
+the declared one; the answering one cannot exceed 1 by construction.
 
 - **Line 1**, carrying BEETLEJUICE show curtain (`bjCurtain`). Its own
   target channel is 274 and its speed channel is 275.
@@ -484,11 +522,16 @@ the channel was driven half-open and the line that answered is the one named her
   A production that hangs its own show curtain therefore MOVES this channel's effect
   onto a different lineset — patch 309 against the show that is playing.
 - **It is PARKED BY THAT LINE'S OWN SPEED BYTE.** Measured: with every speed byte at
-  0, driving 309 moved nothing at all.
+  0, byte 128 on 309 — the same byte that DID move it above — moved
+  nothing at all.
   Written unconditionally this was the one piece of scenery a dead universe DID move:
-  the house curtain ran itself shut at 0.42 m/s in front of the audience the instant
-  the switch went on with nothing patched. Patch that line's speed byte and 309
-  does exactly what the table says.
+  the instant the switch went on with nothing patched, the curtain ran itself shut in
+  front of the audience. How fast, measured off one frame of `updateFly` rather than
+  copied out of the spec — where it had been written as m/s, which `ls.open` is not:
+  **0.42 of its full draw a second**, about 2.4s end to end, each of its 2 panels
+  travelling 3.60m in that second. On the standing hang that is line 2,
+  the house curtain — which is where the story comes from.
+  Patch that line's speed byte and 309 does exactly what the table says.
 
 ## 310..321 — the set movers of BEETLEJUICE (RULING ET)
 
@@ -524,6 +567,17 @@ it back.
 | 320 | closet | park | z | no command | 0.00m | -14.91m | yes, -14.91m |
 | 321 | roof | all | y | no command | 0.00m | 10.50m | yes, 10.50m |
 
+**THE METRES ABOVE ARE THE BUILT STAND-INS'.** This map is generated under jsdom,
+which fetches nothing, so no `.glb` is loaded when it runs. The model files ARE
+committed and they DO load in a browser, and `bjWingPack` re-measures each wing set's
+own box and rewrites `out` on its movers every time one lands — off a CUMULATIVE
+z cursor, so a bigger attic moves the sets behind it too.
+
+Measured, by poisoning every mover's `out` and running the pack: **6 of the 12
+channels are re-pointed by it** — 314, 315, 316, 317, 319, 320. Those metres mean
+something else in a browser that has the model files; the CHANNEL NUMBERS do not move.
+The rest of the block is the show's own declared travel and is the same either way.
+
 **1 of these is ONE-WAY, and it is not a fault in the block:**
 312 `house:mv` (0.00m -> 0.00m). A whole-group travel declares no
 `out`, so where its home is 0 the whole of its range is 0.
@@ -551,15 +605,26 @@ fly TARGET is then on an ODD channel. Patch off this file, never off the parity.
 
 **2. `sc.mv` records carry no `group` field and `sc.pmv` records do.** Anything walking
 the mover block that wants the moving GROUP has to take it from the SCENE for a
-whole-group travel and from the RECORD for a part. Measured on this show: 10 of the 12 mover
-records carry a `group`, and they are exactly the 10 part movers.
+whole-group travel and from the RECORD for a part. Measured on this show, as
+MEMBERSHIP and not as two counts that happen to agree — one `mv` with a group and one
+`pmv` without would leave both totals equal and this sentence a lie:
+10 of the 12 mover records carry a `group`, and they are exactly the 10 part movers.
 
 ## The suite's check
 
-`tests/artnet.js` runs this probe and compares its output with this file **from the
-second line down**. The first line is the built file's byte size, which changes on
-every build — comparing it would fail this suite for a change in any part of the
-game, teaching everyone to regenerate the map without reading the diff. It carries no
-channel information, so excluding it costs the check nothing; the suite asserts its
-SHAPE instead, on both sides, so the line cannot be quietly dropped or widened.
+`tests/artnet.js` runs this probe and compares its output with this file, line for
+line, the body from the second line down and the first line as a number.
+
+The first line — the built file's byte size — is compared as a VALUE, not diffed as
+text, so the failure can say what actually happened: this map was generated against a
+different build of `the-house.html` than the one in the tree. That is the only check
+on the one number in this file that no measurement produces. **The cost is that any
+change to `src/` needs this file regenerated along with the build** — one command,
+`node tools/artnet-map.js > docs/ARTNET.md`, and the diff is one line when nothing
+else moved. The shape of the line is asserted on both sides too, so it cannot be
+quietly dropped or widened into something that always matches.
+
+What NEITHER check catches is a stale BUILD. An `src/`-only edit leaves a stale
+`the-house.html`; the probe reads it, the suite stats the same stale file, and every
+number here agrees with every other. `sh build.sh` first.
 

@@ -170,9 +170,14 @@ The one probe here whose output is COMMITTED: it writes `docs/ARTNET.md`, and
 against the current build.
 
 ```sh
+sh build.sh                                # ALWAYS first: it reads the BUILT file
 node artnet-map.js > ../docs/ARTNET.md     # NODE_PATH optional — it finds
                                            # tests/node_modules on its own
 ```
+
+**Regenerate it from `sh`, never from PowerShell 5.1** — `>` there writes
+UTF‑16LE with a BOM, and the suite then fails at line 2 with an unreadable
+diff. That is a round-trip nobody needs twice.
 
 It boots the BUILT `the-house.html` under jsdom the way `draws.js` does, loads
 **Beetlejuice** (the only production with set movers, and the show whose own
@@ -182,17 +187,25 @@ mover's name and its metre range.
 
 **Nothing in it is typed from a table.** Where a fact could be read two ways it
 is MEASURED — a 512-byte frame is synthesised, the game's own `artLights` /
-`artFlys` / `artMovers` / `artMoverSet` are called, and what moved is written
-down. That is how it knows which lanterns really answer a pan byte, which
-lineset the traveler channel belongs to (**it is a property of the HANG: line 2
-on the Palace's standing hang, line 1 once Beetlejuice hangs its own show
-curtain**), and what byte 0 means to a set mover.
+`artFlys` / `artMovers` / `artMoverSet` / `artBands` are called, and what moved
+is written down. That is how it knows which lanterns really answer a pan byte,
+which record each of the seven fixture offsets writes (red, green and blue
+driven alone, so the names move if the components are swapped), which lineset
+the traveler channel belongs to (**it is a property of the HANG: line 2 on the
+Palace's standing hang, line 1 once Beetlejuice hangs its own show curtain**),
+which dressing channel 307 puts on the stage and which declared stop 308 sends
+the sign to, and what byte 0 means to a set mover.
 
 **Three self-checks throw** before anything is printed — each block's channels
 are driven one at a time and exactly one record may answer. Reversing the mover
 walk in `p6d` makes it exit non-zero rather than print a plausible wrong map,
 which is the whole difference between a generated file and a hand-written one.
 
-The first line is the built file's byte size, per the probe rule, and it is the
-one line the suite does not diff — the reasoning is written beside the
-assertion in `tests/artnet.js`.
+**What it cannot measure, it says.** jsdom fetches nothing, so every set is the
+BUILT STAND-IN; the map names the mover channels `bjWingPack` re-points when
+one of his `.glb` files lands in a real browser, measured by poisoning every
+`out` and running the pack.
+
+The first line is the built file's byte size, per the probe rule, and the suite
+compares it — so a change to `src/` needs this file regenerated alongside the
+build. The reasoning is written beside the assertion in `tests/artnet.js`.

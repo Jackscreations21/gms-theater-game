@@ -2356,29 +2356,37 @@ const P = async (name, fn)=>{
    built file, in its own process, which is why it is not folded into part one
    — and compares its output with the committed file.
 
-   WHAT IS COMPARED, AND THE ONE LINE THAT IS NOT.  The probe's first line is
-   the byte size of the built file it read.  It is there because a probe that
+   WHAT IS COMPARED, INCLUDING THE FIRST LINE.  The probe's first line is the
+   byte size of the built file it read.  It is there because a probe that
    reads the BUILT artifact measures the LAST BUILD, so an src-only edit
-   leaves it describing bytes nobody is running (TRAPS, last entry) — and it
-   changes on EVERY build, including builds that cannot touch a channel.
+   leaves it describing bytes nobody is running (TRAPS, last entry).
 
-   Comparing it would fail this suite for a one-character change in the
-   Haversham study, and the fix for that failure is to regenerate the map,
-   which trains everybody to regenerate it without reading the diff.  That is
-   how a generated file stops being read at all.  So the comparison starts at
-   the SECOND line, and the exemption is bounded three ways rather than left
-   as a hole:
+   IT USED TO BE EXEMPT FROM THE COMPARISON AND THAT MADE IT THE ONE NUMBER IN
+   A GENERATED FILE THAT NOTHING VERIFIED.  The bound that was supposed to
+   cover it — "the PROBE's number is checked against the real byte size" — is
+   a tautology: the probe gets that number by calling statSync on the same
+   path this suite then calls statSync on, in the same run, so the two agree
+   whatever the committed file says.  Setting the committed line to "1 bytes"
+   left this suite at zero failures.
 
-     the line's SHAPE is asserted on both sides, so it cannot be quietly
-       deleted, blanked, or turned into a second line of content;
-     no OTHER line may begin with that prefix, so the exemption cannot be
-       widened by moving text into it;
-     the PROBE's number is checked against the real byte size of
-       the-house.html, so the one line nobody diffs still cannot lie.
+   So the committed number is compared to the probe's, and the shape checks
+   stay on both sides.  The comparison is a VALUE comparison rather than a
+   line diff, so the failure can say what actually happened — the map was
+   generated against a different build — instead of pointing at line 1 of a
+   text diff.  The cost is real and is written into the map itself: an src
+   change now needs `node tools/artnet-map.js > docs/ARTNET.md` alongside the
+   rebuild.  That is the same cost the repo already pays for committing
+   the-house.html built, and it is what makes the whole file, first line
+   included, a thing that was measured rather than typed.
 
-   Nothing about a channel lives in that line, so this costs the check
-   nothing: every base, label, band, metre and channel number is in the body,
-   and a change to any of them fails here.
+   The body is still compared line for line from the second line down, so
+   every base, label, band, metre and channel number is checked; and no OTHER
+   line may begin with the size prefix, so the first line cannot be widened
+   into a hole by moving text into it.
+
+   WHAT NONE OF THIS CATCHES: a stale BUILD.  An src-only edit leaves a stale
+   the-house.html, the probe reads it, this suite stats the same stale file,
+   and every number agrees with every other.  `sh build.sh` first.
    ========================================================================== */
 {
   const name = 'docs/ARTNET.md is exactly what tools/artnet-map.js emits now (RULING EO)';
@@ -2397,6 +2405,27 @@ const P = async (name, fn)=>{
     for(const c of mid) if(c < '0' || c > '9') return null;
     return +mid;
   };
+  /* THE PROBE'S OWN MESSAGE, NOT THE TEMPLATE OF IT.  Node's uncaught-throw
+     format is `path:line`, the RAW SOURCE of the throw statement, a caret and
+     a blank line — and only THEN `Error: <the substituted message>`.  Slicing
+     the first four lines therefore printed the source of the throw and never
+     the channel numbers and metres the message was built to name, which is
+     the whole reason the self-checks build them.  No regex: a backslash in
+     one is eaten by a probe template, and indexOf is exact either way. */
+  const probeErr = txt=>{
+    const lines = String(txt || '').split('\n');
+    const named = [];
+    for(const line of lines){
+      if(line.indexOf('    at ') === 0) continue;          // a stack frame
+      const t = line.trim();
+      if(!t || t.indexOf('throw ') === 0) continue;        // the raw source of the throw
+      if(t.indexOf('Error: ') < 0) continue;
+      named.push(t);
+      if(named.length >= 4) break;
+    }
+    if(named.length) return named.join(' | ');
+    return lines.map(s=>s.trim()).filter(Boolean).slice(0, 4).join(' | ');
+  };
   try{
     /* required HERE rather than at the top of the file: this whole case is one
        contiguous block, so a branch that lands beside it has nothing to
@@ -2409,12 +2438,28 @@ const P = async (name, fn)=>{
        as needing it exported, and a map that only matches when an environment
        variable happens to be set would fail for a reason that has nothing to
        do with the channels. */
+    /* A TIMEOUT, BECAUSE THIS BLOCK IS OUTSIDE THE SUITE'S OWN WATCHDOG.
+       spawnSync blocks the event loop, so the watchdog timer cannot fire
+       while the probe runs — a jsdom boot that never returns would hang
+       `npm test` for ever with no output and nothing to kill. */
     const r = spawnSync(process.execPath, [MAP], {encoding:'utf8', maxBuffer: 64*1024*1024,
+      timeout: 120000,
       env: Object.assign({}, process.env, {NODE_PATH: path.join(__dirname, 'node_modules')})});
-    if(r.error) throw new Error('the map probe would not run: ' + r.error.message);
+    /* THE TIMEOUT ARRIVES DIFFERENTLY ON DIFFERENT PLATFORMS, and both ways
+       have to say the same thing.  On Windows spawnSync sets `error` with code
+       ETIMEDOUT and never reaches the signal branch; elsewhere the child is
+       SIGTERMed and comes back with `signal` set and `status` null. */
+    if(r.error)
+      throw new Error('the map probe would not run: ' + r.error.message +
+        (String(r.error.code) === 'ETIMEDOUT'
+          ? ' — it ran past the 120s timeout and was killed' : ''));
+    /* ON A KILL, `status` IS null AND `signal` CARRIES THE REASON — a message
+       reading "exited null" names nothing an operator can act on. */
+    if(r.signal)
+      throw new Error('the map probe was killed by ' + r.signal +
+        (r.signal === 'SIGTERM' ? ' — it ran past the 120s timeout' : ''));
     if(r.status !== 0)
-      throw new Error('the map probe exited ' + r.status + ' — ' +
-        String(r.stderr || '').trim().split('\n').slice(0, 4).join(' | '));
+      throw new Error('the map probe exited ' + r.status + ' — ' + probeErr(r.stderr));
     const got = String(r.stdout).split('\n');
     const want = fs.readFileSync(DOC, 'utf8').split('\n');
 
@@ -2428,7 +2473,16 @@ const P = async (name, fn)=>{
     const real = fs.statSync(BUILT).size;
     if(gotSize !== real)
       throw new Error('the probe says it read ' + gotSize + ' bytes of a ' + real +
-        '-byte the-house.html — the one line nobody diffs is lying');
+        '-byte the-house.html — the file moved under the run');
+    /* THE ONE THAT CAN ACTUALLY FIRE.  The line above compares two statSync
+       calls on the same path in the same run; this one compares the COMMITTED
+       number against the build in the tree. */
+    if(wantSize !== gotSize)
+      throw new Error('docs/ARTNET.md was generated against a ' + wantSize +
+        '-byte the-house.html and the build in the tree is ' + gotSize + ' bytes — ' +
+        'the map and the build are not from the same moment.\n' +
+        '        rebuild first, then regenerate it: sh build.sh && ' +
+        'node tools/artnet-map.js > docs/ARTNET.md');
     for(const lines of [got, want])
       for(let i = 1; i < lines.length; i++)
         if(lines[i].indexOf(MAP_HEAD) === 0)
@@ -2443,7 +2497,7 @@ const P = async (name, fn)=>{
         '        regenerate it: node tools/artnet-map.js > docs/ARTNET.md');
     }
     console.log('  ok  ' + name + '  -> ' + (want.length - 1) + ' lines matched line for line, ' +
-      'against a probe that read ' + gotSize + ' bytes of the built file');
+      'and the committed size line matches the ' + gotSize + '-byte build the probe read');
   }catch(e){
     console.log('  ERR ' + name + ': ' + e.message);
     errs.push(name + ': ' + e.message);
