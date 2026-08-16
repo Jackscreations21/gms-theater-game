@@ -115,6 +115,10 @@ const ART = {
   opening:0,       // seconds this socket has spent in CONNECTING
   got:    0,       // frames out of THIS socket — what proves the wire
   bad:    0,       // frames that were not 512 bytes; the row prints it
+  bandSc:   null,  // the SCENE the dressing memory belongs to (identity, not name)
+  bandSign: null,  // and the sign record it belongs to
+  houseBand: -1,   // RULING ER — the dressing band last APPLIED, not last seen
+  signBand:  -1,   // RULING ES
   took:   false    // the handover has been done for this spell of driving
 };
 
@@ -195,6 +199,7 @@ function artSetOn(on){
   ART.on = on;
   if(on){
     ART.step = 0; ART.retry = 0; ART.frames = 0; ART.took = false;
+    ART.houseBand = -1; ART.signBand = -1;      // the bands say themselves again
     ART.seen = ART_STALE + 1; ART.live = false; ART.buf = null;
     artOpen();
     if(!ART.ws) artBackoff();      // nothing to connect to yet: try again shortly
@@ -236,6 +241,14 @@ function artHandover(){
   if(ART.took) return false;
   ART.took = true;
   for(const f of FIXTURES){ f.lvlDur = 0; f.colDur = 0; }
+  /* AND THE BANDED CHANNELS ARE RE-ASSERTED (RULINGS ER, ES).  Every light
+     channel says itself again every frame; the two band channels speak only
+     on a CHANGE, so without this a desk that stuttered — which RULING EV says
+     WILL happen, and hands the board back when it does — came back to find a
+     cue had redressed the house, and never corrected it, because the fader
+     had not moved across a boundary.  The fader and the stage then disagreed
+     for the rest of the show with nothing anywhere to say why. */
+  ART.houseBand = -1; ART.signBand = -1;
   return true;
 }
 
@@ -356,6 +369,84 @@ function artFlys(b){
   }
 }
 
+/* ============================================================================
+   RULINGS ER AND ES — TWO BANDED CHANNELS, HIS SPLITS EXACTLY
+
+   Jack, in the brief: "make it so for beetljuice it has a channel and if it is
+   between 0 and 85 it is the maitlands house. if it between 86 and 170 it is
+   the deetz house and if it is between 171 and 255 it is the beetlejuice
+   house."  Channel 307 is that channel.  Channel 308 is the sign, on the same
+   three splits, driving its own named stops (RULING DH).
+
+   BAND CHANGE ONLY, AND THAT IS NOT AN OPTIMISATION.  `bjRedress` detaches and
+   re-attaches whole scene-graph nodes — RULING CN holds two complete houses
+   out of the world so only one exists at a time — and running that 44 times a
+   second would rebuild the graph on every packet.  `flyExtraToStop` retargets
+   a mover, and re-commanding it every frame would restart the haul.
+
+   NEITHER CHANNEL DOES ANYTHING TO A SHOW THAT HAS NO SUCH SCENERY.  The
+   band is not even remembered in that case, so loading Beetlejuice with the
+   fader already sitting at 200 still redresses on the first frame after.
+   ========================================================================== */
+const ART_HOUSES = ['maitland', 'deetz', 'bj'];
+function artBandOf(byte){ return byte <= 85 ? 0 : (byte <= 170 ? 1 : 2); }
+
+function artBands(b){
+  const sel = artSelBase() - 1;                 // channel 307, 0-based
+  if(sel + 1 >= b.length) return;
+
+  /* THE MEMORY BELONGS TO THE SCENERY, NOT TO THE SHOW.  Keying it on the
+     production name looked equivalent and was not: loading Beetlejuice a
+     SECOND time builds fresh scene objects dressed the default way, and the
+     name has not changed — so the band would still read as applied and the
+     fresh house would sit there wearing the wrong dressing until somebody
+     happened to move the fader.  Object identity changes on every load, so
+     it is the identity that is remembered. */
+
+  /* RULING ER — the three dressings, through the show's own mechanism */
+  const sc = SHOW.scenes && SHOW.scenes.find(s=>s.dress &&
+    ART_HOUSES.every(k=>s.dress[k]));
+  if(sc){
+    if(sc !== ART.bandSc){ ART.bandSc = sc; ART.houseBand = -1; }
+    const hb = artBandOf(b[sel]);
+    if(hb !== ART.houseBand){
+      ART.houseBand = hb;
+      sc.dressOn = ART_HOUSES[hb];
+      bjRedress(sc);
+      /* AND A CUE'S DEFERRED DRESS IS NOT STILL OWED.  RULING AY holds a
+         dress until the set is out of sight, and a cue that armed one before
+         the desk took over would fire it at the next changeover — silently
+         overwriting the desk's most recent word with an older one.  The band
+         is the newer instruction; the pending one is spent. */
+      if(SHOW.pendDress && sceneFind(SHOW.pendDress.scene) === sc) SHOW.pendDress = null;
+    }
+  } else if(ART.bandSc){
+    /* NOTHING TO DRESS ANY MORE.  Without this the reference outlives the
+       production: showStrike disposes the scenery and empties SHOW.offstage,
+       and a held dressing group keeps its meshes and their attribute arrays
+       alive for the rest of the session. */
+    ART.bandSc = null; ART.houseBand = -1;
+  }
+
+  /* RULING ES — the sign, the same idiom and the same splits: 0-85 FLOOR,
+     86-170 PRE-SHOW, 171-255 UP, which are the stops the show declares */
+  const x = SHOW.flyExtras && SHOW.flyExtras.find(e=>e.key === 'bjSign');
+  const st = x && flyExtraStops(x);
+  const sb = artBandOf(b[sel + 1]);
+  /* `sb < st.length` says what is meant.  Comparing the STOP COUNT against
+     the number of houses was a coincidental coupling: a fourth house dressing
+     would have silently switched channel 308 off. */
+  if(st && sb < st.length){
+    if(x !== ART.bandSign){ ART.bandSign = x; ART.signBand = -1; }
+    if(sb !== ART.signBand){
+      ART.signBand = sb;
+      flyExtraToStop(x, sb);
+    }
+  } else if(ART.bandSign && !st){
+    ART.bandSign = null; ART.signBand = -1;
+  }
+}
+
 /* ONE WRITER, ONE PLACE IN THE FRAME (RULING EU).  Called from p7's tick,
    once, after input and before every system that reads the rig. */
 function artnetTick(dt){
@@ -424,6 +515,7 @@ function artnetTick(dt){
 
   artLights(b);
   artFlys(b);
+  artBands(b);
 }
 
 /* ============================================================================

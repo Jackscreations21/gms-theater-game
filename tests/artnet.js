@@ -1372,6 +1372,209 @@ const P = async (name, fn)=>{
       return 'a line left holding a 0.20m/s Art-Net speed ran at its rigged ' + ls.speed.toFixed(2) + 'm/s once the desk stopped';
     });
 
+    /* ---- RULINGS ER and ES: the two banded channels ---------------------- */
+
+    P('the three bands land the three houses, on HIS splits (RULING ER)', ()=>{
+      showLoad('beetlejuice');
+      const sc = SHOW.scenes.find(s=>s.dress && s.dress.maitland && s.dress.deetz && s.dress.bj);
+      if(!sc) throw new Error('the interior carries no dressings after a load');
+      const ws = deskOn();
+      const sel = artSelBase() - 1;
+      const band = (byte)=>{ const b = new Uint8Array(512); b[sel] = byte;
+        ws.deliver(b); artnetTick(1/60); return b; };
+      /* READ THE GRAPH, NOT THE FIELD.  RULING CN holds two of the three
+         houses out of the world entirely, so "which one is dressed" is a
+         question about parentage — and a build that set dressOn and never
+         called bjRedress would satisfy any assertion on the field alone. */
+      const inWorld = ()=>Object.keys(sc.dress).filter(k=>{
+        const g = sc.dress[k]; return g && g.parent; });
+      const splits = [[0,'maitland'], [85,'maitland'], [86,'deetz'], [170,'deetz'],
+                      [171,'bj'], [255,'bj']];
+      for(const [byte, want] of splits){
+        band(byte);
+        const up = inWorld();
+        if(up.length !== 1) throw new Error('byte ' + byte + ' left ' + up.length + ' houses in the world: ' + up.join(','));
+        if(up[0] !== want) throw new Error('byte ' + byte + ' dressed ' + up[0] + ', and his split says ' + want);
+      }
+      return 'his splits exactly: 0 and 85 maitland, 86 and 170 deetz, 171 and 255 bj — one house in the world each time';
+    });
+
+    P('two identical frames redress ONCE (RULING ER)', ()=>{
+      /* bjRedress detaches and re-attaches whole scene-graph nodes.  Running
+         it 44 times a second would rebuild the graph on every packet.
+         Counted through membership rather than a spy: take the dressing OUT
+         of the world by hand, send the same band again, and see whether
+         anything put it back. */
+      const sc = SHOW.scenes.find(s=>s.dress && s.dress.maitland);
+      const ws = deskOn();
+      const sel = artSelBase() - 1;
+      const b = new Uint8Array(512); b[sel] = 200;              // bj
+      ws.deliver(b); artnetTick(1/60);
+      const g = sc.dress[sc.dressOn];
+      if(!g || !g.parent) throw new Error('the first frame did not dress the house');
+      const home = g.parent;
+      home.remove(g);
+      for(let i = 0; i < 5; i++){ ws.deliver(b); artnetTick(1/60); }
+      if(g.parent) throw new Error('an unchanged band redressed the house again — five packets, five graph rebuilds');
+      /* and a CHANGED band still works */
+      const c = new Uint8Array(512); c[sel] = 10;               // maitland
+      ws.deliver(c); artnetTick(1/60);
+      if(!sc.dress.maitland.parent) throw new Error('a changed band did not redress');
+      return 'five identical packets rebuilt nothing; the next different one dressed the maitlands';
+    });
+
+    P('the sign takes the same three splits, band-change only (RULING ES)', ()=>{
+      const ws = deskOn();
+      const x = SHOW.flyExtras.find(e=>e.key === 'bjSign');
+      if(!x) throw new Error('the sign is not registered after a load');
+      const st = flyExtraStops(x);
+      if(!st || st.length !== 3) throw new Error('the sign declares ' + (st ? st.length : 0) + ' stops, not 3');
+      const m = flyExtraMover(x);
+      if(!m) throw new Error('the sign has no mover');
+      const sign = (byte)=>{ const b = new Uint8Array(512); b[artSelBase()] = byte;
+        ws.deliver(b); artnetTick(1/60); return m.target; };
+      for(const [byte, i] of [[0,0], [85,0], [86,1], [170,1], [171,2], [255,2]]){
+        const got = sign(byte);
+        if(Math.abs(got - st[i].off) > 1e-6)
+          throw new Error('byte ' + byte + ' aimed the sign at ' + got + ', and stop ' + i + ' (' + st[i].name + ') is ' + st[i].off);
+      }
+      /* band-change only: re-commanding every frame would restart the haul */
+      m.target = m.off = 99;
+      for(let i = 0; i < 5; i++) sign(255);
+      if(m.target !== 99) throw new Error('an unchanged band re-commanded the sign to ' + m.target);
+      return 'FLOOR/PRE-SHOW/UP on 0-85, 86-170, 171-255, and five identical packets commanded nothing';
+    });
+
+    P('the desk taking the rig back re-asserts both bands (RULINGS ER, ES)', ()=>{
+      /* every LIGHT channel says itself again every frame; these two speak
+         only on a change.  A desk that stutters for two seconds hands the
+         board back (RULING EV says so explicitly) — and if a cue redresses
+         while it is away, an unmoved fader would never correct it. */
+      showLoad('beetlejuice');
+      const sc = SHOW.scenes.find(s=>s.dress && s.dress.bj);
+      const ws = deskOn();
+      const b = new Uint8Array(512); b[artSelBase() - 1] = 200;   // bj
+      ws.deliver(b); artnetTick(1/60);
+      if(!sc.dress.bj.parent) throw new Error('the desk did not dress the bj house');
+      deskQuiet();                                  // the board has it back
+      bjDress(sc, 'maitland');
+      if(!sc.dress.maitland.parent) throw new Error('the board could not redress while the desk was away');
+      ws.deliver(b); artnetTick(1/60);              // the SAME byte, desk returns
+      if(!sc.dress.bj.parent)
+        throw new Error('the desk came back on an unmoved fader and the house stayed ' + sc.dressOn);
+      artSetOn(false);
+      return 'desk dressed bj, went quiet, a cue dressed the maitlands, and the desk took it back on the same byte';
+    });
+
+    P('a cue\\u2019s deferred dress does not outlive the desk (RULINGS ER, AY)', ()=>{
+      /* RULING AY holds a dress until the set is out of sight.  One armed
+         before the desk took over would fire at the next changeover and
+         silently overwrite the desk with an older instruction. */
+      showLoad('beetlejuice');
+      const sc = SHOW.scenes.find(s=>s.dress && s.dress.bj);
+      const ws = deskOn();
+      SHOW.pendDress = {scene:sc.name || SHOW.scene, key:'deetz'};
+      const named = sceneFind(SHOW.pendDress.scene);
+      if(named !== sc) throw new Error('this case could not name the dressed scene for the deferral');
+      const b = new Uint8Array(512); b[artSelBase() - 1] = 200;
+      ws.deliver(b); artnetTick(1/60);
+      if(SHOW.pendDress)
+        throw new Error('a deferred dress to ' + SHOW.pendDress.key + ' survived the desk dressing the same scene');
+      artSetOn(false);
+      return 'the desk dressed bj and the cue\\u2019s owed deetz went with it — the newer instruction wins';
+    });
+
+    P('the sign is desk-owned now, so it is not also hand-hauled (RULINGS EM, ES)', ()=>{
+      /* the X-rows were ungated because nothing drove them; RULING ES gave the
+         sign channel 308, and a band writes only on CHANGE — so a hand-haul
+         mid-drive would never be taken back. */
+      showLoad('beetlejuice');
+      const ws = deskOn();
+      const x = SHOW.flyExtras.find(e=>e.key === 'bjSign');
+      const st = flyExtraStops(x), m = flyExtraMover(x);
+      const b = new Uint8Array(512); b[artSelBase()] = 255;      // UP
+      ws.deliver(b); artnetTick(1/60);
+      if(Math.abs(m.target - st[2].off) > 1e-6) throw new Error('the desk did not aim the sign UP');
+      /* the desk row, through the DOM */
+      const rows = document.querySelectorAll('#flyExtraRows button, #lsTable button');
+      let floor = null;
+      document.querySelectorAll('button').forEach(bt=>{ if(bt.textContent.trim() === 'FLOOR') floor = bt; });
+      if(!floor) throw new Error('the desk has no FLOOR button for the sign');
+      floor.click();
+      if(Math.abs(m.target - st[2].off) > 1e-6)
+        throw new Error('the desk FLOOR button hauled a desk-driven sign to ' + m.target);
+      /* AND THE HEADSET'S OWN BUTTON.  Draw the page first: without it
+         VR.hits is empty, and a case that skips when it finds no button is a
+         case that asserts nothing.  Found by meta, never by pixel. */
+      VR.page = 'fly'; vrDrawConsole(true);
+      const hit = VR.hits.find(h=>h.flyExtra === 'bjSign' && h.stop === 0);
+      if(!hit) throw new Error('the headset fly page has no FLOOR button for the sign');
+      if(!hit.fn) throw new Error('the headset FLOOR button has no handler to press');
+      hit.fn();
+      if(Math.abs(m.target - st[2].off) > 1e-6)
+        throw new Error('the headset FLOOR button hauled a desk-driven sign to ' + m.target);
+      deskQuiet();
+      floor.click();
+      if(Math.abs(m.target - st[0].off) > 1e-6)
+        throw new Error('the desk stopped and the FLOOR button still cannot haul: ' + m.target);
+      artSetOn(false);
+      return 'the sign refused the desk row AND the headset row mid-drive, and hauled again the moment the desk stopped';
+    });
+
+    P('neither banded channel touches a show that has no such scenery (RULING ER, ES)', ()=>{
+      showLoad('lostboys');
+      const ws = deskOn();
+      const sel = artSelBase() - 1;
+      /* A PLANTED SCENE, because Beetlejuice's interior is the only thing in
+         the game carrying a dress at all — so "no such scenery" would pass
+         against the weakest possible guard, one that accepted any dress. */
+      const fake = {name:'a planted scene', dress:{maitland:{}}};
+      SHOW.scenes.push(fake);
+      try{
+        const b0 = new Uint8Array(512); b0[sel] = 200;
+        ws.deliver(b0); artnetTick(1/60);
+        if(fake.dressOn)
+          throw new Error('a scene carrying ONE of the three dressings was dressed to ' + fake.dressOn);
+      } finally { SHOW.scenes.splice(SHOW.scenes.indexOf(fake), 1); }
+      const before = SHOW.scenes.map(s=>s.dressOn === undefined ? '-' : String(s.dressOn)).join(',');
+      const mv = SHOW.scenes.map(s=>s.mv ? s.mv.target : '-').join(',');
+      const b = new Uint8Array(512); b[sel] = 200; b[sel + 1] = 200;
+      for(let i = 0; i < 5; i++){ ws.deliver(b); artnetTick(1/60); }
+      if(SHOW.scenes.map(s=>s.dressOn === undefined ? '-' : String(s.dressOn)).join(',') !== before)
+        throw new Error('the house selector dressed something in a show with no dressings');
+      if(SHOW.scenes.map(s=>s.mv ? s.mv.target : '-').join(',') !== mv)
+        throw new Error('the sign channel moved something in a show with no sign');
+      /* AND THE BAND IS NOT REMEMBERED EITHER.  Loading Beetlejuice with the
+         fader already at 200 must still dress on the first frame after — a
+         version that recorded the band it could not apply would sit there
+         showing the wrong house until somebody moved the fader. */
+      showLoad('beetlejuice');
+      ws.deliver(b); artnetTick(1/60);
+      const sc = SHOW.scenes.find(s=>s.dress && s.dress.bj);
+      if(!sc || !sc.dress.bj.parent)
+        throw new Error('Beetlejuice loaded under a fader already at 200 and never dressed');
+      /* AND RELOADING THE SAME SHOW IS A NEW SET OF SCENERY.  The production
+         name has not changed, so a memory keyed on the name still reads as
+         applied — and the fresh house sits there in its default dressing
+         under a fader that has not moved.  Object identity is what changes. */
+      showLoad('beetlejuice');
+      const fresh = SHOW.scenes.find(s=>s.dress && s.dress.bj);
+      if(fresh === sc) throw new Error('the reload did not build a new scene, so this clause proves nothing');
+      if(fresh.dress.bj.parent) throw new Error('the reload came up already dressed; move it away first');
+      const x2 = SHOW.flyExtras.find(e=>e.key === 'bjSign');
+      const st2 = x2 && flyExtraStops(x2), m2 = x2 && flyExtraMover(x2);
+      if(!m2 || !st2) throw new Error('the reloaded sign has no mover or no stops');
+      if(Math.abs(m2.target - st2[2].off) < 1e-6)
+        throw new Error('the reloaded sign is already at UP, so this clause cannot see the re-command');
+      ws.deliver(b); artnetTick(1/60);
+      if(!fresh.dress.bj.parent)
+        throw new Error('the same show reloaded under an unmoved fader never dressed — the band memory outlived its scenery');
+      if(Math.abs(m2.target - st2[2].off) > 1e-6)
+        throw new Error('the reloaded SIGN was never re-commanded: ' + m2.target + ', and UP is ' + st2[2].off);
+      artSetOn(false);
+      return 'a show with neither scenery took nothing from either channel; the band was not banked while unusable, and a reload re-dressed under an unmoved fader';
+    });
+
     /* ---- RULING EW: the writers EM's list forgot ------------------------- */
 
     P('standing by at the top does not half-refuse (RULING EW)', ()=>{
