@@ -119,7 +119,7 @@ ruling.
 | 306 | house circuit: practicals (`HOUSE.practical`, p4:2049) | 1 |
 | 307 | BEETLEJUICE house selector (RULING ER) | 1 |
 | 308 | BEETLEJUICE sign position (RULING ES) | 1 |
-| 309 | traveler open (0=shut, 255=open) — applies to the first lineset whose hung goods declare `traveler:true`; the map probe prints which line that is | 1 |
+| 309 | traveler open (0=shut, 255=open) — applies to the first lineset whose hung goods declare `traveler:true`; the map probe prints which line that is. **Parked by that lineset's own speed byte** — see the note below | 1 |
 | 310+ | set movers of the loaded show (RULING ET) | 1 each |
 
 - **Uniform 7-channel fixture footprint** so QLC+ needs exactly one generic
@@ -165,6 +165,17 @@ The two sliders per line map onto machinery that already exists:
   an Art-Net write there would be silently destroyed on the next hang.
 - Runaway physics untouched: a board-driven line is a board move, and
   `updateFly` already ends a runaway when anything writes `ls.target`.
+
+**A NOTE ON CHANNEL 309, and it is Jack's to reverse in one line.** EO's table
+says byte 0 is shut, and EQ says *"a dead universe moves no scenery."* Written
+unconditionally the two collide, and the collision is not academic: the moment
+the switch went on with nothing patched to 309, the house curtain ran itself
+shut at 0.42/s in front of the audience — measured, the one piece of scenery a
+dead universe did move. The safer reading is in force: the traveler is parked
+by its own lineset's speed byte, exactly as that lineset is. Patch the line and
+309 does what the table says. **If Jack wants 309 live regardless of the line,
+that is one condition removed** — but it means an unpatched desk shuts his
+house curtain, which is why it is not the default.
 
 ### RULING ER — the house selector, his bands exactly
 

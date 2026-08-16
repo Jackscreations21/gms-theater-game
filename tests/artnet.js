@@ -1142,6 +1142,236 @@ const P = async (name, fn)=>{
       } finally { RIG.grand = g0; RIG.blackout = b0; artSetOn(false); }
     });
 
+    /* ---- RULING EQ: the flys, through their own motor -------------------- */
+
+    const flyFrame = (i, targetByte, speedByte)=>{
+      const b = new Uint8Array(512);
+      const o = artFlyBase() - 1 + i * 2;
+      b[o] = targetByte; b[o + 1] = speedByte;
+      return b;
+    };
+
+    P('a desk cannot drive a cloth through the deck (RULING EQ, INVARIANTS)', ()=>{
+      const ws = deskOn();
+      const ls = FLY[0];
+      const lo = minTrimOf(ls);
+      if(!(lo > 0.6)) throw new Error('line 1 has no goods on it, so this case cannot bite: ' + lo);
+      ws.deliver(flyFrame(0, 0, 255)); artnetTick(1/60);
+      if(ls.target < lo - 1e-9)
+        throw new Error('byte 0 asked for ' + ls.target + ', below the ' + lo.toFixed(2) + 'm its goods reach');
+      if(Math.abs(ls.target - lo) > 1e-6)
+        throw new Error('byte 0 should be the lowest this line may come (' + lo.toFixed(2) + 'm), got ' + ls.target);
+      ws.deliver(flyFrame(0, 255, 255)); artnetTick(1/60);
+      if(Math.abs(ls.target - OUT_TRIM) > 1e-6)
+        throw new Error('byte 255 should be the grid at ' + OUT_TRIM + ', got ' + ls.target);
+      /* AND THE MIDDLE, which is the only place the mapping shows.  flyTo
+         clamps, so a version that ramps from the DECK instead of from the
+         goods floor still lands on lo at byte 0 and on the grid at 255 — the
+         two ends agree and only the travel between them differs. */
+      ws.deliver(flyFrame(0, 128, 255)); artnetTick(1/60);
+      const mid = lo + (128 / 255) * (OUT_TRIM - lo);
+      if(Math.abs(ls.target - mid) > 1e-6)
+        throw new Error('byte 128 gave ' + ls.target.toFixed(2) + 'm; half the travel from ' +
+          lo.toFixed(2) + ' to ' + OUT_TRIM + ' is ' + mid.toFixed(2));
+      /* and it is the GOODS' floor, not the deck: a bare pipe goes lower */
+      const bare = FLY.findIndex(l=>minTrimOf(l) < lo - 0.5);
+      if(bare >= 0){
+        ws.deliver(flyFrame(bare, 0, 255)); artnetTick(1/60);
+        if(Math.abs(FLY[bare].target - minTrimOf(FLY[bare])) > 1e-6)
+          throw new Error('a barer line did not get its own floor');
+      }
+      return 'byte 0 lands on ' + lo.toFixed(2) + 'm — where this line\\u2019s goods kiss the deck — and 255 on the grid at ' + OUT_TRIM;
+    });
+
+    P('speed byte 0 PARKS the line, whatever the target says (RULING EQ)', ()=>{
+      const ws = deskOn();
+      const ls = FLY[0];
+      /* A RUNAWAY IS NOT A PARKED LINE, and RULING EQ leaves runaway physics
+         alone on purpose.  An earlier case can leave one armed, and an
+         instant flyTo cannot clear it — the runaway branch clears on
+         target-vs-pos DIFFERING, and an instant move makes them equal — so
+         the line would fall under gravity here and read as a parking bug. */
+      ls.runaway = false; ls.flyVel = 0;
+      flyTo(ls, OUT_TRIM, true);
+      const at = ls.pos;
+      /* a full-travel target with a dead speed byte */
+      ws.deliver(flyFrame(0, 0, 0)); artnetTick(1/60);
+      for(let i = 0; i < 120; i++){ artnetTick(1/60); updateFly(1/60); }
+      if(Math.abs(ls.pos - at) > 1e-6)
+        throw new Error('a parked line moved from ' + at.toFixed(2) + ' to ' + ls.pos.toFixed(2));
+      /* AND IT IS NOT COMMANDED EITHER.  A version that writes the target and
+         relies on the zero speed to hold the line still leaves it standing at
+         one place while ordered to another — which updateFly reads as a move
+         in progress, so the rail runs its start sound and never its stop. */
+      if(Math.abs(ls.target - at) > 1e-6)
+        throw new Error('a parked line is commanded to ' + ls.target.toFixed(2) + ' while standing at ' + at.toFixed(2));
+      if(ls.moving) throw new Error('a parked line reads as MOVING, so the rail never stops making the sound');
+      /* AND THE CASE THAT MATTERS MOST: a line caught MID-TRAVEL by a parked
+         desk.  Everything above starts from a line already standing still, so
+         "target equals pos" and "not moving" are both true before a single
+         byte is applied — the setup satisfies two of the three assertions.
+         A desk patched only for the 273 light channels sends zeros on
+         274-301, so this is what the first real use does. */
+      ls.runaway = false; ls.flyVel = 0;
+      flyTo(ls, minTrimOf(ls), true);                       // start at the bottom
+      ws.deliver(flyFrame(0, 255, 255)); artnetTick(1/60);  // and send it to the grid
+      for(let i = 0; i < 20; i++) updateFly(1/60);
+      if(!ls.moving) throw new Error('this clause needs a line actually travelling, and it is not');
+      const caught = ls.pos;
+      if(Math.abs(caught - ls.target) < 0.05) throw new Error('the line arrived before it could be caught');
+      ws.deliver(flyFrame(0, 255, 0)); artnetTick(1/60);
+      for(let i = 0; i < 60; i++) updateFly(1/60);
+      if(Math.abs(ls.pos - caught) > 0.02)
+        throw new Error('a line parked mid-travel drifted ' + Math.abs(ls.pos - caught).toFixed(3) + 'm');
+      if(ls.moving)
+        throw new Error('a line parked mid-travel still reads MOVING — the rail motor loop never stops');
+      if(Math.abs(ls.target - ls.pos) > 0.02)
+        throw new Error('a line parked mid-travel is still commanded to ' + ls.target.toFixed(2));
+      /* and it is the SPEED that parks it, not a refusal to write: give it a
+         speed and the same target now travels */
+      ws.deliver(flyFrame(0, 0, 255)); artnetTick(1/60);
+      for(let i = 0; i < 120; i++){ artnetTick(1/60); updateFly(1/60); }
+      if(Math.abs(ls.pos - at) < 0.5)
+        throw new Error('with a live speed byte the line still did not travel: ' + ls.pos.toFixed(2));
+      return 'two seconds of a full-travel target at speed 0 moved it 0.00m; the same target at 255 moved it ' +
+             Math.abs(ls.pos - at).toFixed(2) + 'm';
+    });
+
+    P('the desk speed is what the line travels at, and ls.speed is never written (RULING EQ)', ()=>{
+      const ws = deskOn();
+      const ls = FLY[0];
+      const rigged = ls.speed;
+      const travel = (byte)=>{
+        flyTo(ls, OUT_TRIM, true);
+        ws.deliver(flyFrame(0, 0, byte)); artnetTick(1/60);
+        const from = ls.pos;
+        for(let i = 0; i < 60; i++){ artnetTick(1/60); updateFly(1/60); }
+        return Math.abs(ls.pos - from);
+      };
+      const full = travel(255), half = travel(128);
+      if(ls.speed !== rigged)
+        throw new Error('ls.speed was written to ' + ls.speed + ' — hangGoods would silently destroy that');
+      if(Math.abs(full - ART_FLY_MAX) > 0.05)
+        throw new Error('a second at byte 255 covered ' + full.toFixed(2) + 'm, not ART_FLY_MAX ' + ART_FLY_MAX);
+      if(Math.abs(half - full / 2) > 0.1)
+        throw new Error('byte 128 covered ' + half.toFixed(2) + 'm against ' + full.toFixed(2) + ' at full');
+      /* and the rigged speed comes back the moment the desk stops */
+      deskQuiet();
+      flyTo(ls, OUT_TRIM, true);
+      flyTo(ls, minTrimOf(ls));
+      const from = ls.pos;
+      for(let i = 0; i < 60; i++) updateFly(1/60);
+      const board = Math.abs(ls.pos - from);
+      if(Math.abs(board - rigged) > 0.05)
+        throw new Error('with the desk quiet the line ran at ' + board.toFixed(2) + 'm/s, not its rigged ' + rigged.toFixed(2));
+      artSetOn(false);
+      return 'a second at 255 covered ' + full.toFixed(2) + 'm and at 128 covered ' + half.toFixed(2) +
+             'm; ls.speed still ' + rigged.toFixed(2) + ' and back in charge once the desk stopped';
+    });
+
+    P('the traveler opens and shuts on its own channel (RULING EQ)', ()=>{
+      const ws = deskOn();
+      const trav = FLY.find(ls=>ls.goods && GOODS[ls.goodsKey] && GOODS[ls.goodsKey].traveler);
+      if(!trav) throw new Error('nothing hung declares itself a traveler');
+      /* it is the FIRST declaring line, not just any of them */
+      const all = FLY.filter(ls=>ls.goods && GOODS[ls.goodsKey] && GOODS[ls.goodsKey].traveler);
+      if(trav !== all[0]) throw new Error('the traveler channel found line ' + trav.id + ', not the first of ' + all.length);
+      const speedByte = artFlyBase() - 1 + (trav.id - 1) * 2 + 1;
+      const frame = (open, spd)=>{ const b = new Uint8Array(512);
+        b[artSelBase() + 1] = open; b[speedByte] = spd; return b; };
+      /* A DEAD UNIVERSE MOVES NO SCENERY, AND A CURTAIN IS SCENERY.  Written
+         unconditionally this was the one thing 512 zeros DID move: the house
+         curtain ran itself shut in front of the audience the instant the
+         switch went on.  It is parked by its own line's speed byte. */
+      trav.travTarget = 1;
+      ws.deliver(new Uint8Array(512)); artnetTick(1/60);
+      if(trav.travTarget !== 1)
+        throw new Error('an unpatched universe shut the house curtain to ' + trav.travTarget);
+      ws.deliver(frame(255, 255)); artnetTick(1/60);
+      if(Math.abs(trav.travTarget - 1) > 1e-6) throw new Error('255 gave travTarget ' + trav.travTarget);
+      ws.deliver(frame(0, 255)); artnetTick(1/60);
+      if(trav.travTarget !== 0) throw new Error('0 gave travTarget ' + trav.travTarget);
+      ws.deliver(frame(128, 255)); artnetTick(1/60);
+      if(Math.abs(trav.travTarget - 128/255) > 1e-6) throw new Error('128 gave travTarget ' + trav.travTarget);
+      artSetOn(false);
+      return 'line ' + trav.id + ' carries it, first of ' + all.length + '; channel ' + (artSelBase() + 2) +
+             ' shut, opened and half-opened it, and 512 zeros left it alone';
+    });
+
+    P('a desk move works the lock, because it goes through flyTo (RULING EQ)', ()=>{
+      /* "applied via flyTo, which works the lock itself" is a clause of EQ,
+         and a version that clamped and wrote ls.target directly would satisfy
+         every other assertion in this file. */
+      const ws = deskOn();
+      const ls = FLY[0];
+      ls.runaway = false; ls.flyVel = 0;
+      /* a SHORT move at full desk speed, so the arrival happens inside the
+         loop below rather than twenty seconds after it */
+      const lo = minTrimOf(ls);
+      flyTo(ls, lo + 1.0, true);
+      ls.locked = true; ls.relock = false;
+      ws.deliver(flyFrame(0, 0, 255)); artnetTick(1/60);     // byte 0 = down to lo
+      if(ls.locked) throw new Error('the desk commanded a locked line and the lock stayed thrown');
+      if(!ls.relock) throw new Error('the desk took the lock off and did not owe it back');
+      updateFly(1/60);
+      if(ls.locked) throw new Error('the line locked itself mid-travel');
+      for(let i = 0; i < 300 && Math.abs(ls.target - ls.pos) > 0.004; i++) updateFly(1/60);
+      if(Math.abs(ls.target - ls.pos) > 0.004)
+        throw new Error('the line never arrived: ' + ls.pos.toFixed(2) + ' of ' + ls.target.toFixed(2));
+      /* ONE MORE FRAME.  The loop stops the moment the gap closes, which is
+         the frame BEFORE updateFly runs its arrival branch — and the arrival
+         branch is where the flyman throws the lock back on. */
+      updateFly(1/60);
+      if(!ls.locked) throw new Error('the flyman never locked off on arrival');
+      artSetOn(false);
+      return 'a locked line: lock off on the command, still off mid-travel, thrown again on arrival — flyTo did the work';
+    });
+
+    P('a runaway is still a runaway, and a driving desk takes it back (RULING EQ)', ()=>{
+      /* EQ says runaway physics are untouched.  Both halves matter: the fall
+         must still happen, and writing the target must still end it. */
+      const ws = deskOn();
+      const ls = FLY[0];
+      ws.deliver(flyFrame(0, 255, 255)); artnetTick(1/60);
+      for(let i = 0; i < 400 && Math.abs(ls.target - ls.pos) > 0.004; i++){ artnetTick(1/60); updateFly(1/60); }
+      const up = ls.pos;
+      if(!(up > 10)) throw new Error('this case needs the line up at the grid, got ' + up.toFixed(2));
+      /* a hand lets go at the rail with no lock thrown */
+      ls.runaway = true; ls.flyVel = 0; ls.locked = false; ls.relock = false;
+      ls.target = ls.pos;
+      for(let i = 0; i < 30; i++) updateFly(1/60);
+      if(!(ls.pos < up - 0.05)) throw new Error('the line did not fall at all: ' + ls.pos.toFixed(2));
+      if(!ls.runaway) throw new Error('the runaway ended on its own with nothing writing a target');
+      /* and the desk, which is driving, takes it back */
+      ws.deliver(flyFrame(0, 255, 255)); artnetTick(1/60);
+      for(let i = 0; i < 30; i++){ artnetTick(1/60); updateFly(1/60); }
+      if(ls.runaway) throw new Error('a driving desk did not take the line back off the runaway');
+      if(!(ls.pos > up - 5)) throw new Error('the line never flew back: ' + ls.pos.toFixed(2));
+      artSetOn(false);
+      return 'let go at ' + up.toFixed(2) + 'm it fell under gravity, and a desk commanding it ended the runaway and flew it back';
+    });
+
+    P('the desk speed applies ONLY while a desk drives (RULING EQ)', ()=>{
+      /* the guarded read is one line in updateFly and it must not leak: a
+         line still carrying an artSpeed after the handover would run at the
+         desk's speed for ever. */
+      const ws = deskOn();
+      const ls = FLY[0];
+      ws.deliver(flyFrame(0, 255, 26)); artnetTick(1/60);      // a very slow desk speed
+      if(!(ls.artSpeed < 0.3)) throw new Error('this case needs a slow desk speed, got ' + ls.artSpeed);
+      deskQuiet();
+      if(typeof ls.artSpeed !== 'number') throw new Error('the case cannot prove the leak if the field is gone');
+      flyTo(ls, minTrimOf(ls), true);
+      flyTo(ls, OUT_TRIM);
+      const from = ls.pos;
+      for(let i = 0; i < 60; i++) updateFly(1/60);
+      const moved = Math.abs(ls.pos - from);
+      if(moved < ls.speed * 0.9)
+        throw new Error('the desk went quiet and the line still ran at its Art-Net speed: ' + moved.toFixed(2) + 'm');
+      artSetOn(false);
+      return 'a line left holding a 0.20m/s Art-Net speed ran at its rigged ' + ls.speed.toFixed(2) + 'm/s once the desk stopped';
+    });
+
     /* ---- RULING EW: the writers EM's list forgot ------------------------- */
 
     P('standing by at the top does not half-refuse (RULING EW)', ()=>{
