@@ -31,7 +31,8 @@ commitment and nothing in here is binding — **a spec in
 ```
 
 The lettered rulings are one continuous sequence across the whole project.
-**The last one used is `EK`** (the stepladder). The next spec starts at `EL`.
+**The last one used is `EW`** (Art-Net, the writers EM's list forgot). The next
+spec starts at `EX`.
 
 When something in here ships, **delete it from this file** — this is a list of
 what is *not* done. It stops being useful the moment it becomes a history.

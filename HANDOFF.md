@@ -224,7 +224,109 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **THE FRAME RATE GOT A ROUND OF ITS OWN — PUT IT ON THE HEADSET** (2026-08-14, DR–DY)
+## NEXT SESSION: **FINISH THE ART-NET CHAIN — THREE PRs LEFT** (2026-08-15, EL–EW)
+
+Cache-bust **`?v=30`**. Rulings at **EW**. Suite count **21**. `main` is at
+**`e0c5768`**. **Read STATE.md — it carries the channel map, the run
+instructions and the five things that are his to decide.**
+
+**In order:**
+
+1. **PR 7 (RULING ET, set movers) is BUILT and NOT VERIFIED.** Branch
+   `artnet-movers`, tip `cb10848`, `main` already merged into it. It has had
+   **no review** and the full suite has **not** been run on the merge — the
+   merge commit says so in as many words. Run `npm test`, two-stage review,
+   then the usual protocol. **Ask Jack question 1 below before it lands.**
+2. **PR 8 (RULING EO) — `tools/artnet-map.js` and the generated
+   `docs/ARTNET.md`**, plus the suite assertion that the committed file matches
+   what the probe emits. Not started. Everything it needs is already exported
+   from `p6d`.
+3. **PR 9 — the rest of the record**: the QLC+ section in VR-SETUP.md, and
+   delete the Art-Net entry from FUTURE.md.
+
+**THE QUESTION THAT SHOULD BE ASKED FIRST.** RULING ET gives set movers no
+speed byte, so byte 0 is `home` and **512 zeros command every mover in the
+loaded show home** — measured, it walks the parked attic **19.50m onto the deck
+while it is drawn**. A desk patched only for the 273 light channels sends zeros
+on everything else, which is the likeliest first real use, and RULING EQ says
+in as many words that a dead universe moves no scenery. Either **parked unless
+driven** (byte 0 = no command; matches the flys and channel 309) or **as ET is
+written**. One condition either way. The other four questions are in STATE.md.
+
+**AND THE `?v=29` HEADSET RUN IS STILL OWED** from the perf round — nothing in
+DR–DY has ever been seen, and nothing in this round has either.
+
+## DONE — 2026-08-15: Art-Net, six of nine PRs (#200–#205, EL–EW)
+
+The desk drives the Palace. QLC+ sends ArtDmx on UDP 6454, a zero-dependency
+relay forwards each packet as one WebSocket frame, and `src/p6d.txt` applies
+the latest frame once per frame in `artnetTick`. `artDriving()` — the switch
+**and** a frame inside two seconds — is the one gate everything else asks.
+
+**Six PRs, six clean merges, no recovery PR.** #200 the relay (EL), #201 the
+part and the socket (EM state, EN, EU, EV), #202 the lights (EP, EN, EO), #203
+the gates and the rows (EM, EV, EW), #204 the flys (EQ), #205 the bands (ER,
+ES). Every merge byte-identical, 21/21 on the merged result, branches deleted.
+
+**THREE RULINGS WERE ADDED BY WHAT THE ROUND FOUND**, and that is the round's
+shape:
+
+- **EV** came from Jack mid-round — "make it so it just runs normally if it
+  doesnt detect art net signals" — and it narrows EM: the board yields to the
+  switch AND a live signal, never the switch alone. Throwing ARTNET with no
+  relay running changes nothing at all.
+- **EW** came from a review: **EM's list of writers was written from the
+  board's CONTROLS**, so it missed every writer that is not a control — and
+  those are the dangerous ones, because a control writes when a hand moves and
+  these write every frame. Five of them, all measured: `standByAtTheTop`
+  half-refusing (it took `fireCue`'s refusal AND its toast, then wrote all 39
+  fixtures anyway), the firelight and `audFxStep` winning every frame silently
+  with the row still reading LIVE, the pan/tilt/house sliders bypassing
+  `setSection*`, and a running script whose faded writes `updateFades` then
+  carried. **The sharpest part: `SHOW.flicker` and `AUD.fx` are only cleared by
+  `showCueFx`, which only `fireCue` reaches — and EM gates `fireCue`. An effect
+  armed in the last cue before the desk took over could never be turned off
+  again.**
+- **A note on channel 309** reversed EO's literal table for the traveler after
+  measurement: written unconditionally, an unpatched universe ran the house
+  curtain shut at 0.42/s in front of the audience. It is parked by its own
+  lineset's speed byte now, and it is one condition to put back.
+
+**THE FINDING WORTH KEEPING IS ABOUT TESTS, AND IT IS THE SAME ONE FIFTEEN
+TIMES.** Across the round, fifteen assertions were green against builds that
+did the opposite of what the assertion's name claimed, and almost every one was
+the same shape: **the setup already put the system in the state the case then
+asserted.** A duration check on a rig whose durations were already zero. A
+"switching off snaps nothing" comparison taken on a rig that was already dark.
+A parked-line case that began with the line standing still. A mover check that
+read `ART_PAN` back out of the build and compared against it. A grand-master
+check with no frame between setting the grand and reading it. A BACK case
+entered at a pointer where "refused" and "worked" both leave 1.
+
+Three more were masked rather than weak, which reads identically from outside:
+`flyTo`'s own clamp hid a wrong fly mapping at BOTH ends of the travel (only
+the middle differs); a zero speed hid a written target (the observable was the
+rail motor loop, not the position); and two band guards **masked each other**,
+so each mutation alone left the suite green — which is how the band memory
+keyed on `SHOW.key` survived, and it is wrong, because **reloading the same
+show builds fresh scene objects and the name has not changed**.
+
+**Every one of those was found by a negative check that did not fire.** Around
+seventy mutations across the round, all by sha, each proved present in the
+BUILT file and proved to have changed it, each restore proved byte-identical,
+rebuilding in the restore step as well as the mutate step. Two mutations turned
+out to be genuinely UNOBSERVABLE rather than uncaught, and telling those apart
+from a weak assertion can only be done by looking.
+
+**Also found, and fixed, in code that was already on `main`:** two ways to kill
+the relay process outright (`GET /%` and `GET /a%00b` — the second survives the
+first's fix, because `%00` decodes cleanly and `fs.stat` then throws
+synchronously); a header-only ArtDmx that forwarded 512 bytes of blackout; the
+whole working directory including `.git` served to every interface; and a
+dot-segment guard bypassable via NTFS 8.3 short names (`/GIT~1/config` returned
+4040 bytes while `/.git/config` correctly returned 403).
+
+## NEXT SESSION: **THE FRAME RATE GOT A ROUND OF ITS OWN — PUT IT ON THE HEADSET** (2026-08-14, DR–DY) — CARRIED, still unseen
 
 Cache-bust **`?v=29`**. Rulings at **DY**. **Read STATE.md — it carries the
 full picture, the probe numbers and the four-moment checklist.**
