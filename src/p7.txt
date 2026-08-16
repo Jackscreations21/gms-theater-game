@@ -967,6 +967,13 @@ function refreshSceneUI(){
         }).join('')
       : '<span style="color:var(--dim)">this show has one set</span>';
     $$('#sceneList .cue').forEach(el=>el.onclick = ()=>{
+      /* RULING EX — THE DESK OWNS THE SET MOVERS WHILE IT IS DRIVING, so this
+         has to yield with them.  Ungated it is a HALF-REFUSAL, which RULING EW
+         names as worse than either whole answer: the changeover runs, the set
+         is marked ON and drawn, artMovers puts it back wherever its byte says
+         on the very next frame — and the toast two lines down tells the
+         operator it worked.  Measured at 9.75m into the wing, permanently. */
+      if(artYields('the set list')) return;
       sceneChangeTo(el.dataset.s);
       const sc = sceneFind(el.dataset.s);
       if(sc) toast(sc.label + ' is on');

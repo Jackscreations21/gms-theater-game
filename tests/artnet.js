@@ -1773,12 +1773,19 @@ const P = async (name, fn)=>{
        loads Beetlejuice first — it is the show ET is for, and the only one of
        the five that carries any scene movers at all.
 
-       AND EVERY ONE OF THEM READS A WORLD MATRIX RATHER THAN A RECORD.  The
-       set is FROZEN (lockShowStatic), so a group position that "moved" may be
-       a number in an object and nothing on the stage; the mover records are
-       what this code writes, so believing them would be marking my own
-       homework twice over.  scene.updateMatrixWorld(true) from the ROOT, never
-       from the child, or the composition is against a stale parent (TRAPS). */
+       AND WHERE THE CLAIM IS THAT A SET MOVED, IT IS READ OFF A WORLD MATRIX
+       RATHER THAN A RECORD.  The set is FROZEN (lockShowStatic), so a group
+       position that "moved" may be a number in an object and nothing on the
+       stage.  scene.updateMatrixWorld(true) from the ROOT, never from the
+       child, or the composition is against a stale parent (TRAPS).
+
+       NOT every case does, and saying "every one" here was an overclaim a
+       review caught.  The four that assert WHICH RECORD reads WHICH BYTE —
+       declaration order, mv-before-pmv, the re-base, and the computed base —
+       read m.target and nothing else, because the claim under test IS the
+       record write.  That is only sound because the case below them proves
+       separately that a target write becomes real world-space travel; without
+       it the whole block would be marking its own homework. */
 
     const AX = {x:12, y:13, z:14};
     const mvWorld = (g, axis)=>{ scene.updateMatrixWorld(true); return g.matrixWorld.elements[AX[axis]]; };
@@ -1824,8 +1831,11 @@ const P = async (name, fn)=>{
       if(!showLoad('beetlejuice')) throw new Error('Beetlejuice would not load');
       const ws = deskOn();
       const list = mvAll();
+      /* TWELVE, not thirteen: the show declares thirteen scene movers and the
+         sign is the one the rail hauls, so it is addressed on 308 and is not
+         on this map at all (CW, ES). */
       if(list.length < 10)
-        throw new Error('only ' + list.length + ' movers were found; this show carries thirteen');
+        throw new Error('only ' + list.length + ' movers were found; this show maps twelve');
       /* A DISTINCT BYTE PER CHANNEL.  A uniform frame is satisfied by any
          order at all — the whole claim here is WHICH mover reads WHICH byte,
          so two movers that swapped places have to land on wrong metres. */
@@ -1871,6 +1881,7 @@ const P = async (name, fn)=>{
       if(cem.mv) throw new Error('the graveyard already travels; this case no longer builds what it thinks');
       const n0 = mvAll().length;
       const z0 = cem.group.position.z;
+      const auto0 = cem.group.matrixAutoUpdate;
       const ws = deskOn();
       try{
         sceneTravel(cem, 'z', -6, 2.0);            // home -6, no out, so 0 at byte 255
@@ -1899,8 +1910,14 @@ const P = async (name, fn)=>{
         return 'a scene given both reads its travel on ' + artMoverBase() +
                ' and its first part on ' + (artMoverBase() + 1);
       } finally {
+        /* sceneTravel sets more than the record: it flags the group and turns
+           matrixAutoUpdate back on, both of which lockShowStatic had cleared.
+           Leaving them was harmless only because the next case reloads the
+           show — which is a dependency between cases, not a cleanup. */
         cem.mv = null;
         cem.group.position.z = z0;
+        if(cem.group.userData) delete cem.group.userData.sceneTravels;
+        cem.group.matrixAutoUpdate = auto0;
         artSetOn(false);
       }
     });
@@ -2066,6 +2083,160 @@ const P = async (name, fn)=>{
       artSetOn(false);
       return 'the sign held its ' + stops[top].name + ' stop at ' + want.toFixed(2) +
              'm through 120 frames of every mover channel at 255 — the rail keeps what the rail hauls';
+    });
+
+    P('a record the desk cannot read is left alone, not run away with (RULING EX)', ()=>{
+      /* typeof NaN is 'number', so the obvious guard is the one that does NOT
+         catch the value that matters — and a NaN target makes sceneMvAdvance
+         take its step branch every single frame (Math.abs(NaN) <= step is
+         false), so the set walks off in +axis at its own speed and NEVER
+         ARRIVES, with no error anywhere.  Unreachable through the game's own
+         declaration API today; the safe guard costs the same as the broken
+         one, and the failure it prevents is a runaway rather than a wrong
+         number, which is why it is worth pinning. */
+      showLoad('beetlejuice');
+      const ws = deskOn();
+      const sc = sceneFind('attic'), m = sc.pmv.all, i = mvAll().findIndex(x=>x.m === m);
+      if(i < 0) throw new Error('the attic tracking mover is not on the map');
+      const home0 = m.home, out0 = m.out;
+      const bytes = []; for(let k = 0; k <= i; k++) bytes.push(k === i ? 200 : 0);
+      try{
+        /* A NaN NEAR END: no command at all, because there is nothing to
+           interpolate FROM.  The target the show left is what stands. */
+        m.home = NaN;
+        m.target = -3.25;
+        ws.deliver(mvFrame(bytes)); artnetTick(1/60);
+        if(m.target !== -3.25)
+          throw new Error('a NaN home was driven to ' + m.target + ' — the desk read a record it cannot read');
+        m.home = home0;
+        /* A NaN FAR END reads as NO far end, which is the existing fallback —
+           a real number, and the set arrives.  Not "left alone": the two ends
+           are not the same claim and the code does not treat them alike. */
+        m.out = NaN;
+        m.target = -3.25;
+        ws.deliver(mvFrame(bytes)); artnetTick(1/60);
+        const want = home0 + ((200 - 1) / 254) * (0 - home0);
+        if(!Number.isFinite(m.target) || Math.abs(m.target - want) > 1e-6)
+          throw new Error('a NaN out gave the target ' + m.target + ', not the 0 fallback at ' + want.toFixed(3));
+        /* AND IT ARRIVES.  A runaway does not announce itself as a wrong
+           number — it announces itself by never stopping, so the observable
+           has to be the walk, not the record. */
+        let n = 0;
+        while(Math.abs(m.off - m.target) > 1e-4 && n++ < 20000) sceneMoveStep(1/60);
+        if(n >= 20000 || !Number.isFinite(m.off))
+          throw new Error('the mover never arrived: off ' + m.off + ' after ' + n + ' ticks');
+        return 'a NaN home took no command and a NaN out fell back to 0, arriving in ' + n + ' ticks';
+      } finally {
+        m.home = home0; m.out = out0; artSetOn(false);
+      }
+    });
+
+    P('the SET list yields on BOTH surfaces, and works again after (RULINGS EW, EX)', ()=>{
+      /* PR 7 CREATES THIS GAP, SO PR 7 CLOSES IT.  Before the set movers had
+         channels, calling a set on under a desk was harmless.  Now artMovers
+         writes every frame, so ungated the changeover runs, the set is marked
+         ON and drawn — and the very next frame puts it back wherever the
+         desk's byte says, with a toast telling the operator it worked.  That
+         is a HALF-REFUSAL, which RULING EW names as worse than either whole
+         answer, and it was measured standing 9.75m into the wing.
+
+         Driven through the DOM and through a vrHit region, never by calling
+         sceneChangeTo — a detached row fires its handler perfectly well. */
+      showLoad('beetlejuice');
+      const sets = SHOW.scenes.filter(sc=>!sc.always);
+      const want = sets.find(sc=>sc.name !== SHOW.scene);
+      if(!want) throw new Error('this show has only one set, so nothing here can be refused');
+      const was = SHOW.scene;
+      const rowFor = (nm)=>{
+        refreshSceneUI();
+        const rows = document.querySelectorAll('#sceneList .cue');
+        if(!rows.length) throw new Error('the set list has no rows at all');
+        for(const r of rows) if(r.dataset.s === nm) return r;
+        throw new Error('no set row for ' + nm);
+      };
+      const row = rowFor(want.name);
+      const ws = deskOn();
+      row.onclick();
+      if(SHOW.scene !== was)
+        throw new Error('the desk set list called ' + SHOW.scene + ' on while a desk was driving');
+      VR.page = 'sets'; vrDrawConsole(true);
+      const btn = VR.hits.filter(h=>h.setCall).find(c=>c.setCall === want.name);
+      if(!btn) throw new Error('there is no VR call button for ' + want.name);
+      btn.fn();
+      if(SHOW.scene !== was)
+        throw new Error('the VR set list called ' + SHOW.scene + ' on while a desk was driving');
+      /* AND THE OTHER HALF (RULING EV): the moment the desk stops, it works.
+         Without this the case is satisfied by a set list that never works. */
+      artSetOn(false);
+      rowFor(want.name).onclick();
+      if(SHOW.scene !== want.name)
+        throw new Error('the set list refused with no desk driving — it is gated on the switch, not on the signal');
+      return 'both set lists refused ' + want.label + ' while the desk drove, and the desk one called it on the moment the desk stopped';
+    });
+
+    P('the exclusion is keyed on the SCENE, and it shifts every channel after it (CW, ES)', ()=>{
+      /* TWO CLAUSES OF THE RULING THAT TODAY'S DATA CANNOT TELL APART, and
+         both were found by a review running mutations that did NOT fire.
+
+         (1) THE ONLY HAUL IN THE GAME IS {key:'bjSign', scene:'bjSign'} —
+             key and scene are the SAME STRING, so a build matching on the KEY
+             instead of the scene passes every other case in this file.
+         (2) bjSign is the LAST scene declared, so skipping it and consuming
+             its channels before skipping it number every other mover
+             identically.  "Takes NO channel" was tested only as "takes no
+             write"; the channel-SHIFTING half was decoration.
+
+         ONE FIXTURE KILLS BOTH: a second haul whose key is NOT its scene
+         name, declared on the FIRST scene that carries movers. */
+      showLoad('beetlejuice');
+      const cem = sceneFind('cemetery'), house = sceneFind('house');
+      if(!cem || !cem.pmv || !cem.pmv.hillR) throw new Error('the cemetery has no part movers to be excluded');
+      if(!house || !house.mv) throw new Error('there is no house travel to be shifted');
+      const before = mvAll();
+      if(before[0].scene !== 'cemetery')
+        throw new Error('the cemetery is no longer the first scene with movers; this case is built on that');
+      const iBefore = before.findIndex(x=>x.m === house.mv);
+      const nCem = before.filter(x=>x.scene === 'cemetery').length;
+      if(iBefore < 0) throw new Error('the house travel is not on the map to begin with');
+      if(!nCem) throw new Error('the cemetery contributes no channels, so excluding it shifts nothing');
+      SHOW.flyExtras.push({key:'testHaul', label:'A HAUL WHOSE KEY IS NOT ITS SCENE',
+                           scene:'cemetery', inOff:0, outOff:5, speed:2});
+      const ws = deskOn();
+      try{
+        const after = mvAll();
+        if(after.length !== before.length - nCem)
+          throw new Error('the new haul did not take the cemetery off the map');
+        const iAfter = after.findIndex(x=>x.m === house.mv);
+        if(iAfter !== iBefore - nCem)
+          throw new Error('the map moved the house travel to channel ' + (artMoverBase() + iAfter) +
+            '; dropping ' + nCem + ' channels from channel ' + artMoverBase() + ' should put it on ' +
+            (artMoverBase() + iBefore - nCem));
+        /* THE HOUSE TRAVEL IS SENT OFF ITS OWN TARGET FIRST.  Its home and its
+           out are BOTH 0 (it is the one-way channel), so a case that measured
+           "target is 0" from where the show left it would be asserting the
+           state it started in — which is the shape fifteen assertions in this
+           round were green on. */
+        sceneMoveTo('house', house.mv.home + 5);
+        if(Math.abs(house.mv.target - house.mv.home) < 1e-6)
+          throw new Error('the house travel would not move off its home for the setup');
+        const hR = cem.pmv.hillR.target, hL = cem.pmv.hillL.target;
+        const bytes = []; for(let k = 0; k <= iAfter; k++) bytes.push(k === iAfter ? 255 : 0);
+        ws.deliver(mvFrame(bytes)); artnetTick(1/60);
+        if(Math.abs(house.mv.target - mvWant(house.mv, 255)) > 1e-6)
+          throw new Error('channel ' + (artMoverBase() + iAfter) + ' did not reach the house travel — ' +
+            'the block did not shift when the cemetery left it');
+        /* and a FULL universe, so nothing hides behind a zero */
+        const all = new Uint8Array(512);
+        for(let k = artMoverBase() - 1; k < 512; k++) all[k] = 255;
+        ws.deliver(all); artnetTick(1/60);
+        if(Math.abs(cem.pmv.hillR.target - hR) > 1e-6 || Math.abs(cem.pmv.hillL.target - hL) > 1e-6)
+          throw new Error('every mover channel at 255 reached a HAULED scene\\u2019s part movers');
+        return 'a haul keyed testHaul on the cemetery took its ' + nCem + ' channels off the map and moved the house travel from ' +
+               (artMoverBase() + iBefore) + ' to ' + (artMoverBase() + iAfter);
+      } finally {
+        SHOW.flyExtras.pop();
+        artSetOn(false);
+      }
     });
 
     P('512 ZEROS MOVE NO SCENERY AT ALL (RULING EX)', ()=>{

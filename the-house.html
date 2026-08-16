@@ -11972,17 +11972,35 @@ function artFlys(b){
    while it is drawn and flies the exterior cloth in.  RULING EQ's stated
    principle is that a dead universe moves no scenery, and a set is scenery.
    Jack ruled it PARKED UNLESS DRIVEN: 0 is no command and the mover stays
-   wherever the show left it, 1..255 spans home..out.  It costs commanding
-   exact home by one byte — byte 1 is home to within 1/254 of the travel —
-   and it puts the movers on the same footing as the flys (EQ) and the house
-   curtain on channel 309, both of which a zero leaves standing still.
+   wherever the show left it, 1..255 spans home..out.  Byte 1 IS home, exactly
+   — the cost is one lost code point, 254 steps across the travel instead of
+   255 — and it puts the movers on the same footing as the flys (EQ) and the
+   house curtain on channel 309: on all three, a zero is a channel nobody is
+   driving.  What that then MEANS is NOT the same on all three, and the
+   difference is written out at artMoverSet.
 
-   THE RANGE IS READ OFF THE RECORD, NEVER OFF A TABLE.  Byte 1 is `m.home`.
-   Byte 255 is `m.out` WHEN THE RECORD DECLARES A NUMERIC ONE — every part
-   mover does, because sceneTravelPart fills the field in whether the caller
-   passed it or not, and no whole-group travel ever does — and 0 on the
-   mover's own axis when it does not.  `sc.parkMv` and `sc.parkMvAt` are
-   SCENE fields rather than mover fields, and are not consulted.
+   THE RANGE IS READ OFF THE RECORD WHEREVER THE RECORD HAS IT.  Byte 1 is
+   `m.home`.  Byte 255 is `m.out` WHEN THE RECORD DECLARES A NUMERIC ONE —
+   every part mover does, because sceneTravelPart fills the field in whether
+   the caller passed it or not, and no whole-group travel ever does, because
+   sceneTravel has no `out` parameter at all.
+
+   AND FOR THOSE THE 0 IS A FALLBACK THIS CODE CHOOSES, NOT SOMETHING THE
+   RECORD SAYS — worth being honest about, because the two cases it covers are
+   not alike.  On the interior wagon 0 is genuinely its acting offset and the
+   fallback lands on the right number by agreeing with the cue.  On the
+   exterior house 0 is also its HOME, which is what makes that channel one-way
+   (below).  Nothing in the code tells them apart.  `sc.parkMv` and
+   `sc.parkMvAt` are SCENE fields rather than mover fields and are not
+   consulted — the plan's correction #2.
+
+   AND THE BYTE→METRE MAPPING IS NOT FIXED FOR THE SESSION.  `bjWingPack`
+   rewrites `out` on the attic, bedroom and closet whenever one of Jack's
+   model files lands, so six of the twelve channels change meaning under a
+   desk holding a steady byte.  That is the ruling working, not failing — the
+   range is the record's — but its own re-seat (`m.off = m.target = m.out`) is
+   undone by this block on the next frame, so a set that grew while a desk was
+   driving lands where the DESK says rather than where the pack put it.
 
    A SCENE THE RAIL HAULS IS NOT ON THIS MAP AT ALL (RULINGS CW, ES).  A show
    may declare hauls that are not linesets — SHOW.flyExtras, the Beetlejuice
@@ -11995,24 +12013,39 @@ function artFlys(b){
    rail keeps what the rail hauls.  It costs Beetlejuice one channel: the
    block is 310..321, twelve movers, and the sign is addressed on 308.
 
-   ONLY THE TRAVEL MOVER CAN ACTUALLY COLLIDE — flyExtraMover, flyExtraTo and
-   flyExtraToStop all write `sc.mv` and nothing else — so skipping the parts
-   as well is the wider rule of the two.  It is the right one while it costs
-   nothing (no flyExtra scene has a part mover today) because it keeps ONE
-   owner for a hauled scene rather than splitting it across two surfaces; if
-   one ever grows parts they will need a ruling rather than a silent channel.
+   ONLY THE TRAVEL MOVER CAN ACTUALLY COLLIDE — flyExtraTo and flyExtraToStop
+   write `sc.mv` and nothing else (flyExtraMover only READS it) — so skipping
+   the parts as well is the wider rule of the two.  It is the right one while
+   it costs nothing (bjSign's scene has `pmv === null`, and it is the only
+   haul in the game) because it keeps ONE owner for a hauled scene rather than
+   splitting it across two surfaces; if one ever grows parts they will need a
+   ruling rather than a silent channel.
 
-   WHICH LEAVES ONE CHANNEL THAT CANNOT MOVE ANYTHING, AND IT IS NOT A BUG IN
-   THIS FUNCTION.  A whole-group travel that declares `home` 0 and no `out`
-   has `home` and `out` both 0, so every byte from 1 to 255 commands it to
-   exactly where byte 1 does.  Under ET as first written that channel was
-   worse than useless — it wrote 0 every frame a dead universe was connected,
-   so the set could never fly out at all — and RULING EX is what defuses it:
-   a degenerate channel now does nothing until somebody drives it, and then
-   it commands home, which is at least what its own record says.  The ruling
-   is read literally on purpose — the numbers come off the records and
-   docs/ARTNET.md prints them — and widening the range would mean consulting
-   `sc.parkMv`, which the plan's correction #2 forbids.
+   AND THE SAME GOES FOR A SECOND HAUL, WHICH WOULD BE UNREACHABLE FROM THE
+   DESK ENTIRELY.  This exclusion is on `x.scene`, so ANY haul takes its scene
+   off the map — but RULING ES serves only `key === 'bjSign'`, so a show that
+   declared a second one would get no mover channel AND no band channel, and
+   nothing would say why.  Also a ruling, not a silent channel.
+
+   WHICH LEAVES ONE CHANNEL THAT IS ONE-WAY, AND IT IS NOT A BUG IN THIS
+   FUNCTION.  A whole-group travel that declares `home` 0 and no `out` has
+   `home` and `out` both 0, so every byte from 1 to 255 commands it to exactly
+   where byte 1 does.  IT IS NOT INERT, and calling it that would be the more
+   dangerous mistake: Beetlejuice's `house` travel is such a mover, and the
+   Maitlands house spends most of the show flown OUT — so any byte at all
+   walks it home, and no byte can send it back.  The desk can fly that house
+   IN and can never fly it OUT — and it hangs a 12.6m drop dead centre of a
+   15m opening, over whatever is playing.  docs/ARTNET.md prints the range as
+   0.00..0.00 rather than hiding it, because an operator who patches that
+   fader deserves to know it only works one way; until `tools/artnet-map.js`
+   generates that file THIS COMMENT is the only place it is written down.
+
+   Under ET as first written it was worse than one-way: it wrote 0 every frame
+   a dead universe was connected, so the set could never fly out AT ALL.
+   RULING EX is what defuses that half — the channel now does nothing until
+   somebody drives it, and then it commands home, which is what its own record
+   says.  Widening the range would mean consulting `sc.parkMv`, which the
+   plan's correction #2 forbids; if it is to be widened it wants a ruling.
 
    THE WRITE IS `m.target` AND NOTHING ELSE.  `m.off` and the group's own
    position belong to sceneMvAdvance, which walks the record at `m.speed` on
@@ -12032,8 +12065,16 @@ function artFlys(b){
    likeliest first real use, and is what EQ said all along.
    ========================================================================== */
 
-/* the far end of the travel: what the record declares, or 0 on its own axis */
-function artMoverOut(m){ return (typeof m.out === 'number') ? m.out : 0; }
+/* the far end of the travel: what the record declares, or 0 on its own axis.
+
+   `Number.isFinite`, NOT `typeof`, and that is the one guard that catches the
+   value that matters: `typeof NaN` is 'number'.  A NaN target makes
+   sceneMvAdvance take its step branch every single frame — `Math.abs(NaN) <=
+   step` is false — so the set walks off in +axis at its own speed and NEVER
+   ARRIVES, with no error anywhere.  Unreachable today (sceneTravel coerces
+   `home` with `|| 0` and sceneTravelPart fills `out` in), and the safe form
+   costs exactly the same. */
+function artMoverOut(m){ return Number.isFinite(m.out) ? m.out : 0; }
 function artMoverSet(m, byte){
   /* RULING EX.  0 is NOT a position — it is the absence of a command, and the
      mover is left exactly as the show left it.  Unlike a fly line there is
@@ -12041,6 +12082,7 @@ function artMoverSet(m, byte){
      caught mid-travel simply finishes the move the show asked for, which is
      what "the desk is not driving this" should look like. */
   if(!byte) return;
+  if(!Number.isFinite(m.home)) return;            // same reason, the near end
   const out = artMoverOut(m);
   /* target ONLY.  Writing `off` here would be the teleport RULING ET forbids,
      and writing the group's position would be worse than useless — the set is
@@ -12067,6 +12109,11 @@ function artMovers(b){
     /* a rig plus a rail plus a show with a lot of scenery could run past 512;
        the channels that fit are driven and the rest are simply not there */
     if(sc.mv){ if(o >= b.length) return; artMoverSet(sc.mv, b[o++]); }
+    /* `for..in` is INSERTION order here, which is the declaration order the
+       ruling asks for — but only because every part mover is named.  A key
+       that looks like an array index ('0', '2') would be hoisted to the front
+       of the walk and would silently repoint every channel after it.  Same
+       family as the computed bases: name your part movers. */
     if(sc.pmv) for(const k in sc.pmv){ if(o >= b.length) return; artMoverSet(sc.pmv[k], b[o++]); }
   }
 }
@@ -30083,6 +30130,13 @@ function refreshSceneUI(){
         }).join('')
       : '<span style="color:var(--dim)">this show has one set</span>';
     $$('#sceneList .cue').forEach(el=>el.onclick = ()=>{
+      /* RULING EX — THE DESK OWNS THE SET MOVERS WHILE IT IS DRIVING, so this
+         has to yield with them.  Ungated it is a HALF-REFUSAL, which RULING EW
+         names as worse than either whole answer: the changeover runs, the set
+         is marked ON and drawn, artMovers puts it back wherever its byte says
+         on the very next frame — and the toast two lines down tells the
+         operator it worked.  Measured at 9.75m into the wing, permanently. */
+      if(artYields('the set list')) return;
       sceneChangeTo(el.dataset.s);
       const sc = sceneFind(el.dataset.s);
       if(sc) toast(sc.label + ' is on');
@@ -31852,7 +31906,11 @@ function vrPageSets(g, P){
     g.fillStyle = on ? '#7fe08a' : '#5d6874';
     g.fillText(vrSetWhere(sc), P.x + P.w - 420, y + rowH/2 - 3);
     vrBtnBox(g, P.x + P.w - 250, y + 3, 110, rowH - 11, on ? 'ON' : 'CALL ON',
-             ((nm)=>()=>{ sceneChangeTo(nm); vrDrawConsole(true); })(sc.name),
+             /* the same yield as the desk's set list (RULING EX) — a control
+                that exists only in the DOM does not exist in VR, and neither
+                does a refusal */
+             ((nm)=>()=>{ if(artYields('the set list')){ vrDrawConsole(true); return; }
+                          sceneChangeTo(nm); vrDrawConsole(true); })(sc.name),
              on ? {bg:'#1f6b2e', fg:'#ffffff'} : null,
              {setCall: sc.name});
   }
