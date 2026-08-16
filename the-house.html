@@ -11952,22 +11952,30 @@ function artFlys(b){
    mover's own axis when it does not.  `sc.parkMv` and `sc.parkMvAt` are
    SCENE fields rather than mover fields, and are not consulted.
 
-   WHICH LEAVES TWO CHANNELS THAT CANNOT MOVE ANYTHING, AND THEY ARE NOT A
-   BUG IN THIS FUNCTION.  Beetlejuice's exterior and its sign are whole-group
-   travels with `home` 0, so "home at 0, and 0 at 255" is the whole of their
-   range: 310..322 carries eleven live movers and those two dead ones.  The
-   ruling is read literally on purpose — the numbers come off the records and
-   docs/ARTNET.md prints them — and the fix, if it is one, is a ruling rather
-   than a guess made here.
+   A SCENE THE RAIL HAULS IS NOT ON THIS MAP AT ALL (RULINGS CW, ES).  A show
+   may declare hauls that are not linesets — SHOW.flyExtras, the Beetlejuice
+   sign being the one there is — and RULING ES gives that sign its own banded
+   channel, 308, written on a band CHANGE only.  This block writes EVERY
+   FRAME, and a per-frame write outvotes a change-only one absolutely: 308
+   would put the sign on its stop and the next packet would haul it back, so
+   the channel would be dead on arrival and nothing would say why.  So every
+   scene named by a flyExtra is skipped here, travel and parts alike, and the
+   rail keeps what the rail hauls.  It costs Beetlejuice one channel: the
+   block is 310..321, twelve movers, and the sign is addressed on 308.
 
-   AND THE SIGN ONE IS A COLLISION WITH RULING ES, WAITING FOR WHOEVER LANDS
-   IT.  Dead is not inert: a degenerate channel still writes `target` 0 every
-   frame, and the sign's mover is exactly what ES drives through
-   flyExtraToStop.  Whichever of the two runs LATER in artnetTick wins every
-   frame, so with the band decoder in front of this call the sign can never
-   leave its stop 0 while a desk is talking.  Read the collision before
-   choosing the order — the honest answers are ES after ET, or the sign left
-   off this block by a new ruling.
+   ONLY THE TRAVEL MOVER CAN ACTUALLY COLLIDE — flyExtraMover, flyExtraTo and
+   flyExtraToStop all write `sc.mv` and nothing else — so skipping the parts
+   as well is the wider rule of the two.  It is the right one while it costs
+   nothing (no flyExtra scene has a part mover today) because it keeps ONE
+   owner for a hauled scene rather than splitting it across two surfaces; if
+   one ever grows parts they will need a ruling rather than a silent channel.
+
+   WHICH LEAVES ONE CHANNEL THAT CANNOT MOVE ANYTHING, AND IT IS NOT A BUG IN
+   THIS FUNCTION.  Beetlejuice's exterior is a whole-group travel with `home`
+   0 and no declared out, so "home at 0, and 0 at 255" is the whole of its
+   range.  The ruling is read literally on purpose — the numbers come off the
+   records and docs/ARTNET.md prints them — and the fix, if it is one, is a
+   ruling rather than a guess made here.
 
    THE WRITE IS `m.target` AND NOTHING ELSE.  `m.off` and the group's own
    position belong to sceneMvAdvance, which walks the record at `m.speed` on
@@ -12001,10 +12009,20 @@ function artMoverSet(m, byte){
      a mover's live matrix. */
   m.target = m.home + (byte / 255) * (out - m.home);
 }
+/* is this scene hauled by the rail as a fly extra?  Then it is ES's, not
+   ours — and it is asked of SHOW.flyExtras at the moment of the frame, never
+   cached, because the list is the loaded show's and shows change. */
+function artMoverHauled(sc){
+  const xs = SHOW.flyExtras;
+  if(!xs || !xs.length) return false;
+  for(const x of xs) if(x && x.scene === sc.name) return true;
+  return false;
+}
 function artMovers(b){
   if(!SHOW.scenes || !SHOW.scenes.length) return;
   let o = artMoverBase() - 1;                     // to a 0-based index
   for(const sc of SHOW.scenes){
+    if(artMoverHauled(sc)) continue;              // the rail has it (CW, ES)
     /* a rig plus a rail plus a show with a lot of scenery could run past 512;
        the channels that fit are driven and the rest are simply not there */
     if(sc.mv){ if(o >= b.length) return; artMoverSet(sc.mv, b[o++]); }

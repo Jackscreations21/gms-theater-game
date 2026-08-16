@@ -1583,9 +1583,11 @@ const P = async (name, fn)=>{
        reads: SHOW.scenes in declaration order, sc.mv then sc.pmv.  It is only
        ever used to say WHICH record a channel should have moved — the cases
        below assert on metres, so a wrong order shows up as a wrong distance. */
+    const mvHauled = sc => (SHOW.flyExtras || []).some(x=>x && x.scene === sc.name);
     const mvAll = ()=>{
       const out = [];
       for(const sc of SHOW.scenes){
+        if(mvHauled(sc)) continue;               // the rail hauls it (CW, ES)
         if(sc.mv) out.push({scene:sc.name, name:'mv', m:sc.mv, g:sc.group});
         if(sc.pmv) for(const k in sc.pmv) out.push({scene:sc.name, name:k, m:sc.pmv[k], g:sc.pmv[k].group});
       }
@@ -1805,6 +1807,51 @@ const P = async (name, fn)=>{
       } finally { FIXTURES.pop(); }
       artSetOn(false);
       return 'a 40th lantern moved the mover block to 317 and the desk still found the attic';
+    });
+
+    P('a scene the RAIL hauls takes no mover channel at all (RULINGS CW, ES, ET)', ()=>{
+      /* THE SIGN IS RULING ES\\u2019S, ON CHANNEL 308, AND ES WRITES ON A BAND
+         CHANGE ONLY.  This block writes every frame, and a per-frame write
+         beats a change-only one absolutely — so a mover channel on a hauled
+         scene would not merely duplicate 308, it would make it dead on
+         arrival: the stop lands, and the next packet hauls it back.
+         ES itself is not in this build yet, so its own write is made here the
+         way ES makes it, through flyExtraToStop — which is the collision. */
+      showLoad('beetlejuice');
+      const x = (SHOW.flyExtras || []).find(y=>y.key === 'bjSign');
+      if(!x) throw new Error('the sign is not declared as a fly extra any more');
+      const sc = sceneFind(x.scene), m = sc.mv;
+      if(!m) throw new Error('the sign carries no travel, so nothing here can collide');
+      const stops = flyExtraStops(x);
+      if(!stops || stops.length < 2) throw new Error('the sign has no stops to be dragged off');
+      const ws = deskOn();
+      /* put it on its TOP stop and let the scene tick take it there */
+      const top = stops.length - 1, want = stops[top].off;
+      /* and the stop has to be somewhere a mover channel would NOT leave it:
+         this travel is home 0 with no out, so every byte of it maps to 0 */
+      if(Math.abs(want) < 1)
+        throw new Error('the top stop is at ' + want + 'm, which is where a mover channel would put it anyway');
+      flyExtraToStop(x, top);
+      for(let k = 0; k < 20000 && Math.abs(m.off - want) > 1e-4; k++) sceneMoveStep(1/60);
+      if(Math.abs(m.off - want) > 1e-3) throw new Error('the sign would not go to its stop for the setup');
+      const up = mvWorld(sc.group, m.axis);
+      /* EVERY BYTE OF EVERY CHANNEL from the base to the end of the universe,
+         for two seconds of frames.  Not "the channel we think it would take" —
+         if this block can reach the sign on ANY channel at all, this finds it. */
+      const b = new Uint8Array(512);
+      for(let k = artMoverBase() - 1; k < 512; k++) b[k] = 255;
+      for(let f = 0; f < 120; f++){ ws.deliver(b); artnetTick(1/60); sceneMoveStep(1/60); }
+      if(Math.abs(m.target - want) > 1e-6)
+        throw new Error('the mover block commanded the sign to ' + m.target.toFixed(2) +
+          'm, off its stop at ' + want.toFixed(2) + ' — channel 308 would be dead on arrival');
+      if(Math.abs(mvWorld(sc.group, m.axis) - up) > 1e-6)
+        throw new Error('the sign travelled ' + Math.abs(mvWorld(sc.group, m.axis) - up).toFixed(2) +
+          'm in world space under a desk that has no business driving it');
+      if(flyExtraAtStop(x) !== top)
+        throw new Error('the sign is no longer reading as being at its stop');
+      artSetOn(false);
+      return 'the sign held its ' + stops[top].name + ' stop at ' + want.toFixed(2) +
+             'm through 120 frames of every mover channel at 255 — the rail keeps what the rail hauls';
     });
 
     P('512 ZEROS DRIVE EVERY SET HOME — measured, and it collides with RULING EQ', ()=>{
