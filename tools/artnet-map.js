@@ -1,26 +1,36 @@
-/* THE ART-NET CHANNEL MAP, GENERATED OFF THE CODE          (RULING EO, PR 8)
+/* THE ART-NET CHANNEL LIST, GENERATED OFF THE CODE      (RULINGS EO and FA)
 
    RULING EO says the map file "cannot drift from the code because it is read
-   off the code".  This is the probe that reads it.  It emits `docs/ARTNET.md`
-   on stdout:
+   off the code".  RULING FA says what SHAPE it takes: ONE LINE PER CHANNEL,
+   channel 1 to the last channel in use, in numeric order, no gaps, and
+   essentially nothing else — a patch list to work down at a desk rather than
+   a document to read.  This is the probe that writes it:
 
      export NODE_PATH=../tests/node_modules
      node artnet-map.js > ../docs/ARTNET.md
 
    and `tests/artnet.js` fails if the committed file and this output disagree.
 
+   FA IS A PRESENTATION RULING AND IT CHANGED NO MEASUREMENT.  Everything this
+   file used to print as prose is still DRIVEN.  What left the output went one
+   of two ways: onto the channel's own line as a short suffix, or into a
+   SELF-CHECK that throws.  The second is the stronger of the two and it is
+   deliberate — a measurement whose only home was a sentence can be quietly
+   weakened by rewording the sentence, and a measurement that throws cannot.
+
    WHY IT PRINTS THE BUILT FILE'S BYTE SIZE FIRST.  Every probe in this repo
    that reads `the-house.html` measures the LAST BUILD, so an src-only edit
    leaves it describing bytes that are no longer what anyone is running
    (TRAPS, the last entry in the file).  The size line says which bytes were
    read, and the suite COMPARES it — the committed number and the probe's own
-   must agree, or the map was generated against a different build.  It used to
-   be the one line nobody diffed, which meant the one number in this file that
-   nothing verified; the reasoning either way is written down in
-   tests/artnet.js beside the assertion.  It still does NOT catch a stale
-   BUILD: an src-only edit leaves a stale the-house.html, this probe reads it,
-   the suite stats the same stale file, and everything agrees.  `sh build.sh`
-   first, always.
+   must agree, or the list was generated against a different build.  It still
+   does NOT catch a stale BUILD: an src-only edit leaves a stale
+   the-house.html, this probe reads it, the suite stats the same stale file,
+   and everything agrees.  `sh build.sh` first, always.
+
+   THE SECOND HEADER LINE IS WHICH SHOW IS LOADED, and it is there because the
+   set-mover lines and the lineset goods are that show's.  That is the whole
+   header; RULING FA asks for nothing else.
 
    NOTHING BELOW IS TYPED FROM A TABLE.  The rulings' own prose has already
    been wrong about this data once — RULING ET says "the attic tracking in
@@ -31,9 +41,9 @@
    FILE MEASURES RATHER THAN RESTATES: a block that re-indexes the same consts
    the game indexes, in the order this file believes the game uses, is a table
    with a script in front of it and would survive the mutation it exists to
-   catch.  So `artLights`, `artFlys`, `artMovers`, `artMoverSet` AND `artBands`
-   are all called, and what moved is written down.  Where a claim could
-   disagree with the code, these throw:
+   catch.  So `artLights`, `artFlys`, `artMovers`, `artMoverSet`, `artBands`
+   AND `artSign` are all called, and what moved is written down.  The
+   self-checks:
 
      1  every fixture's intensity channel is found by driving that ONE byte
         and watching exactly one fixture light; and each of the seven offsets
@@ -45,18 +55,58 @@
         `traveler`, because artFlys resolves it with findIndex and would drive
         only the first of two silently
      3  every set mover's channel the same way, for every mover whose travel
-        is long enough to be told apart (the degenerate ones are named), plus
-        a sentinel check: a mover artMoverSet returned early on keeps the
-        sentinel, and a comparison would then pass by agreeing with itself
+        is long enough to be told apart (the degenerate ones are named on
+        their own line), plus a sentinel check: a mover artMoverSet returned
+        early on keeps the sentinel, and a comparison would then pass by
+        agreeing with itself
+     4  a fortieth lantern is pushed onto FIXTURES and every base after the
+        light block must move by exactly ART_CH_FIX.  TRAPS: a map written
+        from literals silently repoints when the rig grows, and an assertion
+        that the base EQUALS the formula is satisfied by the literal too —
+        the derivation is proved by growing the rig
+     5  the fade durations really are zeroed, per fixture, not asserted from
+        RULING EP's prose
+     6  a fly speed byte of 0 really parks a line that is MID-TRAVEL, and the
+        traveler is parked by its own line's speed byte
+     7  the band channel really does write on a band CHANGE only.  ONE
+        channel, not two: RULING EZ took the sign off the bands and gave it
+        two channels of its own, so 307 is all that is left banded
+     8  loading a production did not re-point one light channel
+     9  `sc.mv` records carry no `group` and `sc.pmv` records do — as
+        MEMBERSHIP, not as two counts that happen to agree
+     10 the emitted list is one line per channel with NO GAPS, from the first
+        channel to the last one in use.  That is RULING FA itself, and it is
+        what fires if a future ruling inserts a channel and forgets a line
+     11 RULING EZ's sign: the target channel spans a real travel, a speed byte
+        of 0 writes NOTHING, byte 255 is the haul's OWN declared speed, the
+        speed byte scales, and every stop the show declares is reachable by
+        some byte.  IT IS ELEVENTH AND NOT FOURTH ON PURPOSE.  EZ wrote it as
+        "SELF-CHECK 4" when this file carried three; FA had already given 4 to
+        the fortieth-lantern check and 10 to its own no-gap rule, and
+        `tests/artnet.js` names SELF-CHECK 10 by number.  Renumbering FA's
+        block to make room would have moved the number the suite cites, so the
+        newcomer takes the free number at the end.
 
-   WHAT THIS PROBE CANNOT MEASURE, AND SAYS SO IN THE OUTPUT.  jsdom fetches
-   nothing, so every set here is the BUILT STAND-IN.  `bjWingPack` re-measures
-   each wing set's box and rewrites `out` on its movers when one of Jack's
-   model files lands in a real browser, and the map names the channels that
-   changes — measured, by poisoning every `out` and running the pack.
+   WHAT SURVIVED INTO THE LIST AS A WARNING.  "Nothing else" is not licence to
+   throw away a fact that stops somebody breaking a show, so these ride on the
+   line of the channel they concern, compressed to a suffix: the one-way mover
+   channel; that every mover metre was measured with NO model file loaded and
+   which channels `bjWingPack` re-points when one lands; that the traveler
+   channel's LINE changes with the loaded show; that the house selector acts
+   on a band CHANGE only; that a fixture's pan and tilt bytes are ignored on a
+   lantern that does not move; that a fly speed byte of 0 is PARKED; and that
+   PARKED on the SIGN's speed byte means SILENCE rather than a stop, because
+   the sign is a scene mover and a haul the show started runs on (RULING EZ).
 
-   A probe that judges has to be checkable, and a map nobody can check is a
-   table with a script in front of it.                                     */
+   WHAT THIS PROBE CANNOT MEASURE, AND SAYS SO ON EVERY LINE IT AFFECTS.
+   jsdom fetches nothing, so every set here is the BUILT STAND-IN.
+   `bjWingPack` re-measures each wing set's box and rewrites `out` on its
+   movers when one of Jack's model files lands in a real browser, and the list
+   names the channels that changes — measured, by poisoning every `out` and
+   running the pack.
+
+   A probe that judges has to be checkable, and a list nobody can check is a
+   table with a script in front of it.                                      */
 
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
@@ -78,8 +128,8 @@ const dom = new JSDOM(html.replace(/<script src=.*?<\/script>/, ''),
 const w = dom.window;
 /* THE PAGE'S OWN console GOES NOWHERE.  jsdom forwards it to this process's
    stdout, and the loader prints a line about the stand-ins the moment a show
-   is loaded — which lands in the middle of the map and would be committed as
-   part of it.  This file's only output is the map. */
+   is loaded — which lands in the middle of the list and would be committed as
+   part of it.  This file's only output is the list. */
 {
   const noop = ()=>{};
   const quiet = {};
@@ -139,8 +189,8 @@ for(const k of ['FIXTURES','FLY','GOODS','SECTIONS','SHOW','HOUSE','OUT_TRIM',
   if(P[k] === undefined) throw new Error('the probe cannot see ' + k + ' — add it to the __P handout');
 for(const fn of ['artFixBase','artFlyBase','artHouseBase','artSelBase','artMoverBase',
                  'artBandOf','artLights','artFlys','artMovers','artMoverSet','artMoverOut',
-                 'artMoverHauled','artBands','artSign','artSignRange',
-                 'minTrimOf','showLoad','flyExtraStops',
+                 'artMoverHauled','artBands','artSign','artSignRange','minTrimOf',
+                 'showLoad','flyExtraStops',
                  'flyExtraMover','flyTo','updateFly','bjRedress','bjWingPack'])
   if(typeof w[fn] !== 'function')
     throw new Error('the probe cannot see ' + fn + '() on the window');
@@ -152,26 +202,73 @@ pump(6);
 if(w.__fatal) throw new Error('the file did not boot: ' + w.__fatal);
 
 if(P.STAGE !== 'palace')
-  throw new Error('the map is the Palace patch (RULING EN) and the board is on ' + P.STAGE);
+  throw new Error('the list is the Palace patch (RULING EN) and the board is on ' + P.STAGE);
 
 const FIX = P.FIXTURES, FLY = P.FLY;
 const CH_FIX = P.ART_CH_FIX;
 /* THE RIG AND THE RAIL BELONG TO THE STAGE, NOT TO THE SHOW, so every base is
-   already final before a production is loaded — which is why the light block
+   already final before a production is loaded — which is why the light lines
    and the house circuits below are the same in all five. */
 const FIXB = w.artFixBase(), FLYB = w.artFlyBase(), HOUB = w.artHouseBase(),
       SELB = w.artSelBase(), MVB  = w.artMoverBase();
 
+/* THE SELECTOR CHANNELS, NAMED ONCE AND DERIVED — never written down.  The
+   ONE banded channel is the first of the selector block; the sign's TARGET
+   and SPEED are the next two (RULING EZ, which took the sign off the bands
+   and gave it the RULING EQ fly idiom); the traveler is the LAST channel
+   before the mover block, which is what it is in the layout rather than a
+   coincidence of today's arithmetic, and it is the form that survives a
+   ruling inserting a selector channel above it.  EZ IS EXACTLY THAT RULING
+   AND THIS FORM ALREADY SURVIVED IT: the traveler was SELB + 2 and is SELB +
+   3, and only the sign's two lines had to be written.  Both readings are the
+   same channel today (SELB + 3 === MVB - 1), and neither is trusted: the
+   traveler channel is DRIVEN below and the line that answered is checked
+   against the linesets that declare one. */
+const HOUSE_BAND_CH = SELB;
+const SIGN_T_CH     = SELB + 1;
+const SIGN_S_CH     = SELB + 2;
+const TRAV_CH       = MVB - 1;
+/* and the two readings really are the same channel, said out loud rather than
+   assumed — EZ moved the mover base and a stale artMoverBase() would put the
+   traveler on top of the sign's speed byte without anything else noticing */
+if(TRAV_CH !== SIGN_S_CH + 1)
+  throw new Error('the selector block does not fit: the sign speed byte is ' + SIGN_S_CH +
+    ' and the traveler (artMoverBase() - 1) is ' + TRAV_CH + ' — RULING EZ puts four ' +
+    'channels in the selector block and artMoverBase() must be artSelBase() + 4');
+
 const f2 = v => (Math.round(v * 100) / 100).toFixed(2);
 const f1 = v => (Math.round(v * 10) / 10).toFixed(1);
-/* right-aligned, so a two-digit rig does not stagger the tables */
-const pad = (s, n) => ' '.repeat(Math.max(0, n - String(s).length)) + String(s);
+/* right-aligned, so a two-digit rig does not stagger the columns */
+const pad  = (s, n) => ' '.repeat(Math.max(0, n - String(s).length)) + String(s);
+const padR = (s, n) => String(s) + ' '.repeat(Math.max(0, n - String(s).length));
 function frame(){ return new Uint8Array(512); }
 function put(b, ch, v){ b[ch - 1] = v; }              // channel numbers are 1-based
 
+/* SELF-CHECK 4 — THE BASES ARE COMPUTED, AND IT IS PROVED BY GROWING THE RIG.
+   TRAPS: "A CHANNEL MAP MUST BE COMPUTED OR IT SILENTLY REPOINTS", and a test
+   that asserts `base === 1 + 7 * FIXTURES.length` is satisfied by a literal
+   too.  So a fortieth lantern is pushed onto FIXTURES and every base after
+   the light block must move by exactly ART_CH_FIX.  This used to be a
+   sentence at the foot of the file ("add a fortieth lantern and the fly block
+   starts at 281"); as a check it cannot be reworded into agreement. */
+{
+  const names = ['artFlyBase', 'artHouseBase', 'artSelBase', 'artMoverBase'];
+  const before = names.map(n=>w[n]());
+  let after;
+  FIX.push({name: 'a lantern that is not there'});
+  try{ after = names.map(n=>w[n]()); }
+  finally{ FIX.pop(); }
+  for(let i = 0; i < names.length; i++)
+    if(after[i] - before[i] !== CH_FIX)
+      throw new Error('SELF-CHECK 4 FAILED: a fortieth lantern moved ' + names[i] + '() by ' +
+        (after[i] - before[i]) + ' and not ' + CH_FIX + ' — the bases are not computed off ' +
+        'FIXTURES.length, so every channel in this list would silently repoint the day ' +
+        'the rig grows');
+}
+
 /* WHICH LINE THE TRAVELER CHANNEL BELONGS TO IS A PROPERTY OF THE HANG, and a
    production re-hangs the rail — so it is measured TWICE, once on the Palace's
-   own standing hang and once on the show this map is generated with.  Driven
+   own standing hang and once on the show this list is generated with.  Driven
    half-open, because a write of the value a field already holds changes
    nothing and the first version of this reported that no line carried the
    traveler at all (every curtain in the building was shut).
@@ -206,44 +303,46 @@ function travelerNow(where){
     throw new Error('SELF-CHECK 2 FAILED: ' + declared.length + ' linesets on ' + where +
       ' hang goods that declare themselves a traveler (lines ' + declared.map(x=>x.id).join(', ') +
       ') — artFlys takes FLY.findIndex and would drive line ' + declared[0].id +
-      ' alone, so channel ' + (SELB + 3) + ' cannot be printed as belonging to one line');
+      ' alone, so channel ' + TRAV_CH + ' cannot be printed as belonging to one line');
   const was = flySnapOf();
   let hit = null, usedByte = null;
   for(const byte of TRAV_BYTES){
     const b = frame();
     for(let j = 0; j < FLY.length; j++) put(b, FLYB + j * 2 + 1, 255);   // every line driven
-    put(b, SELB + 3, byte);
+    put(b, TRAV_CH, byte);
     w.artFlys(b);
     const moved = FLY.map((ls, i)=>({i: i, id: ls.id, key: ls.goodsKey}))
                      .filter(x=>FLY[x.i].travTarget !== was[x.i].travTarget);
     flyPutBack(was);
     if(moved.length > 1)
-      throw new Error('SELF-CHECK 2 FAILED: channel ' + (SELB + 3) + ' moved ' + moved.length +
-        ' travelers on ' + where + ' — the map claims it belongs to exactly one line');
+      throw new Error('SELF-CHECK 2 FAILED: channel ' + TRAV_CH + ' moved ' + moved.length +
+        ' travelers on ' + where + ' — the list claims it belongs to exactly one line');
     if(moved.length === 1){ hit = moved[0]; usedByte = byte; break; }
   }
   /* the two answers, checked against each other rather than one of them
      printed and the other trusted */
   if(declared.length === 1 && !hit)
     throw new Error('SELF-CHECK 2 FAILED: line ' + declared[0].id + ' on ' + where +
-      ' hangs goods that declare `traveler` and no byte on channel ' + (SELB + 3) +
+      ' hangs goods that declare `traveler` and no byte on channel ' + TRAV_CH +
       ' moved it — the channel and the declaration disagree');
   if(!declared.length && hit)
-    throw new Error('SELF-CHECK 2 FAILED: channel ' + (SELB + 3) + ' moved line ' + hit.id +
+    throw new Error('SELF-CHECK 2 FAILED: channel ' + TRAV_CH + ' moved line ' + hit.id +
       ' on ' + where + ' and no lineset there declares a traveler');
   if(hit && declared.length && hit.i !== declared[0].i)
-    throw new Error('SELF-CHECK 2 FAILED: channel ' + (SELB + 3) + ' moved line ' + hit.id +
+    throw new Error('SELF-CHECK 2 FAILED: channel ' + TRAV_CH + ' moved line ' + hit.id +
       ' on ' + where + ' and the declaring lineset is line ' + declared[0].id);
   return hit ? Object.assign({byte: usedByte}, hit) : null;
 }
 const travBare = travelerNow('the Palace\'s standing hang');
 const travBareGoods = travBare ? (P.GOODS[travBare.key] || {}).label : null;
 
-/* THE RIG AND THE HOUSE CIRCUITS ARE THE STAGE'S, NOT THE SHOW'S — and this
-   file used to say so as reasoning rather than as a reading.  A signature of
-   the light block is taken here, before any production exists, and again
-   after one is loaded; the two are compared below and the answer printed.  It
-   is two shows, not five, and the output says that too. */
+/* SELF-CHECK 8 — THE RIG AND THE HOUSE CIRCUITS ARE THE STAGE'S, NOT THE
+   SHOW'S.  This file used to say so as reasoning, then measured it and
+   printed the answer as a paragraph.  RULING FA has no room for the
+   paragraph, so it is a check: a signature of the light block is taken here,
+   before any production exists, and again after one is loaded, and they must
+   be identical.  If a production ever DOES re-point a light channel this
+   throws rather than printing a list that is silently one show's. */
 const lightSig = ()=>JSON.stringify({
   fixBase: w.artFixBase(), chFix: CH_FIX, flyBase: w.artFlyBase(), houseBase: w.artHouseBase(),
   fixtures: FIX.map(f=>[f.ch, f.name, f.type, !!f.mover]),
@@ -251,15 +350,18 @@ const lightSig = ()=>JSON.stringify({
 const lightSigBare = lightSig();
 
 /* WHICH SHOW IS LOADED CHANGES THIS FILE, so the choice is made here and said
-   out loud in the output.  Beetlejuice is the only production carrying set
+   out loud in the header.  Beetlejuice is the only production carrying set
    movers at all (RULING ET is for it), and it is also the show whose own
-   goods hang on the fly rail — so the mover block and the lineset labels both
+   goods hang on the fly rail — so the mover lines and the lineset labels both
    come from it. */
 const SHOW_KEY = 'beetlejuice';
 if(!w.showLoad(SHOW_KEY)) throw new Error('the probe could not load ' + SHOW_KEY);
 pump(4);
-const lightSigLoaded = lightSig();
-const lightBlockMoved = lightSigBare !== lightSigLoaded;
+if(lightSig() !== lightSigBare)
+  throw new Error('SELF-CHECK 8 FAILED: loading ' + SHOW_KEY.toUpperCase() + ' moved the light ' +
+    'block — a base, a fixture channel, name, type or mover flag, or a house circuit name. ' +
+    'The light lines in this list would then be the LOADED SHOW\'S rather than the stage\'s, ' +
+    'and the header says only which show the movers and the goods came from');
 
 /* ---------------------------------------------------------------------------
    THE LABELS, read off the records BEFORE the rig is driven.  Every
@@ -307,6 +409,20 @@ for(const r of mvRows){
   r.declaresOut = (typeof r.m.out === 'number');
   r.hasGroup = !!r.m.group;
 }
+/* SELF-CHECK 9 — `sc.mv` records carry no `group` field and `sc.pmv` records
+   do, and anything walking this block that wants the moving GROUP has to take
+   it from the SCENE for a whole-group travel and from the RECORD for a part.
+   Asked as MEMBERSHIP and not as two counts that happen to agree — one `mv`
+   with a group and one `pmv` without would leave both totals equal. */
+{
+  const odd = mvRows.filter(r=>r.hasGroup !== (r.part !== 'mv'));
+  if(odd.length)
+    throw new Error('SELF-CHECK 9 FAILED: ' + odd.map(r=>'ch ' + r.ch + ' ' + r.scene + ':' + r.part +
+      (r.hasGroup ? ' is a whole-group travel and carries a group'
+                  : ' is a part mover and carries none')).join('; ') +
+      ' — anything walking the mover channels for a moving group would take it from the ' +
+      'wrong place');
+}
 
 /* ---------------------------------------------------------------------------
    THE MEASUREMENTS.  A frame is 512 bytes and the apply functions are called
@@ -347,7 +463,7 @@ for(let i = 0; i < FIX.length; i++){
   if(lit.length !== 1 || lit[0] !== i)
     throw new Error('SELF-CHECK 1 FAILED: channel ' + (FIXB + i * CH_FIX) +
       ' was meant to be fixture ' + (i + 1) + ' alone and lit [' +
-      lit.map(x=>x + 1).join(',') + '] — the fixture block is not where this map says');
+      lit.map(x=>x + 1).join(',') + '] — the fixture block is not where this list says');
 }
 
 /* THE SEVEN OFFSETS, AND WHAT EACH ONE IS CALLED, MEASURED.  Red, green and
@@ -361,16 +477,6 @@ const zero = frame();
 const FIELDS = ['level', 'r', 'g', 'b', 'gobo', 'panT', 'tiltT'];
 const FIELD_LABEL = {level:'intensity', r:'red', g:'green', b:'blue',
                      gobo:'gobo', panT:'pan', tiltT:'tilt'};
-const FIELD_PLURAL = {level:'levels', r:'reds', g:'greens', b:'blues',
-                      gobo:'gobos', panT:'pans', tiltT:'tilts'};
-const FIELD_WRITE = {
-  level: '`f.level` = byte/255, `f.lvlDur` = 0',
-  r:     '`f.color` red = byte/255, `f.colDur` = 0',
-  g:     '`f.color` green = byte/255, `f.colDur` = 0',
-  b:     '`f.color` blue = byte/255, `f.colDur` = 0',
-  gobo:  '`f.gobo`, clamped to the gobo count',
-  panT:  '`f.panT` degrees',
-  tiltT: '`f.tiltT` degrees'};
 const slotEffect = [];
 for(let s = 0; s < CH_FIX; s++){
   w.artLights(zero);
@@ -392,7 +498,7 @@ const slotField = slotEffect.map((m, s)=>{
   if(ks.length !== 1)
     throw new Error('SELF-CHECK 1 FAILED: offset +' + s + ' (channel ' + (FIXB + s) +
       ') moved ' + (ks.length ? ks.map(k=>FIELD_LABEL[k]).join(' and ') : 'nothing at all') +
-      ' — one fixture channel is one property, and this map names each offset after ' +
+      ' — one fixture channel is one property, and this list names each offset after ' +
       'the property that answered it');
   return ks[0];
 });
@@ -403,68 +509,79 @@ function slotOf(field){
       ' — the seven offsets measured as ' + slotField.map(k=>FIELD_LABEL[k]).join(', '));
   return s;
 }
-/* AND THE FADE DURATIONS ARE ZEROED, measured rather than asserted from
-   RULING EP's prose: every duration is set to nine seconds first, one frame
-   is applied, and what is left at zero is counted. */
-const durProof = (()=>{
-  for(const f of FIX){ f.lvlDur = 9; f.colDur = 9; }
-  const b = frame();
-  for(let i = 0; i < FIX.length; i++) put(b, FIXB + i * CH_FIX, 128);
-  w.artLights(b);
-  return {lvl: FIX.filter(f=>f.lvlDur === 0).length,
-          col: FIX.filter(f=>f.colDur === 0).length};
-})();
+const PAN_S = slotOf('panT'), TILT_S = slotOf('tiltT'), GOBO_S = slotOf('gobo');
 
-/* WHICH LANTERNS ACTUALLY TURN.  Not read off `f.mover` and printed as though
-   it had been measured: the pan and tilt bytes are driven and the records
-   that answered are the movers. */
-const PAN_S = slotOf('panT'), TILT_S = slotOf('tiltT');
-const ptAt = v=>{ const b = frame();
-  for(let i = 0; i < FIX.length; i++){ put(b, FIXB + i*CH_FIX + PAN_S, v); put(b, FIXB + i*CH_FIX + TILT_S, v); }
-  w.artLights(b); return fixSnap(); };
-const turnedHi = ptAt(255), turnedLo = ptAt(0), turnedMid = ptAt(128);
-for(let i = 0; i < FIX.length; i++){
-  const responds = turnedHi[i].panT !== turnedLo[i].panT || turnedHi[i].tiltT !== turnedLo[i].tiltT;
-  fixRows[i].turns = responds;
-  if(responds !== fixRows[i].mover)
-    throw new Error('SELF-CHECK 1 FAILED: fixture ' + (i + 1) + ' declares mover=' +
-      fixRows[i].mover + ' and ' + (responds ? 'moved' : 'did not move') + ' under a pan/tilt byte');
+/* WHAT EVERY FIXTURE CHANNEL DOES AT THREE BYTES, PER FIXTURE.  RULING FA
+   puts one line per channel, so the numbers on a line have to be that
+   channel's own: the previous file measured the ramps on FIXTURE 1 and
+   printed them as the rig's, which is a sentence rather than a reading for
+   the other 38 lines.  One sweep per offset per byte, every fixture driven at
+   once (artLights writes each record independently) and every record read
+   back. */
+const BYTES3 = [0, 128, 255];
+const slotAt = [];
+for(let s = 0; s < CH_FIX; s++){
+  const perByte = {};
+  for(const v of BYTES3){
+    const b = frame();
+    for(let i = 0; i < FIX.length; i++) put(b, FIXB + i * CH_FIX + s, v);
+    w.artLights(b);
+    perByte[v] = fixSnap();
+  }
+  slotAt.push(perByte);
 }
-const aMover = fixRows.find(r=>r.turns);
-const panAt = aMover ? {lo: turnedLo[aMover.i].panT, mid: turnedMid[aMover.i].panT, hi: turnedHi[aMover.i].panT} : null;
-const tiltAt = aMover ? {lo: turnedLo[aMover.i].tiltT, mid: turnedMid[aMover.i].tiltT, hi: turnedHi[aMover.i].tiltT} : null;
+const slotVal = (s, v, i) => slotAt[s][v][i][slotField[s]];
 
-/* the gobo bands, swept byte by byte rather than divided by 43 here */
-const goboBands = [];
+/* the gobo bands, swept byte by byte rather than divided by 43 here — and per
+   fixture, for the same reason as the ramps */
+const goboSweep = [];
 for(let v = 0; v < 256; v++){
   const b = frame();
-  put(b, FIXB + slotOf('gobo'), v);
+  for(let i = 0; i < FIX.length; i++) put(b, FIXB + i * CH_FIX + GOBO_S, v);
   w.artLights(b);
-  const g = FIX[0].gobo;
-  const last = goboBands[goboBands.length - 1];
-  if(!last || last.gobo !== g) goboBands.push({from: v, to: v, gobo: g});
-  else last.to = v;
+  goboSweep.push(FIX.map(f=>f.gobo));
+}
+function goboBandsOf(i){
+  const bands = [];
+  for(let v = 0; v < 256; v++){
+    const g = goboSweep[v][i], last = bands[bands.length - 1];
+    if(!last || last.gobo !== g) bands.push({from: v, to: v, gobo: g});
+    else last.to = v;
+  }
+  return bands;
 }
 const goboName = {};
 for(const k in P.GOBO_NAMES) goboName[P.GOBO_NAMES[k]] = k;
 
-/* THE INTENSITY AND COLOUR RAMPS, EACH BYTE DRIVEN ALONE AND THE MATCHING
-   COMPONENT READ BACK.  The old version drove all four bytes together and
-   read `level` and `r` — which cannot tell red from blue, and printed only
-   the level anyway, leaving "colour the same, per component" as the one
-   sentence in this block that was neither measured nor shown. */
-const rampOf = field=>{
-  const s = slotOf(field);
-  return [0, 128, 255].map(v=>{
-    const b = frame();
-    put(b, FIXB + s, v);
-    w.artLights(b);
-    const f = FIX[0];
-    return {byte: v, val: field === 'level' ? f.level
-                        : field === 'r' ? f.color.r : field === 'g' ? f.color.g : f.color.b};
-  });
-};
-const rampAt = {level: rampOf('level'), r: rampOf('r'), g: rampOf('g'), b: rampOf('b')};
+/* SELF-CHECK 5 — THE FADE DURATIONS ARE ZEROED, measured rather than asserted
+   from RULING EP's prose: every duration is set to nine seconds first, one
+   frame is applied, and any fixture still carrying one throws.  It was a
+   printed count ("39 of 39") until RULING FA; a count in a sentence can be
+   read down to 38 without anything failing, and a check cannot. */
+{
+  for(const f of FIX){ f.lvlDur = 9; f.colDur = 9; }
+  const b = frame();
+  for(let i = 0; i < FIX.length; i++) put(b, FIXB + i * CH_FIX, 128);
+  w.artLights(b);
+  const lvl = FIX.filter(f=>f.lvlDur !== 0).length, col = FIX.filter(f=>f.colDur !== 0).length;
+  if(lvl || col)
+    throw new Error('SELF-CHECK 5 FAILED: an applied frame left ' + lvl + ' of ' + FIX.length +
+      ' lvlDur and ' + col + ' of ' + FIX.length + ' colDur non-zero — RULING EP says every ' +
+      'Art-Net write is RAW, and a surviving duration means the fade engine fights the desk');
+}
+
+/* WHICH LANTERNS ACTUALLY TURN.  Not read off `f.mover` and printed as though
+   it had been measured: the pan and tilt bytes are driven and the records
+   that answered are the movers. */
+for(let i = 0; i < FIX.length; i++){
+  const responds = slotVal(PAN_S, 255, i) !== slotVal(PAN_S, 0, i) ||
+                   slotVal(TILT_S, 255, i) !== slotVal(TILT_S, 0, i);
+  fixRows[i].turns = responds;
+  fixRows[i].gobo = goboBandsOf(i);
+  if(responds !== fixRows[i].mover)
+    throw new Error('SELF-CHECK 1 FAILED: fixture ' + (i + 1) + ' declares mover=' +
+      fixRows[i].mover + ' and ' + (responds ? 'moved' : 'did not move') + ' under a pan/tilt byte');
+}
 w.artLights(zero);
 
 /* ---- 2: the house circuits, in the order the code writes them -----------
@@ -483,7 +600,22 @@ for(let s = 0; s < 5; s++){
   if(hit.length !== 1)
     throw new Error('SELF-CHECK 1 FAILED: channel ' + (HOUB + s) + ' moved ' + hit.length +
       ' house circuits [' + hit.join(',') + '] — one channel is one circuit');
-  houseChan.push({ch: HOUB + s, key: hit[0]});
+  /* AND WHAT THE BYTES MEAN IS READ BACK, NOT TYPED.  This line used to print
+     the string '0=out 255=full' — so a square-law house fader, or one where a
+     dead universe brought the house to HALF, produced a byte-identical map
+     with no throw.  A review proved both.  Three ends, driven and read. */
+  const at = {};
+  for(const v of [0, 128, 255]){
+    const bb = frame();
+    put(bb, HOUB + s, v);
+    w.artLights(bb);
+    at[v] = P.HOUSE[hit[0]];
+  }
+  if(!(at[0] === 0 && at[255] === 1))
+    throw new Error('SELF-CHECK 1 FAILED: house circuit ' + hit[0] + ' on channel ' +
+      (HOUB + s) + ' reads ' + at[0] + ' at byte 0 and ' + at[255] +
+      ' at 255 — a house circuit spans out..full');
+  houseChan.push({ch: HOUB + s, key: hit[0], at: at});
 }
 /* and the rig and the house go back to the look they were found in */
 rigPutBack();
@@ -504,7 +636,7 @@ for(let i = 0; i < FLY.length; i++){
     if(Math.abs(FLY[j].target - want) > 1e-6)
       throw new Error('SELF-CHECK 2 FAILED: channel ' + (FLYB + i * 2) + ' left line ' +
         FLY[j].id + ' at ' + f2(FLY[j].target) + 'm, expected ' + f2(want) +
-        ' — the fly block is not where this map says');
+        ' — the fly block is not where this list says');
   }
   const sb = frame();
   put(sb, FLYB + i * 2 + 1, 255);
@@ -520,7 +652,7 @@ for(let i = 0; i < FLY.length; i++){
 /* the target range, measured per line at three bytes */
 for(const r of flyRows){
   r.at = [];
-  for(const v of [0, 128, 255]){
+  for(const v of BYTES3){
     const b = frame();
     for(let j = 0; j < FLY.length; j++) put(b, FLYB + j * 2 + 1, 255);
     put(b, FLYB + r.i * 2, v);
@@ -529,15 +661,17 @@ for(const r of flyRows){
   }
   flyRestore();
 }
-/* AND WHAT A SPEED BYTE OF 0 DOES: THE LINE IS STOPPED WHERE IT STANDS.
-   THE SETUP HAS TO CREATE THE THING BEING PROVED, or the proof is of the
-   setup.  At the restore point every line is standing AT its own target, so
-   `|target - pos| < 1e-9` is already true of all fourteen and a version that
-   simply sent speed 0 and asserted it passed with `ls.target = ls.pos` cut
-   clean out of artFlys.  So each line is first driven off its position
-   through the game's own `flyTo` — mid-travel, target far from pos, which is
-   the state RULING EQ's stop exists for — and only THEN parked. */
-const parkedProof = (()=>{
+/* SELF-CHECK 6 — AND WHAT A SPEED BYTE OF 0 DOES: THE LINE IS STOPPED WHERE
+   IT STANDS.  THE SETUP HAS TO CREATE THE THING BEING PROVED, or the proof is
+   of the setup.  At the restore point every line is standing AT its own
+   target, so `|target - pos| < 1e-9` is already true of all fourteen and a
+   version that simply sent speed 0 and asserted it passed with
+   `ls.target = ls.pos` cut clean out of artFlys.  So each line is first driven
+   off its position through the game's own `flyTo` — mid-travel, target far
+   from pos, which is the state RULING EQ's stop exists for — and only THEN
+   parked.  Both halves throw: a line that would not go mid-travel is a setup
+   that proves nothing, and it used to be printed as a count. */
+{
   const away = [];
   for(let i = 0; i < FLY.length; i++){
     const ls = FLY[i], lo = flyRows[i].lo;
@@ -545,27 +679,39 @@ const parkedProof = (()=>{
     w.flyTo(ls, far);
     if(Math.abs(ls.target - ls.pos) > 0.01) away.push(ls.id);
   }
+  if(away.length !== FLY.length)
+    throw new Error('SELF-CHECK 6 FAILED: only ' + away.length + ' of ' + FLY.length +
+      ' lines could be driven off their own position, so a park measured on the rest ' +
+      'would be measuring a line that was standing still anyway');
   const b = frame();
   for(let j = 0; j < FLY.length; j++){ put(b, FLYB + j * 2, 255); put(b, FLYB + j * 2 + 1, 0); }
   w.artFlys(b);
   const still = FLY.filter(ls=>Math.abs(ls.target - ls.pos) >= 1e-9).map(ls=>ls.id);
   flyRestore();
-  return {away: away.length, still: still};
-})();
+  if(still.length)
+    throw new Error('SELF-CHECK 6 FAILED: with every speed byte at 0, ' + still.length +
+      ' lines (ids ' + still.join(', ') + ') still held a target they were not at — ' +
+      'RULING EQ says a speed byte of 0 STOPS the line where it stands, and every ' +
+      'speed line in this list says PARKED');
+}
 
 /* ---- 4: the traveler on THIS show's hang, and the speed-byte park ------- */
 const travDriven = travelerNow('the ' + SHOW_KEY.toUpperCase() + ' hang');
-/* driven with the byte that DID move it above — a park proved with a byte the
-   field already holds proves nothing at all */
-const travParked = travDriven ? (()=>{
+/* SELF-CHECK 6 — driven with the byte that DID move it above; a park proved
+   with a byte the field already holds proves nothing at all */
+if(travDriven){
   const b = frame();
   for(let j = 0; j < FLY.length; j++) put(b, FLYB + j * 2 + 1, 0);      // every line parked
-  put(b, SELB + 3, travDriven.byte);
+  put(b, TRAV_CH, travDriven.byte);
   w.artFlys(b);
   const moved = FLY.filter((ls, i)=>ls.travTarget !== flyWas[i].travTarget).length;
   flyRestore();
-  return moved === 0;
-})() : null;
+  if(moved)
+    throw new Error('SELF-CHECK 6 FAILED: with every speed byte at 0, byte ' + travDriven.byte +
+      ' on channel ' + TRAV_CH + ' still moved the traveler — RULING EQ has it parked by its ' +
+      'own line\'s speed byte, and an unpatched desk would run a curtain shut in front of ' +
+      'the audience');
+}
 
 /* HOW FAST A TRAVELER DRAWS, measured off one frame of the game's own
    `updateFly` rather than copied out of the spec — where it had picked up a
@@ -597,19 +743,26 @@ const travRate = travDriven ? (()=>{
   return {rate: rate, metres: metres, panels: panels.length};
 })() : null;
 
-/* ---- 5: the two banded channels, DRIVEN THROUGH artBands ----------------
+/* ---- 5: the ONE banded channel, DRIVEN THROUGH artBands, and the sign,
+   DRIVEN THROUGH artSign ---------------------------------------------------
    The splits themselves come out of `artBandOf`, swept byte by byte.  What
    each band then DOES is the part this file used to restate: it re-indexed
-   `ART_HOUSES[band]` and `signStops[band]` the way its author believed
-   artBands worked, and never called artBands at all — so swapping 307 and
-   308, reversing the dressings, or nailing the sign to stop 0 each produced a
-   byte-identical map.  Both tables are now read back off the stage.
+   `ART_HOUSES[band]` the way its author believed artBands worked, and never
+   called artBands at all — so swapping the selector channels or reversing the
+   dressings produced a byte-identical map.  It is read back off the stage now.
 
-   TWO THINGS MAKE THAT AWKWARD AND NEITHER IS OPTIONAL.  The channels write
-   on a band CHANGE only (RULINGS ER, ES), so stepping the byte inside one
-   band does nothing and the band memory has to be cleared between readings;
-   and `bjRedress` really detaches and re-attaches scene-graph nodes, so
-   everything touched here is put back at the end. */
+   TWO THINGS MAKE THAT AWKWARD AND NEITHER IS OPTIONAL.  The channel writes
+   on a band CHANGE only (RULING ER), so stepping the byte inside one band
+   does nothing and the band memory has to be cleared between readings; and
+   `bjRedress` really detaches and re-attaches scene-graph nodes, so
+   everything touched here is put back at the end.
+
+   THE SIGN IS NOT HERE ANY MORE (RULING EZ).  It was the second banded
+   channel under RULING ES; it is now a TARGET and a SPEED in the RULING EQ
+   fly idiom, written by `artSign`, and it has neither a band nor a band
+   memory.  So it is driven through its own function below, and nothing on it
+   is measured through `artBands` — which is the difference between reporting
+   what the code does and reporting what a superseded ruling said. */
 const bands = [];
 for(let v = 0; v < 256; v++){
   const band = w.artBandOf(v);
@@ -627,24 +780,28 @@ const dressScenes = (P.SHOW.scenes || []).filter(s=>s.dress);
 const bandWas = {
   dress: dressScenes.map(s=>s.dressOn),
   pend: P.SHOW.pendDress,
+  /* `artSpeed` as well as `speed` — RULING EZ writes the desk's speed to the
+     shadow field, and a restore that put back only `speed` would leave the
+     show hauling the sign at whatever this probe last sent */
   sign: signMv ? {target: signMv.target, off: signMv.off, speed: signMv.speed,
                   artSpeed: signMv.artSpeed} : null,
   art: {bandSc: P.ART.bandSc, houseBand: P.ART.houseBand}
 };
-function bandFrame(v307){
+function bandFrame(vHouse){
   const b = frame();
-  put(b, SELB, v307);
+  put(b, HOUSE_BAND_CH, vHouse);
   return b;
 }
-/* RULING EZ - the sign is two channels of its own now, driven through artSign */
+/* RULING EZ — the sign is two channels of its own now, driven through artSign */
 function signFrame(tv, sv){
   const b = frame();
-  put(b, SELB + 1, tv); put(b, SELB + 2, sv);
+  put(b, SIGN_T_CH, tv); put(b, SIGN_S_CH, sv);
   return b;
 }
-/* drive 307 at one byte and read back WHICH scene took WHICH dressing.  Every
-   dressable scene is stamped with a value no dressing key can equal first, so
-   the scene that comes back stamped is the one artBands did not write. */
+/* drive the house band at one byte and read back WHICH scene took WHICH
+   dressing.  Every dressable scene is stamped with a value no dressing key
+   can equal first, so the scene that comes back stamped is the one artBands
+   did not write. */
 function driveHouse(byte){
   for(const s of dressScenes) s.dressOn = DRESS_NOBODY;
   P.ART.bandSc = null; P.ART.houseBand = -1;         // make the band say itself again
@@ -663,14 +820,12 @@ function driveSign(byte, sp){
   signMv.artSpeed = SIGN_NOBODY;
   w.artSign(signFrame(byte, sp === undefined ? 255 : sp));
   const t = signMv.target;
-  if(t === SIGN_NOBODY) return {target: null, stop: -1, speed: null};
-  let stop = -1;
-  /* 0.005m, not 1e-6: a stop is reachable if a BYTE lands on it, and 255
-     steps across an 11.36m travel is 4.5cm a byte. An exact-equality test
-     would report every named stop unreachable and be believed. */
-  if(signStops) for(let i = 0; i < signStops.length; i++)
-    if(Math.abs(t - signStops[i].off) < 0.005){ stop = i; break; }
-  return {target: t, stop: stop,
+  if(t === SIGN_NOBODY) return {target: null, speed: null};
+  /* WHICH STOP A BYTE LANDS ON IS NOT DECIDED HERE.  It needs a tolerance,
+     the only honest tolerance is half a byte step, and a byte step is not
+     known until the ends have been measured — which is what this function is
+     for.  So the matching lives below, where the span exists. */
+  return {target: t,
           speed: signMv.artSpeed === SIGN_NOBODY ? null : signMv.artSpeed};
 }
 /* the byte that lands nearest each declared stop, computed off the MEASURED
@@ -697,47 +852,67 @@ const signDrive = signMv ? (()=>{
   const parked = (()=>{ const r = driveSign(255, 0); return r.target === null; })();
   const full = driveSign(255).speed;
   const half = driveSign(255, 128).speed;
-  const stops = (signStops || []).map(s=>({name: s.name, off: s.off,
-                  byte: signByteFor(s.off, lo, hi),
-                  hits: Math.abs((driveSign(signByteFor(s.off, lo, hi)).target) - s.off) < 0.005}));
+  /* HALF A BYTE STEP, DERIVED.  A stop is reachable if a BYTE lands on it,
+     and rounding to the nearest byte can miss by half a step — so the fixed
+     0.005m this used to carry was NINE TIMES tighter than its own comment
+     reasoned, and false-failed on any geometry nudge: moving BJ_SIGN_OUT to
+     9.05 made the probe exit 1 claiming PRE-SHOW unreachable when byte 53
+     reaches it to 12mm. */
+  const tol = Math.abs(hi - lo) / 510 + 1e-9;
+  const stops = (signStops || []).map(s=>{
+    const by = signByteFor(s.off, lo, hi);
+    const got = driveSign(by).target;
+    return {name: s.name, off: s.off, byte: by, got: got,
+            miss: Math.abs(got - s.off), hits: Math.abs(got - s.off) < tol};
+  });
   return {lo: lo, hi: hi, mid: mid, parked: parked, full: full, half: half,
           declared: signX ? signX.speed : null, stops: stops};
 })() : null;
-/* SELF-CHECK 4 — the sign must be a real travel driven by a real speed byte.
+/* SELF-CHECK 11 — the sign must be a real travel driven by a real speed byte.
    Every one of these can fail: a build that dropped the parked branch, one
    that wrote `speed` instead of `artSpeed`, one that used inOff/outOff (which
-   would put the floor out of reach), or one whose range collapsed. */
+   would put the floor out of reach), or one whose range collapsed.  This is
+   the check RULING EZ wrote as "SELF-CHECK 4"; see the header for why it
+   carries the last number instead of the fourth. */
 if(signDrive){
   if(!(Math.abs(signDrive.hi - signDrive.lo) > 0.5))
-    throw new Error('SELF-CHECK 4 FAILED: the sign channel spans ' +
+    throw new Error('SELF-CHECK 11 FAILED: the sign channel spans ' +
       (signDrive.hi - signDrive.lo).toFixed(3) + 'm — that is not a travel');
   if(!signDrive.parked)
-    throw new Error('SELF-CHECK 4 FAILED: a speed byte of 0 still commanded the sign');
+    throw new Error('SELF-CHECK 11 FAILED: a speed byte of 0 still commanded the sign');
   if(!(signDrive.full > 0) || Math.abs(signDrive.full - signDrive.declared) > 1e-6)
-    throw new Error('SELF-CHECK 4 FAILED: speed 255 gave ' + signDrive.full +
+    throw new Error('SELF-CHECK 11 FAILED: speed 255 gave ' + signDrive.full +
       ', not the haul\'s declared ' + signDrive.declared);
   if(Math.abs(signDrive.half - signDrive.declared * (128 / 255)) > 1e-6)
-    throw new Error('SELF-CHECK 4 FAILED: the speed byte does not scale');
+    throw new Error('SELF-CHECK 11 FAILED: the speed byte does not scale');
   for(const s of signDrive.stops)
     if(!s.hits)
-      throw new Error('SELF-CHECK 4 FAILED: no byte reaches the stop ' + s.name +
-        ' at ' + s.off.toFixed(2) + 'm — RULING EZ says all three are reachable');
+      throw new Error('SELF-CHECK 11 FAILED: no byte reaches the stop ' + s.name +
+        ' at ' + s.off.toFixed(3) + 'm — byte ' + s.byte + ' gave ' + s.got.toFixed(3) +
+        ', a miss of ' + s.miss.toFixed(4) + 'm against half a byte step. ' +
+        'RULING EZ says all three are reachable.');
 }
-/* AND "ON A BAND CHANGE ONLY" IS ITSELF MEASURED: hold the same byte with the
-   memory left alone and nothing may be written a second time. */
-const changeOnly = (()=>{
+/* SELF-CHECK 7 — AND "ON A BAND CHANGE ONLY" IS ITSELF MEASURED: hold the
+   same byte with the memory left alone and nothing may be written a second
+   time.  It was a printed sentence; it throws now, because the sentence had
+   a branch that read "A SECOND FRAME REDRESSED THE SCENE AGAIN" and printing
+   a fault is not catching one. */
+{
   const top = bands[bands.length - 1];
-  let house = null, sign = null;
   const h = driveHouse(top.from);
   if(h.sc){ h.sc.dressOn = DRESS_NOBODY;
-    w.artBands(bandFrame(top.from));             // same byte, memory untouched
-    house = h.sc.dressOn === DRESS_NOBODY; }
-  /* RULING EZ - the sign is no longer band-change-only; it is a per-frame
-     fly write like every other, so there is nothing change-only left to
-     measure on it and saying otherwise would be the file restating a rule
-     the code stopped having. */
-  return {house: house, sign: null};
-})();
+    w.artBands(bandFrame(top.from));                // same byte, memory untouched
+    if(h.sc.dressOn !== DRESS_NOBODY)
+      throw new Error('SELF-CHECK 7 FAILED: a second frame at the same byte redressed ' +
+        h.sc.name + ' again — bjRedress detaches and re-attaches scene-graph nodes, so ' +
+        'channel ' + HOUSE_BAND_CH + ' would rebuild the graph at packet rate'); }
+  /* RULING EZ — THERE IS NO SECOND HALF TO THIS CHECK ANY MORE.  The sign was
+     band-change-only under ES; it is a per-frame fly write now, so a second
+     frame at the same byte SHOULD re-command it, and asserting otherwise would
+     be this file restating a rule the code stopped having.  What replaces it
+     is SELF-CHECK 11, which is about the thing that now protects the sign: the
+     speed byte. */
+}
 /* put the stage back: the dressing through the show's own mechanism, the
    sign's mover by hand, and the band memory to what it was */
 dressScenes.forEach((s, i)=>{ s.dressOn = bandWas.dress[i]; w.bjRedress(s); });
@@ -745,6 +920,9 @@ P.SHOW.pendDress = bandWas.pend;
 if(signMv && bandWas.sign){ signMv.target = bandWas.sign.target; signMv.off = bandWas.sign.off;
                             signMv.speed = bandWas.sign.speed; }
 P.ART.bandSc = bandWas.art.bandSc; P.ART.houseBand = bandWas.art.houseBand;
+/* RULING EZ — `ART.signBand` and `ART.bandSign` no longer exist; the sign's
+   desk speed lives on the mover record as `artSpeed`, and that is what has to
+   go back */
 if(signMv) signMv.artSpeed = bandWas.sign ? bandWas.sign.artSpeed : undefined;
 
 const dressScene = houseBands.find(h=>h.scene) || null;
@@ -769,13 +947,13 @@ mvRestore();
    `artMoverSet` RETURNS EARLY on a mover whose `home` is not finite, and then
    the sentinel is still sitting in `m.target` when self-check 3 compares
    m.target with r.at[255]: SENTINEL === SENTINEL, the check passes, and the
-   table prints -12345.00m as a metre.  Every non-zero byte has to have
-   written something before any of that is believed. */
+   line prints -12345.00m as a metre.  Every non-zero byte has to have written
+   something before any of that is believed. */
 for(const r of mvRows) for(const v of [1, 128, 255])
   if(r.at[v] === SENTINEL)
     throw new Error('artMoverSet wrote nothing into ' + r.scene + ':' + r.part +
       ' at byte ' + v + ' — it returned early (a non-finite home or out?), so the ' +
-      'sentinel would be compared against itself and this map would print it as a metre');
+      'sentinel would be compared against itself and this list would print it as a metre');
 
 let zeroIsNoCommand, zeroIsHome;
 if(mvRows.length){
@@ -823,10 +1001,11 @@ for(let k = 0; k < mvRows.length; k++){
     if(Math.abs(x.m.target - other) > 1e-9)
       throw new Error('SELF-CHECK 3 FAILED: driving channel ' + r.ch + ' also moved ' +
         x.scene + ':' + x.part + ' to ' + f2(x.m.target) + 'm — the mover block is not ' +
-        'in the order this map prints');
+        'in the order this list prints');
   }
 }
 mvRestore();
+for(const r of mvUncheckable) r.unproved = true;
 
 /* WHICH OF THESE CHANNELS CHANGE MEANING WHEN ONE OF JACK'S MODEL FILES
    LANDS.  jsdom fetches nothing, so every metre above is the BUILT STAND-IN's
@@ -853,489 +1032,166 @@ const packAffected = (()=>{
   return hit.map(r=>r.ch);
 })();
 
-/* ---- 7: the caveat the code cannot state — a 40th lantern --------------- */
-const flyBaseWith40 = (()=>{
-  FIX.push({name: 'a lantern that is not there'});
-  try{ return w.artFlyBase(); }
-  finally{ FIX.pop(); }
-})();
+/* ---------------------------------------------------------------------------
+   THE LIST (RULING FA).  One row per channel, built in block order, and then
+   checked for gaps: the rows are NOT sorted into place, because the order is
+   the measurement.
+   ------------------------------------------------------------------------- */
+const ROWS = [];
+function row(ch, subject, fn, detail, notes){
+  ROWS.push({ch: ch, subject: subject, fn: fn, detail: detail || '',
+             notes: (notes || []).filter(Boolean)});
+}
+
+/* ---- the fixtures ------------------------------------------------------- */
+for(const r of fixRows){
+  const who = ('0' + (r.i + 1)).slice(-2) + ' ' + r.name + ' [' + r.type + '] ' + r.section;
+  for(let s = 0; s < CH_FIX; s++){
+    const k = slotField[s];
+    let detail;
+    if(k === 'gobo')
+      detail = r.gobo.map(g=>g.from + '-' + g.to + '=' + (goboName[g.gobo] || '?')).join(' ');
+    else if(k === 'panT' || k === 'tiltT')
+      detail = r.turns ? BYTES3.map(v=>v + '=' + f1(slotVal(s, v, r.i)) + 'deg').join(' ')
+                       : 'ignored: not a mover';
+    else
+      detail = BYTES3.map(v=>v + '=' + f2(slotVal(s, v, r.i))).join(' ');
+    row(r.base + s, who, FIELD_LABEL[k], detail, []);
+  }
+}
+
+/* ---- the linesets ------------------------------------------------------- */
+for(const r of flyRows){
+  const who = 'line ' + pad(r.id, 2) + ' ' + r.label + (r.key === 'none' ? '' : ' (' + r.key + ')');
+  row(r.base, who, 'target',
+      '0=' + f2(r.at[0]) + 'm lowest 128=' + f2(r.at[1]) + 'm 255=' + f2(r.at[2]) + 'm grid',
+      ['dead while speed byte ' + (r.base + 1) + ' is 0',
+       r.traveler ? 'carries the traveler, drawn from channel ' + TRAV_CH : null]);
+  row(r.base + 1, who, 'speed',
+      '0=PARKED (the line stops where it stands) 255=' + f2(P.ART_FLY_MAX) + ' m/s', []);
+}
+
+/* ---- the house circuits ------------------------------------------------- */
+for(const h of houseChan)
+  row(h.ch, 'house circuit HOUSE.' + h.key, 'level',
+      '0=' + f2(h.at[0]) + ' 128=' + f2(h.at[128]) + ' 255=' + f2(h.at[255]), []);
+
+/* ---- the selector channels ---------------------------------------------- */
+{
+  const bandNote = 'acts on a BAND CHANGE only';
+  const houseDetail = houseBands.map(h=>h.from + '-' + h.to + '=' +
+    (h.n === 1 ? h.dress : h.n === 0 ? 'NOTHING ANSWERED' : h.n + ' SCENES ANSWERED') +
+    (h.same ? '' : ' ENDS-DISAGREE')).join(' ');
+  row(HOUSE_BAND_CH, 'BEETLEJUICE house selector', 'dressing',
+      dressScene ? houseDetail : 'nothing in this production answers it',
+      [dressScene ? 'on scene ' + dressScene.scene : null,
+       dressScene ? bandNote + ', and a first frame from a dead universe IS a change, to ' +
+                    houseBands[0].dress : null]);
+
+  /* RULING EZ — TWO LINES, NOT ONE.  The sign is a fly: a target and a speed,
+     the same idiom as every lineset, and every number on both lines came out
+     of `artSign` rather than out of the ruling's prose. */
+  const signHauled = hauled.length
+    ? 'the rail hauls ' + hauled.join(', ') + ' from here, so that scene takes no mover channel'
+    : null;
+  if(signDrive){
+    const named = signDrive.stops.length
+      ? signDrive.stops.map(s=>s.byte + '=' + s.name).join(' ')
+      : 'the show declares no named stops';
+    row(SIGN_T_CH, 'BEETLEJUICE sign (fly extra bjSign)', 'target',
+        '0=' + f2(signDrive.lo) + 'm 128=' + f2(signDrive.mid) + 'm 255=' + f2(signDrive.hi) + 'm',
+        ['stops: ' + named,
+         'dead while speed byte ' + SIGN_S_CH + ' is 0',
+         signHauled]);
+    row(SIGN_S_CH, 'BEETLEJUICE sign (fly extra bjSign)', 'speed',
+        '0=PARKED (no target is commanded; the speed is written as 0) 255=' + signDrive.full +
+        ' m/s, the haul\'s OWN declared speed',
+        ['PARKED here is SILENCE, not a stop: the sign is a scene mover, so a haul ' +
+         'the show started runs on to its stop']);
+  } else {
+    row(SIGN_T_CH, 'BEETLEJUICE sign', 'target',
+        'no sign is declared by this production', [signHauled]);
+    row(SIGN_S_CH, 'BEETLEJUICE sign', 'speed',
+        'no sign is declared by this production', []);
+  }
+
+  const travWho = travDriven
+    ? 'traveler on line ' + flyRows[travDriven.i].id + ' ' + flyRows[travDriven.i].label
+    : 'traveler — no line in this production carries one';
+  row(TRAV_CH, travWho, 'open',
+      travDriven ? '0=shut 255=open   draws ' + f2(travRate.rate) + ' of its full draw a second, ' +
+                   travRate.panels + ' panels, each travelling ' + f2(travRate.metres) + 'm in that second'
+                 : 'nothing answers it in this production',
+      travDriven ? ['PARKED by line ' + flyRows[travDriven.i].id + '\'s own speed byte ' +
+                      (flyRows[travDriven.i].base + 1),
+                    'THE LINE MOVES WITH THE SHOW — on the standing hang it is line ' +
+                      (travBare ? travBare.id + ' ' + travBareGoods : 'NONE')]
+                 : []);
+}
+
+/* ---- the set movers ----------------------------------------------------- */
+for(const r of mvRows){
+  const who = 'set mover ' + r.scene + ':' + r.part + ' (' + r.axis + ')';
+  const notes = [];
+  notes.push(packAffected.indexOf(r.ch) >= 0
+    ? 'STAND-IN METRES — bjWingPack re-points this channel when a model file lands'
+    : 'stand-in metres, no model file loaded');
+  if(r.unproved)
+    notes.push('ONE-WAY: any byte from 1 flies it in, none flies it out' +
+               ' (travel too short for the channel self-check to tell it apart)');
+  row(r.ch, who, 'target',
+      (zeroIsNoCommand ? '0=no command (any other byte HOLDS this set every frame, so the show cannot move it) '
+                       : '0=' + f2(r.at[0]) + 'm ') +
+      '1=' + f2(r.at[1]) + 'm 128=' + f2(r.at[128]) + 'm 255=' + f2(r.at[255]) + 'm' +
+      (r.declaresOut ? '' : ' (no out declared, so 255 is 0 on its own axis)'),
+      notes);
+}
+
+/* SELF-CHECK 10 — RULING FA ITSELF: one line per channel, in numeric order,
+   from the first channel to the last one in use, and NO GAPS.  This is what
+   fires the day a ruling inserts a channel and forgets to give it a line —
+   which is exactly what RULING EZ does to the selector block. */
+const LAST_CH = mvRows.length ? mvRows[mvRows.length - 1].ch : MVB - 1;
+for(let i = 0; i < ROWS.length; i++){
+  const want = FIXB + i;
+  if(ROWS[i].ch !== want)
+    throw new Error('SELF-CHECK 10 FAILED (RULING FA): the list is one line per channel with ' +
+      'no gaps, and row ' + (i + 1) + ' is channel ' + ROWS[i].ch + ' where ' + want +
+      ' was due' + (ROWS[i].ch > want
+        ? ' — channels ' + want + '..' + (ROWS[i].ch - 1) + ' have no line at all'
+        : ' — a channel is listed twice'));
+}
+if(!ROWS.length || ROWS[ROWS.length - 1].ch !== LAST_CH)
+  throw new Error('SELF-CHECK 10 FAILED (RULING FA): the list ends at channel ' +
+    (ROWS.length ? ROWS[ROWS.length - 1].ch : 'nothing') + ' and the last channel in use is ' +
+    LAST_CH);
 
 /* ---------------------------------------------------------------------------
-   THE MAP.
+   THE OUTPUT.  Two header lines and then the list: the built file's byte size
+   (the probe rule, and the suite compares it) and which show is loaded (the
+   mover lines and the lineset goods are that show's).  RULING FA asks for
+   nothing else, so there is nothing else.
+
+   The column widths are COMPUTED off the rows, so a longer fixture name or a
+   fifteenth lineset re-aligns the whole file instead of staggering it.
    ------------------------------------------------------------------------- */
 const L = [];
 const out = s => L.push(s === undefined ? '' : s);
 
 out('THE BUILT FILE  the-house.html  ' + fs.statSync(HOUSE_FILE).size +
     ' bytes  (generated by tools/artnet-map.js)');
-out();
-out('# Art-Net — the channel map                          RULING EO');
-out();
-out('**GENERATED. DO NOT EDIT.** `node tools/artnet-map.js > docs/ARTNET.md` rewrites');
-out('this file, and `tests/artnet.js` fails if the committed text and the probe');
-out('disagree. Every name, band, metre and channel number below was read off the');
-out('BUILT `the-house.html` — booted under jsdom, driven with synthesised frames,');
-out('and the answers copied down. Nothing here is typed from a table, because the');
-out('rulings\' own prose has already been wrong about this data once.');
-out();
-out('The first line is the size of the built file this was read from, and the suite');
-out('compares it: this map and `the-house.html` must have been generated together. It');
-out('does NOT catch a stale BUILD — an `src/`-only edit leaves a stale `the-house.html`,');
-out('the probe reads it and the suite stats the same stale file, and everything agrees.');
-out('`sh build.sh` first, always.');
-out();
-out('Universe **0**, one universe, 512 channels, **the Palace only** (RULING EN). A');
-out('desk patched to any other stage is received and ignored.');
-out();
-out('## Which show is loaded, and why it matters');
-out();
-out('This map was generated with **' + SHOW_KEY.toUpperCase() + ' loaded**. Two blocks below depend on that:');
-out();
-out('- **the set movers (' + MVB + '+)** — the block is derived every frame from `SHOW.scenes`,');
-out('  and Beetlejuice is the only production that carries scene movers at all;');
-out('- **the goods on each lineset (274..301)** — a production hangs its own cloths, so');
-out('  the lineset LABELS are this show\'s. The channel numbers are not: they are');
-out('  `FLY.length` and never move with a show.');
-out();
-out('The ' + (FLYB - 1) + ' light channels and the five house circuits belong to the STAGE, not to the');
-out('show. Measured rather than reasoned: a signature of the whole light block — the');
-out('three bases, and every fixture\'s board channel, name, type and mover flag, and the');
-out('five circuit names — was taken before any production was loaded and again with');
-out(SHOW_KEY.toUpperCase() + ' up, and the two are ' + (lightBlockMoved
-    ? '**NOT THE SAME**, so loading a production DOES re-point light channels and this'
-    : 'IDENTICAL. That is two productions, not five'));
-out(lightBlockMoved
-    ? 'map is the loaded show\'s throughout.'
-    : '— what this file can say is that loading one did not move them.');
-out();
-out('## The blocks — every base is COMPUTED, never written down');
-out();
-out('| channels | what | how the base is reached | today |');
-out('|---|---|---|---|');
-out('| ' + FIXB + '..' + (FLYB - 1) + ' | ' + FIX.length + ' fixtures, ' + CH_FIX +
-    ' channels each | `artFixBase()` | ' + FIXB + ' |');
-out('| ' + FLYB + '..' + (HOUB - 1) + ' | ' + FLY.length +
-    ' linesets, 2 each (target, speed) | `artFixBase() + ' + CH_FIX + ' * FIXTURES.length` | ' + FLYB + ' |');
-out('| ' + HOUB + '..' + (HOUB + 4) + ' | the five house circuits | `artFlyBase() + 2 * FLY.length` | ' + HOUB + ' |');
-out('| ' + SELB + ', ' + (SELB + 1) + ', ' + (SELB + 2) + ', ' + (SELB + 3) +
-    ' | house selector, sign target, sign speed, traveler | `artHouseBase() + 5` | ' + SELB + ' |');
-/* THE OFFSET IS COMPUTED, NOT TYPED.  It was typed once, as `artSelBase() + 3`,
-   and RULING EZ made it 4 — so the column whose whole job is to be the warrant
-   for the table stated a derivation that gave 310 beside a measured 311, and a
-   build mutated back to +3 printed a table that agreed with itself. */
-out('| ' + MVB + '..' + (MVB + mvRows.length - 1) + ' | the loaded show\'s set movers | `artSelBase() + ' +
-    (MVB - SELB) + '` | ' + MVB + ' |');
-out('| ' + (MVB + mvRows.length) + '..512 | nothing — unpatched | | |');
-out();
-out('A fortieth lantern moves every base after it by ' + CH_FIX + '. Measured, by pushing');
-out('one onto `FIXTURES`: the fly block would start at **' + flyBaseWith40 + '** instead of ' + FLYB + '.');
+out('UNIVERSE 0 — the Palace only (RULING EN); on any other stage packets are counted and nothing is written');
+out('SHOW LOADED  ' + SHOW_KEY.toUpperCase() +
+    '  (the set mover lines and the lineset goods are this show\'s)');
 out();
 
-/* ---- the fixtures ------------------------------------------------------- */
-out('## ' + FIXB + '..' + (FLYB - 1) + ' — the ' + FIX.length + ' fixtures (RULING EP)');
-out();
-out('One uniform ' + CH_FIX + '-channel footprint, so a desk needs exactly ONE generic');
-out('fixture definition for the whole rig. The writes are RAW: every one of them zeroes');
-out('the fixture\'s fade durations, so the desk\'s own fades stream through and the');
-out('game\'s fade engine never fights them. Measured: with every fixture\'s `lvlDur` and');
-out('`colDur` set to nine seconds first, one applied frame left ' + durProof.lvl + ' of ' + FIX.length +
-    ' `lvlDur` and');
-out(durProof.col + ' of ' + FIX.length + ' `colDur` at zero.');
-out();
-out('The seven, and what each one did when it was driven. **EACH OFFSET IS NAMED AFTER');
-out('THE ONE RECORD FIELD THAT ANSWERED IT** — red, green and blue are driven alone and');
-out('counted separately, so this table cannot survive two components being swapped. The');
-out('right-hand column is a count of records that MOVED under a byte of 255, across all');
-out(FIX.length + ' fixtures:');
-out();
-out('| offset | channel of fixture *n* | what it writes | what a byte of 255 moved |');
-out('|---|---|---|---|');
-const SLOT = slotField.map(k=>FIELD_LABEL[k]);
-for(let s = 0; s < CH_FIX; s++){
-  const k = slotField[s], n = slotEffect[s][k];
-  const writes = FIELD_WRITE[k] + (n < FIX.length ? ' — ' + n + ' OF THE ' + FIX.length + ' ONLY' : '');
-  out('| +' + s + ' | ' + (FIXB + s) + ', ' + (FIXB + CH_FIX + s) + ', ' + (FIXB + 2*CH_FIX + s) +
-      ' ... | ' + writes + ' | ' + n + ' ' + FIELD_PLURAL[k] + ' |');
+const CHW = String(LAST_CH).length;
+const SW = ROWS.reduce((m, r)=>Math.max(m, r.subject.length), 0);
+const FW = ROWS.reduce((m, r)=>Math.max(m, r.fn.length), 0);
+for(const r of ROWS){
+  let line = pad(r.ch, CHW) + '  ' + padR(r.subject, SW) + ' — ' + padR(r.fn, FW) + '  ' + r.detail;
+  for(const n of r.notes) line += '   ' + n;
+  out(line.replace(/[ ]+$/, ''));
 }
-out();
-out('Intensity is linear: byte ' + rampAt.level.map(x=>x.byte + ' -> ' + f2(x.val)).join(', ') + ' (measured).');
-out('Colour is the same, and it is measured PER COMPONENT — each of the three bytes');
-out('driven on its own and the matching component of `f.color` read back:');
-out();
-out('| byte | red (+' + slotOf('r') + ') | green (+' + slotOf('g') + ') | blue (+' + slotOf('b') + ') |');
-out('|---|---|---|---|');
-for(let i = 0; i < 3; i++)
-  out('| ' + rampAt.r[i].byte + ' | ' + f2(rampAt.r[i].val) + ' | ' + f2(rampAt.g[i].val) +
-      ' | ' + f2(rampAt.b[i].val) + ' |');
-out();
-out('**Gobo** — the byte is divided down onto the ' + P.GOBOS.length +
-    ' gobos, swept here byte by byte:');
-out();
-out('| bytes | gobo | name |');
-out('|---|---|---|');
-for(const g of goboBands)
-  out('| ' + g.from + '..' + g.to + ' | ' + g.gobo + ' | ' + (goboName[g.gobo] || '?') + ' |');
-out();
-if(aMover){
-  out('**Pan and tilt** — `ART_PAN` ' + P.ART_PAN + ', `ART_TILT_LO` ' + P.ART_TILT_LO +
-      ', `ART_TILT_HI` ' + P.ART_TILT_HI + '.');
-  out('Measured on ' + aMover.name + ':');
-  out();
-  out('| byte | pan | tilt |');
-  out('|---|---|---|');
-  out('| 0 | ' + f1(panAt.lo) + ' deg | ' + f1(tiltAt.lo) + ' deg |');
-  out('| 128 | ' + f1(panAt.mid) + ' deg | ' + f1(tiltAt.mid) + ' deg |');
-  out('| 255 | ' + f1(panAt.hi) + ' deg | ' + f1(tiltAt.hi) + ' deg |');
-  out();
-  out('Tilt is NOT symmetric and that is deliberate: `updateRig` poses a head as');
-  out('`rotation.x = (tilt + 90) * DEG`, so ' + P.ART_TILT_LO + ' is straight up, the middle');
-  out('of the fader is horizontal and ' + P.ART_TILT_HI + ' is straight down. A symmetric');
-  out('range wasted half the channel.');
-} else {
-  out('**Pan and tilt** — NO FIXTURE IN THIS RIG MOVES, which is itself a finding.');
-}
-out();
-const movers = fixRows.filter(r=>r.turns), fixed = fixRows.filter(r=>!r.turns);
-out('**' + movers.length + ' of the ' + FIX.length + ' fixtures answer a pan or tilt byte.**');
-out('Driven, not read off a flag — and the two answers were checked against each other:');
-out();
-out('- MOVERS, pan and tilt live:');
-if(movers.length) for(const r of movers)
-  out('  - ch ' + r.base + '..' + (r.base + CH_FIX - 1) + ' — ' + r.name);
-else out('  - none, which would itself be a finding');
-out('- FIXED, pan and tilt bytes ignored and the plotted aim left exactly where the plot');
-out('  put it: the other ' + fixed.length + ' fixtures. The bytes are still THERE — a uniform');
-out('  footprint is what makes ' + FIX.length + ' heads patchable by hand as one definition.');
-out();
-out('| ch | fixture | section | this channel |');
-out('|---|---|---|---|');
-for(const r of fixRows){
-  const who = ('0' + (r.i + 1)).slice(-2) + ' ' + r.name + ' [' + r.type + ']';
-  for(let s = 0; s < CH_FIX; s++){
-    let what = SLOT[s];
-    if(s >= 5) what += r.turns ? ' (live)' : ' (IGNORED — this lantern does not move)';
-    out('| ' + (r.base + s) + ' | ' + who + ' | ' + r.section + ' | ' + what + ' |');
-  }
-}
-out();
-
-/* ---- the flys ----------------------------------------------------------- */
-out('## ' + FLYB + '..' + (HOUB - 1) + ' — the ' + FLY.length + ' linesets, two channels each (RULING EQ)');
-out();
-out('Target first, then speed, in `FLY` order. A fly moves through its own motor and');
-out('never teleports: the target goes through `flyTo`, which works the lock itself and');
-out('CLAMPS, so a desk cannot drive a cloth through the stage any more than a cue can.');
-out();
-out('- **Target** (' + (FLYB % 2 === 0 ? 'the even channel today' : 'the odd channel today') +
-    ') — byte 0 is `minTrimOf(ls)`, the lowest that line may come with what is hung on');
-out('  it, and 255 is `OUT_TRIM` = ' + f2(P.OUT_TRIM) + 'm. Linear between; the middle');
-out('  column below is byte 128, measured.');
-out('- **Speed** (the next channel) — byte 0 is **PARKED**: the line is stopped where it');
-out('  stands, whatever its target says, and 255 is `ART_FLY_MAX` = ' + f2(P.ART_FLY_MAX) + ' m/s.');
-out('  Measured, and the measurement starts by breaking the thing it is proving: ' +
-    parkedProof.away + ' of the');
-out('  ' + FLY.length + ' lines were first driven off their own position through `flyTo`, so every one of');
-out('  them was mid-travel with a target it was not at. Then, with every speed byte at 0, ' +
-    (parkedProof.still.length
-      ? '**' + parkedProof.still.length + ' still held a target it was not at (lines ' +
-        parkedProof.still.join(', ') + '), which contradicts RULING EQ**.'
-      : 'every'));
-if(!parkedProof.still.length)
-  out('  one of them snapped its target back to where it stood.');
-out('- **AND THE TARGET CHANNEL IS PARKED BY THE SPEED CHANNEL TOO.** Byte 0 on a target');
-out('  only reaches `minTrimOf` if that line\'s speed byte is non-zero: `artFlys` takes the');
-out('  park branch and never reaches `flyTo` at all. The target column above was measured');
-out('  with every speed byte at 255. It is the same dependency spelled out on channel ' +
-    (SELB + 3) + '.');
-out();
-out('| ch | lineset | goods | this channel |');
-out('|---|---|---|---|');
-for(const r of flyRows){
-  const who = 'line ' + pad(r.id, 2);
-  const goods = r.label + (r.key === 'none' ? '' : ' (`' + r.key + '`)') + (r.traveler ? ' — TRAVELER' : '');
-  out('| ' + r.base + ' | ' + who + ' | ' + goods + ' | target: 0 = minTrimOf ' + f2(r.at[0]) +
-      'm, 128 = ' + f2(r.at[1]) + 'm, 255 = OUT_TRIM ' + f2(r.at[2]) + 'm |');
-  out('| ' + (r.base + 1) + ' | ' + who + ' | ' + goods + ' | speed: 0 = parked, 255 = ART_FLY_MAX ' +
-      f2(P.ART_FLY_MAX) + ' m/s |');
-}
-out();
-
-/* ---- the house circuits ------------------------------------------------- */
-out('## ' + HOUB + '..' + (HOUB + 4) + ' — the house circuits');
-out();
-out('One byte each, `HOUSE.<circuit>` = byte/255. Driven one at a time here, so the');
-out('order is the code\'s and not a list copied from the ruling.');
-out();
-out('| ch | circuit |');
-out('|---|---|');
-for(const h of houseChan) out('| ' + h.ch + ' | `HOUSE.' + h.key + '` |');
-out();
-
-/* ---- the three selector channels ---------------------------------------- */
-out('## ' + SELB + ', ' + (SELB + 1) + ', ' + (SELB + 2) + ', ' + (SELB + 3) + ' — the selector channels');
-out();
-out('### ' + SELB + ' — the BEETLEJUICE house (RULING ER)');
-out();
-out('His splits come out of `artBandOf`, swept byte by byte. **What each band then DOES');
-out('is not read off `ART_HOUSES` here — the channel is DRIVEN through `artBands` at both');
-out('ends of every band and the dressing the scene actually took is read back off the');
-out('scene.** Re-indexing the same const the game indexes would print a plausible table');
-out('for a build with 307 and 308 crossed over, or the bands reversed.');
-out();
-out('| bytes | band | the scene that answered | the dressing it took |');
-out('|---|---|---|---|');
-for(const h of houseBands)
-  out('| ' + h.from + '..' + h.to + ' | ' + h.band + ' | ' +
-      (h.n === 1 ? '`' + h.scene + '`' : h.n === 0 ? 'NOTHING ANSWERED' : h.n + ' SCENES ANSWERED') +
-      ' | ' + (h.dress ? '`' + h.dress + '`' + (h.same ? '' : ' — AND THE TWO ENDS OF THIS BAND DISAGREED')
-                       : 'none') + ' |');
-out();
-out('Applied by setting `sc.dressOn` and calling `bjRedress` — the show\'s own mechanism,');
-out('which holds two of the three houses out of the graph (RULING CN). **On a band CHANGE');
-out('only**: that call detaches and re-attaches scene-graph nodes and must not run 44');
-out('times a second. Measured, by holding the same byte with the band memory left alone: ' +
-    (changeOnly.house === null ? 'NO SCENE ANSWERED AT ALL, so there was nothing to hold.'
-     : changeOnly.house ? 'a second frame at the same byte wrote nothing.'
-     : '**A SECOND FRAME AT THE SAME BYTE REDRESSED THE SCENE AGAIN**, which is the'));
-if(changeOnly.house === false) out('scene graph being rebuilt at packet rate.');
-out((dressScene ? 'The scene it dresses is `' + dressScene.scene +
-    '`, which is the one carrying all ' + P.ART_HOUSES.length + ' dressings.'
-  : 'NO LOADED SCENE CARRIES ALL THREE DRESSINGS, so this channel does nothing right now.'));
-out('A production with no such scenery ignores this channel entirely.');
-out();
-out('### ' + (SELB + 1) + ', ' + (SELB + 2) + ' — the BEETLEJUICE sign (RULING EZ)');
-out();
-if(signDrive){
-  out('**A fly, not three buttons.** ' + (SELB + 1) + ' is TARGET and ' + (SELB + 2) +
-      ' is SPEED, the same idiom as every');
-  out('lineset. This SUPERSEDES the sign half of RULING ES; the three named stops are still');
-  out('the show\'s own (RULING DH) and still on both surfaces, but the DESK is no longer a');
-  out('three-position switch. Everything below was driven through `artSign` and read back.');
-  out();
-  out('| ' + (SELB + 1) + ' target | commanded to |');
-  out('|---|---|');
-  out('| 0 | ' + f2(signDrive.lo) + 'm |');
-  out('| 128 | ' + f2(signDrive.mid) + 'm |');
-  out('| 255 | ' + f2(signDrive.hi) + 'm |');
-  out();
-  if(signDrive.stops.length){
-    out('The named stops, and the byte that reaches each:');
-    out();
-    out('| stop | metres | ' + (SELB + 1) + ' byte |');
-    out('|---|---|---|');
-    for(const s of signDrive.stops)
-      out('| `' + s.name + '` | ' + f2(s.off) + 'm | ' + s.byte + ' |');
-    out();
-  }
-  out('**' + (SELB + 2) + ' SPEED, and byte 0 is PARKED.** Measured: a speed byte of 0 wrote ' +
-      (signDrive.parked ? 'NOTHING at all' : '**A TARGET ANYWAY**'));
-  out('— so an unpatched universe cannot haul the sign. Byte 255 is ' + signDrive.full +
-      'm/s, the haul\'s');
-  out('OWN declared speed, and 128 gives ' + signDrive.half.toFixed(3) + 'm/s, so it scales.');
-  out();
-  out('Parked here means SILENCE, not a stop: the sign is a SCENE mover, so a haul the show');
-  out('started runs on to its stop rather than freezing where it stands (RULINGS EX, EZ).');
-  out();
-  out('The sign is hauled by the rail, so it takes no mover channel — see the mover block.');
-} else {
-  out('NO SIGN IS DECLARED BY THE LOADED SHOW, so these two channels do nothing.');
-}
-out();
-out('### ' + (SELB + 3) + ' — the traveler');
-out();
-out('0 = shut, 255 = open, written as `travTarget` on whichever lineset carries goods');
-out('that declare themselves a traveler. WHICH LINE THAT IS was not counted off a list:');
-out('the channel was driven half-open and the line that answered is the one named here.');
-out('The two answers are then checked against each other — the line that ANSWERED against');
-out('the linesets whose goods DECLARE `traveler` — because `artFlys` resolves it with');
-out('`FLY.findIndex` and would drive the first of two silently. The count that matters is');
-out('the declared one; the answering one cannot exceed 1 by construction.');
-out();
-if(travDriven){
-  const row = flyRows[travDriven.i];
-  out('- **Line ' + row.id + '**, carrying ' + row.label + ' (`' + row.key + '`). Its own');
-  out('  target channel is ' + row.base + ' and its speed channel is ' + (row.base + 1) + '.');
-} else {
-  out('- NO LINE ANSWERED IT. Nothing hung on this rail declares itself a traveler, so');
-  out('  channel ' + (SELB + 3) + ' does nothing in this production.');
-}
-out('- **AND IT IS A PROPERTY OF THE HANG, NOT OF THE RAIL.** Measured again before any');
-out('  production was loaded, on the Palace\'s own standing hang, ' + (travBare
-    ? 'it is **line ' + travBare.id + '** carrying ' + travBareGoods + ' (`' + travBare.key + '`)'
-    : 'NO line carried it') + '.');
-out('  ' + ((travBare && travDriven && travBare.i !== travDriven.i)
-    ? 'A production that hangs its own show curtain therefore MOVES this channel\'s effect'
-      : 'It is the same line either way today, and nothing guarantees it stays that way'));
-out('  ' + ((travBare && travDriven && travBare.i !== travDriven.i)
-    ? 'onto a different lineset — patch ' + (SELB + 3) + ' against the show that is playing.'
-      : '— patch ' + (SELB + 3) + ' against the show that is playing.'));
-out('- **It is PARKED BY THAT LINE\'S OWN SPEED BYTE.** Measured: with every speed byte at');
-out('  0, byte ' + (travDriven ? travDriven.byte : '?') + ' on ' + (SELB + 3) + ' — the same byte that DID move it above — moved');
-out('  ' + (travParked === null ? 'nothing, because no line carries a traveler here'
-     : travParked ? 'nothing at all' :
-    'the traveler anyway, which contradicts the note under RULING EO') + '.');
-out('  Written unconditionally this was the one piece of scenery a dead universe DID move:');
-out('  the instant the switch went on with nothing patched, the curtain ran itself shut in');
-if(travRate)
-  out('  front of the audience. How fast, measured off one frame of `updateFly` rather than');
-if(travRate)
-  out('  copied out of the spec — where it had been written as m/s, which `ls.open` is not:');
-if(travRate)
-  out('  **' + f2(travRate.rate) + ' of its full draw a second**, about ' + f1(1 / travRate.rate) +
-      's end to end, each of its ' + travRate.panels + ' panels');
-if(travRate)
-  out('  travelling ' + f2(travRate.metres) + 'm in that second. On the standing hang that is line ' +
-      (travBare ? travBare.id : '?') + ',');
-if(travRate)
-  out('  the house curtain — which is where the story comes from.');
-out('  Patch that line\'s speed byte and ' + (SELB + 3) + ' does exactly what the table says.');
-out();
-
-/* ---- the movers --------------------------------------------------------- */
-out('## ' + MVB + '..' + (MVB + Math.max(0, mvRows.length - 1)) + ' — the set movers of ' +
-    SHOW_KEY.toUpperCase() + ' (RULING ET)');
-out();
-out('`SHOW.scenes` in declaration order; inside a scene its whole-group travel `mv`');
-out('first, then its part movers in declaration order. **One channel each and no speed');
-out('channel** — speed was asked for on the flys only. The write is `m.target` and');
-out('nothing else: the mover walks there at its own `m.speed` on the scene tick that');
-out('already exists, so a desk move looks exactly like a cue move.');
-out();
-out('**Byte 0 is ' + (zeroIsNoCommand ? 'NO COMMAND — the target is not touched at all, and' :
-    'the mover\'s HOME, and') + '**');
-out((zeroIsNoCommand ? '**1..255 spans' : '**0..255 spans') + ' home to out.** That was not read out of the ruling:');
-out('`artMoverSet` was called with a sentinel in `m.target` and the answer copied down —');
-out('the metres in the table are the same measurement, per mover, per byte.');
-out();
-if(!zeroIsNoCommand){
-  out('So an unpatched universe — 512 zeros, which is exactly what a desk patched only for');
-  out('the ' + (FLYB - 1) + ' light channels sends — commands EVERY mover in the loaded show home.');
-  out('RULING EQ\'s stated principle is that a dead universe moves no scenery, and the flys');
-  out('and the traveler are parked by a speed byte; a set mover has none to be parked by.');
-  out('That is the collision, printed rather than hidden.');
-  out();
-}
-if(hauled.length){
-  out('**Scenes the rail hauls are not on this map at all** (RULINGS CW, ES): ' +
-      hauled.map(n=>'`' + n + '`').join(', ') + '.');
-  out('That scenery is addressed by channels ' + (SELB + 1) + ' and ' + (SELB + 2) +
-      ' — its own target and speed (RULING EZ) —');
-  out('and a mover channel here would be a SECOND per-frame writer on the same record. Whichever');
-  out('ran later in artnetTick would win silently, so the rail keeps what the rail hauls.');
-  out('(Under RULING ES this reasoning was different: ' + (SELB + 1) + ' wrote on a band change');
-  out('only, so a mover channel would have hauled it straight back off its stop. EZ replaced the');
-  out('mechanism; the exclusion survives it, for the reason above rather than that one.)');
-  out();
-}
-/* THE NEAR END GETS ITS OWN COLUMN WHEN BYTE 0 STOPS BEING A POSITION.  With
-   RULING EX in the build, printing only bytes 0 and 255 says "no command" and
-   the far end and NOWHERE says where the mover starts — an operator would
-   have the top of every fader's travel and not the bottom.  Byte 1 is the
-   bottom, and it is measured off artMoverSet like every other cell here. */
-out('| ch | scene | mover | axis | byte 0 |' + (zeroIsNoCommand ? ' byte 1 |' : '') +
-    ' byte 255 | out declared |');
-out('|---|---|---|---|---|' + (zeroIsNoCommand ? '---|' : '') + '---|---|');
-for(const r of mvRows)
-  out('| ' + r.ch + ' | ' + r.scene + ' | ' + r.part + ' | ' + r.axis + ' | ' +
-      (r.at[0] === SENTINEL ? 'no command' : f2(r.at[0]) + 'm') + ' | ' +
-      (zeroIsNoCommand ? f2(r.at[1]) + 'm | ' : '') + f2(r.at[255]) + 'm | ' +
-      (r.declaresOut ? 'yes, ' + f2(r.out) + 'm' : 'NO — so 255 is 0 on its own axis') + ' |');
-out();
-/* B4 — WHOSE METRES THESE ARE.  The probe boots under jsdom, which fetches
-   nothing, so every set it can measure is the BUILT STAND-IN.  Said here
-   because this is the table an operator patches from. */
-out('**THE METRES ABOVE ARE THE BUILT STAND-INS\'.** This map is generated under jsdom,');
-out('which fetches nothing, so no `.glb` is loaded when it runs. The model files ARE');
-out('committed and they DO load in a browser, and `bjWingPack` re-measures each wing set\'s');
-out('own box and rewrites `out` on its movers every time one lands — off a CUMULATIVE');
-out('z cursor, so a bigger attic moves the sets behind it too.');
-out();
-if(packAffected.length){
-  out('Measured, by poisoning every mover\'s `out` and running the pack: **' + packAffected.length +
-      ' of the ' + mvRows.length);
-  out('channels are re-pointed by it** — ' + packAffected.join(', ') + '. Those metres mean');
-  out('something else in a browser that has the model files; the CHANNEL NUMBERS do not move.');
-  out('The rest of the block is the show\'s own declared travel and is the same either way.');
-} else {
-  out('Measured, by poisoning every mover\'s `out` and running the pack: it re-points NONE');
-  out('of these channels, so the metres above are the metres either way.');
-}
-out();
-if(mvUncheckable.length){
-  out('**' + mvUncheckable.length + ' of these is ONE-WAY, and it is not a fault in the block:**');
-  out(mvUncheckable.map(r=>r.ch + ' `' + r.scene + ':' + r.part + '` (' +
-      f2(r.home) + 'm -> ' + f2(r.out) + 'm)').join(', ') + '. A whole-group travel declares no');
-  out('`out`, so where its home is 0 the whole of its range is 0.');
-  if(zeroIsNoCommand){
-    out('**It is not inert and calling it dead would be the more dangerous mistake:** every byte');
-    out('from 1 to 255 commands that set HOME, and no byte sends it back out. If it is flown or');
-    out('parked when you touch that fader it comes in, and the desk cannot put it back. Hold any');
-    out('non-zero byte and nothing else may move that scene either, because this block writes');
-    out('every frame. Byte 0 leaves it entirely alone (RULING EX), so an unpatched universe');
-    out('cannot reach it at all.');
-  } else {
-    out('Dead is not inert: while a desk drives, that channel writes its one value every frame,');
-    out('so nothing else may move that scene either.');
-  }
-  out('Self-check 3 drives every OTHER mover alone and proves its channel;');
-  out('these are the ones no measurement can tell apart, so they are named rather than');
-  out('quietly asserted.');
-  out();
-}
-out('The block is derived EVERY FRAME, so loading another show re-bases it for free — and');
-out('a production with no scene movers leaves ' + MVB + ' onwards doing nothing at all.');
-out();
-
-/* ---- the two things the code cannot say --------------------------------- */
-out('## Two things the code cannot tell you');
-out();
-out('**1. "Even channel is target, odd is speed" is TRUE TODAY AND IS NOT A RULE.** The fly');
-out('block starts at ' + FLYB + ' because the Palace patch is ' + FIX.length + ' fixtures of ' + CH_FIX +
-    ' channels, and ' + FLYB + ' is even —');
-out('so every target lands on an even channel. The bases are COMPUTED, never written down,');
-out('which is the point: a literal would silently repoint every channel after a rig change.');
-out('Add a fortieth lantern and the block starts at **' + flyBaseWith40 + '** — measured above — and every');
-out('fly TARGET is then on an ODD channel. Patch off this file, never off the parity.');
-out();
-out('**2. `sc.mv` records carry no `group` field and `sc.pmv` records do.** Anything walking');
-out('the mover block that wants the moving GROUP has to take it from the SCENE for a');
-out('whole-group travel and from the RECORD for a part. Measured on this show, as');
-out('MEMBERSHIP and not as two counts that happen to agree — one `mv` with a group and one');
-out('`pmv` without would leave both totals equal and this sentence a lie:');
-{
-  const withGroup = mvRows.filter(r=>r.hasGroup);
-  const parts = mvRows.filter(r=>r.part !== 'mv');
-  const odd = mvRows.filter(r=>r.hasGroup !== (r.part !== 'mv'));
-  if(!odd.length)
-    out(withGroup.length + ' of the ' + mvRows.length + ' mover records carry a `group`, and they are exactly the ' +
-        parts.length + ' part movers.');
-  else {
-    out(withGroup.length + ' of the ' + mvRows.length + ' carry a `group` and ' + parts.length +
-        ' are part movers, **and they are NOT the same set**:');
-    for(const r of odd)
-      out('- ch ' + r.ch + ' `' + r.scene + ':' + r.part + '` ' +
-          (r.hasGroup ? 'is a whole-group travel and carries a `group`'
-                      : 'is a part mover and carries none'));
-  }
-}
-out();
-out('## The suite\'s check');
-out();
-out('`tests/artnet.js` runs this probe and compares its output with this file, line for');
-out('line, the body from the second line down and the first line as a number.');
-out();
-out('The first line — the built file\'s byte size — is compared as a VALUE, not diffed as');
-out('text, so the failure can say what actually happened: this map was generated against a');
-out('different build of `the-house.html` than the one in the tree. That is the only check');
-out('on the one number in this file that no measurement produces. **The cost is that any');
-out('change to `src/` needs this file regenerated along with the build** — one command,');
-out('`node tools/artnet-map.js > docs/ARTNET.md`, and the diff is one line when nothing');
-out('else moved. The shape of the line is asserted on both sides too, so it cannot be');
-out('quietly dropped or widened into something that always matches.');
-out();
-out('What NEITHER check catches is a stale BUILD. An `src/`-only edit leaves a stale');
-out('`the-house.html`; the probe reads it, the suite stats the same stale file, and every');
-out('number here agrees with every other. `sh build.sh` first.');
-out();
 
 process.stdout.write(L.join('\n') + '\n');

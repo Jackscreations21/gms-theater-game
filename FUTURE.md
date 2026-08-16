@@ -31,9 +31,10 @@ commitment and nothing in here is binding — **a spec in
 ```
 
 The lettered rulings are one continuous sequence across the whole project.
-**The last one used is `EY`** (Art-Net, the band channels on a dead universe —
-ruled 2026-08-16 and NOT built; see PART 1a item 4). The next spec starts at
-`EZ`.
+**The last one used is `FA`** (Art-Net, `docs/ARTNET.md` becomes a flat list,
+one line per channel — ruled and built 2026-08-16). `EY` before it (the band
+channels on a dead universe) is ruled and NOT built; see PART 1a item 4. The
+next spec starts at `FB`.
 
 When something in here ships, **delete it from this file** — this is a list of
 what is *not* done. It stops being useful the moment it becomes a history.

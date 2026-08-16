@@ -1,10 +1,12 @@
 # Art-Net control of the Palace — design (2026-08-15)
 
-**BINDING. Rulings EL–EZ.** The next spec starts at **FA**.
+**BINDING. Rulings EL–FA.** The next spec starts at **FB**.
 
 **EX and EY were added on 2026-08-16**, after the round began, and both came
 from measuring what an UNPATCHED universe does. EX is built; **EY is ruled and
-deliberately NOT built** — see FUTURE.md PART 1a.
+deliberately NOT built** — see FUTURE.md PART 1a. **FA was added the same day**,
+from Jack on reading the generated file: it is a presentation ruling and it
+changes no channel.
 
 ## The brief, verbatim
 
@@ -474,6 +476,85 @@ the show started runs on to its stop. Same reasoning as RULING EX.
 **It renumbers what follows**, and nothing had to be edited to say so: the
 traveler goes 309 → 310 and the mover block 310 → 311, because every base is
 computed. `docs/ARTNET.md` regenerates and the suite pins it.
+
+### RULING FA — the channel file is a flat list, one line per channel, and nothing else
+
+Added 2026-08-16, from Jack on reading the generated file:
+
+> make it show what every channel is in a list not just the channel groupings
+> . and it doesnt need anything els in just a list of what each cnannel is
+
+**This narrows RULING EO's PRESENTATION and nothing else.** EO said the file is
+generated off the code and cannot drift; it never said what shape it takes, and
+what it took was 630 lines of grouped tables and reasoning — a document to read
+rather than a patch list to work down at a desk. Somebody patching a console
+wants the answer to "what is channel 293" without first working out which block
+293 falls in.
+
+- **One line per channel, every channel, in numeric order, from channel 1 to
+  the last one in use, with NO GAPS.** The channel number, then what that
+  channel is, specific enough to patch from: a fixture's number, name, type and
+  board section and which of its seven bytes this is; a lineset's id and goods
+  and whether this is its target or its speed; the house circuit; a selector
+  channel's bands and what each band does; a mover's scene, part, axis and metre
+  range. The column widths are COMPUTED off the rows, never written down, so a
+  longer fixture name or a fifteenth lineset re-aligns the whole file instead of
+  staggering it.
+- **The per-channel WARNINGS STAY, on the line of the channel they concern.**
+  "Nothing else" is not licence to throw away a fact that stops somebody
+  breaking a show. Seven survive, each compressed to a suffix: the ONE-WAY mover
+  channel; that every mover metre was measured with NO model file loaded, and
+  which channels `bjWingPack` re-points when one lands; that the traveler
+  channel's LINE changes with the loaded show; that the house selector acts on a
+  band CHANGE only; that a fixture's pan and tilt bytes are ignored on a lantern
+  that does not move; that a fly speed byte of 0 is PARKED; and that PARKED on
+  the SIGN's speed byte is SILENCE rather than a stop. *(The last is RULING EZ's,
+  which landed under this one: EZ took the sign off the bands, so the
+  band-change note is now ONE channel's rather than two, and the sign's own two
+  lines carry the park note instead.)*
+- **The header is two lines and no more:** the built file's byte size (the probe
+  rule, and `tests/artnet.js` compares it against the build in the tree) and
+  which show is loaded, because the mover lines and the lineset goods are that
+  show's.
+- **NOT ONE MEASUREMENT IS DROPPED.** This is a presentation ruling, and if
+  simplifying the output ever means deleting a measurement, the measurement
+  wins. Everything the file used to print as prose is still DRIVEN. What left
+  the output went one of two ways: onto a channel's own line, or into a
+  SELF-CHECK THAT THROWS — the fade durations, the fly speed park, the
+  traveler's park, band-change-only, the `mv`/`pmv` group membership, that
+  loading a production re-points no light channel, and that a fortieth lantern
+  moves every base after the light block by exactly `ART_CH_FIX`. **That
+  direction is deliberate and it is the better half of the trade: a measurement
+  whose only home is a sentence can be quietly weakened by rewording the
+  sentence, and a measurement that throws cannot.** The probe carries eleven
+  self-checks where it carried three — ten of them this ruling's, and RULING
+  EZ's sign check taking the eleventh number rather than the fourth it was
+  written with, because FA had already given 4 to the fortieth-lantern check
+  and `tests/artnet.js` cites SELF-CHECK 10 by number — and several readings
+  that were the rig's
+  are now each channel's own — the ramps, the gobo bands and the pan/tilt
+  degrees on a fixture line are that fixture's reading rather than fixture 1's
+  printed thirty-nine times.
+- **And the list's own shape is checked TWICE, because a line diff cannot say
+  what the two texts agree ON.** A probe that quietly stopped emitting a block
+  would be regenerated into a committed file matching it perfectly, and every
+  existing check would stay green over a list with a hole in it. So the probe
+  proves its own rows gapless before printing, and the suite reads the COMMITTED
+  file independently: two header lines, a blank, then channel 1 to the last with
+  none missing and none listed twice.
+- **Nothing about the channel LAYOUT moves.** No channel changes meaning, none
+  is added or removed, and no game code is touched. This ruling reaches
+  `tools/artnet-map.js`, `docs/ARTNET.md`, the suite case that compares them and
+  `tools/README.md`.
+
+**What it costs, said plainly: the file no longer explains itself.** The
+reasoning that used to sit in it — why every base is computed, what an unpatched
+universe does, why the traveler is parked by a lineset's speed byte, that "even
+is target, odd is speed" is true today and is not a rule — is in `src/p6d.txt`,
+in this spec, and in the header of `tools/artnet-map.js`, which is where a
+reader who wants reasoning rather than a patch list should now go. The file's
+own first line still names the generator, which is the only guard left inside it
+against somebody editing it by hand; the suite is the real one.
 
 ---
 
