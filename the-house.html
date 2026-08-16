@@ -11898,22 +11898,42 @@ function artFlys(b){
     const ls = FLY[i];
     const byte = b[o + 1];
     ls.artSpeed = (byte / 255) * ART_FLY_MAX;
-    /* PARKED.  Not "moves very slowly": the target is not written at all, so
-       a line already standing where the board left it stays there and does
-       not creep, and a line mid-travel stops because the guarded read in
-       updateFly is now zero. */
-    if(!byte) continue;
+    /* PARKED.  Not "moves very slowly", and not merely "held still by a zero
+       speed" either: the line is STOPPED WHERE IT STANDS.
+
+       Leaving the target alone looked right and was not.  A line caught
+       mid-travel then kept its old target while its position stopped, and
+       updateFly reads a target it is not at as a move in progress — so
+       `ls.moving` never cleared, `Snd.railStop` never ran, and the rail motor
+       loop played for the rest of the session on a line that had not moved
+       for ten minutes.  The likeliest first use finds this: a desk patched
+       only for the 273 light channels sends zeros on 274-301, so every line
+       is parked from the moment the switch goes on.
+
+       Writing pos into target is what a stop IS, and it leaves the runaway
+       physics alone: the runaway clear needs target and pos to DIFFER. */
+    if(!byte){ ls.target = ls.pos; continue; }
     const lo = minTrimOf(ls);
     flyTo(ls, lo + (b[o] / 255) * (OUT_TRIM - lo));
   }
-  /* the traveler, one channel: 0 shut, 255 open.  It belongs to whichever
+  /* THE TRAVELER, one channel: 0 shut, 255 open.  It belongs to whichever
      line is carrying goods that declare themselves a traveler — the house
      curtain today — and the map probe prints which line that is rather than
-     leaving it to be counted off this comment. */
+     leaving it to be counted off this comment.
+
+     AND IT IS PARKED BY ITS OWN LINE'S SPEED BYTE.  Written unconditionally,
+     this was the one piece of scenery a dead universe DID move: the instant
+     the switch went on with nothing patched to 309, the house curtain ran
+     itself shut at 0.42/s in front of the audience.  RULING EQ's principle is
+     that a dead universe moves no scenery, and a curtain is scenery; EO's
+     table says 0 is shut, and it still is, once somebody is actually driving
+     that line.  The traveler hangs on a lineset, so the lineset's own speed
+     byte is what says whether the desk is driving it. */
   const t = artSelBase() + 1;                    // channel 309, 0-based
   if(t < b.length){
-    const trav = FLY.find(ls=>ls.goods && GOODS[ls.goodsKey] && GOODS[ls.goodsKey].traveler);
-    if(trav) trav.travTarget = b[t] / 255;
+    const i = FLY.findIndex(ls=>ls.goods && GOODS[ls.goodsKey] && GOODS[ls.goodsKey].traveler);
+    const so = artFlyBase() - 1 + i * 2 + 1;     // that line's speed byte
+    if(i >= 0 && so < b.length && b[so]) FLY[i].travTarget = b[t] / 255;
   }
 }
 

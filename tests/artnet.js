@@ -1206,6 +1206,27 @@ const P = async (name, fn)=>{
       if(Math.abs(ls.target - at) > 1e-6)
         throw new Error('a parked line is commanded to ' + ls.target.toFixed(2) + ' while standing at ' + at.toFixed(2));
       if(ls.moving) throw new Error('a parked line reads as MOVING, so the rail never stops making the sound');
+      /* AND THE CASE THAT MATTERS MOST: a line caught MID-TRAVEL by a parked
+         desk.  Everything above starts from a line already standing still, so
+         "target equals pos" and "not moving" are both true before a single
+         byte is applied — the setup satisfies two of the three assertions.
+         A desk patched only for the 273 light channels sends zeros on
+         274-301, so this is what the first real use does. */
+      ls.runaway = false; ls.flyVel = 0;
+      flyTo(ls, minTrimOf(ls), true);                       // start at the bottom
+      ws.deliver(flyFrame(0, 255, 255)); artnetTick(1/60);  // and send it to the grid
+      for(let i = 0; i < 20; i++) updateFly(1/60);
+      if(!ls.moving) throw new Error('this clause needs a line actually travelling, and it is not');
+      const caught = ls.pos;
+      if(Math.abs(caught - ls.target) < 0.05) throw new Error('the line arrived before it could be caught');
+      ws.deliver(flyFrame(0, 255, 0)); artnetTick(1/60);
+      for(let i = 0; i < 60; i++) updateFly(1/60);
+      if(Math.abs(ls.pos - caught) > 0.02)
+        throw new Error('a line parked mid-travel drifted ' + Math.abs(ls.pos - caught).toFixed(3) + 'm');
+      if(ls.moving)
+        throw new Error('a line parked mid-travel still reads MOVING — the rail motor loop never stops');
+      if(Math.abs(ls.target - ls.pos) > 0.02)
+        throw new Error('a line parked mid-travel is still commanded to ' + ls.target.toFixed(2));
       /* and it is the SPEED that parks it, not a refusal to write: give it a
          speed and the same target now travels */
       ws.deliver(flyFrame(0, 0, 255)); artnetTick(1/60);
@@ -1252,18 +1273,82 @@ const P = async (name, fn)=>{
       const ws = deskOn();
       const trav = FLY.find(ls=>ls.goods && GOODS[ls.goodsKey] && GOODS[ls.goodsKey].traveler);
       if(!trav) throw new Error('nothing hung declares itself a traveler');
-      const b = new Uint8Array(512);
-      b[artSelBase() + 1] = 255;
-      ws.deliver(b); artnetTick(1/60);
+      /* it is the FIRST declaring line, not just any of them */
+      const all = FLY.filter(ls=>ls.goods && GOODS[ls.goodsKey] && GOODS[ls.goodsKey].traveler);
+      if(trav !== all[0]) throw new Error('the traveler channel found line ' + trav.id + ', not the first of ' + all.length);
+      const speedByte = artFlyBase() - 1 + (trav.id - 1) * 2 + 1;
+      const frame = (open, spd)=>{ const b = new Uint8Array(512);
+        b[artSelBase() + 1] = open; b[speedByte] = spd; return b; };
+      /* A DEAD UNIVERSE MOVES NO SCENERY, AND A CURTAIN IS SCENERY.  Written
+         unconditionally this was the one thing 512 zeros DID move: the house
+         curtain ran itself shut in front of the audience the instant the
+         switch went on.  It is parked by its own line's speed byte. */
+      trav.travTarget = 1;
+      ws.deliver(new Uint8Array(512)); artnetTick(1/60);
+      if(trav.travTarget !== 1)
+        throw new Error('an unpatched universe shut the house curtain to ' + trav.travTarget);
+      ws.deliver(frame(255, 255)); artnetTick(1/60);
       if(Math.abs(trav.travTarget - 1) > 1e-6) throw new Error('255 gave travTarget ' + trav.travTarget);
-      b[artSelBase() + 1] = 0;
-      ws.deliver(b); artnetTick(1/60);
+      ws.deliver(frame(0, 255)); artnetTick(1/60);
       if(trav.travTarget !== 0) throw new Error('0 gave travTarget ' + trav.travTarget);
-      b[artSelBase() + 1] = 128;
-      ws.deliver(b); artnetTick(1/60);
+      ws.deliver(frame(128, 255)); artnetTick(1/60);
       if(Math.abs(trav.travTarget - 128/255) > 1e-6) throw new Error('128 gave travTarget ' + trav.travTarget);
       artSetOn(false);
-      return 'line ' + trav.id + ' carries the traveler; channel ' + (artSelBase() + 2) + ' shut it, opened it and half-opened it';
+      return 'line ' + trav.id + ' carries it, first of ' + all.length + '; channel ' + (artSelBase() + 2) +
+             ' shut, opened and half-opened it, and 512 zeros left it alone';
+    });
+
+    P('a desk move works the lock, because it goes through flyTo (RULING EQ)', ()=>{
+      /* "applied via flyTo, which works the lock itself" is a clause of EQ,
+         and a version that clamped and wrote ls.target directly would satisfy
+         every other assertion in this file. */
+      const ws = deskOn();
+      const ls = FLY[0];
+      ls.runaway = false; ls.flyVel = 0;
+      /* a SHORT move at full desk speed, so the arrival happens inside the
+         loop below rather than twenty seconds after it */
+      const lo = minTrimOf(ls);
+      flyTo(ls, lo + 1.0, true);
+      ls.locked = true; ls.relock = false;
+      ws.deliver(flyFrame(0, 0, 255)); artnetTick(1/60);     // byte 0 = down to lo
+      if(ls.locked) throw new Error('the desk commanded a locked line and the lock stayed thrown');
+      if(!ls.relock) throw new Error('the desk took the lock off and did not owe it back');
+      updateFly(1/60);
+      if(ls.locked) throw new Error('the line locked itself mid-travel');
+      for(let i = 0; i < 300 && Math.abs(ls.target - ls.pos) > 0.004; i++) updateFly(1/60);
+      if(Math.abs(ls.target - ls.pos) > 0.004)
+        throw new Error('the line never arrived: ' + ls.pos.toFixed(2) + ' of ' + ls.target.toFixed(2));
+      /* ONE MORE FRAME.  The loop stops the moment the gap closes, which is
+         the frame BEFORE updateFly runs its arrival branch — and the arrival
+         branch is where the flyman throws the lock back on. */
+      updateFly(1/60);
+      if(!ls.locked) throw new Error('the flyman never locked off on arrival');
+      artSetOn(false);
+      return 'a locked line: lock off on the command, still off mid-travel, thrown again on arrival — flyTo did the work';
+    });
+
+    P('a runaway is still a runaway, and a driving desk takes it back (RULING EQ)', ()=>{
+      /* EQ says runaway physics are untouched.  Both halves matter: the fall
+         must still happen, and writing the target must still end it. */
+      const ws = deskOn();
+      const ls = FLY[0];
+      ws.deliver(flyFrame(0, 255, 255)); artnetTick(1/60);
+      for(let i = 0; i < 400 && Math.abs(ls.target - ls.pos) > 0.004; i++){ artnetTick(1/60); updateFly(1/60); }
+      const up = ls.pos;
+      if(!(up > 10)) throw new Error('this case needs the line up at the grid, got ' + up.toFixed(2));
+      /* a hand lets go at the rail with no lock thrown */
+      ls.runaway = true; ls.flyVel = 0; ls.locked = false; ls.relock = false;
+      ls.target = ls.pos;
+      for(let i = 0; i < 30; i++) updateFly(1/60);
+      if(!(ls.pos < up - 0.05)) throw new Error('the line did not fall at all: ' + ls.pos.toFixed(2));
+      if(!ls.runaway) throw new Error('the runaway ended on its own with nothing writing a target');
+      /* and the desk, which is driving, takes it back */
+      ws.deliver(flyFrame(0, 255, 255)); artnetTick(1/60);
+      for(let i = 0; i < 30; i++){ artnetTick(1/60); updateFly(1/60); }
+      if(ls.runaway) throw new Error('a driving desk did not take the line back off the runaway');
+      if(!(ls.pos > up - 5)) throw new Error('the line never flew back: ' + ls.pos.toFixed(2));
+      artSetOn(false);
+      return 'let go at ' + up.toFixed(2) + 'm it fell under gravity, and a desk commanding it ended the runaway and flew it back';
     });
 
     P('the desk speed applies ONLY while a desk drives (RULING EQ)', ()=>{
