@@ -224,7 +224,111 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **FINISH THE ART-NET CHAIN — THREE PRs LEFT** (2026-08-15, EL–EW)
+## NEXT SESSION: **THE ART-NET CHAIN IS FINISHED — PUT IT IN FRONT OF A DESK** (2026-08-16, EL–EY)
+
+Cache-bust **`?v=31`**. Rulings at **EY**. Suite count **21**. `main` is at
+**`44688eb`** as this was written, with its own PR landing on top. **Read
+STATE.md — it carries the run instructions, the one bug left standing, and the
+two things that are his to decide.**
+
+**TEN PRs — #200 to #209 with no gaps, TEN CLEAN MERGES, NO RECOVERY PR.**
+Nine of them are the planned chain; **#206 is the extra**, the mid-round record
+written when the chain paused at six. Every merge verified byte-identical,
+21/21 on the merged result, branches deleted local and remote.
+
+**THE ONE THING TO DO IS PUT A DESK ON IT**, because not one byte of this
+round has been seen against real hardware. `node tools/artnet-relay.js`, QLC+
+to 127.0.0.1 universe 0, LIGHTING page, throw ARTNET. **Patch off
+`docs/ARTNET.md`** — it is generated from the build and the suite fails if it
+drifts. VR-SETUP.md §8 is the whole recipe.
+
+**AND ONE BUG IS LEFT STANDING ON PURPOSE — RULING EY.** A dead universe
+still hauls the Beetlejuice sign 11.36m to its FLOOR stop on the first frame,
+because the band channels write on a CHANGE and their memories start at -1.
+Jack ruled the fix and ruled that it waits: *"Don't fix it — just record it."*
+It is PART 1a item 4 of FUTURE.md. **Expect it the first time the switch goes
+on with a desk patched only for the 273 light channels**, which is the
+likeliest first real use.
+
+**The `?v=29` headset run is now TWO ROUNDS owed** and nothing in DR–DY has
+ever been seen either.
+
+## DONE — 2026-08-16: the Art-Net chain finished, movers, the map and the record (EX, EY)
+
+Three PRs. The set movers with a ruling reversed under them, a channel map
+generated off the code, and the record — and the round's shape is that
+**every one of the three was changed by measuring what a DEAD universe does.**
+
+**RULING EX — the movers are parked unless something is really driving them.**
+ET gave them no speed byte, so byte 0 meant `home` and 512 zeros commanded
+every mover in the loaded show home: measured, it walked the parked attic
+19.50m onto the deck while it is drawn and flew the exterior cloth in. Put to
+Jack with both answers written out; he ruled byte 0 = no command, 1..255 spans
+home..out. **And it is NOT the same park as the flys**, which is the half
+worth keeping: EQ makes a fly line's zero a STOP because a line that kept a
+target it was not at left the rail motor loop playing. A set mover has no such
+loop, so a zero here is SILENCE and a move the show started runs on — a build
+that copied the fly rule across would freeze the show mid-changeover every
+frame a dead desk was connected.
+
+**RULING EY — the bands have the same fault and it is RULED BUT NOT BUILT.**
+`artBands` writes 307 and 308 on a band CHANGE only and the memories start at
+-1, so the first frame of an unpatched universe reads band 0 and acts: the
+sign goes to its FLOOR stop, **11.356m of world travel measured from its UP
+stop**, and the house redresses to the Maitlands. Third time the same
+collision was found in one round. Jack ruled the fix and ruled that it waits.
+
+**THE FINDING OF THE ROUND IS ABOUT WHAT A GREEN ASSERTION IS WORTH, AGAIN,
+AND THIS TIME IT IS ABOUT ORDER.** The sign's own safety case reads green
+BECAUSE `deskOn()` establishes band 0 before the sign is put on its stop — so
+its 120 measured frames are a no-change band. **The assertion written to prove
+the sign safe is the thing that concealed the hole.** Move that call two lines
+down and it fails.
+
+**AND THE SAME SHAPE APPEARED IN THE NEGATIVE CHECKS THEMSELVES.** A mutation
+written to prove the "block STOPS" clause broke an earlier clause in the same
+case, so the case aborted forty lines above the thing under test — and the run
+still printed ERR against the case by name, which reads exactly like a check
+that fired. It took a second mutation, built specifically to leave the earlier
+clauses green, to reach the clause at all. **Read WHICH message came back, not
+just that one did.** In TRAPS.
+
+**TWO REVIEWS FOUND WHAT THE OTHER DID NOT, ON BOTH PRs.** On the movers:
+stage 1 found the two assertions that could not fail (the only haul in the
+game has `key === scene`, and it is the LAST scene declared, so "takes no
+channel" was only ever tested as "takes no write"); stage 2 found the
+half-refusal the PR itself created — the SET list ran the changeover, marked
+the set ON and drawn, and let artMovers put it back in the wing on the next
+frame, with a toast saying it worked. On the map: stage 1 found that channels
+307 and 308 were RESTATED rather than measured — three mutants each produced a
+byte-identical map, on the two channels from Jack's own verbatim brief; stage
+2 found that the mover metres are the STAND-IN geometry's, and that six of the
+twelve channels mean something else once his model files land.
+
+**Negative checks: eleven on the movers, and every one fired.** All by sha,
+every mutation proved present in the BUILT file and proved to have changed it,
+every restore proved byte-identical. Two of them were mutations a REVIEWER ran
+against the old suite and reported as NOT firing; they fire against the new
+fixture.
+
+**Three documents were wrong and are now right.** FUTURE.md's Art-Net entry —
+the one STATE.md said to delete when the chain finished — **never existed**;
+the round went brief straight to spec. The relay serves the repo resolved from
+its own location, not the working directory, so you cannot redirect it by
+`cd`. And Art-Net cannot come off the Pages URL because `artUrl()` only ever
+builds a SAME-ORIGIN socket — from HTTPS it attempts
+`wss://jackscreations21.github.io/artnet`, which does not exist. Mixed content
+is what kills the WORKAROUND, not the default path, so **the console error a
+tester sees will not say "mixed content"**.
+
+**And channel 309's traveler moves with the production.** On the standing hang
+it is line 2, the house curtain. **With Beetlejuice loaded it is line 1**,
+because the show hangs its own `bjCurtain` and `FLY.findIndex` takes the
+first — the Palace house curtain is not on the rail at all. RULING EO always
+said "the first lineset whose goods declare `traveler:true`" and was right;
+the loose sentences were in `p6d`'s comment and in STATE.
+
+## SUPERSEDED: **FINISH THE ART-NET CHAIN — THREE PRs LEFT** (2026-08-15, EL–EW) — all three landed, see above
 
 Cache-bust **`?v=30`**. Rulings at **EW**. Suite count **21**. `main` is at
 **`e0c5768`**. **Read STATE.md — it carries the channel map, the run

@@ -35,12 +35,24 @@ paint, save).
 
 ```sh
 sh build.sh          # rebuild the-house.html from src/ (syntax-checked)
+node tools/artnet-map.js > docs/ARTNET.md   # regenerate the channel map
 cd tests && npm test # all 21 suites; exits non-zero on any failure
 cd tests && node real.js  # boot the whole file, expect "fatal": null
 ```
 
-`the-house.html` is committed BUILT — after editing `src/`, rebuild and
-commit both.
+**TWO generated files are committed, and both follow the same rule: after
+editing `src/`, regenerate and commit them with it.**
+
+- `the-house.html` is committed BUILT.
+- `docs/ARTNET.md` is committed GENERATED, from the BUILT file — it records
+  which bytes it read, and a suite case fails if it has drifted. So *any*
+  `src/` change needs the map regenerated, not only an Art-Net one. The
+  failure message tells you the command.
+- **Regenerate from `sh`, never PowerShell.** PS 5.1's `>` writes a BOM
+  (UTF-8 with `EF BB BF` on this machine), which lands in front of the map's
+  first character; the suite then fails at line 1 with
+  `docs/ARTNET.md no longer opens with the built file size`. Recoverable, and
+  easy to waste a round on.
 
 ## Hard rules (non-negotiable, owner's or learned the hard way)
 

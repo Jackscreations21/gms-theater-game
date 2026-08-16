@@ -471,6 +471,54 @@ against this list before opening a PR; **add new traps as you hit them.**
   needs an explicit `=== undefined` guard first, or the whole test is decoration
   until the feature exists.
 
+- **A mutation that breaks an EARLIER clause never reaches the clause it was
+  meant to prove — and the run still prints `ERR` against the case by name, so
+  it reads exactly like a check that fired.** A case throws on its first
+  failure; everything below that line is untested. PR 7's M4 (the mover block
+  read one channel late) was written to prove the *"and the block STOPS"* tail
+  and broke the channel-order clause forty lines above it; the tail had never
+  run at all. **Read WHICH message came back, not just that one did** — if it
+  is not the clause you aimed at, the check has not been done. The fix is a
+  mutation built to leave the earlier clauses green: M5 wrote the last mover a
+  second time from the channel just *past* the block, which is silent under the
+  first frame (that channel is 0, and RULING EX makes 0 silence) and bites only
+  under the boundary frame. It named `roof:all`, the last mover, and nothing
+  else failed. Sibling of "a mutation can prove the wrong CLAUSE" — that one is
+  a guard swallowing the mutation, this one is the case aborting before it
+  arrives.
+
+- **A test frame built by arithmetic into a `Uint8Array` wraps silently.** The
+  mover channel-order case gives each channel a distinct byte, `20 + i*17`, so
+  that two movers which swapped places land on wrong metres. Twelve movers fit;
+  a fifteenth would compute 258, and `Uint8Array` stores that as **2**. The case
+  would then compare a target against what 258 should have meant while the game
+  had been handed a 2, and fail for a reason with nothing to do with the code.
+  The set is data-driven — a show can grow a scene — so the case throws if its
+  last byte exceeds 255.
+
+- **AN ASSERTION CAN READ GREEN BECAUSE OF THE ORDER ITS OWN SETUP RUNS IN, and
+  this is the sharpest instance the project has had.** RULING EY was found only
+  because a reviewer moved a line. The Art-Net band channels write on a band
+  CHANGE and their memories start at `-1`, so the first frame of an *unpatched*
+  universe reads band 0 and acts on it — it hauls the Beetlejuice sign 11.36m to
+  its FLOOR stop. The case written to prove the sign SAFE calls `deskOn()`
+  (which delivers a frame, which establishes band 0) **before** it puts the sign
+  on its stop, so its 120 measured frames are a no-change band and it passes.
+  **The assertion written to prove the thing safe is the thing that concealed
+  the hole.** When a system is change-driven, ask what state the SETUP left the
+  change-detector in, and place the subject before the detector is armed.
+
+- **A generated document is only as honest as the set it MEASURES; the rest is
+  prose wearing a measurement's clothes.** `tools/artnet-map.js` claimed
+  "nothing here is typed from a table" and then rebuilt two of its channel
+  tables by re-indexing the same constants the game indexes, never calling
+  `artBands` at all. Three mutations — swapping the two channels, reversing the
+  bands, killing one outright — each produced a **byte-identical map**. Same for
+  red/green/blue, folded into one measurement, so swapping red and blue changed
+  nothing. **For every block a generated file claims, name the function it
+  DRIVES and mutate that function to prove the file moves.** If it does not
+  move, the claim is prose and the warrant is void for that block.
+
 ## Tests — stepping the frame, and state that carries
 
 - **The real frame is `updateFades` → `updateRig` → `updateStorm`, and stepping
@@ -811,11 +859,17 @@ against this list before opening a PR; **add new traps as you hit them.**
   write anyway.
 - **AN UNPATCHED UNIVERSE IS THE LIKELIEST FIRST REAL USE, AND ZERO IS A
   COMMAND.** A desk patched only for the light channels sends zeros on
-  everything else. Zeros shut the house curtain at 0.42/s in front of the
-  audience (channel 309) and command every set mover home — walking a parked
-  19.5m attic onto the deck while it is drawn. Anything that reads a byte as a
+  everything else. Zeros shut the house curtain in front of the audience
+  (channel 309) at **0.42 of its full draw a second** — about 2.4s end to end;
+  `ls.open` is a FRACTION and "0.42/s" read as metres for two rounds — and, as
+  ET was first written, commanded every set mover home, walking a parked 19.5m
+  attic onto the deck while it is drawn. Anything that reads a byte as a
   POSITION needs an answer to "what does 0 mean when nobody is driving this",
   and the flys' answer (a speed byte, where 0 is parked) is the pattern.
+  **Updated 2026-08-16:** 309 and the movers are both answered now (309 by its
+  lineset's speed byte, the movers by RULING EX making 0 no command). **The
+  band channels 307/308 are NOT** — RULING EY rules the fix and FUTURE.md
+  carries the work, so a dead universe still hauls the sign 11.36m today.
 - **A BUILT ARTIFACT IN A MERGE CONFLICT HAS EXACTLY ONE CORRECT RESOLUTION:
   REBUILD IT.** `the-house.html` is committed built, so two branches touching
   `src/` always conflict in it too. Never resolve it by hand or by taking a
