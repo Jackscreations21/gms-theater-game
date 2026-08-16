@@ -1,5 +1,5 @@
 /* ============================================================================
-   ART-NET — the suite for RULINGS EL..EV.  Two halves, and they are different
+   ART-NET — the suite for RULINGS EL..EZ and FB.  Two halves, and they are different
    KINDS of test, which is why they look nothing like each other.
 
    PART ONE boots the BUILT file under jsdom and drives src/p6d.txt — with a
@@ -302,6 +302,90 @@ const P = async (name, fn)=>{
       if(FIXTURES.map(f=>f.level + ':' + f.color.getHexString()).join(',') !== before)
         throw new Error('the rig moved when the desk went quiet — it must HOLD its last look');
       return 'stale after ' + ART_STALE + 's with ' + lit + ' channels up: board has it back, not one level or colour moved';
+    });
+
+    P('a REAL desk idling does not hand the board back (RULING FB)', ()=>{
+      /* THE ONE NUMBER IN THIS ROUND THAT CAME OFF HARDWARE.  Jack ran QLC+
+         at the relay on 2026-08-16; the relay log, cumulative, every 10s, read
+         1, 7, 12, 17 ArtDmx packets in.  Five to six packets per TEN SECONDS:
+         QLC+ does not stream at Art-Net nominal ~44Hz while values are not
+         changing, it sends on CHANGE plus a slow keepalive.
+
+         SO THE MARGIN IS PINNED AGAINST THAT LOG, NOT AGAINST THE CONSTANT.
+         Asserting ART_STALE === 5.0 would be a tripwire on a number: it would
+         fire for anyone who changed the value for a good reason and would say
+         nothing whatever about what the value has to DO.  What it has to do is
+         span a real keepalive gap.
+
+         AND THE GAP IS TWICE THE SLOWEST MEASURED SPACING, DELIBERATELY.  A
+         CUMULATIVE COUNT CAN ONLY GIVE A MEAN — four ten-second windows cannot
+         resolve one gap, and a send-on-change desk goes quiet for longer than
+         its own average whenever nothing at all is happening.  The doubling is
+         a stated margin rather than a measurement, and it is the whole of what
+         this case claims: a window has to clear a real keepalive by SOMETHING,
+         and 0.2s is not something.
+
+         IT FIRES BOTH WAYS.  Under the old 2.0 the first gap ends the case; a
+         window widened until a dead desk is never noticed fails the second
+         half.  Between them they fence the value rather than fix it. */
+      const DESK_MEAN  = 10 / 6;                  // 1.67s — the fastest window logged
+      const DESK_WORST = 10 / 5;                  // 2.00s — the slowest window logged
+      const DESK_GAP   = DESK_WORST * 2;          // 4.00s — the gap the log cannot resolve
+      const HANDBACK_MAX = 10;                    // and a desk that really died is still noticed
+      const ws = FakeWS.last;
+      if(!ws || ws !== ART.ws) throw new Error('this case needs the live socket the game is using');
+      /* the board writer is a SECTION fader — gated on artDriving() in p6, and
+         a real writer rather than a re-reading of the gate function.  Its level
+         is put back either way, so nothing downstream inherits this. */
+      const sec = SECTIONS[0], held = sec.level;
+      try{
+        ws.deliver(frameLit(180)); artnetTick(1/60);
+        if(artDriving() !== true) throw new Error('the desk would not come up for this case');
+        const ages = [];
+        for(let g = 0; g < 4; g++){
+          let t = 0;
+          while(t < DESK_GAP){ artnetTick(1/60); t += 1/60; }
+          ages.push(Math.round(ART.seen * 100) / 100);
+          if(artDriving() !== true)
+            throw new Error('keepalive gap ' + (g + 1) + ': an idle desk was called dead after ' +
+              ART.seen.toFixed(2) + 's, and a real QLC+ idles ' + DESK_MEAN.toFixed(2) + 's to ' +
+              DESK_WORST.toFixed(2) + 's between packets');
+          if(ART.live !== true) throw new Error('keepalive gap ' + (g + 1) + ': the row would read STALE mid-show');
+          /* and the BOARD IS STILL REFUSED across the gap — the gate being
+             obeyed, not merely the gate reading true */
+          const want = sec.level > 0.5 ? 0.1 : 0.9;
+          setSection(sec, want, 0);
+          if(Math.abs(sec.level - want) < 1e-9)
+            throw new Error('keepalive gap ' + (g + 1) + ': the board wrote a section while the desk still held the rig');
+          ws.deliver(frameLit(180)); artnetTick(1/60);      // the keepalive lands
+          if(ART.seen !== 0) throw new Error('the keepalive did not reset the age: ' + ART.seen);
+        }
+        /* AND A DESK THAT HAS REALLY STOPPED STILL HANDS BACK, PROMPTLY.
+           Without this half ART_STALE = 600 passes everything above, and the
+           cost RULING FB names — a dead desk holding the rig — would be
+           unbounded with nothing to say so. */
+        let t = 0;
+        while(artDriving() && t < 60){ artnetTick(1/60); t += 1/60; }
+        if(artDriving()) throw new Error('a desk that stopped never handed the board back at all');
+        if(t > HANDBACK_MAX)
+          throw new Error('a dead desk held the rig for ' + t.toFixed(1) + 's, past the ' +
+            HANDBACK_MAX + 's this case pins');
+        /* AND THE WRITER WAS ALIVE ALL ALONG, which the refusals above do not
+           prove on their own.  A review disabled setSection's WRITE while
+           leaving its gate intact and this case stayed green — every refusal
+           reads identically to a writer that is broken for an unrelated
+           reason.  So the same call has to MOVE the fader now the desk has
+           gone, and it needs a value the refusals cannot already have left. */
+        const proof = held > 0.5 ? 0.1 : 0.9;
+        setSection(sec, proof, 0);
+        if(Math.abs(sec.level - proof) > 1e-9)
+          throw new Error('the board still would not write after the handback — ' +
+            'the refusals above prove nothing about the gate');
+        setSection(sec, held, 0);
+        return 'held the rig across 4 gaps of ' + DESK_GAP.toFixed(2) + 's (ages ' + ages.join('s, ') +
+               's) with the board refused throughout, handed back ' + t.toFixed(1) +
+               's after the desk really stopped, and the same writer moved the fader once it had';
+      } finally { sec.level = held; }
     });
 
     P('a refused connection backs off 1-2-4-8, counted off the frame dt', ()=>{
@@ -1579,7 +1663,7 @@ const P = async (name, fn)=>{
 
     P('the desk taking the rig back re-asserts the house band (RULING ER)', ()=>{
       /* every LIGHT channel says itself again every frame; this one speaks
-         only on a change.  A desk that stutters for two seconds hands the
+         only on a change.  A desk that stutters past ART_STALE hands the
          board back (RULING EV says so explicitly) — and if a cue redresses
          while it is away, an unmoved fader would never correct it. */
       showLoad('beetlejuice');

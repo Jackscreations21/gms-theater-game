@@ -918,6 +918,17 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **A SPEC'S OWN PROSE CAN BE WRONG ABOUT THE DATA.** RULING ET says "the attic
   tracking in from x −14.20"; the built record is home 0, out −19.50. Read the
   records, and say in the report that the sentence will not match.
+- **A PROTOCOL'S NOMINAL RATE IS NOT A DEVICE'S ACTUAL RATE, AND A TIMEOUT SIZED
+  OFF THE NOMINAL ONE HAS NO MARGIN AT ALL.** `ART_STALE` was 2.0s because
+  Art-Net "sends ~44 frames a second", which reads as 88 frames of headroom. The
+  first real QLC+ run printed 5–6 packets per 10 SECONDS while idle — the desk
+  sends on change plus a slow keepalive — so the real margin was 0.2s, and in
+  the slowest window none (RULING FB raised it to 5.0s). **Every timeout in this
+  repo that was sized off a datasheet number rather than a measurement is the
+  same bug waiting**, and the way it surfaces is not a crash: it is a gate that
+  flaps, which reads as flakiness rather than as a wrong constant. Ask what the
+  device does when NOTHING is happening — that is the case the spec sheet never
+  covers.
 
 ## Environment
 

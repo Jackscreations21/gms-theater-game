@@ -1,12 +1,17 @@
 # Art-Net control of the Palace — design (2026-08-15)
 
-**BINDING. Rulings EL–FA.** The next spec starts at **FB**.
+**BINDING. Rulings EL–FB.** The next spec starts at **FC**.
 
 **EX and EY were added on 2026-08-16**, after the round began, and both came
 from measuring what an UNPATCHED universe does. EX is built; **EY is ruled and
 deliberately NOT built** — see FUTURE.md PART 1a. **FA was added the same day**,
 from Jack on reading the generated file: it is a presentation ruling and it
 changes no channel.
+
+**FB was added on 2026-08-16 too, and it is the only ruling in this round that
+came off REAL HARDWARE** — the first QLC+ run against the relay, which showed
+`ART_STALE`'s 2s window had about 0.2s of margin against a real desk's idle
+keepalive. It narrows EU and EV.
 
 ## The brief, verbatim
 
@@ -229,7 +234,8 @@ order. Each mover gets ONE channel:
 
 ### RULING EU — hold the last look; reconnect off the frame dt
 
-- **Signal loss** (no frame for >2s): the rig HOLDS its last look — a real
+- **Signal loss** (no frame for >`ART_STALE`; **2s as first ruled here, raised
+  to 5s by RULING FB** once a real desk was measured): the rig HOLDS its last look — a real
   rig does not snap to black when the desk hiccups. The ARTNET row shows
   live/stale and last-packet age on both surfaces.
 - **Socket drop:** reconnect attempts are timed off the frame `dt`
@@ -248,7 +254,8 @@ Added 2026-08-15, after the round began. Jack, on reading the plan:
 
 **This narrows RULING EM.** EM gated the board on the SWITCH; the gate is now
 on the SWITCH **and a live signal**. `ART.live` is true only while a frame has
-arrived within `ART_STALE` (2s, RULING EU's window).
+arrived within `ART_STALE` (2s as RULING EU set it; **5s since RULING FB**,
+which measured a real desk's keepalive and found that window had no margin).
 
 - Switch on with no desk connected, or no relay running: **nothing changes.**
   Every cue, sub, fader, fly and rope works exactly as it does today. A switch
@@ -259,9 +266,12 @@ arrived within `ART_STALE` (2s, RULING EU's window).
   snaps, and it still does. EU governs the light; EV governs who may write.
 - The ARTNET row's live/stale reading is therefore not decoration: it is the
   gate, shown. Both surfaces print it (EM).
-- The one thing this costs: a desk that stutters for two seconds hands the
-  board back and takes it again. That is the right trade — the alternative is
-  a rig nobody can touch because a laptop went to sleep.
+- The one thing this costs: a desk that stutters for longer than `ART_STALE`
+  hands the board back and takes it again. That is the right trade — the
+  alternative is a rig nobody can touch because a laptop went to sleep. **How
+  long a stutter that is turned out to matter more than this bullet allowed:
+  RULING FB found a real desk idling at 1.8s between packets against a 2s
+  window.**
 
 ### RULING EW — EM's list of writers was incomplete, and one of the gaps runs for ever
 
@@ -555,6 +565,69 @@ in this spec, and in the header of `tools/artnet-map.js`, which is where a
 reader who wants reasoning rather than a patch list should now go. The file's
 own first line still names the generator, which is the only guard left inside it
 against somebody editing it by hand; the suite is the real one.
+### RULING FB — `ART_STALE` is 5s, measured against a real desk, not against Art-Net's nominal rate
+
+Added 2026-08-16, from the **first run of a real QLC+ desk against the relay**.
+**This narrows RULING EV** — the same gate, a different window — and it narrows
+**RULING EU**, whose 2s window this was. It is the first thing in this round
+that real hardware has contradicted, and worth marking as such: EQ, EX and EZ
+were each changed by measuring an unpatched universe, but all three
+measurements were taken in jsdom. This one was taken off a desk.
+
+**The measurement.** Jack's relay log, cumulative, printed every 10 seconds
+while the desk sat idle:
+
+```
+[artnet] 1 ArtDmx packets in, 0 client(s)
+[artnet] 7 ArtDmx packets in, 0 client(s)
+[artnet] 12 ArtDmx packets in, 1 client(s)
+[artnet] 17 ArtDmx packets in, 1 client(s)
+```
+
+Five to six packets per ten seconds — **one roughly every 1.8 seconds**, and
+the slowest of those windows spaces them a clear **2.0s** apart.
+
+**Why 2.0 was wrong.** EU picked it against Art-Net's NOMINAL refresh rate: a
+desk sends ~44 frames a second, so 2s read as eighty-eight frames of margin.
+QLC+ does not stream at 44Hz when values are not changing — it sends **on
+change plus a slow keepalive**. Against the measured cadence the old window had
+about **0.2s of margin, and none at all in the slow window**. An idle desk would
+therefore flap LIVE/STALE, and the board would take the rig back mid-show on
+nothing but a desk sitting still — the exact fight this round exists to stop,
+arrived at from the other side.
+
+**And a cumulative count gives the MEAN gap, never the longest one.** Four
+ten-second windows cannot resolve an individual gap; a send-on-change desk can
+easily go quiet for longer than its own average. So the window has to clear the
+measured cadence by a real margin rather than by a hair.
+
+Jack ruled it: **`ART_STALE` 2.0 → 5.0.**
+
+- **What it buys:** an idle desk keeps the rig. No flapping row, no board
+  taking the Palace back between two keepalives, no cue firing into a rig a
+  desk still owns.
+- **What it costs, said plainly:** a desk that really dies is not noticed for
+  up to **five seconds** instead of two. For those seconds neither the desk nor
+  the board is writing — the rig holds its last look, which is what EU asks for
+  anyway, but an operator who pulls the plug and reaches for the board now
+  waits five seconds for it. That is the trade, and it is the right way round:
+  a delayed handback is visible and self-correcting, a handback that happens on
+  its own during a show is neither.
+- **It does not touch EV's principle.** The switch alone still changes nothing,
+  a genuinely stopped desk still hands the board back, and the row still prints
+  which side of the gate we are on. Only the window moved.
+- **The suite pins the BEHAVIOUR, not the constant.** `tests/artnet.js` holds
+  the rig across four gaps of twice the slowest measured spacing with the board
+  refused throughout, and requires a stopped desk to hand back within ten
+  seconds — so the case fires if the window drops back under a realistic
+  keepalive *and* fires if somebody widens it until a dead desk is never
+  noticed. `ART_STALE === 5.0` would have been a tripwire on a number.
+
+**What is still unmeasured:** whether 1.8s is QLC+'s keepalive period or an
+artefact of that session (a desk with a running cue list sends far more), and
+what other consoles do. If a desk ever turns up with a keepalive slower than
+5s, this is the number that moves again — and the log line that prints the
+packet count is how it will be found.
 
 ---
 
