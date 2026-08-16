@@ -500,8 +500,10 @@ against this list before opening a PR; **add new traps as you hit them.**
   this is the sharpest instance the project has had.** RULING EY was found only
   because a reviewer moved a line. The Art-Net band channels write on a band
   CHANGE and their memories start at `-1`, so the first frame of an *unpatched*
-  universe reads band 0 and acts on it — it hauls the Beetlejuice sign 11.36m to
-  its FLOOR stop. The case written to prove the sign SAFE calls `deskOn()`
+  universe reads band 0 and acts on it — it hauled the Beetlejuice sign 11.36m
+  to its FLOOR stop. (RULING EZ has since taken the sign off a band entirely,
+  so that reproduction no longer fires — the LESSON is what this entry is for,
+  not the case.) The case written to prove the sign SAFE calls `deskOn()`
   (which delivers a frame, which establishes band 0) **before** it puts the sign
   on its stop, so its 120 measured frames are a no-change band and it passes.
   **The assertion written to prove the thing safe is the thing that concealed
@@ -866,10 +868,15 @@ against this list before opening a PR; **add new traps as you hit them.**
   attic onto the deck while it is drawn. Anything that reads a byte as a
   POSITION needs an answer to "what does 0 mean when nobody is driving this",
   and the flys' answer (a speed byte, where 0 is parked) is the pattern.
-  **Updated 2026-08-16:** 309 and the movers are both answered now (309 by its
-  lineset's speed byte, the movers by RULING EX making 0 no command). **The
-  band channels 307/308 are NOT** — RULING EY rules the fix and FUTURE.md
-  carries the work, so a dead universe still hauls the sign 11.36m today.
+  **Updated 2026-08-16, twice in one day.** The traveler is answered by its
+  lineset's speed byte; the set movers by RULING EX making 0 no command; and
+  **the SIGN by RULING EZ**, which took it off a band and onto its own
+  target/speed pair, so a zero speed byte parks it. **Only channel 307, the
+  house dressing, is still unanswered** — RULING EY rules the fix and
+  FUTURE.md carries the work. Four ways of saying "0 means nobody is driving
+  this", arrived at one at a time, each after somebody measured a dead
+  universe — which is itself the lesson: **nobody found any of them by
+  reading the code.**
 - **A BUILT ARTIFACT IN A MERGE CONFLICT HAS EXACTLY ONE CORRECT RESOLUTION:
   REBUILD IT.** `the-house.html` is committed built, so two branches touching
   `src/` always conflict in it too. Never resolve it by hand or by taking a

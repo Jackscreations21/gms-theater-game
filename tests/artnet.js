@@ -1476,10 +1476,24 @@ const P = async (name, fn)=>{
          speed byte, zeros park it and a desk patched only for the 273 light
          channels cannot touch it at all. */
       showLoad('beetlejuice');
+      const x0 = SHOW.flyExtras.find(e=>e.key === 'bjSign');
+      const m0 = flyExtraMover(x0);
+      if(!m0) throw new Error('the sign has no mover');
+      /* THE DECLARED SPEED, TAKEN BEFORE ANYTHING HAS DRIVEN ANYTHING.  Read
+         afterwards it would be whatever the desk had just written, and every
+         clause below would be measuring the mutation against itself. */
+      const declared0 = m0.speed;
+      if(!(declared0 > 0)) throw new Error('the sign declares no speed to protect');
+      /* sc.mv RECORDS CARRY NO 'group' FIELD while sc.pmv records do — one of
+         the two things docs/ARTNET.md exists to say, and it bit here first
+         go.  A whole-group travel moves the SCENE's group. */
+      const AXI = {x:12, y:13, z:14};
+      const sgn = sceneFind(x0.scene);
+      if(!sgn || !sgn.group) throw new Error('the sign scene has no group to watch');
+      const world = ()=>{ scene.updateMatrixWorld(true);
+                          return sgn.group.matrixWorld.elements[AXI[m0.axis]]; };
       const ws = deskOn();
-      const x = SHOW.flyExtras.find(e=>e.key === 'bjSign');
-      const m = flyExtraMover(x);
-      if(!m) throw new Error('the sign has no mover');
+      const x = x0, m = m0;
       /* PUT IT SOMEWHERE THAT IS NOT WHERE A ZERO FRAME WOULD SEND IT, or the
          case is satisfied by the state it starts in.  Byte 0 on the target
          channel means the FLOOR, so the sign goes UP first. */
@@ -1509,22 +1523,40 @@ const P = async (name, fn)=>{
          never to speed, exactly as RULING EQ does on the linesets — otherwise
          one touch of the fader would leave the show hauling at the desk's
          speed for the rest of the session. */
-      if(m.speed !== x.speed)
+      /* READ THE DECLARED SPEED BACK OFF A LOCAL TAKEN BEFORE ANY DRIVING.
+         Comparing m.speed against x.speed is the repo's standing failure
+         mode — both are 2.6 from the moment showLoad runs, so the clause is
+         satisfied by the state the setup left, and a build that wrote
+         m.speed only at byte 255 would pass it. */
+      if(m.speed !== declared0)
         throw new Error('the desk overwrote the sign\\u2019s own speed with ' + m.speed);
+      /* AND THE PARK MUST CLEAR artSpeed, NOT JUST DECLINE TO WRITE IT.
+         Found by a review's sixth negative check, and it was a real bug: the
+         park returned early, so the last driven speed stayed on the record
+         and sceneMvAdvance — which gates on artDriving(), not on the byte —
+         went on using it. One touch of the fader left the SHOW hauling at the
+         desk's speed for the rest of the session. The observable is the WALK,
+         because the record alone reads perfectly fine. */
+      spd(26);                                    // a tenth of the declared speed
+      const bPark = new Uint8Array(512);
+      bPark[artSelBase()] = 255; bPark[artSelBase() + 1] = 0;   // target, PARKED
+      ws.deliver(bPark); artnetTick(1/60);
+      const pFrom = world();
+      flyExtraToStop(x, 0);                       // the SHOW hauls it, at ITS speed
+      const PN = 60;
+      for(let f = 0; f < PN; f++){ ws.deliver(bPark); artnetTick(1/60); sceneMoveStep(1/60); }
+      const pWent = Math.abs(world() - pFrom);
+      const pShow = declared0 * (PN / 60), pDesk = (26 / 255) * declared0 * (PN / 60);
+      if(Math.abs(pWent - pDesk) < Math.abs(pWent - pShow))
+        throw new Error('after a PARK the show hauled at ' + pWent.toFixed(4) +
+          'm/s, which is the DESK\\u2019s stale ' + pDesk.toFixed(4) + ' rather than its own ' +
+          pShow.toFixed(4) + ' — artSpeed outlived the park');
       /* AND IT HAS TO REACH THE WALK, which is the clause the record cannot
          prove.  Writing artSpeed is worth nothing unless sceneMvAdvance reads
          it — and the first draft of this case asserted only the record, so
          dropping the guarded read in p5c left every assertion above GREEN.
          Measure the distance the set covers in world space against the DESK's
          speed, which is deliberately nothing like the declared one. */
-      /* sc.mv RECORDS CARRY NO 'group' FIELD while sc.pmv records do —
-         which is one of the two things docs/ARTNET.md exists to say, and it
-         bit here first go. A whole-group travel moves the SCENE's group. */
-      const AXI = {x:12, y:13, z:14};
-      const sgn = sceneFind(x.scene);
-      if(!sgn || !sgn.group) throw new Error('the sign scene has no group to watch');
-      const world = ()=>{ scene.updateMatrixWorld(true);
-                          return sgn.group.matrixWorld.elements[AXI[m.axis]]; };
       const slow = 26;                              // ~1/10 of the declared speed
       const bDrive = new Uint8Array(512);
       bDrive[artSelBase()] = 0; bDrive[artSelBase() + 1] = slow;   // FLOOR, slowly
@@ -1545,8 +1577,8 @@ const P = async (name, fn)=>{
              x.speed + 'm/s and 128 gave half of it, and the declared speed survived';
     });
 
-    P('the desk taking the rig back re-asserts both bands (RULINGS ER, ES)', ()=>{
-      /* every LIGHT channel says itself again every frame; these two speak
+    P('the desk taking the rig back re-asserts the house band (RULING ER)', ()=>{
+      /* every LIGHT channel says itself again every frame; this one speaks
          only on a change.  A desk that stutters for two seconds hands the
          board back (RULING EV says so explicitly) — and if a cue redresses
          while it is away, an unmoved fader would never correct it. */

@@ -140,7 +140,7 @@ for(const k of ['FIXTURES','FLY','GOODS','SECTIONS','SHOW','HOUSE','OUT_TRIM',
 for(const fn of ['artFixBase','artFlyBase','artHouseBase','artSelBase','artMoverBase',
                  'artBandOf','artLights','artFlys','artMovers','artMoverSet','artMoverOut',
                  'artMoverHauled','artBands','artSign','artSignRange',
-                 'flyExtraMover','minTrimOf','showLoad','flyExtraStops',
+                 'minTrimOf','showLoad','flyExtraStops',
                  'flyExtraMover','flyTo','updateFly','bjRedress','bjWingPack'])
   if(typeof w[fn] !== 'function')
     throw new Error('the probe cannot see ' + fn + '() on the window');
@@ -730,7 +730,7 @@ const changeOnly = (()=>{
   let house = null, sign = null;
   const h = driveHouse(top.from);
   if(h.sc){ h.sc.dressOn = DRESS_NOBODY;
-    w.artBands(bandFrame(top.from, 0));             // same byte, memory untouched
+    w.artBands(bandFrame(top.from));             // same byte, memory untouched
     house = h.sc.dressOn === DRESS_NOBODY; }
   /* RULING EZ - the sign is no longer band-change-only; it is a per-frame
      fly write like every other, so there is nothing change-only left to
@@ -891,7 +891,7 @@ out('## Which show is loaded, and why it matters');
 out();
 out('This map was generated with **' + SHOW_KEY.toUpperCase() + ' loaded**. Two blocks below depend on that:');
 out();
-out('- **the set movers (310+)** — the block is derived every frame from `SHOW.scenes`,');
+out('- **the set movers (' + MVB + '+)** — the block is derived every frame from `SHOW.scenes`,');
 out('  and Beetlejuice is the only production that carries scene movers at all;');
 out('- **the goods on each lineset (274..301)** — a production hangs its own cloths, so');
 out('  the lineset LABELS are this show\'s. The channel numbers are not: they are');
@@ -918,8 +918,13 @@ out('| ' + FLYB + '..' + (HOUB - 1) + ' | ' + FLY.length +
     ' linesets, 2 each (target, speed) | `artFixBase() + ' + CH_FIX + ' * FIXTURES.length` | ' + FLYB + ' |');
 out('| ' + HOUB + '..' + (HOUB + 4) + ' | the five house circuits | `artFlyBase() + 2 * FLY.length` | ' + HOUB + ' |');
 out('| ' + SELB + ', ' + (SELB + 1) + ', ' + (SELB + 2) + ', ' + (SELB + 3) +
-    ' | house selector, sign, traveler | `artHouseBase() + 5` | ' + SELB + ' |');
-out('| ' + MVB + '..' + (MVB + mvRows.length - 1) + ' | the loaded show\'s set movers | `artSelBase() + 3` | ' + MVB + ' |');
+    ' | house selector, sign target, sign speed, traveler | `artHouseBase() + 5` | ' + SELB + ' |');
+/* THE OFFSET IS COMPUTED, NOT TYPED.  It was typed once, as `artSelBase() + 3`,
+   and RULING EZ made it 4 — so the column whose whole job is to be the warrant
+   for the table stated a derivation that gave 310 beside a measured 311, and a
+   build mutated back to +3 printed a table that agreed with itself. */
+out('| ' + MVB + '..' + (MVB + mvRows.length - 1) + ' | the loaded show\'s set movers | `artSelBase() + ' +
+    (MVB - SELB) + '` | ' + MVB + ' |');
 out('| ' + (MVB + mvRows.length) + '..512 | nothing — unpatched | | |');
 out();
 out('A fortieth lantern moves every base after it by ' + CH_FIX + '. Measured, by pushing');
@@ -1162,7 +1167,7 @@ out('  ' + ((travBare && travDriven && travBare.i !== travDriven.i)
     ? 'A production that hangs its own show curtain therefore MOVES this channel\'s effect'
       : 'It is the same line either way today, and nothing guarantees it stays that way'));
 out('  ' + ((travBare && travDriven && travBare.i !== travDriven.i)
-    ? 'onto a different lineset — patch 309 against the show that is playing.'
+    ? 'onto a different lineset — patch ' + (SELB + 3) + ' against the show that is playing.'
       : '— patch ' + (SELB + 3) + ' against the show that is playing.'));
 out('- **It is PARKED BY THAT LINE\'S OWN SPEED BYTE.** Measured: with every speed byte at');
 out('  0, byte ' + (travDriven ? travDriven.byte : '?') + ' on ' + (SELB + 3) + ' — the same byte that DID move it above — moved');
@@ -1213,10 +1218,13 @@ if(!zeroIsNoCommand){
 if(hauled.length){
   out('**Scenes the rail hauls are not on this map at all** (RULINGS CW, ES): ' +
       hauled.map(n=>'`' + n + '`').join(', ') + '.');
-  out('That scenery is addressed by channel ' + (SELB + 1) + ', which writes on a band change only —');
-  out('and this block writes EVERY FRAME. A mover channel there would not merely duplicate');
-  out((SELB + 1) + ', it would make it dead on arrival: the stop lands and the next packet hauls');
-  out('it back.');
+  out('That scenery is addressed by channels ' + (SELB + 1) + ' and ' + (SELB + 2) +
+      ' — its own target and speed (RULING EZ) —');
+  out('and a mover channel here would be a SECOND per-frame writer on the same record. Whichever');
+  out('ran later in artnetTick would win silently, so the rail keeps what the rail hauls.');
+  out('(Under RULING ES this reasoning was different: ' + (SELB + 1) + ' wrote on a band change');
+  out('only, so a mover channel would have hauled it straight back off its stop. EZ replaced the');
+  out('mechanism; the exclusion survives it, for the reason above rather than that one.)');
   out();
 }
 /* THE NEAR END GETS ITS OWN COLUMN WHEN BYTE 0 STOPS BEING A POSITION.  With

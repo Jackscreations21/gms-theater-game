@@ -9777,7 +9777,7 @@ function buildFlyExtrasUI(){
         /* RULINGS EM and ES — a desk-driven haul is not also hand-hauled.
            These rows were ungated because nothing drove them; ES gave the
            sign channel 308, and without this the operator hauls it and the
-           desk never takes it back, because a band writes only on change. */
+           desk never takes it back, because this block writes EVERY FRAME and would overwrite a hand-haul on the very next packet. */
         if(typeof artYields === 'function' && artYields('the sign')) return;
         const live = (SHOW.flyExtras || []).find(y=>y.key === x.key);
         if(live) go(live);
@@ -11950,12 +11950,12 @@ function artFlys(b){
      Beetlejuice and it is LINE 1 — the show hangs its own `bjCurtain`, which
      also declares `traveler`, and `findIndex` takes the first; the Palace
      house curtain is not on the rail at all.  docs/ARTNET.md measures and
-     prints both hangs, because an operator patching 309 needs to know its
+     prints both hangs, because an operator patching the traveler channel needs to know its
      target line moves with the production.
 
      AND IT IS PARKED BY ITS OWN LINE'S SPEED BYTE.  Written unconditionally,
      this was the one piece of scenery a dead universe DID move: the instant
-     the switch went on with nothing patched to 309, the house curtain ran
+     the switch went on with nothing patched to the traveler channel, the house curtain ran
      itself shut at 0.42 of its full draw a second — about 2.4 seconds end to
      end, and `ls.open` is a FRACTION, never metres — in front of the
      audience.  docs/ARTNET.md measures it.  RULING EQ's principle is
@@ -11991,7 +11991,7 @@ function artFlys(b){
    wherever the show left it, 1..255 spans home..out.  Byte 1 IS home, exactly
    — the cost is one lost code point, 254 steps across the travel instead of
    255 — and it puts the movers on the same footing as the flys (EQ) and the
-   house curtain on channel 309: on all three, a zero is a channel nobody is
+   house curtain on the traveler channel: on all three, a zero is a channel nobody is
    driving.  What that then MEANS is NOT the same on all three, and the
    difference is written out at artMoverSet.
 
@@ -12020,14 +12020,17 @@ function artFlys(b){
 
    A SCENE THE RAIL HAULS IS NOT ON THIS MAP AT ALL (RULINGS CW, ES).  A show
    may declare hauls that are not linesets — SHOW.flyExtras, the Beetlejuice
-   sign being the one there is — and RULING ES gives that sign its own banded
-   channel, 308, written on a band CHANGE only.  This block writes EVERY
-   FRAME, and a per-frame write outvotes a change-only one absolutely: 308
-   would put the sign on its stop and the next packet would haul it back, so
-   the channel would be dead on arrival and nothing would say why.  So every
+   sign being the one there is — and RULING EZ gives that sign its own TARGET and
+   SPEED pair, written every frame.  A mover channel here would be a SECOND
+   per-frame writer on the same record, and whichever ran later in artnetTick
+   would win silently.  (Under ES the argument was different — the sign band
+   wrote on a CHANGE only, so a mover channel would have hauled it off its
+   stop on the next packet.  EZ replaced the mechanism; the exclusion stands
+   for the newer reason.)  So every
    scene named by a flyExtra is skipped here, travel and parts alike, and the
    rail keeps what the rail hauls.  It costs Beetlejuice one channel: the
-   block is 310..321, twelve movers, and the sign is addressed on 308.
+   block is twelve movers, and the sign is addressed on its own two channels
+   (docs/ARTNET.md prints every number; none of them is written down here).
 
    ONLY THE TRAVEL MOVER CAN ACTUALLY COLLIDE — flyExtraTo and flyExtraToStop
    write `sc.mv` and nothing else (flyExtraMover only READS it) — so skipping
@@ -12140,8 +12143,9 @@ function artMovers(b){
    Jack, in the brief: "make it so for beetljuice it has a channel and if it is
    between 0 and 85 it is the maitlands house. if it between 86 and 170 it is
    the deetz house and if it is between 171 and 255 it is the beetlejuice
-   house."  Channel 307 is that channel.  Channel 308 is the sign, on the same
-   three splits, driving its own named stops (RULING DH).
+   house."  Channel 307 is that channel, and it is now the ONLY banded one —
+   RULING EZ took the sign off a band and onto its own target/speed pair, so
+   everything below about "two banded channels" is the house alone.
 
    BAND CHANGE ONLY, AND THAT IS NOT AN OPTIMISATION.  `bjRedress` detaches and
    re-attaches whole scene-graph nodes — RULING CN holds two complete houses
@@ -12158,7 +12162,8 @@ function artBandOf(byte){ return byte <= 85 ? 0 : (byte <= 170 ? 1 : 2); }
 
 function artBands(b){
   const sel = artSelBase() - 1;                 // channel 307, 0-based
-  if(sel + 1 >= b.length) return;
+  /* one channel, not two: RULING EZ took the sign out of this function */
+  if(sel >= b.length) return;
 
   /* THE MEMORY BELONGS TO THE SCENERY, NOT TO THE SHOW.  Keying it on the
      production name looked equivalent and was not: loading Beetlejuice a
@@ -12264,7 +12269,16 @@ function artSign(b){
   const m = flyExtraMover(x);
   if(!m) return;
   const sp = b[o + 1];
-  if(!sp) return;                               // PARKED — see the block above
+  /* PARKED — and the zero has to be WRITTEN, not just returned on.
+     Returning early left the last driven speed sitting on `artSpeed`, and
+     `sceneMvAdvance` gates on `artDriving()` rather than on the byte — so a
+     desk that touched the fader once and then parked left the SHOW hauling
+     the sign at whatever that fader had been on. Measured: driven at byte 26,
+     then parked, the show's own 2.6m/s haul crawled at 0.2651m/s in world
+     space for the rest of the session, and it survived the switch going off
+     and on again. RULING EQ does not have this hole because `artFlys` writes
+     `ls.artSpeed` unconditionally, including the zero. This is that. */
+  if(!sp){ m.artSpeed = 0; return; }
   const r = artSignRange(x);
   if(!Number.isFinite(r[0]) || !Number.isFinite(r[1])) return;
   m.artSpeed = (sp / 255) * x.speed;
@@ -33982,7 +33996,7 @@ function vrSqueeze(hand, down){
        GRAB rather than in the haul: taking hold arrests a runaway, drops the
        relock and writes ls.target = ls.pos, so a hand that closed and then
        could not pull would still have taken the line off the desk.  The
-       traveler is refused with it — channel 309 works that curtain too. */
+       traveler is refused with it — the traveler channel works that curtain too. */
     if(artYields(best.traveler ? 'the traveler' : 'lineset '+ls.id)) return;
     if(best.traveler){
       /* the traveler's hand line: nothing on it to arrest and nothing that

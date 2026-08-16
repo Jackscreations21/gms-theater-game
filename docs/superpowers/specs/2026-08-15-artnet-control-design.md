@@ -122,9 +122,15 @@ ruling.
 | 302–305 | house circuits: house, work, lobby, backstage | 1 each |
 | 306 | house circuit: practicals (`HOUSE.practical`, p4:2049) | 1 |
 | 307 | BEETLEJUICE house selector (RULING ER) | 1 |
-| 308 | BEETLEJUICE sign position (RULING ES) | 1 |
-| 309 | traveler open (0=shut, 255=open) — applies to the first lineset whose hung goods declare `traveler:true`; the map probe prints which line that is. **Parked by that lineset's own speed byte** — see the note below | 1 |
-| 310+ | set movers of the loaded show (RULING ET) | 1 each |
+| 308 | BEETLEJUICE sign TARGET (**RULING EZ supersedes ES here** — it was one banded channel) | 1 |
+| 309 | BEETLEJUICE sign SPEED, 0 = parked (RULING EZ) | 1 |
+| 310 | traveler open (0=shut, 255=open) — applies to the first lineset whose hung goods declare `traveler:true`; the map probe prints which line that is. **Parked by that lineset's own speed byte** — see the note below | 1 |
+| 311+ | set movers of the loaded show (RULINGS ET, EX) | 1 each |
+
+**THIS TABLE WAS RENUMBERED BY RULING EZ** (2026-08-16): the sign took a second
+channel, so the traveler moved 309 → 310 and the movers 310 → 311. Every base
+is computed, so no code changed to say so — but this table is prose, and prose
+has to be told. `docs/ARTNET.md` is the authority; it is generated.
 
 - **Uniform 7-channel fixture footprint** so QLC+ needs exactly one generic
   fixture definition. Pan/tilt bytes are ignored on non-movers (only
