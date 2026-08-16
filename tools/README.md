@@ -28,8 +28,8 @@ One that draws no picture — it writes a FILE, and a suite checks it:
 
     node artnet-map.js > ../docs/ARTNET.md
 
-Every Art-Net channel with its real label (RULING EO). See the section at the
-foot of this file.
+Every Art-Net channel with its real label, one line each (RULINGS EO, FA). See
+the section at the foot of this file.
 
 One that measures TIME, and refused a feature:
 
@@ -163,7 +163,7 @@ node deeper.js                    # his files
 PROBE_STANDIN=1 node deeper.js    # the fallback that plays on a fresh clone
 ```
 
-## `artnet-map.js` — the channel map that cannot drift (RULING EO)
+## `artnet-map.js` — the channel list that cannot drift (RULINGS EO, FA)
 
 The one probe here whose output is COMMITTED: it writes `docs/ARTNET.md`, and
 `tests/artnet.js` fails if the committed file is not what the probe emits
@@ -175,36 +175,62 @@ node artnet-map.js > ../docs/ARTNET.md     # NODE_PATH optional — it finds
                                            # tests/node_modules on its own
 ```
 
-**Regenerate it from `sh`, never from PowerShell 5.1** — `>` there writes
-UTF‑16LE with a BOM, and the suite then fails at line 2 with an unreadable
-diff. That is a round-trip nobody needs twice.
+**Regenerate it from `sh`, never from PowerShell 5.1** — `>` there writes a BOM
+in front of the first character, and the suite then fails at line 1 with
+`docs/ARTNET.md no longer opens with the built file size`. That is a round-trip
+nobody needs twice.
+
+**RULING FA is the shape: a flat patch list.** Two header lines — the built
+file's byte size (the probe rule; the suite compares it) and which show is
+loaded — then a blank, then **one line per channel from channel 1 to the last
+one in use, in numeric order, with no gaps**. Nothing else: no tables, no
+sections, no prose. Columns are computed off the rows, so a longer fixture name
+or a fifteenth lineset re-aligns the whole file rather than staggering it.
 
 It boots the BUILT `the-house.html` under jsdom the way `draws.js` does, loads
 **Beetlejuice** (the only production with set movers, and the show whose own
-cloths hang on the rail), and emits every channel with its real label: fixture
-name and board section, lineset id and goods, the 307/308 band tables, each
-mover's name and its metre range.
+cloths hang on the rail), and gives every channel its real label: fixture
+number, name, type and board section; lineset id and goods; the bands the house
+selector splits into; the sign's travel and the byte that reaches each of its
+named stops; each mover's scene, part, axis and metre range.
 
 **Nothing in it is typed from a table.** Where a fact could be read two ways it
 is MEASURED — a 512-byte frame is synthesised, the game's own `artLights` /
-`artFlys` / `artMovers` / `artMoverSet` / `artBands` are called, and what moved
-is written down. That is how it knows which lanterns really answer a pan byte,
+`artFlys` / `artMovers` / `artMoverSet` / `artBands` / `artSign` are called, and
+what moved is written down, **per channel**: the ramps, the gobo bands and the pan/tilt
+degrees on a fixture line are that fixture's own reading, not fixture 1's
+printed 39 times. That is how it knows which lanterns really answer a pan byte,
 which record each of the seven fixture offsets writes (red, green and blue
 driven alone, so the names move if the components are swapped), which lineset
 the traveler channel belongs to (**it is a property of the HANG: line 2 on the
 Palace's standing hang, line 1 once Beetlejuice hangs its own show curtain**),
-which dressing channel 307 puts on the stage and which declared stop 308 sends
-the sign to, and what byte 0 means to a set mover.
+which dressing the house selector puts on the stage, what metre each byte on
+the sign's target channel commands and what its speed byte is worth, and what
+byte 0 means to a set mover.
 
-**Three self-checks throw** before anything is printed — each block's channels
-are driven one at a time and exactly one record may answer. Reversing the mover
-walk in `p6d` makes it exit non-zero rather than print a plausible wrong map,
-which is the whole difference between a generated file and a hand-written one.
+**Eleven self-checks throw** before anything is printed, and RULING FA turned
+the old explanatory paragraphs into more of them — a measurement whose only home
+was a sentence can be weakened by rewording the sentence, and one that throws
+cannot. Each block's channels are driven one at a time and exactly one record
+may answer; a fortieth lantern is pushed onto `FIXTURES` and every base after
+the light block must move by exactly `ART_CH_FIX`; the fade durations, the fly
+speed park, the traveler's park, band-change-only and the `mv`/`pmv` group
+membership are all checks rather than claims; RULING EZ's sign must span a real
+travel whose every named stop some byte reaches, park on a speed byte of 0 and
+give the haul's own declared speed at 255; and the emitted rows must be one
+line per channel with no gaps. Reversing the mover walk in `p6d` makes it exit
+non-zero rather than print a plausible wrong list, which is the whole
+difference between a generated file and a hand-written one.
 
-**What it cannot measure, it says.** jsdom fetches nothing, so every set is the
-BUILT STAND-IN; the map names the mover channels `bjWingPack` re-points when
-one of his `.glb` files lands in a real browser, measured by poisoning every
-`out` and running the pack.
+**What it cannot measure, it says — on the line it affects.** jsdom fetches
+nothing, so every mover metre is the BUILT STAND-IN's, and each mover line says
+so; the ones `bjWingPack` re-points when one of his `.glb` files lands in a
+real browser say that instead, measured by poisoning every `out` and running
+the pack. The other warnings ride the same way: the one-way mover channel, the
+traveler's line moving with the show, band-change-only on the house selector,
+pan and tilt ignored on a lantern that does not move, a fly speed byte of 0
+being PARKED, and PARKED on the sign's speed byte meaning SILENCE rather than a
+stop — the sign is a scene mover, so a haul the show started runs on.
 
 The first line is the built file's byte size, per the probe rule, and the suite
 compares it — so a change to `src/` needs this file regenerated alongside the
