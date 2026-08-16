@@ -11696,6 +11696,10 @@ const ART = {
   opening:0,       // seconds this socket has spent in CONNECTING
   got:    0,       // frames out of THIS socket — what proves the wire
   bad:    0,       // frames that were not 512 bytes; the row prints it
+  bandSc:   null,  // the SCENE the dressing memory belongs to (identity, not name)
+  bandSign: null,  // and the sign record it belongs to
+  houseBand: -1,   // RULING ER — the dressing band last APPLIED, not last seen
+  signBand:  -1,   // RULING ES
   took:   false    // the handover has been done for this spell of driving
 };
 
@@ -11937,6 +11941,67 @@ function artFlys(b){
   }
 }
 
+/* ============================================================================
+   RULINGS ER AND ES — TWO BANDED CHANNELS, HIS SPLITS EXACTLY
+
+   Jack, in the brief: "make it so for beetljuice it has a channel and if it is
+   between 0 and 85 it is the maitlands house. if it between 86 and 170 it is
+   the deetz house and if it is between 171 and 255 it is the beetlejuice
+   house."  Channel 307 is that channel.  Channel 308 is the sign, on the same
+   three splits, driving its own named stops (RULING DH).
+
+   BAND CHANGE ONLY, AND THAT IS NOT AN OPTIMISATION.  `bjRedress` detaches and
+   re-attaches whole scene-graph nodes — RULING CN holds two complete houses
+   out of the world so only one exists at a time — and running that 44 times a
+   second would rebuild the graph on every packet.  `flyExtraToStop` retargets
+   a mover, and re-commanding it every frame would restart the haul.
+
+   NEITHER CHANNEL DOES ANYTHING TO A SHOW THAT HAS NO SUCH SCENERY.  The
+   band is not even remembered in that case, so loading Beetlejuice with the
+   fader already sitting at 200 still redresses on the first frame after.
+   ========================================================================== */
+const ART_HOUSES = ['maitland', 'deetz', 'bj'];
+function artBandOf(byte){ return byte <= 85 ? 0 : (byte <= 170 ? 1 : 2); }
+
+function artBands(b){
+  const sel = artSelBase() - 1;                 // channel 307, 0-based
+  if(sel + 1 >= b.length) return;
+
+  /* THE MEMORY BELONGS TO THE SCENERY, NOT TO THE SHOW.  Keying it on the
+     production name looked equivalent and was not: loading Beetlejuice a
+     SECOND time builds fresh scene objects dressed the default way, and the
+     name has not changed — so the band would still read as applied and the
+     fresh house would sit there wearing the wrong dressing until somebody
+     happened to move the fader.  Object identity changes on every load, so
+     it is the identity that is remembered. */
+
+  /* RULING ER — the three dressings, through the show's own mechanism */
+  const sc = SHOW.scenes && SHOW.scenes.find(s=>s.dress &&
+    ART_HOUSES.every(k=>s.dress[k]));
+  if(sc){
+    if(sc !== ART.bandSc){ ART.bandSc = sc; ART.houseBand = -1; }
+    const hb = artBandOf(b[sel]);
+    if(hb !== ART.houseBand){
+      ART.houseBand = hb;
+      sc.dressOn = ART_HOUSES[hb];
+      bjRedress(sc);
+    }
+  }
+
+  /* RULING ES — the sign, the same idiom and the same splits: 0-85 FLOOR,
+     86-170 PRE-SHOW, 171-255 UP, which are the stops the show declares */
+  const x = SHOW.flyExtras && SHOW.flyExtras.find(e=>e.key === 'bjSign');
+  const st = x && flyExtraStops(x);
+  if(st && st.length === ART_HOUSES.length){
+    if(x !== ART.bandSign){ ART.bandSign = x; ART.signBand = -1; }
+    const sb = artBandOf(b[sel + 1]);
+    if(sb !== ART.signBand){
+      ART.signBand = sb;
+      flyExtraToStop(x, sb);
+    }
+  }
+}
+
 /* ONE WRITER, ONE PLACE IN THE FRAME (RULING EU).  Called from p7's tick,
    once, after input and before every system that reads the rig. */
 function artnetTick(dt){
@@ -12005,6 +12070,7 @@ function artnetTick(dt){
 
   artLights(b);
   artFlys(b);
+  artBands(b);
 }
 
 /* ============================================================================
