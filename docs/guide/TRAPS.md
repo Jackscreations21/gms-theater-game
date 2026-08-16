@@ -765,6 +765,99 @@ against this list before opening a PR; **add new traps as you hit them.**
   not been re-run after the probe was edited. The rule is not "be careful", it
   is **run the lint after every probe edit**.
 
+## The EL–EW round — one test mistake, fifteen times
+
+- **THE COMMONEST WEAK ASSERTION IN THIS REPO IS A SETUP THAT ALREADY SATISFIES
+  IT.** Fifteen assertions in one round were green against builds that did the
+  OPPOSITE of what the assertion's own name claimed, and almost all of them
+  were this: a duration check on a rig whose durations were already zero; a
+  "switching off snaps nothing" comparison taken on a rig already dark; a
+  parked-line case that began with the line standing still; a BACK case entered
+  at a pointer where refused and worked both leave 1; a "walked into the Palace"
+  case that began with the handover already cleared. The rule that catches it:
+  **move the system away from the state you are asserting it does not reach,
+  and prove you moved it** — then assert. Every one was found by a negative
+  check that did not fire, and by nothing else.
+- **A MUTATION CAN BE MASKED BY A CLAMP THAT AGREES AT BOTH ENDS.** RULING EQ
+  maps a fly target onto `[minTrimOf, OUT_TRIM]` through `flyTo`, which clamps.
+  A mutant that ramped from the DECK instead landed on the right value at byte
+  0 (clamped up) AND at byte 255 (the grid is the grid) — only byte 128
+  differed, 11.75m against 13.56m. **Assert the middle of any mapped range**,
+  not only its ends.
+- **AND BY A SECOND GUARD THAT DOES THE SAME JOB.** Two band guards each
+  covered the case the other missed, so removing either alone left the suite
+  green — which is how a band memory keyed on `SHOW.key` survived, and it is
+  wrong, because **reloading the same show builds fresh scene objects and the
+  name has not changed.** A redundant guard and a missing test read identically
+  from outside; the only way to tell them apart is to go and look at each check
+  that did not fire.
+- **"IT DID NOT MOVE" IS NOT THE ONLY OBSERVABLE.** A parked lineset that keeps
+  its old target does not move — the speed is zero — so a position assertion
+  passed. What was wrong was `ls.moving`, which never cleared, so `Snd.railStop`
+  never ran and the rail motor loop played for the rest of the session on a
+  line that had not moved for ten minutes. Ask what ELSE a wrong version would
+  leave behind: a flag, a sound, a commanded-but-unreachable target.
+- **A GATE LIST WRITTEN FROM THE UI MISSES EVERY PER-FRAME WRITER.** RULING EM
+  named the writers to gate by walking the board's controls. A control writes
+  when a hand moves; the ones it missed write every frame and therefore always
+  win — the firelight, `audFxStep`, a running script, and two sliders that
+  bypass `setSection*` entirely. **And one of them could never be turned off
+  again**: `SHOW.flicker`/`AUD.fx` are cleared only by `showCueFx`, which only
+  `fireCue` reaches, and the gate was on `fireCue`. Gate on the RULE ("nothing
+  writes a fixture or a circuit while X"), never on a list of callers.
+- **A HALF-REFUSAL IS WORSE THAN EITHER WHOLE ANSWER.** `standByAtTheTop`
+  called `fireCue`, took its refusal *and its toast*, then wrote all 39
+  fixtures itself. The operator got told the board had yielded, and watched it
+  write anyway.
+- **AN UNPATCHED UNIVERSE IS THE LIKELIEST FIRST REAL USE, AND ZERO IS A
+  COMMAND.** A desk patched only for the light channels sends zeros on
+  everything else. Zeros shut the house curtain at 0.42/s in front of the
+  audience (channel 309) and command every set mover home — walking a parked
+  19.5m attic onto the deck while it is drawn. Anything that reads a byte as a
+  POSITION needs an answer to "what does 0 mean when nobody is driving this",
+  and the flys' answer (a speed byte, where 0 is parked) is the pattern.
+- **A BUILT ARTIFACT IN A MERGE CONFLICT HAS EXACTLY ONE CORRECT RESOLUTION:
+  REBUILD IT.** `the-house.html` is committed built, so two branches touching
+  `src/` always conflict in it too. Never resolve it by hand or by taking a
+  side — resolve `src/`, then `sh build.sh`. And stripping conflict markers
+  mechanically can WELD TWO COMMENT BLOCKS together: the `=======` line sat
+  between one block's `*/` and the next block's `/*`, and removing it made the
+  whole of the second header live code.
+- **`decodeURIComponent` IS NOT THE ONLY WAY A URL KILLS A SERVER.** `GET /%`
+  throws `URIError` out of an http handler and exits the process. Guarding the
+  decoder does not help `GET /a%00b`: `%00` decodes cleanly and `fs.stat` then
+  validates its path SYNCHRONOUSLY and throws before the callback exists. Guard
+  the decoded STRING.
+- **A LEXICAL PATH GUARD DOES NOT SEE THE FILE'S OTHER NAMES.** NTFS keeps 8.3
+  aliases, so a dot-segment refusal that reads the URL served `/GIT~1/config` —
+  4040 bytes of `.git/config` — while `/.git/config` correctly returned 403.
+  Judge the RESOLVED path (`fs.realpathSync.native`), which also collapses a
+  symlink out of the tree. Keep the lexical test too, BEFORE it: a dotfile that
+  does not exist must be *forbidden*, not *not-found*, and inside a git
+  worktree `.git` is a FILE, so the difference is reachable.
+- **`reuseAddr` TURNS "PORT TAKEN" INTO "RUNNING FINE, NO PACKETS".** A second
+  UDP bind succeeds, the FIRST binder keeps receiving everything, and the new
+  process prints a banner claiming success. EADDRINUSE is the diagnostic that
+  saves the evening.
+- **TCP AND UDP PORT SPACES ARE SEPARATE** — reserving a free port with a TCP
+  socket says nothing about the UDP port of that number.
+- **A TEST THAT SKIPS WHEN IT CANNOT FIND ITS SUBJECT ASSERTS NOTHING.** A VR
+  case guarded with `if(hit)` passed for a whole round because `VR.hits` is
+  empty until the console is DRAWN. Draw it, then fail loudly if the region is
+  missing.
+- **A SUITE CAN LACK THE `requestAnimationFrame` SHIM AND CALL THE FRAME LOOP
+  UNTESTABLE.** `stages.js` pumps `window.__raf` by hand; a suite that does not
+  install `w.requestAnimationFrame = cb => { w.__raf = cb; }` cannot step the
+  loop, and everything that only happens on a frame gets written off.
+- **A CHANNEL MAP MUST BE COMPUTED OR IT SILENTLY REPOINTS.** 274 is
+  `1 + 7 × 39` and 302 is `274 + 2 × 14`. Written as literals, one more lantern
+  moves every channel after it and the map file lies. And a test that asserts
+  `base === 1 + 7 * FIXTURES.length` is satisfied by the literal too — **prove
+  the derivation by growing the rig** and watching the bases move.
+- **A SPEC'S OWN PROSE CAN BE WRONG ABOUT THE DATA.** RULING ET says "the attic
+  tracking in from x −14.20"; the built record is home 0, out −19.50. Read the
+  records, and say in the report that the sentence will not match.
+
 ## Environment
 
 - **A `const` in its temporal dead zone throws on a PLAIN reference, not just

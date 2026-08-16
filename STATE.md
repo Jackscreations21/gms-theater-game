@@ -1,180 +1,200 @@
-# STATE — 2026-08-14 (THE PERFORMANCE ROUND IS COMPLETE, DR–DY)
+# STATE — 2026-08-15 (ART-NET: SIX PRs LANDED, RULINGS EL–EW)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## READ THIS FIRST: EIGHT PRs LANDED ON THE FRAME RATE, AND NOBODY HAS SEEN THEM
+## READ THIS FIRST
 
-**His second headset run (at `?v=28`) read 47ms avg EMPTY / 57 avg, 70 pk with
-Beetlejuice** against the 13.9ms budget, foveation pegged at 1.00. A four-agent
-code audit found the causes, and rulings **DR–DY** fixed everything it found.
-**Cache-bust is `?v=29` from here.** Rulings are at **DY**.
+The desk drives the Palace. Six PRs of a nine-PR chain are on `main`
+(**`e0c5768`**), the suite count is **21**, rulings are at **EW**, and the
+cache-bust is **`?v=30`** from here.
+
+**Nothing in this round has been seen on hardware, and nothing has been seen
+against a real desk.** Every number below came out of jsdom.
 
 | PR | Ruling | What |
 |---|---|---|
-| **#185** | **DR** | a lens quad that is dark does not draw (39 always-on quads gated) |
-| **#186** | **DS** | castShadow written only on change; shadow slots prefer the fixtures that asked |
-| **#187** | **DT** | **the environment belongs to the metals** — `scene.environment` is GONE; the PMREM rides `material.envMap` on the 21 building metals + imported/session metals via `envCarrier` |
-| **#188** | **DU** | the grade is ONE matrix (~22 → ~9 ALU per pixel; CPU-composed mat3+offset) |
-| **#189** | **DV** | the console texture uploads only within 12m of a desk (was ~3.6MB at 5Hz, always) |
-| **#190** | **DW** | a light that serves no one leaves the loop (the never-driven yard lamp; the Arc bed indoors) |
-| **#191** | **DX** | `tools/draws.js` — the draw census probe, and the finding that re-aimed the round |
-| **#192** | **DY** | the lantern body is one draw per material group (10.8 → 3.2 draws per fixture) |
+| **#200** | **EL** | `tools/artnet-relay.js` — zero-dep Art-Net→WebSocket relay, and the 21st suite |
+| **#201** | **EM state, EN, EU, EV** | `src/p6d.txt` — the socket, the reconnect off frame `dt`, `artnetTick` |
+| **#202** | **EP, EN, EO** | the lights are raw writes; the Palace only; the channel bases |
+| **#203** | **EM gates, EV, EW** | the board yields; the ARTNET row on both surfaces |
+| **#204** | **EQ** | the flys, through their own motor |
+| **#205** | **ER, ES** | the Beetlejuice house selector and the sign |
 
-Every merge verified: `main` rebuilds **byte-identical**, 19/19 suites on the
-merged result, every branch deleted local and remote. Two-stage review on
-every PR; review fixes landed on the branch before each merge.
+Every merge verified: `main` rebuilds **byte-identical**, 21/21 suites on the
+merged result, branches deleted local and remote. Two-stage review on every
+PR, and on most of them a THIRD pass over the fix commit.
 
-## WHAT THE AUDIT SAID, AND WHERE IT WAS WRONG
+## WHAT IS LEFT — three things, in order
 
-The audit (this session, four agents over the DJ–DQ diff + a jsdom census):
+### 1. PR 7 (RULING ET, set movers) — BUILT, MERGED WITH MAIN, NOT VERIFIED
 
-1. **Primary: `scene.environment`** put PMREM cube-UV sampling (up to 16
-   dependent texture taps + ~100 ALU) into EVERY standard fragment, per eye —
-   and **intensity 0 does not remove the taps** (now in TRAPS). Most of the
-   25→47ms empty-house regression. → **DT**.
-2. **Secondary: grade ~22 ALU + atmosphere ~12 ALU per pixel**, no early-out
-   (uniforms cannot fold). → **DU** took the grade to ~9; the atmosphere was
-   judged fine as-is once DT landed.
-3. **Peaks: show-load first-compiles** (env+atm+grade in every program), the
-   console's unconditional texture upload (→ **DV**), and the per-frame
-   `castShadow` write that flips the lights-state hash under dropped-light
-   churn (→ **DS**).
-4. **The baseline was already broken** — but the audit misread TWO things,
-   and the round's own investigations corrected it:
-   - **"13 always-on PointLights from both buildings" was a census misread**
-     (→ **DW**): the venue gate has existed all along in `p2i`'s room sorter;
-     all 13 were the Palace's own. What DW actually found: a yard light minted
-     at intensity 0 that NOTHING has ever driven, and the Arc bed staying in
-     the light loop indoors. Both gated on membership. Palace 13 → 12 points.
-   - **"The instanced batches never cull / merge the architecture" was wrong
-     twice** (→ **DX**): the 26-site workaround pins ~20 draws, and the
-     architecture is ALREADY merged (~1.1 draws a block). **The cost was the
-     RIG: 476 of the scene's 878 visible drawables (54.2%), 423 of them
-     lantern bodies at 10.8 draws each.** → **DY** merged each body's static
-     shell per material group.
+Branch **`artnet-movers`**, tip **`cb10848`**. It has `artMovers` in `p6d`,
+one channel per mover, `m.target` only, walked at the mover's own speed. It
+was written in a worktree by an agent, then `main` was merged into it (both
+`p6d` blocks kept, the built file rebuilt from `src`).
 
-## THE NUMBERS AS THEY STAND (tools/draws.js, the committed probe)
+**It has had NO review and the full suite has NOT been run on the merge.** The
+merge commit says so. Do not merge it to `main` on this state. Next session:
+`cd tests && npm test`, then a two-stage review, then the usual protocol.
 
-Empty Palace, per eye — double for the frame (no multiview at any three.js
-version; that finding stands):
+**AND IT CARRIES A QUESTION FOR JACK THAT SHOULD BE ASKED BEFORE IT LANDS**
+— see "STILL HIS TO DECIDE" below. It is one condition either way.
 
-| view | before the round | after DY | the frame pays |
+Its channel order for Beetlejuice, measured off the records (this is what the
+map probe will print, and `bjSign` is excluded because the rail hauls it):
+
+| Ch | Mover | Axis | byte 0 → 255 |
 |---|---|---|---|
-| boot camera (stalls centre) | 350 | **294** | ~588 |
-| a stalls seat, facing stage | 185 | 185 | 370 |
-| downstage centre, facing upstage | 321 | **214** | 428 |
-| on stage, facing the house | 83 | 83 | 166 |
-| whole scene, frustum off | 878 | **580** | — |
+| 310 | cemetery : hillR | x | 0.00 → −9.50 |
+| 311 | cemetery : hillL | x | 0.00 → +9.50 |
+| 312 | house : mv | y | 0.00 → 0.00 **(degenerate)** |
+| 313 | interior : mv | z | −10.00 → 0.00 |
+| 314 | attic : all | x | 0.00 → −19.50 |
+| 315 | attic : park | z | 0.00 → +1.00 |
+| 316 | bedroom : all | x | 0.00 → −18.51 |
+| 317 | bedroom : park | z | 0.00 → −9.20 |
+| 318 | afterlife : all | y | 0.00 → +10.50 |
+| 319 | closet : all | x | 0.00 → −18.71 |
+| 320 | closet : park | z | 0.00 → −14.91 |
+| 321 | roof : all | y | 0.00 → +10.50 |
 
-One lantern body: **10.8 → 3.2 draws**. Boot tris +0.5% (coarser culling on
-merged shells — stated in the DY comment, worth remembering at the wrist
-meter's tri line). The regression pin: `DY_CEIL` in tests/stages.js — 294
-measured, **ceiling 320**, un-merged build measures 350.
+Note **312 is dead at both ends** (home 0, no `out`) — and dead is not inert:
+it writes `target` 0 every frame, so while a desk drives, the exterior can
+never fly out. Reading ET literally is deliberate; changing it means
+consulting `sc.parkMv`, which the plan's correction #2 forbids.
 
-**Re-measure with `sh build.sh && NODE_PATH=../tests/node_modules node
-draws.js` from tools/ — the probe reads the BUILT file** and prints its byte
-size so a stale build shows itself.
+### 2. PR 8 (RULING EO) — the map probe, NOT STARTED
 
-## THE HEADSET RUN THIS ROUND NEEDS (at `?v=29`)
+`tools/artnet-map.js` reads the **BUILT** `the-house.html`, prints its byte
+size (probe rule), boots it under jsdom the way `tools/draws.js` does, and
+emits every channel with its real label — fixture name and section, lineset id
+and goods, the 307/308 band tables, each mover's name and metre range. Output
+is committed as **`docs/ARTNET.md`**, and a suite assertion fails if the
+committed file differs from what the probe emits. **The map cannot drift
+because it is read off the code.** Run `node probe-lint.js` after every edit.
 
-Nothing in DR–DY has been seen. Read the wrist meter — **all four lines:
-`avg ms`, `pk`, `fov`, and `calls · k tri`** — at the same four moments:
-empty Palace, Beetlejuice pre-show, the 1:00 cue with eight blinders, at the
-proscenium looking up into the neon. Predictions to check:
+Everything it needs is already in the build: `artFixBase`, `artFlyBase`,
+`artHouseBase`, `artSelBase`, `artMoverBase`, `ART_CH_FIX`, `ART_PAN`,
+`ART_TILT_LO/HI`, `ART_FLY_MAX`, `ART_HOUSES`, `artBandOf`.
 
-1. **calls ≈ 590 empty at the boot view** (the meter counts both eyes). If it
-   reads ~700, the build is stale — bust the cache harder.
-2. **avg should fall well below 47 empty.** How far is the question the round
-   exists to answer — the env taps were the modelled majority of the
-   regression, but nothing in jsdom has eyes or a GPU.
-3. **The LOOK questions DT/DU opened**: non-metals no longer sample the
-   environment (their ambience is the bed, as pre-DK) — does the room still
-   read right? The metals (gold proscenium, rails, imported chrome) still do
-   — do they still read like metal in a blackout and at full bed? The grade
-   is algebraically identical (pinned to 2.2e-16) — it should look EXACTLY
-   the same; if it does not, that is a finding, not a tune.
-4. **DV**: walk away from the desk and back — the board must repaint
-   instantly on return; watch for any staleness at the balcony rail edge
-   (the gate is 12m, chosen so the whole stalls band 5.5–10m is inside).
-5. **Carried, still unseen from DJ–DQ**: the neon on the black portal, the
-   no-gold arch, the netherworld at 4.42m, FLOOR/PRE-SHOW/UP on the sign,
-   all three deck parks entering from stage right (stage left empty — still
-   the thing he may want back), the glow halos reading 42–52% smaller in the
-   headset than on the desk (the clamp uses the desk frustum).
+Two things the map must say that the code cannot: **"even/odd channel" for the
+flys holds only because `artFlyBase()` is 274 today** — the bases are computed,
+so a 40th fixture puts every fly TARGET on an odd channel; and `sc.mv` records
+carry no `group` field while `sc.pmv` records do.
 
-## STILL HIS TO DECIDE (carried)
+### 3. PR 9 — the rest of the record
 
-- **The neon rake** — DG turns his own CY lean off; `BJ_NEON_RAKE_ON`, one
-  line in p5h AND one in p4, coupled deliberately.
-- **The sign's red at GO** (one line), **the cemetery's missing park**,
-  **181MB of models** (meshopt works on r128 today — the decoder is published
-  and p5i's loader carries `setMeshoptDecoder`; KTX2 is a hand-port either
-  way), **the graveyard** (still unsupplied, the show opens in it),
-  **the audio join at 4292**, **the house floor pool**, **a park stated as an
-  absolute line** (CT), **`BLIND_BODY`** (a blinder cannot be carried),
-  **`pr6.json`** (still untracked, still unruled), **the `envTrack` rota
-  backstop** (deferred: new per-frame machinery was his call; the audit
-  measured the gap at 5 unhooked show materials, all non-metals, graceful via
-  the mix-0 bypass).
-- **The next perf bites, recorded but not taken**: room-gating the Palace's
-  own 12 point lights (the work lights carry 40m of range — it changes the
-  picture); the FLY system's 109 draws; `LIGHTNING`'s flappy gate (no stable
-  armed flag). All written at their sites.
-- `tests/smoke.js` still flakes under full-suite load (rerun standalone —
-  it passes; not a regression).
+`VR-SETUP.md` needs the QLC+ section (output Art-Net to 127.0.0.1, universe 0)
+and the two-line Route B recipe. `FUTURE.md`'s Art-Net entry gets deleted when
+the chain finishes. This file and HANDOFF.md are done as of PR #206.
 
-## NEW ENGINE PIECES THIS ROUND
+## HOW TO ACTUALLY RUN IT
 
-- **`envCarrier(m)` / `ENV_TEX` / `ENV_METAL_MIN` (p2, DT)** — the one rule
-  for who samples the environment: `metalness >= 0.5` OR no metalness at all
-  (the spec-gloss import deletes the property; **a missing number means
-  YES**). The atm/grade hook (`atmTrack`) still reaches EVERY material —
-  envTrack narrows only the envMap half, and the narrowing must stay BELOW
-  the hook (asserted, 565/565).
-- **`gradeCompose()` / `gradeMat`+`gradeOff` (p2/p4, DU)** — the grade as one
-  CPU-composed matrix, recomposed once per frame in updateRig (the LIGHTING
-  rows write GRADE fields with no notification). The derivation is above the
-  function; a FIFTH grade step must re-derive the closed form, not extend the
-  loop.
-- **`vrConsoleSeen()` / `VR_SEE_CONSOLE` 12 (p9, DV)** — the cadence gate.
-  Interaction (`vrDrawConsole(true)`) never asks. `drawT` deliberately not
-  reset while out of range, so return repaints on the first frame.
-- **`mergeShell()` / `BODY_MERGE` (p4, DY)** — per-material static-shell
-  merging inside every body builder; yoke/head Groups skipped (they move),
-  LENSM pieces never merged (they recolour), negative scale refused (flipped
-  winding is the one failure the tests cannot see), handles re-pointed.
-  All 117 bodies across three stages share FIXG buffers per type.
-- **`tools/draws.js` (DX)** — the census probe, self-checked so it cannot
-  print a confident lie. **`DY_CEIL`** in tests/stages.js pins the boot view.
+```sh
+node tools/artnet-relay.js            # serves the repo, upgrades /artnet, UDP 6454
+```
 
-## Feel constants for the headset (unchanged unless noted)
+Then open `http://localhost:8080/the-house.html`, LIGHTING page, throw ARTNET.
+QLC+ outputs Art-Net to **127.0.0.1, universe 0**.
 
-Everything from the DJ–DQ round stands (see the ROBLOX-round block below) with
-one semantic change: **`ENV_INTENSITY` (the LIGHTING page's env row) now
-drives only the envMap carriers** — the metals — which is what the row's VR
-label (EnvSpecular) always said. `VR_SEE_CONSOLE` 12 is the one new tunable.
+Headset: `adb reverse tcp:8080 tcp:8080`, then the same localhost URL in the
+Quest. **Art-Net from the GitHub Pages URL cannot work** — that page is HTTPS
+and a LAN `ws://` is mixed content. The relay says so in its banner.
 
-In `p2`: `ENV_INTENSITY` 0.55, `ENV_HALF` 10, `ENV_METAL_MIN` 0.5; `ATM`
-density 0.0055 / height 9.0 / haze 1.8 / glare 0.4 / mix 0.75; `GRADE`
-contrast 0.12 / sat −0.05 / tint 0xffeedd / mix 1.0. In `p4`:
-`GLOW_MAX_FRAC` 0.22, `GLOW_SIZE` 1.9, `GLOW_MIN_LVL` 0.04, `GLOW_LENS_OUT`
-0.45, `GLOW_CONE` 2.2, `GLOW_CAP` 64, `BODY_MERGE` true. In `p9`:
-`VR.glowCap` 12, `VR_SEE_CONSOLE` 12.
+The relay binds **127.0.0.1 by default** (it serves the working directory,
+which is the repo, `.git` included). `--host 0.0.0.0` opens the LAN if he
+really wants it; the UDP socket is unaffected either way, so a desk on another
+machine still reaches it.
 
-The Beetlejuice constants (neon, sign, parks, netherworld, budgets) are
-unchanged from the DI/DQ record — see the park table and constants blocks in
-HANDOFF's earlier sections; they were not this round's subject.
+## STILL HIS TO DECIDE (this round)
+
+1. **THE BIG ONE — what an unpatched universe does to his scenery (RULING ET).**
+   ET gives set movers no speed byte, so byte 0 is `home` and **512 zeros
+   command every mover in the loaded show home**. Measured: it walks the parked
+   attic **19.50m onto the deck while it is drawn**, and flies the exterior
+   cloth in. A desk patched only for the 273 light channels sends zeros on
+   everything else, which is the likeliest first real use. RULING EQ's stated
+   principle is that a dead universe moves no scenery. Two answers: **parked
+   unless driven** (byte 0 means "no command", 1–255 spans home→out — costs
+   exact-home commanding by one byte, and matches the flys and channel 309), or
+   **as ET is written**. One condition either way.
+2. **Channel 309, already decided the safe way and reversible in one line.**
+   Written unconditionally it was the one piece of scenery a dead universe DID
+   move: the house curtain ran itself shut at 0.42/s in front of the audience.
+   It is now parked by its own lineset's speed byte. Say the word and it goes
+   back to EO's literal table.
+3. **Audio from QLC+ — asked and unanswered.** Art-Net carries DMX only. A
+   QLC+ audio function plays on the PC's own sound card, outside the game
+   entirely. The offer on the table: a **4-channel sound block** (track select,
+   play/stop, master volume, seek) so a desk cue fires the game's OWN
+   recordings in sync with its transport — the machinery already exists from
+   RULING BO. One extra PR. Or volume only (1 channel). Or leave it out.
+4. **The Art-Net redress pops in full view.** RULING AY defers a cue's dress
+   until the set is out of sight; the band channel swaps it in place. Immediate
+   is probably right for a desk (the same argument as EV), but ER's claim that
+   this is "the exact mechanism the show itself uses" is not accurate — the
+   show uses `bjDress`, which IS the deferral. His to rule on.
+5. **ET's own parenthetical is wrong about the data.** "the attic tracking in
+   from x −14.20" — the built record is home 0, out −19.50. The records are
+   what the code and the map read; the sentence is what will not match.
+
+## WHAT THE ROUND IS, IN ONE PARAGRAPH
+
+QLC+ (or any desk) sends ArtDmx on UDP 6454. `tools/artnet-relay.js` — zero
+npm dependencies, hand-rolled RFC 6455 — serves the game AND forwards each
+packet's 512 channel bytes as one binary WebSocket frame, which is what makes
+the socket same-origin and works over `adb reverse` with no certificate.
+`src/p6d.txt` stores the latest frame in `ART.buf` and applies it once per
+frame in `artnetTick`, called from `p7` after input and above everything that
+reads the rig. `artDriving()` — the switch AND a frame inside 2 seconds — is
+the one gate the rest of the game asks.
+
+## THE ENGINE PIECES THIS ROUND ADDED
+
+- **`src/p6d.txt`** — a new build part after `p6c`, before `p5c` (the spec said
+  "p6c"; that name was already the carpenters). `ART` state, `artUrl`/`artOpen`/
+  `artBackoff`/`artClose`, `artSetOn`, `artDriving`, `artHandover`,
+  `artnetTick`, `artLights`, `artFlys`, `artBands`, `artYields`, `artSyncRow`.
+- **`artDriving()`** — the gate. Used by `fireCue`, GO/BACK/TOP, `runSub`, all
+  three `setSection*`, `showAudioTick`'s cue sweep, `standByAtTheTop`, the
+  firelight, `audFxStep`, `stepProgram`, the fly board on both surfaces, the
+  VR rope, the sign's X-rows, and the pan/tilt/house sliders.
+- **One guarded read in `updateFly` (p3)** — `ls.artSpeed` while a desk drives,
+  `ls.speed` otherwise. `ls.speed` is never written, because `hangGoods`
+  recomputes it from goods weight and would destroy an Art-Net write silently.
+- **The channel bases are FUNCTIONS** (`artFlyBase()` etc.), computed off
+  `FIXTURES.length` and `FLY.length`, because a literal would silently repoint
+  every channel after a rig change and `docs/ARTNET.md` is generated from them.
+
+## TUNABLES ADDED (all in p6d unless noted)
+
+`ART_STALE` 2.0 · `ART_BACKOFF` [1,2,4,8] · `ART_CONNECT_MAX` 10 ·
+`ART_PROVE` 44 · `ART_CH_FIX` 7 · `ART_PAN` 170 · `ART_TILT_LO` −180 ·
+`ART_TILT_HI` 0 · `ART_FLY_MAX` 2.0 · `ART_HOUSES` maitland/deetz/bj.
+
+## CARRIED FROM THE PERF ROUND — STILL UNSEEN
+
+**The `?v=29` headset run never happened**, and it is still owed. Read all four
+wrist lines (`avg`, `pk`, `fov`, `calls · tri`) at the four moments: empty
+Palace, Beetlejuice pre-show, the 1:00 cue with eight blinders, at the
+proscenium looking up into the neon. Prediction on record: **~590 calls empty
+at the boot view**; if it reads ~700 the build is stale. The DT/DU look
+questions and the carried DJ–DQ questions are in HANDOFF's DR–DY block.
+
+Everything else in "STILL HIS TO DECIDE" from that round stands: the neon
+rake, the sign's red at GO, the cemetery's missing park, 181MB of models, the
+graveyard, the audio join at 4292, the house floor pool, `BLIND_BODY`,
+`pr6.json` (still untracked, still unruled), the `envTrack` rota backstop.
 
 ## Standing facts
 
-Suite count is **19** (`npm test` in tests/) — probe-lint runs first and is a
-test of the TESTS. The patch is 39 channels on every stage. RULING AV still
-governs; AO stays repealed; RULING B still holds; BB untouched. **Every
-timestamp in the Beetlejuice plot is a position in his WHOLE recording.**
-**His photographs are never committed.** three.js has **no multiview at any
-version** and the UMD build dies after r160.1 — r160.1 is the ceiling and
-PR 10 of the old plan stays CUT.
+Suite count **21** (`npm test` in tests/); probe-lint runs first and is a test
+of the TESTS. The patch is 39 channels on every stage and the rail is 14 lines
+— which is where 274 and 302 come from, computed not written. three.js has
+**no multiview at any version**; r160.1 is the UMD ceiling. **His photographs
+are never committed.** **Every timestamp in the Beetlejuice plot is a position
+in his WHOLE recording.**
 
 ## Shelved
 
