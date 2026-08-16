@@ -600,7 +600,22 @@ for(let s = 0; s < 5; s++){
   if(hit.length !== 1)
     throw new Error('SELF-CHECK 1 FAILED: channel ' + (HOUB + s) + ' moved ' + hit.length +
       ' house circuits [' + hit.join(',') + '] — one channel is one circuit');
-  houseChan.push({ch: HOUB + s, key: hit[0]});
+  /* AND WHAT THE BYTES MEAN IS READ BACK, NOT TYPED.  This line used to print
+     the string '0=out 255=full' — so a square-law house fader, or one where a
+     dead universe brought the house to HALF, produced a byte-identical map
+     with no throw.  A review proved both.  Three ends, driven and read. */
+  const at = {};
+  for(const v of [0, 128, 255]){
+    const bb = frame();
+    put(bb, HOUB + s, v);
+    w.artLights(bb);
+    at[v] = P.HOUSE[hit[0]];
+  }
+  if(!(at[0] === 0 && at[255] === 1))
+    throw new Error('SELF-CHECK 1 FAILED: house circuit ' + hit[0] + ' on channel ' +
+      (HOUB + s) + ' reads ' + at[0] + ' at byte 0 and ' + at[255] +
+      ' at 255 — a house circuit spans out..full');
+  houseChan.push({ch: HOUB + s, key: hit[0], at: at});
 }
 /* and the rig and the house go back to the look they were found in */
 rigPutBack();
@@ -805,14 +820,12 @@ function driveSign(byte, sp){
   signMv.artSpeed = SIGN_NOBODY;
   w.artSign(signFrame(byte, sp === undefined ? 255 : sp));
   const t = signMv.target;
-  if(t === SIGN_NOBODY) return {target: null, stop: -1, speed: null};
-  let stop = -1;
-  /* 0.005m, not 1e-6: a stop is reachable if a BYTE lands on it, and 255
-     steps across an 11.36m travel is 4.5cm a byte.  An exact-equality test
-     would report every named stop unreachable and be believed. */
-  if(signStops) for(let i = 0; i < signStops.length; i++)
-    if(Math.abs(t - signStops[i].off) < 0.005){ stop = i; break; }
-  return {target: t, stop: stop,
+  if(t === SIGN_NOBODY) return {target: null, speed: null};
+  /* WHICH STOP A BYTE LANDS ON IS NOT DECIDED HERE.  It needs a tolerance,
+     the only honest tolerance is half a byte step, and a byte step is not
+     known until the ends have been measured — which is what this function is
+     for.  So the matching lives below, where the span exists. */
+  return {target: t,
           speed: signMv.artSpeed === SIGN_NOBODY ? null : signMv.artSpeed};
 }
 /* the byte that lands nearest each declared stop, computed off the MEASURED
@@ -839,9 +852,19 @@ const signDrive = signMv ? (()=>{
   const parked = (()=>{ const r = driveSign(255, 0); return r.target === null; })();
   const full = driveSign(255).speed;
   const half = driveSign(255, 128).speed;
-  const stops = (signStops || []).map(s=>({name: s.name, off: s.off,
-                  byte: signByteFor(s.off, lo, hi),
-                  hits: Math.abs((driveSign(signByteFor(s.off, lo, hi)).target) - s.off) < 0.005}));
+  /* HALF A BYTE STEP, DERIVED.  A stop is reachable if a BYTE lands on it,
+     and rounding to the nearest byte can miss by half a step — so the fixed
+     0.005m this used to carry was NINE TIMES tighter than its own comment
+     reasoned, and false-failed on any geometry nudge: moving BJ_SIGN_OUT to
+     9.05 made the probe exit 1 claiming PRE-SHOW unreachable when byte 53
+     reaches it to 12mm. */
+  const tol = Math.abs(hi - lo) / 510 + 1e-9;
+  const stops = (signStops || []).map(s=>{
+    const by = signByteFor(s.off, lo, hi);
+    const got = driveSign(by).target;
+    return {name: s.name, off: s.off, byte: by, got: got,
+            miss: Math.abs(got - s.off), hits: Math.abs(got - s.off) < tol};
+  });
   return {lo: lo, hi: hi, mid: mid, parked: parked, full: full, half: half,
           declared: signX ? signX.speed : null, stops: stops};
 })() : null;
@@ -865,7 +888,9 @@ if(signDrive){
   for(const s of signDrive.stops)
     if(!s.hits)
       throw new Error('SELF-CHECK 11 FAILED: no byte reaches the stop ' + s.name +
-        ' at ' + s.off.toFixed(2) + 'm — RULING EZ says all three are reachable');
+        ' at ' + s.off.toFixed(3) + 'm — byte ' + s.byte + ' gave ' + s.got.toFixed(3) +
+        ', a miss of ' + s.miss.toFixed(4) + 'm against half a byte step. ' +
+        'RULING EZ says all three are reachable.');
 }
 /* SELF-CHECK 7 — AND "ON A BAND CHANGE ONLY" IS ITSELF MEASURED: hold the
    same byte with the memory left alone and nothing may be written a second
@@ -1048,7 +1073,8 @@ for(const r of flyRows){
 
 /* ---- the house circuits ------------------------------------------------- */
 for(const h of houseChan)
-  row(h.ch, 'house circuit HOUSE.' + h.key, 'level', '0=out 255=full', []);
+  row(h.ch, 'house circuit HOUSE.' + h.key, 'level',
+      '0=' + f2(h.at[0]) + ' 128=' + f2(h.at[128]) + ' 255=' + f2(h.at[255]), []);
 
 /* ---- the selector channels ---------------------------------------------- */
 {
@@ -1078,7 +1104,7 @@ for(const h of houseChan)
          'dead while speed byte ' + SIGN_S_CH + ' is 0',
          signHauled]);
     row(SIGN_S_CH, 'BEETLEJUICE sign (fly extra bjSign)', 'speed',
-        '0=PARKED (nothing is written at all) 255=' + signDrive.full +
+        '0=PARKED (no target is commanded; the speed is written as 0) 255=' + signDrive.full +
         ' m/s, the haul\'s OWN declared speed',
         ['PARKED here is SILENCE, not a stop: the sign is a scene mover, so a haul ' +
          'the show started runs on to its stop']);
@@ -1094,7 +1120,7 @@ for(const h of houseChan)
     : 'traveler — no line in this production carries one';
   row(TRAV_CH, travWho, 'open',
       travDriven ? '0=shut 255=open   draws ' + f2(travRate.rate) + ' of its full draw a second, ' +
-                   travRate.panels + ' panels ' + f2(travRate.metres) + 'm each'
+                   travRate.panels + ' panels, each travelling ' + f2(travRate.metres) + 'm in that second'
                  : 'nothing answers it in this production',
       travDriven ? ['PARKED by line ' + flyRows[travDriven.i].id + '\'s own speed byte ' +
                       (flyRows[travDriven.i].base + 1),
@@ -1114,8 +1140,9 @@ for(const r of mvRows){
     notes.push('ONE-WAY: any byte from 1 flies it in, none flies it out' +
                ' (travel too short for the channel self-check to tell it apart)');
   row(r.ch, who, 'target',
-      (zeroIsNoCommand ? '0=no command ' : '0=' + f2(r.at[0]) + 'm ') +
-      '1=' + f2(r.at[1]) + 'm 255=' + f2(r.at[255]) + 'm' +
+      (zeroIsNoCommand ? '0=no command (any other byte HOLDS this set every frame, so the show cannot move it) '
+                       : '0=' + f2(r.at[0]) + 'm ') +
+      '1=' + f2(r.at[1]) + 'm 128=' + f2(r.at[128]) + 'm 255=' + f2(r.at[255]) + 'm' +
       (r.declaresOut ? '' : ' (no out declared, so 255 is 0 on its own axis)'),
       notes);
 }
@@ -1153,6 +1180,7 @@ const out = s => L.push(s === undefined ? '' : s);
 
 out('THE BUILT FILE  the-house.html  ' + fs.statSync(HOUSE_FILE).size +
     ' bytes  (generated by tools/artnet-map.js)');
+out('UNIVERSE 0 — the Palace only (RULING EN); on any other stage packets are counted and nothing is written');
 out('SHOW LOADED  ' + SHOW_KEY.toUpperCase() +
     '  (the set mover lines and the lineset goods are this show\'s)');
 out();

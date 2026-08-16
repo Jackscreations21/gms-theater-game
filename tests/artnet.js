@@ -2654,14 +2654,22 @@ const P = async (name, fn)=>{
        without a regex (a backslash in one is eaten by a probe template, and
        indexOf and a digit walk are exact either way — the same reasoning as
        `sizeOf` above). */
-    if(String(want[1]).indexOf('SHOW LOADED  ') !== 0)
-      throw new Error('docs/ARTNET.md line 2 no longer says which show is loaded — the set ' +
+    /* THREE HEADER LINES, EACH PINNED BY WHAT IT IS FOR.  A review asked for
+       the universe and the Palace-only gate back: both were in the grouped
+       file RULING FA replaced, both are things an operator must know before
+       touching the first fader, and neither is derivable from a channel
+       line. */
+    if(String(want[1]).indexOf('UNIVERSE ') !== 0)
+      throw new Error('docs/ARTNET.md line 2 no longer names the universe and the ' +
+        'Palace-only gate: ' + JSON.stringify(String(want[1]).slice(0, 60)));
+    if(String(want[2]).indexOf('SHOW LOADED  ') !== 0)
+      throw new Error('docs/ARTNET.md line 3 no longer says which show is loaded — the set ' +
         'mover lines and the lineset goods are that show\'s, which is why RULING FA keeps ' +
-        'that one header line: ' + JSON.stringify(String(want[1]).slice(0, 60)));
-    if(want[2] !== '')
-      throw new Error('docs/ARTNET.md line 3 is not the blank between the header and the ' +
-        'list: ' + JSON.stringify(String(want[2]).slice(0, 60)));
-    const body = want.slice(3);
+        'that header line: ' + JSON.stringify(String(want[2]).slice(0, 60)));
+    if(want[3] !== '')
+      throw new Error('docs/ARTNET.md line 4 is not the blank between the header and the ' +
+        'list: ' + JSON.stringify(String(want[3]).slice(0, 60)));
+    const body = want.slice(4);
     while(body.length && body[body.length - 1] === '') body.pop();
     let prev = null;
     for(let i = 0; i < body.length; i++){
