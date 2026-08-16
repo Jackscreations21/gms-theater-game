@@ -886,7 +886,11 @@ function vrPageSets(g, P){
     g.fillStyle = on ? '#7fe08a' : '#5d6874';
     g.fillText(vrSetWhere(sc), P.x + P.w - 420, y + rowH/2 - 3);
     vrBtnBox(g, P.x + P.w - 250, y + 3, 110, rowH - 11, on ? 'ON' : 'CALL ON',
-             ((nm)=>()=>{ sceneChangeTo(nm); vrDrawConsole(true); })(sc.name),
+             /* the same yield as the desk's set list (RULING EX) — a control
+                that exists only in the DOM does not exist in VR, and neither
+                does a refusal */
+             ((nm)=>()=>{ if(artYields('the set list')){ vrDrawConsole(true); return; }
+                          sceneChangeTo(nm); vrDrawConsole(true); })(sc.name),
              on ? {bg:'#1f6b2e', fg:'#ffffff'} : null,
              {setCall: sc.name});
   }
