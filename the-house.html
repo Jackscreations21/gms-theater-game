@@ -11937,6 +11937,72 @@ function artFlys(b){
   }
 }
 
+/* ============================================================================
+   RULING ET — THE SET MOVERS, ONE TARGET CHANNEL EACH, AT THEIR OWN SPEED
+
+   From artMoverBase(), SHOW.scenes in DECLARATION ORDER, and inside a scene
+   its whole-group travel `sc.mv` FIRST and then its part movers `sc.pmv` in
+   the order they were declared.  One channel each and no speed channel —
+   Jack asked for speed on the flys only.
+
+   THE RANGE IS READ OFF THE RECORD, NEVER OFF A TABLE.  Byte 0 is `m.home`.
+   Byte 255 is `m.out` WHEN THE RECORD DECLARES A NUMERIC ONE — every part
+   mover does, because sceneTravelPart fills the field in whether the caller
+   passed it or not, and no whole-group travel ever does — and 0 on the
+   mover's own axis when it does not.  `sc.parkMv` and `sc.parkMvAt` are
+   SCENE fields rather than mover fields, and are not consulted.
+
+   WHICH LEAVES TWO CHANNELS THAT CANNOT MOVE ANYTHING, AND THEY ARE NOT A
+   BUG IN THIS FUNCTION.  Beetlejuice's exterior and its sign are whole-group
+   travels with `home` 0, so "home at 0, and 0 at 255" is the whole of their
+   range: 310..322 carries eleven live movers and those two dead ones.  The
+   ruling is read literally on purpose — the numbers come off the records and
+   docs/ARTNET.md prints them — and the fix, if it is one, is a ruling rather
+   than a guess made here.
+
+   THE WRITE IS `m.target` AND NOTHING ELSE.  `m.off` and the group's own
+   position belong to sceneMvAdvance, which walks the record at `m.speed` on
+   the scene tick that already exists — so a desk move looks exactly like a
+   cue move, and no desk can put a house across the stage between two frames.
+   Same reason as RULING EQ, and the same machinery.
+
+   THE BLOCK IS DERIVED EVERY FRAME, so a show change re-bases it for free:
+   showStrike empties SHOW.scenes and the next show builds new records, and a
+   list cached at first use would go on writing into a struck show's movers
+   for ever while the loaded one stood still.
+
+   AND WHAT 512 ZEROS DO, SAID OUT LOUD RATHER THAN LEFT TO BE FOUND: byte 0
+   is `home`, so an unpatched universe commands EVERY mover in the loaded
+   show home — which on Beetlejuice walks the parked sets back onto the deck,
+   flies the exterior cloth in and brings the sign down.  RULING EQ's stated
+   principle is that a dead universe moves no scenery, and this collides with
+   it head on; the flys and channel 309 are parked by a SPEED byte and ET
+   gives a set mover none to be parked by.  Built as written, flagged in the
+   report, and it is Jack's to reverse — it is one condition (a mover takes
+   its channel only where something is really driving it), not a rewrite.
+   ========================================================================== */
+
+/* the far end of the travel: what the record declares, or 0 on its own axis */
+function artMoverOut(m){ return (typeof m.out === 'number') ? m.out : 0; }
+function artMoverSet(m, byte){
+  const out = artMoverOut(m);
+  /* target ONLY.  Writing `off` here would be the teleport RULING ET forbids,
+     and writing the group's position would be worse than useless — the set is
+     frozen (lockShowStatic) and only sceneMvAdvance's own write goes through
+     a mover's live matrix. */
+  m.target = m.home + (byte / 255) * (out - m.home);
+}
+function artMovers(b){
+  if(!SHOW.scenes || !SHOW.scenes.length) return;
+  let o = artMoverBase() - 1;                     // to a 0-based index
+  for(const sc of SHOW.scenes){
+    /* a rig plus a rail plus a show with a lot of scenery could run past 512;
+       the channels that fit are driven and the rest are simply not there */
+    if(sc.mv){ if(o >= b.length) return; artMoverSet(sc.mv, b[o++]); }
+    if(sc.pmv) for(const k in sc.pmv){ if(o >= b.length) return; artMoverSet(sc.pmv[k], b[o++]); }
+  }
+}
+
 /* ONE WRITER, ONE PLACE IN THE FRAME (RULING EU).  Called from p7's tick,
    once, after input and before every system that reads the rig. */
 function artnetTick(dt){
@@ -12005,6 +12071,7 @@ function artnetTick(dt){
 
   artLights(b);
   artFlys(b);
+  artMovers(b);
 }
 
 /* ============================================================================

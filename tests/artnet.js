@@ -1565,6 +1565,293 @@ const P = async (name, fn)=>{
       return 'the row moved from ' + JSON.stringify(off) + ' to ' + JSON.stringify(el.textContent) + ' without anybody calling artSyncRow';
     });
 
+    /* ---- RULING ET: the set movers, one target channel each --------------
+       NOTHING ABOVE THIS LINE HAS A SHOW LOADED, so every one of these cases
+       loads Beetlejuice first — it is the show ET is for, and the only one of
+       the five that carries any scene movers at all.
+
+       AND EVERY ONE OF THEM READS A WORLD MATRIX RATHER THAN A RECORD.  The
+       set is FROZEN (lockShowStatic), so a group position that "moved" may be
+       a number in an object and nothing on the stage; the mover records are
+       what this code writes, so believing them would be marking my own
+       homework twice over.  scene.updateMatrixWorld(true) from the ROOT, never
+       from the child, or the composition is against a stale parent (TRAPS). */
+
+    const AX = {x:12, y:13, z:14};
+    const mvWorld = (g, axis)=>{ scene.updateMatrixWorld(true); return g.matrixWorld.elements[AX[axis]]; };
+    /* the channel order this suite believes, built the same way the ruling
+       reads: SHOW.scenes in declaration order, sc.mv then sc.pmv.  It is only
+       ever used to say WHICH record a channel should have moved — the cases
+       below assert on metres, so a wrong order shows up as a wrong distance. */
+    const mvAll = ()=>{
+      const out = [];
+      for(const sc of SHOW.scenes){
+        if(sc.mv) out.push({scene:sc.name, name:'mv', m:sc.mv, g:sc.group});
+        if(sc.pmv) for(const k in sc.pmv) out.push({scene:sc.name, name:k, m:sc.pmv[k], g:sc.pmv[k].group});
+      }
+      return out;
+    };
+    const mvOut = m => (typeof m.out === 'number') ? m.out : 0;
+    const mvWant = (m, byte) => m.home + (byte / 255) * (mvOut(m) - m.home);
+    /* a frame carrying these bytes from artMoverBase() on — built off the
+       FUNCTION, so a case that shifts the rig shifts the frame with it */
+    const mvFrame = (bytes)=>{
+      const b = new Uint8Array(512);
+      const base = artMoverBase() - 1;
+      for(let i = 0; i < bytes.length; i++) if(base + i < 512) b[base + i] = bytes[i];
+      return b;
+    };
+    /* send a part somewhere and let the SCENE TICK take it there, so a case
+       can start from a set that is genuinely standing in the wing rather than
+       from a record that says so */
+    const mvPark = (scName, part, to)=>{
+      const m = sceneFind(scName).pmv[part];
+      sceneMovePartTo(scName, part, to);
+      for(let i = 0; i < 6000 && Math.abs(m.off - to) > 1e-4; i++) sceneMoveStep(1/60);
+      if(Math.abs(m.off - to) > 1e-3)
+        throw new Error('the setup could not get ' + scName + ':' + part + ' to ' + to);
+      return m;
+    };
+
+    P('every set mover takes ONE channel, in declaration order (RULING ET)', ()=>{
+      if(!showLoad('beetlejuice')) throw new Error('Beetlejuice would not load');
+      const ws = deskOn();
+      const list = mvAll();
+      if(list.length < 10)
+        throw new Error('only ' + list.length + ' movers were found; this show carries thirteen');
+      /* A DISTINCT BYTE PER CHANNEL.  A uniform frame is satisfied by any
+         order at all — the whole claim here is WHICH mover reads WHICH byte,
+         so two movers that swapped places have to land on wrong metres. */
+      const bytes = list.map((x, i)=> 20 + i * 17);
+      ws.deliver(mvFrame(bytes)); artnetTick(1/60);
+      const said = [];
+      for(let i = 0; i < list.length; i++){
+        const it = list[i], want = mvWant(it.m, bytes[i]);
+        if(Math.abs(it.m.target - want) > 1e-6)
+          throw new Error('channel ' + (artMoverBase() + i) + ' (' + it.scene + ':' + it.name +
+            ') read byte ' + bytes[i] + ' as ' + it.m.target.toFixed(3) + 'm, not ' + want.toFixed(3));
+        said.push(it.scene + ':' + it.name + ' ' + it.m.home.toFixed(2) + '..' + mvOut(it.m).toFixed(2));
+      }
+      /* and the block STOPS: the channel after the last mover belongs to
+         nobody, so a frame that only lights it moves nothing */
+      const zeros = [];
+      for(let i = 0; i < list.length + 1; i++) zeros.push(i === list.length ? 255 : 0);
+      ws.deliver(mvFrame(zeros)); artnetTick(1/60);
+      for(const it of list){
+        if(Math.abs(it.m.target - it.m.home) > 1e-6)
+          throw new Error(it.scene + ':' + it.name + ' answered the channel PAST the block');
+      }
+      return list.length + ' movers on ' + artMoverBase() + '..' + (artMoverBase() + list.length - 1) +
+             ': ' + said.join(', ');
+    });
+
+    P('a scene carrying both is driven mv FIRST, then its parts (RULING ET)', ()=>{
+      /* NO SCENE IN THIS SHOW DECLARES BOTH — the graveyard has two part
+         movers and no travel, the exterior a travel and no parts — so the
+         half of the ruling that orders them inside a scene is unexercised by
+         the data, and an implementation that read pmv first would have passed
+         every case above.  So give one both, through the game's own
+         declaration API rather than by poking a record together. */
+      const cem = sceneFind('cemetery');
+      if(!cem) throw new Error('there is no cemetery in this show');
+      if(cem.mv) throw new Error('the graveyard already travels; this case no longer builds what it thinks');
+      const n0 = mvAll().length;
+      const z0 = cem.group.position.z;
+      const ws = deskOn();
+      try{
+        sceneTravel(cem, 'z', -6, 2.0);            // home -6, no out, so 0 at byte 255
+        const list = mvAll();
+        if(list.length !== n0 + 1) throw new Error('the new travel did not take a channel');
+        /* EVERY mover channel at 255 EXCEPT the first, which gets 128 — and
+           128 rather than 0 because sceneTravel leaves the new travel AT its
+           home, so a byte-0 reading would be the state the setup was already
+           in.  Read in the right order this frame says: the travel half way
+           from -6 to 0, and the first hill at its out.  Read pmv-first it is
+           the hill half way to ITS out and the travel at 0 — four numbers,
+           and all four differ. */
+        const bytes = [];
+        for(let i = 0; i < list.length; i++) bytes.push(i === 0 ? 128 : 255);
+        const wantMv = -6 + (128 / 255) * 6;
+        if(Math.abs(cem.mv.target - wantMv) < 1e-6)
+          throw new Error('this case is measuring the state it starts in');
+        ws.deliver(mvFrame(bytes)); artnetTick(1/60);
+        if(Math.abs(cem.mv.target - wantMv) > 1e-6)
+          throw new Error('the first channel drove the travel to ' + cem.mv.target.toFixed(2) +
+            'm; byte 128 on a travel homed at -6 with no out is ' + wantMv.toFixed(2));
+        const hill = cem.pmv.hillR;
+        if(Math.abs(hill.target - hill.out) > 1e-6)
+          throw new Error('the second channel left hillR at ' + hill.target.toFixed(2) +
+            'm; it should be its out at ' + hill.out.toFixed(2));
+        return 'a scene given both reads its travel on ' + artMoverBase() +
+               ' and its first part on ' + (artMoverBase() + 1);
+      } finally {
+        cem.mv = null;
+        cem.group.position.z = z0;
+        artSetOn(false);
+      }
+    });
+
+    P('a desk target is WALKED to at the mover speed, never teleported (RULING ET)', ()=>{
+      showLoad('beetlejuice');
+      const sc = sceneFind('attic'), m = sc.pmv.all, i = mvAll().findIndex(x=>x.m === m);
+      if(i < 0) throw new Error('the attic tracking mover is not on the map');
+      /* THE RIGGED SPEED IS READ BEFORE A SINGLE BYTE HAS BEEN APPLIED, and
+         that means before deskOn, which delivers a frame of its own.  RULING
+         ET gives a set mover no speed channel at all; read afterwards, this
+         number would be whatever the desk had just written to it and every
+         timing assertion below would measure the mutation against itself. */
+      const rigged = m.speed;
+      const ws = deskOn();
+      /* START IT IN THE WING.  Homed first, every assertion below would be
+         true of a build that wrote nothing at all. */
+      mvPark('attic', 'all', m.out);
+      const away = mvWorld(m.group, m.axis);
+      const bytes = []; for(let k = 0; k < i + 1; k++) bytes.push(0);
+      ws.deliver(mvFrame(bytes)); artnetTick(1/60);
+      if(Math.abs(m.target - m.home) > 1e-6)
+        throw new Error('byte 0 asked for ' + m.target.toFixed(2) + 'm, not the home at ' + m.home);
+      /* THE FRAME THE BYTE ARRIVES ON MOVES NOTHING.  This is the whole of
+         "no teleporting": the write is the target, and the walk belongs to
+         the scene tick. */
+      if(Math.abs(mvWorld(m.group, m.axis) - away) > 1e-9)
+        throw new Error('the set moved in world space on the frame the byte arrived — that is a teleport');
+      if(Math.abs(m.off - m.out) > 1e-9)
+        throw new Error('the offset jumped to ' + m.off.toFixed(2) + ' on the tick that took the byte');
+      if(m.speed !== rigged)
+        throw new Error('the desk wrote the mover speed to ' + m.speed + ' — ET gives set movers no speed channel');
+      /* one scene tick is one speed x dt, and no more */
+      sceneMoveStep(1/60);
+      const step = Math.abs(mvWorld(m.group, m.axis) - away);
+      if(Math.abs(step - rigged / 60) > 1e-6)
+        throw new Error('one tick moved ' + step.toFixed(4) + 'm; the rigged speed says ' + (rigged / 60).toFixed(4));
+      /* and the whole travel takes the time that speed says, in the world */
+      const need = Math.abs(m.out - m.home) / rigged;
+      let t = 1 / 60, n = 0;
+      while(Math.abs(m.off - m.home) > 1e-4 && n++ < 20000){ sceneMoveStep(1/60); t += 1 / 60; }
+      const moved = Math.abs(mvWorld(m.group, m.axis) - away);
+      if(Math.abs(moved - Math.abs(m.out - m.home)) > 1e-3)
+        throw new Error('the world matrix moved ' + moved.toFixed(3) + 'm against a ' +
+          Math.abs(m.out - m.home).toFixed(3) + 'm travel — the record moved and the set did not');
+      if(Math.abs(t - need) > 0.1)
+        throw new Error('the walk took ' + t.toFixed(2) + 's; at ' + rigged + 'm/s it is ' + need.toFixed(2));
+      artSetOn(false);
+      return 'a desk byte walked the attic ' + moved.toFixed(2) + 'm in world space over ' + t.toFixed(2) +
+             's at its own ' + rigged + 'm/s, and moved it 0.00m on the frame the byte landed';
+    });
+
+    P('the mover block RE-BASES on the show that is loaded (RULING ET)', ()=>{
+      showLoad('beetlejuice');
+      const old = sceneFind('attic').pmv.all, i = mvAll().findIndex(x=>x.m === old);
+      /* TWO FRAMES, AND THE FIRST ONE IS THE SETUP.  A show loads with its
+         parked sets AT their out (sceneShow strikes them there), so "the desk
+         drove it to its out" is the state the reload already left it in — the
+         first draft of this case asserted exactly that and passed against a
+         build with the map cached at first use.  So the desk HOLDS it at out
+         to come up, and the frame that is measured drives it HOME. */
+      const hold = []; for(let k = 0; k < i + 1; k++) hold.push(k === i ? 255 : 0);
+      const home = []; for(let k = 0; k < i + 1; k++) home.push(0);
+      /* a show with no scene machinery at all: the block is empty, and a
+         frame that is all mover bytes must simply pass through it */
+      showLoad('goeswrong');
+      if(SHOW.scenes.length) throw new Error('this case wanted a show with no scenes; it has ' + SHOW.scenes.length);
+      let ws = deskOn();
+      const full = []; for(let k = 0; k < 40; k++) full.push(255);
+      ws.deliver(mvFrame(full)); artnetTick(1/60);
+      const held = old.target;
+      showLoad('beetlejuice');
+      const now = sceneFind('attic').pmv.all;
+      if(now === old)
+        throw new Error('the reload reused the same mover record, so nothing here can tell a cached map from a live one');
+      if(Math.abs(now.out - now.home) < 1)
+        throw new Error('the reloaded attic reads home ' + now.home + ' out ' + now.out +
+          ' — with no travel between them this case cannot tell a write from a silence');
+      ws = deskOn(mvFrame(hold));
+      if(Math.abs(now.target - now.out) > 1e-6)
+        throw new Error('the setup meant to leave the reloaded attic at its out and it reads ' + now.target.toFixed(2));
+      ws.deliver(mvFrame(home)); artnetTick(1/60);
+      if(Math.abs(now.target - now.home) > 1e-6)
+        throw new Error('channel ' + (artMoverBase() + i) + ' left the NEW attic at ' +
+          now.target.toFixed(2) + 'm, not its home at ' + now.home.toFixed(2));
+      if(Math.abs(old.target - held) > 1e-9)
+        throw new Error('the STRUCK show\\u2019s mover was written to ' + old.target.toFixed(2) +
+          'm — the map is cached, and it is writing into a show that is gone');
+      artSetOn(false);
+      return 'the block emptied for a show with no scenery and came back pointed at the NEW record, ' +
+             'walked from its out at ' + now.out.toFixed(2) + 'm to home while the struck one held at ' +
+             held.toFixed(2) + 'm';
+    });
+
+    P('the mover block is where the RIG puts it, not at 310 (RULINGS EO, ET)', ()=>{
+      showLoad('beetlejuice');
+      const ws = deskOn();
+      const m = sceneFind('attic').pmv.all, i = mvAll().findIndex(x=>x.m === m);
+      const at0 = []; for(let k = 0; k < i + 1; k++) at0.push(0);
+      ws.deliver(mvFrame(at0)); artnetTick(1/60);
+      if(Math.abs(m.target - m.home) > 1e-6) throw new Error('the setup did not home the attic first');
+      /* a fortieth lantern moves every base after it by seven, and the mover
+         block with them.  A frame built off artMoverBase() follows; a build
+         that wrote 310 down reads seven channels short of it. */
+      const ghost = {name:'a lantern that is not there', mover:false, level:0, lvlDur:0,
+                     colDur:0, gobo:0, color:new T.Color()};
+      FIXTURES.push(ghost);
+      try{
+        if(artMoverBase() !== 317)
+          throw new Error('a 40th fixture left the mover block at ' + artMoverBase());
+        const bytes = []; for(let k = 0; k < i + 1; k++) bytes.push(k === i ? 255 : 0);
+        ws.deliver(mvFrame(bytes)); artnetTick(1/60);
+        if(Math.abs(m.target - m.out) > 1e-6)
+          throw new Error('with the block at 317 the attic read ' + m.target.toFixed(2) +
+            'm — the base is written down somewhere, not computed');
+      } finally { FIXTURES.pop(); }
+      artSetOn(false);
+      return 'a 40th lantern moved the mover block to 317 and the desk still found the attic';
+    });
+
+    P('512 ZEROS DRIVE EVERY SET HOME — measured, and it collides with RULING EQ', ()=>{
+      /* NOT A CELEBRATION OF THE BEHAVIOUR.  RULING ET gives a set mover no
+         speed byte, so byte 0 is home and there is nothing to park it with —
+         while RULING EQ says in as many words that a dead universe moves no
+         scenery, and channel 309 was rewritten to obey that after an
+         unpatched desk shut the house curtain in front of the audience.
+         A desk patched only for the 273 light channels sends exactly this
+         frame, so what it does is measured here rather than discovered.
+         If Jack reverses it, this case is what changes. */
+      showLoad('beetlejuice');
+      const ws = deskOn();
+      const sc = sceneFind('attic'), m = sc.pmv.all;
+      const list = mvAll();
+      /* EVERY ONE OF THEM SENT SOMEWHERE THAT IS NOT ITS HOME FIRST, through
+         the game's own move calls — deskOn has itself just delivered a frame
+         with zeros across this block, so a case that measured from there would
+         be asserting the state it started in.  A whole-group travel is moved
+         by sceneMoveTo and a part by sceneMovePartTo; the part movers have an
+         out to go to and the three travels are simply sent 5m off home. */
+      for(const it of list){
+        if(it.name === 'mv') sceneMoveTo(it.scene, it.m.home + 5);
+        else sceneMovePartTo(it.scene, it.name, mvOut(it.m));
+        if(Math.abs(it.m.target - it.m.home) < 1e-6)
+          throw new Error(it.scene + ':' + it.name + ' would not move off its home for the setup');
+      }
+      mvPark('attic', 'all', m.out);
+      const drawn = !sc.group.userData.sceneOff;
+      const away = mvWorld(m.group, m.axis);
+      ws.deliver(new Uint8Array(512));            // an unpatched universe, exactly
+      artnetTick(1/60);
+      for(const it of list){
+        if(Math.abs(it.m.target - it.m.home) > 1e-6)
+          throw new Error(it.scene + ':' + it.name + ' was not commanded home by 512 zeros');
+      }
+      for(let k = 0; k < 20000 && Math.abs(m.off - m.home) > 1e-4; k++) sceneMoveStep(1/60);
+      const moved = Math.abs(mvWorld(m.group, m.axis) - away);
+      if(Math.abs(moved - Math.abs(m.out - m.home)) > 1e-3)
+        throw new Error('the parked attic moved ' + moved.toFixed(2) + 'm of its ' +
+          Math.abs(m.out - m.home).toFixed(2) + 'm — this case is meant to MEASURE the collision');
+      artSetOn(false);
+      return 'a frame of 512 zeros commanded all ' + list.length +
+             ' movers home and walked the parked attic ' + moved.toFixed(2) +
+             'm onto the deck' + (drawn ? ', in full view — it is drawn while it is parked' : '');
+    });
+
     console.log(window.__errs.length ? '--- part one failures: '+window.__errs.length+' ---'
                                      : '--- part one failures: 0 ---');
     window.__errs.forEach(e=>console.log('  '+e));
