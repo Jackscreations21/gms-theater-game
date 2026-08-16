@@ -84,12 +84,17 @@ const ART_PROVE = 44;
      308         BEETLEJUICE sign TARGET                      (RULING EZ)
      309         BEETLEJUICE sign SPEED, 0 = parked           (RULING EZ)
      310         traveler open
-     311 ..      the loaded show's set movers                 (RULINGS ET, EX)
+     311 .. 314  the proscenium neon: intensity, R, G, B      (RULING FC)
+     315 ..      the loaded show's set movers                 (RULINGS ET, EX)
 
-   RULING EZ MOVED THE LAST THREE.  The sign was one banded channel (ES) and
-   is now a fly on two, so the traveler went 309 -> 310 and the mover block
-   310 -> 311.  Nothing above had to be touched to say so, which is the point
-   of computing the bases.
+   TWO RULINGS HAVE MOVED THE TAIL OF THIS TABLE IN ONE DAY.  EZ took the sign
+   off one banded channel and gave it two (traveler 309 -> 310, movers
+   310 -> 311); FC put four proscenium channels in the fixed block after the
+   traveler (movers 311 -> 315).  NOTHING ABOVE HAD TO BE TOUCHED EITHER TIME,
+   which is the whole point of computing the bases — and it is why the mover
+   block goes LAST: it is the only variable-length block, 0 channels on four
+   of the five productions and 12 on Beetlejuice, so anything placed after it
+   would not be at a fixed position at all.
 
    EVERY BASE IS COMPUTED, NEVER WRITTEN DOWN.  The rig is 39 channels on
    every stage today and the fly rail is 14 lines, which is where 274 and 302
@@ -110,9 +115,11 @@ const ART_CH_FIX = 7;                 // channels per fixture, uniform
 function artFixBase(){ return 1; }
 function artFlyBase(){ return artFixBase() + ART_CH_FIX * FIXTURES.length; }
 function artHouseBase(){ return artFlyBase() + 2 * FLY.length; }
-/* 307 house selector, 308 sign TARGET, 309 sign SPEED, 310 traveler (EZ) */
+/* 307 house selector, 308 sign TARGET, 309 sign SPEED, 310 traveler (EZ),
+   311..314 the proscenium neon: intensity, red, green, blue (RULING FC) */
 function artSelBase(){ return artHouseBase() + 5; }
-function artMoverBase(){ return artSelBase() + 4; }
+function artProsBase(){ return artSelBase() + 4; }
+function artMoverBase(){ return artProsBase() + 4; }
 
 /* A MOVER'S TRAVEL.  Nothing in the rig declares its own range, so this is
    the range every head gets, and the map probe prints it per fixture rather
@@ -577,6 +584,66 @@ function artMovers(b){
 }
 
 /* ============================================================================
+   RULING FC — THE PROSCENIUM NEON, FOUR CHANNELS, AND IT IS A LIGHT
+
+   Jack: "make it so there are channles to controll the colors and brightness
+   of the prosinium."
+
+   FOUR CHANNELS: intensity, red, green, blue — the same shape as a fixture's
+   first four, so QLC+ patches it as a generic RGB dimmer and nobody has to
+   think about it twice.
+
+   THE SUBJECT IS THE NEON BAR AND NOTHING ELSE, and establishing that was
+   most of the work.  Six things could be called "the proscenium" here — the
+   gold arch's four collected pieces, the ivory wall behind them, the black
+   false portal, the neon bar, the eight blinders on its line, and the Arc's
+   own black piers.  EXACTLY ONE of them has a colour and a brightness:
+   `bj:portalFrame`, whose record is `SHOW.bjPortal`.  The gold has no
+   emissive and `M.gold` is shared by 65 meshes; the black portal's `board`
+   material is shared by 5.  Tinting either in place is the shared-material
+   trap INVARIANTS names, and this repo has paid for it three times.  The
+   blinders are FIXTURES 26-33 and already on channels 176..231 — putting
+   them here too would give eight fixtures two writers in one artnetTick,
+   and whichever ran later would win silently.
+
+   THE WRITE IS THE RECORD, NEVER THE MATERIAL.  `updatePortal` rewrites
+   `emissiveIntensity`, `emissive` and `color` EVERY FRAME from `b.lvl` and
+   `b.col`, and it runs after `artnetTick` in p7 — so a material write
+   survives exactly zero frames.  Measured, not reasoned.  That is RULING EW's
+   lesson: the writers that matter are the per-frame ones, not the controls.
+
+   AND IT WRITES BOTH THE VALUE AND ITS TARGET, WHICH IS WHAT MAKES IT RAW.
+   `updatePortal` walks `lvl` toward `tLvl` at BJ_NEON_FADE (1.2/s), so
+   writing only the target would give a desk fader an 0.83s crossfade —
+   pretty, and exactly what RULING EP forbids: "lights are raw writes; the
+   fade engine never fights the desk".  A desk fades by sending values, and
+   stacking a second fade on top makes every fade mushy.  Writing both leaves
+   the lerp a no-op and the fader tracks.
+
+   NO TAKEOVER BYTE, AND THAT IS A DELIBERATE DEPARTURE FROM EQ/EX/EZ.  Those
+   gave scenery a companion byte so a dead universe moves nothing.  This is
+   NOT scenery — it is a light, and RULING EP already says a desk patched only
+   for the light channels blacks the rig.  That same frame blacks all 39
+   lanterns, so the neon going out with them is consistent rather than
+   surprising; a takeover byte here would make the neon the one lit thing in
+   the building that a blackout could not reach.  One byte to add if Jack
+   disagrees.
+
+   FOUR OF THE FIVE PRODUCTIONS HAVE NO SUCH FRAME, and neither Arc stage has
+   one at all — `SHOW.bjPortal` is null and these four channels do nothing,
+   the way `artSign` does nothing without a sign.
+   ========================================================================== */
+function artPros(b){
+  const o = artProsBase() - 1;                  // channel 311, 0-based
+  if(o + 3 >= b.length) return;
+  const p = SHOW.bjPortal;
+  if(!p) return;                                // no lit frame: four dead channels
+  p.tLvl = p.lvl = b[o] / 255;
+  p.tCol.setRGB(b[o + 1] / 255, b[o + 2] / 255, b[o + 3] / 255);
+  p.col.copy(p.tCol);
+}
+
+/* ============================================================================
    RULINGS ER AND ES — TWO BANDED CHANNELS, HIS SPLITS EXACTLY
 
    Jack, in the brief: "make it so for beetljuice it has a channel and if it is
@@ -793,6 +860,7 @@ function artnetTick(dt){
   artLights(b);
   artFlys(b);
   artSign(b);
+  artPros(b);
   artMovers(b);
   artBands(b);
 }

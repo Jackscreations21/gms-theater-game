@@ -1,18 +1,40 @@
-# STATE — 2026-08-16 (ART-NET: THE CHAIN LANDED, THEN A REAL DESK RAN IT — RULINGS EL–EZ)
+# STATE — 2026-08-16 (ART-NET: THE CHAIN LANDED, THEN A REAL DESK RAN IT — RULINGS EL–FC)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
 ## READ THIS FIRST
 
-The desk drives the Palace, and the nine-PR chain is **done** — ten merges in
-all, #200 to #209, because #206 is an extra written mid-round. `main` is
-**`44688eb`** as this was written, with its own PR landing on top. The suite
-count is **21**, rulings are at **EZ**, and the cache-bust is **`?v=31`** from
-here.
+The desk drives the Palace. The nine-PR chain landed, **and then a real QLC+
+desk ran it for the first time and changed three things** — #200 to #213, of
+which #206 is an extra written mid-round. The suite count is **21**, rulings
+are at **FC**, and the cache-bust is **`?v=31`** from here.
 
-**Nothing in this round has been seen on hardware, and nothing has been seen
-against a real desk.** Every number below came out of jsdom.
+## IT HAS NOW BEEN RUN AGAINST A REAL DESK, AND THAT IS NEW
+
+Everything before 2026-08-16 came out of jsdom. On that evening Jack patched a
+real QLC+ into the relay, and the session is worth reading for what it found:
+
+- **The universe was the whole problem, and the default was right.** QLC+ sends
+  Art-Net **universe 0**, which is what `docs/ARTNET.md` and the relay default
+  say. A `--universe 1` suggestion from me broke a working setup for an hour.
+- **QLC+ holds UDP 6454 itself**, on IPv6 `::`, while the relay holds IPv4
+  `0.0.0.0`. They never collide, so no `EADDRINUSE` is ever raised — **the
+  relay's comment claims that refusing `reuseAddr` makes a clash loud, and it
+  does not.** Measured: with QLC+ open, packets to 127.0.0.1 still reach the
+  relay, so it costs nothing today. The reasoning is still wrong.
+- **The ARTNET row cannot tell three failures apart.** A tab that is not
+  rendering (the frame loop stops, so `artnetTick` never consumes what has
+  arrived), a page that can never build a socket (`file://` or Pages —
+  `artUrl` returns null and `artOpen` is a silent no-op), and a desk that
+  simply is not talking all read `ON — no desk yet`. That cost most of an
+  evening, and it is unfixed.
+- **A REAL DESK IDLES AT ~1.8s BETWEEN PACKETS**, not at Art-Net's nominal
+  44Hz — which is what RULING FB is, and it is the first number in this whole
+  round that came off hardware rather than out of reasoning.
+
+**Everything else below is still jsdom**, and no part of this round has been
+in the headset.
 
 | PR | Ruling | What |
 |---|---|---|
@@ -27,6 +49,9 @@ against a real desk.** Every number below came out of jsdom.
 | **#208** | **EO** | `tools/artnet-map.js` and the generated `docs/ARTNET.md` |
 | **#209** | **EY** | the record: the QLC+ recipe, the rulings, the one bug left standing |
 | **#210** | **EZ** | the sign is a fly — target and speed, and it retires EY’s sign half |
+| **#211** | **FA** | `docs/ARTNET.md` becomes a flat list, one line per channel |
+| **#212** | **FB** | `ART_STALE` 2s → 5s, measured against his real QLC+ desk |
+| **#213** | **FC** | the proscenium neon: intensity and RGB, written raw |
 
 Every merge verified: `main` rebuilds **byte-identical**, 21/21 suites on the
 merged result, branches deleted local and remote. Two-stage review on every
@@ -99,13 +124,16 @@ found at a desk.)
    select, play/stop, master volume, seek) so a desk cue fires the game's OWN
    recordings in sync with its transport — the machinery already exists from
    RULING BO. One PR. Or volume only (1 channel). Or leave it out.
-2. **Channel 312 is one-way and nothing can be done about it without a
-   ruling.** The Maitlands exterior is a whole-group travel with `home` 0 and
+2. **Channel 317 is one-way and nothing can be done about it without a
+   ruling.** (It was 312 when first written — RULINGS EZ and FC have each
+   renumbered the mover block since. **Patch off `docs/ARTNET.md`, which is
+   generated and cannot drift; never off this file, which just proved it
+   can.**) The Maitlands exterior is a whole-group travel with `home` 0 and
    no `out`, so every byte from 1 to 255 commands it HOME and no byte sends it
    back out — and it hangs a 12.6m drop dead centre of a 15m opening. Widening
    it means consulting `sc.parkMv`, which the plan's correction #2 forbids.
    `docs/ARTNET.md` prints it rather than hiding it.
-3. **Channel 309's traveler moves with the production — nothing to rule on,
+3. **Channel 310's traveler moves with the production — nothing to rule on,
    but worth knowing before you patch it.** RULING EO always said "the first
    lineset whose hung goods declare `traveler:true`, and the map probe prints
    which line that is", and was right; the loose sentences were `p6d`'s comment

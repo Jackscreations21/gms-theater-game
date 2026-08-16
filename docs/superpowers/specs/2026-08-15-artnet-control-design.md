@@ -1,6 +1,6 @@
 # Art-Net control of the Palace — design (2026-08-15)
 
-**BINDING. Rulings EL–FB.** The next spec starts at **FC**.
+**BINDING. Rulings EL–FC.** The next spec starts at **FD**.
 
 **EX and EY were added on 2026-08-16**, after the round began, and both came
 from measuring what an UNPATCHED universe does. EX is built; **EY is ruled and
@@ -628,6 +628,70 @@ artefact of that session (a desk with a running cue list sends far more), and
 what other consoles do. If a desk ever turns up with a keepalive slower than
 5s, this is the number that moves again — and the log line that prints the
 packet count is how it will be found.
+
+### RULING FC — the proscenium neon takes four channels, and it is a LIGHT
+
+Added 2026-08-16. Jack:
+
+> make it so there are channles to controll the colors and brightness of the
+> prosinium
+
+**Four channels — intensity, red, green, blue** — the same shape as a
+fixture's first four, so QLC+ patches it as a generic RGB dimmer.
+
+**THE SUBJECT IS THE NEON BAR AND ESTABLISHING THAT WAS MOST OF THE WORK.**
+Six things in this building could be called the proscenium: the gold arch's
+four collected pieces, the ivory wall behind them, the black false portal
+`bj:portal`, the neon bar `bj:portalFrame`, the eight blinders on its line,
+and the Arc houses' own black piers. **Exactly one has a colour and a
+brightness** — the neon bar, whose record is `SHOW.bjPortal`. The gold has no
+emissive at all and `M.gold` is shared by **65 meshes**; the black portal's
+`board` material is shared by 5. Tinting either in place is the shared-material
+trap INVARIANTS names and this repo has paid for three times. The blinders are
+FIXTURES 26–33, already on channels 176..231; putting them here as well would
+give eight fixtures two writers inside one `artnetTick`, and whichever ran
+later would win silently.
+
+**THE WRITE IS THE RECORD, NEVER THE MATERIAL.** `updatePortal` rewrites
+`emissiveIntensity`, `emissive` and `color` **every frame** from `b.lvl` and
+`b.col`, and it runs after `artnetTick` in `p7` — measured, a material write
+survives **exactly zero frames**. That is RULING EW's lesson again: the
+writers that matter are the per-frame ones, not the controls.
+
+**AND IT WRITES BOTH THE VALUE AND ITS TARGET, WHICH IS WHAT MAKES IT RAW.**
+`updatePortal` walks `lvl` toward `tLvl` at `BJ_NEON_FADE` (1.2/s), so writing
+only the target would give a desk fader an 0.83s crossfade — exactly what
+RULING EP forbids: *lights are raw writes; the fade engine never fights the
+desk*. A desk fades by sending values, and stacking a second fade on top makes
+every fade mushy. Writing both leaves the lerp a no-op and the fader tracks.
+
+**NO TAKEOVER BYTE, AND THAT IS A DELIBERATE DEPARTURE FROM EQ, EX AND EZ.**
+Those gave scenery a companion byte so a dead universe moves nothing. This is
+not scenery — **it is a light**, and RULING EP already says a desk patched only
+for the light channels blacks the rig. That same frame blacks all 39 lanterns,
+so the neon going out with them is consistent rather than surprising; a
+takeover byte here would make the neon the one lit thing in the building a
+blackout could not reach. One byte to add if Jack disagrees.
+
+**IT ALSO CLOSES A WRITER RULING EW's LIST MISSED.** `updateHouseWait` (p5c)
+fires one `setPortal` from a queue armed **before** the desk took over — RULING
+CZ holds the interval's frame behind the curtain landing — and it runs from
+inside `updateStorm`, so ungated it stomps the desk with an older instruction
+the moment the cloth arrives. It is gated now. EW's list was written from the
+board's controls and this is not a control, which is the same reason EW itself
+existed.
+
+**FOUR OF THE FIVE PRODUCTIONS HAVE NO SUCH FRAME**, and neither Arc stage has
+one — `SHOW.bjPortal` is null and the four channels do nothing, the way
+`artSign` does nothing without a sign. That guard turns out to be load-bearing
+for the whole suite rather than just its own case: removing it crashes every
+case that connects a desk.
+
+**The block sits in the FIXED group, after the traveler**, which renumbers the
+movers 311 → 315. That is the second renumber in a day and nothing had to be
+edited to say so. The mover block goes last on purpose: it is the only
+variable-length one — 0 channels on four productions, 12 on Beetlejuice — so
+anything after it would not be at a fixed position at all.
 
 ---
 

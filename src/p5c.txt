@@ -648,7 +648,14 @@ function updateHouseWait(){
   const a = SHOW.houseAfter;
   if(!a) return;
   SHOW.houseAfter = null;
-  if(a.portal && typeof setPortal === 'function') setPortal(a.portal);
+  /* RULING FC — THE DESK OWNS THE FRAME WHILE IT IS DRIVING.  This is a
+     one-shot write from a queue armed BEFORE the desk took over (RULING CZ
+     holds the interval's portal behind the curtain landing), and ungated it
+     stomps the desk with an older instruction the moment the cloth arrives.
+     RULING EW's exact shape, and a writer its list would have missed because
+     it is not a control — it fires from inside updateStorm. */
+  if(a.portal && typeof setPortal === 'function' &&
+     !(typeof artDriving === 'function' && artDriving())) setPortal(a.portal);
   if(a.audio && typeof showCueAudio === 'function') showCueAudio(a.audio);
 }
 

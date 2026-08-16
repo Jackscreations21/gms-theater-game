@@ -189,7 +189,8 @@ for(const k of ['FIXTURES','FLY','GOODS','SECTIONS','SHOW','HOUSE','OUT_TRIM',
   if(P[k] === undefined) throw new Error('the probe cannot see ' + k + ' — add it to the __P handout');
 for(const fn of ['artFixBase','artFlyBase','artHouseBase','artSelBase','artMoverBase',
                  'artBandOf','artLights','artFlys','artMovers','artMoverSet','artMoverOut',
-                 'artMoverHauled','artBands','artSign','artSignRange','minTrimOf',
+                 'artMoverHauled','artBands','artSign','artSignRange','artPros',
+                 'artProsBase','minTrimOf',
                  'showLoad','flyExtraStops',
                  'flyExtraMover','flyTo','updateFly','bjRedress','bjWingPack'])
   if(typeof w[fn] !== 'function')
@@ -227,14 +228,20 @@ const FIXB = w.artFixBase(), FLYB = w.artFlyBase(), HOUB = w.artHouseBase(),
 const HOUSE_BAND_CH = SELB;
 const SIGN_T_CH     = SELB + 1;
 const SIGN_S_CH     = SELB + 2;
-const TRAV_CH       = MVB - 1;
-/* and the two readings really are the same channel, said out loud rather than
-   assumed — EZ moved the mover base and a stale artMoverBase() would put the
-   traveler on top of the sign's speed byte without anything else noticing */
-if(TRAV_CH !== SIGN_S_CH + 1)
-  throw new Error('the selector block does not fit: the sign speed byte is ' + SIGN_S_CH +
-    ' and the traveler (artMoverBase() - 1) is ' + TRAV_CH + ' — RULING EZ puts four ' +
-    'channels in the selector block and artMoverBase() must be artSelBase() + 4');
+const TRAV_CH       = SELB + 3;
+const PROSB         = w.artProsBase();        // RULING FC — four, after the traveler
+/* THE FIXED BLOCK IS CHECKED FOR SHAPE, NOT ASSUMED.  It has been renumbered
+   twice in one day — EZ gave the sign a second channel, FC added four for the
+   proscenium — and each time a stale base would have quietly stacked one
+   reading on top of another with nothing else noticing.  So the two ends are
+   asserted against each other: the proscenium starts where the traveler ends,
+   and the movers start where the proscenium ends. */
+if(PROSB !== TRAV_CH + 1)
+  throw new Error('the selector block does not fit: the traveler is ' + TRAV_CH +
+    ' and the proscenium base is ' + PROSB + ' — artProsBase() must be artSelBase() + 4');
+if(MVB !== PROSB + 4)
+  throw new Error('the selector block does not fit: the proscenium is ' + PROSB + '..' +
+    (PROSB + 3) + ' and the movers start at ' + MVB + ' — artMoverBase() must be artProsBase() + 4');
 
 const f2 = v => (Math.round(v * 100) / 100).toFixed(2);
 const f1 = v => (Math.round(v * 10) / 10).toFixed(1);
@@ -868,6 +875,67 @@ const signDrive = signMv ? (()=>{
   return {lo: lo, hi: hi, mid: mid, parked: parked, full: full, half: half,
           declared: signX ? signX.speed : null, stops: stops};
 })() : null;
+/* ---- RULING FC: the proscenium neon, DRIVEN through artPros ------------
+   Four channels: intensity, R, G, B.  The record is SHOW.bjPortal, and the
+   write has to be the RECORD rather than the material because updatePortal
+   rewrites emissiveIntensity/emissive/color every frame from it — a material
+   write survives exactly zero frames.  So the read-back is the record too. */
+const prosWas = P.SHOW.bjPortal
+  ? {lvl: P.SHOW.bjPortal.lvl, tLvl: P.SHOW.bjPortal.tLvl,
+     col: P.SHOW.bjPortal.col.getHex(), tCol: P.SHOW.bjPortal.tCol.getHex()} : null;
+function prosFrame(i, r, g, bl){
+  const b = frame();
+  put(b, PROSB, i); put(b, PROSB + 1, r); put(b, PROSB + 2, g); put(b, PROSB + 3, bl);
+  return b;
+}
+function drivePros(i, r, g, bl){
+  const p = P.SHOW.bjPortal;
+  if(!p) return null;
+  p.lvl = -1; p.tLvl = -1;                       // a value no byte can produce
+  w.artPros(prosFrame(i, r, g, bl));
+  return {lvl: p.lvl, tLvl: p.tLvl, r: p.col.r, g: p.col.g, b: p.col.b,
+          tr: p.tCol.r, tg: p.tCol.g, tb: p.tCol.b};
+}
+const prosDrive = P.SHOW.bjPortal ? (()=>{
+  const at0   = drivePros(0, 0, 0, 0);
+  const at128 = drivePros(128, 0, 0, 0);
+  const at255 = drivePros(255, 0, 0, 0);
+  const red   = drivePros(255, 255, 0, 0);
+  const green = drivePros(255, 0, 255, 0);
+  const blue  = drivePros(255, 0, 0, 255);
+  return {lo: at0.lvl, mid: at128.lvl, hi: at255.lvl,
+          raw: at255.lvl === at255.tLvl && red.r === red.tr,
+          red: red, green: green, blue: blue};
+})() : null;
+if(prosWas){ const p = P.SHOW.bjPortal;
+  p.lvl = prosWas.lvl; p.tLvl = prosWas.tLvl;
+  p.col.setHex(prosWas.col); p.tCol.setHex(prosWas.tCol); }
+
+/* SELF-CHECK 12 — the proscenium block is four real channels, and the write is
+   RAW.  Each of these can fail: a build that wrote only the target (the fader
+   would then crossfade, which RULING EP forbids), one whose colour bytes were
+   ordered wrongly, or one whose intensity did not span out..full. */
+if(prosDrive){
+  if(!(prosDrive.lo === 0 && Math.abs(prosDrive.hi - 1) < 1e-9))
+    throw new Error('SELF-CHECK 12 FAILED (RULING FC): the proscenium intensity reads ' +
+      prosDrive.lo + ' at byte 0 and ' + prosDrive.hi + ' at 255 — it spans out..full');
+  if(Math.abs(prosDrive.mid - 0.5) > 0.01)
+    throw new Error('SELF-CHECK 12 FAILED (RULING FC): byte 128 gave ' + prosDrive.mid +
+      ' — the middle of the fader is half');
+  if(!prosDrive.raw)
+    throw new Error('SELF-CHECK 12 FAILED (RULING FC): the write is not RAW — the value and ' +
+      'its target disagree, so updatePortal will crossfade a desk fader (RULING EP)');
+  if(!(prosDrive.red.r === 1 && prosDrive.red.g === 0 && prosDrive.red.b === 0))
+    throw new Error('SELF-CHECK 12 FAILED (RULING FC): the red byte gave rgb ' +
+      [prosDrive.red.r, prosDrive.red.g, prosDrive.red.b].join(','));
+  if(!(prosDrive.green.g === 1 && prosDrive.green.r === 0))
+    throw new Error('SELF-CHECK 12 FAILED (RULING FC): the green byte gave rgb ' +
+      [prosDrive.green.r, prosDrive.green.g, prosDrive.green.b].join(','));
+  if(!(prosDrive.blue.b === 1 && prosDrive.blue.r === 0))
+    throw new Error('SELF-CHECK 12 FAILED (RULING FC): the blue byte gave rgb ' +
+      [prosDrive.blue.r, prosDrive.blue.g, prosDrive.blue.b].join(','));
+}
+
 /* SELF-CHECK 11 — the sign must be a real travel driven by a real speed byte.
    Every one of these can fail: a build that dropped the parked branch, one
    that wrote `speed` instead of `artSpeed`, one that used inOff/outOff (which
@@ -1127,6 +1195,22 @@ for(const h of houseChan)
                     'THE LINE MOVES WITH THE SHOW — on the standing hang it is line ' +
                       (travBare ? travBare.id + ' ' + travBareGoods : 'NONE')]
                  : []);
+
+  /* RULING FC — the proscenium neon.  Four lines, and the numbers on them are
+     read back off SHOW.bjPortal after driving artPros. */
+  const prosNote = 'the NEON BAR only (bj:portalFrame) — not the gold arch and not the black portal, ' +
+                   'neither of which is a lit thing and both of whose materials are shared';
+  const prosNames = ['intensity', 'red', 'green', 'blue'];
+  for(let i = 0; i < 4; i++){
+    row(PROSB + i, 'proscenium neon', prosNames[i],
+        prosDrive ? (i === 0 ? '0=' + f2(prosDrive.lo) + ' 128=' + f2(prosDrive.mid) +
+                               ' 255=' + f2(prosDrive.hi)
+                             : '0=0.00 255=1.00')
+                  : 'no lit proscenium in this production — four dead channels',
+        prosDrive ? (i === 0 ? [prosNote, 'RAW: the fader tracks, it does not crossfade (RULING EP)']
+                             : [])
+                  : []);
+  }
 }
 
 /* ---- the set movers ----------------------------------------------------- */
