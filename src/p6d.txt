@@ -290,6 +290,52 @@ function artLights(b){
   }
 }
 
+/* ============================================================================
+   RULING EQ — THE FLYS MOVE THROUGH THEIR OWN MOTOR, AND NEVER TELEPORT
+
+   Two channels a line, in FLY order: target, then speed.
+
+   TARGET is the whole travel: byte 0 is the lowest this line may come — which
+   is `minTrimOf`, where its goods kiss the deck, NOT the floor — and 255 is
+   the grid.  It is applied through `flyTo`, which works the lock itself and
+   clamps, so A DESK CANNOT DRIVE A CLOTH THROUGH THE STAGE any more than a
+   cue can.  That is an INVARIANT, and routing through flyTo is how this round
+   inherits it rather than reimplementing it.
+
+   SPEED, and byte 0 is PARKED.  A dead universe — a desk switched off, a
+   patch that never reached these channels, a relay sending zeros — moves no
+   scenery.  A line whose speed byte is 0 does not move whatever its target
+   says, which is also what stops a line that was already travelling.
+   ========================================================================== */
+const ART_FLY_MAX = 2.0;             // metres a second at byte 255
+
+function artFlys(b){
+  const base = artFlyBase() - 1;
+  for(let i = 0; i < FLY.length; i++){
+    const o = base + i * 2;
+    if(o + 1 >= b.length) break;
+    const ls = FLY[i];
+    const byte = b[o + 1];
+    ls.artSpeed = (byte / 255) * ART_FLY_MAX;
+    /* PARKED.  Not "moves very slowly": the target is not written at all, so
+       a line already standing where the board left it stays there and does
+       not creep, and a line mid-travel stops because the guarded read in
+       updateFly is now zero. */
+    if(!byte) continue;
+    const lo = minTrimOf(ls);
+    flyTo(ls, lo + (b[o] / 255) * (OUT_TRIM - lo));
+  }
+  /* the traveler, one channel: 0 shut, 255 open.  It belongs to whichever
+     line is carrying goods that declare themselves a traveler — the house
+     curtain today — and the map probe prints which line that is rather than
+     leaving it to be counted off this comment. */
+  const t = artSelBase() + 1;                    // channel 309, 0-based
+  if(t < b.length){
+    const trav = FLY.find(ls=>ls.goods && GOODS[ls.goodsKey] && GOODS[ls.goodsKey].traveler);
+    if(trav) trav.travTarget = b[t] / 255;
+  }
+}
+
 /* ONE WRITER, ONE PLACE IN THE FRAME (RULING EU).  Called from p7's tick,
    once, after input and before every system that reads the rig. */
 function artnetTick(dt){
@@ -357,6 +403,7 @@ function artnetTick(dt){
   if(typeof STAGE === 'undefined' || STAGE !== 'palace') return;
 
   artLights(b);
+  artFlys(b);
 }
 
 /* ============================================================================

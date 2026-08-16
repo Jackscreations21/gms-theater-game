@@ -259,7 +259,15 @@ function updateFly(dt){
     }
     if(!ls.runaway){
       const d = ls.target - ls.pos;
-      const step = ls.speed*dt;
+      /* RULING EQ — THE ONE GUARDED READ.  A desk drives a line through its
+         own motor at its own speed, and `ls.artSpeed` is where that speed
+         lives while a desk is driving.  `ls.speed` itself is NEVER written:
+         `hangGoods` recomputes it from the goods weight, so an Art-Net write
+         there would be silently destroyed by the next hang and the line would
+         quietly go back to running at its rigged speed. */
+      const speed = (typeof artDriving === 'function' && artDriving() &&
+                     typeof ls.artSpeed === 'number') ? ls.artSpeed : ls.speed;
+      const step = speed*dt;
       if(Math.abs(d) < 0.004){
         if(ls.moving){ ls.moving=false; Snd.railStop(ls); }
         ls.pos = ls.target;
