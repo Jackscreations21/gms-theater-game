@@ -254,7 +254,9 @@ even with the default loopback binding — only the *web* half is closed.
 ### 8.4 What the desk does and does not own
 
 - **No signal is not a mode.** The board only yields while the switch is on
-  **and** a frame has arrived within the last 2 seconds. Switch it on with no
+  **and** a frame has arrived within the last **5 seconds** (RULING FB — it was
+  2s until a real QLC+ was measured sending a keepalive only every ~1.8s while
+  idle, which left the row flapping between LIVE and STALE). Switch it on with no
   relay and no desk and nothing changes — every cue, sub, fader, fly and rope
   works exactly as it does today. A desk that drops mid-show hands the board
   back where it left it.
@@ -279,7 +281,7 @@ even with the default loopback binding — only the *web* half is closed.
 | Relay exits with `UDP error: … EADDRINUSE` | QLC+ (or a second relay) already holds 6454. Loud on purpose: a silent second bind would print a banner and never receive a packet |
 | Banner fine, `NO ArtDmx has arrived … for 5s` | The desk is not outputting, or is on another universe — check QLC+'s output plugin and universe 0 |
 | ARTNET row says `no desk yet` | Packets are not reaching the game: relay not running, page not loaded from the relay, or the universe is wrong |
-| Row says `STALE`, board works again | No frame for 2s. That is the design (§8.4), not a fault — find the desk |
+| Row says `STALE`, board works again | No frame for 5s (RULING FB; 2s before it). That is the design (§8.4), not a fault — find the desk |
 | Row says `LIVE`, rig does not move | Not on the Palace (§8.4), or the channels are patched elsewhere — check `docs/ARTNET.md` |
 | Nothing at all from the Pages URL | Art-Net cannot work there at all (§8.2) — use Route B |
 | A fly line will not move under the desk | Its speed byte is 0, which means **parked** — a dead universe moves no scenery |

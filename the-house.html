@@ -11586,7 +11586,7 @@ function carpStart(key, mark, opts){
 }
 
 /* ============================================================================
-   ART-NET — THE DESK DRIVES THE PALACE            RULINGS EL, EM, EN, EU, EV
+   ART-NET — THE DESK DRIVES THE PALACE        RULINGS EL, EM, EN, EU, EV, FB
 
    A lighting console (QLC+, or any desk — Art-Net is Art-Net) sends DMX over
    UDP; `tools/artnet-relay.js` turns it into WebSocket frames; this part is
@@ -11616,11 +11616,36 @@ function carpStart(key, mark, opts){
       a number of seconds counted down in `artnetTick`.
    ========================================================================== */
 
-/* RULING EU — how long a rig waits before it calls the desk gone.  A real rig
-   does not snap to black when a laptop hiccups: at ART_STALE the LOOK is
-   still exactly where the desk left it, and all that changes is who is
-   allowed to write it (RULING EV). */
-const ART_STALE = 2.0;
+/* RULINGS EU AND FB — how long a rig waits before it calls the desk gone.  A
+   real rig does not snap to black when a laptop hiccups: at ART_STALE the LOOK
+   is still exactly where the desk left it, and all that changes is who is
+   allowed to write it (RULING EV).
+
+   2.0 WAS AN ASSUMPTION, AND IT IS THE FIRST NUMBER IN THIS ROUND THAT REAL
+   HARDWARE HAS CONTRADICTED.  It was chosen against Art-Net's NOMINAL refresh
+   rate — a desk sends ~44 frames a second, so two seconds looked like eighty-
+   eight frames of margin.  A real QLC+ does not stream at 44Hz when nothing is
+   changing: it sends on CHANGE, plus a slow keepalive.
+
+   MEASURED 2026-08-16, off Jack's desk and the relay, and every other number
+   in this round came out of jsdom.  The relay's cumulative log, printed every
+   10 seconds, read 1, 7, 12, 17 ArtDmx packets in — 5 to 6 packets per 10s, so
+   ONE ROUGHLY EVERY 1.8 SECONDS while the desk sat idle, and the slowest of
+   those windows spaces them a clear 2.0s apart.  Against a 2.0s window that is
+   0.2s of margin at best and NONE at worst: the row would flap LIVE/STALE and
+   the board would take the rig back mid-show, on nothing but a desk sitting
+   still.  And a cumulative count can only ever give the MEAN gap — it cannot
+   show the longest one it hid, which is worse than the mean by definition.
+
+   5.0 CLEARS ANY KEEPALIVE AND STILL NOTICES A DEAD DESK QUICKLY.  It is more
+   than twice the slowest measured spacing, and the doubling is deliberately a
+   MARGIN rather than a measurement.  What it costs is named rather than hidden
+   (RULING FB): a desk that really dies now holds the rig for up to five
+   seconds instead of two, and for those seconds neither the desk nor the board
+   is writing — the rig simply holds its last look, which is what RULING EU
+   asks for anyway.  `tests/artnet.js` pins both halves against the measured
+   cadence, not against this number. */
+const ART_STALE = 5.0;
 /* RULING EU — 1s, 2s, 4s, then 8s for ever.  Seconds, counted off `dt`. */
 const ART_BACKOFF = [1, 2, 4, 8];
 /* how long a socket may sit in CONNECTING before we give up on it */

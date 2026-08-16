@@ -31,10 +31,12 @@ commitment and nothing in here is binding — **a spec in
 ```
 
 The lettered rulings are one continuous sequence across the whole project.
-**The last one used is `FA`** (Art-Net, `docs/ARTNET.md` becomes a flat list,
-one line per channel — ruled and built 2026-08-16). `EY` before it (the band
-channels on a dead universe) is ruled and NOT built; see PART 1a item 4. The
-next spec starts at `FB`.
+**The last one used is `FB`** (Art-Net, `ART_STALE` raised 2s → 5s after the
+first real QLC+ desk was measured idling at ~1.8s between packets — ruled and
+built 2026-08-16). Before it: `EZ` moved the Beetlejuice sign onto two fly
+channels and `FA` made `docs/ARTNET.md` a flat one-line-per-channel list, both
+built the same day. **`EY` — the band channels on a dead universe — is ruled
+and NOT built; see PART 1a item 4.** The next spec starts at `FC`.
 
 When something in here ships, **delete it from this file** — this is a list of
 what is *not* done. It stops being useful the moment it becomes a history.
