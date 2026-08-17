@@ -387,7 +387,11 @@ function sectionOf(f){
 }
 const fixRows = FIX.map((f, i)=>({
   i: i, ch: f.ch, name: f.name, type: f.type, mover: !!f.mover,
-  section: sectionOf(f), base: FIXB + i * CH_FIX
+  section: sectionOf(f), base: FIXB + i * CH_FIX,
+  /* WHERE IT PHYSICALLY IS — for the CSV export.  `ls` is the lineset it hangs
+     from (-1 for a FOH or boom position, which hang off the building, not the
+     rail); `pos` is the point the rig put it at. */
+  ls: (f.ls === undefined ? -1 : f.ls), pos: f.pos
 }));
 const flyRows = FLY.map((ls, i)=>{
   const g = P.GOODS[ls.goodsKey] || null;
@@ -1507,4 +1511,120 @@ for(const b of BLOCKS){
   b.render();
 }
 
-process.stdout.write(L.join('\n') + '\n');
+
+/* ---------------------------------------------------------------------------
+   --csv — THE SAME MEASUREMENTS, IN JACK'S SPREADSHEET COLUMNS.
+
+   Jack: "redo it into tis google sheet with this format ... make it for the
+   light setup for beeltejuice", pointing at a sheet whose header row is
+   literally `channel number,what is does,where it is`.
+
+   THE HEADER IS COPIED VERBATIM, TYPO AND ALL, because it is HIS sheet and a
+   column whose name does not match will not line up when he pastes.  That is
+   not carelessness; changing it would be the bug.
+
+   "WHERE IT IS" IS THE COLUMN THIS FILE DID NOT HAVE, and it is the reason
+   this is worth generating rather than typing: a lantern's position is `f.pos`
+   and the lineset it hangs from is `f.ls`, both read off the built rig, so the
+   day a bar moves the sheet moves with it.  A hand-typed location column would
+   be wrong the first time anybody re-hung anything.
+   ------------------------------------------------------------------------- */
+function csvCell(v){
+  const s = String(v === undefined || v === null ? '' : v);
+  return (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0)
+    ? '"' + s.split('"').join('""') + '"' : s;
+}
+function xyz(v){
+  if(!v) return '';
+  return 'x ' + f2(v.x) + ', y ' + f2(v.y) + ', z ' + f2(v.z);
+}
+/* which bar a lantern hangs on.  A fixture with no lineset hangs off the
+   building — front of house or a boom — rather than off the rail. */
+function fixWhere(r){
+  const bar = (r.ls >= 0 && FLY[r.ls])
+    ? 'flown on line ' + FLY[r.ls].id
+    : (r.name.indexOf('FOH') === 0 ? 'front of house, fixed'
+      : r.name.indexOf('BOOM') === 0 ? 'boom, fixed to the building' : 'fixed to the building');
+  return r.section + ' — ' + bar + ' — ' + xyz(r.pos);
+}
+const HOUSE_WHERE = {
+  house:      'the auditorium — the audience chandeliers and coves',
+  work:       'the stage — bare working light, not part of any state',
+  lobby:      'front of house — the foyer and bar',
+  backstage:  'backstage — the wings, dock and crossover',
+  practical:  'onstage — practicals inside the set itself'
+};
+
+const C = [];
+C.push(['channel number', 'what is does', 'where it is'].map(csvCell).join(','));
+
+/* the lanterns */
+for(const r of fixRows){
+  const who = ('0' + (r.i + 1)).slice(-2) + ' ' + r.name + ' (' + r.type + ')';
+  const where = fixWhere(r);
+  for(let s = 0; s < CH_FIX; s++){
+    const b = BY_CH[r.base + s]; if(!b) continue;
+    let what = who + ' — ' + b.fn;
+    if((b.fn === 'pan' || b.fn === 'tilt') && !r.mover)
+      what += ' (ignored: this one does not move)';
+    C.push([r.base + s, what, where].map(csvCell).join(','));
+  }
+}
+/* the fly rail */
+for(const r of flyRows){
+  const goods = r.label + (r.key === 'none' ? '' : ' (' + r.key + ')');
+  const where = 'fly rail — line ' + r.id + ', hauling ' + goods;
+  C.push([r.base,     'line ' + r.id + ' ' + goods + ' — target (how high)', where].map(csvCell).join(','));
+  C.push([r.base + 1, 'line ' + r.id + ' ' + goods + ' — speed (0 parks it)', where].map(csvCell).join(','));
+}
+/* the house circuits */
+for(const h of houseChan)
+  C.push([h.ch, 'house circuit ' + h.key + ' — level',
+          HOUSE_WHERE[h.key] || 'the building'].map(csvCell).join(','));
+/* the Beetlejuice specials */
+C.push([HOUSE_BAND_CH, 'BEETLEJUICE house dressing — 0-85 maitland, 86-170 deetz, 171-255 bj',
+        'the house unit on the interior scene — a DRESSING, it does not move'].map(csvCell).join(','));
+C.push([SIGN_T_CH, 'BEETLEJUICE sign — target (how high)',
+        'the sign, flown on the rail as a scene extra'].map(csvCell).join(','));
+C.push([SIGN_S_CH, 'BEETLEJUICE sign — speed (0 parks it)',
+        'the sign, flown on the rail as a scene extra'].map(csvCell).join(','));
+{
+  const t = BY_CH[TRAV_CH];
+  C.push([TRAV_CH, 'traveler — open (0 shut, 255 open)',
+          (t ? t.subject : 'the traveler') + ' — it moves with the production'].map(csvCell).join(','));
+}
+/* the proscenium neon (RULING FC) */
+{
+  const names = ['intensity', 'red', 'green', 'blue'];
+  for(let i = 0; i < 4; i++)
+    C.push([PROSB + i, 'proscenium neon — ' + names[i],
+            'the neon BAR on the false proscenium (bj:portalFrame) — not the gold arch'].map(csvCell).join(','));
+}
+/* the set movers */
+for(const r of mvRows){
+  const b = BY_CH[r.ch]; if(!b) continue;
+  C.push([r.ch, b.subject + ' — target (0 = no command)',
+          'scenery, not a light — the set moves on its own axis'].map(csvCell).join(','));
+}
+
+/* SELF-CHECK 12 — the CSV carries EVERY channel exactly once, in order.  The
+   sheet is a second document generated off the same measurements, and a second
+   document is a second place to be wrong; this is the same guarantee SELF-CHECK
+   11 gives the patch sheet. */
+{
+  let due = FIXB;
+  for(let i = 1; i < C.length; i++){
+    let n = 0, k = 0; const line = C[i];
+    while(k < line.length && line[k] >= '0' && line[k] <= '9'){ n = n * 10 + (line.charCodeAt(k) - 48); k++; }
+    if(!k || n !== due)
+      throw new Error('SELF-CHECK 12 FAILED: the CSV row ' + i + ' is channel ' +
+        (k ? n : '(none)') + ' where ' + due + ' was due');
+    due++;
+  }
+  if(due - 1 !== LAST_CH)
+    throw new Error('SELF-CHECK 12 FAILED: the CSV ends at channel ' + (due - 1) +
+      ' and the last channel in use is ' + LAST_CH);
+}
+
+if(process.argv.indexOf('--csv') > 0) process.stdout.write(C.join('\n') + '\n');
+else process.stdout.write(L.join('\n') + '\n');
