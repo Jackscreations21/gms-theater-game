@@ -6,12 +6,12 @@ fetch`, compare `origin/main`, then read this.
 ## READ THIS FIRST
 
 The desk drives the Palace, **and the Art-Net round is finished** — #200 to
-#214 with no gaps, of which #206 is an extra written mid-round. **Nothing is
+#216 with no gaps, of which #206 is an extra written mid-round. **Nothing is
 open, nothing is shelved, and no branch is unlanded.** `main` is at
-**`53bfa92`**, the suite count is **21**, rulings are at **FD**, and the
+**`a3eecce`**, the suite count is **21**, rulings are at **FD**, and the
 cache-bust is **`?v=31`** from here.
 
-**#214 (RULING FD) is the last one in**, and it came from Jack at a desk with
+**RULING FD is the last ruling in** (#214), and it came from Jack at a desk with
 the channel file open: *"make it so the list isnt generated it is just what it
 is for beetlejuice and make it easier to read."* **The "not generated" half was
 put back to him** — that was one instruction with two halves pulling opposite
@@ -19,6 +19,15 @@ ways, because un-generating the file removes the only reason it can be
 trusted — **and he chose reformat-and-keep-generated.** So `docs/ARTNET.md` is
 now a six-block patch sheet, 326 flat lines down to 219, and it is still
 measured. See "HOW TO ACTUALLY RUN IT" below.
+
+**#216 carries it into a spreadsheet.** `node tools/artnet-map.js --csv` emits
+the same measurements in the three columns of his Google Sheet — `channel
+number,what is does,where it is`, **header copied verbatim, typo and all,
+because it is HIS sheet and a column whose name does not match will not line
+up when he pastes.** `where it is` is the column the data never had, and it is
+read off the built rig (`f.pos`, `f.ls`), so a lantern that is re-hung moves in
+the sheet too. **It is a flag, not a third committed file** — see the open
+decision at the bottom of this file.
 
 **#213 (RULING FC, the proscenium neon) went in before it** — it was the one
 branch this file previously listed as finished-but-unpushed, and the three
@@ -47,10 +56,24 @@ real QLC+ into the relay, and the session is worth reading for what it found:
   Art-Net **universe 0**, which is what `docs/ARTNET.md` and the relay default
   say. A `--universe 1` suggestion from me broke a working setup for an hour.
 - **QLC+ holds UDP 6454 itself**, on IPv6 `::`, while the relay holds IPv4
-  `0.0.0.0`. They never collide, so no `EADDRINUSE` is ever raised — **the
+  `0.0.0.0`. With QLC+ open, packets to 127.0.0.1 still reach the relay.
+
+  **CORRECTED 2026-08-16, off his machine, and the earlier verdict was too
+  broad.** This bullet used to conclude *"no `EADDRINUSE` is ever raised — the
   relay's comment claims that refusing `reuseAddr` makes a clash loud, and it
-  does not.** Measured: with QLC+ open, packets to 127.0.0.1 still reach the
-  relay, so it costs nothing today. The reasoning is still wrong.
+  does not."* **The comment is right; the test was against the wrong
+  opponent.** Measured on his machine, both ways:
+  - **QLC+ vs the relay: genuinely no clash.** Seen with QLC+ holding **both**
+    `0.0.0.0` and `::` — the relay still bound and still counted packets in.
+    QLC+ sets `SO_REUSEADDR`, which on Windows lets a second socket take the
+    same address, so the relay slots in beside it.
+  - **Relay vs relay: a real, loud `EADDRINUSE`,** exactly as the comment
+    claims. With one relay already up, a second printed
+    `[artnet] UDP error: bind EADDRINUSE 0.0.0.0:6454` and died rather than
+    silently splitting the packet stream. **That is the guard working.**
+
+  So the relay's reasoning stands and this file was wrong about it for a day.
+  It is the round's **second** hardware-sourced finding after RULING FB.
 - **The ARTNET row cannot tell three failures apart.** A tab that is not
   rendering (the frame loop stops, so `artnetTick` never consumes what has
   arrived), a page whose socket can never reach a relay, and a desk that simply
@@ -92,6 +115,8 @@ in the headset.
 | **#212** | **FB** | `ART_STALE` 2s → 5s, measured against his real QLC+ desk |
 | **#213** | **FC** | the proscenium neon: intensity and RGB, written raw — channels **311..314**, movers to **315** |
 | **#214** | **FD** | `docs/ARTNET.md` becomes a grouped patch sheet — supersedes FA, still generated |
+| **#215** | — | the record for FC and FD |
+| **#216** | — | `tools/artnet-map.js --csv`, the same measurements in his spreadsheet columns |
 
 Every merge verified: `main` rebuilds **byte-identical**, 21/21 suites on the
 merged result, branches deleted local and remote. Two-stage review on every
@@ -125,6 +150,12 @@ hardware, the rest want a ruling.
    latent only, because `STAGE` is always defined. New this session, from the
    #213 review. FUTURE.md PART 1a item 7.
 6. **The `tests/smoke.js` flake**, ~1 run in 12. FUTURE.md PART 1a item 6.
+   **It fired once in this session** — a full `npm test` came back
+   `20/21 FAILED: smoke`, and `smoke` alone then passed three times running and
+   the next full run was 21/21. That is the documented flake behaving exactly
+   as documented, and it is the first sighting recorded with a re-run count
+   attached: **a lone red `smoke` after an unrelated change is this, and one
+   re-run settles it.**
 
 ## THE ONE THING LEFT, AND IT IS RULED BUT NOT BUILT (and it is smaller than it was)
 
@@ -161,8 +192,20 @@ to reorder.
 ## HOW TO ACTUALLY RUN IT
 
 ```sh
-node tools/artnet-relay.js            # serves the repo, upgrades /artnet, UDP 6454
+node C:/Users/patri/Documents/theater_game/tools/artnet-relay.js
 ```
+
+**THE ABSOLUTE PATH IS DELIBERATE AND IT COST HIM A ROUND.** `node
+tools/artnet-relay.js` is what this file used to say, and run from anywhere but
+the repo root it fails with `Cannot find module`. The relay resolves the
+directory it SERVES from the script’s own location, so an absolute path is
+safe from any working directory — there is no reason to make anyone `cd`
+first.
+
+**AND IT HAS TO BE RUNNING EVERY TIME.** It is a plain Node process, not a
+service: close the window and `localhost:8080` stops answering, which presents
+as `ERR_CONNECTION_REFUSED` and reads like the game is broken. Both of this
+session’s “it isn’t coming up” reports were this.
 
 Then open `http://localhost:8080/the-house.html`, LIGHTING page, throw ARTNET.
 QLC+ outputs Art-Net to **127.0.0.1, universe 0**. **Patch off
@@ -192,18 +235,30 @@ from the script's own location, so you cannot redirect it by `cd`-ing
 elsewhere. `--host 0.0.0.0` opens the LAN; the UDP socket is unaffected either
 way, so a desk on another machine still reaches it.
 
-## STILL HIS TO DECIDE — two, and one to know about
+## STILL HIS TO DECIDE — three, and one to know about
 
-(1 and 2 want an answer. 3 does not — it is here because it will otherwise be
-found at a desk.)
+(1, 2 and 3 want an answer. 4 does not — it is here because it will otherwise
+be found at a desk.)
 
-1. **Audio from QLC+ — asked and unanswered, twice now.** Art-Net carries DMX
+1. **Should the CSV be COMMITTED and guarded, or stay an on-demand flag?**
+   Asked at the end of the desk session and **not answered.** Today it is a
+   flag: `--csv` emits it, nothing is checked in, and **nothing warns when the
+   sheet he has pasted goes stale.** `docs/ARTNET.md` has a suite case that
+   fails the moment it drifts from the build; the CSV has no such guard, so his
+   tripwire is indirect — a red ARTNET.md case means the patch moved and the
+   sheet needs regenerating too, but only if somebody runs the suite. **The
+   argument against committing it** is that this repo already carries two
+   generated files that must be regenerated with every `src/` change, and a
+   third is a third thing to forget. **The argument for** is that a spreadsheet
+   he has actually pasted into a shared sheet is the copy most likely to be
+   consulted and least likely to be regenerated. One small PR either way.
+2. **Audio from QLC+ — asked and unanswered, twice now.** Art-Net carries DMX
    only. A QLC+ audio function plays on the PC's own sound card, outside the
    game entirely. The offer on the table: a **4-channel sound block** (track
    select, play/stop, master volume, seek) so a desk cue fires the game's OWN
    recordings in sync with its transport — the machinery already exists from
    RULING BO. One PR. Or volume only (1 channel). Or leave it out.
-2. **Channel 317 is one-way and nothing can be done about it without a
+3. **Channel 317 is one-way and nothing can be done about it without a
    ruling.** (It was 312 when first written — RULINGS EZ and FC have each
    renumbered the mover block since. **Patch off `docs/ARTNET.md`, which is
    generated and cannot drift; never off this file, which just proved it
@@ -212,7 +267,7 @@ found at a desk.)
    back out — and it hangs a 12.6m drop dead centre of a 15m opening. Widening
    it means consulting `sc.parkMv`, which the plan's correction #2 forbids.
    `docs/ARTNET.md` prints it rather than hiding it.
-3. **Channel 310's traveler moves with the production — nothing to rule on,
+4. **Channel 310's traveler moves with the production — nothing to rule on,
    but worth knowing before you patch it.** RULING EO always said "the first
    lineset whose hung goods declare `traveler:true`, and the map probe prints
    which line that is", and was right; the loose sentences were `p6d`'s comment
