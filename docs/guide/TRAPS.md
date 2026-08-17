@@ -886,6 +886,32 @@ against this list before opening a PR; **add new traps as you hit them.**
   light, and FC is the first time this project has had to draw it. The test
   for it needs a SENTINEL rather than a starting position, because `deskOn()`
   delivers zeros and "byte 0 blacks it" is otherwise the state the setup left.
+- **A FIX WRITTEN IN RESPONSE TO A REVIEW IS ITSELF UNREVIEWED CODE, AND IT IS
+  THE LEAST-WATCHED CODE ON THE BRANCH.** The branch has just been read
+  end-to-end, the findings are being closed out, and the fixes go in under the
+  glow of a review that happened *before they existed*. RULING FC's first
+  review found the interval gate failing open on the portal; the fix widened
+  the gate from `a.portal` to a `deskOwnsIt` that **also gated `HOUSE.house`** —
+  a second behaviour change, correct as it happens, with **no assertion behind
+  it at all**, because the case had been written for the portal. It merged as
+  "reviewed" on the strength of a review that never saw it. **Read the fixes as
+  a diff of their own, and ask what each one WIDENED**, not just whether it
+  closes the finding.
+
+  **And the same trap the branch had just documented reappeared inside the
+  fix.** One commit earlier this file gained the note that the FC case needs a
+  SENTINEL because `deskOn()` delivers zeros. The gate added in the very next
+  commit had exactly that hole again — the desk's own frame writes
+  `HOUSE.house` to 0, so *"it is not 0.5"* is the state the setup left. Writing
+  a trap down does not inoculate the next commit against it; the assertion
+  plants `HOUSE.house = -1`, a level no byte and no queue can produce.
+
+  **The mirror clause is what proves a gate has not simply failed the other
+  way.** "The desk did not stomp it" and "nothing wrote it at all" look
+  identical from one assertion. The Palace clause asserts the level is
+  *withheld*; the Arc clause asserts the same level *lands*. Without the
+  second, a gate that failed SHUT everywhere would have read as a pass — which
+  is the exact failure the first review had just caught in the other direction.
 - **A BUILT ARTIFACT IN A MERGE CONFLICT HAS EXACTLY ONE CORRECT RESOLUTION:
   REBUILD IT.** `the-house.html` is committed built, so two branches touching
   `src/` always conflict in it too. Never resolve it by hand or by taking a

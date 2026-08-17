@@ -224,7 +224,215 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **THE ART-NET CHAIN IS FINISHED — PUT IT IN FRONT OF A DESK** (2026-08-16, EL–EY)
+## NEXT SESSION: **THE ART-NET ROUND IS CLOSED — PUT IT IN A HEADSET** (2026-08-16, EL–FD)
+
+Cache-bust **`?v=31`**. Rulings at **FD**. Suite count **21**. `main` is at
+**`53bfa92`**. **Read STATE.md — it carries the six things left and what the
+real desk found.**
+
+**NOTHING IS OPEN, NOTHING IS SHELVED, AND NO BRANCH IS UNLANDED.** #200 to
+#214 with no gaps. The branch that had been sitting finished-but-unpushed
+(RULING FC, the proscenium neon) merged as **#213**, and **#214** remade
+`docs/ARTNET.md` as a patch sheet. Both are gone from both sides.
+
+**SO THE ONE THING TO DO IS THE HEADSET, AND IT IS NOW THREE ROUNDS OWED.**
+`?v=29` never happened, nothing in DR–DY has ever been seen, and **not one byte
+of the Art-Net round has been in the headset** — all of the desk work, real
+QLC+ included, is desktop-only. Read all four wrist lines (`avg`, `pk`, `fov`,
+`calls · tri`) at four moments: empty Palace, Beetlejuice pre-show, the 1:00
+cue with eight blinders, and **at the proscenium looking up into the neon with
+a desk driving 311..314**. Prediction on record: **~590 calls empty at the boot
+view**; ~700 means the build is stale.
+
+**THE FIVE THINGS THAT WANT A RULING RATHER THAN A SESSION** are in STATE.md
+and FUTURE.md PART 1a: RULING EY (channel 307 on a dead universe, ruled and
+deliberately unbuilt), `ART_PROVE` and the relay's sequence guard (both sized
+off the 44Hz that FB disproved), **the ARTNET row that cannot tell three
+failures apart** — the one most likely to cost another evening — the three
+disagreeing spellings of the driving-here predicate, and the `smoke` flake.
+
+**Patch off [docs/ARTNET.md](docs/ARTNET.md), never off prose.** RULING FD made
+it a six-block patch sheet and it is still generated from the built file, with
+a suite case that fails if it drifts. This session proved the point twice over:
+STATE.md had been wrong about `artUrl` for two days, and the mover block has
+renumbered twice in two days with no code edited to say so.
+
+## DONE — 2026-08-16 (later): the proscenium lands, the sheet becomes readable (#213, #214, FC–FD)
+
+Two PRs, two clean merges, and the round closes.
+
+**#213 — RULING FC, the proscenium neon.** Four channels (311 intensity, 312 R,
+313 G, 314 B), and ruled a **LIGHT**: no takeover byte, so a dead universe
+blacks it along with the 39 lanterns, which reads as "the desk is dark" rather
+than "the game broke". It is the first family in this project ruled to have NO
+answer to *"what does 0 mean when nobody is driving this"* — drawing that line,
+scenery gets a companion byte and light does not, was the ruling.
+
+**THE SESSION'S FINDING IS ABOUT WHAT A REVIEW ACTUALLY COVERS.** The branch
+arrived reviewed, green, negative-checked and unpushed. It had been reviewed
+**once**, seven findings fixed — and **the fixes themselves had never been read
+by anybody.** They are the least-watched code on a branch: written under the
+glow of a review that happened before they existed, and merged as "reviewed".
+
+The third pass found it. Closing the first review's finding — an interval gate
+failing OPEN, asking `artDriving()` on any stage when `artnetTick` only writes
+on the Palace — the fix had **widened the gate from `a.portal` to a
+`deskOwnsIt` that also gated `HOUSE.house`.** A second behaviour change,
+correct as it happens, **with no assertion behind it at all**, because the case
+had been written for the portal.
+
+**AND THE TRAP THE BRANCH HAD JUST DOCUMENTED REAPPEARED INSIDE ITS OWN FIX.**
+One commit earlier it added the note that the FC case needs a SENTINEL because
+`deskOn()` delivers zeros. The new gate had exactly that hole again — the
+desk's frame writes `HOUSE.house` to 0, so *"it is not 0.5"* is the state the
+setup left. **Writing a trap down does not inoculate the next commit against
+it.** The assertion plants `HOUSE.house = -1`, a level no byte and no queue can
+produce.
+
+**The stomp is visible, not merely wrong on paper**: `artnetTick` runs at
+p7:1636 and `updateStorm` — which calls this — at p7:1646, so an ungated write
+lands AFTER the desk's inside one frame and `updateRig` reads it at p7:1664.
+One frame of house light in the middle of the desk's blackout.
+
+**THE MIRROR CLAUSE IS WHAT PROVES A GATE HAS NOT FAILED THE OTHER WAY.** "The
+desk did not stomp it" and "nothing wrote it at all" are indistinguishable from
+one assertion. The Palace clause asserts the level is withheld; the Arc clause
+asserts the same level lands. Without the second, a gate that failed SHUT
+everywhere reads as a pass — the exact failure review one had just caught in
+the other direction.
+
+**#214 — RULING FD, the channel file becomes a patch sheet.** Jack, at a desk
+with the flat file open: *"make it so the list isnt generated it is just what
+it is for beetlejuice and make it easier to read."*
+
+**THE "NOT GENERATED" HALF WAS PUT BACK TO HIM AND HE TOOK THE OTHER ANSWER** —
+one instruction with two halves pulling opposite ways, so the collision was the
+thing to ask about. Offered reformat-and-keep-generated, hand-write it, or keep
+both, he chose **reformat**. 326 flat lines became **219 in six blocks**, each
+heading declaring its own channel range, the 39 lanterns collapsed to one
+7-channel pattern plus a roster, long notes wrapped instead of running to
+column 200.
+
+**The generation was worth defending and the evidence was in the same two
+days:** the mover block has renumbered **twice** (EZ, then FC) with **no code
+edited to say so**, because every base is computed. A hand-written sheet would
+have been wrong twice in two days with nothing to say so.
+
+**AND THE COLLAPSE IS CHECKED RATHER THAN ASSUMED**, which is the round's
+standing finding wearing a new hat — *a generated document is only as honest as
+the set it MEASURES.* Each of the seven slots is compared across all 39
+fixtures; a slot they agree on prints once, a slot they do not prints every
+distinct reading with the fixtures that give it. **Not hypothetical: `+5 pan`
+and `+6 tilt` really do disagree**, and the sheet names fixtures 23, 24 and
+34–39 as the movers. FA's guarantee — no channel missing — is kept and now has
+three guards, including one in the suite that survives somebody deleting the
+probe's own check.
+
+**Negative checks: 7 across the two PRs, all by sha, all fire.** Two on FC (the
+ungated `HOUSE.house` write; the dropped stage test, where the returned `-1`
+proves the sentinel survived and so identifies the fail-shut mode rather than a
+wrong value), five on FD — including one that **neuters the generator's own
+self-check** so a gapped file really is emitted, which is what proves the suite
+is a backstop rather than a restatement of a check that already ran. Every
+restore byte-identical.
+
+**Post-merge verified on both:** `main` rebuilds byte-identical (`94084f5e`),
+`tools/artnet-map.js` reproduces `docs/ARTNET.md` exactly, 21/21 on each merged
+result, branches deleted local and remote.
+
+**AND THREE DOCUMENTS WERE WRONG.** STATE.md's claim that `artUrl` returns null
+from Pages — it does not; **only `file://` has no host.** From Pages it builds
+`wss://jackscreations21.github.io/artnet`, a socket really is constructed and
+it **fails to connect**, a different failure with a different console
+signature. Telling a tester "it fails silently" while their console shows an
+error is how an evening goes. FUTURE.md's PART 1a heading read "SIX" over a
+body opening "All five", and its closing paragraph called item 5 a flake when
+the flake is item 6 — **the same off-by-one that file already warns about,
+twice more.** The count is now stated in three places that must agree.
+
+**New in FUTURE.md (item 7):** three spellings of "a desk is driving THIS rig",
+and two of them disagree on `typeof STAGE === 'undefined'` — `artnetTick`
+refuses to write, `artHandover` counts it as driving. Latent only, because
+`STAGE` is always defined in p2k; recorded rather than fixed because reversing
+`artHandover` is a behaviour change on paper.
+
+**New in TRAPS:** a fix written in response to a review is itself unreviewed
+code, and is the least-watched code on the branch — read the fixes as a diff of
+their own and ask what each one WIDENED; and the mirror clause, because a gate
+that fails shut and a gate that works look identical from one side.
+
+## DONE — 2026-08-16: a real desk ran it, and six more PRs (EX–FC)
+
+The Art-Net chain finished, **and then Jack patched a real QLC+ into it for the
+first time.** That evening is the round: everything before it came out of
+jsdom, and the hardware disagreed.
+
+**SIX MERGES: #207 (EX, set movers parked unless driven), #208 (EO, the map
+probe), #209 (EY, the record), #210 (EZ, the sign is a fly), #211 (FA, the flat
+list), #212 (FB, ART_STALE 5s).** Every one verified byte-identical with the
+map reproducing and 21/21 on the merged result. A seventh, FC, was finished and unlanded when this was
+written; it merged the next day as #213.
+
+**WHAT THE REAL DESK FOUND, and this is the part worth keeping:**
+
+- **The universe was the whole problem and the default was right.** QLC+ sends
+  Art-Net universe 0. A `--universe 1` suggestion from me broke a working setup
+  for an hour.
+- **I blamed QLC+ for stealing UDP 6454 and I was wrong.** Both processes do
+  hold it — QLC+ on IPv6 `::`, the relay on IPv4 `0.0.0.0` — but measured, the
+  packets get through anyway. **The relay's comment claiming that refusing
+  `reuseAddr` makes a clash loud is still wrong**: they never collide, so no
+  `EADDRINUSE` is ever raised.
+- **MY INSTRUMENT WAS BROKEN AND I DREW CONCLUSIONS FROM IT ANYWAY.** Every
+  reading said "no desk yet" because the browser tab I was measuring had a
+  stopped frame loop — `document.hidden`, so `requestAnimationFrame` never
+  fired and `artnetTick` never consumed what had arrived. `ART.buf` held a live
+  512-byte frame the whole time. **Check the instrument before believing the
+  measurement** is the lesson, and it cost most of the evening.
+- **The ARTNET row cannot tell three failures apart** — a tab that is not
+  rendering, a page that can never build a socket (`file://`, or Pages), and a
+  desk that is not talking all read `ON — no desk yet`. Unfixed, no ruling yet.
+- **A REAL DESK IDLES AT ~1.8s BETWEEN PACKETS**, not at the nominal 44Hz —
+  against a 2.0s hand-back. That is RULING FB, and it is the first number in
+  this entire round that came off hardware.
+
+**THE RULINGS.** EX: byte 0 on a set mover is no command, after 512 zeros were
+measured walking the parked attic 19.50m onto the deck. EZ: the sign is a fly
+on target and speed, which retired EY's sign half. FA: `docs/ARTNET.md` is a
+flat list, one line per channel, no gaps. FB: the stale window is 5s. FC: the
+proscenium neon takes four channels and is a LIGHT — the first family in this
+project ruled to have NO answer to "what does 0 mean when nobody is driving
+this", because a light's zero is a real command meaning black.
+
+**THE REVIEWS FOUND SOMETHING REAL ON EVERY SINGLE PR, and three of them were
+bugs written within the hour:**
+
+- Parking the sign left the desk's old speed on the record, so the SHOW's own
+  haul then crawled at 0.2651m/s instead of 2.6 — for the rest of the session,
+  surviving the switch off and on. No assertion covered it.
+- FC's gate asked `artDriving()` alone, which is true on any stage — so with
+  the board on an Arc house and the desk writing nothing, the interval's neon
+  was discarded and never struck again. **It failed OPEN**, and p6d's own
+  comment says a "never write unless" ruling should fail shut.
+- The map's house-circuit lines were the last block still TYPED: a build where
+  a dead universe brings the house lights to half produced a byte-identical
+  file.
+
+**AND THE STANDING FINDING GOT SHARPER TWICE.** A mutation that breaks an
+EARLIER clause never reaches the clause it was meant to prove — the case
+aborts, and the run still prints ERR against the case by name. And an
+assertion can be green because of the ORDER ITS OWN SETUP RUNS IN: RULING EY
+was found only because a reviewer moved one line, and FC's first assertion was
+satisfied by the zeros `deskOn()` had already delivered. Both are in TRAPS.
+
+**Negative checks across the round: 40-odd, all by sha**, every mutation proved
+present in the BUILT file and proved to have changed it, every restore proved
+byte-identical. **Three did not fire on the first attempt and were rebuilt
+until they did** — the guarded read in `sceneMvAdvance`, the sign's stale
+`artSpeed`, and FC's stage test. Two more were recorded as not firing rather
+than quietly dropped.
+
+## SUPERSEDED: **THE ART-NET CHAIN IS FINISHED — PUT IT IN FRONT OF A DESK** (2026-08-16, EL–EY) — the chain landed and the round closed; see above
 
 Cache-bust **`?v=31`**. Rulings at **EY**. Suite count **21**. `main` is at
 **`44688eb`** as this was written, with its own PR landing on top. **Read
