@@ -1127,12 +1127,12 @@ var _buildDirty = false, _buildFlushT = 0, _buildSlowT = 10, _buildLoading = fal
    whatever it found, INCLUDING NO SAVE AT ALL — writing is allowed, and never
    before.  (First written on the gms-studio-grids branch, 71a675d, where the
    studio grids called buildDirty a hundred times at boot and sprang it.) */
-var _buildLoaded = false;
+var _saveReadDone = false;
 function buildDirty(){ if(!_buildLoading) _buildDirty = true; }
 /* dirty writes flush within a second; a slow heartbeat saves every ten
    regardless, so a missed dirty call can never lose more than that */
 function buildTick(dt){
-  if(!_buildLoaded) return;        // see _buildLoaded above — the eager frame
+  if(!_saveReadDone) return;        // see _saveReadDone above — the eager frame
   _buildFlushT -= dt;
   _buildSlowT -= dt;
   if(_buildDirty && _buildFlushT <= 0){
@@ -1320,7 +1320,7 @@ function buildLoad(){
   /* the read has happened — from here on buildTick may write.  FIRST line, so
      the early returns below open the gate too: a player with no save yet must
      still be able to make one. */
-  _buildLoaded = true;
+  _saveReadDone = true;
   let raw = null;
   try{ raw = localStorage.getItem(BUILD_SAVE_KEY); }catch(e){ return; }
   if(!raw) return;

@@ -1053,26 +1053,50 @@ const probe = `
      save dirty while the world is being constructed flushes an EMPTY world
      over the player's build seconds before the load goes to read it — and
      the load then faithfully restores the nothing it just wrote.
-     Both write paths are tested: the dirty flush AND the ten-second
-     heartbeat, which needs no dirty call at all.  The gate is the READ, so
-     the second half proves it OPENS — a gate stuck shut and a gate working
-     are indistinguishable from the first clause alone. */
+
+     THREE CLAUSES, and the third is the one that matters.  buildTick has TWO
+     ways to write — the one-second dirty flush and the ten-second heartbeat,
+     which needs no dirty call at all — so both are held shut separately.
+     Then the gate is opened BY CALLING buildLoad, never by setting the flag
+     by hand: setting it by hand tests "buildTick writes when the flag is
+     true", which is a tautology, and leaves the line under test — the
+     assignment inside buildLoad — completely unasserted.  Deleting that line
+     kills the save system outright and a hand-set clause still reads green.
+     The call also lands on the NO-SAVE path on purpose, because the source
+     comment's claim is that the flag is set ahead of every early return: a
+     player with no save yet must still be able to make one.
+     The timers are set explicitly rather than inherited from the boot
+     frames, so the case does not quietly stop crossing a threshold if a
+     flush constant is ever retuned. */
   P('buildTick writes nothing until buildLoad has run, then does', ()=>{
-    const KEY = 'house.build';
+    const KEY = BUILD_SAVE_KEY;
     localStorage.setItem(KEY, '{"SENTINEL":1}');
     const before = localStorage.getItem(KEY);
-    _buildLoaded = false;                       // the state the eager frame runs in
-    buildDirty();
-    for(let i = 0; i < 5; i++) buildTick(3.0);  // 15s: past the 1s flush AND the 10s heartbeat
-    const mid = localStorage.getItem(KEY);
-    if(mid !== before)
-      throw new Error('the eager frame overwrote the save with '+String(mid).slice(0, 60));
-    _buildLoaded = true;
+    _saveReadDone = false;                  // the state the eager frame runs in
+    _buildFlushT = 0; _buildSlowT = 10;     // not whatever the boot left behind
+    /* (a) the dirty flush is held */
     buildDirty();
     buildTick(2.0);
-    if(localStorage.getItem(KEY) === before)
-      throw new Error('the gate never opened — buildTick wrote nothing after the load either');
-    return 'sentinel survived 15s of ticks unloaded, and was replaced once loaded';
+    let now = localStorage.getItem(KEY);
+    if(now !== before)
+      throw new Error('the dirty flush wrote before the load: '+String(now).slice(0, 60));
+    /* (b) the heartbeat is held too — it fires with no dirty call at all */
+    _buildDirty = false;
+    buildTick(11.0);
+    now = localStorage.getItem(KEY);
+    if(now !== before)
+      throw new Error('the heartbeat wrote before the load: '+String(now).slice(0, 60));
+    /* (c) the REAL read opens it, on the no-save path */
+    localStorage.removeItem(KEY);
+    buildLoad();
+    if(!_saveReadDone)
+      throw new Error('buildLoad returned without opening the gate');
+    buildDirty();
+    _buildFlushT = 0;
+    buildTick(2.0);
+    if(!localStorage.getItem(KEY))
+      throw new Error('the gate never opened — buildTick wrote nothing after buildLoad');
+    return 'flush held, heartbeat held, and buildLoad itself opened the gate';
   });
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
