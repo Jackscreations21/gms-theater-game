@@ -1047,6 +1047,34 @@ const probe = `
     return 'delivered, palleted, and on the wire as k:ladder';
   });
 
+  /* ---- the eager frame must not write (FUTURE.md PART 1a item 3) ---------
+     p7's boot tail runs init(), then ONE eager frame, and only THEN
+     buildLoad().  buildTick is inside that frame, so anything that marks the
+     save dirty while the world is being constructed flushes an EMPTY world
+     over the player's build seconds before the load goes to read it — and
+     the load then faithfully restores the nothing it just wrote.
+     Both write paths are tested: the dirty flush AND the ten-second
+     heartbeat, which needs no dirty call at all.  The gate is the READ, so
+     the second half proves it OPENS — a gate stuck shut and a gate working
+     are indistinguishable from the first clause alone. */
+  P('buildTick writes nothing until buildLoad has run, then does', ()=>{
+    const KEY = 'house.build';
+    localStorage.setItem(KEY, '{"SENTINEL":1}');
+    const before = localStorage.getItem(KEY);
+    _buildLoaded = false;                       // the state the eager frame runs in
+    buildDirty();
+    for(let i = 0; i < 5; i++) buildTick(3.0);  // 15s: past the 1s flush AND the 10s heartbeat
+    const mid = localStorage.getItem(KEY);
+    if(mid !== before)
+      throw new Error('the eager frame overwrote the save with '+String(mid).slice(0, 60));
+    _buildLoaded = true;
+    buildDirty();
+    buildTick(2.0);
+    if(localStorage.getItem(KEY) === before)
+      throw new Error('the gate never opened — buildTick wrote nothing after the load either');
+    return 'sentinel survived 15s of ticks unloaded, and was replaced once loaded';
+  });
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
