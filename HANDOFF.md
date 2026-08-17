@@ -227,13 +227,15 @@ compare the *same* production across stages instead.
 ## NEXT SESSION: **THE ART-NET ROUND IS CLOSED — PUT IT IN A HEADSET** (2026-08-16, EL–FD)
 
 Cache-bust **`?v=31`**. Rulings at **FD**. Suite count **21**. `main` is at
-**`53bfa92`**. **Read STATE.md — it carries the six things left and what the
-real desk found.**
+**`a3eecce`**. **Read STATE.md — it carries the six things left, the three
+open decisions, and what the real desk found.**
 
 **NOTHING IS OPEN, NOTHING IS SHELVED, AND NO BRANCH IS UNLANDED.** #200 to
-#214 with no gaps. The branch that had been sitting finished-but-unpushed
-(RULING FC, the proscenium neon) merged as **#213**, and **#214** remade
-`docs/ARTNET.md` as a patch sheet. Both are gone from both sides.
+#216 with no gaps. The branch that had been sitting finished-but-unpushed
+(RULING FC, the proscenium neon) merged as **#213**; **#214** remade
+`docs/ARTNET.md` as a patch sheet; **#216** added `--csv` for his spreadsheet.
+All four of the session's branches are gone from both sides — verified with
+`git ls-remote`, not assumed.
 
 **SO THE ONE THING TO DO IS THE HEADSET, AND IT IS NOW THREE ROUNDS OWED.**
 `?v=29` never happened, nothing in DR–DY has ever been seen, and **not one byte
@@ -244,18 +246,97 @@ cue with eight blinders, and **at the proscenium looking up into the neon with
 a desk driving 311..314**. Prediction on record: **~590 calls empty at the boot
 view**; ~700 means the build is stale.
 
+**BEFORE ANY OF THAT, START THE RELAY, AND USE THE ABSOLUTE PATH:**
+
+```sh
+node C:/Users/patri/Documents/theater_game/tools/artnet-relay.js
+```
+
+**Two "it isn't coming up" reports in one session were both this**, and neither
+was a bug in the game. `node tools/artnet-relay.js` from anywhere but the repo
+root fails with `Cannot find module`; and the relay is a plain Node process,
+not a service, so closing the window makes `localhost:8080` answer
+`ERR_CONNECTION_REFUSED`, which reads exactly like the build is broken. The
+relay resolves the directory it SERVES from the script's own location, so an
+absolute path is safe from any working directory.
+
 **THE FIVE THINGS THAT WANT A RULING RATHER THAN A SESSION** are in STATE.md
 and FUTURE.md PART 1a: RULING EY (channel 307 on a dead universe, ruled and
 deliberately unbuilt), `ART_PROVE` and the relay's sequence guard (both sized
 off the 44Hz that FB disproved), **the ARTNET row that cannot tell three
 failures apart** — the one most likely to cost another evening — the three
 disagreeing spellings of the driving-here predicate, and the `smoke` flake.
+**And three decisions are his**, now including whether the CSV gets committed
+and guarded or stays an on-demand flag.
 
 **Patch off [docs/ARTNET.md](docs/ARTNET.md), never off prose.** RULING FD made
 it a six-block patch sheet and it is still generated from the built file, with
-a suite case that fails if it drifts. This session proved the point twice over:
-STATE.md had been wrong about `artUrl` for two days, and the mover block has
-renumbered twice in two days with no code edited to say so.
+a suite case that fails if it drifts. This session proved the point three times
+over: STATE.md was wrong about `artUrl` for two days, wrong about `EADDRINUSE`
+for one, and the mover block renumbered twice with no code edited to say so.
+
+## DONE — 2026-08-16 (evening): the record, the spreadsheet, and a desk that finally answered (#215, #216)
+
+Two PRs, and then the first session in this round where the work was checked
+against **his running machine** rather than against jsdom.
+
+**#215 — the record** for FC and FD, plus the two corrections STATE.md had
+owed since the previous session. **And it nearly lost a Done block**, which is
+the process finding: the previous session's record — the real QLC+ desk, #207
+to #212, rulings EX to FB — lived in the SAME commit as an unlanded feature
+branch. Landing that feature as one concern meant dropping the commit, and
+`main` had never carried the record at all. Restored, with the sentence calling
+FC "finished and unlanded" corrected to say when it merged. **A record commit
+riding on a feature branch is a record that depends on that feature landing
+unchanged.**
+
+**#216 — `tools/artnet-map.js --csv`.** He asked for the channel list in a
+Google Sheet whose header row is literally `channel number,what is does,where
+it is`. **The header is reproduced verbatim, typo and all**, because it is his
+sheet and a column whose name does not match will not line up when he pastes.
+`where it is` is the column the data never had and the reason it is worth
+generating: a lantern's position is `f.pos` and the bar it hangs from is
+`f.ls`, both read off the built rig, so a re-hung lantern moves in the sheet
+too. **SELF-CHECK 12** refuses to emit unless every channel appears exactly
+once in order; the negative check drops one house circuit and it fires. **It is
+a flag, not a third committed file** — and that is an open decision, because
+nothing warns him when a pasted sheet goes stale.
+
+**THEN THE DESK ANSWERED, AND IT CORRECTED THE RECORD AGAIN.** Everything
+below came off his machine while he was trying to get the page up:
+
+- **`ERR_CONNECTION_REFUSED` twice, and neither was the game.** Once because
+  `node tools/artnet-relay.js` was run from `C:\Users\patri` rather than the
+  repo; once because no relay was running at all. Diagnosed from
+  `netstat`/`Get-NetTCPConnection`: Chrome sitting in `SYN_SENT` against 8080
+  with nothing listening. **The absolute-path invocation is now in STATE and in
+  the block above.**
+- **THE `EADDRINUSE` VERDICT WAS TOO BROAD AND THE RELAY'S COMMENT WAS RIGHT.**
+  STATE said QLC+ and the relay never collide, so no `EADDRINUSE` is ever
+  raised, and therefore the relay's comment about refusing `reuseAddr` making a
+  clash loud was wrong reasoning. **Measured both ways on his machine:** QLC+
+  vs the relay genuinely does not clash — seen with QLC+ holding **both**
+  `0.0.0.0` and `::` while the relay still bound and still counted packets,
+  because QLC+ sets `SO_REUSEADDR` — but **relay vs relay raises a real, loud
+  `bind EADDRINUSE 0.0.0.0:6454`** and the second process dies rather than
+  silently splitting the packet stream. The comment was describing a different
+  collision than the one the record tested. **Second hardware-sourced finding
+  of the round, after RULING FB.**
+- **QLC+ was already sending the whole time.** The relay's own counter proved
+  it — `1 ArtDmx packets in, 0 client(s)`, then 6 — with no browser attached.
+  The desk half of the chain has never been the problem.
+
+**AND THE `smoke` FLAKE FIRED, WHICH IS WORTH HAVING ON THE RECORD.** A full
+`npm test` came back `20/21 FAILED: smoke`; `smoke` alone then passed **three
+times running**, and the next full run was 21/21. That is FUTURE.md PART 1a
+item 6 behaving exactly as documented, and it is the first sighting logged with
+a re-run count attached. **A lone red `smoke` after an unrelated change is
+this, and one re-run settles it.**
+
+**Post-merge verified on both PRs:** `main` rebuilds byte-identical
+(`94084f5e`), `tools/artnet-map.js` reproduces `docs/ARTNET.md` exactly, the
+`--csv` mode still emits 327 rows, 21/21 on the merged result, and every branch
+confirmed gone from the remote by `git ls-remote` rather than by assumption.
 
 ## DONE — 2026-08-16 (later): the proscenium lands, the sheet becomes readable (#213, #214, FC–FD)
 

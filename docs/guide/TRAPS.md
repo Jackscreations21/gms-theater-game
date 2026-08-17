@@ -912,6 +912,19 @@ against this list before opening a PR; **add new traps as you hit them.**
   *withheld*; the Arc clause asserts the same level *lands*. Without the
   second, a gate that failed SHUT everywhere would have read as a pass — which
   is the exact failure the first review had just caught in the other direction.
+- **A NEGATIVE RESULT IS ONLY AS GOOD AS THE OPPONENT YOU TESTED IT AGAINST.**
+  The relay refuses `SO_REUSEADDR` and its comment says a port clash will
+  therefore be loud. A session measured QLC+ running alongside the relay, saw
+  no `EADDRINUSE`, and wrote into STATE that **no clash is ever raised and the
+  comment's reasoning is wrong.** Both halves of that were too broad. Measured
+  again on real hardware: **QLC+ vs the relay genuinely does not clash** —
+  QLC+ sets `SO_REUSEADDR`, so the relay binds beside it even when QLC+ holds
+  `0.0.0.0` *and* `::` — but **relay vs relay raises exactly the loud
+  `bind EADDRINUSE 0.0.0.0:6454` the comment promised**, and the second process
+  dies instead of silently splitting the packet stream. The guard was never
+  aimed at QLC+; it was aimed at a second copy of itself. **Before writing off
+  a defence as unnecessary, check which attack it was written for** — "I did
+  not see it fire" is evidence about the case you ran, not about the guard.
 - **A BUILT ARTIFACT IN A MERGE CONFLICT HAS EXACTLY ONE CORRECT RESOLUTION:
   REBUILD IT.** `the-house.html` is committed built, so two branches touching
   `src/` always conflict in it too. Never resolve it by hand or by taking a
