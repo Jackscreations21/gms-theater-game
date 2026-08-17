@@ -2957,24 +2957,44 @@ const P = async (name, fn)=>{
     const lastCh = due - 1;
     /* AND THE SUMMARY AT THE TOP MUST AGREE WITH THE BLOCKS BELOW IT, because
        a header that counts the channels itself is a second place to be wrong. */
-    let claimed = null;
+    /* THE RANGE IS READ, NOT ASSUMED TO START AT 1.  A first draft keyed on the
+       literal " channels in use, 1.." and so would have failed with "the header
+       no longer states how many channels are in use" the day artFixBase() moved
+       off 1 — a true failure reported as the wrong thing, which is the shape
+       this suite keeps finding in itself. Both endpoints and the count are
+       read and all three are checked. */
+    const KEY = ' channels in use, ', DOTS = '..';
+    let claimed = null, claimFrom = null, claimTo = null;
     for(let i = 4; i < want.length; i++){
-      const line = String(want[i]), key = ' channels in use, 1..';
-      const at = line.indexOf(key);
+      const line = String(want[i]);
+      const at = line.indexOf(KEY);
       if(at < 0) continue;
+      const digitsFrom = (s, j)=>{
+        let n = 0, k = j;
+        while(k < s.length && s[k] >= '0' && s[k] <= '9'){ n = n * 10 + (s.charCodeAt(k) - 48); k++; }
+        return k === j ? null : {n: n, end: k};
+      };
       let d = 0; while(d < line.length && line[d] === ' ') d++;
-      let n = 0, digits = 0;
-      while(d < line.length && line[d] >= '0' && line[d] <= '9'){
-        n = n * 10 + (line.charCodeAt(d) - 48); d++; digits++;
-      }
-      if(digits) claimed = n;
+      const c = digitsFrom(line, d);
+      const rest = line.slice(at + KEY.length);
+      const lo = digitsFrom(rest, 0);
+      const dots = rest.indexOf(DOTS);
+      const hi = dots < 0 ? null : digitsFrom(rest, dots + DOTS.length);
+      if(c) claimed = c.n;
+      if(lo) claimFrom = lo.n;
+      if(hi) claimTo = hi.n;
       break;
     }
-    if(claimed === null)
-      throw new Error('docs/ARTNET.md no longer states how many channels are in use in its header');
-    if(claimed !== lastCh)
-      throw new Error('docs/ARTNET.md header claims ' + claimed + ' channels in use, but its ' +
-        'blocks tile 1..' + lastCh + ' — the summary and the sheet disagree');
+    if(claimed === null || claimFrom === null || claimTo === null)
+      throw new Error('docs/ARTNET.md header no longer states "<n> channels in use, <from>..<to>" — ' +
+        'RULING FD keeps that summary, and it is the line the blocks below are checked against');
+    if(claimFrom !== blocks[0].from || claimTo !== lastCh)
+      throw new Error('docs/ARTNET.md header claims channels ' + claimFrom + '..' + claimTo +
+        ' but its blocks tile ' + blocks[0].from + '..' + lastCh +
+        ' — the summary and the sheet disagree');
+    if(claimed !== claimTo - claimFrom + 1)
+      throw new Error('docs/ARTNET.md header claims ' + claimed + ' channels in use over the range ' +
+        claimFrom + '..' + claimTo + ', which is ' + (claimTo - claimFrom + 1) + ' channels');
     console.log('  ok  ' + name + '  -> ' + (want.length - 1) + ' lines matched line for line, ' +
       blocks.length + ' blocks tiling channels 1..' + lastCh + ' with no gaps and none twice, ' +
       'the header agreeing, and the committed size line matching the ' + gotSize +
