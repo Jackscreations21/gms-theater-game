@@ -1225,6 +1225,29 @@ try{ w.eval(script + probe); }
 catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
 let errs = (w.__errs||[]).length;
 
+/* ---- the one thing no probe can see -------------------------------------
+   The save gate's INITIAL value is unobservable from inside the page: by the
+   time any probe runs, p7's boot tail has already called buildLoad and set it
+   true, and the case above has to manufacture the pre-load state to test the
+   gate at all.  So flip the declaration to `= true` and the eager frame is
+   completely ungated for every real player while both boots report zero
+   failures — measured, not supposed.
+   It is pinned here instead, against the BUILT file as text, because that is
+   the only place the boot-time value still exists. */
+{
+  const name = 'the save gate is declared false, so the eager frame starts shut';
+  const m = /var\s+_saveReadDone\s*=\s*(\w+)\s*;/.exec(html);
+  if(!m){
+    console.log('  ERR '+name+': no `var _saveReadDone = …;` declaration in the built file');
+    errs++;
+  } else if(m[1] !== 'false'){
+    console.log('  ERR '+name+': it is declared '+m[1]+', so buildTick may write before buildLoad');
+    errs++;
+  } else {
+    console.log('  ok  '+name+'  -> "pinned at the source; no probe can reach it after boot"');
+  }
+}
+
 if(!errs && w.__saveJson){
   const dom2 = new JSDOM(html.replace(/<script src=.*?<\/script>/,''),
     {runScripts:'outside-only', pretendToBeVisual:true, url:'https://the.house/'});

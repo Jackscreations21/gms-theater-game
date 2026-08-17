@@ -1119,8 +1119,12 @@ var _buildDirty = false, _buildFlushT = 0, _buildSlowT = 10, _buildLoading = fal
 /* p7's boot tail runs init(), then ONE eager frame, and only THEN buildLoad().
    buildTick is inside that frame, so anything marking the save dirty while the
    world is still being constructed flushes an EMPTY world over the player's
-   build seconds before the load goes to read it — and the load then faithfully
-   restores the nothing it just wrote.  It went unnoticed because nothing at
+   build ONE FRAME before the load goes to read it — and the load then
+   faithfully restores the nothing it just wrote.  (The eager frame's dt is 0,
+   because p7 sets `last` immediately before calling it, and _buildFlushT
+   starts at 0 — so the dirty branch fires on that frame, not after a delay.
+   The ten-second heartbeat cannot reach it; the dirty path is the whole boot
+   hazard.)  It went unnoticed because nothing at
    boot had ever called buildDirty; the moment something does, every piece the
    player had built is gone.
    The gate is the READ, not the flag: once buildLoad has been called —
@@ -1132,7 +1136,7 @@ function buildDirty(){ if(!_buildLoading) _buildDirty = true; }
 /* dirty writes flush within a second; a slow heartbeat saves every ten
    regardless, so a missed dirty call can never lose more than that */
 function buildTick(dt){
-  if(!_saveReadDone) return;        // see _saveReadDone above — the eager frame
+  if(!_saveReadDone) return;      // see _saveReadDone above — the eager frame
   _buildFlushT -= dt;
   _buildSlowT -= dt;
   if(_buildDirty && _buildFlushT <= 0){

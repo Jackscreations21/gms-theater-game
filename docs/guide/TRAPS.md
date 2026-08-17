@@ -1215,3 +1215,20 @@ against this list before opening a PR; **add new traps as you hit them.**
   `FUTURE.md` naming a symbol that existed nowhere in the tree. A reader greps
   it, finds nothing, and concludes the fix was never landed. **Grep the WHOLE
   repo after a rename**, docs included.
+- **The bundle is strict in a browser and SLOPPY in the harness, and the
+  suites depend on the difference without saying so.** `'use strict'` is the
+  first statement of the last `<script>` (p2), but every suite extracts the
+  script with a greedy `html.match(/<script>([\s\S]*)<\/script>/g).pop()`,
+  which spans the FIRST opening tag to the LAST closing one and glues every
+  inline script into one blob. The directive loses its position, so `w.eval`
+  runs sloppy — which is the only reason a probe may assign to a bundle
+  symbol that does not exist yet. **Tighten that regex to take the real last
+  script and every such probe becomes a `ReferenceError`**, pointing at the
+  probe rather than at the regex.
+- **An initial value is unobservable after boot, so pin it at the SOURCE.**
+  The save gate's `var _saveReadDone = false` cannot be checked from inside
+  the page: by the time any probe runs, `buildLoad` has set it true, and a
+  case that tests the gate has to manufacture the pre-load state. Flipping the
+  initialiser to `true` ungates the eager frame for every real player and
+  leaves both boots green. `tests/build.js` pins it against the BUILT FILE AS
+  TEXT instead — the one place the boot-time value still exists.
