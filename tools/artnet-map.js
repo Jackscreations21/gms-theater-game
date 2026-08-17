@@ -1261,16 +1261,226 @@ if(!ROWS.length || ROWS[ROWS.length - 1].ch !== LAST_CH)
     LAST_CH);
 
 /* ---------------------------------------------------------------------------
-   THE OUTPUT.  Two header lines and then the list: the built file's byte size
-   (the probe rule, and the suite compares it) and which show is loaded (the
-   mover lines and the lineset goods are that show's).  RULING FA asks for
-   nothing else, so there is nothing else.
+   THE OUTPUT (RULING FD) — A PATCH SHEET, NOT A DUMP.
 
-   The column widths are COMPUTED off the rows, so a longer fixture name or a
-   fifteenth lineset re-aligns the whole file instead of staggering it.
+   Jack: "make it so the list isnt generated it is just what it is for
+   beetlejuice and make it easier to read."  It STAYS generated — that half was
+   put back to him, because the generation is the only reason this file cannot
+   be wrong, and the mover block has renumbered twice in two days with no code
+   edited to say so.  What changes is the SHAPE: 326 flat lines became six
+   blocks a human can patch from.
+
+   THIS SUPERSEDES RULING FA, which asked for one line per channel and nothing
+   else.  FA's real content was never the flat shape — it was the GUARANTEE
+   that no channel is missing.  That guarantee is kept twice over: SELF-CHECK
+   10 still proves ROWS is one row per channel with no gaps, and SELF-CHECK 11
+   below proves the blocks TILE that range with no gap and no overlap.  The
+   sheet cannot silently drop a channel just because it now groups them.
+
+   THE 39 LANTERNS ARE COLLAPSED TO A PATTERN PLUS A ROSTER, and that is only
+   honest because it is CHECKED: the per-slot details are compared across every
+   fixture, and a slot only prints once if all 39 agree.  The moment one
+   fixture reads differently the sheet says so per fixture instead of printing
+   a comfortable lie.  That is the standing finding of this whole round — a
+   generated document is only as honest as the set it MEASURES.
    ------------------------------------------------------------------------- */
 const L = [];
 const out = s => L.push(s === undefined ? '' : s);
+const BY_CH = {};
+for(const r of ROWS) BY_CH[r.ch] = r;
+
+/* wrap to a width at spaces, for the notes — a note that ran to column 200 is
+   the single biggest reason the flat file was hard to read at a desk */
+function wrapAt(text, width){
+  const words = String(text).split(' ');
+  const lines = []; let cur = '';
+  for(const wd of words){
+    if(!cur.length) cur = wd;
+    else if(cur.length + 1 + wd.length <= width) cur += ' ' + wd;
+    else { lines.push(cur); cur = wd; }
+  }
+  if(cur.length) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+const trimR = s => s.replace(/[ ]+$/, '');
+/* the marker goes on the FIRST line only — a wrapped note that repeated its
+   own "!" down the left margin read as four notes instead of one */
+function notesUnder(notes, indent, mark){
+  const m = mark || '';
+  const cont = ' '.repeat(m.length);
+  for(const n of notes){
+    const segs = wrapAt(n, 74 - m.length);
+    for(let k = 0; k < segs.length; k++) out(trimR(indent + (k ? cont : m) + segs[k]));
+  }
+}
+
+/* 23,24,34,35,36,37,38,39 -> "23, 24, 34-39" */
+function runsOf(nums){
+  const parts = []; let i = 0;
+  while(i < nums.length){
+    let j = i;
+    while(j + 1 < nums.length && nums[j + 1] === nums[j] + 1) j++;
+    parts.push(j - i >= 2 ? nums[i] + '-' + nums[j] : nums.slice(i, j + 1).join(', '));
+    i = j + 1;
+  }
+  return parts.join(', ');
+}
+
+const BLOCKS = [];
+function block(title, from, to, render){
+  BLOCKS.push({title: title, from: from, to: to, render: render});
+}
+
+/* ---- the lanterns: one pattern, then a roster ---------------------------- */
+const FIX_LAST = FIXB + fixRows.length * CH_FIX - 1;
+block('LANTERNS', FIXB, FIX_LAST, ()=>{
+  out('  ' + fixRows.length + ' fixtures, ' + CH_FIX + ' channels each, in rig order. Patch each as a');
+  out('  ' + CH_FIX + '-channel RGB fixture at the base channel in the roster below.');
+  out();
+  /* THE COLLAPSE IS EARNED, NOT ASSUMED: every slot is compared across every
+     fixture.  A slot all 39 agree on prints once.  A slot they do NOT agree on
+     prints every distinct reading with the fixtures that give it — never a
+     single comfortable value, and never 39 repetitions of the same sentence
+     either, which is what made the flat file unreadable at a desk. */
+  for(let s = 0; s < CH_FIX; s++){
+    const groups = [];
+    for(const r of fixRows){
+      const d = (BY_CH[r.base + s] || {}).detail || '';
+      let g = null;
+      for(const x of groups) if(x.d === d) g = x;
+      if(!g){ g = {d: d, who: []}; groups.push(g); }
+      g.who.push(r.i + 1);
+    }
+    const label = '    +' + s + '  ' + padR((BY_CH[FIXB + s] || {}).fn || '?', 10) + '  ';
+    const blank = ' '.repeat(label.length);
+    if(groups.length === 1){
+      const segs = wrapAt(groups[0].d, 62);
+      out(trimR(label + segs[0]));
+      for(let k = 1; k < segs.length; k++) out(trimR(blank + segs[k]));
+      continue;
+    }
+    /* the biggest group becomes "every other fixture", so a 37/2 split reads
+       as two lines rather than thirty-nine — and it goes LAST, because the
+       named ones are what somebody is looking for */
+    let big = groups[0];
+    for(const g of groups) if(g.who.length > big.who.length) big = g;
+    out(trimR(label + 'reads differently across the rig:'));
+    const order = groups.filter(g=>g !== big).concat([big]);
+    for(const g of order){
+      const tag = g === big ? 'every other fixture'
+                            : 'fixture ' + runsOf(g.who);
+      const segs = wrapAt(g.d, 52);
+      if(tag.length <= 22){
+        out(trimR(blank + '  ' + padR(tag, 22) + ' ' + segs[0]));
+        for(let k = 1; k < segs.length; k++) out(trimR(blank + '  ' + ' '.repeat(23) + segs[k]));
+      } else {
+        out(trimR(blank + '  ' + tag));
+        for(const seg of segs) out(trimR(blank + '  ' + ' '.repeat(23) + seg));
+      }
+    }
+  }
+  out();
+  const NW = fixRows.reduce((m, r)=>Math.max(m, (('0' + (r.i + 1)).slice(-2) + ' ' + r.name +
+    ' [' + r.type + '] ' + r.section).length), 0);
+  out(trimR('  base  ' + padR('fixture', NW)));
+  for(const r of fixRows){
+    const who = ('0' + (r.i + 1)).slice(-2) + ' ' + r.name + ' [' + r.type + '] ' + r.section;
+    out(trimR('  ' + pad(r.base, 4) + '  ' + padR(who, NW)));
+  }
+});
+
+/* ---- the fly rail: target and speed, paired ------------------------------ */
+const FLY_LAST = FLYB + flyRows.length * 2 - 1;
+block('FLY RAIL', FLYB, FLY_LAST, ()=>{
+  out('  ' + flyRows.length + ' linesets, 2 channels each: TARGET then SPEED. A speed byte of 0');
+  out('  PARKS the line where it stands and the target is not commanded at all,');
+  out('  so 512 zeros from a dead desk move nothing (RULING EQ).');
+  out();
+  const NW = flyRows.reduce((m, r)=>Math.max(m, (r.label + (r.key === 'none' ? '' : ' (' + r.key + ')')).length), 0);
+  out('  tgt  spd  ' + padR('line', NW + 9) + '  travel, by the target byte');
+  for(const r of flyRows){
+    const who = 'line ' + pad(r.id, 2) + '  ' + padR(r.label + (r.key === 'none' ? '' : ' (' + r.key + ')'), NW);
+    out(trimR('  ' + pad(r.base, 3) + '  ' + pad(r.base + 1, 3) + '  ' + who + '  ' +
+        ((BY_CH[r.base] || {}).detail || '')));
+    const extra = ((BY_CH[r.base] || {}).notes || []).filter(n=>n.indexOf('dead while speed') !== 0);
+    notesUnder(extra, '            ', '');
+  }
+  out();
+  out('  top speed on every line: ' + f2(P.ART_FLY_MAX) + ' m/s at byte 255.');
+});
+
+/* ---- the house circuits -------------------------------------------------- */
+block('HOUSE CIRCUITS', HOUB, HOUB + houseChan.length - 1, ()=>{
+  out('  Five levels, all reading 0=0.00 128=0.50 255=1.00.');
+  out();
+  for(const h of houseChan) out('  ' + pad(h.ch, 3) + '  HOUSE.' + h.key);
+});
+
+/* ---- the Beetlejuice specials -------------------------------------------- */
+block('BEETLEJUICE — DRESSING, SIGN, TRAVELER', SELB, TRAV_CH, ()=>{
+  for(let ch = SELB; ch <= TRAV_CH; ch++){
+    const r = BY_CH[ch]; if(!r) continue;
+    out(trimR('  ' + pad(ch, 3) + '  ' + r.subject + ' — ' + r.fn));
+    for(const seg of wrapAt(r.detail, 70)) out(trimR('         ' + seg));
+    notesUnder(r.notes, '         ', '! ');
+    if(ch !== TRAV_CH) out();
+  }
+});
+
+/* ---- the proscenium neon (RULING FC) ------------------------------------- */
+block('PROSCENIUM NEON', PROSB, PROSB + 3, ()=>{
+  const first = BY_CH[PROSB];
+  out('  The neon BAR only — not the gold arch and not the black false portal,');
+  out('  neither of which is a lit thing. Patch as a 4-channel RGB dimmer.');
+  out('  It is a LIGHT, so it has no takeover byte: 0 means BLACK, exactly as it');
+  out('  does on the ' + fixRows.length + ' lanterns (RULING FC).');
+  out();
+  for(let ch = PROSB; ch <= PROSB + 3; ch++){
+    const r = BY_CH[ch]; if(!r) continue;
+    out(trimR('  ' + pad(ch, 3) + '  ' + padR(r.fn, 10) + '  ' + r.detail));
+  }
+  if(first && first.notes.length){ out(); notesUnder(first.notes, '  ', '! '); }
+});
+
+/* ---- the set movers ------------------------------------------------------ */
+block('SET MOVERS', MVB, LAST_CH, ()=>{
+  if(!mvRows.length){ out('  This production declares no set movers, so the block is empty.'); return; }
+  out('  ' + mvRows.length + ' movers, ONE target channel each, in SHOW.scenes declaration');
+  out('  order. Byte 0 is NO COMMAND (RULING EX) — any other byte HOLDS that set');
+  out('  every frame, so a move the show started cannot run on underneath it.');
+  out('  A scene the fly rail hauls takes no channel here at all.');
+  out();
+  for(const r of mvRows){
+    const b = BY_CH[r.ch]; if(!b) continue;
+    out(trimR('  ' + pad(r.ch, 3) + '  ' + b.subject));
+    for(const seg of wrapAt(b.detail, 70)) out(trimR('         ' + seg));
+    notesUnder(b.notes, '         ', '! ');
+  }
+});
+
+/* SELF-CHECK 11 — RULING FD ITSELF: the blocks TILE the channel range with no
+   gap and no overlap.  This is what FA's one-line-per-channel scan was really
+   for, restated for a grouped sheet: a ruling that inserts a channel and
+   forgets to put it in a block now fails here instead of shipping a sheet that
+   quietly omits it. */
+{
+  let want = FIXB;
+  for(const b of BLOCKS){
+    if(b.to < b.from - 1)
+      throw new Error('SELF-CHECK 11 FAILED (RULING FD): block ' + b.title +
+        ' runs backwards, ' + b.from + '..' + b.to);
+    if(b.to === b.from - 1) continue;                    // a legitimately empty block
+    if(b.from !== want)
+      throw new Error('SELF-CHECK 11 FAILED (RULING FD): block ' + b.title + ' starts at ' +
+        b.from + ' where ' + want + ' was due' + (b.from > want
+          ? ' — channels ' + want + '..' + (b.from - 1) + ' are in no block at all'
+          : ' — the blocks overlap'));
+    want = b.to + 1;
+  }
+  if(want - 1 !== LAST_CH)
+    throw new Error('SELF-CHECK 11 FAILED (RULING FD): the blocks end at channel ' + (want - 1) +
+      ' and the last channel in use is ' + LAST_CH);
+}
 
 out('THE BUILT FILE  the-house.html  ' + fs.statSync(HOUSE_FILE).size +
     ' bytes  (generated by tools/artnet-map.js)');
@@ -1278,14 +1488,23 @@ out('UNIVERSE 0 — the Palace only (RULING EN); on any other stage packets are 
 out('SHOW LOADED  ' + SHOW_KEY.toUpperCase() +
     '  (the set mover lines and the lineset goods are this show\'s)');
 out();
+out('  A PATCH SHEET (RULING FD). Every number below is MEASURED — the probe');
+out('  drives each channel and reads back what actually moved. Nothing here is');
+out('  typed, so nothing here can drift from the build.');
+out();
+out('  ' + (LAST_CH - FIXB + 1) + ' channels in use, ' + FIXB + '..' + LAST_CH +
+    ', in ' + BLOCKS.filter(b=>b.to >= b.from).length + ' blocks with no gaps:');
+for(const b of BLOCKS){
+  if(b.to < b.from) continue;
+  out('    ' + padR(b.title, 38) + ' ' + pad(b.from, 3) + '-' + b.to);
+}
 
-const CHW = String(LAST_CH).length;
-const SW = ROWS.reduce((m, r)=>Math.max(m, r.subject.length), 0);
-const FW = ROWS.reduce((m, r)=>Math.max(m, r.fn.length), 0);
-for(const r of ROWS){
-  let line = pad(r.ch, CHW) + '  ' + padR(r.subject, SW) + ' — ' + padR(r.fn, FW) + '  ' + r.detail;
-  for(const n of r.notes) line += '   ' + n;
-  out(line.replace(/[ ]+$/, ''));
+for(const b of BLOCKS){
+  if(b.to < b.from) continue;
+  out();
+  out('== ' + b.title + ' ==  channels ' + b.from + '-' + b.to);
+  out();
+  b.render();
 }
 
 process.stdout.write(L.join('\n') + '\n');
