@@ -1,6 +1,6 @@
 # Art-Net control of the Palace — design (2026-08-15)
 
-**BINDING. Rulings EL–FC.** The next spec starts at **FD**.
+**BINDING. Rulings EL–FD.** The next spec starts at **FE**.
 
 **EX and EY were added on 2026-08-16**, after the round began, and both came
 from measuring what an UNPATCHED universe does. EX is built; **EY is ruled and
@@ -488,7 +488,11 @@ the show started runs on to its stop. Same reasoning as RULING EX.
 traveler goes 309 → 310 and the mover block 310 → 311, because every base is
 computed. `docs/ARTNET.md` regenerates and the suite pins it.
 
-### RULING FA — the channel file is a flat list, one line per channel, and nothing else
+### RULING FA — the channel file is a flat list, one line per channel, and nothing else — **SUPERSEDED BY FD**
+
+> **SUPERSEDED 2026-08-16 by RULING FD.** The flat shape is gone; the
+> *guarantee under it* — that no channel is missing — is kept and is now
+> checked twice. Read FD before acting on anything in this section.
 
 Added 2026-08-16, from Jack on reading the generated file:
 
@@ -780,3 +784,65 @@ worth landing first as their own small PRs, as already suggested there.
 3. **The neon portal frame** is a cue field, not a fixture, and is NOT on
    the map in this round. If it should be, it is one channel and one small
    ruling.
+
+### RULING FD — the channel file is a grouped PATCH SHEET, and it stays generated
+
+Added 2026-08-16. Jack, at a desk with the flat file open:
+
+> make it so the list isnt generated it is just what it is for beetlejuice and
+> make it easier to read.
+
+**THE "NOT GENERATED" HALF WAS PUT BACK TO HIM AND HE TOOK THE OTHER ANSWER.**
+The request is one instruction with two halves that pull opposite ways: the
+shape is his to choose, but un-generating the file removes the only reason it
+can be trusted. Offered three ways — reformat and keep it generated, hand-write
+it, or keep both — he chose **reformat, keep it generated**. So FD changes the
+SHAPE and nothing else.
+
+**Why the generation was worth defending.** The mover block has renumbered
+**twice in two days** — RULING EZ gave the sign a second channel, RULING FC
+added four for the proscenium — and **no code was edited to say so either
+time**, because every base is computed. A hand-written sheet would have been
+wrong twice in two days with nothing to say so. In those same two days STATE.md
+was wrong about `artUrl`, wrong about a PR that had not merged, and FUTURE.md
+miscounted its own list twice. **Prose drifts here; the generated file is the
+one thing that cannot.**
+
+**THE SHAPE.** Six blocks, each with a heading that declares its own channel
+range: LANTERNS, FLY RAIL, HOUSE CIRCUITS, BEETLEJUICE (dressing/sign/traveler),
+PROSCENIUM NEON, SET MOVERS. 326 flat lines become 219 a human can patch from.
+Long notes wrap instead of running to column 200, which is the single thing that
+made the flat file unusable at a desk.
+
+**THE 39 LANTERNS COLLAPSE TO A PATTERN PLUS A ROSTER, AND THE COLLAPSE IS
+CHECKED RATHER THAN ASSUMED.** Each of the seven slots is compared across every
+fixture. A slot all 39 agree on prints once. A slot they do not agree on prints
+**every distinct reading with the fixtures that give it** — never one
+comfortable value, and never 39 repetitions of the same sentence. **This is not
+hypothetical: `+5 pan` and `+6 tilt` really do disagree**, and the sheet says so,
+naming fixtures 23, 24 and 34–39 as the movers. That path is exercised by the
+real rig, not merely designed for.
+
+**WHAT FA WAS ACTUALLY FOR IS KEPT, AND IS NOW CHECKED TWICE.** FA's content was
+never the flat shape — it was the guarantee that no channel is missing. That
+guarantee now has independent guards:
+
+- **SELF-CHECK 10** (unchanged) proves the internal row set is one row per
+  channel, in order, with no gaps.
+- **SELF-CHECK 11** (new) proves the blocks **tile** that range — every channel
+  in exactly one block, no gap and no overlap. The generator refuses to emit a
+  sheet that would omit a channel.
+- **The suite re-checks the tiling from the committed file**, so the guarantee
+  survives somebody deleting SELF-CHECK 11. It also checks the header's channel
+  count against the blocks below it, because a header that counts the channels
+  itself is a second place to be wrong.
+
+**The header keeps the three lines FA won back** — built-file size, universe and
+the Palace-only gate, and which show is loaded — because none of them is
+derivable from a channel line and an operator needs all three before touching a
+fader.
+
+**BEETLEJUICE-ONLY WAS ALREADY TRUE** and stays true: the probe has always
+loaded Beetlejuice (`SHOW_KEY`), because the mover lines and the lineset goods
+are that show's. The header says so. What changed is that the sheet now reads
+like it means it.
