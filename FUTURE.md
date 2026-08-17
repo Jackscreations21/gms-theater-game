@@ -31,12 +31,17 @@ commitment and nothing in here is binding — **a spec in
 ```
 
 The lettered rulings are one continuous sequence across the whole project.
-**The last one used is `FB`** (Art-Net, `ART_STALE` raised 2s → 5s after the
-first real QLC+ desk was measured idling at ~1.8s between packets — ruled and
-built 2026-08-16). Before it: `EZ` moved the Beetlejuice sign onto two fly
-channels and `FA` made `docs/ARTNET.md` a flat one-line-per-channel list, both
-built the same day. **`EY` — the band channels on a dead universe — is ruled
-and NOT built; see PART 1a item 4.** The next spec starts at `FC`.
+**The last one used is `FD`** (Art-Net, `docs/ARTNET.md` remade as a grouped
+patch sheet — it supersedes `FA` and keeps the generation, ruled and built
+2026-08-16, merged as #214). Before it, `FC` put the proscenium neon on four channels —
+intensity and RGB — ruled a LIGHT rather than scenery, so it has no takeover
+byte and a dead universe blacks it along with the 39 lanterns; ruled and built
+2026-08-16 as #213. Before those: `FB` raised `ART_STALE` 2s → 5s after
+the first real QLC+ desk was measured idling at ~1.8s between packets, `EZ`
+moved the Beetlejuice sign onto two fly channels, and `FA` made
+`docs/ARTNET.md` a flat one-line-per-channel list — all the same day.
+**`EY` — the band channels on a dead universe — is ruled and NOT built; see
+PART 1a item 4.** The next spec starts at `FE`.
 
 When something in here ships, **delete it from this file** — this is a list of
 what is *not* done. It stops being useful the moment it becomes a history.
@@ -243,16 +248,20 @@ Nothing here has been seen on hardware. jsdom has no eyes and no GPU.
 ---
 ---
 
-# PART 1a — SIX THINGS WRONG ON `main` RIGHT NOW
+# PART 1a — SEVEN THINGS WRONG ON `main` RIGHT NOW
 
-All five are **live in merged code** and none is fixed on `main`. Three came
+All seven are **live in merged code** and none is fixed on `main`. Three came
 out of the paused GMS Studios branches — this heading said "two" while it
 already carried three, and then said "four" while it carried five, which is
-the second time the same off-by-one has been committed in this file and is
-why the number is now checked against the list before this file is saved.
-Item 4 came out of the Art-Net round's own review and is **RULED but
-deliberately not built**; item 5 is a test flake rather than a bug in the
-game, and is here because it will otherwise be diagnosed from scratch.
+why the number is supposed to be checked against the list before this file is
+saved. **It was not, twice more:** the heading then read "SIX" over a body
+that opened "All five", and the closing "suggested order" paragraph called
+item 5 a flake when the flake is item 6. Both are corrected here, and the
+count is now stated in three places that must agree — heading, first
+sentence, and the closing paragraph. Item 4 came out of the Art-Net round's
+own review and is **RULED but deliberately not built**; item 6 is a test flake
+rather than a bug in the game, and is here because it will otherwise be
+diagnosed from scratch; item 7 is latent rather than live.
 
 ## 1. The venue's work lights all share ONE material — the shared-material trap
 
@@ -418,11 +427,46 @@ change is probably this.**
 
 ---
 
+## 7. Three spellings of "a desk is driving THIS rig", and two of them disagree
+
+**Latent, not live** — which is why it is last, and why RULING FC recorded it
+rather than fixing it.
+
+The test *"is a desk talking, and to the Palace"* is written out THREE times,
+each differently, and the three do not agree on `typeof STAGE === 'undefined'`:
+
+| Site | Spelling | Undefined STAGE means |
+|---|---|---|
+| `artnetTick` (`p6d`) | `if(typeof STAGE === 'undefined' \|\| STAGE !== 'palace') return;` | **do not write** — its comment says a "never write unless" ruling should fail shut |
+| `artHandover` (`p6d`) | `artDriving() && (typeof STAGE === 'undefined' \|\| STAGE === 'palace')` | **the desk is driving** |
+| `updateHouseWait` (`p5c`) | `artDriving() && typeof STAGE !== 'undefined' && STAGE === 'palace'` | **the desk is not driving** (mirrors `artnetTick`, deliberately) |
+
+`artHandover` is the odd one out: with `STAGE` undefined it would halt every
+fixture's fade — `f.lvlDur = 0`, `f.colDur = 0` — for a desk that `artnetTick`
+then refuses to write a single byte for. The rig would be frozen mid-fade and
+handed to nobody.
+
+**It cannot bite today.** `STAGE` is unconditionally defined in `p2k`, so the
+undefined branch is unreachable in the built game; all three agree on every
+value that actually occurs. It is on this list because the *next* place this
+predicate is written will copy whichever one the author happened to read, and
+because a defined-everywhere assumption is exactly the kind that a fourth
+stage, a test harness, or an early-boot call quietly breaks.
+
+**The fix** is one exported predicate — `artDrivingHere()` in `p6d`, on
+`artnetTick`'s polarity — called from all three sites. That reverses
+`artHandover`'s behaviour in the unreachable branch, which is why it needs a
+ruling rather than a tidy-up: it is a behaviour change on paper even though no
+frame can reach it.
+
+---
+
 **Suggested order on resuming**, given the above: fix (1) and (3) as their own
 small PRs first — they are live defects and both are cheap — then rebase the
 shed, then the grids, then PRs 4, 7, 8. **RULING EY (4) is independent of the
-GMS round entirely** and can go at any time; **(5) is a flake, not a blocker,
-and wants fixing only when a red `smoke` is costing somebody time.**
+GMS round entirely** and can go at any time; **(6) is a flake, not a blocker,
+and wants fixing only when a red `smoke` is costing somebody time**; **(7) is
+latent and can wait for whoever next touches the Art-Net gates.**
 
 ---
 ---

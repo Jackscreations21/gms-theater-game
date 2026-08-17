@@ -1,14 +1,42 @@
-# STATE — 2026-08-16 (ART-NET: THE CHAIN LANDED, THEN A REAL DESK RAN IT — RULINGS EL–FC)
+# STATE — 2026-08-16 (ART-NET: THE ROUND IS CLOSED — RULINGS EL–FD, NOTHING OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
 ## READ THIS FIRST
 
-The desk drives the Palace. The nine-PR chain landed, **and then a real QLC+
-desk ran it for the first time and changed three things** — #200 to #213, of
-which #206 is an extra written mid-round. The suite count is **21**, rulings
-are at **FC**, and the cache-bust is **`?v=31`** from here.
+The desk drives the Palace, **and the Art-Net round is finished** — #200 to
+#214 with no gaps, of which #206 is an extra written mid-round. **Nothing is
+open, nothing is shelved, and no branch is unlanded.** `main` is at
+**`53bfa92`**, the suite count is **21**, rulings are at **FD**, and the
+cache-bust is **`?v=31`** from here.
+
+**#214 (RULING FD) is the last one in**, and it came from Jack at a desk with
+the channel file open: *"make it so the list isnt generated it is just what it
+is for beetlejuice and make it easier to read."* **The "not generated" half was
+put back to him** — that was one instruction with two halves pulling opposite
+ways, because un-generating the file removes the only reason it can be
+trusted — **and he chose reformat-and-keep-generated.** So `docs/ARTNET.md` is
+now a six-block patch sheet, 326 flat lines down to 219, and it is still
+measured. See "HOW TO ACTUALLY RUN IT" below.
+
+**#213 (RULING FC, the proscenium neon) went in before it** — it was the one
+branch this file previously listed as finished-but-unpushed, and the three
+things it still owed are all discharged:
+
+1. **It is merged.** Post-merge protocol run: `main` rebuilds byte-identical
+   (`94084f5e`), `node tools/artnet-map.js` reproduces `docs/ARTNET.md`
+   exactly, 21/21 on the merged result, branch deleted local and remote.
+2. **The unreviewed post-review fixes were reviewed, and the review found a
+   real hole.** The fix for the first review's finding had widened the gate
+   from the portal to a `deskOwnsIt` that **also gates `HOUSE.house`** — a
+   second behaviour change with **no assertion behind it**. Two assertions
+   added, both on a sentinel, both negative-checked and both firing. The
+   general lesson is now in TRAPS: **a fix written in response to a review is
+   itself unreviewed code.**
+3. **The two corrections this file owed are applied** — the Pages parenthetical
+   below is rewritten, and the PR table's premature #213 self-healed on merge
+   exactly as predicted.
 
 ## IT HAS NOW BEEN RUN AGAINST A REAL DESK, AND THAT IS NEW
 
@@ -25,10 +53,21 @@ real QLC+ into the relay, and the session is worth reading for what it found:
   relay, so it costs nothing today. The reasoning is still wrong.
 - **The ARTNET row cannot tell three failures apart.** A tab that is not
   rendering (the frame loop stops, so `artnetTick` never consumes what has
-  arrived), a page that can never build a socket (`file://` or Pages —
-  `artUrl` returns null and `artOpen` is a silent no-op), and a desk that
-  simply is not talking all read `ON — no desk yet`. That cost most of an
-  evening, and it is unfixed.
+  arrived), a page whose socket can never reach a relay, and a desk that simply
+  is not talking all read `ON — no desk yet`. That cost most of an evening, and
+  it is unfixed.
+
+  **CORRECTED 2026-08-16 — and the correction is the whole point of the
+  bullet.** An earlier draft of this line said `file://` and Pages both make
+  `artUrl` return null. **They do not, and they are two different failures with
+  two different console signatures**, which matters enormously when the row
+  says the same thing for both. `artUrl` (`p6d:172`) returns null **only when
+  there is no host at all** — that is `file://`, where `artOpen` is a genuinely
+  silent no-op and the console stays clean. **From Pages there IS a host**, so
+  it returns `wss://jackscreations21.github.io/artnet`, a socket really is
+  constructed, and it **fails to connect** — a visible WebSocket error, just
+  not one that says anything about Art-Net. Telling a tester "it will fail
+  silently" when their console is showing them an error is how an evening goes.
 - **A REAL DESK IDLES AT ~1.8s BETWEEN PACKETS**, not at Art-Net's nominal
   44Hz — which is what RULING FB is, and it is the first number in this whole
   round that came off hardware rather than out of reasoning.
@@ -51,11 +90,41 @@ in the headset.
 | **#210** | **EZ** | the sign is a fly — target and speed, and it retires EY’s sign half |
 | **#211** | **FA** | `docs/ARTNET.md` becomes a flat list, one line per channel |
 | **#212** | **FB** | `ART_STALE` 2s → 5s, measured against his real QLC+ desk |
-| **#213** | **FC** | the proscenium neon: intensity and RGB, written raw |
+| **#213** | **FC** | the proscenium neon: intensity and RGB, written raw — channels **311..314**, movers to **315** |
+| **#214** | **FD** | `docs/ARTNET.md` becomes a grouped patch sheet — supersedes FA, still generated |
 
 Every merge verified: `main` rebuilds **byte-identical**, 21/21 suites on the
 merged result, branches deleted local and remote. Two-stage review on every
-PR — and on #207 that review was the first the mover code had ever had.
+PR — and on #207 that review was the first the mover code had ever had, and on
+**#213 a THIRD pass** was needed, because the fixes closing out review two had
+never been read by anybody.
+
+## THE REST OF WHAT IS LEFT, in the order it will bite
+
+**None of it is a branch, and none of it is mine to finish** — the first is
+hardware, the rest want a ruling.
+
+1. **A HEADSET RUN, now three rounds owed.** `?v=29` never happened, DR–DY has
+   never been seen, and no part of the Art-Net round has been in the headset
+   either. **All of the desk work is desktop-only.** Read all four wrist lines
+   (`avg`, `pk`, `fov`, `calls · tri`) at the four moments: empty Palace,
+   Beetlejuice pre-show, the 1:00 cue with eight blinders, and — new for this
+   round — **at the proscenium looking up into the neon, with a desk driving
+   311..314**. Prediction on record: **~590 calls empty at the boot view**; if
+   it reads ~700 the build is stale.
+2. **RULING EY, ruled and not built** — a dead universe still redresses the
+   house on its first frame, channel 307. Jack ruled the fix and ruled that it
+   waits. FUTURE.md PART 1a item 4.
+3. **`ART_PROVE` and the relay's sequence guard** — both sized off Art-Net's
+   nominal 44Hz, both disproved by the same measurement that produced FB.
+   FUTURE.md PART 1a item 5. Neither is urgent; both are wrong.
+4. **The ARTNET row cannot tell three failures apart** (above). It cost most of
+   an evening and nothing has been done about it. **No ruling yet, and this is
+   the one most likely to cost another evening.**
+5. **Three spellings of "a desk is driving THIS rig", two disagreeing** —
+   latent only, because `STAGE` is always defined. New this session, from the
+   #213 review. FUTURE.md PART 1a item 7.
+6. **The `tests/smoke.js` flake**, ~1 run in 12. FUTURE.md PART 1a item 6.
 
 ## THE ONE THING LEFT, AND IT IS RULED BUT NOT BUILT (and it is smaller than it was)
 
@@ -99,6 +168,16 @@ Then open `http://localhost:8080/the-house.html`, LIGHTING page, throw ARTNET.
 QLC+ outputs Art-Net to **127.0.0.1, universe 0**. **Patch off
 `docs/ARTNET.md`** — it is generated from the build and the suite fails if it
 drifts. VR-SETUP.md §8 is the full recipe.
+
+**RULING FD made that file a PATCH SHEET** (#214): six blocks — LANTERNS 1-273,
+FLY RAIL 274-301, HOUSE CIRCUITS 302-306, BEETLEJUICE dressing/sign/traveler
+307-310, PROSCENIUM NEON 311-314, SET MOVERS 315-326 — each heading carrying
+its own channel range, the 39 lanterns collapsed to one 7-channel pattern plus
+a roster of base channels. **It is still generated and still measured**, and
+there are now three guards on it: the probe refuses to emit a sheet whose
+blocks do not tile the whole range, and the suite re-checks that tiling from
+the committed file so the guarantee survives somebody deleting the probe's own
+check.
 
 Headset: `adb reverse tcp:8080 tcp:8080`, then the same localhost URL in the
 Quest. **Art-Net from the GitHub Pages URL cannot work** — `artUrl()` only ever
