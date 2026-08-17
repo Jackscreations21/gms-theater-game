@@ -877,6 +877,15 @@ against this list before opening a PR; **add new traps as you hit them.**
   this", arrived at one at a time, each after somebody measured a dead
   universe — which is itself the lesson: **nobody found any of them by
   reading the code.**
+
+  **And RULING FC then added a fifth family that is ruled to have NO answer at
+  all.** The proscenium neon's intensity is a LIGHT, so byte 0 is a real
+  command meaning black, exactly as it is for the 39 lanterns — the same 512
+  zeros black those too, so it reads as "the desk is dark" rather than "the
+  game broke". That is not an oversight; it is the line between scenery and
+  light, and FC is the first time this project has had to draw it. The test
+  for it needs a SENTINEL rather than a starting position, because `deskOn()`
+  delivers zeros and "byte 0 blacks it" is otherwise the state the setup left.
 - **A BUILT ARTIFACT IN A MERGE CONFLICT HAS EXACTLY ONE CORRECT RESOLUTION:
   REBUILD IT.** `the-house.html` is committed built, so two branches touching
   `src/` always conflict in it too. Never resolve it by hand or by taking a

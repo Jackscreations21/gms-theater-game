@@ -11670,12 +11670,17 @@ const ART_PROVE = 44;
      308         BEETLEJUICE sign TARGET                      (RULING EZ)
      309         BEETLEJUICE sign SPEED, 0 = parked           (RULING EZ)
      310         traveler open
-     311 ..      the loaded show's set movers                 (RULINGS ET, EX)
+     311 .. 314  the proscenium neon: intensity, R, G, B      (RULING FC)
+     315 ..      the loaded show's set movers                 (RULINGS ET, EX)
 
-   RULING EZ MOVED THE LAST THREE.  The sign was one banded channel (ES) and
-   is now a fly on two, so the traveler went 309 -> 310 and the mover block
-   310 -> 311.  Nothing above had to be touched to say so, which is the point
-   of computing the bases.
+   TWO RULINGS HAVE MOVED THE TAIL OF THIS TABLE IN ONE DAY.  EZ took the sign
+   off one banded channel and gave it two (traveler 309 -> 310, movers
+   310 -> 311); FC put four proscenium channels in the fixed block after the
+   traveler (movers 311 -> 315).  NOTHING ABOVE HAD TO BE TOUCHED EITHER TIME,
+   which is the whole point of computing the bases — and it is why the mover
+   block goes LAST: it is the only variable-length block, 0 channels on four
+   of the five productions and 12 on Beetlejuice, so anything placed after it
+   would not be at a fixed position at all.
 
    EVERY BASE IS COMPUTED, NEVER WRITTEN DOWN.  The rig is 39 channels on
    every stage today and the fly rail is 14 lines, which is where 274 and 302
@@ -11696,9 +11701,11 @@ const ART_CH_FIX = 7;                 // channels per fixture, uniform
 function artFixBase(){ return 1; }
 function artFlyBase(){ return artFixBase() + ART_CH_FIX * FIXTURES.length; }
 function artHouseBase(){ return artFlyBase() + 2 * FLY.length; }
-/* 307 house selector, 308 sign TARGET, 309 sign SPEED, 310 traveler (EZ) */
+/* 307 house selector, 308 sign TARGET, 309 sign SPEED, 310 traveler (EZ),
+   311..314 the proscenium neon: intensity, red, green, blue (RULING FC) */
 function artSelBase(){ return artHouseBase() + 5; }
-function artMoverBase(){ return artSelBase() + 4; }
+function artProsBase(){ return artSelBase() + 4; }
+function artMoverBase(){ return artProsBase() + 4; }
 
 /* A MOVER'S TRAVEL.  Nothing in the rig declares its own range, so this is
    the range every head gets, and the map probe prints it per fixture rather
@@ -12163,6 +12170,67 @@ function artMovers(b){
 }
 
 /* ============================================================================
+   RULING FC — THE PROSCENIUM NEON, FOUR CHANNELS, AND IT IS A LIGHT
+
+   Jack: "make it so there are channles to controll the colors and brightness
+   of the prosinium."
+
+   FOUR CHANNELS: intensity, red, green, blue — the same shape as a fixture's
+   first four, so QLC+ patches it as a generic RGB dimmer and nobody has to
+   think about it twice.
+
+   THE SUBJECT IS THE NEON BAR AND NOTHING ELSE, and establishing that was
+   most of the work.  Six things could be called "the proscenium" here — the
+   gold arch's four collected pieces, the ivory wall behind them, the black
+   false portal, the neon bar, the eight blinders on its line, and the Arc's
+   own black piers.  EXACTLY ONE of them has a colour and a brightness:
+   `bj:portalFrame`, whose record is `SHOW.bjPortal`.  The gold has no
+   emissive and `M.gold` is shared by 47 reachable meshes — 58 ever built, and
+   the 65 first written here was not reproducible — while the black portal's `board`
+   material is shared by 5.  Tinting either in place is the shared-material
+   trap INVARIANTS names, and this repo has paid for it three times.  The
+   blinders are FIXTURES 26-33 and already on channels 176..231 — putting
+   them here too would give eight fixtures two writers in one artnetTick,
+   and whichever ran later would win silently.
+
+   THE WRITE IS THE RECORD, NEVER THE MATERIAL.  `updatePortal` rewrites
+   `emissiveIntensity`, `emissive` and `color` EVERY FRAME from `b.lvl` and
+   `b.col`, and it runs after `artnetTick` in p7 — so a material write
+   survives exactly zero frames.  Measured, not reasoned.  That is RULING EW's
+   lesson: the writers that matter are the per-frame ones, not the controls.
+
+   AND IT WRITES BOTH THE VALUE AND ITS TARGET, WHICH IS WHAT MAKES IT RAW.
+   `updatePortal` walks `lvl` toward `tLvl` at BJ_NEON_FADE (1.2/s), so
+   writing only the target would give a desk fader an 0.83s crossfade —
+   pretty, and exactly what RULING EP forbids: "lights are raw writes; the
+   fade engine never fights the desk".  A desk fades by sending values, and
+   stacking a second fade on top makes every fade mushy.  Writing both leaves
+   the lerp a no-op and the fader tracks.
+
+   NO TAKEOVER BYTE, AND THAT IS A DELIBERATE DEPARTURE FROM EQ/EX/EZ.  Those
+   gave scenery a companion byte so a dead universe moves nothing.  This is
+   NOT scenery — it is a light, and RULING EP already says a desk patched only
+   for the light channels blacks the rig.  That same frame blacks all 39
+   lanterns, so the neon going out with them is consistent rather than
+   surprising; a takeover byte here would make the neon the one lit thing in
+   the building that a blackout could not reach.  One byte to add if Jack
+   disagrees.
+
+   FOUR OF THE FIVE PRODUCTIONS HAVE NO SUCH FRAME, and neither Arc stage has
+   one at all — `SHOW.bjPortal` is null and these four channels do nothing,
+   the way `artSign` does nothing without a sign.
+   ========================================================================== */
+function artPros(b){
+  const o = artProsBase() - 1;                  // channel 311, 0-based
+  if(o + 3 >= b.length) return;
+  const p = SHOW.bjPortal;
+  if(!p) return;                                // no lit frame: four dead channels
+  p.tLvl = p.lvl = b[o] / 255;
+  p.tCol.setRGB(b[o + 1] / 255, b[o + 2] / 255, b[o + 3] / 255);
+  p.col.copy(p.tCol);
+}
+
+/* ============================================================================
    RULINGS ER AND ES — TWO BANDED CHANNELS, HIS SPLITS EXACTLY
 
    Jack, in the brief: "make it so for beetljuice it has a channel and if it is
@@ -12379,6 +12447,7 @@ function artnetTick(dt){
   artLights(b);
   artFlys(b);
   artSign(b);
+  artPros(b);
   artMovers(b);
   artBands(b);
 }
@@ -13070,17 +13139,61 @@ function frontCurtainShut(){
    press a button on the consol".  So the stop lands the instant the cue fires
    and only the `play` waits.  Splitting the field is the whole trick.
    ========================================================================== */
+/* RULING FC — THE DESK OWNS THE HOUSE AND THE FRAME WHILE IT IS DRIVING THIS
+   RIG.  Everything this function writes is one-shot, from a queue armed
+   BEFORE the desk took over (RULING CZ holds the interval behind the curtain
+   landing), and it all fires from inside updateStorm — so it is exactly the
+   shape RULING EW's list missed, because none of it is a control.  Ungated it
+   stomps the desk with an older instruction the moment the cloth arrives:
+   measured, a desk holding the frame red had it dressed blue, and a desk
+   holding the house at 0 had it written to 0.5.
+
+   AND THE GATE CARRIES THE STAGE TEST, WHICH `artDriving()` DOES NOT.  A
+   review caught the first version failing OPEN: `artnetTick` refuses to write
+   anything unless `STAGE === 'palace'` (RULING EN), but `artDriving()` is
+   true on any stage — so with the board walked to an Arc house and a desk
+   live and writing NOTHING, the interval's neon was discarded and never
+   struck again for the rest of the session.  The question a writer needs
+   answered is not "is a desk talking" but "is a desk talking TO THIS RIG".
+
+   AND THE POLARITY ON `typeof STAGE === 'undefined'` IS COPIED FROM
+   `artnetTick`, DELIBERATELY.  That is now the THIRD spelling of this one
+   predicate in the tree and the three do not agree: artnetTick (p6d, the
+   early return under RULING EN) refuses to write when STAGE is undefined, and
+   this must mirror it exactly — if the desk writes nothing, this has to write
+   something, or the queued look is lost with nobody driving.  `artHandover`
+   (p6d) takes the OPPOSITE view and counts undefined as driving.  STAGE is
+   unconditionally defined in p2k so neither can bite today; the disagreement
+   is recorded in FUTURE.md rather than resolved here, because reversing
+   artHandover is a behaviour change and not this ruling's business.
+
+   THE QUEUE IS SPENT EITHER WAY, and that is deliberate.  RULING EM already
+   says nothing snaps on hand-back and the rig holds the desk's last look, so
+   the neon holding the desk's colour is the same bargain the 39 lanterns
+   get — and `showCueExtras` calls `setPortal` on EVERY cue, so the next GO
+   corrects it.  Deferring instead would fire a stale interval look minutes
+   later, which is worse.
+
+   THE AUDIO IS NOT GATED, which splits RULING CZ and is worth saying out
+   loud: under a live desk the interval music comes in under a frame that
+   never strikes.  That follows EM — the transport keeps its clock and its
+   audio, light is Art-Net's — but CZ's own sentence was about the two
+   arriving together, and they no longer do. */
 function updateHouseWait(){
   if(SHOW.houseWait === null || SHOW.houseWait === undefined) return;
   if(!frontCurtainShut()) return;
-  HOUSE.house = SHOW.houseWait;
+  const deskOwnsIt = typeof artDriving === 'function' && artDriving() &&
+                     typeof STAGE !== 'undefined' && STAGE === 'palace';
+  if(!deskOwnsIt){
+    HOUSE.house = SHOW.houseWait;
+    if(typeof syncMasters === 'function') syncMasters();
+  }
   SHOW.houseWait = null;
-  if(typeof syncMasters === 'function') syncMasters();
   /* the house is up now, so whatever was queued behind it goes */
   const a = SHOW.houseAfter;
   if(!a) return;
   SHOW.houseAfter = null;
-  if(a.portal && typeof setPortal === 'function') setPortal(a.portal);
+  if(!deskOwnsIt && a.portal && typeof setPortal === 'function') setPortal(a.portal);
   if(a.audio && typeof showCueAudio === 'function') showCueAudio(a.audio);
 }
 

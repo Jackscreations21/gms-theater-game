@@ -549,8 +549,8 @@ const P = async (name, fn)=>{
       /* the numbers the map file will print, today */
       if(FIXTURES.length !== 39 || FLY.length !== 14)
         throw new Error('the rig is ' + FIXTURES.length + ' by ' + FLY.length + ' — the bases move WITH it, which is the point');
-      if(artFlyBase() !== 274 || artHouseBase() !== 302 || artSelBase() !== 307 || artMoverBase() !== 311)
-        throw new Error('bases read ' + [artFlyBase(), artHouseBase(), artSelBase(), artMoverBase()].join(','));
+      if(artFlyBase() !== 274 || artHouseBase() !== 302 || artSelBase() !== 307 || artProsBase() !== 311 || artMoverBase() !== 315)
+        throw new Error('bases read ' + [artFlyBase(), artHouseBase(), artSelBase(), artProsBase(), artMoverBase()].join(','));
       /* AND THE DERIVATION IS THE CLAIM, not the numbers.  Everything above
          is satisfied by four literals, because 274 IS 1 + 7*39 today — so
          grow the rig by one lantern and watch every base after it move. */
@@ -558,10 +558,10 @@ const P = async (name, fn)=>{
       try{
         if(artFlyBase() !== 281) throw new Error('a 40th fixture left the fly block at ' + artFlyBase());
         if(artHouseBase() !== 309) throw new Error('a 40th fixture left the house block at ' + artHouseBase());
-        if(artMoverBase() !== 318) throw new Error('a 40th fixture left the movers at ' + artMoverBase());
+        if(artMoverBase() !== 322) throw new Error('a 40th fixture left the movers at ' + artMoverBase());
       } finally { FIXTURES.pop(); }
       if(artFlyBase() !== 274) throw new Error('the rig did not go back to 39');
-      return '39 x 7 = 1-273, flys 274, house 302, selectors 307, movers 311 — and a 40th lantern moves all four';
+      return '39 x 7 = 1-273, flys 274, house 302, selectors 307, proscenium 311, movers 315 — and a 40th lantern moves all five';
     });
 
     P('a frame lands on intensity, colour and gobo, at the right channels (RULING EP)', ()=>{
@@ -1507,6 +1507,155 @@ const P = async (name, fn)=>{
       return 'five identical packets rebuilt nothing; the next different one dressed the maitlands';
     });
 
+    P('the proscenium neon takes intensity and RGB, written RAW (RULING FC)', ()=>{
+      /* Jack: "make it so there are channles to controll the colors and
+         brightness of the prosinium."  The subject is the NEON BAR — it is
+         the only thing under that name with a colour and a brightness at all;
+         the gold arch has no emissive and its material is shared by 65
+         meshes, and the black portal's by 5. */
+      showLoad('beetlejuice');
+      const ws = deskOn();
+      const p = SHOW.bjPortal;
+      if(!p) throw new Error('Beetlejuice has no lit proscenium to drive');
+      const pros = (i, r, g, b)=>{ const f = new Uint8Array(512);
+        f[artProsBase() - 1] = i; f[artProsBase()] = r;
+        f[artProsBase() + 1] = g; f[artProsBase() + 2] = b;
+        ws.deliver(f); artnetTick(1/60); return p; };
+      /* A SENTINEL, BECAUSE "START SOMEWHERE ELSE" IS NOT ENOUGH HERE AND THE
+         FIRST DRAFT OF THIS CASE GOT IT WRONG.  deskOn() delivers a full 512
+         frame whose proscenium bytes are ZERO, and artnetTick applies it — so
+         by the time the case runs the neon is already at 0, and asserting
+         that byte 0 blacks it asserted the state the setup left.  A review
+         proved it with the mutation this ruling itself invites: make the
+         intensity a takeover byte (if(b[o]) ...) and all three cases stayed
+         green.  Plant a value no byte can produce, and byte 0 has to overwrite
+         it. */
+      p.lvl = p.tLvl = -1;
+      pros(0, 0, 0, 0);
+      if(p.lvl !== 0)
+        throw new Error('byte 0 left the neon at ' + p.lvl +
+          ' — a zero must BLACK it, not decline to write (RULING FC has no takeover byte)');
+      pros(255, 255, 0, 0);
+      if(p.lvl !== 1) throw new Error('byte 255 gave ' + p.lvl + ', not full');
+      if(!(p.col.r === 1 && p.col.g === 0 && p.col.b === 0))
+        throw new Error('the red byte gave rgb ' + [p.col.r, p.col.g, p.col.b].join(','));
+      pros(128, 0, 255, 0);
+      if(Math.abs(p.lvl - 128/255) > 1e-9) throw new Error('byte 128 gave ' + p.lvl);
+      if(!(p.col.g === 1 && p.col.r === 0))
+        throw new Error('the green byte gave rgb ' + [p.col.r, p.col.g, p.col.b].join(','));
+      pros(255, 0, 0, 255);
+      if(!(p.col.b === 1 && p.col.r === 0))
+        throw new Error('the blue byte gave rgb ' + [p.col.r, p.col.g, p.col.b].join(','));
+      /* RAW, WHICH IS THE HALF A RECORD-ONLY CHECK CANNOT SEE.  updatePortal
+         walks lvl toward tLvl at BJ_NEON_FADE every frame, so writing only
+         the target gives a desk fader a crossfade — exactly what RULING EP
+         forbids.  Run the real updater and require the material to be THERE,
+         not on its way. */
+      pros(255, 255, 0, 0);
+      updatePortal(1/60);
+      if(Math.abs(p.mat.emissiveIntensity - 1) > 1e-9)
+        throw new Error('one frame after a full fader the material reads ' +
+          p.mat.emissiveIntensity + ' — the desk is being crossfaded');
+      if(Math.abs(p.mat.emissive.r - 1) > 1e-9 || p.mat.emissive.g !== 0)
+        throw new Error('the material emissive is still on its way to the desk colour');
+      artSetOn(false);
+      return 'intensity and RGB on ' + artProsBase() + '..' + (artProsBase() + 3) +
+             ', raw — one frame of the real updater and the material is already there';
+    });
+
+    P('a show with no lit proscenium takes nothing from those channels (RULING FC)', ()=>{
+      /* four of the five productions, and both Arc stages, have no
+         SHOW.bjPortal at all — the channels must be dead, not throw */
+      showLoad('lostboys');
+      if(SHOW.bjPortal) throw new Error('this show has a lit proscenium, so it cannot show the null case');
+      const ws = deskOn();
+      const f = new Uint8Array(512);
+      for(let k = artProsBase() - 1; k < artProsBase() + 3; k++) f[k] = 255;
+      ws.deliver(f); artnetTick(1/60);          // must not throw
+      showLoad('beetlejuice');
+      artSetOn(false);
+      return 'a full frame on ' + artProsBase() + '..' + (artProsBase() + 3) +
+             ' passed through a show with no lit frame and did nothing';
+    });
+
+    P('a cue\\u2019s queued portal does not stomp the desk (RULINGS FC, EW)', ()=>{
+      /* updateHouseWait fires ONE setPortal from a queue armed before the desk
+         took over (RULING CZ holds the interval look behind the curtain
+         landing).  It is not a control, so RULING EW's list missed it — and it
+         runs from inside updateStorm, so it wins. */
+      showLoad('beetlejuice');
+      const ws = deskOn();
+      const p = SHOW.bjPortal;
+      const f = new Uint8Array(512);
+      f[artProsBase() - 1] = 255; f[artProsBase()] = 255;      // full RED from the desk
+      ws.deliver(f); artnetTick(1/60);
+      if(!(p.col.r === 1 && p.col.g === 0)) throw new Error('the desk did not take the frame red');
+      /* arm the queue the way the interval does, and land the curtain */
+      SHOW.houseWait = 0.5;
+      SHOW.houseAfter = {portal:{lvl:1, col:0x00ff00}};
+      FLY[0].pos = FLY[0].target = TRIMS[SHOW.curtainKey];
+      FLY[0].open = FLY[0].travTarget = 0;
+      /* THE HOUSE LEVEL IS THE OTHER HALF OF THE SAME QUEUE, and it is on a
+         SENTINEL for exactly the reason the neon case above carries one: the
+         desk's own frame has already written HOUSE.house to 0, so "it is not
+         0.5" is the state the setup left, not a thing this case proved.  Plant
+         a level no byte and no queue can produce.
+
+         It is worth an assertion because the stomp is VISIBLE: artnetTick runs
+         at p7:1636 and updateStorm — which calls this — at p7:1646, so an
+         ungated write lands AFTER the desk's inside the same frame, and
+         updateRig reads it at p7:1664.  One frame of house light in the middle
+         of the desk's blackout, corrected on the next. */
+      HOUSE.house = -1;
+      updateHouseWait();
+      if(SHOW.houseAfter !== null && SHOW.houseWait !== null)
+        throw new Error('the setup did not land the curtain, so nothing was queued to fire');
+      if(HOUSE.house !== -1)
+        throw new Error('the queued house level wrote ' + HOUSE.house + ' over a desk that owns ' +
+          'the house circuits — RULING FC gates the LEVEL as well as the portal');
+      HOUSE.house = 0;
+      if(Math.abs(p.tCol.g - 1) < 1e-9 && Math.abs(p.tCol.r) < 1e-9)
+        throw new Error('a cue queued before the desk took over dressed the frame green over the desk');
+      /* AND THE GATE HAS TO ASK WHICH RIG, NOT JUST WHETHER A DESK IS TALKING.
+         artDriving() is true on ANY stage, but artnetTick refuses to write
+         unless STAGE is the Palace (RULING EN) — so a gate on artDriving()
+         alone fails OPEN: walked to an Arc house with a desk live and writing
+         NOTHING, the interval's neon was discarded and never struck again for
+         the rest of the session.  A review found that; nothing caught it. */
+      const home = STAGE;
+      try{
+        stageSwitch('arcMain');
+        if(STAGE !== 'arcMain') throw new Error('could not get to the Arc to test this');
+        showLoad('beetlejuice');
+        const p2 = SHOW.bjPortal;
+        if(!p2) throw new Error('Beetlejuice on the Arc has no lit frame to queue for');
+        setPortal({lvl:0, col:0x000000});
+        SHOW.houseWait = 0.5;
+        SHOW.houseAfter = {portal:{lvl:1, col:0x00ff00}};
+        FLY[0].pos = FLY[0].target = TRIMS[SHOW.curtainKey];
+        FLY[0].open = FLY[0].travTarget = 0;
+        if(!artDriving())
+          throw new Error('the desk stopped driving, so this clause cannot tell the stages apart');
+        HOUSE.house = -1;
+        updateHouseWait();
+        if(SHOW.houseWait !== null)
+          throw new Error('the setup did not land the Arc curtain, so nothing was queued to fire');
+        /* the mirror of the clause below: the level must LAND here, or the gate
+           has simply failed shut on the Arc instead of open on the Palace */
+        if(HOUSE.house !== 0.5)
+          throw new Error('on the Arc, with the desk writing nothing, the queued house level was ' +
+            'discarded too — it read ' + HOUSE.house + ' instead of 0.5');
+        HOUSE.house = 0;
+        if(!(Math.abs(p2.tCol.g - 1) < 1e-9 && Math.abs(p2.tCol.r) < 1e-9))
+          throw new Error('on the Arc, with the desk writing nothing, the queued portal was ' +
+            'discarded anyway — the gate asked whether a desk is talking, not whether it is ' +
+            'talking to THIS rig');
+      } finally { stageSwitch(home); }
+      artSetOn(false);
+      return 'the interval\\u2019s queued portal fired while the desk held the Palace frame and did not take it, ' +
+             'and still struck on a stage the desk cannot write to';
+    });
+
     P('the sign is a FLY: target and speed, across its whole travel (RULING EZ)', ()=>{
       /* Jack: "make it so with aretnet the beetljuice sign moves like any
          other fly not just up floor and mid."  So it is two channels in the
@@ -2242,7 +2391,7 @@ const P = async (name, fn)=>{
              held.toFixed(2) + 'm';
     });
 
-    P('the mover block is where the RIG puts it, not at 310 (RULINGS EO, ET)', ()=>{
+    P('the mover block is where the RIG puts it, not written down (RULINGS EO, ET)', ()=>{
       showLoad('beetlejuice');
       const ws = deskOn();
       const m = sceneFind('attic').pmv.all, i = mvAll().findIndex(x=>x.m === m);
@@ -2256,16 +2405,16 @@ const P = async (name, fn)=>{
                      colDur:0, gobo:0, color:new T.Color()};
       FIXTURES.push(ghost);
       try{
-        if(artMoverBase() !== 318)
+        if(artMoverBase() !== 322)
           throw new Error('a 40th fixture left the mover block at ' + artMoverBase());
         const bytes = []; for(let k = 0; k < i + 1; k++) bytes.push(k === i ? 255 : 0);
         ws.deliver(mvFrame(bytes)); artnetTick(1/60);
         if(Math.abs(m.target - m.out) > 1e-6)
-          throw new Error('with the block at 317 the attic read ' + m.target.toFixed(2) +
+          throw new Error('with the block moved by a 40th lantern the attic read ' + m.target.toFixed(2) +
             'm — the base is written down somewhere, not computed');
       } finally { FIXTURES.pop(); }
       artSetOn(false);
-      return 'a 40th lantern moved the mover block to 317 and the desk still found the attic';
+      return 'a 40th lantern moved the mover block to ' + artMoverBase() + ' and the desk still found the attic';
     });
 
     P('a scene the RAIL hauls takes no mover channel at all (RULINGS CW, ES, ET)', ()=>{
