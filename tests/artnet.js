@@ -1595,9 +1595,25 @@ const P = async (name, fn)=>{
       SHOW.houseAfter = {portal:{lvl:1, col:0x00ff00}};
       FLY[0].pos = FLY[0].target = TRIMS[SHOW.curtainKey];
       FLY[0].open = FLY[0].travTarget = 0;
+      /* THE HOUSE LEVEL IS THE OTHER HALF OF THE SAME QUEUE, and it is on a
+         SENTINEL for exactly the reason the neon case above carries one: the
+         desk's own frame has already written HOUSE.house to 0, so "it is not
+         0.5" is the state the setup left, not a thing this case proved.  Plant
+         a level no byte and no queue can produce.
+
+         It is worth an assertion because the stomp is VISIBLE: artnetTick runs
+         at p7:1636 and updateStorm — which calls this — at p7:1646, so an
+         ungated write lands AFTER the desk's inside the same frame, and
+         updateRig reads it at p7:1664.  One frame of house light in the middle
+         of the desk's blackout, corrected on the next. */
+      HOUSE.house = -1;
       updateHouseWait();
       if(SHOW.houseAfter !== null && SHOW.houseWait !== null)
         throw new Error('the setup did not land the curtain, so nothing was queued to fire');
+      if(HOUSE.house !== -1)
+        throw new Error('the queued house level wrote ' + HOUSE.house + ' over a desk that owns ' +
+          'the house circuits — RULING FC gates the LEVEL as well as the portal');
+      HOUSE.house = 0;
       if(Math.abs(p.tCol.g - 1) < 1e-9 && Math.abs(p.tCol.r) < 1e-9)
         throw new Error('a cue queued before the desk took over dressed the frame green over the desk');
       /* AND THE GATE HAS TO ASK WHICH RIG, NOT JUST WHETHER A DESK IS TALKING.
@@ -1620,7 +1636,16 @@ const P = async (name, fn)=>{
         FLY[0].open = FLY[0].travTarget = 0;
         if(!artDriving())
           throw new Error('the desk stopped driving, so this clause cannot tell the stages apart');
+        HOUSE.house = -1;
         updateHouseWait();
+        if(SHOW.houseWait !== null)
+          throw new Error('the setup did not land the Arc curtain, so nothing was queued to fire');
+        /* the mirror of the clause below: the level must LAND here, or the gate
+           has simply failed shut on the Arc instead of open on the Palace */
+        if(HOUSE.house !== 0.5)
+          throw new Error('on the Arc, with the desk writing nothing, the queued house level was ' +
+            'discarded too — it read ' + HOUSE.house + ' instead of 0.5');
+        HOUSE.house = 0;
         if(!(Math.abs(p2.tCol.g - 1) < 1e-9 && Math.abs(p2.tCol.r) < 1e-9))
           throw new Error('on the Arc, with the desk writing nothing, the queued portal was ' +
             'discarded anyway — the gate asked whether a desk is talking, not whether it is ' +
