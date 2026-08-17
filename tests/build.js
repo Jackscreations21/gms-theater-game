@@ -1074,6 +1074,7 @@ const probe = `
     const before = localStorage.getItem(KEY);
     _saveReadDone = false;                  // the state the eager frame runs in
     _buildFlushT = 0; _buildSlowT = 10;     // not whatever the boot left behind
+    _buildLoading = false;                  // the twin the rename exists to separate
     /* (a) the dirty flush is held */
     buildDirty();
     buildTick(2.0);
@@ -1096,8 +1097,21 @@ const probe = `
     buildTick(2.0);
     if(!localStorage.getItem(KEY))
       throw new Error('the gate never opened — buildTick wrote nothing after buildLoad');
-    return 'flush held, heartbeat held, and buildLoad itself opened the gate';
+    /* (d) and the HEARTBEAT can really write, which nothing in the suite has
+       ever proved.  Clause (b) only ever asserts it does NOT fire; neuter the
+       else-if branch in buildTick outright and all 21 suites stay green.
+       A path only ever asserted negative is a path with no test at all. */
+    localStorage.removeItem(KEY);
+    _buildDirty = false;                    // no dirty call: the heartbeat alone
+    _buildSlowT = 10;
+    buildTick(11.0);
+    if(!localStorage.getItem(KEY))
+      throw new Error('the ten-second heartbeat never wrote, with the gate open and 11s elapsed');
+    return 'flush held, heartbeat held, buildLoad opened the gate, and the heartbeat writes';
   });
+  /* ^ this case must stay LAST in probe 1: it exits with the gate open, the
+     timers reset and a real save in the key, and anything appended after it
+     would inherit all three. */
 
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');

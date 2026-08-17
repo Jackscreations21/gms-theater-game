@@ -1191,3 +1191,27 @@ against this list before opening a PR; **add new traps as you hit them.**
   (tools/draws.js, caught in review); and an src-only edit leaves the probe
   measuring the previous build — `sh build.sh` before every re-measure, and
   the probe prints the built file's byte size so a stale build shows itself.
+
+- **One eager frame runs before `buildLoad()`, and `buildTick` is in it.** The
+  p7 boot tail is `init()` → one deliberate eager frame → `buildLoad()`, so
+  anything marking the save dirty during construction flushes an EMPTY world
+  over the player's build seconds before the load reads it — and the load then
+  faithfully restores the nothing it just wrote. Latent from the day the save
+  shipped, because nothing at boot had ever called `buildDirty`; the studio
+  grids called it a hundred times through `removeBody` and it fired at once.
+  Fixed by `_saveReadDone` (#218): **the gate is the READ, not the flag** —
+  set it as `buildLoad`'s FIRST line so its early returns open it too, or a
+  player with no save yet can never make one. **If you add anything that
+  builds or strips at boot, this is the trap it springs.**
+- **A path only ever asserted NEGATIVE is a path with no test at all.**
+  `buildTick` has two write routes — the 1s dirty flush and the 10s heartbeat.
+  Both were held shut by assertions and neither was ever proved to *write*:
+  neutering the heartbeat branch outright left all 21 suites green. "It did
+  not fire when it shouldn't" is not evidence it fires when it should. Every
+  gate wants both directions, which is the mirror clause of RULING FC wearing
+  a second hat.
+- **A `sed` rename stops at the files you list, and the docs are not in them.**
+  Renaming `_buildLoaded` → `_saveReadDone` across `src/` and `tests/` left
+  `FUTURE.md` naming a symbol that existed nowhere in the tree. A reader greps
+  it, finds nothing, and concludes the fix was never landed. **Grep the WHOLE
+  repo after a rename**, docs included.
