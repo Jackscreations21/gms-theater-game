@@ -1221,32 +1221,48 @@ const probe2 = `
 `;
 
 const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?script>/g,'');
-try{ w.eval(script + probe); }
-catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
-let errs = (w.__errs||[]).length;
 
 /* ---- the one thing no probe can see -------------------------------------
    The save gate's INITIAL value is unobservable from inside the page: by the
    time any probe runs, p7's boot tail has already called buildLoad and set it
-   true, and the case above has to manufacture the pre-load state to test the
-   gate at all.  So flip the declaration to `= true` and the eager frame is
-   completely ungated for every real player while both boots report zero
-   failures — measured, not supposed.
-   It is pinned here instead, against the BUILT file as text, because that is
-   the only place the boot-time value still exists. */
+   true, and the case in probe 1 has to manufacture the pre-load state to test
+   the gate at all.  Declare it true and the eager frame is completely ungated
+   for every real player while both boots report zero failures — measured, not
+   supposed.  It is pinned here instead, against the BUILT BUNDLE as text,
+   because that is the only place the boot-time value still exists.
+
+   IT SEARCHES script, NOT html, AND DEMANDS EXACTLY ONE MATCH.  A first-match
+   test over the whole document is defeated by PROSE: a comment above the
+   declaration that quotes it — and the comment block there discusses this very
+   symbol at length — shadows the real one, and a flipped declaration then
+   reads green with all 21 suites passing.  Measured, not imagined.
+
+   It carries its OWN counter and is deliberately NOT folded into errs, so a
+   failure here cannot suppress the second boot below; and it runs before the
+   eval so it fails without waiting for a JSDOM boot. */
+let srcErrs = 0;
 {
   const name = 'the save gate is declared false, so the eager frame starts shut';
-  const m = /var\s+_saveReadDone\s*=\s*(\w+)\s*;/.exec(html);
-  if(!m){
-    console.log('  ERR '+name+': no `var _saveReadDone = …;` declaration in the built file');
-    errs++;
-  } else if(m[1] !== 'false'){
-    console.log('  ERR '+name+': it is declared '+m[1]+', so buildTick may write before buildLoad');
-    errs++;
+  const all = [...script.matchAll(/var\s+_saveReadDone\s*=\s*(\w+)\s*;/g)];
+  if(all.length !== 1){
+    console.log('  ERR '+name+': found '+all.length+' declarations of it in the bundle, expected 1'
+      +(all.length ? ' — prose quoting the declaration shadows the real one'
+                   : ' — either it is gone, or it was reformatted (folded onto the shared var'
+                     +' line, let instead of var, no semicolon); this check cannot tell those apart'));
+    srcErrs++;
+  } else if(all[0][1] !== 'false'){
+    console.log('  ERR '+name+': it is declared '+all[0][1]+', so buildTick may write before'
+      +' buildLoad. (If that value is falsy this is safe and the check is being conservative —'
+      +' it pins the literal, not the truthiness.)');
+    srcErrs++;
   } else {
     console.log('  ok  '+name+'  -> "pinned at the source; no probe can reach it after boot"');
   }
 }
+
+try{ w.eval(script + probe); }
+catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
+let errs = (w.__errs||[]).length;
 
 if(!errs && w.__saveJson){
   const dom2 = new JSDOM(html.replace(/<script src=.*?<\/script>/,''),
@@ -1261,4 +1277,4 @@ if(!errs && w.__saveJson){
   catch(e){ console.log('SECOND BOOT THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
   errs += (w2.__errs||[]).length;
 }
-process.exit(errs ? 1 : 0);
+process.exit((errs + srcErrs) ? 1 : 0);

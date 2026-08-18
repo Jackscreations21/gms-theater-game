@@ -1136,7 +1136,7 @@ function buildDirty(){ if(!_buildLoading) _buildDirty = true; }
 /* dirty writes flush within a second; a slow heartbeat saves every ten
    regardless, so a missed dirty call can never lose more than that */
 function buildTick(dt){
-  if(!_saveReadDone) return;      // see _saveReadDone above — the eager frame
+  if(!_saveReadDone) return;       // see _saveReadDone above — the eager frame
   _buildFlushT -= dt;
   _buildSlowT -= dt;
   if(_buildDirty && _buildFlushT <= 0){
