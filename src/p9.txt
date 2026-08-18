@@ -509,6 +509,53 @@ function vrHit(x, y, w, h, fn, meta){
   VR.hits.push(o);
 }
 
+/* ---- THE TAB STRIP'S GEOMETRY, IN ONE PLACE ----
+   The strip used to be counted off at a fixed pitch from a fixed x, and the
+   count was checked BY HAND against the canvas width each time a tab was
+   added.  That check was missed once and cost the whole of RULING DP (see
+   vrDrawConsole), so the pitch is now DERIVED: the numbers below say where the
+   strip starts, how much room it may use, and the widest it may ever draw a
+   tab, and the count decides the rest.
+
+   x is 300 and stays there: the only chrome drawn to the left of the strip is
+   the board name at x 22 in 600 26px, and the longest of the three board
+   labels — STUDIO THEATRE — is 8.78em, about 228px, so it ends near 250.  300
+   clears it by fifty pixels at any count. */
+const VR_TABSTRIP = {x:300, y:12, h:40, gap:6, pitchMax:112, pad:12,
+                     fontMax:17, fontMin:10, right:10};
+/* Helvetica-Bold advance widths, em x 1000, for the characters a tab label can
+   hold; anything else is charged the widest of them.  The font clamp measures
+   from THESE and not from ctx.measureText, because the suite's canvas is a
+   stub that answers 100 for every string: a layout that asked the canvas would
+   be a layout no test could check, and it would be the stand-in being
+   measured rather than the thing. */
+const VR_TAB_ADV = {' ':278, '-':333, '.':278,
+  '0':556,'1':556,'2':556,'3':556,'4':556,'5':556,'6':556,'7':556,'8':556,'9':556,
+  'A':722,'B':722,'C':722,'D':722,'E':667,'F':611,'G':778,'H':722,'I':278,
+  'J':556,'K':722,'L':611,'M':889,'N':722,'O':778,'P':667,'Q':778,'R':722,
+  'S':667,'T':611,'U':722,'V':667,'W':944,'X':667,'Y':667,'Z':611};
+function vrTabTextEm(s){
+  const str = String(s == null ? '' : s).toUpperCase();
+  let em = 0;
+  for(let i = 0; i < str.length; i++) em += (VR_TAB_ADV[str[i]] || 944) / 1000;
+  return em;
+}
+/* the pitch out of the width, then the font out of the pitch.  The last box
+   ends at x + pitch*n - gap, and pitch*n is at most the room, so the strip is
+   inside the canvas by construction for ANY count — nine, ten, eleven. */
+function vrTabLayout(tabs){
+  const S = VR_TABSTRIP, list = tabs || [];
+  const n = Math.max(1, list.length);
+  const room = VRC.W - S.x - S.right;
+  const pitch = Math.max(1, Math.min(S.pitchMax, Math.floor(room / n)));
+  const w = Math.max(1, pitch - S.gap);
+  let widest = 0;
+  for(const t of list) widest = Math.max(widest, vrTabTextEm(t && t.label));
+  const fits = widest > 0 ? Math.floor((w - S.pad) / widest) : S.fontMax;
+  const font = Math.max(S.fontMin, Math.min(S.fontMax, fits));
+  return {x:S.x, y:S.y, w:w, h:S.h, pitch:pitch, font:font};
+}
+
 function vrDrawConsole(force){
   vrCanvas();
   const g = VR.ctx, W = VRC.W, H = VRC.H;
@@ -525,23 +572,38 @@ function vrDrawConsole(force){
   const board = (typeof STAGES !== 'undefined' && STAGES[STAGE]) ? STAGES[STAGE].label : '';
   g.fillText(board, 22, 32);
 
-  /* tabs.  The strip starts at 300 rather than 380 because RULING CV makes it
-     EIGHT: at 112 each, eight from 380 would end at 1276 on a 1200-wide canvas
-     and SCRIPT would be drawn off the edge with a hit region nobody can reach.
-     From 300 the last box ends at 1190.  Nothing pins a tab by pixel —
-     tests/vr.js sets VR.page directly — so the strip is free to move and the
-     rows below it, which ARE pinned by pixel, are not. */
-  let tx = 300;
+  /* tabs.  The strip once started at 380, and RULING CV's EIGHTH tab moved it
+     to 300 because at a pitch of 112 eight from 380 ended at 1276 on a
+     1200-wide canvas and SCRIPT would have been drawn off the edge with a hit
+     region nobody can reach.  Then RULING DP added a NINTH — LIGHTING — and
+     left the pitch and the start exactly where they were: the ninth box opened
+     at 300 + 112*8 = 1196 and ran to 1302, its label centred at 1249, off the
+     canvas entirely, and the only part of it a hand could reach was the four
+     pixels from 1196 to 1200 — about 4.7mm on a 1.42m desk face.  vrPageLighting
+     carries the ART-NET switch, so the whole headset surface of the Art-Net
+     round sat behind that 4.7mm and nobody reported it, because that round has
+     never been worn.
+
+     Counting the tabs off by hand is what failed, so it is not done by hand any
+     more: vrTabLayout takes the pitch out of the width and the label size out
+     of the pitch (see VR_TABSTRIP above).  A tenth tab and an eleventh narrow
+     the strip; they cannot walk off the edge.  Nothing pins a tab by pixel —
+     tests/vr.js sets VR.page directly, and the regions now carry a tab meta so
+     they are findable by meaning — so the strip is free to move, while the rows
+     below it, which ARE pinned by pixel, are untouched. */
+  const TS = vrTabLayout(VR_TABS);
+  let tx = TS.x;
   for(const t of VR_TABS){
-    const w = 112, on = (VR.page === t.id);
+    const on = (VR.page === t.id);
     g.fillStyle = on ? '#26313e' : '#161b22';
-    g.fillRect(tx, 12, w - 6, 40);
+    g.fillRect(tx, TS.y, TS.w, TS.h);
     g.fillStyle = on ? '#ffd08a' : '#8b95a3';
-    g.font = '600 17px Helvetica, Arial, sans-serif';
+    g.font = '600 ' + TS.font + 'px Helvetica, Arial, sans-serif';
     g.textAlign = 'center';
-    g.fillText(t.label, tx + (w-6)/2, 33);
-    vrHit(tx, 12, w - 6, 40, ((id)=>()=>{ VR.page = id; vrDrawConsole(true); })(t.id));
-    tx += w;
+    g.fillText(t.label, tx + TS.w/2, TS.y + 21);
+    vrHit(tx, TS.y, TS.w, TS.h,
+          ((id)=>()=>{ VR.page = id; vrDrawConsole(true); })(t.id), {tab:t.id});
+    tx += TS.pitch;
   }
   g.textAlign = 'left';
 
