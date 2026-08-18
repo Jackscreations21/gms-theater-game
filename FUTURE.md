@@ -316,10 +316,14 @@ called `buildDirty`**. The grids branch called it 100 times (through
 immediately: `build.js` and `carp.js` both fell over with *"the nailed pair
 never returned"*.
 
-**The fix on `gms-studio-grids`:** `buildTick` refuses to write until
-`buildLoad` has been called, whatever it found (`var _buildLoaded` in `p4c`).
-That is two lines and it is right, but it is currently buried in an unmerged
-feature branch.
+**LANDED as #218** — lifted out of `gms-studio-grids` into a PR of its own,
+which is what the "Decide" below asked for. `buildTick` refuses to write until
+`buildLoad` has been called, whatever it found (`var _saveReadDone` in `p4c` —
+renamed from the branch's `_buildLoaded`, which sat two letters from the
+existing `_buildLoading` that `buildLoad` also sets). **This item stays on the
+list, with its number, until the record commit rewrites STATE.md** — item
+numbers here are cited by STATE.md, so renumbering before that would leave it
+pointing at the wrong things.
 
 **Decide:** cherry-pick it into its own PR now, or let it ride with PR 3. It
 belongs in `TRAPS.md` either way.

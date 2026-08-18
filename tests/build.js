@@ -1047,6 +1047,72 @@ const probe = `
     return 'delivered, palleted, and on the wire as k:ladder';
   });
 
+  /* ---- the eager frame must not write (FUTURE.md PART 1a item 3) ---------
+     p7's boot tail runs init(), then ONE eager frame, and only THEN
+     buildLoad().  buildTick is inside that frame, so anything that marks the
+     save dirty while the world is being constructed flushes an EMPTY world
+     over the player's build seconds before the load goes to read it — and
+     the load then faithfully restores the nothing it just wrote.
+
+     THREE CLAUSES, and the third is the one that matters.  buildTick has TWO
+     ways to write — the one-second dirty flush and the ten-second heartbeat,
+     which needs no dirty call at all — so both are held shut separately.
+     Then the gate is opened BY CALLING buildLoad, never by setting the flag
+     by hand: setting it by hand tests "buildTick writes when the flag is
+     true", which is a tautology, and leaves the line under test — the
+     assignment inside buildLoad — completely unasserted.  Deleting that line
+     kills the save system outright and a hand-set clause still reads green.
+     The call also lands on the NO-SAVE path on purpose, because the source
+     comment's claim is that the flag is set ahead of every early return: a
+     player with no save yet must still be able to make one.
+     The timers are set explicitly rather than inherited from the boot
+     frames, so the case does not quietly stop crossing a threshold if a
+     flush constant is ever retuned. */
+  P('buildTick writes nothing until buildLoad has run, then does', ()=>{
+    const KEY = BUILD_SAVE_KEY;
+    localStorage.setItem(KEY, '{"SENTINEL":1}');
+    const before = localStorage.getItem(KEY);
+    _saveReadDone = false;                  // the state the eager frame runs in
+    _buildFlushT = 0; _buildSlowT = 10;     // not whatever the boot left behind
+    _buildLoading = false;                  // the twin the rename exists to separate
+    /* (a) the dirty flush is held */
+    buildDirty();
+    buildTick(2.0);
+    let now = localStorage.getItem(KEY);
+    if(now !== before)
+      throw new Error('the dirty flush wrote before the load: '+String(now).slice(0, 60));
+    /* (b) the heartbeat is held too — it fires with no dirty call at all */
+    _buildDirty = false;
+    buildTick(11.0);
+    now = localStorage.getItem(KEY);
+    if(now !== before)
+      throw new Error('the heartbeat wrote before the load: '+String(now).slice(0, 60));
+    /* (c) the REAL read opens it, on the no-save path */
+    localStorage.removeItem(KEY);
+    buildLoad();
+    if(!_saveReadDone)
+      throw new Error('buildLoad returned without opening the gate');
+    buildDirty();
+    _buildFlushT = 0;
+    buildTick(2.0);
+    if(!localStorage.getItem(KEY))
+      throw new Error('the gate never opened — buildTick wrote nothing after buildLoad');
+    /* (d) and the HEARTBEAT can really write, which nothing in the suite has
+       ever proved.  Clause (b) only ever asserts it does NOT fire; neuter the
+       else-if branch in buildTick outright and all 21 suites stay green.
+       A path only ever asserted negative is a path with no test at all. */
+    localStorage.removeItem(KEY);
+    _buildDirty = false;                    // no dirty call: the heartbeat alone
+    _buildSlowT = 10;
+    buildTick(11.0);
+    if(!localStorage.getItem(KEY))
+      throw new Error('the ten-second heartbeat never wrote, with the gate open and 11s elapsed');
+    return 'flush held, heartbeat held, buildLoad opened the gate, and the heartbeat writes';
+  });
+  /* ^ this case must stay LAST in probe 1: it exits with the gate open, the
+     timers reset and a real save in the key, and anything appended after it
+     would inherit all three. */
+
   console.log(window.__errs.length ? '--- failures: '+window.__errs.length+' ---'
                                    : '--- failures: 0 ---');
   window.__errs.forEach(e=>console.log('  '+e));
@@ -1155,6 +1221,66 @@ const probe2 = `
 `;
 
 const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?script>/g,'');
+
+/* ---- the one thing no probe can see -------------------------------------
+   The save gate's INITIAL value is unobservable from inside the page: by the
+   time any probe runs, p7's boot tail has already called buildLoad and set it
+   true, and the case in probe 1 has to manufacture the pre-load state to test
+   the gate at all.  Declare it true and the eager frame is completely ungated
+   for every real player while both boots report zero failures — measured, not
+   supposed.  It is pinned here instead, against the BUILT BUNDLE as text,
+   because that is the only place the boot-time value still exists.
+
+   IT SEARCHES script, NOT html, AND DEMANDS EXACTLY ONE MATCH.  A first-match
+   test over the whole document is defeated by PROSE: a comment above the
+   declaration that quotes it — and the comment block there discusses this very
+   symbol at length — shadows the real one, and a flipped declaration then
+   reads green with all 21 suites passing.  Measured, not imagined.
+
+   It carries its OWN counter and is deliberately NOT folded into errs, so a
+   failure here cannot suppress the second boot below; and it runs before the
+   eval so it fails without waiting for a JSDOM boot. */
+let srcErrs = 0;
+console.log('--- the source pin ---');
+{
+  const name = 'the save gate is declared false, so the eager frame starts shut';
+  const all = [...script.matchAll(/var\s+_saveReadDone\s*=\s*(\w+)\s*;/g)];
+  if(all.length !== 1){
+    console.log('  ERR '+name+': found '+all.length+' declarations of it in the bundle, expected 1'
+      +(all.length ? ' — either prose quotes it (this check matches TEXT, comments included, so'
+                     +' rephrase the prose) or there are two real declarations'
+                   : ' — either it is gone, or it was reformatted (folded onto the shared var'
+                     +' line, let instead of var, no semicolon, = !1); this check cannot tell'
+                     +' those apart'));
+    srcErrs++;
+  } else if(all[0][1] !== 'false'){
+    console.log('  ERR '+name+': it is declared '+all[0][1]+', so buildTick may write before'
+      +' buildLoad. (If that value is falsy this is safe and the check is being conservative —'
+      +' it pins the literal, not the truthiness.)');
+    srcErrs++;
+  } else {
+    console.log('  ok  '+name+'  -> "pinned at the source; no probe can reach it after boot"');
+  }
+  /* AND NOTHING ELSE MAY WRITE IT.  Counting DECLARATIONS is not enough: put
+     `_saveReadDone = true;` on the line after the declaration and the gate is
+     open from the first top-level statement, while the declaration still reads
+     false and the check above still prints ok — measured, 21/21, exit 0.  The
+     probe case cannot see it either, because it manufactures the pre-load
+     state itself.  Only writes on paths the probe never exercises — top level,
+     or a boot-only function — get through, so the count is the guard.
+     Exactly two are legitimate: the declaration, and buildLoad's first line. */
+  const n2 = 'nothing but the declaration and buildLoad writes the save gate';
+  const writes = [...script.matchAll(/_saveReadDone\s*=[^=]/g)];
+  if(writes.length !== 2){
+    console.log('  ERR '+n2+': '+writes.length+' assignments to it in the bundle, expected 2'
+      +' — a third can open the gate at boot with the declaration still reading false');
+    srcErrs++;
+  } else {
+    console.log('  ok  '+n2+'  -> "two assignments: the declaration, and buildLoad"');
+  }
+}
+console.log('--- source-pin failures: '+srcErrs+' ---');
+
 try{ w.eval(script + probe); }
 catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
 let errs = (w.__errs||[]).length;
@@ -1172,4 +1298,4 @@ if(!errs && w.__saveJson){
   catch(e){ console.log('SECOND BOOT THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
   errs += (w2.__errs||[]).length;
 }
-process.exit(errs ? 1 : 0);
+process.exit((errs + srcErrs) ? 1 : 0);

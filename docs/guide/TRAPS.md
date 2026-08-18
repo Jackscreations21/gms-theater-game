@@ -1191,3 +1191,59 @@ against this list before opening a PR; **add new traps as you hit them.**
   (tools/draws.js, caught in review); and an src-only edit leaves the probe
   measuring the previous build — `sh build.sh` before every re-measure, and
   the probe prints the built file's byte size so a stale build shows itself.
+
+- **One eager frame runs before `buildLoad()`, and `buildTick` is in it.** The
+  p7 boot tail is `init()` → one deliberate eager frame → `buildLoad()`, so
+  anything marking the save dirty during construction flushes an EMPTY world
+  over the player's build seconds before the load reads it — and the load then
+  faithfully restores the nothing it just wrote. Latent from the day the save
+  shipped, because nothing at boot had ever called `buildDirty`; the studio
+  grids called it a hundred times through `removeBody` and it fired at once.
+  Fixed by `_saveReadDone` (#218): **the gate is the READ, not the flag** —
+  set it as `buildLoad`'s FIRST line so its early returns open it too, or a
+  player with no save yet can never make one. **If you add anything that
+  builds or strips at boot, this is the trap it springs.**
+- **A path only ever asserted NEGATIVE is a path with no test at all.**
+  `buildTick` has two write routes — the 1s dirty flush and the 10s heartbeat.
+  Both were held shut by assertions and neither was ever proved to *write*:
+  neutering the heartbeat branch outright left all 21 suites green. "It did
+  not fire when it shouldn't" is not evidence it fires when it should. Every
+  gate wants both directions, which is the mirror clause of RULING FC wearing
+  a second hat.
+- **A `sed` rename stops at the files you list, and the docs are not in them.**
+  Renaming `_buildLoaded` → `_saveReadDone` across `src/` and `tests/` left
+  `FUTURE.md` naming a symbol that existed nowhere in the tree. A reader greps
+  it, finds nothing, and concludes the fix was never landed. **Grep the WHOLE
+  repo after a rename**, docs included.
+- **The bundle is strict in a browser and SLOPPY in the harness, and the
+  suites depend on the difference without saying so.** `'use strict'` is the
+  first statement of the last `<script>` (p2), but every suite extracts the
+  script with a greedy `html.match(/<script>([\s\S]*)<\/script>/g).pop()`,
+  which spans the FIRST opening tag to the LAST closing one and glues every
+  inline script into one blob. The directive loses its position, so `w.eval`
+  runs sloppy — which is the only reason a probe may assign to a bundle
+  symbol that does not exist yet. **Tighten that regex to take the real last
+  script and every such probe becomes a `ReferenceError`**, pointing at the
+  probe rather than at the regex.
+- **An initial value is unobservable after boot, so pin it at the SOURCE.**
+  The save gate's `var _saveReadDone = false` cannot be checked from inside
+  the page: by the time any probe runs, `buildLoad` has set it true, and a
+  case that tests the gate has to manufacture the pre-load state. Flipping the
+  initialiser to `true` ungates the eager frame for every real player and
+  leaves both boots green. `tests/build.js` pins it against the BUILT FILE AS
+  TEXT instead — the one place the boot-time value still exists.
+- **Some guarantees are only PARTLY expressible as a test, and the honest move
+  is to write down which part.** "This flag is false at boot and only
+  `buildLoad` opens it" took five review passes and still is not fully pinned.
+  The behavioural property — *the save was read before it was written* — is
+  unobservable on a clean build, because nothing at boot calls `buildDirty`,
+  which is exactly why the bug stayed latent from the day the save shipped. So
+  `tests/build.js` pins it three ways instead: a four-clause probe case, the
+  declaration's literal value, and the COUNT OF ASSIGNMENTS in the bundle
+  (exactly two — the declaration and `buildLoad`). Each of the first two was
+  defeated in review by a build that passed 21/21 and exited 0: the value pin
+  by PROSE quoting the declaration above it, the declaration pin by
+  `_saveReadDone = true;` on the following line. **Known residual: the
+  assignment count is text, so a write spelled another way still gets past
+  it.** Recording the hole beats pretending it is closed — and beats a sixth
+  pass on the scaffolding of a three-line fix.
