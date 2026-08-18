@@ -1241,14 +1241,17 @@ const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?scr
    failure here cannot suppress the second boot below; and it runs before the
    eval so it fails without waiting for a JSDOM boot. */
 let srcErrs = 0;
+console.log('--- the source pin ---');
 {
   const name = 'the save gate is declared false, so the eager frame starts shut';
   const all = [...script.matchAll(/var\s+_saveReadDone\s*=\s*(\w+)\s*;/g)];
   if(all.length !== 1){
     console.log('  ERR '+name+': found '+all.length+' declarations of it in the bundle, expected 1'
-      +(all.length ? ' — prose quoting the declaration shadows the real one'
+      +(all.length ? ' — either prose quotes it (this check matches TEXT, comments included, so'
+                     +' rephrase the prose) or there are two real declarations'
                    : ' — either it is gone, or it was reformatted (folded onto the shared var'
-                     +' line, let instead of var, no semicolon); this check cannot tell those apart'));
+                     +' line, let instead of var, no semicolon, = !1); this check cannot tell'
+                     +' those apart'));
     srcErrs++;
   } else if(all[0][1] !== 'false'){
     console.log('  ERR '+name+': it is declared '+all[0][1]+', so buildTick may write before'
@@ -1258,7 +1261,25 @@ let srcErrs = 0;
   } else {
     console.log('  ok  '+name+'  -> "pinned at the source; no probe can reach it after boot"');
   }
+  /* AND NOTHING ELSE MAY WRITE IT.  Counting DECLARATIONS is not enough: put
+     `_saveReadDone = true;` on the line after the declaration and the gate is
+     open from the first top-level statement, while the declaration still reads
+     false and the check above still prints ok — measured, 21/21, exit 0.  The
+     probe case cannot see it either, because it manufactures the pre-load
+     state itself.  Only writes on paths the probe never exercises — top level,
+     or a boot-only function — get through, so the count is the guard.
+     Exactly two are legitimate: the declaration, and buildLoad's first line. */
+  const n2 = 'nothing but the declaration and buildLoad writes the save gate';
+  const writes = [...script.matchAll(/_saveReadDone\s*=[^=]/g)];
+  if(writes.length !== 2){
+    console.log('  ERR '+n2+': '+writes.length+' assignments to it in the bundle, expected 2'
+      +' — a third can open the gate at boot with the declaration still reading false');
+    srcErrs++;
+  } else {
+    console.log('  ok  '+n2+'  -> "two assignments: the declaration, and buildLoad"');
+  }
 }
+console.log('--- source-pin failures: '+srcErrs+' ---');
 
 try{ w.eval(script + probe); }
 catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
