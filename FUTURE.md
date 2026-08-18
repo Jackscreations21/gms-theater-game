@@ -41,7 +41,14 @@ the first real QLC+ desk was measured idling at ~1.8s between packets, `EZ`
 moved the Beetlejuice sign onto two fly channels, and `FA` made
 `docs/ARTNET.md` a flat one-line-per-channel list — all the same day.
 **`EY` — the band channels on a dead universe — is ruled and NOT built; see
-PART 1a item 4.** The next spec starts at `FE`.
+PART 1a item 4.**
+
+**`FE`–`FW` are RESERVED by the Maker Pen round**
+(`docs/superpowers/specs/2026-08-17-maker-pen-design.md`, ruled 2026-08-17,
+being built now — a Rec Room style building pen alongside the wood system,
+plus a props shelf and Circuits). **The next spec after that one starts at
+`FX`.** Ruled and reserved is not built: check the spec's own phase list and
+STATE.md before assuming any of FE–FW is in the code.
 
 When something in here ships, **delete it from this file** — this is a list of
 what is *not* done. It stops being useful the moment it becomes a history.
