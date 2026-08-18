@@ -1232,3 +1232,18 @@ against this list before opening a PR; **add new traps as you hit them.**
   initialiser to `true` ungates the eager frame for every real player and
   leaves both boots green. `tests/build.js` pins it against the BUILT FILE AS
   TEXT instead — the one place the boot-time value still exists.
+- **Some guarantees are only PARTLY expressible as a test, and the honest move
+  is to write down which part.** "This flag is false at boot and only
+  `buildLoad` opens it" took five review passes and still is not fully pinned.
+  The behavioural property — *the save was read before it was written* — is
+  unobservable on a clean build, because nothing at boot calls `buildDirty`,
+  which is exactly why the bug stayed latent from the day the save shipped. So
+  `tests/build.js` pins it three ways instead: a four-clause probe case, the
+  declaration's literal value, and the COUNT OF ASSIGNMENTS in the bundle
+  (exactly two — the declaration and `buildLoad`). Each of the first two was
+  defeated in review by a build that passed 21/21 and exited 0: the value pin
+  by PROSE quoting the declaration above it, the declaration pin by
+  `_saveReadDone = true;` on the following line. **Known residual: the
+  assignment count is text, so a write spelled another way still gets past
+  it.** Recording the hole beats pretending it is closed — and beats a sixth
+  pass on the scaffolding of a three-line fix.
