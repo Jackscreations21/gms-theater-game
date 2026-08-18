@@ -31,9 +31,10 @@ commitment and nothing in here is binding — **a spec in
 ```
 
 The lettered rulings are one continuous sequence across the whole project.
-**The last one used is `FD`** (Art-Net, `docs/ARTNET.md` remade as a grouped
-patch sheet — it supersedes `FA` and keeps the generation, ruled and built
-2026-08-16, merged as #214). Before it, `FC` put the proscenium neon on four channels —
+**The last one BUILT is `FD`; `FE`–`FW` are RULED AND RESERVED (see below), so
+the next spec starts at `FX`.** `FD` was Art-Net: `docs/ARTNET.md` remade as a
+grouped patch sheet — it supersedes `FA` and keeps the generation, ruled and
+built 2026-08-16, merged as #214. Before it, `FC` put the proscenium neon on four channels —
 intensity and RGB — ruled a LIGHT rather than scenery, so it has no takeover
 byte and a dead universe blacks it along with the 39 lanterns; ruled and built
 2026-08-16 as #213. Before those: `FB` raised `ART_STALE` 2s → 5s after
@@ -255,9 +256,16 @@ Nothing here has been seen on hardware. jsdom has no eyes and no GPU.
 ---
 ---
 
-# PART 1a — SEVEN THINGS WRONG ON `main` RIGHT NOW
+# PART 1a — SEVEN LISTED, **SIX** STILL WRONG ON `main` RIGHT NOW
 
-All seven are **live in merged code** and none is fixed on `main`. Three came
+**Item 3 is FIXED — it merged as #218 on 2026-08-17.** It keeps its number and
+its place until the Maker Pen round's record commit, because STATE.md cites
+these items BY NUMBER ("PART 1a item 4", 5, 6, 7) and renumbering here before
+STATE.md is rewritten would leave it pointing at the wrong things. The record
+commit removes item 3 and renumbers all three places together. **So the
+heading says seven listed and six live, and the two numbers are both true.**
+
+Six of the seven are **live in merged code**. Three came
 out of the paused GMS Studios branches — this heading said "two" while it
 already carried three, and then said "four" while it carried five, which is
 why the number is supposed to be checked against the list before this file is

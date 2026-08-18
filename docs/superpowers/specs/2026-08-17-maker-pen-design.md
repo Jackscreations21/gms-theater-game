@@ -1,7 +1,10 @@
 # The Maker Pen — design
 
 **Status:** BINDING. Rulings **FE**–**FW**, continuing the project sequence
-(last used: `FD`). Read this before touching `p4d`, `p6e`, `p9b`, or any of
+(last used: `FD`). **`FG1` and `FI1` are sub-rulings inside that range, not new
+letters** — they were split out of `FG` and `FI` when a review found each was
+carrying two separable decisions. The sequence is unbroken and the next spec
+still starts at `FX`. Read this before touching `p4d`, `p6e`, `p9b`, or any of
 the kind-switches in §9.
 
 **Date:** 2026-08-17. **Base:** `main` at `809dee5` when written; `7b71066`
@@ -57,9 +60,14 @@ product.
 **RULING FE — the model is headless, the surface is thin.** The pen is
 VR-only and every suite runs in jsdom with no headset and no GPU. `p4d` and
 `p6e` hold every decision and are driven directly by tests; `p9b` only maps a
-controller onto a call already proved correct. **Checkable rule: `p9b` may
-not contain the word `ink`, the word `cap`, or arithmetic on a shape's
-dimensions.** If it does, the logic is in the wrong file.
+controller onto a call already proved correct. **Checkable rule: `p9b` may not
+COMPUTE ink, COMPUTE a cap, or do arithmetic on a shape's dimensions.** If it
+does, the logic is in the wrong file.
+
+*(It may READ them. RULING FJ puts the ink meter on the palette, which is a
+`p9b` page — so `p9b` calls `makerInk(venue)` and draws what comes back. The
+rule is about where the number is DECIDED, not where it is displayed; a
+literal word-ban would forbid the readout FJ requires.)*
 
 **RULING FF — `p6e` sits after `p5c`, and `build.sh` is never sorted.**
 `p6e` needs `SHOWS`, `SHOW` and the cue engine. It therefore follows `p5c`
@@ -72,9 +80,10 @@ header must say so, or the next reader will tidy it.
 
 **RULING FG — frozen is the Maker Pen; unfrozen is wood.**
 
-- **Frozen** (the born state): `b.rest` true, `updateBodies` skips it. Hangs
-  where put. No nail, no support, no gravity. In no assembly. `canHang`
-  refuses it. The crew cannot see it. The gizmos own it.
+- **Frozen** (the born state): **`b.frozen` true** — the flag that already
+  exists, RULING N's park, and the one p4:809 `if(b.frozen) continue;`
+  actually skips on. Hangs where put. No nail, no support, no gravity. In no
+  assembly. The crew cannot see it. The gizmos own it.
 - **Unfrozen**: wood with an unusual shape. Falls, settles, takes a nail,
   the hammer pulls it, joins an assembly, the carpenters survey it, the
   gizmos let go.
@@ -82,17 +91,59 @@ header must say so, or the next reader will tidy it.
 One question — *is it frozen?* — answers six that would each have needed a
 ruling.
 
+**IT IS `b.frozen`, NOT `b.rest`, AND THIS SPEC SAID THE WRONG ONE UNTIL A
+REVIEW MEASURED IT.** `b.rest` is the settle rota's cache: p4:810 reads
+`if(b.rest && (BODY_TICK + bi) % REST_ROTA) continue;`, so a rested body is
+still re-tested **one frame in twelve**. A shape "frozen" with `b.rest` hangs
+correctly for eleven frames and **falls on the twelfth**. The two names differ
+by two letters and mean different things. Reusing `b.frozen` is not a
+shortcut, it is the correct reading: it is the same idea, and it already
+serialises as `fz` (p4c:1180/1196), which is most of RULING FP for free.
+
+**RULING FG1 — the pen's gizmo must not route through `grabBody`.**
+Two existing paths CLEAR `b.frozen`. `addNail` (p4c:230, *"nailed work is the
+assembly's story"*) is correct for the pen and wanted — nailing a shape is a
+deliberate handover to the build system. **`grabBody` (p4:758, *"the grab
+takes the park off"*) is not**: picking a frozen shape up with the move gizmo
+must leave it frozen, or every drag silently unfreezes what it touches and the
+shape drops when released. The gizmo therefore does not go through `grabBody`,
+or re-sets the flag after it. **Its own assertion** — the failure is invisible
+until something is standing on the shape.
+
 **RULING FH — `makerUnfreeze` calls `wakeBodies(venue)` unconditionally**,
 first thing. BUILD-SYSTEM names this as the one contract a new feature can
 break: anything that can take the ground from under a resting body must wake
 it. The failure mode is a plank hanging in mid-air for up to a rota, and it
 reads as a physics bug. **Its own assertion.**
 
-**RULING FI — the wood filters widen to *unfrozen build kind*, never to
-"any body".** Six sites filter `b.kind !== 'wood'` across the snap, nail and
-ghost-target scans (p4c:483, 614, 791, 826, 845, 861). RULING FG requires an
-unfrozen pen shape to take a nail, so each widens — but a lantern must not
-become nailable as a side effect.
+**RULING FI — the wood filters widen on a NEW PREDICATE, never on
+`BUILD_KINDS` membership and never to "any body".**
+
+The predicate is `makerNailable(b)` — *an unfrozen body of kind `pen`, or
+wood*. It is **not** `BUILD_KINDS[b.kind]`: joining that object routes
+`makeBodyMesh` (p4:668) into `makeBuildMesh`, whose `else` returns **a paint
+can** (p4c:117), and puts pen shapes into `buildSerialize`'s gate
+(p4c:1223) — contradicting RULING FP. `pen` never joins `BUILD_KINDS`.
+
+Six sites filter `b.kind !== 'wood'` across the snap, nail and ghost-target
+scans — p4c:483 (`nailToCarriage`, which reads `wb.kind`), 614 (`snapWood`),
+791 (`seamSeek`), 826/845/861 (`nailRay`). Those six are what RULING FG's
+"takes a nail" requires.
+
+**FG's other promises reach further, and the spec is naming the rest rather
+than implying them:** the hammer, the carry quantise (p9:3069, 3087), the
+tape tick (p9:1872), the roller scans (p9:2274, 3246), the crew survey
+(p6c:320), the settle/`restH` paths (p4:804, p6b:271, 287) and p4c's other
+five `'wood'` gates (184, 381, 390, 898, 986) all still say `'wood'`. **PR 6
+widens the six that make FG's nail clause true; the remainder are listed in
+the plan as explicitly deferred, not forgotten.**
+
+**RULING FI1 — `pen` goes on `NO_HANG` by name.** `canHang`'s last line
+(p4:719) is permissive — *"anything that is not a speaker answers a lighting
+point"* — so a `pen` kind that is in neither `BUILD_KINDS` nor `NO_HANG`
+returns **true** and can be clamped to a lighting bar and flown out. That is
+the trap the stepladder already documents (RULING EK). Saying "`canHang`
+refuses it" is not a mechanism; `NO_HANG = {ladder:1, pen:1}` is.
 
 ---
 
@@ -135,7 +186,7 @@ that reached the theatre would be a second competing way to change state
 that nothing else in the game knows about.
 
 **RULING FN — the pen carries its own raycaster.** `vrCastWorld` cannot be
-reused: it delegates to `pickAll` (p7:527), a curated four-group list, and
+reused: it delegates to `pickAll` (p7:527), a curated list of four groups PLUS every object in `INTERACT`, and
 `describe` (p7:537) returns null for anything unrecognised — loose `BODIES`
 are invisible to it. `layers.disableAll()` and per-mesh `raycast = ()=>{}`
 protect a new ray for free. **The pen must not assign `raycast` on scenery
@@ -165,14 +216,15 @@ where a tape clips on a real belt.
 through `BUILD_KINDS`.**
 
 `buildSerialize` skips every body whose kind is not in `BUILD_KINDS`
-(p4c:1206), so a summoned lantern, PA box or stepladder would not survive a
+(p4c:1223 on main 7b71066 — it was 1206 before #218 inserted 21 lines above it, so GREP for the BUILD_KINDS gate rather than trusting this number), so a summoned lantern, PA box or stepladder would not survive a
 reload — ten minutes of rigging, gone. **The fix is not to widen that gate**,
 which is load-bearing for the whole build save. The MAKER layer keeps its own
 list of what the pen summoned — kind, pose, colour, frozen — and replays it
 through `regBody`/`makeBodyMesh` at load, exactly as `makeSerBody` does. The
 build save is untouched.
 
-**RULING FQ — the shelf is a deny-list, and three items are named on it.**
+**RULING FQ — one item is DENIED the shelf and two go on it with named
+constraints.**
 
 - **BLINDER is not on the shelf.** `BLIND_BODY = false` (p4:476) — it has no
   mesh at all. Summoning one gives an invisible, un-grabbable body.
@@ -183,13 +235,16 @@ build save is untouched.
   check before it is placed.
 
 **RULING FR — the pen books against the caps itself.** `orderPlace`
-(p2m:719) is the only place `BUILD_CAP` 150 and `STOCK_CAP` 24 are enforced,
-and the pen bypasses it entirely. `venueBuildCount()` / `venueLooseCount()`
-are called before any mint. Without this a pen floods a venue with 200 loose
-par cans and nothing stops it.
+(p2m:720/722) is the only place **`STOCK_CAP` 24** is enforced, and one of two
+for **`BUILD_CAP` 150** — `carpPlan` (p6c:466) is the other, and p6c:364-368's
+own comment calls itself *"this is the enforcement point, RULING Y"*. **The
+pen is a third mint path and bypasses both.** `venueBuildCount()` /
+`venueLooseCount()` are called before any mint. Without this a pen floods a
+venue with 200 loose par cans and nothing stops it.
 
 **RULING FS — any new kind string is named in `makeBodyMesh` AND
-`BODY_LABEL`.** An unnamed kind returns a 0.485m profile spot with no throw
+`BODY_LABEL`.** An unnamed kind returns a **PROFILE SPOT** — the wrong body,
+correct-looking, with nothing thrown anywhere
 (p4:672); a kind that joined `BUILD_KINDS` instead returns a **paint can**
 (p4c:117). Two different silent wrong answers depending on which list was
 joined.
@@ -229,8 +284,10 @@ loop sixty times a second. The sound chip goes through `Snd.isLooping` +
 
 Also binding on the implementation, from the bridge sweep: `showLoad` is a
 demolition, not a setting — never on a repeatable edge. `showCueSeek` must
-never be reached from anything the transport calls. `fireCue` arms the
-codebase's only wall-clock `setTimeout`.
+never be reached from anything the transport calls. `fireCue` arms the one
+surviving wall-clock `setTimeout` **for game timing** (p6:221) — p6:545's
+toast and the p5 SFX timers are wall-clock too, but they are not game timing,
+which is what the hard rule forbids.
 
 ---
 
