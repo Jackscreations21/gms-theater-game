@@ -521,6 +521,97 @@ const probe = `
     return pages;
   });
 
+  /* THE TAB STRIP, AND WHY IT IS MEASURED HERE.
+     RULING CV's eighth tab moved the strip from 380 to 300 so SCRIPT would fit.
+     RULING DP then added a NINTH, LIGHTING, at the same fixed pitch of 112: its
+     box opened at 300 + 112*8 = 1196 and ran to 1302 on a 1200-wide canvas, its
+     label centred at 1249 where nothing is drawn, and the only reachable part of
+     it was four pixels — about 4.7mm on a 1.42m desk face.  vrPageLighting
+     carries the ART-NET switch, so the Art-Net round's entire headset surface
+     was behind those four pixels, unreported because nobody has worn it.
+     Counting by hand is what failed, so these three cases measure the strip
+     instead: on the canvas, big enough to hit, and still both of those with a
+     tenth and an eleventh tab pushed on. */
+  const tabHits = ()=>{ VR.page = 'cues'; vrDrawConsole(true);
+                        return VR.hits.filter(h=>h.tab); };
+  const TAB_MIN_W = 60;   // 60px is about 71mm of desk face — a thumb, not a hair
+
+  P('every tab box and hit region lies wholly on the console canvas', ()=>{
+    const tabs = tabHits();
+    if(tabs.length !== VR_TABS.length)
+      throw new Error(tabs.length + ' tab regions for ' + VR_TABS.length + ' tabs');
+    for(const h of tabs){
+      if(h.x < 0 || h.y < 0)
+        throw new Error(h.tab + ' starts off the canvas at ' + h.x + ',' + h.y);
+      if(h.x + h.w > VRC.W)
+        throw new Error(h.tab + ' ends at ' + (h.x + h.w) + ' on a ' + VRC.W +
+                        '-wide canvas — ' + (VRC.W - h.x) + 'px of it is reachable');
+      if(h.y + h.h > VRC.H)
+        throw new Error(h.tab + ' ends at ' + (h.y + h.h) + ' on a ' + VRC.H + '-tall canvas');
+      if(h.w < TAB_MIN_W)
+        throw new Error(h.tab + ' is only ' + h.w + 'px wide, under the ' +
+                        TAB_MIN_W + 'px a hand can find');
+    }
+    const last = tabs[tabs.length - 1];
+    return VR_TABS.length + ' tabs, last one ' + last.tab + ' ' + last.x + '..' +
+           (last.x + last.w) + ' of ' + VRC.W;
+  });
+
+  P('the label is clamped to fit inside its own box', ()=>{
+    const L = vrTabLayout(VR_TABS);
+    for(const t of VR_TABS){
+      const px = vrTabTextEm(t.label) * L.font;
+      if(px > L.w - 10)
+        throw new Error(t.label + ' draws ' + px.toFixed(1) + 'px of text at ' +
+                        L.font + 'px in a ' + L.w + 'px box');
+    }
+    /* and it is still a label, not a smudge: the shipped nine draw at 16px,
+       and 12 is the smallest this file is willing to call readable through a
+       lens at desk distance until a headset says otherwise */
+    if(L.font < 12)
+      throw new Error('the labels fell to ' + L.font + 'px on the shipped strip');
+    return L.w + 'px boxes at a pitch of ' + L.pitch + ', labels at ' + L.font + 'px';
+  });
+
+  /* the tenth and eleventh are pushed onto VR_TABS here and popped again — the
+     source keeps nine.  A layout that only fits the count it was written for is
+     the bug this whole case exists about. */
+  P('a tenth and an eleventh tab narrow the strip instead of walking off it', ()=>{
+    const had = VR_TABS.length;
+    const said = [];
+    try{
+      for(const extra of [{id:'__p10', label:'FLY RAIL'}, {id:'__p11', label:'LIGHTING'}]){
+        VR_TABS.push(extra);
+        const tabs = tabHits();
+        if(tabs.length !== VR_TABS.length)
+          throw new Error('the strip drew ' + tabs.length + ' of ' + VR_TABS.length);
+        const L = vrTabLayout(VR_TABS);
+        for(const h of tabs){
+          if(h.x + h.w > VRC.W)
+            throw new Error('with ' + VR_TABS.length + ' tabs, ' + h.tab +
+                            ' ends at ' + (h.x + h.w) + ' on a ' + VRC.W + '-wide canvas');
+          if(h.w < TAB_MIN_W)
+            throw new Error('with ' + VR_TABS.length + ' tabs, ' + h.tab +
+                            ' is only ' + h.w + 'px wide');
+        }
+        for(const t of VR_TABS){
+          const px = vrTabTextEm(t.label) * L.font;
+          if(px > L.w - 10)
+            throw new Error('with ' + VR_TABS.length + ' tabs, ' + t.label +
+                            ' draws ' + px.toFixed(1) + 'px in a ' + L.w + 'px box');
+        }
+        const last = tabs[tabs.length - 1];
+        said.push(VR_TABS.length + ': ' + L.w + 'px at ' + L.font + 'px, last ends ' +
+                  (last.x + last.w));
+      }
+    } finally {
+      VR_TABS.length = had;
+      VR.page = 'cues'; vrDrawConsole(true);
+    }
+    if(VR_TABS.length !== had) throw new Error('the probe left its own tabs behind');
+    return said;
+  });
+
   P('pressing GO on the console fires the next cue', ()=>{
     goToView(3);
     showLoad('lostboys');
