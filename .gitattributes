@@ -19,3 +19,6 @@
 *.glb binary
 *.png binary
 *.jpg binary
+# The Midtown scan source (assets/source/midtown/) is glTF + .bin + .jpeg.
+*.jpeg binary
+*.bin binary

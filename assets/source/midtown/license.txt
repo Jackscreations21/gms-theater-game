@@ -1,0 +1,11 @@
+Model Information:
+* title:	Midtown Atlanta Auditorium - Photogrammetry (HD)
+* source:	https://sketchfab.com/3d-models/midtown-atlanta-auditorium-photogrammetry-hd-b5736d651f6347d8a1e146b1ce0ca1eb
+* author:	Cody Setchfield (https://sketchfab.com/SMOUSE)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Midtown Atlanta Auditorium - Photogrammetry (HD)" (https://sketchfab.com/3d-models/midtown-atlanta-auditorium-photogrammetry-hd-b5736d651f6347d8a1e146b1ce0ca1eb) by Cody Setchfield (https://sketchfab.com/SMOUSE) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

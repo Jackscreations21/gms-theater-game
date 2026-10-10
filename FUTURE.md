@@ -479,6 +479,28 @@ latent and can wait for whoever next touches the Art-Net gates.**
 
 Rough is fine. Add to this freely.
 
+### Realism — the Midtown scan, and the options list (2026-10-10)
+
+Jack asked for the game to "look a lot more realistic". The audit found most of
+the cheap wins already in (ACES, sRGB, MeshStandard, PCF soft shadows,
+volumetric beams, haze, grade, metals-only PMREM), and **VR already over budget**
+(25–47 ms empty against 13.9), so anything new is desktop-only unless it saves cost.
+
+- **The Midtown Atlanta scan is edited and NOT wired in.** `assets/midtown-auditorium.glb`
+  (CC BY 4.0, credit in `assets/README.md`), built by `tools/blender/midtown_theatre.py`;
+  walk it in `tools/midtown-viewer/`. Open questions for Jack: **which venue does it
+  become** (replace the Palace auditorium? a third venue? the Arc Studio?), **the fly
+  rail** he wants in its new fly tower (opening 8.6 m × 4.4 m, roof 16 m), and the
+  **17 materials against the 8 budget** — merge before it goes in.
+- **Options he was given, ranked** (none chosen yet): a desktop-only composer pass
+  (bloom + AO + SMAA; VR keeps glow planes — relaxes RULING DN on desktop only);
+  canvas-generated normal/roughness maps from the existing canvas textures (keeps
+  RULING AI); instanced detailed seats (saves draw calls); CC0 PBR photo textures
+  (breaks RULING AI); a glossy stage floor (desktop Reflector); GLB props
+  (lanterns, seat); real crew models + Mixamo (Ready Player Me shut down Jan 2026);
+  Blender-baked lightmaps; a three.js upgrade (UMD ends at r160; was cut once);
+  an engine switch (judged not worth it in the roblox-lighting spec §4).
+
 ### Rulings the grids branch needs before it can be finished
 
 - **The floor-pool footprint is still the Palace's shape.** `updateRig` clamps a
