@@ -1,7 +1,39 @@
-# STATE — 2026-08-16 (ART-NET: THE ROUND IS CLOSED — RULINGS EL–FD, NOTHING OPEN)
+# STATE — 2026-10-10 (A SCANNED AUDITORIUM, EDITED, NOT YET IN THE GAME)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-10, read this before the Art-Net sections below
+
+- **`main` moved on after the Art-Net record below was written:** #217
+  (`artnet-desk-record`) and #218 (`build-load-gate`) merged; `main` is
+  **`7b71066`**. This file was not updated for them. Read those two PRs before
+  trusting the Art-Net numbers below.
+- **New machine:** Jack's, at `C:\Users\jackf\OneDrive\Documents\gms-theater`.
+  Git 2.55 and Blender 5.2 are installed. **Node is not**, so the suites cannot
+  run here yet (`winget install OpenJS.NodeJS.LTS`). The relay path below
+  (`C:/Users/patri/...`) is the OLD machine.
+- **This session's branch, `midtown-scan`, is assets and tools only.** Nothing in
+  `src/` changed, so `the-house.html` and `docs/ARTNET.md` need no regenerating.
+  - `assets/midtown-auditorium.glb` is a CC BY scan of a real auditorium, edited
+    into a theatre house: a solid proscenium, a fly tower, a brick back wall and
+    filled holes.
+  - Rebuild it with `tools/blender/midtown_theatre.py`. Walk it in
+    `tools/midtown-viewer/`.
+  - The full record is in HANDOFF.md, "DONE — 2026-10-10".
+- **Not wired into the game.** Three decisions are Jack's (FUTURE.md PART 2,
+  "Realism"):
+  1. Which venue it becomes.
+  2. The fly rail for its new fly tower.
+  3. Merging its 17 materials down to the 8 budget.
+
+  The rest of the realism options list is there too, unchosen.
+- **The headset run is still owed**, as below. Nothing in this session touched
+  the game's rendering.
+
+---
+
+## (2026-08-16) ART-NET: THE ROUND IS CLOSED — RULINGS EL–FD, NOTHING OPEN
 
 ## READ THIS FIRST
 

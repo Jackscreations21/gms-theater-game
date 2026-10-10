@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0">
+<title>Midtown Theatre Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-height 3D viewport with a slim control strip on top (deliberately single dark theme, like a house at half) */
+:root {
+  --bg: #0d0c0f;
+  --panel: #17151b;
+  --line: #2c2832;
+  --fg: #ebe7ee;
+  --muted: #9a93a1;
+  --accent: #d9b45a;        /* work-light amber */
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; display: flex; flex-direction: column; overflow: hidden; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-inline: 16px; padding-block: 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
+h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .01em; }
+h1 span { color: var(--muted); font-weight: 400; }
+.views { display: flex; flex-wrap: wrap; gap: 6px; }
+button { font: 500 13px var(--body); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.bright { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-left: auto; }
+.bright input { width: 110px; accent-color: var(--accent); }
+.mode { display: flex; gap: 6px; }
+#stage { position: relative; flex: 1; min-height: 0; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hint { position: absolute; left: 16px; bottom: 14px; font: 12px var(--mono); color: var(--muted); background: rgba(13,12,15,.72); padding: 6px 10px; border-radius: 4px; pointer-events: none; max-width: calc(100% - 32px); }
+.credit { position: absolute; right: 16px; bottom: 14px; font-size: 11px; color: var(--muted); background: rgba(13,12,15,.72); padding: 6px 10px; border-radius: 4px; max-width: min(420px, calc(100% - 32px)); }
+.credit a { color: var(--muted); }
+[hidden] { display: none !important; }
+#load { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg); }
+#load div { display: grid; gap: 10px; width: min(320px, 80%); text-align: center; color: var(--muted); font: 12px var(--mono); }
+#bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+#bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+@media (max-width: 640px) { .credit { display: none; } .bright { margin-left: 0; } }
+</style>
+
+<header>
+  <h1>Midtown Theatre <span>· edited scan</span></h1>
+  <div class="views" role="group" aria-label="Viewpoints">
+    <button id="v-back">Back of house</button>
+    <button id="v-mid">Mid house</button>
+    <button id="v-front">Front row</button>
+    <button id="v-stage">On stage</button>
+    <button id="v-wing">Stage-left wing</button>
+    <button id="v-over">High corner</button>
+    <button id="v-fly">Fly tower</button>
+  </div>
+  <label class="bright" for="bright">Brightness <input id="bright" type="range" min="0.6" max="3" step="0.05" value="1.6"></label>
+  <div class="mode" role="group" aria-label="Movement">
+    <button id="m-orbit" aria-pressed="true">Orbit</button>
+    <button id="m-walk" aria-pressed="false">Walk</button>
+  </div>
+</header>
+<div id="stage">
+  <canvas id="c" aria-label="3D model of the theatre"></canvas>
+  <div class="hint" id="hint">Drag to look around · scroll or pinch to zoom · right-drag to pan</div>
+  <div class="credit">Based on “<a href="https://sketchfab.com/3d-models/midtown-atlanta-auditorium-photogrammetry-hd-b5736d651f6347d8a1e146b1ce0ca1eb" target="_blank" rel="noopener">Midtown Atlanta Auditorium – Photogrammetry (HD)</a>” by Cody Setchfield, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Screen removed, solid proscenium, brick back wall, fly tower added, holes filled.</div>
+  <div id="load"><div><span id="loadtxt">Loading model…</span><div id="bar"><i></i></div></div></div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0c0f);
+const camera = new THREE.PerspectiveCamera(65, 1, 0.05, 200);
+const orbit = new OrbitControls(camera, canvas);
+orbit.enableDamping = true; orbit.dampingFactor = 0.08;
+
+// Viewpoints, in glTF coordinates (Y up; the stage is toward +Z).
+const VIEWS = {
+  'v-back':  [[0, 5.0, -13.5], [0, 1.6, 4]],
+  'v-mid':   [[0, 2.6, -6.5],  [0, 1.8, 4]],
+  'v-front': [[0.6, 1.25, -3.2], [0, 1.7, 5]],
+  'v-stage': [[0, 2.5, 5.5],   [0, 1.2, -8]],
+  'v-wing':  [[-5.2, 2.2, 6.2], [-1, 2.0, 0.5]],
+  'v-over':  [[4.5, 6.2, -12], [-1, 1.0, 3]],
+  'v-fly':   [[0, 1.6, 4.0],   [0, 14, 5.5]],
+};
+let tween = null;
+function go(id) {
+  const [p, t] = VIEWS[id];
+  if (walking) setMode(false);
+  tween = { t: 0, start: performance.now(), p0: camera.position.clone(), t0: orbit.target.clone(), p1: new THREE.Vector3(...p), t1: new THREE.Vector3(...t) };
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) tween.t = 1;
+}
+Object.keys(VIEWS).forEach(id => document.getElementById(id).addEventListener('click', () => go(id)));
+
+// Walk mode: drag to look, WASD / arrows to move, Q/E down/up. Works without pointer lock.
+let walking = false, yaw = 0, pitch = 0;
+const keys = new Set();
+const hint = document.getElementById('hint');
+function setMode(walk) {
+  walking = walk;
+  document.getElementById('m-orbit').setAttribute('aria-pressed', String(!walk));
+  document.getElementById('m-walk').setAttribute('aria-pressed', String(walk));
+  orbit.enabled = !walk;
+  if (walk) {
+    const d = new THREE.Vector3(); camera.getWorldDirection(d);
+    yaw = Math.atan2(-d.x, -d.z); pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
+    hint.textContent = 'Drag to look · W A S D or arrows to move · Q / E down and up · Shift to go faster';
+  } else {
+    const d = new THREE.Vector3(); camera.getWorldDirection(d);
+    orbit.target.copy(camera.position).addScaledVector(d, 3);
+    hint.textContent = 'Drag to look around · scroll or pinch to zoom · right-drag to pan';
+  }
+}
+document.getElementById('m-orbit').addEventListener('click', () => setMode(false));
+document.getElementById('m-walk').addEventListener('click', () => setMode(true));
+let drag = null;
+canvas.addEventListener('pointerdown', e => { if (walking) { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); } });
+canvas.addEventListener('pointermove', e => {
+  if (!walking || !drag) return;
+  yaw -= (e.clientX - drag.x) * 0.004; pitch -= (e.clientY - drag.y) * 0.004;
+  pitch = THREE.MathUtils.clamp(pitch, -1.45, 1.45); drag = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointerup', () => { drag = null; });
+addEventListener('keydown', e => { if (walking) { keys.add(e.code); if (e.code.startsWith('Arrow')) e.preventDefault(); } });
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+
+// Load. The scan's lighting is baked into its photos, so draw it unlit.
+const bar = document.querySelector('#bar i'), loadtxt = document.getElementById('loadtxt');
+const mats = [];
+const bright = document.getElementById('bright');
+function applyBright() {
+  const k = parseFloat(bright.value);
+  mats.forEach(m => m.color.copy(m.userData.base).multiplyScalar(k));
+}
+bright.addEventListener('input', applyBright);
+// The page may not fetch data: or .bin URLs, so the geometry ships as base64 text and is
+// assembled into a GLB in memory; textures load as ordinary .jpg files from model/tex/.
+async function fetchText(url, onBytes) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  const total = +res.headers.get('content-length') || 0;
+  const reader = res.body.getReader(); const parts = []; let got = 0;
+  for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; onBytes(got, total); }
+  const all = new Uint8Array(got); let o = 0; for (const p of parts) { all.set(p, o); o += p.length; }
+  return new TextDecoder().decode(all);
+}
+function makeGLB(json, bin) {
+  const enc = new TextEncoder().encode(JSON.stringify(json));
+  const jl = (enc.length + 3) & ~3, bl = (bin.length + 3) & ~3;
+  const out = new Uint8Array(12 + 8 + jl + 8 + bl); const dv = new DataView(out.buffer);
+  dv.setUint32(0, 0x46546C67, true); dv.setUint32(4, 2, true); dv.setUint32(8, out.length, true);
+  dv.setUint32(12, jl, true); dv.setUint32(16, 0x4E4F534A, true); out.set(enc, 20); out.fill(0x20, 20 + enc.length, 20 + jl);
+  dv.setUint32(20 + jl, bl, true); dv.setUint32(24 + jl, 0x004E4942, true); out.set(bin, 28 + jl);
+  return out.buffer;
+}
+function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
+(async () => {
+  const json = await (await fetch('model/scene.json')).json();
+  const b64 = await fetchText('model/geometry.txt', (got, total) => {
+    const t = total || 8270000; bar.style.width = Math.min(100, got / t * 100).toFixed(0) + '%';
+    loadtxt.textContent = `Loading model… ${(got / 1048576).toFixed(1)} MB`;
+  });
+  const raw = atob(b64.trim()); const bin = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bin[i] = raw.charCodeAt(i);
+  loadtxt.textContent = 'Building the model…';
+  new GLTFLoader().parse(makeGLB(json, bin), 'model/', onModel, fail);
+})().catch(fail);
+
+function onModel(gltf) {
+  gltf.scene.traverse(o => {
+    if (!o.isMesh) return;
+    const src = o.material;
+    const m = new THREE.MeshBasicMaterial({ map: src.map || null, side: THREE.DoubleSide });
+    m.userData.base = src.map ? new THREE.Color(1, 1, 1) : src.color.clone();
+    mats.push(m); o.material = m; src.dispose();
+  });
+  applyBright();
+  scene.add(gltf.scene);
+  document.getElementById('load').hidden = true;
+  const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t);
+}
+
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas.parentElement); resize();
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (tween) {
+    if (tween.t < 1) tween.t = Math.min(1, (performance.now() - tween.start) / 1100);
+    const k = tween.t < .5 ? 2 * tween.t * tween.t : 1 - Math.pow(-2 * tween.t + 2, 2) / 2;
+    camera.position.lerpVectors(tween.p0, tween.p1, k); orbit.target.lerpVectors(tween.t0, tween.t1, k);
+    if (tween.t >= 1) tween = null;
+  }
+  if (walking) {
+    camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 6 : 2.2) * dt;
+    const f = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)), r = new THREE.Vector3(-f.z, 0, f.x);
+    if (keys.has('KeyW') || keys.has('ArrowUp')) camera.position.addScaledVector(f, sp);
+    if (keys.has('KeyS') || keys.has('ArrowDown')) camera.position.addScaledVector(f, -sp);
+    if (keys.has('KeyD') || keys.has('ArrowRight')) camera.position.addScaledVector(r, sp);
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) camera.position.addScaledVector(r, -sp);
+    if (keys.has('KeyE')) camera.position.y += sp;
+    if (keys.has('KeyQ')) camera.position.y -= sp;
+  } else {
+    orbit.update();
+  }
+  renderer.render(scene, camera);
+});
+</script>
+
+</body>
+</html>

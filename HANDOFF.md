@@ -224,6 +224,51 @@ compare the *same* production across stages instead.
 
 ---
 
+## DONE — 2026-10-10: a real auditorium, from a scan (the `midtown-scan` branch)
+
+The first session after the Art-Net round, on a **new machine** — Jack's, repo
+at `C:\Users\jackf\OneDrive\Documents\gms-theater`. Git 2.55 was installed this
+session; **Node is NOT installed, so no suite ran** — and none needed to:
+**nothing in `src/` changed**, so `the-house.html` and `docs/ARTNET.md` are
+untouched and still match. Blender 5.2 is installed and is now a tool this repo uses.
+
+**What was asked:** "look a lot more realistic". A research pass (the options
+list is in FUTURE.md PART 2) and a model hunt — **no model of the real Palace
+Theatre exists anywhere**, free or paid — and Jack picked the
+*Midtown Atlanta Auditorium* photogrammetry scan (Cody Setchfield, **CC BY 4.0**),
+then directed four rounds of edits off rendered pictures.
+
+**What landed (assets and tools only, nothing wired into the game):**
+
+- `assets/source/midtown/` — the download as-is, plus `brick_tile.png` (a crop of
+  its own scanned brick). **Rebuild everything from here.**
+- `tools/blender/midtown_theatre.py` → `assets/midtown-auditorium.glb` (~65k tris,
+  13 MB). It deletes the "Free Chapel" screen, its frame, the screen glow baked on
+  the wall behind, two freestanding upstage masking slabs, and the brown curtain
+  legs/valance; builds a **solid proscenium wall** (opening x ±4.3, top 5.2 m, at
+  y −2.3) in the measured colour of the house walls beside it; opens a **fly tower**
+  (roof 16 m — Jack wants a fly rail in it later); tiles the back wall with the
+  scan's own brick; fills the ceiling, wall-top slits, deck and floor gaps the scan
+  never captured; mattes the mirror-glossy (0.96) floor pieces; decimates the
+  speakers (they were 128k of 190k tris). **Doorways deliberately left open** (Jack).
+- `tools/blender/midtown_shot.py` (renders named views; `SHOT_BG=1,0,1` shows
+  holes magenta, and the background is camera-rays-only so reflections can't fake
+  a hole), `midtown_probe.py` (measures), `midtown_inspect.py`.
+- `tools/midtown-viewer/` — a three.js r160 walkthrough, built from
+  `tools/blender/midtown_web_export.ps1`. **Serve it; `file://` cannot fetch.**
+
+**Traps hit, worth keeping:**
+- **Blender coordinates vs the viewer:** Blender world is Z-up with the stage at −Y;
+  glTF is (x, z, −y), so the stage is at **+Z** in three.js.
+- **Mirror-glossy floor reads as holes.** The `.001` floor pieces reflected the
+  magenta test background and looked exactly like gaps. Make the hole-finder's
+  background camera-only.
+- **Artifact pages refuse `.glb`, `.bin` and `data:` fetches** — the viewer ships the
+  buffer as base64 text and rebuilds a GLB in memory.
+
+**Open, and his:** which venue the scan becomes, the fly rail, and the material
+merge (17 vs the 8 budget). See FUTURE.md PART 2.
+
 ## NEXT SESSION: **THE ART-NET ROUND IS CLOSED — PUT IT IN A HEADSET** (2026-08-16, EL–FD)
 
 Cache-bust **`?v=31`**. Rulings at **FD**. Suite count **21**. `main` is at
