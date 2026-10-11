@@ -79,6 +79,32 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 #xhair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(235,231,238,.85); box-shadow: 0 0 0 1px rgba(13,12,15,.6); pointer-events: none; }
 #dropglow { position: absolute; inset: 0; border: 2px dashed var(--accent); pointer-events: none; display: none; }
 @media (max-width: 640px) { .credit { display: none; } .bright { margin-left: 0; } #build, #lights { width: calc(100% - 24px); } }
+/* lights panel (agent I) */
+#lights { grid-auto-rows: max-content; align-content: start; }   /* a grid with a fixed height squeezes its rows (the looks list to nothing) otherwise */
+#lights input[type=number] { width: 58px; }
+#lights input[type=text] { flex: 1; min-width: 0; }
+#lights select { max-width: 100%; }
+#lights #lp-pos { width: 100%; }
+#lights #lp-type { flex: 1; min-width: 0; }
+#lights input[type=range] { width: 100%; min-width: 0; accent-color: var(--accent); margin: 0; }
+#lights input[type=range]:disabled { opacity: .35; }
+#lights input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 4px; }
+#lights .lp-grid { display: grid; grid-template-columns: 46px minmax(0, 1fr) 44px; gap: 5px 6px; align-items: center; }
+#lights .lp-grid > span:first-child, #lights .lp-grid > span:nth-child(3n+1) { color: var(--muted); font-size: 11px; }
+#lights .lp-grid > b { font: 500 11px var(--mono); color: var(--fg); text-align: right; }
+#lights .lp-grid .row { flex-wrap: nowrap; }
+#lights .lp-grid #lp-gel { flex: 1; min-width: 0; }
+#lights .lp-sel { color: var(--accent); font: 12px var(--mono); }
+#lights .lp-step { font-family: var(--mono); min-height: 2.6em; }
+#lights .lp-looks { display: grid; gap: 4px; max-height: 140px; overflow: auto; }
+#lights .lp-look { display: flex; gap: 4px; align-items: center; }
+#lights .lp-look span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 12px var(--mono); }
+#lights .danger { border-color: #6a3030; }
+#lights .lp-keys { border-top: 1px solid var(--line); padding-top: 6px; }
+#lights .lp-keys b { color: var(--fg); font: 500 11px var(--mono); }
+#lights .lp-head { position: sticky; top: -10px; z-index: 1; display: flex; align-items: center; justify-content: space-between; margin: -10px -12px 0; padding: 8px 12px 6px; background: rgb(23,21,27); border-bottom: 1px solid var(--line); }
+#lights .lp-head b { font-size: 13px; font-weight: 600; }
+#lights.lp-overlay { position: fixed; top: 8px; bottom: 8px; left: 8px; width: min(300px, calc(100% - 16px)); max-height: none; z-index: 5; background: rgb(23,21,27); box-shadow: 0 6px 24px rgba(0,0,0,.5); }
 </style>
 </head>
 <body>
@@ -1610,11 +1636,510 @@ function lxColourOf(unit, state) { return state.color; }
 
 /* ---- THE LIGHTS PANEL (agent I) ----
    Agent I's region: the panel in #lights (the header's Lights button shows and hides it), built once at ready by
-   buildLightsPanel(), driving everything through MIDTOWN.lx / the lx functions above. */
+   buildLightsPanel(), driving everything through MIDTOWN.lx / the lx functions above. Jack: "a better way to control
+   the lights". Four parts, top to bottom:
+   - SELECT what is being driven: a position (the rig's hanging positions in rig order: FOH → the electrics → the booms →
+     the deck and the rest), a type, a channel field ("7", "1-20", "7,12,41"), or a CLICK on a fixture in the view
+     (Orbit mode; Shift-click adds or drops one). The selected units carry an outline box (LXP.marks: one LineSegments
+     for all of them, drawn over everything) while the panel is open.
+   - DRIVE the selection: level (with the fade field), colour (a gel, each unit's own gel, open, or any colour from the
+     picker), gobo and its rotation, pan / tilt (movers only; Snap, or travel at the type's speed), zoom, and Aim at view
+     centre (the movers turn to where the view's centre lands on the scenery).
+   - MASTER: All on / Blackout (with the fade), the work light, the haze, and STEP THROUGH: one unit at a time at full,
+     everything else dark — Prev / Next / Play (Play moves on every N seconds of frame dt in lxPanelTick, never a timer)
+     / Stop (puts back what was up before the step began).
+   - LOOKS: the whole rig's state (level, colour, pan / tilt, gobo, its turn and rate, zoom of all 313 units, plus the
+     work light and haze) saved by name in this browser (localStorage, like Build's autosave), recalled with the fade,
+     deleted, and exported / imported as JSON.
+   Keys, while the panel is open and no text field has focus: + / − the selection's level by 5, [ / ] the previous /
+   next unit in the selection's position, 0 blackout (with the fade). None of Walk's (WASD, arrows, Space, C, Shift) or
+   Build's (G R S, Delete, Esc, Enter, C). The frame loop calls lxPanelTick(dt) next to lxTick; it returns true only on a
+   frame where the panel changed something to draw, so an idle page with the panel open still draws nothing.
+   MIDTOWN.lxPanel is the same panel from the console (and for agent J's check: step.to(i) lights unit i alone). */
 const lxPanelEl = document.getElementById('lights'), lxPanelBtn = document.getElementById('l-toggle');
-lxPanelBtn.addEventListener('click', () => { lxPanelEl.hidden = !lxPanelEl.hidden; lxPanelBtn.setAttribute('aria-pressed', String(!lxPanelEl.hidden)); });
+function lxpShowPanel(on) { lxPanelEl.hidden = !on; lxPanelBtn.setAttribute('aria-pressed', String(on)); lxpFit(); lxpMarksDirty(); }
+lxPanelBtn.addEventListener('click', () => lxpShowPanel(lxPanelEl.hidden));
+// A short view (a narrow window wraps the header onto many lines and leaves the stage ~100 px tall) gives the panel no
+// room inside #stage: then it floats over the page, top to bottom, on the left (lp-overlay), with its own Close.
+const LXP_OVERLAY_BELOW = 380;                               // px of stage height
+function lxpFit() { const st = document.getElementById('stage'); lxPanelEl.classList.toggle('lp-overlay', !!st && st.clientHeight < LXP_OVERLAY_BELOW); }
+const LXP_KEY = 'midtown.lx.looks.v1';                       // the looks, in this browser
+const LXP_STEP_EVERY = 1.5;                                  // Play's default: seconds of frame time per unit
+const LXP = { built: false, sel: [], anchor: null, marks: null, marked: [], marksDirty: false, marksSig: '', E: {},
+  step: { on: false, list: [], i: -1, play: false, t: 0, saved: null } };
+const LXP_EDGES = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+// Rig order for the positions: FOH, the apron, 1st–10th Electric, the SL then SR booms 1–8, the deck and the rest.
+function lxpPosRank(p) {
+  if (!p) return 99;
+  let m;
+  if (/^FOH Truss/i.test(p)) return 0;
+  if (/^FOH/i.test(p)) return 1;
+  if (/^Apron/i.test(p)) return 2;
+  if ((m = /^(\d+)(?:st|nd|rd|th) Electric/i.exec(p))) return 10 + +m[1];
+  if ((m = /^(SL|SR) Boom (\d+)/i.exec(p))) return 30 + (m[1].toUpperCase() === 'SR' ? 10 : 0) + +m[2];
+  const k = ['downstage lip', 'deck', 'on the set', 'under the gallery', 'back-wall foots'].indexOf(p.toLowerCase());
+  if (k >= 0) return 60 + k;
+  if (/^Followspot/i.test(p)) return 70;
+  return 80;
+}
+const lxpCh = u => { const c = u.userData.channels; return c && c.length ? Math.min(...c) : 1e6; };
+const lxpPos = u => u.userData.position || '(no position)';
+function lxpOrder(us) {
+  return us.slice().sort((a, b) => lxpPosRank(a.userData.position) - lxpPosRank(b.userData.position) || lxpPos(a).localeCompare(lxpPos(b))
+    || lxpCh(a) - lxpCh(b) || LX.byUnit.get(a).i - LX.byUnit.get(b).i);
+}
+const lxpTarget = (r, key) => r.fade[key] ? r.fade[key].to : r.st[key];   // where a fade is going: what the panel shows and a look keeps
+const lxpFade = () => Math.max(0, parseFloat(LXP.E.fade && LXP.E.fade.value) || 0);
+const lxpLamp = u => !LX.byUnit.get(u).T.hazer;
+function lxpSay(msg) { if (LXP.E.status) LXP.E.status.textContent = msg; }
+
+// ---- selecting
+function lxpSetSel(us, from, anchor) {
+  LXP.sel = us.slice(); LXP.anchor = anchor && us.includes(anchor) ? anchor : us[0] || null;
+  const E = LXP.E;
+  if (from !== 'pos') E.pos.value = '';
+  if (from !== 'type') E.type.value = '';
+  if (from !== 'ch') E.ch.value = '';
+  lxpShowSel(); lxpSync(); lxpMarksDirty();
+}
+function lxpChannels(s) {                                    // "7", "1-20", "7,12,41", "1-20, 41" — or anything lx.select reads
+  const parts = String(s || '').split(',').map(t => t.trim()).filter(Boolean);
+  return parts.length ? lxSelect(parts) : [];
+}
+function lxpShowSel() {
+  const E = LXP.E, us = LXP.sel, n = us.length;
+  if (!n) { E.sel.textContent = 'selected: nothing'; E.unit.textContent = 'Pick a position, a type or channels, or click a fixture in the view.'; return; }
+  const pos = [...new Set(us.map(lxpPos))], types = [...new Set(us.map(u => u.userData.type))];
+  E.sel.textContent = `selected: ${n} unit${n === 1 ? '' : 's'} · ${pos.length <= 2 ? pos.join(', ') : pos.length + ' positions'}`;
+  if (n === 1) {
+    const d = us[0].userData;
+    E.unit.textContent = `${d.label || d.id} · ${lxpPos(us[0])} · ${d.type} · ch ${(d.channels || []).join(', ') || '—'} · gel ${d.gel || 'none'} · id ${d.id}`;
+  } else {
+    const ch = us.flatMap(u => u.userData.channels || []), movers = us.filter(u => LX.byUnit.get(u).mover).length;
+    E.unit.textContent = `${types.length <= 3 ? types.join(', ') : types.length + ' types'}` + (ch.length ? ` · ch ${Math.min(...ch)}–${Math.max(...ch)}` : '')
+      + (movers ? ` · ${movers} mover${movers === 1 ? '' : 's'}` : '');
+  }
+}
+// The 3D pick: a unit whose hang point is within 2 m of the ray, tested against its drawn detail level, nearest first;
+// not one hidden behind scenery (the walk's collision grid, the same ray the pools use).
+const lxpRay = new THREE.Raycaster(), lxpNdc = new THREE.Vector2(), lxpV = new THREE.Vector3();
+function lxpPick(cx, cy) {
+  const rc = canvas.getBoundingClientRect();
+  lxpNdc.set((cx - rc.left) / rc.width * 2 - 1, -((cy - rc.top) / rc.height) * 2 + 1);
+  lxpRay.setFromCamera(lxpNdc, camera); lxpRay.near = 0; lxpRay.far = Infinity;
+  const ray = lxpRay.ray;
+  let best = null;
+  for (const u of LX.units) {
+    if (!u.visible) continue;
+    lxpV.setFromMatrixPosition(u.matrixWorld);
+    if (ray.distanceSqToPoint(lxpV) > 4) continue;
+    const lvl = u.levels[u.getCurrentLevel ? u.getCurrentLevel() : 0] || u.levels[0];
+    const h = lxpRay.intersectObject(lvl.object, true)[0];
+    if (h && (!best || h.distance < best.d)) best = { u, d: h.distance };
+  }
+  const out = { dist: 0, p: new THREE.Vector3(), n: new THREE.Vector3() };
+  if (best && lxCast(ray.origin, ray.direction, best.d, out) && out.dist < best.d - 0.05) best = null;   // a wall, the set or a pipe in front
+  if (!best) best = lxpPickNear(cx, cy, rc, out);           // a far unit is a pixel or two: the nearest on screen within a few px
+  if (!best) return null;
+  if (editing) {                                             // Build open: a built piece in front is Build's click, not ours
+    const b = lxpRay.intersectObjects(cutBox.visible ? [cutBox, ...built.children] : built.children, true)[0];
+    if (b && b.distance < best.d) return null;
+  }
+  return best.u;
+}
+// The forgiving half of the pick: the unit whose box centre lands nearest the click on screen, within LXP_PICK_PX (or its
+// own drawn radius and a little) — and not behind scenery on the line from the eye to that centre. → { u, d } or null.
+const LXP_PICK_PX = 9, lxpC = new THREE.Vector3(), lxpS = new THREE.Sphere(), lxpDir = new THREE.Vector3();
+function lxpPickNear(cx, cy, rc, out) {
+  const f = rc.height / (2 * Math.tan(camera.fov / 2 * LX_DEG));   // px per world metre at 1 m
+  let best = null;
+  for (const u of LX.units) {
+    if (!u.visible) continue;
+    lxpBox.setFromObject(u.levels[0].object); lxpBox.getBoundingSphere(lxpS); lxpC.copy(lxpS.center);
+    const dist = lxpC.distanceTo(camera.position);
+    lxpV.copy(lxpC).project(camera);
+    if (lxpV.z > 1 || lxpV.z < -1) continue;
+    const sx = rc.left + (lxpV.x + 1) / 2 * rc.width, sy = rc.top + (1 - lxpV.y) / 2 * rc.height;
+    const px = Math.hypot(sx - cx, sy - cy), reach = Math.max(LXP_PICK_PX, lxpS.radius / Math.max(dist, 1e-3) * f + 4);
+    if (px > reach || (best && px >= best.px)) continue;
+    lxpDir.copy(lxpC).sub(camera.position).normalize();
+    if (lxCast(camera.position, lxpDir, Math.max(0.05, dist - lxpS.radius), out)) continue;   // hidden
+    best = { u, d: dist, px };
+  }
+  return best;
+}
+let lxpPress = null;
+canvas.addEventListener('pointerdown', e => { lxpPress = { x: e.clientX, y: e.clientY, button: e.button }; });
+canvas.addEventListener('pointerup', e => {
+  const p = lxpPress; lxpPress = null;
+  if (!p || p.button !== 0 || !LXP.built || lxPanelEl.hidden || !LX.ready || walking || transform.dragging || !(rig && rig.visible)) return;
+  if (Math.hypot(e.clientX - p.x, e.clientY - p.y) >= 5) return;   // a drag (orbit), not a click
+  const u = lxpPick(e.clientX, e.clientY);
+  if (!u) return;
+  if (e.shiftKey) {
+    const had = LXP.sel.includes(u), us = had ? LXP.sel.filter(x => x !== u) : lxpOrder([...LXP.sel, u]);
+    lxpSetSel(us, 'click', had ? LXP.anchor : u);
+  } else lxpSetSel([u], 'click', u);
+  const d = u.userData; lxpSay(`Clicked ${d.label || d.id} (${lxpPos(u)}).`);
+});
+// [ and ]: the previous / next unit in the selection's position (with several selected: its first / last).
+function lxpNeighbour(dir) {
+  const a = LXP.anchor || LXP.sel[0];
+  if (!a) { const all = lxpOrder(LX.units); lxpSetSel([dir > 0 ? all[0] : all[all.length - 1]], 'key'); return; }
+  const list = lxpOrder(LX.units.filter(u => lxpPos(u) === lxpPos(a)));
+  if (LXP.sel.length > 1) { lxpSetSel([dir > 0 ? list[0] : list[list.length - 1]], 'key'); return; }
+  const i = list.indexOf(a);
+  lxpSetSel([list[((i + dir) % list.length + list.length) % list.length]], 'key');
+}
+
+// ---- driving
+function lxpDrive(p, fade = 0) {
+  if (!LXP.sel.length) { lxpSay('Select something first.'); return 0; }
+  return lxSet(LXP.sel, p, fade);
+}
+function lxpZoomRange(us) {
+  let lo = Infinity, hi = -Infinity;
+  for (const u of us) { const T = LX.byUnit.get(u).T; if (T.hazer) continue; lo = Math.min(lo, T.min ?? T.zoom); hi = Math.max(hi, T.max ?? T.zoom); }
+  return lo <= hi ? [lo, hi] : [0, 0];
+}
+function lxpGoboOptions(u) {                                 // lx.wheelOf: slot numbers today; agent H may hand back { slot, name } objects
+  const E = LXP.E, G = LX_API.gobos || [], wheel = (u && LX_API.wheelOf(u)) || [0];
+  const opts = wheel.map((w, i) => {
+    if (w && typeof w === 'object') { const s = Number.isFinite(+w.slot) ? +w.slot : i; return { slot: s, name: w.name || (G[s] && G[s].name) || 'slot ' + s }; }
+    return { slot: +w, name: (G[+w] && G[+w].name) || 'slot ' + w };
+  });
+  E.gobo.innerHTML = '';
+  for (const o of opts) { const op = document.createElement('option'); op.value = String(o.slot); op.textContent = `${o.slot} · ${o.name}`; E.gobo.appendChild(op); }
+  return opts.length;
+}
+// The controls from the anchor unit (the one clicked, or the first selected).
+function lxpSync() {
+  const E = LXP.E, a = LXP.anchor && LX.byUnit.get(LXP.anchor), mv = LXP.sel.map(u => LX.byUnit.get(u)).find(r => r.mover);
+  for (const k of ['level', 'gel', 'pick', 'rate']) E[k].disabled = !a;
+  E.pan.disabled = E.tilt.disabled = E.aim.disabled = !mv;
+  E.panV.textContent = mv ? Math.round(mv.st.panTo) + '°' : '—'; E.tiltV.textContent = mv ? Math.round(mv.st.tiltTo) + '°' : '—';
+  if (mv) { E.pan.value = mv.st.panTo; E.tilt.value = mv.st.tiltTo; }
+  const nG = lxpGoboOptions(a ? a.unit : null); E.gobo.disabled = !a || nG <= 1;
+  const [lo, hi] = lxpZoomRange(LXP.sel);
+  E.zoom.min = lo; E.zoom.max = hi; E.zoom.disabled = !a || !(hi > lo);
+  if (!a) { E.levelV.textContent = '—'; E.zoomV.textContent = '—'; E.rateV.textContent = '—'; return; }
+  const st = a.st;
+  E.level.value = Math.round(lxpTarget(a, 'level') * 100); E.levelV.textContent = E.level.value + '%';
+  E.pick.value = '#' + (a.fade.color ? a.fade.color.to : st.color).getHexString();
+  E.gel.value = '';
+  E.gobo.value = String(st.gobo);
+  E.rate.value = st.goboRate; E.rateV.textContent = Math.round(st.goboRate) + '°/s';
+  E.zoom.value = lxpTarget(a, 'zoom'); E.zoomV.textContent = (+lxpTarget(a, 'zoom')).toFixed(1) + '°';
+}
+function lxpNudge(d) {
+  if (!LXP.sel.length) { lxpSay('Select something first.'); return; }
+  for (const u of LXP.sel) { const r = LX.byUnit.get(u); lxSet(u, { level: THREE.MathUtils.clamp(Math.round((lxpTarget(r, 'level') + d) * 100) / 100, 0, 1) }); }
+  lxpSync();
+}
+// The point the view is looking at: the view's centre ray onto the scenery, else the orbit target (or 10 m ahead, walking).
+function lxpViewPoint() {
+  const d = camera.getWorldDirection(new THREE.Vector3()), out = { dist: 0, p: new THREE.Vector3(), n: new THREE.Vector3() };
+  if (lxCast(camera.position, d, 80, out)) return out.p.clone();
+  return walking ? camera.position.clone().addScaledVector(d, 10) : orbit.target.clone();
+}
+
+// ---- looks: the whole rig as it is going (a fade's end, a journey's end)
+function lxpCapture() {
+  const units = {};
+  for (const r of LX.recs) {
+    const st = r.st, c = r.fade.color ? r.fade.color.to : st.color;
+    const e = { l: +lxpTarget(r, 'level').toFixed(4), c: [c.r, c.g, c.b].map(v => +v.toFixed(6)), g: st.gobo, gr: +st.goboRot.toFixed(3), gv: st.goboRate, z: +(+lxpTarget(r, 'zoom')).toFixed(3) };
+    if (r.mover) { e.p = +st.panTo.toFixed(3); e.t = +st.tiltTo.toFixed(3); }
+    units[r.unit.userData.id] = e;
+  }
+  return { v: 1, at: new Date().toISOString(), work: +(LX.work.dur !== null ? LX.work.to : LX.work.level).toFixed(4), haze: +LX.hazeBase.toFixed(4), units };
+}
+function lxpApply(look, fade = 0) {                          // → units driven
+  if (!look || !look.units) return 0;
+  let n = 0;
+  for (const u of LX.units) {
+    const e = look.units[u.userData.id]; if (!e) continue;
+    const p = { level: e.l, color: e.c, gobo: e.g, goboRot: e.gr, goboRate: e.gv, zoom: e.z };
+    if (e.p !== undefined && e.p !== null) { p.pan = e.p; p.tilt = e.t; p.snap = !(fade > 0); }   // no fade: the heads are there at once
+    lxSet(u, p, fade); n++;
+  }
+  if (Number.isFinite(look.work)) LX_API.work(look.work, fade);
+  if (Number.isFinite(look.haze)) LX_API.haze(look.haze);
+  return n;
+}
+function lxpLooks() {
+  try { const t = localStorage.getItem(LXP_KEY), d = t ? JSON.parse(t) : null; return d && d.looks && typeof d.looks === 'object' ? d.looks : {}; }
+  catch (e) { return {}; }
+}
+function lxpLooksPut(looks) {
+  try { localStorage.setItem(LXP_KEY, JSON.stringify({ v: 1, looks })); return true; }
+  catch (e) { lxpSay('Could not save in this browser (' + (e.message || e) + ') — use Export.'); return false; }
+}
+function lxpLooksList() {
+  const E = LXP.E, looks = lxpLooks(), names = Object.keys(looks).sort((a, b) => a.localeCompare(b));
+  E.looks.innerHTML = '';
+  if (!names.length) { const d = document.createElement('div'); d.className = 'note'; d.textContent = 'No looks saved yet.'; E.looks.appendChild(d); return; }
+  for (const name of names) {
+    const row = document.createElement('div'); row.className = 'lp-look';
+    const s = document.createElement('span'); s.textContent = name; s.title = looks[name].at ? 'saved ' + looks[name].at : '';
+    const go = document.createElement('button'); go.textContent = 'Recall'; go.addEventListener('click', () => lxpRecall(name));
+    const del = document.createElement('button'); del.textContent = 'Delete'; del.className = 'danger';
+    del.addEventListener('click', () => { const L = lxpLooks(); delete L[name]; if (lxpLooksPut(L)) lxpSay(`Deleted "${name}".`); lxpLooksList(); });
+    row.append(s, go, del); E.looks.appendChild(row);
+  }
+}
+function lxpSaveLook(name) {
+  name = String(name || '').trim();
+  if (!name) { lxpSay('Name the look first.'); return false; }
+  if (LXP.step.on) lxpStepStop();                            // the look is the rig as it was, not one lamp of a step-through
+  const L = lxpLooks(), had = !!L[name]; L[name] = lxpCapture();
+  if (!lxpLooksPut(L)) return false;
+  lxpSay(`${had ? 'Replaced' : 'Saved'} "${name}" — ${Object.keys(L[name].units).length} units, work ${Math.round(L[name].work * 100)}%, haze ${Math.round(L[name].haze * 100)}%.`);
+  lxpLooksList(); return true;
+}
+function lxpRecall(name, fade = lxpFade()) {
+  const look = lxpLooks()[name];
+  if (!look) { lxpSay(`No look "${name}".`); return 0; }
+  if (LXP.step.on) lxpStepStop(false);
+  const n = lxpApply(look, fade);
+  lxpSync(); lxpMasterSync();
+  lxpSay(`Recalled "${name}" — ${n} units` + (fade > 0 ? `, fading ${fade} s.` : '.'));
+  return n;
+}
+
+// ---- master
+function lxpMasterSync() {
+  const E = LXP.E, w = LX.work.dur !== null ? LX.work.to : LX.work.level;
+  E.work.value = Math.round(w * 100); E.workV.textContent = E.work.value + '%';
+  E.haze.value = Math.round(LX.hazeBase * 100); E.hazeV.textContent = E.haze.value + '%';
+}
+// STEP THROUGH: the list is the selection (when more than one unit is selected) or every lamp, in rig order.
+function lxpEvery() { return Math.max(0.2, parseFloat(LXP.E.every && LXP.E.every.value) || LXP_STEP_EVERY); }
+function lxpStepTo(i) {
+  const S = LXP.step;
+  if (!S.on) {
+    S.list = lxpOrder((LXP.sel.length > 1 ? LXP.sel : LX.units).filter(lxpLamp));
+    if (!S.list.length) return null;
+    S.saved = lxpCapture(); S.on = true;
+  }
+  const n = S.list.length; S.i = ((i % n) + n) % n; S.t = 0;
+  const cur = S.list[S.i];
+  lxSet(u => u !== cur && lxpLamp(u) && lxpTarget(LX.byUnit.get(u), 'level') > 0, { level: 0 });
+  lxSet(cur, { level: 1 });
+  lxpStepShow(); lxpMarksDirty();
+  return cur;
+}
+function lxpStepStop(restore = true) {
+  const S = LXP.step; if (!S.on) return;
+  S.on = S.play = false; S.i = -1;
+  if (restore && S.saved) lxpApply(S.saved, 0);
+  S.saved = null; S.list = [];
+  lxpStepShow(); lxpSync(); lxpMarksDirty();
+}
+function lxpStepPlay(on = !LXP.step.play) {
+  const S = LXP.step;
+  if (on && !S.on) lxpStepTo(0);
+  S.play = on && S.on; S.t = 0;
+  lxpStepShow();
+}
+function lxpStepShow() {
+  const E = LXP.E, S = LXP.step;
+  E.play.setAttribute('aria-pressed', String(S.play)); E.play.textContent = S.play ? 'Pause' : 'Play';
+  E.stop.disabled = !S.on;
+  if (!S.on) { E.step.textContent = `Lights one unit at a time at full, everything else dark: the selection (more than one unit) or every lamp. Stop puts the rig back.`; return; }
+  const u = S.list[S.i], d = u.userData;
+  E.step.textContent = `${S.i + 1} / ${S.list.length} · ${d.label || d.id} · ${lxpPos(u)} · ${d.type} · ch ${(d.channels || []).join(', ') || '—'}` + (S.play ? ` · every ${lxpEvery()} s` : '');
+}
+
+// ---- the selection's outline: one box per unit (its near level's world box), one draw call, over everything
+function lxpMarksDirty() { LXP.marksDirty = true; requestRender(); }
+function lxpMarkList() { const S = LXP.step; return S.on ? (S.i >= 0 ? [S.list[S.i]] : []) : LXP.sel; }
+function lxpSig() {                                          // where the marked units are: the rig moved (Set fitted / Real size), a head turned, the rig hidden
+  let s = rig && rig.visible ? 1 : 0;
+  for (const u of LXP.marked) { const m = u.matrixWorld.elements, r = LX.byUnit.get(u); s += m[12] * 3.1 + m[13] * 5.3 + m[14] * 7.7 + (r.mover ? r.st.pan * 0.11 + r.st.tilt * 0.13 : 0); }
+  return s.toFixed(5) + '/' + LXP.marked.length;
+}
+const lxpBox = new THREE.Box3();
+function lxpMarksBuild() {
+  LXP.marksDirty = false;
+  const list = lxpMarkList();
+  LXP.marked = list.slice();
+  if (!LXP.marks) {
+    LXP.marks = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xd9b45a, depthTest: false, depthWrite: false, transparent: true, opacity: 0.95, toneMapped: false }));
+    LXP.marks.name = 'lx panel selection'; LXP.marks.renderOrder = 20; LXP.marks.frustumCulled = false; LXP.marks.raycast = () => {};
+    scene.add(LXP.marks);
+  }
+  const show = !lxPanelEl.hidden && list.length > 0 && !!(rig && rig.visible);
+  LXP.marksSig = lxpSig();
+  if (!show) { if (LXP.marks.visible) { LXP.marks.visible = false; requestRender(); } return; }
+  const P = new Float32Array(list.length * 72); let k = 0;
+  for (const u of list) {
+    lxpBox.setFromObject(u.levels[0].object).expandByScalar(0.04);
+    const a = lxpBox.min, b = lxpBox.max;
+    const c = [[a.x, a.y, a.z], [b.x, a.y, a.z], [b.x, b.y, a.z], [a.x, b.y, a.z], [a.x, a.y, b.z], [b.x, a.y, b.z], [b.x, b.y, b.z], [a.x, b.y, b.z]];
+    for (const [i, j] of LXP_EDGES) { P.set(c[i], k); P.set(c[j], k + 3); k += 6; }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+  LXP.marks.geometry.dispose(); LXP.marks.geometry = g; LXP.marks.visible = true;
+  requestRender();
+}
+// The frame loop's call, next to lxTick: Play's clock (frame dt), the outline following the rig. → true on a frame where
+// the panel changed what is drawn; false otherwise, so an idle page with the panel open draws nothing.
+function lxPanelTick(dt) {
+  if (!LXP.built) return false;
+  const S = LXP.step;
+  let drew = false;
+  if (S.on && S.play) { S.t += dt; if (S.t >= lxpEvery()) { lxpStepTo(S.i + 1); lxFlush(); drew = true; } }
+  if (!LXP.marksDirty && (LXP.marked.length || (LXP.marks && LXP.marks.visible)) && lxpSig() !== LXP.marksSig) LXP.marksDirty = true;
+  if (LXP.marksDirty) { lxpMarksBuild(); drew = true; }
+  return drew;
+}
+
+// ---- keys: + / − level, [ / ] neighbour, 0 blackout — only with the panel open and no text field focused
+addEventListener('keydown', e => {
+  if (!LXP.built || lxPanelEl.hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (t && (/^(SELECT|TEXTAREA)$/.test(t.tagName) || t.isContentEditable || (t.tagName === 'INPUT' && !/^(range|checkbox|button|color)$/.test(t.type)))) return;
+  let did = true;
+  if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') lxpNudge(0.05);
+  else if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') lxpNudge(-0.05);
+  else if (e.key === '[') lxpNeighbour(-1);
+  else if (e.key === ']') lxpNeighbour(1);
+  else if (e.key === '0') { if (LXP.step.on) lxpStepStop(false); LX_API.blackout(lxpFade()); lxpSync(); lxpSay(`Blackout${lxpFade() ? ` over ${lxpFade()} s` : ''}.`); }
+  else did = false;
+  if (did) e.preventDefault();
+});
+
 function buildLightsPanel() {
-  lxPanelEl.innerHTML = '<h2>Lights</h2><div class="note">The lights panel is not built yet. From the console: MIDTOWN.lx.all(1), MIDTOWN.lx.set("4th Electric", { level: 1, color: "R26" }, 2), MIDTOWN.lx.blackout(1).</div>';
+  const gels = Object.keys(GELS).sort((a, b) => a[0] === b[0] ? +a.slice(1) - +b.slice(1) : a[0] === 'R' ? -1 : 1);
+  const posCounts = {}, typeCounts = {};
+  for (const u of LX.units) { const p = lxpPos(u); posCounts[p] = (posCounts[p] || 0) + 1; typeCounts[u.userData.type] = (typeCounts[u.userData.type] || 0) + 1; }
+  const positions = Object.keys(posCounts).sort((a, b) => lxpPosRank(a === '(no position)' ? null : a) - lxpPosRank(b === '(no position)' ? null : b) || a.localeCompare(b));
+  const types = Object.keys(typeCounts).sort((a, b) => typeCounts[b] - typeCounts[a] || a.localeCompare(b));
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
+  lxPanelEl.innerHTML = `
+    <div class="lp-head"><b>Lights</b><button id="lp-close" title="Close the lights panel">Close</button></div>
+    <h2>Select</h2>
+    <select id="lp-pos" aria-label="Position">${opt('', `Position… (${positions.length})`)}${positions.map(p => opt(p, `${p} (${posCounts[p]})`)).join('')}</select>
+    <div class="row"><select id="lp-type" aria-label="Type">${opt('', 'Type…')}${types.map(t => opt(t, `${t} (${typeCounts[t]})`)).join('')}</select>
+      <input id="lp-ch" type="text" placeholder="ch 7 · 1-20 · 7,12,41" aria-label="Channels"><button id="lp-chgo">Go</button></div>
+    <div class="row"><button id="lp-all">All</button><button id="lp-clear">Clear</button><span class="note">or click a fixture · Shift-click adds</span></div>
+    <div class="lp-sel" id="lp-sel">selected: nothing</div>
+    <div class="note" id="lp-unit"></div>
+    <h2>Drive</h2>
+    <div class="lp-grid">
+      <span>Fade</span><span class="row" title="Seconds: used by Level, Colour, All on, Blackout, 0 and recalling a look"><input id="lp-fade" type="number" min="0" step="0.5" value="0" aria-label="Fade time in seconds"> s</span><span></span>
+      <span>Level</span><input id="lp-level" type="range" min="0" max="100" step="1" value="0" aria-label="Level"><b id="lp-levelV">—</b>
+      <span>Colour</span><span class="row"><select id="lp-gel" aria-label="Gel">${opt('', 'Gel…')}${opt('@own', 'each unit’s own gel')}${opt('@open', 'Open (no gel)')}${gels.map(g => opt(g, g)).join('')}</select><input id="lp-pick" type="color" value="#fff1dc" aria-label="Colour picker"></span><span></span>
+      <span>Gobo</span><select id="lp-gobo" aria-label="Gobo"></select><span></span>
+      <span>Rotate</span><input id="lp-rate" type="range" min="-90" max="90" step="5" value="0" aria-label="Gobo rotation, degrees per second"><b id="lp-rateV">—</b>
+      <span>Pan</span><input id="lp-pan" type="range" min="${-LX_LIMIT.pan}" max="${LX_LIMIT.pan}" step="1" value="0" aria-label="Pan"><b id="lp-panV">—</b>
+      <span>Tilt</span><input id="lp-tilt" type="range" min="${-LX_LIMIT.tilt}" max="${LX_LIMIT.tilt}" step="1" value="0" aria-label="Tilt"><b id="lp-tiltV">—</b>
+      <span>Zoom</span><input id="lp-zoom" type="range" min="0" max="0" step="0.5" value="0" aria-label="Zoom, beam angle"><b id="lp-zoomV">—</b>
+    </div>
+    <div class="row"><label><input id="lp-snap" type="checkbox"> Snap (else travel at speed)</label><button id="lp-aim">Aim at view centre</button></div>
+    <h2>Master</h2>
+    <div class="row"><button id="lp-on">All on</button><button id="lp-bo" class="danger">Blackout</button><span class="note">with the fade</span></div>
+    <div class="lp-grid">
+      <span>Work</span><input id="lp-work" type="range" min="0" max="100" step="1" value="100" aria-label="Work light"><b id="lp-workV">—</b>
+      <span>Haze</span><input id="lp-haze" type="range" min="0" max="100" step="1" value="50" aria-label="Haze"><b id="lp-hazeV">—</b>
+    </div>
+    <div class="row"><span class="note">Step through</span><button id="lp-prev">Prev</button><button id="lp-next">Next</button><button id="lp-play" aria-pressed="false">Play</button><button id="lp-stop">Stop</button>
+      <label>every <input id="lp-every" type="number" min="0.2" step="0.5" value="${LXP_STEP_EVERY}" aria-label="Seconds per unit"> s</label></div>
+    <div class="note lp-step" id="lp-step"></div>
+    <h2>Looks</h2>
+    <div class="row"><input id="lp-name" type="text" placeholder="look name" aria-label="Look name"><button id="lp-save">Save look</button></div>
+    <div id="lp-looks" class="lp-looks"></div>
+    <div class="row"><button id="lp-export">Export JSON</button><button id="lp-copy">Copy JSON</button><label><input id="lp-import" type="file" accept=".json,application/json" hidden><button id="lp-importbtn">Import…</button></label></div>
+    <div class="note" id="lp-status">Recall uses the fade. Looks are saved in this browser; Export to keep or hand them over.</div>
+    <div class="note lp-keys">Keys (panel open, not typing): <b>+</b> / <b>−</b> level ±5 · <b>[</b> / <b>]</b> previous / next unit in the position · <b>0</b> blackout (with the fade) · click a fixture in Orbit to select it, Shift-click to add or drop it.</div>`;
+  const E = LXP.E, $ = id => lxPanelEl.querySelector('#lp-' + id);
+  for (const k of ['pos', 'type', 'ch', 'chgo', 'all', 'clear', 'sel', 'unit', 'fade', 'level', 'levelV', 'gel', 'pick', 'gobo', 'rate', 'rateV', 'pan', 'panV', 'tilt', 'tiltV', 'zoom', 'zoomV',
+    'snap', 'aim', 'on', 'bo', 'work', 'workV', 'haze', 'hazeV', 'prev', 'next', 'play', 'stop', 'every', 'step', 'name', 'save', 'looks', 'export', 'copy', 'import', 'importbtn', 'status']) E[k] = $(k);
+  $('close').addEventListener('click', () => lxpShowPanel(false));
+  new ResizeObserver(lxpFit).observe(document.getElementById('stage')); lxpFit();
+  // select
+  E.pos.addEventListener('change', () => { const p = E.pos.value; if (!p) return; lxpSetSel(p === '(no position)' ? LX.units.filter(u => !u.userData.position) : lxSelect(p), 'pos'); });
+  E.type.addEventListener('change', () => { if (E.type.value) lxpSetSel(lxSelect(E.type.value), 'type'); });
+  const chGo = () => { const us = lxpChannels(E.ch.value); lxpSetSel(us, 'ch'); if (!us.length && E.ch.value.trim()) lxpSay(`No unit answers to "${E.ch.value.trim()}".`); };
+  E.chgo.addEventListener('click', chGo);
+  E.ch.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); chGo(); } });
+  E.all.addEventListener('click', () => lxpSetSel(LX.units.slice(), 'all'));
+  E.clear.addEventListener('click', () => lxpSetSel([], 'clear'));
+  // drive
+  E.level.addEventListener('input', () => { E.levelV.textContent = E.level.value + '%'; if (!lxpFade()) lxpDrive({ level: E.level.value / 100 }); });
+  E.level.addEventListener('change', () => { const f = lxpFade(); if (f) { const n = lxpDrive({ level: E.level.value / 100 }, f); if (n) lxpSay(`${n} units to ${E.level.value}% over ${f} s.`); } });
+  E.gel.addEventListener('change', () => {
+    const v = E.gel.value, f = lxpFade(); if (!v || !LXP.sel.length) { if (v) lxpSay('Select something first.'); E.gel.value = ''; return; }
+    if (v === '@own') for (const u of LXP.sel) lxSet(u, { color: gelColour(u.userData.gel) }, f);
+    else lxpDrive({ color: v === '@open' ? OPEN_WHITE : v }, f);
+    const a = LXP.anchor && LX.byUnit.get(LXP.anchor);
+    if (a) E.pick.value = '#' + (a.fade.color ? a.fade.color.to : a.st.color).getHexString();
+    lxpSay(`${LXP.sel.length} units to ${v === '@own' ? 'their own gels' : v === '@open' ? 'open white' : v}` + (f ? ` over ${f} s.` : '.'));
+  });
+  E.pick.addEventListener('input', () => { E.gel.value = ''; lxpDrive({ color: E.pick.value }); });
+  E.gobo.addEventListener('change', () => { lxpDrive({ gobo: +E.gobo.value }); });
+  E.rate.addEventListener('input', () => { E.rateV.textContent = E.rate.value + '°/s'; lxpDrive({ goboRate: +E.rate.value }); });
+  E.rate.addEventListener('dblclick', () => { E.rate.value = 0; E.rateV.textContent = '0°/s'; lxpDrive({ goboRate: 0 }); });
+  E.pan.addEventListener('input', () => { E.panV.textContent = E.pan.value + '°'; lxpDrive({ pan: +E.pan.value, snap: E.snap.checked }); });
+  E.tilt.addEventListener('input', () => { E.tiltV.textContent = E.tilt.value + '°'; lxpDrive({ tilt: +E.tilt.value, snap: E.snap.checked }); });
+  E.zoom.addEventListener('input', () => { E.zoomV.textContent = (+E.zoom.value).toFixed(1) + '°'; lxpDrive({ zoom: +E.zoom.value }); });
+  E.aim.addEventListener('click', () => {
+    if (!LXP.sel.length) { lxpSay('Select something first.'); return; }
+    const P = lxpViewPoint(), res = lxAim(LXP.sel, P, 0, E.snap.checked), ok = res.filter(r => !r.skipped);
+    lxpSync();
+    lxpSay(`Aimed ${ok.length} mover${ok.length === 1 ? '' : 's'} at (${P.x.toFixed(2)}, ${P.y.toFixed(2)}, ${P.z.toFixed(2)})` + (res.length > ok.length ? ` · ${res.length - ok.length} fixed unit${res.length - ok.length === 1 ? '' : 's'} left alone.` : '.'));
+  });
+  // master
+  E.on.addEventListener('click', () => { if (LXP.step.on) lxpStepStop(false); const f = lxpFade(), n = LX_API.all(1, f); lxpSync(); lxpSay(`All on: ${n} lamps to full` + (f ? ` over ${f} s.` : '.')); });
+  E.bo.addEventListener('click', () => { if (LXP.step.on) lxpStepStop(false); const f = lxpFade(); LX_API.blackout(f); lxpSync(); lxpSay(`Blackout` + (f ? ` over ${f} s.` : '.')); });
+  E.work.addEventListener('input', () => { E.workV.textContent = E.work.value + '%'; LX_API.work(E.work.value / 100); });
+  E.haze.addEventListener('input', () => { E.hazeV.textContent = E.haze.value + '%'; LX_API.haze(E.haze.value / 100); });
+  E.prev.addEventListener('click', () => { const S = LXP.step; lxpStepTo(S.on ? S.i - 1 : -1); });
+  E.next.addEventListener('click', () => { const S = LXP.step; lxpStepTo(S.on ? S.i + 1 : 0); });
+  E.play.addEventListener('click', () => lxpStepPlay());
+  E.stop.addEventListener('click', () => { lxpStepStop(); lxpSay('Step-through stopped; the rig is back as it was.'); });
+  E.every.addEventListener('change', lxpStepShow);
+  // looks
+  E.save.addEventListener('click', () => lxpSaveLook(E.name.value));
+  E.name.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); lxpSaveLook(E.name.value); } });
+  const lookJSON = () => JSON.stringify({ v: 1, kind: 'midtown lx looks', looks: lxpLooks() }, null, 1);
+  E.export.addEventListener('click', () => {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lookJSON()], { type: 'application/json' })); a.download = 'midtown-looks.json'; a.click(); URL.revokeObjectURL(a.href);
+  });
+  E.copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(lookJSON()); lxpSay('Looks JSON copied — paste it into the chat.'); } catch (e) { lxpSay('Clipboard refused; use Export JSON instead.'); }
+  });
+  E.importbtn.addEventListener('click', () => E.import.click());
+  E.import.addEventListener('change', () => {
+    const f = E.import.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const d = JSON.parse(rd.result), got = d && d.looks && typeof d.looks === 'object' ? d.looks : d && d.units ? { [f.name.replace(/\.json$/i, '')]: d } : null;
+        if (!got) throw new Error('no looks in it');
+        const L = lxpLooks(), names = Object.keys(got).filter(k => got[k] && got[k].units);
+        for (const k of names) L[k] = got[k];
+        if (lxpLooksPut(L)) lxpSay(`Imported ${names.length} look${names.length === 1 ? '' : 's'}: ${names.join(', ')}.`);
+        lxpLooksList();
+      } catch (e) { lxpSay('That file is not a looks file: ' + e.message); }
+    };
+    rd.readAsText(f); E.import.value = '';
+  });
+  LXP.built = true;
+  lxpShowSel(); lxpSync(); lxpMasterSync(); lxpStepShow(); lxpLooksList();
+  // The same panel from the console, and for agent J's check (step.to(i): unit i alone at full, its label in the panel).
+  if (window.MIDTOWN) window.MIDTOWN.lxPanel = {
+    select: (q, from = 'console') => { lxpSetSel(lxpOrder(lxSelect(q)), from); return LXP.sel.length; },
+    get selected() { return LXP.sel.map(u => u.userData.id); },
+    pick: (cx, cy) => { const u = lxpPick(cx, cy); return u ? u.userData.id : null; },
+    capture: lxpCapture, apply: lxpApply, looks: lxpLooks, save: lxpSaveLook, recall: lxpRecall,
+    step: { to: i => { const u = lxpStepTo(i); return u ? u.userData.id : null; }, next: () => lxpStepTo(LXP.step.on ? LXP.step.i + 1 : 0), prev: () => lxpStepTo(LXP.step.on ? LXP.step.i - 1 : -1),
+      play: on => lxpStepPlay(on), stop: restore => lxpStepStop(restore !== false),
+      get state() { const S = LXP.step; return { on: S.on, play: S.play, i: S.i, n: S.list.length, unit: S.on ? S.list[S.i].userData.id : null, every: lxpEvery() }; } },
+    viewPoint: lxpViewPoint, marks: () => LXP.marks, el: lxPanelEl,
+  };
 }
 
 /* ---- THE CHECK (agent J) ----
@@ -3582,6 +4107,7 @@ renderer.setAnimationLoop(() => {
   if (walking) { if (ready && walkStep(dt)) moving = true; }  // the walk, its gravity and its floor come off this frame's dt
   else if (orbit.update()) moving = true;                    // true while the camera moved: input, or damping still settling
   if (ready && lxTick(dt)) moving = true;                    // the lights' fades, movers travelling, gobos turning: off this frame's dt
+  if (ready && lxPanelTick(dt)) moving = true;               // the lights panel: Step through's Play (off this frame's dt), the selection's outline
   drewLast = ready && (needsRender || moving);               // render on demand: an idle page draws nothing
   if (drewLast) { needsRender = false; lxDrawn(clock.elapsedTime); renderer.render(scene, camera); }
 });
