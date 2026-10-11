@@ -338,34 +338,37 @@ function cutBeams(houseScene) {
     if (cut) g.setIndex(keep);
   });
 }
-// The stairs the set is missing (Jack: "what happened to the stairs that go here"). The gallery is
-// a U — a back run and two side arms that come downstage and end in railed platforms at x ±3.5..4.5,
-// z 0.5..2.0 (gallery floor y 3.00, measured off ham_plank) — and the model gives those platforms no
-// way down. One open flight each, like the set's own centre stair: treads on two stringers, a rail
-// either side, from the platform's inner edge down to the deck toward centre stage, 12 risers, in
-// the set's plank material. World metres at the fitted placement; hidden at real size.
+// The stairs the set is missing (Jack: "what happened to the stairs that go here", then, of a first
+// try, "stairs are way too big and don't go there"). From the production photo he sent: the gallery
+// is a U whose two side arms end downstage in railed platforms (x ±3.5..4.5, z 0.5..2.0, floor
+// y 3.00, measured off ham_plank); off each platform's INNER side a small landing, and from it a
+// short steep flight running BACKSTAGE along the arm (+z here), down to the deck. 12 risers over
+// 2.4 m, 0.8 m wide, treads on stringers, a rail each side, in the set's plank material. World
+// metres at the fitted placement; hidden at real size.
 const sideStairs = new THREE.Group(); scene.add(sideStairs);
 function buildSideStairs(root) {
   let plank = null; root.traverse(o => { if (o.isMesh && o.name === 'ham_plank') plank = o.material; });
   if (!plank) return;
-  const top = 3.0, deck = HOUSE.deckY, n = 12, rise = (top - deck) / n, run = 0.24, w = 0.85, zc = 1.15;
-  const box = (sx, sy, sz, x, y, z, rz) => {
+  const top = 3.0, deck = HOUSE.deckY, n = 12, rise = (top - deck) / n, run = 0.2, w = 0.8, zTop = 2.0;
+  const box = (sx, sy, sz, x, y, z, rx) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), plank);
-    m.position.set(x, y, z); if (rz) m.rotation.z = rz; m.castShadow = m.receiveShadow = true;
+    m.position.set(x, y, z); if (rx) m.rotation.x = rx; m.castShadow = m.receiveShadow = true;
     sideStairs.add(m); return m;
   };
   for (const side of [-1, 1]) {
-    const xTop = side * 3.5;                                          // platform's inner edge
-    const len = Math.hypot(n * run, top - deck), ang = side * Math.atan2(top - deck, n * run);
-    const xm = xTop - side * n * run / 2, ym = (top + deck) / 2;
+    const xc = side * (3.5 - w / 2 - 0.05);                           // the flight, just inside the arm
+    box(w, 0.08, 0.8, xc, top - 0.04, zTop - 0.4);                   // the landing, against the platform's inner side
+    box(0.05, 0.95, 0.05, xc - side * (w / 2 + 0.03), top + 0.475, zTop - 0.78);   // landing post
     for (let i = 0; i < n; i++)                                       // treads, i = 0 at the top
-      box(run, 0.05, w, xTop - side * run * (i + 0.5), top - rise * i - 0.025, zc);
-    for (const zs of [-1, 1]) {
-      box(len, 0.28, 0.06, xm, ym - 0.16, zc + zs * (w / 2 - 0.03), ang);       // stringer
-      box(len, 0.06, 0.06, xm, ym + 0.95, zc + zs * (w / 2 + 0.03), ang);       // rail
-      for (let k = 0; k <= 3; k++) {                                            // balusters
+      box(w, 0.05, run, xc, top - rise * i - 0.025, zTop + run * (i + 0.5));
+    const len = Math.hypot(n * run, top - deck), ang = Math.atan2(top - deck, n * run);
+    const zm = zTop + n * run / 2, ym = (top + deck) / 2;
+    for (const xs of [-1, 1]) {
+      box(0.06, 0.28, len, xc + xs * (w / 2 - 0.03), ym - 0.16, zm, ang);          // stringer
+      box(0.06, 0.06, len, xc + xs * (w / 2 + 0.03), ym + 0.95, zm, ang);          // rail
+      for (let k = 0; k <= 3; k++) {                                                // balusters
         const t = k / 3;
-        box(0.05, 0.95, 0.05, xTop - side * n * run * t, top - (top - deck) * t + 0.475, zc + zs * (w / 2 + 0.03));
+        box(0.05, 0.95, 0.05, xc + xs * (w / 2 + 0.03), top - (top - deck) * t + 0.475, zTop + n * run * t);
       }
     }
   }
@@ -424,8 +427,11 @@ const built = new THREE.Group(); built.name = 'built'; scene.add(built);
 // BAKED: pieces Jack built and handed over (Export JSON, or the file in his Downloads), pasted here
 // so they are part of the page for everyone. Same shape as an export's `pieces`. "Edit the baked
 // pieces" lifts them into the editor for a session; re-export and they get re-baked.
-const BAKED = [];
-const BAKED_CUTS = [];      // delete boxes he confirmed and handed over: {p, r, s}, same as an export's `cuts`
+// Baked 2026-10-11 from his first export: an inner timber proscenium (two posts and a header in
+// the set's post grain), a black masking panel stage left, and two rail-grain blocks that fill the
+// apron's front corners where his cuts took out the scan's little stairs.
+const BAKED = [{"type":"box","name":"box 1","tex":{"name":"set: post"},"tile":1,"tint":"#ffffff","p":[5.227,2.654,0.292],"r":[0,-3.1416,0],"s":[2.13,8.987,0.23]},{"type":"box","name":"box 2","tex":{"name":"set: post"},"tile":1,"tint":"#ffffff","p":[0.216,6.472,0.687],"r":[0,-3.1416,0],"s":[10.824,1,1]},{"type":"box","name":"box 3","tex":{"name":"set: post"},"tile":1,"tint":"#ffffff","p":[-5.179,2.654,0.292],"r":[0,-3.1416,0],"s":[2.13,8.987,0.23]},{"type":"box","name":"box 4","tex":{"name":"colour: black"},"tile":1,"tint":"#ffffff","p":[-7.543,2.851,2.133],"r":[0,0,0],"s":[4.027,-6.628,-0.109]},{"type":"box","name":"box 5","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[4.744,0.312,0.244],"r":[0,3.1416,0],"s":[4.942,1,1]},{"type":"box","name":"box 6","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[-4.022,0.312,0.244],"r":[0,3.1416,0],"s":[4.942,1,1]}];
+const BAKED_CUTS = [{"p":[-3.339,6.616,-7.907],"r":[0,0,0],"s":[8.811,1.658,1.834]},{"p":[5.381,0.525,-0.468],"r":[-0.0035,0.9708,-0.0016],"s":[1,1,1]},{"p":[-4.866,0.513,-0.324],"r":[0,0,0],"s":[1.061,1,1]},{"p":[-4.564,0.528,-0.518],"r":[0,0.5768,0],"s":[1,1,1]}];      // his delete boxes: something hanging at the back of the house, and the scan's corner stairs
 const baked = new THREE.Group(); baked.name = 'baked'; scene.add(baked);
 const transform = new TransformControls(camera, canvas);
 transform.setSize(0.8);

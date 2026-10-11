@@ -224,11 +224,14 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **MERGE #226, RUN THE POST-MERGE PROTOCOL FOR #224/#225/#226, THEN SPEC THE HAMILTON GAME** (2026-10-11, evening)
+## NEXT SESSION: **MERGE #226, RUN THE POST-MERGE PROTOCOL FOR #224/#225/#226, THEN SPEC THE HAMILTON GAME** (2026-10-11, night)
 
 Rulings at **FE** (FF next). Suite count **21**. `main` is **`692f3d3`** (#224 and #225 merged by
-Jack). **PR #226 (`midtown-preview`) is open** — `midtown.html`, the preview page. Read STATE.md's
-NEWEST block first.
+Jack). **PR #226 (`midtown-preview`) is open, ten commits** — `midtown.html`, the preview page with
+its build mode, delete box, and his first bake. Read STATE.md's NEWEST block first. **If he hands
+over another export** (`Downloads/midtown-build*.json` or pasted JSON): its `pieces` → `BAKED`, its
+`cuts` → `BAKED_CUTS` in `midtown.html`, look, commit. If he had pressed "Edit the baked pieces"
+first, the export already contains the old baked pieces — replace, don't append.
 
 1. **Merge #226**, then the post-merge protocol for all three: fast-forward local `main`, rebuild
    byte-identical, `node tools/artnet-map.js` reproduces `docs/ARTNET.md`, 21/21, delete
@@ -260,9 +263,11 @@ one he could see. *"Fill in the stairs on the front of the stage"* was read as t
 steps, which got filled twice (steps, then blocks: *"what are these blocks"*); he meant the SET's side
 staircases at the gallery ends — which the ETC model simply does not have: the gallery is a U, its two
 arms come downstage and end in railed platforms (x ±3.5..4.5, z 0.5..2.0, floor y 3.00, measured off
-`ham_plank`) with no way down. `buildSideStairs` adds an open flight each, like the set's own centre
-stair: treads on two stringers, a rail either side, 12 risers, plank material, down toward centre
-stage; a first solid-wedge version dominated the house view and was replaced. (`ham_iron`, hidden for
+`ham_plank`) with no way down. `buildSideStairs` adds a flight each. Two tries: solid wedges toward centre
+stage (dominated the house), open flights toward centre stage (*"stairs are way too big and don't
+go there"*, with a production photo), and now, per the photo, a small landing off each platform's
+inner side and a short steep flight running BACKSTAGE along the arm — 12 risers over 2.4 m, 0.8 m
+wide, treads on stringers, rails, plank material. (`ham_iron`, hidden for
 a round on the theory it held the beams, is only the posts' foot blocks.) The scan's corner steps are
 back untouched.
 *"Remove the metal beam"*: not the set's — hiding or cutting every set mesh left it standing. It is
@@ -286,7 +291,10 @@ re-applies the remaining cuts from original indices captured on first cut. Verif
 counts: a 2.5 × 2.4 × 2 box over the stage-right gallery took 252 brick, 335 post and 331 rail
 triangles and undo restored every count. **Bake recipe:** read his export (Downloads,
 `midtown-build.json`) or the pasted JSON, put its `pieces` into the page's `BAKED` constant and its
-`cuts` into `BAKED_CUTS`, commit; "Edit the baked pieces" lifts them
+`cuts` into `BAKED_CUTS`, commit — **done once this session** with his first export: six pieces (an
+inner timber proscenium of two posts and a header in the set's post grain, a black masking panel
+stage left, two rail-grain blocks over the apron's front corners) and four cuts (a hanging thing at
+the back of the house, the scan's corner stairs); "Edit the baked pieces" lifts them
 back into the editor. Verified in the pane: two pieces, brick texture, resize, autosave; console
 clean. The set is 17.3 m wide against
 the scanned side walls, so "Set fitted" is scale 0.62 and "Real size" is 1:1 through the walls.

@@ -1,7 +1,21 @@
-# STATE — 2026-10-11 (A MIDTOWN + HAMILTON PREVIEW PAGE IS IN PR; THE HAMILTON GAME IS BRIEFED, NOT SPECCED)
+# STATE — 2026-10-11 (THE MIDTOWN + HAMILTON PREVIEW IS IN PR #226 WITH A BUILD MODE AND HIS FIRST BAKE; THE HAMILTON GAME IS BRIEFED, NOT SPECCED)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-11 (night), the first bake and the stairs redone (branch `midtown-preview`, PR #226 OPEN, 10 commits)
+
+- **The bake recipe has been run once.** Jack's first export (`C:/Users/jackf/Downloads/midtown-build (1).json`)
+  is in the page: `BAKED` holds six pieces — an inner timber proscenium (two 9 m posts and a header
+  in the set's post grain, x ±5.2, inside the grey frame), a black masking panel stage left, and two
+  rail-grain blocks filling the apron's front corners — and `BAKED_CUTS` holds his four delete boxes
+  (something hanging at the back of the house, and the scan's little corner stairs, which his blocks
+  now cover). **He builds, exports, the agent bakes: that loop works.** Next export → replace the
+  constants (or append to them if he was editing the baked pieces).
+- **The side stairs are rebuilt from his production photo** (*"stairs are way too big and don't go
+  there"*): off each end platform's inner side a small landing, then a short steep flight running
+  BACKSTAGE along the arm (12 risers over 2.4 m, 0.8 m wide), not the long flights toward centre.
+- Everything below in the evening block still stands.
 
 ## NEWEST — 2026-10-11 (evening), the Midtown preview page (branch `midtown-preview`, PR #226 OPEN)
 
