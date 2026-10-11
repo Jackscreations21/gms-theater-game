@@ -6,16 +6,21 @@ fetch`, compare `origin/main`, then read this.
 ## NEWEST — 2026-10-10, read this before the Art-Net sections below
 
 - **`main` moved on after the Art-Net record below was written:** #217
-  (`artnet-desk-record`) and #218 (`build-load-gate`) merged; `main` is
-  **`7b71066`**. This file was not updated for them. Read those two PRs before
-  trusting the Art-Net numbers below.
+  (`artnet-desk-record`), #218 (`build-load-gate`), #221 (`midtown-scan`) and
+  #222 (`midtown-holes`) merged; `main` is **`7d27c9d`**. The Art-Net sections
+  below were not updated for #217/#218. Read those two PRs before trusting the
+  Art-Net numbers below.
+- **#222 was merged with only its first commit.** The markup tool and Jack's two
+  applied rounds landed on the branch after the merge and never reached `main`;
+  the `midtown-rounds` PR carries them. Until it merges, `main`'s GLB still has
+  the speakers and the vent-recess holes.
 - **New machine:** Jack's, at `C:\Users\jackf\OneDrive\Documents\gms-theater`.
   Git 2.55 and Blender 5.2 are installed. **Node is not**, so the suites cannot
   run here yet (`winget install OpenJS.NodeJS.LTS`). The relay path below
   (`C:/Users/patri/...`) is the OLD machine.
-- **`midtown-scan` merged as #221; `midtown-holes` is the second pass on the same
-  asset** (assets and tools only, again). Nothing in `src/` changed, so
-  `the-house.html` and `docs/ARTNET.md` need no regenerating.
+- **`midtown-scan` (#221) and `midtown-holes` (#222) are merged; `midtown-rounds`
+  is the rest of the second pass** (assets and tools only, all three). Nothing in
+  `src/` changed, so `the-house.html` and `docs/ARTNET.md` need no regenerating.
   - `assets/midtown-auditorium.glb` is a CC BY scan of a real auditorium, edited
     into a theatre house: a solid proscenium, a fly tower, a brick back wall and
     filled holes.
@@ -29,13 +34,15 @@ fetch`, compare `origin/main`, then read this.
     https://claude.ai/artifact/LwSoKjQ911xowE1DQa4syv** (`markup.html`: delete a
     region, retexture a panel, pin a note); his edits land in that artifact's
     `edits` collection — **read it at the start of the next scan session and
-    apply them in the script.** Recipe in HANDOFF.
+    apply them in the script.** Recipe in HANDOFF. **Two rounds are already
+    applied and cleared** (speakers out, piers widened, vent recesses closed),
+    so the list starts empty.
   - The full record is in HANDOFF.md, the two "DONE — 2026-10-10" blocks.
 - **Not wired into the game.** Three decisions are Jack's (FUTURE.md PART 2,
   "Realism"):
   1. Which venue it becomes.
   2. The fly rail for its new fly tower.
-  3. Merging its 17 materials down to the 8 budget.
+  3. Merging its 16 materials down to the 8 budget.
 
   The rest of the realism options list is there too, unchosen.
 - **The headset run is still owed**, as below. Nothing in this session touched
