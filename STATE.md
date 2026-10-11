@@ -1,7 +1,71 @@
-# STATE — 2026-10-11 (THE MIDTOWN + HAMILTON PREVIEW WITH ITS BUILD MODE IS IN PR #226, TWO BAKES IN; THE HAMILTON GAME IS BRIEFED, NOT SPECCED)
+# STATE — 2026-10-11 (THE MIDTOWN PREVIEW NOW CARRIES THE WHOLE HAMILTON RIG, ITS RIGGING, A SPOT BOOTH AND A DESK — PR #226, UNMERGED; THE CUES ARE NEXT AND WAIT ON ONE ANSWER)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-11 (night): the rig is hung, rigged, lit for the eye, and fast enough — PR #226 grew four commits
+
+**Read this block first.** `main` is still `692f3d3`; **PR #226 (`midtown-preview`) is open at
+`15703ae`**, twenty commits, UNMERGED. Nothing in `src/`; the suites were not run (nothing they
+check moved; the one red is still the untracked fixture GLBs).
+
+- **Jack's ask was "do all the lighting cues timed correctly"**, with resources in his Downloads
+  (`hamilton lighitn resoucses\` — the THPP cue photos (112), focus charts, magic sheet, ML preset
+  charts, the project guide; a YouTube playlist link in `more hmailton things.txt`; the Eos Nomad
+  CSV; both zips). **He redirected: "first put in all the lights in the correct spots so I can
+  see what they look like."** That is done. **THE CUES ARE NOT STARTED.** The open question I
+  put to him and he has not answered: timed against WHAT — (1) a recording he supplies, the
+  Beetlejuice route (audio clock, exact), or (2) the cast album's track lengths with no audio in
+  the game. Ask again before building.
+- **What landed, in order (all `midtown.html` unless said):**
+  1. `b39f86e` **the rig**: `tools/hamilton-rig.py` reads the ETC pack's `Scene/Patch.json` +
+     `Fixture.json` (extracted in this session's scratchpad; the pack lives in
+     `Downloads\Hamilton THPP\*.esf3d`, NOT the repo) → `assets/hamilton-rig.json` (committed,
+     313 units, non-commercial like the set, declared in `assets/README.md`). Frame: the set
+     GLB's own (Y up, deck 0, **upstage −z, house +z**, stage left +x); ETC (x,y,z) → GLB
+     (x, z+0.2651, 3.96−y). 161 Color Force cells merged to 7 six-foot + 4 four-foot battens +
+     44 single cells (drawn as ColorBlasts). Three Lycians and three hazers placed by hand.
+     The page hangs one model per unit under the set's root (so Set fitted / Real size apply),
+     `quat` split into yaw on the unit and tilt on the head, movers head-down, lens tinted by
+     gel, a Rig toggle. Units carry `userData.{id,channels,type,label,gel,position,hung,placed}`.
+  2. `b7776ce` **the rigging** (three of his screenshots): SL/SR Boom 1 moved onto the Midtown
+     side walls on boom pipes with brackets (their bottom metre hangs over the exit-door
+     recess, unsupported); 12-inch box trusses on four cables for Apron Electric, FOH Electric
+     (dropped 0.75 m real to clear a ledge in the scanned ceiling) and FOH Truss; a pipe grid
+     wall-to-wall at the electrics' height with 12 hangers to the fly roof; 13 floor towers for
+     the wing booms (SL Boom 5's top clips `ham_brick`, SR Boom 6 is 0.14 m from `ham_iron`).
+  3. `5d57fde` **the frame rate** (he said it lags): measured on the Intel UHD — **his Chrome was
+     not on the RTX 5060**; he has since set Chrome to High performance in Windows (screenshot
+     seen), unverified. Code side: overhead specials cast no shadow, static shadow maps,
+     pixel cap 1 (adaptive to 0.8), render on demand (idle = 0 draws), `compileAsync` behind
+     the loader, cuts applied once, and **LOD**: `tools/blender/fixtures_lod.py` →
+     `assets/fixtures/lod/*.glb` (800 tris, 1,000 for movers; hang point pinned; checker
+     `--lod`), swapped in past 7 m. GPU ms Back/Front/Fly 24.9/41.3/28.1 → 16.2/22.5/17.4, then
+     the LOD halves the rig's share (1.46M → 467k tris). The page prints its GPU on load.
+  4. `15703ae` **house works**: a followspot booth cut into the back wall (5.9 m window between
+     the alcove jambs; room behind; spots on stands, re-aimed) and a lighting desk on a riser
+     where rows 7–8 of the centre block were (tech table, Eos-style console, monitors, chairs).
+     Their delete boxes are `BOOTH_CUTS` / `DESK_CUTS`, applied with `BAKED_CUTS`.
+- **STILL UNTRACKED, by his instruction: `assets/fixtures/*.glb` (19) and now
+  `assets/fixtures/lod/*.glb` (19, 1.0 MB).** The page fetches both; on Pages after the merge
+  the rig will not appear until they are committed. **Ask him.** The suite's red case is them.
+- **Known rough edges for his eye:** eleven downstage-lip units and the first booms float over
+  the house floor in front of the deck edge (the real stage is bigger); the up-lighters under
+  the gallery sit a hand's width under it; Real size throws the FOH rows and the booth's spots
+  out through the walls (expected — the rig scales with the set, the house does not).
+- **Cue resources, for the next step:** the Eos CSV has 128 cues in 13 islands with labels
+  ("+++1/7"BeBack"", "Burr Enters", "Helpless", "Satisfied 3 pools", "Non Stop"…), fade/delay
+  per part, follow/hang — a fifth of the show; the cue photos PDF (112 pages, "CUE n" labelled,
+  render with pymupdf at dpi 40 to look). The game's HAMILTON plot (p5f `plotHamilton`, 20
+  looks, `follow`-driven from the p7 script) is the thing to replace or extend; Beetlejuice
+  (p5h, `at:` seconds off `BJ_AUDIO`) is the timed model. The preview page has no cue engine
+  at all — the cues either go into the game (p5f) or the preview grows a player.
+- **Local serving:** `.claude/launch.json` `the-house` on 8080; the pane is ~500 px wide, so
+  screenshots are small — agents rendered the canvas at 1600×900 and posted it to a local
+  receiver instead. Chrome at the same URL is the better window for him.
+- **Headset run still owed**, as below.
+
+---
 
 ## NEWEST — 2026-10-11 (end of session): the Midtown preview round is in PR #226, 16 commits, UNMERGED
 

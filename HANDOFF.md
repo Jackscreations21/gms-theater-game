@@ -224,6 +224,75 @@ compare the *same* production across stages instead.
 
 ---
 
+## NEXT SESSION: **ASK WHAT THE CUES ARE TIMED AGAINST, THEN BUILD THEM; MERGE #226 FIRST IF HE SAYS SO** (2026-10-11, night)
+
+Rulings at **FE** (FF next). Suite count **21**. `main` is **`692f3d3`**. **PR #226
+(`midtown-preview`) is open at `15703ae`, twenty commits** — the preview page now carries the
+whole Hamilton rig, its rigging, a followspot booth, a lighting desk and a frame-rate round. Read
+STATE.md's night block first.
+
+1. **The cues.** Jack: *"i want you to do all the lighting cues timed correctly"* — resources in
+   his Downloads (STATE lists them). **Timed against what?** He has not said: a recording he
+   supplies (the Beetlejuice route, exact) or the cast album's track lengths with no audio. Ask,
+   then spec it: the Eos export's 128 cues and their fade/follow times, the 112 cue photos for
+   the looks, the game's `plotHamilton` (p5f) to replace, Beetlejuice's `at:` clock as the model.
+   The preview page has no cue engine; decide whether the cues live in the game or the preview
+   grows a player (the rig's `userData.channels` is the patch for either).
+2. **Merge #226** when he is happy with the look, then the post-merge protocol for #224/#225/#226.
+   **The 38 fixture GLBs (`assets/fixtures/` and `lod/`) are untracked by his instruction and
+   the page fetches them** — ask whether they get committed; Pages shows no rig until they are.
+3. **Did Chrome move to the RTX 5060?** He set it in Windows; the page prints its GPU on load.
+4. **Headset run**, still owed.
+
+## DONE — 2026-10-11 (night): the rig, its rigging, the booth and the desk, and the frame rate (PR #226, four commits)
+
+Jack asked for the cues and then put the rig first: *"first befor you do the cues put in all
+the lights in the correct spots so i can see what they look like"* — and *"can you have opus
+agents place all the lights."* Eleven Opus agents over the evening, two or three at a time, each
+in a pre-cut region of `midtown.html`; the parent inserted the stubs, the shared import and the
+call lines before spawning, and the record of how that went is in TRAPS.
+
+**The rig (`b39f86e`).** `tools/hamilton-rig.py` turns the ETC pack's `Scene/Patch.json` (445
+entries) into `assets/hamilton-rig.json`: 313 physical units (32 scenic elements skipped, 161
+Color Force cells merged into 11 battens and 44 single cells, six placed by hand), each with its
+model file, hang point, pan×tilt quaternion, beam vector, gel, tags and an inferred hanging
+position, in the set GLB's own frame. The generator found the GLB's upstage is −z (p5i seats it
+unturned; the preview's 180° turn is right for the Midtown house) and that the pack's deck is
+0.229 m below the GLB's y 0 (the dropped floor slab). The page hangs one fixture model per unit
+under the set's root, yaw on the unit and tilt on the head so clamps stay on pipes, movers
+head-down, lens tinted by gel, and the aim check against the file's beam reads dot 1.0000.
+
+**The rigging (`b7776ce`), from three marked-up screenshots.** *"move these lights back to be
+attached to the walls"* — the two house booms raycast to the side-wall piers and sit 0.45 m off
+them on a boom pipe with brackets. *"make a truss hanging down from the roof with 4 ropes
+securing it"* — a 12-inch box truss per FOH row on four cables to the scanned ceiling; the FOH
+Electric's line ran through a ceiling ledge (the real room's own bridge), so that row hangs
+0.75 m lower. *"put a grid at the level of the stage lights"* — ten pipes wall to wall, five
+cross pipes, twelve hangers to the fly roof. *"make all the lights in the wings have trusses
+attached to the ground"* — thirteen box-truss towers on base plates, one chord through each
+boom's hang points. Every structure is one merged mesh marked `rig`.
+
+**The frame rate (`5d57fde`).** *"its also lagging … i have run way heavier things on this
+laptop."* The measurement agent found why both were true: Chromium was on the Intel UHD, not
+the RTX 5060. On the Intel chip the page was GPU-bound (CPU render 3 ms, GPU 25–42 ms), draw
+calls were not the problem, and an instancing prototype RAISED GPU time. What was done: the two
+over-stage specials cast no shadow (−4 / −10 ms Front), static shadow maps (−3 ms, identical
+picture), pixel cap 1 with an adaptive drop to 0.8, render on demand, `compileAsync` behind the
+loader, the cuts applied once, `powerPreference: 'high-performance'`, the GPU name printed on
+load; and a Blender LOD pass (`tools/blender/fixtures_lod.py`, hang point pinned after the first
+collapse moved it) with `THREE.LOD` per unit past 7 m — 1.46M → 467k triangles from the back.
+Jack then set Chrome to High performance in Windows Settings; whether it took is unverified.
+
+**House works (`15703ae`).** *"carve out a hole here and put in a spotlight booth"* — the back
+wall is an alcove between jambs with the rear doorways outside them, so the window is 5.9 m
+not 8; the room behind, sill, lintel, stools, work light, and the Lycians on stands re-aimed at
+the turntable. *"take out some of the seats in the middle here and put in a lighting desk"* —
+rows 7 and 8 of the centre block cut on a box tilted to the 6.5° rake (the floor untouched,
+verified by raycast), a level riser, a tech table, an Eos-style console with two monitors, a
+littlite, a laptop, two chairs.
+
+Not done: the cues (one question open — see NEXT SESSION). Nothing in `src/`; suites not run.
+
 ## NEXT SESSION: **MERGE #226, RUN THE POST-MERGE PROTOCOL FOR #224/#225/#226, THEN SPEC THE HAMILTON GAME** (2026-10-11, end of session)
 
 Rulings at **FE** (FF next). Suite count **21**. `main` is **`692f3d3`** (#224 and #225 merged by
