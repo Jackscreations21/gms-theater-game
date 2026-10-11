@@ -279,8 +279,14 @@ plane / wedge where the view is looking; texture dropdown of the set's and house
 (cloned to lit `MeshStandard`) plus flat colours; image by picker or dropped on the view (data URL,
 travels in the JSON); tiling, tint; `TransformControls` gizmo, G/R/S, numeric fields, snap,
 duplicate, delete; autosave to localStorage flushed from the frame loop (no `setTimeout`); Export /
-Copy / Import JSON. **Bake recipe:** read his export (Downloads, `midtown-build.json`) or the pasted
-JSON, put its `pieces` into the page's `BAKED` constant, commit; "Edit the baked pieces" lifts them
+Copy / Import JSON. Then *"a delete box where you scale it over an area then select confirm and it gets rid
+of it"*: a red translucent cube on the same gizmo; Confirm drops every triangle whose centroid is
+inside it (scan, fills, set, side stairs, proscenium) and removes pieces centred inside; Undo last
+re-applies the remaining cuts from original indices captured on first cut. Verified by triangle
+counts: a 2.5 × 2.4 × 2 box over the stage-right gallery took 252 brick, 335 post and 331 rail
+triangles and undo restored every count. **Bake recipe:** read his export (Downloads,
+`midtown-build.json`) or the pasted JSON, put its `pieces` into the page's `BAKED` constant and its
+`cuts` into `BAKED_CUTS`, commit; "Edit the baked pieces" lifts them
 back into the editor. Verified in the pane: two pieces, brick texture, resize, autosave; console
 clean. The set is 17.3 m wide against
 the scanned side walls, so "Set fitted" is scale 0.62 and "Real size" is 1:1 through the walls.

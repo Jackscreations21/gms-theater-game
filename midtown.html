@@ -119,6 +119,9 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     </div>
     <div class="row"><button id="b-dup">Duplicate</button><button id="b-del" class="danger">Delete</button></div>
     <div class="note">G move · R rotate · S scale · Delete removes · Esc deselects</div>
+    <h2>Delete</h2>
+    <div class="row"><button id="b-cutbox">Place delete box</button><button id="b-cutok" class="danger">Confirm delete</button><button id="b-cutundo">Undo last</button></div>
+    <div class="note" id="b-cutn">Move and scale the red box over what should go, then Confirm (or Enter). Cuts the house, the set and pieces alike.</div>
     <h2>Scene</h2>
     <div class="row"><button id="b-export">Export JSON</button><button id="b-copy">Copy JSON</button><label><input id="b-import" type="file" accept=".json" hidden><button id="b-importbtn">Import…</button></label><button id="b-clear" class="danger">Clear all</button></div>
     <div class="note" id="b-status">Saved in this browser as you work.</div>
@@ -404,7 +407,7 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   houseRoot = house.scene;
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
   registerModelTextures(house.scene, 'house: ', ['deck_fill', 'pros_outer_l', 'back_brick_lo', 'house_ceiling', 'house_floor']);
-  fillTexSelect(); restore({ pieces: BAKED }, baked); loadSaved();
+  fillTexSelect(); restore({ pieces: BAKED }, baked); loadSaved(); reapplyAll();
   window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built };   // a handle for measuring from the console
   document.getElementById('load').hidden = true;
   const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t);
@@ -422,6 +425,7 @@ const built = new THREE.Group(); built.name = 'built'; scene.add(built);
 // so they are part of the page for everyone. Same shape as an export's `pieces`. "Edit the baked
 // pieces" lifts them into the editor for a session; re-export and they get re-baked.
 const BAKED = [];
+const BAKED_CUTS = [];      // delete boxes he confirmed and handed over: {p, r, s}, same as an export's `cuts`
 const baked = new THREE.Group(); baked.name = 'baked'; scene.add(baked);
 const transform = new TransformControls(camera, canvas);
 transform.setSize(0.8);
@@ -448,7 +452,7 @@ function fillTexSelect() {
   const op = document.createElement('option'); op.value = '@image'; op.textContent = 'image (dropped / picked)'; sel.appendChild(op);
 }
 function applyTexture(obj, tex) {                            // tex: {name} | {image: dataURL}
-  const d = obj.userData;
+  const d = obj.userData; if (d.cutter) return;
   if (tex.image) {
     const t = new THREE.TextureLoader().load(tex.image); t.colorSpace = THREE.SRGBColorSpace;
     obj.material = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide });
@@ -490,6 +494,7 @@ function addPiece(type) {                                    // where the view i
 let houseRoot = null; function houseScene() { return houseRoot ? [houseRoot] : []; }
 function select(obj) {
   selected = obj;
+  if (obj !== cutBox && cutBox.visible && obj) cutBox.visible = false;      // one delete box at a time; selecting elsewhere drops it
   if (obj) transform.attach(obj); else transform.detach();
   B('b-name').textContent = obj ? obj.name : 'nothing';
   syncFields();
@@ -512,7 +517,7 @@ function fieldsToObject() {
   markDirty();
 }
 ['b-px', 'b-py', 'b-pz', 'b-sx', 'b-sy', 'b-sz', 'b-rx', 'b-ry', 'b-rz'].forEach(id => B(id).addEventListener('input', fieldsToObject));
-B('b-tex').addEventListener('change', () => { if (selected && B('b-tex').value !== '@image') { applyTexture(selected, { name: B('b-tex').value }); markDirty(); } });
+B('b-tex').addEventListener('change', () => { if (selected && !selected.userData.cutter && B('b-tex').value !== '@image') { applyTexture(selected, { name: B('b-tex').value }); markDirty(); } });
 B('b-tile').addEventListener('input', () => { if (selected) { selected.userData.tile = parseFloat(B('b-tile').value) || 1; applyLook(selected); markDirty(); } });
 B('b-tint').addEventListener('input', () => { if (selected) { selected.userData.tint = B('b-tint').value; applyLook(selected); markDirty(); } });
 document.querySelectorAll('#build [data-add]').forEach(b => b.addEventListener('click', () => addPiece(b.dataset.add)));
@@ -528,14 +533,14 @@ B('b-snap').addEventListener('change', () => {
   transform.setTranslationSnap(on ? 0.1 : null); transform.setRotationSnap(on ? THREE.MathUtils.degToRad(15) : null); transform.setScaleSnap(on ? 0.1 : null);
 });
 B('b-dup').addEventListener('click', () => {
-  if (!selected) return;
+  if (!selected || selected === cutBox) return;
   const s0 = selected, m = makePiece(s0.userData.type, s0.userData.tex);
   m.userData.tile = s0.userData.tile; m.userData.tint = s0.userData.tint; applyLook(m);
   m.position.copy(s0.position).x += s0.scale.x + 0.2; m.rotation.copy(s0.rotation); m.scale.copy(s0.scale);
   select(m); markDirty();
 });
 function removeSelected() {
-  if (!selected) return;
+  if (!selected || selected === cutBox) return;
   const o = selected; select(null); built.remove(o); o.geometry.dispose(); markDirty();
 }
 B('b-del').addEventListener('click', removeSelected);
@@ -555,7 +560,7 @@ stage.addEventListener('drop', e => {
 function pick(cx, cy) {
   const r = canvas.getBoundingClientRect();
   const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2((cx - r.left) / r.width * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), camera);
-  const hits = ray.intersectObjects(built.children, false);
+  const hits = ray.intersectObjects(cutBox.visible ? [cutBox, ...built.children] : built.children, false);
   return hits.length ? hits[0].object : null;
 }
 function buildClick(e) { if (!editing) return; select(pick(e.clientX, e.clientY)); }
@@ -563,7 +568,8 @@ function buildKey(e) {
   if (!editing) return false;
   if (e.code === 'Escape') { select(null); return true; }
   if (!selected) return false;
-  if (e.code === 'Delete' || e.code === 'Backspace') { removeSelected(); return true; }
+  if (selected === cutBox && (e.code === 'Enter' || e.code === 'NumpadEnter')) { confirmCut(); return true; }
+  if (e.code === 'Delete' || e.code === 'Backspace') { if (selected === cutBox) cancelCut(); else removeSelected(); return true; }
   if (e.code === 'KeyG') { setGizmo('translate'); return true; }
   if (e.code === 'KeyR') { setGizmo('rotate'); return true; }
   if (e.code === 'KeyS' && !walking) { setGizmo('scale'); return true; }
@@ -571,13 +577,80 @@ function buildKey(e) {
 }
 B('b-toggle').addEventListener('click', () => {
   editing = !editing; panel.hidden = !editing; B('b-toggle').setAttribute('aria-pressed', String(editing));
-  if (!editing) select(null);
+  if (!editing) { cancelCut(); select(null); }
 });
+// THE DELETE BOX (Jack: "a delete box where you scale it over an area then select confirm and it
+// gets rid of it"). A translucent red unit cube, moved and scaled with the same gizmo; Confirm drops
+// every triangle whose centroid lies inside it — house scan, fills, set, side stairs, proscenium —
+// and removes any built piece whose centre is inside. Each confirmed box is kept as {p, r, s}, saved
+// and exported with the pieces, so it re-applies on load and can be baked into BAKED_CUTS. Undo pops
+// the last one and re-applies the rest from the meshes' original indices, captured on first cut.
+const cutBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
+cutBox.add(new THREE.LineSegments(new THREE.EdgesGeometry(cutBox.geometry), new THREE.LineBasicMaterial({ color: 0xff5050 })));
+cutBox.name = 'delete box'; cutBox.userData = { cutter: true }; cutBox.visible = false; cutBox.renderOrder = 10;
+scene.add(cutBox);
+let cuts = [];                                               // this session's confirmed boxes
+const originals = new Map();                                 // mesh -> original index (array) or null (was non-indexed)
+function cuttables() {
+  const list = [];
+  const take = o => { if (o.isMesh && !o.userData.cutter && !o.userData.piece && o.geometry.attributes.position) list.push(o); };
+  if (houseRoot) houseRoot.traverse(take); setGroup.traverse(take); sideStairs.traverse(take);
+  scene.children.forEach(o => { if (o.name === 'proscenium' || o.name === 'pros_wall') take(o); });
+  return list;
+}
+function cutMatrix(c) {
+  const m = new THREE.Matrix4().compose(new THREE.Vector3().fromArray(c.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(c.r[0], c.r[1], c.r[2])), new THREE.Vector3().fromArray(c.s));
+  return m.invert();
+}
+function applyCut(c) {
+  const inv = cutMatrix(c), p = new THREE.Vector3(), q = new THREE.Vector3();
+  const inside = v => { q.copy(v).applyMatrix4(inv); return Math.abs(q.x) <= 0.5 && Math.abs(q.y) <= 0.5 && Math.abs(q.z) <= 0.5; };
+  for (const o of cuttables()) {
+    o.updateMatrixWorld(true);
+    const g = o.geometry, pos = g.attributes.position, idx = g.index ? g.index.array : null;
+    if (!originals.has(o)) originals.set(o, idx ? Array.from(idx) : null);
+    const n = idx ? idx.length : pos.count, keep = [], a = new THREE.Vector3(), b = new THREE.Vector3(), d = new THREE.Vector3();
+    let cut = 0;
+    for (let t = 0; t < n; t += 3) {
+      const ia = idx ? idx[t] : t, ib = idx ? idx[t + 1] : t + 1, ic = idx ? idx[t + 2] : t + 2;
+      a.fromBufferAttribute(pos, ia); b.fromBufferAttribute(pos, ib); d.fromBufferAttribute(pos, ic);
+      p.copy(a).add(b).add(d).multiplyScalar(1 / 3).applyMatrix4(o.matrixWorld);
+      if (inside(p)) cut++; else keep.push(ia, ib, ic);
+    }
+    if (cut) g.setIndex(keep);
+  }
+  for (const grp of [built, baked]) for (const o of [...grp.children]) {
+    if (inside(o.getWorldPosition(p))) { if (o === selected) select(null); grp.remove(o); }
+  }
+}
+function reapplyAll() {
+  for (const [o, orig] of originals) { if (orig) o.geometry.setIndex(orig.slice()); else o.geometry.setIndex(null); }
+  for (const c of [...BAKED_CUTS, ...cuts]) applyCut(c);
+  B('b-cutn').textContent = `${cuts.length} delete${cuts.length === 1 ? '' : 's'} this session` + (BAKED_CUTS.length ? `, ${BAKED_CUTS.length} baked` : '') + '. Move and scale the red box, then Confirm (or Enter).';
+}
+function placeCutBox() {
+  const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && h.distance > 0.3);
+  const at = hits.length ? hits[0].point : camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
+  cutBox.position.copy(at); cutBox.position.y += 0.5; cutBox.rotation.set(0, 0, 0); cutBox.scale.set(1, 1, 1); cutBox.visible = true;
+  select(cutBox);
+}
+function confirmCut() {
+  if (!cutBox.visible) return;
+  const c = { p: cutBox.position.toArray().map(x => +x.toFixed(3)), r: cutBox.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: cutBox.scale.toArray().map(x => +x.toFixed(3)) };
+  cuts.push(c); applyCut(c);
+  cutBox.visible = false; select(null); reapplyAll(); markDirty();
+}
+function cancelCut() { cutBox.visible = false; if (selected === cutBox) select(null); }
+B('b-cutbox').addEventListener('click', placeCutBox);
+B('b-cutok').addEventListener('click', confirmCut);
+B('b-cutundo').addEventListener('click', () => { if (cuts.length) { cuts.pop(); reapplyAll(); markDirty(); } });
+
 // Save and load. Autosave is a dirty flag the frame loop flushes half a second after the last change.
 const SAVE_KEY = 'midtown.build.v1';
 function markDirty() { dirty = true; dirtyAt = clock.elapsedTime; }
 function serialize() {
-  return { v: 1, pieces: built.children.map(o => ({ type: o.userData.type, name: o.name, tex: o.userData.tex, tile: o.userData.tile, tint: o.userData.tint,
+  return { v: 1, cuts, pieces: built.children.map(o => ({ type: o.userData.type, name: o.name, tex: o.userData.tex, tile: o.userData.tile, tint: o.userData.tint,
     p: o.position.toArray().map(x => +x.toFixed(3)), r: o.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: o.scale.toArray().map(x => +x.toFixed(3)) })) };
 }
 function restore(data, into = built) {
@@ -591,6 +664,7 @@ function restore(data, into = built) {
     if (into !== built) { built.remove(m); into.add(m); }
   }
   serial = built.children.length;
+  if (into === built) { cuts = (data && data.cuts) || []; reapplyAll(); }
   B('b-bakedn').textContent = baked.children.length ? baked.children.length + ' baked' : 'nothing baked yet';
 }
 function save() {

@@ -34,8 +34,14 @@ fetch`, compare `origin/main`, then read this.
   set's and house's own materials plus flat colours, an image picker or an image dropped on the
   view, tiling and tint, a move/rotate/scale gizmo (G/R/S) with numeric position/size/turn fields,
   snap, duplicate, delete. Autosaves to localStorage; Export JSON / Copy JSON / Import.
+  **A DELETE BOX** too (*"a delete box where you scale it over an area then select confirm and it
+  gets rid of it"*): Place delete box → a red translucent cube on the gizmo → Confirm (or Enter)
+  drops every triangle whose centroid is inside it, from the scan, the fills, the set, the side
+  stairs, the proscenium, and removes pieces centred inside; Undo last re-applies the rest from the
+  meshes' original indices. Cuts are saved, exported as `cuts`, and bake into `BAKED_CUTS`.
   **THE BAKE RECIPE:** he exports (`C:/Users/jackf/Downloads/midtown-build.json`) or pastes the
-  JSON; the agent pastes its `pieces` into the page's `const BAKED = [...]` and commits — they are
+  JSON; the agent pastes its `pieces` into the page's `const BAKED = [...]` and its `cuts` into
+  `BAKED_CUTS`, and commits — they are
   then scenery for everyone, and "Edit the baked pieces" lifts them back into the editor.
 - **Suites on this tree: 20/21.** The red is `beetlejuice`'s on-disk index check tripping on the **19
   untracked `assets/fixtures/*.glb`** still sitting in the working tree (his "don't commit the files
