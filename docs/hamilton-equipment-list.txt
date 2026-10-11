@@ -1,0 +1,37 @@
+Hamilton Broadway lighting equipment list (pasted by Jack, 2026-10-11)
+
+1 ETC Eos Console
+3 ETC 96 X 2.4kw Touring Dimmer Rack
+16 Doug Fleenor 5-Way Opto-Splitter
+10 Pathport Via12 Ethernet Switch
+2 City Theatrical 8-way DMX A/B Switch
+2 City Theatrical SHoW DMX Neo Transmitter
+4 City Theatrical SHoW DMX Neo Receiver
+6 City Theatrical SHoW DMX Neo D3 Dimmer
+6 City Theatrical SHoW DMX Neo D4 Dimmer
+35 Harman Martin Viper Performance 1200W
+7 Philips Vari-Lite VL3500Q Wash FX
+26 GLP Impression X4 XL
+7 ETC Source Four Revolution with Iris Module
+56 Philips Color Kinetics ColorBlast 12 TR
+5 Philips Color Kinetics ColorBlaze 48 TR4
+9 Philips Color Kinetics ColorBlaze 72 TR4
+12 Elation Professional ELAR 108 LED PAR
+26 Pixel Range PixelPAR 90
+27 ETC Source Four 14º
+78 ETC Source Four 19º
+140 ETC Source Four 26º
+58 ETC Source Four 36º
+34 ETC Source Four 50º
+22 ETC Source Four 70º
+44 ETC Source Four PAR VNSP
+52 Altman Lighting Par 64 VNSP, 1000W
+13 MR-16 Birdie VNSP
+6 MR-16 Birdie WFL
+13 GAM Stickup
+8 Altman Lighting Mini-10 1kW Worklight
+10 Altman Lighting Mini-10 300W Worklight
+3 Lycian 1290 Followspot
+3 MDG Hazer Atmosphere with DMX Control and CO2 Regulator
+26 City Theatrical Concentric Rings For GLP X4 XL
+6 City Theatrical Safer Side Arms

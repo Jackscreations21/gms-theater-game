@@ -479,6 +479,39 @@ latent and can wait for whoever next touches the Art-Net gates.**
 
 Rough is fine. Add to this freely.
 
+### THE HAMILTON GAME — a second game from the same engine (2026-10-11, Jack's brief, NOT specced)
+
+Jack's words: *"make it so the stuff we have been working on is a separate game from the
+palace. it wont have the building or set changing and i want to make it have an improved
+lighting and sound system."* Answered in the chooser session, so these are his calls, not mine:
+
+- **Home:** same repo, a SECOND HTML built by a second build script from the shared engine
+  parts; `the-house.html` untouched. Engine fixes land in both.
+- **Venue:** the Midtown scan is the one house (fly tower, open rear doorways), the Hamilton set
+  on its stage with the two turntables. No Arc, no studios, no Palace, no build system, no set
+  swaps.
+- **Lighting:** *"better looking and i want you to build out the full rig from the hamilton
+  plots and i want you to try to find the models of the lights they use so it looks better. also
+  i want a better way to control the lights."* The rig is the Broadway equipment list
+  (`docs/hamilton-equipment-list.txt`; counts and positions from the ETC `Patch.json` and the
+  plot PDFs in his Downloads). **The fixture models are DONE** — `assets/fixtures/`,
+  `docs/HAMILTON-RIG.md`. "A better way to control" is unspecified: an Eos-style desk
+  (palettes, presets, groups, effects, cue parts) is the obvious reading; ask.
+- **Sound:** spatial audio from the PA positions, sound cues fired from the lighting desk (the
+  4-channel block offered in STATE.md), and a mixer surface. NOT a QLab-style list (not chosen).
+
+**What the split costs** is surveyed in `docs/hamilton-game-dependency-survey.md`: keep p1 p2 p3
+p4 p6 p6d p7 p9 pz, drop the rest, and the entanglement is p7 (`VIEWS`, `init`, `tick`,
+`updatePlayer`, the show/venue UI), p4's parse-time `buildRig` (`houseFloorY`, `BUILD_KINDS`),
+and p5 (`Snd` and the electrics live in the scenic-stock part and must be split out). p2b is not
+just the auditorium: the deck, proscenium, grid, gallery and arbors are in it.
+
+**Next:** write the spec (`docs/superpowers/specs/2026-10-xx-hamilton-game-design.md`) with the
+rulings above lettered from FF, then a plan, one concern per PR: (1) the second build target
+with the engine parts and a stub venue, (2) the Midtown house wired as the venue, (3) the set,
+(4) the rig from `Patch.json` using the fixture GLBs (pan/tilt on `yoke`/`head`, glow on `lens`),
+(5) the desk, (6) sound, (7) VR.
+
 ### Hamilton — the real set is on the stage; what is still ours (2026-10-11, RULING FE)
 
 The set model landed (`assets/hamilton-set.glb`, p5i `loadHamiltonSet`). What
