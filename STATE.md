@@ -12,9 +12,14 @@ fetch`, compare `origin/main`, then read this.
   (something hanging at the back of the house, and the scan's little corner stairs, which his blocks
   now cover). **He builds, exports, the agent bakes: that loop works.** Next export → replace the
   constants (or append to them if he was editing the baked pieces).
-- **The side stairs are rebuilt from his production photo** (*"stairs are way too big and don't go
-  there"*): off each end platform's inner side a small landing, then a short steep flight running
-  BACKSTAGE along the arm (12 risers over 2.4 m, 0.8 m wide), not the long flights toward centre.
+- **The side stairs, third placement, his marked-up screenshot:** ONE steep flight (9 risers over
+  1.26 m, 0.8 m wide) built once and placed twice — house-left off a landing on the platform's inner
+  side stepping down TOWARD THE AUDIENCE; house-right off the platform's outer edge stepping down
+  TOWARD STAGE RIGHT. The scanned stage wall is at x 5.62 and the right flight's foot reaches 5.76,
+  so its last tread touches the wall — flagged to him; a backstage-facing flight (the photo's
+  reading) or a 0.3 m set shift would clear it. (*"Copy the stairs already in there"* — the model
+  itself has no side stairs; the ones "in there" were the built ones, so they became one flight
+  cloned.)
 - Everything below in the evening block still stands.
 
 ## NEWEST — 2026-10-11 (evening), the Midtown preview page (branch `midtown-preview`, PR #226 OPEN)

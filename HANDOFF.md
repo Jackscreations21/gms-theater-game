@@ -265,9 +265,13 @@ staircases at the gallery ends — which the ETC model simply does not have: the
 arms come downstage and end in railed platforms (x ±3.5..4.5, z 0.5..2.0, floor y 3.00, measured off
 `ham_plank`) with no way down. `buildSideStairs` adds a flight each. Two tries: solid wedges toward centre
 stage (dominated the house), open flights toward centre stage (*"stairs are way too big and don't
-go there"*, with a production photo), and now, per the photo, a small landing off each platform's
-inner side and a short steep flight running BACKSTAGE along the arm — 12 risers over 2.4 m, 0.8 m
-wide, treads on stringers, rails, plank material. (`ham_iron`, hidden for
+go there"*, with a production photo), then per the photo a landing and a flight running backstage along each arm;
+and finally, per his marked-up screenshot (*"this one faces towards the audience"*, *"this one
+faces this way ->"*, *"just copy the stairs that are already in there and move them"*), ONE flight
+built by `buildFlight` (9 risers over 1.26 m, 0.8 m wide, treads on stringers, rails, plank) placed
+twice — house-left off a landing on the platform's inner side toward the audience, house-right off
+the platform's outer edge toward stage right, where its foot (x 5.76) just touches the scanned
+stage wall (x 5.62); flagged. (`ham_iron`, hidden for
 a round on the theory it held the beams, is only the posts' foot blocks.) The scan's corner steps are
 back untouched.
 *"Remove the metal beam"*: not the set's — hiding or cutting every set mesh left it standing. It is

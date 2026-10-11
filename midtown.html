@@ -338,40 +338,46 @@ function cutBeams(houseScene) {
     if (cut) g.setIndex(keep);
   });
 }
-// The stairs the set is missing (Jack: "what happened to the stairs that go here", then, of a first
-// try, "stairs are way too big and don't go there"). From the production photo he sent: the gallery
-// is a U whose two side arms end downstage in railed platforms (x ±3.5..4.5, z 0.5..2.0, floor
-// y 3.00, measured off ham_plank); off each platform's INNER side a small landing, and from it a
-// short steep flight running BACKSTAGE along the arm (+z here), down to the deck. 12 risers over
-// 2.4 m, 0.8 m wide, treads on stringers, a rail each side, in the set's plank material. World
-// metres at the fitted placement; hidden at real size.
+// The stairs the set is missing (Jack: "what happened to the stairs that go here"; then "stairs are
+// way too big and don't go there"; then, with a marked-up screenshot, "this one faces towards the
+// audience" (house left) and "this one faces this way ->" (house right, toward stage right), and
+// "just copy the stairs that are already in there and move them to the other spots"). The gallery
+// is a U whose side arms end downstage in railed platforms (x ±3.5..4.5, z 0.5..2.0, floor y 3.00,
+// measured off ham_plank). ONE flight is built — steep, 9 risers over 1.26 m, 0.8 m wide, treads on
+// stringers with rails, the set's plank material, its top at the group origin descending along
+// local +z — and placed twice: house-left off a landing on the platform's inner side, stepping
+// down toward the audience; house-right off the platform's outer edge, stepping down toward stage
+// right (the scanned stage wall is at x 5.62, which is why it is this steep). World metres at the
+// fitted placement; hidden at real size.
 const sideStairs = new THREE.Group(); scene.add(sideStairs);
-function buildSideStairs(root) {
-  let plank = null; root.traverse(o => { if (o.isMesh && o.name === 'ham_plank') plank = o.material; });
-  if (!plank) return;
-  const top = 3.0, deck = HOUSE.deckY, n = 12, rise = (top - deck) / n, run = 0.2, w = 0.8, zTop = 2.0;
+function buildFlight(plank) {
+  const g = new THREE.Group();
+  const top = 0, drop = 3.0 - HOUSE.deckY, n = 9, rise = drop / n, run = 0.14, w = 0.8;
   const box = (sx, sy, sz, x, y, z, rx) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), plank);
     m.position.set(x, y, z); if (rx) m.rotation.x = rx; m.castShadow = m.receiveShadow = true;
-    sideStairs.add(m); return m;
+    g.add(m); return m;
   };
-  for (const side of [-1, 1]) {
-    const xc = side * (3.5 - w / 2 - 0.05);                           // the flight, just inside the arm
-    box(w, 0.08, 0.8, xc, top - 0.04, zTop - 0.4);                   // the landing, against the platform's inner side
-    box(0.05, 0.95, 0.05, xc - side * (w / 2 + 0.03), top + 0.475, zTop - 0.78);   // landing post
-    for (let i = 0; i < n; i++)                                       // treads, i = 0 at the top
-      box(w, 0.05, run, xc, top - rise * i - 0.025, zTop + run * (i + 0.5));
-    const len = Math.hypot(n * run, top - deck), ang = Math.atan2(top - deck, n * run);
-    const zm = zTop + n * run / 2, ym = (top + deck) / 2;
-    for (const xs of [-1, 1]) {
-      box(0.06, 0.28, len, xc + xs * (w / 2 - 0.03), ym - 0.16, zm, ang);          // stringer
-      box(0.06, 0.06, len, xc + xs * (w / 2 + 0.03), ym + 0.95, zm, ang);          // rail
-      for (let k = 0; k <= 3; k++) {                                                // balusters
-        const t = k / 3;
-        box(0.05, 0.95, 0.05, xc + xs * (w / 2 + 0.03), top - (top - deck) * t + 0.475, zTop + n * run * t);
-      }
-    }
+  for (let i = 0; i < n; i++) box(w, 0.05, run, 0, top - rise * i - 0.025, run * (i + 0.5));   // treads, top first
+  const len = Math.hypot(n * run, drop), ang = Math.atan2(drop, n * run), zm = n * run / 2, ym = -drop / 2;
+  for (const xs of [-1, 1]) {
+    box(0.06, 0.24, len, xs * (w / 2 - 0.03), ym - 0.14, zm, ang);           // stringer
+    box(0.06, 0.06, len, xs * (w / 2 + 0.03), ym + 0.95, zm, ang);           // rail
+    for (let k = 0; k <= 3; k++) { const t = k / 3; box(0.05, 0.95, 0.05, xs * (w / 2 + 0.03), -drop * t + 0.475, n * run * t); }
   }
+  return g;
+}
+function buildSideStairs(root) {
+  let plank = null; root.traverse(o => { if (o.isMesh && o.name === 'ham_plank') plank = o.material; });
+  if (!plank) return;
+  const top = 3.0;
+  // house left: a landing against the platform's inner side (x -3.5), the flight toward the audience (-z)
+  const landing = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 0.8), plank);
+  landing.position.set(-3.05, top - 0.04, 1.6); landing.castShadow = landing.receiveShadow = true; sideStairs.add(landing);
+  const post = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.95, 0.05), plank); post.position.set(-2.62, top + 0.475, 1.98); sideStairs.add(post);
+  const left = buildFlight(plank); left.position.set(-3.05, top, 1.2); left.rotation.y = Math.PI; sideStairs.add(left);
+  // house right: off the platform's outer edge (x 4.5), the flight toward stage right (+x)
+  const right = buildFlight(plank); right.position.set(4.5, top, 1.25); right.rotation.y = Math.PI / 2; sideStairs.add(right);
 }
 function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
 
