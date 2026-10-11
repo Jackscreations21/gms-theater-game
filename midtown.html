@@ -81,6 +81,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     <button id="v-gallery">Up on the gallery</button>
     <button id="v-wing">Stage-left wing</button>
     <button id="v-fly">Fly tower</button>
+    <button id="v-lobby">Lobby</button>
   </div>
   <div class="mode" role="group" aria-label="Set size">
     <button id="s-fit" aria-pressed="true">Set fitted</button>
@@ -196,6 +197,7 @@ const VIEWS = {
   'v-gallery': [[-2.6, 4.6, 5.1], [2, 3.0, -1]],
   'v-wing':    [[-5.6, 2.0, 7.4], [1.5, 2.4, 1.5]],
   'v-fly':     [[0, 2.0, 1.9], [0, 14, 4]],
+  'v-lobby':   [[-7.0, 2.48, -21.7], [-3.6, 2.0, -15.2]],  // eye height in the lobby (floor y 0.875), by the box office, looking back at the house-right doorway (from the middle, the projection room hides both)
 };
 let tween = null;
 function go(id) {
@@ -216,8 +218,8 @@ Object.keys(VIEWS).forEach(id => document.getElementById(id).addEventListener('c
    FLOOR: a ray down from a step above the feet, the highest surface under it. WALLS: short level
    rays along the move at four heights and three widths stop you a radius short of anything; a ray
    up the body column at the new spot stops you walking into a table top or under a low beam.
-   SPEED: the house, the set, the rig's structures, the booth, the desk, the proscenium frame and the
-   baked pieces (~150k triangles) are copied once into a world-space grid of 0.5 m cells, rebuilt
+   SPEED: the house, the set, the rig's structures, the booth, the desk, the lobby, the proscenium frame and
+   the baked pieces (~165k triangles) are copied once into a world-space grid of 0.5 m cells, rebuilt
    when they change (a cut, Real size, the rig toggled, a bake or unbake); a ray reads only its own
    cells. The pieces being built are ray-tested directly, as they move under the gizmo. */
 const WALK = {
@@ -333,7 +335,7 @@ function colliderMeshes() {
   if (houseRoot) houseRoot.traverse(take);
   setGroup.traverse(o => { if (!o.userData.rig) take(o); });  // the set; not the rig's 313 units (they hang overhead)
   if (rig) for (const o of rig.children) if (o.isMesh) take(o);   // the rig's structures: booms, trusses, the grid, the wing towers
-  for (const o of scene.children) if (/^(proscenium|pros_wall|followspot booth|lighting desk)$/.test(o.name)) o.traverse(take);
+  for (const o of scene.children) if (/^(proscenium|pros_wall|followspot booth|lighting desk|lobby)$/.test(o.name)) o.traverse(take);
   baked.traverse(take);
   return list;
 }
@@ -1515,6 +1517,332 @@ function deskSkirt(P, x0, x1, za, zb, yTop, floorAt) {
   (P.skirt = P.skirt || []).push(g);
 }
 
+/* ---------------------------------------------------------------- HOUSE WORKS: THE LOBBY
+   Jack: "add a lobby to the building." The scan is the auditorium only: behind its back wall there was
+   nothing, and the two rear doorways opened onto void. The lobby is built behind that wall in the world
+   frame (like the booth and the desk: meshes merged one per material, marked userData.rig so the build
+   tools leave them alone, in the walk's collision grid by the group's name), and it wraps round the
+   followspot booth, which pokes into it from the house side boxed in as a projection room.
+   THE DOORWAYS, measured off the scan (the console line re-measures them): they are not openings at the
+   back cross-aisle's level (y 2.10 behind the last row, x −3…3) but two short passages from the SIDE
+   aisles, 1.2 m lower — house right x −4.77…−3.57, floor y 0.90, head 3.04; house left x 3.78…5.08, floor
+   0.85, head 3.01 — that run back through the wall's mass and stop, as scan, at z −13.97…−14.12. So the
+   lobby's floor is theirs (y 0.875, between the two; each passage's lining makes up its 2.5 cm), and the
+   passages are lined on from where the scan stops to the lobby's house-side wall, which stands 15 cm
+   behind the scan's rearmost point (z −14.77) and 2 cm behind the fills (z −14.90). The fills the passages
+   cross (house_skirt_s from y 2.5, skirting_s_doorw / _doore up to y 1.3) get holes the passages' size. */
+const LOBBY = {
+  floor: 0.875,                     // the lobby's floor: between the passages' 0.899 (house right) and 0.850 (house left)
+  ceil: 4.90, roof: 5.10,           // the booth's own ceiling and roof lines, so the two roofs meet flush (4.0 m of room)
+  wallZ: -14.92, t: 0.20,           // the house-side wall's house face (its lobby face 20 cm behind), and every wall's thickness
+  x0: -9.80, x1: 10.00,             // the room's inner faces: the fills' own width (the scan's side walls stand at x −9.54 / 9.78)
+  depth: 7.0,                       // from the house-side wall's lobby face to the entrance wall's
+  lining: 0.10, linZ: -13.94,       // the passages' linings: 10 cm walls, from just inside the scan's ends; their faces 4 mm proud of the scan's
+  doors: [                          // the passages as measured 4 cm short of their ends (the walls lean 1.5 cm over the passage's length)
+    { name: 'house right', x0: -4.769, x1: -3.567, floor: 0.899, head: 3.041, end: -14.05 },
+    { name: 'house left',  x0:  3.778, x1:  5.079, floor: 0.850, head: 3.013, end: -14.045 },
+  ],
+  encl: 3.42,                       // the projection room's skin: 12 cm outside the booth's own sides (±3.30)
+  entrance: { w: 6.2, h: 3.0, transom: 2.37 },   // the glazed doors in the far wall: six leaves, a transom light over them
+  tile: 1.0,                        // the carpet's pattern repeat, metres
+};
+// Lit surfaces under the hemisphere and three downlights of the lobby's own (no shadows); each glows a little of
+// its own colour, as the desk's do, so nothing goes black where the downlights do not reach.
+const lobbyStd = (color, roughness, glow, extra) => new THREE.MeshStandardMaterial({ color, roughness, metalness: 0, emissive: new THREE.Color(color).multiplyScalar(glow), ...extra });
+const lobbyMat = {
+  carpet: lobbyStd(0xffffff, 0.95, 0, { emissive: 0x262626 }),                // map and emissiveMap: lobbyCarpet(), at build
+  wall:   lobbyStd(0xd6c8aa, 0.9, 0.10),
+  ceil:   lobbyStd(0xe6e0d4, 0.95, 0.32),
+  reveal: lobbyStd(0x5e574e, 0.9, 0.12),                                       // the passages' linings: the scan's passages are dark stone
+  wood:   lobbyStd(0x5e3a20, 0.6, 0.16),
+  stone:  lobbyStd(0xb4ab9c, 0.45, 0.12),
+  brass:  lobbyStd(0xb48c48, 0.35, 0.22),
+  dark:   deskStd(0x2b2724, 0.6),                                            // the desk's helper: bronze frames, mullions, bins, the canopy
+  colour: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0, emissive: 0x141414 }),   // posters, bottles, belts
+  glass:  new THREE.MeshStandardMaterial({ color: 0xa8bcc4, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide }),
+  glow:   new THREE.MeshBasicMaterial({ color: 0xfff1dc, toneMapped: false }),   // the downlights' and pendants' faces
+  pop:    new THREE.MeshBasicMaterial({ color: 0xe8c468, toneMapped: false }),   // the popcorn machine's lit kettle
+  sign:   new THREE.MeshBasicMaterial({ toneMapped: false }),                     // map: lobbySigns(), at build
+  door:   boothMats.door, screen: deskMat.screen,                               // the booth's door, the desk's screens
+};
+const LOBBY_SIGNS = ['BOX OFFICE', 'BAR', 'STALLS', 'PROJECTION'];   // one row each of one canvas
+function buildLobby(houseScene) {
+  const L = LOBBY, t0 = performance.now(), F = L.floor, C = L.ceil, R = L.roof;
+  scene.updateMatrixWorld(true);
+  // 1. MEASURE the scan (before the cuts, which go on at the load's tail; none comes near the passages).
+  // A ray at the whole scan costs ~12 ms here (no BVH), and this takes ~30: one pass first keeps only the scan's
+  // triangles behind z −11.5 (towerNear, the wing towers' trick), and every ray is cast at those.
+  const scan = []; houseScene.traverse(o => { if (o.isMesh && o.visible && /^Object_/.test(o.name)) scan.push(o); });
+  const V = (x, y, z) => new THREE.Vector3(x, y, z), UP = V(0, 1, 0);
+  const back = towerNear(scan, [new THREE.Box3(V(-12, -2, -17), V(12, 10, -11.5))])[0], list = back ? [back] : scan;
+  const ray = new THREE.Raycaster();
+  const cast = (o, d, far) => { ray.set(o, d); ray.far = far; return ray.intersectObjects(list, false)[0] || null; };
+  const f2 = n => n === null || n === undefined || !Number.isFinite(n) ? '—' : n.toFixed(2);
+  const warn = [], meas = { doors: [] };
+  for (const d of L.doors) {
+    const cx = (d.x0 + d.x1) / 2, o = V(cx, d.floor + 1, d.end + 0.15);   // 15 cm in: house left's walls and head stop 8 cm before its floor
+    const fl = cast(o, DOWN, 2), hd = cast(o, UP, 3), w0 = cast(o, V(-1, 0, 0), 1.5), w1 = cast(o, V(1, 0, 0), 1.5);
+    let end = null, a = d.end + 0.3, b = d.end - 0.3;            // where the passage's floor stops: bisected to 5 mm between a hit and a miss
+    const floorAt = z => !!cast(V(cx, d.floor + 1, z), DOWN, 2);
+    if (floorAt(a) && !floorAt(b)) { while (a - b > 0.005) { const m = (a + b) / 2; if (floorAt(m)) a = m; else b = m; } end = (a + b) / 2; }
+    const m = { name: d.name, x0: w0 && w0.point.x, x1: w1 && w1.point.x, floor: fl && fl.point.y, head: hd && hd.point.y, end };
+    meas.doors.push(m);
+    for (const [k, tol] of [['x0', 0.03], ['x1', 0.03], ['floor', 0.03], ['head', 0.03], ['end', 0.05]]) {
+      if (m[k] === null || Math.abs(m[k] - d[k]) > tol) warn.push(`${d.name} doorway ${k} measured ${f2(m[k])}, built for ${d[k]}`);
+    }
+  }
+  const rear = [-2, 0, 2].map(x => cast(V(x, 2.9, -13), V(0, 0, -1), 3)).filter(Boolean).map(h => h.point.z);
+  meas.backWallZ = rear.length ? rear.reduce((a, b) => a + b, 0) / rear.length : null;      // the alcove's back wall, where the booth is cut
+  const cross = cast(V(0.1, 3, -14.0), DOWN, 3); meas.crossAisleY = cross && cross.point.y;
+  const sl = cast(V(-7, 3.5, -12), V(-1, 0, 0), 5), sr = cast(V(7, 3.5, -12), V(1, 0, 0), 5);
+  meas.sideX = [sl && sl.point.x, sr && sr.point.x];
+  let rearmost = Infinity; const v = new THREE.Vector3();         // every triangle reaching behind z −11.5 is in `back`, in world metres
+  for (const o of list) { const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); if (v.z < rearmost) rearmost = v.z; } }
+  if (back) back.geometry.dispose();
+  meas.rearmostZ = rearmost;
+  if (rearmost < L.wallZ + 0.03) warn.push(`the scan reaches back to z ${f2(rearmost)}, through the lobby's house-side wall at ${L.wallZ}`);
+  if (meas.sideX[0] === null || meas.sideX[0] < L.x0 || meas.sideX[1] === null || meas.sideX[1] > L.x1) warn.push(`the house's side walls measured at x ${f2(meas.sideX[0])} / ${f2(meas.sideX[1])}, outside the lobby's ${L.x0} / ${L.x1}`);
+  // 2. THE FILLS the passages cross: holes the linings' size (house_skirt_s keeps the booth's hole too).
+  const S = boothSpec, holes = L.doors.map(d => [d.x0 - L.lining, d.x1 + L.lining, F - 0.25, d.head + 0.15]);
+  const filled = [
+    lobbyHoles(houseMesh.house_skirt_s, [[S.xo0, S.xo1, S.floor - S.t, S.ceil + S.t], ...holes]),
+    lobbyHoles(houseMesh.skirting_s_doorw, [holes[0]]), lobbyHoles(houseMesh.skirting_s_doore, [holes[1]]),
+  ];
+  // 3. THE ROOM. Geometry goes into P by material key and is merged at the end (deskBox / deskPut file it).
+  const P = {}, zH = L.wallZ - L.t, zF = zH - L.depth, zFo = zF - L.t, X0 = L.x0 - L.t, X1 = L.x1 + L.t;   // house wall's lobby face; the entrance wall's inner and outer faces
+  const bx = (key, x0, x1, y0, y1, z0, z1) => deskBox(P, key, Math.abs(x1 - x0), Math.abs(y1 - y0), Math.abs(z1 - z0), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  const cyl = (key, rT, rB, y0, y1, x, z, seg) => deskPut(P, key, new THREE.CylinderGeometry(rT, rB, y1 - y0, seg), x, (y0 + y1) / 2, z);
+  const tint = (g, hex) => { const c = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) a.set([c.r, c.g, c.b], i * 3); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
+  const encl = L.encl, zE = S.front - S.depth - S.t - 0.12;     // the projection room's front face: 12 cm in front of the booth's back wall
+  // floor, ceiling (round the projection room, whose own roof is the booth's), roof
+  bx('carpet', X0, X1, F - 0.2, F, L.wallZ, zFo);
+  bx('ceil', X0, -encl, C, R, L.wallZ, zFo); bx('ceil', encl, X1, C, R, L.wallZ, zFo); bx('ceil', -encl, encl, C, R, zE, zFo);
+  // the side walls, and the house-side wall: solid but for the two doorways (a head over each) and the projection room
+  bx('wall', X0, L.x0, F, C, L.wallZ, zFo); bx('wall', L.x1, X1, F, C, L.wallZ, zFo);
+  const [dr, dl] = L.doors;
+  bx('wall', X0, dr.x0, F, C, L.wallZ, zH); bx('wall', dr.x0, dr.x1, dr.head, C, L.wallZ, zH); bx('wall', dr.x1, -encl, F, C, L.wallZ, zH);
+  bx('wall', encl, dl.x0, F, C, L.wallZ, zH); bx('wall', dl.x0, dl.x1, dl.head, C, L.wallZ, zH); bx('wall', dl.x1, X1, F, C, L.wallZ, zH);
+  // the projection room: the booth boxed in from the lobby floor to the roof, a door at floor level (stairs behind it)
+  bx('wall', -encl, -S.xo1, F, R, L.wallZ, zE); bx('wall', S.xo1, encl, F, R, L.wallZ, zE); bx('wall', -encl, encl, F, R, zE + 0.12, zE);
+  const dx0 = -2.85, dx1 = -1.95;                                // under the booth's own door (x −2.85…−1.95, in its back wall)
+  bx('door', dx0, dx1, F, F + 2.1, zE, zE - 0.025);
+  bx('brass', dx1 - 0.12, dx1 - 0.08, F + 1.0, F + 1.06, zE - 0.025, zE - 0.06);
+  // the passages' linings, scan end to lobby: floor ramps from the passage's height to the lobby's, walls, soffit
+  for (const d of L.doors) {
+    const a = d.x0 + 0.004, b = d.x1 - 0.004, top = d.head - 0.004;
+    const g = new THREE.BoxGeometry(b - a + 2 * L.lining, 0.25, L.linZ - L.wallZ).translate((a + b) / 2, d.floor - 0.125, (L.linZ + L.wallZ) / 2), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) if (p.getY(i) > d.floor - 0.125) p.setY(i, (p.getZ(i) > (L.linZ + L.wallZ) / 2 ? d.floor + 0.004 : F));
+    g.computeVertexNormals(); (P.carpet = P.carpet || []).push(g);   // the lobby's carpet runs on through the passage
+    bx('reveal', a - L.lining, a, F - 0.25, top, L.linZ, L.wallZ); bx('reveal', b, b + L.lining, F - 0.25, top, L.linZ, L.wallZ);
+    bx('reveal', a - L.lining, b + L.lining, top, d.head + 0.15, L.linZ, L.wallZ);
+    // the lobby side: a timber casing round the opening, and a lit STALLS sign over it
+    bx('wood', d.x0 - 0.1, d.x0, F, d.head + 0.1, zH, zH - 0.04); bx('wood', d.x1, d.x1 + 0.1, F, d.head + 0.1, zH, zH - 0.04);
+    bx('wood', d.x0 - 0.1, d.x1 + 0.1, d.head, d.head + 0.1, zH, zH - 0.04);
+    lobbySign(P, 2, 1.6, 0.2, (d.x0 + d.x1) / 2, d.head + 0.42, zH - 0.012, Math.PI);
+  }
+  // the entrance wall: a 6.2 m opening for the glazed doors, solid either side and over it
+  const E = L.entrance, ex = E.w / 2, zw = (zF + zFo) / 2;
+  bx('wall', X0, -ex, F, C, zF, zFo); bx('wall', ex, X1, F, C, zF, zFo); bx('wall', -ex, ex, F + E.h, C, zF, zFo);
+  bx('dark', -ex, -ex + 0.08, F, F + E.h, zw - 0.05, zw + 0.05); bx('dark', ex - 0.08, ex, F, F + E.h, zw - 0.05, zw + 0.05);     // jambs
+  bx('dark', -ex, ex, F + E.h - 0.08, F + E.h, zw - 0.05, zw + 0.05); bx('dark', -ex, ex, F + E.transom, F + E.transom + 0.08, zw - 0.05, zw + 0.05);   // head, transom bar
+  bx('brass', -ex, ex, F, F + 0.02, zw - 0.1, zw + 0.1);                                                                        // threshold
+  const mull = [-ex + 0.04, -2, -1, 0, 1, 2, ex - 0.04];
+  for (let i = 1; i < mull.length - 1; i++) bx('dark', mull[i] - 0.03, mull[i] + 0.03, F, F + E.h - 0.08, zw - 0.05, zw + 0.05);
+  for (let i = 0; i + 1 < mull.length; i++) {                   // each leaf: a kick plate, a push bar on the lobby side
+    const a = mull[i] + (i ? 0.03 : 0.04), b = mull[i + 1] - (i + 2 < mull.length ? 0.03 : 0.04);
+    bx('dark', a, b, F + 0.02, F + 0.26, zw - 0.03, zw + 0.03);
+    bx('brass', a + 0.1, b - 0.1, F + 1.0, F + 1.04, zw + 0.06, zw + 0.1);
+  }
+  deskPut(P, 'glass', new THREE.PlaneGeometry(E.w - 0.16, E.h - 0.1), 0, F + 0.02 + (E.h - 0.1) / 2, zw);
+  // outside: a canopy over the doors with three lights under it, and a strip of pavement
+  bx('dark', -4.2, 4.2, F + 3.25, F + 3.45, zFo, zFo - 2.2);
+  for (const x of [-2.4, 0, 2.4]) deskPut(P, 'glow', new THREE.CircleGeometry(0.12, 16), x, F + 3.247, zFo - 1.1, Math.PI / 2);
+  bx('stone', -7, 7, F - 0.22, F - 0.02, zFo, zFo - 3.6);
+  // timber wainscot to 1.0 m with a brass rail, round the room (the openings left clear)
+  const wains = (x0, x1, z0, z1) => { bx('wood', x0, x1, F, F + 1.0, z0, z1); };
+  const rail = (x0, x1, z0, z1) => { bx('brass', x0, x1, F + 1.0, F + 1.04, z0, z1); };
+  for (const [x0, x1] of [[L.x0, dr.x0 - 0.1], [dr.x1 + 0.1, -encl], [encl, dl.x0 - 0.1], [dl.x1 + 0.1, L.x1]]) { wains(x0, x1, zH, zH - 0.02); rail(x0, x1, zH, zH - 0.035); }
+  for (const [x0, x1] of [[L.x0, -ex], [ex, L.x1]]) { wains(x0, x1, zF, zF + 0.02); rail(x0, x1, zF, zF + 0.035); }
+  for (const [xa, xb] of [[L.x0, L.x0 + 0.02], [L.x1 - 0.02, L.x1]]) wains(xa, xb, zH, zF);
+  bx('brass', L.x0, L.x0 + 0.035, F + 1.0, F + 1.04, zH, zF); bx('brass', L.x1 - 0.035, L.x1, F + 1.0, F + 1.04, zH, zF);
+  for (const [x0, x1] of [[-encl, dx0], [dx1, encl]]) { wains(x0, x1, zE, zE - 0.02); rail(x0, x1, zE, zE - 0.035); }
+  for (const s of [-1, 1]) { const x = s * encl; wains(x, x + s * 0.02, zH, zE); bx('brass', x, x + s * 0.035, F + 1.0, F + 1.04, zH, zE); }
+  lobbySign(P, 3, 1.2, 0.15, (dx0 + dx1) / 2, F + 2.32, zE - 0.03, Math.PI);
+  // 4. THE BOX OFFICE, house right (−x): a room in the corner behind a counter and a glazed screen
+  const bo = { x: -8.1, z0: -16.9, z1: -20.7 };
+  bx('wall', L.x0, bo.x + 0.1, F, C, bo.z0, bo.z0 + 0.12); bx('wall', L.x0, bo.x + 0.1, F, C, bo.z1, bo.z1 - 0.12);
+  bx('wood', bo.x - 0.35, bo.x + 0.1, F, F + 1.0, bo.z0, bo.z1);                                  // the counter
+  bx('stone', bo.x - 0.4, bo.x + 0.25, F + 1.0, F + 1.05, bo.z0, bo.z1);                          // its top, 15 cm over the customer's side
+  bx('wall', bo.x - 0.35, bo.x + 0.1, F + 2.5, C, bo.z0, bo.z1);                                  // the fascia over the screen
+  bx('dark', bo.x - 0.35, bo.x + 0.1, F + 2.45, F + 2.5, bo.z0, bo.z1);
+  deskPut(P, 'glass', new THREE.PlaneGeometry(bo.z0 - bo.z1, 1.4), bo.x - 0.12, F + 1.75, (bo.z0 + bo.z1) / 2, 0, Math.PI / 2);
+  for (let i = 0; i <= 3; i++) { const z = bo.z0 - 0.03 - (bo.z0 - bo.z1 - 0.06) * i / 3; bx('dark', bo.x - 0.15, bo.x - 0.09, F + 1.05, F + 2.45, z - 0.03, z + 0.03); }
+  lobbySign(P, 0, 2.6, 0.325, bo.x + 0.11, F + 3.0, (bo.z0 + bo.z1) / 2, Math.PI / 2);
+  bx('wood', L.x0, L.x0 + 0.55, F, F + 0.9, bo.z0, bo.z1); bx('stone', L.x0, L.x0 + 0.6, F + 0.9, F + 0.94, bo.z0, bo.z1);   // the back counter
+  for (const z of [-17.8, -19.8]) {                                                                // two ticketing screens, facing the staff
+    bx('dark', bo.x - 0.3, bo.x - 0.26, F + 1.18, F + 1.5, z - 0.24, z + 0.24); bx('dark', bo.x - 0.29, bo.x - 0.27, F + 1.05, F + 1.18, z - 0.03, z + 0.03);
+    deskPut(P, 'screen', new THREE.PlaneGeometry(0.44, 0.28), bo.x - 0.305, F + 1.34, z, 0, -Math.PI / 2);
+  }
+  bx('dark', L.x0 + 0.1, L.x0 + 0.4, F + 0.94, F + 1.12, -18.8, -19.1);                          // the ticket printer
+  // 5. THE BAR, house left (+x): a front counter with a foot rail, a back counter, shelves of bottles, three pendants
+  const bar = { x: 7.4, z0: -16.7, z1: -20.9 };
+  bx('wood', bar.x, bar.x + 0.55, F, F + 1.02, bar.z0, bar.z1);
+  bx('stone', bar.x - 0.08, bar.x + 0.63, F + 1.02, F + 1.08, bar.z0, bar.z1);
+  bx('brass', bar.x - 0.02, bar.x, F + 0.9, F + 0.94, bar.z0, bar.z1);
+  deskRod(P, 'brass', V(bar.x - 0.13, F + 0.18, bar.z0 - 0.1), V(bar.x - 0.13, F + 0.18, bar.z1 + 0.1), 0.025, 8);
+  for (const z of [bar.z0 - 0.3, (bar.z0 + bar.z1) / 2, bar.z1 + 0.3]) bx('brass', bar.x - 0.13, bar.x, F + 0.165, F + 0.195, z - 0.015, z + 0.015);
+  bx('wood', L.x1 - 0.6, L.x1, F, F + 0.92, bar.z0 + 0.2, bar.z1 - 0.2); bx('stone', L.x1 - 0.65, L.x1, F + 0.92, F + 0.96, bar.z0 + 0.2, bar.z1 - 0.2);
+  bx('dark', L.x1 - 0.06, L.x1 - 0.02, F + 1.1, F + 2.7, bar.z0, bar.z1);                          // the back-bar panel
+  const shelves = [F + 1.55, F + 2.08];
+  for (const y of shelves) bx('wood', L.x1 - 0.3, L.x1 - 0.06, y - 0.03, y, bar.z0, bar.z1);
+  const BOTTLE = [0x2c5a32, 0x8a5420, 0xb8c6bc, 0x5a1e26];
+  let nb = 0;
+  for (const y of [...shelves, F + 0.96]) for (let z = bar.z0 - 0.2; z > bar.z1 + 0.15; z -= y > F + 1 ? 0.27 : 0.5) {
+    if (y < F + 1 && z < -19.9) break;                         // the popcorn machine stands at the far end of the back counter
+    const c = BOTTLE[nb++ % BOTTLE.length], x = L.x1 - 0.18 - (y < F + 1 ? 0.15 : 0);
+    tint(cyl('colour', 0.036, 0.036, y, y + 0.24, x, z, 6), c); tint(cyl('colour', 0.012, 0.03, y + 0.24, y + 0.33, x, z, 6), c);
+  }
+  bx('glass', L.x1 - 0.55, L.x1 - 0.1, F + 0.96, F + 1.6, -20.15, -20.7);                         // the popcorn machine: a glass case,
+  bx('pop', L.x1 - 0.53, L.x1 - 0.12, F + 0.97, F + 1.16, -20.17, -20.68);                        // lit corn,
+  tint(deskBox(P, 'colour', 0.47, 0.06, 0.57, L.x1 - 0.325, F + 1.63, -20.425), 0x8a1c1c);        // and a red cap
+  lobbySign(P, 1, 2.4, 0.3, L.x1 - 0.015, F + 3.05, (bar.z0 + bar.z1) / 2, -Math.PI / 2);
+  for (const z of [-17.4, -18.8, -20.2]) {                       // pendants over the front counter
+    const x = bar.x + 0.28;
+    deskRod(P, 'dark', V(x, C, z), V(x, F + 2.7, z), 0.006, 4);
+    cyl('brass', 0.05, 0.2, F + 2.5, F + 2.7, x, z, 12);
+    deskPut(P, 'glow', new THREE.CircleGeometry(0.19, 12), x, F + 2.497, z, Math.PI / 2);
+  }
+  // 6. POSTERS (framed panels, plain), TICKET-CHECK STANCHIONS, BENCHES, BINS
+  const POSTER = [0x7a1e28, 0x1e2e5a, 0x9a7a2a, 0x1e5a5a, 0x4a2450, 0x2a4a2a];
+  const posters = [[-8.3, zH, Math.PI], [-6.4, zH, Math.PI], [6.6, zH, Math.PI], [8.5, zH, Math.PI], [-5.2, zF, 0], [5.2, zF, 0]];
+  posters.forEach(([x, z, ry], i) => {
+    const s = ry ? -1 : 1;                                     // which way the wall's face looks: −z for the house-side wall, +z for the entrance wall
+    deskBox(P, 'dark', 0.86, 1.22, 0.04, x, F + 1.75, z + s * 0.02);
+    tint(deskBox(P, 'colour', 0.74, 1.1, 0.01, x, F + 1.75, z + s * 0.045), POSTER[i % POSTER.length]);
+  });
+  for (const [d, sx] of [[dr, -1], [dl, 1]]) {                   // a lane from each doorway along the projection room's wall
+    const x = (sx < 0 ? d.x0 : d.x1) + sx * 0.15, zs = [zH - 1.1, zH - 2.3];
+    for (const z of zs) {
+      cyl('brass', 0.16, 0.16, F, F + 0.03, x, z, 12); cyl('brass', 0.028, 0.028, F + 0.03, F + 0.95, x, z, 8); cyl('brass', 0.04, 0.04, F + 0.95, F + 1.0, x, z, 8);
+    }
+    tint(deskBox(P, 'colour', 0.006, 0.05, zH - zs[0] - 0.04, x, F + 0.82, (zH + zs[0]) / 2 - 0.02), 0x7a1420);   // the belts at 0.795–0.845: the walk's waist ray (0.8 over the feet) meets them
+    tint(deskBox(P, 'colour', 0.006, 0.05, zs[0] - zs[1] - 0.06, x, F + 0.82, (zs[0] + zs[1]) / 2), 0x7a1420);
+    bx('brass', x - 0.04, x + 0.04, F + 0.78, F + 0.86, zH, zH - 0.02);                             // the belt's wall receiver
+  }
+  for (const [x0, x1, z0, z1] of [[0.3, 2.7, zE - 0.33, zE - 0.75], [-6.6, -4.6, zF + 0.7, zF + 0.28]]) {   // two backless benches
+    bx('wood', x0, x1, F + 0.40, F + 0.46, z0, z1);
+    for (const x of [x0 + 0.1, x1 - 0.18]) bx('dark', x, x + 0.08, F, F + 0.40, z0 - 0.04, z1 + 0.04);
+  }
+  for (const [x, z] of [[dr.x0 - 0.75, zH - 0.4], [dl.x1 + 0.75, zH - 0.4], [3.8, zF + 0.4]]) {     // waste bins
+    cyl('dark', 0.2, 0.17, F, F + 0.72, x, z, 16); cyl('brass', 0.205, 0.205, F + 0.72, F + 0.75, x, z, 16);
+  }
+  // 7. CEILING FITTINGS: recessed downlights (their faces lit), and three real lights of the lobby's own
+  for (const x of [-8.4, -6.2, -4.1, 4.3, 6.4, 8.6]) for (const z of [-16.2, -18.6, -21.0]) deskPut(P, 'glow', new THREE.CircleGeometry(0.11, 16), x, C - 0.004, z, Math.PI / 2);
+  for (const x of [-1.8, 0, 1.8]) for (const z of [zE - 1.4, zF + 0.9]) deskPut(P, 'glow', new THREE.CircleGeometry(0.11, 16), x, C - 0.004, z, Math.PI / 2);
+  // 8. One mesh per material, world frame, never cast or caught, skipped by the build tools; the carpet's uv in world metres.
+  lobbyMat.carpet.map = lobbyMat.carpet.emissiveMap = lobbyCarpet(); lobbyMat.sign.map = lobbySigns();
+  const group = new THREE.Group(); group.name = 'lobby';
+  let tris = 0;
+  for (const [key, geos] of Object.entries(P)) {
+    const geo = mergeGeometries(geos, false); geos.forEach(g => g.dispose());
+    if (!geo) { console.warn(`lobby: the ${key} pieces did not merge — left out`); continue; }
+    if (key === 'carpet') { const p = geo.attributes.position, uv = geo.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / L.tile, -p.getZ(i) / L.tile); }
+    const mesh = new THREE.Mesh(geo, lobbyMat[key]);
+    mesh.name = 'lobby: ' + key; mesh.castShadow = mesh.receiveShadow = false; mesh.userData.rig = true;
+    tris += (geo.index ? geo.index.count : geo.attributes.position.count) / 3;
+    group.add(mesh);
+  }
+  const lights = [[-6.2, -18.6], [6.4, -18.6], [0, (zE + zF) / 2]].map(([x, z]) => spot(x, C - 0.04, z, x, F, z, LOBBY_LIGHT, 1.2, 0xffe2c4, false));
+  group.userData = { spec: L, measured: meas, triangles: tris, lights };
+  scene.add(group);
+  console.info(`lobby: measured — the alcove's back wall at z ${f2(meas.backWallZ)}, the cross-aisle behind the last row at y ${f2(meas.crossAisleY)}; the doorways are passages from the side aisles: `
+    + meas.doors.map(m => `${m.name} x ${f2(m.x0)}…${f2(m.x1)} floor y ${f2(m.floor)} head ${f2(m.head)}, scan ends at z ${f2(m.end)}`).join('; ')
+    + `; the scan's rearmost point z ${f2(rearmost)}, its side walls x ${f2(meas.sideX[0])} / ${f2(meas.sideX[1])}`
+    + ` · built: room x ${L.x0}…${L.x1} z ${zH.toFixed(2)}…${zF.toFixed(2)} (${(L.x1 - L.x0).toFixed(1)} × ${L.depth} m), floor y ${F}, ceiling ${C}; the projection room to z ${zE.toFixed(2)}`
+    + ` · fills holed: ${['house_skirt_s', 'skirting_s_doorw', 'skirting_s_doore'].filter((n, i) => filled[i]).join(', ') || 'none'}`
+    + ` · ${group.children.length} meshes, ${tris} triangles, ${lights.length} lights · ${(performance.now() - t0).toFixed(0)} ms`);
+  for (const w of warn) console.warn('lobby: ' + w + ' — check LOBBY');
+  requestRender();
+  return group;
+}
+const LOBBY_LIGHT = 30;                                        // each downlight's intensity (candela; the spot helper's decay 1.6)
+// A sign from row `row` of the sign canvas (LOBBY_SIGNS), w × h, centred at (x, y, z), turned ry about y (0 faces +z).
+function lobbySign(P, row, w, h, x, y, z, ry) {
+  const g = new THREE.PlaneGeometry(w, h), uv = g.attributes.uv, n = LOBBY_SIGNS.length;
+  for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - (row + 1 - uv.getY(i)) / n);
+  deskPut(P, 'sign', g, x, y, z, 0, ry);
+}
+function lobbySigns() {
+  const c = document.createElement('canvas'), n = LOBBY_SIGNS.length; c.width = 1024; c.height = 128 * n;
+  const g = c.getContext('2d'), tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const draw = () => {
+    g.fillStyle = '#16121a'; g.fillRect(0, 0, c.width, c.height);
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '600 74px "IBM Plex Sans", system-ui, sans-serif';
+    LOBBY_SIGNS.forEach((s, i) => {
+      g.strokeStyle = '#6a5428'; g.lineWidth = 4; g.strokeRect(10, i * 128 + 10, c.width - 20, 108);
+      g.fillStyle = '#e8c878'; g.fillText(s.split('').join(String.fromCharCode(8202)), c.width / 2, i * 128 + 68, c.width - 80);
+    });
+    tex.needsUpdate = true; requestRender();
+  };
+  draw();
+  if (document.fonts) document.fonts.load('600 74px "IBM Plex Sans"').then(draw, () => {});   // redrawn once the page's face is in (a load wait, not game timing)
+  return tex;
+}
+// The carpet: a deep red with a gold diamond lattice, one diamond a tile.
+function lobbyCarpet() {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#5c1a22'; g.fillRect(0, 0, 256, 256);
+  g.strokeStyle = '#7e5e2c'; g.lineWidth = 7;
+  g.beginPath(); g.moveTo(0, 128); g.lineTo(128, 0); g.lineTo(256, 128); g.lineTo(128, 256); g.closePath(); g.stroke();
+  g.fillStyle = '#9a7636';
+  for (const [x, y] of [[128, 128], [0, 0], [256, 0], [0, 256], [256, 256]]) { g.beginPath(); g.moveTo(x, y - 16); g.lineTo(x + 16, y); g.lineTo(x, y + 16); g.lineTo(x - 16, y); g.closePath(); g.fill(); }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+// A flat fill facing z (world = local), its geometry replaced by the rectangles round the holes [x0, x1, y0, y1]
+// (boothHole's job for any number of holes: the plane is cut into strips at every hole edge, and each strip keeps
+// what no hole covers), the uv carried over. A hole that was there already must be passed again. → done?
+function lobbyHoles(mesh, holes) {
+  if (!mesh) return false;
+  const g = mesh.geometry, P = g.attributes.position, U = g.attributes.uv;
+  mesh.updateMatrixWorld(true);
+  if (!mesh.matrixWorld.equals(new THREE.Matrix4()) || !U) { console.warn(`lobby: ${mesh.name} is not a plain fill — left whole`); return false; }
+  let i0 = 0, i1 = 0, j0 = 0, j1 = 0;
+  for (let i = 1; i < P.count; i++) {
+    if (P.getX(i) < P.getX(i0)) i0 = i; if (P.getX(i) > P.getX(i1)) i1 = i;
+    if (P.getY(i) < P.getY(j0)) j0 = i; if (P.getY(i) > P.getY(j1)) j1 = i;
+  }
+  const xa = P.getX(i0), xb = P.getX(i1), ya = P.getY(j0), yb = P.getY(j1), z = P.getZ(0);
+  const uAt = x => U.getX(i0) + (U.getX(i1) - U.getX(i0)) * (x - xa) / (xb - xa);
+  const vAt = y => U.getY(j0) + (U.getY(j1) - U.getY(j0)) * (y - ya) / (yb - ya);
+  const cl = (v, a, b) => Math.min(b, Math.max(a, v));
+  const hs = holes.map(([x0, x1, y0, y1]) => [cl(x0, xa, xb), cl(x1, xa, xb), cl(y0, ya, yb), cl(y1, ya, yb)]).filter(h => h[1] - h[0] > 1e-3 && h[3] - h[2] > 1e-3);
+  const xs = [...new Set([xa, xb, ...hs.flatMap(h => [h[0], h[1]])])].sort((a, b) => a - b);
+  const pos = [], uv = [], idx = [];
+  const quad = (x0, x1, y0, y1) => {
+    if (x1 - x0 < 1e-3 || y1 - y0 < 1e-3) return;
+    const n = pos.length / 3;
+    for (const [x, y] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) { pos.push(x, y, z); uv.push(uAt(x), vAt(y)); }
+    idx.push(n, n + 1, n + 2, n, n + 2, n + 3);
+  };
+  for (let k = 0; k + 1 < xs.length; k++) {
+    const x0 = xs[k], x1 = xs[k + 1];
+    const cover = hs.filter(h => h[0] <= x0 + 1e-6 && h[1] >= x1 - 1e-6).map(h => [h[2], h[3]]).sort((a, b) => a[0] - b[0]);
+    let y = ya;
+    for (const [c0, c1] of cover) { if (c0 > y) quad(x0, x1, y, c0); y = Math.max(y, c1); }
+    quad(x0, x1, y, yb);
+  }
+  const ng = new THREE.BufferGeometry();
+  ng.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  ng.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  ng.setIndex(idx); ng.computeVertexNormals();
+  g.dispose(); mesh.geometry = ng;
+  return true;
+}
+
 // Loading, with one bar across both files.
 const bar = document.querySelector('#bar i'), loadtxt = document.getElementById('loadtxt');
 const SIZES = { 'assets/midtown-auditorium.glb': 13.6e6, 'assets/hamilton-set.glb': 7.1e6 };
@@ -1645,6 +1973,7 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   root.updateMatrixWorld(true);
   if (rig) { fitBoomsToWalls(house.scene); buildHangingTrusses(house.scene); buildWingTowers(house.scene); }
   buildSpotBooth(house.scene); buildDeskPosition(house.scene);
+  const lobby = buildLobby(house.scene);                     // after the booth: it re-holes the fill the booth holed
   houseRoot = house.scene;
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
   registerModelTextures(house.scene, 'house: ', ['deck_fill', 'pros_outer_l', 'back_brick_lo', 'house_ceiling', 'house_floor']);
@@ -1653,6 +1982,7 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   // when there was no save to restore (or it failed before getting there).
   fillTexSelect(); restore({ pieces: BAKED }, baked); if (!loadSaved()) reapplyAll();
   window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty,
+    lobby: { group: lobby, spec: LOBBY, measured: lobby.userData.measured, lights: lobby.userData.lights, triangles: lobby.userData.triangles },
     player, walk: { WALK, keys, setMode, step: walkStep, groundAt, rayDown, rayUp, rayH, col, perf: walkPerf, look: (y, p) => { yaw = y; pitch = p; } } };   // a handle for measuring from the console
   const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t); orbit.update();
   // Compile every shader and draw one frame (texture uploads, the shadow maps) behind the loader, so the
