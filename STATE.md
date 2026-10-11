@@ -1,7 +1,43 @@
-# STATE — 2026-10-11 (THE HAMILTON SET IS A MODEL ON THE STAGE)
+# STATE — 2026-10-11 (THE HAMILTON RIG HAS ITS FIXTURE MODELS; THE HAMILTON GAME IS BRIEFED, NOT SPECCED)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-11 (later), the fixture models and the Hamilton-game brief (branch `fixture-models`)
+
+- **`main` is `1ca0a14`: #224 (`hamilton-set`) MERGED by Jack.** The post-merge protocol for
+  it has NOT been run (rebuild byte-identical, map, 21/21, delete the branch) — do it first;
+  local `main` was still at `4125f6f` when this session started.
+- **Jack's brief for a second game** (his words, his four answers) is in **FUTURE.md PART 2
+  "THE HAMILTON GAME"**: same repo, second HTML; Midtown house + Hamilton set; better-looking
+  light, the full Broadway rig, real fixture models, "a better way to control the lights";
+  spatial PA sound, sound fired from the desk, a mixer. **Not specced, no ruling letters
+  issued** (next is FF). The engine split is surveyed in
+  `docs/hamilton-game-dependency-survey.md`.
+- **The fixture models are DONE and in the working tree, NOT committed** (Jack: *"download,
+  but don't commit the files yet"*): `assets/fixtures/*.glb`, 19 files, 4.8 MB, every one
+  `base > yoke > head > lens` (or `head > lens`), budgets met, `node tools/fixtures-check.js`
+  **0 failures**, loaded and posed in three.js r128. **The sources are not in the repo**: the
+  17 raw 3D Warehouse GLBs plus `picks.json` are in `C:\Users\jackf\Downloads\fixture-sources\`
+  (and re-downloadable — `assets/fixtures/README.md` has the URL pattern). The tools ARE on the
+  branch: `tools/blender/fixtures.py` + `fixtures.json` (the rules, one entry per fixture),
+  `fixtures_sheet.py` (colour-coded check renders), `tools/fixtures-check.js`.
+- **The rig and the picks:** `docs/HAMILTON-RIG.md` (every fixture, count, source, author,
+  tris); the equipment list verbatim in `docs/hamilton-equipment-list.txt`; the chooser he
+  picked from is https://claude.ai/artifact/YFMCghYoCM12CRC1NRoaqz (his picks are its
+  `choices` collection).
+- **Fixture follow-ups, small:** the Source Four is one body (the plot wants six barrel
+  lengths); the X4 is the X4 not the XL (same shape, 20% bigger — scale it); five are
+  stand-ins (Stickup, Mini-10, ELAR, PixelPAR, Lycian) because no model of the real thing
+  exists; the 3D Warehouse licence allows use in the game but not redistributing the files
+  alone; the VL3500 is ETC's, non-commercial.
+- **Node is still the portable copy** in the OLD session scratch
+  (`…\fcf2674c-d68f-48b7-816b-bbf0793541d1\scratchpad\node_dl\node-v24.21.0-win-x64\node.exe`);
+  it ran the check. `winget install OpenJS.NodeJS.LTS` — Jack runs it. The suites were NOT run
+  this session (nothing in `src/` changed; `the-house.html` and `docs/ARTNET.md` untouched).
+- **Headset run still owed**, as below.
+
+---
 
 ## NEWEST — 2026-10-11, the Hamilton set (branch `hamilton-set`, RULING FE)
 

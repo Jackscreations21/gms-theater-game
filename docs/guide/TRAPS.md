@@ -1302,3 +1302,28 @@ against this list before opening a PR; **add new traps as you hit them.**
   colour, so three timbers in three tones came out as one pale grain. Bake the
   tone into a per-material copy of the map (or use a Mix node the exporter
   understands).
+
+## From the fixture-model round (2026-10-11)
+
+- **Blender's `Object.bound_box` goes stale after `mesh.transform()`.** It is a cached box,
+  refreshed on depsgraph evaluation, not on the mesh edit. `tools/blender/fixtures.py` scaled a
+  model, then measured it for the hang point, the tilt axis and the lens, and every number came
+  off the PRE-scale box: a 12 cm birdie hung 1 m from its origin and a followspot read 17 m long.
+  Measure from `o.data.vertices` through `matrix_world` (the script's `world_bbox`), never from
+  `bound_box` after you have touched the data.
+- **A SketchUp export can hide a metre of junk in one mesh.** The birdie came with a 1 m stray bar
+  of 14 loose vertices in the same mesh as the can; "scale the long axis to 12 cm" made the can
+  1 cm. Histogram the vertices along the axis before trusting a `size` rule; `clip` in
+  `fixtures.json` deletes vertices outside a box.
+- **GLTFExporter r128 throws `reading 'width'` on a texture whose image never decoded.** The ETC
+  pack's height and normal maps loaded as textures with no image; null the slot before exporting
+  (`fixview/export.html` does). This is how a DAE gets into Blender 5, which has no COLLADA
+  importer: three.js ColladaLoader → GLTFExporter in a browser page served over http.
+- **`bpy.ops.object.transform_apply` refuses multi-user mesh data** ("Cannot apply to a multi
+  user"); glTF imports of SketchUp components share data between instances. `o.data =
+  o.data.copy()` first.
+- **Research agents share the browser pane's tab.** A subagent navigated the tab I was
+  screenshotting to Sketchfab mid-batch. `tabs_create` your own tab and pass its id everywhere.
+- **The desk-side screenshot of a hidden Browser pane is blank**, not an error; the page is
+  fine. Read it with `read_page` / `javascript_tool`, or render to a canvas and POST the PNG to a
+  local server (`scratchpad/serve.py` pattern) and open the file.

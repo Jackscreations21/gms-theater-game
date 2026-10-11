@@ -1,0 +1,253 @@
+{
+ "source-four": {
+  "mount": "hang",
+  "front": "-y",
+  "auto": false,
+  "base": [
+   "/11408/"
+  ],
+  "yoke": [
+   "/11409/",
+   "/11438/",
+   "/11440/",
+   "/11410/"
+  ],
+  "lens_r": 0.08
+ },
+ "s4-par": {
+  "mount": "hang",
+  "front": "-y"
+ },
+ "par64": {
+  "mount": "hang",
+  "front": "-y",
+  "auto": false,
+  "yoke": [
+   "/Node_5/"
+  ],
+  "rot": [
+   "x",
+   -50
+  ]
+ },
+ "birdie": {
+  "mount": "hang",
+  "front": "+x",
+  "clip": {
+   "x": [
+    0.8,
+    9
+   ]
+  },
+  "size": [
+   "x",
+   0.12
+  ],
+  "budget": {
+   "head": 2000
+  }
+ },
+ "stickup": {
+  "mount": "hang",
+  "front": "-y",
+  "auto": false,
+  "yoke": [
+   "PRT/Mesh_1$",
+   "/0008"
+  ],
+  "budget": {
+   "head": 1500,
+   "yoke": 400,
+   "base": 300
+  }
+ },
+ "mini-10": {
+  "mount": "floor",
+  "front": "+z",
+  "size": [
+   "y",
+   1.1
+  ],
+  "single": true,
+  "budget": {
+   "head": 2500
+  },
+  "lens_r": 0.03
+ },
+ "mac-viper": {
+  "mount": "hang",
+  "flip": true,
+  "front": "-y",
+  "head": [
+   "Node_3/Node_6"
+  ],
+  "yoke": [
+   "Node_3/Node_4"
+  ],
+  "base": [
+   "."
+  ],
+  "budget": {
+   "head": 6000,
+   "yoke": 2000,
+   "base": 2000
+  },
+  "auto": false
+ },
+ "vl3500": {
+  "mount": "hang",
+  "front": "+x",
+  "source": "vl3500.glb",
+  "drop": [
+   "ETC_beam"
+  ],
+  "base": [
+   "base_"
+  ],
+  "yoke": [
+   "yoke_"
+  ],
+  "head": [
+   "head_",
+   "ETC_lens"
+  ],
+  "budget": {
+   "head": 3000,
+   "yoke": 1000,
+   "base": 1000
+  }
+ },
+ "glp-x4": {
+  "mount": "hang",
+  "flip": true,
+  "front": "-y",
+  "auto": false,
+  "zones": {
+   "base": [
+    0.0,
+    0.1
+   ]
+  },
+  "head": [
+   "/Node_12/",
+   "Component#551"
+  ],
+  "rest": "yoke",
+  "budget": {
+   "head": 6000,
+   "yoke": 1500,
+   "base": 1500
+  }
+ },
+ "s4-revolution": {
+  "mount": "hang",
+  "front": "-y"
+ },
+ "colorblast": {
+  "mount": "floor",
+  "front": "-y",
+  "size": [
+   "x",
+   0.32
+  ],
+  "auto": false,
+  "drop": [
+   "/Image/",
+   "Mesh_4$"
+  ],
+  "head": [
+   "Mesh_1$"
+  ],
+  "yoke": [
+   "Mesh_2$"
+  ],
+  "base": [
+   "Mesh_0$"
+  ]
+ },
+ "colorblaze-48": {
+  "mount": "floor",
+  "front": "-y",
+  "source": "colorblaze.glb",
+  "size": [
+   "x",
+   1.22
+  ],
+  "single": true,
+  "budget": {
+   "head": 2500
+  },
+  "lens_r": 0.04
+ },
+ "colorblaze-72": {
+  "mount": "floor",
+  "front": "-y",
+  "source": "colorblaze.glb",
+  "size": [
+   "x",
+   1.83
+  ],
+  "single": true,
+  "budget": {
+   "head": 2500
+  },
+  "lens_r": 0.04
+ },
+ "elar-108": {
+  "mount": "hang",
+  "front": "-y"
+ },
+ "pixelpar": {
+  "mount": "hang",
+  "front": "-y",
+  "auto": false,
+  "yoke": [
+   "/215800/"
+  ],
+  "head": [
+   "/215803/"
+  ]
+ },
+ "lycian": {
+  "mount": "floor",
+  "front": "-y",
+  "auto": false,
+  "base": [
+   "Node_3/Node_12",
+   "Node_3/Node_22",
+   "Node_3/Mesh_13"
+  ],
+  "budget": {
+   "head": 6000,
+   "yoke": 1500,
+   "base": 2000
+  },
+  "drop": [
+   "Node_6/Geom3D.003$"
+  ]
+ },
+ "hazer": {
+  "mount": "floor",
+  "single": true,
+  "front": "+x",
+  "budget": {
+   "head": 4000
+  },
+  "lens_r": 0.03
+ },
+ "s4-lustr": {
+  "mount": "hang",
+  "front": "+x",
+  "auto": false,
+  "base": [
+   "Crochet"
+  ],
+  "yoke": [
+   "/Node_23/"
+  ]
+ },
+ "colorsource-par": {
+  "mount": "hang",
+  "front": "-z"
+ }
+}

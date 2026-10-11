@@ -224,7 +224,69 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **LAND THE HAMILTON SET, THEN DECIDE WHAT ELSE OF HAMILTON IS WANTED** (2026-10-11, FE)
+## NEXT SESSION: **RUN THE POST-MERGE PROTOCOL FOR #224, THEN SPEC THE HAMILTON GAME** (2026-10-11, later)
+
+Rulings at **FE** (FF next). Suite count **21**. `main` is **`1ca0a14`** (#224 merged by Jack).
+The fixture work is on **`fixture-models`** (tools, docs, record; the GLBs deliberately
+uncommitted). Read STATE.md's NEWEST block first.
+
+1. **Post-merge protocol for #224**: fast-forward local `main`, rebuild byte-identical,
+   `node tools/artnet-map.js` reproduces `docs/ARTNET.md`, 21/21, delete `hamilton-set` local
+   and remote. Node: the portable copy (STATE) until Jack installs it.
+2. **Merge `fixture-models`** (tools and record only). Then ask Jack whether the 19 GLBs in
+   `assets/fixtures/` get committed; `node tools/fixtures-check.js` is ready to become a suite
+   case the day they are.
+3. **Spec the Hamilton game** from FUTURE.md PART 2 "THE HAMILTON GAME" and the dependency
+   survey; letter the rulings from FF; one concern per PR, (1) the second build target first.
+   Ask what "a better way to control the lights" means before writing the desk section.
+4. **Headset run**, still owed.
+
+## DONE — 2026-10-11 (later): the Hamilton rig's fixture models, and the brief for a second game (the `fixture-models` branch)
+
+Jack's machine. The session opened on the hamilton-set PR already merged (#224, `1ca0a14`),
+then went where he pointed it: *"make it so the stuff we have been working on is a separate
+game from the palace … improved lighting and sound system."* Four questions, four answers
+(FUTURE.md PART 2 "THE HAMILTON GAME"); then *"find 3d models for all the different lights
+they use and give me a list with pictures and I will choose."* He pasted the **real Broadway
+equipment list** (`docs/hamilton-equipment-list.txt`), which replaced the ETC training rig as
+the source of truth; then *"for this session … just get all the models in a usable state
+(moving parts separate so they can move later), then update state and handoff."*
+
+**The hunt.** Five research agents over Sketchfab, 3D Warehouse, GDTF Share, the manufacturers,
+CGTrader/TurboSquid/Free3D, BlendSwap, Thingiverse. Worth keeping: **3D Warehouse is the
+source** — public GLB downloads via `warehouse/v1.0/entities/<id>/binaries/glb`, one author
+(Jamie V.) with a consistent low-poly theatre set; **GDTF Share is login-walled** (it would
+have official 3D for the Viper, VL3500, X4, Revolution, ColorBlaze, MDG — Jack could open an
+account); Sketchfab's search returned nothing for any fixture; **no model of a GAM Stickup, an
+Altman Mini-10 or any Lycian exists anywhere.** The ETC pack itself ships six fixture DAEs
+(Viper, VL3500, Fresnel, PAR 64, ColorSource PAR, Irideon) with textures; rendered and offered
+beside the web finds. The sheet: https://claude.ai/artifact/YFMCghYoCM12CRC1NRoaqz (74
+candidates, 18 rows, pictures embedded because the artifact sandbox blocks other hosts, a
+`db`-backed pick button per row). **He picked 17 from 3D Warehouse and the ETC VL3500.**
+
+**The build** (`tools/blender/fixtures.py`, rules in `fixtures.json`): import, classify every
+mesh into `base` / `yoke` / `head` by name rules, z-zones or a geometric heuristic, join and
+decimate per part to a budget, merge materials by colour, scale to the real size, put the hang
+point (or floor point) at the origin, set the yoke's origin on the pan axis and the head's on
+the trunnions, add a `lens` disc whose local −Z is the beam, export Y-up GLB. Verified three
+ways: a colour-coded Workbench sheet (`fixtures_sheet.py`, red/green/blue/yellow parts) through
+five rounds of rule fixes; **three.js r128 `GLTFLoader`** loading every file and posing
+yoke/head (pivots right on the Source Four and the Viper); and `tools/fixtures-check.js`, which
+reads the JSON chunk and checks tree, budgets and that the geometry hangs from y = 0 — **19/19,
+0 failures.** Results: 1.4k–10k tris each, 1–4 materials, 4.8 MB in all; table in
+`docs/HAMILTON-RIG.md`.
+
+**Found on the way, now in TRAPS:** Blender's `bound_box` is stale after `mesh.transform()`
+(every post-scale measurement was wrong for a round); a SketchUp mesh can carry a metre of
+loose junk (the birdie); GLTFExporter r128 dies on an undecoded texture (the DAE → GLB route
+for Blender 5, which has no COLLADA importer); `transform_apply` refuses multi-user data;
+research agents share the browser tab; a hidden pane screenshots blank.
+
+**Also:** `docs/hamilton-game-dependency-survey.md` — an agent's survey of what each kept engine
+part needs from the parts the second game drops (p7, p4's `buildRig` and p5's `Snd` are the
+entanglement). Nothing in `src/` changed; suites not run; `the-house.html` untouched.
+
+## SUPERSEDED (the PR merged as #224): **LAND THE HAMILTON SET, THEN DECIDE WHAT ELSE OF HAMILTON IS WANTED** (2026-10-11, FE)
 
 Rulings at **FE**. Suite count **21**. `main` is still **`4125f6f`**; the
 work is on **`hamilton-set` (`f4d9a90`, pushed, PR not yet opened** — the
