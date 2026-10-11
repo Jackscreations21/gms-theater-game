@@ -1,29 +1,49 @@
-# STATE — 2026-10-11 (THE MIDTOWN + HAMILTON PREVIEW IS IN PR #226 WITH A BUILD MODE AND HIS FIRST BAKE; THE HAMILTON GAME IS BRIEFED, NOT SPECCED)
+# STATE — 2026-10-11 (THE MIDTOWN + HAMILTON PREVIEW WITH ITS BUILD MODE IS IN PR #226, TWO BAKES IN; THE HAMILTON GAME IS BRIEFED, NOT SPECCED)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-11 (night), the first bake and the stairs redone (branch `midtown-preview`, PR #226 OPEN, 10 commits)
+## NEWEST — 2026-10-11 (end of session): the Midtown preview round is in PR #226, 16 commits, UNMERGED
 
-- **Second bake (pasted JSON): appended** as `(bake 2)` — a rail-grain strip house left, and the set's
-  own stair COPIED (the copy tool's first real use) to house right at x 2.13 / z 2.05, turned 90°,
-  with two cuts where it meets the gallery. `BAKED` is 8 pieces, `BAKED_CUTS` 6. His session names
-  restart at "box 1" each time, so later bakes get a suffix to stay distinct.
-- **The bake recipe has been run once.** Jack's first export (`C:/Users/jackf/Downloads/midtown-build (1).json`)
-  is in the page: `BAKED` holds six pieces — an inner timber proscenium (two 9 m posts and a header
-  in the set's post grain, x ±5.2, inside the grey frame), a black masking panel stage left, and two
-  rail-grain blocks filling the apron's front corners — and `BAKED_CUTS` holds his four delete boxes
-  (something hanging at the back of the house, and the scan's little corner stairs, which his blocks
-  now cover). **He builds, exports, the agent bakes: that loop works.** Next export → replace the
-  constants (or append to them if he was editing the baked pieces).
-- **There are NO built stairs any more.** Three placements were tried and each was wrong for him;
-  then: *"remove all the stairs you have put and make a tool where I can select an area and copy
-  it."* Done: `buildSideStairs` is gone, and the area box now does **Copy area** (or C) as well as
-  Delete — everything whose centroid is inside becomes a new piece ("copy N", one mesh per source
-  mesh sharing its material, origin at the box centre) on the gizmo, so he copies the set's own
-  stair and puts it where he wants. A copy is saved/exported as its source box `{src:{p,r,s}}` and
-  rebuilt from the models on load, before deletes apply; it bakes like any piece.
-- Everything below in the evening block still stands.
+**Read this block, then the evening block below it only for the placement numbers.**
+
+- **`main` is `692f3d3`** (#224 `hamilton-set` and #225 `fixture-models`, both merged by Jack). The
+  post-merge protocol has NOT been run for either. **PR #226 (`midtown-preview`) is open**:
+  https://github.com/Jackscreations21/gms-theater-game/pull/226 — on Pages after merge at
+  `https://jackscreations21.github.io/gms-theater-game/midtown.html`.
+- **What `midtown.html` is now:** a standalone preview (NOT the second game) of the Midtown scan
+  with the Hamilton set on its stage, plus a **build mode** he used all evening:
+  - the house unlit and dimmable, the set lit (hemisphere, two FOH spots, two over-stage specials),
+    orbit or drag-to-look walk, six viewpoints, `window.MIDTOWN` console handle;
+  - the proscenium moved to the front of the stage (z 0.20) and rebuilt as a real frame in the wall's
+    own grey (1.5 m members, 0.6 m deep) round an opening fitted to the set; the set scaled 0.62
+    ("Real size" toggle shows 1:1 through the walls); the scan's hanging iron over the stage cut
+    (`cutBeams`); **no built stairs** — three placements were wrong for him, so he got tools instead;
+  - **Build:** add box / cylinder / sphere / plane / wedge where the view looks; texture dropdown of
+    the set's and house's materials plus colours; image by picker or drop; tiling, tint; gizmo
+    move/rotate/scale (G/R/S), numeric fields, snap, duplicate, delete; **Area box**: Copy area (C)
+    makes what is inside a new piece, Delete area (Enter) cuts it away, Undo delete; autosave to
+    localStorage; Export / Copy / Import JSON.
+  - **Baked so far:** `BAKED` 8 pieces, `BAKED_CUTS` 6 — his inner timber proscenium (two posts and a
+    header), a black masking panel stage left, two rail-grain corner blocks over the apron corners
+    where his cuts removed the scan's little stairs, a rail strip house left, and the set's own
+    stair COPIED to house right (x 2.13 / z 2.05, turned 90°) with two tidy-up cuts.
+- **THE BAKE RECIPE (works, run twice):** he exports (`C:/Users/jackf/Downloads/midtown-build*.json`)
+  or pastes JSON → append its `pieces` to `BAKED` and its `cuts` to `BAKED_CUTS` in `midtown.html`
+  (session names restart at "box 1": suffix them, e.g. "(bake 3)") → reload, look, commit. **Replace
+  instead of append** only if he pressed "Edit the baked pieces" before exporting (the export then
+  already holds the old ones). A copy's `src` box is taken on the pristine geometry at load, before
+  any cut — safe unless a later cut overlaps a copy's source. **Tell him to Clear all** after a bake
+  or his browser shows the pieces doubled.
+- **Suites on this tree: 20/21** with the portable Node. The red is `beetlejuice`'s on-disk index
+  check tripping on the **19 untracked `assets/fixtures/*.glb`** (his "don't commit the files yet"),
+  not on `main` or the branch. Nothing in `src/` changed all session.
+- **Local serving:** `.claude/launch.json` (gitignored) has `the-house`, Python http.server on 8080
+  over the repo root; `preview_start` it. **It dies whenever the Browser pane is closed** — restart
+  before navigating. Pointer lock fails inside the pane; a normal browser window is fine.
+- **Headset run still owed**, as below.
+
+---
 
 ## NEWEST — 2026-10-11 (evening), the Midtown preview page (branch `midtown-preview`, PR #226 OPEN)
 

@@ -224,14 +224,15 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **MERGE #226, RUN THE POST-MERGE PROTOCOL FOR #224/#225/#226, THEN SPEC THE HAMILTON GAME** (2026-10-11, night)
+## NEXT SESSION: **MERGE #226, RUN THE POST-MERGE PROTOCOL FOR #224/#225/#226, THEN SPEC THE HAMILTON GAME** (2026-10-11, end of session)
 
 Rulings at **FE** (FF next). Suite count **21**. `main` is **`692f3d3`** (#224 and #225 merged by
-Jack). **PR #226 (`midtown-preview`) is open, ten commits** — `midtown.html`, the preview page with
-its build mode, delete box, and his first bake. Read STATE.md's NEWEST block first. **If he hands
-over another export** (`Downloads/midtown-build*.json` or pasted JSON): its `pieces` → `BAKED`, its
-`cuts` → `BAKED_CUTS` in `midtown.html`, look, commit. If he had pressed "Edit the baked pieces"
-first, the export already contains the old baked pieces — replace, don't append.
+Jack). **PR #226 (`midtown-preview`) is open, sixteen commits** — `midtown.html`, the preview page
+with its build mode, area box (copy / delete) and two bakes of his work. Read STATE.md's end-of-session
+block first; the bake recipe is there. **If he hands over another export** (`Downloads/midtown-build*.json`
+or pasted JSON): append its `pieces` to `BAKED` and its `cuts` to `BAKED_CUTS` with a "(bake N)"
+suffix, reload, look, commit; replace instead of append only if he pressed "Edit the baked pieces"
+first; tell him to Clear all afterwards.
 
 1. **Merge #226**, then the post-merge protocol for all three: fast-forward local `main`, rebuild
    byte-identical, `node tools/artnet-map.js` reproduces `docs/ARTNET.md`, 21/21, delete

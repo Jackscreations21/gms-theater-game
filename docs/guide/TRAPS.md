@@ -1327,3 +1327,34 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **The desk-side screenshot of a hidden Browser pane is blank**, not an error; the page is
   fine. Read it with `read_page` / `javascript_tool`, or render to a canvas and POST the PNG to a
   local server (`scratchpad/serve.py` pattern) and open the file.
+
+## From the Midtown preview round (2026-10-11, the build-mode evening)
+
+- **With two models in one scene, find which model a thing belongs to before touching either.**
+  "Remove the metal beam": the beam was hidden in one set mesh, then cut out of two more, and it
+  stood there every time — it was the SCAN's hanging iron, not the set's. Hide meshes one at a time
+  and look; a `visible = false` round trip costs seconds, a wrong cut costs a round. And the
+  reverse: `ham_iron` was hidden on the theory it held the beams, and it held the posts' foot blocks.
+- **Before the first frame, a group's world matrices are stale.** A copy rebuilt at load from its
+  source box came back with no parts, because the set group had been scaled and turned but never
+  rendered, so `mesh.updateMatrixWorld(true)` (which only walks DOWN) saw the old parent matrix. Any
+  geometry test at load that goes through `matrixWorld` wants `scene.updateMatrixWorld(true)` first.
+- **An in-page "fix" the user cannot see is a fix that did not happen.** Widened proscenium planes
+  in the wall's own flat grey read as "you just removed the proscenium"; a dark lit frame read as
+  "still no proscenium"; a copy placed exactly on its original read as "it's not letting me copy".
+  The third time, the cause was the same: the result was invisible from where he was looking. Put
+  the result where the eye is (the frame in a visible material; the copy's part count in the note
+  beside the button; the gizmo switched to Move) before arguing the geometry is right.
+- **Three guesses at where a thing goes is two too many.** Stairs were built toward centre, then
+  backstage, then toward the audience and stage right; each was wrong for him. After the second,
+  the right move was the copy tool that let him place the set's own stair himself — which he did in
+  one go. When the owner is watching and correcting, hand over the tool.
+- **A Python heredoc with a Windows path in a normal string dies on `\U`.** `C:\Users\...` inside
+  a triple-quoted string is a `\Users` escape: `SyntaxError: (unicode error)`. Use forward slashes
+  in record text, or a raw string. It silently cost the record half of one commit.
+- **The pane's dev server dies with the pane.** Every time Jack closed the Browser pane the
+  `preview_start` server went with it and the next `navigate` was "denied or failed". Check
+  `preview_list` and start it again before navigating; `tabId`s change too.
+- **His export's names restart at "box 1" every session.** Baking a second export beside a first
+  gives two "box 1"s; suffix them at bake time.
+
