@@ -8,7 +8,7 @@
   A PREVIEW of the second game's venue, not the game: the Midtown scan (assets/midtown-auditorium.glb)
   with the Hamilton set (assets/hamilton-set.glb) seated on its stage, and the show's lighting rig
   hung where the real show hangs it (assets/hamilton-rig.json, one assets/fixtures/*.glb per type —
-  models only, not lights) — at real size x and z as the file has them, the heights trimmed to this
+  each unit driven as a light by THE LIGHTING ENGINE below, MIDTOWN.lx) — at real size x and z as the file has them, the heights trimmed to this
   smaller house (RIG_TRIM, "THE RIG AT REAL SIZE" below). No sound, no show — look around and walk round it, that is all. The second
   game proper is FUTURE.md PART 2 "THE HAMILTON GAME".
 
@@ -68,9 +68,17 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 #build .sel { color: var(--accent); font: 12px var(--mono); }
 #build .note { color: var(--muted); font-size: 11px; }
 #build .danger { border-color: #6a3030; }
+/* the lights panel (agent I fills it): #build's look, on the left so the two can be open together */
+#lights { position: absolute; top: 12px; left: 12px; width: 280px; max-height: calc(100% - 64px); overflow: auto; background: rgba(23,21,27,.94); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; font-size: 12px; }
+#lights h2 { font-size: 12px; font-weight: 600; margin: 4px 0 0; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+#lights .row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+#lights button { padding: 4px 8px; font-size: 12px; }
+#lights select, #lights input[type=number], #lights input[type=text] { font: 12px var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 5px; }
+#lights label { color: var(--muted); display: flex; align-items: center; gap: 4px; }
+#lights .note { color: var(--muted); font-size: 11px; }
 #xhair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(235,231,238,.85); box-shadow: 0 0 0 1px rgba(13,12,15,.6); pointer-events: none; }
 #dropglow { position: absolute; inset: 0; border: 2px dashed var(--accent); pointer-events: none; display: none; }
-@media (max-width: 640px) { .credit { display: none; } .bright { margin-left: 0; } #build { width: calc(100% - 24px); } }
+@media (max-width: 640px) { .credit { display: none; } .bright { margin-left: 0; } #build, #lights { width: calc(100% - 24px); } }
 </style>
 </head>
 <body>
@@ -99,6 +107,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     <button id="m-walk" aria-pressed="false">Walk</button>
   </div>
   <button id="b-toggle" aria-pressed="false">Build</button>
+  <button id="l-toggle" aria-pressed="false">Lights</button>
 </header>
 <div id="stage">
   <canvas id="c" aria-label="3D model of the theatre with the Hamilton set"></canvas>
@@ -141,6 +150,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     <div class="note">Export (or Copy) and hand the JSON over: it gets baked into the page as real scenery.</div>
     <div class="row"><button id="b-unbake">Edit the baked pieces</button><span class="note" id="b-bakedn"></span></div>
   </div>
+  <div id="lights" hidden></div>
   <div id="load"><div><span id="loadtxt">Loading the house…</span><div id="bar"><i></i></div></div></div>
 </div>
 
@@ -331,7 +341,7 @@ addEventListener('blur', () => keys.clear());
 // THE COLLISION GRID. Every triangle of the static scenery in world space (a corner and two edges, ready for
 // the ray test), its y range, and a uniform x/z grid of cells listing the triangles whose box touches each.
 const col = { n: 0, T: null, Y0: null, Y1: null, x0: 0, z0: 0, nx: 0, nz: 0, start: null, list: null, stamp: null, query: 0, meshes: 0, stale: true, ms: 0 };
-function colliderStale() { col.stale = true; }
+function colliderStale() { col.stale = true; lxStale(); }   // lxStale: the lighting engine's pools land on the same scenery
 function colliderMeshes() {
   const list = [], shown = o => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
   const take = o => { if (o.isMesh && o.geometry && o.geometry.attributes.position && !o.userData.cutter && shown(o)) list.push(o); };
@@ -582,20 +592,23 @@ bright.addEventListener('input', applyBright);
 // The set is lit: a soft fill plus a front-of-house wash and two over-stage specials, all on the set only.
 const setGroup = new THREE.Group();
 scene.add(setGroup);
-scene.add(new THREE.HemisphereLight(0xfff2e0, 0x2a2420, 0.55));
+// The hemisphere and the four spots below are the WORK LIGHT (MIDTOWN.lx.work): today's look, at 1 on load.
+const lxWorkLights = [new THREE.HemisphereLight(0xfff2e0, 0x2a2420, 0.55)];
+scene.add(lxWorkLights[0]);
 function spot(x, y, z, tx, ty, tz, intensity, angle, color, cast = true) {
   const s = new THREE.SpotLight(color, intensity, 0, angle, 0.45, 1.6);
   s.position.set(x, y, z); s.target.position.set(tx, ty, tz);
   s.castShadow = cast; if (cast) { s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0005; }
   scene.add(s, s.target); return s;
 }
-spot(-3.5, 7.8, -6.0, 0, 2.5, 5.5, 180, 0.42, 0xffe6c8);   // FOH left
-spot( 3.5, 7.8, -6.0, 0, 2.5, 5.5, 180, 0.42, 0xffe6c8);   // FOH right
+lxWorkLights.push(spot(-3.5, 7.8, -6.0, 0, 2.5, 5.5, 180, 0.42, 0xffe6c8));   // FOH left
+lxWorkLights.push(spot( 3.5, 7.8, -6.0, 0, 2.5, 5.5, 180, 0.42, 0xffe6c8));   // FOH right
 // The over-stage pair cast no shadow: theirs fall straight down under the set's own pieces — 0.3% / 3.2% / 1.3% of
 // the pixels change, faintly (Back of house / Front row / Fly tower) — and cost 4.2 ms (Back) / 10 ms (Front) of GPU a
 // frame. The FOH pair's shadows are the ones that show (24% of the Front row picture changes without them).
-spot(-2.0, 13.0, 6.0, -1, 1, 6.0, 220, 0.5, 0xffd9a8, false);     // over the stage, warm
-spot( 2.5, 13.0, 7.5,  1, 1, 6.5, 160, 0.5, 0xc8d8ff, false);     // over the stage, cool
+lxWorkLights.push(spot(-2.0, 13.0, 6.0, -1, 1, 6.0, 220, 0.5, 0xffd9a8, false));     // over the stage, warm
+lxWorkLights.push(spot( 2.5, 13.0, 7.5,  1, 1, 6.5, 160, 0.5, 0xc8d8ff, false));     // over the stage, cool
+for (const l of lxWorkLights) l.userData.lxBase = l.intensity;   // work(1) is these intensities, work(0) is none of them
 
 // Set size. The group's transform is the only thing that changes; the model is turned 180° inside it.
 // seatSet is the transform alone: the cuts and copies re-seat the set at the scale they were made at.
@@ -609,6 +622,7 @@ function placeSet(s) {
   document.getElementById('s-fit').setAttribute('aria-pressed', String(s !== 1));
   document.getElementById('s-real').setAttribute('aria-pressed', String(s === 1));
   shadowsDirty(); colliderStale();                         // the walk's floors and walls moved with it
+  lxPlaced();                                              // rigPlace put the movers' heads back to the file: the lighting engine re-poses them and re-lands every pool, now
 }
 document.getElementById('s-fit').addEventListener('click', () => placeSet(SET.fit));
 document.getElementById('s-real').addEventListener('click', () => placeSet(1));
@@ -618,8 +632,9 @@ document.getElementById('s-real').addEventListener('click', () => placeSet(1));
    assets/hamilton-rig.json (tools/hamilton-rig.py) gives each unit a model, a position and a
    quaternion IN THE SET GLB's OWN FRAME (upstage −z, the house +z, deck y 0), so the rig group is a child of the set's loaded root and
    inherits its seating, its 180° turn and the fitted / real-size scale. It goes in AFTER the set's
-   bounding box is taken, so it never widens the seating or the proscenium frame. Models only: no
-   light per unit, no shadows; each lens glows faintly in its gel's colour so the lamps read as lit.
+   bounding box is taken, so it never widens the seating or the proscenium frame. The models cast no
+   shadows; each lens is dark glass until THE LIGHTING ENGINE (below) drives the unit — its level, colour,
+   aim, gobo and zoom live there, on unit.userData.lx.
    The file missing, or a fixture file missing, is a console warning, never an error. */
 const RIG_URL = 'assets/hamilton-rig.json';
 let rig = null;
@@ -636,15 +651,19 @@ const GELS = {
   R80: 0x1a3cf0, R83: 0x102a9a, R85: 0x0a2080, R86: 0x6ac040, R89: 0x3a9a40, R90: 0x2a8a1a, R91: 0x0a6a2a,
   L161: 0x8fb8e8, L182: 0xe8304a, L201: 0x9fc3ff, L202: 0xc4d8ff, L203: 0xdce8ff, L204: 0xffc48a, L205: 0xffd2a4, L206: 0xffe0bc,
 };
-const LENS_GLOW = 0.55;                                      // how lit a lens reads: enough to see, not enough to wash the picture
-function gelColour(gel) {
+// LENS_GLOW (0.55, "every lens always faintly lit in its gel") is retired: a lamp at level 0 now reads OFF — dark
+// glass — and the lighting engine lights the lens with colour × level (LX_LENS_FULL). LX_LENS_DARK is the glass.
+const LX_LENS_DARK = 0x141414;
+// A gel code to its colour at FULL strength (the lighting engine's state.color), or null when the code is not listed.
+function lxGelKnown(gel) {
   for (const g of String(gel || '').toUpperCase().split(/[^A-Z0-9]+/)) {   // "R01", "R1", "R02+R119", "L201"…
     const m = /^([RL])0*(\d+)$/.exec(g); if (!m) continue;
     const key = m[1] + (m[1] === 'R' ? m[2].padStart(2, '0') : m[2]);
-    if (GELS[key]) return new THREE.Color(GELS[key]).multiplyScalar(LENS_GLOW);
+    if (GELS[key]) return new THREE.Color(GELS[key]);
   }
-  return new THREE.Color(OPEN_WHITE).multiplyScalar(LENS_GLOW);
+  return null;
 }
+function gelColour(gel) { return lxGelKnown(gel) || new THREE.Color(OPEN_WHITE); }   // R00, the frosts and no gel: open white
 const finite = (a, n) => Array.isArray(a) && a.length === n && a.every(Number.isFinite);
 // The one-foot ColorBlaze cells (one or two channels) have no 1 ft model: they are drawn as a ColorBlast.
 const modelOf = u => u.type === 'colorblaze-48' && Array.isArray(u.channels) && u.channels.length <= 2 ? 'assets/fixtures/colorblast.glb' : u.model;
@@ -734,7 +753,7 @@ function buildRig(src) {
     unit.userData = { id: u.id, channels: u.channels, type: u.type, label: u.label, gel: u.gel, position: u.position || null, hung: !!u.hung, placed: u.placed };
     unit.position.fromArray(u.pos);
     panTilt(q.fromArray(u.quat).normalize(), e);
-    const lensMat = u.type !== 'hazer' ? new THREE.MeshBasicMaterial({ color: gelColour(u.gel), toneMapped: false, side: THREE.DoubleSide }) : null;
+    const lensMat = u.type !== 'hazer' ? new THREE.MeshBasicMaterial({ color: LX_LENS_DARK, toneMapped: false, side: THREE.DoubleSide }) : null;   // dark till the lighting engine lights it
     const near = g.scene.clone(), lens = poseLevel(near, u, g, e, lensMat);
     unit.rotation.set(0, e.y, 0);
     if (!near.getObjectByName('head')) unit.rotation.set(e.x, e.y, e.z, 'YXZ');   // a model with no head: the whole of it turns
@@ -879,6 +898,729 @@ function rigClash(rows, names) {
     return `${n} ${us.reduce((s, u) => s + hits(new THREE.Box3().setFromObject(u)), 0) + hits(truss)}`;
   }).join(', ');
 }
+
+/* ---------------------------------------------------------------- THE LIGHTING ENGINE (agent G)
+   Jack: "make the lighting engine and check that every light is working with the movements, gobos and colors."
+   Every one of the rig's 313 units is a light that can be driven: a LEVEL, a COLOUR, an AIM (pan and tilt, the three
+   moving-light types only), a GOBO and its rotation, a ZOOM. The state lives on the unit, unit.userData.lx:
+     { level 0..1, color (THREE.Color — the gel's colour at full strength, open white with none), pan, tilt, panTo, tiltTo
+       (degrees, movers only, null otherwise: where the head is and where it is going), gobo (slot, 0 = open), goboRot (deg),
+       goboRate (deg/s), zoom (the beam's full angle, deg) }.
+   What draws is a function of that state and nothing else — the way p4's updateRig drives the game's rig (src/p4.txt
+   makeBeam / addFixture / updateRig, ported, not reinvented):
+   - the LENS: the unit's own lens material (shared by its two detail levels) is dark glass at 0 and colour × level when lit;
+     a single point cloud (one draw call for all 313) adds a soft glare round every lit lens, facing the way it shines, so
+     a lamp reads lit from the back of the house where its lens is under a pixel.
+   - the BEAM: p4's volumetric shader on an open cone from the lens to where the beam lands — its radius the zoom's at that
+     distance — additive, its strength level × the room's haze. Drawn only while the level is over 0.004 (p4's threshold).
+     The ColorBlaze strips draw no beam: a wash light's glow and a shallow pool are what they show.
+   - the POOL: a decal where the beam lands, on the surface's own plane, stretched by the angle it lands at, sized by the
+     cone there, additive, colour × level, the gobo as its picture. The landing point is a ray from the lens (its local −Z:
+     TRAPS — not getWorldDirection) through the walk's collision grid (house, set, rig structures, booth, desk, lobby, baked
+     pieces: col, 0.5 m columns, stepped along the ray's own cells — a whole-scan raycast costs ~12 ms here, TRAPS) plus the
+     pieces being built. It is CACHED per unit, cast again only when that unit's aim changes (a mover travelling: one ray a
+     frame) or the scene does (placeSet, a cut, the rig toggled, a bake: colliderStale; a built piece moved, after it rests).
+   - THE BEAM BUDGET: with more than LX_BEAM_BUDGET (120) cones lit, only the strongest in view draw that frame (LX_BEAM_BUDGET
+     says why). Measured on the Intel UHD at 1280 × 800, GPU + CPU per frame, Front row / Back of house: before this engine
+     28 / 24 ms; with it, every unit dark 32–36 / 24 ms; every lamp at full (lx.all(1): 254 cones lit, 120 drawn) 54 / 36 ms
+     — from 102 / 52 ms with all 254 drawn p4's way (both sides, the original shader, eight real lights).
+   - REAL LIGHT: a fixed pool of LX_REAL.n THREE.SpotLights is always in the scene; each change hands them to the brightest
+     units (level × the type's power), aimed at the unit's landing point, the zoom's angle, the unit's colour. Never added,
+     removed or hidden — a changed light count recompiles every lit material (TRAPS) — a spare one waits at intensity 0.
+     The first LX_REAL.shadows of them cast shadows (static maps: shadowsDirty() when their unit or aim changes). The house
+     scan is unlit MeshBasic with its light baked in, so real light shows only on the SET and on BUILT pieces (and the rig's
+     own bodies); on the scan the pools are the light.
+   Movers: pan turns the yoke about its local Y and tilt the head about its trunnion, both detail levels, ON TOP of the file's
+   rest pose (pan 0 / tilt 0 = the file's pan, head straight down; tilt +90 swings the beam out along the model's own front,
+   which is where the file's beam for a mover points). They travel at the type's speed (LX_TYPES .mover, deg/s), never
+   jump, unless told to snap. rigPlace puts every head back to RIG_FILE at each set scale, so placeSet ends in lxPlaced():
+   the heads are re-posed from the state and every pool re-landed before anything draws.
+   Time: fades, travel and gobo rotation advance in lxTick(dt), off the frame's dt (never a timer); while any of it is
+   visibly moving the frame loop draws, and when it stops the page goes back to drawing nothing. The beams' dust (uTime)
+   advances only on frames that draw anyway.
+   The house light's four spots and hemisphere are the WORK LIGHT (lx.work), at 1 on load: the picture on load is today's,
+   every unit at 0 with a dark lens. The console: MIDTOWN.lx (the API at the end of this section). */
+const LX_DEG = Math.PI / 180;
+// Per type: zoom (full beam angle, deg) with its range (a fixed-focus unit's range is its zoom), the real-light power (who
+// gets a real light, and how bright), the beam's strength (p4: 0.62 a hard-edged lantern, 0.30 a soft source), the beam's
+// length when it meets nothing (world m), and for a mover its pan / tilt speeds in deg/s (the makers' full travels over
+// their times: MAC Viper 540° in ~2.5 s, 270° in ~1.6 s; GLP X4 XL 630° / 240° the same; VL3500 Wash 540° / 270°).
+const LX_TYPES = {
+  'source-four':     { zoom: 26, power: 1.0, beamK: 0.62, cap: 25 },
+  's4-par':          { zoom: 15, power: 1.0, beamK: 0.62, cap: 25 },
+  'par64':           { zoom: 10, power: 1.1, beamK: 0.62, cap: 25 },
+  'birdie':          { zoom: 12, power: 0.15, beamK: 0.45, cap: 10 },
+  'stickup':         { zoom: 12, power: 0.1, beamK: 0.40, cap: 10 },
+  'mac-viper':       { zoom: 20, min: 10, max: 42, power: 1.6, beamK: 0.62, cap: 30, mover: [540 / 2.5, 270 / 1.6] },
+  'glp-x4':          { zoom: 20, min: 7, max: 50, power: 1.3, beamK: 0.50, cap: 30, mover: [630 / 2.5, 240 / 1.6] },
+  'vl3500':          { zoom: 25, min: 10, max: 60, power: 1.8, beamK: 0.55, cap: 30, mover: [540 / 2.5, 270 / 1.6] },
+  'colorblast':      { zoom: 22, power: 0.4, beamK: 0.40, cap: 15 },
+  's4-lustr':        { zoom: 26, power: 0.8, beamK: 0.55, cap: 25 },
+  'colorsource-par': { zoom: 30, power: 0.6, beamK: 0.35, cap: 20 },
+  'elar-108':        { zoom: 25, power: 0.6, beamK: 0.35, cap: 20 },
+  'pixelpar':        { zoom: 25, power: 0.6, beamK: 0.35, cap: 20 },
+  'mini-10':         { zoom: 60, power: 0.2, beamK: 0.30, cap: 8 },
+  'lycian':          { zoom: 4, min: 2, max: 8, power: 2.5, beamK: 0.62, cap: 40 },
+  'colorblaze-48':   { zoom: 110, power: 0.5, strip: true },
+  'colorblaze-72':   { zoom: 110, power: 0.6, strip: true },
+  'hazer':           { zoom: 0, power: 0, hazer: true },
+};
+const LX_TYPE_DEFAULT = { zoom: 25, power: 0.6, beamK: 0.5, cap: 20 };
+const LX_LIMIT = { pan: 270, tilt: 135 };                    // a mover's travel either side of its rest, degrees
+const LX_LIVE = 0.004;                                       // a level at or under this draws nothing (p4's threshold)
+const LX_LENS_FULL = 1.0;                                    // the lens at full: colour × level × this (unlit, not tone-mapped: 1 is the brightest it shows)
+const LX_HALO = { size: 0.45, k: 0.9 };                      // the glare round a lit lens: world metres across, strength
+const LX_POOL = { k: 0.5, strip: 0.22, lift: 0.012 };       // a pool's brightness (× colour × level), a strip's, and its lift off the surface (m)
+// The real lights: how many, how many shadowed, candela per power at full. Four, not eight: every SpotLight in the scene is
+// paid by every lit pixel even at intensity 0, about 1.5 ms (Front row) / 1 ms (Back of house) each on the Intel UHD
+// (dark rig, 1280 × 800: none 27 / 21 ms, 2 → 27 / 21, 4 → 32 / 24, 6 → 34 / 27, 8 → 39 / 29).
+const LX_REAL = { n: 4, shadows: 2, k: 70, penumbra: 0.35, decay: 1.6 };
+// The beam budget: at most this many cones drawn in a frame — the strongest in view (level × strength, nearer first) — when
+// more are lit. A drawn beam costs ~0.12 ms (Front row) on the Intel UHD, and 255 lit at once wash the picture white anyway.
+// The state is untouched: a unit over the budget keeps its level, lens, glare, pool and real light, only its cone waits.
+const LX_BEAM_BUDGET = 120;
+const LX_BEAM_GAIN = 1.4;                                    // the far side alone is about half the light of p4's two sides: √2 on i (the blend squares it)
+const LX_FAR = 40;                                           // world m: a beam that meets nothing in this far ends at its type's cap
+const LX_HAZE_DEFAULT = 0.5;                                 // the room's standing haze on load: beams read clearly, not foggy
+const LX_TIME = { value: 0 }, LX_HAZE_U = { value: 0.25 + LX_HAZE_DEFAULT * 1.15 };   // shared by every beam: one write, not 313
+// The beam: p4's BEAM_VS / BEAM_FS. One shared unit cone (radius 1, z 0 → 1); each mesh's matrix scales it to (R, R, length)
+// and uK, the lens's radius over R, narrows the lens end in the vertex shader, so frustum culling still sees the true size.
+const LX_BEAM_VS = `
+uniform float uK;
+varying vec3 vWpos; varying vec3 vWnorm; varying vec2 vUv;
+void main(){
+  vUv = uv;
+  vec3 p = vec3(position.xy * mix(uK, 1.0, position.z), position.z);
+  vec4 wp = modelMatrix * vec4(p, 1.0);
+  vWpos = wp.xyz;
+  // the cone's normal with the mesh's (R, R, length) scale taken out: radial, leaning back by the side's slope
+  float sx = length(modelMatrix[0].xyz), sz = length(modelMatrix[2].xyz);
+  vWnorm = normalize(modelMatrix[0].xyz / sx * normal.x + modelMatrix[1].xyz / sx * normal.y - modelMatrix[2].xyz / sz * (sx * (1.0 - uK) / sz));
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}`;
+// p4's fragment shader, made cheaper for the Intel chip (measured, everything at full, 1280 × 800, Front row / Back of
+// house): pow(edge, 2.4) → e²·√e and pow(along, 1.35) → along·√along (the same curves to the eye), and a fragment too
+// faint to see (i < 0.006: the middle of every cone, where the eye looks straight through it) discarded before the dust
+// and the blend — 88 → 69 ms / 46 → 39 ms with the cone drawn both sides, and drawn far side only (BackSide, below) too.
+const LX_BEAM_FS = `
+uniform vec3 uColor; uniform float uInt; uniform float uHaze; uniform float uTime;
+uniform sampler2D uGobo; uniform float uUseGobo;
+varying vec3 vWpos; varying vec3 vWnorm; varying vec2 vUv;
+void main(){
+  float along = vUv.y;                       // 0 = lens, 1 = far end
+  float e = 1.0 - abs(dot(normalize(vWnorm), normalize(cameraPosition - vWpos)));
+  float i = uInt * uHaze * e * e * sqrt(e)   // the edge: bright where the eye looks through the most haze
+    * mix(1.0, 0.06, along * sqrt(along))    // dimmer away from the lens
+    * smoothstep(0.0, 0.07, along)           // hide the hard apex
+    * (1.0 - smoothstep(0.72, 1.0, along));  // and the hard end
+  if (i < 0.006) discard;
+  vec2 c = floor(vUv * vec2(60.0, 140.0)) + floor(uTime * 7.0);
+  i *= 0.85 + 0.15 * fract(sin(dot(c, vec2(41.3, 289.1))) * 43758.5453);   // dust drifting through it
+  if (uUseGobo > 0.5) i *= texture2D(uGobo, vec2(fract(vUv.x * 3.0), fract(along * 2.0))).r * 0.75 + 0.35;
+  gl_FragColor = linearToOutputTexel(vec4(uColor * i, i));
+}`;
+const LX_BEAM_GEO = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);   // uv.y 0 at the lens (z 0), 1 at the far end
+const LX_POOL_GEO = new THREE.PlaneGeometry(2, 2);           // scaled by the radius
+// The glare: one THREE.Points of every unit, world positions just in front of each lens, its colour × level (0 when dark),
+// its beam's direction — a lens seen from behind does not glare.
+const LX_HALO_VS = `
+attribute vec3 aColor; attribute vec3 aDir;
+uniform float uScale; uniform float uSize;
+varying vec3 vC;
+void main(){
+  float k = smoothstep(-0.05, 0.5, dot(aDir, normalize(cameraPosition - position)));
+  vC = aColor * k;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  if (max(max(vC.r, vC.g), vC.b) < 0.002) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 1.0; return; }   // dark: off screen
+  gl_PointSize = max(1.5, uSize * uScale / -mv.z);
+  gl_Position = projectionMatrix * mv;
+}`;
+const LX_HALO_FS = `
+varying vec3 vC;
+void main(){
+  float r = length(gl_PointCoord - 0.5) * 2.0;
+  float a = 1.0 - smoothstep(0.0, 1.0, r); a *= a;
+  if (a < 0.004) discard;
+  gl_FragColor = linearToOutputTexel(vec4(vC * a, 1.0));
+}`;
+const LX = {
+  ready: false, units: [], recs: [], byUnit: new Map(), hazers: [],
+  busy: new Set(),                                           // units with a fade, a journey or a turning gobo
+  dirty: new Set(),                                          // units whose look must be redrawn this tick
+  lightsDirty: false, hazeDirty: false, haloDirty: false,
+  group: null, halo: null, real: [], slots: [],
+  on: true,                                                  // the rig is shown (the Rig button): hidden, nothing lights
+  hazeBase: LX_HAZE_DEFAULT, hazeNow: LX_HAZE_DEFAULT,
+  work: { level: 1, from: 1, to: 1, t: 0, dur: null },
+  perf: { last: 0, avg: 0, max: 0, n: 0 }, refresh: null, init: null,
+};
+// A scene change: every landing point again, on the next tick. A function property, so colliderStale may call it any time.
+function lxStale() { lxStale.flag = true; }
+// A built piece moved (markDirty): the pools re-land once it has rested a quarter-second of frame time.
+function lxBuiltMoved() { lxBuiltMoved.wait = 0.25; }
+// The end of placeSet: the set moved and rigPlace reset the movers' heads — re-pose and re-land now, so a measurement
+// straight after placeSet sees the lights where they belong.
+function lxPlaced() { if (LX.ready) lxRefresh(); }
+
+// Build the engine over the hung rig: one record per unit, the beams, pools, glare and real lights, then every landing
+// point. Called once by the loader, after the rig is placed for real size and before the shaders compile.
+function lxInit() {
+  const t0 = performance.now();
+  LX.group = new THREE.Group(); LX.group.name = 'lighting'; scene.add(LX.group);
+  for (let i = 0; i < LX_REAL.n; i++) {
+    const s = new THREE.SpotLight(0xffffff, 0, 0, 0.3, LX_REAL.penumbra, LX_REAL.decay);
+    s.name = 'lx real ' + i;
+    if (i < LX_REAL.shadows) { s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0005; s.shadow.camera.near = 0.3; s.shadow.camera.far = LX_FAR; }
+    s.position.set(0, 30, -40 - i); s.target.position.set(0, 0, -40 - i);   // parked, dark
+    scene.add(s, s.target); LX.real.push(s); LX.slots.push(null);
+  }
+  const units = rig ? rig.children.filter(o => o.isLOD) : [];
+  const n = units.length;
+  const hg = new THREE.BufferGeometry();
+  hg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  hg.setAttribute('aColor', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  hg.setAttribute('aDir', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  LX.halo = new THREE.Points(hg, new THREE.ShaderMaterial({ vertexShader: LX_HALO_VS, fragmentShader: LX_HALO_FS,
+    uniforms: { uScale: { value: 600 }, uSize: { value: LX_HALO.size } }, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  LX.halo.name = 'lx glare'; LX.halo.frustumCulled = false; LX.halo.raycast = () => {};
+  LX.group.add(LX.halo);
+  const Y = new THREE.Vector3(0, 1, 0), inv = new THREE.Matrix4();
+  scene.updateMatrixWorld(true);
+  units.forEach((unit, i) => {
+    const ud = unit.userData, T = LX_TYPES[ud.type] || LX_TYPE_DEFAULT, lv = unit.levels.map(l => l.object);
+    const lens = lv[0].getObjectByName('lens') || null, mover = MOVERS.has(ud.type);
+    const st = { level: 0, color: gelColour(ud.gel), pan: mover ? 0 : null, tilt: mover ? 0 : null, panTo: mover ? 0 : null, tiltTo: mover ? 0 : null,
+      gobo: 0, goboRot: 0, goboRate: 0, zoom: T.zoom };
+    ud.lx = st;
+    let lensR = 0.05;
+    if (lens && lens.geometry) { lens.geometry.computeBoundingBox(); const b = lens.geometry.boundingBox; lensR = Math.max(b.max.x - b.min.x, b.max.y - b.min.y) / 2; }
+    const beam = new THREE.Mesh(LX_BEAM_GEO, new THREE.ShaderMaterial({ vertexShader: LX_BEAM_VS, fragmentShader: LX_BEAM_FS,
+      uniforms: { uColor: { value: new THREE.Color() }, uInt: { value: 0 }, uHaze: LX_HAZE_U, uTime: LX_TIME,
+        uGobo: { value: lxGoboTexture(0) }, uUseGobo: { value: 0 }, uK: { value: 0.1 } },
+      // BackSide: the cone's far half only — one layer of blending a beam instead of two (p4 drew both), and it still draws
+      // with the eye inside the cone. Its strength is made up in LX_BEAM_GAIN.
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide }));
+    const pool = new THREE.Mesh(LX_POOL_GEO, new THREE.MeshBasicMaterial({ map: lxGoboTexture(0), color: 0x000000, transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+    for (const m of [beam, pool]) { m.matrixAutoUpdate = false; m.visible = false; m.raycast = () => {}; m.userData.lxUnit = ud.id; LX.group.add(m); }
+    beam.name = 'lx beam ' + ud.id; pool.name = 'lx pool ' + ud.id;
+    const rec = { unit, i, T, st, mover, lens, lensR, lensMat: lens && ud.type !== 'hazer' && lens.material && lens.material.isMeshBasicMaterial ? lens.material : null,
+      beam, pool, org: new THREE.Vector3(), dir: new THREE.Vector3(0, -1, 0), scale: 1, hit: null, hitRes: { dist: 0, p: new THREE.Vector3(), n: new THREE.Vector3() },
+      hitStale: true, slot: -1, fade: { level: null, color: null, zoom: null }, panRate: 0, tiltRate: 0 };
+    if (mover) {
+      // The rest pose (RIG_FILE's head-down quaternion per level, the yoke as loaded) and the trunnion: poseLevel turned
+      // the head by qH0 = setFromUnitVectors(r, DOWN) about r × DOWN, r the model's own front; tilt turns about that axis.
+      const f = RIG_FILE.get(unit);
+      rec.yokes = lv.map(o => o.getObjectByName('yoke') || null);
+      rec.heads = lv.map(o => o.getObjectByName('head') || null);
+      rec.qY0 = rec.yokes.map(y => y ? y.quaternion.clone() : null);
+      rec.qH0 = rec.heads.map((h, k) => h ? (f && f.heads[k] ? f.heads[k].clone() : h.quaternion.clone()) : null);
+      const r = DOWN.clone().applyQuaternion(rec.qH0[0].clone().invert());
+      rec.A = r.clone().cross(DOWN); if (rec.A.lengthSq() < 1e-8) rec.A.set(1, 0, 0); rec.A.normalize();
+      rec.pFrame = (rec.yokes[0] || rec.heads[0]).parent;
+      // the beam at rest (D) and at tilt +90 (F), in the frame the yoke turns in: what lxSolve inverts
+      const frameDir = (pan, tilt) => { lxPose(rec, pan, tilt); inv.copy(rec.pFrame.matrixWorld).invert(); return lensBeam(lens, new THREE.Vector3()).transformDirection(inv); };
+      rec.D = frameDir(0, 0); rec.F = frameDir(0, 90); lxPose(rec, 0, 0);
+    }
+    if (T.hazer) LX.hazers.push(rec);
+    LX.units.push(unit); LX.recs.push(rec); LX.byUnit.set(unit, rec);
+  });
+  // Compile the beam and pool programs now, behind the loader: they start hidden, so the loader's compile would skip them.
+  if (LX.recs.length) {
+    const tmp = new THREE.Scene(), b = LX.recs[0].beam.clone(), p = LX.recs[0].pool.clone();
+    b.visible = p.visible = true; tmp.add(b, p);
+    try { renderer.compile(tmp, camera); } catch (e) { /* compiled on first use instead */ }
+  }
+  LX.groups = {};
+  for (const u of units) { const k = u.userData.position || '(no position)'; (LX.groups[k] = LX.groups[k] || []).push(...(u.userData.channels || [])); }
+  for (const k of Object.keys(LX.groups)) LX.groups[k] = [...new Set(LX.groups[k])].sort((a, b) => a - b);
+  const setup = performance.now() - t0;
+  const ref = lxRefresh();
+  LX.ready = true;
+  const movers = LX.recs.filter(r => r.mover), by = t => movers.filter(r => r.unit.userData.type === t).length;
+  const beams = LX.recs.filter(r => !r.T.hazer && !r.T.strip && r.lens).length, pools = LX.recs.filter(r => !r.T.hazer && r.lens).length;
+  LX.init = { setup, refresh: ref };
+  console.info(`lx: ${n} units driven — ${n - LX.hazers.length} lamps (${movers.length} movers: ${by('mac-viper')} MAC Viper, ${by('glp-x4')} GLP X4, ${by('vl3500')} VL3500), ${LX.hazers.length} hazers feeding the haze`
+    + ` · ${beams} beams, ${pools} pools, 1 glare cloud, ${LX_REAL.n} real lights (${LX_REAL.shadows} shadowed) · ${Object.keys(LX.groups).length} positions`
+    + ` · every landing point in ${ref.ms.toFixed(0)} ms (${ref.rays} rays, ${ref.hit} landed, ${ref.rays - ref.hit} into nothing; collision grid ${ref.colMs.toFixed(0)} ms of it) · set up in ${setup.toFixed(0)} ms`
+    + ` · work light at 1, every unit at 0 · MIDTOWN.lx`);
+}
+// A mover's pan and tilt (degrees) onto both detail levels: the yoke about its own Y, the head about the trunnion, over the rest.
+const lxQp = new THREE.Quaternion(), lxQt = new THREE.Quaternion(), LX_Y = new THREE.Vector3(0, 1, 0);
+function lxPose(r, pan, tilt) {
+  if (!r.mover) return;
+  lxQp.setFromAxisAngle(LX_Y, pan * LX_DEG); lxQt.setFromAxisAngle(r.A, -tilt * LX_DEG);
+  for (let k = 0; k < r.heads.length; k++) {
+    const y = r.yokes[k], h = r.heads[k];
+    if (y) { y.quaternion.copy(r.qY0[k]).multiply(lxQp); if (h) h.quaternion.copy(lxQt).multiply(r.qH0[k]); }
+    else if (h) h.quaternion.copy(lxQp).multiply(lxQt).multiply(r.qH0[k]);   // no yoke: the head takes both
+  }
+  r.unit.updateMatrixWorld(true);
+}
+// The unit's lens (level 0: both levels are posed alike) → its origin, beam and world scale, and where the beam lands.
+function lxHitRec(r) {
+  r.hitStale = false;
+  if (!r.lens) { r.hit = null; return; }
+  const m = r.lens.matrixWorld.elements;
+  r.org.set(m[12], m[13], m[14]);
+  r.dir.set(-m[8], -m[9], -m[10]); r.scale = r.dir.length(); r.dir.divideScalar(r.scale || 1);   // local −Z is the beam (TRAPS)
+  r.hit = lxCast(r.org, r.dir, LX_FAR, r.hitRes);
+}
+// A ray through the walk's collision grid, cell by cell along its x/z track (a 2-D DDA over col's 0.5 m columns; in each
+// column only the triangles whose height span meets the ray's there), nearest first, then the pieces being built.
+// → out { dist, p, n (the surface's normal, facing the ray) } or null within far.
+const lxRay = new THREE.Raycaster();
+function lxCast(o, d, far, out) {
+  const NEAR = 0.02;                                         // past the lens's own glass
+  let best = far, bt = -1;
+  if (col.stale) buildCollider();
+  if (col.n) {
+    const C = WALK.cell, L = col.list, S = col.stamp, Y0 = col.Y0, Y1 = col.Y1, nx = col.nx, nz = col.nz, st = col.start;
+    if (++col.query > 0xfffffff0) { S.fill(0); col.query = 1; }
+    const q = col.query, ox = o.x, oy = o.y, oz = o.z, dx = d.x, dy = d.y, dz = d.z;
+    let i = Math.floor((ox - col.x0) / C), j = Math.floor((oz - col.z0) / C);
+    const si = dx > 0 ? 1 : -1, sj = dz > 0 ? 1 : -1, ax = Math.abs(dx) > 1e-9, az = Math.abs(dz) > 1e-9;
+    const ddi = ax ? C / Math.abs(dx) : Infinity, ddj = az ? C / Math.abs(dz) : Infinity;
+    let ti = ax ? (col.x0 + (i + (dx > 0 ? 1 : 0)) * C - ox) / dx : Infinity;
+    let tj = az ? (col.z0 + (j + (dz > 0 ? 1 : 0)) * C - oz) / dz : Infinity;
+    let t0 = 0;
+    for (let guard = nx + nz + 4; guard > 0; guard--) {
+      const t1 = Math.min(ti, tj, far);
+      if (i >= 0 && i < nx && j >= 0 && j < nz) {
+        const ya = oy + dy * t0, yb = oy + dy * t1, lo = Math.min(ya, yb) - 1e-3, hi = Math.max(ya, yb) + 1e-3, ci = j * nx + i;
+        for (let k = st[ci], e = st[ci + 1]; k < e; k++) {
+          const t = L[k];
+          if (S[t] === q || Y1[t] < lo || Y0[t] > hi) continue;   // stamped only once tested: a span skipped here may meet the ray in the next column
+          S[t] = q;
+          const h = hitTri(t, ox, oy, oz, dx, dy, dz, best);
+          if (h > NEAR && h < best) { best = h; bt = t; }
+        }
+      } else if ((i < 0 && si < 0) || (i >= nx && si > 0) || (j < 0 && sj < 0) || (j >= nz && sj > 0)) break;   // outside the grid and leaving it
+      if (best <= t1 || t1 >= far) break;                    // the nearest hit is in a column already searched
+      if (ti < tj) { i += si; t0 = ti; ti += ddi; } else { j += sj; t0 = tj; tj += ddj; }
+    }
+  }
+  if (built.children.length) {
+    lxRay.set(o, d); lxRay.near = NEAR; lxRay.far = best;
+    const h = lxRay.intersectObjects(built.children, true)[0];
+    if (h && h.distance < best && h.face) { best = h.distance; bt = -2; out.n.copy(h.face.normal).transformDirection(h.object.matrixWorld); }
+  }
+  if (bt === -1) return null;
+  out.dist = best; out.p.copy(o).addScaledVector(d, best);
+  if (bt >= 0) { const T = col.T, k = bt * 9; out.n.set(T[k + 4] * T[k + 8] - T[k + 5] * T[k + 7], T[k + 5] * T[k + 6] - T[k + 3] * T[k + 8], T[k + 3] * T[k + 7] - T[k + 4] * T[k + 6]).normalize(); }
+  if (out.n.dot(d) > 0) out.n.negate();
+  return out;
+}
+// Every unit again: movers re-posed from their state, every landing point cast, every look redrawn, the real lights handed
+// out. At load and whenever the scene changed. → { ms, colMs, rays, hit }.
+function lxRefresh() {
+  const t0 = performance.now();
+  lxStale.flag = false; lxBuiltMoved.wait = 0;
+  if (col.stale) buildCollider();
+  const t1 = performance.now();
+  scene.updateMatrixWorld(true);
+  LX.on = !!(rig && rig.visible);
+  LX.group.visible = LX.on;
+  let hit = 0;
+  for (const r of LX.recs) { if (r.mover) lxPose(r, r.st.pan, r.st.tilt); lxHitRec(r); if (r.hit) hit++; LX.dirty.add(r); }
+  for (const r of LX.dirty) lxDrawRec(r);
+  LX.dirty.clear();
+  lxHazeApply(); lxAssignLights(true); lxHaloFlush();
+  requestRender();
+  return (LX.refresh = { ms: performance.now() - t0, colMs: t1 - t0, rays: LX.recs.length, hit });
+}
+// One unit's look from its state: lens, glare, beam, pool and (if it holds one) its real light.
+const lxM4 = new THREE.Matrix4(), lxRot = new THREE.Matrix4(), lxQ = new THREE.Quaternion(), lxS = new THREE.Vector3(), lxU = new THREE.Vector3(), lxV = new THREE.Vector3(), lxP = new THREE.Vector3(), lxC = new THREE.Color(), LX_Z = new THREE.Vector3(0, 0, 1);
+function lxDrawRec(r) {
+  const st = r.st, T = r.T, lvl = LX.on ? st.level : 0, lit = lvl > LX_LIVE && !T.hazer && !!r.lens;
+  const colr = lxColourOf(r.unit, st);
+  if (r.lensMat) { r.lensMat.color.set(LX_LENS_DARK); if (lit) r.lensMat.color.lerp(lxC.copy(colr).multiplyScalar(LX_LENS_FULL), Math.min(1, lvl)); }
+  if (!lit) { r.beamOn = r.beam.visible = r.pool.visible = false; lxHaloSet(r, 0); if (r.slot >= 0) LX.lightsDirty = true; return; }
+  if (r.hitStale) lxHitRec(r);
+  lxHaloSet(r, lvl, colr);
+  const dist = r.hit ? r.hit.dist : (T.cap || 20), r0 = r.lensR * r.scale, R = r0 + Math.tan(st.zoom / 2 * LX_DEG) * dist;
+  // the beam
+  const beam = !T.strip && LX.hazeNow > 0.005 && dist > 0.05;
+  r.beamOn = r.beam.visible = beam;                          // beamOn: the state wants a cone; visible: the budget (lxBudget) may hold it back
+  if (beam) {
+    lxQ.setFromUnitVectors(LX_Z, r.dir);
+    r.beam.matrix.compose(r.org, lxQ, lxS.set(R, R, dist)); r.beam.matrixWorld.copy(r.beam.matrix); r.beam.matrixWorldNeedsUpdate = true;
+    const U = r.beam.material.uniforms;
+    U.uColor.value.copy(colr); U.uInt.value = lvl * (T.beamK || 0.5) * LX_BEAM_GAIN; U.uK.value = Math.min(1, r0 / Math.max(R, 1e-4));
+    U.uGobo.value = lxGoboTexture(st.gobo); U.uUseGobo.value = st.gobo > 0 ? 1 : 0;
+  }
+  // the pool: on the surface's plane, long across the way the beam comes in (1 / cos of the landing angle, at most 3.3×:
+  // a pool is a flat decal, so a grazing one runs on past the surface's edge — the deck's lip over the front rows — and
+  // longer stretches showed it)
+  if (r.hit) {
+    const n = r.hit.n, dn = r.dir.dot(n), cosi = Math.max(0.3, -dn), rr = R * 1.12;
+    lxU.copy(r.dir).addScaledVector(n, -dn);
+    if (lxU.lengthSq() < 1e-8) lxU.set(n.y, -n.x, 0).lengthSq() < 1e-8 && lxU.set(0, n.z, -n.y);
+    lxU.normalize(); lxV.crossVectors(n, lxU);
+    lxM4.makeBasis(lxU.multiplyScalar(rr / cosi), lxV.multiplyScalar(rr), n).setPosition(lxP.copy(r.hit.p).addScaledVector(n, LX_POOL.lift));
+    lxM4.multiply(lxRot.makeRotationZ(st.goboRot * LX_DEG));   // the gobo turns inside the ellipse
+    r.pool.matrix.copy(lxM4); r.pool.matrixWorld.copy(lxM4); r.pool.matrixWorldNeedsUpdate = true;
+    const fall = THREE.MathUtils.clamp(1.4 / (0.4 + R), 0.25, 1.2);   // a wide pool is a dimmer one
+    r.pool.material.color.copy(colr).multiplyScalar(lvl * (T.strip ? LX_POOL.strip : LX_POOL.k) * fall);
+    r.pool.material.map = lxGoboTexture(st.gobo);
+    r.pool.visible = true;
+  } else r.pool.visible = false;
+  if (r.slot >= 0) lxRealSet(r);
+}
+function lxHaloSet(r, lvl, colr) {
+  const g = LX.halo.geometry, k = r.i * 3, P = g.attributes.position.array, Cc = g.attributes.aColor.array, D = g.attributes.aDir.array;
+  if (!lvl) { Cc[k] = Cc[k + 1] = Cc[k + 2] = 0; LX.haloDirty = true; return; }
+  P[k] = r.org.x + r.dir.x * 0.04; P[k + 1] = r.org.y + r.dir.y * 0.04; P[k + 2] = r.org.z + r.dir.z * 0.04;
+  D[k] = r.dir.x; D[k + 1] = r.dir.y; D[k + 2] = r.dir.z;
+  const s = lvl * LX_HALO.k * (r.T.strip ? 0.5 : 1);
+  Cc[k] = colr.r * s; Cc[k + 1] = colr.g * s; Cc[k + 2] = colr.b * s;
+  LX.haloDirty = true;
+}
+function lxHaloFlush() {
+  if (!LX.haloDirty) return;
+  const a = LX.halo.geometry.attributes;
+  a.position.needsUpdate = a.aColor.needsUpdate = a.aDir.needsUpdate = true;
+  LX.haloDirty = false;
+}
+// The real lights to the brightest units: the shadowed slots to the top two, the rest kept where they were if still in.
+function lxAssignLights(force) {
+  LX.lightsDirty = false;
+  const N = LX_REAL.n, S = LX_REAL.shadows;
+  const want = LX.on ? LX.recs.filter(r => r.st.level > LX_LIVE && r.T.power > 0 && r.lens) : [];
+  want.sort((a, b) => b.st.level * b.T.power - a.st.level * a.T.power || a.i - b.i);
+  const top = want.slice(0, N), next = new Array(N).fill(null), wait = [];
+  top.slice(0, S).forEach((r, k) => { next[k] = r; });
+  for (const r of top.slice(S)) { if (r.slot >= S && !next[r.slot]) next[r.slot] = r; else wait.push(r); }
+  for (let k = S; k < N && wait.length; k++) if (!next[k]) next[k] = wait.shift();
+  let shadowMoved = false;
+  for (let k = 0; k < N; k++) {
+    const was = LX.slots[k], now = next[k];
+    if (was && was !== now && was.slot === k) was.slot = -1;
+    if (k < S && was !== now) shadowMoved = true;
+  }
+  for (let k = 0; k < N; k++) {
+    const r = next[k]; LX.slots[k] = r;
+    if (r) { r.slot = k; if (r.hitStale) lxHitRec(r); lxRealSet(r, true); }
+    else LX.real[k].intensity = 0;
+  }
+  if (shadowMoved || (force && next.slice(0, S).some(Boolean))) shadowsDirty();
+}
+function lxRealSet(r, quiet) {
+  const L = LX.real[r.slot], st = r.st;
+  const was = L.position.x + L.position.y * 7 + L.position.z * 13 + L.target.position.x * 17 + L.target.position.y * 19 + L.target.position.z * 23;
+  L.position.copy(r.org);
+  if (r.hit) L.target.position.copy(r.hit.p); else L.target.position.copy(r.org).addScaledVector(r.dir, 10);
+  L.angle = THREE.MathUtils.clamp(st.zoom / 2 * LX_DEG * 1.1, 0.03, 1.3);
+  L.color.copy(lxColourOf(r.unit, st));
+  L.intensity = LX.on ? LX_REAL.k * r.T.power * st.level : 0;
+  const now = L.position.x + L.position.y * 7 + L.position.z * 13 + L.target.position.x * 17 + L.target.position.y * 19 + L.target.position.z * 23;
+  if (!quiet && r.slot < LX_REAL.shadows && Math.abs(now - was) > 1e-6) shadowsDirty();   // a shadowed light that moved: its map again
+}
+// The haze: the room's standing haze (lx.haze) topped up by the three hazer units' levels.
+function lxHazeApply() {
+  LX.hazeDirty = false;
+  let m = 0; for (const r of LX.hazers) m = Math.max(m, r.st.level);
+  const h = Math.min(1, LX.hazeBase + (1 - LX.hazeBase) * m), crossed = (h > 0.005) !== (LX.hazeNow > 0.005);
+  LX.hazeNow = h; LX_HAZE_U.value = 0.25 + h * 1.15;
+  if (crossed) for (const r of LX.recs) if (r.st.level > LX_LIVE) LX.dirty.add(r);
+  requestRender();
+}
+function lxWorkApply(level) { LX.work.level = level; for (const l of lxWorkLights) l.intensity = l.userData.lxBase * level; requestRender(); }
+// One unit's fades, journey and gobo for dt seconds. → bit 1: its look changed (draw a frame), bit 2: nothing left to do.
+function lxAdvance(r, dt) {
+  const st = r.st, F = r.fade;
+  let look = false, aim = false, done = true;
+  for (const key of ['level', 'zoom']) {
+    const f = F[key]; if (!f) continue;
+    f.t += dt; const k = f.dur > 0 ? Math.min(1, f.t / f.dur) : 1;
+    st[key] = f.from + (f.to - f.from) * k; look = true;
+    if (k >= 1) F[key] = null; else done = false;
+    if (key === 'level') { LX.lightsDirty = true; if (r.T.hazer) LX.hazeDirty = true; }
+  }
+  if (F.color) {
+    const f = F.color; f.t += dt; const k = f.dur > 0 ? Math.min(1, f.t / f.dur) : 1;
+    st.color.lerpColors(f.from, f.to, k); look = true;
+    if (k >= 1) F.color = null; else done = false;
+  }
+  if (r.mover) {
+    const step = (cur, to, rate) => { const d = to - cur, s = rate * dt; return Math.abs(d) <= s ? to : cur + Math.sign(d) * s; };
+    if (st.pan !== st.panTo) { st.pan = step(st.pan, st.panTo, r.panRate); aim = true; if (st.pan !== st.panTo) done = false; }
+    if (st.tilt !== st.tiltTo) { st.tilt = step(st.tilt, st.tiltTo, r.tiltRate); aim = true; if (st.tilt !== st.tiltTo) done = false; }
+  }
+  if (st.goboRate) {
+    st.goboRot = ((st.goboRot + st.goboRate * dt) % 360 + 360) % 360; done = false;
+    if (st.level > LX_LIVE && LX.on) look = true;            // a dark unit's gobo turns without asking for frames
+  }
+  if (aim) { lxPose(r, st.pan, st.tilt); r.hitStale = true; look = true; if (r.slot >= 0) LX.lightsDirty = true; }
+  if (look) LX.dirty.add(r);
+  return (look ? 1 : 0) | (done ? 2 : 0);
+}
+// The frame loop's call. → true while something visible is still changing (the loop then draws every frame).
+function lxTick(dt) {
+  if (!LX.ready) return false;
+  const t0 = performance.now();
+  let anim = false;
+  if (lxStale.flag) lxRefresh();
+  else if (lxBuiltMoved.wait > 0 && (lxBuiltMoved.wait -= dt) <= 0) lxRefresh();
+  const W = LX.work;
+  if (W.dur !== null) { W.t += dt; const k = W.dur > 0 ? Math.min(1, W.t / W.dur) : 1; lxWorkApply(W.from + (W.to - W.from) * k); if (k >= 1) W.dur = null; anim = true; }
+  for (const r of LX.busy) { const res = lxAdvance(r, dt); if (res & 1) anim = true; if (res & 2) LX.busy.delete(r); }
+  if (LX.hazeDirty) lxHazeApply();
+  const did = LX.dirty.size;
+  if (did) { for (const r of LX.dirty) lxDrawRec(r); LX.dirty.clear(); }
+  if (LX.lightsDirty) lxAssignLights();
+  lxHaloFlush();
+  if (did || anim) {
+    requestRender();
+    const ms = performance.now() - t0, P = LX.perf;
+    P.last = ms; P.n++; P.avg += (ms - P.avg) / Math.min(P.n, 60); P.max = Math.max(P.max, ms);
+  }
+  return anim;
+}
+// A frame is about to draw: the beams' dust moves on and the glare learns the canvas's size. Never asks for a frame itself.
+function lxDrawn(time) {
+  if (!LX.ready) return;
+  if (time !== undefined) LX_TIME.value = time;
+  LX.halo.material.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(camera.fov / 2 * LX_DEG));
+  lxBudget();
+}
+// More cones lit than LX_BEAM_BUDGET: draw the strongest in view (level × strength, over 1 + distance / 8 m) and hold the
+// rest back this frame. Run on every drawn frame (the camera decides what is in view); a few hundred sphere tests.
+const lxFrustum = new THREE.Frustum(), lxPV = new THREE.Matrix4(), lxCand = [];
+function lxBudget() {
+  let on = 0;
+  for (const r of LX.recs) if (r.beamOn) on++;
+  if (on <= LX_BEAM_BUDGET) {
+    if (LX.budgeted) { for (const r of LX.recs) r.beam.visible = !!r.beamOn; LX.budgeted = false; }
+    LX.beamsHeld = 0; return;
+  }
+  LX.budgeted = true;
+  camera.updateMatrixWorld();
+  lxFrustum.setFromProjectionMatrix(lxPV.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  lxCand.length = 0;
+  for (const r of LX.recs) {
+    if (!r.beamOn) continue;
+    if (!lxFrustum.intersectsObject(r.beam)) { r.beam.visible = false; continue; }
+    r.score = r.st.level * (r.T.beamK || 0.5) / (1 + r.org.distanceTo(camera.position) / 8);
+    lxCand.push(r);
+  }
+  lxCand.sort((a, b) => b.score - a.score || a.i - b.i);
+  lxCand.forEach((r, k) => { r.beam.visible = k < LX_BEAM_BUDGET; });
+  LX.beamsHeld = Math.max(0, lxCand.length - LX_BEAM_BUDGET);
+}
+
+// THE API (MIDTOWN.lx). sel everywhere: a channel number, a range "1-20", a position ("4th Electric"), a type ("mac-viper"),
+// an id ("ch7", "lycian-1"), "all", a unit, an array of any of those, or a predicate on the unit.
+function lxSelect(q) {
+  if (q === null || q === undefined) return [];
+  if (typeof q === 'function') return LX.units.filter(q);
+  if (Array.isArray(q)) { const s = new Set(); for (const x of q) for (const u of lxSelect(x)) s.add(u); return LX.units.filter(u => s.has(u)); }
+  if (q && q.isLOD) return LX.byUnit.has(q) ? [q] : [];
+  if (typeof q === 'number') return LX.units.filter(u => (u.userData.channels || []).includes(q));
+  const s = String(q).trim(), low = s.toLowerCase();
+  if (s === '*' || low === 'all') return LX.units.slice();
+  const m = /^(\d+)\s*(?:-|–|thru|through)\s*(\d+)$/i.exec(s);
+  if (m) { const a = Math.min(+m[1], +m[2]), b = Math.max(+m[1], +m[2]); return LX.units.filter(u => (u.userData.channels || []).some(c => c >= a && c <= b)); }
+  if (/^\d+$/.test(s)) return lxSelect(+s);
+  for (const key of ['position', 'type', 'id']) { const r = LX.units.filter(u => String(u.userData[key] || '').toLowerCase() === low); if (r.length) return r; }
+  return [];
+}
+function lxParseColour(c) {
+  if (c && c.isColor) return c.clone();
+  if (typeof c === 'number') return new THREE.Color(c);
+  if (Array.isArray(c) && c.length === 3) return new THREE.Color(c[0], c[1], c[2]);   // linear 0..1
+  if (typeof c !== 'string') return null;
+  const s = c.trim();
+  if (/^[RL]\s*\d+/i.test(s)) return lxGelKnown(s.replace(/\s+/g, ''));
+  if (/^(0x)?[0-9a-f]{6}$/i.test(s)) return new THREE.Color(parseInt(s.replace(/^0x/i, ''), 16));
+  const probe = document.createElement('i').style; probe.color = ''; probe.color = s;   // a CSS colour the browser knows
+  return probe.color ? new THREE.Color().setStyle(s) : null;
+}
+function lxFadeTo(r, key, to, fade) {
+  if (fade > 0) { r.fade[key] = { from: r.st[key], to, t: 0, dur: fade }; LX.busy.add(r); }
+  else { r.fade[key] = null; r.st[key] = to; LX.dirty.add(r); if (key === 'level') { LX.lightsDirty = true; if (r.T.hazer) LX.hazeDirty = true; } }
+}
+// Drive units. p: any of { level, color, pan, tilt, gobo, goboRot, goboRate, zoom, snap }; fade: seconds for level, colour,
+// zoom, and (no faster than the type's speed) pan and tilt. Pan/tilt on a fixed unit are ignored; snap: true puts a mover's
+// head there at once. A gobo the unit's wheel lacks (lxWheelOf) reads open. → the number of units driven.
+function lxSet(sel, p = {}, fade = 0) {
+  const us = lxSelect(sel); fade = Math.max(0, +fade || 0);
+  let colr = null;
+  if (p.color !== undefined) { colr = lxParseColour(p.color); if (!colr) console.warn(`lx: colour ${JSON.stringify(p.color)} not understood — a hex (0xff8800, "#ff8800"), a CSS colour or a gel ("R26", "L201")`); }
+  for (const u of us) {
+    const r = LX.byUnit.get(u), st = r.st, T = r.T;
+    if (p.level !== undefined && Number.isFinite(+p.level)) lxFadeTo(r, 'level', THREE.MathUtils.clamp(+p.level, 0, 1), fade);
+    if (colr) {
+      if (fade > 0) { r.fade.color = { from: st.color.clone(), to: colr.clone(), t: 0, dur: fade }; LX.busy.add(r); }
+      else { r.fade.color = null; st.color.copy(colr); LX.dirty.add(r); }
+    }
+    if (p.zoom !== undefined && Number.isFinite(+p.zoom) && !T.hazer) lxFadeTo(r, 'zoom', THREE.MathUtils.clamp(+p.zoom, T.min ?? T.zoom, T.max ?? T.zoom), fade);
+    if (p.gobo !== undefined) { const g = Math.round(+p.gobo) || 0; st.gobo = lxWheelOf(u).includes(g) ? g : 0; LX.dirty.add(r); }
+    if (p.goboRot !== undefined && Number.isFinite(+p.goboRot)) { st.goboRot = ((+p.goboRot % 360) + 360) % 360; LX.dirty.add(r); }
+    if (p.goboRate !== undefined) { st.goboRate = +p.goboRate || 0; if (st.goboRate) LX.busy.add(r); }
+    if (r.mover && (p.pan !== undefined || p.tilt !== undefined)) {
+      if (p.pan !== undefined && Number.isFinite(+p.pan)) st.panTo = THREE.MathUtils.clamp(+p.pan, -LX_LIMIT.pan, LX_LIMIT.pan);
+      if (p.tilt !== undefined && Number.isFinite(+p.tilt)) st.tiltTo = THREE.MathUtils.clamp(+p.tilt, -LX_LIMIT.tilt, LX_LIMIT.tilt);
+      lxTravel(r, fade, !!p.snap);
+    }
+  }
+  requestRender();
+  return us.length;
+}
+function lxTravel(r, fade, snap) {
+  const st = r.st, [vp, vt] = r.T.mover;
+  if (snap) { st.pan = st.panTo; st.tilt = st.tiltTo; lxPose(r, st.pan, st.tilt); r.hitStale = true; LX.dirty.add(r); if (r.slot >= 0) LX.lightsDirty = true; return; }
+  r.panRate = fade > 0 ? Math.min(vp, Math.max(Math.abs(st.panTo - st.pan) / fade, 1e-3)) : vp;
+  r.tiltRate = fade > 0 ? Math.min(vt, Math.max(Math.abs(st.tiltTo - st.tilt) / fade, 1e-3)) : vt;
+  LX.busy.add(r);
+}
+// The pan and tilt that put a mover's beam through a world point: in the frame the yoke turns in, tilt = the angle off the
+// rest beam (D), pan = the heading of what is left against the tilt-90 beam (F); of the two answers (pan, tilt) and
+// (pan + 180, −tilt) the one inside the limits nearest where the head is. Four passes, as the lens sits off both axes.
+// → { pan, tilt, dot } (dot: the solved beam against the line from the lens to the point; 1 is dead on).
+const lxInv = new THREE.Matrix4(), lxW = new THREE.Vector3(), lxL = new THREE.Vector3(), lxH = new THREE.Vector3(), lxB = new THREE.Vector3();
+function lxSolve(r, target) {
+  const st = r.st, D = r.D, F = r.F;
+  let pan = st.panTo, tilt = st.tiltTo;
+  for (let pass = 0; pass < 4; pass++) {                    // 3 passes left 24 mm at ~10 m (the lens is off both axes); a fourth is nothing
+    lxPose(r, pan, tilt);
+    lxInv.copy(r.pFrame.matrixWorld).invert();
+    lxL.setFromMatrixPosition(r.lens.matrixWorld).applyMatrix4(lxInv);
+    lxW.copy(target).applyMatrix4(lxInv).sub(lxL).normalize();
+    const c = THREE.MathUtils.clamp(lxW.dot(D), -1, 1), th = Math.acos(c) / LX_DEG;
+    lxH.copy(lxW).addScaledVector(D, -c);
+    const ph = lxH.lengthSq() < 1e-10 ? pan : (Math.atan2(lxH.x, lxH.z) - Math.atan2(F.x, F.z)) / LX_DEG;
+    let best = null;
+    for (const [p0, t] of [[ph, th], [ph + 180, -th]]) {
+      if (Math.abs(t) > LX_LIMIT.tilt) continue;
+      let p = p0 + 360 * Math.round((st.pan - p0) / 360);      // the turn nearest the head's
+      if (p > LX_LIMIT.pan) p -= 360; if (p < -LX_LIMIT.pan) p += 360;
+      if (Math.abs(p) > LX_LIMIT.pan) continue;
+      const cost = Math.abs(p - st.pan) + Math.abs(t - st.tilt);
+      if (!best || cost < best.cost) best = { p, t, cost };
+    }
+    if (!best) best = { p: THREE.MathUtils.clamp(ph, -LX_LIMIT.pan, LX_LIMIT.pan), t: THREE.MathUtils.clamp(th, -LX_LIMIT.tilt, LX_LIMIT.tilt) };
+    pan = best.p; tilt = best.t;
+  }
+  lxPose(r, pan, tilt);
+  lxL.setFromMatrixPosition(r.lens.matrixWorld);
+  const dot = lensBeam(r.lens, lxB).dot(lxW.copy(target).sub(lxL).normalize());
+  lxPose(r, st.pan, st.tilt);                                // back where the head really is; it travels there
+  return { pan, tilt, dot };
+}
+function lxAim(sel, point, fade = 0, snap = false) {
+  const P = point && point.isVector3 ? point.clone() : Array.isArray(point) ? new THREE.Vector3(...point) : new THREE.Vector3(point.x, point.y, point.z);
+  return lxSelect(sel).map(u => {
+    const r = LX.byUnit.get(u);
+    if (!r.mover) return { id: u.userData.id, skipped: 'not a mover (its focus is fixed)' };
+    const s = lxSolve(r, P);
+    r.st.panTo = s.pan; r.st.tiltTo = s.tilt; lxTravel(r, Math.max(0, +fade || 0), snap);
+    requestRender();
+    return { id: u.userData.id, pan: +s.pan.toFixed(2), tilt: +s.tilt.toFixed(2), dot: +s.dot.toFixed(5) };
+  });
+}
+function lxSnapshot(u) {
+  const r = LX.byUnit.get(u), st = r.st, ud = u.userData;
+  return { id: ud.id, channels: ud.channels, type: ud.type, position: ud.position, gel: ud.gel, level: +st.level.toFixed(4), color: '#' + st.color.getHexString(),
+    pan: st.pan, tilt: st.tilt, panTo: st.panTo, tiltTo: st.tiltTo, gobo: st.gobo, goboRot: st.goboRot, goboRate: st.goboRate, zoom: st.zoom,
+    lit: st.level > LX_LIVE && LX.on, beam: r.beam.visible, pool: r.pool.visible, realLight: r.slot >= 0 ? r.slot : null,
+    lands: r.hit ? r.hit.p.toArray().map(v => +v.toFixed(3)) : null };
+}
+// The looks set() asked for, drawn now rather than on the next tick: what beam() and get() report is what will draw.
+function lxFlush() {
+  if (!LX.ready) return;
+  if (LX.hazeDirty) lxHazeApply();
+  for (const r of LX.dirty) lxDrawRec(r);
+  LX.dirty.clear();
+  if (LX.lightsDirty) lxAssignLights();
+  lxHaloFlush();
+}
+// For checking: a unit's beam as drawn — origin, direction, where it lands and on what plane, the cone's radius there.
+function lxBeamOf(sel) {
+  const u = lxSelect(sel)[0]; if (!u) return null;
+  lxFlush();
+  const r = LX.byUnit.get(u); if (r.hitStale) lxHitRec(r);
+  const dist = r.hit ? r.hit.dist : (r.T.cap || 20);
+  return { id: u.userData.id, origin: r.org.clone(), dir: r.dir.clone(), hit: r.hit ? r.hit.p.clone() : null, normal: r.hit ? r.hit.n.clone() : null, dist,
+    radius: r.lensR * r.scale + Math.tan(r.st.zoom / 2 * LX_DEG) * dist, beamVisible: r.beam.visible, poolVisible: r.pool.visible,
+    poolCentre: r.pool.visible ? new THREE.Vector3().setFromMatrixPosition(r.pool.matrixWorld) : null };
+}
+const LX_API = {
+  get units() { return LX.units; },
+  byChannel: n => lxSelect(+n),
+  select: lxSelect,
+  set: lxSet,
+  get: sel => { const us = lxSelect(sel); lxFlush(); return us.length === 1 ? lxSnapshot(us[0]) : us.map(lxSnapshot); },
+  all: (level, fade = 0) => lxSet(u => !LX.byUnit.get(u).T.hazer, { level }, fade),     // every lamp; the hazers are not lamps (lx.haze, or set them by type)
+  blackout: (fade = 0) => lxSet(u => !LX.byUnit.get(u).T.hazer, { level: 0 }, fade),
+  work: (level = 1, fade = 0) => { const W = LX.work; W.from = W.level; W.to = THREE.MathUtils.clamp(+level, 0, 1); W.t = 0; W.dur = Math.max(0, +fade || 0); if (!W.dur) { lxWorkApply(W.to); W.dur = null; } return W.to; },
+  haze: level => { if (level !== undefined) { LX.hazeBase = THREE.MathUtils.clamp(+level, 0, 1); LX.hazeDirty = true; requestRender(); } return LX.hazeBase; },
+  aim: lxAim,
+  refresh: () => lxRefresh(),
+  prepare: () => lxDrawn(),                                  // before a hand-made renderer.render with a moved camera: the beam budget and the glare's size follow it
+  beam: lxBeamOf,
+  get groups() { return LX.groups || {}; },
+  get perf() {
+    lxFlush();
+    const fr = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    let beamsLit = 0, beams = 0, beamsInView = 0, pools = 0, poolsInView = 0;
+    for (const r of LX.recs) {
+      if (r.beamOn) beamsLit++;
+      if (r.beam.visible) { beams++; if (fr.intersectsObject(r.beam)) beamsInView++; }
+      if (r.pool.visible) { pools++; if (fr.intersectsObject(r.pool)) poolsInView++; }
+    }
+    const P = LX.perf;
+    return { tickMs: +P.last.toFixed(3), tickMsAvg: +P.avg.toFixed(3), tickMsMax: +P.max.toFixed(3), beamsLit, beams, beamsInView, beamsHeld: LX.beamsHeld || 0, budget: LX_BEAM_BUDGET, pools, poolsInView,
+      realLights: LX.real.filter(l => l.intensity > 0).length, busy: LX.busy.size, haze: LX.hazeNow, work: LX.work.level, refresh: LX.refresh, init: LX.init };
+  },
+  types: LX_TYPES, limits: LX_LIMIT, get gobos() { return LX_GOBOS; }, wheelOf: u => lxWheelOf(u),
+  check: opts => lxCheck(opts),
+};
+
+/* ---- GOBOS AND COLOURS (agent H) ----
+   Agent H's region. Everything the engine draws asks these three functions, so H can grow the gobo wheels and colour
+   mixing here without touching the engine: LX_GOBOS (the patterns, slot 0 the open beam), lxGoboTexture(slot) (a slot's
+   texture, made once), lxWheelOf(unit) (the slots a unit's type carries) and lxColourOf(unit, state) (the colour a unit
+   draws in — beam, pool, lens, glare and real light). The seeds below are p4's goboTex (src/p4.txt): the soft open circle,
+   breakup, leaves, window, stars, bars, drawn with a seeded random so a gobo looks the same on every load. */
+function lxRandom(seed) { let s = seed >>> 0; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
+const LX_GOBOS = [
+  { name: 'open', draw: x => { const g = x.createRadialGradient(128, 128, 10, 128, 128, 128); g.addColorStop(0, '#fff'); g.addColorStop(.62, 'rgba(255,255,255,.92)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 256, 256); } },
+  { name: 'breakup', draw: (x, rnd) => { for (let k = 0; k < 180; k++) { x.save(); x.translate(rnd() * 256, rnd() * 256); x.rotate(rnd() * 6.283); x.globalAlpha = .35 + rnd() * .65; x.fillRect(0, 0, 6 + rnd() * 38, 3 + rnd() * 13); x.restore(); } } },
+  { name: 'leaves', draw: (x, rnd) => { for (let k = 0; k < 90; k++) { x.save(); x.translate(rnd() * 256, rnd() * 256); x.rotate(rnd() * 6.283); x.globalAlpha = .4 + rnd() * .6; x.beginPath(); x.ellipse(0, 0, 6 + rnd() * 16, 3 + rnd() * 7, 0, 0, 6.283); x.fill(); x.restore(); } } },
+  { name: 'window', draw: x => { x.fillRect(24, 24, 208, 208); x.fillStyle = '#000'; for (let i = 0; i < 3; i++) { x.fillRect(24 + i * 70 + 60, 24, 10, 208); x.fillRect(24, 24 + i * 70 + 60, 208, 10); } } },
+  { name: 'stars', draw: (x, rnd) => { for (let k = 0; k < 160; k++) { const r = 1 + rnd() * 2.4; x.globalAlpha = .4 + rnd() * .6; x.beginPath(); x.arc(rnd() * 256, rnd() * 256, r, 0, 6.283); x.fill(); } } },
+  { name: 'bars', draw: x => { for (let i = 0; i < 9; i++) x.fillRect(0, i * 28, 256, 15); } },
+];
+function lxGoboTexture(slot) {
+  const g = LX_GOBOS[slot] || LX_GOBOS[0];
+  if (g.tex) return g.tex;
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0, 0, 256, 256); x.fillStyle = '#fff';
+  g.draw(x, lxRandom(0x9e3779b9 ^ (LX_GOBOS.indexOf(g) * 7919)));
+  const v = x.createRadialGradient(128, 128, 60, 128, 128, 130);   // a vignette, so the pattern stays inside the beam
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,1)');
+  x.globalAlpha = 1; x.globalCompositeOperation = 'destination-out'; x.fillStyle = v; x.fillRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return (g.tex = t);
+}
+function lxWheelOf(unit) { const t = unit.userData.type; return MOVERS.has(t) || t === 'source-four' ? LX_GOBOS.map((g, i) => i) : [0]; }
+function lxColourOf(unit, state) { return state.color; }
+
+/* ---- THE LIGHTS PANEL (agent I) ----
+   Agent I's region: the panel in #lights (the header's Lights button shows and hides it), built once at ready by
+   buildLightsPanel(), driving everything through MIDTOWN.lx / the lx functions above. */
+const lxPanelEl = document.getElementById('lights'), lxPanelBtn = document.getElementById('l-toggle');
+lxPanelBtn.addEventListener('click', () => { lxPanelEl.hidden = !lxPanelEl.hidden; lxPanelBtn.setAttribute('aria-pressed', String(!lxPanelEl.hidden)); });
+function buildLightsPanel() {
+  lxPanelEl.innerHTML = '<h2>Lights</h2><div class="note">The lights panel is not built yet. From the console: MIDTOWN.lx.all(1), MIDTOWN.lx.set("4th Electric", { level: 1, color: "R26" }, 2), MIDTOWN.lx.blackout(1).</div>';
+}
+
+/* ---- THE CHECK (agent J) ----
+   Agent J's region: lxCheck drives every unit through its level, colours, movement and gobos and reports what failed.
+   MIDTOWN.lx.check calls it. */
+function lxCheck(opts) { return 'not written yet (agent J)'; }
 
 /* ---------------------------------------------------------------- RIGGING: BOOMS ONTO THE WALLS (agent A)
    Jack: "move these lights back to be attached to the walls" — the booms standing in the HOUSE
@@ -2400,7 +3142,8 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   console.info(wallReport());
   rigPlaceable = true; placeSet(1);                          // the rig trimmed and rigged for real size, against the house as cut
   const wallChecked = wallCheck();
-  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty,
+  try { lxInit(); } catch (e) { console.error('lx: the lighting engine failed to start —', e); }   // never stops the page
+  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty, lx: LX_API,
     rigTrim: { table: RIG_TRIM, fitDrop: RIG_FIT_DROP, place: rigPlace, report: () => rigPlacedReport },
     walls: { cuts: WALL_CUTS, set: WALL_SET, margin: WALL_MARGIN, split: wallSplitInfo, report: wallReport, check: wallCheck, checked: wallChecked, placeSet },
     lobby: { group: lobby, spec: LOBBY, measured: lobby.userData.measured, lights: lobby.userData.lights, triangles: lobby.userData.triangles },
@@ -2417,6 +3160,7 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
     console.info('midtown: rendering on', dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER), '· pixel ratio', renderer.getPixelRatio());
   } catch (e) { /* no extension: nothing to say */ }
   document.getElementById('load').hidden = true;
+  try { buildLightsPanel(); } catch (e) { console.error('lx: the lights panel failed to build —', e); }
   ready = true; requestRender();
 })().catch(fail);
 
@@ -2750,7 +3494,7 @@ B('b-cutundo').addEventListener('click', () => { if (cuts.length) { cuts.pop(); 
 
 // Save and load. Autosave is a dirty flag the frame loop flushes half a second after the last change.
 const SAVE_KEY = 'midtown.build.v1';
-function markDirty() { dirty = true; dirtyAt = clock.elapsedTime; shadowsDirty(); }   // every build change: save, redraw, re-shadow
+function markDirty() { dirty = true; dirtyAt = clock.elapsedTime; shadowsDirty(); lxBuiltMoved(); }   // every build change: save, redraw, re-shadow, re-land the lights' pools once it rests
 function serialize() {
   return { v: 1, cuts, pieces: built.children.map(o => ({ type: o.userData.type, name: o.name, tex: o.userData.tex, tile: o.userData.tile, tint: o.userData.tint, src: o.userData.src,
     p: o.position.toArray().map(x => +x.toFixed(3)), r: o.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: o.scale.toArray().map(x => +x.toFixed(3)) })) };
@@ -2837,8 +3581,9 @@ renderer.setAnimationLoop(() => {
   }
   if (walking) { if (ready && walkStep(dt)) moving = true; }  // the walk, its gravity and its floor come off this frame's dt
   else if (orbit.update()) moving = true;                    // true while the camera moved: input, or damping still settling
+  if (ready && lxTick(dt)) moving = true;                    // the lights' fades, movers travelling, gobos turning: off this frame's dt
   drewLast = ready && (needsRender || moving);               // render on demand: an idle page draws nothing
-  if (drewLast) { needsRender = false; renderer.render(scene, camera); }
+  if (drewLast) { needsRender = false; lxDrawn(clock.elapsedTime); renderer.render(scene, camera); }
 });
 </script>
 </body>
