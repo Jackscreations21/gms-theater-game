@@ -8,7 +8,7 @@
   A PREVIEW of the second game's venue, not the game: the Midtown scan (assets/midtown-auditorium.glb)
   with the Hamilton set (assets/hamilton-set.glb) seated on its stage, and the show's lighting rig
   hung where the real show hangs it (assets/hamilton-rig.json, one assets/fixtures/*.glb per type —
-  models only, not lights). No desk, no sound, no walkables — look around, that is all. The second
+  models only, not lights). No sound, no show — look around and walk round it, that is all. The second
   game proper is FUTURE.md PART 2 "THE HAMILTON GAME".
 
   Coordinates are the Midtown GLB's (Y up, metres): the deck is y 0.80, the proscenium plane z 2.30,
@@ -65,6 +65,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 #build .sel { color: var(--accent); font: 12px var(--mono); }
 #build .note { color: var(--muted); font-size: 11px; }
 #build .danger { border-color: #6a3030; }
+#xhair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(235,231,238,.85); box-shadow: 0 0 0 1px rgba(13,12,15,.6); pointer-events: none; }
 #dropglow { position: absolute; inset: 0; border: 2px dashed var(--accent); pointer-events: none; display: none; }
 @media (max-width: 640px) { .credit { display: none; } .bright { margin-left: 0; } #build { width: calc(100% - 24px); } }
 </style>
@@ -98,6 +99,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 <div id="stage">
   <canvas id="c" aria-label="3D model of the theatre with the Hamilton set"></canvas>
   <div class="hint" id="hint">Drag to look around · scroll or pinch to zoom · right-drag to pan</div>
+  <div id="xhair" hidden></div>
   <div class="credit">House: “<a href="https://sketchfab.com/3d-models/midtown-atlanta-auditorium-photogrammetry-hd-b5736d651f6347d8a1e146b1ce0ca1eb" target="_blank" rel="noopener">Midtown Atlanta Auditorium – Photogrammetry (HD)</a>” by Cody Setchfield, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, edited. Set: Rod Lemmond's model of David Korins' design, from ETC's <em>Hamilton Programming Project</em> (non-commercial).</div>
   <div id="dropglow"></div>
   <div id="build" hidden>
@@ -204,49 +206,367 @@ function go(id) {
 }
 Object.keys(VIEWS).forEach(id => document.getElementById(id).addEventListener('click', () => go(id)));
 
-// Walk: drag to look, WASD / arrows to move, Q/E down and up. No pointer lock, so it works in any pane.
-let walking = false, yaw = 0, pitch = 0;
+/* ---------------------------------------------------------------- WALK
+   Jack: "make it so i can walk around like i do in the palace or like how a roblox player does."
+   A first-person walker with gravity, on the geometry itself: the Palace's feel (src/p7.txt
+   updatePlayer — its speeds, jump and gravity, a step up, x and z tried apart so you slide along
+   a wall) over this page's own meshes instead of the Palace's hand-written floors and walls.
+   LOOK: click the view and the mouse looks (pointer lock; Esc frees it). Where the lock is refused
+   — the Claude app's browser pane refuses it — or while building (clicks select pieces), drag looks.
+   FLOOR: a ray down from a step above the feet, the highest surface under it. WALLS: short level
+   rays along the move at four heights and three widths stop you a radius short of anything; a ray
+   up the body column at the new spot stops you walking into a table top or under a low beam.
+   SPEED: the house, the set, the rig's structures, the booth, the desk, the proscenium frame and the
+   baked pieces (~150k triangles) are copied once into a world-space grid of 0.5 m cells, rebuilt
+   when they change (a cut, Real size, the rig toggled, a bake or unbake); a ray reads only its own
+   cells. The pieces being built are ray-tested directly, as they move under the gizmo. */
+const WALK = {
+  eye: 1.6, walk: 3.1, run: 6.4, jump: 4.6, gravity: 13.5,   // the Palace's numbers (p7 updatePlayer)
+  radius: 0.25,                     // the body's half-width: the set's doorways, fitted, are 0.6 m wide
+  // The tallest thing you walk up without jumping. Not the Palace's 0.62: this scan's seat cushions stand 0.45–0.51
+  // above the legroom and the set's gallery rails 0.57 above the gallery, so 0.62 walked over the rows and off the
+  // gallery. Every stair here rises 0.17 or less (the set's, fitted, and the copied one), so 0.40 walks them all.
+  step: 0.40,
+  snap: 0.35,                       // walking down: a drop this small keeps your feet on the floor (stairs, the rake)
+  head: 1.75,                       // the top of the head, over the feet: lower overheads stop you
+  rays: [0.46, 0.8, 1.2, 1.7],      // the wall rays' heights over the feet: just over a step, waist, chest, head
+  // Crouching (hold C). Fitted to the stage, the set's galleries stand 1.48–1.61 m off the deck and shut the
+  // wings off from the stage for a 1.75 m walker; crouched, you go under them.
+  crouchEye: 1.0, crouchHead: 1.2, crouchRays: [0.46, 0.8, 1.15], crouchSpeed: 1.6,
+  fallY: -3,                        // below the lowest floor: back to where the walk started
+  cell: 0.5,                        // the collision grid's cell, metres
+  look: 0.0022, drag: 0.004,        // radians per pixel: pointer-locked mouse (the Palace's), dragging
+};
+const player = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), onGround: false, spawn: new THREE.Vector3(), bob: 0, crouched: false, eyeH: 1.6 };
+const bodyHead = () => player.crouched ? WALK.crouchHead : WALK.head;
+let walking = false, yaw = 0, pitch = 0, locked = false, lockPending = false, lockRefusals = 0;
 const keys = new Set();
-const hint = document.getElementById('hint');
+const hint = document.getElementById('hint'), xhair = document.getElementById('xhair');
+const HINT_ORBIT = 'Drag to look around · scroll or pinch to zoom · right-drag to pan';
+const canLock = () => !!canvas.requestPointerLock && lockRefusals < 2 && !editing;
+function walkHint() {
+  const move = 'W A S D or arrows to walk · Shift to run · Space to jump · hold C to crouch';
+  hint.textContent = locked ? `Mouse looks · ${move} · Esc frees the mouse`
+    : editing ? `Drag to look · click a piece to select it · ${move}`
+    : canLock() ? `Click the view to look with the mouse (Esc frees it), or drag to look · ${move}`
+    : `Drag to look · ${move}`;
+}
 function setMode(walk) {
-  walking = walk;
+  if (walk && (walking || !houseRoot)) return;               // already walking, or nothing loaded to stand on
+  const d = new THREE.Vector3(); camera.getWorldDirection(d);
+  if (walk) {
+    tween = null;
+    yaw = Math.atan2(-d.x, -d.z); pitch = THREE.MathUtils.clamp(Math.asin(THREE.MathUtils.clamp(d.y, -1, 1)), -1.45, 1.45);
+    placePlayer();
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();   // Space on a focused button would press it
+  } else {
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+    orbit.target.copy(camera.position).addScaledVector(d, 3);
+  }
+  walking = walk; keys.clear();
   document.getElementById('m-orbit').setAttribute('aria-pressed', String(!walk));
   document.getElementById('m-walk').setAttribute('aria-pressed', String(walk));
   orbit.enabled = !walk; requestRender();
-  const d = new THREE.Vector3(); camera.getWorldDirection(d);
-  if (walk) {
-    yaw = Math.atan2(-d.x, -d.z); pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
-    hint.textContent = 'Drag to look · W A S D or arrows to move · Q / E down and up · Shift to go faster';
-  } else {
-    orbit.target.copy(camera.position).addScaledVector(d, 3);
-    hint.textContent = 'Drag to look around · scroll or pinch to zoom · right-drag to pan';
-  }
+  if (walk) walkHint(); else hint.textContent = HINT_ORBIT;
+  xhair.hidden = !(walk && locked);
 }
 document.getElementById('m-orbit').addEventListener('click', () => setMode(false));
 document.getElementById('m-walk').addEventListener('click', () => setMode(true));
+// Pointer lock. A refusal (the pane, or a re-lock straight after Esc) comes as the request's rejected
+// promise, a pointerlockerror event, or both: counted once. Two in a row and it stops asking — drag looks.
+function requestLock() {
+  if (!canLock() || locked || lockPending) return;
+  lockPending = true;
+  let p;
+  try { p = canvas.requestPointerLock(); } catch (e) { lockRefused(); return; }
+  if (p && typeof p.catch === 'function') p.catch(lockRefused);
+}
+function lockRefused() {
+  if (!lockPending) return;
+  lockPending = false; lockRefusals++;
+  if (lockRefusals === 2) console.info('walk: pointer lock refused here — drag to look instead');
+  if (walking) walkHint();
+}
+document.addEventListener('pointerlockerror', lockRefused);
+document.addEventListener('pointerlockchange', () => {
+  lockPending = false;
+  locked = document.pointerLockElement === canvas;
+  if (locked) { lockRefusals = 0; drag = null; }
+  xhair.hidden = !(walking && locked);
+  if (walking) walkHint();
+});
 let drag = null, press = null;
 canvas.addEventListener('pointerdown', e => {
   press = { x: e.clientX, y: e.clientY, button: e.button };
-  if (walking && !transform.dragging) { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); }
+  if (walking && !locked && !transform.dragging) { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); }
 });
 canvas.addEventListener('pointermove', e => {
-  if (!walking || !drag || transform.dragging) return;
-  yaw -= (e.clientX - drag.x) * 0.004; pitch -= (e.clientY - drag.y) * 0.004;
-  pitch = THREE.MathUtils.clamp(pitch, -1.45, 1.45); drag = { x: e.clientX, y: e.clientY };
+  if (!walking || transform.dragging) return;
+  if (locked) { yaw -= e.movementX * WALK.look; pitch -= e.movementY * WALK.look; }
+  else if (drag) { yaw -= (e.clientX - drag.x) * WALK.drag; pitch -= (e.clientY - drag.y) * WALK.drag; drag = { x: e.clientX, y: e.clientY }; }
+  else return;
+  pitch = THREE.MathUtils.clamp(pitch, -1.45, 1.45);
   requestRender();
 });
 canvas.addEventListener('pointerup', e => {
   drag = null;
-  if (press && press.button === 0 && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5 && !transform.dragging) buildClick(e);
+  const click = press && press.button === 0 && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5 && !transform.dragging;
+  if (click && walking && !editing) { if (!locked) requestLock(); }   // walking: a click takes the mouse
+  else if (click) buildClick(e);
   press = null;
 });
 addEventListener('keydown', e => {
   if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
   if (buildKey(e)) return;
-  if (walking) { keys.add(e.code); if (e.code.startsWith('Arrow')) e.preventDefault(); }
+  if (walking) { keys.add(e.code); if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault(); }
 });
-addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('keyup', e => { keys.delete(e.code); if (walking && e.code === 'Space') e.preventDefault(); });
 addEventListener('blur', () => keys.clear());
+
+// THE COLLISION GRID. Every triangle of the static scenery in world space (a corner and two edges, ready for
+// the ray test), its y range, and a uniform x/z grid of cells listing the triangles whose box touches each.
+const col = { n: 0, T: null, Y0: null, Y1: null, x0: 0, z0: 0, nx: 0, nz: 0, start: null, list: null, stamp: null, query: 0, meshes: 0, stale: true, ms: 0 };
+function colliderStale() { col.stale = true; }
+function colliderMeshes() {
+  const list = [], shown = o => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
+  const take = o => { if (o.isMesh && o.geometry && o.geometry.attributes.position && !o.userData.cutter && shown(o)) list.push(o); };
+  if (houseRoot) houseRoot.traverse(take);
+  setGroup.traverse(o => { if (!o.userData.rig) take(o); });  // the set; not the rig's 313 units (they hang overhead)
+  if (rig) for (const o of rig.children) if (o.isMesh) take(o);   // the rig's structures: booms, trusses, the grid, the wing towers
+  for (const o of scene.children) if (/^(proscenium|pros_wall|followspot booth|lighting desk)$/.test(o.name)) o.traverse(take);
+  baked.traverse(take);
+  return list;
+}
+function buildCollider() {
+  const t0 = performance.now();
+  scene.updateMatrixWorld(true);
+  const meshes = colliderMeshes();
+  let n = 0;
+  for (const o of meshes) { const g = o.geometry; n += Math.floor((g.index ? g.index.count : g.attributes.position.count) / 3); }
+  const T = new Float32Array(n * 9), Y0 = new Float32Array(n), Y1 = new Float32Array(n), X = new Float32Array(n * 4);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  let k = 0, xmin = Infinity, xmax = -Infinity, zmin = Infinity, zmax = -Infinity;
+  for (const o of meshes) {
+    const g = o.geometry, pos = g.attributes.position, idx = g.index ? g.index.array : null, m = idx ? idx.length : pos.count;
+    for (let t = 0; t + 2 < m; t += 3) {
+      a.fromBufferAttribute(pos, idx ? idx[t] : t).applyMatrix4(o.matrixWorld);
+      b.fromBufferAttribute(pos, idx ? idx[t + 1] : t + 1).applyMatrix4(o.matrixWorld);
+      c.fromBufferAttribute(pos, idx ? idx[t + 2] : t + 2).applyMatrix4(o.matrixWorld);
+      const o9 = k * 9;
+      T[o9] = a.x; T[o9 + 1] = a.y; T[o9 + 2] = a.z;
+      T[o9 + 3] = b.x - a.x; T[o9 + 4] = b.y - a.y; T[o9 + 5] = b.z - a.z;
+      T[o9 + 6] = c.x - a.x; T[o9 + 7] = c.y - a.y; T[o9 + 8] = c.z - a.z;
+      Y0[k] = Math.min(a.y, b.y, c.y); Y1[k] = Math.max(a.y, b.y, c.y);
+      const x0 = Math.min(a.x, b.x, c.x), x1 = Math.max(a.x, b.x, c.x), z0 = Math.min(a.z, b.z, c.z), z1 = Math.max(a.z, b.z, c.z);
+      X[k * 4] = x0; X[k * 4 + 1] = x1; X[k * 4 + 2] = z0; X[k * 4 + 3] = z1;
+      if (x0 < xmin) xmin = x0; if (x1 > xmax) xmax = x1; if (z0 < zmin) zmin = z0; if (z1 > zmax) zmax = z1;
+      k++;
+    }
+  }
+  const C = WALK.cell;
+  col.x0 = xmin - 0.01; col.z0 = zmin - 0.01;
+  col.nx = Math.max(1, Math.floor((xmax - col.x0) / C) + 2); col.nz = Math.max(1, Math.floor((zmax - col.z0) / C) + 2);
+  const cells = col.nx * col.nz, cnt = new Uint32Array(cells + 1);
+  const span = (t, f) => {                                    // every cell triangle t's x/z box touches
+    const i0 = cellI(X[t * 4] - 1e-4), i1 = cellI(X[t * 4 + 1] + 1e-4), j0 = cellJ(X[t * 4 + 2] - 1e-4), j1 = cellJ(X[t * 4 + 3] + 1e-4);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) f(j * col.nx + i);
+  };
+  for (let t = 0; t < k; t++) span(t, ci => cnt[ci + 1]++);
+  for (let ci = 0; ci < cells; ci++) cnt[ci + 1] += cnt[ci];
+  const fill = cnt.slice(0, cells), list = new Uint32Array(cnt[cells]);
+  for (let t = 0; t < k; t++) span(t, ci => { list[fill[ci]++] = t; });
+  Object.assign(col, { n: k, T, Y0, Y1, start: cnt, list, stamp: new Uint32Array(k), query: 0, meshes: meshes.length, stale: false });
+  col.ms = performance.now() - t0;
+  console.info(`walk: collision grid — ${k} triangles from ${meshes.length} meshes, ${col.nx} × ${col.nz} cells of ${C} m (${list.length} entries), built in ${col.ms.toFixed(0)} ms`);
+}
+const cellI = x => Math.min(col.nx - 1, Math.max(0, Math.floor((x - col.x0) / WALK.cell)));
+const cellJ = z => Math.min(col.nz - 1, Math.max(0, Math.floor((z - col.z0) / WALK.cell)));
+// Möller–Trumbore, both faces (the scan is drawn double-sided): the distance along the ray to triangle t, or −1.
+function hitTri(t, ox, oy, oz, dx, dy, dz, far) {
+  const T = col.T, o = t * 9;
+  const e1x = T[o + 3], e1y = T[o + 4], e1z = T[o + 5], e2x = T[o + 6], e2y = T[o + 7], e2z = T[o + 8];
+  const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x;
+  const det = e1x * px + e1y * py + e1z * pz;
+  if (det > -1e-12 && det < 1e-12) return -1;
+  const inv = 1 / det, tx = ox - T[o], ty = oy - T[o + 1], tz = oz - T[o + 2];
+  const u = (tx * px + ty * py + tz * pz) * inv;
+  if (u < 0 || u > 1) return -1;
+  const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x;
+  const v = (dx * qx + dy * qy + dz * qz) * inv;
+  if (v < 0 || u + v > 1) return -1;
+  const d = (e2x * qx + e2y * qy + e2z * qz) * inv;
+  return d >= 0 && d <= far ? d : -1;
+}
+// The pieces being built, ray-tested as they stand: the nearest hit within far, or Infinity.
+const builtRay = new THREE.Raycaster(), builtO = new THREE.Vector3(), builtD = new THREE.Vector3();
+function builtHit(ox, oy, oz, dx, dy, dz, far) {
+  if (!built.children.length || !(far > 0)) return Infinity;
+  builtRay.set(builtO.set(ox, oy, oz), builtD.set(dx, dy, dz)); builtRay.far = far;
+  const h = builtRay.intersectObjects(built.children, true);
+  return h.length ? h[0].distance : Infinity;
+}
+// The highest surface straight down from (x, y, z): its y, or null.
+function rayDown(x, y, z) {
+  let best = -Infinity;
+  if (col.n) {
+    const ci = cellJ(z) * col.nx + cellI(x), L = col.list, Y0 = col.Y0, Y1 = col.Y1;
+    for (let k = col.start[ci], e = col.start[ci + 1]; k < e; k++) {
+      const t = L[k];
+      if (Y0[t] > y || Y1[t] <= best) continue;
+      const d = hitTri(t, x, y, z, 0, -1, 0, Infinity);
+      if (d >= 0 && y - d > best) best = y - d;
+    }
+  }
+  const b = builtHit(x, y, z, 0, -1, 0, best > -Infinity ? y - best : 200);
+  if (b < Infinity) best = Math.max(best, y - b);
+  return best > -Infinity ? best : null;
+}
+// Straight up from (x, y, z): the distance to the first surface within far, or Infinity.
+function rayUp(x, y, z, far) {
+  let best = far, hit = false;
+  if (col.n) {
+    const ci = cellJ(z) * col.nx + cellI(x), L = col.list, Y0 = col.Y0, Y1 = col.Y1;
+    for (let k = col.start[ci], e = col.start[ci + 1]; k < e; k++) {
+      const t = L[k];
+      if (Y1[t] < y || Y0[t] > y + best) continue;
+      const d = hitTri(t, x, y, z, 0, 1, 0, best);
+      if (d >= 0 && d <= best) { best = d; hit = true; }
+    }
+  }
+  const b = builtHit(x, y, z, 0, 1, 0, best);
+  return b < Infinity ? b : hit ? best : Infinity;
+}
+// Level, along (dx, dz) (unit): the distance to the first surface within far, or Infinity.
+function rayH(ox, oy, oz, dx, dz, far) {
+  let best = far, hit = false;
+  if (col.n) {
+    const ex = ox + dx * far, ez = oz + dz * far, L = col.list, Y0 = col.Y0, Y1 = col.Y1, S = col.stamp;
+    const i0 = cellI(Math.min(ox, ex)), i1 = cellI(Math.max(ox, ex)), j0 = cellJ(Math.min(oz, ez)), j1 = cellJ(Math.max(oz, ez));
+    if (++col.query > 0xfffffff0) { S.fill(0); col.query = 1; }
+    const q = col.query;
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const ci = j * col.nx + i;
+      for (let k = col.start[ci], e = col.start[ci + 1]; k < e; k++) {
+        const t = L[k];
+        if (S[t] === q) continue;
+        S[t] = q;
+        if (Y0[t] > oy || Y1[t] < oy) continue;
+        const d = hitTri(t, ox, oy, oz, dx, 0, dz, best);
+        if (d >= 0 && d <= best) { best = d; hit = true; }
+      }
+    }
+  }
+  const b = builtHit(ox, oy, oz, dx, 0, dz, best);
+  return b < Infinity ? b : hit ? best : Infinity;
+}
+// The floor under a walker whose feet are at y: the highest surface within a step above the feet or anywhere
+// below. The scan has holes, so a miss under the centre tries four points half a radius out.
+function groundAt(x, z, y) {
+  const from = y + WALK.step;
+  let g = rayDown(x, from, z);
+  if (g !== null) return g;
+  const r = WALK.radius * 0.5;
+  for (const [dx, dz] of [[r, 0], [-r, 0], [0, r], [0, -r]]) {
+    const h = rayDown(x + dx, from, z + dz);
+    if (h !== null && (g === null || h > g)) g = h;
+  }
+  return g;
+}
+// One axis of a move (the Palace's tryMove): as far as the walls let you along it, if the floor there
+// is no more than a step up and the body fits under whatever is overhead. A corner caught by one shoulder
+// only (the end of a row, a post) slides you round it, the way a Roblox player slides. → moved?
+function tryMove(dx, dz, slide = true) {
+  const len = Math.hypot(dx, dz);
+  if (len < 1e-7) return false;
+  const p = player.pos, R = WALK.radius, ux = dx / len, uz = dz / len;
+  let allow = len, left = false, right = false, mid = false;
+  for (const h of player.crouched ? WALK.crouchRays : WALK.rays) for (const s of [-0.7, 0, 0.7]) {
+    const reach = R * Math.sqrt(1 - s * s), d = rayH(p.x - uz * s * R, p.y + h, p.z + ux * s * R, ux, uz, reach + len);
+    if (d === Infinity) continue;
+    if (d - reach < len) { if (s < 0) left = true; else if (s > 0) right = true; else mid = true; }
+    allow = Math.min(allow, d - reach);
+  }
+  const short = len - Math.max(0, allow);
+  if (allow < len) allow -= 0.002;                           // stop a hair short, never touching
+  let moved = allow > 1e-4 && stepTo(p.x + ux * allow, p.z + uz * allow);
+  if (slide && short > 1e-4 && !mid && left !== right) {     // sideways, away from the shoulder that caught
+    const k = (left ? 1 : -1) * short * 0.7;
+    moved = tryMove(-uz * k, ux * k, false) || moved;
+  }
+  return moved;
+}
+function stepTo(nx, nz) {
+  const p = player.pos, g = groundAt(nx, nz, p.y);
+  if (g !== null && g - p.y > WALK.step) return false;       // too tall to step up
+  const base = Math.max(p.y, g === null ? p.y : g);
+  if (rayUp(nx, p.y + WALK.step, nz, base + bodyHead() - (p.y + WALK.step)) < Infinity) return false;   // the body does not fit there
+  p.x = nx; p.z = nz;
+  return true;
+}
+// On the floor under the camera, facing where it faces. Outdoors (nothing overhead: the camera was out over
+// the roof) or over nothing at all, at the Front row viewpoint instead.
+function placePlayer() {
+  if (col.stale) buildCollider();
+  const c = camera.position;
+  let g = rayDown(c.x, c.y, c.z), x = c.x, z = c.z;
+  if (g === null || rayUp(x, g + 0.1, z, 40) === Infinity) {
+    [x, , z] = VIEWS['v-front'][0];
+    g = rayDown(x, 3, z); if (g === null) g = 0;
+  }
+  player.pos.set(x, g, z); player.spawn.copy(player.pos); player.vel.set(0, 0, 0); player.onGround = true; player.bob = 0; player.crouched = false; player.eyeH = WALK.eye;
+  placeCamera();
+}
+function placeCamera() {
+  const bob = player.onGround ? Math.sin(player.bob) * 0.035 : 0;
+  camera.position.set(player.pos.x, player.pos.y + player.eyeH + bob, player.pos.z);
+  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+}
+// One frame of walking. → whether the view moved (render on demand draws only then).
+const walkPerf = { frames: 0, sum: 0, max: 0, logged: false };
+function walkStep(dt) {
+  const t0 = performance.now();
+  if (col.stale) buildCollider();
+  const p = player.pos, before = p.clone(), wasGround = player.onGround;
+  // crouch while C is held; stand again only where there is room to
+  if (keys.has('KeyC')) player.crouched = true;
+  else if (player.crouched && rayUp(p.x, p.y + WALK.step, p.z, WALK.head - WALK.step) === Infinity) player.crouched = false;
+  const eyeTo = player.crouched ? WALK.crouchEye : WALK.eye, eyeWas = player.eyeH;
+  player.eyeH += (eyeTo - player.eyeH) * Math.min(1, dt * 12);
+  if (Math.abs(eyeTo - player.eyeH) < 1e-3) player.eyeH = eyeTo;
+  const run = !player.crouched && (keys.has('ShiftLeft') || keys.has('ShiftRight')), spd = player.crouched ? WALK.crouchSpeed : run ? WALK.run : WALK.walk;
+  let f = 0, s = 0;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) f += 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) f -= 1;
+  if (keys.has('KeyD') || keys.has('ArrowRight')) s += 1;
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) s -= 1;
+  const len = Math.hypot(f, s), k = len ? spd / len : 0;
+  // the camera looks down −z: forward (−sin yaw, −cos yaw), right (cos yaw, −sin yaw)
+  const sin = Math.sin(yaw), cos = Math.cos(yaw);
+  const wx = (s * cos - f * sin) * k, wz = (-s * sin - f * cos) * k;
+  if (keys.has('Space') && player.onGround) { player.vel.y = WALK.jump; player.onGround = false; }
+  player.vel.y -= WALK.gravity * dt;
+  let ny = p.y + player.vel.y * dt;
+  if (player.vel.y > 0 && rayUp(p.x, p.y + bodyHead() - 0.05, p.z, ny - p.y + 0.05) < Infinity) { player.vel.y = 0; ny = p.y; }   // a head on the ceiling
+  tryMove(wx * dt, 0); tryMove(0, wz * dt);
+  const g = groundAt(p.x, p.z, p.y);
+  if (g !== null && (ny <= g + 0.01 || (wasGround && player.vel.y <= 0 && p.y - g <= WALK.snap))) { ny = g; player.vel.y = 0; player.onGround = true; }
+  else player.onGround = false;
+  p.y = ny;
+  if (p.y < WALK.fallY) { p.copy(player.spawn); player.vel.set(0, 0, 0); player.onGround = true; console.info('walk: fell out of the house — back to where the walk started'); }
+  const stepping = len > 0 && player.onGround;
+  if (stepping) player.bob += dt * (run ? 13 : 8);
+  placeCamera();
+  const moved = stepping || !player.onGround || p.distanceToSquared(before) > 1e-10 || player.eyeH !== eyeWas;
+  const ms = performance.now() - t0;
+  if (moved && !walkPerf.logged) {
+    walkPerf.frames++; walkPerf.sum += ms; walkPerf.max = Math.max(walkPerf.max, ms);
+    if (walkPerf.frames === 120) {
+      walkPerf.logged = true;
+      console.info(`walk: ${walkPerf.frames} moving frames cost ${(walkPerf.sum / walkPerf.frames).toFixed(3)} ms average, ${walkPerf.max.toFixed(3)} ms worst, on the CPU (collision: ${col.n} triangles in ${col.nx} × ${col.nz} cells; ${built.children.length} built piece${built.children.length === 1 ? '' : 's'} ray-tested directly)`);
+    }
+  }
+  return moved;
+}
 
 // The house is a photo scan with its lighting baked in: drawn unlit, dimmed by the slider.
 const houseMats = [];
@@ -278,7 +598,7 @@ function placeSet(s) {
   setGroup.position.set(0, HOUSE.deckY, HOUSE.archZ + (SET.upstageOfArch + SET.ttZ) * s);
   document.getElementById('s-fit').setAttribute('aria-pressed', String(s !== 1));
   document.getElementById('s-real').setAttribute('aria-pressed', String(s === 1));
-  shadowsDirty();
+  shadowsDirty(); colliderStale();                         // the walk's floors and walls moved with it
 }
 document.getElementById('s-fit').addEventListener('click', () => placeSet(SET.fit));
 document.getElementById('s-real').addEventListener('click', () => placeSet(1));
@@ -424,7 +744,7 @@ function buildRig(src) {
 }
 function setRig(on) {
   if (!rig) return;
-  rig.visible = on; requestRender();                         // the rig casts no shadow: no shadow update
+  rig.visible = on; requestRender(); colliderStale();        // the rig casts no shadow: no shadow update; its structures leave the walk's collision with it
   document.getElementById('r-rig').setAttribute('aria-pressed', String(on));
 }
 document.getElementById('r-rig').addEventListener('click', () => setRig(!(rig && rig.visible)));
@@ -1332,7 +1652,8 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   // the cuts exactly once: restore() of a saved build already ends in reapplyAll(), so it runs here only
   // when there was no save to restore (or it failed before getting there).
   fillTexSelect(); restore({ pieces: BAKED }, baked); if (!loadSaved()) reapplyAll();
-  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty };   // a handle for measuring from the console
+  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty,
+    player, walk: { WALK, keys, setMode, step: walkStep, groundAt, rayDown, rayUp, rayH, col, perf: walkPerf, look: (y, p) => { yaw = y; pitch = p; } } };   // a handle for measuring from the console
   const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t); orbit.update();
   // Compile every shader and draw one frame (texture uploads, the shadow maps) behind the loader, so the
   // first visible frame does not freeze for a second.
@@ -1528,6 +1849,7 @@ function buildKey(e) {
 B('b-toggle').addEventListener('click', () => {
   editing = !editing; panel.hidden = !editing; B('b-toggle').setAttribute('aria-pressed', String(editing));
   if (!editing) { cancelCut(); select(null); }
+  if (walking) walkHint();                                   // building: clicks select, so drag looks
 });
 // THE DELETE BOX (Jack: "a delete box where you scale it over an area then select confirm and it
 // gets rid of it"). A translucent red unit cube, moved and scaled with the same gizmo; Confirm drops
@@ -1577,7 +1899,7 @@ function applyCut(c) {
 function reapplyAll() {
   for (const [o, orig] of originals) { if (orig) o.geometry.setIndex(orig.slice()); else o.geometry.setIndex(null); }
   for (const c of [...BAKED_CUTS, ...BOOTH_CUTS, ...DESK_CUTS, ...cuts]) applyCut(c);
-  shadowsDirty();                                            // cut geometry casts differently
+  shadowsDirty(); colliderStale();                           // cut geometry casts differently, and is walked differently
   B('b-cutn').textContent = `${cuts.length} delete${cuts.length === 1 ? '' : 's'} this session` + (BAKED_CUTS.length ? `, ${BAKED_CUTS.length} baked` : '') + '. Move and scale the red box, then Confirm (or Enter).';
 }
 function placeCutBox() {
@@ -1676,7 +1998,7 @@ function restore(data, into = built) {
   serial = built.children.length;
   if (into === built) { cuts = (data && data.cuts) || []; reapplyAll(); }
   B('b-bakedn').textContent = baked.children.length ? baked.children.length + ' baked' : 'nothing baked yet';
-  shadowsDirty();                                            // new casters (the baked restore has no reapplyAll of its own)
+  shadowsDirty(); colliderStale();                           // new casters (the baked restore has no reapplyAll of its own); baked pieces are in the walk's grid
 }
 function save() {
   dirty = false;
@@ -1698,7 +2020,7 @@ B('b-copy').addEventListener('click', async () => {
 });
 B('b-unbake').addEventListener('click', () => {
   while (baked.children.length) { const o = baked.children[0]; baked.remove(o); built.add(o); }
-  serial = built.children.length; B('b-bakedn').textContent = 'editing them';
+  serial = built.children.length; B('b-bakedn').textContent = 'editing them'; colliderStale();   // out of the walk's grid, into the pieces it ray-tests as they move
   markDirty();
 });
 B('b-importbtn').addEventListener('click', () => B('b-import').click());
@@ -1741,18 +2063,8 @@ renderer.setAnimationLoop(() => {
     camera.position.lerpVectors(tween.p0, tween.p1, k); orbit.target.lerpVectors(tween.t0, tween.t1, k);
     if (tween.t >= 1) tween = null;
   }
-  if (walking) {
-    camera.rotation.set(pitch, yaw, 0, 'YXZ');
-    const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 6 : 2.2) * dt;
-    const f = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)), r = new THREE.Vector3(-f.z, 0, f.x);
-    if (keys.has('KeyW') || keys.has('ArrowUp')) camera.position.addScaledVector(f, sp);
-    if (keys.has('KeyS') || keys.has('ArrowDown')) camera.position.addScaledVector(f, -sp);
-    if (keys.has('KeyD') || keys.has('ArrowRight')) camera.position.addScaledVector(r, sp);
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) camera.position.addScaledVector(r, -sp);
-    if (keys.has('KeyE')) camera.position.y += sp;
-    if (keys.has('KeyQ')) camera.position.y -= sp;
-    if (keys.size) moving = true;
-  } else if (orbit.update()) moving = true;                  // true while the camera moved: input, or damping still settling
+  if (walking) { if (ready && walkStep(dt)) moving = true; }  // the walk, its gravity and its floor come off this frame's dt
+  else if (orbit.update()) moving = true;                    // true while the camera moved: input, or damping still settling
   drewLast = ready && (needsRender || moving);               // render on demand: an idle page draws nothing
   if (drewLast) { needsRender = false; renderer.render(scene, camera); }
 });
