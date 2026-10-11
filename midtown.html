@@ -48,7 +48,21 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 #load div { display: grid; gap: 10px; width: min(320px, 80%); text-align: center; color: var(--muted); font: 12px var(--mono); }
 #bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
 #bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
-@media (max-width: 640px) { .credit { display: none; } .bright { margin-left: 0; } }
+#build { position: absolute; top: 12px; right: 12px; width: 250px; max-height: calc(100% - 24px); overflow: auto; background: rgba(23,21,27,.94); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; font-size: 12px; }
+#build h2 { font-size: 12px; font-weight: 600; margin: 4px 0 0; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+#build .row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+#build button { padding: 4px 8px; font-size: 12px; }
+#build select, #build input[type=number], #build input[type=text] { font: 12px var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 5px; width: 100%; }
+#build input[type=number] { width: 62px; }
+#build input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 4px; }
+#build label { color: var(--muted); display: flex; align-items: center; gap: 4px; }
+#build .grid3 { display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 4px 6px; align-items: center; }
+#build .grid3 span { color: var(--muted); font: 11px var(--mono); }
+#build .sel { color: var(--accent); font: 12px var(--mono); }
+#build .note { color: var(--muted); font-size: 11px; }
+#build .danger { border-color: #6a3030; }
+#dropglow { position: absolute; inset: 0; border: 2px dashed var(--accent); pointer-events: none; display: none; }
+@media (max-width: 640px) { .credit { display: none; } .bright { margin-left: 0; } #build { width: calc(100% - 24px); } }
 </style>
 </head>
 <body>
@@ -72,11 +86,48 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     <button id="m-orbit" aria-pressed="true">Orbit</button>
     <button id="m-walk" aria-pressed="false">Walk</button>
   </div>
+  <button id="b-toggle" aria-pressed="false">Build</button>
 </header>
 <div id="stage">
   <canvas id="c" aria-label="3D model of the theatre with the Hamilton set"></canvas>
   <div class="hint" id="hint">Drag to look around · scroll or pinch to zoom · right-drag to pan</div>
   <div class="credit">House: “<a href="https://sketchfab.com/3d-models/midtown-atlanta-auditorium-photogrammetry-hd-b5736d651f6347d8a1e146b1ce0ca1eb" target="_blank" rel="noopener">Midtown Atlanta Auditorium – Photogrammetry (HD)</a>” by Cody Setchfield, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, edited. Set: Rod Lemmond's model of David Korins' design, from ETC's <em>Hamilton Programming Project</em> (non-commercial).</div>
+  <div id="dropglow"></div>
+  <div id="build" hidden>
+    <h2>Add</h2>
+    <div class="row">
+      <button data-add="box">Box</button><button data-add="cylinder">Cylinder</button>
+      <button data-add="sphere">Sphere</button><button data-add="plane">Plane</button><button data-add="wedge">Wedge</button>
+    </div>
+    <div class="note">Lands where the view is looking. Click a piece to select it.</div>
+    <h2>Selected <span class="sel" id="b-name">nothing</span></h2>
+    <label>Texture <select id="b-tex"></select></label>
+    <div class="row">
+      <label>Tiling <input id="b-tile" type="number" min="0.1" step="0.5" value="1"></label>
+      <label>Tint <input id="b-tint" type="color" value="#ffffff"></label>
+      <label><input id="b-img" type="file" accept="image/*" hidden><button id="b-imgbtn">Image…</button></label>
+    </div>
+    <div class="note">Or drop an image file onto the view.</div>
+    <div class="row">
+      <button id="b-move" aria-pressed="true">Move</button><button id="b-rot" aria-pressed="false">Rotate</button><button id="b-scale" aria-pressed="false">Scale</button>
+      <label><input id="b-snap" type="checkbox"> snap</label>
+    </div>
+    <div class="grid3">
+      <span>pos</span><input id="b-px" type="number" step="0.1"><input id="b-py" type="number" step="0.1"><input id="b-pz" type="number" step="0.1">
+      <span>size</span><input id="b-sx" type="number" step="0.1" min="0.01"><input id="b-sy" type="number" step="0.1" min="0.01"><input id="b-sz" type="number" step="0.1" min="0.01">
+      <span>turn°</span><input id="b-rx" type="number" step="5"><input id="b-ry" type="number" step="5"><input id="b-rz" type="number" step="5">
+    </div>
+    <div class="row"><button id="b-dup">Duplicate</button><button id="b-del" class="danger">Delete</button></div>
+    <div class="note">G move · R rotate · S scale · Delete removes · Esc deselects</div>
+    <h2>Area box</h2>
+    <div class="row"><button id="b-cutbox">Place box</button><button id="b-copyok">Copy area</button><button id="b-cutok" class="danger">Delete area</button><button id="b-cutundo">Undo delete</button></div>
+    <div class="note" id="b-cutn">Move and scale the red box over an area. Copy (or C) makes what is inside a new piece you can move; Delete (or Enter) cuts it away. House, set and pieces alike.</div>
+    <h2>Scene</h2>
+    <div class="row"><button id="b-export">Export JSON</button><button id="b-copy">Copy JSON</button><label><input id="b-import" type="file" accept=".json" hidden><button id="b-importbtn">Import…</button></label><button id="b-clear" class="danger">Clear all</button></div>
+    <div class="note" id="b-status">Saved in this browser as you work.</div>
+    <div class="note">Export (or Copy) and hand the JSON over: it gets baked into the page as real scenery.</div>
+    <div class="row"><button id="b-unbake">Edit the baked pieces</button><span class="note" id="b-bakedn"></span></div>
+  </div>
   <div id="load"><div><span id="loadtxt">Loading the house…</span><div id="bar"><i></i></div></div></div>
 </div>
 
@@ -90,6 +141,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
 // The house, measured off the GLB's fill geometry (tools/blender/midtown_theatre.py, exported Y up).
 // ARCH_Z is where the proscenium is PUT, not where the GLB has it (2.30, with 2.65 m of apron in
@@ -151,15 +203,26 @@ function setMode(walk) {
 }
 document.getElementById('m-orbit').addEventListener('click', () => setMode(false));
 document.getElementById('m-walk').addEventListener('click', () => setMode(true));
-let drag = null;
-canvas.addEventListener('pointerdown', e => { if (walking) { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); } });
+let drag = null, press = null;
+canvas.addEventListener('pointerdown', e => {
+  press = { x: e.clientX, y: e.clientY, button: e.button };
+  if (walking && !transform.dragging) { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); }
+});
 canvas.addEventListener('pointermove', e => {
-  if (!walking || !drag) return;
+  if (!walking || !drag || transform.dragging) return;
   yaw -= (e.clientX - drag.x) * 0.004; pitch -= (e.clientY - drag.y) * 0.004;
   pitch = THREE.MathUtils.clamp(pitch, -1.45, 1.45); drag = { x: e.clientX, y: e.clientY };
 });
-canvas.addEventListener('pointerup', () => { drag = null; });
-addEventListener('keydown', e => { if (walking) { keys.add(e.code); if (e.code.startsWith('Arrow')) e.preventDefault(); } });
+canvas.addEventListener('pointerup', e => {
+  drag = null;
+  if (press && press.button === 0 && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5 && !transform.dragging) buildClick(e);
+  press = null;
+});
+addEventListener('keydown', e => {
+  if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (buildKey(e)) return;
+  if (walking) { keys.add(e.code); if (e.code.startsWith('Arrow')) e.preventDefault(); }
+});
 addEventListener('keyup', e => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
@@ -224,14 +287,14 @@ function moveArch(o) {
 }
 // The proscenium, fitted round the set. The GLB's piers and header are flat planes in the wall's
 // own grey, so widening them just read as "no proscenium": instead they are hidden and a real frame
-// is built — piers and header FRAME m wide, DEPTH m deep, in a proscenium material of its own,
+// is built — piers and header FRAME.w wide, FRAME.depth deep, in the proscenium wall's own material,
 // around an opening that clears the set by a margin. The opening is clamped to the house: the piers'
 // outer edges are x -6.6 / 6.4 and the ceiling is y 8.05.
-const FRAME = { w: 1.3, depth: 0.5, color: 0x5a4f48 };
+const FRAME = { w: 1.5, depth: 0.6 };
 const houseMesh = {};
-const frameMat = new THREE.MeshStandardMaterial({ color: FRAME.color, roughness: 0.92, metalness: 0 });
 function frameBox(x0, x1, y0, y1) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, FRAME.depth), frameMat);
+  const wall = houseMesh.pros_outer_l.material;             // the GLB's proscenium grey, unlit, on the house-light slider
+  const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, FRAME.depth), wall);
   m.position.set((x0 + x1) / 2, (y0 + y1) / 2, HOUSE.archZ);
   m.castShadow = true; m.receiveShadow = true; m.name = 'proscenium';
   scene.add(m);
@@ -251,21 +314,32 @@ function frameArch(halfW, top) {
     scene.add(m);
   }
 }
-// The two stairs down from the apron's front corners, filled in: one block each, house floor to
-// deck height, over the stair and the strip between it and the deck, in the deck's own material —
-// the corners are squared off. Footprints measured off the scan: treads at x -5.4..-3.5 and
-// 3.5..5.4, z -2.9 (bottom riser) to -2.0; the deck's scanned front is at about z -0.5 there.
-const STAIRS = [[-5.9, -3.4], [3.4, 5.7]];
-function fillStairs(houseScene) {
-  const deck = houseMesh.deck_fill; if (!deck) return;
-  const z0 = -2.95, z1 = -0.30, y0 = -0.06, y1 = HOUSE.deckY + 0.01;
-  for (const [x0, x1] of STAIRS) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), deck.material);
-    m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-    m.name = 'stair_fill'; m.receiveShadow = true;
-    houseScene.add(m);
-  }
+// The "metal beam" over the stage (Jack: "remove the metal beam") is the scanned venue's own hanging
+// iron — pipes, a cross bar, two beams on cables — left in the scan upstage of the wall below the
+// fly cut. It is not the set's: hiding or cutting every set mesh left it standing. So every scan
+// triangle with a vertex in a box over the stage, above the set's gallery and below the old fly
+// cut, is dropped. The scan's side walls and back brick lie outside the box. World metres.
+const BEAM_BOX = { x: 5.2, yMin: 3.0, yMax: 6.3, zMin: 2.4, zMax: 8.6 };
+function cutBeams(houseScene) {
+  houseScene.updateMatrixWorld(true);
+  const p = new THREE.Vector3();
+  const inBox = v => Math.abs(v.x) < BEAM_BOX.x && v.y > BEAM_BOX.yMin && v.y < BEAM_BOX.yMax && v.z > BEAM_BOX.zMin && v.z < BEAM_BOX.zMax;
+  houseScene.traverse(o => {
+    if (!o.isMesh || !/^Object_/.test(o.name)) return;
+    const g = o.geometry, pos = g.attributes.position, idx = g.index ? g.index.array : null;
+    const n = idx ? idx.length : pos.count, keep = [];
+    const at = i => inBox(p.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld));
+    let cut = 0;
+    for (let t = 0; t < n; t += 3) {
+      const a = idx ? idx[t] : t, b = idx ? idx[t + 1] : t + 1, c = idx ? idx[t + 2] : t + 2;
+      if (at(a) || at(b) || at(c)) cut++; else keep.push(a, b, c);
+    }
+    if (cut) g.setIndex(keep);
+  });
 }
+// No built stairs any more (Jack, after three placements: "remove all the stairs you have put and
+// make a tool where I can select an area and copy it") — he copies the set's own stair with the
+// copy box below and puts it where he wants it.
 function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
 
 (async () => {
@@ -282,7 +356,7 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
     houseMesh[o.name] = o;
   });
   applyBright();
-  fillStairs(house.scene);
+  cutBeams(house.scene);
   scene.add(house.scene);
   // Set: seated like the game does (p5i hamApplyModel) — centred on x, its lowest point on the deck —
   // then turned to face the house, because this house's upstage is +z.
@@ -295,15 +369,374 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   root.traverse(o => {
     if (!o.isMesh) return;
     o.castShadow = true; o.receiveShadow = true;
-    if (o.name === 'ham_iron') o.visible = false;    // the two hanging I-beams (and the sconce blocks) — Jack: "remove the metal beam"
   });
   const turned = new THREE.Group(); turned.rotation.y = Math.PI; turned.add(root);
   setGroup.add(turned);
   placeSet(SET.fit);
-  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE };   // a handle for measuring from the console
+  houseRoot = house.scene;
+  registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
+  registerModelTextures(house.scene, 'house: ', ['deck_fill', 'pros_outer_l', 'back_brick_lo', 'house_ceiling', 'house_floor']);
+  fillTexSelect(); restore({ pieces: BAKED }, baked); loadSaved(); reapplyAll();
+  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built };   // a handle for measuring from the console
   document.getElementById('load').hidden = true;
   const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t);
 })().catch(fail);
+
+/* ---------------------------------------------------------------- BUILD MODE
+   Jack: "make something where i can add geometries and use a dropdown to choose their texture and i
+   can move and resize them." Pieces live in `built`; a TransformControls gizmo moves, turns and
+   scales the selected one; the texture dropdown offers the set's and house's own materials, flat
+   colours, or an image (file picker, or a file dropped on the view). Every piece is unit-sized, so
+   its scale IS its size in metres. The scene autosaves to this browser's localStorage and can be
+   exported to / imported from a JSON file (dropped images travel inside it as data URLs). */
+const built = new THREE.Group(); built.name = 'built'; scene.add(built);
+// BAKED: pieces Jack built and handed over (Export JSON, or the file in his Downloads), pasted here
+// so they are part of the page for everyone. Same shape as an export's `pieces`. "Edit the baked
+// pieces" lifts them into the editor for a session; re-export and they get re-baked.
+// Baked 2026-10-11 from his first export (then a second, '(bake 2)': a rail-grain strip house left, the
+// set's stair copied to house right with two cuts where it meets the gallery): an inner timber proscenium (two posts and a header in
+// the set's post grain), a black masking panel stage left, and two rail-grain blocks that fill the
+// apron's front corners where his cuts took out the scan's little stairs.
+const BAKED = [{"type":"box","name":"box 1","tex":{"name":"set: post"},"tile":1,"tint":"#ffffff","p":[5.227,2.654,0.292],"r":[0,-3.1416,0],"s":[2.13,8.987,0.23]},{"type":"box","name":"box 2","tex":{"name":"set: post"},"tile":1,"tint":"#ffffff","p":[0.216,6.472,0.687],"r":[0,-3.1416,0],"s":[10.824,1,1]},{"type":"box","name":"box 3","tex":{"name":"set: post"},"tile":1,"tint":"#ffffff","p":[-5.179,2.654,0.292],"r":[0,-3.1416,0],"s":[2.13,8.987,0.23]},{"type":"box","name":"box 4","tex":{"name":"colour: black"},"tile":1,"tint":"#ffffff","p":[-7.543,2.851,2.133],"r":[0,0,0],"s":[4.027,-6.628,-0.109]},{"type":"box","name":"box 5","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[4.744,0.312,0.244],"r":[0,3.1416,0],"s":[4.942,1,1]},{"type":"box","name":"box 6","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[-4.022,0.312,0.244],"r":[0,3.1416,0],"s":[4.942,1,1]},{"type":"box","name":"box 1 (bake 2)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[-3.476,2.456,2.049],"r":[0,1.5708,0],"s":[1.252,0.069,1]},{"type":"copy","name":"copy 5 (bake 2)","tile":1,"tint":"#ffffff","src":{"p":[-1.975,2.107,3.692],"r":[0,0,0],"s":[1.283,2.577,1.396]},"p":[2.131,2.11,2.047],"r":[0,1.5708,0],"s":[1,1,1]}];
+const BAKED_CUTS = [{"p":[-3.339,6.616,-7.907],"r":[0,0,0],"s":[8.811,1.658,1.834]},{"p":[5.381,0.525,-0.468],"r":[-0.0035,0.9708,-0.0016],"s":[1,1,1]},{"p":[-4.866,0.513,-0.324],"r":[0,0,0],"s":[1.061,1,1]},{"p":[-4.564,0.528,-0.518],"r":[0,0.5768,0],"s":[1,1,1]},{"p":[2.524,3.537,1.215],"r":[0,0,0],"s":[1,1,3.069]},{"p":[1.712,2.748,2.653],"r":[0,0,0],"s":[1.054,1.464,1]}];      // his delete boxes: something hanging at the back of the house, and the scan's corner stairs
+const baked = new THREE.Group(); baked.name = 'baked'; scene.add(baked);
+const transform = new TransformControls(camera, canvas);
+transform.setSize(0.8);
+scene.add(transform);
+transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value && !walking; });
+transform.addEventListener('objectChange', () => { syncFields(); markDirty(); });
+const B = id => document.getElementById(id);
+const panel = B('build'), status = B('b-status');
+let selected = null, editing = false, dirty = false, dirtyAt = 0;
+
+// Texture sources: filled once the models are in (their materials), plus flat colours.
+const TEX = {};                                              // name -> () => MeshStandardMaterial
+const COLOURS = { black: 0x141414, 'dark grey': 0x3a3a3a, grey: 0x808080, white: 0xf0f0f0, red: 0xa02020, blue: 0x203a80, green: 0x2a6a2a, timber: 0x9a6a3a, gold: 0xc9a24a };
+for (const [n, c] of Object.entries(COLOURS)) TEX['colour: ' + n] = () => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 });
+function stdFrom(src) {                                      // the models' own looks, lit
+  return () => new THREE.MeshStandardMaterial({ map: src.map ? src.map.clone() : null, color: src.map ? 0xffffff : src.userData.base || src.color, roughness: 0.9, side: THREE.DoubleSide });
+}
+function registerModelTextures(root, prefix, names) {
+  root.traverse(o => { if (o.isMesh && names.includes(o.name)) TEX[prefix + o.name.replace(/^ham_/, '')] = stdFrom(o.material); });
+}
+function fillTexSelect() {
+  const sel = B('b-tex'); sel.innerHTML = '';
+  for (const n of Object.keys(TEX)) { const op = document.createElement('option'); op.value = n; op.textContent = n; sel.appendChild(op); }
+  const op = document.createElement('option'); op.value = '@image'; op.textContent = 'image (dropped / picked)'; sel.appendChild(op);
+}
+function meshesOf(obj) { const l = []; obj.traverse(o => { if (o.isMesh) l.push(o); }); return l; }
+function applyTexture(obj, tex) {                            // tex: {name} | {image: dataURL}; a copy gets it on every part
+  const d = obj.userData; if (d.cutter) return;
+  let make;
+  if (tex.image) {
+    const t = new THREE.TextureLoader().load(tex.image); t.colorSpace = THREE.SRGBColorSpace;
+    make = () => new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide });
+    d.tex = { image: tex.image };
+  } else if (TEX[tex.name]) { make = TEX[tex.name]; d.tex = { name: tex.name }; }
+  else return;
+  for (const m of meshesOf(obj)) { m.material = make(); m.userData.sharedMat = false; }
+  applyLook(obj);
+}
+function applyLook(obj) {                                    // tiling and tint; a copy's parts that still share a model's material are left alone
+  const d = obj.userData;
+  for (const mesh of meshesOf(obj)) {
+    if (mesh.userData.sharedMat) continue;
+    const m = mesh.material;
+    if (m.map) { m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping; m.map.repeat.set(d.tile || 1, d.tile || 1); m.map.needsUpdate = true; }
+    m.color.set(d.tint || '#ffffff'); if (!m.map && d.tex && d.tex.name && d.tex.name.startsWith('colour')) m.color.multiply(new THREE.Color(COLOURS[d.tex.name.slice(8)]));
+    m.needsUpdate = true;
+  }
+}
+const GEOM = {
+  box: () => new THREE.BoxGeometry(1, 1, 1),
+  cylinder: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 32),
+  sphere: () => new THREE.SphereGeometry(0.5, 32, 20),
+  plane: () => new THREE.PlaneGeometry(1, 1),
+  wedge: () => { const g = new THREE.CylinderGeometry(0.5, 0.5, 1, 3, 1); g.rotateX(Math.PI / 2); g.rotateY(Math.PI / 2); return g; },  // a triangular prism: a ramp or a roof
+};
+let serial = 0;
+function makePiece(type, tex) {
+  const m = new THREE.Mesh(GEOM[type](), new THREE.MeshStandardMaterial({ color: 0x808080 }));
+  m.name = type + ' ' + (++serial); m.userData = { piece: true, type, tile: 1, tint: '#ffffff' };
+  m.castShadow = m.receiveShadow = true;
+  applyTexture(m, tex || { name: Object.keys(TEX)[0] });
+  built.add(m); return m;
+}
+function addPiece(type) {                                    // where the view is looking, standing on what it hits
+  const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && h.distance > 0.3);
+  const at = hits.length ? hits[0].point : camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
+  const m = makePiece(type, selected ? selected.userData.tex : null);
+  m.position.copy(at); m.position.y += 0.5;
+  m.rotation.y = Math.round(Math.atan2(camera.position.x - at.x, camera.position.z - at.z) / (Math.PI / 2)) * (Math.PI / 2);   // squared to the room
+  select(m); markDirty();
+}
+let houseRoot = null; function houseScene() { return houseRoot ? [houseRoot] : []; }
+function select(obj) {
+  selected = obj;
+  if (obj !== cutBox && cutBox.visible && obj) cutBox.visible = false;      // one delete box at a time; selecting elsewhere drops it
+  if (obj) transform.attach(obj); else transform.detach();
+  B('b-name').textContent = obj ? obj.name : 'nothing';
+  syncFields();
+}
+function syncFields() {
+  if (!selected) return;
+  const o = selected, deg = r => +(r * 180 / Math.PI).toFixed(1);
+  B('b-px').value = o.position.x.toFixed(2); B('b-py').value = o.position.y.toFixed(2); B('b-pz').value = o.position.z.toFixed(2);
+  B('b-sx').value = o.scale.x.toFixed(2); B('b-sy').value = o.scale.y.toFixed(2); B('b-sz').value = o.scale.z.toFixed(2);
+  B('b-rx').value = deg(o.rotation.x); B('b-ry').value = deg(o.rotation.y); B('b-rz').value = deg(o.rotation.z);
+  B('b-tile').value = o.userData.tile || 1; B('b-tint').value = o.userData.tint || '#ffffff';
+  B('b-tex').value = o.userData.tex && o.userData.tex.name ? o.userData.tex.name : '@image';
+}
+function fieldsToObject() {
+  if (!selected) return;
+  const o = selected, v = id => parseFloat(B(id).value) || 0, rad = id => v(id) * Math.PI / 180;
+  o.position.set(v('b-px'), v('b-py'), v('b-pz'));
+  o.scale.set(Math.max(0.01, v('b-sx')), Math.max(0.01, v('b-sy')), Math.max(0.01, v('b-sz')));
+  o.rotation.set(rad('b-rx'), rad('b-ry'), rad('b-rz'));
+  markDirty();
+}
+['b-px', 'b-py', 'b-pz', 'b-sx', 'b-sy', 'b-sz', 'b-rx', 'b-ry', 'b-rz'].forEach(id => B(id).addEventListener('input', fieldsToObject));
+B('b-tex').addEventListener('change', () => { if (selected && !selected.userData.cutter && B('b-tex').value !== '@image') { applyTexture(selected, { name: B('b-tex').value }); markDirty(); } });
+B('b-tile').addEventListener('input', () => { if (selected) { selected.userData.tile = parseFloat(B('b-tile').value) || 1; applyLook(selected); markDirty(); } });
+B('b-tint').addEventListener('input', () => { if (selected) { selected.userData.tint = B('b-tint').value; applyLook(selected); markDirty(); } });
+document.querySelectorAll('#build [data-add]').forEach(b => b.addEventListener('click', () => addPiece(b.dataset.add)));
+function setGizmo(mode) {
+  transform.setMode(mode);
+  for (const [id, m] of [['b-move', 'translate'], ['b-rot', 'rotate'], ['b-scale', 'scale']]) B(id).setAttribute('aria-pressed', String(m === mode));
+}
+B('b-move').addEventListener('click', () => setGizmo('translate'));
+B('b-rot').addEventListener('click', () => setGizmo('rotate'));
+B('b-scale').addEventListener('click', () => setGizmo('scale'));
+B('b-snap').addEventListener('change', () => {
+  const on = B('b-snap').checked;
+  transform.setTranslationSnap(on ? 0.1 : null); transform.setRotationSnap(on ? THREE.MathUtils.degToRad(15) : null); transform.setScaleSnap(on ? 0.1 : null);
+});
+B('b-dup').addEventListener('click', () => {
+  if (!selected || selected === cutBox) return;
+  const s0 = selected, m = s0.userData.type === 'copy' ? makeCopy(s0.userData.src) : makePiece(s0.userData.type, s0.userData.tex);
+  m.userData.tile = s0.userData.tile; m.userData.tint = s0.userData.tint; if (s0.userData.tex) applyTexture(m, s0.userData.tex); else applyLook(m);
+  m.position.copy(s0.position).x += s0.scale.x + 0.2; m.rotation.copy(s0.rotation); m.scale.copy(s0.scale);
+  select(m); markDirty();
+});
+function removeSelected() {
+  if (!selected || selected === cutBox) return;
+  const o = selected; select(null); built.remove(o); meshesOf(o).forEach(m => m.geometry.dispose()); markDirty();
+}
+B('b-del').addEventListener('click', removeSelected);
+B('b-imgbtn').addEventListener('click', () => B('b-img').click());
+B('b-img').addEventListener('change', () => { const f = B('b-img').files[0]; if (f && selected) readImage(f, url => { applyTexture(selected, { image: url }); markDirty(); }); B('b-img').value = ''; });
+function readImage(file, cb) { const r = new FileReader(); r.onload = () => cb(r.result); r.readAsDataURL(file); }
+// Drop an image on the view: onto the piece under the cursor, else the selected one.
+const stage = document.getElementById('stage'), glow = B('dropglow');
+stage.addEventListener('dragover', e => { if (editing) { e.preventDefault(); glow.style.display = 'block'; } });
+stage.addEventListener('dragleave', () => { glow.style.display = 'none'; });
+stage.addEventListener('drop', e => {
+  glow.style.display = 'none'; if (!editing) return; e.preventDefault();
+  const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/')); if (!f) return;
+  const hit = pick(e.clientX, e.clientY); const target = hit || selected; if (!target) return;
+  readImage(f, url => { applyTexture(target, { image: url }); select(target); markDirty(); });
+});
+function pick(cx, cy) {
+  const r = canvas.getBoundingClientRect();
+  const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2((cx - r.left) / r.width * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), camera);
+  const hits = ray.intersectObjects(cutBox.visible ? [cutBox, ...built.children] : built.children, true);
+  if (!hits.length) return null;
+  let o = hits[0].object; while (o.parent && o.parent !== built && o.parent !== scene) o = o.parent;   // the piece, not a part of it
+  return o;
+}
+function buildClick(e) { if (!editing) return; select(pick(e.clientX, e.clientY)); }
+function buildKey(e) {
+  if (!editing) return false;
+  if (e.code === 'Escape') { select(null); return true; }
+  if (!selected) return false;
+  if (selected === cutBox && (e.code === 'Enter' || e.code === 'NumpadEnter')) { confirmCut(); return true; }
+  if (selected === cutBox && e.code === 'KeyC') { confirmCopy(); return true; }
+  if (e.code === 'Delete' || e.code === 'Backspace') { if (selected === cutBox) cancelCut(); else removeSelected(); return true; }
+  if (e.code === 'KeyG') { setGizmo('translate'); return true; }
+  if (e.code === 'KeyR') { setGizmo('rotate'); return true; }
+  if (e.code === 'KeyS' && !walking) { setGizmo('scale'); return true; }
+  return false;
+}
+B('b-toggle').addEventListener('click', () => {
+  editing = !editing; panel.hidden = !editing; B('b-toggle').setAttribute('aria-pressed', String(editing));
+  if (!editing) { cancelCut(); select(null); }
+});
+// THE DELETE BOX (Jack: "a delete box where you scale it over an area then select confirm and it
+// gets rid of it"). A translucent red unit cube, moved and scaled with the same gizmo; Confirm drops
+// every triangle whose centroid lies inside it — house scan, fills, set, side stairs, proscenium —
+// and removes any built piece whose centre is inside. Each confirmed box is kept as {p, r, s}, saved
+// and exported with the pieces, so it re-applies on load and can be baked into BAKED_CUTS. Undo pops
+// the last one and re-applies the rest from the meshes' original indices, captured on first cut.
+const cutBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
+cutBox.add(new THREE.LineSegments(new THREE.EdgesGeometry(cutBox.geometry), new THREE.LineBasicMaterial({ color: 0xff5050 })));
+cutBox.name = 'delete box'; cutBox.userData = { cutter: true }; cutBox.visible = false; cutBox.renderOrder = 10;
+scene.add(cutBox);
+let cuts = [];                                               // this session's confirmed boxes
+const originals = new Map();                                 // mesh -> original index (array) or null (was non-indexed)
+function cuttables() {
+  const list = [];
+  const take = o => { if (o.isMesh && !o.userData.cutter && !o.userData.piece && o.geometry.attributes.position) list.push(o); };
+  if (houseRoot) houseRoot.traverse(take); setGroup.traverse(take);
+  scene.children.forEach(o => { if (o.name === 'proscenium' || o.name === 'pros_wall') take(o); });
+  return list;
+}
+function cutMatrix(c) {
+  const m = new THREE.Matrix4().compose(new THREE.Vector3().fromArray(c.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(c.r[0], c.r[1], c.r[2])), new THREE.Vector3().fromArray(c.s));
+  return m.invert();
+}
+function applyCut(c) {
+  scene.updateMatrixWorld(true);                             // before the first frame the set's matrices are stale
+  const inv = cutMatrix(c), p = new THREE.Vector3(), q = new THREE.Vector3();
+  const inside = v => { q.copy(v).applyMatrix4(inv); return Math.abs(q.x) <= 0.5 && Math.abs(q.y) <= 0.5 && Math.abs(q.z) <= 0.5; };
+  for (const o of cuttables()) {
+    o.updateMatrixWorld(true);
+    const g = o.geometry, pos = g.attributes.position, idx = g.index ? g.index.array : null;
+    if (!originals.has(o)) originals.set(o, idx ? Array.from(idx) : null);
+    const n = idx ? idx.length : pos.count, keep = [], a = new THREE.Vector3(), b = new THREE.Vector3(), d = new THREE.Vector3();
+    let cut = 0;
+    for (let t = 0; t < n; t += 3) {
+      const ia = idx ? idx[t] : t, ib = idx ? idx[t + 1] : t + 1, ic = idx ? idx[t + 2] : t + 2;
+      a.fromBufferAttribute(pos, ia); b.fromBufferAttribute(pos, ib); d.fromBufferAttribute(pos, ic);
+      p.copy(a).add(b).add(d).multiplyScalar(1 / 3).applyMatrix4(o.matrixWorld);
+      if (inside(p)) cut++; else keep.push(ia, ib, ic);
+    }
+    if (cut) g.setIndex(keep);
+  }
+  for (const grp of [built, baked]) for (const o of [...grp.children]) {
+    if (inside(o.getWorldPosition(p))) { if (o === selected) select(null); grp.remove(o); }
+  }
+}
+function reapplyAll() {
+  for (const [o, orig] of originals) { if (orig) o.geometry.setIndex(orig.slice()); else o.geometry.setIndex(null); }
+  for (const c of [...BAKED_CUTS, ...cuts]) applyCut(c);
+  B('b-cutn').textContent = `${cuts.length} delete${cuts.length === 1 ? '' : 's'} this session` + (BAKED_CUTS.length ? `, ${BAKED_CUTS.length} baked` : '') + '. Move and scale the red box, then Confirm (or Enter).';
+}
+function placeCutBox() {
+  const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && h.distance > 0.3);
+  const at = hits.length ? hits[0].point : camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
+  cutBox.position.copy(at); cutBox.position.y += 0.5; cutBox.rotation.set(0, 0, 0); cutBox.scale.set(1, 1, 1); cutBox.visible = true;
+  select(cutBox);
+}
+function confirmCut() {
+  if (!cutBox.visible) { placeCutBox(); B('b-cutn').textContent = 'Box placed — move and scale it over the area, then press Delete area again (or Enter).'; return; }
+  const c = { p: cutBox.position.toArray().map(x => +x.toFixed(3)), r: cutBox.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: cutBox.scale.toArray().map(x => +x.toFixed(3)) };
+  cuts.push(c); applyCut(c);
+  cutBox.visible = false; select(null); reapplyAll(); markDirty();
+}
+function cancelCut() { cutBox.visible = false; if (selected === cutBox) select(null); }
+// COPY AREA (Jack: "a tool where I can select an area and copy it"). Every triangle whose centroid
+// lies inside the box — house scan, fills, set, proscenium — is copied into a new piece, one mesh
+// per source mesh sharing its material, in the box's own frame (its centre is the piece's origin,
+// its rotation the piece's rotation, so the piece lands exactly where the box was and moves from
+// there). Pieces centred inside are cloned into it too. A copy is saved as the box it came from
+// ({src: {p, r, s}}) and rebuilt from the models on load, before any delete is applied.
+function makeCopy(src) {
+  const frame = new THREE.Matrix4().compose(new THREE.Vector3().fromArray(src.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(src.r[0], src.r[1], src.r[2])), new THREE.Vector3(1, 1, 1));
+  const toLocal = frame.clone().invert(), inv = cutMatrix(src);
+  scene.updateMatrixWorld(true);                             // before the first frame the set's matrices are stale
+  const p = new THREE.Vector3(), q = new THREE.Vector3();
+  const inside = v => { q.copy(v).applyMatrix4(inv); return Math.abs(q.x) <= 0.5 && Math.abs(q.y) <= 0.5 && Math.abs(q.z) <= 0.5; };
+  const g = new THREE.Group();
+  g.name = 'copy ' + (++serial); g.userData = { piece: true, type: 'copy', src, tile: 1, tint: '#ffffff' };
+  g.position.fromArray(src.p); g.rotation.set(src.r[0], src.r[1], src.r[2]);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (const o of cuttables()) {
+    o.updateMatrixWorld(true);
+    const geo = o.geometry, pos = geo.attributes.position, uv = geo.attributes.uv, idx = geo.index ? geo.index.array : null;
+    const n = idx ? idx.length : pos.count, P = [], U = [];
+    const toFrame = new THREE.Matrix4().multiplyMatrices(toLocal, o.matrixWorld);
+    for (let t = 0; t < n; t += 3) {
+      const ia = idx ? idx[t] : t, ib = idx ? idx[t + 1] : t + 1, ic = idx ? idx[t + 2] : t + 2;
+      a.fromBufferAttribute(pos, ia); b.fromBufferAttribute(pos, ib); c.fromBufferAttribute(pos, ic);
+      p.copy(a).add(b).add(c).multiplyScalar(1 / 3).applyMatrix4(o.matrixWorld);
+      if (!inside(p)) continue;
+      for (const [v, i] of [[a, ia], [b, ib], [c, ic]]) { q.copy(v).applyMatrix4(toFrame); P.push(q.x, q.y, q.z); if (uv) U.push(uv.getX(i), uv.getY(i)); }
+    }
+    if (!P.length) continue;
+    const ng = new THREE.BufferGeometry();
+    ng.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    if (uv) ng.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+    ng.computeVertexNormals();
+    const m = new THREE.Mesh(ng, o.material); m.userData.sharedMat = true; m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  }
+  for (const grp of [built, baked]) for (const o of grp.children) {
+    if (o === g || !inside(o.getWorldPosition(p))) continue;
+    const cl = o.clone(); cl.userData = { ...o.userData, piece: false }; scene.add(cl); cl.position.copy(o.getWorldPosition(p)); cl.quaternion.copy(o.getWorldQuaternion(new THREE.Quaternion())); g.attach(cl);
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+  built.add(g);
+  return g;
+}
+function confirmCopy() {
+  if (!cutBox.visible) { placeCutBox(); B('b-cutn').textContent = 'Box placed — move and scale it over the area, then press Copy area again (or C).'; return; }
+  const src = { p: cutBox.position.toArray().map(x => +x.toFixed(3)), r: cutBox.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: cutBox.scale.toArray().map(x => +x.toFixed(3)) };
+  cutBox.visible = false;
+  const g = makeCopy(src);
+  if (!g.children.length) { built.remove(g); B('b-cutn').textContent = 'Nothing inside that box to copy — make it bigger or move it onto something.'; select(null); return; }
+  const n = g.children.length;
+  B('b-cutn').textContent = `Copied ${n} part${n === 1 ? '' : 's'} into "${g.name}". It sits exactly on the original — drag the arrows to move it.`;
+  status.textContent = `Copied ${n} part${n === 1 ? '' : 's'}.`;
+  setGizmo('translate'); select(g); markDirty();
+}
+B('b-copyok').addEventListener('click', confirmCopy);
+B('b-cutbox').addEventListener('click', placeCutBox);
+B('b-cutok').addEventListener('click', confirmCut);
+B('b-cutundo').addEventListener('click', () => { if (cuts.length) { cuts.pop(); reapplyAll(); markDirty(); } });
+
+// Save and load. Autosave is a dirty flag the frame loop flushes half a second after the last change.
+const SAVE_KEY = 'midtown.build.v1';
+function markDirty() { dirty = true; dirtyAt = clock.elapsedTime; }
+function serialize() {
+  return { v: 1, cuts, pieces: built.children.map(o => ({ type: o.userData.type, name: o.name, tex: o.userData.tex, tile: o.userData.tile, tint: o.userData.tint, src: o.userData.src,
+    p: o.position.toArray().map(x => +x.toFixed(3)), r: o.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: o.scale.toArray().map(x => +x.toFixed(3)) })) };
+}
+function restore(data, into = built) {
+  if (into === built) select(null);
+  while (into.children.length) into.remove(into.children[0]);
+  for (const d of (data && data.pieces) || []) {
+    let m;
+    if (d.type === 'copy' && d.src) { m = makeCopy(d.src); if (d.tex && (d.tex.image || TEX[d.tex.name])) applyTexture(m, d.tex); }
+    else if (GEOM[d.type]) m = makePiece(d.type, d.tex && (d.tex.image || TEX[d.tex.name]) ? d.tex : null);
+    else continue;
+    if (d.name) m.name = d.name; m.userData.tile = d.tile || 1; m.userData.tint = d.tint || '#ffffff'; applyLook(m);
+    m.position.fromArray(d.p); m.rotation.set(d.r[0], d.r[1], d.r[2]); m.scale.fromArray(d.s);
+    if (into !== built) { built.remove(m); into.add(m); }
+  }
+  serial = built.children.length;
+  if (into === built) { cuts = (data && data.cuts) || []; reapplyAll(); }
+  B('b-bakedn').textContent = baked.children.length ? baked.children.length + ' baked' : 'nothing baked yet';
+}
+function save() {
+  dirty = false;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(serialize())); status.textContent = `Saved in this browser · ${built.children.length} piece${built.children.length === 1 ? '' : 's'}.`; }
+  catch (e) { status.textContent = 'Could not save in this browser (' + (e.message || e) + ') — use Export.'; }
+}
+function loadSaved() { try { const t = localStorage.getItem(SAVE_KEY); if (t) restore(JSON.parse(t)); } catch (e) { console.warn('saved build not restored', e); } }
+B('b-export').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(serialize(), null, 1)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'midtown-build.json'; a.click(); URL.revokeObjectURL(a.href);
+});
+B('b-copy').addEventListener('click', async () => {
+  const text = JSON.stringify(serialize(), null, 1);
+  try { await navigator.clipboard.writeText(text); status.textContent = 'JSON copied — paste it into the chat.'; }
+  catch (e) { status.textContent = 'Clipboard refused; use Export JSON instead.'; }
+});
+B('b-unbake').addEventListener('click', () => {
+  while (baked.children.length) { const o = baked.children[0]; baked.remove(o); built.add(o); }
+  serial = built.children.length; B('b-bakedn').textContent = 'editing them';
+  markDirty();
+});
+B('b-importbtn').addEventListener('click', () => B('b-import').click());
+B('b-import').addEventListener('change', () => {
+  const f = B('b-import').files[0]; if (!f) return;
+  const r = new FileReader(); r.onload = () => { try { restore(JSON.parse(r.result)); markDirty(); } catch (e) { status.textContent = 'That file is not a build: ' + e.message; } }; r.readAsText(f);
+  B('b-import').value = '';
+});
+B('b-clear').addEventListener('click', () => { if (built.children.length && confirm('Remove every piece you have built?')) { restore(null); markDirty(); } });
+fillTexSelect();
 
 function resize() {
   const r = canvas.parentElement.getBoundingClientRect();
@@ -315,6 +748,7 @@ new ResizeObserver(resize).observe(canvas.parentElement); resize();
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1);
+  if (dirty && clock.elapsedTime - dirtyAt > 0.5) save();
   if (tween) {
     if (tween.t < 1) tween.t = Math.min(1, (performance.now() - tween.start) / 1100);
     const k = tween.t < .5 ? 2 * tween.t * tween.t : 1 - Math.pow(-2 * tween.t + 2, 2) / 2;

@@ -224,11 +224,15 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **MERGE #226, RUN THE POST-MERGE PROTOCOL FOR #224/#225/#226, THEN SPEC THE HAMILTON GAME** (2026-10-11, evening)
+## NEXT SESSION: **MERGE #226, RUN THE POST-MERGE PROTOCOL FOR #224/#225/#226, THEN SPEC THE HAMILTON GAME** (2026-10-11, end of session)
 
 Rulings at **FE** (FF next). Suite count **21**. `main` is **`692f3d3`** (#224 and #225 merged by
-Jack). **PR #226 (`midtown-preview`) is open** — `midtown.html`, the preview page. Read STATE.md's
-NEWEST block first.
+Jack). **PR #226 (`midtown-preview`) is open, sixteen commits** — `midtown.html`, the preview page
+with its build mode, area box (copy / delete) and two bakes of his work. Read STATE.md's end-of-session
+block first; the bake recipe is there. **If he hands over another export** (`Downloads/midtown-build*.json`
+or pasted JSON): append its `pieces` to `BAKED` and its `cuts` to `BAKED_CUTS` with a "(bake N)"
+suffix, reload, look, commit; replace instead of append only if he pressed "Edit the baked pieces"
+first; tell him to Clear all afterwards.
 
 1. **Merge #226**, then the post-merge protocol for all three: fast-forward local `main`, rebuild
    byte-identical, `node tools/artnet-map.js` reproduces `docs/ARTNET.md`, 21/21, delete
@@ -249,17 +253,65 @@ was built instead of the game: `midtown.html`, the Midtown scan unlit (as `tools
 draws it) with `assets/hamilton-set.glb` seated on its deck the way `p5i hamApplyModel` does, turned
 180° because this GLB's upstage is +z, lit by a hemisphere fill, two FOH spots and two over-stage
 specials with shadows; orbit or drag-to-look walking (no pointer lock), six viewpoints, a
-`window.MIDTOWN` console handle. Five rounds of his, made while he watched the pane: the proscenium
-to the front of the stage (its six nodes slide, the ceiling/skirts/fly walls/roof stretch along z to
-the new plane); the opening fitted round the set — first by re-spanning the GLB's pier and header
-planes, which he read as *"you just removed the proscenium"* because they are the wall's own flat
-grey, so `frameArch` now hides those and builds a real frame (1.3 m piers and header, 0.5 m deep,
-its own material, opening x ±5.6 / top y 6.9, wall strips to the house either side); the two corner
-stairs filled in — first as clean steps (*"the stairs are still there"*), then as one block each from
-the house floor to deck height over the stair and the strip to the deck (footprints measured off the
-scan's vertices: treads x −5.4..−3.5 and 3.5..5.4, z −2.9..−2.0), corners squared off; and the set's
-`ham_iron` mesh hidden (*"remove the metal beam"* — the two hanging I-beams; the sconce blocks go
-with it, same mesh). The set is 17.3 m wide against
+`window.MIDTOWN` console handle. Several rounds of his, made while he watched the pane, two of
+them spent on misreadings worth recording. The proscenium to the front of the stage (its six nodes
+slide, the ceiling/skirts/fly walls/roof stretch along z to the new plane). The opening fitted round
+the set — re-spanning the GLB's pier and header planes read as *"you just removed the proscenium"*
+(they are the wall's own flat grey), a dark lit frame read as *"still no proscenium"*, so `frameArch`
+now hides the planes and builds a frame of 1.5 m piers and header, 0.6 m deep, **in the proscenium
+wall's own unlit material** (opening x ±5.6 / top y 6.9, wall strips to the house either side) — that
+one he could see. *"Fill in the stairs on the front of the stage"* was read as the scan's two corner
+steps, which got filled twice (steps, then blocks: *"what are these blocks"*); he meant the SET's side
+staircases at the gallery ends — which the ETC model simply does not have: the gallery is a U, its two
+arms come downstage and end in railed platforms (x ±3.5..4.5, z 0.5..2.0, floor y 3.00, measured off
+`ham_plank`) with no way down. `buildSideStairs` adds a flight each. Two tries: solid wedges toward centre
+stage (dominated the house), open flights toward centre stage (*"stairs are way too big and don't
+go there"*, with a production photo), then per the photo a landing and a flight running backstage along each arm;
+and finally, per his marked-up screenshot (*"this one faces towards the audience"*, *"this one
+faces this way ->"*, *"just copy the stairs that are already in there and move them"*), ONE flight
+built by `buildFlight` (9 risers over 1.26 m, 0.8 m wide, treads on stringers, rails, plank) placed
+twice — house-left off a landing on the platform's inner side toward the audience, house-right off
+the platform's outer edge toward stage right, where its foot (x 5.76) just touches the scanned
+stage wall (x 5.62). **Then all of it removed** — *"remove all the stairs you have put and make a
+tool where I can select an area and copy it"* — and the area box gained **Copy area**: every
+triangle whose centroid is inside becomes a new piece, one mesh per source mesh sharing its
+material, in the box's frame, on the gizmo; pieces centred inside are cloned in too. Saved as the
+source box and rebuilt from the models on load before deletes apply. Verified: a 1.6 × 2.2 × 1.8 box
+over the house-left platform end copied five parts, moved to centre stage, survived a reload. Lesson:
+after the second wrong placement the right move was to hand him the tool, not a third guess. **And
+it paid at once:** his next export (pasted) was the set's own stair copied to house right, turned
+90°, a rail-grain strip, two tidy-up cuts — baked as `(bake 2)`, appended to the first bake; names
+restart at "box 1" per session, hence the suffix. A copy's `src` box is on the pristine geometry, so
+appending is safe as long as no later cut overlaps a copy's source (checked: none do). (`ham_iron`, hidden for
+a round on the theory it held the beams, is only the posts' foot blocks.) The scan's corner steps are
+back untouched.
+*"Remove the metal beam"*: not the set's — hiding or cutting every set mesh left it standing. It is
+the **scan's** hanging iron over the stage (pipes, a cross bar, two beams on cables, kept upstage of
+the wall below the fly cut); `cutBeams` drops every scan triangle with a vertex in a box over the
+stage (|x| < 5.2, y 3.0..6.3, z 2.4..8.6). Lesson for TRAPS-by-another-name: with two models in
+one scene, **find which model a thing belongs to before touching either** — hide meshes one at a
+time and look.
+
+**Then a build mode**, his ask: *"make something where i can add geometries and use a dropdown to
+choose their texture and i can move and resize them"*, and *"make it so you can see the things i add
+then add them to the actual geometry."* `midtown.html`'s Build button: add box / cylinder / sphere /
+plane / wedge where the view is looking; texture dropdown of the set's and house's materials
+(cloned to lit `MeshStandard`) plus flat colours; image by picker or dropped on the view (data URL,
+travels in the JSON); tiling, tint; `TransformControls` gizmo, G/R/S, numeric fields, snap,
+duplicate, delete; autosave to localStorage flushed from the frame loop (no `setTimeout`); Export /
+Copy / Import JSON. Then *"a delete box where you scale it over an area then select confirm and it gets rid
+of it"*: a red translucent cube on the same gizmo; Confirm drops every triangle whose centroid is
+inside it (scan, fills, set, side stairs, proscenium) and removes pieces centred inside; Undo last
+re-applies the remaining cuts from original indices captured on first cut. Verified by triangle
+counts: a 2.5 × 2.4 × 2 box over the stage-right gallery took 252 brick, 335 post and 331 rail
+triangles and undo restored every count. **Bake recipe:** read his export (Downloads,
+`midtown-build.json`) or the pasted JSON, put its `pieces` into the page's `BAKED` constant and its
+`cuts` into `BAKED_CUTS`, commit — **done once this session** with his first export: six pieces (an
+inner timber proscenium of two posts and a header in the set's post grain, a black masking panel
+stage left, two rail-grain blocks over the apron's front corners) and four cuts (a hanging thing at
+the back of the house, the scan's corner stairs); "Edit the baked pieces" lifts them
+back into the editor. Verified in the pane: two pieces, brick texture, resize, autosave; console
+clean. The set is 17.3 m wide against
 the scanned side walls, so "Set fitted" is scale 0.62 and "Real size" is 1:1 through the walls.
 
 Nothing in `src/`; `the-house.html` and `docs/ARTNET.md` untouched. Suites with the portable Node:

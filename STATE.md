@@ -1,7 +1,49 @@
-# STATE — 2026-10-11 (A MIDTOWN + HAMILTON PREVIEW PAGE IS IN PR; THE HAMILTON GAME IS BRIEFED, NOT SPECCED)
+# STATE — 2026-10-11 (THE MIDTOWN + HAMILTON PREVIEW WITH ITS BUILD MODE IS IN PR #226, TWO BAKES IN; THE HAMILTON GAME IS BRIEFED, NOT SPECCED)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-11 (end of session): the Midtown preview round is in PR #226, 16 commits, UNMERGED
+
+**Read this block, then the evening block below it only for the placement numbers.**
+
+- **`main` is `692f3d3`** (#224 `hamilton-set` and #225 `fixture-models`, both merged by Jack). The
+  post-merge protocol has NOT been run for either. **PR #226 (`midtown-preview`) is open**:
+  https://github.com/Jackscreations21/gms-theater-game/pull/226 — on Pages after merge at
+  `https://jackscreations21.github.io/gms-theater-game/midtown.html`.
+- **What `midtown.html` is now:** a standalone preview (NOT the second game) of the Midtown scan
+  with the Hamilton set on its stage, plus a **build mode** he used all evening:
+  - the house unlit and dimmable, the set lit (hemisphere, two FOH spots, two over-stage specials),
+    orbit or drag-to-look walk, six viewpoints, `window.MIDTOWN` console handle;
+  - the proscenium moved to the front of the stage (z 0.20) and rebuilt as a real frame in the wall's
+    own grey (1.5 m members, 0.6 m deep) round an opening fitted to the set; the set scaled 0.62
+    ("Real size" toggle shows 1:1 through the walls); the scan's hanging iron over the stage cut
+    (`cutBeams`); **no built stairs** — three placements were wrong for him, so he got tools instead;
+  - **Build:** add box / cylinder / sphere / plane / wedge where the view looks; texture dropdown of
+    the set's and house's materials plus colours; image by picker or drop; tiling, tint; gizmo
+    move/rotate/scale (G/R/S), numeric fields, snap, duplicate, delete; **Area box**: Copy area (C)
+    makes what is inside a new piece, Delete area (Enter) cuts it away, Undo delete; autosave to
+    localStorage; Export / Copy / Import JSON.
+  - **Baked so far:** `BAKED` 8 pieces, `BAKED_CUTS` 6 — his inner timber proscenium (two posts and a
+    header), a black masking panel stage left, two rail-grain corner blocks over the apron corners
+    where his cuts removed the scan's little stairs, a rail strip house left, and the set's own
+    stair COPIED to house right (x 2.13 / z 2.05, turned 90°) with two tidy-up cuts.
+- **THE BAKE RECIPE (works, run twice):** he exports (`C:/Users/jackf/Downloads/midtown-build*.json`)
+  or pastes JSON → append its `pieces` to `BAKED` and its `cuts` to `BAKED_CUTS` in `midtown.html`
+  (session names restart at "box 1": suffix them, e.g. "(bake 3)") → reload, look, commit. **Replace
+  instead of append** only if he pressed "Edit the baked pieces" before exporting (the export then
+  already holds the old ones). A copy's `src` box is taken on the pristine geometry at load, before
+  any cut — safe unless a later cut overlaps a copy's source. **Tell him to Clear all** after a bake
+  or his browser shows the pieces doubled.
+- **Suites on this tree: 20/21** with the portable Node. The red is `beetlejuice`'s on-disk index
+  check tripping on the **19 untracked `assets/fixtures/*.glb`** (his "don't commit the files yet"),
+  not on `main` or the branch. Nothing in `src/` changed all session.
+- **Local serving:** `.claude/launch.json` (gitignored) has `the-house`, Python http.server on 8080
+  over the repo root; `preview_start` it. **It dies whenever the Browser pane is closed** — restart
+  before navigating. Pointer lock fails inside the pane; a normal browser window is fine.
+- **Headset run still owed**, as below.
+
+---
 
 ## NEWEST — 2026-10-11 (evening), the Midtown preview page (branch `midtown-preview`, PR #226 OPEN)
 
@@ -15,12 +57,34 @@ fetch`, compare `origin/main`, then read this.
 - **Three calls he made watching it, all in the page, none in the GLB:** the proscenium moved to the
   front of the stage (z 0.20 from the GLB's 2.30, the ceiling/skirts/fly walls/roof stretched to meet
   it); the proscenium rebuilt as a real FRAME round the set (the GLB's flat grey planes read as "no
-  proscenium" when widened — now 1.3 m piers and header, 0.5 m deep, its own material, opening
-  x ±5.6 / top y 6.9); the two corner stairs filled in as one block each, floor to deck, corners
-  squared off (his second round: clean steps were "still there"); the set's `ham_iron` mesh (the two
-  hanging I-beams, plus the sconce blocks) hidden. The set is scaled 0.62 to clear the scanned side
+  proscenium" when widened, and a dark lit frame read as nothing at all — now 1.5 m piers and
+  header, 0.6 m deep, in the proscenium wall's OWN unlit grey, opening x ±5.6 / top y 6.9); and the
+  "metal beam" over the stage cut out — it is the SCAN's hanging iron (pipes, a cross bar, two beams
+  on cables, left upstage of the wall below the fly cut), not the set's: `cutBeams` drops every scan
+  triangle with a vertex in a box over the stage. **Two misreadings cost rounds:** "fill in the
+  stairs on the front of the stage" meant the SET's side staircases — the gallery is a U whose two
+  arms end in railed platforms at x ±3.5..4.5, z 0.5..2.0, gallery floor y 3.00, and the ETC model
+  gives them no way down — so `buildSideStairs` adds an open flight each (treads on stringers, rails,
+  12 risers, plank material) down toward centre stage; not the scan's corner steps, which got blocks
+  for two rounds and are now back untouched. (`ham_iron` is only the posts' foot blocks.) The set is scaled 0.62 to clear the scanned side
   walls, with a "Real size" toggle. If the second game wants these in the asset itself, `tools/blender/midtown_theatre.py`'s
   `PROS_Y`, `OPEN_X0/X1` and `OPEN_TOP` are where they go.
+- **`midtown.html` has a BUILD MODE** (Jack: *"make something where i can add geometries and use a
+  dropdown to choose their texture and i can move and resize them … make it so you can see the
+  things i add then add them to the actual geometry"*). The Build button opens a panel: add box /
+  cylinder / sphere / plane / wedge (they land where the view is looking), a texture dropdown of the
+  set's and house's own materials plus flat colours, an image picker or an image dropped on the
+  view, tiling and tint, a move/rotate/scale gizmo (G/R/S) with numeric position/size/turn fields,
+  snap, duplicate, delete. Autosaves to localStorage; Export JSON / Copy JSON / Import.
+  **A DELETE BOX** too (*"a delete box where you scale it over an area then select confirm and it
+  gets rid of it"*): Place delete box → a red translucent cube on the gizmo → Confirm (or Enter)
+  drops every triangle whose centroid is inside it, from the scan, the fills, the set, the side
+  stairs, the proscenium, and removes pieces centred inside; Undo last re-applies the rest from the
+  meshes' original indices. Cuts are saved, exported as `cuts`, and bake into `BAKED_CUTS`.
+  **THE BAKE RECIPE:** he exports (`C:/Users/jackf/Downloads/midtown-build.json`) or pastes the
+  JSON; the agent pastes its `pieces` into the page's `const BAKED = [...]` and its `cuts` into
+  `BAKED_CUTS`, and commits — they are
+  then scenery for everyone, and "Edit the baked pieces" lifts them back into the editor.
 - **Suites on this tree: 20/21.** The red is `beetlejuice`'s on-disk index check tripping on the **19
   untracked `assets/fixtures/*.glb`** still sitting in the working tree (his "don't commit the files
   yet") — not `main`, not the branch. It goes green the moment they are committed or moved out.
