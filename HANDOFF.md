@@ -224,7 +224,45 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **RUN THE POST-MERGE PROTOCOL FOR #224, THEN SPEC THE HAMILTON GAME** (2026-10-11, later)
+## NEXT SESSION: **MERGE #226, RUN THE POST-MERGE PROTOCOL FOR #224/#225/#226, THEN SPEC THE HAMILTON GAME** (2026-10-11, evening)
+
+Rulings at **FE** (FF next). Suite count **21**. `main` is **`692f3d3`** (#224 and #225 merged by
+Jack). **PR #226 (`midtown-preview`) is open** — `midtown.html`, the preview page. Read STATE.md's
+NEWEST block first.
+
+1. **Merge #226**, then the post-merge protocol for all three: fast-forward local `main`, rebuild
+   byte-identical, `node tools/artnet-map.js` reproduces `docs/ARTNET.md`, 21/21, delete
+   `hamilton-set`, `fixture-models`, `midtown-preview` local and remote. **The suite is red on this
+   tree until the 19 untracked `assets/fixtures/*.glb` are committed or moved out** — ask Jack which.
+2. **Spec the Hamilton game** from FUTURE.md PART 2 and the dependency survey; letter from FF; one
+   concern per PR, (1) the second build target first. The preview page's three placement calls
+   (arch forward, opening fitted, stairs filled) are his and belong in the venue spec.
+3. **Headset run**, still owed.
+
+## DONE — 2026-10-11 (evening): the Midtown preview page (the `midtown-preview` branch, PR #226)
+
+Jack: *"make it so i can actually go into the game and start looking at stuff"* — the Palace was
+already live on Pages and booted clean from a local http server (an Opus agent did that round:
+`.claude/launch.json` gained a `the-house` entry, gitignored). Then: *"no not the palace the new one
+with the 3d model theater and the hamilton set."* That game does not exist yet, so a **preview page**
+was built instead of the game: `midtown.html`, the Midtown scan unlit (as `tools/midtown-viewer/`
+draws it) with `assets/hamilton-set.glb` seated on its deck the way `p5i hamApplyModel` does, turned
+180° because this GLB's upstage is +z, lit by a hemisphere fill, two FOH spots and two over-stage
+specials with shadows; orbit or drag-to-look walking (no pointer lock), six viewpoints, a
+`window.MIDTOWN` console handle. Three rounds of his, made while he watched the pane: the proscenium
+to the front of the stage (its six nodes slide, the ceiling/skirts/fly walls/roof stretch along z to
+the new plane); the opening fitted round the set (`frameArch`: piers re-spanned to x ±5.6, header
+lifted to y 6.9); the two corner stairs filled in as three clean steps each on footprints measured
+off the scan's vertices (x −5.4..−3.5 and 3.5..5.4, z −2.9..−2.0). The set is 17.3 m wide against
+the scanned side walls, so "Set fitted" is scale 0.62 and "Real size" is 1:1 through the walls.
+
+Nothing in `src/`; `the-house.html` and `docs/ARTNET.md` untouched. Suites with the portable Node:
+20/21 — `beetlejuice`'s on-disk index check fails on the 19 untracked fixture GLBs in the working
+tree, not on anything committed. Found on the way: the Midtown GLB's fill boxes are named nodes
+(`pros_*`, `fly_*`, `house_*`, `deck_fill`), which is what made the placement changes possible in
+the page without re-exporting the asset.
+
+## SUPERSEDED (folded into the block above): **RUN THE POST-MERGE PROTOCOL FOR #224, THEN SPEC THE HAMILTON GAME** (2026-10-11, later)
 
 Rulings at **FE** (FF next). Suite count **21**. `main` is **`1ca0a14`** (#224 merged by Jack).
 The fixture work is on **`fixture-models`** (tools, docs, record; the GLBs deliberately
