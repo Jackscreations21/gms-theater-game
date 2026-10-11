@@ -15,10 +15,16 @@ fetch`, compare `origin/main`, then read this.
 - **Three calls he made watching it, all in the page, none in the GLB:** the proscenium moved to the
   front of the stage (z 0.20 from the GLB's 2.30, the ceiling/skirts/fly walls/roof stretched to meet
   it); the proscenium rebuilt as a real FRAME round the set (the GLB's flat grey planes read as "no
-  proscenium" when widened — now 1.3 m piers and header, 0.5 m deep, its own material, opening
-  x ±5.6 / top y 6.9); the two corner stairs filled in as one block each, floor to deck, corners
-  squared off (his second round: clean steps were "still there"); the set's `ham_iron` mesh (the two
-  hanging I-beams, plus the sconce blocks) hidden. The set is scaled 0.62 to clear the scanned side
+  proscenium" when widened, and a dark lit frame read as nothing at all — now 1.5 m piers and
+  header, 0.6 m deep, in the proscenium wall's OWN unlit grey, opening x ±5.6 / top y 6.9); and the
+  "metal beam" over the stage cut out — it is the SCAN's hanging iron (pipes, a cross bar, two beams
+  on cables, left upstage of the wall below the fly cut), not the set's: `cutBeams` drops every scan
+  triangle with a vertex in a box over the stage. **Two misreadings cost rounds:** "fill in the
+  stairs on the front of the stage" meant the SET's side staircases — the gallery is a U whose two
+  arms end in railed platforms at x ±3.5..4.5, z 0.5..2.0, gallery floor y 3.00, and the ETC model
+  gives them no way down — so `buildSideStairs` adds an open flight each (treads on stringers, rails,
+  12 risers, plank material) down toward centre stage; not the scan's corner steps, which got blocks
+  for two rounds and are now back untouched. (`ham_iron` is only the posts' foot blocks.) The set is scaled 0.62 to clear the scanned side
   walls, with a "Real size" toggle. If the second game wants these in the asset itself, `tools/blender/midtown_theatre.py`'s
   `PROS_Y`, `OPEN_X0/X1` and `OPEN_TOP` are where they go.
 - **Suites on this tree: 20/21.** The red is `beetlejuice`'s on-disk index check tripping on the **19

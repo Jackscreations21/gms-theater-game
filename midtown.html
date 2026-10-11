@@ -187,6 +187,7 @@ spot( 2.5, 13.0, 7.5,  1, 1, 6.5, 160, 0.5, 0xc8d8ff);     // over the stage, co
 // Set size. The group's transform is the only thing that changes; the model is turned 180° inside it.
 function placeSet(s) {
   setGroup.scale.setScalar(s);
+  sideStairs.visible = s === SET.fit;                 // built in world metres for the fitted size
   setGroup.position.set(0, HOUSE.deckY, HOUSE.archZ + (SET.upstageOfArch + SET.ttZ) * s);
   document.getElementById('s-fit').setAttribute('aria-pressed', String(s !== 1));
   document.getElementById('s-real').setAttribute('aria-pressed', String(s === 1));
@@ -224,14 +225,14 @@ function moveArch(o) {
 }
 // The proscenium, fitted round the set. The GLB's piers and header are flat planes in the wall's
 // own grey, so widening them just read as "no proscenium": instead they are hidden and a real frame
-// is built — piers and header FRAME m wide, DEPTH m deep, in a proscenium material of its own,
+// is built — piers and header FRAME.w wide, FRAME.depth deep, in the proscenium wall's own material,
 // around an opening that clears the set by a margin. The opening is clamped to the house: the piers'
 // outer edges are x -6.6 / 6.4 and the ceiling is y 8.05.
-const FRAME = { w: 1.3, depth: 0.5, color: 0x5a4f48 };
+const FRAME = { w: 1.5, depth: 0.6 };
 const houseMesh = {};
-const frameMat = new THREE.MeshStandardMaterial({ color: FRAME.color, roughness: 0.92, metalness: 0 });
 function frameBox(x0, x1, y0, y1) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, FRAME.depth), frameMat);
+  const wall = houseMesh.pros_outer_l.material;             // the GLB's proscenium grey, unlit, on the house-light slider
+  const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, FRAME.depth), wall);
   m.position.set((x0 + x1) / 2, (y0 + y1) / 2, HOUSE.archZ);
   m.castShadow = true; m.receiveShadow = true; m.name = 'proscenium';
   scene.add(m);
@@ -251,19 +252,59 @@ function frameArch(halfW, top) {
     scene.add(m);
   }
 }
-// The two stairs down from the apron's front corners, filled in: one block each, house floor to
-// deck height, over the stair and the strip between it and the deck, in the deck's own material —
-// the corners are squared off. Footprints measured off the scan: treads at x -5.4..-3.5 and
-// 3.5..5.4, z -2.9 (bottom riser) to -2.0; the deck's scanned front is at about z -0.5 there.
-const STAIRS = [[-5.9, -3.4], [3.4, 5.7]];
-function fillStairs(houseScene) {
-  const deck = houseMesh.deck_fill; if (!deck) return;
-  const z0 = -2.95, z1 = -0.30, y0 = -0.06, y1 = HOUSE.deckY + 0.01;
-  for (const [x0, x1] of STAIRS) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), deck.material);
-    m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-    m.name = 'stair_fill'; m.receiveShadow = true;
-    houseScene.add(m);
+// The "metal beam" over the stage (Jack: "remove the metal beam") is the scanned venue's own hanging
+// iron — pipes, a cross bar, two beams on cables — left in the scan upstage of the wall below the
+// fly cut. It is not the set's: hiding or cutting every set mesh left it standing. So every scan
+// triangle with a vertex in a box over the stage, above the set's gallery and below the old fly
+// cut, is dropped. The scan's side walls and back brick lie outside the box. World metres.
+const BEAM_BOX = { x: 5.2, yMin: 3.0, yMax: 6.3, zMin: 2.4, zMax: 8.6 };
+function cutBeams(houseScene) {
+  houseScene.updateMatrixWorld(true);
+  const p = new THREE.Vector3();
+  const inBox = v => Math.abs(v.x) < BEAM_BOX.x && v.y > BEAM_BOX.yMin && v.y < BEAM_BOX.yMax && v.z > BEAM_BOX.zMin && v.z < BEAM_BOX.zMax;
+  houseScene.traverse(o => {
+    if (!o.isMesh || !/^Object_/.test(o.name)) return;
+    const g = o.geometry, pos = g.attributes.position, idx = g.index ? g.index.array : null;
+    const n = idx ? idx.length : pos.count, keep = [];
+    const at = i => inBox(p.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld));
+    let cut = 0;
+    for (let t = 0; t < n; t += 3) {
+      const a = idx ? idx[t] : t, b = idx ? idx[t + 1] : t + 1, c = idx ? idx[t + 2] : t + 2;
+      if (at(a) || at(b) || at(c)) cut++; else keep.push(a, b, c);
+    }
+    if (cut) g.setIndex(keep);
+  });
+}
+// The stairs the set is missing (Jack: "what happened to the stairs that go here"). The gallery is
+// a U — a back run and two side arms that come downstage and end in railed platforms at x ±3.5..4.5,
+// z 0.5..2.0 (gallery floor y 3.00, measured off ham_plank) — and the model gives those platforms no
+// way down. One open flight each, like the set's own centre stair: treads on two stringers, a rail
+// either side, from the platform's inner edge down to the deck toward centre stage, 12 risers, in
+// the set's plank material. World metres at the fitted placement; hidden at real size.
+const sideStairs = new THREE.Group(); scene.add(sideStairs);
+function buildSideStairs(root) {
+  let plank = null; root.traverse(o => { if (o.isMesh && o.name === 'ham_plank') plank = o.material; });
+  if (!plank) return;
+  const top = 3.0, deck = HOUSE.deckY, n = 12, rise = (top - deck) / n, run = 0.24, w = 0.85, zc = 1.15;
+  const box = (sx, sy, sz, x, y, z, rz) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), plank);
+    m.position.set(x, y, z); if (rz) m.rotation.z = rz; m.castShadow = m.receiveShadow = true;
+    sideStairs.add(m); return m;
+  };
+  for (const side of [-1, 1]) {
+    const xTop = side * 3.5;                                          // platform's inner edge
+    const len = Math.hypot(n * run, top - deck), ang = side * Math.atan2(top - deck, n * run);
+    const xm = xTop - side * n * run / 2, ym = (top + deck) / 2;
+    for (let i = 0; i < n; i++)                                       // treads, i = 0 at the top
+      box(run, 0.05, w, xTop - side * run * (i + 0.5), top - rise * i - 0.025, zc);
+    for (const zs of [-1, 1]) {
+      box(len, 0.28, 0.06, xm, ym - 0.16, zc + zs * (w / 2 - 0.03), ang);       // stringer
+      box(len, 0.06, 0.06, xm, ym + 0.95, zc + zs * (w / 2 + 0.03), ang);       // rail
+      for (let k = 0; k <= 3; k++) {                                            // balusters
+        const t = k / 3;
+        box(0.05, 0.95, 0.05, xTop - side * n * run * t, top - (top - deck) * t + 0.475, zc + zs * (w / 2 + 0.03));
+      }
+    }
   }
 }
 function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
@@ -282,7 +323,7 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
     houseMesh[o.name] = o;
   });
   applyBright();
-  fillStairs(house.scene);
+  cutBeams(house.scene);
   scene.add(house.scene);
   // Set: seated like the game does (p5i hamApplyModel) — centred on x, its lowest point on the deck —
   // then turned to face the house, because this house's upstage is +z.
@@ -295,10 +336,10 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   root.traverse(o => {
     if (!o.isMesh) return;
     o.castShadow = true; o.receiveShadow = true;
-    if (o.name === 'ham_iron') o.visible = false;    // the two hanging I-beams (and the sconce blocks) — Jack: "remove the metal beam"
   });
   const turned = new THREE.Group(); turned.rotation.y = Math.PI; turned.add(root);
   setGroup.add(turned);
+  buildSideStairs(root);
   placeSet(SET.fit);
   window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE };   // a handle for measuring from the console
   document.getElementById('load').hidden = true;

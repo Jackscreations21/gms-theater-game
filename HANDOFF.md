@@ -249,17 +249,28 @@ was built instead of the game: `midtown.html`, the Midtown scan unlit (as `tools
 draws it) with `assets/hamilton-set.glb` seated on its deck the way `p5i hamApplyModel` does, turned
 180° because this GLB's upstage is +z, lit by a hemisphere fill, two FOH spots and two over-stage
 specials with shadows; orbit or drag-to-look walking (no pointer lock), six viewpoints, a
-`window.MIDTOWN` console handle. Five rounds of his, made while he watched the pane: the proscenium
-to the front of the stage (its six nodes slide, the ceiling/skirts/fly walls/roof stretch along z to
-the new plane); the opening fitted round the set — first by re-spanning the GLB's pier and header
-planes, which he read as *"you just removed the proscenium"* because they are the wall's own flat
-grey, so `frameArch` now hides those and builds a real frame (1.3 m piers and header, 0.5 m deep,
-its own material, opening x ±5.6 / top y 6.9, wall strips to the house either side); the two corner
-stairs filled in — first as clean steps (*"the stairs are still there"*), then as one block each from
-the house floor to deck height over the stair and the strip to the deck (footprints measured off the
-scan's vertices: treads x −5.4..−3.5 and 3.5..5.4, z −2.9..−2.0), corners squared off; and the set's
-`ham_iron` mesh hidden (*"remove the metal beam"* — the two hanging I-beams; the sconce blocks go
-with it, same mesh). The set is 17.3 m wide against
+`window.MIDTOWN` console handle. Several rounds of his, made while he watched the pane, two of
+them spent on misreadings worth recording. The proscenium to the front of the stage (its six nodes
+slide, the ceiling/skirts/fly walls/roof stretch along z to the new plane). The opening fitted round
+the set — re-spanning the GLB's pier and header planes read as *"you just removed the proscenium"*
+(they are the wall's own flat grey), a dark lit frame read as *"still no proscenium"*, so `frameArch`
+now hides the planes and builds a frame of 1.5 m piers and header, 0.6 m deep, **in the proscenium
+wall's own unlit material** (opening x ±5.6 / top y 6.9, wall strips to the house either side) — that
+one he could see. *"Fill in the stairs on the front of the stage"* was read as the scan's two corner
+steps, which got filled twice (steps, then blocks: *"what are these blocks"*); he meant the SET's side
+staircases at the gallery ends — which the ETC model simply does not have: the gallery is a U, its two
+arms come downstage and end in railed platforms (x ±3.5..4.5, z 0.5..2.0, floor y 3.00, measured off
+`ham_plank`) with no way down. `buildSideStairs` adds an open flight each, like the set's own centre
+stair: treads on two stringers, a rail either side, 12 risers, plank material, down toward centre
+stage; a first solid-wedge version dominated the house view and was replaced. (`ham_iron`, hidden for
+a round on the theory it held the beams, is only the posts' foot blocks.) The scan's corner steps are
+back untouched.
+*"Remove the metal beam"*: not the set's — hiding or cutting every set mesh left it standing. It is
+the **scan's** hanging iron over the stage (pipes, a cross bar, two beams on cables, kept upstage of
+the wall below the fly cut); `cutBeams` drops every scan triangle with a vertex in a box over the
+stage (|x| < 5.2, y 3.0..6.3, z 2.4..8.6). Lesson for TRAPS-by-another-name: with two models in
+one scene, **find which model a thing belongs to before touching either** — hide meshes one at a
+time and look. The set is 17.3 m wide against
 the scanned side walls, so "Set fitted" is scale 0.62 and "Real size" is 1:1 through the walls.
 
 Nothing in `src/`; `the-house.html` and `docs/ARTNET.md` untouched. Suites with the portable Node:
