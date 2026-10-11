@@ -13,9 +13,11 @@
 
   Coordinates are the Midtown GLB's (Y up, metres): the deck is y 0.80, the proscenium plane z 2.30,
   the back brick z 8.90, so UPSTAGE IS +Z here (the game's convention is the opposite, and the set
-  model is built to the game's, so it is turned 180° to face the house). The set is 17.3 m wide at
-  real size against an 8.6 m opening and a 6.6 m deep stage, so it is scaled to fit by default —
-  "Real size" shows it at 1:1, through the walls.
+  model is built to the game's, so it is turned 180° to face the house). The set is 17.3 m wide and
+  10.1 m deep at real size, and it loads at REAL SIZE: the house is cut for it at 1:1 (WALL_CUTS,
+  "THE WALLS CUT FOR THE SET" below) — the stage's side walls, the back brick, the proscenium frame
+  and the house's front corners are gone, leaving open holes. The walls that come back are Jack's,
+  to build with Build mode. "Set fitted" still shows it scaled to the old 8.6 m opening, in the cut house.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,8 +86,8 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     <button id="v-lobby">Lobby</button>
   </div>
   <div class="mode" role="group" aria-label="Set size">
-    <button id="s-fit" aria-pressed="true">Set fitted</button>
-    <button id="s-real" aria-pressed="false">Real size</button>
+    <button id="s-fit" aria-pressed="false">Set fitted</button>
+    <button id="s-real" aria-pressed="true">Real size</button>
   </div>
   <div class="mode" role="group" aria-label="Lighting rig">
     <button id="r-rig" aria-pressed="true" disabled title="Hanging the rig…">Rig</button>
@@ -595,9 +597,13 @@ spot(-2.0, 13.0, 6.0, -1, 1, 6.0, 220, 0.5, 0xffd9a8, false);     // over the st
 spot( 2.5, 13.0, 7.5,  1, 1, 6.5, 160, 0.5, 0xc8d8ff, false);     // over the stage, cool
 
 // Set size. The group's transform is the only thing that changes; the model is turned 180° inside it.
-function placeSet(s) {
+// seatSet is the transform alone: the cuts and copies re-seat the set at the scale they were made at.
+function seatSet(s) {
   setGroup.scale.setScalar(s);
   setGroup.position.set(0, HOUSE.deckY, HOUSE.archZ + (SET.upstageOfArch + SET.ttZ) * s);
+}
+function placeSet(s) {
+  seatSet(s);
   document.getElementById('s-fit').setAttribute('aria-pressed', String(s !== 1));
   document.getElementById('s-real').setAttribute('aria-pressed', String(s === 1));
   shadowsDirty(); colliderStale();                         // the walk's floors and walls moved with it
@@ -1843,6 +1849,239 @@ function lobbyHoles(mesh, holes) {
   return true;
 }
 
+/* ---------------------------------------------------------------- HOUSE WORKS: THE WALLS CUT FOR THE SET AT 1:1
+   Jack: "lets change the theater walls so we can fit the hamilton set at full size" — "cut out the area of the
+   walls that needs to be, then i will put walls in that are needed on my own." So this only CUTS: no wall is
+   built back, and the holes stay open for him to close with Build mode. WALL_CUTS are delete boxes in the world
+   frame like BAKED_CUTS, applied in reapplyAll after his and the booth's and the desk's, but each is scoped
+   (`only`): 'house' cuts the scan and the GLB's fills, 'frame' the page's proscenium frame — never the set,
+   never a built or baked piece (his posts, header, masking panel, rail blocks and copied stair all stay; the
+   load-time check below says which of them the 1:1 set now runs into).
+   THE SET AT 1:1, measured in the world after placeSet(1) (wallCheck re-measures it on every load): 17.32 m wide
+   (x ±8.66), 10.07 m deep (z −0.35…9.72), 9.37 m tall (y 0.80…10.17). Downstage of z 1.5 it is the rail at the
+   deck's edge and the set's own portal — posts at x ±6.50…6.73, z 0.08…0.32, a header at y 8.72…9.13, standing
+   on the arch plane (archZ 0.20) — no wider than x ±6.82; upstage of it the galleries and stairs run to x ±8.66
+   and the full height. Its back is 0.82 m through the back brick (z 8.90) and 0.72 m past the end of the deck
+   (z 9.00), over nothing: the deck is Jack's to extend, with the walls.
+   THE MARGINS: 1.0 m in z (downstage and upstage) and in y over the front; the stage box runs to the fly roof.
+   In x 0.80 m, not 1.0: the scan's outer stage walls stand at |x| 9.50–9.60, 0.85–0.95 m off the set's widest
+   point — a 1.0 m box would have cut them in half. They, the fly tower's walls (x −9.8 / 10.0, from y 3.5), its
+   roof, wing_w_top and front_w (x −9.8), void_e and the house's side skirts (x ±9.8 / 10) are outside the
+   boxes and stay. The deck stays: every box starts 5 cm over it (the scan's deck pieces are y 0.81–0.82), and
+   in front of the stage's front face (z −0.41…−0.51) a low box takes the house's piers down to 12 cm over the
+   house floor (y 0.00–0.05), so no stub of them stands in the stalls.
+   CLEAN EDGES: applyCut drops a triangle by its centroid, and a fill is two triangles the size of a wall, so a
+   box would take all of a fill or none. Before the first cut, every house triangle a box takes only part of is
+   split along the box's faces (wallSplit), and the cut takes exactly what is inside — except a triangle that one
+   of the earlier cut boxes (his, the booth's, the desk's) also touches: those are left whole, so what his cuts
+   took is exactly what they took before. A sliver under WALL_SNAP is not split off; it goes with its piece. */
+const WALL_SET = {                  // the set at 1:1, world metres (wallCheck warns if a re-measure disagrees by more than 5 cm)
+  split: 1.5,                       // z: downstage of here the rail and the portal, upstage the galleries
+  front: { z0: -0.35, x: 6.82, top: 9.13 },
+  stage: { z1: 9.72, x: 8.66, top: 10.17 },
+};
+const WALL_MARGIN = { x: 0.80, z: 1.00, y: 1.00 };
+const WALL = { floor: 0.85, houseFloor: 0.12, faceZ: -0.60, flyRoof: 16.0, snap: 0.06 };   // over the deck; over the stalls' floor; in front of the stage's front face; the fly roof; the smallest sliver split off
+const WALL_CUTS = (() => {
+  const S = WALL_SET, m = WALL_MARGIN, r3 = v => +v.toFixed(3);
+  const box = (name, only, x, y0, y1, z0, z1) => ({ name, only, p: [0, (y0 + y1) / 2, (z0 + z1) / 2].map(r3), r: [0, 0, 0], s: [2 * x, y1 - y0, z1 - z0].map(r3) });
+  const fx = S.front.x + m.x, sx = S.stage.x + m.x, z0 = S.front.z0 - m.z, zs = S.split - m.z;
+  return [
+    box('front, over the deck', 'house', fx, WALL.floor, S.front.top + m.y, z0, zs),      // the apron's side walls, the house's piers, the ceiling's front, the arch's walls
+    box('front, in the stalls', 'house', fx, WALL.houseFloor, WALL.floor, z0, WALL.faceZ), // the piers' feet in front of the stage
+    box('stage house', 'house', sx, WALL.floor, WALL.flyRoof - 0.05, zs, S.stage.z1 + m.z), // the side walls, the wings' insides, the back brick and the tower's back
+    box('proscenium frame', 'frame', 7.8, HOUSE.deckY - 0.2, 9.2, HOUSE.archZ - 0.35, HOUSE.archZ + 0.35),   // all of the page's frame (its widest clamp is x ±7.7, its top 9.1): the set's portal stands in both piers and the header
+  ];
+})();
+let wallsCut = [], wallSplitInfo = null;                    // what each wall cut took the last time reapplyAll ran; what wallSplit did
+const cutAABB = c => new THREE.Box3().setFromPoints([0, 1, 2, 3, 4, 5, 6, 7].map(i => new THREE.Vector3(i & 1 ? 0.5 : -0.5, i & 2 ? 0.5 : -0.5, i & 4 ? 0.5 : -0.5)
+  .applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3().fromArray(c.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(c.r[0], c.r[1], c.r[2])), new THREE.Vector3().fromArray(c.s)))));
+// Split the house's triangles along the 'house' wall boxes' faces (see above). Once, at load, before any cut.
+function wallSplit() {
+  const t0 = performance.now(), boxes = WALL_CUTS.filter(c => c.only === 'house').map(cutAABB);
+  const whole = [...BAKED_CUTS, ...BOOTH_CUTS, ...DESK_CUTS].map(c => cutAABB(c).expandByScalar(0.01));
+  scene.updateMatrixWorld(true);
+  const info = { split: 0, made: 0, meshes: [], whole: 0 };
+  houseRoot.traverse(o => {
+    if (!o.isMesh || !o.geometry.attributes.position) return;
+    if (originals.has(o)) { console.warn(`walls: ${o.name} was cut before it could be split — its edges stay ragged`); return; }
+    const r = wallSplitMesh(o, boxes, whole);
+    info.whole += r.whole;
+    if (r.split) { info.split += r.split; info.made += r.made; info.meshes.push(`${o.name} ${r.split}→${r.made}`); }
+  });
+  info.ms = performance.now() - t0;
+  return (wallSplitInfo = info);
+}
+function wallSplitMesh(o, boxes, whole) {
+  const g = o.geometry, pos = g.attributes.position, mw = o.matrixWorld;
+  const idx = g.index ? Array.from(g.index.array) : Array.from({ length: pos.count }, (_, i) => i);
+  const names = Object.keys(g.attributes), attrs = names.map(n => g.attributes[n]), extra = names.map(() => []);
+  const keep = [], W = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], tb = new THREE.Box3();
+  let nv = pos.count, split = 0, made = 0, kept = 0;
+  const vert = (i, w) => ({ w, a: attrs.map(at => { const v = []; for (let k = 0; k < at.itemSize; k++) v.push(at.array[i * at.itemSize + k]); return v; }) });
+  const lerp = (p, q, t) => ({ w: p.w.clone().lerp(q.w, t), a: p.a.map((v, j) => v.map((x, k) => x + (q.a[j][k] - x) * t)) });
+  const clip = (P, ax, c, side) => {                         // Sutherland–Hodgman: the part of convex polygon P on `side` of the plane ax = c
+    const out = [];
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i], q = P[(i + 1) % P.length], dp = (p.w[ax] - c) * side, dq = (q.w[ax] - c) * side;
+      if (dp >= 0) out.push(p);
+      if ((dp >= 0) !== (dq >= 0)) out.push(lerp(p, q, (c - p.w[ax]) / (q.w[ax] - p.w[ax])));
+    }
+    return out;
+  };
+  for (let t = 0; t + 2 < idx.length; t += 3) {
+    const I = [idx[t], idx[t + 1], idx[t + 2]];
+    I.forEach((i, k) => W[k].fromBufferAttribute(pos, i).applyMatrix4(mw));
+    tb.setFromPoints(W);
+    const hit = boxes.filter(b => b.intersectsBox(tb) && !b.containsBox(tb));
+    if (!hit.length) { keep.push(...I); continue; }
+    if (whole.some(w => w.intersectsBox(tb))) { keep.push(...I); kept++; continue; }
+    let polys = [I.map((i, k) => vert(i, W[k].clone()))];
+    for (const b of hit) for (const ax of ['x', 'y', 'z']) for (const c of [b.min[ax], b.max[ax]]) {
+      const next = [];
+      for (const P of polys) {
+        let lo = Infinity, hi = -Infinity;
+        for (const v of P) { lo = Math.min(lo, v.w[ax]); hi = Math.max(hi, v.w[ax]); }
+        if (lo < c - WALL.snap && hi > c + WALL.snap) next.push(clip(P, ax, c, -1), clip(P, ax, c, 1));
+        else next.push(P);
+      }
+      polys = next.filter(P => P.length >= 3);
+    }
+    if (polys.length < 2) { keep.push(...I); continue; }
+    split++;
+    for (const P of polys) for (let k = 1; k + 1 < P.length; k++) {
+      for (const v of [P[0], P[k], P[k + 1]]) v.a.forEach((vals, j) => {
+        if (names[j] === 'normal') { const l = Math.hypot(...vals) || 1; vals = vals.map(x => x / l); }
+        extra[j].push(...vals);
+      });
+      keep.push(nv, nv + 1, nv + 2); nv += 3; made++;
+    }
+  }
+  if (!split) return { split, made, whole: kept };
+  names.forEach((n, j) => {
+    const at = attrs[j], arr = new at.array.constructor(at.array.length + extra[j].length);
+    arr.set(at.array); arr.set(extra[j], at.array.length);
+    g.setAttribute(n, new THREE.BufferAttribute(arr, at.itemSize, at.normalized));
+  });
+  g.setIndex(keep); g.computeBoundingBox(); g.computeBoundingSphere();
+  return { split, made, whole: kept };
+}
+// The cuts' report: each box and what it took, mesh by mesh. One line, at load (MIDTOWN.walls.report() again later).
+function wallReport() {
+  const f = v => v.toFixed(2), sp = wallSplitInfo;
+  return `walls: cut for the set at 1:1 (set x ±${WALL_SET.stage.x}, z ${WALL_SET.front.z0}…${WALL_SET.stage.z1}, top y ${WALL_SET.stage.top}; margins x ${WALL_MARGIN.x}, z ${WALL_MARGIN.z}, y ${WALL_MARGIN.y} m) — `
+    + wallsCut.map(({ cut: c, removed }) => {
+      const b = cutAABB(c), n = Object.values(removed).reduce((a, k) => a + k, 0);
+      return `"${c.name}" [${c.only}] x ${f(b.min.x)}…${f(b.max.x)} y ${f(b.min.y)}…${f(b.max.y)} z ${f(b.min.z)}…${f(b.max.z)}: ${n} triangles`
+        + (n ? ' (' + Object.entries(removed).sort((a, k) => k[1] - a[1]).map(([name, k]) => `${name} ${k}`).join(', ') + ')' : '');
+    }).join('; ')
+    + (sp ? ` · split first: ${sp.split} triangles into ${sp.made} (${sp.meshes.join(', ') || 'none'}), ${sp.whole} left whole where an earlier cut box touches them, ${sp.ms.toFixed(0)} ms` : '');
+}
+// THE CHECK, on every load (MIDTOWN.walls.check() again later): re-measure the set at 1:1; count what of the house is
+// left inside the cut boxes (by centroid: 0, or the cut machinery is broken), what touches the set's own volume (any
+// of seven points of a triangle inside its two zones, 1 cm in: what still collides), and what is left in the plain
+// bounding box plus margins outside the stepped boxes (the front corners: kept on purpose, listed); then which frame
+// pieces, which of Jack's baked pieces and which rig units and structures the set at 1:1 runs into or carries out of the house.
+function wallCheck() {
+  const t0 = performance.now(), was = setGroup.scale.x, S = WALL_SET, m = WALL_MARGIN, f2 = v => v.toFixed(2);
+  if (was !== 1) seatSet(1);
+  scene.updateMatrixWorld(true);
+  const v = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  // 1. the set at 1:1, every drawn vertex (the rig is not the set)
+  const pts = [], all = new THREE.Box3(), fr = { z0: Infinity, x: 0, top: -Infinity }, st = { z1: -Infinity, x: 0, top: -Infinity };
+  setGroup.traverse(o => {
+    if (!o.isMesh || o.userData.rig || !o.geometry.attributes.position) return;
+    const p = o.geometry.attributes.position, idx = o.geometry.index ? o.geometry.index.array : null, seen = new Uint8Array(p.count);
+    for (let k = 0, n = idx ? idx.length : p.count; k < n; k++) {
+      const i = idx ? idx[k] : k; if (seen[i]) continue; seen[i] = 1;
+      v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); pts.push(v.x, v.y, v.z); all.expandByPoint(v);
+      if (v.z < S.split) { fr.z0 = Math.min(fr.z0, v.z); fr.x = Math.max(fr.x, Math.abs(v.x)); fr.top = Math.max(fr.top, v.y); }
+      else { st.z1 = Math.max(st.z1, v.z); st.x = Math.max(st.x, Math.abs(v.x)); st.top = Math.max(st.top, v.y); }
+    }
+  });
+  const off = [['front z0', fr.z0, S.front.z0], ['front x', fr.x, S.front.x], ['front top', fr.top, S.front.top], ['stage z1', st.z1, S.stage.z1], ['stage x', st.x, S.stage.x], ['stage top', st.top, S.stage.top]]
+    .filter(([, got, want]) => Math.abs(got - want) > 0.05).map(([k, got, want]) => `${k} measured ${f2(got)}, the cuts are made for ${want}`);
+  // 2. the house left
+  const boxes = WALL_CUTS.filter(k => k.only === 'house').map(cutAABB);
+  const zones = [new THREE.Box3(new THREE.Vector3(-S.front.x, WALL.floor, S.front.z0), new THREE.Vector3(S.front.x, S.front.top, S.split)),
+    new THREE.Box3(new THREE.Vector3(-S.stage.x, WALL.floor, S.split), new THREE.Vector3(S.stage.x, S.stage.top, S.stage.z1))].map(z => z.expandByScalar(-0.01));
+  const big = new THREE.Box3(new THREE.Vector3(-S.stage.x - m.x, WALL.floor, S.front.z0 - m.z), new THREE.Vector3(S.stage.x + m.x, WALL.flyRoof - 0.05, S.stage.z1 + m.z));
+  const left = { inCuts: 0, touch: 0, corners: 0, touchBy: {}, cornersBy: {} }, samples = [a, b, c, new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  houseRoot.traverse(o => {
+    if (!o.isMesh || !o.geometry.attributes.position) return;
+    const p = o.geometry.attributes.position, idx = o.geometry.index ? o.geometry.index.array : null, n = idx ? idx.length : p.count;
+    for (let t = 0; t + 2 < n; t += 3) {
+      a.fromBufferAttribute(p, idx ? idx[t] : t).applyMatrix4(o.matrixWorld);
+      b.fromBufferAttribute(p, idx ? idx[t + 1] : t + 1).applyMatrix4(o.matrixWorld);
+      c.fromBufferAttribute(p, idx ? idx[t + 2] : t + 2).applyMatrix4(o.matrixWorld);
+      samples[3].copy(a).add(b).add(c).multiplyScalar(1 / 3);
+      samples[4].copy(a).add(b).multiplyScalar(0.5); samples[5].copy(b).add(c).multiplyScalar(0.5); samples[6].copy(c).add(a).multiplyScalar(0.5);
+      const cen = samples[3];
+      if (boxes.some(k => k.containsPoint(cen))) left.inCuts++;
+      if (samples.some(s => zones.some(z => z.containsPoint(s)))) { left.touch++; left.touchBy[o.name] = (left.touchBy[o.name] || 0) + 1; }
+      else if (big.containsPoint(cen) && !boxes.some(k => k.containsPoint(cen))) { left.corners++; left.cornersBy[o.name] = (left.cornersBy[o.name] || 0) + 1; }
+    }
+  });
+  // 3. pieces the set passes through: the frame (its full boxes, from the geometry, whatever is cut) and Jack's baked pieces
+  const into = obj => {                                       // how many of the set's vertices lie inside obj's meshes' own boxes
+    let k = 0;
+    obj.traverse(o => {
+      if (!o.isMesh) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      const inv = o.matrixWorld.clone().invert(), bb = o.geometry.boundingBox;
+      for (let i = 0; i < pts.length; i += 3) { v.set(pts[i], pts[i + 1], pts[i + 2]).applyMatrix4(inv); if (bb.containsPoint(v)) k++; }
+    });
+    return k;
+  };
+  const frame = scene.children.filter(o => o.name === 'proscenium' || o.name === 'pros_wall').map(o => {
+    const bb = new THREE.Box3().setFromObject(o);
+    return { name: `${o.name} x ${f2(bb.min.x)}…${f2(bb.max.x)} y ${f2(bb.min.y)}…${f2(bb.max.y)}`, set: into(o), left: o.geometry.index ? o.geometry.index.count / 3 : 12 };
+  });
+  const bakedHits = baked.children.map(o => ({ name: o.name, at: o.position.toArray().map(f2).join(', '), set: into(o) }));
+  // 4. the rig at 1:1: units whose hang point, and structures whose box, leave the house (beyond its fills, or over the
+  // house ceiling in front of the arch; the back brick being cut, "beyond z 9.1" is where the tower's back wall was)
+  const shell = p => p.x < -9.8 || p.x > 10 || p.y > WALL.flyRoof || p.z > 9.1 || p.z < -14.9 || (p.z < HOUSE.archZ && p.y > 8.05);
+  const rigOut = { units: 0, byPos: {}, structures: [], fixedToCut: [] };
+  const corners = bb => [0, 1, 2, 3, 4, 5, 6, 7].map(i => new THREE.Vector3(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z));
+  if (rig) for (const o of rig.children) {
+    if (o.isLOD) { if (shell(o.getWorldPosition(v))) { rigOut.units++; const k = o.userData.position || o.userData.type; rigOut.byPos[k] = (rigOut.byPos[k] || 0) + 1; } }
+    else if (o.isMesh) {
+      const bb = new THREE.Box3().setFromObject(o);
+      if (corners(bb).some(shell)) rigOut.structures.push(`${o.name} (x ${f2(bb.min.x)}…${f2(bb.max.x)} y ${f2(bb.min.y)}…${f2(bb.max.y)} z ${f2(bb.min.z)}…${f2(bb.max.z)})`);
+    }
+  }
+  // and, fitted (where they were built), the structures whose fixing is in a cut: a boom's wall point, the top ends of
+  // cables and hangers, the ends of the grid's pipes. Fitted, those now hang from nothing; at 1:1 they never met the house.
+  if (rig) atSetScale(SET.fit, () => {
+    for (const o of rig.children) {
+      if (!o.isMesh || o.userData.tower) continue;
+      const bb = new THREE.Box3().setFromObject(o), p = o.geometry.attributes.position, ends = [];
+      if (o.userData.boom && Number.isFinite(o.userData.wallX)) ends.push(new THREE.Vector3(o.userData.wallX, (bb.min.y + bb.max.y) / 2, (bb.min.z + bb.max.z) / 2));
+      else if (/cables|hangers|pipes/.test(o.name)) for (let i = 0; i < p.count; i++) {
+        v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
+        if (/pipes/.test(o.name) ? v.x < bb.min.x + 0.05 || v.x > bb.max.x - 0.05 : v.y > bb.max.y - 0.05) ends.push(v.clone());
+      }
+      const n = ends.filter(e => boxes.some(k => k.containsPoint(e))).length;
+      if (n) rigOut.fixedToCut.push(`${o.name} (${o.userData.boom ? 'its wall' : `${n} of ${ends.length} end points`})`);
+    }
+  });
+  if (was !== 1) { seatSet(was); scene.updateMatrixWorld(true); }
+  const list = o => Object.entries(o).sort((x, y) => y[1] - x[1]).map(([k, n]) => `${k} ${n}`).join(', ');
+  const res = { set: { box: all, front: fr, stage: st }, left, frame, baked: bakedHits, rig: rigOut, ms: performance.now() - t0 };
+  console.info(`walls: check at 1:1 — the set x ${f2(all.min.x)}…${f2(all.max.x)} (${f2(all.max.x - all.min.x)} m) y ${f2(all.min.y)}…${f2(all.max.y)} z ${f2(all.min.z)}…${f2(all.max.z)} (${f2(all.max.z - all.min.z)} m deep, its back ${f2(all.max.z - HOUSE.backZ)} m past the back brick)`
+    + ` · house triangles left inside the cut boxes: ${left.inCuts}; touching the set's own volume: ${left.touch}${left.touch ? ' (' + list(left.touchBy) + ')' : ''}`
+    + `; in the plain bounding box + margins (to the fly roof) but outside the stepped cuts — the house's front corners beyond x ±${f2(S.front.x + m.x)} and the arch wall over y ${f2(S.front.top + m.y)}, downstage of the set's galleries, kept on purpose: ${left.corners}${left.corners ? ' (' + list(left.cornersBy) + ')' : ''}`
+    + ` · the frame: ${frame.map(k => `${k.name} — the set passes through it (${k.set} vertices), ${k.left} triangles left`).join('; ') || 'none'}`
+    + ` · Jack's baked pieces the set runs into: ${bakedHits.filter(k => k.set).map(k => `${k.name} at (${k.at}) — ${k.set} set vertices inside`).join('; ') || 'none'}`
+    + ` · the rig at 1:1: ${rigOut.units} unit${rigOut.units === 1 ? '' : 's'} hang outside the house${rigOut.units ? ' (' + list(rigOut.byPos) + ')' : ''}; structures reaching outside it: ${rigOut.structures.join(', ') || 'none'}`
+    + `; fitted, fixed to house that is now cut: ${rigOut.fixedToCut.join(', ') || 'none'}`
+    + ` · ${res.ms.toFixed(0)} ms`);
+  for (const w of off) console.warn('walls: the set at 1:1 ' + w + ' — check WALL_SET');
+  if (left.inCuts) console.warn(`walls: ${left.inCuts} house triangles are still inside the wall cuts — the cut did not apply`);
+  if (frame.some(k => !k.set && k.left === 0)) console.warn('walls: a frame piece the set does not pass through was cut — check the proscenium frame cut');
+  return res;
+}
+
 // Loading, with one bar across both files.
 const bar = document.querySelector('#bar i'), loadtxt = document.getElementById('loadtxt');
 const SIZES = { 'assets/midtown-auditorium.glb': 13.6e6, 'assets/hamilton-set.glb': 7.1e6 };
@@ -1969,6 +2208,8 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   } else rigBtn.title = `No rig: ${RIG_URL} was not found`;
   const turned = new THREE.Group(); turned.rotation.y = Math.PI; turned.add(root);
   setGroup.add(turned);
+  // Fitted while the rig's structures, the booth, the desk and the lobby measure the uncut house and the baked copy is
+  // taken: they were all made against the fitted set and still are. Real size, the page's default, comes at the end.
   placeSet(SET.fit);
   root.updateMatrixWorld(true);
   if (rig) { fitBoomsToWalls(house.scene); buildHangingTrusses(house.scene); buildWingTowers(house.scene); }
@@ -1980,8 +2221,14 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   // The baked pieces first (a baked copy is taken off the pristine geometry), then the saved build, then
   // the cuts exactly once: restore() of a saved build already ends in reapplyAll(), so it runs here only
   // when there was no save to restore (or it failed before getting there).
-  fillTexSelect(); restore({ pieces: BAKED }, baked); if (!loadSaved()) reapplyAll();
+  // The walls for the set at 1:1: split along the cut boxes before the first cut (the copy above is taken first, off
+  // the geometry as it was), cut in reapplyAll with his, reported, then the set goes to real size and is checked.
+  fillTexSelect(); restore({ pieces: BAKED }, baked); wallSplit(); if (!loadSaved()) reapplyAll();
+  console.info(wallReport());
+  placeSet(1);
+  const wallChecked = wallCheck();
   window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty,
+    walls: { cuts: WALL_CUTS, set: WALL_SET, margin: WALL_MARGIN, split: wallSplitInfo, report: wallReport, check: wallCheck, checked: wallChecked, placeSet },
     lobby: { group: lobby, spec: LOBBY, measured: lobby.userData.measured, lights: lobby.userData.lights, triangles: lobby.userData.triangles },
     player, walk: { WALK, keys, setMode, step: walkStep, groundAt, rayDown, rayUp, rayH, col, perf: walkPerf, look: (y, p) => { yaw = y; pitch = p; } } };   // a handle for measuring from the console
   const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t); orbit.update();
@@ -2193,22 +2440,36 @@ cutBox.name = 'delete box'; cutBox.userData = { cutter: true }; cutBox.visible =
 scene.add(cutBox);
 let cuts = [];                                               // this session's confirmed boxes
 const originals = new Map();                                 // mesh -> original index (array) or null (was non-indexed)
-function cuttables() {
+// only: undefined → everything (his boxes); 'house' → the scan and the fills; 'frame' → the page's proscenium frame (the wall cuts)
+function cuttables(only) {
   const list = [];
   const take = o => { if (o.isMesh && !o.userData.cutter && !o.userData.piece && !o.userData.rig && o.geometry.attributes.position) list.push(o); };   // never the rig: it is not scenery to cut or copy
-  if (houseRoot) houseRoot.traverse(take); setGroup.traverse(take);
-  scene.children.forEach(o => { if (o.name === 'proscenium' || o.name === 'pros_wall') take(o); });
+  if (houseRoot && only !== 'frame') houseRoot.traverse(take);
+  if (!only) setGroup.traverse(take);
+  if (only !== 'house') scene.children.forEach(o => { if (o.name === 'proscenium' || o.name === 'pros_wall') take(o); });
   return list;
+}
+// A box made on the set takes what was inside it AT THE SCALE IT WAS MADE: c.set (his and the booth's and the desk's,
+// all made fitted, have none and mean SET.fit). Re-applied at another scale it would take a different part of the set.
+function atSetScale(s, f) {
+  const was = setGroup.scale.x;
+  if (s !== was) { seatSet(s); scene.updateMatrixWorld(true); }
+  try { return f(); } finally { if (s !== was) { seatSet(was); scene.updateMatrixWorld(true); } }
 }
 function cutMatrix(c) {
   const m = new THREE.Matrix4().compose(new THREE.Vector3().fromArray(c.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(c.r[0], c.r[1], c.r[2])), new THREE.Vector3().fromArray(c.s));
   return m.invert();
 }
+// → { mesh name: triangles cut } (a wall cut's report)
 function applyCut(c) {
+  if (!c.only) return atSetScale(c.set || SET.fit, () => cutAt(c));   // a scoped cut never touches the set
+  return cutAt(c);
+}
+function cutAt(c) {
   scene.updateMatrixWorld(true);                             // before the first frame the set's matrices are stale
-  const inv = cutMatrix(c), p = new THREE.Vector3(), q = new THREE.Vector3();
+  const inv = cutMatrix(c), p = new THREE.Vector3(), q = new THREE.Vector3(), removed = {};
   const inside = v => { q.copy(v).applyMatrix4(inv); return Math.abs(q.x) <= 0.5 && Math.abs(q.y) <= 0.5 && Math.abs(q.z) <= 0.5; };
-  for (const o of cuttables()) {
+  for (const o of cuttables(c.only)) {
     o.updateMatrixWorld(true);
     const g = o.geometry, pos = g.attributes.position, idx = g.index ? g.index.array : null;
     if (!originals.has(o)) originals.set(o, idx ? Array.from(idx) : null);
@@ -2220,17 +2481,20 @@ function applyCut(c) {
       p.copy(a).add(b).add(d).multiplyScalar(1 / 3).applyMatrix4(o.matrixWorld);
       if (inside(p)) cut++; else keep.push(ia, ib, ic);
     }
-    if (cut) g.setIndex(keep);
+    if (cut) { g.setIndex(keep); removed[o.name] = (removed[o.name] || 0) + cut; }
   }
-  for (const grp of [built, baked]) for (const o of [...grp.children]) {
+  if (!c.only) for (const grp of [built, baked]) for (const o of [...grp.children]) {
     if (inside(o.getWorldPosition(p))) { if (o === selected) select(null); grp.remove(o); }
   }
+  return removed;
 }
 function reapplyAll() {
   for (const [o, orig] of originals) { if (orig) o.geometry.setIndex(orig.slice()); else o.geometry.setIndex(null); }
-  for (const c of [...BAKED_CUTS, ...BOOTH_CUTS, ...DESK_CUTS, ...cuts]) applyCut(c);
+  for (const c of [...BAKED_CUTS, ...BOOTH_CUTS, ...DESK_CUTS]) applyCut(c);
+  wallsCut = WALL_CUTS.map(c => ({ cut: c, removed: applyCut(c) }));   // the house cut for the set at 1:1, after his boxes and before this session's
+  for (const c of cuts) applyCut(c);
   shadowsDirty(); colliderStale();                           // cut geometry casts differently, and is walked differently
-  B('b-cutn').textContent = `${cuts.length} delete${cuts.length === 1 ? '' : 's'} this session` + (BAKED_CUTS.length ? `, ${BAKED_CUTS.length} baked` : '') + '. Move and scale the red box, then Confirm (or Enter).';
+  B('b-cutn').textContent = `${cuts.length} delete${cuts.length === 1 ? '' : 's'} this session` + (BAKED_CUTS.length ? `, ${BAKED_CUTS.length} baked` : '') + `, ${WALL_CUTS.length} wall cuts for the set at 1:1. Move and scale the red box, then Confirm (or Enter).`;
 }
 function placeCutBox() {
   const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -2241,7 +2505,7 @@ function placeCutBox() {
 }
 function confirmCut() {
   if (!cutBox.visible) { placeCutBox(); B('b-cutn').textContent = 'Box placed — move and scale it over the area, then press Delete area again (or Enter).'; return; }
-  const c = { p: cutBox.position.toArray().map(x => +x.toFixed(3)), r: cutBox.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: cutBox.scale.toArray().map(x => +x.toFixed(3)) };
+  const c = { p: cutBox.position.toArray().map(x => +x.toFixed(3)), r: cutBox.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: cutBox.scale.toArray().map(x => +x.toFixed(3)), set: +setGroup.scale.x.toFixed(3) };
   cuts.push(c); applyCut(c);
   cutBox.visible = false; select(null); reapplyAll(); markDirty();
 }
@@ -2252,7 +2516,8 @@ function cancelCut() { cutBox.visible = false; requestRender(); if (selected ===
 // its rotation the piece's rotation, so the piece lands exactly where the box was and moves from
 // there). Pieces centred inside are cloned into it too. A copy is saved as the box it came from
 // ({src: {p, r, s}}) and rebuilt from the models on load, before any delete is applied.
-function makeCopy(src) {
+function makeCopy(src) { return atSetScale(src.set || SET.fit, () => copyAt(src)); }   // the set as it stood when the copy was made (none given: fitted)
+function copyAt(src) {
   const frame = new THREE.Matrix4().compose(new THREE.Vector3().fromArray(src.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(src.r[0], src.r[1], src.r[2])), new THREE.Vector3(1, 1, 1));
   const toLocal = frame.clone().invert(), inv = cutMatrix(src);
   scene.updateMatrixWorld(true);                             // before the first frame the set's matrices are stale
@@ -2292,7 +2557,7 @@ function makeCopy(src) {
 }
 function confirmCopy() {
   if (!cutBox.visible) { placeCutBox(); B('b-cutn').textContent = 'Box placed — move and scale it over the area, then press Copy area again (or C).'; return; }
-  const src = { p: cutBox.position.toArray().map(x => +x.toFixed(3)), r: cutBox.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: cutBox.scale.toArray().map(x => +x.toFixed(3)) };
+  const src = { p: cutBox.position.toArray().map(x => +x.toFixed(3)), r: cutBox.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: cutBox.scale.toArray().map(x => +x.toFixed(3)), set: +setGroup.scale.x.toFixed(3) };
   cutBox.visible = false;
   const g = makeCopy(src);
   if (!g.children.length) { built.remove(g); B('b-cutn').textContent = 'Nothing inside that box to copy — make it bigger or move it onto something.'; select(null); return; }
