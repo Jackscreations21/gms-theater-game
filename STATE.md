@@ -1,7 +1,52 @@
-# STATE — 2026-10-10 (A SCANNED AUDITORIUM, EDITED, NOT YET IN THE GAME)
+# STATE — 2026-10-11 (THE HAMILTON SET IS A MODEL ON THE STAGE)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-11, the Hamilton set (branch `hamilton-set`, RULING FE)
+
+- **RULING FE (Jack, 2026-10-11): "can you put the set model onto the stage."**
+  HAMILTON is now *modelled on the production* — AV's repeal of AO extends to
+  it, scoped to it; the other three shows still carry the interpretation note
+  and `beetlejuice.js` pins that. The set is the model ETC ships inside the
+  *Hamilton Programming Project* (Rod Lemmond's model of David Korins' design,
+  **non-commercial licence** — see `assets/README.md`).
+- **What landed:** `assets/hamilton-set.glb` (65,949 tris, 5 materials, 6.8 MB),
+  built by `tools/blender/hamilton_set.py` from the `Hamilton Full Set` COLLADA
+  inside the show file — the theatre's proscenium, borders and floor stripped,
+  walls brick, flats timber, 400k CAD triangles planar-dissolved to 66k. `p5i`
+  `loadHamiltonSet` fetches it at show load and `hamApplyModel` seats it
+  (metres, deck at 0, x centred, `HAM_MODEL.z` −3.91 so the model's turntable
+  centre lands at **z −2.96**); the hand-built structure is now the **stand-in**
+  (`SHOW.hamStand`, p5f) and leaves with its walkables and lanterns. The
+  revolves moved and shrank to the real turntables, **r 3.82 / 2.59 at z −2.96**,
+  measured off the model's own floor rings; `HAM_MODEL.tt` and `REV` are held
+  together by a test. New cases in `tests/sets.js` (five) plus a node-side read
+  of the GLB's budgets; `beetlejuice.js`'s on-disk check now also accepts
+  `HAM_MODEL` and README-declared third-party files.
+- **Not done, deliberately (FUTURE.md PART 2):** the model is scenery only —
+  no `walk_` meshes, so the galleries and stairs are not climbable (a 66k mesh
+  cannot go on `WALKABLE`; it wants low-poly walk boxes); the lanterns went
+  with the stand-in; textures are generated brick/grain, not photographs; the
+  rig, the cues and the Art-Net patch are untouched.
+- **Finding: `main` had a red suite since #221.** `beetlejuice.js` "every
+  delivered .glb is in the index …" fails on `midtown-auditorium.glb`
+  (committed, fetched by no manifest) and nobody saw it because that round had
+  no Node. Fixed in this branch by letting `assets/README.md` declare a
+  not-yet-wired file; the lesson is in TRAPS.
+- **This machine now has Node**, portable, at
+  `C:\Users\jackf\AppData\Local\Temp\claude\…\scratchpad\node_dl\node-v24.21.0-win-x64`
+  (session scratch — install it properly with `winget install OpenJS.NodeJS.LTS`,
+  and run that yourself, see TRAPS "the sandbox"). `tests/npm install` is done.
+  **Eos Nomad v3.3.10 is installed** (`C:\Program Files\ETC\EosFamily\v3\Eos`).
+- **The Hamilton cue data is exported:** `C:\Users\jackf\Downloads\The Hamilton
+  Programming Project - Intro - Rev A.csv` — 128 distinct cues in 13 islands,
+  111 presets, 659 channels, 200,900 level rows. **It is not the whole show**
+  (about a fifth of the cue stack); FUTURE.md PART 2 has the breakdown and
+  what a reconstruction would mean. Nothing of it is in the repo yet.
+- **Headset run still owed**, as below.
+
+---
 
 ## NEWEST — 2026-10-10, read this before the Art-Net sections below
 

@@ -14,3 +14,11 @@ speakers decimated). Credit, required by its licence:
 > (https://sketchfab.com/3d-models/midtown-atlanta-auditorium-photogrammetry-hd-b5736d651f6347d8a1e146b1ce0ca1eb)
 > by Cody Setchfield (https://sketchfab.com/SMOUSE) licensed under CC-BY-4.0
 > (http://creativecommons.org/licenses/by/4.0/)
+
+`hamilton-set.glb` — WIRED IN (RULING FE, 2026-10-11): `p5i` fetches it when HAMILTON loads and
+it replaces the hand-built stand-in. Built by `tools/blender/hamilton_set.py` from the set model
+inside ETC's *Hamilton Programming Project* (the `Hamilton Full Set` COLLADA inside the show
+file's `working.a3d`): Rod Lemmond's model of David Korins' scenic design, with the theatre's own
+proscenium, borders and floor stripped out, five generated materials, 68k triangles. ETC releases
+the project for **non-commercial use only** (see its Project Guide) — keep that in mind if this
+repository ever goes public. The source file is not committed; the script names where it lives.

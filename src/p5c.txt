@@ -928,6 +928,9 @@ function showLoad(key){
      usual late-part pattern; hooked HERE, after the show's build registered
      its scenes, so loading the show on the other stage fetches there too. */
   if(typeof loadSetModels === 'function') loadSetModels();
+  /* RULING FE — Hamilton's set is a single model with a single stand-in; same
+     shape of hook, same late-part guard, defined beside loadSetModels in p5i */
+  if(typeof loadHamiltonSet === 'function') loadHamiltonSet();
   if(typeof crewForgetLoads === 'function') crewForgetLoads();
   if(typeof refreshShowUI === 'function') refreshShowUI();
   if(typeof refreshCues === 'function') refreshCues();

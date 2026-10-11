@@ -77,11 +77,17 @@ const probe = `
       throw new Error('the note does not say what this show is: '+n);
     if(n.indexOf('not a copy') >= 0)
       throw new Error('the note still disclaims copying, which AV repealed: '+n);
-    for(const k of ['outsiders','lostboys','hamilton','goeswrong']){
+    /* RULING FE (2026-10-11) extended the repeal to HAMILTON — its set is the
+       production's model now — so three shows carry the note, and Hamilton's
+       record has to say what it is instead, exactly as this one does. */
+    for(const k of ['outsiders','lostboys','goeswrong']){
       const o = (SHOWS[k] && SHOWS[k].note || '').toLowerCase();
       if(o.indexOf('not a copy') < 0)
-        throw new Error(k+' lost its interpretation note — AV was scoped to beetlejuice');
+        throw new Error(k+' lost its interpretation note — AV and FE are scoped to two shows');
     }
+    const h = (SHOWS.hamilton.note || '').toLowerCase();
+    if(h.indexOf('modelled on the production') < 0 || h.indexOf('not a copy') >= 0)
+      throw new Error('hamilton does not say it is modelled on the production (FE): '+h);
     return SHOWS.beetlejuice.note;
   });
 
@@ -5092,6 +5098,7 @@ const probe = `
      live when this ran — the AZ tail leaves another show up, and a captured
      reference to CUES would silently be the wrong production's. */
   window.__AZ = {SHOW:SHOW, WALKABLE:WALKABLE, BJ_MODELS:BJ_MODELS, BJ_AUDIO:BJ_AUDIO,
+                 HAM_MODEL:typeof HAM_MODEL === 'undefined' ? undefined : HAM_MODEL,   // RULING FE
                  BJ_TRI_BUDGET:BJ_TRI_BUDGET, BJ_TEX_BUDGET:BJ_TEX_BUDGET,
                  /* RULING BX — the room a set is fitted INTO, not just its width */
                  BJ:BJ, D:D, FIXTURES:FIXTURES,
@@ -5365,9 +5372,19 @@ const wd = setTimeout(() => {
     const untracked = onDisk.filter(f => !tracked.has(f));
     if(untracked.length)
       throw new Error('on disk but not in git, so silently absent on Pages: ' + untracked.join(', '));
-    const unfetched = onDisk.filter(f => !manifest.has(f));
+    /* two more ways a file can be accounted for, both added 2026-10-11: the
+       Hamilton set has a manifest of its own (HAM_MODEL, RULING FE), and a
+       third-party file that is committed but NOT YET WIRED IN is declared as
+       such in assets/README.md — the Midtown scan has stood that way since
+       #221, and this assertion had been failing on it unseen, because that
+       round had no Node to run the suites with.  A glb on disk that neither
+       manifest fetches and the README does not name is still a fault. */
+    if(az.HAM_MODEL) manifest.add(az.HAM_MODEL.url.replace(/^assets\//, ''));
+    const readme = fs.readFileSync(require('path').join(root, 'assets', 'README.md'), 'utf8');
+    const declared = new Set((readme.match(/`([^`]+\.glb)`/g) || []).map(s => s.replace(/`/g, '')));
+    const unfetched = onDisk.filter(f => !manifest.has(f) && !declared.has(f));
     if(unfetched.length)
-      throw new Error('committed but no manifest entry fetches them: ' + unfetched.join(', '));
+      throw new Error('committed but no manifest entry fetches them and assets/README.md does not declare them: ' + unfetched.join(', '));
 
     /* and the bytes have to survive a checkout.  `* text=auto eol=lf` decides
        binary by CONTENT HEURISTIC, and a glb that lost that coin toss would be

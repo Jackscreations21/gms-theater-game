@@ -1260,3 +1260,45 @@ against this list before opening a PR; **add new traps as you hit them.**
   lines became butterflies and a conduit elbow in one corner of the crop became a
   row of brackets across the whole back wall. Crop the feature out, cross-fade
   the edges into each other, and REPEAT.
+
+## The Hamilton set round (2026-10-11)
+
+- **A round that cannot run the suites ships red without knowing it.** #221
+  committed `assets/midtown-auditorium.glb` on a machine with no Node, and
+  `beetlejuice.js` "every delivered .glb is in the index, and assets/ holds
+  nothing the manifest ignores" failed on it from that commit until the next
+  session installed Node and ran `npm test` for an unrelated reason. Two PRs
+  merged on top. **If the suites cannot run, the record must say "not run",
+  never "green", and the first thing the next session with Node does is run
+  them before changing anything.** The assertion now accepts a file that
+  `assets/README.md` declares as third-party and not yet wired in.
+- **Installers launched from the agent's tools cannot write under
+  `AppData\Local`.** The ETC Eos installer failed twice at its Augment3d MSI
+  with Windows Installer **1622** ("cannot open the installation log file"),
+  elevated via `-Verb RunAs` or not; a dummy `msiexec /l*` probe reproduced
+  it — Temp and the `Local` root are writable, any new folder under `Local`
+  is not — and the sandbox-off switch is refused by the permission layer. The
+  identical file double-clicked from Downloads installed first time. **Copy
+  the verified installer to Downloads and ask Jack to run it**; do not spend
+  rounds on the installer.
+- **Blender 5.x has no COLLADA importer** (`bpy.ops.wm.collada_import` is
+  gone). `tools/blender/hamilton_set.py` parses the DAE itself — an Assimp
+  export is flat enough (one node, `<polylist>`/`<triangles>`, a node matrix
+  carrying the mm→m scale) that 60 lines of `xml.etree` do it. Bind materials
+  **per `instance_geometry`**, not from one global symbol table: every geometry
+  reuses the same symbol names, and a global dict collapses ten materials into
+  one.
+- **The agent's Bash tool truncates a long heredoc and reports `unexpected EOF
+  while looking for matching quote`** at a line number inside the heredoc.
+  Twice in one session, both past ~100 lines, both with a correctly quoted
+  `<<'EOF'`. Write the file with the file tool and run it; keep heredocs short.
+- **A floor filter at y = 0 removes the underside of the slab and leaves its
+  top.** The Hamilton deck is 0.2 m thick; "all three corners within 3 cm of
+  zero" dropped the bottom face and the first render still had a brick floor
+  with the apron curve. Filter on "all corners below the slab's top" and let
+  the wall faces, which span far taller, survive.
+- **A linked texture exports with `baseColorFactor` 1.** Setting a material's
+  Base Color and then linking an image to it exports the image and forgets the
+  colour, so three timbers in three tones came out as one pale grain. Bake the
+  tone into a per-material copy of the map (or use a Mix node the exporter
+  understands).
