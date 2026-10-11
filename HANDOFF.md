@@ -273,8 +273,39 @@ rebuilds from source; the first-pass fills are unchanged where they worked):
 rear doorways Jack chose to leave open. The last three graze the stage-left wall
 top under the fly-tower fill. Face count 64,563; still 17 materials.
 
-**Delivered:** six 1080p renders in chat, and the walkthrough viewer re-exported
-and published as an artifact (https://claude.ai/artifact/LwSoKjQ911xowE1DQa4syv).
+**Delivered:** six 1080p renders in chat, the walkthrough viewer re-exported, and
+**a markup tool**, `tools/midtown-viewer/markup.html`, published as the artifact
+https://claude.ai/artifact/LwSoKjQ911xowE1DQa4syv (the plain viewer is still
+`index.html`). Jack clicks the model with one of three tools — **Delete** cuts a
+sphere out of whatever he clicks (previewed live by rebuilding the mesh's index
+buffer), **Retexture** swaps a filled panel's tile (the scan's own pieces refuse
+it), **Fix this** drops a pin with a note — and every edit is written to the
+artifact's `db` as a document in the `edits` collection: `{kind, mesh, point
+(glTF), blender (x, y, z in the Blender frame, 3 dp), radius | texture, note,
+created}`. **To apply his edits at source, read that collection** (`ArtifactData`
+list `edits` on the URL above) and turn each into a rule in `midtown_theatre.py`:
+a `delete` is a sphere to drop faces inside (mesh names are the GLB node names,
+`Object_N` for scan pieces), a `retexture` is a `material(...)` swap on the named
+`box_*` panel, a `fix` is a note at a point. Served from a plain file the page
+runs without the store and says so (edits then live in the tab only).
+
+**Round 1 of his edits, applied the same evening and cleared from the list:**
+four Delete clicks on the speaker arrays (read as "remove the arrays", not
+"carve 0.5 m spheres out of four boxes": all nine `Material.002` objects go,
+59k faces, 16 materials now) and two "hole" pins, one each side of the
+proscenium at 4.5–5.4 m. Neither was an opening — the raycast still says 501 —
+they were **slits beside the piers**: the piers stopped at the stage side walls
+(x ±5.9), the house's return walls sit outboard of that, and from the house
+you saw the brick (left) and the void panel (right) through the gap. `PIER_X0/X1`
+are now −6.6 / 6.4 so the piers run behind the return walls.
+
+**Round 2 (two screenshots, "fix these holes on both sides"):** the recesses
+above the louvre vents either side of the proscenium. The scan's vent walls
+(y ≈ −2.2) stop at the vent tops, ~4.5 m; above that each recess has a soffit
+at 6.2 m and nothing behind, so from the seats you looked through into the fly
+tower (a seat-to-recess ray probe hit `fly_wall_w/e` and `back_brick_hi` 350–600
+times a side; after the fix, never). `pros_outer_l/r`: wall-grey strips in the
+proscenium plane from `VENT_TOP` 4.3 m to the ceiling, outboard of the piers.
 
 **Traps hit, now in TRAPS.md:** a texture's MIRROR extension is not a free
 seamless tile; and renders only audit what the camera sees.

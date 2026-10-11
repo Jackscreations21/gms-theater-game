@@ -495,7 +495,7 @@ volumetric beams, haze, grade, metals-only PMREM), and **VR already over budget*
   plaster texture would improve. Open questions for Jack: **which venue does it
   become** (replace the Palace auditorium? a third venue? the Arc Studio?), **the fly
   rail** he wants in its new fly tower (opening 8.6 m × 4.4 m, roof 16 m), and the
-  **17 materials against the 8 budget** — merge before it goes in.
+  **16 materials against the 8 budget** — merge before it goes in.
 - **Options he was given, ranked** (none chosen yet): a desktop-only composer pass
   (bloom + AO + SMAA; VR keeps glow planes — relaxes RULING DN on desktop only);
   canvas-generated normal/roughness maps from the existing canvas textures (keeps

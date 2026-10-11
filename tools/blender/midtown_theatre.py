@@ -27,7 +27,9 @@ SRC_DIR = os.path.dirname(os.path.abspath(src))
 PROS_Y = -2.30            # proscenium wall plane, just downstage of the scanned curtain legs (y ~ -2.5)
 OPEN_X0, OPEN_X1 = -4.30, 4.30   # proscenium opening, inside edges of the old legs
 OPEN_TOP = 5.20           # opening height above the house floor
-PIER_X0, PIER_X1 = -5.95, 5.65   # stage side walls either side of the opening
+PIER_X0, PIER_X1 = -6.6, 6.4     # piers run past the stage side walls (x -5.94 / +5.62) and behind the
+                                 # house's return walls: at their old width a slit beside each pier
+                                 # showed the brick (left) and the void panel (right) from the house
 FLY_CUT = 6.20            # scan geometry above this, upstage of the wall, is removed
 FLY_TOP = 16.0            # fly tower roof
 BACK_Y = -8.90            # the plane of the real scanned brick (y -8.85..-8.98), so the fill is flush with it
@@ -45,6 +47,12 @@ rng = np.random.default_rng(7)
 for n in ('Object_2', 'Object_3'):       # the logo screen overlay
     o = bpy.data.objects.get(n)
     if o: bpy.data.objects.remove(o, do_unlink=True)
+# The two speaker arrays over the proscenium and their fly bar (Object_16..24, the only users of
+# Material.002): Jack marked them for deletion in the markup tool (2026-10-11). The game hangs
+# its own PA.
+for o in [o for o in bpy.context.scene.objects if o.type == 'MESH' and o.material_slots
+          and o.material_slots[0].material and o.material_slots[0].material.name.startswith('Material.002')]:
+    bpy.data.objects.remove(o, do_unlink=True)
 
 def meshes():
     return [o for o in bpy.context.scene.objects if o.type == 'MESH']
@@ -329,6 +337,13 @@ BRICK_TILE = (BRICK_TILE[0], BRICK_TILE[0] * bh_ / bw_)
 box_y("pros_pier_l", PROS_Y, PIER_X0, OPEN_X0, DECK_Z - 0.02, HOUSE_TOP, m_wall)
 box_y("pros_pier_r", PROS_Y, OPEN_X1, PIER_X1, DECK_Z - 0.02, HOUSE_TOP, m_wall)
 box_y("pros_header", PROS_Y, OPEN_X0, OPEN_X1, OPEN_TOP, HOUSE_TOP, m_wall)
+# Outboard of the piers the scan's return walls (the ones with the louvre vents, at y ~ -2.2)
+# stop at the vent tops, ~4.5 m; above that each vent sits in a recess with a soffit at 6.2 m
+# and nothing behind it, so from the house you looked through into the wing and the void
+# (Jack, 2026-10-11, "fix these holes on both sides"). A strip closes each recess.
+VENT_TOP = 4.3
+box_y("pros_outer_l", PROS_Y, X0, PIER_X0, VENT_TOP, HOUSE_TOP, m_wall)
+box_y("pros_outer_r", PROS_Y, PIER_X1, X1, VENT_TOP, HOUSE_TOP, m_wall)
 box_y("pros_upper", PROS_Y, X0, X1, HOUSE_TOP, FLY_TOP, m_ceil)
 # Fly tower: side walls and back wall up to the roof, and the roof.
 box_x("fly_wall_w", X0, Y0, PROS_Y, 3.5, FLY_TOP, m_ceil)
