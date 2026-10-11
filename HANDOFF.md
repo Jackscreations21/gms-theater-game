@@ -289,6 +289,16 @@ a `delete` is a sphere to drop faces inside (mesh names are the GLB node names,
 `box_*` panel, a `fix` is a note at a point. Served from a plain file the page
 runs without the store and says so (edits then live in the tab only).
 
+**Round 1 of his edits, applied the same evening and cleared from the list:**
+four Delete clicks on the speaker arrays (read as "remove the arrays", not
+"carve 0.5 m spheres out of four boxes": all nine `Material.002` objects go,
+59k faces, 16 materials now) and two "hole" pins, one each side of the
+proscenium at 4.5–5.4 m. Neither was an opening — the raycast still says 501 —
+they were **slits beside the piers**: the piers stopped at the stage side walls
+(x ±5.9), the house's return walls sit outboard of that, and from the house
+you saw the brick (left) and the void panel (right) through the gap. `PIER_X0/X1`
+are now −6.6 / 6.4 so the piers run behind the return walls.
+
 **Traps hit, now in TRAPS.md:** a texture's MIRROR extension is not a free
 seamless tile; and renders only audit what the camera sees.
 
