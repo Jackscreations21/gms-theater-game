@@ -1,7 +1,35 @@
-# STATE — 2026-10-11 (THE HAMILTON RIG HAS ITS FIXTURE MODELS; THE HAMILTON GAME IS BRIEFED, NOT SPECCED)
+# STATE — 2026-10-11 (A MIDTOWN + HAMILTON PREVIEW PAGE IS IN PR; THE HAMILTON GAME IS BRIEFED, NOT SPECCED)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-11 (evening), the Midtown preview page (branch `midtown-preview`, PR #226 OPEN)
+
+- **`main` is `692f3d3`: #225 (`fixture-models`) MERGED by Jack**, on top of #224. The post-merge
+  protocol has NOT been run for either (rebuild byte-identical, map, 21/21, delete the branches).
+- **Jack asked to go into "the new one with the 3d model theater and the hamilton set."** That game is
+  not built (FUTURE.md PART 2), so a PREVIEW page was made: **`midtown.html`** at the repo root — the
+  Midtown scan drawn unlit with `assets/hamilton-set.glb` seated on its deck, turned to face the house,
+  lit, walk or orbit. **PR #226**, https://github.com/Jackscreations21/gms-theater-game/pull/226. On
+  Pages after merge: `https://jackscreations21.github.io/gms-theater-game/midtown.html`.
+- **Three calls he made watching it, all in the page, none in the GLB:** the proscenium moved to the
+  front of the stage (z 0.20 from the GLB's 2.30, the ceiling/skirts/fly walls/roof stretched to meet
+  it); the proscenium rebuilt as a real FRAME round the set (the GLB's flat grey planes read as "no
+  proscenium" when widened — now 1.3 m piers and header, 0.5 m deep, its own material, opening
+  x ±5.6 / top y 6.9); the two corner stairs filled in as one block each, floor to deck, corners
+  squared off (his second round: clean steps were "still there"); the set's `ham_iron` mesh (the two
+  hanging I-beams, plus the sconce blocks) hidden. The set is scaled 0.62 to clear the scanned side
+  walls, with a "Real size" toggle. If the second game wants these in the asset itself, `tools/blender/midtown_theatre.py`'s
+  `PROS_Y`, `OPEN_X0/X1` and `OPEN_TOP` are where they go.
+- **Suites on this tree: 20/21.** The red is `beetlejuice`'s on-disk index check tripping on the **19
+  untracked `assets/fixtures/*.glb`** still sitting in the working tree (his "don't commit the files
+  yet") — not `main`, not the branch. It goes green the moment they are committed or moved out.
+- **Local serving:** `.claude/launch.json` (gitignored) has a `the-house` entry — Python's http.server
+  on 8080 over the repo root; `the-house.html` and `midtown.html` both need http, not file://.
+  Pointer lock fails inside the app's browser pane; a normal browser window at the same URL is fine.
+- **Headset run still owed**, as below.
+
+---
 
 ## NEWEST — 2026-10-11 (later), the fixture models and the Hamilton-game brief (branch `fixture-models`)
 

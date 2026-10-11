@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Midtown House · Hamilton Set</title>
+<!--
+  A PREVIEW of the second game's venue, not the game: the Midtown scan (assets/midtown-auditorium.glb)
+  with the Hamilton set (assets/hamilton-set.glb) seated on its stage. No rig, no desk, no sound, no
+  walkables — look around, that is all. The second game proper is FUTURE.md PART 2 "THE HAMILTON GAME".
+
+  Coordinates are the Midtown GLB's (Y up, metres): the deck is y 0.80, the proscenium plane z 2.30,
+  the back brick z 8.90, so UPSTAGE IS +Z here (the game's convention is the opposite, and the set
+  model is built to the game's, so it is turned 180° to face the house). The set is 17.3 m wide at
+  real size against an 8.6 m opening and a 6.6 m deep stage, so it is scaled to fit by default —
+  "Real size" shows it at 1:1, through the walls.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0d0c0f; --panel: #17151b; --line: #2c2832; --fg: #ebe7ee; --muted: #9a93a1; --accent: #d9b45a;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; display: flex; flex-direction: column; overflow: hidden; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .01em; }
+h1 span { color: var(--muted); font-weight: 400; }
+.views, .mode { display: flex; flex-wrap: wrap; gap: 6px; }
+button { font: 500 13px var(--body); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.bright { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-left: auto; }
+.bright input { width: 110px; accent-color: var(--accent); }
+#stage { position: relative; flex: 1; min-height: 0; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hint { position: absolute; left: 16px; bottom: 14px; font: 12px var(--mono); color: var(--muted); background: rgba(13,12,15,.72); padding: 6px 10px; border-radius: 4px; pointer-events: none; max-width: calc(100% - 32px); }
+.credit { position: absolute; right: 16px; bottom: 14px; font-size: 11px; color: var(--muted); background: rgba(13,12,15,.72); padding: 6px 10px; border-radius: 4px; max-width: min(440px, calc(100% - 32px)); }
+.credit a { color: var(--muted); }
+[hidden] { display: none !important; }
+#load { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg); }
+#load div { display: grid; gap: 10px; width: min(320px, 80%); text-align: center; color: var(--muted); font: 12px var(--mono); }
+#bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+#bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+@media (max-width: 640px) { .credit { display: none; } .bright { margin-left: 0; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Midtown House <span>· the Hamilton set on its stage · preview</span></h1>
+  <div class="views" role="group" aria-label="Viewpoints">
+    <button id="v-back">Back of house</button>
+    <button id="v-front">Front row</button>
+    <button id="v-stage">On stage</button>
+    <button id="v-gallery">Up on the gallery</button>
+    <button id="v-wing">Stage-left wing</button>
+    <button id="v-fly">Fly tower</button>
+  </div>
+  <div class="mode" role="group" aria-label="Set size">
+    <button id="s-fit" aria-pressed="true">Set fitted</button>
+    <button id="s-real" aria-pressed="false">Real size</button>
+  </div>
+  <label class="bright" for="bright">House light <input id="bright" type="range" min="0.4" max="3" step="0.05" value="1.4"></label>
+  <div class="mode" role="group" aria-label="Movement">
+    <button id="m-orbit" aria-pressed="true">Orbit</button>
+    <button id="m-walk" aria-pressed="false">Walk</button>
+  </div>
+</header>
+<div id="stage">
+  <canvas id="c" aria-label="3D model of the theatre with the Hamilton set"></canvas>
+  <div class="hint" id="hint">Drag to look around · scroll or pinch to zoom · right-drag to pan</div>
+  <div class="credit">House: “<a href="https://sketchfab.com/3d-models/midtown-atlanta-auditorium-photogrammetry-hd-b5736d651f6347d8a1e146b1ce0ca1eb" target="_blank" rel="noopener">Midtown Atlanta Auditorium – Photogrammetry (HD)</a>” by Cody Setchfield, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, edited. Set: Rod Lemmond's model of David Korins' design, from ETC's <em>Hamilton Programming Project</em> (non-commercial).</div>
+  <div id="load"><div><span id="loadtxt">Loading the house…</span><div id="bar"><i></i></div></div></div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// The house, measured off the GLB's fill geometry (tools/blender/midtown_theatre.py, exported Y up).
+// ARCH_Z is where the proscenium is PUT, not where the GLB has it (2.30, with 2.65 m of apron in
+// front): Jack wants it at the front of the stage with only a little room before the edge (deck_fill
+// ends at z -0.35). The proscenium nodes slide forward and the ceiling, fly walls and roof stretch to meet it.
+const HOUSE = { deckY: 0.80, glbArchZ: 2.30, archZ: 0.20, backZ: 8.90, openW: 8.6, openTop: 5.20 };
+// The set, in its own frame (the game's: upstage is -z). Turntable centre z +0.95; the game seats
+// that 2.96 m upstage of the arch (p5i HAM_MODEL), so the group lands at archZ + 3.91·s once turned.
+const SET = { ttZ: 0.95, upstageOfArch: 2.96, fit: 0.62 };
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0c0f);
+const camera = new THREE.PerspectiveCamera(65, 1, 0.05, 200);
+const orbit = new OrbitControls(camera, canvas);
+orbit.enableDamping = true; orbit.dampingFactor = 0.08;
+
+// Viewpoints: [eye, look-at], house frame.
+const VIEWS = {
+  'v-back':    [[0, 5.0, -13.5], [0, 2.5, 5]],
+  'v-front':   [[0.6, 0.9, -3.0], [0, 2.4, 6]],
+  'v-stage':   [[1.5, 2.4, 1.0], [-1, 2.6, 5]],
+  'v-gallery': [[-2.6, 4.6, 5.1], [2, 3.0, -1]],
+  'v-wing':    [[-5.6, 2.0, 7.4], [1.5, 2.4, 1.5]],
+  'v-fly':     [[0, 2.0, 1.9], [0, 14, 4]],
+};
+let tween = null;
+function go(id) {
+  const [p, t] = VIEWS[id];
+  if (walking) setMode(false);
+  tween = { t: 0, start: performance.now(), p0: camera.position.clone(), t0: orbit.target.clone(), p1: new THREE.Vector3(...p), t1: new THREE.Vector3(...t) };
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) tween.t = 1;
+}
+Object.keys(VIEWS).forEach(id => document.getElementById(id).addEventListener('click', () => go(id)));
+
+// Walk: drag to look, WASD / arrows to move, Q/E down and up. No pointer lock, so it works in any pane.
+let walking = false, yaw = 0, pitch = 0;
+const keys = new Set();
+const hint = document.getElementById('hint');
+function setMode(walk) {
+  walking = walk;
+  document.getElementById('m-orbit').setAttribute('aria-pressed', String(!walk));
+  document.getElementById('m-walk').setAttribute('aria-pressed', String(walk));
+  orbit.enabled = !walk;
+  const d = new THREE.Vector3(); camera.getWorldDirection(d);
+  if (walk) {
+    yaw = Math.atan2(-d.x, -d.z); pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
+    hint.textContent = 'Drag to look · W A S D or arrows to move · Q / E down and up · Shift to go faster';
+  } else {
+    orbit.target.copy(camera.position).addScaledVector(d, 3);
+    hint.textContent = 'Drag to look around · scroll or pinch to zoom · right-drag to pan';
+  }
+}
+document.getElementById('m-orbit').addEventListener('click', () => setMode(false));
+document.getElementById('m-walk').addEventListener('click', () => setMode(true));
+let drag = null;
+canvas.addEventListener('pointerdown', e => { if (walking) { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); } });
+canvas.addEventListener('pointermove', e => {
+  if (!walking || !drag) return;
+  yaw -= (e.clientX - drag.x) * 0.004; pitch -= (e.clientY - drag.y) * 0.004;
+  pitch = THREE.MathUtils.clamp(pitch, -1.45, 1.45); drag = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointerup', () => { drag = null; });
+addEventListener('keydown', e => { if (walking) { keys.add(e.code); if (e.code.startsWith('Arrow')) e.preventDefault(); } });
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+
+// The house is a photo scan with its lighting baked in: drawn unlit, dimmed by the slider.
+const houseMats = [];
+const bright = document.getElementById('bright');
+function applyBright() { const k = parseFloat(bright.value); houseMats.forEach(m => m.color.copy(m.userData.base).multiplyScalar(k)); }
+bright.addEventListener('input', applyBright);
+
+// The set is lit: a soft fill plus a front-of-house wash and two over-stage specials, all on the set only.
+const setGroup = new THREE.Group();
+scene.add(setGroup);
+scene.add(new THREE.HemisphereLight(0xfff2e0, 0x2a2420, 0.55));
+function spot(x, y, z, tx, ty, tz, intensity, angle, color) {
+  const s = new THREE.SpotLight(color, intensity, 0, angle, 0.45, 1.6);
+  s.position.set(x, y, z); s.target.position.set(tx, ty, tz);
+  s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0005;
+  scene.add(s, s.target); return s;
+}
+spot(-3.5, 7.8, -6.0, 0, 2.5, 5.5, 180, 0.42, 0xffe6c8);   // FOH left
+spot( 3.5, 7.8, -6.0, 0, 2.5, 5.5, 180, 0.42, 0xffe6c8);   // FOH right
+spot(-2.0, 13.0, 6.0, -1, 1, 6.0, 220, 0.5, 0xffd9a8);     // over the stage, warm
+spot( 2.5, 13.0, 7.5,  1, 1, 6.5, 160, 0.5, 0xc8d8ff);     // over the stage, cool
+
+// Set size. The group's transform is the only thing that changes; the model is turned 180° inside it.
+function placeSet(s) {
+  setGroup.scale.setScalar(s);
+  setGroup.position.set(0, HOUSE.deckY, HOUSE.archZ + (SET.upstageOfArch + SET.ttZ) * s);
+  document.getElementById('s-fit').setAttribute('aria-pressed', String(s !== 1));
+  document.getElementById('s-real').setAttribute('aria-pressed', String(s === 1));
+}
+document.getElementById('s-fit').addEventListener('click', () => placeSet(SET.fit));
+document.getElementById('s-real').addEventListener('click', () => placeSet(1));
+
+// Loading, with one bar across both files.
+const bar = document.querySelector('#bar i'), loadtxt = document.getElementById('loadtxt');
+const SIZES = { 'assets/midtown-auditorium.glb': 13.6e6, 'assets/hamilton-set.glb': 7.1e6 };
+const got = {};
+function progress() {
+  const total = Object.values(SIZES).reduce((a, b) => a + b, 0);
+  const done = Object.values(got).reduce((a, b) => a + b, 0);
+  bar.style.width = Math.min(100, done / total * 100).toFixed(0) + '%';
+  loadtxt.textContent = `Loading… ${(done / 1048576).toFixed(1)} of ${(total / 1048576).toFixed(0)} MB`;
+}
+function load(url) {
+  return new Promise((ok, no) => new GLTFLoader().load(url, ok, e => { got[url] = e.loaded; progress(); }, no));
+}
+// The proscenium forward: its six pieces translate; the four boxes that end on the old plane
+// (ceiling and skirts end at it, fly walls and roof start at it) stretch along z to the new one.
+function moveArch(o) {
+  const d = HOUSE.archZ - HOUSE.glbArchZ;
+  if (/^pros_/.test(o.name)) { o.position.z += d; return; }
+  const g = o.geometry; g.computeBoundingBox();
+  const b = g.boundingBox;
+  if (/^(house_ceiling|house_skirt_[ew])$/.test(o.name) && Math.abs(b.max.z - HOUSE.glbArchZ) < 0.01) {
+    const k = (HOUSE.archZ - b.min.z) / (b.max.z - b.min.z);          // ends at the new plane
+    o.scale.z = k; o.position.z = b.min.z * (1 - k);
+  } else if (/^(fly_wall_[ew]|fly_roof)$/.test(o.name) && Math.abs(b.min.z - HOUSE.glbArchZ) < 0.01) {
+    const k = (b.max.z - HOUSE.archZ) / (b.max.z - b.min.z);          // starts at the new plane
+    o.scale.z = k; o.position.z = b.max.z * (1 - k);
+  }
+}
+// The proscenium, fitted round the set. The GLB's piers and header are flat planes in the wall's
+// own grey, so widening them just read as "no proscenium": instead they are hidden and a real frame
+// is built — piers and header FRAME m wide, DEPTH m deep, in a proscenium material of its own,
+// around an opening that clears the set by a margin. The opening is clamped to the house: the piers'
+// outer edges are x -6.6 / 6.4 and the ceiling is y 8.05.
+const FRAME = { w: 1.3, depth: 0.5, color: 0x5a4f48 };
+const houseMesh = {};
+const frameMat = new THREE.MeshStandardMaterial({ color: FRAME.color, roughness: 0.92, metalness: 0 });
+function frameBox(x0, x1, y0, y1) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, FRAME.depth), frameMat);
+  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, HOUSE.archZ);
+  m.castShadow = true; m.receiveShadow = true; m.name = 'proscenium';
+  scene.add(m);
+}
+function frameArch(halfW, top) {
+  halfW = Math.min(halfW, 6.2); top = Math.min(top, 7.6);
+  for (const n of ['pros_pier_l', 'pros_pier_r', 'pros_header']) if (houseMesh[n]) houseMesh[n].visible = false;
+  frameBox(-halfW - FRAME.w, -halfW, HOUSE.deckY - 0.1, top + FRAME.w);     // left pier
+  frameBox(halfW, halfW + FRAME.w, HOUSE.deckY - 0.1, top + FRAME.w);       // right pier
+  frameBox(-halfW - FRAME.w, halfW + FRAME.w, top, top + FRAME.w);          // header
+  // what the GLB's piers covered and the frame does not: wall from the frame's outer edge to the house
+  const wall = houseMesh.pros_outer_l && houseMesh.pros_outer_l.material;
+  if (wall) for (const [x0, x1] of [[-6.6, -halfW - FRAME.w], [halfW + FRAME.w, 6.4]]) {
+    if (x1 - x0 < 0.02) continue;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, 8.05 - HOUSE.deckY), wall);
+    m.position.set((x0 + x1) / 2, (8.05 + HOUSE.deckY) / 2, HOUSE.archZ); m.name = 'pros_wall';
+    scene.add(m);
+  }
+}
+// The two stairs down from the apron's front corners, filled in: one block each, house floor to
+// deck height, over the stair and the strip between it and the deck, in the deck's own material —
+// the corners are squared off. Footprints measured off the scan: treads at x -5.4..-3.5 and
+// 3.5..5.4, z -2.9 (bottom riser) to -2.0; the deck's scanned front is at about z -0.5 there.
+const STAIRS = [[-5.9, -3.4], [3.4, 5.7]];
+function fillStairs(houseScene) {
+  const deck = houseMesh.deck_fill; if (!deck) return;
+  const z0 = -2.95, z1 = -0.30, y0 = -0.06, y1 = HOUSE.deckY + 0.01;
+  for (const [x0, x1] of STAIRS) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), deck.material);
+    m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    m.name = 'stair_fill'; m.receiveShadow = true;
+    houseScene.add(m);
+  }
+}
+function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
+
+(async () => {
+  const [house, set] = await Promise.all([load('assets/midtown-auditorium.glb'), load('assets/hamilton-set.glb')]);
+  // House: unlit, dimmable, catches no light. Side-less faces are left double-sided so the scan's gaps stay closed.
+  house.scene.traverse(o => {
+    if (!o.isMesh) return;
+    const src = o.material;
+    const m = new THREE.MeshBasicMaterial({ map: src.map || null, side: THREE.DoubleSide, toneMapped: false });
+    m.userData.base = src.map ? new THREE.Color(1, 1, 1) : src.color.clone();
+    houseMats.push(m); o.material = m; src.dispose();
+    o.receiveShadow = o.name === 'deck_fill';
+    moveArch(o);
+    houseMesh[o.name] = o;
+  });
+  applyBright();
+  fillStairs(house.scene);
+  scene.add(house.scene);
+  // Set: seated like the game does (p5i hamApplyModel) — centred on x, its lowest point on the deck —
+  // then turned to face the house, because this house's upstage is +z.
+  const root = set.scene;
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  const c = box.getCenter(new THREE.Vector3());
+  root.position.set(-c.x, -box.min.y, 0);
+  frameArch((box.max.x - box.min.x) / 2 * SET.fit + 0.25, HOUSE.deckY + (box.max.y - box.min.y) * SET.fit + 0.3);
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = true; o.receiveShadow = true;
+    if (o.name === 'ham_iron') o.visible = false;    // the two hanging I-beams (and the sconce blocks) — Jack: "remove the metal beam"
+  });
+  const turned = new THREE.Group(); turned.rotation.y = Math.PI; turned.add(root);
+  setGroup.add(turned);
+  placeSet(SET.fit);
+  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE };   // a handle for measuring from the console
+  document.getElementById('load').hidden = true;
+  const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t);
+})().catch(fail);
+
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas.parentElement); resize();
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (tween) {
+    if (tween.t < 1) tween.t = Math.min(1, (performance.now() - tween.start) / 1100);
+    const k = tween.t < .5 ? 2 * tween.t * tween.t : 1 - Math.pow(-2 * tween.t + 2, 2) / 2;
+    camera.position.lerpVectors(tween.p0, tween.p1, k); orbit.target.lerpVectors(tween.t0, tween.t1, k);
+    if (tween.t >= 1) tween = null;
+  }
+  if (walking) {
+    camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 6 : 2.2) * dt;
+    const f = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)), r = new THREE.Vector3(-f.z, 0, f.x);
+    if (keys.has('KeyW') || keys.has('ArrowUp')) camera.position.addScaledVector(f, sp);
+    if (keys.has('KeyS') || keys.has('ArrowDown')) camera.position.addScaledVector(f, -sp);
+    if (keys.has('KeyD') || keys.has('ArrowRight')) camera.position.addScaledVector(r, sp);
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) camera.position.addScaledVector(r, -sp);
+    if (keys.has('KeyE')) camera.position.y += sp;
+    if (keys.has('KeyQ')) camera.position.y -= sp;
+  } else {
+    orbit.update();
+  }
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
