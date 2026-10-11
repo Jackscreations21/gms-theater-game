@@ -5,6 +5,10 @@ fetch`, compare `origin/main`, then read this.
 
 ## NEWEST — 2026-10-11 (night), the first bake and the stairs redone (branch `midtown-preview`, PR #226 OPEN, 10 commits)
 
+- **Second bake (pasted JSON): appended** as `(bake 2)` — a rail-grain strip house left, and the set's
+  own stair COPIED (the copy tool's first real use) to house right at x 2.13 / z 2.05, turned 90°,
+  with two cuts where it meets the gallery. `BAKED` is 8 pieces, `BAKED_CUTS` 6. His session names
+  restart at "box 1" each time, so later bakes get a suffix to stay distinct.
 - **The bake recipe has been run once.** Jack's first export (`C:/Users/jackf/Downloads/midtown-build (1).json`)
   is in the page: `BAKED` holds six pieces — an inner timber proscenium (two 9 m posts and a header
   in the set's post grain, x ±5.2, inside the grey frame), a black masking panel stage left, and two

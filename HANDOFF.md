@@ -277,7 +277,11 @@ triangle whose centroid is inside becomes a new piece, one mesh per source mesh 
 material, in the box's frame, on the gizmo; pieces centred inside are cloned in too. Saved as the
 source box and rebuilt from the models on load before deletes apply. Verified: a 1.6 × 2.2 × 1.8 box
 over the house-left platform end copied five parts, moved to centre stage, survived a reload. Lesson:
-after the second wrong placement the right move was to hand him the tool, not a third guess. (`ham_iron`, hidden for
+after the second wrong placement the right move was to hand him the tool, not a third guess. **And
+it paid at once:** his next export (pasted) was the set's own stair copied to house right, turned
+90°, a rail-grain strip, two tidy-up cuts — baked as `(bake 2)`, appended to the first bake; names
+restart at "box 1" per session, hence the suffix. A copy's `src` box is on the pristine geometry, so
+appending is safe as long as no later cut overlaps a copy's source (checked: none do). (`ham_iron`, hidden for
 a round on the theory it held the beams, is only the posts' foot blocks.) The scan's corner steps are
 back untouched.
 *"Remove the metal beam"*: not the set's — hiding or cutting every set mesh left it standing. It is
