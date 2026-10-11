@@ -13,14 +13,21 @@ fetch`, compare `origin/main`, then read this.
   Git 2.55 and Blender 5.2 are installed. **Node is not**, so the suites cannot
   run here yet (`winget install OpenJS.NodeJS.LTS`). The relay path below
   (`C:/Users/patri/...`) is the OLD machine.
-- **This session's branch, `midtown-scan`, is assets and tools only.** Nothing in
-  `src/` changed, so `the-house.html` and `docs/ARTNET.md` need no regenerating.
+- **`midtown-scan` merged as #221; `midtown-holes` is the second pass on the same
+  asset** (assets and tools only, again). Nothing in `src/` changed, so
+  `the-house.html` and `docs/ARTNET.md` need no regenerating.
   - `assets/midtown-auditorium.glb` is a CC BY scan of a real auditorium, edited
     into a theatre house: a solid proscenium, a fly tower, a brick back wall and
     filled holes.
+  - The second pass closed what an inside-out raycast audit found (a void east of
+    the stage-right wall, slits under the wall-top fills, wing-door lintels, wall
+    bases), deleted the shards the first pass missed, and matched the tiled brick
+    to the real one. **Escaped rays: 4807 → 501, of which 498 go out through the
+    two rear doorways Jack chose to leave open.**
   - Rebuild it with `tools/blender/midtown_theatre.py`. Walk it in
-    `tools/midtown-viewer/`.
-  - The full record is in HANDOFF.md, "DONE — 2026-10-10".
+    `tools/midtown-viewer/` (re-exported) or at the published artifact
+    https://claude.ai/artifact/LwSoKjQ911xowE1DQa4syv.
+  - The full record is in HANDOFF.md, the two "DONE — 2026-10-10" blocks.
 - **Not wired into the game.** Three decisions are Jack's (FUTURE.md PART 2,
   "Realism"):
   1. Which venue it becomes.

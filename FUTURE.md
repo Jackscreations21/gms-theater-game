@@ -488,7 +488,11 @@ volumetric beams, haze, grade, metals-only PMREM), and **VR already over budget*
 
 - **The Midtown Atlanta scan is edited and NOT wired in.** `assets/midtown-auditorium.glb`
   (CC BY 4.0, credit in `assets/README.md`), built by `tools/blender/midtown_theatre.py`;
-  walk it in `tools/midtown-viewer/`. Open questions for Jack: **which venue does it
+  walk it in `tools/midtown-viewer/`. A second pass (`midtown-holes`) closed the
+  enclosure to within the two deliberately open rear doorways; what is still only
+  approximate is the filled geometry's LOOK (flat generated mottle on the ceiling,
+  wall-top skirts and the new east panel), which a lightmap bake or a real
+  plaster texture would improve. Open questions for Jack: **which venue does it
   become** (replace the Palace auditorium? a third venue? the Arc Studio?), **the fly
   rail** he wants in its new fly tower (opening 8.6 m × 4.4 m, roof 16 m), and the
   **17 materials against the 8 budget** — merge before it goes in.
