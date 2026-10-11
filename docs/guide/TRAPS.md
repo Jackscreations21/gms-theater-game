@@ -1358,3 +1358,51 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **His export's names restart at "box 1" every session.** Baking a second export beside a first
   gives two "box 1"s; suffix them at bake time.
 
+
+## From the rig round (2026-10-11, the evening of agents)
+
+- **Before the first frame, `root.updateMatrixWorld(true)` does not refresh the
+  root's PARENTS.** The set GLB's root is seated, turned 180° and scaled inside
+  two groups; code that ran after `placeSet` but before any frame raycast the
+  set at its unturned, unscaled position and reported a brick clash that was not
+  there. Call `scene.updateMatrixWorld(true)` (or the top-most ancestor's) before
+  measuring anything in world space at load. `applyCut` already does; the
+  rigging builders learned it the hard way.
+- **An unpinned Decimate moves the hang point.** Collapsing a fixture model to
+  800 triangles dropped the Viper's clamp top 2.6 cm and lifted a ColorBlaze 1 cm
+  off the floor, and `tools/fixtures-check.js` caught both. Pin the vertices at
+  the hang end (a vertex group on the modifier) — and only that end: pinning
+  both ends stalls the collapse over budget.
+- **`lens.getWorldDirection()` is +Z, not the beam.** `assets/fixtures/README.md`
+  says the lens's local −Z is the beam, so the beam is the NEGATION of
+  `getWorldDirection`. Use `new Vector3(0,0,-1).transformDirection(lens.matrixWorld)`.
+- **A quaternion applied to the whole fixture tilts the clamp with the body.**
+  The rig file's `quat` is pan×tilt ('YXZ'); split it — yaw on the unit, tilt on
+  the `head` — or every clamp leaves its pipe.
+- **The browser was on the wrong GPU, and nothing in the code could have fixed
+  it.** Jack's laptop has an Intel UHD and an RTX 5060; Chromium used the Intel
+  chip, so "heavier things run fine" and "this lags" were both true. Measure
+  `WEBGL_debug_renderer_info` before optimising anything (midtown.html now prints
+  it on load); the fix is Windows Settings → Display → Graphics → the browser →
+  High performance, which only Jack can set. `powerPreference:'high-performance'`
+  is a request, not a guarantee.
+- **Instancing did not help a GPU-bound page.** 1,222 → 121 draw calls cut CPU
+  render 3.5 → 1.3 ms and RAISED GPU time 0.5–4.7 ms, because an InstancedMesh is
+  culled as one object and off-screen units get drawn. Measure which side is
+  bound (frame time vs pixel ratio, vs triangle count) before reaching for it.
+- **`renderer.info.render.calls` excludes the shadow passes in r160** —
+  `info.reset()` runs after them. Shadow cost shows only in GPU time.
+- **A load-time `await requestAnimationFrame` never resolves in a background
+  tab.** The "Compiling…" wait hung the loader until the tab was fronted. Race it
+  with a short timer (a load wait, not game timing).
+- **Three agents in one file works only with pre-cut regions.** Stubs inserted
+  by the parent (one function each, a shared import, the call line already in
+  place, a name prefix per agent, Edit-only, never Write) — and one agent's
+  half-written helper still broke the page for another for a minute. Expect it.
+- **The Browser pane only draws the fronted tab**, so a background tab's rAF
+  stalls and its screenshots come back stale or scaled; agents sharing the pane
+  must time synchronous renders (`gl.finish`) rather than frame intervals.
+- **The Bash tool's heredoc limit bit again** — a ~100-line heredoc holding a
+  Python script died with `unexpected EOF`, and nothing before it in the same
+  command ran either (bash parses the whole script first). Write the file with
+  the file tool, then run it.

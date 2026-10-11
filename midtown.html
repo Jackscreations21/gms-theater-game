@@ -6,8 +6,10 @@
 <title>Midtown House · Hamilton Set</title>
 <!--
   A PREVIEW of the second game's venue, not the game: the Midtown scan (assets/midtown-auditorium.glb)
-  with the Hamilton set (assets/hamilton-set.glb) seated on its stage. No rig, no desk, no sound, no
-  walkables — look around, that is all. The second game proper is FUTURE.md PART 2 "THE HAMILTON GAME".
+  with the Hamilton set (assets/hamilton-set.glb) seated on its stage, and the show's lighting rig
+  hung where the real show hangs it (assets/hamilton-rig.json, one assets/fixtures/*.glb per type —
+  models only, not lights). No desk, no sound, no walkables — look around, that is all. The second
+  game proper is FUTURE.md PART 2 "THE HAMILTON GAME".
 
   Coordinates are the Midtown GLB's (Y up, metres): the deck is y 0.80, the proscenium plane z 2.30,
   the back brick z 8.90, so UPSTAGE IS +Z here (the game's convention is the opposite, and the set
@@ -36,6 +38,8 @@ button { font: 500 13px var(--body); color: var(--fg); background: transparent; 
 button:hover { border-color: var(--muted); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+button:disabled:hover { border-color: var(--line); }
 .bright { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-left: auto; }
 .bright input { width: 110px; accent-color: var(--accent); }
 #stage { position: relative; flex: 1; min-height: 0; }
@@ -80,6 +84,9 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   <div class="mode" role="group" aria-label="Set size">
     <button id="s-fit" aria-pressed="true">Set fitted</button>
     <button id="s-real" aria-pressed="false">Real size</button>
+  </div>
+  <div class="mode" role="group" aria-label="Lighting rig">
+    <button id="r-rig" aria-pressed="true" disabled title="Hanging the rig…">Rig</button>
   </div>
   <label class="bright" for="bright">House light <input id="bright" type="range" min="0.4" max="3" step="0.05" value="1.4"></label>
   <div class="mode" role="group" aria-label="Movement">
@@ -142,6 +149,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';   // the rigging structures merge into one mesh each
 
 // The house, measured off the GLB's fill geometry (tools/blender/midtown_theatre.py, exported Y up).
 // ARCH_Z is where the proscenium is PUT, not where the GLB has it (2.30, with 2.65 m of apron in
@@ -153,17 +161,30 @@ const HOUSE = { deckY: 0.80, glbArchZ: 2.30, archZ: 0.20, backZ: 8.90, openW: 8.
 const SET = { ttZ: 0.95, upstageOfArch: 2.96, fit: 0.62 };
 
 const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// PERFORMANCE (Jack: "the page lags"). Measured on the Intel UHD the browser picked, 1920×1200 at
+// pixel ratio 1.25: 39–55 ms a frame, GPU-bound (the CPU's share ~3 ms). So: ask for the discrete GPU
+// on a dual-GPU laptop; draw at pixel ratio 1 (1.25 cost +3.4 / +10 / +6 ms GPU in the Back of house /
+// Front row / Fly tower views), dropping once to 0.8 if frames still run slow; shadow maps drawn only
+// when a caster moves (static, −2.7…2.9 ms every view, same picture); and the scene drawn only when
+// something changed (render on demand) — an idle page no longer holds the GPU at 100%. MSAA stays on.
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+const PIXEL_CAP = 1, PIXEL_FLOOR = 0.8;                      // the cap, and where it drops to if the average frame stays over 40 ms
+let pixelCap = PIXEL_CAP;
+renderer.setPixelRatio(Math.min(devicePixelRatio, pixelCap));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;                       // static: shadowsDirty() whenever a caster moves, appears or is cut
+let needsRender = true, ready = false;                       // ready: the load is done and the loader hidden; nothing draws before
+function requestRender() { needsRender = true; }
+function shadowsDirty() { renderer.shadowMap.needsUpdate = true; needsRender = true; }
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0d0c0f);
 const camera = new THREE.PerspectiveCamera(65, 1, 0.05, 200);
 const orbit = new OrbitControls(camera, canvas);
 orbit.enableDamping = true; orbit.dampingFactor = 0.08;
+orbit.addEventListener('change', requestRender);
 
 // Viewpoints: [eye, look-at], house frame.
 const VIEWS = {
@@ -191,7 +212,7 @@ function setMode(walk) {
   walking = walk;
   document.getElementById('m-orbit').setAttribute('aria-pressed', String(!walk));
   document.getElementById('m-walk').setAttribute('aria-pressed', String(walk));
-  orbit.enabled = !walk;
+  orbit.enabled = !walk; requestRender();
   const d = new THREE.Vector3(); camera.getWorldDirection(d);
   if (walk) {
     yaw = Math.atan2(-d.x, -d.z); pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
@@ -212,6 +233,7 @@ canvas.addEventListener('pointermove', e => {
   if (!walking || !drag || transform.dragging) return;
   yaw -= (e.clientX - drag.x) * 0.004; pitch -= (e.clientY - drag.y) * 0.004;
   pitch = THREE.MathUtils.clamp(pitch, -1.45, 1.45); drag = { x: e.clientX, y: e.clientY };
+  requestRender();
 });
 canvas.addEventListener('pointerup', e => {
   drag = null;
@@ -229,23 +251,26 @@ addEventListener('blur', () => keys.clear());
 // The house is a photo scan with its lighting baked in: drawn unlit, dimmed by the slider.
 const houseMats = [];
 const bright = document.getElementById('bright');
-function applyBright() { const k = parseFloat(bright.value); houseMats.forEach(m => m.color.copy(m.userData.base).multiplyScalar(k)); }
+function applyBright() { const k = parseFloat(bright.value); houseMats.forEach(m => m.color.copy(m.userData.base).multiplyScalar(k)); requestRender(); }   // the house is unlit and casts nothing: no shadow update
 bright.addEventListener('input', applyBright);
 
 // The set is lit: a soft fill plus a front-of-house wash and two over-stage specials, all on the set only.
 const setGroup = new THREE.Group();
 scene.add(setGroup);
 scene.add(new THREE.HemisphereLight(0xfff2e0, 0x2a2420, 0.55));
-function spot(x, y, z, tx, ty, tz, intensity, angle, color) {
+function spot(x, y, z, tx, ty, tz, intensity, angle, color, cast = true) {
   const s = new THREE.SpotLight(color, intensity, 0, angle, 0.45, 1.6);
   s.position.set(x, y, z); s.target.position.set(tx, ty, tz);
-  s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0005;
+  s.castShadow = cast; if (cast) { s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0005; }
   scene.add(s, s.target); return s;
 }
 spot(-3.5, 7.8, -6.0, 0, 2.5, 5.5, 180, 0.42, 0xffe6c8);   // FOH left
 spot( 3.5, 7.8, -6.0, 0, 2.5, 5.5, 180, 0.42, 0xffe6c8);   // FOH right
-spot(-2.0, 13.0, 6.0, -1, 1, 6.0, 220, 0.5, 0xffd9a8);     // over the stage, warm
-spot( 2.5, 13.0, 7.5,  1, 1, 6.5, 160, 0.5, 0xc8d8ff);     // over the stage, cool
+// The over-stage pair cast no shadow: theirs fall straight down under the set's own pieces — 0.3% / 3.2% / 1.3% of
+// the pixels change, faintly (Back of house / Front row / Fly tower) — and cost 4.2 ms (Back) / 10 ms (Front) of GPU a
+// frame. The FOH pair's shadows are the ones that show (24% of the Front row picture changes without them).
+spot(-2.0, 13.0, 6.0, -1, 1, 6.0, 220, 0.5, 0xffd9a8, false);     // over the stage, warm
+spot( 2.5, 13.0, 7.5,  1, 1, 6.5, 160, 0.5, 0xc8d8ff, false);     // over the stage, cool
 
 // Set size. The group's transform is the only thing that changes; the model is turned 180° inside it.
 function placeSet(s) {
@@ -253,9 +278,922 @@ function placeSet(s) {
   setGroup.position.set(0, HOUSE.deckY, HOUSE.archZ + (SET.upstageOfArch + SET.ttZ) * s);
   document.getElementById('s-fit').setAttribute('aria-pressed', String(s !== 1));
   document.getElementById('s-real').setAttribute('aria-pressed', String(s === 1));
+  shadowsDirty();
 }
 document.getElementById('s-fit').addEventListener('click', () => placeSet(SET.fit));
 document.getElementById('s-real').addEventListener('click', () => placeSet(1));
+
+/* ---------------------------------------------------------------- THE RIG
+   The Hamilton lighting rig, every unit its own fixture model where the real show hangs it.
+   assets/hamilton-rig.json (tools/hamilton-rig.py) gives each unit a model, a position and a
+   quaternion IN THE SET GLB's OWN FRAME (upstage −z, the house +z, deck y 0), so the rig group is a child of the set's loaded root and
+   inherits its seating, its 180° turn and the fitted / real-size scale. It goes in AFTER the set's
+   bounding box is taken, so it never widens the seating or the proscenium frame. Models only: no
+   light per unit, no shadows; each lens glows faintly in its gel's colour so the lamps read as lit.
+   The file missing, or a fixture file missing, is a console warning, never an error. */
+const RIG_URL = 'assets/hamilton-rig.json';
+let rig = null;
+// Rosco (R) and Lee (L) numbers to an approximate colour; R00 clear and the frosts (R119, R132, L114…) are not
+// listed, so they read as open white. "R001" / "R1" both mean R01.
+const OPEN_WHITE = 0xfff1dc;
+const GELS = {
+  R01: 0xf9c9a2, R02: 0xf7b98a, R03: 0xf6c6a8, R04: 0xf2a679, R05: 0xf6b9b0, R07: 0xfdf1c4, R08: 0xfbd8a6,
+  R09: 0xf8c27e, R13: 0xf8d29a, R16: 0xf8b055, R18: 0xf4a64a, R20: 0xf49b3a, R21: 0xf2842a, R23: 0xff6a1f,
+  R25: 0xff4a1a, R26: 0xe8102a, R27: 0xc0001a, R32: 0xf88a9a, R33: 0xf8b8c4, R35: 0xf7a4b4, R37: 0xe8a0c0, R39: 0xb4006e,
+  R40: 0xff8a6a, R42: 0xd0207e, R44: 0xf06aa0, R51: 0xd9a6e0, R54: 0xd8c4ee, R57: 0xb4a0e8, R58: 0x9a6ad8,
+  R59: 0x3a1a9a, R60: 0xc9dcf5, R61: 0xd6e6f5, R62: 0xb8d2f2, R63: 0xb0cdf0, R64: 0x8fb8f0, R65: 0x6aa6e8,
+  R68: 0x3d8de0, R69: 0x2a7ad8, R70: 0x5ac0e0, R74: 0x1a3fb0, R76: 0x2d7fc8, R77: 0x2050c0, R79: 0x1a3ae0,
+  R80: 0x1a3cf0, R83: 0x102a9a, R85: 0x0a2080, R86: 0x6ac040, R89: 0x3a9a40, R90: 0x2a8a1a, R91: 0x0a6a2a,
+  L161: 0x8fb8e8, L182: 0xe8304a, L201: 0x9fc3ff, L202: 0xc4d8ff, L203: 0xdce8ff, L204: 0xffc48a, L205: 0xffd2a4, L206: 0xffe0bc,
+};
+const LENS_GLOW = 0.55;                                      // how lit a lens reads: enough to see, not enough to wash the picture
+function gelColour(gel) {
+  for (const g of String(gel || '').toUpperCase().split(/[^A-Z0-9]+/)) {   // "R01", "R1", "R02+R119", "L201"…
+    const m = /^([RL])0*(\d+)$/.exec(g); if (!m) continue;
+    const key = m[1] + (m[1] === 'R' ? m[2].padStart(2, '0') : m[2]);
+    if (GELS[key]) return new THREE.Color(GELS[key]).multiplyScalar(LENS_GLOW);
+  }
+  return new THREE.Color(OPEN_WHITE).multiplyScalar(LENS_GLOW);
+}
+const finite = (a, n) => Array.isArray(a) && a.length === n && a.every(Number.isFinite);
+// The one-foot ColorBlaze cells (one or two channels) have no 1 ft model: they are drawn as a ColorBlast.
+const modelOf = u => u.type === 'colorblaze-48' && Array.isArray(u.channels) && u.channels.length <= 2 ? 'assets/fixtures/colorblast.glb' : u.model;
+// Movers hang head-down from their pan alone (the file's beam for them is the horizontal rest direction).
+const MOVERS = new Set(['mac-viper', 'glp-x4', 'vl3500']);
+// LEVEL OF DETAIL. 313 units at 1.37M triangles cost ~10 ms of GPU a frame on Jack's Intel chip, so each
+// unit is a THREE.LOD: the full model up close, and beyond LOD_NEAR world metres (camera to the unit's
+// hang point; the rig sits under the 0.62-scaled set, so these are drawn metres, not real ones) the copy
+// in assets/fixtures/lod/ (tools/blender/fixtures_lod.py: same nodes, transforms and materials, ~1,200
+// triangles a unit, the lens disc untouched). A missing lod file is one warning; its units stay full.
+const LOD_NEAR = 7;
+const lodOf = m => m.replace(/^(.*\/)?([^/]+\.glb)$/, (s, dir, f) => (dir || '') + 'lod/' + f);
+// Fetch the rig file and every model it names, each model once. Never rejects: a missing file is no rig.
+async function loadRig() {
+  let data;
+  try {
+    const r = await fetch(RIG_URL, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    data = await r.json();
+  } catch (e) { console.warn(`rig: ${RIG_URL} not loaded (${e.message || e}) — the page goes on without a rig`); return null; }
+  const units = Array.isArray(data.units) ? data.units : [];
+  const models = [...new Set(units.map(modelOf).filter(m => typeof m === 'string'))];
+  for (const m of models) if (!SIZES[m]) SIZES[m] = 0.3e6;   // a guess, replaced by the real length on the first progress event
+  for (const m of models) if (!SIZES[lodOf(m)]) SIZES[lodOf(m)] = 0.08e6;
+  progress();                                                // the fixtures join the one bar
+  const gltfs = {}, lods = {}, noLod = [];
+  await Promise.all(models.map(m => load(m).then(g => { gltfs[m] = g; }, e => {
+    console.warn(`rig: ${m} not loaded (${e && e.message || e}) — its units are skipped`);
+    delete SIZES[m]; delete got[m]; progress();
+  })).concat(models.map(m => load(lodOf(m)).then(g => { lods[m] = g; }, () => {
+    noLod.push(m.replace(/^.*\//, '')); delete SIZES[lodOf(m)]; delete got[lodOf(m)]; progress();
+  }))));
+  if (noLod.length) console.warn(`rig: no far-level model for ${noLod.sort().join(', ')} (assets/fixtures/lod/) — those units draw full detail at every distance`);
+  return { data, units, gltfs, lods };
+}
+// AIMING. `quat` turns the model's own rest beam (+Z for most; +X for birdie, hazer, s4-lustr,
+// vl3500; −Y colorsource-par; +Y mini-10) onto the unit's beam. Applied to the whole model it
+// would tilt the clamp off the pipe, so it is split through three.js Euler 'YXZ' (R = Ry·Rx·Rz):
+// the PAN (y) turns the unit, the rest (Rx·Rz, the tilt about the model's own trunnion axis — X
+// for a +Z model, Z for a +X one, so one of the two is ~0) turns only the head. Of the two Euler
+// solutions the one with |z| ≤ 90° is taken, so no head is flipped over in its yoke. The product
+// is exactly `quat`, so the lens lands on the file's beam. Movers take the pan only and hang
+// their head straight down.
+function restBeam(g) {                                       // the lens's beam (local −Z) in the model's own frame
+  if (g.userData.restBeam) return g.userData.restBeam;
+  g.scene.updateMatrixWorld(true);
+  const lens = g.scene.getObjectByName('lens');
+  return (g.userData.restBeam = lens ? new THREE.Vector3(0, 0, -1).transformDirection(lens.matrixWorld) : new THREE.Vector3(0, 0, 1));
+}
+function panTilt(quat, e) {                                  // → e: {x, y, z} with R = Ry(y)·Rx(x)·Rz(z), |z| ≤ 90°
+  e.setFromQuaternion(quat, 'YXZ');
+  if (Math.abs(e.z) > Math.PI / 2) {
+    const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+    e.set(wrap(Math.PI - e.x), wrap(e.y + Math.PI), wrap(e.z - Math.PI), 'YXZ');
+  }
+  return e;
+}
+const lensBeam = (lens, v) => v.set(0, 0, -1).transformDirection(lens.matrixWorld);
+const DOWN = new THREE.Vector3(0, -1, 0);
+// One detail level of a unit, posed: the head's tilt (or head-down for a mover), the unit's one lens
+// material, rig-marked meshes, no shadows. Both levels go through here, so they are posed identically;
+// the pan (and a headless model's whole turn) is on the unit, the LOD that holds them. → its lens.
+function poseLevel(level, u, g, e, lensMat) {
+  const head = level.getObjectByName('head');
+  if (head && MOVERS.has(u.type)) head.quaternion.setFromUnitVectors(restBeam(g), DOWN);   // head-down
+  else if (head) head.rotation.set(e.x, 0, e.z);           // 'XYZ' with y 0: Rx·Rz
+  level.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = o.receiveShadow = false; o.userData.rig = true;   // the build tools skip anything marked rig
+    if (o.name === 'lens' && lensMat) o.material = lensMat;
+  });
+  return level.getObjectByName('lens');
+}
+function buildRig(src) {
+  const group = new THREE.Group(); group.name = 'rig';
+  const used = new Set(), skipped = {}, e = new THREE.Euler(), q = new THREE.Quaternion(), b = new THREE.Vector3();
+  let worst = { dot: 2, id: null }, far = 0;
+  for (const u of src.units) {
+    const model = modelOf(u), g = src.gltfs[model], lg = src.lods && src.lods[model];
+    if (!g) { skipped[u.type] = (skipped[u.type] || 0) + 1; continue; }
+    if (!finite(u.pos, 3) || !finite(u.quat, 4)) { console.warn('rig: unit', u.id, 'has no usable pos / quat — skipped'); continue; }
+    // The unit is the LOD: name, userData, position and the pan live here, where the rigging code and the
+    // console read and move rig.children. Its levels are clones (geometry and body materials shared).
+    const unit = new THREE.LOD();
+    unit.name = String(u.id);
+    unit.userData = { id: u.id, channels: u.channels, type: u.type, label: u.label, gel: u.gel, position: u.position || null, hung: !!u.hung, placed: u.placed };
+    unit.position.fromArray(u.pos);
+    panTilt(q.fromArray(u.quat).normalize(), e);
+    const lensMat = u.type !== 'hazer' ? new THREE.MeshBasicMaterial({ color: gelColour(u.gel), toneMapped: false, side: THREE.DoubleSide }) : null;
+    const near = g.scene.clone(), lens = poseLevel(near, u, g, e, lensMat);
+    unit.rotation.set(0, e.y, 0);
+    if (!near.getObjectByName('head')) unit.rotation.set(e.x, e.y, e.z, 'YXZ');   // a model with no head: the whole of it turns
+    unit.addLevel(near, 0);
+    if (lg) { const l1 = lg.scene.clone(); poseLevel(l1, u, g, e, lensMat); unit.addLevel(l1, LOD_NEAR); far++; }
+    // check: the lens now points along the file's beam (the unit has no parent yet, so this is the set's frame)
+    if (lens && !MOVERS.has(u.type) && finite(u.beam, 3)) {
+      unit.updateMatrixWorld(true);
+      const dot = lensBeam(lens, b).dot(new THREE.Vector3().fromArray(u.beam).normalize());
+      if (dot < worst.dot) worst = { dot, id: u.id, type: u.type };
+    }
+    group.add(unit); used.add(model);
+  }
+  const miss = Object.entries(skipped).map(([t, n]) => `${n} ${t}`).join(', ');
+  group.userData.summary = `rig: ${group.children.length} units, ${used.size} models, ${far} with a far level past ${LOD_NEAR} m` + (miss ? ` (skipped, no model: ${miss})` : '');
+  group.userData.worstAim = worst;
+  return group;
+}
+function setRig(on) {
+  if (!rig) return;
+  rig.visible = on; requestRender();                         // the rig casts no shadow: no shadow update
+  document.getElementById('r-rig').setAttribute('aria-pressed', String(on));
+}
+document.getElementById('r-rig').addEventListener('click', () => setRig(!(rig && rig.visible)));
+
+/* ---------------------------------------------------------------- RIGGING: BOOMS ONTO THE WALLS (agent A)
+   Jack: "move these lights back to be attached to the walls" — the booms standing in the HOUSE
+   (downstage of the arch) go against the Midtown side walls on vertical boom pipes with brackets. */
+function fitBoomsToWalls(houseScene) {
+  // Each house boom (one per position name, every unit downstage of the arch) is raycast outward,
+  // level, to the nearest scan surface; the column's wall is the NEAREST of its units' hits, so no
+  // unit ends up in the wall, and the whole column slides along world x to stand boomDims.clear
+  // (real metres) off it, keeping each unit's height, depth and rotation. Then a 48 mm pipe goes
+  // through the column with 34 mm brackets and wall plates, merged into one mesh per boom, a child
+  // of the rig (real metres; it follows the "Real size" toggle like the units do).
+  if (!rig) return;
+  houseScene.updateMatrixWorld(true); rig.updateMatrixWorld(true);
+  const meshes = []; houseScene.traverse(o => { if (o.isMesh && o.visible) meshes.push(o); });
+  const s = rig.getWorldScale(new THREE.Vector3()).x;       // drawn metres per real metre (0.62 when fitted)
+  const ray = new THREE.Raycaster(), w = new THREE.Vector3(), cols = {};
+  for (const u of rig.children) {
+    const name = u.userData && u.userData.position;
+    if (!name || !/Boom/.test(name)) continue;
+    u.getWorldPosition(w);
+    if (w.z >= HOUSE.archZ) continue;                         // upstage of the arch: the wing towers', not these
+    (cols[name] = cols[name] || []).push({ u, w: w.clone() });
+  }
+  const found = Object.entries(cols).map(([n, l]) => `${n} ×${l.length}`).join(', ');
+  console.info(`booms: house booms found — ${found || 'none'}`);
+  const report = [];
+  for (const [name, list] of Object.entries(cols)) {
+    const sx = Math.sign(list.reduce((a, c) => a + c.w.x, 0)) || 1;   // outward: house left −x, house right +x
+    let wallX = null, missed = 0;
+    for (const c of list) {
+      const h = boomWallHit(ray, meshes, c.w, sx);
+      if (!h) { missed++; continue; }
+      c.wallX = h.point.x;
+      if (wallX === null || h.point.x * sx < wallX * sx) wallX = h.point.x;
+    }
+    if (missed || wallX === null) { report.push(`${name} → no wall found for ${missed} of ${list.length} units, left where it is`); continue; }
+    let x = wallX - sx * boomDims.clear * s;
+    for (const c of list) c.u.position.copy(rig.worldToLocal(w.set(x, c.w.y, c.w.z)));
+    // The scan's wall is not quite plumb and a unit's body can reach past 0.45 m: if any body's
+    // outer edge (over its vertices) comes within 1 cm of its own wall, the column backs off.
+    rig.updateMatrixWorld(true);
+    let into = 0;
+    for (const c of list) {
+      const bb = new THREE.Box3().setFromObject(c.u, true), outer = sx < 0 ? bb.min.x : bb.max.x;
+      into = Math.max(into, (outer - c.wallX) * sx + 0.01 * s);
+    }
+    if (into > 0) { x -= sx * into; for (const c of list) c.u.position.copy(rig.worldToLocal(w.set(x, c.w.y, c.w.z))); }
+    const moves = list.map(c => Math.abs(x - c.w.x));
+    const mesh = boomBuild(name, list.map(c => c.u.position), sx, s, ray, meshes);
+    rig.add(mesh);
+    mesh.userData.wallX = wallX; mesh.userData.unitX = x;
+    const lo = Math.min(...moves), hi = Math.max(...moves);
+    report.push(`${name} → wall at x ${wallX.toFixed(2)}, moved ${list.length} units by ${lo.toFixed(2)}${hi - lo > 0.005 ? '–' + hi.toFixed(2) : ''} m to x ${x.toFixed(2)}, ${mesh.userData.brackets} bracket${mesh.userData.brackets === 1 ? '' : 's'}` + (mesh.userData.skipped ? ` (${mesh.userData.skipped} skipped: no wall near enough)` : ''));
+  }
+  rig.updateMatrixWorld(true);
+  console.info('booms: ' + (report.join('; ') || 'nothing to move'));
+}
+// Real metres: a 48 mm boom pipe, 34 mm bracket arms, 150 mm square 10 mm plates, the units' hang line
+// 0.45 m off the wall (room for a Source Four's body behind its clamp), pipe 0.5 m past the end units.
+const boomDims = { clear: 0.45, pipe: 0.048, arm: 0.034, plate: 0.15, plateT: 0.01, past: 0.5, every: 1.5, maxReach: 1.0 };
+const boomPipeMat = new THREE.MeshStandardMaterial({ color: 0x33363b, metalness: 0.6, roughness: 0.5 });
+const boomUp = new THREE.Vector3(0, 1, 0), boomAcross = new THREE.Vector3(1, 0, 0);
+// The nearest house surface level-outward from a world point; failing that, a little downstage or upstage.
+function boomWallHit(ray, meshes, from, sx) {
+  for (const dz of [0, -0.25, 0.25, -0.5, 0.5]) {
+    ray.set(from, new THREE.Vector3(sx, 0, dz).normalize()); ray.far = 8;
+    const h = ray.intersectObjects(meshes, false)[0];
+    if (h) return h;
+  }
+  return null;
+}
+// A cylinder of radius r from a to b (rig-local), or a plate centred at c facing along dir.
+function boomRod(a, b, r) {
+  const d = new THREE.Vector3().subVectors(b, a), len = d.length();
+  const g = new THREE.CylinderGeometry(r, r, len, 12, 1);
+  g.applyMatrix4(new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(boomUp, d.normalize()), new THREE.Vector3(1, 1, 1)));
+  return g;
+}
+function boomPlate(c, dir) {
+  const g = new THREE.BoxGeometry(boomDims.plateT, boomDims.plate, boomDims.plate);
+  g.applyMatrix4(new THREE.Matrix4().compose(c, new THREE.Quaternion().setFromUnitVectors(boomAcross, dir), new THREE.Vector3(1, 1, 1)));
+  return g;
+}
+// The pipe through the moved column (rig-local origins), with level brackets to the wall every ~1.5 m.
+// A bracket height whose wall is recessed (a doorway, say) is nudged up or down to find the wall;
+// if the wall is nowhere within reach there, that bracket is skipped.
+function boomBuild(name, origins, sx, s, ray, meshes) {
+  const mx = origins.reduce((a, p) => a + p.x, 0) / origins.length, mz = origins.reduce((a, p) => a + p.z, 0) / origins.length;
+  const y0 = Math.min(...origins.map(p => p.y)) - boomDims.past, y1 = Math.max(...origins.map(p => p.y)) + boomDims.past;
+  const parts = [boomRod(new THREE.Vector3(mx, y0, mz), new THREE.Vector3(mx, y1, mz), boomDims.pipe / 2)];
+  const n = Math.max(2, Math.round((y1 - y0 - 0.6) / boomDims.every) + 1);
+  let brackets = 0, skipped = 0;
+  const out = new THREE.Vector3(sx, 0, 0);
+  for (let i = 0; i < n; i++) {
+    const y = y0 + 0.3 + (y1 - y0 - 0.6) * i / (n - 1);
+    let hit = null;
+    for (const dy of [0, 0.15, -0.15, 0.3, -0.3, 0.45, -0.45]) {
+      if (y + dy < y0 + 0.05 || y + dy > y1 - 0.05) continue;
+      const from = rig.localToWorld(new THREE.Vector3(mx, y + dy, mz));
+      ray.set(from, out); ray.far = boomDims.maxReach * s;
+      const h = ray.intersectObjects(meshes, false)[0];
+      if (h) { hit = { y: y + dy, end: rig.worldToLocal(h.point.clone()) }; break; }
+    }
+    if (!hit) { skipped++; continue; }
+    const a = new THREE.Vector3(mx, hit.y, mz), end = new THREE.Vector3(hit.end.x, hit.y, hit.end.z);
+    const dir = new THREE.Vector3().subVectors(end, a); dir.y = 0; dir.normalize();
+    const face = end.clone().addScaledVector(dir, -boomDims.plateT);   // the plate's back on the wall
+    parts.push(boomRod(a, face, boomDims.arm / 2), boomPlate(face.clone().addScaledVector(dir, boomDims.plateT / 2), dir));
+    brackets++;
+  }
+  const geo = mergeGeometries(parts, false); parts.forEach(g => g.dispose());
+  const mesh = new THREE.Mesh(geo, boomPipeMat);
+  mesh.name = name; mesh.castShadow = mesh.receiveShadow = false;
+  mesh.userData = { rig: true, boom: name, brackets, skipped };
+  return mesh;
+}
+
+/* ---------------------------------------------------------------- RIGGING: HANGING TRUSSES (agent B)
+   Jack: "make a truss hanging down from the roof with 4 ropes securing it to the roof for these
+   lights to hang from" (the rows in front of the arch) and "put a grid at the level of the stage
+   lights to hold them up" (the electrics over the stage). */
+// Everything is built as a child of `rig`, in the rig's own frame (real metres, upstage −z, the house
+// +z, deck y 0), so it follows the "Real size" toggle like the units do. The ceiling and the walls are
+// found by raycasting the house in WORLD at the fitted scale, and the hits brought back into rig-local.
+function buildHangingTrusses(houseScene) {
+  const meshes = [];
+  houseScene.updateMatrixWorld(true);
+  houseScene.traverse(o => { if (o.isMesh && o.visible) meshes.push(o); });
+  const rows = {};
+  for (const u of rig.children) { const p = u.userData && u.userData.position; if (p) (rows[p] = rows[p] || []).push(u); }
+  const report = [];
+  // A. One 12-inch box truss per row in front of the arch, hung on four cables.
+  // The FOH Electric's line runs through a ledge in the scanned ceiling (the real room's own lighting
+  // bridge, world y 6.13–6.38 across x −4.5…3.5), which swallowed the truss. The row hangs 0.75 m
+  // (real) lower, so the truss clears the ledge and the cables rise past it.
+  const TRUSS_DROP = { 'FOH Electric': 0.75 };
+  for (const name of ['Apron Electric', 'FOH Electric', 'FOH Truss']) {
+    if (TRUSS_DROP[name] && rows[name]) for (const u of rows[name]) { if (!u.userData.dropped) { u.position.y -= TRUSS_DROP[name]; u.userData.dropped = TRUSS_DROP[name]; } }
+    const row = trussRowStats(rows[name]);
+    if (!row) { report.push(`${name} not in the rig`); continue; }
+    const x0 = row.xMin - 0.3, x1 = row.xMax + 0.3, y = row.y, z = row.z, S = TRUSS_SECTION;
+    // one bottom chord on the units' origin line; the body upstage (−z) of it and above it
+    const corners = [[y, z], [y, z - S], [y + S, z - S], [y + S, z]];   // bottom-front, bottom-back, top-back, top-front
+    const geos = trussBoxTruss(x0, x1, corners);
+    const truss = new THREE.Mesh(trussMerge(geos), trussMat);
+    truss.name = 'truss: ' + name;
+    const tops = [[x0 + 0.3, y + S, z], [x0 + 0.3, y + S, z - S], [x1 - 0.3, y + S, z], [x1 - 0.3, y + S, z - S]];
+    const cableGeos = [], ys = [];
+    let assumed = 0;
+    for (const t of tops) {
+      const a = new THREE.Vector3(...t), hit = trussCeiling(a, meshes);
+      if (hit.assumed) assumed++;
+      ys.push(hit.world.y.toFixed(2));
+      cableGeos.push(trussRod(a, hit.local, TRUSS_CABLE_R, 6));
+    }
+    const cables = new THREE.Mesh(trussMerge(cableGeos), trussCableMat);
+    cables.name = 'truss cables: ' + name;
+    for (const m of [truss, cables]) trussFinish(m);
+    report.push(`${name} ${(x1 - x0).toFixed(1)} m (${row.n} units), cables to y ${ys.join('/')}` + (assumed ? ` (${assumed} on an assumed roof)` : ''));
+  }
+  // B. The grid over the stage: the ten electrics' pipes wall to wall, five cross pipes on top, twelve hangers.
+  const elec = Object.keys(rows).filter(k => /^\d+(st|nd|rd|th) Electric$/.test(k)).sort((a, b) => parseInt(a) - parseInt(b)).map(k => ({ name: k, ...trussRowStats(rows[k]) }));
+  if (elec.length) {
+    const pipes = [], hangers = [], walls = [];
+    for (const e of elec) {
+      const c = rig.localToWorld(new THREE.Vector3((e.xMin + e.xMax) / 2, e.y, e.z));
+      const ends = [];
+      for (const dx of [1, -1]) {                            // world ±x; the hit 0.1 m short, brought into rig-local
+        const dir = new THREE.Vector3(dx, 0, 0);
+        const h = new THREE.Raycaster(c, dir, 0.3, 12).intersectObjects(meshes, false)[0];
+        if (h) { ends.push(rig.worldToLocal(h.point.clone().addScaledVector(dir, -0.1)).x); walls.push(h.object.name); }
+        else {                                               // no wall: 0.5 m past the units' end on that side
+          const way = rig.worldToLocal(c.clone().add(dir)).x - rig.worldToLocal(c.clone()).x;   // which rig-local way this world side runs
+          ends.push(way > 0 ? e.xMax + 0.5 : e.xMin - 0.5); walls.push('none');
+        }
+      }
+      e.x0 = Math.min(...ends); e.x1 = Math.max(...ends);
+      pipes.push(trussRod(new THREE.Vector3(e.x0, e.y, e.z), new THREE.Vector3(e.x1, e.y, e.z), TRUSS_CHORD_R, 8));
+    }
+    const yTop = Math.max(...elec.map(e => e.y)) + 2 * TRUSS_CHORD_R;  // the cross pipes sit ON the electrics' pipes
+    const zFront = elec[0].z + 0.5, zBack = elec[elec.length - 1].z - 0.5;
+    for (const x of TRUSS_GRID_X) pipes.push(trussRod(new THREE.Vector3(x, yTop, zFront), new THREE.Vector3(x, yTop, zBack), TRUSS_CHORD_R, 8));
+    const roofYs = [];
+    let assumed = 0;
+    for (const e of elec.filter(e => /^(1st|4th|7th|10th) /.test(e.name))) for (const x of [-6, 0, 6]) {
+      const a = new THREE.Vector3(x, yTop, e.z), hit = trussCeiling(a, meshes);
+      if (hit.assumed) assumed++;
+      roofYs.push(hit.world.y);
+      hangers.push(trussRod(a, hit.local, TRUSS_HANGER_R, 6));
+    }
+    const grid = new THREE.Mesh(trussMerge(pipes), trussMat); grid.name = 'grid: pipes';
+    const hang = new THREE.Mesh(trussMerge(hangers), trussMat); hang.name = 'grid: hangers';
+    for (const m of [grid, hang]) trussFinish(m);
+    const xs = elec.flatMap(e => [e.x0, e.x1]);
+    rig.userData.trussGrid = { electrics: elec.map(e => ({ name: e.name, n: e.n, y: e.y, z: e.z, x0: e.x0, x1: e.x1 })), walls, zFront, zBack, yTop, roofYs };
+    report.push(`grid: ${elec.length} pipes (x ${Math.min(...xs).toFixed(1)}…${Math.max(...xs).toFixed(1)}, z ${zBack.toFixed(2)}…${zFront.toFixed(2)} rig-local), ${TRUSS_GRID_X.length} cross, ${hangers.length} hangers to y ${Math.min(...roofYs).toFixed(2)}…${Math.max(...roofYs).toFixed(2)}` + (assumed ? ` (${assumed} on an assumed roof)` : ''));
+  } else report.push('grid: no electrics in the rig');
+  console.info('trusses: ' + report.join('; '));
+}
+const TRUSS_SECTION = 0.30, TRUSS_BAY = 0.5;                  // a 12-inch box truss, diagonals every half metre
+const TRUSS_CHORD_R = 0.024, TRUSS_DIAG_R = 0.017, TRUSS_CABLE_R = 0.006, TRUSS_HANGER_R = 0.008;   // 48 mm, 34 mm, 12 mm, 16 mm
+const TRUSS_GRID_X = [-6, -3, 0, 3, 6];
+const trussMat = new THREE.MeshStandardMaterial({ color: 0x33363b, metalness: 0.6, roughness: 0.5 });
+const trussCableMat = new THREE.MeshStandardMaterial({ color: 0x101010, metalness: 0.2, roughness: 0.8 });
+// A row's units → count, x extent, mean y and z (rig-local). Null for no units.
+function trussRowStats(units) {
+  if (!units || !units.length) return null;
+  let xMin = Infinity, xMax = -Infinity, y = 0, z = 0;
+  for (const u of units) { xMin = Math.min(xMin, u.position.x); xMax = Math.max(xMax, u.position.x); y += u.position.y; z += u.position.z; }
+  return { n: units.length, xMin, xMax, y: y / units.length, z: z / units.length };
+}
+// A rod of radius r from a to b (rig-local Vector3s), as a geometry ready to merge.
+const trussUp = new THREE.Vector3(0, 1, 0);
+function trussRod(a, b, r, seg) {
+  const d = new THREE.Vector3().subVectors(b, a), len = d.length();
+  const g = new THREE.CylinderGeometry(r, r, Math.max(len, 1e-4), seg, 1);
+  const m = new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(trussUp, d.normalize()), new THREE.Vector3(1, 1, 1));
+  return g.applyMatrix4(m);
+}
+// The four chords along x from x0 to x1 at the given [y, z] corners, a zig-zag on every face, a frame at each end.
+function trussBoxTruss(x0, x1, corners) {
+  const geos = [], n = Math.max(1, Math.ceil((x1 - x0) / TRUSS_BAY)), step = (x1 - x0) / n;
+  const P = (i, x) => new THREE.Vector3(x, corners[i][0], corners[i][1]);
+  for (let i = 0; i < 4; i++) geos.push(trussRod(P(i, x0), P(i, x1), TRUSS_CHORD_R, 8));
+  for (let f = 0; f < 4; f++) {                              // face between corner f and corner f+1
+    const A = f, Bc = (f + 1) % 4;
+    for (let k = 0; k < n; k++) {
+      const xa = x0 + k * step, xb = xa + step;
+      geos.push(k % 2 ? trussRod(P(Bc, xa), P(A, xb), TRUSS_DIAG_R, 6) : trussRod(P(A, xa), P(Bc, xb), TRUSS_DIAG_R, 6));
+    }
+  }
+  for (const x of [x0, x1]) {                                // end frames: the square and one diagonal across it
+    for (let i = 0; i < 4; i++) geos.push(trussRod(P(i, x), P((i + 1) % 4, x), TRUSS_DIAG_R, 6));
+    geos.push(trussRod(P(0, x), P(2, x), TRUSS_DIAG_R, 6));
+  }
+  return geos;
+}
+function trussMerge(geos) { const g = mergeGeometries(geos, false); geos.forEach(x => x.dispose()); return g; }
+function trussFinish(m) { m.castShadow = m.receiveShadow = false; m.userData.rig = true; rig.add(m); }
+// The ceiling straight above a rig-local point: cast +y in WORLD, nearest hit past 0.3 m within 30 m;
+// none, and a roof 16 m above the deck is assumed. → { local, world, assumed }
+function trussCeiling(localPt, meshes) {
+  const w = rig.localToWorld(localPt.clone());
+  const h = new THREE.Raycaster(w, new THREE.Vector3(0, 1, 0), 0.3, 30).intersectObjects(meshes, false)[0];
+  const world = h ? h.point.clone() : new THREE.Vector3(w.x, HOUSE.deckY + 16, w.z);
+  return { local: rig.worldToLocal(world.clone()), world, assumed: !h };
+}
+
+/* ---------------------------------------------------------------- RIGGING: WING TOWERS (agent C)
+   Jack: "make all the lights in the wings have trusses attached to the ground holding them" —
+   the booms upstage of the arch stand on floor-mounted truss towers. */
+function buildWingTowers(houseScene) {
+  // One tower per boom upstage of the arch (the SL / SR Boom 1s stand in the house and are agent A's).
+  // Everything is built in the rig's own frame (real metres, upstage −z, stage left +x, deck y 0), so
+  // it follows "Real size"; the floor and wall checks are done in the world, at the fitted scale.
+  if (!rig) return;
+  // No frame has drawn since the set was turned and seated, so its groups' world matrices are stale
+  // (root.updateMatrixWorld does not refresh its parents): refresh the whole set, and the house, first.
+  setGroup.updateMatrixWorld(true); houseScene.updateMatrixWorld(true);
+  const t0 = performance.now(), v = new THREE.Vector3(), cols = new Map();
+  for (const u of rig.children) {
+    const d = u.userData;
+    if (!d || d.tower || !/Boom/.test(d.position || '') || u.getWorldPosition(v).z < HOUSE.archZ) continue;
+    if (!cols.has(d.position)) cols.set(d.position, []);
+    cols.get(d.position).push(u);
+  }
+  const houseMeshes = [], setMeshes = [];
+  houseScene.traverse(o => { if (o.isMesh && o.visible) houseMeshes.push(o); });
+  rig.parent.traverse(o => { if (o.isMesh && o.visible && !o.userData.rig) setMeshes.push(o); });   // the set, never the rig
+  const s = rig.getWorldScale(new THREE.Vector3()).x, S = towerSpec.side, ray = new THREE.Raycaster();
+  const W = (x, y, z) => rig.localToWorld(new THREE.Vector3(x, y, z));
+  const dirW = (x, z) => new THREE.Vector3(x, 0, z).transformDirection(rig.matrixWorld).setY(0).normalize();
+  const first = (o, dir, list, far) => { ray.set(o, dir); ray.far = far; return ray.intersectObjects(list, false)[0] || null; };
+  const fmt = p => `(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`;
+  const names = [...cols.keys()].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  const mean = a => a.reduce((p, q) => p + q, 0) / a.length, spread = a => Math.max(...a) - Math.min(...a);
+  const report = names.map(name => {
+    const us = cols.get(name), xs = us.map(u => u.position.x), ys = us.map(u => u.position.y), zs = us.map(u => u.position.z);
+    const x0 = mean(xs), z0 = mean(zs), sx = /^SR/.test(name) ? -1 : /^SL/.test(name) ? 1 : Math.sign(x0) || 1, y1 = Math.max(...ys) + towerSpec.over;
+    const near = new THREE.Box3().setFromPoints([W(x0, 0, z0), W(x0 + sx * S, 0, z0 - S), W(x0, y1, z0), W(x0 + sx * S, y1, z0 - S)]).expandByScalar(0.3);
+    near.min.y -= 3;                                         // room below for a floor lower than the deck
+    return { name, us, x0, z0, sx, y1, near, units: us.length, unitY: [Math.min(...ys), Math.max(...ys)], spread: [spread(xs), spread(zs)], notes: [] };
+  });
+  // Ray-testing the whole scan and set ~260 times took seconds at load: one pass first keeps, per
+  // tower, only the triangles near it, and every ray below is cast at those.
+  const nearScan = towerNear(houseMeshes, report.map(t => t.near)), nearSet = towerNear(setMeshes, report.map(t => t.near));
+  const named = h => h && { point: h.point, distance: h.distance, object: { name: h.object.userData.src[h.faceIndex] } };
+  report.forEach((t, i) => {
+    const { name, us, x0, z0, sx, y1 } = t;
+    const scanNear = nearScan[i] ? [nearScan[i]] : [], setNear = nearSet[i] ? [nearSet[i]] : [];
+    if (t.spread[0] > 0.3 || t.spread[1] > 0.3) t.notes.push(`units spread x ${t.spread[0].toFixed(2)} / z ${t.spread[1].toFixed(2)} m (${us.map(u => u.userData.id).join(', ')}) — mean used`);
+    // FLOOR: down from 0.5 m above the plate's centre, onto the scan; the set looked at separately
+    let y0 = 0;
+    const base = W(x0 + sx * S / 2, 0, z0 - S / 2), from = base.clone().setY(base.y + 0.5);
+    const fh = named(first(from, DOWN, scanNear, 50)) || first(from, DOWN, houseMeshes, 50), fs = named(first(from, DOWN, setNear, 50));
+    if (!fh) t.notes.push(`no scan floor under it at ${fmt(base)}`);
+    else if (base.y - fh.point.y > 0.1) { y0 = rig.worldToLocal(fh.point.clone()).y; t.notes.push(`scan floor ${(base.y - fh.point.y).toFixed(2)} m drawn below the deck at ${fmt(fh.point)} — tower extended down to it`); }
+    else if (fh.point.y - base.y > 0.1) t.notes.push(`scan surface ${(fh.point.y - base.y).toFixed(2)} m drawn ABOVE the deck at ${fmt(fh.point)} (${fh.object.name}) — the tower stands through it`);
+    if (fs && fs.point.y - base.y > 0.02) t.notes.push(`set piece ${fs.object.name} ${(fs.point.y - base.y).toFixed(2)} m drawn above the deck under the plate at ${fmt(fs.point)}`);
+    t.floorY = fh ? fh.point.y : null; t.deckY = base.y;
+    const mesh = new THREE.Mesh(towerGeometry(x0, z0, sx, y0, y1), towerMat);
+    mesh.name = name + ' tower'; mesh.userData = { rig: true, tower: true, boom: name };
+    mesh.castShadow = mesh.receiveShadow = false;
+    rig.add(mesh);
+    t.height = y1 - y0; t.chord = W(x0, y0, z0); t.centre = W(x0 + sx * S / 2, y0, z0 - S / 2);
+    // WALLS: from the chord line outward, upstage and between, at three heights, into the scan and the set
+    const out = dirW(sx, 0), up = dirW(0, -1), diag = out.clone().add(up).normalize();
+    for (const [label, dir, reach] of [['outward', out, Math.max(0.2, S * s)], ['upstage', up, S * s], ['out+up', diag, S * s * Math.SQRT2]]) {
+      for (const yy of [y0 + 0.3, (y0 + y1) / 2, y1 - 0.1]) {
+        const o = W(x0, yy, z0);
+        for (const [what, list] of [['scan', scanNear], ['set', setNear]]) {
+          const h = named(first(o, dir, list, reach));
+          if (h) t.notes.push(`${what} ${h.object.name} ${h.distance.toFixed(2)} m drawn ${label} of the chord at ${fmt(h.point)} — the tower stands in it`);
+        }
+      }
+    }
+    delete t.us; delete t.near;
+  });
+  rig.userData.towers = report;                             // MIDTOWN.rig.userData.towers, for the console
+  const all = [...rig.children].filter(u => u.userData && /Boom/.test(u.userData.position || '') && !u.userData.tower);
+  const skipped = [...new Set(all.filter(u => !cols.has(u.userData.position)).map(u => u.userData.position))];
+  console.info(`towers: ${report.length} — ` + report.map(t => `${t.name} (${t.units} unit${t.units === 1 ? '' : 's'}, ${t.height.toFixed(1)} m)`).join(', ')
+    + (skipped.length ? ` · not towered (downstage of the arch): ${skipped.join(', ')}` : '') + ` · ${(performance.now() - t0).toFixed(0)} ms`);
+  for (const t of report) console.info(`towers: ${t.name} — ${t.units} units at ${t.unitY[0].toFixed(2)}–${t.unitY[1].toFixed(2)} m, spread x ${t.spread[0].toFixed(2)} z ${t.spread[1].toFixed(2)}; chord ${fmt(t.chord)} centre ${fmt(t.centre)} world, deck ${t.deckY.toFixed(3)} floor ${t.floorY === null ? '—' : t.floorY.toFixed(3)}`
+    + (t.notes.length ? '\n  ' + t.notes.join('\n  ') : ''));
+}
+// The tower: 0.30 m box truss (four 48 mm chords, 34 mm lacing zig-zagging up every face about every
+// 0.5 m, a frame at each end) on a 0.60 m × 15 mm base plate. Real metres; drawn at the set's scale.
+const towerSpec = { side: 0.30, chord: 0.048, lace: 0.034, bay: 0.5, plate: 0.60, plateT: 0.015, over: 0.5, seg: 8 };
+const towerMat = new THREE.MeshStandardMaterial({ color: 0x33363b, metalness: 0.6, roughness: 0.5 });
+const towerY = new THREE.Vector3(0, 1, 0);
+function towerTube(a, b, dia, parts) {                       // a tube of diameter `dia` from a to b
+  const dir = new THREE.Vector3().subVectors(b, a), len = dir.length();
+  if (len < 1e-4) return;
+  const g = new THREE.CylinderGeometry(dia / 2, dia / 2, len, towerSpec.seg, 1, false);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(towerY, dir.divideScalar(len)));
+  g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+  parts.push(g);
+}
+// One chord runs up through (x0, z0) — where the boom's clamps are — and the body lies sx·x (offstage)
+// and −z (upstage) of it. The plate's top is at y0 + its thickness; the tower ends at y1.
+function towerGeometry(x0, z0, sx, y0, y1) {
+  const S = towerSpec.side, parts = [], V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const cx = [x0, x0 + sx * S, x0 + sx * S, x0], cz = [z0, z0, z0 - S, z0 - S];   // the corners, round the ring
+  const yb = y0 + towerSpec.plateT, n = Math.max(1, Math.round((y1 - yb) / towerSpec.bay)), h = (y1 - yb) / n;
+  for (let i = 0; i < 4; i++) towerTube(V(cx[i], yb, cz[i]), V(cx[i], y1, cz[i]), towerSpec.chord, parts);
+  for (let f = 0; f < 4; f++) {
+    const j = (f + 1) % 4;
+    for (const y of [yb + towerSpec.chord / 2, y1 - towerSpec.chord / 2]) towerTube(V(cx[f], y, cz[f]), V(cx[j], y, cz[j]), towerSpec.lace, parts);   // end frames
+    for (let k = 0; k < n; k++) {                            // the zig-zag, out of phase on neighbouring faces so they meet at the chords
+      const [a, b] = (k + f) % 2 ? [j, f] : [f, j];
+      towerTube(V(cx[a], yb + k * h, cz[a]), V(cx[b], yb + (k + 1) * h, cz[b]), towerSpec.lace, parts);
+    }
+  }
+  const plate = new THREE.BoxGeometry(towerSpec.plate, towerSpec.plateT, towerSpec.plate);
+  plate.translate(x0 + sx * S / 2, y0 + towerSpec.plateT / 2, z0 - S / 2);
+  parts.push(plate);
+  const g = mergeGeometries(parts, false);
+  parts.forEach(p => p.dispose());
+  return g;
+}
+// For each world box, the meshes' triangles that touch it, as one unparented, never-drawn, double-
+// sided mesh in world coordinates (null if none); userData.src[faceIndex] names the mesh each came from.
+function towerNear(meshes, boxes) {
+  const P = boxes.map(() => []), src = boxes.map(() => []), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), tb = new THREE.Box3();
+  for (const o of meshes) {
+    o.updateMatrixWorld(true);
+    const pos = o.geometry.attributes.position, idx = o.geometry.index ? o.geometry.index.array : null, n = idx ? idx.length : pos.count;
+    for (let t = 0; t < n; t += 3) {
+      a.fromBufferAttribute(pos, idx ? idx[t] : t).applyMatrix4(o.matrixWorld);
+      b.fromBufferAttribute(pos, idx ? idx[t + 1] : t + 1).applyMatrix4(o.matrixWorld);
+      c.fromBufferAttribute(pos, idx ? idx[t + 2] : t + 2).applyMatrix4(o.matrixWorld);
+      tb.makeEmpty().expandByPoint(a).expandByPoint(b).expandByPoint(c);
+      boxes.forEach((box, i) => { if (box.intersectsBox(tb)) { P[i].push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z); src[i].push(o.name); } });
+    }
+  }
+  const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  return P.map((p, i) => {
+    if (!p.length) return null;
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+    const m = new THREE.Mesh(g, mat); m.userData.src = src[i]; return m;
+  });
+}
+
+/* ---------------------------------------------------------------- HOUSE WORKS: THE FOLLOWSPOT BOOTH (agent E)
+   Jack: "carve out a hole here and put in a spotlight booth" — the three Lycians were floating against
+   the back wall of the house. BOOTH_CUTS are delete boxes applied to the scan like BAKED_CUTS (world
+   frame, {p, r, s}); the booth itself is built in the world frame and marked userData.rig so the build
+   tools leave it alone. */
+// The middle of the back wall is an alcove, x −2.81…3.07 between two jambs that run forward to z ≈ −13.8;
+// the rear doorways are beyond them (x ≲ −3.6 and ≳ 3.5, open below y ≈ 3.0). Its back wall is a coarse
+// regular grid of quads in Object_12 — columns at x −2.81 / −1.61 / −0.06 / 1.52 / 3.07, rows at y 0.81 /
+// ~2.98 (sloping 3.04 → 2.93 left to right) / 3.24 / 3.39 / 3.46 / 4.40 / 5.34 — with fine scan detail
+// (a ledge at its foot) up to y ≈ 2.75 just in front of it. The cut takes the four rows between the ~2.98
+// line and the 4.40 line, all four columns: exactly 32 triangles, all Object_12, nothing else (counted
+// against the house and the set), so the window is jamb to jamb, x −2.81…3.07, y 2.93/3.04…4.40, its edges
+// on the scan's own lines. Box: x −2.70…2.95, y 2.85…4.50, z −14.75…−13.95 (the wall is at −14.23…−14.43).
+const BOOTH_CUTS = [{ p: [0.125, 3.675, -14.35], r: [0, 0, 0], s: [5.65, 1.65, 0.8] }];
+function buildSpotBooth(houseScene) {
+  const S = boothSpec, t0 = performance.now();
+  scene.updateMatrixWorld(true);                             // no frame has drawn: the set's and the rig's world matrices are stale
+  const meshes = []; houseScene.traverse(o => { if (o.isMesh && o.visible) meshes.push(o); });
+  const ray = new THREE.Raycaster(), V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const cast = (o, d, far) => { ray.set(o, d); ray.far = far; return ray.intersectObjects(meshes, false)[0] || null; };
+  const f2 = n => n === null || n === undefined ? '—' : n.toFixed(2);
+  // 1. MEASURE the uncut wall (the cuts go on later, in reapplyAll at the load's tail): −z from each spot
+  // and from six points over the window; ±x for the alcove's jambs; down for the house floor in front.
+  const spots = rig ? ['lycian-1', 'lycian-2', 'lycian-3'].map(id => rig.children.find(u => u.userData.id === id)).filter(Boolean) : [];
+  const from = spots.map(u => u.getWorldPosition(new THREE.Vector3()));
+  for (const x of [-2, 0, 2]) for (const y of [3.7, 4.1]) from.push(V(x, y, -12));
+  const wallZs = from.map(o => cast(o, V(0, 0, -1), 6)).filter(Boolean).map(h => h.point.z);
+  const wallZ = wallZs.length ? wallZs.reduce((a, b) => a + b, 0) / wallZs.length : null;
+  const mid = V((S.x0 + S.x1) / 2, 3.8, S.wallZ + 0.2);
+  const jl = cast(mid, V(-1, 0, 0), 5), jr = cast(mid, V(1, 0, 0), 5), fl = cast(V(0.1, 2.9, S.wallZ + 0.35), DOWN, 3);
+  if (wallZ === null || Math.abs(wallZ - S.wallZ) > 0.15) console.warn(`booth: the back wall measured at z ${f2(wallZ)}, not the ${S.wallZ} the booth and its cut are built for — check BOOTH_CUTS / boothSpec`);
+  // 2. The fills behind the scan wall (both planes at z −14.9) would stand in the booth: house_skirt_s
+  // (y 2.5–8.05, the full width) gets a hole the booth's size, skirting_s_mid (x ±3.3, up to y 2.5)
+  // stops under the booth's floor. The rear doorways keep both, untouched.
+  const yB = S.floor - S.t, yT = S.ceil + S.t;
+  const skirt = boothHole(houseMesh.house_skirt_s, S.xo0, S.xo1, yB, yT), skirting = boothHole(houseMesh.skirting_s_mid, S.xo0, S.xo1, yB, yT);
+  // 3. THE BOOTH, world frame: the scan wall stays its face to the house; behind it a front wall with the
+  // window, a floor level with the house's back floor, side walls, back wall, ceiling; the window's
+  // sill ledge (0.3 m proud into the house), lintel and jamb liners cover the cut's edges.
+  const group = new THREE.Group(); group.name = 'followspot booth';
+  const add = (g, mat, name) => { const m = new THREE.Mesh(g, mat); m.name = name; m.castShadow = m.receiveShadow = false; m.userData.rig = true; group.add(m); return m; };
+  const box = (x0, x1, y0, y1, z0, z1, mat, name) => add(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), mat, name);
+  const cyl = (r, x, y0, y1, z, mat, name) => add(new THREE.CylinderGeometry(r, r, y1 - y0, 16).translate(x, (y0 + y1) / 2, z), mat, name);
+  const zF = S.front, zFo = zF + S.t, zB = zF - S.depth, zBo = zB - S.t;   // front wall inner / outer face, back wall inner / outer
+  box(S.xo0, S.xo1, yB, S.floor, zBo, zFo, boothMats.wall, 'booth floor');
+  box(S.xo0, S.xo1, S.ceil, yT, zBo, zFo, boothMats.wall, 'booth ceiling');
+  box(S.xo0, S.xo0 + S.t, S.floor, S.ceil, zB, zF, boothMats.wall, 'booth wall, house right');
+  box(S.xo1 - S.t, S.xo1, S.floor, S.ceil, zB, zF, boothMats.wall, 'booth wall, house left');
+  box(S.xo0, S.xo1, S.floor, S.ceil, zBo, zB, boothMats.wall, 'booth back wall');
+  box(S.xo0, S.xo1, S.floor, S.sill, zF, zFo, boothMats.wall, 'booth front wall, under the window');
+  box(S.xo0, S.xo1, S.head, S.ceil, zF, zFo, boothMats.wall, 'booth front wall, over the window');
+  box(S.xo0, S.x0, S.sill, S.head, zF, zFo, boothMats.wall, 'booth front wall, house right');
+  box(S.x1, S.xo1, S.sill, S.head, zF, zFo, boothMats.wall, 'booth front wall, house left');
+  box(S.x0 - 0.15, S.x1 + 0.15, S.sill - 0.17, S.sill, zF, S.wallZ + 0.3, boothMats.trim, 'booth sill');
+  box(S.x0 - 0.15, S.x1 + 0.15, S.head - 0.02, S.head + 0.13, zF, S.wallZ + 0.1, boothMats.trim, 'booth lintel');
+  box(S.x0 - 0.17, S.x0 + 0.02, S.sill, S.head, zF, S.wallZ, boothMats.trim, 'booth jamb, house right');
+  box(S.x1 - 0.02, S.x1 + 0.17, S.sill, S.head, zF, S.wallZ, boothMats.trim, 'booth jamb, house left');
+  box(S.xo0 + S.t + 0.25, S.xo0 + S.t + 1.15, S.floor, S.floor + 2.0, zB, zB + 0.04, boothMats.door, 'booth door');
+  const lamp = add(new THREE.PlaneGeometry(0.6, 0.1), boothMats.lamp, 'booth work light');
+  lamp.rotation.x = Math.PI / 2; lamp.position.set((S.x0 + S.x1) / 2, S.ceil - 0.01, (zF + zB) / 2);   // facing down, under the ceiling
+  // 4. The spots onto the booth floor, each on a pedestal stand (the Lycian model is the head and yoke
+  // only, 0.5 m tall drawn: standing on the floor its lens would be under the sill), re-aimed at the
+  // turntable centre; an operator's stool behind each.
+  const moved = [];
+  const order = spots.map((u, i) => ({ u, x: from[i].x })).sort((a, b) => a.x - b.x);
+  const target = new THREE.Vector3(...S.aim);
+  order.forEach(({ u }, i) => {
+    const x = S.spotX[i];
+    u.position.copy(rig.worldToLocal(V(x, S.spotY, S.spotZ)));
+    const dot = boothAim(u, target);
+    cyl(0.22, x, S.floor, S.floor + 0.03, S.spotZ, boothMats.metal, 'booth stand base');
+    cyl(0.035, x, S.floor + 0.03, S.spotY - 0.025, S.spotZ, boothMats.metal, 'booth stand post');
+    cyl(0.12, x, S.spotY - 0.025, S.spotY, S.spotZ, boothMats.metal, 'booth stand plate');
+    const zs = S.spotZ - 1.3;
+    cyl(0.2, x, S.floor, S.floor + 0.02, zs, boothMats.metal, 'booth stool foot');
+    cyl(0.025, x, S.floor + 0.02, S.floor + 0.70, zs, boothMats.metal, 'booth stool post');
+    cyl(0.175, x, S.floor + 0.70, S.floor + 0.75, zs, boothMats.seat, 'booth stool seat');
+    moved.push(`${u.userData.id} x ${x.toFixed(2)} (aim dot ${dot === null ? '—' : dot.toFixed(4)})`);
+  });
+  if (rig) rig.updateMatrixWorld(true);
+  scene.add(group);
+  console.info(`booth: wall at z ${f2(wallZ)} (${wallZs.length} rays, ${f2(Math.min(...wallZs))}…${f2(Math.max(...wallZs))}; built for ${S.wallZ}), alcove jambs at x ${f2(jl && jl.point.x)} / ${f2(jr && jr.point.x)}, house floor in front y ${f2(fl && fl.point.y)}`
+    + ` · window x ${S.x0}…${S.x1} y ${S.sill}…${S.head} (cut ${BOOTH_CUTS.length} box), floor y ${S.floor}, room x ${S.xo0}…${S.xo1} z ${zFo.toFixed(2)}…${zBo.toFixed(2)}`
+    + ` · fills: house_skirt_s ${skirt ? 'holed' : 'NOT holed'}, skirting_s_mid ${skirting ? 'cut down' : 'NOT cut'}`
+    + ` · spots moved to y ${S.spotY} z ${S.spotZ}: ${moved.join(', ') || 'none (no rig)'} · ${(performance.now() - t0).toFixed(0)} ms`);
+  requestRender(); shadowsDirty();
+}
+// The booth's numbers, world metres, from the measurements above (the console line re-measures them).
+const boothSpec = {
+  wallZ: -14.30,                    // the alcove's back wall (−14.23…−14.43: it bulges back to −14.4 under y 3.46)
+  x0: -2.81, x1: 3.07,              // the window: the alcove's own jambs
+  sill: 3.05, head: 4.40,           // the sill ledge's top, over the scan's sloping 2.93…3.04 line; the cut's 4.40 line
+  floor: 2.10, ceil: 4.90, t: 0.20, // booth floor top (the house's floor at the back wall is y 2.10), ceiling underside, slab / wall thickness
+  front: -14.65, depth: 3.0,        // the booth front wall's inner face (behind the scan wall and its 0.35 m reveal); the room's depth from it
+  xo0: -3.30, xo1: 3.30,            // the booth's outer sides: skirting_s_mid's own width, clear of the rear doorways (x ≈ −3.6 / 3.5)
+  spotX: [-2.2, 0, 2.2], spotY: 3.28, spotZ: -14.90,   // the units' origin (the yoke's foot), on stands; the lens 0.37 m ahead of it, just inside the window
+  aim: [0, HOUSE.deckY + 1.5, 2.6], // the turntable centre, 1.5 m up
+};
+// Lit by the hemisphere alone the room read as a flat black hole from the stalls; a faint warm emissive
+// stands in for the work light's spill (a real light would cost every lit material a frame).
+const boothSpill = 0x1a1510, boothSpillLow = 0x0d0b08;
+const boothMats = {
+  wall: new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 0.9, emissive: boothSpill }),
+  trim: new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.8, emissive: boothSpill }),
+  door: new THREE.MeshStandardMaterial({ color: 0x1c1c20, roughness: 0.8, emissive: boothSpillLow }),
+  metal: new THREE.MeshStandardMaterial({ color: 0x18181b, metalness: 0.5, roughness: 0.6, emissive: boothSpillLow }),
+  seat: new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.9, emissive: boothSpillLow }),
+  lamp: new THREE.MeshBasicMaterial({ color: 0x5a4a30, toneMapped: false, side: THREE.DoubleSide }),
+};
+// A flat fill facing z (world = local), its geometry replaced by up to four rectangles round the hole
+// x hx0…hx1, y hy0…hy1, the uv carried over (both fills map u from x and v from y, linearly). → done?
+function boothHole(mesh, hx0, hx1, hy0, hy1) {
+  if (!mesh) return false;
+  const g = mesh.geometry, P = g.attributes.position, U = g.attributes.uv;
+  mesh.updateMatrixWorld(true);
+  if (!mesh.matrixWorld.equals(new THREE.Matrix4()) || !U) { console.warn(`booth: ${mesh.name} is not a plain fill — left whole`); return false; }
+  let i0 = 0, i1 = 0, j0 = 0, j1 = 0;
+  for (let i = 1; i < P.count; i++) {
+    if (P.getX(i) < P.getX(i0)) i0 = i; if (P.getX(i) > P.getX(i1)) i1 = i;
+    if (P.getY(i) < P.getY(j0)) j0 = i; if (P.getY(i) > P.getY(j1)) j1 = i;
+  }
+  const xa = P.getX(i0), xb = P.getX(i1), ya = P.getY(j0), yb = P.getY(j1), z = P.getZ(0);
+  const uAt = x => U.getX(i0) + (U.getX(i1) - U.getX(i0)) * (x - xa) / (xb - xa);
+  const vAt = y => U.getY(j0) + (U.getY(j1) - U.getY(j0)) * (y - ya) / (yb - ya);
+  const cx0 = Math.max(xa, hx0), cx1 = Math.min(xb, hx1), cy0 = Math.max(ya, hy0), cy1 = Math.min(yb, hy1);
+  const pos = [], uv = [], idx = [];
+  for (const [x0, x1, y0, y1] of [[xa, cx0, ya, yb], [cx1, xb, ya, yb], [cx0, cx1, cy1, yb], [cx0, cx1, ya, cy0]]) {
+    if (x1 - x0 < 1e-3 || y1 - y0 < 1e-3) continue;
+    const n = pos.length / 3;
+    for (const [x, y] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) { pos.push(x, y, z); uv.push(uAt(x), vAt(y)); }
+    idx.push(n, n + 1, n + 2, n, n + 2, n + 3);
+  }
+  const ng = new THREE.BufferGeometry();
+  ng.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  ng.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  ng.setIndex(idx); ng.computeVertexNormals();
+  g.dispose(); mesh.geometry = ng;
+  return true;
+}
+// Aim a unit's lens at a world point: the pan on the unit (its parents turn about y only, so a change of
+// rotation.y is a change of world heading), the tilt on the head of every detail level (the slope found
+// by a small trial turn, so the head's axis needs no assumption). Three passes. → the beam · the wanted dot.
+function boothAim(unit, target) {
+  const lens = unit.levels.length && unit.levels[0].object.getObjectByName('lens');
+  if (!lens) return null;
+  const heads = unit.levels.map(l => l.object.getObjectByName('head')).filter(Boolean);
+  const p = new THREE.Vector3(), d = new THREE.Vector3(), w = new THREE.Vector3();
+  const look = () => { unit.updateMatrixWorld(true); lens.getWorldPosition(p); lensBeam(lens, d); w.subVectors(target, p).normalize(); };
+  const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+  for (let i = 0; i < 3; i++) {
+    look(); unit.rotation.y += wrap(Math.atan2(w.x, w.z) - Math.atan2(d.x, d.z));
+    if (!heads.length) continue;
+    look(); const e0 = Math.asin(d.y);
+    heads.forEach(h => { h.rotation.x += 0.01; }); look();
+    const k = (Math.asin(d.y) - e0) / 0.01;
+    if (Math.abs(k) > 0.1) heads.forEach(h => { h.rotation.x += (Math.asin(w.y) - Math.asin(d.y)) / k; });
+  }
+  look(); return d.dot(w);
+}
+
+/* ---------------------------------------------------------------- HOUSE WORKS: THE LIGHTING DESK (agent F)
+   Jack: "take out some of the seats in the middle here and put in a lighting desk." DESK_CUTS are delete
+   boxes applied to the scan like BAKED_CUTS (world frame); the desk position is built in the world
+   frame and marked userData.rig so the build tools leave it alone. */
+// The block, measured off the scan: the centre block's seats run x −2.7…3.0 between the two aisles; the
+// two rows taken out are the ones whose seat backs stand at z ≈ −7.78 and −8.62 (pitch ≈ 0.83 m), from just
+// behind the row in front (its back ends at z −7.04) to just in front of the row behind (its seats start at
+// z −9.05): z −7.15…−8.97, x −2.12…2.04 (the edges on the armrests at x ≈ −2.1 / 2.0–2.1). The floor under
+// them is a clean plane rising 0.1135 m per metre back (6.5°: y 0.558 at the front edge, 0.765 at the back,
+// up to 0.026 higher toward x +2), so the box is tilted to that rake: its bottom face 0.079 m above the
+// plane (≥ 0.05 above the floor everywhere, so no floor triangle's centroid is inside), its top 1.30 m above.
+const DESK_CUTS = [{ p: [-0.04, 1.343, -7.992], r: [0.1130, 0, 0], s: [4.16, 1.213, 1.832] }];
+function buildDeskPosition(houseScene) {
+  // Runs BEFORE the cuts (reapplyAll at the load tail), so the scan still has its seats: every floor
+  // reading is the LOWEST up-facing hit straight down, under the seats.
+  const t0 = performance.now(), D = DESK;
+  houseScene.updateMatrixWorld(true);
+  const scan = []; houseScene.traverse(o => { if (o.isMesh && o.visible && /^Object_/.test(o.name)) scan.push(o); });
+  const ray = new THREE.Raycaster(), cx = (D.x0 + D.x1) / 2;
+  // FLOOR: the four corners (for the skirt) and a grid (for the highest point and the cut's clearance)
+  const corner = (x, z) => deskFloor(ray, scan, x, z) ?? D.plane(z);
+  const C = { fl: corner(D.x0, D.z0), fr: corner(D.x1, D.z0), bl: corner(D.x0, D.z1), br: corner(D.x1, D.z1) };
+  const floorAt = (x, z) => {                                  // bilinear between the corners (the floor is a plane to ±3 mm)
+    const u = (x - D.x0) / (D.x1 - D.x0), v = (z - D.z0) / (D.z1 - D.z0);
+    return (C.fl * (1 - u) + C.fr * u) * (1 - v) + (C.bl * (1 - u) + C.br * u) * v;
+  };
+  const inv = cutMatrix(DESK_CUTS[0]), q = new THREE.Vector3();
+  let top = -Infinity, clear = Infinity, misses = 0;
+  for (let i = 0; i <= 5; i++) for (let j = 0; j <= 4; j++) {
+    const x = D.x0 + 0.02 + (D.x1 - D.x0 - 0.04) * i / 5, z = D.z0 - 0.02 - (D.z0 - D.z1 - 0.04) * j / 4;
+    const y = deskFloor(ray, scan, x, z);
+    if (y === null) { misses++; continue; }
+    top = Math.max(top, y);
+    q.set(x, y, z).applyMatrix4(inv);                          // how far BELOW the cut box's bottom face this floor point lies (positive: kept)
+    if (Math.abs(q.x) <= 0.5 && Math.abs(q.z) <= 0.5) clear = Math.min(clear, -(q.y + 0.5) * DESK_CUTS[0].s[1]);
+  }
+  if (!Number.isFinite(top)) top = Math.max(C.fl, C.fr, C.bl, C.br);
+  // ROWS: seat runs straight down the centre line from the front of the stalls back past the block
+  const rows = deskRows(ray, scan, cx + 0.3, -2.0, D.z1 - 0.6, 0.08);
+  const mine = rows.map((r, i) => ({ ...r, n: i + 1 })).filter(r => r.front < D.z0 && r.back > D.z1);
+  const backs = rows.map(r => r.back), pitch = backs.length > 1 ? (backs[0] - backs[backs.length - 1]) / (backs.length - 1) : NaN;
+  const Y0 = top + D.lift;                                     // the platform's top
+  const P = {};                                                // material key -> geometries, merged at the end
+  // THE RISER: a 0.1 m deck, level, over the cut; black skirts down to the raked floor (their feet 3 cm into it)
+  deskBox(P, 'deck', D.x1 - D.x0, D.deck, D.z0 - D.z1, cx, Y0 - D.deck / 2, (D.z0 + D.z1) / 2);
+  const under = Y0 - D.deck, sk = 0.02;
+  deskSkirt(P, D.x0, D.x1, D.z0 - sk / 2, D.z0 + sk / 2, under, floorAt);                // front (stage side)
+  deskSkirt(P, D.x0, D.x1, D.z1 - sk / 2, D.z1 + sk / 2, under, floorAt);                // back (mostly in the floor)
+  deskSkirt(P, D.x0 - sk / 2, D.x0 + sk / 2, D.z1, D.z0, under, floorAt);                 // house left
+  deskSkirt(P, D.x1 - sk / 2, D.x1 + sk / 2, D.z1, D.z0, under, floorAt);                 // house right
+  // SIDE RAILS: a low black surround on the two open sides, as high as the seat backs beside it. A row's seat
+  // backs are one sheet of scan, so the cut leaves the next chair's back sawtoothed, its triangles reaching up to
+  // 9 cm in over the deck; the rails stand 10 cm in and hide that edge from the desk and most of the aisle.
+  for (const x of [D.x0 + D.railIn, D.x1 - D.railIn]) {
+    deskBox(P, 'skirt', 0.025, D.rail, D.z0 - D.z1, x, Y0 + D.rail / 2, (D.z0 + D.z1) / 2);
+    deskBox(P, 'frame', 0.05, 0.03, D.z0 - D.z1, x, Y0 + D.rail + 0.015, (D.z0 + D.z1) / 2);   // the cap
+  }
+  // THE TABLE: 2.4 × 0.8, 0.76 high, black top on a dark square-tube frame
+  const tb = D.table, tz = D.z0 - tb.front - tb.d / 2, T = Y0 + tb.h;
+  deskBox(P, 'top', tb.w, 0.03, tb.d, cx, T - 0.015, tz);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) deskBox(P, 'frame', 0.04, tb.h - 0.03, 0.04, cx + sx * (tb.w / 2 - 0.05), Y0 + (tb.h - 0.03) / 2, tz + sz * (tb.d / 2 - 0.05));
+  for (const sz of [-1, 1]) deskBox(P, 'frame', tb.w - 0.06, 0.07, 0.03, cx, T - 0.065, tz + sz * (tb.d / 2 - 0.05));
+  for (const sx of [-1, 1]) deskBox(P, 'frame', 0.03, 0.07, tb.d - 0.06, cx + sx * (tb.w / 2 - 0.05), T - 0.065, tz);
+  deskBox(P, 'frame', tb.w - 0.1, 0.03, 0.03, cx, Y0 + 0.12, tz + tb.d / 2 - 0.05);       // the foot rail on the stage side
+  // THE CONSOLE (Eos-style): a dark body whose top rakes up away from the operator, 10 faders, a keypad, its own small display
+  const k = D.console, kz = tz - tb.d / 2 + 0.03 + k.d / 2, rake = Math.atan(k.rise / k.d);
+  const body = new THREE.BoxGeometry(k.w, k.h, k.d), bp = body.attributes.position;
+  for (let i = 0; i < bp.count; i++) if (bp.getY(i) > 0) bp.setY(i, k.h / 2 + bp.getZ(i) * k.rise / k.d);   // the far edge (stage side, +z) higher
+  body.computeVertexNormals();
+  deskPut(P, 'body', body, cx, T + k.h / 2, kz);
+  const surf = zl => T + k.h + zl * k.rise / k.d;               // the raked top's height at a local z
+  const fz = -0.15;
+  deskBox(P, 'knob', 0.66, 0.004, 0.13, cx - 0.3, surf(fz) + 0.002, kz + fz, -rake);     // the fader bed
+  for (let i = 0; i < 10; i++) deskBox(P, 'knob', 0.022, 0.026, 0.032, cx - 0.57 + i * 0.06, surf(fz) + 0.016, kz + fz + 0.02, -rake);
+  deskBox(P, 'keys', 0.30, 0.008, 0.22, cx + 0.42, surf(-0.06) + 0.004, kz - 0.06, -rake);   // the keypad
+  deskBox(P, 'screen', 0.34, 0.004, 0.13, cx + 0.05, surf(0.14) + 0.003, kz + 0.14, -rake);  // the console's own display
+  deskBox(P, 'ui', 0.22, 0.005, 0.008, cx + 0.05, surf(0.17) + 0.003, kz + 0.17, -rake);
+  // TWO MONITORS behind it, on thin stands, facing the operator, their tops tipped back
+  const m = D.monitor, a = m.tilt, mz = kz + k.d / 2 + 0.11, my = T + m.lift + m.h / 2;
+  const n = new THREE.Vector3(0, Math.sin(a), -Math.cos(a)), up = new THREE.Vector3(0, Math.cos(a), Math.sin(a));
+  for (const sx of [-1, 1]) {
+    const mx = cx + sx * (m.w / 2 + 0.02);
+    deskBox(P, 'knob', m.w + 0.024, m.h + 0.024, 0.025, mx, my, mz, -a, Math.PI);         // the bezel
+    const sc = new THREE.Vector3(mx, my, mz).addScaledVector(n, 0.0135);
+    deskPut(P, 'screen', new THREE.PlaneGeometry(m.w, m.h), sc.x, sc.y, sc.z, -a, Math.PI);
+    for (let r = 0; r < 6; r++) {                               // a cue list on the screen: a few lit lines
+      const c = sc.clone().addScaledVector(n, 0.001).addScaledVector(up, m.h / 2 - 0.045 - r * 0.045);
+      deskPut(P, r ? 'ui' : 'glow', new THREE.PlaneGeometry(r ? m.w * (0.55 + 0.07 * (r % 3)) : m.w - 0.04, r ? 0.01 : 0.03), c.x - (r ? m.w * 0.12 : 0), c.y, c.z, -a, Math.PI);
+    }
+    deskPut(P, 'halo', new THREE.PlaneGeometry(m.w + 0.14, m.h + 0.12), sc.x + n.x * 0.002, sc.y + n.y * 0.002, sc.z + n.z * 0.002, -a, Math.PI);
+    deskBox(P, 'frame', 0.03, m.lift + 0.02, 0.03, mx, T + (m.lift + 0.02) / 2, mz + 0.03);   // the stand
+    deskBox(P, 'frame', 0.22, 0.012, 0.16, mx, T + 0.006, mz + 0.02);                         // its foot
+  }
+  // THE LITTLITE at the table's left operator-side corner: a base, a gooseneck bending over the desk, a warm tip
+  const lx = cx - tb.w / 2 + 0.12, lz = tz - tb.d / 2 + 0.1;
+  deskBox(P, 'knob', 0.06, 0.02, 0.06, lx, T + 0.01, lz);
+  const g0 = new THREE.Vector3(lx, T + 0.02, lz), g1 = new THREE.Vector3(lx, T + 0.30, lz), g2 = new THREE.Vector3(lx + 0.16, T + 0.33, lz + 0.05);
+  deskRod(P, 'knob', g0, g1, 0.005, 6); deskRod(P, 'knob', g1, g2, 0.005, 6);
+  const hd = g2.clone().add(new THREE.Vector3(0.03, -0.05, 0.01));
+  deskRod(P, 'knob', g2, hd, 0.013, 8);                                                     // the hood
+  deskRod(P, 'lamp', hd, hd.clone().add(new THREE.Vector3(0.002, -0.004, 0.0007)), 0.011, 8);   // the lit tip
+  // A LAPTOP beside the console: base and lid at a 100° hinge, its screen lit
+  const lp = D.laptop, ax = cx + k.w / 2 + 0.07 + lp.w / 2, az = kz, la = lp.open - Math.PI / 2;
+  deskBox(P, 'alu', lp.w, 0.018, lp.d, ax, T + 0.009, az);
+  const hinge = new THREE.Vector3(ax, T + 0.018, az + lp.d / 2), lup = new THREE.Vector3(0, Math.cos(la), Math.sin(la)), ln = new THREE.Vector3(0, Math.sin(la), -Math.cos(la));
+  const lc = hinge.clone().addScaledVector(lup, lp.lid / 2);
+  deskBox(P, 'alu', lp.w, lp.lid, 0.008, lc.x, lc.y, lc.z, la);
+  const ls = lc.clone().addScaledVector(ln, 0.0045);
+  deskPut(P, 'screen', new THREE.PlaneGeometry(lp.w - 0.03, lp.lid - 0.03), ls.x, ls.y, ls.z, -la, Math.PI);
+  // TWO OPERATOR'S CHAIRS behind the table, facing the stage
+  for (const chx of D.chairs) {
+    const chz = tz - tb.d / 2 - 0.36;
+    deskPut(P, 'frame', new THREE.CylinderGeometry(0.28, 0.28, 0.03, 8), chx, Y0 + 0.015, chz);    // the base
+    deskPut(P, 'frame', new THREE.CylinderGeometry(0.025, 0.025, 0.40, 6, 1, true), chx, Y0 + 0.23, chz);   // the post
+    deskBox(P, 'fabric', 0.46, 0.07, 0.45, chx, Y0 + 0.465, chz);                                    // the seat
+    deskBox(P, 'frame', 0.04, 0.26, 0.02, chx, Y0 + 0.58, chz - 0.235, -0.14);                       // the back's upright
+    deskBox(P, 'fabric', 0.44, 0.40, 0.05, chx, Y0 + 0.83, chz - 0.27, -0.14);                       // the back
+  }
+  // One mesh per material, world frame, never cast or caught, skipped by the build tools.
+  const group = new THREE.Group(); group.name = 'lighting desk';
+  let tris = 0;
+  for (const [key, geos] of Object.entries(P)) {
+    const geo = mergeGeometries(geos, false); geos.forEach(g => g.dispose());
+    const mesh = new THREE.Mesh(geo, deskMat[key]);
+    mesh.name = 'desk: ' + key; mesh.castShadow = mesh.receiveShadow = false; mesh.userData.rig = true;
+    if (key === 'halo') mesh.renderOrder = 2;                  // the additive glow after the screens
+    tris += (geo.index ? geo.index.count : geo.attributes.position.count) / 3;
+    group.add(mesh);
+  }
+  group.userData = { floor: C, top, platformTop: Y0, rows: mine, pitch, clearance: clear };
+  scene.add(group);
+  const f = v => v.toFixed(3);
+  const c = DESK_CUTS[0];
+  console.info(`desk: floor y ${f(Math.min(C.fl, C.fr))} (front, z ${D.z0}) to ${f(Math.max(C.bl, C.br))} (back, z ${D.z1}), highest ${f(top)}`
+    + ` over rows z ${mine.length ? mine.map(r => `${r.front.toFixed(2)}…${r.back.toFixed(2)} (row ${r.n} from the front)`).join(', ') : '— none found —'}`
+    + `, seat pitch ${Number.isFinite(pitch) ? pitch.toFixed(2) : '?'} m over ${rows.length} rows; platform top y ${f(Y0)}`
+    + `; cut ${c.s[0]} × ${c.s[2]} m at (${c.p.join(', ')}) tilted ${(c.r[0] * 180 / Math.PI).toFixed(1)}°, bottom ${Number.isFinite(clear) ? f(clear) : '?'} m above the floor at its closest`
+    + ` · ${tris} triangles · ${(performance.now() - t0).toFixed(0)} ms` + (misses ? ` (${misses} floor rays missed)` : ''));
+  if (Number.isFinite(clear) && clear < 0.04) console.warn(`desk: the cut box comes within ${f(clear)} m of the floor — floor triangles may be cut`);
+  requestRender(); shadowsDirty();
+}
+// The desk position's numbers. The block and the floor plane are the ones DESK_CUTS was made from.
+const DESK = {
+  x0: -2.12, x1: 2.04, z0: -7.15, z1: -8.97,                   // z0 the stage side
+  plane: z => 0.555 + 0.1135 * (-7.12 - z),                    // the floor as measured, if a ray misses
+  lift: 0.08,                                                  // the platform's top over the block's highest floor point: 0.05, plus the 0.024 the floor rises across the block, so nothing the cut leaves pokes through
+  deck: 0.10,
+  rail: 0.55, railIn: 0.10,                                    // the side rails: height over the deck, and how far in from the edge
+  table: { w: 2.4, d: 0.8, h: 0.76, front: 0.2 },             // front: its stage-side edge this far behind the platform's
+  console: { w: 1.3, d: 0.55, h: 0.12, rise: 0.06 },          // h at the middle; the top 0.06 higher at the far edge than the near
+  monitor: { w: 0.55, h: 0.33, lift: 0.17, tilt: 0.14 },
+  laptop: { w: 0.33, d: 0.23, lid: 0.22, open: 100 * Math.PI / 180 },
+  chairs: [-0.52, 0.48],
+};
+// The house round it is an unlit photo and the desk sits out of the FOH spots' throw, under the hemisphere
+// alone: at true blacks it drew as one black hole. So the "blacks" are dark greys, nothing is metallic
+// (no environment map to reflect: metal drew black), and each lit surface glows a third of its own colour.
+const deskStd = (color, roughness) => new THREE.MeshStandardMaterial({ color, roughness, metalness: 0, emissive: new THREE.Color(color).multiplyScalar(0.35) });
+const deskMat = {
+  deck:   deskStd(0x46464b, 0.9),
+  skirt:  deskStd(0x232327, 1),
+  top:    deskStd(0x2a2a2d, 0.5),
+  frame:  deskStd(0x62656a, 0.5),
+  body:   deskStd(0x6a6d74, 0.6),
+  knob:   deskStd(0x2a2a2e, 0.5),
+  keys:   deskStd(0xb4b8be, 0.6),
+  fabric: deskStd(0x4a4a56, 0.95),
+  alu:    deskStd(0xc0c3c8, 0.4),
+  screen: new THREE.MeshBasicMaterial({ color: 0x203040, toneMapped: false }),
+  ui:     new THREE.MeshBasicMaterial({ color: 0x4f7fb0, toneMapped: false }),
+  glow:   new THREE.MeshBasicMaterial({ color: 0x8a6a30, toneMapped: false }),          // the cue list's live line
+  halo:   new THREE.MeshBasicMaterial({ color: 0x1a3050, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+  lamp:   new THREE.MeshBasicMaterial({ color: 0xffe0b0, toneMapped: false }),
+};
+// The lowest up-facing scan surface straight down at (x, z) — the floor under any seats. Null if none.
+function deskFloor(ray, scan, x, z) {
+  ray.set(new THREE.Vector3(x, 4, z), DOWN); ray.far = 6;
+  let y = null;
+  for (const h of ray.intersectObjects(scan, false)) {
+    if (!h.face || Math.abs(h.face.normal.clone().transformDirection(h.object.matrixWorld).y) < 0.7) continue;   // double-sided scan: either way up
+    if (y === null || h.point.y < y) y = h.point.y;
+  }
+  return y;
+}
+// Seat rows along a line of constant x: runs of z where something stands over 0.25 m above the floor. → [{front, back}], front first.
+function deskRows(ray, scan, x, zFrom, zTo, step) {
+  const rows = []; let run = null;
+  for (let z = zFrom; z >= zTo; z -= step) {
+    ray.set(new THREE.Vector3(x, 4, z), DOWN); ray.far = 6;
+    const h = ray.intersectObjects(scan, false), seat = h.length > 1 && h[0].point.y - h[h.length - 1].point.y > 0.25;
+    if (seat && !run) run = { front: z, back: z }; else if (seat) run.back = z; else if (run) { rows.push(run); run = null; }
+  }
+  if (run) rows.push(run);
+  return rows.filter(r => r.front - r.back > 0.1);               // a lone hit is a scrap, not a row
+}
+// A geometry placed in the world (Euler 'YXZ': turn, then tip) and filed under its material.
+function deskPut(P, key, g, x, y, z, rx = 0, ry = 0, rz = 0) {
+  g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz, 'YXZ')), new THREE.Vector3(1, 1, 1)));
+  (P[key] = P[key] || []).push(g);
+  return g;
+}
+function deskBox(P, key, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0) { return deskPut(P, key, new THREE.BoxGeometry(w, h, d), x, y, z, rx, ry, rz); }
+function deskRod(P, key, a, b, r, seg) {
+  const d = new THREE.Vector3().subVectors(b, a), len = Math.max(d.length(), 1e-4);
+  const g = new THREE.CylinderGeometry(r, r, len, seg, 1);
+  g.applyMatrix4(new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()), new THREE.Vector3(1, 1, 1)));
+  (P[key] = P[key] || []).push(g);
+}
+// A skirt panel over x0…x1, z0…z1 (z0 < z1 or not), from yTop down to 3 cm into the floor beneath each corner.
+function deskSkirt(P, x0, x1, za, zb, yTop, floorAt) {
+  const g = new THREE.BoxGeometry(Math.abs(x1 - x0), 1, Math.abs(zb - za)), pos = g.attributes.position;
+  g.translate((x0 + x1) / 2, 0, (za + zb) / 2);
+  let tall = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const foot = floorAt(pos.getX(i), pos.getZ(i)) - 0.03;
+    pos.setY(i, pos.getY(i) > 0 ? yTop : Math.min(foot, yTop - 0.005));
+    tall = Math.max(tall, yTop - foot);
+  }
+  if (tall <= 0.035) { g.dispose(); return; }                   // the floor is at the deck's underside here: nothing to skirt
+  g.computeVertexNormals();
+  (P.skirt = P.skirt || []).push(g);
+}
 
 // Loading, with one bar across both files.
 const bar = document.querySelector('#bar i'), loadtxt = document.getElementById('loadtxt');
@@ -268,7 +1206,10 @@ function progress() {
   loadtxt.textContent = `Loading… ${(done / 1048576).toFixed(1)} of ${(total / 1048576).toFixed(0)} MB`;
 }
 function load(url) {
-  return new Promise((ok, no) => new GLTFLoader().load(url, ok, e => { got[url] = e.loaded; progress(); }, no));
+  return new Promise((ok, no) => new GLTFLoader().load(url, ok, e => {
+    got[url] = e.loaded; if (e.lengthComputable && e.total) SIZES[url] = e.total;   // the fixtures' guessed sizes become real ones
+    progress();
+  }, no));
 }
 // The proscenium forward: its six pieces translate; the four boxes that end on the old plane
 // (ceiling and skirts end at it, fly walls and roof start at it) stretch along z to the new one.
@@ -343,7 +1284,7 @@ function cutBeams(houseScene) {
 function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
 
 (async () => {
-  const [house, set] = await Promise.all([load('assets/midtown-auditorium.glb'), load('assets/hamilton-set.glb')]);
+  const [house, set, rigSrc] = await Promise.all([load('assets/midtown-auditorium.glb'), load('assets/hamilton-set.glb'), loadRig()]);
   // House: unlit, dimmable, catches no light. Side-less faces are left double-sided so the scan's gaps stay closed.
   house.scene.traverse(o => {
     if (!o.isMesh) return;
@@ -370,16 +1311,41 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
     if (!o.isMesh) return;
     o.castShadow = true; o.receiveShadow = true;
   });
+  // The rig, only now: the box above and the frame are the set's alone.
+  const rigBtn = document.getElementById('r-rig');
+  if (rigSrc) {
+    rig = buildRig(rigSrc); root.add(rig);
+    const w = rig.userData.worstAim;
+    console.info(rig.userData.summary + (w.id ? ` · worst aim against the file's beam: ${w.id} (${w.type}) dot ${w.dot.toFixed(4)}` : ''));
+    rigBtn.disabled = false; rigBtn.title = rig.userData.summary.replace(/^rig: /, '');
+  } else rigBtn.title = `No rig: ${RIG_URL} was not found`;
   const turned = new THREE.Group(); turned.rotation.y = Math.PI; turned.add(root);
   setGroup.add(turned);
   placeSet(SET.fit);
+  root.updateMatrixWorld(true);
+  if (rig) { fitBoomsToWalls(house.scene); buildHangingTrusses(house.scene); buildWingTowers(house.scene); }
+  buildSpotBooth(house.scene); buildDeskPosition(house.scene);
   houseRoot = house.scene;
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
   registerModelTextures(house.scene, 'house: ', ['deck_fill', 'pros_outer_l', 'back_brick_lo', 'house_ceiling', 'house_floor']);
-  fillTexSelect(); restore({ pieces: BAKED }, baked); loadSaved(); reapplyAll();
-  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built };   // a handle for measuring from the console
+  // The baked pieces first (a baked copy is taken off the pristine geometry), then the saved build, then
+  // the cuts exactly once: restore() of a saved build already ends in reapplyAll(), so it runs here only
+  // when there was no save to restore (or it failed before getting there).
+  fillTexSelect(); restore({ pieces: BAKED }, baked); if (!loadSaved()) reapplyAll();
+  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty };   // a handle for measuring from the console
+  const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t); orbit.update();
+  // Compile every shader and draw one frame (texture uploads, the shadow maps) behind the loader, so the
+  // first visible frame does not freeze for a second.
+  loadtxt.textContent = 'Compiling…'; bar.style.width = '100%';
+  await new Promise(r => { requestAnimationFrame(r); setTimeout(r, 250); });   // let "Compiling…" paint first; a background tab gets no frame, so a timer backs it (a load wait, not game timing)
+  await renderer.compileAsync(scene, camera);
+  shadowsDirty(); renderer.render(scene, camera);
+  try {                                                      // which GPU the browser gave us — Jack's laptop has an Intel chip and an RTX 5060
+    const gl = renderer.getContext(), dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    console.info('midtown: rendering on', dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER), '· pixel ratio', renderer.getPixelRatio());
+  } catch (e) { /* no extension: nothing to say */ }
   document.getElementById('load').hidden = true;
-  const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t);
+  ready = true; requestRender();
 })().catch(fail);
 
 /* ---------------------------------------------------------------- BUILD MODE
@@ -403,8 +1369,9 @@ const baked = new THREE.Group(); baked.name = 'baked'; scene.add(baked);
 const transform = new TransformControls(camera, canvas);
 transform.setSize(0.8);
 scene.add(transform);
-transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value && !walking; });
-transform.addEventListener('objectChange', () => { syncFields(); markDirty(); });
+transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value && !walking; requestRender(); });
+transform.addEventListener('objectChange', () => { syncFields(); markDirty(); });   // markDirty → shadowsDirty: the shadow follows the drag
+transform.addEventListener('change', requestRender);       // hover highlight, attach / detach, mode, the drag itself
 const B = id => document.getElementById(id);
 const panel = B('build'), status = B('b-status');
 let selected = null, editing = false, dirty = false, dirtyAt = 0;
@@ -429,7 +1396,7 @@ function applyTexture(obj, tex) {                            // tex: {name} | {i
   const d = obj.userData; if (d.cutter) return;
   let make;
   if (tex.image) {
-    const t = new THREE.TextureLoader().load(tex.image); t.colorSpace = THREE.SRGBColorSpace;
+    const t = new THREE.TextureLoader().load(tex.image, requestRender); t.colorSpace = THREE.SRGBColorSpace;   // the image arrives a moment later: draw it then
     make = () => new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide });
     d.tex = { image: tex.image };
   } else if (TEX[tex.name]) { make = TEX[tex.name]; d.tex = { name: tex.name }; }
@@ -464,7 +1431,7 @@ function makePiece(type, tex) {
 }
 function addPiece(type) {                                    // where the view is looking, standing on what it hits
   const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0, 0), camera);
-  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && h.distance > 0.3);
+  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && !h.object.userData.rig && h.distance > 0.3);
   const at = hits.length ? hits[0].point : camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
   const m = makePiece(type, selected ? selected.userData.tex : null);
   m.position.copy(at); m.position.y += 0.5;
@@ -473,7 +1440,7 @@ function addPiece(type) {                                    // where the view i
 }
 let houseRoot = null; function houseScene() { return houseRoot ? [houseRoot] : []; }
 function select(obj) {
-  selected = obj;
+  selected = obj; requestRender();
   if (obj !== cutBox && cutBox.visible && obj) cutBox.visible = false;      // one delete box at a time; selecting elsewhere drops it
   if (obj) transform.attach(obj); else transform.detach();
   B('b-name').textContent = obj ? obj.name : 'nothing';
@@ -576,7 +1543,7 @@ let cuts = [];                                               // this session's c
 const originals = new Map();                                 // mesh -> original index (array) or null (was non-indexed)
 function cuttables() {
   const list = [];
-  const take = o => { if (o.isMesh && !o.userData.cutter && !o.userData.piece && o.geometry.attributes.position) list.push(o); };
+  const take = o => { if (o.isMesh && !o.userData.cutter && !o.userData.piece && !o.userData.rig && o.geometry.attributes.position) list.push(o); };   // never the rig: it is not scenery to cut or copy
   if (houseRoot) houseRoot.traverse(take); setGroup.traverse(take);
   scene.children.forEach(o => { if (o.name === 'proscenium' || o.name === 'pros_wall') take(o); });
   return list;
@@ -609,12 +1576,13 @@ function applyCut(c) {
 }
 function reapplyAll() {
   for (const [o, orig] of originals) { if (orig) o.geometry.setIndex(orig.slice()); else o.geometry.setIndex(null); }
-  for (const c of [...BAKED_CUTS, ...cuts]) applyCut(c);
+  for (const c of [...BAKED_CUTS, ...BOOTH_CUTS, ...DESK_CUTS, ...cuts]) applyCut(c);
+  shadowsDirty();                                            // cut geometry casts differently
   B('b-cutn').textContent = `${cuts.length} delete${cuts.length === 1 ? '' : 's'} this session` + (BAKED_CUTS.length ? `, ${BAKED_CUTS.length} baked` : '') + '. Move and scale the red box, then Confirm (or Enter).';
 }
 function placeCutBox() {
   const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0, 0), camera);
-  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && h.distance > 0.3);
+  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && !h.object.userData.rig && h.distance > 0.3);
   const at = hits.length ? hits[0].point : camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
   cutBox.position.copy(at); cutBox.position.y += 0.5; cutBox.rotation.set(0, 0, 0); cutBox.scale.set(1, 1, 1); cutBox.visible = true;
   select(cutBox);
@@ -625,7 +1593,7 @@ function confirmCut() {
   cuts.push(c); applyCut(c);
   cutBox.visible = false; select(null); reapplyAll(); markDirty();
 }
-function cancelCut() { cutBox.visible = false; if (selected === cutBox) select(null); }
+function cancelCut() { cutBox.visible = false; requestRender(); if (selected === cutBox) select(null); }
 // COPY AREA (Jack: "a tool where I can select an area and copy it"). Every triangle whose centroid
 // lies inside the box — house scan, fills, set, proscenium — is copied into a new piece, one mesh
 // per source mesh sharing its material, in the box's own frame (its centre is the piece's origin,
@@ -688,7 +1656,7 @@ B('b-cutundo').addEventListener('click', () => { if (cuts.length) { cuts.pop(); 
 
 // Save and load. Autosave is a dirty flag the frame loop flushes half a second after the last change.
 const SAVE_KEY = 'midtown.build.v1';
-function markDirty() { dirty = true; dirtyAt = clock.elapsedTime; }
+function markDirty() { dirty = true; dirtyAt = clock.elapsedTime; shadowsDirty(); }   // every build change: save, redraw, re-shadow
 function serialize() {
   return { v: 1, cuts, pieces: built.children.map(o => ({ type: o.userData.type, name: o.name, tex: o.userData.tex, tile: o.userData.tile, tint: o.userData.tint, src: o.userData.src,
     p: o.position.toArray().map(x => +x.toFixed(3)), r: o.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: o.scale.toArray().map(x => +x.toFixed(3)) })) };
@@ -708,13 +1676,17 @@ function restore(data, into = built) {
   serial = built.children.length;
   if (into === built) { cuts = (data && data.cuts) || []; reapplyAll(); }
   B('b-bakedn').textContent = baked.children.length ? baked.children.length + ' baked' : 'nothing baked yet';
+  shadowsDirty();                                            // new casters (the baked restore has no reapplyAll of its own)
 }
 function save() {
   dirty = false;
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(serialize())); status.textContent = `Saved in this browser · ${built.children.length} piece${built.children.length === 1 ? '' : 's'}.`; }
   catch (e) { status.textContent = 'Could not save in this browser (' + (e.message || e) + ') — use Export.'; }
 }
-function loadSaved() { try { const t = localStorage.getItem(SAVE_KEY); if (t) restore(JSON.parse(t)); } catch (e) { console.warn('saved build not restored', e); } }
+function loadSaved() {                                       // → true when a save was restored (restore() then ran reapplyAll())
+  try { const t = localStorage.getItem(SAVE_KEY); if (t) { restore(JSON.parse(t)); return true; } } catch (e) { console.warn('saved build not restored', e); }
+  return false;
+}
 B('b-export').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(serialize(), null, 1)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'midtown-build.json'; a.click(); URL.revokeObjectURL(a.href);
@@ -742,13 +1714,27 @@ function resize() {
   const r = canvas.parentElement.getBoundingClientRect();
   renderer.setSize(r.width, r.height, false);
   camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+  requestRender();
 }
 new ResizeObserver(resize).observe(canvas.parentElement); resize();
 
 const clock = new THREE.Clock();
+// The adaptive fallback: the frame after a drawn frame shows what drawing costs; if the last SLOW_N of
+// those average over SLOW_MS, the pixel ratio drops to PIXEL_FLOOR, once, for the rest of the session.
+const SLOW_MS = 40, SLOW_N = 60, drawnDts = [];
+let drewLast = false;
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1);
+  if (drewLast && ready && pixelCap > PIXEL_FLOOR) {
+    drawnDts.push(dt * 1000); if (drawnDts.length > SLOW_N) drawnDts.shift();
+    const avg = drawnDts.reduce((a, b) => a + b, 0) / drawnDts.length;
+    if (drawnDts.length === SLOW_N && avg > SLOW_MS) {
+      pixelCap = PIXEL_FLOOR; renderer.setPixelRatio(Math.min(devicePixelRatio, pixelCap)); resize();
+      console.info(`midtown: frames averaged ${avg.toFixed(1)} ms over ${SLOW_N} drawn frames — pixel ratio dropped to ${renderer.getPixelRatio()} for this session`);
+    }
+  }
   if (dirty && clock.elapsedTime - dirtyAt > 0.5) save();
+  let moving = !!tween;                                      // a tween, a walk or orbit damping draws every frame
   if (tween) {
     if (tween.t < 1) tween.t = Math.min(1, (performance.now() - tween.start) / 1100);
     const k = tween.t < .5 ? 2 * tween.t * tween.t : 1 - Math.pow(-2 * tween.t + 2, 2) / 2;
@@ -765,10 +1751,10 @@ renderer.setAnimationLoop(() => {
     if (keys.has('KeyA') || keys.has('ArrowLeft')) camera.position.addScaledVector(r, -sp);
     if (keys.has('KeyE')) camera.position.y += sp;
     if (keys.has('KeyQ')) camera.position.y -= sp;
-  } else {
-    orbit.update();
-  }
-  renderer.render(scene, camera);
+    if (keys.size) moving = true;
+  } else if (orbit.update()) moving = true;                  // true while the camera moved: input, or damping still settling
+  drewLast = ready && (needsRender || moving);               // render on demand: an idle page draws nothing
+  if (drewLast) { needsRender = false; renderer.render(scene, camera); }
 });
 </script>
 </body>

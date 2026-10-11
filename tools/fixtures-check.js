@@ -3,13 +3,16 @@
    the triangle and material budgets, and that the hang point is the origin.
 
      node tools/fixtures-check.js [dir]      (default assets/fixtures)
+     node tools/fixtures-check.js assets/fixtures/lod --lod   (the far-level copies: 800 tris a unit, 1,000 for the big four)
 
    Exits non-zero on any failure, so it can run as a suite case once the files are committed.
    A GLB is a 12-byte header, a JSON chunk and a BIN chunk; the JSON carries nodes, meshes,
    accessors and materials, which is all this needs - it never touches the vertex data. */
 const fs = require('fs'), path = require('path');
-const DIR = process.argv[2] || path.join(__dirname, '..', 'assets', 'fixtures');
-const BUDGET = {tris: 12000, mats: 8};
+const ARGS = process.argv.slice(2), LOD = ARGS.includes('--lod');
+const DIR = ARGS.filter(a => a !== '--lod')[0] || path.join(__dirname, '..', 'assets', 'fixtures');
+const BUDGET = {tris: LOD ? 800 : 12000, mats: 8};
+const LOD_BIG = {'mac-viper': 1000, 'vl3500': 1000, 'glp-x4': 1000, 'lycian': 1000};   // tools/blender/fixtures_lod.py
 const MOVERS = ['mac-viper', 'vl3500', 'glp-x4', 's4-revolution'];
 let fails = 0;
 const fail = (f, m) => { fails++; console.log(`FAIL ${f}: ${m}`); };
@@ -48,7 +51,8 @@ for (const f of fs.readdirSync(DIR).filter(n => n.endsWith('.glb')).sort()) {
     tris += acc.count / 3;
   }
   const mats = (g.materials || []).length;
-  if (tris > BUDGET.tris) fail(f, `${tris} triangles, budget ${BUDGET.tris}`);
+  const tb = LOD && LOD_BIG[key] || BUDGET.tris;
+  if (tris > tb) fail(f, `${tris} triangles, budget ${tb}`);
   if (mats > BUDGET.mats) fail(f, `${mats} materials, budget ${BUDGET.mats}`);
   if (g.cameras || g.extensions && g.extensions.KHR_lights_punctual) fail(f, 'carries a camera or light');
   const parts = ['base', 'yoke', 'head', 'lens'].filter(k => byName[k]);
