@@ -6,8 +6,10 @@
 <title>Midtown House · Hamilton Set</title>
 <!--
   A PREVIEW of the second game's venue, not the game: the Midtown scan (assets/midtown-auditorium.glb)
-  with the Hamilton set (assets/hamilton-set.glb) seated on its stage. No rig, no desk, no sound, no
-  walkables — look around, that is all. The second game proper is FUTURE.md PART 2 "THE HAMILTON GAME".
+  with the Hamilton set (assets/hamilton-set.glb) seated on its stage, and the show's lighting rig
+  hung where the real show hangs it (assets/hamilton-rig.json, one assets/fixtures/*.glb per type —
+  models only, not lights). No desk, no sound, no walkables — look around, that is all. The second
+  game proper is FUTURE.md PART 2 "THE HAMILTON GAME".
 
   Coordinates are the Midtown GLB's (Y up, metres): the deck is y 0.80, the proscenium plane z 2.30,
   the back brick z 8.90, so UPSTAGE IS +Z here (the game's convention is the opposite, and the set
@@ -36,6 +38,8 @@ button { font: 500 13px var(--body); color: var(--fg); background: transparent; 
 button:hover { border-color: var(--muted); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+button:disabled:hover { border-color: var(--line); }
 .bright { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-left: auto; }
 .bright input { width: 110px; accent-color: var(--accent); }
 #stage { position: relative; flex: 1; min-height: 0; }
@@ -80,6 +84,9 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   <div class="mode" role="group" aria-label="Set size">
     <button id="s-fit" aria-pressed="true">Set fitted</button>
     <button id="s-real" aria-pressed="false">Real size</button>
+  </div>
+  <div class="mode" role="group" aria-label="Lighting rig">
+    <button id="r-rig" aria-pressed="true" disabled title="Hanging the rig…">Rig</button>
   </div>
   <label class="bright" for="bright">House light <input id="bright" type="range" min="0.4" max="3" step="0.05" value="1.4"></label>
   <div class="mode" role="group" aria-label="Movement">
@@ -257,6 +264,129 @@ function placeSet(s) {
 document.getElementById('s-fit').addEventListener('click', () => placeSet(SET.fit));
 document.getElementById('s-real').addEventListener('click', () => placeSet(1));
 
+/* ---------------------------------------------------------------- THE RIG
+   The Hamilton lighting rig, every unit its own fixture model where the real show hangs it.
+   assets/hamilton-rig.json (tools/hamilton-rig.py) gives each unit a model, a position and a
+   quaternion IN THE SET GLB's OWN FRAME (upstage −z, the house +z, deck y 0), so the rig group is a child of the set's loaded root and
+   inherits its seating, its 180° turn and the fitted / real-size scale. It goes in AFTER the set's
+   bounding box is taken, so it never widens the seating or the proscenium frame. Models only: no
+   light per unit, no shadows; each lens glows faintly in its gel's colour so the lamps read as lit.
+   The file missing, or a fixture file missing, is a console warning, never an error. */
+const RIG_URL = 'assets/hamilton-rig.json';
+let rig = null;
+// Rosco (R) and Lee (L) numbers to an approximate colour; R00 clear and the frosts (R119, R132, L114…) are not
+// listed, so they read as open white. "R001" / "R1" both mean R01.
+const OPEN_WHITE = 0xfff1dc;
+const GELS = {
+  R01: 0xf9c9a2, R02: 0xf7b98a, R03: 0xf6c6a8, R04: 0xf2a679, R05: 0xf6b9b0, R07: 0xfdf1c4, R08: 0xfbd8a6,
+  R09: 0xf8c27e, R13: 0xf8d29a, R16: 0xf8b055, R18: 0xf4a64a, R20: 0xf49b3a, R21: 0xf2842a, R23: 0xff6a1f,
+  R25: 0xff4a1a, R26: 0xe8102a, R27: 0xc0001a, R32: 0xf88a9a, R33: 0xf8b8c4, R35: 0xf7a4b4, R37: 0xe8a0c0, R39: 0xb4006e,
+  R40: 0xff8a6a, R42: 0xd0207e, R44: 0xf06aa0, R51: 0xd9a6e0, R54: 0xd8c4ee, R57: 0xb4a0e8, R58: 0x9a6ad8,
+  R59: 0x3a1a9a, R60: 0xc9dcf5, R61: 0xd6e6f5, R62: 0xb8d2f2, R63: 0xb0cdf0, R64: 0x8fb8f0, R65: 0x6aa6e8,
+  R68: 0x3d8de0, R69: 0x2a7ad8, R70: 0x5ac0e0, R74: 0x1a3fb0, R76: 0x2d7fc8, R77: 0x2050c0, R79: 0x1a3ae0,
+  R80: 0x1a3cf0, R83: 0x102a9a, R85: 0x0a2080, R86: 0x6ac040, R89: 0x3a9a40, R90: 0x2a8a1a, R91: 0x0a6a2a,
+  L161: 0x8fb8e8, L182: 0xe8304a, L201: 0x9fc3ff, L202: 0xc4d8ff, L203: 0xdce8ff, L204: 0xffc48a, L205: 0xffd2a4, L206: 0xffe0bc,
+};
+const LENS_GLOW = 0.55;                                      // how lit a lens reads: enough to see, not enough to wash the picture
+function gelColour(gel) {
+  for (const g of String(gel || '').toUpperCase().split(/[^A-Z0-9]+/)) {   // "R01", "R1", "R02+R119", "L201"…
+    const m = /^([RL])0*(\d+)$/.exec(g); if (!m) continue;
+    const key = m[1] + (m[1] === 'R' ? m[2].padStart(2, '0') : m[2]);
+    if (GELS[key]) return new THREE.Color(GELS[key]).multiplyScalar(LENS_GLOW);
+  }
+  return new THREE.Color(OPEN_WHITE).multiplyScalar(LENS_GLOW);
+}
+const finite = (a, n) => Array.isArray(a) && a.length === n && a.every(Number.isFinite);
+// The one-foot ColorBlaze cells (one or two channels) have no 1 ft model: they are drawn as a ColorBlast.
+const modelOf = u => u.type === 'colorblaze-48' && Array.isArray(u.channels) && u.channels.length <= 2 ? 'assets/fixtures/colorblast.glb' : u.model;
+// Movers hang head-down from their pan alone (the file's beam for them is the horizontal rest direction).
+const MOVERS = new Set(['mac-viper', 'glp-x4', 'vl3500']);
+// Fetch the rig file and every model it names, each model once. Never rejects: a missing file is no rig.
+async function loadRig() {
+  let data;
+  try {
+    const r = await fetch(RIG_URL, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    data = await r.json();
+  } catch (e) { console.warn(`rig: ${RIG_URL} not loaded (${e.message || e}) — the page goes on without a rig`); return null; }
+  const units = Array.isArray(data.units) ? data.units : [];
+  const models = [...new Set(units.map(modelOf).filter(m => typeof m === 'string'))];
+  for (const m of models) if (!SIZES[m]) SIZES[m] = 0.3e6;   // a guess, replaced by the real length on the first progress event
+  progress();                                                // the fixtures join the one bar
+  const gltfs = {};
+  await Promise.all(models.map(m => load(m).then(g => { gltfs[m] = g; }, e => {
+    console.warn(`rig: ${m} not loaded (${e && e.message || e}) — its units are skipped`);
+    delete SIZES[m]; delete got[m]; progress();
+  })));
+  return { data, units, gltfs };
+}
+// AIMING. `quat` turns the model's own rest beam (+Z for most; +X for birdie, hazer, s4-lustr,
+// vl3500; −Y colorsource-par; +Y mini-10) onto the unit's beam. Applied to the whole model it
+// would tilt the clamp off the pipe, so it is split through three.js Euler 'YXZ' (R = Ry·Rx·Rz):
+// the PAN (y) turns the unit, the rest (Rx·Rz, the tilt about the model's own trunnion axis — X
+// for a +Z model, Z for a +X one, so one of the two is ~0) turns only the head. Of the two Euler
+// solutions the one with |z| ≤ 90° is taken, so no head is flipped over in its yoke. The product
+// is exactly `quat`, so the lens lands on the file's beam. Movers take the pan only and hang
+// their head straight down.
+function restBeam(g) {                                       // the lens's beam (local −Z) in the model's own frame
+  if (g.userData.restBeam) return g.userData.restBeam;
+  g.scene.updateMatrixWorld(true);
+  const lens = g.scene.getObjectByName('lens');
+  return (g.userData.restBeam = lens ? new THREE.Vector3(0, 0, -1).transformDirection(lens.matrixWorld) : new THREE.Vector3(0, 0, 1));
+}
+function panTilt(quat, e) {                                  // → e: {x, y, z} with R = Ry(y)·Rx(x)·Rz(z), |z| ≤ 90°
+  e.setFromQuaternion(quat, 'YXZ');
+  if (Math.abs(e.z) > Math.PI / 2) {
+    const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+    e.set(wrap(Math.PI - e.x), wrap(e.y + Math.PI), wrap(e.z - Math.PI), 'YXZ');
+  }
+  return e;
+}
+const lensBeam = (lens, v) => v.set(0, 0, -1).transformDirection(lens.matrixWorld);
+const DOWN = new THREE.Vector3(0, -1, 0);
+function buildRig(src) {
+  const group = new THREE.Group(); group.name = 'rig';
+  const used = new Set(), skipped = {}, e = new THREE.Euler(), q = new THREE.Quaternion(), b = new THREE.Vector3();
+  let worst = { dot: 2, id: null };
+  for (const u of src.units) {
+    const model = modelOf(u), g = src.gltfs[model];
+    if (!g) { skipped[u.type] = (skipped[u.type] || 0) + 1; continue; }
+    if (!finite(u.pos, 3) || !finite(u.quat, 4)) { console.warn('rig: unit', u.id, 'has no usable pos / quat — skipped'); continue; }
+    const unit = g.scene.clone();                            // geometry and body materials shared; the lens gets its own
+    unit.name = String(u.id);
+    unit.userData = { id: u.id, channels: u.channels, type: u.type, label: u.label, gel: u.gel };
+    unit.position.fromArray(u.pos);
+    panTilt(q.fromArray(u.quat).normalize(), e);
+    const head = unit.getObjectByName('head'), lens = unit.getObjectByName('lens');
+    unit.rotation.set(0, e.y, 0);
+    if (head && MOVERS.has(u.type)) head.quaternion.setFromUnitVectors(restBeam(g), DOWN);   // head-down
+    else if (head) head.rotation.set(e.x, 0, e.z);           // 'XYZ' with y 0: Rx·Rz
+    else unit.rotation.set(e.x, e.y, e.z, 'YXZ');            // a model with no head: the whole of it turns
+    unit.traverse(o => {
+      if (!o.isMesh) return;
+      o.castShadow = o.receiveShadow = false; o.userData.rig = true;   // the build tools skip anything marked rig
+      if (o.name === 'lens' && u.type !== 'hazer') o.material = new THREE.MeshBasicMaterial({ color: gelColour(u.gel), toneMapped: false, side: THREE.DoubleSide });
+    });
+    // check: the lens now points along the file's beam (the unit has no parent yet, so this is the set's frame)
+    if (lens && !MOVERS.has(u.type) && finite(u.beam, 3)) {
+      unit.updateMatrixWorld(true);
+      const dot = lensBeam(lens, b).dot(new THREE.Vector3().fromArray(u.beam).normalize());
+      if (dot < worst.dot) worst = { dot, id: u.id, type: u.type };
+    }
+    group.add(unit); used.add(model);
+  }
+  const miss = Object.entries(skipped).map(([t, n]) => `${n} ${t}`).join(', ');
+  group.userData.summary = `rig: ${group.children.length} units, ${used.size} models` + (miss ? ` (skipped, no model: ${miss})` : '');
+  group.userData.worstAim = worst;
+  return group;
+}
+function setRig(on) {
+  if (!rig) return;
+  rig.visible = on;
+  document.getElementById('r-rig').setAttribute('aria-pressed', String(on));
+}
+document.getElementById('r-rig').addEventListener('click', () => setRig(!(rig && rig.visible)));
+
 // Loading, with one bar across both files.
 const bar = document.querySelector('#bar i'), loadtxt = document.getElementById('loadtxt');
 const SIZES = { 'assets/midtown-auditorium.glb': 13.6e6, 'assets/hamilton-set.glb': 7.1e6 };
@@ -268,7 +398,10 @@ function progress() {
   loadtxt.textContent = `Loading… ${(done / 1048576).toFixed(1)} of ${(total / 1048576).toFixed(0)} MB`;
 }
 function load(url) {
-  return new Promise((ok, no) => new GLTFLoader().load(url, ok, e => { got[url] = e.loaded; progress(); }, no));
+  return new Promise((ok, no) => new GLTFLoader().load(url, ok, e => {
+    got[url] = e.loaded; if (e.lengthComputable && e.total) SIZES[url] = e.total;   // the fixtures' guessed sizes become real ones
+    progress();
+  }, no));
 }
 // The proscenium forward: its six pieces translate; the four boxes that end on the old plane
 // (ceiling and skirts end at it, fly walls and roof start at it) stretch along z to the new one.
@@ -343,7 +476,7 @@ function cutBeams(houseScene) {
 function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
 
 (async () => {
-  const [house, set] = await Promise.all([load('assets/midtown-auditorium.glb'), load('assets/hamilton-set.glb')]);
+  const [house, set, rigSrc] = await Promise.all([load('assets/midtown-auditorium.glb'), load('assets/hamilton-set.glb'), loadRig()]);
   // House: unlit, dimmable, catches no light. Side-less faces are left double-sided so the scan's gaps stay closed.
   house.scene.traverse(o => {
     if (!o.isMesh) return;
@@ -370,6 +503,14 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
     if (!o.isMesh) return;
     o.castShadow = true; o.receiveShadow = true;
   });
+  // The rig, only now: the box above and the frame are the set's alone.
+  const rigBtn = document.getElementById('r-rig');
+  if (rigSrc) {
+    rig = buildRig(rigSrc); root.add(rig);
+    const w = rig.userData.worstAim;
+    console.info(rig.userData.summary + (w.id ? ` · worst aim against the file's beam: ${w.id} (${w.type}) dot ${w.dot.toFixed(4)}` : ''));
+    rigBtn.disabled = false; rigBtn.title = rig.userData.summary.replace(/^rig: /, '');
+  } else rigBtn.title = `No rig: ${RIG_URL} was not found`;
   const turned = new THREE.Group(); turned.rotation.y = Math.PI; turned.add(root);
   setGroup.add(turned);
   placeSet(SET.fit);
@@ -377,7 +518,7 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
   registerModelTextures(house.scene, 'house: ', ['deck_fill', 'pros_outer_l', 'back_brick_lo', 'house_ceiling', 'house_floor']);
   fillTexSelect(); restore({ pieces: BAKED }, baked); loadSaved(); reapplyAll();
-  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built };   // a handle for measuring from the console
+  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer };   // a handle for measuring from the console
   document.getElementById('load').hidden = true;
   const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t);
 })().catch(fail);
@@ -464,7 +605,7 @@ function makePiece(type, tex) {
 }
 function addPiece(type) {                                    // where the view is looking, standing on what it hits
   const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0, 0), camera);
-  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && h.distance > 0.3);
+  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && !h.object.userData.rig && h.distance > 0.3);
   const at = hits.length ? hits[0].point : camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
   const m = makePiece(type, selected ? selected.userData.tex : null);
   m.position.copy(at); m.position.y += 0.5;
@@ -576,7 +717,7 @@ let cuts = [];                                               // this session's c
 const originals = new Map();                                 // mesh -> original index (array) or null (was non-indexed)
 function cuttables() {
   const list = [];
-  const take = o => { if (o.isMesh && !o.userData.cutter && !o.userData.piece && o.geometry.attributes.position) list.push(o); };
+  const take = o => { if (o.isMesh && !o.userData.cutter && !o.userData.piece && !o.userData.rig && o.geometry.attributes.position) list.push(o); };   // never the rig: it is not scenery to cut or copy
   if (houseRoot) houseRoot.traverse(take); setGroup.traverse(take);
   scene.children.forEach(o => { if (o.name === 'proscenium' || o.name === 'pros_wall') take(o); });
   return list;
@@ -614,7 +755,7 @@ function reapplyAll() {
 }
 function placeCutBox() {
   const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0, 0), camera);
-  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && h.distance > 0.3);
+  const hits = ray.intersectObjects([...houseScene(), setGroup, built], true).filter(h => h.object.visible && !h.object.userData.rig && h.distance > 0.3);
   const at = hits.length ? hits[0].point : camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3));
   cutBox.position.copy(at); cutBox.position.y += 0.5; cutBox.rotation.set(0, 0, 0); cutBox.scale.set(1, 1, 1); cutBox.visible = true;
   select(cutBox);
