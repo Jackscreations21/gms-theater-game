@@ -1406,3 +1406,62 @@ against this list before opening a PR; **add new traps as you hit them.**
   Python script died with `unexpected EOF`, and nothing before it in the same
   command ran either (bash parses the whole script first). Write the file with
   the file tool, then run it.
+
+## From the walk, lobby, walls and rig-trim round (2026-10-11, late night)
+
+- **The Palace's 0.62 m step-up walks straight over this scan's seats.** The
+  cushions stand 0.45–0.51 m above the legroom and the set's gallery rails 0.57 m
+  above the gallery, so a Palace-sized step climbed the rows and stepped off the
+  gallery. `midtown.html`'s walk uses 0.40; every stair in the house rises 0.17 or
+  less. Measure the furniture before copying a step height between venues.
+- **The fitted set's galleries are too low to walk under standing.** At 0.62
+  scale their undersides are 1.48–1.61 m off the deck, so a 1.75 m walker cannot
+  get from centre stage into a wing; the crouch (C) exists for that. At 1:1 the
+  problem goes away and the walls become the problem instead.
+- **A thin thing between the wall rays is not stopped by the rays.** The walk's
+  level rays sit at 0.46, 0.8, 1.2 and 1.7 m over the feet; a 5 cm stanchion belt
+  at 0.855–0.905 slipped between them and the walker was stopped 0.25 m late by
+  the overhead check instead. Put thin barriers ON a ray height, or add a ray.
+- **The rear "doorways" are passages from the side aisles, 1.2 m below the back
+  cross-aisle.** The brief gave the lobby agent the cross-aisle floor (y 2.10);
+  the passages' floors are y 0.85–0.90. Measure the doorway itself, not the
+  floor beside it. The lobby floor follows the passages.
+- **A ray at the whole scan costs about 12 ms here (no BVH).** Thirty measuring
+  rays made a 400 ms load. Cut the scan down to a box with `towerNear` first;
+  the lobby's measuring went 440 → 125 ms that way.
+- **The pane's screenshots are useless under viewport emulation, and its canvas
+  is tiny.** With an emulated size the capture drew the page in one corner; the
+  live canvas is about 405×84 px once the header wraps, so GPU timings taken in
+  the pane mean nothing. For a real frame: `renderer.setSize(1280, 800)`, render,
+  `toDataURL`, POST to a small local receiver, read the PNG.
+- **Toggling a light's `visible` changes the light count, so every lit material
+  recompiles.** Timing lights on against off needs a long warm-up after each
+  toggle, and on the Intel chip the pane's numbers still varied 2× between
+  identical runs. Count the lights; do not try to time them there.
+- **`preview_start` reports the port taken when another session's server is
+  already on it** — and that server serves the same files from the same root,
+  so just navigate. Two agents in the same checkout on 8080 was fine; a worktree
+  needs its own port and its own `.claude/launch.json` (gitignored, so absent in
+  a fresh worktree) and a copy of the untracked fixture GLBs.
+- **A cut box in world coordinates means a different part of the set at a
+  different set scale.** Jack's delete boxes were made with the set fitted
+  (0.62); re-applied with the set at 1:1 they would have eaten other geometry.
+  Every cut and copy now records `set` (the scale it was made at; absent means
+  fitted) and the set is re-seated to it when the cut is re-applied.
+- **A fill plane is two triangles the size of a wall, so a centroid cut takes
+  all of it or none.** `wallSplit` splits every house triangle a box would only
+  partly take along the box's faces before the first cut (220 → 776 triangles).
+- **The Midtown deck is not wall to wall.** `deck_fill` runs x −5.8…5.6
+  downstage of z 3.9; under the old stage-right wall there was always a void.
+  Cut the wall and a 1:1 set stands over a 0.86 m drop there.
+- **"Edit the baked pieces" lifts pieces, never cuts**, so an export can drop a
+  baked piece but cannot drop a baked cut. Pieces replace, cuts append.
+- **The rigging's raycasts cost 11–14 ms each at 1:1** (the scan and the set
+  are a handful of 56k / 66k-triangle meshes). Sixty of them made every Set
+  fitted / Real size click take over a second; one pass that keeps only the
+  triangles in a thin box round each ray (`trussRays` via `towerNear`) brought
+  a rebuild to 150 ms.
+- **Two agents in one file worked this time because their regions did not
+  overlap AND they had separate checkouts** (a worktree with its own port and
+  its own copy of the untracked GLBs); the cherry-pick back was clean. Same
+  checkout, same file, same time is still the trap above.

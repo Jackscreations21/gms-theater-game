@@ -224,7 +224,78 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **ASK WHAT THE CUES ARE TIMED AGAINST, THEN BUILD THEM; MERGE #226 FIRST IF HE SAYS SO** (2026-10-11, night)
+## NEXT SESSION: **LAND THE CHAIN, THEN THE BODY, THEN HIS WALLS AS THEY COME** (2026-10-11, late night)
+
+Rulings at **FE** (FF next). Suite count **21**. `main` is **`e27fc1e`** (#228 merged). **PR #229
+(`midtown-walk`) is open; `midtown-walls` carries it plus lobby, walls cut, bake 3, rig trim and this
+record — five commits on `midtown.html`, unmerged.** Read STATE.md's late-night block first.
+
+1. **The PRs.** Jack has not said whether to close #229 and open one PR from `midtown-walls`, or merge
+   #229 and open lobby → walls → bake+rig in turn. Ask, then do it; post-merge protocol after
+   (fast-forward local `main`, rebuild byte-identical, `node tools/artnet-map.js` reproduces
+   `docs/ARTNET.md`, 21/21 — the red is the untracked fixture GLBs until he commits them — delete the
+   branches). `node` was not on PATH this session; the portable copy is in the old scratchpad (STATE).
+2. **The body.** Jack: *"the person is too tall, and also give them a body"* — paused by him, still
+   wanted. Shorter eye height (Palace 1.68, Roblox ~1.4; make `walk.eye` a setting), a blocky visible
+   body under the camera seen looking down, probably a third-person toggle. Off the branch tip; the
+   walk's crouch and the 0.40 step-up are measured, keep them.
+3. **His walls.** He builds them in Build mode at 1:1 and hands over exports; the bake recipe is in
+   STATE (pieces replace if he pressed "Edit the baked pieces", cuts always append, dedupe exact
+   duplicates, suffix "(bake N)", tell him Clear all). Flag what the page's `walls:` check reports:
+   today his posts, panel, shelf and slab all run into the set, and the slab's top is 4.5 cm over the
+   deck. He needs deck stage right downstage of z 3.9 and behind z 9.0; say so when he asks why he falls.
+4. **The cues** — still waiting on "timed against what".
+5. **Fixture GLBs** uncommitted; **headset run** still owed.
+
+## DONE — 2026-10-11 (late night): the walk, the lobby, the house cut for the set at 1:1, bake 3, the rig trimmed (`midtown-walls`, five commits)
+
+Five Opus 5.5 agents, by Jack's instruction (*"run an opus agent …"*, *"use opus agents to fix it"*),
+one at a time until the last two, which ran at once in separate checkouts (bake in the main one, rig
+in a worktree, non-overlapping regions, clean cherry-pick). All `midtown.html`; nothing in `src/`.
+
+**The walk (`edd07eb`, PR #229).** *"make it so i can walk around like i do in the palace or like how a
+roblox player does."* The fly camera became a first-person walk on the Palace's numbers: pointer-lock
+look with a drag fallback (the pane refuses the lock; two refusals and it stops asking), WASD/Shift/
+Space, gravity, a floor found by a ray down and walls by level rays at four heights and three widths,
+x and z tried separately so you slide, all against one 0.5 m grid of every solid thing in the scene,
+rebuilt whenever the scene changes. Three numbers measured here rather than copied: step-up 0.40 (the
+scan's seat cushions are 0.45–0.51 over the legroom, so 0.62 walked over the rows), radius 0.25 (the
+fitted set's doorways are 0.6 m), and a crouch on C because the fitted galleries were 1.5 m off the
+deck. Jack then asked for a shorter player with a body — paused on his *"wait a second"*, not done.
+
+**The lobby (`0be6c01`).** *"add a lobby to the building."* The brief gave the agent the cross-aisle's
+floor (y 2.10) for the rear doorways; the doorways are passages from the side aisles 1.2 m lower, and
+the agent measured that and built the floor to the passages. A 19.8 × 7 m room behind the back wall
+wrapped round the booth (boxed in as a projection room), box office, bar, six glazed entrance doors,
+furnishings, its own light, a viewpoint, in the walk's collision; 4,962 triangles.
+
+**The walls (`b0028db`).** *"lets change the theater walls so we can fit the hamilton set at full size"*
+— then *"have an opus agent cut out the area of the walls that needs to be, then i will put walls in
+that are needed on my own."* So: Real size the default, the set's 1:1 box measured (17.31 m wide,
+10.07 deep, 10.17 tall, 0.82 m through the back brick), and four delete boxes through the page's own
+cut machinery: the stage house wall to wall up to the fly roof, the front over the deck, the piers'
+feet, the whole proscenium frame (the set's own portal passes through it). Triangles split along the
+box faces first, because a fill plane is two triangles the size of a wall. Cuts and copies now carry
+the set scale they were made at, or a cut made at one scale would eat a different part of the set at
+the other. The deck is not wall to wall: stage right is air downstage of z 3.9.
+
+**Bake 3 (`1fba90a`).** His first walls at 1:1 — two posts, a header, rails, a shelf, a copied stair,
+and a 42 × 39 m floor slab — replaced the old pieces (he had pressed "Edit the baked pieces"; the
+inner timber proscenium, box 5, the rail strip and the first copied stair are gone), exact
+duplicates dropped, cuts appended because the editor never lifts cuts. The page's check reports what
+the set runs into; the slab's top is 4.5 cm over the deck.
+
+**The rig trimmed (`af02c26`).** *"the lights got raised too high so fix that."* At 1:1 the rig hung
+at the Rodgers' heights, through this room's 8.05 m ceiling. `RIG_TRIM` brings the FOH rows to y 7.20
+(the Apron Electric back to z −5.2 behind the scan's own bridge, the FOH Truss to z −12 at 0.6
+width), the ten electrics level at 7.60, booms and on-set units untouched, every moved fixed-focus
+unit re-aimed at where the file's beam met the deck; the rigging rebuilds per set scale against the
+cut house, its raycasts batched (1.3 s → 150 ms). Outside the house: 13 on-set units past the cut back
+wall, zero house-side.
+
+Suites not run (no `node` on PATH; nothing they check moved). Record: STATE, this, fourteen traps.
+
+## SUPERSEDED (the cues still wait; #226/#228 merged): **ASK WHAT THE CUES ARE TIMED AGAINST, THEN BUILD THEM; MERGE #226 FIRST IF HE SAYS SO** (2026-10-11, night)
 
 Rulings at **FE** (FF next). Suite count **21**. `main` is **`692f3d3`**. **PR #226
 (`midtown-preview`) is open at `15703ae`, twenty commits** — the preview page now carries the

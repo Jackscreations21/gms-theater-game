@@ -1,7 +1,96 @@
-# STATE — 2026-10-11 (THE MIDTOWN PREVIEW NOW CARRIES THE WHOLE HAMILTON RIG, ITS RIGGING, A SPOT BOOTH AND A DESK — PR #226, UNMERGED; THE CUES ARE NEXT AND WAIT ON ONE ANSWER)
+# STATE — 2026-10-11 (WALK, LOBBY, THE HOUSE CUT FOR THE SET AT 1:1, HIS FIRST WALLS, THE RIG TRIMMED — `midtown-walls` FIVE COMMITS + PR #229, UNMERGED; THE BODY AND THE CUES WAIT)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-11 (late night): walk, lobby, the house cut for the set at 1:1, his first walls baked, the rig trimmed — `midtown-walls`, five commits, UNMERGED
+
+**Read this block first.** `main` is **`e27fc1e`** (#228 merged by Jack: the rig, rigging, frame rate,
+booth and desk). **PR #229 (`midtown-walk`, one commit `edd07eb`) is OPEN and unmerged.** Branch
+**`midtown-walls`** carries it plus four more — `0be6c01` lobby, `b0028db` walls cut, `1fba90a` bake 3,
+`af02c26` rig trim (cherry-picked from a worktree) — and the record commit. All `midtown.html`;
+nothing in `src/`; `the-house.html` / `docs/ARTNET.md` untouched; suites not run (no `node` on PATH
+this session; nothing they check moved). Linear chain: walk → lobby → walls → bake → rig; the question
+put to Jack and unanswered: close #229 and open ONE PR from `midtown-walls`, or merge #229 and open the
+rest in turn. **Every agent this session was Opus 5.5 by his instruction** ("use opus agents"); five
+of them, one at a time except the last two (bake in the main checkout, rig in a worktree — the two
+regions did not overlap and the cherry-pick was clean; the combined page loads with every round's
+console line and no errors).
+
+- **Walk (`edd07eb`)** — Jack: *"walk around like i do in the palace or like how a roblox player does."*
+  First person on the Palace's numbers (3.1 / 6.4 m/s, jump 4.6, gravity 13.5, eye 1.6): pointer lock
+  on a click in Walk mode (Esc frees; the pane refuses it, so after two refusals drag-to-look carries on
+  silently), floors and walls from the geometry via one 0.5 m grid of the house + set + rig structures +
+  booth + desk + lobby + proscenium + baked pieces (159k tris, ~30 ms, rebuilt after a cut / Real size /
+  Rig toggle / restore). **Step-up 0.40** (0.62 climbed the seat rows), radius 0.25, **crouch on C**
+  (the fitted galleries were 1.5 m off the deck), the stage lip needs the jump. `MIDTOWN.player`,
+  `MIDTOWN.walk.{step,setMode,groundAt,grid,perf}`. Walk cost 0.02–0.05 ms a frame.
+  **Jack's two follow-ups, NOT done, paused on his "wait a second": *"the person is too tall, and
+  also give them a body."*** (Palace eye is 1.68; Roblox is ~1.4 m; a visible body + maybe third
+  person.) A worktree for it was made and later removed; start fresh off the branch tip.
+- **Lobby (`0be6c01`)** — *"add a lobby to the building."* 19.8 × 7 m room behind the back wall
+  (z −15.12…−22.12), floor y 0.875 — **the rear doorways are passages from the side aisles at y
+  0.85/0.90, NOT the cross-aisle's 2.10** (house right x −4.77…−3.57, house left 3.78…5.08, heads
+  ~3.0, the scan stops at z ≈ −14.0). Box office house right, bar house left, six glazed entrance
+  doors with a canopy, the booth boxed in as a projection room, posters, stanchions, benches, lit
+  STALLS signs, carpet; lit materials + 30 glowing discs + 3 shadowless spots (`MIDTOWN.lobby.lights`
+  to switch off). `v-lobby` button. 15 meshes, 4,962 tris, +13–16 draws when in view, 125 ms load.
+- **Walls cut (`b0028db`)** — *"lets change the theater walls so we can fit the hamilton set at full
+  size … have an opus agent cut out the area of the walls that needs to be, then i will put walls in
+  that are needed on my own."* **Real size is now the default** (`placeSet(1)` on load; both buttons
+  still work and each rebuilds the collision grid and the rigging). The set at 1:1: x ±8.66 (17.31 m),
+  y 0.80…10.17, z −0.35…9.72 — **0.82 m through the back brick and 0.72 m past the deck's end**;
+  ±6.82 downstage of z 1.5 (its own portal posts at x ±6.5…6.7 on the arch plane). Four `WALL_CUTS`
+  (world boxes, applied through `applyCut` after his/booth/desk cuts, listed on the console): the
+  stage house x ±9.46 from z 0.5 to 10.72 up to the fly roof (side walls and back brick gone; the
+  outer walls at |x| 9.5–9.6 and the fly walls stay); the front over the deck x ±7.62; the piers'
+  feet in the stalls; the page's whole proscenium frame (the set passes through all three pieces).
+  `wallSplit` first splits every house triangle a box would only partly take (fill planes are two
+  triangles the size of a wall). **Cuts and copies now record the set scale they were made at**
+  (`set: 1`; old ones count as fitted) and re-seat to it when re-applied. `MIDTOWN.walls.check()`
+  prints: house tris left in the boxes 0, touching the set 0, 93 front-corner tris kept on purpose.
+  **Problems he will meet building:** stage right has NO deck downstage of z 3.9 (`deck_fill` runs
+  x −5.8…5.6 there; a 0.86 m drop to y −0.06 under the set at x 5.6…8.66); the set's back overhangs
+  the deck; the viewpoints "On stage" / "Stage-left wing" may start inside set geometry at 1:1.
+- **Bake 3 (`1fba90a`)** — his `Downloads\midtown-build (3).json` (copy in this session's scratchpad):
+  13 pieces → 3 exact duplicates dropped (the doubling) → **10 baked, all "(bake 3)"**: the black
+  panel, two rail blocks (`box 6b` is his moved one at x 4.34), two 10 m posts at x ±6.2…6.4 on the
+  arch, a rail, a 17.5 m header at y 8, **a 42 × 39 m floor slab in deck_fill, top y 0.845, z −1.4…40.9**
+  (4.5 cm above the deck — the set's feet are buried; it runs far past every wall), a shelf, and
+  `copy 24` (a set stair copied at 1:1 to x 4.27 z 2.0, turned 90°). **He had pressed "Edit the baked
+  pieces", so the pieces REPLACED the old bake**: gone are the inner timber proscenium (box 1–3), box 5,
+  the bake-2 rail strip and `copy 5 (bake 2)`. **Cuts were APPENDED, not replaced (8 baked)**: "Edit the
+  baked pieces" never lifts cuts, so an export cannot drop one; old cuts 3–4 still take the scan's
+  house-left apron stair under his block. His two new `set: 1` cuts remove nothing now (they deleted his
+  own pieces mid-session). The set passes through his posts (1133 / 1506 vertices), the panel (529),
+  the slab (628), the shelf (128) — kept as placed. **Tell him Clear all before reloading.**
+- **Rig trim (`af02c26`)** — *"the lights got raised too high so fix that."* At 1:1 the rig hung at
+  its Rodgers heights (electrics y 9.61, FOH 7.3–9.6 through the 8.05 ceiling, 64 units outside the
+  house). `RIG_TRIM` (world metres, real size only; fitted keeps the scaled file + the old 0.75 m FOH
+  Electric drop, now `RIG_FIT_DROP`): **FOH Electric y 7.20 at z −7.05; Apron Electric y 7.20 moved
+  to z −5.20** (its real line at z −2.6 collides with the scan's own lighting bridge at every height);
+  **FOH Truss y 7.20 at z −12.0, x ×0.6** (the side-wall soffits); **the ten electrics level at y 7.60**
+  (6.8 m over the deck, 3.1 m over the gallery); booms, floor booms and on-set units untouched;
+  followspots on the booth stands. Every fixed-focus unit that moved is **re-aimed at the point where
+  the file's beam met the deck** (77 units, dot 1.0000); movers hang head-down and need nothing.
+  `rigPlace` runs inside `placeSet`, so **Set fitted / Real size rebuild booms, trusses, grid and
+  towers against the cut house** (booms find the kept outer walls at x 10.0 / −9.56 — fitted they
+  move ~5 m out to them, odd-looking; cables end on `house_ceiling` 12/12, hangers on `fly_roof`
+  12/12, grid pipes stop 0.1 m short of the fly walls or the set's piers). Rigging raycasts batched
+  (`trussRays` via `towerNear`): a rebuild 1.3 s → 150 ms. **Outside the house now: 13 units, all
+  on the set past z 9.1 where the back brick was, and SR Boom 8's tower; house-side zero.** From
+  the back row the electrics still hide behind the room's own bridge. SR Boom 2/3/4 towers stand
+  down to y −0.06 (no deck there). `MIDTOWN.rigTrim`.
+- **Cues: still not started, still one question** (recording, or album lengths with no audio).
+- **Still untracked, by his instruction: `assets/fixtures/*.glb` (19) + `lod/*.glb` (19).** Pages shows
+  no rig until they are committed. The suite's one red is them.
+- **Local serving:** `.claude/launch.json` `the-house` on 8080 serves the repo root; a server from an
+  EARLIER chat still holds 8080 (`preview_start` says so; just navigate — same files). A worktree
+  needs its own port entry in its own gitignored `.claude/launch.json` and a copy of the fixture GLBs.
+  Full-size frames: `renderer.setSize(1280,800)`, render, `toDataURL`, POST to a local receiver.
+- **Headset run still owed.**
+
+---
 
 ## NEWEST — 2026-10-11 (night): the rig is hung, rigged, lit for the eye, and fast enough — PR #226 grew four commits
 
