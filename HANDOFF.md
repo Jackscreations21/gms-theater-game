@@ -299,6 +299,14 @@ they were **slits beside the piers**: the piers stopped at the stage side walls
 you saw the brick (left) and the void panel (right) through the gap. `PIER_X0/X1`
 are now −6.6 / 6.4 so the piers run behind the return walls.
 
+**Round 2 (two screenshots, "fix these holes on both sides"):** the recesses
+above the louvre vents either side of the proscenium. The scan's vent walls
+(y ≈ −2.2) stop at the vent tops, ~4.5 m; above that each recess has a soffit
+at 6.2 m and nothing behind, so from the seats you looked through into the fly
+tower (a seat-to-recess ray probe hit `fly_wall_w/e` and `back_brick_hi` 350–600
+times a side; after the fix, never). `pros_outer_l/r`: wall-grey strips in the
+proscenium plane from `VENT_TOP` 4.3 m to the ceiling, outboard of the piers.
+
 **Traps hit, now in TRAPS.md:** a texture's MIRROR extension is not a free
 seamless tile; and renders only audit what the camera sees.
 

@@ -337,6 +337,13 @@ BRICK_TILE = (BRICK_TILE[0], BRICK_TILE[0] * bh_ / bw_)
 box_y("pros_pier_l", PROS_Y, PIER_X0, OPEN_X0, DECK_Z - 0.02, HOUSE_TOP, m_wall)
 box_y("pros_pier_r", PROS_Y, OPEN_X1, PIER_X1, DECK_Z - 0.02, HOUSE_TOP, m_wall)
 box_y("pros_header", PROS_Y, OPEN_X0, OPEN_X1, OPEN_TOP, HOUSE_TOP, m_wall)
+# Outboard of the piers the scan's return walls (the ones with the louvre vents, at y ~ -2.2)
+# stop at the vent tops, ~4.5 m; above that each vent sits in a recess with a soffit at 6.2 m
+# and nothing behind it, so from the house you looked through into the wing and the void
+# (Jack, 2026-10-11, "fix these holes on both sides"). A strip closes each recess.
+VENT_TOP = 4.3
+box_y("pros_outer_l", PROS_Y, X0, PIER_X0, VENT_TOP, HOUSE_TOP, m_wall)
+box_y("pros_outer_r", PROS_Y, PIER_X1, X1, VENT_TOP, HOUSE_TOP, m_wall)
 box_y("pros_upper", PROS_Y, X0, X1, HOUSE_TOP, FLY_TOP, m_ceil)
 # Fly tower: side walls and back wall up to the roof, and the roof.
 box_x("fly_wall_w", X0, Y0, PROS_Y, 3.5, FLY_TOP, m_ceil)
