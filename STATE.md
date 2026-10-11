@@ -25,8 +25,11 @@ fetch`, compare `origin/main`, then read this.
     to the real one. **Escaped rays: 4807 → 501, of which 498 go out through the
     two rear doorways Jack chose to leave open.**
   - Rebuild it with `tools/blender/midtown_theatre.py`. Walk it in
-    `tools/midtown-viewer/` (re-exported) or at the published artifact
-    https://claude.ai/artifact/LwSoKjQ911xowE1DQa4syv.
+    `tools/midtown-viewer/` (re-exported). **Jack marks it up at
+    https://claude.ai/artifact/LwSoKjQ911xowE1DQa4syv** (`markup.html`: delete a
+    region, retexture a panel, pin a note); his edits land in that artifact's
+    `edits` collection — **read it at the start of the next scan session and
+    apply them in the script.** Recipe in HANDOFF.
   - The full record is in HANDOFF.md, the two "DONE — 2026-10-10" blocks.
 - **Not wired into the game.** Three decisions are Jack's (FUTURE.md PART 2,
   "Realism"):

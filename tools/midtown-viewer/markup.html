@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0">
+<title>Midtown Markup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a tool strip on top, the 3D viewport with a notes rail on the right (single dark theme, a house at half). */
+:root {
+  --bg: #0d0c0f;
+  --panel: #17151b;
+  --line: #2c2832;
+  --fg: #ebe7ee;
+  --muted: #9a93a1;
+  --accent: #d9b45a;        /* work-light amber */
+  --cut: #e0603a;           /* delete */
+  --fix: #e24b6a;           /* fix pin */
+  --tex: #5aa9d9;           /* retexture */
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 14px; display: flex; flex-direction: column; overflow: hidden; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding-inline: 16px; padding-block: 8px; background: var(--panel); border-bottom: 1px solid var(--line); }
+h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .01em; }
+h1 span { color: var(--muted); font-weight: 400; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 2px; }
+button { font: 500 13px var(--body); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+button.tool-delete[aria-pressed="true"] { border-color: var(--cut); color: var(--cut); }
+button.tool-fix[aria-pressed="true"] { border-color: var(--fix); color: var(--fix); }
+button.tool-tex[aria-pressed="true"] { border-color: var(--tex); color: var(--tex); }
+button.danger { color: var(--cut); }
+label.slider { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+label.slider input { width: 100px; accent-color: var(--accent); }
+label.slider output { font: 12px var(--mono); color: var(--fg); min-width: 4ch; }
+#main { display: flex; flex: 1; min-height: 0; }
+#stage { position: relative; flex: 1; min-width: 0; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+canvas.mode-tool { cursor: crosshair; }
+.hint { position: absolute; left: 16px; bottom: 14px; font: 12px var(--mono); color: var(--muted); background: rgba(13,12,15,.78); padding: 6px 10px; border-radius: 4px; pointer-events: none; max-width: calc(100% - 32px); }
+#load { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg); }
+#load div { display: grid; gap: 10px; width: min(320px, 80%); text-align: center; color: var(--muted); font: 12px var(--mono); }
+#bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+#bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+aside { width: 300px; flex: none; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); min-height: 0; }
+aside h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; padding: 10px 14px 6px; }
+#status { font: 12px var(--mono); color: var(--muted); padding: 0 14px 8px; border-bottom: 1px solid var(--line); }
+#status.warn { color: var(--accent); }
+#pending { padding: 10px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+#pending .kind { font-size: 12px; color: var(--muted); }
+#pending textarea { width: 100%; min-height: 64px; font: 13px var(--body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; resize: vertical; }
+#pending .row { display: flex; gap: 6px; flex-wrap: wrap; }
+.swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.swatches button { padding: 6px 4px; font-size: 12px; display: grid; gap: 4px; justify-items: center; }
+.swatches i { display: block; width: 100%; height: 22px; border-radius: 3px; border: 1px solid var(--line); background-size: 48px 48px; }
+#list { flex: 1; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+#list li { display: grid; grid-template-columns: 26px 1fr auto; gap: 6px 8px; align-items: start; padding: 8px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
+#list li:hover { background: rgba(255,255,255,.03); }
+#list .n { font: 500 12px var(--mono); color: var(--muted); padding-top: 2px; }
+#list .badge { display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; margin-right: 6px; }
+#list .k-delete .badge { color: var(--cut); }
+#list .k-fix .badge { color: var(--fix); }
+#list .k-retexture .badge { color: var(--tex); }
+#list .where { font: 11px var(--mono); color: var(--muted); margin-top: 3px; }
+#list .note { margin-top: 3px; white-space: pre-wrap; }
+#list .rm { padding: 2px 7px; font-size: 12px; }
+#empty { padding: 14px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.foot { padding: 8px 14px; border-top: 1px solid var(--line); display: flex; gap: 6px; flex-wrap: wrap; }
+[hidden] { display: none !important; }
+@media (max-width: 760px) {
+  #main { flex-direction: column; }
+  aside { width: auto; max-height: 42%; border-left: 0; border-top: 1px solid var(--line); }
+}
+</style>
+
+<header>
+  <h1>Midtown Markup <span>· click the model</span></h1>
+  <div class="group" role="group" aria-label="Tool">
+    <span class="lbl">Tool</span>
+    <button id="t-look" aria-pressed="true">Look</button>
+    <button id="t-delete" class="tool-delete" aria-pressed="false">Delete</button>
+    <button id="t-tex" class="tool-tex" aria-pressed="false">Retexture</button>
+    <button id="t-fix" class="tool-fix" aria-pressed="false">Fix this</button>
+  </div>
+  <label class="slider" id="radius-wrap" for="radius">Cut radius <input id="radius" type="range" min="0.1" max="2.5" step="0.05" value="0.5"><output id="radius-out">0.50 m</output></label>
+  <div class="group" role="group" aria-label="Viewpoints">
+    <span class="lbl">Go to</span>
+    <button id="v-back">Back of house</button>
+    <button id="v-front">Front row</button>
+    <button id="v-stage">On stage</button>
+    <button id="v-wing">Stage-left wing</button>
+    <button id="v-over">High corner</button>
+    <button id="v-fly">Fly tower</button>
+  </div>
+  <label class="slider" for="bright">Brightness <input id="bright" type="range" min="0.6" max="3" step="0.05" value="1.6"></label>
+  <div class="group" role="group" aria-label="Movement">
+    <button id="m-orbit" aria-pressed="true">Orbit</button>
+    <button id="m-walk" aria-pressed="false">Walk</button>
+  </div>
+</header>
+<div id="main">
+  <div id="stage">
+    <canvas id="c" aria-label="3D model of the theatre"></canvas>
+    <div class="hint" id="hint">Drag to look around · scroll or pinch to zoom · right-drag to pan</div>
+    <div id="load"><div><span id="loadtxt">Loading model…</span><div id="bar"><i></i></div></div></div>
+  </div>
+  <aside aria-label="Edits">
+    <h2>Edits</h2>
+    <div id="status">Connecting…</div>
+    <div id="pending" hidden>
+      <div class="kind" id="pending-kind"></div>
+      <div id="pending-tex" class="swatches" hidden></div>
+      <textarea id="pending-note" placeholder="What should change here?"></textarea>
+      <div class="row"><button id="pending-save">Save</button><button id="pending-cancel">Cancel</button></div>
+    </div>
+    <ul id="list"></ul>
+    <div id="empty">Nothing marked yet. Pick a tool above and click the model: <b>Delete</b> cuts a sphere out of whatever you click, <b>Retexture</b> changes a filled panel, <b>Fix this</b> drops a pin with a note. Everything here is saved for Claude to apply at source.</div>
+    <div class="foot">
+      <button id="show-cuts" aria-pressed="true">Show cut spheres</button>
+      <button id="clear" class="danger">Clear all</button>
+      <button id="clear-yes" class="danger" hidden>Really clear</button>
+    </div>
+  </aside>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0c0f);
+const camera = new THREE.PerspectiveCamera(65, 1, 0.05, 200);
+const orbit = new OrbitControls(camera, canvas);
+orbit.enableDamping = true; orbit.dampingFactor = 0.08;
+const markers = new THREE.Group(); scene.add(markers);
+
+// Viewpoints, in glTF coordinates (Y up; the stage is toward +Z).
+const VIEWS = {
+  'v-back':  [[0, 5.0, -13.5], [0, 1.6, 4]],
+  'v-front': [[0.6, 1.25, -3.2], [0, 1.7, 5]],
+  'v-stage': [[0, 2.5, 5.5],   [0, 1.2, -8]],
+  'v-wing':  [[-5.2, 2.2, 6.2], [-1, 2.0, 0.5]],
+  'v-over':  [[4.5, 6.2, -12], [-1, 1.0, 3]],
+  'v-fly':   [[0, 1.6, 4.0],   [0, 14, 5.5]],
+};
+let tween = null;
+function flyTo(p, t) {
+  if (walking) setMode(false);
+  tween = { t: 0, start: performance.now(), p0: camera.position.clone(), t0: orbit.target.clone(), p1: new THREE.Vector3(...p), t1: new THREE.Vector3(...t) };
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) tween.t = 1;
+}
+Object.keys(VIEWS).forEach(id => $(id).addEventListener('click', () => flyTo(...VIEWS[id])));
+
+// Walk mode: drag to look, WASD / arrows to move, Q/E down/up.
+let walking = false, yaw = 0, pitch = 0;
+const keys = new Set();
+const hint = $('hint');
+const HINTS = {
+  look: { orbit: 'Drag to look around · scroll or pinch to zoom · right-drag to pan', walk: 'Drag to look · W A S D or arrows to move · Q / E down and up · Shift to go faster' },
+  delete: 'Click a surface to cut a sphere out of it (set the radius above). Drag still looks around.',
+  tex: 'Click one of the filled panels (proscenium, ceiling, skirts, brick, floors) to pick a new texture.',
+  fix: 'Click where something is wrong, then write what should change.',
+};
+function setMode(walk) {
+  walking = walk;
+  $('m-orbit').setAttribute('aria-pressed', String(!walk));
+  $('m-walk').setAttribute('aria-pressed', String(walk));
+  orbit.enabled = !walk;
+  const d = new THREE.Vector3(); camera.getWorldDirection(d);
+  if (walk) { yaw = Math.atan2(-d.x, -d.z); pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1)); }
+  else orbit.target.copy(camera.position).addScaledVector(d, 3);
+  setHint();
+}
+$('m-orbit').addEventListener('click', () => setMode(false));
+$('m-walk').addEventListener('click', () => setMode(true));
+let drag = null, press = null;
+canvas.addEventListener('pointerdown', e => {
+  press = { x: e.clientX, y: e.clientY, button: e.button };
+  if (walking) { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); }
+});
+canvas.addEventListener('pointermove', e => {
+  if (!walking || !drag) return;
+  yaw -= (e.clientX - drag.x) * 0.004; pitch -= (e.clientY - drag.y) * 0.004;
+  pitch = THREE.MathUtils.clamp(pitch, -1.45, 1.45); drag = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointerup', e => {
+  drag = null;
+  if (press && press.button === 0 && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5) pick(e);
+  press = null;
+});
+addEventListener('keydown', e => { if (walking && e.target === document.body) { keys.add(e.code); if (e.code.startsWith('Arrow')) e.preventDefault(); } });
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+
+// Tools.
+let tool = 'look', pendingEdit = null;
+const TOOL_BTN = { look: 't-look', delete: 't-delete', tex: 't-tex', fix: 't-fix' };
+function setTool(t) {
+  tool = t;
+  for (const [k, id] of Object.entries(TOOL_BTN)) $(id).setAttribute('aria-pressed', String(k === t));
+  canvas.classList.toggle('mode-tool', t !== 'look');
+  $('radius-wrap').style.visibility = t === 'delete' ? 'visible' : 'hidden';
+  cancelPending(); setHint();
+}
+function setHint() { hint.textContent = tool === 'look' ? HINTS.look[walking ? 'walk' : 'orbit'] : HINTS[tool]; }
+Object.entries(TOOL_BTN).forEach(([k, id]) => $(id).addEventListener('click', () => setTool(k)));
+const radius = $('radius'), radiusOut = $('radius-out');
+radius.addEventListener('input', () => { radiusOut.value = (+radius.value).toFixed(2) + ' m'; });
+setTool('look');
+
+// Load. The scan's lighting is baked into its photos, so draw it unlit.
+const bar = document.querySelector('#bar i'), loadtxt = $('loadtxt');
+const meshes = [], byName = new Map();
+const bright = $('bright');
+function applyBright() {
+  const k = parseFloat(bright.value);
+  meshes.forEach(o => o.material.color.copy(o.material.userData.base).multiplyScalar(k));
+}
+bright.addEventListener('input', applyBright);
+async function fetchText(url, onBytes) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  const total = +res.headers.get('content-length') || 0;
+  const reader = res.body.getReader(); const parts = []; let got = 0;
+  for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; onBytes(got, total); }
+  const all = new Uint8Array(got); let o = 0; for (const p of parts) { all.set(p, o); o += p.length; }
+  return new TextDecoder().decode(all);
+}
+function makeGLB(json, bin) {
+  const enc = new TextEncoder().encode(JSON.stringify(json));
+  const jl = (enc.length + 3) & ~3, bl = (bin.length + 3) & ~3;
+  const out = new Uint8Array(12 + 8 + jl + 8 + bl); const dv = new DataView(out.buffer);
+  dv.setUint32(0, 0x46546C67, true); dv.setUint32(4, 2, true); dv.setUint32(8, out.length, true);
+  dv.setUint32(12, jl, true); dv.setUint32(16, 0x4E4F534A, true); out.set(enc, 20); out.fill(0x20, 20 + enc.length, 20 + jl);
+  dv.setUint32(20 + jl, bl, true); dv.setUint32(24 + jl, 0x004E4942, true); out.set(bin, 28 + jl);
+  return out.buffer;
+}
+function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
+(async () => {
+  const json = await (await fetch('model/scene.json')).json();
+  const b64 = await fetchText('model/geometry.txt', (got, total) => {
+    const t = total || 7900000; bar.style.width = Math.min(100, got / t * 100).toFixed(0) + '%';
+    loadtxt.textContent = `Loading model… ${(got / 1048576).toFixed(1)} MB`;
+  });
+  const raw = atob(b64.trim()); const bin = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bin[i] = raw.charCodeAt(i);
+  loadtxt.textContent = 'Building the model…';
+  new GLTFLoader().parse(makeGLB(json, bin), 'model/', onModel, fail);
+})().catch(fail);
+
+function onModel(gltf) {
+  gltf.scene.updateMatrixWorld(true);
+  gltf.scene.traverse(o => {
+    if (!o.isMesh) return;
+    const src = o.material;
+    const m = new THREE.MeshBasicMaterial({ map: src.map || null, side: THREE.DoubleSide });
+    m.userData.base = src.map ? new THREE.Color(1, 1, 1) : src.color.clone();
+    m.userData.origMap = m.map; m.userData.origBase = m.userData.base.clone();
+    o.material = m; src.dispose();
+    const g = o.geometry;
+    if (!g.index) {                       // index it so cuts can drop triangles
+      const n = g.attributes.position.count; const idx = new Uint32Array(n); for (let i = 0; i < n; i++) idx[i] = i;
+      g.setIndex(new THREE.BufferAttribute(idx, 1));
+    }
+    o.userData.origIndex = g.index.array.slice();
+    o.userData.centroids = null;          // computed on first cut
+    meshes.push(o); byName.set(o.name, o);
+  });
+  applyBright();
+  scene.add(gltf.scene);
+  $('load').hidden = true;
+  const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t);
+  applyEdits();
+}
+
+// Fill panels are the ones the Blender script built; the scan's own pieces are Object_N.
+const isPanel = name => !/^Object_\d+$/.test(name);
+const PANEL_LABEL = { pros_pier_l: 'proscenium pier (stage left)', pros_pier_r: 'proscenium pier (stage right)', pros_header: 'proscenium header', pros_upper: 'wall above the proscenium',
+  house_ceiling: 'house ceiling', house_floor: 'house floor fill', house_skirt_w: 'house wall top (west)', house_skirt_e: 'house wall top (east)', house_skirt_s: 'house wall top (rear)',
+  fly_wall_w: 'fly tower wall (west)', fly_wall_e: 'fly tower wall (east)', fly_roof: 'fly tower roof', back_tower: 'fly tower back wall', back_brick_lo: 'brick back wall (low)', back_brick_hi: 'brick back wall (high)',
+  deck_fill: 'stage deck fill', void_e: 'east void panel', wing_w_top: 'stage-left wing lintels', front_w: 'front-left vestibule wall' };
+const label = name => PANEL_LABEL[name] || (isPanel(name) ? name.replace(/_/g, ' ') : 'scan piece ' + name.replace('Object_', '#'));
+
+// Textures a panel can take. Tiles are the model's own; flats are plain colours.
+const TEX = {
+  brick: { label: 'Brick', file: 'model/tex/brick_tile.jpg' },
+  wall: { label: 'Wall grey', file: 'model/tex/fill_wall.jpg' },
+  ceiling: { label: 'Ceiling', file: 'model/tex/fill_ceiling.jpg' },
+  deck: { label: 'Stage deck', file: 'model/tex/fill_deck.jpg' },
+  house_floor: { label: 'House carpet', file: 'model/tex/fill_house_floor.jpg' },
+  black: { label: 'Matte black', color: 0x0a0a0c },
+  plaster: { label: 'Warm plaster', color: 0x8f8578 },
+  red: { label: 'Stage red', color: 0x6b1a1e },
+};
+const texLoader = new THREE.TextureLoader(); const texCache = {};
+function texture(key) {
+  if (!TEX[key] || !TEX[key].file) return null;
+  if (!texCache[key]) {
+    const t = texLoader.load(TEX[key].file); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; texCache[key] = t;
+  }
+  return texCache[key];
+}
+
+// Picking.
+const ray = new THREE.Raycaster();
+function pick(e) {
+  if (tool === 'look' || !meshes.length) return;
+  const r = canvas.getBoundingClientRect();
+  const nd = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(nd, camera);
+  const hit = ray.intersectObjects(meshes, false)[0];
+  if (!hit) return;
+  const p = hit.point, name = hit.object.name;
+  const where = { mesh: name, point: [p.x, p.y, p.z], blender: [+p.x.toFixed(3), +(-p.z).toFixed(3), +p.y.toFixed(3)] };
+  if (tool === 'delete') return save({ kind: 'delete', ...where, radius: +radius.value });
+  if (tool === 'tex') {
+    if (!isPanel(name)) { flash('That is a scanned piece, not a filled panel: use Delete or Fix this on it.'); return; }
+    return openPending({ kind: 'retexture', ...where });
+  }
+  if (tool === 'fix') return openPending({ kind: 'fix', ...where });
+}
+
+// Pending form (fix note / texture choice).
+function openPending(edit) {
+  pendingEdit = edit;
+  $('pending').hidden = false;
+  $('pending-kind').textContent = (edit.kind === 'fix' ? 'Fix pin on ' : 'Retexture ') + label(edit.mesh) + ' · Blender (' + edit.blender.join(', ') + ')';
+  const sw = $('pending-tex'); sw.innerHTML = ''; sw.hidden = edit.kind !== 'retexture';
+  if (edit.kind === 'retexture') {
+    for (const [k, t] of Object.entries(TEX)) {
+      const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', 'false');
+      const i = document.createElement('i'); i.style.background = t.file ? `url(${t.file})` : '#' + t.color.toString(16).padStart(6, '0');
+      if (t.file) i.style.backgroundSize = '48px 48px';
+      b.append(i, document.createTextNode(t.label));
+      b.addEventListener('click', () => { pendingEdit.texture = k; [...sw.children].forEach(c => c.setAttribute('aria-pressed', String(c === b))); preview(); });
+      sw.append(b);
+    }
+  }
+  $('pending-note').value = ''; $('pending-note').placeholder = edit.kind === 'fix' ? 'What should change here?' : 'Optional note';
+  $('pending-note').focus();
+}
+function preview() { if (pendingEdit && pendingEdit.texture) applyTexture(byName.get(pendingEdit.mesh), pendingEdit.texture); }
+function cancelPending() { if (pendingEdit) { pendingEdit = null; $('pending').hidden = true; if (meshes.length) applyEdits(); } }
+$('pending-cancel').addEventListener('click', cancelPending);
+$('pending-save').addEventListener('click', () => {
+  if (!pendingEdit) return;
+  const note = $('pending-note').value.trim();
+  if (pendingEdit.kind === 'fix' && !note) { $('pending-note').focus(); return; }
+  if (pendingEdit.kind === 'retexture' && !pendingEdit.texture) { flash('Pick a texture first.'); return; }
+  const e = { ...pendingEdit, note }; pendingEdit = null; $('pending').hidden = true; save(e);
+});
+$('pending-note').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('pending-save').click(); });
+
+// Storage: the artifact's shared db when this page runs inside the claude.ai viewer, memory otherwise.
+let db = null, edits = [], local = [], unsub = null;
+const all = () => db ? edits : local;
+const status = $('status');
+function flash(msg) { const was = status.textContent, cls = status.className; status.textContent = msg; status.className = 'warn'; setTimeout(() => { status.textContent = was; status.className = cls; }, 3500); }
+(async () => {
+  const use = window.claude && window.claude.use;
+  db = use ? await window.claude.use('db') : null;
+  if (!db) { status.textContent = 'Not connected: edits stay in this tab only.'; status.className = 'warn'; render(); return; }
+  status.textContent = 'Saved to this artifact. Claude reads these.';
+  unsub = db.collection('edits').orderBy('created').onSnapshot(snap => {
+    edits = snap.docs.map(d => ({ id: d.id, ...d.data() })); render();
+  }, err => { status.textContent = 'Lost the connection to the edit list (' + err.code + '). Reload to reconnect.'; status.className = 'warn'; });
+})();
+async function save(edit) {
+  const body = { ...edit, created: new Date().toISOString() };
+  if (!db) { local.push({ id: 'l' + Date.now() + Math.random().toString(36).slice(2, 6), ...body }); render(); return; }
+  try { await db.collection('edits').add(body); }
+  catch (err) {
+    if (err && err.code === 'quota_exceeded') flash('The edit list is full: remove some edits first.');
+    else if (err && err.code === 'invalid_argument') flash('This view is read-only: the edit was not saved.');
+    else flash('Could not save (' + (err && err.code || 'unknown') + '). Try again.');
+  }
+}
+async function remove(id) {
+  if (!db) { local = local.filter(e => e.id !== id); render(); return; }
+  try { await db.collection('edits').doc(id).delete(); } catch (err) { flash('Could not remove (' + (err && err.code || 'unknown') + ').'); }
+}
+$('clear').addEventListener('click', () => { $('clear-yes').hidden = false; });
+$('clear-yes').addEventListener('click', async () => {
+  $('clear-yes').hidden = true;
+  for (const e of all()) await remove(e.id);
+});
+
+// Apply edits to the scene.
+let showCuts = true;
+$('show-cuts').addEventListener('click', () => { showCuts = !showCuts; $('show-cuts').setAttribute('aria-pressed', String(showCuts)); applyEdits(); });
+function centroids(o) {
+  if (o.userData.centroids) return o.userData.centroids;
+  const g = o.geometry, pos = g.attributes.position, idx = o.userData.origIndex, n = idx.length / 3;
+  const out = new Float32Array(n * 3), v = new THREE.Vector3();
+  for (let t = 0; t < n; t++) {
+    let x = 0, y = 0, z = 0;
+    for (let k = 0; k < 3; k++) { v.fromBufferAttribute(pos, idx[t * 3 + k]).applyMatrix4(o.matrixWorld); x += v.x; y += v.y; z += v.z; }
+    out[t * 3] = x / 3; out[t * 3 + 1] = y / 3; out[t * 3 + 2] = z / 3;
+  }
+  return (o.userData.centroids = out);
+}
+function applyTexture(o, key) {
+  if (!o) return;
+  const t = TEX[key]; if (!t) return;
+  const m = o.material;
+  if (t.file) { m.map = texture(key); m.userData.base = new THREE.Color(1, 1, 1); }
+  else { m.map = null; m.userData.base = new THREE.Color(t.color); }
+  m.needsUpdate = true;
+}
+function applyEdits() {
+  if (!meshes.length) return;
+  const list = all();
+  // textures: restore, then apply the latest per panel
+  for (const o of meshes) { const m = o.material; if (m.map !== m.userData.origMap || !m.userData.base.equals(m.userData.origBase)) { m.map = m.userData.origMap; m.userData.base = m.userData.origBase.clone(); m.needsUpdate = true; } }
+  for (const e of list) if (e.kind === 'retexture') applyTexture(byName.get(e.mesh), e.texture);
+  applyBright();
+  // cuts: rebuild each affected mesh's index
+  const cuts = list.filter(e => e.kind === 'delete');
+  for (const o of meshes) {
+    const mine = cuts.filter(e => e.mesh === o.name);
+    const g = o.geometry, orig = o.userData.origIndex;
+    if (!mine.length) { if (g.index.array.length !== orig.length) { g.setIndex(new THREE.BufferAttribute(orig.slice(), 1)); } continue; }
+    const c = centroids(o), n = orig.length / 3, keep = new Uint8Array(n).fill(1);
+    for (const e of mine) {
+      const [px, py, pz] = e.point, r2 = e.radius * e.radius;
+      for (let t = 0; t < n; t++) { const dx = c[t * 3] - px, dy = c[t * 3 + 1] - py, dz = c[t * 3 + 2] - pz; if (dx * dx + dy * dy + dz * dz < r2) keep[t] = 0; }
+    }
+    let m = 0; for (let t = 0; t < n; t++) m += keep[t];
+    const out = new (orig.constructor)(m * 3); let w = 0;
+    for (let t = 0; t < n; t++) if (keep[t]) { out[w++] = orig[t * 3]; out[w++] = orig[t * 3 + 1]; out[w++] = orig[t * 3 + 2]; }
+    g.setIndex(new THREE.BufferAttribute(out, 1));
+  }
+  // markers
+  while (markers.children.length) { const k = markers.children.pop(); k.geometry && k.geometry.dispose(); k.material && k.material.map && k.material.map.dispose(); k.material && k.material.dispose(); }
+  list.forEach((e, i) => {
+    const p = new THREE.Vector3(...e.point);
+    if (e.kind === 'delete') {
+      if (!showCuts) return;
+      const s = new THREE.Mesh(new THREE.SphereGeometry(e.radius, 16, 10), new THREE.MeshBasicMaterial({ color: 0xe0603a, wireframe: true, transparent: true, opacity: 0.35 }));
+      s.position.copy(p); markers.add(s);
+    } else {
+      const col = e.kind === 'fix' ? 0xe24b6a : 0x5aa9d9;
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8), new THREE.MeshBasicMaterial({ color: col, depthTest: false }));
+      s.position.copy(p); s.renderOrder = 10; markers.add(s);
+    }
+    markers.add(numberSprite(i + 1, p, e.kind));
+  });
+}
+function numberSprite(n, p, kind) {
+  const c = document.createElement('canvas'); c.width = 96; c.height = 96; const x = c.getContext('2d');
+  x.fillStyle = kind === 'fix' ? '#e24b6a' : kind === 'delete' ? '#e0603a' : '#5aa9d9';
+  x.beginPath(); x.arc(48, 48, 40, 0, Math.PI * 2); x.fill();
+  x.fillStyle = '#fff'; x.font = 'bold 44px "IBM Plex Mono", monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(String(n), 48, 50);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, sizeAttenuation: true }));
+  s.position.copy(p).add(new THREE.Vector3(0, 0.3, 0)); s.scale.set(0.35, 0.35, 1); s.renderOrder = 11;
+  return s;
+}
+
+// The list.
+function render() {
+  const list = all(), ul = $('list'); ul.innerHTML = '';
+  $('empty').hidden = list.length > 0;
+  list.forEach((e, i) => {
+    const li = document.createElement('li'); li.className = 'k-' + e.kind;
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = String(i + 1).padStart(2, '0');
+    const body = document.createElement('div');
+    const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = e.kind === 'delete' ? 'delete' : e.kind === 'fix' ? 'fix' : 'texture';
+    body.append(badge, document.createTextNode(label(e.mesh)));
+    const where = document.createElement('div'); where.className = 'where';
+    where.textContent = (e.kind === 'delete' ? `r ${(+e.radius).toFixed(2)} m · ` : e.kind === 'retexture' ? `→ ${TEX[e.texture] ? TEX[e.texture].label : e.texture} · ` : '') + `xyz ${e.blender.join(', ')}`;
+    body.append(where);
+    if (e.note) { const note = document.createElement('div'); note.className = 'note'; note.textContent = e.note; body.append(note); }
+    const rm = document.createElement('button'); rm.className = 'rm'; rm.textContent = '✕'; rm.title = 'Remove this edit'; rm.setAttribute('aria-label', 'Remove edit ' + (i + 1));
+    rm.addEventListener('click', ev => { ev.stopPropagation(); remove(e.id); });
+    li.append(n, body, rm);
+    li.addEventListener('click', () => { const p = new THREE.Vector3(...e.point); const d = camera.position.clone().sub(p).setLength(2.5); if (d.lengthSq() < 1e-6) d.set(0, 0.5, -2.5); flyTo(p.clone().add(d).toArray(), p.toArray()); });
+    ul.append(li);
+  });
+  applyEdits();
+}
+
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas.parentElement); resize();
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (tween) {
+    if (tween.t < 1) tween.t = Math.min(1, (performance.now() - tween.start) / 1100);
+    const k = tween.t < .5 ? 2 * tween.t * tween.t : 1 - Math.pow(-2 * tween.t + 2, 2) / 2;
+    camera.position.lerpVectors(tween.p0, tween.p1, k); orbit.target.lerpVectors(tween.t0, tween.t1, k);
+    if (tween.t >= 1) tween = null;
+  }
+  if (walking) {
+    camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    const sp = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 6 : 2.2) * dt;
+    const f = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)), r = new THREE.Vector3(-f.z, 0, f.x);
+    if (keys.has('KeyW') || keys.has('ArrowUp')) camera.position.addScaledVector(f, sp);
+    if (keys.has('KeyS') || keys.has('ArrowDown')) camera.position.addScaledVector(f, -sp);
+    if (keys.has('KeyD') || keys.has('ArrowRight')) camera.position.addScaledVector(r, sp);
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) camera.position.addScaledVector(r, -sp);
+    if (keys.has('KeyE')) camera.position.y += sp;
+    if (keys.has('KeyQ')) camera.position.y -= sp;
+  } else {
+    orbit.update();
+  }
+  renderer.render(scene, camera);
+});
+</script>
+
+</body>
+</html>

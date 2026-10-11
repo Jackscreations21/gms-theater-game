@@ -273,8 +273,21 @@ rebuilds from source; the first-pass fills are unchanged where they worked):
 rear doorways Jack chose to leave open. The last three graze the stage-left wall
 top under the fly-tower fill. Face count 64,563; still 17 materials.
 
-**Delivered:** six 1080p renders in chat, and the walkthrough viewer re-exported
-and published as an artifact (https://claude.ai/artifact/LwSoKjQ911xowE1DQa4syv).
+**Delivered:** six 1080p renders in chat, the walkthrough viewer re-exported, and
+**a markup tool**, `tools/midtown-viewer/markup.html`, published as the artifact
+https://claude.ai/artifact/LwSoKjQ911xowE1DQa4syv (the plain viewer is still
+`index.html`). Jack clicks the model with one of three tools — **Delete** cuts a
+sphere out of whatever he clicks (previewed live by rebuilding the mesh's index
+buffer), **Retexture** swaps a filled panel's tile (the scan's own pieces refuse
+it), **Fix this** drops a pin with a note — and every edit is written to the
+artifact's `db` as a document in the `edits` collection: `{kind, mesh, point
+(glTF), blender (x, y, z in the Blender frame, 3 dp), radius | texture, note,
+created}`. **To apply his edits at source, read that collection** (`ArtifactData`
+list `edits` on the URL above) and turn each into a rule in `midtown_theatre.py`:
+a `delete` is a sphere to drop faces inside (mesh names are the GLB node names,
+`Object_N` for scan pieces), a `retexture` is a `material(...)` swap on the named
+`box_*` panel, a `fix` is a note at a point. Served from a plain file the page
+runs without the store and says so (edits then live in the tab only).
 
 **Traps hit, now in TRAPS.md:** a texture's MIRROR extension is not a free
 seamless tile; and renders only audit what the camera sees.
