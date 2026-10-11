@@ -149,6 +149,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';   // the rigging structures merge into one mesh each
 
 // The house, measured off the GLB's fill geometry (tools/blender/midtown_theatre.py, exported Y up).
 // ARCH_Z is where the proscenium is PUT, not where the GLB has it (2.30, with 2.65 m of apron in
@@ -354,7 +355,7 @@ function buildRig(src) {
     if (!finite(u.pos, 3) || !finite(u.quat, 4)) { console.warn('rig: unit', u.id, 'has no usable pos / quat — skipped'); continue; }
     const unit = g.scene.clone();                            // geometry and body materials shared; the lens gets its own
     unit.name = String(u.id);
-    unit.userData = { id: u.id, channels: u.channels, type: u.type, label: u.label, gel: u.gel };
+    unit.userData = { id: u.id, channels: u.channels, type: u.type, label: u.label, gel: u.gel, position: u.position || null, hung: !!u.hung, placed: u.placed };
     unit.position.fromArray(u.pos);
     panTilt(q.fromArray(u.quat).normalize(), e);
     const head = unit.getObjectByName('head'), lens = unit.getObjectByName('lens');
@@ -386,6 +387,389 @@ function setRig(on) {
   document.getElementById('r-rig').setAttribute('aria-pressed', String(on));
 }
 document.getElementById('r-rig').addEventListener('click', () => setRig(!(rig && rig.visible)));
+
+/* ---------------------------------------------------------------- RIGGING: BOOMS ONTO THE WALLS (agent A)
+   Jack: "move these lights back to be attached to the walls" — the booms standing in the HOUSE
+   (downstage of the arch) go against the Midtown side walls on vertical boom pipes with brackets. */
+function fitBoomsToWalls(houseScene) {
+  // Each house boom (one per position name, every unit downstage of the arch) is raycast outward,
+  // level, to the nearest scan surface; the column's wall is the NEAREST of its units' hits, so no
+  // unit ends up in the wall, and the whole column slides along world x to stand boomDims.clear
+  // (real metres) off it, keeping each unit's height, depth and rotation. Then a 48 mm pipe goes
+  // through the column with 34 mm brackets and wall plates, merged into one mesh per boom, a child
+  // of the rig (real metres; it follows the "Real size" toggle like the units do).
+  if (!rig) return;
+  houseScene.updateMatrixWorld(true); rig.updateMatrixWorld(true);
+  const meshes = []; houseScene.traverse(o => { if (o.isMesh && o.visible) meshes.push(o); });
+  const s = rig.getWorldScale(new THREE.Vector3()).x;       // drawn metres per real metre (0.62 when fitted)
+  const ray = new THREE.Raycaster(), w = new THREE.Vector3(), cols = {};
+  for (const u of rig.children) {
+    const name = u.userData && u.userData.position;
+    if (!name || !/Boom/.test(name)) continue;
+    u.getWorldPosition(w);
+    if (w.z >= HOUSE.archZ) continue;                         // upstage of the arch: the wing towers', not these
+    (cols[name] = cols[name] || []).push({ u, w: w.clone() });
+  }
+  const found = Object.entries(cols).map(([n, l]) => `${n} ×${l.length}`).join(', ');
+  console.info(`booms: house booms found — ${found || 'none'}`);
+  const report = [];
+  for (const [name, list] of Object.entries(cols)) {
+    const sx = Math.sign(list.reduce((a, c) => a + c.w.x, 0)) || 1;   // outward: house left −x, house right +x
+    let wallX = null, missed = 0;
+    for (const c of list) {
+      const h = boomWallHit(ray, meshes, c.w, sx);
+      if (!h) { missed++; continue; }
+      c.wallX = h.point.x;
+      if (wallX === null || h.point.x * sx < wallX * sx) wallX = h.point.x;
+    }
+    if (missed || wallX === null) { report.push(`${name} → no wall found for ${missed} of ${list.length} units, left where it is`); continue; }
+    let x = wallX - sx * boomDims.clear * s;
+    for (const c of list) c.u.position.copy(rig.worldToLocal(w.set(x, c.w.y, c.w.z)));
+    // The scan's wall is not quite plumb and a unit's body can reach past 0.45 m: if any body's
+    // outer edge (over its vertices) comes within 1 cm of its own wall, the column backs off.
+    rig.updateMatrixWorld(true);
+    let into = 0;
+    for (const c of list) {
+      const bb = new THREE.Box3().setFromObject(c.u, true), outer = sx < 0 ? bb.min.x : bb.max.x;
+      into = Math.max(into, (outer - c.wallX) * sx + 0.01 * s);
+    }
+    if (into > 0) { x -= sx * into; for (const c of list) c.u.position.copy(rig.worldToLocal(w.set(x, c.w.y, c.w.z))); }
+    const moves = list.map(c => Math.abs(x - c.w.x));
+    const mesh = boomBuild(name, list.map(c => c.u.position), sx, s, ray, meshes);
+    rig.add(mesh);
+    mesh.userData.wallX = wallX; mesh.userData.unitX = x;
+    const lo = Math.min(...moves), hi = Math.max(...moves);
+    report.push(`${name} → wall at x ${wallX.toFixed(2)}, moved ${list.length} units by ${lo.toFixed(2)}${hi - lo > 0.005 ? '–' + hi.toFixed(2) : ''} m to x ${x.toFixed(2)}, ${mesh.userData.brackets} bracket${mesh.userData.brackets === 1 ? '' : 's'}` + (mesh.userData.skipped ? ` (${mesh.userData.skipped} skipped: no wall near enough)` : ''));
+  }
+  rig.updateMatrixWorld(true);
+  console.info('booms: ' + (report.join('; ') || 'nothing to move'));
+}
+// Real metres: a 48 mm boom pipe, 34 mm bracket arms, 150 mm square 10 mm plates, the units' hang line
+// 0.45 m off the wall (room for a Source Four's body behind its clamp), pipe 0.5 m past the end units.
+const boomDims = { clear: 0.45, pipe: 0.048, arm: 0.034, plate: 0.15, plateT: 0.01, past: 0.5, every: 1.5, maxReach: 1.0 };
+const boomPipeMat = new THREE.MeshStandardMaterial({ color: 0x33363b, metalness: 0.6, roughness: 0.5 });
+const boomUp = new THREE.Vector3(0, 1, 0), boomAcross = new THREE.Vector3(1, 0, 0);
+// The nearest house surface level-outward from a world point; failing that, a little downstage or upstage.
+function boomWallHit(ray, meshes, from, sx) {
+  for (const dz of [0, -0.25, 0.25, -0.5, 0.5]) {
+    ray.set(from, new THREE.Vector3(sx, 0, dz).normalize()); ray.far = 8;
+    const h = ray.intersectObjects(meshes, false)[0];
+    if (h) return h;
+  }
+  return null;
+}
+// A cylinder of radius r from a to b (rig-local), or a plate centred at c facing along dir.
+function boomRod(a, b, r) {
+  const d = new THREE.Vector3().subVectors(b, a), len = d.length();
+  const g = new THREE.CylinderGeometry(r, r, len, 12, 1);
+  g.applyMatrix4(new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(boomUp, d.normalize()), new THREE.Vector3(1, 1, 1)));
+  return g;
+}
+function boomPlate(c, dir) {
+  const g = new THREE.BoxGeometry(boomDims.plateT, boomDims.plate, boomDims.plate);
+  g.applyMatrix4(new THREE.Matrix4().compose(c, new THREE.Quaternion().setFromUnitVectors(boomAcross, dir), new THREE.Vector3(1, 1, 1)));
+  return g;
+}
+// The pipe through the moved column (rig-local origins), with level brackets to the wall every ~1.5 m.
+// A bracket height whose wall is recessed (a doorway, say) is nudged up or down to find the wall;
+// if the wall is nowhere within reach there, that bracket is skipped.
+function boomBuild(name, origins, sx, s, ray, meshes) {
+  const mx = origins.reduce((a, p) => a + p.x, 0) / origins.length, mz = origins.reduce((a, p) => a + p.z, 0) / origins.length;
+  const y0 = Math.min(...origins.map(p => p.y)) - boomDims.past, y1 = Math.max(...origins.map(p => p.y)) + boomDims.past;
+  const parts = [boomRod(new THREE.Vector3(mx, y0, mz), new THREE.Vector3(mx, y1, mz), boomDims.pipe / 2)];
+  const n = Math.max(2, Math.round((y1 - y0 - 0.6) / boomDims.every) + 1);
+  let brackets = 0, skipped = 0;
+  const out = new THREE.Vector3(sx, 0, 0);
+  for (let i = 0; i < n; i++) {
+    const y = y0 + 0.3 + (y1 - y0 - 0.6) * i / (n - 1);
+    let hit = null;
+    for (const dy of [0, 0.15, -0.15, 0.3, -0.3, 0.45, -0.45]) {
+      if (y + dy < y0 + 0.05 || y + dy > y1 - 0.05) continue;
+      const from = rig.localToWorld(new THREE.Vector3(mx, y + dy, mz));
+      ray.set(from, out); ray.far = boomDims.maxReach * s;
+      const h = ray.intersectObjects(meshes, false)[0];
+      if (h) { hit = { y: y + dy, end: rig.worldToLocal(h.point.clone()) }; break; }
+    }
+    if (!hit) { skipped++; continue; }
+    const a = new THREE.Vector3(mx, hit.y, mz), end = new THREE.Vector3(hit.end.x, hit.y, hit.end.z);
+    const dir = new THREE.Vector3().subVectors(end, a); dir.y = 0; dir.normalize();
+    const face = end.clone().addScaledVector(dir, -boomDims.plateT);   // the plate's back on the wall
+    parts.push(boomRod(a, face, boomDims.arm / 2), boomPlate(face.clone().addScaledVector(dir, boomDims.plateT / 2), dir));
+    brackets++;
+  }
+  const geo = mergeGeometries(parts, false); parts.forEach(g => g.dispose());
+  const mesh = new THREE.Mesh(geo, boomPipeMat);
+  mesh.name = name; mesh.castShadow = mesh.receiveShadow = false;
+  mesh.userData = { rig: true, boom: name, brackets, skipped };
+  return mesh;
+}
+
+/* ---------------------------------------------------------------- RIGGING: HANGING TRUSSES (agent B)
+   Jack: "make a truss hanging down from the roof with 4 ropes securing it to the roof for these
+   lights to hang from" (the rows in front of the arch) and "put a grid at the level of the stage
+   lights to hold them up" (the electrics over the stage). */
+// Everything is built as a child of `rig`, in the rig's own frame (real metres, upstage −z, the house
+// +z, deck y 0), so it follows the "Real size" toggle like the units do. The ceiling and the walls are
+// found by raycasting the house in WORLD at the fitted scale, and the hits brought back into rig-local.
+function buildHangingTrusses(houseScene) {
+  const meshes = [];
+  houseScene.updateMatrixWorld(true);
+  houseScene.traverse(o => { if (o.isMesh && o.visible) meshes.push(o); });
+  const rows = {};
+  for (const u of rig.children) { const p = u.userData && u.userData.position; if (p) (rows[p] = rows[p] || []).push(u); }
+  const report = [];
+  // A. One 12-inch box truss per row in front of the arch, hung on four cables.
+  // The FOH Electric's line runs through a ledge in the scanned ceiling (the real room's own lighting
+  // bridge, world y 6.13–6.38 across x −4.5…3.5), which swallowed the truss. The row hangs 0.75 m
+  // (real) lower, so the truss clears the ledge and the cables rise past it.
+  const TRUSS_DROP = { 'FOH Electric': 0.75 };
+  for (const name of ['Apron Electric', 'FOH Electric', 'FOH Truss']) {
+    if (TRUSS_DROP[name] && rows[name]) for (const u of rows[name]) { if (!u.userData.dropped) { u.position.y -= TRUSS_DROP[name]; u.userData.dropped = TRUSS_DROP[name]; } }
+    const row = trussRowStats(rows[name]);
+    if (!row) { report.push(`${name} not in the rig`); continue; }
+    const x0 = row.xMin - 0.3, x1 = row.xMax + 0.3, y = row.y, z = row.z, S = TRUSS_SECTION;
+    // one bottom chord on the units' origin line; the body upstage (−z) of it and above it
+    const corners = [[y, z], [y, z - S], [y + S, z - S], [y + S, z]];   // bottom-front, bottom-back, top-back, top-front
+    const geos = trussBoxTruss(x0, x1, corners);
+    const truss = new THREE.Mesh(trussMerge(geos), trussMat);
+    truss.name = 'truss: ' + name;
+    const tops = [[x0 + 0.3, y + S, z], [x0 + 0.3, y + S, z - S], [x1 - 0.3, y + S, z], [x1 - 0.3, y + S, z - S]];
+    const cableGeos = [], ys = [];
+    let assumed = 0;
+    for (const t of tops) {
+      const a = new THREE.Vector3(...t), hit = trussCeiling(a, meshes);
+      if (hit.assumed) assumed++;
+      ys.push(hit.world.y.toFixed(2));
+      cableGeos.push(trussRod(a, hit.local, TRUSS_CABLE_R, 6));
+    }
+    const cables = new THREE.Mesh(trussMerge(cableGeos), trussCableMat);
+    cables.name = 'truss cables: ' + name;
+    for (const m of [truss, cables]) trussFinish(m);
+    report.push(`${name} ${(x1 - x0).toFixed(1)} m (${row.n} units), cables to y ${ys.join('/')}` + (assumed ? ` (${assumed} on an assumed roof)` : ''));
+  }
+  // B. The grid over the stage: the ten electrics' pipes wall to wall, five cross pipes on top, twelve hangers.
+  const elec = Object.keys(rows).filter(k => /^\d+(st|nd|rd|th) Electric$/.test(k)).sort((a, b) => parseInt(a) - parseInt(b)).map(k => ({ name: k, ...trussRowStats(rows[k]) }));
+  if (elec.length) {
+    const pipes = [], hangers = [], walls = [];
+    for (const e of elec) {
+      const c = rig.localToWorld(new THREE.Vector3((e.xMin + e.xMax) / 2, e.y, e.z));
+      const ends = [];
+      for (const dx of [1, -1]) {                            // world ±x; the hit 0.1 m short, brought into rig-local
+        const dir = new THREE.Vector3(dx, 0, 0);
+        const h = new THREE.Raycaster(c, dir, 0.3, 12).intersectObjects(meshes, false)[0];
+        if (h) { ends.push(rig.worldToLocal(h.point.clone().addScaledVector(dir, -0.1)).x); walls.push(h.object.name); }
+        else {                                               // no wall: 0.5 m past the units' end on that side
+          const way = rig.worldToLocal(c.clone().add(dir)).x - rig.worldToLocal(c.clone()).x;   // which rig-local way this world side runs
+          ends.push(way > 0 ? e.xMax + 0.5 : e.xMin - 0.5); walls.push('none');
+        }
+      }
+      e.x0 = Math.min(...ends); e.x1 = Math.max(...ends);
+      pipes.push(trussRod(new THREE.Vector3(e.x0, e.y, e.z), new THREE.Vector3(e.x1, e.y, e.z), TRUSS_CHORD_R, 8));
+    }
+    const yTop = Math.max(...elec.map(e => e.y)) + 2 * TRUSS_CHORD_R;  // the cross pipes sit ON the electrics' pipes
+    const zFront = elec[0].z + 0.5, zBack = elec[elec.length - 1].z - 0.5;
+    for (const x of TRUSS_GRID_X) pipes.push(trussRod(new THREE.Vector3(x, yTop, zFront), new THREE.Vector3(x, yTop, zBack), TRUSS_CHORD_R, 8));
+    const roofYs = [];
+    let assumed = 0;
+    for (const e of elec.filter(e => /^(1st|4th|7th|10th) /.test(e.name))) for (const x of [-6, 0, 6]) {
+      const a = new THREE.Vector3(x, yTop, e.z), hit = trussCeiling(a, meshes);
+      if (hit.assumed) assumed++;
+      roofYs.push(hit.world.y);
+      hangers.push(trussRod(a, hit.local, TRUSS_HANGER_R, 6));
+    }
+    const grid = new THREE.Mesh(trussMerge(pipes), trussMat); grid.name = 'grid: pipes';
+    const hang = new THREE.Mesh(trussMerge(hangers), trussMat); hang.name = 'grid: hangers';
+    for (const m of [grid, hang]) trussFinish(m);
+    const xs = elec.flatMap(e => [e.x0, e.x1]);
+    rig.userData.trussGrid = { electrics: elec.map(e => ({ name: e.name, n: e.n, y: e.y, z: e.z, x0: e.x0, x1: e.x1 })), walls, zFront, zBack, yTop, roofYs };
+    report.push(`grid: ${elec.length} pipes (x ${Math.min(...xs).toFixed(1)}…${Math.max(...xs).toFixed(1)}, z ${zBack.toFixed(2)}…${zFront.toFixed(2)} rig-local), ${TRUSS_GRID_X.length} cross, ${hangers.length} hangers to y ${Math.min(...roofYs).toFixed(2)}…${Math.max(...roofYs).toFixed(2)}` + (assumed ? ` (${assumed} on an assumed roof)` : ''));
+  } else report.push('grid: no electrics in the rig');
+  console.info('trusses: ' + report.join('; '));
+}
+const TRUSS_SECTION = 0.30, TRUSS_BAY = 0.5;                  // a 12-inch box truss, diagonals every half metre
+const TRUSS_CHORD_R = 0.024, TRUSS_DIAG_R = 0.017, TRUSS_CABLE_R = 0.006, TRUSS_HANGER_R = 0.008;   // 48 mm, 34 mm, 12 mm, 16 mm
+const TRUSS_GRID_X = [-6, -3, 0, 3, 6];
+const trussMat = new THREE.MeshStandardMaterial({ color: 0x33363b, metalness: 0.6, roughness: 0.5 });
+const trussCableMat = new THREE.MeshStandardMaterial({ color: 0x101010, metalness: 0.2, roughness: 0.8 });
+// A row's units → count, x extent, mean y and z (rig-local). Null for no units.
+function trussRowStats(units) {
+  if (!units || !units.length) return null;
+  let xMin = Infinity, xMax = -Infinity, y = 0, z = 0;
+  for (const u of units) { xMin = Math.min(xMin, u.position.x); xMax = Math.max(xMax, u.position.x); y += u.position.y; z += u.position.z; }
+  return { n: units.length, xMin, xMax, y: y / units.length, z: z / units.length };
+}
+// A rod of radius r from a to b (rig-local Vector3s), as a geometry ready to merge.
+const trussUp = new THREE.Vector3(0, 1, 0);
+function trussRod(a, b, r, seg) {
+  const d = new THREE.Vector3().subVectors(b, a), len = d.length();
+  const g = new THREE.CylinderGeometry(r, r, Math.max(len, 1e-4), seg, 1);
+  const m = new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(trussUp, d.normalize()), new THREE.Vector3(1, 1, 1));
+  return g.applyMatrix4(m);
+}
+// The four chords along x from x0 to x1 at the given [y, z] corners, a zig-zag on every face, a frame at each end.
+function trussBoxTruss(x0, x1, corners) {
+  const geos = [], n = Math.max(1, Math.ceil((x1 - x0) / TRUSS_BAY)), step = (x1 - x0) / n;
+  const P = (i, x) => new THREE.Vector3(x, corners[i][0], corners[i][1]);
+  for (let i = 0; i < 4; i++) geos.push(trussRod(P(i, x0), P(i, x1), TRUSS_CHORD_R, 8));
+  for (let f = 0; f < 4; f++) {                              // face between corner f and corner f+1
+    const A = f, Bc = (f + 1) % 4;
+    for (let k = 0; k < n; k++) {
+      const xa = x0 + k * step, xb = xa + step;
+      geos.push(k % 2 ? trussRod(P(Bc, xa), P(A, xb), TRUSS_DIAG_R, 6) : trussRod(P(A, xa), P(Bc, xb), TRUSS_DIAG_R, 6));
+    }
+  }
+  for (const x of [x0, x1]) {                                // end frames: the square and one diagonal across it
+    for (let i = 0; i < 4; i++) geos.push(trussRod(P(i, x), P((i + 1) % 4, x), TRUSS_DIAG_R, 6));
+    geos.push(trussRod(P(0, x), P(2, x), TRUSS_DIAG_R, 6));
+  }
+  return geos;
+}
+function trussMerge(geos) { const g = mergeGeometries(geos, false); geos.forEach(x => x.dispose()); return g; }
+function trussFinish(m) { m.castShadow = m.receiveShadow = false; m.userData.rig = true; rig.add(m); }
+// The ceiling straight above a rig-local point: cast +y in WORLD, nearest hit past 0.3 m within 30 m;
+// none, and a roof 16 m above the deck is assumed. → { local, world, assumed }
+function trussCeiling(localPt, meshes) {
+  const w = rig.localToWorld(localPt.clone());
+  const h = new THREE.Raycaster(w, new THREE.Vector3(0, 1, 0), 0.3, 30).intersectObjects(meshes, false)[0];
+  const world = h ? h.point.clone() : new THREE.Vector3(w.x, HOUSE.deckY + 16, w.z);
+  return { local: rig.worldToLocal(world.clone()), world, assumed: !h };
+}
+
+/* ---------------------------------------------------------------- RIGGING: WING TOWERS (agent C)
+   Jack: "make all the lights in the wings have trusses attached to the ground holding them" —
+   the booms upstage of the arch stand on floor-mounted truss towers. */
+function buildWingTowers(houseScene) {
+  // One tower per boom upstage of the arch (the SL / SR Boom 1s stand in the house and are agent A's).
+  // Everything is built in the rig's own frame (real metres, upstage −z, stage left +x, deck y 0), so
+  // it follows "Real size"; the floor and wall checks are done in the world, at the fitted scale.
+  if (!rig) return;
+  // No frame has drawn since the set was turned and seated, so its groups' world matrices are stale
+  // (root.updateMatrixWorld does not refresh its parents): refresh the whole set, and the house, first.
+  setGroup.updateMatrixWorld(true); houseScene.updateMatrixWorld(true);
+  const t0 = performance.now(), v = new THREE.Vector3(), cols = new Map();
+  for (const u of rig.children) {
+    const d = u.userData;
+    if (!d || d.tower || !/Boom/.test(d.position || '') || u.getWorldPosition(v).z < HOUSE.archZ) continue;
+    if (!cols.has(d.position)) cols.set(d.position, []);
+    cols.get(d.position).push(u);
+  }
+  const houseMeshes = [], setMeshes = [];
+  houseScene.traverse(o => { if (o.isMesh && o.visible) houseMeshes.push(o); });
+  rig.parent.traverse(o => { if (o.isMesh && o.visible && !o.userData.rig) setMeshes.push(o); });   // the set, never the rig
+  const s = rig.getWorldScale(new THREE.Vector3()).x, S = towerSpec.side, ray = new THREE.Raycaster();
+  const W = (x, y, z) => rig.localToWorld(new THREE.Vector3(x, y, z));
+  const dirW = (x, z) => new THREE.Vector3(x, 0, z).transformDirection(rig.matrixWorld).setY(0).normalize();
+  const first = (o, dir, list, far) => { ray.set(o, dir); ray.far = far; return ray.intersectObjects(list, false)[0] || null; };
+  const fmt = p => `(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`;
+  const names = [...cols.keys()].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  const mean = a => a.reduce((p, q) => p + q, 0) / a.length, spread = a => Math.max(...a) - Math.min(...a);
+  const report = names.map(name => {
+    const us = cols.get(name), xs = us.map(u => u.position.x), ys = us.map(u => u.position.y), zs = us.map(u => u.position.z);
+    const x0 = mean(xs), z0 = mean(zs), sx = /^SR/.test(name) ? -1 : /^SL/.test(name) ? 1 : Math.sign(x0) || 1, y1 = Math.max(...ys) + towerSpec.over;
+    const near = new THREE.Box3().setFromPoints([W(x0, 0, z0), W(x0 + sx * S, 0, z0 - S), W(x0, y1, z0), W(x0 + sx * S, y1, z0 - S)]).expandByScalar(0.3);
+    near.min.y -= 3;                                         // room below for a floor lower than the deck
+    return { name, us, x0, z0, sx, y1, near, units: us.length, unitY: [Math.min(...ys), Math.max(...ys)], spread: [spread(xs), spread(zs)], notes: [] };
+  });
+  // Ray-testing the whole scan and set ~260 times took seconds at load: one pass first keeps, per
+  // tower, only the triangles near it, and every ray below is cast at those.
+  const nearScan = towerNear(houseMeshes, report.map(t => t.near)), nearSet = towerNear(setMeshes, report.map(t => t.near));
+  const named = h => h && { point: h.point, distance: h.distance, object: { name: h.object.userData.src[h.faceIndex] } };
+  report.forEach((t, i) => {
+    const { name, us, x0, z0, sx, y1 } = t;
+    const scanNear = nearScan[i] ? [nearScan[i]] : [], setNear = nearSet[i] ? [nearSet[i]] : [];
+    if (t.spread[0] > 0.3 || t.spread[1] > 0.3) t.notes.push(`units spread x ${t.spread[0].toFixed(2)} / z ${t.spread[1].toFixed(2)} m (${us.map(u => u.userData.id).join(', ')}) — mean used`);
+    // FLOOR: down from 0.5 m above the plate's centre, onto the scan; the set looked at separately
+    let y0 = 0;
+    const base = W(x0 + sx * S / 2, 0, z0 - S / 2), from = base.clone().setY(base.y + 0.5);
+    const fh = named(first(from, DOWN, scanNear, 50)) || first(from, DOWN, houseMeshes, 50), fs = named(first(from, DOWN, setNear, 50));
+    if (!fh) t.notes.push(`no scan floor under it at ${fmt(base)}`);
+    else if (base.y - fh.point.y > 0.1) { y0 = rig.worldToLocal(fh.point.clone()).y; t.notes.push(`scan floor ${(base.y - fh.point.y).toFixed(2)} m drawn below the deck at ${fmt(fh.point)} — tower extended down to it`); }
+    else if (fh.point.y - base.y > 0.1) t.notes.push(`scan surface ${(fh.point.y - base.y).toFixed(2)} m drawn ABOVE the deck at ${fmt(fh.point)} (${fh.object.name}) — the tower stands through it`);
+    if (fs && fs.point.y - base.y > 0.02) t.notes.push(`set piece ${fs.object.name} ${(fs.point.y - base.y).toFixed(2)} m drawn above the deck under the plate at ${fmt(fs.point)}`);
+    t.floorY = fh ? fh.point.y : null; t.deckY = base.y;
+    const mesh = new THREE.Mesh(towerGeometry(x0, z0, sx, y0, y1), towerMat);
+    mesh.name = name + ' tower'; mesh.userData = { rig: true, tower: true, boom: name };
+    mesh.castShadow = mesh.receiveShadow = false;
+    rig.add(mesh);
+    t.height = y1 - y0; t.chord = W(x0, y0, z0); t.centre = W(x0 + sx * S / 2, y0, z0 - S / 2);
+    // WALLS: from the chord line outward, upstage and between, at three heights, into the scan and the set
+    const out = dirW(sx, 0), up = dirW(0, -1), diag = out.clone().add(up).normalize();
+    for (const [label, dir, reach] of [['outward', out, Math.max(0.2, S * s)], ['upstage', up, S * s], ['out+up', diag, S * s * Math.SQRT2]]) {
+      for (const yy of [y0 + 0.3, (y0 + y1) / 2, y1 - 0.1]) {
+        const o = W(x0, yy, z0);
+        for (const [what, list] of [['scan', scanNear], ['set', setNear]]) {
+          const h = named(first(o, dir, list, reach));
+          if (h) t.notes.push(`${what} ${h.object.name} ${h.distance.toFixed(2)} m drawn ${label} of the chord at ${fmt(h.point)} — the tower stands in it`);
+        }
+      }
+    }
+    delete t.us; delete t.near;
+  });
+  rig.userData.towers = report;                             // MIDTOWN.rig.userData.towers, for the console
+  const all = [...rig.children].filter(u => u.userData && /Boom/.test(u.userData.position || '') && !u.userData.tower);
+  const skipped = [...new Set(all.filter(u => !cols.has(u.userData.position)).map(u => u.userData.position))];
+  console.info(`towers: ${report.length} — ` + report.map(t => `${t.name} (${t.units} unit${t.units === 1 ? '' : 's'}, ${t.height.toFixed(1)} m)`).join(', ')
+    + (skipped.length ? ` · not towered (downstage of the arch): ${skipped.join(', ')}` : '') + ` · ${(performance.now() - t0).toFixed(0)} ms`);
+  for (const t of report) console.info(`towers: ${t.name} — ${t.units} units at ${t.unitY[0].toFixed(2)}–${t.unitY[1].toFixed(2)} m, spread x ${t.spread[0].toFixed(2)} z ${t.spread[1].toFixed(2)}; chord ${fmt(t.chord)} centre ${fmt(t.centre)} world, deck ${t.deckY.toFixed(3)} floor ${t.floorY === null ? '—' : t.floorY.toFixed(3)}`
+    + (t.notes.length ? '\n  ' + t.notes.join('\n  ') : ''));
+}
+// The tower: 0.30 m box truss (four 48 mm chords, 34 mm lacing zig-zagging up every face about every
+// 0.5 m, a frame at each end) on a 0.60 m × 15 mm base plate. Real metres; drawn at the set's scale.
+const towerSpec = { side: 0.30, chord: 0.048, lace: 0.034, bay: 0.5, plate: 0.60, plateT: 0.015, over: 0.5, seg: 8 };
+const towerMat = new THREE.MeshStandardMaterial({ color: 0x33363b, metalness: 0.6, roughness: 0.5 });
+const towerY = new THREE.Vector3(0, 1, 0);
+function towerTube(a, b, dia, parts) {                       // a tube of diameter `dia` from a to b
+  const dir = new THREE.Vector3().subVectors(b, a), len = dir.length();
+  if (len < 1e-4) return;
+  const g = new THREE.CylinderGeometry(dia / 2, dia / 2, len, towerSpec.seg, 1, false);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(towerY, dir.divideScalar(len)));
+  g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+  parts.push(g);
+}
+// One chord runs up through (x0, z0) — where the boom's clamps are — and the body lies sx·x (offstage)
+// and −z (upstage) of it. The plate's top is at y0 + its thickness; the tower ends at y1.
+function towerGeometry(x0, z0, sx, y0, y1) {
+  const S = towerSpec.side, parts = [], V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const cx = [x0, x0 + sx * S, x0 + sx * S, x0], cz = [z0, z0, z0 - S, z0 - S];   // the corners, round the ring
+  const yb = y0 + towerSpec.plateT, n = Math.max(1, Math.round((y1 - yb) / towerSpec.bay)), h = (y1 - yb) / n;
+  for (let i = 0; i < 4; i++) towerTube(V(cx[i], yb, cz[i]), V(cx[i], y1, cz[i]), towerSpec.chord, parts);
+  for (let f = 0; f < 4; f++) {
+    const j = (f + 1) % 4;
+    for (const y of [yb + towerSpec.chord / 2, y1 - towerSpec.chord / 2]) towerTube(V(cx[f], y, cz[f]), V(cx[j], y, cz[j]), towerSpec.lace, parts);   // end frames
+    for (let k = 0; k < n; k++) {                            // the zig-zag, out of phase on neighbouring faces so they meet at the chords
+      const [a, b] = (k + f) % 2 ? [j, f] : [f, j];
+      towerTube(V(cx[a], yb + k * h, cz[a]), V(cx[b], yb + (k + 1) * h, cz[b]), towerSpec.lace, parts);
+    }
+  }
+  const plate = new THREE.BoxGeometry(towerSpec.plate, towerSpec.plateT, towerSpec.plate);
+  plate.translate(x0 + sx * S / 2, y0 + towerSpec.plateT / 2, z0 - S / 2);
+  parts.push(plate);
+  const g = mergeGeometries(parts, false);
+  parts.forEach(p => p.dispose());
+  return g;
+}
+// For each world box, the meshes' triangles that touch it, as one unparented, never-drawn, double-
+// sided mesh in world coordinates (null if none); userData.src[faceIndex] names the mesh each came from.
+function towerNear(meshes, boxes) {
+  const P = boxes.map(() => []), src = boxes.map(() => []), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), tb = new THREE.Box3();
+  for (const o of meshes) {
+    o.updateMatrixWorld(true);
+    const pos = o.geometry.attributes.position, idx = o.geometry.index ? o.geometry.index.array : null, n = idx ? idx.length : pos.count;
+    for (let t = 0; t < n; t += 3) {
+      a.fromBufferAttribute(pos, idx ? idx[t] : t).applyMatrix4(o.matrixWorld);
+      b.fromBufferAttribute(pos, idx ? idx[t + 1] : t + 1).applyMatrix4(o.matrixWorld);
+      c.fromBufferAttribute(pos, idx ? idx[t + 2] : t + 2).applyMatrix4(o.matrixWorld);
+      tb.makeEmpty().expandByPoint(a).expandByPoint(b).expandByPoint(c);
+      boxes.forEach((box, i) => { if (box.intersectsBox(tb)) { P[i].push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z); src[i].push(o.name); } });
+    }
+  }
+  const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  return P.map((p, i) => {
+    if (!p.length) return null;
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+    const m = new THREE.Mesh(g, mat); m.userData.src = src[i]; return m;
+  });
+}
 
 // Loading, with one bar across both files.
 const bar = document.querySelector('#bar i'), loadtxt = document.getElementById('loadtxt');
@@ -514,6 +898,8 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   const turned = new THREE.Group(); turned.rotation.y = Math.PI; turned.add(root);
   setGroup.add(turned);
   placeSet(SET.fit);
+  root.updateMatrixWorld(true);
+  if (rig) { fitBoomsToWalls(house.scene); buildHangingTrusses(house.scene); buildWingTowers(house.scene); }
   houseRoot = house.scene;
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
   registerModelTextures(house.scene, 'house: ', ['deck_fill', 'pros_outer_l', 'back_brick_lo', 'house_ceiling', 'house_floor']);
