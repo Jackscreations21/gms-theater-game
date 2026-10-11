@@ -14,9 +14,12 @@ fetch`, compare `origin/main`, then read this.
   Pages after merge: `https://jackscreations21.github.io/gms-theater-game/midtown.html`.
 - **Three calls he made watching it, all in the page, none in the GLB:** the proscenium moved to the
   front of the stage (z 0.20 from the GLB's 2.30, the ceiling/skirts/fly walls/roof stretched to meet
-  it); the opening fitted round the set (piers x ±5.6, header y 6.9); the two corner stairs filled in
-  as clean solid steps. The set is scaled 0.62 to clear the scanned side walls, with a "Real size"
-  toggle. If the second game wants these in the asset itself, `tools/blender/midtown_theatre.py`'s
+  it); the proscenium rebuilt as a real FRAME round the set (the GLB's flat grey planes read as "no
+  proscenium" when widened — now 1.3 m piers and header, 0.5 m deep, its own material, opening
+  x ±5.6 / top y 6.9); the two corner stairs filled in as one block each, floor to deck, corners
+  squared off (his second round: clean steps were "still there"); the set's `ham_iron` mesh (the two
+  hanging I-beams, plus the sconce blocks) hidden. The set is scaled 0.62 to clear the scanned side
+  walls, with a "Real size" toggle. If the second game wants these in the asset itself, `tools/blender/midtown_theatre.py`'s
   `PROS_Y`, `OPEN_X0/X1` and `OPEN_TOP` are where they go.
 - **Suites on this tree: 20/21.** The red is `beetlejuice`'s on-disk index check tripping on the **19
   untracked `assets/fixtures/*.glb`** still sitting in the working tree (his "don't commit the files

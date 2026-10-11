@@ -249,11 +249,17 @@ was built instead of the game: `midtown.html`, the Midtown scan unlit (as `tools
 draws it) with `assets/hamilton-set.glb` seated on its deck the way `p5i hamApplyModel` does, turned
 180° because this GLB's upstage is +z, lit by a hemisphere fill, two FOH spots and two over-stage
 specials with shadows; orbit or drag-to-look walking (no pointer lock), six viewpoints, a
-`window.MIDTOWN` console handle. Three rounds of his, made while he watched the pane: the proscenium
+`window.MIDTOWN` console handle. Five rounds of his, made while he watched the pane: the proscenium
 to the front of the stage (its six nodes slide, the ceiling/skirts/fly walls/roof stretch along z to
-the new plane); the opening fitted round the set (`frameArch`: piers re-spanned to x ±5.6, header
-lifted to y 6.9); the two corner stairs filled in as three clean steps each on footprints measured
-off the scan's vertices (x −5.4..−3.5 and 3.5..5.4, z −2.9..−2.0). The set is 17.3 m wide against
+the new plane); the opening fitted round the set — first by re-spanning the GLB's pier and header
+planes, which he read as *"you just removed the proscenium"* because they are the wall's own flat
+grey, so `frameArch` now hides those and builds a real frame (1.3 m piers and header, 0.5 m deep,
+its own material, opening x ±5.6 / top y 6.9, wall strips to the house either side); the two corner
+stairs filled in — first as clean steps (*"the stairs are still there"*), then as one block each from
+the house floor to deck height over the stair and the strip to the deck (footprints measured off the
+scan's vertices: treads x −5.4..−3.5 and 3.5..5.4, z −2.9..−2.0), corners squared off; and the set's
+`ham_iron` mesh hidden (*"remove the metal beam"* — the two hanging I-beams; the sconce blocks go
+with it, same mesh). The set is 17.3 m wide against
 the scanned side walls, so "Set fitted" is scale 0.62 and "Real size" is 1:1 through the walls.
 
 Nothing in `src/`; `the-house.html` and `docs/ARTNET.md` untouched. Suites with the portable Node:

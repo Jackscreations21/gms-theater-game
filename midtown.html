@@ -222,35 +222,46 @@ function moveArch(o) {
     o.scale.z = k; o.position.z = b.max.z * (1 - k);
   }
 }
-// The opening fitted round the set: the piers slide out to just clear its edges and the header lifts
-// to just clear its top. The GLB's opening is x ±4.30, top y 5.20; the house allows at most x ±6.2
-// (the piers' outer edges are -6.6 / 6.4) and a top of 7.6 (the house ceiling is 8.05).
+// The proscenium, fitted round the set. The GLB's piers and header are flat planes in the wall's
+// own grey, so widening them just read as "no proscenium": instead they are hidden and a real frame
+// is built — piers and header FRAME m wide, DEPTH m deep, in a proscenium material of its own,
+// around an opening that clears the set by a margin. The opening is clamped to the house: the piers'
+// outer edges are x -6.6 / 6.4 and the ceiling is y 8.05.
+const FRAME = { w: 1.3, depth: 0.5, color: 0x5a4f48 };
 const houseMesh = {};
-function stretch(o, axis, lo, hi) {            // re-span a box mesh along one axis, from its own bounds
-  const b = o.geometry.boundingBox, k = (hi - lo) / (b.max[axis] - b.min[axis]);
-  o.scale[axis] = k; o.position[axis] = lo - b.min[axis] * k;
+const frameMat = new THREE.MeshStandardMaterial({ color: FRAME.color, roughness: 0.92, metalness: 0 });
+function frameBox(x0, x1, y0, y1) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, FRAME.depth), frameMat);
+  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, HOUSE.archZ);
+  m.castShadow = true; m.receiveShadow = true; m.name = 'proscenium';
+  scene.add(m);
 }
 function frameArch(halfW, top) {
   halfW = Math.min(halfW, 6.2); top = Math.min(top, 7.6);
-  const L = houseMesh.pros_pier_l, R = houseMesh.pros_pier_r, H = houseMesh.pros_header;
-  if (!L || !R || !H) return;
-  stretch(L, 'x', L.geometry.boundingBox.min.x, -halfW);
-  stretch(R, 'x', halfW, R.geometry.boundingBox.max.x);
-  stretch(H, 'x', -halfW, halfW);
-  stretch(H, 'y', top, H.geometry.boundingBox.max.y);
+  for (const n of ['pros_pier_l', 'pros_pier_r', 'pros_header']) if (houseMesh[n]) houseMesh[n].visible = false;
+  frameBox(-halfW - FRAME.w, -halfW, HOUSE.deckY - 0.1, top + FRAME.w);     // left pier
+  frameBox(halfW, halfW + FRAME.w, HOUSE.deckY - 0.1, top + FRAME.w);       // right pier
+  frameBox(-halfW - FRAME.w, halfW + FRAME.w, top, top + FRAME.w);          // header
+  // what the GLB's piers covered and the frame does not: wall from the frame's outer edge to the house
+  const wall = houseMesh.pros_outer_l && houseMesh.pros_outer_l.material;
+  if (wall) for (const [x0, x1] of [[-6.6, -halfW - FRAME.w], [halfW + FRAME.w, 6.4]]) {
+    if (x1 - x0 < 0.02) continue;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, 8.05 - HOUSE.deckY), wall);
+    m.position.set((x0 + x1) / 2, (8.05 + HOUSE.deckY) / 2, HOUSE.archZ); m.name = 'pros_wall';
+    scene.add(m);
+  }
 }
-// The two stairs down from the apron's front corners, filled in: the scan's treads are rough and
-// holed, so each stair is rebuilt as three clean solid steps on its measured footprint (x ranges
-// below, z -2.9 at the bottom riser, meeting the chamfered deck corner at about z -2.0), in the
-// deck's own material. Floor -0.06 to deck 0.80, three equal rises.
-const STAIRS = [[-5.4, -3.5], [3.5, 5.4]];
+// The two stairs down from the apron's front corners, filled in: one block each, house floor to
+// deck height, over the stair and the strip between it and the deck, in the deck's own material —
+// the corners are squared off. Footprints measured off the scan: treads at x -5.4..-3.5 and
+// 3.5..5.4, z -2.9 (bottom riser) to -2.0; the deck's scanned front is at about z -0.5 there.
+const STAIRS = [[-5.9, -3.4], [3.4, 5.7]];
 function fillStairs(houseScene) {
   const deck = houseMesh.deck_fill; if (!deck) return;
-  const y0 = -0.06, zFront = -2.9, zBack = -1.8, steps = 3, rise = (HOUSE.deckY - y0) / steps, tread = 0.3;
-  for (const [x0, x1] of STAIRS) for (let i = 0; i < steps; i++) {
-    const z0 = zFront + tread * i, top = y0 + rise * (i + 1), w = (x1 - x0) - 0.004 * i;   // each step a hair narrower: no coplanar sides
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, top - y0, zBack - z0), deck.material);
-    m.position.set((x0 + x1) / 2, (y0 + top) / 2, (z0 + zBack) / 2);
+  const z0 = -2.95, z1 = -0.30, y0 = -0.06, y1 = HOUSE.deckY + 0.01;
+  for (const [x0, x1] of STAIRS) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), deck.material);
+    m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
     m.name = 'stair_fill'; m.receiveShadow = true;
     houseScene.add(m);
   }
@@ -281,7 +292,11 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   const c = box.getCenter(new THREE.Vector3());
   root.position.set(-c.x, -box.min.y, 0);
   frameArch((box.max.x - box.min.x) / 2 * SET.fit + 0.25, HOUSE.deckY + (box.max.y - box.min.y) * SET.fit + 0.3);
-  root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = true; o.receiveShadow = true;
+    if (o.name === 'ham_iron') o.visible = false;    // the two hanging I-beams (and the sconce blocks) — Jack: "remove the metal beam"
+  });
   const turned = new THREE.Group(); turned.rotation.y = Math.PI; turned.add(root);
   setGroup.add(turned);
   placeSet(SET.fit);
