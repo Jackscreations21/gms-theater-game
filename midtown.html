@@ -619,7 +619,7 @@ function placeCutBox() {
   select(cutBox);
 }
 function confirmCut() {
-  if (!cutBox.visible) return;
+  if (!cutBox.visible) { placeCutBox(); B('b-cutn').textContent = 'Box placed — move and scale it over the area, then press Delete area again (or Enter).'; return; }
   const c = { p: cutBox.position.toArray().map(x => +x.toFixed(3)), r: cutBox.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: cutBox.scale.toArray().map(x => +x.toFixed(3)) };
   cuts.push(c); applyCut(c);
   cutBox.visible = false; select(null); reapplyAll(); markDirty();
@@ -670,13 +670,15 @@ function makeCopy(src) {
   return g;
 }
 function confirmCopy() {
-  if (!cutBox.visible) return;
+  if (!cutBox.visible) { placeCutBox(); B('b-cutn').textContent = 'Box placed — move and scale it over the area, then press Copy area again (or C).'; return; }
   const src = { p: cutBox.position.toArray().map(x => +x.toFixed(3)), r: cutBox.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: cutBox.scale.toArray().map(x => +x.toFixed(3)) };
   cutBox.visible = false;
   const g = makeCopy(src);
-  if (!g.children.length) { built.remove(g); status.textContent = 'Nothing inside that box to copy.'; select(null); return; }
-  status.textContent = `Copied ${g.children.length} part${g.children.length === 1 ? '' : 's'} — move it with the gizmo.`;
-  select(g); markDirty();
+  if (!g.children.length) { built.remove(g); B('b-cutn').textContent = 'Nothing inside that box to copy — make it bigger or move it onto something.'; select(null); return; }
+  const n = g.children.length;
+  B('b-cutn').textContent = `Copied ${n} part${n === 1 ? '' : 's'} into "${g.name}". It sits exactly on the original — drag the arrows to move it.`;
+  status.textContent = `Copied ${n} part${n === 1 ? '' : 's'}.`;
+  setGizmo('translate'); select(g); markDirty();
 }
 B('b-copyok').addEventListener('click', confirmCopy);
 B('b-cutbox').addEventListener('click', placeCutBox);
