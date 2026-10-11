@@ -224,6 +224,29 @@ compare the *same* production across stages instead.
 
 ---
 
+## NEXT SESSION: **LAND THE HAMILTON SET, THEN DECIDE WHAT ELSE OF HAMILTON IS WANTED** (2026-10-11, FE)
+
+Rulings at **FE**. Suite count **21**. `main` is still **`4125f6f`**; the
+work is on **`hamilton-set` (`f4d9a90`, pushed, PR not yet opened** — the
+agent's permission layer refused the API call, so Jack opens it from the
+compare page). Read STATE.md's NEWEST block first.
+
+1. **Open and merge the PR**, then the post-merge protocol: `main` rebuilds
+   byte-identical, `node tools/artnet-map.js` reproduces `docs/ARTNET.md`,
+   21/21 on the merged result, branch deleted local and remote. **`main` is
+   red until this merges** (`beetlejuice.js`, the Midtown glb — see the Done
+   block below and TRAPS).
+2. **Node.** This machine has only the portable copy in the session scratch
+   folder. `winget install OpenJS.NodeJS.LTS` — **Jack runs it**, not the
+   agent (TRAPS, the sandbox). `tests/node_modules` is installed.
+3. **Look at it.** Load HAMILTON on the desktop build served from the repo
+   (the model fetches; `file://` cannot) and from Pages after the merge. The
+   stand-in shows for a second or two on a slow line, then the brick and
+   timber replace it. Headset run still owed, now for this too.
+4. **Then Jack's calls, in FUTURE.md PART 2 "Hamilton":** walkables on the
+   model, lanterns on the real gallery, the rig from `Patch.json`, and whether
+   a cue-stack reconstruction from the 128 exported cues is wanted at all.
+
 ## DONE — 2026-10-11: the Hamilton set is a model on the stage (the `hamilton-set` branch, RULING FE)
 
 Jack's machine again. Two things happened in one long session: an assessment

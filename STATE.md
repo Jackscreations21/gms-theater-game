@@ -5,6 +5,12 @@ fetch`, compare `origin/main`, then read this.
 
 ## NEWEST — 2026-10-11, the Hamilton set (branch `hamilton-set`, RULING FE)
 
+- **Where it stands: committed (`f4d9a90`) and pushed, PR NOT YET OPENED.** The
+  permission layer refused the GitHub API call, so Jack opens it from
+  https://github.com/Jackscreations21/gms-theater-game/compare/main...hamilton-set
+  (the body is in the chat of 2026-10-11). Until it merges, `main` is `4125f6f`
+  with the red `beetlejuice.js` case below. After the merge: rebuild `main`
+  byte-identical, 21/21, delete the branch both sides — the post-merge protocol.
 - **RULING FE (Jack, 2026-10-11): "can you put the set model onto the stage."**
   HAMILTON is now *modelled on the production* — AV's repeal of AO extends to
   it, scoped to it; the other three shows still carry the interpretation note
