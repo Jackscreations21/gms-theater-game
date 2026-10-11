@@ -1247,3 +1247,16 @@ against this list before opening a PR; **add new traps as you hit them.**
   assignment count is text, so a write spelled another way still gets past
   it.** Recording the hole beats pretending it is closed — and beats a sixth
   pass on the scaffolding of a three-line fix.
+- **A rendered view only audits what the camera points at.** The first Midtown
+  pass hole-hunted with magenta-background renders from a dozen viewpoints and
+  shipped a model whose largest hole — the whole corner east of the stage-right
+  wall — faced away from every one of them. The second pass found it in one run
+  with an inside-out raycast (`BVHTree` over the GLB, 240 directions from a grid
+  of interior points; a ray that hits nothing has left the building). **Audit
+  enclosure with rays, and use renders to look at what the rays found.** The
+  doorways that are meant to be open show up too, so read the exit cells.
+- **A texture's MIRROR extension is not a free seamless tile.** It makes the
+  repeat continuous, but it folds every feature at the seam: the brick's mortar
+  lines became butterflies and a conduit elbow in one corner of the crop became a
+  row of brackets across the whole back wall. Crop the feature out, cross-fade
+  the edges into each other, and REPEAT.

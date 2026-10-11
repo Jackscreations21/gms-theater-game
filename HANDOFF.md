@@ -224,6 +224,61 @@ compare the *same* production across stages instead.
 
 ---
 
+## DONE — 2026-10-10 (second session): the scan's holes, found by raycast (the `midtown-holes` branch)
+
+Same machine, same asset, same shape of PR: **assets and tools only, nothing in
+`src/`, no suite needed or run** (Node still not installed). Jack asked for the
+model to be gone over for "holes, miscolorings or just problems in general",
+then "fix the issues then make the rendering".
+
+**How it was audited, and this is the reusable part:** the magenta-background
+renders of the first session only find what a camera happens to point at. This
+pass added an **inside-out raycast test** (`BVHTree.FromPolygons` over the whole
+GLB, 240 directions from a 1 m grid of interior points, 620k rays): a ray that
+hits nothing has left the building, and its exit cell on the outer box says
+where. It found the biggest hole in the model — **a void east of the stage-right
+wall** (x 6..10, y −3.8..1.5), the whole corner between the stage's side wall and
+the house's diagonal front-right wall, where the scan has nothing at all — which
+no render had shown because nothing in the house looks that way. The script is
+not committed (it was a scratch tool); the recipe is `tools/blender/midtown_probe.py`
+plus `mathutils.bvhtree`, and it is cheap enough to re-run after any edit.
+
+**What was wrong and what was done** (all in `midtown_theatre.py`, so the GLB
+rebuilds from source; the first-pass fills are unchanged where they worked):
+
+- The east void: a full-height panel at x 10 from the tower's back wall to y 3.6.
+- Slits under the wall-top fills (the scanned walls stop at 2.6–3.3 m, the fills
+  began at 3.5): `SKIRT_Z` 3.5 → 2.5, still above the tallest doorway (2.4 m).
+- No lintels over the stage-left wing doorways, and the front-left vestibule's
+  outer wall torn at every height: a strip and a full panel at x −9.8.
+- Side-wall bases open behind the front rows, and the cavity under the raked
+  rear floor open to the sides: skirting boards on both side walls (low to y 8,
+  skirt-height behind that) and across the rear wall, low only across the two
+  rear doorways so they stay open.
+- Two single-face black shards at the opening's top corners (valance scraps) and
+  12 curtain-leg stubs standing on the deck at the pier bases: a `valance` rule
+  and a stray-island sweep (union-find per object, ≤12 faces inside a box).
+- The old header's soffit at 6.19 m survived the fly cut as a floating black bar:
+  a `soffit` rule (flat faces above 5.95 m upstage of the wall).
+- The tiled brick was a different hue from the real brick beside it, and MIRROR
+  extension folded the mortar into butterflies with a conduit bracket repeating:
+  cropped past the conduit, toned to the measured colour of the real brick,
+  made seamless by edge cross-fade, REPEAT not MIRROR, plane moved to y −8.9 to
+  sit flush with the real brick.
+- Fill mottle read as TV static (2 blur passes): 8.
+- Speakers were pure black (base colour 0.001 in the scan): dark grey, rough 0.85.
+- Deck fill z-fought the scanned deck at distance (5 mm): 2 cm.
+
+**Result:** escaped rays **4807 → 501**, and 498 of the 501 exit through the two
+rear doorways Jack chose to leave open. The last three graze the stage-left wall
+top under the fly-tower fill. Face count 64,563; still 17 materials.
+
+**Delivered:** six 1080p renders in chat, and the walkthrough viewer re-exported
+and published as an artifact (https://claude.ai/artifact/LwSoKjQ911xowE1DQa4syv).
+
+**Traps hit, now in TRAPS.md:** a texture's MIRROR extension is not a free
+seamless tile; and renders only audit what the camera sees.
+
 ## DONE — 2026-10-10: a real auditorium, from a scan (the `midtown-scan` branch)
 
 The first session after the Art-Net round, on a **new machine** — Jack's, repo

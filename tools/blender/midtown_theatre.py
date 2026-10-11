@@ -8,6 +8,10 @@
 #   4. back wall: tiled from a clean crop of the scanned brick (assets/source/midtown/brick_tile.png)
 #   5. fill the holes the scan never captured: house ceiling, wall-top slits, deck and floor gaps
 #   6. matte the mirror-glossy floor pieces, decimate the 16k-face speaker boxes
+#   7. second pass (2026-10-10, from an inside-out raycast audit): close the void east of the
+#      stage-right wall and the slits under the wall-top fills, delete the valance scraps and
+#      curtain-leg stubs the first pass missed, match the tiled brick to the scanned brick and
+#      make it repeat without mirroring, soften the fill mottle, grey the pure-black speakers
 #
 # Coordinates are Blender world, Z up; the stage is toward -Y, the house toward +Y.
 # Run: blender -b --factory-startup --python midtown_theatre.py -- <scene.gltf> <out.glb>
@@ -26,10 +30,13 @@ OPEN_TOP = 5.20           # opening height above the house floor
 PIER_X0, PIER_X1 = -5.95, 5.65   # stage side walls either side of the opening
 FLY_CUT = 6.20            # scan geometry above this, upstage of the wall, is removed
 FLY_TOP = 16.0            # fly tower roof
-BACK_Y = -8.70            # just in front of the scanned back wall (median y -8.75)
+BACK_Y = -8.90            # the plane of the real scanned brick (y -8.85..-8.98), so the fill is flush with it
 BRICK_REAL_X = -4.0       # real scanned brick is kept for x < this, below FLY_CUT
 X0, X1, Y0, Y1 = -9.8, 10.0, -9.1, 14.9   # outer box just outside the scan
 HOUSE_TOP = 8.05          # house ceiling
+SKIRT_Z = 2.5             # house wall-top fills start here: above every doorway (tallest ~2.4 m), below the
+                          # slits the raycast audit found at 2.6-3.3 m
+VOID_Y1 = 3.6             # the east void (x 6..10, y -3.8..1.5) is outside the scanned walls; closed to here
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=src)
@@ -96,7 +103,9 @@ WALL = stats(lambda p, n, c: -2.0 < p.y < 2.5 and 5.9 < abs(p.x) < 8.8 and 1.0 <
 CEIL = stats(lambda p, n, c: p.z > 6.5 and n.z < -0.6)
 DECK = stats(lambda p, n, c: -4 <= p.x <= 4 and -8 <= p.y <= -1 and 0.5 <= p.z <= 1.2 and n.z > 0.9)
 HOUSE = stats(lambda p, n, c: p.y > 2.0 and p.z < 0.3 and n.z > 0.9)
-for k, v in (('WALL', WALL), ('CEIL', CEIL), ('DECK', DECK), ('HOUSE', HOUSE)):
+# The scanned brick that stays (x < BRICK_REAL_X): the tiled brick is toned to match it.
+BRICK = stats(lambda p, n, c: p.x < BRICK_REAL_X and p.y < -8.5 and 0.9 < p.z < 6.0 and n.y > 0.6)
+for k, v in (('WALL', WALL), ('CEIL', CEIL), ('DECK', DECK), ('HOUSE', HOUSE), ('BRICK', BRICK)):
     print("STATS", k, np.round(v[0], 3), "n", v[1])
 deck_z = [ (o.matrix_world @ p.center).z for o in meshes() for p in o.data.polygons
            if (lambda c, n: -4 <= c.x <= 4 and -8 <= c.y <= -1 and 0.5 <= c.z <= 1.2 and n.z > 0.9)(
@@ -112,10 +121,15 @@ def doomed(c, n, cols):
     if 4.2 < c.x <= X1 and c.y < -8.0 and 0.85 <= c.z <= FLY_CUT and n.y > 0.6: return 'blackwall'
     if 3.6 <= abs(c.x) <= 6.2 and -8.6 <= c.y <= -4.2 and 0.9 <= c.z <= 7.5 and abs(n.z) < 0.5: return 'slab'
     if c.y < PROS_Y - 0.05 and c.z > FLY_CUT: return 'fly'
+    # Flat ceiling fragments left just under the fly cut (the real header's soffit at z 6.19).
+    if c.y < PROS_Y - 0.05 and c.z > 5.95 and abs(n.z) > 0.8: return 'soffit'
     # Curtain-leg scraps right behind the piers (not brown enough to be caught below); the stage
     # side walls sit at x -5.94 / +5.62, so the band stops short of them.
-    if -3.0 <= c.y <= PROS_Y + 0.25 and 0.85 <= c.z <= 7.5 and (-5.85 <= c.x <= OPEN_X0 or OPEN_X1 <= c.x <= 5.55):
+    if -3.15 <= c.y <= PROS_Y + 0.25 and 0.85 <= c.z <= 7.5 and (-5.85 <= c.x <= OPEN_X0 or OPEN_X1 <= c.x <= 5.55):
         return 'legs'
+    # Valance scraps above the opening, just upstage of the wall: single-face shards at the
+    # opening's top corners that read as black triangles from the house.
+    if -3.1 <= c.y <= PROS_Y + 0.25 and 4.9 <= c.z <= FLY_CUT and abs(c.x) <= 6.5: return 'valance'
     in_pros = -4.5 <= c.y <= 1.0 and 0.85 <= c.z <= 7.5 and abs(c.x) <= 6.5 and (abs(c.x) >= 2.6 or c.z >= 4.0)
     if in_pros and c.y <= PROS_Y + 0.25 and sum(brown(k) for k in cols) >= 2: return 'curtain'
     return None
@@ -132,6 +146,40 @@ for o in meshes():
         bmesh.ops.delete(bm, geom=[bm.faces[i] for i in kill], context='FACES')
         bm.to_mesh(o.data); bm.free()
 print("DELETED", counts)
+
+# Stray islands: small disconnected scraps standing on the deck at the pier bases (curtain-leg
+# bottoms the band above does not reach, because they sit at the side walls). A box, and the
+# most faces an island inside it may have and still be junk; the walls themselves are huge islands.
+STRAY = [(-6.6, -3.8, -3.6, -2.5, 0.7, 2.6, 12), (3.8, 6.6, -3.6, -2.5, 0.7, 2.6, 12)]
+stray = 0
+for o in meshes():
+    me = o.data; mw = o.matrix_world
+    n = len(me.vertices)
+    if n < 20: continue
+    co = np.empty(n * 3, np.float32); me.vertices.foreach_get('co', co)
+    M = np.array(mw); W = co.reshape(n, 3) @ M[:3, :3].T + M[:3, 3]
+    parent = list(range(n))
+    def find(a):
+        while parent[a] != a: parent[a] = parent[parent[a]]; a = parent[a]
+        return a
+    ek = np.empty(len(me.edges) * 2, np.int32); me.edges.foreach_get('vertices', ek)
+    for a, b in ek.reshape(-1, 2):
+        ra, rb = find(a), find(b)
+        if ra != rb: parent[ra] = rb
+    roots = np.array([find(i) for i in range(n)])
+    proot = roots[[p.vertices[0] for p in me.polygons]]
+    kill = []
+    for r in np.unique(proot):
+        fm = proot == r; nf = int(fm.sum())
+        P = W[roots == r]; mn, mx = P.min(0), P.max(0)
+        for x0, x1, y0, y1, z0, z1, maxf in STRAY:
+            if nf <= maxf and mn[0] >= x0 and mx[0] <= x1 and mn[1] >= y0 and mx[1] <= y1 and mn[2] >= z0 and mx[2] <= z1:
+                kill.extend(np.nonzero(fm)[0].tolist()); break
+    if kill:
+        bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[bm.faces[i] for i in kill], context='FACES')
+        bm.to_mesh(me); bm.free(); stray += len(kill)
+print("STRAY faces deleted", stray)
 
 # Brown scan faces left downstage of the wall (proscenium returns, header) -> wall grey.
 def raster(mask, P):
@@ -183,11 +231,17 @@ for m in bpy.data.materials:
     if m.name.endswith('.001') and m.use_nodes:
         b = next((n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
         if b and not b.inputs['Roughness'].is_linked: b.inputs['Roughness'].default_value = 0.75
+    # The speaker boxes shipped with a base colour of 0.001: pure black under any light.
+    if m.name.startswith('Material.002') and m.use_nodes:
+        b = next((n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
+        if b:
+            b.inputs['Base Color'].default_value = (0.05, 0.05, 0.055, 1.0)
+            b.inputs['Roughness'].default_value = 0.85
 
 # 4-5. New surfaces. Each is a flat polygon with a tiling texture.
 def tile_image(name, rgb, rel, size=512):
     n = rng.normal(0, 1, (size, size)).astype(np.float32)
-    for _ in range(2):   # soften into a scan-like mottle; np.roll wraps, so it tiles
+    for _ in range(8):   # soften into a scan-like mottle (2 passes read as static); np.roll wraps, so it tiles
         n = (n + np.roll(n, 1, 0) + np.roll(n, -1, 0) + np.roll(n, 1, 1) + np.roll(n, -1, 1)) / 5
     n /= n.std() + 1e-6
     a = np.ones((size, size, 4), dtype=np.float32)
@@ -231,10 +285,14 @@ m_wall = material(tile_image("fill_wall", WALL[0], 0.12))
 m_ceil = material(tile_image("fill_ceiling", CEIL[0], 0.15))
 m_deck = material(tile_image("fill_deck", DECK[0], 0.12))
 m_house = material(tile_image("fill_house_floor", HOUSE[0], 0.15))
-brick = bpy.data.images.load(os.path.join(SRC_DIR, "brick_tile.png"))
-# Flatten the photo's lighting falloff (divide by a wide blur) so the tiling does not pulse.
-bw_, bh_ = brick.size
-ba = np.empty(bw_ * bh_ * 4, np.float32); brick.pixels.foreach_get(ba); ba = ba.reshape(bh_, bw_, 4)
+src_brick = bpy.data.images.load(os.path.join(SRC_DIR, "brick_tile.png"))
+# The crop carries a conduit elbow in its top-right corner, which a tiled wall repeats as a row
+# of brackets: keep the conduit-free left 760 px. Then flatten the photo's lighting falloff
+# (divide by a wide blur) so the tiling does not pulse.
+bw_, bh_ = src_brick.size
+ba = np.empty(bw_ * bh_ * 4, np.float32); src_brick.pixels.foreach_get(ba); ba = ba.reshape(bh_, bw_, 4)
+BRICK_CROP_W = min(760, bw_)
+ba = np.ascontiguousarray(ba[:, :BRICK_CROP_W]); bw_ = BRICK_CROP_W
 def blur(a, r):                      # wrapped box blur, both axes
     for axis in (0, 1):
         n = a.shape[axis]
@@ -246,9 +304,26 @@ def blur(a, r):                      # wrapped box blur, both axes
 lum = ba[..., :3].mean(-1)
 low = blur(lum, 90)
 ba[..., :3] = np.clip(ba[..., :3] * (lum.mean() / np.maximum(low, 1e-3))[..., None], 0, 1)
-brick.pixels.foreach_set(ba.ravel()); brick.update(); brick.pack(); brick.file_format = 'JPEG'
-m_brick = material(brick, mirror=True)
-BRICK_TILE = (2.5, 2.5 * brick.size[1] / brick.size[0])    # the crop is 2.5 m wide
+# Tone it to the scanned brick it butts against (measured above), channel by channel.
+ba[..., :3] = np.clip(ba[..., :3] * (BRICK[0] / np.maximum(ba[..., :3].mean((0, 1)), 1e-3))[None, None, :], 0, 1)
+# Make it repeat without mirroring (MIRROR folded the mortar lines into butterflies): cross-fade
+# each edge into the opposite edge over an eighth of the size, then drop the faded-over band.
+def seamless(a, axis, frac=0.125):
+    n = a.shape[axis]; b = max(2, int(n * frac)); keep = n - b
+    t = (np.arange(b, dtype=np.float32) + 0.5) / b
+    shape = [1, 1, 1]; shape[axis] = b; t = t.reshape(shape)
+    head = a.take(range(0, b), axis); tail = a.take(range(keep, n), axis)
+    out = a.take(range(0, keep), axis).copy()
+    idx = [slice(None)] * 3; idx[axis] = slice(0, b)
+    out[tuple(idx)] = head * t + tail * (1 - t)
+    return out
+ba = seamless(seamless(ba, 1), 0)
+bh_, bw_ = ba.shape[:2]
+brick = bpy.data.images.new("brick_tile", bw_, bh_)
+brick.pixels.foreach_set(np.ascontiguousarray(ba).ravel()); brick.update(); brick.pack(); brick.file_format = 'JPEG'
+m_brick = material(brick, mirror=False)
+BRICK_TILE = (2.5 * BRICK_CROP_W / src_brick.size[0], 0)   # the full crop was 2.5 m wide
+BRICK_TILE = (BRICK_TILE[0], BRICK_TILE[0] * bh_ / bw_)
 
 # Proscenium wall: two piers and a header round the opening, then full width above the house ceiling.
 box_y("pros_pier_l", PROS_Y, PIER_X0, OPEN_X0, DECK_Z - 0.02, HOUSE_TOP, m_wall)
@@ -260,17 +335,42 @@ box_x("fly_wall_w", X0, Y0, PROS_Y, 3.5, FLY_TOP, m_ceil)
 box_x("fly_wall_e", X1, Y0, PROS_Y, 3.5, FLY_TOP, m_ceil)
 box_z("fly_roof", FLY_TOP, X0, X1, Y0, PROS_Y, m_ceil)
 # Back wall: brick everywhere except the real scanned brick (x < BRICK_REAL_X, below FLY_CUT).
-box_y("back_brick_lo", BACK_Y, BRICK_REAL_X, X1, DECK_Z - 0.02, FLY_CUT, m_brick, BRICK_TILE)
+# The low panel starts 5 cm past the real brick's end (x -3.96) so the two planes barely overlap;
+# the tower's back wall behind both runs to the floor, so the seam between them cannot leak.
+box_y("back_brick_lo", BACK_Y, BRICK_REAL_X + 0.05, X1, DECK_Z - 0.02, FLY_CUT, m_brick, BRICK_TILE)
 box_y("back_brick_hi", BACK_Y, X0, X1, FLY_CUT, FLY_TOP, m_brick, BRICK_TILE)
-box_y("back_tower", Y0, X0, X1, 3.5, FLY_TOP, m_ceil)
-# House: ceiling, wall-top skirts (above 3.5 m so the doorways stay open), floor under the scan.
+box_y("back_tower", Y0, X0, X1, -0.06, FLY_TOP, m_ceil)
+# East of the stage-right wall (x > 6, y -3.8..1.5) the scan has nothing at all: the house's
+# front-right wall runs diagonally and the stage's side wall stops at y -3.9. Close it from the
+# floor to the fills above; nothing inside the house can see this panel except through slits.
+box_x("void_e", X1, Y0, VOID_Y1, -0.06, 3.5, m_ceil)
+# Stage-left wing doorways have no lintels in the scan (a wedge of sky above each frame): a strip
+# behind them, above door height. The front-left vestibule (x -9.5..-7.3, y -2..3.3, entered
+# through the house's front-left exit) has gaps in its outer wall at every height: a full panel.
+box_x("wing_w_top", X0, -6.0, PROS_Y, 2.3, 3.5, m_ceil)
+box_x("front_w", X0, PROS_Y, 3.5, -0.06, 3.5, m_ceil)
+# House: ceiling, wall-top skirts (above SKIRT_Z so the doorways stay open), floor under the scan.
 box_z("house_ceiling", HOUSE_TOP, X0, X1, PROS_Y, Y1, m_ceil)
-box_x("house_skirt_w", X0, PROS_Y, Y1, 3.5, HOUSE_TOP, m_ceil)
-box_x("house_skirt_e", X1, PROS_Y, Y1, 3.5, HOUSE_TOP, m_ceil)
-box_y("house_skirt_s", Y1, X0, X1, 3.5, HOUSE_TOP, m_ceil)
+box_x("house_skirt_w", X0, PROS_Y, Y1, SKIRT_Z, HOUSE_TOP, m_ceil)
+box_x("house_skirt_e", X1, PROS_Y, Y1, SKIRT_Z, HOUSE_TOP, m_ceil)
+box_y("house_skirt_s", Y1, X0, X1, SKIRT_Z, HOUSE_TOP, m_ceil)
 box_z("house_floor", -0.06, X0, X1, Y0, Y1, m_house)
-# Stage deck under the scanned deck (5 mm down), outline following the deck and its chamfered apron.
-zd = DECK_Z - 0.005
+# Skirting: the scanned side walls do not reach the floor everywhere (a slit at the base behind
+# the front rows, and the cavity under the raked rear floor is open to the sides). The side walls
+# carry no doorways between y 2 and the rear corners, and from y 8 back the rake is above 0.8 m
+# and the rear corners leak up to 2.3 m, so the rear halves rise to the skirt. The rear wall's
+# doorways sit on the top of the rake (threshold ~1.5 m), so the rear strip stays low across
+# the two door zones only.
+box_x("skirting_w", X0, 2.0, 8.0, -0.06, 0.35, m_ceil)
+box_x("skirting_e", X1, 3.5, 8.0, -0.06, 0.35, m_ceil)
+box_x("skirting_w_rear", X0, 8.0, Y1, -0.06, SKIRT_Z, m_ceil)
+box_x("skirting_e_rear", X1, 8.0, Y1, -0.06, SKIRT_Z, m_ceil)
+for nm, xa, xb, zt in (("skirting_s_w", X0, -5.8, SKIRT_Z), ("skirting_s_doorw", -5.8, -3.3, 1.3), ("skirting_s_mid", -3.3, 3.3, SKIRT_Z),
+                       ("skirting_s_doore", 3.3, 5.8, 1.3), ("skirting_s_e", 5.8, X1, SKIRT_Z)):
+    box_y(nm, Y1, xa, xb, -0.06, zt, m_ceil)
+# Stage deck under the scanned deck (2 cm down: 5 mm z-fought at distance), outline following the
+# deck and its chamfered apron.
+zd = DECK_Z - 0.02
 me = bpy.data.meshes.new("deck_fill"); bm = bmesh.new()
 pts = [(-9.5, -9.0), (9.9, -9.0), (9.9, -3.9), (5.6, -3.9), (5.6, -0.45), (4.2, 0.35),
        (-4.3, 0.35), (-5.8, -0.45), (-5.8, -3.9), (-9.5, -3.9)]
