@@ -119,9 +119,9 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     </div>
     <div class="row"><button id="b-dup">Duplicate</button><button id="b-del" class="danger">Delete</button></div>
     <div class="note">G move · R rotate · S scale · Delete removes · Esc deselects</div>
-    <h2>Delete</h2>
-    <div class="row"><button id="b-cutbox">Place delete box</button><button id="b-cutok" class="danger">Confirm delete</button><button id="b-cutundo">Undo last</button></div>
-    <div class="note" id="b-cutn">Move and scale the red box over what should go, then Confirm (or Enter). Cuts the house, the set and pieces alike.</div>
+    <h2>Area box</h2>
+    <div class="row"><button id="b-cutbox">Place box</button><button id="b-copyok">Copy area</button><button id="b-cutok" class="danger">Delete area</button><button id="b-cutundo">Undo delete</button></div>
+    <div class="note" id="b-cutn">Move and scale the red box over an area. Copy (or C) makes what is inside a new piece you can move; Delete (or Enter) cuts it away. House, set and pieces alike.</div>
     <h2>Scene</h2>
     <div class="row"><button id="b-export">Export JSON</button><button id="b-copy">Copy JSON</button><label><input id="b-import" type="file" accept=".json" hidden><button id="b-importbtn">Import…</button></label><button id="b-clear" class="danger">Clear all</button></div>
     <div class="note" id="b-status">Saved in this browser as you work.</div>
@@ -250,7 +250,6 @@ spot( 2.5, 13.0, 7.5,  1, 1, 6.5, 160, 0.5, 0xc8d8ff);     // over the stage, co
 // Set size. The group's transform is the only thing that changes; the model is turned 180° inside it.
 function placeSet(s) {
   setGroup.scale.setScalar(s);
-  sideStairs.visible = s === SET.fit;                 // built in world metres for the fitted size
   setGroup.position.set(0, HOUSE.deckY, HOUSE.archZ + (SET.upstageOfArch + SET.ttZ) * s);
   document.getElementById('s-fit').setAttribute('aria-pressed', String(s !== 1));
   document.getElementById('s-real').setAttribute('aria-pressed', String(s === 1));
@@ -338,47 +337,9 @@ function cutBeams(houseScene) {
     if (cut) g.setIndex(keep);
   });
 }
-// The stairs the set is missing (Jack: "what happened to the stairs that go here"; then "stairs are
-// way too big and don't go there"; then, with a marked-up screenshot, "this one faces towards the
-// audience" (house left) and "this one faces this way ->" (house right, toward stage right), and
-// "just copy the stairs that are already in there and move them to the other spots"). The gallery
-// is a U whose side arms end downstage in railed platforms (x ±3.5..4.5, z 0.5..2.0, floor y 3.00,
-// measured off ham_plank). ONE flight is built — steep, 9 risers over 1.26 m, 0.8 m wide, treads on
-// stringers with rails, the set's plank material, its top at the group origin descending along
-// local +z — and placed twice: house-left off a landing on the platform's inner side, stepping
-// down toward the audience; house-right off the platform's outer edge, stepping down toward stage
-// right (the scanned stage wall is at x 5.62, which is why it is this steep). World metres at the
-// fitted placement; hidden at real size.
-const sideStairs = new THREE.Group(); scene.add(sideStairs);
-function buildFlight(plank) {
-  const g = new THREE.Group();
-  const top = 0, drop = 3.0 - HOUSE.deckY, n = 9, rise = drop / n, run = 0.14, w = 0.8;
-  const box = (sx, sy, sz, x, y, z, rx) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), plank);
-    m.position.set(x, y, z); if (rx) m.rotation.x = rx; m.castShadow = m.receiveShadow = true;
-    g.add(m); return m;
-  };
-  for (let i = 0; i < n; i++) box(w, 0.05, run, 0, top - rise * i - 0.025, run * (i + 0.5));   // treads, top first
-  const len = Math.hypot(n * run, drop), ang = Math.atan2(drop, n * run), zm = n * run / 2, ym = -drop / 2;
-  for (const xs of [-1, 1]) {
-    box(0.06, 0.24, len, xs * (w / 2 - 0.03), ym - 0.14, zm, ang);           // stringer
-    box(0.06, 0.06, len, xs * (w / 2 + 0.03), ym + 0.95, zm, ang);           // rail
-    for (let k = 0; k <= 3; k++) { const t = k / 3; box(0.05, 0.95, 0.05, xs * (w / 2 + 0.03), -drop * t + 0.475, n * run * t); }
-  }
-  return g;
-}
-function buildSideStairs(root) {
-  let plank = null; root.traverse(o => { if (o.isMesh && o.name === 'ham_plank') plank = o.material; });
-  if (!plank) return;
-  const top = 3.0;
-  // house left: a landing against the platform's inner side (x -3.5), the flight toward the audience (-z)
-  const landing = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 0.8), plank);
-  landing.position.set(-3.05, top - 0.04, 1.6); landing.castShadow = landing.receiveShadow = true; sideStairs.add(landing);
-  const post = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.95, 0.05), plank); post.position.set(-2.62, top + 0.475, 1.98); sideStairs.add(post);
-  const left = buildFlight(plank); left.position.set(-3.05, top, 1.2); left.rotation.y = Math.PI; sideStairs.add(left);
-  // house right: off the platform's outer edge (x 4.5), the flight toward stage right (+x)
-  const right = buildFlight(plank); right.position.set(4.5, top, 1.25); right.rotation.y = Math.PI / 2; sideStairs.add(right);
-}
+// No built stairs any more (Jack, after three placements: "remove all the stairs you have put and
+// make a tool where I can select an area and copy it") — he copies the set's own stair with the
+// copy box below and puts it where he wants it.
 function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
 
 (async () => {
@@ -411,7 +372,6 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   });
   const turned = new THREE.Group(); turned.rotation.y = Math.PI; turned.add(root);
   setGroup.add(turned);
-  buildSideStairs(root);
   placeSet(SET.fit);
   houseRoot = house.scene;
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
@@ -463,21 +423,28 @@ function fillTexSelect() {
   for (const n of Object.keys(TEX)) { const op = document.createElement('option'); op.value = n; op.textContent = n; sel.appendChild(op); }
   const op = document.createElement('option'); op.value = '@image'; op.textContent = 'image (dropped / picked)'; sel.appendChild(op);
 }
-function applyTexture(obj, tex) {                            // tex: {name} | {image: dataURL}
+function meshesOf(obj) { const l = []; obj.traverse(o => { if (o.isMesh) l.push(o); }); return l; }
+function applyTexture(obj, tex) {                            // tex: {name} | {image: dataURL}; a copy gets it on every part
   const d = obj.userData; if (d.cutter) return;
+  let make;
   if (tex.image) {
     const t = new THREE.TextureLoader().load(tex.image); t.colorSpace = THREE.SRGBColorSpace;
-    obj.material = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide });
+    make = () => new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide });
     d.tex = { image: tex.image };
-  } else if (TEX[tex.name]) { obj.material = TEX[tex.name](); d.tex = { name: tex.name }; }
+  } else if (TEX[tex.name]) { make = TEX[tex.name]; d.tex = { name: tex.name }; }
   else return;
+  for (const m of meshesOf(obj)) { m.material = make(); m.userData.sharedMat = false; }
   applyLook(obj);
 }
-function applyLook(obj) {                                    // tiling and tint on whatever material it has
-  const m = obj.material, d = obj.userData;
-  if (m.map) { m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping; m.map.repeat.set(d.tile || 1, d.tile || 1); m.map.needsUpdate = true; }
-  m.color.set(d.tint || '#ffffff'); if (!m.map && d.tex && d.tex.name && d.tex.name.startsWith('colour')) m.color.multiply(new THREE.Color(COLOURS[d.tex.name.slice(8)]));
-  m.needsUpdate = true;
+function applyLook(obj) {                                    // tiling and tint; a copy's parts that still share a model's material are left alone
+  const d = obj.userData;
+  for (const mesh of meshesOf(obj)) {
+    if (mesh.userData.sharedMat) continue;
+    const m = mesh.material;
+    if (m.map) { m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping; m.map.repeat.set(d.tile || 1, d.tile || 1); m.map.needsUpdate = true; }
+    m.color.set(d.tint || '#ffffff'); if (!m.map && d.tex && d.tex.name && d.tex.name.startsWith('colour')) m.color.multiply(new THREE.Color(COLOURS[d.tex.name.slice(8)]));
+    m.needsUpdate = true;
+  }
 }
 const GEOM = {
   box: () => new THREE.BoxGeometry(1, 1, 1),
@@ -546,14 +513,14 @@ B('b-snap').addEventListener('change', () => {
 });
 B('b-dup').addEventListener('click', () => {
   if (!selected || selected === cutBox) return;
-  const s0 = selected, m = makePiece(s0.userData.type, s0.userData.tex);
-  m.userData.tile = s0.userData.tile; m.userData.tint = s0.userData.tint; applyLook(m);
+  const s0 = selected, m = s0.userData.type === 'copy' ? makeCopy(s0.userData.src) : makePiece(s0.userData.type, s0.userData.tex);
+  m.userData.tile = s0.userData.tile; m.userData.tint = s0.userData.tint; if (s0.userData.tex) applyTexture(m, s0.userData.tex); else applyLook(m);
   m.position.copy(s0.position).x += s0.scale.x + 0.2; m.rotation.copy(s0.rotation); m.scale.copy(s0.scale);
   select(m); markDirty();
 });
 function removeSelected() {
   if (!selected || selected === cutBox) return;
-  const o = selected; select(null); built.remove(o); o.geometry.dispose(); markDirty();
+  const o = selected; select(null); built.remove(o); meshesOf(o).forEach(m => m.geometry.dispose()); markDirty();
 }
 B('b-del').addEventListener('click', removeSelected);
 B('b-imgbtn').addEventListener('click', () => B('b-img').click());
@@ -572,8 +539,10 @@ stage.addEventListener('drop', e => {
 function pick(cx, cy) {
   const r = canvas.getBoundingClientRect();
   const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2((cx - r.left) / r.width * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), camera);
-  const hits = ray.intersectObjects(cutBox.visible ? [cutBox, ...built.children] : built.children, false);
-  return hits.length ? hits[0].object : null;
+  const hits = ray.intersectObjects(cutBox.visible ? [cutBox, ...built.children] : built.children, true);
+  if (!hits.length) return null;
+  let o = hits[0].object; while (o.parent && o.parent !== built && o.parent !== scene) o = o.parent;   // the piece, not a part of it
+  return o;
 }
 function buildClick(e) { if (!editing) return; select(pick(e.clientX, e.clientY)); }
 function buildKey(e) {
@@ -581,6 +550,7 @@ function buildKey(e) {
   if (e.code === 'Escape') { select(null); return true; }
   if (!selected) return false;
   if (selected === cutBox && (e.code === 'Enter' || e.code === 'NumpadEnter')) { confirmCut(); return true; }
+  if (selected === cutBox && e.code === 'KeyC') { confirmCopy(); return true; }
   if (e.code === 'Delete' || e.code === 'Backspace') { if (selected === cutBox) cancelCut(); else removeSelected(); return true; }
   if (e.code === 'KeyG') { setGizmo('translate'); return true; }
   if (e.code === 'KeyR') { setGizmo('rotate'); return true; }
@@ -606,7 +576,7 @@ const originals = new Map();                                 // mesh -> original
 function cuttables() {
   const list = [];
   const take = o => { if (o.isMesh && !o.userData.cutter && !o.userData.piece && o.geometry.attributes.position) list.push(o); };
-  if (houseRoot) houseRoot.traverse(take); setGroup.traverse(take); sideStairs.traverse(take);
+  if (houseRoot) houseRoot.traverse(take); setGroup.traverse(take);
   scene.children.forEach(o => { if (o.name === 'proscenium' || o.name === 'pros_wall') take(o); });
   return list;
 }
@@ -654,6 +624,59 @@ function confirmCut() {
   cutBox.visible = false; select(null); reapplyAll(); markDirty();
 }
 function cancelCut() { cutBox.visible = false; if (selected === cutBox) select(null); }
+// COPY AREA (Jack: "a tool where I can select an area and copy it"). Every triangle whose centroid
+// lies inside the box — house scan, fills, set, proscenium — is copied into a new piece, one mesh
+// per source mesh sharing its material, in the box's own frame (its centre is the piece's origin,
+// its rotation the piece's rotation, so the piece lands exactly where the box was and moves from
+// there). Pieces centred inside are cloned into it too. A copy is saved as the box it came from
+// ({src: {p, r, s}}) and rebuilt from the models on load, before any delete is applied.
+function makeCopy(src) {
+  const frame = new THREE.Matrix4().compose(new THREE.Vector3().fromArray(src.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(src.r[0], src.r[1], src.r[2])), new THREE.Vector3(1, 1, 1));
+  const toLocal = frame.clone().invert(), inv = cutMatrix(src);
+  const p = new THREE.Vector3(), q = new THREE.Vector3();
+  const inside = v => { q.copy(v).applyMatrix4(inv); return Math.abs(q.x) <= 0.5 && Math.abs(q.y) <= 0.5 && Math.abs(q.z) <= 0.5; };
+  const g = new THREE.Group();
+  g.name = 'copy ' + (++serial); g.userData = { piece: true, type: 'copy', src, tile: 1, tint: '#ffffff' };
+  g.position.fromArray(src.p); g.rotation.set(src.r[0], src.r[1], src.r[2]);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (const o of cuttables()) {
+    o.updateMatrixWorld(true);
+    const geo = o.geometry, pos = geo.attributes.position, uv = geo.attributes.uv, idx = geo.index ? geo.index.array : null;
+    const n = idx ? idx.length : pos.count, P = [], U = [];
+    const toFrame = new THREE.Matrix4().multiplyMatrices(toLocal, o.matrixWorld);
+    for (let t = 0; t < n; t += 3) {
+      const ia = idx ? idx[t] : t, ib = idx ? idx[t + 1] : t + 1, ic = idx ? idx[t + 2] : t + 2;
+      a.fromBufferAttribute(pos, ia); b.fromBufferAttribute(pos, ib); c.fromBufferAttribute(pos, ic);
+      p.copy(a).add(b).add(c).multiplyScalar(1 / 3).applyMatrix4(o.matrixWorld);
+      if (!inside(p)) continue;
+      for (const [v, i] of [[a, ia], [b, ib], [c, ic]]) { q.copy(v).applyMatrix4(toFrame); P.push(q.x, q.y, q.z); if (uv) U.push(uv.getX(i), uv.getY(i)); }
+    }
+    if (!P.length) continue;
+    const ng = new THREE.BufferGeometry();
+    ng.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    if (uv) ng.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+    ng.computeVertexNormals();
+    const m = new THREE.Mesh(ng, o.material); m.userData.sharedMat = true; m.castShadow = m.receiveShadow = true;
+    g.add(m);
+  }
+  for (const grp of [built, baked]) for (const o of grp.children) {
+    if (o === g || !inside(o.getWorldPosition(p))) continue;
+    const cl = o.clone(); cl.userData = { ...o.userData, piece: false }; scene.add(cl); cl.position.copy(o.getWorldPosition(p)); cl.quaternion.copy(o.getWorldQuaternion(new THREE.Quaternion())); g.attach(cl);
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+  built.add(g);
+  return g;
+}
+function confirmCopy() {
+  if (!cutBox.visible) return;
+  const src = { p: cutBox.position.toArray().map(x => +x.toFixed(3)), r: cutBox.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: cutBox.scale.toArray().map(x => +x.toFixed(3)) };
+  cutBox.visible = false;
+  const g = makeCopy(src);
+  if (!g.children.length) { built.remove(g); status.textContent = 'Nothing inside that box to copy.'; select(null); return; }
+  status.textContent = `Copied ${g.children.length} part${g.children.length === 1 ? '' : 's'} — move it with the gizmo.`;
+  select(g); markDirty();
+}
+B('b-copyok').addEventListener('click', confirmCopy);
 B('b-cutbox').addEventListener('click', placeCutBox);
 B('b-cutok').addEventListener('click', confirmCut);
 B('b-cutundo').addEventListener('click', () => { if (cuts.length) { cuts.pop(); reapplyAll(); markDirty(); } });
@@ -662,15 +685,17 @@ B('b-cutundo').addEventListener('click', () => { if (cuts.length) { cuts.pop(); 
 const SAVE_KEY = 'midtown.build.v1';
 function markDirty() { dirty = true; dirtyAt = clock.elapsedTime; }
 function serialize() {
-  return { v: 1, cuts, pieces: built.children.map(o => ({ type: o.userData.type, name: o.name, tex: o.userData.tex, tile: o.userData.tile, tint: o.userData.tint,
+  return { v: 1, cuts, pieces: built.children.map(o => ({ type: o.userData.type, name: o.name, tex: o.userData.tex, tile: o.userData.tile, tint: o.userData.tint, src: o.userData.src,
     p: o.position.toArray().map(x => +x.toFixed(3)), r: o.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: o.scale.toArray().map(x => +x.toFixed(3)) })) };
 }
 function restore(data, into = built) {
   if (into === built) select(null);
   while (into.children.length) into.remove(into.children[0]);
   for (const d of (data && data.pieces) || []) {
-    if (!GEOM[d.type]) continue;
-    const m = makePiece(d.type, d.tex && (d.tex.image || TEX[d.tex.name]) ? d.tex : null);
+    let m;
+    if (d.type === 'copy' && d.src) { m = makeCopy(d.src); if (d.tex && (d.tex.image || TEX[d.tex.name])) applyTexture(m, d.tex); }
+    else if (GEOM[d.type]) m = makePiece(d.type, d.tex && (d.tex.image || TEX[d.tex.name]) ? d.tex : null);
+    else continue;
     if (d.name) m.name = d.name; m.userData.tile = d.tile || 1; m.userData.tint = d.tint || '#ffffff'; applyLook(m);
     m.position.fromArray(d.p); m.rotation.set(d.r[0], d.r[1], d.r[2]); m.scale.fromArray(d.s);
     if (into !== built) { built.remove(m); into.add(m); }

@@ -271,7 +271,13 @@ faces this way ->"*, *"just copy the stairs that are already in there and move t
 built by `buildFlight` (9 risers over 1.26 m, 0.8 m wide, treads on stringers, rails, plank) placed
 twice — house-left off a landing on the platform's inner side toward the audience, house-right off
 the platform's outer edge toward stage right, where its foot (x 5.76) just touches the scanned
-stage wall (x 5.62); flagged. (`ham_iron`, hidden for
+stage wall (x 5.62). **Then all of it removed** — *"remove all the stairs you have put and make a
+tool where I can select an area and copy it"* — and the area box gained **Copy area**: every
+triangle whose centroid is inside becomes a new piece, one mesh per source mesh sharing its
+material, in the box's frame, on the gizmo; pieces centred inside are cloned in too. Saved as the
+source box and rebuilt from the models on load before deletes apply. Verified: a 1.6 × 2.2 × 1.8 box
+over the house-left platform end copied five parts, moved to centre stage, survived a reload. Lesson:
+after the second wrong placement the right move was to hand him the tool, not a third guess. (`ham_iron`, hidden for
 a round on the theory it held the beams, is only the posts' foot blocks.) The scan's corner steps are
 back untouched.
 *"Remove the metal beam"*: not the set's — hiding or cutting every set mesh left it standing. It is
