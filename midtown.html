@@ -812,6 +812,389 @@ function towerNear(meshes, boxes) {
   });
 }
 
+/* ---------------------------------------------------------------- HOUSE WORKS: THE FOLLOWSPOT BOOTH (agent E)
+   Jack: "carve out a hole here and put in a spotlight booth" — the three Lycians were floating against
+   the back wall of the house. BOOTH_CUTS are delete boxes applied to the scan like BAKED_CUTS (world
+   frame, {p, r, s}); the booth itself is built in the world frame and marked userData.rig so the build
+   tools leave it alone. */
+// The middle of the back wall is an alcove, x −2.81…3.07 between two jambs that run forward to z ≈ −13.8;
+// the rear doorways are beyond them (x ≲ −3.6 and ≳ 3.5, open below y ≈ 3.0). Its back wall is a coarse
+// regular grid of quads in Object_12 — columns at x −2.81 / −1.61 / −0.06 / 1.52 / 3.07, rows at y 0.81 /
+// ~2.98 (sloping 3.04 → 2.93 left to right) / 3.24 / 3.39 / 3.46 / 4.40 / 5.34 — with fine scan detail
+// (a ledge at its foot) up to y ≈ 2.75 just in front of it. The cut takes the four rows between the ~2.98
+// line and the 4.40 line, all four columns: exactly 32 triangles, all Object_12, nothing else (counted
+// against the house and the set), so the window is jamb to jamb, x −2.81…3.07, y 2.93/3.04…4.40, its edges
+// on the scan's own lines. Box: x −2.70…2.95, y 2.85…4.50, z −14.75…−13.95 (the wall is at −14.23…−14.43).
+const BOOTH_CUTS = [{ p: [0.125, 3.675, -14.35], r: [0, 0, 0], s: [5.65, 1.65, 0.8] }];
+function buildSpotBooth(houseScene) {
+  const S = boothSpec, t0 = performance.now();
+  scene.updateMatrixWorld(true);                             // no frame has drawn: the set's and the rig's world matrices are stale
+  const meshes = []; houseScene.traverse(o => { if (o.isMesh && o.visible) meshes.push(o); });
+  const ray = new THREE.Raycaster(), V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const cast = (o, d, far) => { ray.set(o, d); ray.far = far; return ray.intersectObjects(meshes, false)[0] || null; };
+  const f2 = n => n === null || n === undefined ? '—' : n.toFixed(2);
+  // 1. MEASURE the uncut wall (the cuts go on later, in reapplyAll at the load's tail): −z from each spot
+  // and from six points over the window; ±x for the alcove's jambs; down for the house floor in front.
+  const spots = rig ? ['lycian-1', 'lycian-2', 'lycian-3'].map(id => rig.children.find(u => u.userData.id === id)).filter(Boolean) : [];
+  const from = spots.map(u => u.getWorldPosition(new THREE.Vector3()));
+  for (const x of [-2, 0, 2]) for (const y of [3.7, 4.1]) from.push(V(x, y, -12));
+  const wallZs = from.map(o => cast(o, V(0, 0, -1), 6)).filter(Boolean).map(h => h.point.z);
+  const wallZ = wallZs.length ? wallZs.reduce((a, b) => a + b, 0) / wallZs.length : null;
+  const mid = V((S.x0 + S.x1) / 2, 3.8, S.wallZ + 0.2);
+  const jl = cast(mid, V(-1, 0, 0), 5), jr = cast(mid, V(1, 0, 0), 5), fl = cast(V(0.1, 2.9, S.wallZ + 0.35), DOWN, 3);
+  if (wallZ === null || Math.abs(wallZ - S.wallZ) > 0.15) console.warn(`booth: the back wall measured at z ${f2(wallZ)}, not the ${S.wallZ} the booth and its cut are built for — check BOOTH_CUTS / boothSpec`);
+  // 2. The fills behind the scan wall (both planes at z −14.9) would stand in the booth: house_skirt_s
+  // (y 2.5–8.05, the full width) gets a hole the booth's size, skirting_s_mid (x ±3.3, up to y 2.5)
+  // stops under the booth's floor. The rear doorways keep both, untouched.
+  const yB = S.floor - S.t, yT = S.ceil + S.t;
+  const skirt = boothHole(houseMesh.house_skirt_s, S.xo0, S.xo1, yB, yT), skirting = boothHole(houseMesh.skirting_s_mid, S.xo0, S.xo1, yB, yT);
+  // 3. THE BOOTH, world frame: the scan wall stays its face to the house; behind it a front wall with the
+  // window, a floor level with the house's back floor, side walls, back wall, ceiling; the window's
+  // sill ledge (0.3 m proud into the house), lintel and jamb liners cover the cut's edges.
+  const group = new THREE.Group(); group.name = 'followspot booth';
+  const add = (g, mat, name) => { const m = new THREE.Mesh(g, mat); m.name = name; m.castShadow = m.receiveShadow = false; m.userData.rig = true; group.add(m); return m; };
+  const box = (x0, x1, y0, y1, z0, z1, mat, name) => add(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), mat, name);
+  const cyl = (r, x, y0, y1, z, mat, name) => add(new THREE.CylinderGeometry(r, r, y1 - y0, 16).translate(x, (y0 + y1) / 2, z), mat, name);
+  const zF = S.front, zFo = zF + S.t, zB = zF - S.depth, zBo = zB - S.t;   // front wall inner / outer face, back wall inner / outer
+  box(S.xo0, S.xo1, yB, S.floor, zBo, zFo, boothMats.wall, 'booth floor');
+  box(S.xo0, S.xo1, S.ceil, yT, zBo, zFo, boothMats.wall, 'booth ceiling');
+  box(S.xo0, S.xo0 + S.t, S.floor, S.ceil, zB, zF, boothMats.wall, 'booth wall, house right');
+  box(S.xo1 - S.t, S.xo1, S.floor, S.ceil, zB, zF, boothMats.wall, 'booth wall, house left');
+  box(S.xo0, S.xo1, S.floor, S.ceil, zBo, zB, boothMats.wall, 'booth back wall');
+  box(S.xo0, S.xo1, S.floor, S.sill, zF, zFo, boothMats.wall, 'booth front wall, under the window');
+  box(S.xo0, S.xo1, S.head, S.ceil, zF, zFo, boothMats.wall, 'booth front wall, over the window');
+  box(S.xo0, S.x0, S.sill, S.head, zF, zFo, boothMats.wall, 'booth front wall, house right');
+  box(S.x1, S.xo1, S.sill, S.head, zF, zFo, boothMats.wall, 'booth front wall, house left');
+  box(S.x0 - 0.15, S.x1 + 0.15, S.sill - 0.17, S.sill, zF, S.wallZ + 0.3, boothMats.trim, 'booth sill');
+  box(S.x0 - 0.15, S.x1 + 0.15, S.head - 0.02, S.head + 0.13, zF, S.wallZ + 0.1, boothMats.trim, 'booth lintel');
+  box(S.x0 - 0.17, S.x0 + 0.02, S.sill, S.head, zF, S.wallZ, boothMats.trim, 'booth jamb, house right');
+  box(S.x1 - 0.02, S.x1 + 0.17, S.sill, S.head, zF, S.wallZ, boothMats.trim, 'booth jamb, house left');
+  box(S.xo0 + S.t + 0.25, S.xo0 + S.t + 1.15, S.floor, S.floor + 2.0, zB, zB + 0.04, boothMats.door, 'booth door');
+  const lamp = add(new THREE.PlaneGeometry(0.6, 0.1), boothMats.lamp, 'booth work light');
+  lamp.rotation.x = Math.PI / 2; lamp.position.set((S.x0 + S.x1) / 2, S.ceil - 0.01, (zF + zB) / 2);   // facing down, under the ceiling
+  // 4. The spots onto the booth floor, each on a pedestal stand (the Lycian model is the head and yoke
+  // only, 0.5 m tall drawn: standing on the floor its lens would be under the sill), re-aimed at the
+  // turntable centre; an operator's stool behind each.
+  const moved = [];
+  const order = spots.map((u, i) => ({ u, x: from[i].x })).sort((a, b) => a.x - b.x);
+  const target = new THREE.Vector3(...S.aim);
+  order.forEach(({ u }, i) => {
+    const x = S.spotX[i];
+    u.position.copy(rig.worldToLocal(V(x, S.spotY, S.spotZ)));
+    const dot = boothAim(u, target);
+    cyl(0.22, x, S.floor, S.floor + 0.03, S.spotZ, boothMats.metal, 'booth stand base');
+    cyl(0.035, x, S.floor + 0.03, S.spotY - 0.025, S.spotZ, boothMats.metal, 'booth stand post');
+    cyl(0.12, x, S.spotY - 0.025, S.spotY, S.spotZ, boothMats.metal, 'booth stand plate');
+    const zs = S.spotZ - 1.3;
+    cyl(0.2, x, S.floor, S.floor + 0.02, zs, boothMats.metal, 'booth stool foot');
+    cyl(0.025, x, S.floor + 0.02, S.floor + 0.70, zs, boothMats.metal, 'booth stool post');
+    cyl(0.175, x, S.floor + 0.70, S.floor + 0.75, zs, boothMats.seat, 'booth stool seat');
+    moved.push(`${u.userData.id} x ${x.toFixed(2)} (aim dot ${dot === null ? '—' : dot.toFixed(4)})`);
+  });
+  if (rig) rig.updateMatrixWorld(true);
+  scene.add(group);
+  console.info(`booth: wall at z ${f2(wallZ)} (${wallZs.length} rays, ${f2(Math.min(...wallZs))}…${f2(Math.max(...wallZs))}; built for ${S.wallZ}), alcove jambs at x ${f2(jl && jl.point.x)} / ${f2(jr && jr.point.x)}, house floor in front y ${f2(fl && fl.point.y)}`
+    + ` · window x ${S.x0}…${S.x1} y ${S.sill}…${S.head} (cut ${BOOTH_CUTS.length} box), floor y ${S.floor}, room x ${S.xo0}…${S.xo1} z ${zFo.toFixed(2)}…${zBo.toFixed(2)}`
+    + ` · fills: house_skirt_s ${skirt ? 'holed' : 'NOT holed'}, skirting_s_mid ${skirting ? 'cut down' : 'NOT cut'}`
+    + ` · spots moved to y ${S.spotY} z ${S.spotZ}: ${moved.join(', ') || 'none (no rig)'} · ${(performance.now() - t0).toFixed(0)} ms`);
+  requestRender(); shadowsDirty();
+}
+// The booth's numbers, world metres, from the measurements above (the console line re-measures them).
+const boothSpec = {
+  wallZ: -14.30,                    // the alcove's back wall (−14.23…−14.43: it bulges back to −14.4 under y 3.46)
+  x0: -2.81, x1: 3.07,              // the window: the alcove's own jambs
+  sill: 3.05, head: 4.40,           // the sill ledge's top, over the scan's sloping 2.93…3.04 line; the cut's 4.40 line
+  floor: 2.10, ceil: 4.90, t: 0.20, // booth floor top (the house's floor at the back wall is y 2.10), ceiling underside, slab / wall thickness
+  front: -14.65, depth: 3.0,        // the booth front wall's inner face (behind the scan wall and its 0.35 m reveal); the room's depth from it
+  xo0: -3.30, xo1: 3.30,            // the booth's outer sides: skirting_s_mid's own width, clear of the rear doorways (x ≈ −3.6 / 3.5)
+  spotX: [-2.2, 0, 2.2], spotY: 3.28, spotZ: -14.90,   // the units' origin (the yoke's foot), on stands; the lens 0.37 m ahead of it, just inside the window
+  aim: [0, HOUSE.deckY + 1.5, 2.6], // the turntable centre, 1.5 m up
+};
+// Lit by the hemisphere alone the room read as a flat black hole from the stalls; a faint warm emissive
+// stands in for the work light's spill (a real light would cost every lit material a frame).
+const boothSpill = 0x1a1510, boothSpillLow = 0x0d0b08;
+const boothMats = {
+  wall: new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 0.9, emissive: boothSpill }),
+  trim: new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.8, emissive: boothSpill }),
+  door: new THREE.MeshStandardMaterial({ color: 0x1c1c20, roughness: 0.8, emissive: boothSpillLow }),
+  metal: new THREE.MeshStandardMaterial({ color: 0x18181b, metalness: 0.5, roughness: 0.6, emissive: boothSpillLow }),
+  seat: new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.9, emissive: boothSpillLow }),
+  lamp: new THREE.MeshBasicMaterial({ color: 0x5a4a30, toneMapped: false, side: THREE.DoubleSide }),
+};
+// A flat fill facing z (world = local), its geometry replaced by up to four rectangles round the hole
+// x hx0…hx1, y hy0…hy1, the uv carried over (both fills map u from x and v from y, linearly). → done?
+function boothHole(mesh, hx0, hx1, hy0, hy1) {
+  if (!mesh) return false;
+  const g = mesh.geometry, P = g.attributes.position, U = g.attributes.uv;
+  mesh.updateMatrixWorld(true);
+  if (!mesh.matrixWorld.equals(new THREE.Matrix4()) || !U) { console.warn(`booth: ${mesh.name} is not a plain fill — left whole`); return false; }
+  let i0 = 0, i1 = 0, j0 = 0, j1 = 0;
+  for (let i = 1; i < P.count; i++) {
+    if (P.getX(i) < P.getX(i0)) i0 = i; if (P.getX(i) > P.getX(i1)) i1 = i;
+    if (P.getY(i) < P.getY(j0)) j0 = i; if (P.getY(i) > P.getY(j1)) j1 = i;
+  }
+  const xa = P.getX(i0), xb = P.getX(i1), ya = P.getY(j0), yb = P.getY(j1), z = P.getZ(0);
+  const uAt = x => U.getX(i0) + (U.getX(i1) - U.getX(i0)) * (x - xa) / (xb - xa);
+  const vAt = y => U.getY(j0) + (U.getY(j1) - U.getY(j0)) * (y - ya) / (yb - ya);
+  const cx0 = Math.max(xa, hx0), cx1 = Math.min(xb, hx1), cy0 = Math.max(ya, hy0), cy1 = Math.min(yb, hy1);
+  const pos = [], uv = [], idx = [];
+  for (const [x0, x1, y0, y1] of [[xa, cx0, ya, yb], [cx1, xb, ya, yb], [cx0, cx1, cy1, yb], [cx0, cx1, ya, cy0]]) {
+    if (x1 - x0 < 1e-3 || y1 - y0 < 1e-3) continue;
+    const n = pos.length / 3;
+    for (const [x, y] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) { pos.push(x, y, z); uv.push(uAt(x), vAt(y)); }
+    idx.push(n, n + 1, n + 2, n, n + 2, n + 3);
+  }
+  const ng = new THREE.BufferGeometry();
+  ng.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  ng.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  ng.setIndex(idx); ng.computeVertexNormals();
+  g.dispose(); mesh.geometry = ng;
+  return true;
+}
+// Aim a unit's lens at a world point: the pan on the unit (its parents turn about y only, so a change of
+// rotation.y is a change of world heading), the tilt on the head of every detail level (the slope found
+// by a small trial turn, so the head's axis needs no assumption). Three passes. → the beam · the wanted dot.
+function boothAim(unit, target) {
+  const lens = unit.levels.length && unit.levels[0].object.getObjectByName('lens');
+  if (!lens) return null;
+  const heads = unit.levels.map(l => l.object.getObjectByName('head')).filter(Boolean);
+  const p = new THREE.Vector3(), d = new THREE.Vector3(), w = new THREE.Vector3();
+  const look = () => { unit.updateMatrixWorld(true); lens.getWorldPosition(p); lensBeam(lens, d); w.subVectors(target, p).normalize(); };
+  const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+  for (let i = 0; i < 3; i++) {
+    look(); unit.rotation.y += wrap(Math.atan2(w.x, w.z) - Math.atan2(d.x, d.z));
+    if (!heads.length) continue;
+    look(); const e0 = Math.asin(d.y);
+    heads.forEach(h => { h.rotation.x += 0.01; }); look();
+    const k = (Math.asin(d.y) - e0) / 0.01;
+    if (Math.abs(k) > 0.1) heads.forEach(h => { h.rotation.x += (Math.asin(w.y) - Math.asin(d.y)) / k; });
+  }
+  look(); return d.dot(w);
+}
+
+/* ---------------------------------------------------------------- HOUSE WORKS: THE LIGHTING DESK (agent F)
+   Jack: "take out some of the seats in the middle here and put in a lighting desk." DESK_CUTS are delete
+   boxes applied to the scan like BAKED_CUTS (world frame); the desk position is built in the world
+   frame and marked userData.rig so the build tools leave it alone. */
+// The block, measured off the scan: the centre block's seats run x −2.7…3.0 between the two aisles; the
+// two rows taken out are the ones whose seat backs stand at z ≈ −7.78 and −8.62 (pitch ≈ 0.83 m), from just
+// behind the row in front (its back ends at z −7.04) to just in front of the row behind (its seats start at
+// z −9.05): z −7.15…−8.97, x −2.12…2.04 (the edges on the armrests at x ≈ −2.1 / 2.0–2.1). The floor under
+// them is a clean plane rising 0.1135 m per metre back (6.5°: y 0.558 at the front edge, 0.765 at the back,
+// up to 0.026 higher toward x +2), so the box is tilted to that rake: its bottom face 0.079 m above the
+// plane (≥ 0.05 above the floor everywhere, so no floor triangle's centroid is inside), its top 1.30 m above.
+const DESK_CUTS = [{ p: [-0.04, 1.343, -7.992], r: [0.1130, 0, 0], s: [4.16, 1.213, 1.832] }];
+function buildDeskPosition(houseScene) {
+  // Runs BEFORE the cuts (reapplyAll at the load tail), so the scan still has its seats: every floor
+  // reading is the LOWEST up-facing hit straight down, under the seats.
+  const t0 = performance.now(), D = DESK;
+  houseScene.updateMatrixWorld(true);
+  const scan = []; houseScene.traverse(o => { if (o.isMesh && o.visible && /^Object_/.test(o.name)) scan.push(o); });
+  const ray = new THREE.Raycaster(), cx = (D.x0 + D.x1) / 2;
+  // FLOOR: the four corners (for the skirt) and a grid (for the highest point and the cut's clearance)
+  const corner = (x, z) => deskFloor(ray, scan, x, z) ?? D.plane(z);
+  const C = { fl: corner(D.x0, D.z0), fr: corner(D.x1, D.z0), bl: corner(D.x0, D.z1), br: corner(D.x1, D.z1) };
+  const floorAt = (x, z) => {                                  // bilinear between the corners (the floor is a plane to ±3 mm)
+    const u = (x - D.x0) / (D.x1 - D.x0), v = (z - D.z0) / (D.z1 - D.z0);
+    return (C.fl * (1 - u) + C.fr * u) * (1 - v) + (C.bl * (1 - u) + C.br * u) * v;
+  };
+  const inv = cutMatrix(DESK_CUTS[0]), q = new THREE.Vector3();
+  let top = -Infinity, clear = Infinity, misses = 0;
+  for (let i = 0; i <= 5; i++) for (let j = 0; j <= 4; j++) {
+    const x = D.x0 + 0.02 + (D.x1 - D.x0 - 0.04) * i / 5, z = D.z0 - 0.02 - (D.z0 - D.z1 - 0.04) * j / 4;
+    const y = deskFloor(ray, scan, x, z);
+    if (y === null) { misses++; continue; }
+    top = Math.max(top, y);
+    q.set(x, y, z).applyMatrix4(inv);                          // how far BELOW the cut box's bottom face this floor point lies (positive: kept)
+    if (Math.abs(q.x) <= 0.5 && Math.abs(q.z) <= 0.5) clear = Math.min(clear, -(q.y + 0.5) * DESK_CUTS[0].s[1]);
+  }
+  if (!Number.isFinite(top)) top = Math.max(C.fl, C.fr, C.bl, C.br);
+  // ROWS: seat runs straight down the centre line from the front of the stalls back past the block
+  const rows = deskRows(ray, scan, cx + 0.3, -2.0, D.z1 - 0.6, 0.08);
+  const mine = rows.map((r, i) => ({ ...r, n: i + 1 })).filter(r => r.front < D.z0 && r.back > D.z1);
+  const backs = rows.map(r => r.back), pitch = backs.length > 1 ? (backs[0] - backs[backs.length - 1]) / (backs.length - 1) : NaN;
+  const Y0 = top + D.lift;                                     // the platform's top
+  const P = {};                                                // material key -> geometries, merged at the end
+  // THE RISER: a 0.1 m deck, level, over the cut; black skirts down to the raked floor (their feet 3 cm into it)
+  deskBox(P, 'deck', D.x1 - D.x0, D.deck, D.z0 - D.z1, cx, Y0 - D.deck / 2, (D.z0 + D.z1) / 2);
+  const under = Y0 - D.deck, sk = 0.02;
+  deskSkirt(P, D.x0, D.x1, D.z0 - sk / 2, D.z0 + sk / 2, under, floorAt);                // front (stage side)
+  deskSkirt(P, D.x0, D.x1, D.z1 - sk / 2, D.z1 + sk / 2, under, floorAt);                // back (mostly in the floor)
+  deskSkirt(P, D.x0 - sk / 2, D.x0 + sk / 2, D.z1, D.z0, under, floorAt);                 // house left
+  deskSkirt(P, D.x1 - sk / 2, D.x1 + sk / 2, D.z1, D.z0, under, floorAt);                 // house right
+  // SIDE RAILS: a low black surround on the two open sides, as high as the seat backs beside it. A row's seat
+  // backs are one sheet of scan, so the cut leaves the next chair's back sawtoothed, its triangles reaching up to
+  // 9 cm in over the deck; the rails stand 10 cm in and hide that edge from the desk and most of the aisle.
+  for (const x of [D.x0 + D.railIn, D.x1 - D.railIn]) {
+    deskBox(P, 'skirt', 0.025, D.rail, D.z0 - D.z1, x, Y0 + D.rail / 2, (D.z0 + D.z1) / 2);
+    deskBox(P, 'frame', 0.05, 0.03, D.z0 - D.z1, x, Y0 + D.rail + 0.015, (D.z0 + D.z1) / 2);   // the cap
+  }
+  // THE TABLE: 2.4 × 0.8, 0.76 high, black top on a dark square-tube frame
+  const tb = D.table, tz = D.z0 - tb.front - tb.d / 2, T = Y0 + tb.h;
+  deskBox(P, 'top', tb.w, 0.03, tb.d, cx, T - 0.015, tz);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) deskBox(P, 'frame', 0.04, tb.h - 0.03, 0.04, cx + sx * (tb.w / 2 - 0.05), Y0 + (tb.h - 0.03) / 2, tz + sz * (tb.d / 2 - 0.05));
+  for (const sz of [-1, 1]) deskBox(P, 'frame', tb.w - 0.06, 0.07, 0.03, cx, T - 0.065, tz + sz * (tb.d / 2 - 0.05));
+  for (const sx of [-1, 1]) deskBox(P, 'frame', 0.03, 0.07, tb.d - 0.06, cx + sx * (tb.w / 2 - 0.05), T - 0.065, tz);
+  deskBox(P, 'frame', tb.w - 0.1, 0.03, 0.03, cx, Y0 + 0.12, tz + tb.d / 2 - 0.05);       // the foot rail on the stage side
+  // THE CONSOLE (Eos-style): a dark body whose top rakes up away from the operator, 10 faders, a keypad, its own small display
+  const k = D.console, kz = tz - tb.d / 2 + 0.03 + k.d / 2, rake = Math.atan(k.rise / k.d);
+  const body = new THREE.BoxGeometry(k.w, k.h, k.d), bp = body.attributes.position;
+  for (let i = 0; i < bp.count; i++) if (bp.getY(i) > 0) bp.setY(i, k.h / 2 + bp.getZ(i) * k.rise / k.d);   // the far edge (stage side, +z) higher
+  body.computeVertexNormals();
+  deskPut(P, 'body', body, cx, T + k.h / 2, kz);
+  const surf = zl => T + k.h + zl * k.rise / k.d;               // the raked top's height at a local z
+  const fz = -0.15;
+  deskBox(P, 'knob', 0.66, 0.004, 0.13, cx - 0.3, surf(fz) + 0.002, kz + fz, -rake);     // the fader bed
+  for (let i = 0; i < 10; i++) deskBox(P, 'knob', 0.022, 0.026, 0.032, cx - 0.57 + i * 0.06, surf(fz) + 0.016, kz + fz + 0.02, -rake);
+  deskBox(P, 'keys', 0.30, 0.008, 0.22, cx + 0.42, surf(-0.06) + 0.004, kz - 0.06, -rake);   // the keypad
+  deskBox(P, 'screen', 0.34, 0.004, 0.13, cx + 0.05, surf(0.14) + 0.003, kz + 0.14, -rake);  // the console's own display
+  deskBox(P, 'ui', 0.22, 0.005, 0.008, cx + 0.05, surf(0.17) + 0.003, kz + 0.17, -rake);
+  // TWO MONITORS behind it, on thin stands, facing the operator, their tops tipped back
+  const m = D.monitor, a = m.tilt, mz = kz + k.d / 2 + 0.11, my = T + m.lift + m.h / 2;
+  const n = new THREE.Vector3(0, Math.sin(a), -Math.cos(a)), up = new THREE.Vector3(0, Math.cos(a), Math.sin(a));
+  for (const sx of [-1, 1]) {
+    const mx = cx + sx * (m.w / 2 + 0.02);
+    deskBox(P, 'knob', m.w + 0.024, m.h + 0.024, 0.025, mx, my, mz, -a, Math.PI);         // the bezel
+    const sc = new THREE.Vector3(mx, my, mz).addScaledVector(n, 0.0135);
+    deskPut(P, 'screen', new THREE.PlaneGeometry(m.w, m.h), sc.x, sc.y, sc.z, -a, Math.PI);
+    for (let r = 0; r < 6; r++) {                               // a cue list on the screen: a few lit lines
+      const c = sc.clone().addScaledVector(n, 0.001).addScaledVector(up, m.h / 2 - 0.045 - r * 0.045);
+      deskPut(P, r ? 'ui' : 'glow', new THREE.PlaneGeometry(r ? m.w * (0.55 + 0.07 * (r % 3)) : m.w - 0.04, r ? 0.01 : 0.03), c.x - (r ? m.w * 0.12 : 0), c.y, c.z, -a, Math.PI);
+    }
+    deskPut(P, 'halo', new THREE.PlaneGeometry(m.w + 0.14, m.h + 0.12), sc.x + n.x * 0.002, sc.y + n.y * 0.002, sc.z + n.z * 0.002, -a, Math.PI);
+    deskBox(P, 'frame', 0.03, m.lift + 0.02, 0.03, mx, T + (m.lift + 0.02) / 2, mz + 0.03);   // the stand
+    deskBox(P, 'frame', 0.22, 0.012, 0.16, mx, T + 0.006, mz + 0.02);                         // its foot
+  }
+  // THE LITTLITE at the table's left operator-side corner: a base, a gooseneck bending over the desk, a warm tip
+  const lx = cx - tb.w / 2 + 0.12, lz = tz - tb.d / 2 + 0.1;
+  deskBox(P, 'knob', 0.06, 0.02, 0.06, lx, T + 0.01, lz);
+  const g0 = new THREE.Vector3(lx, T + 0.02, lz), g1 = new THREE.Vector3(lx, T + 0.30, lz), g2 = new THREE.Vector3(lx + 0.16, T + 0.33, lz + 0.05);
+  deskRod(P, 'knob', g0, g1, 0.005, 6); deskRod(P, 'knob', g1, g2, 0.005, 6);
+  const hd = g2.clone().add(new THREE.Vector3(0.03, -0.05, 0.01));
+  deskRod(P, 'knob', g2, hd, 0.013, 8);                                                     // the hood
+  deskRod(P, 'lamp', hd, hd.clone().add(new THREE.Vector3(0.002, -0.004, 0.0007)), 0.011, 8);   // the lit tip
+  // A LAPTOP beside the console: base and lid at a 100° hinge, its screen lit
+  const lp = D.laptop, ax = cx + k.w / 2 + 0.07 + lp.w / 2, az = kz, la = lp.open - Math.PI / 2;
+  deskBox(P, 'alu', lp.w, 0.018, lp.d, ax, T + 0.009, az);
+  const hinge = new THREE.Vector3(ax, T + 0.018, az + lp.d / 2), lup = new THREE.Vector3(0, Math.cos(la), Math.sin(la)), ln = new THREE.Vector3(0, Math.sin(la), -Math.cos(la));
+  const lc = hinge.clone().addScaledVector(lup, lp.lid / 2);
+  deskBox(P, 'alu', lp.w, lp.lid, 0.008, lc.x, lc.y, lc.z, la);
+  const ls = lc.clone().addScaledVector(ln, 0.0045);
+  deskPut(P, 'screen', new THREE.PlaneGeometry(lp.w - 0.03, lp.lid - 0.03), ls.x, ls.y, ls.z, -la, Math.PI);
+  // TWO OPERATOR'S CHAIRS behind the table, facing the stage
+  for (const chx of D.chairs) {
+    const chz = tz - tb.d / 2 - 0.36;
+    deskPut(P, 'frame', new THREE.CylinderGeometry(0.28, 0.28, 0.03, 8), chx, Y0 + 0.015, chz);    // the base
+    deskPut(P, 'frame', new THREE.CylinderGeometry(0.025, 0.025, 0.40, 6, 1, true), chx, Y0 + 0.23, chz);   // the post
+    deskBox(P, 'fabric', 0.46, 0.07, 0.45, chx, Y0 + 0.465, chz);                                    // the seat
+    deskBox(P, 'frame', 0.04, 0.26, 0.02, chx, Y0 + 0.58, chz - 0.235, -0.14);                       // the back's upright
+    deskBox(P, 'fabric', 0.44, 0.40, 0.05, chx, Y0 + 0.83, chz - 0.27, -0.14);                       // the back
+  }
+  // One mesh per material, world frame, never cast or caught, skipped by the build tools.
+  const group = new THREE.Group(); group.name = 'lighting desk';
+  let tris = 0;
+  for (const [key, geos] of Object.entries(P)) {
+    const geo = mergeGeometries(geos, false); geos.forEach(g => g.dispose());
+    const mesh = new THREE.Mesh(geo, deskMat[key]);
+    mesh.name = 'desk: ' + key; mesh.castShadow = mesh.receiveShadow = false; mesh.userData.rig = true;
+    if (key === 'halo') mesh.renderOrder = 2;                  // the additive glow after the screens
+    tris += (geo.index ? geo.index.count : geo.attributes.position.count) / 3;
+    group.add(mesh);
+  }
+  group.userData = { floor: C, top, platformTop: Y0, rows: mine, pitch, clearance: clear };
+  scene.add(group);
+  const f = v => v.toFixed(3);
+  const c = DESK_CUTS[0];
+  console.info(`desk: floor y ${f(Math.min(C.fl, C.fr))} (front, z ${D.z0}) to ${f(Math.max(C.bl, C.br))} (back, z ${D.z1}), highest ${f(top)}`
+    + ` over rows z ${mine.length ? mine.map(r => `${r.front.toFixed(2)}…${r.back.toFixed(2)} (row ${r.n} from the front)`).join(', ') : '— none found —'}`
+    + `, seat pitch ${Number.isFinite(pitch) ? pitch.toFixed(2) : '?'} m over ${rows.length} rows; platform top y ${f(Y0)}`
+    + `; cut ${c.s[0]} × ${c.s[2]} m at (${c.p.join(', ')}) tilted ${(c.r[0] * 180 / Math.PI).toFixed(1)}°, bottom ${Number.isFinite(clear) ? f(clear) : '?'} m above the floor at its closest`
+    + ` · ${tris} triangles · ${(performance.now() - t0).toFixed(0)} ms` + (misses ? ` (${misses} floor rays missed)` : ''));
+  if (Number.isFinite(clear) && clear < 0.04) console.warn(`desk: the cut box comes within ${f(clear)} m of the floor — floor triangles may be cut`);
+  requestRender(); shadowsDirty();
+}
+// The desk position's numbers. The block and the floor plane are the ones DESK_CUTS was made from.
+const DESK = {
+  x0: -2.12, x1: 2.04, z0: -7.15, z1: -8.97,                   // z0 the stage side
+  plane: z => 0.555 + 0.1135 * (-7.12 - z),                    // the floor as measured, if a ray misses
+  lift: 0.08,                                                  // the platform's top over the block's highest floor point: 0.05, plus the 0.024 the floor rises across the block, so nothing the cut leaves pokes through
+  deck: 0.10,
+  rail: 0.55, railIn: 0.10,                                    // the side rails: height over the deck, and how far in from the edge
+  table: { w: 2.4, d: 0.8, h: 0.76, front: 0.2 },             // front: its stage-side edge this far behind the platform's
+  console: { w: 1.3, d: 0.55, h: 0.12, rise: 0.06 },          // h at the middle; the top 0.06 higher at the far edge than the near
+  monitor: { w: 0.55, h: 0.33, lift: 0.17, tilt: 0.14 },
+  laptop: { w: 0.33, d: 0.23, lid: 0.22, open: 100 * Math.PI / 180 },
+  chairs: [-0.52, 0.48],
+};
+// The house round it is an unlit photo and the desk sits out of the FOH spots' throw, under the hemisphere
+// alone: at true blacks it drew as one black hole. So the "blacks" are dark greys, nothing is metallic
+// (no environment map to reflect: metal drew black), and each lit surface glows a third of its own colour.
+const deskStd = (color, roughness) => new THREE.MeshStandardMaterial({ color, roughness, metalness: 0, emissive: new THREE.Color(color).multiplyScalar(0.35) });
+const deskMat = {
+  deck:   deskStd(0x46464b, 0.9),
+  skirt:  deskStd(0x232327, 1),
+  top:    deskStd(0x2a2a2d, 0.5),
+  frame:  deskStd(0x62656a, 0.5),
+  body:   deskStd(0x6a6d74, 0.6),
+  knob:   deskStd(0x2a2a2e, 0.5),
+  keys:   deskStd(0xb4b8be, 0.6),
+  fabric: deskStd(0x4a4a56, 0.95),
+  alu:    deskStd(0xc0c3c8, 0.4),
+  screen: new THREE.MeshBasicMaterial({ color: 0x203040, toneMapped: false }),
+  ui:     new THREE.MeshBasicMaterial({ color: 0x4f7fb0, toneMapped: false }),
+  glow:   new THREE.MeshBasicMaterial({ color: 0x8a6a30, toneMapped: false }),          // the cue list's live line
+  halo:   new THREE.MeshBasicMaterial({ color: 0x1a3050, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+  lamp:   new THREE.MeshBasicMaterial({ color: 0xffe0b0, toneMapped: false }),
+};
+// The lowest up-facing scan surface straight down at (x, z) — the floor under any seats. Null if none.
+function deskFloor(ray, scan, x, z) {
+  ray.set(new THREE.Vector3(x, 4, z), DOWN); ray.far = 6;
+  let y = null;
+  for (const h of ray.intersectObjects(scan, false)) {
+    if (!h.face || Math.abs(h.face.normal.clone().transformDirection(h.object.matrixWorld).y) < 0.7) continue;   // double-sided scan: either way up
+    if (y === null || h.point.y < y) y = h.point.y;
+  }
+  return y;
+}
+// Seat rows along a line of constant x: runs of z where something stands over 0.25 m above the floor. → [{front, back}], front first.
+function deskRows(ray, scan, x, zFrom, zTo, step) {
+  const rows = []; let run = null;
+  for (let z = zFrom; z >= zTo; z -= step) {
+    ray.set(new THREE.Vector3(x, 4, z), DOWN); ray.far = 6;
+    const h = ray.intersectObjects(scan, false), seat = h.length > 1 && h[0].point.y - h[h.length - 1].point.y > 0.25;
+    if (seat && !run) run = { front: z, back: z }; else if (seat) run.back = z; else if (run) { rows.push(run); run = null; }
+  }
+  if (run) rows.push(run);
+  return rows.filter(r => r.front - r.back > 0.1);               // a lone hit is a scrap, not a row
+}
+// A geometry placed in the world (Euler 'YXZ': turn, then tip) and filed under its material.
+function deskPut(P, key, g, x, y, z, rx = 0, ry = 0, rz = 0) {
+  g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz, 'YXZ')), new THREE.Vector3(1, 1, 1)));
+  (P[key] = P[key] || []).push(g);
+  return g;
+}
+function deskBox(P, key, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0) { return deskPut(P, key, new THREE.BoxGeometry(w, h, d), x, y, z, rx, ry, rz); }
+function deskRod(P, key, a, b, r, seg) {
+  const d = new THREE.Vector3().subVectors(b, a), len = Math.max(d.length(), 1e-4);
+  const g = new THREE.CylinderGeometry(r, r, len, seg, 1);
+  g.applyMatrix4(new THREE.Matrix4().compose(a.clone().add(b).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()), new THREE.Vector3(1, 1, 1)));
+  (P[key] = P[key] || []).push(g);
+}
+// A skirt panel over x0…x1, z0…z1 (z0 < z1 or not), from yTop down to 3 cm into the floor beneath each corner.
+function deskSkirt(P, x0, x1, za, zb, yTop, floorAt) {
+  const g = new THREE.BoxGeometry(Math.abs(x1 - x0), 1, Math.abs(zb - za)), pos = g.attributes.position;
+  g.translate((x0 + x1) / 2, 0, (za + zb) / 2);
+  let tall = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const foot = floorAt(pos.getX(i), pos.getZ(i)) - 0.03;
+    pos.setY(i, pos.getY(i) > 0 ? yTop : Math.min(foot, yTop - 0.005));
+    tall = Math.max(tall, yTop - foot);
+  }
+  if (tall <= 0.035) { g.dispose(); return; }                   // the floor is at the deck's underside here: nothing to skirt
+  g.computeVertexNormals();
+  (P.skirt = P.skirt || []).push(g);
+}
+
 // Loading, with one bar across both files.
 const bar = document.querySelector('#bar i'), loadtxt = document.getElementById('loadtxt');
 const SIZES = { 'assets/midtown-auditorium.glb': 13.6e6, 'assets/hamilton-set.glb': 7.1e6 };
@@ -941,6 +1324,7 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   placeSet(SET.fit);
   root.updateMatrixWorld(true);
   if (rig) { fitBoomsToWalls(house.scene); buildHangingTrusses(house.scene); buildWingTowers(house.scene); }
+  buildSpotBooth(house.scene); buildDeskPosition(house.scene);
   houseRoot = house.scene;
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
   registerModelTextures(house.scene, 'house: ', ['deck_fill', 'pros_outer_l', 'back_brick_lo', 'house_ceiling', 'house_floor']);
@@ -1192,7 +1576,7 @@ function applyCut(c) {
 }
 function reapplyAll() {
   for (const [o, orig] of originals) { if (orig) o.geometry.setIndex(orig.slice()); else o.geometry.setIndex(null); }
-  for (const c of [...BAKED_CUTS, ...cuts]) applyCut(c);
+  for (const c of [...BAKED_CUTS, ...BOOTH_CUTS, ...DESK_CUTS, ...cuts]) applyCut(c);
   shadowsDirty();                                            // cut geometry casts differently
   B('b-cutn').textContent = `${cuts.length} delete${cuts.length === 1 ? '' : 's'} this session` + (BAKED_CUTS.length ? `, ${BAKED_CUTS.length} baked` : '') + '. Move and scale the red box, then Confirm (or Enter).';
 }
