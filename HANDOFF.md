@@ -270,7 +270,19 @@ the **scan's** hanging iron over the stage (pipes, a cross bar, two beams on cab
 the wall below the fly cut); `cutBeams` drops every scan triangle with a vertex in a box over the
 stage (|x| < 5.2, y 3.0..6.3, z 2.4..8.6). Lesson for TRAPS-by-another-name: with two models in
 one scene, **find which model a thing belongs to before touching either** — hide meshes one at a
-time and look. The set is 17.3 m wide against
+time and look.
+
+**Then a build mode**, his ask: *"make something where i can add geometries and use a dropdown to
+choose their texture and i can move and resize them"*, and *"make it so you can see the things i add
+then add them to the actual geometry."* `midtown.html`'s Build button: add box / cylinder / sphere /
+plane / wedge where the view is looking; texture dropdown of the set's and house's materials
+(cloned to lit `MeshStandard`) plus flat colours; image by picker or dropped on the view (data URL,
+travels in the JSON); tiling, tint; `TransformControls` gizmo, G/R/S, numeric fields, snap,
+duplicate, delete; autosave to localStorage flushed from the frame loop (no `setTimeout`); Export /
+Copy / Import JSON. **Bake recipe:** read his export (Downloads, `midtown-build.json`) or the pasted
+JSON, put its `pieces` into the page's `BAKED` constant, commit; "Edit the baked pieces" lifts them
+back into the editor. Verified in the pane: two pieces, brick texture, resize, autosave; console
+clean. The set is 17.3 m wide against
 the scanned side walls, so "Set fitted" is scale 0.62 and "Real size" is 1:1 through the walls.
 
 Nothing in `src/`; `the-house.html` and `docs/ARTNET.md` untouched. Suites with the portable Node:

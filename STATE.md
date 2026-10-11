@@ -27,6 +27,16 @@ fetch`, compare `origin/main`, then read this.
   for two rounds and are now back untouched. (`ham_iron` is only the posts' foot blocks.) The set is scaled 0.62 to clear the scanned side
   walls, with a "Real size" toggle. If the second game wants these in the asset itself, `tools/blender/midtown_theatre.py`'s
   `PROS_Y`, `OPEN_X0/X1` and `OPEN_TOP` are where they go.
+- **`midtown.html` has a BUILD MODE** (Jack: *"make something where i can add geometries and use a
+  dropdown to choose their texture and i can move and resize them … make it so you can see the
+  things i add then add them to the actual geometry"*). The Build button opens a panel: add box /
+  cylinder / sphere / plane / wedge (they land where the view is looking), a texture dropdown of the
+  set's and house's own materials plus flat colours, an image picker or an image dropped on the
+  view, tiling and tint, a move/rotate/scale gizmo (G/R/S) with numeric position/size/turn fields,
+  snap, duplicate, delete. Autosaves to localStorage; Export JSON / Copy JSON / Import.
+  **THE BAKE RECIPE:** he exports (`C:/Users/jackf/Downloads/midtown-build.json`) or pastes the
+  JSON; the agent pastes its `pieces` into the page's `const BAKED = [...]` and commits — they are
+  then scenery for everyone, and "Edit the baked pieces" lifts them back into the editor.
 - **Suites on this tree: 20/21.** The red is `beetlejuice`'s on-disk index check tripping on the **19
   untracked `assets/fixtures/*.glb`** still sitting in the working tree (his "don't commit the files
   yet") — not `main`, not the branch. It goes green the moment they are committed or moved out.
