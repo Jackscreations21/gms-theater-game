@@ -316,6 +316,80 @@ const probe = `
     return 'outer '+o.r+'m, inner '+i.r+'m, concentric';
   });
 
+  P('its record says it is MODELLED on the production (RULING FE)', ()=>{
+    const n = (SHOWS.hamilton.note || '').toLowerCase();
+    if(n.indexOf('modelled on the production') < 0)
+      throw new Error('the note does not say what this show is: '+n);
+    if(n.indexOf('not a copy') >= 0)
+      throw new Error('the note still disclaims copying, which FE repealed for this show: '+n);
+    return SHOWS.hamilton.note;
+  });
+
+  P('the revolves stand where the real turntables do, at their size (FE)', ()=>{
+    if(typeof HAM_MODEL === 'undefined') throw new Error('HAM_MODEL is not in the build');
+    const o = SHOW.revolve.outer, i = SHOW.revolve.inner;
+    if(Math.abs(o.r - HAM_MODEL.tt.rOut) > 0.005 || Math.abs(i.r - HAM_MODEL.tt.rIn) > 0.005)
+      throw new Error('radii '+o.r+' / '+i.r+' against the model rings '+HAM_MODEL.tt.rOut+' / '+HAM_MODEL.tt.rIn);
+    const po = world4(o.group), pi = world4(i.group);
+    if(Math.abs(po.z - HAM_MODEL.tt.z) > 0.005 || Math.abs(pi.z - HAM_MODEL.tt.z) > 0.005 || Math.abs(po.x) > 0.005)
+      throw new Error('centres at z '+po.z.toFixed(2)+' / '+pi.z.toFixed(2)+', the model rings at '+HAM_MODEL.tt.z);
+    return 'outer '+o.r+' inner '+i.r+' at z '+HAM_MODEL.tt.z+' — the circles the model draws on its floor';
+  });
+
+  P('the hand-built structure is a STAND-IN: one group, walkables and lanterns, that the model takes out', ()=>{
+    showLoad('hamilton');
+    const S = SHOW.hamStand;
+    if(!S || S.parent !== SHOW.group) throw new Error('no stand-in group under the show');
+    let m = 0; S.traverse(o=>{ if(o.isMesh) m++; });
+    if(m < 10) throw new Error('the stand-in holds only '+m+' meshes');
+    const inS = o=>{ let p = o; while(p){ if(p === S) return true; p = p.parent; } return false; };
+    const walk = SHOW.walk.filter(inS);
+    if(walk.length < 3) throw new Error('the gallery, the walkway and the stairs are not on the walk list: '+walk.length);
+    if(!SHOW.neon.some(e=>inS(e.mesh)) || !SHOW.neonLights.some(e=>inS(e.light)))
+      throw new Error('the lanterns are not in the stand-in');
+    const kept = SHOW.walk.length - walk.length;      // the deck and the revolves stay walkable
+    if(kept < 2) throw new Error('only '+kept+' walkables outside the stand-in');
+    /* a model in the file's own frame: 2 m box, floor at -1, centred */
+    const root = new THREE.Group();
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshStandardMaterial()));
+    if(!hamApplyModel(root)) throw new Error('a clean model was refused');
+    if(S.parent) throw new Error('the stand-in is still on the stage');
+    if(SHOW.hamStand) throw new Error('SHOW.hamStand still points at the struck stand-in');
+    if(SHOW.walk.some(inS) || WALKABLE.some(inS)) throw new Error('the stand-in walkables survived');
+    if(SHOW.walk.length !== kept) throw new Error('the walk list lost more than the stand-in: '+SHOW.walk.length+' of '+kept);
+    if(SHOW.neon.some(e=>inS(e.mesh)) || SHOW.neonLights.some(e=>inS(e.light)))
+      throw new Error('the stand-in lanterns survived on the neon lists');
+    if(root.parent !== SHOW.group) throw new Error('the model did not land under the show');
+    SHOW.group.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root), c = box.getCenter(new THREE.Vector3());
+    if(Math.abs(box.min.y) > 0.01) throw new Error('its floor is at '+box.min.y.toFixed(2)+', not on the deck');
+    if(Math.abs(c.x) > 0.01) throw new Error('off the stage axis by '+c.x.toFixed(2));
+    if(Math.abs(c.z - HAM_MODEL.z) > 0.01) throw new Error('its frame landed at z '+c.z.toFixed(2)+', HAM_MODEL.z is '+HAM_MODEL.z);
+    if(root.matrixAutoUpdate) throw new Error('the landed model is not frozen (RULING AP)');
+    if(!SHOW.revolve || SHOW.revolve.outer.group.parent !== SHOW.group)
+      throw new Error('the revolves went with the stand-in');
+    if(SHOW.hamModel !== root) throw new Error('SHOW.hamModel does not point at what landed');
+    return m+' stand-in meshes out, '+walk.length+' walkables pruned, '+kept+' kept, model seated at z '+HAM_MODEL.z;
+  });
+
+  P('a strike takes the landed model with it, and the next load gets a fresh stand-in', ()=>{
+    showStrike();
+    if(SHOW.hamModel || SHOW.hamStand) throw new Error('the strike left a Hamilton field behind');
+    showLoad('hamilton');
+    if(!SHOW.hamStand || SHOW.hamStand.parent !== SHOW.group) throw new Error('no fresh stand-in after a re-load');
+    if(SHOW.hamModel) throw new Error('a model is recorded on a stage that fetched nothing');
+    return 'struck clean, stand-in back';
+  });
+
+  P('with no fetch in the world, loadHamiltonSet resolves and touches nothing', ()=>{
+    if(typeof window.fetch === 'function') throw new Error('jsdom grew a fetch — this fallback test needs a rewrite');
+    const before = SHOW.group.children.length;
+    const p = loadHamiltonSet();
+    if(!p || typeof p.then !== 'function') throw new Error('it did not return a promise');
+    if(SHOW.group.children.length !== before || !SHOW.hamStand) throw new Error('the stage changed with nothing to change it');
+    return 'no fetch: the stand-in plays, '+before+' children untouched';
+  });
+
   P('they turn, and they take what is on them round', ()=>{
     const inner = SHOW.revolve.inner;
     const rider = inner.group.children.find(c=>c.isMesh && Math.abs(c.position.x) > 0.5);
@@ -754,4 +828,33 @@ const probe = `
 const script = html.match(/<script>([\s\S]*)<\/script>/g).pop().replace(/<\/?script>/g,'');
 try{ w.eval(script + probe); }
 catch(e){ console.log('TOP LEVEL THREW: ' + e.message); console.log(e.stack.split('\n').slice(0,8).join('\n')); process.exit(1); }
+/* RULING FE — the file itself, read out in node without three.js: a GLB is a
+   JSON chunk and a binary chunk, so the budgets p5i enforces at import can be
+   checked here against the bytes that will be fetched.  A missing file is not
+   a normal state for THIS set the way it is for an undelivered Beetlejuice
+   piece: the stand-in exists for a slow wifi, not for a forgotten commit. */
+(function(){
+  const path = require('path'), file = path.join(__dirname, '..', 'assets', 'hamilton-set.glb');
+  const errs = w.__errs || (w.__errs = []);
+  const fail = m => { console.log('  ERR the Hamilton set file: ' + m); errs.push('the Hamilton set file: ' + m); };
+  if(!fs.existsSync(file)) return fail('assets/hamilton-set.glb is not there');
+  const buf = fs.readFileSync(file);
+  if(buf.toString('ascii', 0, 4) !== 'glTF') return fail('not a GLB');
+  const len = buf.readUInt32LE(12);
+  const json = JSON.parse(buf.toString('utf8', 20, 20 + len));
+  const mats = (json.materials || []).length;
+  let tris = 0;
+  for(const m of json.meshes || []) for(const p of m.primitives || []){
+    const a = json.accessors[p.indices];
+    tris += a ? a.count / 3 : json.accessors[p.attributes.POSITION].count / 3;
+  }
+  const imgs = (json.images || []).length;
+  if(mats > 8) fail(mats + ' materials against the budget of 8');
+  if(tris > 150000) fail(tris + ' triangles against the budget of 150,000');
+  if(tris < 20000) fail('only ' + tris + ' triangles — that is not the set');
+  if((json.nodes || []).some(n => n.camera !== undefined) || (json.extensions && json.extensions.KHR_lights_punctual))
+    fail('the file carries a camera or a light');
+  console.log('  ok  the Hamilton set file: ' + tris + ' triangles, ' + mats + ' materials, ' + imgs + ' images, ' +
+              (buf.length / 1048576).toFixed(1) + ' MB');
+})();
 process.exit((w.__errs||[]).length ? 1 : 0);

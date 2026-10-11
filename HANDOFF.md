@@ -224,6 +224,107 @@ compare the *same* production across stages instead.
 
 ---
 
+## NEXT SESSION: **LAND THE HAMILTON SET, THEN DECIDE WHAT ELSE OF HAMILTON IS WANTED** (2026-10-11, FE)
+
+Rulings at **FE**. Suite count **21**. `main` is still **`4125f6f`**; the
+work is on **`hamilton-set` (`f4d9a90`, pushed, PR not yet opened** — the
+agent's permission layer refused the API call, so Jack opens it from the
+compare page). Read STATE.md's NEWEST block first.
+
+1. **Open and merge the PR**, then the post-merge protocol: `main` rebuilds
+   byte-identical, `node tools/artnet-map.js` reproduces `docs/ARTNET.md`,
+   21/21 on the merged result, branch deleted local and remote. **`main` is
+   red until this merges** (`beetlejuice.js`, the Midtown glb — see the Done
+   block below and TRAPS).
+2. **Node.** This machine has only the portable copy in the session scratch
+   folder. `winget install OpenJS.NodeJS.LTS` — **Jack runs it**, not the
+   agent (TRAPS, the sandbox). `tests/node_modules` is installed.
+3. **Look at it.** Load HAMILTON on the desktop build served from the repo
+   (the model fetches; `file://` cannot) and from Pages after the merge. The
+   stand-in shows for a second or two on a slow line, then the brick and
+   timber replace it. Headset run still owed, now for this too.
+4. **Then Jack's calls, in FUTURE.md PART 2 "Hamilton":** walkables on the
+   model, lanterns on the real gallery, the rig from `Patch.json`, and whether
+   a cue-stack reconstruction from the 128 exported cues is wanted at all.
+
+## DONE — 2026-10-11: the Hamilton set is a model on the stage (the `hamilton-set` branch, RULING FE)
+
+Jack's machine again. Two things happened in one long session: an assessment
+of two Hamilton source packs he had downloaded, and then — on his instruction —
+the set from one of them onto the stage.
+
+**The packs.** *The Hamilton Programming Project* (ETC's official Eos Augment3d
+training pack, non-commercial) and a zip of the 2015 Richard Rodgers light plot
+PDFs. The ETC pack's `.esf3d` is a zip; inside, `working.a3d` is another zip
+whose `Scene/Patch.json` holds all 445 patched channels with world positions in
+metres (y = depth, z = up; the FOH truss at y −17.5), `Scene/Fixture.json` the
+21 fixture types, and `Resources/Hamilton Full Set*.dae` is Rod Lemmond's full
+set model (401k polys, ten flat greys, no UVs, Y-up, mm with a 0.001 node
+scale). The cue states are in the binary `showdat.dat` and are NOT parseable;
+the route is Eos Nomad (free) → File > Export > CSV. **Both are in Jack's
+Downloads, not the repo.**
+
+**RULING FE** — Jack: *"can you put the set model onto the stage then update
+state and handoff."* This extends RULING AV (Beetlejuice modelled on the
+production, AO repealed for it) to HAMILTON, scoped to it. The other three
+shows keep their interpretation note and the assertion that pinned AV's scope
+now pins FE's as well. The licence is ETC's non-commercial one; recorded in
+`assets/README.md` against the day the repo goes public.
+
+**What was built:**
+- `tools/blender/hamilton_set.py` — parses the COLLADA itself (Blender 5.2
+  removed the importer), drops the theatre (proscenium surround, borders, and
+  the 0.2 m floor slab — the game keeps its deck because the revolves are cut
+  into it), splits the two mixed grey groups by face normal (vertical = brick,
+  flat = timber plank), maps the rest onto post/rail/iron, generates brick and
+  three tinted grain maps, planar-dissolves 400k CAD triangles to **65,949**,
+  box-projects UVs, exports Y-up metres. It prints the turntable rings it finds
+  on the floor: **centre z +0.95 (model frame), r 3.82 and 2.59.**
+- `assets/hamilton-set.glb` (6.8 MB, 5 materials) — WIRED IN: `p5i`
+  `HAM_MODEL`/`loadHamiltonSet`/`hamApplyModel`, hooked from `showLoad` beside
+  `loadSetModels`. Placed, not fitted: `HAM_MODEL.z` −3.91 carries the model's
+  frame so its turntable centre lands at z −2.96 (the ETC cone sheet's
+  measurement of the real one, upstage of the arch). Same shrink, validator,
+  freeze, pinned-group discipline and "the stand-in plays" fallback as the
+  Beetlejuice loader.
+- `p5f` — the hand-built structure is filed into one group, `SHOW.hamStand`,
+  which the apply strips along with its walk entries and its lanterns
+  (`hamPruneStandIn`). `REV` moved from (−5.6, 6.6, 3.4) to **(−2.96, 3.82,
+  2.59)**; the model's rings and the game's discs are the same circles, held
+  by a test against `HAM_MODEL.tt`.
+- Tests: five new cases in `tests/sets.js` (the FE note; revolves match
+  `HAM_MODEL.tt`; the stand-in is one group with ≥3 walkables and the lanterns,
+  and a 2 m box applied through `hamApplyModel` takes it out, prunes exactly
+  its walkables, lands seated at y 0 / x 0 / z −3.91, frozen, revolves intact;
+  strike-and-reload gives a fresh stand-in; no-fetch resolves and touches
+  nothing) and a node-side read of the GLB (≤8 materials, 20k–150k triangles,
+  no camera or light). `beetlejuice.js`: the AO/AV note case excludes Hamilton
+  and asserts FE's note; the on-disk check accepts `HAM_MODEL` and any `.glb`
+  named in `assets/README.md`. All negative-checked against `main`'s build in a
+  detached worktree (`git worktree add … main`, the new suites copied in,
+  `NODE_PATH` at the real `node_modules`).
+
+**What was found on the way, now in TRAPS:** `main`'s suite had been RED since
+#221 (the Midtown glb trips "committed but no manifest entry fetches them") and
+nobody knew, because that round had no Node — a round that cannot run the
+suites must say so and must not call the result green. Installers and
+`msiexec` launched from the agent's tools cannot write under `AppData\Local`
+(Windows Installer 1622), even elevated; Jack double-clicking the same file
+worked first time. Blender 5.x has no COLLADA importer. The agent's Bash tool
+truncates a heredoc past ~100 lines and reports `unexpected EOF`; write the
+file with the file tool instead.
+
+**Also this session, not in the repo:** Eos Nomad v3.3.10 installed; the ETC
+show file opened in it (driven through the window by screenshot and mouse,
+because OSC is off by default and the GUI is the only export path) and
+exported to CSV — **128 distinct cues, 333 rows with parts, 111 presets, 41
+colour / 118 beam palettes, 280 groups, 45 effects, 659 channels, 200,900
+level rows.** Cue numbers run 0.5–1271 in thirteen islands (36 → 190, 476 →
+631, 894 → 1039…): one moment per training exercise, matching the 112 cue
+photos; about a fifth of the real stack. The rig, presets and palettes are
+complete. Nothing of it is in the repo; FUTURE.md PART 2 carries what a
+reconstruction would be.
+
 ## DONE — 2026-10-10 (second session): the scan's holes, found by raycast (the `midtown-holes` branch)
 
 Same machine, same asset, same shape of PR: **assets and tools only, nothing in

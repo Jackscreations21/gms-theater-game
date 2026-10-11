@@ -479,6 +479,40 @@ latent and can wait for whoever next touches the Art-Net gates.**
 
 Rough is fine. Add to this freely.
 
+### Hamilton — the real set is on the stage; what is still ours (2026-10-11, RULING FE)
+
+The set model landed (`assets/hamilton-set.glb`, p5i `loadHamiltonSet`). What
+it does not do yet, and what the ETC pack could still give:
+
+- **Walkables.** The model is scenery only: no `walk_` meshes, so the galleries
+  and the two staircases cannot be climbed. A 66k-triangle mesh cannot go on
+  `WALKABLE` (TRAPS, the 4.29 ms lesson), so this wants a handful of low-poly
+  `walk_` boxes over the gallery decks and treads, exported alongside by the
+  same script.
+- **Lanterns and sconces.** Ours went with the stand-in. The model has sconce
+  blocks (grey 238, now `iron`); hanging lanterns on the real gallery rail, on
+  `SHOW.neon`, is one evening.
+- **Materials.** Brick and grain are generated in the build script; a brick
+  normal map and a plank roughness map would do more than more triangles. Five
+  materials against the budget of eight — three spare.
+- **The rig, from `Scene/Patch.json`:** 445 channels with world positions in
+  metres and 21 fixture types. Generating the Hamilton plot from it (positions
+  → `stageToWorld`, types → profile/PAR/mover, gobo loads from the 14 images)
+  is mechanical. It overruns one Art-Net universe at 7 channels a lantern:
+  needs a second universe or a compressed Hamilton block in `docs/ARTNET.md`.
+- **The cue stack, from the Nomad export** (`Downloads\…Intro - Rev A.csv`,
+  not committed): 128 distinct cues in 13 islands with fade and follow times,
+  111 presets, all palettes and groups. About a fifth of the real stack; a
+  full show means ~500 cues reconstructed by eye from the 112 cue photos, in
+  Binkley's own palettes and presets, labelled as a reconstruction. Timing to
+  a clock needs a recording from Jack (the Beetlejuice route).
+- **Follow spots:** the Broadway pack's spot sheet is one page, the opening
+  two numbers only.
+- **Turntable moves:** not in any file — inferred from cue labels ("Trans
+  /Turntable", "Outer Ring CC").
+- **Licence:** ETC's pack is non-commercial; `assets/README.md` says so. The
+  Broadway plot PDFs are not ETC's and are not to be committed.
+
 ### Realism — the Midtown scan, and the options list (2026-10-10)
 
 Jack asked for the game to "look a lot more realistic". The audit found most of

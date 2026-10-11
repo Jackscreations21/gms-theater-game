@@ -102,7 +102,13 @@ function hamiltonCurtainCanvas(){
 SHOWS.hamilton = {
   name: 'HAMILTON',
   blurb: 'Brick and timber, a gallery across the back, rope overhead and two revolves that turn.',
-  note: 'An interpretation in the show’s own vocabulary, not a copy of anyone’s design.',
+  /* RULING FE (2026-10-11) — the owner asked for the real set on the stage, which
+     extends RULING AV's repeal of AO to this show.  The set is David Korins'
+     design, from the model ETC ships in the Hamilton Programming Project; the
+     hand-built structure below is now the STAND-IN that plays until the file
+     lands (assets/hamilton-set.glb, p5i loadHamiltonSet).  beetlejuice.js pins
+     the other three shows to their interpretation notes still. */
+  note: 'Modelled on the production: David Korins’ set, from the ETC Hamilton Programming Project model (RULING FE).',
   load(){
     const G = showRoot();
     SHOW.neon = []; SHOW.neonLevel = 0; SHOW.neonTarget = 1; SHOW.neonLights = [];
@@ -116,7 +122,12 @@ SHOWS.hamilton = {
     const iron   = new T.MeshStandardMaterial({color:0x2e3238, roughness:.6, metalness:.6});
 
     /* ---- the deck: boards running upstage, with the revolve rings cut in ---- */
-    const REV = {cx:0, cz:-5.6, rOut:6.6, rIn:3.4};
+    /* RULING FE — the real turntables, measured off the model's own floor rings by
+       tools/blender/hamilton_set.py: centre 2.96 m upstage of the arch, 3.82 m and
+       2.59 m radius.  HAM_MODEL.tt in p5i carries the same three numbers and a
+       test holds them together; they used to be -5.6 / 6.6 / 3.4, sized to the
+       hand-built structure rather than to anything measured. */
+    const REV = {cx:0, cz:-2.96, rOut:3.82, rIn:2.59};
     {
       const sh = new T.Shape(), HW = D.stageW/2;
       const usZ = -(D.backWall + 0.4);
@@ -186,7 +197,19 @@ SHOWS.hamilton = {
 
     /* ================================================================
        THE STRUCTURE — brick below, timber gallery above
+
+       THE STAND-IN (RULING FE).  Everything this block adds to G is the
+       hand-built structure that plays until assets/hamilton-set.glb lands —
+       in jsdom, over a slow fetch, on a clone without the file.  It is
+       filed into one group so hamApplyModel (p5i) can take it out in one
+       move, walkables and lanterns with it; the deck, the revolves, the
+       curtain and the brick beyond stay, because the model carries none of
+       them.  The lanterns are ours and go with the stand-in on purpose: at
+       the stand-in's depth they would hang behind the model's back wall.
        ================================================================ */
+    const STAND = new T.Group(); STAND.name = 'hamilton stand-in';
+    G.add(STAND); SHOW.hamStand = STAND;
+    const standFrom = G.children.length;
     const H = {z:D.backWall + 4.2, x0:-10.6, x1:10.6, gall:4.3, top:8.6};
     {
       /* the brick back wall of it, with a big arch in the middle */
@@ -286,6 +309,10 @@ SHOWS.hamilton = {
         SHOW.neonLights.push({light:l, power:1.0});
       });
     }
+
+    /* file what the structure block added to G into the stand-in group.
+       Object3D.add re-parents, so each move shortens G.children by one. */
+    while(G.children.length > standFrom) STAND.add(G.children[standFrom]);
 
     /* ---- machines rigged on the set ---- */
     if(typeof addShowSmoke === 'function'){

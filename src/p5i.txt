@@ -4520,3 +4520,122 @@ function loadSetModels(){
     return out;
   });
 }
+
+/* ==========================================================================
+   HAMILTON — THE SET IS A MODEL (RULING FE, 2026-10-11).
+
+   The owner asked for the real set on the stage.  The file is Rod Lemmond's
+   model of David Korins' design, as ETC ships it inside the Hamilton
+   Programming Project (non-commercial use), rebuilt into a game-sized GLB by
+   tools/blender/hamilton_set.py: the theatre's own proscenium, borders and
+   floor stripped out, the ten flat greys mapped onto five materials, 400k
+   CAD triangles planar-dissolved to 66k.  It arrives in metres with the deck
+   at y = 0 and x centred, so unlike the Beetlejuice sets it is PLACED, not
+   fitted: `z` carries the model's own frame to where the real turntable
+   stands (its centre is at +0.95 in the file; -2.96 is where RULING FE puts
+   it, 2.96 m upstage of the arch, which is what the ETC cone sheet measures).
+
+   `tt` is the same three numbers p5f's REV builds the revolves from.  They
+   are declared here as well so a test can hold the two in step: the rings
+   drawn on the model's floor and the discs the game turns have to be the
+   same circles, or the set stands on turntables that are not under it.
+
+   One file, one stand-in (SHOW.hamStand, p5f), so this is the Beetlejuice
+   machinery without the manifest: the same shrink, the same validator, the
+   same freeze, the same "the stand-in plays" fallback — and the same
+   discipline that the fetch pins the group it set out from, because a strike
+   or a walk to the other building while the file is in flight must not land
+   it on a stage that has moved on.
+   ========================================================================== */
+const HAM_MODEL = {url:'assets/hamilton-set.glb', z:-3.91,
+                   tt:{z:-2.96, rOut:3.82, rIn:2.59}};
+
+/* is `o` somewhere under `root`? */
+function hamUnder(o, root){ let p = o; while(p){ if(p === root) return true; p = p.parent; } return false; }
+
+/* the stand-in is leaving: everything it registered goes with it — its
+   gallery and stairs off the walk lists (or you stand on a floor that is no
+   longer there, the bjPruneWalk lesson), its lanterns off the neon lists
+   (or updateNeon writes colour into meshes nobody can see, every frame) */
+function hamPruneStandIn(stand){
+  for(let i = SHOW.walk.length - 1; i >= 0; i--){
+    const o = SHOW.walk[i];
+    if(!hamUnder(o, stand)) continue;
+    SHOW.walk.splice(i, 1);
+    if(typeof WALKABLE !== 'undefined'){ const j = WALKABLE.indexOf(o); if(j >= 0) WALKABLE.splice(j, 1); }
+    o.userData.wasWalkable = false;
+  }
+  if(SHOW.neon) SHOW.neon = SHOW.neon.filter(e=>!hamUnder(e.mesh, stand));
+  if(SHOW.neonLights) SHOW.neonLights = SHOW.neonLights.filter(e=>!hamUnder(e.light, stand));
+}
+
+/* land a parsed model: place it, take the stand-in out, register and freeze.
+   Returns false when there is no Hamilton on this stage to land it in. */
+function hamApplyModel(root){
+  if(typeof SHOW === 'undefined' || SHOW.key !== 'hamilton' || !SHOW.group) return false;
+  const G = SHOW.group;
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  if(!isFinite(box.min.x) || box.isEmpty()) return false;
+  const c = box.getCenter(new THREE.Vector3());
+  root.position.x -= c.x;              // on the stage axis
+  root.position.y -= box.min.y;        // the deck is y = 0, on every stage
+  root.position.z += HAM_MODEL.z;      // the model's frame, carried upstage to the real turntable
+  const stand = SHOW.hamStand;
+  if(stand){
+    if(stand.parent) stand.parent.remove(stand);
+    hamPruneStandIn(stand);
+    SHOW.hamStand = null;
+  }
+  G.add(root);
+  if(typeof envRegister === 'function') envRegister(root);   // RULING DK — the fog and the grade
+  bjFreeze(root);                                              // RULING AP — scenery does not move
+  SHOW.hamModel = root;
+  return true;
+}
+
+/* the fetch.  Hooked from showLoad (p5c) beside loadSetModels; silent when the
+   file is absent, loud when it is present and wrong.  Returns a promise of
+   {applied, refused, missing} — the game ignores it, the tests await it. */
+function loadHamiltonSet(){
+  const out = {applied:false, refused:null, missing:false};
+  if(typeof SHOW === 'undefined' || SHOW.key !== 'hamilton' || !SHOW.group) return Promise.resolve(out);
+  if(typeof fetch !== 'function'){
+    console.log('[models] no fetch here — the built stand-in plays');
+    return Promise.resolve(out);
+  }
+  const group = SHOW.group;                 // pinned: the stage this fetch set out from
+  if(group.userData.hamApplied) return Promise.resolve(out);
+  return fetch(HAM_MODEL.url)
+    .then(r=>{ if(!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+    .then(buf=>new Promise(res=>{
+      new THREE.GLTFLoader().parse(buf, '', gltf=>{
+        try{
+          if(SHOW.group !== group){ res(); return; }   // struck or re-loaded while in flight
+          const sh = bjShrinkTextures(gltf.scene);
+          if(sh.shrunk)
+            console.log('[models] ' + HAM_MODEL.url + ': ' + sh.shrunk + ' texture' +
+                        (sh.shrunk > 1 ? 's' : '') + ' brought down from ' + sh.from + 'px to ' + BJ_TEX_BUDGET + 'px');
+          const bad = bjValidateModel(gltf.scene);
+          if(bad){
+            console.log('[models] ' + HAM_MODEL.url + ' refused: ' + bad + ' — the stand-in stays');
+            out.refused = bad;
+          } else if(hamApplyModel(gltf.scene)){
+            group.userData.hamApplied = true;
+            out.applied = true;
+          }
+        }catch(e){
+          console.log('[models] ' + HAM_MODEL.url + ' failed to apply (' + e.message + ') — the stand-in stays');
+          out.refused = 'apply: ' + e.message;
+        }
+        res();
+      }, function(){
+        console.log('[models] ' + HAM_MODEL.url + ' would not parse — the stand-in stays');
+        out.refused = 'parse';
+        res();
+      });
+    }))
+    .catch(()=>{ out.missing = true; })      // not delivered: a normal state
+    .then(()=>out);
+}
+
