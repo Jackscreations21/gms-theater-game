@@ -161,17 +161,30 @@ const HOUSE = { deckY: 0.80, glbArchZ: 2.30, archZ: 0.20, backZ: 8.90, openW: 8.
 const SET = { ttZ: 0.95, upstageOfArch: 2.96, fit: 0.62 };
 
 const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// PERFORMANCE (Jack: "the page lags"). Measured on the Intel UHD the browser picked, 1920×1200 at
+// pixel ratio 1.25: 39–55 ms a frame, GPU-bound (the CPU's share ~3 ms). So: ask for the discrete GPU
+// on a dual-GPU laptop; draw at pixel ratio 1 (1.25 cost +3.4 / +10 / +6 ms GPU in the Back of house /
+// Front row / Fly tower views), dropping once to 0.8 if frames still run slow; shadow maps drawn only
+// when a caster moves (static, −2.7…2.9 ms every view, same picture); and the scene drawn only when
+// something changed (render on demand) — an idle page no longer holds the GPU at 100%. MSAA stays on.
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+const PIXEL_CAP = 1, PIXEL_FLOOR = 0.8;                      // the cap, and where it drops to if the average frame stays over 40 ms
+let pixelCap = PIXEL_CAP;
+renderer.setPixelRatio(Math.min(devicePixelRatio, pixelCap));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;                       // static: shadowsDirty() whenever a caster moves, appears or is cut
+let needsRender = true, ready = false;                       // ready: the load is done and the loader hidden; nothing draws before
+function requestRender() { needsRender = true; }
+function shadowsDirty() { renderer.shadowMap.needsUpdate = true; needsRender = true; }
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0d0c0f);
 const camera = new THREE.PerspectiveCamera(65, 1, 0.05, 200);
 const orbit = new OrbitControls(camera, canvas);
 orbit.enableDamping = true; orbit.dampingFactor = 0.08;
+orbit.addEventListener('change', requestRender);
 
 // Viewpoints: [eye, look-at], house frame.
 const VIEWS = {
@@ -199,7 +212,7 @@ function setMode(walk) {
   walking = walk;
   document.getElementById('m-orbit').setAttribute('aria-pressed', String(!walk));
   document.getElementById('m-walk').setAttribute('aria-pressed', String(walk));
-  orbit.enabled = !walk;
+  orbit.enabled = !walk; requestRender();
   const d = new THREE.Vector3(); camera.getWorldDirection(d);
   if (walk) {
     yaw = Math.atan2(-d.x, -d.z); pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
@@ -220,6 +233,7 @@ canvas.addEventListener('pointermove', e => {
   if (!walking || !drag || transform.dragging) return;
   yaw -= (e.clientX - drag.x) * 0.004; pitch -= (e.clientY - drag.y) * 0.004;
   pitch = THREE.MathUtils.clamp(pitch, -1.45, 1.45); drag = { x: e.clientX, y: e.clientY };
+  requestRender();
 });
 canvas.addEventListener('pointerup', e => {
   drag = null;
@@ -237,23 +251,26 @@ addEventListener('blur', () => keys.clear());
 // The house is a photo scan with its lighting baked in: drawn unlit, dimmed by the slider.
 const houseMats = [];
 const bright = document.getElementById('bright');
-function applyBright() { const k = parseFloat(bright.value); houseMats.forEach(m => m.color.copy(m.userData.base).multiplyScalar(k)); }
+function applyBright() { const k = parseFloat(bright.value); houseMats.forEach(m => m.color.copy(m.userData.base).multiplyScalar(k)); requestRender(); }   // the house is unlit and casts nothing: no shadow update
 bright.addEventListener('input', applyBright);
 
 // The set is lit: a soft fill plus a front-of-house wash and two over-stage specials, all on the set only.
 const setGroup = new THREE.Group();
 scene.add(setGroup);
 scene.add(new THREE.HemisphereLight(0xfff2e0, 0x2a2420, 0.55));
-function spot(x, y, z, tx, ty, tz, intensity, angle, color) {
+function spot(x, y, z, tx, ty, tz, intensity, angle, color, cast = true) {
   const s = new THREE.SpotLight(color, intensity, 0, angle, 0.45, 1.6);
   s.position.set(x, y, z); s.target.position.set(tx, ty, tz);
-  s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0005;
+  s.castShadow = cast; if (cast) { s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0005; }
   scene.add(s, s.target); return s;
 }
 spot(-3.5, 7.8, -6.0, 0, 2.5, 5.5, 180, 0.42, 0xffe6c8);   // FOH left
 spot( 3.5, 7.8, -6.0, 0, 2.5, 5.5, 180, 0.42, 0xffe6c8);   // FOH right
-spot(-2.0, 13.0, 6.0, -1, 1, 6.0, 220, 0.5, 0xffd9a8);     // over the stage, warm
-spot( 2.5, 13.0, 7.5,  1, 1, 6.5, 160, 0.5, 0xc8d8ff);     // over the stage, cool
+// The over-stage pair cast no shadow: theirs fall straight down under the set's own pieces — 0.3% / 3.2% / 1.3% of
+// the pixels change, faintly (Back of house / Front row / Fly tower) — and cost 4.2 ms (Back) / 10 ms (Front) of GPU a
+// frame. The FOH pair's shadows are the ones that show (24% of the Front row picture changes without them).
+spot(-2.0, 13.0, 6.0, -1, 1, 6.0, 220, 0.5, 0xffd9a8, false);     // over the stage, warm
+spot( 2.5, 13.0, 7.5,  1, 1, 6.5, 160, 0.5, 0xc8d8ff, false);     // over the stage, cool
 
 // Set size. The group's transform is the only thing that changes; the model is turned 180° inside it.
 function placeSet(s) {
@@ -261,6 +278,7 @@ function placeSet(s) {
   setGroup.position.set(0, HOUSE.deckY, HOUSE.archZ + (SET.upstageOfArch + SET.ttZ) * s);
   document.getElementById('s-fit').setAttribute('aria-pressed', String(s !== 1));
   document.getElementById('s-real').setAttribute('aria-pressed', String(s === 1));
+  shadowsDirty();
 }
 document.getElementById('s-fit').addEventListener('click', () => placeSet(SET.fit));
 document.getElementById('s-real').addEventListener('click', () => placeSet(1));
@@ -302,6 +320,13 @@ const finite = (a, n) => Array.isArray(a) && a.length === n && a.every(Number.is
 const modelOf = u => u.type === 'colorblaze-48' && Array.isArray(u.channels) && u.channels.length <= 2 ? 'assets/fixtures/colorblast.glb' : u.model;
 // Movers hang head-down from their pan alone (the file's beam for them is the horizontal rest direction).
 const MOVERS = new Set(['mac-viper', 'glp-x4', 'vl3500']);
+// LEVEL OF DETAIL. 313 units at 1.37M triangles cost ~10 ms of GPU a frame on Jack's Intel chip, so each
+// unit is a THREE.LOD: the full model up close, and beyond LOD_NEAR world metres (camera to the unit's
+// hang point; the rig sits under the 0.62-scaled set, so these are drawn metres, not real ones) the copy
+// in assets/fixtures/lod/ (tools/blender/fixtures_lod.py: same nodes, transforms and materials, ~1,200
+// triangles a unit, the lens disc untouched). A missing lod file is one warning; its units stay full.
+const LOD_NEAR = 7;
+const lodOf = m => m.replace(/^(.*\/)?([^/]+\.glb)$/, (s, dir, f) => (dir || '') + 'lod/' + f);
 // Fetch the rig file and every model it names, each model once. Never rejects: a missing file is no rig.
 async function loadRig() {
   let data;
@@ -313,13 +338,17 @@ async function loadRig() {
   const units = Array.isArray(data.units) ? data.units : [];
   const models = [...new Set(units.map(modelOf).filter(m => typeof m === 'string'))];
   for (const m of models) if (!SIZES[m]) SIZES[m] = 0.3e6;   // a guess, replaced by the real length on the first progress event
+  for (const m of models) if (!SIZES[lodOf(m)]) SIZES[lodOf(m)] = 0.08e6;
   progress();                                                // the fixtures join the one bar
-  const gltfs = {};
+  const gltfs = {}, lods = {}, noLod = [];
   await Promise.all(models.map(m => load(m).then(g => { gltfs[m] = g; }, e => {
     console.warn(`rig: ${m} not loaded (${e && e.message || e}) — its units are skipped`);
     delete SIZES[m]; delete got[m]; progress();
-  })));
-  return { data, units, gltfs };
+  })).concat(models.map(m => load(lodOf(m)).then(g => { lods[m] = g; }, () => {
+    noLod.push(m.replace(/^.*\//, '')); delete SIZES[lodOf(m)]; delete got[lodOf(m)]; progress();
+  }))));
+  if (noLod.length) console.warn(`rig: no far-level model for ${noLod.sort().join(', ')} (assets/fixtures/lod/) — those units draw full detail at every distance`);
+  return { data, units, gltfs, lods };
 }
 // AIMING. `quat` turns the model's own rest beam (+Z for most; +X for birdie, hazer, s4-lustr,
 // vl3500; −Y colorsource-par; +Y mini-10) onto the unit's beam. Applied to the whole model it
@@ -345,29 +374,41 @@ function panTilt(quat, e) {                                  // → e: {x, y, z}
 }
 const lensBeam = (lens, v) => v.set(0, 0, -1).transformDirection(lens.matrixWorld);
 const DOWN = new THREE.Vector3(0, -1, 0);
+// One detail level of a unit, posed: the head's tilt (or head-down for a mover), the unit's one lens
+// material, rig-marked meshes, no shadows. Both levels go through here, so they are posed identically;
+// the pan (and a headless model's whole turn) is on the unit, the LOD that holds them. → its lens.
+function poseLevel(level, u, g, e, lensMat) {
+  const head = level.getObjectByName('head');
+  if (head && MOVERS.has(u.type)) head.quaternion.setFromUnitVectors(restBeam(g), DOWN);   // head-down
+  else if (head) head.rotation.set(e.x, 0, e.z);           // 'XYZ' with y 0: Rx·Rz
+  level.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = o.receiveShadow = false; o.userData.rig = true;   // the build tools skip anything marked rig
+    if (o.name === 'lens' && lensMat) o.material = lensMat;
+  });
+  return level.getObjectByName('lens');
+}
 function buildRig(src) {
   const group = new THREE.Group(); group.name = 'rig';
   const used = new Set(), skipped = {}, e = new THREE.Euler(), q = new THREE.Quaternion(), b = new THREE.Vector3();
-  let worst = { dot: 2, id: null };
+  let worst = { dot: 2, id: null }, far = 0;
   for (const u of src.units) {
-    const model = modelOf(u), g = src.gltfs[model];
+    const model = modelOf(u), g = src.gltfs[model], lg = src.lods && src.lods[model];
     if (!g) { skipped[u.type] = (skipped[u.type] || 0) + 1; continue; }
     if (!finite(u.pos, 3) || !finite(u.quat, 4)) { console.warn('rig: unit', u.id, 'has no usable pos / quat — skipped'); continue; }
-    const unit = g.scene.clone();                            // geometry and body materials shared; the lens gets its own
+    // The unit is the LOD: name, userData, position and the pan live here, where the rigging code and the
+    // console read and move rig.children. Its levels are clones (geometry and body materials shared).
+    const unit = new THREE.LOD();
     unit.name = String(u.id);
     unit.userData = { id: u.id, channels: u.channels, type: u.type, label: u.label, gel: u.gel, position: u.position || null, hung: !!u.hung, placed: u.placed };
     unit.position.fromArray(u.pos);
     panTilt(q.fromArray(u.quat).normalize(), e);
-    const head = unit.getObjectByName('head'), lens = unit.getObjectByName('lens');
+    const lensMat = u.type !== 'hazer' ? new THREE.MeshBasicMaterial({ color: gelColour(u.gel), toneMapped: false, side: THREE.DoubleSide }) : null;
+    const near = g.scene.clone(), lens = poseLevel(near, u, g, e, lensMat);
     unit.rotation.set(0, e.y, 0);
-    if (head && MOVERS.has(u.type)) head.quaternion.setFromUnitVectors(restBeam(g), DOWN);   // head-down
-    else if (head) head.rotation.set(e.x, 0, e.z);           // 'XYZ' with y 0: Rx·Rz
-    else unit.rotation.set(e.x, e.y, e.z, 'YXZ');            // a model with no head: the whole of it turns
-    unit.traverse(o => {
-      if (!o.isMesh) return;
-      o.castShadow = o.receiveShadow = false; o.userData.rig = true;   // the build tools skip anything marked rig
-      if (o.name === 'lens' && u.type !== 'hazer') o.material = new THREE.MeshBasicMaterial({ color: gelColour(u.gel), toneMapped: false, side: THREE.DoubleSide });
-    });
+    if (!near.getObjectByName('head')) unit.rotation.set(e.x, e.y, e.z, 'YXZ');   // a model with no head: the whole of it turns
+    unit.addLevel(near, 0);
+    if (lg) { const l1 = lg.scene.clone(); poseLevel(l1, u, g, e, lensMat); unit.addLevel(l1, LOD_NEAR); far++; }
     // check: the lens now points along the file's beam (the unit has no parent yet, so this is the set's frame)
     if (lens && !MOVERS.has(u.type) && finite(u.beam, 3)) {
       unit.updateMatrixWorld(true);
@@ -377,13 +418,13 @@ function buildRig(src) {
     group.add(unit); used.add(model);
   }
   const miss = Object.entries(skipped).map(([t, n]) => `${n} ${t}`).join(', ');
-  group.userData.summary = `rig: ${group.children.length} units, ${used.size} models` + (miss ? ` (skipped, no model: ${miss})` : '');
+  group.userData.summary = `rig: ${group.children.length} units, ${used.size} models, ${far} with a far level past ${LOD_NEAR} m` + (miss ? ` (skipped, no model: ${miss})` : '');
   group.userData.worstAim = worst;
   return group;
 }
 function setRig(on) {
   if (!rig) return;
-  rig.visible = on;
+  rig.visible = on; requestRender();                         // the rig casts no shadow: no shadow update
   document.getElementById('r-rig').setAttribute('aria-pressed', String(on));
 }
 document.getElementById('r-rig').addEventListener('click', () => setRig(!(rig && rig.visible)));
@@ -903,10 +944,24 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   houseRoot = house.scene;
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
   registerModelTextures(house.scene, 'house: ', ['deck_fill', 'pros_outer_l', 'back_brick_lo', 'house_ceiling', 'house_floor']);
-  fillTexSelect(); restore({ pieces: BAKED }, baked); loadSaved(); reapplyAll();
-  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer };   // a handle for measuring from the console
+  // The baked pieces first (a baked copy is taken off the pristine geometry), then the saved build, then
+  // the cuts exactly once: restore() of a saved build already ends in reapplyAll(), so it runs here only
+  // when there was no save to restore (or it failed before getting there).
+  fillTexSelect(); restore({ pieces: BAKED }, baked); if (!loadSaved()) reapplyAll();
+  window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty };   // a handle for measuring from the console
+  const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t); orbit.update();
+  // Compile every shader and draw one frame (texture uploads, the shadow maps) behind the loader, so the
+  // first visible frame does not freeze for a second.
+  loadtxt.textContent = 'Compiling…'; bar.style.width = '100%';
+  await new Promise(r => { requestAnimationFrame(r); setTimeout(r, 250); });   // let "Compiling…" paint first; a background tab gets no frame, so a timer backs it (a load wait, not game timing)
+  await renderer.compileAsync(scene, camera);
+  shadowsDirty(); renderer.render(scene, camera);
+  try {                                                      // which GPU the browser gave us — Jack's laptop has an Intel chip and an RTX 5060
+    const gl = renderer.getContext(), dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    console.info('midtown: rendering on', dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER), '· pixel ratio', renderer.getPixelRatio());
+  } catch (e) { /* no extension: nothing to say */ }
   document.getElementById('load').hidden = true;
-  const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t);
+  ready = true; requestRender();
 })().catch(fail);
 
 /* ---------------------------------------------------------------- BUILD MODE
@@ -930,8 +985,9 @@ const baked = new THREE.Group(); baked.name = 'baked'; scene.add(baked);
 const transform = new TransformControls(camera, canvas);
 transform.setSize(0.8);
 scene.add(transform);
-transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value && !walking; });
-transform.addEventListener('objectChange', () => { syncFields(); markDirty(); });
+transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value && !walking; requestRender(); });
+transform.addEventListener('objectChange', () => { syncFields(); markDirty(); });   // markDirty → shadowsDirty: the shadow follows the drag
+transform.addEventListener('change', requestRender);       // hover highlight, attach / detach, mode, the drag itself
 const B = id => document.getElementById(id);
 const panel = B('build'), status = B('b-status');
 let selected = null, editing = false, dirty = false, dirtyAt = 0;
@@ -956,7 +1012,7 @@ function applyTexture(obj, tex) {                            // tex: {name} | {i
   const d = obj.userData; if (d.cutter) return;
   let make;
   if (tex.image) {
-    const t = new THREE.TextureLoader().load(tex.image); t.colorSpace = THREE.SRGBColorSpace;
+    const t = new THREE.TextureLoader().load(tex.image, requestRender); t.colorSpace = THREE.SRGBColorSpace;   // the image arrives a moment later: draw it then
     make = () => new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide });
     d.tex = { image: tex.image };
   } else if (TEX[tex.name]) { make = TEX[tex.name]; d.tex = { name: tex.name }; }
@@ -1000,7 +1056,7 @@ function addPiece(type) {                                    // where the view i
 }
 let houseRoot = null; function houseScene() { return houseRoot ? [houseRoot] : []; }
 function select(obj) {
-  selected = obj;
+  selected = obj; requestRender();
   if (obj !== cutBox && cutBox.visible && obj) cutBox.visible = false;      // one delete box at a time; selecting elsewhere drops it
   if (obj) transform.attach(obj); else transform.detach();
   B('b-name').textContent = obj ? obj.name : 'nothing';
@@ -1137,6 +1193,7 @@ function applyCut(c) {
 function reapplyAll() {
   for (const [o, orig] of originals) { if (orig) o.geometry.setIndex(orig.slice()); else o.geometry.setIndex(null); }
   for (const c of [...BAKED_CUTS, ...cuts]) applyCut(c);
+  shadowsDirty();                                            // cut geometry casts differently
   B('b-cutn').textContent = `${cuts.length} delete${cuts.length === 1 ? '' : 's'} this session` + (BAKED_CUTS.length ? `, ${BAKED_CUTS.length} baked` : '') + '. Move and scale the red box, then Confirm (or Enter).';
 }
 function placeCutBox() {
@@ -1152,7 +1209,7 @@ function confirmCut() {
   cuts.push(c); applyCut(c);
   cutBox.visible = false; select(null); reapplyAll(); markDirty();
 }
-function cancelCut() { cutBox.visible = false; if (selected === cutBox) select(null); }
+function cancelCut() { cutBox.visible = false; requestRender(); if (selected === cutBox) select(null); }
 // COPY AREA (Jack: "a tool where I can select an area and copy it"). Every triangle whose centroid
 // lies inside the box — house scan, fills, set, proscenium — is copied into a new piece, one mesh
 // per source mesh sharing its material, in the box's own frame (its centre is the piece's origin,
@@ -1215,7 +1272,7 @@ B('b-cutundo').addEventListener('click', () => { if (cuts.length) { cuts.pop(); 
 
 // Save and load. Autosave is a dirty flag the frame loop flushes half a second after the last change.
 const SAVE_KEY = 'midtown.build.v1';
-function markDirty() { dirty = true; dirtyAt = clock.elapsedTime; }
+function markDirty() { dirty = true; dirtyAt = clock.elapsedTime; shadowsDirty(); }   // every build change: save, redraw, re-shadow
 function serialize() {
   return { v: 1, cuts, pieces: built.children.map(o => ({ type: o.userData.type, name: o.name, tex: o.userData.tex, tile: o.userData.tile, tint: o.userData.tint, src: o.userData.src,
     p: o.position.toArray().map(x => +x.toFixed(3)), r: o.rotation.toArray().slice(0, 3).map(x => +x.toFixed(4)), s: o.scale.toArray().map(x => +x.toFixed(3)) })) };
@@ -1235,13 +1292,17 @@ function restore(data, into = built) {
   serial = built.children.length;
   if (into === built) { cuts = (data && data.cuts) || []; reapplyAll(); }
   B('b-bakedn').textContent = baked.children.length ? baked.children.length + ' baked' : 'nothing baked yet';
+  shadowsDirty();                                            // new casters (the baked restore has no reapplyAll of its own)
 }
 function save() {
   dirty = false;
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(serialize())); status.textContent = `Saved in this browser · ${built.children.length} piece${built.children.length === 1 ? '' : 's'}.`; }
   catch (e) { status.textContent = 'Could not save in this browser (' + (e.message || e) + ') — use Export.'; }
 }
-function loadSaved() { try { const t = localStorage.getItem(SAVE_KEY); if (t) restore(JSON.parse(t)); } catch (e) { console.warn('saved build not restored', e); } }
+function loadSaved() {                                       // → true when a save was restored (restore() then ran reapplyAll())
+  try { const t = localStorage.getItem(SAVE_KEY); if (t) { restore(JSON.parse(t)); return true; } } catch (e) { console.warn('saved build not restored', e); }
+  return false;
+}
 B('b-export').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(serialize(), null, 1)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'midtown-build.json'; a.click(); URL.revokeObjectURL(a.href);
@@ -1269,13 +1330,27 @@ function resize() {
   const r = canvas.parentElement.getBoundingClientRect();
   renderer.setSize(r.width, r.height, false);
   camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+  requestRender();
 }
 new ResizeObserver(resize).observe(canvas.parentElement); resize();
 
 const clock = new THREE.Clock();
+// The adaptive fallback: the frame after a drawn frame shows what drawing costs; if the last SLOW_N of
+// those average over SLOW_MS, the pixel ratio drops to PIXEL_FLOOR, once, for the rest of the session.
+const SLOW_MS = 40, SLOW_N = 60, drawnDts = [];
+let drewLast = false;
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1);
+  if (drewLast && ready && pixelCap > PIXEL_FLOOR) {
+    drawnDts.push(dt * 1000); if (drawnDts.length > SLOW_N) drawnDts.shift();
+    const avg = drawnDts.reduce((a, b) => a + b, 0) / drawnDts.length;
+    if (drawnDts.length === SLOW_N && avg > SLOW_MS) {
+      pixelCap = PIXEL_FLOOR; renderer.setPixelRatio(Math.min(devicePixelRatio, pixelCap)); resize();
+      console.info(`midtown: frames averaged ${avg.toFixed(1)} ms over ${SLOW_N} drawn frames — pixel ratio dropped to ${renderer.getPixelRatio()} for this session`);
+    }
+  }
   if (dirty && clock.elapsedTime - dirtyAt > 0.5) save();
+  let moving = !!tween;                                      // a tween, a walk or orbit damping draws every frame
   if (tween) {
     if (tween.t < 1) tween.t = Math.min(1, (performance.now() - tween.start) / 1100);
     const k = tween.t < .5 ? 2 * tween.t * tween.t : 1 - Math.pow(-2 * tween.t + 2, 2) / 2;
@@ -1292,10 +1367,10 @@ renderer.setAnimationLoop(() => {
     if (keys.has('KeyA') || keys.has('ArrowLeft')) camera.position.addScaledVector(r, -sp);
     if (keys.has('KeyE')) camera.position.y += sp;
     if (keys.has('KeyQ')) camera.position.y -= sp;
-  } else {
-    orbit.update();
-  }
-  renderer.render(scene, camera);
+    if (keys.size) moving = true;
+  } else if (orbit.update()) moving = true;                  // true while the camera moved: input, or damping still settling
+  drewLast = ready && (needsRender || moving);               // render on demand: an idle page draws nothing
+  if (drewLast) { needsRender = false; renderer.render(scene, camera); }
 });
 </script>
 </body>

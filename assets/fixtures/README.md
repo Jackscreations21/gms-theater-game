@@ -16,6 +16,20 @@ one** from the candidate sheet (the chooser artifact, 2026-10-11); the picks are
 - Budgets: ≤ 12k triangles, ≤ 8 materials (most are 2–6k and 2–3). `node tools/fixtures-check.js`
   reads every file's JSON chunk and fails on a broken tree, a budget, or a hang point off the origin.
 
+## `lod/` — the far level
+
+`lod/<name>.glb` is the same fixture cut to **800 triangles a unit** (1,000 for `mac-viper`,
+`vl3500`, `glp-x4`, `lycian`), lens included, for the far level of a `THREE.LOD`: same node
+names, tree, transforms and materials, the lens disc untouched, the hang (or floor) point pinned
+so the collapse cannot move it. `midtown.html` swaps to it past 7 m (world) from the camera; 313
+units go from 1.37M triangles to about 0.4M seen from the back of the house. Made by
+
+    blender -b --python tools/blender/fixtures_lod.py -- assets/fixtures assets/fixtures/lod
+    node tools/fixtures-check.js assets/fixtures/lod --lod
+
+Rerun it whenever a full model changes. A missing lod file is one console warning; its units
+draw full detail at every distance.
+
 ## Sources and licences
 
 Seventeen are from **SketchUp 3D Warehouse**, under its General Model License: free to use and
