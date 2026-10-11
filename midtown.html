@@ -585,6 +585,7 @@ function cutMatrix(c) {
   return m.invert();
 }
 function applyCut(c) {
+  scene.updateMatrixWorld(true);                             // before the first frame the set's matrices are stale
   const inv = cutMatrix(c), p = new THREE.Vector3(), q = new THREE.Vector3();
   const inside = v => { q.copy(v).applyMatrix4(inv); return Math.abs(q.x) <= 0.5 && Math.abs(q.y) <= 0.5 && Math.abs(q.z) <= 0.5; };
   for (const o of cuttables()) {
@@ -633,6 +634,7 @@ function cancelCut() { cutBox.visible = false; if (selected === cutBox) select(n
 function makeCopy(src) {
   const frame = new THREE.Matrix4().compose(new THREE.Vector3().fromArray(src.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(src.r[0], src.r[1], src.r[2])), new THREE.Vector3(1, 1, 1));
   const toLocal = frame.clone().invert(), inv = cutMatrix(src);
+  scene.updateMatrixWorld(true);                             // before the first frame the set's matrices are stale
   const p = new THREE.Vector3(), q = new THREE.Vector3();
   const inside = v => { q.copy(v).applyMatrix4(inv); return Math.abs(q.x) <= 0.5 && Math.abs(q.y) <= 0.5 && Math.abs(q.z) <= 0.5; };
   const g = new THREE.Group();
