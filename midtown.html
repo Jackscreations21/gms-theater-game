@@ -2675,10 +2675,524 @@ function buildLightsPanel() {
 }
 
 /* ---- THE CHECK (agent J) ----
-   Agent J's region: lxCheck drives every unit through its level, colours, movement and gobos and reports what failed.
-   MIDTOWN.lx.check calls it. */
-function lxCheck(opts) { return 'not written yet (agent J)'; }
-
+   Jack: "check that every light is working with the movements, gobos and colors." lxCheck (MIDTOWN.lx.check, the panel's
+   "Check all") drives EVERY unit through what the engine, the colour models and the wheels claim, and measures what is drawn
+   — the lens material, the glare cloud's buffer, the cone's matrix, the pool's matrix and map, the beam's uniforms, the real
+   lights — never a flag it did not test. Per unit:
+   1 LEVEL   at 0: lens dark glass, no cone, no pool, no glare, no real light. At 1, alone: lens = the drawn colour, glare lit
+             in it, a real light in it (types with power), a cone from the lens along the beam (not the strips), a pool where
+             the beam lands, its centre on the ray (lift 12 mm) — and the landing re-found by testing EVERY triangle of the
+             collision grid (no grid walk: lxCast's DDA is what is being checked), within 2 mm. A beam that lands nowhere is
+             followed to where it leaves the house scan's box: a NOTE when it leaves (the scan is open there), a FAIL when it
+             would stay inside 40 m. Hazers: the haze goes to 1 at full and back.
+   2 COLOUR  gel units: the hung gel under the lamp at full (±0.002 linear RGB, and the panel's own-gel colour agrees), warmer at
+             30% (a xenon followspot: unchanged — no shift), set({gel:'R26'}) re-gels (frames: the nearest frame). CMY movers
+             asked R26 / R80 / L201: within 0.02 of the best this lamp's flags can make (the asked colour clipped to the lamp's
+             white: a 6000 K lamp has no 3200 K-gel blue to spare) — the 1% flag leak is what that 0.02 allows; the raw
+             distance is reported too. Every colour-wheel slot and frame draws its filter × the lamp. LEDs asked pure R, G, B:
+             exact (±0.001) — the S4 Lustr's seven emitters cannot, so it must reach the best its emitters can (a 4,000-step
+             projected-gradient fit, ±0.005) and is noted. Hazers take no colour. set({color}) with a gel, a hex, a CSS name, a
+             number, an array and a temperature never throws, on every type.
+   3 GOBO    every slot on lx.wheelOf(unit) binds that pattern (a non-blank 512² canvas) to the pool's map and the beam's uGobo
+             (uUseGobo 1); a slot it lacks reads open; a gobo by name works; a template Source Four has its template in at load
+             and opens with gobo 0. Rotation: goboRate 90°/s for 1 s of driven ticks turns goboRot 90° (±0.01°) and the beam's
+             uGoboRot with it.
+   4 MOVE    movers: pan 0 / tilt 0 is straight down (dot > 0.9999); tilt +45 turns the beam 45° (±0.05°); pan +90 at tilt 45
+             turns it +90° about world Y (dot > 0.9999); back to 0/0 restores it; a 180° pan with a 90° tilt at speed arrives in
+             max(180 / pan speed, 90 / tilt speed) ±10%; aim at centre stage (0, 0.85, 3) passes within 5 cm of it and lands
+             within 5 cm — or the surface it stops on is named. Both detail levels' lenses agree (dot > 0.99999, 1 cm), every
+             unit. Fixed units: pan / tilt leave the beam where it was.
+   5 ZOOM    a zoom range widens the cone (lx.beam radius AND the cone mesh's own scale) from min to max; fixed focus: no change.
+   6 SCALE   once, for all: a test state on every unit, placeSet to the other scale and back: the state is kept, every pool
+             re-lands (finite), and at the scale it began every landing point is back within 2 cm.
+   Time: everything timed (travel, gobo rotation) is advanced by driving lxTick(1/60) by hand, synchronously — the frame
+   loop cannot run in between, so nothing fights it; no timer anywhere. A step-through or its Play is stopped first. The rig
+   is left exactly as found: every unit's state (a fade or journey in progress is taken at its end), its colour state (gel,
+   CMY, CTO, wheel, frame, emitters), the haze, the work light, the rig shown or hidden and the set's scale.
+   check({show: true, every: 1}): Jack WATCHES it instead — the panel's step-through over every lamp in rig order, its label in
+   the panel, Play moving on every `every` seconds of frame time (lxPanelTick, off the frame dt), stopping after the last unit
+   and putting the rig back. → the report: { ok, scale, units: [{ id, channels, type, position, pass, fails, notes, lands }],
+   byType, byPosition, noteClasses, summary, ms }. */
+const LXJ = { show: null, pending: 0, last: null, map: null, cov: [], box: null, E: {} };
+const LXJ_DT = 1 / 60;                                        // the check's tick: lxTick driven by hand
+const LXJ_TOL = { col: 0.002, cmy: 0.02, led: 0.001, lustr: 0.005, dir: 0.9999, deg: 0.05, lod: 0.99999, aim: 0.05, travel: 0.10, rot: 0.01, land: 0.002, back: 0.02 };
+const LXJ_CENTRE = new THREE.Vector3(0, 0.85, 3);            // centre stage, on the deck, for aim
+const lxjDist = (a, b) => Math.hypot(a.r - b.r, a.g - b.g, a.b - b.b);
+const lxjHex = c => '#' + c.getHexString();
+// A collision-grid triangle → its mesh: colliderMeshes() in buildCollider's order, their triangle counts summed (rebuilt with the grid).
+function lxjMeshOf(t) {
+  if (!LXJ.map || LXJ.map.T !== col.T) {
+    const list = colliderMeshes(), ends = []; let n = 0;
+    for (const o of list) { const g = o.geometry; n += Math.floor((g.index ? g.index.count : g.attributes.position.count) / 3); ends.push(n); }
+    LXJ.map = { T: col.T, list, ends, ok: n === col.n };
+  }
+  const M = LXJ.map; if (!M.ok || t < 0) return null;
+  let lo = 0, hi = M.ends.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (M.ends[m] > t) hi = m; else lo = m + 1; }
+  return M.list[lo];
+}
+function lxjLabel(o) {
+  if (!o) return 'nothing named';
+  const name = o.name || (o.material && o.material.name) || 'a mesh';
+  for (let p = o; p; p = p.parent) {
+    if (p === houseRoot) return `the house scan (${name})`;
+    if (p === baked) return `a baked piece (${name})`;
+    if (p === built) return `a built piece (${name})`;
+    if (p === rig) return `rigging (${name})`;
+    if (p === setGroup) return `the set (${name})`;
+    if (p.parent === scene && p.name) return p === o ? p.name : `${p.name} (${name})`;
+  }
+  return name;
+}
+// The nearest surface on a ray by testing EVERY collision-grid triangle (no grid walk) and the built pieces. → { dist, obj } or null.
+function lxjBrute(o, d, far) {
+  if (col.stale) buildCollider();
+  let best = far, bt = -1, obj = null;
+  for (let t = 0; t < col.n; t++) { const h = hitTri(t, o.x, o.y, o.z, d.x, d.y, d.z, best); if (h > 0.02 && h < best) { best = h; bt = t; } }
+  if (built.children.length) {
+    lxRay.set(o, d); lxRay.near = 0.02; lxRay.far = best;
+    const h = lxRay.intersectObjects(built.children, true)[0];
+    if (h && h.distance < best) { best = h.distance; bt = -2; obj = h.object; }
+  }
+  return bt === -1 ? null : { dist: best, obj: bt >= 0 ? lxjMeshOf(bt) : obj };
+}
+// A ray that met nothing: where it leaves the house scan's box, and why that is (or is not) all right.
+function lxjExit(o, d) {
+  const B = LXJ.box, f = v => v.toFixed(2);
+  if (!B.containsPoint(o)) return { ok: true, why: `hangs outside the house scan's box (its upstage end is z ${f(B.max.z)}; the set runs on past it), at (${f(o.x)}, ${f(o.y)}, ${f(o.z)}), its beam ${d.y > 0.9 ? 'straight up' : 'pointing (' + [d.x, d.y, d.z].map(f).join(', ') + ')'}: nothing there to meet` };
+  let t = Infinity, face = '';
+  for (const [a, lo, hi, neg, pos] of [['x', B.min.x, B.max.x, 'house-right wall', 'house-left wall'], ['y', B.min.y, B.max.y, 'floor', 'top'], ['z', B.min.z, B.max.z, 'back of the house', 'upstage end']]) {
+    if (Math.abs(d[a]) < 1e-9) continue;
+    const k = ((d[a] > 0 ? hi : lo) - o[a]) / d[a];
+    if (k < t) { t = k; face = d[a] > 0 ? pos : neg; }
+  }
+  const p = o.clone().addScaledVector(d, t), up = d.y > 0.5 ? 'rises' : d.y < -0.5 ? 'falls' : 'runs';
+  if (t >= LX_FAR) return { ok: false, why: `meets nothing in ${LX_FAR} m though it stays inside the house scan — it should have landed` };
+  return { ok: true, why: `${up} out of the house scan through its ${face} at (${f(p.x)}, ${f(p.y)}, ${f(p.z)}), ${t.toFixed(1)} m from the lens, meeting nothing — the scan is open there (above the stage house's cut for the set at 1:1, no roof or wall left)` };
+}
+const LXJ_UP = new THREE.Vector3(0, 1, 0), LXJ_AXES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].map(a => new THREE.Vector3(...a));
+function lxjShut(o) { return LXJ_AXES.filter(d => lxjBrute(o, d, 0.35)).length; }   // how many of the six axis rays from a point meet something within 0.35 m
+function lxjCoverage(s) { return LXJ.cov[s] || (LXJ.cov[s] = lxGoboCoverage(s)); }
+// The best a set of emitters (E: [[r, g, b]…], each 0..1) can do for t: projected gradient, 4,000 steps. → the distance left.
+function lxjBestEmit(E, t) {
+  const e = new Float64Array(E.length), lr = 0.5 / E.reduce((s, v) => s + v[0] * v[0] + v[1] * v[1] + v[2] * v[2], 0);
+  const res = () => { const r = [-t[0], -t[1], -t[2]]; E.forEach((v, j) => { r[0] += v[0] * e[j]; r[1] += v[1] * e[j]; r[2] += v[2] * e[j]; }); return r; };
+  for (let k = 0; k < 4000; k++) { const r = res(); E.forEach((v, j) => { e[j] = lx01(e[j] - lr * 2 * (v[0] * r[0] + v[1] * r[1] + v[2] * r[2])); }); }
+  const r = res(); return Math.hypot(r[0], r[1], r[2]);
+}
+function lxjHalo(r) { const C = LX.halo.geometry.attributes.aColor.array, k = r.i * 3; return [C[k], C[k + 1], C[k + 2]]; }
+function lxjLod(r) {                                          // the two detail levels' lenses: { dot, gap } or null with one level
+  const l1 = r.unit.levels[1] && r.unit.levels[1].object.getObjectByName('lens');
+  if (!l1 || !r.lens) return null;
+  r.unit.updateMatrixWorld(true);
+  const a = lensBeam(r.lens, new THREE.Vector3()), b = lensBeam(l1, new THREE.Vector3());
+  return { dot: a.dot(b), gap: r.lens.getWorldPosition(new THREE.Vector3()).distanceTo(l1.getWorldPosition(new THREE.Vector3())) };
+}
+// A unit as it loads: dark, the type's zoom, no gobo turning, a mover at rest, its colour state made again from the rig file
+// (the hung gel, a template in its holder).
+function lxjFresh(r) {
+  const st = r.st;
+  r.fade.level = r.fade.color = r.fade.zoom = null;
+  st.level = 0; st.zoom = r.T.zoom; st.gobo = 0; st.goboRot = 0; st.goboRate = 0; LX.busy.delete(r);
+  if (r.mover) { st.pan = st.panTo = st.tilt = st.tiltTo = 0; lxPose(r, 0, 0); }
+  delete st.cm; st.color.copy(gelColour(r.unit.userData.gel)); lxColourOf(r.unit, st);
+  r.hitStale = true; LX.dirty.add(r); LX.lightsDirty = true; if (r.T.hazer) LX.hazeDirty = true;
+}
+const LXJ_KEYS = ['gel', 'wheel', 'cto', 'cmy', 'frame', 'rgb', 'emit'];
+function lxjSave() {
+  return { work: LX.work.dur !== null ? LX.work.to : LX.work.level, haze: LX.hazeBase, rig: !!(rig && rig.visible), scale: rig ? rig.userData.placedFor : null,
+    units: LX.recs.map(r => {
+      const st = r.st, F = r.fade, c = st.cm, s = { level: F.level ? F.level.to : st.level, zoom: F.zoom ? F.zoom.to : st.zoom, color: (F.color ? F.color.to : st.color).clone(),
+        pan: st.panTo, tilt: st.tiltTo, gobo: st.gobo, goboRot: st.goboRot, goboRate: st.goboRate, cm: c, lock: c ? c.lock : undefined, keys: {} };
+      for (const k of LXJ_KEYS) if (k in st) s.keys[k] = Array.isArray(st[k]) ? st[k].slice() : st[k] && typeof st[k] === 'object' ? Object.assign({}, st[k]) : st[k];
+      return s;
+    }) };
+}
+function lxjRestore(S) {
+  LX.recs.forEach((r, i) => {
+    const s = S.units[i], st = r.st;
+    r.fade.level = r.fade.zoom = r.fade.color = null;
+    st.level = s.level; st.zoom = s.zoom; st.color.copy(s.color); st.gobo = s.gobo; st.goboRot = s.goboRot; st.goboRate = s.goboRate;
+    if (r.mover) { st.pan = st.panTo = s.pan; st.tilt = st.tiltTo = s.tilt; lxPose(r, s.pan, s.tilt); }
+    for (const k of LXJ_KEYS) if (k in s.keys) st[k] = s.keys[k]; else delete st[k];
+    if (s.cm) { st.cm = s.cm; s.cm.lock = s.lock; } else delete st.cm;   // its cache still matches the state put back: no re-solve (the Lustr's warm-started solve drifts its emitters a little each time)
+    if (st.goboRate) LX.busy.add(r); else LX.busy.delete(r);
+    r.hitStale = true; LX.dirty.add(r);
+  });
+  LX.hazeBase = S.haze; LX.work.dur = null; LX.work.from = LX.work.to = S.work; lxWorkApply(S.work);
+  if (rig && rig.visible !== S.rig) setRig(S.rig);
+  lxRefresh();
+}
+// One unit through 1–5. X: the run's shared tallies. → { F (fails), N (notes), I (what it lands on) }.
+function lxjUnit(r, X) {
+  const u = r.unit, ud = u.userData, st = r.st, T = r.T, M = lxModelOf(ud), F = [], N = [], I = {};
+  const fail = s => F.push(s), note = (cls, s) => { N.push(`${cls}: ${s}`); X.noteClass[cls] = (X.noteClass[cls] || 0) + 1; };
+  const set = p => { lxSet(u, p, 0); lxFlush(); };
+  const drawn = () => lxColourOf(u, st).clone();
+  const dir = () => { lxFlush(); if (r.hitStale) lxHitRec(r); return r.dir.clone(); };
+  const COLOURS = ['R26', '#33cc88', 'orchid', 0xff8800, [0.2, 0.4, 0.9], '3200K', 'L201'];
+  lxjFresh(r); lxFlush();
+  if (T.hazer) {                                              // 1 (the haze), 2, 3, 5: a hazer is not a lamp
+    set({ level: 1 });
+    if (Math.abs(LX.hazeNow - 1) > 1e-6) fail(`level: a hazer at full left the haze at ${LX.hazeNow.toFixed(3)}, not 1`);
+    if (r.beam.visible || r.pool.visible || r.slot >= 0 || lxjHalo(r).some(v => v > 0)) fail('level: a hazer drew a beam, a pool, a glare or took a real light');
+    const c0 = st.color.clone(), z0 = st.zoom;
+    for (const c of COLOURS) try { set({ color: c }); } catch (e) { fail(`colour: set({color: ${JSON.stringify(c)}}) threw — ${e.message}`); }
+    if (!st.color.equals(c0)) fail('colour: a hazer took a colour');
+    set({ zoom: 40, gobo: 7, pan: 90 });
+    if (st.zoom !== z0 || st.gobo !== 0) fail('a hazer took a zoom or a gobo');
+    set({ level: 0 });
+    if (Math.abs(LX.hazeNow - LX.hazeBase) > 1e-6) fail(`level: the haze stayed at ${LX.hazeNow.toFixed(3)} with the hazer off`);
+    note('hazer', 'no lamp: its level feeds the room\'s haze (measured: standing 0.5 → 1 at full → 0.5), no colour, gobo, aim or zoom');
+    return { F, N, I };
+  }
+  // ---- 1 LEVEL
+  if (!r.lens || !r.lensMat) fail('level: no lens to light');
+  else if (u.levels.some(l => { const ln = l.object.getObjectByName('lens'); return !ln || ln.material !== r.lensMat; })) fail('level: a detail level\'s lens does not wear the material the engine lights');
+  set({ level: 0 });
+  if (r.lensMat && r.lensMat.color.getHex() !== LX_LENS_DARK) fail(`level 0: the lens is ${lxjHex(r.lensMat.color)}, not dark glass`);
+  if (r.beam.visible || r.beamOn) fail('level 0: a cone is drawn');
+  if (r.pool.visible) fail('level 0: a pool is drawn');
+  if (r.slot >= 0) fail('level 0: it holds a real light');
+  if (lxjHalo(r).some(v => v > 0)) fail('level 0: its glare is lit');
+  set({ level: 1 });
+  const c1 = drawn(), b = lxBeamOf(u), gk = LX_HALO.k * (T.strip ? 0.5 : 1), g = lxjHalo(r);
+  if (r.lensMat && lxjDist(r.lensMat.color, c1) > 1e-4) fail(`level 1: the lens is ${lxjHex(r.lensMat.color)}, the drawn colour ${lxjHex(c1)}`);
+  if (!(Math.max(...g) > 0)) fail('level 1: its glare is dark');
+  else if (Math.abs(g[0] - c1.r * gk) + Math.abs(g[1] - c1.g * gk) + Math.abs(g[2] - c1.b * gk) > 1e-4) fail('level 1: its glare is not its colour');
+  if (T.power > 0) {
+    if (r.slot < 0) fail('level 1: alone at full, it holds no real light');
+    else { const L = LX.real[r.slot]; if (!(L.intensity > 0) || lxjDist(L.color, c1) > 1e-4 || L.position.distanceTo(b.origin) > 1e-4) fail('level 1: its real light is dark, off its lens or another colour'); }
+  }
+  if (T.strip) { if (b.beamVisible || r.beamOn) fail('level 1: a strip drew a cone'); else note('strip', 'a ColorBlaze strip draws no cone by design: its glow and a shallow pool'); }
+  else if (!b.beamVisible || !r.beamOn) fail('level 1: no cone drawn');
+  else {
+    const m = r.beam.matrix, pos = new THREE.Vector3().setFromMatrixPosition(m), ax = new THREE.Vector3().setFromMatrixColumn(m, 2), sx = new THREE.Vector3().setFromMatrixColumn(m, 0).length();
+    if (pos.distanceTo(b.origin) > 1e-5 || Math.abs(ax.length() - b.dist) > 1e-4 || ax.normalize().dot(b.dir) < 0.99999 || Math.abs(sx - b.radius) > 1e-4) fail('level 1: the cone is not on the beam (origin, axis, length or radius)');
+    if (r.beam.material.uniforms.uInt.value <= 0) fail('level 1: the cone\'s strength is 0');
+  }
+  const bf = lxjBrute(b.origin, b.dir, LX_FAR);
+  I.lands = bf ? lxjLabel(bf.obj) : null;
+  const over = lxjBrute(b.origin, LXJ_UP, 0.15);             // a floor-level surface (the deck, the scan's stage floor, a baked floor) just over the lens: it is under the floor
+  if (over && b.origin.y + over.dist <= HOUSE.deckY + 0.1) fail(`level: the lens (y ${b.origin.y.toFixed(3)}) is under the stage floor — ${lxjLabel(over.obj)} at y ${(b.origin.y + over.dist).toFixed(3)} is right over it, so its light starts inside the floor`);
+  if (b.hit) {
+    I.dist = +b.dist.toFixed(2); I.at = b.hit.toArray().map(v => +v.toFixed(2));
+    const shut = T.strip && b.dist <= 0.2 ? lxjShut(b.origin) : 0;
+    if (shut >= 5) note('built in', `a strip inside a set piece: ${shut} of 6 level and plumb rays from its lens meet the set within 0.35 m, its own ray ${lxjLabel(bf && bf.obj)} at ${b.dist.toFixed(2)} m — its light stays in the model's solid piece (in the show, a strip built into the scenery)`);
+    else if (!(b.dist > 0.2 && b.dist < 40)) fail(`pool: lands ${b.dist.toFixed(3)} m from the lens, on ${I.lands} (sane: 0.2–40 m)` + (T.strip ? ` — a strip placed against the set (${shut} of 6 rays from its lens meet it within 0.35 m)` : ''));
+    if (b.origin.clone().addScaledVector(b.dir, b.dist).distanceTo(b.hit) > 1e-4) fail('pool: the landing point is off the ray');
+    if (!b.poolVisible) fail('pool: it lands but no pool is drawn');
+    else if (Math.abs(b.poolCentre.distanceTo(b.hit) - LX_POOL.lift) > 1e-3) fail(`pool: its centre is ${b.poolCentre.distanceTo(b.hit).toFixed(4)} m off the landing point (lift ${LX_POOL.lift} m)`);
+    if (!bf) fail(`pool: lands at ${b.dist.toFixed(3)} m, but testing every triangle finds nothing`);
+    else if (Math.abs(bf.dist - b.dist) > LXJ_TOL.land) fail(`pool: lxCast lands at ${b.dist.toFixed(3)} m, testing every triangle at ${bf.dist.toFixed(3)} m (${I.lands})`);
+  } else {
+    if (b.poolVisible) fail('pool: drawn with nowhere to land');
+    if (bf) fail(`pool: lxCast found nothing, testing every triangle finds ${I.lands} at ${bf.dist.toFixed(2)} m`);
+    else { const ex = lxjExit(b.origin, b.dir); if (ex.ok) note('into nothing', ex.why); else fail('pool: ' + ex.why); }
+  }
+  const lod = lxjLod(r);
+  if (lod && (lod.dot < LXJ_TOL.lod || lod.gap > 0.01)) fail(`LOD: the two detail levels' lenses disagree (dot ${lod.dot.toFixed(6)}, ${(lod.gap * 100).toFixed(1)} cm apart)`);
+  // ---- 2 COLOUR
+  if (M.model === 'gel') {
+    const info = lxGelInfo(ud.gel);
+    const near = (want, code) => { let k = code ? M.frames.findIndex(f => f.code === code) : -1; if (k < 0) { let bd = Infinity; M.frames.forEach((f, j) => { const d = lxjDist(f.c, want); if (d < bd) { bd = d; k = j; } }); } return k; };
+    const want = M.frames ? M.frames[info.known ? near(lxGelOn(info, M.K), info.code) : 0].c : lxGelOn(info, M.K);
+    if (lxjDist(c1, want) > LXJ_TOL.col) fail(`colour: hung ${ud.gel || 'with no gel'}, it draws ${lxjHex(c1)} at full; the gel under its lamp is ${lxjHex(want)}`);
+    if (!M.frames && lxjDist(gelColour(ud.gel), want) > LXJ_TOL.col) fail(`colour: the panel's "each unit's own gel" gives ${lxjHex(gelColour(ud.gel))}, the hung state ${lxjHex(want)}`);
+    set({ level: 0.3 }); const c3 = drawn(); set({ level: 1 });
+    const cool = c => (c.g + c.b) / Math.max(c.r, 1e-6);
+    if (M.dims) { if (!(cool(c3) < cool(c1) - 1e-3)) fail(`colour: no warmer at 30% (${lxjHex(c3)}, at full ${lxjHex(c1)})`); }
+    else if (lxjDist(c3, c1) > 1e-6) fail('colour: a xenon lamp shifted colour as it dimmed');
+    else note('xenon', 'a followspot (xenon, a mechanical dimmer): measured no colour shift at 30%, as it should be');
+    set({ gel: 'R26' }); const c26 = drawn(), i26 = lxGelInfo('R26');
+    if (M.frames) {
+      const k = near(lxGelOn(i26, M.K), 'R26');
+      if (st.frame !== k || lxjDist(c26, M.frames[k].c) > 1e-4) fail(`colour: asked R26, it took frame ${st.frame}, not the nearest (${k})`);
+      else note('frames', `its colours are frames: asked R26 (not one of them), it snaps to the nearest, ${M.frames[k].code || 'Open'}`);
+      M.frames.forEach((f, k) => { set({ wheel: k }); if (st.frame !== k || lxjDist(drawn(), f.c) > 1e-4) fail(`colour: frame ${k} (${f.code || 'Open'}) draws ${lxjHex(drawn())}, not ${lxjHex(f.c)}`); });
+    } else if (st.gel !== 'R26' || lxjDist(c26, lxGelOn(i26, M.K)) > LXJ_TOL.col) fail(`colour: set({gel: 'R26'}) left gel ${st.gel}, drawing ${lxjHex(c26)}`);
+  } else if (M.model === 'cmy') {
+    const lamp = () => { const x = st.cto || 0; return new THREE.Color(M.W.r * (1 - x * (1 - M.F.r)), M.W.g * (1 - x * (1 - M.F.g)), M.W.b * (1 - x * (1 - M.F.b))); };
+    for (const gel of ['R26', 'R80', 'L201']) {
+      set({ color: gel });
+      const want = lxGelInfo(gel).colour, k = lamp(), best = new THREE.Color(Math.min(want.r, k.r), Math.min(want.g, k.g), Math.min(want.b, k.b)), c = drawn();
+      const dB = lxjDist(c, best), dA = lxjDist(c, want);
+      (X.cmy[gel] = X.cmy[gel] || []).push(dA); X.cmyBest = Math.max(X.cmyBest, dB);
+      if (dB > LXJ_TOL.cmy) fail(`colour: asked ${gel}, it draws ${lxjHex(c)} — ${dB.toFixed(3)} from the best its flags can make (${lxjHex(best)})`);
+      if (st.wheel !== 0) fail(`colour: asking ${gel} left the colour wheel in`);
+    }
+    for (let k = 1; k < M.wheel.length; k++) {
+      set({ wheel: k }); const L = lamp(), w = M.wheel[k].c, want = new THREE.Color(L.r * w.r, L.g * w.g, L.b * w.b);
+      if (st.wheel !== k || lxjDist(drawn(), want) > 1e-4) fail(`colour: wheel slot ${k} (${M.wheel[k].name}) draws ${lxjHex(drawn())}, not ${lxjHex(want)}`);
+    }
+    set({ wheel: 0 });
+  } else if (M.model === 'led') {
+    let worst = null;
+    for (const [nm, t] of [['red', [1, 0, 0]], ['green', [0, 1, 0]], ['blue', [0, 0, 1]]]) {
+      set({ color: t });
+      const c = drawn(), d = lxjDist(c, new THREE.Color(...t)), e = M.names.map(n => st.emit[n]), mix = [0, 1, 2].map(ch => e.reduce((s, v, j) => s + M.E[j][ch] * v, 0));
+      if (Math.abs(mix[0] - c.r) + Math.abs(mix[1] - c.g) + Math.abs(mix[2] - c.b) > 1e-6) fail(`colour: asked pure ${nm}, what draws is not what its emitters make`);
+      if (M.kind === 'LUSTR') {
+        const best = lxjBestEmit(M.E, t);
+        if (d > best + LXJ_TOL.lustr) fail(`colour: asked pure ${nm}, it draws ${lxjHex(c)} (${d.toFixed(3)} off); its emitters can reach ${best.toFixed(3)}`);
+        else if (d > LXJ_TOL.led && (!worst || d > worst.d)) worst = { nm, d, best };
+      } else if (d > LXJ_TOL.led) fail(`colour: asked pure ${nm}, it draws ${lxjHex(c)} (${d.toFixed(4)} off)`);
+    }
+    if (worst) note('Lustr gamut', `the S4 Lustr's seven emitters cannot make pure ${worst.nm} (its green carries blue, its blue some green): it draws the best they can, ${worst.d.toFixed(3)} off`);
+  }
+  for (const c of COLOURS) try { set({ color: c }); } catch (e) { fail(`colour: set({color: ${JSON.stringify(c)}}) threw — ${e.message}`); }
+  if (!drawn().toArray().every(Number.isFinite)) fail('colour: it drew a colour that is not a number');
+  // ---- 3 GOBO
+  lxjFresh(r); set({ level: 1 });
+  const wheel = lxWheelOf(u), tpl = lxTemplateOf(ud);
+  const bound = (s, why) => {
+    const tex = lxGoboTexture(s), cov = lxjCoverage(s), name = t => { const k = LX_GOBOS.findIndex(gb => gb.tex === t); return k < 0 ? 'no gobo' : LX_GOBOS[k].name; };
+    if (!(cov.mean > 0.03) || !tex.image || tex.image.width !== LX_S) fail(`gobo ${s} (${LX_GOBOS[s].name}): the pattern is blank`);
+    if (r.hit && r.pool.visible && r.pool.material.map !== tex) fail(`gobo ${why}: the pool shows ${name(r.pool.material.map)}, not ${LX_GOBOS[s].name}`);
+    if (r.beamOn) { const U = r.beam.material.uniforms; if (U.uGobo.value !== tex || U.uUseGobo.value !== (s > 0 ? 1 : 0)) fail(`gobo ${why}: the cone shows ${name(U.uGobo.value)} (use ${U.uUseGobo.value}), not ${LX_GOBOS[s].name}`); }
+  };
+  if (tpl) {
+    const s = lxGoboSlot(tpl.gobo);
+    if (st.gobo !== s) fail(`gobo: its template (${tpl.gobo}, ${tpl.system}) is not in at load (gobo ${st.gobo})`); else bound(s, `${s} (its template, at load)`);
+    set({ gobo: 0 }); if (st.gobo !== 0) fail('gobo: gobo 0 did not pull its template'); else bound(0, '0 (template pulled)');
+  }
+  for (const s of wheel) { set({ gobo: s }); if (st.gobo !== s) fail(`gobo: slot ${s} on its wheel gave ${st.gobo}`); else bound(s, `${s}`); }
+  const off = LX_GOBOS.findIndex((gb, s) => s > 0 && !wheel.includes(s));
+  set({ gobo: off }); if (st.gobo !== 0) fail(`gobo: slot ${off} (not on its wheel) gave ${st.gobo}, not open`); else bound(0, `${off} (not on its wheel: open)`);
+  const named = wheel.find(s => s > 0);
+  if (named) { set({ gobo: LX_GOBOS[named].name }); if (st.gobo !== named) fail(`gobo: by name ("${LX_GOBOS[named].name}") gave ${st.gobo}`); }
+  // ---- 4 MOVE
+  lxjFresh(r); set({ level: 1 });
+  if (r.mover) {
+    const Y = new THREE.Vector3(0, 1, 0), d0 = dir();
+    if (d0.dot(DOWN) < LXJ_TOL.dir) fail(`move: at pan 0 / tilt 0 the beam is ${(d0.angleTo(DOWN) / LX_DEG).toFixed(3)}° off straight down`);
+    set({ pan: 0, tilt: 45, snap: true }); const d45 = dir(), a = d0.angleTo(d45) / LX_DEG;
+    if (Math.abs(a - 45) > LXJ_TOL.deg) fail(`move: tilt +45 turned the beam ${a.toFixed(3)}°`);
+    set({ pan: 90, tilt: 45, snap: true }); const dp = dir(), want = d45.clone().applyAxisAngle(Y, 90 * LX_DEG);
+    if (dp.dot(want) < LXJ_TOL.dir) fail(`move: pan +90 did not turn the beam +90° about world Y (dot ${dp.dot(want).toFixed(5)}; against −90°: ${dp.dot(d45.clone().applyAxisAngle(Y, -90 * LX_DEG)).toFixed(5)})`);
+    const lod2 = lxjLod(r);
+    if (lod2 && (lod2.dot < LXJ_TOL.lod || lod2.gap > 0.01)) fail(`LOD: panned and tilted, the two levels' heads disagree (dot ${lod2.dot.toFixed(6)})`);
+    set({ pan: 400, tilt: -400, snap: true });
+    if (st.pan !== LX_LIMIT.pan || st.tilt !== -LX_LIMIT.tilt) fail(`move: pan 400 / tilt −400 gave ${st.pan} / ${st.tilt}, not the limits`);
+    set({ pan: 0, tilt: 0, snap: true });
+    if (dir().dot(d0) < LXJ_TOL.dir) fail('move: back to pan 0 / tilt 0 did not restore the rest direction');
+    const res = lxAim(u, LXJ_CENTRE, 0, true)[0], ba = lxBeamOf(u), toP = LXJ_CENTRE.clone().sub(ba.origin), along = toP.dot(ba.dir);
+    const perp = toP.clone().addScaledVector(ba.dir, -along).length();
+    I.aim = { pan: res.pan, tilt: res.tilt, dot: res.dot };
+    if (perp > LXJ_TOL.aim) fail(`aim: aimed at centre stage, the beam passes ${perp.toFixed(3)} m from it (solve dot ${res.dot})`);
+    else if (!ba.hit) fail('aim: aimed at centre stage, it lands nowhere');
+    else if (Math.abs(ba.dist - along) <= LXJ_TOL.aim) I.aimMiss = +ba.hit.distanceTo(LXJ_CENTRE).toFixed(3);
+    else if (ba.dist < along) { const ob = lxjBrute(ba.origin, ba.dir, ba.dist + 0.01); note('aim blocked', `aimed at centre stage (it passes ${(perp * 100).toFixed(1)} cm from the point), the beam stops ${(along - ba.dist).toFixed(2)} m short, on ${ob ? lxjLabel(ob.obj) : 'something'}`); }
+    else fail(`aim: aimed at centre stage, it passes the point and lands ${(ba.dist - along).toFixed(2)} m beyond`);
+  } else {
+    const d0 = dir(); set({ pan: 90, tilt: 45, snap: true });
+    if (dir().dot(d0) < 0.999999 || st.pan !== null || st.tilt !== null) fail('move: a fixed unit moved when told to pan and tilt');
+  }
+  // ---- 5 ZOOM
+  lxjFresh(r); set({ level: 1 });
+  const lo = T.min ?? T.zoom, hi = T.max ?? T.zoom, Rof = (z, d) => r.lensR * r.scale + Math.tan(z / 2 * LX_DEG) * d;
+  if (hi > lo) {
+    set({ zoom: lo }); const b1 = lxBeamOf(u); set({ zoom: hi }); const b2 = lxBeamOf(u);
+    if (!(b2.radius > b1.radius) || Math.abs(b2.radius - Rof(hi, b2.dist)) > 1e-4 || Math.abs(b1.radius - Rof(lo, b1.dist)) > 1e-4) fail(`zoom: ${lo}° → ${hi}° gave a radius ${b1.radius.toFixed(3)} → ${b2.radius.toFixed(3)} m`);
+    if (b2.beamVisible && Math.abs(new THREE.Vector3().setFromMatrixColumn(r.beam.matrix, 0).length() - b2.radius) > 1e-4) fail('zoom: the drawn cone is not the beam\'s radius');
+    set({ zoom: 999 }); if (st.zoom !== hi) fail(`zoom: 999° gave ${st.zoom}°, not its widest (${hi}°)`);
+  } else {
+    const b1 = lxBeamOf(u); set({ zoom: lo + 15 }); const b2 = lxBeamOf(u);
+    if (st.zoom !== lo || Math.abs(b2.radius - b1.radius) > 1e-9) fail('zoom: a fixed-focus unit zoomed');
+  }
+  return { F, N, I };
+}
+// 4, timed: every mover from rest to pan 180 / tilt 90 at its type's speed, lxTick driven by hand. → id → fail text.
+function lxjTravel(recs) {
+  const out = new Map(), at = new Map();
+  for (const r of recs) { lxjFresh(r); lxSet(r.unit, { pan: 180, tilt: 90 }); }
+  lxFlush();
+  let t = 0;
+  for (let k = 0; k < 900 && at.size < recs.length; k++) {
+    lxTick(LXJ_DT); t += LXJ_DT;
+    for (const r of recs) if (!at.has(r) && r.st.pan === 180 && r.st.tilt === 90) at.set(r, t);
+  }
+  for (const r of recs) {
+    const [vp, vt] = r.T.mover, want = Math.max(180 / vp, 90 / vt), got = at.get(r);
+    if (got === undefined) { out.set(r, `move: at speed it never reached pan 180 / tilt 90 in ${t.toFixed(1)} s (expected ${want.toFixed(2)} s)`); continue; }
+    if (r.hitStale) lxHitRec(r);                             // a dark unit's draw does not re-cast: the beam where the head is now
+    const d = r.dir.clone(); lxSet(r.unit, { pan: 0, tilt: 0, snap: true }); lxSet(r.unit, { pan: 180, tilt: 90, snap: true }); lxFlush(); if (r.hitStale) lxHitRec(r);
+    if (Math.abs(got - want) > LXJ_TOL.travel * want) out.set(r, `move: 180° / 90° at speed took ${got.toFixed(3)} s, expected ${want.toFixed(3)} s (±10%)`);
+    else if (r.dir.dot(d) < LXJ_TOL.dir) out.set(r, 'move: where it travelled to is not where a snap to the same pan / tilt puts it');
+    lxjFresh(r);
+  }
+  return out;
+}
+// 3, timed: every lamp at full on a gobo (its first patterned slot, else open), turned at 90°/s for 1 s of driven ticks.
+function lxjRotate(recs) {
+  const out = new Map();
+  for (const r of recs) { lxjFresh(r); const s = lxWheelOf(r.unit).find(x => x > 0) || 0; lxSet(r.unit, { level: 1, gobo: s, goboRot: 10, goboRate: 90 }); }
+  lxFlush();
+  for (let k = 0; k < 60; k++) lxTick(LXJ_DT);
+  for (const r of recs) {
+    const st = r.st, d = Math.abs(((st.goboRot - 100) % 360 + 540) % 360 - 180);
+    if (d > LXJ_TOL.rot) out.set(r, `gobo: at 90°/s for 1 s its gobo turned to ${st.goboRot.toFixed(3)}°, not 100°`);
+    else if (st.gobo && r.beamOn && Math.abs(r.beam.material.uniforms.uGoboRot.value - st.goboRot * LX_DEG) > 1e-5) out.set(r, 'gobo: the cone\'s pattern did not turn with the gobo');
+    lxjFresh(r);
+  }
+  lxFlush();
+  return out;
+}
+// 6, once: a test state on every unit, the other scale and back. → { fails: id → [text], notes: id → [text], other }.
+function lxjScale(recs) {
+  const fails = new Map(), notes = new Map(), add = (m, r, s) => { if (!m.has(r)) m.set(r, []); m.get(r).push(s); };
+  const s0 = rig.userData.placedFor ?? 1, other = s0 === 1 ? SET.fit : 1, sn = s => s === 1 ? 'real size' : `fitted (${s})`;
+  const stateOf = r => JSON.stringify({ l: r.st.level, p: r.st.panTo, t: r.st.tiltTo, g: r.st.gobo, z: r.st.zoom, c: r.st.color.getHex(), gel: r.st.gel ?? null });
+  for (const r of recs) {
+    lxjFresh(r); if (r.T.hazer) continue;
+    const T = r.T, p = { level: 0.6, gobo: lxWheelOf(r.unit).find(x => x > 0) || 0 };
+    if (T.max > T.min) p.zoom = (T.min + T.max) / 2;
+    if (r.mover) Object.assign(p, { pan: 30, tilt: 20, snap: true });
+    lxSet(r.unit, p);
+  }
+  lxFlush();
+  const before = new Map(recs.map(r => { if (r.hitStale) lxHitRec(r); return [r, { s: stateOf(r), hit: r.hit ? r.hit.p.clone() : null, dir: r.dir.clone() }]; }));
+  for (const s of [other, s0]) {
+    placeSet(s); lxFlush();
+    for (const r of recs) {
+      const B = before.get(r); if (r.hitStale) lxHitRec(r);
+      if (stateOf(r) !== B.s) add(fails, r, `scale: at ${sn(s)} its state changed (${stateOf(r)}, was ${B.s})`);
+      if (r.T.hazer) continue;
+      if (r.hit && !(Number.isFinite(r.hit.dist) && r.hit.dist > 0)) add(fails, r, `scale: at ${sn(s)} it lands at a distance that is not a number`);
+      if (!r.hit && B.hit) add(notes, r, `at ${sn(s)} it meets nothing (it lands at ${sn(s0)})`);
+      if (r.st.level > LX_LIVE && r.hit && !r.pool.visible) add(fails, r, `scale: at ${sn(s)} it lands but draws no pool`);
+      if (s === s0) {
+        if (!!r.hit !== !!B.hit || (r.hit && r.hit.p.distanceTo(B.hit) > LXJ_TOL.back)) add(fails, r, `scale: back at ${sn(s0)}, it lands ${r.hit && B.hit ? r.hit.p.distanceTo(B.hit).toFixed(3) + ' m from' : 'not where'} it did before`);
+        if (r.dir.dot(B.dir) < LXJ_TOL.dir) add(fails, r, `scale: back at ${sn(s0)}, its beam points another way (dot ${r.dir.dot(B.dir).toFixed(5)})`);
+      }
+    }
+  }
+  for (const r of recs) lxjFresh(r);
+  lxFlush();
+  return { fails, notes, other: sn(other) };
+}
+function lxCheck(opts = {}) {
+  if (!LX.ready || !rig) return { ok: false, summary: 'the lighting engine is not running' };
+  if (opts.show) return lxjShow(opts);
+  const t0 = performance.now();
+  if (LXJ.show) lxjShowEnd(false);
+  if (LXP.step.on) lxpStepStop();                            // the step-through (and its Play) stopped, the rig put back as it was
+  const S = lxjSave();
+  if (!rig.visible) setRig(true);                            // a hidden rig lights nothing: shown for the check, hidden again after
+  LXJ.box = new THREE.Box3().setFromObject(houseRoot);
+  LX.hazeBase = LX_HAZE_DEFAULT; LX.hazeDirty = true;        // beams need haze; the standing haze is put back after
+  for (const r of LX.recs) lxjFresh(r);
+  lxRefresh();
+  const recs = (opts.sel !== undefined ? lxSelect(opts.sel) : LX.units).map(u => LX.byUnit.get(u));
+  const X = { noteClass: {}, cmy: {}, cmyBest: 0 }, out = new Map(), ph = {};
+  let tp = performance.now();
+  const lap = k => { const t = performance.now(); ph[k] = Math.round(t - tp); tp = t; };
+  lap('setup');
+  for (const r of recs) {
+    let res;
+    try { res = lxjUnit(r, X); } catch (e) { res = { F: [`the check threw: ${e && e.message || e}`], N: [], I: {} }; console.error('lx check:', r.unit.userData.id, e); }
+    out.set(r, res); lxjFresh(r); lxFlush();
+  }
+  lap('units');
+  const merge = (m, key, cls) => { for (const [r, v] of m) { const o = out.get(r); if (!o) continue; for (const s of [].concat(v)) { if (key === 'F') o.F.push(s); else { o.N.push(`${cls}: ${s}`); X.noteClass[cls] = (X.noteClass[cls] || 0) + 1; } } } };
+  try { merge(lxjTravel(recs.filter(r => r.mover)), 'F'); } catch (e) { console.error('lx check: travel', e); }
+  lap('travel');
+  try { merge(lxjRotate(recs.filter(r => !r.T.hazer && r.lens)), 'F'); } catch (e) { console.error('lx check: gobo rotation', e); }
+  lap('rotate');
+  let scaled = null;
+  if (opts.scale !== false) {
+    try { scaled = lxjScale(recs); merge(scaled.fails, 'F'); merge(scaled.notes, 'N', 'other scale'); }
+    catch (e) { console.error('lx check: scale', e); for (const o of out.values()) o.F.push('scale: the scale step threw — ' + (e && e.message || e)); }
+  }
+  lap('scale');
+  lxjRestore(S);
+  lap('restore');
+  // the report
+  const units = recs.map(r => {
+    const ud = r.unit.userData, o = out.get(r);
+    return { id: ud.id, channels: ud.channels, type: ud.type, position: ud.position || '(no position)', pass: o.F.length === 0, fails: o.F, notes: o.N,
+      lands: o.I.lands ?? null, dist: o.I.dist ?? null, at: o.I.at ?? null, aimMiss: o.I.aimMiss ?? null };
+  });
+  const tally = key => { const t = {}; for (const u of units) { const k = u[key], e = t[k] || (t[k] = { units: 0, pass: 0, fail: 0 }); e.units++; e[u.pass ? 'pass' : 'fail']++; } return t; };
+  const pass = units.filter(u => u.pass).length, scale = rig.userData.placedFor === 1 ? 'real size' : `fitted (${rig.userData.placedFor})`;
+  const cmy = Object.fromEntries(Object.entries(X.cmy).map(([g, a]) => [g, +Math.max(...a).toFixed(3)]));
+  const rep = { ok: pass === units.length, scale, units, byType: tally('type'), byPosition: tally('position'), noteClasses: X.noteClass,
+    cmyDistance: { asked: cmy, worstFromBest: +X.cmyBest.toFixed(4) }, otherScale: scaled ? scaled.other : null,
+    summary: `${pass} / ${units.length} pass · ${units.length - pass} fail`, ms: Math.round(performance.now() - t0), phases: ph,
+    time: 'fixed 1/60 s steps of lxTick, driven by hand inside the check (synchronous; no timer)' };
+  LXJ.last = rep;
+  if (!opts.quiet) {
+    console.info(`lx check: ${rep.summary} at ${scale} (and through ${rep.otherScale || 'no other scale'} and back) · ${rep.ms} ms · notes: ${Object.entries(X.noteClass).map(([k, n]) => `${k} ${n}`).join(', ') || 'none'} · CMY worst distance from asked ${JSON.stringify(cmy)}, from the best the flags can make ${rep.cmyDistance.worstFromBest}`);
+    console.table(Object.entries(rep.byType).map(([type, t]) => ({ type, ...t })));
+    const bad = units.filter(u => !u.pass);
+    if (bad.length) console.table(bad.map(u => ({ id: u.id, type: u.type, position: u.position, fails: u.fails.join(' | ') })));
+  }
+  return rep;
+}
+// THE WATCH: the panel's step-through over every lamp in rig order, Play off the frame dt; ends itself after the last unit.
+function lxjShow(opts) {
+  if (LXJ.show) lxjShowEnd(false);
+  if (LXP.step.on) lxpStepStop();
+  const every = Math.max(0.2, +opts.every || 1), save = lxjSave(), S = LXP.step;
+  lxpShowPanel(true); LXP.E.every.value = every;
+  S.list = lxpOrder((opts.sel !== undefined ? lxSelect(opts.sel) : LX.units).filter(lxpLamp));
+  if (!S.list.length) return { show: false, summary: 'nothing to watch' };
+  S.saved = null; S.on = true;
+  LXJ.show = { save, n: S.list.length, every };
+  lxpStepTo(0); lxpStepPlay(true);
+  if (LXJ.E.out) LXJ.E.out.textContent = `Watching ${S.list.length} lamps, one every ${every} s (${Math.ceil(S.list.length * every / 60)} min) — Stop ends it.`;
+  return { show: true, units: S.list.length, every, seconds: +(S.list.length * every).toFixed(1), stop: 'MIDTOWN.lxPanel.step.stop()' };
+}
+function lxjShowEnd(done) { if (LXJ.show) { LXJ.show.done = done; lxpStepStop(false); } }
+// The step-through's Stop, wrapped: during a watch it puts back the watch's own exact save, at once (Stop, the console's
+// step.stop(), a recall, a blackout or Check all mid-watch) — the panel's own capture rewrites gels as colours.
+const lxpStepStopI = lxpStepStop;
+lxpStepStop = (restore = true) => {
+  const W = LXJ.show; LXJ.show = null;
+  if (W) LXP.step.saved = null;
+  lxpStepStopI(W ? false : restore);
+  if (!W) return;
+  lxjRestore(W.save);
+  if (LXJ.E.out) LXJ.E.out.textContent = W.done ? `Watched all ${W.n} lamps; the rig is back as it was.` : 'Watch stopped; the rig is back as it was.';
+};
+// The frame loop's lxPanelTick, wrapped: the watch's end (and Stop pressed during it), and Check all one frame after its
+// "Checking…" has painted. Off the frame, never a timer.
+const lxPanelTickI = lxPanelTick;
+lxPanelTick = dt => {
+  const S = LXP.step;
+  if (LXJ.show) {
+    if (!S.on) lxjShowEnd(false);
+    else if (S.play && S.i === S.list.length - 1 && S.t + dt >= lxpEvery()) { lxjShowEnd(true); return true; }
+  }
+  if (LXJ.pending && --LXJ.pending === 0) { lxjPanelRun(); return true; }
+  return lxPanelTickI(dt);
+};
+function lxjPanelRun() {
+  const rep = lxCheck(), E = LXJ.E, bad = rep.units ? rep.units.filter(u => !u.pass) : [];
+  const lines = [`${rep.summary}  (${rep.scale}, ${rep.otherScale ? 'through ' + rep.otherScale + ' and back, ' : ''}${(rep.ms / 1000).toFixed(1)} s)`];
+  for (const u of bad.slice(0, 12)) lines.push(`✗ ${u.id} (${u.type}, ${u.position}): ${u.fails[0]}` + (u.fails.length > 1 ? ` (+${u.fails.length - 1})` : ''));
+  if (bad.length > 12) lines.push(`… and ${bad.length - 12} more — MIDTOWN.lx.check() in the console lists them all`);
+  const nc = Object.entries(rep.noteClasses || {});
+  if (nc.length) lines.push('notes: ' + nc.map(([k, n]) => `${k} ${n}`).join(' · '));
+  E.out.textContent = lines.join('\n'); E.out.style.color = rep.ok ? '' : '#e0a0a0';
+  E.go.disabled = false;
+}
+function lxjPanel() {
+  if (!LXP.built || LXJ.E.go) return;
+  const h = document.createElement('h2'); h.textContent = 'Check';
+  const row = document.createElement('div'); row.className = 'row';
+  const go = document.createElement('button'); go.textContent = 'Check all'; go.title = 'Drive every unit through its level, colours, gobos, movement, zoom and both set sizes, and measure what draws (a few seconds; the rig is put back)';
+  const watch = document.createElement('button'); watch.textContent = 'Watch all'; watch.title = 'Light every lamp alone, in rig order, its label below the step-through (Stop ends it)';
+  const out = document.createElement('div'); out.className = 'note lp-step'; out.style.whiteSpace = 'pre-wrap';
+  out.textContent = 'Check all measures every light; Watch all fires them one by one.';
+  row.append(go, watch);
+  lxPanelEl.querySelector('.lp-keys').before(h, row, out);
+  Object.assign(LXJ.E, { go, watch, out });
+  go.addEventListener('click', () => { go.disabled = true; out.style.color = ''; out.textContent = `Checking ${LX.units.length} units…`; LXJ.pending = 2; requestRender(); });
+  watch.addEventListener('click', () => lxjShow({ every: lxpEvery() }));
+}
+const buildLightsPanelI = buildLightsPanel;
+buildLightsPanel = () => { buildLightsPanelI(); try { lxjPanel(); } catch (e) { console.error('lx check: its panel buttons failed —', e); } };
 /* ---------------------------------------------------------------- RIGGING: BOOMS ONTO THE WALLS (agent A)
    Jack: "move these lights back to be attached to the walls" — the booms standing in the HOUSE
    (downstage of the arch) go against the Midtown side walls on vertical boom pipes with brackets. */
@@ -2699,7 +3213,7 @@ function fitBoomsToWalls(houseScene) {
     if (!name || !/Boom/.test(name)) continue;
     u.getWorldPosition(w);
     if (w.z >= HOUSE.archZ) continue;                         // upstage of the arch: the wing towers', not these
-    (cols[name] = cols[name] || []).push({ u, w: w.clone() });
+    (cols[name] = cols[name] || []).push({ u, w: w.clone(), aim: boomAimTarget(u) });   // where its focus is, before it moves (agent J)
   }
   const found = Object.entries(cols).map(([n, l]) => `${n} ×${l.length}`).join(', ');
   console.info(`booms: house booms found — ${found || 'none'}`);
@@ -2716,6 +3230,11 @@ function fitBoomsToWalls(houseScene) {
     if (missed || wallX === null) { report.push(`${name} → no wall found for ${missed} of ${list.length} units, left where it is`); continue; }
     let x = wallX - sx * boomDims.clear * s;
     for (const c of list) c.u.position.copy(rig.worldToLocal(w.set(x, c.w.y, c.w.z)));
+    // Moved 2 m outward on the file's angles, every lamp landed 2 m off its focus — in the seats or on the proscenium's
+    // side (agent J's check). Each is RE-AIMED at its focus as rigTrim does (boomAimTarget, taken before the move);
+    // again after any back-off below, so the turn is measured into the wall check.
+    const reaim = () => { rig.updateMatrixWorld(true); let n = 0, worst = 1; for (const c of list) { if (!c.aim) continue; const d = boothAim(c.u, c.aim); if (d !== null) { n++; worst = Math.min(worst, d); } } return { n, worst }; };
+    let aimed = reaim();
     // The scan's wall is not quite plumb and a unit's body can reach past 0.45 m: if any body's
     // outer edge (over its vertices) comes within 1 cm of its own wall, the column backs off.
     rig.updateMatrixWorld(true);
@@ -2724,16 +3243,29 @@ function fitBoomsToWalls(houseScene) {
       const bb = new THREE.Box3().setFromObject(c.u, true), outer = sx < 0 ? bb.min.x : bb.max.x;
       into = Math.max(into, (outer - c.wallX) * sx + 0.01 * s);
     }
-    if (into > 0) { x -= sx * into; for (const c of list) c.u.position.copy(rig.worldToLocal(w.set(x, c.w.y, c.w.z))); }
+    if (into > 0) { x -= sx * into; for (const c of list) c.u.position.copy(rig.worldToLocal(w.set(x, c.w.y, c.w.z))); aimed = reaim(); }
     const moves = list.map(c => Math.abs(x - c.w.x));
     const mesh = boomBuild(name, list.map(c => c.u.position), sx, s, ray, meshes);
     rig.add(mesh);
     mesh.userData.wallX = wallX; mesh.userData.unitX = x;
     const lo = Math.min(...moves), hi = Math.max(...moves);
-    report.push(`${name} → wall at x ${wallX.toFixed(2)}, moved ${list.length} units by ${lo.toFixed(2)}${hi - lo > 0.005 ? '–' + hi.toFixed(2) : ''} m to x ${x.toFixed(2)}, ${mesh.userData.brackets} bracket${mesh.userData.brackets === 1 ? '' : 's'}` + (mesh.userData.skipped ? ` (${mesh.userData.skipped} skipped: no wall near enough)` : ''));
+    report.push(`${name} → wall at x ${wallX.toFixed(2)}, moved ${list.length} units by ${lo.toFixed(2)}${hi - lo > 0.005 ? '–' + hi.toFixed(2) : ''} m to x ${x.toFixed(2)}, ${mesh.userData.brackets} bracket${mesh.userData.brackets === 1 ? '' : 's'}` + (mesh.userData.skipped ? ` (${mesh.userData.skipped} skipped: no wall near enough)` : '')
+      + `, ${aimed.n} re-aimed at their focus (worst dot ${aimed.worst.toFixed(4)})`);
   }
   rig.updateMatrixWorld(true);
   console.info('booms: ' + (report.join('; ') || 'nothing to move'));
+}
+// A house boom unit's focus, from where it hangs before the move (agent J): where the file's beam meets the deck (rigDeckTarget,
+// as rigTrim re-aims), else — a side light near level — where it crosses the house's centre line (world x 0) within 30 m, so
+// the moved lamp still crosses the stage at the height and depth its focus did. null keeps the file's angle.
+function boomAimTarget(u) {
+  const t = rigDeckTarget(u); if (t) return t;
+  const lens = u.levels.length && u.levels[0].object.getObjectByName('lens'); if (!lens) return null;
+  u.updateMatrixWorld(true);
+  const p = lens.getWorldPosition(new THREE.Vector3()), d = lensBeam(lens, new THREE.Vector3());
+  if (Math.abs(d.x) < 0.05) return null;
+  const k = -p.x / d.x;
+  return k > 0.5 && k < 30 ? p.addScaledVector(d, k) : null;
 }
 // Real metres: a 48 mm boom pipe, 34 mm bracket arms, 150 mm square 10 mm plates, the units' hang line
 // 0.45 m off the wall (room for a Source Four's body behind its clamp), pipe 0.5 m past the end units.
@@ -2997,7 +3529,12 @@ function buildWingTowers(houseScene) {
   const mean = a => a.reduce((p, q) => p + q, 0) / a.length, spread = a => Math.max(...a) - Math.min(...a);
   const report = names.map(name => {
     const us = cols.get(name), xs = us.map(u => u.position.x), ys = us.map(u => u.position.y), zs = us.map(u => u.position.z);
-    const x0 = mean(xs), z0 = mean(zs), sx = /^SR/.test(name) ? -1 : /^SL/.test(name) ? 1 : Math.sign(x0) || 1, y1 = Math.max(...ys) + towerSpec.over;
+    const z0 = mean(zs), sx = /^SR/.test(name) ? -1 : /^SL/.test(name) ? 1 : Math.sign(mean(xs)) || 1, y1 = Math.max(...ys) + towerSpec.over;
+    // At the units' mean, a column spread 0.38 m put SL Boom 4's corner chord 2 cm in front of ch222's lens (agent J's check):
+    // the tower steps outward until every lens in its depth is 5 cm on the stage side of it.
+    let x0 = mean(xs);
+    const lenses = us.map(u => { const l = u.levels.length && u.levels[0].object.getObjectByName('lens'); return l ? rig.worldToLocal(l.getWorldPosition(new THREE.Vector3())) : null; }).filter(Boolean);
+    for (const l of lenses) if (l.z <= z0 + 0.05 && l.z >= z0 - S - 0.05 && sx * (l.x - x0) > -0.05) x0 = l.x + sx * 0.05;
     const near = new THREE.Box3().setFromPoints([W(x0, 0, z0), W(x0 + sx * S, 0, z0 - S), W(x0, y1, z0), W(x0 + sx * S, y1, z0 - S)]).expandByScalar(0.3);
     near.min.y -= 3;                                         // room below for a floor lower than the deck
     return { name, us, x0, z0, sx, y1, near, units: us.length, unitY: [Math.min(...ys), Math.max(...ys)], spread: [spread(xs), spread(zs)], notes: [] };
