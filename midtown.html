@@ -1030,7 +1030,7 @@ void main(){
 // and the blend — 88 → 69 ms / 46 → 39 ms with the cone drawn both sides, and drawn far side only (BackSide, below) too.
 const LX_BEAM_FS = `
 uniform vec3 uColor; uniform float uInt; uniform float uHaze; uniform float uTime;
-uniform sampler2D uGobo; uniform float uUseGobo;
+uniform sampler2D uGobo; uniform float uUseGobo; uniform float uGoboRot;
 varying vec3 vWpos; varying vec3 vWnorm; varying vec2 vUv;
 void main(){
   float along = vUv.y;                       // 0 = lens, 1 = far end
@@ -1042,7 +1042,12 @@ void main(){
   if (i < 0.006) discard;
   vec2 c = floor(vUv * vec2(60.0, 140.0)) + floor(uTime * 7.0);
   i *= 0.85 + 0.15 * fract(sin(dot(c, vec2(41.3, 289.1))) * 43758.5453);   // dust drifting through it
-  if (uUseGobo > 0.5) i *= texture2D(uGobo, vec2(fract(vUv.x * 3.0), fract(along * 2.0))).r * 0.75 + 0.35;
+  if (uUseGobo > 0.5) {                      // the gobo's shafts (agent H): a shaft keeps its bearing all down the cone, so the wall at
+    float th = vUv.x * 6.2831853 + uGoboRot; // bearing th is seen through the pattern along that bearing — three samples across the
+    vec2 gd = vec2(cos(th), sin(th));        // gate, turning with the gobo (uGoboRot, radians; set by lxColourOf)
+    float g = texture2D(uGobo, 0.5 + gd * 0.16).r + texture2D(uGobo, 0.5 + gd * 0.28).r + texture2D(uGobo, 0.5 + gd * 0.38).r;
+    i *= 0.25 + g * 0.42;
+  }
   gl_FragColor = linearToOutputTexel(vec4(uColor * i, i));
 }`;
 const LX_BEAM_GEO = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);   // uv.y 0 at the lens (z 0), 1 at the far end
@@ -1604,35 +1609,562 @@ const LX_API = {
 };
 
 /* ---- GOBOS AND COLOURS (agent H) ----
-   Agent H's region. Everything the engine draws asks these three functions, so H can grow the gobo wheels and colour
-   mixing here without touching the engine: LX_GOBOS (the patterns, slot 0 the open beam), lxGoboTexture(slot) (a slot's
-   texture, made once), lxWheelOf(unit) (the slots a unit's type carries) and lxColourOf(unit, state) (the colour a unit
-   draws in — beam, pool, lens, glare and real light). The seeds below are p4's goboTex (src/p4.txt): the soft open circle,
-   breakup, leaves, window, stars, bars, drawn with a seeded random so a gobo looks the same on every load. */
+   Jack: "check that every light is working with the movements, gobos and colors." The engine asks four things of this region
+   and nothing else: LX_GOBOS (the pattern library — a slot is its index, so slot 7 is Nite sky on every unit of every type),
+   lxGoboTexture(slot), lxWheelOf(unit) (the slots that unit carries) and lxColourOf(unit, state) (the one THREE.Color it draws
+   in: beam, pool, lens, glare, real light). Nothing in the engine changed but the beam shader's gobo lines (it now samples the
+   pattern along each bearing of the cone and turns with the gobo: uGoboRot, set here).
+   GOBOS — sixteen patterns, each standing in for one the real show's Beam_Palettes name (the Eos export), drawn on a 512² canvas
+   with a seeded random, so a gobo is the same on every load; no maker's image is copied. White passes light. A profile gobo is
+   cut by the gate (a disc the cone's size: the pool decal spans 1.12 × the cone, so 228 px of the 256) with a ~16 px focus edge;
+   the VL3500's wash patterns are drawn soft. Each costs ~1.4 MB of GPU with mipmaps and is made on first use (all sixteen ~22 MB,
+   ~0.4 s to draw); at 256² the Linear lines and the sticks smeared in a 2 m pool.
+   WHEELS — the MAC Viper Performance: a rotating wheel of six + open (the show's Gobo_Select runs 0.5 … 6.4: six slots, half-steps
+   between), the framing shutters' Slot and Square, and its diffusion's Vignette; the VL3500 Wash FX: its FX wheel, open + three
+   soft; a Source Four or S4 Lustr in a template system on Howell Binkley's magic sheet (its template icons — the Clear T and
+   LED T systems, the Wall Scrapes): a holder with that system's template, IN on load (gobo 0 pulls it); every other unit open
+   only. The Viper's animation wheel is not modelled. lx.wheel(unit) lists a unit's slots by name.
+   COLOUR — one model per type (LX_CMODEL), each ending in one THREE.Color, cached on the state:
+   - 'gel': an incandescent lantern (3200 K) and its gel. state.color is the gel's colour under the lamp at full (GELS, which this
+     region EXTENDS with every gel the show names); it draws × a dimming shift — a filament cools as it dims (30% ≈ 2770 K, amber;
+     5% a red glow). state.gel is the gel in it: set({gel: 'R26'}) re-gels, and so does set({color}) (state.gel then '#rrggbb').
+     The followspots (Lycian: xenon ~6000 K, a mechanical dimmer, no shift) and the S4 Revolution (a scroller) are gel units whose
+     choices are FRAMES — the boomerang's six (the magic sheet's DS Spot Color: R3314, R33, R302, R362, R54, R02) or the scroll's
+     string (the show's colour palettes): any ask snaps to the nearest frame (state.frame); set({wheel: n}) picks one.
+   - 'cmy': a discharge mover (MAC Viper, VL3500: ~6000 K, a cool white beside the tungsten), subtractive: W × CTO × (1 − cmy).
+     set({color}) solves the CMY for it as near as the gamut allows (state.cmy) at the current CTO (state.cto; set({cto: 0..1}),
+     6000 → 3200 K); set({cmy: [c, m, y]}) sets the flags; a temperature ("3200K") is reached with the CTO first; set({wheel: n or
+     a name}) puts in a colour-wheel slot (state.wheel), which overrides the mix while not open. A gel code asks for the colour that
+     gel makes on a conventional — a palette matched to the gel look.
+   - 'led': additive — RGB (ColorBlast, ColorSource PAR, ELAR, PixelPAR), RGBW (GLP X4), RGBA (the ColorBlaze strips: Color Force
+     II in the show's patch), seven colours (S4 Lustr). set({color}) → the emitter levels (state.emit) and their mix (state.rgb,
+     linear); set({rgb: [r, g, b]}) asks a linear mix; set({emitters: [...]}) sets the emitters. An LED dims with no colour shift.
+   A colour anywhere: a hex, a CSS colour, an RGB array (linear), a gel code ("R26", "L201", "R 01") or a temperature ("3200K"). */
 function lxRandom(seed) { let s = seed >>> 0; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
+const LX_S = 512, LX_C = LX_S / 2, LX_GATE = 228;           // the canvas (px), its centre, the gate's radius: the pool decal spans 1.12 × the cone
+// Value noise on a seeded 64² lattice, smoothly interpolated: the organic patterns' raw material.
+function lxNoise(rnd, n = 64) {
+  const v = new Float32Array(n * n); for (let i = 0; i < v.length; i++) v[i] = rnd();
+  const a = (i, j) => v[((j % n + n) % n) * n + ((i % n + n) % n)];
+  return (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const top = a(xi, yi) + (a(xi + 1, yi) - a(xi, yi)) * sx, bot = a(xi, yi + 1) + (a(xi + 1, yi + 1) - a(xi, yi + 1)) * sx;
+    return top + (bot - top) * sy;
+  };
+}
+// A pattern by pixel: f(x, y) → 0..1 over the whole canvas.
+function lxPixels(x, f) {
+  const img = x.createImageData(LX_S, LX_S), d = img.data;
+  for (let j = 0, k = 0; j < LX_S; j++) for (let i = 0; i < LX_S; i++, k += 4) { const v = Math.max(0, Math.min(1, f(i, j))) * 255; d[k] = d[k + 1] = d[k + 2] = v; d[k + 3] = 255; }
+  x.putImageData(img, 0, 0);
+}
+// Voronoi cells on a jittered grid (each pixel tests its 3 × 3 cells): cb(d1, d2, the cell's own random) → 0..1.
+function lxCells(x, rnd, cell, cb) {
+  const n = Math.ceil(LX_S / cell) + 2, px = new Float32Array(n * n), py = new Float32Array(n * n), id = new Float32Array(n * n);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const k = j * n + i; px[k] = (i - 1 + 0.15 + rnd() * 0.7) * cell; py[k] = (j - 1 + 0.15 + rnd() * 0.7) * cell; id[k] = rnd(); }
+  lxPixels(x, (X, Y) => {
+    const ci = Math.floor(X / cell) + 1, cj = Math.floor(Y / cell) + 1;
+    let d1 = 1e9, d2 = 1e9, k1 = 0;
+    for (let j = cj - 1; j <= cj + 1; j++) for (let i = ci - 1; i <= ci + 1; i++) {
+      const k = j * n + i, d = Math.hypot(X - px[k], Y - py[k]);
+      if (d < d1) { d2 = d1; d1 = d; k1 = k; } else if (d < d2) d2 = d;
+    }
+    return cb(d1, d2, id[k1]);
+  });
+}
+// A straight bar through (cx, cy) at angle a, L long and w wide.
+function lxBar(x, cx, cy, a, L, w) { x.save(); x.translate(cx, cy); x.rotate(a); x.fillRect(-L / 2, -w / 2, L, w); x.restore(); }
+// A parallelogram slab centred (0, 0) in the current transform, L × h, its ends skewed by k.
+function lxSlab(x, X, L, h, k) { x.beginPath(); x.moveTo(X + k, -h / 2); x.lineTo(X + L + k, -h / 2); x.lineTo(X + L - k, h / 2); x.lineTo(X - k, h / 2); x.closePath(); x.fill(); }
+// THE LIBRARY. The slot is the index, on every unit of every type. White passes light; draw(x, rnd) starts on black with
+// fillStyle white. gate: false — the pattern is its own edge (no gate cut); soft: px of blur (a wash light's soft focus).
 const LX_GOBOS = [
-  { name: 'open', draw: x => { const g = x.createRadialGradient(128, 128, 10, 128, 128, 128); g.addColorStop(0, '#fff'); g.addColorStop(.62, 'rgba(255,255,255,.92)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 256, 256); } },
-  { name: 'breakup', draw: (x, rnd) => { for (let k = 0; k < 180; k++) { x.save(); x.translate(rnd() * 256, rnd() * 256); x.rotate(rnd() * 6.283); x.globalAlpha = .35 + rnd() * .65; x.fillRect(0, 0, 6 + rnd() * 38, 3 + rnd() * 13); x.restore(); } } },
-  { name: 'leaves', draw: (x, rnd) => { for (let k = 0; k < 90; k++) { x.save(); x.translate(rnd() * 256, rnd() * 256); x.rotate(rnd() * 6.283); x.globalAlpha = .4 + rnd() * .6; x.beginPath(); x.ellipse(0, 0, 6 + rnd() * 16, 3 + rnd() * 7, 0, 0, 6.283); x.fill(); x.restore(); } } },
-  { name: 'window', draw: x => { x.fillRect(24, 24, 208, 208); x.fillStyle = '#000'; for (let i = 0; i < 3; i++) { x.fillRect(24 + i * 70 + 60, 24, 10, 208); x.fillRect(24, 24 + i * 70 + 60, 208, 10); } } },
-  { name: 'stars', draw: (x, rnd) => { for (let k = 0; k < 160; k++) { const r = 1 + rnd() * 2.4; x.globalAlpha = .4 + rnd() * .6; x.beginPath(); x.arc(rnd() * 256, rnd() * 256, r, 0, 6.283); x.fill(); } } },
-  { name: 'bars', draw: x => { for (let i = 0; i < 9; i++) x.fillRect(0, i * 28, 256, 15); } },
+  { name: 'Open', gate: false, stands: 'no gobo: the open beam, a flat field with a soft edge',
+    draw: x => { const g = x.createRadialGradient(LX_C, LX_C, 0, LX_C, LX_C, 240); g.addColorStop(0, '#fff'); g.addColorStop(.6, 'rgba(255,255,255,.95)'); g.addColorStop(.86, 'rgba(255,255,255,.8)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, LX_S, LX_S); } },
+  { name: 'Construction', stands: 'a scaffold / girder breakup: light between three families of crossing beams, with braces',
+    draw: (x, rnd) => {
+      x.fillRect(0, 0, LX_S, LX_S); x.fillStyle = '#000';
+      const a0 = rnd() * Math.PI, fam = [a0, a0 + Math.PI / 3 + (rnd() - .5) * .3, a0 + 2 * Math.PI / 3 + (rnd() - .5) * .3];
+      for (let k = 0; k < 11; k++) { const a = fam[k % 3] + (rnd() - .5) * .12, o = (rnd() - .5) * 400; lxBar(x, LX_C - Math.sin(a) * o, LX_C + Math.cos(a) * o, a, 800, 8 + rnd() * 12); }
+      for (let k = 0; k < 9; k++) lxBar(x, LX_C + (rnd() - .5) * 380, LX_C + (rnd() - .5) * 380, rnd() * Math.PI, 60 + rnd() * 90, 6 + rnd() * 6);
+    } },
+  { name: 'Linear', stands: 'fine parallel lines (the wall scrapes\' template)',
+    draw: x => { for (let y = 4; y < LX_S; y += 24) x.fillRect(0, y, LX_S, 9); } },
+  { name: 'Dust', stands: 'a soft dappled breakup: blots of light and specks',
+    draw: (x, rnd) => {
+      x.filter = 'blur(3px)';
+      for (let k = 0; k < 240; k++) {
+        const r = 6 + rnd() * 30, cx = rnd() * LX_S, cy = rnd() * LX_S, a = .35 + rnd() * .6, g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+        g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(.6, `rgba(255,255,255,${a * .7})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+        x.fillStyle = g; x.fillRect(cx - r, cy - r, 2 * r, 2 * r);
+      }
+      x.filter = 'none'; x.fillStyle = '#fff';
+      for (let k = 0; k < 500; k++) { x.globalAlpha = .4 + rnd() * .6; x.beginPath(); x.arc(rnd() * LX_S, rnd() * LX_S, .8 + rnd() * 2.2, 0, 6.283); x.fill(); }
+      x.globalAlpha = 1;
+    } },
+  { name: 'Cobble stone', stands: 'cobbles: close-set stones with dark joints, a little uneven in tone',
+    draw: (x, rnd) => lxCells(x, rnd, 58, (d1, d2, id) => Math.min(1, Math.max(0, ((d2 - d1) / 2 - 3.5) / 3)) * (0.78 + 0.22 * id)) },
+  { name: 'Alpha', stands: 'a sharp-edged geometric breakup: angular slats and shards, mostly upright (the BOX templates\')',
+    draw: (x, rnd) => {
+      for (let k = 0; k < 36; k++) {
+        const cx = LX_C + (rnd() - .5) * 440, cy = LX_C + (rnd() - .5) * 440, a = rnd() < .65 ? Math.PI / 2 + (rnd() - .5) * .5 : rnd() * Math.PI;
+        const L = 50 + rnd() * 110, w = 10 + rnd() * 18, s1 = (rnd() - .5) * w * 1.6, s2 = (rnd() - .5) * w * 1.6;
+        x.save(); x.translate(cx, cy); x.rotate(a);
+        x.beginPath(); x.moveTo(-L / 2 + s1, -w / 2); x.lineTo(L / 2 + s2, -w / 2); x.lineTo(L / 2 - s2, w / 2); x.lineTo(-L / 2 - s1, w / 2); x.closePath(); x.fill();
+        x.restore();
+      }
+    } },
+  { name: 'Vignette', gate: false, stands: 'a soft-edged open beam: bright centre, falling away to nothing at the edge',
+    draw: x => { const g = x.createRadialGradient(LX_C, LX_C, 0, LX_C, LX_C, 226); g.addColorStop(0, '#fff'); g.addColorStop(.3, 'rgba(255,255,255,.9)'); g.addColorStop(.7, 'rgba(255,255,255,.4)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, LX_S, LX_S); } },
+  { name: 'Nite sky', soft: 1.2, stands: 'a night sky: a dense star field, a few bright stars, a faint band of the Milky Way',
+    draw: (x, rnd) => {
+      x.save(); x.translate(LX_C, LX_C); x.rotate(-.6);
+      const g = x.createLinearGradient(0, -90, 0, 90); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,.3)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = g; x.fillRect(-300, -90, 600, 180); x.restore();
+      x.fillStyle = '#fff';
+      for (let k = 0; k < 1700; k++) { const b = rnd(); x.globalAlpha = .5 + rnd() * .5; x.beginPath(); x.arc(rnd() * LX_S, rnd() * LX_S, 1.5 + b * b * b * 4.5, 0, 6.283); x.fill(); }
+      x.globalAlpha = 1; x.strokeStyle = '#fff'; x.lineWidth = 1.5;
+      for (let k = 0; k < 14; k++) { const cx = rnd() * LX_S, cy = rnd() * LX_S, L = 7 + rnd() * 8; x.beginPath(); x.moveTo(cx - L, cy); x.lineTo(cx + L, cy); x.moveTo(cx, cy - L); x.lineTo(cx, cy + L); x.stroke(); x.beginPath(); x.arc(cx, cy, 4, 0, 6.283); x.fill(); }
+    } },
+  { name: 'Brains', stands: 'an organic swirl: winding brain-coral ridges',
+    draw: (x, rnd) => {   // the contour lines of two octaves of gently warped noise: ridges that wind and branch like a maze
+      const n1 = lxNoise(rnd), n2 = lxNoise(rnd), n3 = lxNoise(rnd);
+      lxPixels(x, (i, j) => { const w = n3(i / 160, j / 160) * 1.6, h = n1(i / 95 + w, j / 95 - w) * 0.65 + n2(i / 47 - w, j / 47 + w) * 0.35; return (Math.sin(h * 6.2832 * 7) + 0.1) * 2.5; });
+    } },
+  { name: 'Pebbles', stands: 'pebbles: separate rounded stones of mixed sizes, dark between',
+    draw: (x, rnd) => lxCells(x, rnd, 44, (d1, d2, id) => Math.min(13 + id * 11 - d1, (d2 - d1) / 2 - 4) / 2.5) },
+  { name: 'Blocks', stands: 'blocks: rows of horizontal slabs, broken and offset (the X templates\')',
+    draw: (x, rnd) => {
+      for (let y = -10; y < LX_S + 10; y += 34) {
+        x.save(); x.translate(LX_C, y); x.rotate((rnd() - .5) * .08);
+        const h = 18 + rnd() * 8; let X = -LX_C - rnd() * 120;
+        while (X < LX_C + 20) { const L = 30 + rnd() * 120; lxSlab(x, X, L, h, (rnd() - .5) * 14); X += L + 8 + rnd() * 26; }
+        x.restore();
+      }
+    } },
+  { name: 'Tribal', soft: 2.5, stands: 'tribal: bold tapering swooshes, mirrored left to right',
+    draw: (x, rnd) => {
+      const shapes = []; for (let k = 0; k < 17; k++) shapes.push([rnd(), rnd(), rnd(), rnd(), rnd(), rnd()]);
+      for (const m of [1, -1]) {
+        x.save(); x.translate(LX_C, LX_C); x.scale(m, 1);
+        for (const [a, b, c, d, e, f] of shapes) {
+          const x0 = -10 - a * 220, y0 = (b - .5) * 440, ang = c * 6.283, L = 90 + d * 170, x1 = x0 + Math.cos(ang) * L, y1 = y0 + Math.sin(ang) * L;
+          const s = e * 2 - 1, bend = Math.sign(s || 1) * (0.35 + 0.4 * Math.abs(s)) * L, hx = (x0 + x1) / 2, hy = (y0 + y1) / 2;
+          const mx = hx - Math.sin(ang) * bend, my = hy + Math.cos(ang) * bend, t = 0.45 + f * 0.3;
+          x.beginPath(); x.moveTo(x0, y0); x.quadraticCurveTo(mx, my, x1, y1); x.quadraticCurveTo(hx + (mx - hx) * (1 - t), hy + (my - hy) * (1 - t), x0, y0); x.fill();
+        }
+        x.restore();
+      }
+    } },
+  { name: 'Leaves', soft: 3, stands: 'a leaf breakup: dappled light through foliage',
+    draw: (x, rnd) => {
+      x.fillRect(0, 0, LX_S, LX_S); x.fillStyle = '#000';
+      for (let k = 0; k < 230; k++) {
+        const L = 14 + rnd() * 22, W = L * (.4 + rnd() * .25);
+        x.save(); x.translate(rnd() * LX_S, rnd() * LX_S); x.rotate(rnd() * 6.283);
+        x.beginPath(); x.moveTo(-L, 0); x.quadraticCurveTo(0, -W * 1.4, L, 0); x.quadraticCurveTo(0, W * 1.4, -L, 0); x.fill(); x.fillRect(-L - 9, -1.2, 10, 2.4);
+        x.restore();
+      }
+    } },
+  { name: 'Slot', stands: 'a slot: one bar of light across the beam', draw: x => x.fillRect(0, LX_C - 50, LX_S, 100) },
+  { name: 'Square', stands: 'a square cut out of the beam', draw: x => x.fillRect(LX_C - 150, LX_C - 150, 300, 300) },
+  { name: 'Pickup sticks', stands: 'pickup sticks: long thin sticks crossing at random angles (the Clear T and LED T Down templates\')',
+    draw: (x, rnd) => { for (let k = 0; k < 28; k++) { const r = Math.sqrt(rnd()) * 170, t = rnd() * 6.283; lxBar(x, LX_C + Math.cos(t) * r, LX_C + Math.sin(t) * r, rnd() * Math.PI, 240 + rnd() * 240, 7 + rnd() * 6); } } },
 ];
+const LX_GOBO_BY_NAME = new Map();
+LX_GOBOS.forEach((g, i) => { const k = g.name.toLowerCase(); LX_GOBO_BY_NAME.set(k, i); LX_GOBO_BY_NAME.set(k.replace(/\s+/g, ''), i); });
+// A slot from a number or a pattern's name ("Nite sky", "nitesky", "7") → the slot, or -1.
+function lxGoboSlot(q) {
+  if (typeof q === 'number') return Number.isInteger(q) && LX_GOBOS[q] ? q : -1;
+  const s = String(q ?? '').trim().toLowerCase();
+  if (/^\d+$/.test(s)) return LX_GOBOS[+s] ? +s : -1;
+  return LX_GOBO_BY_NAME.get(s) ?? LX_GOBO_BY_NAME.get(s.replace(/\s+/g, '')) ?? -1;
+}
+// A slot's picture, drawn once: the pattern, its blur, and the gate (a disc the cone's size with a focus edge, wider when soft).
+function lxGoboCanvas(slot) {
+  const g = LX_GOBOS[slot] || LX_GOBOS[0];
+  if (g.canvas) return g.canvas;
+  const c = document.createElement('canvas'); c.width = c.height = LX_S;
+  let x = c.getContext('2d', { willReadFrequently: true }), out = c;
+  x.fillStyle = '#000'; x.fillRect(0, 0, LX_S, LX_S); x.fillStyle = '#fff';
+  g.draw(x, lxRandom(0x9e3779b9 ^ ((LX_GOBOS.indexOf(g) + 1) * 7919)));
+  x.filter = 'none'; x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
+  if (g.soft) {
+    out = document.createElement('canvas'); out.width = out.height = LX_S;
+    x = out.getContext('2d', { willReadFrequently: true });
+    x.fillStyle = '#000'; x.fillRect(0, 0, LX_S, LX_S); x.filter = `blur(${g.soft}px)`; x.drawImage(c, 0, 0); x.filter = 'none';
+  }
+  if (g.gate !== false) {
+    const e0 = g.soft ? 196 : 218, e1 = g.soft ? 238 : 234, v = x.createRadialGradient(LX_C, LX_C, 0, LX_C, LX_C, e1);
+    v.addColorStop(0, '#fff'); v.addColorStop(e0 / e1, '#fff'); v.addColorStop(1, 'rgba(255,255,255,0)');
+    x.globalCompositeOperation = 'destination-in'; x.fillStyle = v; x.fillRect(0, 0, LX_S, LX_S); x.globalCompositeOperation = 'source-over';
+  }
+  return (g.canvas = out);
+}
 function lxGoboTexture(slot) {
   const g = LX_GOBOS[slot] || LX_GOBOS[0];
   if (g.tex) return g.tex;
-  const c = document.createElement('canvas'); c.width = c.height = 256;
-  const x = c.getContext('2d');
-  x.fillStyle = '#000'; x.fillRect(0, 0, 256, 256); x.fillStyle = '#fff';
-  g.draw(x, lxRandom(0x9e3779b9 ^ (LX_GOBOS.indexOf(g) * 7919)));
-  const v = x.createRadialGradient(128, 128, 60, 128, 128, 130);   // a vignette, so the pattern stays inside the beam
-  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,1)');
-  x.globalAlpha = 1; x.globalCompositeOperation = 'destination-out'; x.fillStyle = v; x.fillRect(0, 0, 256, 256);
-  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  const t = new THREE.CanvasTexture(lxGoboCanvas(LX_GOBOS.indexOf(g)));
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.anisotropy = 4;   // a pool lands at grazing angles too
   return (g.tex = t);
 }
-function lxWheelOf(unit) { const t = unit.userData.type; return MOVERS.has(t) || t === 'source-four' ? LX_GOBOS.map((g, i) => i) : [0]; }
-function lxColourOf(unit, state) { return state.color; }
+// For checking: how much of the gate a slot passes — mean (the average transmission) and open (the share over half).
+function lxGoboCoverage(slot) {
+  const g = LX_GOBOS[slot] || LX_GOBOS[0], d = lxGoboCanvas(LX_GOBOS.indexOf(g)).getContext('2d').getImageData(0, 0, LX_S, LX_S).data, R2 = (LX_GATE * 0.95) ** 2;
+  let n = 0, sum = 0, open = 0;
+  for (let j = 0; j < LX_S; j++) for (let i = 0; i < LX_S; i++) {
+    const dx = i + .5 - LX_C, dy = j + .5 - LX_C; if (dx * dx + dy * dy > R2) continue;
+    const k = (j * LX_S + i) * 4, v = d[k] / 255 * d[k + 3] / 255; n++; sum += v; if (v > .5) open++;
+  }
+  return { slot: LX_GOBOS.indexOf(g), name: g.name, mean: +(sum / n).toFixed(3), open: +(open / n).toFixed(3) };
+}
+
+// THE WHEELS. Movers by type; the template systems by channel (Howell Binkley's magic sheet, its template icons).
+const LX_GOBO_WHEELS = {
+  'mac-viper': { rotating: ['Construction', 'Dust', 'Cobble stone', 'Alpha', 'Brains', 'Pebbles'], framing: ['Slot', 'Square'], diffusion: ['Vignette'] },
+  'vl3500': { fx: ['Nite sky', 'Tribal', 'Leaves'] },
+};
+const LX_TEMPLATES = [
+  { from: 111, to: 125, gobo: 'Pickup sticks', system: 'Clear T: Down' },
+  { from: 131, to: 138, gobo: 'Blocks', system: 'Clear T: X <' },
+  { from: 141, to: 149, gobo: 'Blocks', system: 'Clear T: X >' },
+  { from: 160, to: 179, gobo: 'Construction', system: 'LED T: Diag < and >' },
+  { from: 181, to: 192, gobo: 'Pickup sticks', system: 'LED T: Down - Above' },
+  { from: 201, to: 208, gobo: 'Alpha', system: 'Clear / R01 / L161 / R23 T: > BOX <' },
+  { from: 241, to: 249, gobo: 'Pickup sticks', system: 'Clear T: Shin' },
+  { from: 281, to: 284, gobo: 'Pickup sticks', system: 'Clear T: Show Portal' },
+  { from: 290, to: 298, gobo: 'Linear', system: 'Wall Scrapes' },
+];
+function lxTemplateOf(ud) {
+  if (ud.type !== 'source-four' && ud.type !== 's4-lustr') return null;
+  for (const c of ud.channels || []) { const n = Math.floor(c); for (const t of LX_TEMPLATES) if (n >= t.from && n <= t.to) return t; }
+  return null;
+}
+// The slots a unit carries, by name: [{ slot, name, kind ('open' | 'rotating' | 'framing' | 'diffusion' | 'fx' | 'template'), system? }].
+function lxWheelInfo(ud) {
+  if (ud.lxWheelInfo) return ud.lxWheelInfo;
+  const out = [{ slot: 0, name: LX_GOBOS[0].name, kind: 'open' }], W = LX_GOBO_WHEELS[ud.type], t = lxTemplateOf(ud);
+  if (W) for (const kind of Object.keys(W)) for (const n of W[kind]) out.push({ slot: lxGoboSlot(n), name: n, kind });
+  if (t) out.push({ slot: lxGoboSlot(t.gobo), name: t.gobo, kind: 'template', system: t.system });
+  return (ud.lxWheelInfo = out);
+}
+function lxWheelOf(unit) { const ud = unit.userData; return ud.lxWheel || (ud.lxWheel = lxWheelInfo(ud).map(w => w.slot)); }
+
+// THE GELS. GELS (THE RIG) gives a gel's colour under a 3200 K lamp at full; this EXTENDS it with every gel the show's colour
+// palettes, the magic sheet and the rig file name, and the rest of Roscolux 01–99 (approximate, by the swatch books' look).
+Object.assign(GELS, {
+  R06: 0xfdf0d0, R10: 0xfde84a, R11: 0xfde3a0, R12: 0xfdd970, R14: 0xfbc860, R15: 0xf9b640, R17: 0xf8905a, R19: 0xf44a1a,
+  R22: 0xf46a10, R24: 0xe8202a, R30: 0xf8a890, R31: 0xf8b0a0, R34: 0xf590a0, R36: 0xf47fa0, R38: 0xf6a0c0, R41: 0xf86a5a,
+  R43: 0xe8407a, R45: 0xd8306a, R46: 0xc0105a, R47: 0xb860a8, R48: 0xc078d0, R49: 0x9030b0, R50: 0xc04080, R52: 0xd0b0e8,
+  R53: 0xe4d8f2, R55: 0xb090e0, R56: 0x7a40b0, R66: 0xb8e0f0, R67: 0x6ab8f0, R71: 0x2a80c8, R72: 0x50a8e0, R73: 0x20a0b0,
+  R78: 0x7a70c8, R81: 0x5a8ae0, R82: 0x4050c0, R84: 0x3a7ad8, R87: 0xe8f0a0, R88: 0xb8e080, R92: 0x30c0b0, R93: 0x10a090,
+  R94: 0x10a050, R95: 0x108080, R96: 0xe8f060,
+  R302: 0xfbd8b8, R304: 0xfbcfa8, R312: 0xfff070, R318: 0xffa030, R362: 0xa8b8f0, R3314: 0xf8e4ee,
+  L106: 0xd00018, L116: 0x00a090, L124: 0x109040, L128: 0xf02a8a,
+});
+// Clear and the diffusions read as open (no colour). R119 / R132 are Rosco's Hamburg frosts; Lee's frosts are L114 and up.
+const LX_OPEN_GELS = new Set(['R00', 'R100', 'R101', 'R102', 'R103', 'R104', 'R105', 'R106', 'R107', 'R108', 'R109', 'R110', 'R111', 'R112', 'R113',
+  'R114', 'R115', 'R116', 'R117', 'R118', 'R119', 'R132', 'R140', 'L114', 'L129', 'L216', 'L250', 'L251', 'L252', 'L253', 'L254', 'L255', 'L256', 'L257']);
+const LX_GEL_NAMES = {
+  R00: 'Clear', R01: 'Light Bastard Amber', R02: 'Bastard Amber', R09: 'Pale Amber Gold', R15: 'Deep Straw', R23: 'Orange', R26: 'Light Red',
+  R32: 'Medium Salmon Pink', R33: 'No Color Pink', R40: 'Light Salmon', R54: 'Special Lavender', R56: 'Gypsy Lavender', R57: 'Lavender',
+  R59: 'Indigo', R68: 'Sky Blue', R69: 'Brilliant Blue', R73: 'Peacock Blue', R77: 'Green Blue', R80: 'Primary Blue', R119: 'Light Hamburg Frost',
+  R132: 'Quarter Hamburg Frost', R302: 'Pale Bastard Amber', R312: 'Canary', R318: 'Mayan Sun', R362: 'Tipton Blue',
+  R3314: 'Cinegel 3314 (taken as 1/4 Minusgreen: a faint pink)', L114: 'Hamburg Frost', L116: 'Medium Blue-Green', L124: 'Dark Green',
+  L128: 'Bright Pink', L161: 'Slate Blue', L182: 'Light Red', L201: 'Full CT Blue', L202: 'Half CT Blue', L203: 'Quarter CT Blue',
+  L204: 'Full CT Orange', L205: 'Half CT Orange', L206: 'Quarter CT Orange',
+};
+// A gel string ("R01", "R1", "R001", "R 26", "R02+R119", "L201") → { code, name, known (a colour in GELS), open (clear or a frost
+// only), frost, colour (THREE.Color under 3200 K, or null) }. The first coloured gel wins; a frost with it is noted.
+function lxGelInfo(gel) {
+  const raw = String(gel ?? '').toUpperCase().replace(/([RL])\s+(?=\d)/g, '$1');
+  let first = null, frost = null, unknown = null;
+  for (const g of raw.split(/[^A-Z0-9]+/)) {
+    const m = /^([RL])0*(\d+)$/.exec(g); if (!m) continue;
+    const code = m[1] + (m[1] === 'R' ? m[2].padStart(2, '0') : m[2]);
+    if (LX_OPEN_GELS.has(code)) frost = frost || code;
+    else if (GELS[code] !== undefined) first = first || code;
+    else unknown = unknown || code;
+  }
+  const code = first || frost || unknown;
+  return { code, name: code ? LX_GEL_NAMES[code] || null : null, known: !!first, open: !first && !unknown, frost: frost && frost !== 'R00' ? frost : null,
+    colour: first ? new THREE.Color(GELS[first]) : null };
+}
+
+// LAMPS AND COLOUR TEMPERATURE. A colour temperature → linear RGB (Tanner Helland's fit to the blackbody, sRGB → linear).
+function lxKelvinRaw(K) {
+  const t = K / 100; let r, g, b;
+  if (t <= 66) { r = 255; g = 99.4708025861 * Math.log(t) - 161.1195681661; b = t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307; }
+  else { r = 329.698727446 * Math.pow(t - 60, -0.1332047592); g = 288.1221695283 * Math.pow(t - 60, -0.0755148492); b = 255; }
+  const lin = v => { v = Math.min(255, Math.max(0, v)) / 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return [lin(r), lin(g), lin(b)];
+}
+// The stage white at K: the eye adapted to the stage (raw ^ 0.2), brightest channel 1. Its 3200 K is #fff0de — the page's
+// OPEN_WHITE (#fff1dc), which lxLamp(3200) returns exactly so nothing already lit changes; 6000 K is #fffcfa, cool beside it.
+function lxStageWhite(K, out = new THREE.Color()) {
+  const [r, g, b] = lxKelvinRaw(K); out.setRGB(r ** .2, g ** .2, b ** .2);
+  return out.multiplyScalar(1 / Math.max(out.r, out.g, out.b));
+}
+const LX_LAMPS = new Map();
+function lxLamp(K) { K = Math.round(K); if (!LX_LAMPS.has(K)) LX_LAMPS.set(K, K === 3200 ? new THREE.Color(OPEN_WHITE) : lxStageWhite(K)); return LX_LAMPS.get(K); }   // shared: clone before changing
+// A gel's colour on a lamp at K, at full: GELS is under 3200 K, so the gel's transmission is that over the tungsten white.
+function lxGelOn(info, K) {
+  const W = lxLamp(K);
+  if (!info || !info.known) return W.clone();
+  const c = info.colour.clone(); if (Math.round(K) === 3200) return c;
+  const T = lxLamp(3200); c.r /= T.r; c.g /= T.g; c.b /= T.b;
+  const m = Math.max(c.r, c.g, c.b); if (m > 1) c.multiplyScalar(1 / m);
+  return c.multiply(W);
+}
+// An incandescent lamp dims warmer: T = 3200 K × level^0.123 (output ∝ V^3.4, T ∝ V^0.42), so 30% ≈ 2770 K, 10% ≈ 2430 K, 1% ≈
+// 1820 K. The shift is the blackbody's own change (raw ratio to 3200 K, ^0.75 — the eye adapts a little), red kept at 1.
+const LX_RAW3200 = lxKelvinRaw(3200);
+function lxDimShift(level, out) {
+  const r = lxKelvinRaw(3200 * Math.pow(Math.max(level, 0.002), 0.123));
+  out.setRGB((r[0] / LX_RAW3200[0]) ** .75, (r[1] / LX_RAW3200[1]) ** .75, (r[2] / LX_RAW3200[2]) ** .75);
+  return out.multiplyScalar(1 / Math.max(out.r, out.g, out.b, 1e-6));
+}
+
+// THE COLOUR MODELS, per type.
+// CMY movers: the white W at the lamp's K, the CTO's full filter (W → 3200 K), and the colour wheel (a slot overrides the mix).
+// The Viper's wheel is Martin's (the numbers are Martin's own filter names); the VL3500 Wash FX's two wheels are not in the
+// show's export by slot, so its one wheel here is an approximate set of saturates.
+function lxCmyModel(K, wheel) {
+  const W = lxLamp(K), T = lxLamp(3200);
+  return { model: 'cmy', K, W, F: new THREE.Color(T.r / W.r, T.g / W.g, T.b / W.b), wheel: [{ name: 'Open', c: null }].concat(wheel.map(([name, hex]) => ({ name, c: new THREE.Color(hex) }))) };
+}
+// LED emitters, linear RGB at full. RGB, RGBW (white ~6500 K), RGBA (amber ~590 nm), and the Lustr's seven.
+const LX_EMIT = {
+  RGB: [['red', [1, 0, 0]], ['green', [0, 1, 0]], ['blue', [0, 0, 1]]],
+  RGBW: [['red', [1, 0, 0]], ['green', [0, 1, 0]], ['blue', [0, 0, 1]], ['white', lxStageWhite(6500).toArray()]],
+  RGBA: [['red', [1, 0, 0]], ['green', [0, 1, 0]], ['blue', [0, 0, 1]], ['amber', [1, 0.42, 0]]],
+  LUSTR: [['red', [1, 0, 0]], ['lime', [0.55, 1, 0.05]], ['amber', [1, 0.42, 0]], ['green', [0, 1, 0.12]], ['cyan', [0, 0.7, 1]], ['blue', [0.02, 0.06, 1]], ['indigo', [0.25, 0, 1]]],
+};
+const lxLed = kind => ({ model: 'led', kind, names: LX_EMIT[kind].map(e => e[0]), E: LX_EMIT[kind].map(e => e[1]) });
+// Frames: a gel unit whose choices are a string of gels (index 0 open). The S4 Revolution's scroll holds the show's colour palettes;
+// the followspots' boomerang the magic sheet's "DS Spot Color" six (with R132 frost in the spot, not modelled).
+function lxFrames(codes, K) { return [{ code: null, name: 'Open', c: lxLamp(K).clone() }].concat(codes.map(code => { const i = lxGelInfo(code); return { code: i.code, name: i.name, c: lxGelOn(i, K) }; })); }
+const LX_GEL_MODEL = { model: 'gel', K: 3200, dims: true };
+const LX_CMODEL = {
+  'source-four': LX_GEL_MODEL, 's4-par': LX_GEL_MODEL, 'par64': LX_GEL_MODEL, 'birdie': LX_GEL_MODEL, 'stickup': LX_GEL_MODEL, 'mini-10': LX_GEL_MODEL,
+  's4-revolution': { model: 'gel', K: 3200, dims: true, frames: lxFrames(['R01', 'R09', 'R15', 'R23', 'R26', 'R33', 'R56', 'R57', 'R59', 'R68', 'R69', 'R73', 'R77', 'R80', 'L116', 'L124', 'L128', 'L161', 'L201', 'L202', 'L204', 'R312', 'R318'], 3200) },
+  'lycian': { model: 'gel', K: 6000, dims: false, frames: lxFrames(['R3314', 'R33', 'R302', 'R362', 'R54', 'R02'], 6000) },
+  'mac-viper': lxCmyModel(6000, [['Blue 104', 0x3d6cff], ['Green 206', 0x18d040], ['Orange 306', 0xff7a10], ['Pink 332', 0xff6aa8], ['Congo Blue 383', 0x3a10e0], ['Red 308', 0xf01010], ['Magenta 507', 0xe020c8], ['Yellow 603', 0xffe020]]),
+  'vl3500': lxCmyModel(6000, [['Deep Red', 0xe01018], ['Primary Blue', 0x1a3cf0], ['Congo Blue', 0x3010d0], ['Green', 0x20c040], ['Amber', 0xffa020], ['Magenta', 0xd02090], ['Lavender', 0xb090e8]]),
+  'glp-x4': lxLed('RGBW'), 'colorblast': lxLed('RGB'), 'colorsource-par': lxLed('RGB'), 'elar-108': lxLed('RGB'), 'pixelpar': lxLed('RGB'),
+  'colorblaze-48': lxLed('RGBA'), 'colorblaze-72': lxLed('RGBA'), 's4-lustr': lxLed('LUSTR'),
+  'hazer': { model: 'none' },
+};
+const lxModelOf = ud => LX_CMODEL[ud.type] || LX_GEL_MODEL;
+const LX_LED_WHITE = new THREE.Color(1, 1, 1);
+const lx01 = v => Math.min(1, Math.max(0, +v || 0));
+// A unit's emitter levels for a linear target t (warm-started from e): exact for RGB / RGBW / RGBA (white and amber take as much
+// as they can), coordinate-descent least squares in [0, 1] for the Lustr's seven.
+function lxEmitSolve(M, t, e) {
+  const E = M.E;
+  if (M.kind === 'RGB') { e[0] = lx01(t[0]); e[1] = lx01(t[1]); e[2] = lx01(t[2]); return e; }
+  if (M.kind === 'RGBW' || M.kind === 'RGBA') {
+    const X = E[3]; let k = 1;
+    for (let c = 0; c < 3; c++) if (X[c] > 0) k = Math.min(k, t[c] / X[c]);
+    k = lx01(k); e[3] = k;
+    for (let c = 0; c < 3; c++) e[c] = lx01(t[c] - k * X[c]);
+    return e;
+  }
+  const r = [t[0], t[1], t[2]];
+  for (let j = 0; j < E.length; j++) for (let c = 0; c < 3; c++) r[c] -= E[j][c] * e[j];
+  for (let sweep = 0; sweep < 80; sweep++) {
+    let moved = 0;
+    for (let j = 0; j < E.length; j++) {
+      const v = E[j], vv = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+      const x = lx01((v[0] * (r[0] + v[0] * e[j]) + v[1] * (r[1] + v[1] * e[j]) + v[2] * (r[2] + v[2] * e[j])) / (vv + 1e-3)), dx = x - e[j];
+      if (dx) { r[0] -= v[0] * dx; r[1] -= v[1] * dx; r[2] -= v[2] * dx; e[j] = x; moved += Math.abs(dx); }
+    }
+    if (moved < 1e-7) break;
+  }
+  return e;
+}
+// A dichroic flag is not a perfect block: at full it still passes this much of the light it removes (so a mover's deep red is
+// a touch less pure than the gel's; the solve does not chase it). What a CMY unit's flags ask for (the leak and the wheel aside):
+// W × CTO × (1 − cmy).
+const LX_CMY_LEAK = 0.01;
+function lxCmyColour(M, cmy, cto, out = new THREE.Color()) {
+  const x = cto || 0;
+  return out.setRGB(M.W.r * (1 - x * (1 - M.F.r)) * (1 - cmy[0]), M.W.g * (1 - x * (1 - M.F.g)) * (1 - cmy[1]), M.W.b * (1 - x * (1 - M.F.b)) * (1 - cmy[2]));
+}
+// A frame for a colour (nearest, linear RGB) or a gel code (exact first).
+function lxFrameNear(M, colour, code) {
+  if (code) { const k = M.frames.findIndex(f => f.code === code); if (k >= 0) return k; }
+  let best = 0, bd = Infinity;
+  M.frames.forEach((f, k) => { const d = (f.c.r - colour.r) ** 2 + (f.c.g - colour.g) ** 2 + (f.c.b - colour.b) ** 2; if (d < bd) { bd = d; best = k; } });
+  return best;
+}
+// A wheel slot / frame from a number or a name ("Red 308", "red", "308", "R33") → index, or null.
+function lxSlotIn(list, q) {
+  if (typeof q === 'number' || /^\s*\d+\s*$/.test(String(q))) { const k = Math.round(+q); return k >= 0 && k < list.length ? k : null; }
+  const s = String(q ?? '').trim().toLowerCase(); if (!s) return null;
+  let k = list.findIndex(w => [w.name, w.code].some(n => n && n.toLowerCase() === s));
+  if (k < 0) k = list.findIndex(w => [w.name, w.code].some(n => n && n.toLowerCase().split(/\s+/).includes(s)));
+  return k >= 0 ? k : null;
+}
+// The colour state, made on the unit's first draw: state.gel from the rig file's gel, the template in its holder (state.gobo),
+// the model's own white where the file names no gel, and the beam's gobo-rotation uniform (before the beam first renders).
+function lxColourInit(unit, st) {
+  const ud = unit.userData, M = lxModelOf(ud), rec = LX.byUnit.get(unit) || null, info = lxGelInfo(ud.gel);
+  const c = st.cm = { M, rec, v: 0, done: -1, r: NaN, g: NaN, b: NaN, lv: NaN, out: new THREE.Color(), emit: null };
+  st.gel = info.code; st.wheel = 0;
+  if (M.model === 'gel') {
+    if (M.frames) { st.frame = info.known ? lxFrameNear(M, lxGelOn(info, M.K), info.code) : 0; st.gel = M.frames[st.frame].code; st.color.copy(M.frames[st.frame].c); }
+    else st.color.copy(lxGelOn(info, M.K));
+  } else if (M.model === 'cmy') {
+    st.cmy = [0, 0, 0]; st.cto = 0; if (!info.known) st.gel = null;
+    st.color.copy(info.known ? info.colour : M.W);
+  } else if (M.model === 'led') {
+    st.rgb = [1, 1, 1]; st.emit = null; c.emit = new Float64Array(M.E.length); if (!info.known) st.gel = null;
+    st.color.copy(info.known ? info.colour : LX_LED_WHITE);
+  }
+  const t = lxTemplateOf(ud);   // a template sits in its holder at whatever turn it was dropped in: a fixed turn per unit, so a system is not one repeat
+  if (t) { st.gobo = lxGoboSlot(t.gobo); const R = lxRandom(0x51ed27 ^ Math.round((ud.channels && ud.channels[0] || 0) * 100)); R(); st.goboRot = Math.floor(R() * 360); }
+  if (rec && rec.beam) rec.beam.material.uniforms.uGoboRot = { value: 0 };
+  return c;
+}
+// THE ENGINE'S CALL, per lit unit per tick: the one colour it draws in. Cached on state.cm — recomputed only when state.color,
+// the level (a dimming lamp only) or a set() of gel / cmy / cto / wheel / rgb (c.v) changed. Also turns the beam's gobo.
+function lxColourOf(unit, st) {
+  const c = st.cm || lxColourInit(unit, st), M = c.M, col = st.color;
+  if (c.rec && st.gobo) c.rec.beam.material.uniforms.uGoboRot.value = st.goboRot * LX_DEG;
+  const lv = M.dims ? st.level : 0;
+  if (c.done === c.v && col.r === c.r && col.g === c.g && col.b === c.b && lv === c.lv) return c.out;
+  c.done = c.v; c.r = col.r; c.g = col.g; c.b = col.b; c.lv = lv;
+  if (M.model === 'gel') { if (M.dims) lxDimShift(st.level, c.out).multiply(col); else c.out.copy(col); }
+  else if (M.model === 'cmy') {
+    const x = st.cto || 0, k0 = M.W.r * (1 - x * (1 - M.F.r)), k1 = M.W.g * (1 - x * (1 - M.F.g)), k2 = M.W.b * (1 - x * (1 - M.F.b));
+    const f0 = lx01(col.r / k0), f1 = lx01(col.g / k1), f2 = lx01(col.b / k2);
+    st.cmy = [1 - f0, 1 - f1, 1 - f2];
+    const lk = LX_CMY_LEAK, g0 = lk + (1 - lk) * f0, g1 = lk + (1 - lk) * f1, g2 = lk + (1 - lk) * f2;   // a full flag still passes 1%
+    const w = st.wheel ? M.wheel[st.wheel] : null;
+    if (w && w.c) c.out.setRGB(k0 * w.c.r, k1 * w.c.g, k2 * w.c.b);   // the wheel's filter overrides the mix
+    else c.out.setRGB(k0 * g0, k1 * g1, k2 * g2);
+  } else if (M.model === 'led') {
+    const lock = c.lock && c.lock.r === col.r && c.lock.g === col.g && c.lock.b === col.b ? c.lock : null;   // set({emitters}) is kept as set
+    const e = lock ? (c.emit.set(lock.e), c.emit) : lxEmitSolve(M, [col.r, col.g, col.b], c.emit);
+    let r = 0, g = 0, b = 0; for (let j = 0; j < e.length; j++) { r += M.E[j][0] * e[j]; g += M.E[j][1] * e[j]; b += M.E[j][2] * e[j]; }
+    c.out.setRGB(r, g, b); st.rgb = [r, g, b];
+    const em = {}; M.names.forEach((n, j) => { em[n] = e[j]; }); st.emit = em;
+  } else c.out.copy(col);
+  return c.out;
+}
+
+// THE API. lxSet (and MIDTOWN.lx.set) wrapped: the keys gel, cmy, cto, wheel, rgb, emitters, a colour by gel code or temperature,
+// and a gobo by name become per-unit state and per-unit colours, handed to the engine's own set (so they fade like any colour).
+// A colour / gel / cmy ask puts a mover's colour wheel back to open unless the same call names a wheel.
+const lxSetEngine = lxSet;
+function lxAskColour(p) {
+  const a = {};
+  if (p.color !== undefined) {
+    const c = p.color;
+    if (typeof c === 'string' && /^\s*[RL]\s*\d+/i.test(c)) a.gel = c;
+    else if (typeof c === 'string' && /^\s*\d{4,5}\s*K\s*$/i.test(c)) a.K = THREE.MathUtils.clamp(parseInt(c, 10), 1000, 12000);
+    else { a.colour = lxParseColour(c); if (!a.colour) console.warn(`lx: colour ${JSON.stringify(c)} not understood — a hex (0xff8800, "#ff8800"), a CSS colour, an RGB array (linear), a gel ("R26", "L201") or a temperature ("3200K")`); }
+  }
+  if (p.gel !== undefined) a.gel = p.gel;
+  if (a.gel !== undefined) {
+    a.info = lxGelInfo(a.gel);
+    if (!a.info.known && !a.info.open) { console.warn(`lx: gel ${JSON.stringify(a.gel)} is not in the gel table (GELS) — ignored`); delete a.info; }
+  }
+  return a;
+}
+function lxSetH(sel, p = {}, fade = 0) {
+  if (!LX.ready || !p || typeof p !== 'object' || !['color', 'gel', 'cmy', 'cto', 'wheel', 'rgb', 'emitters'].some(k => p[k] !== undefined) && typeof p.gobo !== 'string')
+    return lxSetEngine(sel, p, fade);
+  const us = lxSelect(sel), rest = Object.assign({}, p), a = lxAskColour(p), ask = !!(a.info || a.K || a.colour), groups = new Map(), ignored = {};
+  for (const k of ['color', 'gel', 'cmy', 'cto', 'wheel', 'rgb', 'emitters']) delete rest[k];
+  if (typeof p.gobo === 'string') { const g = lxGoboSlot(p.gobo); if (g < 0) { console.warn(`lx: no gobo called ${JSON.stringify(p.gobo)} — lx.gobos lists them`); delete rest.gobo; } else rest.gobo = g; }
+  const skip = k => { ignored[k] = (ignored[k] || 0) + 1; };
+  for (const u of us) {
+    const r = LX.byUnit.get(u), st = r.st, c = st.cm || lxColourInit(u, st), M = c.M;
+    let tgt = null, touched = false;
+    if (M.model === 'gel') {
+      for (const k of ['cmy', 'cto', 'rgb', 'emitters']) if (p[k] !== undefined) skip(k);
+      if (M.frames) {
+        let f = null;
+        if (p.wheel !== undefined) { f = lxSlotIn(M.frames, p.wheel); if (f === null) skip('wheel'); }
+        else if (a.info) f = lxFrameNear(M, lxGelOn(a.info, M.K), a.info.code);
+        else if (a.K) f = lxFrameNear(M, lxLamp(a.K));
+        else if (a.colour) f = lxFrameNear(M, a.colour);
+        if (f !== null) { st.frame = f; st.gel = M.frames[f].code; tgt = M.frames[f].c; }
+      } else {
+        if (p.wheel !== undefined) skip('wheel');
+        if (a.info) { st.gel = a.info.code; tgt = lxGelOn(a.info, M.K); }
+        else if (a.K) { st.gel = a.K + 'K'; tgt = lxLamp(a.K); }
+        else if (a.colour) { st.gel = '#' + a.colour.getHexString(); tgt = a.colour; }
+      }
+    } else if (M.model === 'cmy') {
+      for (const k of ['rgb', 'emitters']) if (p[k] !== undefined) skip(k);
+      if (p.cto !== undefined) { st.cto = lx01(p.cto); touched = true; }
+      if (p.wheel !== undefined) { const w = lxSlotIn(M.wheel, p.wheel); if (w === null) skip('wheel'); else { st.wheel = w; touched = true; } }
+      else if (ask || Array.isArray(p.cmy)) { st.wheel = 0; touched = true; }
+      if (Array.isArray(p.cmy) && p.cmy.length === 3) { st.gel = null; tgt = lxCmyColour(M, p.cmy.map(lx01), st.cto); }
+      else if (p.cmy !== undefined) skip('cmy');
+      else if (a.info) { st.gel = a.info.code; tgt = a.info.known ? a.info.colour : lxCmyColour(M, [0, 0, 0], st.cto); }
+      else if (a.K) {
+        const KL = M.K, mk = 1e6 / a.K, m0 = 1e6 / KL, m1 = 1e6 / 3200;
+        st.cto = lx01((mk - m0) / (m1 - m0)); st.gel = a.K + 'K';
+        tgt = a.K >= 3200 && a.K <= KL ? lxCmyColour(M, [0, 0, 0], st.cto) : lxLamp(a.K);
+      } else if (a.colour) { st.gel = null; tgt = a.colour; }
+      else if (p.cto !== undefined) tgt = lxCmyColour(M, st.cmy, st.cto);   // the CTO warms the same mix
+    } else if (M.model === 'led') {
+      for (const k of ['cmy', 'cto', 'wheel']) if (p[k] !== undefined) skip(k);
+      if (Array.isArray(p.emitters) && p.emitters.length === M.E.length) {
+        const e = p.emitters.map(lx01); let r0 = 0, g0 = 0, b0 = 0; e.forEach((v, j) => { r0 += M.E[j][0] * v; g0 += M.E[j][1] * v; b0 += M.E[j][2] * v; });
+        st.gel = null; tgt = new THREE.Color(r0, g0, b0); c.lock = { r: tgt.r, g: tgt.g, b: tgt.b, e };
+      } else if (p.emitters !== undefined) skip('emitters');
+      else if (Array.isArray(p.rgb) && p.rgb.length === 3) { st.gel = null; tgt = new THREE.Color(lx01(p.rgb[0]), lx01(p.rgb[1]), lx01(p.rgb[2])); }
+      else if (p.rgb !== undefined) skip('rgb');
+      else if (a.info) { st.gel = a.info.code; tgt = a.info.known ? a.info.colour : LX_LED_WHITE; }
+      else if (a.K) { st.gel = a.K + 'K'; tgt = lxLamp(a.K); }
+      else if (a.colour) { st.gel = null; tgt = a.colour; }
+    }                                                        // a hazer has no colour: asked one, it says nothing (lx.set('all', …) is normal)
+    if (touched || tgt) { c.v++; LX.dirty.add(r); }
+    if (tgt) { const key = `${tgt.r},${tgt.g},${tgt.b}`; if (!groups.has(key)) groups.set(key, { colour: tgt.clone(), units: [] }); groups.get(key).units.push(u); }
+  }
+  const skipped = Object.entries(ignored);
+  if (skipped.length) console.warn('lx: ' + skipped.map(([k, n]) => `${k} ignored on ${n} unit${n > 1 ? 's' : ''}`).join(', ') + ' — not part of their colour model (lx.wheel(unit) says what a unit has)');
+  for (const g of groups.values()) lxSetEngine(g.units, { color: g.colour }, fade);
+  lxSetEngine(us, rest, fade);
+  return us.length;
+}
+lxSet = lxSetH;                                              // the engine's own callers (all, blackout) and agent I's panel get it too
+LX_API.set = lxSetH;
+// get() reports the colour state too: gel (what is in it now; gelHung is the rig file's), model, drawn (the colour it draws at its
+// level), cmy / cto / wheel (movers), rgb / emit (LEDs), frame (scroller, boomerang), goboName.
+const lxGetEngine = LX_API.get, lxById = new Map();
+function lxColourReport(u) {
+  const st = LX.byUnit.get(u).st, c = st.cm || lxColourInit(u, st), M = c.M, o = { gel: st.gel ?? null, gelHung: u.userData.gel ?? null, model: M.model + (M.kind ? ' ' + M.kind : '') + (M.frames ? ' frames' : ''),
+    drawn: '#' + lxColourOf(u, st).getHexString(), goboName: (LX_GOBOS[st.gobo] || LX_GOBOS[0]).name };
+  if (M.model === 'cmy') Object.assign(o, { cmy: st.cmy.map(v => +v.toFixed(4)), cto: +(st.cto || 0).toFixed(4), wheel: st.wheel, wheelName: M.wheel[st.wheel].name });
+  if (M.model === 'led') Object.assign(o, { rgb: st.rgb.map(v => +v.toFixed(4)), emit: Object.fromEntries(Object.entries(st.emit || {}).map(([k, v]) => [k, +v.toFixed(4)])) });
+  if (M.frames) Object.assign(o, { frame: st.frame, frameName: M.frames[st.frame].name });
+  return o;
+}
+LX_API.get = sel => {
+  const s = lxGetEngine(sel);
+  if (!lxById.size) for (const u of LX.units) lxById.set(u.userData.id, u);
+  for (const o of [].concat(s)) if (o && lxById.has(o.id)) Object.assign(o, lxColourReport(lxById.get(o.id)));
+  return s;
+};
+// What a unit carries, by name: its gobo slots, its colour wheel or frames, its emitters.
+LX_API.wheel = sel => {
+  const u = lxSelect(sel)[0]; if (!u) return null;
+  const ud = u.userData, M = lxModelOf(ud), hex = c => c ? '#' + c.getHexString() : null;
+  return { id: ud.id, type: ud.type, model: M.model + (M.kind ? ' ' + M.kind : ''), gobos: lxWheelInfo(ud).map(w => Object.assign({}, w)),
+    colours: M.model === 'cmy' ? M.wheel.map((w, i) => ({ slot: i, name: w.name, hex: hex(w.c) })) : M.frames ? M.frames.map((f, i) => ({ slot: i, name: f.code || 'Open', gel: f.name, hex: hex(f.c) })) : null,
+    emitters: M.names || null };
+};
+LX_API.gel = code => { const i = lxGelInfo(code); return { code: i.code, name: i.name, known: i.known, open: i.open, frost: i.frost, hex: i.colour ? '#' + i.colour.getHexString() : null }; };
+LX_API.gels = () => Object.keys(GELS).map(k => ({ code: k, name: LX_GEL_NAMES[k] || null, hex: '#' + new THREE.Color(GELS[k]).getHexString() }));
+LX_API.goboCoverage = slot => slot === undefined ? LX_GOBOS.map((g, i) => lxGoboCoverage(i)) : lxGoboCoverage(lxGoboSlot(slot));
+LX_API.colourModels = LX_CMODEL;
+LX_API.templates = LX_TEMPLATES;
 
 /* ---- THE LIGHTS PANEL (agent I) ----
    Agent I's region: the panel in #lights (the header's Lights button shows and hides it), built once at ready by
