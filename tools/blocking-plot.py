@@ -12,6 +12,13 @@ the PNGs are written with zlib + struct, the text is a 5x7 bitmap font.
         a contact sheet per track: a small plan every SECONDS (default 10) from 0 to the track's end;
         `all` = a sheet for every track the file has waypoints in
 
+    add --pools <POOLS DIR> to any of these: the light lit at each moment is drawn UNDER the actors, from
+    <POOLS DIR>/<track>.json (dumped from the page: the lit units, where each beam lands and its radius there
+    — see that folder's README.md): every pool a translucent disc in its colour, SPECIALS (narrow pools for one
+    person) outlined white, washes in their colour; side light and LED strips are left out unless --pools-all.
+    In moment mode it also prints, per actor, the specials she stands in (within the pool's radius + 0.3 m, at
+    her level) — or "NO SPECIAL".
+
 <file> is either a SEGMENT file (`{"segment", "tracks", "waypoints": {"<id>": [...]}}`, as the
 blocking writers produce) or the page's blocking file (`assets/hamilton-blocking.json`,
 `{"actors": [{"id", "name", "color", "path"}]}`).  Names and colours come from the file, else
@@ -323,6 +330,51 @@ class Stage:
         return cv
 
 
+POOLS = {}
+SHOWN_KINDS = {'special', 'wash', 'followspot'}
+
+
+def pools_at(pdir, tid, sec, every_kind=False):
+    """The pools lit at `sec` into the track: the cue whose at <= sec (latest) — its look holds until the next."""
+    if not pdir: return []
+    if tid not in POOLS:
+        f = os.path.join(pdir, tid + '.json')
+        POOLS[tid] = json.load(open(f, encoding='utf-8')) if os.path.exists(f) else {'cues': []}
+    cue = None
+    for c in POOLS[tid]['cues']:
+        if c['at'] <= sec + 1e-6: cue = c
+    if not cue: return []
+    out = []
+    for q in cue['pools']:
+        if not every_kind and q.get('kind') not in SHOWN_KINDS: continue
+        lands = q.get('lands', '')
+        if q.get('hit') and (lands in ('deck', 'gallery') or lands.startswith('floor')):
+            out.append(dict(q, px=q['hit'][0], pz=q['hit'][2], py=q['hit'][1], pr=q['hitR'], onfloor=True))
+        elif q.get('deck'):
+            out.append(dict(q, px=q['deck'][0], pz=q['deck'][1], py=0.045, pr=q['deckR'], onfloor=False))
+    return out
+
+
+def draw_pools(cv, st, pools):
+    for q in sorted(pools, key=lambda q: -q['pr']):
+        x, y = st.P(q['px'], q['pz']); r = max(1.5, q['pr'] * st.s)
+        col = hexc(q['color'])
+        lv = min(1.0, q['level'])
+        if r < 260: cv.disc(x, y, r, col, 0.04 + 0.30 * lv)        # brighter = higher level
+        if q.get('kind') == 'special': cv.ring(x, y, r, (255, 255, 255) if lv >= 0.15 else (150, 150, 150), 1.2)
+        elif q['onfloor'] and lv >= 0.3: cv.ring(x, y, r, col, 1.0)
+
+
+def specials_on(p, pools):
+    hits = []
+    for q in pools:
+        if q.get('kind') not in ('special', 'followspot') or not q['onfloor']: continue
+        if abs(q['py'] - p['y']) > 0.6: continue
+        d = math.hypot(p['x'] - q['px'], p['z'] - q['pz'])
+        if d <= q['pr'] + 0.3: hits.append(f"ch{q['ch']}({d:.1f}/{q['pr']:.1f}m)")
+    return hits
+
+
 def draw_actor(cv, st, a, p, short=False):
     x, y = st.P(p['x'], p['z'])
     r = max(2.5, 0.27 * st.s)
@@ -365,23 +417,25 @@ def load_inputs(path):
     return d, tracks, actors
 
 
-def frame(st, tracks, actors, tid, sec, title=True, short=False):
+def frame(st, tracks, actors, tid, sec, title=True, short=False, pdir=None, every_kind=False):
     tr = tracks[tid]; T = tr['start'] + sec
     cv = st.canvas()
+    pools = pools_at(pdir, tid, sec, every_kind)
+    draw_pools(cv, st, pools)
     ps = [(a, pose(a['c'], T)) for a in actors]
     for a, p in sorted(ps, key=lambda ap: (ap[1]['visible'], ap[1]['y']) if ap[1] else (False, 0)):
         if p: draw_actor(cv, st, a, p, short)
     if title:
         m, s = divmod(sec, 60)
-        cv.text(st.ml, 4, f'{tid} {tr["title"]}  {int(m)}:{s:04.1f}  ({sec:.1f} s)', (255, 225, 120), 1)
-    return cv, ps
+        cv.text(st.ml, 4, f'{tid} {tr["title"]}  {int(m)}:{s:04.1f}  ({sec:.1f} s)' + (f'  - {len(pools)} pools' if pdir else ''), (255, 225, 120), 1)
+    return cv, ps, pools
 
 
 def main(argv):
     if len(argv) < 2:
         print(__doc__); return 2
     f, tid = argv[0], argv[1]
-    out, scale, every, path_id, sheet, times = '.', 40.0, 10.0, None, False, None
+    out, scale, every, path_id, sheet, times, pdir, every_kind = '.', 40.0, 10.0, None, False, None, None, False
     i = 2
     while i < len(argv):
         a = argv[i]
@@ -390,6 +444,8 @@ def main(argv):
         elif a == '--every': every = float(argv[i + 1]); i += 2
         elif a == '--path': path_id = argv[i + 1]; i += 2
         elif a == '--sheet': sheet = True; i += 1
+        elif a == '--pools': pdir = argv[i + 1]; i += 2
+        elif a == '--pools-all': every_kind = True; i += 1
         elif times is None and not a.startswith('--'): times = [float(t) for t in a.split(',') if t.strip()]; i += 1
         else: print('unknown argument', a); return 2
     os.makedirs(out, exist_ok=True)
@@ -409,7 +465,7 @@ def main(argv):
             sh.text(6, 6, f'{t} {tracks[t]["title"]} - a frame every {every:g} s - {os.path.basename(f)}', (255, 225, 120), 2)
             sh.text(6, sh.h - 10, 'each frame: the house (downstage) at the bottom, stage left on the right; 1 m grid; hollow ring = not seen; white rim = up off the deck', (200, 200, 200), 1)
             for n, sec in enumerate(secs):
-                cv, _ = frame(st, tracks, actors, t, sec, title=False, short=True)
+                cv, _, _ = frame(st, tracks, actors, t, sec, title=False, short=True, pdir=pdir, every_kind=every_kind)
                 m, ss = divmod(sec, 60)
                 cv.text(st.ml, 2, f'{int(m)}:{ss:04.1f}', (255, 225, 120))
                 sh.blit(cv, 4 + (n % cols) * (st.w + 4), 28 + (n // cols) * (st.h + 12))
@@ -442,10 +498,16 @@ def main(argv):
     if not times:
         print('give the moments: <t1,t2,...> (seconds into the track), or --sheet, or --path <id>'); return 2
     for sec in times:
-        cv, ps = frame(st, tracks, actors, tid, sec)
+        cv, ps, pools = frame(st, tracks, actors, tid, sec, pdir=pdir, every_kind=every_kind)
         p = os.path.join(out, f'{tid}_{sec:07.2f}.png'); cv.save(p)
-        seen = [f'{a["id"]}={pp["label"]}@({pp["x"]:.1f},{pp["z"]:.1f}){"" if pp["visible"] else " off"}' for a, pp in ps if pp]
-        print('wrote', p, '|', '; '.join(seen))
+        print('wrote', p)
+        for a, pp in ps:
+            if not pp: continue
+            line = f'   {a["id"]:10s} {pp["label"]:16s} ({pp["x"]:5.1f}, {pp["z"]:5.1f}) y {pp["y"]:.2f} ' + ('seen' if pp['visible'] else 'off ')
+            if pdir and pp['visible']:
+                sp = specials_on(pp, pools)
+                line += '  specials: ' + (', '.join(sp) if sp else 'NO SPECIAL')
+            print(line)
     return 0
 
 

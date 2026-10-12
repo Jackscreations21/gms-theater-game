@@ -145,5 +145,10 @@ python -I tools/blocking-plot.py <file> <track> --path <actorId> [--out DIR]    
 python -I tools/blocking-plot.py <file> <track|all> --sheet [--every 10] [--out DIR]                          # a contact sheet per track
 ```
 
+Add `--pools <DIR>` to any of these to draw the light lit at each moment under the actors. `<DIR>/<track>.json` is a
+per-cue dump of every lit unit's landing point and radius. It is derived from the page and kept in the session scratch,
+not in the repository; that folder's README says how it was made and how to read it. Specials are outlined white. In
+moment mode the tool also prints, for each actor, the specials she stands in, or "NO SPECIAL".
+
 The tool draws top-down PNGs from the measured floor map, using the page's pose rules re-implemented in Python. Standard
 library only. Its header lists what it approximates: the height comes from the waypoints, not a ray.
