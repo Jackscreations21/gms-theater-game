@@ -136,3 +136,14 @@ It **warns** (and still writes) if any of these occur:
 - an offstage waypoint in plain view.
 
 It then prints, for each track, the actors present and their waypoint counts.
+
+## Seeing it without the page (`tools/blocking-plot.py`)
+
+```sh
+python -I tools/blocking-plot.py <segN.json | assets/hamilton-blocking.json> <track> <t1,t2,...> [--out DIR]   # plans at those moments
+python -I tools/blocking-plot.py <file> <track> --path <actorId> [--out DIR]                                  # one actor's path, waypoint times
+python -I tools/blocking-plot.py <file> <track|all> --sheet [--every 10] [--out DIR]                          # a contact sheet per track
+```
+
+The tool draws top-down PNGs from the measured floor map, using the page's pose rules re-implemented in Python. Standard
+library only. Its header lists what it approximates: the height comes from the waypoints, not a ray.
