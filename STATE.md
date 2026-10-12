@@ -1,4 +1,4 @@
-# STATE — 2026-10-12 (THE SHOW RE-JUDGED FROM RENDERS AGAINST BINKLEY'S PHOTOS; THE ENGINE CALIBRATED; PRESHOW AND THE INTERVAL — `midtown-lights` ON TOP OF `midtown-walls`, UNMERGED, UNCOMMITTED)
+# STATE — 2026-10-12 (THE SHOW RE-JUDGED FROM RENDERS AGAINST BINKLEY'S PHOTOS; THE ENGINE CALIBRATED; PRESHOW AND THE INTERVAL — `midtown-lights` = PR #230, OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
@@ -49,7 +49,11 @@ nonstop it blacks out then the lights go back to what they where at preshow an i
 - **Still open, Jack's:** the three 10th-Electric VL3500s (71/73/76) focused behind Midtown's back wall burn the upper
   brick; the back-wall foots under the upstage gallery never reach the brick; the Deck strips point at the deck edge
   (FUTURE.md has the options); Binkley's `edge`/`frost` not drawn; the 238 effects not run; the Cabinet Battle sides
-  still unsourced. Suites not run (nothing in `src/`); the fixture GLBs still untracked; the chain of PRs still his call.
+  still unsourced. Suites not run (nothing in `src/`); the fixture GLBs still untracked.
+- **Landed as ONE PR: #229 (`midtown-walk`) merged by Jack; everything else is PR #230**
+  (`midtown-lights` rebased onto that `main`, 12 commits): https://github.com/Jackscreations21/gms-theater-game/pull/230.
+  After it merges: the post-merge protocol (fast-forward local `main`, rebuild byte-identical, map, suites when Node is
+  on the PATH, delete `midtown-walls` and `midtown-lights` both sides).
 
 ---
 

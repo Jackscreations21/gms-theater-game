@@ -226,13 +226,14 @@ compare the *same* production across stages instead.
 
 ## NEXT SESSION: **COMMIT AND LAND THE SHOW; HIS EYE ON THE RE-JUDGED CUES WITH THE MUSIC PLAYING** (2026-10-12, later)
 
-Rulings at **FE** (FF next). `main` is **`e27fc1e`**. On top of `midtown-lights` (unmerged), UNCOMMITTED in the tree: everything
+Rulings at **FE** (FF next). `main` is **`f3f3b35`** (#229 merged). Committed on `midtown-lights` (PR #230): everything
 the block below this one lists PLUS this round: the engine calibrated to the cue photos, the Viper colour model, the
 converter's gobo fix (`assets/hamilton-eos.json` regenerated), the show re-judged from renders (`assets/hamilton-show.json`,
 892 cues), the preshow and the interval hold in the player, `docs/hamilton-cues-format.md` (`tracks[].hold`), TRAPS, FUTURE,
 the lighting-style doc. Read STATE.md's newest block.
 
-1. **Ask Jack** to commit on `midtown-lights` (the chain question — one PR or in turn — is still open).
+1. **PR #230 is open** (Jack merged #229 and asked for everything else in one PR; `midtown-lights` rebased onto that
+   `main` and pushed). When he merges it: the post-merge protocol, then delete `midtown-walls` and `midtown-lights`.
 2. **Watch it with him, music on.** Show → the preset is up with the house on; Play; at the end of Non-Stop it holds on the
    preset with the house up until Play. His notes are one-line `at` / level / focus fixes in the segment files (session
    scratch `ham/out/seg<N>.json`, then `python -I ham/merge.py`) or straight in `assets/hamilton-show.json`.
