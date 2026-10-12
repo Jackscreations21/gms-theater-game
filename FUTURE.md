@@ -42,6 +42,9 @@ moved the Beetlejuice sign onto two fly channels, and `FA` made
 `docs/ARTNET.md` a flat one-line-per-channel list — all the same day.
 **`EY` — the band channels on a dead universe — is ruled and NOT built; see
 PART 1a item 4.** The next spec starts at `FE`.
+**Update 2026-10-12:** `FE` went to the Hamilton set (2026-10-11) and **`FF`–`FM` to the
+automatic actors** (`docs/superpowers/specs/2026-10-12-automatic-actors-design.md`). **The next spec
+starts at `FN`.**
 
 When something in here ships, **delete it from this file** — this is a list of
 what is *not* done. It stops being useful the moment it becomes a history.
@@ -551,6 +554,36 @@ it does not do yet, and what the ETC pack could still give:
   /Turntable", "Outer Ring CC").
 - **Licence:** ETC's pack is non-commercial; `assets/README.md` says so. The
   Broadway plot PDFs are not ETC's and are not to be committed.
+
+### Automatic actors — what is still to come (2026-10-12, RULINGS FF–FM built)
+
+**What Jack said:** *"make a system for automatic actors. Make a software where you can create their paths
+and stuff. Right now just make them using this mannequin but later we will add arm and feet movement."*
+The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocking.json`, the spec). NOT built:
+
+- **Arms and feet.** The hook is ruled (FL): `group.userData.pose` carries `speed` and `dist` (the distance
+  walked — the gait phase, a pure function of show time), and `group.userData.animate(pose, group)` is called
+  every frame. Wants a rigged body (skinned, or the mannequin cut into limbs at hips/knees/shoulders/elbows)
+  in the same frame (feet 0, front +Z, 1.65 m). Open: a rigged model from where (Mixamo-style, or cut this one)?
+  A walk cycle only, or gestures per waypoint too (a `pose` key on a waypoint)?
+- **Per-character models.** A `model` key per actor in the file; today every actor wears the mannequin in her
+  own colour. Open: men's bodies, costumes, heights per character.
+- **Riding the turntables.** The two turntables do not turn yet (their moves are in no file — FUTURE's Hamilton
+  section); when they do, an actor standing on one should turn with it: waypoints in the turntable's frame
+  (a `on: "tt-inner"` key), or the turn added to the pose. Open: which.
+- **The whole show.** The committed blocking is a demonstration through 1-01. Real blocking for 46 numbers is
+  Jack's (or research's) to author with the panel.
+- **Follow spots on actors.** The three Lycians could track a named actor (`focus` = her head each frame).
+- **Actors avoiding each other.** Paths cross freely; nothing stops two bodies sharing a spot.
+- **Light on a body is speckled.** The pool shader takes its normal from depth; on a dense body that shows
+  dark flecks where it faces away. Real normals into the albedo pass would fix it (an engine change).
+- **Small props under a path lift her** by their height (the floor is found by ray, FI); a "deck only" flag
+  per leg, or a minimum footprint, would smooth it.
+- **Found, not fixed (pre-existing on `main`):** once the show has made its YouTube adapter `SHW.A` and
+  YouTube cannot play (the Browser pane: "This video is unavailable"), `showState()` throws reading
+  `SHW.A.currentTime.toFixed` — so `MIDTOWN.show.state` and a second `MIDTOWN.show.check()` throw. Guard
+  `currentTime` in `showState`. Also, by the player's own design the clock waits while the YouTube player is not ready (readyState 0), so
+  where YouTube cannot play, untick "Play the album from YouTube" to get the silent clock (seen, not measured).
 
 ### Realism — the Midtown scan, and the options list (2026-10-10)
 

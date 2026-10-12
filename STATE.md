@@ -3,6 +3,48 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
+## NEWEST — 2026-10-12 (evening): AUTOMATIC ACTORS — the Blocking panel, RULINGS FF–FM — branch `actors`, PR open
+
+Jack: *"make a system for automatic actors. Make a software where you can create their paths and stuff. Right now
+just make them using this mannequin but later we will add arm and feet movement."* Branched from `main` at
+**`5d24188`** ALONGSIDE the open **#233** (`cue-blackouts`) — not stacked on it; both touch `midtown.html` (this one
+adds one CSS block and one code region, and touches none of #233's lines: a test merge of the two is clean in
+`midtown.html`; the record files will conflict and want a hand merge).
+
+- **The mannequin:** `assets/mannequin-woman.glb` from his `Downloads\standing-woman.stl` by the new
+  `tools/mannequin-glb.py` (standard library; weld, quadric vertex clustering at 1.5 cm, smooth normals, GLB
+  writer): 158,010 → **18,096 triangles, 8,864 vertices, 322,508 bytes**; the STL is +z up facing −y,
+  unitless (2,000 units tall) → metres, Y up, feet at 0, facing +Z, **1.65 m**. Licence UNKNOWN (assets/README.md).
+- **Actors on the page (midtown.html, region "AUTOMATIC ACTORS: THE BLOCKING"):** a group per actor with a `body`
+  child, under the set's root (set-local metres, scale with the set), in her own colour. Paths of waypoints
+  `{track, at, x, z, y?, dwell?, facing?, off?}` on the show clock; the pose is a PURE function of show time
+  (centripetal Catmull–Rom through walk-throughs, straight into stops, eased 0.6 s, facing turns 0.6 s, auto
+  dwell walks at 1.3 m/s, offstage flag); the floor by a ray down the walk's collision grid (she climbs the
+  stage-left stair onto the 2.74 m gallery). Lit by the show: the pools' depth band is widened per frame round
+  any actor in a cone (without it a pool lit her to the shins).
+- **The Blocking panel** (header button): the show clock (the player's own Play/seek), actors (add, rename,
+  colour, remove), the path in the view (line + discs), **Click to place** at the current show time, drag a disc
+  to move it, a waypoint form, Download / Load… / Copy JSON, a draft in this browser offered on reload.
+  `MIDTOWN.actors` on the console; `MIDTOWN.frame()` poses them first.
+- **`assets/hamilton-blocking.json`:** a DEMONSTRATION through 1-01 — Burr enters SR at "Burr Enters"; Hamilton
+  walks into the centre shaft at "Hamilton revealed" and climbs the SL stair to the gallery at "the Voyage";
+  Eliza on the upstage gallery at 93 s and again at 166 s. Format: `docs/hamilton-blocking-format.md`.
+  Spec: `docs/superpowers/specs/2026-10-12-automatic-actors-design.md`.
+- **Verified in the Browser pane** (the worktree served on 8093, not Jack's 8080): console clean but the
+  soundtrack HEAD 404 (his file is not in the worktree; pre-existing); `MIDTOWN.actors.check()` **passes**
+  (12 moments, seek = play to 0 mm / 0 rad; negative-checked with a position lerp and a yaw smoothing — both
+  fail it); `MIDTOWN.show.check()` seek-equivalence still passes (overall `pass` false on the 16 channels with no
+  unit, as on `main`); `lx.check()` 301/313 as before; a real click dropped a waypoint at 0:05, a drag moved it
+  without orbiting the camera; Download → Load round-trips byte-identical; real-time Play walks Burr on at
+  1.7 m/s and turns him to the house on arrival. Renders in the session scratch `act/shots/`
+  (`stair-climb.png`, `play-burr-walking.png`, `lit-on.png` / `lit-off.png`).
+- **Found on `main`, not fixed (FUTURE.md):** `MIDTOWN.show.state` throws once the YouTube adapter is the audio
+  and YouTube cannot play (`showState` → `SHW.A.currentTime.toFixed`).
+- **Suites NOT run** (no Node on the PATH; nothing in `src/` moved, so `the-house.html` and `docs/ARTNET.md` are
+  untouched). The new GLB is declared in `assets/README.md`, which the `beetlejuice.js` assets assertion reads.
+
+---
+
 ## NEWEST — 2026-10-12: the engine calibrated to Binkley's cue photos, every cue re-judged from renders, the preshow and the interval — UNCOMMITTED on `midtown-lights`
 
 Jack: *"go through all the cues and compare them to pictures to make sure they are all correct"*, *"the main problem i saw

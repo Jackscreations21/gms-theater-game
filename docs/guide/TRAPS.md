@@ -1617,3 +1617,28 @@ against this list before opening a PR; **add new traps as you hit them.**
   read the album's loudness bins from the PREVIOUS session's `shots/`; three agents each wrote their own copy before
   anyone told me. Copy a helper's data with the helper.
 
+## From the automatic-actors round (2026-10-12)
+
+- **Stopping a pointerup to "take" a click leaves OrbitControls holding the button down.** r160's OrbitControls
+  registers its pointerup on the canvas at pointerdown; a capture-phase listener on `#stage` that calls
+  `stopPropagation()` on the pointerup starves it, and the next mouse move rotates the camera with no button
+  pressed. Take a click from the page's own handler by clearing its `press` (same module scope) instead; stop
+  only a pointerdown the orbit must never see (a marker drag).
+- **A capture listener on `#stage` also catches clicks on every panel inside `#stage`.** The first cut of the
+  Blocking panel picked markers behind its own buttons. Check `e.target === canvas` first.
+- **A pool's depth band stops 0.4 m short of what it lands on, so a body standing in it is lit to the shins.**
+  `lxPoolBand` fits the cone to the scenery its twelve rays meet; anything taller standing in it (an actor) is
+  outside the band and discarded. `actPoolBands` widens the band of every lit pool with an actor in it, each
+  frame — any new thing that moves through pools needs the same.
+- **The Browser pane's `preview_start` reads the MAIN checkout's `.claude/launch.json`, not a worktree's.** A
+  config written in the worktree was "not found"; the main one's `the-house` serves port 8080 from the main
+  checkout (Jack's). Serve the worktree with a background `python -m http.server <port> --bind 127.0.0.1` and
+  `preview_start({ url })`.
+- **A hidden pane gets no animation frames, so the show clock does not move** (`document.visibilityState`
+  "hidden"): Play looks dead. A screenshot brings the pane up and the clock runs; `MIDTOWN.frame()` and the
+  check functions do not need frames.
+- **`MIDTOWN.show.state` can throw on `main`** once the YouTube adapter is the show's audio and YouTube cannot
+  play: `showState` reads `SHW.A.currentTime.toFixed` and the adapter has no time. A test that calls
+  `showAdvance` (which ends in `showState()`) throws with it — `actCheck` steps `showTick` + `lxTick` itself.
+- **At "Set fitted" the set has holes the cuts made at that scale**, so a floor ray that finds the gallery at
+  real size can fall through to the deck there. Author blocking at Real size (the default).

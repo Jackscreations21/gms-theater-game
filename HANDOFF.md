@@ -238,6 +238,24 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
 3. **Watch it with him, music on** (below). His notes go into the segment files in the session scratch or straight into
    `assets/hamilton-show.json`.
 4. Rule the rig placements (FUTURE.md), then the older list.
+5. **The automatic actors (branch `actors`, RULINGS FF–FM, the next spec starts at FN):** a PR is open beside #233.
+   Let Jack drive the Blocking panel (header button) and block a number; his Download goes into
+   `assets/hamilton-blocking.json`. Ask him the mannequin's licence/origin, and which way arms and feet come
+   (FUTURE.md "Automatic actors").
+
+## DONE — 2026-10-12 (evening): automatic actors — the mannequin, paths on the show clock, the Blocking panel (branch `actors`, FF–FM)
+
+*"make a system for automatic actors. Make a software where you can create their paths and stuff. Right now just make
+them using this mannequin but later we will add arm and feet movement."* → `tools/mannequin-glb.py` turns his STL into
+`assets/mannequin-woman.glb` (18,096 triangles, 1.65 m, feet at 0, facing +Z); `midtown.html` gains actors (a group
+with a `body`, under the set's root, set-local metres) walking waypoints on the show clock — a pure function of show
+time (centripetal Catmull–Rom, eased stops, facing turns, auto dwell at 1.3 m/s, an offstage flag, the floor by ray so
+she climbs onto the gallery), lit by the show (pool bands widened round a body); the Blocking panel (the show clock,
+actors, Click to place at the current time, drag a disc, a waypoint form, Download / Load… / Copy, a browser draft);
+`assets/hamilton-blocking.json` (a demonstration through 1-01; format `docs/hamilton-blocking-format.md`); the spec
+`docs/superpowers/specs/2026-10-12-automatic-actors-design.md`. Checks: `MIDTOWN.actors.check()` seek = play
+(negative-checked twice), `show.check()` seek-equivalence and `lx.check()` 301/313 unchanged, drop / drag / round trip
+by real clicks. Nothing in `src/`; suites not run (no Node). Branched from `main` beside #233, not on it.
 
 ## SUPERSEDED (merged as #230): **COMMIT AND LAND THE SHOW; HIS EYE ON THE RE-JUDGED CUES WITH THE MUSIC PLAYING** (2026-10-12, later)
 

@@ -43,3 +43,14 @@ groups, presets and palettes (shape: `docs/hamilton-cues-format.md` section 2). 
 against time-synced lyric data that is NOT in the repo; the file holds no lyrics. Built on the same
 pack's data, so the same **non-commercial** licence applies. The album audio is never committed: the
 player plays the owner's own files from his machine.
+
+`mannequin-woman.glb` — WIRED IN to `midtown.html` (RULING FF, 2026-10-12): the body every automatic actor
+wears. Made by `tools/mannequin-glb.py` from `standing-woman.stl`, a file **Jack supplied** (binary STL, 158,010
+triangles, from his Downloads; not committed): 1.65 m, metres, Y up, feet at y 0, facing +Z, quadric-clustered
+to 18,096 triangles, one material. **Its licence and origin are unknown** (the STL's header says only "MW 1.0
+1219062 US") — find out before this repository goes public or anything here is sold.
+
+`hamilton-blocking.json` — the automatic actors' paths for `midtown.html`'s Blocking panel (RULINGS FF–FM; shape:
+`docs/hamilton-blocking-format.md`). Positions are in the frame of `hamilton-set.glb`, times on the show
+player's clock (album track, seconds into it). Written by the panel (Download), committed by hand. Ours, no
+third-party content.

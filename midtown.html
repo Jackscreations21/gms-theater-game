@@ -78,6 +78,37 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 #lights .note { color: var(--muted); font-size: 11px; }
 #xhair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(235,231,238,.85); box-shadow: 0 0 0 1px rgba(13,12,15,.6); pointer-events: none; }
 #dropglow { position: absolute; inset: 0; border: 2px dashed var(--accent); pointer-events: none; display: none; }
+/* the blocking panel (automatic actors, RULINGS FF–FM): the show panel's look, on the left; beside Lights when both are open */
+#blocking { position: absolute; top: 12px; left: 12px; width: 300px; max-height: calc(100% - 64px); overflow: auto; background: rgb(23,21,27); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; grid-auto-rows: max-content; gap: 8px; font-size: 12px; z-index: 4; }
+#lights:not([hidden]) ~ #blocking { left: 304px; }
+#blocking h2 { font-size: 12px; font-weight: 600; margin: 4px 0 0; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+#blocking h2 span { color: var(--accent); text-transform: none; letter-spacing: 0; font-weight: 500; }
+#blocking .row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+#blocking button { padding: 4px 8px; font-size: 12px; }
+#blocking label { color: var(--muted); display: flex; align-items: center; gap: 4px; }
+#blocking .note { color: var(--muted); font-size: 11px; }
+#blocking .danger { border-color: #6a3030; }
+#blocking select, #blocking input[type=number], #blocking input[type=text] { font: 12px var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 5px; min-width: 0; }
+#blocking select, #blocking input[type=text] { flex: 1; width: 100%; }
+#blocking input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 4px; }
+#blocking input[type=range] { width: 100%; min-width: 0; accent-color: var(--accent); margin: 0; }
+#blocking .bk-head { position: sticky; top: -10px; z-index: 1; display: flex; align-items: center; justify-content: space-between; margin: -10px -12px 0; padding: 8px 12px 6px; background: rgb(23,21,27); border-bottom: 1px solid var(--line); }
+#blocking .bk-head b { font-size: 13px; font-weight: 600; }
+#blocking .bk-clock { font: 12px var(--mono); color: var(--accent); margin-left: auto; }
+#blocking .bk-list { display: grid; max-height: 150px; overflow: auto; overflow-x: hidden; border: 1px solid var(--line); border-radius: 4px; }
+#blocking .bk-list:empty { display: none; }
+#blocking .bk-list > div { display: flex; gap: 6px; align-items: center; padding: 3px 6px; cursor: pointer; font: 11px var(--mono); white-space: nowrap; }
+#blocking .bk-list > div:hover { background: rgba(255,255,255,.06); }
+#blocking .bk-list > div.on { background: rgba(255,255,255,.1); color: var(--accent); }
+#blocking .bk-list span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#blocking .bk-list b { font-weight: 500; min-width: 6.6em; }
+#blocking .bk-sw { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+#blocking .bk-dim { color: var(--muted); margin-left: auto; }
+#blocking .bk-grid { display: grid; grid-template-columns: 50px minmax(0, 1fr) 50px minmax(0, 1fr); gap: 4px 6px; align-items: center; }
+#blocking .bk-grid > span { color: var(--muted); font: 11px var(--mono); }
+#blocking .bk-grid input, #blocking .bk-grid select { width: 100%; }
+#blocking .bk-status { min-height: 1.3em; overflow-wrap: anywhere; }
+@media (max-width: 640px) { #blocking { width: calc(100% - 24px); } #lights:not([hidden]) ~ #blocking { left: 12px; } }
 @media (max-width: 640px) { .credit { display: none; } .bright { margin-left: 0; } #build, #lights { width: calc(100% - 24px); } }
 /* lights panel (agent I) */
 #lights { grid-auto-rows: max-content; align-content: start; }   /* a grid with a fixed height squeezes its rows (the looks list to nothing) otherwise */
@@ -4951,6 +4982,665 @@ function deskAct(b) {
 }
 const showUIDesk = showUI;
 showUI = force => { showUIDesk(force); deskScreensDraw(force); };
+/* ---------------------------------------------------------------- AUTOMATIC ACTORS: THE BLOCKING (RULINGS FF–FM)
+   Jack: "make a system for automatic actors. Make a software where you can create their paths and stuff. Right now just make
+   them using this mannequin but later we will add arm and feet movement." BINDING: docs/superpowers/specs/2026-10-12-automatic-
+   actors-design.md. The file: assets/hamilton-blocking.json, its format in docs/hamilton-blocking-format.md.
+   - AN ACTOR (FF) is a THREE.Group — its origin her feet, her front its +z — with ONE child, `body`: the mannequin
+     (assets/mannequin-woman.glb, tools/mannequin-glb.py: 1.65 m, feet at y 0, facing +Z) in the actor's own colour (a material
+     per colour, ACT.mats, never one tinted in place). The paths move only the group; arms and feet, later, go under it and read
+     the pose the group carries (userData.pose: speed, distance walked — FL) through an optional userData.animate.
+   - WHERE (FG): every actor is a child of `ACT.group`, itself a child of the set's loaded root, as the rig is — so the waypoints
+     are SET-LOCAL metres (the set GLB's own frame: upstage −z, the house +z, the deck y 0, stage right −x) and Real size / Set
+     fitted scale and turn the actors with the set. The floor (FI): straight down from the path's own height + ACT_STEP through
+     the walk's collision grid (rayDown: the set, the house, the baked pieces), so she rises onto the gallery and up the stairs.
+     Actors, markers and labels are marked userData.rig — the build tools, the walk's grid and the pools' landing rays skip them.
+   - WHEN (FH): a waypoint is { track, at, x, z, y?, dwell?, facing?, off? } on the SHOW PLAYER'S clock (the album track and the
+     seconds into it — the cues' own). She ARRIVES at a waypoint at its time, stands, and LEAVES after `dwell` s (none = when she
+     must, to walk the next leg at ACT_WALK), arriving at the next on its time. Stops ease in and out (ACT_EASE); a waypoint
+     with dwell 0 is passed through without stopping, and only those shape a curve (a centripetal Catmull-Rom); a stop breaks
+     the curve. She faces her way of travel, and turns (ACT_TURN) into a stop's `facing` (degrees: 0 the house, 90 stage left).
+     `off` (FJ): at an offstage waypoint she is not seen; she walks on from it and off to it. Before her first waypoint and
+     after her last she stands at it. The pose is a PURE FUNCTION of the show time (actPose) — nothing carried from frame to
+     frame — so a seek puts her exactly where playing to that moment does (MIDTOWN.actors.check(), the cues' invariant).
+   - LIT (FK): the actors are ordinary lit meshes — the work light and the engine's real lights light them, and the pools' depth
+     and albedo pass draws them like any set piece. A pool's cone is drawn only over a depth band fitted to the scenery it lands
+     on (lxPoolBand), which stops 0.4 m short of the deck — a standing body would be lit to the shins; so each frame the band of
+     every lit pool with an actor in its cone is widened to reach her (actPoolBands), and put back when she leaves.
+   - THE EDITOR: the header's Blocking button → the panel (#blocking): actors (add, rename, colour, remove), the show clock
+     (Play / Pause, nudges, a scrub over the track — the show player's own showStart / showPause / showSeek), the selected
+     actor's waypoints (a list, a form, markers and the path in the view): "Click to place" drops a waypoint at the CURRENT show
+     time where the view is clicked; drag a marker to move one. Download / Load… / Copy the JSON; a draft is kept in this browser.
+   MIDTOWN.actors: list, data(), load(obj|url), pose(id, T), select(i), place(x, z, y), check(), panel(on). */
+const ACT_URL = { model: 'assets/mannequin-woman.glb', blocking: 'assets/hamilton-blocking.json' };
+const ACT_H = 1.65;                        // m: the mannequin as built (tools/mannequin-glb.py HEIGHT)
+const ACT_STEP = 0.6;                      // m: the floor ray starts this far above the path's own height (the set's stairs rise 0.17)
+const ACT_WALK = 1.3;                      // m/s: an auto-dwell leg's walking pace
+const ACT_EASE = 0.6;                      // s: the speed ramp out of a stop and into one
+const ACT_TURN = 0.6;                      // s: the turn into a stop's facing, and out of it into the walk
+const ACT_SEG_N = 24;                      // samples per leg for its arc-length table
+const ACT_FAST = 3.5;                      // m/s: check() reports a leg faster than this (a run is ~3–4)
+const ACT_DRAFT = 'midtown-blocking-draft';
+const ACT_COLOURS = ['#d9b45a', '#5a8fd8', '#d8665a', '#6abf7a', '#b07ad8', '#e8e4dc', '#4fc1c1', '#d88ab8'];
+const ACT = { geo: null, root: null, group: null, help: null, actors: [], sel: -1, wsel: -1, drop: false, shown: true, T: NaN, dirty: true,
+  compiledFor: undefined, el: null, E: {}, btn: null, drag: null, press: null, mats: new Map(), band: new Map(), file: null, err: null, note: '', ready: false,
+  litBodies: true };                       // false: the pools' bands left as the engine fits them (a body lit to the shins) — for comparing
+
+// ---- the path, compiled: the waypoints in time order with their global times, each leg's curve and arc-length table
+const actF = v => v === null || v === undefined || v === '' ? null : Number.isFinite(+v) ? +v : null;
+function actCompile(a) {
+  const tr = SHW.d ? SHW.d.byTrack : null, probs = [];
+  const P = [];
+  a.path.forEach((w, k) => {
+    const t = tr && tr.get(String(w.track));
+    if (tr && !t) { probs.push(`waypoint ${k + 1}: no track "${w.track}"`); return; }
+    const at = actF(w.at) ?? 0;
+    if (t && (at < 0 || at > t.len + 1e-6)) probs.push(`waypoint ${k + 1}: at ${at} is outside ${t.id} (0–${t.len} s)`);
+    P.push({ w, k, T: t ? t.start + at : 0, x: actF(w.x) ?? 0, z: actF(w.z) ?? 0, y: actF(w.y) ?? 0, dwell: actF(w.dwell), facing: actF(w.facing), off: !!w.off });
+  });
+  if (tr) P.sort((p, q) => p.T - q.T || p.k - q.k);
+  const n = P.length;
+  P.forEach((p, i) => { p.stop = i === 0 || i === n - 1 || p.off || p.dwell === null || p.dwell > 0; });
+  const segs = [];
+  for (let i = 0; i + 1 < n; i++) {
+    const p1 = P[i], p2 = P[i + 1];
+    const p0 = p1.stop || i === 0 ? { x: 2 * p1.x - p2.x, z: 2 * p1.z - p2.z } : P[i - 1];
+    const p3 = p2.stop || i + 2 >= n ? { x: 2 * p2.x - p1.x, z: 2 * p2.z - p1.z } : P[i + 2];
+    const s = { i, p0, p1, p2, p3, L: new Float64Array(ACT_SEG_N + 1), len: 0 };
+    let px = p1.x, pz = p1.z;
+    for (let k = 1; k <= ACT_SEG_N; k++) { const q = actCR(s, k / ACT_SEG_N); s.L[k] = s.L[k - 1] + Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z; }
+    s.len = s.L[ACT_SEG_N];
+    segs.push(s);
+  }
+  // when she leaves each waypoint: after her dwell, or (none) just in time to walk the leg at ACT_WALK — never after the next
+  // waypoint's own time; and the yaw she stands at: her facing, else the way she arrived, else the way she will leave, else the house
+  let dist = 0;
+  P.forEach((p, i) => {
+    const s = segs[i], q = P[i + 1];
+    p.leave = !q ? p.T + (p.dwell || 0) : p.dwell === null ? Math.max(p.T, q.T - s.len / ACT_WALK) : Math.min(p.T + p.dwell, q.T);
+    if (q && p.dwell !== null && p.T + p.dwell > q.T + 1e-6) probs.push(`waypoint ${p.k + 1}: its ${p.dwell} s dwell runs past the next waypoint (cut to ${(q.T - p.T).toFixed(2)} s)`);
+    if (s) { s.t0 = p.leave; s.t1 = q.T; s.dist0 = dist; dist += s.len; if (s.t1 - s.t0 > 1e-6 && s.len / (s.t1 - s.t0) > ACT_FAST) probs.push(`waypoint ${p.k + 1} → ${q.k + 1}: ${(s.len / (s.t1 - s.t0)).toFixed(1)} m/s`); }
+    p.dist = s ? s.dist0 : dist;
+  });
+  segs.forEach(s => { s.yaw0 = s.len > 1e-3 ? actTanYaw(s, 0) : null; s.yaw1 = s.len > 1e-3 ? actTanYaw(s, 1) : null; });
+  P.forEach((p, i) => {
+    const before = segs[i - 1], after = segs[i];
+    p.arrive = before && before.yaw1 !== null ? before.yaw1 : null;
+    p.yaw = p.facing !== null ? p.facing * Math.PI / 180 : p.arrive ?? (after && after.yaw0 !== null ? after.yaw0 : (i > 0 ? P[i - 1].yaw : 0));
+  });
+  return { P, segs, probs, timed: !!tr };
+}
+// A centripetal Catmull-Rom through p1 → p2 (the Barry–Goldman pyramid), u 0..1, in x/z.
+function actCR(s, u) {
+  const { p0, p1, p2, p3 } = s, k = (a, b) => Math.max(1e-4, Math.sqrt(Math.hypot(b.x - a.x, b.z - a.z)));
+  const t1 = k(p0, p1), t2 = t1 + k(p1, p2), t3 = t2 + k(p2, p3), t = t1 + (t2 - t1) * u;
+  const L = (a, b, ta, tb) => ({ x: (tb - t) / (tb - ta) * a.x + (t - ta) / (tb - ta) * b.x, z: (tb - t) / (tb - ta) * a.z + (t - ta) / (tb - ta) * b.z });
+  const A1 = L(p0, p1, 0, t1), A2 = L(p1, p2, t1, t2), A3 = L(p2, p3, t2, t3), B1 = L(A1, A2, 0, t2), B2 = L(A2, A3, t1, t3);
+  return L(B1, B2, t1, t2);
+}
+function actTanYaw(s, u) {
+  const e = 1 / (ACT_SEG_N * 4), a = actCR(s, Math.max(0, u - e)), b = actCR(s, Math.min(1, u + e));
+  return Math.atan2(b.x - a.x, b.z - a.z);   // yaw 0 faces +z (the house); her front is the group's +z
+}
+function actArcU(s, f) {                 // the curve's u at a fraction f of its length
+  const d = f * s.len, L = s.L;
+  let k = 1; while (k < ACT_SEG_N && L[k] < d) k++;
+  const span = L[k] - L[k - 1];
+  return (k - 1 + (span > 1e-9 ? (d - L[k - 1]) / span : 0)) / ACT_SEG_N;
+}
+// The fraction of a leg walked t s into it (D long): a trapezoid of speed — up over a, steady, down over b. → [f, speed factor]
+function actWarp(t, D, a, b) {
+  const v = 1 / (D - a / 2 - b / 2);
+  if (t <= 0) return [0, a > 0 ? 0 : v];
+  if (t >= D) return [1, b > 0 ? 0 : v];
+  if (a > 0 && t < a) return [v * t * t / (2 * a), v * t / a];
+  if (b > 0 && t > D - b) return [1 - v * (D - t) * (D - t) / (2 * b), v * (D - t) / b];
+  return [v * (a / 2 + (t - a)), v];
+}
+const actSmooth = k => { k = Math.min(1, Math.max(0, k)); return k * k * (3 - 2 * k); };
+const actYawLerp = (a, b, k) => a + ((((b - a) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI) * k;
+// THE POSE at show time T (global seconds): { x, y, z (set-local; y the floor under her), yaw, visible, speed (m/s), dist (m walked
+// along her path since her first waypoint) }. Pure: the compiled path, T, and the scenery under her — nothing else.
+function actPose(a, T) {
+  const c = a.c, P = c ? c.P : [];
+  if (!P.length) return { x: 0, y: actFloor(0, SET.ttZ, 0), z: SET.ttZ, yaw: 0, visible: true, speed: 0, dist: 0 };
+  let i = 0;
+  if (c.timed) { while (i + 1 < P.length && P[i + 1].T <= T) i++; }
+  const p = P[i], q = P[i + 1];
+  if (!c.timed || T < p.T || !q || T < p.leave || q.T - p.leave <= 1e-6) {          // standing at p (before her first, at a stop, after her last)
+    const k = c.timed && i > 0 && p.arrive !== null && T >= p.T ? actSmooth((T - p.T) / ACT_TURN) : 1;
+    return { x: p.x, y: actFloor(p.x, p.z, p.y), z: p.z, yaw: k < 1 ? actYawLerp(p.arrive, p.yaw, k) : p.yaw, visible: !p.off, speed: 0, dist: p.dist };
+  }
+  const s = c.segs[i], D = s.t1 - s.t0, t = T - s.t0;
+  const [f, v] = actWarp(t, D, p.stop ? Math.min(ACT_EASE, D / 2) : 0, q.stop ? Math.min(ACT_EASE, D / 2) : 0);
+  const u = actArcU(s, f), at = actCR(s, u), ref = p.y + (q.y - p.y) * f;
+  let yaw = s.len > 1e-3 ? actTanYaw(s, u) : p.yaw;
+  if (p.stop) yaw = actYawLerp(p.yaw, yaw, actSmooth(t / ACT_TURN));                  // out of her stance into the walk
+  return { x: at.x, y: actFloor(at.x, at.z, ref), z: at.z, yaw, visible: !(p.off && q.off), speed: v * s.len, dist: s.dist0 + f * s.len };
+}
+// The floor under set-local (x, z) for a body at height ref: the highest surface within ACT_STEP above ref, or anything below —
+// the walk's own ray through its collision grid, in the world, back into the set's frame. Nothing under her (a hole in the scan):
+// ref itself.
+const actV = new THREE.Vector3();
+function actFloor(x, z, ref) {
+  if (!ACT.root) return ref;
+  if (col.stale) buildCollider();
+  actV.set(x, ref + ACT_STEP, z); ACT.root.localToWorld(actV);
+  const g = rayDown(actV.x, actV.y, actV.z);
+  if (g === null) return ref;
+  actV.y = g;
+  return ACT.root.worldToLocal(actV).y;
+}
+
+// ---- the actors in the scene
+function actMat(hex) {                    // a material per colour (shared materials are never tinted in place)
+  let m = ACT.mats.get(hex);
+  if (!m) { m = new THREE.MeshStandardMaterial({ color: new THREE.Color(hex), roughness: 0.65, metalness: 0 }); ACT.mats.set(hex, m); }
+  return m;
+}
+function actLabel(a) {                    // the name over her head, while the panel is open
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+  const g = cv.getContext('2d'); g.font = '600 34px "IBM Plex Sans", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = 'rgba(13,12,15,.72)'; const w = Math.min(250, g.measureText(a.name).width + 28); g.fillRect(128 - w / 2, 8, w, 48);
+  g.fillStyle = a.color; g.fillText(a.name, 128, 33);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  if (a.label) { a.label.material.map.dispose(); a.label.material.map = tex; a.label.material.needsUpdate = true; return a.label; }
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, toneMapped: false }));
+  sp.scale.set(0.8, 0.2, 1); sp.position.y = ACT_H + 0.3; sp.renderOrder = 10; sp.userData.rig = true; sp.userData.actor = a.id;
+  return sp;
+}
+function actBuild(a) {
+  const g = new THREE.Group(); g.name = 'actor: ' + a.name; g.userData.rig = true; g.userData.actor = a.id;
+  const body = new THREE.Mesh(ACT.geo, actMat(a.color)); body.name = 'body';
+  body.castShadow = false; body.receiveShadow = true;      // static shadow maps: a moving caster would redraw them every frame
+  body.userData.rig = true; body.userData.actor = a.id;
+  g.add(body); g.userData.body = body;
+  a.obj = g; a.label = null; a.label = actLabel(a); a.label.visible = false; g.add(a.label);
+  ACT.group.add(g);
+}
+function actRecolour(a) { a.obj.userData.body.material = actMat(a.color); a.obj.name = 'actor: ' + a.name; actLabel(a); }
+function actSlug(name) {
+  const base = String(name || 'actor').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'actor';
+  let id = base, n = 2; while (ACT.actors.some(x => x.id === id)) id = `${base}-${n++}`;
+  return id;
+}
+// The blocking from its JSON (validated, never thrown): every actor rebuilt.
+function actSetData(d, from) {
+  if (!d || typeof d !== 'object' || !Array.isArray(d.actors)) throw new Error('not a blocking file (no "actors" list)');
+  for (const a of ACT.actors) ACT.group.remove(a.obj);
+  ACT.actors = []; ACT.sel = -1; ACT.wsel = -1;
+  for (const s of d.actors) {
+    if (!s || typeof s !== 'object') continue;
+    const name = String(s.name || s.id || 'Actor');
+    const a = { id: '', name, color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color.toLowerCase() : ACT_COLOURS[ACT.actors.length % ACT_COLOURS.length],
+      path: (Array.isArray(s.path) ? s.path : []).filter(w => w && typeof w === 'object').map(actCleanWp), c: null, obj: null, label: null };
+    a.id = s.id && !ACT.actors.some(x => x.id === String(s.id)) ? String(s.id) : actSlug(name);
+    ACT.actors.push(a); actBuild(a);
+  }
+  ACT.file = { format: d.format || 'hamilton-blocking 1', note: d.note || '' };
+  ACT.sel = ACT.actors.length ? 0 : -1;
+  ACT.compiledFor = undefined; ACT.dirty = true;
+  ACT.note = `${ACT.actors.length} actor${ACT.actors.length === 1 ? '' : 's'} from ${from}`;
+  actUI(true); requestRender();
+}
+function actCleanWp(w) {
+  const o = { track: String(w.track ?? ''), at: actF(w.at) ?? 0, x: actF(w.x) ?? 0, z: actF(w.z) ?? 0 };
+  if (actF(w.y) !== null) o.y = actF(w.y);
+  if (actF(w.dwell) !== null) o.dwell = Math.max(0, actF(w.dwell));
+  if (actF(w.facing) !== null) o.facing = actF(w.facing);
+  if (w.off) o.off = true;
+  return o;
+}
+const actR = (v, d = 3) => +(+v).toFixed(d);
+function actData() {                      // → the JSON object, waypoints in time order, numbers rounded (mm, ms)
+  return {
+    format: 'hamilton-blocking 1',
+    frame: 'set-local metres: the frame of assets/hamilton-set.glb (upstage -z, the house +z, the deck y 0, stage right -x); times on the show clock (album track, seconds into it)',
+    model: ACT_URL.model,
+    note: (ACT.file && ACT.file.note) || '',
+    actors: ACT.actors.map(a => ({ id: a.id, name: a.name, color: a.color,
+      path: actSorted(a).map(w => { const o = { track: w.track, at: actR(w.at, 2), x: actR(w.x), z: actR(w.z) };
+        if (w.y !== undefined) o.y = actR(w.y); if (w.dwell !== undefined) o.dwell = actR(w.dwell, 2); if (w.facing !== undefined) o.facing = actR(w.facing, 1); if (w.off) o.off = true; return o; }) })),
+  };
+}
+const actGT = w => { const t = SHW.d && SHW.d.byTrack.get(String(w.track)); return t ? t.start + (+w.at || 0) : 0; };
+function actSorted(a) { return a.path.map((w, k) => [w, k]).sort((x, y) => actGT(x[0]) - actGT(y[0]) || x[1] - y[1]).map(x => x[0]); }
+function actEdited(a) {                   // after any edit: re-sorted, recompiled, redrawn, the draft kept
+  if (a) { const w = ACT.wsel >= 0 ? a.path[ACT.wsel] : null; a.path = actSorted(a); ACT.wsel = w ? a.path.indexOf(w) : -1; a.c = actCompile(a); }
+  ACT.dirty = true; ACT.helpDirty = true;
+  try { localStorage.setItem(ACT_DRAFT, JSON.stringify(actData())); } catch (e) { /* no storage here: Download keeps it */ }
+  ACT.note = 'edited — Download to keep it (a draft is kept in this browser)';
+  actUI(true); requestRender();
+}
+
+// ---- the frame: every actor posed at the show's time; the pools' bands round them; the editor's markers
+const actNow = () => SHW.d ? showT() : 0;
+function actUpdate(T) {
+  if (SHW.d !== ACT.compiledFor) { for (const a of ACT.actors) a.c = actCompile(a); ACT.compiledFor = SHW.d; ACT.helpDirty = true; }
+  ACT.root.updateWorldMatrix(true, false);
+  for (const a of ACT.actors) {
+    if (!a.c) a.c = actCompile(a);
+    const p = actPose(a, T), o = a.obj;
+    o.position.set(p.x, p.y, p.z); o.rotation.set(0, p.yaw, 0);
+    o.visible = ACT.shown && p.visible; o.userData.pose = p;
+    if (typeof o.userData.animate === 'function') { try { o.userData.animate(p, o); } catch (e) { /* a limb rig's own failure never stops the show */ } }
+  }
+}
+function actTick(dt, force = false) {
+  if (!ACT.ready) return false;
+  const T = actNow();
+  if (force || ACT.dirty || T !== ACT.T || SHW.d !== ACT.compiledFor) { actUpdate(T); ACT.T = T; ACT.dirty = false; requestRender(); actUI(false); }
+  if (ACT.helpDirty) actHelpers();
+  actPoolBands();
+  return false;
+}
+// THE POOLS ON A BODY (FK). Every lit pool's depth band, widened to reach the actors in its cone; the engine's own band back when
+// none is. The engine rewrites uZ whenever it redraws a unit: a value that is not the one set here last is the engine's new band.
+const actBO = new THREE.Vector3(), actBP = new THREE.Vector3();
+function actPoolBands() {
+  if (!LX.ready) return;
+  const bodies = [];
+  if (ACT.shown && ACT.litBodies) for (const a of ACT.actors) if (a.obj.visible) bodies.push(a.obj);
+  if (!bodies.length && !ACT.band.size) return;
+  const s = ACT.root.getWorldScale(actBO).x, R = 0.35 * s, hs = [0.1, 0.9, 1.6].map(h => h * s);
+  const feet = bodies.map(o => o.getWorldPosition(new THREE.Vector3()));
+  let changed = false;
+  for (const r of LX.recs) {
+    const U = r.pool.material.uniforms.uZ.value;
+    let m = ACT.band.get(r);
+    if (m && U.x !== m.set) { ACT.band.delete(r); m = null; }
+    const base = m ? m.base : U.x;
+    let near = Infinity;
+    if (r.pool.visible && feet.length) {
+      const tanH = Math.tan(r.st.zoom / 2 * LX_DEG), r0 = (r.lensR || 0) * (r.scale || 1);
+      for (const f of feet) for (const h of hs) {
+        actBP.set(f.x, f.y + h, f.z).sub(r.org);
+        const z = actBP.dot(r.dir); if (z <= 0) continue;
+        const radial = Math.sqrt(Math.max(0, actBP.lengthSq() - z * z));
+        if (radial <= 1.12 * (r0 + tanH * z) + R) near = Math.min(near, z - R - 0.1);
+      }
+    }
+    const want = near < base ? Math.max(0.05, near) : base;
+    if (U.x !== want) { U.x = want; changed = true; }
+    if (want !== base) ACT.band.set(r, { base, set: want }); else ACT.band.delete(r);
+  }
+  if (changed) requestRender();
+}
+// The selected actor's path in the view: a line along her legs, a disc at each waypoint (the selected one larger and white,
+// an offstage one dim). Transparent, so the pools' depth pass leaves them out (lxDepthPass skips see-through materials).
+function actHelpers() {
+  ACT.helpDirty = false;
+  const H = ACT.help;
+  while (H.children.length) { const o = H.children.pop(); o.geometry.dispose(); o.material.dispose(); }
+  const on = !!(ACT.el && !ACT.el.hidden), a = ACT.actors[ACT.sel];
+  for (const x of ACT.actors) if (x.label) x.label.visible = on;
+  if (!on || !a || !a.c) { requestRender(); return; }
+  ACT.root.updateWorldMatrix(true, false);
+  const pts = [], c = a.c;
+  c.P.forEach((p, i) => {
+    const s = c.segs[i], y0 = actFloor(p.x, p.z, p.y);
+    pts.push(new THREE.Vector3(p.x, y0 + 0.03, p.z));
+    if (s && s.len > 1e-3) for (let k = 1; k < 16; k++) { const f = k / 16, q = actCR(s, actArcU(s, f)); pts.push(new THREE.Vector3(q.x, actFloor(q.x, q.z, p.y + (c.P[i + 1].y - p.y) * f) + 0.03, q.z)); }
+  });
+  if (pts.length > 1) {
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: a.color, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false, toneMapped: false }));
+    line.renderOrder = 9; line.userData.rig = true; H.add(line);
+  }
+  c.P.forEach(p => {
+    const w = p.w, k = a.path.indexOf(w), sel = k === ACT.wsel;
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(sel ? 0.2 : 0.14, sel ? 0.2 : 0.14, 0.05, 20),
+      new THREE.MeshBasicMaterial({ color: sel ? 0xffffff : a.color, transparent: true, opacity: p.off ? 0.3 : 0.55, depthTest: false, depthWrite: false, toneMapped: false }));
+    m.position.set(p.x, actFloor(p.x, p.z, p.y) + 0.03, p.z); m.renderOrder = 9; m.userData.rig = true; m.userData.wp = k;
+    H.add(m);
+    if (p.facing !== null) {                       // a stop's facing: a short tick out of the disc
+      const t = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.32), m.material.clone());
+      t.position.set(p.x + Math.sin(p.yaw) * 0.22, m.position.y, p.z + Math.cos(p.yaw) * 0.22); t.rotation.y = p.yaw; t.renderOrder = 9; t.userData.rig = true;
+      H.add(t);
+    }
+  });
+  requestRender();
+}
+
+// ---- clicking in the view: drop a waypoint where it lands, drag a marker
+const actRay = new THREE.Raycaster(), actNdc = new THREE.Vector2(), actHit = { dist: 0, p: new THREE.Vector3(), n: new THREE.Vector3() };
+function actNdcOf(e) {
+  if (walking && locked) return actNdc.set(0, 0);
+  const r = canvas.getBoundingClientRect();
+  return actNdc.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+}
+function actPickMarker(e) {                // → the waypoint index of the marker under the pointer, or -1
+  actRay.setFromCamera(actNdcOf(e), camera);
+  const hits = actRay.intersectObjects(ACT.help.children.filter(o => o.isMesh && o.userData.wp !== undefined), false);
+  return hits.length ? hits[0].object.userData.wp : -1;
+}
+function actPickActor(e) {
+  actRay.setFromCamera(actNdcOf(e), camera);
+  const hits = actRay.intersectObjects(ACT.actors.filter(a => a.obj.visible).map(a => a.obj.userData.body), false);
+  return hits.length ? ACT.actors.findIndex(a => a.obj.userData.body === hits[0].object) : -1;
+}
+function actPickFloor(e) {                 // → set-local { x, y (the floor there), z } where the view is clicked, or null
+  actRay.setFromCamera(actNdcOf(e), camera);
+  if (!lxCast(actRay.ray.origin, actRay.ray.direction, 300, actHit)) return null;
+  ACT.root.updateWorldMatrix(true, false);
+  const p = ACT.root.worldToLocal(actHit.p.clone());
+  return { x: p.x, y: actFloor(p.x, p.z, p.y), z: p.z };
+}
+// A new waypoint for the selected actor at the show's CURRENT time; one already at that time moves instead.
+function actPlace(x, z, y) {
+  const a = ACT.actors[ACT.sel];
+  if (!a) { ACT.note = 'Add or select an actor first.'; actUI(true); return null; }
+  if (!SHW.d) { ACT.note = 'The show is still loading — its clock places the waypoint.'; actUI(true); return null; }
+  const tr = SHW.d.tracks[SHW.ti], at = actR(Math.min(SHW.lt, tr.len), 2);
+  let w = a.path.find(v => String(v.track) === tr.id && Math.abs((+v.at || 0) - at) < 0.05);
+  if (w) Object.assign(w, { x: actR(x), z: actR(z), y: actR(y) });
+  else { w = { track: tr.id, at, x: actR(x), z: actR(z), y: actR(y) }; a.path.push(w); }
+  ACT.wsel = a.path.indexOf(w);
+  actEdited(a);
+  return w;
+}
+function actPointerDown(e) {
+  if (e.target !== canvas || !ACT.ready || !ACT.el || ACT.el.hidden || e.button !== 0 || (walking && locked) || transform.dragging) return;
+  const k = actPickMarker(e);
+  if (k >= 0) {                            // a marker: select it and drag it (the orbit never sees the press)
+    e.stopPropagation(); e.preventDefault();
+    const a = ACT.actors[ACT.sel];
+    ACT.wsel = k; ACT.drag = { a, w: a.path[k], id: e.pointerId, moved: false }; canvas.setPointerCapture(e.pointerId);
+    ACT.helpDirty = true; actUI(true);
+    return;
+  }
+  ACT.press = { x: e.clientX, y: e.clientY };
+}
+function actPointerMove(e) {
+  const D = ACT.drag; if (!D || e.pointerId !== D.id) return;
+  e.stopPropagation();
+  const p = actPickFloor(e); if (!p) return;
+  Object.assign(D.w, { x: actR(p.x), z: actR(p.z), y: actR(p.y) }); D.moved = true;
+  D.a.c = actCompile(D.a); ACT.dirty = true; ACT.helpDirty = true; actUI(true);
+}
+function actPointerUp(e) {
+  const D = ACT.drag;
+  if (D && e.pointerId === D.id) { e.stopPropagation(); ACT.drag = null; try { canvas.releasePointerCapture(e.pointerId); } catch (x) { /* already gone */ } actEdited(D.a); return; }
+  const P = ACT.press; ACT.press = null;
+  if (!P || e.target !== canvas || !ACT.el || ACT.el.hidden || e.button !== 0 || Math.hypot(e.clientX - P.x, e.clientY - P.y) >= 5) return;
+  // a click the panel takes is taken from the page's own handler by clearing its press (never by stopping the event: the
+  // orbit's pointerup must still arrive, or it holds the button down)
+  if (ACT.drop) {                          // Click to place: the click is the panel's (not the desk's, not Build's)
+    press = null;
+    const p = actPickFloor(e);
+    if (p) actPlace(p.x, p.z, p.y); else { ACT.note = 'Nothing there to stand on.'; actUI(true); }
+    return;
+  }
+  if (editing) return;
+  const i = actPickActor(e);
+  if (i >= 0) { press = null; actSelect(i); }
+}
+const actStage = document.getElementById('stage');
+actStage.addEventListener('pointerdown', actPointerDown, true);   // capture, on the canvas's parent: before the orbit and the build tools
+actStage.addEventListener('pointermove', actPointerMove, true);
+actStage.addEventListener('pointerup', actPointerUp, true);
+addEventListener('keydown', e => {
+  if (!ACT.el || ACT.el.hidden || editing || (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))) return;
+  if (e.code === 'Escape' && (ACT.drop || ACT.wsel >= 0)) { if (ACT.drop) actSetDrop(false); else { ACT.wsel = -1; ACT.helpDirty = true; actUI(true); } }
+  else if ((e.code === 'Delete' || e.code === 'Backspace') && ACT.wsel >= 0) { e.preventDefault(); actDeleteWp(); }
+});
+
+// ---- the panel
+function actSelect(i) { ACT.sel = i; ACT.wsel = -1; ACT.helpDirty = true; actUI(true); }
+function actSetDrop(on) { ACT.drop = on; actUI(true); if (!walking) hint.textContent = on ? 'Blocking · click where she should be at this moment (Esc stops placing) · drag a marker to move it' : HINT_ORBIT; }
+function actDeleteWp() {
+  const a = ACT.actors[ACT.sel]; if (!a || ACT.wsel < 0) return;
+  a.path.splice(ACT.wsel, 1); ACT.wsel = -1; actEdited(a);
+}
+const actFmt = s => { s = Math.max(0, s); const m = Math.floor(s / 60); return `${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}`; };
+function actBuildPanel() {
+  if (ACT.el) return;
+  const el = ACT.el = document.createElement('div'); el.id = 'blocking'; el.hidden = true;
+  el.innerHTML = `<div class="bk-head"><b>Blocking</b><button class="bk-x" title="Hide the panel (the actors stay)">Hide</button></div>
+<div class="row"><button class="bk-play" aria-pressed="false">Play</button><button class="bk-n" data-n="-5">−5</button><button class="bk-n" data-n="-1">−1</button><button class="bk-n" data-n="1">+1</button><button class="bk-n" data-n="5">+5</button><span class="bk-clock"></span></div>
+<input class="bk-scrub" type="range" min="0" max="1" step="0.1" value="0" aria-label="Position in the track">
+<div class="row"><select class="bk-track" aria-label="Track"></select></div>
+<h2>Actors</h2>
+<div class="bk-list bk-actors"></div>
+<div class="row"><button class="bk-add">Add actor</button><button class="bk-del danger">Remove</button><label><input class="bk-shown" type="checkbox" checked> Show actors</label></div>
+<div class="row"><input class="bk-name" type="text" aria-label="Name"><input class="bk-color" type="color" aria-label="Colour"></div>
+<h2>Path <span class="bk-who"></span></h2>
+<div class="row"><button class="bk-drop" aria-pressed="false">Click to place</button></div>
+<div class="note">Play or scrub the show to a moment, press Click to place, then click where she should be: she arrives there at that time. Drag a marker to move it.</div>
+<div class="bk-list bk-wps"></div>
+<h2>Waypoint <span class="bk-wn"></span></h2>
+<div class="bk-grid">
+  <span>track</span><select class="bk-wtrack"></select><span>at s</span><input class="bk-wat" type="number" step="0.1" min="0">
+  <span>dwell s</span><input class="bk-wdwell" type="number" step="0.1" min="0" placeholder="auto"><span>facing°</span><input class="bk-wface" type="number" step="15" placeholder="auto">
+  <span>x</span><input class="bk-wx" type="number" step="0.1"><span>z</span><input class="bk-wz" type="number" step="0.1">
+</div>
+<div class="row"><label><input class="bk-woff" type="checkbox"> offstage (not seen here)</label></div>
+<div class="row"><button class="bk-wnow" title="This waypoint's time becomes the show's current time">Time = now</button><button class="bk-wgo" title="Take the show to this waypoint's time">Go to</button><button class="bk-wdel danger">Delete</button></div>
+<div class="note">Dwell blank: she stands until she must leave to walk the next leg. 0: she walks through without stopping (and the path curves). Facing: 0 the house, 90 stage left, −90 stage right, 180 upstage.</div>
+<h2>File</h2>
+<div class="row"><button class="bk-dl">Download</button><button class="bk-load">Load…</button><input class="bk-fin" type="file" accept=".json,application/json" hidden><button class="bk-copy">Copy JSON</button><button class="bk-revert" title="Reload assets/hamilton-blocking.json">Revert</button><button class="bk-draft" hidden>Restore draft</button></div>
+<div class="note bk-status"></div>`;
+  document.getElementById('stage').appendChild(el);
+  const q = s => el.querySelector(s), E = ACT.E;
+  Object.assign(E, { play: q('.bk-play'), clock: q('.bk-clock'), scrub: q('.bk-scrub'), track: q('.bk-track'), actors: q('.bk-actors'), name: q('.bk-name'), color: q('.bk-color'),
+    shown: q('.bk-shown'), who: q('.bk-who'), drop: q('.bk-drop'), wps: q('.bk-wps'), wn: q('.bk-wn'), wtrack: q('.bk-wtrack'), wat: q('.bk-wat'), wdwell: q('.bk-wdwell'),
+    wface: q('.bk-wface'), wx: q('.bk-wx'), wz: q('.bk-wz'), woff: q('.bk-woff'), status: q('.bk-status'), draft: q('.bk-draft'), del: q('.bk-del') });
+  q('.bk-x').addEventListener('click', () => actPanel(false));
+  // the clock: the show player's own controls (showStart / showPause / showSeek / showSeekT), never a second clock
+  E.play.addEventListener('click', () => { if (!SHW.d) return; if (!SHW.on) showStart(true); else showPause(); actUI(true); });
+  el.querySelectorAll('.bk-n').forEach(b => b.addEventListener('click', () => { if (!SHW.d) return; if (!SHW.on) showStart(false); showSeekT(showT() + +b.dataset.n); actUI(true); }));
+  E.scrub.addEventListener('pointerdown', () => { ACT.scrubbing = true; });
+  E.scrub.addEventListener('input', () => { if (SHW.d) E.clock.textContent = `${SHW.d.tracks[SHW.ti].id} ${actFmt(+E.scrub.value)}`; });
+  E.scrub.addEventListener('change', () => { ACT.scrubbing = false; if (SHW.d) showSeek(SHW.ti, +E.scrub.value); actUI(true); });
+  E.track.addEventListener('change', () => { if (SHW.d) showSeek(+E.track.value, 0); actUI(true); });
+  E.actors.addEventListener('click', e => { const d = e.target.closest('[data-a]'); if (d) actSelect(+d.dataset.a); });
+  q('.bk-add').addEventListener('click', () => {
+    const name = `Actor ${ACT.actors.length + 1}`, a = { id: actSlug(name), name, color: ACT_COLOURS[ACT.actors.length % ACT_COLOURS.length], path: [], c: null, obj: null, label: null };
+    ACT.actors.push(a); actBuild(a); ACT.sel = ACT.actors.length - 1; ACT.wsel = -1; actEdited(a); E.name.focus(); E.name.select();
+  });
+  E.del.addEventListener('click', () => {
+    const a = ACT.actors[ACT.sel]; if (!a || !confirm(`Remove ${a.name} and her path?`)) return;
+    ACT.group.remove(a.obj); ACT.actors.splice(ACT.sel, 1); ACT.sel = Math.min(ACT.sel, ACT.actors.length - 1); ACT.wsel = -1; actEdited(null);
+  });
+  E.shown.addEventListener('change', () => { ACT.shown = E.shown.checked; ACT.dirty = true; requestRender(); });
+  E.name.addEventListener('change', () => { const a = ACT.actors[ACT.sel]; if (!a) return; a.name = E.name.value.trim() || a.name; actRecolour(a); actEdited(null); });
+  E.color.addEventListener('input', () => { const a = ACT.actors[ACT.sel]; if (!a) return; a.color = E.color.value.toLowerCase(); actRecolour(a); ACT.helpDirty = true; requestRender(); });
+  E.color.addEventListener('change', () => actEdited(null));
+  E.drop.addEventListener('click', () => actSetDrop(!ACT.drop));
+  E.wps.addEventListener('click', e => { const d = e.target.closest('[data-w]'); if (!d) return; ACT.wsel = +d.dataset.w; ACT.helpDirty = true; actUI(true); });
+  E.wps.addEventListener('dblclick', e => { const d = e.target.closest('[data-w]'); if (d) actGoWp(+d.dataset.w); });
+  const wpSet = f => { const a = ACT.actors[ACT.sel], w = a && a.path[ACT.wsel]; if (!w) return; f(w); actEdited(a); };
+  E.wtrack.addEventListener('change', () => wpSet(w => { w.track = E.wtrack.value; }));
+  E.wat.addEventListener('change', () => wpSet(w => { w.at = Math.max(0, actF(E.wat.value) ?? 0); }));
+  E.wdwell.addEventListener('change', () => wpSet(w => { const v = actF(E.wdwell.value); if (v === null) delete w.dwell; else w.dwell = Math.max(0, v); }));
+  E.wface.addEventListener('change', () => wpSet(w => { const v = actF(E.wface.value); if (v === null) delete w.facing; else w.facing = v; }));
+  E.wx.addEventListener('change', () => wpSet(w => { w.x = actF(E.wx.value) ?? w.x; w.y = actR(actFloor(w.x, w.z, w.y ?? 0)); }));
+  E.wz.addEventListener('change', () => wpSet(w => { w.z = actF(E.wz.value) ?? w.z; w.y = actR(actFloor(w.x, w.z, w.y ?? 0)); }));
+  E.woff.addEventListener('change', () => wpSet(w => { if (E.woff.checked) w.off = true; else delete w.off; }));
+  q('.bk-wnow').addEventListener('click', () => wpSet(w => { if (!SHW.d) return; const tr = SHW.d.tracks[SHW.ti]; w.track = tr.id; w.at = actR(SHW.lt, 2); }));
+  q('.bk-wgo').addEventListener('click', () => actGoWp(ACT.wsel));
+  q('.bk-wdel').addEventListener('click', () => actDeleteWp());
+  q('.bk-dl').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(actData(), null, 1) + '\n'], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'hamilton-blocking.json'; a.click(); URL.revokeObjectURL(a.href);
+    ACT.note = 'Downloaded hamilton-blocking.json — put it in assets/ (or hand it over) to make it the page\'s blocking.'; actUI(true);
+  });
+  const fin = q('.bk-fin');
+  q('.bk-load').addEventListener('click', () => fin.click());
+  fin.addEventListener('change', () => {
+    const f = fin.files[0]; fin.value = ''; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { try { actSetData(JSON.parse(r.result), f.name); actEdited(null); ACT.note = `Loaded ${f.name}`; actUI(true); } catch (e) { ACT.note = `${f.name} is not a blocking file: ${e.message}`; actUI(true); } };
+    r.readAsText(f);
+  });
+  q('.bk-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(JSON.stringify(actData(), null, 1)); ACT.note = 'JSON copied.'; }
+    catch (e) { ACT.note = 'The clipboard refused; use Download.'; }
+    actUI(true);
+  });
+  q('.bk-revert').addEventListener('click', () => { if (confirm('Throw away the edits and reload assets/hamilton-blocking.json?')) actLoadFile(); });
+  E.draft.addEventListener('click', () => { try { actSetData(JSON.parse(localStorage.getItem(ACT_DRAFT)), 'this browser\'s draft'); } catch (e) { ACT.note = 'The draft could not be read: ' + e.message; } E.draft.hidden = true; actUI(true); });
+}
+function actGoWp(k) {
+  const a = ACT.actors[ACT.sel], w = a && a.path[k];
+  if (!w || !SHW.d) return;
+  const t = SHW.d.byTrack.get(String(w.track)); if (!t) return;
+  ACT.wsel = k; ACT.helpDirty = true;
+  showSeek(t.i, +w.at || 0); actUI(true);
+}
+function actPanel(on) {
+  actBuildPanel();
+  ACT.el.hidden = !on;
+  if (ACT.btn) ACT.btn.setAttribute('aria-pressed', String(on));
+  if (!on && ACT.drop) actSetDrop(false);
+  if (on && !SHW.d && !SHW.loading) showLoad();
+  ACT.helpDirty = true; actUI(true); requestRender();
+}
+// The readouts. Lists rebuilt only on force (an edit, a selection); the clock every tick.
+function actUI(force) {
+  const E = ACT.E; if (!E.clock || ACT.el.hidden) return;
+  const D = SHW.d, yt = document.getElementById('sh-yt'), ytOn = !!(yt && !yt.hidden);
+  if (ACT.ytOn !== ytOn) { ACT.ytOn = ytOn; ACT.el.style.maxHeight = ytOn ? 'calc(100% - 256px)' : ''; }   // clear of the YouTube card (bottom left, and its terms want it seen)
+  if (D && !ACT.scrubbing) {
+    const tr = D.tracks[SHW.ti];
+    const s = `${tr.id} ${actFmt(SHW.lt)} / ${actFmt(tr.len)}`;
+    if (E.clock.textContent !== s) E.clock.textContent = s;
+    if (+E.scrub.max !== tr.len) E.scrub.max = String(tr.len);
+    E.scrub.value = String(SHW.lt);
+    if (E.track.options.length !== D.tracks.length) {
+      E.track.textContent = ''; E.wtrack.textContent = '';
+      for (const t of D.tracks) { E.track.add(new Option(`${t.id} ${t.title}`, t.i)); E.wtrack.add(new Option(`${t.id} ${t.title}`, t.id)); }
+    }
+    if (+E.track.value !== SHW.ti) E.track.value = String(SHW.ti);
+    const p = SHW.on && SHW.playing;
+    if (E.play.textContent !== (p ? 'Pause' : 'Play')) { E.play.textContent = p ? 'Pause' : 'Play'; E.play.setAttribute('aria-pressed', String(p)); }
+  } else if (!D) E.clock.textContent = SHW.loading ? 'loading the show…' : 'no show clock';
+  if (!force) return;
+  E.actors.textContent = '';
+  ACT.actors.forEach((a, i) => {
+    const d = document.createElement('div'); d.dataset.a = i; if (i === ACT.sel) d.className = 'on';
+    const sw = document.createElement('i'); sw.className = 'bk-sw'; sw.style.background = a.color;
+    const n = document.createElement('span'); n.textContent = a.name;
+    const k = document.createElement('span'); k.className = 'bk-dim'; k.textContent = `${a.path.length} pt${a.path.length === 1 ? '' : 's'}`;
+    d.append(sw, n, k); E.actors.appendChild(d);
+  });
+  const a = ACT.actors[ACT.sel];
+  E.del.disabled = !a; E.name.disabled = E.color.disabled = E.drop.disabled = !a;
+  E.name.value = a ? a.name : ''; E.color.value = a ? a.color : '#ffffff';
+  E.who.textContent = a ? a.name : '';
+  E.drop.setAttribute('aria-pressed', String(ACT.drop)); E.drop.textContent = ACT.drop ? 'Placing… (Esc)' : 'Click to place';
+  E.wps.textContent = '';
+  if (a) a.path.forEach((w, k) => {
+    const d = document.createElement('div'); d.dataset.w = k; if (k === ACT.wsel) d.className = 'on'; d.title = 'Click to select · double-click to go to its time';
+    const t = document.createElement('b'); t.textContent = `${w.track} ${actFmt(+w.at || 0)}`;
+    const m = document.createElement('span');
+    m.textContent = `x ${(+w.x).toFixed(1)} z ${(+w.z).toFixed(1)}${(+w.y || 0) > 0.3 ? ` up ${(+w.y).toFixed(1)}` : ''}${w.dwell !== undefined ? ` · ${w.dwell === 0 ? 'through' : 'stays ' + w.dwell + ' s'}` : ''}${w.facing !== undefined ? ` · ${w.facing}°` : ''}${w.off ? ' · off' : ''}`;
+    d.append(t, m); E.wps.appendChild(d);
+  });
+  const w = a && a.path[ACT.wsel];
+  E.wn.textContent = w ? `${ACT.wsel + 1} of ${a.path.length}` : '';
+  for (const k of ['wtrack', 'wat', 'wdwell', 'wface', 'wx', 'wz', 'woff']) E[k].disabled = !w;
+  el_q(ACT.el, '.bk-wnow').disabled = el_q(ACT.el, '.bk-wgo').disabled = el_q(ACT.el, '.bk-wdel').disabled = !w;
+  if (w) {
+    if (E.wtrack.querySelector(`option[value="${CSS.escape(String(w.track))}"]`)) E.wtrack.value = String(w.track);
+    E.wat.value = String(+w.at || 0); E.wdwell.value = w.dwell === undefined ? '' : String(w.dwell); E.wface.value = w.facing === undefined ? '' : String(w.facing);
+    E.wx.value = String(w.x); E.wz.value = String(w.z); E.woff.checked = !!w.off;
+  } else { E.wat.value = E.wdwell.value = E.wface.value = E.wx.value = E.wz.value = ''; E.woff.checked = false; }
+  const probs = a && a.c ? a.c.probs : [];
+  E.status.textContent = (ACT.err ? `The blocking file could not be loaded: ${ACT.err}. ` : '') + (ACT.note || '') + (probs.length ? ` · ${a.name}: ${probs.join('; ')}` : '');
+}
+const el_q = (el, s) => el.querySelector(s);
+
+// ---- loading: the mannequin, then the blocking file (a missing file is an empty stage, never an error)
+async function actLoadFile(url = ACT_URL.blocking) {
+  ACT.err = null;
+  try {
+    const r = await fetch(url, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+    actSetData(await r.json(), url.replace(/^.*\//, ''));
+  } catch (e) { ACT.err = String(e.message || e); console.warn('actors: the blocking could not be loaded —', ACT.err); actSetData({ actors: [] }, 'nothing'); }
+  try {                                    // a draft from this browser that is not the file: offered, never applied by itself
+    const d = localStorage.getItem(ACT_DRAFT);
+    if (d && ACT.E.draft) ACT.E.draft.hidden = d === JSON.stringify(actData());
+  } catch (e) { /* no storage */ }
+  actUI(true);
+}
+async function actInit() {
+  const root = rig ? rig.parent : setGroup.children[0] && setGroup.children[0].children[0];
+  if (!root) { console.warn('actors: no set to stand on'); return; }
+  const gltf = await new Promise((ok, no) => new GLTFLoader().load(ACT_URL.model, ok, undefined, no));
+  let mesh = null; gltf.scene.traverse(o => { if (!mesh && o.isMesh) mesh = o; });
+  if (!mesh) throw new Error(`${ACT_URL.model} has no mesh`);
+  ACT.geo = mesh.geometry; ACT.geo.computeBoundingSphere();
+  ACT.root = root;
+  ACT.group = new THREE.Group(); ACT.group.name = 'actors'; ACT.group.userData.rig = true; root.add(ACT.group);
+  ACT.help = new THREE.Group(); ACT.help.name = 'blocking helpers'; ACT.help.userData.rig = true; root.add(ACT.help);
+  ACT.ready = true;
+  actBuildPanel();
+  await actLoadFile();
+  ACT.btn.disabled = false; ACT.btn.title = 'Automatic actors: their paths through the show (again to hide the panel)';
+  console.info(`actors: ${ACT.actors.length} from ${ACT_URL.blocking}, the mannequin ${ACT.geo.index ? ACT.geo.index.count / 3 : ACT.geo.attributes.position.count / 3} triangles`);
+}
+// MIDTOWN.actors.check(): the file (tracks, times, dwells, speeds) and SEEK EQUIVALENCE — each actor at a spread of moments,
+// reached by seeking straight there and by playing the show's clock up to it from `span` s before (the frame's own path: the
+// show's tick, then this one), must stand in the same place, facing the same way, seen or not alike.
+function actCheck(opts = {}) {
+  if (!SHW.d) return { error: 'the show is not loaded yet' };
+  const t0 = performance.now(), wasOn = SHW.on, wasT = showT(), wasPlaying = SHW.playing;
+  for (const a of ACT.actors) a.c = actCompile(a);
+  const problems = ACT.actors.flatMap(a => a.c.probs.map(p => `${a.name}: ${p}`));
+  // the moments: mid-walk on every leg and just into every stop (mid-turn), round-robin over the actors, opts.n of them
+  const per = ACT.actors.map(a => a.c.segs.map(s => s.t0 + (s.t1 - s.t0) * 0.37).concat(a.c.P.map(p => p.T + ACT_TURN * 0.4)));
+  const pts = opts.points || [...Array(Math.max(0, ...per.map(l => l.length))).keys()].flatMap(k => per.map(l => l[k])).filter((T, i, A) => T !== undefined && A.indexOf(T) === i).slice(0, opts.n || 12);
+  const span = opts.span ?? 8, step = opts.step || 0.1;
+  if (!wasOn) showStart(false);
+  SHW.playing = false;
+  const snap = () => ACT.actors.map(a => ({ p: a.obj.position.clone(), yaw: a.obj.rotation.y, vis: a.obj.visible }));
+  const eq = pts.map(T => {
+    T = Math.min(T, SHW.d.end);
+    showSeekT(Math.max(0, T - span)); actTick(0, true);
+    for (let t = showT(); t < T - 1e-9;) {               // the frame's own order: the show's tick (its silent clock), the engine's, then this one
+      const d = Math.min(step, T - t);
+      SHW.playing = true; showTick(d, true); lxTick(d); SHW.playing = false; actTick(d); t += d;
+      if (SHW.hold) { SHW.hold = false; showSeekT(t); }
+    }
+    const A = snap(), at = showT();
+    showSeekT(at); actTick(0, true);
+    const B = snap();
+    let dp = 0, dy = 0, dv = 0;
+    A.forEach((x, i) => { dp = Math.max(dp, x.p.distanceTo(B[i].p)); dy = Math.max(dy, Math.abs(actYawLerp(x.yaw, B[i].yaw, 1) - x.yaw)); if (x.vis !== B[i].vis) dv++; });
+    return { T: +at.toFixed(3), posM: +dp.toFixed(6), yawRad: +dy.toFixed(6), visibility: dv };
+  });
+  const pass = eq.every(e => e.posM <= 1e-4 && e.yawRad <= 1e-4 && !e.visibility);
+  if (wasOn) { showSeekT(wasT); if (wasPlaying) showPause(false); } else { showStop(false); showSeekT(wasT); }
+  actTick(0, true);
+  return { pass: pass && !problems.length, seekEquivalence: { pass, points: eq }, problems, actors: ACT.actors.map(a => ({ id: a.id, name: a.name, waypoints: a.path.length })), ms: Math.round(performance.now() - t0) };
+}
+
+// ---- the hooks: the header's Blocking button, the frame (after the show's own tick), MIDTOWN.actors
+ACT.btn = document.createElement('button');
+ACT.btn.id = 'bk-toggle'; ACT.btn.textContent = 'Blocking'; ACT.btn.setAttribute('aria-pressed', 'false'); ACT.btn.disabled = true; ACT.btn.title = 'Loading the actors…';
+SHW.btn.after(ACT.btn);
+ACT.btn.addEventListener('click', () => actPanel(!ACT.el || ACT.el.hidden));
+const lxPanelTickA = lxPanelTick;
+lxPanelTick = dt => { const a = lxPanelTickA(dt), b = actTick(dt); return a || b; };   // after showTick: the clock has moved this frame
+const buildLightsPanelA = buildLightsPanel;
+buildLightsPanel = () => {
+  buildLightsPanelA();
+  actInit().then(() => {
+    const M = window.MIDTOWN; if (!M) return;
+    const frame = M.frame;
+    M.frame = () => { actTick(0, true); frame(); };       // a synchronous frame poses the actors first (captures from a hidden pane)
+    M.actors = {
+      get list() { return ACT.actors.map(a => ({ id: a.id, name: a.name, color: a.color, waypoints: a.path.length, pose: a.obj.userData.pose || null, visible: a.obj.visible })); },
+      data: () => actData(), load: x => typeof x === 'string' ? actLoadFile(x) : actSetData(x, 'the console'),
+      pose: (id, T = actNow()) => { const a = ACT.actors.find(x => x.id === id) || ACT.actors[id]; if (!a) return null; if (!a.c) a.c = actCompile(a); ACT.root.updateWorldMatrix(true, false); return actPose(a, T); },
+      select: i => actSelect(typeof i === 'number' ? i : ACT.actors.findIndex(a => a.id === i)), place: (x, z, y) => actPlace(x, z, y ?? actFloor(x, z, 0)),
+      floor: (x, z, ref = 0) => actFloor(x, z, ref), check: opts => actCheck(opts), panel: on => actPanel(on !== false), drop: on => actSetDrop(on !== false),
+      group: ACT.group, state: ACT, tune: { ACT_STEP, ACT_WALK, ACT_EASE, ACT_TURN, ACT_H },
+    };
+  }).catch(e => { console.error('actors: they could not be set up —', e); ACT.btn.title = 'No actors: ' + (e.message || e); });
+};
+
 /* ---------------------------------------------------------------- RIGGING: BOOMS ONTO THE WALLS (agent A)
    Jack: "move these lights back to be attached to the walls" — the booms standing in the HOUSE
    (downstage of the arch) go against the Midtown side walls on vertical boom pipes with brackets. */
