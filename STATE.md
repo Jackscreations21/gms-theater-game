@@ -40,6 +40,9 @@ blackout for yorktown also happens to ealy."*
 - **Checks:** show.check() seek-equivalence passes, refs resolve, timeline monotonic; every edited track re-scanned —
   no half-second under 1 % left except Binkley's own FTBs (190, 273) and the cut-offs that remain. Verification sheets
   in this session's scratch `shots/r3-*.png`, `r3b.png`; the before/after of every suspect moment `sheet-*.png`.
+- **A readout on the right edge of the page while the show is on** (`#sh-hud`, `showHud()` in midtown.html, drawn
+  from `showUI`): the song (id, act, number, title), the time into it to a tenth (`0:17.9` and `17.9 s in · of 2:07`), the
+  live cue and label, paused / interval. Jack asked for it so his notes can say exactly where. Hidden when the show stops.
 - **His notes now come through a checklist:** https://claude.ai/artifact/FpiGBBW8LicWbaRb1nTUjg ("Hamilton Cue
   Checklist", one row per album track, good / needs work + a notes field, saved to the artifact's database:
   collection `songs`, doc id = track id, fields `status`/`notes`/`updatedAt`). **Read it with `ArtifactData` `list`
