@@ -1649,3 +1649,13 @@ against this list before opening a PR; **add new traps as you hit them.**
   predicts it to 0.1 s for 98 cells — and two cells decode from the cell before, which no model would have said.
   The fix lives in the show file (`soundtrack.seek`) and `showSoundSeek`; a different copy of the album needs the
   table rebuilt (`mp3toc.py`, then `probes.py` to check).
+- **A browser's seek is history-dependent: a table of landings holds only for a region the page has not played.** As the
+  file plays, the demuxer indexes every frame it reads with the time it believes it is at; a later seek lands on those
+  entries, labelled with whatever error the run that read them carried. So the open-loop table (above) was right going
+  forward into fresh territory and wrong going back ("works going forward but doesn't go back"). The only clock to trust
+  is the sound: tap the element through Web Audio and match its loudness against the stored envelope after every seek
+  (`sndTick`). Two things that bit on the way: `createMediaElementSource` reroutes the element's output through the
+  context, so a context that never runs (no gesture) MUTES the music — make the context on the Play click and tap the
+  element only after `ctx.state === "running"`; and the first Play often comes before the file's blob has landed, so
+  the tap must also start from the blob handler (the click's activation still allows it). Test it the way it fails:
+  run across a table cell, skip away, skip back, and read `MIDTOWN.show.sound`.

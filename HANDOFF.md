@@ -232,7 +232,8 @@ Ships. Read STATE.md's newest block.
 
 1. **When #233 merges:** fast-forward local `main`; delete `cue-blackouts` and the five landed branches both sides
    (`midtown-walk`, `midtown-walls`, `midtown-lights`, `record-230`, `fixture-glbs`); suites when Node is on the PATH.
-2. **His next notes.** The method that answered this round, reuse it before changing a single `at`: (a) check the
+2. **His next notes — act 2 is next** (act 1 is done: 18 good, 5 notes answered in revision 4). Read the checklist's
+   `songs` collection first (STATE.md). The method that answered this round, reuse it before changing a single `at`: (a) check the
    clock first — `ham/audio.py <track> from to` for the file, the IFrame API for YouTube; (b) `CAP.dark(track, 0, len)`
    in the page for every track he names (install `CAP` from the session's scratch `capture.js` after
    `midtown.html?cap=N`; the receiver `shotrecv.py` on 8099 takes the sheets); (c) `CAP.sheet([...])` of the suspect
@@ -259,7 +260,10 @@ in `src/`. Then, the same afternoon: *"make a checklist of every song"* → a db
 that says what song it is and how many seconds in"* → `#sh-hud`; *"when I skip it misaligns … the audio timing"* → his
 VBR soundtrack mis-seeks by up to 52 s in Chrome (the Xing table), measured by matching the element's real output
 against the file's loudness; fixed with a per-cell table in the show file and `showSoundSeek`, verified within 0.1 s.
-Five traps.
+Then his review of act 1 came back through the checklist (18 good, 5 notes) → revision 4 (STATE.md lists it), and
+*"going forward works but doesn't go back correctly"* → the seek table only holds for unplayed regions, so the clock now
+follows the sound itself: the element tapped through Web Audio, matched against a stored loudness envelope (new asset),
+after every seek and every half-minute; the interval bug he found (act 2's first cue at the hold) fixed. Six traps.
 
 ## SUPERSEDED (the show reached him; his notes are the round above): **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
 

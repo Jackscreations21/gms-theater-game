@@ -1,4 +1,4 @@
-# STATE — 2026-10-12 (JACK'S FIRST NOTES ON ACT 1: THE BLACKOUTS OUT, THE PULL-INS LIFTED, THE TOP OF GUNS AND SHIPS — `cue-blackouts` = PR #233, OPEN)
+# STATE — 2026-10-12 (ACT 1 REVIEWED BY JACK: HIS NOTES IN, THE SKIP SYNCED BY THE SOUND ITSELF, THE READOUT, THE CHECKLIST — `cue-blackouts` = PR #233, OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
@@ -43,6 +43,21 @@ blackout for yorktown also happens to ealy."*
 - **A readout on the right edge of the page while the show is on** (`#sh-hud`, `showHud()` in midtown.html, drawn
   from `showUI`): the song (id, act, number, title), the time into it to a tenth (`0:17.9` and `17.9 s in · of 2:07`), the
   live cue and label, paused / interval. Jack asked for it so his notes can say exactly where. Hidden when the show stops.
+- **The sound tap (evening): the clock follows what the file really plays.** Jack: *"going forward works but doesn't go
+  back correctly"* — the seek table is right only for UNPLAYED regions: the browser indexes every frame it reads with the
+  time it believes it is at, and a skip back into a played region lands on those entries (a straight run from the top
+  labels them exactly; the table then mis-corrects by the cell's error). So the element's output is tapped through Web
+  Audio into 20 ms loudness bins and matched (normalised cross-correlation, ±75 s) against the file's stored envelope —
+  **new asset `assets/hamilton-soundtrack-env.u8`** (one byte per 20 ms, `soundtrack.envelope` in the show file) — after
+  every seek (one corrective seek if the landing is far off) and every half-minute. The readout shows "checking the
+  sound…" / "the sound landed −14.5 s off — moving it" / "sound synced"; `MIDTOWN.show.sound` for the console. Tested the
+  way it failed (run across a cell, skip away, skip back): detected, moved, synced. **The interval bug** he found (act 2's
+  first cue fired at the hold) was the tick firing to the clock the hold had just put on the next track's start: fixed.
+- **His act-1 checklist (18 good, 5 notes) → revision 4** in `assets/hamilton-show.json` (889 cues, 123 real): My Shot's
+  "did I talk too loud" blue with a white centre spot (119, 120 restores the warm colours); no blackout Farmer Refuted →
+  You'll Be Back (189.5 and Binkley's 190 FTB out of the show; 190.01 cross-fades); Ten Duel Commandments fades into
+  452 (451.5) and the number cues land on the number word; Guns and Ships holds the platform special to 31 before the
+  sweep (561 at 31.0, 561.2 sweep, 561.5 full warm at 32.6, 562 at 34.2). All rendered and checked. Still to come: his act 2.
 - **"when I skip it misaligns" — the audio, not the lights: FIXED.** His soundtrack is variable-bitrate with a Xing table,
   and Chrome seeks such a file by that table: a request of t jumps to the byte the table gives for t's cell (100 cells,
   each byte a 1/256 of the file = 33 s of audio), calls it the cell's nominal time and decodes on to t — so what PLAYS
