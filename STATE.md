@@ -3,7 +3,7 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-12 (evening): AUTOMATIC ACTORS — the Blocking panel, RULINGS FF–FM — branch `actors`, PR open
+## NEWEST — 2026-10-12 (evening): AUTOMATIC ACTORS — the Blocking panel, RULINGS FF–FM — branch `actors`, PR #234 OPEN
 
 Jack: *"make a system for automatic actors. Make a software where you can create their paths and stuff. Right now
 just make them using this mannequin but later we will add arm and feet movement."* Branched from `main` at

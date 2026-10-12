@@ -238,12 +238,12 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
 3. **Watch it with him, music on** (below). His notes go into the segment files in the session scratch or straight into
    `assets/hamilton-show.json`.
 4. Rule the rig placements (FUTURE.md), then the older list.
-5. **The automatic actors (branch `actors`, RULINGS FF–FM, the next spec starts at FN):** a PR is open beside #233.
+5. **The automatic actors (branch `actors`, RULINGS FF–FM, the next spec starts at FN):** PR #234 is open beside #233.
    Let Jack drive the Blocking panel (header button) and block a number; his Download goes into
    `assets/hamilton-blocking.json`. Ask him the mannequin's licence/origin, and which way arms and feet come
    (FUTURE.md "Automatic actors").
 
-## DONE — 2026-10-12 (evening): automatic actors — the mannequin, paths on the show clock, the Blocking panel (branch `actors`, FF–FM)
+## DONE — 2026-10-12 (evening): automatic actors — the mannequin, paths on the show clock, the Blocking panel (branch `actors`, PR #234, FF–FM)
 
 *"make a system for automatic actors. Make a software where you can create their paths and stuff. Right now just make
 them using this mannequin but later we will add arm and feet movement."* → `tools/mannequin-glb.py` turns his STL into
