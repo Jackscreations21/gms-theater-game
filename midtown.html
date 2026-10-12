@@ -4003,7 +4003,7 @@ const SHW_META = new Set(['ref', 'time', 'delay', 'mark', 'blk', 'fx']);   // a 
 const SHW_COLKEYS = ['cmy', 'cto', 'rgb', 'w', 'a', 'lime', 'indigo', 'cyan', 'cw'];
 const SHW_EMIT = { red: p => p.rgb && p.rgb[0], green: p => p.rgb && p.rgb[1], blue: p => p.rgb && p.rgb[2], white: p => p.w, amber: p => p.a, lime: p => p.lime, indigo: p => p.indigo, cyan: p => p.cyan };
 const SHW = { d: null, loading: null, err: null, urls: null, on: false, playing: false, hold: false, houseUp: true, ti: 0, lt: 0, next: 0, cue: -1,
-  ch: new Map(), ut: new Map(), save: null, cm: null, cam: null, haze: null, A: null, fileA: null, stA: null, sound: null, yt: null, ytOn: true, vol: 0.8, files: new Map(), audioOn: false, audioWant: null,
+  ch: new Map(), ut: new Map(), save: null, cm: null, cam: null, haze: null, A: null, fileA: null, stA: null, sound: null, yt: null, ytOn: true, vol: 0.8, files: new Map(), audioOn: false, audioWant: null, soundOff: 0,
   audioNote: '', silent: false, E: {}, btn: null, el: null, built: false, shown: { cue: -2, ti: -1, sec: -1 }, perf: { fireMs: 0, fireMax: 0, n: 0 } };
 const showKey = c => String(+c);                             // channel keys: 7, "7", "7.0" → "7"; 619.2 → "619.2"
 const showFmt = s => { s = Math.max(0, s); const m = Math.floor(s / 60), x = Math.floor(s - m * 60); return `${m}:${String(x).padStart(2, '0')}`; };
@@ -4020,7 +4020,7 @@ async function showLoad(urls = {}) {
     SHW.sound = null;                                        // Jack's one-file album, if it is on this machine (git-ignored: absent on Pages)
     const st = show.soundtrack;
     if (st && st.url && SHW.d.tracks.every(t => t.file !== null)) {
-      try { const r = await fetch(st.url, { method: 'HEAD', cache: 'no-cache' }); if (r.ok) SHW.sound = { url: st.url }; } catch (e) { /* not here: YouTube, then silence */ }
+      try { const r = await fetch(st.url, { method: 'HEAD', cache: 'no-cache' }); if (r.ok) SHW.sound = { url: st.url, seek: st.seek && Array.isArray(st.seek.toc) && st.seek.toc.length === 100 && +st.seek.cell > 0 ? st.seek : null }; } catch (e) { /* not here: YouTube, then silence */ }
     }
     SHW.ti = 0; SHW.lt = 0; SHW.next = 0; SHW.cue = -1; SHW.ch.clear(); SHW.ut.clear();
     showMatchAll();
@@ -4399,6 +4399,25 @@ function showAudioEl() {
 // each track's start in it in tracks[].file — found from the silences between tracks; the album's 15 segues have none, and
 // there the start is the previous start + its length. While it plays, the file's time IS the clock: the track is the last
 // one starting at or before it, and the time into the track runs to the track's length, holding through the gap after.
+// SEEKING THE FILE (Jack, 2026-10-12: "when I skip it misaligns"): the file is variable-bitrate with a Xing table, and Chrome seeks
+// such a file by that table — a request of t jumps to the byte the table gives for t's cell (100 cells, each byte a 1/256 of the
+// file: 33 s of audio per step), calls that byte the cell's nominal time i·cell, and decodes on to t. What plays is therefore
+// off by err(i) = (the true time of the cell's byte) − i·cell, measured here at +17 / −18 / −33 s in three cells, until the
+// next seek — while currentTime reports t. The show file carries the true time of every cell's byte (soundtrack.seek.toc,
+// from the frame index): to hear P, ask for the t whose cell lands there, and read the clock as currentTime + err. The
+// cells' spans overlap and leave gaps, so every cell is tried and the one landing nearest P wins (exact when reachable).
+function showSoundSeek(P) {
+  const k = SHW.sound && SHW.sound.seek;
+  if (!k) return { req: P, off: 0 };
+  const A = SHW.stA, cell = A && Number.isFinite(A.duration) && A.duration > 0 ? A.duration / 100 : +k.cell;   // the cell is a hundredth of the duration the browser itself computed
+  const err = i => +k.toc[i] - i * cell;
+  let best = null;
+  for (let i = 0; i < 100; i++) {
+    const e = err(i), req = THREE.MathUtils.clamp(P - e, i * cell, (i + 1) * cell - 0.001), miss = Math.abs(req + e - P);
+    if (!best || miss < best.miss) best = { req, off: e, miss };
+  }
+  return best;
+}
 function showSoundEl() {
   if (SHW.stA) return SHW.stA;
   const A = SHW.stA = new Audio(); A.preload = 'auto'; A.volume = SHW.vol;
@@ -4407,7 +4426,7 @@ function showSoundEl() {
   SHW.sound.note = 'loading the soundtrack…';
   fetch(SHW.sound.url).then(r => r.blob()).then(bl => { A.src = URL.createObjectURL(bl); SHW.sound.note = ''; if (SHW.on && SHW.A === A && SHW.playing) A.play().catch(showAudioFail); showUI(true); },
     () => { SHW.sound = null; if (SHW.A === A) showAudioFail({ message: 'the soundtrack file could not be read' }); });
-  A.addEventListener('loadedmetadata', () => { if (SHW.audioWant !== null) { try { A.currentTime = SHW.audioWant; } catch (e) { /* from the top */ } SHW.audioWant = null; } });
+  A.addEventListener('loadedmetadata', () => { if (SHW.audioWant !== null) { const q = showSoundSeek(SHW.audioWant); try { A.currentTime = q.req; SHW.soundOff = q.off; } catch (e) { SHW.soundOff = 0; /* from the top */ } SHW.audioWant = null; } });
   A.addEventListener('ended', () => { if (SHW.A === A && SHW.on) { showFireTo(SHW.d.end); showEnd(); } });
   A.addEventListener('error', () => { if (SHW.A === A) { SHW.sound = null; showAudioFail({ message: 'the soundtrack file would not play' }); } });
   return A;
@@ -4415,7 +4434,7 @@ function showSoundEl() {
 function showSoundTick() {                                   // the file's time → the track and the time into it
   const A = SHW.stA, tr = SHW.d.tracks;
   if (!A || A.readyState < 1 || A.seeking || SHW.audioWant !== null) return;
-  const t = A.currentTime;
+  const t = A.currentTime + SHW.soundOff;                    // what is playing, not what the element reports (showSoundSeek)
   let i = SHW.ti;
   while (i + 1 < tr.length && tr[i + 1].file <= t + 1e-3) i++;
   while (i > 0 && tr[i].file > t + 1e-3) i--;
@@ -4489,7 +4508,7 @@ function showTrackAudio() {
     if (SHW.yt) SHW.yt.pause(); if (ytBox) ytBox.hidden = true;
     const A = showSoundEl(), go = SHW.on && SHW.playing, P = tr.file + SHW.lt;
     SHW.A = A; SHW.audioOn = true; SHW.audioNote = '';
-    if (A.readyState >= 1) { if (Math.abs(A.currentTime - P) > 0.25) A.currentTime = P; } else SHW.audioWant = P;
+    if (A.readyState >= 1) { if (Math.abs(A.currentTime + SHW.soundOff - P) > 0.25) { const q = showSoundSeek(P); A.currentTime = q.req; SHW.soundOff = q.off; } } else SHW.audioWant = P;
     if (go && A.src) A.play().catch(showAudioFail); else A.pause();   // no src yet: the blob is still loading and plays when it lands
     return;
   }
