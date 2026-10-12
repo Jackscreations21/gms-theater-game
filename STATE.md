@@ -75,7 +75,7 @@ headset.
 
 ---
 
-## NEWEST — 2026-10-12: the engine calibrated to Binkley's cue photos, every cue re-judged from renders, the preshow and the interval — UNCOMMITTED on `midtown-lights`
+## (earlier today, landed as #230) 2026-10-12: the engine calibrated to Binkley's cue photos, every cue re-judged from renders, the preshow and the interval
 
 Jack: *"go through all the cues and compare them to pictures to make sure they are all correct"*, *"the main problem i saw
 where spotlight places, timing and brightness"*, and *"you didnt do the preshow lighting and make it so at the end of
