@@ -1640,5 +1640,10 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **`MIDTOWN.show.state` can throw on `main`** once the YouTube adapter is the show's audio and YouTube cannot
   play: `showState` reads `SHW.A.currentTime.toFixed` and the adapter has no time. A test that calls
   `showAdvance` (which ends in `showState()`) throws with it — `actCheck` steps `showTick` + `lxTick` itself.
+- **A seek-equivalence check that seeks to the SAME moment it just played to proves nothing about history.** The first
+  `MIDTOWN.actors.check()` played up to T, then seeked to T: a deliberately broken label that only updated on small time
+  steps passed, because the stale value the seek left behind was the value play had just set. Seek FIRST, as a jump from far
+  away (600 s), then play — now the broken label fails it. `show.check()` (the cues) seeks after playing too; its state is
+  re-folded from scratch on every seek, which is why it holds there.
 - **At "Set fitted" the set has holes the cuts made at that scale**, so a floor ray that finds the gallery at
   real size can fall through to the deck there. Author blocking at Real size (the default).

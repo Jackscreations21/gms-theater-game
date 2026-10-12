@@ -243,6 +243,15 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
    `assets/hamilton-blocking.json`. Ask him the mannequin's licence/origin, and which way arms and feet come
    (FUTURE.md "Automatic actors").
 
+## DONE — 2026-10-12 (night): names over their heads, the company of twenty, the merge tool and the writers' brief (PR #234, FN)
+
+*"put the choreography for every character in hamilton … put a thing over their head with what character they are"* → head
+labels (constant screen size, per-waypoint `label` from that waypoint on, part of the pose and of `check()`, which now seeks
+first from far away); `tools/hamilton-cast.json` (20 bodies, the doublings fixed); `tools/hamilton-floor.json` (the floor
+measured every 0.2 m); `tools/blocking-merge.py` (validate and merge eight segment files); `assets/hamilton-blocking.json`
+reset to the cast with no waypoints; the brief for eight writers in the session scratch (`act/brief/`). Next on the branch:
+their eight segments, merged.
+
 ## DONE — 2026-10-12 (evening): automatic actors — the mannequin, paths on the show clock, the Blocking panel (branch `actors`, PR #234, FF–FM)
 
 *"make a system for automatic actors. Make a software where you can create their paths and stuff. Right now just make

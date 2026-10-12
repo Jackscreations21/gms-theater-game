@@ -2,45 +2,27 @@
  "format": "hamilton-blocking 1",
  "frame": "set-local metres: the frame of assets/hamilton-set.glb (upstage -z, the house +z, the deck y 0, stage right -x); times on the show clock (album track, seconds into it)",
  "model": "assets/mannequin-woman.glb",
- "note": "A DEMONSTRATION of the actor system through the first number, timed to its cues (Burr Enters, Hamilton revealed, the Voyage, the women on the gallery) - not the Broadway blocking. Edit it in the Blocking panel and Download.",
+ "note": "Merged by tools/blocking-merge.py from seg1.json, seg2.json, seg3.json, seg4.json, seg5.json, seg6.json, seg7.json, seg8.json. The company of Hamilton as blank mannequins named over their heads (RULING FN).",
  "actors": [
-  {
-   "id": "burr",
-   "name": "Burr",
-   "color": "#d9b45a",
-   "path": [
-    { "track": "1-01", "at": 0, "x": -8.2, "z": 1.8, "y": 0.045, "dwell": 2, "off": true },
-    { "track": "1-01", "at": 6.5, "x": -1.6, "z": 1.8, "y": 0.045, "facing": 0 },
-    { "track": "1-01", "at": 121, "x": -0.4, "z": 2.2, "y": 0.045, "facing": 0 },
-    { "track": "1-01", "at": 203, "x": -3, "z": 1, "y": 0.045, "facing": 35 },
-    { "track": "1-01", "at": 221, "x": 0, "z": 2.4, "y": 0.045, "facing": 0 }
-   ]
-  },
-  {
-   "id": "hamilton",
-   "name": "Hamilton",
-   "color": "#6abf7a",
-   "path": [
-    { "track": "1-01", "at": 0, "x": -8.3, "z": -0.6, "y": 0.045, "off": true },
-    { "track": "1-01", "at": 79, "x": 0, "z": 0.95, "y": 0.045, "facing": 0 },
-    { "track": "1-01", "at": 143.2, "x": 1.4, "z": -2.45, "y": 0.045, "dwell": 0 },
-    { "track": "1-01", "at": 144, "x": 2.2, "z": -2.45, "y": 0.045, "dwell": 0 },
-    { "track": "1-01", "at": 146.6, "x": 4.6, "z": -2.45, "y": 2.743, "dwell": 0 },
-    { "track": "1-01", "at": 150.5, "x": 5.2, "z": 0.5, "y": 2.746, "facing": -20 }
-   ]
-  },
-  {
-   "id": "eliza",
-   "name": "Eliza",
-   "color": "#5a8fd8",
-   "path": [
-    { "track": "1-01", "at": 0, "x": -4.3, "z": -3.4, "y": 2.743, "off": true },
-    { "track": "1-01", "at": 93.2, "x": -1, "z": -3.4, "y": 2.743, "facing": 0 },
-    { "track": "1-01", "at": 108.5, "x": -4.3, "z": -3.4, "y": 2.743, "off": true },
-    { "track": "1-01", "at": 162, "x": 3.8, "z": -3.4, "y": 2.743, "off": true },
-    { "track": "1-01", "at": 166.3, "x": 0.8, "z": -3.4, "y": 2.743, "facing": 0 },
-    { "track": "1-01", "at": 217.4, "x": 0, "z": -3.3, "y": 2.743, "facing": 0 }
-   ]
-  }
+  {"id": "hamilton", "name": "Hamilton", "color": "#6abf7a", "path": []},
+  {"id": "burr", "name": "Burr", "color": "#c9a23a", "path": []},
+  {"id": "eliza", "name": "Eliza", "color": "#5a8fd8", "path": []},
+  {"id": "angelica", "name": "Angelica", "color": "#e0789e", "path": []},
+  {"id": "peggy", "name": "Peggy", "color": "#e8d24a", "path": []},
+  {"id": "washington", "name": "Washington", "color": "#ece6da", "path": []},
+  {"id": "lafayette", "name": "Lafayette", "color": "#4fc1c1", "path": []},
+  {"id": "mulligan", "name": "Mulligan", "color": "#a47ad8", "path": []},
+  {"id": "laurens", "name": "Laurens", "color": "#e0883a", "path": []},
+  {"id": "king", "name": "King George", "color": "#c0392b", "path": []},
+  {"id": "ens1", "name": "Ensemble 1", "color": "#8c8c8c", "path": []},
+  {"id": "ens2", "name": "Ensemble 2", "color": "#8c8c8c", "path": []},
+  {"id": "ens3", "name": "Ensemble 3", "color": "#8c8c8c", "path": []},
+  {"id": "ens4", "name": "Ensemble 4", "color": "#8c8c8c", "path": []},
+  {"id": "ens5", "name": "Ensemble 5", "color": "#8c8c8c", "path": []},
+  {"id": "ens6", "name": "Ensemble 6", "color": "#8c8c8c", "path": []},
+  {"id": "ens7", "name": "Ensemble 7", "color": "#8c8c8c", "path": []},
+  {"id": "ens8", "name": "Ensemble 8", "color": "#8c8c8c", "path": []},
+  {"id": "ens9", "name": "Ensemble 9", "color": "#8c8c8c", "path": []},
+  {"id": "ens10", "name": "Ensemble 10", "color": "#8c8c8c", "path": []}
  ]
 }

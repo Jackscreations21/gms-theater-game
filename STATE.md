@@ -3,7 +3,38 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-12 (evening): AUTOMATIC ACTORS — the Blocking panel, RULINGS FF–FM — branch `actors`, PR #234 OPEN
+## NEWEST — 2026-10-12 (night): NAMES OVER THEIR HEADS, THE COMPANY OF TWENTY, AND THE TOOLS FOR EIGHT BLOCKING WRITERS (RULING FN) — PR #234 grows
+
+Jack: *"dont focus on any costumes or arm or feet movements. but i want you to put the choreography for every character in
+hamilton. for now just use the blank mannequin and put a thing over their head with what character they are."* The
+preparation for eight parallel writers (one per cue-round segment); their merged blocking is the next commit on `actors`.
+
+- **Head labels (midtown.html):** a constant-screen-size name tag 0.25 m over every crown, drawn over everything, hidden with
+  her, left out of the lighting engine's passes; a waypoint `label` changes it from that waypoint on (Lafayette → Jefferson);
+  part of the pose, so `MIDTOWN.actors.check()` compares labels — and the check now SEEKS FIRST, as a jump from 600 s away,
+  then plays (negative-checked: a label that updates only on small steps fails it; it passed the old order). A body with no
+  waypoints is not on stage (was: at centre). Pose lookup is a binary search (6,131 random waypoints: load 78 ms, check
+  passes). Panel: a `label` field per waypoint, a Names box.
+- **The company:** `tools/hamilton-cast.json` — 20 ids (10 principals, ens1–ens10 in grey), colours, and the only labels each
+  may show (Maria Reynolds, Jefferson, Madison, Philip; the Bullet ens1, Seabury ens2, Charles Lee ens3, Philip Schuyler /
+  James Reynolds / the Doctor ens4, George Eacker ens5). `assets/hamilton-blocking.json` is now that cast with NO waypoints
+  (the demo is kept in the session scratch `act/brief/example-demo-1-01.json`).
+- **Measured, not guessed:** `tools/hamilton-floor.json` (the floor at deck level and at the top, every 0.2 m, x −10…10,
+  z −7…6, from `MIDTOWN.actors.floor` at Real size); the glossary in the brief and the format doc: deck points, the
+  turntables (centre (0, 0.95), inner r 2.59, outer to 3.82), the SL stair (foot (2.2, −2.45) → top (4.5, −2.45)), the SR
+  stair (foot (−4.5, 1.85) → top (−4.5, −0.3)), the galleries at 2.743 (USG x −4.75…5 z −3.8…−3; SR strip, cross-walk and
+  SR arm; SLG x 4.6…6 with a hole in its outer half at z −1.8…−1.4), entrances checked hidden from six house seats.
+- **`tools/blocking-merge.py`** (stdlib): seg*.json → `assets/hamilton-blocking.json`; errors on ids, tracks, `at`, labels,
+  time not strictly increasing per actor, a track claimed twice; warns on off-stage positions, props, gallery legs leaving
+  the gallery, level changes away from a stair, fast stairs/legs, overrunning dwells, `off` in plain view, a segment's first
+  waypoint without a label; fills `y` from "deck" / "gallery" / "top"; prints a per-track summary. Tested on a broken set
+  (5 errors, 6 warnings, nothing written) and on the demo (written).
+- **The brief** (session scratch `act/brief/README.md`, with `tracks/*.txt` — every track's cues as timing anchors, no
+  lyrics — `floor-map.txt`, `pictures/`, `segments-template/`): segmentation = the cue round's (1-01…06 · 07…11 · 12…17 ·
+  18…23 · 2-01…05 · 06…10 · 11…16 · 17…23).
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (evening): AUTOMATIC ACTORS — the Blocking panel, RULINGS FF–FM — branch `actors`, PR #234 OPEN
 
 Jack: *"make a system for automatic actors. Make a software where you can create their paths and stuff. Right now
 just make them using this mannequin but later we will add arm and feet movement."* Branched from `main` at

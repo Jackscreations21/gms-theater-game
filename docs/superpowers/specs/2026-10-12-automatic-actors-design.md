@@ -1,6 +1,7 @@
 # Automatic actors — design (2026-10-12)
 
-**BINDING. Rulings FF–FM.** The next spec starts at **FN**.
+**BINDING. Rulings FF–FN.** The next spec starts at **FO**. (FN was added the same day, from Jack's
+second message — see its section.)
 
 These rulings were made by the building session (an agent), not answered by
 Jack in a Q&A first: he asked for the system and named the model, and every
@@ -121,7 +122,9 @@ and the walk's player body are untouched.
   waypoint and an onstage one she IS seen — she walks on from it, or off to
   it; between two offstage ones she is not.
 - Before her first waypoint and after her last she stands at it (hidden if it
-  is offstage). An actor with no waypoints stands at the turntable's centre.
+  is offstage). An actor with no waypoints is **not on stage** (amended by FN: it
+  used to stand at the turntable's centre, and a cast list of twenty with no
+  blocking yet stood twenty bodies in one spot).
 
 ### FK — Actors are lit by the show
 
@@ -161,10 +164,11 @@ and the walk's player body are untouched.
 - `assets/hamilton-blocking.json`, format `"hamilton-blocking 1"`
   (`docs/hamilton-blocking-format.md`), fetched at load (a missing file is an
   empty stage and a console warning, never an error). It is the committed
-  truth. The committed one is a **demonstration** through 1-01 (Burr enters,
+  truth. The first commit held a **demonstration** through 1-01 (Burr enters,
   Hamilton walks into the centre shaft and climbs the stage-left stair onto the
   gallery at the Voyage, Eliza appears on the upstage gallery twice) — not the
-  Broadway blocking.
+  Broadway blocking. Under FN it became the twenty-strong cast with no
+  waypoints, to be filled by the merged segment blocking.
 - The page cannot write to the repository: the editor's **Download** saves the
   JSON (Jack drops it into `assets/` or hands it over), **Load…** reads one,
   **Copy JSON** copies it. Every edit also keeps a **draft** in this browser's
@@ -189,3 +193,44 @@ and the walk's player body are untouched.
   `pose(id, T)`, `select(i | id)`, `place(x, z, y)`, `floor(x, z, ref)`,
   `check()`, `panel(on)`, `drop(on)`, `state`, `tune`. `MIDTOWN.frame()` poses
   the actors before it draws.
+
+### FN — A name over every head, and the whole company
+
+Jack, on PR #234: *"dont focus on any costumes or arm or feet movements. but
+i want you to put the choreography for every character in hamilton. for now
+just use the blank mannequin and put a thing over their head with what
+character they are."*
+
+- **The head label.** Every actor carries a label: a canvas-texture sprite, a
+  child of her group so it moves and hides with her. It is drawn at a constant
+  **screen** size (`sizeAttenuation` off, about 3.5 % of the view's height),
+  so it reads from the back of the house without towering over a body in the
+  front row. Its lower edge sits 0.25 m above her crown. It is drawn over
+  everything (no depth test), so a name on the gallery reads through the rail.
+  The lighting engine's depth/albedo and pool passes get nothing from it (it
+  draws transparent into any render target), so a pool never lands on a label.
+  The panel's **Names** box turns them all off.
+- **The text** is the actor's `label`, or her `name` when she has none, until
+  a waypoint's `label` changes it **from that waypoint's time on**. It holds
+  until another waypoint changes it. It is part of the pose, a pure function of
+  show time, so a seek shows the right name; `MIDTOWN.actors.check()` compares
+  labels too. Negative-checked: a label that only updates on small time steps
+  fails it. The check now seeks to each moment as a jump from 600 s away,
+  BEFORE playing up to it, so nothing left behind by the previous moment can
+  pass for the right answer.
+- **The company is fixed** in `tools/hamilton-cast.json`: twenty ids, each
+  with a default label (its `name`), a colour, and the only other labels it
+  may show. The principals: hamilton, burr, eliza, angelica, peggy (→ Maria
+  Reynolds), washington, lafayette (→ Jefferson), mulligan (→ Madison),
+  laurens (→ Philip), king ("King George"). The ensemble is ens1 … ens10 in one
+  grey; the ensemble's named parts are each on one fixed body: ens1 the
+  Bullet, ens2 Samuel Seabury, ens3 Charles Lee, ens4 Philip Schuyler / James
+  Reynolds / the Doctor, ens5 George Eacker. These follow the Original Broadway
+  Cast's doubling as far as it is known; any part not listed is played by a
+  principal or not shown. Colours are a ruling of taste.
+- **The blocking is written in eight segments** (the cue round's eight
+  stretches of the album) and merged by `tools/blocking-merge.py`, which
+  validates it (ids, tracks, times strictly increasing per actor across the
+  show, labels against the cast, positions and levels against
+  `tools/hamilton-floor.json`, measured in the page) and fills `y` from level
+  names. The format doc has its rules.

@@ -571,8 +571,9 @@ The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocki
 - **Riding the turntables.** The two turntables do not turn yet (their moves are in no file — FUTURE's Hamilton
   section); when they do, an actor standing on one should turn with it: waypoints in the turntable's frame
   (a `on: "tt-inner"` key), or the turn added to the pose. Open: which.
-- **The whole show.** The committed blocking is a demonstration through 1-01. Real blocking for 46 numbers is
-  Jack's (or research's) to author with the panel.
+- **The whole show — IN PROGRESS (RULING FN):** the cast of twenty, head labels and `tools/blocking-merge.py` are built;
+  eight writers are blocking the eight segments. Still wanted after: Jack's eye on it with the music, and his corrections
+  in the panel.
 - **Follow spots on actors.** The three Lycians could track a named actor (`focus` = her head each frame).
 - **Actors avoiding each other.** Paths cross freely; nothing stops two bodies sharing a spot.
 - **Light on a body is speckled.** The pool shader takes its normal from depth; on a dense body that shows

@@ -78,7 +78,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 #lights .note { color: var(--muted); font-size: 11px; }
 #xhair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(235,231,238,.85); box-shadow: 0 0 0 1px rgba(13,12,15,.6); pointer-events: none; }
 #dropglow { position: absolute; inset: 0; border: 2px dashed var(--accent); pointer-events: none; display: none; }
-/* the blocking panel (automatic actors, RULINGS FF–FM): the show panel's look, on the left; beside Lights when both are open */
+/* the blocking panel (automatic actors, RULINGS FF–FN): the show panel's look, on the left; beside Lights when both are open */
 #blocking { position: absolute; top: 12px; left: 12px; width: 300px; max-height: calc(100% - 64px); overflow: auto; background: rgb(23,21,27); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; grid-auto-rows: max-content; gap: 8px; font-size: 12px; z-index: 4; }
 #lights:not([hidden]) ~ #blocking { left: 304px; }
 #blocking h2 { font-size: 12px; font-weight: 600; margin: 4px 0 0; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
@@ -4982,7 +4982,7 @@ function deskAct(b) {
 }
 const showUIDesk = showUI;
 showUI = force => { showUIDesk(force); deskScreensDraw(force); };
-/* ---------------------------------------------------------------- AUTOMATIC ACTORS: THE BLOCKING (RULINGS FF–FM)
+/* ---------------------------------------------------------------- AUTOMATIC ACTORS: THE BLOCKING (RULINGS FF–FN)
    Jack: "make a system for automatic actors. Make a software where you can create their paths and stuff. Right now just make
    them using this mannequin but later we will add arm and feet movement." BINDING: docs/superpowers/specs/2026-10-12-automatic-
    actors-design.md. The file: assets/hamilton-blocking.json, its format in docs/hamilton-blocking-format.md.
@@ -5007,6 +5007,10 @@ showUI = force => { showUIDesk(force); deskScreensDraw(force); };
      and albedo pass draws them like any set piece. A pool's cone is drawn only over a depth band fitted to the scenery it lands
      on (lxPoolBand), which stops 0.4 m short of the deck — a standing body would be lit to the shins; so each frame the band of
      every lit pool with an actor in its cone is widened to reach her (actPoolBands), and put back when she leaves.
+   - NAMES (FN): a label over every head (constant screen size, 0.25 m over the crown) — the actor's name, or from a waypoint's
+     `label` on (a doubling: Lafayette → Jefferson); part of the pose, so a seek shows the right name. An actor with no
+     waypoints is not on stage. The company is tools/hamilton-cast.json; the whole show's blocking is merged into the file by
+     tools/blocking-merge.py.
    - THE EDITOR: the header's Blocking button → the panel (#blocking): actors (add, rename, colour, remove), the show clock
      (Play / Pause, nudges, a scrub over the track — the show player's own showStart / showPause / showSeek), the selected
      actor's waypoints (a list, a form, markers and the path in the view): "Click to place" drops a waypoint at the CURRENT show
@@ -5024,7 +5028,7 @@ const ACT_DRAFT = 'midtown-blocking-draft';
 const ACT_COLOURS = ['#d9b45a', '#5a8fd8', '#d8665a', '#6abf7a', '#b07ad8', '#e8e4dc', '#4fc1c1', '#d88ab8'];
 const ACT = { geo: null, root: null, group: null, help: null, actors: [], sel: -1, wsel: -1, drop: false, shown: true, T: NaN, dirty: true,
   compiledFor: undefined, el: null, E: {}, btn: null, drag: null, press: null, mats: new Map(), band: new Map(), file: null, err: null, note: '', ready: false,
-  litBodies: true };                       // false: the pools' bands left as the engine fits them (a body lit to the shins) — for comparing
+  litBodies: true, names: true };                       // false: the pools' bands left as the engine fits them (a body lit to the shins) — for comparing
 
 // ---- the path, compiled: the waypoints in time order with their global times, each leg's curve and arc-length table
 const actF = v => v === null || v === undefined || v === '' ? null : Number.isFinite(+v) ? +v : null;
@@ -5036,11 +5040,14 @@ function actCompile(a) {
     if (tr && !t) { probs.push(`waypoint ${k + 1}: no track "${w.track}"`); return; }
     const at = actF(w.at) ?? 0;
     if (t && (at < 0 || at > t.len + 1e-6)) probs.push(`waypoint ${k + 1}: at ${at} is outside ${t.id} (0–${t.len} s)`);
-    P.push({ w, k, T: t ? t.start + at : 0, x: actF(w.x) ?? 0, z: actF(w.z) ?? 0, y: actF(w.y) ?? 0, dwell: actF(w.dwell), facing: actF(w.facing), off: !!w.off });
+    P.push({ w, k, T: t ? t.start + at : 0, x: actF(w.x) ?? 0, z: actF(w.z) ?? 0, y: actF(w.y) ?? 0, dwell: actF(w.dwell), facing: actF(w.facing), off: !!w.off,
+      label: typeof w.label === 'string' && w.label.trim() ? w.label.trim() : null });
   });
   if (tr) P.sort((p, q) => p.T - q.T || p.k - q.k);
   const n = P.length;
   P.forEach((p, i) => { p.stop = i === 0 || i === n - 1 || p.off || p.dwell === null || p.dwell > 0; });
+  // the head label in effect from each waypoint on (FN): its own `label`, else the one before it, else the actor's own
+  P.forEach((p, i) => { p.lab = p.label ?? (i > 0 ? P[i - 1].lab : actHead(a)); });
   const segs = [];
   for (let i = 0; i + 1 < n; i++) {
     const p1 = P[i], p2 = P[i + 1];
@@ -5100,23 +5107,30 @@ function actWarp(t, D, a, b) {
 const actSmooth = k => { k = Math.min(1, Math.max(0, k)); return k * k * (3 - 2 * k); };
 const actYawLerp = (a, b, k) => a + ((((b - a) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI) * k;
 // THE POSE at show time T (global seconds): { x, y, z (set-local; y the floor under her), yaw, visible, speed (m/s), dist (m walked
-// along her path since her first waypoint) }. Pure: the compiled path, T, and the scenery under her — nothing else.
+// along her path since her first waypoint), label (the name over her head) }. Pure: the compiled path, T, and the scenery under
+// her — nothing else.
 function actPose(a, T) {
   const c = a.c, P = c ? c.P : [];
-  if (!P.length) return { x: 0, y: actFloor(0, SET.ttZ, 0), z: SET.ttZ, yaw: 0, visible: true, speed: 0, dist: 0 };
+  // no waypoints: not on stage (FN — a cast list with no blocking yet must not stand twenty bodies in one spot)
+  if (!P.length) return { x: 0, y: 0, z: SET.ttZ, yaw: 0, visible: false, speed: 0, dist: 0, label: actHead(a) };
   let i = 0;
-  if (c.timed) { while (i + 1 < P.length && P[i + 1].T <= T) i++; }
+  if (c.timed) {                                           // the last waypoint at or before T (binary: a whole show is hundreds a body)
+    let lo = 0, hi = P.length - 1;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (P[m].T <= T) lo = m; else hi = m - 1; }
+    i = lo;
+  }
   const p = P[i], q = P[i + 1];
   if (!c.timed || T < p.T || !q || T < p.leave || q.T - p.leave <= 1e-6) {          // standing at p (before her first, at a stop, after her last)
     const k = c.timed && i > 0 && p.arrive !== null && T >= p.T ? actSmooth((T - p.T) / ACT_TURN) : 1;
-    return { x: p.x, y: actFloor(p.x, p.z, p.y), z: p.z, yaw: k < 1 ? actYawLerp(p.arrive, p.yaw, k) : p.yaw, visible: !p.off, speed: 0, dist: p.dist };
+    return { x: p.x, y: actFloor(p.x, p.z, p.y), z: p.z, yaw: k < 1 ? actYawLerp(p.arrive, p.yaw, k) : p.yaw, visible: !p.off, speed: 0, dist: p.dist,
+      label: c.timed && T < p.T ? actHead(a) : p.lab };
   }
   const s = c.segs[i], D = s.t1 - s.t0, t = T - s.t0;
   const [f, v] = actWarp(t, D, p.stop ? Math.min(ACT_EASE, D / 2) : 0, q.stop ? Math.min(ACT_EASE, D / 2) : 0);
   const u = actArcU(s, f), at = actCR(s, u), ref = p.y + (q.y - p.y) * f;
   let yaw = s.len > 1e-3 ? actTanYaw(s, u) : p.yaw;
   if (p.stop) yaw = actYawLerp(p.yaw, yaw, actSmooth(t / ACT_TURN));                  // out of her stance into the walk
-  return { x: at.x, y: actFloor(at.x, at.z, ref), z: at.z, yaw, visible: !(p.off && q.off), speed: v * s.len, dist: s.dist0 + f * s.len };
+  return { x: at.x, y: actFloor(at.x, at.z, ref), z: at.z, yaw, visible: !(p.off && q.off), speed: v * s.len, dist: s.dist0 + f * s.len, label: p.lab };
 }
 // The floor under set-local (x, z) for a body at height ref: the highest surface within ACT_STEP above ref, or anything below —
 // the walk's own ray through its collision grid, in the world, back into the set's frame. Nothing under her (a hole in the scan):
@@ -5138,27 +5152,61 @@ function actMat(hex) {                    // a material per colour (shared mater
   if (!m) { m = new THREE.MeshStandardMaterial({ color: new THREE.Color(hex), roughness: 0.65, metalness: 0 }); ACT.mats.set(hex, m); }
   return m;
 }
-function actLabel(a) {                    // the name over her head, while the panel is open
-  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
-  const g = cv.getContext('2d'); g.font = '600 34px "IBM Plex Sans", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillStyle = 'rgba(13,12,15,.72)'; const w = Math.min(250, g.measureText(a.name).width + 28); g.fillRect(128 - w / 2, 8, w, 48);
-  g.fillStyle = a.color; g.fillText(a.name, 128, 33);
-  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-  if (a.label) { a.label.material.map.dispose(); a.label.material.map = tex; a.label.material.needsUpdate = true; return a.label; }
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, toneMapped: false }));
-  sp.scale.set(0.8, 0.2, 1); sp.position.y = ACT_H + 0.3; sp.renderOrder = 10; sp.userData.rig = true; sp.userData.actor = a.id;
+// THE NAME OVER HER HEAD (FN): a sprite of constant SCREEN size (sizeAttenuation off: ACT_TAG.h ≈ 3.5 % of the view's height,
+// legible from the back of the house, not a billboard from the front row), its lower edge ACT_TAG.above over her crown, a child
+// of her group so it moves and hides with her. The text is the pose's label — a pure function of show time like the rest. One
+// texture per text per actor, made once. Left out of the lighting engine's passes (drawn to the screen only): a pool never
+// lands on a label.
+const ACT_TAG = { h: 0.045, above: 0.25, px: 44 };
+const actHead = a => a.label || a.name;
+function actTagTex(a, text) {
+  a.texs = a.texs || new Map();
+  let t = a.texs.get(text);
+  if (t) return t;
+  const cv = document.createElement('canvas'), g = cv.getContext('2d'), F = `600 ${ACT_TAG.px}px "IBM Plex Sans", system-ui, sans-serif`;
+  g.font = F; const tw = Math.ceil(g.measureText(text).width), H = Math.round(ACT_TAG.px * 1.6), dot = Math.round(ACT_TAG.px * 0.5);
+  cv.width = tw + dot + Math.round(ACT_TAG.px * 1.3); cv.height = H;
+  g.font = F; g.textBaseline = 'middle';
+  g.fillStyle = 'rgba(13,12,15,.78)';
+  if (g.roundRect) { g.beginPath(); g.roundRect(0, 0, cv.width, H, H / 2); g.fill(); } else g.fillRect(0, 0, cv.width, H);
+  g.fillStyle = a.color; g.beginPath(); g.arc(H / 2, H / 2, dot / 2, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#f2eef5'; g.fillText(text, H / 2 + dot * 0.9, H / 2 + 1);
+  t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.userData.aspect = cv.width / H;
+  a.texs.set(text, t);
+  return t;
+}
+function actTagSet(a, text) {
+  const sp = a.tag; if (!sp || a.tagText === text) return;
+  const t = actTagTex(a, text);
+  sp.material.map = t; sp.material.needsUpdate = true; sp.scale.set(ACT_TAG.h * t.userData.aspect, ACT_TAG.h, 1);
+  a.tagText = text;
+}
+function actTagBuild(a) {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false, toneMapped: false, sizeAttenuation: false }));
+  sp.center.set(0.5, 0); sp.position.y = ACT_H + ACT_TAG.above; sp.renderOrder = 10; sp.frustumCulled = false;
+  sp.userData.rig = true; sp.userData.actor = a.id; sp.name = 'name';
+  // the engine's depth / albedo and pool passes render into targets: there the label draws nothing
+  sp.onBeforeRender = r => { sp.material.opacity = r.getRenderTarget() ? 0 : 1; };
+  a.tag = sp; a.tagText = null;
+  actTagSet(a, actHead(a));
   return sp;
+}
+function actRetag(a) {                     // a new colour or name: every text redrawn
+  if (a.texs) { for (const t of a.texs.values()) t.dispose(); a.texs.clear(); }
+  const was = a.tagText; a.tagText = null; actTagSet(a, was || actHead(a));
 }
 function actBuild(a) {
   const g = new THREE.Group(); g.name = 'actor: ' + a.name; g.userData.rig = true; g.userData.actor = a.id;
+  g.visible = false;                                         // until her first pose says otherwise
+  ACT.dirty = true;
   const body = new THREE.Mesh(ACT.geo, actMat(a.color)); body.name = 'body';
   body.castShadow = false; body.receiveShadow = true;      // static shadow maps: a moving caster would redraw them every frame
   body.userData.rig = true; body.userData.actor = a.id;
   g.add(body); g.userData.body = body;
-  a.obj = g; a.label = null; a.label = actLabel(a); a.label.visible = false; g.add(a.label);
+  a.obj = g; g.add(actTagBuild(a)); a.tag.visible = ACT.names;
   ACT.group.add(g);
 }
-function actRecolour(a) { a.obj.userData.body.material = actMat(a.color); a.obj.name = 'actor: ' + a.name; actLabel(a); }
+function actRecolour(a) { a.obj.userData.body.material = actMat(a.color); a.obj.name = 'actor: ' + a.name; actRetag(a); ACT.dirty = true; }
 function actSlug(name) {
   const base = String(name || 'actor').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'actor';
   let id = base, n = 2; while (ACT.actors.some(x => x.id === id)) id = `${base}-${n++}`;
@@ -5172,8 +5220,9 @@ function actSetData(d, from) {
   for (const s of d.actors) {
     if (!s || typeof s !== 'object') continue;
     const name = String(s.name || s.id || 'Actor');
-    const a = { id: '', name, color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color.toLowerCase() : ACT_COLOURS[ACT.actors.length % ACT_COLOURS.length],
-      path: (Array.isArray(s.path) ? s.path : []).filter(w => w && typeof w === 'object').map(actCleanWp), c: null, obj: null, label: null };
+    const a = { id: '', name, label: typeof s.label === 'string' && s.label.trim() ? s.label.trim() : null,
+      color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color.toLowerCase() : ACT_COLOURS[ACT.actors.length % ACT_COLOURS.length],
+      path: (Array.isArray(s.path) ? s.path : []).filter(w => w && typeof w === 'object').map(actCleanWp), c: null, obj: null, tag: null };
     a.id = s.id && !ACT.actors.some(x => x.id === String(s.id)) ? String(s.id) : actSlug(name);
     ACT.actors.push(a); actBuild(a);
   }
@@ -5189,6 +5238,7 @@ function actCleanWp(w) {
   if (actF(w.dwell) !== null) o.dwell = Math.max(0, actF(w.dwell));
   if (actF(w.facing) !== null) o.facing = actF(w.facing);
   if (w.off) o.off = true;
+  if (typeof w.label === 'string' && w.label.trim()) o.label = w.label.trim();
   return o;
 }
 const actR = (v, d = 3) => +(+v).toFixed(d);
@@ -5198,9 +5248,10 @@ function actData() {                      // → the JSON object, waypoints in t
     frame: 'set-local metres: the frame of assets/hamilton-set.glb (upstage -z, the house +z, the deck y 0, stage right -x); times on the show clock (album track, seconds into it)',
     model: ACT_URL.model,
     note: (ACT.file && ACT.file.note) || '',
-    actors: ACT.actors.map(a => ({ id: a.id, name: a.name, color: a.color,
+    actors: ACT.actors.map(a => Object.assign({ id: a.id, name: a.name }, a.label ? { label: a.label } : {}, { color: a.color,
       path: actSorted(a).map(w => { const o = { track: w.track, at: actR(w.at, 2), x: actR(w.x), z: actR(w.z) };
-        if (w.y !== undefined) o.y = actR(w.y); if (w.dwell !== undefined) o.dwell = actR(w.dwell, 2); if (w.facing !== undefined) o.facing = actR(w.facing, 1); if (w.off) o.off = true; return o; }) })),
+        if (w.y !== undefined) o.y = actR(w.y); if (w.dwell !== undefined) o.dwell = actR(w.dwell, 2); if (w.facing !== undefined) o.facing = actR(w.facing, 1); if (w.off) o.off = true;
+        if (w.label) o.label = w.label; return o; }) })),
   };
 }
 const actGT = w => { const t = SHW.d && SHW.d.byTrack.get(String(w.track)); return t ? t.start + (+w.at || 0) : 0; };
@@ -5222,7 +5273,7 @@ function actUpdate(T) {
     if (!a.c) a.c = actCompile(a);
     const p = actPose(a, T), o = a.obj;
     o.position.set(p.x, p.y, p.z); o.rotation.set(0, p.yaw, 0);
-    o.visible = ACT.shown && p.visible; o.userData.pose = p;
+    o.visible = ACT.shown && p.visible; o.userData.pose = p; actTagSet(a, p.label); a.tag.visible = ACT.names;
     if (typeof o.userData.animate === 'function') { try { o.userData.animate(p, o); } catch (e) { /* a limb rig's own failure never stops the show */ } }
   }
 }
@@ -5273,7 +5324,6 @@ function actHelpers() {
   const H = ACT.help;
   while (H.children.length) { const o = H.children.pop(); o.geometry.dispose(); o.material.dispose(); }
   const on = !!(ACT.el && !ACT.el.hidden), a = ACT.actors[ACT.sel];
-  for (const x of ACT.actors) if (x.label) x.label.visible = on;
   if (!on || !a || !a.c) { requestRender(); return; }
   ACT.root.updateWorldMatrix(true, false);
   const pts = [], c = a.c;
@@ -5401,7 +5451,7 @@ function actBuildPanel() {
 <div class="row"><select class="bk-track" aria-label="Track"></select></div>
 <h2>Actors</h2>
 <div class="bk-list bk-actors"></div>
-<div class="row"><button class="bk-add">Add actor</button><button class="bk-del danger">Remove</button><label><input class="bk-shown" type="checkbox" checked> Show actors</label></div>
+<div class="row"><button class="bk-add">Add actor</button><button class="bk-del danger">Remove</button><label><input class="bk-shown" type="checkbox" checked> Show actors</label><label><input class="bk-names" type="checkbox" checked> Names</label></div>
 <div class="row"><input class="bk-name" type="text" aria-label="Name"><input class="bk-color" type="color" aria-label="Colour"></div>
 <h2>Path <span class="bk-who"></span></h2>
 <div class="row"><button class="bk-drop" aria-pressed="false">Click to place</button></div>
@@ -5412,6 +5462,7 @@ function actBuildPanel() {
   <span>track</span><select class="bk-wtrack"></select><span>at s</span><input class="bk-wat" type="number" step="0.1" min="0">
   <span>dwell s</span><input class="bk-wdwell" type="number" step="0.1" min="0" placeholder="auto"><span>facing°</span><input class="bk-wface" type="number" step="15" placeholder="auto">
   <span>x</span><input class="bk-wx" type="number" step="0.1"><span>z</span><input class="bk-wz" type="number" step="0.1">
+  <span>label</span><input class="bk-wlabel" type="text" placeholder="unchanged" title="From this waypoint on, the name over her head (a doubled role: Jefferson, Seabury…)" style="grid-column: span 3">
 </div>
 <div class="row"><label><input class="bk-woff" type="checkbox"> offstage (not seen here)</label></div>
 <div class="row"><button class="bk-wnow" title="This waypoint's time becomes the show's current time">Time = now</button><button class="bk-wgo" title="Take the show to this waypoint's time">Go to</button><button class="bk-wdel danger">Delete</button></div>
@@ -5423,7 +5474,7 @@ function actBuildPanel() {
   const q = s => el.querySelector(s), E = ACT.E;
   Object.assign(E, { play: q('.bk-play'), clock: q('.bk-clock'), scrub: q('.bk-scrub'), track: q('.bk-track'), actors: q('.bk-actors'), name: q('.bk-name'), color: q('.bk-color'),
     shown: q('.bk-shown'), who: q('.bk-who'), drop: q('.bk-drop'), wps: q('.bk-wps'), wn: q('.bk-wn'), wtrack: q('.bk-wtrack'), wat: q('.bk-wat'), wdwell: q('.bk-wdwell'),
-    wface: q('.bk-wface'), wx: q('.bk-wx'), wz: q('.bk-wz'), woff: q('.bk-woff'), status: q('.bk-status'), draft: q('.bk-draft'), del: q('.bk-del') });
+    wface: q('.bk-wface'), wx: q('.bk-wx'), wz: q('.bk-wz'), woff: q('.bk-woff'), wlabel: q('.bk-wlabel'), names: q('.bk-names'), status: q('.bk-status'), draft: q('.bk-draft'), del: q('.bk-del') });
   q('.bk-x').addEventListener('click', () => actPanel(false));
   // the clock: the show player's own controls (showStart / showPause / showSeek / showSeekT), never a second clock
   E.play.addEventListener('click', () => { if (!SHW.d) return; if (!SHW.on) showStart(true); else showPause(); actUI(true); });
@@ -5434,7 +5485,7 @@ function actBuildPanel() {
   E.track.addEventListener('change', () => { if (SHW.d) showSeek(+E.track.value, 0); actUI(true); });
   E.actors.addEventListener('click', e => { const d = e.target.closest('[data-a]'); if (d) actSelect(+d.dataset.a); });
   q('.bk-add').addEventListener('click', () => {
-    const name = `Actor ${ACT.actors.length + 1}`, a = { id: actSlug(name), name, color: ACT_COLOURS[ACT.actors.length % ACT_COLOURS.length], path: [], c: null, obj: null, label: null };
+    const name = `Actor ${ACT.actors.length + 1}`, a = { id: actSlug(name), name, label: null, color: ACT_COLOURS[ACT.actors.length % ACT_COLOURS.length], path: [], c: null, obj: null, tag: null };
     ACT.actors.push(a); actBuild(a); ACT.sel = ACT.actors.length - 1; ACT.wsel = -1; actEdited(a); E.name.focus(); E.name.select();
   });
   E.del.addEventListener('click', () => {
@@ -5442,7 +5493,8 @@ function actBuildPanel() {
     ACT.group.remove(a.obj); ACT.actors.splice(ACT.sel, 1); ACT.sel = Math.min(ACT.sel, ACT.actors.length - 1); ACT.wsel = -1; actEdited(null);
   });
   E.shown.addEventListener('change', () => { ACT.shown = E.shown.checked; ACT.dirty = true; requestRender(); });
-  E.name.addEventListener('change', () => { const a = ACT.actors[ACT.sel]; if (!a) return; a.name = E.name.value.trim() || a.name; actRecolour(a); actEdited(null); });
+  E.names.addEventListener('change', () => { ACT.names = E.names.checked; ACT.dirty = true; requestRender(); });
+  E.name.addEventListener('change', () => { const a = ACT.actors[ACT.sel]; if (!a) return; a.name = E.name.value.trim() || a.name; actRecolour(a); actEdited(a); });
   E.color.addEventListener('input', () => { const a = ACT.actors[ACT.sel]; if (!a) return; a.color = E.color.value.toLowerCase(); actRecolour(a); ACT.helpDirty = true; requestRender(); });
   E.color.addEventListener('change', () => actEdited(null));
   E.drop.addEventListener('click', () => actSetDrop(!ACT.drop));
@@ -5456,6 +5508,7 @@ function actBuildPanel() {
   E.wx.addEventListener('change', () => wpSet(w => { w.x = actF(E.wx.value) ?? w.x; w.y = actR(actFloor(w.x, w.z, w.y ?? 0)); }));
   E.wz.addEventListener('change', () => wpSet(w => { w.z = actF(E.wz.value) ?? w.z; w.y = actR(actFloor(w.x, w.z, w.y ?? 0)); }));
   E.woff.addEventListener('change', () => wpSet(w => { if (E.woff.checked) w.off = true; else delete w.off; }));
+  E.wlabel.addEventListener('change', () => wpSet(w => { const v = E.wlabel.value.trim(); if (v) w.label = v; else delete w.label; }));
   q('.bk-wnow').addEventListener('click', () => wpSet(w => { if (!SHW.d) return; const tr = SHW.d.tracks[SHW.ti]; w.track = tr.id; w.at = actR(SHW.lt, 2); }));
   q('.bk-wgo').addEventListener('click', () => actGoWp(ACT.wsel));
   q('.bk-wdel').addEventListener('click', () => actDeleteWp());
@@ -5533,18 +5586,18 @@ function actUI(force) {
     const d = document.createElement('div'); d.dataset.w = k; if (k === ACT.wsel) d.className = 'on'; d.title = 'Click to select · double-click to go to its time';
     const t = document.createElement('b'); t.textContent = `${w.track} ${actFmt(+w.at || 0)}`;
     const m = document.createElement('span');
-    m.textContent = `x ${(+w.x).toFixed(1)} z ${(+w.z).toFixed(1)}${(+w.y || 0) > 0.3 ? ` up ${(+w.y).toFixed(1)}` : ''}${w.dwell !== undefined ? ` · ${w.dwell === 0 ? 'through' : 'stays ' + w.dwell + ' s'}` : ''}${w.facing !== undefined ? ` · ${w.facing}°` : ''}${w.off ? ' · off' : ''}`;
+    m.textContent = `x ${(+w.x).toFixed(1)} z ${(+w.z).toFixed(1)}${(+w.y || 0) > 0.3 ? ` up ${(+w.y).toFixed(1)}` : ''}${w.dwell !== undefined ? ` · ${w.dwell === 0 ? 'through' : 'stays ' + w.dwell + ' s'}` : ''}${w.facing !== undefined ? ` · ${w.facing}°` : ''}${w.off ? ' · off' : ''}${w.label ? ` · “${w.label}”` : ''}`;
     d.append(t, m); E.wps.appendChild(d);
   });
   const w = a && a.path[ACT.wsel];
   E.wn.textContent = w ? `${ACT.wsel + 1} of ${a.path.length}` : '';
-  for (const k of ['wtrack', 'wat', 'wdwell', 'wface', 'wx', 'wz', 'woff']) E[k].disabled = !w;
+  for (const k of ['wtrack', 'wat', 'wdwell', 'wface', 'wx', 'wz', 'woff', 'wlabel']) E[k].disabled = !w;
   el_q(ACT.el, '.bk-wnow').disabled = el_q(ACT.el, '.bk-wgo').disabled = el_q(ACT.el, '.bk-wdel').disabled = !w;
   if (w) {
     if (E.wtrack.querySelector(`option[value="${CSS.escape(String(w.track))}"]`)) E.wtrack.value = String(w.track);
     E.wat.value = String(+w.at || 0); E.wdwell.value = w.dwell === undefined ? '' : String(w.dwell); E.wface.value = w.facing === undefined ? '' : String(w.facing);
-    E.wx.value = String(w.x); E.wz.value = String(w.z); E.woff.checked = !!w.off;
-  } else { E.wat.value = E.wdwell.value = E.wface.value = E.wx.value = E.wz.value = ''; E.woff.checked = false; }
+    E.wx.value = String(w.x); E.wz.value = String(w.z); E.woff.checked = !!w.off; E.wlabel.value = w.label || '';
+  } else { E.wat.value = E.wdwell.value = E.wface.value = E.wx.value = E.wz.value = E.wlabel.value = ''; E.woff.checked = false; }
   const probs = a && a.c ? a.c.probs : [];
   E.status.textContent = (ACT.err ? `The blocking file could not be loaded: ${ACT.err}. ` : '') + (ACT.note || '') + (probs.length ? ` · ${a.name}: ${probs.join('; ')}` : '');
 }
@@ -5594,23 +5647,27 @@ function actCheck(opts = {}) {
   const span = opts.span ?? 8, step = opts.step || 0.1;
   if (!wasOn) showStart(false);
   SHW.playing = false;
-  const snap = () => ACT.actors.map(a => ({ p: a.obj.position.clone(), yaw: a.obj.rotation.y, vis: a.obj.visible }));
+  const snap = () => ACT.actors.map(a => ({ p: a.obj.position.clone(), yaw: a.obj.rotation.y, vis: a.obj.visible, tag: a.tagText }));
   const eq = pts.map(T => {
     T = Math.min(T, SHW.d.end);
+    // SEEK first, as a jump from far away (whatever the last moment left behind must not survive it) …
+    showSeekT(T > 600 ? T - 600 : T + 600); actTick(0, true);
+    showSeekT(T); actTick(0, true);
+    const B = snap();
+    // … then PLAY up to the same moment from `span` s before, in the frame's own order: the show's tick (its silent clock), the
+    // engine's, then this one
     showSeekT(Math.max(0, T - span)); actTick(0, true);
-    for (let t = showT(); t < T - 1e-9;) {               // the frame's own order: the show's tick (its silent clock), the engine's, then this one
+    for (let t = showT(); t < T - 1e-9;) {
       const d = Math.min(step, T - t);
       SHW.playing = true; showTick(d, true); lxTick(d); SHW.playing = false; actTick(d); t += d;
       if (SHW.hold) { SHW.hold = false; showSeekT(t); }
     }
     const A = snap(), at = showT();
-    showSeekT(at); actTick(0, true);
-    const B = snap();
-    let dp = 0, dy = 0, dv = 0;
-    A.forEach((x, i) => { dp = Math.max(dp, x.p.distanceTo(B[i].p)); dy = Math.max(dy, Math.abs(actYawLerp(x.yaw, B[i].yaw, 1) - x.yaw)); if (x.vis !== B[i].vis) dv++; });
-    return { T: +at.toFixed(3), posM: +dp.toFixed(6), yawRad: +dy.toFixed(6), visibility: dv };
+    let dp = 0, dy = 0, dv = 0, dl = 0;
+    A.forEach((x, i) => { dp = Math.max(dp, x.p.distanceTo(B[i].p)); dy = Math.max(dy, Math.abs(actYawLerp(x.yaw, B[i].yaw, 1) - x.yaw)); if (x.vis !== B[i].vis) dv++; if (x.tag !== B[i].tag) dl++; });
+    return { T: +at.toFixed(3), posM: +dp.toFixed(6), yawRad: +dy.toFixed(6), visibility: dv, labels: dl };
   });
-  const pass = eq.every(e => e.posM <= 1e-4 && e.yawRad <= 1e-4 && !e.visibility);
+  const pass = eq.every(e => e.posM <= 1e-4 && e.yawRad <= 1e-4 && !e.visibility && !e.labels);
   if (wasOn) { showSeekT(wasT); if (wasPlaying) showPause(false); } else { showStop(false); showSeekT(wasT); }
   actTick(0, true);
   return { pass: pass && !problems.length, seekEquivalence: { pass, points: eq }, problems, actors: ACT.actors.map(a => ({ id: a.id, name: a.name, waypoints: a.path.length })), ms: Math.round(performance.now() - t0) };
