@@ -40,6 +40,10 @@ blackout for yorktown also happens to ealy."*
 - **Checks:** show.check() seek-equivalence passes, refs resolve, timeline monotonic; every edited track re-scanned —
   no half-second under 1 % left except Binkley's own FTBs (190, 273) and the cut-offs that remain. Verification sheets
   in this session's scratch `shots/r3-*.png`, `r3b.png`; the before/after of every suspect moment `sheet-*.png`.
+- **His notes now come through a checklist:** https://claude.ai/artifact/FpiGBBW8LicWbaRb1nTUjg ("Hamilton Cue
+  Checklist", one row per album track, good / needs work + a notes field, saved to the artifact's database:
+  collection `songs`, doc id = track id, fields `status`/`notes`/`updatedAt`). **Read it with `ArtifactData` `list`
+  on `songs` at the start of the next round** — it is the brief.
 - **Left as it was, on purpose:** the end of My Shot (139.5) still cuts to black into The Story of Tonight (he did not
   name it); the real FTBs. **Still open from before:** the rig placements (FUTURE.md), `edge`/`frost`, the 238 effects,
   the body, the headset. The post-merge protocol for #230–#232: local `main` fast-forwarded; the landed branches
