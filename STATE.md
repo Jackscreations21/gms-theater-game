@@ -1,7 +1,69 @@
-# STATE — 2026-10-11 (WALK, LOBBY, THE HOUSE CUT FOR THE SET AT 1:1, HIS FIRST WALLS, THE RIG TRIMMED — `midtown-walls` FIVE COMMITS + PR #229, UNMERGED; THE BODY AND THE CUES WAIT)
+# STATE — 2026-10-11 (THE LIGHTING ENGINE: EVERY RIG UNIT DRIVEN, GOBOS, COLOURS, A PANEL, A CHECK AND A PREVIEW — `midtown-lights` ON TOP OF `midtown-walls`, UNMERGED; THE BODY AND THE CUES WAIT)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-11 (night, second session): the lighting engine — `midtown-lights`, six commits on top of `midtown-walls`, UNMERGED
+
+**Read this block first.** `main` is still **`e27fc1e`**; PR #229 still open; `midtown-walls` unmerged (its
+question to Jack — one PR or in turn — still unanswered). **Branch `midtown-lights`** is `midtown-walls` +
+`c0179c1` engine, `9da710c` panel, `5a2688e` gobos+colours, `768f9a5` check, the preview commit, and the record.
+All `midtown.html` (now ~5,300 lines); nothing in `src/`; `the-house.html` / `docs/ARTNET.md` untouched; suites
+not run (nothing they check moved; `node` still not on PATH). Jack: *"use opus agents to make the lighting engine
+and to check that every light is working with the movements, gobos and colors"*, then *"make a preview of the
+lights that shows a bunch of different gobos and stuff."* Five Opus 5.5 agents: G engine (alone), H gobos+colours
+and I panel (at once, in worktrees `.claude/worktrees/lx-*` on ports 8091/8092, cherry-picked, removed), J check
+(alone), K preview (alone). The recipe is in TRAPS ("the clean way").
+
+- **The engine (`c0179c1`, `MIDTOWN.lx`)** — every one of the 313 units has state `unit.userData.lx`
+  `{level, color, pan, tilt, panTo, tiltTo, gobo, goboRot, goboRate, zoom}`; a lit unit draws a lens glow, a point
+  in one glare cloud, a volumetric cone (p4's shader, far side only, **budget 120 cones a frame**, strongest in
+  view), a pool decal where the beam lands (a ray stepped through the walk's collision grid, cached, recast on aim
+  or scene change — all 313 in ~36 ms) and the brightest four get real SpotLights (two shadowed, static maps; the
+  house scan is unlit so real light shows on the set and built pieces only). Movers (41 Viper, 24 X4, 6 VL3500):
+  pan on the yoke, tilt on the head, both LOD levels, at the type's speed unless `snap`; `lx.aim(sel, point)`.
+  Fades, travel and gobo rotation in `lxTick(dt)`; idle still draws nothing. API: `select` (channel, "1-20",
+  position, type, id, "all", array, predicate), `set/get/all/blackout/work/haze/aim/beam/refresh/groups/perf`.
+  **Cost, Intel UHD, 1280×800: dark 31/24 ms (front/back), everything at full 54/34.** `LENS_GLOW` retired: a
+  dark unit reads dark; the load picture is unchanged (work light 1, rig at 0).
+- **Gobos and colours (`5a2688e`)** — 16 canvas-drawn patterns (512², seeded) named for the show's beam palettes:
+  Open, Construction, Linear, Dust, Cobble stone, Alpha, Vignette, Nite sky, Brains, Pebbles, Blocks, Tribal,
+  Leaves, Slot, Square, Pickup sticks; the beam shows the shafts and they turn with the pool. Wheels: Viper
+  rotating 6 + framing + diffusion; VL3500 FX 3; **template Source Four systems from Binkley's magic sheet**
+  (111–125 and 241–249 Pickup sticks, 131–149 Blocks, 201–208 Alpha, 291–298 Linear, Lustr 160–179 Construction,
+  181–192 Pickup sticks) hold their template at load; everything else open. Colour per type: gel (3200 K, warms as
+  it dims; `set({gel})` re-gels), Lycian xenon boomerang, CMY+CTO+colour wheel for Viper/VL3500 (R26 within 0.014
+  of the gel), RGB/RGBW/RGBA/7-colour LEDs (`rgb`, `emitters`), hazers none. `GELS` extended to all of Roscolux
+  01–99 plus the Lee codes the show names. `lx.wheel(sel)`, `lx.gels()`.
+- **The panel (`9da710c`, Lights button, `MIDTOWN.lxPanel`)** — select by position (38), type, channel
+  field ("1-20, 41"), or **click a fixture in the view** (shift adds), gold outline on the selection; level with
+  fade, gel dropdown + colour picker, gobo dropdown from the unit's wheel, rotate rate, pan/tilt (movers only),
+  snap, zoom, Aim at view centre; All on / Blackout / Work / Haze; **Step through** (one unit at a time with its
+  label, Play off frame dt); **Looks** saved to localStorage, recall with fade, export/import. Keys `+ - [ ] 0`.
+- **The check (`768f9a5`, `MIDTOWN.lx.check()`, panel "Check all" / "Watch all")** — measures what draws (lens,
+  glare, cone matrix+uniforms, pool map, real lights), re-finds every landing point against all 159k triangles,
+  drives travel by calling `lxTick(1/60)` by hand, restores the rig exactly, ~2 s. **301 / 313 pass at real
+  size, 302 fitted.** Every fail is placement, not engine: **3 Source Four shins (ch234, 239, 240) have their lens
+  under the deck** (clamped 0.33–0.39 m, lens 0.39 m below the clamp — sit them yoke-up or lift 15 cm) and **9
+  ColorBlaze-48 strips (ch616, 715, 632–637) sit under set rails**. Notes, not fails: 55 strips draw no cone;
+  Lustr can't make pure green/blue; 7 Apron Electric movers (ch24, 41–46) hit the house bridge when aimed at
+  centre; 6 beams into nothing (3 Mini-10s rising through the cut back wall, 3 strips behind the scan). Fixed by
+  J: **house booms SL/SR Boom 1 re-aimed after their wall move** (20/20, dot 1.0000) — they now land on Jack's
+  baked proscenium posts box 17/19 (the booms hang inside the posts' depth; Jack's call: booms downstage of z −1.6
+  or narrower posts); SL Boom 4's tower stepped clear of ch222's lens. Known: additive pools wash to white when
+  many overlap; the gobo canvases draw on first use (Dust 342 ms).
+- **The preview (`817ad37`, Preview button, `MIDTOWN.lxDemo`)** — a scripted show on the real rig: **12
+  scenes, 132 s, looping**, each as data (view, haze, timed steps; ops set/aim/row/ring/work/haze/cam/fx):
+  Curtain up, Gobo parade (nine Vipers, nine patterns on the deck), Every pattern every unit, Templates on the
+  brick and deck, VL3500 soft patterns, Ballyhoo in haze, LED chases, Fan and ring, CMY mixing, Dimming gel
+  against LED, Strips on the set, Finale with followspots and blackout. Prev/Play/Next/Stop in the panel; Stop
+  restores the rig and the camera exactly; entering Walk stops it; heaviest scene 42 ms on the Intel chip. Built
+  for Real size (aim points are 1:1 world). Contact sheet and one picture a scene in this session's scratchpad
+  `agent-k/`. Rough: the wall scrapes land high behind the electrics; the VLs on the brick are steep from the
+  10th Electric; the pane runs it at ~10 s per 12 (dt cap) — a full window is real time.
+- **Still:** fixture GLBs untracked (38); PR question; the body; the cues ("timed against what"); headset.
+
+---
 
 ## NEWEST — 2026-10-11 (late night): walk, lobby, the house cut for the set at 1:1, his first walls baked, the rig trimmed — `midtown-walls`, five commits, UNMERGED
 

@@ -1465,3 +1465,59 @@ against this list before opening a PR; **add new traps as you hit them.**
   overlap AND they had separate checkouts** (a worktree with its own port and
   its own copy of the untracked GLBs); the cherry-pick back was clean. Same
   checkout, same file, same time is still the trap above.
+
+## From the lighting-engine round (2026-10-11, five Opus agents)
+
+- **The pane's JavaScript tool returns `undefined` for a THREE object.** It
+  cannot serialise one ("Object reference chain is too long") and reports
+  nothing rather than an error, so `lx.byChannel(7)` read as broken for a
+  round when it was fine. Return names, numbers and `toArray()`s, never the
+  object.
+- **A `SpotLight` costs every lit pixel even at intensity 0.** On the Intel
+  chip each one in the scene is ~1.5 ms a frame (front row) whether it shines
+  or not, because it is in every lit material's shader. A fixed pool is still
+  right (toggling `visible` recompiles everything), but size it small: the
+  engine runs four, not eight.
+- **313 additive cones are the whole frame.** Everything at full went 30 →
+  102 ms; drawing the cone's far side only with a leaner shader and a budget
+  of 120 cones a frame (strongest in view) brought it to 54. Pools and the
+  glare cloud cost ~2 ms together. Beams are the thing to budget, not lights.
+- **Additive pools wash to white.** Forty Vipers in R80 on one spot, or
+  twenty templates at 80% over the same deck, clip per channel and read
+  white, not deep blue. Looks that read keep a few units per spot or lower
+  levels; `j-2-look-*.png` needed the electrics at 25%.
+- **A grid ray and a brute three.js raycast disagree on back faces.** The
+  collision-grid walk hits any triangle; `Raycaster` skips the back face of a
+  single-sided material, so ch222 "missed" its own tower in the brute check
+  until that check went double-sided. Make the reference double-sided before
+  calling the fast path wrong.
+- **The rig file's clamp height plus the model's lens offset can put a lens
+  under the floor.** Three shins are clamped at 0.33–0.39 m and the Source
+  Four model hangs its lens 0.39 m below the clamp: light starts inside the
+  deck. Nine ColorBlaze strips sit under set rails. The check reports them as
+  fails on purpose; they want a placement ruling, not an engine fix.
+- **Moving a unit without re-aiming it is a bug that hides for a round.** The
+  house booms went 2 m onto the walls two rounds ago and nobody looked where
+  their beams went until there were beams: the seats. `rigTrim` re-aims every
+  trimmed row at where the file's beam met the deck; anything that moves a
+  unit must do the same (`fitBoomsToWalls` now does).
+- **A canvas gobo drawn on first use stalls the frame.** "Dust" takes 342 ms
+  to draw at 512²; all fifteen patterns ~0.46 s. Only "Open" is made at load.
+  Unfixed: draw them behind the loader, or at 256² where it does not matter.
+- **A warm-started least-squares solve drifts.** The Lustr's seven-emitter
+  fit, re-run from its last answer, moves each emitter ~0.03 while the colour
+  stays put within 1e-4. Cache the answer; never re-solve on a restore.
+- **`preview_start {name}` in an agent reads the MAIN checkout's
+  `launch.json`,** not the worktree's, when the agent's cwd is the main
+  checkout. Start `python -m http.server <port>` in the worktree by hand (and
+  kill it after: it outlives the agent).
+- **The pane opens a `file://` tab for the edited file after every edit** and
+  fronts it, stalling the localhost tab's rAF. Close the stray tab and front
+  yours before any frame-timed measurement.
+- **Three agents in one file, the clean way:** the engine agent first, alone,
+  leaving comment-headed regions with WORKING stubs (`lxColourOf`,
+  `lxWheelOf`, `buildLightsPanel`, `lxCheck`); then two agents in separate
+  worktrees on separate ports, each in its region plus a one-line hook; both
+  cherry-picks clean; then the check agent alone in the main checkout. Later
+  agents extended earlier regions by WRAPPING the stub's name (`lxSet`,
+  `lxPanelTick`) rather than editing another agent's text.

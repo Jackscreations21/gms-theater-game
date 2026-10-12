@@ -224,7 +224,58 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **LAND THE CHAIN, THEN THE BODY, THEN HIS WALLS AS THEY COME** (2026-10-11, late night)
+## NEXT SESSION: **LAND THE CHAIN (NOW SEVEN COMMITS DEEPER), RULE THE TWELVE PLACEMENTS, THEN THE BODY** (2026-10-11, night, second session)
+
+Rulings at **FE** (FF next). Suite count **21**. `main` is **`e27fc1e`**. **PR #229 open; `midtown-walls`
+unmerged; `midtown-lights` on top of it carries the lighting engine, the panel, gobos and colours, the check, the
+preview and this record.** Read STATE.md's newest block first.
+
+1. **The PRs.** Still Jack's call: close #229 and open one PR from the tip (`midtown-lights`), or merge in turn.
+   Then the post-merge protocol (fast-forward local `main`, rebuild byte-identical, map, 21/21 — red is the
+   untracked fixture GLBs until he commits them — delete the branches).
+2. **Twelve placements the check fails on purpose** (`MIDTOWN.lx.check()` prints them): three shins with their
+   lens under the deck (ch234, 239, 240 — yoke-up on a sidearm, or lift 0.15 m) and nine ColorBlaze-48 strips
+   under set rails (ch616, 715, 632–637). And the two house booms now land on his baked posts (box 17/19): booms
+   downstage of z −1.6, or narrower posts. Ask, then fix in `hamilton-rig.py`/the page as he rules.
+3. **The body** — *"the person is too tall, and also give them a body"* — still paused, still wanted.
+4. **The cues** — still "timed against what". The engine is the player's target now: `lx.set` with fades is a
+   cue; a cue engine over `lx` plus the Eos export's 128 cues is the next piece of work when he answers.
+5. **Fixture GLBs** uncommitted; **headset run** still owed. Gobo first-use stall (TRAPS) worth fixing in passing.
+
+## DONE — 2026-10-11 (night, second session): the lighting engine, its gobos, colours, panel, check and preview (`midtown-lights`, six commits)
+
+Jack: *"use opus agents to make the lighting engine and to check that every light is working with the movements,
+gobos and colors"*, then *"make a preview of the lights that shows a bunch of different gobos and stuff."* Five
+Opus agents — engine alone; gobos+colours and panel at once in two worktrees, cherry-picked; check alone; preview
+alone — each in a comment-headed region with working stubs left by the engine agent (TRAPS, "the clean way").
+
+**The engine (`c0179c1`).** Every rig unit a light: level, colour, pan/tilt on the 71 movers (yoke and head, both
+LOD levels, at speed), gobo and rotation, zoom; a lens glow, one glare cloud, p4's volumetric cone (far side only,
+120 a frame), a pool where the beam lands (a ray through the walk's collision grid, cached), four real SpotLights
+for the brightest. Off frame dt; idle draws nothing. Everything at full 54 ms a frame on the Intel chip from the
+front row (30 dark; 102 before the cone cuts). Landing points matched a brute raycast 310/310.
+
+**Gobos and colours (`5a2688e`).** Sixteen drawn patterns named for the show's beam palettes, wheels per type,
+the template Source Four systems read off Binkley's magic sheet and loaded with their template; colour models per
+type — gel with an amber dim, xenon boomerang, CMY+CTO+wheel, LED emitters — ending in one colour the engine draws.
+
+**The panel (`9da710c`).** Select by position, type, channel or a click in the view; drive level, colour, gobo,
+pan/tilt, zoom, aim; master; a step-through that fires one light at a time; saved looks.
+
+**The check (`768f9a5`).** `lx.check()` measures what draws for all 313 units through level, colour, gobo,
+movement, zoom and both set sizes, restoring the rig exactly: **301 / 313 pass; the 12 fails are placements**
+(three shins' lenses under the deck, nine strips under rails), left for Jack. It also re-aimed the house booms
+after their wall move (they land on his baked posts now) and stepped SL Boom 4's tower clear of a lens.
+
+**The preview (`817ad37`).** *"make a preview of the lights that shows a bunch of different gobos and stuff."* A
+scripted two-minute show on the rig, twelve scenes as data with the camera moving to where each reads: the gobo
+parade, every pattern through every unit, the templates on the brick, the VL3500s' soft patterns, a ballyhoo in
+haze, LED chases, a fan and a ring on the turntable, CMY mixing on one pool, a gel dimming amber beside an LED that
+does not, the strips, a finale. Stop restores the rig and camera exactly; 35/35 checks; every scene under 54 ms.
+
+Suites not run (no `node` on PATH; nothing they check moved). Record: STATE, this, twelve traps.
+
+## SUPERSEDED (the chain grew; the body and his walls still wait): **LAND THE CHAIN, THEN THE BODY, THEN HIS WALLS AS THEY COME** (2026-10-11, late night)
 
 Rulings at **FE** (FF next). Suite count **21**. `main` is **`e27fc1e`** (#228 merged). **PR #229
 (`midtown-walk`) is open; `midtown-walls` carries it plus lobby, walls cut, bake 3, rig trim and this
