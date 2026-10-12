@@ -43,6 +43,17 @@ blackout for yorktown also happens to ealy."*
 - **A readout on the right edge of the page while the show is on** (`#sh-hud`, `showHud()` in midtown.html, drawn
   from `showUI`): the song (id, act, number, title), the time into it to a tenth (`0:17.9` and `17.9 s in · of 2:07`), the
   live cue and label, paused / interval. Jack asked for it so his notes can say exactly where. Hidden when the show stops.
+- **"when I skip it misaligns" — the audio, not the lights: FIXED.** His soundtrack is variable-bitrate with a Xing table,
+  and Chrome seeks such a file by that table: a request of t jumps to the byte the table gives for t's cell (100 cells,
+  each byte a 1/256 of the file = 33 s of audio), calls it the cell's nominal time and decodes on to t — so what PLAYS
+  is off by up to 52 s (measured: +17 / −18 / −33 s) until the next seek while `currentTime` reports t. Proven by
+  capturing the element's output through Web Audio and matching its loudness against the file's stored 20 ms
+  envelope. The fix: `soundtrack.seek.toc` in the show file — the true time of every cell's byte from the file's frame
+  index (scratch `ham/mp3toc.py`), checked in all 100 cells against what Chrome played (`ham/probes.py`; cells 37 and 79
+  decode from the cell before and carry that) — and `showSoundSeek(P)` in the player: ask for the t whose cell lands on P,
+  read the clock as `currentTime + err`. Verified through the show's own seek at six places: within 0.1 s. Playing
+  from the top was never affected (cell 0 is exact). The table is for THIS file; a different copy needs `mp3toc.py` run
+  again (and the per-track-files path is unchecked). YouTube on Pages seeks exactly and is untouched.
 - **His notes now come through a checklist:** https://claude.ai/artifact/FpiGBBW8LicWbaRb1nTUjg ("Hamilton Cue
   Checklist", one row per album track, good / needs work + a notes field, saved to the artifact's database:
   collection `songs`, doc id = track id, fields `status`/`notes`/`updatedAt`). **Read it with `ArtifactData` `list`

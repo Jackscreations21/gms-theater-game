@@ -1638,3 +1638,14 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **Removing a blackout cue is not a deletion.** The next cue only sets what it lights; everything the blackout took
   out stays lit through it. Fold the intensity state up to the removed cue, and move its zeros into the next cue (as
   channels, with the groups expanded, so a group zero cannot override a channel the next cue sets).
+- **A browser does not seek a variable-bitrate MP3 where you ask.** Chrome seeks a VBR file with a Xing table by that
+  table — 100 cells, each byte position a 1/256 of the file (33 s of audio on a 2.4-hour file) — lands on the cell's
+  byte, calls it the cell's nominal time, decodes on to the requested time and REPORTS the requested time: what plays
+  was up to 52 s away. Playing from the top is exact, so nothing shows until someone skips ("when I skip it
+  misaligns"). Measure it, don't reason about it: route the element through Web Audio (`createMediaElementSource` →
+  a ScriptProcessor summing RMS per 20 ms), match the live envelope against the file's stored one (normalised
+  cross-correlation, a ±70 s window — a narrower window finds a confident wrong peak in repetitive music, and 4 s of
+  capture can lock onto a repeated phrase; 8 s is safe), and the offset is the landing error. The frame index
+  predicts it to 0.1 s for 98 cells — and two cells decode from the cell before, which no model would have said.
+  The fix lives in the show file (`soundtrack.seek`) and `showSoundSeek`; a different copy of the album needs the
+  table rebuilt (`mp3toc.py`, then `probes.py` to check).

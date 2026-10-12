@@ -254,7 +254,12 @@ song's first look), nine pull-ins lifted to a visible surround, Farmer Refuted's
 Would Be Enough's fade moved onto the cut-off and made complete, Guns and Ships rebuilt to his two screenshots (one
 special on the SL gallery platform; on "Lafayette!" the Apron Electric Vipers snap on white and sweep the deck; the
 full warm look in one cue), Yorktown's last chord keeps the stage. 890 cues; show.check() green; re-scanned; nothing
-in `src/`. Four traps.
+in `src/`. Then, the same afternoon: *"make a checklist of every song"* → a db-backed artifact, one row per track
+(https://claude.ai/artifact/FpiGBBW8LicWbaRb1nTUjg, STATE.md has its shape); *"add something on the side of my screen
+that says what song it is and how many seconds in"* → `#sh-hud`; *"when I skip it misaligns … the audio timing"* → his
+VBR soundtrack mis-seeks by up to 52 s in Chrome (the Xing table), measured by matching the element's real output
+against the file's loudness; fixed with a per-cell table in the show file and `showSoundSeek`, verified within 0.1 s.
+Five traps.
 
 ## SUPERSEDED (the show reached him; his notes are the round above): **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
 
