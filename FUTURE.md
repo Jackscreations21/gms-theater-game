@@ -42,9 +42,9 @@ moved the Beetlejuice sign onto two fly channels, and `FA` made
 `docs/ARTNET.md` a flat one-line-per-channel list — all the same day.
 **`EY` — the band channels on a dead universe — is ruled and NOT built; see
 PART 1a item 4.** The next spec starts at `FE`.
-**Update 2026-10-12:** `FE` went to the Hamilton set (2026-10-11) and **`FF`–`FM` to the
+**Update 2026-10-12:** `FE` went to the Hamilton set (2026-10-11) and **`FF`–`FO` to the
 automatic actors** (`docs/superpowers/specs/2026-10-12-automatic-actors-design.md`). **The next spec
-starts at `FN`.**
+starts at `FP`.**
 
 When something in here ships, **delete it from this file** — this is a list of
 what is *not* done. It stops being useful the moment it becomes a history.
@@ -571,9 +571,20 @@ The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocki
 - **Riding the turntables.** The two turntables do not turn yet (their moves are in no file — FUTURE's Hamilton
   section); when they do, an actor standing on one should turn with it: waypoints in the turntable's frame
   (a `on: "tt-inner"` key), or the turn added to the pose. Open: which.
-- **The whole show — IN PROGRESS (RULING FN):** the cast of twenty, head labels and `tools/blocking-merge.py` are built;
-  eight writers are blocking the eight segments. Still wanted after: Jack's eye on it with the music, and his corrections
-  in the panel.
+- **The whole show — BLOCKED (RULING FO, 9,410 waypoints).** Still open:
+  - Jack's eye on it with the music, and his two rulings: the sisters' order in 1-05, and the duel sides in 2-22.
+  - The cue fixes in `docs/hamilton-blocking-cue-notes.md`:
+    - the 2-02 / 2-07 Cabinet Battle mirrors;
+    - 1-23 cues 659/661 refocused onto Washington on the SL gallery;
+    - 1-11 Q369/370 mirrored to the DR pool;
+    - the FOH X4s ch41–46 and apron Vipers ch2/ch4 stopped by house geometry at z ≈ 8.4;
+    - 2-05's preset-767 table light that the page does not resolve to a focus;
+    - the rest of the list.
+  - Props the blocking mimes:
+    - the rolling staircase;
+    - the chairs and desks (the Cabinet chairs, the 2-05 table, Hamilton's desk);
+    - the 2-17 bed / table.
+  - The turntables do not turn: revolves are walked as arcs.
 - **Follow spots on actors.** The three Lycians could track a named actor (`focus` = her head each frame).
 - **Actors avoiding each other.** Paths cross freely; nothing stops two bodies sharing a spot.
 - **Light on a body is speckled.** The pool shader takes its normal from depth; on a dense body that shows

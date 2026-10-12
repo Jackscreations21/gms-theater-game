@@ -16,3 +16,7 @@ assets/audio/*
 !assets/audio/preshow.mp3
 !assets/audio/act1.m4a
 !assets/audio/act2.m4a
+
+# the blocking generators' output (tools/blocking/*.py write it; tools/blocking-merge.py reads it) and their bytecode
+tools/blocking/segments/
+__pycache__/

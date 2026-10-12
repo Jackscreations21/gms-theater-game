@@ -238,10 +238,30 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
 3. **Watch it with him, music on** (below). His notes go into the segment files in the session scratch or straight into
    `assets/hamilton-show.json`.
 4. Rule the rig placements (FUTURE.md), then the older list.
-5. **The automatic actors (branch `actors`, RULINGS FF–FM, the next spec starts at FN):** PR #234 is open beside #233.
-   Let Jack drive the Blocking panel (header button) and block a number; his Download goes into
-   `assets/hamilton-blocking.json`. Ask him the mannequin's licence/origin, and which way arms and feet come
-   (FUTURE.md "Automatic actors").
+5. **The automatic actors (branch `actors`, RULINGS FF–FO, the next spec starts at FP):** PR #234 is open beside #233 —
+   the whole show is blocked. Play it with him (Show → Play; Blocking for corrections — a correction goes into the
+   segment's generator in `tools/blocking/`, then the merge). Put `docs/hamilton-blocking-cue-notes.md` in front of him:
+   his two rulings (1-05 sisters, 2-22 duel sides) and the cue fixes. Ask the mannequin's licence/origin.
+
+## DONE — 2026-10-12 (late night): the whole of Hamilton blocked, merged and checked (PR #234, RULING FO)
+
+Jack's three asks:
+- *"put the choreography for every character in hamilton"*
+- *"run agents to check each section using reference pictures, documents, and videos"*
+- *"make sure that spotlights are on their actor"*
+
+What was done:
+- Eight segment writers, eight reviewers, eight spotlight checkers, then the merge.
+- `assets/hamilton-blocking.json`: 9,410 waypoints, 20 bodies, all 46 tracks.
+- The generators and research are in `tools/blocking/`; re-run, they reproduce the file byte for byte.
+- In the page: `actors.check` passes (after its speed test stopped counting unseen offstage moves); show seek-equivalence
+  passes; the doubling labels are right; twelve proof renders are in scratch.
+- `docs/hamilton-blocking-cue-notes.md`: the cue fixes the light needs, and two questions for Jack.
+
+Next:
+- His eye on it with the music.
+- His two rulings.
+- The cue fixes (some may already be on #233).
 
 ## DONE — 2026-10-12 (night): names over their heads, the company of twenty, the merge tool and the writers' brief (PR #234, FN)
 

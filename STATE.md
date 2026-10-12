@@ -3,7 +3,54 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-12 (night): NAMES OVER THEIR HEADS, THE COMPANY OF TWENTY, AND THE TOOLS FOR EIGHT BLOCKING WRITERS (RULING FN) — PR #234 grows
+## NEWEST — 2026-10-12 (late night): THE WHOLE OF HAMILTON BLOCKED — 9,410 WAYPOINTS, MERGED AND CHECKED (RULING FO) — PR #234
+
+Jack: *"put the choreography for every character in hamilton"*, then *"run agents to check each section using reference
+pictures, documents, and videos then have them fix anything that is wrong"*, then *"make sure that spotlights are on their
+actor."*
+
+- **The pipeline.** Eight agents wrote one segment each, eight reviewed them against references, and eight checked them
+  against the spotlights. The merge (`tools/blocking-merge.py`) reads their outputs: 0 errors, 0 warnings.
+- **`assets/hamilton-blocking.json`** (720 KB) has the twenty bodies over all 46 tracks:
+  - Hamilton 667 waypoints, Burr 400, Eliza 271, the ensemble about 590–690 each.
+  - 2–20 actors per number.
+  - The merge prints the per-track table.
+- **The ruled segment edges are continuous to the number:**
+  - 2-10 → 2-11: the King at (0, 3.41).
+  - 2-16 → 2-17: Philip at (−0.4, 2.4) and Eacker at (1.6, −1.0), both facing 180.
+  - 2-23: ends on the bows with all twenty on stage.
+- **Regenerable.**
+  - The eight generators, their notes and research are in `tools/blocking/` (stdlib; `docs/hamilton-blocking-format.md`
+    has the eight commands).
+  - Run from the repo, they reproduce every segment byte for byte, and the merge reproduces the committed file byte for
+    byte.
+  - Their output folder `tools/blocking/segments/` and `__pycache__/` are git-ignored (two lines in `.gitignore`).
+  - Lyric scan (5-word runs against the album's synced lyrics): only song titles and Binkley's own cue labels. One phrase
+    in `research/seg7.md` was reworded.
+- **Checked in the page** (worktree served on 8093):
+  - `MIDTOWN.actors.check({n: 40})` passes: seek = play at 40 moments, 0 m / 0 rad, labels equal. This came after a fix:
+    the page's speed check had flagged 19 legs between two OFFSTAGE waypoints (up to 128 m/s, unseen). Like the merge, it
+    now skips them.
+  - `show.check()`: seek-equivalence passes. Overall still false on the 16 channels with no unit, as on `main`.
+  - Labels at the doublings are right: 1-01 Jefferson / Madison verses, 2-01 Jefferson, 2-04 Maria and James Reynolds,
+    2-16 George Eacker, 2-22 the Bullet, plus Seabury, Lee, the Doctor and Philip.
+  - Console clean apart from the git-ignored soundtrack's 404.
+- **Frame cost**, 19 on stage at the 1-01 line-up, house camera, 1280 × 800, Intel UHD:
+  - Medians 94.7 ms with the actors and 91.2 ms without, run-to-run 60–130 ms. The look's 142 lit pools dominate.
+  - On a tiny canvas (CPU-bound) the actors add about 2.5 ms (24.3 vs 21.8).
+- **Twelve proof renders** from the house: session scratch `act/shots/final/` (`01-1-01.png` … `12-2-23.png`, `sheet.png`).
+- **For Jack: `docs/hamilton-blocking-cue-notes.md`.**
+  - The cue, rig and page problems the passes found, per track: the 2-02 / 2-07 mirrors, 1-11 Q369/370, 1-23 659/661,
+    the FOH X4s ch41–46 and apron Vipers ch2/ch4 stopped by house geometry at z ≈ 8.4, 2-05's unresolved preset-767
+    focus, and more.
+  - Two blocking questions: the 1-05 sisters' order and the 2-22 duel sides.
+  - The pool data the spotlight pass used was dumped from `actors`, which lacks the cue revisions 3–5 on `cue-blackouts`
+    (#233). The agents allowed for the Cabinet Battle sides and 1-03 Q119.
+- **`tools/blocking-plot.py`'s person-light test** now counts any unit at zoom ≤ 18.5°. The dump's `special` cut-off
+  misses those face keys.
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (night): NAMES OVER THEIR HEADS, THE COMPANY OF TWENTY, AND THE TOOLS FOR EIGHT BLOCKING WRITERS (RULING FN) — PR #234 grows
 
 Jack: *"dont focus on any costumes or arm or feet movements. but i want you to put the choreography for every character in
 hamilton. for now just use the blank mannequin and put a thing over their head with what character they are."* The

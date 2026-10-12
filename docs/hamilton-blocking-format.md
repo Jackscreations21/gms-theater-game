@@ -92,6 +92,31 @@ known.
 To go back to the default after a doubling, give a later waypoint the
 default name (`"label": "Ensemble 2"`, `"label": "Lafayette"`).
 
+## How the committed file is produced (RULING FO)
+
+`assets/hamilton-blocking.json` is GENERATED. Do not hand-edit it: fix the segment's generator and re-run.
+
+```sh
+cd tools/blocking
+python -I seg1/export.py      # 1-01 … 1-06   (seg1/lib.py + one module per track, t101.py … t106.py)
+python -I gen_seg2.py         # 1-07 … 1-11
+python -I seg3gen.py --space  # 1-12 … 1-17   (--space also prints its spacing check)
+python -I gen4.py             # 1-18 … 1-23
+python -I seg5gen.py          # 2-01 … 2-05   (seg5lib.py)
+python -I gen6.py             # 2-06 … 2-10
+python -I seg7_gen.py         # 2-11 … 2-16
+python -I gen_seg8.py         # 2-17 … 2-23
+cd ../..
+python -I tools/blocking-merge.py tools/blocking/segments    # -> assets/hamilton-blocking.json
+```
+
+- Each generator writes `tools/blocking/segments/segN.json`. That folder is git-ignored, because it is an intermediate.
+- Each generator reads its own notes file (`segN-notes.txt`, `seg1/notes.txt`) into the segment's `notes`.
+- The research, the review and the spotlight pass behind every segment are in `tools/blocking/research/segN.md`.
+- `tools/blocking/floor-map.txt` is the brief's ASCII floor map; segment 5 reads it.
+- They are standard library only. Re-run from the repository, they reproduce the committed file byte for byte.
+- The cue problems the blocking passes found are listed for Jack in `docs/hamilton-blocking-cue-notes.md`.
+
 ## Writing it in segments (`tools/blocking-merge.py`)
 
 ```sh
@@ -145,7 +170,9 @@ python -I tools/blocking-plot.py <file> <track> --path <actorId> [--out DIR]    
 python -I tools/blocking-plot.py <file> <track|all> --sheet [--every 10] [--out DIR]                          # a contact sheet per track
 ```
 
-Add `--pools <DIR>` to any of these to draw the light lit at each moment under the actors. `<DIR>/<track>.json` is a
+Add `--pools <DIR>` to any of these to draw the light lit at each moment under the actors. A "person light" in its
+printed check is any `special`, or any unit at zoom 18.5° or less. The dump's own `special` cut-off (zoom ≤ 14°, or a
+floor pool ≤ 1 m) misses face keys and duet pools of 14.5–18.5°. `<DIR>/<track>.json` is a
 per-cue dump of every lit unit's landing point and radius. It is derived from the page and kept in the session scratch,
 not in the repository; that folder's README says how it was made and how to read it. Specials are outlined white. In
 moment mode the tool also prints, for each actor, the specials she stands in, or "NO SPECIAL".

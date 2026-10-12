@@ -1,6 +1,6 @@
 # Automatic actors — design (2026-10-12)
 
-**BINDING. Rulings FF–FN.** The next spec starts at **FO**. (FN was added the same day, from Jack's
+**BINDING. Rulings FF–FO.** The next spec starts at **FP**. (FN was added the same day, from Jack's
 second message — see its section.)
 
 These rulings were made by the building session (an agent), not answered by
@@ -234,3 +234,26 @@ character they are."*
   show, labels against the cast, positions and levels against
   `tools/hamilton-floor.json`, measured in the page) and fills `y` from level
   names. The format doc has its rules.
+
+### FO — The whole show's blocking, and how it is made
+
+- **The pipeline.** The blocking is written by eight generators, one per segment of the album (the cue round's
+  segments). They live in `tools/blocking/`, are standard library only, and each writes `segments/segN.json`.
+  `tools/blocking-merge.py` merges and validates them into `assets/hamilton-blocking.json`.
+  - The committed JSON is an OUTPUT. A fix goes in the segment's generator, never the merged file.
+  - Each segment went through four passes: written, reviewed against references (photos, the Disney+ film, fan
+    accounts), spotlight-checked against the page's own pool landings, then merged.
+  - The research behind each is `tools/blocking/research/segN.md`.
+- **Segment edges.** Every actor ends a segment offstage and starts the next offstage, except at three ruled edges.
+  The adjoining segments agree there to the number, and the merge sees each as one continuous pose:
+  - **2-10 → 2-11:** the King stays at (0, 3.41), facing the house, through the blackout. 2-10 ends at 95.6;
+    2-11 starts at 0.0.
+  - **2-16 → 2-17:** Philip (`laurens`) at (−0.4, 2.4) facing 180, and George Eacker (`ens5`) at (1.6, −1.0) facing
+    180. 2-16 ends at 172.5; 2-17 starts at 0.0.
+  - **2-23** ends on the bows line-up, with the company on stage, not offstage.
+- **Unseen moves are not errors.** A leg between two offstage waypoints is invisible, so neither the page's
+  `check()` nor the merge reports its speed. Bodies "teleport" between wings in the dark.
+- **Light versus blocking.** Where a person light and the blocking disagreed, the blocking moved to the light unless
+  the evidence said the cue was wrong. Those cues are listed, not edited, in
+  `docs/hamilton-blocking-cue-notes.md` for Jack. That file also has two questions only he can rule: the sisters'
+  order in 1-05, and the duel sides at the shot in 2-22.

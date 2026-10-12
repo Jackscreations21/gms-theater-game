@@ -16,8 +16,10 @@ the PNGs are written with zlib + struct, the text is a 5x7 bitmap font.
     <POOLS DIR>/<track>.json (dumped from the page: the lit units, where each beam lands and its radius there
     — see that folder's README.md): every pool a translucent disc in its colour, SPECIALS (narrow pools for one
     person) outlined white, washes in their colour; side light and LED strips are left out unless --pools-all.
-    In moment mode it also prints, per actor, the specials she stands in (within the pool's radius + 0.3 m, at
-    her level) — or "NO SPECIAL".
+    In moment mode it also prints, per actor, the person lights she stands in (within the pool's radius + 0.3 m, at
+    her level) — or "NO SPECIAL".  A person light is a `special` OR any unit at zoom 18.5 deg or less: the dump's
+    `special` cut-off (zoom <= 14, or a floor pool of radius <= 1 m) misses face keys and duet pools at 14.5-18.5 deg
+    whose pool is wider than 1 m (found by the segment-5 spotlight pass).  Only the specials are outlined white.
 
 <file> is either a SEGMENT file (`{"segment", "tracks", "waypoints": {"<id>": [...]}}`, as the
 blocking writers produce) or the page's blocking file (`assets/hamilton-blocking.json`,
@@ -368,7 +370,7 @@ def draw_pools(cv, st, pools):
 def specials_on(p, pools):
     hits = []
     for q in pools:
-        if q.get('kind') not in ('special', 'followspot') or not q['onfloor']: continue
+        if (q.get('kind') not in ('special', 'followspot') and q.get('zoom', 99) > 18.5) or not q['onfloor']: continue   # a person light: a special, or any unit at zoom <= 18.5
         if abs(q['py'] - p['y']) > 0.6: continue
         d = math.hypot(p['x'] - q['px'], p['z'] - q['pz'])
         if d <= q['pr'] + 0.3: hits.append(f"ch{q['ch']}({d:.1f}/{q['pr']:.1f}m)")

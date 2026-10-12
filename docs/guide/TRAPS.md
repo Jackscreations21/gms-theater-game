@@ -1645,5 +1645,15 @@ against this list before opening a PR; **add new traps as you hit them.**
   steps passed, because the stale value the seek left behind was the value play had just set. Seek FIRST, as a jump from far
   away (600 s), then play — now the broken label fails it. `show.check()` (the cues) seeks after playing too; its state is
   re-folded from scratch on every seek, which is why it holds there.
+- **A Browser pane that is hidden or squeezed renders a tiny canvas, and every measurement taken from it is wrong.**
+  The merge round's first frame-cost numbers (24 ms) and its twelve proof shots came off a 302 × 52 canvas — the pane
+  was collapsed to a strip. `MIDTOWN.renderer.domElement.width/height` first; for numbers and pictures,
+  `renderer.setSize(1280, 800, false)` and the camera's aspect before measuring.
+- **`python -I` leaves the script's own directory off `sys.path`.** A generator that does `from lib import *` (its
+  sibling) fails under `-I` though `python export.py` works. Insert `os.path.dirname(os.path.abspath(__file__))`
+  into `sys.path` at the top (the copies in `tools/blocking/` do).
+- **A speed check that does not know about offstage flags reports invisible moves.** `MIDTOWN.actors.check()` flagged 19
+  legs at up to 128 m/s after the merge — every one between two `off` waypoints (a body crossing the wings in the dark).
+  The page's check now skips them, as the merge always did; keep the two checks' rules the same.
 - **At "Set fitted" the set has holes the cuts made at that scale**, so a floor ray that finds the gallery at
   real size can fall through to the deck there. Author blocking at Real size (the default).

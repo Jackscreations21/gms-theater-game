@@ -5066,7 +5066,7 @@ function actCompile(a) {
     const s = segs[i], q = P[i + 1];
     p.leave = !q ? p.T + (p.dwell || 0) : p.dwell === null ? Math.max(p.T, q.T - s.len / ACT_WALK) : Math.min(p.T + p.dwell, q.T);
     if (q && p.dwell !== null && p.T + p.dwell > q.T + 1e-6) probs.push(`waypoint ${p.k + 1}: its ${p.dwell} s dwell runs past the next waypoint (cut to ${(q.T - p.T).toFixed(2)} s)`);
-    if (s) { s.t0 = p.leave; s.t1 = q.T; s.dist0 = dist; dist += s.len; if (s.t1 - s.t0 > 1e-6 && s.len / (s.t1 - s.t0) > ACT_FAST) probs.push(`waypoint ${p.k + 1} → ${q.k + 1}: ${(s.len / (s.t1 - s.t0)).toFixed(1)} m/s`); }
+    if (s) { s.t0 = p.leave; s.t1 = q.T; s.dist0 = dist; dist += s.len; if (!(p.off && q.off) && s.t1 - s.t0 > 1e-6 && s.len / (s.t1 - s.t0) > ACT_FAST) probs.push(`waypoint ${p.k + 1} → ${q.k + 1}: ${(s.len / (s.t1 - s.t0)).toFixed(1)} m/s`); }
     p.dist = s ? s.dist0 : dist;
   });
   segs.forEach(s => { s.yaw0 = s.len > 1e-3 ? actTanYaw(s, 0) : null; s.yaw1 = s.len > 1e-3 ? actTanYaw(s, 1) : null; });
