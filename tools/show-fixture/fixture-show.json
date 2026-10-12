@@ -1,0 +1,454 @@
+{
+ "album": "TEST FIXTURE \u2014 Hamilton (Original Broadway Cast Recording), 2015; lengths approximate",
+ "tracks": [
+  {
+   "id": "1-01",
+   "act": 1,
+   "n": 1,
+   "title": "Alexander Hamilton",
+   "len": 236
+  },
+  {
+   "id": "1-02",
+   "act": 1,
+   "n": 2,
+   "title": "Aaron Burr, Sir",
+   "len": 156
+  },
+  {
+   "id": "1-03",
+   "act": 1,
+   "n": 3,
+   "title": "My Shot",
+   "len": 333
+  },
+  {
+   "id": "1-04",
+   "act": 1,
+   "n": 4,
+   "title": "The Story of Tonight",
+   "len": 91
+  },
+  {
+   "id": "1-05",
+   "act": 1,
+   "n": 5,
+   "title": "The Schuyler Sisters",
+   "len": 186
+  },
+  {
+   "id": "1-06",
+   "act": 1,
+   "n": 6,
+   "title": "Farmer Refuted",
+   "len": 112
+  },
+  {
+   "id": "1-07",
+   "act": 1,
+   "n": 7,
+   "title": "You'll Be Back",
+   "len": 208
+  },
+  {
+   "id": "1-08",
+   "act": 1,
+   "n": 8,
+   "title": "Right Hand Man",
+   "len": 321
+  },
+  {
+   "id": "1-09",
+   "act": 1,
+   "n": 9,
+   "title": "A Winter's Ball",
+   "len": 110
+  },
+  {
+   "id": "1-10",
+   "act": 1,
+   "n": 10,
+   "title": "Helpless",
+   "len": 249
+  },
+  {
+   "id": "1-11",
+   "act": 1,
+   "n": 11,
+   "title": "Satisfied",
+   "len": 329
+  },
+  {
+   "id": "1-12",
+   "act": 1,
+   "n": 12,
+   "title": "The Story of Tonight (Reprise)",
+   "len": 115
+  },
+  {
+   "id": "1-13",
+   "act": 1,
+   "n": 13,
+   "title": "Wait for It",
+   "len": 193
+  },
+  {
+   "id": "1-14",
+   "act": 1,
+   "n": 14,
+   "title": "Stay Alive",
+   "len": 159
+  },
+  {
+   "id": "1-15",
+   "act": 1,
+   "n": 15,
+   "title": "Ten Duel Commandments",
+   "len": 106
+  },
+  {
+   "id": "1-16",
+   "act": 1,
+   "n": 16,
+   "title": "Meet Me Inside",
+   "len": 83
+  },
+  {
+   "id": "1-17",
+   "act": 1,
+   "n": 17,
+   "title": "That Would Be Enough",
+   "len": 178
+  },
+  {
+   "id": "1-18",
+   "act": 1,
+   "n": 18,
+   "title": "Guns and Ships",
+   "len": 127
+  },
+  {
+   "id": "1-19",
+   "act": 1,
+   "n": 19,
+   "title": "History Has Its Eyes on You",
+   "len": 97
+  },
+  {
+   "id": "1-20",
+   "act": 1,
+   "n": 20,
+   "title": "Yorktown (The World Turned Upside Down)",
+   "len": 242
+  },
+  {
+   "id": "1-21",
+   "act": 1,
+   "n": 21,
+   "title": "What Comes Next?",
+   "len": 98
+  },
+  {
+   "id": "1-22",
+   "act": 1,
+   "n": 22,
+   "title": "Dear Theodosia",
+   "len": 184
+  },
+  {
+   "id": "1-23",
+   "act": 1,
+   "n": 23,
+   "title": "Non-Stop",
+   "len": 385
+  },
+  {
+   "id": "2-01",
+   "act": 2,
+   "n": 1,
+   "title": "What'd I Miss",
+   "len": 236
+  },
+  {
+   "id": "2-02",
+   "act": 2,
+   "n": 2,
+   "title": "Cabinet Battle #1",
+   "len": 215
+  },
+  {
+   "id": "2-03",
+   "act": 2,
+   "n": 3,
+   "title": "Take a Break",
+   "len": 286
+  },
+  {
+   "id": "2-04",
+   "act": 2,
+   "n": 4,
+   "title": "Say No to This",
+   "len": 242
+  },
+  {
+   "id": "2-05",
+   "act": 2,
+   "n": 5,
+   "title": "The Room Where It Happens",
+   "len": 318
+  },
+  {
+   "id": "2-06",
+   "act": 2,
+   "n": 6,
+   "title": "Schuyler Defeated",
+   "len": 63
+  },
+  {
+   "id": "2-07",
+   "act": 2,
+   "n": 7,
+   "title": "Cabinet Battle #2",
+   "len": 142
+  },
+  {
+   "id": "2-08",
+   "act": 2,
+   "n": 8,
+   "title": "Washington on Your Side",
+   "len": 181
+  },
+  {
+   "id": "2-09",
+   "act": 2,
+   "n": 9,
+   "title": "One Last Time",
+   "len": 296
+  },
+  {
+   "id": "2-10",
+   "act": 2,
+   "n": 10,
+   "title": "I Know Him",
+   "len": 97
+  },
+  {
+   "id": "2-11",
+   "act": 2,
+   "n": 11,
+   "title": "The Adams Administration",
+   "len": 54
+  },
+  {
+   "id": "2-12",
+   "act": 2,
+   "n": 12,
+   "title": "We Know",
+   "len": 101
+  },
+  {
+   "id": "2-13",
+   "act": 2,
+   "n": 13,
+   "title": "Hurricane",
+   "len": 143
+  },
+  {
+   "id": "2-14",
+   "act": 2,
+   "n": 14,
+   "title": "The Reynolds Pamphlet",
+   "len": 128
+  },
+  {
+   "id": "2-15",
+   "act": 2,
+   "n": 15,
+   "title": "Burn",
+   "len": 225
+  },
+  {
+   "id": "2-16",
+   "act": 2,
+   "n": 16,
+   "title": "Blow Us All Away",
+   "len": 139
+  },
+  {
+   "id": "2-17",
+   "act": 2,
+   "n": 17,
+   "title": "Stay Alive (Reprise)",
+   "len": 112
+  },
+  {
+   "id": "2-18",
+   "act": 2,
+   "n": 18,
+   "title": "It's Quiet Uptown",
+   "len": 270
+  },
+  {
+   "id": "2-19",
+   "act": 2,
+   "n": 19,
+   "title": "The Election of 1800",
+   "len": 227
+  },
+  {
+   "id": "2-20",
+   "act": 2,
+   "n": 20,
+   "title": "Your Obedient Servant",
+   "len": 148
+  },
+  {
+   "id": "2-21",
+   "act": 2,
+   "n": 21,
+   "title": "Best of Wives and Best of Women",
+   "len": 47
+  },
+  {
+   "id": "2-22",
+   "act": 2,
+   "n": 22,
+   "title": "The World Was Wide Enough",
+   "len": 302
+  },
+  {
+   "id": "2-23",
+   "act": 2,
+   "n": 23,
+   "title": "Who Lives, Who Dies, Who Tells Your Story",
+   "len": 217
+  }
+ ],
+ "cues": [
+  {
+   "q": "0.5",
+   "track": "1-01",
+   "at": 0.0,
+   "real": true
+  },
+  {
+   "q": "1",
+   "track": "1-01",
+   "at": 5.0,
+   "real": true
+  },
+  {
+   "q": "2",
+   "track": "1-01",
+   "at": 12.0,
+   "real": true
+  },
+  {
+   "q": "3",
+   "track": "1-01",
+   "at": 30.0,
+   "real": true
+  },
+  {
+   "q": "4",
+   "track": "1-01",
+   "at": 60.0,
+   "real": true
+  },
+  {
+   "q": "5",
+   "track": "1-01",
+   "at": 66.0,
+   "real": true
+  },
+  {
+   "q": "6",
+   "track": "1-01",
+   "at": 70.0,
+   "real": true
+  },
+  {
+   "q": "6.5",
+   "track": "1-01",
+   "at": 120.0,
+   "real": false,
+   "label": "Strips swell warm",
+   "time": {
+    "up": 4
+   },
+   "ch": {
+    "g:4": {
+     "i": 80,
+     "cp": 7
+    }
+   },
+   "why": "test: a reconstruction using a group and a palette"
+  },
+  {
+   "q": "7",
+   "track": "1-02",
+   "at": 3.0,
+   "real": true
+  },
+  {
+   "q": "8",
+   "track": "1-03",
+   "at": 10.0,
+   "real": true
+  },
+  {
+   "q": "9",
+   "track": "1-03",
+   "at": 40.0,
+   "real": true
+  },
+  {
+   "q": "10",
+   "track": "1-05",
+   "at": 2.0,
+   "real": true
+  },
+  {
+   "q": "192",
+   "track": "1-07",
+   "at": 0.0,
+   "real": true
+  },
+  {
+   "q": "192.5",
+   "track": "1-07",
+   "at": 41.5,
+   "real": false,
+   "label": "Verse 2 \u2014 Vipers warm",
+   "time": {
+    "up": 3
+   },
+   "ch": {
+    "g:1": {
+     "i": 80,
+     "cp": 7
+    }
+   },
+   "why": "test: the spec's example shape"
+  },
+  {
+   "q": "1270",
+   "track": "2-23",
+   "at": 200.0,
+   "real": false,
+   "label": "Final fade",
+   "time": {
+    "down": 6
+   },
+   "ch": {
+    "g:1": {
+     "i": 0
+    },
+    "g:4": {
+     "i": 0
+    }
+   },
+   "why": "test: the end"
+  }
+ ]
+}

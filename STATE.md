@@ -1,7 +1,322 @@
-# STATE — 2026-10-11 (THE MIDTOWN PREVIEW NOW CARRIES THE WHOLE HAMILTON RIG, ITS RIGGING, A SPOT BOOTH AND A DESK — PR #226, UNMERGED; THE CUES ARE NEXT AND WAIT ON ONE ANSWER)
+# STATE — 2026-10-12 (THE SHOW RE-JUDGED FROM RENDERS AGAINST BINKLEY'S PHOTOS; THE ENGINE CALIBRATED; PRESHOW AND THE INTERVAL — `midtown-lights` = PR #230, OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-12: the engine calibrated to Binkley's cue photos, every cue re-judged from renders, the preshow and the interval — UNCOMMITTED on `midtown-lights`
+
+Jack: *"go through all the cues and compare them to pictures to make sure they are all correct"*, *"the main problem i saw
+where spotlight places, timing and brightness"*, and *"you didnt do the preshow lighting and make it so at the end of
+nonstop it blacks out then the lights go back to what they where at preshow an it waits for me to press play"*.
+
+- **The method this time was renders, not JSON.** `MIDTOWN.frame()` (new on the console handle) draws one full frame
+  synchronously, so a hidden Browser pane can capture; a receiver on 127.0.0.1:8099 takes `canvas.toDataURL()` POSTs.
+  Every cue of the show was rendered from a house camera (`{p:[0,3.4,-6.5], t:[0,1.9,4], fov:52}`) into contact sheets,
+  and the 109 photographed real cues were rendered beside Binkley's photos (session scratch `shots/final-*.png`,
+  `shots/full/sheet-*.png`; the recipe is in TRAPS "From the cue-review round").
+- **The engine, calibrated to the photos (one Opus agent, the lighting-engine region only):** pools now accumulate in
+  LINEAR light in an off-screen buffer with a knee (`LX_ACC_KNEE` 0.55) so overlaps keep their colour instead of going
+  white; beams are filled shafts (`LX_BEAM_FILL`); the Viper wheel gained Linear; ColorBlaze strips get a sixth of a real
+  light; X4 power 1.3 → 0.7; the near-field cap 0.8 → 1.2 (narrow pools are hot); `LX_POOL_GAIN` 3 → 6; Open beams have a
+  hard edge. Pool SIZE needed no change (the stored zoom is the angle the photos draw: measured 1.81 vs 1.75 m). Mean
+  luminance ours ÷ photo: 0.73 → 0.98 over the 20 fitting cues, 1.22 over all 109. lx.check() 301/313, show.check()
+  seek-equivalence passes, frame cost +4 %. Pre-change copy in session scratch `midtown.before-engine.html`.
+- **Colour: the Viper's cyan flag is blue.** C88/Y55 drew teal here and blue in the photos (and the production stills);
+  `lxCmyColour` now mixes with per-flag transmissions (`LX_CMY_FLAGS`, cyan [0.05, 0.3, 1]); the ambers are unchanged.
+  The old TRAPS line "the data is right, the renderer differs" is corrected in place.
+- **Converter bug fixed (`tools/hamilton-cues.py`, `assets/hamilton-eos.json` regenerated, only gobo fields changed):**
+  the second Viper profile (channels 91–100) learnt no gobo table, so 654 gobo changes came out as `"slot:N"` and the
+  player dropped them; the table is now shared across the Viper profiles and 6.4 = Open.
+- **The cues (eight Opus reviewers, one per segment, each rendering its own cues in its own tab):**
+  `assets/hamilton-show.json` is now **892 cues (124 real, 768 reconstructed)**, down from 911: ~20 invisible cues
+  removed, 3 added, every reconstructed cue re-judged; no real cue's `at` moved. The repeated findings: the FOH Truss
+  and Apron Electric movers (36–39, 41–46, X4s 43/44) and Binkley's wide presets land in Midtown's pit, house ceiling
+  and side walls at the Rodgers' aims — out of every reconstructed look now (the REAL cues 194, 200, 300.3, 1044, 1110,
+  1238.01 still carry them); the boom shins at full crossed the haze and whited out centre — capped ~25; "BLUE LED"
+  (cp 4) and C70/M85 draw violet on the Vipers — blues re-mixed to C100/M30–55; the Take a Break family and Eliza's
+  gallery specials were under the gallery, now on it; every GO re-checked against the album's hits (seg8 moved 58,
+  mostly < 0.1 s). The eight reports are in the segments' `notes` ("Revision 2:"). Stale `slot:N` gobos in two
+  segments broke seek = play on one dark unit (ch94); fixed, and the validator now rejects them.
+- **The player: preshow and the interval.** Opening the Show panel puts the show at its top paused — the real 24.01
+  preset up, the house lights UP (`SHW.houseUp`); the first Play takes the house to 0.35. A track with `hold` in the
+  show file (2-01: "Intermission") is not entered: at the end of 1-23 the clock stops at the track's end with its last
+  cues fired (668 button, 669 blackout on the cut-off, 670 = exactly real 24.01), the audio pauses, the house comes up,
+  the panel says "Intermission — press Play for What'd I Miss"; Play steps into 2-01 (720 fires on its first beat) and
+  takes the house out. Works on the silent clock, his one-file soundtrack (`showSoundTick` holds) and per-track audio
+  (`showAudioEnded`). A roll-over tolerance bug (384.99 + 0.01 lands an ulp short of 385 and the next track's 0.0 cue
+  fired through `showFireTo`'s own 1e-9) is fixed. Verified in the page: states captured in session scratch
+  `shots/states.png`.
+- **Still open, Jack's:** the three 10th-Electric VL3500s (71/73/76) focused behind Midtown's back wall burn the upper
+  brick; the back-wall foots under the upstage gallery never reach the brick; the Deck strips point at the deck edge
+  (FUTURE.md has the options); Binkley's `edge`/`frost` not drawn; the 238 effects not run; the Cabinet Battle sides
+  still unsourced. Suites not run (nothing in `src/`); the fixture GLBs still untracked.
+- **Landed as ONE PR: #229 (`midtown-walk`) merged by Jack; everything else is PR #230**
+  (`midtown-lights` rebased onto that `main`, 12 commits): https://github.com/Jackscreations21/gms-theater-game/pull/230.
+  After it merges: the post-merge protocol (fast-forward local `main`, rebuild byte-identical, map, suites when Node is
+  on the PATH, delete `midtown-walls` and `midtown-lights` both sides).
+
+---
+
+## 2026-10-11 (third session, final): every cue revised against pictures, writing and the real audio — superseded by the block above
+
+Jack: *"do a revision of the cues. go over all of them and look at pictures online and fix anything that is wrong"*, and
+*"make an md file of an in-depth explanation of the style of lighting used in hamilton"*.
+
+- **Research** (two Opus agents, notes in session scratch `ham/research/`): ~120 production pictures (Disney+ press stills,
+  per-song film frames, Joan Marcus photos) → notes for 45 numbers; written sources (LSA Oct 2015, Live Design's
+  "Birth of a Nation" set, Korins / Blankenbuehler / Steinberg / Arch interviews) → notes for 40.
+- **Timing evidence**: Jack's soundtrack decoded to 20 ms loudness; `ham/audio.py <track> [from to]` prints its hits and
+  rests in track seconds. Every GO in the show was checked against it.
+- **Revision** (the eight segment agents, resumed): looks re-palette'd to the evidence (Say No to This blue/cyan not red;
+  Wait for It, That Would Be Enough, Burn, Quiet Uptown deep blue; Washington on Your Side's red deck; Satisfied's rewind
+  drains to sidelight; Yorktown ends on isolated pools, no flashes; What Comes Next snaps red→blue; the finale ends on a
+  lavender-magenta gasp), staging fixed where known, real cues RE-PLACED on the audio (474 gunshot now the END of 1-15;
+  200 button on the chord; the 1104 and 1270 duel chains on their shot onsets; 1039 FTB on Hurricane's cut-off…), content
+  untouched; leak checks green in every segment (segment 1 found real 190 FTB leaves 106 channels on — fixed with 189.5).
+- `assets/hamilton-show.json`: **911 cues (124 real, 787 reconstructed)**, 2.6 MB; lyric scan clean.
+- **`docs/HAMILTON-LIGHTING-STYLE.md`**: the design explained in depth — philosophy, the rig, the palette by gel, the
+  look-book, space, his systems (group names), the movers, how the cues are built (from the 124 real cues: median 0.5 s,
+  82 part cues, 76 move-in-dark marks, "AF" = auto-follow, MIDI-fired from sound), the famous moments, all 46 numbers, a
+  "light like Binkley" checklist, what is unknown, sources.
+- Checks: show.check() seek-equivalence passes (Lustr colour now judged at the engine's own 0.005), refs resolve, 142:13;
+  lx.check() 301/313 with the show stopped; console clean.
+
+---
+
+## 2026-10-11 (third session, last): the music, and the light made real — UNCOMMITTED on `midtown-lights`
+
+Jack: *"you forgot to put in the audio and … the lights looked too bright and unrealistic"*, then his own file
+(`Downloads\Hamilton The Musical [Full Soundtrack].mp3`, the album as ONE 8,555.8 s file), then *"when a light is shining
+on a wall it loses its texture and just looks like one solid color."*
+
+- **Audio, three sources, in order:** his own per-track files (Load album audio…) → **his one-file soundtrack**, copied to
+  `assets/audio/hamilton-soundtrack.mp3` (ignored by the EXISTING `assets/audio/*` rule — never committed; the committed
+  Beetlejuice files there are untouched) → the **official album on YouTube** (`tracks[].yt`, all 46 artist/Topic uploads,
+  embeddable, within 2 s of the album; a 320×180 player card bottom-left while it plays, as YouTube's terms want) → silent.
+  The soundtrack's track starts (`tracks[].file`) were found from its silences in the browser (decoded in 1-minute
+  chunks): 30 real gaps of 0.1–1.6 s, **15 album segues with no silence** (there: previous start + length); the last track
+  ends 0.25 s from the file's end. The file loads into a Blob: **python's http.server has no Range requests, so a streamed
+  file cannot seek** (TRAPS). Verified: seek lands on the file position; playing across the Winter's Ball→Helpless segue
+  changes track at 1716.95 s and fires 300.3.
+- **The light is now light × surface.** The depth pass also renders every mesh in its own UNLIT colour (albedo, the house
+  scan at its undimmed base); a pool multiplies by it — brick, grain and the scan's photo show through every pool. Dark
+  textures are scaled up (×4), not floored (a floor flattened them); the house deck fill (and his slab wearing it, avg ~0.9%)
+  reads as a stained deck ×11 in the light pass only. Pools carry the type's output (`LX_TYPES.power`); strips 0.22→0.08;
+  near-field cap 1.3→0.8; the set's brick texture graded at load (sat ×0.5, lift 1.12: it was sRGB 98/28/14, near pure red);
+  show haze 0.6→0.35; **house lights fade to 0.35 at the show's start** (restored on Stop).
+- **Calibrated against the cue photos** (8 real cues, side by side, session scratch `shots/cmpA/B.png`): mean luminance now
+  within ~0.5–1.8× of Augment3d's renders (was blown out); walls dark, deck templates carry the light. Left as is: Augment3d
+  draws the Vipers' CMY cyan/teal as indigo/lavender (its colour model, not the data — the raw rows are C88/Y55 etc.); a few
+  specials missing (16 channels with no unit); templates are hard-edged where Augment3d softens by `edge`.
+- Checks: show.check() seek-equivalence passes, refs resolve; **lx.check() 301/313 — run it with the show STOPPED** (230
+  while the show drives the rig); all lamps at full 62–70 ms a frame front row, Intel UHD 1280×800.
+
+---
+
+## 2026-10-11 (third session, later): THE WHOLE SHOW, AUTO-TIMED — and the desk drives it. UNCOMMITTED on `midtown-lights`
+
+Jack: *"use these files and anything you can find online to make as accurate of an auto timed light sequence for the
+entirety of Hamilton"*, then *"make it so on the lighting console i can skip to songs and it brings the cues to the right
+place."* **Everything below is in the working tree, uncommitted** (with the projected pools under it).
+
+- **The sources, as found.** The Eos Nomad CSV (Intro file) holds **128 real Binkley cues in 12 islands** (0.5–36.1 opening,
+  190–204.02 You'll Be Back, 273–278 Right Hand Man, 300–304 Helpless, 366–368.01 Satisfied, 450–476 Ten Duel → Meet Me
+  Inside, 631–638 Non-Stop, 780–784 Say No, 864–894 Room Where It Happens, 1039–1050.1 Reynolds Pamphlet, 1104–1110 Stay
+  Alive (Reprise), 1238–1271 World Was Wide Enough) plus 4 utility cues; real levels, CMY/RGB, gobos, zooms, part times,
+  follows, and the movers' X/Y/Z focus points. The 110 cue photos are renders of those same cues (index in session scratch).
+  The Advanced file has no more cues ("all fixtures … and not much else"). **The playlist and his Guns-and-Ships link are fan
+  lighting-design videos on the album audio, not a soundtrack file.**
+- **`tools/hamilton-cues.py` → `assets/hamilton-eos.json`** (1.6 MB, deterministic): channels → our fixture types, 280
+  groups WITH membership (Group rows' TIME_DATA), 111 presets, palettes, effects, gobo-slot names learnt from labelled beam
+  palettes, and the real cues as tracked deltas. Focus: Eos (X, Y, Z) → set-local (X, Z+0.2651, 3.96−Y), the rig's own
+  transform, verified against stored tilt within ~1°. Gobo rotation encoding is a medium-confidence guess (mode 25 = index).
+- **`assets/hamilton-show.json`** (2.8 MB): **910 cues over the album's 46 tracks (142:13): 124 real, 786 reconstructed**,
+  each at (track, seconds). Eight Opus agents, one per stretch of songs, each placed the real cues on their moments and
+  filled the rest in Binkley's own presets/palettes/groups, against time-synced lyric data (LRCLIB; **scratch only — no
+  lyrics in the repo**, a 4-gram scan run). Every segment re-establishes the exact real state before each real island so
+  his cues land as programmed. Spec: `docs/hamilton-cues-format.md`.
+- **The show player** (midtown.html, region "THE SHOW PLAYER (agent L)", `MIDTOWN.show`): Show button; album clock from his
+  own audio files ("Load album audio…" / folder, matched by disc+track or title; object URLs only) or a silent frame-dt
+  clock; Eos tracking, up/down/focus/colour/beam times, part delays, follows, mark (move-in-dark) cues; seek folds every cue
+  up to t (check() proves seek = play-through); start/stop restore the rig and camera; Walk keeps the show running.
+- **The desk screens** ("THE DESK SCREENS"): the two monitors on the stalls desk are live canvases — LEFT the 46 songs (click
+  one: the show jumps to its top with every cue before it folded in, and plays), RIGHT cue list 1 around the live cue (click
+  to jump) with soft keys SONG◀ CUE◀ GO/PAUSE CUE▶ SONG▶ STOP. Clicks from orbit by pointer, walking by the crosshair.
+- **Pools now fall off as 1/R²** (they were 1/R with a floor of 0.25): at full-show levels 36 ColorBlaze strips flooded the
+  set white-orange; Binkley's cue 872 is a dark lavender room. Calibrated equal at a 1.5 m Source Four pool.
+- **Checked:** show.check() — seek equivalence passes, every reference resolves, timeline monotonic; lx.check() 301/313
+  (unchanged); biggest cue fires in < 2 ms; console clean on load.
+- **Known, not done:** effects (238 channel entries) are not run; 16 channels have no rig unit; the engine's aim solver
+  lands near-vertical heads up to 20 cm off (the player re-solves; TRAPS); FOH Vipers focused at the Rodgers' corners land
+  on Midtown's nearer side walls; the gunshot between 1-15/1-16 and a few other placements are flagged in the segment notes
+  (session scratch `ham/out/notes.json`). Suites not run (nothing in `src/`).
+
+---
+
+## 2026-10-11 (third session): the pools are projected — UNCOMMITTED on `midtown-lights`
+
+Jack (two screenshots): *"the light isnt rendering correctly onto surfaces … when something is projected onto an uneven
+surface the shape stays flat."* The flat decal pool is replaced by a **deferred decal**: one depth pass of the scenery per
+drawn frame (`lxDepthPass`, `LXDEP`), then each lit pool a cone over its depth band that rebuilds the surface under every
+pixel and projects the gobo onto it (`LX_POOL_VS/FS`). Gobos now wrap stairs, seat rows, set brick, rails and built
+pieces, lit by the angle they meet. The band is fitted by twelve rays across the cone once per aim (`lxPoolBand`, ~0.5 ms a
+unit); a travelling head or a zoom fade uses the plane estimate (`lxPoolDepth`). **No shadows:** a surface behind a lit one
+in the same cone is lit too. Measured, Intel UHD 1280 × 800, all 304 pools lit: +3–4 ms front row, ~0 back of house.
+`lx.check()` still **301 / 313** (the same 12 placement fails); its pool case now checks the projector's centre and band.
+`midtown.html` only; nothing in `src/`. Six traps in TRAPS.md. **Not committed: waiting on Jack.**
+
+---
+
+## (superseded by the block above for the pools) 2026-10-11 (night, second session): the lighting engine — `midtown-lights`, six commits on top of `midtown-walls`, UNMERGED
+
+**Read this block first.** `main` is still **`e27fc1e`**; PR #229 still open; `midtown-walls` unmerged (its
+question to Jack — one PR or in turn — still unanswered). **Branch `midtown-lights`** is `midtown-walls` +
+`c0179c1` engine, `9da710c` panel, `5a2688e` gobos+colours, `768f9a5` check, the preview commit, and the record.
+All `midtown.html` (now ~5,300 lines); nothing in `src/`; `the-house.html` / `docs/ARTNET.md` untouched; suites
+not run (nothing they check moved; `node` still not on PATH). Jack: *"use opus agents to make the lighting engine
+and to check that every light is working with the movements, gobos and colors"*, then *"make a preview of the
+lights that shows a bunch of different gobos and stuff."* Five Opus 5.5 agents: G engine (alone), H gobos+colours
+and I panel (at once, in worktrees `.claude/worktrees/lx-*` on ports 8091/8092, cherry-picked, removed), J check
+(alone), K preview (alone). The recipe is in TRAPS ("the clean way").
+
+- **The engine (`c0179c1`, `MIDTOWN.lx`)** — every one of the 313 units has state `unit.userData.lx`
+  `{level, color, pan, tilt, panTo, tiltTo, gobo, goboRot, goboRate, zoom}`; a lit unit draws a lens glow, a point
+  in one glare cloud, a volumetric cone (p4's shader, far side only, **budget 120 cones a frame**, strongest in
+  view), a pool decal where the beam lands (a ray stepped through the walk's collision grid, cached, recast on aim
+  or scene change — all 313 in ~36 ms) and the brightest four get real SpotLights (two shadowed, static maps; the
+  house scan is unlit so real light shows on the set and built pieces only). Movers (41 Viper, 24 X4, 6 VL3500):
+  pan on the yoke, tilt on the head, both LOD levels, at the type's speed unless `snap`; `lx.aim(sel, point)`.
+  Fades, travel and gobo rotation in `lxTick(dt)`; idle still draws nothing. API: `select` (channel, "1-20",
+  position, type, id, "all", array, predicate), `set/get/all/blackout/work/haze/aim/beam/refresh/groups/perf`.
+  **Cost, Intel UHD, 1280×800: dark 31/24 ms (front/back), everything at full 54/34.** `LENS_GLOW` retired: a
+  dark unit reads dark; the load picture is unchanged (work light 1, rig at 0).
+- **Gobos and colours (`5a2688e`)** — 16 canvas-drawn patterns (512², seeded) named for the show's beam palettes:
+  Open, Construction, Linear, Dust, Cobble stone, Alpha, Vignette, Nite sky, Brains, Pebbles, Blocks, Tribal,
+  Leaves, Slot, Square, Pickup sticks; the beam shows the shafts and they turn with the pool. Wheels: Viper
+  rotating 6 + framing + diffusion; VL3500 FX 3; **template Source Four systems from Binkley's magic sheet**
+  (111–125 and 241–249 Pickup sticks, 131–149 Blocks, 201–208 Alpha, 291–298 Linear, Lustr 160–179 Construction,
+  181–192 Pickup sticks) hold their template at load; everything else open. Colour per type: gel (3200 K, warms as
+  it dims; `set({gel})` re-gels), Lycian xenon boomerang, CMY+CTO+colour wheel for Viper/VL3500 (R26 within 0.014
+  of the gel), RGB/RGBW/RGBA/7-colour LEDs (`rgb`, `emitters`), hazers none. `GELS` extended to all of Roscolux
+  01–99 plus the Lee codes the show names. `lx.wheel(sel)`, `lx.gels()`.
+- **The panel (`9da710c`, Lights button, `MIDTOWN.lxPanel`)** — select by position (38), type, channel
+  field ("1-20, 41"), or **click a fixture in the view** (shift adds), gold outline on the selection; level with
+  fade, gel dropdown + colour picker, gobo dropdown from the unit's wheel, rotate rate, pan/tilt (movers only),
+  snap, zoom, Aim at view centre; All on / Blackout / Work / Haze; **Step through** (one unit at a time with its
+  label, Play off frame dt); **Looks** saved to localStorage, recall with fade, export/import. Keys `+ - [ ] 0`.
+- **The check (`768f9a5`, `MIDTOWN.lx.check()`, panel "Check all" / "Watch all")** — measures what draws (lens,
+  glare, cone matrix+uniforms, pool map, real lights), re-finds every landing point against all 159k triangles,
+  drives travel by calling `lxTick(1/60)` by hand, restores the rig exactly, ~2 s. **301 / 313 pass at real
+  size, 302 fitted.** Every fail is placement, not engine: **3 Source Four shins (ch234, 239, 240) have their lens
+  under the deck** (clamped 0.33–0.39 m, lens 0.39 m below the clamp — sit them yoke-up or lift 15 cm) and **9
+  ColorBlaze-48 strips (ch616, 715, 632–637) sit under set rails**. Notes, not fails: 55 strips draw no cone;
+  Lustr can't make pure green/blue; 7 Apron Electric movers (ch24, 41–46) hit the house bridge when aimed at
+  centre; 6 beams into nothing (3 Mini-10s rising through the cut back wall, 3 strips behind the scan). Fixed by
+  J: **house booms SL/SR Boom 1 re-aimed after their wall move** (20/20, dot 1.0000) — they now land on Jack's
+  baked proscenium posts box 17/19 (the booms hang inside the posts' depth; Jack's call: booms downstage of z −1.6
+  or narrower posts); SL Boom 4's tower stepped clear of ch222's lens. Known: additive pools wash to white when
+  many overlap; the gobo canvases draw on first use (Dust 342 ms).
+- **The preview (`817ad37`, Preview button, `MIDTOWN.lxDemo`)** — a scripted show on the real rig: **12
+  scenes, 132 s, looping**, each as data (view, haze, timed steps; ops set/aim/row/ring/work/haze/cam/fx):
+  Curtain up, Gobo parade (nine Vipers, nine patterns on the deck), Every pattern every unit, Templates on the
+  brick and deck, VL3500 soft patterns, Ballyhoo in haze, LED chases, Fan and ring, CMY mixing, Dimming gel
+  against LED, Strips on the set, Finale with followspots and blackout. Prev/Play/Next/Stop in the panel; Stop
+  restores the rig and the camera exactly; entering Walk stops it; heaviest scene 42 ms on the Intel chip. Built
+  for Real size (aim points are 1:1 world). Contact sheet and one picture a scene in this session's scratchpad
+  `agent-k/`. Rough: the wall scrapes land high behind the electrics; the VLs on the brick are steep from the
+  10th Electric; the pane runs it at ~10 s per 12 (dt cap) — a full window is real time.
+- **Still:** fixture GLBs untracked (38); PR question; the body; the cues ("timed against what"); headset.
+
+---
+
+## NEWEST — 2026-10-11 (late night): walk, lobby, the house cut for the set at 1:1, his first walls baked, the rig trimmed — `midtown-walls`, five commits, UNMERGED
+
+**Read this block first.** `main` is **`e27fc1e`** (#228 merged by Jack: the rig, rigging, frame rate,
+booth and desk). **PR #229 (`midtown-walk`, one commit `edd07eb`) is OPEN and unmerged.** Branch
+**`midtown-walls`** carries it plus four more — `0be6c01` lobby, `b0028db` walls cut, `1fba90a` bake 3,
+`af02c26` rig trim (cherry-picked from a worktree) — and the record commit. All `midtown.html`;
+nothing in `src/`; `the-house.html` / `docs/ARTNET.md` untouched; suites not run (no `node` on PATH
+this session; nothing they check moved). Linear chain: walk → lobby → walls → bake → rig; the question
+put to Jack and unanswered: close #229 and open ONE PR from `midtown-walls`, or merge #229 and open the
+rest in turn. **Every agent this session was Opus 5.5 by his instruction** ("use opus agents"); five
+of them, one at a time except the last two (bake in the main checkout, rig in a worktree — the two
+regions did not overlap and the cherry-pick was clean; the combined page loads with every round's
+console line and no errors).
+
+- **Walk (`edd07eb`)** — Jack: *"walk around like i do in the palace or like how a roblox player does."*
+  First person on the Palace's numbers (3.1 / 6.4 m/s, jump 4.6, gravity 13.5, eye 1.6): pointer lock
+  on a click in Walk mode (Esc frees; the pane refuses it, so after two refusals drag-to-look carries on
+  silently), floors and walls from the geometry via one 0.5 m grid of the house + set + rig structures +
+  booth + desk + lobby + proscenium + baked pieces (159k tris, ~30 ms, rebuilt after a cut / Real size /
+  Rig toggle / restore). **Step-up 0.40** (0.62 climbed the seat rows), radius 0.25, **crouch on C**
+  (the fitted galleries were 1.5 m off the deck), the stage lip needs the jump. `MIDTOWN.player`,
+  `MIDTOWN.walk.{step,setMode,groundAt,grid,perf}`. Walk cost 0.02–0.05 ms a frame.
+  **Jack's two follow-ups, NOT done, paused on his "wait a second": *"the person is too tall, and
+  also give them a body."*** (Palace eye is 1.68; Roblox is ~1.4 m; a visible body + maybe third
+  person.) A worktree for it was made and later removed; start fresh off the branch tip.
+- **Lobby (`0be6c01`)** — *"add a lobby to the building."* 19.8 × 7 m room behind the back wall
+  (z −15.12…−22.12), floor y 0.875 — **the rear doorways are passages from the side aisles at y
+  0.85/0.90, NOT the cross-aisle's 2.10** (house right x −4.77…−3.57, house left 3.78…5.08, heads
+  ~3.0, the scan stops at z ≈ −14.0). Box office house right, bar house left, six glazed entrance
+  doors with a canopy, the booth boxed in as a projection room, posters, stanchions, benches, lit
+  STALLS signs, carpet; lit materials + 30 glowing discs + 3 shadowless spots (`MIDTOWN.lobby.lights`
+  to switch off). `v-lobby` button. 15 meshes, 4,962 tris, +13–16 draws when in view, 125 ms load.
+- **Walls cut (`b0028db`)** — *"lets change the theater walls so we can fit the hamilton set at full
+  size … have an opus agent cut out the area of the walls that needs to be, then i will put walls in
+  that are needed on my own."* **Real size is now the default** (`placeSet(1)` on load; both buttons
+  still work and each rebuilds the collision grid and the rigging). The set at 1:1: x ±8.66 (17.31 m),
+  y 0.80…10.17, z −0.35…9.72 — **0.82 m through the back brick and 0.72 m past the deck's end**;
+  ±6.82 downstage of z 1.5 (its own portal posts at x ±6.5…6.7 on the arch plane). Four `WALL_CUTS`
+  (world boxes, applied through `applyCut` after his/booth/desk cuts, listed on the console): the
+  stage house x ±9.46 from z 0.5 to 10.72 up to the fly roof (side walls and back brick gone; the
+  outer walls at |x| 9.5–9.6 and the fly walls stay); the front over the deck x ±7.62; the piers'
+  feet in the stalls; the page's whole proscenium frame (the set passes through all three pieces).
+  `wallSplit` first splits every house triangle a box would only partly take (fill planes are two
+  triangles the size of a wall). **Cuts and copies now record the set scale they were made at**
+  (`set: 1`; old ones count as fitted) and re-seat to it when re-applied. `MIDTOWN.walls.check()`
+  prints: house tris left in the boxes 0, touching the set 0, 93 front-corner tris kept on purpose.
+  **Problems he will meet building:** stage right has NO deck downstage of z 3.9 (`deck_fill` runs
+  x −5.8…5.6 there; a 0.86 m drop to y −0.06 under the set at x 5.6…8.66); the set's back overhangs
+  the deck; the viewpoints "On stage" / "Stage-left wing" may start inside set geometry at 1:1.
+- **Bake 3 (`1fba90a`)** — his `Downloads\midtown-build (3).json` (copy in this session's scratchpad):
+  13 pieces → 3 exact duplicates dropped (the doubling) → **10 baked, all "(bake 3)"**: the black
+  panel, two rail blocks (`box 6b` is his moved one at x 4.34), two 10 m posts at x ±6.2…6.4 on the
+  arch, a rail, a 17.5 m header at y 8, **a 42 × 39 m floor slab in deck_fill, top y 0.845, z −1.4…40.9**
+  (4.5 cm above the deck — the set's feet are buried; it runs far past every wall), a shelf, and
+  `copy 24` (a set stair copied at 1:1 to x 4.27 z 2.0, turned 90°). **He had pressed "Edit the baked
+  pieces", so the pieces REPLACED the old bake**: gone are the inner timber proscenium (box 1–3), box 5,
+  the bake-2 rail strip and `copy 5 (bake 2)`. **Cuts were APPENDED, not replaced (8 baked)**: "Edit the
+  baked pieces" never lifts cuts, so an export cannot drop one; old cuts 3–4 still take the scan's
+  house-left apron stair under his block. His two new `set: 1` cuts remove nothing now (they deleted his
+  own pieces mid-session). The set passes through his posts (1133 / 1506 vertices), the panel (529),
+  the slab (628), the shelf (128) — kept as placed. **Tell him Clear all before reloading.**
+- **Rig trim (`af02c26`)** — *"the lights got raised too high so fix that."* At 1:1 the rig hung at
+  its Rodgers heights (electrics y 9.61, FOH 7.3–9.6 through the 8.05 ceiling, 64 units outside the
+  house). `RIG_TRIM` (world metres, real size only; fitted keeps the scaled file + the old 0.75 m FOH
+  Electric drop, now `RIG_FIT_DROP`): **FOH Electric y 7.20 at z −7.05; Apron Electric y 7.20 moved
+  to z −5.20** (its real line at z −2.6 collides with the scan's own lighting bridge at every height);
+  **FOH Truss y 7.20 at z −12.0, x ×0.6** (the side-wall soffits); **the ten electrics level at y 7.60**
+  (6.8 m over the deck, 3.1 m over the gallery); booms, floor booms and on-set units untouched;
+  followspots on the booth stands. Every fixed-focus unit that moved is **re-aimed at the point where
+  the file's beam met the deck** (77 units, dot 1.0000); movers hang head-down and need nothing.
+  `rigPlace` runs inside `placeSet`, so **Set fitted / Real size rebuild booms, trusses, grid and
+  towers against the cut house** (booms find the kept outer walls at x 10.0 / −9.56 — fitted they
+  move ~5 m out to them, odd-looking; cables end on `house_ceiling` 12/12, hangers on `fly_roof`
+  12/12, grid pipes stop 0.1 m short of the fly walls or the set's piers). Rigging raycasts batched
+  (`trussRays` via `towerNear`): a rebuild 1.3 s → 150 ms. **Outside the house now: 13 units, all
+  on the set past z 9.1 where the back brick was, and SR Boom 8's tower; house-side zero.** From
+  the back row the electrics still hide behind the room's own bridge. SR Boom 2/3/4 towers stand
+  down to y −0.06 (no deck there). `MIDTOWN.rigTrim`.
+- **Cues: still not started, still one question** (recording, or album lengths with no audio).
+- **Still untracked, by his instruction: `assets/fixtures/*.glb` (19) + `lod/*.glb` (19).** Pages shows
+  no rig until they are committed. The suite's one red is them.
+- **Local serving:** `.claude/launch.json` `the-house` on 8080 serves the repo root; a server from an
+  EARLIER chat still holds 8080 (`preview_start` says so; just navigate — same files). A worktree
+  needs its own port entry in its own gitignored `.claude/launch.json` and a copy of the fixture GLBs.
+  Full-size frames: `renderer.setSize(1280,800)`, render, `toDataURL`, POST to a local receiver.
+- **Headset run still owed.**
+
+---
 
 ## NEWEST — 2026-10-11 (night): the rig is hung, rigged, lit for the eye, and fast enough — PR #226 grew four commits
 
