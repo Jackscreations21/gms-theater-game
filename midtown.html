@@ -4020,7 +4020,7 @@ async function showLoad(urls = {}) {
     SHW.sound = null;                                        // Jack's one-file album, if it is on this machine (git-ignored: absent on Pages)
     const st = show.soundtrack;
     if (st && st.url && SHW.d.tracks.every(t => t.file !== null)) {
-      try { const r = await fetch(st.url, { method: 'HEAD', cache: 'no-cache' }); if (r.ok) SHW.sound = { url: st.url, seek: st.seek && Array.isArray(st.seek.toc) && st.seek.toc.length === 100 && +st.seek.cell > 0 ? st.seek : null }; } catch (e) { /* not here: YouTube, then silence */ }
+      try { const r = await fetch(st.url, { method: 'HEAD', cache: 'no-cache' }); if (r.ok) SHW.sound = { url: st.url, seek: st.seek && Array.isArray(st.seek.toc) && st.seek.toc.length === 100 && +st.seek.cell > 0 ? st.seek : null, env: st.envelope && st.envelope.url ? st.envelope : null }; } catch (e) { /* not here: YouTube, then silence */ }
     }
     SHW.ti = 0; SHW.lt = 0; SHW.next = 0; SHW.cue = -1; SHW.ch.clear(); SHW.ut.clear();
     showMatchAll();
@@ -4305,7 +4305,7 @@ function showPause(on = SHW.playing) {
   SHW.playing = !on;
   if (SHW.playing && SHW.houseUp) showHouse(false);
   const A = SHW.A;
-  if (A && SHW.audioOn) { if (SHW.playing && (A !== SHW.stA || A.src)) A.play().catch(e => showAudioFail(e)); else A.pause(); }
+  if (A && SHW.audioOn) { if (SHW.playing && (A !== SHW.stA || A.src)) { A.play().catch(e => showAudioFail(e)); if (A === SHW.stA) sndStart(A); } else A.pause(); }   // the Play click is the gesture the sound tap needs
   showUI(true); requestRender();
   return SHW.playing;
 }
@@ -4314,6 +4314,7 @@ function showStop(camBack = true) {
   SHW.on = false; SHW.playing = false; SHW.hold = false; SHW.houseUp = true; SHW.haze = null; SHW.house = null;
   applyBright();                                             // the house lights back to the slider
   if (SHW.A) SHW.A.pause();
+  SND.bins.length = 0; SND.check = null; SND.note = '';
   const ytBox = document.getElementById('sh-yt'); if (ytBox) ytBox.hidden = true;
   lxjRestore(SHW.save); lxdCmRestore(SHW.cm);
   if (camBack && SHW.cam && !walking) {
@@ -4344,7 +4345,7 @@ function showTick(dt, silent = false) {
   if (HL) { HL.t += dt; const k = HL.dur > 0 ? Math.min(1, HL.t / HL.dur) : 1, v = HL.from + (HL.to - HL.from) * k; houseMats.forEach(m => m.color.copy(m.userData.base).multiplyScalar(v)); requestRender(); if (k >= 1) SHW.house = null; }
   if (SHW.playing) {
     const tr = SHW.d.tracks, A = SHW.A;
-    if (SHW.audioOn && !silent && A && A === SHW.stA) showSoundTick();
+    if (SHW.audioOn && !silent && A && A === SHW.stA) { showSoundTick(); if (SHW.hold || !SHW.playing) { showUI(false); return true; } }   // the interval: showHold put the clock ON the next track's start — firing to it now would take its first cue (Jack saw What'd I Miss's look at the hold)
     else if (SHW.audioOn && !silent && A) {
       if (A.readyState >= 1 && SHW.audioWant === null && !A.seeking) SHW.lt = Math.min(A.currentTime, tr[SHW.ti].len - 1e-3);
     } else {
@@ -4418,15 +4419,89 @@ function showSoundSeek(P) {
   }
   return best;
 }
+// THE SOUND TAP (Jack, 2026-10-12: "going forward works but doesn't go back correctly"). The table above is right only
+// for a region this page has not played yet: as the file plays, the browser indexes every frame it reads with the time
+// it BELIEVES it is at, and a later seek into a played region lands on those entries — so where a skip lands depends on
+// what was played before it. The one clock to trust is the sound itself: the element's output is tapped through Web
+// Audio into 20 ms loudness bins and matched (normalised cross-correlation, ±75 s) against the file's stored envelope
+// (soundtrack.envelope, the same bins precomputed), which gives the offset between what plays and what the element
+// reports — after every seek, with one corrective seek if the landing was far from the skip's target, and again every
+// half-minute. The context is made on the Play click (the gesture allows it) and the element is tapped only once the
+// context runs, because a tapped element plays through the context alone. No context or no envelope: the table stands.
+const SND = { ctx: null, src: null, tap: null, env: null, envWanted: false, bins: [], check: null, next: 0, note: '' };
+const SND_BIN = 0.02, SND_WIN = 75, SND_N = 200, SND_LAT = 0.07, SND_EVERY = 30;   // bin, search window s, 4 s per match, the tap's latency (measured), confirmation period s
+const sndLog = v => Math.log10(Math.max(v, 1e-4)) + 4;      // the envelope's scale (u8 = 255 · log / 4)
+function sndEnv() {
+  if (SND.envWanted || !SHW.sound || !SHW.sound.env) return; SND.envWanted = true;
+  fetch(SHW.sound.env.url, { cache: 'force-cache' }).then(r => r.ok ? r.arrayBuffer() : null).then(b => { SND.env = b ? new Uint8Array(b) : null; }, () => { SND.env = null; });
+}
+async function sndStart(A) {
+  if (SND.ctx || !window.AudioContext || !A) return;
+  try {
+    const ctx = SND.ctx = new AudioContext();
+    await ctx.resume();
+    if (ctx.state !== 'running') { SND.ctx = null; return; }
+    SND.src = ctx.createMediaElementSource(A);
+    const tap = SND.tap = ctx.createScriptProcessor(2048, 2, 1), BIN = Math.round(ctx.sampleRate * SND_BIN);
+    let acc = 0, cnt = 0;
+    tap.onaudioprocess = e => {
+      if (A.seeking || A.paused) { acc = 0; cnt = 0; return; }
+      const L = e.inputBuffer.getChannelData(0), R = e.inputBuffer.numberOfChannels > 1 ? e.inputBuffer.getChannelData(1) : L, at = A.currentTime;
+      for (let i = 0; i < L.length; i++) { const s = (L[i] + R[i]) * 0.5; acc += s * s; if (++cnt === BIN) { SND.bins.push([at, sndLog(Math.sqrt(acc / cnt))]); acc = 0; cnt = 0; } }
+      if (SND.bins.length > 1500) SND.bins.splice(0, SND.bins.length - 1500);
+    };
+    SND.src.connect(ctx.destination); SND.src.connect(tap); tap.connect(ctx.destination);   // the sound goes on to the speakers; the tap only listens
+    A.addEventListener('seeking', () => { SND.bins.length = 0; });
+  } catch (e) { console.warn('show: no sound tap —', e); SND.ctx = null; }
+}
+function sndSeeked(P, q) {                                   // a seek went out for true time P as request q.req: measure the landing once 4 s have played
+  SND.bins.length = 0; SND.check = { want: P, req: q.req, tries: 0 }; SND.note = SND.ctx && SND.env ? 'checking the sound…' : '';
+}
+function sndMatch() {                                        // the last 4 s of what played, found in the stored envelope near where the clock says it is
+  const E = SND.env, B = SND.bins; if (!E || B.length < SND_N) return null;
+  const seg = B.slice(-SND_N), n = SND_N;
+  let m = 0; for (const b of seg) m += b[1]; m /= n;
+  const L = seg.map(b => b[1] - m); let nL = 0; for (const x of L) nL += x * x; nL = Math.sqrt(nL) || 1e-9;
+  const c0 = Math.round((seg[0][0] + SHW.soundOff) / SND_BIN), W = Math.round(SND_WIN / SND_BIN);
+  const k0 = Math.max(0, c0 - W), k1 = Math.min(E.length - n, c0 + W); if (k1 <= k0) return null;
+  const sc = new Float32Array(k1 - k0 + 1); let best = -2, bk = k0;
+  for (let k = k0; k <= k1; k++) {
+    let s = 0, ss = 0; for (let j = 0; j < n; j++) { const v = E[k + j]; s += v; ss += v * v; }
+    const me = s / n, va = Math.sqrt(Math.max(ss - n * me * me, 1e-9));
+    let c = 0; for (let j = 0; j < n; j++) c += L[j] * (E[k + j] - me);
+    c /= nL * va; sc[k - k0] = c; if (c > best) { best = c; bk = k; }
+  }
+  let second = -2; for (let k = k0; k <= k1; k++) if (Math.abs(k - bk) > 50 && sc[k - k0] > second) second = sc[k - k0];
+  return { off: bk * SND_BIN - seg[0][0] + SND_LAT, score: best, margin: best - second };
+}
+function sndTick(A) {                                        // each frame while the file plays: the pending check, then a confirmation every half-minute
+  if (!SND.ctx || !SND.env || !SHW.playing || A.seeking) return;
+  const now = performance.now() / 1000, C = SND.check;
+  if (C) {
+    if (SND.bins.length < SND_N) return;
+    const r = sndMatch(); SND.bins.length = 0; C.tries++;
+    if (r && r.score > 0.8 && r.margin > 0.08) {
+      const e = r.off - (C.want - C.req);                     // how far the landing is from the skip's target
+      SHW.soundOff = r.off;
+      if (Math.abs(e) > 0.5 && C.tries <= 2) { A.currentTime = A.currentTime - e; SND.note = `the sound landed ${e.toFixed(1)} s off — moving it`; return; }
+      SND.check = null; SND.next = now + SND_EVERY; SND.note = 'sound synced';
+    } else if (C.tries >= 4) { SND.check = null; SND.next = now + SND_EVERY; SND.note = 'sound: no match, the table stands'; }
+    return;
+  }
+  if (now >= SND.next && SND.bins.length >= SND_N) {
+    const r = sndMatch(); SND.next = now + SND_EVERY;
+    if (r && r.score > 0.85 && r.margin > 0.1 && Math.abs(r.off - SHW.soundOff) > 0.3) { SHW.soundOff = r.off; SND.note = 'sound re-synced'; }
+  }
+}
 function showSoundEl() {
   if (SHW.stA) return SHW.stA;
   const A = SHW.stA = new Audio(); A.preload = 'auto'; A.volume = SHW.vol;
   // loaded whole into a Blob, not streamed from its URL: python's http.server (how this page is served on Jack's machine) has
   // no Range requests, and without them the browser cannot seek in the file — a seek would play from the top
   SHW.sound.note = 'loading the soundtrack…';
-  fetch(SHW.sound.url).then(r => r.blob()).then(bl => { A.src = URL.createObjectURL(bl); SHW.sound.note = ''; if (SHW.on && SHW.A === A && SHW.playing) A.play().catch(showAudioFail); showUI(true); },
+  fetch(SHW.sound.url).then(r => r.blob()).then(bl => { A.src = URL.createObjectURL(bl); SHW.sound.note = ''; if (SHW.on && SHW.A === A && SHW.playing) { A.play().catch(showAudioFail); sndStart(A); } showUI(true); },   // the Play click came before the file landed: its activation still lets the tap start
     () => { SHW.sound = null; if (SHW.A === A) showAudioFail({ message: 'the soundtrack file could not be read' }); });
-  A.addEventListener('loadedmetadata', () => { if (SHW.audioWant !== null) { const q = showSoundSeek(SHW.audioWant); try { A.currentTime = q.req; SHW.soundOff = q.off; } catch (e) { SHW.soundOff = 0; /* from the top */ } SHW.audioWant = null; } });
+  A.addEventListener('loadedmetadata', () => { if (SHW.audioWant !== null) { const q = showSoundSeek(SHW.audioWant); try { A.currentTime = q.req; SHW.soundOff = q.off; sndSeeked(SHW.audioWant, q); } catch (e) { SHW.soundOff = 0; /* from the top */ } SHW.audioWant = null; } });
   A.addEventListener('ended', () => { if (SHW.A === A && SHW.on) { showFireTo(SHW.d.end); showEnd(); } });
   A.addEventListener('error', () => { if (SHW.A === A) { SHW.sound = null; showAudioFail({ message: 'the soundtrack file would not play' }); } });
   return A;
@@ -4434,7 +4509,8 @@ function showSoundEl() {
 function showSoundTick() {                                   // the file's time → the track and the time into it
   const A = SHW.stA, tr = SHW.d.tracks;
   if (!A || A.readyState < 1 || A.seeking || SHW.audioWant !== null) return;
-  const t = A.currentTime + SHW.soundOff;                    // what is playing, not what the element reports (showSoundSeek)
+  sndTick(A);
+  const t = A.currentTime + SHW.soundOff;                    // what is playing, not what the element reports (showSoundSeek, the sound tap)
   let i = SHW.ti;
   while (i + 1 < tr.length && tr[i + 1].file <= t + 1e-3) i++;
   while (i > 0 && tr[i].file > t + 1e-3) i--;
@@ -4508,8 +4584,9 @@ function showTrackAudio() {
     if (SHW.yt) SHW.yt.pause(); if (ytBox) ytBox.hidden = true;
     const A = showSoundEl(), go = SHW.on && SHW.playing, P = tr.file + SHW.lt;
     SHW.A = A; SHW.audioOn = true; SHW.audioNote = '';
-    if (A.readyState >= 1) { if (Math.abs(A.currentTime + SHW.soundOff - P) > 0.25) { const q = showSoundSeek(P); A.currentTime = q.req; SHW.soundOff = q.off; } } else SHW.audioWant = P;
-    if (go && A.src) A.play().catch(showAudioFail); else A.pause();   // no src yet: the blob is still loading and plays when it lands
+    sndEnv();
+    if (A.readyState >= 1) { if (Math.abs(A.currentTime + SHW.soundOff - P) > 0.25) { const q = showSoundSeek(P); A.currentTime = q.req; SHW.soundOff = q.off; sndSeeked(P, q); } } else SHW.audioWant = P;
+    if (go && A.src) { A.play().catch(showAudioFail); sndStart(A); } else A.pause();   // no src yet: the blob is still loading and plays when it lands
     return;
   }
   if (SHW.stA && !SHW.stA.paused) SHW.stA.pause();
@@ -4680,7 +4757,7 @@ function showHud() {
   const D = SHW.d;
   if (!SHW.on || !D) { if (!H.el.hidden) { H.el.hidden = true; H.key = ''; } return; }
   const t = Math.max(0, SHW.lt), t10 = Math.floor(t * 10), tr = D.tracks[SHW.ti], c = D.cues[SHW.cue];
-  const key = `${SHW.ti}|${SHW.cue}|${t10}|${SHW.playing}|${SHW.hold}`;
+  const key = `${SHW.ti}|${SHW.cue}|${t10}|${SHW.playing}|${SHW.hold}|${SND.note}`;
   if (key === H.key) return;
   H.key = key; H.el.hidden = false;
   const m = Math.floor(t / 60), s = t - m * 60;
@@ -4689,7 +4766,7 @@ function showHud() {
   H.time.textContent = `${m}:${s.toFixed(1).padStart(4, '0')}`;
   H.sec.textContent = `${t.toFixed(1)} s in · of ${showFmt(tr.len)}`;
   H.cue.textContent = c && c.ti === SHW.ti ? `Q ${c.q}${c.label ? ` · ${c.label}` : ''}` : c ? `Q ${c.q} (from ${D.tracks[c.ti].id})` : 'before the first cue';
-  H.state.textContent = SHW.hold ? `${D.tracks[SHW.ti + 1].hold} — press Play` : SHW.playing ? '' : 'paused';
+  H.state.textContent = (SHW.hold ? `${D.tracks[SHW.ti + 1].hold} — press Play` : SHW.playing ? '' : 'paused') + (SND.note && SHW.A === SHW.stA ? (SHW.playing && !SHW.hold ? '' : ' · ') + SND.note : '');
 }
 function showUI(force) {
   const E = SHW.E, D = SHW.d;
@@ -4850,6 +4927,7 @@ buildLightsPanel = () => {
       get tracks() { return SHW.d ? SHW.d.tracks.map(t => ({ id: t.id, title: t.title, len: t.len, start: t.start, hold: t.hold, audio: SHW.files.has(t.i) ? SHW.files.get(t.i).name : null })) : []; },
       check: opts => showCheck(opts), matchFiles: files => showMatchFiles(files), parseName: name => { const p = showParseFile({ name, webkitRelativePath: name }); return { disc: p.disc, n: p.n, rest: p.rest }; },
       get perf() { return Object.assign({}, SHW.perf); }, urls: SHW_URLS,
+      get sound() { return { off: SHW.soundOff, note: SND.note, bins: SND.bins.length, check: SND.check, ctx: SND.ctx ? SND.ctx.state : null, env: !!SND.env, match: SND.ctx && SND.env && SND.bins.length >= SND_N ? sndMatch() : null }; },   // the sound tap, for the console
     };
   } catch (e) { console.error('show: its controls failed —', e); }
   if (!SHW.d && !SHW.loading) showLoad().then(() => deskScreensDraw(true), () => deskScreensDraw(true));   // the desk's screens list the songs from the start
