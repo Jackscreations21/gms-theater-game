@@ -1,4 +1,4 @@
-# STATE — 2026-10-12 (THE SHOW RE-JUDGED FROM RENDERS AGAINST BINKLEY'S PHOTOS; THE ENGINE CALIBRATED; PRESHOW AND THE INTERVAL — `midtown-lights` = PR #230, OPEN)
+# STATE — 2026-10-12 (PR #230 MERGED: THE HOUSE AT 1:1, THE LIGHTING ENGINE, THE WHOLE OF HAMILTON AUTO-TIMED AND CALIBRATED TO BINKLEY'S PHOTOS — ALL ON `main`)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
@@ -50,10 +50,16 @@ nonstop it blacks out then the lights go back to what they where at preshow an i
   brick; the back-wall foots under the upstage gallery never reach the brick; the Deck strips point at the deck edge
   (FUTURE.md has the options); Binkley's `edge`/`frost` not drawn; the 238 effects not run; the Cabinet Battle sides
   still unsourced. Suites not run (nothing in `src/`); the fixture GLBs still untracked.
-- **Landed as ONE PR: #229 (`midtown-walk`) merged by Jack; everything else is PR #230**
-  (`midtown-lights` rebased onto that `main`, 12 commits): https://github.com/Jackscreations21/gms-theater-game/pull/230.
-  After it merges: the post-merge protocol (fast-forward local `main`, rebuild byte-identical, map, suites when Node is
-  on the PATH, delete `midtown-walls` and `midtown-lights` both sides).
+- **MERGED: #229 (`midtown-walk`) and #230 (everything else on the chain), both by Jack, 2026-10-12.** `main` is
+  **`8961616`**. Local `main` fast-forwarded. Not yet done of the post-merge protocol: the suites (Node still not on
+  the PATH; nothing in `src/` moved, so `the-house.html` and `docs/ARTNET.md` are as they were) and deleting the
+  landed branches `midtown-walk`, `midtown-walls`, `midtown-lights` (local and remote — the sandbox refused the
+  delete; Jack or a `git push origin --delete` from a terminal).
+- **On GitHub Pages:** https://jackscreations21.github.io/gms-theater-game/midtown.html — BUT the 38 fixture GLBs
+  (`assets/fixtures/*.glb`, `lod/*.glb`) are still untracked by Jack's instruction, so on Pages the rig has no models:
+  the page loads, the set and the house are there, and the lights are not. Commit the GLBs (one PR) and the show
+  works there; locally (python http.server on 8080, `.claude/launch.json` `the-house`) it is all there. His
+  soundtrack is local only; Pages falls back to the official YouTube uploads for the audio.
 
 ---
 
