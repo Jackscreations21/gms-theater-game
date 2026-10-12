@@ -43,6 +43,13 @@ blackout for yorktown also happens to ealy."*
 - **A readout on the right edge of the page while the show is on** (`#sh-hud`, `showHud()` in midtown.html, drawn
   from `showUI`): the song (id, act, number, title), the time into it to a tenth (`0:17.9` and `17.9 s in · of 2:07`), the
   live cue and label, paused / interval. Jack asked for it so his notes can say exactly where. Hidden when the show stops.
+- **His act-2 checklist (four notes) + two more words on Guns and Ships → revision 5** (891 cues, 123 real): Cabinet
+  Battle #1's Jefferson and Hamilton specials mirrored (he said the sides were swapped); Cabinet Battle #2's mic-drop and
+  French-king punchline moved onto their lines; a blackout (977.5) into One Last Time; the finale fades up to the full warm
+  look 3 s after the final blackout (1298, the bows); Guns and Ships' balcony special is now Viper 22 aimed at a PERSON on the
+  platform (floor found by raycast at set-local 5.49, 2.78, 2.36 — a floor pool from above was invisible from the house), and
+  the sweep is the upstage row (9th/10th Electric) tilting out over the audience at 31. All rendered. **Act 1 and act 2 are
+  both answered once; the checklist still shows his original marks — he re-checks.**
 - **The sound tap (evening): the clock follows what the file really plays.** Jack: *"going forward works but doesn't go
   back correctly"* — the seek table is right only for UNPLAYED regions: the browser indexes every frame it reads with the
   time it believes it is at, and a skip back into a played region lands on those entries (a straight run from the top

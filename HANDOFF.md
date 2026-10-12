@@ -232,7 +232,8 @@ Ships. Read STATE.md's newest block.
 
 1. **When #233 merges:** fast-forward local `main`; delete `cue-blackouts` and the five landed branches both sides
    (`midtown-walk`, `midtown-walls`, `midtown-lights`, `record-230`, `fixture-glbs`); suites when Node is on the PATH.
-2. **His next notes — act 2 is next** (act 1 is done: 18 good, 5 notes answered in revision 4). Read the checklist's
+2. **His next notes** (act 1: 18 good, 5 notes → revision 4; act 2: 4 notes → revision 5; both answered once, his
+   re-check is next). Read the checklist's
    `songs` collection first (STATE.md). The method that answered this round, reuse it before changing a single `at`: (a) check the
    clock first — `ham/audio.py <track> from to` for the file, the IFrame API for YouTube; (b) `CAP.dark(track, 0, len)`
    in the page for every track he names (install `CAP` from the session's scratch `capture.js` after
@@ -263,7 +264,10 @@ against the file's loudness; fixed with a per-cell table in the show file and `s
 Then his review of act 1 came back through the checklist (18 good, 5 notes) → revision 4 (STATE.md lists it), and
 *"going forward works but doesn't go back correctly"* → the seek table only holds for unplayed regions, so the clock now
 follows the sound itself: the element tapped through Web Audio, matched against a stored loudness envelope (new asset),
-after every seek and every half-minute; the interval bug he found (act 2's first cue at the hold) fixed. Six traps.
+after every seek and every half-minute; the interval bug he found (act 2's first cue at the hold) fixed. His act-2 notes
+→ revision 5 (Cabinet Battle #1's sides, Cabinet Battle #2's timing, a blackout into One Last Time, the bows look at the
+end, Guns and Ships' balcony lit from the apron at a person's height, the sweep an upstage row tilting out over the house).
+Six traps.
 
 ## SUPERSEDED (the show reached him; his notes are the round above): **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
 
