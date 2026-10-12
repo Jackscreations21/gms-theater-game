@@ -533,12 +533,18 @@ it does not do yet, and what the ETC pack could still give:
   → `stageToWorld`, types → profile/PAR/mover, gobo loads from the 14 images)
   is mechanical. It overruns one Art-Net universe at 7 channels a lantern:
   needs a second universe or a compressed Hamilton block in `docs/ARTNET.md`.
-- **The cue stack, from the Nomad export** (`Downloads\…Intro - Rev A.csv`,
-  not committed): 128 distinct cues in 13 islands with fade and follow times,
-  111 presets, all palettes and groups. About a fifth of the real stack; a
-  full show means ~500 cues reconstructed by eye from the 112 cue photos, in
-  Binkley's own palettes and presets, labelled as a reconstruction. Timing to
-  a clock needs a recording from Jack (the Beetlejuice route).
+- **The cue stack — BUILT (2026-10-11, third session, uncommitted):** `assets/hamilton-eos.json` (the export, 128
+  real cues) + `assets/hamilton-show.json` (910 cues on the album's 46 tracks, 786 reconstructed) + midtown.html's show
+  player and desk screens. Still wanted: Binkley's EFFECTS (238 channel entries, not run), the turntable moves (not in
+  any file; cue labels name them), and Jack's ear on the timing with the album playing.
+- **Rig placements the cue photos expose (2026-10-12, the engine-calibration round), Jack's to rule on:**
+  the three VL3500s on the 10th Electric (ch 71/73/76) are focused at set-local z −4…−6 — behind where Midtown's
+  back wall now stands — so they burn three hot pools on the upper brick 2.5 m from the lens (24.01, 300.3, 1270);
+  the back-wall foots (ch 665/677/689/701) sit at z 7.7 under the upstage gallery and light its underside, so the
+  brick never sees them (872's photo has the brick blue from them); the Deck and Downstage-lip strips point straight
+  up at the deck's edges and show nothing. Options: move the units in `tools/hamilton-rig.py`, or clamp focus in the
+  player. Also still not drawn: Binkley's `edge` and `frost` (the cues carry them; the player does not pass them —
+  his templates are softer than ours), and the 238 effect entries.
 - **Follow spots:** the Broadway pack's spot sheet is one page, the opening
   two numbers only.
 - **Turntable moves:** not in any file — inferred from cue labels ("Trans

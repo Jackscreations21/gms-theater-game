@@ -1521,3 +1521,99 @@ against this list before opening a PR; **add new traps as you hit them.**
   cherry-picks clean; then the check agent alone in the main checkout. Later
   agents extended earlier regions by WRAPPING the stub's name (`lxSet`,
   `lxPanelTick`) rather than editing another agent's text.
+
+## From the projected-pools round (2026-10-11)
+
+- **A flat decal cannot show a gobo on anything but a plane.** Jack's two
+  screenshots: the parade's pools hung flat in the air beside a stair, and a
+  FOH gobo lay flat across raked seats. The pool is now projected
+  (`LX_POOL_FS`, a deferred decal over one depth pass); it has no shadow, so a
+  surface behind a lit one in the same cone is lit as well.
+- **Gathering each pool's triangles on the CPU does not scale on this set.**
+  Every scenery triangle in each cone, from the collision grid: 1.94M
+  triangles over 304 pools and 5.5 s for a refresh (Source Fours on the set's
+  brick alone 720k). Do it on the GPU from depth instead.
+- **A deferred decal's cost is the screen area of its VOLUME, not of the lit
+  patch.** With a fixed 3.5 m band in front of every landing point, 304 pools
+  cost +47 ms from the front row (tall cones of air over the deck); with the
+  band fitted to twelve rays across each cone, +3–4 ms. Keep the band tight.
+- **Normals from `dFdx`/`dFdy` of a rebuilt position speckle every
+  silhouette** (a seat back's edge takes its slope from the row behind).
+  Sample the four neighbours' depth and take the nearer of each pair. And
+  derivatives taken after a `discard` are undefined; take them first, or not at all.
+- **One `<script>` of 5,000 lines shares one scope.** A new `const lxB` or
+  `LXD` beside an existing one is a SyntaxError that kills the WHOLE page;
+  `MIDTOWN` never appears, and a wait-for-it loop just times out. Read the
+  console first, and grep a short name before declaring it.
+- **The demo cannot be watched in real time while the pane is hidden**
+  (no rAF). Drive it with `lxDemo.play(i); pause(); advance(s); settle(true)`
+  and render by hand.
+
+## From the whole-show round (2026-10-11)
+
+- **A YouTube playlist called "the soundtrack" may be fan lighting videos.** Jack's playlist (and a later link) were
+  fan lighting-design renders on the album audio. Read the titles before planning around a source.
+- **The Eos CSV's group membership is in the Group rows' TIME_DATA column** ("101>104", "121 116 111"), not in LEVELS.
+  And its LOCATION_X/Y/Z for MOVERS is offset ~(−3.58, −2.76, +8.55) from the patch frame — ignore it; the focus
+  points (X/Y/Z_Focus) ARE in the patch frame.
+- **Real cue islands track from cues that are not in the file.** A reconstruction that runs into a real island must
+  put every channel back to the real tracked state (in the dark, before the island's FTB/first cue) or the real cues
+  land on the wrong colours and positions. Every segment agent built a "leak" check for exactly this.
+- **A light's spread is 1/R², not 1/R.** Single units looked right at 1/R; a whole show's worth of 110° strips washed
+  the set white. Calibrate a pool's brightness against a REAL cue photo, not against one unit alone.
+- **The engine's aim solver (`lxSolve`) misses near-vertical heads by up to 20 cm, and the miss depends on where the
+  head started** — so seek and play-through disagreed by 25 cm until the show player re-solved from each answer.
+  The fix belongs in `lxSolve`.
+- **Agents share the scratch directory: one rewrote another's helper** (`recv.py` came back on a new port, saving to
+  its cwd — the repo). Give each agent its own file names, and read a helper before running it.
+- **Synced lyrics are a timing source, never content.** LRCLIB matched all 46 album tracks to within a second; keep the
+  sheets in scratch, scan the output for 4-word runs, and reword notes that paraphrase a line.
+- **python's `http.server` (how the page is served locally) has no Range requests, so an `<audio>` streamed from it
+  cannot seek** — set `currentTime` and it plays from the top, silently. Load a long file into a Blob first.
+- **`assets/audio/` already has a whitelist rule** (`assets/audio/*` plus `!` exceptions for the committed Beetlejuice
+  files). Adding `assets/audio/` as a directory rule would override those exceptions. Anything new there is ignored
+  already; check with `git check-ignore -v` instead of editing `.gitignore`.
+- **A light added ON TOP of a surface loses the surface** ("a wall loses its texture, one solid colour"). Multiply by
+  the surface's own unlit colour (the albedo pass). And never floor a dark albedo — it flattens the texture; scale it.
+- **`MIDTOWN.lx.check()` while the show plays reports ~80 false fails** (the show re-drives what the check sets). Stop
+  the show first.
+- **Augment3d's renders draw the MAC Viper's CMY differently from textbook CMY** (C88/Y55 is teal in ours, indigo in
+  theirs). The data is right; do not "fix" the export to match a photo. **Corrected 2026-10-12: the data is right AND
+  the photos are right** — a real cyan dichroic is a deep blue-cyan that passes little green, so C88/Y55 IS blue on a
+  Viper. The engine's ideal flags ([0,1,1]) were the wrong model; `LX_CMY_FLAGS` holds measured-looking transmissions
+  (cyan [0.05, 0.3, 1]) and the ambers (M33/Y86, M68/Y100) stay amber. Fit a colour model to the photos before
+  declaring the renderer wrong.
+
+## From the cue-review round (2026-10-12)
+
+- **A hidden Browser pane gets no animation frames.** `requestAnimationFrame` never fires while the pane is hidden,
+  so anything awaiting a frame (a capture, a tween, `setAnimationLoop`) hangs until the 45 s tool timeout. Draw
+  synchronously: `MIDTOWN.frame()` runs one full frame (the pools' depth pass included) and `canvas.toDataURL()`
+  right after it has the picture.
+- **python's `http.server` lets the browser cache `midtown.html`.** After an edit, a plain reload served the old
+  file; `MIDTOWN.frame` "did not exist". Navigate to `midtown.html?cap=N` with a fresh N after every edit — and after
+  REVERTING one, or you compare against the version you meant to throw away.
+- **Additive decals blended straight onto the sRGB canvas add in encoded values, not light.** Two half-bright pools
+  overlapped to white (366.01's ring was one white blob). Accumulate pools in a linear buffer and encode once, with a
+  knee that rolls off the brightest channel and keeps the others' ratio (`LX_ACC_KNEE`), or every overlap goes white.
+- **The export's two Viper profiles share one gobo wheel, but the labelled palettes only name the main profile's
+  channels** — so `learn_gobos` knew slot 2 = Construction for channels 1–40 and emitted `"slot:2"` for 91–100,
+  which the player silently ignored (654 gobo changes dropped: every ring look on the second profile stayed on its
+  template). Share a learnt table across profiles of the same fixture. The gobo table in `hamilton-eos.json` now
+  has `6.4` (Open: the beam palettes that hold it are labelled for the OTHER wheel).
+- **`gotoCue(q)` on a cue with a follow of 0 shows the FOLLOWING cue's look** (204 → 204.01): both fire at the same
+  T. A cue photo of such a cue is a state the player never holds; compare the follower.
+- **The tracked rows of a parted cue (`TRACK_TYPE b`, part blank) are values already in effect, not moves** — the
+  converter puts them in the cue's own `ch` with the cue's time (none → the 5 s default). In Eos they do nothing; in
+  our player they re-assert the real state over 5 s where a reconstruction had drifted. Not a bug, but a 5 s fade on
+  a FTB's blank-part rows is NOT the FTB being slow: the real moves are in part 1 at 0 s.
+- **Eight agents on one Browser pane: each in its own tab** (`tabs_create`, pass the tabId), never the shared one,
+  or two agents' `gotoCue` calls interleave on the same page and both read the other's state (the cue pointer
+  jumped to "638" mid-test: another agent had loaded a different show file into the tab).
+- **Eight agents on one machine: give each its own PORT, and say so.** Two reviewers picked 8097 for their preview
+  server; the second one force-killed the first's python to take it. Name a port per agent in the brief (8090 + N),
+  and never kill a listener you did not start.
+- **A helper that reads a file from another session's scratch breaks the moment that folder is gone.** `audio.py`
+  read the album's loudness bins from the PREVIOUS session's `shots/`; three agents each wrote their own copy before
+  anyone told me. Copy a helper's data with the helper.
+

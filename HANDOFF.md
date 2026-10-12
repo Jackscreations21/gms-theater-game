@@ -224,7 +224,89 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **LAND THE CHAIN (NOW SEVEN COMMITS DEEPER), RULE THE TWELVE PLACEMENTS, THEN THE BODY** (2026-10-11, night, second session)
+## NEXT SESSION: **COMMIT AND LAND THE SHOW; HIS EYE ON THE RE-JUDGED CUES WITH THE MUSIC PLAYING** (2026-10-12, later)
+
+Rulings at **FE** (FF next). `main` is **`e27fc1e`**. On top of `midtown-lights` (unmerged), UNCOMMITTED in the tree: everything
+the block below this one lists PLUS this round: the engine calibrated to the cue photos, the Viper colour model, the
+converter's gobo fix (`assets/hamilton-eos.json` regenerated), the show re-judged from renders (`assets/hamilton-show.json`,
+892 cues), the preshow and the interval hold in the player, `docs/hamilton-cues-format.md` (`tracks[].hold`), TRAPS, FUTURE,
+the lighting-style doc. Read STATE.md's newest block.
+
+1. **Ask Jack** to commit on `midtown-lights` (the chain question — one PR or in turn — is still open).
+2. **Watch it with him, music on.** Show → the preset is up with the house on; Play; at the end of Non-Stop it holds on the
+   preset with the house up until Play. His notes are one-line `at` / level / focus fixes in the segment files (session
+   scratch `ham/out/seg<N>.json`, then `python -I ham/merge.py`) or straight in `assets/hamilton-show.json`.
+3. **Rule the rig placements the photos exposed** (FUTURE.md, the Hamilton section): the 10th-Electric VL3500s focused
+   behind the back wall, the back-wall foots under the gallery, the Deck strips. And the real cues that still throw into
+   Midtown's house at the Rodgers' aims (194, 200, 300.3, 1044, 1110, 1238.01): a focus clamp in the player, or leave them.
+4. Then the older list: `edge`/`frost`, the 238 effects, the twelve placements, the body, the fixture GLBs, the headset.
+
+The session's working material (not in the repo) is in its scratchpad: `ham/` (segments, generators, research, `audio.py`
+with its loudness file now in `shots/`, `merge.py`, `validate.py` — now rejecting `slot:` gobos), `cuephotos/`, `shots/`
+(every render: `final-*.png` photo | ours for the 109 real cues, `full/sheet-*.png` per track), `BRIEF-ENGINE.md`,
+`ham/REVIEW2.md`, `calib.json`, `midtown.before-engine.html`.
+
+## DONE — 2026-10-12 (later): the engine calibrated to the cue photos, every cue re-judged from renders, the preshow and the interval (uncommitted)
+
+*"go through all the cues and compare them to pictures … the main problem i saw where spotlight places, timing and
+brightness"* → every cue rendered (a synchronous `MIDTOWN.frame()` for the hidden pane, a receiver for the PNGs, contact
+sheets), the 109 photographed real cues rendered beside Binkley's photos; one Opus agent calibrated the engine (linear
+accumulation with a knee so overlaps keep colour, filled beams, Linear on the Viper wheel, strip and X4 output down, a hotter
+near field; 0.73 → 0.98 of the photos' luminance); the Viper's cyan flag made blue-leaning (C88/Y55 is blue in the photos
+and the stills); the converter's lost gobo table for channels 91–100 fixed (654 changes); eight Opus reviewers re-judged
+every cue from renders of their own segments against the notes, the photos and the album's hits (911 → 892 cues: house-
+and wall-landing aims pulled onto the deck, shins capped, blues re-mixed, specials moved onto the people, invisible cues
+cut, ~60 re-timed). *"you didnt do the preshow lighting … at the end of nonstop it blacks out then the lights go back to
+what they where at preshow an it waits for me to press play"* → the Show panel opens on the preset with the house up; a
+`hold` track (2-01) makes the player stop at the end of 1-23 (blackout, preset, house up) until Play, on every clock.
+Checks: show.check() seek-equivalence passes, refs resolve, lx 301/313, console clean. Nothing in `src/`; suites not run.
+
+## SUPERSEDED (the round above landed on top): **COMMIT AND LAND THE SHOW; HIS EAR AND EYE ON IT WITH THE MUSIC PLAYING** (2026-10-12)
+
+Rulings at **FE** (FF next). `main` is **`e27fc1e`**. On top of `midtown-lights` (unmerged), UNCOMMITTED in the tree:
+the projected pools and the light-as-albedo pass, the whole-show cue sequence (`tools/hamilton-cues.py`,
+`assets/hamilton-eos.json`, `assets/hamilton-show.json` — revised — `docs/hamilton-cues-format.md`,
+`tools/show-fixture/`), the show player (his soundtrack / YouTube / silent clock), the desk screens, the brick grade, and
+`docs/HAMILTON-LIGHTING-STYLE.md`. His soundtrack sits at `assets/audio/hamilton-soundtrack.mp3`, ignored by the existing
+`assets/audio/*` rule — never commit it. Read STATE.md's three newest blocks.
+
+1. **Ask Jack** to commit (and how the PRs land — the chain question is still open). Commit on `midtown-lights`.
+2. **Watch it with him, music on** (Show → Play; the desk's song list jumps anywhere). His notes are one-line `at` or
+   colour fixes in `assets/hamilton-show.json`. Still doubtful after the revision: the Cabinet Battle sides (unknown in
+   any source), Washington's entrance in Right Hand Man, 782/784 (a strong onset at 25.3 s), Burr's shot 191.18 vs 189.06,
+   1044's moment, the specials' exact positions.
+3. Run Binkley's effects (238 entries: chases, gobo trails, the AMBER/RED fades); soften templates by Eos `edge`; fix
+   `lxSolve`'s near-vertical miss; FOH Vipers aimed at the Rodgers' corners land on Midtown's nearer side walls.
+4. Still from before: the twelve placements, the body, the fixture GLBs, the headset.
+
+The session's working material (not in the repo) is in its scratchpad `ham/`: the eight segment files and generators,
+`research/visual` + `research/text` (per-number notes and sources), `audio.py` (the album's hits per track), the timing
+sheets (lyrics: scratch only), `merge.py` (segments → `assets/hamilton-show.json`), `validate.py`.
+
+## DONE — 2026-10-12: the music, the light made physical, and every cue revised against pictures, writing and the audio (uncommitted)
+
+*"you forgot to put in the audio … the lights looked too bright and unrealistic"* → the player plays his one-file
+soundtrack (track starts found from its silences; a Blob, because python's server cannot seek), else the official album on
+YouTube (embedded), else a silent clock; a pool is now light × the surface's own colour (an albedo pass with the depth
+pass), output per fixture type, 1/R² with a near-field cap, the brick graded from near-pure red, haze 0.35, house lights
+out for the show — calibrated against Binkley's cue photos. *"when a light is shining on a wall it loses its texture"* →
+the albedo multiply; dark textures scaled, not floored. *"do a revision of the cues … look at pictures online"* → two
+research agents (≈120 production pictures; LSA / Live Design / creatives' interviews), the album's loudness decoded for
+timing, and the eight segment agents revising every cue: palettes to the evidence, staging where known, real cues
+re-placed on the audio (content untouched), 911 cues. *"make an md file … the style of lighting used in hamilton"* →
+`docs/HAMILTON-LIGHTING-STYLE.md`. Checks green (show seek-equivalence, refs, lx 301/313 with the show stopped); nothing in
+`src/`; suites not run.
+
+## DONE — 2026-10-11 (third session): projected pools; the whole of Hamilton auto-timed; the desk drives it (uncommitted)
+
+Jack's flat-gobo screenshots → the pool is a deferred decal over a depth pass (1/R² fall-off since). *"make as accurate of
+an auto timed light sequence for the entirety of Hamilton"* → the Eos export converted (128 real cues, the full vocabulary),
+a show player against the cast album (his own files, or a silent clock), and eight Opus agents reconstructing the other
+~80% in Binkley's presets and palettes, timed on synced lyric data kept out of the repo: 910 cues, 124 real. *"on the
+lighting console i can skip to songs"* → the desk's two monitors are live: songs, cue list, soft keys. Checks green;
+nothing in `src/`; suites not run.
+
+## SUPERSEDED (the show came first): **LAND THE CHAIN (NOW SEVEN COMMITS DEEPER), RULE THE TWELVE PLACEMENTS, THEN THE BODY** (2026-10-11, night, second session)
 
 Rulings at **FE** (FF next). Suite count **21**. `main` is **`e27fc1e`**. **PR #229 open; `midtown-walls`
 unmerged; `midtown-lights` on top of it carries the lighting engine, the panel, gobos and colours, the check, the

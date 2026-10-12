@@ -105,6 +105,35 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 #lights .lp-head { position: sticky; top: -10px; z-index: 1; display: flex; align-items: center; justify-content: space-between; margin: -10px -12px 0; padding: 8px 12px 6px; background: rgb(23,21,27); border-bottom: 1px solid var(--line); }
 #lights .lp-head b { font-size: 13px; font-weight: 600; }
 #lights.lp-overlay { position: fixed; top: 8px; bottom: 8px; left: 8px; width: min(300px, calc(100% - 16px)); max-height: none; z-index: 5; background: rgb(23,21,27); box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+/* the show player (agent L): #build's look, on the right; beside Build when both are open */
+#sh-yt { position: absolute; left: 12px; bottom: 12px; z-index: 5; background: rgb(23,21,27); border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
+#sh-yt[hidden] { display: none; }
+#sh-yt iframe { display: block; width: 320px; height: 180px; border: 0; border-radius: 3px; }
+#sh-yt .sh-yt-cap { font-size: 11px; color: var(--muted); padding: 4px 2px 0; }
+@media (max-width: 700px) { #sh-yt iframe { width: 240px; height: 135px; } }
+#show { position: absolute; top: 12px; right: 12px; width: 320px; max-height: calc(100% - 64px); overflow: auto; background: rgb(23,21,27); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; grid-auto-rows: max-content; gap: 8px; font-size: 12px; z-index: 4; }
+#build:not([hidden]) ~ #show { right: 274px; }
+#show h2 { font-size: 12px; font-weight: 600; margin: 4px 0 0; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+#show .row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+#show button { padding: 4px 8px; font-size: 12px; }
+#show label { color: var(--muted); display: flex; align-items: center; gap: 4px; }
+#show .note { color: var(--muted); font-size: 11px; }
+#show input[type=range] { width: 100%; min-width: 0; accent-color: var(--accent); margin: 0; }
+#show .sh-head { position: sticky; top: -10px; z-index: 1; display: flex; align-items: center; justify-content: space-between; margin: -10px -12px 0; padding: 8px 12px 6px; background: rgb(23,21,27); border-bottom: 1px solid var(--line); }
+#show .sh-head b { font-size: 13px; font-weight: 600; }
+#show .sh-now { font: 600 15px var(--mono); color: var(--accent); line-height: 1.35; min-height: 2.7em; overflow-wrap: anywhere; }
+#show .sh-next { font: 12px var(--mono); color: var(--fg); min-height: 1.4em; overflow-wrap: anywhere; }
+#show .sh-clock { font: 12px var(--mono); color: var(--muted); margin-left: auto; }
+#show .sh-list { display: grid; max-height: 190px; overflow: auto; border: 1px solid var(--line); border-radius: 4px; }
+#show .sh-list > div { display: flex; gap: 6px; padding: 2px 6px; cursor: pointer; font: 11px var(--mono); white-space: nowrap; }
+#show .sh-list > div:hover { background: rgba(255,255,255,.06); }
+#show .sh-list > div.on { background: rgba(255,255,255,.1); color: var(--accent); }
+#show .sh-list > .sh-act { cursor: default; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; background: rgba(0,0,0,.25); }
+#show .sh-list span:last-child { overflow: hidden; text-overflow: ellipsis; }
+#show .sh-list b { font-weight: 500; min-width: 3.4em; }
+#show .sh-list .sh-rec { color: var(--muted); font-style: italic; }
+#show .sh-list .sh-aud { color: var(--accent); }
+@media (max-width: 640px) { #show { width: calc(100% - 24px); } #build:not([hidden]) ~ #show { right: 12px; } }
 </style>
 </head>
 <body>
@@ -352,7 +381,8 @@ canvas.addEventListener('pointermove', e => {
 canvas.addEventListener('pointerup', e => {
   drag = null;
   const click = press && press.button === 0 && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5 && !transform.dragging;
-  if (click && walking && !editing) { if (!locked) requestLock(); }   // walking: a click takes the mouse
+  if (click && deskClick(e)) { /* the desk's screens took it (THE DESK SCREENS) */ }
+  else if (click && walking && !editing) { if (!locked) requestLock(); }   // walking: a click takes the mouse
   else if (click) buildClick(e);
   press = null;
 });
@@ -940,8 +970,11 @@ function rigClash(rows, names) {
    - the BEAM: p4's volumetric shader on an open cone from the lens to where the beam lands — its radius the zoom's at that
      distance — additive, its strength level × the room's haze. Drawn only while the level is over 0.004 (p4's threshold).
      The ColorBlaze strips draw no beam: a wash light's glow and a shallow pool are what they show.
-   - the POOL: a decal where the beam lands, on the surface's own plane, stretched by the angle it lands at, sized by the
-     cone there, additive, colour × level, the gobo as its picture. The landing point is a ray from the lens (its local −Z:
+   - the POOL: the gobo projected from the lens onto whatever surface is in the cone near where the beam lands — a deferred
+     decal (LX_POOL_FS): one depth pass of the scenery per drawn frame, then each pool a cone over its depth band reading it,
+     so a gobo bends over stairs, seat rows and set pieces. Additive, colour × level × the angle it meets each surface — summed
+     LINEAR into LXACC and added to the frame once, under a hue-keeping shoulder (LX_ACC_KNEE), so overlaps keep their colour. The
+     band is fitted to what twelve rays across the cone meet (lxPoolBand, once per aim). The landing point is a ray from the lens (its local −Z:
      TRAPS — not getWorldDirection) through the walk's collision grid (house, set, rig structures, booth, desk, lobby, baked
      pieces: col, 0.5 m columns, stepped along the ray's own cells — a whole-scan raycast costs ~12 ms here, TRAPS) plus the
      pieces being built. It is CACHED per unit, cast again only when that unit's aim changes (a mover travelling: one ray a
@@ -978,7 +1011,10 @@ const LX_TYPES = {
   'birdie':          { zoom: 12, power: 0.15, beamK: 0.45, cap: 10 },
   'stickup':         { zoom: 12, power: 0.1, beamK: 0.40, cap: 10 },
   'mac-viper':       { zoom: 20, min: 10, max: 42, power: 1.6, beamK: 0.62, cap: 30, mover: [540 / 2.5, 270 / 1.6] },
-  'glp-x4':          { zoom: 20, min: 7, max: 50, power: 1.3, beamK: 0.50, cap: 30, mover: [630 / 2.5, 240 / 1.6] },
+  // power 1.3 → 0.7 (engine calibration, 2026-10-12): an X4 XL's ~9,500 lm is under half a Viper Performance's ~21,000 (0.45 × 1.6);
+  // in Binkley's photos 300.3's and 1039.01's twenty X4s at 20–23 % (sea-green) do not show beside the Vipers at 25–80 %, and
+  // 1248's at 50 % are pale pools under the Vipers' white — at 1.3 they painted 300.3's and 1039.01's decks teal
+  'glp-x4':          { zoom: 20, min: 7, max: 50, power: 0.7, beamK: 0.50, cap: 30, mover: [630 / 2.5, 240 / 1.6] },
   'vl3500':          { zoom: 25, min: 10, max: 60, power: 1.8, beamK: 0.55, cap: 30, mover: [540 / 2.5, 270 / 1.6] },
   'colorblast':      { zoom: 22, power: 0.4, beamK: 0.40, cap: 15 },
   's4-lustr':        { zoom: 26, power: 0.8, beamK: 0.55, cap: 25 },
@@ -996,7 +1032,15 @@ const LX_LIMIT = { pan: 270, tilt: 135 };                    // a mover's travel
 const LX_LIVE = 0.004;                                       // a level at or under this draws nothing (p4's threshold)
 const LX_LENS_FULL = 1.0;                                    // the lens at full: colour × level × this (unlit, not tone-mapped: 1 is the brightest it shows)
 const LX_HALO = { size: 0.45, k: 0.9 };                      // the glare round a lit lens: world metres across, strength
-const LX_POOL = { k: 0.5, strip: 0.22, lift: 0.012 };       // a pool's brightness (× colour × level), a strip's, and its lift off the surface (m)
+// A pool's brightness (× colour × level), a strip's; the depth band it lights round what its rays met (m: in front, behind);
+// while a head travels or a zoom fades, the plane estimate's band instead (m in front of the landing plane, behind it).
+const LX_DECK_ALBEDO = 11;                                   // the deck fill's albedo × this in the light pass (lxAlbedoOf): ~0.9 % → ~10 %
+// pool light × albedo × this (lxDepthPass's albedo). 3 → 6 (engine calibration, 2026-10-12): fitted, with the pools summed linear
+// under LX_ACC_KNEE, the near-field cap at 2.3 m and the filled shafts, against Binkley's photos of twenty cues (24.01 … 1270.3;
+// their black pedestal of sRGB 20/255 taken off) to a geometric mean of our mean luminance over theirs near 1 (was 0.61), and a
+// full white Viper pool near white as in theirs (1104.1, 190.01)
+const LX_POOL_GAIN = { value: 6.0 };
+const LX_POOL = { k: 0.5, strip: 0.08, front: 0.4, behind: 0.6, moving: [1.5, 0.6] };
 // The real lights: how many, how many shadowed, candela per power at full. Four, not eight: every SpotLight in the scene is
 // paid by every lit pixel even at intensity 0, about 1.5 ms (Front row) / 1 ms (Back of house) each on the Intel UHD
 // (dark rig, 1280 × 800: none 27 / 21 ms, 2 → 27 / 21, 4 → 32 / 24, 6 → 34 / 27, 8 → 39 / 29).
@@ -1028,6 +1072,14 @@ void main(){
 // house): pow(edge, 2.4) → e²·√e and pow(along, 1.35) → along·√along (the same curves to the eye), and a fragment too
 // faint to see (i < 0.006: the middle of every cone, where the eye looks straight through it) discarded before the dust
 // and the blend — 88 → 69 ms / 46 → 39 ms with the cone drawn both sides, and drawn far side only (BackSide, below) too.
+// THE SHAFT (engine calibration, 2026-10-12): Binkley's cue photos draw every beam in haze as a FILLED shaft, brightest through
+// its middle and reaching the deck (1248's ten Viper columns, 1104.1's and 1270's single shafts, 190.01's, 366.01's FOH pair);
+// p4's cone was a bright rim with a hollow middle that faded out two-thirds of the way down — a wire outline. Now: core × the
+// chord the eye looks through ((1 − e)², longest through the middle) + rim × p4's edge; dimming to far (was 0.06) at the far end;
+// the end fade starts at end (was 0.72); a gobo marks the shaft at .gobo of its old depth (was all of it: 192's and 366.01's
+// shafts drew as striped fans where the photos' are smooth). core 0.6, not 0.9: at 0.9 the many-beam looks (366.01, 192,
+// 300.3) were veiled in shafts the photos do not have. Measured (Intel UHD, 1280 × 720, 366.01 / 1248 / 872 / 300.3): ≤ 1.5 ms.
+const LX_BEAM_FILL = { core: 0.6, rim: 0.35, far: 0.3, end: 0.85, gobo: 0.4 };
 const LX_BEAM_FS = `
 uniform vec3 uColor; uniform float uInt; uniform float uHaze; uniform float uTime;
 uniform sampler2D uGobo; uniform float uUseGobo; uniform float uGoboRot;
@@ -1035,10 +1087,10 @@ varying vec3 vWpos; varying vec3 vWnorm; varying vec2 vUv;
 void main(){
   float along = vUv.y;                       // 0 = lens, 1 = far end
   float e = 1.0 - abs(dot(normalize(vWnorm), normalize(cameraPosition - vWpos)));
-  float i = uInt * uHaze * e * e * sqrt(e)   // the edge: bright where the eye looks through the most haze
-    * mix(1.0, 0.06, along * sqrt(along))    // dimmer away from the lens
+  float i = uInt * uHaze * (${LX_BEAM_FILL.core.toFixed(3)} * (1.0 - e) * (1.0 - e) + ${LX_BEAM_FILL.rim.toFixed(3)} * e * e * sqrt(e))   // the shaft's body and its rim
+    * mix(1.0, ${LX_BEAM_FILL.far.toFixed(3)}, along * sqrt(along))    // dimmer away from the lens
     * smoothstep(0.0, 0.07, along)           // hide the hard apex
-    * (1.0 - smoothstep(0.72, 1.0, along));  // and the hard end
+    * (1.0 - smoothstep(${LX_BEAM_FILL.end.toFixed(3)}, 1.0, along));  // and the hard end
   if (i < 0.006) discard;
   vec2 c = floor(vUv * vec2(60.0, 140.0)) + floor(uTime * 7.0);
   i *= 0.85 + 0.15 * fract(sin(dot(c, vec2(41.3, 289.1))) * 43758.5453);   // dust drifting through it
@@ -1046,12 +1098,90 @@ void main(){
     float th = vUv.x * 6.2831853 + uGoboRot; // bearing th is seen through the pattern along that bearing — three samples across the
     vec2 gd = vec2(cos(th), sin(th));        // gate, turning with the gobo (uGoboRot, radians; set by lxColourOf)
     float g = texture2D(uGobo, 0.5 + gd * 0.16).r + texture2D(uGobo, 0.5 + gd * 0.28).r + texture2D(uGobo, 0.5 + gd * 0.38).r;
-    i *= 0.25 + g * 0.42;
+    i *= mix(1.0, 0.25 + g * 0.42, ${LX_BEAM_FILL.gobo.toFixed(3)});
   }
   gl_FragColor = linearToOutputTexel(vec4(uColor * i, i));
 }`;
 const LX_BEAM_GEO = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);   // uv.y 0 at the lens (z 0), 1 at the far end
-const LX_POOL_GEO = new THREE.PlaneGeometry(2, 2);           // scaled by the radius
+// The pool: the gobo PROJECTED from the lens onto whatever surface is there — a deferred decal. Each frame that shows a pool
+// starts with one depth pass of the scenery (lxDepthPass, the beams, glare and pools left out); each pool is then a closed
+// cone around where it lands (depth uZ.x → uZ.y along the beam), drawn by its far side with no depth test, and every pixel
+// it covers reads the depth there, rebuilds the world point, and lights it if it is inside the cone: so a gobo bends over
+// stairs, seat rows, set pieces and built pieces alike, and a mover's pool costs nothing more while it travels.
+// uProj maps a world point to (along U, along V, the gate's radius there, depth along the beam): .xy / .z is the gate (1 at
+// its edge). Lit by the angle the surface meets the beam (its normal from the depth's own slope); no shadow: a surface
+// behind a lit one in the same cone is lit as well.
+const LX_POOL_VS = `
+uniform vec2 uZ; uniform vec2 uR;
+void main(){
+  float z = mix(uZ.x, uZ.y, position.z);
+  vec3 p = vec3(position.xy * (uR.x + uR.y * z) * 1.03, z);   // 1.03: the 16-sided cone round the round gate
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+}`;
+const LX_POOL_FS = `
+uniform vec3 uColor; uniform vec3 uOrg; uniform sampler2D uGobo; uniform mat4 uProj; uniform vec2 uZ;
+uniform sampler2D uDepth; uniform sampler2D uAlbedo; uniform mat4 uInvPV; uniform vec2 uRes; uniform float uGain;
+vec3 at(vec2 sv){ float d = texture2D(uDepth, sv).r; vec4 h = uInvPV * vec4(vec3(sv, d) * 2.0 - 1.0, 1.0); return h.xyz / h.w; }
+void main(){
+  vec2 sv = gl_FragCoord.xy / uRes;
+  float dep = texture2D(uDepth, sv).r;
+  if (dep >= 1.0) discard;                   // sky
+  vec4 h = uInvPV * vec4(vec3(sv, dep) * 2.0 - 1.0, 1.0);
+  vec3 W = h.xyz / h.w;
+  vec4 P = uProj * vec4(W, 1.0);
+  if (P.w < uZ.x || P.w > uZ.y) discard;
+  vec2 q = P.xy / P.z;
+  if (dot(q, q) > 1.0) discard;
+  // the surface's normal from its neighbours, each way taking the nearer one: a pixel on a seat back's edge takes its slope
+  // from the seat, not from the row behind it (dFdx across that edge flips it and speckles every silhouette)
+  vec2 px = 1.0 / uRes;
+  vec3 l = at(sv - vec2(px.x, 0.0)) - W, r = at(sv + vec2(px.x, 0.0)) - W, d = at(sv - vec2(0.0, px.y)) - W, u = at(sv + vec2(0.0, px.y)) - W;
+  vec3 ex = dot(l, l) < dot(r, r) ? -l : r, ey = dot(d, d) < dot(u, u) ? -d : u;
+  vec3 n = normalize(cross(ex, ey)); if (dot(n, cameraPosition - W) < 0.0) n = -n;
+  float c = dot(n, normalize(uOrg - W));
+  if (c <= 0.0) discard;                     // the side of it the beam does not reach
+  float R = P.z / 1.12;                      // the cone's radius at this depth
+  vec3 g = texture2D(uGobo, 0.5 + 0.5 * q).rgb;
+  // a unit's light spread over its spot: illuminance ∝ 1 / R² (the spot's area), set equal to the old 1 / R at a 1.5 m pool
+  // (a Source Four at a 6–7 m throw); a 110° strip's 5 m spread is a tenth of that, not the quarter the old floor gave it
+  // (at a whole show's levels, 36 strips at the old floor flooded the set white-orange: Binkley's cue 872 is a dark room)
+  // what the light lands on (lxDepthPass): light × surface, not light on top, so brick, grain and the scan's own photo show
+  // through every pool. A very dark texture (the deck's fill averages sRGB 23 — under 1 %, darker than velvet, where a real
+  // black deck reflects ~7 %) is SCALED up, not floored: a floor would flatten it to one colour, scaling keeps its pattern
+  vec3 alb = texture2D(uAlbedo, sv).rgb;
+  float al = dot(alb, vec3(0.2126, 0.7152, 0.0722));
+  alb *= mix(4.0, 1.0, smoothstep(0.004, 0.06, al));
+  // capped at a 2.3 m pool (was 0.8, a 3 m pool — engine calibration, 2026-10-12): under 3 m the cap had every pool the same
+  // strength whatever its zoom, where Binkley's photos have the narrow ones hot (190.01's 10° Vipers and 1104.1's 17° one near
+  // white, 1270's pools) and the 26–36° fields dim (1248's, 366.01's); not lower: at 2.1 (1.6 m) the booms' templates a metre
+  // or two from the galleries burnt them (864.01) — a unit a hand's width from a wall is still not a sun
+  vec3 col = uColor * g * min(1.2, pow(1.6 / (0.3 + R), 2.0)) * c * alb * uGain;
+  gl_FragColor = linearToOutputTexel(vec4(col, 1.0));
+}`;
+const LX_POOL_GEO = new THREE.CylinderGeometry(1, 1, 1, 16, 1, false).rotateX(Math.PI / 2).translate(0, 0, 0.5);   // closed, z 0 → 1
+// The depth pass the pools read: the scenery only, into a target the drawing buffer's size; shared by every pool.
+const LXDEP = { rt: null, alb: new WeakMap(),
+  uDepth: { value: null }, uAlbedo: { value: null }, uInvPV: { value: new THREE.Matrix4() }, uRes: { value: new THREE.Vector2(1, 1) }, ms: 0, n: 0 };
+// THE LIGHT IS SUMMED LINEAR (engine calibration, 2026-10-12, against Binkley's cue photos). The pools used to add straight onto
+// the sRGB canvas, each one encoded on its own: two pools of linear 0.2 made sRGB 0.48 + 0.48 ≈ white where one of 0.4 is 0.66,
+// and every overlap lost its colour (366.01's blue ring drew one white-blue blob, 300.3's and 1039.01's rings white discs; the
+// photos keep the blue in the overlap). Now the pools (on LX_POOL_LAYER, which the camera does not draw) add LINEAR into LXACC.rt
+// in lxDepthPass, and one screen quad in the main pass adds the sum, encoded once, after a hue-keeping shoulder: the brightest
+// channel rolls off from LX_ACC_KNEE towards 1 and the other two keep their ratio to it — an overlap of blue pools gets bright
+// BLUE, not white (366.01, 1248, 1039.01, 1270.3). A single pool under the knee draws exactly as before.
+const LX_POOL_LAYER = 1;
+const LX_ACC_KNEE = 0.55;                                    // new: the shoulder starts here (linear); 366.01's ring and 1248's Construction field stay blue
+const LXACC = { rt: null, quad: null, uAcc: { value: null } };
+const LX_ACC_VS = `void main(){ gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+const LX_ACC_FS = `
+uniform sampler2D uAcc; uniform vec2 uRes; uniform float uKnee;
+void main(){
+  vec3 c = texture2D(uAcc, gl_FragCoord.xy / uRes).rgb;
+  float m = max(c.r, max(c.g, c.b));
+  if (m < 1e-4) discard;
+  float f = m <= uKnee ? m : uKnee + (1.0 - uKnee) * (1.0 - exp(-(m - uKnee) / (1.0 - uKnee)));
+  gl_FragColor = linearToOutputTexel(vec4(c * (f / m), 1.0));
+}`;
 // The glare: one THREE.Points of every unit, world positions just in front of each lens, its colour × level (0 when dark),
 // its beam's direction — a lens seen from behind does not glare.
 const LX_HALO_VS = `
@@ -1115,6 +1245,12 @@ function lxInit() {
     uniforms: { uScale: { value: 600 }, uSize: { value: LX_HALO.size } }, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
   LX.halo.name = 'lx glare'; LX.halo.frustumCulled = false; LX.halo.raycast = () => {};
   LX.group.add(LX.halo);
+  // the pools' sum, added once over the frame (LXACC): one triangle covering the screen, shown only when lxDepthPass filled it
+  const qg = new THREE.BufferGeometry(); qg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]), 3));
+  LXACC.quad = new THREE.Mesh(qg, new THREE.ShaderMaterial({ vertexShader: LX_ACC_VS, fragmentShader: LX_ACC_FS,
+    uniforms: { uAcc: LXACC.uAcc, uRes: LXDEP.uRes, uKnee: { value: LX_ACC_KNEE } }, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false }));
+  LXACC.quad.name = 'lx pools'; LXACC.quad.frustumCulled = false; LXACC.quad.renderOrder = 10; LXACC.quad.visible = false; LXACC.quad.raycast = () => {};
+  LX.group.add(LXACC.quad);
   const Y = new THREE.Vector3(0, 1, 0), inv = new THREE.Matrix4();
   scene.updateMatrixWorld(true);
   units.forEach((unit, i) => {
@@ -1131,13 +1267,18 @@ function lxInit() {
       // BackSide: the cone's far half only — one layer of blending a beam instead of two (p4 drew both), and it still draws
       // with the eye inside the cone. Its strength is made up in LX_BEAM_GAIN.
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide }));
-    const pool = new THREE.Mesh(LX_POOL_GEO, new THREE.MeshBasicMaterial({ map: lxGoboTexture(0), color: 0x000000, transparent: true,
-      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+    const pool = new THREE.Mesh(LX_POOL_GEO, new THREE.ShaderMaterial({ vertexShader: LX_POOL_VS, fragmentShader: LX_POOL_FS,
+      uniforms: { uProj: { value: new THREE.Matrix4() }, uColor: { value: new THREE.Color(0, 0, 0) }, uOrg: { value: new THREE.Vector3() }, uGobo: { value: lxGoboTexture(0) },
+        uZ: { value: new THREE.Vector2(0, 1) }, uR: { value: new THREE.Vector2(0, 0) }, uDepth: LXDEP.uDepth, uAlbedo: LXDEP.uAlbedo, uInvPV: LXDEP.uInvPV, uRes: LXDEP.uRes, uGain: LX_POOL_GAIN },
+      // the far side only and no depth test: each pixel the cone covers is lit once, from outside it or inside it
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.BackSide }));
+    pool.frustumCulled = false;                              // one shared unit cone, scaled in its shader: its own bounds say nothing
+    pool.layers.set(LX_POOL_LAYER);                          // drawn by lxDepthPass into LXACC (linear), never by the main pass
     for (const m of [beam, pool]) { m.matrixAutoUpdate = false; m.visible = false; m.raycast = () => {}; m.userData.lxUnit = ud.id; LX.group.add(m); }
     beam.name = 'lx beam ' + ud.id; pool.name = 'lx pool ' + ud.id;
     const rec = { unit, i, T, st, mover, lens, lensR, lensMat: lens && ud.type !== 'hazer' && lens.material && lens.material.isMeshBasicMaterial ? lens.material : null,
       beam, pool, org: new THREE.Vector3(), dir: new THREE.Vector3(0, -1, 0), scale: 1, hit: null, hitRes: { dist: 0, p: new THREE.Vector3(), n: new THREE.Vector3() },
-      hitStale: true, slot: -1, fade: { level: null, color: null, zoom: null }, panRate: 0, tiltRate: 0 };
+      hitStale: true, band: null, slot: -1, fade: { level: null, color: null, zoom: null }, panRate: 0, tiltRate: 0 };
     if (mover) {
       // The rest pose (RIG_FILE's head-down quaternion per level, the yoke as loaded) and the trunnion: poseLevel turned
       // the head by qH0 = setFromUnitVectors(r, DOWN) about r × DOWN, r the model's own front; tilt turns about that axis.
@@ -1196,6 +1337,7 @@ function lxHitRec(r) {
   r.org.set(m[12], m[13], m[14]);
   r.dir.set(-m[8], -m[9], -m[10]); r.scale = r.dir.length(); r.dir.divideScalar(r.scale || 1);   // local −Z is the beam (TRAPS)
   r.hit = lxCast(r.org, r.dir, LX_FAR, r.hitRes);
+  r.band = null;                                             // the pool's depth band goes with the aim
 }
 // A ray through the walk's collision grid, cell by cell along its x/z track (a 2-D DDA over col's 0.5 m columns; in each
 // column only the triangles whose height span meets the ray's there), nearest first, then the pieces being built.
@@ -1280,23 +1422,139 @@ function lxDrawRec(r) {
     U.uColor.value.copy(colr); U.uInt.value = lvl * (T.beamK || 0.5) * LX_BEAM_GAIN; U.uK.value = Math.min(1, r0 / Math.max(R, 1e-4));
     U.uGobo.value = lxGoboTexture(st.gobo); U.uUseGobo.value = st.gobo > 0 ? 1 : 0;
   }
-  // the pool: on the surface's plane, long across the way the beam comes in (1 / cos of the landing angle, at most 3.3×:
-  // a pool is a flat decal, so a grazing one runs on past the surface's edge — the deck's lip over the front rows — and
-  // longer stretches showed it)
+  // the pool: the gobo projected from the lens onto every surface in the cone (LX_POOL_FS), on the triangles gathered for it
   if (r.hit) {
-    const n = r.hit.n, dn = r.dir.dot(n), cosi = Math.max(0.3, -dn), rr = R * 1.12;
-    lxU.copy(r.dir).addScaledVector(n, -dn);
-    if (lxU.lengthSq() < 1e-8) lxU.set(n.y, -n.x, 0).lengthSq() < 1e-8 && lxU.set(0, n.z, -n.y);
-    lxU.normalize(); lxV.crossVectors(n, lxU);
-    lxM4.makeBasis(lxU.multiplyScalar(rr / cosi), lxV.multiplyScalar(rr), n).setPosition(lxP.copy(r.hit.p).addScaledVector(n, LX_POOL.lift));
-    lxM4.multiply(lxRot.makeRotationZ(st.goboRot * LX_DEG));   // the gobo turns inside the ellipse
-    r.pool.matrix.copy(lxM4); r.pool.matrixWorld.copy(lxM4); r.pool.matrixWorldNeedsUpdate = true;
-    const fall = THREE.MathUtils.clamp(1.4 / (0.4 + R), 0.25, 1.2);   // a wide pool is a dimmer one
-    r.pool.material.color.copy(colr).multiplyScalar(lvl * (T.strip ? LX_POOL.strip : LX_POOL.k) * fall);
-    r.pool.material.map = lxGoboTexture(st.gobo);
+    const tanH = Math.tan(st.zoom / 2 * LX_DEG);
+    // the depth band: cast across the cone once per aim and zoom (r.band, cleared by lxHitRec); a head on the move or a zoom
+    // in a fade takes the plane's estimate each frame instead, and casts when it settles
+    const moving = (r.mover && (st.pan !== st.panTo || st.tilt !== st.tiltTo)) || !!r.fade.zoom;
+    if (!moving && (!r.band || r.band.zoom !== st.zoom)) lxPoolBand(r, r0, tanH);
+    const zr = moving ? lxPoolDepth(r, r0, tanH) : r.band.z;
+    lxQ.setFromUnitVectors(LX_Z, r.dir);
+    r.pool.matrix.compose(r.org, lxQ, lxS.set(1, 1, 1)); r.pool.matrixWorld.copy(r.pool.matrix); r.pool.matrixWorldNeedsUpdate = true;
+    r.pool.material.uniforms.uZ.value.set(zr[0], zr[1]); r.pool.material.uniforms.uR.value.set(1.12 * r0, 1.12 * tanH);
+    // the projector: U, V across the beam (turned by the gobo's rotation), the gate's radius 1.12 × the cone's at each depth
+    lxU.set(r.dir.z, 0, -r.dir.x); if (lxU.lengthSq() < 1e-8) lxU.set(1, 0, 0);
+    lxU.normalize(); lxV.crossVectors(r.dir, lxU);
+    const a = st.goboRot * LX_DEG, ca = Math.cos(a), sa = Math.sin(a);
+    lxP.copy(lxU).multiplyScalar(ca).addScaledVector(lxV, sa); lxV.multiplyScalar(ca).addScaledVector(lxU, -sa); lxU.copy(lxP);
+    const d = r.dir, o = r.org, k = 1.12 * tanH, ou = o.dot(lxU), ov = o.dot(lxV), od = o.dot(d);
+    r.pool.material.uniforms.uProj.value.set(
+      lxU.x, lxU.y, lxU.z, -ou,
+      lxV.x, lxV.y, lxV.z, -ov,
+      k * d.x, k * d.y, k * d.z, 1.12 * r0 - k * od,
+      d.x, d.y, d.z, -od);
+    const U = r.pool.material.uniforms;
+    U.uOrg.value.copy(o);
+    U.uColor.value.copy(colr).multiplyScalar(lvl * (T.strip ? LX_POOL.strip : LX_POOL.k) * (T.power || 1));   // × the type's output (LX_TYPES power: a Source Four 1)
+    U.uGobo.value = lxGoboTexture(st.gobo);
     r.pool.visible = true;
   } else r.pool.visible = false;
   if (r.slot >= 0) lxRealSet(r);
+}
+// The depth band a pool lights, from what is really there: twelve rays across the cone (eight at 0.9 of its radius, four at
+// 0.45) plus the landing ray; the band runs from the nearest thing they meet (less LX_POOL.front) to the farthest (plus
+// LX_POOL.behind, and a sixth more for the rim past the outer rays). A tight band is what keeps a pool cheap: the cone is
+// drawn only over that depth, so a pool on the deck covers its own patch of screen and not a tall cone of air above it.
+// A thing standing in the beam between the rays (a thin post) is missed, and stays unlit. ~0.5 ms a unit, once per aim
+// (lx.all(1): 304 bands in 155 ms). Measured, all 304 pools lit, Intel UHD 1280 × 800: +3–4 ms a frame from the front row
+// (the depth pass ~5 of it), nothing measurable from the back; with the old 3.5 m band in front of every pool it was +47 ms.
+const lxBandRes = { dist: 0, p: new THREE.Vector3(), n: new THREE.Vector3() }, lxBandO = new THREE.Vector3(), lxBandD = new THREE.Vector3();
+function lxPoolBand(r, r0, tanH) {
+  const dist = r.hit.dist;
+  let near = dist, far = dist;
+  lxPA.set(r.dir.z, 0, -r.dir.x); if (lxPA.lengthSq() < 1e-8) lxPA.set(1, 0, 0); lxPA.normalize(); lxPB.crossVectors(r.dir, lxPA);
+  for (let i = 0; i < 12; i++) {
+    const f = i < 8 ? 0.9 : 0.45, t = (i < 8 ? i / 8 : (i - 8) / 4 + 0.125) * Math.PI * 2, c = Math.cos(t) * f, s = Math.sin(t) * f;
+    lxBandO.copy(r.org).addScaledVector(lxPA, c * r0).addScaledVector(lxPB, s * r0);
+    lxBandD.copy(r.dir).addScaledVector(lxPA, c * tanH).addScaledVector(lxPB, s * tanH).normalize();
+    const h = lxCast(lxBandO, lxBandD, LX_FAR, lxBandRes);
+    if (!h) continue;
+    const z = (h.p.x - r.org.x) * r.dir.x + (h.p.y - r.org.y) * r.dir.y + (h.p.z - r.org.z) * r.dir.z;
+    near = Math.min(near, z); far = Math.max(far, z);
+  }
+  const span = far - near;
+  r.band = { zoom: r.st.zoom, z: [Math.max(0.05, near - LX_POOL.front), far + LX_POOL.behind + span / 6] };
+}
+// The band's cheap stand-in for a moving head: where the cone's edge meets the landing surface's plane (eight edge rays) — at
+// least the landing point, at most 3× it (a grazing beam's ellipse runs on for ever) — plus LX_POOL.moving's margins.
+// → [near, far] (m along the beam).
+const lxPE = new THREE.Vector3(), lxPA = new THREE.Vector3(), lxPB = new THREE.Vector3(), lxPZ = [0, 0];
+function lxPoolDepth(r, r0, tanH) {
+  const h = r.hit, n = h.n, dist = h.dist, cap = Math.min(dist * 3, dist + 12);
+  lxPA.set(r.dir.z, 0, -r.dir.x); if (lxPA.lengthSq() < 1e-8) lxPA.set(1, 0, 0); lxPA.normalize(); lxPB.crossVectors(r.dir, lxPA);
+  const pn = n.dot(h.p);
+  let far = dist, near = dist;
+  for (let i = 0; i < 8; i++) {
+    const t = i / 8 * Math.PI * 2, c = Math.cos(t), s = Math.sin(t);
+    const so = lxP.copy(r.org).addScaledVector(lxPA, c * r0).addScaledVector(lxPB, s * r0);   // the edge ray starts at the lens's rim
+    lxPE.copy(r.dir).addScaledVector(lxPA, c * tanH).addScaledVector(lxPB, s * tanH);       // and opens at the zoom (depth 1 per unit)
+    const dn = n.dot(lxPE);
+    if (dn >= -1e-6) { far = cap; continue; }
+    const z = (pn - n.dot(so)) / dn;
+    far = Math.max(far, z); near = Math.min(near, z);
+  }
+  lxPZ[0] = Math.max(0.05, near - LX_POOL.moving[0]); lxPZ[1] = Math.min(far, cap) + LX_POOL.moving[1];
+  return lxPZ;
+}
+// Before a frame draws (lxDrawn): if any pool is lit, the scenery's depth into LXDEP.rt, with the matrix that undoes it.
+const lxDV = new THREE.Vector2(), lxDC = new THREE.Color();
+function lxAlbedoOf(m) {
+  let a = LXDEP.alb.get(m);
+  if (!a) {
+    const base = m.userData && m.userData.base ? m.userData.base : m.color;   // the house scan: its colour before the house-light slider
+    a = new THREE.MeshBasicMaterial({ map: m.map || null, color: base ? base.clone() : 0xffffff, side: THREE.DoubleSide, vertexColors: !!m.vertexColors, alphaTest: m.alphaTest || 0, toneMapped: false });
+    // the stage deck: the house's deck fill texture (and every built piece wearing it, as Jack's floor slab does) is a dark
+    // stand-in averaging ~0.9 % — the light sees it as a stained stage deck (~10 %, its pattern kept), as the cue photos show
+    if (m.map && m.map.name === 'fill_deck') a.color.multiplyScalar(LX_DECK_ALBEDO);
+    LXDEP.alb.set(m, a);
+  }
+  return a;
+}
+function lxDepthPass() {
+  let any = false;
+  for (const r of LX.recs) if (r.pool.visible) { any = true; break; }
+  if (LXACC.quad) LXACC.quad.visible = false;
+  if (!any || !LX.group.visible) return;
+  const t0 = performance.now();
+  renderer.getDrawingBufferSize(lxDV);
+  if (!LXDEP.rt || LXDEP.rt.width !== lxDV.x || LXDEP.rt.height !== lxDV.y) {
+    if (LXDEP.rt) { LXDEP.rt.depthTexture.dispose(); LXDEP.rt.dispose(); }
+    const dt = new THREE.DepthTexture(lxDV.x, lxDV.y); dt.type = THREE.UnsignedIntType;
+    LXDEP.rt = new THREE.WebGLRenderTarget(lxDV.x, lxDV.y, { depthTexture: dt, depthBuffer: true, samples: 0, type: THREE.HalfFloatType });
+    LXDEP.uDepth.value = dt; LXDEP.uAlbedo.value = LXDEP.rt.texture; LXDEP.uRes.value.copy(lxDV);
+    if (LXACC.rt) LXACC.rt.dispose();
+    LXACC.rt = new THREE.WebGLRenderTarget(lxDV.x, lxDV.y, { depthBuffer: false, samples: 0, type: THREE.HalfFloatType });
+    LXACC.uAcc.value = LXACC.rt.texture;
+  }
+  camera.updateMatrixWorld();
+  LXDEP.uInvPV.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).invert();
+  // THE ALBEDO: every visible mesh drawn in its own UNLIT colour (its map × its colour; the house scan at its undimmed base,
+  // not the house-light slider's), linear, into the same target as the depth — so a pool is light × what it lands on: a
+  // gobo on the black deck stays dark, the brick shows through, a white flat glows. Glass and helpers (mostly see-through
+  // materials) are left out, as the beams and glare are. The swap is undone before anything else draws.
+  const swapped = [];
+  scene.traverseVisible(o => {
+    if (!o.isMesh || o === LX.group) return;
+    const m = o.material;
+    if (Array.isArray(m)) { if (m.some(x => x.transparent && x.opacity < 0.6)) { o.visible = false; swapped.push([o, m, true]); return; } swapped.push([o, m]); o.material = m.map(lxAlbedoOf); return; }
+    if (!m || (m.transparent && m.opacity < 0.6) || m.colorWrite === false) { o.visible = false; swapped.push([o, m, true]); return; }
+    swapped.push([o, m]); o.material = lxAlbedoOf(m);
+  });
+  const prevT = renderer.getRenderTarget(), prevB = scene.background, prevS = renderer.shadowMap.autoUpdate;
+  LX.group.visible = false; scene.background = null; renderer.shadowMap.autoUpdate = false;
+  renderer.getClearColor(lxDC); const prevA = renderer.getClearAlpha();
+  renderer.setRenderTarget(LXDEP.rt); renderer.setClearColor(0x000000, 0); renderer.render(scene, camera); renderer.setRenderTarget(prevT);
+  for (const [o, m, hid] of swapped) { if (hid) o.visible = true; else o.material = m; }
+  LX.group.visible = true; scene.background = prevB;
+  // the pools, summed linear into LXACC.rt (the camera sees their layer only for this): the quad adds the sum in the main pass
+  const prevL = camera.layers.mask;
+  camera.layers.set(LX_POOL_LAYER);
+  renderer.setRenderTarget(LXACC.rt); renderer.render(LX.group, camera); renderer.setRenderTarget(prevT);
+  camera.layers.mask = prevL;
+  renderer.setClearColor(lxDC, prevA); renderer.shadowMap.autoUpdate = prevS;
+  LXACC.quad.visible = true;
+  LXDEP.ms = performance.now() - t0; LXDEP.n++;
 }
 function lxHaloSet(r, lvl, colr) {
   const g = LX.halo.geometry, k = r.i * 3, P = g.attributes.position.array, Cc = g.attributes.aColor.array, D = g.attributes.aDir.array;
@@ -1314,11 +1572,16 @@ function lxHaloFlush() {
   LX.haloDirty = false;
 }
 // The real lights to the brightest units: the shadowed slots to the top two, the rest kept where they were if still in.
+// A unit's real-light weight: its type's power, and for a strip the same share its pool gets (LX_POOL.strip / LX_POOL.k, 0.16) —
+// was the full power (engine calibration, 2026-10-12): 1050.1's 26 ColorBlaze strips at full took all four real lights at
+// 35 cd over 110° and washed both side walls of the set orange-white where Binkley's photo has them dark (the strips' own pools
+// were already a sixth of a unit's); now a lantern or mover at any useful level wins the real lights.
+const lxRealWeight = r => r.T.power * (r.T.strip ? LX_POOL.strip / LX_POOL.k : 1);
 function lxAssignLights(force) {
   LX.lightsDirty = false;
   const N = LX_REAL.n, S = LX_REAL.shadows;
   const want = LX.on ? LX.recs.filter(r => r.st.level > LX_LIVE && r.T.power > 0 && r.lens) : [];
-  want.sort((a, b) => b.st.level * b.T.power - a.st.level * a.T.power || a.i - b.i);
+  want.sort((a, b) => b.st.level * lxRealWeight(b) - a.st.level * lxRealWeight(a) || a.i - b.i);
   const top = want.slice(0, N), next = new Array(N).fill(null), wait = [];
   top.slice(0, S).forEach((r, k) => { next[k] = r; });
   for (const r of top.slice(S)) { if (r.slot >= S && !next[r.slot]) next[r.slot] = r; else wait.push(r); }
@@ -1343,7 +1606,7 @@ function lxRealSet(r, quiet) {
   if (r.hit) L.target.position.copy(r.hit.p); else L.target.position.copy(r.org).addScaledVector(r.dir, 10);
   L.angle = THREE.MathUtils.clamp(st.zoom / 2 * LX_DEG * 1.1, 0.03, 1.3);
   L.color.copy(lxColourOf(r.unit, st));
-  L.intensity = LX.on ? LX_REAL.k * r.T.power * st.level : 0;
+  L.intensity = LX.on ? LX_REAL.k * lxRealWeight(r) * st.level : 0;
   const now = L.position.x + L.position.y * 7 + L.position.z * 13 + L.target.position.x * 17 + L.target.position.y * 19 + L.target.position.z * 23;
   if (!quiet && r.slot < LX_REAL.shadows && Math.abs(now - was) > 1e-6) shadowsDirty();   // a shadowed light that moved: its map again
 }
@@ -1414,6 +1677,7 @@ function lxDrawn(time) {
   if (time !== undefined) LX_TIME.value = time;
   LX.halo.material.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(camera.fov / 2 * LX_DEG));
   lxBudget();
+  lxDepthPass();
 }
 // More cones lit than LX_BEAM_BUDGET: draw the strongest in view (level × strength, over 1 + distance / 8 m) and hold the
 // rest back this frame. Run on every drawn frame (the camera decides what is in view); a few hundred sphere tests.
@@ -1574,7 +1838,9 @@ function lxBeamOf(sel) {
   const dist = r.hit ? r.hit.dist : (r.T.cap || 20);
   return { id: u.userData.id, origin: r.org.clone(), dir: r.dir.clone(), hit: r.hit ? r.hit.p.clone() : null, normal: r.hit ? r.hit.n.clone() : null, dist,
     radius: r.lensR * r.scale + Math.tan(r.st.zoom / 2 * LX_DEG) * dist, beamVisible: r.beam.visible, poolVisible: r.pool.visible,
-    poolCentre: r.pool.visible ? new THREE.Vector3().setFromMatrixPosition(r.pool.matrixWorld) : null };
+    poolDepth: r.pool.visible ? r.pool.material.uniforms.uZ.value.toArray() : null,
+    // where the landing point falls in the projected gate (0 0 its centre, 1 its edge): the projector is the beam
+    poolGate: r.pool.visible && r.hit ? (v => [v.x / v.z, v.y / v.z])(new THREE.Vector4(r.hit.p.x, r.hit.p.y, r.hit.p.z, 1).applyMatrix4(r.pool.material.uniforms.uProj.value)) : null };
 }
 const LX_API = {
   get units() { return LX.units; },
@@ -1598,7 +1864,8 @@ const LX_API = {
     for (const r of LX.recs) {
       if (r.beamOn) beamsLit++;
       if (r.beam.visible) { beams++; if (fr.intersectsObject(r.beam)) beamsInView++; }
-      if (r.pool.visible) { pools++; if (fr.intersectsObject(r.pool)) poolsInView++; }
+      if (r.pool.visible) { pools++; const U = r.pool.material.uniforms, z = U.uZ.value, mid = (z.x + z.y) / 2;   // the cone over its band
+        if (fr.intersectsSphere(new THREE.Sphere(r.org.clone().addScaledVector(r.dir, mid), Math.hypot((z.y - z.x) / 2, U.uR.value.x + U.uR.value.y * z.y)))) poolsInView++; }
     }
     const P = LX.perf;
     return { tickMs: +P.last.toFixed(3), tickMsAvg: +P.avg.toFixed(3), tickMsMax: +P.max.toFixed(3), beamsLit, beams, beamsInView, beamsHeld: LX.beamsHeld || 0, budget: LX_BEAM_BUDGET, pools, poolsInView,
@@ -1679,8 +1946,11 @@ function lxSlab(x, X, L, h, k) { x.beginPath(); x.moveTo(X + k, -h / 2); x.lineT
 // THE LIBRARY. The slot is the index, on every unit of every type. White passes light; draw(x, rnd) starts on black with
 // fillStyle white. gate: false — the pattern is its own edge (no gate cut); soft: px of blur (a wash light's soft focus).
 const LX_GOBOS = [
-  { name: 'Open', gate: false, stands: 'no gobo: the open beam, a flat field with a soft edge',
-    draw: x => { const g = x.createRadialGradient(LX_C, LX_C, 0, LX_C, LX_C, 240); g.addColorStop(0, '#fff'); g.addColorStop(.6, 'rgba(255,255,255,.95)'); g.addColorStop(.86, 'rgba(255,255,255,.8)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, LX_S, LX_S); } },
+  // the edge: was a long fall from 0.8 at 206 px to 0 at 240 (a soft 1.05-cone rim); now flat to 217 px and 0 at 236, its half
+  // at the cone's own radius (engine calibration, 2026-10-12: the open pools in Binkley's photos are hard-edged — 1104.1, 1248's
+  // white and pink pools, 1270's two)
+  { name: 'Open', gate: false, stands: 'no gobo: the open beam, a flat field with a hard edge',
+    draw: x => { const g = x.createRadialGradient(LX_C, LX_C, 0, LX_C, LX_C, 236); g.addColorStop(0, '#fff'); g.addColorStop(.92, '#fff'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, LX_S, LX_S); } },
   { name: 'Construction', stands: 'a scaffold / girder breakup: light between three families of crossing beams, with braces',
     draw: (x, rnd) => {
       x.fillRect(0, 0, LX_S, LX_S); x.fillStyle = '#000';
@@ -1821,7 +2091,10 @@ function lxGoboCoverage(slot) {
 
 // THE WHEELS. Movers by type; the template systems by channel (Howell Binkley's magic sheet, its template icons).
 const LX_GOBO_WHEELS = {
-  'mac-viper': { rotating: ['Construction', 'Dust', 'Cobble stone', 'Alpha', 'Brains', 'Pebbles'], framing: ['Slot', 'Square'], diffusion: ['Vignette'] },
+  // 'Linear' added (engine calibration, 2026-10-12): the export's own map has the Viper's Gobo_Select 3 = Linear (hamilton-eos.json
+  // "gobos"), and without it on the wheel the show player dropped it — cue 366.01's ring of 18 Vipers drew open where the photo
+  // shows Linear's lines (also 300.3, 1039.01). Was: the six below without Linear.
+  'mac-viper': { rotating: ['Construction', 'Dust', 'Cobble stone', 'Alpha', 'Brains', 'Pebbles', 'Linear'], framing: ['Slot', 'Square'], diffusion: ['Vignette'] },
   'vl3500': { fx: ['Nite sky', 'Tribal', 'Leaves'] },
 };
 const LX_TEMPLATES = [
@@ -1929,10 +2202,18 @@ function lxDimShift(level, out) {
 // CMY movers: the white W at the lamp's K, the CTO's full filter (W → 3200 K), and the colour wheel (a slot overrides the mix).
 // The Viper's wheel is Martin's (the numbers are Martin's own filter names); the VL3500 Wash FX's two wheels are not in the
 // show's export by slot, so its one wheel here is an approximate set of saturates.
-function lxCmyModel(K, wheel) {
+function lxCmyModel(K, wheel, flags = LX_CMY_FLAGS) {
   const W = lxLamp(K), T = lxLamp(3200);
-  return { model: 'cmy', K, W, F: new THREE.Color(T.r / W.r, T.g / W.g, T.b / W.b), wheel: [{ name: 'Open', c: null }].concat(wheel.map(([name, hex]) => ({ name, c: new THREE.Color(hex) }))) };
+  return { model: 'cmy', K, W, F: new THREE.Color(T.r / W.r, T.g / W.g, T.b / W.b), flags, wheel: [{ name: 'Open', c: null }].concat(wheel.map(([name, hex]) => ({ name, c: new THREE.Color(hex) }))) };
 }
+// What each subtractive flag passes at full insertion, linear RGB. Ideal flags would be cyan [0,1,1], magenta [1,0,1], yellow
+// [1,1,0]; real dichroics are not: a moving light's CYAN flag is a deep blue-cyan that passes little green, its magenta leaks
+// some green, its yellow passes a little blue. Fitted (2026-10-12) against Binkley's cue photos — Augment3d's renders of the
+// same cue data: with ideal flags cue 366.01's Vipers (C88 Y55) drew teal and 1248's (C98 M17) sky-cyan where the photos (and
+// the production stills of Satisfied, Helpless, The World Was Wide Enough) are blue and indigo; with these the hue lands and
+// the ambers (36's cobble pool at M33 Y86, 300.3's orange centre at M68 Y100) stay amber.
+const LX_CMY_FLAGS = [[0.05, 0.30, 1.00], [1.00, 0.15, 0.85], [1.00, 0.92, 0.05]];
+const LX_CMY_IDEAL = [[0, 1, 1], [1, 0, 1], [1, 1, 0]];
 // LED emitters, linear RGB at full. RGB, RGBW (white ~6500 K), RGBA (amber ~590 nm), and the Lustr's seven.
 const LX_EMIT = {
   RGB: [['red', [1, 0, 0]], ['green', [0, 1, 0]], ['blue', [0, 0, 1]]],
@@ -1988,8 +2269,10 @@ function lxEmitSolve(M, t, e) {
 // W × CTO × (1 − cmy).
 const LX_CMY_LEAK = 0.01;
 function lxCmyColour(M, cmy, cto, out = new THREE.Color()) {
-  const x = cto || 0;
-  return out.setRGB(M.W.r * (1 - x * (1 - M.F.r)) * (1 - cmy[0]), M.W.g * (1 - x * (1 - M.F.g)) * (1 - cmy[1]), M.W.b * (1 - x * (1 - M.F.b)) * (1 - cmy[2]));
+  const x = cto || 0, F = M.flags || LX_CMY_IDEAL;
+  let r = M.W.r * (1 - x * (1 - M.F.r)), g = M.W.g * (1 - x * (1 - M.F.g)), b = M.W.b * (1 - x * (1 - M.F.b));
+  for (let k = 0; k < 3; k++) { const v = cmy[k] || 0; r *= 1 - v * (1 - F[k][0]); g *= 1 - v * (1 - F[k][1]); b *= 1 - v * (1 - F[k][2]); }
+  return out.setRGB(r, g, b);
 }
 // A frame for a colour (nearest, linear RGB) or a gel code (exact first).
 function lxFrameNear(M, colour, code) {
@@ -2677,7 +2960,7 @@ function buildLightsPanel() {
 /* ---- THE CHECK (agent J) ----
    Jack: "check that every light is working with the movements, gobos and colors." lxCheck (MIDTOWN.lx.check, the panel's
    "Check all") drives EVERY unit through what the engine, the colour models and the wheels claim, and measures what is drawn
-   — the lens material, the glare cloud's buffer, the cone's matrix, the pool's matrix and map, the beam's uniforms, the real
+   — the lens material, the glare cloud's buffer, the cone's matrix, the pool's projector, band and gobo, the beam's uniforms, the real
    lights — never a flag it did not test. Per unit:
    1 LEVEL   at 0: lens dark glass, no cone, no pool, no glare, no real light. At 1, alone: lens = the drawn colour, glare lit
              in it, a real light in it (types with power), a cone from the lens along the beam (not the strips), a pool where
@@ -2693,7 +2976,7 @@ function buildLightsPanel() {
              exact (±0.001) — the S4 Lustr's seven emitters cannot, so it must reach the best its emitters can (a 4,000-step
              projected-gradient fit, ±0.005) and is noted. Hazers take no colour. set({color}) with a gel, a hex, a CSS name, a
              number, an array and a temperature never throws, on every type.
-   3 GOBO    every slot on lx.wheelOf(unit) binds that pattern (a non-blank 512² canvas) to the pool's map and the beam's uGobo
+   3 GOBO    every slot on lx.wheelOf(unit) binds that pattern (a non-blank 512² canvas) to the pool's uGobo and the beam's uGobo
              (uUseGobo 1); a slot it lacks reads open; a gobo by name works; a template Source Four has its template in at load
              and opens with gobo 0. Rotation: goboRate 90°/s for 1 s of driven ticks turns goboRot 90° (±0.01°) and the beam's
              uGoboRot with it.
@@ -2882,7 +3165,8 @@ function lxjUnit(r, X) {
     else if (!(b.dist > 0.2 && b.dist < 40)) fail(`pool: lands ${b.dist.toFixed(3)} m from the lens, on ${I.lands} (sane: 0.2–40 m)` + (T.strip ? ` — a strip placed against the set (${shut} of 6 rays from its lens meet it within 0.35 m)` : ''));
     if (b.origin.clone().addScaledVector(b.dir, b.dist).distanceTo(b.hit) > 1e-4) fail('pool: the landing point is off the ray');
     if (!b.poolVisible) fail('pool: it lands but no pool is drawn');
-    else if (Math.abs(b.poolCentre.distanceTo(b.hit) - LX_POOL.lift) > 1e-3) fail(`pool: its centre is ${b.poolCentre.distanceTo(b.hit).toFixed(4)} m off the landing point (lift ${LX_POOL.lift} m)`);
+    else if (!(b.poolDepth[0] <= b.dist && b.dist <= b.poolDepth[1])) fail(`pool: lights ${b.poolDepth.map(v => v.toFixed(2)).join('–')} m along the beam, not the landing point at ${b.dist.toFixed(2)} m`);
+    else if (Math.hypot(...b.poolGate) > 1e-3) fail(`pool: the landing point is ${Math.hypot(...b.poolGate).toFixed(4)} of the gate off the projection's centre`);
     if (!bf) fail(`pool: lands at ${b.dist.toFixed(3)} m, but testing every triangle finds nothing`);
     else if (Math.abs(bf.dist - b.dist) > LXJ_TOL.land) fail(`pool: lxCast lands at ${b.dist.toFixed(3)} m, testing every triangle at ${bf.dist.toFixed(3)} m (${I.lands})`);
   } else {
@@ -2948,7 +3232,7 @@ function lxjUnit(r, X) {
   const bound = (s, why) => {
     const tex = lxGoboTexture(s), cov = lxjCoverage(s), name = t => { const k = LX_GOBOS.findIndex(gb => gb.tex === t); return k < 0 ? 'no gobo' : LX_GOBOS[k].name; };
     if (!(cov.mean > 0.03) || !tex.image || tex.image.width !== LX_S) fail(`gobo ${s} (${LX_GOBOS[s].name}): the pattern is blank`);
-    if (r.hit && r.pool.visible && r.pool.material.map !== tex) fail(`gobo ${why}: the pool shows ${name(r.pool.material.map)}, not ${LX_GOBOS[s].name}`);
+    if (r.hit && r.pool.visible && r.pool.material.uniforms.uGobo.value !== tex) fail(`gobo ${why}: the pool shows ${name(r.pool.material.uniforms.uGobo.value)}, not ${LX_GOBOS[s].name}`);
     if (r.beamOn) { const U = r.beam.material.uniforms; if (U.uGobo.value !== tex || U.uUseGobo.value !== (s > 0 ? 1 : 0)) fail(`gobo ${why}: the cone shows ${name(U.uGobo.value)} (use ${U.uUseGobo.value}), not ${LX_GOBOS[s].name}`); }
   };
   if (tpl) {
@@ -3648,6 +3932,1025 @@ const buildLightsPanelJ = buildLightsPanel;
 buildLightsPanel = () => { buildLightsPanelJ(); try { lxdPanel(); } catch (e) { console.error('lx preview: its controls failed —', e); } };
 const lxPanelTickJ = lxPanelTick;
 lxPanelTick = dt => { const a = lxDemoTick(dt), b = lxPanelTickJ(dt); return a || b; };
+/* ---- THE SHOW PLAYER (agent L) ----
+   The whole of Hamilton, auto-timed against the cast album: the real show's cues (assets/hamilton-eos.json — the Eos export's
+   vocabulary and its real cue list) placed on the album's 46 tracks by assets/hamilton-show.json (every cue a (track, at), the
+   gaps filled with reconstructed cues of the same shape). THE spec is docs/hamilton-cues-format.md; this region reads it and
+   nothing else, and is the only reader.
+   - DATA: fetched lazily, the first time the Show panel opens (showLoad; MIDTOWN.show.load({eos, show}) takes other URLs — the
+     test fixture is tools/show-fixture/fixture-eos.json + fixture-show.json). showCompile turns the two files into one list of
+     ACTIONS, each { t (global show seconds), chs [[channel key, PARAMS resolved]], time, mark }: a cue's part-less changes at
+     its GO + its delay, each part at its GO + the part's delay (the cue's delay when the part names none), with the cue's times
+     under the part's own; a channel with its OWN time / delay / mark (the converter's per-channel keys) goes in an action of
+     its own (its delay counted from the GO; a bare number for its time is every category's). Every reference ({preset}, {cp}, {bp}, {fp}, {ip}) is resolved per channel AT LOAD, recursively (a
+     preset may name a palette), explicit keys beside a reference winning; "g:N" is every channel of group N. What does not
+     resolve is reported (check()), never thrown.
+   - THE CLOCK: the 46 tracks back to back, Act 1 then Act 2, each its show-file length; the position is (track, seconds into it)
+     and the global time is the track's start + that. With an album file loaded for the current track the clock IS
+     audio.currentTime (clamped short of the track's length: cues past the file's end wait for its 'ended', which moves on to the
+     next track); with none it runs off the frame's dt (showTick, hooked onto lxPanelTick as the preview is) — never a timer.
+     Every action fires when the clock passes its t: delays and parts are just later actions, so they hold while paused and run
+     at the clock's own speed.
+   - TRACKING (Eos semantics): SHW.ch holds every channel's PARAMS as the cues have left them; an action merges its keys in and
+     only the units it touches are looked at again. A unit's look is a pure function of its channels' tracked PARAMS
+     (showTarget): level the highest of its channels' i / 100 (the merged ColorBlaze battens carry up to 12 channels), colour,
+     gobo, rotation, zoom and focus from the brightest channel that has each. Only what differs from the unit's last look is
+     sent, and identical changes are batched into one lx.set / lx.aim over every unit that shares them (a cue can touch 400
+     channels). Times: level rising the cue's up time, falling its down time (down missing = up; up missing = SHW_TIME, Eos's
+     default 5 s); focus, colour and beam their own when given, else up. A MARK cue (move in dark) applies its non-intensity
+     changes at once, heads snapping, to every unit dark before and after it; so does a channel row carrying `mark` (the cue
+     its move-in-dark value is pre-set for). blk, fx, frost, edge, iris and goboSpd are read and not drawn (effects are not run:
+     check() counts them).
+   - PARAMS → lx: i → level; focus (SET-LOCAL metres) → world through the set's root matrixWorld (rig.parent: the frame the rig
+     file and the export share, so it is right at Real size and Set fitted; a size change re-aims every mover — placeSet is
+     wrapped) → lx.aim; cmy / cto (0–100) → the engine's 0..1, cw → the colour wheel by name; rgb / w / a / lime / indigo / cyan
+     (0–100) → the unit's own emitters by name (an RGB unit's three, RGBW's white, RGBA's amber, the Lustr's seven), exact;
+     cw on a framed gel unit (followspot, scroller) → its frame; gobo name → the unit's wheel when it carries it, else left;
+     goboRot → goboRate, goboIdx (a still gobo's angle) → the gobo's turn; zoom → clamped to the type's range (fixed units left). A gel unit keeps its hung gel. HAZER channels
+     (typed 'hazer' in the export; the rig file's hazers have no channel) drive the rig's hazer units in order, at SHW_HAZER_K of
+     their level: the engine tops the room's haze up from them (lxHazeApply), over the show's standing SHW_HAZE.
+   - SEEK: every unit back to its home (lxjFresh: dark, hung gel, template in, default zoom, heads home), every action up to t
+     folded into the tracked state, and every unit snapped to its look (fade 0); the actions after t fire as the clock runs, so
+     a delay in flight at t still lands. check() proves seek(t) equals playing up to t, fades completed.
+   - START / STOP: the preview's own save (lxjSave + lxdCmSave, the camera); start stops the Preview, the check's watch and the
+     step-through, fades the work light to 0 over 3 s and the haze to SHW_HAZE; Stop restores the rig, the work light, the haze and
+     the camera exactly as the Preview's Stop does, and keeps the position (Play carries on from there). Starting the Preview
+     stops the show (lxdPlay is wrapped). Walk keeps the show running: walk round the house during it. Pause holds the clock and
+     the audio; fades already moving finish.
+   - AUDIO: the album from Jack's own files — "Load album audio…" (files, or a folder): matched to tracks by the disc / act and
+     track number in the path ("1-07 …", "2 04 …", "Disc 2/04 …", "Act 1/07 …") and a fuzzy title, the title alone when there is
+     no number. One HTMLAudioElement, object URLs only: nothing is uploaded, stored or committed.
+   MIDTOWN.show: load, play, pause, stop, seek(trackId, sec), gotoCue(q), next/prev (tracks), advance(sec) (the show and the engine
+   by hand, silent clock, for testing with the pane hidden), state, cues, tracks, check(), perf. */
+const SHW_URLS = { eos: 'assets/hamilton-eos.json', show: 'assets/hamilton-show.json' };
+const SHW_DT = 1 / 60;
+const SHW_TIME = 5;                                          // s: a cue with no up time (Eos's default cue time)
+const SHW_HAZE = 0.35, SHW_HAZE_FADE = 3, SHW_WORK_FADE = 3;  // the show's standing haze; the work light out and the haze in at start
+const SHW_HOUSE = 0.35;                                     // the house scan's brightness while the show plays (the slider's 1.4 = house lights up): house to half and out, as a show does
+const SHW_HAZER_K = 0.5;                                     // a hazer channel at full tops the room's haze halfway to 1
+const SHW_REF = { preset: 'presets', cp: 'colorPalettes', bp: 'beamPalettes', fp: 'focusPalettes', ip: 'intensityPalettes' };
+const SHW_META = new Set(['ref', 'time', 'delay', 'mark', 'blk', 'fx']);   // a channel's own timing and bookkeeping, not its look
+const SHW_COLKEYS = ['cmy', 'cto', 'rgb', 'w', 'a', 'lime', 'indigo', 'cyan', 'cw'];
+const SHW_EMIT = { red: p => p.rgb && p.rgb[0], green: p => p.rgb && p.rgb[1], blue: p => p.rgb && p.rgb[2], white: p => p.w, amber: p => p.a, lime: p => p.lime, indigo: p => p.indigo, cyan: p => p.cyan };
+const SHW = { d: null, loading: null, err: null, urls: null, on: false, playing: false, hold: false, houseUp: true, ti: 0, lt: 0, next: 0, cue: -1,
+  ch: new Map(), ut: new Map(), save: null, cm: null, cam: null, haze: null, A: null, fileA: null, stA: null, sound: null, yt: null, ytOn: true, vol: 0.8, files: new Map(), audioOn: false, audioWant: null,
+  audioNote: '', silent: false, E: {}, btn: null, el: null, built: false, shown: { cue: -2, ti: -1, sec: -1 }, perf: { fireMs: 0, fireMax: 0, n: 0 } };
+const showKey = c => String(+c);                             // channel keys: 7, "7", "7.0" → "7"; 619.2 → "619.2"
+const showFmt = s => { s = Math.max(0, s); const m = Math.floor(s / 60), x = Math.floor(s - m * 60); return `${m}:${String(x).padStart(2, '0')}`; };
+
+// ---- the data
+async function showLoad(urls = {}) {
+  const u = { eos: urls.eos || SHW_URLS.eos, show: urls.show || SHW_URLS.show };
+  const get = async url => { const r = await fetch(url, { cache: 'no-cache' }); if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.json(); };
+  SHW.err = null;
+  SHW.loading = (async () => {
+    const [eos, show] = await Promise.all([get(u.eos), get(u.show)]);
+    if (SHW.on) showStop();
+    SHW.d = showCompile(eos, show); SHW.urls = u;
+    SHW.sound = null;                                        // Jack's one-file album, if it is on this machine (git-ignored: absent on Pages)
+    const st = show.soundtrack;
+    if (st && st.url && SHW.d.tracks.every(t => t.file !== null)) {
+      try { const r = await fetch(st.url, { method: 'HEAD', cache: 'no-cache' }); if (r.ok) SHW.sound = { url: st.url }; } catch (e) { /* not here: YouTube, then silence */ }
+    }
+    SHW.ti = 0; SHW.lt = 0; SHW.next = 0; SHW.cue = -1; SHW.ch.clear(); SHW.ut.clear();
+    showMatchAll();
+    if (SHW.built) showBuildLists();
+    showUI(true);
+    const D = SHW.d;
+    return { tracks: D.tracks.length, cues: D.cues.length, real: D.cues.filter(c => c.real).length, actions: D.acts.length, problems: D.rep.problems.length };
+  })();
+  try { return await SHW.loading; }
+  catch (e) { SHW.err = e; console.warn('show: the cue data could not be loaded —', e.message || e); showUI(true); return { error: String(e.message || e) }; }
+  finally { SHW.loading = null; }
+}
+// The two files → tracks (with their starts), the cue list for the panel, the sorted actions, and what did not resolve.
+function showCompile(eos, show) {
+  const rep = { problems: [], refs: new Map(), groups: new Set(), noContent: [], order: [], unknownTrack: [], noUnits: new Map(), panOnly: 0, fx: 0 };
+  const problem = s => { if (rep.problems.length < 500) rep.problems.push(s); };
+  let start = 0;
+  const tracks = (show.tracks || []).map((t, i) => { const o = { i, id: String(t.id), act: +t.act || (String(t.id)[0] === '2' ? 2 : 1), n: +t.n || i + 1, title: t.title || '', yt: typeof t.yt === 'string' ? t.yt : null, file: Number.isFinite(+t.file) && t.file !== null ? +t.file : null, hold: typeof t.hold === 'string' && t.hold ? t.hold : null, len: Math.max(0.001, +t.len || 0), start }; start += o.len; return o; });
+  const byTrack = new Map(tracks.map(t => [t.id, t]));
+  const eosCues = new Map((eos.cues || []).map(c => [String(c.q), c]));
+  // channel → units: every rig channel, then the export's hazer channels onto the rig's hazer units in turn
+  const keyRecs = new Map(), recKeys = new Map();
+  const link = (k, r) => { if (!keyRecs.has(k)) keyRecs.set(k, []); keyRecs.get(k).push(r); if (!recKeys.has(r)) recKeys.set(r, []); recKeys.get(r).push(k); };
+  for (const r of LX.recs) if (!r.T.hazer) for (const c of r.unit.userData.channels || []) link(showKey(c), r);
+  const hazerKeys = Object.entries(eos.channels || {}).filter(([, c]) => c && c.type === 'hazer').map(([k]) => showKey(k)).sort((a, b) => a - b);
+  hazerKeys.forEach((k, j) => { if (LX.hazers.length) link(k, LX.hazers[j % LX.hazers.length]); });
+  const hazer = new Set(hazerKeys);
+  const every = [...new Set([...Object.keys(eos.channels || {}).map(showKey), ...keyRecs.keys()])];
+  // a channel's PARAMS with its references resolved (a preset may name a palette: depth-limited)
+  const resolve = (k, p, depth = 0) => {
+    const out = {};
+    if (!p || typeof p !== 'object') return out;
+    for (const [rk, tbl] of Object.entries(SHW_REF)) {
+      if (p[rk] === undefined || p[rk] === null) continue;
+      const P = (eos[tbl] || {})[String(p[rk])], v = P && P.ch ? P.ch[k] ?? P.ch[String(+k)] : undefined;
+      if (v === undefined || depth > 4) { const key = `${rk} ${p[rk]}`; if (!rep.refs.has(key)) rep.refs.set(key, new Set()); rep.refs.get(key).add(k); continue; }
+      Object.assign(out, resolve(k, v, depth + 1));
+    }
+    for (const key of Object.keys(p)) if (!(key in SHW_REF) && !SHW_META.has(key)) out[key] = p[key];
+    return out;
+  };
+  const expand = (chMap, where) => {
+    const out = [];
+    for (const [key, p] of Object.entries(chMap || {})) {
+      let ks;
+      if (key === '*' || key.toLowerCase() === 'all') ks = every;
+      else if (/^g:/i.test(key)) { const G = (eos.groups || {})[key.slice(2).trim()]; if (!G) { rep.groups.add(`${key} (${where})`); continue; } ks = (G.ch || []).map(showKey); }
+      else ks = [showKey(key)];
+      for (const k of ks) {
+        const r = resolve(k, p);
+        if (r.focus === undefined && (r.pan !== undefined || r.tilt !== undefined)) rep.panOnly++;
+        if (!keyRecs.has(k)) rep.noUnits.set(k, (rep.noUnits.get(k) || 0) + 1);
+        if (p.fx !== undefined && p.fx !== null) rep.fx++;
+        out.push([k, r, { time: p.time, delay: p.delay, mark: p.mark !== undefined && p.mark !== null && p.mark !== false }]);
+      }
+    }
+    return out;
+  };
+  const cues = [], acts = [];
+  // A cue's (or part's) changes as actions: one for the channels on its own timing, one per distinct per-channel time / delay /
+  // mark (a channel's delay counts from the GO; a number for its time is every category's time).
+  const pushActs = (chs, go, t, time, mark, ci, part) => {
+    const by = new Map();
+    for (const e of chs) { const m = e[2], key = `${m.delay ?? ''}|${m.time === undefined ? '' : JSON.stringify(m.time)}|${m.mark}`; if (!by.has(key)) by.set(key, { m, chs: [] }); by.get(key).chs.push([e[0], e[1]]); }
+    for (const { m, chs: list } of by.values()) {
+      const tm = m.time === undefined || m.time === null ? time : typeof m.time === 'number' ? { up: m.time, down: m.time, focus: m.time, color: m.time, beam: m.time } : Object.assign({}, time, m.time);
+      acts.push({ t: m.delay !== undefined && m.delay !== null ? go + (+m.delay || 0) : t, ci, part, chs: list, time: tm, mark: mark || m.mark });
+    }
+  };
+  let lastT = -Infinity, lastQ = -Infinity;
+  (show.cues || []).forEach((s, i) => {
+    const tr = byTrack.get(String(s.track));
+    if (!tr) { rep.unknownTrack.push(`Q ${s.q} → track ${s.track}`); return; }
+    const real = !!s.real, C = real ? eosCues.get(String(s.q)) : s;
+    if (real && !C) rep.noContent.push(String(s.q));
+    const T = tr.start + (+s.at || 0);
+    if (T < lastT - 1e-9) rep.order.push(`Q ${s.q} at ${tr.id} ${(+s.at).toFixed(2)} s is before the cue above it`);
+    if (+s.q <= lastQ) rep.order.push(`Q ${s.q} does not follow Q ${lastQ} in number`);
+    lastT = Math.max(lastT, T); lastQ = Math.max(lastQ, +s.q || lastQ);
+    const cue = { i: cues.length, q: String(s.q), label: (C && C.label) || s.label || '', scene: (C && C.scene) || s.scene || null, track: tr.id, ti: tr.i, at: +s.at || 0, T, real,
+      why: s.why || null, mark: !!(C && C.mark), time: (C && C.time) || {}, delay: (C && +C.delay) || 0, parts: C && C.parts ? C.parts.length : 0, n: 0 };
+    cues.push(cue);
+    if (!C) return;
+    const where = `Q ${cue.q}`;
+    if (C.ch) { const chs = expand(C.ch, where); pushActs(chs, T, T + cue.delay, cue.time, cue.mark, cue.i, 0); cue.n += chs.length; }
+    for (const P of C.parts || []) {
+      const chs = expand(P.ch, `${where} part ${P.part}`);
+      pushActs(chs, T, T + (P.delay !== undefined && P.delay !== null ? +P.delay : cue.delay), Object.assign({}, cue.time, P.time || {}), cue.mark, cue.i, +P.part || 0);
+      cue.n += chs.length;
+    }
+  });
+  acts.forEach((a, j) => { a.j = j; });
+  acts.sort((a, b) => a.t - b.t || a.j - b.j);
+  for (const [k, n] of rep.refs) problem(`unresolved ${k} for channel${n.size > 1 ? 's' : ''} ${[...n].slice(0, 8).join(', ')}${n.size > 8 ? ` … (${n.size})` : ''}`);
+  for (const g of rep.groups) problem(`no group ${g}`);
+  if (rep.noContent.length) problem(`real cue${rep.noContent.length > 1 ? 's' : ''} not in hamilton-eos.json: Q ${rep.noContent.slice(0, 12).join(', ')}${rep.noContent.length > 12 ? ' …' : ''}`);
+  rep.order.forEach(problem); rep.unknownTrack.forEach(s => problem('unknown track: ' + s));
+  return { eos, show, tracks, byTrack, cues, acts, keyRecs, recKeys, hazer, rep, end: start, album: show.album || '' };
+}
+
+// ---- a unit's look from its channels
+function showColour(r, p) {
+  const M = lxModelOf(r.unit.userData), pc = v => lx01((+v || 0) / 100);
+  if (M.model === 'cmy') {
+    const cmy = Array.isArray(p.cmy) ? p.cmy : Array.isArray(p.rgb) ? p.rgb.map(v => 100 - (+v || 0)) : [0, 0, 0];
+    const w = p.cw !== undefined && p.cw !== null ? lxSlotIn(M.wheel, p.cw) : null;
+    return { cmy: cmy.map(pc), cto: pc(p.cto), wheel: w ?? 0 };
+  }
+  if (M.model === 'led') {
+    const q = !Array.isArray(p.rgb) && Array.isArray(p.cmy) ? Object.assign({}, p, { rgb: p.cmy.map(v => 100 - (+v || 0)) }) : p;
+    if (!Array.isArray(q.rgb) && !['w', 'a', 'lime', 'indigo', 'cyan'].some(k => q[k] !== undefined)) return null;
+    return { emitters: M.names.map(n => pc(SHW_EMIT[n] ? SHW_EMIT[n](q) : 0)) };
+  }
+  if (M.model === 'gel' && M.frames && p.cw !== undefined && p.cw !== null) { const f = lxSlotIn(M.frames, p.cw); return f === null ? null : { wheel: f }; }
+  return null;
+}
+// → { level, col (lx params or null), colKey, gobo (slot or null), rate, zoom, focus ([x, y, z] set-local or null) }, or null: no
+// channel of this unit has been touched (home).
+function showTarget(r) {
+  const keys = SHW.d.recKeys.get(r); if (!keys) return null;
+  const ps = [];
+  for (const k of keys) { const p = SHW.ch.get(k); if (p) ps.push(p); }
+  if (!ps.length) return null;
+  if (ps.length > 1) ps.sort((a, b) => (+b.i || 0) - (+a.i || 0));   // stable: the brightest first, ties in channel order
+  const lv = lx01((+ps[0].i || 0) / 100) * (r.T.hazer ? SHW_HAZER_K : 1);
+  if (r.T.hazer) return Object.assign({}, SHW_HOME, { level: lv });
+  const pick = f => ps.find(f);
+  const pc = pick(p => SHW_COLKEYS.some(k => p[k] !== undefined)), col = pc ? showColour(r, pc) : null;
+  const pg = pick(p => typeof p.gobo === 'string' && !p.gobo.startsWith('slot:'));
+  let gobo = null;
+  if (pg) { const g = lxGoboSlot(pg.gobo); if (g >= 0 && lxWheelOf(r.unit).includes(g)) gobo = g; }
+  const pr = pick(p => p.goboRot !== undefined), pi = pick(p => p.goboIdx !== undefined), pz = pick(p => p.zoom !== undefined), pf = pick(p => Array.isArray(p.focus) && p.focus.length === 3);
+  const T = r.T, zoom = pz && T.min !== undefined ? THREE.MathUtils.clamp(+pz.zoom || T.zoom, T.min, T.max) : null;
+  return { level: lv, col, colKey: col ? JSON.stringify(col) : '', gobo, rate: pr ? +pr.goboRot || 0 : null, idx: pi ? +pi.goboIdx || 0 : null, zoom, focus: r.mover && pf ? pf.focus : null };
+}
+const SHW_HOME = { level: 0, col: null, colKey: '', gobo: null, rate: null, idx: null, zoom: null, focus: null };
+// Set-local metres → world, through the set's root (the rig's parent: the rig file's and the export's frame), now.
+function showWorld(f) { const root = rig && rig.parent; if (!root) return null; root.updateWorldMatrix(true, false); return new THREE.Vector3(+f[0], +f[1], +f[2]).applyMatrix4(root.matrixWorld); }
+// The touched units to their looks: only what changed, batched by identical change. time: the action's times; snap: a seek.
+// An aim is solved until it holds (showAim).
+function showApply(recs, time, mark, snap) {
+  const up = time.up ?? SHW_TIME, down = time.down ?? up, tc = time.color ?? up, tf = time.focus ?? up, tb = time.beam ?? up;
+  const B = new Map();
+  const add = (key, mk, r) => { let b = B.get(key); if (!b) B.set(key, b = { mk, units: [] }); b.units.push(r.unit); };
+  for (const r of recs) {
+    const N = showTarget(r) || SHW_HOME, O = SHW.ut.get(r) || SHW_HOME;
+    SHW.ut.set(r, N);
+    const dark = mark && O.level <= LX_LIVE && N.level <= LX_LIVE && r.st.level <= LX_LIVE, now = snap || dark;
+    if (N.level !== O.level) { const f = snap ? 0 : N.level > O.level ? up : down; add(`L${N.level}|${f}`, u => lxSet(u, { level: N.level }, f), r); }
+    if (N.col && N.colKey !== O.colKey) { const f = now ? 0 : tc; add(`C${N.colKey}|${f}`, u => lxSet(u, N.col, f), r); }
+    if (N.gobo !== null && N.gobo !== O.gobo) add(`G${N.gobo}`, u => lxSet(u, { gobo: N.gobo }), r);
+    if (N.rate !== null && N.rate !== O.rate) add(`R${N.rate}`, u => lxSet(u, { goboRate: N.rate }), r);
+    if (N.idx !== null && N.idx !== O.idx && !N.rate) add(`I${N.idx}`, u => lxSet(u, { goboRot: N.idx }), r);   // an indexed (still) gobo's angle
+    if (N.zoom !== null && N.zoom !== O.zoom) { const f = now ? 0 : tb; add(`Z${N.zoom}|${f}`, u => lxSet(u, { zoom: N.zoom }, f), r); }
+    if (N.focus && (!O.focus || N.focus.join() !== O.focus.join())) { const f = now ? 0 : tf; add(`F${N.focus.join()}|${f}|${now}`, u => { const P = showWorld(N.focus); if (P) showAim(u, P, f, now); }, r); }
+  }
+  for (const b of B.values()) b.mk(b.units);
+  return B.size;
+}
+// Movers at a world point. lxSolve, near vertical (a tilt of a degree or two: the pan barely matters and the lens is off both
+// axes), stops short: its four passes from the head's last target, choosing the answer nearest where the head IS, settle on a
+// pose up to 20 cm off the point, and which one depends on where the head started — so a seek and a play-through landed 25 cm
+// apart. Solved here with the head snapped to each answer in turn until it holds (≤ SHW_AIM_N; measured on a Viper aimed nearly
+// straight down: 20 → 11 → 0.6 → 0.03 cm → 0 by the fifth, an ordinary aim at the second); then the head is put back where it
+// was and travels to that answer over the fade (lx.set pan / tilt), or stays there when snapping. Synchronous: no frame sees
+// the solving poses.
+const SHW_AIM_N = 8;
+function showAim(units, P, fade, snap) {
+  for (const u of [].concat(units)) {
+    const r = LX.byUnit.get(u); if (!r || !r.mover) continue;
+    const st = r.st, pan0 = st.pan, tilt0 = st.tilt;
+    let last = null;
+    for (let k = 0; k < SHW_AIM_N; k++) {
+      const a = lxAim(u, P, 0, true)[0];
+      if (!a || a.skipped || (last && Math.abs(a.pan - last.pan) < 0.01 && Math.abs(a.tilt - last.tilt) < 0.01)) break;
+      last = a;
+    }
+    if (snap) continue;
+    const pan = st.panTo, tilt = st.tiltTo;
+    lxSet(u, { pan: pan0, tilt: tilt0, snap: true });
+    lxSet(u, { pan, tilt }, fade);
+  }
+}
+// One action: its channels merged into the tracked state, the units they feed re-looked.
+function showFire(a, applyNow = true) {
+  const touched = new Set(), K = SHW.d.keyRecs;
+  for (const [k, p] of a.chs) {
+    const cur = SHW.ch.get(k);
+    if (cur) Object.assign(cur, p); else SHW.ch.set(k, Object.assign({}, p));
+    const rs = K.get(k); if (rs) for (const r of rs) touched.add(r);
+  }
+  return applyNow ? showApply(touched, a.time, a.mark, false) : 0;
+}
+function showFireTo(T) {
+  const A = SHW.d.acts; let n = 0;
+  if (SHW.next < A.length && A[SHW.next].t <= T + 1e-9) {
+    const t0 = performance.now();
+    while (SHW.next < A.length && A[SHW.next].t <= T + 1e-9) { showFire(A[SHW.next++]); n++; }
+    lxFlush();
+    const ms = performance.now() - t0, P = SHW.perf; P.fireMs = ms; P.fireMax = Math.max(P.fireMax, ms); P.n++;
+  }
+  const C = SHW.d.cues;
+  while (SHW.cue + 1 < C.length && C[SHW.cue + 1].T <= T + 1e-9) SHW.cue++;
+  return n;
+}
+const showT = () => SHW.d ? SHW.d.tracks[SHW.ti].start + SHW.lt : 0;
+
+// ---- seek: home, fold, snap
+function showSeekT(T) {
+  const D = SHW.d, tr = D.tracks;
+  T = THREE.MathUtils.clamp(T, 0, D.end);
+  let i = 0; while (i + 1 < tr.length && tr[i + 1].start <= T + 1e-9) i++;
+  SHW.ti = i; SHW.lt = Math.min(T - tr[i].start, tr[i].len); SHW.hold = false;
+  if (!SHW.on) { SHW.next = D.acts.findIndex(a => a.t > T + 1e-9); if (SHW.next < 0) SHW.next = D.acts.length; SHW.cue = D.cues.findLastIndex(c => c.T <= T + 1e-9); showTrackAudio(); showUI(true); return; }
+  for (const r of LX.recs) lxjFresh(r);
+  SHW.ch.clear(); SHW.ut.clear(); SHW.next = 0; SHW.cue = -1;
+  while (SHW.next < D.acts.length && D.acts[SHW.next].t <= T + 1e-9) showFire(D.acts[SHW.next++], false);
+  showApply(LX.recs, {}, false, true);
+  SHW.cue = D.cues.findLastIndex(c => c.T <= T + 1e-9);
+  lxFlush(); requestRender();
+  showTrackAudio();
+  showUI(true);
+}
+function showSeek(trackId, sec = 0) {
+  if (!SHW.d) return false;
+  const tr = typeof trackId === 'number' ? SHW.d.tracks[trackId] : SHW.d.byTrack.get(String(trackId));
+  if (!tr) return false;
+  if (!SHW.on) showStart(false);
+  showSeekT(tr.start + THREE.MathUtils.clamp(+sec || 0, 0, tr.len));
+  return showState();
+}
+function showGotoCue(q) {
+  if (!SHW.d) return false;
+  const c = typeof q === 'object' && q ? q : SHW.d.cues.find(x => x.q === String(q)) || SHW.d.cues.find(x => +x.q === +q);
+  if (!c) return false;
+  if (!SHW.on) showStart(false);
+  showSeekT(c.T);
+  return showState();
+}
+
+// ---- start, play, pause, stop
+function showStart(play = true) {
+  if (!LX.ready || !SHW.d) return false;
+  if (SHW.on) { if (play) showPause(false); return true; }
+  if (LXD.on) lxdStop();                                     // the preview puts the rig back first; its camera tween is where the view goes back to
+  if (LXJ.show) lxjShowEnd(false);
+  if (LXP.step && LXP.step.on) lxpStepStop();
+  SHW.save = lxjSave(); SHW.cm = lxdCmSave();
+  SHW.cam = tween ? { p: tween.p1.clone(), t: tween.t1.clone() } : { p: camera.position.clone(), t: orbit.target.clone() };
+  if (rig && !rig.visible) setRig(true);
+  LX_API.work(0, SHW_WORK_FADE);
+  SHW.haze = { from: LX.hazeBase, to: SHW_HAZE, t: 0, dur: SHW_HAZE_FADE };
+  SHW.on = true; SHW.playing = false; SHW.hold = false; SHW.houseUp = true;   // the house lights stay up over the preshow look; the first Play takes them out
+  showSeekT(showT());
+  if (play) showPause(false);
+  if (SHW.btn) SHW.btn.setAttribute('aria-pressed', 'true');
+  return true;
+}
+function showHouse(up) {                                  // the house lights, as a show runs them: out for the acts, up for the preshow and the interval
+  SHW.houseUp = up;
+  SHW.house = { from: houseMats.length ? houseMats[0].color.r / Math.max(1e-6, houseMats[0].userData.base.r) : parseFloat(bright.value), to: up ? parseFloat(bright.value) : SHW_HOUSE, t: 0, dur: SHW_WORK_FADE };
+}
+// THE ACT BREAK. A track with `hold` text in the show file (2-01 What'd I Miss: "Intermission") is not entered when the clock
+// runs out of the track before it: the clock stops at that track's end (its last cues fired — the blackout and the interval
+// preset), the audio pauses, the house lights come up, and the show waits for Play, which steps into the held track and takes
+// the house out again. Jack: "at the end of nonstop it blacks out then the lights go back to what they were at preshow and it
+// waits for me to press play". Seeking anywhere clears a hold.
+function showHold() {
+  const tr = SHW.d.tracks[SHW.ti];
+  SHW.lt = tr.len; showFireTo(tr.start + tr.len - 1e-6);
+  SHW.playing = false; SHW.hold = true;
+  if (SHW.A) SHW.A.pause();
+  showHouse(true); showUI(true); requestRender();
+}
+function showPause(on = SHW.playing) {
+  if (!SHW.on) return showStart(!on);
+  if (!on && SHW.hold) {                                     // Play at the interval: into the held track
+    SHW.hold = false; SHW.ti++; SHW.lt = 0; SHW.playing = true;
+    showHouse(false); showTrackAudio(); showFireTo(showT()); showUI(true); requestRender();
+    return true;
+  }
+  SHW.playing = !on;
+  if (SHW.playing && SHW.houseUp) showHouse(false);
+  const A = SHW.A;
+  if (A && SHW.audioOn) { if (SHW.playing && (A !== SHW.stA || A.src)) A.play().catch(e => showAudioFail(e)); else A.pause(); }
+  showUI(true); requestRender();
+  return SHW.playing;
+}
+function showStop(camBack = true) {
+  if (!SHW.on) return false;
+  SHW.on = false; SHW.playing = false; SHW.hold = false; SHW.houseUp = true; SHW.haze = null; SHW.house = null;
+  applyBright();                                             // the house lights back to the slider
+  if (SHW.A) SHW.A.pause();
+  const ytBox = document.getElementById('sh-yt'); if (ytBox) ytBox.hidden = true;
+  lxjRestore(SHW.save); lxdCmRestore(SHW.cm);
+  if (camBack && SHW.cam && !walking) {
+    tween = { t: 0, start: performance.now(), p0: camera.position.clone(), t0: orbit.target.clone(), p1: SHW.cam.p.clone(), t1: SHW.cam.t.clone() };
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) tween.t = 1;
+  }
+  SHW.save = SHW.cm = null; SHW.ch.clear(); SHW.ut.clear();
+  if (LXP.built) { lxpSync(); lxpMasterSync(); }
+  if (!walking) hint.textContent = HINT_ORBIT;
+  if (SHW.btn) SHW.btn.setAttribute('aria-pressed', String(!!(SHW.el && !SHW.el.hidden)));
+  showUI(true); requestRender();
+  return true;
+}
+function showStep(d) {                                       // the previous / next track (previous: this one's top if past its first 3 s)
+  if (!SHW.d) return false;
+  const i = d < 0 && SHW.lt > 3 ? SHW.ti : THREE.MathUtils.clamp(SHW.ti + d, 0, SHW.d.tracks.length - 1);
+  return showSeek(i, 0);
+}
+// The end of the album: hold at the end, paused.
+function showEnd() { SHW.lt = SHW.d.tracks[SHW.ti].len; SHW.playing = false; if (SHW.A) SHW.A.pause(); showUI(true); }
+
+// ---- the frame's call (through lxPanelTick). → true every frame while playing (the page draws); false otherwise.
+function showTick(dt, silent = false) {
+  if (!SHW.on || !SHW.d) return false;
+  const H = SHW.haze;
+  if (H) { H.t += dt; const k = H.dur > 0 ? Math.min(1, H.t / H.dur) : 1; LX_API.haze(H.from + (H.to - H.from) * k); if (k >= 1) SHW.haze = null; }
+  const HL = SHW.house;
+  if (HL) { HL.t += dt; const k = HL.dur > 0 ? Math.min(1, HL.t / HL.dur) : 1, v = HL.from + (HL.to - HL.from) * k; houseMats.forEach(m => m.color.copy(m.userData.base).multiplyScalar(v)); requestRender(); if (k >= 1) SHW.house = null; }
+  if (SHW.playing) {
+    const tr = SHW.d.tracks, A = SHW.A;
+    if (SHW.audioOn && !silent && A && A === SHW.stA) showSoundTick();
+    else if (SHW.audioOn && !silent && A) {
+      if (A.readyState >= 1 && SHW.audioWant === null && !A.seeking) SHW.lt = Math.min(A.currentTime, tr[SHW.ti].len - 1e-3);
+    } else {
+      SHW.lt += dt;
+      while (SHW.lt >= tr[SHW.ti].len - 1e-7) {              // 384.99 + 0.01 lands an ulp short of 385: roll over (or hold) here, or showFireTo's own tolerance fires the next track's 0.0 cue first
+        if (SHW.ti + 1 >= tr.length) { showFireTo(SHW.d.end); showEnd(); return true; }
+        if (tr[SHW.ti + 1].hold) { showHold(); return true; }
+        SHW.lt -= tr[SHW.ti].len; SHW.ti++;
+        if (!silent) showTrackAudio();
+      }
+    }
+    showFireTo(showT());
+  }
+  showUI(false);
+  return SHW.playing || !!H || !!HL;
+}
+// Hand-driven (tests, pictures with the pane hidden): the show's clock (silent) and the engine together, synchronously.
+function showAdvance(sec, step = SHW_DT) {                // the clock moves by sec, paused or not (pause() first, so the frame does not move it too)
+  const was = SHW.playing; SHW.playing = true;
+  for (let t = 0; t < sec - 1e-9 && SHW.playing; t += step) { const d = Math.min(step, sec - t); showTick(d, true); lxTick(d); }
+  SHW.playing = was && SHW.playing;
+  lxFlush(); showUI(true);
+  return showState();
+}
+// Every fade, journey and delay of the ENGINE run out (the show's clock does not move).
+function showSettle() { for (let k = 0; k < 4; k++) lxTick(600); lxFlush(); }
+
+// ---- the audio
+// TWO SOURCES behind one face. SHW.A is whichever is playing the current track: Jack's own file (an HTMLAudioElement,
+// SHW.fileA) when he has loaded one for it, else THE ALBUM ON YOUTUBE (SHW.yt, an adapter over the IFrame player with the
+// few members the clock reads: currentTime, readyState, seeking, paused, play, pause, volume) — the official upload of
+// each track (show file tracks[].yt: the cast's artist and Topic channels, every one matched to the album's length within
+// 2 s and embeddable, checked 2026-10-11). Nothing is downloaded or stored. YouTube's terms want the player seen, so while
+// it plays the music it sits as a small card in the corner (#sh-yt). Neither loaded nor reachable: the silent clock.
+function showAudioEnded() {                                  // an event, not a timer: the track ran out, the next one begins
+  if (!SHW.on || !SHW.playing || !SHW.audioOn) return;
+  const tr = SHW.d.tracks;
+  showFireTo(tr[SHW.ti].start + tr[SHW.ti].len - 1e-6);     // the cues the track's end left waiting
+  if (SHW.ti + 1 >= tr.length) { showEnd(); return; }
+  if (tr[SHW.ti + 1].hold) { showHold(); return; }
+  SHW.ti++; SHW.lt = 0; showTrackAudio(); showFireTo(showT()); showUI(true);
+}
+function showAudioEl() {
+  if (SHW.fileA) return SHW.fileA;
+  const A = SHW.fileA = new Audio(); A.preload = 'auto'; A.volume = SHW.vol;
+  A.addEventListener('loadedmetadata', () => { if (SHW.audioWant !== null) { try { A.currentTime = Math.min(SHW.audioWant, Math.max(0, A.duration - 0.05)); } catch (e) { /* not seekable: from the top */ } SHW.audioWant = null; } });
+  A.addEventListener('ended', () => { if (SHW.A === A) showAudioEnded(); });
+  A.addEventListener('error', () => { if (SHW.audioOn && SHW.A === A) showAudioFail(A.error); });
+  return A;
+}
+// THE SOUNDTRACK: Jack's own copy of the whole album as ONE file (show file soundtrack.url, git-ignored, never committed),
+// each track's start in it in tracks[].file — found from the silences between tracks; the album's 15 segues have none, and
+// there the start is the previous start + its length. While it plays, the file's time IS the clock: the track is the last
+// one starting at or before it, and the time into the track runs to the track's length, holding through the gap after.
+function showSoundEl() {
+  if (SHW.stA) return SHW.stA;
+  const A = SHW.stA = new Audio(); A.preload = 'auto'; A.volume = SHW.vol;
+  // loaded whole into a Blob, not streamed from its URL: python's http.server (how this page is served on Jack's machine) has
+  // no Range requests, and without them the browser cannot seek in the file — a seek would play from the top
+  SHW.sound.note = 'loading the soundtrack…';
+  fetch(SHW.sound.url).then(r => r.blob()).then(bl => { A.src = URL.createObjectURL(bl); SHW.sound.note = ''; if (SHW.on && SHW.A === A && SHW.playing) A.play().catch(showAudioFail); showUI(true); },
+    () => { SHW.sound = null; if (SHW.A === A) showAudioFail({ message: 'the soundtrack file could not be read' }); });
+  A.addEventListener('loadedmetadata', () => { if (SHW.audioWant !== null) { try { A.currentTime = SHW.audioWant; } catch (e) { /* from the top */ } SHW.audioWant = null; } });
+  A.addEventListener('ended', () => { if (SHW.A === A && SHW.on) { showFireTo(SHW.d.end); showEnd(); } });
+  A.addEventListener('error', () => { if (SHW.A === A) { SHW.sound = null; showAudioFail({ message: 'the soundtrack file would not play' }); } });
+  return A;
+}
+function showSoundTick() {                                   // the file's time → the track and the time into it
+  const A = SHW.stA, tr = SHW.d.tracks;
+  if (!A || A.readyState < 1 || A.seeking || SHW.audioWant !== null) return;
+  const t = A.currentTime;
+  let i = SHW.ti;
+  while (i + 1 < tr.length && tr[i + 1].file <= t + 1e-3) i++;
+  while (i > 0 && tr[i].file > t + 1e-3) i--;
+  if (i !== SHW.ti) {
+    if (i > SHW.ti && tr.slice(SHW.ti + 1, i + 1).some(x => x.hold)) { showHold(); return; }   // the interval: the file runs on, the show does not
+    if (i > SHW.ti) showFireTo(tr[SHW.ti].start + tr[SHW.ti].len - 1e-6);   // the cues the last track's end left waiting
+    SHW.ti = i;
+    if (SHW.files.has(i)) { SHW.lt = Math.max(0, t - tr[i].file); showTrackAudio(); return; }   // his own file for this one wins
+  }
+  SHW.lt = THREE.MathUtils.clamp(t - tr[i].file, 0, tr[i].len - 1e-3);
+}
+// The YouTube source. The API script loads once, on first need; until the player is ready, readyState 0 (the clock waits).
+// getCurrentTime() steps coarsely, so between its changes the time runs on from the last one by the wall clock (at most
+// 0.6 s on — this reads the music's own clock, it is not game timing).
+function showYT() {
+  if (SHW.yt) return SHW.yt;
+  const Y = SHW.yt = { p: null, ready: false, failed: false, vid: null, want: null, state: -1, base: 0, wall: 0, vol: SHW.vol,
+    get readyState() { return this.ready && this.vid ? 4 : 0; },
+    get seeking() { return this.state === 3; },
+    get paused() { return this.state !== 1; },
+    get currentTime() {
+      if (!this.ready || !this.p.getCurrentTime) return 0;
+      const b = this.p.getCurrentTime(), now = performance.now();
+      if (b !== this.base) { this.base = b; this.wall = now; }
+      return this.state === 1 ? this.base + Math.min(0.6, (now - this.wall) / 1000) : this.base;
+    },
+    set currentTime(s) { if (this.ready) { this.p.seekTo(s, true); this.base = s; this.wall = performance.now(); } else this.want = s; },
+    get volume() { return this.vol; },
+    set volume(v) { this.vol = v; if (this.ready) this.p.setVolume(Math.round(v * 100)); },
+    load(vid, at, play) {
+      this.vid = vid; this.want = at;
+      if (!this.ready) return;
+      if (play) this.p.loadVideoById({ videoId: vid, startSeconds: at }); else this.p.cueVideoById({ videoId: vid, startSeconds: at });
+      this.base = at; this.wall = performance.now();
+    },
+    play() { if (this.ready && this.vid) this.p.playVideo(); return Promise.resolve(); },
+    pause() { if (this.ready) this.p.pauseVideo(); },
+  };
+  const box = document.createElement('div'); box.id = 'sh-yt'; box.hidden = true;
+  box.innerHTML = '<div id="sh-yt-p"></div><div class="sh-yt-cap">The cast album · YouTube</div>';
+  document.body.append(box);
+  const make = () => {
+    Y.p = new YT.Player('sh-yt-p', { width: 320, height: 180, playerVars: { playsinline: 1, controls: 1, rel: 0, modestbranding: 1, origin: location.origin },
+      events: {
+        onReady: () => { Y.ready = true; Y.p.setVolume(Math.round(Y.vol * 100)); if (Y.vid) { const go = SHW.on && SHW.playing && SHW.A === Y; Y.load(Y.vid, Y.want || 0, go); } showUI(true); },
+        onStateChange: e => { Y.state = e.data; if (e.data === 0 && SHW.A === Y) showAudioEnded(); },
+        onError: e => { if (SHW.A === Y) showAudioFail({ message: `YouTube error ${e.data} on ${Y.vid}` }); },
+      } });
+  };
+  if (window.YT && window.YT.Player) make();
+  else {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (prev) prev(); make(); };
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api';
+    s.onerror = () => { Y.failed = true; if (SHW.A === Y) showAudioFail({ message: 'YouTube could not be reached' }); };
+    document.head.append(s);
+  }
+  return Y;
+}
+function showAudioFail(e) {
+  if (e && e.name === 'AbortError') return;                  // a src change interrupted play(): not a failure
+  SHW.audioOn = false; SHW.audioNote = `audio could not play (${(e && (e.message || e.name)) || 'error'}) — silent clock`;
+  console.warn('show: ' + SHW.audioNote); showUI(true);
+}
+// The current track's file (if any) into the audio element, at the clock's position; playing if the show is.
+function showTrackAudio() {
+  const f = SHW.files.get(SHW.ti), tr = SHW.d && SHW.d.tracks[SHW.ti];
+  const ytBox = document.getElementById('sh-yt');
+  if (!f && tr && SHW.sound) {                               // the one-file soundtrack
+    if (SHW.fileA && !SHW.fileA.paused) SHW.fileA.pause();
+    if (SHW.yt) SHW.yt.pause(); if (ytBox) ytBox.hidden = true;
+    const A = showSoundEl(), go = SHW.on && SHW.playing, P = tr.file + SHW.lt;
+    SHW.A = A; SHW.audioOn = true; SHW.audioNote = '';
+    if (A.readyState >= 1) { if (Math.abs(A.currentTime - P) > 0.25) A.currentTime = P; } else SHW.audioWant = P;
+    if (go && A.src) A.play().catch(showAudioFail); else A.pause();   // no src yet: the blob is still loading and plays when it lands
+    return;
+  }
+  if (SHW.stA && !SHW.stA.paused) SHW.stA.pause();
+  if (!f && tr && tr.yt && SHW.ytOn && !(SHW.yt && SHW.yt.failed)) {   // the album from YouTube
+    if (SHW.fileA && !SHW.fileA.paused) SHW.fileA.pause();
+    const Y = showYT(), go = SHW.on && SHW.playing;
+    SHW.A = Y; SHW.audioOn = true; SHW.audioWant = null; SHW.audioNote = '';
+    if (Y.vid !== tr.yt) Y.load(tr.yt, SHW.lt, go);
+    else { Y.currentTime = SHW.lt; if (go) Y.play(); else Y.pause(); }
+    if (ytBox) ytBox.hidden = !SHW.on;
+    return;
+  }
+  if (SHW.yt) SHW.yt.pause();
+  if (ytBox) ytBox.hidden = true;
+  if (!f) { if (SHW.fileA && !SHW.fileA.paused) SHW.fileA.pause(); SHW.A = SHW.fileA || null; SHW.audioOn = false; SHW.audioWant = null; return; }
+  const El = showAudioEl();
+  SHW.A = El;
+  SHW.audioOn = true;
+  if (El.dataset.ti !== String(SHW.ti) || El.dataset.url !== f.url) { El.src = f.url; El.dataset.ti = String(SHW.ti); El.dataset.url = f.url; SHW.audioWant = SHW.lt; }
+  else if (El.readyState >= 1) { try { El.currentTime = SHW.lt; } catch (e) { SHW.audioWant = SHW.lt; } }
+  else SHW.audioWant = SHW.lt;
+  if (SHW.on && SHW.playing) El.play().catch(showAudioFail); else El.pause();
+}
+// Matching Jack's files to the album: the disc / act and track number from the path, then a fuzzy title.
+const showNorm = s => String(s || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/&/g, ' and ').replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/[^a-z0-9#]+/g, ' ').trim();
+function showTitleScore(name, title) {
+  const a = new Set(showNorm(name).split(' ').filter(w => w.length > 1 || /\d/.test(w))), b = showNorm(title).split(' ').filter(w => w.length > 1 || /\d/.test(w));
+  if (!b.length) return 0;
+  let hit = 0; for (const w of b) if (a.has(w)) hit++;
+  return hit / b.length;                                     // the share of the title's words in the file's name
+}
+function showParseFile(f) {
+  const path = (f.webkitRelativePath || f.name || '').replace(/\\/g, '/'), parts = path.split('/'), base = parts.pop().replace(/\.[a-z0-9]{2,5}$/i, '');
+  let disc = null, n = null, rest = base;
+  for (const p of parts) { const m = /(?:disc|disk|cd|act)\s*[-_ ]?\s*(\d)/i.exec(p); if (m) disc = +m[1]; }
+  let m = /^\s*(\d)\s*[-_. ]\s*(\d{1,2})(?!\d)\s*[-_. ]*\s*(.*)$/.exec(base);
+  if (m && +m[2] >= 1 && +m[2] <= 30) { disc = +m[1]; n = +m[2]; rest = m[3]; }
+  else if ((m = /^\s*([12])(\d{2})(?!\d)\s*[-_. ]*\s*(.*)$/.exec(base)) && +m[2] >= 1 && +m[2] <= 23 && disc === null) { disc = +m[1]; n = +m[2]; rest = m[3]; }
+  else if ((m = /^\s*(\d{1,2})(?!\d)\s*[-_. ]*\s*(.*)$/.exec(base))) { n = +m[1]; rest = m[2]; }
+  const m2 = /(?:disc|act|cd)\s*(\d)/i.exec(base); if (disc === null && m2) disc = +m2[1];
+  return { file: f, path, disc, n, rest: rest || base };
+}
+// files → SHW.files (track index → { file, url, name, score }); each track takes its best file, each file one track.
+function showMatchFiles(list) {
+  const audio = [...list].filter(f => /^audio\//.test(f.type) || /\.(mp3|m4a|aac|wav|flac|ogg|oga|opus|webm|aif|aiff)$/i.test(f.name));
+  for (const f of SHW.files.values()) URL.revokeObjectURL(f.url);
+  SHW.files.clear();
+  SHW.pending = audio.map(showParseFile);
+  showMatchAll();
+  return { files: audio.length, matched: SHW.files.size, unmatched: audio.length - SHW.files.size };
+}
+function showMatchAll() {
+  const D = SHW.d, P = SHW.pending || [];
+  for (const f of SHW.files.values()) URL.revokeObjectURL(f.url);
+  SHW.files.clear();
+  if (!D || !P.length) { SHW.audioOn = false; showUI(true); return; }
+  const cand = [];
+  P.forEach((p, fi) => D.tracks.forEach(t => {
+    const ts = showTitleScore(p.rest, t.title);
+    let s = 0;
+    if (p.n === t.n && p.disc === t.act) s = 3 + ts;
+    else if (p.n === t.n && p.disc === null) s = 1 + ts * 2;   // a number but no disc: the title decides the act
+    else if (p.n === null && ts >= 0.75) s = ts * 2;
+    if (s > 1.2) cand.push({ fi, ti: t.i, s });
+  }));
+  cand.sort((a, b) => b.s - a.s);
+  const usedF = new Set();
+  for (const c of cand) {
+    if (usedF.has(c.fi) || SHW.files.has(c.ti)) continue;
+    usedF.add(c.fi); const p = P[c.fi];
+    SHW.files.set(c.ti, { file: p.file, name: p.path, url: URL.createObjectURL(p.file), score: +c.s.toFixed(2) });
+  }
+  SHW.audioNote = '';
+  if (SHW.A) SHW.A.removeAttribute('data-ti');
+  if (SHW.on) showTrackAudio();
+  if (SHW.built) showBuildLists();
+  showUI(true);
+}
+
+// ---- the panel
+const showTrackOf = c => SHW.d.tracks[c.ti];
+function showCueLine(c, withTime) {
+  const tr = showTrackOf(c);
+  return `Q ${c.q}${c.label ? ` · ${c.label}` : ''} · ${tr.title} ${withTime !== undefined ? showFmt(withTime) : showFmt(c.at)}`;
+}
+function showState() {
+  const D = SHW.d; if (!D) return { loaded: false, error: SHW.err ? String(SHW.err.message || SHW.err) : null };
+  const tr = D.tracks[SHW.ti], c = D.cues[SHW.cue] || null, nx = D.cues[SHW.cue + 1] || null, f = SHW.files.get(SHW.ti);
+  return { loaded: true, on: SHW.on, playing: SHW.playing, hold: SHW.hold, houseUp: SHW.houseUp, track: tr.id, title: tr.title, t: +SHW.lt.toFixed(3), T: +showT().toFixed(3), end: +D.end.toFixed(1),
+    cue: c ? { q: c.q, label: c.label, track: c.track, at: c.at, real: c.real } : null, next: nx ? { q: nx.q, label: nx.label, track: nx.track, at: nx.at, real: nx.real, in: +(nx.T - showT()).toFixed(2) } : null,
+    pending: D.acts.length - SHW.next,
+    audio: { files: SHW.files.size, mode: SHW.audioOn ? 'audio' : 'silent', file: f ? f.name : null, currentTime: SHW.A ? +SHW.A.currentTime.toFixed(3) : null, note: SHW.audioNote || null } };
+}
+function showBuildPanel() {
+  if (SHW.built) return;
+  const el = SHW.el = document.createElement('div'); el.id = 'show'; el.hidden = true;
+  el.innerHTML = `<div class="sh-head"><b>Show</b><button class="sh-x" title="Hide the panel (the show keeps playing)">Hide</button></div>
+<div class="sh-now" aria-live="polite"></div>
+<div class="sh-next"></div>
+<div class="row"><button class="sh-prev" title="The previous track (this one's top, past its first 3 s)">Prev</button><button class="sh-play" aria-pressed="false">Play</button><button class="sh-nexttr" title="The next track">Next</button><button class="sh-stop" title="Stop: the rig, the work light, the haze and the view go back as they were">Stop</button><span class="sh-clock"></span></div>
+<input class="sh-scrub" type="range" min="0" max="1" step="0.1" value="0" aria-label="Position in the track">
+<div class="row"><button class="sh-files">Load album audio…</button><button class="sh-dir" title="A folder of the album (both discs)">Folder…</button><input class="sh-fin" type="file" accept="audio/*" multiple hidden><input class="sh-din" type="file" webkitdirectory multiple hidden></div>
+<label><input class="sh-ytin" type="checkbox" checked> Play the album from YouTube (your own files win)</label>
+<label>Volume <input class="sh-vol" type="range" min="0" max="1" step="0.01" value="0.8"></label>
+<div class="note sh-audio"></div>
+<h2>Tracks</h2><div class="sh-list sh-tracks"></div>
+<h2>Cues</h2><div class="sh-list sh-cues"></div>
+<div class="note">● a real cue from the show file · ○ a reconstruction (timed to the album, modelled on the real ones). Click a cue or a track to go there.</div>
+<div class="note sh-data"></div>`;
+  document.getElementById('stage').appendChild(el);
+  const q = s => el.querySelector(s), E = SHW.E;
+  Object.assign(E, { now: q('.sh-now'), next: q('.sh-next'), play: q('.sh-play'), stop: q('.sh-stop'), clock: q('.sh-clock'), scrub: q('.sh-scrub'), audio: q('.sh-audio'),
+    tracks: q('.sh-tracks'), cues: q('.sh-cues'), data: q('.sh-data'), vol: q('.sh-vol') });
+  q('.sh-x').addEventListener('click', () => showPanel(false));
+  E.play.addEventListener('click', () => { if (!SHW.d) return; if (!SHW.on) showStart(true); else showPause(); });
+  E.stop.addEventListener('click', () => showStop());
+  q('.sh-prev').addEventListener('click', () => showStep(-1));
+  q('.sh-nexttr').addEventListener('click', () => showStep(1));
+  E.scrub.addEventListener('pointerdown', () => { SHW.scrubbing = true; });
+  E.scrub.addEventListener('change', () => { SHW.scrubbing = false; if (SHW.d) showSeek(SHW.ti, +E.scrub.value); });
+  E.scrub.addEventListener('input', () => { if (E.clock) E.clock.textContent = `${showFmt(+E.scrub.value)} / ${SHW.d ? showFmt(SHW.d.tracks[SHW.ti].len) : ''}`; });
+  const fin = q('.sh-fin'), din = q('.sh-din');
+  q('.sh-files').addEventListener('click', () => fin.click());
+  q('.sh-dir').addEventListener('click', () => din.click());
+  for (const inp of [fin, din]) inp.addEventListener('change', () => { if (inp.files && inp.files.length) showMatchFiles(inp.files); inp.value = ''; });
+  E.vol.addEventListener('input', () => { SHW.vol = +E.vol.value; showAudioEl().volume = SHW.vol; if (SHW.yt) SHW.yt.volume = SHW.vol; if (SHW.stA) SHW.stA.volume = SHW.vol; });
+  q('.sh-ytin').addEventListener('change', e => { SHW.ytOn = e.target.checked; if (SHW.on) showTrackAudio(); showUI(true); });
+  E.tracks.addEventListener('click', e => { const d = e.target.closest('[data-t]'); if (d) showSeek(+d.dataset.t, 0); });
+  E.cues.addEventListener('click', e => { const d = e.target.closest('[data-c]'); if (d && SHW.d) showGotoCue(SHW.d.cues[+d.dataset.c]); });
+  SHW.built = true;
+  showBuildLists();
+}
+function showBuildLists() {
+  const E = SHW.E, D = SHW.d; if (!E.tracks) return;
+  E.tracks.textContent = ''; E.cues.textContent = ''; E.trackRows = []; E.cueRows = [];
+  if (!D) return;
+  const row = (cls, cells) => { const d = document.createElement('div'); if (cls) d.className = cls; for (const [c, t] of cells) { const s = document.createElement(c[0] === 'b' ? 'b' : 'span'); if (c.length > 1) s.className = c.slice(2); s.textContent = t; d.appendChild(s); } return d; };
+  let act = 0;
+  const tf = document.createDocumentFragment();
+  for (const t of D.tracks) {
+    if (t.act !== act) { act = t.act; tf.appendChild(row('sh-act', [['s', `Act ${act}`]])); }
+    const f = SHW.files.get(t.i), d = row('', [['b', t.id], ['s', showFmt(t.len)], ['s sh-aud', f ? '♪' : ' '], ['s', t.title]]);
+    d.dataset.t = t.i; if (f) d.title = f.name; E.trackRows[t.i] = d; tf.appendChild(d);
+  }
+  E.tracks.appendChild(tf);
+  const cf = document.createDocumentFragment();
+  let ti = -1;
+  for (const c of D.cues) {
+    if (c.ti !== ti) { ti = c.ti; cf.appendChild(row('sh-act', [['s', `${D.tracks[ti].id} ${D.tracks[ti].title}`]])); }
+    const d = row(c.real ? '' : 'sh-rec', [['s', c.real ? '●' : '○'], ['b', c.q], ['s', showFmt(c.at)], ['s', c.label || (c.scene ? c.scene : '')]]);
+    d.dataset.c = c.i; d.title = (c.real ? 'Real cue' : 'Reconstructed') + (c.why ? ' — ' + c.why : '') + (c.n ? ` · ${c.n} channel changes` : '');
+    E.cueRows[c.i] = d; cf.appendChild(d);
+  }
+  E.cues.appendChild(cf);
+  SHW.shown = { cue: -2, ti: -1, sec: -1 };
+}
+// The readouts; cheap when nothing visible changed (called every tick while playing).
+function showUI(force) {
+  const E = SHW.E, D = SHW.d;
+  if (SHW.btn) SHW.btn.setAttribute('aria-pressed', String(SHW.on || !!(SHW.el && !SHW.el.hidden)));
+  if (!E.now) return;
+  const sec = Math.floor(SHW.lt), S = SHW.shown;
+  if (!force && S.cue === SHW.cue && S.ti === SHW.ti && S.sec === sec) return;
+  if (!D) {
+    E.now.textContent = SHW.loading ? 'Loading the cues…' : SHW.err ? 'No cue data' : '';
+    E.next.textContent = ''; E.data.textContent = SHW.err ? `Could not load the cues: ${SHW.err.message || SHW.err}` : '';
+    E.audio.textContent = ''; return;
+  }
+  const tr = D.tracks[SHW.ti], c = D.cues[SHW.cue], nx = D.cues[SHW.cue + 1];
+  E.now.textContent = SHW.hold ? `${D.tracks[SHW.ti + 1].hold} — press Play for ${D.tracks[SHW.ti + 1].title}` : c ? `Q ${c.q}${c.label ? ` · ${c.label}` : ''} · ${tr.title} ${showFmt(SHW.lt)}` : `${tr.id} ${tr.title} ${showFmt(SHW.lt)} · before the first cue`;
+  E.next.textContent = nx ? `Next: ${showCueLine(nx)}${nx.ti === SHW.ti || nx.T - showT() < 600 ? ` · in ${showFmt(nx.T - showT())}` : ''}` : 'Next: — (the last cue)';
+  E.clock.textContent = `${tr.id} ${showFmt(SHW.lt)} / ${showFmt(tr.len)}`;
+  if (!SHW.scrubbing) { E.scrub.max = String(tr.len); E.scrub.value = String(SHW.lt); }
+  E.play.textContent = SHW.on && SHW.playing ? 'Pause' : 'Play'; E.play.setAttribute('aria-pressed', String(SHW.on && SHW.playing));
+  E.stop.disabled = !SHW.on;
+  const f = SHW.files.get(SHW.ti);
+  E.audio.textContent = SHW.audioNote || (!f && SHW.sound ? (SHW.sound.note || 'the album: your soundtrack file (assets/audio/hamilton-soundtrack.mp3)') : !f && SHW.audioOn && SHW.A === SHW.yt ? `the album from YouTube${SHW.yt.ready ? '' : ' (loading the player…)'}` : !SHW.files.size ? (SHW.ytOn ? 'the album from YouTube when the show plays' : 'no audio — silent clock') : f ? `${SHW.files.size} / ${D.tracks.length} tracks have audio · ${SHW.audioOn ? 'playing' : 'ready'}: ${f.name}` : `${SHW.files.size} / ${D.tracks.length} tracks have audio · this one none — silent clock`);
+  if (S.cue !== SHW.cue || force) {
+    if (E.cueRows[S.cue]) E.cueRows[S.cue].classList.remove('on');
+    const r = E.cueRows[SHW.cue]; if (r) { r.classList.add('on'); if (!SHW.el.hidden) r.scrollIntoView({ block: 'nearest' }); }
+    E.data.textContent = `${D.cues.length} cues (${D.cues.filter(x => x.real).length} real) · ${D.tracks.length} tracks · ${showFmt(D.end)} · ${D.rep.problems.length ? `${D.rep.problems.length} problem${D.rep.problems.length > 1 ? 's' : ''} (MIDTOWN.show.check())` : 'every reference resolves'}${SHW.urls && SHW.urls.eos !== SHW_URLS.eos ? ' · ' + SHW.urls.eos : ''}`;
+    if (SHW.on && !walking && c) hint.textContent = `Show · Q ${c.q}${c.label ? ` ${c.label}` : ''} · ${tr.title}${SHW.playing ? '' : ' (paused)'} — Stop puts the rig back`;
+  }
+  if (S.ti !== SHW.ti || force) {
+    if (E.trackRows[S.ti]) E.trackRows[S.ti].classList.remove('on');
+    const r = E.trackRows[SHW.ti]; if (r) { r.classList.add('on'); if (!SHW.el.hidden) r.scrollIntoView({ block: 'nearest' }); }
+  }
+  S.cue = SHW.cue; S.ti = SHW.ti; S.sec = sec;
+}
+function showPanel(on) {
+  showBuildPanel();
+  SHW.el.hidden = !on;
+  if (on && !SHW.d && !SHW.loading) showLoad();
+  if (on && SHW.d && !SHW.on) showStart(false);           // the panel opening puts the preshow look up (the rig at the top of the show, house lights up), paused until Play
+  showUI(true);
+}
+
+// ---- self-tests
+// A unit's look as compared: level, the colour it draws, gobo, its rate, zoom, and where a mover's beam lands (not its direction:
+// the lens is off both axes, so the two head poses that hit one point — pan, tilt and pan + 180, −tilt — differ in direction by
+// up to a degree, and which one a head takes depends on where it was).
+function showSnap() {
+  lxFlush();
+  return LX.recs.map(r => {
+    let land = null, dir = null, miss = null;
+    if (r.mover) {
+      if (r.hitStale) lxHitRec(r); dir = lensBeam(r.lens, new THREE.Vector3()); land = r.hit ? r.hit.p.clone() : null;
+      const N = SHW.ut.get(r), P = N && N.focus ? showWorld(N.focus) : null;   // how far the beam passes from its focus point
+      if (P) { const o = new THREE.Vector3().setFromMatrixPosition(r.lens.matrixWorld), v = P.sub(o); miss = v.addScaledVector(dir, -v.dot(dir)).length(); }
+    }
+    return { level: r.st.level, col: lxColourOf(r.unit, r.st).clone(), gobo: r.st.gobo, rate: r.st.goboRate, zoom: r.st.zoom, land, dir, miss };
+  });
+}
+function showDiff(A, B) {
+  const o = { level: 0, colour: 0, zoom: 0, gobo: 0, rate: 0, landM: 0, aimM: 0, worst: null, missM: 0, missBy: null };
+  A.forEach((a, i) => {
+    const b = B[i], id = LX.recs[i].unit.userData.id;
+    // the Lustr's seven emitters are found by an iterative solve that lands a few thousandths apart from different starts (the
+    // engine's own check allows it 0.005, LXJ_TOL.lustr): its colour is judged at that tolerance, scaled onto the 0.002 here
+    const lus = LX.recs[i].unit.userData.type === 's4-lustr' ? 0.002 / LXJ_TOL.lustr : 1;
+    const dl = Math.abs(a.level - b.level), dc = lus * Math.max(Math.abs(a.col.r - b.col.r), Math.abs(a.col.g - b.col.g), Math.abs(a.col.b - b.col.b)), dz = Math.abs(a.zoom - b.zoom);
+    // a focused mover: how differently the two beams pass by the focus point (both poses aim at it; where they then land can
+    // differ when the point is occluded or the head near straight down; a point out of the head's reach is missed by both alike:
+    // missM, the worst, is reported, not judged). Otherwise: m apart where they land (radians if neither lands).
+    // A focused mover is judged by the better of the two: they land together, or they pass the point alike.
+    const dm = a.miss !== null && b.miss !== null ? Math.min(Math.abs(a.miss - b.miss), a.land && b.land ? a.land.distanceTo(b.land) : Infinity) : 0;
+    if (a.miss !== null && a.miss > o.missM) { o.missM = a.miss; o.missBy = id; }
+    const da = a.miss !== null && b.miss !== null ? 0 : a.land && b.land ? a.land.distanceTo(b.land) : a.dir && b.dir ? (a.land || b.land ? 99 : Math.acos(THREE.MathUtils.clamp(a.dir.dot(b.dir), -1, 1))) : 0;
+    if (a.gobo !== b.gobo) o.gobo++; if (Math.abs(a.rate - b.rate) > 1e-9) o.rate++;
+    for (const [k, v] of [['level', dl], ['colour', dc], ['zoom', dz], ['landM', da], ['aimM', dm]]) if (v > o[k]) { o[k] = v; if (v > 1e-3) o.worst = `${id} ${k} ${v.toFixed(4)}`; }
+  });
+  for (const k of ['level', 'colour', 'zoom', 'landM', 'aimM', 'missM']) o[k] = +o[k].toFixed(6);
+  return o;
+}
+// seek(T) against playing from `from` up to T (step s of silent clock), both with every fade run out.
+function showEquiv(T, from, step = 0.1) {
+  showSeekT(from);
+  showAdvance(T - from, step); showSettle();
+  const P = showSnap(), at = showT();
+  showSeekT(at); showSettle();
+  return Object.assign({ T: +at.toFixed(3), from: +from.toFixed(3) }, showDiff(P, showSnap()));
+}
+function showCheck(opts = {}) {
+  const D = SHW.d; if (!D) return { error: 'not loaded — MIDTOWN.show.load() first' };
+  const t0 = performance.now(), wasOn = SHW.on, wasT = showT(), wasPlaying = SHW.playing;
+  // 1. references, groups, content, order
+  const rep = D.rep;
+  // 2. channels → units
+  const noUnits = [...rep.noUnits.keys()].sort((a, b) => a - b);
+  // 3. the timeline
+  let mono = true; for (let i = 1; i < D.cues.length; i++) if (D.cues[i].T < D.cues[i - 1].T - 1e-9) mono = false;
+  let actsMono = true; for (let i = 1; i < D.acts.length; i++) if (D.acts[i].t < D.acts[i - 1].t) actsMono = false;
+  // 4. seek equivalence: mid-fade just after a spread of cues (and the biggest), each played from up to `span` s before
+  if (!wasOn) showStart(false);
+  const pause = SHW.playing; SHW.playing = false;              // the frame must not move the clock under the test
+  const big = D.acts.reduce((b, a) => a.chs.length > (b ? b.chs.length : -1) ? a : b, null);
+  const pts = opts.points || (() => {
+    const withActs = D.cues.filter(c => c.n > 0), k = Math.min(opts.n || 4, withActs.length), out = [];
+    for (let j = 0; j < k; j++) { const c = withActs[Math.floor((j + 0.5) / k * withActs.length)]; out.push(c.T + Math.min(1.2, (c.time.up ?? SHW_TIME) / 2) + c.delay); }
+    if (big) out.push(big.t + 0.7);
+    return out;
+  })();
+  const span = opts.span ?? 90, eq = pts.map(T => showEquiv(Math.min(T, D.end), Math.max(0, Math.min(T, D.end) - span), opts.step || 0.1));
+  const tol = { level: 1e-4, colour: 2e-3, zoom: 1e-3, landM: 0.03, aimM: 0.05 };
+  const eqPass = eq.every(e => e.level <= tol.level && e.colour <= tol.colour && e.zoom <= tol.zoom && e.landM <= tol.landM && e.aimM <= tol.aimM && !e.gobo && !e.rate);
+  // 5. the cost of firing the biggest actions (the rig snapped to just before each): the fire (merge, looks, batched sets and aims,
+  // lxFlush) and the engine's first tick after it
+  const perf = D.acts.filter(a => a.t > 0.01).sort((x, y) => y.chs.length - x.chs.length).slice(0, opts.perfN || 3).map(a => {
+    showSeekT(Math.max(0, a.t - 1e-3)); showSettle();
+    const pre = SHW.next, t1 = performance.now();
+    const batches = (() => { let n = 0; while (SHW.next < D.acts.length && D.acts[SHW.next].t <= a.t + 1e-6) { n += showFire(D.acts[SHW.next++]); } lxFlush(); return n; })();
+    const fire = performance.now() - t1, t2 = performance.now(); lxTick(SHW_DT); const tick = performance.now() - t2;
+    return { cue: D.cues[a.ci].q, channels: a.chs.length, actions: SHW.next - pre, batches, fireMs: +fire.toFixed(2), firstTickMs: +tick.toFixed(2) };
+  });
+  SHW.playing = pause;
+  if (wasOn) { showSeekT(wasT); if (wasPlaying) showPause(false); } else { showStop(false); SHW.ti = 0; SHW.lt = 0; showSeekT(wasT); }
+  const out = {
+    pass: eqPass && !rep.problems.length && !noUnits.length && mono && actsMono,
+    tracks: D.tracks.length, cues: D.cues.length, real: D.cues.filter(c => c.real).length, reconstructed: D.cues.filter(c => !c.real).length, actions: D.acts.length, showLength: showFmt(D.end),
+    seekEquivalence: { pass: eqPass, tolerance: tol, points: eq, note: 'missM: the worst distance a focused mover’s beam passes from its focus point, on both paths (out of reach, or the lens off-axis) — reported, not judged' },
+    references: { unresolved: [...rep.refs].map(([k, s]) => `${k} (${s.size} ch)`), missingGroups: [...rep.groups], realCuesWithoutContent: rep.noContent },
+    channels: { withoutUnits: noUnits, hazerChannels: [...D.hazer], panTiltWithoutFocus: rep.panOnly, effectsNotRun: rep.fx },
+    timeline: { monotonic: mono, actionsSorted: actsMono, problems: rep.order.concat(rep.unknownTrack) },
+    perf, problems: rep.problems, ms: Math.round(performance.now() - t0),
+  };
+  return out;
+}
+
+// ---- the hooks: the header's Show button, the frame, the Preview, the set's size
+SHW.btn = document.createElement('button');
+SHW.btn.id = 'sh-toggle'; SHW.btn.textContent = 'Show'; SHW.btn.setAttribute('aria-pressed', 'false'); SHW.btn.disabled = true; SHW.btn.title = 'Loading the rig…';
+LXD.btn.after(SHW.btn);
+SHW.btn.addEventListener('click', () => showPanel(!SHW.el || SHW.el.hidden));
+const lxdPlayShow = lxdPlay;
+lxdPlay = i => { if (SHW.on) showStop(false); return lxdPlayShow(i); };   // the Preview stops the show (the rig put back first)
+const placeSetShow = placeSet;
+placeSet = s => {                                            // a set-size change moves the set's frame: every mover re-aimed at once
+  placeSetShow(s);
+  if (SHW.on) for (const [r, N] of SHW.ut) if (N && N.focus) { const P = showWorld(N.focus); if (P) showAim(r.unit, P, 0, true); }
+};
+const lxPanelTickK = lxPanelTick;
+lxPanelTick = dt => { const a = showTick(dt), b = lxPanelTickK(dt); return a || b; };
+const buildLightsPanelK = buildLightsPanel;
+buildLightsPanel = () => {
+  buildLightsPanelK();
+  try {
+    SHW.btn.disabled = false; SHW.btn.title = 'The whole show, auto-timed against the cast album (again to hide the panel)';
+    if (window.MIDTOWN) window.MIDTOWN.show = {
+      load: urls => showLoad(urls), play: () => showStart(true), pause: () => showPause(true), resume: () => showPause(false), stop: () => showStop(),
+      seek: (trackId, sec) => showSeek(trackId, sec), gotoCue: q => showGotoCue(q), next: () => showStep(1), prev: () => showStep(-1),
+      advance: (sec, step) => SHW.on ? showAdvance(sec, step) : null, settle: showSettle, panel: on => showPanel(on !== false),
+      get state() { return showState(); }, get cues() { return SHW.d ? SHW.d.cues.map(c => ({ q: c.q, label: c.label, track: c.track, at: c.at, real: c.real, n: c.n })) : []; },
+      get tracks() { return SHW.d ? SHW.d.tracks.map(t => ({ id: t.id, title: t.title, len: t.len, start: t.start, hold: t.hold, audio: SHW.files.has(t.i) ? SHW.files.get(t.i).name : null })) : []; },
+      check: opts => showCheck(opts), matchFiles: files => showMatchFiles(files), parseName: name => { const p = showParseFile({ name, webkitRelativePath: name }); return { disc: p.disc, n: p.n, rest: p.rest }; },
+      get perf() { return Object.assign({}, SHW.perf); }, urls: SHW_URLS,
+    };
+  } catch (e) { console.error('show: its controls failed —', e); }
+  if (!SHW.d && !SHW.loading) showLoad().then(() => deskScreensDraw(true), () => deskScreensDraw(true));   // the desk's screens list the songs from the start
+};
+
+/* ---- THE DESK SCREENS
+   Jack: "make it so on the lighting console i can skip to songs and it brings the cues to the right place." The two monitors
+   on the desk in the stalls are the show player's console. LEFT: every song, Act One and Act Two side by side, the one playing
+   lit gold; click a song and the show jumps to its top with the rig in exactly the state the cues leave it there (showSeek:
+   every cue before that point folded into the tracked state and snapped — the same seek the Show panel's track list uses, the
+   one check() proves equal to playing up to it), and plays on from there. RIGHT: cue list 1 as a desk shows it — the cues
+   either side of the live one, the live one gold, real cues ● and reconstructed ○, each with its song and time; click a cue to
+   go to it; the soft keys along the bottom are SONG ◀, CUE ◀, GO / PAUSE, CUE ▶, SONG ▶, STOP. Clicks land from the orbit
+   view where the pointer is, and walking with the mouse captured, where the crosshair is (walk up to the desk and click).
+   Each screen is a 1024 × 614 canvas on its own plane; it is redrawn only when what it shows changes (the cue, the song, the
+   second, play / pause), riding on showUI, so a running show uploads one small texture a second. */
+const DSK_W = 1024, DSK_H = 614;
+const DSK_C = { bg: '#0d1520', bar: '#1b2a3c', line: '#22344a', text: '#c9d6e6', dim: '#6f8399', gold: '#e2a640', goldText: '#1a1206', real: '#7fd18a', recon: '#7f97b3', key: '#24384f', keyOn: '#3b5d82' };
+const DSK = { screens: [], ray: new THREE.Raycaster(), ndc: new THREE.Vector2(), shown: {} };
+function deskScreenMesh(side, geo) {
+  const cv = document.createElement('canvas'); cv.width = DSK_W; cv.height = DSK_H;
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  mesh.name = 'desk: screen ' + side; mesh.castShadow = mesh.receiveShadow = false; mesh.userData.rig = true;
+  const s = { side, mesh, cv, g: cv.getContext('2d'), tex, hits: [] };
+  mesh.userData.deskScreen = s;
+  DSK.screens.push(s);
+  deskScreenDraw(s);
+  return mesh;
+}
+// Redraw what changed. force: everything.
+function deskScreensDraw(force) {
+  for (const s of DSK.screens) {
+    const D = SHW.d, key = s.side === 'songs'
+      ? [!!D, SHW.loading ? 1 : 0, SHW.ti, SHW.on, SHW.playing].join()
+      : [!!D, SHW.cue, SHW.ti, Math.floor(SHW.lt), SHW.on, SHW.playing].join();
+    if (!force && DSK.shown[s.side] === key) continue;
+    DSK.shown[s.side] = key;
+    deskScreenDraw(s);
+  }
+}
+function deskScreenDraw(s) {
+  const g = s.g, D = SHW.d, C = DSK_C;
+  s.hits = [];
+  g.fillStyle = C.bg; g.fillRect(0, 0, DSK_W, DSK_H);
+  g.fillStyle = C.bar; g.fillRect(0, 0, DSK_W, 44);
+  g.textBaseline = 'middle';
+  const state = !SHW.on ? 'STOPPED' : SHW.playing ? 'PLAYING' : 'PAUSED';
+  const stateCol = !SHW.on ? C.dim : SHW.playing ? C.real : C.gold;
+  g.font = '600 22px system-ui, sans-serif'; g.fillStyle = C.text; g.textAlign = 'left';
+  g.fillText(s.side === 'songs' ? 'HAMILTON · SONGS' : 'CUE LIST 1', 16, 23);
+  g.textAlign = 'right'; g.fillStyle = stateCol; g.fillText(state, DSK_W - 16, 23);
+  if (!D) {
+    g.textAlign = 'center'; g.fillStyle = C.dim; g.font = '22px system-ui, sans-serif';
+    g.fillText(SHW.loading ? 'Loading the show…' : SHW.err ? 'The cues did not load' : 'Click to load the show', DSK_W / 2, DSK_H / 2);
+    s.hits.push({ x0: 0, y0: 0, x1: DSK_W, y1: DSK_H, act: 'load' });
+    s.tex.needsUpdate = true; return;
+  }
+  if (s.side === 'songs') deskDrawSongs(s, g, D); else deskDrawCues(s, g, D);
+  s.tex.needsUpdate = true;
+}
+function deskDrawSongs(s, g, D) {
+  const C = DSK_C, top = 84, rh = (DSK_H - top - 34) / 23, colW = DSK_W / 2;
+  for (const act of [1, 2]) {
+    const x0 = (act - 1) * colW;
+    g.textAlign = 'left'; g.font = '600 17px system-ui, sans-serif'; g.fillStyle = C.dim;
+    g.fillText(act === 1 ? 'ACT ONE' : 'ACT TWO', x0 + 16, 62);
+    const list = D.tracks.filter(t => +t.id[0] === act);
+    list.forEach((t, k) => {
+      const i = D.tracks.indexOf(t), y = top + k * rh, on = i === SHW.ti;
+      if (on) { g.fillStyle = C.gold; g.fillRect(x0 + 8, y + 1, colW - 16, rh - 2); }
+      else if (k % 2) { g.fillStyle = C.line; g.globalAlpha = 0.35; g.fillRect(x0 + 8, y + 1, colW - 16, rh - 2); g.globalAlpha = 1; }
+      g.fillStyle = on ? C.goldText : C.dim; g.font = '15px ui-monospace, monospace'; g.textAlign = 'left';
+      g.fillText(t.id.slice(2), x0 + 16, y + rh / 2);
+      g.fillStyle = on ? C.goldText : C.text; g.font = (on ? '600 ' : '') + '16px system-ui, sans-serif';
+      g.fillText(deskFit(g, (on && SHW.on ? (SHW.playing ? '▶ ' : '❚❚ ') : '') + t.title, colW - 110), x0 + 48, y + rh / 2);
+      g.textAlign = 'right'; g.fillStyle = on ? C.goldText : C.dim; g.font = '15px ui-monospace, monospace';
+      g.fillText(showFmt(t.len), x0 + colW - 16, y + rh / 2);
+      s.hits.push({ x0: x0 + 8, y0: y, x1: x0 + colW - 8, y1: y + rh, act: 'song', i });
+    });
+  }
+  g.textAlign = 'center'; g.fillStyle = C.dim; g.font = '15px system-ui, sans-serif';
+  g.fillText('Click a song: the show jumps to its top with every cue before it in place', DSK_W / 2, DSK_H - 16);
+}
+function deskDrawCues(s, g, D) {
+  const C = DSK_C, tr = D.tracks[SHW.ti];
+  g.textAlign = 'left'; g.font = '600 17px system-ui, sans-serif'; g.fillStyle = C.text;
+  g.fillText(deskFit(g, `${tr.id}  ${tr.title}`, 760), 16, 62);
+  g.textAlign = 'right'; g.font = '17px ui-monospace, monospace';
+  g.fillText(`${showFmt(SHW.lt)} / ${showFmt(tr.len)}`, DSK_W - 16, 62);
+  // the rows: two before the live cue, the live cue, the rest after
+  const top = 84, rh = 27, rows = 15, first = Math.max(0, Math.min(SHW.cue - 2, D.cues.length - rows));
+  g.font = '600 13px system-ui, sans-serif'; g.fillStyle = C.dim; g.textAlign = 'left';
+  g.fillText('Q', 34, top + 6); g.fillText('LABEL', 128, top + 6); g.fillText('SONG', 650, top + 6);
+  g.textAlign = 'right'; g.fillText('AT', DSK_W - 16, top + 6);
+  for (let r = 0; r < rows; r++) {
+    const k = first + r, c = D.cues[k]; if (!c) break;
+    const y = top + 14 + r * rh, on = k === SHW.cue;
+    if (on) { g.fillStyle = C.gold; g.fillRect(8, y + 1, DSK_W - 16, rh - 2); }
+    else if (k < SHW.cue) { g.globalAlpha = 0.5; }
+    g.textAlign = 'left'; g.font = '15px system-ui, sans-serif';
+    g.fillStyle = on ? C.goldText : c.real ? C.real : C.recon; g.fillText(c.real ? '●' : '○', 14, y + rh / 2);
+    g.fillStyle = on ? C.goldText : C.text; g.font = (on ? '600 ' : '') + '15px ui-monospace, monospace'; g.fillText(c.q, 34, y + rh / 2);
+    g.font = (on ? '600 ' : '') + '15px system-ui, sans-serif'; g.fillText(deskFit(g, c.label || '', 500), 128, y + rh / 2);
+    g.fillStyle = on ? C.goldText : C.dim; g.fillText(deskFit(g, D.tracks[c.ti].title, 230), 650, y + rh / 2);
+    g.textAlign = 'right'; g.font = '15px ui-monospace, monospace'; g.fillText(showFmt(c.at), DSK_W - 16, y + rh / 2);
+    g.globalAlpha = 1;
+    s.hits.push({ x0: 8, y0: y, x1: DSK_W - 8, y1: y + rh, act: 'cue', k });
+  }
+  // the soft keys
+  const keys = [['SONG ◀', 'song-1'], ['CUE ◀', 'cue-1'], [SHW.on && SHW.playing ? 'PAUSE' : 'GO', 'go'], ['CUE ▶', 'cue+1'], ['SONG ▶', 'song+1'], ['STOP', 'stop']];
+  const ky = DSK_H - 70, kw = (DSK_W - 16 - 8 * (keys.length - 1)) / keys.length;
+  keys.forEach(([t, act], i) => {
+    const x = 8 + i * (kw + 8), hot = act === 'go';
+    g.fillStyle = hot ? (SHW.on && SHW.playing ? DSK_C.keyOn : '#2f6b3a') : DSK_C.key; g.fillRect(x, ky, kw, 60);
+    g.fillStyle = DSK_C.text; g.font = '600 20px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(t, x + kw / 2, ky + 30);
+    s.hits.push({ x0: x, y0: ky, x1: x + kw, y1: ky + 60, act });
+  });
+}
+function deskFit(g, t, w) {                                    // trim to a width with an ellipsis
+  if (g.measureText(t).width <= w) return t;
+  while (t.length > 1 && g.measureText(t + '…').width > w) t = t.slice(0, -1);
+  return t + '…';
+}
+// A click on the canvas: the screen it lands on (from the pointer, or the crosshair while the mouse is captured) → its action.
+// → true when it was a desk screen's (the click goes no further).
+function deskClick(e) {
+  if (!DSK.screens.length || editing) return false;
+  if (locked) DSK.ndc.set(0, 0);
+  else { const r = canvas.getBoundingClientRect(); DSK.ndc.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); }
+  DSK.ray.setFromCamera(DSK.ndc, camera); DSK.ray.far = 12;     // within a few steps of the desk
+  const h = DSK.ray.intersectObjects(DSK.screens.map(s => s.mesh), false)[0];
+  if (!h || !h.uv) return false;
+  if (walking && !locked) return false;                        // walking: the first click takes the mouse, as it always has
+  const s = h.object.userData.deskScreen, x = h.uv.x * DSK_W, y = (1 - h.uv.y) * DSK_H;
+  const hit = s.hits.find(b => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1);
+  if (hit) deskAct(hit);
+  return true;
+}
+function deskAct(b) {
+  const D = SHW.d;
+  if (b.act === 'load' || !D) { if (!SHW.loading) showLoad().then(() => deskScreensDraw(true), () => deskScreensDraw(true)); deskScreensDraw(true); return; }
+  const wasOn = SHW.on;
+  switch (b.act) {
+    case 'song': showSeek(b.i, 0); if (!wasOn) showPause(false); break;   // a song from a stopped show starts it playing there
+    case 'cue': showGotoCue(D.cues[b.k]); if (!wasOn) showPause(false); break;
+    case 'go': if (!SHW.on) showStart(true); else showPause(); break;
+    case 'stop': showStop(); break;
+    case 'song-1': case 'song+1': showStep(b.act === 'song-1' ? -1 : 1); if (!wasOn) showPause(false); break;
+    case 'cue-1': case 'cue+1': { const k = THREE.MathUtils.clamp(SHW.cue + (b.act === 'cue-1' ? -1 : 1), 0, D.cues.length - 1); showGotoCue(D.cues[k]); if (!wasOn) showPause(false); break; }
+  }
+  deskScreensDraw(true); requestRender();
+}
+const showUIDesk = showUI;
+showUI = force => { showUIDesk(force); deskScreensDraw(force); };
 /* ---------------------------------------------------------------- RIGGING: BOOMS ONTO THE WALLS (agent A)
    Jack: "move these lights back to be attached to the walls" — the booms standing in the HOUSE
    (downstage of the arch) go against the Midtown side walls on vertical boom pipes with brackets. */
@@ -4352,17 +5655,15 @@ function buildDeskPosition(houseScene) {
   deskBox(P, 'screen', 0.34, 0.004, 0.13, cx + 0.05, surf(0.14) + 0.003, kz + 0.14, -rake);  // the console's own display
   deskBox(P, 'ui', 0.22, 0.005, 0.008, cx + 0.05, surf(0.17) + 0.003, kz + 0.17, -rake);
   // TWO MONITORS behind it, on thin stands, facing the operator, their tops tipped back
-  const m = D.monitor, a = m.tilt, mz = kz + k.d / 2 + 0.11, my = T + m.lift + m.h / 2;
+  const m = D.monitor, a = m.tilt, mz = kz + k.d / 2 + 0.11, my = T + m.lift + m.h / 2, screens = [];
   const n = new THREE.Vector3(0, Math.sin(a), -Math.cos(a)), up = new THREE.Vector3(0, Math.cos(a), Math.sin(a));
   for (const sx of [-1, 1]) {
     const mx = cx + sx * (m.w / 2 + 0.02);
     deskBox(P, 'knob', m.w + 0.024, m.h + 0.024, 0.025, mx, my, mz, -a, Math.PI);         // the bezel
     const sc = new THREE.Vector3(mx, my, mz).addScaledVector(n, 0.0135);
-    deskPut(P, 'screen', new THREE.PlaneGeometry(m.w, m.h), sc.x, sc.y, sc.z, -a, Math.PI);
-    for (let r = 0; r < 6; r++) {                               // a cue list on the screen: a few lit lines
-      const c = sc.clone().addScaledVector(n, 0.001).addScaledVector(up, m.h / 2 - 0.045 - r * 0.045);
-      deskPut(P, r ? 'ui' : 'glow', new THREE.PlaneGeometry(r ? m.w * (0.55 + 0.07 * (r % 3)) : m.w - 0.04, r ? 0.01 : 0.03), c.x - (r ? m.w * 0.12 : 0), c.y, c.z, -a, Math.PI);
-    }
+    // the screen itself is a live mesh of its own (THE DESK SCREENS: the songs on the left, the cue list on the right), not
+    // merged: its picture is redrawn as the show runs, and it takes clicks
+    screens.push({ side: sx > 0 ? 'songs' : 'cues', geo: deskPut({}, 'screen', new THREE.PlaneGeometry(m.w, m.h), sc.x, sc.y, sc.z, -a, Math.PI) });
     deskPut(P, 'halo', new THREE.PlaneGeometry(m.w + 0.14, m.h + 0.12), sc.x + n.x * 0.002, sc.y + n.y * 0.002, sc.z + n.z * 0.002, -a, Math.PI);
     deskBox(P, 'frame', 0.03, m.lift + 0.02, 0.03, mx, T + (m.lift + 0.02) / 2, mz + 0.03);   // the stand
     deskBox(P, 'frame', 0.22, 0.012, 0.16, mx, T + 0.006, mz + 0.02);                         // its foot
@@ -4403,6 +5704,7 @@ function buildDeskPosition(houseScene) {
     tris += (geo.index ? geo.index.count : geo.attributes.position.count) / 3;
     group.add(mesh);
   }
+  for (const s of screens) group.add(deskScreenMesh(s.side, s.geo));
   group.userData = { floor: C, top, platformTop: Y0, rows: mine, pitch, clearance: clear };
   scene.add(group);
   const f = v => v.toFixed(3);
@@ -4414,6 +5716,32 @@ function buildDeskPosition(houseScene) {
     + ` · ${tris} triangles · ${(performance.now() - t0).toFixed(0)} ms` + (misses ? ` (${misses} floor rays missed)` : ''));
   if (Number.isFinite(clear) && clear < 0.04) console.warn(`desk: the cut box comes within ${f(clear)} m of the floor — floor triangles may be cut`);
   requestRender(); shadowsDirty();
+}
+// THE BRICK, GRADED. The set's generated brick texture (tools/blender/hamilton_set.py) averages sRGB (98, 28, 14): nearly pure
+// red, where weathered brick is a brown-red (~120, 70, 55) and Binkley's renders show it so. Under stage light a pure-red
+// surface can only glow pure red (Jack: "too bright and unrealistic"), so at load its saturation is taken halfway to its own
+// grey and lifted a little — the pattern untouched, on the GLB's own texture, once. The GLB is not changed.
+const BRICK_GRADE = { sat: 0.5, lift: 1.12 };
+function gradeSetBrick(root) {
+  let done = 0;
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      if (!m || m.name !== 'ham_brick' || !m.map || !m.map.image || m.userData.graded) continue;
+      const img = m.map.image, c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+      const D = g.getImageData(0, 0, c.width, c.height), d = D.data, k = BRICK_GRADE.sat, L = BRICK_GRADE.lift;
+      for (let i = 0; i < d.length; i += 4) {
+        const y = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        d[i] = Math.min(255, (y + (d[i] - y) * k) * L); d[i + 1] = Math.min(255, (y + (d[i + 1] - y) * k) * L); d[i + 2] = Math.min(255, (y + (d[i + 2] - y) * k) * L);
+      }
+      g.putImageData(D, 0, 0);
+      const t = new THREE.CanvasTexture(c);
+      for (const key of ['wrapS', 'wrapT', 'repeat', 'offset', 'flipY', 'colorSpace', 'anisotropy', 'channel']) if (m.map[key] !== undefined) t[key] = m.map[key] && m.map[key].clone ? m.map[key].clone() : m.map[key];
+      t.needsUpdate = true; m.map = t; m.userData.graded = true; m.needsUpdate = true; done++;
+    }
+  });
+  if (!done) console.warn('set: no ham_brick texture to grade');
 }
 // The desk position's numbers. The block and the floor plane are the ones DESK_CUTS was made from.
 const DESK = {
@@ -5180,6 +6508,7 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   buildSpotBooth(house.scene); buildDeskPosition(house.scene);
   const lobby = buildLobby(house.scene);                     // after the booth: it re-holes the fill the booth holed
   houseRoot = house.scene;
+  gradeSetBrick(root);
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
   registerModelTextures(house.scene, 'house: ', ['deck_fill', 'pros_outer_l', 'back_brick_lo', 'house_ceiling', 'house_floor']);
   // The baked pieces first (a baked copy is taken off the pristine geometry), then the saved build, then
@@ -5193,6 +6522,7 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
   const wallChecked = wallCheck();
   try { lxInit(); } catch (e) { console.error('lx: the lighting engine failed to start —', e); }   // never stops the page
   window.MIDTOWN = { scene, house: house.scene, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty, lx: LX_API,
+    frame: () => { lxDrawn(clock.elapsedTime); renderer.render(scene, camera); },   // one full frame now (the pools' depth pass included): captures from a hidden tab, where no animation frame comes
     rigTrim: { table: RIG_TRIM, fitDrop: RIG_FIT_DROP, place: rigPlace, report: () => rigPlacedReport },
     walls: { cuts: WALL_CUTS, set: WALL_SET, margin: WALL_MARGIN, split: wallSplitInfo, report: wallReport, check: wallCheck, checked: wallChecked, placeSet },
     lobby: { group: lobby, spec: LOBBY, measured: lobby.userData.measured, lights: lobby.userData.lights, triangles: lobby.userData.triangles },
