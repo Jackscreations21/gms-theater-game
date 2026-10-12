@@ -3193,6 +3193,461 @@ function lxjPanel() {
 }
 const buildLightsPanelI = buildLightsPanel;
 buildLightsPanel = () => { buildLightsPanelI(); try { lxjPanel(); } catch (e) { console.error('lx check: its panel buttons failed —', e); } };
+
+/* ---- THE PREVIEW (agent K) ----
+   Jack: "make a preview of the lights that shows a bunch of different gobos and stuff." A scripted demo on the real rig: twelve
+   scenes, about two minutes, looping — the curtain going up, the gobo parade, every pattern through every unit, the template
+   systems on the brick and the deck, the VL3500s' soft patterns, a Viper ballyhoo in haze, LED chases, a mover ring and fan
+   on the turntable, CMY mixing, gel against LED dimming, the strips on the set, and a finale that ends in blackout — with the
+   camera moving to where each look reads best.
+   - SCENES are DATA (LXD_SCENES): a name, a length, a camera view, the haze, and a list of timed steps [t, op, ...args]
+     run by LXD_OPS (set, aim, row, ring, work, haze, cam, fx). The moving parts are EFFECTS (LXD_FX: parade, chase,
+     ballyhoo, spin, zoom pulse) started by a step: each fires on a fixed beat of scene time, deterministically (seeded), so
+     goto(i) and a hand-driven clock give the same picture as playing through. Each scene starts by fading every lamp it
+     does not raise to dark, and names everything its own units need (level, colour, gobo, rotation, zoom, aim), so a
+     scene looks the same however it was reached.
+   - TIME is the frame's dt (lxDemoTick, hooked onto agent I's lxPanelTick the way agent J's check is) — never a timer.
+     It returns true every frame while playing, so the render-on-demand loop draws; paused or stopped it returns false and
+     the page draws nothing (pause also holds the gobos' rotation, so a paused picture is still).
+   - CAMERA: each scene's first view by the page's own tween (the 1.1 s the view buttons use); slower drifts within a
+     scene by a glide on the demo's clock. Dragging the view cancels the drift until the next scene. Walk owns the camera:
+     entering Walk stops the demo (the rig is put back, the camera left alone); Play from Walk leaves Walk first, as a
+     view button does.
+   - START saves the rig exactly (lxjSave — agent J's: every unit's state and colour state, haze, work light, rig shown —
+     plus a copy of each unit's colour cache, lxdCmSave) and the panel's lxpCapture (the snapshot the check compares);
+     STOP puts the save back (lxjRestore, lxdCmRestore) and tweens the camera back to where it was.
+   - CONTROLS: the header's Preview button (play / stop), and a row at the top of the Lights panel: Prev / Play-Pause /
+     Next / Stop and the scene's name and index. No keys: Space and Esc stay Walk's and Build's.
+   MIDTOWN.lxDemo: play(i), stop(), pause(), resume(), goto(i), next(), prev(), scenes, state; advance(sec) drives the
+   demo and the engine together by hand (1/60 s steps, synchronous) and settle() ends the camera's move — for pictures. */
+const LXD_DT = 1 / 60;
+const LXD = { on: false, paused: false, i: 0, t: 0, next: 0, fx: [], save: null, cm: null, cap: null, cam: null, glide: null, frozen: null, haze: null, E: {}, btn: null };
+const LXD_CENTRE = [0, 0.85, 3];                             // the turntable's centre on the deck (1:1)
+// The demo's camera views, [eye, look-at] in the house frame — the page's own and a few of the demo's.
+const LXD_VIEWS = {
+  back: VIEWS['v-back'],
+  backNear: [[0, 4.2, -9.5], [0, 2.6, 5]],
+  frontStand: [[0.6, 1.75, -3.0], [0, 2.0, 5]],
+  frontHigh: [[0.6, 3.0, -3.4], [0, 1.2, 4.0]],             // the front row, standing on the seat: the deck's pools and the shafts above them
+  stage: VIEWS['v-stage'],
+  deckHigh: [[0, 5.5, -0.5], [0, 0.85, 2.8]],
+  deckLow: [[1.5, 2.4, 1.0], [0, 0.85, 3]],
+  scrapes: [[-1.0, 5.4, 3.0], [1.0, 6.3, 9.7]],             // up between the electrics at the brick (the scrapes land 5.6–7.3 m up it)
+  galleryDeck: [[-5.2, 5.0, 3.6], [0.5, 0.9, 3.0]],
+  brick: [[0, 2.2, -1.0], [0, 2.8, 9.5]],
+  brickNear: [[0, 3.0, 1.6], [0, 3.9, 9.5]],
+  stallsUp: [[3.5, 1.5, -6.0], [0, 5.5, 3]],
+  ringHigh: [[0, 6.0, -1.2], [0, 0.85, 3.2]],
+  ringSide: [[5.5, 6.5, 0.0], [-0.5, 0.85, 4.5]],
+  pool: [[0.2, 3.3, 0.6], [0, 0.85, 3.6]],
+  pair: [[-3.1, 2.5, 2.0], [-3.3, 0.85, 4.3]],
+  set: [[0, 2.2, -1.5], [0, 2.6, 7]],
+};
+// The groups the scenes use, by channel (assets/hamilton-rig.json; lx.select resolves them).
+const LXD_G = {
+  parade: [91, 92, 94, 95, 6, 7, 8, 9, 10],                  // the 2nd and 3rd Electric Vipers: a row of nine across the deck
+  ring: [6, 7, 8, 9, 10, 13, 96, 97, 99, 100, 91, 92],       // twelve over the turntable (not the Apron's: the bridge blocks them at centre)
+  houseVipers: [1, 2, 4, 5, 21, 22, 23, 24, 31, 35, 36, 37, 38, 39],   // the Apron Electric and FOH Truss
+  x4: [47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64],   // the X4s over the stage (3rd, 6th, 9th)
+  vl: [71, 72, 73, 74, 75, 76],
+  blasts: '600-610',
+  scrapes: '291-298',                                        // the Wall Scrapes (Linear), SL Boom 7 / SR Boom 8
+  clearDown: '111-125',                                      // Clear T: Down (Pickup sticks)
+  ledT: '160-192',                                           // the S4 Lustrs (LED T)
+  foh: '201-208',                                            // the FOH Electric's front light (the Alpha box templates)
+  strips: ['Deck', 'On the set', 'Back-wall foots'],
+  spots: 'lycian',
+};
+const LXD_VIPER_GOBOS = ['Construction', 'Dust', 'Cobble stone', 'Alpha', 'Brains', 'Pebbles', 'Slot', 'Square', 'Vignette'];
+const LXD_WHEEL = ['Blue 104', 'Magenta 507', 'Congo Blue 383', 'Yellow 603', 'Red 308', 'Green 206', 'Pink 332', 'Orange 306'];
+const LXD_SHOW_GELS = ['R26', 'R80', 'L201', 'R23'];         // the show's gels the CMY and the chases go through
+const lxdSel = q => lxSelect(q).filter(u => !LX.byUnit.get(u).T.hazer);
+// The fixed-focus lanterns (the rig's own gels and templates) at the named positions — the movers and LEDs left out.
+const LXD_FIXED = new Set(['source-four', 's4-par', 'par64', 's4-lustr', 'colorsource-par', 'birdie', 'stickup', 'mini-10']);
+const lxdFixed = (...pos) => u => LXD_FIXED.has(u.userData.type) && pos.includes(u.userData.position);
+const lxdOrg = u => LX.byUnit.get(u).org;
+// Screen order from the house: +x is to the left as you face the stage, so left → right is x falling.
+const lxdRow = q => lxdSel(q).sort((a, b) => lxdOrg(b).x - lxdOrg(a).x || LX.byUnit.get(a).i - LX.byUnit.get(b).i);
+const lxdLerp = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+function lxdRowPoints(n, from, to) { return Array.from({ length: n }, (_, j) => lxdLerp(from, to, n > 1 ? j / (n - 1) : 0.5)); }
+// Points round a circle on the deck, each unit to the point nearest its own bearing from the centre (so the beams do not cross).
+function lxdRingAim(q, c, r, phase, fade, snap) {
+  const us = lxdSel(q).sort((a, b) => Math.atan2(lxdOrg(a).z - c[2], lxdOrg(a).x - c[0]) - Math.atan2(lxdOrg(b).z - c[2], lxdOrg(b).x - c[0]));
+  us.forEach((u, j) => { const a = phase + j / us.length * Math.PI * 2; lxAim(u, [c[0] + Math.cos(a) * r, c[1], c[2] + Math.sin(a) * r], fade, snap); });
+  return us.length;
+}
+function lxdHint() {
+  if (!LXD.on) return;
+  const S = LXD_SCENES[LXD.i];
+  hint.textContent = `Preview ${LXD.i + 1} / ${LXD_SCENES.length} · ${S.name}${LXD.paused ? ' (paused)' : ''} — ${S.says}`;
+}
+// THE OPS: what a step can do. Every op's args are plain data.
+const LXD_OPS = {
+  set: (q, p, fade = 0) => lxSet(lxdSel(q), p, fade),
+  aim: (q, point, fade = 0, snap = false) => lxAim(lxdSel(q), point, fade, snap),
+  // movers spread along a line, in the order they hang along it (so the beams do not cross)
+  row: (q, from, to, fade = 0, snap = false) => {
+    const d = new THREE.Vector3(to[0] - from[0], 0, to[2] - from[2]), along = u => d.dot(lxdOrg(u));
+    const us = lxdSel(q).sort((a, b) => along(a) - along(b)), P = lxdRowPoints(us.length, from, to);
+    us.forEach((u, j) => lxAim(u, P[j], fade, snap));
+  },
+  ring: (q, r, phase = 0, fade = 0, snap = false, c = LXD_CENTRE) => lxdRingAim(q, c, r, phase, fade, snap),
+  // each unit of a row gets its own value: rowSet(q, key, values) — values[j % n]
+  rowSet: (q, key, values, fade = 0) => lxdRow(q).forEach((u, j) => lxSet(u, { [key]: values[j % values.length] }, fade)),
+  work: (level, fade = 0) => LX_API.work(level, fade),
+  haze: (level, fade = 0) => { if (fade > 0) LXD.haze = { from: LX.hazeBase, to: level, t: 0, dur: fade }; else { LXD.haze = null; LX_API.haze(level); } },
+  cam: (view, secs = 0) => lxdCamera(LXD_VIEWS[view], secs),
+  fx: (name, o) => { const f = LXD_FX[name](o); f.t0 = LXD.t; f.k = -1; f.until = o.until ?? Infinity; LXD.fx.push(f); lxdFxRun(f, LXD.t); },
+};
+// THE EFFECTS: each fires fire(k) on beat k of its own clock (every seconds), k = 0 at once.
+const LXD_FX = {
+  // every pattern through every unit: unit j shows gobos[(j + k) % n]
+  parade: o => ({ every: o.every, fire: k => lxdRow(o.sel).forEach((u, j) => lxSet(u, { gobo: o.gobos[(j + k) % o.gobos.length] })) }),
+  // colours along a row: unit j shows colours[floor((j + k·step) / band) % n], crossfading over fade
+  chase: o => ({ every: o.every, fire: k => lxdRow(o.sel).forEach((u, j) => lxSet(u, { color: o.colours[Math.floor((j + k * (o.step || 1)) / (o.band || 1)) % o.colours.length] }, o.fade || 0)) }),
+  // movers to seeded random points (a share in the house, the rest on the set), travelling the whole beat; the colour wheel
+  // moves on every wheelEvery beats
+  ballyhoo: o => ({ every: o.every, fire: k => {
+    const R = lxRandom(0x6a09e667 ^ ((o.seed || 1) * 7919 + k * 104729));
+    lxdRow(o.sel).forEach((u, j) => {
+      const house = R() < (o.house ?? 0.5);
+      const P = house ? [(R() - 0.5) * 16, 1 + R() * 3, -2 - R() * 10] : [(R() - 0.5) * 12, 0.85 + R() * 4, 2 + R() * 7];
+      lxAim(u, P, o.every * 0.95);
+      if (o.wheel && k % (o.wheelEvery || 1) === 0) lxSet(u, { wheel: o.wheel[(j + Math.floor(k / (o.wheelEvery || 1))) % o.wheel.length] });
+    });
+  } }),
+  // the ring turning: each beat the points move on by step radians, the heads travelling the beat
+  spin: o => ({ every: o.every, fire: k => lxdRingAim(o.sel, o.c || LXD_CENTRE, o.r, (o.phase || 0) + k * o.step, o.every, false) }),
+  // zoom breathing between two angles, a half-period each way
+  zoom: o => ({ every: o.every, fire: k => lxSet(lxdSel(o.sel), { zoom: k % 2 ? o.min : o.max }, o.every) }),
+};
+function lxdFxRun(f, t) {
+  if (t >= f.until) return;
+  const k = Math.floor((t - f.t0) / f.every + 1e-9);
+  if (k > f.k) { f.k = k; f.fire(k); }
+}
+const lxdAll = u => !LX.byUnit.get(u).T.hazer;
+/* THE SCENES. Each: name, len (s), view (its first camera), haze, says (the hint line), steps [t, op, ...args]. Levels are kept
+   down where pools overlap: additive pools wash to white when many land on one spot (agent J). */
+const LXD_SCENES = [
+  { name: 'Curtain up', len: 12, view: 'back', haze: 0.5, says: 'the work light goes out and the electrics come up, position by position, in their gels',
+    steps: [
+      [0, 'work', 1, 0.8],
+      [1.2, 'work', 0, 3.5],
+      [1.6, 'set', LXD_G.strips, { level: 0.55, color: 'R80' }, 2.5],
+      [2.6, 'set', lxdFixed('1st Electric', '2nd Electric'), { level: 0.26 }, 1.5],
+      [3.8, 'set', lxdFixed('4th Electric'), { level: 0.24 }, 1.5],
+      [5.0, 'set', lxdFixed('5th Electric', '6th Electric', '7th Electric', '8th Electric'), { level: 0.24 }, 1.5],
+      [6.2, 'set', lxdFixed('10th Electric'), { level: 0.3 }, 1.5],
+      [7.4, 'set', LXD_G.scrapes, { level: 0.85 }, 1.5],
+      [8.6, 'set', LXD_G.foh, { level: 0.12 }, 2],
+      [2.0, 'cam', 'backNear', 9.5],
+    ] },
+  { name: 'Gobo parade', len: 10, view: 'deckHigh', haze: 0.35, says: 'nine Vipers in a row, each with a different pattern from the wheels: rotating, framing shutters, diffusion',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'row', LXD_G.parade, [-4.4, 0.85, 2.6], [4.4, 0.85, 2.6], 0, true],
+      [0, 'set', LXD_G.parade, { color: '#ffffff', zoom: 10, goboRate: 0, goboRot: 0 }],
+      [0, 'rowSet', LXD_G.parade, 'gobo', LXD_VIPER_GOBOS],
+      [0, 'set', LXD_G.parade, { level: 1 }, 1.5],
+      [3, 'rowSet', LXD_G.parade, 'goboRate', [18, -18]],
+      [5, 'cam', 'deckLow', 4.5],
+    ] },
+  { name: 'Every pattern, every unit', len: 12, view: 'frontHigh', haze: 0.6, says: 'the patterns step along the row, one unit to the next, turning — seen through the haze from the front row',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'row', LXD_G.parade, [-4.4, 0.85, 3.2], [4.4, 0.85, 3.2], 0, true],
+      [0, 'set', LXD_G.parade, { color: '#ffffff', zoom: 12, level: 1 }, 1],
+      [0, 'rowSet', LXD_G.parade, 'goboRate', [30, -30]],
+      [0.5, 'fx', 'parade', { sel: LXD_G.parade, gobos: LXD_VIPER_GOBOS, every: 1.2 }],
+      [6, 'cam', 'stage', 4.5],
+    ] },
+  { name: 'Templates on the brick and the deck', len: 11, view: 'scrapes', haze: 0.45, says: 'the Wall Scrapes in Linear up the brick, then the Clear T: Down system (Pickup sticks) and the LED T system on the deck',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'set', LXD_G.scrapes, { level: 1 }, 1.5],
+      [3.0, 'set', LXD_G.clearDown, { level: 0.34 }, 1.5],
+      [3.0, 'cam', 'galleryDeck', 3.5],
+      [7.0, 'set', LXD_G.clearDown, { level: 0 }, 1.5],
+      [7.0, 'set', LXD_G.ledT, { level: 0.32, color: 'L201' }, 1.5],
+    ] },
+  { name: 'VL3500 soft patterns', len: 10, view: 'brick', haze: 0.45, says: 'the six VL3500 Washes put their FX patterns — Nite sky, Leaves, Tribal — on the brick, turning slowly, the colour wheel moving on',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'row', LXD_G.vl, [-3.9, 1.6, 9.6], [3.9, 1.6, 9.6], 0, true],
+      [0, 'set', LXD_G.vl, { zoom: 24, goboRot: 0 }],
+      [0, 'rowSet', LXD_G.vl, 'gobo', ['Nite sky', 'Leaves', 'Tribal']],
+      [0, 'rowSet', LXD_G.vl, 'wheel', ['Lavender', 'Green', 'Amber']],
+      [0, 'rowSet', LXD_G.vl, 'goboRate', [10, -8, 12]],
+      [0, 'set', LXD_G.vl, { level: 1 }, 2],
+      [5.5, 'rowSet', LXD_G.vl, 'wheel', ['Amber', 'Lavender', 'Green']],
+      [2.0, 'cam', 'brickNear', 7],
+    ] },
+  { name: 'Ballyhoo in haze', len: 12, view: 'stallsUp', haze: 0.85, says: 'Vipers sweeping the house and the set through thick haze, patterns turning, the colour wheels changing',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'haze', 0.85, 1.5],
+      [0, 'set', [LXD_G.houseVipers, LXD_G.parade], { zoom: 14, color: '#ffffff' }],
+      [0, 'rowSet', [LXD_G.houseVipers, LXD_G.parade], 'gobo', ['Construction', 'Dust', 'Cobble stone', 'Alpha', 'Brains', 'Pebbles']],
+      [0, 'rowSet', [LXD_G.houseVipers, LXD_G.parade], 'goboRate', [60, -45, 75]],
+      [0, 'fx', 'ballyhoo', { sel: [LXD_G.houseVipers, LXD_G.parade], every: 1.6, seed: 3, house: 0.5, wheel: LXD_WHEEL, wheelEvery: 2 }],
+      [0.3, 'set', [LXD_G.houseVipers, LXD_G.parade], { level: 0.75 }, 1],
+    ] },
+  { name: 'LED chases', len: 12, view: 'backNear', haze: 0.6, says: 'the X4s and the ColorBlasts chasing red, green, blue — then the show\'s gels R26, R80, L201, R23',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'set', LXD_G.x4, { pan: 0, tilt: 0, snap: true, zoom: 18 }],
+      [0, 'fx', 'chase', { sel: [LXD_G.x4, LXD_G.blasts], colours: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], every: 0.45, until: 6 }],
+      [0, 'set', [LXD_G.x4, LXD_G.blasts], { level: 1 }, 0.8],
+      [6, 'fx', 'chase', { sel: [LXD_G.x4, LXD_G.blasts], colours: LXD_SHOW_GELS, every: 0.6, band: 2, fade: 0.3 }],
+      [5, 'cam', 'deckHigh', 4.5],
+    ] },
+  { name: 'Fan and ring', len: 12, view: 'ringHigh', haze: 0.55, says: 'twelve Vipers find one spot, open into a ring round the turntable, turn it, fan across the back breathing their zoom, and snap home',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'aim', LXD_G.ring, LXD_CENTRE, 0, true],
+      [0, 'set', LXD_G.ring, { gobo: 0, goboRate: 0, zoom: 10 }],
+      [0, 'rowSet', LXD_G.ring, 'color', ['R80', 'R26']],
+      [0, 'set', LXD_G.ring, { level: 0.8 }, 1],
+      [1.6, 'ring', LXD_G.ring, 2.3, 0, 1.2],
+      [3.4, 'fx', 'spin', { sel: LXD_G.ring, r: 2.3, step: Math.PI / 6, every: 0.75, until: 7.6 }],
+      [7.6, 'row', LXD_G.ring, [-6, 0.85, 6.5], [6, 0.85, 6.5], 1.2],
+      [7.6, 'fx', 'zoom', { sel: LXD_G.ring, min: 8, max: 22, every: 0.9, until: 9.4 }],
+      [9.4, 'ring', LXD_G.ring, 2.3, 0, 0, true],
+      [10.6, 'aim', LXD_G.ring, LXD_CENTRE, 0, true],
+      [3.4, 'cam', 'ringSide', 5.5],
+    ] },
+  { name: 'CMY mixing', len: 9, view: 'pool', haze: 0.4, says: 'one Viper mixing the show\'s gels with its CMY flags on a single pool: R26, R80, L201, R23',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'aim', 8, [0, 0.85, 3.6], 0, true],
+      [0, 'set', 8, { gobo: 0, goboRate: 0, zoom: 24, color: 'R26' }],
+      [0, 'set', 8, { level: 1 }, 0.8],
+      [2.2, 'set', 8, { color: 'R80' }, 1.5],
+      [4.4, 'set', 8, { color: 'L201' }, 1.5],
+      [6.6, 'set', 8, { color: 'R23' }, 1.5],
+    ] },
+  { name: 'Dimming: gel against LED', len: 10, view: 'pair', haze: 0.4, says: 'a PAR 64 in clear (R00) dims 100 → 10% and goes amber like a filament; the X4 below it, the same white at full, does not',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'aim', 50, [-3.4, 0.85, 3.6], 0, true],
+      [0, 'set', 222, { gel: 'R00' }],                       // SL Boom 4's PAR (R23 in the rig), pulled to clear so the shift shows
+      [0, 'set', 50, { zoom: 8, gobo: 0, goboRate: 0, color: '3200K' }],   // the X4 at the lamp's own white
+      [0, 'set', [222, 50], { level: 1 }, 0.8],
+      [2, 'set', [222, 50], { level: 0.1 }, 6],
+      [8.8, 'set', [222, 50], { level: 1 }, 1],
+    ] },
+  { name: 'Strips on the set', len: 9, view: 'set', haze: 0.45, says: 'the ColorBlaze strips on the deck, the set and the back-wall foots: a wave of colour across the stage',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'fx', 'chase', { sel: LXD_G.strips, colours: ['R80', 'L201', 'R26', 'R23', [0, 0.6, 0.35]], every: 0.35, band: 4, fade: 0.25 }],
+      [0, 'set', LXD_G.strips, { level: 0.26 }, 1],         // low: higher, the real lights they get wash the set's walls pastel
+      [4, 'cam', 'deckLow', 4],
+    ] },
+  { name: 'Finale', len: 13, view: 'back', haze: 0.55, says: 'a full look — front light, templates, movers on the set, the brick washed — followspots on, then blackout',
+    steps: [
+      [0, 'work', 0, 0.8],
+      [0, 'set', LXD_G.strips, { color: 'R80', level: 0.5 }, 2],
+      [0, 'set', LXD_G.foh, { level: 0.16 }, 2],
+      [0, 'set', LXD_G.clearDown, { level: 0.2 }, 2],
+      [0, 'set', LXD_G.scrapes, { level: 0.8 }, 2],
+      [0, 'row', LXD_G.vl, [-3.9, 1.6, 9.6], [3.9, 1.6, 9.6], 0, true],
+      [0, 'set', LXD_G.vl, { gobo: 'Nite sky', goboRate: 6, wheel: 'Lavender', zoom: 30, level: 0.8 }, 2],
+      [0.5, 'row', LXD_G.parade, [-4.8, 0.85, 5.5], [4.8, 0.85, 5.5], 0, true],
+      [0.5, 'set', LXD_G.parade, { gobo: 'Dust', goboRate: 15, zoom: 20, color: 'R80', level: 0.6 }, 2],
+      [3, 'set', LXD_G.spots, { level: 1 }, 0.6],
+      [3, 'cam', 'frontStand', 5],
+      [10, 'set', lxdAll, { level: 0 }, 2.5],
+    ] },
+];
+LXD_SCENES.forEach(S => S.steps.sort((a, b) => a[0] - b[0]));
+// The camera: a view by the page's tween (secs ≤ 1.1, the view buttons' own), or a glide over secs of demo time.
+function lxdCamera(v, secs) {
+  if (!v || walking) return;
+  const p1 = new THREE.Vector3(...v[0]), t1 = new THREE.Vector3(...v[1]);
+  if (!(secs > 1.1)) {
+    LXD.glide = null;
+    tween = { t: 0, start: performance.now(), p0: camera.position.clone(), t0: orbit.target.clone(), p1, t1 };
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) tween.t = 1;
+    return;
+  }
+  if (tween) { camera.position.copy(tween.p1); orbit.target.copy(tween.t1); tween = null; }   // a drift starts where the cut ends
+  LXD.glide = { p0: camera.position.clone(), t0: orbit.target.clone(), p1, t1, el: 0, dur: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : secs };
+}
+function lxdGlide(dt) {
+  const G = LXD.glide; if (!G) return;
+  G.el += dt;
+  const x = G.dur > 0 ? Math.min(1, G.el / G.dur) : 1, k = x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+  camera.position.lerpVectors(G.p0, G.p1, k); orbit.target.lerpVectors(G.t0, G.t1, k); camera.lookAt(orbit.target);
+  if (x >= 1) LXD.glide = null;
+}
+orbit.addEventListener('start', () => { if (LXD.on) { LXD.glide = null; tween = null; } });   // Jack took the view: the drift lets go
+// Into scene i: every lamp it does not raise fades to dark, the haze and the camera move, its t = 0 steps run.
+function lxdEnter(i) {
+  const n = LXD_SCENES.length; LXD.i = ((i % n) + n) % n;
+  const S = LXD_SCENES[LXD.i];
+  LXD.t = 0; LXD.next = 0; LXD.fx = []; LXD.glide = null;
+  lxSet(lxdAll, { level: 0 }, 1);
+  LXD_OPS.haze(S.haze ?? LX_HAZE_DEFAULT, 1.2);
+  lxdCamera(LXD_VIEWS[S.view], 0);
+  lxdSteps();
+  lxdShow();
+}
+function lxdSteps() {
+  const S = LXD_SCENES[LXD.i];
+  let fired = false;
+  while (LXD.next < S.steps.length && S.steps[LXD.next][0] <= LXD.t + 1e-9) {
+    const [, op, ...args] = S.steps[LXD.next++];
+    try { LXD_OPS[op](...args); } catch (e) { console.error(`lx preview: scene "${S.name}" step ${op} failed —`, e); }
+    fired = true;
+  }
+  for (const f of LXD.fx) lxdFxRun(f, LXD.t);
+  if (fired) lxFlush();
+}
+// The frame's call (through lxPanelTick). → true every frame while playing; false paused or stopped.
+function lxDemoTick(dt) {
+  if (!LXD.on) return false;
+  if (walking) { lxdStop(false); return true; }              // Walk owns the camera: stop, put the rig back, leave the camera be
+  if (LXD.paused) return false;
+  LXD.t += dt;
+  const H = LXD.haze;
+  if (H) { H.t += dt; const k = Math.min(1, H.t / H.dur); LX_API.haze(H.from + (H.to - H.from) * k); if (k >= 1) LXD.haze = null; }
+  lxdGlide(dt);
+  lxdSteps();
+  if (LXD.t >= LXD_SCENES[LXD.i].len) lxdEnter(LXD.i + 1);   // the last scene loops to the first
+  lxdShowTime();
+  return true;
+}
+// lxjSave keeps each unit's colour cache (state.cm) by reference — agent J's check swaps in fresh ones, so its copy stays
+// untouched; the demo re-colours through the SAME cache, so its contents are copied too and written back after lxjRestore.
+// Without it a VL3500 put back to open still drew its last wheel colour (the cache's version said it was current), and a
+// Lustr's emitters came back re-solved (warm-started from the demo's last colour) rather than as they were.
+function lxdCmSave() {
+  return LX.recs.map(r => { const c = r.st.cm; return c ? { c, emit: c.emit ? Float64Array.from(c.emit) : null, out: c.out.clone(), done: c.done, v: c.v, r: c.r, g: c.g, b: c.b, lv: c.lv, lock: c.lock } : null; });
+}
+function lxdCmRestore(S) {
+  LX.recs.forEach((rec, i) => {
+    const s = S[i]; if (!s || rec.st.cm !== s.c) return;
+    const c = s.c; if (c.emit && s.emit) c.emit.set(s.emit);
+    c.out.copy(s.out); c.done = s.done; c.v = s.v; c.r = s.r; c.g = s.g; c.b = s.b; c.lv = s.lv; c.lock = s.lock;
+    LX.dirty.add(rec);
+  });
+  lxFlush();
+}
+function lxdPlay(i) {
+  if (!LX.ready || !LXP.built) return false;
+  if (LXD.on) { if (i !== undefined) lxdEnter(i); if (LXD.paused) lxdPause(false); return true; }
+  if (walking) setMode(false);                               // as a view button does
+  if (LXJ.show) lxjShowEnd(false);
+  if (LXP.step.on) lxpStepStop();                            // the step-through put back first: the save is the rig as Jack left it
+  LXD.save = lxjSave(); LXD.cm = lxdCmSave(); LXD.cap = lxpCapture();
+  LXD.cam = { p: camera.position.clone(), t: orbit.target.clone() };
+  if (rig && !rig.visible) setRig(true);                     // a hidden rig lights nothing (lxjRestore hides it again)
+  LXD.on = true; LXD.paused = false; LXD.frozen = null; LXD.haze = null;
+  lxdEnter(i ?? 0);
+  requestRender();
+  return true;
+}
+// Stop: the rig back exactly as saved; the camera back where it was (not when Walk stopped it — Walk has the camera).
+function lxdStop(camBack = true) {
+  if (!LXD.on) return false;
+  LXD.on = false; LXD.paused = false; LXD.fx = []; LXD.glide = null; LXD.haze = null; LXD.frozen = null;
+  lxjRestore(LXD.save); lxdCmRestore(LXD.cm);
+  if (camBack && LXD.cam && !walking) {
+    tween = { t: 0, start: performance.now(), p0: camera.position.clone(), t0: orbit.target.clone(), p1: LXD.cam.p.clone(), t1: LXD.cam.t.clone() };
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) tween.t = 1;
+  }
+  LXD.save = LXD.cm = null;
+  if (LXP.built) { lxpSync(); lxpMasterSync(); }
+  hint.textContent = walking ? hint.textContent : HINT_ORBIT;
+  lxdShow(); requestRender();
+  return true;
+}
+// Pause holds the picture: the demo's clock stops and every turning gobo stops turning (put back on resume).
+function lxdPause(on = !LXD.paused) {
+  if (!LXD.on || on === LXD.paused) return LXD.paused;
+  LXD.paused = on;
+  if (on) {
+    LXD.frozen = [];
+    for (const r of LX.recs) if (r.st.goboRate) { LXD.frozen.push([r, r.st.goboRate]); r.st.goboRate = 0; }
+  } else {
+    for (const [r, rate] of LXD.frozen || []) lxSet(r.unit, { goboRate: rate });
+    LXD.frozen = null;
+  }
+  lxdShow(); requestRender();
+  return LXD.paused;
+}
+function lxdGoto(i) {
+  if (!LXD.on) return lxdPlay(i);
+  const wasPaused = LXD.paused;
+  if (wasPaused) lxdPause(false);
+  lxdEnter(i);
+  if (wasPaused) lxdPause(true);
+  return true;
+}
+// Hand-driven: the demo and the engine together, synchronously (pictures and checks; nothing can run in between).
+function lxdAdvance(sec, step = LXD_DT) {
+  for (let t = 0; t < sec - 1e-9; t += step) { const d = Math.min(step, sec - t); lxDemoTick(d); lxTick(d); }
+  lxFlush();
+}
+function lxdSettle(glideToo = false) {                     // the tween ends now (it runs on the wall clock); a glide runs on the demo's
+  if (tween) { camera.position.copy(tween.p1); orbit.target.copy(tween.t1); tween = null; }
+  if (glideToo && LXD.glide) lxdGlide(LXD.glide.dur - LXD.glide.el + 1);
+  camera.lookAt(orbit.target); camera.updateMatrixWorld(); requestRender();
+}
+// ---- the controls
+function lxdShow() {
+  const E = LXD.E, S = LXD_SCENES[LXD.i], n = LXD_SCENES.length;
+  if (LXD.btn) LXD.btn.setAttribute('aria-pressed', String(LXD.on));
+  if (!E.play) return;
+  E.play.textContent = LXD.on && !LXD.paused ? 'Pause' : 'Play';
+  E.play.setAttribute('aria-pressed', String(LXD.on && !LXD.paused));
+  E.stop.disabled = !LXD.on;
+  E.label.textContent = LXD.on ? `${LXD.i + 1} / ${n} · ${S.name}${LXD.paused ? ' · paused' : ''}` : `${n} scenes · ${Math.round(LXD_SCENES.reduce((s, x) => s + x.len, 0))} s · loops`;
+  E.note.textContent = LXD.on ? S.says : 'A scripted show on the rig: gobos, colours, movers, beams in haze. Stop puts the rig and the view back.';
+  lxdShowTime(true);
+  lxdHint();
+}
+function lxdShowTime(force) {
+  const E = LXD.E; if (!E.time) return;
+  const s = LXD.on ? `${Math.floor(LXD.t)} / ${LXD_SCENES[LXD.i].len} s` : '';
+  if (force || E.time.textContent !== s) E.time.textContent = s;
+}
+LXD.btn = document.createElement('button');
+LXD.btn.id = 'p-toggle'; LXD.btn.textContent = 'Preview'; LXD.btn.setAttribute('aria-pressed', 'false'); LXD.btn.disabled = true; LXD.btn.title = 'Loading the rig…';
+lxPanelBtn.after(LXD.btn);
+LXD.btn.addEventListener('click', () => { if (LXD.on) lxdStop(); else lxdPlay(0); });
+function lxdPanel() {
+  if (!LXP.built || LXD.E.play) return;
+  const h = document.createElement('h2'); h.textContent = 'Preview';
+  const row = document.createElement('div'); row.className = 'row';
+  const mk = (t, title) => { const b = document.createElement('button'); b.textContent = t; b.title = title; row.appendChild(b); return b; };
+  const prev = mk('Prev', 'The previous scene'), play = mk('Play', 'Play the preview (Pause holds it)'), next = mk('Next', 'The next scene'), stop = mk('Stop', 'Stop: the rig and the view go back as they were');
+  play.setAttribute('aria-pressed', 'false');
+  const time = document.createElement('span'); time.className = 'note'; row.appendChild(time);
+  const label = document.createElement('div'); label.className = 'lp-sel';
+  const note = document.createElement('div'); note.className = 'note';
+  lxPanelEl.querySelector('.lp-head').after(h, row, label, note);
+  Object.assign(LXD.E, { prev, play, next, stop, label, note, time });
+  play.addEventListener('click', () => { if (!LXD.on) lxdPlay(0); else lxdPause(); });
+  stop.addEventListener('click', () => lxdStop());
+  next.addEventListener('click', () => lxdGoto(LXD.on ? LXD.i + 1 : 0));
+  prev.addEventListener('click', () => lxdGoto(LXD.on ? LXD.i - 1 : LXD_SCENES.length - 1));
+  LXD.btn.disabled = false; LXD.btn.title = 'Play a scripted preview of the lights (again to stop)';
+  lxdShow();
+  if (window.MIDTOWN) window.MIDTOWN.lxDemo = {
+    play: i => lxdPlay(i), stop: () => lxdStop(), pause: () => lxdPause(true), resume: () => lxdPause(false), goto: i => lxdGoto(i),
+    next: () => lxdGoto(LXD.i + 1), prev: () => lxdGoto(LXD.i - 1),
+    scenes: LXD_SCENES.map((S, i) => ({ i, name: S.name, len: S.len, view: S.view, says: S.says })),
+    get state() { const S = LXD_SCENES[LXD.i]; return { on: LXD.on, paused: LXD.paused, i: LXD.i, n: LXD_SCENES.length, name: S.name, t: +LXD.t.toFixed(3), len: S.len, total: LXD_SCENES.reduce((s, x) => s + x.len, 0), fx: LXD.fx.length, gliding: !!LXD.glide, tweening: !!tween }; },
+    advance: (sec, step) => { lxdAdvance(sec, step); return LXD.on ? { i: LXD.i, t: +LXD.t.toFixed(3) } : null; },
+    settle: lxdSettle, views: LXD_VIEWS, groups: LXD_G, saved: () => LXD.cap,
+  };
+}
+const buildLightsPanelJ = buildLightsPanel;
+buildLightsPanel = () => { buildLightsPanelJ(); try { lxdPanel(); } catch (e) { console.error('lx preview: its controls failed —', e); } };
+const lxPanelTickJ = lxPanelTick;
+lxPanelTick = dt => { const a = lxDemoTick(dt), b = lxPanelTickJ(dt); return a || b; };
 /* ---------------------------------------------------------------- RIGGING: BOOMS ONTO THE WALLS (agent A)
    Jack: "move these lights back to be attached to the walls" — the booms standing in the HOUSE
    (downstage of the arch) go against the Midtown side walls on vertical boom pipes with brackets. */
