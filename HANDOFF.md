@@ -224,9 +224,24 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **COMMIT AND LAND THE SHOW; HIS EYE ON THE RE-JUDGED CUES WITH THE MUSIC PLAYING** (2026-10-12, later)
+## NEXT SESSION: **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
 
-Rulings at **FE** (FF next). `main` is **`f3f3b35`** (#229 merged). Committed on `midtown-lights` (PR #230): everything
+Rulings at **FE** (FF next). `main` is **`8961616`**: #229 and #230 merged by Jack — the house at 1:1, the lobby, bake 3,
+the rig trimmed, the lighting engine, the show, the calibration, all on `main`. Read STATE.md's newest block.
+
+1. **Finish the post-merge protocol:** delete `midtown-walk`, `midtown-walls`, `midtown-lights` local and remote (the
+   sandbox refused the delete this session); run the suites once Node is on the PATH (`winget install OpenJS.NodeJS.LTS`,
+   Jack runs it) — expect the one red (the untracked GLBs) until step 2.
+2. **The rig on Pages needs the fixture GLBs committed** (38 files, 5.8 MB; `assets/fixtures/README.md` has the licences).
+   Jack said "don't commit the files yet" on 2026-10-11; ask again now that the show is on `main` — without them the
+   Pages copy has no lights.
+3. **Watch it with him, music on** (below). His notes go into the segment files in the session scratch or straight into
+   `assets/hamilton-show.json`.
+4. Rule the rig placements (FUTURE.md), then the older list.
+
+## SUPERSEDED (merged as #230): **COMMIT AND LAND THE SHOW; HIS EYE ON THE RE-JUDGED CUES WITH THE MUSIC PLAYING** (2026-10-12, later)
+
+Rulings at **FE** (FF next). `main` was **`f3f3b35`** (#229 merged). Committed on `midtown-lights` (PR #230): everything
 the block below this one lists PLUS this round: the engine calibrated to the cue photos, the Viper colour model, the
 converter's gobo fix (`assets/hamilton-eos.json` regenerated), the show re-judged from renders (`assets/hamilton-show.json`,
 892 cues), the preshow and the interval hold in the player, `docs/hamilton-cues-format.md` (`tracks[].hold`), TRAPS, FUTURE,
