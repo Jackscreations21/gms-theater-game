@@ -224,7 +224,39 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
+## NEXT SESSION: **LAND #233, THEN HIS NEXT NOTES — ACT 1 AGAIN, THEN ACT 2** (2026-10-12, afternoon)
+
+Rulings at **FE** (FF next). `main` is **`5d24188`** (#230, #231, #232 merged: the show and the fixture GLBs are on
+Pages). **PR #233 (`cue-blackouts`) is open**: the blackouts Jack named, the pull-ins lifted, the new top of Guns and
+Ships. Read STATE.md's newest block.
+
+1. **When #233 merges:** fast-forward local `main`; delete `cue-blackouts` and the five landed branches both sides
+   (`midtown-walk`, `midtown-walls`, `midtown-lights`, `record-230`, `fixture-glbs`); suites when Node is on the PATH.
+2. **His next notes.** The method that answered this round, reuse it before changing a single `at`: (a) check the
+   clock first — `ham/audio.py <track> from to` for the file, the IFrame API for YouTube; (b) `CAP.dark(track, 0, len)`
+   in the page for every track he names (install `CAP` from the session's scratch `capture.js` after
+   `midtown.html?cap=N`; the receiver `shotrecv.py` on 8099 takes the sheets); (c) `CAP.sheet([...])` of the suspect
+   seconds, look, then edit `assets/hamilton-show.json` with a script that folds the state (`ham/edit3.py` is the
+   model: `lift`, `remove_cross`, per-channel merge) and re-scan. Expect more of the same in act 2: the reviewers' habit
+   was a one-pool "pull-in" before every button and a cut-off blackout at every track end.
+3. Then the older list: the rig placements the photos exposed (FUTURE.md), `edge`/`frost`, the 238 effects, the body,
+   the headset.
+
+## DONE — 2026-10-12 (afternoon): Jack's first notes on act 1 — the blackouts out, the pull-ins lifted, the top of Guns and Ships (PR #233)
+
+*"Ther shouldnt be a blackout at the end of alexander hamilton … a random blackout in the middle of my shot … story of
+tonight … farmer refuted … right hand man … fades to black to earliy … the only light should be shinnig right here … a
+row of vipers sweep white … the timing seams to get off somewhere majorly"* → the clock checked first and found right
+(the file's track starts on measured silences, the YouTube uploads the album's length), then a luminance scanner in
+the page measured every half-second of the tracks he named: the reviewers' pull-ins were 3–5 % of the frame and the
+track-end cut-offs true black across every song change. Four blackout cues removed (their zeros folded into the next
+song's first look), nine pull-ins lifted to a visible surround, Farmer Refuted's middle held to one warm palette, That
+Would Be Enough's fade moved onto the cut-off and made complete, Guns and Ships rebuilt to his two screenshots (one
+special on the SL gallery platform; on "Lafayette!" the Apron Electric Vipers snap on white and sweep the deck; the
+full warm look in one cue), Yorktown's last chord keeps the stage. 890 cues; show.check() green; re-scanned; nothing
+in `src/`. Four traps.
+
+## SUPERSEDED (the show reached him; his notes are the round above): **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
 
 Rulings at **FE** (FF next). `main` is **`8961616`**: #229 and #230 merged by Jack — the house at 1:1, the lobby, bake 3,
 the rig trimmed, the lighting engine, the show, the calibration, all on `main`. Read STATE.md's newest block.

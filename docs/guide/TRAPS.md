@@ -1617,3 +1617,24 @@ against this list before opening a PR; **add new traps as you hit them.**
   read the album's loudness bins from the PREVIOUS session's `shots/`; three agents each wrote their own copy before
   anyone told me. Copy a helper's data with the helper.
 
+
+## From the blackout round (2026-10-12)
+
+- **A reconstructed "pull-in" that leaves one pool on a black stage IS a blackout to the person watching.** Eight
+  reviewers judged cues from stills and wrote "everything down to Hamilton in warm" at 5–10 % on the surround; from
+  the house that is 3–5 % of the frame, and Jack called every one of them a blackout, and the ones that came before a
+  button "too early". Measure, don't judge: `CAP.scan` (HANDOFF, this round) renders every half-second from the house
+  camera and prints the mean luminance per cue; anything under ~0.06 that is not a real FTB wants a surround.
+- **Both audio paths were checked before touching a single `at`.** "The timing got off really bad" turned out to be
+  the pull-ins above, not the clock: the one-file soundtrack's `tracks[].file` starts all sit on a measured silence
+  (`shots/soundtrack-env-20ms.f32`, copied with `audio.py` this time), and the YouTube uploads are the album's length
+  to the second (`getDuration()` through the IFrame API — poll until `getVideoData().video_id` is the one you cued,
+  or you read the PREVIOUS video's duration). Check the clock first; it is cheap, and moving `at`s to chase a
+  perception would have broken every real island.
+- **Merging two cues' `ch` maps is per CHANNEL, not per key.** `dict.update` on the channel level replaced
+  `{"cp": 28, "i": 60}` with `{"i": 75}`, so the lustrs kept the previous song's palette and the "full warm stage"
+  came up blue. Merge `{**a[k], **b[k]}` for every key, and render the result: the offline fold cannot see it,
+  because it does not resolve `cp`/`preset` references the way the player does.
+- **Removing a blackout cue is not a deletion.** The next cue only sets what it lights; everything the blackout took
+  out stays lit through it. Fold the intensity state up to the removed cue, and move its zeros into the next cue (as
+  channels, with the groups expanded, so a group zero cannot override a channel the next cue sets).

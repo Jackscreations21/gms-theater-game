@@ -1,7 +1,52 @@
-# STATE — 2026-10-12 (PR #230 MERGED: THE HOUSE AT 1:1, THE LIGHTING ENGINE, THE WHOLE OF HAMILTON AUTO-TIMED AND CALIBRATED TO BINKLEY'S PHOTOS — ALL ON `main`)
+# STATE — 2026-10-12 (JACK'S FIRST NOTES ON ACT 1: THE BLACKOUTS OUT, THE PULL-INS LIFTED, THE TOP OF GUNS AND SHIPS — `cue-blackouts` = PR #233, OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
+
+## NEWEST — 2026-10-12 (afternoon): act 1 re-judged by Jack — the blackouts out, the pull-ins lifted, the top of Guns and Ships — `cue-blackouts`, PR #233 OPEN
+
+**Read this block first.** `main` is **`5d24188`**: #230, #231 (the record) and **#232 (`fixture-glbs`, the 38 model
+files) all merged by Jack** — the rig now hangs on Pages. PR #233 (`cue-blackouts`, one commit + the record):
+https://github.com/Jackscreations21/gms-theater-game/pull/233. Nothing in `src/`; suites unaffected.
+
+Jack, after watching act 1 with the music: *"Ther shouldnt be a blackout at the end of alexander hamilton. Why is there a
+random blackout in the middle of my shot … story of tonight … near the start of farmer refuted … redo the middle why does
+it randomly go to red and blue. Why is there a blackout in right hand man. Its fades to black to earliy in take a break
+[That Would Be Enough] then when it fades back up for guns and ships the only light should be shinnig right here
+[screenshot: the stage-left gallery platform]. then when they say lafayette a row of vipers sweep white and it lights up
+the stage to look like this [screenshot: the full warm look]. The timing seams to get off somewhere majorly because the
+blackout for yorktown also happens to ealy."*
+
+- **The clock is right; the cues were the problem.** Checked before touching anything: his one-file soundtrack's
+  `tracks[].file` starts every sit on a measured silence (the 20 ms loudness file, copied into this session's scratch
+  with `audio.py`); the YouTube uploads the Pages copy plays are each the album's length to the second (IFrame API
+  `getDuration()`). What he heard as "too early" was a reconstructed cue dropping the stage to one pool while the band
+  played on.
+- **Measured, not judged:** a luminance scanner in the page (`CAP.scan` / `CAP.dark`, recipe in HANDOFF) renders every
+  half-second of a track from the house camera and prints the mean luminance per cue; contact sheets (`CAP.sheet`) of
+  the suspect moments. The eight reviewers' "pull-ins" (the room at 5–10 %) were 3–5 % of the frame — a blackout on any
+  screen; the track-end "cut-off" cues were true black for 1.5–4 s across every song change.
+- **What changed (`assets/hamilton-show.json`, 892 → 890 cues, the 124 real untouched):** no blackout out of
+  Alexander Hamilton, The Story of Tonight, The Schuyler Sisters or Right Hand Man (69, 149, 174.7, 289.5 removed; what
+  they took out now goes out under the next song's first look — a cross-fade); My Shot's 104/119/127/138 keep the room
+  at a third; Farmer Refuted's middle is one warm rally (the VL wash no longer jumps to deep amber = "red", the X4 pools
+  warm not cool-white = "blue", 187's snap-down visible); Right Hand Man's 283 keeps a red surround under Washington's
+  shaft and the tent (284–285.5, 90 s at 4 %) is lit; That Would Be Enough's 500 keeps the blue room at half and 501
+  fades EVERYTHING to black from the cut-off (175.24) to the track's end; **Guns and Ships: 560 is black but for one
+  special on the SL gallery platform (Viper 22 from the Apron Electric), 561 at 17.9 ("Lafayette!") snaps the ten Apron
+  Electric Vipers on open white, 561.2 sweeps them 9 m across the deck in 1.4 s, 561.5 at 19.4 brings up the full warm
+  war palette (the old 560 ⊕ 561, merged per channel)**; Yorktown's 609.7 keeps the full stage under the soldiers' pools,
+  the blackout stays on the cut-off (240.14). Every edited cue's `why` starts "Revision 3 (Jack, 2026-10-12):".
+- **Checks:** show.check() seek-equivalence passes, refs resolve, timeline monotonic; every edited track re-scanned —
+  no half-second under 1 % left except Binkley's own FTBs (190, 273) and the cut-offs that remain. Verification sheets
+  in this session's scratch `shots/r3-*.png`, `r3b.png`; the before/after of every suspect moment `sheet-*.png`.
+- **Left as it was, on purpose:** the end of My Shot (139.5) still cuts to black into The Story of Tonight (he did not
+  name it); the real FTBs. **Still open from before:** the rig placements (FUTURE.md), `edge`/`frost`, the 238 effects,
+  the body, the headset. The post-merge protocol for #230–#232: local `main` fast-forwarded; the landed branches
+  (`midtown-walk`, `midtown-walls`, `midtown-lights`, `record-230`, `fixture-glbs`) still to delete both sides; suites
+  when Node is on the PATH.
+
+---
 
 ## NEWEST — 2026-10-12: the engine calibrated to Binkley's cue photos, every cue re-judged from renders, the preshow and the interval — UNCOMMITTED on `midtown-lights`
 
