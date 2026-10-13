@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blocking editor · Hamilton</title>
+<link rel="icon" href="data:,">
 <!--
   THE BLOCKING EDITOR (RULING FP, docs/superpowers/specs/2026-10-12-automatic-actors-design.md).
   Jack: "make a software that i can make paths for the people. have it so it has all the paths you have made already and i can
@@ -125,6 +126,8 @@ kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid
       <button id="prevtr" title="The previous track's top">⏮</button>
       <select id="track" aria-label="Track"></select>
       <button id="nexttr" title="The next track's top">⏭</button>
+      <button id="cleartr" title="Remove every waypoint of every actor and prop in THIS song, to block it from a blank stage (undoable)">Clear this song</button>
+      <button id="restoretr" title="Put this song back as the loaded file has it (undoable)">Restore this song</button>
     </div>
     <div id="clock">—<small>loading…</small></div>
     <div id="lightbox" class="lit"><div class="big">…</div><div><div class="meter"><i style="width:0"></i></div><div class="cue">—</div></div></div>
@@ -160,6 +163,8 @@ kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid
         <label>Colour</label><input id="p_color" type="color">
         <span class="full"><button id="p_del">Remove this prop</button></span>
       </div>
+      <h2>Key</h2>
+      <canvas id="legend" style="width:100%;height:148px;display:block"></canvas>
       <h2>File</h2>
       <div class="btns"><button id="loadbtn" title="Open another blocking file (it becomes the original the changes are measured against)">Load…</button><input id="loadfile" type="file" accept=".json,application/json" hidden></div>
       <div class="note" id="srcnote"></div>
@@ -168,6 +173,7 @@ kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid
       <canvas id="plan" aria-label="The stage from above"></canvas>
       <div id="viewbtns">
         <label><input type="checkbox" id="v_labels" checked> Labels</label>
+        <label><input type="checkbox" id="v_scan"> Floor scan</label>
         <label><input type="checkbox" id="v_points" checked> Points</label>
         <label><input type="checkbox" id="v_pools" checked> Person lights</label>
         <label><input type="checkbox" id="v_names" checked> Names</label>
@@ -188,7 +194,8 @@ kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid
         <label>At (s)</label><span><input id="f_at" type="number" step="0.1"> <button id="f_now" title="This waypoint's time = the clock's">= now</button> <button id="f_go" title="The clock to this waypoint">Go</button></span>
         <label>x (m)</label><span><input id="f_x" type="number" step="0.05"> <span class="faint">+ stage left</span></span>
         <label>z (m)</label><span><input id="f_z" type="number" step="0.05"> <span class="faint">+ the house</span></span>
-        <label class="actonly">Level</label><span class="actonly"><select id="f_level"><option value="deck">deck (lower level)</option><option value="gallery">gallery 2.74 (upper level)</option><option value="top">the floor's top here</option><option value="custom">custom y</option></select> <input id="f_y" type="number" step="0.01" style="width:64px" title="y, metres"></span>
+        <label class="actonly">Level</label><span class="actonly"><button id="lv_deck" title="The lower level here: the deck">Lower · deck</button> <button id="lv_gal" title="The upper level here: the gallery floor at 2.74 m">Upper · gallery (2.74 m)</button> <span class="faint" id="lv_note"></span></span>
+        <label class="actonly">y (m)</label><span class="actonly"><input id="f_y" type="number" step="0.01" style="width:64px" title="y, metres (blank: the deck)"> <span class="faint">a stair tread: its height · <kbd>L</kbd> or the ⇅ by the disc switches level</span></span>
         <label class="actonly">Dwell (s)</label><span class="actonly"><input id="f_dwell" type="number" step="0.1" min="0" placeholder="auto"> <span class="faint">blank: leave in time · 0: walk through</span></span>
         <label>Facing °</label><span><input id="f_facing" type="number" step="5" placeholder="travel"> <span class="faint">0 house · 90 SL · −90 SR · 180 up</span></span>
         <label>Offstage</label><span><input id="f_off" type="checkbox"> <span class="faint">not seen here</span></span>
@@ -406,7 +413,9 @@ function regionAt(x, z) {                              // the part of the stage 
   const inR = (x0, x1, z0, z1) => x >= x0 && x <= x1 && z >= z0 && z <= z1;
   const r = Math.hypot(x, z - 0.95);
   let part;
-  if (z > 6.05) part = 'House / audience';
+  const en = Object.entries(ENTR).find(([, [ex, ez]]) => Math.hypot(ex - x, ez - z) < 0.45);
+  if (en) part = `${en[0]} — ${en[1][2]} (an entrance: an \`off\` waypoint here is unseen)`;
+  else if (z > 6.05) part = 'House / audience';
   else if (top !== null && top < -0.05) part = z > 5.2 ? 'Pit (below the deck edge)' : 'Below the deck';
   else if (Math.hypot(x - 5.49, z - 2.36) < 0.45 && isGallery(top)) part = 'Balcony (Guns and Ships) — downstage end of the SL gallery';
   else if (inR(2.2, 4.5, -2.75, -2.15)) part = 'SL stair (up → onto the SL gallery)';
@@ -575,7 +584,7 @@ async function boot() {
 }
 
 // ================================================================ the music
-const AU = { el: new Audio(), ready: false, note: 'the soundtrack: looking…', toc: null, off: 0, mode: 'file', url: null, loading: false };
+const AU = { el: new Audio(), ready: false, note: 'the soundtrack: looking…', toc: null, off: 0, mode: 'file', url: null, loading: false, pct: 0, blocked: false, missing: false };
 AU.el.preload = 'auto'; AU.el.volume = 0.8;
 function initAudio() {
   AU.el.addEventListener('loadedmetadata', () => {
@@ -594,18 +603,23 @@ async function loadSoundURL(url) {
   AU.loading = true;
   try {
     const r = await fetch(url);
-    if (!r.ok) { AU.note = 'no soundtrack file in assets/audio — choose the MP3, or the clock runs silent'; AU.loading = false; S.uiDirty = true; return; }
+    if (!r.ok) {                                         // absent (it is git-ignored): the picker, said plainly
+      AU.missing = true; AU.loading = false;
+      AU.note = 'No soundtrack in assets/audio/ — press “Choose the MP3…” and pick “Hamilton The Musical [Full Soundtrack].mp3” (Downloads). Until then the clock runs silent.';
+      $('pickaud').classList.add('on'); S.uiDirty = true; return;
+    }
     const total = +r.headers.get('content-length') || 0, reader = r.body.getReader(), parts = []; let got = 0;
     for (;;) {
       const { done, value } = await reader.read(); if (done) break;
-      parts.push(value); got += value.length;
-      AU.note = `loading the soundtrack… ${(got / 1e6).toFixed(0)}${total ? ' / ' + (total / 1e6).toFixed(0) : ''} MB`; S.uiDirty = true;
+      parts.push(value); got += value.length; AU.pct = total ? Math.floor(got / total * 100) : 0;
+      AU.note = `loading the soundtrack… ${total ? AU.pct + ' %' : (got / 1e6).toFixed(0) + ' MB'}`; S.uiDirty = true;
     }
     setAudioSrc(URL.createObjectURL(new Blob(parts, { type: 'audio/mpeg' })), 'the soundtrack (assets/audio)');
   } catch (e) { AU.note = 'the soundtrack could not be read — choose the MP3, or the clock runs silent'; S.uiDirty = true; }
   AU.loading = false;
 }
 function setAudioSrc(url, label) {
+  AU.missing = false; $('pickaud').classList.remove('on');
   if (AU.url) URL.revokeObjectURL(AU.url);
   AU.url = url; AU.label = label; AU.ready = false; AU.el.src = url; AU.note = 'opening ' + label + '…'; S.uiDirty = true;
 }
@@ -626,7 +640,11 @@ function audioSync(force) {                            // the element to the clo
   if (!inMusic(S.T)) { if (!AU.el.paused) AU.el.pause(); return; }
   const { tr, at } = locate(S.T), P = tr.file + at;
   if (force || Math.abs(AU.el.currentTime + AU.off - P) > 0.3) { const q = soundSeek(P); try { AU.el.currentTime = q.req; AU.off = q.off; } catch (e) { /* not seekable yet */ } }
-  if (S.playing && AU.el.paused) AU.el.play().catch(() => { AU.note = 'the browser would not start the audio — press Play again'; S.uiDirty = true; });
+  if (S.playing && AU.el.paused && !AU.blocked) AU.el.play().catch(e => {        // a refusal is shown and stops the clock, never swallowed
+    if (e && e.name === 'AbortError') return;                                     // a seek or a new file interrupted it: not a failure
+    AU.blocked = true; S.playing = false;
+    AU.note = `the browser would not start the music (${(e && (e.name + ': ' + e.message)) || 'refused'}) — press Play again`; S.uiDirty = true;
+  });
   if (!S.playing && !AU.el.paused) AU.el.pause();
 }
 
@@ -636,17 +654,26 @@ function seek(T) {
   if (locate(T).tr.id === S.tracks[S.tracks.length - 1].id) S.tailView = Math.max(S.tailView, T - S.end + 10);
   audioSync(true); S.dirty = true; S.uiDirty = true;
 }
-function setPlaying(on) {
-  S.playing = on; S.hold = null;
-  if (on && !AU.ready && AU.mode === 'file' && !AU.loading && !AU.url) AU.note = 'no music — silent clock';
+function setPlaying(on) {                                // called from the Play click itself, so its play() carries the gesture (autoplay policy)
+  S.playing = on; S.hold = null; AU.blocked = false;
+  if (AU.ready) AU.note = `${AU.label} · ${mmss(AU.el.duration)}${AU.toc ? ' · seeks corrected (Chrome VBR table)' : ''}`;
   audioSync(true); S.uiDirty = true;
+}
+function audioStatus() {                                 // the Music line: what is (and is not) sounding, and why
+  if (AU.mode === 'none') return 'silent clock (chosen)';
+  if (AU.loading) return `${AU.note}${S.playing ? ' — the clock runs silent until it lands, then the music joins' : ''}`;
+  if (!AU.ready) return AU.note;
+  const { tr, at } = locate(S.T);
+  if (at < 0) return `lead-in — the music starts at 0:00 (${Math.ceil(-at)} s)`;
+  if (at >= tr.len - 1e-3) return Number.isFinite(tr.post) && tr.post > 0 ? 'tail — the music of this song is over; the clock runs on' : !Number.isFinite(tr.post) ? 'the show is over — the clock runs on' : AU.note;
+  return S.playing && !AU.el.paused ? `♪ playing · ${AU.note}` : AU.note;
 }
 function tick(dt) {                                     // the frame's clock: the music's own time while it plays; the frame dt in a lead-in, a tail, or silence
   if (!S.playing) return;
   const was = locate(S.T);
   if (useAudio() && inMusic(S.T)) {
     const A = AU.el;
-    if (A.paused && !A.seeking) audioSync(true);
+    if (A.paused && !A.seeking && !AU.blocked) audioSync(true);
     if (A.readyState >= 1 && !A.seeking && !A.paused) {
       const ft = A.currentTime + AU.off, tr = S.tracks;
       let i = was.tr.i;
@@ -678,15 +705,26 @@ function findW(id) {
   for (const p of S.props) { const w = p.waypoints.find(x => x._id === id); if (w) return { kind: 'prop', e: p, w }; }
   return null;
 }
+const NEG0 = '\u0000-0', toJ = x => JSON.stringify(x, (k, v) => Object.is(v, -0) ? NEG0 : v), fromJ = j => JSON.parse(j, (k, v) => v === NEG0 ? -0 : v);   // JSON alone writes -0 as 0
 function snapOf(key) {                                   // what an undo step keeps: one actor's path, or the whole props list
-  if (key === 'props') return JSON.stringify(S.props.map(p => ({ id: p.id, kind: p.kind, label: p.label, size: p.size, color: p.color, waypoints: p.waypoints })));
-  const a = S.actors.find(x => 'a:' + x.id === key); return JSON.stringify(a ? a.path : []);
+  if (key === 'props') return toJ(S.props.map(p => ({ id: p.id, kind: p.kind, label: p.label, size: p.size, color: p.color, waypoints: p.waypoints })));
+  const a = S.actors.find(x => 'a:' + x.id === key); return toJ(a ? a.path : []);
 }
 function restore(key, json) {
-  if (key === 'props') { S.props = JSON.parse(json).map((p, k) => cleanProp(p, k)); }
-  else { const a = S.actors.find(x => 'a:' + x.id === key); if (a) { a.path = JSON.parse(json); a.c = null; } }
+  if (key === 'props') { S.props = fromJ(json).map((p, k) => cleanProp(p, k)); }
+  else { const a = S.actors.find(x => 'a:' + x.id === key); if (a) { a.path = fromJ(json); a.c = null; } }
 }
 const keyOf = sel => sel.kind === 'actor' ? 'a:' + sel.id : 'props';
+function editMany(keys, fn) {                           // one undo step over several paths (a whole song cleared or restored)
+  const before = keys.map(snapOf);
+  fn();
+  keys.forEach(sortAll);
+  const multi = keys.map((key, i) => ({ key, before: before[i], after: snapOf(key) })).filter(m => m.before !== m.after);
+  if (!multi.length) { touch(false); return false; }
+  S.undo.push({ multi }); if (S.undo.length > 400) S.undo.shift(); S.redo = [];
+  touch(true);
+  return true;
+}
 function edit(key, fn) {                                 // every change goes through here: undo step, sort, recompile, validate, draft
   const before = snapOf(key);
   fn();
@@ -705,7 +743,7 @@ function sortAll(key) {
 }
 function undoRedo(from, to) {
   const st = from.pop(); if (!st) return;
-  restore(st.key, from === S.undo ? st.before : st.after);
+  for (const m of st.multi || [st]) restore(m.key, from === S.undo ? m.before : m.after);
   to.push(st);
   if (S.selW && !findW(S.selW)) S.selW = null;
   if (S.sel && !ent()) S.sel = null;
@@ -720,15 +758,15 @@ function touch(edited) {
 function saveDraft() {
   S.draftDue = false;
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ v: 1, saved: new Date().toISOString(), src: { name: S.src.name, bytes: S.src.bytes, sha256: S.src.sha256 },
-      actors: S.actors.map(a => ({ id: a.id, path: a.path })), props: JSON.parse(snapOf('props')), notes: S.notes, nextId: S.nextId }));
+    localStorage.setItem(DRAFT_KEY, toJ({ v: 1, saved: new Date().toISOString(), src: { name: S.src.name, bytes: S.src.bytes, sha256: S.src.sha256 },
+      actors: S.actors.map(a => ({ id: a.id, path: a.path })), props: fromJ(snapOf('props')), notes: S.notes, nextId: S.nextId }));
   } catch (e) { /* no storage here (a private window): the Download buttons keep the work */ }
 }
 function offerDraft() {
-  let d = null; try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { d = null; }
+  let d = null; try { d = fromJ(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { d = null; }
   if (!d || d.v !== 1) return;
-  const nowA = JSON.stringify(S.actors.map(a => ({ id: a.id, path: a.path }))), nowP = snapOf('props');
-  if (JSON.stringify(d.actors) === nowA && JSON.stringify(d.props) === nowP && !(d.notes && (d.notes.global || Object.values(d.notes.tracks || {}).some(Boolean)))) return;   // nothing in it this file does not have
+  const nowA = toJ(S.actors.map(a => ({ id: a.id, path: a.path }))), nowP = snapOf('props');
+  if (toJ(d.actors) === nowA && toJ(d.props) === nowP && !(d.notes && (d.notes.global || Object.values(d.notes.tracks || {}).some(Boolean)))) return;   // nothing in it this file does not have
   const same = d.src && d.src.sha256 === S.src.sha256;
   $('draftnote').textContent = `Saved ${new Date(d.saved).toLocaleString()}${same ? ', from this same blocking file.' : ' — from a DIFFERENT blocking file than the one loaded now; restoring puts its paths over this one.'}`;
   $('draft').style.display = 'block';
@@ -769,12 +807,88 @@ function addAt(x, z) {                                   // the selected actor /
     });
   }
 }
+// CLEAR THIS SONG (Jack: "for each song I can choose to start with none of the lines already in there"). Every waypoint of every
+// actor and prop in the current track goes. Because an actor stands at her last waypoint after it, and at her first before it,
+// someone on stage at the end of the song before (or needed on stage at the top of the song after) would otherwise stand frozen
+// through the cleared song: such an actor gets OFFSTAGE holds instead — she walks off at a walk to the nearest wing (in the first
+// seconds of the song, if the song before kept her to its end), and waits in the wing nearest her next spot until she must walk
+// on to reach it (in the song's last seconds) (RULING FP). A prop still seen gets an
+// `off` at the song's top. The holds carry the note "clear-track: held offstage" and are the only waypoints left in the song.
+const WINGS = Object.entries(ENTR).filter(([n]) => n !== 'G-UC').map(([n, [x, z]]) => [n, x, z]);
+function wingNear(x, z, up) {
+  if (up) return { x: 0.6, z: -4.8, y: GALLERY };
+  let best = null; for (const [, wx, wz] of WINGS) { const d = Math.hypot(wx - x, wz - z); if (!best || d < best[0]) best = [d, wx, wz]; }
+  return { x: best[1], z: best[2] };
+}
+function trackWindow(tr) { return [tr.start - tr.pre, tr.start + tr.len + (Number.isFinite(tr.post) ? tr.post : S.tailView)]; }
+function holdOffstage(tr) {
+  const [t0, t1] = trackWindow(tr), HOLD = 'clear-track: held offstage';
+  for (const a of S.actors) {
+    a.c = null;
+    const P = a.path.map(w => ({ w, T: gT(w.track, w.at) })).filter(p => Number.isFinite(p.T)).sort((p, q) => p.T - q.T);
+    const A = [...P].reverse().find(p => p.T < t0), B = P.find(p => p.T > t1);
+    const aOn = A && !A.w.off, bOn = B && !B.w.off;
+    if (!aOn && !bOn) continue;                                            // off before and after (or never on): unseen through the song
+    let exitAt = -Infinity;
+    if (aOn) {                                                             // she walks off at a walk, from the end of the song before into the top of this one
+      const wg = wingNear(+A.w.x, +A.w.z, A.w.y !== undefined && +A.w.y > 1.5), d = Math.hypot(wg.x - A.w.x, wg.z - A.w.z);
+      exitAt = r2(Math.max(-tr.pre + 0.05, A.T + (actF(A.w.dwell) || 0) + d / ACT_WALK + 2 * ACT_EASE - tr.start));
+      a.path.push(newW(Object.assign({ track: tr.id, at: exitAt, x: wg.x, z: wg.z }, wg.y ? { y: wg.y } : {}, { off: true, note: HOLD })));
+    }
+    if (bOn) {                                                             // she waits in the wing nearest her next spot, and walks on in time for it
+      const wg = wingNear(+B.w.x, +B.w.z, B.w.y !== undefined && +B.w.y > 1.5), d = Math.hypot(wg.x - B.w.x, wg.z - B.w.z);
+      const at = r2(Math.min(t1, B.T - d / ACT_WALK - 2 * ACT_EASE) - tr.start);
+      if (at > Math.max(-tr.pre, exitAt) + 0.1) a.path.push(newW(Object.assign({ track: tr.id, at, x: wg.x, z: wg.z }, wg.y ? { y: wg.y } : {}, { off: true, note: HOLD })));
+    }
+  }
+  for (const p of S.props) {
+    p.c = null;
+    const was = propPose(p, t0 + 0.01);
+    if (was.visible || [0.25, 0.5, 0.75].some(f => propPose(p, t0 + (t1 - t0) * f).visible))
+      p.waypoints.push(newW({ track: tr.id, at: r2(-tr.pre + 0.05), x: r3(was.x), z: r3(was.z), off: true, note: HOLD }));
+  }
+}
+function clearTrack() {
+  const tr = curTrack();
+  const na = S.actors.reduce((n, a) => n + a.path.filter(w => String(w.track) === tr.id).length, 0), np = S.props.reduce((n, p) => n + p.waypoints.filter(w => String(w.track) === tr.id).length, 0);
+  if (!na && !np) { alert(`${tr.id} ${tr.title} has no waypoints to clear.`); return; }
+  if (!confirm(`Clear ${tr.id} ${tr.title}?\n\nThis removes all ${na} actor waypoints and ${np} prop waypoints in this song, so you can block it from a blank stage. Anyone still on stage from the song before walks off to arrive at its top, and anyone needed at the top of the next song waits in the wings (two "held offstage" waypoints each).\n\nUndo (Ctrl+Z) or "Restore this song" brings it back.`)) return;
+  editMany(S.actors.map(a => 'a:' + a.id).concat(['props']), () => {
+    for (const a of S.actors) a.path = a.path.filter(w => String(w.track) !== tr.id);
+    for (const p of S.props) p.waypoints = p.waypoints.filter(w => String(w.track) !== tr.id);
+    holdOffstage(tr);
+  });
+  S.selW = null; S.listDirty = true;
+}
+function restoreTrack() {
+  const tr = curTrack();
+  if (!confirm(`Restore ${tr.id} ${tr.title} as the loaded file has it? Your edits in this song are replaced (Undo brings them back).`)) return;
+  editMany(S.actors.map(a => 'a:' + a.id).concat(['props']), () => {
+    for (const a of S.actors) a.path = a.path.filter(w => String(w.track) !== tr.id);
+    for (const p of S.props) p.waypoints = p.waypoints.filter(w => String(w.track) !== tr.id);
+    for (const [id, o] of S.origIds) {
+      if (String(o.w.track) !== tr.id) continue;
+      const e = o.kind === 'actor' ? S.actors.find(a => a.id === o.ent) : S.props.find(q => q.id === o.ent);
+      if (e) wpsOf(e, o.kind).push(Object.assign({}, o.w, { _id: id }));
+    }
+  });
+  S.selW = null; S.listDirty = true;
+}
+// THE LEVEL where the floor has two (Jack: "add a button so if it is in a place with a second level I can choose what level it is
+// on"): under and on the galleries and the balcony the map has the deck below and the gallery above. y absent = the deck,
+// y 2.743 = the gallery (the merge's level names "deck" / "gallery"; the change file says which).
+const twoLevel = (x, z) => { const f = floorAt(x, z); return !!(f && isGallery(f.top) && f.deck !== null && f.deck < 0.3); };
+const levelOf = w => w.y === undefined || w.y === null ? 'deck' : Math.abs(+w.y - GALLERY) < 0.15 ? 'gallery' : `stair ${(+w.y).toFixed(2)} m`;
+function setLevel(id, lv) {
+  const f = findW(id); if (!f || f.kind !== 'actor') return;
+  edit('a:' + f.e.id, () => { const w = findW(id).w; if (lv === 'gallery') w.y = GALLERY; else delete w.y; });
+}
 function moveW(id, x, z) {
   const f = findW(id); if (!f) return;
   const w = f.w; w.x = snap(x); w.z = snap(z);
   if (f.kind === 'actor' && w.y !== undefined) {
     const fl = floorAt(w.x, w.z);
-    if (Math.abs(w.y - GALLERY) < 0.15) w.y = GALLERY;                     // on the gallery she stays at gallery height (the check says if it leaves it)
+    if (Math.abs(w.y - GALLERY) < 0.15) { if (fl && isGallery(fl.top)) w.y = GALLERY; else delete w.y; }   // upper while there is gallery under her; off it, the deck
     else if (fl) w.y = r3(fl.top);                                         // a stair tread: the floor's top where she now is
   }
 }
@@ -854,8 +968,21 @@ function changes() {
   const push = (kind, entId, before, after, ops) => {
     const w = after || before, tid = String(w.track), sg = segOf(tid), tr = S.byTrack.get(tid);
     out.push({ kind, [kind]: entId, name: nameOf(kind, entId), track: tid, title: tr ? tr.title : '', T: gT(w.track, w.at), op: ops[0], ops,
-      before: before || null, after: after || null, note: (after && after.note) || (before && before.note) || '', generator: kind === 'prop' ? 'tools/blocking/props.py' : sg ? sg.gen : null });
+      before: before || null, after: after || null, note: (after && after.note) || (before && before.note) || '', generator: kind === 'prop' ? 'tools/blocking/props.py' : sg ? sg.gen : null,
+      ...(kind === 'actor' ? { level: { before: before ? levelOf(before) : null, after: after ? levelOf(after) : null } } : {}) });
   };
+  // a song whose every original waypoint is gone was CLEARED: one clear-track entry instead of its deletes
+  const origByTrack = new Map(), keptByTrack = new Map(), live = new Map();
+  for (const a of S.actors) for (const w of a.path) live.set(w._id, String(w.track));
+  for (const p of S.props) for (const w of p.waypoints) live.set(w._id, String(w.track));
+  for (const [id, o] of S.origIds) { const t = String(o.w.track); origByTrack.set(t, (origByTrack.get(t) || 0) + 1); if (live.get(id) === t) keptByTrack.set(t, (keptByTrack.get(t) || 0) + 1); }
+  const cleared = new Set([...origByTrack].filter(([t, n]) => n > 0 && !keptByTrack.get(t)).map(([t]) => t));
+  for (const t of cleared) {
+    const tr = S.byTrack.get(t), sg = segOf(t), who = new Set([...S.origIds.values()].filter(o => String(o.w.track) === t).map(o => o.ent));
+    out.push({ kind: 'track', track: t, title: tr ? tr.title : '', T: tr ? tr.start - tr.pre - 1e-3 : -1, op: 'clear-track', ops: ['clear-track'], removed: origByTrack.get(t),
+      who: [...who], before: null, after: null, note: `every waypoint of every actor and prop in ${t} was removed (Clear this song); the ${origByTrack.get(t)} deletes are folded into this entry. The adds listed for ${t} are the new blocking (and the "held offstage" waypoints the clear left).`,
+      generator: sg ? sg.gen : null });
+  }
   const visit = (kind, e, L) => {
     for (const w0 of L) {
       const w = stripW(w0); seen.add(w0._id);
@@ -868,7 +995,7 @@ function changes() {
   };
   S.actors.forEach(a => visit('actor', a, a.path));
   S.props.forEach(p => visit('prop', p, p.waypoints));
-  for (const [id, o] of S.origIds) if (!seen.has(id)) push(o.kind, o.ent, o.w, null, [o.kind === 'actor' ? 'delete' : 'prop-delete-waypoint']);
+  for (const [id, o] of S.origIds) if (!seen.has(id) && !cleared.has(String(o.w.track))) push(o.kind, o.ent, o.w, null, [o.kind === 'actor' ? 'delete' : 'prop-delete-waypoint']);
   for (const p of S.props) {                               // the props themselves
     const o = S.origProps.get(p.id), now = { kind: p.kind, label: p.label, size: p.size, color: p.color };
     if (!o) out.push({ kind: 'prop', prop: p.id, name: p.label, track: null, T: -1, op: 'prop-add', ops: ['prop-add'], before: null, after: now, note: '', generator: 'tools/blocking/props.py' });
@@ -911,7 +1038,7 @@ function changeMarkdown(doc) {
     if (cs.length) {
       if (t) { const sg = segOf(t); if (sg) L.push(`Generator: \`${sg.gen}\``, ''); }
       L.push('| # | who | change | before | after | note |', '|---|---|---|---|---|---|');
-      for (const c of cs) L.push(`| ${c.n} | ${c.name} | ${c.ops.join(', ')} | ${c.track ? wpText(c.before) : esc(JSON.stringify(c.before))} | ${c.track ? wpText(c.after) : esc(JSON.stringify(c.after))} | ${(c.note || '').replace(/\|/g, '\\|')} |`);
+      for (const c of cs) L.push(c.op === 'clear-track' ? `| ${c.n} | (everyone) | **clear-track** — ${c.removed} waypoints removed | | | ${c.note.replace(/\|/g, '\\|')} |` : `| ${c.n} | ${c.name} | ${c.ops.join(', ')}${c.level && c.level.before !== c.level.after ? ` (${c.level.before ?? '—'} → ${c.level.after ?? '—'})` : ''} | ${c.track ? wpText(c.before) : esc(JSON.stringify(c.before))} | ${c.track ? wpText(c.after) : esc(JSON.stringify(c.after))} | ${(c.note || '').replace(/\|/g, '\\|')} |`);
       L.push('');
     }
   }
@@ -982,6 +1109,7 @@ function resize() {
   W = Math.max(50, r.width); H = Math.max(50, r.height);
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
   if (S.view.fit) fitView();
+  drawLegend();
   S.dirty = true;
 }
 function fitView() {
@@ -1005,70 +1133,184 @@ function arrow(x0, z0, x1, z1, col) {
   g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke();
   g.beginPath(); g.moveTo(c, d); g.lineTo(c - h * Math.cos(ang - 0.45), d - h * Math.sin(ang - 0.45)); g.lineTo(c - h * Math.cos(ang + 0.45), d - h * Math.sin(ang + 0.45)); g.closePath(); g.fill();
 }
-function drawStage() {
-  const F = S.floor, s = S.view.s;
-  g.fillStyle = '#0b0a0d'; g.fillRect(0, 0, W, H);
-  // the house beyond the floor map (+z past 6.1)
-  const [hx0, hy0] = PX(-14, 6.1), [hx1, hy1] = PX(14, 12);
-  g.fillStyle = '#16141c'; g.fillRect(hx0, hy0, hx1 - hx0, hy1 - hy0);
-  for (let r = 0; r < 4; r++) { g.strokeStyle = '#26232e'; g.lineWidth = 1; const [, yy] = PX(0, 6.6 + r * 0.45); g.beginPath(); g.moveTo(PX(-9, 0)[0], yy); g.lineTo(PX(9, 0)[0], yy); g.stroke(); }
-  if (floorImg) {
-    g.imageSmoothingEnabled = false;
-    const [px, py] = PX(F.x0 - F.step / 2, F.z0 - F.step / 2);
-    g.drawImage(floorImg, px, py, F.nx * F.step * s, F.nz * F.step * s);
+// THE PLAN, drawn as an architect's plan (Jack: "make the map of the stage look better"): vector shapes from the measured geometry
+// (the brief's glossary, measured in the page — tools/hamilton-floor.json stays the source of the hover readout and the level logic,
+// and is drawn only as a faint underlay when "Floor scan" is on). A quiet two-tone floor: the deck (lower level) and the raised
+// galleries (upper level, with a shadow along their downstage edge); stairs as treads with UP; rails as thin lines; labels placed
+// without overlapping (inside their shape where they fit, else outside on a short leader).
+const PLAN = {
+  deck: [-10, -6.3, 10, 5.4], pit: [-10, 5.4, 10, 6.1], block: [7.75, 2.25, 10, 6.1],
+  upper: [
+    { r: [-4.75, -3.8, 5.0, -3.0] },                      // the upstage gallery
+    { r: [-4.75, -3.5, -4.25, -0.2] },                    // the SR strip
+    { r: [-7.0, -1.1, -4.0, -0.25] },                     // the cross-walk
+    { r: [-6.65, -1.1, -5.65, 3.25] },                    // the SR arm (balcony)
+    { r: [4.6, -2.5, 6.0, 3.4] },                         // the SL gallery
+    { r: [-1.1, -5.0, 0.9, -4.4], hidden: true },         // the backstage platform
+    { r: [0.4, -4.4, 0.8, -3.8], hidden: true },          // its passage onto the gallery
+  ],
+  holes: [[5.3, -1.8, 6.0, -1.4]],                        // the hole in the SL gallery's outer half
+  stairs: [
+    { foot: [2.2, -2.45], top: [4.5, -2.45], w: 0.6, n: 12 },
+    { foot: [-4.5, 1.85], top: [-4.5, -0.3], w: 0.5, n: 12 },
+    { foot: [-3.2, -4.75], top: [-1.0, -4.75], w: 0.5, n: 12, hidden: true },
+  ],
+  rails: [[[-4.25, -2.97], [4.6, -2.97]], [[4.62, -2.15], [4.62, 3.4]], [[-5.63, -0.25], [-5.63, 3.25]], [[-4.27, -2.97], [-4.27, -0.3]]],
+  posts: [[-6.65, 4.0, -6.35, 4.3], [6.35, 4.0, 6.65, 4.3]],
+};
+const PC = { bg: '#0d0c10', deck: '#2b2931', wing: '#252329', upper: '#5a4c3a', upperEdge: '#8a7556', hidden: 'rgba(90,76,58,.35)', stair: '#6b5a40',
+  tread: 'rgba(20,16,10,.55)', rail: '#d8cfbd', pit: '#141217', house: '#18161d', block: '#3a3741', grid: 'rgba(160,190,200,.07)', gridMid: 'rgba(160,190,200,.16)',
+  text: '#ebe6dc', sub: '#a39d90', faint: '#7c7788', ring: 'rgba(225,95,90,.8)', entr: '#8fb4ff', point: '#d8c65a' };
+let floorFaint = null;
+function wrect(r, fill, stroke, dash) {
+  const [a, b] = PX(r[0], r[1]), [c, d] = PX(r[2], r[3]);
+  if (fill) { g.fillStyle = fill; g.fillRect(a, b, c - a, d - b); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1; g.setLineDash(dash || []); g.strokeRect(a + 0.5, b + 0.5, c - a - 1, d - b - 1); g.setLineDash([]); }
+}
+function drawStage() {                                  // the floor: shapes only (the labels come after the light pools, drawLabels)
+  const s = S.view.s;
+  g.fillStyle = PC.bg; g.fillRect(0, 0, W, H);
+  wrect([-14, 6.1, 14, 14], PC.house);
+  for (let r = 0; r < 6; r++) { const [, yy] = PX(0, 6.55 + r * 0.5), [x0] = PX(-8.5 + r * 0.3, 0), [x1] = PX(8.5 - r * 0.3, 0); g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, yy); g.lineTo(x1, yy); g.stroke(); }
+  wrect(PLAN.deck, PC.wing);
+  wrect([-6.5, -6.3, 6.5, 5.4], PC.deck);                 // the deck between the proscenium posts reads a shade lighter than the wings
+  wrect(PLAN.pit, PC.pit);
+  { const [a, b] = PX(-10, 5.4), [c] = PX(10, 5.4); const gr = g.createLinearGradient(0, b, 0, b + 0.7 * s); gr.addColorStop(0, 'rgba(0,0,0,.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(a, b, c - a, 0.7 * s); }
+  wrect(PLAN.block, PC.block, 'rgba(255,255,255,.12)');
+  if ($('v_scan') && $('v_scan').checked && floorImg) {    // the measured cells, very faint (the source of the readout)
+    g.save(); g.globalAlpha = 0.22; g.imageSmoothingEnabled = false; const F = S.floor, [px, py] = PX(F.x0 - F.step / 2, F.z0 - F.step / 2); g.drawImage(floorImg, px, py, F.nx * F.step * s, F.nz * F.step * s); g.restore();
   }
-  // the 1 m grid
+  // the 1 m grid, very faint
   g.lineWidth = 1;
-  for (let x = -10; x <= 10; x++) { const [a, b] = PX(x, -7), [, d] = PX(x, 6.1); g.strokeStyle = x === 0 ? 'rgba(110,200,210,.55)' : x % 5 === 0 ? 'rgba(90,140,150,.45)' : 'rgba(90,140,150,.16)'; g.beginPath(); g.moveTo(a, b); g.lineTo(a, d); g.stroke(); }
-  for (let z = -7; z <= 6; z++) { const [a, b] = PX(-10, z), [c] = PX(10, z); g.strokeStyle = z === 0 ? 'rgba(110,200,210,.55)' : z % 5 === 0 ? 'rgba(90,140,150,.45)' : 'rgba(90,140,150,.16)'; g.beginPath(); g.moveTo(a, b); g.lineTo(c, b); g.stroke(); }
-  // the turntables
-  for (const r of [2.59, 3.82]) { const [cx, cy] = PX(0, 0.95); g.strokeStyle = 'rgba(225,85,80,.85)'; g.lineWidth = 1.5; g.beginPath(); g.arc(cx, cy, r * s, 0, Math.PI * 2); g.stroke(); }
-  // the deck's edge, the proscenium posts
-  { const [a, b] = PX(-6.5, 5.4), [c] = PX(6.5, 5.4); g.strokeStyle = 'rgba(240,240,240,.35)'; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(a, b); g.lineTo(c, b); g.stroke(); g.setLineDash([]); }
-  for (const sx of [-1, 1]) { const [a, b] = PX(sx * 6.5 - 0.15, 4.0), [c, d] = PX(sx * 6.5 + 0.15, 4.3); g.fillStyle = '#9a96a8'; g.fillRect(a, b, c - a, d - b); }
-  // the stairs: up arrows
-  arrow(2.25, -2.45, 4.45, -2.45, '#ffcf7a'); arrow(-4.5, 1.8, -4.5, -0.25, '#ffcf7a'); arrow(-3.15, -4.75, -1.05, -4.75, 'rgba(255,207,122,.55)');
-  const L = $('v_labels').checked, P = $('v_points').checked, big = s >= 28;
-  if (P) {
-    for (const [n, [x, z, what]] of Object.entries(ENTR)) {
-      const [a, b] = PX(x, z); g.strokeStyle = '#7fb0ff'; g.lineWidth = 2; g.beginPath(); g.moveTo(a - 4, b - 4); g.lineTo(a + 4, b + 4); g.moveTo(a - 4, b + 4); g.lineTo(a + 4, b - 4); g.stroke();
-      if (L) txt(`${n} · ${what}`, a + (x > 6 ? -7 : 7), b + (n === 'G-UC' ? -9 : 0), { color: '#9cc0ff', size: 10, align: x > 6 ? 'right' : 'left' });
+  for (let x = -10; x <= 10; x++) { const [a, b] = PX(x, -6.3), [, d] = PX(x, 6.1); g.strokeStyle = x === 0 ? PC.gridMid : PC.grid; g.beginPath(); g.moveTo(Math.round(a) + 0.5, b); g.lineTo(Math.round(a) + 0.5, d); g.stroke(); }
+  for (let z = -6; z <= 6; z++) { const [a, b] = PX(-10, z), [c] = PX(10, z); g.strokeStyle = z === 0 ? PC.gridMid : PC.grid; g.beginPath(); g.moveTo(a, Math.round(b) + 0.5); g.lineTo(c, Math.round(b) + 0.5); g.stroke(); }
+  // the turntables: crisp rings and a hub
+  { const [cx, cy] = PX(0, 0.95); g.strokeStyle = PC.ring; g.lineWidth = 1.5; for (const r of [2.59, 3.82]) { g.beginPath(); g.arc(cx, cy, r * s, 0, 7); g.stroke(); }
+    g.fillStyle = 'rgba(225,95,90,.06)'; g.beginPath(); g.arc(cx, cy, 3.82 * s, 0, 7); g.arc(cx, cy, 2.59 * s, 0, 7, true); g.fill();
+    g.beginPath(); g.moveTo(cx - 6, cy); g.lineTo(cx + 6, cy); g.moveTo(cx, cy - 6); g.lineTo(cx, cy + 6); g.stroke(); }
+  // the raised platforms: a shadow along the downstage edge, a lighter fill, an edge line
+  for (const u of PLAN.upper) if (!u.hidden) { const r = u.r; wrect([r[0] + 0.05, r[3], r[2] + 0.05, r[3] + 0.14], 'rgba(0,0,0,.5)'); }
+  for (const u of PLAN.upper) wrect(u.r, u.hidden ? PC.hidden : PC.upper, u.hidden ? 'rgba(200,180,150,.35)' : null, u.hidden ? [4, 3] : null);
+  for (const h of PLAN.holes) wrect(h, PC.deck, 'rgba(0,0,0,.6)');
+  // the stairs: treads from the deck's tone up to the gallery's, an UP arrow
+  for (const st of PLAN.stairs) {
+    const [fx, fz] = st.foot, [tx, tz] = st.top, L = Math.hypot(tx - fx, tz - fz), ux = (tx - fx) / L, uz = (tz - fz) / L, nx = -uz, nz = ux, hw = st.w / 2;
+    const quad = (t0, t1) => [[fx + ux * t0 + nx * hw, fz + uz * t0 + nz * hw], [fx + ux * t1 + nx * hw, fz + uz * t1 + nz * hw], [fx + ux * t1 - nx * hw, fz + uz * t1 - nz * hw], [fx + ux * t0 - nx * hw, fz + uz * t0 - nz * hw]];
+    for (let k = 0; k < st.n; k++) {
+      const q = quad(L * k / st.n, L * (k + 1) / st.n).map(([x, z]) => PX(x, z));
+      g.beginPath(); q.forEach(([a, b], i) => i ? g.lineTo(a, b) : g.moveTo(a, b)); g.closePath();
+      g.globalAlpha = st.hidden ? 0.45 : 1; g.fillStyle = k % 2 ? PC.stair : '#615238'; g.fill(); g.strokeStyle = PC.tread; g.lineWidth = 1; g.stroke(); g.globalAlpha = 1;
     }
-    for (const [n, [x, z]] of Object.entries(NAMED)) { const [a, b] = PX(x, z); g.fillStyle = '#e6d250'; g.beginPath(); g.arc(a, b, 2.2, 0, 7); g.fill(); if (big) txt(n, a + 4, b + 6, { color: '#cdbb5a', size: 10 }); }
+    const [a, b] = PX(fx + ux * 0.25, fz + uz * 0.25), [c, d] = PX(tx - ux * 0.15, tz - uz * 0.15), ang = Math.atan2(d - b, c - a);
+    g.strokeStyle = st.hidden ? 'rgba(255,225,160,.5)' : '#ffe1a0'; g.fillStyle = g.strokeStyle; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke();
+    g.beginPath(); g.moveTo(c, d); g.lineTo(c - 7 * Math.cos(ang - 0.5), d - 7 * Math.sin(ang - 0.5)); g.lineTo(c - 7 * Math.cos(ang + 0.5), d - 7 * Math.sin(ang + 0.5)); g.closePath(); g.fill();
   }
-  if (L) {
-    const lab = (s0, x, z, o = {}) => { const [a, b] = PX(x, z); txt(s0, a, b, Object.assign({ align: 'center', color: '#f3e4cc', size: 11, bg: 'rgba(13,12,15,.62)' }, o)); };
-    lab('Upper level — upstage gallery (2.74 m)', 0.1, -3.42, { bold: true });
-    lab('Upper level — SL gallery (2.74 m)', 5.25, 0.55, { rot: -Math.PI / 2, bold: true });
-    lab('Upper level — SR arm / balcony (2.74 m)', -6.15, 1.1, { rot: -Math.PI / 2 });
-    lab('SR strip (2.74 m)', -4.5, -1.9, { rot: -Math.PI / 2, size: 10 });
-    lab('Cross-walk (2.74 m)', -5.6, -0.68, { size: 10 });
-    lab('SL stair (up →)', 3.3, -2.0, { color: '#ffd994', size: 10 });
-    lab('SR stair (up ↑)', -3.85, 0.9, { color: '#ffd994', size: 10, rot: -Math.PI / 2 });
-    lab('Backstage stair (hidden, up →)', -2.1, -5.1, { color: '#d9c08f', size: 10 });
-    lab('Backstage platform (2.74 m, hidden)', -0.1, -4.25, { color: '#d9c08f', size: 9 });
-    lab('Balcony (Guns and Ships)', 5.49, 2.95, { color: '#ffe0b0', size: 10 });
-    { const [a, b] = PX(5.49, 2.36); g.strokeStyle = '#ffe0b0'; g.lineWidth = 1.5; g.beginPath(); g.arc(a, b, 0.32 * s, 0, 7); g.stroke(); }
-    lab('Lower level — deck (0.05 m)', -2.4, -1.45, { color: '#d8d6e0' });
-    lab('Lower level — under the upstage gallery', 0.1, -3.05, { color: '#cfc7b8', size: 9, bg: null });
-    lab('Turntable — inner disc', 0, 0.95 + 1.55, { color: '#ffb3ad', size: 10, bg: null });
-    lab('Turntable — outer ring', 0, 0.95 + 3.2, { color: '#ffb3ad', size: 10, bg: null });
-    lab('Gallery rail', -2.5, -2.82, { color: '#c9c7d6', size: 9, bg: null });
-    lab('Proscenium', -6.5, 3.75, { color: '#bdb9cc', size: 9, bg: null }); lab('Proscenium', 6.5, 3.75, { color: '#bdb9cc', size: 9, bg: null });
-    lab('Deck edge', 3.2, 5.25, { color: '#bdb9cc', size: 9, bg: null });
-    lab('Pit', 0, 5.78, { color: '#9a96a8', size: 11, bold: true, bg: null });
-    lab('House / audience', 0, 6.9, { color: '#8a86a0', size: 13, bold: true, bg: null });
-    lab('Wing (offstage)', -8.6, 2.2, { color: '#8a86a0', size: 10, rot: -Math.PI / 2, bg: null }); lab('Wing (offstage)', 8.6, 2.2, { color: '#8a86a0', size: 10, rot: Math.PI / 2, bg: null });
+  // rails, proscenium posts, the deck's edge
+  g.strokeStyle = PC.rail; g.lineWidth = 1.2;
+  for (const [[x0, z0], [x1, z1]] of PLAN.rails) { const [a, b] = PX(x0, z0), [c, d] = PX(x1, z1); g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); }
+  for (const p of PLAN.posts) wrect(p, '#b8b2c4');
+  { const [a, b] = PX(-6.5, 4.15), [c] = PX(-10, 4.15), [e] = PX(6.5, 4.15), [f] = PX(10, 4.15); g.strokeStyle = 'rgba(184,178,196,.35)'; g.lineWidth = 2; g.beginPath(); g.moveTo(a, b); g.lineTo(c, b); g.moveTo(e, b); g.lineTo(f, b); g.stroke(); }
+  { const [a, b] = PX(-10, 5.4), [c] = PX(10, 5.4); g.strokeStyle = 'rgba(236,230,220,.5)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(a, b); g.lineTo(c, b); g.stroke(); }
+  // the Guns and Ships balcony spot
+  { const [a, b] = PX(5.49, 2.36); g.strokeStyle = '#ffe0b0'; g.lineWidth = 1.2; g.setLineDash([3, 2]); g.beginPath(); g.arc(a, b, 0.32 * s, 0, 7); g.stroke(); g.setLineDash([]); }
+  // the entrances: tabs at the wings' openings
+  if ($('v_points').checked) for (const [n, [x, z]] of Object.entries(ENTR)) {
+    const [a, b] = PX(x, z); g.fillStyle = 'rgba(143,180,255,.18)'; g.strokeStyle = PC.entr; g.lineWidth = 1;
+    g.beginPath(); g.roundRect ? g.roundRect(a - 6, b - 6, 12, 12, 3) : g.rect(a - 6, b - 6, 12, 12); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(a - 3, b); g.lineTo(a + 3, b); g.moveTo(a, b - 3); g.lineTo(a, b + 3); g.stroke(); void n;
   }
-  // the edges: the directions, and the metre numbers
-  g.fillStyle = 'rgba(11,10,13,.75)'; g.fillRect(0, 0, W, 16); g.fillRect(0, 0, 22, H);
-  for (let x = -10; x <= 10; x++) { const [a] = PX(x, 0); if (a > 24 && a < W - 4 && (big || x % 2 === 0)) txt(String(x), a, 8, { align: 'center', color: '#a8a48a', size: 10 }); }
-  for (let z = -7; z <= 7; z++) { const [, b] = PX(0, z); if (b > 18 && b < H - 4) txt((z > 0 ? '+' : '') + z, 11, b, { align: 'center', color: '#a8a48a', size: 10 }); }
-  txt('x m →', W - 6, 8, { align: 'right', color: '#7d7a6a', size: 10 });
-  txt('↑ UPSTAGE (−z)', W / 2, 26, { align: 'center', color: '#fff', size: 12, bold: true, bg: 'rgba(13,12,15,.7)' });
-  txt('↓ DOWNSTAGE · the house (+z)', W / 2, H - 38, { align: 'center', color: '#fff', size: 12, bold: true, bg: 'rgba(13,12,15,.7)' });
-  txt('← STAGE RIGHT (−x)', 28, H / 2, { color: '#fff', size: 12, bold: true, bg: 'rgba(13,12,15,.7)' });
-  txt('STAGE LEFT (+x) →', W - 8, H / 2, { align: 'right', color: '#fff', size: 12, bold: true, bg: 'rgba(13,12,15,.7)' });
+}
+// THE LABELS: placed in order of importance; each tries its spots in turn (the first inside its shape, the rest outside on a
+// leader) and takes the first that overlaps nothing placed before it. Names in one weight; heights smaller and muted.
+function drawLabels() {
+  const s = S.view.s, boxes = [], on = $('v_labels').checked;
+  const fits = (b) => !boxes.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]) && b[0] >= 24 && b[1] >= 18 && b[2] <= W - 4 && b[3] <= H - 4;
+  const measure = (t, size, weight) => { g.font = `${weight} ${size}px "IBM Plex Sans", system-ui, sans-serif`; return g.measureText(t).width; };
+  const place = (name, sub, spots, o = {}) => {                 // spots: [[x, z, rot?]] world; the first is the anchor
+    const nw = measure(name, o.size || 11, 600), sw = sub ? measure(sub, 9.5, 400) : 0, w = Math.max(nw, sw) + 6, h = sub ? 26 : 15;
+    const [ax, ay] = PX(spots[0][0], spots[0][1]);
+    for (let i = 0; i < spots.length; i++) {
+      const [x, z, rot] = spots[i], [px, py] = PX(x, z), vert = !!rot, bw = vert ? h : w, bh = vert ? w : h;
+      const b = [px - bw / 2, py - bh / 2, px + bw / 2, py + bh / 2];
+      if (!fits(b)) continue;
+      boxes.push(b);
+      if (i > 0 && (o.leader !== false)) { g.strokeStyle = 'rgba(235,230,220,.45)'; g.lineWidth = 1; g.beginPath(); g.moveTo(ax, ay); g.lineTo(px, py + (vert ? 0 : (py > ay ? -bh / 2 : bh / 2))); g.stroke(); }
+      g.save(); g.translate(px, py); if (rot) g.rotate(rot);
+      if (o.bg !== false) { g.fillStyle = 'rgba(13,12,16,.55)'; g.fillRect(-w / 2, -h / 2, w, h); }
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = `600 ${o.size || 11}px "IBM Plex Sans", system-ui, sans-serif`; g.fillStyle = o.color || PC.text; g.fillText(name, 0, sub ? -5.5 : 0.5);
+      if (sub) { g.font = '400 9.5px "IBM Plex Sans", system-ui, sans-serif'; g.fillStyle = PC.sub; g.fillText(sub, 0, 7); }
+      g.restore();
+      return true;
+    }
+    return false;
+  };
+  // the directions, uppercase and letter-spaced, at the edges
+  const edge = (t, x, y, align, rot) => { g.save(); g.translate(x, y); if (rot) g.rotate(rot); g.font = '700 11px "IBM Plex Sans", system-ui, sans-serif'; if ('letterSpacing' in g) g.letterSpacing = '3px'; g.textAlign = align; g.textBaseline = 'middle'; g.fillStyle = 'rgba(235,230,220,.75)'; g.fillText(t, 0, 0); g.restore(); };
+  edge('UPSTAGE  ↑', W / 2, 27, 'center'); edge('DOWNSTAGE · THE HOUSE  ↓', W / 2, H - 34, 'center');
+  edge('←  STAGE RIGHT', 30, H / 2, 'left', -Math.PI / 2 * 0); edge('STAGE LEFT  →', W - 10, H / 2, 'right');
+  boxes.push([W / 2 - 60, 19, W / 2 + 60, 35], [W / 2 - 110, H - 42, W / 2 + 110, H - 26], [24, H / 2 - 8, 150, H / 2 + 8], [W - 140, H / 2 - 8, W - 4, H / 2 + 8]);
+  // metre numbers along the top and the left edge only
+  g.fillStyle = 'rgba(13,12,16,.8)'; g.fillRect(0, 0, W, 15); g.fillRect(0, 0, 22, H);
+  g.font = '10px "IBM Plex Sans", system-ui, sans-serif'; g.fillStyle = '#8e8a7c'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let x = -10; x <= 10; x++) { const [a] = PX(x, 0); if (a > 26 && a < W - 6 && (s >= 28 || x % 2 === 0)) g.fillText(String(x), a, 8); }
+  for (let z = -6; z <= 7; z++) { const [, b] = PX(0, z); if (b > 20 && b < H - 6) g.fillText((z > 0 ? '+' : '') + z, 11, b); }
+  if (on) {
+    place('UPSTAGE GALLERY', 'upper level · 2.74 m', [[0.1, -3.4], [0.1, -2.45], [-2.6, -2.45]]);
+    place('DECK', 'lower level · 0.05 m', [[-2.6, -1.55], [-2.6, -0.8], [2.4, -1.4]]);
+    place('SL GALLERY', 'upper level · 2.74 m', [[5.3, 0.75, -Math.PI / 2], [5.3, -0.2, -Math.PI / 2], [6.9, 0.75, -Math.PI / 2]]);
+    place('SR ARM · BALCONY', 'upper level · 2.74 m', [[-6.15, 1.25, -Math.PI / 2], [-7.2, 1.25, -Math.PI / 2]]);
+    place('SR STRIP', '2.74 m', [[-4.5, -1.95, -Math.PI / 2], [-3.75, -1.95, -Math.PI / 2]], { size: 10 });
+    place('CROSS-WALK', '2.74 m', [[-5.0, -0.68], [-7.6, -0.68], [-6.1, -1.65]], { size: 10 });
+    place('SL STAIR', 'up →', [[3.35, -2.45], [3.35, -1.85], [3.35, -3.25]], { size: 10 });
+    place('SR STAIR', 'up ↑', [[-4.5, 0.85, -Math.PI / 2], [-3.85, 0.85], [-3.7, 1.6]], { size: 10 });
+    place('BACKSTAGE STAIR', 'hidden · up →', [[-2.1, -4.75], [-2.1, -5.55], [-3.2, -5.55]], { size: 9.5 });
+    place('BACKSTAGE PLATFORM', 'hidden · 2.74 m', [[-0.1, -4.7], [-0.1, -5.6], [1.9, -5.55]], { size: 9.5 });
+    place('GUNS AND SHIPS', 'the balcony spot', [[5.49, 2.36], [7.0, 2.0], [7.0, 3.0], [5.49, 4.0]], { size: 10 });
+    place('TURNTABLE', 'inner disc', [[0, 0.95 + 1.6], [0, 0.95 - 1.6], [1.5, 0.95]], { size: 10, bg: false, color: '#ffc2bd' });
+    place('OUTER RING', null, [[0, 0.95 + 3.2], [2.3, 0.95 + 2.3], [-2.3, 0.95 + 2.3]], { size: 9.5, bg: false, color: '#ffc2bd' });
+    place('PIT', null, [[0, 5.75], [3.0, 5.75], [-3.0, 5.75]], { size: 10, bg: false, color: '#9a95a8' });
+    place('HOUSE / AUDIENCE', null, [[0, 6.95], [0, 7.4]], { size: 11, bg: false, color: '#8a86a0' });
+    place('PROSCENIUM', null, [[-6.5, 3.7], [-6.5, 4.65]], { size: 9, bg: false, color: '#bdb9cc' }); place('PROSCENIUM', null, [[6.5, 3.7], [6.5, 4.65]], { size: 9, bg: false, color: '#bdb9cc' });
+    place('DECK EDGE', null, [[3.5, 5.25], [-3.5, 5.25]], { size: 9, bg: false, color: '#bdb9cc' });
+    place('BLOCK', '2.4 m', [[8.9, 4.1, Math.PI / 2], [8.9, 3.0, Math.PI / 2]], { size: 9.5 });
+    place('WING', 'offstage', [[-8.6, 2.2, -Math.PI / 2], [-8.6, -1.6, -Math.PI / 2]], { size: 10, bg: false, color: '#8a86a0' });
+    place('WING', 'offstage', [[8.6, 0.9, Math.PI / 2], [8.6, -1.6, Math.PI / 2]], { size: 10, bg: false, color: '#8a86a0' });
+  }
+  if ($('v_points').checked) {
+    for (const [n, [x, z]] of Object.entries(ENTR)) { const left = x > 6 || n === 'G-UC'; place(n, null, [[x + (left ? -0.75 : 0.75), z], [x, z - 0.5], [x, z + 0.5]], { size: 9.5, color: PC.entr, leader: false }); }
+    for (const [n, [x, z]] of Object.entries(NAMED)) { const [a, b] = PX(x, z); g.fillStyle = PC.point; g.beginPath(); g.arc(a, b, 2.2, 0, 7); g.fill(); if (s >= 26) place(n, null, [[x + 0.3, z + 0.25], [x - 0.3, z + 0.25]], { size: 9, color: '#cdbb5a', bg: false, leader: false }); }
+  }
+  drawScale();
+}
+function drawLegend() {                                  // the key, in the left panel (off the plan, so it hides nothing)
+  const c = $('legend'), d = window.devicePixelRatio || 1, r = c.getBoundingClientRect(); if (!r.width) return;
+  c.width = Math.round(r.width * d); c.height = Math.round(r.height * d); const g = c.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0);
+  const items = [['deck', 'Lower level · deck'], ['upper', 'Upper level · gallery 2.74 m'], ['stair', 'Stair (treads, ▶ up)'], ['actor', 'Actor, seen'], ['hollow', 'Actor not seen (offstage)'],
+    ['rim', 'Up off the deck'], ['prop', 'Prop (white edge = its front)'], ['pool', 'Person light (special)'], ['band', 'Blackout (on the scrub bars)']];
+  const x0 = 0, lh = 16, y0 = 0;
+  g.font = '10px "IBM Plex Sans", system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
+  items.forEach(([k, t], i) => {
+    const y = y0 + 10 + i * lh, cx = x0 + 14;
+    g.lineWidth = 1.5;
+    if (k === 'deck') { g.fillStyle = PC.deck; g.fillRect(cx - 7, y - 5, 14, 10); g.strokeStyle = 'rgba(255,255,255,.25)'; g.strokeRect(cx - 7, y - 5, 14, 10); }
+    if (k === 'upper') { g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(cx - 6, y + 4, 14, 2); g.fillStyle = PC.upper; g.fillRect(cx - 7, y - 5, 14, 9); }
+    if (k === 'stair') { for (let j = 0; j < 4; j++) { g.fillStyle = j % 2 ? PC.stair : '#615238'; g.fillRect(cx - 7 + j * 3.5, y - 4, 3.5, 8); } }
+    if (k === 'actor') { g.fillStyle = '#6abf7a'; g.beginPath(); g.arc(cx, y, 5, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.beginPath(); g.moveTo(cx, y); g.lineTo(cx, y + 8); g.stroke(); }
+    if (k === 'hollow') { g.strokeStyle = '#6abf7a'; g.beginPath(); g.arc(cx, y, 5, 0, 7); g.stroke(); }
+    if (k === 'rim') { g.fillStyle = '#5a8fd8'; g.beginPath(); g.arc(cx, y, 5, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.beginPath(); g.arc(cx, y, 6.5, 0, 7); g.stroke(); }
+    if (k === 'prop') { g.fillStyle = '#8a6a48'; g.fillRect(cx - 7, y - 4, 14, 8); g.strokeStyle = '#fff'; g.beginPath(); g.moveTo(cx - 7, y + 4); g.lineTo(cx + 7, y + 4); g.stroke(); }
+    if (k === 'pool') { g.fillStyle = 'rgba(255,248,225,.18)'; g.beginPath(); g.arc(cx, y, 6, 0, 7); g.fill(); g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1; g.stroke(); }
+    if (k === 'band') { g.fillStyle = '#000'; g.fillRect(cx - 7, y - 4, 14, 8); g.fillStyle = '#c0392b'; g.fillRect(cx - 7, y + 2, 14, 2); }
+    g.fillStyle = PC.text; g.fillText(t, x0 + 28, y);
+  });
+}
+function drawScale() {                                   // the scale bar on the plan, bottom right: 2 m, ticked every metre
+  const s = S.view.s, by = H - 52, bx = W - 2 * s - 24;
+  g.font = '10px "IBM Plex Sans", system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
+  g.strokeStyle = PC.text; g.lineWidth = 1.5; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + 2 * s, by); for (const k of [0, 1, 2]) { g.moveTo(bx + k * s, by - 4); g.lineTo(bx + k * s, by + 1); } g.stroke();
+  g.fillStyle = PC.sub; g.fillText('0', bx - 2, by - 9); g.fillText('1', bx + s - 2, by - 9); g.fillText('2 m', bx + 2 * s - 4, by - 9);
 }
 function drawPools(T) {
   if (!$('v_pools').checked) return;
@@ -1099,6 +1341,7 @@ function wpScreen(kind, e, w) {                          // where a waypoint is 
   return PX(+w.x || 0, +w.z || 0);
 }
 function drawSelected() {
+  S.lvBtn = null;
   const e = ent(); if (!e) return;
   const kind = S.sel.kind, col = kind === 'actor' ? e.color : e.color, pts = selPath();
   g.lineCap = 'round';
@@ -1124,6 +1367,13 @@ function drawSelected() {
     if (w.off) bits.push('off');
     if (w.note) bits.push('✎');
     txt(bits.join(' '), a + r + 4, b - 8, { color: sel ? '#ffe2a0' : '#f0f0f0', size: 10, bg: 'rgba(13,12,15,.78)' });
+    if (sel && kind === 'actor' && twoLevel(+w.x, +w.z)) {                  // the quick level switch by the disc
+      const up = levelOf(w) === 'gallery', lab = up ? '⇅ upper · gallery' : '⇅ lower · deck';
+      g.font = '600 10px system-ui, sans-serif'; const bw = g.measureText(lab).width + 10, bx = a + r + 4, by = b + 4;
+      g.fillStyle = up ? '#5a4220' : '#2c2b33'; g.fillRect(bx, by, bw, 15); g.strokeStyle = '#ffe2a0'; g.lineWidth = 1; g.strokeRect(bx + 0.5, by + 0.5, bw - 1, 14);
+      txt(lab, bx + 5, by + 8, { color: '#ffe2a0', size: 10, bold: true });
+      S.lvBtn = { x: bx, y: by, w: bw, h: 15, id: w._id, up };
+    }
   }
 }
 function drawProps(T) {
@@ -1166,7 +1416,8 @@ function draw() {
   if (!S.ready) return;
   g.setTransform(DPR, 0, 0, DPR, 0, 0);
   drawStage();
-  drawPools(S.T);
+  drawPools(S.T);                                       // the light under everything but the floor
+  drawLabels();
   drawSelected();
   drawProps(S.T);
   drawActors(S.T);
@@ -1303,7 +1554,10 @@ function renderForm() {
   $('f_facing').value = w.facing ?? ''; $('f_off').checked = !!w.off; $('f_note').value = w.note || '';
   if (isA) {
     $('f_dwell').value = w.dwell ?? ''; $('f_y').value = w.y ?? '';
-    $('f_level').value = w.y === undefined ? 'deck' : Math.abs(+w.y - GALLERY) < 0.01 ? 'gallery' : 'custom';
+    const two = twoLevel(+w.x, +w.z), lv = levelOf(w), fl = floorAt(+w.x, +w.z);
+    $('lv_deck').disabled = $('lv_gal').disabled = !two;
+    $('lv_deck').classList.toggle('on', lv === 'deck'); $('lv_gal').classList.toggle('on', lv === 'gallery');
+    $('lv_note').textContent = two ? '(two levels here)' : `(one level here: ${fl && isGallery(fl.top) ? 'the gallery' : fl && fl.top > 0.3 && fl.top < 2.65 ? 'a stair, ' + fl.top.toFixed(2) + ' m' : 'the deck'})`;
     const ls = $('f_label'); ls.textContent = ''; ls.add(new Option('— (holds the last label)', ''));
     const c = S.cast.get(f.e.id); for (const l of [f.e.name, ...(c && c.labels || [])]) ls.add(new Option(l, l));
     if (w.label && ![...ls.options].some(o => o.value === w.label)) ls.add(new Option(w.label + ' (not allowed)', w.label));
@@ -1320,7 +1574,7 @@ function renderProbs() {
 }
 function renderChanges() {
   const L = changes(); $('chgcount').textContent = L.length ? `(${L.length} change${L.length === 1 ? '' : 's'})` : '(no changes yet)';
-  $('chg').innerHTML = L.slice(0, 60).map(c => `<div><b>${esc(c.name)}</b> ${esc(c.track || '')} · ${esc(c.ops.join(', '))}${c.note ? ' · ✎ ' + esc(c.note) : ''}</div>`).join('') + (L.length > 60 ? `<div class="faint">… ${L.length - 60} more in the file</div>` : '');
+  $('chg').innerHTML = L.slice(0, 60).map(c => c.op === 'clear-track' ? `<div><b>${esc(c.track)} cleared</b> · ${c.removed} waypoints removed</div>` : `<div><b>${esc(c.name)}</b> ${esc(c.track || '')} · ${esc(c.ops.join(', '))}${c.note ? ' · ✎ ' + esc(c.note) : ''}</div>`).join('') + (L.length > 60 ? `<div class="faint">… ${L.length - 60} more in the file</div>` : '');
 }
 function renderTop() {
   S.uiDirty = false;
@@ -1339,7 +1593,7 @@ function renderTop() {
     box.querySelector('.cue').innerHTML = `${c ? `<b>Q ${esc(c.q)}</b> ${esc(c.label)} <span class="faint">(${esc(c.track)} ${c.at.toFixed(1)} s)</span>` : 'before the first cue'}<br><span class="faint">${dark ? 'nothing lit' : `brightest ${Math.round(lt.snap.max)} % · ${lt.snap.n} channels lit`}${n ? ` · next Q ${esc(n.q)} in ${(n.T - S.T).toFixed(1)} s` : ''}</span>`;
   }
   $('play').textContent = S.playing ? 'Pause' : 'Play'; $('play').setAttribute('aria-pressed', String(S.playing));
-  $('audnote').textContent = AU.mode === 'none' ? 'silent clock' : AU.note;
+  $('audnote').textContent = audioStatus();
   $('tailmore').hidden = Number.isFinite(tr.post) || tr.post === 0;
   $('undo').disabled = !S.undo.length; $('redo').disabled = !S.redo.length;
   const e = ent(); $('addnow').disabled = !e; $('carrynow').disabled = !(e && S.sel.kind === 'prop');
@@ -1358,10 +1612,10 @@ $('f_at').onchange = e => formEdit(w => { w.at = r2(actF(e.target.value) ?? 0); 
 $('f_x').onchange = e => formEdit(w => { w.x = r3(actF(e.target.value) ?? 0); });
 $('f_z').onchange = e => formEdit(w => { w.z = r3(actF(e.target.value) ?? 0); });
 $('f_y').onchange = e => formEdit(w => numOrDel(w, 'y', e.target.value, r3));
-$('f_level').onchange = e => formEdit(w => {
-  const v = e.target.value, f = floorAt(+w.x, +w.z);
-  if (v === 'deck') delete w.y; else if (v === 'gallery') w.y = GALLERY; else if (v === 'top' && f) w.y = r3(f.top); else if (v === 'custom' && w.y === undefined) w.y = 0.045;
-});
+$('lv_deck').onclick = () => { if (S.selW) setLevel(S.selW, 'deck'); };
+$('lv_gal').onclick = () => { if (S.selW) setLevel(S.selW, 'gallery'); };
+$('cleartr').onclick = () => clearTrack();
+$('restoretr').onclick = () => restoreTrack();
 $('f_dwell').onchange = e => formEdit(w => numOrDel(w, 'dwell', e.target.value, v => r2(Math.max(0, v))));
 $('f_facing').onchange = e => formEdit(w => numOrDel(w, 'facing', e.target.value, r1));
 $('f_off').onchange = e => formEdit(w => { if (e.target.checked) w.off = true; else delete w.off; });
@@ -1434,7 +1688,7 @@ $('dl_full').onclick = () => {
   if (S.probs.errors.length && !confirm(`${S.probs.errors.length} error(s) — the merge tool would refuse this. Download anyway?`)) return;
   download('hamilton-blocking.json', fileText(), 'application/json');
 };
-for (const id of ['v_labels', 'v_points', 'v_pools', 'v_names']) $(id).onchange = () => { S.dirty = true; };
+for (const id of ['v_labels', 'v_points', 'v_pools', 'v_names', 'v_scan']) $(id).onchange = () => { S.dirty = true; };
 $('fit').onclick = () => { fitView(); S.dirty = true; };
 
 // ================================================================ the plan: the pointer
@@ -1467,6 +1721,7 @@ cv.addEventListener('pointerdown', e => {
   const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
   cv.setPointerCapture(e.pointerId);
   if (e.button === 1 || e.button === 2) { S.pan = { px, py, cx: S.view.cx, cz: S.view.cz }; return; }
+  if (S.lvBtn && px >= S.lvBtn.x && px <= S.lvBtn.x + S.lvBtn.w && py >= S.lvBtn.y && py <= S.lvBtn.y + S.lvBtn.h) { setLevel(S.lvBtn.id, S.lvBtn.up ? 'deck' : 'gallery'); return; }
   const w = hitWaypoint(px, py);
   if (w) {
     S.selW = w._id; S.listDirty = true; S.dirty = true;
@@ -1519,6 +1774,7 @@ window.addEventListener('keydown', e => {
   if (k === ']' || k === '}') { seek(S.T + (e.shiftKey ? 5 : 1)); return; }
   if (k === 'Delete' || k === 'Backspace') { if (S.selW) { e.preventDefault(); delW(S.selW); } return; }
   if (k === 'Escape') { S.selW = null; S.listDirty = S.dirty = true; return; }
+  if ((k === 'l' || k === 'L') && S.selW) { const f = findW(S.selW); if (f && f.kind === 'actor' && twoLevel(+f.w.x, +f.w.z)) setLevel(S.selW, levelOf(f.w) === 'gallery' ? 'deck' : 'gallery'); return; }
   if (k === ',' || k === '.' || k === '<' || k === '>') {
     const e2 = ent(); if (!e2) return;
     const L = wpsOf(e2, S.sel.kind).map(w => [w, gT(w.track, w.at)]).filter(x => Number.isFinite(x[1]));
@@ -1540,7 +1796,7 @@ new ResizeObserver(resize).observe($('planwrap'));
 // ================================================================ the frame (requestAnimationFrame only: no timers)
 let lastNow = 0;
 function frame(now) {
-  const dt = lastNow ? Math.min(0.25, (now - lastNow) / 1000) : 0; lastNow = now;
+  const dt = lastNow ? Math.min(1, (now - lastNow) / 1000) : 0; lastNow = now;   // wall time between frames (a slow or throttled frame must not slow the silent clock); a hidden page gets no frames, and at most 1 s is caught up
   if (S.ready) {
     tick(dt);
     if (S.listDirty) renderLists();
@@ -1562,7 +1818,7 @@ window.EDITOR = {
   tracks: () => S.tracks.map(t => ({ id: t.id, start: t.start, len: t.len, pre: t.pre, post: Number.isFinite(t.post) ? t.post : 'open' })),
   light: (T = S.T) => lightAt(T), blackouts: () => S.light ? S.light.bands.map(([a, b]) => { const l = locate(a); return { track: l.tr.id, at: +l.at.toFixed(2), len: Number.isFinite(b) ? +(b - a).toFixed(2) : 'to the end' }; }) : [],
   changes: () => changes(), changeDoc: () => changeDoc(), markdown: async () => changeMarkdown(await changeDoc()), fileText: () => fileText(), problems: () => S.probs,
-  state: S, audio: AU, select: (kind, id) => select({ kind, id }), addAt: (x, z) => addAt(x, z), undo: () => undoRedo(S.undo, S.redo), redo: () => undoRedo(S.redo, S.undo),
+  state: S, audio: AU, select: (kind, id) => select({ kind, id }), clearTrack: () => clearTrack(), restoreTrack: () => restoreTrack(), setLevel: (id, lv) => setLevel(id, lv), twoLevel: (x, z) => twoLevel(x, z), addAt: (x, z) => addAt(x, z), undo: () => undoRedo(S.undo, S.redo), redo: () => undoRedo(S.redo, S.undo),
   sourceText: () => S.src && S.src.text,
 };
 </script>

@@ -243,6 +243,14 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
    file says what to change, and a correction goes into the segment's generator in `tools/blocking/`, then the merge. Put `docs/hamilton-blocking-cue-notes.md` in front of him:
    his two rulings (1-05 sisters, 2-22 duel sides) and the cue fixes. Ask the mannequin's licence/origin.
 
+## DONE — 2026-10-12 (latest, round 2): the editor's music checked on 8093, Clear / Restore a song, the level button, a clean plan (PR #234)
+
+- The music plays on Jack's own URL (the soundtrack was missing from the worktree); lead-in, loading and refusal states shown.
+- Clear this song (with offstage holds so nobody is left frozen) / Restore this song; `clear-track` in the change file.
+- Lower · deck / Upper · gallery where the floor has both; the change file names the level.
+- The plan redrawn as an architect's plan; the key in the panel.
+- The YouTube `showState` guard; `actors.check` off the waypoint instants; carriers for the two unattended props.
+
 ## DONE — 2026-10-12 (latest): the blocking editor, the clock's lead-ins and tails, props (PR #234, RULINGS FP–FR)
 
 Jack's asks: a separate page to see and alter every path with the music, a blackout indicator, a top view with every part

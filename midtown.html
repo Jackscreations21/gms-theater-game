@@ -4489,7 +4489,7 @@ function showYT() {
     get paused() { return this.state !== 1; },
     get currentTime() {
       if (!this.ready || !this.p.getCurrentTime) return 0;
-      const b = this.p.getCurrentTime(), now = performance.now();
+      const b = +this.p.getCurrentTime() || 0, now = performance.now();   // an unavailable video answers undefined: 0, so showState never throws
       if (b !== this.base) { this.base = b; this.wall = now; }
       return this.state === 1 ? this.base + Math.min(0.6, (now - this.wall) / 1000) : this.base;
     },
@@ -4635,7 +4635,7 @@ function showState() {
   return { loaded: true, on: SHW.on, playing: SHW.playing, hold: SHW.hold, houseUp: SHW.houseUp, track: tr.id, title: tr.title, t: +SHW.lt.toFixed(3), T: +showT().toFixed(3), end: +D.end.toFixed(1),
     cue: c ? { q: c.q, label: c.label, track: c.track, at: c.at, real: c.real } : null, next: nx ? { q: nx.q, label: nx.label, track: nx.track, at: nx.at, real: nx.real, in: +(nx.T - showT()).toFixed(2) } : null,
     pending: D.acts.length - SHW.next,
-    audio: { files: SHW.files.size, mode: SHW.audioOn ? 'audio' : 'silent', file: f ? f.name : null, currentTime: SHW.A ? +SHW.A.currentTime.toFixed(3) : null, note: SHW.audioNote || null } };
+    audio: { files: SHW.files.size, mode: SHW.audioOn ? 'audio' : 'silent', file: f ? f.name : null, currentTime: SHW.A ? +(+SHW.A.currentTime || 0).toFixed(3) : null, note: SHW.audioNote || null } };
 }
 function showBuildPanel() {
   if (SHW.built) return;
@@ -5785,7 +5785,12 @@ function actCheck(opts = {}) {
   // the props' moments (FR): just after each waypoint (a set-down, a pick-up) and mid-carry — a third of the moments when there are props
   const propPts = ACT.props.flatMap(p => p.c.P.flatMap((w, i) => [w.T + 0.3].concat(w.byId && p.c.P[i + 1] ? [(w.T + p.c.P[i + 1].T) / 2] : [])));
   const nPts = opts.n || 12, nProp = Math.min(propPts.length, Math.ceil(nPts / 3));
-  const pts = opts.points || propPts.filter((T, i) => i % Math.max(1, Math.floor(propPts.length / Math.max(1, nProp))) === 0).slice(0, nProp).concat(actPts).slice(0, nPts);
+  // OFF THE INSTANT: the pose is a pure function of time but is allowed to STEP at a waypoint's own time (a turn with no time to
+  // turn, offstage → on, a prop handed over), and the played clock reaches T as a sum of steps that can land an ulp before it —
+  // so a moment exactly on any waypoint's time compares two sides of a step. Every moment is moved 5 ms clear of all of them.
+  const inst = ACT.actors.flatMap(a => a.c.P.map(p => p.T)).concat(ACT.props.flatMap(p => p.c.P.map(w => w.T))).sort((a, b) => a - b);
+  const clear = T => { for (let k = 0; k < 8; k++) { let lo = 0, hi = inst.length; while (lo < hi) { const m = (lo + hi) >> 1; if (inst[m] < T - 5e-3) lo = m + 1; else hi = m; } if (lo < inst.length && Math.abs(inst[lo] - T) < 5e-3) T = inst[lo] + 5e-3; else break; } return T; };
+  const pts = (opts.points || propPts.filter((T, i) => i % Math.max(1, Math.floor(propPts.length / Math.max(1, nProp))) === 0).slice(0, nProp).concat(actPts).slice(0, nPts)).map(clear);
   const span = opts.span ?? 8, step = opts.step || 0.1;
   if (!wasOn) showStart(false);
   SHW.playing = false;

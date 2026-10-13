@@ -294,6 +294,21 @@ and stuff like that"*
 - **The person lights** (`assets/hamilton-pools.json`, 0.6 MB) are slimmed by `tools/blocking-pools.py` from the per-cue pool
   dump of the page (session scratch): specials, and units at zoom ≤ 18.5°, where they land. They are a snapshot of the cue
   data they were dumped from; regenerate after cue revisions.
+- **Clear this song** (Jack: *"for each song I can choose to start with none of the lines already in there"*): every waypoint
+  of the current track goes in one undoable step. RULED: because a body stands at her last waypoint after it, a cleared song
+  would leave anyone on stage at the previous song's end frozen there; the clear therefore adds `off` holds (she walks off to
+  the nearest wing at a walk, and waits in the wing nearest her next spot until she must walk on), marked
+  `clear-track: held offstage`. The change file reports one `clear-track` with the count, not the deletes. **Restore this
+  song** puts the loaded file's track back.
+- **The level control** (Jack: *"add a button so if it is in a place with a second level I can choose what level it is on"*):
+  Lower · deck / Upper · gallery, enabled only where the floor map has the deck below and the gallery above; `y` absent or
+  2.743; the change file names the level.
+- **The plan is drawn as an architect's plan** (Jack: *"make the map of the stage look better"*): vector shapes from the
+  measured geometry (the deck a shade lighter between the proscenium posts, the pit, the galleries raised with a shadow on
+  their downstage edge, stairs as treads with an UP arrow, rails, posts, entrance tabs), labels placed so none overlap (inside
+  their shape, else outside on a leader), the directions in letter-spaced capitals at the edges, metre numbers on two edges,
+  a scale bar, the key in the left panel, the light pools under the labels. The floor map stays the source of the hover
+  readout and the level logic, and is an optional faint underlay ("Floor scan").
 
 ### FQ — The show clock's lead-ins and tails
 
@@ -314,6 +329,10 @@ give me 10 seconds at the end of act 1, and as much time as I want at the end of
   `MIDTOWN.show.check({ points: [5, 10.6, 4275, 4283, 4289.5, 8600], span: 3 })` passes (a lead-in, the music's top, 1-23's
   tail, 2-01's lead-in, 2-23's open tail), `MIDTOWN.actors.check({ n: 40 })` passes, and stepping the clock by hand runs
   1-01 −10 → 1, 1-23 380 → the hold at 395, Play → 2-01 −10 → 1 (Q 720 at 0), 2-23 215 → 325 → 400.
+- **The seek check samples off the instant.** The pose may STEP exactly at a waypoint's time (a facing with no time to turn,
+  offstage → on, a jump, a prop changing hands), and the played clock reaches T as a sum of steps that can land an ulp short,
+  so a moment exactly on a waypoint compares the two sides of a step. `MIDTOWN.actors.check()` moves every moment 5 ms clear of
+  every waypoint time (the helper found failures only exactly there: a 45° turn at 2-02 ≈157.5, the top of 2-17).
 
 ### FR — Props, carried on and set down
 

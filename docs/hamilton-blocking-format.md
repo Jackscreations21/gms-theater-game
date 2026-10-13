@@ -150,6 +150,23 @@ It writes nothing to the repository. Its three downloads:
 A draft of the edits and notes is kept in the browser (localStorage `hamilton-blocking-editor-draft-1`) and OFFERED on
 reload ("Restore it" / "Discard it"), never applied by itself.
 
+- **Clear this song** (beside the track list; confirm; one undo step): every waypoint of every actor and prop in the CURRENT
+  track goes, so Jack blocks the number from a blank stage. Because an actor stands at her last waypoint after it (and at her
+  first before it), someone on stage at the end of the song before, or needed on stage at the top of the song after, would
+  otherwise stand frozen through the cleared song. So the clear leaves, for each such actor, `off` "holds" in the song (note
+  `clear-track: held offstage`): she walks off at a walk to the nearest wing (in the song's first seconds if the song before kept
+  her to its end), and waits in the wing nearest her next spot until she must walk on to reach it (its last seconds). A prop
+  still seen gets an `off` at the song's top. The merge's rules still hold (checked: 0 errors, 0 warnings after clearing 1-02,
+  1-04 and 2-17). **Restore this song** puts the track back as the loaded file has it (also one undo step).
+- **The level**, where the floor has two (under and on the galleries, the balcony): the waypoint form's **Lower · deck** /
+  **Upper · gallery (2.74 m)** buttons, the **⇅** tab by the selected disc, or the **L** key. Elsewhere the buttons are disabled
+  and the form says the one level the floor has. Dragging keeps the chosen level while the disc stays over gallery floor; off
+  it, the waypoint is on the deck. In the file the level is `y` (absent = the deck, 2.743 = the gallery); a segment generator
+  may write it as the merge's level names `"deck"` / `"gallery"`, and the change file names it (`level`, below).
+- **Music:** the soundtrack loads with a percentage; Play while it loads runs the clock silent and the music joins when it
+  lands; in a lead-in the Music line says "lead-in — the music starts at 0:00"; a browser refusal to play is shown and stops
+  the clock; with no file in `assets/audio/` it says to press "Choose the MP3…".
+
 ### The editor's change file
 
 ```jsonc
@@ -179,7 +196,15 @@ CHANGE:
 | `generator` | where the fix goes (RULING FO): the segment's generator for the track, `tools/blocking/props.py` for a prop |
 
 Ops on an actor's waypoint: `add`, `delete`, `move` (x / z), `retime` (track / at), `dwell`, `facing`, `relabel` (`label`),
-`level` (`y`), `offstage` (`off`), `note` (only a note was written on an unchanged waypoint). On a prop: `prop-add`,
+`level` (`y`), `offstage` (`off`), `note` (only a note was written on an unchanged waypoint). An actor's change also carries
+`level: { before, after }`: `"deck"`, `"gallery"` or `"stair 1.23 m"` — write `"y": "gallery"` (or leave `y` out for the deck)
+in the generator.
+
+**`clear-track`** (`kind: "track"`, `track`, `removed`: how many of the source's waypoints in that track are gone, `who`: the
+actor and prop ids that had them): every original waypoint in the track was removed (Clear this song, or every one deleted by
+hand). Its individual deletes are NOT listed; the track's `add`s that follow are the new blocking, including the
+`clear-track: held offstage` waypoints. To apply: drop every waypoint the track's generator writes for that track (all actors;
+the props in `tools/blocking/props.py`), then add the listed `add`s. On a prop: `prop-add`,
 `prop-remove`, `prop-edit` (kind, label, size, colour — `before` / `after` are those), and on its waypoints
 `prop-add-waypoint`, `prop-delete-waypoint`, `prop-move`, `prop-retime`, `prop-carry` (`carriedBy`), `prop-facing`,
 `prop-level`, `prop-offstage`, `prop-note`.

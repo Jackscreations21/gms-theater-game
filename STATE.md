@@ -3,7 +3,30 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-12 (latest): THE BLOCKING EDITOR `blocking.html`, THE CLOCK'S LEAD-INS AND TAILS, PROPS (RULINGS FP–FR) — PR #234 grows
+## NEWEST — 2026-10-12 (latest, round 2): THE EDITOR — MUSIC CHECKED ON 8093, CLEAR / RESTORE A SONG, THE LEVEL BUTTON, A CLEAN PLAN — PR #234
+
+Jack: *"The audio isn't playing"*; *"for each song I can choose to start with none of the lines already in there"*; *"add a
+button so if it is in a place with a second level I can choose what level it is on"*; *"make the map of the stage look better"*.
+
+- **Music:** the cause was the soundtrack missing from the worktree (git-ignored); it is now in its `assets/audio/` (copied by
+  the coordinator). Checked on http://localhost:8093/blocking.html with a real click: the element plays, `currentTime` and the
+  readout advance with wall time (2.9 s in 3 s), and from 1-01 −3 the Music line says "lead-in — the music starts at 0:00" and
+  the music joins at 0 (file 0.4 + at). Fixed on the way: the frame dt clamp (0.25 s) slowed the silent clock in a throttled
+  pane (now 1 s); a refused `play()` is shown and stops the clock; loading shows a percentage; a missing file says to press
+  "Choose the MP3…" and lights that button.
+- **Clear this song / Restore this song** (one undo step each; the change file's `clear-track`). Ruled: the clear leaves
+  `off` holds so nobody stands frozen from the song before (format doc). Checked on 1-02, 1-04, 2-17: only walk-offs in the
+  first seconds and walk-ons in the last; 0 errors, 0 warnings; undo returns the file byte for byte.
+- **The level button**: Lower · deck / Upper · gallery on the form, a ⇅ tab by the disc, the L key; enabled only on two-level
+  floor; drag keeps it over gallery floor; the change file names the level.
+- **The plan redrawn** as clean vector shapes with non-overlapping labels, a key and a scale bar (before / after:
+  session scratch `act/shots/editor/plan-BEFORE-*.jpg`, `plan-AFTER-*.jpg`).
+- **From the props helper:** the YouTube time guard (`showState` no longer throws when the video is unavailable);
+  `actors.check` samples 5 ms off waypoint instants (its only failures were the two sides of a step there); Washington's chair
+  (2-02) and the 2-16 desk now have carriers (Washington, Hamilton; `props.py --check` warns Hamilton is 1.77 m from the desk).
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (latest): THE BLOCKING EDITOR `blocking.html`, THE CLOCK'S LEAD-INS AND TAILS, PROPS (RULINGS FP–FR) — PR #234 grows
 
 Jack: *"make a software that i can make paths for the people … make this a different html … play the music and it shows me
 where they would be … export a file that tells you what to change … an indicator for when it is a blackout … a 2d view from

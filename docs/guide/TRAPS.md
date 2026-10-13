@@ -1637,7 +1637,7 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **A hidden pane gets no animation frames, so the show clock does not move** (`document.visibilityState`
   "hidden"): Play looks dead. A screenshot brings the pane up and the clock runs; `MIDTOWN.frame()` and the
   check functions do not need frames.
-- **`MIDTOWN.show.state` can throw on `main`** once the YouTube adapter is the show's audio and YouTube cannot
+- **`MIDTOWN.show.state` can throw on `main`** (fixed on `actors`, PR #234: the adapter answers 0) once the YouTube adapter is the show's audio and YouTube cannot
   play: `showState` reads `SHW.A.currentTime.toFixed` and the adapter has no time. A test that calls
   `showAdvance` (which ends in `showState()`) throws with it — `actCheck` steps `showTick` + `lxTick` itself.
 - **A seek-equivalence check that seeks to the SAME moment it just played to proves nothing about history.** The first
@@ -1656,6 +1656,11 @@ against this list before opening a PR; **add new traps as you hit them.**
   set above 0: six Color Force channels (764, 766, 803–806) sit at 57 % through Act One's end, but no unit answers them (no
   `type` in the Eos file, not in the rig), so eleven of the page's blackouts — the end of Non-Stop among them — read "lit".
   Count only the channels a unit in `assets/hamilton-rig.json` answers; then all 892 cues agree with the page's own dump.
+- **`JSON.stringify` writes −0 as 0.** The editor keeps undo steps and its draft as JSON; the merged file has a few `-0.0`, so
+  an undone edit no longer downloaded byte-identical. Snapshot with a replacer that keeps the sign (`toJ` / `fromJ` in
+  `blocking.html`).
+- **A frame-time clock clamped per frame runs slow when frames are slow.** The editor clamped each frame's dt to 0.25 s; in a
+  throttled pane (a frame every few hundred ms) the silent lead-in ran at half speed. Clamp only against a long gap (1 s).
 - **A `<canvas>` given only `width: 100%` in CSS takes its height from its 300 × 150 attribute ratio.** The editor's scrub
   bars grew to 670 px each while the pane was hidden (no frame had sized them yet). Give a canvas a CSS height.
 - **A speed check that does not know about offstage flags reports invisible moves.** `MIDTOWN.actors.check()` flagged 19

@@ -154,7 +154,8 @@ hd.bring('ens1', '2-13', 130.7, '2-13', 134.0, 0.0, 1.9, 0, wing=(-0.95, 1.55),
 hd.strike('hamilton', '2-14', 115.6, '2-14', 121.5, 'D-UC', note='Hamilton takes it off upstage as the title comes back (115.66)')
 hd.bring('hamilton', '2-16', 76.0, '2-16', 81.5, -1.4, 1.75, 0, wing='D-UC',
          note="2-16 Hamilton's office: he brings it in from D-UC and stands behind it in the 'Desk' pool (Viper 12 at (-1.38, 1.82))")
-hd.hidden('2-16', 137.4, (-1.4, 1.75), note='struck as the room goes to the cold dawn (cue 1081); nobody passes it - give it a carrier')
+hd.strike('hamilton', '2-16', 137.4, '2-16', 145.4, 'D-UC',
+          note='struck as the room goes to the cold dawn (cue 1081): Hamilton, 1.8 m from it, takes it as he goes off')
 hd.set_dark('2-19', 236.0, 0.0, 1.15, 0, note="2-20: set in the change; Burr's desk centre (cue 1193), he sits behind it at (0, 0.6)")
 hd.carry('2-20', 147.75, 'hamilton', note='in the blackout (cue 1206) Hamilton moves it to his place near SR')
 hd.place('2-21', 0.44, -2.8, 3.15, 0, note='2-21: the desk near SR (ironinkpen); he sits behind it at (-2.8, 2.6)')
@@ -177,7 +178,8 @@ for k, (who, seat, wing) in enumerate(VSEAT):
 wx, wz, wf = chair_for((1.0, -1.4), LOOK, 0.45)
 wc = Prop('washington-chair', 'chair', "Washington's chair", OAK)
 wc.set_dark('2-01', 234.2, wx, wz, wf, note="2-02: his chair at the vertex of the SL arm (cue 742 'chair SL')")
-wc.hidden('2-02', 214.8, (wx, wz), note='struck in the change into Take a Break (nobody passes it: move it to a carrier)')
+wc.strike('washington', '2-02', 214.0, '2-03', 3.0, 'W-USL',
+          note='struck in the change into Take a Break: Washington, beside it (1.3 m at 214.8), takes it as he goes off')
 
 # ---- 2-05 The Room Where It Happens: the table USC (0, 0.2), the three round it (seg5gen.py TABLE, H_T / J_T / M_T)
 rt = Prop('room-table', 'table', 'The Room table', WALNUT, size=[1.4, 0.75, 0.9])

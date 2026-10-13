@@ -609,10 +609,9 @@ The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocki
   dark flecks where it faces away. Real normals into the albedo pass would fix it (an engine change).
 - **Small props under a path lift her** by their height (the floor is found by ray, FI); a "deck only" flag
   per leg, or a minimum footprint, would smooth it.
-- **Found, not fixed (pre-existing on `main`):** once the show has made its YouTube adapter `SHW.A` and
-  YouTube cannot play (the Browser pane: "This video is unavailable"), `showState()` throws reading
-  `SHW.A.currentTime.toFixed` — so `MIDTOWN.show.state` and a second `MIDTOWN.show.check()` throw. Guard
-  `currentTime` in `showState`. Also, by the player's own design the clock waits while the YouTube player is not ready (readyState 0), so
+- **FIXED on `actors` (2026-10-12, PR #234), still on `main` until it merges:** once the show had made its YouTube adapter
+  `SHW.A` and YouTube could not play, `showState()` threw reading `SHW.A.currentTime.toFixed`. The adapter's time now answers
+  0 for an unavailable video and `showState` guards it. Also, by the player's own design the clock waits while the YouTube player is not ready (readyState 0), so
   where YouTube cannot play, untick "Play the album from YouTube" to get the silent clock (seen, not measured).
 
 ### Realism — the Midtown scan, and the options list (2026-10-10)

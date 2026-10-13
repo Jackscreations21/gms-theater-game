@@ -9532,7 +9532,8 @@
    {"track": "2-16", "at": 75.8, "x": 1.25, "z": -4.9, "off": true},
    {"track": "2-16", "at": 76.0, "carriedBy": "hamilton", "note": "2-16 Hamilton's office: he brings it in from D-UC and stands behind it in the 'Desk' pool (Viper 12 at (-1.38, 1.82))"},
    {"track": "2-16", "at": 81.5, "x": -1.4, "z": 1.75, "facing": 0.0},
-   {"track": "2-16", "at": 137.4, "x": -1.4, "z": 1.75, "off": true, "note": "struck as the room goes to the cold dawn (cue 1081); nobody passes it - give it a carrier"},
+   {"track": "2-16", "at": 137.4, "carriedBy": "hamilton", "note": "struck as the room goes to the cold dawn (cue 1081): Hamilton, 1.8 m from it, takes it as he goes off"},
+   {"track": "2-16", "at": 145.4, "x": 1.25, "z": -4.9, "off": true},
    {"track": "2-19", "at": 235.8, "x": 0.0, "z": 1.15, "off": true},
    {"track": "2-19", "at": 236.0, "x": 0.0, "z": 1.15, "facing": 0.0, "note": "2-20: set in the change; Burr's desk centre (cue 1193), he sits behind it at (0, 0.6)"},
    {"track": "2-20", "at": 147.75, "carriedBy": "hamilton", "note": "in the blackout (cue 1206) Hamilton moves it to his place near SR"},
@@ -9603,7 +9604,8 @@
   {"id": "washington-chair", "kind": "chair", "label": "Washington's chair", "size": [0.45, 0.9, 0.45], "color": "#7a5230", "waypoints": [
    {"track": "2-01", "at": 234.0, "x": 1.096, "z": -1.84, "off": true},
    {"track": "2-01", "at": 234.2, "x": 1.096, "z": -1.84, "facing": -12.3, "note": "2-02: his chair at the vertex of the SL arm (cue 742 'chair SL')"},
-   {"track": "2-02", "at": 214.8, "x": 1.096, "z": -1.84, "off": true, "note": "struck in the change into Take a Break (nobody passes it: move it to a carrier)"}
+   {"track": "2-02", "at": 214.0, "carriedBy": "washington", "note": "struck in the change into Take a Break: Washington, beside it (1.3 m at 214.8), takes it as he goes off"},
+   {"track": "2-03", "at": 3.0, "x": 8.5, "z": -3.0, "off": true}
   ]},
   {"id": "room-table", "kind": "table", "label": "The Room table", "size": [1.4, 0.75, 0.9], "color": "#5e3f26", "waypoints": [
    {"track": "2-05", "at": 0.0, "x": 0.0, "z": 0.2, "off": true},
