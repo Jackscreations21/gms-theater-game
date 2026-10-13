@@ -572,6 +572,10 @@ it does not do yet, and what the ETC pack could still give:
 - **The person lights are a snapshot** (`assets/hamilton-pools.json`, dumped from `actors` before #233's cue revisions):
   re-dump and run `tools/blocking-pools.py` after cue changes. The blackouts are computed live from the cues and do not
   have this problem.
+- **Simple mode does not:** set facings (a keyframe faces the way she walked; facings are Advanced's), give a dwell or a
+  walk-through point (every keyframe is a stop), record a stair climb as foot and top (drag to the foot, then the top), or
+  merge a recording into the loaded file in the page (a session applies it to the generators). It shows Advanced's edits
+  only through the loaded file, not live.
 - **3D in the editor:** it is a plan only; height shows as "↑" and a white rim. `midtown.html` remains the 3D view.
 - `tools/blocking-plot.py` does not draw props.
 

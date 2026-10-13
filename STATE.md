@@ -3,7 +3,27 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-12 (latest, round 2): THE EDITOR — MUSIC CHECKED ON 8093, CLEAR / RESTORE A SONG, THE LEVEL BUTTON, A CLEAN PLAN — PR #234
+## NEWEST — 2026-10-12 (latest, round 3): THE EDITOR'S SIMPLE MODE — DRAG THE DOTS WHILE THE MUSIC PLAYS, CARRY THE FURNITURE — PR #234
+
+Jack: *"just make it so every person has a dot, then I can play the music and I move the people to where they need to be, and
+make it so I pause it with space bar … then make it export that so I can give it to you"*; *"when I add furniture it creates a
+square for it, and it has a button, then when I press it I can choose who carries it at that time."*
+
+- `blocking.html` opens in **Simple**: a dot per person (big, named), a square per prop, the plan, the music, the blackout
+  indicator, the scrub bars; Space anywhere; ← → ±1 s (Shift 5), Home; drag = a keyframe now; drop in a wing = offstage; ⇅ / L =
+  level; Ctrl+Z; "Keyframes: N in this song" and ticks; Clear this song / Restore / Export; Add furniture + carry ▾ (nearest
+  first, or nobody); notes per song and on the show; saved at every keyframe and back on reload. **Advanced ▸** is the editor
+  as it was.
+- **The rule** (format doc, spec FP): keyframes replace a body's loaded waypoints in that song from the first keyframe on.
+- **The recording file** `hamilton-blocking-recording-<date>.json` and how to apply it: the format doc.
+- **Checked on http://localhost:8093** with real mouse drags: Laurens dragged while paused (1-04 30.0), Lafayette while playing
+  (recorded at the drag's end, 39.23), Space toggling, a desk carried on by Laurens (66.1), set down at centre (77.4) and
+  carried off by Hamilton (85.6) all live with the music playing; Ctrl+Z; Clear (nobody frozen; a body with a keyframe walks
+  on from the wing); ⇅ to the gallery (y 2.743); export → wipe → load back replays identically (141 sampled poses equal).
+  A 20-minute play soak: see below. Shots: session scratch `act/shots/editor/simple-*.jpg`.
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (latest, round 2): THE EDITOR — MUSIC CHECKED ON 8093, CLEAR / RESTORE A SONG, THE LEVEL BUTTON, A CLEAN PLAN — PR #234
 
 Jack: *"The audio isn't playing"*; *"for each song I can choose to start with none of the lines already in there"*; *"add a
 button so if it is in a place with a second level I can choose what level it is on"*; *"make the map of the stage look better"*.

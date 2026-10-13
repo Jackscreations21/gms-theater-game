@@ -243,6 +243,12 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
    file says what to change, and a correction goes into the segment's generator in `tools/blocking/`, then the merge. Put `docs/hamilton-blocking-cue-notes.md` in front of him:
    his two rulings (1-05 sisters, 2-22 duel sides) and the cue fixes. Ask the mannequin's licence/origin.
 
+## DONE — 2026-10-12 (latest, round 3): the editor's Simple mode — record by dragging dots with the music, furniture carries (PR #234)
+
+- `blocking.html` defaults to Simple (dots, squares, Space, drag = keyframe now, carry ▾); Advanced unchanged behind a toggle.
+- The recording file and how to apply it: `docs/hamilton-blocking-format.md` ("Simple mode: recording, and the recording file").
+- Next: Jack records; a session applies his recording to the generators.
+
 ## DONE — 2026-10-12 (latest, round 2): the editor's music checked on 8093, Clear / Restore a song, the level button, a clean plan (PR #234)
 
 - The music plays on Jack's own URL (the soundtrack was missing from the worktree); lead-in, loading and refusal states shown.

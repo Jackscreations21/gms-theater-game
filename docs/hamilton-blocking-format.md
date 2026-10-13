@@ -139,7 +139,12 @@ on the scrub bars, the person lights (`assets/hamilton-pools.json`, optional), a
 time, the waypoint form, delete, undo / redo, nudges; the merge tool's checks run live. Its pose and prop functions are
 `midtown.html`'s, lifted (checked equal at 360 random moments), so the plan and the 3D page agree.
 
-It writes nothing to the repository. Its three downloads:
+**Two modes.** It opens in **Simple** (recording): one big dot per person, one square per prop, the plan, the music, the
+blackout indicator and the scrub bars — no lines, no forms. Jack plays the music (Space anywhere) and drags a dot to where that
+person should be: that records a KEYFRAME at that moment (below, "The recording file"). **Advanced ▸** (top bar) is the full
+editor described here; its edits and the recording are separate (Advanced edits the loaded paths, Simple records over them).
+
+It writes nothing to the repository. Advanced's three downloads:
 
 1. **`hamilton-blocking-changes-<date>.json` — "what to change"** (below). This is what Jack hands to a session.
 2. The same as Markdown, to read.
@@ -166,6 +171,63 @@ reload ("Restore it" / "Discard it"), never applied by itself.
 - **Music:** the soundtrack loads with a percentage; Play while it loads runs the clock silent and the music joins when it
   lands; in a lead-in the Music line says "lead-in — the music starts at 0:00"; a browser refusal to play is shown and stops
   the clock; with no file in `assets/audio/` it says to press "Choose the MP3…".
+
+### Simple mode: recording, and the recording file
+
+Jack: *"just make it so every person has a dot, then I can play the music and I move the people to where they need to be, and
+make it so I pause it with space bar … then make it export that so I can give it to you"*; *"when I add furniture it creates a
+square for it, and it has a button, then when I press it I can choose who carries it at that time."*
+
+- **Recording.** Dragging a dot (or a prop's square) records a keyframe for it at the CURRENT clock time: paused, the paused
+  time; playing, the time the drag ENDS (everyone else keeps moving meanwhile). Dropped in a wing (|x| ≥ 6.7), behind the
+  upstage wall (z ≤ −4.4) or on an entrance tab, it is OFFSTAGE (`off: true`). A keyframe within ±0.25 s of an existing one
+  for the same body replaces it. **Level:** where the floor has two, the hovered dot shows ⇅ (or press **L** over it) to record
+  it on the other level at the current time; the dot's white rim means up. **Ctrl+Z** takes back the last thing recorded.
+- **Transport:** Space play / pause anywhere on the page (never a scroll or a button press); ← / → ±1 s, Shift ±5 s; Home the
+  song's top. The song list (with each song's keyframe count), "Keyframes: N in this song" and a tick per keyframe on the song's
+  scrub bar show what is recorded.
+- **Furniture:** "Add furniture" (desk, table, chair, bench, stool, box, crate, lantern, bucket; a name) makes a square in the
+  upstage-right wing tray. Every square has a **carry ▾** button (on hover or when clicked): it lists "Nobody — set it down
+  here" and the company, the nearest first; choosing someone records `{ at, carriedBy }` now — the square rides with them until
+  it is dragged somewhere (a placed keyframe: set down there, then). The 28 seeded props show as squares with their carries and
+  are overridden the same way. Only the props of the current song (and new furniture) are shown while unseen.
+- **THE RULE:** a body's keyframes in a song REPLACE its loaded waypoints in that song from its first keyframe's time on; the
+  loaded waypoints before that stay, and so do other songs'. **Clear this song** first drops every loaded waypoint of the song
+  (and anything recorded in it): a body with no keyframe there is offstage through it (the same offstage holds as Advanced's
+  clear: nobody frozen), and one with keyframes waits in the wing until she must walk on to her first. Between keyframes a
+  body moves by the page's own pose rules — each keyframe is a stop with no dwell and no facing, so she walks the straight leg
+  at 1.3 m/s, leaving just in time (faster if the time is short) — so the playback is what `midtown.html` will do.
+- **Saved** to this browser (localStorage `hamilton-blocking-recording-1`) at every keyframe and note, and back on reload with
+  a one-line banner ("Discard it" throws it away). **Restore** puts the current song back as the loaded file has it.
+
+**The recording file** (`hamilton-blocking-recording-<date>.json`, the **Export** button; "Load a recording…" reads one back):
+
+```jsonc
+{
+  "format": "hamilton-blocking-recording 1", "made": "…", "by": "blocking.html, Simple mode (RULING FP)",
+  "source": { "file": "assets/hamilton-blocking.json", "bytes": 722013, "sha256": "…", "waypoints": 9559 },
+  "rule": "…the rule above, in words…",
+  "clock": "at: seconds into the album track; 1-01 and 2-01 may be −10…0, 1-23 up to its length + 10, 2-23 open (RULING FQ)",
+  "notes": { "global": "…", "tracks": { "1-04": "…" } },
+  "furniture": [ { "id": "f-test-desk", "kind": "desk", "label": "Test desk", "size": [1.2, 0.75, 0.6], "color": "#9a7b4f" } ],   // props he added
+  "keyframes": 5,
+  "tracks": {
+    "1-04": { "title": "The Story of Tonight", "cleared": false,
+              "actors": { "laurens": [ { "at": 30, "x": 2, "z": 0, "level": "deck", "off": false } ] },
+              "props":  { "f-test-desk": [ { "at": 66.1, "carriedBy": "laurens", "off": false },
+                                           { "at": 77.4, "x": 0, "z": 1.65, "off": false },
+                                           { "at": 85.6, "carriedBy": "hamilton", "off": false } ] } } }
+}
+```
+
+**Applying it (for the next session):** check `source.sha256` against the committed blocking. For each track: if `cleared`,
+remove every waypoint the generator writes in that track (actors; props in `tools/blocking/props.py`); otherwise, per body,
+remove its waypoints in the track at or after its first keyframe's `at`. Then write each keyframe as a waypoint:
+`{ track, at, x, z }` plus `"y": "gallery"` when `level` is "gallery" and `"off": true` when `off` — no `dwell`, no `facing`
+(add a `facing` only if Jack's note asks); a prop keyframe with `carriedBy` becomes `{ track, at, carriedBy }`, one with x / z a
+placed waypoint (`facing` 0 unless noted). Each `furniture` entry becomes a new prop in `props.py`. A cleared track's bodies
+with no keyframes need an offstage waypoint at the track's top and before its end (the editor's holds: the nearest wing). Run
+the generators and the merge, then `MIDTOWN.actors.check()`.
 
 ### The editor's change file
 

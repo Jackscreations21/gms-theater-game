@@ -303,6 +303,13 @@ and stuff like that"*
 - **The level control** (Jack: *"add a button so if it is in a place with a second level I can choose what level it is on"*):
   Lower · deck / Upper · gallery, enabled only where the floor map has the deck below and the gallery above; `y` absent or
   2.743; the change file names the level.
+- **SIMPLE MODE is the default** (Jack: *"just make it so every person has a dot, then I can play the music and I move the
+  people to where they need to be … make it so I pause it with space bar … make it export that"*; *"when I add furniture it
+  creates a square for it, and it has a button … I can choose who carries it at that time"*): dots and squares, no lines or
+  forms; a drag records a keyframe at the current clock time (the drag's end while playing); keyframes REPLACE a body's loaded
+  waypoints in that song from the first keyframe on (RULED; the format doc has it); furniture squares with a carry picker
+  (nearest first, or nobody); saved at every keyframe; exported as the RECORDING FILE (format doc). The full editor is behind
+  **Advanced ▸**, unchanged.
 - **The plan is drawn as an architect's plan** (Jack: *"make the map of the stage look better"*): vector shapes from the
   measured geometry (the deck a shade lighter between the proscenium posts, the pit, the galleries raised with a shadow on
   their downstage edge, stairs as treads with an UP arrow, rails, posts, entrance tabs), labels placed so none overlap (inside
