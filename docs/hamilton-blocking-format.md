@@ -189,7 +189,10 @@ square for it, and it has a button, then when I press it I can choose who carrie
 - **Furniture:** "Add furniture" (desk, table, chair, bench, stool, box, crate, lantern, bucket; a name) makes a square in the
   upstage-right wing tray. Every square has a **carry ▾** button (on hover or when clicked): it lists "Nobody — set it down
   here" and the company, the nearest first; choosing someone records `{ at, carriedBy }` now — the square rides with them until
-  it is dragged somewhere (a placed keyframe: set down there, then). The 28 seeded props show as squares with their carries and
+  it is dragged somewhere (a placed keyframe: set down there, then). A CARRIED square is drawn beside its carrier's dot (not
+  under it), tagged "carried by …", with a **⬇ put down** button (a placed keyframe where it rides, now); its carry ▾ list
+  starts with **Set down here, now** and **Off stage, now** (an `off` keyframe at the nearest wing). In the file a set-down
+  is simply the next keyframe with x / z (no `carriedBy`). The 28 seeded props show as squares with their carries and
   are overridden the same way. Only the props of the current song (and new furniture) are shown while unseen.
 - **THE RULE:** a body's keyframes in a song REPLACE its loaded waypoints in that song from its first keyframe's time on; the
   loaded waypoints before that stay, and so do other songs'. **Clear this song** first drops every loaded waypoint of the song

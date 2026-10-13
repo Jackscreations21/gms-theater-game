@@ -1656,6 +1656,10 @@ against this list before opening a PR; **add new traps as you hit them.**
   set above 0: six Color Force channels (764, 766, 803–806) sit at 57 % through Act One's end, but no unit answers them (no
   `type` in the Eos file, not in the rig), so eleven of the page's blackouts — the end of Non-Stop among them — read "lit".
   Count only the channels a unit in `assets/hamilton-rig.json` answers; then all 892 cues agree with the page's own dump.
+- **A hit test by "nearest centre" steals clicks from a small shape drawn beside a big one.** In the editor's Simple mode a
+  carried prop's square sat d/2 + 0.22 m ahead of its carrier, drawn UNDER her dot; a press on the half of the square nearer
+  her centre found her (45 % of a desk's visible square at 48 px/m), so Jack dragged the person and could not put the prop
+  down. Draw the small thing on top, clear of the big one, and give it its own button.
 - **`JSON.stringify` writes −0 as 0.** The editor keeps undo steps and its draft as JSON; the merged file has a few `-0.0`, so
   an undone edit no longer downloaded byte-identical. Snapshot with a replacer that keeps the sign (`toJ` / `fromJ` in
   `blocking.html`).

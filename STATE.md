@@ -3,7 +3,17 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-13: SIMPLE MODE — SELECT SEVERAL, DELETE A TRACK IN A SONG OR FROM NOW ON — PR #234
+## NEWEST — 2026-10-13 (later): FIXED — "IT WASN'T LETTING ME LET SOMEONE STOP CARRYING AN OBJECT" — PR #234
+
+- **Cause:** a carried square was drawn under its carrier's dot, only d/2 + 0.22 m ahead of her, and the hit test takes the
+  nearest centre: 45 % of a desk's visible square (more for a chair or a lantern, all of it at small zoom) grabbed the
+  PERSON, so a drag moved her instead of setting the prop down; the picker's only release was a line labelled "Nobody".
+- **Fix:** carried squares are drawn after the people, clear of the dot, tagged "carried by X", with a ⬇ put down button;
+  the carry ▾ list starts with "Set down here, now" and "Off stage, now". Now 100 % of the square grabs the prop.
+- Checked (localhost:8093): put down while paused (1-01 100.0), a drag-down while playing (recorded at the drop, 105.5),
+  Off stage now, Ctrl+Z, export → wipe → load replays identically.
+
+## 2026-10-13: SIMPLE MODE — SELECT SEVERAL, DELETE A TRACK IN A SONG OR FROM NOW ON — PR #234
 
 Jack: *"make it so I can delete the track for a specific person, or it can delete the track in front of the position of the
 song I am at. Make it so I can select multiple people at once to delete tracks for."*

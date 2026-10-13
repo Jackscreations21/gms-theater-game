@@ -2085,7 +2085,8 @@ function importRecording(d) {
 // ---- drawing
 function drawSimple(T) {
   const s = S.view.s, EA = effActors(), EP = effProps(), names = $('v_names').checked, fan = new Map();
-  S.simpleHits = []; S.carryBtn = null; S.lvSimple = null;
+  S.simpleHits = []; S.carryBtn = null; S.lvSimple = null; S.putBtns = [];
+  const carried = [], disp = new Map();
   // the unseen: fanned out in a little grid beside where they wait (away from the centre), so each can be grabbed
   const fanPos = (x, z) => { const k = Math.round(x / 0.6) + ',' + Math.round(z / 0.6), n = fan.get(k) || 0; fan.set(k, n + 1); const sx = x >= 0 ? 1 : -1; return [x + sx * Math.floor(n / 4) * 0.6, z + (n % 4) * 0.5]; };
   const tr = curTrack(), Rt = S.rec.tracks[tr.id];
@@ -2093,6 +2094,7 @@ function drawSimple(T) {
   // the props: squares
   for (const p of EP.values()) {
     const q = propPose(p, T), drag = S.sDrag && S.sDrag.moved && S.sDrag.kind === 'prop' && S.sDrag.id === p.id;
+    if (!drag && !q.none && q.visible && q.carrier) { carried.push([p, q]); continue; }   // carried: drawn after the people, beside its carrier
     let x, z, vis;
     if (drag) [x, z, vis] = [S.sDrag.x, S.sDrag.z, true];
     else if (q.none) { [x, z] = [-9.4 + 0.6 * Math.floor(parked / 6), -5.7 + 0.55 * (parked++ % 6)]; vis = false; }   // never placed: the furniture tray, upstage right
@@ -2143,7 +2145,7 @@ function drawSimple(T) {
     if (S.selSet.has(selKey('actor', a.id))) { g.strokeStyle = '#5ff0ff'; g.lineWidth = 3; g.beginPath(); g.arc(px, py, r + 5, 0, 7); g.stroke(); }
     if (hov || drag) { g.strokeStyle = '#ffe2a0'; g.lineWidth = 2; g.beginPath(); g.arc(px, py, r + 8, 0, 7); g.stroke(); }
     if (names || hov) txt((p.label || a.name) + (p.y > 1 && vis ? ' ↑' : ''), px + r + 4, py, { color: vis ? '#fff' : '#a39fae', size: vis ? 12 : 10, bold: vis, bg: 'rgba(13,12,16,.72)' });
-    S.simpleHits.push({ kind: 'actor', id: a.id, a: px, b: py, r: r + 3, x, z });
+    S.simpleHits.push({ kind: 'actor', id: a.id, a: px, b: py, r: r + 3, x, z }); disp.set(a.id, [px, py, r]);
     if (hov && vis && !drag && twoLevel(p.x, p.z)) {                      // the level switch on the hovered dot
       const up = p.y > 1.5, lab = up ? '⇅ upper → lower' : '⇅ lower → upper'; g.font = '600 10px system-ui, sans-serif';
       const bw = g.measureText(lab).width + 10, bx = px - bw / 2, by = py + r + 4;
@@ -2152,7 +2154,36 @@ function drawSimple(T) {
       S.lvSimple = { x: bx, y: by, w: bw, h: 15, id: a.id };
     }
   }
+  // CARRIED SQUARES, over the people: drawn clear of the carrier's dot (toward where it really rides), tagged "carried by …",
+  // with a PUT DOWN button — the bug was that a carried square sat under its carrier's dot (props were drawn first, only
+  // d/2 + 0.22 m ahead of her), so a click on it found the person (the nearest) and dragged her instead.
+  for (const [p, q] of carried) {
+    const hs = Math.max(7, 0.22 * s), c = disp.get(q.carrier), [qa, qb] = PX(q.x, q.z);
+    let a = qa, b = qb;
+    if (c) { let dx = qa - c[0], dy = qb - c[1]; const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L; const off = c[2] + hs * 1.45 + 6; a = c[0] + dx * off; b = c[1] + dy * off; g.strokeStyle = 'rgba(255,226,160,.7)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(c[0] + dx * c[2], c[1] + dy * c[2]); g.lineTo(a - dx * hs, b - dy * hs); g.stroke(); }
+    const sel = S.sSel && S.sSel.kind === 'prop' && S.sSel.id === p.id, hov = S.sHover && S.sHover.kind === 'prop' && S.sHover.id === p.id, picked = S.selSet.has(selKey('prop', p.id));
+    g.save(); g.translate(a, b); g.rotate(-q.yaw);
+    g.fillStyle = p.color; g.fillRect(-hs, -hs, 2 * hs, 2 * hs);
+    g.strokeStyle = picked ? '#5ff0ff' : '#ffe2a0'; g.lineWidth = picked || sel || hov ? 3 : 2; g.strokeRect(-hs, -hs, 2 * hs, 2 * hs);
+    g.restore();
+    const who = (EA.get(q.carrier) || {}).name || q.carrier;
+    txt(`${p.label} · carried by ${who}`, a, b - hs - 9, { align: 'center', color: '#ffe9c7', size: 10, bold: true, bg: 'rgba(13,12,16,.78)' });
+    g.font = '600 10px system-ui, sans-serif';
+    const lab = '⬇ put down', bw = g.measureText(lab).width + 12, bx = a - bw / 2, by = b + hs + 4;
+    g.fillStyle = '#3b3320'; g.fillRect(bx, by, bw, 16); g.strokeStyle = '#e8b44a'; g.lineWidth = 1; g.strokeRect(bx + 0.5, by + 0.5, bw - 1, 15);
+    txt(lab, bx + 6, by + 8, { color: '#ffe2a0', size: 10, bold: true });
+    S.putBtns.push({ x: bx, y: by, w: bw, h: 16, id: p.id, wx: q.x, wz: q.z });
+    S.simpleHits.push({ kind: 'prop', id: p.id, a, b, r: hs + 4, x: q.x, z: q.z });
+    if (sel || hov) {                                                    // and the carry button, to hand it to someone else
+      const l2 = 'carry ▾', w2 = g.measureText(l2).width + 12, x2 = a + hs + 6, y2 = b - 8;
+      g.fillStyle = '#3b3320'; g.fillRect(x2, y2, w2, 16); g.strokeStyle = '#e8b44a'; g.strokeRect(x2 + 0.5, y2 + 0.5, w2 - 1, 15);
+      txt(l2, x2 + 6, y2 + 8, { color: '#ffe2a0', size: 10, bold: true });
+      S.carryBtn = { x: x2, y: y2, w: w2, h: 16, id: p.id, px: a, py: b };
+    }
+  }
 }
+function putDown(id, x, z) { recordKey('prop', id, { x: snap(x), z: snap(z) }); }   // set down where it rides, now
+function offStageNow(id, x, z) { const wg = wingNear(x, z, false); recordKey('prop', id, { x: wg.x, z: wg.z, off: true }); }
 function drawBox() {
   if (!S.box) return; const b = S.box;
   g.fillStyle = 'rgba(95,240,255,.08)'; g.strokeStyle = '#5ff0ff'; g.lineWidth = 1; g.setLineDash([4, 3]);
@@ -2169,18 +2200,20 @@ function openPicker(id, px, py) {                        // who carries it, from
   const q = hit ? { x: hit.x, z: hit.z } : q0;          // where its square is drawn (the tray, for one never placed)
   const near = S.actors.map(a => { const p = actPose(EA.get(a.id), S.T); return [a, p, Math.hypot(p.x - q.x, p.z - q.z)]; }).sort((x, y) => (y[1].visible - x[1].visible) || x[2] - y[2]);
   const { tr, at } = locate(S.T);
-  pk.innerHTML = `<div class="ph">Who carries <b>${esc(P.label)}</b> from ${esc(tr.id)} ${at.toFixed(1)} s?</div>` +
-    `<button data-c="">Nobody — set it down here</button>` + near.map(([a, p, d]) => `<button data-c="${esc(a.id)}"><span class="sw" style="background:${a.color}"></span>${esc(p.label || a.name)} <span class="faint">${p.visible ? d.toFixed(1) + ' m' : 'offstage'}</span></button>`).join('');
+  pk.innerHTML = `<div class="ph"><b>${esc(P.label)}</b> from ${esc(tr.id)} ${at.toFixed(1)} s${q0.carrier && q0.visible ? ` · carried by ${esc((EA.get(q0.carrier) || {}).name || q0.carrier)}` : ''}:</div>` +
+    `<button data-c="">⬇ Set down here, now</button><button data-c="__off">✕ Off stage, now</button><div class="ph" style="margin-top:6px">…or carried from now by:</div>` + near.map(([a, p, d]) => `<button data-c="${esc(a.id)}"><span class="sw" style="background:${a.color}"></span>${esc(p.label || a.name)} <span class="faint">${p.visible ? d.toFixed(1) + ' m' : 'offstage'}</span></button>`).join('');
   pk.style.left = Math.min(px + 16, W - 230) + 'px'; pk.style.top = Math.max(8, Math.min(py - 20, H - 320)) + 'px'; pk.hidden = false;
   pk.querySelectorAll('button').forEach(b => b.onclick = () => {
     pk.hidden = true;
-    if (b.dataset.c) recordKey('prop', id, { carriedBy: b.dataset.c });
-    else recordKey('prop', id, { x: snap(q.x), z: snap(q.z) });
+    if (b.dataset.c === '__off') offStageNow(id, q.x, q.z);
+    else if (b.dataset.c) recordKey('prop', id, { carriedBy: b.dataset.c });
+    else putDown(id, q.x, q.z);
   });
 }
 function simpleDown(e, px, py) {
   $('picker').hidden = true;
   if (inBox(S.lvSimple, px, py)) { flipLevel(S.lvSimple.id); return; }
+  for (const b of S.putBtns || []) if (inBox(b, px, py)) { putDown(b.id, b.wx, b.wz); return; }
   if (S.carryBtn && inBox(S.carryBtn, px, py)) { openPicker(S.carryBtn.id, S.carryBtn.px, S.carryBtn.py); return; }
   const h = simpleHit(px, py);
   if (h) { S.sDrag = { kind: h.kind, id: h.id, px, py, x: h.x, z: h.z, moved: false, add: e.shiftKey || e.ctrlKey || e.metaKey }; return; }
@@ -2190,9 +2223,10 @@ function simpleMove(px, py, x, z) {
   if (S.sDrag) { if (!S.sDrag.moved && Math.hypot(px - S.sDrag.px, py - S.sDrag.py) < 4) return; S.sDrag.moved = true; S.sDrag.x = x; S.sDrag.z = z; S.dirty = true; return; }
   if (S.box) { S.box.qx = px; S.box.qy = py; S.dirty = true; return; }
   const h = simpleHit(px, py), was = S.sHover;
-  if (!(S.lvSimple && inBox(S.lvSimple, px, py)) && !(S.carryBtn && inBox(S.carryBtn, px, py))) S.sHover = h ? { kind: h.kind, id: h.id } : null;
+  const onBtn = (S.lvSimple && inBox(S.lvSimple, px, py)) || (S.carryBtn && inBox(S.carryBtn, px, py)) || (S.putBtns || []).some(b => inBox(b, px, py));
+  if (!onBtn) S.sHover = h ? { kind: h.kind, id: h.id } : null;
   if ((was && was.id) !== (S.sHover && S.sHover.id)) S.dirty = true;
-  cv.style.cursor = h ? 'grab' : 'default';
+  cv.style.cursor = onBtn ? 'pointer' : h ? 'grab' : 'default';
 }
 function simpleUp() {
   if (S.box) {
@@ -2281,7 +2315,7 @@ window.EDITOR = {
   sourceText: () => S.src && S.src.text,
   mode: m => setMode(m), simplePose: (id, T = S.T) => { const a = effActors().get(id); return a ? actPose(a, T) : null; }, simplePropPose: (id, T = S.T) => { const p = effProps().get(id); return p ? propPose(p, T) : null; },
   recordDrop: (kind, id, x, z) => recordDrop(kind, id, x, z), recordKey: (kind, id, k) => recordKey(kind, id, k), recUndo: () => recUndo(), recordingDoc: () => recordingDoc(), importRecording: d => importRecording(d),
-  recCount: tid => recCount(tid ?? curTrack().id), select2: (keys, add) => { if (!add) S.selSet.clear(); for (const k of keys) S.selSet.add(k); S.dirty = S.listDirty = true; }, recDelete: m => recDelete(m), deleteKeyframe: () => deleteKeyframe(), recClear: () => recClear(), recRestore: () => recRestore(), addFurniture: (kind, name) => { $('f_kind').value = kind; $('f_name').value = name || ''; addFurniture(); }, openPicker: id => openPicker(id, 100, 100),
+  recCount: tid => recCount(tid ?? curTrack().id), putDown: id => { const q = effProps().get(id) && propPose(effProps().get(id), S.T); if (q) putDown(id, q.x, q.z); }, select2: (keys, add) => { if (!add) S.selSet.clear(); for (const k of keys) S.selSet.add(k); S.dirty = S.listDirty = true; }, recDelete: m => recDelete(m), deleteKeyframe: () => deleteKeyframe(), recClear: () => recClear(), recRestore: () => recRestore(), addFurniture: (kind, name) => { $('f_kind').value = kind; $('f_name').value = name || ''; addFurniture(); }, openPicker: id => openPicker(id, 100, 100),
 };
 </script>
 </body>
