@@ -563,8 +563,7 @@ it does not do yet, and what the ETC pack could still give:
   doc). A tool that turns `move` / `retime` changes into generator patches would be the next step if Jack sends many.
 - **The sound tap.** Skips are corrected by the VBR seek table only; `midtown.html` (now on `actors` too, merged from
   `cue-blackouts`) also matches the audio's loudness envelope, because Chrome lands a skip into an already-played region
-  by its own history. In the 3D page a BACK skip still resumes about its landing error from the asked time (the
-  corrective seek lands by history again; STATE 2026-10-13). In the editor a
+  by its own history. (In the 3D page a back skip now resumes within ~0.15 s of the asked time: STATE 2026-10-13.) In the editor a
   skip BACK into music already played may land some seconds off. Port `sndTick` / the envelope if he notices.
 - **YouTube** as a music source (the page has it; the editor has the file, a chosen MP3, or silence).
 - **Group edits:** select several waypoints or actors, move a formation, copy a number's blocking to another moment,

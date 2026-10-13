@@ -288,7 +288,10 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
 - `assets/hamilton-pools.json` was re-dumped from the merged page and regenerated. The cue notes say what #233 settled.
 - Skip forward 20 min, back 10, and across the interval both ways: each landing error was reported, moved, and ended
   "sound synced" in `MIDTOWN.show.sound` and the HUD.
-- A BACK skip resumes about the landing error from the asked time (see STATE): #233's corrective seek, not fixed here.
+- Then FIXED: a back skip resumed about its landing error away from the asked time. The check kept the first request's
+  relation, so the second check undid the correction. Each corrective seek now re-arms the check, and the check judges
+  POSITION. Six skips, the back ones into played stretches, resume within 0.15 s. The stale "moving it" note at a tail
+  is cleared too.
 
 ## DONE — 2026-10-13: notes2 — two carry it, a better carry, prop models, the roll call on the gallery (PR #234, RULING FU)
 

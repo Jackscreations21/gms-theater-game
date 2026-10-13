@@ -4340,6 +4340,7 @@ function showHold() {
   SHW.lt = tr.len + tr.post; showFireTo(tr.start + tr.len + tr.post - 1e-6);   // after its tail (FQ)
   SHW.playing = false; SHW.hold = true; SHW.gap = true;
   if (SHW.A) SHW.A.pause();
+  if (SND.check) { SND.check = null; SND.note = ''; }      // a check cut short by the interval says nothing (the next seek re-arms it)
   showHouse(true); showUI(true); requestRender();
 }
 function showPause(on = SHW.playing) {
@@ -4388,6 +4389,7 @@ function showTail() {
   showFireTo(tr.start + tr.len - 1e-6);
   SHW.lt = Math.max(SHW.lt, tr.len); SHW.gap = true;
   if (SHW.A) SHW.A.pause();
+  if (SND.check) { SND.check = null; SND.note = ''; }      // a check cut short by the tail: no stale "moving it" (the next seek re-arms it)
   showUI(true);
 }
 
@@ -4488,8 +4490,9 @@ function showSoundSeek(P) {
 // reports — after every seek, with one corrective seek if the landing was far from the skip's target, and again every
 // half-minute. The context is made on the Play click (the gesture allows it) and the element is tapped only once the
 // context runs, because a tapped element plays through the context alone. No context or no envelope: the table stands.
-const SND = { ctx: null, src: null, tap: null, env: null, envWanted: false, bins: [], check: null, next: 0, note: '' };
+const SND = { ctx: null, src: null, tap: null, env: null, envWanted: false, bins: [], check: null, next: 0, note: '', err: null };
 const SND_BIN = 0.02, SND_WIN = 75, SND_N = 200, SND_LAT = 0.07, SND_EVERY = 30;   // bin, search window s, 4 s per match, the tap's latency (measured), confirmation period s
+const SND_TOL = 0.25, SND_MOVES = 3;                         // a landing within this of the skip's target is good; corrective seeks before giving up
 const sndLog = v => Math.log10(Math.max(v, 1e-4)) + 4;      // the envelope's scale (u8 = 255 · log / 4)
 function sndEnv() {
   if (SND.envWanted || !SHW.sound || !SHW.sound.env) return; SND.envWanted = true;
@@ -4515,7 +4518,7 @@ async function sndStart(A) {
   } catch (e) { console.warn('show: no sound tap —', e); SND.ctx = null; }
 }
 function sndSeeked(P, q) {                                   // a seek went out for true time P as request q.req: measure the landing once 4 s have played
-  SND.bins.length = 0; SND.check = { want: P, req: q.req, tries: 0 }; SND.note = SND.ctx && SND.env ? 'checking the sound…' : '';
+  SND.bins.length = 0; SND.check = { want: P, req: q.req, tries: 0, moves: 0, first: null }; SND.err = null; SND.note = SND.ctx && SND.env ? 'checking the sound…' : '';
 }
 function sndMatch() {                                        // the last 4 s of what played, found in the stored envelope near where the clock says it is
   const E = SND.env, B = SND.bins; if (!E || B.length < SND_N) return null;
@@ -4541,10 +4544,20 @@ function sndTick(A) {                                        // each frame while
     if (SND.bins.length < SND_N) return;
     const r = sndMatch(); SND.bins.length = 0; C.tries++;
     if (r && r.score > 0.8 && r.margin > 0.08) {
-      const e = r.off - (C.want - C.req);                     // how far the landing is from the skip's target
-      SHW.soundOff = r.off;
-      if (Math.abs(e) > 0.5 && C.tries <= 2) { A.currentTime = A.currentTime - e; SND.note = `the sound landed ${e.toFixed(1)} s off — moving it`; return; }
-      SND.check = null; SND.next = now + SND_EVERY; SND.note = 'sound synced';
+      // THE POSITION ERROR: where the sound is (the element's time + the measured offset) less where the skip asked it to be by
+      // now (the target + what the element has played since the LAST request). C.want / C.req always describe the last seek
+      // that went out, so a corrective seek is judged by where IT landed — judging it by the first request's relation (as
+      // before) read the corrected landing as still off and moved it back by the same error. (TRAPS: the sound tap.)
+      const e = r.off - (C.want - C.req);
+      SHW.soundOff = r.off;                                   // the clock follows what really plays, whatever happens next
+      SND.err = e; if (C.first === null) C.first = e;
+      if (Math.abs(e) > SND_TOL && C.moves < SND_MOVES) {
+        const ct = A.currentTime, want = C.want + (ct - C.req), req = Math.max(0, ct - e);   // where it should be now; ask for that less the error
+        C.want = want; C.req = req; C.moves++; C.tries = 0;
+        A.currentTime = req; SND.note = `the sound landed ${e.toFixed(1)} s off — moving it`; return;
+      }
+      SND.check = null; SND.next = now + SND_EVERY;
+      SND.note = Math.abs(e) <= SND_TOL ? 'sound synced' : `sound synced, ${Math.abs(e).toFixed(1)} s ${e > 0 ? 'after' : 'before'} the skip's time (the file would not land there)`;
     } else if (C.tries >= 4) { SND.check = null; SND.next = now + SND_EVERY; SND.note = 'sound: no match, the table stands'; }
     return;
   }
@@ -4991,7 +5004,7 @@ buildLightsPanel = () => {
       get tracks() { return SHW.d ? SHW.d.tracks.map(t => ({ id: t.id, title: t.title, len: t.len, start: t.start, pre: t.pre, post: Number.isFinite(t.post) ? t.post : 'open', hold: t.hold, audio: SHW.files.has(t.i) ? SHW.files.get(t.i).name : null })) : []; },
       check: opts => showCheck(opts), matchFiles: files => showMatchFiles(files), parseName: name => { const p = showParseFile({ name, webkitRelativePath: name }); return { disc: p.disc, n: p.n, rest: p.rest }; },
       get perf() { return Object.assign({}, SHW.perf); }, urls: SHW_URLS,
-      get sound() { return { off: SHW.soundOff, note: SND.note, bins: SND.bins.length, check: SND.check, ctx: SND.ctx ? SND.ctx.state : null, env: !!SND.env, match: SND.ctx && SND.env && SND.bins.length >= SND_N ? sndMatch() : null }; },   // the sound tap, for the console
+      get sound() { return { off: SHW.soundOff, note: SND.note, err: SND.err, bins: SND.bins.length, check: SND.check, ctx: SND.ctx ? SND.ctx.state : null, env: !!SND.env, match: SND.ctx && SND.env && SND.bins.length >= SND_N ? sndMatch() : null }; },   // the sound tap, for the console
     };
   } catch (e) { console.error('show: its controls failed —', e); }
   if (!SHW.d && !SHW.loading) showLoad().then(() => deskScreensDraw(true), () => deskScreensDraw(true));   // the desk's screens list the songs from the start

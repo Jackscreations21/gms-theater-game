@@ -39,13 +39,35 @@ carries #233's 14 commits**. Either #233 merges first, or #234 absorbs it.
   - `actors.check()` passes. `show.check()`'s seek equivalence passes, its references resolve and its timeline is
     monotonic. Its overall `pass: false` is the 16 channels with no unit, as before.
   - The console is clean.
-- **Seen in that test, not fixed (#233's logic):**
-  - On a BACK skip, the corrective seek lands by the browser's history again, so the show resumes about the landing
-    error away from the asked time: 1-03 ~11 s early, 1-20 ~16 s late. Sound and picture agree there: the tap's match
-    equals the offset in use.
-  - `sndTick` accepts the second check by comparing offsets, not positions. A fix would re-arm the check with the
-    corrective request, or seek by the measured position.
-  - The HUD keeps a stale "moving it" note when the clock runs into a tail before the check finishes.
+- **Two bugs that test found, now FIXED (`sndTick`, `showTail`, `showHold`):**
+  - **A back skip resumed about its landing error away from the asked time** (1-03 ~11 s early, 1-20 ~16 s late).
+    - The cause: the check kept the FIRST request's want / req. The corrective seek did land right: a played
+      stretch is off by one constant, so subtracting the measured error lands it.
+    - But the second check re-measured that same error against the old relation and moved it back again (twice,
+      at most), undoing the fix.
+    - Now each corrective seek re-arms the check with its own target and request:
+      - the target is the asked time + what the element has played since the last request;
+      - the check judges the POSITION error, within 0.25 s, with up to 3 corrective seeks.
+    - If it cannot converge, the clock stays on the measured position (sound and picture agree). The HUD then says
+      "sound synced, N s after/before the skip's time (the file would not land there)" instead of pretending.
+  - **A stale "moving it" note.** A check cut short by a tail or the interval left the note up. `showTail` /
+    `showHold` now clear the pending check and its note.
+  - `MIDTOWN.show.sound.err` is the last measured position error.
+- **Verified after the fix**, on :8095 with the soundtrack, the back targets primed by playing them first:
+  - Resume error = the show clock − (asked time + what the element played since), sampled every 0.1 s. The tap's
+    own figure is in brackets.
+
+    | skip | resume error |
+    |---|---|
+    | forward 20 min, to 1-07 | +0.01 s (0.05) |
+    | back 9.6 min, to 1-03 | +0.13 s (0.00) — it landed −6.0 s off, was moved once, then synced |
+    | across the interval, forward to 2-03 | −0.06 s (−0.07) |
+    | across the interval, back to 1-20 | +0.06 s (0.00) |
+    | 1-11 → 1-03 | +0.15 s (−0.01) — it landed −10.0 s off, was moved once, then synced |
+    | 2-20 → 2-05 | +0.12 s (0.03) |
+
+  - Into 1-23's tail mid-check, the note cleared at the tail.
+  - `actors.check()` and the show's seek equivalence pass; the console is clean.
 
 ## 2026-10-13: NOTES2 — TWO CARRY IT, A BETTER CARRY, PROP MODELS, THE ROLL CALL ON THE GALLERY (RULING FU) — PR #234
 

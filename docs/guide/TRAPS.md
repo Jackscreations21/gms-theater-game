@@ -1710,6 +1710,13 @@ against this list before opening a PR; **add new traps as you hit them.**
   time). Take several runs and drop the first before comparing a before and an after.
 - **Clicking a viewpoint button and capturing in the same script captured the old view.** Two shots taken a click apart
   in one call (`v-back`, then `v-front`) came out byte-identical. Click, let a call return, then capture.
+- **A corrective step judged against the ORIGINAL request undoes itself.** The sound tap measured a skip's landing
+  error e and seeked by −e, which was right. But the next check still computed the error from the first request's
+  want / req, saw e again, and moved it back. So a back skip resumed about e from where it was asked: 11 s, 16 s.
+  The symptom looked like the browser's history defeating the fix; it was the bookkeeping.
+  - Every corrective action must re-arm its check with the state it created: here, the target advanced by what has
+    played, and the new request.
+  - Test a closed loop by its RESULT (where it is, against an independent clock), not by its own "synced" message.
 - **A helper that rewrites a waypoint from `pos()` dropped the level.** `seg1/lib.py` `turn()` copied x and z only, so
   everyone who turned on the gallery stepped back down to the deck for that waypoint (the page's floor ray follows the `y`
   hint). It now carries `y`. Any helper that copies a position must copy `y` with it. Check a gallery scene by sampling
