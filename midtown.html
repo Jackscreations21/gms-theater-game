@@ -5023,6 +5023,9 @@ showUI = force => { showUIDesk(force); deskScreensDraw(force); };
      (assets/mannequin-woman.glb, tools/mannequin-glb.py: 1.65 m, feet at y 0, facing +Z) in the actor's own colour (a material
      per colour, ACT.mats, never one tinted in place). The paths move only the group; arms and feet, later, go under it and read
      the pose the group carries (userData.pose: speed, distance walked — FL) through an optional userData.animate.
+   - LIMBS (FS): the body is the JOINTED mannequin (assets/mannequin-woman-rig.glb, tools/mannequin-rig.py: fifteen rigid parts,
+     each turning about its joint) when it loads, and rigAnimate walks, idles, turns and carries from the pose — a pure function of
+     it, so the seek check covers the limbs; ?rig=0, or the file missing, keeps the whole mannequin.
    - WHERE (FG): every actor is a child of `ACT.group`, itself a child of the set's loaded root, as the rig is — so the waypoints
      are SET-LOCAL metres (the set GLB's own frame: upstage −z, the house +z, the deck y 0, stage right −x) and Real size / Set
      fitted scale and turn the actors with the set. The floor (FI): straight down from the path's own height + ACT_STEP through
@@ -5156,14 +5159,15 @@ function actPose(a, T) {
   if (!c.timed || T < p.T || !q || T < p.leave || q.T - p.leave <= 1e-6) {          // standing at p (before her first, at a stop, after her last)
     const k = c.timed && i > 0 && p.arrive !== null && T >= p.T ? actSmooth((T - p.T) / ACT_TURN) : 1;
     return { x: p.x, y: actFloor(p.x, p.z, p.y), z: p.z, yaw: k < 1 ? actYawLerp(p.arrive, p.yaw, k) : p.yaw, visible: !p.off, speed: 0, dist: p.dist,
-      label: c.timed && T < p.T ? actHead(a) : p.lab };
+      label: c.timed && T < p.T ? actHead(a) : p.lab,
+      turn: k < 1 ? actYawLerp(p.arrive, p.yaw, 1) - p.arrive : 0, turnK: k };          // FS: a turn on the spot (radians, how far through)
   }
   const s = c.segs[i], D = s.t1 - s.t0, t = T - s.t0;
   const [f, v] = actWarp(t, D, p.stop ? Math.min(ACT_EASE, D / 2) : 0, q.stop ? Math.min(ACT_EASE, D / 2) : 0);
   const u = actArcU(s, f), at = actCR(s, u), ref = p.y + (q.y - p.y) * f;
   let yaw = s.len > 1e-3 ? actTanYaw(s, u) : p.yaw;
   if (p.stop) yaw = actYawLerp(p.yaw, yaw, actSmooth(t / ACT_TURN));                  // out of her stance into the walk
-  return { x: at.x, y: actFloor(at.x, at.z, ref), z: at.z, yaw, visible: !(p.off && q.off), speed: v * s.len, dist: s.dist0 + f * s.len, label: p.lab };
+  return { x: at.x, y: actFloor(at.x, at.z, ref), z: at.z, yaw, visible: !(p.off && q.off), speed: v * s.len, dist: s.dist0 + f * s.len, label: p.lab, turn: 0, turnK: 1 };
 }
 // The floor under set-local (x, z) for a body at height ref: the highest surface within ACT_STEP above ref, or anything below —
 // the walk's own ray through its collision grid, in the world, back into the set's frame. Nothing under her (a hole in the scan):
@@ -5232,14 +5236,150 @@ function actBuild(a) {
   const g = new THREE.Group(); g.name = 'actor: ' + a.name; g.userData.rig = true; g.userData.actor = a.id;
   g.visible = false;                                         // until her first pose says otherwise
   ACT.dirty = true;
-  const body = new THREE.Mesh(ACT.geo, actMat(a.color)); body.name = 'body';
+  const body = RIG.parts ? rigBody(a) : new THREE.Mesh(ACT.geo, actMat(a.color)); body.name = 'body';
   body.castShadow = false; body.receiveShadow = true;      // static shadow maps: a moving caster would redraw them every frame
   body.userData.rig = true; body.userData.actor = a.id;
   g.add(body); g.userData.body = body;
+  if (RIG.parts) g.userData.animate = rigAnimate;           // FL's hook: the limbs read the pose (FS)
   a.obj = g; g.add(actTagBuild(a)); a.tag.visible = ACT.names;
   ACT.group.add(g);
 }
-function actRecolour(a) { a.obj.userData.body.material = actMat(a.color); a.obj.name = 'actor: ' + a.name; actRetag(a); ACT.dirty = true; }
+function actRecolour(a) { const m = actMat(a.color); a.obj.userData.body.traverse(o => { if (o.isMesh) o.material = m; }); a.obj.name = 'actor: ' + a.name; actRetag(a); ACT.dirty = true; }
+
+// ---- THE JOINTED BODY (RULING FS — Jack: "start working on the system for moving body parts"). assets/mannequin-woman-rig.glb
+// (tools/mannequin-rig.py): the same mannequin cut at her joints into fifteen rigid parts, each a node whose origin is its joint —
+// pelvis → spine → head; pelvis → thigh → shin → foot; spine → upper arm → forearm → hand (_L is her left, +x). One geometry per
+// part, shared by every actor; a mesh per part per actor, in the actor's colour. No skinning: a part turns about its joint.
+// THE ANIMATION (rigAnimate, through FL's userData.animate) is a PURE FUNCTION of the pose — nothing carried from frame to frame,
+// every joint set outright each time — so a seek lands the limbs where playing does (MIDTOWN.actors.check() compares them):
+//   - the GAIT's phase is the distance walked (pose.dist / RIG_GAIT.cycle: two steps of 0.65 m), so her feet keep pace with her
+//     travel at any speed; each foot follows a stance (planted: it slides back under her at her own speed) and a swing (lifted,
+//     forward), and the leg reaches it by two-bone IK (hip, knee); the pelvis dips at double support, sways over the stance foot
+//     and twists with the stride; the shoulders twist back; the arms swing opposite the legs from the shoulder, elbows a little bent;
+//   - blended by speed (RIG_GAIT.full) from the IDLE: a slow breath, a small weight shift, arms relaxed — on the show clock (pose.T),
+//     each actor her own rhythm;
+//   - STAIRS: the floor 0.35 m ahead (pose.rise, the same ray as her own) lifts the swing foot higher;
+//   - a TURN on the spot (pose.turn, pose.turnK from actPose): the head and shoulders lead the turn, the feet step round;
+//   - CARRYING a prop (pose.carry, from the props at the same time): both arms forward to the prop's near face by IK, no swing.
+// Off (?rig=0) or the rig file missing: the whole mannequin, as before (FF).
+const RIG = { url: 'assets/mannequin-woman-rig.glb', on: !/[?&]rig=0\b/.test(location.search), parts: null, J: null, len: null, err: null };
+const RIG_NAMES = ['pelvis', 'spine', 'head', 'thigh_L', 'shin_L', 'foot_L', 'thigh_R', 'shin_R', 'foot_R',
+  'upperarm_L', 'forearm_L', 'hand_L', 'upperarm_R', 'forearm_R', 'hand_R'];
+const RIG_GAIT = {
+  cycle: 1.3,      // m walked per gait cycle (two steps of 0.65 m)
+  full: 0.5,       // m/s at which the walk is all there (below it, blended with the idle; the stairs are walked at ~0.5)
+  reach: 0.29,     // m: the foot's reach ahead of (and behind) the hip in a step
+  lift: 0.07,      // m: the swing foot's lift
+  stair: 0.18,     // m: the most a rising (or falling) floor ahead adds to it
+  bob: 0.022,      // m: the pelvis's dip at double support
+  sway: 0.014,     // m: the pelvis over the stance foot
+  roll: 0.035,     // rad: the hip drop on the swing side
+  twist: 0.08,     // rad: the pelvis's turn with the stride (the shoulders turn back the other way)
+  lean: 0.05,      // rad: forward, walking
+  arm: 0.36,       // rad: the arm's swing each way
+  elbow: 0.22,     // rad: the elbow's bend walking (more on the forward swing)
+};
+function rigLoad(scene) {                                  // the GLB's nodes → the parts, their joints and the leg / arm bones
+  scene.updateMatrixWorld(true);
+  const by = {}; scene.traverse(o => { if (o.isMesh && RIG_NAMES.includes(o.name)) by[o.name] = o; });
+  const miss = RIG_NAMES.filter(n => !by[n]); if (miss.length) throw new Error(`${RIG.url}: no ${miss.join(', ')}`);
+  const J = {}; for (const n of RIG_NAMES) J[n] = by[n].getWorldPosition(new THREE.Vector3());
+  const parts = RIG_NAMES.map(n => { const o = by[n]; o.geometry.computeBoundingSphere();
+    return { name: n, parent: RIG_NAMES.includes(o.parent.name) ? o.parent.name : null, pos: o.position.clone(), geo: o.geometry }; });
+  // a bone's length and its rest angle forward of straight down, in her side view (y, z)
+  const bone = (a, b) => ({ len: Math.hypot(J[b].y - J[a].y, J[b].z - J[a].z), rest: Math.atan2(J[b].z - J[a].z, J[a].y - J[b].y) });
+  const len = {};
+  for (const s of ['L', 'R']) {
+    len['thigh_' + s] = bone('thigh_' + s, 'shin_' + s); len['shin_' + s] = bone('shin_' + s, 'foot_' + s);
+    len['upperarm_' + s] = bone('upperarm_' + s, 'forearm_' + s); len['forearm_' + s] = bone('forearm_' + s, 'hand_' + s);
+  }
+  RIG.parts = parts; RIG.J = J; RIG.len = len;
+}
+function rigBody(a) {
+  const m = actMat(a.color), body = new THREE.Group(), P = {};
+  for (const d of RIG.parts) {
+    const o = new THREE.Mesh(d.geo, m); o.name = d.name; o.position.copy(d.pos);
+    o.castShadow = false; o.receiveShadow = true; o.userData.rig = true; o.userData.actor = a.id;
+    P[d.name] = o; (d.parent ? P[d.parent] : body).add(o);
+  }
+  let h = 0; for (const ch of String(a.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  body.userData.parts = P; body.userData.seed = (h % 1000) / 1000;        // her own breath and weight shift, fixed by her id
+  return body;
+}
+// Two bones in her side view from a joint at the origin to a target (dz forward, dy up): → [the first bone's angle forward of
+// straight down, the second's]. bend +1: the middle joint forward of the line (a knee); −1: behind it (an elbow).
+function rigIK(a, b, dz, dy, bend) {
+  const D = Math.min(Math.max(Math.hypot(dz, dy), Math.abs(a - b) + 1e-4), a + b - 1e-4), phi = Math.atan2(dz, -dy);
+  const c = x => Math.min(1, Math.max(-1, x));
+  const beta = Math.acos(c((a * a + D * D - b * b) / (2 * a * D))), gamma = Math.acos(c((a * a + b * b - D * D) / (2 * a * b)));
+  const t1 = phi + bend * beta;
+  return [t1, t1 - bend * (Math.PI - gamma)];
+}
+const rigBump = (x, w) => (Math.abs(x) < w ? 0.5 + 0.5 * Math.cos(Math.PI * x / w) : 0);
+const rigFrac = x => x - Math.floor(x);
+function rigLeg(P, s, u, wk, lift, step, drop) {            // one leg at gait phase u (0 heel strike … 0.5 toe off … 1)
+  const G = RIG_GAIT, J = RIG.J, th = RIG.len['thigh_' + s], sh = RIG.len['shin_' + s];
+  let z, y, pitch;                                          // the ankle's target from its rest place (m), the foot's pitch (toes up < 0)
+  if (u < 0.5) {                                            // stance: planted, sliding back under her as she goes
+    z = G.reach * (1 - 4 * u); const heel = actSmooth((u - 0.3) / 0.2);
+    y = 0.06 * heel + 0.012 * rigBump(u, 0.12); pitch = -0.22 * rigBump(u, 0.14) + 0.55 * heel;
+  } else {                                                  // swing: lifted, carried forward
+    const v = (u - 0.5) * 2;
+    z = -G.reach * Math.cos(Math.PI * v); y = Math.max(lift * Math.sin(Math.PI * v), 0.06 * (1 - v) * (1 - v));
+    pitch = 0.55 * (1 - actSmooth(v * 1.6)) - 0.22 * actSmooth((v - 0.6) / 0.4);
+  }
+  z *= wk; y = y * wk + step; pitch *= wk;
+  const hip = J['thigh_' + s], ank = J['foot_' + s];
+  const [t1, t2] = rigIK(th.len, sh.len, (ank.z - hip.z) + z, (ank.y - hip.y) + y + drop, 1);
+  const r1 = t1 - th.rest, r2 = (t2 - sh.rest) - r1;
+  P['thigh_' + s].rotation.x = -r1; P['shin_' + s].rotation.x = -r2; P['foot_' + s].rotation.x = pitch + r1 + r2;
+}
+function rigArm(P, s, swing, elbow, carry) {
+  const ua = RIG.len['upperarm_' + s], fa = RIG.len['forearm_' + s], up = P['upperarm_' + s], fo = P['forearm_' + s];
+  if (carry) {                                              // both hands to the prop's near face, by IK (the elbow below and behind)
+    const S = RIG.J['upperarm_' + s], sx = s === 'L' ? 1 : -1;
+    const [t1, t2] = rigIK(ua.len, fa.len, carry.z - S.z, carry.y - S.y, -1);
+    const r1 = t1 - ua.rest, r2 = (t2 - fa.rest) - r1;
+    up.rotation.set(-r1, 0, sx * Math.min(0.35, Math.max(0, Math.atan2(carry.x - Math.abs(S.x), ua.len + fa.len))));
+    fo.rotation.set(-r2, 0, 0); P['hand_' + s].rotation.set(-0.25, 0, 0);
+    return;
+  }
+  up.rotation.set(-swing, 0, 0); fo.rotation.set(-elbow, 0, 0); P['hand_' + s].rotation.set(-0.1 * elbow, 0, 0);
+}
+// THE LIMBS from the pose (FL's userData.animate): pure — every joint set outright from the pose's own fields.
+function rigAnimate(p, g) {
+  const B = g.userData.body, P = B.userData.parts; if (!P || !g.visible) return;   // unseen: posed afresh when she is seen
+  const G = RIG_GAIT, seed = B.userData.seed, T = p.T || 0;
+  const wk = actSmooth(p.speed / G.full), idle = 1 - wk;
+  const uL = rigFrac(p.dist / G.cycle), uR = rigFrac(uL + 0.5);
+  const breath = Math.sin(2 * Math.PI * (T / 4.6 + seed)), shift = Math.sin(2 * Math.PI * (T / 11.3 + seed * 1.7));
+  // the turn on the spot: the feet step round (one step per ~50°, the turning side first), the head and shoulders lead it
+  let stepL = 0, stepR = 0, lead = 0;
+  if (p.turn && p.turnK < 1) {
+    const n = Math.min(3, Math.max(1, Math.ceil(Math.abs(p.turn) / 0.9))), sp = p.turnK * n, k = Math.min(n - 1, Math.floor(sp));
+    const first = p.turn > 0 ? 'L' : 'R', foot = k % 2 === 0 ? first : (first === 'L' ? 'R' : 'L'), up = 0.05 * Math.sin(Math.PI * (sp - k)) * idle;
+    if (foot === 'L') stepL = up; else stepR = up;
+    lead = p.turn * (1 - p.turnK);                          // turnK is already eased (actPose)
+  }
+  const lift = G.lift + Math.min(G.stair, Math.abs(p.rise || 0) * 0.9);
+  // the pelvis: down at double support, over the stance foot, its hip dropped on the swing side, turned with the stride
+  const drop = G.bob * wk * (0.5 + 0.5 * Math.cos(4 * Math.PI * uL));
+  const pel = P.pelvis, rest = RIG.parts[0].pos;
+  pel.position.set(rest.x + G.sway * wk * Math.sin(2 * Math.PI * uL) + 0.012 * idle * shift, rest.y - drop + 0.002 * idle * breath, rest.z);
+  pel.rotation.set(0, -G.twist * wk * Math.cos(2 * Math.PI * uL), -G.roll * wk * Math.sin(2 * Math.PI * uL) - 0.02 * idle * shift);
+  rigLeg(P, 'L', uL, wk, lift, stepL, drop); rigLeg(P, 'R', uR, wk, lift, stepR, drop);
+  P.thigh_L.rotation.z = -pel.rotation.z; P.thigh_R.rotation.z = -pel.rotation.z;   // the legs stay under her as the hips roll
+  // the spine: a lean walking, a breath standing, the shoulders turned against the hips, leading a turn; the head kept level
+  const twistS = G.twist * 1.6 * wk * Math.cos(2 * Math.PI * uL), leadS = Math.max(-0.35, Math.min(0.35, lead * 0.35));
+  P.spine.rotation.set(G.lean * wk + 0.012 * idle * breath, twistS + leadS, -pel.rotation.z * 0.7);
+  P.head.rotation.set(-0.6 * P.spine.rotation.x, -(pel.rotation.y + twistS) + Math.max(-0.6, Math.min(0.6, lead * 0.5)), -P.spine.rotation.z * 0.5 - pel.rotation.z * 0.3);
+  // the arms: opposite the legs, from the shoulder; or holding what she carries
+  const legL = Math.cos(2 * Math.PI * uL);
+  for (const [s, f] of [['L', -legL], ['R', legL]]) {
+    const sw = G.arm * wk * f;
+    rigArm(P, s, sw, G.elbow * wk * (0.6 + 0.4 * Math.max(0, f)) + 0.12 * idle, p.carry);
+  }
+}
 function actSlug(name) {
   const base = String(name || 'actor').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'actor';
   let id = base, n = 2; while (ACT.actors.some(x => x.id === id)) id = `${base}-${n++}`;
@@ -5304,11 +5444,18 @@ const actNow = () => SHW.d ? showT() : 0;
 function actUpdate(T) {
   if (SHW.d !== ACT.compiledFor) { for (const a of ACT.actors) a.c = actCompile(a); for (const p of ACT.props) p.c = propCompile(p); ACT.compiledFor = SHW.d; ACT.helpDirty = true; }
   ACT.root.updateWorldMatrix(true, false);
+  const held = RIG.parts ? propHeld(T) : null;
   for (const a of ACT.actors) {
     if (!a.c) a.c = actCompile(a);
     const p = actPose(a, T), o = a.obj;
     o.position.set(p.x, p.y, p.z); o.rotation.set(0, p.yaw, 0);
     o.visible = ACT.shown && p.visible; o.userData.pose = p; actTagSet(a, p.label); a.tag.visible = ACT.names;
+    if (held && o.visible) {                                 // FS: what the limbs read besides FL's fields — all pure functions of T
+      p.T = T;
+      p.rise = p.speed > 0.05 ? actFloor(p.x + Math.sin(p.yaw) * 0.35, p.z + Math.cos(p.yaw) * 0.35, p.y) - p.y : 0;   // the floor ahead (stairs)
+      const pr = held.get(a.id);
+      p.carry = pr ? { x: Math.min(pr.size[0] / 2, 0.2), y: Math.max(0.2, PROP_HOLD.waist - pr.size[1] / 2) + pr.size[1] / 2, z: PROP_HOLD.ahead + 0.02 } : null;
+    }
     if (typeof o.userData.animate === 'function') { try { o.userData.animate(p, o); } catch (e) { /* a limb rig's own failure never stops the show */ } }
   }
   propUpdate(T);                                             // after the actors: a carried prop rides with her pose
@@ -5425,6 +5572,18 @@ function propPose(p, T) {
   }
   return { x: w.x, y: actFloor(w.x, w.z, w.y), z: w.z, yaw: w.yaw, visible: !w.off, carrier: null };
 }
+// Who carries what at show time T (FS: her arms hold it): actor id → prop. Pure: the props' waypoints and T.
+function propHeld(T) {
+  const m = new Map();
+  for (const p of ACT.props) {
+    if (!p.c) p.c = propCompile(p);
+    const P = p.c.P; if (!P.length || T < P[0].T) continue;
+    let lo = 0, hi = P.length - 1;
+    while (lo < hi) { const k = (lo + hi + 1) >> 1; if (P[k].T <= T) lo = k; else hi = k - 1; }
+    if (P[lo].by && !P[lo].off && !m.has(P[lo].by.id)) m.set(P[lo].by.id, p);
+  }
+  return m;
+}
 function propUpdate(T) {
   for (const p of ACT.props) {
     if (!p.c) p.c = propCompile(p);
@@ -5500,8 +5659,8 @@ function actPickMarker(e) {                // → the waypoint index of the mark
 }
 function actPickActor(e) {
   actRay.setFromCamera(actNdcOf(e), camera);
-  const hits = actRay.intersectObjects(ACT.actors.filter(a => a.obj.visible).map(a => a.obj.userData.body), false);
-  return hits.length ? ACT.actors.findIndex(a => a.obj.userData.body === hits[0].object) : -1;
+  const hits = actRay.intersectObjects(ACT.actors.filter(a => a.obj.visible).map(a => a.obj.userData.body), true);   // the jointed body's parts too (FS)
+  return hits.length ? ACT.actors.findIndex(a => a.id === hits[0].object.userData.actor) : -1;
 }
 function actPickFloor(e) {                 // → set-local { x, y (the floor there), z } where the view is clicked, or null
   actRay.setFromCamera(actNdcOf(e), camera);
@@ -5761,6 +5920,10 @@ async function actInit() {
   let mesh = null; gltf.scene.traverse(o => { if (!mesh && o.isMesh) mesh = o; });
   if (!mesh) throw new Error(`${ACT_URL.model} has no mesh`);
   ACT.geo = mesh.geometry; ACT.geo.computeBoundingSphere();
+  if (RIG.on) {                                            // FS: the jointed body; without it, the whole mannequin (FF)
+    try { rigLoad((await new Promise((ok, no) => new GLTFLoader().load(RIG.url, ok, undefined, no))).scene); }
+    catch (e) { RIG.parts = null; RIG.err = String(e.message || e); console.warn('actors: no jointed body, the whole mannequin instead —', RIG.err); }
+  }
   ACT.root = root;
   ACT.group = new THREE.Group(); ACT.group.name = 'actors'; ACT.group.userData.rig = true; root.add(ACT.group);
   ACT.help = new THREE.Group(); ACT.help.name = 'blocking helpers'; ACT.help.userData.rig = true; root.add(ACT.help);
@@ -5768,7 +5931,8 @@ async function actInit() {
   actBuildPanel();
   await actLoadFile();
   ACT.btn.disabled = false; ACT.btn.title = 'Automatic actors: their paths through the show (again to hide the panel)';
-  console.info(`actors: ${ACT.actors.length} from ${ACT_URL.blocking}, the mannequin ${ACT.geo.index ? ACT.geo.index.count / 3 : ACT.geo.attributes.position.count / 3} triangles`);
+  console.info(`actors: ${ACT.actors.length} from ${ACT_URL.blocking}, the mannequin ${ACT.geo.index ? ACT.geo.index.count / 3 : ACT.geo.attributes.position.count / 3} triangles`
+    + (RIG.parts ? `, jointed (${RIG.url}: ${RIG.parts.length} parts, ${RIG.parts.reduce((n, d) => n + d.geo.index.count / 3, 0)} triangles)` : ', not jointed'));
 }
 // MIDTOWN.actors.check(): the file (tracks, times, dwells, speeds) and SEEK EQUIVALENCE — each actor at a spread of moments,
 // reached by seeking straight there and by playing the show's clock up to it from `span` s before (the frame's own path: the
@@ -5794,7 +5958,10 @@ function actCheck(opts = {}) {
   const span = opts.span ?? 8, step = opts.step || 0.1;
   if (!wasOn) showStart(false);
   SHW.playing = false;
-  const snap = () => ACT.actors.concat(ACT.props).map(a => ({ p: a.obj.position.clone(), yaw: a.obj.rotation.y, vis: a.obj.visible, tag: a.tagText }));   // the props too (FR)
+  // the limbs too (FS): every joint's angles and the pelvis's place, for a body that is seen
+  const limbs = o => { const P = o.visible && o.userData.body.userData.parts; if (!P) return null;
+    const v = [P.pelvis.position.x, P.pelvis.position.y, P.pelvis.position.z]; for (const n of RIG_NAMES) v.push(P[n].rotation.x, P[n].rotation.y, P[n].rotation.z); return v; };
+  const snap = () => ACT.actors.concat(ACT.props).map(a => ({ p: a.obj.position.clone(), yaw: a.obj.rotation.y, vis: a.obj.visible, tag: a.tagText, limbs: a.obj.userData.body ? limbs(a.obj) : null }));   // the props too (FR)
   const eq = pts.map(T => {
     T = Math.min(T, SHW.d.max);
     // SEEK first, as a jump from far away (whatever the last moment left behind must not survive it) …
@@ -5810,11 +5977,12 @@ function actCheck(opts = {}) {
       if (SHW.hold) { SHW.hold = false; showSeekT(t); }
     }
     const A = snap(), at = showT();
-    let dp = 0, dy = 0, dv = 0, dl = 0;
-    A.forEach((x, i) => { dp = Math.max(dp, x.p.distanceTo(B[i].p)); dy = Math.max(dy, Math.abs(actYawLerp(x.yaw, B[i].yaw, 1) - x.yaw)); if (x.vis !== B[i].vis) dv++; if (x.tag !== B[i].tag) dl++; });
-    return { T: +at.toFixed(3), posM: +dp.toFixed(6), yawRad: +dy.toFixed(6), visibility: dv, labels: dl };
+    let dp = 0, dy = 0, dv = 0, dl = 0, dj = 0, nj = 0;
+    A.forEach((x, i) => { dp = Math.max(dp, x.p.distanceTo(B[i].p)); dy = Math.max(dy, Math.abs(actYawLerp(x.yaw, B[i].yaw, 1) - x.yaw)); if (x.vis !== B[i].vis) dv++; if (x.tag !== B[i].tag) dl++;
+      if (x.limbs && B[i].limbs) { nj++; x.limbs.forEach((v, k) => { dj = Math.max(dj, Math.abs(v - B[i].limbs[k])); }); } else if (!x.limbs !== !B[i].limbs) dv++; });
+    return { T: +at.toFixed(3), posM: +dp.toFixed(6), yawRad: +dy.toFixed(6), visibility: dv, labels: dl, limbs: nj, limbRad: +dj.toFixed(6) };
   });
-  const pass = eq.every(e => e.posM <= 1e-4 && e.yawRad <= 1e-4 && !e.visibility && !e.labels);
+  const pass = eq.every(e => e.posM <= 1e-4 && e.yawRad <= 1e-4 && !e.visibility && !e.labels && e.limbRad <= 1e-4);
   if (wasOn) { showSeekT(wasT); if (wasPlaying) showPause(false); } else { showStop(false); showSeekT(wasT); }
   actTick(0, true);
   return { pass: pass && !problems.length, seekEquivalence: { pass, points: eq }, problems, actors: ACT.actors.map(a => ({ id: a.id, name: a.name, waypoints: a.path.length })),
@@ -5841,7 +6009,8 @@ buildLightsPanel = () => {
       pose: (id, T = actNow()) => { const a = ACT.actors.find(x => x.id === id) || ACT.actors[id]; if (!a) return null; if (!a.c) a.c = actCompile(a); ACT.root.updateWorldMatrix(true, false); return actPose(a, T); },
       select: i => actSelect(typeof i === 'number' ? i : ACT.actors.findIndex(a => a.id === i)), place: (x, z, y) => actPlace(x, z, y ?? actFloor(x, z, 0)),
       floor: (x, z, ref = 0) => actFloor(x, z, ref), check: opts => actCheck(opts), panel: on => actPanel(on !== false), drop: on => actSetDrop(on !== false),
-      group: ACT.group, state: ACT, tune: { ACT_STEP, ACT_WALK, ACT_EASE, ACT_TURN, ACT_H, PROP_HOLD, PROP_KINDS },
+      group: ACT.group, state: ACT, tune: { ACT_STEP, ACT_WALK, ACT_EASE, ACT_TURN, ACT_H, PROP_HOLD, PROP_KINDS, RIG_GAIT },
+      rig: RIG,                                              // FS: the jointed body (parts, joints, bones; null parts: the whole mannequin)
       get props() { return ACT.props.map(p => ({ id: p.id, kind: p.kind, label: p.label, size: p.size, waypoints: p.waypoints.length, pose: p.obj.userData.pose || null, visible: p.obj.visible })); },
       propPose: (id, T = actNow()) => { const p = ACT.props.find(x => x.id === id) || ACT.props[id]; if (!p) return null; if (!p.c) p.c = propCompile(p); ACT.root.updateWorldMatrix(true, false); return propPose(p, T); },
     };

@@ -1,7 +1,8 @@
 # Automatic actors — design (2026-10-12)
 
-**BINDING. Rulings FF–FR.** The next spec starts at **FS**. (FN was added the same day, from Jack's
-second message — see its section; FP–FR from his messages on the editor, the clock's edges and the props.)
+**BINDING. Rulings FF–FS.** The next spec starts at **FT**. (FN was added the same day, from Jack's
+second message — see its section; FP–FR from his messages on the editor, the clock's edges and the props; FS, the limbs, on
+2026-10-13.)
 
 These rulings were made by the building session (an agent), not answered by
 Jack in a Q&A first: he asked for the system and named the model, and every
@@ -365,3 +366,85 @@ Jack: *"make it so i can also put in props i want people to carry on like desks 
   ranges, times not increasing; warnings: placed off the stage, a carrier who is never on stage).
 - The editor edits props like actors (a Props panel: add, remove, label, kind, size, colour; waypoints dragged and added;
   "Carry from now"; a "Carried by" field), and the change file reports `prop-*` ops.
+
+### FS — The limbs: a jointed mannequin, walked by the pose
+
+Jack: *"start working on the system for moving body parts while I work on the choreo"* (earlier: *"right now just make them
+using this mannequin, later we will add arm and feet movement"*). No costumes, no faces, no per-character models.
+
+- **The rig is the same mannequin, cut.** `tools/mannequin-rig.py` (standard library) reads `assets/mannequin-woman.glb` (so it
+  needs no STL) and writes `assets/mannequin-woman-rig.glb`: **fifteen rigid parts**, each a glTF node whose origin is its joint —
+  pelvis → spine → head; pelvis → thigh → shin → foot; spine → upper arm → forearm → hand. `_L` is her left, **+x** (she faces
+  +Z). One material. **23,156 triangles, 451,116 bytes** (17,924 of scan, 4,192 of liner, 1,040 in thirteen joint balls); the frame is
+  FF's (feet at 0, front +Z, 1.65 m). Deterministic: the same input gives the same bytes. The joints are in `asset.extras.joints`.
+- **The joints are measured from the mesh** (horizontal sections; `--report` prints the working):
+
+  | joint | height (m) | how |
+  |---|---|---|
+  | ankle L / R | 0.095 / 0.100 | the leg's narrowest section 0.08–0.14 (the shoe's collar, 0.125 / 0.130) less 0.03 |
+  | knee L / R | 0.430 / 0.440 | where the leg's section centroid moves forward fastest (the kneecap; the trousers hide any narrowing) |
+  | hip L / R | 0.845 | the crotch (the two legs' sections join at 0.795) + 0.05, on the thigh's axis carried up (x ±0.106) |
+  | waist (spine on pelvis) | 0.985 | the sweater's hem |
+  | wrist L / R | 0.807 / 0.820 | the arm's narrowest section 0.76–0.86 (the cuff); x / z from the hand's own free sections below |
+  | elbow L / R | 1.045 / 1.056 | the middle of the span where the arm's section is clear of the torso (0.965–1.125 / 0.997–1.115) |
+  | shoulder L / R | 1.323 / 1.327 | the top of the arm's column (1.373 / 1.377) less 0.05, the upper arm's radius in from the outside |
+  | neck | 1.432 | the narrowest section 1.38–1.50 |
+  | fingertips L / R | 0.670 / 0.677 | the lowest section with a ring of its own outboard of the thigh |
+
+- **The cut.** Each triangle goes to one part by its centroid: an ARM if it is within 1.45 × the arm's radius of its axis
+  (shoulder–elbow–wrist–fingertips) and outboard of the shoulder's plane — but only 1.0 × on her body's side of the arm, because
+  the scan fused sleeve to body at the armpit and at the hip (the body keeps the crease); else the head above the neck, a thigh
+  below the groin line (from the crotch, rising 0.25 per metre out), split at x 0, a shin below the knee, a foot below 0.115;
+  else pelvis or spine at the waist. Teeth are voted away (a triangle two of whose neighbours agree on another part joins them),
+  every part keeps its largest piece, and flaps (two open edges) are trimmed off the rims.
+- **No holes where it is cut.** A cut scan is open: at every joint, and wherever an arm lay against her. Fan caps over those rims
+  were tried and looked torn (zigzag rims, non-manifold edges from the clustering), so each part carries a **liner**: her volume
+  voxelised at 1.8 cm (the scan rasterised, the outside flooded in), the cells wholly inside her labelled by the same rule,
+  each part's share surfaced (a cuberille, Taubin-smoothed), set 3 mm in, and kept only within 3.5 cm of that part's cut rims
+  (not the scan's own pinholes). Under a bent knee or a swung arm there is a smooth closed surface, never the sky. Each child
+  part also carries a **joint ball** at its pivot (an icosphere, 0.8 × the section's mean radius, never past the nearest point of
+  its own or its parent's surface) to fill the wedge a bend opens. Up close (about 1 m) the hip and armpit, where the scan was
+  fused, read patched when an arm swings away; from the house they read as a walking figure (`limbs/shots/`, session record).
+- **The animation is `rigAnimate`, through FL's hook, and it is a PURE FUNCTION of the pose.** Every joint is set outright each
+  frame; nothing is carried between frames. Its inputs: FL's `speed` and `dist`, and four more fields, all pure functions of
+  the show time:
+  - `T` (the show time: the idle's clock);
+  - `rise` — the floor 0.35 m ahead along her facing, less the floor under her (FI's ray; walking only);
+  - `turn`, `turnK` — from `actPose` itself: a turn on the spot (radians) and how far through it (eased);
+  - `carry` — from the props at the same T (`propHeld`): the hold point of what she carries, or null.
+
+  The body's seed (the breath's and weight shift's phase) is a hash of her id. `MIDTOWN.actors.check()` now also compares every
+  joint's angles and the pelvis's place, seek against play, for every body that is seen (limit 1e-4): it passes at 40 and at 60
+  moments (416 / 641 body-moments, worst 0). **Negative-checked:** an upper arm smoothed with its last frame's angle fails all 40
+  moments (worst 0.28 rad).
+- **The walk.** The gait's phase is the distance walked: a cycle is `RIG_GAIT.cycle` = **1.3 m** (two steps of 0.65 m), so at
+  1.3 m/s she takes two steps a second and at any speed her feet keep pace with her travel. Each foot has a **stance** (planted:
+  it slides back under her at her own speed, ±0.29 m about the hip; heel up and toes down to push off at its end) and a **swing**
+  (lifted 0.07 m, carried forward, toes up to strike); the leg reaches its ankle target by **two-bone IK** (hip, knee in front),
+  and the foot is pitched in the world, not with the shin. The pelvis dips 22 mm at double support, sways 14 mm over the stance
+  foot, drops 0.035 rad on the swing side and turns 0.08 rad with the stride; the shoulders turn back against it; the head is
+  held level and facing her way. The arms swing **opposite the legs** from the shoulder, ±0.36 rad, the elbows bent 0.13–0.22
+  rad (more on the forward swing). She leans 0.05 rad forward walking.
+- **Blended by speed** from the idle: all walk from 0.5 m/s (`RIG_GAIT.full`; the stairs are walked at about 0.5), none at 0.
+- **The idle:** a slow breath (4.6 s: the spine ±0.012 rad, the pelvis ±2 mm), a weight shift (11.3 s: the pelvis ±12 mm sideways
+  and rolled ±0.02 rad, the legs kept under her), the arms relaxed with the elbows a little bent.
+- **Stairs:** a rising (or falling) floor ahead lifts the swing foot by 0.9 × the rise, up to 0.18 m more, so she climbs with her
+  knees up (her height is still the floor ray's, FI, so the body steps riser by riser).
+- **A turn on the spot** (a stop's `facing`, over ACT_TURN): the head leads by half the turn still to go (up to 0.6 rad), the
+  shoulders by a third (up to 0.35), and the feet step round — one step per ~50° (one to three), the turning side's foot first.
+- **Carrying (FR):** both arms reach the prop's near face at its centre height (0.22 + 0.02 m in front; 1.0 m up for anything up
+  to 1.6 m tall), the hands at its sides (half its width, at most 0.2 m out), by IK with the elbows down and back; no swing. The
+  arms follow the prop's own steps (picked up and set down at its waypoint times).
+- **Seen bodies only:** an unseen actor's limbs are not posed (she is posed afresh the frame she is seen).
+- **The page:** a mesh per part per actor (geometry shared by all, the actor's colour material), under `body`, marked
+  `userData.rig` and `userData.actor`: the depth/albedo pass draws them, the labels sit as before, and the Blocking panel's click
+  finds her by any part (the pick is recursive now). **Off:** `?rig=0`, or the rig file missing or bad (a console warning) — the
+  whole mannequin, no animation, as before (checked both). `MIDTOWN.actors.rig` (parts, joints, bones),
+  `MIDTOWN.actors.tune.RIG_GAIT`.
+- **Cost, measured** (the bows, 2-23 at T 8560: 20 bodies seen, 19 walking; 1280 × 800; a synchronous frame with the pools'
+  depth pass, the GPU finished by a pixel read; this machine): **about 75 ms whole mannequin, 74–76 ms jointed** (inside the
+  run-to-run noise); `rigAnimate` for all 20: **0.10–0.16 ms**; the stairs' extra floor ray for the 19 walkers: **0.06 ms**. Draw
+  calls 1,247 → 1,527 a pass (15 meshes a body, not 1); the actors' triangles 362 k → 463 k. An earlier liner (7.5 k triangles a
+  body) cost about 9 ms here and was cut to the cut rims (4.2 k): triangles, not draw calls, are what this GPU feels.
+- **Not built** (FUTURE.md): gestures per keyframe, a skinned model, faces, costumes, per-character bodies, a stride fitted to a
+  stair's treads, feet that stay planted on a turning turntable.

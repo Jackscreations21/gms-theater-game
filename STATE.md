@@ -3,7 +3,27 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-13 (later): FIXED — "IT WASN'T LETTING ME LET SOMEONE STOP CARRYING AN OBJECT" — PR #234
+## NEWEST — 2026-10-13 (latest): THE LIMBS — THE MANNEQUIN WALKS, IDLES, TURNS AND CARRIES (RULING FS) — PR #234
+
+Jack: *"start working on the system for moving body parts while I work on the choreo."*
+
+- **The body is jointed:** `assets/mannequin-woman-rig.glb` (new, 451 KB, 23,156 triangles) is the same mannequin cut by
+  `tools/mannequin-rig.py` (new; from the committed body, no STL) into fifteen rigid parts at joints MEASURED from the mesh
+  (ankle 0.095 / 0.100, knee 0.430 / 0.440, hip 0.845, waist 0.985, wrist 0.807 / 0.820, elbow 1.045 / 1.056, shoulder
+  1.323 / 1.327, neck 1.432 m), with a voxel liner under every cut and a ball at every joint.
+- **`midtown.html` animates it** through FL's hook (`rigAnimate`), a pure function of the pose: the walk's phase is the
+  distance walked (two 0.65 m steps a cycle, feet planted by two-bone IK, pelvis bob / sway / twist, arms opposite), blended
+  by speed from an idle (breath, weight shift); stairs lift the knee (the floor 0.35 m ahead); a turn on the spot leads with
+  the head and steps round; a carried prop takes both arms forward. `?rig=0` or a missing file: the whole mannequin as before.
+- **Checked on my own port (8113 / 8114, not 8093):** `MIDTOWN.actors.check()` passes with the limbs compared too (40 and 60
+  moments, 416 / 641 body-moments, worst 0); negative-checked (a smoothed arm fails all 40). Frame cost at the bows (20
+  bodies): ~75 ms → 74–76 ms a synchronous frame on this machine (noise); the limbs 0.10–0.16 ms, the stair ray 0.06 ms.
+  Shots: session scratch `limbs/shots/` (a walk from the side and front, Washington's real walk, Hamilton's stair climb,
+  a turn, an idle, a carried desk, the house).
+- Up close the fused hip and armpit read patched when an arm swings away (FUTURE.md). Suites not run (no Node; nothing in
+  `src/`).
+
+## 2026-10-13 (later): FIXED — "IT WASN'T LETTING ME LET SOMEONE STOP CARRYING AN OBJECT" — PR #234
 
 - **Cause:** a carried square was drawn under its carrier's dot, only d/2 + 0.22 m ahead of her, and the hit test takes the
   nearest centre: 45 % of a desk's visible square (more for a chair or a lantern, all of it at small zoom) grabbed the

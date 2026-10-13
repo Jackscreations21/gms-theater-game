@@ -1672,3 +1672,28 @@ against this list before opening a PR; **add new traps as you hit them.**
   The page's check now skips them, as the merge always did; keep the two checks' rules the same.
 - **At "Set fitted" the set has holes the cuts made at that scale**, so a floor ray that finds the gallery at
   real size can fall through to the deck there. Author blocking at Real size (the default).
+
+## From the limbs round (2026-10-13)
+
+- **The decimated mannequin is not a clean manifold.** `assets/mannequin-woman.glb` (quadric clustering) has 608
+  non-manifold edges and 333 open ones. Cutting it into parts and capping each part's open loops with fans failed three
+  ways: loops break at pinched vertices, a zigzag rim's area vector points either way (so a whole cap comes out inside-out,
+  dark or see-through), and a fan over a long contact patch is spikes. `tools/mannequin-rig.py` closes the cuts with a
+  voxel LINER instead (RULING FS). If you ever fan-cap a scan, wind each fan triangle on its own toward an outward
+  reference, never the loop as a whole.
+- **A voxel surface built from the cells the scan passes through sits OUTSIDE the scan** (by up to a cell) and pokes through
+  it everywhere — a blotchy second skin. Build it from the cells wholly inside (not the shell), then set it a few mm in.
+- **A scan with the arms against the body has no surface there.** The sleeve was fused to the hip and the armpit; whatever
+  rule cuts the arm off, the body's side under it does not exist in the scan. Give the crease to the BODY (a tighter
+  distance rule on the body's side of the arm): a hole in the arm's inner side faces the body and is seldom seen, a hole
+  in her side faces the house.
+- **An `animate` that skips unseen bodies leaves their limbs stale**, so a limb comparison that includes unseen bodies fails
+  for no reason. `MIDTOWN.actors.check()` compares limbs only for bodies seen on both sides (a seen / unseen disagreement
+  is counted as a visibility failure).
+- **The first timing run after a page load is ~10 ms high** (75 ms frames read 84–104 on the first of three runs, every
+  time). Take several runs and drop the first before comparing a before and an after.
+- **Clicking a viewpoint button and capturing in the same script captured the old view.** Two shots taken a click apart
+  in one call (`v-back`, then `v-front`) came out byte-identical. Click, let a call return, then capture.
+- **This machine's Bash tool rejected a heredoc** (`unexpected EOF while looking for matching '`) whose body held apostrophes
+  or a `'''`, even with the delimiter quoted — the command never ran. Write the text to a scratch file with the Write tool
+  and `cat` it, or patch with a small Python script that reads its replacement text from a file.

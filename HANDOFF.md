@@ -238,10 +238,16 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
 3. **Watch it with him, music on** (below). His notes go into the segment files in the session scratch or straight into
    `assets/hamilton-show.json`.
 4. Rule the rig placements (FUTURE.md), then the older list.
-5. **The automatic actors (branch `actors`, RULINGS FF–FR, the next spec starts at FS):** PR #234 is open beside #233 —
+5. **The automatic actors (branch `actors`, RULINGS FF–FS, the next spec starts at FT):** PR #234 is open beside #233 —
    the whole show is blocked. Play it with him (Show → Play), and give him `blocking.html` for corrections: its change
    file says what to change, and a correction goes into the segment's generator in `tools/blocking/`, then the merge. Put `docs/hamilton-blocking-cue-notes.md` in front of him:
    his two rulings (1-05 sisters, 2-22 duel sides) and the cue fixes. Ask the mannequin's licence/origin.
+
+## DONE — 2026-10-13 (latest): the limbs — a jointed mannequin that walks, idles, turns and carries (PR #234, RULING FS)
+
+- `tools/mannequin-rig.py` → `assets/mannequin-woman-rig.glb` (fifteen parts, joints measured from the mesh, a liner under
+  the cuts); `midtown.html`'s `rigAnimate` through FL's hook, a pure function of the pose; `check()` compares the limbs.
+  `?rig=0` keeps the whole mannequin. Next: gestures per keyframe (FUTURE.md), when Jack's choreography asks for them.
 
 ## DONE — 2026-10-13: Simple mode — selection, delete a track in a song or from now on, delete a keyframe (PR #234)
 

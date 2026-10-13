@@ -585,11 +585,20 @@ it does not do yet, and what the ETC pack could still give:
 and stuff. Right now just make them using this mannequin but later we will add arm and feet movement."*
 The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocking.json`, the spec). NOT built:
 
-- **Arms and feet.** The hook is ruled (FL): `group.userData.pose` carries `speed` and `dist` (the distance
-  walked — the gait phase, a pure function of show time), and `group.userData.animate(pose, group)` is called
-  every frame. Wants a rigged body (skinned, or the mannequin cut into limbs at hips/knees/shoulders/elbows)
-  in the same frame (feet 0, front +Z, 1.65 m). Open: a rigged model from where (Mixamo-style, or cut this one)?
-  A walk cycle only, or gestures per waypoint too (a `pose` key on a waypoint)?
+- **Arms and feet — BUILT (RULING FS, 2026-10-13):** the mannequin cut into fifteen rigid parts
+  (`assets/mannequin-woman-rig.glb`, `tools/mannequin-rig.py`), a walk / idle / turn / carry from the pose. NOT built:
+  - **Gestures per keyframe** — a `gesture` (or `pose`) key on a waypoint (point, arms crossed, hand on hip, a bow,
+    sit, kneel, the duel's raised pistol), blended in over a fixed time from the waypoint's time so it stays a pure
+    function of show time. Open: Jack's list of gestures, and whether the editor (`blocking.html`) gets a picker.
+  - **A rigged, skinned model** (Mixamo-style), which would bend at the joints instead of showing the cut; the
+    rig's part names and joints (FS) are the skeleton it would have to match.
+  - **Faces, costumes, per-character bodies** (men's bodies, heights): a `model` key per actor, a body swap (FL).
+  - **The fused hip and armpit** read patched up close (about 1 m) when an arm swings away: the scan has no surface
+    there and the liner is a smoothed voxel stand-in. A better liner (finer, or a fitted surface), or a body scanned
+    with her arms away from her sides, would fix it.
+  - **A stride fitted to a stair's treads** (today the gait's 1.3 m cycle is kept on stairs, and her height steps
+    riser by riser with the floor ray, FI); **feet planted on a turning turntable** (with the turntables, below).
+  - **Running.** Above ~2.5 m/s the walk just goes faster (a run has a flight phase and more knee).
 - **Per-character models.** A `model` key per actor in the file; today every actor wears the mannequin in her
   own colour. Open: men's bodies, costumes, heights per character.
 - **Riding the turntables.** The two turntables do not turn yet (their moves are in no file — FUTURE's Hamilton
