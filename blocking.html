@@ -635,7 +635,7 @@ function initAudio() {
     AU.toc = Math.abs(AU.el.duration - k.duration) < 3 ? k : null;           // the table is this file's alone
     AU.ready = true;
     AU.note = `${AU.label} · ${mmss(AU.el.duration)}${AU.toc ? ' · seeks corrected (Chrome VBR table)' : ''}`;
-    if (AU.ready) audioSync(true);
+    if (AU.ready) { if (S.playing) S.clock = clockFor(S.T); audioSync(true); }
     S.uiDirty = true;
   });
   AU.el.addEventListener('error', () => { AU.ready = false; AU.note = 'the audio would not play — silent clock'; S.uiDirty = true; });
@@ -692,17 +692,30 @@ function audioSync(force) {                            // the element to the clo
 }
 
 // ================================================================ transport
+// WHICH CLOCK (Jack: "the sound is getting out of sync and it isn't resyncing itself anymore"). S.clock is 'audio' while the
+// soundtrack plays the show: the clock IS the element's currentTime (+ the seek table's offset), read every frame, across the
+// album's track boundaries and the silences between them, with no seek. It is 'silent' only in a lead-in, a tail, or with no
+// file, and hands over to the element (one seek) the moment the music should start. The bug: at each track's end the clock was
+// clamped to len − 1 ms, which the "is this music?" test counted as NOT music, so the next frame ran the silent clock across
+// the boundary and then force-SEEKED the element into the next track — a re-seek every song, each landing where Chrome's VBR
+// index put it and each stalling the clock while it seeked, so the clock and the sound drifted apart (1,125 s in 1,231 s).
+const clockFor = T => useAudio() && inMusic(T) ? 'audio' : 'silent';
 function seek(T) {
   T = Math.max(0, T); S.T = T; S.hold = null;
   if (locate(T).tr.id === S.tracks[S.tracks.length - 1].id) S.tailView = Math.max(S.tailView, T - S.end + 10);
+  S.clock = clockFor(T);
   audioSync(true); S.dirty = true; S.uiDirty = true; S.listDirty = true;
 }
 function setPlaying(on) {                                // called from the Play click itself, so its play() carries the gesture (autoplay policy)
   S.playing = on; S.hold = null; AU.blocked = false;
   if (AU.ready) AU.note = `${AU.label} · ${mmss(AU.el.duration)}${AU.toc ? ' · seeks corrected (Chrome VBR table)' : ''}`;
-  audioSync(true); S.uiDirty = true;
+  if (on) S.clock = clockFor(S.T);
+  audioSync(false); S.uiDirty = true;                    // a resume does not re-seek an element already where the clock is
 }
 function audioStatus() {                                 // the Music line: what is (and is not) sounding, and why
+  return `clock: ${S.playing ? S.clock : clockFor(S.T)} · ` + audioStatus0();
+}
+function audioStatus0() {
   if (AU.mode === 'none') return 'silent clock (chosen)';
   if (AU.loading) return `${AU.note}${S.playing ? ' — the clock runs silent until it lands, then the music joins' : ''}`;
   if (!AU.ready) return AU.note;
@@ -714,23 +727,25 @@ function audioStatus() {                                 // the Music line: what
 function tick(dt) {                                     // the frame's clock: the music's own time while it plays; the frame dt in a lead-in, a tail, or silence
   if (!S.playing) return;
   const was = locate(S.T);
-  if (useAudio() && inMusic(S.T)) {
+  if (S.clock === 'audio' && useAudio()) {               // THE ELEMENT IS THE CLOCK
     const A = AU.el;
-    if (A.paused && !A.seeking && !AU.blocked) audioSync(true);
-    if (A.readyState >= 1 && !A.seeking && !A.paused) {
+    if (A.paused && !A.seeking && !AU.blocked) A.play().catch(() => {});      // resumed (or stopped by the browser): play on, never re-seek
+    if (A.readyState >= 1 && !A.seeking) {
       const ft = A.currentTime + AU.off, tr = S.tracks;
       let i = was.tr.i;
       while (i + 1 < tr.length && tr[i + 1].file !== null && tr[i + 1].file <= ft + 1e-3 && !tr[i + 1].hold) i++;
       while (i > 0 && tr[i].file > ft + 1e-3) i--;
       const at = ft - tr[i].file;
-      if (at >= tr[i].len - 1e-3 && tr[i].post > 0) { S.T = tr[i].start + tr[i].len; A.pause(); }      // into the tail (FQ): the clock runs on, silent
-      else S.T = tr[i].start + clamp(at, 0, tr[i].len - 1e-3);
+      if (at >= tr[i].len && tr[i].post > 0) { S.T = tr[i].start + tr[i].len; A.pause(); S.clock = 'silent'; }   // into a tail (FQ): the clock runs on, silent
+      else if (A.ended) { S.T = tr[i].start + tr[i].len; S.clock = 'silent'; }
+      else S.T = tr[i].start + clamp(at, 0, tr[i].len);                          // in the silence between two songs the clock waits at the end of the first
+      AU.lastRead = { ft, T: S.T, wall: performance.now() };
     }
-  } else {
+  } else {                                               // the silent clock: a lead-in, a tail, no file
     S.T += dt;
     const now = locate(S.T);
-    if (now.tr.hold && now.tr !== was.tr) { S.T = now.tr.start - now.tr.pre; S.playing = false; S.hold = now.tr; }   // the interval: wait for Play
-    else if (inMusic(S.T)) audioSync(true);                                                                        // a lead-in is over: the music starts
+    if (now.tr.hold && now.tr !== was.tr) { S.T = now.tr.start - now.tr.pre; S.playing = false; S.hold = now.tr; S.clock = 'silent'; }   // the interval: wait for Play
+    else if (useAudio() && inMusic(S.T)) { S.clock = 'audio'; audioSync(true); }                                                     // a lead-in is over: the element takes the clock
   }
   const last = S.tracks[S.tracks.length - 1];
   if (S.T > S.end + S.tailView - 5) S.tailView += 30;                         // 2-23's open tail grows as the clock runs on
@@ -1728,7 +1743,7 @@ $('prevtr').onclick = () => { const { tr, at } = locate(S.T); const t = at > -tr
 $('nexttr').onclick = () => { const t = S.tracks[Math.min(S.tracks.length - 1, curTrack().i + 1)]; seek(t.start - t.pre); };
 $('tailmore').onclick = () => { S.tailView += 30; S.dirty = true; S.uiDirty = true; };
 $('vol').oninput = e => { AU.el.volume = +e.target.value; };
-$('audsrc').onchange = e => { AU.mode = e.target.value; audioSync(true); S.uiDirty = true; };
+$('audsrc').onchange = e => { AU.mode = e.target.value; S.clock = clockFor(S.T); audioSync(true); S.uiDirty = true; };
 $('pickaud').onclick = () => $('audfile').click();
 $('audfile').onchange = e => { const f = e.target.files[0]; if (!f) return; AU.mode = 'file'; $('audsrc').value = 'file'; setAudioSrc(URL.createObjectURL(f), f.name); };
 $('loadbtn').onclick = () => $('loadfile').click();
@@ -1876,7 +1891,7 @@ new ResizeObserver(resize).observe($('planwrap'));
 // will do. The recording is saved to this browser at every keyframe and comes back on reload; Export writes it as a file.
 const REC_KEY = 'hamilton-blocking-recording-1';
 const FURNITURE = ['desk', 'table', 'chair', 'bench', 'stool', 'box', 'crate', 'lantern', 'bucket'];
-Object.assign(S, { selSet: new Set(), box: null, mode: 'simple', rec: { tracks: {}, furniture: [] }, recUndo: [], eff: null, effP: null, sDrag: null, sHover: null, sSel: null, simpleHits: [], carryBtn: null, lvSimple: null });
+Object.assign(S, { clock: 'silent', selSet: new Set(), box: null, mode: 'simple', rec: { tracks: {}, furniture: [] }, recUndo: [], eff: null, effP: null, sDrag: null, sHover: null, sSel: null, simpleHits: [], carryBtn: null, lvSimple: null });
 const recTrack = (tid, make) => { let R = S.rec.tracks[tid]; if (!R && make) R = S.rec.tracks[tid] = { cleared: false, actors: {}, props: {} }; return R; };
 function recChanged() { S.eff = null; S.effP = null; S.dirty = S.uiDirty = S.listDirty = true; saveRec(); }
 function recDo(fn) { S.recUndo.push(toJ(S.rec)); if (S.recUndo.length > 1000) S.recUndo.shift(); fn(); recChanged(); }

@@ -3,7 +3,21 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-13 (review 2 merged): THE ENSEMBLE CUT BACK, THE FURNITURE CARRIED, PROPS GLIDE (RULING FT) — PR #234
+## NEWEST — 2026-10-13 (latest): FIXED — THE EDITOR'S SOUND DRIFTING OUT OF SYNC (blocking.html) — PR #234
+
+Jack: *"the sound is getting out of sync and it isn't resyncing itself anymore."*
+
+- **Cause:** each song's clock was clamped to its length − 1 ms, which the music test counted as not-music, so the silent
+  clock crossed every song boundary and then force-SEEKED the element into the next song (2 seeks per boundary, measured on
+  the old build); each seek landed by Chrome's VBR index and stalled the clock — the drift the soak saw (1,125 s in 1,231 s).
+- **Fix:** `S.clock` is 'audio' while the element plays — the clock IS `currentTime` + the seek offset, every frame, across
+  boundaries and the silences between songs, never re-seeked; 'silent' only for lead-ins, tails, no file; one seek hands
+  over. A resume does not re-seek. The Music line shows "clock: audio / silent".
+- Checked on localhost:8093: 1-01 → 1-02 with 0 seeks and clock = element; the lead-in hands over at 0:00 (1 seek); pause /
+  resume 0 seeks; a scrub during play 1 seek then exact; 5 s with no frames then one frame: exact; 1-23's tail goes silent,
+  the interval holds at 2-01 −10, its lead-in hands over at 0 (1 seek). The envelope resync stays on `cue-blackouts`.
+
+## 2026-10-13 (review 2 merged): THE ENSEMBLE CUT BACK, THE FURNITURE CARRIED, PROPS GLIDE (RULING FT) — PR #234
 
 Jack watched the blocking: *"the ensemble is used far too much and much of the choreography is wrong"*. He wanted the
 furniture carried on by named people at named cues. Eight reviewers edited the eight generators and their own

@@ -1666,6 +1666,12 @@ against this list before opening a PR; **add new traps as you hit them.**
   set above 0: six Color Force channels (764, 766, 803–806) sit at 57 % through Act One's end, but no unit answers them (no
   `type` in the Eos file, not in the rig), so eleven of the page's blackouts — the end of Non-Stop among them — read "lit".
   Count only the channels a unit in `assets/hamilton-rig.json` answers; then all 892 cues agree with the page's own dump.
+- **A clock that clamps to "just before the end" and then asks "is this the music?" re-seeks at every boundary.** The
+  editor clamped each song's clock to its length − 1 ms, and its music test was `at < length − 1 ms`: false there, so the next
+  frame ran the silent clock across the boundary and force-seeked the element into the next song — two seeks per song
+  boundary, each landing by Chrome's VBR index and stalling the clock, so sound and clock drifted (1,125 s in 1,231 s). While the
+  element plays, IT is the clock (`S.clock = 'audio'`), across boundaries, with no seek; the silent clock is for lead-ins,
+  tails and no file only.
 - **A hit test by "nearest centre" steals clicks from a small shape drawn beside a big one.** In the editor's Simple mode a
   carried prop's square sat d/2 + 0.22 m ahead of its carrier, drawn UNDER her dot; a press on the half of the square nearer
   her centre found her (45 % of a desk's visible square at 48 px/m), so Jack dragged the person and could not put the prop
