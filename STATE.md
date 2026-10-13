@@ -90,7 +90,11 @@ come off right before the table comes on"*; *"the table should come off about ha
 - **1-01.**
   - The clerk's table is carried on and off between ens7 and ens6. The cousin strikes the chair. Lafayette steps off
     DSR while they pass.
-  - The roll-call singers sing from the upstage gallery and stay there for the line-up. Burr sings Q65 at (0, 2.5).
+  - The roll-call singers sing from the galleries and stay there for the line-up. Burr sings Q65 at (0, 2.5).
+    - Re-placed by an eyewitness account (Jack's Reddit notes): Lafayette and Mulligan side by side at the upstage
+      gallery's centre (∓0.5), Laurens at 2.2.
+    - The three sisters are on the SL end balcony (Guns and Ships' balcony, about (5.3, 2.3)); Washington is on the
+      SR balcony (−5.5, 2.2).
   - **Crowding:** the deck's centre third (|x| < 1.83) held up to 10 bodies, more than 8 at four moments. Now it never
     holds more than 8:
     - Q45 closes in an oval (it was a 2 m circle);

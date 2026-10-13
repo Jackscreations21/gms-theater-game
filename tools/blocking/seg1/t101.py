@@ -246,8 +246,8 @@ def build():
     move('angelica', A(179.5), A(181.8), (-4.6, 2.4), f=70)
     # REVIEW: two of the company UL, the rest SR, so Peggy comes down the SL stair clear of them
     # NOTES2 (Jack: "too crowded"): none of them in the centre third now (was five, nine bodies there in all)
-    jslots = [(-3.6, 1.2), (-2.3, 1.3), (-4.0, -0.2), (-2.6, -0.3), (-3.3, 2.9),
-              (4.5, 0.3), (4.6, 1.5), (4.3, 2.9), (1.0, -1.3), (0.9, 0.0)]   # SL: clear of the stair walkers at Q60
+    jslots = [(-3.3, 2.0), (-2.3, 1.3), (-4.0, -0.2), (-2.6, -0.3), (-3.3, 2.9),
+              (4.5, 0.3), (4.6, 1.5), (4.3, 2.9), (1.2, -0.5), (0.9, 0.0)]   # SL: clear of the stair walkers at Q60
     form(E, jslots, A(179.5), A(182.4), face=0)
     # Peggy comes down the SL stair (Q59 193.7 the held note)
     for a, tl, hold in (('peggy', 187.4, (4.0, -0.8)),):
@@ -260,33 +260,45 @@ def build():
 
     # ---- Q60 201.2 the company turns toward him: Hamilton to the centre shaft
     # NOTES2 (Jack): "everyone who has one of those lines is on the balcony except Burr who is at center stage
-    # when he does his line." The roll-call singers climb to the UPSTAGE GALLERY (z -3.35) and sing from there:
-    # SR stair: Angelica -2.9, Lafayette (Jefferson) -3.9; the passage: Washington 0.0; SL stair: Peggy 1.3,
-    # Eliza 2.2, Mulligan (Madison) 3.1, Laurens 4.0 (the first up walks furthest, so nobody passes). They stay
-    # up there for the line-up (the gallery is their line) and go off by the passage in the blackout. The
-    # company and Burr make a looser ring round him on the deck.
+    # when he does his line." Placed by an eyewitness account (Jack's Reddit notes, `hamilton choreo info.txt`
+    # 144-150, whose right / left are the AUDIENCE's): Lafayette (Jefferson) and Mulligan (Madison) side by side on the
+    # upper level near centre, Laurens a person's length to THEIR audience-right (stage left); the three sisters as
+    # a group on the audience-right end balcony (the SL arm, Guns and Ships' balcony, about (5.49, 2.36)); Washington
+    # on the audience-left balcony (the SR arm); Burr at centre stage. They stay up there for the line-up and go off
+    # along the galleries in the blackout. The company and Burr make a looser ring round him on the deck.
     # LIGHT: the roll-call specials (ch47/49/51 Q61, ch51 Q62, ch12 Q63, ch52/48 Q64) are on the DECK; they want
-    # refocusing to these gallery spots, and Burr's AF (ch2, Q65) to centre (0, 2.5) (docs/hamilton-blocking-cue-notes.md).
+    # refocusing to these spots, and Burr's AF (ch2, Q65) to centre (0, 2.5) (docs/hamilton-blocking-cue-notes.md).
     move('hamilton', A(201.2), A(204.0), (0.0, 1.0), f=0)
-    GSP = {'angelica': -2.9, 'lafayette': -3.9, 'washington': 0.0, 'peggy': 1.3, 'eliza': 2.2, 'mulligan': 3.1, 'laurens': 4.0}
-    for a, tl, v in (('angelica', 201.2, 1.0), ('lafayette', 201.4, 1.4)):          # up the SR stair
-        t1 = tl + dist(pos(a), (-4.5, 1.85)) / v
-        move(a, A(tl), A(t1), (-4.5, 1.85), d=0)
-        via(a, A(t1 + 4.0), (-4.5, -0.3), y=GAL)
-        via(a, A(t1 + 6.3), (-4.5, -3.35), y=GAL)
-        put(a, A(t1 + 6.3 + abs(GSP[a] + 4.5) / 1.4 + 0.1), (GSP[a], -3.35), f=0, y=GAL)
-    for a, tl, v in (('peggy', 200.6, 1.5), ('eliza', 201.0, 1.5), ('mulligan', 201.2, 1.6), ('laurens', 201.6, 1.6)):   # the SL stair
+    GSP = {'lafayette': (-0.5, -3.35), 'mulligan': (0.5, -3.35), 'laurens': (2.2, -3.35),      # the upstage gallery
+           'peggy': (5.1, 2.9), 'eliza': (5.55, 2.3), 'angelica': (5.1, 1.7),                    # the SL end balcony
+           'washington': (-5.5, 2.2)}                                                           # the SR balcony
+    # Lafayette, then Mulligan: out by the deck door and up through the passage (Lafayette first: he goes furthest)
+    for a, tl, v, tg in (('lafayette', 201.2, 1.9, 206.8), ('mulligan', 202.6, 1.6, 208.2)):
+        t1 = tl + dist(pos(a), WINGS['D_UC']) / v
+        move(a, A(tl), A(t1), WINGS['D_UC']); W[a][-1]['off'] = True
+        put(a, A(tg), G_UC, off=True, y=GAL); W[a][-1]['d'] = 0
+        via(a, A(tg + 1.2), (0.6, -3.35), y=GAL)
+        put(a, A(tg + 1.2 + dist((0.6, -3.35), GSP[a]) / 1.3 + 0.1), GSP[a], f=0, y=GAL)
+    # up the SL stair, one at a time: the sisters turn down the SL arm to the end balcony (the first up walks furthest),
+    # Laurens goes along the upstage gallery
+    for a, tl, v in (('peggy', 200.6, 1.5), ('eliza', 201.0, 1.5), ('laurens', 201.4, 1.65), ('angelica', 201.2, 1.65)):
         t1 = tl + dist(pos(a), (2.2, -2.45)) / v
         move(a, A(tl), A(t1), (2.2, -2.45), d=0)
         via(a, A(t1 + 4.0), (4.5, -2.45), y=GAL)
-        via(a, A(t1 + 4.7), (4.75, -3.1), y=GAL)
-        put(a, A(t1 + 4.7 + dist((4.75, -3.1), (GSP[a], -3.35)) / 1.4 + 0.1), (GSP[a], -3.35), f=0, y=GAL)
-    # Washington out by the deck door and up through the passage, to the middle of the gallery
-    move('washington', A(201.2), A(203.8), WINGS['D_UC'])
-    W['washington'][-1]['off'] = True
-    put('washington', A(205.4), G_UC, off=True, y=GAL); W['washington'][-1]['d'] = 0
-    via('washington', A(206.6), (0.6, -3.35), y=GAL)
-    put('washington', A(207.2), (GSP['washington'], -3.35), f=0, y=GAL)
+        if a == 'laurens':
+            via(a, A(t1 + 4.7), (4.75, -3.1), y=GAL)
+            put(a, A(t1 + 4.7 + dist((4.75, -3.1), GSP[a]) / 1.4 + 0.1), GSP[a], f=0, y=GAL)
+        else:
+            via(a, A(t1 + 4.6), (4.85, -1.9), y=GAL)
+            via(a, A(t1 + 6.8), (4.85, 1.0), y=GAL)
+            put(a, A(t1 + 6.8 + dist((4.85, 1.0), GSP[a]) / 1.3 + 0.1), GSP[a], f=-60, y=GAL)
+    # Washington up the SR stair and round the landing onto the SR balcony
+    t1 = 201.2 + dist(pos('washington'), (-4.5, 1.85)) / 1.6
+    move('washington', A(201.2), A(t1), (-4.5, 1.85), d=0)
+    via('washington', A(t1 + 4.0), (-4.5, -0.3), y=GAL)
+    via('washington', A(t1 + 5.2), (-6.2, -0.5), y=GAL)
+    via('washington', A(t1 + 6.6), (-6.2, 1.2), y=GAL)
+    put('washington', A(t1 + 6.6 + dist((-6.2, 1.2), GSP['washington']) / 1.3 + 0.1), GSP['washington'], f=60, y=GAL)
     # the deck ring: Burr (his AF side) and the company, evenly round him, the downstage centre left open
     p = ring(3.4, 210)
     move('burr', A(201.2), A(204.6), p, f=face_to(p, C, 135))
@@ -294,7 +306,7 @@ def build():
     m = assign(E, [ring(3.2, th) for th in es])
     turn(E, A(201.2), lambda a, q: face_to(q, C, 150))
     for a in E:     # once the singers are past them on their way to the stairs
-        move(a, A(204.8), A(208.0), m[a], f=face_to(m[a], C, 135))
+        move(a, A(206.8), A(210.0), m[a], f=face_to(m[a], C, 135))
 
     # ---- Q61 212.0 the friends, Q62 214.0 Laurens alone, Q63 215.9 Washington, Q64 217.4 the women: each sings
     # from the gallery (NOTES2), turned a little toward him
@@ -324,11 +336,18 @@ def build():
     UPW = ['W_MSR', 'W_MSL', 'W_USR', 'W_USL', 'D_UC']
     for a in E:     # REVIEW: the row behind goes off upstage, the line downstage, so nobody crosses in the dark
         exit_(a, A(234.0) + 0.25 * ENS.index(a), nearest_wing(pos(a), UPW), speed=2.4)
-    # NOTES2: the gallery off by the passage, the nearest first; then parked at a downstage wing, as before
-    for k, a in enumerate(sorted(GSP, key=lambda a: abs(GSP[a] - 0.6))):
+    # NOTES2: off along the galleries in the dark: the upstage three by the passage, the sisters off the SL arm's end,
+    # Washington off the SR arm's; then parked at a downstage wing, as before
+    for k, a in enumerate(('mulligan', 'lafayette', 'laurens')):
         tl = 234.0 + 0.55 * k
-        t1 = tl + abs(GSP[a] - 0.6) / 2.0 + 0.15
+        t1 = tl + dist(GSP[a], (0.6, -3.35)) / 2.0 + 0.15
         move(a, A(tl), A(t1), (0.6, -3.35), d=0, y=GAL)
         put(a, A(t1 + 0.7), G_UC, off=True, y=GAL)
-        put(a, A(t1 + 1.0), WINGS['W_DSR' if GSP[a] < 0 else 'W_DSL'], off=True)
+        put(a, A(t1 + 1.0), WINGS['W_DSL'], off=True)
+    for k, (a, edge, wing) in enumerate((('eliza', (6.5, 2.4), 'W_DSL'), ('peggy', (6.5, 2.4), 'W_DSL'), ('angelica', (6.5, 2.4), 'W_DSL'),
+                                         ('washington', (-6.5, 2.4), 'W_DSR'))):
+        tl = 234.0 + (0.6 * k if a != 'washington' else 0)
+        t1 = tl + dist(GSP[a], edge) / 2.0 + 0.15
+        move(a, A(tl), A(t1), edge, y=GAL); W[a][-1]['off'] = True
+        put(a, A(t1 + 0.3), WINGS[wing], off=True)
     exit_('hamilton', A(234.0), 'W_DSL', speed=2.4)

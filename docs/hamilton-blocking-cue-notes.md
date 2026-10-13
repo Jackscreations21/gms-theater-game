@@ -64,8 +64,15 @@ the landing points in the new one.
 
 - **1-01 Q61–Q65, the roll call ("I fought with him", "I died for him", "I trusted him", "I loved him").** Jack: *"everyone
   who has one of those lines is on the balcony except Burr who is at center stage when he does his line."*
-  - The singers now stand on the UPSTAGE GALLERY (z −3.35). From SR to SL: Lafayette (Jefferson) −3.9, Angelica −2.9,
-    Washington 0.0, Peggy 1.3, Eliza 2.2, Mulligan (Madison) 3.1, Laurens 4.0. They stay up there for the line-up.
+  - The singers sing from the galleries, placed by an eyewitness account (Jack's Reddit notes, `hamilton choreo
+    info.txt` lines 144–150; its right and left are the audience's). All at y 2.74:
+    - Lafayette (Jefferson) at (−0.5, −3.35) and Mulligan (Madison) at (0.5, −3.35), side by side near the centre of
+      the upstage gallery;
+    - Laurens at (2.2, −3.35), a person's length to their stage left;
+    - the three sisters as a group on the SL end balcony (Guns and Ships' balcony): Angelica (5.1, 1.7), Eliza
+      (5.55, 2.3), Peggy (5.1, 2.9);
+    - Washington on the SR balcony at (−5.5, 2.2).
+  - They stay up there for the line-up.
   - Burr sings Q65 at centre, (0, 2.5), downstage of Hamilton in the centre shaft at (0, 1.0).
   - **The cues still light the deck**:
     - Q61 ch47 / ch49 / ch51 at (−2.76, 3.06), (−0.60, 3.47), (1.99, 3.27);
@@ -77,8 +84,14 @@ the landing points in the new one.
   - On the gallery, Q61–Q64 light only VL3500 ch74, at (1.9, −3.61) and level 0.3.
   - Q66's line-up does light the whole gallery, ch181–ch192 at 0.6, so the singers are lit there for it.
   - **Wanted:**
-    - refocus Q61–Q64's specials to the singers' gallery spots, at y 2.74;
-    - move Q65's ch2 to centre, (0, 2.5).
+    - Q61 (the friends): ch47 / ch49 / ch51 to Lafayette (−0.5, −3.35), Mulligan (0.5, −3.35) and Laurens
+      (2.2, −3.35);
+    - Q62: ch51 stays on Laurens (2.2, −3.35);
+    - Q63: ch12 to Washington on the SR balcony (−5.5, 2.2);
+    - Q64 (the women): ch52 / ch48 to the sisters on the SL balcony, about (5.3, 2.3). Revision 5's Viper 93 on the
+      1st Electric is already aimed at chest height on that balcony for Guns and Ships, and may serve;
+    - all at y 2.74;
+    - Q65: move ch2 to centre, (0, 2.5).
 - **1-02 the street lamp (cue 80's practical) is struck at 80.0**, just before the friends carry the picnic table on at Q86.
   Any later cue that brings the lamp's practical up lights an empty spot.
 - **1-02 / 1-03 the picnic table stands UPSTAGE RIGHT, (−2.4, −1.0)**, not DSC. 1-03 Q132's "Cntr Table" no longer
