@@ -481,3 +481,46 @@ waypoint every 0.5 s, because a placed prop JUMPED from one waypoint's spot to t
   - A chord is at most 0.11 m inside the arc.
   - The table moves at most 0.04 m in 0.1 s.
   - It stays within 0.1 m of Philip.
+
+### FU — Two carry it; the carry pose; prop models
+
+From Jack's notes2 (2026-10-13): *"make two people carry it on and make the carrying look better"*, and *"find a model
+for the lamp. find a model for the picnic bench and it should be this type of bench"* (an A-frame wooden picnic table
+with its benches attached, dark red-brown stain).
+
+- **Two carriers.** A prop waypoint's `carriedBy` may be a list of two DIFFERENT cast ids, `[a, b]`.
+  - The prop rides at the midpoint of the two, at hand height above their feet.
+  - Its long side (`w`) lies along the line from a to b. Its yaw is `atan2(-dz, dx)` of that line, so a placed
+    `facing` of 0 continues a pair that ends with b straight stage left of a.
+  - It is seen when either carrier is.
+  - Each carrier's hands go under the end nearest her, one either side of its centre line, a hand's width in.
+  - The pair walk ABREAST, about the prop's width + 0.5 m apart. A turn is walked in steps of 15° or less, so the gap
+    holds: `tools/blocking/seg1/lib.py` `pair_carry`. `props.py --check` reports each pair's gap.
+  - The merge validates one id or a list of two different ids, each a cast id.
+- **The carry pose (one carrier).**
+  - **In front**, everything but the two below. The prop is at hip height, its near face 0.10 m beyond her front.
+    Both forearms are under it: under its top for a desk, table or bench (the top's underside at 0.88 m), under its
+    bottom otherwise. She leans back 0.07 rad, and her shoulders twist less.
+  - **A chair or a stool** is carried by one hand at her right side, its seat at the hand (0.70 m). The free arm swings
+    at half its walking swing.
+  - **A tall piece** (over 1.6 m: the street lamp) is carried upright at her right side, just off the floor.
+  - The hands are placed by a small IK (`rigArmTo`): out to the side, then shoulder and elbow in the side view. It
+    ignores the spine's own lean and twist, so it is good to a few centimetres.
+- **Still a pure function of show time.** `propHeld(T)` hands each carrier the prop's pose at T. Her arms are set from
+  it outright, so `MIDTOWN.actors.check()` still compares limbs seek against play, and passes.
+- **Models.** A prop may name `model: "assets/props/<file>.glb"`.
+  - The page loads each file once (`PROP_MODELS`) and clones it per prop.
+  - It is scaled per axis to the prop's `size`, its feet on the floor, centred. It casts no shadow and is lit like
+    the actors.
+  - It REPLACES the boxes once loaded. Until then, or if it cannot load (a console warning), the boxes stand in.
+  - The merge requires the `assets/props/*.glb` path, and warns if the file is missing.
+  - The two models are BUILT, not downloaded, by `tools/props-models.py` (stdlib, deterministic):
+    - `picnic-table.glb`: five top planks on two A-frames with attached benches, in a dark red-brown stain, 1.8 × 0.75
+      × 1.56 m, 240 triangles;
+    - `street-lamp.glb`: an iron post with a glowing lantern, 0.56 × 3.17 × 0.44 m, 300 triangles.
+- **Where it is implemented:**
+  - `midtown.html`;
+  - `tools/blocking-plot.py` (the pair's midpoint and yaw, the hold heights);
+  - `tools/blocking-merge.py`;
+  - `tools/blocking/props.py` (`P(..., model=)`, `by=[a, b]`, the pair check).
+  - `blocking.html` does NOT have it yet. A two-carrier waypoint or a `model` is the editor round's work.

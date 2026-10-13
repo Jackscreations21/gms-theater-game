@@ -30,6 +30,28 @@ these is edited. They are yours to rule or fix. The sources are the eight agents
    - The blocking keeps the ruled sides, Hamilton SR and Burr SL, and stands them in the same pools the other way round.
    - If the preset names are right, the sides at the shot should swap.
 
+## Added after notes2 (2026-10-13: Jack's notes on 1-01 to 1-03)
+
+- **1-01 Q61–Q65, the roll call ("I fought with him", "I died for him", "I trusted him", "I loved him").** Jack: *"everyone
+  who has one of those lines is on the balcony except Burr who is at center stage when he does his line."*
+  - The singers now stand on the UPSTAGE GALLERY (z −3.35). From SR to SL: Lafayette (Jefferson) −3.9, Angelica −2.9,
+    Washington 0.0, Peggy 1.3, Eliza 2.2, Mulligan (Madison) 3.1, Laurens 4.0. They stay up there for the line-up.
+  - Burr sings Q65 at centre, (0, 2.5), downstage of Hamilton in the centre shaft at (0, 1.0).
+  - **The cues still light the deck**:
+    - Q61 ch47 / ch49 / ch51 at (−2.6, 3.05), (−0.62, 3.52), (1.95, 3.25);
+    - Q62 ch51;
+    - Q63 ch12 at (−0.55, −0.6);
+    - Q64 ch52 / ch48 at (2.6, 1.95), (−2.05, 2.05);
+    - Q65 Burr's AF, ch2, at (−1.82, 4.25).
+  - The gallery has only the two VL3500s (ch74 at (1.9, −3.61), ch76 at (5.14, −3.66)), at 0.3.
+  - **Wanted:**
+    - refocus Q61–Q64's specials to the singers' gallery spots, at y 2.74;
+    - move Q65's ch2 to centre, (0, 2.5).
+- **1-02 the street lamp (cue 80's practical) is struck at 80.0**, just before the friends carry the picnic table on at Q86.
+  Any later cue that brings the lamp's practical up lights an empty spot.
+- **1-02 / 1-03 the picnic table stands UPSTAGE RIGHT, (−2.4, −1.0)**, not DSC. 1-03 Q132's "Cntr Table" no longer
+  has a table: the table is struck in the blue of Q119.
+
 ## Added after review 2 (2026-10-13: Jack's verdict — the ensemble far less, the invented formations cut)
 
 Review 2 moved the blocking in every segment. The research notes record what moved, each under its

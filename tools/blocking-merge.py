@@ -14,7 +14,8 @@ holding ONLY its own tracks' waypoints.  The folder may also hold PROPS.JSON
 
     { "props": [ { "id", "kind", "label", "size": [w, h, d], "color",
                    "waypoints": [ { "track", "at", "x", "z", "facing"?, "off"?,
-                                    "carriedBy"?: "<actor id>", "note"? }, ... ] } ] }
+                                    "carriedBy"?: "<actor id>" | ["<id>", "<id>"], "note"? }, ... ],
+                   "model"?: "assets/props/<file>.glb" } ] }
 
 merged into the file's "props" list after the actors.
 
@@ -279,7 +280,8 @@ def main(argv):
             f.write(' ],\n "props": [\n')
             for n, p in enumerate(props):
                 f.write('  {"id": ' + json.dumps(p['id']) + ', "kind": ' + json.dumps(p['kind']) + ', "label": ' + json.dumps(p['label'], ensure_ascii=False) +
-                        ', "size": ' + json.dumps(p['size']) + ', "color": ' + json.dumps(p['color']) + ', "waypoints": [')
+                        ', "size": ' + json.dumps(p['size']) + ', "color": ' + json.dumps(p['color']) +
+                        (', "model": ' + json.dumps(p['model']) if p.get('model') else '') + ', "waypoints": [')
                 f.write(','.join('\n   ' + json.dumps(w, ensure_ascii=False) for w in p['waypoints']))
                 f.write(('\n  ' if p['waypoints'] else '') + ']}' + (',' if n + 1 < len(props) else '') + '\n')
         f.write(' ]\n}\n')
@@ -351,12 +353,16 @@ def merge_props(segdir, tracks, byid, floor, paths, errors, warns):
                 except Exception: errors.append(f'{wh}: facing must be a number (degrees)')
             if w.get('off'): o['off'] = True
             if cb:
-                cb = str(cb)
-                if cb not in byid:
-                    errors.append(f'{wh}: carriedBy "{cb}" is not a cast id')
-                elif not paths.get(cb):
-                    warns.append(f'{wh}: carriedBy {cb}, who has no waypoints (never on stage)')
-                o['carriedBy'] = cb
+                # RULING FU: one carrier (a cast id) or two ([a, b]: the prop rides between them, its long side along them)
+                ids = [str(v) for v in cb] if isinstance(cb, list) else [str(cb)]
+                if len(ids) not in (1, 2) or (len(ids) == 2 and ids[0] == ids[1]):
+                    errors.append(f'{wh}: carriedBy must be one cast id or a list of two different ones')
+                for c1 in ids:
+                    if c1 not in byid:
+                        errors.append(f'{wh}: carriedBy "{c1}" is not a cast id')
+                    elif not paths.get(c1):
+                        warns.append(f'{wh}: carriedBy {c1}, who has no waypoints (never on stage)')
+                o['carriedBy'] = ids if len(ids) == 2 else ids[0]
             if w.get('note'): o['note'] = str(w['note'])
             o['_T'] = tracks[tid]['start'] + at
             wps.append(o)
@@ -364,8 +370,16 @@ def merge_props(segdir, tracks, byid, floor, paths, errors, warns):
         for a, b in zip(wps, wps[1:]):
             if b['_T'] <= a['_T'] + 1e-6:
                 errors.append(f'{where}: time does not increase: {a["track"]} {a["at"]} then {b["track"]} {b["at"]}')
-        out.append({'id': pid, 'kind': kind, 'label': str(q.get('label') or pid), 'size': size, 'color': color,
-                    'waypoints': [{k: v for k, v in o.items() if not k.startswith('_')} for o in wps]})
+        rec = {'id': pid, 'kind': kind, 'label': str(q.get('label') or pid), 'size': size, 'color': color}
+        if q.get('model'):                       # RULING FU: a GLB drawn in place of the boxes (scaled to `size`)
+            mdl = str(q['model'])
+            if not (mdl.startswith('assets/props/') and mdl.endswith('.glb')):
+                errors.append(f'{where}: model "{mdl}" must be an assets/props/*.glb')
+            elif not os.path.exists(os.path.join(ROOT, *mdl.split('/'))):
+                warns.append(f'{where}: model {mdl} is not in the repository (the page draws the boxes)')
+            rec['model'] = mdl
+        rec['waypoints'] = [{k: v for k, v in o.items() if not k.startswith('_')} for o in wps]
+        out.append(rec)
     return out
 
 

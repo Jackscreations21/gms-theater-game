@@ -97,6 +97,7 @@ Jack: *"make it so i can also put in props i want people to carry on like desks 
     "label": "The Room's table",        // the name tag over it (the Names box)
     "size": [1.5, 0.75, 0.9],           // [w across, h, d deep] metres; absent: the kind's default
     "color": "#8a6a48",
+    "model": "assets/props/picnic-table.glb",   // optional (RULING FU): drawn in place of the boxes, scaled to size
     "waypoints": [ PROP WAYPOINT, ... ] }
 ]
 ```
@@ -110,6 +111,7 @@ Jack: *"make it so i can also put in props i want people to carry on like desks 
 | stool | 0.4 × 0.6 × 0.4 | | custom | 0.5 × 0.5 × 0.5 |
 
 PROP WAYPOINT: `{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }` — the same clock (and edges) as an actor's.
+`carriedBy` is one cast id, or (RULING FU) a list of two different ones.
 
 - **Placed** (no `carriedBy`): from `at` until its next waypoint the prop stands on the floor at (x, z), its front (+z of its
   own frame) turned to `facing` (degrees, as an actor's; absent 0, the house). The floor is found as an actor's is (a desk on
@@ -119,8 +121,19 @@ PROP WAYPOINT: `{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }` — t
   the second's. Examples: a piece riding the turntable (a few points on the ring), or a piece pushed across. To make it JUMP
   instead (moved in a blackout), put an `off` between, or a carry. In Simple mode two placed keyframes of a square glide the
   same way, as two keyframes of a dot walk.
-- **Carried** (`carriedBy: "<actor id>"`, x / z not needed): from `at` until its next waypoint it rides with her — held in
-  front of her at waist height (its centre 1.0 m up, 0.22 m beyond her front), turned with her, seen when she is.
+- **Carried** (`carriedBy: "<actor id>"`, x / z not needed): from `at` until its next waypoint it rides with her, turned
+  with her, seen when she is. How she holds it (RULING FU):
+  - **in front**, at hip height, both forearms under it (under its top for a desk, table or bench, the underside at 0.88 m;
+    otherwise under its bottom), its near face 0.10 m beyond her front; she leans back a little;
+  - **a chair or a stool**: by one hand at her right side, its seat at the hand (0.70 m); her free arm swings less;
+  - **a tall piece** (over 1.6 m, e.g. the street lamp): upright at her right side, just off the floor.
+- **Carried by two** (`carriedBy: ["<id a>", "<id b>"]`, RULING FU): it rides at the midpoint of the two, at hand height,
+  its long side (`w`) along the line from a to b, seen when either is; each holds the end nearest her. Walk them ABREAST,
+  about its width + 0.5 m apart (`pair_carry` in `tools/blocking/seg1/lib.py` does it, and turns them in steps of
+  15° or less). A placed `facing` 0 continues a pair that ends with b straight stage left of a. `blocking.html` does
+  not handle a pair yet.
+- **A model** (`model`, RULING FU): the page draws the GLB instead of the boxes, scaled per axis to `size`, feet on the
+  floor; the boxes stand in until it loads (or if it cannot). The merge requires an `assets/props/*.glb` path.
 - **`off`**: not seen from `at` on.
 - **Before its first waypoint a prop is not on stage**; after its last it stays as that one says.
 - "Hamilton carries the desk on at 2-05 12.0 and sets it at centre at 18.0" is two waypoints:
@@ -130,7 +143,8 @@ PROP WAYPOINT: `{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }` — t
 - In the page: a few shaded boxes of its size and colour (a desk or a table is a top on four legs, a chair has a back), lit as
   the actors are, with a name tag (the Names box).
 - The seed is GENERATED: `python -I tools/blocking/props.py` writes `tools/blocking/segments/props.json`; the merge validates it
-  (kind, size, colour, unique id, `carriedBy` a cast id, x / z on a placed waypoint, the track ranges, strictly increasing times
+  (kind, size, colour, unique id, `carriedBy` a cast id or two different ones, `model` an `assets/props/*.glb` path (a
+  missing file is a warning), x / z on a placed waypoint, the track ranges, strictly increasing times
   — errors; a placed prop off the stage, a carrier with no waypoints — warnings) and writes `props` after the actors.
 
 ## The editor: `blocking.html` (RULING FP)

@@ -577,7 +577,9 @@ it does not do yet, and what the ETC pack could still give:
   merge a recording into the loaded file in the page (a session applies it to the generators). It shows Advanced's edits
   only through the loaded file, not live.
 - **3D in the editor:** it is a plan only; height shows as "↑" and a white rim. `midtown.html` remains the 3D view.
-- `tools/blocking-plot.py` does not draw props.
+- **Two-person carries and prop models (RULING FU).** The page, the plotter and the merge have them; the editor shows a
+  pair carry (`carriedBy: [a, b]`) as an error and draws a modelled prop as its square. Teach Simple mode to record a carry by
+  two, and draw the pair's square between them.
 
 ### Automatic actors — what is still to come (2026-10-12, RULINGS FF–FM built)
 

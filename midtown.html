@@ -5346,6 +5346,36 @@ function rigArm(P, s, swing, elbow, carry) {
   }
   up.rotation.set(-swing, 0, 0); fo.rotation.set(-elbow, 0, 0); P['hand_' + s].rotation.set(-0.1 * elbow, 0, 0);
 }
+// FU: where her hands go for what she carries — targets in HER frame (x her left, y up from her feet, z forward) — and her lean.
+//   front: both forearms under it, the hands a little in from its sides, under its top (a desk, a table, a bench) or bottom;
+//   side:  her right hand down at her side on its top edge, her left arm free (a smaller swing);
+//   pair:  both hands under the end of it nearest her, a hand either side of its centre line.
+function propCarryPose(pr, q, me) {
+  const [w, h, d] = pr.size, t = Math.min(0.05, h * 0.12), top = pr.kind === 'desk' || pr.kind === 'table' || pr.kind === 'bench' ? h - t : 0;
+  const local = (wx, wy, wz) => { const dx = wx - me.x, dz = wz - me.z, c = Math.cos(me.yaw), s = Math.sin(me.yaw); return { x: dx * c - dz * s, y: wy - me.y, z: dx * s + dz * c }; };
+  if (q.hold === 'side') return { R: { x: -0.24, y: h > 1.6 ? 0.95 : PROP_HOLD.side, z: 0.02 }, L: null, lean: 0, free: 0.5 };
+  if (q.hold === 'pair') {
+    const ax = Math.cos(q.yaw), az = -Math.sin(q.yaw), px = Math.sin(q.yaw), pz = Math.cos(q.yaw);   // its long side, and across it
+    const e1 = [q.x + ax * w / 2, q.z + az * w / 2], e2 = [q.x - ax * w / 2, q.z - az * w / 2];
+    const E = Math.hypot(e1[0] - me.x, e1[1] - me.z) < Math.hypot(e2[0] - me.x, e2[1] - me.z) ? e1 : e2;
+    const sgn = E === e1 ? -1 : 1, inX = E[0] + sgn * ax * 0.08, inZ = E[1] + sgn * az * 0.08;   // a hand's width in from the end
+    const k = Math.min(0.18, d / 2 - 0.03);
+    const a = local(inX + px * k, q.y + top, inZ + pz * k), b = local(inX - px * k, q.y + top, inZ - pz * k);
+    return a.x > b.x ? { L: a, R: b, lean: -0.03, free: 0 } : { L: b, R: a, lean: -0.03, free: 0 };
+  }
+  const hx = Math.max(0.08, Math.min(w / 2 - 0.05, 0.2)), hy = propHoldY(pr) + top - 0.02, hz = PROP_HOLD.body + PROP_HOLD.near + Math.min(0.25, d * 0.4);
+  return { L: { x: hx, y: hy, z: hz }, R: { x: -hx, y: hy, z: hz }, lean: PROP_HOLD.lean, free: 0 };
+}
+// FU: one arm to a point in her frame: lifted out to its side, then the shoulder and the elbow by the side-view IK (the elbow
+// down and behind). An approximation (the spine's own lean and twist are not counted), good to a few centimetres at the hands.
+function rigArmTo(P, s, tg) {
+  const ua = RIG.len['upperarm_' + s], fa = RIG.len['forearm_' + s], S = RIG.J['upperarm_' + s], sx = s === 'L' ? 1 : -1;
+  const dx = tg.x - S.x, dy = tg.y - S.y, dz = tg.z - S.z;
+  const ab = Math.max(-0.45, Math.min(1.2, Math.atan2(dx * sx, Math.max(0.05, -dy))));
+  const [t1, t2] = rigIK(ua.len, fa.len, dz, dy < 0 ? -Math.hypot(dx, dy) : Math.hypot(dx, dy), -1);
+  const r1 = t1 - ua.rest, r2 = (t2 - fa.rest) - r1;
+  P['upperarm_' + s].rotation.set(-r1, 0, sx * ab); P['forearm_' + s].rotation.set(-r2, 0, 0); P['hand_' + s].rotation.set(-0.25, 0, 0);
+}
 // THE LIMBS from the pose (FL's userData.animate): pure — every joint set outright from the pose's own fields.
 function rigAnimate(p, g) {
   const B = g.userData.body, P = B.userData.parts; if (!P || !g.visible) return;   // unseen: posed afresh when she is seen
@@ -5371,13 +5401,16 @@ function rigAnimate(p, g) {
   P.thigh_L.rotation.z = -pel.rotation.z; P.thigh_R.rotation.z = -pel.rotation.z;   // the legs stay under her as the hips roll
   // the spine: a lean walking, a breath standing, the shoulders turned against the hips, leading a turn; the head kept level
   const twistS = G.twist * 1.6 * wk * Math.cos(2 * Math.PI * uL), leadS = Math.max(-0.35, Math.min(0.35, lead * 0.35));
-  P.spine.rotation.set(G.lean * wk + 0.012 * idle * breath, twistS + leadS, -pel.rotation.z * 0.7);
+  const C = p.carry;                                        // FU: carrying in front she leans back a little, not forward
+  P.spine.rotation.set((C ? C.lean : G.lean * wk) + 0.012 * idle * breath, (C && !C.free ? 0.3 : 1) * twistS + leadS, -pel.rotation.z * 0.7);
   P.head.rotation.set(-0.6 * P.spine.rotation.x, -(pel.rotation.y + twistS) + Math.max(-0.6, Math.min(0.6, lead * 0.5)), -P.spine.rotation.z * 0.5 - pel.rotation.z * 0.3);
   // the arms: opposite the legs, from the shoulder; or holding what she carries
   const legL = Math.cos(2 * Math.PI * uL);
   for (const [s, f] of [['L', -legL], ['R', legL]]) {
-    const sw = G.arm * wk * f;
-    rigArm(P, s, sw, G.elbow * wk * (0.6 + 0.4 * Math.max(0, f)) + 0.12 * idle, p.carry);
+    const tg = C ? C[s] : null;
+    if (tg) { rigArmTo(P, s, tg); continue; }                // FU: a hand on what she carries
+    const sw = G.arm * wk * f * (C ? C.free : 1);            // the free arm of a one-hand carry swings less
+    rigArm(P, s, sw, G.elbow * wk * (0.6 + 0.4 * Math.max(0, f)) + 0.12 * idle, null);
   }
 }
 function actSlug(name) {
@@ -5453,8 +5486,8 @@ function actUpdate(T) {
     if (held && o.visible) {                                 // FS: what the limbs read besides FL's fields — all pure functions of T
       p.T = T;
       p.rise = p.speed > 0.05 ? actFloor(p.x + Math.sin(p.yaw) * 0.35, p.z + Math.cos(p.yaw) * 0.35, p.y) - p.y : 0;   // the floor ahead (stairs)
-      const pr = held.get(a.id);
-      p.carry = pr ? { x: Math.min(pr.size[0] / 2, 0.2), y: Math.max(0.2, PROP_HOLD.waist - pr.size[1] / 2) + pr.size[1] / 2, z: PROP_HOLD.ahead + 0.02 } : null;
+      const h = held.get(a.id);
+      p.carry = h ? propCarryPose(h.p, h.q, p) : null;
     }
     if (typeof o.userData.animate === 'function') { try { o.userData.animate(p, o); } catch (e) { /* a limb rig's own failure never stops the show */ } }
   }
@@ -5507,9 +5540,31 @@ function actPoolBands() {
 // seen when she is), or hidden (`off`). Before its first waypoint it is not on stage; after its last it stays as that one says. Like the actors, a pure function of show
 // time (propPose): the seek-equivalence check covers it. A simple shaded build of boxes in its colour, lit as the actors are,
 // with a name tag (the Names box) — one material per colour (actMat).
+// RULING FU: `carriedBy` may be TWO cast ids [a, b]: the prop rides between them at hand height, its long side (w) along the line
+// from a to b, seen when either is; each holds the end nearest her. ONE carrier holds it in front at hip height, both forearms under
+// it, leaning back a little — or, a chair or a stool, by one hand at her right side; a tall piece (over 1.6 m) upright at her side.
+// A prop may name a MODEL (`model`: assets/props/*.glb): loaded once, cloned, scaled to its size, drawn instead of the boxes (lit
+// the same way); until it loads, or if it cannot, the boxes stand in.
 const PROP_KINDS = { desk: [1.2, 0.75, 0.6], table: [1.5, 0.75, 0.9], chair: [0.45, 0.9, 0.45], bench: [1.4, 0.45, 0.4], stool: [0.4, 0.6, 0.4],
   box: [0.5, 0.45, 0.5], crate: [0.6, 0.5, 0.6], lantern: [0.2, 0.35, 0.2], bucket: [0.3, 0.35, 0.3], custom: [0.5, 0.5, 0.5] };
-const PROP_HOLD = { waist: 1.0, ahead: 0.22, tag: 0.12 };   // m: a carried prop's centre at her waist, this far beyond her front; the tag over its top
+const PROP_HOLD = { waist: 1.0, ahead: 0.22, tag: 0.12,     // m: (FR) a carried prop's centre at her waist, this far beyond her front; the tag over its top
+  hand: 0.88, near: 0.10, body: 0.13, side: 0.70, lean: -0.07 };   // FU: the forearms' height under it, its near face beyond her front (her front 0.13
+                                                               // from her axis), a one-hand side carry's hand height, the lean back carrying in front
+const PROP_SIDE = k => k === 'chair' || k === 'stool';       // FU: carried by one hand at her side
+// FU: a prop's origin (its feet) above the carriers' feet when it is held: the hands under its top (a desk, a table, a bench), else
+// under its bottom; a tall piece just off the floor
+function propHoldY(p) {
+  const [, h] = p.size, t = Math.min(0.05, h * 0.12);
+  if (h > 1.6) return 0.15;
+  if (p.kind === 'desk' || p.kind === 'table' || p.kind === 'bench') return Math.max(0.05, PROP_HOLD.hand - (h - t));
+  return PROP_HOLD.hand;
+}
+// FU: models — one load per file, cloned per prop
+const PROP_MODELS = new Map();
+function propModel(url) {
+  if (!PROP_MODELS.has(url)) PROP_MODELS.set(url, new Promise((ok, no) => new GLTFLoader().load(url, g => ok(g.scene), undefined, no)));
+  return PROP_MODELS.get(url);
+}
 function propParts(kind, [w, h, d]) {            // → [[sx, sy, sz, x, y, z], …]: boxes in the prop's frame (its feet at y 0, its front +z)
   const t = Math.min(0.05, h * 0.12), L = 0.05, legs = (top, ix, iz) => [-1, 1].flatMap(a => [-1, 1].map(b => [L, top, L, a * (w / 2 - ix), top / 2, b * (d / 2 - iz)]));
   if (kind === 'desk' || kind === 'table' || kind === 'stool') return [[w, t, d, 0, h - t / 2, 0], ...legs(h - t, 0.05, 0.05)];
@@ -5526,6 +5581,18 @@ function propBuild(p) {
   }
   p.obj = g; p.name = p.label; g.add(actTagBuild(p)); p.tag.position.y = p.size[1] + PROP_HOLD.tag; p.tag.visible = ACT.names;
   ACT.group.add(g);
+  if (p.model) propModel(p.model).then(src => {             // FU: the model, scaled to the prop's size, its feet on the floor, centred
+    if (p.obj !== g) return;                                 // the blocking was reloaded meanwhile
+    const m = src.clone(true); m.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3());
+    const k = [p.size[0] / Math.max(1e-3, sz.x), p.size[1] / Math.max(1e-3, sz.y), p.size[2] / Math.max(1e-3, sz.z)];
+    const holder = new THREE.Group(); holder.name = 'model'; holder.userData.rig = true; holder.add(m);
+    holder.scale.set(k[0], k[1], k[2]);
+    holder.position.set(-(bb.min.x + bb.max.x) / 2 * k[0], -bb.min.y * k[1], -(bb.min.z + bb.max.z) / 2 * k[2]);
+    m.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; o.userData.rig = true; o.userData.prop = p.id; } });
+    for (const b of g.children.filter(o => o.isMesh)) g.remove(b);   // the boxes go; the name tag stays
+    g.add(holder); requestRender();
+  }).catch(e => console.warn(`props: ${p.model} could not be loaded — ${p.label} stays boxes (${e && e.message || e})`));
 }
 function propClean(s, k) {                       // a prop from the file, validated, never thrown
   const kind = PROP_KINDS[s.kind] ? s.kind : 'custom';
@@ -5535,10 +5602,13 @@ function propClean(s, k) {                       // a prop from the file, valida
     const o = { track: String(w.track ?? ''), at: actF(w.at) ?? 0 };
     if (actF(w.x) !== null) o.x = actF(w.x); if (actF(w.z) !== null) o.z = actF(w.z); if (actF(w.y) !== null) o.y = actF(w.y);
     if (actF(w.facing) !== null) o.facing = actF(w.facing); if (w.off) o.off = true;
-    if (typeof w.carriedBy === 'string' && w.carriedBy) o.carriedBy = w.carriedBy; if (typeof w.note === 'string' && w.note) o.note = w.note;
+    if (typeof w.carriedBy === 'string' && w.carriedBy) o.carriedBy = w.carriedBy;
+    else if (Array.isArray(w.carriedBy) && w.carriedBy.length === 2 && w.carriedBy.every(v => typeof v === 'string' && v)) o.carriedBy = w.carriedBy.slice();   // FU
+    if (typeof w.note === 'string' && w.note) o.note = w.note;
     return o;
   });
-  return { id, kind, label: String(s.label || id), size, color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color.toLowerCase() : '#8a6a48', waypoints: wps, c: null, obj: null, tag: null };
+  const model = typeof s.model === 'string' && /^assets\/props\/[\w.-]+\.glb$/i.test(s.model) ? s.model : null;
+  return { id, kind, label: String(s.label || id), size, color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color.toLowerCase() : '#8a6a48', model, waypoints: wps, c: null, obj: null, tag: null };
 }
 function propCompile(p) {
   const tr = SHW.d ? SHW.d.byTrack : null, probs = [], P = [];
@@ -5547,10 +5617,11 @@ function propCompile(p) {
     if (tr && !t) { probs.push(`waypoint ${k + 1}: no track "${w.track}"`); return; }
     const at = actF(w.at) ?? 0;
     if (t && (at < -t.pre - 1e-6 || at > t.len + t.post + 1e-6)) probs.push(`waypoint ${k + 1}: at ${at} is outside ${t.id}`);
-    const by = w.carriedBy ? ACT.actors.find(a => a.id === w.carriedBy) || null : null;
-    if (w.carriedBy && !by) probs.push(`waypoint ${k + 1}: carriedBy "${w.carriedBy}" is no actor`);
+    const ids = w.carriedBy ? [].concat(w.carriedBy) : [];
+    const by = ids.length ? ids.map(id => ACT.actors.find(a => a.id === id) || null) : null;   // FU: one carrier or two
+    if (by && by.some(a => !a)) probs.push(`waypoint ${k + 1}: carriedBy "${ids.join(' + ')}" is no actor`);
     if (!w.carriedBy && (actF(w.x) === null || actF(w.z) === null)) probs.push(`waypoint ${k + 1}: placed, but no x / z`);
-    P.push({ w, k, T: t ? t.start + at : 0, x: actF(w.x) ?? 0, z: actF(w.z) ?? 0, y: actF(w.y) ?? 0, yaw: (actF(w.facing) ?? 0) * Math.PI / 180, off: !!w.off, by, byId: w.carriedBy || null });
+    P.push({ w, k, T: t ? t.start + at : 0, x: actF(w.x) ?? 0, z: actF(w.z) ?? 0, y: actF(w.y) ?? 0, yaw: (actF(w.facing) ?? 0) * Math.PI / 180, off: !!w.off, by, byId: ids.length ? ids.join('+') : null });
   });
   P.sort((a, b) => a.T - b.T || a.k - b.k);
   for (let i = 1; i < P.length; i++) if (P[i].T <= P[i - 1].T + 1e-6) probs.push(`waypoints ${P[i - 1].k + 1} and ${P[i].k + 1}: time does not increase`);
@@ -5565,10 +5636,21 @@ function propPose(p, T) {
   if (T < P[0].T) return { x: P[0].x, y: 0, z: P[0].z, yaw: P[0].yaw, visible: false, carrier: null };   // before its first waypoint: not on stage
   const w = P[lo];
   if (w.byId) {
-    const a = w.by; if (!a) return { x: w.x, y: 0, z: w.z, yaw: 0, visible: false, carrier: w.byId };
-    if (!a.c) a.c = actCompile(a);
-    const q = actPose(a, T), f = p.size[2] / 2 + PROP_HOLD.ahead;
-    return { x: q.x + Math.sin(q.yaw) * f, y: q.y + Math.max(0.2, PROP_HOLD.waist - p.size[1] / 2), z: q.z + Math.cos(q.yaw) * f, yaw: q.yaw, visible: q.visible && !w.off, carrier: a.id };
+    const A = w.by; if (!A || A.some(a => !a)) return { x: w.x, y: 0, z: w.z, yaw: 0, visible: false, carrier: w.byId };
+    for (const a of A) if (!a.c) a.c = actCompile(a);
+    if (A.length === 2) {                                    // FU: between two, its long side from the first to the second
+      const q1 = actPose(A[0], T), q2 = actPose(A[1], T), dx = q2.x - q1.x, dz = q2.z - q1.z;
+      return { x: (q1.x + q2.x) / 2, y: (q1.y + q2.y) / 2 + propHoldY(p), z: (q1.z + q2.z) / 2, yaw: Math.atan2(-dz, dx),
+        visible: (q1.visible || q2.visible) && !w.off, carrier: w.byId, hold: 'pair' };
+    }
+    const q = actPose(A[0], T), a = A[0];
+    if (PROP_SIDE(p.kind) || p.size[1] > 1.6) {              // FU: at her right side (her right is her −x), one hand on it
+      const sd = 0.16 + p.size[0] / 2, seat = p.kind === 'chair' ? Math.min(0.46, p.size[1] * 0.52) : p.kind === 'stool' ? p.size[1] : 0;
+      const y = p.size[1] > 1.6 ? 0.15 : Math.max(0.05, PROP_HOLD.side - seat);
+      return { x: q.x - Math.cos(q.yaw) * sd, y: q.y + y, z: q.z + Math.sin(q.yaw) * sd, yaw: q.yaw, visible: q.visible && !w.off, carrier: a.id, hold: 'side' };
+    }
+    const f = p.size[2] / 2 + PROP_HOLD.near + PROP_HOLD.body;   // FU: in front, the forearms under it
+    return { x: q.x + Math.sin(q.yaw) * f, y: q.y + propHoldY(p), z: q.z + Math.cos(q.yaw) * f, yaw: q.yaw, visible: q.visible && !w.off, carrier: a.id, hold: 'front' };
   }
   // THE GLIDE (RULING FT): between two consecutive PLACED waypoints (neither carried, neither off) the prop moves in a straight
   // line and turns the short way, linearly in time from the first's time to the second's — a piece riding the turntable or
@@ -5588,7 +5670,9 @@ function propHeld(T) {
     const P = p.c.P; if (!P.length || T < P[0].T) continue;
     let lo = 0, hi = P.length - 1;
     while (lo < hi) { const k = (lo + hi + 1) >> 1; if (P[k].T <= T) lo = k; else hi = k - 1; }
-    if (P[lo].by && !P[lo].off && !m.has(P[lo].by.id)) m.set(P[lo].by.id, p);
+    const w = P[lo]; if (!w.by || w.off || w.by.some(a => !a)) continue;
+    const q = propPose(p, T);
+    for (const a of w.by) if (!m.has(a.id)) m.set(a.id, { p, q });   // FU: each carrier, with the prop's pose (pure, at T)
   }
   return m;
 }
@@ -5611,7 +5695,7 @@ function propSetData(list) {
 }
 function propData(p) {
   const gt = w => actGT(w);
-  return { id: p.id, kind: p.kind, label: p.label, size: p.size.map(v => actR(v)), color: p.color,
+  return { id: p.id, kind: p.kind, label: p.label, size: p.size.map(v => actR(v)), color: p.color, ...(p.model ? { model: p.model } : {}),
     waypoints: p.waypoints.map((w, k) => [w, k]).sort((x, y) => gt(x[0]) - gt(y[0]) || x[1] - y[1]).map(([w]) => {
       const o = { track: w.track, at: actR(w.at, 2) };
       if (w.x !== undefined) o.x = actR(w.x); if (w.z !== undefined) o.z = actR(w.z); if (w.y !== undefined) o.y = actR(w.y);

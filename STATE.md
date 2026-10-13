@@ -3,7 +3,47 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-13 (latest): FIXED — THE EDITOR'S SOUND DRIFTING OUT OF SYNC (blocking.html) — PR #234
+## NEWEST — 2026-10-13 (latest): NOTES2 — TWO CARRY IT, A BETTER CARRY, PROP MODELS, THE ROLL CALL ON THE GALLERY (RULING FU) — PR #234
+
+Jack's notes on 1-01 to 1-03: *"make two people carry it on and make the carrying look better"*; *"everyone who has one of
+those lines is on the balcony except Burr who is at center stage"*; *"find a model for the lamp. find a model for the
+picnic bench"*; *"the bench should go onto upstage right. two people should carry the table on. the street light should
+come off right before the table comes on"*; *"the table should come off about halfway through"*.
+
+- **RULING FU.**
+  - `carriedBy` may be `[a, b]`: the prop rides between the two at hand height, its long side along them, and each
+    holds her end.
+  - One carrier holds it in front at hip height, forearms under it, leaning back; a chair or a stool one-handed at her
+    side; a tall piece upright at her side.
+  - A prop may name `model` (a GLB in `assets/props/`), scaled to its size; the boxes stand in until it loads.
+  - Built in `midtown.html`, the plotter, the merge, `props.py` and the format doc. **`blocking.html` does not have it
+    yet**: it is the editor round's work (that agent was fixing the clock this round).
+- **The models are built, not downloaded:** `tools/props-models.py` writes `assets/props/picnic-table.glb` (an A-frame
+  table with attached benches, dark red-brown) and `street-lamp.glb` (an iron post, a glowing lantern). The 2-04 lamps
+  use the lamp model too.
+- **1-01.**
+  - The clerk's table is carried on and off between ens7 and ens6. The cousin strikes the chair. Lafayette steps off
+    DSR while they pass.
+  - The roll-call singers sing from the upstage gallery and stay there for the line-up. Burr sings Q65 at (0, 2.5).
+  - **Crowding:** the deck's centre third (|x| < 1.83) held up to 10 bodies, more than 8 at four moments. Now it never
+    holds more than 8:
+    - Q45 closes in an oval (it was a 2 m circle);
+    - Q58's company stands to the sides;
+    - the roll-call ring is looser.
+- **1-02.** The lamp is struck at 80.0, just before Q86. Mulligan and Laurens carry the picnic table on, between them,
+  to upstage right at (−2.4, −1.0).
+- **1-03.** ens1 and ens4 strike the table in the blue of Q119 (159.8, the cue nearest the middle). Laurens is no longer
+  up on it.
+- **Checked on :8095:**
+  - merge: 0 errors, 0 warnings;
+  - `props.py --check`: 0 warnings, both pairs walk 2.28–2.30 m apart;
+  - `actors.check()` passes;
+  - `show.check()`'s seek equivalence passes (its overall `pass: false` is the 16 channels with no unit, as before);
+  - the console is clean;
+  - renders are in scratch `act/shots/notes2/`.
+- **The cues still light the deck for the roll call.** The refocus asks are in `docs/hamilton-blocking-cue-notes.md`.
+
+## 2026-10-13: FIXED — THE EDITOR'S SOUND DRIFTING OUT OF SYNC (blocking.html) — PR #234
 
 Jack: *"the sound is getting out of sync and it isn't resyncing itself anymore."*
 

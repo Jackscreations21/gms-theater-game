@@ -400,7 +400,16 @@ def draw_actor(cv, st, a, p, short=False):
 # ---------------------------------------------------------------- the props (RULINGS FR, FT): midtown.html propCompile / propPose
 PROP_KINDS = {'desk': [1.2, 0.75, 0.6], 'table': [1.5, 0.75, 0.9], 'chair': [0.45, 0.9, 0.45], 'bench': [1.4, 0.45, 0.4], 'stool': [0.4, 0.6, 0.4],
               'box': [0.5, 0.45, 0.5], 'crate': [0.6, 0.5, 0.6], 'lantern': [0.2, 0.35, 0.2], 'bucket': [0.3, 0.35, 0.3], 'custom': [0.5, 0.5, 0.5]}
-PROP_AHEAD = 0.22
+PROP_AHEAD = 0.22          # (FR; FU replaced it with the hold below)
+PROP_HOLD = {'hand': 0.88, 'near': 0.10, 'body': 0.13, 'side': 0.70}   # RULING FU, as midtown.html's PROP_HOLD
+
+
+def prop_hold_y(p):
+    """FU: a held prop's feet above the carriers' feet (midtown.html propHoldY)."""
+    h = p['size'][1]; t = min(0.05, h * 0.12)
+    if h > 1.6: return 0.15
+    if p.get('kind') in ('desk', 'table', 'bench'): return max(0.05, PROP_HOLD['hand'] - (h - t))
+    return PROP_HOLD['hand']
 PROPS_LOADED = []          # filled by load_inputs (its return value is kept as it was: tools/blocking/props.py unpacks three)
 
 
@@ -411,7 +420,7 @@ def compile_prop(p, tracks):
         if not t: continue
         f = num(w.get('facing'))
         P.append({'k': k, 'T': t['start'] + (num(w.get('at')) or 0), 'x': num(w.get('x')) or 0, 'z': num(w.get('z')) or 0, 'y': num(w.get('y')) or 0.045,
-                  'yaw': (f or 0) * math.pi / 180, 'off': bool(w.get('off')), 'by': w.get('carriedBy') or None})
+                  'yaw': (f or 0) * math.pi / 180, 'off': bool(w.get('off')), 'by': '+'.join(w['carriedBy']) if isinstance(w.get('carriedBy'), list) else (w.get('carriedBy') or None)})
     P.sort(key=lambda q: (q['T'], q['k']))
     return P
 
@@ -426,12 +435,21 @@ def prop_pose(p, T, actors_by_id):
         else: hi = m - 1
     w = P[lo]
     if w['by']:
-        a = actors_by_id.get(w['by'])
-        if not a: return None
-        q = pose(a['c'], T)
-        if not q: return None
-        f = p['size'][2] / 2 + PROP_AHEAD
-        return {'x': q['x'] + math.sin(q['yaw']) * f, 'z': q['z'] + math.cos(q['yaw']) * f, 'y': q['y'] + 1.0, 'yaw': q['yaw'], 'visible': q['visible'] and not w['off'], 'by': w['by']}
+        ids = w['by'].split('+')                           # FU: one carrier, or two ("a+b")
+        A = [actors_by_id.get(i) for i in ids]
+        if not all(A): return None
+        Q = [pose(a['c'], T) for a in A]
+        if not all(Q): return None
+        if len(Q) == 2:                                    # FU: between the two, its long side from the first to the second
+            q1, q2 = Q
+            return {'x': (q1['x'] + q2['x']) / 2, 'z': (q1['z'] + q2['z']) / 2, 'y': (q1['y'] + q2['y']) / 2 + prop_hold_y(p),
+                    'yaw': math.atan2(-(q2['z'] - q1['z']), q2['x'] - q1['x']), 'visible': (q1['visible'] or q2['visible']) and not w['off'], 'by': w['by']}
+        q = Q[0]
+        if p.get('kind') in ('chair', 'stool') or p['size'][1] > 1.6:   # FU: at her right side
+            sd = 0.16 + p['size'][0] / 2
+            return {'x': q['x'] - math.cos(q['yaw']) * sd, 'z': q['z'] + math.sin(q['yaw']) * sd, 'y': q['y'], 'yaw': q['yaw'], 'visible': q['visible'] and not w['off'], 'by': w['by']}
+        f = p['size'][2] / 2 + PROP_HOLD['near'] + PROP_HOLD['body']
+        return {'x': q['x'] + math.sin(q['yaw']) * f, 'z': q['z'] + math.cos(q['yaw']) * f, 'y': q['y'] + prop_hold_y(p), 'yaw': q['yaw'], 'visible': q['visible'] and not w['off'], 'by': w['by']}
     n = P[lo + 1] if lo + 1 < len(P) else None
     if not w['off'] and n and not n['by'] and not n['off'] and n['T'] > w['T'] + 1e-6:     # the glide (RULING FT)
         f = (T - w['T']) / (n['T'] - w['T'])
@@ -497,7 +515,7 @@ def load_inputs(path):
     PROPS_LOADED.clear()
     for pr in plist:
         size = pr.get('size') if isinstance(pr.get('size'), list) and len(pr['size']) == 3 else PROP_KINDS.get(pr.get('kind'), PROP_KINDS['custom'])
-        PROPS_LOADED.append({'id': pr.get('id'), 'label': str(pr.get('label') or pr.get('id')), 'size': [float(v) for v in size],
+        PROPS_LOADED.append({'id': pr.get('id'), 'kind': pr.get('kind'), 'label': str(pr.get('label') or pr.get('id')), 'size': [float(v) for v in size],
                              'rgb': hexc(pr.get('color') or '#8a6a48'), 'c': compile_prop(pr, tracks)})
     return d, tracks, actors
 

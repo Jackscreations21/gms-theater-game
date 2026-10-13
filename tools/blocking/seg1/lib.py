@@ -184,7 +184,7 @@ def turn(actors, t, f, dt=0.6):
     for a in actors:
         p = pos(a)
         ff = f(a, p) if callable(f) else f
-        move(a, t, t + dt, p, f=ff)
+        move(a, t, t + dt, p, f=ff, y=W[a][-1].get('y'))   # NOTES2: keeps her level (a turn on the gallery stays up there)
 
 def polar(p):
     dx, dz = p[0] - C[0], p[1] - C[1]
@@ -317,3 +317,34 @@ def export(path, notes):
             f.write('\n  ]' + (',' if n + 1 < len(keys) else '') + '\n')
         f.write(' },\n "notes": ' + json.dumps(notes, ensure_ascii=False) + '\n}\n')
     return sum(len(v) for v in wps.values())
+
+
+def pair_carry(a, b, length, keys):
+    """RULING FU: two carriers abreast, the prop between them. keys: (t, centre, axis in degrees from +x toward +z (the
+    line from a to b), kind): 'off' an offstage point (both hidden there), 'from' they are already there (the pick-up),
+    'stop' they stop there, None a point they walk through. They stand `length` + 0.5 m apart, half each side."""
+    h = length / 2 + 0.25
+    K = [keys[0]]
+    for k0, k1 in zip(keys, keys[1:]):            # a turn is walked in steps of 15 degrees or less, so they keep their spacing
+        n = max(1, math.ceil(abs(k1[2] - k0[2]) / 15.0))
+        for i in range(1, n):
+            u = i / n
+            K.append((k0[0] + (k1[0] - k0[0]) * u, (k0[1][0] + (k1[1][0] - k0[1][0]) * u, k0[1][1] + (k1[1][1] - k0[1][1]) * u),
+                      k0[2] + (k1[2] - k0[2]) * u, None))
+        K.append(k1)
+    for t, c, ax, kind in K:
+        ux, uz = math.cos(math.radians(ax)), math.sin(math.radians(ax))
+        pa, pb = (c[0] - h * ux, c[1] - h * uz), (c[0] + h * ux, c[1] + h * uz)
+        for who, q in ((a, pa), (b, pb)):
+            if kind == 'from':
+                if W[who][-1].get('d') is None: W[who][-1]['d'] = round(max(0.0, t - W[who][-1]['t']), 2)
+                continue
+            if kind == 'off':
+                if W[who] and not W[who][-1].get('off'):       # walking off: arrive hidden
+                    move(who, None, t, q); W[who][-1]['off'] = True
+                else:
+                    put(who, t, q, off=True); W[who][-1]['d'] = 0
+            elif kind == 'stop':
+                move(who, None, t, q, f=face_to(q, c))
+            else:
+                via(who, t, q)

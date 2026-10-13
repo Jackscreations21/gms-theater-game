@@ -29,20 +29,27 @@ def build():
     # ---- Q85 79.6 the warning
     turn(['burr'], B(79.6), -60)
 
+    # ---- NOTES2 (Jack): "the street light should come off right before the table comes on": one of the company
+    # slips on from SL and takes the lamp off (props.py 'street-lamp', at her side) just before Q86
+    put('ens10', B(77.0), WINGS['W_MSL'], off=True); W['ens10'][-1]['d'] = 0
+    put('ens10', B(79.8), (4.0, 1.95), f=-90)
+    exit_('ens10', B(80.2), 'W_MSL', speed=1.6)
     # ---- Q86 83.4 the friends burst in; the street becomes the tavern
-    # REVIEW2 (Jack): the three carry on a picnic table -- Laurens carries it (props.py 'picnic-table'), Lafayette and
-    # Mulligan walk in either side of him -- and the ensemble does NOT come on. They play their verses at the table.
-    # The table stands DSC at (0, 3.3) (x -0.9..0.9, z 2.95..3.65): each verse pool is at one end or behind it.
-    move('hamilton', B(84.0), B(85.8), (-0.9, 2.1), f=20)      # out of the table's way
+    # REVIEW2 (Jack): the friends carry on a picnic table and the ensemble does NOT come on.
+    # NOTES2 (Jack): "the bench should go onto upstage right. two people should carry the table on": Mulligan and
+    # Laurens carry it BETWEEN them (RULING FU) from the USR wing, Lafayette a step ahead; it stands UPSTAGE RIGHT
+    # at (-2.4, -1.0) (x -3.3..-1.5, z -1.78..-0.22, the benches included) and they come down to their pools.
+    move('hamilton', B(84.0), B(85.8), (-0.9, 2.1), f=20)
     move('burr', B(84.0), B(88.0), (-3.6, 3.6), f=45)
-    enter('lafayette', B(83.0), B(86.4), (0.2, 4.2), -100, wing='W_DSL')   # the downstage side
-    W['lafayette'][-1]['d'] = 0; W['lafayette'][-1].pop('f')
-    put('lafayette', B(88.6), (-1.55, 3.3), f=60)                          # the table's SR end
-    enter('laurens', B(83.4), B(88.0), (1.05, 3.3), -90, wing='W_DSL')     # carrying it: sets it down at 88.0
-    enter('mulligan', B(83.8), B(88.4), (0.6, 2.3), -10, wing='W_DSL')    # the upstage side
+    put('lafayette', B(82.4), WINGS['W_USR'], off=True); W['lafayette'][-1]['d'] = 0
+    via('lafayette', B(85.0), (-4.2, -1.3))                                # upstage of the stair top, ahead of the table
+    put('lafayette', B(88.6), (-1.55, 3.3), f=60)
+    pair_carry('mulligan', 'laurens', 1.8, [(B(83.2), (-9.0, -1.4), -90, 'off'), (B(86.4), (-4.6, -1.4), -90, None),
+                                            (B(88.6), (-2.4, -1.0), 0, 'stop')])
+    move('mulligan', B(89.2), B(92.6), (0.6, 2.3), f=-10)                  # down to the centre
 
-    # ---- Q87 90.9 Laurens' verse, his pool SL (ch51 (2.41, 3.26)), at the table's SL end
-    move('laurens', B(90.6), B(92.0), (1.75, 3.35), f=-30)
+    # ---- Q87 90.9 Laurens' verse, his pool SL (ch51 (2.41, 3.26)): straight down from the table
+    move('laurens', B(88.8), B(92.0), (1.75, 3.35), f=-30)
     # ---- Q88 102.8 Lafayette's verse SR (ch48 (-2.41, 3.06)), at the table's SR end
     move('lafayette', B(102.4), B(103.6), (-1.75, 3.2), f=30)
     move('laurens', B(102.8), B(104.4), (1.15, 2.7), f=-45)

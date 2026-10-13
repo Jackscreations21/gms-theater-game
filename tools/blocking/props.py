@@ -10,11 +10,14 @@ The furniture the blocking already MIMES (the research notes and the eight gener
 a desk, a table, a box that the model does not have), placed where the reviewers put it. Format (the merge
 validates it; docs/hamilton-blocking-format.md):
 
-    { "props": [ { "id", "kind", "label", "size": [w, h, d], "color",
+    { "props": [ { "id", "kind", "label", "size": [w, h, d], "color", "model"?,
                    "waypoints": [ { "track", "at", "x"?, "z"?, "facing"?, "off"?, "carriedBy"?, "note"? } ] } ] }
 
-A waypoint with `carriedBy` hands the prop to that actor until the next waypoint (held at her waist, seen when
-she is); one without places it on the floor at (x, z) turned to `facing`; `off` hides it. Before its first
+A waypoint with `carriedBy` hands the prop to that actor until the next waypoint (held in front at hip height,
+forearms under it; a chair or a stool at her side; seen when she is) — or, RULING FU, to TWO actors
+(`carriedBy: [a, b]`, here `by=['a', 'b']`): it rides between them at hand height, its long side from a to b, so
+walk them ABREAST, about its width + 0.5 m apart. One without places it on the floor at (x, z) turned to
+`facing`; `off` hides it. `model` (FU) names a GLB in assets/props/ drawn in place of the boxes. Before its first
 waypoint a prop is hidden; every prop here still starts with an `off` waypoint.
 
 HOW A CARRY IS CHOSEN. Bring-on: an actor the notes name, else one who is OFFSTAGE before the moment and walks
@@ -57,10 +60,11 @@ PROPS = []
 
 
 class Prop:
-    def __init__(self, pid, kind, label, color, size=None):
+    def __init__(self, pid, kind, label, color, size=None, model=None):
         self.d = {'id': pid, 'kind': kind, 'label': label}
         if size: self.d['size'] = size
         self.d['color'] = color
+        if model: self.d['model'] = model                       # RULING FU: assets/props/<file>.glb
         self.w = []
         PROPS.append(self)
 
@@ -121,8 +125,8 @@ OAK, WALNUT, PINE, CRATE = '#7a5230', '#5e3f26', '#9a7b4f', '#8c6d45'
 
 
 # The operations a section lists. Each returns a plain tuple; the file applies them in section order (below).
-def P(pid, kind, label, color, size=None):                                    # a new prop (declared once, where it first appears)
-    return ('new', pid, (kind, label, color), {'size': size})
+def P(pid, kind, label, color, size=None, model=None):                        # a new prop (declared once, where it first appears)
+    return ('new', pid, (kind, label, color), {'size': size, 'model': model})
 
 
 def DARK(pid, track, at, x, z, facing=0.0, note='set in the dark'):            # set on the floor in a blackout
@@ -162,25 +166,27 @@ SEGMENT_1 = [
     DARK('cousin-chair', '1-01', -9.8, 1.6, -2.75, 0, note='1-01: preset UC by the SL stair foot before the music (the cousin\'s chair, fan account)'),
     CARRY('cousin-chair', '1-01', 106.6, 'ens3', note='the cousin takes it to centre (Q48-Q49)'),
     PLACE('cousin-chair', '1-01', 109.4, 0.0, 0.35, 0, note='the cousin on the chair at centre; then Hamilton\'s seat at his table (Q51)'),
-    CARRY('cousin-chair', '1-01', 141.6, 'ens6', note='Q52: off DSR with the table (Jack)'),
-    HIDE('cousin-chair', '1-01', 147.1, (-7.6, 3.8)),
+    CARRY('cousin-chair', '1-01', 140.9, 'ens3', note='Q52: the cousin takes it off USR (NOTES2: ens6 now carries the table)'),
+    HIDE('cousin-chair', '1-01', 147.8, 'W-USR'),
     P('clerk-table', 'table', "Hamilton's table", OAK, size=[1.2, 0.75, 0.6]),
-    BRING('clerk-table', 'ens7', '1-01', 122.4, '1-01', 129.4, 0.0, 1.6, 0, wing='W-DSR',
-          note="1-01: right before Q51 two of the company bring a table to the centre; Hamilton works at it (Jack)"),
-    STRIKE('clerk-table', 'ens7', '1-01', 141.3, '1-01', 146.5, 'W-DSR', note='Q52: they take it back off (Jack)'),
+    BRING('clerk-table', ['ens7', 'ens6'], '1-01', 122.4, '1-01', 129.4, 0.0, 1.6, 0, wing='W-DSR',
+          note="1-01: right before Q51 two of the company carry a table to the centre between them (Jack; RULING FU); Hamilton works at it"),
+    STRIKE('clerk-table', ['ens7', 'ens6'], '1-01', 141.3, '1-01', 148.0, 'W-DSR', note='Q52: the two take it back off (Jack)'),
     # 1-02: the street lamp SL (cue 80: "the practical street lamp", Disney+ frames) and the tavern's chair UR, both set
     # in the 1-01 blackout; the friends carry on a picnic table (Jack), which stays DSC through My Shot (Laurens
     # stands on it, fan account; Hamilton writes at it on Q132 "Cntr Table"); Burr reads in the chair UR (fan
     # account). The five of the company strike all three in the My Shot blackout.
-    P('street-lamp', 'custom', 'Street lamp', '#2f2a24', size=[0.3, 2.2, 0.3]),
+    P('street-lamp', 'custom', 'Street lamp', '#2f2a24', size=[0.56, 3.17, 0.44], model='assets/props/street-lamp.glb'),
     DARK('street-lamp', '1-02', 0.3, 3.6, 2.2, 0, note='1-02: the night street\'s practical lamp SL (cue 80), set in the 1-01 blackout'),
     P('burr-chair', 'chair', "Chair (Burr's)", PINE),
     DARK('burr-chair', '1-02', 0.3, *behind((-3.3, -2.2), 20, 0.7), 20, note='1-03: the tavern chair UR where Burr reads (fan account); set in the 1-01 blackout'),
-    P('picnic-table', 'table', 'Picnic table', WALNUT, size=[1.8, 0.75, 0.7]),
-    BRING('picnic-table', 'laurens', '1-02', 83.2, '1-02', 88.0, 0.0, 3.3, 0, wing='W-DSL',
-          note='1-02 Q86: Laurens carries it on, Lafayette and Mulligan either side of him (Jack)'),
-    STRIKE('picnic-table', 'ens8', '1-03', 331.4, '1-04', 1.5, 'D-UC', note='struck in the My Shot blackout (cue 139.5)'),
-    STRIKE('street-lamp', 'ens10', '1-03', 331.4, '1-04', 0.8, 'W-MSL', note='struck in the My Shot blackout'),
+    STRIKE('street-lamp', 'ens10', '1-02', 80.0, '1-02', 83.2, 'W-MSL',
+           note='NOTES2 (Jack): "the street light should come off right before the table comes on"'),
+    P('picnic-table', 'table', 'Picnic table', '#5a2a1f', size=[1.8, 0.75, 1.56], model='assets/props/picnic-table.glb'),
+    BRING('picnic-table', ['mulligan', 'laurens'], '1-02', 83.0, '1-02', 88.6, -2.4, -1.0, 0, wing='W-USR',
+          note='1-02 Q86: Mulligan and Laurens carry it on between them to UPSTAGE RIGHT (Jack, NOTES2; RULING FU)'),
+    STRIKE('picnic-table', ['ens1', 'ens4'], '1-03', 161.0, '1-03', 166.4, 'W-USR',
+           note='NOTES2 (Jack): "the table should come off about halfway through": in the blue of Q119 (159.8)'),
     STRIKE('burr-chair', 'ens4', '1-03', 331.4, '1-04', 1.0, 'W-USR', note='struck in the My Shot blackout'),
     P('tavern-table', 'table', 'Tavern table', WALNUT, size=[0.8, 0.75, 0.5]),
     DARK('tavern-table', '1-03', 331.4, 0.0, 2.7, 0, note='1-04: set in the blackout at the end of My Shot (cue 139.5); the candle table upstage of their chairs'),
@@ -301,7 +307,7 @@ SEGMENT_5 = [
     DARK('hamilton-desk', '2-03', 0.2, -1.5, 1.85, 0, note='2-03 Take a Break: set in the change ("Desk Mid SR"); he stands at (-1.5, 1.4), behind it'),
     # 2-04 Say No: ETC's scenic element "3 x Street Lamps", standing in the THPP renders of cues 782 and 784 (one DSR
     # in front of the desk, one upstage behind it, one SL beside Maria's door)
-    *[P(f'street-lamp-{k + 1}', 'custom', 'Street lamp', '#2b2b2b', size=[0.3, 3.0, 0.3]) for k in range(3)],
+    *[P(f'street-lamp-{k + 1}', 'custom', 'Street lamp', '#2b2b2b', size=[0.53, 3.0, 0.42], model='assets/props/street-lamp.glb') for k in range(3)],
     *[DARK(f'street-lamp-{k + 1}', '2-04', 0.3, x, z, 0, note='2-04: set in the FTB at the top (cue 780); THPP cue photos 782/784') for k, (x, z) in
       enumerate([(-2.1, 3.0), (-1.0, -1.6), (3.7, 1.0)])],
     *[HIDE(f'street-lamp-{k + 1}', '2-04', 236.4, (x, z), note='struck in the Say No fade to black (cue 834)') for k, (x, z) in
@@ -510,32 +516,44 @@ def check(path):
         W = p.w
         for i, w in enumerate(W):
             if not w.get('carriedBy'): continue
-            who, T0 = w['carriedBy'], G(w)
-            prev, nxt = (W[i - 1] if i else None), (W[i + 1] if i + 1 < len(W) else None)
-            q0 = pose(who, T0)
-            if q0 is None:
-                print(f'  {p.d["id"]}: {who} has no blocking'); bad += 1; continue
-            msg = []
-            if prev and not prev.get('off'):                 # a pick-up: she must be beside it
-                d0 = math.hypot(q0['x'] - prev['x'], q0['z'] - prev['z'])
-                if not q0['visible'] or d0 > 1.5: msg.append(f'pick-up at {w["track"]} {w["at"]}: {who} {"hidden" if not q0["visible"] else f"{d0:.2f} m away"}')
-            elif q0['visible'] and 'in the dark' not in (w.get('note') or ''):     # a pick-up in a blackout may start on stage
-                msg.append(f'carry-on at {w["track"]} {w["at"]}: {who} is already on stage at ({q0["x"]:.1f}, {q0["z"]:.1f})')
-            if nxt and nxt.get('off'):
-                q1 = pose(who, G(nxt))
-                if q1['visible']: msg.append(f'parked off at {nxt["track"]} {nxt["at"]} but {who} is still on at ({q1["x"]:.1f}, {q1["z"]:.1f})')
-                T = T0; seen_off = False
-                while T < G(nxt):
-                    v = pose(who, T)['visible']
-                    if not v: seen_off = True
-                    elif seen_off: msg.append(f'{who} comes back on at {T - tracks[w["track"]]["start"]:.1f} with it'); break
+            ids = w['carriedBy'] if isinstance(w['carriedBy'], list) else [w['carriedBy']]   # FU: one or two
+            pair = len(ids) == 2
+            for who in ids:
+                T0 = G(w)
+                prev, nxt = (W[i - 1] if i else None), (W[i + 1] if i + 1 < len(W) else None)
+                q0 = pose(who, T0)
+                if q0 is None:
+                    print(f'  {p.d["id"]}: {who} has no blocking'); bad += 1; continue
+                msg = []
+                if prev and not prev.get('off'):                 # a pick-up: she must be beside it
+                    d0 = math.hypot(q0['x'] - prev['x'], q0['z'] - prev['z'])
+                    if not q0['visible'] or d0 > 1.5: msg.append(f'pick-up at {w["track"]} {w["at"]}: {who} {"hidden" if not q0["visible"] else f"{d0:.2f} m away"}')
+                elif q0['visible'] and 'in the dark' not in (w.get('note') or ''):     # a pick-up in a blackout may start on stage
+                    msg.append(f'carry-on at {w["track"]} {w["at"]}: {who} is already on stage at ({q0["x"]:.1f}, {q0["z"]:.1f})')
+                if nxt and nxt.get('off'):
+                    q1 = pose(who, G(nxt))
+                    if q1['visible']: msg.append(f'parked off at {nxt["track"]} {nxt["at"]} but {who} is still on at ({q1["x"]:.1f}, {q1["z"]:.1f})')
+                    T = T0; seen_off = False
+                    while T < G(nxt):
+                        v = pose(who, T)['visible']
+                        if not v: seen_off = True
+                        elif seen_off: msg.append(f'{who} comes back on at {T - tracks[w["track"]]["start"]:.1f} with it'); break
+                        T += 0.2
+                elif nxt:
+                    q1 = pose(who, G(nxt))
+                    d1 = math.hypot(q1['x'] - nxt['x'], q1['z'] - nxt['z'])
+                    if d1 > 1.2 + (p.d.get('size', [0])[0] / 2 if pair else 0): msg.append(f'set-down at {nxt["track"]} {nxt["at"]}: {who} is {d1:.2f} m from the spot')
+                    else: print(f'  ok   {p.d["id"]}: {who} sets it down {d1:.2f} m from its spot ({nxt["track"]} {nxt["at"]})')
+                for m in msg: print(f'  WARN {p.d["id"]}: {m}'); bad += 1
+            if pair and i + 1 < len(W) and all(x in A for x in ids):   # FU: the two walk abreast, about its width + 0.5 m apart
+                wd, T, gaps = (p.d.get('size') or [1.0])[0], G(w), []
+                while T < G(W[i + 1]):
+                    q1, q2 = pose(ids[0], T), pose(ids[1], T)
+                    if q1['visible'] and q2['visible']: gaps.append(math.hypot(q1['x'] - q2['x'], q1['z'] - q2['z']))
                     T += 0.2
-            elif nxt:
-                q1 = pose(who, G(nxt))
-                d1 = math.hypot(q1['x'] - nxt['x'], q1['z'] - nxt['z'])
-                if d1 > 1.2: msg.append(f'set-down at {nxt["track"]} {nxt["at"]}: {who} is {d1:.2f} m from the spot')
-                else: print(f'  ok   {p.d["id"]}: {who} sets it down {d1:.2f} m from its spot ({nxt["track"]} {nxt["at"]})')
-            for m in msg: print(f'  WARN {p.d["id"]}: {m}'); bad += 1
+                if gaps and (min(gaps) < wd + 0.15 or max(gaps) > wd + 1.3):
+                    print(f'  WARN {p.d["id"]}: the pair {ids} are {min(gaps):.2f}..{max(gaps):.2f} m apart (it is {wd} m long)'); bad += 1
+                elif gaps: print(f'  ok   {p.d["id"]}: the pair {ids} walk {min(gaps):.2f}..{max(gaps):.2f} m apart')
         # bodies standing inside a placed piece (expected for the box / the climbed desk / Burr's table / Philip's)
         hw, hd = [v / 2 for v in (p.d.get('size') or {'desk': [1.2, 0, 0.6], 'table': [1.5, 0, 0.9], 'chair': [0.45, 0, 0.45], 'bench': [1.4, 0, 0.4],
                                                      'stool': [0.4, 0, 0.4], 'box': [0.5, 0, 0.5], 'lantern': [0.2, 0, 0.2], 'bucket': [0.3, 0, 0.3]}[p.d['kind']])[::2]]

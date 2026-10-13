@@ -1710,6 +1710,10 @@ against this list before opening a PR; **add new traps as you hit them.**
   time). Take several runs and drop the first before comparing a before and an after.
 - **Clicking a viewpoint button and capturing in the same script captured the old view.** Two shots taken a click apart
   in one call (`v-back`, then `v-front`) came out byte-identical. Click, let a call return, then capture.
+- **A helper that rewrites a waypoint from `pos()` dropped the level.** `seg1/lib.py` `turn()` copied x and z only, so
+  everyone who turned on the gallery stepped back down to the deck for that waypoint (the page's floor ray follows the `y`
+  hint). It now carries `y`. Any helper that copies a position must copy `y` with it. Check a gallery scene by sampling
+  `sim()`'s level, not only x and z.
 - **This machine's Bash tool rejected a heredoc** (`unexpected EOF while looking for matching '`) whose body held apostrophes
   or a `'''`, even with the delimiter quoted — the command never ran. Write the text to a scratch file with the Write tool
   and `cat` it, or patch with a small Python script that reads its replacement text from a file.

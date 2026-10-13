@@ -3,6 +3,8 @@ from lib import *
 
 def A(at): return S('1-01', at)
 
+
+
 def build():
     # ---- everyone offstage at the top, labelled
     start('burr', 'W_DSR', t=LEAD_IN); start('hamilton', 'D_UC'); start('laurens', 'W_MSL')
@@ -97,7 +99,8 @@ def build():
     bear = sorted(E, key=lambda a: polar(pos(a))[1])
     for k, a in enumerate(bear):
         th = -162 + k * 36
-        p = ring(2.0, th)
+        # NOTES2 (Jack: "too crowded"): an oval 2.9 m across by 1.8 m up and down stage (was a 2 m circle)
+        p = (round(C[0] + 2.9 * math.sin(math.radians(th)), 3), round(C[1] - 1.8 * math.cos(math.radians(th)), 3))
         move(a, A(85.9), A(87.9), p, f=face_to(p, C))
     for k, a in enumerate(bear):
         th = -162 + k * 36
@@ -141,18 +144,18 @@ def build():
     # ---- Q51 130.0 the clerking: Mulligan's verse SL; the company dances in two loose rows
     move('mulligan', A(130.0), A(131.6), (1.8, 3.3), f=-30)   # SPOT: his key SL (ch51 at (1.78, 3.27))
     move('burr', A(130.0), A(132.6), (-3.0, 4.4), f=35)    # REVIEW2: was (-3.6, 3.8), the carriers' path
-    # REVIEW2 (Jack): right before Q51 two of the company (ens7 carrying, ens6 beside him) bring a table on to the
-    # centre (props.py 'clerk-table' at (0, 1.6)); Hamilton works at it, on the cousin's chair behind it (C);
-    # at Q52 they take the table and the chair off again.
+    # REVIEW2 (Jack): right before Q51 two of the company bring a table on to the centre (props.py 'clerk-table'
+    # at (0, 1.6)); Hamilton works at it, on the cousin's chair behind it (C); at Q52 they take it off again.
+    # NOTES2 (Jack: "make two people carry it on"): ens7 and ens6 carry it BETWEEN them (RULING FU), walking
+    # abreast, one at each end; it turns as they come in so it lands along the stage. Lafayette steps upstage
+    # out of their way. The cousin strikes the chair (it was ens6's, whose hands are now on the table).
     TABLE = (0.0, 1.6)
-    put(CARRIER, A(122.6), WINGS['W_DSR'], off=True); W[CARRIER][-1]['d'] = 0
-    via(CARRIER, A(125.4), (-4.0, 4.25))                       # round Lafayette, who stands DSR
-    put(CARRIER, A(129.4), (-1.0, 1.6), f=90)                  # sets the table down at its SR end
-    put(MOTHER, A(122.9), (-7.6, 3.8), off=True); W[MOTHER][-1]['d'] = 0
-    via(MOTHER, A(125.9), (-3.9, 3.55))                        # beside him, a body's width upstage
-    put(MOTHER, A(129.8), (-0.95, 0.4), f=60)                  # stands by the chair
-    move('hamilton', A(128.6), A(130.0), (0.95, 1.0), d=0)     # round the table's SL end
-    put('hamilton', A(130.8), C, f=0)                          # at the table, on the chair: writing
+    exit_('lafayette', A(120.0), 'W_DSR')                      # NOTES2: off DSR, clear of the carriers' line; back for Q53
+    pair_carry(CARRIER, MOTHER, 1.2, [(A(122.6), (-7.9, 3.75), -90, 'off'), (A(125.2), (-4.4, 3.75), -90, None),
+                                      (A(127.4), (-2.0, 2.85), -55, None), (A(129.4), TABLE, 0, 'stop')])
+    move(MOTHER, A(129.6), A(130.8), (1.85, 0.25), f=-80)       # steps up and right, out of Hamilton's way
+    move('hamilton', A(129.4), A(130.6), (0.95, 1.0), d=0)     # round the table's SL end
+    put('hamilton', A(131.4), C, f=0)                          # at the table, on the chair: writing
     fslots = [(-4.0, -1.0), (-2.4, -1.4), (-0.8, -1.0), (-3.2, 0.4), (-1.6, -0.3),
               (3.6, 0.6), (3.4, -1.0), (4.2, 1.9)]
     others = [e for e in E if e not in (MOTHER, CARRIER)]
@@ -163,16 +166,20 @@ def build():
     turn(['hamilton'], A(137.6), 80)
     move('laurens', A(139.8), A(141.2), (2.75, 2.9), d=0)
     put('laurens', A(142.6), (2.6, 4.4), f=-20)
-    # Q52 141.3: the table and the chair go off DSR
-    move(CARRIER, A(141.3), A(144.0), (-4.0, 4.25), d=0)
-    put(CARRIER, A(146.4), WINGS['W_DSR'], off=True)
-    move(MOTHER, A(141.6), A(144.6), (-3.9, 3.55), d=0)
-    put(MOTHER, A(147.0), (-7.6, 3.8), off=True)
+    # Q52 141.3: the table goes off DSR between the two (FU); the cousin takes the chair off upstage right
+    move(MOTHER, A(139.8), A(141.2), (0.85, 1.6), f=-90)       # back to the table's SL end
+    turn([CARRIER], A(140.8), 90)
+    pair_carry(CARRIER, MOTHER, 1.2, [(A(141.3), TABLE, 0, 'from'), (A(143.4), (-2.0, 2.85), -55, None),
+                                      (A(145.6), (-4.4, 3.75), -90, None), (A(147.8), (-7.9, 3.75), -90, 'off')])
+    move(COUSIN, A(139.8), A(140.8), (-0.55, 0.35), f=90)      # beside the chair (Hamilton has just left it)
+    move(COUSIN, A(141.0), A(142.4), (-0.9, -1.5), d=0)        # upstage first, ahead of the ship forming
+    via(COUSIN, A(144.8), (-4.0, -2.3))
+    put(COUSIN, A(147.6), WINGS['W_USR'], off=True)
 
     # ---- Q52 141.3 the voyage: the company becomes the ship, sailing SL; he climbs to the gallery (the prow)
     hull = [(-3.7, -0.4), (-2.7, -0.4), (-1.7, -0.4), (-0.7, -0.4), (-3.7, 1.7), (-2.7, 1.7), (-1.7, 1.7),
             (-0.7, 1.7)]
-    SHIP = [e for e in E if e not in (MOTHER, CARRIER)]    # REVIEW2: the two carriers are off with the table
+    SHIP = [e for e in E if e not in (MOTHER, CARRIER, COUSIN)]   # REVIEW2: the carriers are off with the table (NOTES2: and the chair)
     m = assign(SHIP, hull)
     for a in SHIP:   # the ones from SL wait until he has passed on his way to the stair
         late = pos(a)[0] > 1.0
@@ -195,7 +202,7 @@ def build():
         tl = 148.2 + 0.25 * k
         move(a, A(tl), A(tl + max(2.6, dist(pos(a), m[a]) / 2.0)), m[a], f=0)
     move('burr', A(148.2), A(150.6), (-1.8, 4.2), f=0)
-    move('lafayette', A(148.2), A(150.6), (-3.4, 3.6), f=0)
+    move('lafayette', A(150.0), A(153.2), (-3.4, 3.6), f=0)   # NOTES2: back on from DSR, after the company
     move('laurens', A(148.2), A(150.6), (1.9, 4.1), f=0)
     move('mulligan', A(148.2), A(150.6), (3.4, 3.6), f=0)
     # Q54 154.5 the sweep: the company cheats in to the centre
@@ -238,8 +245,9 @@ def build():
     move('eliza', A(179.5), A(181.6), (3.6, 1.0), f=-60)
     move('angelica', A(179.5), A(181.8), (-4.6, 2.4), f=70)
     # REVIEW: two of the company UL, the rest SR, so Peggy comes down the SL stair clear of them
-    jslots = [(-3.6, 1.2), (-1.8, 1.4), (-4.0, -0.2), (-2.0, -0.2), (-3.0, 2.8), (-0.9, -0.8), (0.0, 0.4),
-              (-2.8, 0.6), (0.9, -1.4), (1.6, -0.3)]
+    # NOTES2 (Jack: "too crowded"): none of them in the centre third now (was five, nine bodies there in all)
+    jslots = [(-3.6, 1.2), (-2.3, 1.3), (-4.0, -0.2), (-2.6, -0.3), (-3.3, 2.9),
+              (4.5, 0.3), (4.6, 1.5), (4.3, 2.9), (1.0, -1.3), (0.9, 0.0)]   # SL: clear of the stair walkers at Q60
     form(E, jslots, A(179.5), A(182.4), face=0)
     # Peggy comes down the SL stair (Q59 193.7 the held note)
     for a, tl, hold in (('peggy', 187.4, (4.0, -0.8)),):
@@ -250,79 +258,77 @@ def build():
         via(a, A(t1 + 5.3), (2.2, -2.45))
         put(a, A(t1 + 5.3 + dist((2.2, -2.45), hold) / 1.3 + 0.2), hold, f=-30)
 
-    # ---- Q60 201.2 the company turns toward him: Hamilton to the centre shaft, all eighteen in a ring
+    # ---- Q60 201.2 the company turns toward him: Hamilton to the centre shaft
+    # NOTES2 (Jack): "everyone who has one of those lines is on the balcony except Burr who is at center stage
+    # when he does his line." The roll-call singers climb to the UPSTAGE GALLERY (z -3.35) and sing from there:
+    # SR stair: Angelica -2.9, Lafayette (Jefferson) -3.9; the passage: Washington 0.0; SL stair: Peggy 1.3,
+    # Eliza 2.2, Mulligan (Madison) 3.1, Laurens 4.0 (the first up walks furthest, so nobody passes). They stay
+    # up there for the line-up (the gallery is their line) and go off by the passage in the blackout. The
+    # company and Burr make a looser ring round him on the deck.
+    # LIGHT: the roll-call specials (ch47/49/51 Q61, ch51 Q62, ch12 Q63, ch52/48 Q64) are on the DECK; they want
+    # refocusing to these gallery spots, and Burr's AF (ch2, Q65) to centre (0, 2.5) (docs/hamilton-blocking-cue-notes.md).
     move('hamilton', A(201.2), A(204.0), (0.0, 1.0), f=0)
-    # SPOT: the ring is set so each roll-call pool is on (or one step in from) its owner's place:
-    # Lafayette 228 (ch47), Mulligan 190 (ch49), Laurens 140 (ch51), Washington 0 (ch12), Eliza 110 (ch52),
-    # Angelica 252 at r 3.4 (ch48), Burr 210 at r 3.4 (ch2, his AF); the downstage arc is left open
-    ringslots = {'washington': (0, 3.2), 'peggy': (88, 3.2), 'eliza': (110, 3.2), 'laurens': (140, 3.2),
-                 'mulligan': (190, 3.2), 'burr': (210, 3.4), 'lafayette': (228, 3.2), 'angelica': (252, 3.4)}
-    es = [15, 30, 45, 60, 74, 266, 284, 302, 320, 338]
-    for a, (th, rr) in ringslots.items():
-        p = ring(rr, th)
-        if a in ('peggy', 'angelica', 'eliza'):
-            move(a, A(202.0), A(205.2), p, f=face_to(p, C, 135))
-        elif a == 'laurens':
-            move(a, A(201.2), A(202.2), p, f=face_to(p, C, 135))
-        elif a == 'mulligan':   # SPOT: round behind Laurens to the SR side of the downstage arc
-            move(a, A(201.4), A(202.6), (1.2, 2.9), d=0)
-            via(a, A(203.8), (0.5, 4.3))
-            put(a, A(205.0), p, f=face_to(p, C, 135))
-        else:
-            move(a, A(201.2), A(204.6), p, f=face_to(p, C, 135))
+    GSP = {'angelica': -2.9, 'lafayette': -3.9, 'washington': 0.0, 'peggy': 1.3, 'eliza': 2.2, 'mulligan': 3.1, 'laurens': 4.0}
+    for a, tl, v in (('angelica', 201.2, 1.0), ('lafayette', 201.4, 1.4)):          # up the SR stair
+        t1 = tl + dist(pos(a), (-4.5, 1.85)) / v
+        move(a, A(tl), A(t1), (-4.5, 1.85), d=0)
+        via(a, A(t1 + 4.0), (-4.5, -0.3), y=GAL)
+        via(a, A(t1 + 6.3), (-4.5, -3.35), y=GAL)
+        put(a, A(t1 + 6.3 + abs(GSP[a] + 4.5) / 1.4 + 0.1), (GSP[a], -3.35), f=0, y=GAL)
+    for a, tl, v in (('peggy', 200.6, 1.5), ('eliza', 201.0, 1.5), ('mulligan', 201.2, 1.6), ('laurens', 201.6, 1.6)):   # the SL stair
+        t1 = tl + dist(pos(a), (2.2, -2.45)) / v
+        move(a, A(tl), A(t1), (2.2, -2.45), d=0)
+        via(a, A(t1 + 4.0), (4.5, -2.45), y=GAL)
+        via(a, A(t1 + 4.7), (4.75, -3.1), y=GAL)
+        put(a, A(t1 + 4.7 + dist((4.75, -3.1), (GSP[a], -3.35)) / 1.4 + 0.1), (GSP[a], -3.35), f=0, y=GAL)
+    # Washington out by the deck door and up through the passage, to the middle of the gallery
+    move('washington', A(201.2), A(203.8), WINGS['D_UC'])
+    W['washington'][-1]['off'] = True
+    put('washington', A(205.4), G_UC, off=True, y=GAL); W['washington'][-1]['d'] = 0
+    via('washington', A(206.6), (0.6, -3.35), y=GAL)
+    put('washington', A(207.2), (GSP['washington'], -3.35), f=0, y=GAL)
+    # the deck ring: Burr (his AF side) and the company, evenly round him, the downstage centre left open
+    p = ring(3.4, 210)
+    move('burr', A(201.2), A(204.6), p, f=face_to(p, C, 135))
+    es = [20, 50, 80, 110, 140, 235, 255, 280, 310, 340]
     m = assign(E, [ring(3.2, th) for th in es])
-    for a in E:
-        move(a, A(201.0), A(204.2), m[a], f=face_to(m[a], C, 135))
+    turn(E, A(201.2), lambda a, q: face_to(q, C, 150))
+    for a in E:     # once the singers are past them on their way to the stairs
+        move(a, A(204.8), A(208.0), m[a], f=face_to(m[a], C, 135))
 
-    # ---- Q61 212.0 the friends, each in a pool on a dark deck (Lafayette ch47, Mulligan ch49, Laurens ch51)
-    move('lafayette', A(211.6), A(212.4), (-2.6, 3.05), f=40)
-    move('mulligan', A(211.4), A(212.4), (-0.62, 3.52), f=-10)
-    move('laurens', A(211.6), A(212.4), (1.95, 3.25), f=-40)
-    # Q62 214.0 Laurens alone: the other two step back into the ring
-    for a in ('mulligan', 'lafayette'):
-        th, rr = ringslots[a]; p = ring(rr, th)
-        move(a, A(213.6), A(214.6), p, f=face_to(p, C, 135))
-    # Q63 215.9 Washington's pool UC (ch12); Laurens slips round to his place for the line-up
-    move('washington', A(214.3), A(215.9), (-0.55, -0.6), f=19)
-    move('laurens', A(216.0), A(219.0), (-1.2, 3.0), f=20)
-    # Q64 217.4 the women's line: Eliza's pool SL (ch52), Angelica's SR (ch48)
-    move('eliza', A(216.9), A(217.9), (2.6, 1.95), f=-20)
-    move('angelica', A(216.9), A(217.9), (-2.05, 2.05), f=20)
-    # ---- Q65 219.6 Burr's confession: into his AF (ch2); in the dark Angelica crosses to the sisters' side
-    move('burr', A(219.2), A(220.0), (-1.82, 4.22), f=0)
-    move('angelica', A(219.7), A(223.2), (3.1, 2.9), f=-30)
+    # ---- Q61 212.0 the friends, Q62 214.0 Laurens alone, Q63 215.9 Washington, Q64 217.4 the women: each sings
+    # from the gallery (NOTES2), turned a little toward him
+    turn(['lafayette', 'mulligan', 'laurens'], A(211.8), lambda a, q: face_to(q, (0.0, 1.0), 35))
+    turn(['laurens'], A(214.0), lambda a, q: face_to(q, (0.0, 1.0), 40))
+    turn(['washington'], A(215.7), 0)
+    turn(['eliza', 'angelica', 'peggy'], A(217.2), lambda a, q: face_to(q, (0.0, 1.0), 35))
+    # ---- Q65 219.6 Burr's confession: alone at centre, downstage of Hamilton (NOTES2: "Burr at center stage")
+    move('burr', A(218.0), A(219.6), (0.0, 2.5), f=0)
 
-    # ---- Q66 223.3 the line-up across the front, the company in a row behind
-    # REVIEW: symmetric, four each side of him; Burr beside him for the last question; the sisters SL
+    # ---- Q66 223.3 the line-up: Burr and Hamilton DSC, the company in a row behind, the singers' line the gallery
     # SPOT: Q66 brings his centre shaft back (ch13 at (0, 1.15)): he holds it, framed by a corridor through the
-    # row and the line, and comes down into the line on Q67 (229.4, the last question)
-    line = {'washington': -3.4, 'lafayette': -2.55, 'laurens': -1.7, 'burr': -0.85, 'hamilton': 0.0,
-            'mulligan': 0.85, 'eliza': 1.7, 'angelica': 2.55, 'peggy': 3.4}
-    for a, x in line.items():
-        if a == 'washington':
-            move(a, A(226.0), A(228.5), (-3.0, 1.0), d=0)
-            via(a, A(229.6), (-3.0, 3.0))
-            put(a, A(230.4), (x, 3.7), f=0)
-        elif a == 'burr':
-            move(a, A(223.9), A(226.4), (x, 3.7), f=0)
-        elif a == 'hamilton':
-            move(a, A(229.4), A(231.0), (x, 3.7), f=0)
-        else:
-            move(a, A(223.3), A(226.2), (x, 3.7), f=0)
+    # row, and comes down into the line on Q67 (229.4, the last question)
+    turn(list(GSP), A(223.3), 0)
+    move('burr', A(223.9), A(226.4), (-0.85, 3.7), f=0)
+    move('hamilton', A(229.4), A(231.0), (0.0, 3.7), f=0)
     erow = [(x, 2.2) for x in (-4.4, -3.6, -2.4, -1.6, -0.8, 0.8, 1.6, 2.4, 3.3, 4.3)]
     m = assign(E, erow)
     for a in E:
         move(a, A(223.3), A(226.4), m[a], f=0)
     # Q67 229.4 the last question: Burr turns to him; Q68 the button, all to him
     turn(['burr'], A(229.4), 60)
-    turn([a for a in line if a not in ('burr', 'hamilton')], A(232.4),
-         lambda a, p: 25 if p[0] < 0 else -25)
+    turn(list(GSP), A(232.4), lambda a, p: 25 if p[0] < 0 else -25)
     turn(['burr'], A(233.0), 0)
 
     # ---- blackout 233.9: the company clears in the dark; Burr finds his street mark, Hamilton goes off SL
     UPW = ['W_MSR', 'W_MSL', 'W_USR', 'W_USL', 'D_UC']
     for a in E:     # REVIEW: the row behind goes off upstage, the line downstage, so nobody crosses in the dark
         exit_(a, A(234.0) + 0.25 * ENS.index(a), nearest_wing(pos(a), UPW), speed=2.4)
-    for a in ('washington', 'lafayette', 'mulligan', 'laurens', 'eliza', 'angelica', 'peggy'):
-        exit_(a, A(234.0), nearest_wing(pos(a), ['W_DSR', 'W_DSL']), speed=2.4)
+    # NOTES2: the gallery off by the passage, the nearest first; then parked at a downstage wing, as before
+    for k, a in enumerate(sorted(GSP, key=lambda a: abs(GSP[a] - 0.6))):
+        tl = 234.0 + 0.55 * k
+        t1 = tl + abs(GSP[a] - 0.6) / 2.0 + 0.15
+        move(a, A(tl), A(t1), (0.6, -3.35), d=0, y=GAL)
+        put(a, A(t1 + 0.7), G_UC, off=True, y=GAL)
+        put(a, A(t1 + 1.0), WINGS['W_DSR' if GSP[a] < 0 else 'W_DSL'], off=True)
     exit_('hamilton', A(234.0), 'W_DSL', speed=2.4)

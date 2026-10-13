@@ -243,6 +243,18 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
    file says what to change, and a correction goes into the segment's generator in `tools/blocking/`, then the merge. Put `docs/hamilton-blocking-cue-notes.md` in front of him:
    his two rulings (1-05 sisters, 2-22 duel sides) and the cue fixes. Ask the mannequin's licence/origin.
 
+## DONE — 2026-10-13 (latest): notes2 — two carry it, a better carry, prop models, the roll call on the gallery (PR #234, RULING FU)
+
+- RULING FU covers the page, the plotter, the merge, `props.py` and the format doc. `blocking.html` still has to learn
+  a pair carry and `model`.
+- `tools/props-models.py` builds the picnic table and the street lamp (`assets/props/`).
+- 1-01: the clerk's table is carried by two; the roll-call singers are on the gallery and Burr is at centre; the centre
+  third never holds more than 8.
+- 1-02: the lamp is struck just before Q86; the table goes upstage right, carried by two.
+- 1-03: the table is struck by two at Q119.
+- `seg1/lib.py` gained `pair_carry`. Its `turn()` now keeps the level, so a turn on the gallery stays up there (TRAPS).
+- Checks pass; renders are in scratch `act/shots/notes2/`; the cue asks are in `docs/hamilton-blocking-cue-notes.md`.
+
 ## DONE — 2026-10-13 (review 2 merged): the ensemble cut back, the furniture carried, props glide (PR #234, RULING FT)
 
 - Jack's verdict, *"the ensemble is used far too much and much of the choreography is wrong"*, was applied by eight
