@@ -30,7 +30,11 @@ first and second act, and give me 10 seconds at the end of act 1, and as much ti
   hand-driven clock and the editor's (same rules) were.
 - **FR props** in the page (boxes, a desk a top on legs, lit, name tags, carried in front of the carrier at waist height,
   pure function of time, in `actors.check`), in the merge (validated, written after the actors), in the editor (a Props panel,
-  "Carry from now", the change file's `prop-*` ops). The seed (`tools/blocking/props.py`): see the record below this block.
+  "Carry from now", the change file's `prop-*` ops). **The seed:** `tools/blocking/props.py` (written by a helper agent) —
+  28 props (the tavern table and chairs, Seabury's box, Washington's desk, Hamilton's desk through Act Two, the ten Cabinet
+  chairs and Washington's, the Room's table and three chairs, the King's stool, Burn's bench / bucket / lantern, Philip's
+  table), carried on and off by the actors its notes name, else set in the dark; merged: 0 errors, 0 warnings; the editor
+  loads it with 0 problems.
 - **`assets/hamilton-pools.json`** (0.6 MB, `tools/blocking-pools.py`): the person lights per cue, slimmed from the page dump —
   a snapshot of the cue data on `actors` (before #233's revisions 3–5).
 - Suites not run (no Node; nothing in `src/`).

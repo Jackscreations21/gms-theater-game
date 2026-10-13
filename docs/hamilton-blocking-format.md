@@ -236,6 +236,7 @@ python -I seg5gen.py          # 2-01 … 2-05   (seg5lib.py)
 python -I gen6.py             # 2-06 … 2-10
 python -I seg7_gen.py         # 2-11 … 2-16
 python -I gen_seg8.py         # 2-17 … 2-23
+python -I props.py            # the props (RULING FR) -> segments/props.json
 cd ../..
 python -I tools/blocking-merge.py tools/blocking/segments    # -> assets/hamilton-blocking.json
 ```

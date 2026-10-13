@@ -9454,5 +9454,210 @@
    {"track": "2-23", "at": 211.9, "x": 3.387, "z": 0.654, "facing": -33.2},
    {"track": "2-23", "at": 214.6, "x": 3.6, "z": 3.05, "facing": 0.0}
   ]}
+ ],
+ "props": [
+  {"id": "tavern-table", "kind": "table", "label": "Tavern table", "size": [0.8, 0.75, 0.5], "color": "#5e3f26", "waypoints": [
+   {"track": "1-03", "at": 331.2, "x": 0.0, "z": 2.7, "off": true},
+   {"track": "1-03", "at": 331.4, "x": 0.0, "z": 2.7, "facing": 0.0, "note": "1-04: set in the blackout at the end of My Shot (cue 139.5); the candle table upstage of their chairs"},
+   {"track": "1-04", "at": 89.2, "x": 0.0, "z": 2.7, "off": true, "note": "struck in the 1-04 blackout (cue 149)"},
+   {"track": "1-11", "at": 328.3, "x": 7.3, "z": 4.6, "off": true},
+   {"track": "1-11", "at": 328.5, "carriedBy": "hamilton", "note": "1-12: Hamilton brings it on from W-DSL; the four stand round it (seg3gen.py)"},
+   {"track": "1-12", "at": 5.0, "x": -0.05, "z": 2.1, "facing": 0.0},
+   {"track": "1-12", "at": 75.8, "carriedBy": "lafayette", "note": "the friends leave on 75.4: Lafayette takes it off W-MSL"},
+   {"track": "1-12", "at": 83.0, "x": 8.0, "z": -0.5, "off": true}
+  ]},
+  {"id": "tavern-chair-1", "kind": "chair", "label": "Chair (Lafayette)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "1-03", "at": 331.2, "x": -1.499, "z": 2.812, "off": true},
+   {"track": "1-03", "at": 331.4, "x": -1.499, "z": 2.812, "facing": 20.0, "note": "1-04: his chair, behind his pool (chair pools ch48-51); set in the blackout"},
+   {"track": "1-04", "at": 89.1, "carriedBy": "lafayette", "note": "he takes his own chair off in the blackout (cue 149)"},
+   {"track": "1-05", "at": 6.0, "x": -8.5, "z": 0.0, "off": true}
+  ]},
+  {"id": "tavern-chair-2", "kind": "chair", "label": "Chair (Hamilton)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "1-03", "at": 331.2, "x": -0.451, "z": 3.083, "off": true},
+   {"track": "1-03", "at": 331.4, "x": -0.451, "z": 3.083, "facing": 5.0, "note": "1-04: his chair, behind his pool (chair pools ch48-51); set in the blackout"},
+   {"track": "1-04", "at": 89.1, "carriedBy": "hamilton", "note": "he takes his own chair off in the blackout (cue 149)"},
+   {"track": "1-05", "at": 4.0, "x": 7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "tavern-chair-3", "kind": "chair", "label": "Chair (Laurens)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "1-03", "at": 331.2, "x": 0.551, "z": 3.093, "off": true},
+   {"track": "1-03", "at": 331.4, "x": 0.551, "z": 3.093, "facing": -5.0, "note": "1-04: his chair, behind his pool (chair pools ch48-51); set in the blackout"},
+   {"track": "1-04", "at": 89.1, "carriedBy": "laurens", "note": "he takes his own chair off in the blackout (cue 149)"},
+   {"track": "1-05", "at": 4.0, "x": 7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "tavern-chair-4", "kind": "chair", "label": "Chair (Mulligan)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "1-03", "at": 331.2, "x": 1.609, "z": 2.822, "off": true},
+   {"track": "1-03", "at": 331.4, "x": 1.609, "z": 2.822, "facing": -20.0, "note": "1-04: his chair, behind his pool (chair pools ch48-51); set in the blackout"},
+   {"track": "1-04", "at": 89.1, "carriedBy": "mulligan", "note": "he takes his own chair off in the blackout (cue 149)"},
+   {"track": "1-05", "at": 6.0, "x": 8.0, "z": -0.5, "off": true}
+  ]},
+  {"id": "seabury-box", "kind": "box", "label": "Seabury's box", "size": [0.5, 0.45, 0.5], "color": "#8c6d45", "waypoints": [
+   {"track": "1-05", "at": 184.55, "x": 1.4, "z": 2.4, "off": true},
+   {"track": "1-05", "at": 184.75, "x": 1.4, "z": 2.4, "facing": -15.0, "note": "1-06: set in the 1-05 blackout (cue 174.7, \"the soapbox goes on in the dark\"); Seabury stands at it"},
+   {"track": "1-06", "at": 105.5, "carriedBy": "ens2", "note": "Seabury takes his box off at the end of the scene"},
+   {"track": "1-06", "at": 110.0, "x": 7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "washington-desk", "kind": "desk", "label": "Washington's desk", "size": [1.2, 0.75, 0.6], "color": "#7a5230", "waypoints": [
+   {"track": "1-08", "at": 170.6, "x": 8.5, "z": -3.0, "off": true},
+   {"track": "1-08", "at": 170.8, "carriedBy": "ens9", "note": "1-08 the tent (Q284): a soldier of the night march drops it off on his way across; Washington stands DS of it"},
+   {"track": "1-08", "at": 177.0, "x": -0.35, "z": 0.85, "facing": 0.0},
+   {"track": "1-09", "at": 33.3, "carriedBy": "washington", "note": "1-09: Washington takes it with him as the men take over (Q291)"},
+   {"track": "1-09", "at": 41.0, "x": -8.5, "z": -3.0, "off": true},
+   {"track": "1-14", "at": 11.3, "x": 1.25, "z": -4.9, "off": true},
+   {"track": "1-14", "at": 11.5, "carriedBy": "washington", "note": "1-14: Washington brings his desk in from D-UC (cue 429 \"a warm pool on the desk\"); he stands DS of it"},
+   {"track": "1-14", "at": 16.9, "x": 0.0, "z": 0.85, "facing": 0.0},
+   {"track": "1-14", "at": 144.8, "carriedBy": "washington", "note": "he takes it off D-UC as the company clears (144.3)"},
+   {"track": "1-14", "at": 150.5, "x": 1.25, "z": -4.9, "off": true},
+   {"track": "1-16", "at": 24.8, "x": -1.75, "z": 2.45, "off": true},
+   {"track": "1-16", "at": 25.0, "x": -1.75, "z": 2.45, "facing": 40.0, "note": "1-16: set on the chant stab that turns the deck into his office (cue 478); behind his place"},
+   {"track": "1-16", "at": 77.9, "carriedBy": "washington", "note": "he takes it off DR on the button"},
+   {"track": "1-16", "at": 82.9, "x": -7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "hamilton-desk", "kind": "desk", "label": "Hamilton's desk", "size": [1.2, 0.75, 0.6], "color": "#5e3f26", "waypoints": [
+   {"track": "1-23", "at": 249.3, "x": -1.0, "z": 2.1, "off": true},
+   {"track": "1-23", "at": 249.5, "x": -1.0, "z": 2.1, "facing": 0.0, "note": "1-23 the Federalist papers: set as the sisters go (gen4.py puts him at (-1.0, 2.65)); the desk US of him, clear of the finale pools DS"},
+   {"track": "1-23", "at": 382.3, "x": -1.0, "z": 2.1, "off": true, "note": "struck in the Act One blackout (cue 669)"},
+   {"track": "2-03", "at": 0.0, "x": -1.5, "z": 1.85, "off": true},
+   {"track": "2-03", "at": 0.2, "x": -1.5, "z": 1.85, "facing": 0.0, "note": "2-03 Take a Break: set in the change (\"Desk Mid SR\"); he stands at (-1.5, 1.4), behind it"},
+   {"track": "2-04", "at": 236.3, "x": -1.5, "z": 1.85, "off": true, "note": "struck in the Say No fade to black (cue 834)"},
+   {"track": "2-11", "at": 50.4, "x": 1.25, "z": -4.9, "off": true},
+   {"track": "2-11", "at": 50.6, "carriedBy": "hamilton", "note": "2-12 We Know: Hamilton brings it in from D-UC; he stands behind it at (1.4, 0.5) (seg7_gen.py DESK)"},
+   {"track": "2-12", "at": 1.0, "x": 1.4, "z": 1.1, "facing": 0.0},
+   {"track": "2-12", "at": 116.3, "carriedBy": "mulligan", "note": "the accusers withdraw: Madison takes it off"},
+   {"track": "2-12", "at": 121.5, "x": 8.0, "z": -0.5, "off": true},
+   {"track": "2-13", "at": 130.5, "x": -0.95, "z": 1.55, "off": true},
+   {"track": "2-13", "at": 130.7, "carriedBy": "ens1", "note": "2-14: brought on in front of him at the decision (hamilton-lyrics); ens1 lifts it from the ring in the dark of 130.65"},
+   {"track": "2-13", "at": 134.0, "x": 0.0, "z": 1.9, "facing": 0.0},
+   {"track": "2-14", "at": 115.6, "carriedBy": "hamilton", "note": "Hamilton takes it off upstage as the title comes back (115.66)"},
+   {"track": "2-14", "at": 121.5, "x": 1.25, "z": -4.9, "off": true},
+   {"track": "2-16", "at": 75.8, "x": 1.25, "z": -4.9, "off": true},
+   {"track": "2-16", "at": 76.0, "carriedBy": "hamilton", "note": "2-16 Hamilton's office: he brings it in from D-UC and stands behind it in the 'Desk' pool (Viper 12 at (-1.38, 1.82))"},
+   {"track": "2-16", "at": 81.5, "x": -1.4, "z": 1.75, "facing": 0.0},
+   {"track": "2-16", "at": 137.4, "x": -1.4, "z": 1.75, "off": true, "note": "struck as the room goes to the cold dawn (cue 1081); nobody passes it - give it a carrier"},
+   {"track": "2-19", "at": 235.8, "x": 0.0, "z": 1.15, "off": true},
+   {"track": "2-19", "at": 236.0, "x": 0.0, "z": 1.15, "facing": 0.0, "note": "2-20: set in the change; Burr's desk centre (cue 1193), he sits behind it at (0, 0.6)"},
+   {"track": "2-20", "at": 147.75, "carriedBy": "hamilton", "note": "in the blackout (cue 1206) Hamilton moves it to his place near SR"},
+   {"track": "2-21", "at": 0.44, "x": -2.8, "z": 3.15, "facing": 0.0, "note": "2-21: the desk near SR (ironinkpen); he sits behind it at (-2.8, 2.6)"},
+   {"track": "2-21", "at": 44.4, "carriedBy": "hamilton", "note": "he takes it off in the dark (cue 1238 FTB)"},
+   {"track": "2-22", "at": 3.0, "x": -7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "cabinet-chair-1", "kind": "chair", "label": "Chair (1)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": -4.24, "z": 2.307, "off": true},
+   {"track": "2-01", "at": 234.2, "x": -4.24, "z": 2.307, "facing": 78.1, "note": "2-02: the V of chairs (ironinkpen); set in the snap to the DSC mic special (cue 739.5)"},
+   {"track": "2-02", "at": 157.5, "carriedBy": "ens1", "note": "she takes her chair off as the meeting breaks up (156.5)"},
+   {"track": "2-02", "at": 167.0, "x": -7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "cabinet-chair-2", "kind": "chair", "label": "Chair (3)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": -3.492, "z": 1.229, "off": true},
+   {"track": "2-01", "at": 234.2, "x": -3.492, "z": 1.229, "facing": 60.6, "note": "2-02: the V of chairs (ironinkpen); set in the snap to the DSC mic special (cue 739.5)"},
+   {"track": "2-02", "at": 158.6, "carriedBy": "ens3", "note": "she takes her chair off as the meeting breaks up (156.5)"},
+   {"track": "2-02", "at": 168.1, "x": -7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "cabinet-chair-3", "kind": "chair", "label": "Chair (2)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": -2.699, "z": 0.164, "off": true},
+   {"track": "2-01", "at": 234.2, "x": -2.699, "z": 0.164, "facing": 41.6, "note": "2-02: the V of chairs (ironinkpen); set in the snap to the DSC mic special (cue 739.5)"},
+   {"track": "2-02", "at": 159.7, "carriedBy": "ens2", "note": "she takes her chair off as the meeting breaks up (156.5)"},
+   {"track": "2-02", "at": 169.2, "x": -7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "cabinet-chair-4", "kind": "chair", "label": "Chair (6)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": -1.89, "z": -0.858, "off": true},
+   {"track": "2-01", "at": 234.2, "x": -1.89, "z": -0.858, "facing": 25.0, "note": "2-02: the V of chairs (ironinkpen); set in the snap to the DSC mic special (cue 739.5)"},
+   {"track": "2-02", "at": 165.2, "carriedBy": "ens6", "note": "she takes her chair off as the meeting breaks up (156.5)"},
+   {"track": "2-02", "at": 174.7, "x": 1.25, "z": -4.9, "off": true}
+  ]},
+  {"id": "cabinet-chair-5", "kind": "chair", "label": "Chair (4)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": -1.096, "z": -1.84, "off": true},
+   {"track": "2-01", "at": 234.2, "x": -1.096, "z": -1.84, "facing": 12.3, "note": "2-02: the V of chairs (ironinkpen); set in the snap to the DSC mic special (cue 739.5)"},
+   {"track": "2-02", "at": 163.0, "carriedBy": "ens4", "note": "she takes her chair off as the meeting breaks up (156.5)"},
+   {"track": "2-02", "at": 172.5, "x": 1.25, "z": -4.9, "off": true}
+  ]},
+  {"id": "cabinet-chair-6", "kind": "chair", "label": "Chair (7)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": 1.89, "z": -0.858, "off": true},
+   {"track": "2-01", "at": 234.2, "x": 1.89, "z": -0.858, "facing": -25.0, "note": "2-02: the V of chairs (ironinkpen); set in the snap to the DSC mic special (cue 739.5)"},
+   {"track": "2-02", "at": 167.4, "carriedBy": "ens7", "note": "she takes her chair off as the meeting breaks up (156.5)"},
+   {"track": "2-02", "at": 176.9, "x": 1.25, "z": -4.9, "off": true}
+  ]},
+  {"id": "cabinet-chair-7", "kind": "chair", "label": "Chair (8)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": 2.699, "z": 0.164, "off": true},
+   {"track": "2-01", "at": 234.2, "x": 2.699, "z": 0.164, "facing": -41.6, "note": "2-02: the V of chairs (ironinkpen); set in the snap to the DSC mic special (cue 739.5)"},
+   {"track": "2-02", "at": 166.3, "carriedBy": "ens8", "note": "she takes her chair off as the meeting breaks up (156.5)"},
+   {"track": "2-02", "at": 175.8, "x": 8.0, "z": -0.5, "off": true}
+  ]},
+  {"id": "cabinet-chair-8", "kind": "chair", "label": "Chair (9)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": 3.492, "z": 1.229, "off": true},
+   {"track": "2-01", "at": 234.2, "x": 3.492, "z": 1.229, "facing": -60.6, "note": "2-02: the V of chairs (ironinkpen); set in the snap to the DSC mic special (cue 739.5)"},
+   {"track": "2-02", "at": 164.1, "carriedBy": "ens9", "note": "she takes her chair off as the meeting breaks up (156.5)"},
+   {"track": "2-02", "at": 173.6, "x": 8.0, "z": -0.5, "off": true}
+  ]},
+  {"id": "cabinet-chair-9", "kind": "chair", "label": "Chair (10)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": 4.24, "z": 2.307, "off": true},
+   {"track": "2-01", "at": 234.2, "x": 4.24, "z": 2.307, "facing": -78.1, "note": "2-02: the V of chairs (ironinkpen); set in the snap to the DSC mic special (cue 739.5)"},
+   {"track": "2-02", "at": 161.9, "carriedBy": "ens10", "note": "she takes her chair off as the meeting breaks up (156.5)"},
+   {"track": "2-02", "at": 171.4, "x": 7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "cabinet-chair-10", "kind": "chair", "label": "Chair (5)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": 4.95, "z": 3.365, "off": true},
+   {"track": "2-01", "at": 234.2, "x": 4.95, "z": 3.365, "facing": -91.9, "note": "2-02: the V of chairs (ironinkpen); set in the snap to the DSC mic special (cue 739.5)"},
+   {"track": "2-02", "at": 160.8, "carriedBy": "ens5", "note": "she takes her chair off as the meeting breaks up (156.5)"},
+   {"track": "2-02", "at": 170.3, "x": 7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "washington-chair", "kind": "chair", "label": "Washington's chair", "size": [0.45, 0.9, 0.45], "color": "#7a5230", "waypoints": [
+   {"track": "2-01", "at": 234.0, "x": 1.096, "z": -1.84, "off": true},
+   {"track": "2-01", "at": 234.2, "x": 1.096, "z": -1.84, "facing": -12.3, "note": "2-02: his chair at the vertex of the SL arm (cue 742 'chair SL')"},
+   {"track": "2-02", "at": 214.8, "x": 1.096, "z": -1.84, "off": true, "note": "struck in the change into Take a Break (nobody passes it: move it to a carrier)"}
+  ]},
+  {"id": "room-table", "kind": "table", "label": "The Room table", "size": [1.4, 0.75, 0.9], "color": "#5e3f26", "waypoints": [
+   {"track": "2-05", "at": 0.0, "x": 0.0, "z": 0.2, "off": true},
+   {"track": "2-05", "at": 0.2, "x": 0.0, "z": 0.2, "facing": 0.0, "note": "2-05: preset USC in the opening FTB (cue 864); Burr stands up on it at 277.9 (deck level here)"},
+   {"track": "2-05", "at": 317.0, "x": 0.0, "z": 0.2, "off": true, "note": "struck in the dark after the button (cue 896)"}
+  ]},
+  {"id": "room-chair-hamilton", "kind": "chair", "label": "Chair (Hamilton)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-05", "at": 0.0, "x": 0.0, "z": -1.1, "off": true},
+   {"track": "2-05", "at": 0.2, "x": 0.0, "z": -1.1, "facing": 0.0, "note": "preset with the table"},
+   {"track": "2-05", "at": 271.6, "carriedBy": "hamilton", "note": "the three leave upstage on 882 \"Burr DS\": each takes his chair"},
+   {"track": "2-05", "at": 276.0, "x": 1.25, "z": -4.9, "off": true}
+  ]},
+  {"id": "room-chair-jefferson", "kind": "chair", "label": "Chair (Jefferson)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-05", "at": 39.8, "x": 1.25, "z": -4.9, "off": true},
+   {"track": "2-05", "at": 40.0, "carriedBy": "lafayette", "note": "Jefferson brings his chair in from D-UC to the dinner"},
+   {"track": "2-05", "at": 47.0, "x": 1.15, "z": 0.635, "facing": -138.2},
+   {"track": "2-05", "at": 272.4, "carriedBy": "lafayette"},
+   {"track": "2-05", "at": 277.5, "x": 1.25, "z": -4.9, "off": true}
+  ]},
+  {"id": "room-chair-madison", "kind": "chair", "label": "Chair (Madison)", "size": [0.45, 0.9, 0.45], "color": "#9a7b4f", "waypoints": [
+   {"track": "2-05", "at": 41.3, "x": 1.25, "z": -4.9, "off": true},
+   {"track": "2-05", "at": 41.5, "carriedBy": "mulligan", "note": "Madison brings his chair in from D-UC"},
+   {"track": "2-05", "at": 48.5, "x": -1.15, "z": 0.635, "facing": 138.2},
+   {"track": "2-05", "at": 273.4, "carriedBy": "mulligan"},
+   {"track": "2-05", "at": 279.0, "x": 1.25, "z": -4.9, "off": true}
+  ]},
+  {"id": "king-stool", "kind": "stool", "label": "The King's stool", "size": [0.4, 0.6, 0.4], "color": "#8c2a22", "waypoints": [
+   {"track": "2-11", "at": 0.8, "x": 4.375, "z": -1.903, "off": true},
+   {"track": "2-11", "at": 1.0, "x": 4.375, "z": -1.903, "facing": -30.0, "note": "2-11: set UL in the dark while he walks to it"},
+   {"track": "2-11", "at": 47.4, "carriedBy": "king", "note": "he takes his stool with him"},
+   {"track": "2-11", "at": 51.5, "x": 8.0, "z": -0.5, "off": true}
+  ]},
+  {"id": "burn-bench", "kind": "bench", "label": "Bench", "size": [1.2, 0.45, 0.4], "color": "#7a5230", "waypoints": [
+   {"track": "2-15", "at": 0.0, "x": -0.3, "z": 2.85, "off": true},
+   {"track": "2-15", "at": 0.2, "x": -0.3, "z": 2.85, "facing": 0.0, "note": "2-15: set in the dark (cue 1051: one figure on a bench); she sits at (-0.4, 3.2), DS of it"},
+   {"track": "2-15", "at": 217.0, "x": -0.3, "z": 2.85, "off": true, "note": "struck in the dark after she goes (cue 1065)"}
+  ]},
+  {"id": "burn-bucket", "kind": "bucket", "label": "Bucket", "size": [0.3, 0.35, 0.3], "color": "#6f7377", "waypoints": [
+   {"track": "2-15", "at": 0.0, "x": -1.5, "z": 2.6, "off": true},
+   {"track": "2-15", "at": 0.2, "x": -1.5, "z": 2.6, "facing": 0.0, "note": "the burnt letters go in it"},
+   {"track": "2-15", "at": 217.0, "x": -1.5, "z": 2.6, "off": true, "note": "struck in the dark (cue 1065)"}
+  ]},
+  {"id": "burn-lantern", "kind": "lantern", "label": "Lantern", "size": [0.2, 0.35, 0.2], "color": "#d9a441", "waypoints": [
+   {"track": "2-14", "at": 127.3, "x": -7.3, "z": 4.6, "off": true},
+   {"track": "2-14", "at": 127.5, "carriedBy": "eliza", "note": "2-15: Eliza brings it on and sets it at the bench's SR end (Viper 2, the candle glow)"},
+   {"track": "2-15", "at": 6.0, "x": -1.25, "z": 3.31, "facing": 0.0},
+   {"track": "2-15", "at": 217.2, "carriedBy": "eliza", "note": "\"she exits with her lantern as the fire dies\" (WatchMojo)"},
+   {"track": "2-15", "at": 224.0, "x": -7.3, "z": 4.6, "off": true}
+  ]},
+  {"id": "philip-table", "kind": "table", "label": "Philip's table", "size": [1.4, 0.75, 0.8], "color": "#5e3f26", "waypoints": [
+   {"track": "2-17", "at": 0.1, "x": -7.3, "z": 4.6, "off": true},
+   {"track": "2-17", "at": 0.3, "carriedBy": "ens3", "note": "2-17: a bearer brings it from SR under Philip at the shot (gen_seg8.py); he lies on it"},
+   {"track": "2-17", "at": 4.2, "x": -0.3, "z": 3.9, "facing": 0.0},
+   {"track": "2-17", "at": 109.8, "x": -0.3, "z": 3.9, "off": true, "note": "struck in the blackout (cue 1116) as Philip is carried off"}
+  ]}
  ]
 }

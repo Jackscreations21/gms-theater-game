@@ -254,6 +254,7 @@ What was done:
 - `midtown.html`: the lead-ins and tails in the show player (FQ); props drawn, posed, carried and checked (FR).
 - `tools/blocking-merge.py`: `track_table` / `at_ok` (FQ), `merge_props` (FR); `tools/blocking-plot.py` on the FQ clock.
 - `assets/hamilton-pools.json` + `tools/blocking-pools.py`: the person lights for the editor.
+- `tools/blocking/props.py`: the 28-prop seed, merged into `assets/hamilton-blocking.json`.
 - Checked in the browser (editor = page poses at 360 moments; blackouts = the page's dump on 892 cues; round trip byte for
   byte; `show.check` and `actors.check` pass across the edges).
 

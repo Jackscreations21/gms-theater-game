@@ -39,7 +39,9 @@ input[type="text"], textarea, select { padding: 2px 4px; }
 textarea { width: 100%; resize: vertical; }
 label { color: var(--dim); }
 h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin: 12px 0 6px; font-weight: 600; }
-#app { display: grid; grid-template-rows: auto auto 1fr; height: 100vh; }
+#app { display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); height: 100vh; }
+#top > *, .grp > * { min-width: 0; max-width: 100%; }
+#track { max-width: min(260px, 100%); }
 #top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
 #top .title { font-weight: 700; font-size: 14px; }
 #top .title span { color: var(--dim); font-weight: 400; }
