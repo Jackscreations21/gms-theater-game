@@ -1652,6 +1652,12 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **`python -I` leaves the script's own directory off `sys.path`.** A generator that does `from lib import *` (its
   sibling) fails under `-I` though `python export.py` works. Insert `os.path.dirname(os.path.abspath(__file__))`
   into `sys.path` at the top (the copies in `tools/blocking/` do).
+- **A blackout test that counts every channel in the cues calls dark cues lit.** The editor first counted any channel a cue
+  set above 0: six Color Force channels (764, 766, 803–806) sit at 57 % through Act One's end, but no unit answers them (no
+  `type` in the Eos file, not in the rig), so eleven of the page's blackouts — the end of Non-Stop among them — read "lit".
+  Count only the channels a unit in `assets/hamilton-rig.json` answers; then all 892 cues agree with the page's own dump.
+- **A `<canvas>` given only `width: 100%` in CSS takes its height from its 300 × 150 attribute ratio.** The editor's scrub
+  bars grew to 670 px each while the pane was hidden (no frame had sized them yet). Give a canvas a CSS height.
 - **A speed check that does not know about offstage flags reports invisible moves.** `MIDTOWN.actors.check()` flagged 19
   legs at up to 128 m/s after the merge — every one between two `off` waypoints (a body crossing the wings in the dark).
   The page's check now skips them, as the merge always did; keep the two checks' rules the same.

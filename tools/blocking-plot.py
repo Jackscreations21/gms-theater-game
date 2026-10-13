@@ -398,10 +398,13 @@ def load_inputs(path):
     d = json.load(open(path, encoding='utf-8'))
     cast = {a['id']: a for a in json.load(open(os.path.join(ROOT, 'tools', 'hamilton-cast.json'), encoding='utf-8'))['actors']}
     show = json.load(open(os.path.join(ROOT, 'assets', 'hamilton-show.json'), encoding='utf-8'))
-    tracks, t0 = {}, 0.0
-    for k, t in enumerate(show['tracks']):
-        tracks[t['id']] = {'i': k, 'id': t['id'], 'title': t['title'], 'len': float(t['len']), 'start': t0}
-        t0 += float(t['len'])
+    tracks, t0, L = {}, 0.0, show['tracks']
+    for k, t in enumerate(L):                    # the clock's lead-ins and tails (RULING FQ), as midtown.html and the merge lay them out
+        pre = 10.0 if k == 0 or t.get('hold') else 0.0
+        post = math.inf if k == len(L) - 1 else (10.0 if L[k + 1].get('hold') else 0.0)
+        t0 += pre
+        tracks[t['id']] = {'i': k, 'id': t['id'], 'title': t['title'], 'len': float(t['len']), 'start': t0, 'pre': pre, 'post': post}
+        t0 += float(t['len']) + (post if post != math.inf else 0.0)
     actors = []
     if isinstance(d.get('actors'), list):
         src = [(a['id'], a.get('name'), a.get('color'), a.get('label'), a.get('path') or []) for a in d['actors']]

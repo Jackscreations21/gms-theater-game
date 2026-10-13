@@ -3,7 +3,39 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-12 (late night): THE WHOLE OF HAMILTON BLOCKED — 9,410 WAYPOINTS, MERGED AND CHECKED (RULING FO) — PR #234
+## NEWEST — 2026-10-12 (latest): THE BLOCKING EDITOR `blocking.html`, THE CLOCK'S LEAD-INS AND TAILS, PROPS (RULINGS FP–FR) — PR #234 grows
+
+Jack: *"make a software that i can make paths for the people … make this a different html … play the music and it shows me
+where they would be … export a file that tells you what to change … an indicator for when it is a blackout … a 2d view from
+the top and add text showing what each part is"*; then *"give me 10 seconds before the first song starts at the start of the
+first and second act, and give me 10 seconds at the end of act 1, and as much time as I want at the end of act 2"*; then
+*"make it so i can also put in props i want people to carry on like desks or stuff."*
+
+- **`blocking.html`** (repo root; on the worktree server `/blocking.html`): the plan from the top, labelled part by part from
+  the measured floor; every actor at the moment with her label; the selected actor's / prop's path; drag, click-to-add at the
+  current time, a waypoint form, delete, undo / redo, nudges, snapping 0.05 m; the merge tool's checks live (the committed file:
+  0 errors, 0 warnings); the music (Jack's soundtrack fetched as a Blob, or chosen from disk, or silent; the VBR seek table);
+  BLACKOUT / LIT with brightness and the cue, blackout bands on both scrub bars; the person lights; Notes for Claude per track
+  and on the show; downloads: the change file (format in `docs/hamilton-blocking-format.md`), its Markdown, the whole edited
+  blocking file (byte-identical when unedited). A draft is kept in the browser and offered on reload.
+- **Checked:** the editor's pose = `MIDTOWN.actors.pose` at 360 random moments (0 m, 0 rad, labels and visibility alike) and =
+  `blocking-plot.py`'s printout; its BLACKOUT agrees with the page's per-cue pool dump on all 892 cues (after it learnt to skip
+  the channels no unit answers — TRAPS); export round-trips byte for byte; drag / add / delete / undo / redo / draft restore;
+  the clock through 1-01's lead-in into the music, a corrected skip into 1-11, 1-23's tail, the interval stop at 2-01 −10;
+  console clean. Shots: session scratch `act/shots/editor/`.
+- **FQ in the page** (`midtown.html` show player): `at` −10 … 0 on 1-01 and 2-01 (silent; the preshow / interval look held),
+  1-23 runs 10 s past its music before the interval hold, 2-23 has an open tail. `show.check` passes at points inside every
+  edge; `actors.check({ n: 40 })` passes. The merge (`track_table`, `at_ok`) and `blocking-plot.py` lay the clock out the same.
+  NOT seen: Play with real frames through a lead-in in the 3D page — the Browser pane was hidden (no animation frames); the
+  hand-driven clock and the editor's (same rules) were.
+- **FR props** in the page (boxes, a desk a top on legs, lit, name tags, carried in front of the carrier at waist height,
+  pure function of time, in `actors.check`), in the merge (validated, written after the actors), in the editor (a Props panel,
+  "Carry from now", the change file's `prop-*` ops). The seed (`tools/blocking/props.py`): see the record below this block.
+- **`assets/hamilton-pools.json`** (0.6 MB, `tools/blocking-pools.py`): the person lights per cue, slimmed from the page dump —
+  a snapshot of the cue data on `actors` (before #233's revisions 3–5).
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (late night): THE WHOLE OF HAMILTON BLOCKED — 9,410 WAYPOINTS, MERGED AND CHECKED (RULING FO) — PR #234
 
 Jack: *"put the choreography for every character in hamilton"*, then *"run agents to check each section using reference
 pictures, documents, and videos then have them fix anything that is wrong"*, then *"make sure that spotlights are on their

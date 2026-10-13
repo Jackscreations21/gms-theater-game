@@ -9,7 +9,21 @@
       "waypoints": { "<actor id>": [ WAYPOINT, ... ], ... },
       "notes": "free text" }
 
-holding ONLY its own tracks' waypoints.  WAYPOINT is the format of
+holding ONLY its own tracks' waypoints.  The folder may also hold PROPS.JSON
+(RULING FR; tools/blocking/props.py writes it):
+
+    { "props": [ { "id", "kind", "label", "size": [w, h, d], "color",
+                   "waypoints": [ { "track", "at", "x", "z", "facing"?, "off"?,
+                                    "carriedBy"?: "<actor id>", "note"? }, ... ] } ] }
+
+merged into the file's "props" list after the actors.
+
+THE CLOCK'S EDGES (RULING FQ): `at` runs 0 ... the track's length, except
+-10 ... 0 is also allowed on the first track of each act (1-01, and the track
+the show file marks `hold`: 2-01), up to length + 10 on the last track of Act
+One (1-23), and with no upper bound on the album's last track (2-23).
+
+WAYPOINT is the format of
 docs/hamilton-blocking-format.md, with one convenience: `y` may be a LEVEL
 NAME instead of a number, filled here from the measured floor map
 (tools/hamilton-floor.json, measured in the page at Real size):
@@ -23,9 +37,11 @@ tools/hamilton-cast.json; the track list and lengths come from
 assets/hamilton-show.json.
 
 ERRORS (nothing is written): an unknown actor id or track id; `at` outside its
-track; a label the cast does not allow that actor; time not strictly
-increasing for an actor across the whole show; a malformed waypoint; two
-segments writing the same track.
+track (with its lead-in and tail, FQ); a label the cast does not allow that
+actor; time not strictly increasing for an actor across the whole show; a malformed waypoint; two
+segments writing the same track; for a prop: an unknown kind, a bad size or
+colour, a duplicate id, `carriedBy` not a cast id, time not strictly
+increasing, a placed waypoint without x / z.
 WARNINGS (written anyway, printed): a waypoint outside the measured stage
 (x beyond +-9.5, z beyond -6.5 .. +5.3); standing on a prop or a stair at deck
 level; a "gallery" waypoint where the map has no gallery; a leg between two
@@ -33,7 +49,8 @@ gallery waypoints that leaves the gallery floor on the way; a level change of
 more than 1 m over more than 3.5 m of floor (split it at a stair's foot and
 top); a stair leg climbed faster than 0.7 m/s across the floor; a leg faster
 than 3.5 m/s; a dwell that runs past the next waypoint; an offstage waypoint in
-plain view (the body would vanish in front of the house).
+plain view (the body would vanish in front of the house); a prop placed off the
+measured stage; a prop carried by an actor who has no waypoints.
 Then a summary per track: who has waypoints in it, and how many.
 
 Standard library only.
@@ -44,6 +61,32 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GALLERY = 2.743
 STAGE = {'x': (-9.5, 9.5), 'z': (-6.5, 5.3)}
 IN_VIEW = {'x': (-5.5, 5.5), 'z': (-2.8, 5.0)}      # an `off` waypoint in here vanishes in plain sight
+LEAD, TAIL = 10.0, 10.0                               # RULING FQ: the lead-in before each act's first track, the tail after Act One
+# RULING FR: the prop kinds and their default sizes [w (across), h, d (deep)] in metres
+PROP_KINDS = {'desk': [1.2, 0.75, 0.6], 'table': [1.5, 0.75, 0.9], 'chair': [0.45, 0.9, 0.45], 'bench': [1.4, 0.45, 0.4],
+              'stool': [0.4, 0.6, 0.4], 'box': [0.5, 0.45, 0.5], 'crate': [0.6, 0.5, 0.6], 'lantern': [0.2, 0.35, 0.2],
+              'bucket': [0.3, 0.35, 0.3], 'custom': [0.5, 0.5, 0.5]}
+
+
+def track_table(show):
+    """id -> {i, len, start, pre, post, title}: the show clock with its lead-ins and tails (FQ). `start` is where the track's
+    own 0 falls on the global clock, after its lead-in; the next track starts after this one's tail."""
+    T, start, L = {}, 0.0, show['tracks']
+    for k, t in enumerate(L):
+        pre = LEAD if k == 0 or t.get('hold') else 0.0
+        post = math.inf if k == len(L) - 1 else (TAIL if L[k + 1].get('hold') else 0.0)
+        start += pre
+        T[t['id']] = {'i': k, 'len': float(t['len']), 'start': start, 'pre': pre, 'post': post, 'title': t['title']}
+        start += float(t['len']) + (post if post != math.inf else 0.0)
+    return T
+
+
+def at_ok(tr, at):
+    return -tr['pre'] - 1e-6 <= at <= tr['len'] + tr['post'] + 1e-6
+
+
+def at_range(tr):
+    return f"{-tr['pre']:g}-{(tr['len'] + tr['post']) if tr['post'] != math.inf else 'open'}"
 
 
 def load(p):
@@ -78,10 +121,7 @@ def main(argv):
     cast = load(os.path.join(ROOT, 'tools', 'hamilton-cast.json'))['actors']
     show = load(os.path.join(ROOT, 'assets', 'hamilton-show.json'))
     floor = Floor(load(os.path.join(ROOT, 'tools', 'hamilton-floor.json')))
-    tracks, start = {}, 0.0
-    for k, t in enumerate(show['tracks']):
-        tracks[t['id']] = {'i': k, 'len': float(t['len']), 'start': start, 'title': t['title']}
-        start += float(t['len'])
+    tracks = track_table(show)
     byid = {a['id']: a for a in cast}
     errors, warns = [], []
     paths = {a['id']: [] for a in cast}
@@ -117,8 +157,8 @@ def main(argv):
                     at, x, z = float(w['at']), float(w['x']), float(w['z'])
                 except Exception:
                     errors.append(f'{where}: at, x and z must be numbers'); continue
-                if not (0 <= at <= tracks[tid]['len'] + 1e-6):
-                    errors.append(f'{where}: at {at} outside {tid} (0-{tracks[tid]["len"]} s)')
+                if not at_ok(tracks[tid], at):
+                    errors.append(f'{where}: at {at} outside {tid} ({at_range(tracks[tid])} s)')
                 o = {'track': tid, 'at': round(at, 2), 'x': round(x, 3), 'z': round(z, 3)}
                 y = w.get('y')
                 if isinstance(y, str):
@@ -202,6 +242,7 @@ def main(argv):
                     if t is None or abs(t - GALLERY) > 0.1:
                         warns.append(f'{a["_src"]} -> {b["_src"]}: leaves the gallery floor near ({x:.2f}, {z:.2f}) (top {t}) — route it along the gallery')
                         break
+    props = merge_props(segdir, tracks, byid, floor, paths, errors, warns)
     for e in errors: print('ERROR  ', e)
     for w in warns: print('warning', w)
     # the summary
@@ -213,7 +254,8 @@ def main(argv):
         print(f'{tid}  {t["title"][:38]:38s}  {len(cnt):6d}  {sum(cnt.values()):9d}  ' + ' '.join(f'{k}:{v}' for k, v in cnt.items()))
     missing = sorted(set(tracks) - set(owner))
     if missing: print('\ntracks no segment claimed:', ' '.join(missing))
-    print(f'\n{len(files)} segment file(s), {sum(len(P) for P in paths.values())} waypoints, {len(errors)} error(s), {len(warns)} warning(s)')
+    if props: print('\nprops: ' + ', '.join(f"{p['id']} ({len(p['waypoints'])})" for p in props))
+    print(f'\n{len(files)} segment file(s), {sum(len(P) for P in paths.values())} waypoints, {len(props)} prop(s), {len(errors)} error(s), {len(warns)} warning(s)')
     if errors:
         print('NOT written (errors).'); return 1
     if check:
@@ -233,9 +275,98 @@ def main(argv):
             f.write('  {"id": ' + json.dumps(a['id']) + ', "name": ' + json.dumps(a['name']) + ', "color": ' + json.dumps(a['color']) + ', "path": [')
             f.write(','.join('\n   ' + json.dumps(w, ensure_ascii=False) for w in a['path']))
             f.write(('\n  ' if a['path'] else '') + ']}' + (',' if n + 1 < len(doc['actors']) else '') + '\n')
+        if props:                                       # RULING FR: after the actors
+            f.write(' ],\n "props": [\n')
+            for n, p in enumerate(props):
+                f.write('  {"id": ' + json.dumps(p['id']) + ', "kind": ' + json.dumps(p['kind']) + ', "label": ' + json.dumps(p['label'], ensure_ascii=False) +
+                        ', "size": ' + json.dumps(p['size']) + ', "color": ' + json.dumps(p['color']) + ', "waypoints": [')
+                f.write(','.join('\n   ' + json.dumps(w, ensure_ascii=False) for w in p['waypoints']))
+                f.write(('\n  ' if p['waypoints'] else '') + ']}' + (',' if n + 1 < len(props) else '') + '\n')
         f.write(' ]\n}\n')
     print('written', out)
     return 0
+
+
+def merge_props(segdir, tracks, byid, floor, paths, errors, warns):
+    """RULING FR: <segdir>/props.json, validated and normalised -> the file's "props" list (empty when there is none)."""
+    p = os.path.join(segdir, 'props.json')
+    if not os.path.exists(p):
+        return []
+    try:
+        d = load(p)
+    except Exception as e:
+        errors.append(f'props.json: not JSON ({e})'); return []
+    out, seen = [], set()
+    for n, q in enumerate(d.get('props') or []):
+        pid = str(q.get('id') or '').strip()
+        where = f'props.json: {pid or "#" + str(n + 1)}'
+        if not pid or pid in seen:
+            errors.append(f'{where}: a prop needs a unique id'); continue
+        seen.add(pid)
+        kind = str(q.get('kind') or 'custom')
+        if kind not in PROP_KINDS:
+            errors.append(f'{where}: kind "{kind}" is not one of {sorted(PROP_KINDS)}'); continue
+        size = q.get('size') or PROP_KINDS[kind]
+        try:
+            size = [round(float(v), 3) for v in size]
+            assert len(size) == 3 and all(v > 0 for v in size)
+        except Exception:
+            errors.append(f'{where}: size must be [w, h, d], three positive metres'); continue
+        color = str(q.get('color') or '#8a6a48').lower()
+        if not (len(color) == 7 and color[0] == '#' and all(c in '0123456789abcdef' for c in color[1:])):
+            errors.append(f'{where}: color "{color}" is not #rrggbb'); continue
+        wps = []
+        for k, w in enumerate(q.get('waypoints') or []):
+            wh = f'{where} #{k + 1}'
+            tid = str(w.get('track', ''))
+            if tid not in tracks:
+                errors.append(f'{wh}: unknown track "{tid}"'); continue
+            try:
+                at = float(w['at'])
+            except Exception:
+                errors.append(f'{wh}: at must be a number'); continue
+            if not at_ok(tracks[tid], at):
+                errors.append(f'{wh}: at {at} outside {tid} ({at_range(tracks[tid])} s)')
+            o = {'track': tid, 'at': round(at, 2)}
+            cb = w.get('carriedBy')
+            has_xz = w.get('x') is not None and w.get('z') is not None
+            if not cb and not has_xz:
+                errors.append(f'{wh}: a placed waypoint needs x and z'); continue
+            if has_xz:
+                try:
+                    x, z = float(w['x']), float(w['z'])
+                except Exception:
+                    errors.append(f'{wh}: x and z must be numbers'); continue
+                o['x'], o['z'] = round(x, 3), round(z, 3)
+                if not cb and not w.get('off') and not (STAGE['x'][0] <= x <= STAGE['x'][1] and STAGE['z'][0] <= z <= STAGE['z'][1]):
+                    warns.append(f'{wh}: ({x}, {z}) is outside the measured stage')
+            y = w.get('y')
+            if isinstance(y, str) and has_xz:
+                lv = y.strip().lower()
+                y = GALLERY if lv == 'gallery' else (floor.top_at(o['x'], o['z']) if lv == 'top' else None)
+            if y is not None and not isinstance(y, str) and float(y) > 0.1:
+                o['y'] = round(float(y), 3)
+            if w.get('facing') is not None:
+                try: o['facing'] = round(float(w['facing']), 1)
+                except Exception: errors.append(f'{wh}: facing must be a number (degrees)')
+            if w.get('off'): o['off'] = True
+            if cb:
+                cb = str(cb)
+                if cb not in byid:
+                    errors.append(f'{wh}: carriedBy "{cb}" is not a cast id')
+                elif not paths.get(cb):
+                    warns.append(f'{wh}: carriedBy {cb}, who has no waypoints (never on stage)')
+                o['carriedBy'] = cb
+            if w.get('note'): o['note'] = str(w['note'])
+            o['_T'] = tracks[tid]['start'] + at
+            wps.append(o)
+        wps.sort(key=lambda o: o['_T'])
+        for a, b in zip(wps, wps[1:]):
+            if b['_T'] <= a['_T'] + 1e-6:
+                errors.append(f'{where}: time does not increase: {a["track"]} {a["at"]} then {b["track"]} {b["at"]}')
+        out.append({'id': pid, 'kind': kind, 'label': str(q.get('label') or pid), 'size': size, 'color': color,
+                    'waypoints': [{k: v for k, v in o.items() if not k.startswith('_')} for o in wps]})
+    return out
 
 
 if __name__ == '__main__':

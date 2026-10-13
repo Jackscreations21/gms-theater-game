@@ -1,7 +1,7 @@
 # Automatic actors — design (2026-10-12)
 
-**BINDING. Rulings FF–FO.** The next spec starts at **FP**. (FN was added the same day, from Jack's
-second message — see its section.)
+**BINDING. Rulings FF–FR.** The next spec starts at **FS**. (FN was added the same day, from Jack's
+second message — see its section; FP–FR from his messages on the editor, the clock's edges and the props.)
 
 These rulings were made by the building session (an agent), not answered by
 Jack in a Q&A first: he asked for the system and named the model, and every
@@ -257,3 +257,80 @@ character they are."*
   the evidence said the cue was wrong. Those cues are listed, not edited, in
   `docs/hamilton-blocking-cue-notes.md` for Jack. That file also has two questions only he can rule: the sisters'
   order in 1-05, and the duel sides at the shot in 2-22.
+
+### FP — The blocking editor: a second page, and the file it hands back
+
+Jack: *"make a software that i can make paths for the people. have it so it has all the paths you have made already and i
+can alter them. make this a different html. make it so i can play the music and it shows me where they would be at that
+time in the music then i can export a file that tells you what to change. make it so it has an indicator for when it is a
+blackout. make it be a 2d view from the top and add text showing what each part is like if it is the upper or lower level
+and stuff like that"*
+
+- **`blocking.html`, at the repository's root**, one file, no framework, a 2D canvas. It reads the committed files (the
+  blocking, the show, the Eos file, the rig, the cast, the floor map, the person lights) and Jack's git-ignored soundtrack.
+- **The plan is `tools/blocking-plot.py`'s picture**: from the top, the house at the bottom, stage left on the right, drawn
+  from `tools/hamilton-floor.json` (the deck grey, the galleries tan, stairs a brown ramp, rails pale, the pit black), a 1 m
+  grid with metre numbers, and a text label on every part (upper level / lower level, the galleries at 2.74 m, the stairs with
+  an arrow up, the turntables, the Guns and Ships balcony, the pit, the house, the wings, the entrances, the named points).
+  The pointer's readout names the part, the level and the height under it.
+- **The pose is `midtown.html`'s** (actCompile / actPose and the prop pose, lifted line for line; only the floor ray is left
+  out — the height on the plan is the waypoints'). Checked: equal to `MIDTOWN.actors.pose` at 360 random moments (position
+  0 m, yaw 0 rad, visibility and labels alike), and to `blocking-plot.py`'s printout.
+- **The clock is the music's** while it plays (the audio element's `currentTime`, through the VBR seek table — RULING on the
+  soundtrack, `soundtrack.seek.toc`, embedded for a file of that duration when the show file lacks it), and the frame's dt in
+  the lead-ins, the tails (FQ) and with no music. Never a timer. The soundtrack is fetched whole into a Blob (python's server
+  has no Range requests). At the interval it stops and waits for Play, as the page does.
+- **Lit or BLACKOUT** comes from the cues: every cue's intensities, tracked and resolved through presets and palettes as the
+  page resolves them, over the channels a unit answers (the rig's); BLACKOUT when none is above 0. It agrees with the page's
+  own per-cue dump on all 892 cues. The blackouts are dark bands with a red edge on both scrub bars.
+- **Editing** goes through one function (an undo step per edit, the path re-sorted, the merge tool's checks re-run).
+  Positions snap to 0.05 m. Waypoints keep an identity, so the change file says "moved", not "deleted and added".
+- **It writes nothing.** Its downloads: the CHANGE FILE (`hamilton-blocking-changes-<date>.json`, its format in
+  `docs/hamilton-blocking-format.md` — every change against the loaded file by actor or prop, track, op, before / after, Jack's
+  note, the generator to fix, and his notes per track and on the show; the source file's bytes and SHA-256 at the top), its
+  Markdown, and the whole edited blocking file in the merge's own layout (byte-identical when nothing is edited). The
+  committed blocking stays GENERATED (FO): a session applies the change file to the generators.
+- **A draft** (edits and notes) is kept in localStorage and OFFERED on reload, never applied by itself (as FM's panel).
+- **The person lights** (`assets/hamilton-pools.json`, 0.6 MB) are slimmed by `tools/blocking-pools.py` from the per-cue pool
+  dump of the page (session scratch): specials, and units at zoom ≤ 18.5°, where they land. They are a snapshot of the cue
+  data they were dumped from; regenerate after cue revisions.
+
+### FQ — The show clock's lead-ins and tails
+
+Jack: *"for timing make it give me 10 seconds before the first song starts at the start of the first and second act, and
+give me 10 seconds at the end of act 1, and as much time as I want at the end of act 2."*
+
+- A 10 s **lead-in** before the first track and before every track the show file marks `hold` (1-01, 2-01): `at` −10 … 0.
+  No music; the music starts at 0. The look before it holds: for 1-01 the cues at its 0.0 (HOME, the preshow PRESET) now stand
+  from the top of the lead-in; for 2-01 the interval's look (1-23's last cue).
+- A 10 s **tail** after the track before a `hold` (1-23): `at` up to length + 10; the music stops at the track's end, the clock
+  runs on, and then the interval hold happens (after the tail, not at the music's end).
+- An **open tail** after the album's last track (2-23): `at` ≥ 0 with no upper bound; the clock keeps counting after the
+  music until Stop or a scrub.
+- The global clock leaves room: a track's `start` is after its own lead-in, the next track's after this one's tail. Every
+  tool lays it out the same way (`midtown.html` showCompile, `blocking.html` buildTracks, `tools/blocking-merge.py`
+  track_table / at_ok, `tools/blocking-plot.py`). The merge allows those ranges on exactly those tracks.
+- Play from the top runs 1-01 from −10 ("−0:10" counting down); Play at the interval runs 2-01 from −10. Checked:
+  `MIDTOWN.show.check({ points: [5, 10.6, 4275, 4283, 4289.5, 8600], span: 3 })` passes (a lead-in, the music's top, 1-23's
+  tail, 2-01's lead-in, 2-23's open tail), `MIDTOWN.actors.check({ n: 40 })` passes, and stepping the clock by hand runs
+  1-01 −10 → 1, 1-23 380 → the hold at 395, Play → 2-01 −10 → 1 (Q 720 at 0), 2-23 215 → 325 → 400.
+
+### FR — Props, carried on and set down
+
+Jack: *"make it so i can also put in props i want people to carry on like desks or stuff."*
+
+- In the blocking file, `props` after the actors: `{ id, kind, label, size: [w, h, d], color, waypoints: [{ track, at, x, z,
+  y?, facing?, off?, carriedBy?, note? }] }`. Kinds and their default sizes: desk, table, chair, bench, stool, box, crate,
+  lantern, bucket, custom (`docs/hamilton-blocking-format.md`).
+- From a waypoint until the next the prop is PLACED on the floor at (x, z) turned to `facing` (the floor found by the same ray
+  as an actor's: on the gallery it sits on the gallery), or CARRIED by `carriedBy` (held in front of her at waist height —
+  its centre 1.0 m up and 0.22 m beyond her front — turned with her, seen when she is), or hidden (`off`). Before its first
+  waypoint a prop is not on stage.
+- A pure function of show time and the carrier's pose; `MIDTOWN.actors.check()` covers props (moments just after each prop
+  waypoint and mid-carry). Drawn in `midtown.html` as shaded boxes (a desk or table a top on four legs, a chair with a back),
+  lit as the actors are, with a name tag (the Names box). `MIDTOWN.actors.props`, `MIDTOWN.actors.propPose(id, T)`.
+- The seed is generated by `tools/blocking/props.py` into `tools/blocking/segments/props.json`, and the merge validates and
+  writes it (errors: kind, size, colour, duplicate id, `carriedBy` not a cast id, a placed waypoint without x / z, the track
+  ranges, times not increasing; warnings: placed off the stage, a carrier who is never on stage).
+- The editor edits props like actors (a Props panel: add, remove, label, kind, size, colour; waypoints dragged and added;
+  "Carry from now"; a "Carried by" field), and the change file reports `prop-*` ops.

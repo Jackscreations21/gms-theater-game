@@ -1,7 +1,7 @@
 # The Hamilton blocking — data format
 
-`assets/hamilton-blocking.json` holds the automatic actors' paths for
-`midtown.html` (RULINGS FF–FN, `docs/superpowers/specs/2026-10-12-automatic-actors-design.md`).
+`assets/hamilton-blocking.json` holds the automatic actors' paths and the props for
+`midtown.html` (RULINGS FF–FR, `docs/superpowers/specs/2026-10-12-automatic-actors-design.md`).
 The page fetches it at load. The **Blocking** panel edits it and saves it by
 Download, because the page cannot write to the repository. A missing file
 means an empty stage. For the whole show the file is **generated** by
@@ -22,7 +22,8 @@ segments" below).
       "color": "#5a8fd8",                   // #rrggbb, her body's colour and her label's dot
       "path": [ WAYPOINT, ... ]             // kept in time order by the editor and the merge
     }
-  ]
+  ],
+  "props": [ PROP, ... ]                    // optional, after the actors (RULING FR): see "Props" below
 }
 ```
 
@@ -31,7 +32,7 @@ segments" below).
 | key | required | meaning |
 |---|---|---|
 | `track` | yes | Album track id, as in `assets/hamilton-show.json` (`"1-01"` … `"2-23"`). |
-| `at` | yes | Seconds into that track, the cues' own clock. She **arrives** here at this time. |
+| `at` | yes | Seconds into that track, the cues' own clock. She **arrives** here at this time. 0 … the track's length, with the clock's edges (RULING FQ, below): −10 … 0 on 1-01 and 2-01, up to length + 10 on 1-23, no upper bound on 2-23. |
 | `x`, `z` | yes | Where she stands, in **set-local metres**: the frame of `assets/hamilton-set.glb`. Upstage is −z, the house +z, stage right −x, stage left +x. The turntables' centre is (0, 0.95). The deck's edge is at z +5.4 at real size. |
 | `y` | no | The floor height she stands at here: deck 0.045, galleries 2.743, stair treads in between. The editor writes it from where the waypoint was dropped. Absent means the deck. It is a hint, not a position: the page finds the floor with a ray down from the path's height + 0.6 m (FI). |
 | `dwell` | no | Absent: she stands, then leaves just in time to walk the next leg at 1.3 m/s. `0`: she walks **through** without stopping, and the path curves through the waypoint. `n`: she leaves `n` s after arriving. |
@@ -62,6 +63,135 @@ Rules (FH, FJ, FN):
 
 Numbers are written rounded: positions to the millimetre, times to the
 hundredth of a second, facings to a tenth of a degree.
+
+## The clock's edges: lead-ins and tails (RULING FQ)
+
+Jack: *"for timing make it give me 10 seconds before the first song starts at the start of the first and second act, and give
+me 10 seconds at the end of act 1, and as much time as I want at the end of act 2."*
+
+| track | `at` may run | what happens there |
+|---|---|---|
+| **1-01** (the show's first) | **−10 … 236** | a 10 s LEAD-IN: the clock runs, no music; the preshow look (HOME / PRESET, the cues at 1-01 0.0) stands from −10; the music starts at 0 |
+| **2-01** (the track the show file marks `hold`) | **−10 … 236** | a 10 s LEAD-IN after the interval: no music; the interval's look (1-23's last cue) holds; the music starts at 0 |
+| **1-23** (the track before the `hold`) | 0 … **395** | a 10 s TAIL: the music has ended, the clock runs on; then the interval hold (the page stops and waits for Play) |
+| **2-23** (the album's last) | 0 … **open** | an OPEN TAIL: the clock keeps counting after the music until Stop or a scrub |
+| every other track | 0 … its length | as before |
+
+- The rule is the show file's, not the ids: a lead-in before the first track and before any track with `hold`; a 10 s tail on
+  the track before a `hold`; an open tail on the last track. `tools/blocking-merge.py` (`track_table`, `at_ok`),
+  `tools/blocking-plot.py`, `midtown.html` (`showCompile`) and `blocking.html` (`buildTracks`) lay the clock out the same way.
+- On the GLOBAL clock (seconds from the top of the show, what `MIDTOWN.actors.pose(id, T)` takes) a track's 0 is after its own
+  lead-in and the next track starts after this one's tail: 1-01's 0 is T 10, 2-01's 0 is 1-23's end + 10 + 10.
+- No cue fires in a lead-in that would not have fired before 0; seek = play holds across the edges (`MIDTOWN.show.check`,
+  `MIDTOWN.actors.check`).
+- The existing blocking does not use the edges yet; they are for Jack's edits.
+
+## Props (RULING FR)
+
+Jack: *"make it so i can also put in props i want people to carry on like desks or stuff."*
+
+```jsonc
+"props": [
+  { "id": "room-table",                 // unique
+    "kind": "table",                    // desk · table · chair · bench · stool · box · crate · lantern · bucket · custom
+    "label": "The Room's table",        // the name tag over it (the Names box)
+    "size": [1.5, 0.75, 0.9],           // [w across, h, d deep] metres; absent: the kind's default
+    "color": "#8a6a48",
+    "waypoints": [ PROP WAYPOINT, ... ] }
+]
+```
+
+| kind | default size [w, h, d] m | | kind | default size |
+|---|---|---|---|---|
+| desk | 1.2 × 0.75 × 0.6 | | box | 0.5 × 0.45 × 0.5 |
+| table | 1.5 × 0.75 × 0.9 | | crate | 0.6 × 0.5 × 0.6 |
+| chair | 0.45 × 0.9 × 0.45 | | lantern | 0.2 × 0.35 × 0.2 |
+| bench | 1.4 × 0.45 × 0.4 | | bucket | 0.3 × 0.35 × 0.3 |
+| stool | 0.4 × 0.6 × 0.4 | | custom | 0.5 × 0.5 × 0.5 |
+
+PROP WAYPOINT: `{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }` — the same clock (and edges) as an actor's.
+
+- **Placed** (no `carriedBy`): from `at` until its next waypoint the prop stands on the floor at (x, z), its front (+z of its
+  own frame) turned to `facing` (degrees, as an actor's; absent 0, the house). The floor is found as an actor's is (a desk on
+  the gallery sits on the gallery); `y` is a hint, like hers.
+- **Carried** (`carriedBy: "<actor id>"`, x / z not needed): from `at` until its next waypoint it rides with her — held in
+  front of her at waist height (its centre 1.0 m up, 0.22 m beyond her front), turned with her, seen when she is.
+- **`off`**: not seen from `at` on.
+- **Before its first waypoint a prop is not on stage**; after its last it stays as that one says.
+- "Hamilton carries the desk on at 2-05 12.0 and sets it at centre at 18.0" is two waypoints:
+  `{ "track": "2-05", "at": 12.0, "carriedBy": "hamilton" }`, `{ "track": "2-05", "at": 18.0, "x": 0, "z": 1.9, "facing": 0 }`.
+- A prop's state is a pure function of show time (and its carrier's pose), so a seek shows it right; `MIDTOWN.actors.check()`
+  includes props. `MIDTOWN.actors.props`, `MIDTOWN.actors.propPose(id, T)`.
+- In the page: a few shaded boxes of its size and colour (a desk or a table is a top on four legs, a chair has a back), lit as
+  the actors are, with a name tag (the Names box).
+- The seed is GENERATED: `python -I tools/blocking/props.py` writes `tools/blocking/segments/props.json`; the merge validates it
+  (kind, size, colour, unique id, `carriedBy` a cast id, x / z on a placed waypoint, the track ranges, strictly increasing times
+  — errors; a placed prop off the stage, a carrier with no waypoints — warnings) and writes `props` after the actors.
+
+## The editor: `blocking.html` (RULING FP)
+
+A second page beside `midtown.html`, for Jack: the stage from the top (the house at the bottom, stage left on the right, as
+`tools/blocking-plot.py` draws it), every part labelled (upper level / lower level, the galleries at 2.74 m, the stairs with
+an arrow up, the turntables, the balcony, the pit, the house, the entrances), a hover readout of the part, level and height
+under the pointer, every actor at the current moment with her head label, the selected actor's or prop's path through the
+track, the music (Jack's soundtrack, or the MP3 chosen from disk, or a silent clock), the BLACKOUT indicator and the blackouts
+on the scrub bars, the person lights (`assets/hamilton-pools.json`, optional), and editing: drag, click to add at the current
+time, the waypoint form, delete, undo / redo, nudges; the merge tool's checks run live. Its pose and prop functions are
+`midtown.html`'s, lifted (checked equal at 360 random moments), so the plan and the 3D page agree.
+
+It writes nothing to the repository. Its three downloads:
+
+1. **`hamilton-blocking-changes-<date>.json` — "what to change"** (below). This is what Jack hands to a session.
+2. The same as Markdown, to read.
+3. **`hamilton-blocking.json`** — the whole edited file, laid out byte for byte as the merge writes it (an unedited file
+   downloads identical to the committed one). Because the committed file is GENERATED (FO), a session should apply the
+   change file to the generators, not drop this file in; it is there for a quick look in `midtown.html` (Blocking → Load…).
+
+A draft of the edits and notes is kept in the browser (localStorage `hamilton-blocking-editor-draft-1`) and OFFERED on
+reload ("Restore it" / "Discard it"), never applied by itself.
+
+### The editor's change file
+
+```jsonc
+{
+  "format": "hamilton-blocking-changes 1",
+  "made": "2026-10-12T20:52:43.000Z", "by": "blocking.html (RULING FP)",
+  "source": { "file": "assets/hamilton-blocking.json", "bytes": 719625, "sha256": "1bada61f…",   // what the edits were made against
+              "format": "hamilton-blocking 1", "actors": 20, "waypoints": 9410, "props": 0 },
+  "show":   { "file": "assets/hamilton-show.json", "cues": 892, "tracks": 46, "approxSha256": "…" },   // a hash of the parsed show, to tell revisions apart
+  "clock":  "track + at: seconds into the album track …",
+  "notes":  { "global": "Jack's notes on the whole show", "tracks": { "1-05": "Jack's notes on that number" } },
+  "summary": { "changes": 3, "byOp": { "move": 2, "add": 1 }, "byTrack": { "1-05": 3 }, "problemsNow": { "errors": 0, "warnings": 1 } },
+  "changes": [ CHANGE, ... ]                                            // in show order
+}
+```
+
+CHANGE:
+
+| key | meaning |
+|---|---|
+| `n` | 1, 2, … in show order |
+| `kind` | `"actor"` or `"prop"`; then `actor` or `prop`: the id; `name`: the actor's name or the prop's label |
+| `track`, `title` | where it is (the waypoint after the change, else before); `null` for a prop-level change |
+| `op`, `ops` | the first of `ops`, and every kind of change on this one waypoint |
+| `before`, `after` | the waypoint as it was in the source file and as it is now (`null` for an add / a delete), in the file's format; an actor waypoint may carry Jack's `note` |
+| `note` | Jack's note on this waypoint (the form's Note box), or "" |
+| `generator` | where the fix goes (RULING FO): the segment's generator for the track, `tools/blocking/props.py` for a prop |
+
+Ops on an actor's waypoint: `add`, `delete`, `move` (x / z), `retime` (track / at), `dwell`, `facing`, `relabel` (`label`),
+`level` (`y`), `offstage` (`off`), `note` (only a note was written on an unchanged waypoint). On a prop: `prop-add`,
+`prop-remove`, `prop-edit` (kind, label, size, colour — `before` / `after` are those), and on its waypoints
+`prop-add-waypoint`, `prop-delete-waypoint`, `prop-move`, `prop-retime`, `prop-carry` (`carriedBy`), `prop-facing`,
+`prop-level`, `prop-offstage`, `prop-note`.
+
+Waypoints are matched by identity, not by value: a moved waypoint is one `move`, not a delete and an add, and a waypoint
+retimed past its neighbours is still one `retime`.
+
+**Applying it (for the next session):** check `source.sha256` against the committed `assets/hamilton-blocking.json` (if it
+differs, the edits were made on another revision: match each `before` by track, at, x and z). For each change, edit the
+generator named in `generator` so that it writes `after` instead of `before` (or adds / drops it), re-run that generator and
+the merge (the commands above), and confirm with `python -I tools/blocking-merge.py tools/blocking/segments --check` and, in
+the page, `MIDTOWN.actors.check()`. The notes are Jack's words: read them before the list.
 
 ## The company (fixed: `tools/hamilton-cast.json`)
 

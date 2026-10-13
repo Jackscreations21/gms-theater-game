@@ -4016,6 +4016,12 @@ lxPanelTick = dt => { const a = lxDemoTick(dt), b = lxPanelTickJ(dt); return a |
 const SHW_URLS = { eos: 'assets/hamilton-eos.json', show: 'assets/hamilton-show.json' };
 const SHW_DT = 1 / 60;
 const SHW_TIME = 5;                                          // s: a cue with no up time (Eos's default cue time)
+// THE LEAD-INS AND TAILS (RULING FQ, Jack: "give me 10 seconds before the first song starts at the start of the first and second
+// act, and give me 10 seconds at the end of act 1, and as much time as I want at the end of act 2"). The clock runs SHW_LEAD s
+// before the first track of each act (1-01, and the track with `hold`: 2-01) — its `at` −10 … 0, silent, the look before it held —
+// SHW_TAIL s after the last track of Act One (the one before a `hold`), and with no end after the album's last track. The global
+// clock leaves room for them: a track's `start` is after its own lead-in, the next track's after this one's tail.
+const SHW_LEAD = 10, SHW_TAIL = 10;
 const SHW_HAZE = 0.35, SHW_HAZE_FADE = 3, SHW_WORK_FADE = 3;  // the show's standing haze; the work light out and the haze in at start
 const SHW_HOUSE = 0.35;                                     // the house scan's brightness while the show plays (the slider's 1.4 = house lights up): house to half and out, as a show does
 const SHW_HAZER_K = 0.5;                                     // a hazer channel at full tops the room's haze halfway to 1
@@ -4027,7 +4033,7 @@ const SHW = { d: null, loading: null, err: null, urls: null, on: false, playing:
   ch: new Map(), ut: new Map(), save: null, cm: null, cam: null, haze: null, A: null, fileA: null, stA: null, sound: null, yt: null, ytOn: true, vol: 0.8, files: new Map(), audioOn: false, audioWant: null,
   audioNote: '', silent: false, E: {}, btn: null, el: null, built: false, shown: { cue: -2, ti: -1, sec: -1 }, perf: { fireMs: 0, fireMax: 0, n: 0 } };
 const showKey = c => String(+c);                             // channel keys: 7, "7", "7.0" → "7"; 619.2 → "619.2"
-const showFmt = s => { s = Math.max(0, s); const m = Math.floor(s / 60), x = Math.floor(s - m * 60); return `${m}:${String(x).padStart(2, '0')}`; };
+const showFmt = s => { if (s < 0) return '−' + showFmt(Math.ceil(-s - 1e-9)); const m = Math.floor(s / 60), x = Math.floor(s - m * 60); return `${m}:${String(x).padStart(2, '0')}`; };   // a lead-in counts down: −0:10
 
 // ---- the data
 async function showLoad(urls = {}) {
@@ -4043,7 +4049,7 @@ async function showLoad(urls = {}) {
     if (st && st.url && SHW.d.tracks.every(t => t.file !== null)) {
       try { const r = await fetch(st.url, { method: 'HEAD', cache: 'no-cache' }); if (r.ok) SHW.sound = { url: st.url }; } catch (e) { /* not here: YouTube, then silence */ }
     }
-    SHW.ti = 0; SHW.lt = 0; SHW.next = 0; SHW.cue = -1; SHW.ch.clear(); SHW.ut.clear();
+    SHW.ti = 0; SHW.lt = -SHW.d.tracks[0].pre; SHW.next = 0; SHW.cue = -1; SHW.ch.clear(); SHW.ut.clear();
     showMatchAll();
     if (SHW.built) showBuildLists();
     showUI(true);
@@ -4059,7 +4065,13 @@ function showCompile(eos, show) {
   const rep = { problems: [], refs: new Map(), groups: new Set(), noContent: [], order: [], unknownTrack: [], noUnits: new Map(), panOnly: 0, fx: 0 };
   const problem = s => { if (rep.problems.length < 500) rep.problems.push(s); };
   let start = 0;
-  const tracks = (show.tracks || []).map((t, i) => { const o = { i, id: String(t.id), act: +t.act || (String(t.id)[0] === '2' ? 2 : 1), n: +t.n || i + 1, title: t.title || '', yt: typeof t.yt === 'string' ? t.yt : null, file: Number.isFinite(+t.file) && t.file !== null ? +t.file : null, hold: typeof t.hold === 'string' && t.hold ? t.hold : null, len: Math.max(0.001, +t.len || 0), start }; start += o.len; return o; });
+  const holdOf = t => t && typeof t.hold === 'string' && t.hold ? t.hold : null, ST = show.tracks || [];
+  const tracks = ST.map((t, i) => {
+    const pre = i === 0 || holdOf(t) ? SHW_LEAD : 0, post = i === ST.length - 1 ? Infinity : holdOf(ST[i + 1]) ? SHW_TAIL : 0;   // FQ
+    start += pre;
+    const o = { i, id: String(t.id), act: +t.act || (String(t.id)[0] === '2' ? 2 : 1), n: +t.n || i + 1, title: t.title || '', yt: typeof t.yt === 'string' ? t.yt : null, file: Number.isFinite(+t.file) && t.file !== null ? +t.file : null, hold: holdOf(t), len: Math.max(0.001, +t.len || 0), start, pre, post };
+    start += o.len + (Number.isFinite(post) ? post : 0); return o;
+  });
   const byTrack = new Map(tracks.map(t => [t.id, t]));
   const eosCues = new Map((eos.cues || []).map(c => [String(c.q), c]));
   // channel → units: every rig channel, then the export's hazer channels onto the rig's hazer units in turn
@@ -4117,7 +4129,9 @@ function showCompile(eos, show) {
     if (!tr) { rep.unknownTrack.push(`Q ${s.q} → track ${s.track}`); return; }
     const real = !!s.real, C = real ? eosCues.get(String(s.q)) : s;
     if (real && !C) rep.noContent.push(String(s.q));
-    const T = tr.start + (+s.at || 0);
+    // the first track's cues at its 0 (HOME, the preshow PRESET) are the look before the show: they stand from the top of its
+    // lead-in (FQ — the lead-in is "before 0"; the interval's look before 2-01 is simply 1-23's last cue, held)
+    const T = tr.i === 0 && (+s.at || 0) <= 0 ? tr.start - tr.pre : tr.start + (+s.at || 0);
     if (T < lastT - 1e-9) rep.order.push(`Q ${s.q} at ${tr.id} ${(+s.at).toFixed(2)} s is before the cue above it`);
     if (+s.q <= lastQ) rep.order.push(`Q ${s.q} does not follow Q ${lastQ} in number`);
     lastT = Math.max(lastT, T); lastQ = Math.max(lastQ, +s.q || lastQ);
@@ -4139,7 +4153,9 @@ function showCompile(eos, show) {
   for (const g of rep.groups) problem(`no group ${g}`);
   if (rep.noContent.length) problem(`real cue${rep.noContent.length > 1 ? 's' : ''} not in hamilton-eos.json: Q ${rep.noContent.slice(0, 12).join(', ')}${rep.noContent.length > 12 ? ' …' : ''}`);
   rep.order.forEach(problem); rep.unknownTrack.forEach(s => problem('unknown track: ' + s));
-  return { eos, show, tracks, byTrack, cues, acts, keyRecs, recKeys, hazer, rep, end: start, album: show.album || '' };
+  const last = tracks[tracks.length - 1];
+  // end: the album's last note; max: the clock's last moment (Infinity: 2-23's open tail)
+  return { eos, show, tracks, byTrack, cues, acts, keyRecs, recKeys, hazer, rep, end: last ? last.start + last.len : 0, max: last ? last.start + last.len + last.post : 0, album: show.album || '' };
 }
 
 // ---- a unit's look from its channels
@@ -4252,9 +4268,9 @@ const showT = () => SHW.d ? SHW.d.tracks[SHW.ti].start + SHW.lt : 0;
 // ---- seek: home, fold, snap
 function showSeekT(T) {
   const D = SHW.d, tr = D.tracks;
-  T = THREE.MathUtils.clamp(T, 0, D.end);
-  let i = 0; while (i + 1 < tr.length && tr[i + 1].start <= T + 1e-9) i++;
-  SHW.ti = i; SHW.lt = Math.min(T - tr[i].start, tr[i].len); SHW.hold = false;
+  T = THREE.MathUtils.clamp(T, 0, D.max);
+  let i = 0; while (i + 1 < tr.length && tr[i + 1].start - tr[i + 1].pre <= T + 1e-9) i++;   // a track owns its lead-in, itself and its tail
+  SHW.ti = i; SHW.lt = Math.min(T - tr[i].start, tr[i].len + tr[i].post); SHW.hold = false;
   if (!SHW.on) { SHW.next = D.acts.findIndex(a => a.t > T + 1e-9); if (SHW.next < 0) SHW.next = D.acts.length; SHW.cue = D.cues.findLastIndex(c => c.T <= T + 1e-9); showTrackAudio(); showUI(true); return; }
   for (const r of LX.recs) lxjFresh(r);
   SHW.ch.clear(); SHW.ut.clear(); SHW.next = 0; SHW.cue = -1;
@@ -4270,7 +4286,7 @@ function showSeek(trackId, sec = 0) {
   const tr = typeof trackId === 'number' ? SHW.d.tracks[trackId] : SHW.d.byTrack.get(String(trackId));
   if (!tr) return false;
   if (!SHW.on) showStart(false);
-  showSeekT(tr.start + THREE.MathUtils.clamp(+sec || 0, 0, tr.len));
+  showSeekT(tr.start + THREE.MathUtils.clamp(+sec || 0, -tr.pre, tr.len + tr.post));
   return showState();
 }
 function showGotoCue(q) {
@@ -4311,22 +4327,22 @@ function showHouse(up) {                                  // the house lights, a
 // waits for me to press play". Seeking anywhere clears a hold.
 function showHold() {
   const tr = SHW.d.tracks[SHW.ti];
-  SHW.lt = tr.len; showFireTo(tr.start + tr.len - 1e-6);
-  SHW.playing = false; SHW.hold = true;
+  SHW.lt = tr.len + tr.post; showFireTo(tr.start + tr.len + tr.post - 1e-6);   // after its tail (FQ)
+  SHW.playing = false; SHW.hold = true; SHW.gap = true;
   if (SHW.A) SHW.A.pause();
   showHouse(true); showUI(true); requestRender();
 }
 function showPause(on = SHW.playing) {
   if (!SHW.on) return showStart(!on);
   if (!on && SHW.hold) {                                     // Play at the interval: into the held track
-    SHW.hold = false; SHW.ti++; SHW.lt = 0; SHW.playing = true;
+    SHW.hold = false; SHW.ti++; SHW.lt = -SHW.d.tracks[SHW.ti].pre; SHW.playing = true;   // from the top of its lead-in (FQ)
     showHouse(false); showTrackAudio(); showFireTo(showT()); showUI(true); requestRender();
     return true;
   }
   SHW.playing = !on;
   if (SHW.playing && SHW.houseUp) showHouse(false);
   const A = SHW.A;
-  if (A && SHW.audioOn) { if (SHW.playing && (A !== SHW.stA || A.src)) A.play().catch(e => showAudioFail(e)); else A.pause(); }
+  if (A && SHW.audioOn) { if (SHW.playing && !SHW.gap && (A !== SHW.stA || A.src)) A.play().catch(e => showAudioFail(e)); else A.pause(); }   // a lead-in or a tail: silent
   showUI(true); requestRender();
   return SHW.playing;
 }
@@ -4351,10 +4367,18 @@ function showStop(camBack = true) {
 function showStep(d) {                                       // the previous / next track (previous: this one's top if past its first 3 s)
   if (!SHW.d) return false;
   const i = d < 0 && SHW.lt > 3 ? SHW.ti : THREE.MathUtils.clamp(SHW.ti + d, 0, SHW.d.tracks.length - 1);
-  return showSeek(i, 0);
+  return showSeek(i, -SHW.d.tracks[i].pre);
 }
 // The end of the album: hold at the end, paused.
 function showEnd() { SHW.lt = SHW.d.tracks[SHW.ti].len; SHW.playing = false; if (SHW.A) SHW.A.pause(); showUI(true); }
+// A TAIL (FQ): this track's music is over and the clock runs on, silent — 1-23's 10 s before the interval, 2-23's open end.
+function showTail() {
+  const tr = SHW.d.tracks[SHW.ti];
+  showFireTo(tr.start + tr.len - 1e-6);
+  SHW.lt = Math.max(SHW.lt, tr.len); SHW.gap = true;
+  if (SHW.A) SHW.A.pause();
+  showUI(true);
+}
 
 // ---- the frame's call (through lxPanelTick). → true every frame while playing (the page draws); false otherwise.
 function showTick(dt, silent = false) {
@@ -4365,15 +4389,19 @@ function showTick(dt, silent = false) {
   if (HL) { HL.t += dt; const k = HL.dur > 0 ? Math.min(1, HL.t / HL.dur) : 1, v = HL.from + (HL.to - HL.from) * k; houseMats.forEach(m => m.color.copy(m.userData.base).multiplyScalar(v)); requestRender(); if (k >= 1) SHW.house = null; }
   if (SHW.playing) {
     const tr = SHW.d.tracks, A = SHW.A;
-    if (SHW.audioOn && !silent && A && A === SHW.stA) showSoundTick();
-    else if (SHW.audioOn && !silent && A) {
+    if (SHW.audioOn && !silent && A && !SHW.gap && A === SHW.stA) showSoundTick();
+    else if (SHW.audioOn && !silent && A && !SHW.gap) {
       if (A.readyState >= 1 && SHW.audioWant === null && !A.seeking) SHW.lt = Math.min(A.currentTime, tr[SHW.ti].len - 1e-3);
-    } else {
+    } else {                                                 // the silent clock — and a lead-in or a tail with audio (FQ)
+      const was = SHW.lt;
       SHW.lt += dt;
-      while (SHW.lt >= tr[SHW.ti].len - 1e-7) {              // 384.99 + 0.01 lands an ulp short of 385: roll over (or hold) here, or showFireTo's own tolerance fires the next track's 0.0 cue first
+      if (was < 0 && SHW.lt >= 0 && !silent) showTrackAudio();   // the lead-in is over: the music starts at 0
+      if (!silent && SHW.audioOn && !SHW.gap && tr[SHW.ti].post > 0 && SHW.lt >= tr[SHW.ti].len) showTail();
+      // 384.99 + 0.01 lands an ulp short of 385: roll over (or hold) here, or showFireTo's own tolerance fires the next track's 0.0 cue first
+      while (SHW.lt >= tr[SHW.ti].len + tr[SHW.ti].post - 1e-7) {
         if (SHW.ti + 1 >= tr.length) { showFireTo(SHW.d.end); showEnd(); return true; }
         if (tr[SHW.ti + 1].hold) { showHold(); return true; }
-        SHW.lt -= tr[SHW.ti].len; SHW.ti++;
+        SHW.lt -= tr[SHW.ti].len + tr[SHW.ti].post + tr[SHW.ti + 1].pre; SHW.ti++;
         if (!silent) showTrackAudio();
       }
     }
@@ -4404,9 +4432,10 @@ function showAudioEnded() {                                  // an event, not a 
   if (!SHW.on || !SHW.playing || !SHW.audioOn) return;
   const tr = SHW.d.tracks;
   showFireTo(tr[SHW.ti].start + tr[SHW.ti].len - 1e-6);     // the cues the track's end left waiting
+  if (tr[SHW.ti].post > 0) { showTail(); return; }          // 1-23's ten seconds, 2-23's open end (FQ): the clock runs on
   if (SHW.ti + 1 >= tr.length) { showEnd(); return; }
   if (tr[SHW.ti + 1].hold) { showHold(); return; }
-  SHW.ti++; SHW.lt = 0; showTrackAudio(); showFireTo(showT()); showUI(true);
+  SHW.ti++; SHW.lt = -tr[SHW.ti].pre; showTrackAudio(); showFireTo(showT()); showUI(true);
 }
 function showAudioEl() {
   if (SHW.fileA) return SHW.fileA;
@@ -4429,14 +4458,15 @@ function showSoundEl() {
   fetch(SHW.sound.url).then(r => r.blob()).then(bl => { A.src = URL.createObjectURL(bl); SHW.sound.note = ''; if (SHW.on && SHW.A === A && SHW.playing) A.play().catch(showAudioFail); showUI(true); },
     () => { SHW.sound = null; if (SHW.A === A) showAudioFail({ message: 'the soundtrack file could not be read' }); });
   A.addEventListener('loadedmetadata', () => { if (SHW.audioWant !== null) { try { A.currentTime = SHW.audioWant; } catch (e) { /* from the top */ } SHW.audioWant = null; } });
-  A.addEventListener('ended', () => { if (SHW.A === A && SHW.on) { showFireTo(SHW.d.end); showEnd(); } });
+  A.addEventListener('ended', () => { if (SHW.A === A && SHW.on) { if (SHW.d.tracks[SHW.ti].post > 0) showTail(); else { showFireTo(SHW.d.end); showEnd(); } } });
   A.addEventListener('error', () => { if (SHW.A === A) { SHW.sound = null; showAudioFail({ message: 'the soundtrack file would not play' }); } });
   return A;
 }
 function showSoundTick() {                                   // the file's time → the track and the time into it
   const A = SHW.stA, tr = SHW.d.tracks;
   if (!A || A.readyState < 1 || A.seeking || SHW.audioWant !== null) return;
-  const t = A.currentTime;
+  const t = A.currentTime, cur = tr[SHW.ti];
+  if (cur.post > 0 && cur.file !== null && t >= cur.file + cur.len - 1e-3) { showTail(); return; }   // into this track's tail (FQ)
   let i = SHW.ti;
   while (i + 1 < tr.length && tr[i + 1].file <= t + 1e-3) i++;
   while (i > 0 && tr[i].file > t + 1e-3) i--;
@@ -4505,6 +4535,8 @@ function showAudioFail(e) {
 function showTrackAudio() {
   const f = SHW.files.get(SHW.ti), tr = SHW.d && SHW.d.tracks[SHW.ti];
   const ytBox = document.getElementById('sh-yt');
+  SHW.gap = !!tr && (SHW.lt < 0 || (tr.post > 0 && SHW.lt >= tr.len - 1e-3));   // a lead-in or a tail (FQ): no music; the tick runs the clock
+  if (SHW.gap) { for (const X of [SHW.stA, SHW.fileA, SHW.yt]) if (X && !X.paused) X.pause(); return; }
   if (!f && tr && SHW.sound) {                               // the one-file soundtrack
     if (SHW.fileA && !SHW.fileA.paused) SHW.fileA.pause();
     if (SHW.yt) SHW.yt.pause(); if (ytBox) ytBox.hidden = true;
@@ -4669,6 +4701,7 @@ function showBuildLists() {
   SHW.shown = { cue: -2, ti: -1, sec: -1 };
 }
 // The readouts; cheap when nothing visible changed (called every tick while playing).
+const showScrubMax = tr => tr.len + (Number.isFinite(tr.post) ? tr.post : Math.max(60, SHW.lt - tr.len + 30));   // 2-23's open tail: a minute, growing as the clock runs on
 function showUI(force) {
   const E = SHW.E, D = SHW.d;
   if (SHW.btn) SHW.btn.setAttribute('aria-pressed', String(SHW.on || !!(SHW.el && !SHW.el.hidden)));
@@ -4684,7 +4717,7 @@ function showUI(force) {
   E.now.textContent = SHW.hold ? `${D.tracks[SHW.ti + 1].hold} — press Play for ${D.tracks[SHW.ti + 1].title}` : c ? `Q ${c.q}${c.label ? ` · ${c.label}` : ''} · ${tr.title} ${showFmt(SHW.lt)}` : `${tr.id} ${tr.title} ${showFmt(SHW.lt)} · before the first cue`;
   E.next.textContent = nx ? `Next: ${showCueLine(nx)}${nx.ti === SHW.ti || nx.T - showT() < 600 ? ` · in ${showFmt(nx.T - showT())}` : ''}` : 'Next: — (the last cue)';
   E.clock.textContent = `${tr.id} ${showFmt(SHW.lt)} / ${showFmt(tr.len)}`;
-  if (!SHW.scrubbing) { E.scrub.max = String(tr.len); E.scrub.value = String(SHW.lt); }
+  if (!SHW.scrubbing) { E.scrub.min = String(-tr.pre); E.scrub.max = String(showScrubMax(tr)); E.scrub.value = String(SHW.lt); }
   E.play.textContent = SHW.on && SHW.playing ? 'Pause' : 'Play'; E.play.setAttribute('aria-pressed', String(SHW.on && SHW.playing));
   E.stop.disabled = !SHW.on;
   const f = SHW.files.get(SHW.ti);
@@ -4774,7 +4807,7 @@ function showCheck(opts = {}) {
     if (big) out.push(big.t + 0.7);
     return out;
   })();
-  const span = opts.span ?? 90, eq = pts.map(T => showEquiv(Math.min(T, D.end), Math.max(0, Math.min(T, D.end) - span), opts.step || 0.1));
+  const span = opts.span ?? 90, eq = pts.map(T => showEquiv(Math.min(T, D.max), Math.max(0, Math.min(T, D.max) - span), opts.step || 0.1));   // the tails too (FQ)
   const tol = { level: 1e-4, colour: 2e-3, zoom: 1e-3, landM: 0.03, aimM: 0.05 };
   const eqPass = eq.every(e => e.level <= tol.level && e.colour <= tol.colour && e.zoom <= tol.zoom && e.landM <= tol.landM && e.aimM <= tol.aimM && !e.gobo && !e.rate);
   // 5. the cost of firing the biggest actions (the rig snapped to just before each): the fire (merge, looks, batched sets and aims,
@@ -4824,7 +4857,7 @@ buildLightsPanel = () => {
       seek: (trackId, sec) => showSeek(trackId, sec), gotoCue: q => showGotoCue(q), next: () => showStep(1), prev: () => showStep(-1),
       advance: (sec, step) => SHW.on ? showAdvance(sec, step) : null, settle: showSettle, panel: on => showPanel(on !== false),
       get state() { return showState(); }, get cues() { return SHW.d ? SHW.d.cues.map(c => ({ q: c.q, label: c.label, track: c.track, at: c.at, real: c.real, n: c.n })) : []; },
-      get tracks() { return SHW.d ? SHW.d.tracks.map(t => ({ id: t.id, title: t.title, len: t.len, start: t.start, hold: t.hold, audio: SHW.files.has(t.i) ? SHW.files.get(t.i).name : null })) : []; },
+      get tracks() { return SHW.d ? SHW.d.tracks.map(t => ({ id: t.id, title: t.title, len: t.len, start: t.start, pre: t.pre, post: Number.isFinite(t.post) ? t.post : 'open', hold: t.hold, audio: SHW.files.has(t.i) ? SHW.files.get(t.i).name : null })) : []; },
       check: opts => showCheck(opts), matchFiles: files => showMatchFiles(files), parseName: name => { const p = showParseFile({ name, webkitRelativePath: name }); return { disc: p.disc, n: p.n, rest: p.rest }; },
       get perf() { return Object.assign({}, SHW.perf); }, urls: SHW_URLS,
     };
@@ -5028,7 +5061,7 @@ const ACT_DRAFT = 'midtown-blocking-draft';
 const ACT_COLOURS = ['#d9b45a', '#5a8fd8', '#d8665a', '#6abf7a', '#b07ad8', '#e8e4dc', '#4fc1c1', '#d88ab8'];
 const ACT = { geo: null, root: null, group: null, help: null, actors: [], sel: -1, wsel: -1, drop: false, shown: true, T: NaN, dirty: true,
   compiledFor: undefined, el: null, E: {}, btn: null, drag: null, press: null, mats: new Map(), band: new Map(), file: null, err: null, note: '', ready: false,
-  litBodies: true, names: true };                       // false: the pools' bands left as the engine fits them (a body lit to the shins) — for comparing
+  litBodies: true, names: true, props: [] };                       // false: the pools' bands left as the engine fits them (a body lit to the shins) — for comparing
 
 // ---- the path, compiled: the waypoints in time order with their global times, each leg's curve and arc-length table
 const actF = v => v === null || v === undefined || v === '' ? null : Number.isFinite(+v) ? +v : null;
@@ -5039,7 +5072,7 @@ function actCompile(a) {
     const t = tr && tr.get(String(w.track));
     if (tr && !t) { probs.push(`waypoint ${k + 1}: no track "${w.track}"`); return; }
     const at = actF(w.at) ?? 0;
-    if (t && (at < 0 || at > t.len + 1e-6)) probs.push(`waypoint ${k + 1}: at ${at} is outside ${t.id} (0–${t.len} s)`);
+    if (t && (at < -t.pre - 1e-6 || at > t.len + t.post + 1e-6)) probs.push(`waypoint ${k + 1}: at ${at} is outside ${t.id} (${-t.pre}–${Number.isFinite(t.post) ? t.len + t.post : '∞'} s)`);   // FQ: lead-ins and tails
     P.push({ w, k, T: t ? t.start + at : 0, x: actF(w.x) ?? 0, z: actF(w.z) ?? 0, y: actF(w.y) ?? 0, dwell: actF(w.dwell), facing: actF(w.facing), off: !!w.off,
       label: typeof w.label === 'string' && w.label.trim() ? w.label.trim() : null });
   });
@@ -5226,10 +5259,11 @@ function actSetData(d, from) {
     a.id = s.id && !ACT.actors.some(x => x.id === String(s.id)) ? String(s.id) : actSlug(name);
     ACT.actors.push(a); actBuild(a);
   }
+  propSetData(d.props);                                      // FR: after the actors (a prop names its carrier by id)
   ACT.file = { format: d.format || 'hamilton-blocking 1', note: d.note || '' };
   ACT.sel = ACT.actors.length ? 0 : -1;
   ACT.compiledFor = undefined; ACT.dirty = true;
-  ACT.note = `${ACT.actors.length} actor${ACT.actors.length === 1 ? '' : 's'} from ${from}`;
+  ACT.note = `${ACT.actors.length} actor${ACT.actors.length === 1 ? '' : 's'}${ACT.props.length ? ` and ${ACT.props.length} prop${ACT.props.length === 1 ? '' : 's'}` : ''} from ${from}`;
   actUI(true); requestRender();
 }
 function actCleanWp(w) {
@@ -5252,6 +5286,7 @@ function actData() {                      // → the JSON object, waypoints in t
       path: actSorted(a).map(w => { const o = { track: w.track, at: actR(w.at, 2), x: actR(w.x), z: actR(w.z) };
         if (w.y !== undefined) o.y = actR(w.y); if (w.dwell !== undefined) o.dwell = actR(w.dwell, 2); if (w.facing !== undefined) o.facing = actR(w.facing, 1); if (w.off) o.off = true;
         if (w.label) o.label = w.label; return o; }) })),
+    ...(ACT.props.length ? { props: ACT.props.map(propData) } : {}),
   };
 }
 const actGT = w => { const t = SHW.d && SHW.d.byTrack.get(String(w.track)); return t ? t.start + (+w.at || 0) : 0; };
@@ -5267,7 +5302,7 @@ function actEdited(a) {                   // after any edit: re-sorted, recompil
 // ---- the frame: every actor posed at the show's time; the pools' bands round them; the editor's markers
 const actNow = () => SHW.d ? showT() : 0;
 function actUpdate(T) {
-  if (SHW.d !== ACT.compiledFor) { for (const a of ACT.actors) a.c = actCompile(a); ACT.compiledFor = SHW.d; ACT.helpDirty = true; }
+  if (SHW.d !== ACT.compiledFor) { for (const a of ACT.actors) a.c = actCompile(a); for (const p of ACT.props) p.c = propCompile(p); ACT.compiledFor = SHW.d; ACT.helpDirty = true; }
   ACT.root.updateWorldMatrix(true, false);
   for (const a of ACT.actors) {
     if (!a.c) a.c = actCompile(a);
@@ -5276,6 +5311,7 @@ function actUpdate(T) {
     o.visible = ACT.shown && p.visible; o.userData.pose = p; actTagSet(a, p.label); a.tag.visible = ACT.names;
     if (typeof o.userData.animate === 'function') { try { o.userData.animate(p, o); } catch (e) { /* a limb rig's own failure never stops the show */ } }
   }
+  propUpdate(T);                                             // after the actors: a carried prop rides with her pose
 }
 function actTick(dt, force = false) {
   if (!ACT.ready) return false;
@@ -5316,6 +5352,105 @@ function actPoolBands() {
     if (want !== base) ACT.band.set(r, { base, set: want }); else ACT.band.delete(r);
   }
   if (changed) requestRender();
+}
+// ---- PROPS (RULING FR — Jack: "make it so i can also put in props i want people to carry on like desks or stuff"). The blocking
+// file's `props`: { id, kind, label, size [w, h, d] m, color, waypoints: [{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }] }.
+// From a waypoint until the next, the prop is PLACED on the floor at (x, z) turned to `facing` (the floor found as an actor's is,
+// so a desk on the gallery sits on the gallery), or CARRIED by `carriedBy` (held in front of her at waist height, turned with her,
+// seen when she is), or hidden (`off`). Before its first waypoint it is not on stage; after its last it stays as that one says. Like the actors, a pure function of show
+// time (propPose): the seek-equivalence check covers it. A simple shaded build of boxes in its colour, lit as the actors are,
+// with a name tag (the Names box) — one material per colour (actMat).
+const PROP_KINDS = { desk: [1.2, 0.75, 0.6], table: [1.5, 0.75, 0.9], chair: [0.45, 0.9, 0.45], bench: [1.4, 0.45, 0.4], stool: [0.4, 0.6, 0.4],
+  box: [0.5, 0.45, 0.5], crate: [0.6, 0.5, 0.6], lantern: [0.2, 0.35, 0.2], bucket: [0.3, 0.35, 0.3], custom: [0.5, 0.5, 0.5] };
+const PROP_HOLD = { waist: 1.0, ahead: 0.22, tag: 0.12 };   // m: a carried prop's centre at her waist, this far beyond her front; the tag over its top
+function propParts(kind, [w, h, d]) {            // → [[sx, sy, sz, x, y, z], …]: boxes in the prop's frame (its feet at y 0, its front +z)
+  const t = Math.min(0.05, h * 0.12), L = 0.05, legs = (top, ix, iz) => [-1, 1].flatMap(a => [-1, 1].map(b => [L, top, L, a * (w / 2 - ix), top / 2, b * (d / 2 - iz)]));
+  if (kind === 'desk' || kind === 'table' || kind === 'stool') return [[w, t, d, 0, h - t / 2, 0], ...legs(h - t, 0.05, 0.05)];
+  if (kind === 'chair') { const seat = Math.min(0.46, h * 0.52); return [[w, t, d, 0, seat - t / 2, 0], ...legs(seat - t, 0.04, 0.04), [w, h - seat, 0.04, 0, seat + (h - seat) / 2, -d / 2 + 0.02]]; }
+  if (kind === 'bench') return [[w, t, d, 0, h - t / 2, 0], ...[-1, 1].map(a => [0.05, h - t, d * 0.9, a * (w / 2 - 0.1), (h - t) / 2, 0])];
+  return [[w, h, d, 0, h / 2, 0]];
+}
+function propBuild(p) {
+  const g = new THREE.Group(); g.name = 'prop: ' + p.label; g.userData.rig = true; g.userData.prop = p.id; g.visible = false;
+  const m = actMat(p.color);
+  for (const [sx, sy, sz, x, y, z] of propParts(p.kind, p.size)) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m); b.position.set(x, y, z);
+    b.castShadow = false; b.receiveShadow = true; b.userData.rig = true; b.userData.prop = p.id; g.add(b);
+  }
+  p.obj = g; p.name = p.label; g.add(actTagBuild(p)); p.tag.position.y = p.size[1] + PROP_HOLD.tag; p.tag.visible = ACT.names;
+  ACT.group.add(g);
+}
+function propClean(s, k) {                       // a prop from the file, validated, never thrown
+  const kind = PROP_KINDS[s.kind] ? s.kind : 'custom';
+  const size = Array.isArray(s.size) && s.size.length === 3 && s.size.every(v => +v > 0) ? s.size.map(v => +v) : PROP_KINDS[kind].slice();
+  const id = String(s.id || `prop-${k + 1}`);
+  const wps = (Array.isArray(s.waypoints) ? s.waypoints : []).filter(w => w && typeof w === 'object').map(w => {
+    const o = { track: String(w.track ?? ''), at: actF(w.at) ?? 0 };
+    if (actF(w.x) !== null) o.x = actF(w.x); if (actF(w.z) !== null) o.z = actF(w.z); if (actF(w.y) !== null) o.y = actF(w.y);
+    if (actF(w.facing) !== null) o.facing = actF(w.facing); if (w.off) o.off = true;
+    if (typeof w.carriedBy === 'string' && w.carriedBy) o.carriedBy = w.carriedBy; if (typeof w.note === 'string' && w.note) o.note = w.note;
+    return o;
+  });
+  return { id, kind, label: String(s.label || id), size, color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color.toLowerCase() : '#8a6a48', waypoints: wps, c: null, obj: null, tag: null };
+}
+function propCompile(p) {
+  const tr = SHW.d ? SHW.d.byTrack : null, probs = [], P = [];
+  p.waypoints.forEach((w, k) => {
+    const t = tr && tr.get(String(w.track));
+    if (tr && !t) { probs.push(`waypoint ${k + 1}: no track "${w.track}"`); return; }
+    const at = actF(w.at) ?? 0;
+    if (t && (at < -t.pre - 1e-6 || at > t.len + t.post + 1e-6)) probs.push(`waypoint ${k + 1}: at ${at} is outside ${t.id}`);
+    const by = w.carriedBy ? ACT.actors.find(a => a.id === w.carriedBy) || null : null;
+    if (w.carriedBy && !by) probs.push(`waypoint ${k + 1}: carriedBy "${w.carriedBy}" is no actor`);
+    if (!w.carriedBy && (actF(w.x) === null || actF(w.z) === null)) probs.push(`waypoint ${k + 1}: placed, but no x / z`);
+    P.push({ w, k, T: t ? t.start + at : 0, x: actF(w.x) ?? 0, z: actF(w.z) ?? 0, y: actF(w.y) ?? 0, yaw: (actF(w.facing) ?? 0) * Math.PI / 180, off: !!w.off, by, byId: w.carriedBy || null });
+  });
+  P.sort((a, b) => a.T - b.T || a.k - b.k);
+  for (let i = 1; i < P.length; i++) if (P[i].T <= P[i - 1].T + 1e-6) probs.push(`waypoints ${P[i - 1].k + 1} and ${P[i].k + 1}: time does not increase`);
+  return { P, probs };
+}
+// THE PROP'S POSE at show time T: { x, y, z, yaw, visible, carrier }. Pure: its waypoints, the carrier's own pose at T, the floor.
+function propPose(p, T) {
+  const P = p.c ? p.c.P : [];
+  if (!P.length) return { x: 0, y: 0, z: 0, yaw: 0, visible: false, carrier: null };
+  let lo = 0, hi = P.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (P[m].T <= T) lo = m; else hi = m - 1; }
+  if (T < P[0].T) return { x: P[0].x, y: 0, z: P[0].z, yaw: P[0].yaw, visible: false, carrier: null };   // before its first waypoint: not on stage
+  const w = P[lo];
+  if (w.byId) {
+    const a = w.by; if (!a) return { x: w.x, y: 0, z: w.z, yaw: 0, visible: false, carrier: w.byId };
+    if (!a.c) a.c = actCompile(a);
+    const q = actPose(a, T), f = p.size[2] / 2 + PROP_HOLD.ahead;
+    return { x: q.x + Math.sin(q.yaw) * f, y: q.y + Math.max(0.2, PROP_HOLD.waist - p.size[1] / 2), z: q.z + Math.cos(q.yaw) * f, yaw: q.yaw, visible: q.visible && !w.off, carrier: a.id };
+  }
+  return { x: w.x, y: actFloor(w.x, w.z, w.y), z: w.z, yaw: w.yaw, visible: !w.off, carrier: null };
+}
+function propUpdate(T) {
+  for (const p of ACT.props) {
+    if (!p.c) p.c = propCompile(p);
+    const q = propPose(p, T), o = p.obj;
+    o.position.set(q.x, q.y, q.z); o.rotation.set(0, q.yaw, 0);
+    o.visible = ACT.shown && q.visible; o.userData.pose = q; p.tag.visible = ACT.names;
+  }
+}
+function propSetData(list) {
+  for (const p of ACT.props) ACT.group.remove(p.obj);
+  ACT.props = [];
+  (Array.isArray(list) ? list : []).filter(s => s && typeof s === 'object').forEach((s, k) => {
+    const p = propClean(s, k);
+    if (ACT.props.some(x => x.id === p.id)) p.id += '-' + (k + 1);
+    ACT.props.push(p); propBuild(p);
+  });
+}
+function propData(p) {
+  const gt = w => actGT(w);
+  return { id: p.id, kind: p.kind, label: p.label, size: p.size.map(v => actR(v)), color: p.color,
+    waypoints: p.waypoints.map((w, k) => [w, k]).sort((x, y) => gt(x[0]) - gt(y[0]) || x[1] - y[1]).map(([w]) => {
+      const o = { track: w.track, at: actR(w.at, 2) };
+      if (w.x !== undefined) o.x = actR(w.x); if (w.z !== undefined) o.z = actR(w.z); if (w.y !== undefined) o.y = actR(w.y);
+      if (w.facing !== undefined) o.facing = actR(w.facing, 1); if (w.off) o.off = true; if (w.carriedBy) o.carriedBy = w.carriedBy; if (w.note) o.note = w.note;
+      return o;
+    }) };
 }
 // The selected actor's path in the view: a line along her legs, a disc at each waypoint (the selected one larger and white,
 // an offstage one dim). Transparent, so the pools' depth pass leaves them out (lxDepthPass skips see-through materials).
@@ -5380,7 +5515,7 @@ function actPlace(x, z, y) {
   const a = ACT.actors[ACT.sel];
   if (!a) { ACT.note = 'Add or select an actor first.'; actUI(true); return null; }
   if (!SHW.d) { ACT.note = 'The show is still loading — its clock places the waypoint.'; actUI(true); return null; }
-  const tr = SHW.d.tracks[SHW.ti], at = actR(Math.min(SHW.lt, tr.len), 2);
+  const tr = SHW.d.tracks[SHW.ti], at = actR(Math.min(SHW.lt, tr.len + tr.post), 2);
   let w = a.path.find(v => String(v.track) === tr.id && Math.abs((+v.at || 0) - at) < 0.05);
   if (w) Object.assign(w, { x: actR(x), z: actR(z), y: actR(y) });
   else { w = { track: tr.id, at, x: actR(x), z: actR(z), y: actR(y) }; a.path.push(w); }
@@ -5441,7 +5576,7 @@ function actDeleteWp() {
   const a = ACT.actors[ACT.sel]; if (!a || ACT.wsel < 0) return;
   a.path.splice(ACT.wsel, 1); ACT.wsel = -1; actEdited(a);
 }
-const actFmt = s => { s = Math.max(0, s); const m = Math.floor(s / 60); return `${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}`; };
+const actFmt = s => { if (s < 0) return '−' + actFmt(-s); const m = Math.floor(s / 60); return `${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}`; };
 function actBuildPanel() {
   if (ACT.el) return;
   const el = ACT.el = document.createElement('div'); el.id = 'blocking'; el.hidden = true;
@@ -5557,7 +5692,9 @@ function actUI(force) {
     const tr = D.tracks[SHW.ti];
     const s = `${tr.id} ${actFmt(SHW.lt)} / ${actFmt(tr.len)}`;
     if (E.clock.textContent !== s) E.clock.textContent = s;
-    if (+E.scrub.max !== tr.len) E.scrub.max = String(tr.len);
+    const mx = showScrubMax(tr);
+    if (+E.scrub.max !== mx) E.scrub.max = String(mx);
+    if (+E.scrub.min !== -tr.pre) E.scrub.min = String(-tr.pre);
     E.scrub.value = String(SHW.lt);
     if (E.track.options.length !== D.tracks.length) {
       E.track.textContent = ''; E.wtrack.textContent = '';
@@ -5640,16 +5777,21 @@ function actCheck(opts = {}) {
   if (!SHW.d) return { error: 'the show is not loaded yet' };
   const t0 = performance.now(), wasOn = SHW.on, wasT = showT(), wasPlaying = SHW.playing;
   for (const a of ACT.actors) a.c = actCompile(a);
-  const problems = ACT.actors.flatMap(a => a.c.probs.map(p => `${a.name}: ${p}`));
+  for (const p of ACT.props) p.c = propCompile(p);
+  const problems = ACT.actors.flatMap(a => a.c.probs.map(p => `${a.name}: ${p}`)).concat(ACT.props.flatMap(p => p.c.probs.map(q => `prop ${p.label}: ${q}`)));
   // the moments: mid-walk on every leg and just into every stop (mid-turn), round-robin over the actors, opts.n of them
   const per = ACT.actors.map(a => a.c.segs.map(s => s.t0 + (s.t1 - s.t0) * 0.37).concat(a.c.P.map(p => p.T + ACT_TURN * 0.4)));
-  const pts = opts.points || [...Array(Math.max(0, ...per.map(l => l.length))).keys()].flatMap(k => per.map(l => l[k])).filter((T, i, A) => T !== undefined && A.indexOf(T) === i).slice(0, opts.n || 12);
+  const actPts = [...Array(Math.max(0, ...per.map(l => l.length))).keys()].flatMap(k => per.map(l => l[k])).filter((T, i, A) => T !== undefined && A.indexOf(T) === i);
+  // the props' moments (FR): just after each waypoint (a set-down, a pick-up) and mid-carry — a third of the moments when there are props
+  const propPts = ACT.props.flatMap(p => p.c.P.flatMap((w, i) => [w.T + 0.3].concat(w.byId && p.c.P[i + 1] ? [(w.T + p.c.P[i + 1].T) / 2] : [])));
+  const nPts = opts.n || 12, nProp = Math.min(propPts.length, Math.ceil(nPts / 3));
+  const pts = opts.points || propPts.filter((T, i) => i % Math.max(1, Math.floor(propPts.length / Math.max(1, nProp))) === 0).slice(0, nProp).concat(actPts).slice(0, nPts);
   const span = opts.span ?? 8, step = opts.step || 0.1;
   if (!wasOn) showStart(false);
   SHW.playing = false;
-  const snap = () => ACT.actors.map(a => ({ p: a.obj.position.clone(), yaw: a.obj.rotation.y, vis: a.obj.visible, tag: a.tagText }));
+  const snap = () => ACT.actors.concat(ACT.props).map(a => ({ p: a.obj.position.clone(), yaw: a.obj.rotation.y, vis: a.obj.visible, tag: a.tagText }));   // the props too (FR)
   const eq = pts.map(T => {
-    T = Math.min(T, SHW.d.end);
+    T = Math.min(T, SHW.d.max);
     // SEEK first, as a jump from far away (whatever the last moment left behind must not survive it) …
     showSeekT(T > 600 ? T - 600 : T + 600); actTick(0, true);
     showSeekT(T); actTick(0, true);
@@ -5670,7 +5812,8 @@ function actCheck(opts = {}) {
   const pass = eq.every(e => e.posM <= 1e-4 && e.yawRad <= 1e-4 && !e.visibility && !e.labels);
   if (wasOn) { showSeekT(wasT); if (wasPlaying) showPause(false); } else { showStop(false); showSeekT(wasT); }
   actTick(0, true);
-  return { pass: pass && !problems.length, seekEquivalence: { pass, points: eq }, problems, actors: ACT.actors.map(a => ({ id: a.id, name: a.name, waypoints: a.path.length })), ms: Math.round(performance.now() - t0) };
+  return { pass: pass && !problems.length, seekEquivalence: { pass, points: eq }, problems, actors: ACT.actors.map(a => ({ id: a.id, name: a.name, waypoints: a.path.length })),
+    props: ACT.props.map(p => ({ id: p.id, kind: p.kind, waypoints: p.waypoints.length })), ms: Math.round(performance.now() - t0) };
 }
 
 // ---- the hooks: the header's Blocking button, the frame (after the show's own tick), MIDTOWN.actors
@@ -5693,7 +5836,9 @@ buildLightsPanel = () => {
       pose: (id, T = actNow()) => { const a = ACT.actors.find(x => x.id === id) || ACT.actors[id]; if (!a) return null; if (!a.c) a.c = actCompile(a); ACT.root.updateWorldMatrix(true, false); return actPose(a, T); },
       select: i => actSelect(typeof i === 'number' ? i : ACT.actors.findIndex(a => a.id === i)), place: (x, z, y) => actPlace(x, z, y ?? actFloor(x, z, 0)),
       floor: (x, z, ref = 0) => actFloor(x, z, ref), check: opts => actCheck(opts), panel: on => actPanel(on !== false), drop: on => actSetDrop(on !== false),
-      group: ACT.group, state: ACT, tune: { ACT_STEP, ACT_WALK, ACT_EASE, ACT_TURN, ACT_H },
+      group: ACT.group, state: ACT, tune: { ACT_STEP, ACT_WALK, ACT_EASE, ACT_TURN, ACT_H, PROP_HOLD, PROP_KINDS },
+      get props() { return ACT.props.map(p => ({ id: p.id, kind: p.kind, label: p.label, size: p.size, waypoints: p.waypoints.length, pose: p.obj.userData.pose || null, visible: p.obj.visible })); },
+      propPose: (id, T = actNow()) => { const p = ACT.props.find(x => x.id === id) || ACT.props[id]; if (!p) return null; if (!p.c) p.c = propCompile(p); ACT.root.updateWorldMatrix(true, false); return propPose(p, T); },
     };
   }).catch(e => { console.error('actors: they could not be set up —', e); ACT.btn.title = 'No actors: ' + (e.message || e); });
 };

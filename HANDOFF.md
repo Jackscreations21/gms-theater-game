@@ -238,10 +238,29 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
 3. **Watch it with him, music on** (below). His notes go into the segment files in the session scratch or straight into
    `assets/hamilton-show.json`.
 4. Rule the rig placements (FUTURE.md), then the older list.
-5. **The automatic actors (branch `actors`, RULINGS FF–FO, the next spec starts at FP):** PR #234 is open beside #233 —
-   the whole show is blocked. Play it with him (Show → Play; Blocking for corrections — a correction goes into the
-   segment's generator in `tools/blocking/`, then the merge). Put `docs/hamilton-blocking-cue-notes.md` in front of him:
+5. **The automatic actors (branch `actors`, RULINGS FF–FR, the next spec starts at FS):** PR #234 is open beside #233 —
+   the whole show is blocked. Play it with him (Show → Play), and give him `blocking.html` for corrections: its change
+   file says what to change, and a correction goes into the segment's generator in `tools/blocking/`, then the merge. Put `docs/hamilton-blocking-cue-notes.md` in front of him:
    his two rulings (1-05 sisters, 2-22 duel sides) and the cue fixes. Ask the mannequin's licence/origin.
+
+## DONE — 2026-10-12 (latest): the blocking editor, the clock's lead-ins and tails, props (PR #234, RULINGS FP–FR)
+
+Jack's asks: a separate page to see and alter every path with the music, a blackout indicator, a top view with every part
+named, and a file that says what to change (FP); 10 s before each act and after Act One, an open end after Act Two (FQ);
+props the company carries on (FR).
+
+What was done:
+- `blocking.html` (FP): the editor; its change file is documented in `docs/hamilton-blocking-format.md`.
+- `midtown.html`: the lead-ins and tails in the show player (FQ); props drawn, posed, carried and checked (FR).
+- `tools/blocking-merge.py`: `track_table` / `at_ok` (FQ), `merge_props` (FR); `tools/blocking-plot.py` on the FQ clock.
+- `assets/hamilton-pools.json` + `tools/blocking-pools.py`: the person lights for the editor.
+- Checked in the browser (editor = page poses at 360 moments; blackouts = the page's dump on 892 cues; round trip byte for
+  byte; `show.check` and `actors.check` pass across the edges).
+
+Next:
+- Jack edits in `blocking.html` and hands back `hamilton-blocking-changes-<date>.json`: apply it to the generators (the
+  format doc's "Applying it").
+- His eye on the props seed.
 
 ## DONE — 2026-10-12 (late night): the whole of Hamilton blocked, merged and checked (PR #234, RULING FO)
 

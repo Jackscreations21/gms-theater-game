@@ -555,6 +555,26 @@ it does not do yet, and what the ETC pack could still give:
 - **Licence:** ETC's pack is non-commercial; `assets/README.md` says so. The
   Broadway plot PDFs are not ETC's and are not to be committed.
 
+### The blocking editor — what it does not do yet (2026-10-12, RULING FP built)
+
+`blocking.html` is built (the plan, the music, the blackouts, editing, the change file, props). NOT built:
+
+- **Applying the change file automatically.** A session applies it to the generators by hand ("Applying it" in the format
+  doc). A tool that turns `move` / `retime` changes into generator patches would be the next step if Jack sends many.
+- **The sound tap.** Skips are corrected by the VBR seek table only; `midtown.html` on `cue-blackouts` also matches the
+  audio's loudness envelope, because Chrome lands a skip into an already-played region by its own history. In the editor a
+  skip BACK into music already played may land some seconds off. Port `sndTick` / the envelope if he notices.
+- **YouTube** as a music source (the page has it; the editor has the file, a chosen MP3, or silence).
+- **Group edits:** select several waypoints or actors, move a formation, copy a number's blocking to another moment,
+  mirror a staging. One waypoint at a time today.
+- **The cast is fixed** in the editor (no adding / renaming actors; the cast file is the source, FN).
+- **Turntable revolves** as a tool (walk an actor round an arc: today waypoints by hand, as the writers did).
+- **The person lights are a snapshot** (`assets/hamilton-pools.json`, dumped from `actors` before #233's cue revisions):
+  re-dump and run `tools/blocking-pools.py` after cue changes. The blackouts are computed live from the cues and do not
+  have this problem.
+- **3D in the editor:** it is a plan only; height shows as "↑" and a white rim. `midtown.html` remains the 3D view.
+- `tools/blocking-plot.py` does not draw props.
+
 ### Automatic actors — what is still to come (2026-10-12, RULINGS FF–FM built)
 
 **What Jack said:** *"make a system for automatic actors. Make a software where you can create their paths
@@ -580,10 +600,8 @@ The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocki
     - the FOH X4s ch41–46 and apron Vipers ch2/ch4 stopped by house geometry at z ≈ 8.4;
     - 2-05's preset-767 table light that the page does not resolve to a focus;
     - the rest of the list.
-  - Props the blocking mimes:
-    - the rolling staircase;
-    - the chairs and desks (the Cabinet chairs, the 2-05 table, Hamilton's desk);
-    - the 2-17 bed / table.
+  - Props the blocking mimes: props are BUILT (RULING FR) and seeded by `tools/blocking/props.py`; still not a prop:
+    - the rolling staircase (a moving set piece, not something carried).
   - The turntables do not turn: revolves are walked as arcs.
 - **Follow spots on actors.** The three Lycians could track a named actor (`focus` = her head each frame).
 - **Actors avoiding each other.** Paths cross freely; nothing stops two bodies sharing a spot.
