@@ -374,3 +374,139 @@ shafts, not one person's.
   the two keys are 3.8 m apart for two people reading one paper. Raising the focus to y about 3.6 and bringing it in
   to about x +-0.9 would fit the frame.
 - Merge check: 0 errors, 0 warnings, 729 waypoints. The King still ends at (0, 3.41) at 2-10 95.6.
+
+
+## Review 2 (Jack's verdict)
+
+Jack: the ensemble is used far too much and much of the choreography is wrong. The generator was edited and re-run
+(`python -I tools/blocking/gen6.py`). The copy from before this pass is in the scratchpad at
+`review2/seg6/gen6.before-review2.py`, with its JSON and notes beside it. Furniture is in `props.py`, in the
+SEGMENT 6 section. Merge check (seg6.json and props.json alone): 0 errors. The warnings are all "carriedBy X, who has no
+waypoints" for props in other segments. `props.py --check segments/seg6.json` passes every seg-6 carry. `legcheck6.py`
+finds no close approaches. Its only hits are the known D-UC overhead `^` and Washington's intended SL-stair leg.
+The waypoint count fell from 729 to 388.
+
+**Evidence this pass.**
+- **ironinkpen, "Neat little Hamilton staging things (Act II)":**
+  https://ironinkpen.tumblr.com/post/136585710522/neat-little-hamilton-staging-things-act-ii . It is a
+  theatregoer's list, and the only written account that covers all five numbers. Everything below that says
+  "ironinkpen" is paraphrased from it.
+- **hamilton-lyrics, "Highlights from the staging of Hamilton - Act 2":**
+  https://hamilton-lyrics.tumblr.com/post/136891099523/highlights-from-the-staging-of-hamilton-act-2 . It covers
+  the CB2 head-in-the-basket bit, the I Know Him messenger who giggles, and the King's stool, which is brought for
+  2-11.
+- **The libretto at newtfire** (https://newtfire.org/hamilton/07_CabinetBattle2.html , `08_WashingtonOnYourSide.html`).
+  - CB2 gives the ensemble one interjection.
+  - WOYS gives it three short lines in the money passage.
+  - Madison's first line in WOYS comes after Jefferson's verse and the Jefferson/Burr hook, just before hook 2.
+- **ETC THPP cue photos:** the PDF jumps from 894 (the Room's button) to 1039.01 (Reynolds Pamphlet), so there are no
+  renders for 2-06 to 2-10.
+- **Left/right:** ironinkpen's convention is not settled. Seg 7 read it as the house's. Here it is read as STAGE
+  left/right, because two of its notes then agree with what is already ruled or lit:
+  - Washington calls Hamilton "from the left", which is Hamilton's ruled side.
+  - Madison enters "from the left", which is his SL key in the row.
+
+  The 2-06 gallery was left where the lights are: ironinkpen puts Eliza and Philip "on the right", and under either
+  reading the move would be small.
+
+### 2-06 Schuyler Defeated: ensemble 0 -> 0. Nothing changed.
+ironinkpen confirms the staging: Philip and Eliza are on the second floor, and Hamilton confronts Burr near centre on
+the deck. No furniture.
+
+### 2-07 Cabinet Battle #2: ensemble 10 -> 6
+- **Cut:** the invented crowd.
+  - Four stood on the USG and six stood upstage on the deck.
+  - All ten leaned towards every change of speaker (twelve leans each).
+- **Now:** ironinkpen calls it "another rap battle, same kind of staging" as #1, which means the company seated in the
+  V of chairs.
+  - Six of the company (ens1-6) carry their chairs on in the top of the number (in by 9.6-10.6).
+  - They sit in a short V. These are the three seats an arm nearest the vertex of seg 5's 2-02 V:
+    SR (-3.1, 1.45), (-2.4, 0.5), (-1.7, -0.45); SL the mirror.
+  - They turn to Jefferson (16.5), to Hamilton (82.7) and to Washington (113.9).
+  - They take their chairs off at the clear-out (127.6-129.4).
+- **The end, per ironinkpen:** "everyone kind of clears out", leaving Hamilton and Jefferson to argue.
+  - Washington leaves by the deck door at 127.6, and Madison leaves DR at 128.8.
+  - Washington then calls Hamilton from off-stage left: he is seen at the SL wing (5.5, 4.45) at 139.6.
+  - The two go off SL together.
+  - Jefferson stays alone, staring after them, into 2-08.
+- **Principals moved inside the V** (the arms' seats were in their way):
+  - Jefferson waits out Hamilton's verse at (-2.0, 2.0) (it was (-3.3, 1.2)).
+  - Madison's spots are re-placed at Jefferson's shoulder, at least 0.85 m from any seat. Both now enter from the DR
+    wing.
+  - Hamilton waits at (2.1, 2.0) (it was (2.6, 1.4), 0.5 m from a seat).
+- **Spotlight placements kept:** the DR mic, the mic-drop, the punchline, 954, 955 and the face-off.
+- **Furniture:** `cb2-chair-1..6`, PINE. Each ensemble member BRINGs her own chair from her wing and STRIKEs it at
+  the clear-out. They are new ids, so this section does not depend on seg 5's `cabinet-chair-*`.
+- **Not verified:** the size of the V (six). Washington standing at centre rather than in a chair, which keeps his
+  centre special (ch93).
+
+### 2-08 Washington on Your Side: ensemble 10 -> 1
+- **Cut:** the two invented lines of ten for the chant (122.6-176): entering, stepping, driving in and sinking back.
+  The ensemble's three short lines are sung unseen. No account puts them on.
+- **Now, per ironinkpen:**
+  - Burr walks on from DR (by 6.5) while Jefferson is still staring SL after Hamilton and Washington (3.5).
+  - Jefferson turns to Burr (7.0) and takes the centre key (10.5).
+  - Madison is off until his first line. He enters from SL at 63.5, just before hook 2, and joins the row.
+    He used to stand in the row from 8.1.
+  - The rest of the trio's blocking (and every spotlight placement) is unchanged.
+- **One ensemble member:** ens1 sets Washington's desk "in the background while the focus is on the trio" (ironinkpen).
+  She brings it from the deck door at 118.8 and sets it at 123.0, then goes back out by 128.8.
+- **The resignation:** ironinkpen says Jefferson writes it at the end and it ends up on Washington's desk. In the change
+  he lays it on the desk (2-09 1.2) and leaves SL.
+- **Furniture:** `washington-desk`, the existing prop from segments 2 and 3, set at (-0.4, 0.85). That is in 981's
+  desk pool (ch18 at (0, 1.11)) and clear of Washington's ch94 (0.58, 1.16) and the 987 shafts.
+
+### 2-09 One Last Time: ensemble 10 + 10 -> 6 (ending only), plus Eliza and Philip
+- **Cut:**
+  - The chorus-2 company (88.7-112.4): four on the USG and six on the deck, who swayed and left. No account puts
+    them on.
+  - The gallery four of the ending.
+  - The deck six's step-ins.
+- **Opening, per ironinkpen:** Washington is behind his desk reading Jefferson's resignation (in from the deck door
+  by 5.0), and Hamilton walks in from SR (7.0). The drinks are not modelled. Washington's and Hamilton's mid-song spots
+  were nudged clear of the real desk; all 982-991 specials are still hit (plotter).
+- **The address (ironinkpen):** it starts with Hamilton at the front and Washington behind him, and they switch places
+  over its course.
+  - Hamilton reads DSC in ch13 from 171.5, and Washington stands behind the desk.
+  - They change places (Washington 185.3-193.0 down the SL side, Hamilton 184.0-187.6 up the SR side).
+  - Washington takes over the reading DSC at 993 (193.1), and Hamilton finishes it at the desk.
+  - **This replaces review 1's climb up the SR stair to read on the USG.** That climb fitted a reconstructed gallery
+    special (ch25), which now has nobody under it.
+  - **Cue fix for later:** refocus ch25 of 992-995 onto the desk, at about (-0.55, 0.2).
+- **The final chorus:** ironinkpen says Hamilton, Eliza and Philip stand together as a family, and "ensemble members
+  come out to watch".
+  - Eliza (247.0) and Philip (248.5) enter DR beside Hamilton SR.
+  - Six of the company (ens1-6) come out at 245-249 into a loose arc upstage, behind Washington. The arc's points are
+    (-2.6, -0.3), (-1.4, -0.9), (-0.2, -1.3), (0.9, -1.0), (3.4, 0.3) and (3.7, -0.9).
+  - The arc leaves his lane to the SL stair open, so nobody has to part. Everyone stays at least 1.05 m from his path
+    and at least 1.27 m from ch12.
+  - They turn as he comes through (268) and watch him on the stair (283).
+  - They leave after the cut-off by the side wings, not the deck door the King uses.
+- **Kept:** Washington's exit upstage SL, the hold half-way up the SL stair on the held note (ch20), and his cross of
+  the USG.
+  - ironinkpen half-remembers him DSC raising his sword at the end ("memory's fuzzy"). That is not adopted: it
+    conflicts with the lighting's 998-1000, and with her own note that he is still walking off as the King walks on.
+- **Furniture:** `washington-desk` stays from 2-08 and is HIDden (struck in the dark of the cut-off, 294.5), before the
+  King comes down through centre.
+
+### 2-10 I Know Him: ensemble 0 -> 1
+- **New:** in the six-second silence before the name (1006), ens3 runs on from DR (40.5), whispers the name, giggles
+  and is shooed off (gone by 44.9). The King turns to them at 40.6 and shoos them at 43.0.
+  - ironinkpen: a member of the company runs on to tell him who the new president is, and he shoos them away.
+  - hamilton-lyrics: they whisper and giggle.
+- **Kept, as ruled:** the King's entrance from the deck door as Washington goes (ironinkpen's side-eye), his specials,
+  and his end in ch93 at (0, 3.41).
+- **The King's stool** is not set here.
+  - ironinkpen: at the end of I Know Him he sets up a little chair "on the left" and sits to watch.
+  - hamilton-lyrics: a stool is brought for the top of 2-11.
+  - The ruling keeps him in his special at the 2-10 blackout, and the stool is declared in seg 7's props section
+    (`king-stool`, set UL in the dark at 2-11 1.0).
+  - Under the house-left reading "on the left" would be SR. That is seg 7's to settle.
+
+### For Jack, first
+1. 2-07 0-12 and 127-142: the chairs carried on and the V; then the clear-out, Washington at the SL wing, and the two
+   going off together, leaving Jefferson alone.
+2. 2-08 0-11 and 60-67: Burr walking on while Jefferson stares off; Madison's entrance from SL.
+3. 2-09 170-195: the address, with Hamilton DSC and Washington behind at the desk, then the change of places.
+4. 2-09 243-295: the family SR, the six behind Washington, and his walk up to the SL stair.
+5. 2-10 38-46: the messenger.

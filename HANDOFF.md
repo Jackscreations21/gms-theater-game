@@ -243,6 +243,17 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
    file says what to change, and a correction goes into the segment's generator in `tools/blocking/`, then the merge. Put `docs/hamilton-blocking-cue-notes.md` in front of him:
    his two rulings (1-05 sisters, 2-22 duel sides) and the cue fixes. Ask the mannequin's licence/origin.
 
+## DONE — 2026-10-13 (review 2 merged): the ensemble cut back, the furniture carried, props glide (PR #234, RULING FT)
+
+- Jack's verdict, *"the ensemble is used far too much and much of the choreography is wrong"*, was applied by eight
+  reviewers in the generators and in `props.py`'s sections.
+- Merged: 9,410 → 6,491 waypoints, 28 → 62 props, ensemble on-stage time −36 %; 0 errors and 0 warnings.
+- New ruling FT: placed props glide (the page, the editor, the plotter); the 2-17 table rides the ring on a few points.
+- Dolly and Martha are allowed and used.
+- Checks pass (actors with props and limbs, show seek-equivalence, labels); renders are in scratch `act/shots/review2/`.
+- The new cue items and questions are in `docs/hamilton-blocking-cue-notes.md`.
+- Next: Jack's questions; merging the limbs' parts per body for frame time.
+
 ## DONE — 2026-10-13 (latest): the limbs — a jointed mannequin that walks, idles, turns and carries (PR #234, RULING FS)
 
 - `tools/mannequin-rig.py` → `assets/mannequin-woman-rig.glb` (fifteen parts, joints measured from the mesh, a liner under

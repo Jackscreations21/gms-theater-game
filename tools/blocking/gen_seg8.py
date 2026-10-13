@@ -212,18 +212,30 @@ def revolve(a, d_ang, t0, t1, step=25.0, end_facing=None):
 # SPOTLIGHT (seg 8 spotlight agent): Binkley's own 1104 chain puts the family DOWNSTAGE from the shot on: his shot
 # pool for Philip (ch8, preset 1023 "Pools") lands at (-0.68, 4.13); the auto-follow ch7 ("AF- start move around")
 # ends at (-0.83, 3.87); "DS to CTO" warms the DS pair ch7/ch9 (+-0.8, 3.95); "add Ring" brings the table wash ch98
-# up on (0, 4.13). Nothing at all lights C in 1104.3-1113, so the table is at the front from the start (the editor's
-# front-of-stage three-shot), not carried there at 80 s.
-TABLE_F = (-0.3, 3.9)       # the table at the front, between the DS pools ch7/ch9
+# up on (0, 4.13). The table ends at the front (the editor's front-of-stage three-shot) - by 32.46 (REVIEW 2, below).
+# REVIEW 2 (Jack's verdict: sparse and right): ETC's THPP renders of Binkley's own cues show the table carrying Philip
+# ROUND THE OUTER RING - at 12 o'clock in 1104.4 "Lose Wedge" (8.66), at the SL side in 1104.5 (28.46), at the front with
+# one figure (the Doctor) behind it in 1110 "add Ring" (32.46); "AF- start move around" (2.06) is an auto-follow riding
+# it. ironinkpen: Philip on a table on the slowly spinning platform, Hamilton at his side, the table stopping at the
+# front. Nobody in the number but the four (the Doctor has a line): the bearers and the seven gallery watchers are cut.
+TABLE_F = (-0.3, 3.9)       # the table at the front, between the DS pools ch7/ch9 (angle 186 on the outer ring)
+TAB_R = 2.97
 H_T = (-1.15, 3.55); E_T = (0.6, 3.6); DOC_T = (-0.35, 3.0)
 E_SL = (2.0, 2.65)          # Eliza's special SL (ch14, 1112)
+TAB_T0, TAB_T1, TAB_A1 = 8.66, 32.46, 186.0
+def tab_ang(t):             # the table's angle round C (0 = 12 o'clock, clockwise), from the cue renders
+    if t <= TAB_T0: return 0.0
+    if t >= TAB_T1: return TAB_A1
+    return TAB_A1 * (t - TAB_T0) / (TAB_T1 - TAB_T0)
+TABLE_REVOLVE = [(round(TAB_T0 + 0.5 * k, 2), round(tab_ang(TAB_T0 + 0.5 * k), 1)) for k in range(int((TAB_T1 - TAB_T0) / 0.5) + 1)]
+TABLE_UC = clock(TAB_R, 0.0)
 
-# Philip: handed over from seg 7 downstage of centre, his back to the house (coordinator's re-ruled mark);
-# shot, he staggers downstage into his pool and onto the table the bearers bring under him
+# Philip: handed over from seg 7 downstage of centre, his back to the house (coordinator's re-ruled mark); shot, he
+# staggers upstage in the blackout to the table at 12 o'clock and lies on it; the platform carries him round to the front
 wp('laurens', '2-17', 0.0, -0.4, 2.4, facing=180, dwell=0.5, label='Philip')
-walk('laurens', T('2-17', 2.2), (-0.45, 3.6), facing=0)
-walk('laurens', T('2-17', 5.0), TABLE_F, facing=0)
-hold('laurens', T('2-17', 32.46), -35)       # to his father
+walk('laurens', T('2-17', 4.2), TABLE_UC, facing=0)
+circle('laurens', TAB_R, 0.0, TAB_A1, T('2-17', TAB_T0), T('2-17', TAB_T1), step=15, end_facing=0)
+hold('laurens', T('2-17', 36.36), -35)       # to his father
 hold('laurens', T('2-17', 75.19), 20)        # to his mother
 hold('laurens', T('2-17', 106.78), 0)        # dies
 
@@ -233,18 +245,17 @@ wp('ens5', '2-17', 0.0, 1.6, -1.0, facing=180, dwell=0.0, label='George Eacker')
 hold('ens5', T('2-17', 0.36), face((1.6, -1.0), (-0.4, 2.4)), dwell=1.2)
 leave('ens5', 'W-USL', T('2-17', 1.56), speed=1.3, label='Ensemble 5')
 
-# the Doctor and two bearers bring the table on from SR, under Philip at the front
-enter('ens2', 'W-DSR', (-1.25, 4.3), T('2-17', 4.0), 90, speed=1.8, label='Ensemble 2')
-enter('ens3', 'W-DSR', (0.6, 4.35), T('2-17', 4.8), 90, speed=1.8, label='Ensemble 3')
-enter('ens4', 'W-DSR', DOC_T, T('2-17', 5.6), 160, speed=1.6, label='The Doctor')
-walk('ens2', T('2-17', 9.0), clock(3.0, 235), facing=face(clock(3.0, 235), C))   # back to the ring
-walk('ens3', T('2-17', 11.0), (1.3, 4.75), dwell=0)
-walk('ens3', T('2-17', 14.5), clock(3.0, 80), facing=face(clock(3.0, 80), C))
+# the Doctor: in by the deck door to the inside of the table, rides round with it, ends behind it at the front (1110)
+enter('ens4', 'D-UC', clock(2.2, 0.0), T('2-17', 6.0), 180, speed=1.3, label='The Doctor', via=[(1.1, -1.3)])
+circle('ens4', 2.2, 0.0, TAB_A1 - 4, T('2-17', TAB_T0), T('2-17', TAB_T1), step=15, end_facing=180)
 
-# Hamilton runs in from SR on "Lose Wedge", to the table's SR side (in the DS pool ch7)
-enter('hamilton', 'W-DSR', H_T, T('2-17', 11.0), 70, speed=2.4, label='Hamilton')
-hold('hamilton', T('2-17', 32.46), 80)
-hold('ens4', T('2-17', 32.46), 180)
+# Hamilton runs in by the deck door on "Lose Wedge" to the table's leading end and rides round with it, ending at its SR
+# end (in the DS pool ch7)
+_ha0 = tab_ang(10.9) + 18
+enter('hamilton', 'D-UC', clock(2.85, _ha0), T('2-17', 10.9), face(clock(2.85, _ha0), clock(TAB_R, tab_ang(10.9))),
+      speed=2.4, label='Hamilton', via=[(2.1, -2.0)])
+circle('hamilton', 2.85, _ha0, TAB_A1 + 18, T('2-17', 10.9), T('2-17', TAB_T1), step=15, end_facing=70)
+hold('hamilton', T('2-17', 36.36), 80)
 
 # Eliza comes in from upstage centre, down the SL side of the ring into her special, then to the table
 enter('eliza', 'D-UC', E_SL, T('2-17', 59.64), -120, speed=2.0, label='Eliza')
@@ -254,15 +265,6 @@ walk('ens4', T('2-17', 94.82), (-1.45, 2.15), facing=40)      # the doctor gives
 hold('eliza', T('2-17', 94.82), -80)
 hold('hamilton', T('2-17', 107.5), 70)
 hold('eliza', T('2-17', 107.5), -60)
-
-# the company on the upstage gallery, watching (G-UC in, 2.06 "start move around")
-USG_X = {'ens1': -3.6, 'ens7': -2.4, 'ens6': -1.2, 'ens5': 0.0, 'ens8': 1.2, 'ens9': 2.4, 'ens10': 3.6}
-for k, e in enumerate(['ens1', 'ens10', 'ens7', 'ens9', 'ens6', 'ens8', 'ens5']):
-    x = USG_X[e]
-    lbl = 'Ensemble %s' % e[3:]
-    enter(e, 'G-UC', (x, -3.35), T('2-17', 6.0 + 1.3 * k + abs(x - 0.6) / 1.3), 0, label=lbl, ty='gallery')
-    hold(e, T('2-17', 32.46 + 0.4 * k), face((x, -3.35), C))
-    hold(e, T('2-17', 87.0 + 0.4 * k), face((x, -3.35), TABLE_F))
 
 # =====================================================================================
 # 2-18 IT'S QUIET UPTOWN   0 dark / 8.6 Angelica DS / 23.6 company in / 31 the move uptown /
@@ -279,14 +281,10 @@ for k, e in enumerate(['ens1', 'ens10', 'ens7', 'ens9', 'ens6', 'ens8', 'ens5'])
 # the platform turns the family away towards SR; they are carried off in the dark
 for a in ('laurens', 'hamilton', 'eliza', 'ens4'):
     revolve(a, 70, T('2-18', 0.4), T('2-18', 6.5), step=25, end_facing=-100)
-leave('ens2', 'W-DSR', T('2-18', 0.3), speed=1.2)
-leave('ens3', 'W-MSL', T('2-18', 0.3), speed=1.2)
 leave('laurens', 'W-DSR', T('2-18', 6.8), speed=1.0)
 leave('ens4', 'W-DSR', T('2-18', 7.0), speed=1.0, label='Ensemble 4')
 leave('hamilton', 'W-DSR', T('2-18', 7.2), speed=1.1)
 leave('eliza', 'W-DSR', T('2-18', 7.4), speed=1.1)
-for k, e in enumerate(['ens7', 'ens8', 'ens6', 'ens9', 'ens5', 'ens10', 'ens1']):
-    leave(e, 'G-UC', T('2-18', 0.5 + 1.2 * k), speed=1.2)
 
 # Angelica narrates DSL, in black
 # SPOTLIGHT: her tight special (ch4, 1121) is DS just SR of centre at (-0.71, 4.0); she stands in it, downstage of
@@ -301,8 +299,11 @@ enter('angelica', 'W-DSR', (-3.2, 4.25), T('2-18', 166.0), 20)       # her secon
 hold('angelica', T('2-18', 208.28), 45)
 leave('angelica', 'W-DSR', T('2-18', 250.5), speed=1.0)
 
-# the company: five couples circling the outer ring round Hamilton
-COUPLE = [0, 72, 144, 216, 288]
+# the company: couples circling the outer ring round Hamilton (the film's editor: "several couples" circle him on the
+# turntable, counter-clockwise, then clockwise in his grief, the direction corrected as Eliza returns).
+# REVIEW 2: four couples, not five (the number is not documented; fewer, per Jack's verdict). ens9 / ens10 stay off.
+COUPLE = [0, 90, 180, 270]
+QU = ENS[:8]
 QU_ENS = {}
 for i, base in enumerate(COUPLE):
     QU_ENS[ENS[2 * i]] = base
@@ -317,7 +318,7 @@ R1 = 2.9
 # SPOTLIGHT: "Hamilton alone on the ring - his special SR" / "Pull in to Hamilton" (ch12 at (-2.43, 2.31), full,
 # 68-96 s, the only bright light at 89-96): he walks out of the centre to the SR side, inside the couples' circle
 H_QC = (-1.95, 2.0)
-for k, e in enumerate(ENS):
+for k, e in enumerate(QU):
     a0 = QU_ENS[e]
     p = clock(R1, a0)
     ent, _ = ent_for(a0)
@@ -371,29 +372,25 @@ hold('eliza', T('2-18', 250.3), 20)
 leave('hamilton', 'W-MSL', T('2-18', 260.8), speed=1.0, via=[(2.4, 0.45)])
 leave('eliza', 'W-MSL', T('2-18', 260.8), speed=1.0, via=[(2.3, 1.05)])
 
-# the company returns: couples circling (SPOTLIGHT: on the outer ring, r 2.75, clear of the couple keyed at
-# z 2.3), then the standing ring, then round again
+# the company returns: the couples circle again, now counter-clockwise (the healthy direction, as Eliza's return begins
+# the healing; SPOTLIGHT: on the outer ring, r 2.75, clear of the couple keyed at z 2.3), then open out to the sides and
+# watch the forgiveness (ironinkpen: the company off to the sides, observing), and fall away (1140).
+# REVIEW 2: the writer's standing ring and second lap are cut (invented).
 R2 = 2.75
-for k, e in enumerate(ENS):
+QU_SIDE = [(-3.65, -1.3), (-3.6, -0.1), (-3.65, 2.0), (-3.4, 3.0), (3.7, -1.2), (3.75, 0.0), (3.75, 1.2), (3.55, 2.4)]
+for k, e in enumerate(QU):
     base = COUPLE[k // 2] + (20 if k % 2 else 0)
     p = clock(R2, base)
     ent, _ = ent_for(base)
-    if ent == 'W-DSL': ent = 'W-MSL'
-    enter(e, ent, p, T('2-18', 167.2 + 2.0 * (k % 2)), face(p, C) - 90, speed=1.2)
-    circle(e, R2, base, base - 330, T('2-18', 169.6), T('2-18', 193.66), step=55)
-    # out to the standing ring (a gap downstage for the couple)
-    stand = [16.7, 50, 83.3, 116.7, 150, 210, 243.3, 276.7, 310, 343.3][k]
-    sp = clock(R1, stand)
-    walk(e, T('2-18', 198.0 + 0.2 * k), sp, facing=face(sp, C) * 0.5)
-    # forgiveness: round again, counter-clockwise, then away
-    circle(e, R1, stand, stand - 250, T('2-18', 220.76), T('2-18', 249.5), step=50, end_facing=face(clock(R1, stand - 250), C) * 0.5)
-    ang = (stand - 250) % 360
-    if 100 <= ang < 180: ex = 'W-DSL'
-    elif 180 <= ang < 260: ex = 'W-DSR'
-    elif 260 <= ang < 330: ex = 'W-USR'
-    elif 30 <= ang < 100: ex = 'W-USL'
-    else: ex = 'D-UC'
-    leave(e, ex, T('2-18', 251.0 + 0.4 * k), speed=1.0)
+    vq = [(-2.9, 3.4)] if ent == 'W-DSR' else None     # upstage of Angelica, who is on DSR now
+    enter(e, ent, p, T('2-18', 167.2 + 2.0 * (k % 2)), face(p, C) - 90, speed=1.2, via=vq)
+    circle(e, R2, base, base - 360, T('2-18', 169.6), T('2-18', 204.0), step=45)
+QS = dict(zip(QU, hungarian([pos(e) for e in QU], QU_SIDE)))
+for k, e in enumerate(QU):
+    q = QS[e]
+    walk(e, T('2-18', 208.0 + 0.3 * k), q, facing=face(q, C) * 0.8)
+    ex = ('W-USR' if q[1] < 0.5 else 'W-DSR') if q[0] < 0 else ('W-USL' if q[1] < 0.5 else 'W-MSL')
+    leave(e, ex, T('2-18', 250.04 + 0.4 * k), speed=1.0)
 
 # =====================================================================================
 # 2-19 THE ELECTION OF 1800   0.6 company look / 7.56 Jefferson DSR / 19.5 Burr UL /
@@ -465,54 +462,47 @@ walk('burr', T('2-19', 229.72), (0.7, 3.2), facing=0)  # alone in his special (c
 # SPOTLIGHT: the echo's cold centre-top (ch13, 1158/1160) lands at (0, -0.83): he stands in it, at the head of the alley
 enter('hamilton', 'D-UC', (0.0, -1.45), T('2-19', 99.25), 0, speed=1.1)
 walk('hamilton', T('2-19', 121.52), (-0.75, 3.45), facing=70)    # SPOTLIGHT: in ch4 of 1162
-leave('hamilton', 'D-UC', T('2-19', 135.0), speed=1.3)
+leave('hamilton', 'D-UC', T('2-19', 135.0), speed=1.3, via=[(0.0, 0.6), (0.0, -2.7)])   # up the middle of the company
 enter('hamilton', 'G-UC', (0.0, -3.35), T('2-19', 152.37), 0, ty='gallery')
 hold('hamilton', T('2-19', 157.94), 0)
 hold('hamilton', T('2-19', 184.92), 45)
 leave('hamilton', 'G-UC', T('2-19', 188.5), speed=1.3)
 
-# the voters
-CROWD = [(-2.6, 2.2), (-1.3, 2.4), (0.0, 2.2), (1.3, 2.4), (2.6, 2.2),
-         (-1.95, 0.1), (-0.65, 0.3), (0.65, 0.1), (1.95, 0.3), (3.1, 0.6)]
-CROWD_ENT = ['W-DSR', 'W-DSR', 'D-UC', 'W-DSL', 'W-DSL', 'W-USR', 'D-UC', 'D-UC', 'W-USL', 'W-USL']
-CAMP_R = [(-2.2, 0.9), (-1.6, 2.4), (-2.3, 3.4), (-1.3, 1.5), (-2.9, 0.1)]
-CAMP_L = [(2.3, 1.2), (1.6, 2.6), (2.3, 3.4), (1.3, 1.6), (2.5, 0.2)]
-for k, e in enumerate(ENS):
+# the voters. REVIEW 2: eight, not ten; only the shapes the fan account gives are kept - a loose crowd Burr goes through
+# person to person, the line facing the house that he weaves behind, the two facing lines holding letters out to
+# Hamilton. The writer's ring round Burr (63), the SR/SL camps (110), the deadlock lines (144) and the eruption line
+# (191) are cut (invented): the company stands where it is and turns.
+VOT = ENS[:8]
+CROWD = [(-2.0, 2.3), (-0.65, 2.4), (0.65, 2.3), (2.0, 2.4),
+         (-1.95, 0.1), (-0.65, 0.3), (0.65, 0.1), (1.95, 0.3)]
+CROWD_ENT = ['W-DSR', 'W-DSR', 'W-DSL', 'W-DSL', 'W-USR', 'D-UC', 'D-UC', 'W-USL']
+for k, e in enumerate(VOT):
     p = CROWD[k]
     enter(e, CROWD_ENT[k], p, T('2-19', 3.4 + 0.3 * k), 0, speed=1.8, label='Ensemble %s' % e[3:])
     hold(e, T('2-19', 7.56 + 0.15 * k), face(p, J_DSR) * 0.6)
     hold(e, T('2-19', 19.5 + 0.15 * k), face(p, B_UL) * 0.6)
+    hold(e, T('2-19', 50.28 + 0.15 * k), face(p, C) * 0.5)          # Burr's vamp: they watch him work the room
 def formation(t, spots, facing_fn, stagger=0.15):
-    """move the ten from where they are to these spots (matched to keep paths short), arriving t + k*stagger."""
-    dst = hungarian([pos(e) for e in ENS], spots)
-    for k, e in enumerate(ENS):
+    """move the eight from where they are to these spots (matched to keep paths short), arriving t + k*stagger."""
+    dst = hungarian([pos(e) for e in VOT], spots)
+    for k, e in enumerate(VOT):
         walk(e, t + stagger * k, dst[k], facing=facing_fn(dst[k]))
-    return dict(zip(ENS, dst))
-# Burr's campaign: a ring round him at centre
-formation(T('2-19', 63.3), [clock(1.55, 36 * k) for k in range(10)], lambda p: 0)
-# the townspeople: a line facing the house
-formation(T('2-19', 80.0), [(-3.0 + 0.6667 * i, 3.3) for i in range(10)], lambda p: 0, stagger=0.1)
-# the letters: two lines facing each other, an alley up to Hamilton UC, papers held out to him
-ALLEY = [(-1.0, -1.2 + 0.95 * i) for i in range(5)] + [(1.0, -1.2 + 0.95 * i) for i in range(5)]
-formation(T('2-19', 95.0), ALLEY, lambda p: 125 if p[0] < 0 else -125, stagger=0.15)
-# the split: Jefferson's camp SR, Burr's SL
-CAMP = formation(T('2-19', 110.0), CAMP_R + CAMP_L, lambda p: 40 if p[0] < 0 else -40, stagger=0.3)
-# the camps fall back for the two men's exchange DSC
-for k, e in enumerate(ENS):
-    q = (CAMP[e][0], CAMP[e][1] - 1.2)
-    walk(e, T('2-19', 121.52 + 0.1 * k), q, facing=face(q, (0.0, 4.3)) * 0.8)
-# the deadlock: two lines upstage
-LINES = [(-2.6 + 1.3 * i, -0.5) for i in range(5)] + [(-1.95 + 1.3 * i, -1.6) for i in range(4)] + [(3.1, -1.25)]
-DL = formation(T('2-19', 144.0), LINES, lambda p: 0, stagger=0.35)
-for k, e in enumerate(ENS):
-    hold(e, T('2-19', 157.94 + 0.1 * k), face(DL[e], (0.0, -3.35)))    # up to Hamilton on the gallery
-# Jefferson wins: the company erupts, a line upstage of him
-ER = formation(T('2-19', 191.0), [(-3.6 + 0.8 * k, -0.3) for k in range(10)], lambda p: 0, stagger=0.12)
-for k, e in enumerate(ENS):
-    hold(e, T('2-19', 215.1 + 0.1 * k), face(ER[e], (-0.5, 3.4)) * 0.5)
-    x = ER[e][0]
-    ex = 'W-USR' if x < -1.5 else ('D-UC' if x < 1.5 else 'W-USL')
-    leave(e, ex, T('2-19', 230.0 + 0.2 * k), speed=1.3)
+    return dict(zip(VOT, dst))
+# the townspeople: a line facing the house (ironinkpen)
+formation(T('2-19', 80.0), [(-2.8 + 0.8 * i, 3.3) for i in range(8)], lambda p: 0, stagger=0.1)
+# the letters: two lines facing each other, an alley up to Hamilton UC, papers held out to him (ironinkpen)
+ALLEY = [(-1.0, -1.2 + 0.95 * i) for i in range(4)] + [(1.0, -1.2 + 0.95 * i) for i in range(4)]
+AL = formation(T('2-19', 95.0), ALLEY, lambda p: 125 if p[0] < 0 else -125, stagger=0.15)
+# the two men's exchange DSC: the company falls back (1162), and stays there
+for k, e in enumerate(VOT):
+    q = (AL[e][0], AL[e][1] - 1.2)
+    walk(e, T('2-19', 121.52 + 0.1 * k), q, facing=face(q, (0.0, 3.45)) * 0.8)
+    hold(e, T('2-19', 157.94 + 0.1 * k), 180)                         # up to Hamilton on the gallery
+    hold(e, T('2-19', 191.0 + 0.12 * k), face(q, (-0.5, 3.4)) * 0.8)   # Jefferson wins: to him
+for k, e in enumerate(VOT):
+    x = last(e)['x']
+    ex = 'W-USR' if x < -0.5 else 'W-USL'
+    leave(e, ex, T('2-19', 223.5 + 0.3 * k), speed=1.5)    # gone before the band stops (229.72): Burr alone
 
 # =====================================================================================
 # 2-20 YOUR OBEDIENT SERVANT   0.2 Burr in a steel shaft / 17.38 the steel fan /
@@ -542,43 +532,39 @@ walk('hamilton', T('2-20', 74.81), DESK, facing=0)         # takes the desk, wri
 hold('hamilton', T('2-20', 119.69), 55)                     # refuses: towards Burr
 hold('hamilton', T('2-20', 136.61), 10)
 
-FAN = {}
-for k, e in enumerate(ENS):
-    ang = 270 + 20 * k
-    FAN[e] = ang
-    p = clock(3.0, ang)
-    ent = 'W-USR' if ang < 320 else ('D-UC' if ang < 400 else ('W-USL' if ang < 420 else 'W-MSL'))
-    enter(e, ent, p, T('2-20', 13.0 + 0.6 * k), face(p, DESK) * 0.4, speed=1.4)
-    hold(e, T('2-20', 38.59 + 0.1 * k), face(p, DESK))      # lean to the desk
-# the couriers: ens6 carries Burr's letter to Hamilton
+# REVIEW 2: six of the company, from the sides, only for what the evidence gives them: the courier who takes Burr's letter
+# to Hamilton and the ones who bring Burr the pages (ironinkpen), the lean as it escalates (the film's editor), one SR and
+# one SL staring out at Weehawken (ironinkpen). The writer's steel fan at 17.38 (Burr's rant is his alone) and the ring
+# round both men at 136.61 are cut (invented). They come on for the first crossing (1195, 67.44).
+OS_HOME = {'ens1': (-3.7, -0.7), 'ens6': (-3.5, 0.55),
+           'ens7': (3.9, -0.9), 'ens8': (4.1, 0.3), 'ens9': (3.95, 1.5), 'ens10': (4.25, 2.35)}
+OS_ENT = {'ens1': 'W-USR', 'ens6': 'W-USR', 'ens7': 'W-USL', 'ens8': 'W-MSL', 'ens9': 'W-MSL', 'ens10': 'W-DSL'}
+for k, e in enumerate(OS_HOME):
+    p = OS_HOME[e]
+    enter(e, OS_ENT[e], p, T('2-20', 60.0 + 0.8 * k), face(p, DESK) * 0.6, speed=1.3, label='Ensemble %s' % e[3:])
+# the courier: ens6 takes Burr's letter from the desk across to Hamilton
 cr = 'ens6'
 walk(cr, T('2-20', 67.6), (0.55, 1.1), dwell=0.6, facing=-120)
 walk(cr, T('2-20', 70.8), (-1.75, 2.2), facing=-110, dwell=0.8)
-walk(cr, T('2-20', 76.5), clock(3.0, FAN[cr]), facing=face(clock(3.0, FAN[cr]), DESK))
+walk(cr, T('2-20', 76.5), OS_HOME[cr], facing=face(OS_HOME[cr], DESK))
 # the pages of Hamilton's list, brought to Burr one at a time
 for e, t, stop in (('ens7', 79.5, (2.45, 2.4)), ('ens8', 83.5, (2.35, 3.25)), ('ens9', 87.5, (2.6, 2.05))):
-    home = clock(3.0, FAN[e])
-    if e == 'ens9': walk(e, T('2-20', t - 1.3), (2.2, 0.9), dwell=0)
+    home = OS_HOME[e]
     walk(e, T('2-20', t), stop, facing=face(stop, B_SL), dwell=0.8)
-    if e == 'ens9': walk(e, T('2-20', t + 2.4), (2.2, 0.9), dwell=0)
     walk(e, T('2-20', t + 4.2), home, facing=face(home, DESK))
 # Hamilton's signed reply goes across
 walk('ens7', T('2-20', 103.2), (0.6, 1.05), dwell=0.6, facing=-120)
 walk('ens7', T('2-20', 106.5), (2.45, 2.4), facing=50, dwell=0.6)
-walk('ens7', T('2-20', 110.5), clock(3.0, FAN['ens7']), facing=0)
-# 111.09 escalates: the country leans in; 130.1 Weehawken: one SR, one SL staring out;
-# 136.61 the company surrounds both men
-SUR_C = (1.55, 1.8)
-SUR = [36 * k + 15 for k in range(10)]
-SURP = hungarian([clock(2.55, FAN[e]) for e in ENS], [clock(2.9, a, SUR_C) for a in SUR])
+walk('ens7', T('2-20', 110.5), OS_HOME['ens7'], facing=face(OS_HOME['ens7'], DESK))
+# 111.09 escalates: the country leans in (half a metre toward the desk); 130.1 Weehawken: one SR, one SL staring out
 WEE = {'ens1': (-3.7, 3.6), 'ens10': (4.2, 1.2)}
-for k, e in enumerate(ENS):
-    q = clock(2.55, FAN[e])
-    walk(e, T('2-20', 115.0 + 0.2 * k), q, facing=face(q, DESK))
+for k, e in enumerate(OS_HOME):
+    h = OS_HOME[e]; d = math.hypot(DESK[0] - h[0], DESK[1] - h[1])
+    q = (h[0] + 0.5 * (DESK[0] - h[0]) / d, h[1] + 0.5 * (DESK[1] - h[1]) / d)
+    walk(e, T('2-20', 113.0 + 0.3 * k), q, facing=face(q, DESK))
     if e in WEE:
         walk(e, T('2-20', 130.1), WEE[e], facing=0)
-    s = SURP[k]
-    walk(e, T('2-20', 136.61 + 0.15 * k), s, facing=face(s, SUR_C))
+    hold(e, T('2-20', 136.61 + 0.1 * k), last(e)['facing'] if e in WEE else face((last(e)['x'], last(e)['z']), (1.55, 1.8)))
 
 # =====================================================================================
 # 2-21 BEST OF WIVES AND BEST OF WOMEN   0.44 pre-dawn, Hamilton at his desk / 7.72 Eliza behind him /
@@ -586,7 +572,7 @@ for k, e in enumerate(ENS):
 # REVIEW: fan account (ironinkpen): Hamilton at a desk near SR; Eliza comes up behind him and puts her arms round him;
 # she starts back to bed and he catches her hand to stop her for his last words.
 # =====================================================================================
-for k, e in enumerate(ENS):
+for k, e in enumerate(OS_HOME):
     s = (last(e)['x'], last(e)['z'])
     if s[0] < -0.5 and s[1] < 0.5: ex = 'W-USR'
     elif s[0] < -0.5: ex = 'W-DSR'
@@ -597,15 +583,17 @@ for k, e in enumerate(ENS):
     leave(e, ex, T('2-20', 148.0 + 0.2 * k), speed=1.5)
 H_DESK = (-2.8, 2.6)
 walk('hamilton', T('2-21', 0.44), H_DESK, facing=0)          # the desk, now near SR, in the dark
-E_BEHIND = (-2.75, 1.85)
+E_BEHIND = (-2.6, 1.6)      # REVIEW 2: behind his chair (props.py), not in it
 enter('eliza', 'W-DSR', E_BEHIND, T('2-21', 7.72), 10, speed=1.3, via=[(-3.8, 2.4)])
 walk('eliza', T('2-21', 19.96), (-2.05, 2.25), facing=-70)     # her plea, at his side
 hold('hamilton', T('2-21', 21.0), 40)
-walk('eliza', T('2-21', 36.6), (-3.35, 2.05), facing=60)       # starts back to bed; he catches her hand
+walk('eliza', T('2-21', 35.6), (-2.3, 1.6), dwell=0)              # starts back to bed, round behind his chair;
+walk('eliza', T('2-21', 36.6), (-3.3, 1.45), facing=40)           # he catches her hand
 hold('hamilton', T('2-21', 35.5), -70)
 hold('hamilton', T('2-21', 40.16), -30)
 leave('eliza', 'W-DSR', T('2-21', 41.0), speed=1.1)
-leave('hamilton', 'W-DSR', T('2-21', 44.5), speed=1.3, via=[(-3.6, 3.7)])
+# REVIEW 2: he stays at the desk through the FTB: The World Was Wide Enough opens with him rising from his chair, where he
+# has been writing to Eliza (hamilton-lyrics, "The World Was Wide Enough staging")
 
 # =====================================================================================
 # 2-22 THE WORLD WAS WIDE ENOUGH   3.1 the count begins / 9.84 Burr narrates SL /
@@ -669,7 +657,15 @@ for k, (e, a) in enumerate(ARC22.items()):
 enter('burr', 'W-MSL', (3.2, 2.3), T('2-22', 9.84), -40, label='Burr')
 enter('ens2', 'W-MSL', (3.85, 1.3), T('2-22', 11.4), -60, label='Ensemble 2')
 # Hamilton and Pendleton (ens3) walk down from upstage right; the Doctor (ens4) follows
-enter('hamilton', 'W-USR', (-2.6, -1.2), T('2-22', 17.0), 160, label='Hamilton')
+# REVIEW 2: Hamilton rises from the desk DR (hamilton-lyrics), goes round it and up to UR, and comes down with his second;
+# the Doctor (ens4) and Pendleton (ens3) take the desk and the chair off SR first (props.py)
+hold('hamilton', T('2-22', 3.6), 0, dwell=0.6)
+walk('hamilton', T('2-22', 6.0), (-2.0, 1.95), facing=-150)
+walk('hamilton', T('2-22', 17.0), (-2.6, -1.2), facing=160)
+enter('ens4', 'W-DSR', (-2.8, 3.75), T('2-22', 6.6), 0, speed=1.6, label='Ensemble 4')
+leave('ens4', 'W-DSR', T('2-22', 7.0), speed=1.6)
+enter('ens3', 'W-DSR', (-3.45, 2.15), T('2-22', 8.6), 90, speed=1.6, label='Ensemble 3')
+leave('ens3', 'W-DSR', T('2-22', 9.0), speed=1.6, via=[(-4.0, 3.2)])
 enter('ens3', 'W-USR', (-3.3, -0.85), T('2-22', 18.6), 160, label='Ensemble 3')
 enter('ens4', 'W-USR', (-3.3, -0.6), T('2-22', 25.0), 60, label='The Doctor')
 walk('hamilton', T('2-22', 21.86), (-2.65, 1.95), facing=-30)   # surveys the ground SR (in ch11)
@@ -764,41 +760,68 @@ walk('eliza', T('2-22', 176.5), (0.3, 2.1), facing=75)
 walk('eliza', T('2-22', 181.0), (-0.6, -0.9), dwell=0)
 leave('eliza', 'W-USR', T('2-22', 181.1), speed=1.3)
 
-# the company in the monologue (ens2..ens10): behind him DR, round him on the box, round the Bullet at centre,
-# blown out to the edges at the restore, gone before the shot
-MON = ['ens2', 'ens3', 'ens4', 'ens5', 'ens6', 'ens7', 'ens8', 'ens9', 'ens10']
-DRB = [(x, z) for z in (2.35, 1.45, 0.55) for x in (-3.7, -2.8, -1.9)]
-DRB_ENT = {(-1.9, 2.35): 'D-UC', (-1.9, 1.45): 'D-UC', (-1.9, 0.55): 'D-UC'}
-for k, (e, p) in enumerate(zip(MON, DRB)):
-    enter(e, DRB_ENT.get(p, 'W-USR'), p, T('2-22', 118.0 + 1.3 * k), 20,
-          label='Ensemble %s' % e[3:])
+# the company in the monologue. REVIEW 2, against ETC's THPP renders of Binkley's real cues and hamilton-lyrics: in
+# 1248 "Legacy/ Hamilton DR" a handful stand in pools round the outer ring behind him (the writer's 3x3 block DR is cut);
+# at the box ("America" Center pose, 1250) they make the My Shot pose round him (hamilton-lyrics); in 1254 "to center"
+# and 1256 they stand in a ring round the centre; in 1258 "Eyes UP" to 1260 Restore they are one tight knot at the
+# centre round the Bullet (who is lifted); then they are blown out to the edges and scatter before the shot. Eight, not
+# nine: ens10 is used only for the 'mum' figure on the gallery; ens9 brings the box on, poses, and takes it off as
+# Hamilton steps down, so the ring and the knot are seven.
+MON = ['ens2', 'ens3', 'ens4', 'ens5', 'ens6', 'ens7', 'ens8']
+BEHIND = [clock(3.5, a) for a in (245, 280, 315, 350, 25, 95, 125)]
+def mon_ent(p):
+    a = ang_of(p)
+    if a >= 330 or a < 60: return 'D-UC'
+    if a < 110: return 'W-MSL'
+    if a < 180: return 'W-DSL'
+    return 'W-USR'
+BH = dict(zip(MON, BEHIND))
+for k, e in enumerate(MON):
+    p = BH[e]
+    enter(e, mon_ent(p), p, T('2-22', 122.0 + 1.1 * k), face(p, C) * 0.3, label='Ensemble %s' % e[3:])
+# the box: ens9 brings it on from SL and sets it DSC (preset 24's spot), then joins the pose
 BOX = (0.0, 3.45)
-POSE = [clock(1.4, a, BOX) for a in (-70, -35, 0, 35, 70)] + [clock(2.2, a, BOX) for a in (-80, -45, 45, 80)]
+enter('ens9', 'W-DSL', (0.6, 3.05), T('2-22', 137.0), -60, speed=1.3, label='Ensemble 9')
+MON = MON + ['ens9']
+POSE = [clock(1.4, a, BOX) for a in (-60, -20, 20, 60)] + [clock(2.2, a, BOX) for a in (-80, -40, 40, 80)]
 P1 = dict(zip(MON, hungarian([pos(e) for e in MON], POSE)))
 def seg_dist(a, b, q):
     dx, dz = b[0] - a[0], b[1] - a[1]; L2 = dx * dx + dz * dz or 1e-9
     f = max(0.0, min(1.0, ((q[0] - a[0]) * dx + (q[1] - a[1]) * dz) / L2))
     return math.hypot(a[0] + f * dx - q[0], a[1] + f * dz - q[1]), f
+def walk_round(e, t1, dst, facing, r=0.9):
+    """walk to dst arriving t1, stepping round the Bullet (on the side the path is already on) if it passes her"""
+    a0 = pos(e)
+    d_, f_ = seg_dist(a0, dst, BULLET_HOLD)
+    if d_ < r and 0.0 < f_ < 1.0:
+        mx, mz = a0[0] + f_ * (dst[0] - a0[0]), a0[1] + f_ * (dst[1] - a0[1])
+        ux, uz = mx - BULLET_HOLD[0], mz - BULLET_HOLD[1]; L = math.hypot(ux, uz)
+        if L < 1e-6: ux, uz, L = 0.0, 1.0, 1.0
+        via = (BULLET_HOLD[0] + (r + 0.1) * ux / L, BULLET_HOLD[1] + (r + 0.1) * uz / L)
+        d1 = math.hypot(via[0] - a0[0], via[1] - a0[1]); d2 = math.hypot(dst[0] - via[0], dst[1] - via[1])
+        tv = t1 - d2 / 1.3
+        walk(e, max(tv, last(e)['_T'] + 0.3 + d1 / 3.0), via, dwell=0)
+    walk(e, t1, dst, facing=facing)
 for k, e in enumerate(MON):
-    a0 = pos(e); t1 = T('2-22', 142.4 + 0.1 * k)
-    d_, f_ = seg_dist(a0, P1[e], BULLET_HOLD)
-    if d_ < 0.8:      # step round her on the downstage side
-        via = (BULLET_HOLD[0], BULLET_HOLD[1] + 0.95)
-        t0 = t1 - (math.hypot(via[0] - a0[0], via[1] - a0[1]) + math.hypot(P1[e][0] - via[0], P1[e][1] - via[1])) / 1.3
-        tv = t0 + math.hypot(via[0] - a0[0], via[1] - a0[1]) / 1.3
-        walk(e, max(tv, last(e)['_T'] + 1.0), via, dwell=0)
-    walk(e, t1, P1[e], facing=face(P1[e], BOX))
-# SPOTLIGHT: ens10 leaves the pose for the 'mum' figure on the gallery (preset 1168, ch17 at 99.6% in "GW UL Steps",
-# caught by the gallery at (0.72, -3.09)); the other eight ring the Bullet
-leave('ens10', 'D-UC', T('2-22', 150.0), speed=1.5)
-enter('ens10', 'G-UC', (0.75, -3.35), T('2-22', 165.6), -20, speed=1.3, ty='gallery')
-leave('ens10', 'G-UC', T('2-22', 169.0), speed=1.3)
-MON = [e for e in MON if e != 'ens10']
-RB = [clock(1.25, 180 + (270.0 / 7) * k, BULLET_HOLD) for k in range(8)]
+    walk_round(e, T('2-22', 142.4 + 0.1 * k), P1[e], face(P1[e], BOX))
+# off the box (1256): ens9 takes it off SR as Hamilton steps down to SL
+walk('ens9', T('2-22', 153.6), (-0.65, 3.2), facing=90, dwell=0.4)
+leave('ens9', 'W-DSR', T('2-22', 154.0), speed=1.4)
+MON = [e for e in MON if e != 'ens9']
+# "to center" (1254): a ring round the centre
+RC = [clock(1.9, 25.7 + (360.0 / 7) * k) for k in range(7)]
+P15 = dict(zip(MON, hungarian([pos(e) for e in MON], RC)))
+for k, e in enumerate(sorted(MON, key=lambda e: P15[e][1])):
+    walk_round(e, T('2-22', 149.9 + 0.2 * k), P15[e], face(P15[e], C))
+# "Eyes UP" (1258): the knot round the Bullet at the centre
+RB = [clock(0.8, 25.7 + (360.0 / 7) * k, BULLET_HOLD) for k in range(7)]
 P2 = dict(zip(MON, hungarian([pos(e) for e in MON], RB)))
 for k, e in enumerate(sorted(MON, key=lambda e: P2[e][1])):     # the upstage places fill first
-    walk(e, T('2-22', 155.5 + 0.5 * k), P2[e], facing=face(P2[e], BULLET_HOLD))
-MON_ORDER = sorted(MON, key=lambda e: P2[e][1])
+    walk(e, T('2-22', 155.46 + 0.3 * k), P2[e], facing=face(P2[e], BULLET_HOLD))
+# SPOTLIGHT: ens10 is the 'mum' figure on the gallery (preset 1168, ch17 at 99.6% in "GW UL Steps", caught by the
+# gallery at (0.72, -3.09))
+enter('ens10', 'G-UC', (0.75, -3.35), T('2-22', 165.6), -20, speed=1.3, ty='gallery')
+leave('ens10', 'G-UC', T('2-22', 169.0), speed=1.3)
 def blown(a0):
     for d in (0, 12, -12, 24, -24, 36, -36):
         q = clock(3.4, a0 + d)

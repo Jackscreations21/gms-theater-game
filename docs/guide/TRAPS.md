@@ -1645,6 +1645,16 @@ against this list before opening a PR; **add new traps as you hit them.**
   steps passed, because the stale value the seek left behind was the value play had just set. Seek FIRST, as a jump from far
   away (600 s), then play — now the broken label fails it. `show.check()` (the cues) seeks after playing too; its state is
   re-folded from scratch on every seek, which is why it holds there.
+- **Eight agents editing one file corrupts it, even "each in its own section".** During review 2,
+  `tools/blocking/props.py` was broken twice by concurrent edits: a duplicated block in the docstring, and a quote
+  error. Each agent's exact-string Edit read the file, and another's write landed in between. It was repaired both times.
+  - Sections make edits small; they do not make them atomic.
+  - After a parallel round, read the shared file whole, parse it (`ast.parse`), and run it before trusting any output.
+  - Better: give each agent its own file and let the shared one import them.
+- **Python's `open(path, 'w', newline=BAD)` truncates the file, then raises.** A rewrite script with
+  `newline='\\n'` (a doubled backslash) emptied `tools/blocking-plot.py` and only then failed with
+  `illegal newline value`. Recovered from git. Write to a temporary name and rename, or validate the arguments before
+  opening for write.
 - **A Browser pane that is hidden or squeezed renders a tiny canvas, and every measurement taken from it is wrong.**
   The merge round's first frame-cost numbers (24 ms) and its twelve proof shots came off a 302 × 52 canvas — the pane
   was collapsed to a strip. `MIDTOWN.renderer.domElement.width/height` first; for numbers and pictures,

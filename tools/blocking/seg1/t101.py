@@ -5,7 +5,7 @@ def A(at): return S('1-01', at)
 
 def build():
     # ---- everyone offstage at the top, labelled
-    start('burr', 'W_DSR'); start('hamilton', 'D_UC'); start('laurens', 'W_MSL')
+    start('burr', 'W_DSR', t=LEAD_IN); start('hamilton', 'D_UC'); start('laurens', 'W_MSL')
     start('lafayette', 'W_MSR'); start('mulligan', 'W_DSL'); start('eliza', 'W_MSL')
     start('angelica', G_UC, y=GAL); start('peggy', G_UC, y=GAL); start('washington', 'D_UC')
     wings = {'ens1': 'W_USR', 'ens2': 'W_MSR', 'ens3': 'D_UC', 'ens4': 'W_USL', 'ens5': 'W_MSL',
@@ -17,25 +17,27 @@ def build():
 
     # ---- Burr Enters (Q36 2.0): walks on from the DSR wing and starts the story
     # SPOT: Burr's AF stand-in (ch2, preset 117 BURR) lands at (-1.82, 4.25): he walks into it and works inside it
-    move('burr', A(2.0), A(6.0), (-1.9, 4.05), f=0)
+    # REVIEW2 (Jack): Burr walks on in the 10 s lead-in and is in his place when the music starts at 0
+    move('burr', A(-8.0), A(-3.5), (-1.9, 4.05), f=0)
     move('burr', A(10.0), A(12.5), (-1.45, 4.2), f=0)
     move('burr', A(15.8), A(19.0), (-4.4, 3.2), f=40)          # gives the floor to Laurens
 
-    # ---- Q37 15.8 the company gathers into the opening pools
+    # ---- the company gathers into the opening pools
+    # REVIEW2 (Jack): the ensemble walks on SLOWER and a little AFTER Lafayette (Jefferson, Q39 33.5) starts
     A_slots = [(-3.2, -1.4), (-1.0, -1.6), (1.0, -1.6), (3.2, -1.2), (-1.8, 0.6), (1.8, 0.6)]
     m = assign(DECK6, A_slots)
     for k, e in enumerate(sorted(DECK6, key=lambda e: -dist(pos(e), m[e]))):
         p = m[e]
         q = WINGS[wings[e]]
-        tl = 12.4 + 0.3 * k
-        ta = tl + max(3.2, dist(p, q) / 1.6)
+        tl = 36.0 + 0.7 * k
+        ta = tl + max(4.5, dist(p, q) / 0.85)      # a stroll, about 0.85 m/s
         move(e, A(tl), A(ta), p, f=0)
-    # the gallery four come through the passage onto the upstage gallery (lit at Q39)
+    # the gallery four come through the passage onto the upstage gallery (it warms on Q39), at the same slow pace
     for k, (e, x) in enumerate(zip(['ens9', 'ens6', 'ens8', 'ens7'], [3.2, -3.2, 1.5, -1.5])):
         W[e][-1]['d'] = 0
-        W[e][-1]['t'] = A(13.0 + 1.0 * k)
-        via(e, A(15.0 + 1.0 * k), (0.6, -3.35), y=GAL)
-        put(e, A(15.4 + 1.0 * k + abs(x - 0.6) / 1.3), (x, -3.35), f=0, y=GAL)
+        W[e][-1]['t'] = A(36.4 + 1.4 * k)
+        via(e, A(38.4 + 1.4 * k), (0.6, -3.35), y=GAL)
+        put(e, A(38.8 + 1.4 * k + abs(x - 0.6) / 0.85), (x, -3.35), f=0, y=GAL)
 
     # ---- Q38 18.6 Laurens' verse, his pin SL
     move('laurens', A(14.4), A(19.0), (2.9, 3.3), f=-15)   # SPOT: into his SL pin (ch51)
@@ -46,17 +48,9 @@ def build():
     # ---- Q40 48.4 Madison: the hurricane (Mulligan's body)
     move('mulligan', A(41.6), A(46.2), (1.1, 2.7), f=-10, label='Madison')   # SPOT: ch52
 
-    # the hurricane: the company swirls round the outer ring (clockwise), then stops facing in
+    # REVIEW2: the hurricane swirl on the outer ring is CUT (invented; Blankenbuehler kept the opening off the
+    # turntable, and the slower entrance lands the six in their pools only just before Q40). They hold their pools.
     E = ENS
-    # ring angles by current bearing so nobody crosses (the six on the deck; the gallery four watch)
-    bear = sorted(DECK6, key=lambda a: polar(pos(a))[1])
-    for k, a in enumerate(bear):
-        th = -150 + k * 60
-        p = ring(3.2, th)
-        move(a, A(46.0), A(48.4), p, d=0)
-        via(a, A(50.9), ring(3.2, th + 30))
-        via(a, A(53.4), ring(3.2, th + 60))
-        put(a, A(55.9), ring(3.2, th + 90), f=face_to(ring(3.2, th + 90), C, 135))
     # Q41 55.9: the gallery four come down for the company's turn (two by each onstage stair)
     for e, x, t0 in (('ens9', 3.2, 53.4), ('ens8', 1.5, 53.6)):
         t1 = t0 + abs(4.75 - x) / 1.3
@@ -118,20 +112,23 @@ def build():
 
     # ---- Q48 105.2 his mother dies: ens6 comes down to him, then is gone
     MOTHER = 'ens6'
-    CARRIER = min([e for e in E if e != MOTHER], key=lambda e: dist(pos(e), (-1.7, -1.9)))
+    CARRIER = 'ens7'   # REVIEW2: fixed (was the nearest to (-1.7, -1.9), which is ens7): props.py names him
     move(MOTHER, A(101.6), A(105.0), (-0.75, 1.25), f=70)
     move(CARRIER, A(102.6), A(105.6), (-1.25, 0.95), f=60)
     turn(['hamilton'], A(104.6), -70)
-    exit_(MOTHER, A(108.4), 'W_MSR', speed=1.4)
-    exit_(CARRIER, A(108.4), 'W_MSR', speed=1.4)
+    # REVIEW2: off DSR round Lafayette (the old MSR line crossed the SR stair)
+    move(MOTHER, A(108.4), A(111.4), (-4.0, 4.25), d=0); put(MOTHER, A(113.8), WINGS['W_DSR'], off=True)
+    move(CARRIER, A(108.4), A(111.4), (-4.1, 3.4), d=0); put(CARRIER, A(114.0), (-7.6, 3.8), off=True)
     # ---- Q49 109.2 Washington UC; the cousin on the centre chair (fan staging account)
     # SPOT: his pale warm pool UC is ch12 refocused onto the deck at (-0.57, -0.59) (rev 2); he steps back to UC after the verse
     move('washington', A(105.6), A(109.2), (-0.5, -0.65), f=15)
     move('washington', A(119.8), A(121.8), (0.0, -2.3), f=0)
     move('hamilton', A(107.6), A(109.0), (1.0, 1.7), f=-150)
-    COUSIN = min([e for e in E if e not in (MOTHER, CARRIER)], key=lambda e: dist(pos(e), (0.9, -1.9)))
+    # REVIEW2: the chair is real (fan account: a chair centre, the cousin on it). It stands preset UC by the SL
+    # stair foot (props.py 'cousin-chair' at (1.6, -2.75)); the cousin picks it up at 106.6 and sets it at centre.
+    COUSIN = 'ens3'    # fixed (was the nearest to (0.9, -1.9)): props.py names him
     cousin_home = pos(COUSIN)
-    move(COUSIN, A(106.6), A(109.4), C, f=0)
+    move(COUSIN, A(106.6), A(109.4), (0.0, 0.35), f=0)    # REVIEW2: on the chair, which he sets at (0, 0.35)
     move(COUSIN, A(116.4), A(118.6), cousin_home, f=0)
     move('eliza', A(109.6), A(112.6), (5.0, 3.6), f=-60)
     exit_('eliza', A(113.0), 'W_DSL')
@@ -143,29 +140,44 @@ def build():
     exit_('angelica', A(125.0), 'W_DSL')
     # ---- Q51 130.0 the clerking: Mulligan's verse SL; the company dances in two loose rows
     move('mulligan', A(130.0), A(131.6), (1.8, 3.3), f=-30)   # SPOT: his key SL (ch51 at (1.78, 3.27))
-    move('burr', A(130.0), A(132.6), (-3.6, 3.8), f=35)
-    move('hamilton', A(130.0), A(131.6), (1.0, 1.5), f=0)
-    fslots = [(-4.0, -1.0), (-2.4, -1.4), (-0.8, -1.0), (-3.2, 0.4), (-1.6, 0.2), (-2.6, 1.8),
-              (-0.9, 1.7), (3.6, 0.6), (3.4, -1.0), (4.2, 1.9)]
+    move('burr', A(130.0), A(132.6), (-3.0, 4.4), f=35)    # REVIEW2: was (-3.6, 3.8), the carriers' path
+    # REVIEW2 (Jack): right before Q51 two of the company (ens7 carrying, ens6 beside him) bring a table on to the
+    # centre (props.py 'clerk-table' at (0, 1.6)); Hamilton works at it, on the cousin's chair behind it (C);
+    # at Q52 they take the table and the chair off again.
+    TABLE = (0.0, 1.6)
+    put(CARRIER, A(122.6), WINGS['W_DSR'], off=True); W[CARRIER][-1]['d'] = 0
+    via(CARRIER, A(125.4), (-4.0, 4.25))                       # round Lafayette, who stands DSR
+    put(CARRIER, A(129.4), (-1.0, 1.6), f=90)                  # sets the table down at its SR end
+    put(MOTHER, A(122.9), (-7.6, 3.8), off=True); W[MOTHER][-1]['d'] = 0
+    via(MOTHER, A(125.9), (-3.9, 3.55))                        # beside him, a body's width upstage
+    put(MOTHER, A(129.8), (-0.95, 0.4), f=60)                  # stands by the chair
+    move('hamilton', A(128.6), A(130.0), (0.95, 1.0), d=0)     # round the table's SL end
+    put('hamilton', A(130.8), C, f=0)                          # at the table, on the chair: writing
+    fslots = [(-4.0, -1.0), (-2.4, -1.4), (-0.8, -1.0), (-3.2, 0.4), (-1.6, -0.3),
+              (3.6, 0.6), (3.4, -1.0), (4.2, 1.9)]
     others = [e for e in E if e not in (MOTHER, CARRIER)]
-    form(others, [s for s in fslots if s not in ((-0.9, 1.7), (-2.6, 1.8))], A(130.0), A(133.0), face=0)
-    enter(MOTHER, A(129.6), A(134.6), (-0.9, 1.7), 0, wing='W_MSR')
-    enter(CARRIER, A(130.6), A(135.4), (-2.6, 1.8), 0, wing='W_MSR')
-    # Laurens brings him his pack for the voyage
-    move('laurens', A(136.4), A(137.4), (2.75, 2.9), d=0)   # SPOT: round Mulligan, who is in his key
-    put('laurens', A(138.6), (1.6, 2.1), f=-120)
-    turn(['hamilton'], A(137.6), 60)
-    move('laurens', A(140.4), A(141.4), (2.75, 2.9), d=0)
+    form(others, fslots, A(130.0), A(133.0), face=0)
+    # Laurens brings him his pack for the voyage (fan account): to the table's SL side
+    move('laurens', A(136.4), A(137.0), (2.75, 2.9), d=0)   # SPOT: round Mulligan, who is in his key
+    put('laurens', A(138.8), (1.15, 1.05), f=-90)
+    turn(['hamilton'], A(137.6), 80)
+    move('laurens', A(139.8), A(141.2), (2.75, 2.9), d=0)
     put('laurens', A(142.6), (2.6, 4.4), f=-20)
+    # Q52 141.3: the table and the chair go off DSR
+    move(CARRIER, A(141.3), A(144.0), (-4.0, 4.25), d=0)
+    put(CARRIER, A(146.4), WINGS['W_DSR'], off=True)
+    move(MOTHER, A(141.6), A(144.6), (-3.9, 3.55), d=0)
+    put(MOTHER, A(147.0), (-7.6, 3.8), off=True)
 
     # ---- Q52 141.3 the voyage: the company becomes the ship, sailing SL; he climbs to the gallery (the prow)
     hull = [(-3.7, -0.4), (-2.7, -0.4), (-1.7, -0.4), (-0.7, -0.4), (-3.7, 1.7), (-2.7, 1.7), (-1.7, 1.7),
-            (-0.7, 1.7), (0.3, 0.65), (-3.7, 0.65)]
-    m = assign(E, hull)
-    for a in E:   # the ones from SL wait until he has passed on his way to the stair
+            (-0.7, 1.7)]
+    SHIP = [e for e in E if e not in (MOTHER, CARRIER)]    # REVIEW2: the two carriers are off with the table
+    m = assign(SHIP, hull)
+    for a in SHIP:   # the ones from SL wait until he has passed on his way to the stair
         late = pos(a)[0] > 1.0
         move(a, A(143.0 if late else 141.6), A(145.6 if late else 145.0), m[a], f=90)
-    for a in E:
+    for a in SHIP:
         p = pos(a)
         move(a, A(145.8), A(148.0), (p[0] + 0.7, p[1]), f=90)
     move('hamilton', A(140.2), A(143.8), (2.2, -2.45), d=0)

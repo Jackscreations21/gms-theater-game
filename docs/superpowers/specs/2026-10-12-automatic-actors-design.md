@@ -1,6 +1,6 @@
 # Automatic actors — design (2026-10-12)
 
-**BINDING. Rulings FF–FS.** The next spec starts at **FT**. (FN was added the same day, from Jack's
+**BINDING. Rulings FF–FT.** The next spec starts at **FU**. (FN was added the same day, from Jack's
 second message — see its section; FP–FR from his messages on the editor, the clock's edges and the props; FS, the limbs, on
 2026-10-13.)
 
@@ -252,6 +252,14 @@ character they are."*
   - **2-16 → 2-17:** Philip (`laurens`) at (−0.4, 2.4) facing 180, and George Eacker (`ens5`) at (1.6, −1.0) facing
     180. 2-16 ends at 172.5; 2-17 starts at 0.0.
   - **2-23** ends on the bows line-up, with the company on stage, not offstage.
+- **Review 2 (2026-10-13, Jack's verdict: "the ensemble is used far too much and much of the choreography is wrong").**
+  Eight reviewers edited the eight generators and the props sections again; each records its changes under
+  `## Review 2 (Jack's verdict)` in `research/segN.md`. What it did:
+  - Invented formations were cut, and sourced staging was kept.
+  - Furniture was carried by named people at named cues: `tools/blocking/props.py`, with one section per segment, the
+    rule in its header.
+  - Waypoints 9,410 → 6,491; props 28 → 62. Ensemble time on stage 52,375 → 33,732 body-seconds (−36 %).
+  - Dolly and Martha (2-16) were added to ens6 / ens7's allowed labels.
 - **Unseen moves are not errors.** A leg between two offstage waypoints is invisible, so neither the page's
   `check()` nor the merge reports its speed. Bodies "teleport" between wings in the dark.
 - **Light versus blocking.** Where a person light and the blocking disagreed, the blocking moved to the light unless
@@ -448,3 +456,28 @@ using this mannequin, later we will add arm and feet movement"*). No costumes, n
   body) cost about 9 ms here and was cut to the cut rims (4.2 k): triangles, not draw calls, are what this GPU feels.
 - **Not built** (FUTURE.md): gestures per keyframe, a skinned model, faces, costumes, per-character bodies, a stride fitted to a
   stair's treads, feet that stay planted on a turning turntable.
+
+### FT — Placed props glide
+
+From review 2 (Jack's verdict on the blocking). Segment 8 stepped Philip's table round the turntable with a placed
+waypoint every 0.5 s, because a placed prop JUMPED from one waypoint's spot to the next at the second's time.
+
+- **The rule.** Between two consecutive PLACED waypoints of a prop (neither carried, neither `off`), the prop moves:
+  - from the first spot to the second in a straight line;
+  - turning the short way;
+  - linearly in time, from the first waypoint's time to the second's;
+  - its floor height following.
+- **It is still a pure function of show time.** `MIDTOWN.actors.check()` compares props, seek against play, and passes.
+- **An `off` or a carry on either side breaks the glide.** The prop then holds its spot until the next waypoint, as
+  before. A piece moved in a blackout keeps an `off` (or a carry) between its two spots.
+- **Implemented the same way in all three places:**
+  - `midtown.html` `propPose`;
+  - `blocking.html` `propPose`. In Simple mode, two placed keyframes of a furniture square now glide, as two keyframes
+    of a dot walk.
+  - `tools/blocking-plot.py`, which now draws props as shaded squares, from the blocking file or the `props.json`
+    beside a segment file.
+- **The table ride, now.** `tools/blocking/props.py` segment 8 rides Philip's table on seven points of the outer ring
+  every 31°, plus three for the turn away in 2-18, with a hold at each end. It was 60 stepped points.
+  - A chord is at most 0.11 m inside the arc.
+  - The table moves at most 0.04 m in 0.1 s.
+  - It stays within 0.1 m of Philip.

@@ -207,3 +207,156 @@ The pool dump labels a unit `wash` when its floor pool is wider than 1 m, even a
 - **1-23 cue 658 (presets 402 and 732)**: the sisters are in 402's SR and SL pools (from pass 1). Burr at (2.6, 4.6) and the company ring's 126/234 slots at r 3.2 stood in the edges of those pools. Burr is now at (1.8, 4.7) from 306.5, and the company moves in to r 2.4 at 312.5 instead of 351.8.
 - Checked, no change: preset 766 "AH Burr DR" is Vipers 8/92/94, all wide (zoom 25-35), round (-3.2, 3.25) and (-2.3, 4.1), and both men are inside it. 151/259 "Ham DSC" are X4 43 (0.27, 2.53) and 44 (-1.2, 3.74), consistent with pass 1. 222 "King DSC" puts the King at the lip, as blocked. 968 "king SR" is Lafayette's DR pool in 1-20, as blocked. Viper 93 (zoom 16) in 642/643 has both men in it. Also in this range: the 1-19 and 1-20 X4 rows (47-64) are company looks, not person lights. Viper 18 at (-1.62, -1.31) in 592-604 is a shaft on the upstage company.
 - Result: 1,391 waypoints, `blocking-merge.py --check` 0 errors 0 warnings. `verify4.py` still shows only the same 11 edge-of-cue transitions.
+
+## Review 2 (Jack's verdict)
+
+Jack watched the show: "the ensemble members are being used too much. a lot of the choreo is wrong." This pass cuts the
+company back to what evidence puts on stage, removes every formation the earlier passes marked invented, and adds the
+furniture. Every change is in `gen4.py`, marked `# REVIEW2:`; the props are in `props.py`, section SEGMENT 4. The
+pre-pass generator, JSON, props and notes are kept in the scratchpad at `review2/seg4/before/`. Result: 769 waypoints
+(was 1,391); `blocking-merge.py --check` on seg4.json + props.json: 0 errors, 0 warnings; `props.py --check`: every
+segment-4 carry is OK. Plots: `review2/seg4/plots/`.
+
+Ensemble on stage, measured (ensemble-seconds, sampled every 0.5 s; for 1-18/1-19 Laurens and Mulligan counted as
+soldiers): 1-18 1,493 -> 835 (peak 12 -> 8); 1-19 1,164 -> 12 (only the walk-on into the Yorktown line in the last 3 s);
+1-20 2,408 -> 2,346 but moving 795 -> 466 (the company is kept, the invented traffic is cut); 1-23 3,020 -> 1,507
+(moving 788 -> 153).
+
+### The new evidence: ETC's renders of Binkley's real Non-Stop cues
+`THPP - Cue Photos.pdf` pages 45-52 are ETC's Augment3d renders of Binkley's REAL cues 631.01, 632, 633, 633.01, 634,
+635, 636 and 638 (rendered to `review2/seg4/pdf/`; no page covers 560-630 or 640-670). Caveat as segment 5 found:
+the stock figures on the side galleries and the SR stair are in every render, so only the deck figures count.
+- **631.01 "Non Stop"** (the courtroom): a table up centre in the row of narrow X4 pools (z about -0.6), one lit figure
+  at it and one either side, and **six chairs** in two rows of three in the diamond of Viper pools in front. The chairs'
+  **seats face upstage**, to the table (the blue seat shows behind each back panel). Matching the pools dump: the flank
+  figures stand in X4 59 (-1.73, -0.67) and X4 64 (1.68, -0.81); the chairs are in Vipers 12 (-2.12, 1.87), 13 (0.70,
+  1.81), 15 (3.50, 1.71) and 6 (-3.50, 3.60), 8 (-0.59, 3.65), 9 (2.31, 3.55). The spotlight pass's reading of this
+  row ("preset 615 Desk", the jury along it) was wrong: the row is the table's.
+- **632 "Constitutional"**: the same table and chairs under the ring.
+- **633 / 633.01 / 634**: no table or chairs; Hamilton in the white centre special, four men round him (634: about six,
+  close).
+- **635 "Men on Ring"**: Hamilton and four men across the centre. **636**: about seven men spread round a centre pool.
+- **638 "Burr/Men"**: one figure downstage (Burr), four men loose upstage.
+
+### Web sources tried this pass
+Searches for staging accounts of Guns and Ships, History Has Its Eyes On You, Yorktown and Non-Stop (fan write-ups,
+tumblr, reviews) found plot summaries and general praise only, e.g. the Bucknell chapter on the Non-Stop ensemble
+(https://digitalcommons.bucknell.edu/fac_books/224, abstract only: the ensemble drives transitions) and a Cincinnati
+review (https://www.citybeat.com/arts/the-hamilton-cincinnati-staging-is-on-par-with-broadways-original-12213440/:
+the company "constantly in motion", general). Neither places bodies. Where nothing better was found the simplest
+staging was chosen, as the brief says.
+
+### 1-18 Guns and Ships - company 12 -> 8
+- Kept (ruled): Burr on the SL balcony for the opening; Lafayette bursting in up centre and in cue 562's ring of beams by
+  31.3; Washington's centre special; Hamilton in from DSR for the button.
+- Company: eight soldiers (ens1-8). Laurens and Mulligan are out (their labels would read as the characters; Mulligan's
+  entrance belongs to Yorktown). Evidence for a company at all: the Disney+ frame behind cue 562 (research 1-18) has "the
+  company in warm amber side light" round Lafayette. They walk on WITH his entrance (from about 19 s, cue 561 "the
+  build") into two loose groups either side of the centre ((+-2.3 .. 3.7, -1.1 .. 1.3)), and from then on only turn: to
+  Lafayette (31.3), to Washington (59.2), a step in for the chant (69.6), to Washington for his anthem (80), out front
+  for the build (104.4). They go off in the button (120), which cue 572 leaves to Washington and Hamilton.
+- Cut (invented): the march-on during Burr's intro (0-7.5), the outer-ring walk "the fan opens" (42.3; cue 563's fan
+  is the BEAMS), the upstage arc (59.2), the chant blocks (69.6/75), the arcs round Washington (80/93.7), the V and its
+  step (104.4/109.6), and the upstage watchers' line held through History.
+
+### 1-19 History Has Its Eyes On You - company 12 -> 0
+- Washington and Hamilton only, as the spotlight pass placed them. The company is heard, not seen: nothing places bodies
+  (the cue labels "ensemble's backing" / "with the full company" describe the vocals), so by the brief's rule they are
+  off. Cut: the four invented arcs (27, 39.5, 56, 77) and the upstage line.
+- The transition (cue 584, 94.5, "the cold column ... troops in line"): ten walk on from the nearest wings and the deck
+  door into the Yorktown line (z -1.4) by 1-20 2.5. ens10 brings the Yorktown box on from W-DSL at the lip (94.5, in the
+  dark of 583/584) and takes the SL end of the line.
+
+### 1-20 Yorktown - company kept (10 + Laurens, Lafayette, Mulligan), traffic cut
+Yorktown genuinely uses the company; kept what the evidence shows (the line, the night pools, the redcoat, the final
+tableau) and cut the rest.
+- Kept: Hamilton on the box near the lip (Joan Marcus photo); the Yorktown line advancing, falling back and surging; the
+  farewell in preset 402's centre pool; Hamilton alone at the lip, then his DS special; the redcoat (ens5) in the cool
+  UC special on the deck; Washington through D-UC for the terms; Mulligan's entrance from D-UC.
+- The night attack (cue 595; Disney+ frame: each soldier in his own small pool, black between): all twelve pools are
+  now filled - Hamilton (Viper 4), Laurens (Viper 13), Lafayette in the DSR pool (-3.18, 3.37) (next to his DR pool of
+  100.1, so no cross), and nine soldiers - instead of seven bodies and five empty lit pools. The creep is a 0.4 m
+  advance inside the pool.
+- Cut: the line-into-a-walking-ring at 43.6 (invented from cue 591's turning GOBOS); the march block (69.5); **the six
+  gallery climbs** to the SR arm, the SL gallery and the USG and their descents (cue 596 is a reconstruction, only two
+  USG units are lit, and these were the busiest invented traffic in the number); the counter-walked rings in the battle
+  (138.4-141.7) and the outward drift; the line reshuffle at 148 (each rank now just steps straight back 3.1 m); the arc
+  at "it is over" (170.5); the full-stage celebration spread (189.6); **the counter-rotating rings of The World Turned
+  Upside Down** (204.2-230.6; cues 609.2/609.3's "spin" is the Construction gobos turning).
+- Now: the battle is two ranks that charge (135.8), freeze on the cold turn (141.7) and move on in slow motion to 145.6
+  (Wyzant viewer account: the dancers stop, then seem to move in slow motion,
+  https://www.wyzant.com/resources/answers/820794/thoughts-on-the-battle-of-yorktown-from-hamilton), step back and
+  charge to the lip (150.5). After the battle the soldiers hold in the dark where they stand. In The World Turned Upside
+  Down each walks slowly (204.2 -> 217.1, a stagger, not a march) to his own pool of the final tableau and holds it
+  (LSA: "the company on the turntable ... each isolated in his own pool"). Thirteen bodies, eleven free pools: two hold
+  in the dark at r 4.0.
+- Furniture: **the Yorktown box** (0, 4.7): on with ens10 in the 1-19 transition, Hamilton stands on it 0-22 and
+  43.6-61; ens10 comes in from DL on the march (66.7) and takes it off by 70-75.
+
+### 1-21 What Comes Next? - no company
+Unchanged: the King alone in his lip special (preset 222 "King DSC"). No furniture.
+
+### 1-22 Dear Theodosia - no company
+- Unchanged blocking: Burr in his SL pool (Viper 10), Hamilton in his SR pool (Viper 6).
+- Furniture: the Disney+ frame behind cue 618 has Burr SEATED SL and Hamilton SR, so **each brings his own chair** on in
+  the change (from W-MSL / W-MSR, set 0.7 m behind his first place: (2.93, 1.37) and (-2.93, 1.37)). In the fade
+  (176.9) each picks his chair up and sets it as a jury chair of Non-Stop (back row, (3.50, 1.71) and (-2.12, 1.87), seat
+  upstage), then goes to the defence table. Unverified: whether they are chairs or stools.
+
+### 1-23 Non-Stop - company 10 everywhere -> jury 6, delegates 4, finale 7
+- **The courtroom (0.7-78.5), from real cue 631.01** (above): Levi Weeks (ens4) behind the table at (0, -1.25); Hamilton
+  and Burr in the two flank pools; the jury of six (ens1, ens6-10) standing at their chairs facing the table (the
+  mannequins stand; each chair is 0.7 m behind its sitter, per props.py). Hamilton addresses them from just in front of
+  the table (21.6-38); Burr steps in to sit him down (32). The jury turns out to the house for the first chorus (41.5)
+  and to Hamilton for his brag (74.5, his DS special X4 44). At the end of the trial each juror takes her chair off and
+  Weeks the table (78.5, cues 631.6/631.7: the restore and the move in the dark). Cut (invented): the judge, the two SL
+  onlookers, the company arc at the first chorus, the hook's outer ring and its 99-degree revolve.
+- **The Convention (85.2-125.3)**: four delegates (ens2, ens3, ens5, and ens4 back in without the table), as the real
+  renders of 633/633.01/635/638 show four men round Hamilton. Hamilton to centre on 633 (Move to center); the four on the
+  outer ring walking 45 degrees on 635 (Binkley's own label "Men on Ring"); in to r 2.2 on 636; loose behind Burr DS on
+  638 (the render: one far SR, two up centre, one SL). Cut: the six-man arc and the wedge.
+- **Burr's reprise (187.9-207)**: no watchers on the galleries (cue 645 is a reconstruction; the ten climbs to three
+  galleries were invented). Burr alone in his column, as the spotlight pass placed him.
+- **The Federalist papers**: ens8 brings Hamilton's desk on from SR as the sisters go (246-251) and sets it at
+  (-1.0, 2.1); Hamilton writes DS of it in his DS key. ens8 strikes it from DR as the music drops for Washington (304.3).
+- **The company chorus and the finale (281.7-382)**: seven (ens1-7) walk on into a loose arc upstage (r 2.9, -80 ..
+  +80 degrees, clear of the sisters' specials and Washington's path to the SL stair) and hold it; they turn out for the
+  counterpoint (352.4) and take one step in on the final Shot (368.7). The finale genuinely has the company; the
+  evidence does not say how they move, so they stand. Cut: the watchers coming down three stairs, the outer-ring walk
+  (286-300.7), the inner-disc revolve (352.4-364.8) and the 6 o'clock gap.
+- Kept as ruled or placed: Washington's offer in his deck special and the climb to the SL gallery (ruling); midnight at
+  Burr's DR (preset 766); Angelica's and Eliza's keys; the sisters' finale specials; Hamilton's name DC.
+
+### Furniture added (props.py, SEGMENT 4)
+| prop | on (who, when) | off (who, when) |
+|---|---|---|
+| yorktown-box (0, 4.7) | ens10 from W-DSL, 1-19 90 -> 94.5 | ens10 to W-DSL, 1-20 70 -> 75 |
+| theo-chair-burr (2.93, 1.37) | Burr from W-MSL, 1-21 90 -> 1-22 4.5 | Burr moves it to jury b3 (1-22 177-179.5); ens7 takes it off W-MSL, 1-23 78.5 |
+| theo-chair-hamilton (-2.93, 1.37) | Hamilton from W-MSR, same | Hamilton moves it to jury b1; ens1 off W-MSR, 1-23 78.5 |
+| jury-chair-b2 / f1 / f2 / f3 | ens6 (W-USL) / ens8 (W-DSR) / ens9 (W-DSL) / ens10 (W-DSL), 1-22 176.9 -> 183.5, in the dark | the same juror, the same wing, 1-23 78.5 |
+| court-table (0, -0.6), 1.4 x 0.7 | ens4 (Weeks) through D-UC, 1-22 176.9 -> 182.5 | ens4 through D-UC, 1-23 78.5 |
+| hamilton-desk (-1.0, 2.1) | ens8 from W-MSR, 1-23 245.8 -> 251 | ens8 to W-DSR, 1-23 305.5 -> 310 (was: hidden in the Act One blackout) |
+No lamp or lantern: nothing in these numbers shows one.
+
+### Lighting conflicts this pass creates (for Jack, cues not edited)
+1. **1-23 cue 631.1** (a reconstruction) puts Hamilton in his DS special X4 44 to address the jury. With the jury seated
+   facing the table, as the real 631.01 shows, he addresses them from the table, inside the real X4 row; X4 44 at 21.6
+   lights nobody. If the jury should face the house, turn the chairs (props.py) and move him back to (-1.05, 3.4).
+2. **1-20 cue 596** (a reconstruction): Vipers 25/26 on the USG now light nobody; the gallery soldiers are cut.
+3. Unchanged from the spotlight pass: cue 659/661's "Washington high centre" units light empty air (Washington is on
+   the SL gallery by ruling); X4 43 never reaches the stage.
+
+### Could not verify; simplest staging chosen
+- Guns and Ships: how many soldiers and what they dance. Chose eight, standing in two groups, turning.
+- The courtroom: who the lit figure at the table is (chose Weeks behind it), and whether the jury really faces upstage
+  in performance (the render's chairs do).
+- Yorktown: Mulligan's entrance direction (kept D-UC), the battle's real patterns (kept ranks, freeze, slow motion).
+- Non-Stop finale: how the company moves (chose a still arc and one step).
+- Whether Laurens, Lafayette or Mulligan stand in the Non-Stop finale company (kept out, as review 1).
+
+### For Jack to watch first
+1. 1-23 0-80: the courtroom - table, six chairs with their backs to the house, Hamilton and Burr at the table.
+2. 1-20 66-90: the night attack with every pool filled, and the box going off with ens10.
+3. 1-18 17-35: the eight soldiers coming on with Lafayette.
+4. 1-20 198-240: the slow walk into the tableau pools in place of the counter-rotating rings.
+5. 1-22 176-184 into 1-23 0.7: the fathers' chairs becoming jury chairs in the dark.

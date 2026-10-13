@@ -436,3 +436,134 @@ no edit to `seg3gen.py` in this pass.
   - preset 404 also puts ch18 at (-1.57, -1.34) for the 0.2 s shot cue. It falls on Laurens' SR group, which stands
     there. Left.
 - Merge check unchanged: 0 errors, 0 warnings.
+
+## Review 2 (Jack's verdict)
+
+Second reviewer, segment 3. Jack's verdict on the whole show: the ensemble are used far too much, and much of the
+choreography is wrong. Rule this round: sparse and right beats busy and invented. Fixes are in `seg3gen.py` (the
+pre-review generator and JSON are kept in the scratchpad at `review2/seg3/before/`) and in props.py SEGMENT_3.
+Result: 458 waypoints (was 896), 16 actors (ens10 no longer used). The generator's spacing check (`--space`) is clean,
+with no pair under 0.5 m. The merge check on seg3.json + props.json gives 0 errors. Its 7 warnings all name actors
+from other segments' props (ens10, king) that this file does not have.
+
+### The new evidence: ETC's cue photos for the duel
+`THPP - Cue Photos.pdf`, pp. 27-44, renders Binkley's real cues 450.01-476. In ETC's Augment3d model, mannequins
+stand where each cue's light needs bodies. Only the deck figures change from cue to cue. The gallery and SR-stair
+figures are stock dressing. Renders are in the scratchpad at `review2/seg3/pdf/p027-p044.png`.
+
+- **450.01 top:** two figures face each other in the centre pool, and one stands alone in each of the DR and DL pools.
+- **452 #1, 470 #9:** the two face each other at C, with one figure out at each side.
+- **454 #2, 456 #3:** the four stand in one row across the middle.
+- **457 Company Vocal:** the four face out on the upstage arc. Nobody else is on.
+- **458 #4, 459 "Hamilton/ Burr DL", 460 #5:** still four. Two of them are together just right of centre.
+- **461 Company Vocal, 461.11, 462 #6:** a line of ten across the stage at about z 0.5. The page's strobe row (ch59-64,
+  72-75) lands on exactly that line.
+- **464 #7, 466 #8:** a loose wedge or cluster on the inner disc, with one figure DR.
+- **468 Ham/Burr scene:** six or seven figures.
+- **472 the count:** one figure at C (the two back to back), and the two seconds in the DR and DL specials.
+- **474 the shot:** one figure DC at the lip, one up centre, and the seconds DR and DL.
+
+**What follows:** the company is on only from the second Company Vocal to the Ham/Burr scene. The duellists do not
+revolve on the outer ring. Korins' "line in the middle, duellers on the donut" was his pitch sketch of the 2-22 duel,
+as the first reviewer found.
+
+### Per track
+- **1-12 Story of Tonight (Reprise): no change.**
+  - No ensemble before, none after. No source puts tavern patrons on.
+  - The tavern table is confirmed: the setting is the wedding night's drinking (Wikipedia, "The Story of Tonight";
+    Korins' rolling tavern tables). Hamilton carries it on at the top (seg 2's BRING), and Lafayette takes it off on
+    75.4 (kept).
+  - No chairs: none could be confirmed for this scene, and the four stand.
+- **1-13 Wait for It: ensemble 10 → 7** (six mirroring, plus the watcher).
+  - **Cut** as invented: the nine-body ring and its revolve, the counter-revolve of all ten, the V "fan", the two side
+    columns, the line behind Burr at the peak, and the fan again.
+  - **Kept, simpler:** six (ens1, 2, 5, 6, 7, 9) stand in a loose staggered group upstage of Burr on the turntable.
+    - They come on for chorus 1 (31.15; cue 411's "the ensemble mirrors Burr").
+    - They stand as he stands, and take his three moves with him: the step down on the boast (99.9) and at the peak
+      (152.2), and the turn upstage to watch Hamilton UC in verse 3 (115.4-132.3).
+    - They walk off in the outro fade.
+  - **Source** for the mirroring: Blankenbuehler, Playbill (https://playbill.com/article/andy-blankenbuehler-on-making-history-with-hamilton):
+    they stand in Burr's shoes and sit as he sits.
+  - **Not verified:** the count of six, and their places. These are the simplest placing.
+  - **The watcher (ens8):** she stays, far SL in her chair pool. Cue 410 has her seated, and
+    docs/HAMILTON-LIGHTING-STYLE.md 4.5 records "a second dim pool on a watcher in Wait for It" as seen in the
+    production pictures.
+  - **Furniture:** her chair (`watcher-chair`) at (4.48, 2.33). She carries it on (set-down 9.5) and takes it off
+    W-MSL as her pool fades (51.4).
+  - **Burr, Hamilton UC:** unchanged (spotlight placements kept).
+- **1-14 Stay Alive: ensemble 10 → 4 soldiers, plus Lee.**
+  - **Cut** as invented: the camp ring, the two drill lines on the tactics chant, the marching revolve, the cut-away,
+    and the two Monmouth ranks with a colour bearer.
+  - **Evidence:**
+    - The Newtfire / Digital Mitford libretto (https://newtfire.org/hamilton/14_StayAlive.html) credits the tactics
+      chant to Hamilton, Lafayette and Laurens. It gives COMPANY one line in the whole number, the reaction to Lee's
+      slander, which they can sing unseen. There is no MEN or ENSEMBLE label.
+    - WatchMojo (https://www.watchmojo.com/articles/top-20-hidden-details-in-hamilton-that-blow-us-all-away) has the
+      Bullet miming a bullet during Stay Alive. That is the only ensemble body any source puts in the number.
+  - **"How many soldiers are really on":** no source gives a count. I chose four: ens1 (the Bullet), ens2, ens5 and
+    ens6.
+    - They walk on for Monmouth only (98.6, the red cue) into one loose rank at z 2.2.
+    - They step forward and back on Lee's four orders (101.3 / 102.5 / 103.4 / 104.1) while Lee runs in front.
+    - They sag in the heat, and are off by 119 before the sepia camp.
+  - **Charles Lee (ens3)** now walks on from W-DSL to his DL special (2.45, 3.05) by 87.6. Before, he left the camp
+    ring.
+  - **Unchanged:** Eliza on the gallery (in ch18), Washington's desk and its pools, Hamilton, the friends, the battle
+    runs, and the two keys DL at the end.
+  - **Furniture:** Washington's desk is kept and confirmed. Cue 429's desk pool, and Korins on the replica desk
+    (https://rogercatlin.com/2018/05/25/regarding-the-furniture-of-hamilton/). He brings it in from D-UC (16.9) and
+    takes it off at 144.8.
+- **1-15 Ten Duel Commandments: ensemble 8 + Lee + Doctor → 6 + Lee + Doctor, on only 53-80 s.** Rewritten from the
+  renders above.
+  - **Cut:** the duellists' and seconds' opposed revolve on the outer ring; the company line from the top; the two
+    mirrored groups of four; the unison step-out on every number; and the surge on the company vocals.
+  - **The four principals, cue by cue:**
+    - Top: Laurens and Lee face to face in the centre pool (ch13). Hamilton is alone in the DR pool (ch12) and Burr in
+      the DL pool (ch14).
+    - #1: the duellists at C (±0.45, 0.95), the seconds out at (∓2.95, 1.5).
+    - #2 and #3: one row across, the seconds at ∓1.6.
+    - First Company Vocal: the four face out on the upstage arc.
+    - #4 / Ham-Burr DL / #5: the render positions. Hamilton and Burr are together right of centre at (1.1, 2.75) and
+      (1.85, 2.05).
+  - **The company:** six (ens1, 2, 5, 6, 7, 9) come on from the upstage wings during #5.
+    - They step down from z -1.2 into the line of ten at z 0.5 for the second Company Vocal and #6. The duellists
+      are at the line's ends, the seconds next in.
+    - All six move together at 61.5 into a loose wedge on the inner disc for #7 and #8. Hamilton goes DR, Burr DL.
+    - They go straight upstage and off on the Ham/Burr scene (77-82).
+  - **The Ham/Burr scene:** in the front row (ch113 / ch112). The duellists wait in the mid pools (ch119 / ch117).
+  - **#9:** back to the #1 picture.
+  - **The count:** back to back at C, and the seconds into ch42 / ch45 (spotlight placement kept).
+  - **The shot:** Lee paces down to DC at the lip (0, 4.75; ch98), and Laurens up to (-1.5, -1.2) in ch18.
+  - **The Doctor (ens4):** unchanged. He comes on UC for his commandment and turns his back at 50.
+  - **Not verified:** which body is which in the renders. I gave the sides to Laurens/Hamilton (SR) and Lee/Burr
+    (SL). I also chose which duellist goes downstage: Lee, the one who is hit.
+- **1-16 Meet Me Inside: ensemble 8 + Lee + Doctor → Lee + Doctor + 2 furniture carriers.**
+  - **Cut:** the company clusters facing Washington and the chant. Cue 476's render is an empty stage, and no source
+    puts the company on.
+  - **Lee:** hit where he stood, DC. The Doctor runs down the centre to him, and Burr goes to him. Laurens and
+    Hamilton watch from SR. Lee and the Doctor go off DR, Burr off DL.
+  - **Furniture:** on the chant (cue 478, "the deck turns into Washington's office"), ens2 brings Washington's desk
+    on from SR, set at (-1.9, 2.4) behind his key. ens6 brings a chair on from SL to (0.99, 1.94).
+    - Washington takes the desk off DR on the button (kept).
+    - The chair stays for 1-17. Hamilton is seated at its top (cue 490, "Hamilton (seated)").
+    - Hamilton takes the chair off DR with Eliza in the fade (173.6).
+  - **Unchanged:** the office in the two apron keys.
+- **1-17 That Would Be Enough: no ensemble, no change** apart from the chair.
+
+### Could not verify, so I chose the simplest staging
+- The number of mirroring bodies in Wait for It, and their places.
+- How many soldiers are in Stay Alive. The only evidence is the Bullet.
+- Whether Washington's office in Meet Me Inside has a chair, and whether Hamilton's chair in That Would Be Enough is
+  that one.
+- Whether the 1-12 tavern has chairs.
+
+Searches that found nothing usable: Wait for It mirroring detail, Stay Alive's Monmouth or horse staging, Meet Me
+Inside's office, That Would Be Enough's seating, and the 1-12 table. The sources tried were the fandom wiki (402),
+ironinkpen (no hits), and Kollaboration / Dance Magazine (no blocking).
+
+### Watch first
+1. 1-15 from 53 to 82 s: the company's only stretch. The line of ten at #6, the wedge at #7, then off upstage.
+2. 1-15 at 1.6, 14.9 and 101-105 s: the duellists face to face in the middle, and the shot with Lee DC and Laurens
+   up centre.
+3. 1-14 from 98.6 to 119 s: Monmouth with four soldiers and Lee.
+4. 1-13 from 31 to 190 s: six bodies standing behind Burr, with no shapes.
+5. 1-16 from 25 to 30 s: the desk and chair carried on. 1-17: Hamilton in front of the chair.

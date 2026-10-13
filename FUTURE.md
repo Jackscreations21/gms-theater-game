@@ -604,7 +604,7 @@ The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocki
 - **Riding the turntables.** The two turntables do not turn yet (their moves are in no file — FUTURE's Hamilton
   section); when they do, an actor standing on one should turn with it: waypoints in the turntable's frame
   (a `on: "tt-inner"` key), or the turn added to the pose. Open: which.
-- **The whole show — BLOCKED (RULING FO, 9,410 waypoints).** Still open:
+- **The whole show — BLOCKED (RULING FO; after review 2, 6,491 waypoints and 62 props).** Still open:
   - Jack's eye on it with the music, and his two rulings: the sisters' order in 1-05, and the duel sides in 2-22.
   - The cue fixes in `docs/hamilton-blocking-cue-notes.md`:
     - the 2-02 / 2-07 Cabinet Battle mirrors;
@@ -615,7 +615,16 @@ The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocki
     - the rest of the list.
   - Props the blocking mimes: props are BUILT (RULING FR) and seeded by `tools/blocking/props.py`; still not a prop:
     - the rolling staircase (a moving set piece, not something carried).
-  - The turntables do not turn: revolves are walked as arcs.
+  - The turntables do not turn: revolves are walked as arcs (props ride them by gliding, FT).
+  - Review 2's questions for Jack (`docs/hamilton-blocking-cue-notes.md`):
+    - the 1-07 "Kings men DS" figures;
+    - the 1-09 / 1-10 side flip;
+    - which side the King's stool goes;
+    - and the cue items: 1-10 Q302 ch25/26, 1-20 596, 1-23 631.1 X4 44, 2-09 992–995 ch25 → the desk, the 2-07 sides.
+  - **The jointed bodies cost frame time.** At the 1-01 line-up, 19 bodies at 1280 × 800 on the Intel UHD: medians
+    89.5 / 106.4 ms with the actors against 60.7 / 70.2 ms without, about +30 ms. The single-mesh bodies cost about
+    3 ms. FS measured the draw calls going 1,247 → 1,527 a pass. Merging each body's parts, or a level of detail for
+    far bodies, would win it back.
 - **Follow spots on actors.** The three Lycians could track a named actor (`focus` = her head each frame).
 - **Actors avoiding each other.** Paths cross freely; nothing stops two bodies sharing a spot.
 - **Light on a body is speckled.** The pool shader takes its normal from depth; on a dense body that shows

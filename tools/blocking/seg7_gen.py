@@ -186,7 +186,7 @@ h.face('2-16', 124.1, -70)
 h.at('2-16', 129.5, 0.25, 1.9, f=-80)                                     # SPOT: the promise, under the top light (Viper 8)
 h.at('2-16', 133.2, CABINET[0], CABINET[1], f=90, dwell=1.0)              # the pistols from the mantel SL
 h.at('2-16', 137.27, 0.35, 2.0, f=-80)                                     # hands them over
-h.exit('2-16', 138.4, 'W-MSL', speed=1.6)
+h.exit('2-16', 138.4, 'D-UC', speed=1.6, via=[(1.25, -3.4), (-0.8, -0.6), (-0.85, 1.5)])   # REVIEW 2: off upstage, taking the desk
 
 # ================================================================ BURR
 b = actor('burr').start('W-DSR', 'Burr')
@@ -322,12 +322,12 @@ an = actor('angelica').start('G-UC', 'Angelica')
 an.enter('G-UC', '2-13', 123.4, (-4.5, -1.3), 90, y='gallery', via=[(0.6, -3.35), (-4.5, -3.35)])  # SPOT: SR strip, in Viper 16's beam (it stops on the rail at y 3.66)
 an.exit('2-13', 132.0, 'G-UC', via=[(0.6, -3.35), (-4.5, -3.35)])
 # Pamphlet (REVIEW: hamilton-lyrics post - through the desk-arch at centre with her bags; her verse is AT him, closer each line)
-an.enter('D-UC', '2-14', 55.49, (0.3, 3.0), 0, speed=1.4, via=[(1.25, -3.4), (0.0, -2.6), (0.0, 1.9)])
+an.enter('D-UC', '2-14', 55.49, (0.3, 3.0), 0, speed=1.4, via=[(1.25, -3.4), (0.0, -2.7), (0.0, -1.6), (0.55, 0.3), (0.0, 1.9)])   # REVIEW 2: through the gap, round his chair
 an.face('2-14', 57.0, 0)
 an.at('2-14', 61.5, 0.9, 3.2, f=-90)                                       # pulls away from his hand
 an.at('2-14', 72.0, 0.6, 3.1, f=-90)                                       # closer on every line
 an.at('2-14', 81.17, 0.1, 3.05, f=-90)                                     # nose to nose, her climax
-an.exit('2-14', 86.0, 'D-UC', speed=1.5, via=[(1.25, -3.4), (0.0, -2.6), (-0.2, 1.0)])
+an.exit('2-14', 86.0, 'W-MSL', speed=1.5, via=[(5.0, -0.6), (2.6, 2.0), (2.0, 3.05)])   # REVIEW 2: out SL through the circle's gap, clear of the desk and his chair
 
 # ================================================================ WASHINGTON
 wa = actor('washington').start('G-UC', 'Washington')
@@ -346,12 +346,13 @@ p.at('2-13', 92.5, -3.4, -3.35, f=20, y='gallery')                         # dri
 p.exit('2-13', 94.0, 'G-UC')
 p.add(G('2-13', 112.0), 1.25, -4.9, off=True)
 p.enter('D-UC', '2-13', 129.2, (0.0, 0.2), 0)                              # behind him - the quill
+p.at('2-13', 132.6, 0.0, -0.45, f=0)                                       # REVIEW 2: a step back as his chair is set between them
 # Pamphlet (REVIEW: hamilton-lyrics post): she leaves as the company reads, then is on the DECK - DSR reading,
 # round behind the desk, behind his chair as he steps down, and off on her heel. Not on the SL gallery.
 p.exit('2-14', 12.9, 'D-UC', via=[(1.25, -3.4), (0.0, -2.4)])
 p.enter('W-DSR', '2-14', 21.0, (-2.4, 3.9), 20, speed=1.4)                 # DSR, reading a pamphlet
 p.at('2-14', 29.0, -0.6, 0.95, f=60)                                       # circles round behind the desk
-p.at('2-14', 33.0, 0.0, 0.35, f=0)                                         # behind his chair as he steps off the desk
+p.at('2-14', 33.0, 0.0, -0.4, f=0)                                         # behind his chair as he steps off the desk (REVIEW 2: the chair is a prop at (0, 0.25))
 p.exit('2-14', 38.0, 'D-UC', via=[(1.25, -3.4), (0.0, -2.4)])             # turns on her heel and goes
 
 # ================================================================ PHILIP (laurens)
@@ -397,42 +398,37 @@ first_wing = {1: 'D-UC', 2: 'W-USR', 3: 'W-USR', 4: 'W-USR', 5: 'W-DSL', 6: 'W-U
 for i in range(1, 11):
     ens[i].start(first_wing[i], f'Ensemble {i}')
 
-# ---- 2-11 the company hit: a line at z -1.0 (invented); scatter off when the papers fall
-line = {2: -3.5, 3: -2.5, 4: -1.5, 6: -0.5, 7: 0.5, 8: 1.5, 9: 2.5}
-for i, x in line.items():
-    sr = x < 0
-    wing = 'W-USR' if sr else 'W-MSL'
-    a = ens[i]
-    a.enter(wing, '2-11', 14.84, (x, -1.0), 0, speed=1.7, lead=0.5)
-    a.face('2-11', 25.37, 180)                                             # up at Hamilton on the gallery
-    a.at('2-11', 33.28 + 0.6, x, -0.5, f=180)                              # recoil from the thud
-    order = {2: 0, 3: 0.4, 4: 0.8, 6: 1.2, 9: 0, 8: 0.4, 7: 0.8}[i]
-    a.exit('2-11', 34.4 + order, wing, speed=1.7)
+# ---- 2-11 (REVIEW 2, Jack's verdict): the writer's line of seven at z -1.0 (marked INVENTED) is CUT. Both eyewitness
+# accounts (ironinkpen, hamilton-lyrics) name only the King on his stool, Burr, Hamilton on the gallery and the two
+# Virginians; the company's hits are sung, with no account of a body on the deck. No ensemble in 2-11.
 
-# ---- 2-13 Hurricane: the ring on the outer turntable
+# ---- 2-13 Hurricane (REVIEW 2, Jack's verdict): EIGHT of the company, not ten, and they START GATHERED round him
+# (ironinkpen: "initially gathered around Hamilton, eventually moves like hurricane winds as the stage spins"), r 1.9,
+# frozen at the still point; on the storm memory they are flung out to the outer ring and revolve with the turntable
+# (Backstage/Blankenbuehler: they swivel round him on the turntable). The writer's ten-body even ring that swirled on at
+# r 3.2 is cut; ens9 and ens10 are off until the decision, where they bring on the desk and his chair.
 R = 3.2
-base = {i: 18 + 36 * (i - 1) for i in range(1, 11)}
-hw = {1: 'D-UC', 2: 'D-UC', 3: 'W-MSL', 4: 'W-MSL', 5: 'W-DSL', 6: 'W-DSL', 7: 'W-DSR', 8: 'W-DSR', 9: 'W-USR', 10: 'W-USR'}
-stag = {1: 4.4, 2: 5.6, 3: 4.4, 4: 5.6, 5: 5.6, 6: 4.4, 7: 4.4, 8: 5.6, 9: 6.6, 10: 4.4}
+R0 = 1.9
+RING8 = range(1, 9)
+base = {i: -67.5 + 45 * (i - 1) for i in RING8}                         # so the mother and her two bearers end the montage SR
+hw = {1: 'W-USR', 2: 'D-UC', 3: 'D-UC', 4: 'W-USL', 5: 'W-MSL', 6: 'W-DSL', 7: 'W-DSR', 8: 'W-MSR'}   # each from the wing nearest
+stag = {1: 5.4, 2: 6.6, 3: 5.4, 4: 6.6, 5: 6.6, 6: 5.4, 7: 5.4, 8: 6.6}
 rot = {}
-for i in range(1, 11):
-    a = ens[i]; th = base[i] - 30
-    a.enter(hw[i], '2-13', stag[i], ring(R, th), None, speed=1.5, dwell=0)
-    pts_t = []
-    # swirl into place: +30 by the still point
-    a.go('2-13', (stag[i] + 11.88) / 2, ring(R, th + 15), dwell=0)
-    th += 30
-    a.go('2-13', 11.88, ring(R, th), f=inward(th))                         # frozen in shapes
-    def revolve(a, th, deg, t0, t1, step=30):
-        n = max(1, round(abs(deg) / step))
-        a.last()['dwell'] = round(G('2-13', t0) - a.last()['g'], 2)
-        for k in range(1, n + 1):
-            tt = t0 + (t1 - t0) * k / n
-            thk = th + deg * k / n
-            if k < n: a.go('2-13', tt, ring(R, thk), dwell=0)
-            else: a.go('2-13', tt, ring(R, thk), f=inward(thk))
-        return th + deg
-    th = revolve(a, th, 90, 23.76, 34.33)                                  # the storm memory
+def revolve(a, th, deg, t0, t1, step=30, r0=R, r1=R):
+    n = max(1, round(abs(deg) / step))
+    a.last()['dwell'] = round(G('2-13', t0) - a.last()['g'], 2)
+    for k in range(1, n + 1):
+        tt = t0 + (t1 - t0) * k / n
+        thk = th + deg * k / n
+        rk = r0 + (r1 - r0) * k / n
+        if k < n: a.go('2-13', tt, ring(rk, thk), dwell=0)
+        else: a.go('2-13', tt, ring(rk, thk), f=inward(thk))
+    return th + deg
+for i in RING8:
+    a = ens[i]; th = base[i]
+    a.enter(hw[i], '2-13', stag[i], ring(R0, th), inward(th), speed=1.5)     # gathered round him
+    a.face('2-13', 11.88, inward(th))                                      # frozen in shapes at the still point
+    th = revolve(a, th, 90, 23.76, 34.33, r0=R0, r1=R)                     # the storm memory: flung out to the outer ring
     th = revolve(a, th, 45, 51.16, 64.49)                                  # the town helps
     th = revolve(a, th, 270, 70.47, 97.38)                                 # the montage
     rot[i] = th
@@ -442,35 +438,35 @@ m6 = ens[6]; m7 = ens[7]; m8 = ens[8]
 m6.at('2-13', 103.4, -0.8, 1.5, f=60)
 d = (-0.774, 0.633); pp = (0.633, 0.774)
 def off_(p, s): return (p[0] + s * pp[0], p[1] + s * pp[1])
-m7.go('2-13', 104.3, off_((-0.9, 1.6), -0.65), f=60)
-m8.go('2-13', 104.4, off_((-0.9, 1.6), 0.65), f=60)
-for a, s in ((m6, 0), (m7, -0.65), (m8, 0.65)):
+m7.go('2-13', 104.3, off_((-0.9, 1.6), 0.65), f=60)
+m8.go('2-13', 104.4, off_((-0.9, 1.6), -0.65), f=60)
+for a, s in ((m6, 0), (m7, 0.65), (m8, -0.65)):
     a.last()['dwell'] = round(G('2-13', 104.8) - a.last()['g'], 2)
     a.go('2-13', 108.8, off_((-3.0, 3.3), s), dwell=0)
     a.go('2-13', 112.2, off_((-6.0, 4.7), s * 0.3), dwell=0)
     a.add(G('2-13', 113.4 + abs(s)), -7.3, 4.6, off=True)
 
 # cockroaches: ens2 and ens4 crawl backwards across the downstage edge, slowly (placement invented)
-for i, (p0, p1) in {4: ((2.4, 4.8), (-1.6, 4.8)), 2: ((3.6, 4.8), (-0.4, 4.8))}.items():
+for i, (p0, p1) in {2: ((2.4, 4.8), (-1.6, 4.8)), 4: ((3.6, 4.8), (-0.4, 4.8))}.items():
     a = ens[i]
     a.at('2-13', 112.0 + (i - 2) * 0.5, p0[0], p0[1], f=-90)
     a.last()['dwell'] = round(G('2-13', 116.28) - a.last()['g'], 2)
     a.at('2-13', 129.0, p1[0], p1[1], f=-90)
-    a.exit('2-13', {4: 131.2, 2: 131.8}[i], 'W-DSR', speed=1.6)
+    a.exit('2-13', {2: 131.2, 4: 131.8}[i], 'W-DSR', speed=1.6)
 
-# the rest of the ring stirs +60 and goes at the decision
-for i in (1, 3, 5, 9, 10):
-    a = ens[i]; th = rot[i]
-    a.last()['dwell'] = round(G('2-13', 116.28) - a.last()['g'], 2)
-    for k in (1, 2):
-        thk = th + 30 * k
-        a.go('2-13', 116.28 + (130.65 - 116.28) * k / 2, ring(R, thk), f=inward(thk) if k == 2 else None,
-             dwell=0 if k == 1 else None)
-    rot[i] = th + 60
-# REVIEW (hamilton-lyrics post): at the decision his desk is brought on in front of him, and four of the company close
-# in round it under the white light and pose; the rest go. The four stay into the Pamphlet's Build MC.
-ens[10].exit('2-13', 131.6, 'W-MSL', speed=1.6)
-desk4 = {1: (-0.95, 1.55), 3: (0.95, 2.45), 5: (-0.95, 2.45), 9: (0.95, 1.55)}
+# REVIEW 2: the rest of the ring (ens1, 3, 5) hold where the montage left them until the decision (the writer's +60 stir
+# is cut: it walked ens1 across Maria's path to him)
+# REVIEW (hamilton-lyrics post): at the decision the crew bring his desk on in front of him, his chair behind it and an
+# extra chair in front of it; four of the company close in round the desk under the white light and pose, and stay
+# into the Pamphlet's Build MC. REVIEW 2: the desk comes on with ens9 (the fourth of the four; she was off for the
+# storm), his chair with ens10, the extra chair with ens8; those two go again (props.py SEGMENT 7).
+ens[9].enter('D-UC', '2-13', 133.4, (0.6, 1.75), -90, speed=1.6, via=[(1.25, -3.4), (1.0, -1.0)])   # sets the desk down
+ens[9].at('2-13', 134.9, 0.95, 1.4, f=facing_to((0.95, 1.4), (0.0, 2.0)))
+ens[10].enter('D-UC', '2-13', 138.2, (0.65, 0.25), -90, speed=1.6, via=[(1.25, -3.4), (1.0, -1.0)])  # sets his chair behind him
+ens[10].exit('2-13', 139.0, 'D-UC', speed=1.6, via=[(1.25, -3.4), (1.0, -1.0)])
+ens[8].enter('W-MSL', '2-13', 134.4, (1.4, 2.95), -120, speed=1.6, via=[(5.0, -0.6), (2.6, 2.2)])   # sets the extra chair DS-SL of the desk (0.7, 2.6)
+ens[8].exit('2-13', 135.2, 'W-MSL', speed=1.6, via=[(5.0, -0.6), (2.6, 2.2)])
+desk4 = {1: (-0.95, 1.4), 3: (1.25, 2.3), 5: (-0.95, 2.4)}             # REVIEW 2: clear of the extra chair
 for k_, (i, pos) in enumerate(desk4.items()):
     ens[i].last()['dwell'] = round(G('2-13', 130.65 + 0.3 * k_) - ens[i].last()['g'], 2)
     ens[i].go('2-13', 134.0 + 0.3 * k_, pos, f=facing_to(pos, (0.0, 2.0)))
@@ -541,33 +537,39 @@ for i in E8:
 pex = {5: ('W-MSL', 118.6), 1: ('W-MSL', 119.6), 7: ('W-MSR', 118.6), 6: ('W-MSR', 119.6), 8: ('W-USR', 118.8),
        2: ('D-UC', 119.0), 9: ('D-UC', 120.6), 3: ('W-USL', 118.8)}
 for i, (w, t) in pex.items():
-    ens[i].exit('2-14', t, w, speed=1.5)
+    if i == 1:                                                             # REVIEW 2: ens1 takes the desk off with him
+        ens[i].exit('2-14', t, w, speed=1.5, via=[(5.0, -0.6), (0.65, 2.05)])
+    else:
+        ens[i].exit('2-14', t, w, speed=1.5)
 ens[10].exit('2-14', 118.6, 'G-UC')
 
-# ---- 2-16 Blow Us All Away
-party = {1: ((2.2, 0.2), 'W-MSL', 20), 2: ((3.2, 1.4), 'W-DSL', -40), 3: ((2.4, 2.6), 'W-DSL', -30),
-         4: ((1.0, -1.0), 'W-MSL', 10), 9: ((-1.0, -1.2), 'D-UC', -10), 10: ((-2.6, -0.4), 'W-USR', 30),
-         6: ((-2.6, 1.6), 'W-USR', 40), 7: ((-3.0, 2.7), 'W-USR', 50), 8: ((-2.4, 3.4), 'W-DSR', 20)}
-pt = {1: 1.0, 2: 1.2, 3: 2.4, 4: 2.5, 9: 3.5, 10: 3.0, 6: 1.0, 7: 2.6, 8: 2.0}
-for i, (pos, w, f) in party.items():
-    ens[i].enter(w, '2-16', pt[i], pos, f, speed=1.5, via=[(-5.0, -2.9), (-3.6, -1.2)] if i == 7 else None)
+# ---- 2-16 Blow Us All Away (REVIEW 2, Jack's verdict). CUT: the writer's party of nine (marked INVENTED). Kept, from
+# evidence: the two women Philip goes SR to ask (ironinkpen; the newtfire libretto names them DOLLY and MARTHA;
+# hamilton-lyrics: ensemble women swooning) - ens6 and ens7, from the top; the play at centre with its audience on
+# chairs SL facing SR (ironinkpen), who turn to watch the quarrel - ens1-4 each bring a chair on from SL, sit, and take
+# it off again in the clear (props.py SEGMENT 7); the play's two actors ens9 and ens10 (the count is invented: two).
+girls = {6: ((-2.6, 1.6), 40, 1.0, 'Dolly'), 7: ((-3.0, 2.7), 50, 2.6, 'Martha')}
+for i, (pos, f, t, lab) in girls.items():
+    ens[i].enter('W-USR', '2-16', t, pos, f, speed=1.5, label=lab,        # their libretto names, allowed by the cast file since review 2
+                 via=[(-5.0, -2.9), (-3.6, -1.2)] if i == 7 else None)
     ens[i].face('2-16', 25.85, 0)                                          # the hook
-    ens[i].face('2-16', 27.24, f + (15 if f < 0 else -15))
-for i in (6, 7, 8):
-    ens[i].face('2-16', 30.0, 60)                                          # Philip's audience
-# the girls and the upstage pair leave; the SL partygoers become the theatre audience
-ens[7].exit('2-16', 40.6, 'W-DSR', speed=1.4); ens[8].exit('2-16', 41.4, 'W-DSR', speed=1.4)
+    ens[i].face('2-16', 27.24, f - 15)
+    ens[i].face('2-16', 30.0, 60)                                          # Philip comes to them
+ens[7].exit('2-16', 40.6, 'W-DSR', speed=1.4)
 ens[6].exit('2-16', 42.4, 'W-DSR', speed=1.4)
-seats = {1: (2.8, 0.6), 2: (2.8, 1.8), 3: (1.8, 1.8), 4: (1.8, 0.6)}
-for i, s in seats.items():
-    ens[i].go('2-16', 49.0 + 0.4 * i, s, f=-90)                            # seated SL, facing the play
+for i in (6, 7):                                                           # back to the company in the wing
+    ens[i].add(G('2-16', 47.0), 7.3, 4.6, off=True, label=f'Ensemble {i}')
+SEATS = {1: (3.0, 0.6), 2: (3.0, 1.8), 3: (1.6, 1.8), 4: (1.6, 0.6)}     # the theatre audience, SL, facing SR
+seat_w = {1: ('W-MSL', 49.4), 2: ('W-DSL', 49.8), 3: ('W-DSL', 51.4), 4: ('W-USL', 50.6)}
+for i, st in SEATS.items():
+    ens[i].enter(seat_w[i][0], '2-16', seat_w[i][1], st, -90, speed=1.4)   # each brings a chair on, sits, watching the play
     ens[i].face('2-16', 59.39 + 0.1 * i, 60)                               # turn to the quarrel
     ens[i].face('2-16', 70.14, 75)                                         # the gasp
-players = {9: (-1.2, 0.5), 10: (-0.4, 1.5)}
-for i, s in players.items():
-    ens[i].go('2-16', 50.0, s, f=90)                                       # the play, centre
+players = {9: ((-1.2, 0.5), 'W-USR', 50.5), 10: ((-0.4, 1.5), 'W-MSR', 51.0)}
+for i, (st, w, t) in players.items():
+    ens[i].enter(w, '2-16', t, st, 90, speed=1.4)                          # the play, centre, played out to the SL audience
     ens[i].face('2-16', 59.39, 60)
-sx = {1: ('W-MSL', 73.0), 2: ('W-DSL', 73.0), 3: ('W-MSL', 75.6), 4: ('W-MSL', 74.4), 9: ('W-USR', 72.6), 10: ('W-DSR', 72.6)}
+sx = {1: ('W-MSL', 73.0), 2: ('W-DSL', 73.0), 3: ('W-MSL', 75.6), 4: ('W-USL', 74.4), 9: ('W-USR', 72.6), 10: ('W-DSR', 72.6)}
 for i, (w, t) in sx.items():
     ens[i].exit('2-16', t, w, speed=1.5)
 # George Eacker
@@ -584,20 +586,9 @@ ea.face('2-16', 156.52, -40)
 ea.path('2-16', 167.6, [EA_BB], '2-16', 169.7, f=facing_to(PH_BB, EA_BB), last_dwell=0.2)  # back to back with Philip (SPOT: in his pool to 167.6)
 ea.at('2-16', 172.5, EA_END[0], EA_END[1], f=180)                                     # REVIEW (ruled exception): paces to his mark
                                                                            # and turns toward Philip; seg 8 fires the shot
-# the duel: seconds and the watchers
-ens[2].enter('W-DSR', '2-16', 156.52, (-3.6, 2.6), 45, speed=1.4)         # Philip's second
-ens[3].enter('W-MSL', '2-16', 156.52, (4.0, 2.6), -45, speed=1.4)         # Eacker's second
-ens[2].face('2-16', 161.87, 30); ens[3].face('2-16', 161.87, -30)
-ens[2].exit('2-16', 166.8, 'W-DSR', speed=1.6); ens[3].exit('2-16', 166.8, 'W-MSL', speed=1.6)
-usg = [(1, -3.2, 148.0), (4, -2.0, 149.4), (6, -0.8, 150.8), (7, 3.0, 152.2), (8, 1.8, 153.6)]
-for i, x, t in usg:
-    ens[i].enter('G-UC', '2-16', t, (x, -3.3), 0, y='gallery')
-    ens[i].face('2-16', 161.87, 0)
-for i, t in ((6, 166.7), (8, 167.6), (4, 167.5), (7, 168.4), (1, 168.3)):
-    ens[i].exit('2-16', t, 'G-UC', speed=1.6)
-ens[9].enter('W-USR', '2-16', 156.52, (-3.3, -2.0), 30, speed=1.4)
-ens[10].enter('W-USL', '2-16', 156.52, (4.0, -1.5), -30, speed=1.4)
-ens[9].exit('2-16', 167.0, 'W-USR', speed=1.6); ens[10].exit('2-16', 167.0, 'W-USL', speed=1.6)
+# REVIEW 2: the writer's duel seconds (ens2, ens3) and seven watchers (USG and deck) are CUT - all marked INVENTED; the
+# libretto names no second, and the only account (ironinkpen) has just the two on the spinning platform. The count is
+# the company's, unseen.
 
 # ---------------------------------------------------------------- write
 def r3(v): return round(v, 3)

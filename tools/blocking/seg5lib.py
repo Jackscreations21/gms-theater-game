@@ -21,7 +21,7 @@ WINGS = {'W-DSR': (-7.3, 4.6), 'W-DSL': (7.3, 4.6), 'W-MSR': (-8.5, 0.0), 'W-MSL
          'W-USR': (-8.5, -3.0), 'W-USL': (8.5, -3.0), 'D-UC': (1.25, -4.9)}
 # the deck-side approach points that keep a body clear of the proscenium posts / the door frame
 VIA = {'W-DSR': [(-6.0, 4.65)], 'W-DSL': [(6.0, 4.65)], 'D-UC': [(1.25, -3.6)],
-       'W-MSL': [(6.6, -0.15), (4.4, 0.1)], 'W-USL': [(6.5, -3.0)], 'W-USR': [(-5.4, -3.15)], 'W-MSR': []}
+       'W-MSL': [(6.6, -0.15), (4.4, 0.1)], 'W-USL': [(6.5, -3.0)], 'W-USR': [(-5.4, -3.15), (-4.4, -3.2)], 'W-MSR': []}
 GUC = [(0.6, -4.8, 'g'), (0.6, -3.35, 'g')]
 
 W = {}      # actor -> list of dict(g, x, z, lvl, dwell, facing, off, label)

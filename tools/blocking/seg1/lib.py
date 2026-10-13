@@ -9,12 +9,15 @@ _s = 0.0
 for _k, _L in TRACKS:
     T0[_k] = _s; _s += _L
 SEG_END = _s
+LEAD_IN = -10.0   # REVIEW2: 1-01 may run from -10 (the lead-in; the music starts at 0)
 LEN = dict(TRACKS)
 
 def S(tr, at):
     return round(T0[tr] + at, 3)
 
 def to_track(t):
+    if t < 0:   # REVIEW2: the 10 s lead-in before 1-01 (RULING FQ): 1-01 at -10 ... 0
+        return TRACKS[0][0], round(t, 2)
     for i, (k, L) in enumerate(TRACKS):
         if T0[k] - 1e-9 <= t < T0[k] + L - 1e-9:
             return k, round(t - T0[k], 2)
@@ -264,7 +267,7 @@ def check(min_d=0.55, dtt=0.2):
                 issues.append(f'{a} stop without facing at {to_track(w["t"])}')
     # proximity
     actors = list(W)
-    t = 0.0
+    t = LEAD_IN
     hits = defaultdict(list)
     while t < SEG_END:
         st = {a: sim(a, t) for a in actors}

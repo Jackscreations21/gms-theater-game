@@ -19,60 +19,52 @@ go('burr', [(-3.7, 3.7)], t_start=t(41.3), facing=40)
 stand('burr', t(52.0), facing=face((-3.7, 3.7), (0.6, -3.35)))   # turns to look up at the gallery top centre with the company
 leave('burr', 'W-DSR', t_start=t(63.0))
 
-# --- the company: W1 an arc upstage of Burr for the recap
-W1 = [ring(3.2, -110 + 220 * k / 9) for k in range(10)]
-W1_toff = [2.6, 0.3, 0.8, 1.8, 2.8, 4.8, 3.8, 0.5, 2.6, 1.2]
-W1_via = ['W-DSR', 'W-DSR', 'D-UC', 'D-UC', 'D-UC', 'D-UC', 'D-UC', 'W-MSL', 'W-MSL', 'W-DSL']
-for k, a in enumerate(E):
-    extra = [(-3.9, 2.6)] if k == 1 else None
-    enter(a, W1_via[k], W1[k], t_end=t(8.8 - 0.0 * k), facing=0, label=lab(a), extra=extra,
-          t_off=t(W1_toff[k]))
-# 27.9 the rival named: the arc turns to look up at the gallery
-for k, a in enumerate(E):
-    stand(a, t(28.6 + 0.15 * k), facing=face(W1[k], (0.6, -3.6)))
-# W2 41.3/45.3: two rows across the turntable, a fan towards the top centre of the gallery
+# --- the company (REVIEW 2, Jack's verdict "the ensemble is used too much"): EIGHT bodies (ens1-ens8), not ten,
+# and only from the build to Jefferson on. The recap is Burr's alone (the writer's company arc at 8.8 was invented);
+# the company "waits on the floor for Jefferson" and kneels scrubbing as he comes down (ironinkpen; WatchMojo), and
+# is the party and the welcome. The party V, the letter arc and the walked journey-north revolve are cut (invented):
+# the company stays where it scrubbed, rises and watches, and forms one line only for the final build.
+E8 = E[:8]
+# W2 41.3/45.3: they come on for the build and wait on the floor, turned up to the gallery top centre
 # (REVIEW: Jefferson appears top centre and comes down the stage-left stair - PLSN/BroadwayBox: the
 #  Washington/Jefferson rolling staircase parks at the SL balcony)
-W2 = [(-2.6, 0.0), (-1.2, -0.3), (0.2, -0.5), (1.6, -0.6), (3.0, -0.5),
-      (-1.9, 1.5), (-0.5, 1.3), (0.9, 1.2), (2.3, 1.2), (3.7, 1.4)]
-m2 = form(E, W2, t_end=t(45.3), facing=lambda p: face(p, (0.6, -3.35)))
-for k, a in enumerate(E):
+W2 = [(-2.6, 0.0), (-1.2, -0.3), (0.4, -0.5), (3.0, -0.5),
+      (-1.9, 1.5), (-0.5, 1.3), (1.0, 1.2), (3.4, 1.4)]
+W2_via = {'ens1': 'W-USR', 'ens2': 'D-UC', 'ens3': 'D-UC', 'ens4': 'W-USL',
+          'ens5': 'W-DSR', 'ens6': 'W-DSR', 'ens7': 'W-DSL', 'ens8': 'W-MSL'}
+W2_toff = {'ens1': 38.0, 'ens2': 37.0, 'ens3': 38.6, 'ens4': 38.0,
+           'ens5': 36.0, 'ens6': 39.8, 'ens7': 38.0, 'ens8': 38.0}
+W2_at = {'ens1': (-2.6, 0.0), 'ens2': (-1.2, -0.3), 'ens3': (0.4, -0.5), 'ens4': (3.0, -0.5),
+         'ens5': (-1.9, 1.5), 'ens6': (-0.5, 1.3), 'ens7': (1.0, 1.2), 'ens8': (3.4, 1.4)}
+for k, a in enumerate(E8):
+    enter(a, W2_via[a], W2_at[a], t_end=t(45.3 + 0.15 * k), facing=face(W2_at[a], (0.6, -3.35)), label=lab(a),
+          t_off=t(W2_toff[a]), extra=[(-4.0, 2.9)] if a == 'ens5' else None)
+m2 = dict(W2_at)
+for k, a in enumerate(E8):
     stand(a, t(58.4 + 0.1 * k), facing=face(m2[a], (0.6, -3.35)))   # Jefferson appears up top
 # W3 60.8: they drop to scrub the floor as he strides down - scattered, low, turned to his path
 # (an aisle is left from the SL stair foot (2.2,-2.45) down through (2.0,0.4) and (0.6,2.8) to DSC)
 W3 = [(-3.0, -0.6), (-1.6, -0.1), (-0.2, -0.8), (1.0, -0.9), (3.1, -0.9),
-      (-2.3, 1.1), (-0.8, 1.7), (0.6, 1.0), (2.4, 2.0), (3.6, 0.6)]
-m3 = form(E, W3, t_end=t(63.5), stagger=0.2, facing=lambda p: face(p, (1.6, 1.2)))
-for k, a in enumerate(E):
-    stand(a, t(76.0 + 0.2 * k), facing=face(m3[a], (0.0, 4.2)))       # they watch him sing DSC
-# W4 97.0: the party picture - a V behind Jefferson DSC
-W4 = [(-3.8, 0.7), (-3.0, 1.4), (-2.1, 2.2), (-1.2, 3.0), (-0.7, 1.7),
-      (0.7, 1.7), (1.2, 3.0), (2.1, 2.2), (3.0, 1.4), (3.8, 0.7)]
-m4 = form(E, W4, t_end=t(97.0))
-for k, a in enumerate(E):
-    stand(a, t(109.5 + 0.1 * k), facing=face(m4[a], (1.4, 3.6)))       # the Paris aside
-# W5 118.2 the letter: the company pulls back to an upstage arc; Sally (ens6) brings the letter
-W5 = [ring(3.2, -100 + 200 * k / 9) for k in range(10)]
+      (-2.3, 1.1), (2.4, 2.0), (3.6, 0.6)]
+m3 = form(E8, W3, t_end=t(63.5), stagger=0.2, facing=lambda p: face(p, (1.6, 1.2)))
+for k, a in enumerate(E8):
+    stand(a, t(76.0 + 0.2 * k), facing=face(m3[a], (0.0, 4.2)))       # they rise and watch him sing DSC
+for k, a in enumerate(E8):
+    stand(a, t(109.5 + 0.1 * k), facing=face(m3[a], (1.4, 3.6)))       # the Paris aside
+# 118.2 the letter: Sally (ens6) brings it to him DC and goes back to her place; the rest hold
+s6 = m3['ens6']
 go('ens6', [(0.95, 3.0)], t_end=t(119.5), facing=face((0.95, 3.0), (0.0, 3.6)))
-others = [a for a in E if a != 'ens6']
-m5 = form(others, W5, t_end=t(120.5), facing=lambda p: face(p, (0.0, 3.6)))
-left = [p for p in W5 if p not in m5.values()][0]
-go('ens6', [left], t_start=t(126.5), facing=face(left, (0.0, 3.6)))
-# 135.3 the journey north: the arc walks the outer ring an eighth of a turn (12 -> 3 -> 6 way)
-for k, a in enumerate(E):
-    th1 = theta_of(cur(a)) + 45
-    revolve_by(a, 3.2, 45, t(135.6), t(152.5), facing=face(ring(3.2, th1), (0, 0.95)))
-# 163.5 Madison's verse: the ring turns in to the two of them
-for k, a in enumerate(E):
-    stand(a, t(164.0 + 0.1 * k), facing=face(cur(a), (0.0, 3.9)))
-# 187.5 hook 2: back to the V
-m4b = form(E, W4, t_end=t(187.5))
+go('ens6', [s6], t_start=t(126.5), facing=face(s6, (0.0, 3.6)))
+# 135.3 the journey north (Jefferson's loop): they turn with him; 163.5 Madison's verse: they turn to the two DSC
+for k, a in enumerate(E8):
+    stand(a, t(136.0 + 0.1 * k), facing=face(m3[a], (0.0, 1.6)))
+    stand(a, t(164.0 + 0.1 * k), facing=face(m3[a], (0.0, 3.9)))
 # 208.3 Hamilton named, DL: the company turns on him
-for k, a in enumerate(E):
-    stand(a, t(209.0 + 0.1 * k), facing=face(m4b[a], (3.5, 3.4)))
+for k, a in enumerate(E8):
+    stand(a, t(209.0 + 0.1 * k), facing=face(m3[a], (3.5, 3.4)))
 # 221.2 final build: one line across the deck
-W8 = [(-3.6 + 0.8 * k, 1.9) for k in range(10)]
-m8 = form(E, W8, t_end=t(222.0))
+W8 = [(-3.5 + 1.0 * k, 1.9) for k in range(8)]
+m8 = form(E8, W8, t_end=t(222.0))
 
 # Jefferson: appears TOP CENTRE on the upstage gallery (REVIEW: the Washington/Jefferson rolling staircase
 # is parked at the SL balcony and rolled centre for this entrance - PLSN, BroadwayBox/Korins; the page has no
@@ -128,27 +120,29 @@ c = lambda at: T('2-02', at)
 # (REVIEW: "two rows of chairs form a V opening toward the audience", ensemble seated in them, Washington
 #  seated with them - ironinkpen staging notes; cue 742 puts Washington's chair SL. Jefferson's side SR,
 #  Hamilton's side SL per Jack's revision-5 ruling. The chairs themselves are not modelled.)
-V_SR = [(-3.8, 2.4), (-3.1, 1.45), (-2.4, 0.5), (-1.7, -0.45), (-1.0, -1.4)]          # downstage-out -> vertex
-V_SL = [(1.7, -0.45), (2.4, 0.5), (3.1, 1.45), (3.8, 2.4), (4.5, 3.35)]               # vertex -> downstage-out
+# (REVIEW 2: eight seats, four an arm, with Washington's chair at the SL vertex; the V itself is sourced, its size is
+#  not - eight follows the company of What'd I Miss. Sides as ruled: Jefferson's SR, Hamilton's SL.)
+V_SR = [(-3.8, 2.4), (-3.1, 1.45), (-2.4, 0.5), (-1.7, -0.45)]                       # downstage-out -> vertex
+V_SL = [(1.7, -0.45), (2.4, 0.5), (3.1, 1.45), (3.8, 2.4)]                           # vertex -> downstage-out
 WA_CHAIR = (1.0, -1.4)                                                               # SL arm, at the vertex
-byx = sorted(E, key=lambda a: m8[a][0])
+byx = sorted(E8, key=lambda a: m8[a][0])
 seat = {a: (V_SR + V_SL)[i] for i, a in enumerate(byx)}
 look = (0.0, 3.2)
 for k, a in enumerate(byx):
     go(a, [seat[a]], t_start=T('2-01', 234.3 + 0.15 * k), facing=face(seat[a], look))
 # the crowd reacts: they turn to whoever has the floor
-for k, a in enumerate(E):
+for k, a in enumerate(E8):
     d = seat[a]
     stand(a, c(22.5 + 0.1 * k), facing=face(d, (-1.3, 3.7)))
     stand(a, c(86.5 + 0.1 * k), facing=face(d, (1.3, 3.7)))
     stand(a, c(147.5 + 0.1 * k), facing=face(d, (0.0, 1.4)))
 # 156.5 the meeting breaks up: the crowd goes, the SR arm first (the Virginians leave that way after them)
 exit_plan = {V_SR[0]: ('W-DSR', None), V_SR[1]: ('W-DSR', [(-3.9, 2.6)]), V_SR[2]: ('W-DSR', [(-3.9, 2.6)]),
-             V_SR[3]: ('D-UC', None), V_SR[4]: ('D-UC', None),
+             V_SR[3]: ('D-UC', None),
              V_SL[0]: ('D-UC', None), V_SL[1]: ('W-MSL', None), V_SL[2]: ('W-MSL', None),
-             V_SL[3]: ('W-DSL', None), V_SL[4]: ('W-DSL', None)}
-exit_order = [V_SR[0], V_SR[1], V_SR[2], V_SL[4], V_SL[3], V_SR[4], V_SL[2], V_SR[3], V_SL[1], V_SL[0]]
-for a in E:
+             V_SL[3]: ('W-DSL', None)}
+exit_order = [V_SR[0], V_SR[1], V_SR[2], V_SL[3], V_SL[2], V_SR[3], V_SL[1], V_SL[0]]
+for a in E8:
     via, extra = exit_plan[seat[a]]
     ts = c(157.5) + 1.1 * exit_order.index(seat[a])
     leave(a, via, t_start=ts, extra=extra)
@@ -218,18 +212,19 @@ EL, AN, PH = 'eliza', 'angelica', 'laurens'
 PIANO_P, PIANO_E = (1.0, 1.5), (2.2, 1.1)
 # (REVIEW: Eliza and Philip at the piano "on the moving platform, which spins slowly" - ironinkpen staging
 #  notes; the piano group rides the inner turntable 40 degrees into its place SL of centre)
-def _rot(p, d):
-    th = theta_of(p); r_ = dist(p, (0.0, 0.95)); return ring(r_, th + d)
-enter(EL, 'W-MSL', _rot(PIANO_E, -40), t_end=b(0.0), facing=-40, label='Eliza')
-enter(PH, 'W-MSL', _rot(PIANO_P, -40), t_end=T('2-02', 213.0), facing=0, label='Philip')
-revolve_by(EL, dist(PIANO_E, (0.0, 0.95)), 40, b(0.5), b(18.0), step=20, facing=-40)
-revolve_by(PH, dist(PIANO_P, (0.0, 0.95)), 40, b(0.5), b(18.0), step=20, facing=-10)
+# REVIEW 2: the piano is now a prop (props.py 'piano', set in the dark at the 2-02 button), and a placed prop cannot
+# ride the turntable, so the 40-degree ride is dropped: mother and son walk straight to it in the change and stay.
+# Philip at the keys (the piano is SL of him, keyboard to SR), Eliza behind it leaning over to him.
+enter(EL, 'W-MSL', PIANO_E, t_end=b(0.0), facing=-70, label='Eliza')
+enter(PH, 'W-MSL', [(2.4, 2.5), PIANO_P], t_end=T('2-02', 213.0), facing=60, label='Philip')
+stand(EL, b(14.0), facing=-60)
+stand(PH, b(14.0), facing=40)
 DESK = (-1.5, 1.4)
 go(H, [DESK], t_end=b(19.5), facing=0)                  # to the desk, writing to Angelica
 # SPOT: her gallery key (766/774/775/776, ch18) crosses the USG at x 0 and head height near z -3.4
 enter(AN, 'G-UC', (0.0, -3.45, 'g'), t_end=b(45.2), facing=0, label='Angelica')
 go(AN, [(-0.9, -3.65, 'g')], t_start=b(58.6), facing=0)  # she fades back
-go(EL, [(1.6, 2.4)], t_end=b(60.0), facing=-60)          # calls him down
+go(EL, [(2.1, 2.15), (1.6, 2.4)], t_end=b(60.0), facing=-60)          # calls him down
 go(H, [(-0.6, 2.6)], t_end=b(70.0), facing=40)
 go(EL, [(1.1, 2.8)], t_end=b(70.5), facing=-30)
 go(PH, [(0.0, 4.4)], t_end=b(78.5), facing=0)            # Philip's poem, DSC
@@ -238,7 +233,7 @@ go(PH, [(0.9, 4.3)], t_end=b(92.0), facing=-15)
 go(PH, [(0.0, 4.5)], t_end=b(99.0), facing=0)
 go(H, [(-1.1, 2.8)], t_end=b(80.0), facing=20)
 go(EL, [(1.1, 2.8)], t_end=b(80.5), facing=-20)
-go(PH, [(2.2, 3.8), PIANO_P], t_start=b(103.0), facing=-20)   # back to the piano, round them
+go(PH, [(2.2, 3.8), (2.0, 2.4), PIANO_P], t_start=b(103.0), facing=40)   # back to the piano, round them
 go(EL, [(0.6, 3.3)], t_end=b(106.0), facing=-50)         # the duet
 go(H, [(-0.45, 3.15)], t_end=b(106.0), facing=50)        # SPOT: inside the duet pool (772, ch8)
 go(EL, [(0.4, 2.6)], t_end=b(118.0), facing=-40)         # the lake upstate
@@ -258,12 +253,12 @@ stand(H, b(189.5), facing=60)
 go(H, [(-2.6, 3.0)], t_end=b(218.0), facing=40)          # he stays behind - his DR pool
 go(EL, [(1.4, 3.1)], t_end=b(226.0), facing=-60)         # the trio
 go(AN, [(2.3, 2.6)], t_end=b(226.5), facing=-60)
-go(PH, [(2.0, 1.6)], t_end=b(227.0), facing=-50)
+go(PH, [(0.9, 2.2)], t_end=b(227.0), facing=-50)
 go(EL, [(0.8, 3.4)], t_end=b(257.0), facing=0)           # the Schuyler motif
 go(AN, [(1.6, 3.4)], t_end=b(257.0), facing=0)
 leave(EL, 'W-MSL', t_start=b(266.3), extra=[(3.0, 1.6)])
 leave(AN, 'W-MSL', t_start=b(268.6), extra=[(3.6, 2.2)])
-leave(PH, 'W-MSL', t_start=b(266.6))
+leave(PH, 'W-MSL', t_start=b(264.8), extra=[(2.4, 2.4)])
 go(H, [DESK], t_end=b(271.0), facing=0)                  # alone at the desk into the dark
 
 # ======================================================================= 2-04 SAY NO TO THIS
@@ -315,11 +310,11 @@ leave(H, 'W-DSR', t_start=s(236.2))
 # (REVIEW: "the ensemble stands on the second floor and shouts down at Hamilton", also after the kiss -
 #  ironinkpen staging notes; the writer's revolving deck ring is replaced)
 SN_POS = {  # body: (gallery route, destination); entry order = list order (farthest first)
-    'ens2': ('srarm', (-6.15, 2.0, 'g')), 'ens8': ('srarm', (-6.15, 0.6, 'g')),
-    'ens7': ('slg', (4.9, 1.8, 'g')), 'ens5': ('slg', (4.9, 0.0, 'g')),
-    'ens1': ('usg', (-3.4, -3.35, 'g')), 'ens10': ('usg', (3.4, -3.35, 'g')),
-    'ens3': ('usg', (-2.0, -3.35, 'g')), 'ens9': ('usg', (2.0, -3.35, 'g')),
-    'ens6': ('usg', (-0.6, -3.35, 'g'))}
+    # REVIEW 2: six, not nine - one on the SR arm, one on the SL gallery, four along the USG
+    'ens2': ('srarm', (-6.15, 1.2, 'g')),
+    'ens7': ('slg', (4.9, 1.0, 'g')),
+    'ens1': ('usg', (-3.2, -3.35, 'g')), 'ens8': ('usg', (3.4, -3.35, 'g')),
+    'ens3': ('usg', (-1.4, -3.35, 'g')), 'ens5': ('usg', (2.0, -3.35, 'g'))}
 SN_ROUTE = {'srarm': [(-4.5, -3.3, 'g'), (-4.5, -0.7, 'g'), (-6.15, -0.7, 'g')],
             'slg': [(4.75, -3.3, 'g'), (4.9, -2.6, 'g')], 'usg': []}
 def sn_on(t_first, look_at, label=False):
@@ -410,86 +405,51 @@ leave(H, 'D-UC', t_start=r(271.6), extra=[(0.4, -2.0)])
 leave(J, 'D-UC', t_start=r(272.4), extra=[(1.25, -1.2)])
 leave(M, 'D-UC', t_start=r(273.4), extra=[(-0.2, -1.0), (0.6, -2.6)])
 
-# the company
-# R1 50.06: a line downstage with Burr; four upstage flanking the table
-R1 = {'ens1': (-4.2, 3.8), 'ens3': (-2.8, 3.8), 'ens5': (-1.4, 3.8), 'ens7': (1.4, 3.8), 'ens9': (2.8, 3.8),
-      'ens10': (4.2, 3.8), 'ens2': (-2.6, -1.2), 'ens4': (-1.6, -2.0), 'ens6': (1.6, -2.0), 'ens8': (2.6, -1.2)}
-R1via = {'ens1': 'W-DSR', 'ens3': 'W-DSR', 'ens5': 'W-DSR', 'ens7': 'W-DSL', 'ens9': 'W-DSL', 'ens10': 'W-DSL',
-         'ens2': 'D-UC', 'ens4': 'D-UC', 'ens6': 'D-UC', 'ens8': 'D-UC'}
-R1t = {'ens1': 49.6, 'ens3': 50.0, 'ens5': 50.4, 'ens7': 50.4, 'ens9': 50.0, 'ens10': 49.6,
-       'ens2': 46.0, 'ens4': 47.5, 'ens6': 49.0, 'ens8': 50.5}
-for k, a in enumerate(E):
+# the company (REVIEW 2, Jack's verdict): EIGHT bodies (ens1-ens8), not ten, in the shapes ETC's renders of Binkley's real
+# cues show (THPP Cue Photos 866-890; research/seg5pics): a line of four with Burr DS (866); four a side down the
+# sides of the room with the table between them (867, 868, 870, 872, 876.1, 882 all show the same side groups);
+# two fanning lines (884); four round the table (885); a horseshoe round the table with Burr in front (890).
+# CUT (invented): the crossing diagonal lines in the three choruses, the arc during Jefferson's account, the
+# chess-game ring of eight and its closing, the 194 re-form, the 256.6 loose ring, and the walked 72-degree revolve.
+# R1 50.06 "Company vocal": a line of four downstage, Burr in the middle of it
+R1 = {'ens1': (-3.2, 3.8), 'ens3': (-1.6, 3.8), 'ens5': (1.6, 3.8), 'ens7': (3.2, 3.8)}
+R1via = {'ens1': 'W-DSR', 'ens3': 'W-DSR', 'ens5': 'W-DSL', 'ens7': 'W-DSL'}
+R1t = {'ens1': 49.6, 'ens3': 50.1, 'ens5': 50.1, 'ens7': 49.6}
+for a in R1:
     enter(a, R1via[a], R1[a], t_end=r(R1t[a]), facing=0, label=lab(a))
-# chorus 1 (71.9): "Ensemble X" - two diagonal lines, one SR one SL, that cross through each other
-A = ['ens2', 'ens5', 'ens3']
-Bl = ['ens8', 'ens7', 'ens9']
-FL = ['ens4', 'ens6']
-CO = ['ens1', 'ens10']
-A0 = [(-2.4, 1.3), (-3.1, 2.4), (-3.8, 3.5)]
-B0 = [(2.7, 1.85), (3.4, 2.95), (4.1, 4.05)]
-FL0 = [(-1.0, -2.2), (1.0, -2.2)]
-CO0 = [(-4.8, 4.6), (4.8, 4.6)]
-def lines(t_set, t_a, t_b, a_starts_sr, fl=True):
-    for i, a in enumerate(A):
-        p = A0[i] if a_starts_sr else (-A0[i][0], A0[i][1])
-        go(a, [p], t_end=t_set + 0.15 * i, facing=0)
-        go(a, [(-p[0], p[1])], t_start=t_a + 0.2 * i, t_end=t_a + 6.0 + 0.2 * i, facing=0)
-    for i, a in enumerate(Bl):
-        p = B0[i] if a_starts_sr else (-B0[i][0], B0[i][1])
-        go(a, [p], t_end=t_set + 0.15 * i, facing=0)
-        go(a, [(-p[0], p[1])], t_start=t_b + 0.2 * i, t_end=t_b + 6.0 + 0.2 * i, facing=0)
-    if fl:
-        for i, a in enumerate(FL):
-            go(a, [FL0[i]], t_end=t_set + 0.3 * i, facing=0)
-        for i, a in enumerate(CO):
-            go(a, [CO0[i]], t_end=t_set + 0.3 * i, facing=0)
-lines(r(71.9), r(76.0), r(79.0), True)
-# 97: Jefferson's account - the lines drift up to an arc on the outer ring and hold, watching him DSL
-ARC_A = [ring(3.2, th) for th in (45, 70, 95)]      # A ended SL
-ARC_B = [ring(3.2, -th) for th in (45, 70, 95)]     # B ended SR
-for i, a in enumerate(A):
-    go(a, [ARC_A[i]], t_end=r(100.0 + 0.2 * i), facing=face(ARC_A[i], (3.0, 3.7)))
-for i, a in enumerate(Bl):
-    go(a, [ARC_B[i]], t_end=r(100.0 + 0.2 * i), facing=face(ARC_B[i], (3.0, 3.7)))
-# chorus 2 (118.4): the lines again, from the other sides
-lines(r(118.4), r(120.5), r(122.5), False, fl=False)
-# 129.5 the chess game: eight in a ring round the table, two in the DS corners
-RING8 = [ring(2.3, 22.5 + 45 * k, 0.0, 0.2) for k in range(8)]
-mc = form(E, RING8 + [(-4.0, 3.9), (4.0, 3.9)], t_end=r(130.0),
-          facing=lambda p: face(p, TABLE) if p[1] < 3.5 else (30 if p[0] < 0 else -30))
-# 165.3 the trade: the ring closes in on the table
-RING8b = [ring(1.9, 22.5 + 45 * k, 0.0, 0.2) for k in range(8)]
-inring = [a for a in E if mc[a] in RING8]
-form(inring, RING8b, t_end=r(166.5), facing=lambda p: face(p, TABLE))
-# chorus 3 (176.8): the crossing lines a third time
-lines(r(177.6), r(180.0), r(182.5), True)
-# 193.8 click-boom / 196.3 to the table / 198.9 Burr-Ham DR: the company to the sides of the room
-R6 = [(-3.4, -0.6), (-3.1, 0.5), (-2.9, 1.6), (-1.6, -1.8), (3.4, -0.6), (3.1, 0.5), (2.9, 1.6), (3.4, 2.8),
-      (1.6, -1.8), (0.0, -3.0)]
-m6 = form(E, R6, t_end=r(194.0), stagger=0.05, facing=lambda p: face(p, TABLE))
-for k, a in enumerate(E):
-    stand(a, r(200.0 + 0.1 * k), facing=face(m6[a], (-2.7, 3.2)))   # they call his name at Burr
-# 256.6 PD: a loose ring round Burr in the build
-R7 = [(-3.2, 3.0), (-2.0, 1.4), (-3.0, 0.4), (-2.0, -1.0), (3.0, 0.4), (2.0, 1.4), (3.2, 3.0), (2.6, -1.0),
-      (-1.2, -2.2), (2.8, -1.7)]      # (REVIEW: kept clear of the table trio and their way out upstage)
-form(E, R7, t_start=r(249.0), stagger=0.2, facing=lambda p: face(p, (0.0, 2.6)))
-# 277.9 Art of Bink: two lines fanning out downstage from the table, Burr up on it
-srl = [(-1.4, -0.4), (-2.2, 0.2), (-2.9, 0.9), (-3.4, 1.8), (-3.8, 2.8)]
-R8 = srl + [(-p[0], p[1]) for p in srl]
-m8r = form(E, R8, t_end=r(277.9), stagger=0.05)
-# 284.4 the women's line - four step in to a V under the table
-WOMT = {srl[1]: (-1.0, 0.9), srl[2]: (-1.7, 1.7), (-srl[1][0], srl[1][1]): (1.0, 0.9), (-srl[2][0], srl[2][1]): (1.7, 1.7)}
-for a in E:
-    if m8r[a] in WOMT:
-        go(a, [WOMT[m8r[a]]], t_end=r(285.0), facing=0)
-        go(a, [m8r[a]], t_start=r(291.4), t_end=r(294.0), facing=0)
-# 296.9 the dance: a ring of ten on the outer turntable that revolves, Burr inside it
-RING10 = [ring(3.2, 18 + 36 * k) for k in range(10)]
-form(E, RING10, t_end=r(298.5), stagger=0.05, facing=lambda p: face(p, (0, 0.95)))
-for a in E:
-    revolve_by(a, 3.2, 72, r(301.0), r(311.0), step=36, facing=0)
+# 71.9 "Ensemble X on chairs": the line crosses up to the sides of the room and four more come on - four a side
+SIDE = {'ens1': (-3.5, 1.9), 'ens3': (-3.1, 0.9), 'ens2': (-2.6, -0.3), 'ens4': (-1.9, -1.6),
+        'ens7': (3.5, 1.9), 'ens5': (3.1, 0.9), 'ens6': (2.7, -0.3), 'ens8': (1.9, -1.6)}
+SIDEvia = {'ens2': 'W-USR', 'ens4': 'D-UC', 'ens6': 'W-MSL', 'ens8': 'D-UC'}
+LOOKC = (0.0, 1.5)
+for k, a in enumerate(['ens1', 'ens3', 'ens5', 'ens7']):
+    go(a, [SIDE[a]], t_start=r(71.9 + 0.2 * k), facing=face(SIDE[a], LOOKC))
+for k, a in enumerate(['ens2', 'ens6', 'ens4', 'ens8']):
+    enter(a, SIDEvia[a], SIDE[a], t_end=r(74.0 + 0.3 * k), facing=face(SIDE[a], LOOKC), label=lab(a))
+# they hold the sides of the room to Burr's build, turned to whoever has the moment
+for when, at in [(97.3, (3.0, 3.7)), (118.6, LOOKC), (144.2, (-3.0, 3.7)), (155.2, TABLE), (194.0, LOOKC),
+                 (199.2, (-2.7, 3.2)), (244.0, (0.0, 2.4)), (272.0, (0.0, 4.3))]:
+    for k, a in enumerate(E8):
+        stand(a, r(when + 0.1 * k), facing=face(SIDE[a], at))
+# 277.9 "Art of Bink": two lines fanning out downstage from the table, Burr at it
+srl = [(-1.4, -0.4), (-2.2, 0.4), (-2.9, 1.3), (-3.5, 2.3)]
+LN = {'ens4': srl[0], 'ens2': srl[1], 'ens3': srl[2], 'ens1': srl[3]}
+for a, b2 in [('ens8', 'ens4'), ('ens6', 'ens2'), ('ens5', 'ens3'), ('ens7', 'ens1')]:
+    LN[a] = (-LN[b2][0], LN[b2][1])
+for k, a in enumerate(E8):
+    go(a, [LN[a]], t_start=r(275.8 + 0.1 * k), t_end=r(277.9 + 0.05 * k), facing=face(LN[a], (0.0, 3.0)))
+# 284.4 "Girls Diamonds&Lace": the second and third of each line step in round the table, back for the cloth pull
+VT = {'ens2': (-0.8, 0.55), 'ens3': (-1.3, 1.15), 'ens6': (0.8, 0.55), 'ens5': (1.3, 1.15)}
+for a in VT:
+    go(a, [VT[a]], t_end=r(285.0), facing=face(VT[a], TABLE))
+    go(a, [LN[a]], t_start=r(291.4), t_end=r(293.8), facing=face(LN[a], (0.0, 3.0)))
+# 296.9 "Dance": a horseshoe round the table, open downstage, Burr in front of it
+HS = {'ens1': -145, 'ens3': -110, 'ens2': -70, 'ens4': -30, 'ens8': 30, 'ens6': 70, 'ens5': 110, 'ens7': 145}
+for k, a in enumerate(E8):
+    p = ring(2.0, HS[a], 0.0, 0.3)
+    go(a, [p], t_end=r(298.5 + 0.05 * k), facing=face(p, (0.0, 2.6)))
 # the button, then out in the blackout
-for k, a in enumerate(E):
+for k, a in enumerate(E8):
     p = cur(a)
     if p[1] < -0.5:
         via = 'D-UC'
@@ -506,23 +466,25 @@ if __name__ == '__main__':
     print({a: len(L) for a, L in W.items()}, sum(len(L) for L in W.values()))
 
 NOTES = (
- "Segment 5 (2-01..2-05). Research, sources and the review: research/seg5.md. Generated by scratchpad seg5gen.py. "
- "2-01 What'd I Miss: Burr recaps DSC and leaves SR; company in an upstage arc, a fan turned to the gallery top centre, "
- "scrubbing low as Jefferson appears TOP CENTRE on the USG and comes down the SL stair (the real rolling staircase parks "
- "at the SL balcony and rolls centre - PLSN, Korins) to DSC; party V, the letter (Sally = ens6), a ring travel for the "
- "journey north, Madison enters DR, Hamilton and Washington appear DL together for the welcome. "
+ "Segment 5 (2-01..2-05). Research, sources and the reviews: research/seg5.md. Generated by tools/blocking/seg5gen.py. "
+ "REVIEW 2 (Jack: the ensemble is used too much): eight ensemble (ens1-8), not ten; invented formations cut. "
+ "2-01 What'd I Miss: Burr recaps alone DSC and leaves SR; the company (8) comes on for the build to Jefferson and waits on "
+ "the floor, kneels scrubbing as Jefferson appears TOP CENTRE on the USG and comes down the SL stair (the real rolling "
+ "staircase parks at the SL balcony - PLSN, Korins; ironinkpen, WatchMojo), then stays in place and watches; Sally (ens6) "
+ "brings the letter; Madison enters DR, Hamilton and Washington appear DL together for the welcome; one line for the final build. "
  "SIDES (Jack's revision-5 ruling): Jefferson+Madison STAGE RIGHT, Hamilton STAGE LEFT, Washington with Hamilton's side. "
- "2-02 Cabinet Battle #1: Washington MCs at the DSC mic then sits in a chair at the SL arm of a V of chairs opening to "
- "the house, the ensemble seated in the V (staging notes; chairs not modelled); debaters' pools at x -/+1.3 z 3.7; "
+ "2-02 Cabinet Battle #1: Washington MCs at the DSC mic then sits in his chair at the SL vertex of a V of chairs opening to "
+ "the house, the eight seated in the V (ironinkpen; chairs are props); debaters' pools at x -/+1.3 z 3.7; "
  "Virginians exit DSR; Washington and Hamilton DC; Washington exits through the upstage door. "
- "2-03 Take a Break: desk SR of centre (THPP 'Desk Mid SR'), piano SL of centre riding the inner turntable at the top; "
+ "2-03 Take a Break (no ensemble): desk SR of centre (THPP 'Desk Mid SR'), the piano SL of centre (a prop; Philip at the keys); "
  "Angelica on the USG, down the SL stair at 164-177; Philip's poem DSC; family exits SL. "
- "2-04 Say No: desk, Burr SR, Maria SL from the THPP cue photos 782/784; her door SL in her key (ch13); James Reynolds (ens4) DR where preset 769 points (spotlight pass); the company on the "
- "galleries (USG, SR arm, SL gallery) for both choruses (staging notes). "
- "2-05 Room: THPP cue photos 864.01-892 (table USC with Jefferson SL / Madison SR / Hamilton upstage of it, Burr+Ham DR "
- "at 872, Hamilton back to the table at 874, the three at the table through 882 then out upstage, Burr at the table at "
- "884, the women's V at 885, Burr DC at 892); the chair choreography is not modelled, the 'Ensemble X' is two "
- "crossing diagonal lines matching the side lines in photos 867/868; Burr stands at deck level where the table is."
+ "2-04 Say No: desk, Burr SR, Maria SL and three street lamps from the THPP cue photos 782/784; her door SL in her key (ch13); "
+ "James Reynolds (ens4) DR where preset 769 points; six of the company on the galleries (USG, SR arm, SL gallery) for both "
+ "choruses (ironinkpen). "
+ "2-05 Room: THPP cue photos 866-892 - a line of four with Burr DS (866), four a side down the sides of the room (867-882), "
+ "the round table USC with Jefferson SL / Madison SR / Hamilton upstage of it, Burr+Ham DR at 872, Hamilton back to the table "
+ "at 874, the three out upstage on 882, two fanning lines (884), four round the table (885), a horseshoe round the table "
+ "for the dance (890), Burr DC at 892; Burr stands at deck level where the table is."
 )
 if __name__ == '__main__':
     import os

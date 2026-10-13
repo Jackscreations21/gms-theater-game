@@ -216,3 +216,107 @@ The new close passes this caused were fixed: Jefferson's spot in 2-12 at 44.5; E
 - Vipers 2 and 5 at 0.4 in 1017, the turntable breakup.
 - Philip enters at C at 2-16 1.72 (fan account) and walks into Viper 93 (DS AREA) by about 10 s.
 - The "Travel DS" X4 fan, which lights the three as written.
+
+
+## Review 2 (Jack's verdict)
+
+Jack's verdict was that the ensemble is used too much and much of the choreography is wrong. This pass edited `seg7_gen.py` and the SEGMENT 7 section of `props.py`. Every change is marked `REVIEW 2`. The pre-pass copies are in `scratchpad/act/review2/seg7/orig/`. Merge `--check` on seg7 alone: **0 errors, 0 warnings, 743 waypoints** (was 889).
+
+The generator's own sampler reports only the long-standing items:
+- the mother lift in 2-13, 103.5-114, which is deliberate;
+- the King on the SR stair in 2-14;
+- an off-to-off FAST leg for Maria.
+
+`props.py --check` gives `ok` on every seg 7 carry. The old 2-16 desk pick-up warning, where Hamilton was 1.8 m away, is fixed: he now passes the desk on his way off.
+
+The ruled boundaries are unchanged:
+- the King at (0, 3.41) at 2-11 0, walking to UL in the dark;
+- Philip at (-0.4, 2.4) facing 180 at 2-16 172.5;
+- Eacker at (1.6, -1.0) facing 180 at 2-16 172.5.
+
+No spotlight placement of a principal was moved.
+
+### Evidence (re-read this round)
+- ironinkpen Act II: https://ironinkpen.tumblr.com/post/136585710522/neat-little-hamilton-staging-things-act-ii
+  - Hurricane: the ensemble is "initially gathered around Hamilton", then moves like the wind as the stage spins.
+  - Blow Us All Away: the women SR; the chairs SL facing SR for the play's audience.
+- hamilton-lyrics, Act 2 highlights (the King's stool brought out; ensemble women swooning in Blow Us All Away): https://hamilton-lyrics.tumblr.com/post/136891099523/highlights-from-the-staging-of-hamilton-act-2
+- hamilton-lyrics, The Reynolds Pamphlet: https://hamilton-lyrics.tumblr.com/post/139520343979/the-reynolds-pamphlet-staging
+  - The crew bring on the desk, his chair behind it and **an extra chair in front of it**.
+  - Four of the company close round the desk.
+  - The Burn bench is "already in place" as the men exit.
+- Backstage on Blankenbuehler (the ensemble swivels round him on the turntable, furniture overhead; the men's "cockroach" crawl): https://www.backstage.com/magazine/article/inside-choreographic-storytelling-hamilton-6542/
+- newtfire libretto, Blow Us All Away. The speakers are PHILIP, ENSEMBLE, **MARTHA, DOLLY**, COMPANY, GEORGE, HAMILTON and MALE/FULL ENSEMBLE. No second is named. https://newtfire.org/hamilton/16_BlowUsAllAway.html
+- ETC "THPP - Cue Photos" renders 1039.01, 1040, 1040.1, 1042 and 1044 (rendered in `review/seg7/pdf/`):
+  - Build MC: the three at centre in front of Hamilton, with a horseshoe of about 6-8 round them.
+  - King DR and "Pigs and Shit": the horseshoe widened to about 8 round the centre group.
+  - The Pamphlet's 8-body horseshoe matches these, and is kept.
+- No production still or film description was found for The Adams Administration, Hurricane or Blow Us All Away. Searched: Disney+ scene breakdowns, Dance Magazine (403), the fandom wiki (402).
+
+### Per track
+- **2-11 The Adams Administration: ensemble 7 -> 0.**
+  - The writer's line of seven at z -1.0, who looked up at the gallery and scattered at the papers drop, is **cut**. It was marked INVENTED, and both eyewitness accounts name only the following:
+    - the King on his stool;
+    - Burr DSR;
+    - Hamilton dropping the papers from the gallery;
+    - Jefferson and Madison.
+  - The company's hits are sung unseen.
+  - Furniture: the King's stool, set UL in the dark, which he takes off with him. It is unchanged; hamilton-lyrics confirms that a stool is "brought out".
+- **2-12 We Know: ensemble 0 -> 0.** The four principals and Hamilton's desk, as the fan account has them. Unchanged.
+- **2-13 Hurricane: storm ring 10 -> 8.** Ten bodies still touch the stage, because ens9 and ens10 come on only at the decision to carry furniture.
+  - The ring now **starts gathered round him** at r 1.9, frozen at the still point (11.88). On the storm memory (23.76-34.33) it is flung out to the outer ring, r 3.2, while revolving. It keeps the writer's revolves for the town and the montage: Korins' turntable, Blankenbuehler's "swivel round him".
+  - Cut:
+    - the writer's swirl-on at r 3.2;
+    - ens9 and ens10 on the ring;
+    - the +60 degree "stir" of the remaining ring after 116.28, which walked ens1 across Maria's path.
+  - The base angles are rotated so that the mother (ens6) and her two bearers (ens7, ens8) end the montage SR, next to where she is carried off. Each member enters from the wing nearest their ring place.
+  - The crawl is kept: ens2 and ens4, "the men crawling backward". It is still on the DS edge, a placement nobody has verified. The two now start in the other order, so that they do not cross.
+  - The decision (hamilton-lyrics): four close round the desk.
+    - ens1, ens3 and ens5 come from the ring.
+    - ens9 is the fourth. She **brings the desk on** from D-UC and sets it at (0, 1.9).
+    - ens10 brings **his chair** from D-UC and sets it at (0, 0.25), behind him at C. Maria steps back to (0, -0.45) so that the chair goes between them.
+    - ens8 brings the **extra chair** from SL and sets it at (0.7, 2.6), facing the desk.
+  - Not added: the British officer and American soldier crossing in the montage (ironinkpen). That is possible later, but it would add bodies.
+- **2-14 The Reynolds Pamphlet: ensemble 10 -> 10, kept.**
+  - The horseshoe of 8, the USG reader ens10 and James Reynolds (ens4) are kept. It is the best-sourced number in the segment (hamilton-lyrics, scene by scene, and the ETC renders).
+  - Changes are for the furniture only:
+    - Angelica enters through the gap at 12 o'clock and round his chair.
+    - She now exits **SL through the circle's gap** (W-MSL), instead of back through the desk and chair.
+    - Maria stands behind the chair at (0, -0.4).
+  - Washington takes the extra chair off SL as he goes (50.5), which clears the front of the desk for the desk-arch.
+  - Hamilton takes his own chair off upstage at 115.66.
+  - ens1 takes the desk off SL as the company clear (120.1).
+  - The Burn bench and bucket are set at 121.0, behind the three as they Travel DS: the bench is "already in place" (hamilton-lyrics).
+- **2-15 Burn: no ensemble, unchanged.** Eliza alone, with the bench, lantern and bucket. Only the bench and bucket's set time moved, to 2-14 121.0.
+- **2-16 Blow Us All Away: up to 10 at once -> up to 7 (party 9 -> 2; duel 9 -> 0).**
+  - The party of nine is **cut** (INVENTED).
+  - Kept are the two women Philip goes SR to ask, **Dolly and Martha** in the libretto: ens6 and ens7, from the top to about 41. The cast file allows them no head label, so they show as Ensemble 6/7.
+  - The theatre (ironinkpen):
+    - ens1-4 each **bring a chair** on from SL (49-51) and sit as the play's audience, facing SR.
+    - They turn to the quarrel and take their chairs off again at 73-76.
+    - The rows are at x 1.6 and 3.0, with the chairs 0.7 m behind each sitter at x 2.3 and 3.7.
+  - The play is ens9 and ens10 at centre, entering at about 50 from SR. The count of two is still invented.
+  - Eacker's box on the SL gallery is unchanged.
+  - The duel's **seconds (ens2, ens3) and seven watchers** (five on the USG, two on the deck) are **cut**. All were INVENTED; the libretto names no second; the fan account has only the two on the spinning platform. The count is the company's, unseen.
+  - The 2-16 office desk is unchanged; Hamilton brings it in. He now exits **upstage via the desk** (D-UC), not SL, so that he takes it off as he goes.
+
+### Furniture (props.py SEGMENT 7) and who carries it
+
+| Prop | Carried on | Carried off |
+|---|---|---|
+| hamilton-desk, 2-12 | Hamilton, from D-UC | Madison, W-MSL |
+| hamilton-desk, 2-13/14 | **ens9, D-UC** | **ens1, W-MSL, 2-14 120.1** |
+| hamilton-desk, 2-16 | Hamilton | Hamilton, D-UC, 139.2 |
+| **pamphlet-chair** (his chair) | ens10, D-UC, 2-13 138.2 | Hamilton, D-UC, 2-14 115.7 |
+| **pamphlet-chair-2** (the extra chair) | ens8, W-MSL, 2-13 134.4 | Washington, W-MSL, 2-14 50.5 |
+| king-stool | set in the dark | the King |
+| burn-bench, burn-bucket | set at 2-14 121.0 | struck in the dark after Burn |
+| burn-lantern | Eliza | Eliza |
+| **theatre-chair-1...4** | ens1-4, 2-16 about 49-51 | the same four, 73-76 |
+
+### Not verifiable: the simplest staging was chosen
+- The Hurricane crawl's placement.
+- The ring's exact radii.
+- The size of the 2-16 play's cast.
+- Whether the King dances on the SR or the SL balcony in the Pamphlet. hamilton-lyrics says "stage left"; the King DR cue lands SR, so SR is kept.
+- Eliza standing inside the bench footprint at 2-15 119.5 is a spotlight-pass placement, and is left.

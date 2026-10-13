@@ -346,3 +346,124 @@ Wave 3, the spotlight pass. Changes are in the generator only (`seg1work/t101.py
   - Burr passing through Hamilton's key as he enters at 1-06 Q177
   - crowd bodies passing the herald's special and the red disc during the 1-06 clear
 - **1-01 Q47 to Q51:** ch13 is off, so Hamilton is unlit there by design.
+
+## Review 2 (Jack's verdict)
+
+Jack watched 1-01 to 1-05 and gave notes per song; for 1-06 and anything his notes do not cover, his general verdict is
+that the ensemble is used too much and the invented formations are wrong. All changes are in the generator
+(`tools/blocking/seg1/t101.py`–`t106.py`, `lib.py`, marked `REVIEW2`) and in segment 1's section of
+`tools/blocking/props.py`. The pre-change files are backed up in `scratchpad/act/review2/seg1/backup/`.
+Result: 819 waypoints (was 1288). `blocking-merge.py --check` gives 0 errors; its one warning is another segment's
+(`king-stool`). `lib.check()` leaves only sub-second passes at 0.26 m or more, and the run in 1-05 (3.0 m/s, wanted).
+
+### Sources this round
+- https://ironinkpen.tumblr.com/post/136570471307/neat-little-hamilton-staging-things-act-i (re-read for furniture):
+  - the opening has a chair at centre, with the cousin on it;
+  - in My Shot, Laurens stands on a table and Hamilton stands on things;
+  - in The Story of Tonight, only the four are on stage;
+  - The Schuyler Sisters has the street-walk turntable;
+  - in Farmer Refuted, Seabury is on a soapbox, Burr holds Hamilton back and later pulls him away, and Seabury moves
+    the soapbox away from Hamilton.
+- https://hamiltonsideblog.tumblr.com/post/137020626930/hamilton-staging-notes: Burr sits at the back reading in My Shot.
+- Binkley's own Eos presets in `assets/hamilton-eos.json`: 42 "Cntr Table", 45 "Cntr table", 43 "inner table",
+  767 "Table USC", 768 "DS table", 805 "tight table", 606 "chairs", 703 "surround chairs", and 615/730/947 "desk". So
+  the production has a centre table and chairs, but the presets do not say which number uses which.
+- The show file's cue 80 (1-02): "a warm spill SL where the practical street lamp stands … Disney+ frames".
+- Tried and unusable:
+  - The ETC cue-photo PDF is 325 MB, beyond the reader's 100 MB limit, and this machine has no PDF tool.
+  - A search for Farmer Refuted staging found only the song's Wikipedia page and LitCharts, which say nothing about
+    the crowd.
+
+### Per track
+- **1-01** (ensemble 10 → 10, Jack's notes):
+  - The show clock's 10 s lead-in is used. Burr walks on from DSR between −8.0 and −3.5 and is standing in his AF when
+    the music starts at 0.
+  - The six deck ensemble start walking on at 36.0, just after Jefferson's verse starts (Q39 33.5). They walk at about
+    0.85 m/s, staggered 0.7 s, and are in their pools by about 46.
+  - The gallery four come through the passage from 36.4, 1.4 s apart, at the same pace. Q39 is where the cue warms the
+    gallery.
+  - CUT: the hurricane swirl on the outer ring. It was marked invented, and it clashed with the later entrance. The six
+    hold their pools through Q40 and Q41.
+  - Furniture: the cousin's chair (fan account), preset UC by the SL stair foot at (1.6, −2.75) from the lead-in. The
+    cousin (ens3, fixed now) carries it to (0, 0.35) for Washington's verse and stands on it.
+  - Jack's table:
+    - ens7 carries a table (1.2 × 0.6) on from W-DSR, with ens6 beside him, round Lafayette. It is set at (0, 1.6) at
+      129.4, just before Q51.
+    - Hamilton comes round its SL end and works at it from 130.8, standing at C with the chair behind him. Laurens
+      brings the pack to the table's SL side.
+    - At Q52 (141.3) ens7 takes the table off DSR and ens6 the chair. They come back for the New York burst (Q53).
+    - The ship is made of the other eight.
+  - The mother and her carrier now leave DSR round Lafayette. Their MSR line crossed the SR stair.
+  - Burr's Q51 place moved to (−3.0, 4.4), out of the carriers' path.
+- **1-02** (ensemble 8 → 0, Jack's note):
+  - No ensemble.
+  - At Q86 Laurens carries the picnic table (1.8 × 0.7) on from W-DSL, with Lafayette on its downstage side and Mulligan
+    upstage. It is set DSC at (0, 3.3) at 88.0.
+  - Each verse is played at the table and inside the spotlight pass's pools:
+    - Laurens at its SL end (1.75, 3.35), in ch51
+    - Lafayette at its SR end (−1.75, 3.2), in ch48
+    - Mulligan behind it at (0.4, 2.45), in ch50
+  - For the toast the four stand round the table. On Q93 Hamilton stands in ch13, just upstage of it.
+  - Other furniture, both set in the 1-01 blackout:
+    - a street lamp (custom, 0.3 × 2.2 m) at (3.6, 2.2) SL, from cue 80's "practical street lamp";
+    - the tavern chair UR, for Burr.
+- **1-03** (ensemble 10 → 5, Jack's note):
+  - Five of the company (ens1, 4, 5, 8, 10) come on at Q106 and watch from a loose group upstage of him. They face front
+    for the choruses.
+  - At Q123 they go off. The four friends wander the room at random until Q124: a seeded stroll at about 1 m/s, clear of
+    the table, the lamp and each other.
+  - The five come back on at Q131 and stay to the end.
+  - CUT (all marked invented):
+    - the opening V
+    - the chorus-2 revolve
+    - the everyone-line on Q123 and Q137
+    - the flying V
+    - the marching rows
+    - the death-verse ring
+    - the Q131 ring
+  - The picnic table stays DSC all song:
+    - Laurens stands on it for his verse (fan account; Q115's ch50 lands on it). On Q118 he steps down to (1.25, 3.85),
+      still in ch50.
+    - Hamilton's verse-1 crosses are pulled up to z 2.5, behind the table.
+    - On Q132 ("Cntr Table") Hamilton writes at it.
+  - Burr walks to his chair UR at the top and reads until his verse. He then comes down the SR side into his AF, clear of
+    the stair and of Lafayette.
+  - The death verse is Hamilton alone in ch13 at (0, 1.15), with the friends frozen apart.
+  - In the blackout ens8 strikes the table, ens10 the lamp and ens4 Burr's chair. The 1-04 candle table and chairs are
+    set as before.
+- **1-04**: unchanged (Jack: good).
+- **1-05** (ensemble 10 → 8, Jack's notes):
+  - Burr starts at W-USL and runs (3.0 m/s) to (−2.0, 4.15), in his AF DSR, from 0.2 to 4.4.
+  - On Q164 he backs off to the DSR corner (−4.3, 4.35) and watches the start of Angelica's solo. He walks off only at
+    Q166 (105.9).
+  - Eight of the company (ens1–8). Nobody enters from W-MSR now.
+  - Kept: the walk-on, the drift, the turntable carry (fan account) and the step-in at Q166.
+  - CUT: the anthem's marching rows and the counterpoint's 180° revolve. Instead the city stands in two loose groups
+    either side of the sisters and cheats in to them.
+  - On Q171 ens2 drifts to (2.4, 1.5), by where the box will be set.
+  - In the blackout ens4, ens6 and ens8 go. ens1, ens3, ens5, ens7 and Seabury stay for 1-06.
+- **1-06** (ensemble 10 → 5, counting Seabury):
+  - Four of the crowd stand round the box (was nine). The one nearest ch13 becomes the King's herald, as before.
+  - Kept, sourced by the fan account: the friends, and Burr holding Hamilton back and pulling him away.
+  - On Q184 Seabury carries his box away from Hamilton to (2.6, 2.0) and stands at it again (fan account). He strikes it
+    at the end, as before.
+
+### Furniture added (props.py, segment 1)
+
+| prop | brought on by | where | taken off by |
+|---|---|---|---|
+| `cousin-chair` | preset before the music | UC (1.6, −2.75) | ens3 carries it to centre (0, 0.35) at 109.4; ens6 takes it off DSR at Q52 |
+| `clerk-table` | ens7, with ens6 beside him | centre (0, 1.6) at 1-01 129.4 | ens7, off DSR at Q52 (141.3) |
+| `street-lamp` | set in the 1-01 blackout | SL (3.6, 2.2) | ens10, in the My Shot blackout |
+| `burr-chair` | set in the 1-01 blackout | UR (−3.54, −2.86) | ens4, in the My Shot blackout |
+| `picnic-table` | Laurens, with Lafayette and Mulligan either side | DSC (0, 3.3) at 1-02 88.0 | ens8, in the My Shot blackout |
+| `seabury-box` | already there: set in the 1-05 blackout | (1.4, 2.4) | Seabury moves it to (2.6, 2.0) at Q184, then strikes it |
+
+### Not verified; the simplest staging chosen
+- When Burr leaves after the rebuff in 1-05. Jack said only "too early"; Q166 is my choice.
+- The five in My Shot and their places. Jack gave the count and the cues; the places are a plain loose group.
+- Whether the company is on in Farmer Refuted at all. Q183 says the company shouts. Four bodies is the minimum that
+  reads as a crowd and still gives the herald.
+- The picnic table's spot DSC. It is chosen so that the verse pools sit at its ends and Laurens' Q115 pool lands on it.
+  Binkley's "Cntr Table" presets light a table nearer centre (about (0, 1.0–1.2)), probably for another scene.
+- The street lamp's exact place. The cue says only "SL".

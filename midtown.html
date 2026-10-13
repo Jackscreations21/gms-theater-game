@@ -5570,6 +5570,14 @@ function propPose(p, T) {
     const q = actPose(a, T), f = p.size[2] / 2 + PROP_HOLD.ahead;
     return { x: q.x + Math.sin(q.yaw) * f, y: q.y + Math.max(0.2, PROP_HOLD.waist - p.size[1] / 2), z: q.z + Math.cos(q.yaw) * f, yaw: q.yaw, visible: q.visible && !w.off, carrier: a.id };
   }
+  // THE GLIDE (RULING FT): between two consecutive PLACED waypoints (neither carried, neither off) the prop moves in a straight
+  // line and turns the short way, linearly in time from the first's time to the second's — a piece riding the turntable or
+  // pushed across. An `off` or a carry on either side breaks it (the piece then holds, as before).
+  const n = P[lo + 1];
+  if (!w.off && n && !n.byId && !n.off && n.T > w.T + 1e-6) {
+    const f = (T - w.T) / (n.T - w.T), x = w.x + (n.x - w.x) * f, z = w.z + (n.z - w.z) * f;
+    return { x, y: actFloor(x, z, w.y + (n.y - w.y) * f), z, yaw: actYawLerp(w.yaw, n.yaw, f), visible: true, carrier: null };
+  }
   return { x: w.x, y: actFloor(w.x, w.z, w.y), z: w.z, yaw: w.yaw, visible: !w.off, carrier: null };
 }
 // Who carries what at show time T (FS: her arms hold it): actor id → prop. Pure: the props' waypoints and T.

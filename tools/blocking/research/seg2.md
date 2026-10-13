@@ -434,3 +434,172 @@ Confirmed:
 Left:
 - Hamilton "on the steps" in Q372 is 2 m from the UL pool that the reconstruction lights during the rap. This follows the write-up; he reaches the pool for Q376.
 - The VL3500 fans (Q288 in 1-08, Q386 here) are beams over the company, so they were not treated as person specials.
+
+
+
+## Review 2 (Jack's verdict)
+
+Jack said the ensemble is used too much and much of the choreography is wrong. The rule for this round: the ensemble is
+off unless evidence puts it on. Where there is no evidence, I chose the simplest staging. I edited the generator,
+`gen_seg2.py`. The copy from before this pass is `scratchpad/act/review2/seg2/gen_seg2.pre-r2.py`, with
+`seg2.pre-r2.json`. The props are in `props.py` SEGMENT_2.
+
+### Evidence used
+- **ETC "THPP – Cue Photos.pdf"** (Jack's Downloads), pages 6–26.
+  - **What they are:** Augment3d renders of Binkley's REAL cue states, with mannequins standing where the cue needs
+    bodies. The pages I used are labelled 190.01, 192, 193, 194, 196, 198, 200, 202, 202.01, 204, 204.01, 204.02, 274,
+    274.01, 278, 300.3, 302, 304, 366.01, 368 and 368.01.
+  - **Orientation:** the camera is in the house, so STAGE RIGHT IS ON THE LEFT of the picture. I checked this three ways:
+    the SR stair runs upstage on the left, the SL stair climbs to the right, and in 366.01 the near pool is the DR one.
+  - **What counts:** ETC keeps a stock set of figures on the galleries and the SR stair in every cue, so I ignored
+    those. Only deck figures that change from cue to cue count as evidence.
+  - The rendered pages are in `scratchpad/act/review2/seg2/pdf/`.
+- **Fan write-up of Helpless and Satisfied**, re-read in full this pass:
+  https://hamilton-lyrics.tumblr.com/post/139127842879/helpless-and-satisfied-staging . New from it this pass:
+  - In Two Weeks, Philip Schuyler sits in a chair on the turntable, and the sisters sit on a bench on the opposite side.
+  - At the end of A Winter's Ball, the men exit stage left.
+  - The ensemble women bring papers for Hamilton to sign.
+  - In Satisfied the ensemble stands in a semicircle at the back.
+  - In Satisfied a line of men turns Hamilton to face Eliza.
+- **Fan notes, Act I:** https://ironinkpen.tumblr.com/post/136570471307/neat-little-hamilton-staging-things-act-i
+  - The King is alone until he calls the others on.
+  - In Right Hand Man there is a desk, and Washington sits at it or stands by it.
+  - The soldiers leave Washington gradually (desertion).
+  - Hamilton and Philip Schuyler stand upstage on the turntable, facing away from the house.
+- I searched for a beat-by-beat account of Right Hand Man (the battle, the night march, the finale) and found nothing.
+
+### 1-07 You'll Be Back — ensemble 10 → 8 (on for 12 s, Q196 → Q198)
+- **The evidence:** photo 196 (a top-down render) shows **eight** figures standing on the X4 ring pools. There are four
+  a side, at 8–11 o'clock and 1–4 o'clock, and the downstage side is open for the King. Photo 198 has the King alone
+  again.
+- **Now:** ens2, ens3, ens6 and ens7 stand SR on ch60, ch59, ch53 and ch47. ens4, ens5, ens8 and ens9 stand SL on ch63,
+  ch64, ch58 and ch52. They stand still, facing him.
+- **Cut:** the ten-body semicircle behind him and its sway, both invented.
+- **King:** unchanged. Photos 192 and 193 have him UC inside the ring; photos 194, 198 and 200 have him DC.
+- **Not added:** photo 190.01 has two figures in the DS side pools (preset 203 "Kings men DS") for the first 7 s.
+  - Nobody knows who they are; they may be Hamilton and Seabury held over from Farmer Refuted.
+  - Adding them would need segment 1 to pre-set them in the 1-06/1-07 blackout.
+  - I left them out. This is a question for Jack.
+
+### 1-08 Right Hand Man — ensemble 10 → 8; Laurens, Lafayette and Mulligan out
+- **Top (Q202.01–Q204).**
+  - Photos 202, 202.01 and 204 show only a figure at the centre of the disc and the pair DR.
+  - Now: Hamilton stands at the centre (0, 0.6) from the transition. The spy (ens1) and the redcoat (ens5) are DR as
+    before.
+  - **Cut:** the two rows of the company marching forward, and the build. Both were invented.
+- **Q274.**
+  - Photos 274 and 274.01 show Washington at the head of a **single file** standing in the centre lane, with a figure
+    DSR of its head. That figure is Hamilton in 'Ham dsc'.
+  - Now: Washington and seven ensemble (ens2, 3, 4, 6, 7, 8, 10) walk down from the door in the red climax. They are
+    standing in the lane on the snap.
+  - **Cut:** the two-man file, and the company splitting to either side of the lane.
+- **Q278.**
+  - Photo 278 shows Washington in the path DC with Hamilton just SR of him. **Eight** figures stand in a loose block on
+    **stage LEFT**.
+  - The reconstruction's label said SR. The photo and the page's own Q278 pools both put the block SL.
+  - Now: the seven plus ens5 stand in a block SL, and Hamilton stands beside Washington.
+- **Battle (Q280–Q282.5) and night march (Q283.5).**
+  - No evidence supports the scatter, the cannon recoils, the retreat or the file across upstage. **Cut** all of it.
+  - I kept only what the fan note says: the soldiers desert Washington one by one, from 128 to 153, each to the nearest
+    SL wing.
+  - Hamilton goes off SR at 132. Washington is alone on Q283, in his shaft (unchanged).
+- **Tent:** unchanged. The spotlight placements of Washington, Burr and Hamilton are kept. The furniture is listed below.
+- **Finale (Q288).**
+  - **Cut:** the thirteen-body arc on the ring.
+  - The libretto gives the company the last chorus, and the reconstruction calls this "the big company look of the
+    stills". I found no picture of it.
+  - Simplest staging: the eight stand in one line upstage of the desk (z −1.6) from 302, and leave on the last line
+    (Q288.5). **Unverified.**
+
+### 1-09 A Winter's Ball — ensemble 10 → 8, and only from 42 s
+- **Cut:** the five ensemble men who stood behind Hamilton in the refrain (invented). Only Laurens, Lafayette and
+  Mulligan are round him now.
+- **The ball:** four couples (ens2/6, ens3/7, ens5/8, ens10/9) come on at Q292 and stand on the upstage half. There were
+  five. They start to turn only on Q293, when the fan write-up says "the turntable begins rotating".
+- **Sides flipped (the big correction).**
+  - Photo 300.3, Binkley's real top of Helpless, has the three women together **SR** and two men **SL**. The fan
+    write-up has the men leave SL.
+  - The earlier passes had it the other way round: the sisters SL and the men SR.
+  - Now: Burr is DL for the ball, and Hamilton goes back to him DL. Laurens and Mulligan dance off SL.
+  - On Q293 the sisters go round the downstage half, where no couple is, to SR.
+  - Eliza still enters into her lit pool far SL (ch14, the spotlight placement). She crosses on Q293, at a brisk pace.
+- Angelica's diagonal toward Hamilton (Lafayette at her side), the hand-kiss and the circle are now at centre / DL.
+
+### 1-10 Helpless — couples 5 → 4; the Two Weeks scene restaged
+- **Top.**
+  - Following photo 300.3, the sisters are SR, and Hamilton and Burr are SL and go off at once.
+  - **Cut:** Laurens, Mulligan and Lafayette standing SR at the top (invented), and Angelica's cross from DR to SL.
+  - Mulligan now enters only to sweep Peggy away, and Laurens only to take her. Both come from the write-up.
+- **Couples:** four, down from five. ens1 and ens4 are out. They still turn CCW in the same shape (Blankenbuehler).
+- **Two weeks (Q302–Q304), the evidence.**
+  - Photo 302: three figures at the downstage edge of the disc with their backs to the house, and two figures upstage SL.
+  - Photo 304: the three upstage centre, facing out.
+  - Both fan accounts: Schuyler in a chair on the turntable with the sisters on a bench opposite (hamilton-lyrics), and
+    the two men upstage on the turntable (ironinkpen).
+- **Two weeks, now.**
+  - The sisters sit on a **bench** at (0, 3.0), facing upstage.
+  - Hamilton and Schuyler face each other upstage on the disc. Schuyler's **chair** is at (2.0, −0.9).
+  - Eliza runs up to Hamilton and they swirl at centre. Her father turns away and back, then shakes Hamilton's hand.
+  - On Q304 the sisters walk up to the upstage centre spot of photo 304. In the real show the turntable carries the
+    bench round; the page cannot turn the disc, so the walk shows the half-turn.
+  - The men take their drink SL by the chair.
+- **Two weeks, changed from the spotlight pass.** That pass had put this scene in the Q302 viper keys, ch25 DR and
+  ch26 SL. The real photo does not, so those two keys now light nobody. This is a cue note for the cue team.
+- **Wedding.**
+  - Four women bring the papers (there were five).
+  - Four couples dance on the ring and make the aisle. There were five, with ens1 spare.
+  - The processional is unchanged.
+  - Washington had stood DS of the couple with his back to the house, an invented "officiant" place. He now stands at
+    the foot of the aisle SR.
+
+### 1-11 Satisfied — semicircle 14 → 10; ball couples 5 → 4
+- **Semicircle** (sourced: "the ensemble forms a semicircle along the back").
+  - Now: eight ensemble, with Washington and Lafayette.
+  - **Cut from it:** Burr, Mulligan, Philip Schuyler (ens4) and ens1. Mulligan and Schuyler leave at the top.
+- **Ball replay.**
+  - Four couples. Laurens no longer partners ens8; he goes off after the rewind and comes back for the men's line.
+  - **Cut:** Washington, Schuyler and Mulligan standing round watching the replay (invented).
+  - Washington now leaves after the rewind and comes back from DSR to dance with Angelica (sourced). He then goes round
+    outside the turning couples to the handshake at the steps.
+  - Burr comes on DR only for the replay. This is sourced: Hamilton goes to talk to Burr.
+- **Men's line:** Laurens and four ensemble; Lafayette is dropped. **Letters:** four women (there were five).
+- Everything else is unchanged: the rewind, the pools DR / UL, the counts, the fantasy, the rewind forward and the
+  ending.
+
+### Furniture (props.py SEGMENT_2)
+| prop | where | brought on | taken off |
+|---|---|---|---|
+| Washington's desk | (−0.35, 0.85), 1-08 tent and 1-09 | ens4, from W-USR, set at 1-08 174.0 (night-march light) | Washington, at 1-09 33.3 → W-USR (unchanged) |
+| Chair (Washington, the tent) — NEW | (−0.35, −0.45), behind the desk | ens10, from W-USR, set at 1-08 174.5 | hidden in the Right Hand Man blackout (1-09 0.2) |
+| Bench (the sisters) — NEW | (0, 3.0), facing upstage | ens1, from W-DSR, set at 1-10 114.0 as the letters end | Peggy, at 1-10 159.8 → W-DSL, as the room drops to the couple |
+| Chair (Philip Schuyler) — NEW | (2.0, −0.9), facing SR | ens4 as Schuyler, from W-MSL, set at 1-10 117.5 | ens4, at 1-10 163.9 → W-MSL |
+| Tavern table (for 1-12) | unchanged | Hamilton, at 1-11 328.5 | — |
+
+- The id `washington-chair` was already taken by segment 5's Cabinet Battle chair, so the tent chair is
+  `washington-tent-chair`.
+- Not modelled: the letters, Peggy's box, the veil, the tray and the glasses. These are hand props.
+- The desk's carrier changed: it had been ens9 in the night march, which is now cut.
+
+### Unverified: the simplest staging was chosen
+- Who stands at the centre of the disc in 202, 202.01 and 204. I took it to be Hamilton.
+- Right Hand Man's finale line, and where Hamilton is during the battle (off).
+- The two "King's men" of photo 190.01 (left out).
+- The exact position of the Two Weeks pair upstage (photo 302 is a long shot), and whether the bench faces upstage.
+
+### Checks
+- **Merge:** `blocking-merge.py <dir with seg2.json + props.json> --check` gives 0 errors and 0 warnings. 1,081
+  waypoints, down from 1,401.
+- **Props:** `props.py --check segments/seg2.json` passes every segment-2 carry. The set-down distances are: desk 0.65 m,
+  tent chair 0.74 m, bench 0.87 m, Schuyler's chair 0.70 m. The strikes are clean. Other segments' warnings in that
+  output belong to their own actors, who are not in this file.
+- **Speed and spacing:** `review/seg2/tools/sim_vis.py` finds no leg over 2.6 m/s. Every close pass under 0.45 m lasts
+  0.5–1.2 s: partners, the swirl, the turning couples.
+- **Ensemble load:** ensemble-seconds on stage, from `scratchpad/act/review2/seg2/tools/ensload.py`.
+
+  | track | before | after |
+  |---|---|---|
+  | 1-07 | 218 | 177 |
+  | 1-08 | 1633 | 935 |
+  | 1-09 | 298 | 178 |
+  | 1-10 | 1561 | 1304 |
+  | 1-11 | 2761 | 2249 |

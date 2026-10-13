@@ -611,3 +611,151 @@ on to Hamilton.
   the company spreads, at 153 s. Until then ch18 lights Washington and ens2/ens3. It belongs on 1290.
 - **1286 "Washington on the gallery" (1169 GW).** He is on the deck behind her, as the reviewer staged it. The GW preset
   lands off the SL gallery anyway.
+
+## Review 2 (Jack's verdict)
+
+Jack watched the whole show: the ensemble is used far too much and much of the choreography is wrong. This pass cut
+everything the earlier passes had marked invented unless new evidence turned up, and kept the company only where a source
+puts it there. The fixes are all in `gen_seg8.py` (blocks marked `REVIEW 2`) and in the seg 8 section of `props.py`. The
+pre-pass copies are in `scratchpad/act/review2/seg8/orig/`. Merge check, seg8 + props alone: 0 errors, 0 warnings, 1,289
+waypoints, 59 props. `check8.py 0.45`: no prop crossings, and 43 close passes (was 63), nearly all under 1 s.
+
+### New evidence
+- **ETC THPP cue photos** (`Downloads\hamilton lighitn resoucses\THPP - Cue Photos.pdf`, pp. 89-110, rendered to
+  `scratchpad/act/review2/seg8/pdf/`). These are ETC's renders of Binkley's real cues, with figures where the cue needs
+  bodies (the gallery "dressing" figures are stock, so only the deck figures count).
+  - 1104.4 "Lose Wedge": Philip on his table at 12 o'clock on the outer ring, nobody else on the deck.
+  - 1104.5 "DS to CTO": the table at the SL side of the ring, one figure at the centre.
+  - 1110 "add Ring": the table at the front, one figure (the Doctor) behind it.
+  - 1238.01 #9: two at the centre, about eight standing round the outside of the ring.
+  - 1242 FIRE: the two men only.
+  - 1248 "Legacy/ Hamilton DR": Hamilton DR, and five or six standing apart in pools round the ring.
+  - 1250 "America" Center pose: Hamilton DSC, three or four others.
+  - 1254 "to center" and 1256 "Hamilton off box": about twelve in a ring round the centre.
+  - 1258 "Eyes UP", 1258.3, 1259 "GW UL Steps", 1260 Restore: one tight knot of seven or eight at the centre, Philip on
+    the gallery, Washington on the SL stair treads.
+  - 1262 ELIZA, 1266: the knot is gone; three figures.
+- **ironinkpen** (Act II), re-read: https://ironinkpen.tumblr.com/post/136585710522/neat-little-hamilton-staging-things-act-ii
+  It names no ensemble in Stay Alive (Reprise) or Best of Wives. In Quiet Uptown the company is off to the sides watching
+  the forgiveness. For the Election and Obedient Servant it gives only the shapes kept below.
+- **hamilton-lyrics**, "The World Was Wide Enough staging", re-read:
+  https://hamilton-lyrics.tumblr.com/post/139464778319/the-world-was-wide-enough-staging
+  - The number opens with Hamilton rising from the chair where he has been writing to Eliza.
+  - The ensemble enters with the duel melody.
+  - In the monologue: dancing behind him DR, the My Shot pose round him on the box, posing round the Bullet at the centre.
+    Then the Bullet is lifted, they are blown out as if by an explosion, and they scatter before the shot.
+- **The film's editor** (Jonah Moran, ProVideo Coalition), re-read: https://www.provideocoalition.com/aotc-hamilton/
+  - Quiet Uptown has "several couples" circling Hamilton on the turntable, counter-clockwise, then clockwise, the
+    direction corrected as Eliza returns.
+  - In Obedient Servant the ensemble leans toward the two men.
+- **hamilton-lyrics** on Quiet Uptown, re-read:
+  https://hamilton-lyrics.tumblr.com/post/139058981514/hey-do-you-know-how-its-quiet-uptown-and-say-no
+  It says the ensemble surrounds Hamilton and watches him. It gives no number.
+- No fan staging account of the Election of 1800 turned up beyond ironinkpen.
+
+### Per track
+
+**2-17 Stay Alive (Reprise).** Ensemble 10 → 2: Eacker at the shot (ruled) and the Doctor.
+- Cut: the two bearers, and the seven watchers on the upstage gallery. The number has no chorus, and no source puts
+  anyone else there.
+- Changed: the table rides the outer ring.
+  - The table is set at 12 o'clock (0, -2.02) in the shot's blackout. Philip (from the ruled mark, facing upstage)
+    staggers up to it in the dark by 4.2.
+  - From "Lose Wedge" (8.66) the platform carries the table round by SL to the front (angle 186, (-0.3, 3.9)) by
+    "add Ring" (32.46). This follows the 1104.4 / 1104.5 / 1110 renders; "AF- start move around" is the auto-follow riding
+    it.
+  - Hamilton runs in by D-UC to the table's leading end and rides with it, ending at its SR end (H_T, in ch7).
+  - The Doctor comes in by D-UC to the inside of the ring and rides with it, ending behind the table (as in 1110).
+  - The riding group is in the surround pools ch19 / ch15 on the way.
+- Kept: the spotlight placements at the front from 32.46, and Eliza from D-UC into her SL special, then to the table.
+- Furniture: **Philip's table**. It is set in the dark at 0.6. It is stepped every 0.5 s round the ring (placed props
+  cannot glide). It rides on with the family as the platform turns them SR in the dark of 2-18, and is struck in the
+  dark at 2-18 13.0, once Philip is off.
+
+**2-18 It's Quiet Uptown.** Ensemble 10 → 8: four couples (ens1-ens8). ens9 and ens10 are off.
+- Kept: the circling. It is sourced by the editor: counter-clockwise, then clockwise in his grief, then the company
+  turns to him and recedes at 96.2. "Several couples" is not a number; four is the sparse reading.
+- Cut: the writer's standing ring with a gap (193.66) and the second lap (220.76), both invented.
+- Changed: when they return at 163.92 they circle once counter-clockwise (the corrected direction, as Eliza's return
+  begins the healing) until about 204. Then they open out to stand at the sides, four SR and four SL at x ±3.6, watching
+  the couple at the centre (ironinkpen). They fall away from 250.04 (cue 1140). The downstage couple's entrance now passes
+  upstage of Angelica, who is on DSR.
+- Furniture: none. The table goes off with the family at the top.
+
+**2-19 The Election of 1800.** Ensemble 10 → 8.
+- Kept (ironinkpen):
+  - A loose crowd that Burr goes through person to person.
+  - The line facing the house at 80, with Burr weaving behind it.
+  - The two facing lines at 95, holding letters up to Hamilton UC.
+- Cut (invented):
+  - The ring round Burr (63). He ends at C inside the standing crowd instead.
+  - The SR/SL camps (110).
+  - The deadlock lines (144).
+  - The eruption line (191).
+- Instead, the company falls back upstage from the alley at 121.52 (cue 1162) and stays. It turns up to Hamilton on the
+  gallery at 157.94 and to Jefferson at 191. It leaves before the band stops.
+- Hamilton now leaves for G-UC up the middle of the fallen-back lines, not through them.
+- Furniture: the desk and its chair are set in the dark at the end, for 2-20 (below).
+
+**2-20 Your Obedient Servant.** Ensemble 10 → 6. They come on from the sides at 60-64 for the first crossing (1195):
+ens1 and ens6 SR, ens7-ens10 SL.
+- Kept (ironinkpen; editor):
+  - The courier (ens6) takes Burr's letter from the desk to Hamilton.
+  - ens7, ens8 and ens9 bring Burr his pages.
+  - ens7 carries the signed reply.
+  - A half-metre lean in toward the desk as it escalates (111).
+  - ens1 SR and ens10 SL staring out at Weehawken (130.1).
+- Cut (invented):
+  - The upstage fan at 17.38. Burr's rant is his alone.
+  - The ring round both men at 136.61.
+- Furniture: **the desk** (existing seed, Burr's at centre) and a new **desk chair**. The chair is 0.5 m behind Burr's
+  standing spot at (0, 0.1); the cue's reason has him seated. Hamilton moves the desk in the blackout (147.75). The
+  chair is reset in the dark.
+
+**2-21 Best of Wives.** Ensemble 0 → 0.
+- Changed:
+  - The **chair** sits at (-2.8, 2.1), behind Hamilton at the desk near SR. Eliza stands behind it at (-2.6, 1.6),
+    still in the rim ch14 (0.9 of 1.1 m).
+  - Her start back to bed goes round behind the chair.
+  - Hamilton no longer walks off in the dark: he stays at the desk through the FTB.
+
+**2-22 The World Was Wide Enough.** The company is used here, at the amount the renders show.
+- Top: Hamilton rises from the desk (hamilton-lyrics). He goes round it and up to UR by 17.0 (the 34.45 place and the
+  spotlight marks are unchanged). ens4 (the Doctor, still labelled Ensemble 4) takes the **desk** off SR at 6.7, and ens3
+  (Pendleton) the **chair** at 8.7. Both come back for their parts.
+- Kept: the six standing round the upstage ring at the top (1238.01 shows the company round the ring), and the clear at
+  the count.
+- Monologue: eight, not nine.
+  - The writer's 3x3 block behind him DR is cut. Seven now stand spaced round the ring behind him for 1248, entering
+    from 122.
+  - ens9 brings the **box** on from SL by 137.0, so Hamilton has something to climb for "America" Center pose (preset 24
+    spot (0, 3.45)).
+  - The My Shot pose round the box (142.4) is kept.
+  - New: a ring round the centre at "to center" (149.9), from the 1254 / 1256 renders.
+  - The knot round the Bullet is now tight (r 0.8, seven bodies) from "Eyes UP" (155.46), as in 1258-1260.
+  - Blown out at 169.6 and scattering from 184, as before.
+  - ens9 takes the box off SR as Hamilton steps down (153.6).
+  - ens10 is only the 'mum' figure on the gallery.
+  - Moves now step round the Bullet instead of through her.
+- After the shot: kept as sourced (one holds Burr back, two rowers, the mourners mirroring the women and closing on
+  Burr).
+- Ruled and kept: Hamilton SR, Burr SL.
+
+**2-23 Who Lives, Who Dies.** Unchanged. The finale company round Eliza is sourced by both fan accounts and ironinkpen,
+and the bows line-up is ruled. No source shows a chair for Eliza, so none was added.
+
+### Could not verify (simplest staging chosen)
+- How many couples circle in Quiet Uptown (four).
+- The Election's crowd at the top, and its number (eight, loose).
+- Where the Obedient Servant company waits (at the sides).
+- Which ensemble members strike the furniture.
+- The table's exact speed round the ring (a constant pace between the 8.66 and 32.46 renders).
+- The 2-22 opening company's exact spots (kept from the writer).
+
+### Moments to watch first
+- 2-17 8.7-32.5: the table, Philip, Hamilton and the Doctor riding round the ring to the front.
+- 2-18 164-215: the returning couples circle once, then stand at the sides.
+- 2-19 60-125: the crowd with no ring, the line, the alley, the fall-back.
+- 2-20 60-140: the six from the sides.
+- 2-21 44 into 2-22 17: Hamilton rises from the desk; the desk and chair go off.
+- 2-22 122-170: behind him, the box, the ring, the knot.

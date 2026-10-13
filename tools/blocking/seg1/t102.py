@@ -3,7 +3,7 @@ from lib import *
 
 def B(at): return S('1-02', at)
 
-TAVERN = ['ens1', 'ens2', 'ens3', 'ens4', 'ens5', 'ens7', 'ens8', 'ens10']
+TAVERN = []   # REVIEW2 (Jack): no ensemble in Aaron Burr, Sir (was eight of the company filling the tavern)
 
 def build():
     # ---- the street at night (Q80 0.5): Burr alone, strolling SR to centre
@@ -30,51 +30,42 @@ def build():
     turn(['burr'], B(79.6), -60)
 
     # ---- Q86 83.4 the friends burst in; the street becomes the tavern
-    enter('laurens', B(82.0), B(86.0), (3.0, 1.0), face_to((3.0, 1.0), (0.0, 1.9)), wing='W_MSL')
-    enter('lafayette', B(81.8), B(86.0), (-3.0, 0.6), face_to((-3.0, 0.6), (0.0, 1.9)), wing='W_MSR')
-    enter('mulligan', B(82.6), B(86.2), (0.6, -0.6), 0, wing='D_UC')
+    # REVIEW2 (Jack): the three carry on a picnic table -- Laurens carries it (props.py 'picnic-table'), Lafayette and
+    # Mulligan walk in either side of him -- and the ensemble does NOT come on. They play their verses at the table.
+    # The table stands DSC at (0, 3.3) (x -0.9..0.9, z 2.95..3.65): each verse pool is at one end or behind it.
+    move('hamilton', B(84.0), B(85.8), (-0.9, 2.1), f=20)      # out of the table's way
     move('burr', B(84.0), B(88.0), (-3.6, 3.6), f=45)
-    move('hamilton', B(84.6), B(87.0), (0.0, 1.9), f=0)
-    tslots = [(-3.8, -1.4), (-2.6, -2.3), (-1.4, -1.5), (-0.6, -2.6), (1.8, -1.8), (3.0, -1.0), (4.1, -0.2),
-              (-4.0, 0.2)]
-    tw = {'ens1': 'W_USR', 'ens2': 'W_MSR', 'ens3': 'D_UC', 'ens4': 'W_USL', 'ens5': 'W_MSR',
-          'ens7': 'W_USR', 'ens8': 'W_USL', 'ens10': 'D_UC'}
-    for e in TAVERN:
-        put(e, B(60.0 + TAVERN.index(e) * 0.1), WINGS[tw[e]], off=True)
-    m = assign(TAVERN, tslots)
-    for k, e in enumerate(TAVERN):
-        p = m[e]
-        W[e][-1]['d'] = 0
-        W[e][-1]['t'] = B(82.4 + 0.35 * k)
-        put(e, B(82.4 + 0.35 * k + max(3.0, dist(p, WINGS[tw[e]]) / 1.7)), p, f=face_to(p, (0.0, 2.0), 110))
+    enter('lafayette', B(83.0), B(86.4), (0.2, 4.2), -100, wing='W_DSL')   # the downstage side
+    W['lafayette'][-1]['d'] = 0; W['lafayette'][-1].pop('f')
+    put('lafayette', B(88.6), (-1.55, 3.3), f=60)                          # the table's SR end
+    enter('laurens', B(83.4), B(88.0), (1.05, 3.3), -90, wing='W_DSL')     # carrying it: sets it down at 88.0
+    enter('mulligan', B(83.8), B(88.4), (0.6, 2.3), -10, wing='W_DSL')    # the upstage side
 
-    # ---- Q87 90.9 Laurens' verse, his pool SL
-    move('laurens', B(90.6), B(92.6), (2.4, 3.0), f=-30)
-    # ---- Q88 102.8 Lafayette's verse SR
-    move('lafayette', B(102.4), B(104.6), (-2.2, 3.0), f=30)
-    move('laurens', B(102.8), B(104.8), (2.6, 1.3), f=-60)
-    # ---- Q89 115.6 Mulligan's verse, down the centre
-    move('hamilton', B(113.6), B(115.2), (-0.9, 1.8), f=30)
-    move('mulligan', B(114.6), B(117.6), (0.4, 2.5), f=0)   # SPOT: his pool centre (ch50 at (0.39, 2.44))
-    move('lafayette', B(115.0), B(117.0), (-2.6, 1.4), f=60)
-    # ---- Q90 127.6 the toast: the friends round Hamilton, the tavern raises up behind
-    move('hamilton', B(127.6), B(129.0), (0.0, 2.2), f=0)
-    move('laurens', B(127.6), B(129.4), (1.1, 2.7), f=-45)
-    move('lafayette', B(127.6), B(129.4), (-1.1, 2.7), f=45)
-    move('mulligan', B(127.6), B(129.4), (1.4, 3.6), f=-40)
-    arc = [ring(3.2, th) for th in (-80, -57, -34, -11, 11, 34, 57, 80)]
-    form(TAVERN, arc, B(127.6), B(130.4), face=('at', (0.0, 2.2), 110))
+    # ---- Q87 90.9 Laurens' verse, his pool SL (ch51 (2.41, 3.26)), at the table's SL end
+    move('laurens', B(90.6), B(92.0), (1.75, 3.35), f=-30)
+    # ---- Q88 102.8 Lafayette's verse SR (ch48 (-2.41, 3.06)), at the table's SR end
+    move('lafayette', B(102.4), B(103.6), (-1.75, 3.2), f=30)
+    move('laurens', B(102.8), B(104.4), (1.15, 2.7), f=-45)
+    # ---- Q89 115.6 Mulligan's verse, behind the table centre
+    move('hamilton', B(113.6), B(115.2), (-0.8, 1.9), f=30)
+    move('mulligan', B(114.6), B(116.2), (0.4, 2.45), f=0)   # SPOT: his pool centre (ch50 at (0.39, 2.44))
+    move('lafayette', B(115.0), B(117.0), (-1.5, 2.45), f=60)
+    # ---- Q90 127.6 the toast: the four round the table
+    move('hamilton', B(127.6), B(129.0), (0.0, 2.35), f=0)
+    move('mulligan', B(127.4), B(128.8), (0.9, 2.4), f=-20)
+    move('laurens', B(127.6), B(129.4), (1.35, 3.0), f=-80)
+    move('lafayette', B(127.6), B(129.4), (-1.35, 3.0), f=80)
     # ---- Q91 133.7 they turn on Burr
     move('burr', B(133.7), B(135.4), (-1.85, 4.15), f=45)   # SPOT: into his AF (ch2)
-    turn(['hamilton', 'laurens', 'lafayette', 'mulligan'] + TAVERN, B(134.6),
+    turn(['hamilton', 'laurens', 'lafayette', 'mulligan'], B(134.6),
          lambda a, p: face_to(p, (-1.85, 4.15), 120))
     # ---- Q92 139.6 Burr sits it out: back to his corner
     move('burr', B(139.6), B(141.6), (-4.2, 4.1), f=40)
-    turn(['hamilton', 'laurens', 'lafayette', 'mulligan'] + TAVERN, B(141.8),
-         lambda a, p: face_to(p, (0.0, 2.2), 110) if a != 'hamilton' else 0)
-    # ---- Q93 151.6 Hamilton steps up DSC: the vamp into My Shot
-    # SPOT: his DSC special is ch13 at (0, 2.40) (and the real 'Ham DSC' preset 151, ch43, at (0.27, 2.53)):
-    # he steps back among the friends on Q92 and forward into it on Q93
+    turn(['laurens', 'lafayette', 'mulligan'], B(141.8), lambda a, p: face_to(p, (0.0, 2.35), 110))
+    turn(['hamilton'], B(141.8), 0)
+    # ---- Q93 151.6 Hamilton steps up: the vamp into My Shot
+    # SPOT: his DSC special is ch13 at (0, 2.40): he steps back among the friends on Q92 and forward into it on Q93
+    # (just upstage of the picnic table)
     move('hamilton', B(142.4), B(143.6), (0.0, 1.7), f=0)
-    move('hamilton', B(151.6), B(152.8), (0.1, 2.45), f=0)
-    turn(['laurens', 'lafayette', 'mulligan'] + TAVERN, B(152.4), lambda a, p: face_to(p, (0.1, 2.45), 120))
+    move('hamilton', B(151.6), B(152.8), (0.05, 2.35), f=0)
+    turn(['laurens', 'lafayette', 'mulligan'], B(152.4), lambda a, p: face_to(p, (0.05, 2.35), 120))

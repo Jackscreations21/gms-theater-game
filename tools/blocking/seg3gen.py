@@ -172,68 +172,37 @@ for at, x, z, f in [(0.6, 0.63, 2.2, 0), (10.0, 0.85, 2.4, 25), (31.15, 0.63, 2.
                     (159.45, 0.63, 2.3, 0), (175.2, 0.63, 2.2, 0), (189.6, 0.63, 2.3, 0)]:
     add(B, T, at, x, z, f)
 
-# Theodosia: one ensemble woman far stage left in her own pool (ens8)
+# Theodosia: one ensemble woman far stage left in her own pool (ens8) - "a second dim pool on a watcher in Wait for It"
+# is seen in the production pictures (docs/HAMILTON-LIGHTING-STYLE.md 4.5); cue 410 has her seated: she brings her
+# chair on and takes it off (props.py SEGMENT_3)
 enter_from("ens8", T, 9.5, "W-MSL", 4.0, 2.6, -60, label="Ensemble 8", t_off=0.0)   # SPOT: her chair pool ch10 (4.04, 2.64)
 add("ens8", T, 31.0, 4.0, 2.6, -45)
 add("ens8", T, 51.1, 4.0, 2.6, -80)
 exit_to("ens8", T, 51.3, "W-MSL")
 
-# chorus 1: nine bodies on the outer ring round and behind him, mirroring him, slow revolve clockwise
-NINE = ["ens1", "ens2", "ens3", "ens4", "ens5", "ens6", "ens7", "ens9", "ens10"]
-A1 = [-100, -75, -50, -25, 0, 25, 50, 75, 100]
-gate1 = {"ens1": "W-MSR", "ens2": "W-MSR", "ens3": "W-USR", "ens4": "W-USR", "ens5": "D-UC",
-         "ens6": "W-USL", "ens7": "W-USL", "ens9": "W-MSL", "ens10": "W-MSL"}
-for i, m in enumerate(NINE):
-    x, z = ring(3.2, A1[i])
-    enter_from(m, T, 31.15 + 0.15 * (i % 3), gate1[m], x, z, 0, label="Ensemble %s" % m[3:],
-               t_off=12.0 + i * 0.5)
-    x, z = ring(3.2, A1[i] + 15); add(m, T, 41.0 + 0.1 * i, x, z, dwell=0)
-    x, z = ring(3.2, A1[i] + 30); add(m, T, 51.1, x, z, 0)
-    # 66.4 everyone else goes: they fade back to the ring's outer edge
-    x, z = ring(3.75, A1[i] + 30); add(m, T, 68.5, x, z, 0)
-# chorus 2: all ten on the ring, revolving the other way
-A2 = [-112.5 + 25 * k for k in range(10)]
-for k, m in enumerate(ENS):
-    x, z = ring(3.2, A2[k])
-    if m == "ens8":
-        enter_from(m, T, 72.0, "W-MSL", x, z, 0, t_off=60.0)
-    else:
-        add(m, T, 72.0, x, z, 0)
-    x, z = ring(3.2, A2[k] - 12); add(m, T, 81.0, x, z, dwell=0)
-    x, z = ring(3.2, A2[k] - 24); add(m, T, 89.5, x, z, 0)
-# bridge: the fan - a V opening upstage behind Burr
-V = [(-4.1, -1.0), (-3.2, -1.8), (-2.3, -1.3), (-1.4, -0.8), (-0.5, -0.3),
-     (0.5, -0.3), (1.4, -0.8), (2.3, -1.3), (3.2, -1.8), (4.1, -1.0)]
-VA = assign(ENS, V, {m: here(m, T, 89.5) for m in ENS})
-for k, m in enumerate(ENS):
-    x, z = VA[m]
-    add(m, T, 94.5, x, z, 0)
-    add(m, T, 99.9, x, z + 0.8, 0)          # Burr's boast: the fan surges a step with him
-    add(m, T, 106.0, x, z, 0)
-# REVIEW: ens3 swings wide of ens4 on the way into the fan (they passed 0.39 m apart)
-assert VA["ens3"] == (-3.2, -1.8)
-add("ens3", T, 92.6, -3.65, -0.6, dwell=0)
-# verse 3 (Hamilton seen UC): the fan splits into two side columns, UC left open
-COLS = [(sx * 3.6, z) for sx in (-1, 1) for z in (-1.5, -0.3, 0.9, 2.1, 3.3)]
-CA = assign(ENS, COLS, VA)
-for m in ENS:
-    x, z = CA[m]
-    add(m, T, 114.9, x, z, 90 if x < 0 else -90)
-    add(m, T, 136.3, x, z, 0)               # the sparse half: they face out in the side light
-    add(m, T, 146.2, x * 0.68, z, 0)        # the build: they close in
-LINEP = [(-4.05 + 0.9 * k, 2.4) for k in range(10)]
-LA = assign(ENS, LINEP, {m: (CA[m][0] * 0.68, CA[m][1]) for m in ENS})
-VB = assign(ENS, V, LA)
-for m in ENS:
-    add(m, T, 152.0, LA[m][0], LA[m][1], 0)     # the peak: a line right behind him
-    add(m, T, 159.45, VB[m][0], VB[m][1], 0)    # final chorus: back to the fan
-    add(m, T, 175.2, VB[m][0], VB[m][1], 0)
-    add(m, T, 178.2, VB[m][0], VB[m][1], 0)
-OUT13 = {"ens1": "W-MSR", "ens2": "W-USR", "ens3": "W-USR", "ens4": "D-UC", "ens5": "D-UC",
-         "ens6": "D-UC", "ens7": "D-UC", "ens8": "W-USL", "ens9": "W-USL", "ens10": "W-MSL"}
-for k, m in enumerate(ENS):
-    g = min([ENT[q] for q in ("W-MSR", "W-USR", "D-UC", "W-USL", "W-MSL")], key=lambda q: dist(VB[m], q))
-    add(m, T, 185.0 + 0.6 * k, g[0], g[1], off=True)   # a slow walk off in the fade
+# REVIEW 2 (Jack: "the ensemble are used too much"): the ring, the counter-revolve, the V fan, the side columns and
+# the line behind him were all invented and are cut. What is sourced is only that the company stand in Burr's shoes
+# and move as he moves (Blankenbuehler, Playbill). So: SIX bodies, a loose staggered group on the turntable upstage of
+# him, in from chorus 1 (cue 411) to the outro fade, standing as he stands and taking his few moves with him - the
+# step down on his boast and at the peak, the turn upstage to look at Hamilton in verse 3 - and nothing else.
+MIRROR = {"ens1": (-1.9, 1.45), "ens2": (-0.75, 0.55), "ens5": (2.05, 0.65), "ens6": (3.05, 1.6),
+          "ens7": (-1.35, -0.6), "ens9": (1.15, -0.45)}
+GATE13 = {"ens1": "W-MSR", "ens2": "W-MSR", "ens7": "W-USR", "ens5": "W-MSL", "ens6": "W-MSL", "ens9": "W-USL"}
+for k, (m, (x, z)) in enumerate(sorted(MIRROR.items())):
+    enter_from(m, T, 31.15, GATE13[m], x, z, 0, label="Ensemble %s" % m[3:], t_off=22.5 + 0.4 * k)
+    add(m, T, 44.8, x, z, 0)
+    for at, dz in [(99.9, 0.6), (106.0, 0.0), (152.2, 0.6), (159.45, 0.0)]:   # his boast / his peak: a step down with him
+        add(m, T, at, x, z + dz, 0)
+# verse 3: as he turns upstage to watch Hamilton UC, they turn with him; front again when he does
+for m, (x, z) in MIRROR.items():
+    add(m, T, 115.4, x, z, 180)
+    add(m, T, 132.3, x, z, 0)
+for k, (m, (x, z)) in enumerate(sorted(MIRROR.items())):
+    add(m, T, 178.2, x, z, 0)
+    g = {"ens1": "W-MSR", "ens2": "W-MSR", "ens7": "W-USR", "ens9": "W-USL", "ens5": "W-MSL", "ens6": "W-DSL"}[m]
+    exit_to(m, T, 179.0 + 0.7 * k, g)          # a slow walk off in the outro fade
+for m in MIRROR:
+    P[m].sort(key=lambda w: clock(w["track"], w["at"]))
 
 # Hamilton crosses UC through verse 3
 add("hamilton", T, 106.0, ENT["D-UC"][0], ENT["D-UC"][1], off=True)
@@ -298,69 +267,26 @@ for at, x, z, f in [(53.45, 1.2, 0.3, -10), (65.5, 0.3, 2.9, 0), (77.5, 0.0, 2.6
     add(MU, T, at, x, z, f)
 exit_to(MU, T, 144.5, "W-USL")
 
-# the company: soldiers of the camp on the outer ring round the tent
-CAMP = {"ens1": 210, "ens2": 240, "ens4": 270, "ens5": 300, "ens6": 330,
-        "ens7": 30, "ens8": 60, "ens3": 90, "ens9": 120, "ens10": 150}
-GATE14 = {"ens1": "W-DSR", "ens2": "W-MSR", "ens4": "W-MSR", "ens5": "W-USR", "ens6": "W-USR",
-          "ens7": "W-USL", "ens8": "W-USL", "ens3": "W-MSL", "ens9": "W-MSL", "ens10": "W-DSL"}
-LINEA = {"ens1": (-3.2, -0.5), "ens4": (-1.6, -0.5), "ens6": (0.0, -0.5), "ens8": (1.6, -0.5), "ens10": (3.2, -0.5),
-         "ens2": (-4.0, -1.7), "ens5": (-2.0, -1.7), "ens7": (0.0, -1.7), "ens3": (2.0, -1.7), "ens9": (4.0, -1.7)}
-for k, m in enumerate(ENS):
-    th = CAMP[m]
-    x, z = ring(3.4, th)
-    enter_from(m, T, 29.65 + 0.2 * (k % 4), GATE14[m], x, z, face((x, z), C, 0.4), t_off=20.0 + 0.3 * k)
-LAS = assign(ENS, list(LINEA.values()), {m: ring(3.4, CAMP[m]) for m in ENS})
-for k, m in enumerate(ENS):
-    th = CAMP[m]
-    lx, lz = LAS[m]
-    add(m, T, 53.6 + 0.05 * k, lx, lz, 0)       # tactics chant: two drill lines snap in
-    add(m, T, 59.0 + 0.05 * k, lx, lz, 0)       # the vocal gun: hold
-    x, z = ring(3.4, th); add(m, T, 65.5 + 0.1 * (k % 3), x, z, face((x, z), C, 0.4))
-    x, z = ring(3.4, th + 20); add(m, T, 72.0 + 0.1 * k, x, z, dwell=0)
-    x, z = ring(3.4, th + 40); add(m, T, 77.5 + 0.1 * (k % 3), x, z, face((x, z), C, 0.4))
-    x, z = ring(3.4, th + 52); add(m, T, 81.5 + 0.1 * k, x, z, dwell=0)
-    x, z = ring(3.4, th + 64); add(m, T, 85.0 + 0.05 * k, x, z, face((x, z), C, 0.4))
-
-# Charles Lee: ens3 leaves the ring for his promotion DL
-add("ens3", T, 86.4, *ring(3.4, CAMP["ens3"] + 64), dwell=0, label="Charles Lee")
+# REVIEW 2: the camp ring, the two drill lines, the marching revolve, the cut-away and the two Monmouth ranks with a
+# colour bearer were invented and are cut. Newtfire's libretto gives the company ONE line in the whole number (the
+# reaction to Lee's slander, which they can sing unseen) and credits the tactics chant to Hamilton / Lafayette /
+# Laurens; the only staging source for an ensemble body is WatchMojo's "the Bullet mimes holding a bullet" during it.
+# So the camp is the principals, and FOUR soldiers (ens1 the Bullet among them) come on for Monmouth only: Lee's men,
+# who advance and fall back on his four contradictory orders and leave as the battle ends.
+# Charles Lee: ens3 walks on for his promotion, into his DL special (ch5, up from 87.1)
+add("ens3", T, 80.0, ENT["W-DSL"][0], ENT["W-DSL"][1], off=True, label="Charles Lee")
 add("ens3", T, 87.6, 2.45, 3.05, -20)      # SPOT: Lee's DL special (ch5 2.35-2.56, 3.02-3.33) is up from 87.1
 add("ens3", T, 90.1, 2.45, 3.05, -20)
-# 87.1 the camp cuts away: the others withdraw under the gallery, x-sorted
-others = [m for m in ENS if m != "ens3"]
-WD = {m: CAMP[m] + 64 for m in others}
-# SPOT: ens8 stood in Lee's DL special (ch5, up from 87.1); ens7 steps upstage (64 deg) and ens8 takes its place (94)
-WD["ens7"], WD["ens8"] = 50, 94
-WT = {"ens7": 87.6, "ens8": 88.6}
-for i, m in enumerate(others):
-    x, z = ring(3.6, WD[m])
-    add(m, T, WT.get(m, 89.0 + 0.1 * i), x, z, face((x, z), C, 0.4))   # they step back out of the light
-# Monmouth: two ranks, advance / fall back on Lee's orders
-FRONT = {"ens1": -2.4, "ens4": -0.8, "ens8": 0.8, "ens10": 2.4}
-BACK = {"ens2": -3.2, "ens5": -1.6, "ens7": 1.6, "ens9": 3.2}
-RANKS = [(v, 2.2) for v in (-2.4, -0.8, 0.8, 2.4)] + [(v, 0.9) for v in (-3.2, -1.6, 1.6, 3.2)] + [(0.0, -1.3)]
-RA = assign(others, RANKS, {m: ring(3.6, WD[m]) for m in others})
-for m in others:
-    x, z = RA[m]
-    add(m, T, 98.6, x, z, 0)
+SOLD = {"ens1": -1.8, "ens2": -0.6, "ens5": 0.6, "ens6": 1.8}
+GATE14 = {"ens1": "W-MSR", "ens2": "W-MSR", "ens5": "W-MSL", "ens6": "W-MSL"}
+SZ = 2.2
+for k, (m, x) in enumerate(SOLD.items()):
+    enter_from(m, T, 98.6, GATE14[m], x, SZ, 0, label="Ensemble %s" % m[3:], t_off=89.5 + 0.5 * k)
     for at, dz in [(101.3, 1.0), (102.5, 0.0), (103.4, 1.0), (104.1, 0.0)]:
-        if z < 0:
-            dz *= 0.4
-        add(m, T, at, x, z + dz, 0 if dz else (180 if z > 0 else 0))
-    add(m, T, 105.6, x, z, 0)
-    add(m, T, 118.0, x * 1.15, z - 0.4, 0 if x == 0 else (20 if x < 0 else -20))   # the heat: a slow sag
-SAG = {m: (RA[m][0] * 1.15, RA[m][1] - 0.4) for m in others}
-# SPOT: the camp's ring places skip the DL arc round Lee's special (Lee stands at ~131 deg on the ring)
-CAMPA = {"ens1": 270, "ens2": 300, "ens10": 225, "ens4": 200, "ens9": 180, "ens5": 0, "ens6": 30, "ens8": 60,
-         "ens7": 105}
-assert sorted(CAMPA) == sorted(others)
-CAMPR = {m: ring(3.4, CAMPA[m]) for m in others}
-for m in others:
-    x2, z2 = CAMPR[m]
-    add(m, T, 121.0, x2, z2, face((x2, z2), (2.45, 3.05), 0.3))                       # sepia camp, all eyes on Lee
-    add(m, T, 137.3 + 0.05 * (int(m[3:])), x2, z2, face((x2, z2), (0.0, 1.4), 0.3))  # and back to Washington
-for k, m in enumerate(others):
-    g = min(["W-DSR", "W-MSR", "W-USR", "W-USL", "W-MSL", "W-DSL"], key=lambda gg: dist(last(m), ENT[gg]))
-    exit_to(m, T, 144.3 + 0.2 * (k % 4), g)
+        add(m, T, at, x, SZ + dz, 0 if dz else 180)
+    add(m, T, 105.6, x, SZ, 0)
+    add(m, T, 114.1, x * 1.15, SZ - 0.3, 20 if x < 0 else -20)    # the heat: a slow sag outward
+    exit_to(m, T, {"ens1": 115.0, "ens2": 115.6, "ens6": 115.0, "ens5": 115.6}[m], GATE14[m])   # off before the sepia camp (119.5)
 # Lee's battle: running back and forth in front of the troops
 for at, x, z, f in [(98.6, 1.2, 4.0, 0), (101.3, 1.0, 4.2, 0), (102.5, -0.8, 4.0, -90), (103.4, 0.9, 4.2, 90),
                     (104.1, -0.9, 4.0, -90), (105.6, -2.4, 4.3, 45), (110.0, -1.8, 4.4, 30),
@@ -369,163 +295,146 @@ for at, x, z, f in [(98.6, 1.2, 4.0, 0), (101.3, 1.0, 4.2, 0), (102.5, -0.8, 4.0
 exit_to("ens3", T, 137.5, "W-DSL")
 
 # =====================================================================================
-# 1-15  Ten Duel Commandments - the duellists on the outer ring; the company counts in a line, then two unison groups
+# 1-15  Ten Duel Commandments - REVIEW 2: staged from ETC's renders of Binkley's real cues (THPP Cue Photos.pdf,
+# pp. 27-44, cues 450.01-476), which stand mannequins where each cue's light needs bodies:
+#   450.01 the two duellists face each other in the centre pool, a second alone in each of the DR / DL pools;
+#   452 #1 / 470 #9: duellists face to face at C, the seconds out at the sides; 454 #2 / 456 #3: the four in one row
+#   across the middle, duellists facing, seconds facing in; 457 Company Vocal: the four facing out on the upstage arc
+#   (the company is NOT on: they sing unseen); 458 #4 / 459 Ham/Burr DL / 460 #5: the four only, Hamilton and Burr
+#   together right of centre; 461 Company Vocal -> 461.11 / 462 #6: a line of ten across at z ~0.5 (the strobe row
+#   ch59-64 / 72-75 lands on it); 464 #7 / 466 #8: a loose cluster on the inner disc; 468 Ham/Burr scene: six or
+#   seven, the company leaving; 470 #9 the four only again; 472 the count: duellists back to back at C, seconds in the
+#   DR / DL specials; 474 the shot: one duellist DC at the lip (ch98), one up centre (ch18), seconds DR / DL.
+# Cut (invented, and contradicted by the renders): the outer-ring opposed revolve of the duellists and seconds, the
+# company line from the top, the two mirrored groups of four, the unison step on every number.
 # =====================================================================================
 T = "1-15"
-NUMS = [14.9, 21.0, 27.3, 39.4, 52.3, 58.0, 64.5, 70.2]
-LINE8 = ["ens1", "ens2", "ens5", "ens6", "ens7", "ens8", "ens9", "ens10"]
-
-
-def lpos(th):
-    return ring(3.2, th)
-
-
-def mir(p):
-    return (-p[0], p[1])
-
-
-def ringface(p):
-    return face(p, C, 0.35)
-
-
-# Laurens' angles round the outer ring (Lee mirrors him: the two revolves turn against each other)
-LTH = [(14.9, 240), (21.0, 255), (27.3, 270), (39.4, 285), (52.3, 300), (58.0, 310), (64.5, 320),
-       (70.2, 330), (86.0, 330)]
-add("laurens", T, 0.75, -1.5, 2.7, dwell=0)  # in the FTB: upstage of Hamilton on the cross
-add("laurens", T, 1.6, -3.4, 3.55, 30)       # SPOT: the DR pool of the "3 pools" (ch12 -3.18, 3.86)
-for i, (at, th) in enumerate(LTH):
-    p = lpos(th)
-    dw = None if i in (0, len(LTH) - 1) else 1.0
-    add("laurens", T, at, p[0], p[1], ringface(p), dwell=dw)
-# Lee enters with Burr from SL
+DUEL = {"laurens": -1, "ens3": 1}          # SR / SL duellist
+SEC = {"hamilton": -1, "burr": 1}           # Laurens' second SR, Lee's second SL
+# the walk-on in the 1-14 FTB (158.1), placed when the three pools come up (1.6)
 add("ens3", "1-14", 157.0, ENT["W-MSL"][0], ENT["W-MSL"][1], off=True, dwell=0, label="Charles Lee")
-add("ens3", T, 1.6, 3.55, 3.75, -30)         # SPOT: the DL pool (ch14 3.35, 4.08)
-for i, (at, th) in enumerate(LTH):
-    p = mir(lpos(th))
-    dw = None if i in (0, len(LTH) - 1) else 1.0
-    add("ens3", T, at + 0.05, p[0], p[1], ringface(p), dwell=dw)
-for a, sgn in (("laurens", 1), ("ens3", -1)):
-    p = ring(3.2, 300); add(a, T, 88.0, sgn * p[0], p[1], dwell=0)
-    p = ring(3.2, 270); add(a, T, 91.0, sgn * p[0], p[1], dwell=0)
-    add(a, T, 94.9, sgn * -0.3, 0.95, sgn * -90)       # back to back at the centre
-    add(a, T, 101.0, sgn * -0.3, 0.95, sgn * -90)
-    add(a, T, 104.5, sgn * -2.8, 0.95, sgn * 90)       # the ten paces out, and turn
-
-# Hamilton (Laurens' second) and Burr (Lee's second)
-for a, sgn in (("hamilton", 1), ("burr", -1)):
-    def S(p):
-        return (sgn * p[0], p[1])
-    if a == "burr":
-        add(a, "1-14", 157.2, ENT["W-DSL"][0], ENT["W-DSL"][1], off=True, dwell=0)
-    p = S((-2.8, 4.05)); add(a, T, 1.6, p[0], p[1], sgn * 30)   # SPOT: with his principal in the DR / DL pool
-    p = S(lpos(220)); add(a, T, 14.95, p[0], p[1], ringface(p))
-    p = S(lpos(235)); add(a, T, 21.1, p[0], p[1], ringface(p), dwell=1.0)
-    p = S(lpos(250)); add(a, T, 27.4, p[0], p[1], ringface(p), dwell=1.0)
-    add(a, T, 34.1, p[0], p[1], ringface(p))
-    # #4: Hamilton and Burr together down left
-    if a == "hamilton":
-        add(a, T, 37.6, 0.2, 3.9, dwell=0)
-        add(a, T, 40.4, 2.9, 3.7, 50)
-        add(a, T, 50.5, 2.9, 3.7, 70)
-        add(a, T, 56.0, 0.0, 3.4, dwell=0)
-        add(a, T, 58.5, -3.9, 2.2, 45)
-    else:
-        add(a, T, 40.4, 3.9, 3.1, -60)
-        add(a, T, 51.0, 3.9, 3.1, -50)
-        add(a, T, 52.3, 3.9, 2.2, -45)
-    q = S((-3.9, 2.2))
-    add(a, T, 64.6, q[0], q[1], sgn * 40)
-    add(a, T, 70.3, q[0], q[1], sgn * 45)
-    # the seconds' negotiation DC
-    add(a, T, 73.5, *S((-3.4, 2.4)), dwell=0)
-    add(a, T, 77.1, *S((-0.8, 3.6)), facing=sgn * 45)
-    add(a, T, 85.0, *S((-0.7, 3.6)), facing=sgn * 60)
-    add(a, T, 91.0, *S((-0.7, 3.6)), facing=sgn * 45)
-    add(a, T, 94.9, *S((-3.2, 4.0)), facing=sgn * 50)    # SPOT: the count's DR / DL specials (ch42 / ch45), and the shot's (ch97 / ch99)
-    add(a, T, 104.9, *S((-3.2, 4.0)), facing=sgn * 60)
-
-# the company (REVIEW): the opening count in a line, then two mirrored groups of four, unison on every number
-GATE15 = {"ens1": "W-DSR", "ens2": "W-MSR", "ens5": "W-USR", "ens6": "D-UC", "ens7": "D-UC", "ens8": "W-USL",
-          "ens9": "W-MSL", "ens10": "W-MSL"}
-GO15 = {"ens6": 156.3, "ens7": 157.6, "ens9": 156.0}
-# group slots: SR group (Laurens' side) ens1,2,5,6; SL group (Lee's side) ens7..10, mirrored
-GRP_A = {"ens1": (-1.6, 1.5), "ens2": (-0.8, 1.5), "ens5": (-1.6, 0.6), "ens6": (-0.8, 0.6)}
-GRP_B = {"ens1": (-1.6, -0.3), "ens2": (-0.8, -0.3), "ens5": (-1.6, -1.1), "ens6": (-0.8, -1.1)}   # SPOT: inner pair just clear of the UC special (the Doctor's) on #9
-MIR = {"ens7": "ens6", "ens8": "ens5", "ens9": "ens2", "ens10": "ens1"}
-for dst, src in MIR.items():
-    GRP_A[dst] = (-GRP_A[src][0], GRP_A[src][1])
-    GRP_B[dst] = (-GRP_B[src][0], GRP_B[src][1])
-CVOX = [34.1, 55.3]
-for n, m in enumerate(LINE8):
-    sg = -1 if GRP_A[m][0] < 0 else 1          # -1 SR group, +1 SL group
-    x = -2.275 + n * 0.65                      # the opening-count line across the middle, 0.65 m apart
-    # walk on in the FTB at the end of Stay Alive, in the line for the opening count (3.0)
-    add(m, "1-14", GO15.get(m, 156.5 + 0.1 * n), ENT[GATE15[m]][0], ENT[GATE15[m]][1], off=True, dwell=0)
-    add(m, T, 3.0 + 0.1 * n, x, 1.75, 0)      # SPOT: the line in the centre pool of the "3 pools" (ch13 -0.04, 1.84)
-    # #1: the line splits into the two groups, each behind its own duellist, facing across at the other side
-    bx, bz = GRP_A[m]
-    base_f = -sg * 35
-    add(m, T, 14.9 + 2.0, bx, bz, base_f)
-    shouts = [t for t in NUMS[1:]]              # #2..#8: the same unison pose, both groups at once
-    for t in shouts:
-        if t > 77.0:
-            continue
-        add(m, T, t + 0.4, bx, bz + 0.35, 0)    # the shout: a step to the house, square to it
-        add(m, T, t + 2.6, bx, bz, base_f)      # and back, facing across again
-        for cv in CVOX:                          # the company vocals: both groups surge at each other
-            if t < cv < t + 6.0:
-                add(m, T, cv + 0.5, bx - sg * 0.35, bz, -sg * 90)
-                add(m, T, cv + 2.4, bx, bz, base_f)
-    add(m, T, 73.0, bx, bz, sg * 165)            # after #8: they turn up to their own duellist on the ring
-    # the seconds' negotiation DC: both groups fall back upstage, out of the duellists' walk line
-    gx, gz = GRP_B[m]
-    add(m, T, 79.0, gx, gz, -sg * 30)
-    add(m, T, 94.9 + 0.4, gx, gz + 0.35, 0)      # #9: the same pose, together
-    add(m, T, 97.5, gx, gz, -sg * 30)
-    add(m, T, 101.35 + 0.3, gx, gz, sg * 60)       # the count: they turn out to their own man walking away
-# the doctor: paid, then turns his back
+add("burr", "1-14", 157.2, ENT["W-DSL"][0], ENT["W-DSL"][1], off=True, dwell=0)
+add("laurens", T, 1.6, -0.45, 1.84, 90)     # SPOT: the centre pool of preset 402 "3 pools" (ch13 -0.04, 1.84)
+add("ens3", T, 1.65, 0.45, 1.84, -90)
+add("hamilton", T, 1.6, -3.18, 3.86, 50)    # SPOT: the DR pool (ch12 -3.18, 3.86)
+add("burr", T, 1.6, 3.35, 4.08, -50)        # SPOT: the DL pool (ch14 3.35, 4.08)
+for a, s in DUEL.items():
+    add(a, T, 14.9, s * 0.45, 0.95, -s * 90)                 # #1: face to face at C
+for a, s in SEC.items():
+    add(a, T, 16.5, s * 2.95, 1.5, -s * 60)                  # #1: out at the sides (ch11 / ch15)
+    add(a, T, 21.6, s * 1.6, 0.85, -s * 90)                  # #2 / #3: one row across the middle, facing in
+    add(a, T, 31.0, s * 1.6, 0.85, -s * 90)
+for a, s in DUEL.items():
+    add(a, T, 31.0, s * 0.45, 0.95, -s * 90)
+# 457 Company Vocal: the four face out on the upstage arc
+for a, p in {"hamilton": (-2.6, 0.2), "laurens": (-1.5, -0.4), "ens3": (1.5, -0.4), "burr": (2.6, 0.2)}.items():
+    add(a, T, 34.6, p[0], p[1], 0)
+# 458 #4
+for a, p, f in [("laurens", (-2.5, -0.3), 20), ("hamilton", (-1.6, 0.5), 30), ("burr", (1.7, 1.2), -30), ("ens3", (2.9, 0.2), -20)]:
+    add(a, T, 39.6, p[0], p[1], f)
+# 459 "Hamilton/ Burr DL": the two seconds together right of centre, the duellists apart
+add("burr", T, 42.0, 1.85, 2.05, -50)
+add("hamilton", T, 43.0, 1.1, 2.75, 60)
+add("laurens", T, 43.0, -0.2, -0.5, 0)
+add("ens3", T, 43.0, 3.7, 2.6, -60)
+# 460 #5
+for a, p, f in [("laurens", (0.0, -0.5), 0), ("hamilton", (0.0, 0.9), 180), ("burr", (0.9, 2.7), 75), ("ens3", (3.7, 2.8), -90)]:
+    add(a, T, 52.6, p[0], p[1], f)
+# 461 Company Vocal -> 462 #6: the line of ten at z 0.5 (the four principals in the middle)
+LZ = 0.5
+LX = {"laurens": -3.15, "hamilton": -2.45, "ens1": -1.75, "ens2": -1.05, "ens5": -0.35, "ens6": 0.35, "ens7": 1.05,
+      "ens9": 1.75, "burr": 2.45, "ens3": 3.15}
+CO = ["ens1", "ens2", "ens5", "ens6", "ens7", "ens9"]
+GATE15 = {"ens5": ("W-USR", 51.6), "ens2": ("W-USR", 52.3), "ens1": ("W-USR", 53.0),
+          "ens6": ("W-USL", 51.6), "ens7": ("W-USL", 52.3), "ens9": ("W-USL", 53.0)}
+VIA = -1.2      # the company comes on upstage of the four and steps down into the line (clear of the Doctor UC)
+for m in CO:
+    g, t0 = GATE15[m]
+    add(m, T, t0, ENT[g][0], ENT[g][1], off=True, label="Ensemble %s" % m[3:])
+    add(m, T, 56.0, LX[m], VIA, dwell=0)
+for a, x in LX.items():
+    if a in ("laurens", "ens3"):
+        add(a, T, 55.0, x, LZ, 0)        # the duellists are in their places first
+    add(a, T, 57.3, x, LZ, 0)
+    add(a, T, 58.3, x, LZ, 0, dwell=3.2 if a in CO else None)   # the company moves off the line all together at 61.5
+# 464 #7 (held through 466 #8): a loose cluster on the inner disc, Hamilton and Burr outside it DR / DL
+WEDGE_CO = [(0.0, 2.0), (-0.6, 1.35), (0.6, 1.35), (0.0, 0.7), (-0.6, 0.05), (0.6, 0.05)]
+WA = assign(CO, WEDGE_CO, {m: (LX[m], LZ) for m in CO})
+for m in CO:
+    add(m, T, 64.5, WA[m][0], WA[m][1], 0)
+    add(m, T, 71.0, WA[m][0], WA[m][1], 0)
+add("laurens", T, 64.5, -3.15, 0.5, 30)      # the duellists hold their line places either side of it
+add("ens3", T, 64.5, 3.15, 0.5, -30)
+add("hamilton", T, 64.5, -2.7, 2.5, 30)
+add("burr", T, 64.5, 2.7, 2.5, -30)
+# 468 the Hamilton/Burr scene: the company goes; the seconds negotiate in the front row (ch113 / ch112), the duellists
+# wait in the two mid pools (ch119 / ch117)
+for k, m in enumerate(sorted(CO, key=lambda q: (WA[q][1], abs(WA[q][0])))):
+    x, z = WA[m]
+    t0 = 77.1 + 0.8 * k
+    add(m, T, t0 + (z - VIA) / 1.3, x, VIA, dwell=0)     # straight upstage, then off to the upstage wing
+    exit_to(m, T, t0 + (z - VIA) / 1.3, "W-USR" if x < 0 or (x == 0 and z < 1) else "W-USL", extra=0.0)
+add("laurens", T, 79.0, -1.83, 1.2, 30)
+add("ens3", T, 79.0, 1.83, 1.2, -30)
+add("hamilton", T, 79.6, 0.4, 3.6, 70)
+add("burr", T, 79.0, 1.5, 3.5, -70)
+add("hamilton", T, 91.0, 0.4, 3.6, 60)
+add("burr", T, 91.0, 1.5, 3.5, -60)
+# 470 #9: back to the #1 picture
+for a, s in DUEL.items():
+    add(a, T, 94.9, s * 0.45, 0.95, -s * 90)
+for a, s in SEC.items():
+    add(a, T, 95.6, s * 2.95, 1.5, -s * 60)
+# 472 the count: back to back at C, the seconds into the DR / DL specials (ch42 / ch45, and the shot's ch97 / ch99)
+add("laurens", T, 101.35, 0.0, 0.7, 180)
+add("ens3", T, 101.4, 0.0, 1.2, 0)
+for a, s in SEC.items():
+    add(a, T, 101.0, s * 3.2, 4.0, -s * 50)                  # SPOT: ch42 (-3.01, 3.76) / ch45 (3.05, 3.68)
+    add(a, T, 104.9, s * 3.2, 4.0, -s * 60)
+# the paces, and the turn for the shot (474): Lee DC at the lip in ch98, Laurens up centre in ch18 (-1.62, -1.31)
+add("laurens", T, 104.0, -1.5, -1.2, 15)
+add("ens3", T, 104.0, 0.0, 4.75, -165)
+# the Doctor: comes on for the commandment that names him, stands up centre, turns his back
 add("ens4", T, 30.0, ENT["D-UC"][0], ENT["D-UC"][1], off=True, label="The Doctor")
-add("ens4", T, 45.0, 0.0, -2.6, 0)
-add("ens4", T, 50.0, 0.0, -2.6, 180)
+add("ens4", T, 45.0, 0.0, -2.1, 0)
+add("ens4", T, 50.0, 0.0, -2.1, 180)
 
 # =====================================================================================
-# 1-16  Meet Me Inside - Lee yields, Washington arrives UC, the office
+# 1-16  Meet Me Inside - Lee hit DC, Washington arrives UC, the office. REVIEW 2: the company is not on (cue 476's
+# render has an empty stage; the chant is sung unseen); two of them set the office furniture on the chant stab.
 # =====================================================================================
 T = "1-16"
-add("ens3", T, 1.5, 2.9, 1.1, -60)
-add("ens3", T, 20.0, 2.9, 1.1, -30)
-exit_to("ens3", T, 21.0, "W-MSL", label="Ensemble 3")
-add("ens4", T, 1.5, 2.3, -1.9, dwell=0)
-add("ens4", T, 3.5, 3.5, 0.4, -120)
-add("ens4", T, 20.0, 3.5, 0.4, -110)
-exit_to("ens4", T, 21.3, "W-MSL", label="Ensemble 4")
-add("burr", T, 3.0, 2.4, 1.9, -30)
-add("burr", T, 9.6, 2.2, 2.0, -60)
-add("burr", T, 18.0, 2.2, 2.0, -100)
+add("ens3", T, 1.5, 0.3, 4.6, -150)          # hit: he staggers where he stood for the shot
+add("ens3", T, 20.0, 0.3, 4.6, -120)
+add("ens4", T, 1.5, 0.0, -2.1, 180, dwell=0)
+add("ens4", T, 4.5, -0.5, 3.9, 120)          # the Doctor runs down the centre to him
+add("ens4", T, 19.5, -0.5, 3.9, 110)
+exit_to("ens4", T, 20.3, "W-DSR", label="Ensemble 4")
+exit_to("ens3", T, 21.3, "W-DSR", label="Ensemble 3")
+add("burr", T, 3.0, 1.1, 4.1, -100)
+add("burr", T, 9.6, 1.1, 4.1, -165)
+add("burr", T, 18.0, 1.1, 4.1, -120)
 exit_to("burr", T, 19.0, "W-DSL")
-add("laurens", T, 3.0, -1.6, 1.4, 60)
-add("laurens", T, 9.6, -1.4, 1.2, 160)
-add("laurens", T, 17.0, -1.4, 1.2, -90)
+add("laurens", T, 3.0, -1.9, 0.9, 30)
+add("laurens", T, 9.6, -1.9, 0.9, 150)
+add("laurens", T, 17.0, -1.9, 0.9, -90)
 exit_to("laurens", T, 17.5, "W-MSR")
-for at, x, z, f in [(2.5, -0.6, 1.8, 60), (9.6, -0.4, 1.6, 160), (25.0, -0.4, 1.6, 170), (31.6, 1.3, 3.1, -60),
-                    (43.4, 1.15, 3.2, -70), (57.0, 1.35, 3.65, -20), (63.0, 0.85, 3.3, -50), (70.25, 1.15, 3.25, -70),
-                    (74.4, 1.3, 3.3, -60), (80.45, 1.4, 3.35, 0)]:
+for at, x, z, f in [(2.5, -2.0, 2.6, 55), (9.6, -2.0, 2.6, 155), (25.0, -2.0, 2.6, 160), (28.5, 1.3, 3.1, -60),
+                    (31.6, 1.3, 3.1, -60), (43.4, 1.15, 3.2, -70), (57.0, 1.35, 3.65, -20), (63.0, 0.85, 3.3, -50),
+                    (70.25, 1.15, 3.25, -70), (74.4, 1.3, 3.3, -60), (80.45, 1.4, 3.35, 0)]:
     add("hamilton", T, at, x, z, f)
 add(W, T, 4.5, ENT["D-UC"][0], ENT["D-UC"][1], off=True)
 for at, x, z, f in [(9.6, 0.0, -2.3, 0), (25.0, 0.0, -2.3, 10), (31.6, -1.25, 3.05, 60), (43.4, -1.1, 3.2, 70),
                     (57.0, -1.3, 3.1, 50), (70.25, -1.2, 3.2, 70), (74.4, -1.3, 3.0, -140)]:
     add(W, T, at, x, z, f)
 exit_to(W, T, 77.6, "W-DSR")     # SPOT: holds his key through his order; goes off DR on the button
-# the company breaks the line when Washington arrives, then chants and clears for the office
-SIDE = {"ens1": (-2.4, 0.0), "ens2": (-1.6, 0.0), "ens5": (-2.4, -0.8), "ens6": (-1.6, -0.8),
-        "ens10": (2.4, 0.0), "ens9": (1.6, 0.0), "ens8": (2.4, -0.8), "ens7": (1.6, -0.8)}
-OUT16 = {"ens1": "W-MSR", "ens2": "W-MSR", "ens5": "W-USR", "ens6": "W-USR",
-         "ens7": "W-USL", "ens8": "W-USL", "ens9": "W-MSL", "ens10": "W-MSL"}
-for k, m in enumerate(LINE8):
-    x, z = SIDE[m]
-    add(m, T, 11.5 + 0.1 * k, x, z, face((x, z), (0.0, -2.3), 0.3))
-    add(m, T, 25.0 + 0.1 * k, x, z, face((x, z), (0.0, 1.2), 0.3))
-    exit_to(m, T, 26.0 + 0.2 * k, OUT16[m])
+# the office furniture, set on the chant stab (cue 478): ens2 the desk from SR, ens6 a chair from SL (props.py)
+add("ens2", T, 21.5, ENT["W-MSR"][0], ENT["W-MSR"][1], off=True, label="Ensemble 2")
+add("ens2", T, 28.5, -2.45, 2.15, 40)
+exit_to("ens2", T, 29.0, "W-MSR")
+add("ens6", T, 22.0, ENT["W-MSL"][0], ENT["W-MSL"][1], off=True, label="Ensemble 6")
+add("ens6", T, 29.0, 1.45, 1.6, -20)
+exit_to("ens6", T, 29.5, "W-MSL")
 
 # =====================================================================================
 # 1-17  That Would Be Enough - Hamilton and Eliza alone

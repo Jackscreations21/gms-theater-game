@@ -114,6 +114,11 @@ PROP WAYPOINT: `{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }` — t
 - **Placed** (no `carriedBy`): from `at` until its next waypoint the prop stands on the floor at (x, z), its front (+z of its
   own frame) turned to `facing` (degrees, as an actor's; absent 0, the house). The floor is found as an actor's is (a desk on
   the gallery sits on the gallery); `y` is a hint, like hers.
+- **The glide (RULING FT):** when the NEXT waypoint is placed too (neither of the two carried, neither `off`), the prop moves
+  from the first spot to the second in a straight line and turns the short way, linearly in time from the first's `at` to
+  the second's. Examples: a piece riding the turntable (a few points on the ring), or a piece pushed across. To make it JUMP
+  instead (moved in a blackout), put an `off` between, or a carry. In Simple mode two placed keyframes of a square glide the
+  same way, as two keyframes of a dot walk.
 - **Carried** (`carriedBy: "<actor id>"`, x / z not needed): from `at` until its next waypoint it rides with her — held in
   front of her at waist height (its centre 1.0 m up, 0.22 m beyond her front), turned with her, seen when she is.
 - **`off`**: not seen from `at` on.

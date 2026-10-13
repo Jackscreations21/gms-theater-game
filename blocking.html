@@ -435,6 +435,11 @@ function propPose(p, T) {
     const q = actPose(a, T), f = p.size[2] / 2 + PROP_HOLD.ahead;
     return { x: q.x + Math.sin(q.yaw) * f, y: q.y + Math.max(0.2, PROP_HOLD.waist - p.size[1] / 2), z: q.z + Math.cos(q.yaw) * f, yaw: q.yaw, visible: q.visible && !w.off, carrier: a.id };
   }
+  const n = P[lo + 1];                            // the glide (RULING FT): placed → placed moves linearly, as midtown.html's propPose
+  if (!w.off && n && !n.byId && !n.off && n.T > w.T + 1e-6) {
+    const f = (T - w.T) / (n.T - w.T);
+    return { x: w.x + (n.x - w.x) * f, y: w.y + (n.y - w.y) * f, z: w.z + (n.z - w.z) * f, yaw: actYawLerp(w.yaw, n.yaw, f), visible: true, carrier: null };
+  }
   return { x: w.x, y: w.y, z: w.z, yaw: w.yaw, visible: !w.off, carrier: null };
 }
 

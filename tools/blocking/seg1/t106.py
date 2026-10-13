@@ -6,11 +6,12 @@ def F(at): return S('1-06', at)
 BOX = (1.4, 2.4)
 
 def build():
-    crowd_e = [e for e in ENS if e != 'ens2']
+    # REVIEW2: a small crowd -- four of the company round Seabury (was nine); one of them is the herald
+    from t105 import CROWD
+    crowd_e = list(CROWD)
     # ---- Q175 0.8 Seabury up on his box centre-left; the crowd gathers round him (in the change)
     move('ens2', S('1-05', 183.6), F(0.8), BOX, f=-15, label='Samuel Seabury')
-    crowd = [(-1.0, 0.6), (0.2, -0.2), (1.5, -0.5), (2.8, -0.1), (3.9, 0.8), (4.2, 2.2), (3.9, 3.6),
-             (-0.2, 1.4), (2.6, 1.0)]
+    crowd = [(-0.2, 1.4), (1.5, -0.3), (2.9, 0.6), (3.9, 2.4)]
     m = assign(crowd_e, crowd)
     for e in crowd_e:
         move(e, S('1-05', 184.6), F(2.0), m[e], f=face_to(m[e], BOX))
@@ -49,8 +50,9 @@ def build():
     move('lafayette', F(78.0), F(80.0), (-1.2, 2.6), f=45)
     move('mulligan', F(78.0), F(80.0), (-2.0, 3.6), f=30)
     move('burr', F(81.0), F(83.6), (-2.4, 4.8), f=40)
-    # ---- Q184 86.9 the collision
-    move('ens2', F(86.9), F(88.0), (2.2, 2.6), f=-60)
+    # ---- Q184 86.9 the collision: Seabury picks up his box and moves it away from Hamilton (fan account),
+    # to (2.6, 2.0) (props.py 'seabury-box'), and stands at it again
+    move('ens2', F(86.9), F(88.6), (2.6, 2.0), f=-60)
     turn(['hamilton'], F(87.2), 60)
     # ---- Q185 92.3 Hamilton DSC with his best line
     # SPOT: 'Hamilton DSC in his key (preset 259)' -- ch44 lands at (-0.28, 2.93); the friends give him the pool

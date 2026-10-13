@@ -16,8 +16,8 @@
   { "id": "ens3",  "name": "Ensemble 3",  "color": "#8c8c8c", "labels": ["Charles Lee"] },
   { "id": "ens4",  "name": "Ensemble 4",  "color": "#8c8c8c", "labels": ["Philip Schuyler", "James Reynolds", "The Doctor"] },
   { "id": "ens5",  "name": "Ensemble 5",  "color": "#8c8c8c", "labels": ["George Eacker"] },
-  { "id": "ens6",  "name": "Ensemble 6",  "color": "#8c8c8c", "labels": [] },
-  { "id": "ens7",  "name": "Ensemble 7",  "color": "#8c8c8c", "labels": [] },
+  { "id": "ens6",  "name": "Ensemble 6",  "color": "#8c8c8c", "labels": ["Dolly"] },
+  { "id": "ens7",  "name": "Ensemble 7",  "color": "#8c8c8c", "labels": ["Martha"] },
   { "id": "ens8",  "name": "Ensemble 8",  "color": "#8c8c8c", "labels": [] },
   { "id": "ens9",  "name": "Ensemble 9",  "color": "#8c8c8c", "labels": [] },
   { "id": "ens10", "name": "Ensemble 10", "color": "#8c8c8c", "labels": [] }

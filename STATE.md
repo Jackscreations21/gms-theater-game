@@ -3,7 +3,53 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-13 (latest): THE LIMBS — THE MANNEQUIN WALKS, IDLES, TURNS AND CARRIES (RULING FS) — PR #234
+## NEWEST — 2026-10-13 (review 2 merged): THE ENSEMBLE CUT BACK, THE FURNITURE CARRIED, PROPS GLIDE (RULING FT) — PR #234
+
+Jack watched the blocking: *"the ensemble is used far too much and much of the choreography is wrong"*. He wanted the
+furniture carried on by named people at named cues. Eight reviewers edited the eight generators and their own
+sections of `tools/blocking/props.py`; this session merged and checked the result.
+
+- **Integrity first.**
+  - `props.py` had been corrupted twice mid-round by concurrent edits, and repaired. It reads whole: eight sections once
+    each, and it runs.
+  - Every generator parses and runs.
+  - All eight segments and the props were regenerated. The merge has 0 errors and 0 warnings, and
+    `props.py --check` against the full merge gives 0 warnings.
+- **Totals, before → after:**
+  - waypoints 9,410 → **6,491**;
+  - props 28 → **62** (335 prop waypoints);
+  - ensemble time on stage 52,375 → **33,732 body-seconds** (−36 %), measured with the plotter's pose every 0.5 s;
+  - principals 28,284 → 26,557.
+- **RULING FT, placed props glide.** Between two placed waypoints (neither carried, neither off) a prop moves and turns
+  linearly in time; an `off` or a carry breaks it.
+  - It is the same in `midtown.html`, `blocking.html` (Simple mode's furniture keyframes now glide, as dots walk) and
+    `tools/blocking-plot.py`, which now draws props.
+  - Philip's table in 2-17 rides the ring on 7 + 3 points instead of 60 steps. It moves at most 0.04 m in 0.1 s and
+    stays within 0.1 m of Philip. The page and the editor agree to the centimetre.
+- **Dolly and Martha** (ens6 / ens7) are allowed in `tools/hamilton-cast.json`. Segment 7 labels the two women of 2-16
+  with them and hands the names back in the wing.
+- **Checked in the page** (worktree on 8095, never 8093):
+  - `MIDTOWN.actors.check({n: 60})` passes: positions, yaw, labels, visibility, limbs (19 bodies) and props, seek
+    against play.
+  - `show.check()`: seek-equivalence passes; overall false only on the 16 channels with no unit, as on `main`.
+  - Labels are right at every doubling, including Dolly / Martha in 2-16.
+  - The 1-01 lead-in: Burr walks on from −10 and is in place at 0.
+  - Console clean.
+- **The limbs cost frame time.** At the 1-01 line-up, 19 bodies at 1280 × 800 on the Intel UHD: medians 89.5 / 106.4 ms
+  with the actors against 60.7 / 70.2 ms without, about +30 ms. In FUTURE.md.
+- **Spot-check with `blocking-plot.py --pools`** (18 moments, all segments): principals are in their person lights wherever
+  the cue data lights them. The misses are the listed cue items: 1-10 Q302, 1-11 Q369/370, the 2-02 / 2-07 sides, 2-05's
+  table special, 2-09 ch25, ch43 blocked.
+- **Renders:** 13 house-camera frames of the reviewers' "watch first" moments are in session scratch
+  `act/shots/review2/` (`sheet.png`).
+- **blocking.html with a changed source file:** a recording saved against the old file still restores, with the banner
+  "it was made on a different blocking file", and plays. Checked on port 8095 with a planted recording, which was then
+  removed. No change was needed.
+- **`docs/hamilton-blocking-cue-notes.md`** now has the review-2 cue items and three new questions for Jack: the 1-07
+  "Kings men DS", the 1-09 / 1-10 side flip, and the King's stool side.
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-13 (latest): THE LIMBS — THE MANNEQUIN WALKS, IDLES, TURNS AND CARRIES (RULING FS) — PR #234
 
 Jack: *"start working on the system for moving body parts while I work on the choreo."*
 

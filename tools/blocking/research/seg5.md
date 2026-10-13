@@ -421,3 +421,85 @@ washes carry that; it is the staging.
   - **Gone:** ens2 and Madison at 2-01 187.5.
   - **Unchanged:** the transient passes listed above, the D-UC door legs crossing the `^` row at z −4.5, and the 316.7
     blackout convergence.
+
+## Review 2 (Jack's verdict)
+
+Jack watched it: the ensemble is used too much and much of the choreography is wrong; he wants the furniture. Fixed by
+editing `seg5gen.py` (every change marked `REVIEW 2`), one line of `seg5lib.py` (the W-USR approach now runs under the
+USG, (-4.4, -3.2), so it clears the SR structure), and the SEGMENT 5 section of `props.py`. Originals kept in
+`scratchpad/act/review2/seg5/orig/`. Result: 942 waypoints (was 1,311), 17 bodies; ens9 and ens10 are not used in this
+segment. Merge check: 0 errors; 2 warnings, both other segments' carriers (ens9 in seg2, the King in seg7) missing from a
+one-segment check. `props.py --check`: no warning on a segment-5 prop.
+
+### Evidence used this round
+- ironinkpen, "Neat little Hamilton staging things (Act II)" (re-read this round):
+  https://ironinkpen.tumblr.com/post/136585710522/neat-little-hamilton-staging-things-act-ii. It says: the ensemble waits on
+  the floor for Jefferson; the cabinet V of chairs with the ensemble and Washington seated in it; the piano on the moving
+  platform; the Say No ensemble on the second floor; in Room, a round table, the three leave and Burr is left with the company,
+  Burr on the table and the cloth yanked.
+- ETC THPP Cue Photos, Room 866-892 (`research/seg5pics/p057-p074`). The deck figures ETC moves from cue to cue are the
+  evidence: a line of four plus Burr DS (866); four a side down the sides of the room with the table between (867, 868, 870,
+  872, 876.1 and 882 hold the same shape); two fanning lines of four (884); four round the table (885); eight round the table
+  with Burr on it (888); a horseshoe round the table with Burr in front (890); Burr alone (892). **No chairs appear in 867**,
+  although ETC's model has a chairs element (it uses it in Act 1, 631.01), so "Ensemble X on chairs" is not read as a chair
+  dance.
+- ETC "hamilton lighting stuff.pdf", Scenic Elements: 1991 Desk Mid SR, 1994 Center-Stage Round Table, 1996 Up-Stage Center
+  Table, **2020 - 3 x Street Lamps** (standing in the 782 and 784 renders of Say No).
+- Searched with nothing new: Blankenbuehler on Room (backstage/dancemagazine snippets only: his favourite number, precise
+  visual storytelling), dancespirit's Hamilfilm piece (no staging), the Disney+ Room clip pages (no description).
+
+### Per track
+- **2-01 What'd I Miss: 10 -> 8.** The recap is Burr's alone: the writer's company arc at 8.8 was invented. The eight come
+  on for the build to Jefferson (41.3-45.3) and wait on the floor turned up to the gallery (ironinkpen). They kneel scrubbing
+  at 60.8, with the aisle for his descent (WatchMojo), then stay where they are and turn to follow him. Sally (ens6) still
+  brings the letter. **Cut (invented):** the party V (97, 187.5), the letter arc (118.2), and the walked 45-degree
+  journey-north revolve (135.3). Kept: one line for the final build (221.2), which feeds the snap to the chairs.
+- **2-02 Cabinet Battle #1: 10 -> 8.** The V of chairs is sourced (ironinkpen) and kept: four seats an arm, with Washington's
+  chair at the SL vertex (cue 742 "chair SL"). Sides as ruled: Jefferson and Madison SR, Hamilton SL. The debaters and
+  Washington are unchanged, and so are the spotlight placements.
+- **2-03 Take a Break: 0 -> 0.** No ensemble (confirmed by ironinkpen's account: the family, the desk and Angelica only). The
+  turntable ride for Eliza and Philip is dropped, because the piano is now a placed prop and cannot ride. They walk straight
+  to the piano in the change and stay there: Philip at the keys (1.0, 1.5), facing SL; Eliza behind the piano (2.2, 1.1).
+  Their 764 specials are the same spots. Three paths were rerouted round the piano, and Philip's trio spot moved (2.0, 1.6)
+  -> (0.9, 2.2) so he does not stand in it.
+- **2-04 Say No to This: 9 -> 6** on the galleries (plus ens4 as James Reynolds, unchanged). ironinkpen puts the company on
+  the second floor, shouting down at him in both choruses. There are now four on the USG, one on the SR arm and one on the SL
+  gallery, with the same entrances, turns and exits.
+- **2-05 The Room Where It Happens: 10 -> 8,** in ETC's shapes:
+  - 50.06: a line of four with Burr in the middle. The four upstage table flankers are cut (not in 866).
+  - 71.9: the line crosses up to the sides of the room and four more come on, four a side. They HOLD that shape to Burr's
+    build and only turn to whoever has the moment.
+  - 277.9: two fanning lines. 284.4: the second and third of each line step in round the table and go back at 291.4.
+  - 296.9: a horseshoe round the table that holds, with Burr in front.
+  - **Cut (invented):** the crossing diagonal lines in all three choruses, the arc during Jefferson's account, the chess-game
+    ring of eight and its closing on the trade, the re-form at 194, the loose ring at 256.6, and the walked 72-degree revolve
+    in the dance.
+  - The principals and every spotlight placement are unchanged.
+
+### Furniture (props.py, SEGMENT 5)
+- **Cabinet chairs:** now 8 (cabinet-chair-1..8), plus Washington's chair. They are set in the snap (739.5), and each sitter
+  takes her own chair off as the meeting breaks up (157.5 + 1.1 k, matching the generator's exit order). Washington's chair is
+  now struck through the upstage door he leaves by (D-UC, off by 2-03 1.5), not W-USL.
+- **Hamilton's desk:** 2-03 and 2-04, as before ("Desk Mid SR", 765 / 780.01). It is set in the change and struck in the 834
+  fade.
+- **NEW piano** (custom, 1.4 x 1.1 x 0.55, at (1.6, 1.3), turned -90 so the keyboard faces SR). It is set in the dark of the
+  Cabinet Battle button (2-02 212.0) and struck in the Take a Break fade (2-03 284.6). The show's piano rides the turntable;
+  this one cannot.
+- **NEW three street lamps** (custom, 0.3 x 3.0 x 0.3), from ETC element 2020 and renders 782/784: DSR in front of the desk
+  (-2.1, 3.0), upstage behind it (-1.0, -1.6), and SL by Maria's door (3.7, 1.0). They are set in the 780 FTB (2-04 0.3) and
+  struck in the 834 fade (236.4). The positions are read off the renders by eye.
+- **The Room table** is now round, 1.2 x 1.2 (ironinkpen "round table", ETC "Center-Stage Round Table"); it was 1.4 x 0.9. It
+  is preset at (0, 0.2), with the three chairs as before: Jefferson and Madison carry theirs in, Hamilton's is preset, and all
+  three take them out on 882.
+
+### Not verified; the simplest staging was chosen
+- Whether the What'd I Miss company is on for the recap at all, and where it stands for the party hooks. It is left on the
+  floor where it scrubbed.
+- How many sit in the cabinet V, and whether Madison sits in it. There are eight seats; Madison stands.
+- Which ensemble members are "the girls" of 885, and who pulls the cloth (887). Neither is modelled.
+- ironinkpen's "names shouted from the second floor" in Room: no timing found, so it is not added.
+- The street lamps' exact spots, and whether they ride the turntable.
+
+### Warnings left standing
+The generator's own check shows only the convergence in the 2-05 exits after 315.75, in the dark of 892/894, and the brief's
+own D-UC door legs crossing the `^` row at z -4.5.

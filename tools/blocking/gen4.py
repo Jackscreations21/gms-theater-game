@@ -89,8 +89,6 @@ def g(a, t, x, z, face=None, dwell=None): wp(a, t, x, z, face=face, dwell=dwell,
 # 1-18 GUNS AND SHIPS
 # ====================================================================================
 tr = '1-18'
-CO12 = ['ens1', 'ens2', 'ens3', 'ens4', 'ens5', 'mulligan', 'ens6', 'ens7', 'ens8', 'ens9', 'ens10', 'laurens']
-SRSIDE, SLSIDE = CO12[:6], CO12[6:]
 GS = (5.49, 2.36)
 
 # REVIEW: Burr opens the number from the stage-left balcony (the G&S spot): BroadwayWorld forum, two OBC-era
@@ -110,68 +108,33 @@ g('burr', T(tr, 25.1), 4.75, -3.2, dwell=0)
 g('burr', T(tr, 28.3), 0.6, -3.35, dwell=0)
 off('burr', T(tr, 29.5), 'G-UC')
 
-# the company marches on from both wings into two blocks
-ent_sr = ['W-USR', 'W-MSR', 'W-DSR', 'W-USR', 'W-MSR', 'W-MSR']
-ent_sl = ['W-USL', 'W-MSL', 'W-DSL', 'W-USL', 'W-MSL', 'W-MSL']
-for a, e in zip(SRSIDE, ent_sr): off(a, T(tr, 0.0), e)
-for a, e in zip(SLSIDE, ent_sl): off(a, T(tr, 0.0), e)
-BLK_SR = [(-3.8, -0.6), (-2.5, -0.6), (-3.8, 0.9), (-2.5, 0.9), (-3.8, 2.4), (-2.5, 2.4)]
-BLK_SL = [(2.5, -0.6), (3.8, -0.6), (2.5, 0.9), (3.8, 0.9), (2.5, 2.4), (3.8, 2.4)]
-place(SRSIDE, BLK_SR, T(tr, 7.0), face=lambda p: facing_to(p, GS))
-place(SLSIDE, BLK_SL, T(tr, 7.5), face=lambda p: facing_to(p, GS))
-# the build: everyone turns to the balcony
-LAFC = (0.0, 2.1)   # REVIEW: the ring of beams of cue 562 is centred (0, 2.0), his front key (0, 2.3)
-for a in CO12: wp(a, T(tr, 17.6), *pos(a), face=facing_to(pos(a), (0.0, -0.2)))
-# Lafayette revealed: the company on the outer ring, all eyes on the SL balcony
-R0 = 15.0
-ringA = ring(12, 3.2, R0)
-# assign ring slots by nearness (SR side bodies to the SR half)
-slotsA = {}
-order_sr = [7, 8, 9, 10, 6, 11]     # ring slots on the SR half (angles 225..345 & 195)
-order_sl = [1, 2, 3, 4, 0, 5]
-for a, k in zip(SRSIDE, [10, 9, 8, 7, 11, 6]): slotsA[a] = k
-for a, k in zip(SLSIDE, [1, 2, 3, 4, 0, 5]): slotsA[a] = k
-for a in CO12:
-    p = ringA[slotsA[a]]; wp(a, T(tr, 31.3), p[0], p[1], face=facing_to(p, LAFC))
-# the fan opens: the ring revolves 120 degrees while Lafayette comes down
-for a in CO12:
-    th0 = R0 + 30 * slotsA[a]
-    revolve(a, 3.2, th0, th0 + 120, T(tr, 42.3), T(tr, 48.8), step=30, face=None)
-    last(a)['face'] = facing_to(pos(a), C)
-# Lafayette asks Washington for Hamilton: an upstage arc watching the centre
-arcB = arc(12, 3.0, -105, 105)
-def by_x(actors): return sorted(actors, key=lambda a: pos(a)[0])
-srt = by_x(CO12)
-place(srt, arcB, T(tr, 59.2), face=lambda p: facing_to(p, C))
-# the company chant: two blocks, then a step in
-BLK2_SR = [(-4.0, -0.4), (-2.6, -0.4), (-4.0, 1.2), (-2.6, 1.2), (-4.0, 2.8), (-2.6, 2.8)]
-BLK2_SL = [(2.6, -0.4), (4.0, -0.4), (2.6, 1.2), (4.0, 1.2), (2.6, 2.8), (4.0, 2.8)]
-srt = by_x(CO12)
-place(srt[:6], sorted(BLK2_SR, key=lambda p: (p[0], p[1])), T(tr, 69.6), face=0)
-place(srt[6:], sorted(BLK2_SL, key=lambda p: (p[0], p[1])), T(tr, 69.6), face=0)
-for a in CO12:
-    x, z = pos(a); wp(a, T(tr, 75.0), x - 0.5 * math.copysign(1, x), z + 0.3, face=0)
-# Washington's anthem: an arc round him DC, then tighter on the second phrase
-WDC = (0.0, 1.6)   # SPOT: centred on Washington in his special (cue 568: Viper 93 at (0, 1.54)), not DC
-srt = by_x(CO12)
-place(srt, arc(12, 3.2, -100, 100, WDC), T(tr, 80.0), face=lambda p: facing_to(p, WDC))
-place(srt, arc(12, 2.7, -100, 100, WDC), T(tr, 93.7), face=lambda p: facing_to(p, WDC))
-# the build: a V opening to the house behind Washington, then a step down on the held note
-V = []
-for k, (x, z) in enumerate([(0.7, -1.0), (1.4, -0.4), (2.1, 0.2), (2.8, 0.8), (3.5, 1.4), (4.0, 2.1)]):
-    V += [(-x, z), (x, z)]
-V = sorted(V, key=lambda p: p[0])
-srt = by_x(CO12)
-place(srt, V, T(tr, 104.4), face=0)
-for a in CO12:
-    x, z = pos(a); wp(a, T(tr, 109.6), x, z + 0.5, face=0)
-# the button: the company falls back into the dark upstage and watches (they stay through History)
-W1 = [(-4.0, -3.1), (-3.2, -3.1), (-2.4, -3.1), (-1.6, -3.1), (-0.8, -3.1), (0.0, -3.1), (0.8, -3.1), (1.6, -3.1),
-      (-3.6, -2.2), (-2.0, -2.2), (-0.4, -2.2), (1.2, -2.2)]
-W1s = sorted(W1, key=lambda p: (p[0]))
-srt = by_x(CO12)
-place(srt, W1s, T(tr, 124.0), face=0)
+# REVIEW2 (Jack's verdict: the ensemble is used too much, much of the choreography is wrong). Eight soldiers, not
+# twelve: Laurens and Mulligan are out of this number (their labels would read as the characters; Mulligan's entrance
+# is Yorktown's). The company comes on WITH Lafayette's entrance (cue 561, the build; the Disney+ frame behind cue 562
+# has "the company in warm amber side light" round him), stands in two loose groups either side of the centre, and
+# only turns to whoever has the number. Cut as invented: the march-on during Burr's intro, the outer-ring walk at 42.3
+# (cue 563's "fan opens" is the BEAMS), the upstage arc, the chant blocks, the arcs round Washington, the V, and the
+# upstage watchers' line that stood through History.
+CO8 = ['ens%d' % i for i in range(1, 9)]
+G18 = {'ens1': ('W-USR', (-3.6, -1.1)), 'ens2': ('W-MSR', (-2.3, -0.5)), 'ens3': ('W-MSR', (-3.7, 0.6)), 'ens4': ('W-DSR', (-2.5, 1.3)),
+       'ens5': ('W-USL', (3.6, -1.1)), 'ens6': ('W-MSL', (2.3, -0.5)), 'ens7': ('W-MSL', (3.7, 0.6)), 'ens8': ('W-DSL', (2.5, 1.3))}
+for a in CO8:
+    e, p = G18[a]
+    off(a, T(tr, 0.0), e)
+    wp(a, T(tr, 24.0), p[0], p[1], face=facing_to(p, (0.0, 1.0)))     # they walk on from about 19 s, behind his burst
+for a in CO8:
+    wp(a, T(tr, 31.3), *pos(a), face=facing_to(pos(a), (0.0, 2.1)))     # Lafayette in the ring of beams
+    wp(a, T(tr, 59.2), *pos(a), face=facing_to(pos(a), C))              # Washington's special
+for a in CO8:   # the company chant (cue 567): a step in towards the front, out to the house
+    x, z = pos(a); wp(a, T(tr, 69.6), x * 0.85, z + 0.8, face=0)
+WDC = (0.0, 1.6)   # SPOT: Washington in his special (cue 568: Viper 93 at (0, 1.54))
+for a in CO8:
+    wp(a, T(tr, 80.0), *pos(a), face=facing_to(pos(a), WDC))            # his anthem: they turn to him
+    wp(a, T(tr, 104.4), *pos(a), face=0)                                 # the build, out front
+for a in CO8:   # the button (cue 572): everything out but Washington and Hamilton - the company goes in the dark
+    exit_to(a, T(tr, 120.0), G18[a][0], speed=1.5)
 
+LAFC = (0.0, 2.1)   # REVIEW: the ring of beams of cue 562 is centred (0, 2.0), his front key (0, 2.3)
 # REVIEW: Lafayette bursts in up centre through the company on the shout (17.6) and raps on the deck; he is centre
 # in the cathedral of beams by 31.3 (cue 562's ring of ten Vipers round (0, 2.0); Jack's note: the ring on him at 34.2).
 # The balcony at the top is Burr's (BroadwayWorld forum), so the 31.3 conflict goes away.
@@ -231,17 +194,23 @@ wp('hamilton', T(tr, 74.7), -1.2, 3.2, face=30)
 hold_until('hamilton', T(tr, 95.0))
 wp('hamilton', T('1-20', 0.0), 0.0, 4.7, face=0)
 
-# the company: steps out of the dark for the chorus, closer for the second, back, and the full company at the end
-srt = by_x(CO12)
-place(srt, arc(12, 3.4, -75, 75), T(tr, 27.0), face=lambda p: facing_to(p, (0.0, 3.2)))
-place(srt, arc(12, 2.9, -82, 82), T(tr, 39.5), face=lambda p: facing_to(p, (0.0, 3.4)))
-place(srt, W1s, T(tr, 56.0), face=0)
-place(srt, arc(12, 3.3, -95, 95), T(tr, 77.0), face=lambda p: facing_to(p, (0.0, 3.0)))
-# transition: Mulligan slips away (he is behind the British lines), the rest form the Yorktown line
-exit_to('mulligan', T(tr, 92.0), 'W-USL', speed=1.4)
-YC = [a for a in srt if a != 'mulligan']           # 11, sorted SR -> SL
+# REVIEW2: History is Washington and Hamilton alone. The company is OFF for the whole number: the previous passes
+# stood twelve in an upstage line and stepped them into invented arcs for each chorus. The ensemble's backing is
+# heard, not seen ("the chorus sings" is not evidence of bodies), and nothing places them. They walk on only in the
+# transition (cue 584, 94.5: "the cold column ... troops in line", under the drum count-in) to form the Yorktown line.
 LINE = [(-4.0 + 0.8 * k, -1.4) for k in range(11)]
-place(YC, LINE, T('1-20', 2.5), face=0)
+YC = ['ens1', 'ens2', 'ens3', 'ens4', 'laurens', 'ens5', 'ens6', 'ens7', 'ens8', 'ens9', 'ens10']   # SR -> SL
+for a, p in zip(YC, LINE):
+    if a == 'ens10': continue
+    off(a, T(tr, 94.5), nearest(p, ['W-USR', 'W-MSR', 'D-UC', 'W-USL', 'W-MSL']))
+    wp(a, T('1-20', 2.5), p[0], p[1], face=0)
+# the Yorktown box (Joan Marcus photo: Hamilton on a box near the lip): ens10 brings it on from W-DSL in the dark at
+# the lip (cue 583 has pulled the stage in to Washington), sets it down, and takes the SL end of the line
+off('ens10', T(tr, 90.0), 'W-DSL')
+wp('ens10', T(tr, 94.5), 0.5, 4.55, face=-90, dwell=0.3)
+wp('ens10', T('1-20', 2.5), LINE[10][0], LINE[10][1], face=0)
+W1s = sorted([(-4.0, -3.1), (-3.2, -3.1), (-2.4, -3.1), (-1.6, -3.1), (-0.8, -3.1), (0.0, -3.1), (0.8, -3.1), (1.6, -3.1),
+              (-3.6, -2.2), (-2.0, -2.2), (-0.4, -2.2), (1.2, -2.2)])
 
 # ====================================================================================
 # 1-20 YORKTOWN
@@ -258,68 +227,46 @@ wp('lafayette', T(tr, 22.4), 0.4, 1.9, face=-60)
 wp('hamilton', T(tr, 22.4), -0.45, 1.9, face=60)
 wp('lafayette', T(tr, 32.2), 0.6, 3.6, face=0)
 wp('hamilton', T(tr, 32.2), -0.6, 3.6, face=0)
-# first upside-down phrase: the line becomes a ring (Lafayette joins it) and turns
-RING_Y = YC + ['lafayette']
-ringY = ring(12, 2.9, 15)
-# assign by angle nearest to current position
 def assign_ring(actors, pts):
     out, free = {}, list(range(len(pts)))
     for a in sorted(actors, key=lambda a: pos(a)[0]):
         k = min(free, key=lambda k: dist(pos(a), pts[k])); free.remove(k); out[a] = k
     return out
-sl = assign_ring(RING_Y, ringY)
+# REVIEW2: the first title phrase (43.6) no longer turns the line into a walking ring (invented from cue 591's turning
+# GOBOS). The line holds at the front of the stage, then falls back into the upstage dark for Hamilton alone (51.2).
+RING_Y = YC + ['lafayette']
 wp('hamilton', T(tr, 43.6), 0.0, 4.6, face=0)
-for a in RING_Y:
-    p = ringY[sl[a]]; wp(a, T(tr, 46.5), p[0], p[1], face=0)
-    th0 = 15 + 30 * sl[a]
-    revolve(a, 2.9, th0, th0 + 60, T(tr, 46.6), T(tr, 50.6), step=30)
-# Hamilton alone: the company recedes into the upstage dark
 wp('hamilton', T(tr, 52.0), 0.0, 4.55, face=0)   # SPOT: cue 592's centre shaft (Viper 98) crosses the lip at (0, 5.55)
-srt = sorted(RING_Y, key=lambda a: pos(a)[0])
-place(srt, W1s, T(tr, 56.0), face=0)
+REC = [a for a in RING_Y if a != 'ens10']
+srt = sorted(REC, key=lambda a: pos(a)[0])
+place(srt, [p for p in W1s if p != (1.6, -3.1)], T(tr, 56.0), face=0)
+# ens10 (the SL end of the line) goes off DL instead, to come back for the box
+exit_to('ens10', T(tr, 52.0), 'W-DSL', speed=1.4)
 wp('hamilton', T(tr, 61.2), -1.1, 3.7, face=10)   # SPOT: cue 593, his DS special (X4 44 at (-1.31, 3.53)) warms
-# the march / the night attack: six to the galleries, six into pools on the turntable
-GAL = {'ens8': 'SLG1', 'ens9': 'SLG2', 'ens10': 'USG-SL', 'ens1': 'USG-SR', 'ens6': 'ARM1', 'ens7': 'ARM2'}
-DECKY = [a for a in RING_Y if a not in GAL]                 # ens2..5, laurens, lafayette
 wp('hamilton', T(tr, 66.7), 0.0, 3.2, face=0)
-BLOCK6 = [(-1.4, -1.2), (0.0, -1.2), (1.4, -1.2), (-1.4, -0.2), (0.0, -0.2), (1.4, -0.2)]
-srt = sorted(DECKY, key=lambda a: (pos(a)[0]))
-place(srt, sorted(BLOCK6, key=lambda p: p[0]), T(tr, 69.5), face=0)
-# SPOT: cue 595's twelve pools (Vipers 1-18, same focus as the final tableau). Each deck soldier takes one: Laurens
-# the SL one (Viper 13, which stays up through 597-598 for the friends' fortunes), Hamilton the DSC one (Viper 4).
-# The creep is now a slow advance INSIDE each pool (0.6 m, 80 -> 84) instead of 25 degrees round the disc out of them.
-PL = {'ch15': (-1.97, -0.80), 'ch18': (1.86, -0.75), 'ch8': (-2.69, 1.60), 'ch10': (-1.05, 0.98),
-      'ch11': (1.04, 1.07), 'ch13': (2.69, 1.66), 'ch4': (-0.09, 3.16)}
-POOLS6 = [PL[k] for k in ('ch15', 'ch18', 'ch8', 'ch10', 'ch11')]
-others = [a for a in DECKY if a != 'laurens']
-pk = assign_ring(others, POOLS6)
-for a in DECKY:
-    p = PL['ch13'] if a == 'laurens' else POOLS6[pk[a]]
-    wp(a, T(tr, 72.0), p[0], p[1] - 0.3, face=0)
-wp('hamilton', T(tr, 72.5), PL['ch4'][0], PL['ch4'][1] - 0.05, face=0)
-for a in DECKY:
-    x, z = pos(a); hold_until(a, T(tr, 80.0)); wp(a, T(tr, 84.0), x, z + 0.6, face=0)
-# the climbs
-def to_gallery_SL_slg(a, t_foot, dest_z, face):
-    climb_SL(a, t_foot); g(a, t_foot + 4.9, *SLJ, dwell=0)
-    tz = t_foot + 4.9 + abs(dest_z - SLJ[1]) / 1.3
-    g(a, tz, 4.9, dest_z, face=face)
-def to_usg_SL(a, t_foot, dest_x):
-    climb_SL(a, t_foot); g(a, t_foot + 4.9, *SLJ, dwell=0); g(a, t_foot + 5.6, 4.85, -3.2, dwell=0)
-    g(a, t_foot + 5.6 + abs(4.85 - dest_x) / 1.3, dest_x, -3.35, face=0)
-def to_usg_SR(a, t_foot, dest_x):
-    climb_SR(a, t_foot); g(a, t_foot + 4.5 + 3.0 / 1.3, -4.5, -3.3, dwell=0)
-    g(a, t_foot + 4.5 + 3.0 / 1.3 + abs(-4.5 - dest_x) / 1.3, dest_x, -3.35, face=0)
-def to_arm(a, t_foot, dest_z, face=40):
-    climb_SR(a, t_foot); g(a, t_foot + 5.8, -6.15, -0.7, dwell=0)
-    g(a, t_foot + 5.8 + abs(dest_z + 0.7) / 1.3, -6.15, dest_z, face=face)
-hold_until('ens8', T(tr, 66.7)); to_gallery_SL_slg('ens8', T(tr, 68.5), 0.0, -70)
-hold_until('ens9', T(tr, 67.5)); to_gallery_SL_slg('ens9', T(tr, 70.0), 1.8, -60)
-hold_until('ens10', T(tr, 68.5)); to_usg_SL('ens10', T(tr, 71.5), 2.4)
-hold_until('ens1', T(tr, 66.7)); to_usg_SR('ens1', T(tr, 70.0), -2.4)
-hold_until('ens6', T(tr, 67.5)); to_arm('ens6', T(tr, 71.5), 1.0)
-hold_until('ens7', T(tr, 69.0)); to_arm('ens7', T(tr, 73.0), 2.4)
-# the friends' fortunes: Hamilton narrates DS; Laurens in his own pool DL; Lafayette at the bay DR
+# the box struck on the march (66.7, "the drive returns"): ens10 in from DL, out with it the same way
+wp('ens10', T(tr, 70.0), 0.55, 4.55, face=-90, dwell=0.3)
+exit_to('ens10', T(tr, 70.3), 'W-DSL', speed=1.5)
+# REVIEW2: the night attack (cue 595; the Disney+ frame behind it: "each soldier in his own small warm-white pool on
+# the turntable, black between"). The cue lights twelve pools; twelve bodies stand in them - Hamilton (Viper 4),
+# Laurens (Viper 13, held through 597-598), Lafayette in the DSR one (he has the DR pool at 100.1) and nine soldiers.
+# Cut: the march block, and the six soldiers climbing to the SR arm, the SL gallery and the USG for the "gallery
+# specials" (cue 596 is a reconstruction; only two USG units are lit, and the climbs and descents were the busiest
+# invented traffic in the number).
+TAB = [(-1.97, -0.80), (0.11, -1.37), (1.86, -0.75), (-2.69, 1.60), (-1.05, 0.98), (1.04, 1.07), (2.69, 1.66),
+       (-3.18, 3.37), (-1.58, 3.99), (-0.09, 3.16), (1.52, 3.99), (3.42, 3.68)]
+NIGHT = [a for a in REC if a not in ('laurens', 'lafayette')]       # ens1..ens9
+npools = [p for k, p in enumerate(TAB) if k not in (6, 7, 9)]        # minus Laurens', Lafayette's, Hamilton's
+pk = assign_ring(NIGHT, npools)
+for a in NIGHT:
+    p = npools[pk[a]]; wp(a, T(tr, 72.0), p[0], p[1] - 0.3, face=0)
+wp('laurens', T(tr, 72.0), TAB[6][0], TAB[6][1] - 0.3, face=0)
+wp('lafayette', T(tr, 72.0), TAB[7][0], TAB[7][1] - 0.3, face=0)
+wp('hamilton', T(tr, 72.5), TAB[9][0], TAB[9][1] - 0.05, face=0)
+DECKY = NIGHT + ['laurens', 'lafayette']
+for a in DECKY:   # the creep: a slow advance inside each pool
+    x, z = pos(a); hold_until(a, T(tr, 80.0)); wp(a, T(tr, 84.0), x, z + 0.4, face=0)
+# the friends' fortunes: Hamilton narrates DS; Laurens in his own pool; Lafayette at the bay DR
 wp('hamilton', T(tr, 92.0), 0.05, 3.0, face=0)   # SPOT: cue 597's warm key on him is X4 43, focused (0.06, 2.98)
 wp('laurens', T(tr, 93.0), 2.75, 1.7, face=-20)  # SPOT: Laurens' own pool is Viper 13 (2.69, 1.66), lit 595-598
 wp('lafayette', T(tr, 100.1), -3.5, 3.4, face=20)
@@ -327,32 +274,16 @@ wp('lafayette', T(tr, 100.1), -3.5, 3.4, face=20)
 off('mulligan', T(tr, 100.0), 'D-UC')
 wp('mulligan', T(tr, 108.5), 0.4, -1.0, dwell=0)
 wp('mulligan', T(tr, 111.0), 0.3, 2.0, face=0)
-# the rally: the deck soldiers gather round Mulligan
 M = (0.3, 2.0)
+for a in NIGHT:   # every soldier turns to him
+    wp(a, T(tr, 111.5), *pos(a), face=facing_to(pos(a), M))
+# the rally: the nearest gather round him (cue 600, full stage)
 rallyers = ['ens2', 'ens3', 'ens4', 'ens5', 'laurens', 'lafayette']
 rpts = arc(6, 1.8, -95, 95, M)
 rk = assign_ring(rallyers, rpts)
 for a in rallyers:
     p = rpts[rk[a]]; wp(a, T(tr, 120.1), p[0], p[1], face=facing_to(p, M))
-# the gallery soldiers come down
-def from_slg(a, t0, t_slj):
-    hold_until(a, t0); g(a, t_slj, *SLJ, dwell=0); down_SL(a, t_slj + 0.4)
-def from_usg_SL(a, t0):
-    hold_until(a, t0); x = pos(a)[0]; t1 = t0 + abs(4.85 - x) / 1.4
-    g(a, t1, 4.85, -3.2, dwell=0); g(a, t1 + 0.7, *SLJ, dwell=0); down_SL(a, t1 + 1.1)
-def from_usg_SR(a, t0):
-    hold_until(a, t0); x = pos(a)[0]; t1 = t0 + abs(-4.5 - x) / 1.4
-    g(a, t1, -4.5, -3.3, dwell=0); t2 = t1 + 3.0 / 1.4; down_SR(a, t2)
-def from_arm(a, t0):
-    hold_until(a, t0); z = pos(a)[1]; t1 = t0 + abs(z + 0.7) / 1.4
-    g(a, t1, -6.15, -0.7, dwell=0); down_SR(a, t1 + 1.3)
-from_slg('ens8', T(tr, 112.0), T(tr, 113.8))
-from_slg('ens9', T(tr, 113.0), T(tr, 116.3))
-from_usg_SL('ens10', T(tr, 116.5))
-from_arm('ens6', T(tr, 112.0))
-from_arm('ens7', T(tr, 113.0))
-from_usg_SR('ens1', T(tr, 115.5))
-# the drill: a block of twelve, Hamilton and Lafayette in front
+# the drill: a block of twelve (ens10 back in from DL), Hamilton and Lafayette in front
 B12 = YC + ['mulligan']
 BLK12 = [(x, z) for z in (-0.6, 0.8, 2.2) for x in (-2.4, -0.8, 0.8, 2.4)]
 bk = assign_ring(B12, BLK12)
@@ -360,11 +291,10 @@ for a in B12:
     p = BLK12[bk[a]]; wp(a, T(tr, 129.9), p[0], p[1], face=0)
 wp('hamilton', T(tr, 129.9), -0.8, 3.6, face=0)
 wp('lafayette', T(tr, 129.9), 0.8, 3.6, face=0)
-# REVIEW: the battle rebuilt on the patterns the accounts give instead of invented wedges: ranked lines that
-# charge (the Yorktown line), the two revolves walked against each other (Blankenbuehler, Playbill: two revolves so
-# they can go in opposite directions), a freeze into single pools with a slow-motion drift on the cold turn (141.7,
-# cue 604; Wyzant viewer account: the dancers stop, then move in slow motion; LSA pools), the lines again for the
-# last charge to the lip (146-150.5).
+# REVIEW2: the battle is the line, not shapes: two ranks (133.3) charge (135.8); on the cold turn (141.7, cue 604)
+# they freeze and move on in slow motion (Wyzant viewer account: the dancers stop, then seem to move in slow motion);
+# back in the red (146) the ranks re-form and charge to the lip (150.5). Cut: the counter-walked rings at 138.4-141.7
+# and the outward drift (invented).
 LX = [-3.5, -2.1, -0.7, 0.7, 2.1, 3.5]
 LINES = [(x, 2.2) for x in LX] + [(x, 0.5) for x in LX]
 lk = assign_ring(B12, LINES)
@@ -372,60 +302,43 @@ for a in B12:
     p = LINES[lk[a]]; wp(a, T(tr, 133.3), p[0], p[1], face=0)
 wp('hamilton', T(tr, 133.3), -0.6, 3.6, face=0)
 wp('lafayette', T(tr, 133.3), 0.6, 3.6, face=0)
-# the charge: the ranks advance, the two commanders peel out to the flanks
 for a in B12:
     x, z = pos(a); wp(a, T(tr, 135.8), x, z + 0.8, face=0)
 wp('hamilton', T(tr, 135.8), -4.4, 3.7, face=30)
 wp('lafayette', T(tr, 135.8), 4.4, 3.7, face=-30)
-# the turning rings: the front rank onto the outer ring, the back rank onto the inner disc; they walk against each other
-FRONT = [a for a in B12 if lk[a] < 6]; BACK = [a for a in B12 if lk[a] >= 6]
-OR6 = ring(6, 3.2, 30); IR6 = ring(6, 1.6, 0)
-fk = assign_ring(FRONT, OR6); bk2 = assign_ring(BACK, IR6)
-for a in FRONT:
-    p = OR6[fk[a]]; wp(a, T(tr, 138.4), p[0], p[1], face=facing_to(C, p))
-    th0 = 30 + 60 * fk[a]; revolve(a, 3.2, th0, th0 + 90, T(tr, 138.6), T(tr, 141.7), step=30, face=facing_to(C, polar(3.2, th0 + 90)))
-for a in BACK:
-    p = IR6[bk2[a]]; wp(a, T(tr, 138.4), p[0], p[1], face=facing_to(C, p))
-    th0 = 60 * bk2[a]; revolve(a, 1.6, th0, th0 - 90, T(tr, 138.6), T(tr, 141.7), step=30, face=facing_to(C, polar(1.6, th0 - 90)))
 wp('hamilton', T(tr, 138.6), -4.2, 4.2, face=40)
 wp('lafayette', T(tr, 138.6), 4.2, 4.2, face=-40)
-# the cold turn: they stop, each in his own pool, and drift outward in slow motion
-for a in B12:
-    x, z = pos(a); r = dist((x, z), C); th = math.degrees(math.atan2(x, -(z - C[1])))
-    p = polar(r + 0.6, th); wp(a, T(tr, 145.6), p[0], p[1], face=facing_to(C, p))
+for a in B12:   # the freeze, then the slow-motion advance
+    x, z = pos(a); hold_until(a, T(tr, 141.7)); wp(a, T(tr, 145.6), x, z + 0.5, face=0)
 wp('hamilton', T(tr, 143.0), -3.3, 4.4, face=20)
 wp('lafayette', T(tr, 143.0), 3.3, 4.4, face=-20)
 # back to red: the lines re-form upstage and charge to the lip; ens5 slips away to become the redcoat
 B11 = [a for a in B12 if a != 'ens5']
-LINES2 = [(x, 0.4) for x in LX] + [(x, -1.1) for x in (-2.8, -1.4, 0.0, 1.4, 2.8)]
-lk2 = assign_ring(B11, LINES2)
-for a in B11:
-    p = LINES2[lk2[a]]; wp(a, T(tr, 148.0), p[0], p[1], face=0)
+for a in B11:   # each rank straight back 3.1 m (no reshuffle)
+    x, z = pos(a); wp(a, T(tr, 148.0), x, z - 3.1, face=0)
 for a in B11:
     x, z = pos(a); wp(a, T(tr, 150.5), x, z + 2.6, face=0)
 wp('hamilton', T(tr, 148.0), -0.7, 2.6, face=0)
 wp('lafayette', T(tr, 148.0), 0.7, 2.6, face=0)
 wp('hamilton', T(tr, 150.5), -0.8, 4.3, face=0)
 wp('lafayette', T(tr, 150.5), 0.8, 4.3, face=0)
-# the redcoat: out through the deck door, up the back way, onto the gallery centre with the white flag
+# the redcoat with the white flag
 hold_until('ens5', T(tr, 146.0))
 off('ens5', T(tr, 151.5), 'D-UC')
 # SPOT: cue 606's "cool special upstage centre for the redcoat" is Viper 18, straight down onto the DECK at (0, -1.58)
-# (its lens is at z -2.09, 6.2 m up); it cannot reach the gallery. The redcoat comes out of the deck door into it.
 off('ens5', T(tr, 152.0), 'D-UC')
 wp('ens5', T(tr, 155.0), 0.0, -1.6, face=0)
 # after a week: the soldiers in a few pools, all turned to the parapet
-# SPOT: cue 606's four warm soldier pools (Vipers 16, 13, 5, 1) replace the four inner spots; Hamilton takes the
-# centre one (Viper 8 at (0, 2.01)), the same pool cue 607 keeps on him ("one warm pool centre")
+# SPOT: cue 606's four warm soldier pools (Vipers 16, 13, 5, 1); Hamilton in the centre one (Viper 8 at (0, 2.01))
 P12 = [(1.66, 0.60), (-1.55, 0.52), (2.46, 2.74), (-2.46, 2.74)] + [polar(3.2, a) for a in (30, 70, 110, 150, 210, 250, 290, 330)]
 pk = assign_ring(B11 + ['lafayette'], P12)
 for a in B11 + ['lafayette']:
     p = P12[pk[a]]; wp(a, T(tr, 158.0), p[0], p[1], face=facing_to(p, (0.0, -1.6)) * 0.6)
 wp('hamilton', T(tr, 155.5), 0.0, 2.3, face=0)
-# it is over: an arc, soldiers in blue; Hamilton in the one warm pool
-ARC12 = arc(12, 3.0, -100, 100)
-srt = sorted(B11 + ['lafayette'], key=lambda a: pos(a)[0])
-place(srt, ARC12, T(tr, 170.5), face=0)
+# REVIEW2: "it is over" (169.8) and the celebration (189.6): the soldiers stay where they are and turn out (the
+# arc at 170.5 and the full-stage spread at 189.6 were invented reshuffles)
+for a in B11 + ['lafayette']:
+    wp(a, T(tr, 170.5), *pos(a), face=0)
 wp('hamilton', T(tr, 169.8), 0.0, 2.6, face=0)
 hold_until('ens5', T(tr, 169.0))
 off('ens5', T(tr, 172.0), 'D-UC')   # SPOT: back out through the deck door
@@ -433,57 +346,33 @@ off('ens5', T(tr, 172.0), 'D-UC')   # SPOT: back out through the deck door
 off('washington', T(tr, 173.0), 'D-UC')
 wp('washington', T(tr, 179.8), 0.0, -0.6, face=0)
 wp('hamilton', T(tr, 179.8), 0.0, 2.6, face=165)
-# celebration: the company spreads full stage (ens5 back in)
-CEL = [(-3.6, -1.0), (-1.8, -1.0), (1.8, -1.0), (3.6, -1.0),
-       (-4.0, 1.0), (-2.2, 1.0), (2.2, 1.0), (4.0, 1.0),
-       (-3.6, 3.0), (-1.8, 3.2), (1.8, 3.2), (3.6, 3.0), (0.0, -1.6)]
-CELB = B12 + ['lafayette']
-ck = assign_ring([a for a in CELB if a != 'ens5'], CEL[:-1] + [CEL[-1]])
-used = set(ck.values())
-free = [k for k in range(len(CEL)) if k not in used]
-ck['ens5'] = free[0]
-for a in CELB:
-    p = CEL[ck[a]]; wp(a, T(tr, 189.6) if a != 'ens5' else T(tr, 190.5), p[0], p[1], face=0)
 wp('washington', T(tr, 189.6), 0.0, -2.6, face=0)
 wp('hamilton', T(tr, 189.6), 0.0, 1.0, face=0)
-# the world turned upside down: nine on the outer ring, four on the inner; they turn, then turn back
-OUT9 = ['ens1', 'ens2', 'ens3', 'ens4', 'ens5', 'ens6', 'ens7', 'ens8', 'laurens']
-IN4 = ['ens9', 'ens10', 'mulligan', 'lafayette']
-o9 = ring(9, 3.2, 20); i4 = ring(4, 1.6, 45)
-okk = assign_ring(OUT9, o9); ikk = assign_ring(IN4, i4)
-for a in OUT9:
-    p = o9[okk[a]]; wp(a, T(tr, 201.0), p[0], p[1], face=0)
-for a in IN4:
-    p = i4[ikk[a]]; wp(a, T(tr, 201.0), p[0], p[1], face=0)
+off('ens5', T(tr, 186.0), 'D-UC')
+wp('ens5', T(tr, 191.0), -0.9, -1.4, face=0)    # the redcoat back among the company
 wp('washington', T(tr, 199.0), 0.0, -3.1, face=0)
 wp('hamilton', T(tr, 198.4), 0.0, 0.95, face=0)
-for a in OUT9:
-    th0 = 20 + 40 * okk[a]
-    revolve(a, 3.2, th0, th0 + 160, T(tr, 204.2), T(tr, 217.1), step=40)
-    revolve(a, 3.2, th0 + 160, th0, T(tr, 217.2), T(tr, 230.6), step=40)
-for a in IN4:
-    th0 = 45 + 90 * ikk[a]
-    revolve(a, 1.6, th0, th0 - 120, T(tr, 204.2), T(tr, 217.1), step=40)
-    revolve(a, 1.6, th0 - 120, th0, T(tr, 217.2), T(tr, 230.6), step=40)
-# the final tableau: each a step out into his own pool, weapons up
-# SPOT: cue 609.7 lights twelve pools (the night-attack Vipers); each soldier steps into the nearest free one,
-# Hamilton into the centre-SR one (Viper 10). Fourteen bodies, twelve pools: the two left over hold in the dark.
-TAB = [(-1.97, -0.80), (0.11, -1.37), (1.86, -0.75), (-2.69, 1.60), (-1.05, 0.98), (1.04, 1.07), (2.69, 1.66),
-       (-3.18, 3.37), (-1.58, 3.99), (-0.09, 3.16), (1.52, 3.99), (3.42, 3.68)]
-wp('hamilton', T(tr, 235.4), TAB[4][0], TAB[4][1], face=0)
-tab_free = [k for k in range(len(TAB)) if k != 4]
+# REVIEW2: the World Turned Upside Down. Cut: nine on the outer ring and four on the inner, walked 160 / 120 degrees
+# against each other and back (invented from cues 609.2/609.3, whose "spin" is the Construction GOBOS turning). Now
+# each soldier walks slowly (a stagger, not a march) to his own pool of the final tableau and holds there; the tableau
+# (LSA: "the company on the turntable, each brandishing a weapon, isolated in his own pool") is then already made.
+OUT9 = ['ens1', 'ens2', 'ens3', 'ens4', 'ens5', 'ens6', 'ens7', 'ens8', 'laurens']
+IN4 = ['ens9', 'ens10', 'mulligan', 'lafayette']
 tab_bodies = OUT9 + IN4
+tab_free = [k for k in range(len(TAB)) if k != 4]
 TABK = {}
 for group in (['lafayette', 'laurens', 'mulligan'], tab_bodies):     # the principals first, then the company
     for d_, a, k in sorted((dist(pos(a), TAB[k]), a, k) for a in group for k in tab_free):
         if a in TABK or k in TABK.values(): continue
         TABK[a] = k
 for a in tab_bodies:
+    hold_until(a, T(tr, 204.2))
     if a in TABK:
-        p = TAB[TABK[a]]; wp(a, T(tr, 235.4), p[0], p[1], face=0)
-    else:   # left over: a step back out into the dark, clear of every pool
+        p = TAB[TABK[a]]
+    else:   # left over (thirteen bodies, eleven pools): back out into the dark, clear of every pool
         x, z = pos(a); th = math.degrees(math.atan2(x, -(z - C[1]))); p = polar(4.0, th)
-        wp(a, T(tr, 235.4), p[0], p[1], face=0)
+    wp(a, T(tr, 217.1), p[0], p[1], face=0)
+wp('hamilton', T(tr, 235.4), TAB[4][0], TAB[4][1], face=0)
 # blackout: everyone off in the dark, upstage and mid wings (the King comes on DSL)
 for a in OUT9 + IN4 + ['hamilton', 'washington']:
     p = pos(a)
@@ -532,78 +421,81 @@ wp('hamilton', T(tr, 126.5), -2.1, 2.8, face=20)
 wp('hamilton', T(tr, 135.6), -2.0, 2.6, face=10)
 wp('hamilton', T(tr, 153.4), -2.1, 2.7, face=35)
 wp('hamilton', T(tr, 162.5), -2.05, 2.55, face=60)
-# in the dark: to their places for the top of Non-Stop (no crossing)
-wp('burr', T(tr, 183.0), 1.2, 3.9, face=0)
-wp('hamilton', T(tr, 183.0), -1.2, 3.9, face=0)
+# REVIEW2: the Disney+ frame behind cue 618 has Burr SEATED SL and Hamilton SR: each brings his chair on (props.py
+# 'theo-chair-burr' / 'theo-chair-hamilton', set 0.7 m behind his first place). In the fade (176.9) each picks his
+# chair up and turns it into a juror's chair for Non-Stop (the courtroom of real cue 631.01), then goes to his place
+# at the defence table.
+JCH = {'b1': (-2.12, 1.87), 'b2': (0.70, 1.81), 'b3': (3.50, 1.71), 'f1': (-3.50, 3.60), 'f2': (-0.59, 3.65), 'f3': (2.31, 3.55)}
+wp('burr', T(tr, 176.5), 2.75, 1.85, face=160)
+wp('burr', T(tr, 179.5), 2.95, 1.75, face=90)        # sets his chair at JCH b3, facing upstage
+wp('hamilton', T(tr, 176.5), -2.75, 1.85, face=-160)
+wp('hamilton', T(tr, 179.5), -1.5, 2.2, face=-90)    # sets his chair at JCH b1, facing upstage
+# the jury and Levi Weeks come on in the dark (1-22 176.9 fade, 181.5 "move in the dark", 1-23 0.0 FTB): four bring
+# their chairs, two sit in the fathers' chairs, Weeks (ens4) brings the defence table in through the deck door
+JURY = {'ens1': ('b1', 'W-MSR'), 'ens6': ('b2', 'W-USL'), 'ens7': ('b3', 'W-MSL'),
+        'ens8': ('f1', 'W-DSR'), 'ens9': ('f2', 'W-DSL'), 'ens10': ('f3', 'W-DSL')}
+for a, (k, e) in JURY.items():
+    off(a, T(tr, 176.9), e, label=NAMES[a])
+    x, z = JCH[k]; wp(a, T(tr, 183.5), x, z - 0.7, face=180)
+off('ens4', T(tr, 176.9), 'D-UC', label='Ensemble 4')
+wp('ens4', T(tr, 182.5), 0.0, -1.25, face=0)          # behind the table at (0, -0.6)
 
 # ====================================================================================
 # 1-23 NON-STOP
 # ====================================================================================
 tr = '1-23'
-JURY = ['ens1', 'ens6', 'ens7', 'ens8', 'ens9', 'ens10']
-# SPOT2: cue 631.01 lights preset 615 "Desk" (Eos): eight narrow X4s (zoom 14.9) in a row at z -0.2 .. -0.8 across the
-# stage. The jury sits along it, three each side of the judge, each in a desk pool.
-JPTS = [(-1.55, -0.65), (-2.2, -0.65), (-3.4, -0.6), (1.55, -0.65), (2.2, -0.65), (3.82, -0.3)]
-jent = ['W-USR', 'W-USR', 'W-MSR', 'W-MSL', 'W-MSL', 'W-USL']
-for a, p, e in zip(JURY, JPTS, jent):
-    off(a, T(tr, 0.0), e, label=NAMES[a])
-    wp(a, T(tr, 9.0), p[0], p[1], face=0)
-# Levi Weeks at the defence table, the judge UC, two onlookers SL
-off('ens4', T(tr, 0.0), 'D-UC', label='Ensemble 4'); wp('ens4', T(tr, 8.0), 0.0, 0.6, face=0)
-off('ens2', T(tr, 0.0), 'D-UC', label='Ensemble 2'); wp('ens2', T(tr, 6.0), 0.0, -0.67, face=0)   # SPOT2: the judge in the desk's centre pair (X4s 60/63)
-off('ens3', T(tr, 0.0), 'W-MSL', label='Ensemble 3'); wp('ens3', T(tr, 8.0), 3.1, 0.9, face=-60)
-off('ens5', T(tr, 0.0), 'W-MSL', label='Ensemble 5'); wp('ens5', T(tr, 9.0), 3.6, 1.8, face=-60)
-# the trial
-wp('hamilton', T(tr, 21.6), -0.8, 3.2, face=-50)
-wp('burr', T(tr, 21.6), 1.8, 3.4, face=-30)
-wp('hamilton', T(tr, 30.0), -1.5, 2.4, face=-70)
-wp('burr', T(tr, 32.0), 0.85, 1.15, face=-60)   # REVIEW: co-counsel, at the table with Weeks
-wp('hamilton', T(tr, 38.0), -0.4, 3.4, face=-30)
-# the company's first chorus: everyone up, an arc round the two lawyers
-CO10 = ENS[:]
-srt = sorted(CO10, key=lambda a: pos(a)[0])
-place(srt, arc(10, 3.2, -90, 90, (0.0, 3.4)), T(tr, 44.0), face=lambda p: facing_to(p, (0.0, 3.4)))
-wp('burr', T(tr, 41.5), 1.4, 3.6, face=-40)
-wp('hamilton', T(tr, 41.5), -0.4, 3.0, face=0)
-# the hook: the company on the outer ring, Hamilton to the centre
-R10 = ring(10, 3.2, 18)
-rk = assign_ring(CO10, R10)
-for a in CO10:
-    p = R10[rk[a]]; wp(a, T(tr, 54.0), p[0], p[1], face=facing_to(p, C))
-wp('hamilton', T(tr, 53.5), 0.0, 0.95, face=0)
-wp('burr', T(tr, 52.3), 2.0, 4.7, face=-10)
-# Non-stop! the ring revolves; Hamilton out to his DS special for the brag
-for a in CO10:
-    th0 = 18 + 36 * rk[a]
-    revolve(a, 3.2, th0, th0 + 99, T(tr, 62.5), T(tr, 73.8), step=36)   # SPOT: 99 not 108, so the ring straddles his special
-wp('hamilton', T(tr, 73.8), -1.05, 3.35, face=10)   # SPOT: cue 631.5 "the stage falls back to his DS special" = X4 44
-wp('burr', T(tr, 73.8), 3.2, 3.9, face=-20)
-# the Convention: the women of the company leave; six delegates sit in an upstage arc
-WOMEN = ['ens1', 'ens6', 'ens7', 'ens8']
-MEN = ['ens2', 'ens3', 'ens4', 'ens5', 'ens9', 'ens10']
-for a in WOMEN:
-    exit_to(a, T(tr, 78.5), nearest(pos(a), ['W-MSR', 'W-USR', 'W-MSL', 'W-USL', 'D-UC']), speed=1.4)
-DEL = arc(6, 3.2, -75, 75)
-mk = assign_ring(MEN, DEL)
+# REVIEW2: the courtroom is the ETC render of Binkley's real cue 631.01 (THPP Cue Photos, "CUE 631.01"): the defence
+# table up centre in the row of narrow X4 pools (z -0.6), one figure at it and one either side, and SIX CHAIRS in the
+# diamond of Viper pools in front, in two rows, their seats turned UPSTAGE to the table. So: Weeks (ens4) at the table,
+# Hamilton and Burr in the two flank pools (X4 59 (-1.73, -0.67), X4 64 (1.68, -0.81)), the jury of six at their chairs
+# facing the table. Cut as invented: the judge, the two onlookers, the company arc at the first chorus, the hook's
+# outer ring and its revolve. In the choruses the jurors only turn out to the house.
+wp('burr', T(tr, 0.5), 1.7, -0.75, face=-10)
+wp('hamilton', T(tr, 0.5), -1.73, -0.67, face=10)
+wp('hamilton', T(tr, 21.6), -1.3, -0.15, face=15)     # REVIEW2: addresses the jury from the table (see notes: cue 631.1)
+wp('hamilton', T(tr, 30.0), -0.8, 0.25, face=0)
+wp('burr', T(tr, 32.0), 0.9, -0.2, face=-40)           # co-counsel: he sits him down
+wp('hamilton', T(tr, 38.0), -1.6, -0.5, face=20)
+for a in JURY:
+    wp(a, T(tr, 41.5), *pos(a), face=0)                 # the first chorus (631.2): the jury turns out
+wp('burr', T(tr, 41.5), 1.6, -0.6, face=-20)
+wp('hamilton', T(tr, 53.5), -0.7, 0.35, face=0)        # the hook
+wp('hamilton', T(tr, 73.8), -1.55, 3.3, face=10)       # SPOT: cue 631.5, his DS special X4 44 (-1.31, 3.53)
+for a in JURY:
+    wp(a, T(tr, 74.5), *pos(a), face=facing_to(pos(a), (-1.55, 3.3)))
+# the trial is over: each juror takes her chair off, Weeks the table (props.py)
+JEX = {'ens1': 'W-MSR', 'ens6': 'W-USL', 'ens7': 'W-MSL', 'ens8': 'W-DSR', 'ens9': 'W-DSL', 'ens10': 'W-DSL'}
+for a in JURY:
+    exit_to(a, T(tr, 78.5), JEX[a], speed=1.5)
+exit_to('ens4', T(tr, 78.5), 'D-UC', speed=1.4)
+# the Convention (632 "Constitutional"): the real renders of 633-638 show four or five men round Hamilton, not a
+# company. Four delegates (ens2, ens3, ens5, and ens4 back in without the table).
+MEN = ['ens2', 'ens3', 'ens4', 'ens5']
+DEL = {'ens2': ('W-USR', -60), 'ens3': ('D-UC', -20), 'ens4': ('D-UC', 20), 'ens5': ('W-USL', 60)}
 for a in MEN:
-    p = DEL[mk[a]]; wp(a, T(tr, 85.2), p[0], p[1], face=facing_to(p, C))
+    e, th = DEL[a]; p = polar(2.4, th)
+    if a == 'ens4':
+        off(a, T(tr, 84.0), e); wp(a, T(tr, 87.0), p[0], p[1], face=facing_to(p, C))
+    else:
+        off(a, T(tr, 79.0), e); wp(a, T(tr, 85.2), p[0], p[1], face=facing_to(p, C))
 wp('burr', T(tr, 85.2), 3.3, 2.9, face=-60)
 wp('hamilton', T(tr, 85.2), -2.0, 3.4, face=30)
 wp('hamilton', T(tr, 95.6), 0.0, 0.95, face=0)       # Move to center / AF-Center
-# Men on Ring: the delegates close round him and walk; then turn on him
-R6 = ring(6, 3.2, 30)
-mk = assign_ring(MEN, R6)
+# Men on Ring (635, Binkley's label): the four ring him on the outer ring and walk a little; on 636 they close in
+R4 = ring(4, 3.2, 0)
+mk = assign_ring(MEN, R4)
 for a in MEN:
-    p = R6[mk[a]]; wp(a, T(tr, 99.5), p[0], p[1], face=facing_to(p, C))
-    th0 = 30 + 60 * mk[a]
-    revolve(a, 3.2, th0, th0 + 60, T(tr, 99.6), T(tr, 104.0), step=30)
-    p = polar(2.2, th0 + 60); wp(a, T(tr, 106.0), p[0], p[1], face=facing_to(p, C))
+    p = R4[mk[a]]; wp(a, T(tr, 99.5), p[0], p[1], face=facing_to(p, C))
+    th0 = 90 * mk[a]
+    revolve(a, 3.2, th0, th0 + 45, T(tr, 99.6), T(tr, 104.0), step=45)
+    p = polar(2.2, th0 + 45); wp(a, T(tr, 106.0), p[0], p[1], face=facing_to(p, C))
 wp('burr', T(tr, 106.0), 0.0, 3.15, face=150)
-# Burr / Men: Burr DS, the men in a wedge behind him; Hamilton pushed upstage
-WEDGE6 = [(-1.0, 3.3), (1.0, 3.3), (-2.0, 2.5), (2.0, 2.5), (-3.0, 1.7), (3.0, 1.7)]
-wk = assign_ring(MEN, WEDGE6)
+# Burr/Men (638): Burr DS, the four men loose behind him (the render: one far SR, two up centre, one SL); Hamilton
+# pushed upstage
+LOOSE = [(-2.8, 0.4), (-1.2, -0.2), (1.2, -0.4), (2.8, 0.6)]
+wk = assign_ring(MEN, LOOSE)
 for a in MEN:
-    p = WEDGE6[wk[a]]; wp(a, T(tr, 115.1), p[0], p[1], face=0)
+    p = LOOSE[wk[a]]; wp(a, T(tr, 115.1), p[0], p[1], face=0)
 wp('burr', T(tr, 115.1), 0.0, 4.2, face=0)
 wp('hamilton', T(tr, 115.1), 0.0, -0.8, face=0)
 # midnight at Burr's: the men go; the two men DR
@@ -625,23 +517,8 @@ wp('hamilton', T(tr, 178.1), -0.85, 3.05, face=-50)
 # Burr alone in the blue column; Hamilton gone into the dark
 wp('burr', T(tr, 189.0), 0.0, 1.1, face=0)   # SPOT: in Viper 13's column (0, 1.24) a second after cue 644, not 3 s
 exit_to('hamilton', T(tr, 188.0), 'W-DSR', speed=1.3, via=[(-5.6, 4.7)])
-# the company returns as watchers on the three galleries
-# USG via the back way
-for a, t_in, x in [('ens1', 189.0, -3.0), ('ens7', 189.5, 3.2), ('ens6', 190.5, -1.6), ('ens8', 191.0, 1.8)]:
-    off(a, T(tr, t_in), 'G-UC')
-    g(a, T(tr, t_in + 1.6), 0.6, -3.35, dwell=0)
-    g(a, T(tr, t_in + 1.6 + abs(x - 0.6) / 1.3), x, -3.35, face=0)
-# SR arm via the SR stair
-for a, t_foot, z in [('ens2', 186.0, 2.7), ('ens3', 187.6, 1.5), ('ens4', 189.2, 0.3)]:
-    off(a, T(tr, t_foot - 4.5), 'W-MSR')
-    to_arm(a, T(tr, t_foot), z, face=45)
-# SLG via the deck door and the SL stair
-for a, t_in, z in [('ens5', 183.0, 2.2), ('ens9', 184.5, 0.6), ('ens10', 186.0, -1.0)]:
-    off(a, T(tr, t_in), 'D-UC')
-    wp(a, T(tr, t_in + 2.9), 1.5, -2.45, dwell=0)
-    climb_SL(a, T(tr, t_in + 3.5))
-    g(a, T(tr, t_in + 8.4), *SLJ, dwell=0)
-    g(a, T(tr, t_in + 8.4 + abs(z - SLJ[1]) / 1.3), 4.9, z, face=-70)
+# REVIEW2: no watchers on the galleries for Burr's reprise (cue 645 is a reconstruction; nothing places bodies there,
+# and the three climbs were invented traffic). The company is off from the Convention to the company chorus (281.7).
 # Angelica's farewell SL; Burr leaves; Hamilton answers from his DS special; Eliza's plea SR
 exit_to('burr', T(tr, 205.0), 'W-DSR', speed=1.5, via=[(-5.6, 4.75)])
 off('angelica', T(tr, 0.0), 'W-DSL', label='Angelica')
@@ -658,6 +535,10 @@ wp('hamilton', T(tr, 242.0), -0.2, 3.3, face=0)
 exit_to('angelica', T(tr, 245.0), 'W-MSL', speed=1.3)
 wp('eliza', T(tr, 244.0), -2.6, 3.2, face=45)
 exit_to('eliza', T(tr, 249.0), 'W-MSR', speed=1.3)
+# REVIEW2: Hamilton's desk (props.py 'hamilton-desk') is brought on in the change by ens8 from SR and set at (-1.0, 2.1)
+off('ens8', T(tr, 246.0), 'W-MSR')
+wp('ens8', T(tr, 251.0), -1.0, 1.5, face=0, dwell=0.3)
+exit_to('ens8', T(tr, 251.3), 'W-MSR', speed=1.5)
 # the Federalist Papers: Hamilton at his desk centre, writing; Burr counts the essays DR
 # SPOT: cue 649's warm-white key on him is X4 44 (-1.31, 3.53), and the slanted window (Vipers 16/17) is round
 # (-0.95, 1.1): his desk sits where both reach, (-1.0, 2.65), not at C (no desk prop exists)
@@ -667,22 +548,20 @@ wp('burr', T(tr, 260.0), -2.8, 3.6, face=20)
 wp('hamilton', T(tr, 268.0), -0.8, 2.75, face=-10)
 wp('hamilton', T(tr, 276.0), -1.15, 2.6, face=10)
 wp('burr', T(tr, 281.7), -2.6, 4.6, face=20)
-# the company chorus: the watchers come down onto the ring and turn it
-for a, t0 in [('ens6', 272.5), ('ens1', 274.0), ('ens8', 272.5), ('ens7', 274.0)]:
-    hold_until(a, T(tr, t0)); x = pos(a)[0]; t1 = t0 + abs(x - 0.6) / 1.4
-    g(a, T(tr, t1), 0.6, -3.35, dwell=0); off(a, T(tr, t1 + 1.2), 'G-UC'); off(a, T(tr, t1 + 1.6), 'D-UC')
-for a, t0 in [('ens2', 269.5), ('ens3', 272.0), ('ens4', 274.5)]:
-    from_arm(a, T(tr, t0))
-for a, t0 in [('ens10', 270.0), ('ens9', 272.0), ('ens5', 274.0)]:
-    hold_until(a, T(tr, t0)); z = pos(a)[1]; t1 = t0 + abs(z - SLJ[1]) / 1.4
-    g(a, T(tr, t1), *SLJ, dwell=0); down_SL(a, T(tr, t1 + 0.4))
-R10b = ring(10, 3.2, 18)
-rk = assign_ring(CO10, R10b)
-for a in CO10:
-    p = R10b[rk[a]]; wp(a, T(tr, 285.5), p[0], p[1], face=facing_to(p, C))
-    th0 = 18 + 36 * rk[a]
-    revolve(a, 3.2, th0, th0 + 108, T(tr, 286.0), T(tr, 300.7), step=36)
-    last(a)['face'] = facing_to(pos(a), C)
+# the company chorus (cue 652, 281.7): REVIEW2 - seven of the company walk on into a loose arc upstage of the desk and
+# stay there, facing in (cut: the ten watchers coming down three stairs and the ring walked 108 degrees; the turning
+# is cue 652's Construction GOBO texture). They hold the arc to the end, turn out for the counterpoint and take one
+# step in on the final Shot (368.7).
+FIN = ['ens%d' % i for i in range(1, 8)]
+FIN_TH = [-80, -55, -30, -5, 30, 55, 80]
+for a, th in zip(FIN, FIN_TH):
+    p = polar(2.9, th)
+    off(a, T(tr, 276.0), nearest(p, ['W-USR', 'W-MSR', 'D-UC', 'W-USL', 'W-MSL']))
+    wp(a, T(tr, 285.5), p[0], p[1], face=facing_to(p, (-1.0, 2.65)))
+# the desk struck as the music drops for Washington (304.3): ens8 in from DR, off with it the same way
+off('ens8', T(tr, 302.0), 'W-DSR')
+wp('ens8', T(tr, 305.5), -1.6, 2.65, face=60, dwell=0.3)
+exit_to('ens8', T(tr, 305.8), 'W-DSR', speed=1.5)
 # Washington appears high centre on the gallery: the new government
 # REVIEW: BroadwayWorld forum (OBC, 2016): Washington at the end of Non-Stop is on the upper balcony, stage left.
 # The offer (304.3) is played in his deck special (cue 655: Viper 93 + X4 front focused (0, 1.8)-(0, 2.1)), then he
@@ -713,23 +592,16 @@ wp('hamilton', T(tr, 332.0), 0.05, 2.3, face=0)
 wp('angelica', T(tr, 342.8), 3.3, 1.5, face=-25)
 wp('eliza', T(tr, 342.8), -3.2, 1.55, face=25)
 wp('eliza', T(tr, 368.7), -3.4, 2.55, face=20)    # SPOT: into the beam fan's SR unit (Viper 11 at (-3.23, 2.18)), then X4 54
-# everyone, the turntable turning
-# SPOT: the sisters now stand ON the outer ring's line (their specials are at r 3.3), so the company's turn runs on
-# the inner disc (r 2.4) instead, steps out to r 2.9 (not 3.5) for the beam fan, and the 6 o'clock pair opens to
-# (+-2.8, 3.2), clear of Hamilton's DS special (X4 44), for his name.
-for a in CO10:
-    x, z = pos(a); th0 = math.degrees(math.atan2(x, -(z - C[1])))
-    p = polar(2.4, th0); wp(a, T(tr, 312.5), p[0], p[1], face=facing_to(p, (0.0, 1.3)))   # SPOT2: in to r 2.4 already, clear of the 402 pools
-    revolve(a, 2.4, th0, th0 + 108, T(tr, 352.4), T(tr, 364.8), step=36, face=0)
-    p = polar(2.9, th0 + 108); wp(a, T(tr, 368.7), p[0], p[1], face=0)
-    th = (th0 + 108) % 360
-    if 150 < th < 210:       # open the 6 o'clock gap for Hamilton's walk to DSC
-        p = (2.8, 3.2) if th < 180 else (-2.8, 3.2); wp(a, T(tr, 372.0), p[0], p[1], face=0)
+# everyone: the company counterpoint (662, 352.4) - REVIEW2: the arc turns out to the house, and steps in on the
+# final Shot (368.7); no walked revolve (cut, invented)
+for a, th in zip(FIN, FIN_TH):
+    wp(a, T(tr, 352.4), *pos(a), face=0)
+    p = polar(2.4, th); wp(a, T(tr, 368.7), p[0], p[1], face=0)
 # SPOT: cue 666 "his DS specials and an overhead white special": X4 44 (-1.31, 3.53), Viper 93 (0, 2.99) and the fan's
 # Viper 9 (0, 4.0) all reach (-0.4, 3.5)
 wp('hamilton', T(tr, 374.0), -0.4, 3.5, face=0)
 # the button, then the blackout: everyone off for the interval
-everyone = CO10 + ['hamilton', 'burr', 'eliza', 'angelica', 'washington']
+everyone = FIN + ['hamilton', 'burr', 'eliza', 'angelica', 'washington']
 for a in everyone:
     hold_until(a, T(tr, 382.2))
     p = pos(a)
@@ -742,7 +614,7 @@ for a in everyone:
     elif a == 'angelica': e = 'W-MSL'
     else:
         e = nearest(p, ['W-MSR', 'W-USR', 'W-MSL', 'W-USL', 'D-UC'])
-        if dist(p, ENT[e]) > 6.0: e = nearest(p, ['W-DSL', 'W-DSR'])
+        if dist(p, ENT[e]) > 6.5: e = nearest(p, ['W-DSL', 'W-DSR'])
     off(a, T(tr, 384.4), e)
 
 

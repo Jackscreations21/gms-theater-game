@@ -21,6 +21,9 @@ the PNGs are written with zlib + struct, the text is a 5x7 bitmap font.
     `special` cut-off (zoom <= 14, or a floor pool of radius <= 1 m) misses face keys and duet pools at 14.5-18.5 deg
     whose pool is wider than 1 m (found by the segment-5 spotlight pass).  Only the specials are outlined white.
 
+Props (RULINGS FR, FT) are drawn as shaded squares in their colour, from the blocking file's `props`, or for a segment
+file from the `props.json` beside it; a placed prop GLIDES between two placed waypoints, as the page draws it.
+
 <file> is either a SEGMENT file (`{"segment", "tracks", "waypoints": {"<id>": [...]}}`, as the
 blocking writers produce) or the page's blocking file (`assets/hamilton-blocking.json`,
 `{"actors": [{"id", "name", "color", "path"}]}`).  Names and colours come from the file, else
@@ -394,6 +397,74 @@ def draw_actor(cv, st, a, p, short=False):
 
 
 # ---------------------------------------------------------------- input
+# ---------------------------------------------------------------- the props (RULINGS FR, FT): midtown.html propCompile / propPose
+PROP_KINDS = {'desk': [1.2, 0.75, 0.6], 'table': [1.5, 0.75, 0.9], 'chair': [0.45, 0.9, 0.45], 'bench': [1.4, 0.45, 0.4], 'stool': [0.4, 0.6, 0.4],
+              'box': [0.5, 0.45, 0.5], 'crate': [0.6, 0.5, 0.6], 'lantern': [0.2, 0.35, 0.2], 'bucket': [0.3, 0.35, 0.3], 'custom': [0.5, 0.5, 0.5]}
+PROP_AHEAD = 0.22
+PROPS_LOADED = []          # filled by load_inputs (its return value is kept as it was: tools/blocking/props.py unpacks three)
+
+
+def compile_prop(p, tracks):
+    P = []
+    for k, w in enumerate(p.get('waypoints') or []):
+        t = tracks.get(str(w.get('track')))
+        if not t: continue
+        f = num(w.get('facing'))
+        P.append({'k': k, 'T': t['start'] + (num(w.get('at')) or 0), 'x': num(w.get('x')) or 0, 'z': num(w.get('z')) or 0, 'y': num(w.get('y')) or 0.045,
+                  'yaw': (f or 0) * math.pi / 180, 'off': bool(w.get('off')), 'by': w.get('carriedBy') or None})
+    P.sort(key=lambda q: (q['T'], q['k']))
+    return P
+
+
+def prop_pose(p, T, actors_by_id):
+    P = p['c']
+    if not P or T < P[0]['T']: return None
+    lo, hi = 0, len(P) - 1
+    while lo < hi:
+        m = (lo + hi + 1) // 2
+        if P[m]['T'] <= T: lo = m
+        else: hi = m - 1
+    w = P[lo]
+    if w['by']:
+        a = actors_by_id.get(w['by'])
+        if not a: return None
+        q = pose(a['c'], T)
+        if not q: return None
+        f = p['size'][2] / 2 + PROP_AHEAD
+        return {'x': q['x'] + math.sin(q['yaw']) * f, 'z': q['z'] + math.cos(q['yaw']) * f, 'y': q['y'] + 1.0, 'yaw': q['yaw'], 'visible': q['visible'] and not w['off'], 'by': w['by']}
+    n = P[lo + 1] if lo + 1 < len(P) else None
+    if not w['off'] and n and not n['by'] and not n['off'] and n['T'] > w['T'] + 1e-6:     # the glide (RULING FT)
+        f = (T - w['T']) / (n['T'] - w['T'])
+        return {'x': w['x'] + (n['x'] - w['x']) * f, 'z': w['z'] + (n['z'] - w['z']) * f, 'y': w['y'] + (n['y'] - w['y']) * f,
+                'yaw': ylerp(w['yaw'], n['yaw'], f), 'visible': True, 'by': None}
+    return {'x': w['x'], 'z': w['z'], 'y': w['y'], 'yaw': w['yaw'], 'visible': not w['off'], 'by': None}
+
+
+def draw_prop(cv, st, p, q, short=False):
+    w, d = p['size'][0], p['size'][2]
+    c, s_ = math.cos(q['yaw']), math.sin(q['yaw'])
+    corners = [(q['x'] + u * c + v * s_, q['z'] - u * s_ + v * c) for u, v in ((-w / 2, -d / 2), (w / 2, -d / 2), (w / 2, d / 2), (-w / 2, d / 2))]
+    pts = [st.P(x, z) for x, z in corners]
+    x0, x1 = int(min(a for a, _ in pts)), int(max(a for a, _ in pts)) + 1
+    y0, y1 = int(min(b for _, b in pts)), int(max(b for _, b in pts)) + 1
+    def inside(x, y):
+        sign = 0
+        for (ax, ay), (bx, by) in zip(pts, pts[1:] + pts[:1]):
+            cr_ = (bx - ax) * (y - ay) - (by - ay) * (x - ax)
+            if cr_ != 0:
+                if sign == 0: sign = 1 if cr_ > 0 else -1
+                elif (cr_ > 0) != (sign > 0): return False
+        return True
+    col = p['rgb']
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            if inside(x + 0.5, y + 0.5): cv.put(x, y, col, 0.85)
+    for a, b in zip(pts, pts[1:] + pts[:1]): cv.line(a[0], a[1], b[0], b[1], (235, 220, 190), 1)
+    if not short:
+        cx, cy = st.P(q['x'], q['z'])
+        cv.text(int(cx) - 3 * len(p['label'][:14]), int(cy) + 6, p['label'][:14], (235, 220, 190), 1, bg=(20, 18, 22))
+
+
 def load_inputs(path):
     d = json.load(open(path, encoding='utf-8'))
     cast = {a['id']: a for a in json.load(open(os.path.join(ROOT, 'tools', 'hamilton-cast.json'), encoding='utf-8'))['actors']}
@@ -419,6 +490,15 @@ def load_inputs(path):
         a['c'] = compile_path(path, tracks, label or name)
         a['path'] = path
         actors.append(a)
+    plist = d.get('props') if isinstance(d.get('props'), list) else None
+    if plist is None:                            # a segment file: the props are generated beside it (tools/blocking/props.py)
+        side = os.path.join(os.path.dirname(os.path.abspath(path)), 'props.json')
+        plist = json.load(open(side, encoding='utf-8')).get('props', []) if os.path.exists(side) else []
+    PROPS_LOADED.clear()
+    for pr in plist:
+        size = pr.get('size') if isinstance(pr.get('size'), list) and len(pr['size']) == 3 else PROP_KINDS.get(pr.get('kind'), PROP_KINDS['custom'])
+        PROPS_LOADED.append({'id': pr.get('id'), 'label': str(pr.get('label') or pr.get('id')), 'size': [float(v) for v in size],
+                             'rgb': hexc(pr.get('color') or '#8a6a48'), 'c': compile_prop(pr, tracks)})
     return d, tracks, actors
 
 
@@ -428,6 +508,10 @@ def frame(st, tracks, actors, tid, sec, title=True, short=False, pdir=None, ever
     pools = pools_at(pdir, tid, sec, every_kind)
     draw_pools(cv, st, pools)
     ps = [(a, pose(a['c'], T)) for a in actors]
+    byid = {a['id']: a for a in actors}
+    for pr in PROPS_LOADED:
+        q = prop_pose(pr, T, byid)
+        if q and q['visible']: draw_prop(cv, st, pr, q, short)
     for a, p in sorted(ps, key=lambda ap: (ap[1]['visible'], ap[1]['y']) if ap[1] else (False, 0)):
         if p: draw_actor(cv, st, a, p, short)
     if title:

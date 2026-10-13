@@ -30,6 +30,54 @@ these is edited. They are yours to rule or fix. The sources are the eight agents
    - The blocking keeps the ruled sides, Hamilton SR and Burr SL, and stands them in the same pools the other way round.
    - If the preset names are right, the sides at the shot should swap.
 
+## Added after review 2 (2026-10-13: Jack's verdict — the ensemble far less, the invented formations cut)
+
+Review 2 moved the blocking in every segment. The research notes record what moved, each under its
+`## Review 2 (Jack's verdict)` section. Some cues now light places nobody stands, or follow the old staging. These
+are new or changed:
+
+- **1-10 Q302 (Two Weeks), ch25 (−3.51, 4.01) and ch26 (2.86, 2.10).**
+  - Binkley's real cue raises these two keys in part 3, from about 124 s.
+  - The restaged scene follows photo 302 and the fan accounts:
+    - the sisters on a bench at (0, 3.0), backs to the house;
+    - Hamilton and Schuyler (in his chair) upstage on the disc.
+  - So both keys now light nobody. Either re-aim them onto that geometry, or the photo is not Q302's moment.
+- **1-20 cue 596** (a reconstruction): its gallery specials, Vipers 25/26 on the upstage gallery, now light nobody,
+  because the gallery soldiers were cut. Drop them, or put the soldiers back.
+- **1-23 cue 631.1** (a reconstruction) puts Hamilton in his downstage special, **X4 44**, to address the jury.
+  - Since review 2 the jury sits facing the defence table, as real 631.01 shows, and he addresses them from the table.
+    X4 44 at 21.6 s lights nobody.
+  - If the jury should face the house instead, turn the six chairs (`tools/blocking/props.py`, segment 4) and move
+    him back to (−1.05, 3.4).
+- **2-09 992–995, ch25 (−0.55, −3.02).** Washington takes over the reading downstage centre in ch13, and Hamilton
+  finishes it at Washington's desk. ch25 still lands on the upstage gallery, where nobody is. **Refocus ch25 onto the
+  desk, about (−0.55, 0.2).**
+- **2-07 the sides (unchanged, still open).** The blocking is on the ruled sides: Jefferson and Madison SR, Hamilton
+  SL. The cue data still has the old sides. The mirror list is below under Act Two.
+- **1-23 659 / 661** (Washington "high centre") are unchanged. They still light empty air while he is on the SL
+  gallery.
+- **Not counted as cue faults.** The plotter's spot-check (`tools/blocking-plot.py --pools`, 18 moments across all
+  eight segments) finds the principals in their person lights wherever the cue data lights them. Every miss it shows is
+  one of the items in this file.
+
+### Questions for Jack from review 2
+
+3. **1-07, the top: "Kings men DS".**
+   - Photo 190.01 shows two figures in the downstage side pools (preset 203 "Kings men DS") for the first 7 s.
+   - Nobody knows who they are; perhaps Hamilton and Seabury held over from Farmer Refuted.
+   - They are left out. Adding them needs segment 1 to set them in the 1-06 / 1-07 blackout.
+4. **1-09 / 1-10, the side flip the photos forced.**
+   - Photo 300.3 (Binkley's real top of Helpless) has the three sisters SR and two men SL. The fan write-up has the men
+     leave SL.
+   - Review 2 flipped the earlier passes, which had the sisters SL, to match. So Burr is DL for the ball and the sisters
+     cross to SR on Q293.
+   - Confirm the flip.
+5. **2-11, the King's stool: which side?**
+   - It is set UL (4.2, −1.6), the ruled "King UL".
+   - The fan account has him set up a little chair "on the left". As the audience sees it, that is SR.
+   - Viper 17 "King UL" lands near the SL stair, so the cue data agrees with SL.
+   - SR or SL?
+
 ## The rig and the page (not single cues)
 
 - **The FOH X4s ch41–46 hit house geometry about 0.8–1.2 m from their lenses**, at about (x, 5.5, 8.4) set-local:
