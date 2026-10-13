@@ -243,6 +243,10 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
    file says what to change, and a correction goes into the segment's generator in `tools/blocking/`, then the merge. Put `docs/hamilton-blocking-cue-notes.md` in front of him:
    his two rulings (1-05 sisters, 2-22 duel sides) and the cue fixes. Ask the mannequin's licence/origin.
 
+## DONE — 2026-10-13: Simple mode — selection, delete a track in a song or from now on, delete a keyframe (PR #234)
+
+- The recording file's `deletions` and how to apply them: the format doc.
+
 ## DONE — 2026-10-12 (latest, round 3): the editor's Simple mode — record by dragging dots with the music, furniture carries (PR #234)
 
 - `blocking.html` defaults to Simple (dots, squares, Space, drag = keyframe now, carry ▾); Advanced unchanged behind a toggle.

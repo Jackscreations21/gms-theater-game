@@ -310,6 +310,11 @@ and stuff like that"*
   waypoints in that song from the first keyframe on (RULED; the format doc has it); furniture squares with a carry picker
   (nearest first, or nobody); saved at every keyframe; exported as the RECORDING FILE (format doc). The full editor is behind
   **Advanced ▸**, unchanged.
+- **Selection and deletes in Simple mode:** click / Shift-click / a box / Ctrl+A select; Delete removes the selected bodies'
+  whole track in the current song, Shift+Delete everything of theirs in the current song from the clock's time on (nothing
+  earlier, no other song), X one keyframe. RULED: a deletion is recorded per song and body (`deleted: "all"` /
+  `deletedFrom`) and, like a keyframe, replaces the loaded waypoints from the cut on; nobody is left frozen (the walk-off and
+  wing holds as for a cleared song).
 - **The plan is drawn as an architect's plan** (Jack: *"make the map of the stage look better"*): vector shapes from the
   measured geometry (the deck a shade lighter between the proscenium posts, the pit, the galleries raised with a shadow on
   their downstage edge, stairs as treads with an UP arrow, rails, posts, entrance tabs), labels placed so none overlap (inside

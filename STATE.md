@@ -3,7 +3,22 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-12 (latest, round 3): THE EDITOR'S SIMPLE MODE — DRAG THE DOTS WHILE THE MUSIC PLAYS, CARRY THE FURNITURE — PR #234
+## NEWEST — 2026-10-13: SIMPLE MODE — SELECT SEVERAL, DELETE A TRACK IN A SONG OR FROM NOW ON — PR #234
+
+Jack: *"make it so I can delete the track for a specific person, or it can delete the track in front of the position of the
+song I am at. Make it so I can select multiple people at once to delete tracks for."*
+
+- Select: click, Shift / Ctrl-click, a box on the empty plan, Ctrl+A, Esc; the cast list mirrors it (Shift-click ranges).
+- Delete (their whole track in this song), Shift+Delete ("Delete from 0:30 on in this song": the current song only, from the
+  clock on), X (one keyframe). Confirm with song, time, who, count; one Ctrl+Z each; nobody left frozen.
+- The recording file carries `deletions` per song and body (`deleted: "all"` / `deletedFrom`); format doc updated.
+- Checked on http://localhost:8093 with real input: a box round Hamilton and Lafayette, Shift-click Mulligan, Shift+Delete at
+  1-04 30 s (they walk off by ~41 s; earlier untouched), click Laurens + Delete (she walks off in the song's first 4 s), Ctrl+Z
+  twice restores, X removes a keyframe and Ctrl+Z brings it back, Ctrl+A selects 20, cast-row Shift range, export → wipe →
+  load replays identically.
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (latest, round 3): THE EDITOR'S SIMPLE MODE — DRAG THE DOTS WHILE THE MUSIC PLAYS, CARRY THE FURNITURE — PR #234
 
 Jack: *"just make it so every person has a dot, then I can play the music and I move the people to where they need to be, and
 make it so I pause it with space bar … then make it export that so I can give it to you"*; *"when I add furniture it creates a

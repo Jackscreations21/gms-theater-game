@@ -197,6 +197,18 @@ square for it, and it has a button, then when I press it I can choose who carrie
   clear: nobody frozen), and one with keyframes waits in the wing until she must walk on to her first. Between keyframes a
   body moves by the page's own pose rules — each keyframe is a stop with no dwell and no facing, so she walks the straight leg
   at 1.3 m/s, leaving just in time (faster if the time is short) — so the playback is what `midtown.html` will do.
+- **Selecting and deleting** (Jack: *"make it so I can delete the track for a specific person, or it can delete the track in
+  front of the position of the song I am at. Make it so I can select multiple people at once"*): click a dot (or square) to
+  select it, Shift / Ctrl-click to add, drag a box on the empty plan round several, Ctrl+A everyone, Esc clears; the cast list
+  shows and makes the same selection (Shift-click for a range). Then:
+  - **Delete their track in this song** (the Delete key): each selected body's whole track in the CURRENT song goes — its
+    keyframes there and the loaded blocking's waypoints there.
+  - **Delete from 2:03 on in this song** (Shift+Delete; the button shows the clock's time): everything of theirs in the
+    CURRENT song at or after the clock's time goes; nothing before it in the song, and nothing in any other song.
+  - Both confirm (the song, the time, who, how many keyframes) and are one Ctrl+Z. Nobody is left frozen: a body on stage at
+    the cut walks off to the nearest wing right after it, and waits in the wing nearest her next spot until a later keyframe
+    (or the next song) needs her. A cut prop goes off at the cut.
+  - **Delete this keyframe** (X): the keyframe within ±0.25 s of the clock of the dot under the pointer (or the one selected).
 - **Saved** to this browser (localStorage `hamilton-blocking-recording-1`) at every keyframe and note, and back on reload with
   a one-line banner ("Discard it" throws it away). **Restore** puts the current song back as the loaded file has it.
 
@@ -216,13 +228,17 @@ square for it, and it has a button, then when I press it I can choose who carrie
               "actors": { "laurens": [ { "at": 30, "x": 2, "z": 0, "level": "deck", "off": false } ] },
               "props":  { "f-test-desk": [ { "at": 66.1, "carriedBy": "laurens", "off": false },
                                            { "at": 77.4, "x": 0, "z": 1.65, "off": false },
-                                           { "at": 85.6, "carriedBy": "hamilton", "off": false } ] } } }
+                                           { "at": 85.6, "carriedBy": "hamilton", "off": false } ] },
+              "deletions": { "actors": { "laurens": { "deleted": "all" }, "hamilton": { "deletedFrom": 30 } }, "props": {} } } }
 }
 ```
 
 **Applying it (for the next session):** check `source.sha256` against the committed blocking. For each track: if `cleared`,
 remove every waypoint the generator writes in that track (actors; props in `tools/blocking/props.py`); otherwise, per body,
-remove its waypoints in the track at or after its first keyframe's `at`. Then write each keyframe as a waypoint:
+remove its waypoints in the track at or after the EARLIER of its first keyframe's `at` and its `deletions` entry
+(`deleted: "all"` = all of them in that track; `deletedFrom: s` = those at or after s in that track only). A body whose track
+was cut and who would be left on stage gets an offstage waypoint at the nearest wing just after the cut (and one in the wing
+nearest her next spot, timed to walk on to it), as the editor plays it. Then write each keyframe as a waypoint:
 `{ track, at, x, z }` plus `"y": "gallery"` when `level` is "gallery" and `"off": true` when `off` — no `dwell`, no `facing`
 (add a `facing` only if Jack's note asks); a prop keyframe with `carriedBy` becomes `{ track, at, carriedBy }`, one with x / z a
 placed waypoint (`facing` 0 unless noted). Each `furniture` entry becomes a new prop in `props.py`. A cleared track's bodies

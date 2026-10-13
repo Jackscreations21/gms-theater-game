@@ -167,6 +167,8 @@ kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid
         <h2>Songs</h2>
         <div class="songlist" id="songlist"></div>
         <div id="s_count"></div>
+        <div class="note" id="s_sel">Nobody selected — click a dot (Shift / Ctrl-click adds; drag a box round several; Ctrl+A everyone).</div>
+        <div class="btns"><button id="s_delall" title="Delete key">Delete their track in this song</button><button id="s_delfrom" title="Shift+Delete">Delete from 0:00 on in this song</button><button id="s_delkey" title="X: the keyframe of the dot under the pointer (or the one selected) at this moment">Delete this keyframe</button></div>
         <div class="btns"><button id="s_clear" title="Start this song from an empty stage">Clear this song</button><button id="s_restore" title="Back to the loaded blocking for this song">Restore</button><button id="s_export" title="hamilton-blocking-recording-&lt;date&gt;.json: your keyframes and notes, for Claude">Export</button></div>
         <h2>Add furniture</h2>
         <div class="btns"><select id="f_kind" aria-label="Kind"></select><input id="f_name" type="text" placeholder="name" style="width:92px"><button id="f_add">Add</button></div>
@@ -688,7 +690,7 @@ function audioSync(force) {                            // the element to the clo
 function seek(T) {
   T = Math.max(0, T); S.T = T; S.hold = null;
   if (locate(T).tr.id === S.tracks[S.tracks.length - 1].id) S.tailView = Math.max(S.tailView, T - S.end + 10);
-  audioSync(true); S.dirty = true; S.uiDirty = true;
+  audioSync(true); S.dirty = true; S.uiDirty = true; S.listDirty = true;
 }
 function setPlaying(on) {                                // called from the Play click itself, so its play() carries the gesture (autoplay policy)
   S.playing = on; S.hold = null; AU.blocked = false;
@@ -1454,7 +1456,7 @@ function draw() {
   drawStage();
   drawPools(S.T);                                       // the light under everything but the floor
   drawLabels();
-  if (S.mode === 'simple') drawSimple(S.T);
+  if (S.mode === 'simple') { drawSimple(S.T); drawBox(); }
   else { drawSelected(); drawProps(S.T); drawActors(S.T); }
   if (S.hoverP) { const [a, b] = PX(S.hoverP[0], S.hoverP[1]); g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(a - 7, b); g.lineTo(a + 7, b); g.moveTo(a, b - 7); g.lineTo(a, b + 7); g.stroke(); }
   const lt = lightAt(S.T);
@@ -1544,7 +1546,14 @@ function renderLists() {
     const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = a.color;
     const nm = document.createElement('span'); nm.className = 'nm' + (isSel ? ' sel' : '') + (S.hidden.has(a.id) ? ' off' : '');
     nm.innerHTML = `${esc(a.name)}${p.label !== a.name && !p.none ? ` <small>as ${esc(p.label)}</small>` : ''} <small>${n || ''}</small>`;
-    nm.title = `${a.id}: ${n} waypoint${n === 1 ? '' : 's'} in ${tr.id}`; nm.onclick = () => select({ kind: 'actor', id: a.id });
+    nm.title = `${a.id}: ${n} waypoint${n === 1 ? '' : 's'} in ${tr.id}`;
+    if (S.mode === 'simple') { if (S.selSet.has('actor:' + a.id)) nm.classList.add('sel'); else nm.classList.remove('sel'); }
+    nm.onclick = e => {
+      if (S.mode !== 'simple') { select({ kind: 'actor', id: a.id }); return; }
+      if (e.shiftKey && S.lastRow !== undefined) { const i0 = S.actors.findIndex(x => x.id === S.lastRow), i1 = S.actors.indexOf(a); for (let i = Math.min(i0, i1); i <= Math.max(i0, i1); i++) S.selSet.add('actor:' + S.actors[i].id); S.dirty = S.listDirty = true; }
+      else selToggle('actor', a.id, e.ctrlKey || e.metaKey);
+      S.lastRow = a.id;
+    };
     const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !S.hidden.has(a.id); cb.title = 'Show on the plan';
     cb.onchange = () => { if (cb.checked) S.hidden.delete(a.id); else S.hidden.add(a.id); S.dirty = true; S.listDirty = true; };
     cast.append(sw, nm, cb);
@@ -1818,7 +1827,10 @@ window.addEventListener('keydown', e => {
     if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); seek(S.T + (k === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 5 : 1)); return; }
     if (k === 'Home') { e.preventDefault(); const tr = curTrack(); seek(tr.start - tr.pre); return; }
     if ((k === 'l' || k === 'L') && S.sHover && S.sHover.kind === 'actor') { flipLevel(S.sHover.id); return; }
-    if (k === 'Escape') { $('picker').hidden = true; S.sSel = null; S.dirty = true; }
+    if ((e.ctrlKey || e.metaKey) && (k === 'a' || k === 'A')) { e.preventDefault(); for (const a of S.actors) if (!S.hidden.has(a.id)) S.selSet.add('actor:' + a.id); S.dirty = S.listDirty = true; return; }
+    if (k === 'Delete') { e.preventDefault(); recDelete(e.shiftKey ? 'from' : 'all'); return; }
+    if (k === 'x' || k === 'X') { deleteKeyframe(); return; }
+    if (k === 'Escape') { $('picker').hidden = true; S.sSel = null; S.selSet.clear(); S.dirty = S.listDirty = true; }
     return;
   }
   if ((e.ctrlKey || e.metaKey) && (k === 'z' || k === 'Z')) { e.preventDefault(); if (e.shiftKey) undoRedo(S.redo, S.undo); else undoRedo(S.undo, S.redo); return; }
@@ -1859,7 +1871,7 @@ new ResizeObserver(resize).observe($('planwrap'));
 // will do. The recording is saved to this browser at every keyframe and comes back on reload; Export writes it as a file.
 const REC_KEY = 'hamilton-blocking-recording-1';
 const FURNITURE = ['desk', 'table', 'chair', 'bench', 'stool', 'box', 'crate', 'lantern', 'bucket'];
-Object.assign(S, { mode: 'simple', rec: { tracks: {}, furniture: [] }, recUndo: [], eff: null, effP: null, sDrag: null, sHover: null, sSel: null, simpleHits: [], carryBtn: null, lvSimple: null });
+Object.assign(S, { selSet: new Set(), box: null, mode: 'simple', rec: { tracks: {}, furniture: [] }, recUndo: [], eff: null, effP: null, sDrag: null, sHover: null, sSel: null, simpleHits: [], carryBtn: null, lvSimple: null });
 const recTrack = (tid, make) => { let R = S.rec.tracks[tid]; if (!R && make) R = S.rec.tracks[tid] = { cleared: false, actors: {}, props: {} }; return R; };
 function recChanged() { S.eff = null; S.effP = null; S.dirty = S.uiDirty = S.listDirty = true; saveRec(); }
 function recDo(fn) { S.recUndo.push(toJ(S.rec)); if (S.recUndo.length > 1000) S.recUndo.shift(); fn(); recChanged(); }
@@ -1891,23 +1903,36 @@ function keyToW(kind, tid, k) {
   if (k.off) w.off = true;
   return w;
 }
+// The deletions (Jack: "make it so I can delete the track for a specific person, or it can delete the track in front of the
+// position of the song I am at"): R.del[kind][id] = "all" (the whole song) or a time in seconds (from then on, in that song
+// only). Like a keyframe, a cut REPLACES: the loaded waypoints of that body in that song from the cut on are gone.
+const delOf = (R, kind, id) => R.del && R.del[kind === 'actor' ? 'actors' : 'props'] ? R.del[kind === 'actor' ? 'actors' : 'props'][id] : undefined;
 function recMerge(kind, id, base) {                      // the loaded path with the recording laid over it (the RULE above)
-  let path = base.slice(); const cleared = [];
+  let path = base.slice(); const cuts = [];
   for (const [tid, R] of Object.entries(S.rec.tracks)) {
-    if (!S.byTrack.has(tid)) continue;
-    const keys = (kind === 'actor' ? R.actors : R.props)[id] || [];
-    if (!R.cleared && !keys.length) continue;
-    const from = R.cleared ? -Infinity : keys[0].at - 1e-6;
+    const tr = S.byTrack.get(tid); if (!tr) continue;
+    const keys = (kind === 'actor' ? R.actors : R.props)[id] || [], del = delOf(R, kind, id);
+    const cutAt = R.cleared || del === 'all' ? -Infinity : typeof del === 'number' ? del : null;          // seconds into the song, or none
+    if (cutAt === null && !keys.length) continue;
+    const from = Math.min(cutAt === null ? Infinity : cutAt, keys.length ? keys[0].at : Infinity) - 1e-6;
     path = path.filter(w => String(w.track) !== tid || (+w.at || 0) < from);
     for (const k of keys) path.push(keyToW(kind, tid, k));
-    if (R.cleared) cleared.push([S.byTrack.get(tid), keys]);
+    if (cutAt !== null) cuts.push([tr, keys.filter(k => k.at >= cutAt - 1e-6), cutAt === -Infinity ? tr.start - tr.pre : tr.start + cutAt]);
   }
   path.sort((p, q) => gT(p.track, p.at) - gT(q.track, q.at));
-  if (kind === 'actor') for (const [tr, keys] of cleared) path = path.concat(clearHolds(path, tr, keys)).sort((p, q) => gT(p.track, p.at) - gT(q.track, q.at));
+  if (kind === 'actor') for (const [tr, keys, cutT] of cuts) path = path.concat(clearHolds(path, tr, keys, cutT)).sort((p, q) => gT(p.track, p.at) - gT(q.track, q.at));
+  if (kind === 'prop') for (const [tr, keys, cutT] of cuts) {               // a cut prop goes off at the cut (unless a keyframe is right there)
+    if (keys.length && gT(tr.id, keys[0].at) <= cutT + 0.1) continue;
+    const e = { size: PROP_KINDS.custom, waypoints: path, c: null }, was = propPose(e, cutT + 0.01);
+    if (was.visible) path = path.concat([{ track: tr.id, at: r2(cutT - tr.start + 0.05), x: r3(was.x), z: r3(was.z), off: true }]).sort((p, q) => gT(p.track, p.at) - gT(q.track, q.at));
+  }
   return path;
 }
-function clearHolds(path, tr, keys) {                    // a cleared song: off before his first keyframe there, and nobody frozen
-  const [t0, t1] = trackWindow(tr), P = path.map(w => ({ w, T: gT(w.track, w.at) })).filter(p => p.T < t0 || p.T > t1 || (keys.length && String(p.w.track) === tr.id));
+// NOBODY FROZEN: after a cut (a cleared song, a deleted track, or from a time on) a body still on stage walks off to the nearest
+// wing, and one who is needed later waits in the wing nearest that spot until she must walk on.
+function clearHolds(path, tr, keys, cutT) {
+  const t1 = trackWindow(tr)[1], t0 = cutT ?? trackWindow(tr)[0];
+  const P = path.map(w => ({ w, T: gT(w.track, w.at) })).filter(p => p.T < t0 || p.T > t1 || (keys.length && String(p.w.track) === tr.id && p.T >= t0));
   const A = [...P].reverse().find(p => p.T < t0), B = P.find(p => p.T > t1), out = [];
   const firstKey = keys.length ? gT(tr.id, keys[0].at) : Infinity;
   if (A && !A.w.off) {
@@ -1937,15 +1962,6 @@ function effProps() {
   const M = new Map(), all = S.props.concat(S.rec.furniture.filter(f => !S.props.some(p => p.id === f.id)).map((f, k) => cleanProp(Object.assign({ waypoints: [] }, f), k)));
   for (const p of all) {
     const e = { id: p.id, kind: p.kind, label: p.label, size: p.size, color: p.color, waypoints: recMerge('prop', p.id, p.waypoints), c: null, isNew: !S.props.includes(p) };
-    // a cleared song: a prop still seen at its top goes off there (unless his first keyframe is right there)
-    for (const [tid, R] of Object.entries(S.rec.tracks)) {
-      if (!R.cleared) continue; const tr = S.byTrack.get(tid); if (!tr) continue;
-      const keys = R.props[p.id] || [], t0 = tr.start - tr.pre;
-      if (keys.length && keys[0].at <= -tr.pre + 0.1) continue;
-      e.c = null; const was = propPose(e, t0 + 0.01);
-      if (was.visible) { e.waypoints.push({ track: tid, at: r2(-tr.pre + 0.05), x: r3(was.x), z: r3(was.z), off: true }); e.waypoints.sort((a, b) => gT(a.track, a.at) - gT(b.track, b.at)); }
-      e.c = null;
-    }
     M.set(p.id, e);
   }
   return (S.effP = M);
@@ -1980,7 +1996,41 @@ function flipLevel(id) {
 function recClear() {
   const tr = curTrack();
   if (!confirm(`Clear ${tr.id} ${tr.title}?\n\nThe song starts from an empty stage: the loaded blocking and anything you recorded in it go. (Ctrl+Z brings it back.)`)) return;
-  recDo(() => { const R = recTrack(tr.id, true); R.cleared = true; R.actors = {}; R.props = {}; });
+  recDo(() => { const R = recTrack(tr.id, true); R.cleared = true; R.actors = {}; R.props = {}; R.del = {}; });
+}
+// ---- the selection, and the deletes
+const selKey = (kind, id) => kind + ':' + id;
+function selNames() { return [...S.selSet].map(k => { const [kind, id] = k.split(':'); return kind === 'actor' ? (S.actors.find(a => a.id === id) || {}).name || id : ((effProps().get(id) || {}).label || id); }); }
+function selToggle(kind, id, add) { const k = selKey(kind, id); if (!add) S.selSet.clear(); if (add && S.selSet.has(k)) S.selSet.delete(k); else S.selSet.add(k); S.sSel = kind === 'prop' && S.selSet.has(k) ? { kind, id } : S.sSel; S.dirty = S.listDirty = true; }
+function recDelete(mode) {                               // 'all': their whole track in this song; 'from': from the clock's time on, in this song only
+  const sel = [...S.selSet].map(k => k.split(':'));
+  if (!sel.length) { alert('Select someone first: click a dot (Shift / Ctrl-click to add more, or drag a box round several).'); return; }
+  const tr = curTrack(), at = r2(locate(S.T).at), R0 = S.rec.tracks[tr.id];
+  let nk = 0; for (const [kind, id] of sel) { const L = R0 ? (kind === 'actor' ? R0.actors : R0.props)[id] || [] : []; nk += mode === 'all' ? L.length : L.filter(k => k.at >= at - 1e-6).length; }
+  const who = selNames(), list = who.length > 6 ? who.slice(0, 6).join(', ') + ` and ${who.length - 6} more` : who.join(', ');
+  const what = mode === 'all' ? `their whole track in ${tr.id} ${tr.title}` : `everything of theirs in ${tr.id} ${tr.title} from ${mmss(at)} (${at.toFixed(1)} s) on — nothing before that, and nothing in any other song`;
+  if (!confirm(`Delete ${what}?
+
+${sel.length} ${sel.length === 1 ? 'body' : 'bodies'}: ${list}.
+This removes ${nk} recorded keyframe${nk === 1 ? '' : 's'} and their loaded blocking ${mode === 'all' ? 'in this song' : 'from that moment in this song'}. Anyone left on stage walks off to the nearest wing and waits there until a later keyframe needs them.
+
+Ctrl+Z undoes it.`)) return;
+  recDo(() => {
+    const R = recTrack(tr.id, true); R.del = R.del || {}; R.del.actors = R.del.actors || {}; R.del.props = R.del.props || {};
+    for (const [kind, id] of sel) {
+      const M = kind === 'actor' ? R.actors : R.props, D = kind === 'actor' ? R.del.actors : R.del.props;
+      if (mode === 'all') { M[id] = []; D[id] = 'all'; }
+      else { M[id] = (M[id] || []).filter(k => k.at < at - 1e-6); if (D[id] !== 'all') D[id] = D[id] === undefined ? at : Math.min(D[id], at); }
+    }
+  });
+}
+function deleteKeyframe() {                              // the hovered (or the one selected) body's keyframe at this moment (±0.25 s)
+  const b = S.sHover || (S.selSet.size === 1 ? (([kind, id]) => ({ kind, id }))([...S.selSet][0].split(':')) : null);
+  if (!b) { alert('Point at a dot (or select one) to delete its keyframe at this moment.'); return; }
+  const tr = curTrack(), at = locate(S.T).at, R = S.rec.tracks[tr.id], L = R ? (b.kind === 'actor' ? R.actors : R.props)[b.id] || [] : [];
+  const i = L.findIndex(k => Math.abs(k.at - at) <= 0.25);
+  if (i < 0) { const near = L.reduce((m, k) => Math.abs(k.at - at) < Math.abs(m - at) ? k.at : m, Infinity); $('s_banner').textContent = `No keyframe of ${b.id} at ${at.toFixed(1)} s${Number.isFinite(near) ? ` (the nearest is at ${near.toFixed(2)} s)` : ''}.`; $('s_banner').hidden = false; return; }
+  recDo(() => { const R2 = S.rec.tracks[tr.id], L2 = (b.kind === 'actor' ? R2.actors : R2.props)[b.id]; L2.splice(L2.findIndex(k => Math.abs(k.at - at) <= 0.25), 1); });
 }
 function recRestore() {
   const tr = curTrack();
@@ -2003,12 +2053,14 @@ async function recordingDoc() {
     if (!R && !(note && note.trim())) continue;
     const clean = M => Object.fromEntries(Object.entries(M || {}).filter(([, L]) => L.length).map(([id, L]) => [id, L.map(k => Object.assign({ at: k.at },
       k.carriedBy ? { carriedBy: k.carriedBy } : { x: k.x, z: k.z }, k.level ? { level: k.level } : {}, { off: !!k.off }))]));
-    tracks[tr.id] = { title: tr.title, cleared: !!(R && R.cleared), actors: clean(R && R.actors), props: clean(R && R.props) };
+    const dels = M => Object.fromEntries(Object.entries(M || {}).map(([id, v]) => [id, v === 'all' ? { deleted: 'all' } : { deletedFrom: v }]));
+    tracks[tr.id] = { title: tr.title, cleared: !!(R && R.cleared), actors: clean(R && R.actors), props: clean(R && R.props),
+      deletions: { actors: dels(R && R.del && R.del.actors), props: dels(R && R.del && R.del.props) } };
   }
   return {
     format: 'hamilton-blocking-recording 1', made: new Date().toISOString(), by: 'blocking.html, Simple mode (RULING FP)',
     source: { file: S.src.name, bytes: S.src.bytes, sha256: S.src.sha256, waypoints: S.origIds.size },
-    rule: 'Per song and per actor / prop, the keyframes REPLACE that actor\'s (prop\'s) waypoints in that song from the first keyframe\'s time on; the loaded ones before it stay. cleared: true = every loaded waypoint of that song goes first. A keyframe is a stop: { at, x, z, level ("deck" | "gallery"), off } — a waypoint with no dwell and no facing; a prop keyframe with carriedBy hands it to that actor from then on.',
+    rule: 'Per song and per actor / prop, the keyframes REPLACE that actor\'s (prop\'s) waypoints in that song from the first keyframe\'s time on; the loaded ones before it stay. cleared: true = every loaded waypoint of that song goes first. deletions: { id: { deleted: "all" } } = that body\'s loaded waypoints in that song all go; { id: { deletedFrom: s } } = those at or after s go (that song only); a body left on stage by a cut walks off to the nearest wing. A keyframe is a stop: { at, x, z, level ("deck" | "gallery"), off } — a waypoint with no dwell and no facing; a prop keyframe with carriedBy hands it to that actor from then on.',
     clock: 'at: seconds into the album track; 1-01 and 2-01 may be −10…0, 1-23 up to its length + 10, 2-23 open (RULING FQ)',
     notes: { global: S.notes.global || '', tracks: Object.fromEntries(Object.entries(S.notes.tracks).filter(([, v]) => v && v.trim())) },
     furniture: S.rec.furniture,
@@ -2020,7 +2072,10 @@ function importRecording(d) {
   const tracks = {};
   for (const [tid, T] of Object.entries(d.tracks || {})) {
     const conv = M => Object.fromEntries(Object.entries(M || {}).map(([id, L]) => [id, L.map(k => Object.assign({ at: +k.at }, k.carriedBy ? { carriedBy: k.carriedBy } : { x: +k.x, z: +k.z }, k.level ? { level: k.level } : {}, k.off ? { off: true } : {}))]));
-    if (T.cleared || Object.keys(T.actors || {}).length || Object.keys(T.props || {}).length) tracks[tid] = { cleared: !!T.cleared, actors: conv(T.actors), props: conv(T.props) };
+    const undel = M => Object.fromEntries(Object.entries(M || {}).map(([id, v]) => [id, v.deleted === 'all' ? 'all' : +v.deletedFrom]));
+    const del = { actors: undel(T.deletions && T.deletions.actors), props: undel(T.deletions && T.deletions.props) };
+    if (T.cleared || Object.keys(T.actors || {}).length || Object.keys(T.props || {}).length || Object.keys(del.actors).length || Object.keys(del.props).length)
+      tracks[tid] = { cleared: !!T.cleared, actors: conv(T.actors), props: conv(T.props), del };
   }
   recDo(() => { S.rec = { tracks, furniture: d.furniture || [] }; });
   if (d.notes) { S.notes = { global: d.notes.global || '', tracks: d.notes.tracks || {} }; S.sNotesFor = null; saveRec(); }
@@ -2054,7 +2109,7 @@ function drawSimple(T) {
     const [a, b] = PX(x, z), hs = Math.max(6, 0.22 * s), sel = S.sSel && S.sSel.kind === 'prop' && S.sSel.id === p.id, hov = S.sHover && S.sHover.kind === 'prop' && S.sHover.id === p.id;
     g.save(); g.translate(a, b); if (vis && !drag) g.rotate(-q.yaw);
     g.globalAlpha = vis ? 1 : 0.55; g.fillStyle = vis ? p.color : 'rgba(0,0,0,0)'; g.fillRect(-hs, -hs, 2 * hs, 2 * hs);
-    g.strokeStyle = sel ? '#ffe2a0' : vis ? '#fff' : p.color; g.lineWidth = sel ? 2.5 : 1.5; g.setLineDash(vis ? [] : [3, 2]); g.strokeRect(-hs, -hs, 2 * hs, 2 * hs); g.setLineDash([]);
+    g.strokeStyle = S.selSet.has(selKey('prop', p.id)) ? '#5ff0ff' : sel ? '#ffe2a0' : vis ? '#fff' : p.color; g.lineWidth = sel || S.selSet.has(selKey('prop', p.id)) ? 3 : 1.5; g.setLineDash(vis ? [] : [3, 2]); g.strokeRect(-hs, -hs, 2 * hs, 2 * hs); g.setLineDash([]);
     g.restore(); g.globalAlpha = 1;
     if (names || sel || hov) txt(p.label + (q.carrier && vis ? ` ⇐ ${(EA.get(q.carrier) || {}).name || q.carrier}` : ''), a, b + hs + 8, { align: 'center', color: vis ? '#ffe9c7' : '#9a958c', size: 10, bg: 'rgba(13,12,16,.7)' });
     S.simpleHits.push({ kind: 'prop', id: p.id, a, b, r: hs + 3, x, z });
@@ -2085,7 +2140,8 @@ function drawSimple(T) {
       g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 1.5; g.stroke();
       if (p.y > 1.0 && !drag) { g.strokeStyle = '#fff'; g.lineWidth = 2.5; g.beginPath(); g.arc(px, py, r + 3, 0, 7); g.stroke(); }
     } else { g.globalAlpha = 0.65; g.strokeStyle = a.color; g.lineWidth = 2; g.setLineDash([3, 2]); g.beginPath(); g.arc(px, py, r, 0, 7); g.stroke(); g.setLineDash([]); g.globalAlpha = 1; }
-    if (hov || drag) { g.strokeStyle = '#ffe2a0'; g.lineWidth = 2; g.beginPath(); g.arc(px, py, r + 6, 0, 7); g.stroke(); }
+    if (S.selSet.has(selKey('actor', a.id))) { g.strokeStyle = '#5ff0ff'; g.lineWidth = 3; g.beginPath(); g.arc(px, py, r + 5, 0, 7); g.stroke(); }
+    if (hov || drag) { g.strokeStyle = '#ffe2a0'; g.lineWidth = 2; g.beginPath(); g.arc(px, py, r + 8, 0, 7); g.stroke(); }
     if (names || hov) txt((p.label || a.name) + (p.y > 1 && vis ? ' ↑' : ''), px + r + 4, py, { color: vis ? '#fff' : '#a39fae', size: vis ? 12 : 10, bold: vis, bg: 'rgba(13,12,16,.72)' });
     S.simpleHits.push({ kind: 'actor', id: a.id, a: px, b: py, r: r + 3, x, z });
     if (hov && vis && !drag && twoLevel(p.x, p.z)) {                      // the level switch on the hovered dot
@@ -2096,6 +2152,11 @@ function drawSimple(T) {
       S.lvSimple = { x: bx, y: by, w: bw, h: 15, id: a.id };
     }
   }
+}
+function drawBox() {
+  if (!S.box) return; const b = S.box;
+  g.fillStyle = 'rgba(95,240,255,.08)'; g.strokeStyle = '#5ff0ff'; g.lineWidth = 1; g.setLineDash([4, 3]);
+  g.fillRect(Math.min(b.px, b.qx), Math.min(b.py, b.qy), Math.abs(b.qx - b.px), Math.abs(b.qy - b.py)); g.strokeRect(Math.min(b.px, b.qx) + 0.5, Math.min(b.py, b.qy) + 0.5, Math.abs(b.qx - b.px), Math.abs(b.qy - b.py)); g.setLineDash([]);
 }
 function simpleHit(px, py) {
   let best = null;
@@ -2122,31 +2183,44 @@ function simpleDown(e, px, py) {
   if (inBox(S.lvSimple, px, py)) { flipLevel(S.lvSimple.id); return; }
   if (S.carryBtn && inBox(S.carryBtn, px, py)) { openPicker(S.carryBtn.id, S.carryBtn.px, S.carryBtn.py); return; }
   const h = simpleHit(px, py);
-  if (h) { S.sDrag = { kind: h.kind, id: h.id, px, py, x: h.x, z: h.z, moved: false }; return; }
-  S.sSel = null; S.dirty = true;
+  if (h) { S.sDrag = { kind: h.kind, id: h.id, px, py, x: h.x, z: h.z, moved: false, add: e.shiftKey || e.ctrlKey || e.metaKey }; return; }
+  S.box = { px, py, qx: px, qy: py, add: e.shiftKey || e.ctrlKey || e.metaKey }; S.dirty = true;     // a rubber band on the empty plan
 }
 function simpleMove(px, py, x, z) {
   if (S.sDrag) { if (!S.sDrag.moved && Math.hypot(px - S.sDrag.px, py - S.sDrag.py) < 4) return; S.sDrag.moved = true; S.sDrag.x = x; S.sDrag.z = z; S.dirty = true; return; }
+  if (S.box) { S.box.qx = px; S.box.qy = py; S.dirty = true; return; }
   const h = simpleHit(px, py), was = S.sHover;
   if (!(S.lvSimple && inBox(S.lvSimple, px, py)) && !(S.carryBtn && inBox(S.carryBtn, px, py))) S.sHover = h ? { kind: h.kind, id: h.id } : null;
   if ((was && was.id) !== (S.sHover && S.sHover.id)) S.dirty = true;
   cv.style.cursor = h ? 'grab' : 'default';
 }
 function simpleUp() {
+  if (S.box) {
+    const b = S.box; S.box = null;
+    const x0 = Math.min(b.px, b.qx), x1 = Math.max(b.px, b.qx), y0 = Math.min(b.py, b.qy), y1 = Math.max(b.py, b.qy);
+    if (!b.add) S.selSet.clear();
+    if (x1 - x0 > 4 || y1 - y0 > 4) for (const h of S.simpleHits) if (h.a >= x0 && h.a <= x1 && h.b >= y0 && h.b <= y1) S.selSet.add(selKey(h.kind, h.id));
+    S.sSel = null; S.dirty = S.listDirty = true; return;
+  }
   const d = S.sDrag; S.sDrag = null; if (!d) return;
   if (d.moved) recordDrop(d.kind, d.id, d.x, d.z);                    // recorded at the clock's time NOW: the drag's end
-  else { S.sSel = { kind: d.kind, id: d.id }; S.dirty = true; }
+  else { selToggle(d.kind, d.id, d.add); if (d.kind === 'prop') S.sSel = { kind: d.kind, id: d.id }; }
 }
 // ---- the panel
 function renderSimple() {
   const tr = curTrack();
   const n = recCount(tr.id), R = S.rec.tracks[tr.id];
+  const sn = selNames();
+  $('s_sel').innerHTML = sn.length ? `<b>Selected ${sn.length}:</b> ${esc(sn.slice(0, 8).join(', '))}${sn.length > 8 ? ' …' : ''} <span class="faint">(Esc clears)</span>` : 'Nobody selected — click a dot (Shift / Ctrl-click adds; drag a box round several; Ctrl+A everyone).';
+  $('s_delfrom').textContent = `Delete from ${mmss(Math.max(0, locate(S.T).at)).replace(/\.\d$/, '')} on in this song`;
+  $('s_delall').disabled = $('s_delfrom').disabled = !sn.length;
   $('s_count').innerHTML = `<b>Keyframes: ${n}</b> in ${esc(tr.id)}${R && R.cleared ? ' · <span style="color:#ffb3a8">cleared</span>' : ''} · ${recTotal()} in the show`;
   const L = $('songlist');
   if (L.children.length !== S.tracks.length) { L.textContent = ''; for (const t of S.tracks) { const d = document.createElement('div'); d.className = 'song'; d.dataset.i = t.i; d.onclick = () => seek(t.start - t.pre); L.append(d); } }
   for (const d of L.children) {
     const t = S.tracks[+d.dataset.i], k = recCount(t.id), Rt = S.rec.tracks[t.id];
-    const html = `<span>${esc(t.id)} ${esc(t.title)}</span><span class="faint">${Rt && Rt.cleared ? 'cleared ' : ''}${k || ''}</span>`;
+    const nd = Rt && Rt.del ? Object.keys(Rt.del.actors || {}).length + Object.keys(Rt.del.props || {}).length : 0;
+    const html = `<span>${esc(t.id)} ${esc(t.title)}</span><span class="faint">${Rt && Rt.cleared ? 'cleared ' : ''}${nd ? '✂' + nd + ' ' : ''}${k || ''}</span>`;
     if (d.innerHTML !== html) d.innerHTML = html;
     d.classList.toggle('cur', t === tr);
   }
@@ -2170,6 +2244,9 @@ $('s_loadfile').onchange = async e => {
   catch (err) { alert('Could not load it: ' + (err.message || err)); }
 };
 $('f_add').onclick = () => addFurniture();
+$('s_delall').onclick = () => recDelete('all');
+$('s_delfrom').onclick = () => recDelete('from');
+$('s_delkey').onclick = () => deleteKeyframe();
 for (const k of FURNITURE) $('f_kind').add(new Option(k, k));
 $('s_note_track').oninput = e => { S.notes.tracks[curTrack().id] = e.target.value; saveRec(); };
 $('s_note_global').oninput = e => { S.notes.global = e.target.value; saveRec(); };
@@ -2204,7 +2281,7 @@ window.EDITOR = {
   sourceText: () => S.src && S.src.text,
   mode: m => setMode(m), simplePose: (id, T = S.T) => { const a = effActors().get(id); return a ? actPose(a, T) : null; }, simplePropPose: (id, T = S.T) => { const p = effProps().get(id); return p ? propPose(p, T) : null; },
   recordDrop: (kind, id, x, z) => recordDrop(kind, id, x, z), recordKey: (kind, id, k) => recordKey(kind, id, k), recUndo: () => recUndo(), recordingDoc: () => recordingDoc(), importRecording: d => importRecording(d),
-  recCount: tid => recCount(tid ?? curTrack().id), recClear: () => recClear(), recRestore: () => recRestore(), addFurniture: (kind, name) => { $('f_kind').value = kind; $('f_name').value = name || ''; addFurniture(); }, openPicker: id => openPicker(id, 100, 100),
+  recCount: tid => recCount(tid ?? curTrack().id), select2: (keys, add) => { if (!add) S.selSet.clear(); for (const k of keys) S.selSet.add(k); S.dirty = S.listDirty = true; }, recDelete: m => recDelete(m), deleteKeyframe: () => deleteKeyframe(), recClear: () => recClear(), recRestore: () => recRestore(), addFurniture: (kind, name) => { $('f_kind').value = kind; $('f_name').value = name || ''; addFurniture(); }, openPicker: id => openPicker(id, 100, 100),
 };
 </script>
 </body>
