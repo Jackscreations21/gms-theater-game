@@ -1717,3 +1717,45 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **This machine's Bash tool rejected a heredoc** (`unexpected EOF while looking for matching '`) whose body held apostrophes
   or a `'''`, even with the delimiter quoted — the command never ran. Write the text to a scratch file with the Write tool
   and `cat` it, or patch with a small Python script that reads its replacement text from a file.
+
+## From the blackout round (2026-10-12)
+
+- **A reconstructed "pull-in" that leaves one pool on a black stage IS a blackout to the person watching.** Eight
+  reviewers judged cues from stills and wrote "everything down to Hamilton in warm" at 5–10 % on the surround; from
+  the house that is 3–5 % of the frame, and Jack called every one of them a blackout, and the ones that came before a
+  button "too early". Measure, don't judge: `CAP.scan` (HANDOFF, this round) renders every half-second from the house
+  camera and prints the mean luminance per cue; anything under ~0.06 that is not a real FTB wants a surround.
+- **Both audio paths were checked before touching a single `at`.** "The timing got off really bad" turned out to be
+  the pull-ins above, not the clock: the one-file soundtrack's `tracks[].file` starts all sit on a measured silence
+  (`shots/soundtrack-env-20ms.f32`, copied with `audio.py` this time), and the YouTube uploads are the album's length
+  to the second (`getDuration()` through the IFrame API — poll until `getVideoData().video_id` is the one you cued,
+  or you read the PREVIOUS video's duration). Check the clock first; it is cheap, and moving `at`s to chase a
+  perception would have broken every real island.
+- **Merging two cues' `ch` maps is per CHANNEL, not per key.** `dict.update` on the channel level replaced
+  `{"cp": 28, "i": 60}` with `{"i": 75}`, so the lustrs kept the previous song's palette and the "full warm stage"
+  came up blue. Merge `{**a[k], **b[k]}` for every key, and render the result: the offline fold cannot see it,
+  because it does not resolve `cp`/`preset` references the way the player does.
+- **Removing a blackout cue is not a deletion.** The next cue only sets what it lights; everything the blackout took
+  out stays lit through it. Fold the intensity state up to the removed cue, and move its zeros into the next cue (as
+  channels, with the groups expanded, so a group zero cannot override a channel the next cue sets).
+- **A browser does not seek a variable-bitrate MP3 where you ask.** Chrome seeks a VBR file with a Xing table by that
+  table — 100 cells, each byte position a 1/256 of the file (33 s of audio on a 2.4-hour file) — lands on the cell's
+  byte, calls it the cell's nominal time, decodes on to the requested time and REPORTS the requested time: what plays
+  was up to 52 s away. Playing from the top is exact, so nothing shows until someone skips ("when I skip it
+  misaligns"). Measure it, don't reason about it: route the element through Web Audio (`createMediaElementSource` →
+  a ScriptProcessor summing RMS per 20 ms), match the live envelope against the file's stored one (normalised
+  cross-correlation, a ±70 s window — a narrower window finds a confident wrong peak in repetitive music, and 4 s of
+  capture can lock onto a repeated phrase; 8 s is safe), and the offset is the landing error. The frame index
+  predicts it to 0.1 s for 98 cells — and two cells decode from the cell before, which no model would have said.
+  The fix lives in the show file (`soundtrack.seek`) and `showSoundSeek`; a different copy of the album needs the
+  table rebuilt (`mp3toc.py`, then `probes.py` to check).
+- **A browser's seek is history-dependent: a table of landings holds only for a region the page has not played.** As the
+  file plays, the demuxer indexes every frame it reads with the time it believes it is at; a later seek lands on those
+  entries, labelled with whatever error the run that read them carried. So the open-loop table (above) was right going
+  forward into fresh territory and wrong going back ("works going forward but doesn't go back"). The only clock to trust
+  is the sound: tap the element through Web Audio and match its loudness against the stored envelope after every seek
+  (`sndTick`). Two things that bit on the way: `createMediaElementSource` reroutes the element's output through the
+  context, so a context that never runs (no gesture) MUTES the music — make the context on the Play click and tap the
+  element only after `ctx.state === "running"`; and the first Play often comes before the file's blob has landed, so
+  the tap must also start from the blob handler (the click's activation still allows it). Test it the way it fails:
+  run across a table cell, skip away, skip back, and read `MIDTOWN.show.sound`.

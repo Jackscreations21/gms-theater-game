@@ -561,15 +561,17 @@ it does not do yet, and what the ETC pack could still give:
 
 - **Applying the change file automatically.** A session applies it to the generators by hand ("Applying it" in the format
   doc). A tool that turns `move` / `retime` changes into generator patches would be the next step if Jack sends many.
-- **The sound tap.** Skips are corrected by the VBR seek table only; `midtown.html` on `cue-blackouts` also matches the
-  audio's loudness envelope, because Chrome lands a skip into an already-played region by its own history. In the editor a
+- **The sound tap.** Skips are corrected by the VBR seek table only; `midtown.html` (now on `actors` too, merged from
+  `cue-blackouts`) also matches the audio's loudness envelope, because Chrome lands a skip into an already-played region
+  by its own history. In the 3D page a BACK skip still resumes about its landing error from the asked time (the
+  corrective seek lands by history again; STATE 2026-10-13). In the editor a
   skip BACK into music already played may land some seconds off. Port `sndTick` / the envelope if he notices.
 - **YouTube** as a music source (the page has it; the editor has the file, a chosen MP3, or silence).
 - **Group edits:** select several waypoints or actors, move a formation, copy a number's blocking to another moment,
   mirror a staging. One waypoint at a time today.
 - **The cast is fixed** in the editor (no adding / renaming actors; the cast file is the source, FN).
 - **Turntable revolves** as a tool (walk an actor round an arc: today waypoints by hand, as the writers did).
-- **The person lights are a snapshot** (`assets/hamilton-pools.json`, dumped from `actors` before #233's cue revisions):
+- **The person lights are a snapshot** (`assets/hamilton-pools.json`, re-dumped 2026-10-13 after merging #233's cue revisions):
   re-dump and run `tools/blocking-pools.py` after cue changes. The blackouts are computed live from the cues and do not
   have this problem.
 - **Simple mode does not:** set facings (a keyframe faces the way she walked; facings are Advanced's), give a dwell or a

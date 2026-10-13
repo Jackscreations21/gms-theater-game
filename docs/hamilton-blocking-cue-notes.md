@@ -8,8 +8,10 @@ these is edited. They are yours to rule or fix. The sources are the eight agents
 `tools/blocking/research/seg1.md` … `seg8.md` (each segment's `## Spotlights` section).
 
 **Read with this:**
-- The pool data the pass used is dumped from the page on branch `actors`. Binkley's cue revisions 3–5 (your
-  checklist notes, on `cue-blackouts`, PR #233) were not in it.
+- The pool data the pass used was dumped from the page on branch `actors`, before Binkley's cue revisions 3–5 (your
+  checklist notes, on `cue-blackouts`, PR #233). **2026-10-13: `cue-blackouts` is merged into `actors`, the pools are
+  re-dumped from the merged page, and `assets/hamilton-pools.json` is regenerated from them.** What that settled is in
+  the next section.
 - The agents allowed for the known differences: the Cabinet Battle sides, and 1-03 Q119's refocus of ch13 to
   centre. Where a note below may already be fixed by those revisions, it says so.
 - Positions are set-local metres: x + is stage left, z + is downstage, and the deck is at y 0.045.
@@ -30,6 +32,34 @@ these is edited. They are yours to rule or fix. The sources are the eight agents
    - The blocking keeps the ruled sides, Hamilton SR and Burr SL, and stands them in the same pools the other way round.
    - If the preset names are right, the sides at the shot should swap.
 
+## After merging #233 (2026-10-13): what its cue revisions settled, and what is still open
+
+Every item below was checked in the re-dump. For each, the cue's landing points in the old dump were compared with
+the landing points in the new one.
+
+- **SETTLED by revision 5: 2-02 Cabinet Battle #1's sides.** The mirrors this file asked for are in the data:
+  - ch94 (Jefferson) is now at (−1.39, 3.75) and ch92 (Hamilton) at (1.39, 3.75), in 742–760;
+  - 760's gloat pool, ch94, is now DR at (−3.15, 3.65);
+  - 761–763.5: ch8 is now at (−0.83, 2.22) and ch92 at (1.29, 2.40).
+  - These now agree with the blocking, which was already on the ruled sides.
+  - **Still open from that item: ch99** at (3.68, 1.25) is not on Washington's chair at (1.0, −1.4).
+- **SETTLED by revision 4: 1-07's top.** Binkley's FTB 190 has gone; 190.01 cross-fades out of Farmer Refuted.
+  - The "Kings men DS" pools at 190.01 are unchanged: ch2 / ch4 at (±1.3, 4.1), ch25 / ch26 at (±1.5, 5.0). They
+    are still empty, and question 3 still stands.
+- **Now visible in the data: 1-03 Q120's focus leak.** Revision 4 added Q119's centre refocus of ch13. The page holds
+  ch13 at (0, 1.15) through Q120–Q126 and restores (0, 2.40) only at Q129, as the item below predicted. Still open.
+- **Unchanged, still open:**
+  - 1-02 ch44 at (−0.69, 3.35);
+  - 1-07 Q194–Q200 ch12 / ch13 / ch14;
+  - 1-08 Q204's Kill-1 X4s. Revision 3 dropped one cue in 1-08, but the X4s still hold only from 204.01 to 204.02;
+  - 1-15 Q452 / Q474;
+  - 1-20 589 / 595 / 596. Revision 5 changed Guns and Ships' top (Viper 93 on the balcony, the sweep), not these;
+  - 2-01 733 / 737. This item said "may be fixed by the sides revision"; it was not;
+  - 2-07 Cabinet Battle #2's sides. Revision 5 moved its mic-drop and punchline in time only; the x → −x list below
+    stands.
+- Nothing in this file concerns 1-04 to 1-06, 1-09, 1-17, 1-18 or 2-08, the other tracks the revisions touched. The
+  2-23 items are about reconstructions the revisions did not change.
+
 ## Added after notes2 (2026-10-13: Jack's notes on 1-01 to 1-03)
 
 - **1-01 Q61–Q65, the roll call ("I fought with him", "I died for him", "I trusted him", "I loved him").** Jack: *"everyone
@@ -38,12 +68,14 @@ these is edited. They are yours to rule or fix. The sources are the eight agents
     Washington 0.0, Peggy 1.3, Eliza 2.2, Mulligan (Madison) 3.1, Laurens 4.0. They stay up there for the line-up.
   - Burr sings Q65 at centre, (0, 2.5), downstage of Hamilton in the centre shaft at (0, 1.0).
   - **The cues still light the deck**:
-    - Q61 ch47 / ch49 / ch51 at (−2.6, 3.05), (−0.62, 3.52), (1.95, 3.25);
+    - Q61 ch47 / ch49 / ch51 at (−2.76, 3.06), (−0.60, 3.47), (1.99, 3.27);
     - Q62 ch51;
-    - Q63 ch12 at (−0.55, −0.6);
-    - Q64 ch52 / ch48 at (2.6, 1.95), (−2.05, 2.05);
+    - Q63 ch12 at (−0.57, −0.59);
+    - Q64 ch52 / ch48 at (2.55, 1.92), (−1.99, 2.02);
     - Q65 Burr's AF, ch2, at (−1.82, 4.25).
-  - The gallery has only the two VL3500s (ch74 at (1.9, −3.61), ch76 at (5.14, −3.66)), at 0.3.
+    - These are from the re-dump after #233.
+  - On the gallery, Q61–Q64 light only VL3500 ch74, at (1.9, −3.61) and level 0.3.
+  - Q66's line-up does light the whole gallery, ch181–ch192 at 0.6, so the singers are lit there for it.
   - **Wanted:**
     - refocus Q61–Q64's specials to the singers' gallery spots, at y 2.74;
     - move Q65's ch2 to centre, (0, 2.5).

@@ -224,7 +224,44 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
+## NEXT SESSION: **LAND #233; THEN HIS RE-CHECK THROUGH THE CHECKLIST** (2026-10-12, end of day)
+
+Rulings at **FE** (FF next). `main` is **`5d24188`** (#230, #231, #232 merged: the show and the fixture GLBs are on
+Pages). **PR #233 (`cue-blackouts`, 13 commits) is open** — the whole day: revisions 3, 4 and 5 of the cues, the
+readout, the sound-synced skip, the interval fix. Read STATE.md's newest block.
+
+1. **When #233 merges:** fast-forward local `main`; delete `cue-blackouts` and the five landed branches both sides
+   (`midtown-walk`, `midtown-walls`, `midtown-lights`, `record-230`, `fixture-glbs`); suites when Node is on the PATH.
+2. **His notes come through the checklist** (https://claude.ai/artifact/FpiGBBW8LicWbaRb1nTUjg): `ArtifactData` `list`
+   on `songs` first thing. Nine songs carry notes answered once (act 1: My Shot, Farmer Refuted, Ten Duel Commandments,
+   Guns and Ships, Non-Stop; act 2: Cabinet Battle #1, Cabinet Battle #2, Washington on Your Side, Who Lives) — his
+   re-check decides. The method, before changing a single `at`: (a) the clock — it is the sound tap's business now, so
+   a timing note means the cue, but check `MIDTOWN.show.sound` says "sound synced" when he watched; (b) `CAP.dark(track,
+   0, len)` for a track he names (install `CAP` from the session scratch `capture.js` after `midtown.html?cap=N`;
+   `shotrecv.py` on 8099 takes the sheets); (c) `CAP.sheet([...])` of the suspect seconds, look, edit
+   `assets/hamilton-show.json` with a script that folds the state (`ham/edit3.py`–`edit6.py` are the models: `lift`,
+   `remove_cross`, per-channel merge, mirrored focus), re-render, `show.check()`.
+3. Then the older list: the rig placements the photos exposed (FUTURE.md), `edge`/`frost`, the 238 effects, the body,
+   the headset.
+
+## DONE — 2026-10-12: his first full watch — the blackouts, the checklist, the readout, the skip (twice), his act-1 and act-2 notes (PR #233)
+
+*"Ther shouldnt be a blackout at the end of alexander hamilton … a random blackout in the middle of my shot … the timing
+seams to get off somewhere majorly"* → the clock checked and found right, a luminance scanner in the page measuring every
+half-second: the reviewers' one-pool pull-ins and the cut-off blackouts at every song change were what he saw. Revision
+3: four blackouts gone (cross-fades), nine pull-ins lifted, Farmer Refuted one palette, Yorktown's last chord kept.
+*"make a checklist of every song"* → a db-backed artifact, one row per track, Good / Need work + notes. *"add something on
+the side of my screen that says what song it is and how many seconds in"* → `#sh-hud`. *"when I skip it misaligns … the
+audio timing"* → his VBR soundtrack mis-seeks by up to 52 s in Chrome, measured by matching the element's real output
+against the file's loudness; a per-cell table fixed the first pass; *"going forward works but doesn't go back"* → the
+browser's seek is history-dependent, so the clock now follows the sound itself: the element tapped through Web Audio and
+matched against a stored envelope (new asset) after every seek and every half-minute. The interval bug he found (act 2's
+first cue at the hold) fixed. His act-1 notes (18 good, 5 notes) → revision 4; his act-2 notes (4) and two more words on
+Guns and Ships → revision 5 (the balcony lit from the 1st Electric at a person's height, the upstage row sweeping out
+over the house in 0.6 s). 891 cues, 123 real; show.check() green after every step; everything rendered; nothing in
+`src/`. Six traps.
+
+## SUPERSEDED (the show reached him; his notes are the round above): **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
 
 Rulings at **FE** (FF next). `main` is **`8961616`**: #229 and #230 merged by Jack — the house at 1:1, the lobby, bake 3,
 the rig trimmed, the lighting engine, the show, the calibration, all on `main`. Read STATE.md's newest block.
@@ -243,7 +280,17 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
    file says what to change, and a correction goes into the segment's generator in `tools/blocking/`, then the merge. Put `docs/hamilton-blocking-cue-notes.md` in front of him:
    his two rulings (1-05 sisters, 2-22 duel sides) and the cue fixes. Ask the mannequin's licence/origin.
 
-## DONE — 2026-10-13 (latest): notes2 — two carry it, a better carry, prop models, the roll call on the gallery (PR #234, RULING FU)
+## DONE — 2026-10-13 (latest): `cue-blackouts` (#233) merged into `actors` — the sound tap in the 3D page (PR #234)
+
+- A merge commit on `actors`; PR #234 now carries #233.
+- The conflicts were resolved by keeping both sides: `midtown.html`'s clock edges (FQ) with the sound tap, `STATE.md`
+  and `TRAPS.md`. `hamilton-show.json` is #233's.
+- `assets/hamilton-pools.json` was re-dumped from the merged page and regenerated. The cue notes say what #233 settled.
+- Skip forward 20 min, back 10, and across the interval both ways: each landing error was reported, moved, and ended
+  "sound synced" in `MIDTOWN.show.sound` and the HUD.
+- A BACK skip resumes about the landing error from the asked time (see STATE): #233's corrective seek, not fixed here.
+
+## DONE — 2026-10-13: notes2 — two carry it, a better carry, prop models, the roll call on the gallery (PR #234, RULING FU)
 
 - RULING FU covers the page, the plotter, the merge, `props.py` and the format doc. `blocking.html` still has to learn
   a pair carry and `model`.

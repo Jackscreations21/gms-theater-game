@@ -1,9 +1,53 @@
-# STATE — 2026-10-12 (PR #230 MERGED: THE HOUSE AT 1:1, THE LIGHTING ENGINE, THE WHOLE OF HAMILTON AUTO-TIMED AND CALIBRATED TO BINKLEY'S PHOTOS — ALL ON `main`)
+# STATE — 2026-10-13 (`actors` = PR #234: THE AUTOMATIC ACTORS, THE EDITOR, NOTES2 (RULING FU); IT NOW CARRIES `cue-blackouts` = PR #233: JACK'S CHECKLIST NOTES, THE SOUND TAP, THE READOUT — BOTH OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-13 (latest): NOTES2 — TWO CARRY IT, A BETTER CARRY, PROP MODELS, THE ROLL CALL ON THE GALLERY (RULING FU) — PR #234
+## NEWEST — 2026-10-13 (latest): `cue-blackouts` (PR #233) MERGED INTO `actors` — THE SOUND TAP IN THE 3D PAGE — PR #234
+
+Jack: *"the sound in the 3D page gets out of sync when he skips a lot and no longer resyncs."* The envelope sound tap
+(`sndStart` / `sndTick`, `assets/hamilton-soundtrack-env.u8`, `showSoundSeek` with the seek table, `MIDTOWN.show.sound`,
+the HUD) existed only on `cue-blackouts`. That branch is now merged into `actors` with a merge commit, so **PR #234
+carries #233's 14 commits**. Either #233 merges first, or #234 absorbs it.
+
+- **Conflicts, each resolved by keeping both sides:**
+  - **`midtown.html`, five places where the FQ clock edges met the sound tap:**
+    - `showPause` keeps FQ's `!SHW.gap` (a lead-in or tail is silent) and the tap's `sndStart` on the Play click;
+    - `showTick` keeps the `!SHW.gap` tests and the interval guard after `showSoundTick`;
+    - `loadedmetadata` seeks by the table and arms the check; `ended` goes to FQ's tail when the track has one;
+    - `showSoundTick` reads `currentTime + soundOff` and then takes FQ's tail test on that true time;
+    - `showScrubMax` (FQ) and `showHud` (#233) are both kept.
+  - **`STATE.md`, `docs/guide/TRAPS.md`:** both blocks kept, newest first.
+  - **Auto-merged:** `HANDOFF.md`. `assets/hamilton-show.json` is #233's (cue revisions 3–5; `actors` never changed it).
+- **`assets/hamilton-pools.json` regenerated.** The pools were re-dumped from the merged page: 46 tracks, 891 cues,
+  13,346 person lights. On an unchanged track, 2,376 shared lights landed within 0.05 m of the old dump.
+  `docs/hamilton-blocking-cue-notes.md` says what #233 settled:
+  - Cabinet Battle #1's sides;
+  - 1-07's FTB.
+  - And what is still open, including 1-03 Q120's focus leak, which the data now shows.
+- **Checked on :8095 with the soundtrack, the Play button clicked (the tap needs the gesture):**
+
+  | skip | landing error | moved | result |
+  |---|---|---|---|
+  | forward 20 min, to 1-07 | 0.7 s | yes | "sound synced" |
+  | back 10 min, to 1-03 | 10.9 s | yes | "sound synced" |
+  | across the interval, forward to 2-03 | 2.5 s | yes | "sound synced" |
+  | across the interval, back to 1-20 | −15.6 s | yes | "sound synced" |
+
+  - The HUD showed each note.
+  - Playing into 1-23's tail held at the interval, on 670, with the house up.
+  - `actors.check()` passes. `show.check()`'s seek equivalence passes, its references resolve and its timeline is
+    monotonic. Its overall `pass: false` is the 16 channels with no unit, as before.
+  - The console is clean.
+- **Seen in that test, not fixed (#233's logic):**
+  - On a BACK skip, the corrective seek lands by the browser's history again, so the show resumes about the landing
+    error away from the asked time: 1-03 ~11 s early, 1-20 ~16 s late. Sound and picture agree there: the tap's match
+    equals the offset in use.
+  - `sndTick` accepts the second check by comparing offsets, not positions. A fix would re-arm the check with the
+    corrective request, or seek by the measured position.
+  - The HUD keeps a stale "moving it" note when the clock runs into a tail before the check finishes.
+
+## 2026-10-13: NOTES2 — TWO CARRY IT, A BETTER CARRY, PROP MODELS, THE ROLL CALL ON THE GALLERY (RULING FU) — PR #234
 
 Jack's notes on 1-01 to 1-03: *"make two people carry it on and make the carrying look better"*; *"everyone who has one of
 those lines is on the balcony except Burr who is at center stage"*; *"find a model for the lamp. find a model for the
@@ -347,7 +391,79 @@ adds one CSS block and one code region, and touches none of #233's lines: a test
 
 ---
 
-## NEWEST — 2026-10-12: the engine calibrated to Binkley's cue photos, every cue re-judged from renders, the preshow and the interval — UNCOMMITTED on `midtown-lights`
+## 2026-10-12 (merged into `actors` 2026-10-13): Jack's first full watch — his notes answered twice over, the skip synced by the sound, the readout, the checklist — `cue-blackouts`, PR #233 OPEN
+
+**Read this block first.** `main` is **`5d24188`**: #230 (the show), #231 (its record) and #232 (`fixture-glbs`, the 38
+model files) merged by Jack — the rig hangs on Pages. **PR #233 (`cue-blackouts`, 13 commits) is open:**
+https://github.com/Jackscreations21/gms-theater-game/pull/233. Everything below is on it. Nothing in `src/`, so
+`the-house.html` and `docs/ARTNET.md` are untouched and the suites are unaffected (not run: no Node on the PATH).
+**Until it merges, all of this is live only in the working copy on the local server (localhost:8080), not on Pages.**
+
+**Where his notes come from now:** the checklist artifact https://claude.ai/artifact/FpiGBBW8LicWbaRb1nTUjg ("Hamilton
+Cue Checklist", one row per album track, Good / Need work + a notes field, saved to its database: collection `songs`, doc
+id = track id, fields `status` / `notes` / `updatedAt`). **Read it with `ArtifactData` `list` (or `query` on
+`status != good`) at the start of every round** — it is the brief. He marked act 1 (18 good, 5 notes) and act 2 (4
+notes) today; all nine notes are answered once (revisions 4 and 5) and the rows still carry his marks until he re-checks.
+
+The day, in order (each step a commit on the branch):
+
+1. **Revision 3 — the blackouts he named by ear** (`assets/hamilton-show.json`, 892 → 890 cues, the 124 real untouched).
+   Checked the clock first and found it right (his one-file soundtrack's `tracks[].file` starts all sit on measured
+   silences; the YouTube uploads are the album's length to the second). A luminance scanner in the page (`CAP.scan` /
+   `CAP.dark`, `CAP.sheet` — session scratch `capture.js`, recipe in HANDOFF) showed the eight reviewers' "pull-ins"
+   at 3–5 % of the frame and true black for 1.5–4 s at every song change. No blackout out of Alexander Hamilton, The Story
+   of Tonight, The Schuyler Sisters, Right Hand Man (their zeros folded into the next song's first look); My Shot's
+   pull-ins at a third; Farmer Refuted's middle one warm palette; Right Hand Man's 283 and the tent lit; That Would Be
+   Enough's fade on the cut-off and complete; Yorktown's last chord keeps the stage. `why` fields start "Revision 3".
+2. **The checklist** (above) and **the readout** (`#sh-hud`, `showHud()` from `showUI`): the song (id, act, number,
+   title), the time into it to a tenth, the live cue and label, paused / the interval, the sound tap's state. Hidden when
+   the show stops.
+3. **The skip, first pass (open loop):** his soundtrack is variable-bitrate with a Xing table and Chrome seeks it by that
+   table — up to 52 s from the requested time while `currentTime` reports the request (+17 / −18 / −33 s measured by
+   tapping the element through Web Audio and matching its loudness against the file's stored 20 ms envelope).
+   `soundtrack.seek.toc` in the show file = the true time of every table cell from the file's frame index (scratch
+   `ham/mp3toc.py`), checked in all 100 cells against what Chrome played (`ham/probes.py`; cells 37 and 79 decode from
+   the cell before); `showSoundSeek(P)` asks for the time whose cell lands on P and reads the clock as
+   `currentTime + err`. Right for regions the page has not played.
+4. **Revision 4 — his act-1 notes** (889 cues, 123 real): My Shot's "did I talk too loud" blue with a white centre spot
+   (119; 120 restores the warm colours); no blackout Farmer Refuted → You'll Be Back (189.5 and Binkley's 190 FTB left
+   out of the show; 190.01 cross-fades); Ten Duel Commandments fades into 452 (451.5) and the number cues land on the
+   number word; Guns and Ships holds its special to 31 before the sweep.
+5. **The skip, second pass (closed loop — the sound tap):** *"going forward works but doesn't go back correctly"* — the
+   browser indexes every frame it reads with the time it believes it is at, so a skip back into a played region lands on
+   those entries and the table mis-corrects. Now the element's output is tapped through Web Audio (`sndStart`, on the Play
+   click; the element is tapped only once the context runs, or it would mute) into 20 ms bins and matched (normalised
+   cross-correlation, ±75 s) against **`assets/hamilton-soundtrack-env.u8`** (new asset, one byte per 20 ms,
+   `soundtrack.envelope`) after every seek — one corrective seek if the landing is far off — and every half-minute
+   (`sndTick`). The readout says "checking the sound…" / "the sound landed −14.5 s off — moving it" / "sound synced";
+   `MIDTOWN.show.sound` for the console. Tested the way it failed: detected, moved, synced. **The interval bug** he found
+   (act 2's first cue at the hold) was the tick firing to the clock the hold had just put on the next track's start: fixed,
+   checked with the audio running (holds on 670, house up, 720 next).
+6. **Revision 5 — his act-2 notes, and Guns and Ships twice more** (891 cues, 123 real): Cabinet Battle #1's Jefferson
+   and Hamilton specials mirrored (the sides were swapped); Cabinet Battle #2's mic-drop and French-king punchline on
+   their lines; a blackout (977.5) into One Last Time; the finale fades up to the full warm look 3 s after the final
+   blackout (1298, the bows). **Guns and Ships' top:** the balcony is the railed platform at the stage-left end of the
+   gallery (floor by raycast at set-local 5.49, 2.78, 2.36); a floor pool from above was invisible from the house and the
+   apron unit's beam was clipped by the proscenium, so **Viper 93 on the 1st Electric** (upstage of the arch) is aimed at
+   chest height on it, zoom 16 — checked from the house and the front row; the sweep is **the upstage row (9th and 10th
+   Electric Vipers) snapping on white at their feet at 31.0 and tilting out over the audience in 0.6 s**, the full warm
+   look at 32.0, the ring of beams on Lafayette at 34.2.
+
+**Checks after every step:** `MIDTOWN.show.check()` seek-equivalence passes, references resolve, timeline monotonic;
+every changed moment rendered and looked at (session scratch `shots/r3*.png`, `r4.png`, `r5*.png`, `balcony*.png`).
+The seek and sound work is specific to HIS copy of the album: a different file needs `mp3toc.py` (the table) and a new
+envelope (decoded in the browser, 20 ms RMS, quantised `255·(log10(rms)+4)/4`); YouTube on Pages seeks exactly and
+is untouched. Session scratch: `ham/` (`edit3.py`–`edit6.py` the revision scripts, `mp3toc.py`, `probes.py`,
+`seekcheck.py`, `audio.py` + the envelope, the before-files), `capture.js`, `shotrecv.py`, `shots/`.
+
+**Open:** his re-check of the nine noted songs (and anything new he marks); the post-merge protocol when #233 lands
+(fast-forward, delete `cue-blackouts` and the five landed branches both sides, suites when Node is on the PATH); then
+the older list — the rig placements the photos exposed (FUTURE.md), `edge`/`frost`, the 238 effects, the body, the
+headset.
+
+---
+
+## (earlier today, landed as #230) 2026-10-12: the engine calibrated to Binkley's cue photos, every cue re-judged from renders, the preshow and the interval
 
 Jack: *"go through all the cues and compare them to pictures to make sure they are all correct"*, *"the main problem i saw
 where spotlight places, timing and brightness"*, and *"you didnt do the preshow lighting and make it so at the end of
