@@ -112,7 +112,7 @@
     "prior": "house",
     "choice": "least rms",
     "depthCue": "none",
-    "depthCueNote": "implausible: shoulders 2.15-2.70 m, never 1.25-1.55",
+    "depthCueNote": "implausible: shoulders 2.31-3.26 m, never 1.25-1.55",
     "window": {
      "tolPx": 2.53,
      "fov": [
@@ -125,8 +125,8 @@
      ],
      "poor": false
     },
-    "bodyHeightM": 3.27,
-    "bodies": 1,
+    "bodyHeightM": null,
+    "bodies": 0,
     "free": {
      "camera": [
       0.23,

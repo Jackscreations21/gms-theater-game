@@ -5,7 +5,7 @@
   "title": "The Room Where It Happens",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/2-05.json",
-  "outSha256": "06eec6de801a9d779331d5d44a6ed2c5e6a6eb1e52e380d2459138515fa683b7",
+  "outSha256": "b8a04162a5d29a2f23b6f89add9eb0d9901749a2d8962599e0aac3d4773f815e",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -13,20 +13,20 @@
    "2-05-the-room-where-it-happens": {
     "url": "https://www.youtube.com/watch?v=e_FWUW6SnDo",
     "shots": {
-     "52": {
+     "62": {
       "judged": "fair",
       "moving": false,
-      "rms": 11.05
+      "rms": 13.59
      },
-     "65": {
+     "78": {
       "judged": "fair",
       "moving": false,
-      "rms": 14.44
+      "rms": 15.14
      }
     },
-    "tracklets": 14,
-    "positions": 59,
-    "identified": 521
+    "tracklets": 33,
+    "positions": 189,
+    "identified": 681
    },
    "2-04-say-no-to-this": {
     "url": "",
@@ -36,19 +36,19 @@
     "identified": 4
    }
   },
-  "stage4Positions": 59,
+  "stage4Positions": 189,
   "counts": {
-   "samples": 59,
-   "withPosition": 59,
-   "offMap": 0,
+   "samples": 189,
+   "withPosition": 189,
+   "offMap": 15,
    "evidence": 0,
    "evidenceWithPosition": 0,
-   "placedByBlocking": 41,
-   "pool": 18,
+   "placedByBlocking": 110,
+   "pool": 79,
    "other": 0,
    "byRule": {
-    "blocking": 41,
-    "pool": 18
+    "blocking": 110,
+    "pool": 79
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -88,7 +88,20 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 8,
+    "samples": 14,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens2": {
+   "name": "Ensemble 2 (also Samuel Seabury)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 15,
     "tracklets": 2
    },
    "other": 0,
@@ -101,7 +114,20 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 11,
+    "samples": 7,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens4": {
+   "name": "Ensemble 4 (also Philip Schuyler, James Reynolds, The Doctor)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 9,
     "tracklets": 2
    },
    "other": 0,
@@ -114,7 +140,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 2,
+    "samples": 7,
     "tracklets": 1
    },
    "other": 0,
@@ -127,8 +153,8 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 3,
-    "tracklets": 2
+    "samples": 14,
+    "tracklets": 3
    },
    "other": 0,
    "items": [],
@@ -140,8 +166,34 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 14,
+    "samples": 16,
     "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens8": {
+   "name": "Ensemble 8",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 9,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "hamilton": {
+   "name": "Hamilton",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 8,
+    "tracklets": 1
    },
    "other": 0,
    "items": [],
@@ -153,7 +205,20 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 2,
+    "samples": 9,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "mulligan": {
+   "name": "Mulligan (also Madison)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 1,
     "tracklets": 1
    },
    "other": 0,
@@ -162,41 +227,41 @@
   }
  },
  "pool": {
-  "samples": 18,
-  "withPosition": 18,
-  "tracklets": 3,
+  "samples": 79,
+  "withPosition": 64,
+  "tracklets": 15,
   "formations": [
    {
     "from": 252.0,
     "to": 255.0,
     "clip": "2-05-the-room-where-it-happens",
     "at": 254.8,
-    "bodies": 1,
-    "tracklets": 1,
-    "deck": 1,
-    "gallery": 0,
+    "bodies": 5,
+    "tracklets": 5,
+    "deck": 4,
+    "gallery": 1,
     "inWings": 0,
     "sides": {
      "SR": 1,
-     "C": 0,
-     "SL": 0
+     "C": 2,
+     "SL": 2
     },
-    "shape": "one body",
+    "shape": "scattered",
     "centroid": [
-     -2.81,
-     3.36
+     1.31,
+     -0.35
     ],
     "extent": {
      "x": [
-      -2.81,
-      -2.81
+      -2.79,
+      4.99
      ],
      "z": [
-      3.36,
-      3.36
+      -4.12,
+      3.54
      ]
     },
-    "samples": 2,
+    "samples": 8,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -208,32 +273,32 @@
     "to": 258.0,
     "clip": "2-05-the-room-where-it-happens",
     "at": 255.2,
-    "bodies": 1,
-    "tracklets": 1,
-    "deck": 1,
-    "gallery": 0,
-    "inWings": 0,
+    "bodies": 5,
+    "tracklets": 7,
+    "deck": 4,
+    "gallery": 1,
+    "inWings": 1,
     "sides": {
-     "SR": 1,
-     "C": 0,
-     "SL": 0
+     "SR": 2,
+     "C": 2,
+     "SL": 1
     },
-    "shape": "one body",
+    "shape": "scattered",
     "centroid": [
-     -2.93,
-     3.44
+     -1.17,
+     0.2
     ],
     "extent": {
      "x": [
-      -2.93,
-      -2.93
+      -6.66,
+      3.06
      ],
      "z": [
-      3.44,
-      3.44
+      -4.15,
+      3.6
      ]
     },
-    "samples": 3,
+    "samples": 29,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -245,32 +310,32 @@
     "to": 300.0,
     "clip": "2-05-the-room-where-it-happens",
     "at": 299.8,
-    "bodies": 2,
-    "tracklets": 2,
-    "deck": 2,
-    "gallery": 0,
+    "bodies": 4,
+    "tracklets": 4,
+    "deck": 3,
+    "gallery": 1,
     "inWings": 0,
     "sides": {
-     "SR": 0,
-     "C": 1,
+     "SR": 1,
+     "C": 2,
      "SL": 1
     },
-    "shape": "a pair 3.5 m apart",
+    "shape": "scattered",
     "centroid": [
-     1.75,
-     3.83
+     0.06,
+     1.91
     ],
     "extent": {
      "x": [
-      0.01,
-      3.49
+      -4.15,
+      3.73
      ],
      "z": [
-      3.55,
-      4.11
+      -3.34,
+      4.09
      ]
     },
-    "samples": 3,
+    "samples": 8,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -282,32 +347,32 @@
     "to": 303.0,
     "clip": "2-05-the-room-where-it-happens",
     "at": 300.2,
-    "bodies": 2,
-    "tracklets": 2,
-    "deck": 2,
-    "gallery": 0,
+    "bodies": 4,
+    "tracklets": 5,
+    "deck": 3,
+    "gallery": 1,
     "inWings": 0,
     "sides": {
-     "SR": 0,
-     "C": 1,
+     "SR": 1,
+     "C": 2,
      "SL": 1
     },
-    "shape": "a pair 4.1 m apart",
+    "shape": "scattered",
     "centroid": [
-     1.47,
-     3.63
+     -0.14,
+     1.75
     ],
     "extent": {
      "x": [
-      -0.53,
-      3.47
+      -4.17,
+      3.59
      ],
      "z": [
-      3.13,
-      4.14
+      -3.29,
+      3.91
      ]
     },
-    "samples": 10,
+    "samples": 19,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,

@@ -5,7 +5,7 @@
   "title": "I Know Him",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/2-10.json",
-  "outSha256": "29093f3ff486dc39419cc616c5a7176d0ab05e4c84d577de5042bfd84cae093d",
+  "outSha256": "769a501e082a0ebf0016125f689365f8786085c6c3766de8118736e5f0522c01",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -13,42 +13,36 @@
    "2-09-one-last-time": {
     "url": "https://www.youtube.com/watch?v=mgoFrstrYNk",
     "shots": {
-     "46": {
+     "52": {
       "judged": "fair",
       "moving": false,
-      "rms": 8.79
+      "rms": 8.88
      }
     },
-    "tracklets": 8,
-    "positions": 176,
-    "identified": 26
+    "tracklets": 10,
+    "positions": 200,
+    "identified": 32
    },
    "2-10-i-know-him": {
-    "url": "https://www.youtube.com/watch?v=FAgwoLO0S-4",
-    "shots": {
-     "0": {
-      "judged": "fair",
-      "moving": false,
-      "rms": 8.81
-     }
-    },
-    "tracklets": 1,
-    "positions": 14,
-    "identified": 32
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 33
    }
   },
-  "stage4Positions": 190,
+  "stage4Positions": 200,
   "counts": {
-   "samples": 190,
-   "withPosition": 190,
-   "offMap": 8,
+   "samples": 200,
+   "withPosition": 200,
+   "offMap": 0,
    "evidence": 0,
    "evidenceWithPosition": 0,
    "placedByBlocking": 0,
-   "pool": 190,
+   "pool": 200,
    "other": 0,
    "byRule": {
-    "pool": 190
+    "pool": 200
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -90,41 +84,41 @@
  ],
  "characters": {},
  "pool": {
-  "samples": 190,
-  "withPosition": 182,
-  "tracklets": 9,
+  "samples": 200,
+  "withPosition": 200,
+  "tracklets": 10,
   "formations": [
    {
     "from": 0.0,
     "to": 3.0,
     "clip": "2-09-one-last-time",
     "at": 1.2,
-    "bodies": 8,
-    "tracklets": 8,
-    "deck": 8,
+    "bodies": 9,
+    "tracklets": 9,
+    "deck": 9,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 3,
+     "SR": 4,
      "C": 1,
      "SL": 4
     },
     "shape": "scattered",
     "centroid": [
-     0.32,
-     2.99
+     -0.4,
+     1.57
     ],
     "extent": {
      "x": [
-      -3.22,
-      4.05
+      -4.37,
+      3.74
      ],
      "z": [
-      1.8,
-      4.04
+      -0.86,
+      3.67
      ]
     },
-    "samples": 64,
+    "samples": 72,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 3,
@@ -135,36 +129,34 @@
     "from": 3.0,
     "to": 6.0,
     "clip": "2-09-one-last-time",
-    "at": 3.0,
-    "bodies": 8,
-    "tracklets": 8,
-    "deck": 8,
+    "at": 5.7,
+    "bodies": 9,
+    "tracklets": 10,
+    "deck": 9,
     "gallery": 0,
-    "inWings": 0,
+    "inWings": 1,
     "sides": {
-     "SR": 3,
+     "SR": 4,
      "C": 1,
      "SL": 4
     },
     "shape": "scattered",
     "centroid": [
-     0.32,
-     2.99
+     -0.35,
+     1.69
     ],
     "extent": {
      "x": [
-      -3.27,
-      3.98
+      -4.26,
+      3.65
      ],
      "z": [
-      1.88,
-      3.79
+      -1.12,
+      3.75
      ]
     },
-    "samples": 118,
-    "otherClips": {
-     "2-10-i-know-him": 1
-    },
+    "samples": 128,
+    "otherClips": {},
     "blocking": {
      "ensembleOn": 0,
      "everyoneOn": 1

@@ -5,7 +5,7 @@
   "title": "Blow Us All Away",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/2-16.json",
-  "outSha256": "a4dca863591862d869abcea90f6f34069f0a4351a7c6cefe03f4abef659bf3c6",
+  "outSha256": "c461abd435d68d3dcad5c8349f9ba8301f0036ab09ccc54ef2c86e43f96845e7",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -16,27 +16,27 @@
      "4": {
       "judged": "fair",
       "moving": true,
-      "rms": 11.88
+      "rms": 8.49
      }
     },
-    "tracklets": 10,
-    "positions": 115,
-    "identified": 200
+    "tracklets": 11,
+    "positions": 138,
+    "identified": 274
    }
   },
-  "stage4Positions": 115,
+  "stage4Positions": 138,
   "counts": {
-   "samples": 115,
-   "withPosition": 115,
-   "offMap": 2,
+   "samples": 138,
+   "withPosition": 138,
+   "offMap": 10,
    "evidence": 0,
    "evidenceWithPosition": 0,
-   "placedByBlocking": 30,
-   "pool": 85,
+   "placedByBlocking": 29,
+   "pool": 109,
    "other": 0,
    "byRule": {
-    "blocking": 30,
-    "pool": 85
+    "blocking": 29,
+    "pool": 109
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -161,7 +161,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 13,
+    "samples": 12,
     "tracklets": 1
    },
    "other": 0,
@@ -170,38 +170,38 @@
   }
  },
  "pool": {
-  "samples": 85,
-  "withPosition": 83,
-  "tracklets": 8,
+  "samples": 109,
+  "withPosition": 99,
+  "tracklets": 9,
   "formations": [
    {
     "from": 24.0,
     "to": 27.0,
     "clip": "2-16-blow-us-all-away",
     "at": 26.4,
-    "bodies": 5,
+    "bodies": 6,
     "tracklets": 7,
-    "deck": 5,
+    "deck": 6,
     "gallery": 0,
-    "inWings": 2,
+    "inWings": 1,
     "sides": {
-     "SR": 2,
+     "SR": 3,
      "C": 1,
      "SL": 2
     },
     "shape": "scattered",
     "centroid": [
-     -0.14,
-     0.82
+     -0.65,
+     -0.04
     ],
     "extent": {
      "x": [
-      -4.55,
-      3.88
+      -4.72,
+      3.89
      ],
      "z": [
-      -3.36,
-      2.1
+      -3.56,
+      1.92
      ]
     },
     "samples": 28,
@@ -216,32 +216,32 @@
     "to": 30.0,
     "clip": "2-16-blow-us-all-away",
     "at": 27.1,
-    "bodies": 5,
-    "tracklets": 7,
-    "deck": 5,
+    "bodies": 6,
+    "tracklets": 9,
+    "deck": 6,
     "gallery": 0,
     "inWings": 1,
     "sides": {
-     "SR": 2,
+     "SR": 3,
      "C": 1,
      "SL": 2
     },
     "shape": "scattered",
     "centroid": [
-     0.05,
-     0.14
+     -0.33,
+     0.33
     ],
     "extent": {
      "x": [
-      -4.42,
-      3.87
+      -4.4,
+      3.96
      ],
      "z": [
-      -3.36,
-      2.29
+      -3.33,
+      2.06
      ]
     },
-    "samples": 55,
+    "samples": 71,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 2,

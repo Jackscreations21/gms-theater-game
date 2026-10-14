@@ -5,7 +5,7 @@
   "title": "Helpless",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/1-10.json",
-  "outSha256": "bf562a01095ffafb1c7d5d2fcf89570ab0c35d5186c3690f0e9a01654a5a6f6f",
+  "outSha256": "cca025cff15631642d2edecdcf80c266af1f8a89f3034fa9f432d9c5efc09df1",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -16,42 +16,42 @@
      "0": {
       "judged": "fair",
       "moving": false,
-      "rms": 13.47
+      "rms": 11.02
      },
-     "2": {
+     "3": {
       "judged": "fair",
       "moving": false,
-      "rms": 11.62
+      "rms": 11.19
      },
-     "6": {
+     "7": {
       "judged": "fair",
       "moving": false,
-      "rms": 15.57
+      "rms": 12.02
      },
-     "67": {
+     "72": {
       "judged": "fair",
       "moving": true,
-      "rms": 12.59
+      "rms": 10.16
      }
     },
-    "tracklets": 66,
-    "positions": 825,
-    "identified": 437
+    "tracklets": 92,
+    "positions": 1365,
+    "identified": 522
    }
   },
-  "stage4Positions": 825,
+  "stage4Positions": 1365,
   "counts": {
-   "samples": 825,
-   "withPosition": 825,
-   "offMap": 6,
+   "samples": 1365,
+   "withPosition": 1365,
+   "offMap": 10,
    "evidence": 0,
    "evidenceWithPosition": 0,
-   "placedByBlocking": 458,
-   "pool": 367,
+   "placedByBlocking": 493,
+   "pool": 872,
    "other": 0,
    "byRule": {
-    "blocking": 458,
-    "pool": 367
+    "blocking": 493,
+    "pool": 872
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -78,8 +78,21 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 16,
-    "tracklets": 2
+    "samples": 12,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "eliza": {
+   "name": "Eliza",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 5,
+    "tracklets": 1
    },
    "other": 0,
    "items": [],
@@ -91,7 +104,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 18,
+    "samples": 22,
     "tracklets": 2
    },
    "other": 0,
@@ -104,8 +117,8 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 33,
-    "tracklets": 4
+    "samples": 31,
+    "tracklets": 2
    },
    "other": 0,
    "items": [],
@@ -117,7 +130,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 79,
+    "samples": 87,
     "tracklets": 3
    },
    "other": 0,
@@ -130,8 +143,8 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 22,
-    "tracklets": 4
+    "samples": 43,
+    "tracklets": 2
    },
    "other": 0,
    "items": [],
@@ -143,8 +156,8 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 26,
-    "tracklets": 4
+    "samples": 10,
+    "tracklets": 3
    },
    "other": 0,
    "items": [],
@@ -156,8 +169,8 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 27,
-    "tracklets": 3
+    "samples": 34,
+    "tracklets": 5
    },
    "other": 0,
    "items": [],
@@ -169,7 +182,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 17,
+    "samples": 10,
     "tracklets": 2
    },
    "other": 0,
@@ -182,7 +195,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 52,
+    "samples": 70,
     "tracklets": 2
    },
    "other": 0,
@@ -195,7 +208,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 19,
+    "samples": 4,
     "tracklets": 2
    },
    "other": 0,
@@ -208,7 +221,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 2,
+    "samples": 14,
     "tracklets": 1
    },
    "other": 0,
@@ -221,7 +234,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 54,
+    "samples": 42,
     "tracklets": 1
    },
    "other": 0,
@@ -234,8 +247,8 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 58,
-    "tracklets": 3
+    "samples": 65,
+    "tracklets": 2
    },
    "other": 0,
    "items": [],
@@ -247,8 +260,8 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 35,
-    "tracklets": 1
+    "samples": 44,
+    "tracklets": 2
    },
    "other": 0,
    "items": [],
@@ -256,41 +269,41 @@
   }
  },
  "pool": {
-  "samples": 367,
-  "withPosition": 361,
-  "tracklets": 32,
+  "samples": 872,
+  "withPosition": 864,
+  "tracklets": 61,
   "formations": [
    {
     "from": 0.0,
     "to": 3.0,
     "clip": "1-10-helpless",
     "at": 0.0,
-    "bodies": 4,
-    "tracklets": 7,
-    "deck": 4,
+    "bodies": 6,
+    "tracklets": 9,
+    "deck": 6,
     "gallery": 0,
     "inWings": 0,
     "sides": {
      "SR": 0,
      "C": 1,
-     "SL": 3
+     "SL": 5
     },
     "shape": "scattered",
     "centroid": [
-     2.96,
-     -0.49
+     3.24,
+     -0.9
     ],
     "extent": {
      "x": [
-      0.79,
-      4.63
+      0.75,
+      4.42
      ],
      "z": [
-      -2.29,
-      1.58
+      -3.88,
+      1.47
      ]
     },
-    "samples": 45,
+    "samples": 69,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -301,33 +314,33 @@
     "from": 3.0,
     "to": 6.0,
     "clip": "1-10-helpless",
-    "at": 3.4,
-    "bodies": 2,
-    "tracklets": 5,
-    "deck": 2,
+    "at": 3.2,
+    "bodies": 5,
+    "tracklets": 9,
+    "deck": 5,
     "gallery": 0,
     "inWings": 0,
     "sides": {
      "SR": 0,
-     "C": 0,
-     "SL": 2
+     "C": 1,
+     "SL": 4
     },
-    "shape": "a pair 0.8 m apart",
+    "shape": "scattered",
     "centroid": [
-     2.15,
-     0.77
+     2.31,
+     -1.53
     ],
     "extent": {
      "x": [
-      1.78,
-      2.52
+      -1.39,
+      4.2
      ],
      "z": [
-      0.64,
-      0.89
+      -2.92,
+      0.59
      ]
     },
-    "samples": 12,
+    "samples": 38,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -339,32 +352,32 @@
     "to": 21.0,
     "clip": "1-10-helpless",
     "at": 18.8,
-    "bodies": 4,
-    "tracklets": 4,
-    "deck": 4,
+    "bodies": 10,
+    "tracklets": 11,
+    "deck": 10,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 1,
-     "C": 0,
+     "SR": 5,
+     "C": 2,
      "SL": 3
     },
     "shape": "scattered",
     "centroid": [
-     2.45,
-     0.94
+     0.02,
+     0.11
     ],
     "extent": {
      "x": [
-      -2.75,
-      5.13
+      -3.27,
+      4.91
      ],
      "z": [
-      -1.72,
-      2.31
+      -3.87,
+      4.32
      ]
     },
-    "samples": 9,
+    "samples": 32,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -375,33 +388,33 @@
     "from": 21.0,
     "to": 24.0,
     "clip": "1-10-helpless",
-    "at": 22.0,
-    "bodies": 4,
-    "tracklets": 5,
-    "deck": 4,
+    "at": 22.2,
+    "bodies": 6,
+    "tracklets": 11,
+    "deck": 6,
     "gallery": 0,
-    "inWings": 0,
+    "inWings": 1,
     "sides": {
-     "SR": 1,
+     "SR": 2,
      "C": 0,
-     "SL": 3
+     "SL": 4
     },
     "shape": "scattered",
     "centroid": [
-     2.84,
-     1.59
+     1.85,
+     0.4
     ],
     "extent": {
      "x": [
-      -3.02,
-      5.32
+      -2.83,
+      5.28
      ],
      "z": [
-      -1.09,
-      3.12
+      -2.68,
+      3.17
      ]
     },
-    "samples": 37,
+    "samples": 78,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -413,32 +426,32 @@
     "to": 27.0,
     "clip": "1-10-helpless",
     "at": 24.6,
-    "bodies": 4,
-    "tracklets": 5,
-    "deck": 4,
+    "bodies": 7,
+    "tracklets": 9,
+    "deck": 7,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 1,
+     "SR": 2,
      "C": 0,
-     "SL": 3
+     "SL": 5
     },
     "shape": "scattered",
     "centroid": [
-     2.65,
-     1.14
+     2.29,
+     -0.01
     ],
     "extent": {
      "x": [
-      -3.11,
-      5.12
+      -3.16,
+      5.1
      ],
      "z": [
-      0.27,
-      2.32
+      -2.05,
+      2.69
      ]
     },
-    "samples": 13,
+    "samples": 29,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -449,33 +462,33 @@
     "from": 45.0,
     "to": 48.0,
     "clip": "1-10-helpless",
-    "at": 45.0,
-    "bodies": 2,
-    "tracklets": 2,
-    "deck": 2,
+    "at": 47.2,
+    "bodies": 8,
+    "tracklets": 12,
+    "deck": 8,
     "gallery": 0,
-    "inWings": 0,
+    "inWings": 1,
     "sides": {
-     "SR": 1,
-     "C": 0,
-     "SL": 1
+     "SR": 3,
+     "C": 3,
+     "SL": 2
     },
-    "shape": "a pair 7.1 m apart",
+    "shape": "scattered",
     "centroid": [
-     -1.91,
-     1.28
+     -0.97,
+     -0.02
     ],
     "extent": {
      "x": [
-      -5.42,
-      1.6
+      -5.69,
+      3.09
      ],
      "z": [
-      0.89,
-      1.66
+      -4.21,
+      2.94
      ]
     },
-    "samples": 26,
+    "samples": 98,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -487,32 +500,32 @@
     "to": 231.0,
     "clip": "1-10-helpless",
     "at": 230.7,
-    "bodies": 3,
-    "tracklets": 3,
-    "deck": 3,
+    "bodies": 9,
+    "tracklets": 9,
+    "deck": 9,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 2,
-     "C": 0,
-     "SL": 1
+     "SR": 3,
+     "C": 3,
+     "SL": 3
     },
-    "shape": "an arc r 4.4 m about (1.0, 1.9)",
+    "shape": "scattered",
     "centroid": [
-     -0.5,
-     0.15
+     0.31,
+     -1.35
     ],
     "extent": {
      "x": [
-      -3.44,
-      4.52
+      -2.62,
+      4.34
      ],
      "z": [
-      -0.71,
-      1.85
+      -4.0,
+      1.42
      ]
     },
-    "samples": 5,
+    "samples": 18,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -523,33 +536,33 @@
     "from": 231.0,
     "to": 234.0,
     "clip": "1-10-helpless",
-    "at": 232.1,
-    "bodies": 3,
-    "tracklets": 5,
-    "deck": 3,
+    "at": 232.5,
+    "bodies": 10,
+    "tracklets": 12,
+    "deck": 10,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 0,
-     "C": 0,
-     "SL": 3
+     "SR": 3,
+     "C": 2,
+     "SL": 5
     },
-    "shape": "a line up / downstage",
+    "shape": "scattered",
     "centroid": [
-     4.42,
+     1.09,
      0.11
     ],
     "extent": {
      "x": [
-      4.18,
-      4.59
+      -2.39,
+      4.77
      ],
      "z": [
-      -1.61,
-      2.3
+      -2.82,
+      2.71
      ]
     },
-    "samples": 26,
+    "samples": 128,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -560,33 +573,33 @@
     "from": 234.0,
     "to": 237.0,
     "clip": "1-10-helpless",
-    "at": 236.7,
-    "bodies": 6,
-    "tracklets": 7,
-    "deck": 6,
+    "at": 235.0,
+    "bodies": 11,
+    "tracklets": 11,
+    "deck": 11,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 2,
-     "C": 0,
-     "SL": 4
+     "SR": 5,
+     "C": 1,
+     "SL": 5
     },
     "shape": "scattered",
     "centroid": [
-     1.17,
-     -0.74
+     -0.01,
+     -0.68
     ],
     "extent": {
      "x": [
-      -5.31,
-      4.66
+      -5.81,
+      4.8
      ],
      "z": [
-      -2.87,
-      0.44
+      -3.0,
+      1.71
      ]
     },
-    "samples": 63,
+    "samples": 137,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 9,
@@ -597,33 +610,33 @@
     "from": 237.0,
     "to": 240.0,
     "clip": "1-10-helpless",
-    "at": 237.1,
-    "bodies": 6,
-    "tracklets": 6,
-    "deck": 6,
+    "at": 237.3,
+    "bodies": 11,
+    "tracklets": 12,
+    "deck": 11,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 2,
-     "C": 0,
-     "SL": 4
+     "SR": 5,
+     "C": 1,
+     "SL": 5
     },
     "shape": "scattered",
     "centroid": [
-     1.07,
-     -0.85
+     -0.32,
+     -0.96
     ],
     "extent": {
      "x": [
-      -5.63,
-      4.53
+      -6.22,
+      4.6
      ],
      "z": [
-      -2.71,
-      0.59
+      -3.41,
+      0.41
      ]
     },
-    "samples": 53,
+    "samples": 113,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 9,
@@ -634,33 +647,33 @@
     "from": 240.0,
     "to": 243.0,
     "clip": "1-10-helpless",
-    "at": 242.4,
-    "bodies": 6,
-    "tracklets": 10,
-    "deck": 6,
+    "at": 241.7,
+    "bodies": 10,
+    "tracklets": 13,
+    "deck": 10,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 1,
-     "C": 0,
+     "SR": 4,
+     "C": 1,
      "SL": 5
     },
     "shape": "scattered",
     "centroid": [
-     2.27,
-     0.37
+     0.27,
+     0.18
     ],
     "extent": {
      "x": [
-      -5.04,
-      5.14
+      -5.14,
+      4.99
      ],
      "z": [
-      -2.27,
-      2.08
+      -3.79,
+      2.77
      ]
     },
-    "samples": 57,
+    "samples": 96,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 9,
@@ -672,32 +685,32 @@
     "to": 246.0,
     "clip": "1-10-helpless",
     "at": 243.1,
-    "bodies": 6,
-    "tracklets": 6,
-    "deck": 6,
+    "bodies": 10,
+    "tracklets": 11,
+    "deck": 10,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 2,
-     "C": 0,
-     "SL": 4
+     "SR": 4,
+     "C": 1,
+     "SL": 5
     },
     "shape": "scattered",
     "centroid": [
-     1.17,
-     0.06
+     0.14,
+     0.11
     ],
     "extent": {
      "x": [
-      -5.24,
-      5.12
+      -5.29,
+      4.99
      ],
      "z": [
-      -2.81,
-      1.91
+      -3.3,
+      2.65
      ]
     },
-    "samples": 15,
+    "samples": 28,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 9,

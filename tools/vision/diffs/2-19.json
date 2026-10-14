@@ -5,7 +5,7 @@
   "title": "The Election of 1800",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/2-19.json",
-  "outSha256": "8740afb57f2a64c985a0428208c730dd47636a4f6b0fde97349500a814578ba6",
+  "outSha256": "b373209dca247b5129cdf8ef828a50eb0ae6e18b82fcac22f9bc9bc8131ba85c",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -13,30 +13,25 @@
    "2-19-the-election-of-1800": {
     "url": "https://www.youtube.com/watch?v=yEq-B8gPVn4",
     "shots": {
-     "29": {
+     "36": {
       "judged": "good",
       "moving": true,
       "rms": 7.32
      },
-     "30": {
+     "37": {
       "judged": "good",
       "moving": true,
-      "rms": 4.32
+      "rms": 2.44
      },
-     "39": {
+     "45": {
       "judged": "fair",
       "moving": false,
-      "rms": 11.85
-     },
-     "40": {
-      "judged": "fair",
-      "moving": false,
-      "rms": 11.04
+      "rms": 10.86
      }
     },
-    "tracklets": 39,
-    "positions": 339,
-    "identified": 431
+    "tracklets": 42,
+    "positions": 432,
+    "identified": 476
    },
    "2-18-it-s-quiet-uptown": {
     "url": "",
@@ -46,19 +41,19 @@
     "identified": 0
    }
   },
-  "stage4Positions": 339,
+  "stage4Positions": 432,
   "counts": {
-   "samples": 339,
-   "withPosition": 339,
-   "offMap": 134,
+   "samples": 432,
+   "withPosition": 432,
+   "offMap": 169,
    "evidence": 0,
    "evidenceWithPosition": 0,
-   "placedByBlocking": 85,
-   "pool": 254,
+   "placedByBlocking": 148,
+   "pool": 284,
    "other": 0,
    "byRule": {
-    "blocking": 85,
-    "pool": 254
+    "blocking": 148,
+    "pool": 284
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -86,7 +81,7 @@
    "evidenceOffMap": 0,
    "placedByBlocking": {
     "samples": 24,
-    "tracklets": 3
+    "tracklets": 2
    },
    "other": 0,
    "items": [],
@@ -98,8 +93,8 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 16,
-    "tracklets": 2
+    "samples": 18,
+    "tracklets": 1
    },
    "other": 0,
    "items": [],
@@ -111,20 +106,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 4,
-    "tracklets": 1
-   },
-   "other": 0,
-   "items": [],
-   "proposals": []
-  },
-  "ens3": {
-   "name": "Ensemble 3 (also Charles Lee)",
-   "evidence": 0,
-   "evidenceWithPosition": 0,
-   "evidenceOffMap": 0,
-   "placedByBlocking": {
-    "samples": 4,
+    "samples": 3,
     "tracklets": 1
    },
    "other": 0,
@@ -137,8 +119,8 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 4,
-    "tracklets": 1
+    "samples": 47,
+    "tracklets": 3
    },
    "other": 0,
    "items": [],
@@ -150,7 +132,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 2,
+    "samples": 3,
     "tracklets": 1
    },
    "other": 0,
@@ -163,8 +145,21 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 5,
+    "samples": 6,
     "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens7": {
+   "name": "Ensemble 7 (also Martha)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 5,
+    "tracklets": 2
    },
    "other": 0,
    "items": [],
@@ -176,8 +171,21 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 2,
+    "samples": 6,
     "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "hamilton": {
+   "name": "Hamilton",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 12,
+    "tracklets": 3
    },
    "other": 0,
    "items": [],
@@ -190,7 +198,7 @@
    "evidenceOffMap": 0,
    "placedByBlocking": {
     "samples": 24,
-    "tracklets": 3
+    "tracklets": 2
    },
    "other": 0,
    "items": [],
@@ -198,17 +206,17 @@
   }
  },
  "pool": {
-  "samples": 254,
-  "withPosition": 120,
+  "samples": 284,
+  "withPosition": 147,
   "tracklets": 25,
   "formations": [
    {
-    "from": 156.0,
-    "to": 159.0,
+    "from": 153.0,
+    "to": 156.0,
     "clip": "2-19-the-election-of-1800",
-    "at": 156.9,
+    "at": 154.0,
     "bodies": 1,
-    "tracklets": 3,
+    "tracklets": 1,
     "deck": 1,
     "gallery": 0,
     "inWings": 0,
@@ -219,20 +227,57 @@
     },
     "shape": "one body",
     "centroid": [
-     -4.69,
+     -4.68,
      1.67
     ],
     "extent": {
      "x": [
-      -4.69,
-      -4.69
+      -4.68,
+      -4.68
      ],
      "z": [
       1.67,
       1.67
      ]
     },
-    "samples": 10,
+    "samples": 9,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 156.0,
+    "to": 159.0,
+    "clip": "2-19-the-election-of-1800",
+    "at": 158.4,
+    "bodies": 2,
+    "tracklets": 4,
+    "deck": 2,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 0,
+     "C": 1,
+     "SL": 1
+    },
+    "shape": "a pair 6.7 m apart",
+    "centroid": [
+     2.45,
+     0.54
+    ],
+    "extent": {
+     "x": [
+      -0.07,
+      4.97
+     ],
+     "z": [
+      -1.66,
+      2.74
+     ]
+    },
+    "samples": 15,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -244,32 +289,32 @@
     "to": 162.0,
     "clip": "2-19-the-election-of-1800",
     "at": 159.0,
-    "bodies": 1,
-    "tracklets": 1,
-    "deck": 1,
+    "bodies": 3,
+    "tracklets": 4,
+    "deck": 3,
     "gallery": 0,
-    "inWings": 0,
+    "inWings": 1,
     "sides": {
-     "SR": 0,
-     "C": 0,
+     "SR": 1,
+     "C": 1,
      "SL": 1
     },
-    "shape": "one body",
+    "shape": "a line across the stage",
     "centroid": [
-     5.1,
-     1.52
+     1.09,
+     0.14
     ],
     "extent": {
      "x": [
-      5.1,
-      5.1
+      -2.68,
+      5.46
      ],
      "z": [
-      1.52,
-      1.52
+      -0.52,
+      1.19
      ]
     },
-    "samples": 1,
+    "samples": 4,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -281,32 +326,32 @@
     "to": 171.0,
     "clip": "2-19-the-election-of-1800",
     "at": 170.6,
-    "bodies": 1,
-    "tracklets": 6,
-    "deck": 1,
+    "bodies": 5,
+    "tracklets": 7,
+    "deck": 5,
     "gallery": 0,
-    "inWings": 5,
+    "inWings": 2,
     "sides": {
-     "SR": 0,
-     "C": 0,
+     "SR": 2,
+     "C": 2,
      "SL": 1
     },
-    "shape": "one body",
+    "shape": "a line across the stage",
     "centroid": [
-     5.19,
-     -0.28
+     0.25,
+     -3.23
     ],
     "extent": {
      "x": [
-      5.19,
-      5.19
+      -2.06,
+      5.35
      ],
      "z": [
-      -0.28,
-      -0.28
+      -4.22,
+      -0.5
      ]
     },
-    "samples": 10,
+    "samples": 14,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -317,33 +362,33 @@
     "from": 171.0,
     "to": 174.0,
     "clip": "2-19-the-election-of-1800",
-    "at": 171.4,
-    "bodies": 1,
-    "tracklets": 12,
-    "deck": 1,
+    "at": 171.0,
+    "bodies": 5,
+    "tracklets": 8,
+    "deck": 5,
     "gallery": 0,
-    "inWings": 5,
+    "inWings": 2,
     "sides": {
-     "SR": 0,
-     "C": 0,
+     "SR": 2,
+     "C": 2,
      "SL": 1
     },
-    "shape": "one body",
+    "shape": "scattered",
     "centroid": [
-     5.16,
-     -0.2
+     0.26,
+     -3.26
     ],
     "extent": {
      "x": [
-      5.16,
-      5.16
+      -1.98,
+      5.27
      ],
      "z": [
-      -0.2,
-      -0.2
+      -4.33,
+      -0.28
      ]
     },
-    "samples": 81,
+    "samples": 98,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -356,10 +401,10 @@
     "clip": "2-19-the-election-of-1800",
     "at": 174.0,
     "bodies": 4,
-    "tracklets": 5,
+    "tracklets": 7,
     "deck": 4,
     "gallery": 0,
-    "inWings": 1,
+    "inWings": 3,
     "sides": {
      "SR": 1,
      "C": 1,
@@ -367,20 +412,20 @@
     },
     "shape": "scattered",
     "centroid": [
-     1.32,
-     -2.9
+     1.28,
+     -2.62
     ],
     "extent": {
      "x": [
-      -2.5,
-      5.17
+      -2.49,
+      5.02
      ],
      "z": [
-      -3.96,
-      -0.98
+      -3.76,
+      -0.32
      ]
     },
-    "samples": 5,
+    "samples": 7,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -399,6 +444,6 @@
   "proposals": 0,
   "proposalsLook": 0,
   "proposalsDiffer": 0,
-  "formationWindows": 5
+  "formationWindows": 6
  }
 }

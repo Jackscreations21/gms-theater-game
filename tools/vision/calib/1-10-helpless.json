@@ -117,7 +117,7 @@
     "prior": "house",
     "choice": "least rms",
     "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.55-1.57 m over every lens",
+    "depthCueNote": "uninformative: shoulders 1.54-1.55 m over every lens",
     "window": {
      "tolPx": 1.65,
      "fov": [
@@ -130,8 +130,8 @@
      ],
      "poor": false
     },
-    "bodyHeightM": 1.56,
-    "bodies": 24,
+    "bodyHeightM": 1.54,
+    "bodies": 54,
     "free": {
      "camera": [
       1.92,
@@ -269,7 +269,7 @@
     "prior": "house",
     "choice": "nearest house camera within 1.5 px of the best",
     "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.40-1.41 m over every lens",
+    "depthCueNote": "uninformative: shoulders 1.28-1.28 m over every lens",
     "window": {
      "tolPx": 1.5,
      "fov": [
@@ -282,8 +282,8 @@
      ],
      "poor": true
     },
-    "bodyHeightM": 1.4,
-    "bodies": 24,
+    "bodyHeightM": 1.28,
+    "bodies": 49,
     "free": {
      "camera": [
       1.74,
@@ -347,13 +347,13 @@
    "solve": {
     "K": [
      [
-      1650.0185057737467,
+      1739.469062706187,
       0.0,
       640.0
      ],
      [
       0.0,
-      1650.0185057737467,
+      1739.469062706187,
       360.0
      ],
      [
@@ -364,50 +364,50 @@
     ],
     "R": [
      [
-      0.9985997619605895,
-      -0.0014203579172267886,
-      -0.052881925037208795
+      0.9980034841813452,
+      -0.000739208091686167,
+      -0.06315456541923622
      ],
      [
-      -0.0018194487177683395,
-      -0.999970223473387,
-      -0.0074994515098015906
+      -0.0007724680485120131,
+      -0.9999995755297079,
+      -0.0005022285516321396
      ],
      [
-      -0.05286969849183377,
-      0.007585166443224921,
-      -0.998572611396593
+      -0.06315416736059015,
+      0.0005500107282882487,
+      -0.9980036315731468
      ]
     ],
     "t": [
-     1.3188601620318503,
-     2.348806495306243,
-     14.926868480113088
+     1.2784019468614953,
+     2.371741546926636,
+     15.863315225080862
     ],
     "rvec": [
-     3.1329503204552918,
-     -0.002539352297156892,
-     -0.08288785671211182
+     3.1394980824323695,
+     -0.0011876617609059943,
+     -0.09923557566148596
     ],
     "camera": [
-     -0.524,
-     2.237,
-     14.993
+     -0.272,
+     2.364,
+     15.914
     ],
     "look": [
-     -0.053,
-     0.008,
-     -0.999
+     -0.063,
+     0.001,
+     -0.998
     ],
-    "fovDeg": 42.4,
-    "rms": 12.43,
+    "fovDeg": 40.4,
+    "rms": 12.02,
     "residuals": [
-     2.0,
-     8.6,
-     8.9,
-     11.3,
-     10.6,
-     23.0
+     2.9,
+     8.8,
+     9.0,
+     10.2,
+     10.0,
+     22.3
     ],
     "frameSize": [
      1280,
@@ -429,8 +429,8 @@
      ],
      "poor": true
     },
-    "bodyHeightM": 1.52,
-    "bodies": 25,
+    "bodyHeightM": 1.53,
+    "bodies": 51,
     "free": {
      "camera": [
       0.9,
@@ -441,7 +441,7 @@
      "rms": 11.42,
      "breaks": []
     },
-    "mPerPx": 0.054,
+    "mPerPx": 0.0551,
     "cond": {
      "sv": [
       3.54,
@@ -449,9 +449,9 @@
       0.55
      ],
      "heightSd": 1.2,
-     "depthSd": 1.92,
-     "sdDistPerPx": 0.26,
-     "sdFovPerPx": 0.6
+     "depthSd": 1.9,
+     "sdDistPerPx": 0.3,
+     "sdFovPerPx": 0.63
     }
    },
    "moving": false,
@@ -602,7 +602,7 @@
     "prior": "house",
     "choice": "least rms",
     "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.53-1.54 m over every lens",
+    "depthCueNote": "uninformative: shoulders 1.52-1.54 m over every lens",
     "window": {
      "tolPx": 1.53,
      "fov": [
@@ -615,8 +615,8 @@
      ],
      "poor": false
     },
-    "bodyHeightM": 1.54,
-    "bodies": 76,
+    "bodyHeightM": 1.53,
+    "bodies": 106,
     "free": {
      "camera": [
       0.74,

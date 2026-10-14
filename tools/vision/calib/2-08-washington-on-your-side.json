@@ -113,7 +113,7 @@
     "prior": "house",
     "choice": "nearest house camera within 1.5 px of the best",
     "depthCue": "none",
-    "depthCueNote": "implausible: shoulders 1.56-2.50 m, never 1.25-1.55",
+    "depthCueNote": "implausible: shoulders 1.57-2.88 m, never 1.25-1.55",
     "window": {
      "tolPx": 1.5,
      "fov": [
@@ -126,8 +126,8 @@
      ],
      "poor": true
     },
-    "bodyHeightM": 2.09,
-    "bodies": 7,
+    "bodyHeightM": 3.56,
+    "bodies": 2,
     "free": {
      "camera": [
       -0.17,

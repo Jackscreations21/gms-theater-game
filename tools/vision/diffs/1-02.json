@@ -5,7 +5,7 @@
   "title": "Aaron Burr, Sir",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/1-02.json",
-  "outSha256": "ffe45588093f783fedf53e977776b3f0cc38870625578bdd2ed9cc9a8e04ab38",
+  "outSha256": "22753538fecf4578a8d7d184ab5bc2611bac1c8a26b6834ffe618ad0d100d98e",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -16,27 +16,26 @@
      "0": {
       "judged": "fair",
       "moving": null,
-      "rms": 15.5
+      "rms": 16.83
      }
     },
-    "tracklets": 6,
-    "positions": 35,
-    "identified": 176
+    "tracklets": 7,
+    "positions": 46,
+    "identified": 213
    }
   },
-  "stage4Positions": 35,
+  "stage4Positions": 46,
   "counts": {
-   "samples": 35,
-   "withPosition": 35,
-   "offMap": 24,
+   "samples": 46,
+   "withPosition": 46,
+   "offMap": 31,
    "evidence": 0,
    "evidenceWithPosition": 0,
-   "placedByBlocking": 3,
-   "pool": 32,
+   "placedByBlocking": 0,
+   "pool": 46,
    "other": 0,
    "byRule": {
-    "blocking": 3,
-    "pool": 32
+    "pool": 46
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -56,64 +55,12 @@
   "windowS": 3.0
  },
  "rulings": [],
- "characters": {
-  "ens10": {
-   "name": "Ensemble 10",
-   "evidence": 0,
-   "evidenceWithPosition": 0,
-   "evidenceOffMap": 0,
-   "placedByBlocking": {
-    "samples": 3,
-    "tracklets": 1
-   },
-   "other": 0,
-   "items": [],
-   "proposals": []
-  }
- },
+ "characters": {},
  "pool": {
-  "samples": 32,
-  "withPosition": 10,
-  "tracklets": 5,
-  "formations": [
-   {
-    "from": 0.0,
-    "to": 3.0,
-    "clip": "1-02-aaron-burr-sir",
-    "at": 0.5,
-    "bodies": 1,
-    "tracklets": 4,
-    "deck": 1,
-    "gallery": 0,
-    "inWings": 2,
-    "sides": {
-     "SR": 0,
-     "C": 1,
-     "SL": 0
-    },
-    "shape": "one body",
-    "centroid": [
-     -0.58,
-     -2.44
-    ],
-    "extent": {
-     "x": [
-      -0.58,
-      -0.58
-     ],
-     "z": [
-      -2.44,
-      -2.44
-     ]
-    },
-    "samples": 10,
-    "otherClips": {},
-    "blocking": {
-     "ensembleOn": 5,
-     "everyoneOn": 6
-    }
-   }
-  ]
+  "samples": 46,
+  "withPosition": 15,
+  "tracklets": 7,
+  "formations": []
  },
  "summary": {
   "position": 0,
@@ -125,6 +72,6 @@
   "proposals": 0,
   "proposalsLook": 0,
   "proposalsDiffer": 0,
-  "formationWindows": 1
+  "formationWindows": 0
  }
 }

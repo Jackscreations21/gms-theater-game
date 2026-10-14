@@ -115,7 +115,7 @@
     "prior": "house",
     "choice": "nearest house camera within 2.1 px of the best",
     "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.51-1.53 m over every lens",
+    "depthCueNote": "uninformative: shoulders 1.52-1.53 m over every lens",
     "window": {
      "tolPx": 2.09,
      "fov": [
@@ -129,7 +129,7 @@
      "poor": true
     },
     "bodyHeightM": 1.52,
-    "bodies": 37,
+    "bodies": 40,
     "free": {
      "camera": [
       1.3,

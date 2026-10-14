@@ -5,7 +5,7 @@
   "title": "The Story of Tonight (Reprise)",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/1-12.json",
-  "outSha256": "8a70be840dee5ae7e746858ea369399af8f7f10d2d845339d6998d82483fe504",
+  "outSha256": "869b714d167b67fdef4cf4de78c4832480fe17ea1d38e5677f9df8516560fe7d",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -16,27 +16,27 @@
      "8": {
       "judged": "fair",
       "moving": false,
-      "rms": 14.55
+      "rms": 14.59
      }
     },
-    "tracklets": 9,
-    "positions": 124,
-    "identified": 82
+    "tracklets": 7,
+    "positions": 130,
+    "identified": 92
    }
   },
-  "stage4Positions": 124,
+  "stage4Positions": 130,
   "counts": {
-   "samples": 124,
-   "withPosition": 124,
+   "samples": 130,
+   "withPosition": 130,
    "offMap": 0,
    "evidence": 0,
    "evidenceWithPosition": 0,
    "placedByBlocking": 2,
-   "pool": 122,
+   "pool": 128,
    "other": 0,
    "byRule": {
     "blocking": 2,
-    "pool": 122
+    "pool": 128
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -72,41 +72,41 @@
   }
  },
  "pool": {
-  "samples": 122,
-  "withPosition": 122,
-  "tracklets": 8,
+  "samples": 128,
+  "withPosition": 128,
+  "tracklets": 6,
   "formations": [
    {
     "from": 45.0,
     "to": 48.0,
     "clip": "1-12-the-story-of-tonight-reprise",
-    "at": 47.4,
+    "at": 47.2,
     "bodies": 6,
-    "tracklets": 7,
+    "tracklets": 6,
     "deck": 6,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 3,
-     "C": 0,
+     "SR": 2,
+     "C": 1,
      "SL": 3
     },
     "shape": "scattered",
     "centroid": [
-     0.91,
-     -0.33
+     0.92,
+     -0.4
     ],
     "extent": {
      "x": [
-      -3.13,
-      4.72
+      -3.2,
+      4.67
      ],
      "z": [
-      -3.88,
-      0.74
+      -3.85,
+      0.71
      ]
     },
-    "samples": 56,
+    "samples": 60,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 2,
@@ -117,33 +117,33 @@
     "from": 48.0,
     "to": 51.0,
     "clip": "1-12-the-story-of-tonight-reprise",
-    "at": 48.4,
+    "at": 48.2,
     "bodies": 6,
     "tracklets": 6,
     "deck": 6,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 2,
+     "SR": 3,
      "C": 0,
-     "SL": 4
+     "SL": 3
     },
-    "shape": "a line across the stage",
+    "shape": "scattered",
     "centroid": [
-     1.72,
-     0.27
+     0.58,
+     -0.28
     ],
     "extent": {
      "x": [
       -3.18,
-      4.8
+      4.63
      ],
      "z": [
-      -0.02,
-      0.8
+      -3.69,
+      0.84
      ]
     },
-    "samples": 66,
+    "samples": 68,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 2,

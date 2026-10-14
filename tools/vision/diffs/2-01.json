@@ -5,7 +5,7 @@
   "title": "What'd I Miss",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/2-01.json",
-  "outSha256": "642b6aef1f2e0e067de2bc768d4f4bb9da9b450ad43d85b34ea5b2a9119e2500",
+  "outSha256": "18ee82783cc4ef6517a254543a4f75d52bae09407aedb56b2bc13d5abb3d2982",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -16,37 +16,37 @@
      "7": {
       "judged": "fair",
       "moving": null,
-      "rms": 9.9
+      "rms": 9.8
      },
-     "47": {
+     "53": {
       "judged": "fair",
       "moving": null,
       "rms": 3.23
      },
-     "50": {
+     "56": {
       "judged": "fair",
       "moving": null,
-      "rms": 3.76
+      "rms": 3.8
      }
     },
-    "tracklets": 46,
-    "positions": 515,
-    "identified": 476
+    "tracklets": 49,
+    "positions": 640,
+    "identified": 539
    }
   },
-  "stage4Positions": 515,
+  "stage4Positions": 640,
   "counts": {
-   "samples": 515,
-   "withPosition": 515,
-   "offMap": 150,
+   "samples": 640,
+   "withPosition": 640,
+   "offMap": 232,
    "evidence": 0,
    "evidenceWithPosition": 0,
-   "placedByBlocking": 129,
-   "pool": 386,
+   "placedByBlocking": 128,
+   "pool": 512,
    "other": 0,
    "byRule": {
-    "blocking": 129,
-    "pool": 386
+    "blocking": 128,
+    "pool": 512
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -73,7 +73,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 39,
+    "samples": 24,
     "tracklets": 2
    },
    "other": 0,
@@ -86,7 +86,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 14,
+    "samples": 15,
     "tracklets": 1
    },
    "other": 0,
@@ -99,7 +99,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 19,
+    "samples": 15,
     "tracklets": 1
    },
    "other": 0,
@@ -112,7 +112,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 18,
+    "samples": 20,
     "tracklets": 1
    },
    "other": 0,
@@ -125,7 +125,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 28,
+    "samples": 36,
     "tracklets": 2
    },
    "other": 0,
@@ -138,8 +138,8 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 7,
-    "tracklets": 1
+    "samples": 6,
+    "tracklets": 2
    },
    "other": 0,
    "items": [],
@@ -151,7 +151,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 4,
+    "samples": 12,
     "tracklets": 1
    },
    "other": 0,
@@ -160,9 +160,9 @@
   }
  },
  "pool": {
-  "samples": 386,
-  "withPosition": 236,
-  "tracklets": 37,
+  "samples": 512,
+  "withPosition": 280,
+  "tracklets": 39,
   "formations": [
    {
     "from": 210.0,
@@ -175,23 +175,23 @@
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 2,
-     "C": 5,
+     "SR": 3,
+     "C": 4,
      "SL": 0
     },
     "shape": "scattered",
     "centroid": [
-     -1.68,
-     -0.04
+     -1.75,
+     -0.5
     ],
     "extent": {
      "x": [
-      -5.41,
+      -5.4,
       1.04
      ],
      "z": [
-      -3.66,
-      2.31
+      -3.31,
+      2.32
      ]
     },
     "samples": 85,
@@ -205,33 +205,33 @@
     "from": 213.0,
     "to": 216.0,
     "clip": "2-01-what-d-i-miss",
-    "at": 213.4,
-    "bodies": 5,
-    "tracklets": 7,
-    "deck": 5,
+    "at": 213.2,
+    "bodies": 6,
+    "tracklets": 8,
+    "deck": 6,
     "gallery": 0,
     "inWings": 1,
     "sides": {
      "SR": 2,
-     "C": 2,
+     "C": 3,
      "SL": 1
     },
     "shape": "scattered",
     "centroid": [
-     -1.46,
-     0.54
+     -1.47,
+     -0.84
     ],
     "extent": {
      "x": [
-      -5.07,
-      1.75
+      -5.04,
+      1.78
      ],
      "z": [
-      -3.22,
-      2.07
+      -4.29,
+      2.21
      ]
     },
-    "samples": 27,
+    "samples": 34,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -242,33 +242,33 @@
     "from": 219.0,
     "to": 222.0,
     "clip": "2-01-what-d-i-miss",
-    "at": 221.9,
-    "bodies": 6,
-    "tracklets": 12,
-    "deck": 6,
+    "at": 219.7,
+    "bodies": 7,
+    "tracklets": 14,
+    "deck": 7,
     "gallery": 0,
     "inWings": 3,
     "sides": {
      "SR": 3,
      "C": 0,
-     "SL": 3
+     "SL": 4
     },
     "shape": "scattered",
     "centroid": [
-     -0.87,
-     -0.94
+     0.32,
+     -0.06
     ],
     "extent": {
      "x": [
-      -5.8,
-      4.19
+      -4.36,
+      4.68
      ],
      "z": [
-      -3.55,
-      2.35
+      -4.07,
+      2.93
      ]
     },
-    "samples": 85,
+    "samples": 106,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -280,32 +280,32 @@
     "to": 225.0,
     "clip": "2-01-what-d-i-miss",
     "at": 222.1,
-    "bodies": 5,
-    "tracklets": 8,
-    "deck": 5,
+    "bodies": 7,
+    "tracklets": 12,
+    "deck": 7,
     "gallery": 0,
     "inWings": 2,
     "sides": {
-     "SR": 2,
+     "SR": 3,
      "C": 0,
-     "SL": 3
+     "SL": 4
     },
     "shape": "scattered",
     "centroid": [
-     0.12,
-     -0.92
+     0.28,
+     0.16
     ],
     "extent": {
      "x": [
-      -5.62,
-      4.15
+      -5.3,
+      4.88
      ],
      "z": [
-      -3.5,
-      2.47
+      -3.29,
+      2.77
      ]
     },
-    "samples": 39,
+    "samples": 55,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,

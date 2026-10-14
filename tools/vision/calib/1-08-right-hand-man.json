@@ -129,7 +129,7 @@
     "prior": "house",
     "choice": "least rms",
     "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.42-1.49 m over every lens",
+    "depthCueNote": "uninformative: shoulders 1.42-1.47 m over every lens",
     "window": {
      "tolPx": 1.5,
      "fov": [
@@ -142,8 +142,8 @@
      ],
      "poor": false
     },
-    "bodyHeightM": 1.48,
-    "bodies": 49,
+    "bodyHeightM": 1.46,
+    "bodies": 61,
     "free": {
      "camera": [
       0.72,
@@ -287,7 +287,7 @@
     "prior": "house",
     "choice": "least rms",
     "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.39-1.47 m over every lens",
+    "depthCueNote": "uninformative: shoulders 1.41-1.46 m over every lens",
     "window": {
      "tolPx": 1.5,
      "fov": [
@@ -301,7 +301,7 @@
      "poor": false
     },
     "bodyHeightM": 1.42,
-    "bodies": 32,
+    "bodies": 43,
     "free": {
      "camera": [
       0.72,
@@ -477,7 +477,7 @@
     "prior": "house",
     "choice": "least rms",
     "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.47-1.49 m over every lens",
+    "depthCueNote": "uninformative: shoulders 1.45-1.47 m over every lens",
     "window": {
      "tolPx": 1.5,
      "fov": [
@@ -490,8 +490,8 @@
      ],
      "poor": false
     },
-    "bodyHeightM": 1.48,
-    "bodies": 17,
+    "bodyHeightM": 1.46,
+    "bodies": 23,
     "free": {
      "camera": [
       -0.14,
@@ -652,7 +652,7 @@
      ],
      "poor": false
     },
-    "bodyHeightM": 1.57,
+    "bodyHeightM": 1.58,
     "bodies": 18,
     "free": {
      "camera": [
@@ -1115,7 +1115,7 @@
     "prior": "house",
     "choice": "least rms",
     "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.46-1.46 m over every lens",
+    "depthCueNote": "uninformative: shoulders 1.47-1.47 m over every lens",
     "window": {
      "tolPx": 1.5,
      "fov": [
@@ -1128,8 +1128,8 @@
      ],
      "poor": false
     },
-    "bodyHeightM": 1.46,
-    "bodies": 34,
+    "bodyHeightM": 1.47,
+    "bodies": 36,
     "free": {
      "camera": [
       0.49,
@@ -1590,7 +1590,7 @@
     "prior": "house",
     "choice": "least rms",
     "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.55-1.55 m over every lens",
+    "depthCueNote": "uninformative: shoulders 1.47-1.55 m over every lens",
     "window": {
      "tolPx": 1.5,
      "fov": [
@@ -1603,8 +1603,8 @@
      ],
      "poor": false
     },
-    "bodyHeightM": 1.55,
-    "bodies": 7,
+    "bodyHeightM": 1.51,
+    "bodies": 8,
     "free": {
      "camera": [
       0.48,
@@ -1748,7 +1748,7 @@
     "prior": "house",
     "choice": "least rms",
     "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.55-1.56 m over every lens",
+    "depthCueNote": "uninformative: shoulders 1.59-1.59 m over every lens",
     "window": {
      "tolPx": 1.5,
      "fov": [
@@ -1761,8 +1761,8 @@
      ],
      "poor": false
     },
-    "bodyHeightM": 1.56,
-    "bodies": 46,
+    "bodyHeightM": 1.59,
+    "bodies": 63,
     "free": {
      "camera": [
       0.63,

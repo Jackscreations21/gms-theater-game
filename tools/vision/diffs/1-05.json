@@ -5,7 +5,7 @@
   "title": "The Schuyler Sisters",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/1-05.json",
-  "outSha256": "b9c72c503b927a60b7d1f6c046fe6beb7f55a4f9ab8d357a3b8ccd394e89051c",
+  "outSha256": "1eae47650f6ff3f3b85d0d3f7810e040a8f9520da9ad2b9c21c1f393aeca4f3d",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -13,30 +13,30 @@
    "1-05-the-schuyler-sisters": {
     "url": "https://www.youtube.com/watch?v=POHVE9uCNAY",
     "shots": {
-     "34": {
+     "37": {
       "judged": "fair",
       "moving": null,
-      "rms": 4.33
+      "rms": 5.83
      }
     },
-    "tracklets": 13,
-    "positions": 196,
-    "identified": 414
+    "tracklets": 18,
+    "positions": 228,
+    "identified": 490
    }
   },
-  "stage4Positions": 196,
+  "stage4Positions": 228,
   "counts": {
-   "samples": 196,
-   "withPosition": 196,
-   "offMap": 0,
+   "samples": 228,
+   "withPosition": 228,
+   "offMap": 13,
    "evidence": 0,
    "evidenceWithPosition": 0,
-   "placedByBlocking": 135,
-   "pool": 61,
+   "placedByBlocking": 133,
+   "pool": 95,
    "other": 0,
    "byRule": {
-    "blocking": 135,
-    "pool": 61
+    "blocking": 133,
+    "pool": 95
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -76,7 +76,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 13,
+    "samples": 18,
     "tracklets": 1
    },
    "other": 0,
@@ -89,8 +89,21 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 18,
-    "tracklets": 2
+    "samples": 6,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens2": {
+   "name": "Ensemble 2 (also Samuel Seabury)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 1,
+    "tracklets": 1
    },
    "other": 0,
    "items": [],
@@ -102,20 +115,20 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 16,
+    "samples": 19,
     "tracklets": 1
    },
    "other": 0,
    "items": [],
    "proposals": []
   },
-  "ens5": {
-   "name": "Ensemble 5 (also George Eacker)",
+  "ens6": {
+   "name": "Ensemble 6 (also Dolly)",
    "evidence": 0,
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 19,
+    "samples": 1,
     "tracklets": 1
    },
    "other": 0,
@@ -128,7 +141,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 12,
+    "samples": 16,
     "tracklets": 1
    },
    "other": 0,
@@ -137,6 +150,19 @@
   },
   "ens8": {
    "name": "Ensemble 8",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 15,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "laurens": {
+   "name": "Laurens (also Philip)",
    "evidence": 0,
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
@@ -163,41 +189,41 @@
   }
  },
  "pool": {
-  "samples": 61,
-  "withPosition": 61,
-  "tracklets": 4,
+  "samples": 95,
+  "withPosition": 82,
+  "tracklets": 8,
   "formations": [
    {
     "from": 153.0,
     "to": 156.0,
     "clip": "1-05-the-schuyler-sisters",
     "at": 154.1,
-    "bodies": 3,
-    "tracklets": 3,
-    "deck": 3,
+    "bodies": 5,
+    "tracklets": 6,
+    "deck": 5,
     "gallery": 0,
     "inWings": 0,
     "sides": {
-     "SR": 0,
+     "SR": 1,
      "C": 3,
-     "SL": 0
+     "SL": 1
     },
-    "shape": "a cluster (all within 1.2 m)",
+    "shape": "an arc r 4.5 m about (0.6, 3.6)",
     "centroid": [
-     -0.06,
-     -0.54
+     0.13,
+     0.05
     ],
     "extent": {
      "x": [
-      -0.93,
-      0.78
+      -3.58,
+      4.29
      ],
      "z": [
-      -0.89,
-      -0.29
+      -1.12,
+      1.69
      ]
     },
-    "samples": 29,
+    "samples": 47,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,
@@ -208,9 +234,9 @@
     "from": 156.0,
     "to": 159.0,
     "clip": "1-05-the-schuyler-sisters",
-    "at": 156.3,
+    "at": 156.1,
     "bodies": 4,
-    "tracklets": 4,
+    "tracklets": 5,
     "deck": 4,
     "gallery": 0,
     "inWings": 0,
@@ -221,20 +247,20 @@
     },
     "shape": "scattered",
     "centroid": [
-     -1.09,
-     0.38
+     -1.06,
+     0.43
     ],
     "extent": {
      "x": [
-      -3.92,
-      0.7
+      -3.79,
+      0.69
      ],
      "z": [
-      -0.12,
-      0.81
+      -0.54,
+      2.1
      ]
     },
-    "samples": 32,
+    "samples": 35,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 8,

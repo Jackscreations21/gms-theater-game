@@ -5,7 +5,7 @@
   "title": "Non-Stop",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/1-23.json",
-  "outSha256": "7be3f19aa5dfea45df0c4a1b337e27529ff59b2627a64490178aa4eda593a6be",
+  "outSha256": "cf6b1ca8a28db7aa2a54e2880f1f91b872d7f0bc589ed0de473d680f6c5aa405",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -13,50 +13,50 @@
    "1-23-non-stop-p1": {
     "url": "",
     "shots": {
-     "4": {
+     "5": {
       "judged": "fair",
       "moving": null,
-      "rms": 12.83
+      "rms": 12.82
      }
     },
-    "tracklets": 7,
-    "positions": 47,
-    "identified": 238
+    "tracklets": 6,
+    "positions": 43,
+    "identified": 305
    },
    "1-23-non-stop-p3": {
     "url": "",
     "shots": {
-     "14": {
+     "20": {
       "judged": "good",
       "moving": null,
       "rms": 1.41
      }
     },
-    "tracklets": 8,
-    "positions": 39,
-    "identified": 151
+    "tracklets": 11,
+    "positions": 47,
+    "identified": 173
    },
    "1-23-non-stop-p2": {
     "url": "",
     "shots": {},
     "tracklets": 0,
     "positions": 0,
-    "identified": 44
+    "identified": 58
    }
   },
-  "stage4Positions": 86,
+  "stage4Positions": 90,
   "counts": {
-   "samples": 86,
-   "withPosition": 86,
-   "offMap": 2,
+   "samples": 90,
+   "withPosition": 90,
+   "offMap": 0,
    "evidence": 0,
    "evidenceWithPosition": 0,
-   "placedByBlocking": 74,
-   "pool": 12,
+   "placedByBlocking": 68,
+   "pool": 22,
    "other": 0,
    "byRule": {
-    "blocking": 74,
-    "pool": 12
+    "blocking": 68,
+    "pool": 22
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -116,7 +116,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 4,
+    "samples": 9,
     "tracklets": 1
    },
    "other": 0,
@@ -129,7 +129,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 16,
+    "samples": 12,
     "tracklets": 1
    },
    "other": 0,
@@ -155,7 +155,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 19,
+    "samples": 18,
     "tracklets": 2
    },
    "other": 0,
@@ -168,20 +168,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 9,
-    "tracklets": 2
-   },
-   "other": 0,
-   "items": [],
-   "proposals": []
-  },
-  "ens8": {
-   "name": "Ensemble 8",
-   "evidence": 0,
-   "evidenceWithPosition": 0,
-   "evidenceOffMap": 0,
-   "placedByBlocking": {
-    "samples": 4,
+    "samples": 6,
     "tracklets": 1
    },
    "other": 0,
@@ -194,7 +181,7 @@
    "evidenceWithPosition": 0,
    "evidenceOffMap": 0,
    "placedByBlocking": {
-    "samples": 3,
+    "samples": 4,
     "tracklets": 1
    },
    "other": 0,
@@ -216,20 +203,20 @@
   }
  },
  "pool": {
-  "samples": 12,
-  "withPosition": 10,
-  "tracklets": 3,
+  "samples": 22,
+  "withPosition": 22,
+  "tracklets": 7,
   "formations": [
    {
-    "from": 285.0,
-    "to": 288.0,
-    "clip": "1-23-non-stop-p3",
-    "at": 287.2,
+    "from": 21.0,
+    "to": 24.0,
+    "clip": "1-23-non-stop-p1",
+    "at": 21.6,
     "bodies": 1,
-    "tracklets": 2,
+    "tracklets": 1,
     "deck": 1,
     "gallery": 0,
-    "inWings": 1,
+    "inWings": 0,
     "sides": {
      "SR": 0,
      "C": 0,
@@ -237,20 +224,57 @@
     },
     "shape": "one body",
     "centroid": [
-     3.04,
+     4.31,
+     2.47
+    ],
+    "extent": {
+     "x": [
+      4.31,
+      4.31
+     ],
+     "z": [
+      2.47,
+      2.47
+     ]
+    },
+    "samples": 5,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 7,
+     "everyoneOn": 9
+    }
+   },
+   {
+    "from": 285.0,
+    "to": 288.0,
+    "clip": "1-23-non-stop-p3",
+    "at": 287.0,
+    "bodies": 1,
+    "tracklets": 6,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 3,
+    "sides": {
+     "SR": 0,
+     "C": 0,
+     "SL": 1
+    },
+    "shape": "one body",
+    "centroid": [
+     2.73,
      3.81
     ],
     "extent": {
      "x": [
-      3.04,
-      3.04
+      2.73,
+      2.73
      ],
      "z": [
       3.81,
       3.81
      ]
     },
-    "samples": 10,
+    "samples": 17,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 7,
@@ -269,6 +293,6 @@
   "proposals": 0,
   "proposalsLook": 0,
   "proposalsDiffer": 0,
-  "formationWindows": 1
+  "formationWindows": 2
  }
 }

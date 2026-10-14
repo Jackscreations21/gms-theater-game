@@ -544,21 +544,33 @@ and `out/` follow once the solver agent's `resolve all` finishes (see STATE.md).
 - The homography trick: read ONE frame of a camera set-up carefully and carry its points to sibling shots by SIFT
   homography or a measured similarity (1-08, 2-09, 1-10 were done this way; the `note` says so).
 
-**What is left, in order:**
-1. **Finish the solver round:** `calib.py`'s prior softened (y ≥ 0, z ≥ 3.5, fov ≤ 100, the body cue decides),
-   `resolve all`, drop the 45 m entry from `HOUSE_CAMERAS`, run the `census`, then `floor` on every clip and `ident`
-   on every track (stage 1 re-aligned the `at`s, so every out file is stale until then). Commit calib + out.
-2. **Fix `setpoints.json`** from the census (rail height, the stairs per number or dropped, lip-c, the SR strip),
-   add the rolling staircases and the light rig as points, re-solve.
-3. **Re-run `bodies` at `--imgsz 1280`** on every clip (~80 min), or a larger pose model; then `floor` + `ident`.
-4. **The missed cuts:** apply the structure test in a new round that re-keys everything (frames → bodies → calib
-   shot ids re-mapped by frame range — the calib entries carry `frame`, so a remap is mechanical).
-5. **Jack labels a few numbers in the Calibrate UI** (bodies → cast ids) so rules 1–3 of stage 5 have something to
-   work from; until then every identity is `blocking` or `ens?` and is not evidence.
-6. **`compare.py` (GC)** and **GD dance timing** — not started.
-7. The Calibrate UI's JS solver must carry the same prior and body cue as `calib.py` once those settle.
-8. `aligncheck.py`'s one failing case (My Shot ×1.03, coverage 47 %): a tempo-aware walk-back.
-9. The Tonys/Ham4Ham question, 5 vs 10 fps, the still-wanted clips.
+**The re-key batch ran (2026-10-14, 16:04–16:07, steps 4–6 of STATE.md's list, after the 1280 bodies and the
+re-detected cuts):**
+- `resolve all`: **54 shots re-solved** with the body cue reading the 1280 bodies; 31 took the body cue, 3 degenerate,
+  29 poorly conditioned; cameras below 0.8 m 13 before and after; none broke the prior; one moved more than 5 m
+  (2-19 s37, (−0.1, 6.4, 24.4) → (0.0, 11.1, 38.5), poorly conditioned — a one-plane shot the cue could not pin).
+  rms 25 % / median / 75 %: 6.8 / 8.2 / 10.2 px before, 7.1 / 8.7 / 11.0 px after (the cue trades a little rms for a
+  camera it believes).
+- `floor` on all 43 calib files: 20 tracks got an `out/<track>.json` (the rest have no usable shot — too tight,
+  moving, dark, or a title card — each reason is printed). `ident` then `motion` on the 20: with no labels every
+  identity is `blocking` (conf 0.3) or `ens?`; `motion` finds 0 proposals over 0.7 on every track.
+- `compare.py --all`: 20 diffs, **evidence 0 on every track** (no labels), so every disagreement count is 0; the
+  RULED checks fire on 1-18 (1), 1-23 (1), 2-10 (1) and 2-16 (9) as "footage disagrees with ruling", reported never
+  proposed. Placed samples per track range from 0 (1-02, 2-08, 2-10, 2-12) to 493 (1-10). The batch is committed:
+  `calib/` (21 files), `out/` (20), `diffs/` (40).
+
+**What is left, in order** (the same list as HANDOFF.md's, items 2–6 — item 1, the batch, is done):
+1. **Jack labels a few numbers** (`blocking.html` → Advanced → Calibrate → Labels; save as
+   `tools/vision/labels/<clip>.json`). Start with 1-06, 1-15, 1-16, 2-05, 1-08. Then `ident`, `motion`, `compare` for
+   those tracks and read `diffs/<track>.md`; `compare.py --apply --min-conf 0.7 --dry` shows what it would write.
+   Until then nothing in `out/` or `diffs/` is evidence.
+2. **The cameras, round two:** re-check the skipped wide shots by the same method (one careful frame per camera
+   set-up, points carried to its siblings by homography; the rig lanterns as points in the dark wides), briefed from
+   `tools/vision/AGENT-CALIB.md` with the camera families above, each agent in its own scratch subfolder.
+3. **Jack's rulings and questions:** the five blocking rulings; the Tonys/Ham4Ham clips; 5 vs 10 fps for the dance
+   numbers; whether he clicks the first few numbers' points himself; a larger pose model; the still-wanted clips.
+4. **Loose:** `setpoints.json`'s open conflicts (`gal-sl-ds`, the SL stair's steepness, the rig height ±0.3 m); the
+   1-08 handheld close-up over-splits (8 false cuts, harmless); 2-19 s37's solve (above).
 
 ## 8. Traps specific to this (the full list is in TRAPS.md)
 

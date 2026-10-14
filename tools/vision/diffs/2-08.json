@@ -5,7 +5,7 @@
   "title": "Washington on Your Side",
   "made": "2026-10-14",
   "outFile": "tools/vision/out/2-08.json",
-  "outSha256": "47048694528e2a7fd95d956ae63997aa6b9ccaf6960f1586a9db50d55cdedaa9",
+  "outSha256": "850909feb8ffceb105c25859e3329c5a4ccd3ac92d2e906c37aecaa1f28f7798",
   "blocking": "assets/hamilton-blocking.json",
   "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
   "stage5": true,
@@ -13,15 +13,15 @@
    "2-08-washington-on-your-side": {
     "url": "https://www.youtube.com/watch?v=o0uncfmN_cM",
     "shots": {
-     "46": {
+     "50": {
       "judged": "fair",
       "moving": false,
-      "rms": 3.91
+      "rms": 7.47
      }
     },
-    "tracklets": 3,
-    "positions": 71,
-    "identified": 202
+    "tracklets": 2,
+    "positions": 70,
+    "identified": 209
    },
    "2-07-cabinet-battle-2": {
     "url": "",
@@ -38,18 +38,18 @@
     "identified": 5
    }
   },
-  "stage4Positions": 71,
+  "stage4Positions": 70,
   "counts": {
-   "samples": 71,
-   "withPosition": 71,
-   "offMap": 22,
+   "samples": 70,
+   "withPosition": 70,
+   "offMap": 37,
    "evidence": 0,
    "evidenceWithPosition": 0,
    "placedByBlocking": 0,
-   "pool": 71,
+   "pool": 70,
    "other": 0,
    "byRule": {
-    "pool": 71
+    "pool": 70
    }
   },
   "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
@@ -71,9 +71,9 @@
  "rulings": [],
  "characters": {},
  "pool": {
-  "samples": 71,
-  "withPosition": 49,
-  "tracklets": 3,
+  "samples": 70,
+  "withPosition": 33,
+  "tracklets": 2,
   "formations": [
    {
     "from": 171.0,
@@ -92,20 +92,20 @@
     },
     "shape": "one body",
     "centroid": [
-     -4.01,
-     4.27
+     -3.66,
+     5.1
     ],
     "extent": {
      "x": [
-      -4.01,
-      -4.01
+      -3.66,
+      -3.66
      ],
      "z": [
-      4.27,
-      4.27
+      5.1,
+      5.1
      ]
     },
-    "samples": 3,
+    "samples": 2,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 0,
@@ -116,12 +116,12 @@
     "from": 174.0,
     "to": 177.0,
     "clip": "2-08-washington-on-your-side",
-    "at": 174.2,
+    "at": 175.6,
     "bodies": 1,
-    "tracklets": 1,
+    "tracklets": 2,
     "deck": 1,
     "gallery": 0,
-    "inWings": 0,
+    "inWings": 1,
     "sides": {
      "SR": 1,
      "C": 0,
@@ -129,20 +129,20 @@
     },
     "shape": "one body",
     "centroid": [
-     -3.81,
-     4.72
+     -3.5,
+     5.49
     ],
     "extent": {
      "x": [
-      -3.81,
-      -3.81
+      -3.5,
+      -3.5
      ],
      "z": [
-      4.72,
-      4.72
+      5.49,
+      5.49
      ]
     },
-    "samples": 15,
+    "samples": 14,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 0,
@@ -153,7 +153,7 @@
     "from": 177.0,
     "to": 180.0,
     "clip": "2-08-washington-on-your-side",
-    "at": 177.8,
+    "at": 178.8,
     "bodies": 2,
     "tracklets": 2,
     "deck": 2,
@@ -161,25 +161,25 @@
     "inWings": 0,
     "sides": {
      "SR": 1,
-     "C": 0,
-     "SL": 1
+     "C": 1,
+     "SL": 0
     },
     "shape": "a pair 9.5 m apart",
     "centroid": [
-     -0.56,
-     1.33
+     -1.69,
+     0.63
     ],
     "extent": {
      "x": [
-      -3.81,
-      2.69
+      -3.73,
+      0.34
      ],
      "z": [
-      -2.12,
-      4.77
+      -3.66,
+      4.92
      ]
     },
-    "samples": 25,
+    "samples": 11,
     "otherClips": {},
     "blocking": {
      "ensembleOn": 0,
@@ -190,30 +190,30 @@
     "from": 180.0,
     "to": 183.0,
     "clip": "2-08-washington-on-your-side",
-    "at": 180.6,
+    "at": 180.2,
     "bodies": 1,
-    "tracklets": 3,
+    "tracklets": 2,
     "deck": 1,
     "gallery": 0,
     "inWings": 1,
     "sides": {
-     "SR": 0,
+     "SR": 1,
      "C": 0,
-     "SL": 1
+     "SL": 0
     },
     "shape": "one body",
     "centroid": [
-     2.47,
-     -2.14
+     -5.08,
+     0.73
     ],
     "extent": {
      "x": [
-      2.47,
-      2.47
+      -5.08,
+      -5.08
      ],
      "z": [
-      -2.14,
-      -2.14
+      0.73,
+      0.73
      ]
     },
     "samples": 6,
