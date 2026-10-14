@@ -6,9 +6,16 @@
    "frame": 3,
    "skipped": "too dark and no depth cue: only the upstage gallery rail/floor line is readable (lip under the frame edge, ring not visible, light pool is not the ring); a 7-frame tail of 1-18"
   },
-  "11": {
+  "13": {
    "frame": 451,
-   "skipped": "too tight: a medium shot of the deck crowd, no lip, ring or gallery corners/posts readable (fewer than five set points); dark blue wash"
+   "skipped": "too tight: a medium shot of the deck crowd, no lip, ring or gallery corners/posts readable (fewer than five set points); dark blue wash",
+   "was": 11,
+   "split": [
+    12,
+    13,
+    14
+   ]
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:04"
 }

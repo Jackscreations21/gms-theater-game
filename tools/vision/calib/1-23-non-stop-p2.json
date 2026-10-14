@@ -2,12 +2,13 @@
  "clip": "1-23-non-stop-p2",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
+  "0": {
+   "skipped": "too tight; low close camera, a seated actor covers the ring, under five certain points"
+  },
   "1": {
    "frame": 16,
    "skipped": "too tight; ring front out of frame, ~4 certain points, solve runs to the fov bound (11 deg)"
-  },
-  "0": {
-   "skipped": "too tight; low close camera, a seated actor covers the ring, under five certain points"
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:08"
 }

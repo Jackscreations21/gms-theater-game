@@ -2,7 +2,150 @@
  "clip": "1-18-guns-and-ships",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "16": {
+  "3": {
+   "skipped": "too dark: only the upstage rail reads; the deck, lip and side galleries are black (also a slow zoom)",
+   "was": 2
+  },
+  "10": {
+   "frame": 240,
+   "points": {
+    "rail-us-c": [
+     672.0,
+     415.0
+    ],
+    "rail-us-sr": [
+     404.0,
+     415.0
+    ],
+    "rail-us-sl": [
+     966.0,
+     414.0
+    ],
+    "lip-c": [
+     672.0,
+     680.0
+    ],
+    "post-bw-c-base": [
+     672.0,
+     652.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      790.334180182433,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      790.334180182433,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9993904266209185,
+      0.005210067934296229,
+      -0.034519999573849505
+     ],
+     [
+      -0.006862860277833528,
+      -0.9401873919665684,
+      -0.34058856283778677
+     ],
+     [
+      -0.03422975792005381,
+      0.3406178550505274,
+      -0.9395785227928065
+     ]
+    ],
+    "t": [
+     0.3195324125183602,
+     3.2072505328139256,
+     8.331414923432428
+    ],
+    "rvec": [
+     2.7935383936296794,
+     -0.0011902430482411584,
+     -0.04950949902772189
+    ],
+    "camera": [
+     -0.012,
+     0.176,
+     8.931
+    ],
+    "look": [
+     -0.034,
+     0.341,
+     -0.94
+    ],
+    "fovDeg": 78.0,
+    "rms": 3.44,
+    "residuals": [
+     4.1,
+     4.6,
+     2.1,
+     0.2,
+     4.1
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "nearest house camera within 1.5 px of the best",
+    "depthCue": "none",
+    "depthCueNote": "implausible: shoulders 2.20-3.52 m, never 1.25-1.55",
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      29.0,
+      78.0
+     ],
+     "dist": [
+      8.0,
+      34.1
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 2.4,
+    "bodies": 6,
+    "free": {
+     "camera": [
+      -0.02,
+      0.4,
+      13.24
+     ],
+     "fovDeg": 62.0,
+     "rms": 2.11,
+     "breaks": []
+    },
+    "degenerate": "rms within 1.5 px over fov 29-78",
+    "mPerPx": 0.5033,
+    "cond": {
+     "sv": [
+      3.62,
+      2.75,
+      1.45
+     ],
+     "heightSd": 1.74,
+     "depthSd": 3.62,
+     "sdDistPerPx": 0.48,
+     "sdFovPerPx": 2.15
+    }
+   },
+   "moving": true,
+   "judged": "poor",
+   "skipped": "poorly conditioned (5 points, rail + centre line + lip only) and the two answers disagree: free solve = a low wide camera like shot 16 (0.0, 0.24, 9.8) fov 75 rms 0.4, which the prior forbids; the bounded one (0.0, 0.8, 17.9) fov 51 implies 2.26 m shoulders. Same low pit camera as shot 16 by look (audience heads, rig lights in frame); a slow push-in",
+   "was": 7
+  },
+  "19": {
    "frame": 338,
    "points": {
     "rail-us-c": [
@@ -153,153 +296,14 @@
    "moving": null,
    "judged": "poor",
    "skipped": "the prior rejects the true camera: the 8 points fit a LOW WIDE camera in the front stalls at deck height, free solve (0.02, 0.19, 8.95) fov 89.5 rms 5.8, and its wire sits on the SR balcony, both stairs, the SL gallery and the posts; the bounded solve (y>=0.8, fov<=70) is rms ~24 and wrong. Re-solve once the prior admits it. NOT the 45 m / 24 deg rear camera the first solve claimed (that one had misidentified posts)",
-   "note": "audience heads in the foreground hide the lip; the deck is seen nearly edge-on"
+   "note": "audience heads in the foreground hide the lip; the deck is seen nearly edge-on",
+   "was": 16
   },
-  "7": {
-   "frame": 240,
-   "points": {
-    "rail-us-c": [
-     672.0,
-     415.0
-    ],
-    "rail-us-sr": [
-     404.0,
-     415.0
-    ],
-    "rail-us-sl": [
-     966.0,
-     414.0
-    ],
-    "lip-c": [
-     672.0,
-     680.0
-    ],
-    "post-bw-c-base": [
-     672.0,
-     652.0
-    ]
-   },
-   "solve": {
-    "K": [
-     [
-      790.334180182433,
-      0.0,
-      640.0
-     ],
-     [
-      0.0,
-      790.334180182433,
-      360.0
-     ],
-     [
-      0.0,
-      0.0,
-      1.0
-     ]
-    ],
-    "R": [
-     [
-      0.9993904266209185,
-      0.005210067934296229,
-      -0.034519999573849505
-     ],
-     [
-      -0.006862860277833528,
-      -0.9401873919665684,
-      -0.34058856283778677
-     ],
-     [
-      -0.03422975792005381,
-      0.3406178550505274,
-      -0.9395785227928065
-     ]
-    ],
-    "t": [
-     0.3195324125183602,
-     3.2072505328139256,
-     8.331414923432428
-    ],
-    "rvec": [
-     2.7935383936296794,
-     -0.0011902430482411584,
-     -0.04950949902772189
-    ],
-    "camera": [
-     -0.012,
-     0.176,
-     8.931
-    ],
-    "look": [
-     -0.034,
-     0.341,
-     -0.94
-    ],
-    "fovDeg": 78.0,
-    "rms": 3.44,
-    "residuals": [
-     4.1,
-     4.6,
-     2.1,
-     0.2,
-     4.1
-    ],
-    "frameSize": [
-     1280,
-     720
-    ],
-    "prior": "house",
-    "choice": "nearest house camera within 1.5 px of the best",
-    "depthCue": "none",
-    "depthCueNote": "implausible: shoulders 2.20-3.52 m, never 1.25-1.55",
-    "window": {
-     "tolPx": 1.5,
-     "fov": [
-      29.0,
-      78.0
-     ],
-     "dist": [
-      8.0,
-      34.1
-     ],
-     "poor": true
-    },
-    "bodyHeightM": 2.4,
-    "bodies": 6,
-    "free": {
-     "camera": [
-      -0.02,
-      0.4,
-      13.24
-     ],
-     "fovDeg": 62.0,
-     "rms": 2.11,
-     "breaks": []
-    },
-    "degenerate": "rms within 1.5 px over fov 29-78",
-    "mPerPx": 0.5033,
-    "cond": {
-     "sv": [
-      3.62,
-      2.75,
-      1.45
-     ],
-     "heightSd": 1.74,
-     "depthSd": 3.62,
-     "sdDistPerPx": 0.48,
-     "sdFovPerPx": 2.15
-    }
-   },
-   "moving": true,
-   "judged": "poor",
-   "skipped": "poorly conditioned (5 points, rail + centre line + lip only) and the two answers disagree: free solve = a low wide camera like shot 16 (0.0, 0.24, 9.8) fov 75 rms 0.4, which the prior forbids; the bounded one (0.0, 0.8, 17.9) fov 51 implies 2.26 m shoulders. Same low pit camera as shot 16 by look (audience heads, rig lights in frame); a slow push-in"
+  "22": {
+   "skipped": "too tight: a close angled shot of the SR corner (upstage rail end, SR strip, SR stair); no lip and no centre line to fix the camera",
+   "was": 18
   },
-  "2": {
-   "skipped": "too dark: only the upstage rail reads; the deck, lip and side galleries are black (also a slow zoom)"
-  },
-  "18": {
-   "skipped": "too tight: a close angled shot of the SR corner (upstage rail end, SR strip, SR stair); no lip and no centre line to fix the camera"
-  },
-  "23": {
+  "29": {
    "frame": 430,
    "points": {
     "rail-us-c": [
@@ -449,9 +453,14 @@
    },
    "moving": true,
    "judged": "fair",
-   "note": "missed cut at frame 442: frames 420-441 are this static wide camera (solved on 430); 442-464 are a different, moving closer shot from SL"
+   "note": "missed cut at frame 442: frames 420-441 are this static wide camera (solved on 430); 442-464 are a different, moving closer shot from SL",
+   "was": 23,
+   "split": [
+    29,
+    30
+   ]
   },
-  "24": {
+  "32": {
    "frame": 505,
    "points": {
     "rail-us-c": [
@@ -601,7 +610,13 @@
    },
    "moving": true,
    "judged": "fair",
-   "note": "missed cut at frame 496: frames 496-514 are this static wide camera (solved on 505); 465-495 are a different, moving close shot (onstage angle from SL)"
+   "note": "missed cut at frame 496: frames 496-514 are this static wide camera (solved on 505); 465-495 are a different, moving close shot (onstage angle from SL)",
+   "was": 24,
+   "split": [
+    31,
+    32
+   ]
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:03"
 }

@@ -2,35 +2,50 @@
  "clip": "1-11-satisfied",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "2": {
-   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points"
+  "0": {
+   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points",
+   "was": 2
+  },
+  "20": {
+   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points",
+   "was": 28
+  },
+  "27": {
+   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points",
+   "was": 35,
+   "merged": [
+    {
+     "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points",
+     "was": 36
+    }
+   ]
   },
   "28": {
-   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points"
+   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points",
+   "was": 37
   },
-  "35": {
-   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points"
+  "29": {
+   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points",
+   "was": 46
   },
   "36": {
-   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points"
-  },
-  "37": {
-   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points"
-  },
-  "46": {
-   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points"
-  },
-  "61": {
-   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points"
-  },
-  "62": {
-   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points"
-  },
-  "63": {
-   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points"
-  },
-  "64": {
-   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points"
+   "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points",
+   "was": 61,
+   "merged": [
+    {
+     "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points",
+     "was": 62
+    },
+    {
+     "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points",
+     "was": 63
+    },
+    {
+     "skipped": "high-angle shot looking down on the deck (rewind sequence camera); only the deck shows, no rings, rails or posts readable - fewer than five set points",
+     "was": 64
+    }
+   ]
   }
- }
+ },
+ "shotmap": "2026-10-14 12:10:59"
 }

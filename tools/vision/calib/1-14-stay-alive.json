@@ -2,7 +2,15 @@
  "clip": "1-14-stay-alive",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "7": {
+  "10": {
+   "skipped": "too tight and panning (people ~0.4 frame high, blue wash): only the SR stair and a slanted piece of the upstage rail read; the shot dissolves/cuts at ~frame 300 into a close two-shot",
+   "was": 5,
+   "split": [
+    10,
+    11
+   ]
+  },
+  "13": {
    "frame": 340,
    "points": {
     "rail-us-c": [
@@ -136,15 +144,14 @@
     }
    },
    "moving": null,
-   "judged": "fair"
-  },
-  "5": {
-   "skipped": "too tight and panning (people ~0.4 frame high, blue wash): only the SR stair and a slanted piece of the upstage rail read; the shot dissolves/cuts at ~frame 300 into a close two-shot"
-  },
-  "9": {
-   "skipped": "too tight and tilting (frame 360 vs 368 moves ~33 px): the deck fills the frame, only a short piece of the upstage rail, the SL stair handrail and the lip read; no centre or ends to fix the camera"
+   "judged": "fair",
+   "was": 7
   },
   "15": {
+   "skipped": "too tight and tilting (frame 360 vs 368 moves ~33 px): the deck fills the frame, only a short piece of the upstage rail, the SL stair handrail and the lip read; no centre or ends to fix the camera",
+   "was": 9
+  },
+  "22": {
    "frame": 470,
    "points": {
     "rail-us-sr": [
@@ -284,9 +291,14 @@
    },
    "moving": true,
    "judged": "fair",
-   "note": "missed cut at frame 460: frames 452-459 are a different, closer shot; this camera holds 460-476 (solved on 470, a slight tilt)"
+   "note": "missed cut at frame 460: frames 452-459 are a different, closer shot; this camera holds 460-476 (solved on 470, a slight tilt)",
+   "was": 15,
+   "split": [
+    21,
+    22
+   ]
   },
-  "17": {
+  "26": {
    "frame": 517,
    "points": {
     "rail-us-c": [
@@ -421,9 +433,15 @@
    },
    "moving": true,
    "judged": "fair",
-   "note": "missed cuts at ~496 and 509: frames 482-495 (a blue wide from SR) and 496-508 (a closer SL angle) are other shots; this camera holds ~509-522 (solved on 517)"
+   "note": "missed cuts at ~496 and 509: frames 482-495 (a blue wide from SR) and 496-508 (a closer SL angle) are other shots; this camera holds ~509-522 (solved on 517)",
+   "was": 17,
+   "split": [
+    24,
+    25,
+    26
+   ]
   },
-  "18": {
+  "28": {
    "frame": 559,
    "points": {
     "rail-us-c": [
@@ -568,10 +586,21 @@
    },
    "moving": true,
    "judged": "fair",
-   "note": "missed cut at frame 548: frames 526-547 are other, closer side angles; this camera holds 548-569 with a slow zoom (solved on 559); same camera position as shots 15 and 17"
+   "note": "missed cut at frame 548: frames 526-547 are other, closer side angles; this camera holds 548-569 with a slow zoom (solved on 559); same camera position as shots 15 and 17",
+   "was": 18,
+   "split": [
+    27,
+    28
+   ]
   },
-  "21": {
-   "skipped": "too dark and tight (blue wash, five large figures; only the SR stair top and a piece of the SL gallery rail read); frames 672-693 static, 694-708 move, a missed cut at 709"
+  "35": {
+   "skipped": "too dark and tight (blue wash, five large figures; only the SR stair top and a piece of the SL gallery rail read); frames 672-693 static, 694-708 move, a missed cut at 709",
+   "was": 21,
+   "split": [
+    35,
+    36
+   ]
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:01"
 }

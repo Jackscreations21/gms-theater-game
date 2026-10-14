@@ -5,16 +5,23 @@
   "9": {
    "skipped": "too tight: low close shot under the gallery, fewer than five set points identifiable"
   },
-  "15": {
-   "skipped": "camera at deck height, very dark: deck edge-on and back wall unreadable, fewer than five certain points"
+  "19": {
+   "skipped": "camera at deck height, very dark: deck edge-on and back wall unreadable, fewer than five certain points",
+   "was": 15
   },
-  "16": {
-   "skipped": "back-wall posts not identifiable (no clear window pair), gallery ends unclear; solves degenerate"
+  "20": {
+   "skipped": "back-wall posts not identifiable (no clear window pair), gallery ends unclear; solves degenerate",
+   "was": 16
   },
-  "28": {
-   "skipped": "too tight and angled (close on the SL stair), fewer than five certain points"
+  "34": {
+   "skipped": "too tight and angled (close on the SL stair), fewer than five certain points",
+   "was": 28,
+   "split": [
+    34,
+    35
+   ]
   },
-  "29": {
+  "36": {
    "frame": 790,
    "points": {
     "post-bw-sr2-base": [
@@ -165,9 +172,10 @@
    },
    "moving": true,
    "judged": "good",
-   "note": "slow pan (~3 px per cache frame, reversing); solved at the middle frame 790"
+   "note": "slow pan (~3 px per cache frame, reversing); solved at the middle frame 790",
+   "was": 29
   },
-  "30": {
+  "37": {
    "frame": 807,
    "points": {
     "post-bw-sr2-base": [
@@ -307,15 +315,22 @@
    },
    "moving": true,
    "judged": "good",
-   "note": "crane/tilt move ~7-12 px per cache frame (frame 804 is much wider and panned SR); solved at frame 807. SL stair points left out: the stair handrail, not its stringer, is what reads; turntable rings sit on the lit circles"
+   "note": "crane/tilt move ~7-12 px per cache frame (frame 804 is much wider and panned SR); solved at frame 807. SL stair points left out: the stair handrail, not its stringer, is what reads; turntable rings sit on the lit circles",
+   "was": 30
   },
-  "31": {
-   "skipped": "low camera, deck edge-on, the back wall occluded by the dancers; posts unreadable"
-  },
-  "32": {
-   "skipped": "low angled camera from the SR side of the house, back wall occluded by bodies; points not certain"
+  "38": {
+   "skipped": "low camera, deck edge-on, the back wall occluded by the dancers; posts unreadable",
+   "was": 31
   },
   "39": {
+   "skipped": "low angled camera from the SR side of the house, back wall occluded by bodies; points not certain",
+   "was": 32,
+   "split": [
+    39,
+    40
+   ]
+  },
+  "45": {
    "frame": 875,
    "points": {
     "rail-us-c": [
@@ -465,165 +480,176 @@
    },
    "moving": false,
    "judged": "fair",
-   "note": "stair-sl-foot 26 px off; rings sit on the lit pool; same locked camera as shot 40"
-  },
-  "40": {
-   "frame": 884,
-   "points": {
-    "rail-us-c": [
-     635.0,
-     210.0
-    ],
-    "lip-c": [
-     635.0,
-     682.0
-    ],
-    "post-bw-sr2-base": [
-     290.0,
-     547.0
-    ],
-    "post-bw-sr1-base": [
-     343.0,
-     547.0
-    ],
-    "post-bw-sl1-base": [
-     912.0,
-     545.0
-    ],
-    "post-bw-sl2-base": [
-     968.0,
-     545.0
-    ],
-    "stair-sl-foot": [
-     870.0,
-     545.0
-    ],
-    "post-sl-b-base": [
-     1167.0,
-     575.0
-    ]
-   },
-   "solve": {
-    "K": [
-     [
-      2029.820673512456,
-      0.0,
-      640.0
-     ],
-     [
-      0.0,
-      2029.820673512456,
-      360.0
-     ],
-     [
-      0.0,
-      0.0,
-      1.0
-     ]
-    ],
-    "R": [
-     [
-      0.9999624442592316,
-      0.002005274719522889,
-      0.008431426000518993
-     ],
-     [
-      0.0020119609552849234,
-      -0.9999976682002207,
-      -0.0007846064208703596
-     ],
-     [
-      0.008429832988701157,
-      0.0008015406543054543,
-      -0.9999641470814651
-     ]
-    ],
-    "t": [
-     -0.06865584201207119,
-     2.0513203580346833,
-     18.034142408160168
-    ],
-    "rvec": [
-     3.140770083616109,
-     0.0031543631348005512,
-     0.013239585144445686
-    ],
-    "camera": [
-     -0.087,
-     2.037,
-     18.036
-    ],
-    "look": [
-     0.008,
-     0.001,
-     -1.0
-    ],
-    "fovDeg": 35.0,
-    "rms": 10.86,
-    "residuals": [
-     3.4,
-     1.3,
-     5.0,
-     6.7,
-     0.7,
-     1.7,
-     24.8,
-     15.5
-    ],
-    "frameSize": [
-     1280,
-     720
-    ],
-    "prior": "house",
-    "choice": "nearest house camera within 1.5 px of the best",
-    "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.42-1.52 m over every lens",
-    "window": {
-     "tolPx": 1.5,
-     "fov": [
-      16.0,
-      37.0
-     ],
-     "dist": [
-      16.0,
-      43.3
-     ],
-     "poor": true
-    },
-    "bodyHeightM": 1.51,
-    "bodies": 38,
-    "free": {
-     "camera": [
-      -0.11,
-      3.04,
-      24.53
-     ],
-     "fovDeg": 27.0,
-     "rms": 9.99,
-     "breaks": []
-    },
-    "mPerPx": 0.0719,
-    "cond": {
-     "sv": [
-      3.09,
-      2.95,
-      1.16
-     ],
-     "heightSd": 1.18,
-     "depthSd": 3.03,
-     "sdDistPerPx": 0.44,
-     "sdFovPerPx": 0.69
+   "note": "stair-sl-foot 26 px off; rings sit on the lit pool; same locked camera as shot 40",
+   "was": 39,
+   "merged": [
+    {
+     "frame": 884,
+     "points": {
+      "rail-us-c": [
+       635.0,
+       210.0
+      ],
+      "lip-c": [
+       635.0,
+       682.0
+      ],
+      "post-bw-sr2-base": [
+       290.0,
+       547.0
+      ],
+      "post-bw-sr1-base": [
+       343.0,
+       547.0
+      ],
+      "post-bw-sl1-base": [
+       912.0,
+       545.0
+      ],
+      "post-bw-sl2-base": [
+       968.0,
+       545.0
+      ],
+      "stair-sl-foot": [
+       870.0,
+       545.0
+      ],
+      "post-sl-b-base": [
+       1167.0,
+       575.0
+      ]
+     },
+     "solve": {
+      "K": [
+       [
+        2029.820673512456,
+        0.0,
+        640.0
+       ],
+       [
+        0.0,
+        2029.820673512456,
+        360.0
+       ],
+       [
+        0.0,
+        0.0,
+        1.0
+       ]
+      ],
+      "R": [
+       [
+        0.9999624442592316,
+        0.002005274719522889,
+        0.008431426000518993
+       ],
+       [
+        0.0020119609552849234,
+        -0.9999976682002207,
+        -0.0007846064208703596
+       ],
+       [
+        0.008429832988701157,
+        0.0008015406543054543,
+        -0.9999641470814651
+       ]
+      ],
+      "t": [
+       -0.06865584201207119,
+       2.0513203580346833,
+       18.034142408160168
+      ],
+      "rvec": [
+       3.140770083616109,
+       0.0031543631348005512,
+       0.013239585144445686
+      ],
+      "camera": [
+       -0.087,
+       2.037,
+       18.036
+      ],
+      "look": [
+       0.008,
+       0.001,
+       -1.0
+      ],
+      "fovDeg": 35.0,
+      "rms": 10.86,
+      "residuals": [
+       3.4,
+       1.3,
+       5.0,
+       6.7,
+       0.7,
+       1.7,
+       24.8,
+       15.5
+      ],
+      "frameSize": [
+       1280,
+       720
+      ],
+      "prior": "house",
+      "choice": "nearest house camera within 1.5 px of the best",
+      "depthCue": "none",
+      "depthCueNote": "uninformative: shoulders 1.42-1.52 m over every lens",
+      "window": {
+       "tolPx": 1.5,
+       "fov": [
+        16.0,
+        37.0
+       ],
+       "dist": [
+        16.0,
+        43.3
+       ],
+       "poor": true
+      },
+      "bodyHeightM": 1.51,
+      "bodies": 38,
+      "free": {
+       "camera": [
+        -0.11,
+        3.04,
+        24.53
+       ],
+       "fovDeg": 27.0,
+       "rms": 9.99,
+       "breaks": []
+      },
+      "mPerPx": 0.0719,
+      "cond": {
+       "sv": [
+        3.09,
+        2.95,
+        1.16
+       ],
+       "heightSd": 1.18,
+       "depthSd": 3.03,
+       "sdDistPerPx": 0.44,
+       "sdFovPerPx": 0.69
+      }
+     },
+     "moving": false,
+     "judged": "fair",
+     "note": "same camera and framing as shot 39 (a lighting change cut, not a camera cut): shot 39's points reused, wire checked on this frame (inner ring visible and on the wire)",
+     "was": 40
     }
-   },
-   "moving": false,
-   "judged": "fair",
-   "note": "same camera and framing as shot 39 (a lighting change cut, not a camera cut): shot 39's points reused, wire checked on this frame (inner ring visible and on the wire)"
-  },
-  "54": {
-   "skipped": "low camera, line of bodies occludes the back wall; post identifications inconsistent (rms 25, camera on stage)"
+   ]
   },
   "56": {
-   "skipped": "back-wall posts not identifiable; every 5-6 point solve degenerate (camera on the stage)"
+   "skipped": "low camera, line of bodies occludes the back wall; post identifications inconsistent (rms 25, camera on stage)",
+   "was": 54
+  },
+  "59": {
+   "skipped": "back-wall posts not identifiable; every 5-6 point solve degenerate (camera on the stage)",
+   "was": 56,
+   "split": [
+    58,
+    59
+   ]
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:23"
 }

@@ -168,17 +168,46 @@
    "moving": true,
    "judged": "fair"
   },
-  "11": {
-   "skipped": "too tight (SL gallery pair + seated group), dark; frames across the shot do not match (move or missed cut)"
+  "17": {
+   "skipped": "too tight (SL gallery pair + seated group), dark; frames across the shot do not match (move or missed cut)",
+   "was": 11,
+   "split": [
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ]
   },
-  "13": {
-   "skipped": "medium shot, very dark (two pools of light + SL balcony); fewer than five nameable points; first and middle frames do not match (likely a missed cut)"
+  "23": {
+   "skipped": "medium shot, very dark (two pools of light + SL balcony); fewer than five nameable points; first and middle frames do not match (likely a missed cut)",
+   "was": 13,
+   "split": [
+    22,
+    23
+   ]
   },
-  "22": {
-   "skipped": "too tight at the middle frame; first/middle/last frames do not match (big move or missed cuts in 123 frames)"
+  "35": {
+   "skipped": "too tight at the middle frame; first/middle/last frames do not match (big move or missed cuts in 123 frames)",
+   "was": 22,
+   "split": [
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38
+   ]
   },
-  "26": {
-   "skipped": "gallery floor/rail and lip lines readable but no certain x anchors in the dark; 7 frames"
+  "42": {
+   "skipped": "gallery floor/rail and lip lines readable but no certain x anchors in the dark; 7 frames",
+   "was": 26
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:20"
 }

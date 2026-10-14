@@ -2,13 +2,16 @@
  "clip": "1-20-yorktown-the-world-turned-upside-down-p3",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "4": {
+  "2": {
    "frame": 4,
-   "skipped": "low camera at deck level, 1 frame: no lip, gallery or posts identifiable"
+   "skipped": "low camera at deck level, 1 frame: no lip, gallery or posts identifiable",
+   "was": 4
   },
-  "20": {
+  "19": {
    "frame": 88,
-   "skipped": "no depth cue: upstage gallery rail/floor and the moved stairs only (no lip/ring); the stairs do not match setpoints so cannot be used"
+   "skipped": "no depth cue: upstage gallery rail/floor and the moved stairs only (no lip/ring); the stairs do not match setpoints so cannot be used",
+   "was": 20
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:05"
 }

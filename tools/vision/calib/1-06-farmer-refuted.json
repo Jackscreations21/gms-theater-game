@@ -138,7 +138,7 @@
    "moving": null,
    "judged": "good"
   },
-  "9": {
+  "10": {
    "frame": 395,
    "points": {
     "rail-us-sr": [
@@ -278,7 +278,13 @@
    },
    "moving": null,
    "judged": "good",
-   "note": "missed cut at frame 408 (a close two-shot at the box follows); this solve is the wide camera of frames 395-407 only"
+   "note": "missed cut at frame 408 (a close two-shot at the box follows); this solve is the wide camera of frames 395-407 only",
+   "was": 9,
+   "split": [
+    10,
+    11
+   ]
   }
- }
+ },
+ "shotmap": "2026-10-14 12:10:53"
 }

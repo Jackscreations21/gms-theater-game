@@ -5,8 +5,16 @@
   "3": {
    "skipped": "low front-row camera looking up into a dark set; deck, lip and ring not readable, gallery rail behind heads; a stairs-only solve gave rms 12.5 with uncertain identifications"
   },
-  "4": {
-   "skipped": "dark side view of the SL gallery (one lit figure on it); camera zooms (scale 0.76-1.0); fewer than five sure set points"
+  "5": {
+   "skipped": "dark side view of the SL gallery (one lit figure on it); camera zooms (scale 0.76-1.0); fewer than five sure set points",
+   "was": 4,
+   "split": [
+    4,
+    5,
+    6,
+    7
+   ]
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:18"
 }

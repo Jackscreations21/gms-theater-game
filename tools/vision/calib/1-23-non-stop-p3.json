@@ -2,7 +2,14 @@
  "clip": "1-23-non-stop-p3",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "14": {
+  "7": {
+   "skipped": "high close camera in a blue wash; the centre line and back posts ambiguous, lip out of frame"
+  },
+  "18": {
+   "skipped": "too tight; low camera close on one actor, gallery and lip not in a usable spread",
+   "was": 12
+  },
+  "20": {
    "frame": 558,
    "points": {
     "post-bw-sr2-base": [
@@ -141,16 +148,13 @@
     }
    },
    "moving": null,
-   "judged": "good"
+   "judged": "good",
+   "was": 14
   },
-  "17": {
-   "skipped": "dim; no lip or ring readable, the centre line ambiguous by ~60 px, under five certain points"
-  },
-  "12": {
-   "skipped": "too tight; low camera close on one actor, gallery and lip not in a usable spread"
-  },
-  "7": {
-   "skipped": "high close camera in a blue wash; the centre line and back posts ambiguous, lip out of frame"
+  "23": {
+   "skipped": "dim; no lip or ring readable, the centre line ambiguous by ~60 px, under five certain points",
+   "was": 17
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:09"
 }

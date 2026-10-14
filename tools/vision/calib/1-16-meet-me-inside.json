@@ -2,7 +2,7 @@
  "clip": "1-16-meet-me-inside",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "6": {
+  "7": {
    "frame": 66,
    "points": {
     "rail-us-c": [
@@ -142,10 +142,17 @@
    },
    "moving": true,
    "judged": "good",
-   "note": "missed cut at frame 55: frames 43-54 are a closer moving shot / transition; this camera holds 55-77 (solved on 66), zooming out ~3% over 66-77"
+   "note": "missed cut at frame 55: frames 43-54 are a closer moving shot / transition; this camera holds 55-77 (solved on 66), zooming out ~3% over 66-77",
+   "was": 6,
+   "split": [
+    6,
+    7
+   ]
   },
-  "8": {
-   "skipped": "too dark: the galleries and rail ends are black (only the deck pool is lit), fewer than five points readable; by image matching it is the shot-6 camera (scale 0.99) panned ~12 px left and tilted ~17 px down, drifting through the shot"
+  "9": {
+   "skipped": "too dark: the galleries and rail ends are black (only the deck pool is lit), fewer than five points readable; by image matching it is the shot-6 camera (scale 0.99) panned ~12 px left and tilted ~17 px down, drifting through the shot",
+   "was": 8
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:02"
 }

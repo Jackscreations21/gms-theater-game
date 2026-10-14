@@ -6,9 +6,11 @@
    "frame": 54,
    "skipped": "depth free: the readable set points (upstage rail, back-wall post feet, the lip at centre, the gallery's SL end) fit within 9-15 px at any lens from 12 to 60 deg; the solve drifts to a 62 m / 11 deg telephoto that makes the cabinet's people 2.2 m tall (shoulders 1.76 m); their heights say about 20 m back, 1.5 m up, fov ~30 - not written, as the set points do not fix it (lip ends, piers and rings out of frame or under the actors)"
   },
-  "8": {
+  "10": {
    "frame": 247,
-   "skipped": "too tight: a close/medium shot with fewer than five set points readable (a close-up)"
+   "skipped": "too tight: a close/medium shot with fewer than five set points readable (a close-up)",
+   "was": 8
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:15"
 }

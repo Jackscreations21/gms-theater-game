@@ -5,11 +5,14 @@
   "2": {
    "skipped": "angled side shot, dark; album time not anchored (trailer-style montage), not worth a camera"
   },
-  "10": {
-   "skipped": "angled, heavy motion; album time not anchored"
+  "9": {
+   "skipped": "angled, heavy motion; album time not anchored",
+   "was": 10
   },
-  "31": {
-   "skipped": "title card (THE MOMENT) over the frame; album time not anchored"
+  "30": {
+   "skipped": "title card (THE MOMENT) over the frame; album time not anchored",
+   "was": 31
   }
- }
+ },
+ "shotmap": "2026-10-14 12:10:49"
 }

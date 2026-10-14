@@ -5,19 +5,23 @@
   "5": {
    "skipped": "camera tracks (low, moving) through the shot; no lip"
   },
-  "11": {
-   "skipped": "low wide camera: the upstage rail centre and ends do not fit together (coil spacing inconsistent), lip occluded by audience heads"
+  "14": {
+   "skipped": "low wide camera: the upstage rail centre and ends do not fit together (coil spacing inconsistent), lip occluded by audience heads",
+   "was": 11
   },
-  "23": {
-   "skipped": "camera tracks right through the shot; low angle, no lip"
-  },
-  "24": {
-   "skipped": "no deck-level set point: the lip is below the frame and the rings are not visible; only gallery-height points"
+  "25": {
+   "skipped": "camera tracks right through the shot; low angle, no lip",
+   "was": 23
   },
   "26": {
-   "skipped": "blue wash: rail and gallery barely legible, the lit circle is a light pool not the ring, no lip"
+   "skipped": "no deck-level set point: the lip is below the frame and the rings are not visible; only gallery-height points",
+   "was": 24
   },
-  "34": {
+  "28": {
+   "skipped": "blue wash: rail and gallery barely legible, the lit circle is a light pool not the ring, no lip",
+   "was": 26
+  },
+  "37": {
    "frame": 780,
    "points": {
     "rail-us-c": [
@@ -151,16 +155,25 @@
     }
    },
    "moving": null,
-   "judged": "fair"
-  },
-  "36": {
-   "skipped": "tighter version of shot 34: the lip is below the frame and the deck is covered by the chorus"
-  },
-  "38": {
-   "skipped": "camera zooms in from wide to close; at mid-shot the lip and rail ends are out of frame"
+   "judged": "fair",
+   "was": 34
   },
   "39": {
-   "skipped": "high (balcony) camera that pans; the upstage rail ends and stair feet not identifiable with confidence - a good candidate for a human click"
+   "skipped": "tighter version of shot 34: the lip is below the frame and the deck is covered by the chorus",
+   "was": 36
+  },
+  "42": {
+   "skipped": "camera zooms in from wide to close; at mid-shot the lip and rail ends are out of frame",
+   "was": 38,
+   "split": [
+    41,
+    42
+   ]
+  },
+  "43": {
+   "skipped": "high (balcony) camera that pans; the upstage rail ends and stair feet not identifiable with confidence - a good candidate for a human click",
+   "was": 39
   }
- }
+ },
+ "shotmap": "2026-10-14 12:10:53"
 }

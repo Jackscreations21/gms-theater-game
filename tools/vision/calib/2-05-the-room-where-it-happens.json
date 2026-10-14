@@ -10,35 +10,58 @@
    "frame": 299,
    "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (a medium shot, framed off-centre)"
   },
-  "17": {
+  "18": {
    "frame": 409,
-   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f389 - f362-388 is a low wide, f389-455 a high crane wide); re-split before calibrating"
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f389 - f362-388 is a low wide, f389-455 a high crane wide); re-split before calibrating",
+   "was": 17,
+   "split": [
+    17,
+    18
+   ]
   },
-  "20": {
+  "21": {
    "frame": 519,
-   "skipped": "too dark: only the upstage gallery is faintly readable; no lip corner, pier, ring or side gallery to fix the camera"
+   "skipped": "too dark: only the upstage gallery is faintly readable; no lip corner, pier, ring or side gallery to fix the camera",
+   "was": 20
   },
-  "32": {
+  "35": {
    "frame": 758,
-   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (the light change at about f755-761 is a lighting cue, not a cut)"
-  },
-  "37": {
-   "frame": 934,
-   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at about f909, f945, f960 - a low wide, a low medium, a high wide; the last part also zooms); re-split before calibrating"
-  },
-  "39": {
-   "frame": 985,
-   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free"
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (the light change at about f755-761 is a lighting cue, not a cut)",
+   "was": 32
   },
   "41": {
+   "frame": 934,
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at about f909, f945, f960 - a low wide, a low medium, a high wide; the last part also zooms); re-split before calibrating",
+   "was": 37,
+   "split": [
+    41,
+    42,
+    43
+   ]
+  },
+  "45": {
+   "frame": 985,
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free",
+   "was": 39
+  },
+  "47": {
    "frame": 1004,
-   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free"
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free",
+   "was": 41
   },
-  "49": {
+  "56": {
    "frame": 1195,
-   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f1172, f1202, f1225); re-split before calibrating"
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f1172, f1202, f1225); re-split before calibrating",
+   "was": 49,
+   "split": [
+    55,
+    56,
+    57,
+    58,
+    59
+   ]
   },
-  "52": {
+  "62": {
    "frame": 1292,
    "points": {
     "rail-us-sr": [
@@ -173,17 +196,25 @@
    },
    "moving": false,
    "judged": "fair",
-   "depthCheck": "shoulder height of the shot's dancers through this camera: median 1.30 m (26 bodies); the set points alone leave depth loose (rms flat 11-12 px over fov 28-76)"
+   "depthCheck": "shoulder height of the shot's dancers through this camera: median 1.30 m (26 bodies); the set points alone leave depth loose (rms flat 11-12 px over fov 28-76)",
+   "was": 52
   },
-  "55": {
+  "67": {
    "frame": 1381,
-   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f1351, f1403); re-split before calibrating"
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f1351, f1403); re-split before calibrating",
+   "was": 55,
+   "split": [
+    66,
+    67,
+    68
+   ]
   },
-  "58": {
+  "71": {
    "frame": 1443,
-   "skipped": "low wide-angle camera near the deck; the galleries' ends are hidden behind both stairs and no lip corner is in frame - best solve put the camera 0.3 m up at the lip (rms 14.6), not credible"
+   "skipped": "low wide-angle camera near the deck; the galleries' ends are hidden behind both stairs and no lip corner is in frame - best solve put the camera 0.3 m up at the lip (rms 14.6), not credible",
+   "was": 58
   },
-  "65": {
+  "78": {
    "frame": 1523,
    "points": {
     "rail-us-sr": [
@@ -328,19 +359,24 @@
    },
    "moving": false,
    "judged": "fair",
-   "depthCheck": "shoulder height of the shot's dancers through this camera: median 1.30 m (31 bodies); the set points alone leave depth loose (rms flat 14-15 px over fov 24-81)"
+   "depthCheck": "shoulder height of the shot's dancers through this camera: median 1.30 m (31 bodies); the set points alone leave depth loose (rms flat 14-15 px over fov 24-81)",
+   "was": 65
   },
-  "68": {
+  "81": {
    "frame": 1543,
-   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (the lip corners are readable but nothing else named is: the posts are in darkness)"
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (the lip corners are readable but nothing else named is: the posts are in darkness)",
+   "was": 68
   },
-  "77": {
+  "90": {
    "frame": 1586,
-   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (a dancer close in front)"
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (a dancer close in front)",
+   "was": 77
   },
-  "78": {
+  "91": {
    "frame": 1595,
-   "skipped": "too tight: a close/medium shot with fewer than five set points readable (from the side, close on one dancer)"
+   "skipped": "too tight: a close/medium shot with fewer than five set points readable (from the side, close on one dancer)",
+   "was": 78
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:14"
 }

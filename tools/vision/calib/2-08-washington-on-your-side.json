@@ -2,7 +2,23 @@
  "clip": "2-08-washington-on-your-side",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "46": {
+  "41": {
+   "skipped": "2 frames; oblique dark view, no lip/ring/post anchors readable",
+   "was": 37
+  },
+  "42": {
+   "skipped": "tight on the dance group: the deck is a light pool under bodies (no lip, ring), only the SR stair and gallery run readable, no centre or post anchor; first solve rms 35; camera also drifts ~50 px",
+   "was": 38
+  },
+  "45": {
+   "skipped": "medium shot, gallery and back-wall posts unlit; only the SR stair foot and deck readable (fewer than five sure points); camera drifts 15-25 px with 3% zoom",
+   "was": 41
+  },
+  "47": {
+   "skipped": "camera pans ~260 px and zooms 9% through the shot; medium shot with dark gallery, too few sure set points",
+   "was": 43
+  },
+  "50": {
    "frame": 875,
    "points": {
     "rail-us-c": [
@@ -137,19 +153,9 @@
    },
    "moving": false,
    "judged": "fair",
-   "note": "front-of-house camera at deck height; points lean SR + centre (SL stair hidden in the dark), but the solved lip tilt matches the image at both ends"
-  },
-  "37": {
-   "skipped": "2 frames; oblique dark view, no lip/ring/post anchors readable"
-  },
-  "38": {
-   "skipped": "tight on the dance group: the deck is a light pool under bodies (no lip, ring), only the SR stair and gallery run readable, no centre or post anchor; first solve rms 35; camera also drifts ~50 px"
-  },
-  "41": {
-   "skipped": "medium shot, gallery and back-wall posts unlit; only the SR stair foot and deck readable (fewer than five sure points); camera drifts 15-25 px with 3% zoom"
-  },
-  "43": {
-   "skipped": "camera pans ~260 px and zooms 9% through the shot; medium shot with dark gallery, too few sure set points"
+   "note": "front-of-house camera at deck height; points lean SR + centre (SL stair hidden in the dark), but the solved lip tilt matches the image at both ends",
+   "was": 46
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:16"
 }

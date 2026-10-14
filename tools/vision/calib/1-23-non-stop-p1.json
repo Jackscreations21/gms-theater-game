@@ -2,7 +2,7 @@
  "clip": "1-23-non-stop-p1",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "4": {
+  "5": {
    "frame": 115,
    "points": {
     "post-bw-sr2-base": [
@@ -161,29 +161,52 @@
     }
    },
    "moving": null,
-   "judged": "fair"
+   "judged": "fair",
+   "was": 4,
+   "split": [
+    4,
+    5
+   ]
+  },
+  "10": {
+   "frame": 166,
+   "skipped": "set unlit; only a light pool on the deck, solve inconsistent (fov wider than the wider shot 11)",
+   "was": 9
+  },
+  "12": {
+   "frame": 219,
+   "skipped": "dim; the only deck feature is a light pool off the centre line, back posts not readable",
+   "was": 11
   },
   "27": {
-   "frame": 585,
-   "skipped": "the lit disc is a light pool centred ~2.5 m SR of the centre line (the coils and back posts put x 0 near px 880), lip out of frame; the back-plane points alone put the camera under the stage"
-  },
-  "21": {
    "frame": 457,
-   "skipped": "dim; the only deck feature is a light pool off the centre line (coils put x 0 ~300 px right of it), back posts not readable"
+   "skipped": "dim; the only deck feature is a light pool off the centre line (coils put x 0 ~300 px right of it), back posts not readable",
+   "was": 21
   },
-  "11": {
-   "frame": 219,
-   "skipped": "dim; the only deck feature is a light pool off the centre line, back posts not readable"
+  "32": {
+   "skipped": "too tight; gallery cut by the frame top, no ring or lip readable",
+   "was": 24,
+   "split": [
+    30,
+    31,
+    32,
+    33,
+    34
+   ]
   },
-  "9": {
-   "frame": 166,
-   "skipped": "set unlit; only a light pool on the deck, solve inconsistent (fov wider than the wider shot 11)"
+  "36": {
+   "skipped": "2 frames, dim; the same set-up as shot 27",
+   "was": 26
   },
-  "24": {
-   "skipped": "too tight; gallery cut by the frame top, no ring or lip readable"
-  },
-  "26": {
-   "skipped": "2 frames, dim; the same set-up as shot 27"
+  "37": {
+   "frame": 585,
+   "skipped": "the lit disc is a light pool centred ~2.5 m SR of the centre line (the coils and back posts put x 0 near px 880), lip out of frame; the back-plane points alone put the camera under the stage",
+   "was": 27,
+   "split": [
+    37,
+    38
+   ]
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:08"
 }

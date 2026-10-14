@@ -2,19 +2,29 @@
  "clip": "1-03-my-shot",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "7": {
-   "skipped": "tavern medium-wide (as 1-02 shots 19-26): rail ends and centre not identifiable"
+  "10": {
+   "skipped": "tavern medium-wide (as 1-02 shots 19-26): rail ends and centre not identifiable",
+   "was": 7
   },
-  "32": {
-   "skipped": "too tight: tables and dancers on the deck, no gallery or lip"
+  "44": {
+   "skipped": "too tight: tables and dancers on the deck, no gallery or lip",
+   "was": 32
   },
-  "35": {
-   "skipped": "too dark (blue wash), fewer than five legible set points"
+  "48": {
+   "skipped": "too dark (blue wash), fewer than five legible set points",
+   "was": 35,
+   "split": [
+    47,
+    48,
+    49,
+    50
+   ]
   },
-  "39": {
-   "skipped": "too tight: low angle on the stair and dancers, fewer than five certain points"
+  "54": {
+   "skipped": "too tight: low angle on the stair and dancers, fewer than five certain points",
+   "was": 39
   },
-  "42": {
+  "57": {
    "frame": 1154,
    "points": {
     "ring-out-sr": [
@@ -158,12 +168,14 @@
     }
    },
    "moving": null,
-   "judged": "good"
+   "judged": "good",
+   "was": 42
   },
-  "43": {
-   "skipped": "too tight: only the lit ring is legible; the galleries are cut off and ambiguous"
+  "58": {
+   "skipped": "too tight: only the lit ring is legible; the galleries are cut off and ambiguous",
+   "was": 43
   },
-  "44": {
+  "59": {
    "frame": 1164,
    "points": {
     "ring-out-sr": [
@@ -302,12 +314,16 @@
     }
    },
    "moving": null,
-   "judged": "fair"
+   "judged": "fair",
+   "was": 44,
+   "merged": [
+    {
+     "skipped": "too dark: only a blue light pool (not the ring) and a faint rail; likely the same camera as shot 44",
+     "was": 45
+    }
+   ]
   },
-  "45": {
-   "skipped": "too dark: only a blue light pool (not the ring) and a faint rail; likely the same camera as shot 44"
-  },
-  "49": {
+  "66": {
    "frame": 1379,
    "points": {
     "rail-us-sr": [
@@ -451,9 +467,10 @@
     }
    },
    "moving": null,
-   "judged": "fair"
+   "judged": "fair",
+   "was": 49
   },
-  "57": {
+  "74": {
    "frame": 1473,
    "points": {
     "rail-us-sr": [
@@ -597,25 +614,43 @@
     }
    },
    "moving": null,
-   "judged": "fair"
+   "judged": "fair",
+   "was": 57
   },
-  "59": {
-   "skipped": "camera moves: zooms from a wide to a close medium within the shot"
+  "77": {
+   "skipped": "camera moves: zooms from a wide to a close medium within the shot",
+   "was": 59,
+   "split": [
+    76,
+    77,
+    78
+   ]
   },
-  "60": {
-   "skipped": "side angle from house left; the rail ends, centre and lip ends not identifiable with confidence"
+  "79": {
+   "skipped": "side angle from house left; the rail ends, centre and lip ends not identifiable with confidence",
+   "was": 60
   },
-  "61": {
-   "skipped": "side angle (low, from the side of the house) with heavy haze; set points ambiguous"
+  "80": {
+   "skipped": "side angle (low, from the side of the house) with heavy haze; set points ambiguous",
+   "was": 61
   },
-  "62": {
-   "skipped": "side angle from the side of the house; set points ambiguous"
+  "81": {
+   "skipped": "side angle from the side of the house; set points ambiguous",
+   "was": 62
   },
-  "64": {
-   "skipped": "camera moves: wide at the start, a close group of four at the end"
+  "83": {
+   "skipped": "camera moves: wide at the start, a close group of four at the end",
+   "was": 64,
+   "split": [
+    83,
+    84,
+    85
+   ]
   },
-  "65": {
-   "skipped": "camera zooms within the shot and the gallery is too dark to read"
+  "86": {
+   "skipped": "camera zooms within the shot and the gallery is too dark to read",
+   "was": 65
   }
- }
+ },
+ "shotmap": "2026-10-14 12:10:51"
 }

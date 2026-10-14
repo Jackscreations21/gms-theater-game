@@ -2,163 +2,6 @@
  "clip": "1-10-helpless",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "67": {
-   "frame": 1185,
-   "points": {
-    "rail-us-sr": [
-     295.0,
-     222.0
-    ],
-    "rail-us-c": [
-     683.0,
-     222.0
-    ],
-    "stair-sl-top": [
-     1091.0,
-     308.0
-    ],
-    "post-bw-c-gal": [
-     683.0,
-     306.0
-    ],
-    "post-sl-b-gal": [
-     1207.0,
-     300.0
-    ],
-    "post-sl-b-base": [
-     1207.0,
-     569.0
-    ],
-    "stair-sr-foot": [
-     131.0,
-     629.0
-    ],
-    "gal-sl-ds": [
-     1259.0,
-     291.0
-    ],
-    "stair-sr-top": [
-     169.0,
-     291.0
-    ]
-   },
-   "solve": {
-    "K": [
-     [
-      2073.911065301543,
-      0.0,
-      640.0
-     ],
-     [
-      0.0,
-      2073.911065301543,
-      360.0
-     ],
-     [
-      0.0,
-      0.0,
-      1.0
-     ]
-    ],
-    "R": [
-     [
-      0.9987124307905878,
-      -0.003695931369152637,
-      -0.05059467042752568
-     ],
-     [
-      -0.0026792493680157696,
-      -0.9997934237755568,
-      0.020147739276997794
-     ],
-     [
-      -0.05065868343314318,
-      -0.019986241929497554,
-      -0.9985160228691156
-     ]
-    ],
-    "t": [
-     0.21193159629152214,
-     2.190979417099318,
-     19.143846183222614
-    ],
-    "rvec": [
-     -3.120512795872857,
-     0.004977163917625499,
-     0.07904945132549579
-    ],
-    "camera": [
-     0.764,
-     2.574,
-     19.082
-    ],
-    "look": [
-     -0.051,
-     -0.02,
-     -0.999
-    ],
-    "fovDeg": 34.3,
-    "rms": 10.16,
-    "residuals": [
-     4.7,
-     10.2,
-     8.8,
-     6.9,
-     2.2,
-     4.4,
-     12.8,
-     2.8,
-     22.0
-    ],
-    "frameSize": [
-     1280,
-     720
-    ],
-    "prior": "house",
-    "choice": "least rms",
-    "depthCue": "none",
-    "depthCueNote": "uninformative: shoulders 1.53-1.54 m over every lens",
-    "window": {
-     "tolPx": 1.53,
-     "fov": [
-      31.0,
-      38.0
-     ],
-     "dist": [
-      16.4,
-      20.4
-     ],
-     "poor": false
-    },
-    "bodyHeightM": 1.54,
-    "bodies": 76,
-    "free": {
-     "camera": [
-      0.74,
-      2.57,
-      19.26
-     ],
-     "fovDeg": 34.0,
-     "rms": 10.17,
-     "breaks": []
-    },
-    "mPerPx": 0.0629,
-    "cond": {
-     "sv": [
-      4.08,
-      2.38,
-      1.13
-     ],
-     "heightSd": 1.27,
-     "depthSd": 2.31,
-     "sdDistPerPx": 0.13,
-     "sdFovPerPx": 0.23
-    }
-   },
-   "moving": true,
-   "judged": "fair",
-   "note": "points carried from 1-08 shot 81 by a measured similarity (rail top, SL stair handrail, lip), overlay checked; the camera zooms in ~6% across the shot"
-  },
   "0": {
    "frame": 13,
    "points": {
@@ -316,7 +159,7 @@
    "judged": "fair",
    "note": "points carried from shot 67 by a SIFT homography (9 inliers); overlay roughly on rail and stairs"
   },
-  "2": {
+  "3": {
    "frame": 109,
    "points": {
     "rail-us-sr": [
@@ -466,12 +309,14 @@
    },
    "moving": false,
    "judged": "fair",
-   "note": "points carried from shot 67 by a SIFT homography (19 inliers); rail, gallery floor, SL stair checked on the overlay"
+   "note": "points carried from shot 67 by a SIFT homography (19 inliers); rail, gallery floor, SL stair checked on the overlay",
+   "was": 2
   },
-  "4": {
-   "skipped": "carried points disagree (rms 17.7) and the frame is too dark to read the set points directly"
+  "5": {
+   "skipped": "carried points disagree (rms 17.7) and the frame is too dark to read the set points directly",
+   "was": 4
   },
-  "6": {
+  "7": {
    "frame": 232,
    "points": {
     "rail-us-sr": [
@@ -611,28 +456,199 @@
    },
    "moving": false,
    "judged": "fair",
-   "note": "points carried from shot 67 by a SIFT homography (6 points kept); the least certain of the clip"
+   "note": "points carried from shot 67 by a SIFT homography (6 points kept); the least certain of the clip",
+   "was": 6
   },
-  "8": {
-   "skipped": "carried solve put the camera 4.5 m from the lip with a 58 deg lens; not credible, frame too dark to fix by hand"
+  "9": {
+   "skipped": "carried solve put the camera 4.5 m from the lip with a 58 deg lens; not credible, frame too dark to fix by hand",
+   "was": 8,
+   "split": [
+    9,
+    10
+   ]
   },
-  "12": {
-   "skipped": "carried points disagree (rms 19.9); not fixed by hand (budget)"
+  "15": {
+   "skipped": "carried points disagree (rms 19.9); not fixed by hand (budget)",
+   "was": 12
   },
-  "14": {
-   "skipped": "registration failed (rms 127); set too dark to read"
+  "17": {
+   "skipped": "registration failed (rms 127); set too dark to read",
+   "was": 14
   },
-  "18": {
-   "skipped": "too dark: the gallery and stairs barely show; registration to shot 67 failed (6 inliers)"
+  "21": {
+   "skipped": "too dark: the gallery and stairs barely show; registration to shot 67 failed (6 inliers)",
+   "was": 18
   },
-  "28": {
-   "skipped": "too tight: a close two-shot, fewer than five set points visible"
+  "32": {
+   "skipped": "too tight: a close two-shot, fewer than five set points visible",
+   "was": 28
   },
-  "29": {
-   "skipped": "no set points: the scene is played on the bare lit deck with the galleries dark (a flashback look); nothing to read"
+  "33": {
+   "skipped": "no set points: the scene is played on the bare lit deck with the galleries dark (a flashback look); nothing to read",
+   "was": 29
   },
-  "69": {
-   "skipped": "too dark (end of song, blackout); also its frames belong to 1-11"
+  "72": {
+   "frame": 1185,
+   "points": {
+    "rail-us-sr": [
+     295.0,
+     222.0
+    ],
+    "rail-us-c": [
+     683.0,
+     222.0
+    ],
+    "stair-sl-top": [
+     1091.0,
+     308.0
+    ],
+    "post-bw-c-gal": [
+     683.0,
+     306.0
+    ],
+    "post-sl-b-gal": [
+     1207.0,
+     300.0
+    ],
+    "post-sl-b-base": [
+     1207.0,
+     569.0
+    ],
+    "stair-sr-foot": [
+     131.0,
+     629.0
+    ],
+    "gal-sl-ds": [
+     1259.0,
+     291.0
+    ],
+    "stair-sr-top": [
+     169.0,
+     291.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      2073.911065301543,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      2073.911065301543,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9987124307905878,
+      -0.003695931369152637,
+      -0.05059467042752568
+     ],
+     [
+      -0.0026792493680157696,
+      -0.9997934237755568,
+      0.020147739276997794
+     ],
+     [
+      -0.05065868343314318,
+      -0.019986241929497554,
+      -0.9985160228691156
+     ]
+    ],
+    "t": [
+     0.21193159629152214,
+     2.190979417099318,
+     19.143846183222614
+    ],
+    "rvec": [
+     -3.120512795872857,
+     0.004977163917625499,
+     0.07904945132549579
+    ],
+    "camera": [
+     0.764,
+     2.574,
+     19.082
+    ],
+    "look": [
+     -0.051,
+     -0.02,
+     -0.999
+    ],
+    "fovDeg": 34.3,
+    "rms": 10.16,
+    "residuals": [
+     4.7,
+     10.2,
+     8.8,
+     6.9,
+     2.2,
+     4.4,
+     12.8,
+     2.8,
+     22.0
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms",
+    "depthCue": "none",
+    "depthCueNote": "uninformative: shoulders 1.53-1.54 m over every lens",
+    "window": {
+     "tolPx": 1.53,
+     "fov": [
+      31.0,
+      38.0
+     ],
+     "dist": [
+      16.4,
+      20.4
+     ],
+     "poor": false
+    },
+    "bodyHeightM": 1.54,
+    "bodies": 76,
+    "free": {
+     "camera": [
+      0.74,
+      2.57,
+      19.26
+     ],
+     "fovDeg": 34.0,
+     "rms": 10.17,
+     "breaks": []
+    },
+    "mPerPx": 0.0629,
+    "cond": {
+     "sv": [
+      4.08,
+      2.38,
+      1.13
+     ],
+     "heightSd": 1.27,
+     "depthSd": 2.31,
+     "sdDistPerPx": 0.13,
+     "sdFovPerPx": 0.23
+    }
+   },
+   "moving": true,
+   "judged": "fair",
+   "note": "points carried from 1-08 shot 81 by a measured similarity (rail top, SL stair handrail, lip), overlay checked; the camera zooms in ~6% across the shot",
+   "was": 67
+  },
+  "74": {
+   "skipped": "too dark (end of song, blackout); also its frames belong to 1-11",
+   "was": 69
   }
- }
+ },
+ "shotmap": "2026-10-14 12:10:57"
 }

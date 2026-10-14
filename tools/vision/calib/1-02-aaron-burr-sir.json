@@ -153,17 +153,27 @@
    "moving": null,
    "judged": "fair"
   },
-  "16": {
-   "skipped": "too tight: a medium of three men in the tavern, fewer than five set points"
+  "17": {
+   "skipped": "too tight: a medium of three men in the tavern, fewer than five set points",
+   "was": 16,
+   "split": [
+    16,
+    17,
+    18
+   ]
   },
-  "19": {
-   "skipped": "tavern medium-wide: the upstage rail ends and centre are hidden by the chandelier and dressing, no lip; fewer than five certain points"
+  "22": {
+   "skipped": "tavern medium-wide: the upstage rail ends and centre are hidden by the chandelier and dressing, no lip; fewer than five certain points",
+   "was": 19
   },
-  "23": {
-   "skipped": "camera pans/zooms through the shot; tavern dressing hides the rail ends and centre, lip not legible"
+  "27": {
+   "skipped": "camera pans/zooms through the shot; tavern dressing hides the rail ends and centre, lip not legible",
+   "was": 23
   },
-  "26": {
-   "skipped": "tavern medium-wide, zooms; the rail ends, centre and lip not identifiable with confidence"
+  "30": {
+   "skipped": "tavern medium-wide, zooms; the rail ends, centre and lip not identifiable with confidence",
+   "was": 26
   }
- }
+ },
+ "shotmap": "2026-10-14 12:10:50"
 }

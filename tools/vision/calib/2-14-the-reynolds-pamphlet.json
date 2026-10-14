@@ -12,31 +12,41 @@
    "skipped": "medium shot: upstage rail and gallery floor lines readable but no certain x anchors (posts, stair ends) in the dark"
   },
   "8": {
-   "skipped": "4-frame wide from a low camera; centre is a rolling staircase (not in setpoints), fixed set too dark to name five points"
-  },
-  "9": {
-   "skipped": "same set-up as shot 8 (rolling staircase at centre), dark; camera pans ~50 px"
+   "skipped": "4-frame wide from a low camera; centre is a rolling staircase (not in setpoints), fixed set too dark to name five points",
+   "merged": [
+    {
+     "skipped": "same set-up as shot 8 (rolling staircase at centre), dark; camera pans ~50 px",
+     "was": 9
+    }
+   ]
   },
   "12": {
    "skipped": "far low house camera (deck <20 px deep), set dark; camera pans ~220 px across the shot"
   },
-  "15": {
-   "skipped": "2 frames, low camera, set dark: fewer than five nameable points"
-  },
-  "23": {
-   "skipped": "medium shot, dark; camera pans ~220 px"
+  "16": {
+   "skipped": "2 frames, low camera, set dark: fewer than five nameable points",
+   "was": 15
   },
   "25": {
-   "skipped": "low angle looking up, dark; first and middle frames do not match (likely a missed cut)"
+   "skipped": "medium shot, dark; camera pans ~220 px",
+   "was": 23
   },
   "27": {
-   "skipped": "far low house camera (deck ~20 px deep: upstage feet y 655, lip y 675); lit light rig is not in setpoints, gallery and posts unreadable in the dark; zooms in ~8% across the shot"
+   "skipped": "low angle looking up, dark; first and middle frames do not match (likely a missed cut)",
+   "was": 25
   },
   "29": {
-   "skipped": "too tight (1 frame, close on Jefferson)"
+   "skipped": "far low house camera (deck ~20 px deep: upstage feet y 655, lip y 675); lit light rig is not in setpoints, gallery and posts unreadable in the dark; zooms in ~8% across the shot",
+   "was": 27
   },
-  "30": {
-   "skipped": "medium shot of downstage centre; upstage set dark, fewer than five certain points"
+  "31": {
+   "skipped": "too tight (1 frame, close on Jefferson)",
+   "was": 29
+  },
+  "32": {
+   "skipped": "medium shot of downstage centre; upstage set dark, fewer than five certain points",
+   "was": 30
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:19"
 }

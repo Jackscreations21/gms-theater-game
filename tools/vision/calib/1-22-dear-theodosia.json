@@ -2,14 +2,22 @@
  "clip": "1-22-dear-theodosia",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "10": {
-   "skipped": "too tight and angled; close on two seated actors"
+  "4": {
+   "skipped": "dark, same set-up as shot 11; under five certain set points",
+   "was": 3,
+   "split": [
+    4,
+    5
+   ]
   },
-  "11": {
-   "skipped": "dark; two spots lit, the centre line ambiguous by ~30 px (two brick columns, coils dim) and back posts unreadable; lip and gallery edge alone under-determine the camera"
+  "12": {
+   "skipped": "too tight and angled; close on two seated actors",
+   "was": 10
   },
-  "3": {
-   "skipped": "dark, same set-up as shot 11; under five certain set points"
+  "13": {
+   "skipped": "dark; two spots lit, the centre line ambiguous by ~30 px (two brick columns, coils dim) and back posts unreadable; lip and gallery edge alone under-determine the camera",
+   "was": 11
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:07"
 }

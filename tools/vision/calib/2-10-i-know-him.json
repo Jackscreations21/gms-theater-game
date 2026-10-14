@@ -142,7 +142,13 @@
    },
    "moving": false,
    "judged": "fair",
-   "note": "MISSED CUT: frames 0-18 are the 2-09 shot 43/46 front camera (identical, similarity scale 1.000) and this solve (frame 10) applies only to them; frames 19-91 are other set-ups (not matched). same camera as shot 43 (ORB similarity to its frame: scale 1.000, shift < 2 px); points are shot 43's reads"
+   "note": "MISSED CUT: frames 0-18 are the 2-09 shot 43/46 front camera (identical, similarity scale 1.000) and this solve (frame 10) applies only to them; frames 19-91 are other set-ups (not matched). same camera as shot 43 (ORB similarity to its frame: scale 1.000, shift < 2 px); points are shot 43's reads",
+   "was": 0,
+   "split": [
+    0,
+    1
+   ]
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:18"
 }

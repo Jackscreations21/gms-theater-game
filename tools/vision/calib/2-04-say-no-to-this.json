@@ -2,33 +2,76 @@
  "clip": "2-04-say-no-to-this",
  "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
  "shots": {
-  "3": {
+  "19": {
    "frame": 482,
-   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f473, f487, f502 - a close-up two-shot, a wide and another close-up); re-split before calibrating"
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f473, f487, f502 - a close-up two-shot, a wide and another close-up); re-split before calibrating",
+   "was": 3,
+   "split": [
+    18,
+    19,
+    20,
+    21
+   ]
   },
-  "4": {
+  "26": {
    "frame": 557,
-   "skipped": "too tight: a close/medium shot with fewer than five set points readable (a close-up kiss)"
+   "skipped": "too tight: a close/medium shot with fewer than five set points readable (a close-up kiss)",
+   "was": 4,
+   "split": [
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29
+   ]
   },
-  "7": {
+  "36": {
    "frame": 728,
-   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f706, f712, f747); re-split before calibrating"
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f706, f712, f747); re-split before calibrating",
+   "was": 7,
+   "split": [
+    34,
+    35,
+    36,
+    37
+   ]
   },
-  "18": {
+  "55": {
    "frame": 1026,
-   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at about f1015 and f1034 - the last part, f1034-1047, is a wide shot from the house); re-split before calibrating"
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at about f1015 and f1034 - the last part, f1034-1047, is a wide shot from the house); re-split before calibrating",
+   "was": 18,
+   "split": [
+    55,
+    56
+   ]
   },
-  "20": {
+  "58": {
    "frame": 1069,
-   "skipped": "dark medium shot: lip, piers, rings and both gallery ends unreadable; the lamp posts are props, not set points"
+   "skipped": "dark medium shot: lip, piers, rings and both gallery ends unreadable; the lamp posts are props, not set points",
+   "was": 20
   },
-  "23": {
+  "62": {
    "frame": 1125,
-   "skipped": "too tight: a close/medium shot with fewer than five set points readable (a close-up two-shot)"
+   "skipped": "too tight: a close/medium shot with fewer than five set points readable (a close-up two-shot)",
+   "was": 23,
+   "split": [
+    61,
+    62,
+    63
+   ]
   },
-  "25": {
+  "65": {
    "frame": 1206,
-   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f1234); re-split before calibrating"
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f1234); re-split before calibrating",
+   "was": 25,
+   "split": [
+    65,
+    66
+   ]
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:12"
 }

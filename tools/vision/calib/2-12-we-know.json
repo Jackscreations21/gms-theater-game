@@ -144,7 +144,7 @@
    "judged": "good",
    "note": "ON-STAGE camera near the SR lip (~1.1 m up) - a film-shoot set-up, not the house; camera drifts ~50-120 px and zooms 8% across the shot, solved at its middle frame"
   },
-  "24": {
+  "29": {
    "frame": 661,
    "points": {
     "stair-sl-top": [
@@ -284,7 +284,9 @@
    },
    "moving": true,
    "judged": "fair",
-   "note": "ON-STAGE camera at SR, ~2.3 m up near the lip (crane/ladder); camera drifts 50-135 px across the shot; SL stair top residual 18"
+   "note": "ON-STAGE camera at SR, ~2.3 m up near the lip (crane/ladder); camera drifts 50-135 px across the shot; SL stair top residual 18",
+   "was": 24
   }
- }
+ },
+ "shotmap": "2026-10-14 12:11:19"
 }
