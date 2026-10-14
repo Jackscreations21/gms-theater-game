@@ -5,6 +5,7 @@
     python tools/vision/run.py frames <clip> [--fps 5]     # stage 1: frames, cuts, clip time -> album time
     python tools/vision/run.py bodies <clip> [--model M] [--imgsz 640]   # stage 2: pose + tracklets on every kept frame
     python tools/vision/run.py check  <clip>               # what the cache says about a clip
+    python tools/vision/run.py recut  <clip>|all [--dry]   # re-detect cuts from the cached frames -> shots, shotmap.json
 
 <clip> is a file in video/ by name, stem, or path.  Everything this writes goes to tools/vision/cache/<clip>/
 (git-ignored, regenerable): frames/NNNNNN.jpg, frames.json, bodies.json.  Stage 1 needs numpy, cv2 and an ffmpeg
@@ -421,19 +422,32 @@ def align_pass(cenv, aenv, ts, tids, win_s=10.0, step_s=10.0, slack_s=2.0, min_c
             misses += 1
             if misses >= 6: off = None
     # a global find starts a chain going forward; walk BACK from it too, locally, for the windows before it that
-    # were too weak to pass the global bar on their own (a quiet opening) - until six misses or an earlier anchor
+    # were too weak to pass the global bar on their own (a quiet opening) - until six misses or an earlier anchor.
+    # The walk is tempo-aware: 3 % off the album's tempo smears a 10 s window's peak to 0.30-0.34 at the truth (My
+    # Shot at +3 % gave up after six such windows, 47 % covered), so each window is resampled to the tempo of the
+    # chain the find started (the line through its anchors within 40 s, the two agreeing windows at least) and
+    # searched around where that line puts it; at that tempo the same windows correlate at 0.94-0.99.
     taken = {round(a[0], 3) for a in anchors}
     for s_g, off_g in found_global:
-        off, misses = off_g, 0
+        c_ref = round((s_g + wn / 2) / b, 3)
+        ref = next((a for a in anchors if a[0] == c_ref), None)
+        if ref is None: continue
+        fwd = sorted(a for a in anchors if c_ref <= a[0] <= c_ref + 40.0)
+        r = float(np.polyfit([a[0] for a in fwd], [a[1] for a in fwd], 1)[0]) if len(fwd) >= 2 else 1.0
+        if abs(r - 1.0) < 0.005 or abs(r - 1.0) > 0.1: r = 1.0
+        m = int(round(wn * r)); a_ref, misses = ref[1], 0
         for s in range(s_g - st, -1, -st):
-            if round((s + wn / 2) / b, 3) in taken: break
+            c = round((s + wn / 2) / b, 3)
+            if c in taken: break
             sl2 = sl + misses * int(b)
-            lo, hi = max(0, s + off - sl2), min(len(hay), s + off + wn + sl2)
-            if hi - lo < wn: break
-            j, cc = ncc_search(clip[s:s + wn], hay[lo:hi]); searches['local'] += 1
+            mid = (a_ref + (c - c_ref) * r) * b - span0          # where the chain's line puts this window's centre
+            lo, hi = max(0, int(round(mid - m / 2)) - sl2), min(len(hay), int(round(mid + m / 2)) + sl2)
+            if hi - lo < m: break
+            w = clip[s:s + wn] if r == 1.0 else np.interp(np.arange(m) / r, np.arange(wn), clip[s:s + wn])
+            j, cc = ncc_search(w, hay[lo:hi]); searches['local'] += 1
             if j is not None and cc >= min_corr:               # the full bar: a quiet opening is also where applause is
-                anchors.append((round((s + wn / 2) / b, 3), round((span0 + lo + j + wn / 2) / b, 3), round(cc, 3)))
-                off, misses = lo + j - s, 0
+                anchors.append((c, round((span0 + lo + j + m / 2) / b, 3), round(cc, 3)))
+                c_ref, a_ref, misses = c, anchors[-1][1], 0
             else:
                 misses += 1
                 if misses >= 6: break
@@ -516,25 +530,130 @@ def decode_frames(path, fdir, fps, height):
     return sorted(os.listdir(fdir))
 
 
-def detect_cuts(fdir, files, thr, hthr):
-    """cut before frame i when the tiny-grayscale mean abs diff AND the hue/sat-histogram distance both jump.
-    (On the film at 5 fps / 720p: every real cut had hist > 0.2 and gray > 12; fast motion inside a shot reaches
-    gray 33 but hist stays under 0.15.)"""
+# the cut rule (VISION.md stage 1, "Cuts"), tuned on 62 labelled missed cuts and 39 labelled non-cuts (2026-10-14):
+#   old:       gray > 12 AND hist > 0.2 (the first rule) - kept unless the STRUCTURE did not change (tq >= same: a
+#              lighting change; 71 of the first rule's 1326 cuts were, by eye, a cue on one camera) or it is a flash
+#   structure: hist > shist AND tq < struct AND the pair is a dip, both neighbouring pairs at least `contrast` more alike
+#              (fast dance and a moving camera keep every pair low; a cut is one low pair between two steadier ones),
+#              or - a cut into or out of a moving shot - hist > ohist and ONE neighbour `oneSide` more alike;
+#              AND neither frame is flat (a fade to black has no structure to compare)
+#   flash:     frame i+1 against frame i-1 >= flash (the change did not last two frames) - no cut either way
+CUT_RULE = {'same': 0.5, 'shist': 0.11, 'struct': 0.4, 'contrast': 0.3, 'ohist': 0.25, 'oneSide': 0.6, 'flash': 0.6, 'flat': 2.0,
+            'tiles': [3, 4], 'tileFloor': 3.0, 'tileQ': 0.25}
+
+
+def frame_feats(im):
+    """a decoded frame -> (48x27 gray, uint8; 16x8 hue/sat histogram, normalised)."""
     import cv2, numpy as np
-    prev_g = prev_h = None; diffs = []; cuts = []
-    for i, f in enumerate(files):
-        im = cv2.imread(os.path.join(fdir, f))
-        g = cv2.resize(cv2.cvtColor(im, cv2.COLOR_BGR2GRAY), (48, 27), interpolation=cv2.INTER_AREA).astype(np.float32)
-        hsv = cv2.cvtColor(cv2.resize(im, (160, 90), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2HSV)
-        h = cv2.calcHist([hsv], [0, 1], None, [16, 8], [0, 180, 0, 256]).flatten(); h /= (h.sum() + 1e-6)
-        if prev_g is not None:
-            d = float(np.abs(g - prev_g).mean()); hd = float(0.5 * np.abs(h - prev_h).sum())
-            diffs.append((round(d, 1), round(hd, 3)))
-            if d > thr and hd > hthr: cuts.append(i)
-        else:
-            diffs.append((0.0, 0.0))
-        prev_g, prev_h = g, h
+    g = cv2.resize(cv2.cvtColor(im, cv2.COLOR_BGR2GRAY), (48, 27), interpolation=cv2.INTER_AREA)
+    hsv = cv2.cvtColor(cv2.resize(im, (160, 90), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2HSV)
+    h = cv2.calcHist([hsv], [0, 1], None, [16, 8], [0, 180, 0, 256]).flatten(); h /= (h.sum() + 1e-6)
+    return g, h.astype(np.float32)
+
+
+def tile_ncc(A, B, rule=CUT_RULE):
+    """the structure of two stacks of 27x48 grays: per tile (3 rows x 4 columns) the NCC of the mean/std-normalised
+    gray, over the tiles with contrast (std >= tileFloor on either side), and its lower quartile.  A tile normalises
+    its own light, so a lighting cue keeps it near 1; a quartile, not the whole frame, because an overlay that does
+    not cut with the picture (Wait for It's lyric captions, the Disney+ bug) holds a whole-frame NCC at 0.73-0.83
+    across a real cut.  NaN where fewer than four tiles have contrast."""
+    import numpy as np
+    rows, cols = rule['tiles']; h, w = A.shape[-2] // rows, A.shape[-1] // cols
+    vals = []
+    for r in range(rows):
+        for c in range(cols):
+            a = A[..., r * h:(r + 1) * h, c * w:(c + 1) * w].reshape(A.shape[:-2] + (-1,))
+            b = B[..., r * h:(r + 1) * h, c * w:(c + 1) * w].reshape(B.shape[:-2] + (-1,))
+            a = a - a.mean(-1, keepdims=True); b = b - b.mean(-1, keepdims=True)
+            sa = np.sqrt((a ** 2).mean(-1)); sb = np.sqrt((b ** 2).mean(-1))
+            v = (a * b).mean(-1) / (sa * sb + 1e-3)
+            vals.append(np.where(np.maximum(sa, sb) >= rule['tileFloor'], v, np.nan))
+    V = np.stack(vals, -1)
+    ok = (~np.isnan(V)).sum(-1)
+    q = np.nanquantile(np.where(ok[..., None] > 0, V, 0.0), rule['tileQ'], axis=-1)
+    return np.where(ok >= 4, q, np.nan)
+
+
+def cut_scores(G, H, rule=CUT_RULE):
+    """per consecutive pair (i-1, i): gray (mean abs diff), hist (half-L1), ncc (the whole normalised gray), tq (the
+    tiles' lower quartile, falling back to ncc), and tq2 (frame i+1 against i-1: did the change last); plus each
+    frame's gray std.  Arrays of len(G); index 0 is a no-change pair."""
+    import numpy as np
+    G = np.asarray(G, dtype=np.float32); n = len(G)
+    Z = G.reshape(n, -1); sd = Z.std(1)
+    Zn = (Z - Z.mean(1, keepdims=True)) / (sd[:, None] + 1e-3)
+    d = np.zeros(n); hd = np.zeros(n); ncc = np.ones(n); ncc2 = np.ones(n); tq = np.ones(n); tq2 = np.ones(n)
+    if n > 1:
+        d[1:] = np.abs(G[1:] - G[:-1]).reshape(n - 1, -1).mean(1)
+        hd[1:] = 0.5 * np.abs(H[1:] - H[:-1]).sum(1)
+        ncc[1:] = (Zn[1:] * Zn[:-1]).mean(1)
+        tq[1:] = tile_ncc(G[1:], G[:-1], rule)
+    if n > 2:
+        ncc2[1:n - 1] = (Zn[2:] * Zn[:-2]).mean(1)
+        tq2[1:n - 1] = tile_ncc(G[2:], G[:-2], rule)
+    tq = np.where(np.isnan(tq), ncc, tq); tq2 = np.where(np.isnan(tq2), ncc2, tq2)
+    return {'gray': d, 'hist': hd, 'ncc': ncc, 'tq': tq, 'tq2': tq2, 'std': sd}
+
+
+def decide_cuts(sc, thr=12.0, hthr=0.2, rule=CUT_RULE):
+    """the cut rule (CUT_RULE above) over cut_scores -> the frame indices a shot starts at (a cut before frame i)."""
+    d, hd, tq, tq2, sd = sc['gray'], sc['hist'], sc['tq'], sc['tq2'], sc['std']
+    n = len(d); cuts = []
+    for i in range(1, n):
+        lasts = tq2[i] < rule['flash'] if i + 1 < n else True
+        if not lasts: continue
+        if d[i] > thr and hd[i] > hthr and tq[i] < rule['same']: cuts.append(i); continue
+        if hd[i] <= rule['shist'] or tq[i] >= rule['struct'] or min(sd[i - 1], sd[i]) < rule['flat']: continue
+        nb = (tq[i - 1] if i > 1 else 1.0, tq[i + 1] if i + 1 < n else 1.0)
+        if min(nb) - tq[i] >= rule['contrast'] or (hd[i] > rule['ohist'] and max(nb) - tq[i] >= rule['oneSide']):
+            cuts.append(i)
+    return cuts
+
+
+def read_feats(fdir, files):
+    """frame_feats of every frame file, read on a few threads (cv2 lets go of the GIL) -> (G, H) arrays."""
+    import cv2, numpy as np
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(8) as ex:
+        r = list(ex.map(lambda f: frame_feats(cv2.imread(os.path.join(fdir, f))), files))
+    return np.stack([g for g, _ in r]), np.stack([h for _, h in r])
+
+
+def detect_cuts(fdir, files, thr, hthr, rule=CUT_RULE):
+    """cut before frame i by decide_cuts: the first rule (gray > thr AND hist > hthr: on the film every cut it found
+    had hist > 0.2, and fast motion inside a shot reaches gray 33 with hist under 0.15) unless the structure stayed,
+    OR the structure rule.  -> (cuts, diffs): diffs[i] = [gray, hist, ncc, tq] of the pair (i-1, i)."""
+    G, H = read_feats(fdir, files)
+    sc = cut_scores(G, H, rule)
+    cuts = decide_cuts(sc, thr, hthr, rule)
+    diffs = [[round(float(sc['gray'][i]), 1), round(float(sc['hist'][i]), 3), round(float(sc['ncc'][i]), 2),
+              round(float(sc['tq'][i]), 2)] for i in range(len(files))]
+    if diffs: diffs[0] = [0.0, 0.0, 1.0, 1.0]
     return cuts, diffs
+
+
+def make_shots(cuts, n):
+    """cut frame indices -> shots [{id, first, last, n}] and the shot of every frame."""
+    shots = []
+    bounds = [0] + [c for c in sorted(set(cuts)) if 0 < c < n] + [n]
+    for s in range(len(bounds) - 1):
+        shots.append({'id': s, 'first': bounds[s], 'last': bounds[s + 1] - 1, 'n': bounds[s + 1] - bounds[s]})
+    shot_of = [0] * n
+    for sh in shots:
+        for i in range(sh['first'], sh['last'] + 1): shot_of[i] = sh['id']
+    return shots, shot_of
+
+
+def apply_cuts_json(cdir, cuts):
+    """cache/<clip>/cuts.json {"add": [i], "remove": [i]} over the detected cuts."""
+    cj = os.path.join(cdir, 'cuts.json')
+    if not os.path.isfile(cj): return sorted(cuts)
+    with open(cj, encoding='utf-8') as f: ed = json.load(f)
+    return sorted((set(cuts) | set(ed.get('add', []))) - set(ed.get('remove', [])))
+
+
+def cuts_record(thr, hthr, detected):
+    return {'threshold': thr, 'histThreshold': hthr, 'rule': CUT_RULE, 'detected': detected}
 
 
 def cmd_frames(args):
@@ -563,27 +682,22 @@ def cmd_frames(args):
     if args.no_decode and prev and os.path.isdir(fdir):
         files = sorted(os.listdir(fdir)); fps = prev['fps']; height = prev['height']
         cuts, diffs = prev['cuts']['detected'], prev.get('diffs') or []
+        cut_rec = dict(prev['cuts'])           # the rule the kept cuts were detected by
     else:
         fps, height = args.fps, args.height
         t0 = time.time()
         files = decode_frames(path, fdir, fps, height)
         log('%d frames at %g fps in %.1f s' % (len(files), fps, time.time() - t0))
         cuts, diffs = detect_cuts(fdir, files, args.cut, args.cut_hist)
+        cut_rec = cuts_record(args.cut, args.cut_hist, None)
         log('%d cuts detected' % len(cuts))
     detected = list(cuts)
-    cj = os.path.join(cdir, 'cuts.json')
-    if os.path.isfile(cj):
-        ed = json.load(open(cj, encoding='utf-8'))
-        cuts = sorted((set(cuts) | set(ed.get('add', []))) - set(ed.get('remove', [])))
+    if os.path.isfile(os.path.join(cdir, 'cuts.json')):
+        cuts = apply_cuts_json(cdir, cuts)
         log('cuts after cuts.json: %d' % len(cuts))
     # --- assemble
-    frames, shots = [], []
-    bounds = [0] + [c for c in cuts if 0 < c < len(files)] + [len(files)]
-    for s in range(len(bounds) - 1):
-        shots.append({'id': s, 'first': bounds[s], 'last': bounds[s + 1] - 1, 'n': bounds[s + 1] - bounds[s]})
-    shot_of = {}
-    for sh in shots:
-        for i in range(sh['first'], sh['last'] + 1): shot_of[i] = sh['id']
+    frames = []
+    shots, shot_of = make_shots(cuts, len(files))
     a0, a1 = (anchors[0][0], anchors[-1][0]) if anchors else (None, None)
     for i, f in enumerate(files):
         t = i / fps
@@ -601,7 +715,7 @@ def cmd_frames(args):
            'tracksSeen': covered, 'fps': fps, 'height': height, 'frames': frames, 'shots': shots,
            'align': {'anchors': anchors, 'info': info, **stats, 'stretch': info.get('stretch'),
                      'envelope': os.path.relpath(ENV, ROOT).replace('\\', '/')},
-           'cuts': {'threshold': args.cut, 'histThreshold': args.cut_hist, 'detected': detected}, 'diffs': diffs,
+           'cuts': {**cut_rec, 'detected': detected}, 'diffs': diffs,
            'written': time.strftime('%Y-%m-%d %H:%M')}
     with open(fjson, 'w', encoding='utf-8') as f: json.dump(out, f, separators=(',', ':')); f.write('\n')
     print('%s: %d frames, %d shots, %d anchors (median residual %s s, worst gap %s s), tracks seen %s -> %s' %
@@ -672,8 +786,11 @@ def cmd_sheet(args):
         ia = cv2.resize(cv2.imread(os.path.join(fdir, a['file'])), (320, 180))
         ic = cv2.resize(cv2.imread(os.path.join(fdir, c['file'])), (320, 180))
         t = np.hstack([ia, ic]); d = fr['diffs'][sh['first']] if sh['first'] < len(fr['diffs']) else (0, 0)
-        cv2.putText(t, 'shot %d  f%d  %s %s  d%.0f h%.2f' % (sh['id'], sh['first'], c['track'] or '-', c['at'] if c['at'] is not None else '', d[0], d[1]),
+        cv2.putText(t, 'shot %d  f%d  %s %s' % (sh['id'], sh['first'], c['track'] or '-', c['at'] if c['at'] is not None else ''),
                     (6, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
+        # gray diff, hist distance and (since recut) the whole-frame NCC and the tiles' structure (VISION.md stage 1)
+        cv2.putText(t, 'd%.0f h%.2f' % (d[0], d[1]) + (' ncc%.2f tq%.2f' % (d[2], d[3]) if len(d) > 3 else ''),
+                    (6, 42), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
         tiles.append(t)
     if not tiles: print('one shot, nothing to tile'); return
     cols = 3
@@ -813,6 +930,10 @@ def main():
     p.add_argument('--imgsz', type=int, default=640, help='the model\'s input size: 960/1280 find many more bodies in the widest shots, at ~1/2 and ~1/3 the speed (VISION.md stage 2)')
     p = sub.add_parser('check'); p.set_defaults(fn=cmd_check); p.add_argument('clip'); p.add_argument('-n', type=int, default=12)
     p = sub.add_parser('sheet'); p.set_defaults(fn=cmd_sheet); p.add_argument('clip')
+    p = sub.add_parser('recut', help='re-detect the cuts from the cached frames (no decode, no align) -> frames.json shots + shotmap.json (recut.py)')
+    p.set_defaults(fn=lambda a: (sys.path.insert(0, HERE), __import__('recut').cmd_recut(a)))
+    p.add_argument('clip', help="a clip, or 'all'"); p.add_argument('--dry', action='store_true', help='print old vs new shots and the new cut frames; write nothing')
+    p.add_argument('--rebase', action='store_true', help='map from the shots frames.json has NOW, not the ones shotmap.json recorded first')
     p = sub.add_parser('draw'); p.set_defaults(fn=cmd_draw); p.add_argument('clip'); p.add_argument('-n', type=int, default=9)
     p = sub.add_parser('wide', help='the shots that look wide (small bodies, several) - the ones to calibrate'); p.set_defaults(fn=cmd_wide)
     p.add_argument('clip'); p.add_argument('--max-h', type=float, default=0.4); p.add_argument('--min-bodies', type=float, default=3)
