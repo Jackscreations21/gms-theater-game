@@ -33,7 +33,7 @@ worktree. Stage 1 ran over every clip, ~10 s each.
   every other track yields no anchor against My Shot's span (except Story of Tonight, which really starts inside
   it). The recipe is in `tools/README.md`.
 - **Stage 2 ran** on Schuyler Defeated (316 frames in 22 s, 17.6 fps on his CPU, 1,183 bodies, 71 tracklets, right by
-  eye in `draw`), then over every clip in the background at ~37 fps once warm (HANDOFF's Done block has the count).
+  eye in `draw`), then over every clip in the background at ~40 fps once warm — all 45 done.
 - **Stage 3, the camera, is BUILT AND PROVEN ON ONE SHOT, not yet precise** (`tools/vision/calib.py`,
   `tools/vision/setpoints.json`: 47 named set points from the editor's measured plan and the GLB's posts, a
   wireframe; `run.py calib <clip> <shot> grid|solve|refine`). *"can you figure out now how to figure out the camera

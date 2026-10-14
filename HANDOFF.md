@@ -227,7 +227,9 @@ compare the *same* production across stages instead.
 ## NEXT SESSION: **STAGE 2 ON ONE CLIP (WHEN THE 3.13 VENV EXISTS); DANCE ROUND 2; HIS RULINGS** (2026-10-14)
 
 Rulings at **GE** (GF next — reserved for dance round 2). `actors` = PR #234. Read STATE.md's newest block, then
-the memory files `video-capture-status-2026-10-14.md` and `hamilton-blocking-status-2026-10-13.md`.
+**`docs/guide/VISION.md`** (the whole video-capture system: how it works, the agents' plan in full, what is left — Jack
+asked for it as the detailed handoff), then the memory files `video-capture-status-2026-10-14.md` and
+`hamilton-blocking-status-2026-10-13.md`.
 
 1. **Spawn the Opus agents on the calibration** — Jack's word (*"once you figure out the best way to do it have
    opus agents do the rest"*), PAUSED before spawning on his *"get everything to a point where it can pause"*.
@@ -277,7 +279,7 @@ tempo to ≤ 0.1 s and no false anchor from any other track), 1-04 not, 1-01 a m
 clips. Jack ran `py install 3.13`; the venv was made and filled here. **Stage 2 ran on Schuyler Defeated: 316
 frames in 22 s (17.6 fps on his CPU — faster than the spec's 6–10), 1,183 bodies, 71 tracklets, 3.7 bodies a frame
 (max 9), every body in nine shots boxed and skeletoned right by eye (`draw`), the dark upstage ensemble included.**
-Then the lot in the background (27 of 44 when paused). **Stage 3 built** (`calib.py`, `setpoints.json`: 47 named set
+Then the lot in the background: all 45 clips, 130k bodies, done by the end of the day. **Stage 3 built** (`calib.py`, `setpoints.json`: 47 named set
 points off the editor's plan and the GLB's posts; a focal grid-search + PnP, an overlay, per-point zoom crops, an
 edge refinement, `wide`) and proven on Guns and Ships shot 16 — a long lens 45 m back; agent-read points give
 ~25 px, so the Opus agents' brief (`tools/vision/AGENT-CALIB.md`) expects 8–15 px and the clicking UI stays the
