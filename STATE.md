@@ -11,13 +11,12 @@ worktree (`actors`). **Commit `62f7ddf`**: stage 4 `tools/vision/floor.py` (`run
 `tools/vision/ident.py` (`run.py ident`), the Calibrate mode in `blocking.html` (Advanced; `window.CALIB`; its JS PnP
 matches `calib.py` to 1e-7), stage 1's wrong-beat drop + tempo-matched refine + tempo prior (every clip re-aligned, no
 shot id changed; 1-04 aligns, its hand `anchors.json` force-added), `tools/vision/aligncheck.py` (one honest failure
-left: My Shot ×1.03 coverage), `AGENT-COMMON.md`. **Uncommitted / in flight at the pause:** the solver agent's
+left: My Shot ×1.03 coverage), `AGENT-COMMON.md`. **Landed as `5efc9aa` (the solver finished before the pause):** the solver agent's
 `calib.py` (a physical prior + the body-height depth cue + `resolve`/`census` commands; it was told to soften the
 bounds — y ≥ 0, z ≥ 3.5, fov ≤ 100 — because pit and on-stage cameras are real) and its `resolve all` over the 43
 `tools/vision/calib/<clip>.json` files the nine agents wrote; `tools/vision/out/` (4 tracks, STALE against the
-re-aligned `at`s until `floor` + `ident` re-run). If the solver finished: check `git status`, read its report in
-HANDOFF if recorded, else run `$P -I tools/vision/run.py calib all resolve` yourself, then `floor` every clip, `ident`
-every track, commit `calib.py` + `calib/` + `out/`.
+re-aligned `at`s until `floor` + `ident` re-run). `floor` ran on every calibrated clip and `ident` on all 20 tracks after the re-solve; `calib.py`, `calib/` and `out/`
+are committed. 59 solves kept, 2 degenerate; the census is in the commit message and VISION.md §7.
 
 - **The cameras:** the brief's 45 m / 24° reference was a wrong solve (misidentified posts); G&S s16 is a pit camera
   at deck height, 85–90°. The real families and the degeneracy (lens vs distance from one-plane points; the body

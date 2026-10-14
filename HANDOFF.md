@@ -227,9 +227,7 @@ compare the *same* production across stages instead.
 ## NEXT SESSION: **FINISH THE SOLVER ROUND, FIX THE SET POINTS, THEN BODIES AT 1280, THEN HIS LABELS** (2026-10-14, second session, paused at 11)
 
 Rulings at **GE** (GF = dance round 2 when it lands). `actors` = PR #234 at **`62f7ddf`** + the record commit. Read STATE.md's
-newest block, then `docs/guide/VISION.md` §7 — it is the ordered list. In short: (1) the solver's `calib.py` + `resolve all`
-+ `census` (in flight at the pause; commit `calib.py`, `calib/`, then `floor` every clip and `ident` every track and commit
-`out/`); (2) `setpoints.json` from the census; (3) `bodies --imgsz 1280` on all 45 (~80 min, background); (4) the missed-cut
+newest block, then `docs/guide/VISION.md` §7 — it is the ordered list. In short: (1) DONE at `5efc9aa` — the solver's `calib.py`, `resolve all`, the census, `floor` + `ident` over everything; (2) `setpoints.json` from the census; (3) `bodies --imgsz 1280` on all 45 (~80 min, background); (4) the missed-cut
 round; (5) Jack labels a few numbers in Calibrate; (6) `compare.py` (GC), GD. The Calibrate UI needs the same prior as
 `calib.py` once it settles. Brief every agent with `tools/vision/AGENT-COMMON.md` and its own scratch subfolder.
 
@@ -243,7 +241,7 @@ GA; in-page PnP equal to `calib.py`'s, loupe, wire overlay, body labels, downloa
 ends (aligncheck as a script — the old "≤ 0.1 s" claim did not reproduce, 0.15 s is honest; 1-04 anchored by hand and
 chroma; the missed-cut rate measured at 15–20 %), the stage 1 fixes (wrong-beat drop, refine, tempo prior; all 45 re-
 aligned, 620 → 613 anchors, no shot id changed), and a solver agent (physical prior + body-height depth cue + `resolve`
-+ `census`, still running at the pause). The cameras: ~55 kept of ~190 wide shots; the brief's reference camera was
++ `census`; landed as `5efc9aa` with floor + ident over all 20 tracks). The cameras: ~55 kept of ~190 wide shots; the brief's reference camera was
 wrong, the real families are in VISION.md §7, the set points to fix are listed there. Six traps. Nothing in `src/`.
 
 ## NEXT SESSION: **STAGE 2 ON ONE CLIP (WHEN THE 3.13 VENV EXISTS); DANCE ROUND 2; HIS RULINGS** (2026-10-14)
