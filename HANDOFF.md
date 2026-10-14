@@ -224,25 +224,135 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **FINISH THE SOLVER ROUND, FIX THE SET POINTS, THEN BODIES AT 1280, THEN HIS LABELS** (2026-10-14, second session, paused at 11)
+## NEXT SESSION: **RUN STEPS 4–6 OF THE RE-KEY BATCH, COMMIT, THEN HIS LABELS; THE CAMERAS' SECOND ROUND** (2026-10-14, second session, stopped 15:38)
 
-Rulings at **GE** (GF = dance round 2 when it lands). `actors` = PR #234 at **`62f7ddf`** + the record commit. Read STATE.md's
-newest block, then `docs/guide/VISION.md` §7 — it is the ordered list. In short: (1) DONE at `5efc9aa` — the solver's `calib.py`, `resolve all`, the census, `floor` + `ident` over everything; (2) `setpoints.json` from the census; (3) `bodies --imgsz 1280` on all 45 (~80 min, background); (4) the missed-cut
-round; (5) Jack labels a few numbers in Calibrate; (6) `compare.py` (GC), GD. The Calibrate UI needs the same prior as
-`calib.py` once it settles. Brief every agent with `tools/vision/AGENT-COMMON.md` and its own scratch subfolder.
+Rulings at **GE** (GF = dance round 2 when it lands). `actors` = PR #234 at **`0eea859`** + this record; `cue-blackouts` = PR #233,
+both open, both Jack's to merge. Read STATE.md's top block, then this block's "How the system works" if you are new to
+`tools/vision/`, then "What is left". The agents' notes file every agent must read is `tools/vision/AGENT-COMMON.md`;
+the manual is `docs/guide/VISION.md` (§3 commands, §4 every stage, §7 the findings and the list).
 
-## DONE — 2026-10-14 (second session): the agents' round — stages 4–5, the Calibrate UI, the cameras (half), stage 1 fixed (PR #234, `62f7ddf`)
+### What is left, in order
 
-*"finish everything using agents"* → fourteen Opus agents in the worktree: nine calibrating (one per 4–6 clips, the §5
-plan of VISION.md), builders for stage 4 (floor positions: foot pixel → deck / gallery plane / stair tread, a metres-per-
-pixel conditioning figure per shot, `out/<track>.json`), stage 5 (identities by label / continuity / torso-colour /
-the blocking as last resort, the `ens?` pool, per-character tracks), the Calibrate clicking UI in `blocking.html` (RULING
-GA; in-page PnP equal to `calib.py`'s, loupe, wire overlay, body labels, downloads, `window.CALIB`), the stage 1 loose
-ends (aligncheck as a script — the old "≤ 0.1 s" claim did not reproduce, 0.15 s is honest; 1-04 anchored by hand and
-chroma; the missed-cut rate measured at 15–20 %), the stage 1 fixes (wrong-beat drop, refine, tempo prior; all 45 re-
-aligned, 620 → 613 anchors, no shot id changed), and a solver agent (physical prior + body-height depth cue + `resolve`
-+ `census`; landed as `5efc9aa` with floor + ident over all 20 tracks). The cameras: ~55 kept of ~190 wide shots; the brief's reference camera was
-wrong, the real families are in VISION.md §7, the set points to fix are listed there. Six traps. Nothing in `src/`.
+1. **Steps 4–6 of the re-key batch** (STATE.md has the commands verbatim; one agent, ~15 min). Jack stopped the agent
+   mid-step-4 at 15:38; four calib files (1-02, 1-03, 1-05, 1-06) are re-solved and uncommitted, the rest wait.
+   `resolve all` (the body-height cue must read the 1280 bodies) → `floor` every calibrated clip → per track `ident`
+   then `motion` → `compare.py --all` → commit `calib/`, `out/`, `diffs/`. The five `out/*.json` in the tree are STALE
+   (old shot ids, 640 bodies) until this runs. Then write the numbers into §7 of VISION.md.
+2. **Jack labels a few numbers** in `blocking.html` → Advanced → Calibrate → Labels (click a body, pick the cast id;
+   "Download labels JSON" → save as `tools/vision/labels/<clip>.json`; `x` = not a performer, `ens?` = ensemble unknown).
+   Until labels exist, every identity is the blocking's nearest character (`fromBlocking`, conf 0.3) or the `ens?`
+   pool, every diff says "NO EVIDENCE", and the move matcher has nobody known to be dancing. Start with the numbers
+   whose cameras are good and whose principals are few: 1-06 Farmer Refuted (two `good` solves), 1-15 Ten Duel
+   Commandments, 1-16 Meet Me Inside, 2-05 The Room Where It Happens, 1-08 Right Hand Man (one camera, 11 shots).
+   After labels: `ident`, `motion`, `compare` for those tracks; read `diffs/<track>.md`; `compare.py --apply
+   --min-conf 0.7 --dry` to see what it would write into a `# VISION:` generator section.
+3. **The cameras, round two.** 59 of ~190 wide shots are solved (54 after the merges). The agents skipped the rest for
+   dark washes, bodies hiding the back wall, deck-level cameras, and merged shots — the last is fixed (1631 shots now)
+   and the set points are better, so a re-check of the skipped shots by the same method (one careful frame per camera
+   set-up, points carried to its siblings by homography; the rig lanterns as points in the dark wides) should win more.
+   Brief per clip as before (`tools/vision/AGENT-CALIB.md`, now with the pit/centre/high camera families in VISION.md
+   §7 instead of the wrong 45 m reference) and give each agent its own scratch subfolder.
+4. **Jack's rulings and questions:** the five blocking rulings (1-05 sisters' order, 1-07 the two Kings men, 1-09/1-10
+   the side flip, 2-11 the King's stool, 2-22 the duel sides — the shaded rows of the checklist); the Tonys/Ham4Ham
+   clips (a different stage); 5 vs 10 fps for the dance numbers (the matcher cannot tell moves apart at 5); whether he
+   clicks the first few numbers' points himself. Downloads only he does: a larger pose model (the nano misses the
+   galleries even at 1280), the still-wanted clips (1-09, 2-13, 2-02, 2-15, 2-22, 2-23, a full 1-01).
+5. **Dance round 2** (paused since 2026-10-13; `scratchpad/dance/WIP-round2.md` of the 2026-10-12 session): ~40 moves
+   the video reviewers asked for and the beat-grid fixes for My Shot and 1-18; RULING GF.
+6. **Loose:** `setpoints.json`'s open conflicts (`gal-sl-ds`, the SL stair's steepness, the rig height ±0.3 m);
+   `aligncheck.py` is green; the 1-08 handheld dance close-up still over-splits (8 false cuts, harmless); a far-body LOD
+   for the jointed actors; then the older list (rig placements from the cue photos, `edge`/`frost`, the 238 effects,
+   the body, the headset).
+
+### How the system works (`tools/vision/`, RULINGS FX–GE; the manual is VISION.md)
+
+The footage (45 clips of the Disney+ film, one per number, 40 of 46 tracks) lives outside the repo at
+`C:\Users\jackf\Videos\hamilton-clips\`; `video/` in the worktree is a directory junction to it (a fresh clone must
+remake it, TRAPS). `video/INDEX.json` (committed) names each file, its sha256, duration, URL. The venv is
+`tools/vision/.venv` (Python 3.13 — Jack's 3.15 has no torch wheel), `P=tools/vision/.venv/Scripts/python`, every
+script run as `$P -I`. Everything derived is a file; every stage reads the previous stage's file and writes its own,
+so any one can be re-run alone. The cache (`tools/vision/cache/<clip>/`, git-ignored, regenerable) holds the per-frame
+work; `calib/`, `out/`, `diffs/`, `labels/` are committed.
+
+- **Stage 1 `frames`** (`run.py`): ffmpeg decodes 5 fps 720p JPEGs; the clip's audio becomes the page's own 20 ms
+  loudness envelope and is matched piecewise (10 s windows) against the album's envelope for the track(s) the clip
+  covers — a global find needs two agreeing windows, a chain moves ±2 s a step; wrong-beat anchors are dropped against
+  their neighbours, each anchor is refined at the local tempo, and a tempo prior (×0.94–1.06) retries when nothing
+  aligns (1-04 needed ×1.06; its hand anchors in `cache/1-04…/anchors.json` are force-added). Cuts: gray diff + hue
+  histogram, now with a tiled normalised-NCC structure test (`tq` < 0.4 = the picture's structure changed; ≥ 0.5 = a
+  lighting change, not a cut; a flash must persist 2 frames). `recut <clip>` re-detects cuts from the cached frames
+  without decoding or re-aligning and writes `shotmap.json` (old → new shot ids); `recut.py remap all --write` re-keys
+  the calib files by each entry's `frame`. Output `frames.json`: per frame `t`, `track`, `at`, `tconf`, `shot`.
+  `aligncheck.py` is the synthetic check (0.15 s tolerance, exits 0).
+- **Stage 2 `bodies`**: YOLO26n-pose (`yolo26n-pose.pt`, auto-downloaded) + ByteTrack, the tracker reset at every cut,
+  `--imgsz 1280` now (2–3× the bodies in wide shots, ~14 fps on Jack's CPU, ~45 min for the playlist). Output
+  `bodies.json`: per frame boxes + 17 COCO keypoints, tracklets `s<shot>-t<n>`.
+- **Stage 3 `calib`** (`calib.py`, `setpoints.json`): 52 named set points in `assets/hamilton-set.glb`'s frame (metres,
+  deck y 0.045, galleries 2.743, upstage −z, stage left +x = image RIGHT from the house) with `see` hints and a wire
+  for the overlay; `stair-sr-*` flagged `movable` (the unit stands differently by number), the six rig lanterns `approx`.
+  A shot's camera: ≥ 5 named points read off the frame (`grid` → `solve` → `zoom` → re-solve; or clicked in the page),
+  PnP at every lens 12–100° free AND bounded (the camera in the house or at the lip, off the turntables, under 60 m),
+  the winner by the **body-height cue** — the shot's bodies' implied shoulder height through the candidate camera vs
+  1.40 m, because a point set in one plane lets lens and distance trade off freely and a low rms from 5–7 points
+  proves nothing — else the nearest known camera family (`HOUSE_CAMERAS`: centre stalls (0, 2.1, 18) 33°; high close
+  (0, 4.5, 14.5) 52°; pit (0, 0.3, 9) 88°; front row; SR lip), else least rms; `degenerate` when the rms is flat over
+  30° of lens; `mPerPx` and `cond` say how fragile the depth is. `resolve all` re-solves every stored point set;
+  `census --loo` gives per-point signed residuals (how `setpoints.json` was corrected). Output `calib/<clip>.json`:
+  per shot `frame`, `points`, `solve{K,R,t,rvec,camera,look,fovDeg,rms,residuals,frameSize,choice,…}`, `judged`
+  good/fair, `moving`, `skipped: why`, `note`. **The Calibrate mode** in `blocking.html` (Advanced) does the same
+  in the page: the frame with a 4× loupe, the point list, an in-page PnP identical to `calib.py` (all 59 solves
+  reproduced), the wire overlay, body boxes to label, downloads of `calib-<clip>.json` and `labels-<clip>.json`,
+  `window.CALIB` for an agent.
+- **Stage 4 `floor`** (`floor.py`): each body's foot pixel (ankle mean, else hip + 0.85 m of leg scaled by box
+  height) back-projected through the shot's camera onto the deck plane, or the 2.743 plane where the floor map
+  (`tools/hamilton-floor.json`) has gallery floor and the foot is above the gallery's front edge in the image, or a
+  stair tread; `offMap` when it lands off the set. Only `good`/`fair` shots (weights 1 / 0.6, `moving` 0.3). Output
+  `out/<track>.json` `clips.<clip>.positions.<tid> = [[at, x, z, level, conf], …]` with `mPerPx` per shot;
+  `floor-check <clip> <shot>` draws the dots on the plan.
+- **Stage 5 `ident`** (`ident.py`): a tracklet's identity by (1) a human label `labels/<clip>.json`, (2) continuity
+  across a cut (0.5 s, 0.6 m, ×0.8), (3) torso-colour HSV histogram vs the clip's labelled tracklets (≥ 0.80
+  Bhattacharyya, ensemble only among ensemble), (4) the committed blocking's nearest on-stage character within 1.5 m,
+  conf 0.3, `fromBlocking` — never evidence; else the `ens?` pool. Writes `identities` and `characters` (per cast id,
+  samples with clip/shot/tid/rule) into the out file.
+- **GD `motion`** (`motion.py`): per identified tracklet the 2D joint angles → motion energy per bar on the beat grid
+  (`assets/hamilton-beats.json`), arms/legs split, a company total (`motion`); a DTW matcher of the arm/leg angle
+  sequences against the 46 library moves exported from `midtown.html`'s `DANCE` (`motion/moves.json`, re-export with
+  `motion/moves2d.js` if the move code changes) → `proposals` with a score vs standing still (nothing reaches 0.7 at
+  5 fps on 2–4 s shots). Order per track: floor → ident → motion (floor rebuilds the file and drops the later keys).
+- **GC `compare.py`**: `out/<track>.json` vs `assets/hamilton-blocking.json` → `diffs/<track>.md` + `.json`:
+  disagreements > 0.75 m for > 2 s, on/off-stage, level; proposals by Douglas–Peucker (0.3 m, ≤ 1 per 3 s) snapped to
+  the floor map, conf < 0.5 flagged; the RULED items (boundary carry-overs, the Cabinet Battle sides, Burr's balcony,
+  the Non-Stop gallery, the duel sides — cited to where each lives) reported as "footage disagrees with ruling", never
+  proposed; `fromBlocking` samples counted as "seen, placed by blocking", never evidence; the `ens?` pool as
+  formations per 3 s. `--apply --min-conf 0.7 [--dry]` writes qualifying proposals into a new `# VISION:` section of
+  the right generator under `tools/blocking/`, never into an existing waypoint; the merge accepts it (tested).
+
+### Traps of this round (all in TRAPS.md)
+
+A low rms from points in one plane proves nothing; the brief's reference camera was a wrong solve; "a camera on the
+stage means wrong points" is false for a film (pit and SR-lip cameras are real); re-aligning stage 1 stales stages 4–5
+silently; agents sharing one scratchpad overwrote each other's helpers; the stair units move between numbers.
+
+## DONE — 2026-10-14 (second session, 09:00–15:38): the video capture finished end to end by twenty agents; the cameras half won (PR #234, `62f7ddf`…`0eea859`)
+
+*"finish everything using agents"* → nine calibration agents (one per 4–6 clips) read set points off gridded frames
+and solved ~190 wide shots: 59 kept, the rest `skipped` with the reason (dark washes, bodies hiding the back wall,
+deck-level cameras, merged shots); every "known" was overturned — the 45 m / 24° reference was misidentified posts
+(Guns and Ships s16 is a pit camera at deck height, 98°), the real families are a centre-stalls camera (0, 2–2.6,
+14–19) 32–45°, a high close one, a pit one, on-stage ones in We Know. Builders landed stage 4 (`floor.py`), stage 5
+(`ident.py`), the Calibrate clicking mode in `blocking.html` (its JS PnP = `calib.py` to 1e-7), the stage 1 loose
+ends (the "≤ 0.1 s" claim did not reproduce — 0.15 s is honest; 1-04 anchored by hand and chroma, then by the new
+tempo prior on its own; the missed-cut rate measured at 15–20 %), the stage 1 fixes (wrong-beat drop, refine, tempo
+prior; 620 → 613 anchors, no shot id changed). A solver agent rewrote the solve with the physical prior and the
+body-height depth cue, `resolve` and `census`; the census corrected `setpoints.json` (SL stair top 0.2 m toward
+centre, the SR rail ends 0.15 m stage-left, the SR balcony to the GLB's edge, `stair-sr-*` movable, six rig lanterns
+added; median rms 10.6 → 8.2 px). The missed cuts: a tiled structure test found 60 of 62 the agents had noted and
+removed 71 lighting splits (1371 → 1631 shots), `recut`/shotmap/`remap` re-keyed the 43 calib files (66 splits, 7
+merges). GC `compare.py` and GD `motion.py` built (diffs for 20 tracks say NO EVIDENCE — no labels; the placed dance
+bars run 2× the rest in energy; the matcher proposes nothing at 5 fps). The UI solver carries the prior. The pose
+re-run at 1280 over all 45 clips: 120,092 → 137,362 bodies. Jack paused at 11 (record written), unpaused, paused at
+14:55, resumed the batch, stopped it at 15:38 mid-step-4 — steps 4–6 are item 1 above. The blocking checklist
+artifact got a "What is left" board. Twelve commits; nothing in `src/`; suites unaffected (not run).
 
 ## NEXT SESSION: **STAGE 2 ON ONE CLIP (WHEN THE 3.13 VENV EXISTS); DANCE ROUND 2; HIS RULINGS** (2026-10-14)
 

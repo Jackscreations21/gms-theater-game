@@ -5,8 +5,8 @@ fetch`, compare `origin/main`, then read this.
 
 ## NEWEST — 2026-10-14, 14:55: PAUSED MID-BATCH — STEPS 4–6 OF THE RE-KEY BATCH ARE NEXT (actors, PR #234)
 
-**Read this first.** Jack paused at 14:55. Everything is committed on `actors` through **`28cb486`** (plus this note);
-the full HANDOFF write-up is owed after the batch finishes (Jack's instruction). Since the block below: the UI solver
+**Read this first.** Jack paused at 14:55, resumed the batch at 15:36 and stopped its agent at 15:38 mid-step-4 (four calib files — 1-02, 1-03, 1-05, 1-06 — re-solved with the 1280 bodies, uncommitted; `resolve all` redoes them). HANDOFF.md's top block has the full account: how the system works, what was done, what is left. Everything is committed on `actors` through **`28cb486`** (plus this note);
+HANDOFF.md is written in full. Since the block below: the UI solver
 carries the prior (`536d614`), `compare.py` (`b2b956c`), the missed cuts fixed + `recut`/shotmap/remap (`1464b3b`),
 GD `motion.py` (`d44526e`), the set points from the census + the 45 m camera gone (`b7ca344`), the calib files
 re-keyed to the new cuts and re-solved (`28cb486`). The pose re-run at `--imgsz 1280` finished on all 45 clips
