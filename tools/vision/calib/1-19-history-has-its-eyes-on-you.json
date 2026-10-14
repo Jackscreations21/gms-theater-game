@@ -1,0 +1,14 @@
+{
+ "clip": "1-19-history-has-its-eyes-on-you",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "0": {
+   "frame": 3,
+   "skipped": "too dark and no depth cue: only the upstage gallery rail/floor line is readable (lip under the frame edge, ring not visible, light pool is not the ring); a 7-frame tail of 1-18"
+  },
+  "11": {
+   "frame": 451,
+   "skipped": "too tight: a medium shot of the deck crowd, no lip, ring or gallery corners/posts readable (fewer than five set points); dark blue wash"
+  }
+ }
+}

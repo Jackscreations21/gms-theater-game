@@ -1,0 +1,24 @@
+{
+ "clip": "2-20-your-obedient-servant",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "1": {
+   "skipped": "too dark: posts and gallery edge unreadable; not the same framing as 2-19 shot 29 (lip 30 px lower)"
+  },
+  "2": {
+   "skipped": "merged shots: three framings inside (missed cuts at ~174, ~186, ~194; first/last frames are tight close-ups); the wide middle looks like 2-19 shot 39 locked centre camera but was not fitted on its own points"
+  },
+  "3": {
+   "skipped": "too tight: close on Burr at the desk"
+  },
+  "9": {
+   "skipped": "too dark (blue wash): gallery floor/rail and back-wall posts not identifiable with certainty"
+  },
+  "11": {
+   "skipped": "too dark (blue wash): rail/floor reading inconsistent, posts unreadable"
+  },
+  "13": {
+   "skipped": "too dark (blue wash), same framing family as shot 11; posts unreadable"
+  }
+ }
+}

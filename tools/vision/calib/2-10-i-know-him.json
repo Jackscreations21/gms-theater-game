@@ -1,0 +1,148 @@
+{
+ "clip": "2-10-i-know-him",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "0": {
+   "frame": 10,
+   "points": {
+    "rail-us-c": [
+     640.0,
+     412.0
+    ],
+    "lip-c": [
+     640.0,
+     635.0
+    ],
+    "stair-sr-top": [
+     365.0,
+     425.0
+    ],
+    "rail-srstrip-ds": [
+     395.0,
+     365.0
+    ],
+    "bal-sr-ds": [
+     123.0,
+     353.0
+    ],
+    "stair-sr-foot": [
+     235.0,
+     612.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      559.291864374475,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      559.291864374475,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9999469417975543,
+      -0.010231825521437839,
+      0.0011930365532338907
+     ],
+     [
+      -0.009135076692277337,
+      -0.9343120258434661,
+      -0.35633914847810993
+     ],
+     [
+      0.004760668392643017,
+      0.35630934328302016,
+      -0.9343559214376917
+     ]
+    ],
+    "t": [
+     -0.01150392993938437,
+     3.5057869266132666,
+     8.144223369760798
+    ],
+    "rvec": [
+     2.7772183766949827,
+     -0.013903197467244771,
+     0.004274072054002465
+    ],
+    "camera": [
+     0.005,
+     0.374,
+     8.859
+    ],
+    "look": [
+     0.005,
+     0.356,
+     -0.934
+    ],
+    "fovDeg": 97.7,
+    "rms": 8.81,
+    "residuals": [
+     3.9,
+     1.7,
+     4.3,
+     12.4,
+     11.3,
+     12.1
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      87.0,
+      100.0
+     ],
+     "dist": [
+      7.7,
+      9.1
+     ],
+     "poor": false
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 35,
+    "free": {
+     "camera": [
+      0.02,
+      0.36,
+      9.22
+     ],
+     "fovDeg": 94.0,
+     "rms": 8.51,
+     "breaks": []
+    },
+    "mPerPx": 0.2776,
+    "cond": {
+     "sv": [
+      2.96,
+      2.29,
+      0.89
+     ],
+     "heightSd": 1.51,
+     "depthSd": 2.95,
+     "sdDistPerPx": 0.06,
+     "sdFovPerPx": 0.59
+    }
+   },
+   "moving": false,
+   "judged": "fair",
+   "note": "MISSED CUT: frames 0-18 are the 2-09 shot 43/46 front camera (identical, similarity scale 1.000) and this solve (frame 10) applies only to them; frames 19-91 are other set-ups (not matched). same camera as shot 43 (ORB similarity to its frame: scale 1.000, shift < 2 px); points are shot 43's reads"
+  }
+ }
+}

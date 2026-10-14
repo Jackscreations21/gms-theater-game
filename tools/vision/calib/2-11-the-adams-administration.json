@@ -1,0 +1,12 @@
+{
+ "clip": "2-11-the-adams-administration",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "3": {
+   "skipped": "low front-row camera looking up into a dark set; deck, lip and ring not readable, gallery rail behind heads; a stairs-only solve gave rms 12.5 with uncertain identifications"
+  },
+  "4": {
+   "skipped": "dark side view of the SL gallery (one lit figure on it); camera zooms (scale 0.76-1.0); fewer than five sure set points"
+  }
+ }
+}

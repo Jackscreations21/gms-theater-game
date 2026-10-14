@@ -1,0 +1,34 @@
+{
+ "clip": "2-03-take-a-break",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "0": {
+   "frame": 161,
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f39, f114, f173, f294; also starts in the 2-02 track); re-split before calibrating"
+  },
+  "17": {
+   "frame": 660,
+   "skipped": "medium shot on the upstage gallery and the SR stair; lip, piers and rings out of frame (depth free); the camera also creeps (about 150 px from first to middle frame)"
+  },
+  "21": {
+   "frame": 773,
+   "skipped": "too tight: a close/medium shot with fewer than five set points readable (the stair and two actors close up)"
+  },
+  "23": {
+   "frame": 834,
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f831); re-split before calibrating"
+  },
+  "25": {
+   "frame": 902,
+   "skipped": "long-lens medium shot on the upstage gallery: lip, piers and rings below or out of frame, the gallery's SR end hidden by the stair and the SL end in darkness - the depth is free"
+  },
+  "28": {
+   "frame": 951,
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f946, f959); re-split before calibrating"
+  },
+  "31": {
+   "frame": 998,
+   "skipped": "too tight: a close/medium shot with fewer than five set points readable"
+  }
+ }
+}

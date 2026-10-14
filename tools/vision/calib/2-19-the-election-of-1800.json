@@ -1,0 +1,629 @@
+{
+ "clip": "2-19-the-election-of-1800",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "9": {
+   "skipped": "too tight: low close shot under the gallery, fewer than five set points identifiable"
+  },
+  "15": {
+   "skipped": "camera at deck height, very dark: deck edge-on and back wall unreadable, fewer than five certain points"
+  },
+  "16": {
+   "skipped": "back-wall posts not identifiable (no clear window pair), gallery ends unclear; solves degenerate"
+  },
+  "28": {
+   "skipped": "too tight and angled (close on the SL stair), fewer than five certain points"
+  },
+  "29": {
+   "frame": 790,
+   "points": {
+    "post-bw-sr2-base": [
+     373.0,
+     633.0
+    ],
+    "post-bw-sr1-base": [
+     418.0,
+     633.0
+    ],
+    "post-bw-sl1-base": [
+     800.0,
+     633.0
+    ],
+    "post-bw-sl2-base": [
+     830.0,
+     633.0
+    ],
+    "lip-c": [
+     607.0,
+     650.0
+    ],
+    "rail-us-c": [
+     607.0,
+     410.0
+    ],
+    "post-bw-sr1-gal": [
+     418.0,
+     480.0
+    ],
+    "post-bw-sl1-gal": [
+     800.0,
+     480.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1065.1388687043316,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1065.1388687043316,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.999547199843731,
+      -0.00019970373990251325,
+      0.030089124330441183
+     ],
+     [
+      0.007127590574186258,
+      -0.9699467255292731,
+      -0.24321296652861177
+     ],
+     [
+      0.029233418157363154,
+      0.24331730261832415,
+      -0.9695061100938867
+     ]
+    ],
+    "t": [
+     -0.4094972170288456,
+     3.523763132715418,
+     13.180981118233046
+    ],
+    "rvec": [
+     2.8955003023675263,
+     0.005092586504904398,
+     0.043607118091911444
+    ],
+    "camera": [
+     -0.001,
+     0.211,
+     13.648
+    ],
+    "look": [
+     0.029,
+     0.243,
+     -0.97
+    ],
+    "fovDeg": 62.0,
+    "rms": 7.32,
+    "residuals": [
+     7.0,
+     5.4,
+     6.0,
+     5.6,
+     0.1,
+     3.0,
+     11.1,
+     12.3
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "nearest house camera within 1.5 px of the best",
+    "depthCue": "none",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      19.0,
+      71.0
+     ],
+     "dist": [
+      10.1,
+      57.1
+     ],
+     "poor": true
+    },
+    "bodyHeightM": null,
+    "bodies": 0,
+    "free": {
+     "camera": [
+      -0.02,
+      0.57,
+      30.08
+     ],
+     "fovDeg": 34.0,
+     "rms": 6.58,
+     "breaks": []
+    },
+    "degenerate": "rms within 1.5 px over fov 19-71",
+    "mPerPx": 0.8,
+    "cond": {
+     "sv": [
+      3.14,
+      2.84,
+      1.42
+     ],
+     "heightSd": 1.47,
+     "depthSd": 3.12,
+     "sdDistPerPx": 0.87,
+     "sdFovPerPx": 2.6
+    }
+   },
+   "moving": true,
+   "judged": "good",
+   "note": "slow pan (~3 px per cache frame, reversing); solved at the middle frame 790"
+  },
+  "30": {
+   "frame": 807,
+   "points": {
+    "post-bw-sr2-base": [
+     306.0,
+     457.0
+    ],
+    "post-bw-sr1-base": [
+     353.0,
+     457.0
+    ],
+    "rail-us-c": [
+     600.0,
+     193.0
+    ],
+    "lip-c": [
+     600.0,
+     703.0
+    ],
+    "gal-us-sr": [
+     200.0,
+     267.0
+    ],
+    "gal-us-sl": [
+     1020.0,
+     267.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      2307.7654456069586,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      2307.7654456069586,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9997481540271601,
+      0.010754677616888867,
+      0.019696838036664284
+     ],
+     [
+      0.007172832389671359,
+      -0.9847843829577696,
+      0.17363257055631764
+     ],
+     [
+      0.02126450081228047,
+      -0.17344755977482568,
+      -0.9846135104767569
+     ]
+    ],
+    "t": [
+     -0.45058519247322126,
+     2.0596849850318963,
+     25.118548240690462
+    ],
+    "rvec": [
+     -2.9669700760432467,
+     -0.013400964613394819,
+     -0.0306189455329333
+    ],
+    "camera": [
+     -0.098,
+     6.39,
+     24.383
+    ],
+    "look": [
+     0.021,
+     -0.173,
+     -0.985
+    ],
+    "fovDeg": 31.0,
+    "rms": 4.32,
+    "residuals": [
+     4.1,
+     4.6,
+     1.5,
+     1.3,
+     7.5,
+     3.7
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      17.0,
+      28.0
+     ],
+     "dist": [
+      27.4,
+      48.0
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 35,
+    "free": {
+     "camera": [
+      0.08,
+      13.01,
+      44.16
+     ],
+     "fovDeg": 18.0,
+     "rms": 2.31,
+     "breaks": []
+    },
+    "mPerPx": 0.0399,
+    "cond": {
+     "sv": [
+      3.64,
+      3.04,
+      1.24
+     ],
+     "heightSd": 1.52,
+     "depthSd": 3.2,
+     "sdDistPerPx": 1.47,
+     "sdFovPerPx": 1.55
+    }
+   },
+   "moving": true,
+   "judged": "good",
+   "note": "crane/tilt move ~7-12 px per cache frame (frame 804 is much wider and panned SR); solved at frame 807. SL stair points left out: the stair handrail, not its stringer, is what reads; turntable rings sit on the lit circles"
+  },
+  "31": {
+   "skipped": "low camera, deck edge-on, the back wall occluded by the dancers; posts unreadable"
+  },
+  "32": {
+   "skipped": "low angled camera from the SR side of the house, back wall occluded by bodies; points not certain"
+  },
+  "39": {
+   "frame": 875,
+   "points": {
+    "rail-us-c": [
+     635.0,
+     210.0
+    ],
+    "lip-c": [
+     635.0,
+     682.0
+    ],
+    "post-bw-sr2-base": [
+     290.0,
+     547.0
+    ],
+    "post-bw-sr1-base": [
+     343.0,
+     547.0
+    ],
+    "post-bw-sl1-base": [
+     912.0,
+     545.0
+    ],
+    "post-bw-sl2-base": [
+     968.0,
+     545.0
+    ],
+    "stair-sl-foot": [
+     870.0,
+     545.0
+    ],
+    "post-sl-b-base": [
+     1167.0,
+     575.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1832.6785480060464,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1832.6785480060464,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9999512423530723,
+      0.0032268283814156614,
+      0.009332764603482655
+     ],
+     [
+      0.0033857609238486285,
+      -0.999848664068528,
+      -0.017064160786463223
+     ],
+     [
+      0.00927628910252737,
+      0.017094927287842433,
+      -0.999810839069826
+     ]
+    ],
+    "t": [
+     -0.07268682304784656,
+     1.9974605974171884,
+     15.994369570787354
+    ],
+    "rvec": [
+     3.124473981849098,
+     0.005165718504043143,
+     0.014537290709304956
+    ],
+    "camera": [
+     -0.082,
+     1.724,
+     16.026
+    ],
+    "look": [
+     0.009,
+     0.017,
+     -1.0
+    ],
+    "fovDeg": 38.5,
+    "rms": 11.85,
+    "residuals": [
+     3.6,
+     1.2,
+     6.1,
+     7.6,
+     2.8,
+     4.3,
+     25.2,
+     18.8
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.54,
+     "fov": [
+      16.0,
+      38.0
+     ],
+     "dist": [
+      15.4,
+      43.3
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.44,
+    "bodies": 33,
+    "free": {
+     "camera": [
+      -0.11,
+      3.04,
+      24.53
+     ],
+     "fovDeg": 27.0,
+     "rms": 10.24,
+     "breaks": []
+    },
+    "mPerPx": 0.0732,
+    "cond": {
+     "sv": [
+      3.09,
+      2.94,
+      1.16
+     ],
+     "heightSd": 1.18,
+     "depthSd": 3.03,
+     "sdDistPerPx": 0.36,
+     "sdFovPerPx": 0.67
+    }
+   },
+   "moving": false,
+   "judged": "fair",
+   "note": "stair-sl-foot 26 px off; rings sit on the lit pool; same locked camera as shot 40"
+  },
+  "40": {
+   "frame": 884,
+   "points": {
+    "rail-us-c": [
+     635.0,
+     210.0
+    ],
+    "lip-c": [
+     635.0,
+     682.0
+    ],
+    "post-bw-sr2-base": [
+     290.0,
+     547.0
+    ],
+    "post-bw-sr1-base": [
+     343.0,
+     547.0
+    ],
+    "post-bw-sl1-base": [
+     912.0,
+     545.0
+    ],
+    "post-bw-sl2-base": [
+     968.0,
+     545.0
+    ],
+    "stair-sl-foot": [
+     870.0,
+     545.0
+    ],
+    "post-sl-b-base": [
+     1167.0,
+     575.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      2029.820673512456,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      2029.820673512456,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.999962443093674,
+      0.0019166729502661177,
+      0.00845214569990939
+     ],
+     [
+      0.001923418235832926,
+      -0.9999978381791514,
+      -0.0007899995656630962
+     ],
+     [
+      0.008450613257086374,
+      0.0008062269068945188,
+      -0.9999639679177215
+     ]
+    ],
+    "t": [
+     -0.06810289195702664,
+     2.050712153615597,
+     18.032949093139536
+    ],
+    "rvec": [
+     3.1407650430004135,
+     0.00301526314196181,
+     0.013272149959611785
+    ],
+    "camera": [
+     -0.088,
+     2.036,
+     18.034
+    ],
+    "look": [
+     0.008,
+     0.001,
+     -1.0
+    ],
+    "fovDeg": 35.0,
+    "rms": 11.04,
+    "residuals": [
+     3.4,
+     1.5,
+     5.1,
+     6.8,
+     0.7,
+     1.7,
+     25.3,
+     15.7
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "nearest house camera within 1.5 px of the best",
+    "depthCue": "none",
+    "depthCueNote": "uninformative: shoulders 1.41-1.50 m over every lens",
+    "window": {
+     "tolPx": 1.54,
+     "fov": [
+      16.0,
+      38.0
+     ],
+     "dist": [
+      15.4,
+      43.3
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.5,
+    "bodies": 30,
+    "free": {
+     "camera": [
+      -0.11,
+      3.04,
+      24.53
+     ],
+     "fovDeg": 27.0,
+     "rms": 10.24,
+     "breaks": []
+    },
+    "mPerPx": 0.0719,
+    "cond": {
+     "sv": [
+      3.09,
+      2.94,
+      1.16
+     ],
+     "heightSd": 1.18,
+     "depthSd": 3.03,
+     "sdDistPerPx": 0.44,
+     "sdFovPerPx": 0.68
+    }
+   },
+   "moving": false,
+   "judged": "fair",
+   "note": "same camera and framing as shot 39 (a lighting change cut, not a camera cut): shot 39's points reused, wire checked on this frame (inner ring visible and on the wire)"
+  },
+  "54": {
+   "skipped": "low camera, line of bodies occludes the back wall; post identifications inconsistent (rms 25, camera on stage)"
+  },
+  "56": {
+   "skipped": "back-wall posts not identifiable; every 5-6 point solve degenerate (camera on the stage)"
+  }
+ }
+}

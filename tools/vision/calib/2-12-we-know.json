@@ -1,0 +1,290 @@
+{
+ "clip": "2-12-we-know",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "1": {
+   "frame": 42,
+   "points": {
+    "rail-us-c": [
+     537.0,
+     154.0
+    ],
+    "post-bw-c-base": [
+     512.0,
+     547.0
+    ],
+    "post-bw-sr1-base": [
+     160.0,
+     558.0
+    ],
+    "stair-sl-top": [
+     980.0,
+     276.0
+    ],
+    "stair-sl-foot": [
+     795.0,
+     555.0
+    ],
+    "rail-us-sl": [
+     965.0,
+     195.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1637.2919096058615,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1637.2919096058615,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9058375350175876,
+      -0.013325276365598313,
+      0.4234156316942505
+     ],
+     [
+      0.036458841486441865,
+      -0.9933443581687359,
+      -0.10925996051531683
+     ],
+     [
+      0.42205344807349615,
+      0.11440901670813589,
+      -0.899322780688419
+     ]
+    ],
+    "t": [
+     0.4247980172800799,
+     1.4146695950453534,
+     11.702639143367874
+    ],
+    "rvec": [
+     2.9544151354219226,
+     0.017992910578565665,
+     0.6575920948516497
+    ],
+    "camera": [
+     -5.376,
+     0.072,
+     10.499
+    ],
+    "look": [
+     0.422,
+     0.114,
+     -0.899
+    ],
+    "fovDeg": 42.7,
+    "rms": 8.07,
+    "residuals": [
+     6.1,
+     13.8,
+     4.4,
+     9.6,
+     6.1,
+     3.7
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      48.0,
+      73.0
+     ],
+     "dist": [
+      4.1,
+      9.2
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.37,
+    "bodies": 4,
+    "free": {
+     "camera": [
+      -2.28,
+      1.09,
+      5.44
+     ],
+     "fovDeg": 66.0,
+     "rms": 5.84,
+     "breaks": []
+    },
+    "mPerPx": 2.1462,
+    "cond": {
+     "sv": [
+      2.96,
+      1.29,
+      0.44
+     ],
+     "heightSd": 1.66,
+     "depthSd": 0.87,
+     "sdDistPerPx": 0.57,
+     "sdFovPerPx": 1.51
+    }
+   },
+   "moving": true,
+   "judged": "good",
+   "note": "ON-STAGE camera near the SR lip (~1.1 m up) - a film-shoot set-up, not the house; camera drifts ~50-120 px and zooms 8% across the shot, solved at its middle frame"
+  },
+  "24": {
+   "frame": 661,
+   "points": {
+    "stair-sl-top": [
+     915.0,
+     302.0
+    ],
+    "stair-sl-foot": [
+     772.0,
+     540.0
+    ],
+    "post-bw-c-base": [
+     500.0,
+     545.0
+    ],
+    "rail-us-c": [
+     525.0,
+     203.0
+    ],
+    "rail-us-sl": [
+     876.0,
+     208.0
+    ],
+    "post-bw-c-gal": [
+     492.0,
+     297.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      947.0552343218172,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      947.0552343218172,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.8656615356071063,
+      -0.046080082774341266,
+      0.4985044952072714
+     ],
+     [
+      -0.038425655307808976,
+      -0.998933197954345,
+      -0.025611228765345224
+     ],
+     [
+      0.49915285713347574,
+      0.00301529371956572,
+      -0.8665087034873179
+     ]
+    ],
+    "t": [
+     0.5874234836523571,
+     1.9744648171838262,
+     6.5845673506916365
+    ],
+    "rvec": [
+     3.019929818828292,
+     -0.06839837131350643,
+     0.8074970951998633
+    ],
+    "camera": [
+     -3.719,
+     1.98,
+     5.463
+    ],
+    "look": [
+     0.499,
+     0.003,
+     -0.867
+    ],
+    "fovDeg": 68.1,
+    "rms": 10.28,
+    "residuals": [
+     18.1,
+     10.4,
+     5.7,
+     6.2,
+     11.1,
+     1.5
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.54,
+     "fov": [
+      28.0,
+      80.0
+     ],
+     "dist": [
+      4.6,
+      23.1
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 21,
+    "free": {
+     "camera": [
+      -3.09,
+      2.25,
+      4.41
+     ],
+     "fovDeg": 75.0,
+     "rms": 10.24,
+     "breaks": []
+    },
+    "mPerPx": 0.0183,
+    "cond": {
+     "sv": [
+      2.17,
+      1.42,
+      0.49
+     ],
+     "heightSd": 1.51,
+     "depthSd": 0.75,
+     "sdDistPerPx": 0.43,
+     "sdFovPerPx": 2.54
+    }
+   },
+   "moving": true,
+   "judged": "fair",
+   "note": "ON-STAGE camera at SR, ~2.3 m up near the lip (crane/ladder); camera drifts 50-135 px across the shot; SL stair top residual 18"
+  }
+ }
+}

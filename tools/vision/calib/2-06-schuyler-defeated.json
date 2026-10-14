@@ -1,0 +1,14 @@
+{
+ "clip": "2-06-schuyler-defeated",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "0": {
+   "frame": 46,
+   "skipped": "too tight: a close/medium shot with fewer than five set points readable (close on two actors on the balcony rail; also a jump at f16)"
+  },
+  "2": {
+   "frame": 140,
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at a dissolve about f145-151 - f120-144 a dark balcony shot, then a deck shot); re-split before calibrating; also too dark to read"
+  }
+ }
+}

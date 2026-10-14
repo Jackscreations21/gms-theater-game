@@ -1,0 +1,42 @@
+{
+ "clip": "2-14-the-reynolds-pamphlet",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "2": {
+   "skipped": "far low house camera (deck <20 px deep), set unlit behind the trio: fewer than five set points nameable; camera zooms out ~8% across the shot"
+  },
+  "3": {
+   "skipped": "medium shot, upstage set too dark to name five points with certainty"
+  },
+  "5": {
+   "skipped": "medium shot: upstage rail and gallery floor lines readable but no certain x anchors (posts, stair ends) in the dark"
+  },
+  "8": {
+   "skipped": "4-frame wide from a low camera; centre is a rolling staircase (not in setpoints), fixed set too dark to name five points"
+  },
+  "9": {
+   "skipped": "same set-up as shot 8 (rolling staircase at centre), dark; camera pans ~50 px"
+  },
+  "12": {
+   "skipped": "far low house camera (deck <20 px deep), set dark; camera pans ~220 px across the shot"
+  },
+  "15": {
+   "skipped": "2 frames, low camera, set dark: fewer than five nameable points"
+  },
+  "23": {
+   "skipped": "medium shot, dark; camera pans ~220 px"
+  },
+  "25": {
+   "skipped": "low angle looking up, dark; first and middle frames do not match (likely a missed cut)"
+  },
+  "27": {
+   "skipped": "far low house camera (deck ~20 px deep: upstage feet y 655, lip y 675); lit light rig is not in setpoints, gallery and posts unreadable in the dark; zooms in ~8% across the shot"
+  },
+  "29": {
+   "skipped": "too tight (1 frame, close on Jefferson)"
+  },
+  "30": {
+   "skipped": "medium shot of downstage centre; upstage set dark, fewer than five certain points"
+  }
+ }
+}

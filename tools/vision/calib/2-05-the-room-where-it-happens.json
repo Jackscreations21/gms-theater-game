@@ -1,0 +1,346 @@
+{
+ "clip": "2-05-the-room-where-it-happens",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "9": {
+   "frame": 204,
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (a medium shot of the SL half, the SR half in darkness)"
+  },
+  "14": {
+   "frame": 299,
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (a medium shot, framed off-centre)"
+  },
+  "17": {
+   "frame": 409,
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f389 - f362-388 is a low wide, f389-455 a high crane wide); re-split before calibrating"
+  },
+  "20": {
+   "frame": 519,
+   "skipped": "too dark: only the upstage gallery is faintly readable; no lip corner, pier, ring or side gallery to fix the camera"
+  },
+  "32": {
+   "frame": 758,
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (the light change at about f755-761 is a lighting cue, not a cut)"
+  },
+  "37": {
+   "frame": 934,
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at about f909, f945, f960 - a low wide, a low medium, a high wide; the last part also zooms); re-split before calibrating"
+  },
+  "39": {
+   "frame": 985,
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free"
+  },
+  "41": {
+   "frame": 1004,
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free"
+  },
+  "49": {
+   "frame": 1195,
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f1172, f1202, f1225); re-split before calibrating"
+  },
+  "52": {
+   "frame": 1292,
+   "points": {
+    "rail-us-sr": [
+     345.0,
+     186.0
+    ],
+    "rail-us-sl": [
+     1007.0,
+     187.0
+    ],
+    "gal-us-sr": [
+     333.0,
+     263.0
+    ],
+    "gal-us-sl": [
+     1013.0,
+     263.0
+    ],
+    "lip-c": [
+     660.0,
+     690.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1564.3683759180544,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1564.3683759180544,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9998588239227317,
+      -0.0015878817423856844,
+      -0.016727547800680524
+     ],
+     [
+      0.002071137588758599,
+      -0.9762862769714,
+      0.216473591429558
+     ],
+     [
+      -0.01667460982872717,
+      -0.21647767559010553,
+      -0.9761451599829631
+     ]
+    ],
+    "t": [
+     0.2716538496060289,
+     1.8679476265595187,
+     19.463618329908535
+    ],
+    "rvec": [
+     -2.9232772648354746,
+     -0.0003574360017999656,
+     0.024705616629692846
+    ],
+    "camera": [
+     0.049,
+     6.038,
+     18.599
+    ],
+    "look": [
+     -0.017,
+     -0.216,
+     -0.976
+    ],
+    "fovDeg": 44.5,
+    "rms": 11.05,
+    "residuals": [
+     12.3,
+     11.9,
+     12.8,
+     12.5,
+     0.1
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.63,
+     "fov": [
+      25.0,
+      82.0
+     ],
+     "dist": [
+      6.2,
+      37.2
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 19,
+    "free": {
+     "camera": [
+      0.02,
+      3.9,
+      14.16
+     ],
+     "fovDeg": 55.0,
+     "rms": 10.9,
+     "breaks": []
+    },
+    "mPerPx": 0.0365,
+    "cond": {
+     "sv": [
+      4.17,
+      3.58,
+      0.36
+     ],
+     "heightSd": 1.31,
+     "depthSd": 3.0,
+     "sdDistPerPx": 5.88,
+     "sdFovPerPx": 10.47
+    }
+   },
+   "moving": false,
+   "judged": "fair",
+   "depthCheck": "shoulder height of the shot's dancers through this camera: median 1.30 m (26 bodies); the set points alone leave depth loose (rms flat 11-12 px over fov 28-76)"
+  },
+  "55": {
+   "frame": 1381,
+   "skipped": "missed cut(s) - two or more different camera set-ups merged in this shot (jumps at f1351, f1403); re-split before calibrating"
+  },
+  "58": {
+   "frame": 1443,
+   "skipped": "low wide-angle camera near the deck; the galleries' ends are hidden behind both stairs and no lip corner is in frame - best solve put the camera 0.3 m up at the lip (rms 14.6), not credible"
+  },
+  "65": {
+   "frame": 1523,
+   "points": {
+    "rail-us-sr": [
+     355.0,
+     155.0
+    ],
+    "rail-us-sl": [
+     1025.0,
+     152.0
+    ],
+    "gal-us-sr": [
+     330.0,
+     230.0
+    ],
+    "gal-us-sl": [
+     1030.0,
+     242.0
+    ],
+    "lip-c": [
+     662.0,
+     667.0
+    ],
+    "stair-sl-foot": [
+     833.0,
+     400.0
+    ],
+    "stair-sl-top": [
+     1000.0,
+     215.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1596.073305243621,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1596.073305243621,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9995121423754645,
+      -0.00916479786456452,
+      -0.029857724697485728
+     ],
+     [
+      -0.0011686263803668247,
+      -0.9662832146068905,
+      0.2574788990992408
+     ],
+     [
+      -0.031210760266169205,
+      -0.2573183935304191,
+      -0.9658225161977392
+     ]
+    ],
+    "t": [
+     0.3676330451680623,
+     1.4713624223251562,
+     19.87436635616973
+    ],
+    "rvec": [
+     -2.8808729774381043,
+     0.0075717639994213725,
+     0.0447476214067002
+    ],
+    "camera": [
+     0.255,
+     6.539,
+     18.827
+    ],
+    "look": [
+     -0.031,
+     -0.257,
+     -0.966
+    ],
+    "fovDeg": 43.7,
+    "rms": 14.44,
+    "residuals": [
+     6.6,
+     15.6,
+     9.8,
+     25.2,
+     0.5,
+     17.5,
+     11.6
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 2.16,
+     "fov": [
+      24.0,
+      89.0
+     ],
+     "dist": [
+      5.0,
+      38.1
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 32,
+    "free": {
+     "camera": [
+      0.15,
+      4.69,
+      15.18
+     ],
+     "fovDeg": 52.0,
+     "rms": 14.4,
+     "breaks": []
+    },
+    "mPerPx": 0.0346,
+    "cond": {
+     "sv": [
+      3.88,
+      3.04,
+      0.99
+     ],
+     "heightSd": 1.42,
+     "depthSd": 2.55,
+     "sdDistPerPx": 1.67,
+     "sdFovPerPx": 2.93
+    }
+   },
+   "moving": false,
+   "judged": "fair",
+   "depthCheck": "shoulder height of the shot's dancers through this camera: median 1.30 m (31 bodies); the set points alone leave depth loose (rms flat 14-15 px over fov 24-81)"
+  },
+  "68": {
+   "frame": 1543,
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (the lip corners are readable but nothing else named is: the posts are in darkness)"
+  },
+  "77": {
+   "frame": 1586,
+   "skipped": "camera at about deck height: the deck is seen edge-on (no rings, feet nearly on one line), no lip corner or pier readable, the upstage gallery's ends hidden behind the stairs; the gallery alone leaves the depth free (a dancer close in front)"
+  },
+  "78": {
+   "frame": 1595,
+   "skipped": "too tight: a close/medium shot with fewer than five set points readable (from the side, close on one dancer)"
+  }
+ }
+}

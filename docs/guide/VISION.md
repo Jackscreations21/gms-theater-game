@@ -167,11 +167,49 @@ re-run over any clip: a re-run changes every tracklet id, so it waits for the de
   (back-wall posts at x −3.67, −3.07, 0, 3.07, 3.67, z −4.12; tall side posts at (−5.62, 0.52), (−5.17, −1.57),
   (5.32, −1.57)). Each has a `see` line. Also a `wire`: polylines + the two rings, for the overlay. **The rail height
   (y 3.6) and the post x's came from vertex clustering, not from a measurement — verify them against a good solve.**
-- **`solve`**: the lens is unknown, so the horizontal field of view is grid-searched 12°–100° in 1° steps, PnP
-  (`cv2.solvePnP`, SQPNP) at each with the principal point at the frame centre, the least reprojection RMS wins, then
-  a 0.1° search around it with iterative refinement. Output per shot in `calib/<clip>.json`: `frame, points{name:
-  [u, v]}, solve{K, R, t, rvec, camera [x, y, z] in set metres, look (unit), fovDeg, rms, residuals[], frameSize},
-  moving`. Pixels are in the 1280×720 cache frame.
+- **`solve`**: the lens is unknown, so the horizontal field of view is grid-searched 12°–100° in 1° steps with the
+  principal point at the frame centre. **The first version took the least RMS, and it went wrong**: the agents' point
+  sets are near-planar or near-collinear (the back wall and the upstage rail, the centre line at one u), so the
+  lens/distance trade-off is flat and the minimum fell on a deck-height 75–90° camera 9 m out where the frame is plainly
+  a long lens — and 5 low-RMS points mean nothing there. Now, at every lens the camera is solved twice: **free** (SQPNP
+  then iterative; kept as `solve.free` for comparison) and **bounded** — least squares in (rotation, camera centre)
+  with the centre held inside a physical `PRIOR`: not under the deck (y 0–14), not inside the set (z ≥ 3.5, |x| ≤ 14,
+  off the turntables r 3.82), at most 60 m from the set centre (0, 0.045, 0.95). (A tighter first prior — z ≥ 6, y ≥
+  0.8, fov ≤ 70 — was wrong: the film had a pit camera at deck height with an 80–94° lens, One Last Time s37/43/46,
+  1-03 s42, Washington s46, and on-stage cameras near the SR lip, We Know s1/s24.) Which bounded candidate wins:
+  1. **the body cue** (`depthCue: "bodies"`): the shot's bodies (`bodies.json`, the solve's frame ± 3, inside the shot)
+     with both ankles and both shoulders (or the nose, less 0.22 m) over 0.3; each foot pixel's ray meets the deck, the
+     shoulder ray is brought to the vertical through that point, and the median implied shoulder height should be
+     ~1.40 m. Score = RMS + 16.7 px/m × |h − 1.40| (0.3 m costs 5 px), over the candidates within **5 px** of the
+     best RMS only — the cue decides what the points leave open, it does not overrule them (uncapped, it pushed a
+     judged-good 4 px fit to 20 px). It is dropped (`depthCueNote` says why) with fewer than 3 bodies on the deck, when
+     h moves less than 0.15 m over every lens (no information — it would only pull to a bound), or when h never comes
+     within 1.25–1.55 (the bodies are not standing on the deck: a riser, a stair, a lift).
+  2. else, when the candidates within 1.5 px (or 15 %) of the best span more than 25 % of its camera distance
+     (`window.poor`), the one **nearest a known camera** (`HOUSE_CAMERAS`: the centre-stalls camera (0, 2.1, 18) 31–36°
+     that four shots found independently, the high close one (0, 4.5, 14.5) ~53°, the rear-house long lens (−5, 2, 45)
+     24°, the pit (0, 0.3, 9) ~88°, the front row (0, 0.1, 13.5) ~67°, the SR lip (−2.6, 1.7, 4.9) ~70°);
+  3. else the least RMS. Then a 0.1° search around the pick by the same score.
+
+  `solve.degenerate` is set when no body cue ran and the RMS is within 1.5 px over more than 30° of lens (the honest
+  label: the points do not say where the camera is), or when no free candidate at any lens keeps inside the prior.
+  Every solve also carries `mPerPx` (metres of deck one pixel down the frame moves the floor point at the set centre's
+  pixel — stage 4's fragility measure; a deck-height camera gives 0.3–4.6), `cond` (`sv`: the singular values of the
+  centred 3D point cloud / √n in metres, `heightSd`, `depthSd` along the look, and `sdDistPerPx`/`sdFovPerPx`: the
+  camera distance's and the lens's 1σ for 1 px of point noise, from the Jacobian), `window`, `choice`, `bodyHeightM`,
+  `bodies`. Output per shot in `calib/<clip>.json`: `frame, points{name: [u, v]}, solve{K, R, t, rvec, camera [x, y,
+  z] in set metres, look (unit), fovDeg, rms, residuals[], frameSize, …the above}, moving`. Pixels are in the cache
+  frame — **1280×720, but 1330 for Yorktown and 1350 for Non-Stop**: each solve takes the frame's own size.
+- **`resolve`**: `run.py calib <clip> all resolve` (or `python -I tools/vision/calib.py resolve all [--no-bodies]
+  [--dry]` for every clip) re-solves every shot with 5+ stored points through the above and redraws its overlay; it
+  keeps `frame`, `points`, `judged`, `moving`, `skipped`, `note` and replaces only `solve` (the file is re-read before
+  writing and a shot whose points changed meanwhile is left alone). It prints shot, n, RMS and camera before → after,
+  fov, m/px, the cue, h, degenerate. **`census`**: `run.py calib <clip> census` (any clip; it reads every calib
+  file) or `calib.py census [--loo]` — per named point over every solved, unskipped, non-degenerate shot: uses, mean
+  signed residual (clicked − projected, +du right, +dv down) in px and in metres at the point's depth, its sd, and RMS.
+  A point misplaced in `setpoints.json` shows a consistent sign across independent set-ups; `--loo` predicts each
+  point from a solve without it, so a solve cannot absorb its own bad point. Count set-ups, not shots: Right Hand
+  Man's ten shots are one camera.
 - **`zoom`**: for every named point the solve puts in the frame, a 120 px crop at 4x with a 10 px grid and a red
   cross at the prediction — the reader finds the true pixel and re-solves. **`refine`**: Nelder–Mead over (rvec, t,
   fov) maximising the blurred image-gradient under the projected wireframe, coarse to fine (σ 8, 4, 2), penalised by

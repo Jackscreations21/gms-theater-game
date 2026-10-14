@@ -1,0 +1,189 @@
+{
+ "clip": "1-23-non-stop-p1",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "4": {
+   "frame": 115,
+   "points": {
+    "post-bw-sr2-base": [
+     128.0,
+     493.0
+    ],
+    "post-bw-sr1-base": [
+     220.0,
+     493.0
+    ],
+    "post-bw-c-base": [
+     553.0,
+     493.0
+    ],
+    "post-bw-sl1-base": [
+     878.0,
+     493.0
+    ],
+    "post-bw-sl2-base": [
+     958.0,
+     493.0
+    ],
+    "rail-us-c": [
+     560.0,
+     107.0
+    ],
+    "ring-out-sr": [
+     15.0,
+     563.0
+    ],
+    "ring-out-sl": [
+     1100.0,
+     535.0
+    ],
+    "ring-out-ds": [
+     570.0,
+     600.0
+    ],
+    "lip-c": [
+     575.0,
+     652.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      2467.3844393902746,
+      0.0,
+      675.0
+     ],
+     [
+      0.0,
+      2467.3844393902746,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.998036220258534,
+      -0.0046666626531559246,
+      0.06246539291272075
+     ],
+     [
+      -0.006097683232302856,
+      -0.9997228619395944,
+      0.022738020461446372
+     ],
+     [
+      0.06234197070399231,
+      -0.02307426217646625,
+      -0.997788082266848
+     ]
+    ],
+    "t": [
+     -0.8602869296401511,
+     1.3679692148355225,
+     18.381617661745175
+    ],
+    "rvec": [
+     -3.1171415762605506,
+     0.008397846082065468,
+     -0.09736894751565693
+    ],
+    "camera": [
+     -0.279,
+     1.788,
+     18.364
+    ],
+    "look": [
+     0.062,
+     -0.023,
+     -0.998
+    ],
+    "fovDeg": 30.6,
+    "rms": 12.83,
+    "residuals": [
+     18.1,
+     9.2,
+     2.0,
+     8.8,
+     6.9,
+     16.1,
+     7.0,
+     10.5,
+     19.5,
+     17.4
+    ],
+    "frameSize": [
+     1350,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.92,
+     "fov": [
+      27.0,
+      35.0
+     ],
+     "dist": [
+      15.0,
+      20.2
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 24,
+    "free": {
+     "camera": [
+      -0.27,
+      1.76,
+      18.1
+     ],
+     "fovDeg": 31.0,
+     "rms": 12.81,
+     "breaks": []
+    },
+    "mPerPx": 0.0705,
+    "cond": {
+     "sv": [
+      3.67,
+      2.74,
+      1.05
+     ],
+     "heightSd": 1.07,
+     "depthSd": 3.66,
+     "sdDistPerPx": 0.14,
+     "sdFovPerPx": 0.21
+    }
+   },
+   "moving": null,
+   "judged": "fair"
+  },
+  "27": {
+   "frame": 585,
+   "skipped": "the lit disc is a light pool centred ~2.5 m SR of the centre line (the coils and back posts put x 0 near px 880), lip out of frame; the back-plane points alone put the camera under the stage"
+  },
+  "21": {
+   "frame": 457,
+   "skipped": "dim; the only deck feature is a light pool off the centre line (coils put x 0 ~300 px right of it), back posts not readable"
+  },
+  "11": {
+   "frame": 219,
+   "skipped": "dim; the only deck feature is a light pool off the centre line, back posts not readable"
+  },
+  "9": {
+   "frame": 166,
+   "skipped": "set unlit; only a light pool on the deck, solve inconsistent (fov wider than the wider shot 11)"
+  },
+  "24": {
+   "skipped": "too tight; gallery cut by the frame top, no ring or lip readable"
+  },
+  "26": {
+   "skipped": "2 frames, dim; the same set-up as shot 27"
+  }
+ }
+}

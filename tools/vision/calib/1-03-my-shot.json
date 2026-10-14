@@ -1,0 +1,621 @@
+{
+ "clip": "1-03-my-shot",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "7": {
+   "skipped": "tavern medium-wide (as 1-02 shots 19-26): rail ends and centre not identifiable"
+  },
+  "32": {
+   "skipped": "too tight: tables and dancers on the deck, no gallery or lip"
+  },
+  "35": {
+   "skipped": "too dark (blue wash), fewer than five legible set points"
+  },
+  "39": {
+   "skipped": "too tight: low angle on the stair and dancers, fewer than five certain points"
+  },
+  "42": {
+   "frame": 1154,
+   "points": {
+    "ring-out-sr": [
+     175.0,
+     650.0
+    ],
+    "ring-out-sl": [
+     1070.0,
+     648.0
+    ],
+    "ring-out-ds": [
+     622.0,
+     667.0
+    ],
+    "ring-out-us": [
+     622.0,
+     636.0
+    ],
+    "rail-us-c": [
+     622.0,
+     400.0
+    ],
+    "rail-us-sr": [
+     358.0,
+     400.0
+    ],
+    "rail-us-sl": [
+     921.0,
+     398.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      685.116324398241,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      685.116324398241,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9998745112845523,
+      -0.0026244386178430417,
+      0.015622868027958021
+     ],
+     [
+      0.003355961009547693,
+      -0.9287087376758066,
+      -0.3707948463642829
+     ],
+     [
+      0.015482222359216214,
+      0.3708007455312771,
+      -0.9285833876956171
+     ]
+    ],
+    "t": [
+     -0.13579705057402208,
+     2.8466270884787974,
+     6.719501823704881
+    ],
+    "rvec": [
+     2.761621912534727,
+     0.000523749284576632,
+     0.02227036249568577
+    ],
+    "camera": [
+     0.022,
+     0.152,
+     7.297
+    ],
+    "look": [
+     0.015,
+     0.371,
+     -0.929
+    ],
+    "fovDeg": 86.1,
+    "rms": 4.35,
+    "residuals": [
+     1.8,
+     2.8,
+     0.8,
+     7.7,
+     6.1,
+     3.4,
+     3.7
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms",
+    "depthCue": "none",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      84.0,
+      88.0
+     ],
+     "dist": [
+      6.1,
+      6.6
+     ],
+     "poor": false
+    },
+    "bodyHeightM": null,
+    "bodies": 0,
+    "free": {
+     "camera": [
+      0.02,
+      0.15,
+      7.31
+     ],
+     "fovDeg": 86.0,
+     "rms": 4.35,
+     "breaks": []
+    },
+    "mPerPx": 0.4363,
+    "cond": {
+     "sv": [
+      3.15,
+      3.1,
+      1.15
+     ],
+     "heightSd": 1.76,
+     "depthSd": 3.1,
+     "sdDistPerPx": 0.03,
+     "sdFovPerPx": 0.27
+    }
+   },
+   "moving": null,
+   "judged": "good"
+  },
+  "43": {
+   "skipped": "too tight: only the lit ring is legible; the galleries are cut off and ambiguous"
+  },
+  "44": {
+   "frame": 1164,
+   "points": {
+    "ring-out-sr": [
+     367.0,
+     580.0
+    ],
+    "ring-out-sl": [
+     1137.0,
+     574.0
+    ],
+    "ring-out-ds": [
+     752.0,
+     700.0
+    ],
+    "stair-sl-top": [
+     1075.0,
+     286.0
+    ],
+    "rail-us-sl": [
+     1090.0,
+     204.0
+    ],
+    "rail-us-sr": [
+     372.0,
+     207.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1493.2318770911036,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1493.2318770911036,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9998328967796906,
+      -0.013026101943513174,
+      -0.012825723577635909
+     ],
+     [
+      -0.011508281195275452,
+      -0.9936381172291423,
+      0.11203058266944732
+     ],
+     [
+      -0.014203449618426952,
+      -0.11186425996484581,
+      -0.9936219851439754
+     ]
+    ],
+    "t": [
+     0.9733412109889746,
+     2.0787844519450274,
+     15.952707382429711
+    ],
+    "rvec": [
+     -3.029278399680036,
+     0.0186405175167968,
+     0.020535987131837918
+    ],
+    "camera": [
+     -0.723,
+     3.863,
+     15.631
+    ],
+    "look": [
+     -0.014,
+     -0.112,
+     -0.994
+    ],
+    "fovDeg": 46.4,
+    "rms": 13.57,
+    "residuals": [
+     11.0,
+     20.1,
+     9.7,
+     19.4,
+     3.5,
+     9.9
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 2.02,
+     "fov": [
+      41.0,
+      54.0
+     ],
+     "dist": [
+      12.6,
+      17.6
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.19,
+    "bodies": 12,
+    "free": {
+     "camera": [
+      -0.68,
+      3.7,
+      15.04
+     ],
+     "fovDeg": 48.0,
+     "rms": 13.46,
+     "breaks": []
+    },
+    "mPerPx": 0.0395,
+    "cond": {
+     "sv": [
+      3.87,
+      3.07,
+      0.67
+     ],
+     "heightSd": 1.66,
+     "depthSd": 2.63,
+     "sdDistPerPx": 0.16,
+     "sdFovPerPx": 0.38
+    }
+   },
+   "moving": null,
+   "judged": "fair"
+  },
+  "45": {
+   "skipped": "too dark: only a blue light pool (not the ring) and a faint rail; likely the same camera as shot 44"
+  },
+  "49": {
+   "frame": 1379,
+   "points": {
+    "rail-us-sr": [
+     292.0,
+     206.0
+    ],
+    "rail-us-sl": [
+     1095.0,
+     203.0
+    ],
+    "rail-us-c": [
+     705.0,
+     205.0
+    ],
+    "lip-c": [
+     705.0,
+     694.0
+    ],
+    "gal-us-sr": [
+     278.0,
+     298.0
+    ],
+    "gal-us-sl": [
+     1108.0,
+     296.0
+    ],
+    "post-bw-c-gal": [
+     689.0,
+     298.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      4641.983176276758,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      4641.983176276758,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9999228407662094,
+      -0.0007709128837499121,
+      0.012398314698355757
+     ],
+     [
+      -0.0027160675256901884,
+      -0.9874913964457922,
+      0.1576495002298932
+     ],
+     [
+      0.012121695064209759,
+      -0.15767101077517348,
+      -0.9874172962177163
+     ]
+    ],
+    "t": [
+     0.5676119111783935,
+     2.3971910257509306,
+     50.26117514516852
+    ],
+    "rvec": [
+     -2.9832108198925686,
+     0.0026170663080201466,
+     -0.018402882691342735
+    ],
+    "camera": [
+     -1.17,
+     10.292,
+     49.244
+    ],
+    "look": [
+     0.012,
+     -0.158,
+     -0.987
+    ],
+    "fovDeg": 15.7,
+    "rms": 16.98,
+    "residuals": [
+     21.0,
+     13.0,
+     21.8,
+     3.0,
+     11.3,
+     18.5,
+     21.3
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 2.24,
+     "fov": [
+      15.0,
+      68.0
+     ],
+     "dist": [
+      6.7,
+      51.9
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.34,
+    "bodies": 44,
+    "free": {
+     "camera": [
+      -0.29,
+      2.41,
+      15.56
+     ],
+     "fovDeg": 43.0,
+     "rms": 14.95,
+     "breaks": []
+    },
+    "mPerPx": 0.0511,
+    "cond": {
+     "sv": [
+      3.52,
+      3.21,
+      0.45
+     ],
+     "heightSd": 1.16,
+     "depthSd": 2.82,
+     "sdDistPerPx": 6.16,
+     "sdFovPerPx": 1.81
+    }
+   },
+   "moving": null,
+   "judged": "fair"
+  },
+  "57": {
+   "frame": 1473,
+   "points": {
+    "rail-us-sr": [
+     305.0,
+     210.0
+    ],
+    "rail-us-sl": [
+     1095.0,
+     207.0
+    ],
+    "rail-us-c": [
+     712.0,
+     210.0
+    ],
+    "lip-c": [
+     712.0,
+     676.0
+    ],
+    "gal-us-sr": [
+     290.0,
+     296.0
+    ],
+    "gal-us-sl": [
+     1108.0,
+     294.0
+    ],
+    "post-bw-c-gal": [
+     690.0,
+     296.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1975.5819601285862,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1975.5819601285862,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9999792180486256,
+      -0.0013348275215139176,
+      -0.0063072740821452835
+     ],
+     [
+      -0.0009844151165754732,
+      -0.9984727914113088,
+      0.055236905581206495
+     ],
+     [
+      -0.0063713733007688626,
+      -0.055229548674569785,
+      -0.9984533552226992
+     ]
+    ],
+    "t": [
+     0.5783784710682259,
+     2.088527337386985,
+     20.054925773623044
+    ],
+    "rvec": [
+     -3.0863149695082153,
+     0.0017908638355827549,
+     0.0097901490379949
+    ],
+    "camera": [
+     -0.449,
+     3.194,
+     19.912
+    ],
+    "look": [
+     -0.006,
+     -0.055,
+     -0.998
+    ],
+    "fovDeg": 35.9,
+    "rms": 13.62,
+    "residuals": [
+     18.0,
+     9.3,
+     21.4,
+     1.4,
+     10.0,
+     16.0,
+     8.2
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 2.03,
+     "fov": [
+      14.0,
+      65.0
+     ],
+     "dist": [
+      7.6,
+      56.8
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 28,
+    "free": {
+     "camera": [
+      -0.38,
+      2.64,
+      17.41
+     ],
+     "fovDeg": 40.0,
+     "rms": 13.56,
+     "breaks": []
+    },
+    "mPerPx": 0.0585,
+    "cond": {
+     "sv": [
+      3.52,
+      3.21,
+      0.45
+     ],
+     "heightSd": 1.16,
+     "depthSd": 2.96,
+     "sdDistPerPx": 1.31,
+     "sdFovPerPx": 1.89
+    }
+   },
+   "moving": null,
+   "judged": "fair"
+  },
+  "59": {
+   "skipped": "camera moves: zooms from a wide to a close medium within the shot"
+  },
+  "60": {
+   "skipped": "side angle from house left; the rail ends, centre and lip ends not identifiable with confidence"
+  },
+  "61": {
+   "skipped": "side angle (low, from the side of the house) with heavy haze; set points ambiguous"
+  },
+  "62": {
+   "skipped": "side angle from the side of the house; set points ambiguous"
+  },
+  "64": {
+   "skipped": "camera moves: wide at the start, a close group of four at the end"
+  },
+  "65": {
+   "skipped": "camera zooms within the shot and the gallery is too dark to read"
+  }
+ }
+}

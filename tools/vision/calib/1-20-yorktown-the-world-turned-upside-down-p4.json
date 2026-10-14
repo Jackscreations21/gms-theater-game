@@ -1,0 +1,18 @@
+{
+ "clip": "1-20-yorktown-the-world-turned-upside-down-p4",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "9": {
+   "frame": 267,
+   "skipped": "3 rounds, poor: with the side galleries the solve is a camera 9 m out at 82 deg (rms 35); with only the back gallery + the deck edge at y 643 it is 89 m out at 14 deg (rms 6 but no perspective, while the side galleries in frame clearly slope) - the true lip is probably hidden behind the audience heads, and the side structures sit far wider (x 0-260 and 1130-1300) than the setpoints project"
+  },
+  "8": {
+   "frame": 230,
+   "skipped": "no depth cue: only the upstage gallery rail/floor and one post are readable (no lip/ring); 2 solve rounds were degenerate (fov at the 12 deg floor, camera 19-26 m off to SL)"
+  },
+  "3": {
+   "frame": 113,
+   "skipped": "too tight: a medium shot of the deck crowd, no lip, ring or gallery corners/posts readable (fewer than five set points); dark"
+  }
+ }
+}

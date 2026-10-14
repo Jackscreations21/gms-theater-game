@@ -1,0 +1,14 @@
+{
+ "clip": "1-20-yorktown-the-world-turned-upside-down-p3",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "4": {
+   "frame": 4,
+   "skipped": "low camera at deck level, 1 frame: no lip, gallery or posts identifiable"
+  },
+  "20": {
+   "frame": 88,
+   "skipped": "no depth cue: upstage gallery rail/floor and the moved stairs only (no lip/ring); the stairs do not match setpoints so cannot be used"
+  }
+ }
+}

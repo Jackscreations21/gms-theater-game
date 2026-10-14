@@ -1,0 +1,577 @@
+{
+ "clip": "1-14-stay-alive",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "7": {
+   "frame": 340,
+   "points": {
+    "rail-us-c": [
+     620.0,
+     261.0
+    ],
+    "rail-us-sl": [
+     1003.0,
+     260.0
+    ],
+    "lip-c": [
+     620.0,
+     699.0
+    ],
+    "post-bw-c-base": [
+     620.0,
+     558.0
+    ],
+    "gal-us-sl": [
+     1035.0,
+     340.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1306.4025389578896,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1306.4025389578896,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9998523022413144,
+      2.2840911161818513e-05,
+      0.017186424323754865
+     ],
+     [
+      0.0012219757065324048,
+      -0.9975627092790019,
+      -0.06976494701001486
+     ],
+     [
+      0.017142942516266576,
+      0.06977564427671244,
+      -0.9974153994137316
+     ]
+    ],
+    "t": [
+     -0.1991895040792456,
+     2.2300569206092855,
+     12.354106722547883
+    ],
+    "rvec": [
+     3.0716494784269828,
+     0.0009571470929059397,
+     0.026396059632535433
+    ],
+    "camera": [
+     -0.015,
+     1.363,
+     12.481
+    ],
+    "look": [
+     0.017,
+     0.07,
+     -0.997
+    ],
+    "fovDeg": 52.2,
+    "rms": 3.19,
+    "residuals": [
+     2.4,
+     4.1,
+     0.1,
+     2.3,
+     4.8
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      33.0,
+      77.0
+     ],
+     "dist": [
+      5.3,
+      21.9
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 25,
+    "free": {
+     "camera": [
+      -0.01,
+      1.01,
+      10.63
+     ],
+     "fovDeg": 58.0,
+     "rms": 3.08,
+     "breaks": []
+    },
+    "mPerPx": 0.0751,
+    "cond": {
+     "sv": [
+      3.77,
+      2.21,
+      1.14
+     ],
+     "heightSd": 1.63,
+     "depthSd": 3.56,
+     "sdDistPerPx": 1.26,
+     "sdFovPerPx": 3.55
+    }
+   },
+   "moving": null,
+   "judged": "fair"
+  },
+  "5": {
+   "skipped": "too tight and panning (people ~0.4 frame high, blue wash): only the SR stair and a slanted piece of the upstage rail read; the shot dissolves/cuts at ~frame 300 into a close two-shot"
+  },
+  "9": {
+   "skipped": "too tight and tilting (frame 360 vs 368 moves ~33 px): the deck fills the frame, only a short piece of the upstage rail, the SL stair handrail and the lip read; no centre or ends to fix the camera"
+  },
+  "15": {
+   "frame": 470,
+   "points": {
+    "rail-us-sr": [
+     322.0,
+     262.0
+    ],
+    "rail-us-c": [
+     652.0,
+     259.0
+    ],
+    "rail-us-sl": [
+     1040.0,
+     257.0
+    ],
+    "lip-c": [
+     652.0,
+     695.0
+    ],
+    "gal-us-sr": [
+     290.0,
+     340.0
+    ],
+    "gal-us-sl": [
+     1075.0,
+     338.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1356.9941698599755,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1356.9941698599755,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9995628903047135,
+      -0.0040096094260745965,
+      -0.02929080671367198
+     ],
+     [
+      -0.005086469087967236,
+      -0.9993103342346018,
+      -0.03678292707419463
+     ],
+     [
+      -0.02912312067592537,
+      0.0369158356830602,
+      -0.9988939207533084
+     ]
+    ],
+    "t": [
+     0.2267330698166702,
+     2.2942899694012824,
+     13.697223667068114
+    ],
+    "rvec": [
+     3.104391485227343,
+     -0.007063390052919826,
+     -0.04536024541111065
+    ],
+    "camera": [
+     0.184,
+     1.788,
+     13.773
+    ],
+    "look": [
+     -0.029,
+     0.037,
+     -0.999
+    ],
+    "fovDeg": 50.5,
+    "rms": 7.41,
+    "residuals": [
+     4.0,
+     13.0,
+     4.0,
+     0.8,
+     7.9,
+     8.0
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      15.0,
+      81.0
+     ],
+     "dist": [
+      5.0,
+      56.8
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 25,
+    "free": {
+     "camera": [
+      0.14,
+      1.43,
+      12.16
+     ],
+     "fovDeg": 55.0,
+     "rms": 7.39,
+     "breaks": []
+    },
+    "mPerPx": 0.0684,
+    "cond": {
+     "sv": [
+      3.81,
+      3.35,
+      0.36
+     ],
+     "heightSd": 1.26,
+     "depthSd": 3.17,
+     "sdDistPerPx": 2.96,
+     "sdFovPerPx": 7.49
+    }
+   },
+   "moving": true,
+   "judged": "fair",
+   "note": "missed cut at frame 460: frames 452-459 are a different, closer shot; this camera holds 460-476 (solved on 470, a slight tilt)"
+  },
+  "17": {
+   "frame": 517,
+   "points": {
+    "rail-us-c": [
+     650.0,
+     262.0
+    ],
+    "rail-us-sl": [
+     988.0,
+     261.0
+    ],
+    "stair-sl-top": [
+     980.0,
+     338.0
+    ],
+    "lip-c": [
+     650.0,
+     697.0
+    ],
+    "post-sr-b-gal": [
+     195.0,
+     330.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1350.8780564027406,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1350.8780564027406,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9998226200205289,
+      0.003338964879664544,
+      0.01853590593463331
+     ],
+     [
+      0.0034009685887656568,
+      -0.9999887235379818,
+      -0.0033145451476702726
+     ],
+     [
+      0.018524629765353937,
+      0.0033769972475680148,
+      -0.999822701273404
+     ]
+    ],
+    "t": [
+     -0.030247521033123646,
+     2.3581549892853135,
+     14.581209230626493
+    ],
+    "rvec": [
+     3.1381075587603093,
+     0.0052881428465060745,
+     0.029077647081760437
+    ],
+    "camera": [
+     -0.248,
+     2.309,
+     14.587
+    ],
+    "look": [
+     0.019,
+     0.003,
+     -1.0
+    ],
+    "fovDeg": 50.7,
+    "rms": 9.78,
+    "residuals": [
+     16.0,
+     6.1,
+     11.7,
+     0.7,
+     7.0
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      26.0,
+      65.0
+     ],
+     "dist": [
+      9.3,
+      31.7
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 32,
+    "free": {
+     "camera": [
+      -0.32,
+      2.7,
+      16.09
+     ],
+     "fovDeg": 47.0,
+     "rms": 9.72,
+     "breaks": []
+    },
+    "mPerPx": 0.0605,
+    "cond": {
+     "sv": [
+      3.91,
+      3.1,
+      0.22
+     ],
+     "heightSd": 1.31,
+     "depthSd": 3.22,
+     "sdDistPerPx": 0.66,
+     "sdFovPerPx": 1.7
+    }
+   },
+   "moving": true,
+   "judged": "fair",
+   "note": "missed cuts at ~496 and 509: frames 482-495 (a blue wide from SR) and 496-508 (a closer SL angle) are other shots; this camera holds ~509-522 (solved on 517)"
+  },
+  "18": {
+   "frame": 559,
+   "points": {
+    "rail-us-c": [
+     652.0,
+     258.0
+    ],
+    "rail-us-sl": [
+     1045.0,
+     257.0
+    ],
+    "rail-us-sr": [
+     300.0,
+     262.0
+    ],
+    "lip-c": [
+     652.0,
+     697.0
+    ],
+    "stair-sl-top": [
+     1035.0,
+     337.0
+    ],
+    "stair-sr-foot": [
+     110.0,
+     615.0
+    ],
+    "stair-sr-top": [
+     205.0,
+     335.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1347.8368695183042,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1347.8368695183042,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9998702223668362,
+      -0.00749469587550213,
+      -0.014260713790948057
+     ],
+     [
+      -0.008315233249837429,
+      -0.9982599712271547,
+      -0.05837710802669915
+     ],
+     [
+      -0.013798381067879043,
+      0.058488113145269395,
+      -0.9981927395551481
+     ]
+    ],
+    "t": [
+     0.13635396487115678,
+     2.277330414516467,
+     13.022906944046044
+    ],
+    "rvec": [
+     3.083024721954797,
+     -0.012196812710369853,
+     -0.02164661979838347
+    ],
+    "camera": [
+     0.062,
+     1.513,
+     13.134
+    ],
+    "look": [
+     -0.014,
+     0.058,
+     -0.998
+    ],
+    "fovDeg": 50.8,
+    "rms": 8.98,
+    "residuals": [
+     6.9,
+     9.2,
+     6.3,
+     2.1,
+     10.9,
+     5.6,
+     15.4
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      46.0,
+      54.0
+     ],
+     "dist": [
+      11.3,
+      13.9
+     ],
+     "poor": false
+    },
+    "bodyHeightM": 1.42,
+    "bodies": 24,
+    "free": {
+     "camera": [
+      0.06,
+      1.55,
+      13.38
+     ],
+     "fovDeg": 50.0,
+     "rms": 8.9,
+     "breaks": []
+    },
+    "mPerPx": 0.0733,
+    "cond": {
+     "sv": [
+      4.02,
+      2.94,
+      0.5
+     ],
+     "heightSd": 1.49,
+     "depthSd": 3.05,
+     "sdDistPerPx": 0.09,
+     "sdFovPerPx": 0.3
+    }
+   },
+   "moving": true,
+   "judged": "fair",
+   "note": "missed cut at frame 548: frames 526-547 are other, closer side angles; this camera holds 548-569 with a slow zoom (solved on 559); same camera position as shots 15 and 17"
+  },
+  "21": {
+   "skipped": "too dark and tight (blue wash, five large figures; only the SR stair top and a piece of the SL gallery rail read); frames 672-693 static, 694-708 move, a missed cut at 709"
+  }
+ }
+}
