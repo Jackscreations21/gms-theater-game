@@ -8,5 +8,6 @@ opencv-python>=4.10
 torch>=2.5
 torchvision>=0.20
 ultralytics>=8.3
+scipy>=1.14            # the edge refinement of a camera solve (calib.py)
 lap>=0.5.12          # the ByteTrack assignment; ultralytics auto-installs it otherwise, mid-run
 imageio-ffmpeg>=0.5   # fallback ffmpeg binary when none is on the PATH (run.py finds it)

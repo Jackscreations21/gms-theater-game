@@ -618,6 +618,34 @@ def cmd_draw(args):
            len(bo['tracklets']), max((t['n'] for t in bo['tracklets'].values()), default=0)))
 
 
+# ---------------------------------------------------------------- calib (stage 3, in calib.py)
+
+def cmd_calib(args):
+    sys.path.insert(0, HERE); import calib
+    if args.shot == 'list': args.what = 'list'; return calib.cmd_calib(args, None, None)
+    stem = os.path.splitext(os.path.basename(args.clip))[0]
+    cdir = os.path.join(CACHE, stem)
+    fp = os.path.join(cdir, 'frames.json')
+    if not os.path.isfile(fp): die('run frames first for %s' % stem)
+    calib.cmd_calib(args, cdir, json.load(open(fp, encoding='utf-8')))
+
+
+def cmd_wide(args):
+    sys.path.insert(0, HERE); import calib
+    stem = os.path.splitext(os.path.basename(args.clip))[0]
+    cdir = os.path.join(CACHE, stem)
+    fp, bp = os.path.join(cdir, 'frames.json'), os.path.join(cdir, 'bodies.json')
+    if not os.path.isfile(bp): die('run frames and bodies first for %s' % stem)
+    fr = json.load(open(fp, encoding='utf-8')); bo = json.load(open(bp, encoding='utf-8'))
+    wide = calib.wide_shots(fr, bo, args.max_h, args.min_bodies)
+    done = calib.load_calib(stem)['shots']
+    print('%s: %d of %d shots look wide' % (stem, len(wide), len(fr['shots'])))
+    for s in wide:
+        print('  shot %3d  frames %4d-%4d (%3d)  %s at %s  body h %.2f  bodies %.0f%s' %
+              (s['shot'], s['frames'][0], s['frames'][1], s['n'], s['track'], s['at'], s['bodyH'], s['bodies'],
+               ('  SOLVED rms %.1f' % done[str(s['shot'])]['solve']['rms']) if str(s['shot']) in done else ''))
+
+
 # ---------------------------------------------------------------- check
 
 def cmd_check(args):
@@ -667,6 +695,12 @@ def main():
     p = sub.add_parser('check'); p.set_defaults(fn=cmd_check); p.add_argument('clip'); p.add_argument('-n', type=int, default=12)
     p = sub.add_parser('sheet'); p.set_defaults(fn=cmd_sheet); p.add_argument('clip')
     p = sub.add_parser('draw'); p.set_defaults(fn=cmd_draw); p.add_argument('clip'); p.add_argument('-n', type=int, default=9)
+    p = sub.add_parser('wide', help='the shots that look wide (small bodies, several) - the ones to calibrate'); p.set_defaults(fn=cmd_wide)
+    p.add_argument('clip'); p.add_argument('--max-h', type=float, default=0.4); p.add_argument('--min-bodies', type=float, default=3)
+    p = sub.add_parser('calib', help='stage 3: a shot\'s camera from named set points (calib.py)'); p.set_defaults(fn=cmd_calib)
+    p.add_argument('clip'); p.add_argument('shot', help="the shot id, or 'list'"); p.add_argument('what', nargs='?', default='grid', choices=['grid', 'solve', 'refine', 'zoom', 'list'])
+    p.add_argument('points', nargs='*', help='name=u,v (pixels in the cache frame)'); p.add_argument('--from', dest='from_file')
+    p.add_argument('--frame', type=int, help='which frame of the shot (default: its middle)')
     args = ap.parse_args(); args.fn(args)
 
 

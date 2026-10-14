@@ -571,8 +571,13 @@ number; every window correlates under 0.5 and the windows disagree) — it needs
 `cache/1-04-the-story-of-tonight/anchors.json` by hand, two `[clipTime, "1-04:at"]` pairs from a scrub — and
 **1-01 is Disney's promo montage**, cut up, not continuous footage.
 
-**Not built:** stage 3 (the Calibrate mode, in-page PnP, `calib/`), stage 4 (floor projection, `out/`), stage 5
-(identities, `labels/`), `compare.py` (the diff), GD (dance timing). **Not had** (`video/INDEX.json`
+**Stage 3 half-built (2026-10-14, afternoon):** `tools/vision/setpoints.json` (47 named set points + a wireframe)
+and `tools/vision/calib.py` (a focal grid-search over 12–100° with PnP at each, refined; an overlay of the
+wireframe; `calib/<clip>.json`). Proven on Guns and Ships shot 16 from nine agent-read points: a long lens from
+the back of the house, lip to 8 px, posts 25–50 px — the agent cannot resolve the timber at 720p. **Not built:**
+the Calibrate clicking mode in `blocking.html` (GA), moving-shot tracking (GA's optical-flow re-solve), the
+upper-level rule. **Not built:** stage 4 (floor projection, `out/`), stage 5 (identities, `labels/`),
+`compare.py` (the diff), GD (dance timing). **Not had** (`video/INDEX.json`
 `elsewhere.stillWanted`): 1-09 and 2-13 (on the playlist, did not download), 2-02, 2-15, 2-22, 2-23 (unavailable
 there), and a full uncut 1-01. **Known soft spots:** a lead-in anchor can sit
 up to 1.5 s off (applause matched at the lowered local bar — it is bounded by the ±2 s slack and only at a clip's

@@ -229,12 +229,19 @@ compare the *same* production across stages instead.
 Rulings at **GE** (GF next — reserved for dance round 2). `actors` = PR #234. Read STATE.md's newest block, then
 the memory files `video-capture-status-2026-10-14.md` and `hamilton-blocking-status-2026-10-13.md`.
 
-1. **Stage 2 on the lot** — the venv exists (`tools/vision/.venv`, Python 3.13.16, torch + ultralytics):
-   `run.py bodies <clip>` per clip in the background (~45k frames at 6–10 fps CPU ≈ 1.5–2 h), then look at the
-   tracklets per shot. (See the Done block for what the first run on Schuyler Defeated showed.)
-2. **1-04's anchors by hand** (`cache/1-04-the-story-of-tonight/anchors.json`, `[[clipTime, "1-04:at"], ...]`) —
+1. **Spawn the Opus agents on the calibration** — Jack's word (*"once you figure out the best way to do it have
+   opus agents do the rest"*), PAUSED before spawning on his *"get everything to a point where it can pause"*.
+   The brief is `tools/vision/AGENT-CALIB.md` (the loop: `wide` → `grid` → read 6–10 points → `solve` → `zoom`
+   the bad ones → `solve` → judge the overlay → the JSON). First make sure every clip has `bodies.json` (the
+   batch was at 27 of 44 when paused; re-run the same loop — it skips the done ones:
+   `for f in video/*.mp4; do c=$(basename "$f" .mp4); [ -f tools/vision/cache/$c/bodies.json ] || $P -I tools/vision/run.py bodies $c; done`).
+   Then one agent per 4–5 clips, `model: opus`, the brief's path and its clips in the prompt, in parallel; commit
+   `tools/vision/calib/*.json` as they come back. Expect 8–15 px per shot; the Calibrate clicking mode in
+   `blocking.html` (RULING GA's UI, not built) is the way to tighten later if the floor positions need it.
+2. **Stage 2's output, looked at**: `run.py draw <clip>` per clip, the tracklet counts, any shot where it found
+   nobody.
+3. **1-04's anchors by hand** (`cache/1-04-the-story-of-tonight/anchors.json`, `[[clipTime, "1-04:at"], ...]`) —
    Jack scrubs the clip for two moments, or the page's cue list gives them.
-3. **Stage 3**: the Calibrate mode in `blocking.html` (Advanced), the in-page PnP, `calib/<clip>.json` — RULING GA.
 4. **Resume dance round 2** from the WIP note (session scratch `scratchpad/dance/WIP-round2.md`, the 2026-10-12
    session): the ~40 moves from the reviewers' `## Review 3` descriptions, the stand-in swaps in
    `tools/blocking/dance.py`, the beat-grid fixes (My Shot, 1-18). RULING GF.
@@ -270,7 +277,11 @@ tempo to ≤ 0.1 s and no false anchor from any other track), 1-04 not, 1-01 a m
 clips. Jack ran `py install 3.13`; the venv was made and filled here. **Stage 2 ran on Schuyler Defeated: 316
 frames in 22 s (17.6 fps on his CPU — faster than the spec's 6–10), 1,183 bodies, 71 tracklets, 3.7 bodies a frame
 (max 9), every body in nine shots boxed and skeletoned right by eye (`draw`), the dark upstage ensemble included.**
-Then the lot in the background. Nothing in `src/`; suites not run.
+Then the lot in the background (27 of 44 when paused). **Stage 3 built** (`calib.py`, `setpoints.json`: 47 named set
+points off the editor's plan and the GLB's posts; a focal grid-search + PnP, an overlay, per-point zoom crops, an
+edge refinement, `wide`) and proven on Guns and Ships shot 16 — a long lens 45 m back; agent-read points give
+~25 px, so the Opus agents' brief (`tools/vision/AGENT-CALIB.md`) expects 8–15 px and the clicking UI stays the
+way to tighten. Paused before spawning on Jack's word. Nothing in `src/`; suites not run.
 
 ## SUPERSEDED (all of it landed or was absorbed into PR #234): **LAND #233; THEN HIS RE-CHECK THROUGH THE CHECKLIST** (2026-10-12, end of day)
 

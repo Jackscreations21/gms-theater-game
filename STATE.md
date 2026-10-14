@@ -32,6 +32,17 @@ worktree. Stage 1 ran over every clip, ~10 s each.
   album envelope with applause in front recovers its time to ≤ 0.1 s on ten tracks at ±3 % tempo, and a slice of
   every other track yields no anchor against My Shot's span (except Story of Tonight, which really starts inside
   it). The recipe is in `tools/README.md`.
+- **Stage 2 ran** on Schuyler Defeated (316 frames in 22 s, 17.6 fps on his CPU, 1,183 bodies, 71 tracklets, right by
+  eye in `draw`), then over every clip in the background at ~37 fps once warm (HANDOFF's Done block has the count).
+- **Stage 3, the camera, is BUILT AND PROVEN ON ONE SHOT, not yet precise** (`tools/vision/calib.py`,
+  `tools/vision/setpoints.json`: 47 named set points from the editor's measured plan and the GLB's posts, a
+  wireframe; `run.py calib <clip> <shot> grid|solve|refine`). *"can you figure out now how to figure out the camera
+  angle"* → Guns and Ships shot 16 (the whole set from the house): nine points read off gridded crops of the frame
+  by the agent gave a camera **45 m back, 2.5 m up, 24° lens** (a long lens from the rear of the house — plausible)
+  with the lip fitting to 8 px but posts 25–50 px off: **at 720p the agent cannot tell one timber post from
+  another; a human click would give ~3 px.** `tools/vision/calib/1-18-guns-and-ships.json` holds that solve, the
+  overlay is `cache/1-18-guns-and-ships/calib-s16.jpg`. Jack's word: *"once you figure out the best way to do it
+  have opus agents do the rest"* — see HANDOFF for where that stands.
 - **Nothing in `src/`**; suites unaffected (not run: no Node on the PATH). `the-house.html` and `docs/ARTNET.md` untouched.
 - Dance round 2 is still PAUSED (below). Jack's five rulings still open.
 

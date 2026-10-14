@@ -249,6 +249,9 @@ Python with third-party packages — the ONE place in the repo that has them —
     python tools/vision/run.py bodies 1-03-my-shot      # stage 2: YOLO-pose + ByteTrack per shot -> bodies.json
     python tools/vision/run.py draw   1-03-my-shot      # cache/<clip>/bodies.jpg — the boxes and skeletons, a frame a shot
     python tools/vision/run.py check  1-03-my-shot      # what the cache holds for a clip
+    python tools/vision/run.py calib  1-03-my-shot 16 grid            # stage 3: the shot's middle frame with a 100 px grid
+    python tools/vision/run.py calib  1-03-my-shot 16 solve lip-sr=200,652 rail-us-c=615,405 ...   # >= 5 named points -> camera + overlay
+    python tools/vision/run.py calib  1-03-my-shot list               # the named set points (setpoints.json) and how to find each
 
 Stage 1 needs only numpy, OpenCV and an ffmpeg (imageio-ffmpeg's is found when none is on the PATH); stage 2
 needs ultralytics. The time alignment (RULING FZ) is the page's own 20 ms envelope recipe cross-correlated against
