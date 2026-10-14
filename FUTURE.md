@@ -555,6 +555,16 @@ it does not do yet, and what the ETC pack could still give:
 - **Licence:** ETC's pack is non-commercial; `assets/README.md` says so. The
   Broadway plot PDFs are not ETC's and are not to be committed.
 
+### Video blocking capture — SPECCED, NOT BUILT (2026-10-13, RULINGS FX–GE)
+
+Jack: *"body recognition on those videos to detect every body … figure out where everyone should be and when, then
+… figure out where the camera angle would be."* The spec is `docs/superpowers/specs/2026-10-13-video-blocking-capture-design.md`:
+a five-stage pipeline (frames + album-time alignment by the envelope matcher, 2D pose + tracking, per-shot camera
+by PnP from clicked set points in a Calibrate mode of `blocking.html`, floor projection, identity labelling) that
+writes per-character `(at, x, z)` tracks and a reviewable diff against the blocking — never an overwrite. Needs
+Jack to download the clips (git-ignored `video/`) and create a venv (`tools/vision/`), the one place in the repo
+with third-party Python. Dance from skeletons is timing-only in v1 (GD). Five PRs planned, after #234.
+
 ### The blocking editor — what it does not do yet (2026-10-12, RULING FP built)
 
 `blocking.html` is built (the plan, the music, the blackouts, editing, the change file, props). NOT built:

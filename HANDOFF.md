@@ -224,7 +224,23 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **LAND #233; THEN HIS RE-CHECK THROUGH THE CHECKLIST** (2026-10-12, end of day)
+## NEXT SESSION: **RESUME DANCE ROUND 2; HIS FIVE RULINGS; THEN THE VIDEO CAPTURE** (2026-10-13, end of day)
+
+Rulings at **GE** (GF next — reserved for dance round 2). `actors` = PR #234 at `ec5ea08` + the record. Read
+STATE.md's newest block, then the memory file `hamilton-blocking-status-2026-10-13.md` in Claude's project memory.
+
+1. **Resume dance round 2** from the WIP note (session scratch `scratchpad/dance/WIP-round2.md`): the ~40 moves
+   from the reviewers' `## Review 3` descriptions, the stand-in swaps in `tools/blocking/dance.py`, the beat-grid
+   fixes (My Shot, 1-18). Develop on a scratch copy, apply to the worktree, verify (`actors.check`), commit on
+   `actors`, push. RULING GF.
+2. **His rulings** (the checklist's "Your call" bullets): read the `songs` collection first; apply what he marked.
+3. **The video capture** — build only when he has downloaded the clips into `video/` and created the venv; PR 1 of
+   the spec's plan (stages 1–2 on one clip).
+4. Optional, his call: the far-body LOD for the jointed bodies (~+30 ms a frame at the busiest moment).
+5. Post-merge protocol when #234 lands (it carries #233): fast-forward `main`, delete `actors`, `cue-blackouts` and
+   the five older landed branches both sides; suites when Node is on the PATH.
+
+## SUPERSEDED (all of it landed or was absorbed into PR #234): **LAND #233; THEN HIS RE-CHECK THROUGH THE CHECKLIST** (2026-10-12, end of day)
 
 Rulings at **FE** (FF next). `main` is **`5d24188`** (#230, #231, #232 merged: the show and the fixture GLBs are on
 Pages). **PR #233 (`cue-blackouts`, 13 commits) is open** — the whole day: revisions 3, 4 and 5 of the cues, the
@@ -244,7 +260,15 @@ readout, the sound-synced skip, the interval fix. Read STATE.md's newest block.
 3. Then the older list: the rig placements the photos exposed (FUTURE.md), `edge`/`frost`, the 238 effects, the body,
    the headset.
 
-## DONE — 2026-10-13 (latest): review 3 merged — the video evidence, the dance assignments (PR #234, RULING FW)
+## DONE — 2026-10-13 (end of day): the video-capture spec; dance round 2 paused (PR #234, RULINGS FX–GE specced)
+
+*"would it be possible … body recognition on those videos … where everyone should be and when … where the camera
+angle would be"* → the design in `docs/superpowers/specs/2026-10-13-video-blocking-capture-design.md`: five stages,
+per-shot PnP from clicked set points, identities by label/continuity/appearance, a diff a person reads, dance timing
+only in v1. Not built. The dance agent's round 2 (the ~40 reviewer-requested moves, the beat-grid fixes) was paused on
+Jack's word with a WIP note in scratch and nothing in the worktree. The checklist is at v5. Suites not run.
+
+## DONE — 2026-10-13: review 3 merged — the video evidence, the dance assignments (PR #234, RULING FW)
 
 - Eight reviewers' generators, `props.py` / `dance.py` sections and research notes were merged. Totals: waypoints
   6,596 → 7,153, moves 322 → 859, props 62 → 72. The merge has 0 errors and 0 warnings; `props.py --check` gives 0.

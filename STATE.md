@@ -1,9 +1,35 @@
-# STATE — 2026-10-13 (`actors` = PR #234: THE AUTOMATIC ACTORS, THE EDITOR, NOTES2 (RULING FU), THE DANCING (FV), REVIEW 3 (FW); IT NOW CARRIES `cue-blackouts` = PR #233: JACK'S CHECKLIST NOTES, THE SOUND TAP, THE READOUT — BOTH OPEN)
+# STATE — 2026-10-13, end of day (`actors` = PR #234: THE AUTOMATIC ACTORS, THE EDITOR, NOTES2 (RULING FU), THE DANCING (FV), REVIEW 3 (FW); IT NOW CARRIES `cue-blackouts` = PR #233: JACK'S CHECKLIST NOTES, THE SOUND TAP, THE READOUT — BOTH OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-13 (latest): REVIEW 3 MERGED — THE VIDEO EVIDENCE, THE DANCE ASSIGNMENTS (RULING FW) — PR #234
+## NEWEST — 2026-10-13 (end of day): DANCE ROUND 2 PAUSED, THE VIDEO-CAPTURE SPEC WRITTEN, JACK OUT OF CREDITS — PR #234
+
+**Read this block first.** `actors` on origin is **`ec5ea08`** (review 3 merged, RULING FW) plus this record commit.
+PR #234 holds everything: the actors, the editor (`blocking.html`, Simple mode = dots + music + drag records), the
+limbs, the dancing (47 moves, the beat grid), three review rounds (written → references → Jack's verdict → video
+evidence), 72 props, 859 placed moves, and #233's 14 commits (the sound tap, the cue revisions). Jack works on
+http://localhost:8093 from this worktree. Checklist: https://claude.ai/artifact/4Q5Xh37ZmSinhtsJbVhAub (v5, the
+review-3 watch lists; his `songs` rows are the brief).
+
+- **Dance round 2 is PAUSED, not lost:** ~40 moves the video reviewers asked for (sit — the first seated pose —
+  head-bob, shoulder-pop, king-walk, sword-draw, the two-body lift/catch, hand props …) and the beat-grid fixes for
+  My Shot (~160 s and the death verse) and 1-18. The agent had verified the grid fix and coded nothing in the
+  worktree when Jack paused it. Its note: session scratch `scratchpad/dance/WIP-round2.md` (the 2026-10-12 session,
+  `a0b0b830…`); the reviewers' move descriptions are the `## Review 3` sections of `tools/blocking/research/segN.md`,
+  the stand-ins are marked in `tools/blocking/dance.py`. It takes RULING **GF** when it lands.
+- **The video-capture system is SPECCED, not built:** `docs/superpowers/specs/2026-10-13-video-blocking-capture-design.md`
+  (RULINGS FX–GE). It needs Jack's downloads and a venv before any code.
+- **Open, Jack's rulings** (the checklist's "Your call" bullets; `docs/hamilton-blocking-cue-notes.md`): the sisters'
+  order in 1-05; the duel sides at the shot in 2-22 (two sources say they swap); the King's stool (end of 2-10, sits
+  stage right?); 1-07's two "Kings men" figures; the 1-09/1-10 side flip. Plus the cue items listed there.
+- **Frame cost:** the jointed bodies cost up to ~+30 ms a frame at the busiest dance moment (the Pamphlet freestyle)
+  on his Intel GPU. A far-body LOD was offered, not started.
+- Suites not run all day (no Node; nothing in `src/`). `the-house.html` and `docs/ARTNET.md` untouched by this branch.
+
+---
+
+## 2026-10-13 (latest): REVIEW 3 MERGED — THE VIDEO EVIDENCE, THE DANCE ASSIGNMENTS (RULING FW) — PR #234
 
 Eight reviewers went through the video evidence: the clips' titles, descriptions and top comments, the written accounts,
 and Blankenbuehler's interviews. Nobody here can watch video. They edited:
