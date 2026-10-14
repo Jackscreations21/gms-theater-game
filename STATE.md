@@ -3,7 +3,30 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-13 (latest): `cue-blackouts` (PR #233) MERGED INTO `actors` — THE SOUND TAP IN THE 3D PAGE — PR #234
+## NEWEST — 2026-10-13 (latest): THE DANCING — A BEAT GRID, 47 MOVES, THE SHOW'S OWN CHOREOGRAPHY, THE DANCE BUTTON (RULING FV) — PR #234
+
+Jack: *"have an agent build the dancing system"* — and his sources (`Downloads\hamilton choreo info.txt`: a playlist of the
+film's clips, the reddit staging notes, the Blankenbuehler interviews) and *"also look on youtube"*.
+
+- **The beat grid** `assets/hamilton-beats.json` (`tools/beats.html` decodes Jack's soundtrack in the browser): 46 tracks,
+  measured vs published BPM median 0.04 % (largest 4.2 %), 57–96 % of clear onsets within 50 ms; tempo changes in 18
+  tracks for Jack's ear. `MIDTOWN.show.beatAt / beatTime`.
+- **47 moves** (`midtown.html` `DANCE`, `tools/hamilton-moves.json`, `docs/hamilton-dance-moves.md` with sources): 25
+  general and 22 of this show's — the My Shot phrase and `legacy`, Yorktown's I-imagined-death / command / heartbeat /
+  hip-hop march (from Blankenbuehler's WSJ breakdown, captions read and frames seen), musket, upside-down furniture, the
+  Room's shimmy and ooey-gooey jazz, Hurricane's hoist and cockroach crawl, the gavotte and grind, equals and work, the
+  Pamphlet's wall, Bojangles, the Bullet, the rowers, the rewind.
+- **`moves` in the file**, a first pass of assignments for 11 numbers by `tools/blocking/dance.py` (322 entries), merged and
+  validated by `tools/blocking-merge.py`, marked by `tools/blocking-plot.py`. `MIDTOWN.actors.check()` compares limbs and
+  body offsets in the middle of moves: passes (45 moments, 421 body-moments, worst 0); negative-checked.
+- **Cost:** posing 0.1–0.2 → 0.2–0.3 ms with 13 dancing; frames 72–74 ms either way (noise).
+- **The editor:** ♪ Dance… (D) on the selection (counts, mirror, canon step), dancing badges, beat ticks, `moves` in the
+  recording file, undo / Clear / Restore / Delete / X. Also (the coordinator's ask) two-person carries ("two carry it
+  (with…)") and props' `model` kept: the whole-file export is byte-identical again and the editor shows 0 errors.
+- Checked on 8115 (scratch) and 8116 (the worktree); never 8093 / 8080. Shots: session scratch `dance/shots/`.
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-13 (later still): `cue-blackouts` (PR #233) MERGED INTO `actors` — THE SOUND TAP IN THE 3D PAGE — PR #234
 
 Jack: *"the sound in the 3D page gets out of sync when he skips a lot and no longer resyncs."* The envelope sound tap
 (`sndStart` / `sndTick`, `assets/hamilton-soundtrack-env.u8`, `showSoundSeek` with the seek table, `MIDTOWN.show.sound`,

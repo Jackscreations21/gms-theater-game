@@ -1,0 +1,222 @@
+{
+ "format": "hamilton-moves 1",
+ "by": "midtown.html (RULING FV): the move library, written out from MIDTOWN.actors.moves — remake it after changing a move",
+ "note": "counts: a loop's length in beats (once: played once over them, then held). midtown.html dances them; blocking.html offers them (its Dance button); tools/blocking-merge.py accepts these names. Each is described, with its source, in docs/hamilton-dance-moves.md.",
+ "moves": {
+  "step-touch": {
+   "counts": 4,
+   "body": true,
+   "desc": "step right, touch left beside it, step left, touch right"
+  },
+  "grapevine": {
+   "counts": 8,
+   "body": true,
+   "desc": "to the right: side, behind, side, touch; then back to the left"
+  },
+  "box-step": {
+   "counts": 4,
+   "body": true,
+   "desc": "right foot forward, left crosses over, right back, left to the side: a square"
+  },
+  "sway": {
+   "counts": 2,
+   "desc": "her weight side to side, arms floating"
+  },
+  "bounce": {
+   "counts": 1,
+   "desc": "a pulse: the knees dip on every beat (also \"pulse\")"
+  },
+  "clap": {
+   "counts": 1,
+   "desc": "the hands meet in front of her chest on every beat"
+  },
+  "point": {
+   "counts": 4,
+   "desc": "the right arm points up and out on 1, holds, comes down on 4"
+  },
+  "lunge": {
+   "counts": 4,
+   "body": true,
+   "desc": "the right foot forward into a lunge on 1, held, back on 4"
+  },
+  "kneel": {
+   "counts": 2,
+   "once": true,
+   "desc": "down onto the right knee over two counts, and stay there"
+  },
+  "rise": {
+   "counts": 2,
+   "once": true,
+   "desc": "up from a kneel to standing tall, the arms opening up and out"
+  },
+  "spin-quarter": {
+   "counts": 1,
+   "once": true,
+   "desc": "a quarter turn to her left on the spot (mirror: to the right)"
+  },
+  "spin-half": {
+   "counts": 2,
+   "once": true,
+   "desc": "a half turn on the spot"
+  },
+  "spin-full": {
+   "counts": 2,
+   "once": true,
+   "desc": "a full turn on the spot, arms in, then out"
+  },
+  "reach-up": {
+   "counts": 2,
+   "once": true,
+   "desc": "both arms up over her head on 1, up on her toes, held"
+  },
+  "arm-sweep": {
+   "counts": 4,
+   "desc": "the right arm sweeps from low across her up to high on the right, the body turning with it"
+  },
+  "salute": {
+   "counts": 2,
+   "once": true,
+   "desc": "the right hand to her brow, standing tall, held"
+  },
+  "bow": {
+   "counts": 4,
+   "desc": "a bow from the waist: down by 2, held, up by 4; one hand across her, one behind"
+  },
+  "curtsy": {
+   "counts": 4,
+   "desc": "the right foot slides behind, the knees dip, a little bow; the hands out as if holding a skirt"
+  },
+  "freeze": {
+   "counts": 1,
+   "once": true,
+   "desc": "she holds the pose she had on its first count, still as a statue"
+  },
+  "slow-walk": {
+   "counts": 4,
+   "desc": "the walk in slow motion on the spot — one stride every four counts (reverse: the \"rewind\", the walk run backwards)"
+  },
+  "stomp": {
+   "counts": 2,
+   "desc": "a knee up on the \"and\", stamped down on the beat; right then left"
+  },
+  "jump": {
+   "counts": 2,
+   "body": true,
+   "desc": "down on 1, up in the air on the \"and\", landing on 2"
+  },
+  "kick": {
+   "counts": 2,
+   "desc": "a kick forward with the right leg, then the left"
+  },
+  "two-step": {
+   "counts": 2,
+   "desc": "the hip-hop two-step: out to the side and together, right then left, a bounce on every beat"
+  },
+  "march": {
+   "counts": 2,
+   "desc": "marching on the spot: the knees up in turn, the arms swinging straight"
+  },
+  "pulse": {
+   "counts": 1,
+   "same": "bounce",
+   "desc": "a pulse: the knees dip on every beat (also \"pulse\")"
+  },
+  "my-shot": {
+   "counts": 8,
+   "once": true,
+   "desc": "\"Just like my country I'm young, scrappy and hungry, and I'm not throwing away my shot\": second position, reach out to the people, hand to the heart, the hand flicks out, the boxer's groove, the roundhouse punch, the shot snapped down"
+  },
+  "legacy": {
+   "counts": 8,
+   "once": true,
+   "desc": "the My Shot phrase as it returns at \"Legacy\" at the end of the show: the same, but the shot is thrown UP"
+  },
+  "imagine-death": {
+   "counts": 8,
+   "once": true,
+   "desc": "Yorktown, \"I imagined death so much it feels more like a memory\": a hand behind the head, a hand across the chest, chin up; a knee up and a punch for \"on my feet, enemy ahead of me\"; arms crossed for \"if this is the end of me\""
+  },
+  "command": {
+   "counts": 4,
+   "once": true,
+   "desc": "Yorktown, \"weapon in my hand, a command, and boom\": the rifle overhead, the forearm across the face, fists up and shoulders squared, the hands on the epaulets"
+  },
+  "heartbeat": {
+   "counts": 2,
+   "desc": "Yorktown, thinking of Eliza: a contraction on each \"boom\" of the heartbeat, then a point to the head"
+  },
+  "hiphop-march": {
+   "counts": 4,
+   "desc": "Yorktown, \"we gotta go, we gotta get the job done\": a hip-hop step like a march — out with the arms wide, the shoulders brushed off, a foot pushed out, down"
+  },
+  "musket": {
+   "counts": 2,
+   "desc": "firing a musket that weighs 35 pounds: a wide stance, the back used, aim, and the recoil through the whole body on the beat"
+  },
+  "hoist": {
+   "counts": 2,
+   "once": true,
+   "lift": "overhead",
+   "desc": "Hurricane: what she carries hoisted overhead, arms straight up, like the storm lifting it (a carried prop rises with her hands)"
+  },
+  "upside-down": {
+   "counts": 4,
+   "once": true,
+   "lift": "flip",
+   "desc": "Yorktown, \"the world turned upside down\": furniture lifted overhead and turned upside down, held there (a carried prop flips over)"
+  },
+  "shimmy": {
+   "counts": 2,
+   "desc": "The Room Where It Happens: Burr's ego mocking him — the Fosse-like upper-body shimmy, knees bent and turned in, jazz hands, the head cocked"
+  },
+  "jazz-roll": {
+   "counts": 4,
+   "desc": "The Room Where It Happens' \"ooey-gooey jazz\": a slow hip roll, the shoulders sliding against it, the hands drifting up and down"
+  },
+  "crawl-back": {
+   "counts": 4,
+   "desc": "Hurricane, the \"cockroaches\": on hands and knees, crawling backward in slow motion (travelling, she turns her back to her path, so she crawls backward along it)"
+  },
+  "gavotte": {
+   "counts": 4,
+   "body": true,
+   "desc": "Helpless / Satisfied: the formal court dance — upright, up on the toes, one palm raised to her partner's, step and close each way (mirror her partner)"
+  },
+  "grind": {
+   "counts": 2,
+   "desc": "Helpless: twenty seconds after the palms touched, \"they want to grind\" — the hips rolling low, the arms round a partner"
+  },
+  "equals": {
+   "counts": 2,
+   "once": true,
+   "desc": "The Schuyler Sisters, \"…that all men are created equal\": the forearms held level one above the other in front of her — an equals sign"
+  },
+  "work": {
+   "counts": 2,
+   "once": true,
+   "desc": "The Schuyler Sisters, \"…include women in the sequel. Work!\": a hand up (the two fingers), the other on the hip, the hip popped"
+  },
+  "wall-ooze": {
+   "counts": 8,
+   "once": true,
+   "desc": "The Reynolds Pamphlet, round Angelica: slow motion into an invisible wall, the hit, then oozing down and out of it"
+  },
+  "bojangles": {
+   "counts": 2,
+   "desc": "Fred Astaire's \"Bojangles of Harlem\" (one in front, many behind doing the same): a heel dig forward each beat, the arms swinging, a clap on the \"and\" of 2"
+  },
+  "bullet": {
+   "counts": 4,
+   "desc": "The World Was Wide Enough, the Bullet: walking in slow motion, one arm out ahead carrying the bullet toward him (one stride every four counts; the path carries her)"
+  },
+  "row": {
+   "counts": 4,
+   "desc": "the rowers at Hamilton's death (and the duellists' boats): kneeling, a long stroke — reach forward, pull to the chest, lean back, recover"
+  },
+  "rewind": {
+   "counts": 4,
+   "reverse": true,
+   "desc": "Satisfied's rewind: the slow-motion walk run backwards (the slow walk with reverse); travelling, she turns her back to her path"
+  }
+ }
+}

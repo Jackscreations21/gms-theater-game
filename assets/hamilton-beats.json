@@ -1,0 +1,839 @@
+{
+ "format": "hamilton-beats 1",
+ "made": "2026-10-13",
+ "by": "tools/beats.html (RULING FV)",
+ "clock": "seconds into each album track (the cues and the blocking clock); a beat is a quarter note unless noted",
+ "sources": {
+  "published": "songbpm.com (cast album and instrumental pages), tunebat.com for Burn; the published number picks the octave only",
+  "measured": "Jack's soundtrack (assets/audio/hamilton-soundtrack.mp3, git-ignored): spectral-flux comb over the whole track; the downbeat from the low band"
+ },
+ "tracks": {
+  "1-01": {
+   "title": "Alexander Hamilton",
+   "bpm": 135.9,
+   "firstBeat": 1.057,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 1.057,
+     "bpm": 127.8
+    },
+    {
+     "at": 119.818,
+     "bpm": 135.9
+    }
+   ],
+   "published": 134,
+   "confidence": 4.48,
+   "onBeatMs": {
+    "n": 418,
+    "median": 1,
+    "within50": 0.73
+   }
+  },
+  "1-02": {
+   "title": "Aaron Burr, Sir",
+   "bpm": 106.45,
+   "firstBeat": 1.265,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 120.193,
+     "bpm": 109.87
+    },
+    {
+     "at": 143.865,
+     "bpm": 106.45
+    }
+   ],
+   "published": 107,
+   "confidence": 3.56,
+   "onBeatMs": {
+    "n": 202,
+    "median": -10,
+    "within50": 0.75
+   }
+  },
+  "1-03": {
+   "title": "My Shot",
+   "bpm": 91,
+   "firstBeat": 0.416,
+   "meter": 4,
+   "published": 182,
+   "confidence": 4.34,
+   "onBeatMs": {
+    "n": 377,
+    "median": 1,
+    "within50": 0.74
+   }
+  },
+  "1-04": {
+   "title": "The Story of Tonight",
+   "bpm": 79.64,
+   "firstBeat": 0,
+   "meter": 4,
+   "published": 81,
+   "confidence": 3.63,
+   "onBeatMs": {
+    "n": 92,
+    "median": 1,
+    "within50": 0.62
+   }
+  },
+  "1-05": {
+   "title": "The Schuyler Sisters",
+   "bpm": 101.81,
+   "firstBeat": 0.069,
+   "meter": 4,
+   "published": 102,
+   "confidence": 5.92,
+   "onBeatMs": {
+    "n": 248,
+    "median": 1,
+    "within50": 0.83
+   }
+  },
+  "1-06": {
+   "title": "Farmer Refuted",
+   "bpm": 78.01,
+   "firstBeat": 0.711,
+   "meter": 4,
+   "published": 156,
+   "confidence": 4.58,
+   "onBeatMs": {
+    "n": 123,
+    "median": 1,
+    "within50": 0.8
+   }
+  },
+  "1-07": {
+   "title": "You'll Be Back",
+   "bpm": 121.97,
+   "firstBeat": 0.996,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 7.882,
+     "bpm": 117.89
+    },
+    {
+     "at": 31.986,
+     "bpm": 121.97
+    }
+   ],
+   "published": 122,
+   "confidence": 5.22,
+   "onBeatMs": {
+    "n": 330,
+    "median": 1,
+    "within50": 0.79
+   }
+  },
+  "1-08": {
+   "title": "Right Hand Man",
+   "bpm": 78.96,
+   "firstBeat": 1.134,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 1.134,
+     "bpm": 71
+    },
+    {
+     "at": 23.93,
+     "bpm": 76.24
+    },
+    {
+     "at": 48.246,
+     "bpm": 78.96
+    }
+   ],
+   "published": 160,
+   "confidence": 5.32,
+   "onBeatMs": {
+    "n": 331,
+    "median": 1,
+    "within50": 0.75
+   }
+  },
+  "1-09": {
+   "title": "A Winter's Ball",
+   "bpm": 132.03,
+   "firstBeat": 0,
+   "meter": 4,
+   "published": 132,
+   "confidence": 5,
+   "onBeatMs": {
+    "n": 127,
+    "median": 1,
+    "within50": 0.8
+   }
+  },
+  "1-10": {
+   "title": "Helpless",
+   "bpm": 78.98,
+   "firstBeat": 1.589,
+   "meter": 4,
+   "published": 79,
+   "confidence": 8.69,
+   "onBeatMs": {
+    "n": 282,
+    "median": 1,
+    "within50": 0.96
+   }
+  },
+  "1-11": {
+   "title": "Satisfied",
+   "bpm": 123.86,
+   "firstBeat": 0.83,
+   "meter": 4,
+   "published": 124,
+   "confidence": 3.92,
+   "onBeatMs": {
+    "n": 498,
+    "median": 1,
+    "within50": 0.8
+   }
+  },
+  "1-12": {
+   "title": "The Story of Tonight (Reprise)",
+   "bpm": 82.03,
+   "firstBeat": 0.476,
+   "meter": 4,
+   "published": 164,
+   "confidence": 7.7,
+   "onBeatMs": {
+    "n": 142,
+    "median": 1,
+    "within50": 0.76
+   }
+  },
+  "1-13": {
+   "title": "Wait for It",
+   "bpm": 93.96,
+   "firstBeat": 0.581,
+   "meter": 4,
+   "published": 94,
+   "confidence": 5.96,
+   "onBeatMs": {
+    "n": 210,
+    "median": 1,
+    "within50": 0.93
+   }
+  },
+  "1-14": {
+   "title": "Stay Alive",
+   "bpm": 79.77,
+   "firstBeat": 2.812,
+   "meter": 4,
+   "published": 160,
+   "confidence": 4.22,
+   "onBeatMs": {
+    "n": 174,
+    "median": 1,
+    "within50": 0.74
+   }
+  },
+  "1-15": {
+   "title": "Ten Duel Commandments",
+   "bpm": 77.96,
+   "firstBeat": 2.356,
+   "meter": 4,
+   "published": 156,
+   "confidence": 9.76,
+   "onBeatMs": {
+    "n": 127,
+    "median": 1,
+    "within50": 0.95
+   }
+  },
+  "1-16": {
+   "title": "Meet Me Inside",
+   "bpm": 87.98,
+   "firstBeat": 2.416,
+   "meter": 4,
+   "published": 177,
+   "confidence": 5.61,
+   "onBeatMs": {
+    "n": 102,
+    "median": -10,
+    "within50": 0.8
+   }
+  },
+  "1-17": {
+   "title": "That Would Be Enough",
+   "bpm": 138.1,
+   "firstBeat": 1.303,
+   "meter": 4,
+   "published": 139,
+   "confidence": 2.8,
+   "onBeatMs": {
+    "n": 295,
+    "median": 1,
+    "within50": 0.69
+   }
+  },
+  "1-18": {
+   "title": "Guns and Ships",
+   "bpm": 138,
+   "firstBeat": 0.846,
+   "meter": 4,
+   "published": 138,
+   "confidence": 5.51,
+   "onBeatMs": {
+    "n": 224,
+    "median": 1,
+    "within50": 0.85
+   }
+  },
+  "1-19": {
+   "title": "History Has Its Eyes on You",
+   "bpm": 77.99,
+   "firstBeat": 0.758,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 0.758,
+     "bpm": 70.44
+    },
+    {
+     "at": 23.838,
+     "bpm": 77.99
+    }
+   ],
+   "published": 78,
+   "confidence": 5.8,
+   "onBeatMs": {
+    "n": 93,
+    "median": 13,
+    "within50": 0.82
+   }
+  },
+  "1-20": {
+   "title": "Yorktown (The World Turned Upside Down)",
+   "bpm": 97.99,
+   "firstBeat": 2.38,
+   "meter": 4,
+   "published": 98,
+   "confidence": 6.51,
+   "onBeatMs": {
+    "n": 342,
+    "median": 1,
+    "within50": 0.89
+   }
+  },
+  "1-21": {
+   "title": "What Comes Next?",
+   "bpm": 118.29,
+   "firstBeat": 0,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 0,
+     "bpm": 112.71
+    },
+    {
+     "at": 40.073,
+     "bpm": 118.29
+    },
+    {
+     "at": 72.029,
+     "bpm": 107.67
+    }
+   ],
+   "published": 117,
+   "confidence": 3.19,
+   "onBeatMs": {
+    "n": 134,
+    "median": 1,
+    "within50": 0.71
+   }
+  },
+  "1-22": {
+   "title": "Dear Theodosia",
+   "bpm": 106.98,
+   "firstBeat": -0.035,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 151.956,
+     "bpm": 94.41
+    }
+   ],
+   "published": 107,
+   "confidence": 5,
+   "onBeatMs": {
+    "n": 249,
+    "median": 1,
+    "within50": 0.86
+   }
+  },
+  "1-23": {
+   "title": "Non-Stop",
+   "bpm": 92.01,
+   "firstBeat": 0.664,
+   "meter": 4,
+   "published": 92,
+   "confidence": 5.19,
+   "onBeatMs": {
+    "n": 492,
+    "median": -10,
+    "within50": 0.78
+   }
+  },
+  "2-01": {
+   "title": "What'd I Miss",
+   "bpm": 87.03,
+   "firstBeat": 0.619,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 39.916,
+     "bpm": 94.29
+    },
+    {
+     "at": 95.759,
+     "bpm": 87.03
+    },
+    {
+     "at": 152.291,
+     "bpm": 94.56
+    },
+    {
+     "at": 192.277,
+     "bpm": 87.03
+    }
+   ],
+   "published": 89,
+   "confidence": 4.45,
+   "onBeatMs": {
+    "n": 253,
+    "median": 1,
+    "within50": 0.68
+   }
+  },
+  "2-02": {
+   "title": "Cabinet Battle #1",
+   "bpm": 88,
+   "firstBeat": 0.982,
+   "meter": 4,
+   "published": 88,
+   "confidence": 6.32,
+   "onBeatMs": {
+    "n": 277,
+    "median": 1,
+    "within50": 0.77
+   }
+  },
+  "2-03": {
+   "title": "Take a Break",
+   "bpm": 83.77,
+   "firstBeat": 0.058,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 0.058,
+     "bpm": 79.23
+    },
+    {
+     "at": 63.804,
+     "bpm": 83.77
+    },
+    {
+     "at": 128.266,
+     "bpm": 78.8
+    },
+    {
+     "at": 184.133,
+     "bpm": 83.77
+    }
+   ],
+   "published": 162,
+   "confidence": 3.38,
+   "onBeatMs": {
+    "n": 312,
+    "median": 1,
+    "within50": 0.7
+   }
+  },
+  "2-04": {
+   "title": "Say No to This",
+   "bpm": 81,
+   "firstBeat": 1.192,
+   "meter": 4,
+   "published": 81,
+   "confidence": 9.66,
+   "onBeatMs": {
+    "n": 274,
+    "median": 1,
+    "within50": 0.94
+   }
+  },
+  "2-05": {
+   "title": "The Room Where It Happens",
+   "bpm": 86.96,
+   "firstBeat": 2.421,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 239.771,
+     "bpm": 82.68
+    },
+    {
+     "at": 263.92,
+     "bpm": 86.96
+    }
+   ],
+   "published": 173,
+   "confidence": 5.28,
+   "onBeatMs": {
+    "n": 370,
+    "median": -10,
+    "within50": 0.86
+   }
+  },
+  "2-06": {
+   "title": "Schuyler Defeated",
+   "bpm": 102.02,
+   "firstBeat": 1.73,
+   "meter": 4,
+   "published": 102,
+   "confidence": 7.75,
+   "onBeatMs": {
+    "n": 88,
+    "median": 1,
+    "within50": 0.94
+   }
+  },
+  "2-07": {
+   "title": "Cabinet Battle #2",
+   "bpm": 116.7,
+   "firstBeat": 1.437,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 15.833,
+     "bpm": 124.98
+    }
+   ],
+   "published": 112,
+   "confidence": 3.09,
+   "onBeatMs": {
+    "n": 209,
+    "median": -10,
+    "within50": 0.57
+   }
+  },
+  "2-08": {
+   "title": "Washington on Your Side",
+   "bpm": 133.95,
+   "firstBeat": 1.244,
+   "meter": 4,
+   "published": 134,
+   "confidence": 7.92,
+   "onBeatMs": {
+    "n": 367,
+    "median": 1,
+    "within50": 0.91
+   }
+  },
+  "2-09": {
+   "title": "One Last Time",
+   "bpm": 80.75,
+   "firstBeat": 0.012,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 0.012,
+     "bpm": 89.01
+    },
+    {
+     "at": 144.16,
+     "bpm": 74.77
+    },
+    {
+     "at": 167.937,
+     "bpm": 72.74
+    },
+    {
+     "at": 216.235,
+     "bpm": 80.75
+    },
+    {
+     "at": 248.185,
+     "bpm": 87.84
+    }
+   ],
+   "published": 83,
+   "confidence": 2.7,
+   "onBeatMs": {
+    "n": 289,
+    "median": 1,
+    "within50": 0.63
+   }
+  },
+  "2-10": {
+   "title": "I Know Him",
+   "bpm": 123.83,
+   "firstBeat": 0,
+   "meter": 4,
+   "published": 121,
+   "confidence": 4.39,
+   "onBeatMs": {
+    "n": 142,
+    "median": 1,
+    "within50": 0.73
+   }
+  },
+  "2-11": {
+   "title": "The Adams Administration",
+   "bpm": 130.12,
+   "firstBeat": 0,
+   "meter": 4,
+   "published": 130,
+   "confidence": 5.31,
+   "onBeatMs": {
+    "n": 100,
+    "median": 1,
+    "within50": 0.8
+   }
+  },
+  "2-12": {
+   "title": "We Know",
+   "bpm": 86,
+   "firstBeat": 2.012,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 112.244,
+     "bpm": 76.27
+    }
+   ],
+   "published": 172,
+   "confidence": 8.52,
+   "onBeatMs": {
+    "n": 165,
+    "median": 1,
+    "within50": 0.88
+   }
+  },
+  "2-13": {
+   "title": "Hurricane",
+   "bpm": 86.21,
+   "firstBeat": 0.348,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 15.659,
+     "bpm": 81.5
+    },
+    {
+     "at": 72.033,
+     "bpm": 86.21
+    },
+    {
+     "at": 95.697,
+     "bpm": 76.92
+    },
+    {
+     "at": 120.056,
+     "bpm": 86.21
+    }
+   ],
+   "published": 86,
+   "confidence": 3.12,
+   "onBeatMs": {
+    "n": 134,
+    "median": 1,
+    "within50": 0.72
+   }
+  },
+  "2-14": {
+   "title": "The Reynolds Pamphlet",
+   "bpm": 70.98,
+   "firstBeat": 2.918,
+   "meter": 4,
+   "published": 142,
+   "confidence": 11.36,
+   "onBeatMs": {
+    "n": 145,
+    "median": 1,
+    "within50": 0.94
+   }
+  },
+  "2-15": {
+   "title": "Burn",
+   "bpm": 97.99,
+   "firstBeat": 0.566,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 200.178,
+     "bpm": 91.67
+    }
+   ],
+   "published": 99,
+   "confidence": 4.88,
+   "onBeatMs": {
+    "n": 285,
+    "median": 1,
+    "within50": 0.72
+   }
+  },
+  "2-16": {
+   "title": "Blow Us All Away",
+   "bpm": 88.97,
+   "firstBeat": -0.047,
+   "meter": 4,
+   "published": 89,
+   "confidence": 6.56,
+   "onBeatMs": {
+    "n": 240,
+    "median": 1,
+    "within50": 0.8
+   }
+  },
+  "2-17": {
+   "title": "Stay Alive (Reprise)",
+   "bpm": 79.99,
+   "firstBeat": 1.789,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 31.792,
+     "bpm": 76.33
+    },
+    {
+     "at": 55.795,
+     "bpm": 79.99
+    }
+   ],
+   "published": 80,
+   "confidence": 6.15,
+   "onBeatMs": {
+    "n": 123,
+    "median": 1,
+    "within50": 0.8
+   }
+  },
+  "2-18": {
+   "title": "It's Quiet Uptown",
+   "bpm": 130.01,
+   "firstBeat": 1.269,
+   "meter": 4,
+   "published": 130,
+   "confidence": 4.12,
+   "onBeatMs": {
+    "n": 446,
+    "median": 1,
+    "within50": 0.8
+   }
+  },
+  "2-19": {
+   "title": "The Election of 1800",
+   "bpm": 134.99,
+   "firstBeat": 0.421,
+   "meter": 4,
+   "published": 135,
+   "confidence": 5.97,
+   "onBeatMs": {
+    "n": 476,
+    "median": 1,
+    "within50": 0.81
+   }
+  },
+  "2-20": {
+   "title": "Your Obedient Servant",
+   "bpm": 83,
+   "firstBeat": 1.038,
+   "meter": 3,
+   "published": null,
+   "confidence": 8.37,
+   "onBeatMs": {
+    "n": 179,
+    "median": 1,
+    "within50": 0.86
+   },
+   "note": "Your Obedient Servant: a 3/4 minuet groove"
+  },
+  "2-21": {
+   "title": "Best of Wives and Best of Women",
+   "bpm": 71.01,
+   "firstBeat": 0.394,
+   "meter": 4,
+   "published": 142,
+   "confidence": 11.2,
+   "onBeatMs": {
+    "n": 52,
+    "median": 1,
+    "within50": 0.92
+   }
+  },
+  "2-22": {
+   "title": "The World Was Wide Enough",
+   "bpm": 103.99,
+   "firstBeat": 1.131,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 111.91,
+     "bpm": 116.54
+    },
+    {
+     "at": 136.143,
+     "bpm": 103.99
+    },
+    {
+     "at": 200.187,
+     "bpm": 100.01
+    },
+    {
+     "at": 223.843,
+     "bpm": 103.99
+    },
+    {
+     "at": 239.998,
+     "bpm": 99.03
+    },
+    {
+     "at": 287.887,
+     "bpm": 103.99
+    }
+   ],
+   "published": 103,
+   "confidence": 3.59,
+   "onBeatMs": {
+    "n": 330,
+    "median": -10,
+    "within50": 0.71
+   }
+  },
+  "2-23": {
+   "title": "Who Lives, Who Dies, Who Tells Your Story",
+   "bpm": 76,
+   "firstBeat": 1.66,
+   "meter": 4,
+   "changes": [
+    {
+     "at": 1.66,
+     "bpm": 72.94
+    },
+    {
+     "at": 48.239,
+     "bpm": 76
+    },
+    {
+     "at": 176.134,
+     "bpm": 67.5
+    }
+   ],
+   "published": 76,
+   "confidence": 5.26,
+   "onBeatMs": {
+    "n": 201,
+    "median": 1,
+    "within50": 0.71
+   }
+  }
+ }
+}

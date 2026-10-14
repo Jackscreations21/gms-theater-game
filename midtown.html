@@ -5004,6 +5004,7 @@ buildLightsPanel = () => {
       get tracks() { return SHW.d ? SHW.d.tracks.map(t => ({ id: t.id, title: t.title, len: t.len, start: t.start, pre: t.pre, post: Number.isFinite(t.post) ? t.post : 'open', hold: t.hold, audio: SHW.files.has(t.i) ? SHW.files.get(t.i).name : null })) : []; },
       check: opts => showCheck(opts), matchFiles: files => showMatchFiles(files), parseName: name => { const p = showParseFile({ name, webkitRelativePath: name }); return { disc: p.disc, n: p.n, rest: p.rest }; },
       get perf() { return Object.assign({}, SHW.perf); }, urls: SHW_URLS,
+      beatAt: (id, t) => beatAt(id, t), beatTime: (id, b) => beatTime(id, b), get beats() { return BEAT.d; },   // FV: the beat grid
       get sound() { return { off: SHW.soundOff, note: SND.note, err: SND.err, bins: SND.bins.length, check: SND.check, ctx: SND.ctx ? SND.ctx.state : null, env: !!SND.env, match: SND.ctx && SND.env && SND.bins.length >= SND_N ? sndMatch() : null }; },   // the sound tap, for the console
     };
   } catch (e) { console.error('show: its controls failed —', e); }
@@ -5558,6 +5559,528 @@ function rigAnimate(p, g) {
     rigArm(P, s, sw, G.elbow * wk * (0.6 + 0.4 * Math.max(0, f)) + 0.12 * idle, null);
   }
 }
+// ---- THE BEAT GRID (RULING FV — Jack: "have an agent build the dancing system"). assets/hamilton-beats.json (tools/beats.html):
+// per album track { bpm, firstBeat, meter, changes?: [{ at, bpm }] } on the track's own clock. A track's grid is segments, each
+// from a time a with beat number b and period p; a change starts a new segment at its time, the beat count carried on (rounded
+// to the beat it lands on). Before firstBeat the first segment runs backwards (negative beats). beatAt and beatTime are inverses.
+const BEAT = { url: 'assets/hamilton-beats.json', d: null, g: new Map(), v: 0, err: null };
+function beatCompile(d) {
+  BEAT.d = d; BEAT.g.clear(); BEAT.v++;
+  for (const [id, t] of Object.entries(d && d.tracks || {})) {
+    if (!(t.bpm > 0) || !Number.isFinite(+t.firstBeat)) continue;
+    const segs = [{ a: +t.firstBeat, b: 0, p: 60 / t.bpm, bpm: +t.bpm }];
+    for (const c of (Array.isArray(t.changes) ? t.changes : []).filter(c => c && c.bpm > 0 && Number.isFinite(+c.at)).sort((x, y) => x.at - y.at)) {
+      const s = segs[segs.length - 1]; if (+c.at <= s.a) { if (segs.length === 1 && +c.at === s.a) { s.p = 60 / c.bpm; s.bpm = +c.bpm; } continue; }
+      segs.push({ a: +c.at, b: Math.round(s.b + (+c.at - s.a) / s.p), p: 60 / c.bpm, bpm: +c.bpm });
+    }
+    BEAT.g.set(id, { segs, meter: t.meter > 0 ? Math.round(t.meter) : 4, bpm: +t.bpm });
+  }
+  ACT.compiledFor = undefined; ACT.dirty = true;            // every actor's moves re-timed on the new grid
+}
+// → { beat (from the first downbeat, fractional), bar, inBar (0 … meter−1), phase (0 … 1 into the beat), bpm, meter } at t s into
+// the track, or null without a grid. Pure.
+function beatAt(id, t) {
+  const g = BEAT.g.get(String(id)); if (!g) return null;
+  let s = g.segs[0]; for (const q of g.segs) if (q.a <= t) s = q; else break;
+  const beat = s.b + (t - s.a) / s.p, k = Math.floor(beat);
+  return { beat, bar: Math.floor(k / g.meter), inBar: ((k % g.meter) + g.meter) % g.meter, phase: beat - k, bpm: s.bpm, meter: g.meter };
+}
+function beatTime(id, beat) {                                 // the time (s into the track) of a beat number
+  const g = BEAT.g.get(String(id)); if (!g) return null;
+  let s = g.segs[0]; for (const q of g.segs) if (q.b <= beat) s = q; else break;
+  return s.a + (beat - s.b) * s.p;
+}
+
+// ---- THE MOVES (RULING FV). docs/hamilton-dance-moves.md lists them. A move is joint angles as a PURE function of how many beats
+// into it she is (k) — looped over its `counts` (u, 0 … 1 through a loop) or, one-shot, played once and held. It writes into a pose
+// VECTOR (DV): per part [rx, ry, rz] in RIG_NAMES order, then the pelvis's offset from its joint (x, y, z), then the BODY's offset
+// in her frame (x her left, y up, z forward) and its turn (rad). A move starts from DANCE_NEUTRAL (standing tall, arms down), so
+// what it does not set is neutral. A move that "moves her" offsets the body a little and brings it back by its last count — the
+// path still says where she is. Mirrored, left and right swap (a step-touch to the right becomes one to the left).
+const DV_N = RIG_NAMES.length * 3 + 7, DV_PEL = RIG_NAMES.length * 3, DV_BODY = DV_PEL + 3, DV_YAW = DV_BODY + 3;
+const DJ = Object.fromEntries(RIG_NAMES.map((n, i) => [n, i * 3]));
+const dEase = k => actSmooth(k), dBump = x => (x > 0 && x < 1 ? Math.sin(Math.PI * x) : 0), dTri = x => 1 - Math.abs(2 * x - 1);
+const dSeg = (k, a, b) => Math.min(1, Math.max(0, (k - a) / (b - a)));   // 0 … 1 across beats a … b
+function dvLeg(V, s, dz, dy, pitch, drop, dx = 0) {          // a leg to its ankle's target (from its rest place), the pelvis `drop` down
+  const J = RIG.J, th = RIG.len['thigh_' + s], sh = RIG.len['shin_' + s], hip = J['thigh_' + s], ank = J['foot_' + s];
+  const [t1, t2] = rigIK(th.len, sh.len, (ank.z - hip.z) + dz, (ank.y - hip.y) + dy + drop, 1);
+  dvLegAbs(V, s, t1, t2, pitch, dx);
+}
+function dvLegAbs(V, s, t1, t2, pitch, dx = 0) {             // a leg by its bones' angles forward of straight down; the foot's pitch in the world
+  const th = RIG.len['thigh_' + s], sh = RIG.len['shin_' + s], r1 = t1 - th.rest, r2 = (t2 - sh.rest) - r1, sx = s === 'L' ? 1 : -1;
+  V[DJ['thigh_' + s]] = -r1; V[DJ['thigh_' + s] + 2] = sx * Math.atan2(dx, th.len + sh.len); V[DJ['shin_' + s]] = -r2; V[DJ['foot_' + s]] = pitch + r1 + r2;
+}
+function dvArm(V, s, fwd, abd, elbow, twist = 0, hand = 0) {  // an arm: raised forward (rad), out to its side, the elbow bent, turned
+  const sx = s === 'L' ? 1 : -1;
+  V[DJ['upperarm_' + s]] = -fwd; V[DJ['upperarm_' + s] + 1] = sx * twist; V[DJ['upperarm_' + s] + 2] = sx * abd;
+  V[DJ['forearm_' + s]] = -elbow; V[DJ['hand_' + s]] = -hand;
+}
+function dLegRest(s) {                                       // a leg's bones' angles (forward of straight down) standing
+  const J = RIG.J, th = RIG.len['thigh_' + s], sh = RIG.len['shin_' + s], hip = J['thigh_' + s], ank = J['foot_' + s];
+  return rigIK(th.len, sh.len, ank.z - hip.z, ank.y - hip.y, 1);
+}
+const dvRot = (V, n, x, y, z) => { const i = DJ[n]; V[i] = x; V[i + 1] = y; V[i + 2] = z; };
+const dvBody = (V, x, y, z, yaw = 0) => { V[DV_BODY] = x; V[DV_BODY + 1] = y; V[DV_BODY + 2] = z; V[DV_YAW] = yaw; };
+const dvPel = (V, x, drop, z = 0) => { V[DV_PEL] = x; V[DV_PEL + 1] = -drop; V[DV_PEL + 2] = z; };
+// a step: the foot that moves lifts in a bump across beats a … b; a foot on the floor stays where the body left it (dx from it)
+const dStep = (k, a, b, h = 0.06) => h * dBump(dSeg(k, a, b));
+let DANCE_NEUTRAL = null;
+function danceNeutral() {
+  if (DANCE_NEUTRAL) return DANCE_NEUTRAL;
+  const V = new Float64Array(DV_N); dvLeg(V, 'L', 0, 0, 0, 0); dvLeg(V, 'R', 0, 0, 0, 0); dvArm(V, 'L', 0, 0, 0.12); dvArm(V, 'R', 0, 0, 0.12);
+  return (DANCE_NEUTRAL = V);
+}
+// The library. counts: a loop's length (beats); once: played once over its counts, then held; body: it moves her (offsets that come
+// back); bin / bout: its blend in and out (s). f(V, k, u, o): k beats into it (× speed; negative running backwards with `reverse`),
+// u = how far through the loop (or, once, the move); o = { p (her pose), g (her group), seed }.
+const DANCE = {
+  'step-touch': { counts: 4, body: true, desc: 'step right, touch left beside it, step left, touch right', f(V, k, u) {
+    const b = u * 4, out = b < 1 ? dEase(b) : b < 2 ? 1 : b < 3 ? 1 - dEase(b - 2) : 0, w = 0.32;
+    dvBody(V, -w * out, 0, 0); const drop = 0.035 * dBump(rigFrac(b));
+    // 0-1 the right foot steps out (lifted) while the left stays where it was (so it is w·out out from her); 1-2 the left closes
+    // with a tap; 2-3 the left steps back while the right stays; 3-4 the right closes. dx is each foot's offset OUT from under her.
+    const lx = b < 1 ? w * out : b < 2 ? w * (1 - dEase(b - 1)) : 0, rx = b >= 2 && b < 3 ? w * (1 - out) : b >= 3 ? w * (1 - dEase(b - 3)) : 0;
+    dvPel(V, 0, drop);
+    dvLeg(V, 'R', 0, b < 1 ? dStep(b, 0, 1) : b >= 3 ? dStep(b, 3, 4, 0.04) : 0, 0, drop, rx);
+    dvLeg(V, 'L', 0, b >= 1 && b < 2 ? dStep(b, 1, 2, 0.04) : b >= 2 && b < 3 ? dStep(b, 2, 3) : 0, 0, drop, lx);
+    const sw = Math.sin(Math.PI * b / 2);
+    dvArm(V, 'L', 0.35 + 0.25 * sw, 0.25, 1.35); dvArm(V, 'R', 0.35 - 0.25 * sw, 0.25, 1.35);
+    dvRot(V, 'spine', 0.02, 0.12 * sw, 0.05 * sw); dvRot(V, 'head', 0, -0.06 * sw, 0);
+  } },
+  'grapevine': { counts: 8, body: true, desc: 'to the right: side, behind, side, touch; then back to the left', f(V, k, u) {
+    const b = u * 8, step = 0.3, half = b < 4 ? b : b - 4, dir = b < 4 ? -1 : 1;
+    const travel = half < 3 ? step * (Math.floor(half) + dEase(rigFrac(half))) : 3 * step;
+    dvBody(V, dir < 0 ? -travel : -3 * step + travel, 0, 0);
+    const drop = 0.04 * dBump(rigFrac(b)), lead = dir < 0 ? 'R' : 'L', trail = dir < 0 ? 'L' : 'R', n = Math.floor(half), f = rigFrac(half);
+    dvPel(V, 0, drop);
+    // the leading foot steps out on counts 1 and 3, the trailing one crosses BEHIND on 2 and taps beside on 4
+    dvLeg(V, lead, 0, n === 0 || n === 2 ? 0.06 * dBump(f) : 0, 0, drop, 0);
+    dvLeg(V, trail, n === 1 ? -0.14 * dBump(f) - 0.06 : 0, n === 1 || n === 3 ? 0.05 * dBump(f) : 0, n === 1 ? 0.3 : 0, drop, n === 1 ? -0.16 * dEase(f) : 0);
+    dvArm(V, 'L', 0.15, 0.55 + 0.1 * dBump(f), 0.35); dvArm(V, 'R', 0.15, 0.55 + 0.1 * dBump(f), 0.35);
+    dvRot(V, 'head', 0, dir * -0.25, 0); dvRot(V, 'spine', 0.03, 0, dir * -0.04);
+  } },
+  'box-step': { counts: 4, body: true, desc: 'right foot forward, left crosses over, right back, left to the side: a square', f(V, k, u) {
+    const b = u * 4, n = Math.floor(b), f = rigFrac(b), e = dEase(f);
+    const corners = [[0, 0], [0, 0.24], [-0.16, 0.24], [-0.16, 0], [0, 0]];
+    dvBody(V, corners[n][0] + (corners[n + 1][0] - corners[n][0]) * e * 0.5, 0, corners[n][1] + (corners[n + 1][1] - corners[n][1]) * e * 0.5);
+    const drop = 0.03 * dBump(f), mover = n % 2 === 0 ? 'R' : 'L', still = mover === 'R' ? 'L' : 'R';
+    dvPel(V, 0, drop);
+    dvLeg(V, mover, (n === 0 ? 0.24 : n === 2 ? -0.24 : 0) * (e - 0.5), 0.05 * dBump(f), 0, drop, n === 1 ? -0.08 * dBump(f) : n === 3 ? 0.08 * dBump(f) : 0);
+    dvLeg(V, still, 0, 0, 0, drop);
+    dvArm(V, 'L', 0.3, 0.3, 1.1); dvArm(V, 'R', 0.3, 0.3, 1.1); dvRot(V, 'spine', 0.02, 0.1 * Math.sin(Math.PI * b / 2), 0);
+  } },
+  'sway': { counts: 2, desc: 'her weight side to side, arms floating', f(V, k, u) {
+    const s = Math.sin(2 * Math.PI * u);
+    dvPel(V, 0.06 * s, 0.02 * Math.abs(s)); dvRot(V, 'pelvis', 0, 0, -0.07 * s);
+    dvLeg(V, 'L', 0, 0, 0, 0.02 * Math.abs(s), 0.06 * s); dvLeg(V, 'R', 0, 0, 0, 0.02 * Math.abs(s), -0.06 * s);
+    V[DJ.thigh_L + 2] += 0.07 * s; V[DJ.thigh_R + 2] += 0.07 * s;
+    dvRot(V, 'spine', 0.02, 0, 0.1 * s); dvRot(V, 'head', 0, 0, -0.06 * s);
+    dvArm(V, 'L', 0.15, 0.35 + 0.25 * s, 0.4); dvArm(V, 'R', 0.15, 0.35 - 0.25 * s, 0.4);
+  } },
+  'bounce': { counts: 1, desc: 'a pulse: the knees dip on every beat (also "pulse")', f(V, k, u) {
+    const d = 0.07 * Math.pow(Math.sin(Math.PI * u), 2);
+    dvPel(V, 0, d); dvLeg(V, 'L', 0, 0, 0, d); dvLeg(V, 'R', 0, 0, 0, d);
+    dvArm(V, 'L', 0.35, 0.2, 1.4 + 0.3 * d / 0.07); dvArm(V, 'R', 0.35, 0.2, 1.4 + 0.3 * d / 0.07);
+    dvRot(V, 'spine', 0.05 + d, 0, 0); dvRot(V, 'head', 0.15 * d / 0.07, 0, 0);
+  } },
+  'clap': { counts: 1, desc: 'the hands meet in front of her chest on every beat', f(V, k, u) {
+    const c = Math.pow(Math.cos(Math.PI * u), 6);                         // 1 on the beat, open between
+    dvArm(V, 'L', 0.8, 0.45 - 0.95 * c, 1.2 + 0.2 * c, 0, 0); dvArm(V, 'R', 0.8, 0.45 - 0.95 * c, 1.2 + 0.2 * c, 0, 0);
+    const d = 0.03 * c; dvPel(V, 0, d); dvLeg(V, 'L', 0, 0, 0, d); dvLeg(V, 'R', 0, 0, 0, d); dvRot(V, 'head', 0.05 * c, 0, 0);
+  } },
+  'point': { counts: 4, desc: 'the right arm points up and out on 1, holds, comes down on 4', f(V, k, u) {
+    const b = u * 4, e = b < 1 ? dEase(b) : b < 3 ? 1 : 1 - dEase(b - 3);
+    dvArm(V, 'R', 2.2 * e, 0.45 * e, 0.12 + 0.05 * (1 - e)); dvArm(V, 'L', 0.2, 0.55 * e, 1.6 * e + 0.12, 0.4 * e);
+    dvRot(V, 'head', -0.3 * e, -0.3 * e, 0); dvRot(V, 'spine', -0.05 * e, -0.15 * e, 0);
+    dvLeg(V, 'R', 0.18 * e, 0, -0.2 * e, 0.02 * e); dvLeg(V, 'L', 0, 0, 0, 0.02 * e); dvPel(V, 0, 0.02 * e);
+  } },
+  'lunge': { counts: 4, body: true, desc: 'the right foot forward into a lunge on 1, held, back on 4', f(V, k, u) {
+    const b = u * 4, e = b < 1 ? dEase(b) : b < 3 ? 1 : 1 - dEase(b - 3), drop = 0.24 * e;
+    dvBody(V, 0, 0, 0.2 * e); dvPel(V, 0, drop);
+    dvLeg(V, 'R', 0.3 * e, b < 1 ? dStep(b, 0, 1, 0.05) : 0, 0, drop); dvLeg(V, 'L', -0.38 * e, 0.06 * e, 0.6 * e, drop);
+    dvRot(V, 'spine', 0.12 * e, 0, 0); dvRot(V, 'head', -0.1 * e, 0, 0);
+    dvArm(V, 'R', 1.4 * e, 0.1, 0.2); dvArm(V, 'L', -0.5 * e, 0.15, 0.2);
+  } },
+  'kneel': { counts: 2, once: true, bin: 0.1, desc: 'down onto the right knee over two counts, and stay there', f(V, k, u) {
+    const e = dEase(u), drop = 0.43 * e;
+    dvPel(V, 0, drop, -0.04 * e);
+    dvLeg(V, 'L', 0.32 * e, 0, 0, drop);                                     // the left foot planted in front, its knee up
+    // the right foot slides back along the floor as she goes down, so the knee lands under her and the shin lies flat behind
+    dvLeg(V, 'R', -0.38 * e, -0.01 * e, 1.2 * e, drop);
+    dvRot(V, 'spine', 0.12 * e, 0, 0); dvRot(V, 'head', 0.2 * e, 0, 0);
+    dvArm(V, 'L', 0.75 * e, 0.12, 0.9 * e + 0.12); dvArm(V, 'R', 0.1 * e, 0.05, 0.25);
+  } },
+  'rise': { counts: 2, once: true, bin: 0.1, desc: 'up from a kneel to standing tall, the arms opening up and out', f(V, k, u, o) {
+    DANCE.kneel.f(V, k, 1 - dEase(Math.min(1, u * 1.4)), o);
+    const a = dEase(dSeg(u, 0.45, 1));
+    dvArm(V, 'L', 0.4 + 2.1 * a, 0.5 * a, 0.6 * (1 - a) + 0.15); dvArm(V, 'R', 0.1 + 2.4 * a, 0.5 * a, 0.15);
+    dvRot(V, 'head', -0.25 * a, 0, 0);
+  } },
+  'spin-quarter': { counts: 1, once: true, bin: 0.08, bout: 0.4, desc: 'a quarter turn to her left on the spot (mirror: to the right)', f: (V, k, u) => danceSpin(V, u, Math.PI / 2) },
+  'spin-half': { counts: 2, once: true, bin: 0.08, bout: 0.5, desc: 'a half turn on the spot', f: (V, k, u) => danceSpin(V, u, Math.PI) },
+  'spin-full': { counts: 2, once: true, bin: 0.08, desc: 'a full turn on the spot, arms in, then out', f: (V, k, u) => danceSpin(V, u, 2 * Math.PI) },
+  'reach-up': { counts: 2, once: true, desc: 'both arms up over her head on 1, up on her toes, held', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 2));
+    dvArm(V, 'L', 2.95 * e, 0.22 * e, 0.12); dvArm(V, 'R', 2.95 * e, 0.22 * e, 0.12);
+    dvLeg(V, 'L', 0, 0.05 * e, 0.55 * e, 0); dvLeg(V, 'R', 0, 0.05 * e, 0.55 * e, 0); dvBody(V, 0, 0.05 * e, 0);
+    dvRot(V, 'spine', -0.08 * e, 0, 0); dvRot(V, 'head', -0.3 * e, 0, 0);
+  } },
+  'arm-sweep': { counts: 4, desc: 'the right arm sweeps from low across her up to high on the right, the body turning with it', f(V, k, u) {
+    const th = -0.35 + (Math.PI * 0.95 + 0.35) * dTri(u), up = Math.sin(Math.PI * dTri(u));
+    dvArm(V, 'R', 0.55 * up + 0.3, th, 0.15); dvArm(V, 'L', 0.2, 0.35 * up, 0.5);
+    dvRot(V, 'spine', -0.04 * up, -0.25 * (dTri(u) - 0.5), 0.06 * up); dvRot(V, 'head', -0.2 * up, -0.3 * (dTri(u) - 0.5), 0);
+    dvLeg(V, 'R', 0, 0, 0, 0, 0.08 * up); dvLeg(V, 'L', 0, 0, 0, 0);
+  } },
+  'salute': { counts: 2, once: true, desc: 'the right hand to her brow, standing tall, held', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 2));
+    dvArm(V, 'R', 0.55 * e, 1.25 * e, 2.35 * e + 0.12 * (1 - e), -0.5 * e, -0.2 * e); dvArm(V, 'L', 0, 0.04, 0.05);
+    dvRot(V, 'spine', -0.04 * e, 0, 0); dvRot(V, 'head', -0.05 * e, 0, 0);
+  } },
+  'bow': { counts: 4, desc: 'a bow from the waist: down by 2, held, up by 4; one hand across her, one behind', f(V, k, u) {
+    const b = u * 4, e = b < 1.5 ? dEase(b / 1.5) : b < 2.5 ? 1 : 1 - dEase((b - 2.5) / 1.5);
+    dvRot(V, 'spine', 0.9 * e, 0, 0); dvRot(V, 'head', 0.25 * e, 0, 0); dvPel(V, 0, 0, -0.04 * e); dvBody(V, 0, 0, -0.04 * e);
+    dvArm(V, 'R', 0.75 * e, -0.35 * e, 1.45 * e + 0.12); dvArm(V, 'L', -0.45 * e, 0.1, 1.2 * e + 0.12);
+    dvLeg(V, 'R', 0.12 * e, 0, 0, 0); dvLeg(V, 'L', 0, 0, 0, 0);
+  } },
+  'curtsy': { counts: 4, desc: 'the right foot slides behind, the knees dip, a little bow; the hands out as if holding a skirt', f(V, k, u) {
+    const b = u * 4, e = b < 1.5 ? dEase(b / 1.5) : b < 2.5 ? 1 : 1 - dEase((b - 2.5) / 1.5), drop = 0.16 * e;
+    dvPel(V, 0, drop); dvLeg(V, 'L', 0.04 * e, 0, 0, drop); dvLeg(V, 'R', -0.26 * e, 0.06 * e, 0.6 * e, drop, -0.09 * e);
+    dvRot(V, 'spine', 0.28 * e, 0, 0); dvRot(V, 'head', 0.2 * e, 0, 0);
+    dvArm(V, 'L', 0.3 * e, 0.45 * e, 0.3); dvArm(V, 'R', 0.3 * e, 0.45 * e, 0.3);
+  } },
+  'freeze': { counts: 1, once: true, bin: 0.04, bout: 0.15, desc: 'she holds the pose she had on its first count, still as a statue', f(V, k, u, o) { danceBaseAt(V, o, o.at0); } },
+  'slow-walk': { counts: 4, desc: 'the walk in slow motion on the spot — one stride every four counts (reverse: the "rewind", the walk run backwards)', f(V, k, u, o) {
+    const q = Object.assign({}, o.p, { speed: 9, dist: k / 4 * RIG_GAIT.cycle, turn: 0, carry: null, dance: null });
+    danceBaseAt(V, o, null, q);
+    V[DJ.spine] += o.reverse ? -0.06 : 0.02;
+    // the rewind travelling: her path walks her one way, so she turns her back to it and the walk runs backwards along it
+    if (o.reverse) V[DV_YAW] = Math.PI * actSmooth(o.p.speed / 0.08);
+  } },
+  'stomp': { counts: 2, desc: 'a knee up on the "and", stamped down on the beat; right then left', f(V, k, u) {
+    const b = u * 2, s = b < 1 ? 'R' : 'L', o2 = s === 'R' ? 'L' : 'R', f = rigFrac(b), up = f < 0.25 ? 0 : Math.sin(Math.PI * (f - 0.25) / 0.75);
+    const hit = Math.pow(Math.max(0, 1 - f * 4), 2), drop = 0.05 * hit + 0.02;
+    dvPel(V, 0, drop);
+    const [a1, a2] = dLegRest(s); dvLegAbs(V, s, a1 + 1.25 * up, a2 - 0.5 * up, -0.2 * up); dvLeg(V, o2, 0, 0, 0, drop);
+    dvArm(V, 'L', 0.5 + 0.3 * hit, 0.35, 1.7); dvArm(V, 'R', 0.5 + 0.3 * hit, 0.35, 1.7);
+    dvRot(V, 'spine', 0.1 + 0.08 * hit, 0, 0); dvRot(V, 'head', 0.1 * hit, 0, 0);
+  } },
+  'jump': { counts: 2, body: true, desc: 'down on 1, up in the air on the "and", landing on 2', f(V, k, u) {
+    const b = u * 2, crouch = b < 0.8 ? dBump(b / 1.6) : b > 1.6 ? dBump((b - 1.6) / 0.8) * 0.7 : 0, air = b >= 0.8 && b < 1.6 ? Math.sin(Math.PI * (b - 0.8) / 0.8) : 0;
+    const drop = 0.17 * crouch;
+    dvBody(V, 0, 0.32 * air, 0); dvPel(V, 0, drop);
+    dvLeg(V, 'L', 0, 0, 0.7 * air, drop); dvLeg(V, 'R', 0, 0, 0.7 * air, drop);
+    dvArm(V, 'L', -0.6 * crouch + 2.6 * air, 0.3 * air, 0.3); dvArm(V, 'R', -0.6 * crouch + 2.6 * air, 0.3 * air, 0.3);
+    dvRot(V, 'spine', 0.25 * crouch - 0.05 * air, 0, 0);
+  } },
+  'kick': { counts: 2, desc: 'a kick forward with the right leg, then the left', f(V, k, u) {
+    const b = u * 2, s = b < 1 ? 'R' : 'L', o2 = s === 'R' ? 'L' : 'R', f = rigFrac(b), up = Math.sin(Math.PI * f);
+    const [a1, a2] = dLegRest(s), th = a1 + 1.35 * up;                           // the knee bent on the way up and down, straight at the top
+    dvLegAbs(V, s, th, th - (a1 - a2) - 0.9 * (1 - up) * Math.sin(Math.PI * f), -0.5 * up); dvLeg(V, o2, 0, 0, 0, 0.03);
+    dvPel(V, 0, 0.03); dvArm(V, 'L', 0.2, 1.0, 0.2); dvArm(V, 'R', 0.2, 1.0, 0.2); dvRot(V, 'spine', -0.1 * up, 0, 0);
+  } },
+  'two-step': { counts: 2, desc: 'the hip-hop two-step: out to the side and together, right then left, a bounce on every beat', f(V, k, u) {
+    const b = u * 2, s = b < 1 ? 'R' : 'L', o2 = s === 'R' ? 'L' : 'R', f = rigFrac(b), out = Math.sin(Math.PI * f), d = 0.06 * Math.pow(Math.sin(Math.PI * f), 2);
+    dvPel(V, (s === 'R' ? -1 : 1) * 0.04 * out, d); dvRot(V, 'pelvis', 0, 0, (s === 'R' ? 1 : -1) * 0.06 * out);
+    dvLeg(V, s, 0, 0.05 * out, 0, d, 0.16 * out); dvLeg(V, o2, 0, 0, 0, d);
+    const sh = Math.sin(Math.PI * b);
+    dvArm(V, 'L', 0.35 + 0.3 * sh, 0.25, 1.5); dvArm(V, 'R', 0.35 - 0.3 * sh, 0.25, 1.5);
+    dvRot(V, 'spine', 0.1, 0.12 * sh, (s === 'R' ? -1 : 1) * 0.06 * out); dvRot(V, 'head', 0.12 * out, 0, 0);
+  } },
+  'march': { counts: 2, desc: 'marching on the spot: the knees up in turn, the arms swinging straight', f(V, k, u) {
+    const b = u * 2, s = b < 1 ? 'R' : 'L', o2 = s === 'R' ? 'L' : 'R', up = Math.sin(Math.PI * rigFrac(b)), sw = Math.cos(Math.PI * b);
+    const [a1, a2] = dLegRest(s); dvLegAbs(V, s, a1 + 1.0 * up, a2 - 0.35 * up, -0.1 * up); dvLeg(V, o2, 0, 0, 0, 0.01);
+    dvArm(V, 'L', 0.65 * sw, 0.05, 0.1); dvArm(V, 'R', -0.65 * sw, 0.05, 0.1);
+    dvRot(V, 'spine', -0.03, 0, 0); dvPel(V, 0, 0.01);
+  } },
+};
+DANCE.pulse = DANCE.bounce;                                  // the same move, its other name
+// ---- THIS SHOW'S OWN MOVES (FV; their sources are in docs/hamilton-dance-moves.md). A phrase is a list of KEY shapes on the count
+// they land on; between two keys the body eases from one to the other (dPhrase), and after the last it holds.
+function dPhrase(V, b, keys) {
+  let k = 0; while (k + 1 < keys.length && keys[k + 1][0] <= b) k++;
+  const A = new Float64Array(V.length); A.set(danceNeutral()); keys[k][1](A);
+  if (k + 1 >= keys.length || b <= keys[k][0]) { V.set(A); return; }
+  const B = new Float64Array(V.length); B.set(danceNeutral()); keys[k + 1][1](B);
+  const t = dEase((b - keys[k][0]) / (keys[k + 1][0] - keys[k][0]));
+  for (let i = 0; i < V.length; i++) V[i] = A[i] + (B[i] - A[i]) * t;
+}
+const dStance = (V, drop, wide = 0.12, fwdL = 0, fwdR = 0) => { dvPel(V, 0, drop); dvLeg(V, 'L', fwdL, 0, 0, drop, wide); dvLeg(V, 'R', fwdR, 0, 0, drop, wide); };
+// the arms' two named shapes the phrases reuse
+const dHeart = (V, s) => dvArm(V, s, 0.5, 0, 2.0, -1.57);                 // the hand on the heart (the Pledge): the arm rolled in, the forearm across
+const dGuard = (V) => { dvArm(V, 'L', 1.0, 0.1, 2.1); dvArm(V, 'R', 0.8, 0.15, 2.35); };   // fists up, a boxer's guard
+// "Just like my country I'm young, scrappy and hungry, and I'm not throwing away my shot": Blankenbuehler's signature phrase
+// (WSJ, "Choreographing 'Hamilton': The Meaning Behind the Moves"): second position, reaching out to "all those people over
+// there", the lean and the hand to the heart (a broken-down Pledge of Allegiance), the hand flips out on "scrappy" (flicking paint
+// off the hands), the boxing stance grooving on "hungry", a big roundhouse punch on "throwing away", and the shot SNAPPED DOWN
+// ("he's not going to miss any opportunities"). At the end of the show (legacy) it is thrown UP instead.
+function dMyShot(V, b, up) {
+  dPhrase(V, b, [
+    [0, V => dStance(V, 0.06)],
+    [0.75, V => { dStance(V, 0.1, 0.16); dvArm(V, 'R', 0.45, 1.25, 0.15); dvArm(V, 'L', 0.1, 0.2, 0.3); dvRot(V, 'spine', 0.08, -0.3, -0.12); dvRot(V, 'head', 0, -0.4, 0); }],
+    [1.5, V => { dStance(V, 0.1, 0.16); dvArm(V, 'L', 0.45, 1.25, 0.15); dvArm(V, 'R', 0.2, 0.3, 0.3); dvRot(V, 'spine', 0.08, 0.3, 0.12); dvRot(V, 'head', 0, 0.4, 0); }],
+    [2.25, V => { dStance(V, 0.05, 0.1); dHeart(V, 'R'); dvRot(V, 'spine', -0.04, 0, 0.16); dvRot(V, 'head', -0.12, 0, -0.1); }],
+    [3, V => { dStance(V, 0.04, 0.1); dHeart(V, 'R'); dvRot(V, 'spine', -0.04, 0, 0.12); dvRot(V, 'head', -0.12, 0, -0.08); }],
+    [3.25, V => { dStance(V, 0.07, 0.1); dvArm(V, 'R', 0.7, 1.05, 0.35, 0, -0.5); dvRot(V, 'spine', 0, -0.15, 0); dvRot(V, 'head', 0, -0.3, 0); }],
+    [4, V => { dStance(V, 0.12, 0.12, 0.12, -0.05); dGuard(V); dvRot(V, 'spine', 0.1, 0.2, 0); }],
+    [4.5, V => { dStance(V, 0.17, 0.12, 0.12, -0.05); dGuard(V); dvRot(V, 'spine', 0.14, 0.25, 0); }],
+    [5, V => { dStance(V, 0.12, 0.12, 0.12, -0.05); dGuard(V); dvRot(V, 'spine', 0.1, 0.2, 0); }],
+    [5.5, V => { dStance(V, 0.1, 0.12, 0.05, -0.1); dvArm(V, 'R', 0.6, 1.45, 0.5); dvArm(V, 'L', 1.0, 0.1, 2.0); dvRot(V, 'spine', 0.05, 0.5, 0); }],
+    [6.5, V => { dStance(V, 0.14, 0.12, 0.28, -0.1); dvArm(V, 'R', 1.45, -0.3, 0.2); dvArm(V, 'L', 0.4, 0.3, 1.8); dvRot(V, 'spine', 0.14, -0.5, 0); }],
+    [7, V => { dStance(V, 0.08, 0.12, 0.2); dvArm(V, 'R', up ? 1.6 : 2.4, 0.2, 0.3); dvArm(V, 'L', 0.3, 0.3, 1.2); dvRot(V, 'spine', 0, -0.2, 0); }],
+    [7.4, V => { if (up) { dStance(V, 0.02, 0.1, 0.1); dvArm(V, 'R', 3.0, 0.15, 0.05, 0, -0.3); dvRot(V, 'head', -0.35, 0, 0); dvRot(V, 'spine', -0.08, 0, 0); }
+                 else { dStance(V, 0.13, 0.12, 0.2); dvArm(V, 'R', -0.15, 0.25, 0.05, 0, 0.4); dvRot(V, 'spine', 0.18, -0.1, 0); dvRot(V, 'head', 0.15, 0, 0); } dvArm(V, 'L', 0.2, 0.3, 0.6); }],
+  ]);
+}
+// Yorktown, "I imagined death so much it feels more like a memory" (WSJ, "'Hamilton' Choreographer Breaks Down His Moves"): the
+// marching troops freeze and play out his thought — a hand behind the head ("memory, up in the back of my head") and one across
+// the chest, chin up ("put a knife to my neck and I'm not going to change how I feel"), then on his feet with the enemy ahead (a knee
+// up and a punch forward), arms crossed on "if this is the end of me".
+const dImagine = (V, b) => dPhrase(V, b, [
+  [0, V => dStance(V, 0, 0.05)],
+  [1, V => { dStance(V, 0.03, 0.08); dvArm(V, 'R', 0.35, 2.35, 2.3); dvArm(V, 'L', 0.5, 0, 2.0, -1.57); dvRot(V, 'head', -0.28, 0, 0); }],
+  [3, V => { dStance(V, 0.05, 0.1); dvArm(V, 'R', 0.35, 2.35, 2.3); dvArm(V, 'L', 0.5, 0, 2.0, -1.57); dvRot(V, 'head', -0.3, 0.1, 0); }],
+  [4, V => { dStance(V, 0.12, 0.2); dvArm(V, 'R', 0.3, 2.45, 2.4); dvArm(V, 'L', 0.6, 0, 2.0, -1.57); dvRot(V, 'head', -0.2, -0.35, 0); dvRot(V, 'spine', 0.08, 0.15, 0); }],
+  [5, V => { dvPel(V, 0, 0.04); const [a1, a2] = dLegRest('R'); dvLegAbs(V, 'R', a1 + 1.05, a2 - 0.15, -0.2); dvLeg(V, 'L', 0, 0, 0, 0.04); dvArm(V, 'L', 1.5, 0.05, 0.05); dvArm(V, 'R', 0.6, 0.3, 1.9); dvRot(V, 'spine', 0.1, 0.2, 0); }],
+  [6, V => { dStance(V, 0.12, 0.12, 0.25); dvArm(V, 'L', 1.4, 0.1, 0.1); dvArm(V, 'R', 1.4, 0.1, 0.1); dvRot(V, 'spine', 0.12, 0, 0); }],
+  [7, V => { dStance(V, 0.04, 0.08); dvArm(V, 'L', 0.75, 0.05, 1.9, -1.45); dvArm(V, 'R', 0.6, 0.05, 1.9, -1.45); dvRot(V, 'head', 0.1, 0, 0); }],
+]);
+// Yorktown, "weapon in my hand, a command, and boom": the rifle held up over the head, a forearm across the face (command), the
+// shoulders squared, fists up — "the musculature of being totally in charge" — and the hands on the shoulders (the epaulets).
+const dCommand = (V, b) => dPhrase(V, b, [
+  [0, V => { dStance(V, 0.04, 0.12); dvArm(V, 'R', 2.8, 0.3, 0.4); dvArm(V, 'L', 2.6, 0.35, 0.9); dvRot(V, 'head', -0.25, 0, 0); }],
+  [1.5, V => { dStance(V, 0.06, 0.14); dvArm(V, 'R', 1.45, -0.35, 2.25); dvArm(V, 'L', 0.3, 0.3, 0.4); dvRot(V, 'spine', 0, -0.2, 0); }],
+  [2.5, V => { dStance(V, 0.1, 0.18); dvArm(V, 'L', Math.PI / 2, 1.45, 1.6); dvArm(V, 'R', Math.PI / 2, 1.45, 1.6);   /* the raised arm rolled a quarter turn, so the elbow bends UP */ dvRot(V, 'head', -0.1, 0, 0); }],
+  [3.5, V => { dStance(V, 0.04, 0.12); dvArm(V, 'L', 0.35, 0.55, 2.7); dvArm(V, 'R', 0.35, 0.55, 2.7); }],
+]);
+// Yorktown, "we gotta go, we gotta get the job done": the hip-hop step that feels like a march — a step out with the arms swinging
+// wide, the shoulders brushed off ("as if we don't care about anything but ourselves"), a foot pushed out to the side, and down.
+const dHipMarch = (V, b) => dPhrase(V, b, [
+  [0, V => { dvPel(V, 0, 0.06); dvLeg(V, 'R', 0.1, 0.05, 0, 0.06, 0.08); dvLeg(V, 'L', 0, 0, 0, 0.06); dvArm(V, 'L', 0.2, 0.95, 0.6); dvArm(V, 'R', 0.2, 0.95, 0.6); }],
+  [1, V => { dvPel(V, 0, 0.08); dvLeg(V, 'L', 0.1, 0.05, 0, 0.08, 0.08); dvLeg(V, 'R', 0, 0, 0, 0.08); dvArm(V, 'L', 0.5, 0.5, 0.9); dvArm(V, 'R', 0.5, 0.5, 0.9); dvRot(V, 'spine', 0.08, 0.2, 0); }],
+  [2, V => { dStance(V, 0.05, 0.08); dvArm(V, 'L', 1.0, 0.1, 2.2, -1.4); dvArm(V, 'R', 1.0, 0.1, 2.2, -1.4); dvRot(V, 'spine', 0.06, -0.15, 0); dvRot(V, 'head', 0, 0.3, 0); }],
+  [3, V => { dvPel(V, -0.03, 0.1); dvLeg(V, 'R', 0, 0.06, 0.3, 0.1, 0.3); dvLeg(V, 'L', 0, 0, 0, 0.1); dvArm(V, 'L', 0.2, 0.6, 1.4); dvArm(V, 'R', 0.2, 0.6, 1.4); dvRot(V, 'spine', 0.12, 0, -0.08); }],
+  [3.6, V => { dStance(V, 0.14, 0.2); dvArm(V, 'L', 0.1, 0.3, 0.9); dvArm(V, 'R', 0.1, 0.3, 0.9); dvRot(V, 'spine', 0.18, 0, 0); }],
+  [4, V => { dvPel(V, 0, 0.06); dvLeg(V, 'R', 0.1, 0.05, 0, 0.06, 0.08); dvLeg(V, 'L', 0, 0, 0, 0.06); dvArm(V, 'L', 0.2, 0.95, 0.6); dvArm(V, 'R', 0.2, 0.95, 0.6); }],
+]);
+Object.assign(DANCE, {
+  'my-shot': { counts: 8, once: true, bin: 0.15, desc: '"Just like my country I\'m young, scrappy and hungry, and I\'m not throwing away my shot": second position, reach out to the people, hand to the heart, the hand flicks out, the boxer\'s groove, the roundhouse punch, the shot snapped down', f: (V, k, u) => dMyShot(V, u * 8, false) },
+  'legacy': { counts: 8, once: true, bin: 0.15, desc: 'the My Shot phrase as it returns at "Legacy" at the end of the show: the same, but the shot is thrown UP', f: (V, k, u) => dMyShot(V, u * 8, true) },
+  'imagine-death': { counts: 8, once: true, bin: 0.15, desc: 'Yorktown, "I imagined death so much it feels more like a memory": a hand behind the head, a hand across the chest, chin up; a knee up and a punch for "on my feet, enemy ahead of me"; arms crossed for "if this is the end of me"', f: (V, k, u) => dImagine(V, u * 8) },
+  'command': { counts: 4, once: true, desc: 'Yorktown, "weapon in my hand, a command, and boom": the rifle overhead, the forearm across the face, fists up and shoulders squared, the hands on the epaulets', f: (V, k, u) => dCommand(V, u * 4) },
+  'heartbeat': { counts: 2, desc: 'Yorktown, thinking of Eliza: a contraction on each "boom" of the heartbeat, then a point to the head', f(V, k, u) {
+    const b = u * 2, hit = Math.pow(Math.max(0, 1 - rigFrac(b) * 3), 2), drop = 0.13 * hit + 0.03;
+    dStance(V, drop, 0.12); dvRot(V, 'spine', 0.35 * hit, 0, 0); dvRot(V, 'head', 0.25 * hit, 0, 0);
+    if (b < 1) { dvArm(V, 'L', 0.5, 0, 2.0 + 0.2 * hit, -1.57); dvArm(V, 'R', 0.4, 0, 2.0 + 0.2 * hit, -1.57); }
+    else { dvArm(V, 'R', 1.0, 0.75, 2.45); dvArm(V, 'L', 0.5, 0, 2.0, -1.57); dvRot(V, 'head', 0.1 * hit, -0.2, 0); }
+  } },
+  'hiphop-march': { counts: 4, desc: 'Yorktown, "we gotta go, we gotta get the job done": a hip-hop step like a march — out with the arms wide, the shoulders brushed off, a foot pushed out, down', f: (V, k, u) => dHipMarch(V, u * 4) },
+  'musket': { counts: 2, desc: 'firing a musket that weighs 35 pounds: a wide stance, the back used, aim, and the recoil through the whole body on the beat', f(V, k, u) {
+    const b = u * 2, kick = Math.pow(Math.max(0, 1 - rigFrac(b) * 2.5), 2) * (b < 1 ? 1 : 0.4);
+    dStance(V, 0.14, 0.17, 0.22, -0.12); dvRot(V, 'pelvis', 0, 0.35, 0);
+    dvArm(V, 'L', 1.45, -0.2, 0.15); dvArm(V, 'R', 1.25, 0.35, 1.9 + 0.2 * kick);
+    dvRot(V, 'spine', 0.18 - 0.22 * kick, -0.3, 0); dvRot(V, 'head', 0.12, -0.05, 0.1); dvBody(V, 0, 0, -0.05 * kick);
+  } },
+  'hoist': { counts: 2, once: true, lift: 'overhead', desc: 'Hurricane: what she carries hoisted overhead, arms straight up, like the storm lifting it (a carried prop rises with her hands)', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 1.5));
+    dStance(V, 0.05 * e, 0.12); dvArm(V, 'L', 2.8 * e, 0.35 * e, 0.35); dvArm(V, 'R', 2.8 * e, 0.35 * e, 0.35); dvRot(V, 'spine', -0.08 * e, 0, 0); dvRot(V, 'head', -0.25 * e, 0, 0);
+  } },
+  'upside-down': { counts: 4, once: true, lift: 'flip', desc: 'Yorktown, "the world turned upside down": furniture lifted overhead and turned upside down, held there (a carried prop flips over)', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 2));
+    dStance(V, 0.06 * e, 0.14); dvArm(V, 'L', 2.75 * e, 0.4 * e, 0.45); dvArm(V, 'R', 2.75 * e, 0.4 * e, 0.45); dvRot(V, 'spine', -0.1 * e, 0, 0); dvRot(V, 'head', -0.3 * e, 0, 0);
+  } },
+  'shimmy': { counts: 2, desc: 'The Room Where It Happens: Burr\'s ego mocking him — the Fosse-like upper-body shimmy, knees bent and turned in, jazz hands, the head cocked', f(V, k, u) {
+    const sh = Math.sin(2 * Math.PI * u * 2 * 4), d = 0.1;
+    dvPel(V, 0, d); dvLeg(V, 'L', 0.02, 0, 0.2, d, -0.02); dvLeg(V, 'R', 0.02, 0, 0.2, d, -0.02);
+    dvRot(V, 'spine', 0.12, 0.09 * sh, 0.03 * sh); dvRot(V, 'head', 0.05, -0.15, 0.2);
+    dvArm(V, 'L', 0.35, 0.75 + 0.05 * sh, 0.45, 0, -0.6); dvArm(V, 'R', 0.35, 0.75 - 0.05 * sh, 0.45, 0, -0.6);
+  } },
+  'jazz-roll': { counts: 4, desc: 'The Room Where It Happens\' "ooey-gooey jazz": a slow hip roll, the shoulders sliding against it, the hands drifting up and down', f(V, k, u) {
+    const a = 2 * Math.PI * u, d = 0.07;
+    dvPel(V, 0.05 * Math.cos(a), d, 0.03 * Math.sin(a)); dvRot(V, 'pelvis', 0.06 * Math.sin(a), 0, -0.08 * Math.cos(a));
+    dvLeg(V, 'L', 0, 0, 0, d, 0.05 * Math.cos(a)); dvLeg(V, 'R', 0, 0, 0, d, -0.05 * Math.cos(a));
+    V[DJ.thigh_L + 2] += 0.08 * Math.cos(a); V[DJ.thigh_R + 2] += 0.08 * Math.cos(a);
+    dvRot(V, 'spine', 0.05, 0.08 * Math.sin(a), 0.1 * Math.cos(a)); dvRot(V, 'head', 0, -0.1 * Math.sin(a), -0.08 * Math.cos(a));
+    dvArm(V, 'L', 0.5 + 0.35 * Math.sin(a), 0.5, 1.0, 0, -0.4); dvArm(V, 'R', 0.5 - 0.35 * Math.sin(a), 0.5, 1.0, 0, -0.4);
+  } },
+  'crawl-back': { counts: 4, bin: 0.5, desc: 'Hurricane, the "cockroaches": on hands and knees, crawling backward in slow motion (travelling, she turns her back to her path, so she crawls backward along it)', f(V, k, u, o) {
+    const a = 2 * Math.PI * u, drop = 0.44;
+    dvPel(V, 0, drop, -0.05); dvBody(V, 0, -0.02, 0);
+    dvLeg(V, 'L', -0.38 + 0.06 * Math.sin(a), 0.03 * Math.max(0, Math.sin(a)), 1.2, drop); dvLeg(V, 'R', -0.38 - 0.06 * Math.sin(a), 0.03 * Math.max(0, -Math.sin(a)), 1.2, drop);
+    dvRot(V, 'spine', 1.25, 0.06 * Math.sin(a), 0); dvRot(V, 'head', -0.7, 0, 0);
+    dvArm(V, 'L', 1.45 + 0.25 * Math.sin(a), 0.12, 0.2); dvArm(V, 'R', 1.45 - 0.25 * Math.sin(a), 0.12, 0.2);   /* the spine tips forward: 'forward' of it is down to the floor */
+    V[DV_YAW] = Math.PI * actSmooth(o.p.speed / 0.08);
+  } },
+  'gavotte': { counts: 4, body: true, desc: 'Helpless / Satisfied: the formal court dance — upright, up on the toes, one palm raised to her partner\'s, step and close each way (mirror her partner)', f(V, k, u) {
+    const b = u * 4, n = Math.floor(b), f = rigFrac(b), out = n === 0 ? dEase(f) : n === 1 ? 1 - dEase(f) : n === 2 ? -dEase(f) : -(1 - dEase(f));
+    dvBody(V, -0.15 * out, 0.035 * dBump(f), 0); dvPel(V, 0, 0);
+    dvLeg(V, 'R', 0, n % 2 === 0 ? 0.04 * dBump(f) : 0.03, 0.35, 0); dvLeg(V, 'L', 0, n % 2 === 1 ? 0.04 * dBump(f) : 0.03, 0.35, 0);
+    dvArm(V, 'R', 1.45, 0.45, 0.55, 0, -0.9); dvArm(V, 'L', 0.15, 0.5, 1.75, 0.4);
+    dvRot(V, 'spine', -0.04, 0.1, 0); dvRot(V, 'head', n === 3 ? 0.15 * dBump(f) : -0.05, 0.25, 0);
+  } },
+  'grind': { counts: 2, desc: 'Helpless: twenty seconds after the palms touched, "they want to grind" — the hips rolling low, the arms round a partner', f(V, k, u) {
+    const a = 2 * Math.PI * u * 2, d = 0.12;
+    dvPel(V, 0.05 * Math.cos(a), d, 0.04 * Math.sin(a)); dvRot(V, 'pelvis', 0.08 * Math.sin(a), 0, -0.07 * Math.cos(a));
+    dvLeg(V, 'L', 0.05, 0, 0, d, 0.1 + 0.04 * Math.cos(a)); dvLeg(V, 'R', -0.05, 0, 0, d, 0.1 - 0.04 * Math.cos(a));
+    dvRot(V, 'spine', 0.08, -0.06 * Math.sin(a), 0.06 * Math.cos(a));
+    dvArm(V, 'L', 1.05, 0.45, 1.45); dvArm(V, 'R', 1.05, 0.45, 1.45);
+  } },
+  'equals': { counts: 2, once: true, desc: 'The Schuyler Sisters, "…that all men are created equal": the forearms held level one above the other in front of her — an equals sign', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 2));
+    dvArm(V, 'L', 1.05 * e, 0.2 * e, 1.75 * e + 0.12, -1.25 * e); dvArm(V, 'R', 0.6 * e, 0.1 * e, 1.85 * e + 0.12, -1.45 * e);
+    dvRot(V, 'head', -0.08 * e, 0, 0); dStance(V, 0.02 * e, 0.06);
+  } },
+  'work': { counts: 2, once: true, desc: 'The Schuyler Sisters, "…include women in the sequel. Work!": a hand up (the two fingers), the other on the hip, the hip popped', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 3));
+    dvArm(V, 'R', 2.55 * e, 0.45 * e, 0.4 * e + 0.12, 0, -0.3 * e); dvArm(V, 'L', 0.1, 0.65 * e, 1.9 * e + 0.12, 0.6 * e);
+    dvPel(V, 0.06 * e, 0.03 * e); dvRot(V, 'pelvis', 0, 0, -0.1 * e); dvLeg(V, 'L', 0, 0, 0, 0.03 * e, 0.06 * e); dvLeg(V, 'R', 0.08 * e, 0, 0.25 * e, 0.03 * e, -0.02);
+    dvRot(V, 'spine', -0.04 * e, 0, 0.08 * e); dvRot(V, 'head', -0.1 * e, -0.2 * e, 0.1 * e);
+  } },
+  'wall-ooze': { counts: 8, once: true, desc: 'The Reynolds Pamphlet, round Angelica: slow motion into an invisible wall, the hit, then oozing down and out of it', f(V, k, u) {
+    const b = u * 8, rush = dEase(Math.min(1, b / 0.6)), ooze = dEase(dSeg(b, 0.6, 8)), hit = b > 0.6 && b < 1.2 ? Math.sin(Math.PI * (b - 0.6) / 0.6) : 0;
+    dvBody(V, 0, 0, 0.12 * rush); const drop = 0.28 * ooze;
+    dStance(V, drop, 0.1 + 0.08 * ooze, 0.12 * rush);
+    dvArm(V, 'L', 1.5 - 0.8 * ooze, 0.1 + 0.6 * ooze, 0.2 + 0.4 * ooze, 0, -0.9 * rush); dvArm(V, 'R', 1.5 - 0.8 * ooze, 0.1 + 0.6 * ooze, 0.2 + 0.4 * ooze, 0, -0.9 * rush);
+    dvRot(V, 'spine', 0.12 * rush - 0.14 * hit + 0.55 * ooze, 0.1 * ooze, 0.12 * ooze); dvRot(V, 'head', -0.1 * hit + 0.45 * ooze, 0, 0.15 * ooze);
+  } },
+  'bojangles': { counts: 2, desc: 'Fred Astaire\'s "Bojangles of Harlem" (one in front, many behind doing the same): a heel dig forward each beat, the arms swinging, a clap on the "and" of 2', f(V, k, u) {
+    const b = u * 2, s = b < 1 ? 'R' : 'L', o2 = s === 'R' ? 'L' : 'R', f = rigFrac(b), dig = Math.sin(Math.PI * Math.min(1, f * 1.6));
+    dvPel(V, 0, 0.05); dvLeg(V, s, 0.2 * dig, 0.02 * dig, -0.45 * dig, 0.05); dvLeg(V, o2, 0, 0, 0, 0.05);
+    const clap = b > 1.4 ? Math.pow(Math.sin(Math.PI * (b - 1.4) / 0.6), 4) : 0, sw = Math.sin(Math.PI * b);
+    dvArm(V, 'L', 0.5 + 0.4 * sw + 0.5 * clap, 0.35 - 0.8 * clap, 1.3); dvArm(V, 'R', 0.5 - 0.4 * sw + 0.5 * clap, 0.35 - 0.8 * clap, 1.3);
+    dvRot(V, 'spine', -0.06, 0.1 * sw, 0); dvRot(V, 'head', 0, -0.1 * sw, 0);
+  } },
+  'bullet': { counts: 4, desc: 'The World Was Wide Enough, the Bullet: walking in slow motion, one arm out ahead carrying the bullet toward him (one stride every four counts; the path carries her)', f(V, k, u, o) {
+    const q = Object.assign({}, o.p, { speed: 9, dist: k / 4 * RIG_GAIT.cycle, turn: 0, carry: null, dance: null });
+    danceBaseAt(V, o, null, q);
+    dvArm(V, 'R', 1.55, 0.05, 0.05, 0, 0.2); dvArm(V, 'L', -0.2, 0.15, 0.25);
+    V[DJ.head] = 0.05; V[DJ.spine] += 0.05;
+  } },
+  'row': { counts: 4, desc: 'the rowers at Hamilton\'s death (and the duellists\' boats): kneeling, a long stroke — reach forward, pull to the chest, lean back, recover', f(V, k, u) {
+    const a = 2 * Math.PI * u, pull = 0.5 - 0.5 * Math.cos(a), drop = 0.43;
+    dvPel(V, 0, drop, -0.04); dvLeg(V, 'L', 0.32, 0, 0, drop); dvLeg(V, 'R', -0.38, -0.01, 1.2, drop);
+    dvRot(V, 'spine', 0.45 - 0.6 * pull, 0, 0); dvRot(V, 'head', -0.2 + 0.25 * pull, 0, 0);
+    dvArm(V, 'L', 1.45 - 0.75 * pull, -0.15, 0.15 + 1.6 * pull); dvArm(V, 'R', 1.45 - 0.75 * pull, -0.15, 0.15 + 1.6 * pull);
+  } },
+});
+DANCE.rewind = Object.assign({}, DANCE['slow-walk'], { reverse: true, desc: 'Satisfied\'s rewind: the slow-motion walk run backwards (the slow walk with reverse); travelling, she turns her back to her path' });
+function danceSpin(V, u, ang) {                              // a turn on the spot: arms in, little steps, back up on the toes; out at the end
+  const e = dEase(u), mid = dBump(u);
+  dvBody(V, 0, 0.03 * mid, 0, ang * e);
+  dvArm(V, 'L', 0.8 * mid + 0.2, 0.25 + 0.6 * (1 - mid) * e, 1.5 * mid + 0.15); dvArm(V, 'R', 0.8 * mid + 0.2, 0.25 + 0.6 * (1 - mid) * e, 1.5 * mid + 0.15);
+  const n = Math.max(2, Math.round(ang / 1.6)), sp = u * n, i = Math.min(n - 1, Math.floor(sp)), f = sp - i;
+  dvLeg(V, i % 2 ? 'R' : 'L', 0, 0.04 * Math.sin(Math.PI * f) + 0.03 * mid, 0.4 * mid, 0); dvLeg(V, i % 2 ? 'L' : 'R', 0, 0.03 * mid, 0.4 * mid, 0);
+  dvRot(V, 'head', -0.05, 0.25 * mid * Math.sign(ang), 0);
+}
+// The walk / idle pose of the body at another moment (freeze) or for another pose (the slow walk), read off the body by posing it.
+function danceBaseAt(V, o, T0, q) {
+  const pose = q || Object.assign(actPose(o.a, T0), { T: T0, rise: 0, carry: o.p.carry, dance: null });
+  rigAnimate(pose, o.g); rigRead(o.g.userData.body, V);
+}
+function rigRead(B, V) {
+  const P = B.userData.parts, rest = RIG.parts[0].pos;
+  RIG_NAMES.forEach((n, i) => { const r = P[n].rotation; V[i * 3] = r.x; V[i * 3 + 1] = r.y; V[i * 3 + 2] = r.z; });
+  V[DV_PEL] = P.pelvis.position.x - rest.x; V[DV_PEL + 1] = P.pelvis.position.y - rest.y; V[DV_PEL + 2] = P.pelvis.position.z - rest.z;
+  V[DV_BODY] = B.position.x; V[DV_BODY + 1] = B.position.y; V[DV_BODY + 2] = B.position.z; V[DV_YAW] = B.rotation.y;
+  return V;
+}
+function rigWrite(B, V) {
+  const P = B.userData.parts, rest = RIG.parts[0].pos;
+  RIG_NAMES.forEach((n, i) => P[n].rotation.set(V[i * 3], V[i * 3 + 1], V[i * 3 + 2]));
+  P.pelvis.position.set(rest.x + V[DV_PEL], rest.y + V[DV_PEL + 1], rest.z + V[DV_PEL + 2]);
+  B.position.set(V[DV_BODY], V[DV_BODY + 1], V[DV_BODY + 2]); B.rotation.set(0, V[DV_YAW], 0);
+}
+function danceMirror(V) {                                    // left for right: swap the sides, and every turn about y and z the other way
+  for (const n of RIG_NAMES) if (n.endsWith('_L')) { const i = DJ[n], j = DJ[n.slice(0, -1) + 'R']; for (let c = 0; c < 3; c++) { const t = V[i + c]; V[i + c] = V[j + c]; V[j + c] = t; } }
+  for (let i = 0; i < RIG_NAMES.length * 3; i += 3) { V[i + 1] = -V[i + 1]; V[i + 2] = -V[i + 2]; }
+  V[DV_PEL] = -V[DV_PEL]; V[DV_BODY] = -V[DV_BODY]; V[DV_YAW] = -V[DV_YAW];
+}
+// ---- an actor's moves, timed on the beat grid: each entry from `at` (+ `canon`) snapped to the nearest beat, for `counts` beats
+function actCleanMove(m) {
+  const o = { track: String(m.track ?? ''), at: actF(m.at) ?? 0, move: String(m.move || ''), counts: Math.max(0, actF(m.counts) ?? 0) };
+  if (m.mirror) o.mirror = true; if (actF(m.canon)) o.canon = actF(m.canon); if (actF(m.speed) !== null && actF(m.speed) > 0 && actF(m.speed) !== 1) o.speed = actF(m.speed);
+  if (m.reverse) o.reverse = true; if (typeof m.note === 'string' && m.note) o.note = m.note;
+  return o;
+}
+function danceCompile(a) {
+  const tr = SHW.d ? SHW.d.byTrack : null, L = [], probs = [], warns = [];
+  (a.moves || []).forEach((m, i) => {
+    const t = tr && tr.get(m.track), def = DANCE[m.move];
+    if (!def) { probs.push(`move ${i + 1}: no move "${m.move}"`); return; }
+    if (!(m.counts > 0)) { probs.push(`move ${i + 1}: counts must be more than 0`); return; }
+    if (tr && !t) { probs.push(`move ${i + 1}: no track "${m.track}"`); return; }
+    if (!t) return;
+    // `at` snaps to the nearest beat; `canon` is added AFTER the snap, so a ripple can be finer than a beat
+    const canon = m.canon || 0, bt = beatAt(m.track, m.at);
+    let b0 = null, t0 = m.at + canon, t1 = t0 + m.counts * 0.5;    // no grid for the track: 120 BPM from `at`
+    if (bt) { b0 = Math.round(bt.beat); t0 = beatTime(m.track, b0) + canon; t1 = beatTime(m.track, b0 + m.counts) + canon; if (Math.abs(t0 - canon - m.at) > 0.1) warns.push(`move ${i + 1}: ${m.move} at ${m.at.toFixed(2)} s is ${(t0 - canon - m.at).toFixed(2)} s off the beat (snapped)`); }
+    L.push({ m, def, i, track: m.track, b0, t0, canon, T0: t.start + t0, T1: t.start + t1, start: t.start, speed: m.speed || 1,
+      bin: def.bin ?? 0.25, bout: def.bout ?? 0.3, sign: m.reverse || def.reverse ? -1 : 1, lift: def.lift || null });
+  });
+  L.sort((x, y) => x.T0 - y.T0 || x.i - y.i);
+  return { L, probs, warns, c: a.c, bv: BEAT.v };
+}
+// The move (if any) she is in at T, and the one before it if she is still blending out of it. Pure.
+function danceAt(a, T) {
+  if (!a.dc || a.dc.c !== a.c || a.dc.bv !== BEAT.v) a.dc = danceCompile(a);
+  const L = a.dc.L; if (!L.length || T < L[0].T0) return null;
+  let lo = 0, hi = L.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (L[m].T0 <= T) lo = m; else hi = m - 1; }
+  const cur = L[lo]; if (T > cur.T1 + cur.bout) return null;
+  const prev = lo > 0 && L[lo - 1].T1 + L[lo - 1].bout > cur.T0 ? L[lo - 1] : null;
+  return { cur, prev };
+}
+// beats into a move at T (× its speed, backwards when reversed), on its own track's grid; past its end, held at its end
+function danceK(e, T, clampEnd) {
+  const t = Math.min(T, clampEnd ? e.T1 : Infinity) - e.start;
+  const k = e.b0 === null ? (t - e.t0) * 2 : beatAt(e.track, t - e.canon).beat - e.b0;   // the canon's delay off the clock first
+  return k;
+}
+function danceEval(e, T, o, V) {
+  V.set(danceNeutral());
+  const k = Math.max(0, danceK(e, T, true)), def = e.def, ks = k * e.speed;
+  const u = def.once ? Math.min(1, ks / def.counts) : rigFrac(ks / def.counts);
+  def.f(V, e.sign * ks, def.once ? u : (e.sign < 0 ? rigFrac(1 - u) : u), Object.assign(o, { at0: e.T0, reverse: e.sign < 0 }));
+  if (e.m.mirror) danceMirror(V);
+  return V;
+}
+const DV_A = new Float64Array(DV_N), DV_B = new Float64Array(DV_N), DV_C = new Float64Array(DV_N);
+// After the walk / idle has posed her (FL's animate), the move on top of it — blended in from it (or from the move before), and
+// back out to it after the move's last count. Pure: everything from the pose, the moves and the grid at T. Without a move the
+// body's own offset is put back to none.
+function danceApply(a, p, g) {
+  const B = g.userData.body;
+  const d = p.dance; if (!d) { if (B.position.lengthSq() || B.rotation.y) { B.position.set(0, 0, 0); B.rotation.set(0, 0, 0); } return; }
+  const T = p.T, o = { a, p, g, seed: B.userData.seed };
+  B.position.set(0, 0, 0); B.rotation.set(0, 0, 0);
+  rigRead(B, DV_A);                                          // the walk / idle she is doing now
+  const { cur, prev } = d;
+  danceEval(cur, T, o, DV_B);
+  let w = cur.bin > 0 ? actSmooth((T - cur.T0) / cur.bin) : 1;
+  if (prev && w < 1) {                                       // out of the move before, not out of the walk
+    danceEval(prev, T, o, DV_C);
+    const wp = T > prev.T1 ? 1 - actSmooth((T - prev.T1) / prev.bout) : 1;
+    for (let i = 0; i < DV_N; i++) DV_C[i] = DV_A[i] + (DV_C[i] - DV_A[i]) * wp;
+    DV_A.set(DV_C);
+  }
+  if (T > cur.T1) w = Math.min(w, 1 - actSmooth((T - cur.T1) / cur.bout));
+  for (let i = 0; i < DV_N; i++) DV_B[i] = DV_A[i] + (DV_B[i] - DV_A[i]) * w;
+  rigWrite(B, DV_B);
+}
+// A prop in the hands of a dancer whose move lifts it (hoist: overhead; upside-down: overhead and turned over) is carried there
+// instead of in front of her — after the props are posed, from her move at the same T. Pure, like the rest.
+const DP_Q = new THREE.Quaternion(), DP_X = new THREE.Vector3(1, 0, 0);
+function danceProps(T) {
+  for (const p of ACT.props) {
+    const o = p.obj, q = o.userData.pose; if (!o.visible || !q || !q.carrier) continue;
+    const id = Array.isArray(q.carrier) ? q.carrier[0] : q.carrier, a = ACT.actors.find(x => x.id === id);
+    if (!a || !a.obj.visible) continue;
+    const d = danceAt(a, T); if (!d || !d.cur.lift) continue;
+    const e = d.cur, k = Math.max(0, danceK(e, T, true)) * e.speed, u = e.def.once ? Math.min(1, k / e.def.counts) : 1;
+    let w = dEase(Math.min(1, u * (e.lift === 'flip' ? 2 : 1.5))); if (T > e.T1) w *= 1 - actSmooth((T - e.T1) / e.bout);
+    const me = a.obj.position, h = p.size[1], up = me.y + 1.85 + (e.lift === 'flip' ? h * 0.9 : 0);   // over her head, in her hands
+    o.position.set(o.position.x + (me.x + Math.sin(a.obj.rotation.y) * 0.08 - o.position.x) * w, o.position.y + (up - o.position.y) * w, o.position.z + (me.z + Math.cos(a.obj.rotation.y) * 0.08 - o.position.z) * w);
+    if (e.lift === 'flip') { const f = dEase(dSeg(u * 4, 1, 2)) * w; DP_Q.setFromAxisAngle(DP_X, Math.PI * f); o.quaternion.multiply(DP_Q); }
+  }
+}
 function actSlug(name) {
   const base = String(name || 'actor').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'actor';
   let id = base, n = 2; while (ACT.actors.some(x => x.id === id)) id = `${base}-${n++}`;
@@ -5573,7 +6096,8 @@ function actSetData(d, from) {
     const name = String(s.name || s.id || 'Actor');
     const a = { id: '', name, label: typeof s.label === 'string' && s.label.trim() ? s.label.trim() : null,
       color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color.toLowerCase() : ACT_COLOURS[ACT.actors.length % ACT_COLOURS.length],
-      path: (Array.isArray(s.path) ? s.path : []).filter(w => w && typeof w === 'object').map(actCleanWp), c: null, obj: null, tag: null };
+      path: (Array.isArray(s.path) ? s.path : []).filter(w => w && typeof w === 'object').map(actCleanWp), c: null, obj: null, tag: null,
+      moves: (Array.isArray(s.moves) ? s.moves : []).filter(m => m && typeof m === 'object').map(actCleanMove) };   // FV: her dance moves
     a.id = s.id && !ACT.actors.some(x => x.id === String(s.id)) ? String(s.id) : actSlug(name);
     ACT.actors.push(a); actBuild(a);
   }
@@ -5603,7 +6127,8 @@ function actData() {                      // → the JSON object, waypoints in t
     actors: ACT.actors.map(a => Object.assign({ id: a.id, name: a.name }, a.label ? { label: a.label } : {}, { color: a.color,
       path: actSorted(a).map(w => { const o = { track: w.track, at: actR(w.at, 2), x: actR(w.x), z: actR(w.z) };
         if (w.y !== undefined) o.y = actR(w.y); if (w.dwell !== undefined) o.dwell = actR(w.dwell, 2); if (w.facing !== undefined) o.facing = actR(w.facing, 1); if (w.off) o.off = true;
-        if (w.label) o.label = w.label; return o; }) })),
+        if (w.label) o.label = w.label; return o; }) },
+      a.moves && a.moves.length ? { moves: a.moves.map(m => Object.assign({}, m, { at: actR(m.at, 2) })).sort((x, y) => actGT(x) - actGT(y)) } : {})),
     ...(ACT.props.length ? { props: ACT.props.map(propData) } : {}),
   };
 }
@@ -5634,14 +6159,17 @@ function actUpdate(T) {
       const h = held.get(a.id);
       p.carry = h ? propCarryPose(h.p, h.q, p) : null;
     }
+    if (held && o.visible) p.dance = danceAt(a, T);         // FV: the move she is in (pure: the moves, the beat grid, T)
     if (typeof o.userData.animate === 'function') { try { o.userData.animate(p, o); } catch (e) { /* a limb rig's own failure never stops the show */ } }
+    if (RIG.parts && o.visible && o.userData.body.userData.parts) { try { danceApply(a, p, o); } catch (e) { console.warn('dance:', e); } }
   }
-  propUpdate(T);                                             // after the actors: a carried prop rides with her pose
+  propUpdate(T);
+  if (RIG.parts) danceProps(T);                              // FV: a prop hoisted or turned over by the dancer carrying it                                             // after the actors: a carried prop rides with her pose
 }
 function actTick(dt, force = false) {
   if (!ACT.ready) return false;
   const T = actNow();
-  if (force || ACT.dirty || T !== ACT.T || SHW.d !== ACT.compiledFor) { actUpdate(T); ACT.T = T; ACT.dirty = false; requestRender(); actUI(false); }
+  if (force || ACT.dirty || T !== ACT.T || SHW.d !== ACT.compiledFor) { const t0 = performance.now(); actUpdate(T); ACT.ms = performance.now() - t0; ACT.T = T; ACT.dirty = false; requestRender(); actUI(false); }
   if (ACT.helpDirty) actHelpers();
   actPoolBands();
   return false;
@@ -6161,6 +6689,8 @@ async function actInit() {
     try { rigLoad((await new Promise((ok, no) => new GLTFLoader().load(RIG.url, ok, undefined, no))).scene); }
     catch (e) { RIG.parts = null; RIG.err = String(e.message || e); console.warn('actors: no jointed body, the whole mannequin instead —', RIG.err); }
   }
+  try { const r = await fetch(BEAT.url, { cache: 'no-cache' }); if (!r.ok) throw new Error(`${BEAT.url}: HTTP ${r.status}`); beatCompile(await r.json()); }
+  catch (e) { BEAT.err = String(e.message || e); console.warn('actors: no beat grid (moves run at 120 BPM from their times) —', BEAT.err); }   // FV
   ACT.root = root;
   ACT.group = new THREE.Group(); ACT.group.name = 'actors'; ACT.group.userData.rig = true; root.add(ACT.group);
   ACT.help = new THREE.Group(); ACT.help.name = 'blocking helpers'; ACT.help.userData.rig = true; root.add(ACT.help);
@@ -6179,25 +6709,31 @@ function actCheck(opts = {}) {
   const t0 = performance.now(), wasOn = SHW.on, wasT = showT(), wasPlaying = SHW.playing;
   for (const a of ACT.actors) a.c = actCompile(a);
   for (const p of ACT.props) p.c = propCompile(p);
-  const problems = ACT.actors.flatMap(a => a.c.probs.map(p => `${a.name}: ${p}`)).concat(ACT.props.flatMap(p => p.c.probs.map(q => `prop ${p.label}: ${q}`)));
+  for (const a of ACT.actors) a.dc = danceCompile(a);       // FV: the moves, on the beat grid
+  const problems = ACT.actors.flatMap(a => a.c.probs.concat(a.dc.probs).map(p => `${a.name}: ${p}`)).concat(ACT.props.flatMap(p => p.c.probs.map(q => `prop ${p.label}: ${q}`)));
   // the moments: mid-walk on every leg and just into every stop (mid-turn), round-robin over the actors, opts.n of them
   const per = ACT.actors.map(a => a.c.segs.map(s => s.t0 + (s.t1 - s.t0) * 0.37).concat(a.c.P.map(p => p.T + ACT_TURN * 0.4)));
   const actPts = [...Array(Math.max(0, ...per.map(l => l.length))).keys()].flatMap(k => per.map(l => l[k])).filter((T, i, A) => T !== undefined && A.indexOf(T) === i);
   // the props' moments (FR): just after each waypoint (a set-down, a pick-up) and mid-carry — a third of the moments when there are props
   const propPts = ACT.props.flatMap(p => p.c.P.flatMap((w, i) => [w.T + 0.3].concat(w.byId && p.c.P[i + 1] ? [(w.T + p.c.P[i + 1].T) / 2] : [])));
-  const nPts = opts.n || 12, nProp = Math.min(propPts.length, Math.ceil(nPts / 3));
+  // the moves' moments (FV): blending in, a third of the way through, blending out — a third of the moments when there are moves
+  const movePts = ACT.actors.flatMap(a => a.dc.L.flatMap(e => [e.T0 + e.bin * 0.5, e.T0 + (e.T1 - e.T0) * 0.37, e.T1 + e.bout * 0.5]));
+  const nPts = opts.n || 12, nProp = Math.min(propPts.length, Math.ceil(nPts / 3)), nMove = Math.min(movePts.length, Math.ceil(nPts / 3));
   // OFF THE INSTANT: the pose is a pure function of time but is allowed to STEP at a waypoint's own time (a turn with no time to
   // turn, offstage → on, a prop handed over), and the played clock reaches T as a sum of steps that can land an ulp before it —
   // so a moment exactly on any waypoint's time compares two sides of a step. Every moment is moved 5 ms clear of all of them.
   const inst = ACT.actors.flatMap(a => a.c.P.map(p => p.T)).concat(ACT.props.flatMap(p => p.c.P.map(w => w.T))).sort((a, b) => a - b);
   const clear = T => { for (let k = 0; k < 8; k++) { let lo = 0, hi = inst.length; while (lo < hi) { const m = (lo + hi) >> 1; if (inst[m] < T - 5e-3) lo = m + 1; else hi = m; } if (lo < inst.length && Math.abs(inst[lo] - T) < 5e-3) T = inst[lo] + 5e-3; else break; } return T; };
-  const pts = (opts.points || propPts.filter((T, i) => i % Math.max(1, Math.floor(propPts.length / Math.max(1, nProp))) === 0).slice(0, nProp).concat(actPts).slice(0, nPts)).map(clear);
+  const every = (L, n) => L.filter((T, i) => i % Math.max(1, Math.floor(L.length / Math.max(1, n))) === 0).slice(0, n);
+  const pts = (opts.points || every(propPts, nProp).concat(every(movePts, nMove), actPts).slice(0, nPts)).map(clear);
+  const warnings = ACT.actors.flatMap(a => a.dc.warns.map(w => `${a.name}: ${w}`));   // FV: a move off the beat is snapped, and said
   const span = opts.span ?? 8, step = opts.step || 0.1;
   if (!wasOn) showStart(false);
   SHW.playing = false;
   // the limbs too (FS): every joint's angles and the pelvis's place, for a body that is seen
   const limbs = o => { const P = o.visible && o.userData.body.userData.parts; if (!P) return null;
-    const v = [P.pelvis.position.x, P.pelvis.position.y, P.pelvis.position.z]; for (const n of RIG_NAMES) v.push(P[n].rotation.x, P[n].rotation.y, P[n].rotation.z); return v; };
+    const B = o.userData.body, v = [P.pelvis.position.x, P.pelvis.position.y, P.pelvis.position.z, B.position.x, B.position.y, B.position.z, B.rotation.y];   // FV: the body's offset too
+    for (const n of RIG_NAMES) v.push(P[n].rotation.x, P[n].rotation.y, P[n].rotation.z); return v; };
   const snap = () => ACT.actors.concat(ACT.props).map(a => ({ p: a.obj.position.clone(), yaw: a.obj.rotation.y, vis: a.obj.visible, tag: a.tagText, limbs: a.obj.userData.body ? limbs(a.obj) : null }));   // the props too (FR)
   const eq = pts.map(T => {
     T = Math.min(T, SHW.d.max);
@@ -6222,7 +6758,7 @@ function actCheck(opts = {}) {
   const pass = eq.every(e => e.posM <= 1e-4 && e.yawRad <= 1e-4 && !e.visibility && !e.labels && e.limbRad <= 1e-4);
   if (wasOn) { showSeekT(wasT); if (wasPlaying) showPause(false); } else { showStop(false); showSeekT(wasT); }
   actTick(0, true);
-  return { pass: pass && !problems.length, seekEquivalence: { pass, points: eq }, problems, actors: ACT.actors.map(a => ({ id: a.id, name: a.name, waypoints: a.path.length })),
+  return { pass: pass && !problems.length, seekEquivalence: { pass, points: eq }, problems, warnings, actors: ACT.actors.map(a => ({ id: a.id, name: a.name, waypoints: a.path.length, moves: (a.moves || []).length })),
     props: ACT.props.map(p => ({ id: p.id, kind: p.kind, waypoints: p.waypoints.length })), ms: Math.round(performance.now() - t0) };
 }
 
@@ -6248,6 +6784,8 @@ buildLightsPanel = () => {
       floor: (x, z, ref = 0) => actFloor(x, z, ref), check: opts => actCheck(opts), panel: on => actPanel(on !== false), drop: on => actSetDrop(on !== false),
       group: ACT.group, state: ACT, tune: { ACT_STEP, ACT_WALK, ACT_EASE, ACT_TURN, ACT_H, PROP_HOLD, PROP_KINDS, RIG_GAIT },
       rig: RIG,                                              // FS: the jointed body (parts, joints, bones; null parts: the whole mannequin)
+      moves: DANCE, beats: BEAT, beatAt: (id, t) => beatAt(id, t),   // FV: the move library, the beat grid
+      dance: (id, T = actNow()) => { const a = ACT.actors.find(x => x.id === id) || ACT.actors[id]; if (!a) return null; const d = danceAt(a, T); return d && { move: d.cur.m.move, from: d.cur.T0, to: d.cur.T1, beats: danceK(d.cur, T, false), prev: d.prev && d.prev.m.move }; },
       get props() { return ACT.props.map(p => ({ id: p.id, kind: p.kind, label: p.label, size: p.size, waypoints: p.waypoints.length, pose: p.obj.userData.pose || null, visible: p.obj.visible })); },
       propPose: (id, T = actNow()) => { const p = ACT.props.find(x => x.id === id) || ACT.props[id]; if (!p) return null; if (!p.c) p.c = propCompile(p); ACT.root.updateWorldMatrix(true, false); return propPose(p, T); },
     };

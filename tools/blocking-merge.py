@@ -17,7 +17,16 @@ holding ONLY its own tracks' waypoints.  The folder may also hold PROPS.JSON
                                     "carriedBy"?: "<actor id>" | ["<id>", "<id>"], "note"? }, ... ],
                    "model"?: "assets/props/<file>.glb" } ] }
 
-merged into the file's "props" list after the actors.
+merged into the file's "props" list after the actors.  And DANCE.JSON (RULING FV;
+tools/blocking/dance.py writes it):
+
+    { "moves": { "<actor id>": [ { "track", "at", "move", "counts", "mirror"?, "canon"?,
+                                   "speed"?, "reverse"?, "note"? }, ... ] } }
+
+merged into each actor as "moves" after her path: a move from tools/hamilton-moves.json (the library
+midtown.html dances), counts > 0 beats, `at` (+ `canon`) inside its track, snapped by the page to the
+nearest beat of assets/hamilton-beats.json (a warning here when that is more than 0.1 s away); `canon`
+(seconds) is added after that snap, so a ripple can be finer than a beat.
 
 THE CLOCK'S EDGES (RULING FQ): `at` runs 0 ... the track's length, except
 -10 ... 0 is also allowed on the first track of each act (1-01, and the track
@@ -244,6 +253,7 @@ def main(argv):
                         warns.append(f'{a["_src"]} -> {b["_src"]}: leaves the gallery floor near ({x:.2f}, {z:.2f}) (top {t}) — route it along the gallery')
                         break
     props = merge_props(segdir, tracks, byid, floor, paths, errors, warns)
+    moves = merge_moves(segdir, tracks, byid, errors, warns)       # RULING FV
     for e in errors: print('ERROR  ', e)
     for w in warns: print('warning', w)
     # the summary
@@ -256,6 +266,7 @@ def main(argv):
     missing = sorted(set(tracks) - set(owner))
     if missing: print('\ntracks no segment claimed:', ' '.join(missing))
     if props: print('\nprops: ' + ', '.join(f"{p['id']} ({len(p['waypoints'])})" for p in props))
+    if moves: print('moves: ' + ', '.join(f"{k} ({len(v)})" for k, v in moves.items()))
     print(f'\n{len(files)} segment file(s), {sum(len(P) for P in paths.values())} waypoints, {len(props)} prop(s), {len(errors)} error(s), {len(warns)} warning(s)')
     if errors:
         print('NOT written (errors).'); return 1
@@ -275,7 +286,10 @@ def main(argv):
         for n, a in enumerate(doc['actors']):
             f.write('  {"id": ' + json.dumps(a['id']) + ', "name": ' + json.dumps(a['name']) + ', "color": ' + json.dumps(a['color']) + ', "path": [')
             f.write(','.join('\n   ' + json.dumps(w, ensure_ascii=False) for w in a['path']))
-            f.write(('\n  ' if a['path'] else '') + ']}' + (',' if n + 1 < len(doc['actors']) else '') + '\n')
+            f.write(('\n  ' if a['path'] else '') + ']')
+            if moves.get(a['id']):                      # RULING FV: her dance moves, after her path
+                f.write(', "moves": [' + ','.join('\n   ' + json.dumps(m, ensure_ascii=False) for m in moves[a['id']]) + '\n  ]')
+            f.write('}' + (',' if n + 1 < len(doc['actors']) else '') + '\n')
         if props:                                       # RULING FR: after the actors
             f.write(' ],\n "props": [\n')
             for n, p in enumerate(props):
@@ -287,6 +301,83 @@ def main(argv):
         f.write(' ]\n}\n')
     print('written', out)
     return 0
+
+
+def beat_grid(beats):
+    """RULING FV: assets/hamilton-beats.json -> {track: [(time, beat number, period)]} (midtown.html's beatCompile)."""
+    out = {}
+    for tid, t in (beats.get('tracks') or {}).items():
+        try: segs = [(float(t['firstBeat']), 0, 60.0 / float(t['bpm']))]
+        except Exception: continue
+        for c in sorted(t.get('changes') or [], key=lambda c: c['at']):
+            a, b, per = segs[-1]
+            if c['at'] <= a:
+                if len(segs) == 1 and c['at'] == a: segs[0] = (a, 0, 60.0 / c['bpm'])
+                continue
+            segs.append((float(c['at']), round(b + (c['at'] - a) / per), 60.0 / c['bpm']))
+        out[tid] = segs
+    return out
+
+
+def beat_at(grid, tid, t):
+    """-> (beat number, the segment it is in), or None without a grid."""
+    segs = grid.get(tid)
+    if not segs: return None
+    s = segs[0]
+    for q in segs:
+        if q[0] <= t: s = q
+        else: break
+    return s[1] + (t - s[0]) / s[2], s
+
+
+def merge_moves(segdir, tracks, byid, errors, warns):
+    """RULING FV: <segdir>/dance.json, validated -> {actor id: [move, ...]} in time order (empty when there is none)."""
+    p = os.path.join(segdir, 'dance.json')
+    if not os.path.exists(p):
+        return {}
+    try:
+        d = load(p)
+        lib = load(os.path.join(ROOT, 'tools', 'hamilton-moves.json'))['moves']
+    except Exception as e:
+        errors.append(f'dance.json / tools/hamilton-moves.json: not JSON ({e})'); return {}
+    try: grid = beat_grid(load(os.path.join(ROOT, 'assets', 'hamilton-beats.json')))
+    except Exception: grid = {}; warns.append('dance.json: no assets/hamilton-beats.json: the moves are not checked against the beat')
+    out = {}
+    for aid, L in (d.get('moves') or {}).items():
+        if aid not in byid:
+            errors.append(f'dance.json: unknown actor id "{aid}"'); continue
+        for k, m in enumerate(L if isinstance(L, list) else []):
+            where = f'dance.json: {aid} move #{k + 1}'
+            tid = str(m.get('track', ''))
+            if tid not in tracks: errors.append(f'{where}: unknown track "{tid}"'); continue
+            name = str(m.get('move', ''))
+            if name not in lib: errors.append(f'{where}: no move "{name}" (tools/hamilton-moves.json)'); continue
+            try: at, counts = float(m['at']), float(m['counts'])
+            except Exception: errors.append(f'{where}: at and counts must be numbers'); continue
+            if counts <= 0: errors.append(f'{where}: counts must be more than 0'); continue
+            canon = float(m.get('canon') or 0)
+            if not at_ok(tracks[tid], at + canon): errors.append(f'{where}: at {at + canon} outside {tid} ({at_range(tracks[tid])} s)'); continue
+            o = {'track': tid, 'at': round(at, 2), 'move': name, 'counts': round(counts, 3)}
+            if m.get('mirror'): o['mirror'] = True
+            if canon: o['canon'] = round(canon, 3)
+            if m.get('speed') not in (None, 1, 1.0):
+                try:
+                    sp = float(m['speed'])
+                    if sp <= 0: raise ValueError
+                    o['speed'] = sp
+                except Exception: errors.append(f'{where}: speed must be a number above 0')
+            if m.get('reverse'): o['reverse'] = True
+            if m.get('note'): o['note'] = str(m['note'])
+            ba = beat_at(grid, tid, at)                    # `at` snaps to its beat; `canon` is added after the snap
+            if ba is not None:
+                b, sg = ba; off = (round(b) - b) * sg[2]
+                if abs(off) > 0.1: warns.append(f'{where}: {name} at {at:.2f} s is {off:+.2f} s off the beat (the page snaps it)')
+            o['_T'] = tracks[tid]['start'] + at + canon
+            out.setdefault(aid, []).append(o)
+    for aid in out:
+        out[aid].sort(key=lambda o: o['_T'])
+        for o in out[aid]: del o['_T']
+    return out
 
 
 def merge_props(segdir, tracks, byid, floor, paths, errors, warns):

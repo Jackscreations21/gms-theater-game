@@ -682,6 +682,24 @@
    {"track": "2-23", "at": 204.04, "x": 0.85, "z": 2.75, "facing": -15.0},
    {"track": "2-23", "at": 211.9, "x": 0.85, "z": 2.75, "facing": -15.0},
    {"track": "2-23", "at": 214.6, "x": -0.45, "z": 4.15, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"},
+   {"track": "2-22", "at": 130.44, "move": "legacy", "counts": 8.0, "note": "\"Legacy, what is a legacy?\" (cue 1248)"}
   ]},
   {"id": "burr", "name": "Burr", "color": "#c9a23a", "path": [
    {"track": "1-01", "at": -10.0, "x": -7.3, "z": 4.6, "dwell": 2.0, "off": true, "label": "Burr"},
@@ -1077,6 +1095,8 @@
    {"track": "2-23", "at": 153.78, "x": 2.3, "z": 0.95, "facing": -29.0},
    {"track": "2-23", "at": 211.9, "x": 2.3, "z": 0.95, "facing": -29.0},
    {"track": "2-23", "at": 214.6, "x": -1.35, "z": 4.15, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"}
   ]},
   {"id": "eliza", "name": "Eliza", "color": "#5a8fd8", "path": [
    {"track": "1-01", "at": 0.0, "x": 8.0, "z": -0.5, "off": true, "label": "Eliza"},
@@ -1366,6 +1386,10 @@
    {"track": "2-23", "at": 210.98, "x": 0.0, "z": 4.2, "facing": 0.0},
    {"track": "2-23", "at": 211.9, "x": 0.0, "z": 4.2, "facing": 0.0},
    {"track": "2-23", "at": 214.6, "x": 0.45, "z": 4.15, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-05", "at": 108.51, "move": "equals", "counts": 4.0, "note": "\"…that all men are created equal\": the equals sign"},
+   {"track": "1-05", "at": 115.58, "move": "work", "counts": 2.0, "note": "\"…include women in the sequel. Work!\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"}
   ]},
   {"id": "angelica", "name": "Angelica", "color": "#e0789e", "path": [
    {"track": "1-01", "at": 0.0, "x": 0.6, "z": -4.8, "y": 2.743, "off": true, "label": "Angelica"},
@@ -1551,6 +1575,10 @@
    {"track": "2-23", "at": 153.66, "x": -1.992, "z": 2.1, "facing": 39.4},
    {"track": "2-23", "at": 211.9, "x": -1.992, "z": 2.1, "facing": 39.4},
    {"track": "2-23", "at": 214.6, "x": -2.25, "z": 4.15, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-05", "at": 108.51, "move": "equals", "counts": 4.0, "note": "\"…that all men are created equal\": the equals sign"},
+   {"track": "1-05", "at": 115.58, "move": "work", "counts": 2.0, "note": "\"…include women in the sequel. Work!\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"}
   ]},
   {"id": "peggy", "name": "Peggy", "color": "#e8d24a", "path": [
    {"track": "1-01", "at": 0.0, "x": 0.6, "z": -4.8, "y": 2.743, "off": true, "label": "Peggy"},
@@ -1700,6 +1728,10 @@
    {"track": "2-23", "at": 153.9, "x": -2.3, "z": 0.95, "facing": 29.0},
    {"track": "2-23", "at": 211.9, "x": -2.3, "z": 0.95, "facing": 29.0},
    {"track": "2-23", "at": 214.6, "x": -2.7, "z": 3.05, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-05", "at": 108.51, "move": "equals", "counts": 4.0, "note": "\"…that all men are created equal\": the equals sign"},
+   {"track": "1-05", "at": 115.58, "move": "work", "counts": 2.0, "note": "\"…include women in the sequel. Work!\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"}
   ]},
   {"id": "washington", "name": "Washington", "color": "#ece6da", "path": [
    {"track": "1-01", "at": 0.0, "x": 1.25, "z": -4.9, "dwell": 105.6, "off": true, "label": "Washington"},
@@ -1946,6 +1978,8 @@
    {"track": "2-23", "at": 204.5, "x": -0.85, "z": 2.75, "facing": 15.0},
    {"track": "2-23", "at": 211.9, "x": -0.85, "z": 2.75, "facing": 15.0},
    {"track": "2-23", "at": 214.6, "x": 1.35, "z": 4.15, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"}
   ]},
   {"id": "lafayette", "name": "Lafayette", "color": "#4fc1c1", "path": [
    {"track": "1-01", "at": 0.0, "x": -8.5, "z": 0.0, "dwell": 29.0, "off": true, "label": "Lafayette"},
@@ -2301,6 +2335,22 @@
    {"track": "2-23", "at": 153.42, "x": -2.404, "z": 3.354, "facing": 59.0},
    {"track": "2-23", "at": 211.9, "x": -2.404, "z": 3.354, "facing": 59.0},
    {"track": "2-23", "at": 214.6, "x": 3.15, "z": 4.15, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"}
   ]},
   {"id": "mulligan", "name": "Mulligan", "color": "#a47ad8", "path": [
    {"track": "1-01", "at": 0.0, "x": 7.3, "z": 4.6, "dwell": 41.6, "off": true, "label": "Mulligan"},
@@ -2552,6 +2602,22 @@
    {"track": "2-23", "at": 153.54, "x": 3.195, "z": 2.113, "facing": -44.7},
    {"track": "2-23", "at": 211.9, "x": 3.195, "z": 2.113, "facing": -44.7},
    {"track": "2-23", "at": 214.6, "x": -4.05, "z": 4.15, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"}
   ]},
   {"id": "laurens", "name": "Laurens", "color": "#e0883a", "path": [
    {"track": "1-01", "at": 0.0, "x": 8.0, "z": -0.5, "dwell": 14.4, "off": true, "label": "Laurens"},
@@ -2840,6 +2906,22 @@
    {"track": "2-23", "at": 154.02, "x": 1.992, "z": -0.2, "facing": -19.1},
    {"track": "2-23", "at": 211.9, "x": 1.992, "z": -0.2, "facing": -19.1},
    {"track": "2-23", "at": 214.6, "x": 0.9, "z": 3.05, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"}
   ]},
   {"id": "king", "name": "King George", "color": "#c0392b", "path": [
    {"track": "1-07", "at": 0.0, "x": 1.25, "z": -4.9, "off": true, "label": "King George"},
@@ -3255,6 +3337,34 @@
    {"track": "2-23", "at": 154.14, "x": -2.944, "z": -0.75, "facing": 22.9},
    {"track": "2-23", "at": 211.9, "x": -2.944, "z": -0.75, "facing": 22.9},
    {"track": "2-23", "at": 214.6, "x": 2.25, "z": 4.15, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-10", "at": 28.94, "move": "gavotte", "counts": 16.0, "note": "the ball: the gavotte, palm to palm"},
+   {"track": "1-10", "at": 47.17, "move": "grind", "counts": 8.0, "note": "\"twenty seconds later, they're grinding\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-11", "at": 72.52, "move": "gavotte", "counts": 16.0, "note": "the ball replayed from Angelica's side"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"},
+   {"track": "2-05", "at": 118.34, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 118.4)"},
+   {"track": "2-05", "at": 123.86, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-05", "at": 176.29, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 176.8)"},
+   {"track": "2-05", "at": 181.81, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-13", "at": 70.14, "move": "hoist", "counts": 16.0, "note": "the storm: furniture overhead (nothing carried yet: the arms go up empty)"},
+   {"track": "2-14", "at": 57.02, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 55.49)"},
+   {"track": "2-14", "at": 67.16, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 65.52)"},
+   {"track": "2-22", "at": 100.37, "move": "bullet", "counts": 53.0, "note": "the Bullet carries Burr's shot to the centre"}
   ]},
   {"id": "ens2", "name": "Ensemble 2", "color": "#8c8c8c", "path": [
    {"track": "1-01", "at": 0.0, "x": -8.5, "z": 0.0, "dwell": 36.7, "off": true, "label": "Ensemble 2"},
@@ -3698,6 +3808,33 @@
    {"track": "2-23", "at": 154.26, "x": -1.992, "z": -0.2, "facing": 19.1},
    {"track": "2-23", "at": 211.9, "x": -1.992, "z": -0.2, "facing": 19.1},
    {"track": "2-23", "at": 214.6, "x": -4.5, "z": 3.05, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-10", "at": 28.94, "move": "gavotte", "counts": 16.0, "mirror": true, "note": "the ball: the gavotte, palm to palm"},
+   {"track": "1-10", "at": 47.17, "move": "grind", "counts": 8.0, "mirror": true, "note": "\"twenty seconds later, they're grinding\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-11", "at": 72.52, "move": "gavotte", "counts": 16.0, "mirror": true, "note": "the ball replayed from Angelica's side"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"},
+   {"track": "2-05", "at": 118.34, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 118.4)"},
+   {"track": "2-05", "at": 123.86, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-05", "at": 176.29, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 176.8)"},
+   {"track": "2-05", "at": 181.81, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-13", "at": 116.76, "move": "crawl-back", "counts": 17.0, "note": "the cockroaches (seg7: ens2 and ens4 cross the downstage edge 116.28 to 129.0)"},
+   {"track": "2-14", "at": 57.02, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 55.49)"},
+   {"track": "2-14", "at": 67.16, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 65.52)"}
   ]},
   {"id": "ens3", "name": "Ensemble 3", "color": "#8c8c8c", "path": [
    {"track": "1-01", "at": 0.0, "x": 1.25, "z": -4.9, "dwell": 39.5, "off": true, "label": "Ensemble 3"},
@@ -4130,6 +4267,33 @@
    {"track": "2-23", "at": 154.38, "x": -1.15, "z": -1.042, "facing": 9.5},
    {"track": "2-23", "at": 211.9, "x": -1.15, "z": -1.042, "facing": 9.5},
    {"track": "2-23", "at": 214.6, "x": -3.6, "z": 3.05, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-10", "at": 28.94, "move": "gavotte", "counts": 16.0, "note": "the ball: the gavotte, palm to palm"},
+   {"track": "1-10", "at": 47.17, "move": "grind", "counts": 8.0, "note": "\"twenty seconds later, they're grinding\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-11", "at": 72.52, "move": "gavotte", "counts": 16.0, "note": "the ball replayed from Angelica's side"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"},
+   {"track": "2-05", "at": 118.34, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 118.4)"},
+   {"track": "2-05", "at": 123.86, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-05", "at": 176.29, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 176.8)"},
+   {"track": "2-05", "at": 181.81, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-13", "at": 70.14, "move": "hoist", "counts": 16.0, "note": "the storm: furniture overhead (nothing carried yet: the arms go up empty)"},
+   {"track": "2-14", "at": 57.02, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 55.49)"},
+   {"track": "2-14", "at": 67.16, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 65.52)"}
   ]},
   {"id": "ens4", "name": "Ensemble 4", "color": "#8c8c8c", "path": [
    {"track": "1-01", "at": 0.0, "x": 8.5, "z": -3.0, "dwell": 38.1, "off": true, "label": "Ensemble 4"},
@@ -4493,6 +4657,33 @@
    {"track": "2-23", "at": 154.5, "x": 1.15, "z": -1.042, "facing": -9.5},
    {"track": "2-23", "at": 211.9, "x": 1.15, "z": -1.042, "facing": -9.5},
    {"track": "2-23", "at": 214.6, "x": -1.8, "z": 3.05, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-10", "at": 28.94, "move": "gavotte", "counts": 16.0, "mirror": true, "note": "the ball: the gavotte, palm to palm"},
+   {"track": "1-10", "at": 47.17, "move": "grind", "counts": 8.0, "mirror": true, "note": "\"twenty seconds later, they're grinding\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-11", "at": 72.52, "move": "gavotte", "counts": 16.0, "mirror": true, "note": "the ball replayed from Angelica's side"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"},
+   {"track": "2-05", "at": 118.34, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 118.4)"},
+   {"track": "2-05", "at": 123.86, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-05", "at": 176.29, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 176.8)"},
+   {"track": "2-05", "at": 181.81, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-13", "at": 116.76, "move": "crawl-back", "counts": 17.0, "note": "the cockroaches (seg7: ens2 and ens4 cross the downstage edge 116.28 to 129.0)"},
+   {"track": "2-14", "at": 57.02, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 55.49)"},
+   {"track": "2-14", "at": 67.16, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 65.52)"}
   ]},
   {"id": "ens5", "name": "Ensemble 5", "color": "#8c8c8c", "path": [
    {"track": "1-01", "at": 0.0, "x": 8.0, "z": -0.5, "dwell": 37.4, "off": true, "label": "Ensemble 5"},
@@ -4936,6 +5127,33 @@
    {"track": "2-23", "at": 154.62, "x": -3.195, "z": 2.113, "facing": 44.7},
    {"track": "2-23", "at": 211.9, "x": -3.195, "z": 2.113, "facing": 44.7},
    {"track": "2-23", "at": 214.6, "x": -0.9, "z": 3.05, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-10", "at": 28.94, "move": "gavotte", "counts": 16.0, "note": "the ball: the gavotte, palm to palm"},
+   {"track": "1-10", "at": 47.17, "move": "grind", "counts": 8.0, "note": "\"twenty seconds later, they're grinding\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-11", "at": 72.52, "move": "gavotte", "counts": 16.0, "note": "the ball replayed from Angelica's side"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"},
+   {"track": "2-05", "at": 118.34, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 118.4)"},
+   {"track": "2-05", "at": 123.86, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-05", "at": 176.29, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 176.8)"},
+   {"track": "2-05", "at": 181.81, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-13", "at": 70.14, "move": "hoist", "counts": 16.0, "note": "the storm: furniture overhead (nothing carried yet: the arms go up empty)"},
+   {"track": "2-14", "at": 57.02, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 55.49)"},
+   {"track": "2-14", "at": 67.16, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 65.52)"}
   ]},
   {"id": "ens6", "name": "Ensemble 6", "color": "#8c8c8c", "path": [
    {"track": "1-01", "at": 37.8, "x": 0.6, "z": -4.8, "y": 2.743, "dwell": 0.0, "off": true, "label": "Ensemble 6"},
@@ -5368,6 +5586,33 @@
    {"track": "2-23", "at": 154.74, "x": -3.387, "z": 0.654, "facing": 33.2},
    {"track": "2-23", "at": 211.9, "x": -3.387, "z": 0.654, "facing": 33.2},
    {"track": "2-23", "at": 214.6, "x": 0.0, "z": 3.05, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-10", "at": 28.94, "move": "gavotte", "counts": 16.0, "mirror": true, "note": "the ball: the gavotte, palm to palm"},
+   {"track": "1-10", "at": 47.17, "move": "grind", "counts": 8.0, "mirror": true, "note": "\"twenty seconds later, they're grinding\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-11", "at": 72.52, "move": "gavotte", "counts": 16.0, "mirror": true, "note": "the ball replayed from Angelica's side"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"},
+   {"track": "2-05", "at": 118.34, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 118.4)"},
+   {"track": "2-05", "at": 123.86, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-05", "at": 176.29, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 176.8)"},
+   {"track": "2-05", "at": 181.81, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-13", "at": 70.14, "move": "hoist", "counts": 16.0, "note": "the storm: furniture overhead (nothing carried yet: the arms go up empty)"},
+   {"track": "2-14", "at": 57.02, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 55.49)"},
+   {"track": "2-14", "at": 67.16, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 65.52)"}
   ]},
   {"id": "ens7", "name": "Ensemble 7", "color": "#8c8c8c", "path": [
    {"track": "1-01", "at": 40.6, "x": 0.6, "z": -4.8, "y": 2.743, "dwell": 0.0, "off": true, "label": "Ensemble 7"},
@@ -5802,6 +6047,33 @@
    {"track": "2-23", "at": 154.86, "x": -1.95, "z": -1.835, "facing": 13.2},
    {"track": "2-23", "at": 211.9, "x": -1.95, "z": -1.835, "facing": 13.2},
    {"track": "2-23", "at": 214.6, "x": 1.8, "z": 3.05, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-10", "at": 28.94, "move": "gavotte", "counts": 16.0, "note": "the ball: the gavotte, palm to palm"},
+   {"track": "1-10", "at": 47.17, "move": "grind", "counts": 8.0, "note": "\"twenty seconds later, they're grinding\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-11", "at": 72.52, "move": "gavotte", "counts": 16.0, "note": "the ball replayed from Angelica's side"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"},
+   {"track": "2-05", "at": 118.34, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 118.4)"},
+   {"track": "2-05", "at": 123.86, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-05", "at": 176.29, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 176.8)"},
+   {"track": "2-05", "at": 181.81, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-13", "at": 70.14, "move": "hoist", "counts": 16.0, "note": "the storm: furniture overhead (nothing carried yet: the arms go up empty)"},
+   {"track": "2-14", "at": 57.02, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 55.49)"},
+   {"track": "2-14", "at": 67.16, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 65.52)"}
   ]},
   {"id": "ens8", "name": "Ensemble 8", "color": "#8c8c8c", "path": [
    {"track": "1-01", "at": 39.2, "x": 0.6, "z": -4.8, "y": 2.743, "dwell": 0.0, "off": true, "label": "Ensemble 8"},
@@ -6200,6 +6472,34 @@
    {"track": "2-23", "at": 154.98, "x": 1.95, "z": -1.835, "facing": -13.2},
    {"track": "2-23", "at": 211.9, "x": 1.95, "z": -1.835, "facing": -13.2},
    {"track": "2-23", "at": 214.6, "x": 2.7, "z": 3.05, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-10", "at": 28.94, "move": "gavotte", "counts": 16.0, "mirror": true, "note": "the ball: the gavotte, palm to palm"},
+   {"track": "1-10", "at": 47.17, "move": "grind", "counts": 8.0, "mirror": true, "note": "\"twenty seconds later, they're grinding\""},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-11", "at": 72.52, "move": "gavotte", "counts": 16.0, "mirror": true, "note": "the ball replayed from Angelica's side"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"},
+   {"track": "2-05", "at": 118.34, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 118.4)"},
+   {"track": "2-05", "at": 123.86, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-05", "at": 176.29, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 176.8)"},
+   {"track": "2-05", "at": 181.81, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-13", "at": 70.14, "move": "hoist", "counts": 16.0, "note": "the storm: furniture overhead (nothing carried yet: the arms go up empty)"},
+   {"track": "2-14", "at": 57.02, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 55.49)"},
+   {"track": "2-14", "at": 67.16, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 65.52)"},
+   {"track": "2-22", "at": 201.39, "move": "row", "counts": 8.0, "note": "the rowers beside him"}
   ]},
   {"id": "ens9", "name": "Ensemble 9", "color": "#8c8c8c", "path": [
    {"track": "1-01", "at": 36.4, "x": 0.6, "z": -4.8, "y": 2.743, "dwell": 0.0, "off": true, "label": "Ensemble 9"},
@@ -6426,6 +6726,31 @@
    {"track": "2-23", "at": 155.1, "x": 2.944, "z": -0.75, "facing": -22.9},
    {"track": "2-23", "at": 211.9, "x": 2.944, "z": -0.75, "facing": -22.9},
    {"track": "2-23", "at": 214.6, "x": -3.15, "z": 4.15, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "1-20", "at": 36.67, "move": "my-shot", "counts": 8.0, "note": "the My Shot reprise (cue 590)"},
+   {"track": "1-20", "at": 51.36, "move": "imagine-death", "counts": 8.0, "note": "\"I imagined death so much it feels more like a memory\" (cue 592)"},
+   {"track": "1-20", "at": 56.26, "move": "command", "counts": 4.0, "note": "\"…weapon in my hand, a command, and boom\""},
+   {"track": "1-20", "at": 61.16, "move": "heartbeat", "counts": 8.0, "note": "thinking of Eliza: the heartbeat (cue 593)"},
+   {"track": "1-20", "at": 66.06, "move": "hiphop-march", "counts": 16.0, "note": "\"we gotta go, we gotta get the job done\" (cue 594)"},
+   {"track": "1-20", "at": 129.74, "move": "musket", "counts": 8.0, "note": "the drill (cue 601)"},
+   {"track": "1-20", "at": 146.88, "move": "musket", "counts": 8.0, "note": "the battle resumes (cue 605)"},
+   {"track": "1-20", "at": 198.32, "move": "upside-down", "counts": 16.0, "note": "\"the world turned upside down\" (cue 609)"},
+   {"track": "2-05", "at": 118.34, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 118.4)"},
+   {"track": "2-05", "at": 123.86, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-05", "at": 176.29, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 176.8)"},
+   {"track": "2-05", "at": 181.81, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-13", "at": 70.14, "move": "hoist", "counts": 16.0, "note": "the storm: furniture overhead (nothing carried yet: the arms go up empty)"},
+   {"track": "2-14", "at": 57.02, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 55.49)"},
+   {"track": "2-14", "at": 67.16, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 65.52)"},
+   {"track": "2-22", "at": 201.39, "move": "row", "counts": 8.0, "mirror": true, "note": "the rowers beside him"}
   ]},
   {"id": "ens10", "name": "Ensemble 10", "color": "#8c8c8c", "path": [
    {"track": "1-01", "at": 0.0, "x": -8.5, "z": 0.0, "dwell": 38.8, "off": true, "label": "Ensemble 10"},
@@ -6639,6 +6964,22 @@
    {"track": "2-23", "at": 155.22, "x": 3.387, "z": 0.654, "facing": -33.2},
    {"track": "2-23", "at": 211.9, "x": 3.387, "z": 0.654, "facing": -33.2},
    {"track": "2-23", "at": 214.6, "x": 3.6, "z": 3.05, "facing": 0.0}
+  ], "moves": [
+   {"track": "1-03", "at": 79.54, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 73.9 + 2 bars)"},
+   {"track": "1-03", "at": 90.09, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 84.4 + 2 bars)"},
+   {"track": "1-03", "at": 174.48, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 168.2 + 2 bars)"},
+   {"track": "1-03", "at": 185.03, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 180.0 + 2 bars)"},
+   {"track": "1-03", "at": 301.08, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 296.4 + 2 bars)"},
+   {"track": "1-03", "at": 311.62, "move": "my-shot", "counts": 8.0, "note": "the signature phrase, \"Hey yo, I'm just like my country…\" (chorus at cue 307.1 + 2 bars)"},
+   {"track": "1-08", "at": 271.65, "move": "my-shot", "counts": 8.0, "note": "the My Shot phrase in the middle of Right Hand Man (placement guessed)"},
+   {"track": "1-11", "at": 47.33, "move": "rewind", "counts": 22.0, "note": "the rewind (cues 366.2 to 366.8)"},
+   {"track": "2-05", "at": 118.34, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 118.4)"},
+   {"track": "2-05", "at": 123.86, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-05", "at": 176.29, "move": "shimmy", "counts": 8.0, "note": "the chorus: Burr's ego, the shimmy (cue at 176.8)"},
+   {"track": "2-05", "at": 181.81, "move": "jazz-roll", "counts": 8.0, "note": "the chorus: ooey-gooey jazz"},
+   {"track": "2-13", "at": 70.14, "move": "hoist", "counts": 16.0, "note": "the storm: furniture overhead (nothing carried yet: the arms go up empty)"},
+   {"track": "2-14", "at": 57.02, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 55.49)"},
+   {"track": "2-14", "at": 67.16, "move": "wall-ooze", "counts": 8.0, "note": "round Angelica: the slow-motion wall (cue at 65.52)"}
   ]}
  ],
  "props": [

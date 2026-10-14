@@ -169,6 +169,7 @@ kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid
         <div id="s_count"></div>
         <div class="note" id="s_sel">Nobody selected — click a dot (Shift / Ctrl-click adds; drag a box round several; Ctrl+A everyone).</div>
         <div class="btns"><button id="s_delall" title="Delete key">Delete their track in this song</button><button id="s_delfrom" title="Shift+Delete">Delete from 0:00 on in this song</button><button id="s_delkey" title="X: the keyframe of the dot under the pointer (or the one selected) at this moment">Delete this keyframe</button></div>
+        <div class="btns"><button id="s_dance" title="D: the selected dance a move from now (the move library; counts, mirror, canon)">♪ Dance… (D)</button></div>
         <div class="btns"><button id="s_clear" title="Start this song from an empty stage">Clear this song</button><button id="s_restore" title="Back to the loaded blocking for this song">Restore</button><button id="s_export" title="hamilton-blocking-recording-&lt;date&gt;.json: your keyframes and notes, for Claude">Export</button></div>
         <h2>Add furniture</h2>
         <div class="btns"><select id="f_kind" aria-label="Kind"></select><input id="f_name" type="text" placeholder="name" style="width:92px"><button id="f_add">Add</button></div>
@@ -218,7 +219,7 @@ kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid
       </div>
       <div id="hover" hidden></div>
       <div id="picker" hidden></div>
-      <div id="helps" class="simpleonly">Drag a dot (or a square) to record it there now · <kbd>Space</kbd> play / pause · <kbd>←</kbd> <kbd>→</kbd> ±1 s, <kbd>Shift</kbd> ±5 · <kbd>Home</kbd> the song's top · <kbd>Ctrl+Z</kbd> undo · <kbd>L</kbd> level · wheel zoom · right-drag pan</div>
+      <div id="helps" class="simpleonly">Drag a dot (or a square) to record it there now · <kbd>Space</kbd> play / pause · <kbd>←</kbd> <kbd>→</kbd> ±1 s, <kbd>Shift</kbd> ±5 · <kbd>Home</kbd> the song's top · <kbd>Ctrl+Z</kbd> undo · <kbd>L</kbd> level · <kbd>D</kbd> dance · wheel zoom · right-drag pan</div>
       <div id="help" class="advonly">Click the stage: a waypoint for the selected actor at the current time · drag a disc: move it · <kbd>Del</kbd> delete · <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd> · arrows nudge 5 cm (<kbd>Shift</kbd> 25) · <kbd>Space</kbd> play · <kbd>[</kbd> <kbd>]</kbd> ∓1 s (<kbd>Shift</kbd> 5) · <kbd>,</kbd> <kbd>.</kbd> waypoints · wheel zoom · right-drag pan</div>
     </div>
     <div id="right" class="advonly">
@@ -262,7 +263,8 @@ kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid
 'use strict';
 // ================================================================ constants
 const URLS = { blocking: 'assets/hamilton-blocking.json', show: 'assets/hamilton-show.json', eos: 'assets/hamilton-eos.json', cast: 'tools/hamilton-cast.json',
-  floor: 'tools/hamilton-floor.json', pools: 'assets/hamilton-pools.json', rig: 'assets/hamilton-rig.json', sound: 'assets/audio/hamilton-soundtrack.mp3' };
+  floor: 'tools/hamilton-floor.json', pools: 'assets/hamilton-pools.json', rig: 'assets/hamilton-rig.json', sound: 'assets/audio/hamilton-soundtrack.mp3',
+  beats: 'assets/hamilton-beats.json', moves: 'tools/hamilton-moves.json' };   // RULING FV: the beat grid and the move library
 const LEAD = 10, TAIL = 10;                    // RULING FQ: the lead-in before each act's first track; the tail after Act One
 const ACT_WALK = 1.3, ACT_EASE = 0.6, ACT_TURN = 0.6, ACT_SEG_N = 24;   // midtown.html's own (actPose)
 const GALLERY = 2.743, SNAP = 0.05;
@@ -422,6 +424,9 @@ function propCompile(p) {
   P.sort((a, b) => a.T - b.T || a.k - b.k);
   return { P };
 }
+// FU: `carriedBy` is one actor's id or a list of two; the names for the plan
+const carriers = v => !v ? [] : Array.isArray(v) ? v.map(String) : [String(v)];
+const carrierName = (v, M) => carriers(v).map(id => ((M ? M.get(id) : S.actors.find(a => a.id === id)) || {}).name || id).join(' & ');
 function propPose(p, T) {
   const P = (p.c || (p.c = propCompile(p))).P;
   if (!P.length) return { x: 0, y: 0, z: 0, yaw: 0, visible: false, carrier: null, none: true };
@@ -429,6 +434,12 @@ function propPose(p, T) {
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (P[m].T <= T) lo = m; else hi = m - 1; }
   if (T < P[0].T) return { x: P[0].x, y: 0, z: P[0].z, yaw: P[0].yaw, visible: false, carrier: null };   // before its first waypoint: not on stage
   const w = P[lo];
+  if (w.byId && Array.isArray(w.byId)) {                // FU: between two, its long side from the first to the second (midtown.html's)
+    const A = w.byId.map(actorFor);
+    if (A.length !== 2 || A.some(a => !a)) return { x: w.x, y: 0, z: w.z, yaw: 0, visible: false, carrier: w.byId };
+    const q1 = actPose(A[0], T), q2 = actPose(A[1], T), dx = q2.x - q1.x, dz = q2.z - q1.z;
+    return { x: (q1.x + q2.x) / 2, y: (q1.y + q2.y) / 2 + PROP_HOLD.waist - p.size[1] / 2, z: (q1.z + q2.z) / 2, yaw: Math.atan2(-dz, dx), visible: (q1.visible || q2.visible) && !w.off, carrier: w.byId };
+  }
   if (w.byId) {
     const a = actorFor(w.byId);
     if (!a) return { x: w.x, y: 0, z: w.z, yaw: 0, visible: false, carrier: w.byId };
@@ -585,7 +596,8 @@ async function setSource(text, name) {
   S.nextId = 1; S.origIds = new Map();
   S.actors = d.actors.filter(a => a && typeof a === 'object').map(a => {
     const o = { id: String(a.id), name: String(a.name || a.id), label: typeof a.label === 'string' && a.label ? a.label : null, color: /^#[0-9a-f]{6}$/i.test(a.color) ? a.color : '#c8c8c8',
-      path: (Array.isArray(a.path) ? a.path : []).map(w => Object.assign({}, w, { _id: 'w' + S.nextId++ })), c: null };
+      path: (Array.isArray(a.path) ? a.path : []).map(w => Object.assign({}, w, { _id: 'w' + S.nextId++ })), c: null,
+      moves: (Array.isArray(a.moves) ? a.moves : []).filter(m => m && typeof m === 'object').map(m => Object.assign({}, m)) };   // FV: kept as loaded
     o.path.forEach(w => S.origIds.set(w._id, { kind: 'actor', ent: o.id, w: stripW(w) }));
     return o;
   });
@@ -601,6 +613,7 @@ function cleanProp(s, k) {
   const kind = PROP_KINDS[s.kind] ? s.kind : 'custom';
   const size = Array.isArray(s.size) && s.size.length === 3 && s.size.every(v => +v > 0) ? s.size.map(v => +v) : PROP_KINDS[kind].slice();
   return { id: String(s.id || `prop-${k + 1}`), kind, label: String(s.label || s.id || kind), size, color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color.toLowerCase() : '#8a6a48',
+    ...(typeof s.model === 'string' && s.model ? { model: s.model } : {}),   // FU: its GLB, kept as loaded
     waypoints: (Array.isArray(s.waypoints) ? s.waypoints : []).map(w => Object.assign({}, w, { _id: w._id || 'w' + S.nextId++ })), c: null };
 }
 const stripW = w => { const o = {}; for (const [k, v] of Object.entries(w)) if (k[0] !== '_') o[k] = v; return o; };
@@ -616,6 +629,8 @@ async function boot() {
     buildTracks(show);
     S.light = buildLight();
     buildPoolCues();
+    const [beats, mlib] = await Promise.all([getJSON(URLS.beats, true), getJSON(URLS.moves, true)]);   // FV
+    if (beats) beatCompileEd(beats); S.moveLib = mlib && mlib.moves || {};
     if (btext) await setSource(btext, URLS.blocking);
     else await setSource(JSON.stringify({ format: 'hamilton-blocking 1', actors: S.castList.map(a => ({ id: a.id, name: a.name, color: a.color, path: [] })) }), '(no blocking file: the cast, empty)');
     S.T = 0; S.ready = true;
@@ -1007,7 +1022,8 @@ function validate() {
       if (!tr) { add(E, `${where}: unknown track`, 'prop', p.id, w); continue; }
       const at = +w.at || 0;
       if (at < -tr.pre - 1e-6 || at > tr.len + tr.post + 1e-6) add(E, `${where}: outside ${tr.id}`, 'prop', p.id, w);
-      if (w.carriedBy && !S.cast.has(w.carriedBy) && !S.actors.some(a => a.id === w.carriedBy)) add(E, `${where}: carried by "${w.carriedBy}", not one of the company`, 'prop', p.id, w);
+      for (const cid of carriers(w.carriedBy)) if (!S.cast.has(cid) && !S.actors.some(a => a.id === cid)) add(E, `${where}: carried by "${cid}", not one of the company`, 'prop', p.id, w);   // FU: one carrier or two
+      if (Array.isArray(w.carriedBy) && (w.carriedBy.length !== 2 || w.carriedBy[0] === w.carriedBy[1])) add(E, `${where}: two carriers must be two different people`, 'prop', p.id, w);
       if (!w.carriedBy && (actF(w.x) === null || actF(w.z) === null)) add(E, `${where}: placed, but no x / z`, 'prop', p.id, w);
       if (!w.carriedBy && !w.off && !(w.x >= STAGE.x[0] && w.x <= STAGE.x[1] && w.z >= STAGE.z[0] && w.z <= STAGE.z[1])) add(W, `${where}: off the measured stage`, 'prop', p.id, w);
     }
@@ -1121,12 +1137,12 @@ function fileText() {
   S.actors.forEach((a, n) => {
     out.push('  {"id": ' + JSON.stringify(a.id) + ', "name": ' + JSON.stringify(a.name) + (a.label ? ', "label": ' + JSON.stringify(a.label) : '') + ', "color": ' + JSON.stringify(a.color) + ', "path": [');
     out.push(a.path.map(w => '\n   ' + pyObj(cleanOut(w, 'actor'))).join(','));
-    out.push((a.path.length ? '\n  ' : '') + ']}' + (n + 1 < S.actors.length ? ',' : '') + '\n');
+    out.push((a.path.length ? '\n  ' : '') + ']' + (a.moves && a.moves.length ? ', "moves": [' + a.moves.map(m => '\n   ' + pyObj(m)).join(',') + '\n  ]' : '') + '}' + (n + 1 < S.actors.length ? ',' : '') + '\n');   // FV: her moves, as the merge writes them
   });
   if (S.props.length) {
     out.push(' ],\n "props": [\n');
     S.props.forEach((p, n) => {
-      out.push('  {"id": ' + JSON.stringify(p.id) + ', "kind": ' + JSON.stringify(p.kind) + ', "label": ' + JSON.stringify(p.label) + ', "size": ' + pyVal(p.size.map(r3)) + ', "color": ' + JSON.stringify(p.color) + ', "waypoints": [');
+      out.push('  {"id": ' + JSON.stringify(p.id) + ', "kind": ' + JSON.stringify(p.kind) + ', "label": ' + JSON.stringify(p.label) + ', "size": ' + pyVal(p.size.map(r3)) + ', "color": ' + JSON.stringify(p.color) + (p.model ? ', "model": ' + JSON.stringify(p.model) : '') + ', "waypoints": [');
       out.push(p.waypoints.map(w => '\n   ' + pyObj(cleanOut(w, 'prop'))).join(','));
       out.push((p.waypoints.length ? '\n  ' : '') + ']}' + (n + 1 < S.props.length ? ',' : '') + '\n');
     });
@@ -1522,8 +1538,13 @@ function drawTrackBar() {
   x.fillStyle = 'rgba(255,255,255,.4)';
   for (let t = 0; t <= a1; t += step) { x.fillRect(X(t), 0, 1, 5); x.fillText(String(t), X(t) + 2, 1); }
   if (S.light) for (const c of S.light.cues) if (c.track === tr.id) { x.fillStyle = 'rgba(232,180,74,.8)'; x.fillRect(X(c.T - tr.start), 6, 1, 6); }
+  const bg = BEATS.g.get(tr.id);                       // FV: the beats faintly, the bars brighter
+  if (bg) { const b0 = Math.ceil(beatAtEd(tr.id, a0)), b1 = Math.floor(beatAtEd(tr.id, a1));
+    for (let b = b0; b <= b1; b++) { const bar = ((b % bg.meter) + bg.meter) % bg.meter === 0; x.fillStyle = bar ? 'rgba(255,226,160,.38)' : 'rgba(255,226,160,.13)'; x.fillRect(X(beatTimeEd(tr.id, b)), bar ? h - 9 : h - 5, 1, bar ? 9 : 5); } }
   const e = ent();
   if (S.mode === 'simple') {                            // a tick per recorded keyframe in this song, in the body's colour
+    const Rm = S.rec.tracks[tr.id];                      // FV: and a bar per recorded move, its length on the beat grid
+    if (Rm && Rm.moves) for (const [id, L] of Object.entries(Rm.moves)) for (const m of L) { const sp = moveSpan(Object.assign({ track: tr.id }, m)); if (!sp) continue; x.fillStyle = (S.actors.find(a => a.id === id) || {}).color || '#ccc'; x.globalAlpha = 0.55; x.fillRect(X(sp.T0 - tr.start), 27, Math.max(2, X(sp.T1 - tr.start) - X(sp.T0 - tr.start)), 4); x.globalAlpha = 1; }
     const R = S.rec.tracks[tr.id];
     if (R) for (const [kind, M] of [['actor', R.actors], ['prop', R.props]]) for (const [id, L] of Object.entries(M)) {
       const col = kind === 'actor' ? (S.actors.find(a => a.id === id) || {}).color || '#ccc' : '#d9c08f';
@@ -1850,6 +1871,7 @@ window.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && (k === 'a' || k === 'A')) { e.preventDefault(); for (const a of S.actors) if (!S.hidden.has(a.id)) S.selSet.add('actor:' + a.id); S.dirty = S.listDirty = true; return; }
     if (k === 'Delete') { e.preventDefault(); recDelete(e.shiftKey ? 'from' : 'all'); return; }
     if (k === 'x' || k === 'X') { deleteKeyframe(); return; }
+    if (k === 'd' || k === 'D') { openDance(); return; }                 // FV
     if (k === 'Escape') { $('picker').hidden = true; S.sSel = null; S.selSet.clear(); S.dirty = S.listDirty = true; }
     return;
   }
@@ -2016,7 +2038,7 @@ function flipLevel(id) {
 function recClear() {
   const tr = curTrack();
   if (!confirm(`Clear ${tr.id} ${tr.title}?\n\nThe song starts from an empty stage: the loaded blocking and anything you recorded in it go. (Ctrl+Z brings it back.)`)) return;
-  recDo(() => { const R = recTrack(tr.id, true); R.cleared = true; R.actors = {}; R.props = {}; R.del = {}; });
+  recDo(() => { const R = recTrack(tr.id, true); R.cleared = true; R.actors = {}; R.props = {}; R.del = {}; R.moves = {}; });   // FV: and the moves
 }
 // ---- the selection, and the deletes
 const selKey = (kind, id) => kind + ':' + id;
@@ -2041,6 +2063,7 @@ Ctrl+Z undoes it.`)) return;
       const M = kind === 'actor' ? R.actors : R.props, D = kind === 'actor' ? R.del.actors : R.del.props;
       if (mode === 'all') { M[id] = []; D[id] = 'all'; }
       else { M[id] = (M[id] || []).filter(k => k.at < at - 1e-6); if (D[id] !== 'all') D[id] = D[id] === undefined ? at : Math.min(D[id], at); }
+      if (kind === 'actor' && R.moves && R.moves[id]) R.moves[id] = mode === 'all' ? [] : R.moves[id].filter(m => m.at < at - 1e-6);   // FV: her moves go too
     }
   });
 }
@@ -2049,6 +2072,8 @@ function deleteKeyframe() {                              // the hovered (or the 
   if (!b) { alert('Point at a dot (or select one) to delete its keyframe at this moment.'); return; }
   const tr = curTrack(), at = locate(S.T).at, R = S.rec.tracks[tr.id], L = R ? (b.kind === 'actor' ? R.actors : R.props)[b.id] || [] : [];
   const i = L.findIndex(k => Math.abs(k.at - at) <= 0.25);
+  const mv = b.kind === 'actor' && R && R.moves && R.moves[b.id] ? R.moves[b.id].findIndex(m => Math.abs(m.at - at) <= 0.25) : -1;   // FV: or a move she starts now
+  if (i < 0 && mv >= 0) { recDo(() => { S.rec.tracks[tr.id].moves[b.id].splice(mv, 1); }); return; }
   if (i < 0) { const near = L.reduce((m, k) => Math.abs(k.at - at) < Math.abs(m - at) ? k.at : m, Infinity); $('s_banner').textContent = `No keyframe of ${b.id} at ${at.toFixed(1)} s${Number.isFinite(near) ? ` (the nearest is at ${near.toFixed(2)} s)` : ''}.`; $('s_banner').hidden = false; return; }
   recDo(() => { const R2 = S.rec.tracks[tr.id], L2 = (b.kind === 'actor' ? R2.actors : R2.props)[b.id]; L2.splice(L2.findIndex(k => Math.abs(k.at - at) <= 0.25), 1); });
 }
@@ -2065,6 +2090,86 @@ function addFurniture() {
   recDo(() => { S.rec.furniture.push({ id, kind, label, size: PROP_KINDS[kind].slice(), color: '#9a7b4f' }); });
   $('f_name').value = ''; S.sSel = { kind: 'prop', id };
 }
+// ================================================================ DANCE (RULING FV)
+// Jack: "have an agent build the dancing system." The moves are midtown.html's (the library is written out to
+// tools/hamilton-moves.json); here they are RECORDED like keyframes: select one or many dots, press Dance (D), pick a move —
+// each selected body gets { at: the clock, move, counts, mirror?, canon? } in this song (canon: the step in seconds, added per
+// body in the order they were selected). The loaded blocking's own `moves` stay, unless the song is cleared or the body's track
+// deleted (all of it, or from the clock on) — the same rule as the keyframes. A dancing dot wears a ♪ and the move's name while
+// the move runs (from `at` + `canon` on the song's beat grid, assets/hamilton-beats.json, for `counts` beats); the song's scrub
+// bar shows the beats faintly and the bars brighter.
+const BEATS = { g: new Map() };
+function beatCompileEd(d) {
+  BEATS.g.clear();
+  for (const [id, t] of Object.entries(d && d.tracks || {})) {
+    if (!(t.bpm > 0)) continue;
+    const segs = [{ a: +t.firstBeat, b: 0, p: 60 / t.bpm }];
+    for (const c of (t.changes || []).slice().sort((x, y) => x.at - y.at)) {
+      const s = segs[segs.length - 1]; if (c.at <= s.a) { if (segs.length === 1 && c.at === s.a) s.p = 60 / c.bpm; continue; }
+      segs.push({ a: +c.at, b: Math.round(s.b + (c.at - s.a) / s.p), p: 60 / c.bpm });
+    }
+    BEATS.g.set(id, { segs, meter: t.meter > 0 ? t.meter : 4, bpm: +t.bpm });
+  }
+}
+function beatAtEd(id, t) { const g = BEATS.g.get(id); if (!g) return null; let s = g.segs[0]; for (const q of g.segs) if (q.a <= t) s = q; else break; return (s.b + (t - s.a) / s.p); }
+function beatTimeEd(id, b) { const g = BEATS.g.get(id); if (!g) return null; let s = g.segs[0]; for (const q of g.segs) if (q.b <= b) s = q; else break; return s.a + (b - s.b) * s.p; }
+// a move's span on the global clock: `at` snapped to the nearest beat, plus `canon`, `counts` beats long (no grid: 120 BPM)
+function moveSpan(m) {
+  const tr = S.byTrack.get(String(m.track)); if (!tr) return null;
+  const c = +m.canon || 0, b = beatAtEd(tr.id, +m.at || 0);              // `at` snapped to its beat, then the canon's delay
+  if (b === null) return { T0: tr.start + (+m.at || 0) + c, T1: tr.start + (+m.at || 0) + c + (+m.counts || 0) * 0.5 };
+  const b0 = Math.round(b); return { T0: tr.start + beatTimeEd(tr.id, b0) + c, T1: tr.start + beatTimeEd(tr.id, b0 + (+m.counts || 0)) + c };
+}
+// her moves as the recording makes them (the loaded ones, less what a cleared song or a deletion cut, plus the recorded ones)
+function effMoves(id) {
+  const a = S.actors.find(x => x.id === id); let L = (a && a.moves ? a.moves : []).slice();
+  for (const [tid, R] of Object.entries(S.rec.tracks)) {
+    const del = delOf(R, 'actor', id);
+    if (R.cleared || del === 'all') L = L.filter(m => String(m.track) !== tid);
+    else if (typeof del === 'number') L = L.filter(m => String(m.track) !== tid || (+m.at || 0) < del - 1e-6);
+    for (const m of (R.moves && R.moves[id]) || []) L.push(Object.assign({ track: tid }, m));
+  }
+  return L.map(m => Object.assign({}, m, { _span: moveSpan(m) })).filter(m => m._span).sort((x, y) => x._span.T0 - y._span.T0);
+}
+function danceNow(id, T) { const L = effMoves(id); let cur = null; for (const m of L) if (m._span.T0 <= T) cur = m; return cur && T < cur._span.T1 ? cur : null; }
+function recordMoves(move, counts, mirror, canonStep) {
+  const sel = [...S.selSet].map(k => k.split(':')).filter(([kind]) => kind === 'actor');
+  if (!sel.length) { alert('Select who dances first: click a dot (Shift / Ctrl-click to add more, or drag a box round several).'); return; }
+  const { tr, at } = locate(S.T), t0 = r2(at);
+  recDo(() => {
+    const R = recTrack(tr.id, true); R.moves = R.moves || {};
+    sel.forEach(([, id], k) => {
+      const m = Object.assign({ at: t0, move, counts }, mirror ? { mirror: true } : {}, canonStep && k ? { canon: r3(canonStep * k) } : {});
+      const L = R.moves[id] || (R.moves[id] = []), i = L.findIndex(q => Math.abs(q.at - t0) <= 0.25 && !(q.canon || m.canon));
+      if (i >= 0) L[i] = m; else L.push(m);
+      L.sort((x, y) => x.at - y.at);
+    });
+  });
+}
+function movesCount(tid) { const R = S.rec.tracks[tid]; return R && R.moves ? Object.values(R.moves).reduce((n, L) => n + L.length, 0) : 0; }
+function openDance() {
+  const pk = $('picker'), lib = S.moveLib || {}, n = [...S.selSet].filter(k => k.startsWith('actor:')).length;
+  if (!Object.keys(lib).length) { alert('The move library (tools/hamilton-moves.json) did not load.'); return; }
+  if (!n) { alert('Select who dances first: click a dot (Shift / Ctrl-click to add more, or drag a box round several).'); return; }
+  const SHOW = ['my-shot', 'legacy', 'equals', 'work', 'gavotte', 'grind', 'rewind', 'imagine-death', 'command', 'heartbeat', 'hiphop-march', 'musket', 'upside-down', 'shimmy', 'jazz-roll', 'hoist', 'crawl-back', 'wall-ooze', 'bojangles', 'bullet', 'row'];
+  const names = Object.keys(lib).filter(k => !lib[k].same);
+  const row = k => `<button data-m="${esc(k)}" title="${esc(lib[k].desc || '')}"><b>${esc(k)}</b> <span class="faint">${lib[k].counts}${lib[k].once ? ' once' : ''}</span></button>`;
+  const { tr, at } = locate(S.T);
+  pk.innerHTML = `<div class="ph"><b>Dance</b> — ${n} selected, from ${esc(tr.id)} ${at.toFixed(1)} s</div>` +
+    `<div class="ph">Counts <input id="dz_counts" type="number" min="1" step="1" value="8" style="width:48px"> <label><input id="dz_mirror" type="checkbox"> mirror</label><br>Canon step <input id="dz_canon" type="number" min="0" step="0.05" value="0" style="width:52px"> s <span class="faint">(added per body, in selection order)</span></div>` +
+    `<div class="ph" style="margin-top:6px">This show</div>` + SHOW.filter(k => lib[k]).map(row).join('') +
+    `<div class="ph" style="margin-top:6px">General</div>` + names.filter(k => !SHOW.includes(k)).map(row).join('');
+  pk.style.width = '280px'; pk.style.maxHeight = '420px';
+  pk.style.left = (W - 300) + 'px'; pk.style.top = '8px'; pk.hidden = false;
+  pk.querySelectorAll('button[data-m]').forEach(b => {
+    b.onmouseenter = () => { $('dz_counts').placeholder = String(lib[b.dataset.m].counts); };
+    b.onclick = () => {
+      const c = Math.max(1, Math.round(+$('dz_counts').value || lib[b.dataset.m].counts));
+      pk.hidden = true; pk.style.width = ''; pk.style.maxHeight = '';
+      recordMoves(b.dataset.m, c, $('dz_mirror').checked, Math.max(0, +$('dz_canon').value || 0));
+    };
+  });
+}
 // ---- the recording file
 async function recordingDoc() {
   const tracks = {};
@@ -2075,7 +2180,8 @@ async function recordingDoc() {
       k.carriedBy ? { carriedBy: k.carriedBy } : { x: k.x, z: k.z }, k.level ? { level: k.level } : {}, { off: !!k.off }))]));
     const dels = M => Object.fromEntries(Object.entries(M || {}).map(([id, v]) => [id, v === 'all' ? { deleted: 'all' } : { deletedFrom: v }]));
     tracks[tr.id] = { title: tr.title, cleared: !!(R && R.cleared), actors: clean(R && R.actors), props: clean(R && R.props),
-      deletions: { actors: dels(R && R.del && R.del.actors), props: dels(R && R.del && R.del.props) } };
+      deletions: { actors: dels(R && R.del && R.del.actors), props: dels(R && R.del && R.del.props) },
+      moves: Object.fromEntries(Object.entries((R && R.moves) || {}).filter(([, L]) => L.length)) };   // FV: { id: [{ at, move, counts, mirror?, canon? }] }
   }
   return {
     format: 'hamilton-blocking-recording 1', made: new Date().toISOString(), by: 'blocking.html, Simple mode (RULING FP)',
@@ -2094,8 +2200,9 @@ function importRecording(d) {
     const conv = M => Object.fromEntries(Object.entries(M || {}).map(([id, L]) => [id, L.map(k => Object.assign({ at: +k.at }, k.carriedBy ? { carriedBy: k.carriedBy } : { x: +k.x, z: +k.z }, k.level ? { level: k.level } : {}, k.off ? { off: true } : {}))]));
     const undel = M => Object.fromEntries(Object.entries(M || {}).map(([id, v]) => [id, v.deleted === 'all' ? 'all' : +v.deletedFrom]));
     const del = { actors: undel(T.deletions && T.deletions.actors), props: undel(T.deletions && T.deletions.props) };
-    if (T.cleared || Object.keys(T.actors || {}).length || Object.keys(T.props || {}).length || Object.keys(del.actors).length || Object.keys(del.props).length)
-      tracks[tid] = { cleared: !!T.cleared, actors: conv(T.actors), props: conv(T.props), del };
+    const mv = Object.fromEntries(Object.entries(T.moves || {}).map(([id, L]) => [id, (L || []).map(m => Object.assign({ at: +m.at, move: String(m.move), counts: +m.counts }, m.mirror ? { mirror: true } : {}, +m.canon ? { canon: +m.canon } : {}))]));
+    if (T.cleared || Object.keys(T.actors || {}).length || Object.keys(T.props || {}).length || Object.keys(del.actors).length || Object.keys(del.props).length || Object.keys(mv).length)
+      tracks[tid] = { cleared: !!T.cleared, actors: conv(T.actors), props: conv(T.props), del, moves: mv };
   }
   recDo(() => { S.rec = { tracks, furniture: d.furniture || [] }; });
   if (d.notes) { S.notes = { global: d.notes.global || '', tracks: d.notes.tracks || {} }; S.sNotesFor = null; saveRec(); }
@@ -2133,7 +2240,7 @@ function drawSimple(T) {
     g.globalAlpha = vis ? 1 : 0.55; g.fillStyle = vis ? p.color : 'rgba(0,0,0,0)'; g.fillRect(-hs, -hs, 2 * hs, 2 * hs);
     g.strokeStyle = S.selSet.has(selKey('prop', p.id)) ? '#5ff0ff' : sel ? '#ffe2a0' : vis ? '#fff' : p.color; g.lineWidth = sel || S.selSet.has(selKey('prop', p.id)) ? 3 : 1.5; g.setLineDash(vis ? [] : [3, 2]); g.strokeRect(-hs, -hs, 2 * hs, 2 * hs); g.setLineDash([]);
     g.restore(); g.globalAlpha = 1;
-    if (names || sel || hov) txt(p.label + (q.carrier && vis ? ` ⇐ ${(EA.get(q.carrier) || {}).name || q.carrier}` : ''), a, b + hs + 8, { align: 'center', color: vis ? '#ffe9c7' : '#9a958c', size: 10, bg: 'rgba(13,12,16,.7)' });
+    if (names || sel || hov) txt(p.label + (q.carrier && vis ? ` ⇐ ${carrierName(q.carrier, EA)}` : ''), a, b + hs + 8, { align: 'center', color: vis ? '#ffe9c7' : '#9a958c', size: 10, bg: 'rgba(13,12,16,.7)' });
     S.simpleHits.push({ kind: 'prop', id: p.id, a, b, r: hs + 3, x, z });
     if (sel || hov) {                                                    // the carry button
       const lab = q.carrier && vis ? 'carry: change ▾' : 'carry ▾'; g.font = '600 10px system-ui, sans-serif';
@@ -2165,6 +2272,8 @@ function drawSimple(T) {
     if (S.selSet.has(selKey('actor', a.id))) { g.strokeStyle = '#5ff0ff'; g.lineWidth = 3; g.beginPath(); g.arc(px, py, r + 5, 0, 7); g.stroke(); }
     if (hov || drag) { g.strokeStyle = '#ffe2a0'; g.lineWidth = 2; g.beginPath(); g.arc(px, py, r + 8, 0, 7); g.stroke(); }
     if (names || hov) txt((p.label || a.name) + (p.y > 1 && vis ? ' ↑' : ''), px + r + 4, py, { color: vis ? '#fff' : '#a39fae', size: vis ? 12 : 10, bold: vis, bg: 'rgba(13,12,16,.72)' });
+    const dm = vis && danceNow(a.id, T);                                    // FV: dancing — a note and the move's name
+    if (dm) txt('♪ ' + dm.move, px, py - r - 9, { align: 'center', color: '#ffe2a0', size: 10, bold: true, bg: 'rgba(59,51,32,.85)' });
     S.simpleHits.push({ kind: 'actor', id: a.id, a: px, b: py, r: r + 3, x, z }); disp.set(a.id, [px, py, r]);
     if (hov && vis && !drag && twoLevel(p.x, p.z)) {                      // the level switch on the hovered dot
       const up = p.y > 1.5, lab = up ? '⇅ upper → lower' : '⇅ lower → upper'; g.font = '600 10px system-ui, sans-serif';
@@ -2178,7 +2287,7 @@ function drawSimple(T) {
   // with a PUT DOWN button — the bug was that a carried square sat under its carrier's dot (props were drawn first, only
   // d/2 + 0.22 m ahead of her), so a click on it found the person (the nearest) and dragged her instead.
   for (const [p, q] of carried) {
-    const hs = Math.max(7, 0.22 * s), c = disp.get(q.carrier), [qa, qb] = PX(q.x, q.z);
+    const hs = Math.max(7, 0.22 * s), c = Array.isArray(q.carrier) ? null : disp.get(q.carrier), [qa, qb] = PX(q.x, q.z);   // two carry it: drawn where it rides, between them
     let a = qa, b = qb;
     if (c) { let dx = qa - c[0], dy = qb - c[1]; const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L; const off = c[2] + hs * 1.45 + 6; a = c[0] + dx * off; b = c[1] + dy * off; g.strokeStyle = 'rgba(255,226,160,.7)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(c[0] + dx * c[2], c[1] + dy * c[2]); g.lineTo(a - dx * hs, b - dy * hs); g.stroke(); }
     const sel = S.sSel && S.sSel.kind === 'prop' && S.sSel.id === p.id, hov = S.sHover && S.sHover.kind === 'prop' && S.sHover.id === p.id, picked = S.selSet.has(selKey('prop', p.id));
@@ -2186,7 +2295,7 @@ function drawSimple(T) {
     g.fillStyle = p.color; g.fillRect(-hs, -hs, 2 * hs, 2 * hs);
     g.strokeStyle = picked ? '#5ff0ff' : '#ffe2a0'; g.lineWidth = picked || sel || hov ? 3 : 2; g.strokeRect(-hs, -hs, 2 * hs, 2 * hs);
     g.restore();
-    const who = (EA.get(q.carrier) || {}).name || q.carrier;
+    const who = carrierName(q.carrier, EA);
     txt(`${p.label} · carried by ${who}`, a, b - hs - 9, { align: 'center', color: '#ffe9c7', size: 10, bold: true, bg: 'rgba(13,12,16,.78)' });
     g.font = '600 10px system-ui, sans-serif';
     const lab = '⬇ put down', bw = g.measureText(lab).width + 12, bx = a - bw / 2, by = b + hs + 4;
@@ -2220,12 +2329,17 @@ function openPicker(id, px, py) {                        // who carries it, from
   const q = hit ? { x: hit.x, z: hit.z } : q0;          // where its square is drawn (the tray, for one never placed)
   const near = S.actors.map(a => { const p = actPose(EA.get(a.id), S.T); return [a, p, Math.hypot(p.x - q.x, p.z - q.z)]; }).sort((x, y) => (y[1].visible - x[1].visible) || x[2] - y[2]);
   const { tr, at } = locate(S.T);
-  pk.innerHTML = `<div class="ph"><b>${esc(P.label)}</b> from ${esc(tr.id)} ${at.toFixed(1)} s${q0.carrier && q0.visible ? ` · carried by ${esc((EA.get(q0.carrier) || {}).name || q0.carrier)}` : ''}:</div>` +
-    `<button data-c="">⬇ Set down here, now</button><button data-c="__off">✕ Off stage, now</button><div class="ph" style="margin-top:6px">…or carried from now by:</div>` + near.map(([a, p, d]) => `<button data-c="${esc(a.id)}"><span class="sw" style="background:${a.color}"></span>${esc(p.label || a.name)} <span class="faint">${p.visible ? d.toFixed(1) + ' m' : 'offstage'}</span></button>`).join('');
-  pk.style.left = Math.min(px + 16, W - 230) + 'px'; pk.style.top = Math.max(8, Math.min(py - 20, H - 320)) + 'px'; pk.hidden = false;
+  pk.innerHTML = `<div class="ph"><b>${esc(P.label)}</b> from ${esc(tr.id)} ${at.toFixed(1)} s${q0.carrier && q0.visible ? ` · carried by ${esc(carrierName(q0.carrier, EA))}` : ''}:</div>` +
+    `<button data-c="">⬇ Set down here, now</button><button data-c="__off">✕ Off stage, now</button><div class="ph" style="margin-top:6px">…or carried from now by: <label title="Pick two people: it rides between them"><input type="checkbox" id="pk_two"> two carry it (with…)</label></div><div class="ph" id="pk_first" hidden></div>` + near.map(([a, p, d]) => `<button data-c="${esc(a.id)}"><span class="sw" style="background:${a.color}"></span>${esc(p.label || a.name)} <span class="faint">${p.visible ? d.toFixed(1) + ' m' : 'offstage'}</span></button>`).join('');
+  pk.style.left = Math.min(px + 16, W - 230) + 'px'; pk.style.top = Math.max(8, Math.min(py - 20, H - 320)) + 'px'; pk.hidden = false; delete pk.dataset.first;
   pk.querySelectorAll('button').forEach(b => b.onclick = () => {
     pk.hidden = true;
     if (b.dataset.c === '__off') offStageNow(id, q.x, q.z);
+    else if (b.dataset.c && $('pk_two') && $('pk_two').checked) {         // FU: two carry it — the first pick waits for the second
+      if (!pk.dataset.first) { pk.dataset.first = b.dataset.c; pk.hidden = false; const f = $('pk_first'); f.hidden = false; f.innerHTML = `With <b>${esc((EA.get(b.dataset.c) || {}).name || b.dataset.c)}</b> and…`; return; }
+      if (pk.dataset.first !== b.dataset.c) recordKey('prop', id, { carriedBy: [pk.dataset.first, b.dataset.c] });
+      delete pk.dataset.first;
+    }
     else if (b.dataset.c) recordKey('prop', id, { carriedBy: b.dataset.c });
     else putDown(id, q.x, q.z);
   });
@@ -2268,7 +2382,7 @@ function renderSimple() {
   $('s_sel').innerHTML = sn.length ? `<b>Selected ${sn.length}:</b> ${esc(sn.slice(0, 8).join(', '))}${sn.length > 8 ? ' …' : ''} <span class="faint">(Esc clears)</span>` : 'Nobody selected — click a dot (Shift / Ctrl-click adds; drag a box round several; Ctrl+A everyone).';
   $('s_delfrom').textContent = `Delete from ${mmss(Math.max(0, locate(S.T).at)).replace(/\.\d$/, '')} on in this song`;
   $('s_delall').disabled = $('s_delfrom').disabled = !sn.length;
-  $('s_count').innerHTML = `<b>Keyframes: ${n}</b> in ${esc(tr.id)}${R && R.cleared ? ' · <span style="color:#ffb3a8">cleared</span>' : ''} · ${recTotal()} in the show`;
+  $('s_count').innerHTML = `<b>Keyframes: ${n}</b> in ${esc(tr.id)}${movesCount(tr.id) ? ` · <b>♪ ${movesCount(tr.id)}</b> move${movesCount(tr.id) === 1 ? '' : 's'}` : ''}${R && R.cleared ? ' · <span style="color:#ffb3a8">cleared</span>' : ''} · ${recTotal()} in the show`;
   const L = $('songlist');
   if (L.children.length !== S.tracks.length) { L.textContent = ''; for (const t of S.tracks) { const d = document.createElement('div'); d.className = 'song'; d.dataset.i = t.i; d.onclick = () => seek(t.start - t.pre); L.append(d); } }
   for (const d of L.children) {
@@ -2301,6 +2415,7 @@ $('f_add').onclick = () => addFurniture();
 $('s_delall').onclick = () => recDelete('all');
 $('s_delfrom').onclick = () => recDelete('from');
 $('s_delkey').onclick = () => deleteKeyframe();
+$('s_dance').onclick = () => openDance();                                 // FV
 for (const k of FURNITURE) $('f_kind').add(new Option(k, k));
 $('s_note_track').oninput = e => { S.notes.tracks[curTrack().id] = e.target.value; saveRec(); };
 $('s_note_global').oninput = e => { S.notes.global = e.target.value; saveRec(); };
@@ -2335,7 +2450,7 @@ window.EDITOR = {
   sourceText: () => S.src && S.src.text,
   mode: m => setMode(m), simplePose: (id, T = S.T) => { const a = effActors().get(id); return a ? actPose(a, T) : null; }, simplePropPose: (id, T = S.T) => { const p = effProps().get(id); return p ? propPose(p, T) : null; },
   recordDrop: (kind, id, x, z) => recordDrop(kind, id, x, z), recordKey: (kind, id, k) => recordKey(kind, id, k), recUndo: () => recUndo(), recordingDoc: () => recordingDoc(), importRecording: d => importRecording(d),
-  recCount: tid => recCount(tid ?? curTrack().id), putDown: id => { const q = effProps().get(id) && propPose(effProps().get(id), S.T); if (q) putDown(id, q.x, q.z); }, select2: (keys, add) => { if (!add) S.selSet.clear(); for (const k of keys) S.selSet.add(k); S.dirty = S.listDirty = true; }, recDelete: m => recDelete(m), deleteKeyframe: () => deleteKeyframe(), recClear: () => recClear(), recRestore: () => recRestore(), addFurniture: (kind, name) => { $('f_kind').value = kind; $('f_name').value = name || ''; addFurniture(); }, openPicker: id => openPicker(id, 100, 100),
+  recCount: tid => recCount(tid ?? curTrack().id), dance: (move, counts, mirror, canon) => recordMoves(move, counts, !!mirror, canon || 0), moves: id => effMoves(id), danceNow: (id, T = S.T) => danceNow(id, T), openDance: () => openDance(), beatAt: (id, t) => beatAtEd(id, t), /* FV */ putDown: id => { const q = effProps().get(id) && propPose(effProps().get(id), S.T); if (q) putDown(id, q.x, q.z); }, select2: (keys, add) => { if (!add) S.selSet.clear(); for (const k of keys) S.selSet.add(k); S.dirty = S.listDirty = true; }, recDelete: m => recDelete(m), deleteKeyframe: () => deleteKeyframe(), recClear: () => recClear(), recRestore: () => recRestore(), addFurniture: (kind, name) => { $('f_kind').value = kind; $('f_name').value = name || ''; addFurniture(); }, openPicker: id => openPicker(id, 100, 100),
 };
 </script>
 </body>

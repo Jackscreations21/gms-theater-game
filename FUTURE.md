@@ -578,9 +578,9 @@ it does not do yet, and what the ETC pack could still give:
   merge a recording into the loaded file in the page (a session applies it to the generators). It shows Advanced's edits
   only through the loaded file, not live.
 - **3D in the editor:** it is a plan only; height shows as "↑" and a white rim. `midtown.html` remains the 3D view.
-- **Two-person carries and prop models (RULING FU).** The page, the plotter and the merge have them; the editor shows a
-  pair carry (`carriedBy: [a, b]`) as an error and draws a modelled prop as its square. Teach Simple mode to record a carry by
-  two, and draw the pair's square between them.
+- **Prop models in the editor (RULING FU).** Two-person carries are recorded and drawn since FV's round, and a prop's `model`
+  is kept and written back; but a modelled prop is still drawn as its square on the plan, and Advanced mode's "Carried by"
+  form shows one carrier only.
 
 ### Automatic actors — what is still to come (2026-10-12, RULINGS FF–FM built)
 
@@ -590,9 +590,23 @@ The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocki
 
 - **Arms and feet — BUILT (RULING FS, 2026-10-13):** the mannequin cut into fifteen rigid parts
   (`assets/mannequin-woman-rig.glb`, `tools/mannequin-rig.py`), a walk / idle / turn / carry from the pose. NOT built:
-  - **Gestures per keyframe** — a `gesture` (or `pose`) key on a waypoint (point, arms crossed, hand on hip, a bow,
-    sit, kneel, the duel's raised pistol), blended in over a fixed time from the waypoint's time so it stays a pure
-    function of show time. Open: Jack's list of gestures, and whether the editor (`blocking.html`) gets a picker.
+  - **Gestures per keyframe** — PARTLY BUILT by FV: a move from the library (point, salute, bow, kneel, reach-up,
+    freeze…) is given to a body at a time with `moves`, and the editor's Dance button records it. Not built: a pose held
+    for as long as a waypoint holds (today a move's counts say how long), sitting, and the duel's raised pistol.
+- **Dancing (RULING FV) — BUILT: the beat grid, 47 moves, `moves` in the file, the Dance button, a first pass of
+  assignments. NOT built:**
+  - **Partnering, lifts and contact:** the gavotte's palms meet only if the two are placed facing each other; nobody is
+    lifted (Hamilton's mother in Hurricane, the Bullet "lifted" at the centre), nobody is caught or dipped.
+  - **Props in a dance** beyond `hoist` / `upside-down` lifting what she already carries: nobody carries furniture in
+    Yorktown or the Hurricane ring yet (`tools/blocking/props.py`), so their arms go up empty; the duel's pistols, quills,
+    letters and the Pamphlet's papers are not props.
+  - **Motion capture** or video-derived poses: every shape is hand-made from the sources' words and a few frames.
+  - **The Yorktown phrase's baseball pitch** ("from here I take the baseball … into my batting … into my glove") and
+    **fingers** (the Schuyler sisters' two fingers, jazz hands): the hand is one rigid part.
+  - **Jack's eye on every assignment.** `tools/blocking/dance.py` places each move by a cue label + whole bars; the Right
+    Hand Man phrase is a guess at the bar; the Bojangles move is in the library but not placed (no source says which
+    number). The beat grid's tempo changes (18 tracks) are placed to within a 16 s window.
+  - **Speed per move in the editor** (`speed`, `reverse` exist in the file; the picker offers counts, mirror and canon).
   - **A rigged, skinned model** (Mixamo-style), which would bend at the joints instead of showing the cut; the
     rig's part names and joints (FS) are the skeleton it would have to match.
   - **Faces, costumes, per-character bodies** (men's bodies, heights): a `model` key per actor, a body swap (FL).

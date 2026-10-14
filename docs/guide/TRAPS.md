@@ -1766,3 +1766,36 @@ against this list before opening a PR; **add new traps as you hit them.**
   element only after `ctx.state === "running"`; and the first Play often comes before the file's blob has landed, so
   the tap must also start from the blob handler (the click's activation still allows it). Test it the way it fails:
   run across a table cell, skip away, skip back, and read `MIDTOWN.show.sound`.
+
+## From the dancing round (2026-10-13)
+
+- **A comb fit always prefers half the tempo.** A comb's mean onset strength over the beats is highest on the sparser grid,
+  because half the tempo keeps only the strong beats. The first pass of `tools/beats.html` measured Alexander Hamilton at 68
+  BPM and The Schuyler Sisters at 51. The octave has to be RULED, not scored. `tools/beats.html` takes the count a dancer
+  counts, 70–140.
+- **Snapping a canon to the beat swallows it.** The first cut added `canon` to `at` and then snapped to the nearest beat, so
+  a 0.25 s ripple at 80 BPM (a 0.75 s beat) put all four bodies on the same beat. Snap `at`, then add `canon` (page, editor,
+  merge alike).
+- **A `//` comment pasted into the MIDDLE of a long line comments out the rest of it.** It happened twice:
+  - `actTick`'s update line lost its `ACT.T = T; … }`, and the page died with "Unexpected end of input".
+  - The editor's `window.EDITOR` lost every method after `beatAt` (`recClear is not a function`).
+
+  An exact-replacement script that adds a note mid-line must use `/* … */`.
+- **Python's `open(p, 'w')` on Windows writes CRLF.** Every file the apply scripts wrote came out with CRLF line ends.
+  `midtown.html` alone had 8,811. Git warned "CRLF will be replaced by LF". Write with `newline='\n'`, or put the bytes back
+  before committing.
+- **A spine that tips forward turns its children's "forward" toward the floor.** The arms are children of the spine. In the
+  crawl the spine pitches 1.25 rad, so the arm's rest (hanging) points down and BACK, and "forward" points down. The first
+  crawl's arms flailed behind her. Write limb angles relative to the parent's frame, not the world's.
+- **YouTube's transcript endpoints are gated.**
+  - `timedtext` returns an empty body without a PO token.
+  - `youtubei/v1/get_transcript` answers 400 "Precondition check failed", from Python and from the page alike.
+
+  What worked: in the Browser pane on youtube.com, hook `XMLHttpRequest` / `fetch`, then make the player reload its caption
+  module (`player.unloadModule('captions'); player.loadModule('captions'); setOption('captions','track',{languageCode:'en'})`).
+  Read the player's own `timedtext` response. Wait for the ads to finish first: their captions come through the same request,
+  so filter by `v=<id>`. For frames, draw `<video>` onto a canvas AFTER `requestVideoFrameCallback`. Seeking a paused video
+  and drawing on `seeked` drew the same stale frame nine times.
+- **The editor's whole-file export is a byte check.** A field the merge writes and the editor does not keep — `moves` here,
+  props' `model` in FU — breaks "byte-identical when nothing is edited" silently, at the first actor or prop that has one.
+  Check `EDITOR.fileText() === EDITOR.sourceText()` after any format change.

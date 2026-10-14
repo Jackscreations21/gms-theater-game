@@ -244,6 +244,14 @@ readout, the sound-synced skip, the interval fix. Read STATE.md's newest block.
 3. Then the older list: the rig placements the photos exposed (FUTURE.md), `edge`/`frost`, the 238 effects, the body,
    the headset.
 
+## DONE — 2026-10-13 (latest): the dancing — a beat grid, 47 moves, the show's own choreography, the Dance button (PR #234, RULING FV)
+
+- `tools/beats.html` → `assets/hamilton-beats.json`; `midtown.html` `DANCE` (→ `tools/hamilton-moves.json`, described with
+  sources in `docs/hamilton-dance-moves.md`); actors' `moves` (format doc), `tools/blocking/dance.py` → the merge → the file;
+  the editor's Dance button; two-person carries and `model` in the editor. Next: Jack watches the numbers with the music
+  and moves the moves (the Dance button), the beat grid's tempo changes by ear, props for Yorktown's and Hurricane's
+  furniture so the lifts lift something.
+
 ## DONE — 2026-10-12: his first full watch — the blackouts, the checklist, the readout, the skip (twice), his act-1 and act-2 notes (PR #233)
 
 *"Ther shouldnt be a blackout at the end of alexander hamilton … a random blackout in the middle of my shot … the timing
@@ -275,7 +283,7 @@ the rig trimmed, the lighting engine, the show, the calibration, all on `main`. 
 3. **Watch it with him, music on** (below). His notes go into the segment files in the session scratch or straight into
    `assets/hamilton-show.json`.
 4. Rule the rig placements (FUTURE.md), then the older list.
-5. **The automatic actors (branch `actors`, RULINGS FF–FS, the next spec starts at FT):** PR #234 is open beside #233 —
+5. **The automatic actors (branch `actors`, RULINGS FF–FV, the next spec starts at FW):** PR #234 is open beside #233 —
    the whole show is blocked. Play it with him (Show → Play), and give him `blocking.html` for corrections: its change
    file says what to change, and a correction goes into the segment's generator in `tools/blocking/`, then the merge. Put `docs/hamilton-blocking-cue-notes.md` in front of him:
    his two rulings (1-05 sisters, 2-22 duel sides) and the cue fixes. Ask the mannequin's licence/origin.

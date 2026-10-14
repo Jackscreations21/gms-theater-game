@@ -1,6 +1,6 @@
 # Automatic actors — design (2026-10-12)
 
-**BINDING. Rulings FF–FT.** The next spec starts at **FU**. (FN was added the same day, from Jack's
+**BINDING. Rulings FF–FV.** The next spec starts at **FW**. (FN was added the same day, from Jack's
 second message — see its section; FP–FR from his messages on the editor, the clock's edges and the props; FS, the limbs, on
 2026-10-13.)
 
@@ -523,4 +523,106 @@ with its benches attached, dark red-brown stain).
   - `tools/blocking-plot.py` (the pair's midpoint and yaw, the hold heights);
   - `tools/blocking-merge.py`;
   - `tools/blocking/props.py` (`P(..., model=)`, `by=[a, b]`, the pair check).
-  - `blocking.html` does NOT have it yet. A two-carrier waypoint or a `model` is the editor round's work.
+  - `blocking.html` has both since FV's round: the carry picker's "two carry it (with…)", and the `model` kept and written back.
+
+### FV — Dancing: a beat grid, a move library, moves in the file, the Dance button
+
+Jack: *"have an agent build the dancing system"*; *"use these two youtube playlists and anything you can find online to make
+the dances and the choreo"*; *"also look on youtube, there are a lot of videos on the Hamilton choreo."*
+
+- **The beat grid.** It is `assets/hamilton-beats.json`, made by `tools/beats.html`. The page decodes Jack's one-file
+  soundtrack track by track: it walks the MP3's frame headers for an exact byte map, then decodes at 11,025 Hz.
+  - **Onsets.** A spectral-flux onset envelope, with the low band kept apart.
+  - **Tempo.** A comb fit over the whole track.
+  - **The octave.** The published BPM (songbpm.com, and tunebat.com for Burn) only picks it. It is RULED: the count a
+    dancer counts, 70–140 BPM. My Shot's published 182 is counted at 91.
+  - **Tempo changes.** 16 s windows, 8 s apart; a run of two or more off by more than 3 % is a change.
+  - **The downbeat.** The low band's strongest beat of the bar.
+  - **The meter.** 4, except Your Obedient Servant (3, an override).
+
+  **Result:** 46 tracks. Measured against published: a median difference of 0.04 %, the largest 4.2 % (Cabinet Battle #2,
+  116.7 against 112). Of the beats with a clear onset near them, 57–96 % per track land within 50 ms. Tempo changes are
+  detected in 18 tracks; they are placed to within a window and are for Jack's ear.
+
+  `MIDTOWN.show.beatAt(track, t)` → `{ beat, bar, inBar, phase, bpm, meter }`; `beatTime(track, beat)` is its inverse.
+- **The move library.** It is in `midtown.html` (`DANCE`), written out to `tools/hamilton-moves.json` and described with
+  sources in `docs/hamilton-dance-moves.md`. There are 47 names:
+  - 25 general (`step-touch` … `march`, with `pulse` the same as `bounce`);
+  - 22 from this show (`my-shot`, `legacy`, `imagine-death`, `command`, `heartbeat`, `hiphop-march`, `musket`, `upside-down`,
+    `shimmy`, `jazz-roll`, `hoist`, `crawl-back`, `gavotte`, `grind`, `equals`, `work`, `wall-ooze`, `bojangles`, `bullet`,
+    `row`, `rewind`).
+
+  The show's moves come from:
+  - Blankenbuehler's own breakdowns (the two WSJ videos; their auto-captions were read in full and their frames seen);
+  - the TheaterMania, Backstage and Dance Magazine interviews;
+  - Jack's reddit notes.
+- **How a move is made.** Each move is joint angles on the FS rig. They are a pure function of how many beats into it she
+  is: looped over its counts, or played once and held.
+  - **Phrases.** These are KEY SHAPES on the counts they land on, eased between (`dPhrase`).
+  - **Legs.** They go by the FS two-bone IK to ankle targets (a step, a lunge, a kneel's back foot sliding back) or by
+    absolute bone angles (a kick, a march).
+  - **Arms.** By angle, raised forward, out to the side, the elbow bent. A rolled upper arm makes the shapes across the body:
+    the hand on the heart, the equals sign, crossed arms, the double-biceps "boom".
+  - **Mirror** swaps left and right.
+- **The file.** An actor's `moves`:
+
+  ```jsonc
+  [{ track, at, move, counts, mirror?, canon?, speed?, reverse?, note? }]
+  ```
+
+  - `at` snaps to the nearest beat.
+  - `canon` (seconds) is added AFTER the snap, so a ripple can be finer than a beat.
+  - `counts` is the length in beats.
+  - Where two overlap, the later one wins.
+
+  Its format is in `docs/hamilton-blocking-format.md`, "Dance moves". The merge validates it from
+  `segments/dance.json`, which `tools/blocking/dance.py` writes; that is the first pass of assignments, listed in the
+  moves doc. The plotter marks a dancing actor with a note and the move's name.
+- **In the page.** After FL's `animate` has posed her walk or idle, `danceApply` blends the move on top:
+  - from the walk, or from the previous move if she is still blending out of it, over the move's `bin` (about 0.25 s);
+  - back out over `bout` (about 0.3 s) after its last count.
+
+  A move that "moves her" offsets the BODY (her group's child), and the offset comes back by its last count. A spin turns
+  the body; a quarter or half spin stays turned until the entry ends, then turns back.
+
+  Special cases:
+  - **`freeze`** holds the walk or idle pose of its first count: `actPose` at that time, posed through `rigAnimate`.
+  - **`slow-walk`, `rewind`, `bullet`** run the FS walk generator on the beat clock. Reversed and travelling, she turns her
+    back to her path, so she walks or crawls backwards along it. `crawl-back` does the same.
+  - **`hoist`, `upside-down`** carry the prop she holds up over her head and turn it over (`danceProps`, after the props are
+    posed).
+- **Pure.** Every joint, the pelvis and the body offset are a function of T, the moves and the grid.
+  `MIDTOWN.actors.check()` now:
+  - compares the body offset too;
+  - samples moments in the middle of moves (blending in, a third of the way, blending out);
+  - reports moves off the beat as `warnings`, not problems.
+
+  It passes on the whole show (45 moments, 421 body-moments, worst 0). **Negative-checked:** a move smoothed with its last
+  frame's angle fails 16 of 24 moments (worst 1.04 rad).
+- **Cost.** The whole show's dancing, with 13 dancing at Yorktown's "upside down" and 9 at a My Shot chorus:
+  - the posing goes from about 0.1–0.2 ms to 0.2–0.3 ms;
+  - a synchronous frame stays at about 72–74 ms on this machine, inside the noise.
+- **The editor (Simple mode).**
+  - Select dots, press **♪ Dance… (D)**, pick a move. The picker has the counts, mirror, and a canon step in seconds, added
+    per body in selection order.
+  - Each selected body gets `{ at: the clock, move, counts, mirror?, canon? }` in this song.
+  - Dancing dots wear "♪ move".
+  - The song's bar shows the beats faintly and the bars brighter, and the recorded moves as bars in the dancer's colour.
+  - The recording file carries `tracks[id].moves`.
+  - Undo, Clear (it drops the song's loaded and recorded moves), Restore, Delete (all, or from the clock on) and X (a move
+    starting now) cover moves.
+  - The loaded file's `moves` are kept and written back by the merge's layout.
+- **The same round, in the editor** (the coordinator's ask): it now accepts a TWO-person carry, `carriedBy: [a, b]`.
+  - The square rides at their midpoint, its long side from a to b.
+  - The carry picker has "two carry it (with…)".
+  - It keeps a prop's `model`.
+  - Its whole-file export is byte-identical to the merged file again.
+- **Path styles are not a move.** Burr walks straight lines and Hamilton arcs. Burr circles the Room's circle and does not
+  enter it until the end. Both are rules for the generators, written in the moves doc.
+- **Not built** (FUTURE.md):
+  - partnering, lifts and contact;
+  - props in a dance beyond the overhead lift;
+  - motion capture;
+  - the baseball pitch of the Yorktown phrase;
+  - fingers;
+  - Jack's eye on every assignment.

@@ -21,6 +21,10 @@ the PNGs are written with zlib + struct, the text is a 5x7 bitmap font.
     `special` cut-off (zoom <= 14, or a floor pool of radius <= 1 m) misses face keys and duet pools at 14.5-18.5 deg
     whose pool is wider than 1 m (found by the segment-5 spotlight pass).  Only the specials are outlined white.
 
+A DANCING actor (RULING FV: her `moves`, from the blocking file, or for a segment file from the `dance.json` beside it,
+timed on assets/hamilton-beats.json as the page times them) wears a little note over her disc and the move's name under
+her label; the moment printout names the move.
+
 Props (RULINGS FR, FT) are drawn as shaded squares in their colour, from the blocking file's `props`, or for a segment
 file from the `props.json` beside it; a placed prop GLIDES between two placed waypoints, as the page draws it.
 
@@ -380,7 +384,7 @@ def specials_on(p, pools):
     return hits
 
 
-def draw_actor(cv, st, a, p, short=False):
+def draw_actor(cv, st, a, p, short=False, dance=None):
     x, y = st.P(p['x'], p['z'])
     r = max(2.5, 0.27 * st.s)
     col = a['rgb']
@@ -394,6 +398,59 @@ def draw_actor(cv, st, a, p, short=False):
     lab = p['label'] or a['name']
     if short: lab = lab.split()[0][:7] if lab.split() else lab
     cv.text(int(x + r + 2), int(y - 3), lab, (240, 240, 240) if p['visible'] else (150, 150, 150), 1, bg=(20, 18, 22) if not short else None)
+    if dance and p['visible']:                          # RULING FV: a note over her, the move's name under her label
+        nx, ny = x + r * 0.6, y - r - 7
+        cv.disc(nx, ny + 4, 2.2, (255, 226, 160)); cv.line(nx + 2, ny + 4, nx + 2, ny - 3, (255, 226, 160), 1); cv.line(nx + 2, ny - 3, nx + 5, ny - 1, (255, 226, 160), 1)
+        if not short: cv.text(int(x + r + 2), int(y + 6), dance, (255, 226, 160), 1, bg=(20, 18, 22))
+
+
+# ---------------------------------------------------------------- the dance moves (RULING FV): when each runs, as midtown.html times it
+def beat_grid():
+    try: beats = json.load(open(os.path.join(ROOT, 'assets', 'hamilton-beats.json'), encoding='utf-8'))
+    except Exception: return {}
+    out = {}
+    for tid, t in (beats.get('tracks') or {}).items():
+        segs = [(float(t['firstBeat']), 0, 60.0 / float(t['bpm']))]
+        for c in sorted(t.get('changes') or [], key=lambda c: c['at']):
+            a, b, per = segs[-1]
+            if c['at'] <= a:
+                if len(segs) == 1 and c['at'] == a: segs[0] = (a, 0, 60.0 / c['bpm'])
+                continue
+            segs.append((float(c['at']), round(b + (c['at'] - a) / per), 60.0 / c['bpm']))
+        out[tid] = segs
+    return out
+
+
+def move_spans(moves, tracks, grid):
+    """-> [(T0, T1, name)] on the global clock: `at` snapped to its beat, plus `canon`, for `counts` beats."""
+    out = []
+    for m in moves or []:
+        tr = tracks.get(str(m.get('track')))
+        if not tr: continue
+        at, canon, n = float(m.get('at', 0)), float(m.get('canon') or 0), float(m.get('counts', 0))
+        segs = grid.get(tr['id'])
+        if not segs:
+            out.append((tr['start'] + at + canon, tr['start'] + at + canon + n * 0.5, m.get('move'))); continue
+        def beat(t):
+            sg = segs[0]
+            for q in segs:
+                if q[0] <= t: sg = q
+            return sg[1] + (t - sg[0]) / sg[2]
+        def time(b):
+            sg = segs[0]
+            for q in segs:
+                if q[1] <= b: sg = q
+            return sg[0] + (b - sg[1]) * sg[2]
+        b0 = round(beat(at))
+        out.append((tr['start'] + time(b0) + canon, tr['start'] + time(b0 + n) + canon, m.get('move')))
+    return sorted(out)
+
+
+def dance_at(a, T):
+    cur = None
+    for s0, s1, name in a.get('dance') or []:
+        if s0 <= T: cur = (s1, name)
+    return cur[1] if cur and T < cur[0] else None
 
 
 # ---------------------------------------------------------------- input
@@ -484,6 +541,7 @@ def draw_prop(cv, st, p, q, short=False):
 
 
 def load_inputs(path):
+    src_file = path                              # (the loop below rebinds `path` to each actor's path)
     d = json.load(open(path, encoding='utf-8'))
     cast = {a['id']: a for a in json.load(open(os.path.join(ROOT, 'tools', 'hamilton-cast.json'), encoding='utf-8'))['actors']}
     show = json.load(open(os.path.join(ROOT, 'assets', 'hamilton-show.json'), encoding='utf-8'))
@@ -497,9 +555,13 @@ def load_inputs(path):
     actors = []
     if isinstance(d.get('actors'), list):
         src = [(a['id'], a.get('name'), a.get('color'), a.get('label'), a.get('path') or []) for a in d['actors']]
+        moves = {a['id']: a.get('moves') or [] for a in d['actors']}
     else:
         order = list(cast) + [k for k in (d.get('waypoints') or {}) if k not in cast]
         src = [(k, None, None, None, (d.get('waypoints') or {}).get(k) or []) for k in order]
+        side = os.path.join(os.path.dirname(os.path.abspath(src_file)), 'dance.json')   # RULING FV: the moves beside a segment file
+        moves = json.load(open(side, encoding='utf-8')).get('moves', {}) if os.path.exists(side) else {}
+    grid = beat_grid()
     for aid, name, color, label, path in src:
         if not path: continue
         cs = cast.get(aid, {})
@@ -507,10 +569,11 @@ def load_inputs(path):
         a = {'id': aid, 'name': name, 'rgb': hexc(color or cs.get('color') or '#c8c8c8')}
         a['c'] = compile_path(path, tracks, label or name)
         a['path'] = path
+        a['dance'] = move_spans(moves.get(aid), tracks, grid)
         actors.append(a)
     plist = d.get('props') if isinstance(d.get('props'), list) else None
     if plist is None:                            # a segment file: the props are generated beside it (tools/blocking/props.py)
-        side = os.path.join(os.path.dirname(os.path.abspath(path)), 'props.json')
+        side = os.path.join(os.path.dirname(os.path.abspath(src_file)), 'props.json')
         plist = json.load(open(side, encoding='utf-8')).get('props', []) if os.path.exists(side) else []
     PROPS_LOADED.clear()
     for pr in plist:
@@ -531,7 +594,7 @@ def frame(st, tracks, actors, tid, sec, title=True, short=False, pdir=None, ever
         q = prop_pose(pr, T, byid)
         if q and q['visible']: draw_prop(cv, st, pr, q, short)
     for a, p in sorted(ps, key=lambda ap: (ap[1]['visible'], ap[1]['y']) if ap[1] else (False, 0)):
-        if p: draw_actor(cv, st, a, p, short)
+        if p: draw_actor(cv, st, a, p, short, dance_at(a, T))
     if title:
         m, s = divmod(sec, 60)
         cv.text(st.ml, 4, f'{tid} {tr["title"]}  {int(m)}:{s:04.1f}  ({sec:.1f} s)' + (f'  - {len(pools)} pools' if pdir else ''), (255, 225, 120), 1)
@@ -611,6 +674,8 @@ def main(argv):
         for a, pp in ps:
             if not pp: continue
             line = f'   {a["id"]:10s} {pp["label"]:16s} ({pp["x"]:5.1f}, {pp["z"]:5.1f}) y {pp["y"]:.2f} ' + ('seen' if pp['visible'] else 'off ')
+            dm = dance_at(a, tracks[tid]['start'] + sec)
+            if dm and pp['visible']: line += f'  dancing: {dm}'                      # RULING FV
             if pdir and pp['visible']:
                 sp = specials_on(pp, pools)
                 line += '  specials: ' + (', '.join(sp) if sp else 'NO SPECIAL')

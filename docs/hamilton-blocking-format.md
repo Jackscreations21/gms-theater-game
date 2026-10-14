@@ -147,6 +147,54 @@ PROP WAYPOINT: `{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }` — t
   missing file is a warning), x / z on a placed waypoint, the track ranges, strictly increasing times
   — errors; a placed prop off the stage, a carrier with no waypoints — warnings) and writes `props` after the actors.
 
+## Dance moves (RULING FV)
+
+An actor may carry `moves` after her `path`:
+
+```jsonc
+{"id": "hamilton", "name": "Hamilton", "color": "#…", "path": [ … ],
+ "moves": [ { "track": "1-03", "at": 76.99, "move": "my-shot", "counts": 8.0,
+              "mirror"?: true, "canon"?: 0.33, "speed"?: 2.0, "reverse"?: true, "note"?: "…" } ]}
+```
+
+| key | required | meaning |
+|---|---|---|
+| `track`, `at` | yes | When she starts. The page snaps `at` to the nearest beat of the song's grid. The grid is `assets/hamilton-beats.json`; the merge warns when `at` is more than 0.1 s off a beat. |
+| `move` | yes | A move from `tools/hamilton-moves.json` (described in `docs/hamilton-dance-moves.md`). |
+| `counts` | yes | How many beats she dances it, more than 0. A looping move loops for that long. A move played once holds its last shape for the rest. |
+| `mirror` | no | Left and right swapped. |
+| `canon` | no | Seconds added AFTER the snap, so a ripple can be finer than a beat. |
+| `speed` | no | The move's own counts per beat: 2 is double time, 0.5 is half time. |
+| `reverse` | no | The move run backwards. `rewind` is `slow-walk` with this already set. |
+| `note` | no | Why. |
+
+**Rules:**
+- The path still says where she is. A move only adds a small offset that comes back by its last count, plus the turns a spin
+  makes.
+- It blends in from whatever she was doing: walking, standing, or the move before it.
+- When two moves overlap, the later one wins. The earlier one does not come back when the later one ends.
+- A move given to someone who is offstage does nothing.
+- A move whose `lift` is `overhead` or `flip` (`hoist`, `upside-down`) carries the prop she is carrying up over her head
+  (`flip` also turns it over).
+
+Like everything else, it is a pure function of the show time: `MIDTOWN.actors.check()` compares every joint, seek against
+play, in the middle of moves.
+
+**For the whole show, the file is generated.** `tools/blocking/dance.py` writes `tools/blocking/segments/dance.json`
+(`{ "moves": { "<actor id>": [ … ] } }`). `tools/blocking-merge.py` validates it and writes each actor's `moves`.
+
+**The beat grid**, `assets/hamilton-beats.json` (`tools/beats.html`). Per album track:
+
+```jsonc
+{ "bpm", "firstBeat", "meter", "changes"?: [ { "at", "bpm" } ], "published", "confidence", "onBeatMs" }
+```
+
+- Times are seconds into the track.
+- `firstBeat` is the first downbeat.
+- A change starts a new tempo at its time, and the beat count carries on.
+- `MIDTOWN.show.beatAt(track, t)` returns `{ beat, bar, inBar, phase, bpm, meter }`. `MIDTOWN.show.beatTime(track, beat)` is
+  its inverse.
+
 ## The editor: `blocking.html` (RULING FP)
 
 A second page beside `midtown.html`, for Jack: the stage from the top (the house at the bottom, stage left on the right, as
@@ -234,6 +282,13 @@ square for it, and it has a button, then when I press it I can choose who carrie
 - **Saved** to this browser (localStorage `hamilton-blocking-recording-1`) at every keyframe and note, and back on reload with
   a one-line banner ("Discard it" throws it away). **Restore** puts the current song back as the loaded file has it.
 
+- **Dance** (RULING FV): select dots, press **♪ Dance… (D)**, pick a move (the counts, mirror, a canon step in seconds added
+  per body in selection order): each gets `{ at: the clock, move, counts, mirror?, canon? }` in this song, recorded in the
+  track's `moves`. A dancing dot wears "♪ move"; the song's bar shows the beats faintly, the bars brighter, and the moves.
+  The loaded file's `moves` stay unless the song is cleared or the body's track deleted (all, or from the clock on); X takes
+  back a move starting now. Applying a recording: each `moves` entry becomes an actor's `moves` entry for that track in
+  `tools/blocking/dance.py` (its section `# ---- DANCE: <track> …`).
+
 **The recording file** (`hamilton-blocking-recording-<date>.json`, the **Export** button; "Load a recording…" reads one back):
 
 ```jsonc
@@ -251,7 +306,8 @@ square for it, and it has a button, then when I press it I can choose who carrie
               "props":  { "f-test-desk": [ { "at": 66.1, "carriedBy": "laurens", "off": false },
                                            { "at": 77.4, "x": 0, "z": 1.65, "off": false },
                                            { "at": 85.6, "carriedBy": "hamilton", "off": false } ] },
-              "deletions": { "actors": { "laurens": { "deleted": "all" }, "hamilton": { "deletedFrom": 30 } }, "props": {} } } }
+              "deletions": { "actors": { "laurens": { "deleted": "all" }, "hamilton": { "deletedFrom": 30 } }, "props": {} },
+              "moves": { "hamilton": [ { "at": 30, "move": "my-shot", "counts": 8, "canon": 0.25 } ] } } }   // RULING FV
 }
 ```
 
