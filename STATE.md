@@ -1,9 +1,54 @@
-# STATE — 2026-10-14 (`actors` = PR #234: THE AUTOMATIC ACTORS, THE EDITOR, NOTES2 (FU), THE DANCING (FV), REVIEW 3 (FW), AND NOW THE VIDEO CAPTURE'S STAGES 1–2 (FX–GE, PART); IT CARRIES `cue-blackouts` = PR #233 — BOTH OPEN)
+# STATE — 2026-10-14 (`actors` = PR #234: THE AUTOMATIC ACTORS, THE EDITOR, NOTES2 (FU), THE DANCING (FV), REVIEW 3 (FW), THE VIDEO CAPTURE (FX–GE), AND NOW DANCE ROUND 2 (GF); IT CARRIES `cue-blackouts` = PR #233 — BOTH OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-14, 14:55: PAUSED MID-BATCH — STEPS 4–6 OF THE RE-KEY BATCH ARE NEXT (actors, PR #234)
+## NEWEST — 2026-10-14 (third session): DANCE ROUND 2 LANDED (RULING GF) AND THE RE-KEY BATCH RAN — PR #234
+
+**Read this block first.** Jack: *"finish everything for the choreo and dancing"*, then *"use opus agents to finish
+everything"*, then (from the handoff-review session's note) *"Do this task here: run steps 4–6 of the vision re-key
+batch"*. `actors` on origin is **`ec66e53`** (+ this record). Three Opus agents ran in parallel on disjoint files,
+then a fourth wrote the docs; the batch ran as one background script in between (`6e2580c`, pushed).
+
+- **Dance round 2 is BUILT and merged, RULING GF** (the spec, the moves doc, the format doc, FUTURE):
+  - **40 new moves** in `midtown.html` after `DANCE.rewind` (87 in `tools/hamilton-moves.json`, which now carries
+    `pair` and `reach`): hand/arm (aim, aim-up, point-down, point-fall, beckon, shoo, air-quotes, finger-wag,
+    make-it-rain, angel-wings, breath, gasp, handshake, coat-on, sword-draw, sword-take, gun-pass), head/body
+    (head-bob, head-snap, laugh-bob, chest-pump, shoulder-pop, tootsie-roll, prance-fan, scrub, lean-in, fold,
+    hold-side, floor-slide, floor-freestyle), four gait overlays on her own walk (strut, king-walk, old-walk,
+    moonwalk), `sit` (snaps to the nearest chair/bench/stool/box — to the seat's nearest point, the chair behind her
+    on a tie — seat height from the prop, the pelvis drop measured off the rig) and `comfort`, and the two-body
+    `lift`, `catch`, `partner-lift`, `sabre`.
+  - **Pairs:** `with: "<id>"` on the LEAD's entry only (the one doing the verb: lifter, catcher, comforter, the giver
+    in gun-pass, the taker in sword-take); the mate is posed from it; the aligner slides each half the gap excess
+    (cap 0.6 m) and turns them to face; the check reports a required move with no `with`, a `with` naming nobody,
+    a mate off stage. The merge validates the same (`tools/blocking-merge.py`).
+  - **Hand props:** `kind: "hand"`, `item` ∈ book | quill | letter | pistol | sword | glass, in the page (ride from
+    the `hand_R` bone, the arm free), the editor (a hand-prop square, an item select, the "with …" picker on pair
+    moves, `with` through the recording file), the merge, the plot and `props.py` (the two books converted).
+  - **The beat grid:** 1-03 nine tempo changes, 1-18 `firstBeat` 1.716 (the verified regrid of the paused round).
+  - **The assignments** (`tools/blocking/dance.py`): 177 → 260 entries, 859 → 974 moves on 20 actors, 13 pairs,
+    46 sits; every stand-in from review 3 swapped for the reviewers' gesture; My Shot's five phrases on beat 1 of
+    bars 31/35/67/71/115; every 1-18 entry re-placed on beat 1. Two seated actions HELD (the 2-02 crowd's nodding,
+    the King's jamming on his stool) — a seated layer is not built (FUTURE). `floor-slide` is unused; the
+    Helpless/Satisfied lifts and the rewind's floor-slide have no time in the sources.
+  - **Checks:** merge 7,153 waypoints, 72 props, 0 errors, 0 warnings; `props.py --check` 0 warnings;
+    `dance.py --check` 1–8 all 0 errors; `MIDTOWN.actors.check()` on the real blocking passes (seek equivalence,
+    worst 0 rad / 0 m); console clean. Suites not run (no Node on the PATH; nothing in `src/`; `the-house.html`
+    and `docs/ARTNET.md` untouched by this branch).
+- **The re-key batch (steps 4–6) RAN and is committed** (`6e2580c`): 54 shots re-solved on the 1280 bodies, floor
+  on every calib file (20 tracks have `out/`), ident + motion on the 20, `compare --all` (20 diffs). No labels, so
+  evidence is 0 everywhere; `motion` finds nothing over 0.7. VISION.md §7 has the numbers and the list that is left
+  (his labels first).
+- **Open, Jack's:** the five blocking rulings (1-05 sisters' order, 1-07 the two Kings men, 1-09/1-10 the side
+  flip, 2-11 the King's stool, 2-22 the duel sides); his eye on the 83 new assignments and the 46 sits (the
+  checklist https://claude.ai/artifact/4Q5Xh37ZmSinhtsJbVhAub); the labels. Not started: the far-body LOD; the
+  grid drift candidates (1-02, 1-07, 1-11, 1-17, 1-22, 2-01, 2-03, 2-07, 2-09, 2-22, 2-23).
+- Eight traps into TRAPS.md.
+
+---
+
+## DONE (the batch ran this session, `6e2580c`) — 2026-10-14, 14:55: PAUSED MID-BATCH — STEPS 4–6 OF THE RE-KEY BATCH ARE NEXT (actors, PR #234)
 
 **Read this first.** Jack paused at 14:55, resumed the batch at 15:36 and stopped its agent at 15:38 mid-step-4 (four calib files — 1-02, 1-03, 1-05, 1-06 — re-solved with the 1280 bodies, uncommitted; `resolve all` redoes them). HANDOFF.md's top block has the full account: how the system works, what was done, what is left. Everything is committed on `actors` through **`28cb486`** (plus this note);
 HANDOFF.md is written in full. Since the block below: the UI solver

@@ -224,7 +224,44 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **RUN STEPS 4–6 OF THE RE-KEY BATCH, COMMIT, THEN HIS LABELS; THE CAMERAS' SECOND ROUND** (2026-10-14, second session, stopped 15:38)
+## NEXT SESSION: **HIS EYE ON THE DANCING AND THE SITS; HIS LABELS; THE CAMERAS' SECOND ROUND** (2026-10-14, third session)
+
+Rulings at **GF** (GG next). `actors` = PR #234 at **`ec66e53`**; `cue-blackouts` = PR #233; both open, both Jack's to
+merge. Read STATE.md's top block. Dance round 2 landed this session (below) and the re-key batch ran (`6e2580c`), so
+the vision list in the block two below this one starts at its item 2.
+
+1. **Watch it with him** (http://localhost:8093/midtown.html → Show → Play, or the editor's Dance button per song):
+   83 new assignments and 46 sits are a reading of the reviewers' words, not a measurement. His notes go into the
+   blocking checklist (https://claude.ai/artifact/4Q5Xh37ZmSinhtsJbVhAub; `ArtifactData` `list` on `songs` first) and
+   then into `tools/blocking/dance.py` (one `dict(...)` per entry; `with_=` for a partner) or `props.py` — regenerate
+   (`python -I tools/blocking/dance.py`, `props.py`), merge (`python -I tools/blocking-merge.py tools/blocking/segments`),
+   `MIDTOWN.actors.check()` in the page. The two HELD seated actions (2-02's nodding, the King's jamming in 2-11) wait
+   for a seated layer (FUTURE).
+2. **His five rulings** (unchanged): 1-05 the sisters' order; 1-07 the two Kings men; 1-09/1-10 the side flip; 2-11 the
+   King's stool; 2-22 the duel sides.
+3. **His labels** in `blocking.html` → Advanced → Calibrate → Labels (VISION.md §7, item 1), then `ident`, `motion`,
+   `compare` for those tracks — the first evidence the diffs can carry.
+4. Then: the cameras' second round (VISION.md §7 item 2); the far-body LOD; the grid drift candidates; the older list.
+
+## DONE — 2026-10-14 (third session): dance round 2 (RULING GF) by four Opus agents, and the re-key batch (PR #234, `6e2580c`, `6ce2d53`, `ec66e53`)
+
+*"finish everything for the choreo and dancing … use opus agents to finish everything"* → the paused round rebuilt from
+its WIP note by three agents on disjoint files (engine: `midtown.html` + the move export; tooling: the editor, the
+merge, the plot, `props.py`, the grid, the format doc; assignments: `dance.py`), then a docs agent. **40 new moves**
+(87 in the library): hand and arm gestures, head and body loops, four gait overlays on her own walk, `sit` (snaps to
+the nearest seat's nearest point, the chair behind her on a tie, the seat height from the prop) and `comfort`, the
+two-body `lift`, `catch` (the forward lean of It's Quiet Uptown), `partner-lift`, `sabre`. **Pairs:** `with` on the
+lead's entry (the one doing the verb), the mate posed from it, an aligner that closes and faces them; the page's check
+and the merge both validate it. **Hand props** end to end (page, editor, merge, plot, `props.py`; the two books
+converted). **The grid:** My Shot's nine tempo changes and Guns and Ships' first beat, verified against the album's
+onsets. **The assignments:** 177 → 260 entries, every review-3 stand-in swapped for the reviewers' gesture, 46 sits,
+13 pairs, My Shot's phrases and all of 1-18 re-placed on beat 1. Merge 0/0, `props.py --check` 0, `dance.py --check`
+1–8 all 0, `MIDTOWN.actors.check()` green, console clean. *"Do this task here: run steps 4–6 of the vision re-key
+batch"* → run as one background script in three minutes: 54 shots re-solved on the 1280 bodies, floor/ident/motion
+on 20 tracks, 20 diffs (evidence 0 everywhere — no labels yet); VISION.md §7 has the numbers. Nothing in `src/`;
+suites not run (no Node on the PATH). Eight traps.
+
+## SUPERSEDED (the batch ran; dance round 2 landed; the labels are item 3 above): **RUN STEPS 4–6 OF THE RE-KEY BATCH, COMMIT, THEN HIS LABELS; THE CAMERAS' SECOND ROUND** (2026-10-14, second session, stopped 15:38)
 
 Rulings at **GE** (GF = dance round 2 when it lands). `actors` = PR #234 at **`0eea859`** + this record; `cue-blackouts` = PR #233,
 both open, both Jack's to merge. Read STATE.md's top block, then this block's "How the system works" if you are new to
