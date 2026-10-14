@@ -948,6 +948,7 @@ def main():
     p = sub.add_parser('ident', help='stage 5: identities -> characters in out/<track>.json (ident.py)')
     p.set_defaults(fn=lambda a: (sys.path.insert(0, HERE), __import__('ident').run(a.track, a.clip, a.labels, a.hist_stats)))
     p.add_argument('track'); p.add_argument('--clip'); p.add_argument('--labels'); p.add_argument('--hist-stats', action='store_true')
+    p = sub.add_parser('motion', help='GD: motion energy per bar + move proposals -> out/<track>.json (motion.py; after floor and ident)'); p.add_argument('track'); p.add_argument('--all', action='store_true'); p.add_argument('--dry', action='store_true'); p.add_argument('--check', action='store_true'); p.set_defaults(fn=lambda a: (sys.path.insert(0, HERE), __import__('motion').run(a.track, a.all, a.dry, a.check)))
     args = ap.parse_args(); args.fn(args)
 
 
