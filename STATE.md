@@ -6,24 +6,28 @@ fetch`, compare `origin/main`, then read this.
 ## NEWEST — 2026-10-14: THE FOOTAGE IS IN, STAGE 1 RAN ON ALL OF IT, STAGE 2 WAITS ON A PYTHON 3.13 VENV — PR #234
 
 **Read this block first.** Jack downloaded the playlist (JDownloader; 34 of the 36 available clips — 1-09 and 2-13
-did not finish, 10 of 46 are unavailable on YouTube) and the spec's stages 1–2 were built the same morning in
-`tools/vision/run.py` (`tools/README.md` has the commands). Stage 2 has never run: **his Python is 3.15 and torch
-has no wheel for it** — he must install 3.13 and make the venv (`tools/vision/requirements.txt` says how). Stage 1
-ran from a scratch 3.15 venv (numpy, OpenCV, imageio-ffmpeg) over every clip, ~10 s each.
+did not finish, 10 of 46 are unavailable on YouTube) and then 11 more from elsewhere (`Downloads\Jack - ham\`:
+1-01, 1-07, 1-11, 1-13, Yorktown in four parts, Non-Stop in three) — **45 files, 40 of the 46 tracks**. The spec's
+stages 1–2 were built the same morning in `tools/vision/run.py` (`tools/README.md` has the commands). His Python
+was 3.15 (no torch wheel); he ran `py install 3.13` and the venv `tools/vision/.venv` was made from it in this
+worktree. Stage 1 ran over every clip, ~10 s each.
 
-- **Where the footage is:** copied from `Downloads\Asaki Takaya - Hamilfilm song clips …\` into
-  `C:\Users\jackf\Videos\hamilton-clips\`, and `video/` in this worktree is a directory junction to that folder (the
-  repo is in OneDrive; 1.5 GB must not sync). `video/INDEX.json` (committed) names the 34 files, their sha256,
-  duration, size, fps, the playlist's URL per clip, and which tracks are unavailable. A fresh clone needs the
-  junction remade (TRAPS).
-- **Stage 1 results** (`tools/vision/cache/<clip>/frames.json` + `shots.jpg`, git-ignored, 1.6 GB of frames):
-  33 of 34 clips aligned to the album by the envelope matcher — median residual ≤ 0.2 s on 30 of them, 0.26–0.77 s
-  on 1-16, 1-19 and 2-11 (dialogue-heavy, few anchors). **1-04 The Story of Tonight did not align** (every window
-  under 0.5, no two agree): it wants `cache/1-04-the-story-of-tonight/anchors.json` by hand. The film runs at the
-  album's tempo to within 20 ms on most numbers, drifts 1.5 s through Aaron Burr, Sir's rap and 10 s over One Last
-  Time (the film's is 25 s longer). Cuts: 3 to 95 shots a clip, judged by eye on Aaron Burr, Sir and Guns and Ships
-  (every detected cut real; the sheets are there for the rest). Each frame carries `tconf` (1 between anchors,
-  falling at the ends where the offset is extrapolated through applause).
+- **Where the footage is:** copied (his download folders untouched) into `C:\Users\jackf\Videos\hamilton-clips\`,
+  and `video/` in this worktree is a directory junction to that folder (the repo is in OneDrive; 1.8 GB must not
+  sync). `video/INDEX.json` (committed) names the 45 files, their sha256, duration, size, fps, the playlist's URL
+  per clip, a `note` on the odd ones, and `elsewhere.stillWanted`: **1-09, 2-13 (on the playlist, did not
+  download), 2-02, 2-15, 2-22, 2-23, and a full 1-01** (what came is Disney's 104 s promo montage — cut up, it
+  does not align). A fresh clone needs the junction remade (TRAPS). `index --import` skips a file whose bytes are
+  already here, so a folder can be re-imported after a download finishes.
+- **Stage 1 results** (`tools/vision/cache/<clip>/frames.json` + `shots.jpg`, git-ignored, 1.9 GB of frames):
+  43 of 45 clips aligned to the album by the envelope matcher — median residual ≤ 0.2 s on 40 of them, 0.26–0.77 s
+  on 1-16, 1-19 and 2-11 (dialogue-heavy, few anchors). **Not aligned: 1-04 The Story of Tonight** (every window
+  under 0.5, no two agree — it wants `cache/1-04-the-story-of-tonight/anchors.json` by hand) **and the 1-01
+  montage**. The film runs at the album's tempo to within 20 ms on most numbers, drifts 1.5 s through Aaron Burr,
+  Sir's rap and 10 s over One Last Time (the film's is 25 s longer). The "LIVE AUDIO" Satisfied and the sing-along
+  Wait for It are the film's performance (0.01–0.02 s residuals). Cuts: 3 to 95 shots a clip, judged by eye on
+  Aaron Burr, Sir and Guns and Ships (every detected cut real; the sheets are there for the rest). Each frame
+  carries `tconf` (1 between anchors, falling at the ends where the offset is extrapolated through applause).
 - **The alignment's own checks** (not a suite — stdlib has no numpy; run in the venv): a stretched slice of the
   album envelope with applause in front recovers its time to ≤ 0.1 s on ten tracks at ±3 % tempo, and a slice of
   every other track yields no anchor against My Shot's span (except Story of Tonight, which really starts inside

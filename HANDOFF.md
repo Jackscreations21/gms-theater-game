@@ -229,10 +229,9 @@ compare the *same* production across stages instead.
 Rulings at **GE** (GF next — reserved for dance round 2). `actors` = PR #234. Read STATE.md's newest block, then
 the memory files `video-capture-status-2026-10-14.md` and `hamilton-blocking-status-2026-10-13.md`.
 
-1. **Stage 2 on one clip** — the moment `tools/vision/.venv` exists (Jack: Python 3.13, `py -3.13 -m venv
-   tools/vision/.venv`, `pip install -r tools/vision/requirements.txt`): `run.py bodies 2-06-schuyler-defeated`
-   (316 frames, 10 shots — the smallest), look at the tracklets, then the lot in the background (~45k frames at
-   6–10 fps CPU ≈ 1.5–2 h). The ultralytics tracker-reset-per-shot call is untested against the installed version.
+1. **Stage 2 on the lot** — the venv exists (`tools/vision/.venv`, Python 3.13.16, torch + ultralytics):
+   `run.py bodies <clip>` per clip in the background (~45k frames at 6–10 fps CPU ≈ 1.5–2 h), then look at the
+   tracklets per shot. (See the Done block for what the first run on Schuyler Defeated showed.)
 2. **1-04's anchors by hand** (`cache/1-04-the-story-of-tonight/anchors.json`, `[[clipTime, "1-04:at"], ...]`) —
    Jack scrubs the clip for two moments, or the page's cue list gives them.
 3. **Stage 3**: the Calibrate mode in `blocking.html` (Advanced), the in-page PnP, `calib/<clip>.json` — RULING GA.
@@ -259,16 +258,19 @@ STATE.md's newest block, then the memory file `hamilton-blocking-status-2026-10-
 5. Post-merge protocol when #234 lands (it carries #233): fast-forward `main`, delete `actors`, `cue-blackouts` and
    the five older landed branches both sides; suites when Node is on the PATH.
 
-## DONE — 2026-10-14: the footage in, the video capture's stages 1–2 built, stage 1 run on all 34 clips (PR #234, RULINGS FX–FZ built, GE part)
+## DONE — 2026-10-14: the footage in (45 clips, 40 tracks), stages 1–2 built and run, the 3.13 venv (PR #234, RULINGS FX–FZ built, GE)
 
-*"i am getting the videos right now"* → `tools/vision/run.py` (index / frames / sheet / bodies / check),
+*"i am getting the videos right now"* → `tools/vision/run.py` (index / frames / sheet / bodies / draw / check),
 `tools/vision/requirements.txt`, `video/README.md` + `video/INDEX.json` (the playlist read from YouTube: 36 clips
-with ids and the file name each takes; 10 unavailable), the ignore rules, a `tools/README.md` section, six TRAPS.
-`video/` is a junction to `C:\Users\jackf\Videos\hamilton-clips` (OneDrive). Stage 1 on all 34 clips: 33 aligned
-(the envelope matcher, 10 s windows, a global find must agree with its neighbour and walk back; the synthetic check
-is ten tracks at ±3 % tempo to ≤ 0.1 s and no false anchor from any other track), 1-04 not. Cuts checked by eye on
-two clips. Stage 2 is written, not run (Python 3.15, no torch wheel — Jack to make a 3.13 venv). Nothing in `src/`;
-suites not run.
+with ids and the file name each takes; 10 unavailable; his second folder's 11 placed by title, parts as `-pN`),
+the ignore rules, a `tools/README.md` section, six TRAPS. `video/` is a junction to
+`C:\Users\jackf\Videos\hamilton-clips` (OneDrive). Stage 1 on all 45 clips: 43 aligned (the envelope matcher,
+10 s windows, a global find must agree with its neighbour and walk back; the synthetic check is ten tracks at ±3 %
+tempo to ≤ 0.1 s and no false anchor from any other track), 1-04 not, 1-01 a montage. Cuts checked by eye on two
+clips. Jack ran `py install 3.13`; the venv was made and filled here. **Stage 2 ran on Schuyler Defeated: 316
+frames in 22 s (17.6 fps on his CPU — faster than the spec's 6–10), 1,183 bodies, 71 tracklets, 3.7 bodies a frame
+(max 9), every body in nine shots boxed and skeletoned right by eye (`draw`), the dark upstage ensemble included.**
+Then the lot in the background. Nothing in `src/`; suites not run.
 
 ## SUPERSEDED (all of it landed or was absorbed into PR #234): **LAND #233; THEN HIS RE-CHECK THROUGH THE CHECKLIST** (2026-10-12, end of day)
 

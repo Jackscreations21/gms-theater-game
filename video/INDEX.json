@@ -2,6 +2,22 @@
  "note": "what is in video/ (the files themselves are never committed, RULING FX)",
  "files": [
   {
+   "file": "1-01-alexander-hamilton.mp4",
+   "sha256": "53fdd58dd3830176ea4b22b2e287e5bfb9dfaf22e471f8fdd991280eb720e792",
+   "size": 34182612,
+   "duration": 104.06,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-01"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "Disney's promo 'Song Clip': 104 s of a 236 s number, cut as a montage (the audio windows land at 109, 47, 83, 224 s...). Not continuous footage - no alignment; a full upload is still wanted."
+  },
+  {
    "file": "1-02-aaron-burr-sir.mp4",
    "sha256": "7749b7a765485dc357435e247ed1585e854f0110dd4677c458e29b79a40a9e6d",
    "size": 49297293,
@@ -77,6 +93,22 @@
    "uploader": "Asaki Takaya"
   },
   {
+   "file": "1-07-you-ll-be-back.mp4",
+   "sha256": "753a4070a8f72bd74062e01f97da2219f4325bf13410d3f7aa316e59adc67b61",
+   "size": 24870038,
+   "duration": 246.51,
+   "width": 1920,
+   "height": 1080,
+   "fps": 29.97,
+   "tracks": [
+    "1-07"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "Indonesian lyric upload of the film clip (subtitles burned in)."
+  },
+  {
    "file": "1-08-right-hand-man.mp4",
    "sha256": "dfd23ebec31b6b477d2523fe6a17982cba9576b192699f1c663ed6bf83bc84b7",
    "size": 72992865,
@@ -107,6 +139,22 @@
    "uploader": "Asaki Takaya"
   },
   {
+   "file": "1-11-satisfied.mp4",
+   "sha256": "38ee58b6cdda55817ef79858c26dd5703a5f1174aed8253e1d36585f6dea8023",
+   "size": 112975009,
+   "duration": 328.2,
+   "width": 1920,
+   "height": 1080,
+   "fps": 30.0,
+   "tracks": [
+    "1-11"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "Titled 'LIVE AUDIO' (Renee Elise Goldsberry); aligned to the album to 0.02 s over 28 anchors, so it is the film's performance."
+  },
+  {
    "file": "1-12-the-story-of-tonight-reprise.mp4",
    "sha256": "92f8f76a702b9294f1620a0166b579101f4edfd64f455737463ef28b7f4f0d8b",
    "size": 40913096,
@@ -120,6 +168,22 @@
    "url": "https://www.youtube.com/watch?v=e4NAz2TWA4I",
    "title": "The Story of Tonight (Reprise) - Hamilton (Original Cast 2016 - Live) [HD]",
    "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-13-wait-for-it.mp4",
+   "sha256": "b6f843b87e67a66a48ff7429dd34d516fdb15f181413fcb6d42ce65a77269c78",
+   "size": 34107302,
+   "duration": 211.44,
+   "width": 1920,
+   "height": 1080,
+   "fps": 25.0,
+   "tracks": [
+    "1-13"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "Disney+ UK sing-along upload (lyrics on screen)."
   },
   {
    "file": "1-14-stay-alive.mp4",
@@ -212,6 +276,70 @@
    "uploader": "Asaki Takaya"
   },
   {
+   "file": "1-20-yorktown-the-world-turned-upside-down-p1.mp4",
+   "sha256": "d408450317d22cf294479d750d5a549e39a8a6897c1fb6c175bd3585f1ce0329",
+   "size": 16328531,
+   "duration": 67.23,
+   "width": 1920,
+   "height": 1040,
+   "fps": 30.0,
+   "tracks": [
+    "1-20"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-20-yorktown-the-world-turned-upside-down-p2.mp4",
+   "sha256": "6516eb0516a00a885dde846d5ffaeb1257c1b47cb2929838036fb5708ae163fb",
+   "size": 21154498,
+   "duration": 63.13,
+   "width": 1920,
+   "height": 1040,
+   "fps": 30.0,
+   "tracks": [
+    "1-20"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-20-yorktown-the-world-turned-upside-down-p3.mp4",
+   "sha256": "008bc3c45daedcffde32780aaa17756cdb09cc5e2b5eeb654cc568be6c505e74",
+   "size": 15059864,
+   "duration": 60.2,
+   "width": 1920,
+   "height": 1040,
+   "fps": 30.0,
+   "tracks": [
+    "1-20"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-20-yorktown-the-world-turned-upside-down-p4.mp4",
+   "sha256": "07793d9a5b5f165d119604b2d9f9f5cef8bf06bf53176eba144a9b61f1c6e737",
+   "size": 11623272,
+   "duration": 57.43,
+   "width": 1920,
+   "height": 1040,
+   "fps": 30.0,
+   "tracks": [
+    "1-20"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
    "file": "1-21-what-comes-next.mp4",
    "sha256": "7709e84a854e5a1d3599663a2f90ec845f3475cead16d6942b796c006b36d2ba",
    "size": 19037444,
@@ -240,6 +368,54 @@
    "url": "https://www.youtube.com/watch?v=GgxPJRN_LVI",
    "title": "Dear Theodosia - Hamilton (Original Cast 2016 - Live) [HD]",
    "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-23-non-stop-p1.mp4",
+   "sha256": "a988e0d89c8694c9bc54f476f5212f8068fe9054568fd2d5a4d451ccaa92f7f2",
+   "size": 37151307,
+   "duration": 118.1,
+   "width": 1920,
+   "height": 1024,
+   "fps": 30.0,
+   "tracks": [
+    "1-23"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-23-non-stop-p2.mp4",
+   "sha256": "cd9526f19def8083d4d5b40ae13d1e3e489a5d9d42c2da1c110fca41497ce9fb",
+   "size": 11826487,
+   "duration": 60.6,
+   "width": 1920,
+   "height": 1024,
+   "fps": 30.0,
+   "tracks": [
+    "1-23"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-23-non-stop-p3.mp4",
+   "sha256": "7b7f6dbf1111e20e736f6933f02dd030e31481ddfa6e32376ac828f887da132f",
+   "size": 29428280,
+   "duration": 121.5,
+   "width": 1920,
+   "height": 1024,
+   "fps": 30.0,
+   "tracks": [
+    "1-23"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
   },
   {
    "file": "2-01-what-d-i-miss.mp4",
@@ -891,6 +1067,26 @@
     "albumLen": 47,
     "file": "2-21-best-of-wives-and-best-of-women.mp4"
    }
+  ]
+ },
+ "elsewhere": {
+  "note": "clips Jack found outside the playlist (folder \"Jack - ham\"), 2026-10-14",
+  "tracks": [
+   "1-01",
+   "1-07",
+   "1-11",
+   "1-13",
+   "1-20",
+   "1-23"
+  ],
+  "stillWanted": [
+   "1-09 (playlist, did not download)",
+   "2-13 (playlist, did not download)",
+   "2-02",
+   "2-15",
+   "2-22",
+   "2-23",
+   "1-01 (a full, uncut upload)"
   ]
  }
 }

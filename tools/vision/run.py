@@ -131,15 +131,30 @@ def norm_title(s):
     return re.sub(r'[^a-z0-9 ]+', ' ', s.lower()).split()
 
 
+STOP = ('the', 'a', 'of', 'to', 'on')
+PART_RE = re.compile(r'\bpart\s*(\d+)\b', re.I)
+
+
 def guess_tracks(stem, ts):
+    """the track a file name means: a 1-03 prefix, else the title whose words all appear in the name (the longest
+    wins; a title's part before its bracket counts too, so 'Battle of Yorktown' finds 1-20)."""
     m = TRACK_RE.match(stem)
     if m: return re.findall(r'[12]-\d\d', m.group(0)), 'name'
     words = set(norm_title(stem))
     best, score = [], 0
     for t in ts:
-        tw = [w for w in norm_title(t['title']) if w not in ('the', 'a', 'of', 'to', 'on')]
-        if tw and all(w in words for w in tw) and len(tw) > score: best, score = [t['id']], len(tw)
+        for title in (t['title'], t['title'].split('(')[0]):
+            tw = [w for w in norm_title(title) if w not in STOP]
+            if tw and all(w in words for w in tw) and len(tw) > score: best, score = [t['id']], len(tw)
     return best, ('title' if best else 'none')
+
+
+def track_file_name(tids, stem, ext, idx):
+    """1-23-non-stop.mp4 from the playlist's name or the track's title, with -p2 for 'Part 2' in the stem."""
+    pe = playlist_entry(idx, tids)
+    base = os.path.splitext(pe['file'])[0] if pe else '%s-%s' % ('+'.join(tids), '-'.join(norm_title(next(t['title'] for t in tracks() if t['id'] == tids[0]))))
+    m = PART_RE.search(stem)
+    return base + ('-p%d' % int(m.group(1)) if m else '') + ext.lower()
 
 
 def playlist_entry(idx, tids):
@@ -156,12 +171,17 @@ def cmd_index(args):
     # --import DIR: copy the clips (and any .info.json sidecars) from a download folder into video/; the download
     # folder is left as it was (a .part file, still downloading, is skipped; so is a clip already here)
     if args.import_dir:
+        had = {e['file'] for e in idx.get('files', [])} | {e.get('source') for e in idx.get('files', [])}
+        by_size = {e.get('size'): e.get('sha256') for e in idx.get('files', [])}
         for f in sorted(os.listdir(args.import_dir)):
-            if f.lower().endswith(VIDEO_EXT) and not os.path.exists(os.path.join(VIDEO, f)):
-                shutil.copy2(os.path.join(args.import_dir, f), os.path.join(VIDEO, f)); log('copied', f)
-                side = os.path.splitext(f)[0] + '.info.json'
-                if os.path.isfile(os.path.join(args.import_dir, side)):
-                    shutil.copy2(os.path.join(args.import_dir, side), os.path.join(VIDEO, side))
+            if not f.lower().endswith(VIDEO_EXT) or f in had or os.path.exists(os.path.join(VIDEO, f)): continue
+            src = os.path.join(args.import_dir, f)
+            if os.path.getsize(src) in by_size and sha256(src) == by_size[os.path.getsize(src)]:
+                log('already here (same bytes):', f); continue       # it was imported and renamed before
+            shutil.copy2(src, os.path.join(VIDEO, f)); log('copied', f)
+            side = os.path.splitext(f)[0] + '.info.json'
+            if os.path.isfile(os.path.join(args.import_dir, side)):
+                shutil.copy2(os.path.join(args.import_dir, side), os.path.join(VIDEO, side))
     # --rename: a file placed on a track but not named 1-03-slug.ext takes the playlist's name (or 1-03-<its own name>)
     old = {e['file']: e for e in idx.get('files', [])}
     files = sorted(f for f in os.listdir(VIDEO) if f.lower().endswith(VIDEO_EXT))
@@ -171,9 +191,7 @@ def cmd_index(args):
         if TRACK_RE.match(stem): continue
         tids, how = (old.get(f, {}).get('tracks') or [], 'index') if old.get(f, {}).get('tracks') else guess_tracks(stem, ts)
         if not tids: continue
-        pe = playlist_entry(idx, tids)
-        new = (os.path.splitext(pe['file'])[0] + ext.lower()) if pe else ('%s-%s%s' % ('+'.join(tids), re.sub(r'[^a-z0-9]+', '-', stem.lower()).strip('-')[:40], ext.lower()))
-        renames.append((f, new))
+        renames.append((f, track_file_name(tids, stem, ext, idx)))
     if renames and not args.rename:
         print('%d file(s) would be renamed (run with --rename):' % len(renames))
         for a, b2 in renames: print('  %s  ->  %s' % (a, b2))
@@ -183,7 +201,7 @@ def cmd_index(args):
             os.rename(os.path.join(VIDEO, a), os.path.join(VIDEO, b2)); log('renamed', a, '->', b2)
             sa, sb = os.path.splitext(a)[0] + '.info.json', os.path.splitext(b2)[0] + '.info.json'
             if os.path.isfile(os.path.join(VIDEO, sa)): os.rename(os.path.join(VIDEO, sa), os.path.join(VIDEO, sb))
-            if a in old: old[b2] = old.pop(a)
+            old[b2] = old.pop(a, {}); old[b2]['source'] = a      # the name it was downloaded under: never re-imported
         files = sorted(f for f in os.listdir(VIDEO) if f.lower().endswith(VIDEO_EXT))
     out, unplaced = [], []
     for f in files:
@@ -300,8 +318,8 @@ def align(cenv, aenv, ts, tids, win_s=10.0, step_s=10.0, slack_s=2.0, min_corr=0
             searches['global'] += 1
             j, cc, ncc = ncc_full(clip[s:s + wn], hay)
             if j is None or cc < max(0.45, min_corr + 0.1): misses += 1; continue
-            far = np.concatenate([ncc[:max(0, j - 2 * sl)], ncc[j + 2 * sl:]])
-            if len(far) and far.max() > 0.85 * cc: misses += 1; continue
+            # (no runner-up test: a refrain repeats and the right window loses it - Non-Stop's second part did;
+            # the neighbour's agreement below is the test that a wrong number cannot pass)
             agreed = False
             for s2 in (s + st, s - st):                        # the next window, or the previous one, on its own
                 if s2 < 0 or s2 + wn > L: continue
@@ -556,6 +574,50 @@ def cmd_sheet(args):
     print('%s: %d cuts -> %s (%dx%d)' % (stem, len(fr['shots']) - 1, os.path.relpath(out, ROOT), sheet.shape[1], sheet.shape[0]))
 
 
+# ---------------------------------------------------------------- draw
+
+COCO_BONES = [(5, 7), (7, 9), (6, 8), (8, 10), (5, 6), (5, 11), (6, 12), (11, 12), (11, 13), (13, 15), (12, 14), (14, 16),
+              (0, 5), (0, 6)]
+
+
+def cmd_draw(args):
+    """cache/<clip>/bodies.jpg: the middle frame of each shot (the first --n shots) with every detected body's box,
+    tracklet id and skeleton drawn on it - what stage 2 saw, to judge by eye."""
+    import cv2, numpy as np
+    stem = os.path.splitext(os.path.basename(args.clip))[0]
+    cdir = os.path.join(CACHE, stem); fdir = os.path.join(cdir, 'frames')
+    fr = json.load(open(os.path.join(cdir, 'frames.json'), encoding='utf-8'))
+    bp = os.path.join(cdir, 'bodies.json')
+    if not os.path.isfile(bp): die('run bodies first for %s' % stem)
+    bo = json.load(open(bp, encoding='utf-8'))
+    by_i = {x['i']: x['bodies'] for x in bo['frames']}
+    tiles = []
+    for sh in fr['shots'][:args.n]:
+        i = sh['first'] + sh['n'] // 2
+        im = cv2.imread(os.path.join(fdir, fr['frames'][i]['file']))
+        for b in by_i.get(i, []):
+            x1, y1, x2, y2 = map(int, b['box']); cv2.rectangle(im, (x1, y1), (x2, y2), (0, 255, 255), 2)
+            cv2.putText(im, b['tid'], (x1, max(12, y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+            kp = b['kp']
+            for a, c in COCO_BONES:
+                if kp[a][2] > 0.3 and kp[c][2] > 0.3:
+                    cv2.line(im, (int(kp[a][0]), int(kp[a][1])), (int(kp[c][0]), int(kp[c][1])), (0, 0, 255), 2)
+            for x, y, cf in kp:
+                if cf > 0.3: cv2.circle(im, (int(x), int(y)), 3, (255, 128, 0), -1)
+        f = fr['frames'][i]
+        cv2.putText(im, 'shot %d  %s at %s  %d bodies' % (f['shot'], f['track'], f['at'], len(by_i.get(i, []))), (8, 28),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        tiles.append(cv2.resize(im, (640, 360)))
+    while len(tiles) % 3: tiles.append(np.zeros_like(tiles[0]))
+    sheet = np.vstack([np.hstack(tiles[k:k + 3]) for k in range(0, len(tiles), 3)])
+    out = os.path.join(cdir, 'bodies.jpg')
+    cv2.imwrite(out, sheet, [cv2.IMWRITE_JPEG_QUALITY, 80])
+    n = [len(x['bodies']) for x in bo['frames']]
+    print('%s: %d shots drawn -> %s; %.1f bodies/frame (max %d), %d tracklets, longest %d frames' %
+          (stem, min(args.n, len(fr['shots'])), os.path.relpath(out, ROOT), sum(n) / max(1, len(n)), max(n or [0]),
+           len(bo['tracklets']), max((t['n'] for t in bo['tracklets'].values()), default=0)))
+
+
 # ---------------------------------------------------------------- check
 
 def cmd_check(args):
@@ -604,6 +666,7 @@ def main():
     p.add_argument('--imgsz', type=int, default=640)
     p = sub.add_parser('check'); p.set_defaults(fn=cmd_check); p.add_argument('clip'); p.add_argument('-n', type=int, default=12)
     p = sub.add_parser('sheet'); p.set_defaults(fn=cmd_sheet); p.add_argument('clip')
+    p = sub.add_parser('draw'); p.set_defaults(fn=cmd_draw); p.add_argument('clip'); p.add_argument('-n', type=int, default=9)
     args = ap.parse_args(); args.fn(args)
 
 

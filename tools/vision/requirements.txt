@@ -8,4 +8,5 @@ opencv-python>=4.10
 torch>=2.5
 torchvision>=0.20
 ultralytics>=8.3
+lap>=0.5.12          # the ByteTrack assignment; ultralytics auto-installs it otherwise, mid-run
 imageio-ffmpeg>=0.5   # fallback ffmpeg binary when none is on the PATH (run.py finds it)

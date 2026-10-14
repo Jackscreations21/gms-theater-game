@@ -565,16 +565,16 @@ writes per-character `(at, x, z)` tracks and a reviewable diff against the block
 
 **Built 2026-10-14 (`tools/vision/run.py`, see `tools/README.md`):** `index` (the clips in, named, `video/INDEX.json`),
 `frames` (stage 1: 5 fps frames, cuts, clip time → album `(track, at)` with a `tconf`), `sheet` (every cut as a pair
-of frames to judge by eye), `bodies` (stage 2: YOLO-pose + ByteTrack per shot — WRITTEN, NOT RUN: Jack's Python is
-3.15 and torch has no wheel for it; a 3.13 venv is his to make). Stage 1 ran on all 34 clips: 33 aligned (median
-residual ≤ 0.4 s), **1-04 The Story of Tonight did not** (a quiet close-harmony number; every window correlates
-under 0.5 and the windows disagree) — it needs `cache/1-04-the-story-of-tonight/anchors.json` by hand, two
-`[clipTime, "1-04:at"]` pairs from a scrub.
+of frames to judge by eye), `bodies` (stage 2: YOLO-pose + ByteTrack per shot). Stage 1 ran on all 45 clips (40 of
+the 46 tracks): 43 aligned (median residual ≤ 0.8 s), **1-04 The Story of Tonight did not** (a quiet close-harmony
+number; every window correlates under 0.5 and the windows disagree) — it needs
+`cache/1-04-the-story-of-tonight/anchors.json` by hand, two `[clipTime, "1-04:at"]` pairs from a scrub — and
+**1-01 is Disney's promo montage**, cut up, not continuous footage.
 
 **Not built:** stage 3 (the Calibrate mode, in-page PnP, `calib/`), stage 4 (floor projection, `out/`), stage 5
-(identities, `labels/`), `compare.py` (the diff), GD (dance timing). **Not had:** 10 of the playlist's 46 clips are
-unavailable on YouTube (1-01, 1-07, 1-11, 1-13, 1-20, 1-23, 2-02, 2-15, 2-22, 2-23 — other uploads to find), and
-1-09 A Winter's Ball and 2-13 Hurricane did not finish downloading. **Known soft spots:** a lead-in anchor can sit
+(identities, `labels/`), `compare.py` (the diff), GD (dance timing). **Not had** (`video/INDEX.json`
+`elsewhere.stillWanted`): 1-09 and 2-13 (on the playlist, did not download), 2-02, 2-15, 2-22, 2-23 (unavailable
+there), and a full uncut 1-01. **Known soft spots:** a lead-in anchor can sit
 up to 1.5 s off (applause matched at the lowered local bar — it is bounded by the ±2 s slack and only at a clip's
 ends; `tconf` marks the ends); One Last Time's offset drifts 10 s over the clip (the film's version is 25 s longer)
 and the chain follows it at correlations of 0.25–0.33. The spec's open questions stay Jack's: the Tonys/Ham4Ham

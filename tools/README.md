@@ -247,6 +247,7 @@ Python with third-party packages — the ONE place in the repo that has them —
     python tools/vision/run.py frames 1-03-my-shot      # stage 1: 5 fps frames, cuts, clip time -> (track, at)
     python tools/vision/run.py sheet  1-03-my-shot      # cache/<clip>/shots.jpg — every cut, last frame | first frame
     python tools/vision/run.py bodies 1-03-my-shot      # stage 2: YOLO-pose + ByteTrack per shot -> bodies.json
+    python tools/vision/run.py draw   1-03-my-shot      # cache/<clip>/bodies.jpg — the boxes and skeletons, a frame a shot
     python tools/vision/run.py check  1-03-my-shot      # what the cache holds for a clip
 
 Stage 1 needs only numpy, OpenCV and an ffmpeg (imageio-ffmpeg's is found when none is on the PATH); stage 2
