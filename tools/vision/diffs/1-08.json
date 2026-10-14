@@ -1,0 +1,748 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-08",
+  "title": "Right Hand Man",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-08.json",
+  "outSha256": "043fe58492a0c5e306398066b8f16259b45bcef9e35dcc67b71a22839683e5a0",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-08-right-hand-man": {
+    "url": "https://www.youtube.com/watch?v=FmnDhbCd3N4",
+    "shots": {
+     "4": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 11.23
+     },
+     "8": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 12.49
+     },
+     "73": {
+      "judged": "fair",
+      "moving": true,
+      "rms": 11.05
+     },
+     "75": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 10.61
+     },
+     "76": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 10.85
+     },
+     "77": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 10.65
+     },
+     "80": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 10.91
+     },
+     "81": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 10.96
+     },
+     "82": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 11.07
+     },
+     "83": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 11.01
+     },
+     "85": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 11.0
+     }
+    },
+    "tracklets": 81,
+    "positions": 525,
+    "identified": 518
+   },
+   "1-07-you-ll-be-back": {
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 15
+   }
+  },
+  "stage4Positions": 525,
+  "counts": {
+   "samples": 525,
+   "withPosition": 525,
+   "offMap": 3,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 146,
+   "pool": 379,
+   "other": 0,
+   "byRule": {
+    "blocking": 146,
+    "pool": 379
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "ens10": {
+   "name": "Ensemble 10",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 12,
+    "tracklets": 4
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens2": {
+   "name": "Ensemble 2 (also Samuel Seabury)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 16,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens3": {
+   "name": "Ensemble 3 (also Charles Lee)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 8,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens4": {
+   "name": "Ensemble 4 (also Philip Schuyler, James Reynolds, The Doctor)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 3,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens5": {
+   "name": "Ensemble 5 (also George Eacker)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 4,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens6": {
+   "name": "Ensemble 6 (also Dolly)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 6,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens7": {
+   "name": "Ensemble 7 (also Martha)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 6,
+    "tracklets": 3
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens8": {
+   "name": "Ensemble 8",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 20,
+    "tracklets": 5
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "hamilton": {
+   "name": "Hamilton",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 26,
+    "tracklets": 9
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "washington": {
+   "name": "Washington",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 45,
+    "tracklets": 4
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 379,
+  "withPosition": 376,
+  "tracklets": 50,
+  "formations": [
+   {
+    "from": 24.0,
+    "to": 27.0,
+    "clip": "1-08-right-hand-man",
+    "at": 24.6,
+    "bodies": 7,
+    "tracklets": 7,
+    "deck": 7,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 2,
+     "SL": 3
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.42,
+     1.75
+    ],
+    "extent": {
+     "x": [
+      -3.58,
+      4.15
+     ],
+     "z": [
+      -1.73,
+      4.13
+     ]
+    },
+    "samples": 91,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 3
+    }
+   },
+   {
+    "from": 27.0,
+    "to": 30.0,
+    "clip": "1-08-right-hand-man",
+    "at": 27.8,
+    "bodies": 7,
+    "tracklets": 8,
+    "deck": 7,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 1,
+     "SL": 4
+    },
+    "shape": "scattered",
+    "centroid": [
+     1.45,
+     2.83
+    ],
+    "extent": {
+     "x": [
+      -3.19,
+      5.25
+     ],
+     "z": [
+      1.06,
+      5.01
+     ]
+    },
+    "samples": 22,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 3
+    }
+   },
+   {
+    "from": 51.0,
+    "to": 54.0,
+    "clip": "1-08-right-hand-man",
+    "at": 53.5,
+    "bodies": 2,
+    "tracklets": 2,
+    "deck": 2,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 2,
+     "SL": 0
+    },
+    "shape": "a pair 2.3 m apart",
+    "centroid": [
+     0.33,
+     0.07
+    ],
+    "extent": {
+     "x": [
+      -0.82,
+      1.49
+     ],
+     "z": [
+      0.01,
+      0.14
+     ]
+    },
+    "samples": 6,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 7,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 54.0,
+    "to": 57.0,
+    "clip": "1-08-right-hand-man",
+    "at": 56.9,
+    "bodies": 4,
+    "tracklets": 5,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 0,
+     "SL": 2
+    },
+    "shape": "an arc r 4.7 m about (-0.0, 2.7)",
+    "centroid": [
+     0.11,
+     0.92
+    ],
+    "extent": {
+     "x": [
+      -4.6,
+      4.73
+     ],
+     "z": [
+      -0.87,
+      2.4
+     ]
+    },
+    "samples": 31,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 7,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 57.0,
+    "to": 60.0,
+    "clip": "1-08-right-hand-man",
+    "at": 57.9,
+    "bodies": 6,
+    "tracklets": 6,
+    "deck": 6,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 3,
+     "C": 0,
+     "SL": 3
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.23,
+     -0.66
+    ],
+    "extent": {
+     "x": [
+      -4.56,
+      4.94
+     ],
+     "z": [
+      -4.15,
+      2.94
+     ]
+    },
+    "samples": 79,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 7,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 60.0,
+    "to": 63.0,
+    "clip": "1-08-right-hand-man",
+    "at": 60.2,
+    "bodies": 6,
+    "tracklets": 9,
+    "deck": 6,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 3,
+     "C": 0,
+     "SL": 3
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.29,
+     -1.33
+    ],
+    "extent": {
+     "x": [
+      -4.92,
+      5.13
+     ],
+     "z": [
+      -4.27,
+      1.76
+     ]
+    },
+    "samples": 61,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 7,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 63.0,
+    "to": 66.0,
+    "clip": "1-08-right-hand-man",
+    "at": 63.2,
+    "bodies": 2,
+    "tracklets": 2,
+    "deck": 2,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 0,
+     "SL": 1
+    },
+    "shape": "a pair 6.4 m apart",
+    "centroid": [
+     0.48,
+     0.52
+    ],
+    "extent": {
+     "x": [
+      -2.18,
+      3.13
+     ],
+     "z": [
+      -1.22,
+      2.26
+     ]
+    },
+    "samples": 4,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 7,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 273.0,
+    "to": 276.0,
+    "clip": "1-08-right-hand-man",
+    "at": 275.8,
+    "bodies": 3,
+    "tracklets": 3,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 0,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     2.36,
+     0.53
+    ],
+    "extent": {
+     "x": [
+      -2.63,
+      5.87
+     ],
+     "z": [
+      -2.26,
+      2.98
+     ]
+    },
+    "samples": 7,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 276.0,
+    "to": 279.0,
+    "clip": "1-08-right-hand-man",
+    "at": 276.2,
+    "bodies": 1,
+    "tracklets": 2,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 0,
+     "SL": 0
+    },
+    "shape": "one body",
+    "centroid": [
+     -2.7,
+     3.83
+    ],
+    "extent": {
+     "x": [
+      -2.7,
+      -2.7
+     ],
+     "z": [
+      3.83,
+      3.83
+     ]
+    },
+    "samples": 7,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 288.0,
+    "to": 291.0,
+    "clip": "1-08-right-hand-man",
+    "at": 288.3,
+    "bodies": 2,
+    "tracklets": 4,
+    "deck": 2,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 0,
+     "SL": 1
+    },
+    "shape": "a pair 7.3 m apart",
+    "centroid": [
+     0.55,
+     2.16
+    ],
+    "extent": {
+     "x": [
+      -3.12,
+      4.22
+     ],
+     "z": [
+      2.11,
+      2.2
+     ]
+    },
+    "samples": 6,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 291.0,
+    "to": 294.0,
+    "clip": "1-08-right-hand-man",
+    "at": 293.7,
+    "bodies": 5,
+    "tracklets": 5,
+    "deck": 5,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 1,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.26,
+     0.46
+    ],
+    "extent": {
+     "x": [
+      -3.6,
+      4.2
+     ],
+     "z": [
+      -0.44,
+      2.19
+     ]
+    },
+    "samples": 10,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 294.0,
+    "to": 297.0,
+    "clip": "1-08-right-hand-man",
+    "at": 294.1,
+    "bodies": 5,
+    "tracklets": 19,
+    "deck": 5,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 1,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.15,
+     1.14
+    ],
+    "extent": {
+     "x": [
+      -3.44,
+      4.04
+     ],
+     "z": [
+      0.39,
+      2.33
+     ]
+    },
+    "samples": 19,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 297.0,
+    "to": 300.0,
+    "clip": "1-08-right-hand-man",
+    "at": 297.7,
+    "bodies": 3,
+    "tracklets": 3,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 1,
+     "SL": 1
+    },
+    "shape": "an arc r 2.5 m about (0.5, -0.3)",
+    "centroid": [
+     0.41,
+     0.85
+    ],
+    "extent": {
+     "x": [
+      -1.99,
+      2.98
+     ],
+     "z": [
+      0.05,
+      2.24
+     ]
+    },
+    "samples": 33,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 10
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 13
+ }
+}

@@ -1,0 +1,397 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-03",
+  "title": "My Shot",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-03.json",
+  "outSha256": "18fdc028dc73cd1869ba9d820301d0902e2bb7988cdfca739da147e2c411b6e7",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-03-my-shot": {
+    "url": "https://www.youtube.com/watch?v=wk01z2f5akg",
+    "shots": {
+     "42": {
+      "judged": "good",
+      "moving": null,
+      "rms": 4.35
+     },
+     "44": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 13.57
+     },
+     "49": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 16.98
+     },
+     "57": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 13.62
+     }
+    },
+    "tracklets": 26,
+    "positions": 168,
+    "identified": 701
+   }
+  },
+  "stage4Positions": 168,
+  "counts": {
+   "samples": 168,
+   "withPosition": 168,
+   "offMap": 4,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 106,
+   "pool": 62,
+   "other": 0,
+   "byRule": {
+    "blocking": 106,
+    "pool": 62
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "ens1": {
+   "name": "Ensemble 1 (also The Bullet)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 24,
+    "tracklets": 3
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens10": {
+   "name": "Ensemble 10",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 11,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens4": {
+   "name": "Ensemble 4 (also Philip Schuyler, James Reynolds, The Doctor)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 11,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens8": {
+   "name": "Ensemble 8",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 8,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "hamilton": {
+   "name": "Hamilton",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 15,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "lafayette": {
+   "name": "Lafayette (also Jefferson)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 13,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "laurens": {
+   "name": "Laurens (also Philip)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 10,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "mulligan": {
+   "name": "Mulligan (also Madison)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 11,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "peggy": {
+   "name": "Peggy (also Maria Reynolds)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 3,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 62,
+  "withPosition": 60,
+  "tracklets": 12,
+  "formations": [
+   {
+    "from": 231.0,
+    "to": 234.0,
+    "clip": "1-03-my-shot",
+    "at": 231.6,
+    "bodies": 2,
+    "tracklets": 2,
+    "deck": 2,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 0,
+     "SL": 0
+    },
+    "shape": "a pair 3.4 m apart",
+    "centroid": [
+     -3.45,
+     1.07
+    ],
+    "extent": {
+     "x": [
+      -4.35,
+      -2.56
+     ],
+     "z": [
+      -0.4,
+      2.54
+     ]
+    },
+    "samples": 4,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 0,
+     "everyoneOn": 7
+    }
+   },
+   {
+    "from": 273.0,
+    "to": 276.0,
+    "clip": "1-03-my-shot",
+    "at": 273.8,
+    "bodies": 4,
+    "tracklets": 4,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 2,
+     "SL": 1
+    },
+    "shape": "scattered",
+    "centroid": [
+     -0.82,
+     -0.45
+    ],
+    "extent": {
+     "x": [
+      -3.63,
+      1.96
+     ],
+     "z": [
+      -4.24,
+      1.31
+     ]
+    },
+    "samples": 32,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 5,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 276.0,
+    "to": 279.0,
+    "clip": "1-03-my-shot",
+    "at": 276.1,
+    "bodies": 3,
+    "tracklets": 3,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 1,
+     "SL": 1
+    },
+    "shape": "scattered",
+    "centroid": [
+     -0.61,
+     0.24
+    ],
+    "extent": {
+     "x": [
+      -2.92,
+      1.93
+     ],
+     "z": [
+      -0.29,
+      0.91
+     ]
+    },
+    "samples": 3,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 5,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 291.0,
+    "to": 294.0,
+    "clip": "1-03-my-shot",
+    "at": 292.5,
+    "bodies": 2,
+    "tracklets": 2,
+    "deck": 2,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 2,
+     "SL": 0
+    },
+    "shape": "a pair 4.2 m apart",
+    "centroid": [
+     -0.17,
+     -1.62
+    ],
+    "extent": {
+     "x": [
+      -0.46,
+      0.13
+     ],
+     "z": [
+      -3.7,
+      0.47
+     ]
+    },
+    "samples": 12,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 5,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 294.0,
+    "to": 297.0,
+    "clip": "1-03-my-shot",
+    "at": 294.0,
+    "bodies": 2,
+    "tracklets": 3,
+    "deck": 2,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 2,
+     "SL": 0
+    },
+    "shape": "a pair 3.5 m apart",
+    "centroid": [
+     -0.12,
+     -1.04
+    ],
+    "extent": {
+     "x": [
+      -0.43,
+      0.18
+     ],
+     "z": [
+      -2.75,
+      0.68
+     ]
+    },
+    "samples": 7,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 5,
+     "everyoneOn": 12
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 5
+ }
+}

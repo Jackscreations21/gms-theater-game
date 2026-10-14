@@ -1,0 +1,130 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-02",
+  "title": "Aaron Burr, Sir",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-02.json",
+  "outSha256": "ffe45588093f783fedf53e977776b3f0cc38870625578bdd2ed9cc9a8e04ab38",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-02-aaron-burr-sir": {
+    "url": "https://www.youtube.com/watch?v=KAnVd7Fxb0g",
+    "shots": {
+     "0": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 15.5
+     }
+    },
+    "tracklets": 6,
+    "positions": 35,
+    "identified": 176
+   }
+  },
+  "stage4Positions": 35,
+  "counts": {
+   "samples": 35,
+   "withPosition": 35,
+   "offMap": 24,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 3,
+   "pool": 32,
+   "other": 0,
+   "byRule": {
+    "blocking": 3,
+    "pool": 32
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "ens10": {
+   "name": "Ensemble 10",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 3,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 32,
+  "withPosition": 10,
+  "tracklets": 5,
+  "formations": [
+   {
+    "from": 0.0,
+    "to": 3.0,
+    "clip": "1-02-aaron-burr-sir",
+    "at": 0.5,
+    "bodies": 1,
+    "tracklets": 4,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 2,
+    "sides": {
+     "SR": 0,
+     "C": 1,
+     "SL": 0
+    },
+    "shape": "one body",
+    "centroid": [
+     -0.58,
+     -2.44
+    ],
+    "extent": {
+     "x": [
+      -0.58,
+      -0.58
+     ],
+     "z": [
+      -2.44,
+      -2.44
+     ]
+    },
+    "samples": 10,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 5,
+     "everyoneOn": 6
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 1
+ }
+}

@@ -1,0 +1,400 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-18",
+  "title": "Guns and Ships",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-18.json",
+  "outSha256": "ba6ae8430d22caaf2e4c0661fc046e775bb48cce9e375f00add2f5f7c4ecbe9a",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-18-guns-and-ships": {
+    "url": "https://www.youtube.com/watch?v=0D3zz6byFT4",
+    "shots": {
+     "23": {
+      "judged": "fair",
+      "moving": true,
+      "rms": 6.15
+     },
+     "24": {
+      "judged": "fair",
+      "moving": true,
+      "rms": 8.97
+     }
+    },
+    "tracklets": 24,
+    "positions": 257,
+    "identified": 191
+   },
+   "1-19-history-has-its-eyes-on-you": {
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 9
+   }
+  },
+  "stage4Positions": 257,
+  "counts": {
+   "samples": 257,
+   "withPosition": 257,
+   "offMap": 98,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 146,
+   "pool": 111,
+   "other": 0,
+   "byRule": {
+    "blocking": 146,
+    "pool": 111
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [
+  {
+   "id": "burr-balcony",
+   "title": "1-18 Guns and Ships: Burr sings the opening from the SL balcony, the G&S spot (5.49, 2.36), gallery level",
+   "cite": [
+    "tools/blocking/research/seg4.md, Review 2 1-18 (\"Kept (ruled): Burr on the SL balcony for the opening\") and Review 3 1-18 (\"balcony (ruled)\")",
+    "tools/blocking/gen4.py, 1-18 Burr (BroadwayWorld forum, OBC 2016); tools/blocking/seg4-notes.txt"
+   ],
+   "checks": [
+    {
+     "check": "Burr 1-18 6.3-50.0: (burr) at (5.49, 2.36) on the gallery",
+     "actor": "burr",
+     "evidenceSamples": 0,
+     "placedByBlocking": 0,
+     "status": "not testable",
+     "why": "no evidence sample of her in the window"
+    }
+   ]
+  }
+ ],
+ "characters": {
+  "angelica": {
+   "name": "Angelica",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 13,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens1": {
+   "name": "Ensemble 1 (also The Bullet)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 18,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens4": {
+   "name": "Ensemble 4 (also Philip Schuyler, James Reynolds, The Doctor)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 18,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens6": {
+   "name": "Ensemble 6 (also Dolly)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 22,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens7": {
+   "name": "Ensemble 7 (also Martha)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 20,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens8": {
+   "name": "Ensemble 8",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 8,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "hamilton": {
+   "name": "Hamilton",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 3,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "lafayette": {
+   "name": "Lafayette (also Jefferson)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 44,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 111,
+  "withPosition": 48,
+  "tracklets": 14,
+  "formations": [
+   {
+    "from": 81.0,
+    "to": 84.0,
+    "clip": "1-18-guns-and-ships",
+    "at": 82.0,
+    "bodies": 1,
+    "tracklets": 1,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 0,
+     "SL": 0
+    },
+    "shape": "one body",
+    "centroid": [
+     -3.81,
+     1.34
+    ],
+    "extent": {
+     "x": [
+      -3.81,
+      -3.81
+     ],
+     "z": [
+      1.34,
+      1.34
+     ]
+    },
+    "samples": 4,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 14
+    }
+   },
+   {
+    "from": 84.0,
+    "to": 87.0,
+    "clip": "1-18-guns-and-ships",
+    "at": 84.5,
+    "bodies": 1,
+    "tracklets": 2,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 0,
+     "SL": 1
+    },
+    "shape": "one body",
+    "centroid": [
+     5.31,
+     0.01
+    ],
+    "extent": {
+     "x": [
+      5.31,
+      5.31
+     ],
+     "z": [
+      0.01,
+      0.01
+     ]
+    },
+    "samples": 12,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 16
+    }
+   },
+   {
+    "from": 87.0,
+    "to": 90.0,
+    "clip": "1-18-guns-and-ships",
+    "at": 87.5,
+    "bodies": 2,
+    "tracklets": 2,
+    "deck": 1,
+    "gallery": 1,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 1,
+     "SL": 1
+    },
+    "shape": "one body",
+    "centroid": [
+     2.16,
+     4.28
+    ],
+    "extent": {
+     "x": [
+      -0.57,
+      4.88
+     ],
+     "z": [
+      3.17,
+      5.39
+     ]
+    },
+    "samples": 20,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 16
+    }
+   },
+   {
+    "from": 90.0,
+    "to": 93.0,
+    "clip": "1-18-guns-and-ships",
+    "at": 90.2,
+    "bodies": 1,
+    "tracklets": 1,
+    "deck": 0,
+    "gallery": 1,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 0,
+     "SL": 1
+    },
+    "shape": "-",
+    "centroid": [
+     4.74,
+     3.24
+    ],
+    "extent": {
+     "x": [
+      4.74,
+      4.74
+     ],
+     "z": [
+      3.24,
+      3.24
+     ]
+    },
+    "samples": 2,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 16
+    }
+   },
+   {
+    "from": 96.0,
+    "to": 99.0,
+    "clip": "1-18-guns-and-ships",
+    "at": 96.1,
+    "bodies": 3,
+    "tracklets": 5,
+    "deck": 2,
+    "gallery": 1,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 0,
+     "SL": 1
+    },
+    "shape": "a pair 11.1 m apart",
+    "centroid": [
+     -1.59,
+     1.5
+    ],
+    "extent": {
+     "x": [
+      -5.13,
+      2.83
+     ],
+     "z": [
+      -4.34,
+      5.43
+     ]
+    },
+    "samples": 6,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 16
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 1,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 5
+ }
+}

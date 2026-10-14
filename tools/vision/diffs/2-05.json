@@ -1,0 +1,331 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "2-05",
+  "title": "The Room Where It Happens",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/2-05.json",
+  "outSha256": "06eec6de801a9d779331d5d44a6ed2c5e6a6eb1e52e380d2459138515fa683b7",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "2-05-the-room-where-it-happens": {
+    "url": "https://www.youtube.com/watch?v=e_FWUW6SnDo",
+    "shots": {
+     "52": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 11.05
+     },
+     "65": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 14.44
+     }
+    },
+    "tracklets": 14,
+    "positions": 59,
+    "identified": 521
+   },
+   "2-04-say-no-to-this": {
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 4
+   }
+  },
+  "stage4Positions": 59,
+  "counts": {
+   "samples": 59,
+   "withPosition": 59,
+   "offMap": 0,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 41,
+   "pool": 18,
+   "other": 0,
+   "byRule": {
+    "blocking": 41,
+    "pool": 18
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "burr": {
+   "name": "Burr",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 1,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens1": {
+   "name": "Ensemble 1 (also The Bullet)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 8,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens3": {
+   "name": "Ensemble 3 (also Charles Lee)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 11,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens5": {
+   "name": "Ensemble 5 (also George Eacker)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 2,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens6": {
+   "name": "Ensemble 6 (also Dolly)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 3,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens7": {
+   "name": "Ensemble 7 (also Martha)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 14,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "lafayette": {
+   "name": "Lafayette (also Jefferson)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 2,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 18,
+  "withPosition": 18,
+  "tracklets": 3,
+  "formations": [
+   {
+    "from": 252.0,
+    "to": 255.0,
+    "clip": "2-05-the-room-where-it-happens",
+    "at": 254.8,
+    "bodies": 1,
+    "tracklets": 1,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 0,
+     "SL": 0
+    },
+    "shape": "one body",
+    "centroid": [
+     -2.81,
+     3.36
+    ],
+    "extent": {
+     "x": [
+      -2.81,
+      -2.81
+     ],
+     "z": [
+      3.36,
+      3.36
+     ]
+    },
+    "samples": 2,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 255.0,
+    "to": 258.0,
+    "clip": "2-05-the-room-where-it-happens",
+    "at": 255.2,
+    "bodies": 1,
+    "tracklets": 1,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 0,
+     "SL": 0
+    },
+    "shape": "one body",
+    "centroid": [
+     -2.93,
+     3.44
+    ],
+    "extent": {
+     "x": [
+      -2.93,
+      -2.93
+     ],
+     "z": [
+      3.44,
+      3.44
+     ]
+    },
+    "samples": 3,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 297.0,
+    "to": 300.0,
+    "clip": "2-05-the-room-where-it-happens",
+    "at": 299.8,
+    "bodies": 2,
+    "tracklets": 2,
+    "deck": 2,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 1,
+     "SL": 1
+    },
+    "shape": "a pair 3.5 m apart",
+    "centroid": [
+     1.75,
+     3.83
+    ],
+    "extent": {
+     "x": [
+      0.01,
+      3.49
+     ],
+     "z": [
+      3.55,
+      4.11
+     ]
+    },
+    "samples": 3,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 9
+    }
+   },
+   {
+    "from": 300.0,
+    "to": 303.0,
+    "clip": "2-05-the-room-where-it-happens",
+    "at": 300.2,
+    "bodies": 2,
+    "tracklets": 2,
+    "deck": 2,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 1,
+     "SL": 1
+    },
+    "shape": "a pair 4.1 m apart",
+    "centroid": [
+     1.47,
+     3.63
+    ],
+    "extent": {
+     "x": [
+      -0.53,
+      3.47
+     ],
+     "z": [
+      3.13,
+      4.14
+     ]
+    },
+    "samples": 10,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 9
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 4
+ }
+}

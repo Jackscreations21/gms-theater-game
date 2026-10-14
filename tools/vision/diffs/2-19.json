@@ -1,0 +1,404 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "2-19",
+  "title": "The Election of 1800",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/2-19.json",
+  "outSha256": "8740afb57f2a64c985a0428208c730dd47636a4f6b0fde97349500a814578ba6",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "2-19-the-election-of-1800": {
+    "url": "https://www.youtube.com/watch?v=yEq-B8gPVn4",
+    "shots": {
+     "29": {
+      "judged": "good",
+      "moving": true,
+      "rms": 7.32
+     },
+     "30": {
+      "judged": "good",
+      "moving": true,
+      "rms": 4.32
+     },
+     "39": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 11.85
+     },
+     "40": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 11.04
+     }
+    },
+    "tracklets": 39,
+    "positions": 339,
+    "identified": 431
+   },
+   "2-18-it-s-quiet-uptown": {
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 0
+   }
+  },
+  "stage4Positions": 339,
+  "counts": {
+   "samples": 339,
+   "withPosition": 339,
+   "offMap": 134,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 85,
+   "pool": 254,
+   "other": 0,
+   "byRule": {
+    "blocking": 85,
+    "pool": 254
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "burr": {
+   "name": "Burr",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 24,
+    "tracklets": 3
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens1": {
+   "name": "Ensemble 1 (also The Bullet)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 16,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens2": {
+   "name": "Ensemble 2 (also Samuel Seabury)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 4,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens3": {
+   "name": "Ensemble 3 (also Charles Lee)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 4,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens4": {
+   "name": "Ensemble 4 (also Philip Schuyler, James Reynolds, The Doctor)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 4,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens5": {
+   "name": "Ensemble 5 (also George Eacker)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 2,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens6": {
+   "name": "Ensemble 6 (also Dolly)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 5,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens8": {
+   "name": "Ensemble 8",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 2,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "mulligan": {
+   "name": "Mulligan (also Madison)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 24,
+    "tracklets": 3
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 254,
+  "withPosition": 120,
+  "tracklets": 25,
+  "formations": [
+   {
+    "from": 156.0,
+    "to": 159.0,
+    "clip": "2-19-the-election-of-1800",
+    "at": 156.9,
+    "bodies": 1,
+    "tracklets": 3,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 0,
+     "SL": 0
+    },
+    "shape": "one body",
+    "centroid": [
+     -4.69,
+     1.67
+    ],
+    "extent": {
+     "x": [
+      -4.69,
+      -4.69
+     ],
+     "z": [
+      1.67,
+      1.67
+     ]
+    },
+    "samples": 10,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 159.0,
+    "to": 162.0,
+    "clip": "2-19-the-election-of-1800",
+    "at": 159.0,
+    "bodies": 1,
+    "tracklets": 1,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 0,
+     "SL": 1
+    },
+    "shape": "one body",
+    "centroid": [
+     5.1,
+     1.52
+    ],
+    "extent": {
+     "x": [
+      5.1,
+      5.1
+     ],
+     "z": [
+      1.52,
+      1.52
+     ]
+    },
+    "samples": 1,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 168.0,
+    "to": 171.0,
+    "clip": "2-19-the-election-of-1800",
+    "at": 170.6,
+    "bodies": 1,
+    "tracklets": 6,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 5,
+    "sides": {
+     "SR": 0,
+     "C": 0,
+     "SL": 1
+    },
+    "shape": "one body",
+    "centroid": [
+     5.19,
+     -0.28
+    ],
+    "extent": {
+     "x": [
+      5.19,
+      5.19
+     ],
+     "z": [
+      -0.28,
+      -0.28
+     ]
+    },
+    "samples": 10,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 171.0,
+    "to": 174.0,
+    "clip": "2-19-the-election-of-1800",
+    "at": 171.4,
+    "bodies": 1,
+    "tracklets": 12,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 5,
+    "sides": {
+     "SR": 0,
+     "C": 0,
+     "SL": 1
+    },
+    "shape": "one body",
+    "centroid": [
+     5.16,
+     -0.2
+    ],
+    "extent": {
+     "x": [
+      5.16,
+      5.16
+     ],
+     "z": [
+      -0.2,
+      -0.2
+     ]
+    },
+    "samples": 81,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 174.0,
+    "to": 177.0,
+    "clip": "2-19-the-election-of-1800",
+    "at": 174.0,
+    "bodies": 4,
+    "tracklets": 5,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 1,
+     "C": 1,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     1.32,
+     -2.9
+    ],
+    "extent": {
+     "x": [
+      -2.5,
+      5.17
+     ],
+     "z": [
+      -3.96,
+      -0.98
+     ]
+    },
+    "samples": 5,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 5
+ }
+}

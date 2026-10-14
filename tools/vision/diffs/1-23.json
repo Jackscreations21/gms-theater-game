@@ -1,0 +1,274 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-23",
+  "title": "Non-Stop",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-23.json",
+  "outSha256": "7be3f19aa5dfea45df0c4a1b337e27529ff59b2627a64490178aa4eda593a6be",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-23-non-stop-p1": {
+    "url": "",
+    "shots": {
+     "4": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 12.83
+     }
+    },
+    "tracklets": 7,
+    "positions": 47,
+    "identified": 238
+   },
+   "1-23-non-stop-p3": {
+    "url": "",
+    "shots": {
+     "14": {
+      "judged": "good",
+      "moving": null,
+      "rms": 1.41
+     }
+    },
+    "tracklets": 8,
+    "positions": 39,
+    "identified": 151
+   },
+   "1-23-non-stop-p2": {
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 44
+   }
+  },
+  "stage4Positions": 86,
+  "counts": {
+   "samples": 86,
+   "withPosition": 86,
+   "offMap": 2,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 74,
+   "pool": 12,
+   "other": 0,
+   "byRule": {
+    "blocking": 74,
+    "pool": 12
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [
+  {
+   "id": "nonstop-gallery",
+   "title": "1-23 Non-Stop: Washington on the SL gallery at (4.9, -1.5) from 330.2 for the finale",
+   "cite": [
+    "tools/blocking/research/seg4.md, 1-23 (\"Kept as ruled: Washington is on the SL gallery (4.9, -1.5) from 330.2\")",
+    "tools/blocking/seg4-notes.txt (\"climbs to the SL gallery (4.9, -1.5) for the finale (ruling)\")",
+    "docs/hamilton-blocking-cue-notes.md, 1-23 659 / 661 (\"By ruling Washington is on the SL gallery\")"
+   ],
+   "checks": [
+    {
+     "check": "Washington 1-23 330.2-382.0: (washington) at (4.90, -1.50) on the gallery",
+     "actor": "washington",
+     "evidenceSamples": 0,
+     "placedByBlocking": 0,
+     "status": "not testable",
+     "why": "no evidence sample of her in the window"
+    }
+   ]
+  }
+ ],
+ "characters": {
+  "burr": {
+   "name": "Burr",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 7,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens1": {
+   "name": "Ensemble 1 (also The Bullet)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 4,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens10": {
+   "name": "Ensemble 10",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 16,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens2": {
+   "name": "Ensemble 2 (also Samuel Seabury)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 6,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens6": {
+   "name": "Ensemble 6 (also Dolly)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 19,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens7": {
+   "name": "Ensemble 7 (also Martha)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 9,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens8": {
+   "name": "Ensemble 8",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 4,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens9": {
+   "name": "Ensemble 9",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 3,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "hamilton": {
+   "name": "Hamilton",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 6,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 12,
+  "withPosition": 10,
+  "tracklets": 3,
+  "formations": [
+   {
+    "from": 285.0,
+    "to": 288.0,
+    "clip": "1-23-non-stop-p3",
+    "at": 287.2,
+    "bodies": 1,
+    "tracklets": 2,
+    "deck": 1,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 0,
+     "C": 0,
+     "SL": 1
+    },
+    "shape": "one body",
+    "centroid": [
+     3.04,
+     3.81
+    ],
+    "extent": {
+     "x": [
+      3.04,
+      3.04
+     ],
+     "z": [
+      3.81,
+      3.81
+     ]
+    },
+    "samples": 10,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 7,
+     "everyoneOn": 10
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 1,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 1
+ }
+}

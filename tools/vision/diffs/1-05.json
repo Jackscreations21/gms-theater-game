@@ -1,0 +1,258 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-05",
+  "title": "The Schuyler Sisters",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-05.json",
+  "outSha256": "b9c72c503b927a60b7d1f6c046fe6beb7f55a4f9ab8d357a3b8ccd394e89051c",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-05-the-schuyler-sisters": {
+    "url": "https://www.youtube.com/watch?v=POHVE9uCNAY",
+    "shots": {
+     "34": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 4.33
+     }
+    },
+    "tracklets": 13,
+    "positions": 196,
+    "identified": 414
+   }
+  },
+  "stage4Positions": 196,
+  "counts": {
+   "samples": 196,
+   "withPosition": 196,
+   "offMap": 0,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 135,
+   "pool": 61,
+   "other": 0,
+   "byRule": {
+    "blocking": 135,
+    "pool": 61
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "angelica": {
+   "name": "Angelica",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 19,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "burr": {
+   "name": "Burr",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 13,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens1": {
+   "name": "Ensemble 1 (also The Bullet)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 18,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens4": {
+   "name": "Ensemble 4 (also Philip Schuyler, James Reynolds, The Doctor)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 16,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens5": {
+   "name": "Ensemble 5 (also George Eacker)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 19,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens7": {
+   "name": "Ensemble 7 (also Martha)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 12,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens8": {
+   "name": "Ensemble 8",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 19,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "peggy": {
+   "name": "Peggy (also Maria Reynolds)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 19,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 61,
+  "withPosition": 61,
+  "tracklets": 4,
+  "formations": [
+   {
+    "from": 153.0,
+    "to": 156.0,
+    "clip": "1-05-the-schuyler-sisters",
+    "at": 154.1,
+    "bodies": 3,
+    "tracklets": 3,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 3,
+     "SL": 0
+    },
+    "shape": "a cluster (all within 1.2 m)",
+    "centroid": [
+     -0.06,
+     -0.54
+    ],
+    "extent": {
+     "x": [
+      -0.93,
+      0.78
+     ],
+     "z": [
+      -0.89,
+      -0.29
+     ]
+    },
+    "samples": 29,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 15
+    }
+   },
+   {
+    "from": 156.0,
+    "to": 159.0,
+    "clip": "1-05-the-schuyler-sisters",
+    "at": 156.3,
+    "bodies": 4,
+    "tracklets": 4,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 3,
+     "SL": 0
+    },
+    "shape": "scattered",
+    "centroid": [
+     -1.09,
+     0.38
+    ],
+    "extent": {
+     "x": [
+      -3.92,
+      0.7
+     ],
+     "z": [
+      -0.12,
+      0.81
+     ]
+    },
+    "samples": 32,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 15
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 2
+ }
+}

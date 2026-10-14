@@ -1,0 +1,224 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-16",
+  "title": "Meet Me Inside",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-16.json",
+  "outSha256": "3abdbe43c1643480f6558e541198b174760a8a52b48a128ee0db915e5ed56a23",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-16-meet-me-inside": {
+    "url": "https://www.youtube.com/watch?v=TZ1w59D5et4",
+    "shots": {
+     "6": {
+      "judged": "good",
+      "moving": true,
+      "rms": 0.92
+     }
+    },
+    "tracklets": 12,
+    "positions": 148,
+    "identified": 69
+   },
+   "1-17-that-would-be-enough": {
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 2
+   }
+  },
+  "stage4Positions": 148,
+  "counts": {
+   "samples": 148,
+   "withPosition": 148,
+   "offMap": 0,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 38,
+   "pool": 110,
+   "other": 0,
+   "byRule": {
+    "blocking": 38,
+    "pool": 110
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "ens4": {
+   "name": "Ensemble 4 (also Philip Schuyler, James Reynolds, The Doctor)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 12,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "hamilton": {
+   "name": "Hamilton",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 26,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 110,
+  "withPosition": 110,
+  "tracklets": 9,
+  "formations": [
+   {
+    "from": 6.0,
+    "to": 9.0,
+    "clip": "1-16-meet-me-inside",
+    "at": 7.7,
+    "bodies": 3,
+    "tracklets": 4,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 0,
+     "SL": 3
+    },
+    "shape": "a cluster (all within 1.2 m)",
+    "centroid": [
+     4.35,
+     -0.68
+    ],
+    "extent": {
+     "x": [
+      3.94,
+      5.11
+     ],
+     "z": [
+      -0.99,
+      -0.14
+     ]
+    },
+    "samples": 14,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 6
+    }
+   },
+   {
+    "from": 9.0,
+    "to": 12.0,
+    "clip": "1-16-meet-me-inside",
+    "at": 11.9,
+    "bodies": 4,
+    "tracklets": 6,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 1,
+     "C": 1,
+     "SL": 2
+    },
+    "shape": "an arc r 4.1 m about (0.4, 1.8)",
+    "centroid": [
+     1.52,
+     0.55
+    ],
+    "extent": {
+     "x": [
+      -3.11,
+      4.19
+     ],
+     "z": [
+      -1.91,
+      4.07
+     ]
+    },
+    "samples": 41,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 6
+    }
+   },
+   {
+    "from": 12.0,
+    "to": 15.0,
+    "clip": "1-16-meet-me-inside",
+    "at": 12.1,
+    "bodies": 4,
+    "tracklets": 7,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 1,
+     "C": 1,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     1.54,
+     0.67
+    ],
+    "extent": {
+     "x": [
+      -3.14,
+      4.2
+     ],
+     "z": [
+      -1.52,
+      3.96
+     ]
+    },
+    "samples": 55,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 6
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 3
+ }
+}

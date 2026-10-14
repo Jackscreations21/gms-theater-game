@@ -1,0 +1,187 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "2-10",
+  "title": "I Know Him",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/2-10.json",
+  "outSha256": "29093f3ff486dc39419cc616c5a7176d0ab05e4c84d577de5042bfd84cae093d",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "2-09-one-last-time": {
+    "url": "https://www.youtube.com/watch?v=mgoFrstrYNk",
+    "shots": {
+     "46": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 8.79
+     }
+    },
+    "tracklets": 8,
+    "positions": 176,
+    "identified": 26
+   },
+   "2-10-i-know-him": {
+    "url": "https://www.youtube.com/watch?v=FAgwoLO0S-4",
+    "shots": {
+     "0": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 8.81
+     }
+    },
+    "tracklets": 1,
+    "positions": 14,
+    "identified": 32
+   }
+  },
+  "stage4Positions": 190,
+  "counts": {
+   "samples": 190,
+   "withPosition": 190,
+   "offMap": 8,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 0,
+   "pool": 190,
+   "other": 0,
+   "byRule": {
+    "pool": 190
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [
+  {
+   "id": "edge-2-10-2-11",
+   "title": "Segment edge 2-10 -> 2-11: the King stays at (0, 3.41), facing the house, through the blackout",
+   "cite": [
+    "docs/superpowers/specs/2026-10-12-automatic-actors-design.md, RULING FO, \"Segment edges\"",
+    "tools/blocking/gen6.py, end of 2-10 (\"SPOT (coordinator, boundary relaxed for 2-10 -> 2-11)\")",
+    "tools/blocking/seg7_gen.py, 2-11 King (\"REVIEW (ruled boundary exception)\")"
+   ],
+   "checks": [
+    {
+     "check": "King George 2-10 94.4-97.0: (king) at (0.00, 3.41) on the deck",
+     "actor": "king",
+     "evidenceSamples": 0,
+     "placedByBlocking": 0,
+     "status": "not testable",
+     "why": "no evidence sample of her in the window"
+    }
+   ]
+  }
+ ],
+ "characters": {},
+ "pool": {
+  "samples": 190,
+  "withPosition": 182,
+  "tracklets": 9,
+  "formations": [
+   {
+    "from": 0.0,
+    "to": 3.0,
+    "clip": "2-09-one-last-time",
+    "at": 1.2,
+    "bodies": 8,
+    "tracklets": 8,
+    "deck": 8,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 3,
+     "C": 1,
+     "SL": 4
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.32,
+     2.99
+    ],
+    "extent": {
+     "x": [
+      -3.22,
+      4.05
+     ],
+     "z": [
+      1.8,
+      4.04
+     ]
+    },
+    "samples": 64,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 3,
+     "everyoneOn": 7
+    }
+   },
+   {
+    "from": 3.0,
+    "to": 6.0,
+    "clip": "2-09-one-last-time",
+    "at": 3.0,
+    "bodies": 8,
+    "tracklets": 8,
+    "deck": 8,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 3,
+     "C": 1,
+     "SL": 4
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.32,
+     2.99
+    ],
+    "extent": {
+     "x": [
+      -3.27,
+      3.98
+     ],
+     "z": [
+      1.88,
+      3.79
+     ]
+    },
+    "samples": 118,
+    "otherClips": {
+     "2-10-i-know-him": 1
+    },
+    "blocking": {
+     "ensembleOn": 0,
+     "everyoneOn": 1
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 1,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 2
+ }
+}

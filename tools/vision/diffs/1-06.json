@@ -1,0 +1,436 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-06",
+  "title": "Farmer Refuted",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-06.json",
+  "outSha256": "31a58c280aa11e4c482b275eccdd40234279a08c3fa8212a5b8fc8e2bb8b7688",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-06-farmer-refuted": {
+    "url": "https://www.youtube.com/watch?v=Oy5ybRNSkb8",
+    "shots": {
+     "0": {
+      "judged": "good",
+      "moving": null,
+      "rms": 6.56
+     },
+     "9": {
+      "judged": "good",
+      "moving": null,
+      "rms": 7.81
+     }
+    },
+    "tracklets": 34,
+    "positions": 500,
+    "identified": 129
+   },
+   "1-05-the-schuyler-sisters": {
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 11
+   },
+   "1-07-you-ll-be-back": {
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 1
+   }
+  },
+  "stage4Positions": 500,
+  "counts": {
+   "samples": 500,
+   "withPosition": 500,
+   "offMap": 0,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 174,
+   "pool": 326,
+   "other": 0,
+   "byRule": {
+    "blocking": 174,
+    "pool": 326
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "burr": {
+   "name": "Burr",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 49,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens1": {
+   "name": "Ensemble 1 (also The Bullet)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 2,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens2": {
+   "name": "Ensemble 2 (also Samuel Seabury)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 1,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens3": {
+   "name": "Ensemble 3 (also Charles Lee)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 40,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens5": {
+   "name": "Ensemble 5 (also George Eacker)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 20,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens7": {
+   "name": "Ensemble 7 (also Martha)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 62,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 326,
+  "withPosition": 326,
+  "tracklets": 26,
+  "formations": [
+   {
+    "from": 0.0,
+    "to": 3.0,
+    "clip": "1-06-farmer-refuted",
+    "at": 2.5,
+    "bodies": 5,
+    "tracklets": 7,
+    "deck": 5,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 3,
+     "C": 0,
+     "SL": 2
+    },
+    "shape": "an arc r 4.6 m about (0.3, 1.6)",
+    "centroid": [
+     -0.52,
+     -0.44
+    ],
+    "extent": {
+     "x": [
+      -4.47,
+      4.82
+     ],
+     "z": [
+      -2.21,
+      1.3
+     ]
+    },
+    "samples": 57,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 7,
+     "everyoneOn": 9
+    }
+   },
+   {
+    "from": 3.0,
+    "to": 6.0,
+    "clip": "1-06-farmer-refuted",
+    "at": 3.3,
+    "bodies": 6,
+    "tracklets": 8,
+    "deck": 6,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 3,
+     "C": 0,
+     "SL": 3
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.29,
+     -1.09
+    ],
+    "extent": {
+     "x": [
+      -4.33,
+      4.84
+     ],
+     "z": [
+      -2.92,
+      1.73
+     ]
+    },
+    "samples": 69,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 5,
+     "everyoneOn": 6
+    }
+   },
+   {
+    "from": 6.0,
+    "to": 9.0,
+    "clip": "1-06-farmer-refuted",
+    "at": 6.0,
+    "bodies": 4,
+    "tracklets": 5,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 0,
+     "SL": 2
+    },
+    "shape": "an arc r 4.0 m about (0.3, 2.9)",
+    "centroid": [
+     -0.09,
+     1.72
+    ],
+    "extent": {
+     "x": [
+      -3.99,
+      4.26
+     ],
+     "z": [
+      -0.39,
+      2.69
+     ]
+    },
+    "samples": 55,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 5,
+     "everyoneOn": 6
+    }
+   },
+   {
+    "from": 9.0,
+    "to": 12.0,
+    "clip": "1-06-farmer-refuted",
+    "at": 9.0,
+    "bodies": 3,
+    "tracklets": 3,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 0,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     1.01,
+     0.68
+    ],
+    "extent": {
+     "x": [
+      -3.49,
+      4.14
+     ],
+     "z": [
+      -1.85,
+      3.08
+     ]
+    },
+    "samples": 6,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 5,
+     "everyoneOn": 6
+    }
+   },
+   {
+    "from": 78.0,
+    "to": 81.0,
+    "clip": "1-06-farmer-refuted",
+    "at": 80.4,
+    "bodies": 8,
+    "tracklets": 8,
+    "deck": 8,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 1,
+     "SL": 5
+    },
+    "shape": "scattered",
+    "centroid": [
+     1.12,
+     0.35
+    ],
+    "extent": {
+     "x": [
+      -4.77,
+      4.79
+     ],
+     "z": [
+      -2.87,
+      3.09
+     ]
+    },
+    "samples": 24,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 5,
+     "everyoneOn": 10
+    }
+   },
+   {
+    "from": 81.0,
+    "to": 84.0,
+    "clip": "1-06-farmer-refuted",
+    "at": 81.0,
+    "bodies": 8,
+    "tracklets": 11,
+    "deck": 8,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 1,
+     "SL": 5
+    },
+    "shape": "scattered",
+    "centroid": [
+     1.12,
+     0.36
+    ],
+    "extent": {
+     "x": [
+      -4.8,
+      4.86
+     ],
+     "z": [
+      -1.89,
+      2.96
+     ]
+    },
+    "samples": 94,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 4,
+     "everyoneOn": 9
+    }
+   },
+   {
+    "from": 84.0,
+    "to": 87.0,
+    "clip": "1-06-farmer-refuted",
+    "at": 85.1,
+    "bodies": 3,
+    "tracklets": 8,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 2,
+    "sides": {
+     "SR": 2,
+     "C": 1,
+     "SL": 0
+    },
+    "shape": "scattered",
+    "centroid": [
+     -2.23,
+     -0.82
+    ],
+    "extent": {
+     "x": [
+      -4.1,
+      -0.8
+     ],
+     "z": [
+      -4.09,
+      1.58
+     ]
+    },
+    "samples": 21,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 4,
+     "everyoneOn": 9
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 7
+ }
+}
