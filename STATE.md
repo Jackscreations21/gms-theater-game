@@ -1,9 +1,39 @@
-# STATE — 2026-10-13, end of day (`actors` = PR #234: THE AUTOMATIC ACTORS, THE EDITOR, NOTES2 (RULING FU), THE DANCING (FV), REVIEW 3 (FW); IT NOW CARRIES `cue-blackouts` = PR #233: JACK'S CHECKLIST NOTES, THE SOUND TAP, THE READOUT — BOTH OPEN)
+# STATE — 2026-10-14 (`actors` = PR #234: THE AUTOMATIC ACTORS, THE EDITOR, NOTES2 (FU), THE DANCING (FV), REVIEW 3 (FW), AND NOW THE VIDEO CAPTURE'S STAGES 1–2 (FX–GE, PART); IT CARRIES `cue-blackouts` = PR #233 — BOTH OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-13 (end of day): DANCE ROUND 2 PAUSED, THE VIDEO-CAPTURE SPEC WRITTEN, JACK OUT OF CREDITS — PR #234
+## NEWEST — 2026-10-14: THE FOOTAGE IS IN, STAGE 1 RAN ON ALL OF IT, STAGE 2 WAITS ON A PYTHON 3.13 VENV — PR #234
+
+**Read this block first.** Jack downloaded the playlist (JDownloader; 34 of the 36 available clips — 1-09 and 2-13
+did not finish, 10 of 46 are unavailable on YouTube) and the spec's stages 1–2 were built the same morning in
+`tools/vision/run.py` (`tools/README.md` has the commands). Stage 2 has never run: **his Python is 3.15 and torch
+has no wheel for it** — he must install 3.13 and make the venv (`tools/vision/requirements.txt` says how). Stage 1
+ran from a scratch 3.15 venv (numpy, OpenCV, imageio-ffmpeg) over every clip, ~10 s each.
+
+- **Where the footage is:** copied from `Downloads\Asaki Takaya - Hamilfilm song clips …\` into
+  `C:\Users\jackf\Videos\hamilton-clips\`, and `video/` in this worktree is a directory junction to that folder (the
+  repo is in OneDrive; 1.5 GB must not sync). `video/INDEX.json` (committed) names the 34 files, their sha256,
+  duration, size, fps, the playlist's URL per clip, and which tracks are unavailable. A fresh clone needs the
+  junction remade (TRAPS).
+- **Stage 1 results** (`tools/vision/cache/<clip>/frames.json` + `shots.jpg`, git-ignored, 1.6 GB of frames):
+  33 of 34 clips aligned to the album by the envelope matcher — median residual ≤ 0.2 s on 30 of them, 0.26–0.77 s
+  on 1-16, 1-19 and 2-11 (dialogue-heavy, few anchors). **1-04 The Story of Tonight did not align** (every window
+  under 0.5, no two agree): it wants `cache/1-04-the-story-of-tonight/anchors.json` by hand. The film runs at the
+  album's tempo to within 20 ms on most numbers, drifts 1.5 s through Aaron Burr, Sir's rap and 10 s over One Last
+  Time (the film's is 25 s longer). Cuts: 3 to 95 shots a clip, judged by eye on Aaron Burr, Sir and Guns and Ships
+  (every detected cut real; the sheets are there for the rest). Each frame carries `tconf` (1 between anchors,
+  falling at the ends where the offset is extrapolated through applause).
+- **The alignment's own checks** (not a suite — stdlib has no numpy; run in the venv): a stretched slice of the
+  album envelope with applause in front recovers its time to ≤ 0.1 s on ten tracks at ±3 % tempo, and a slice of
+  every other track yields no anchor against My Shot's span (except Story of Tonight, which really starts inside
+  it). The recipe is in `tools/README.md`.
+- **Nothing in `src/`**; suites unaffected (not run: no Node on the PATH). `the-house.html` and `docs/ARTNET.md` untouched.
+- Dance round 2 is still PAUSED (below). Jack's five rulings still open.
+
+---
+
+## 2026-10-13 (end of day): DANCE ROUND 2 PAUSED, THE VIDEO-CAPTURE SPEC WRITTEN, JACK OUT OF CREDITS — PR #234
 
 **Read this block first.** `actors` on origin is **`ec5ea08`** (review 3 merged, RULING FW) plus this record commit.
 PR #234 holds everything: the actors, the editor (`blocking.html`, Simple mode = dots + music + drag records), the

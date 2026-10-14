@@ -555,15 +555,30 @@ it does not do yet, and what the ETC pack could still give:
 - **Licence:** ETC's pack is non-commercial; `assets/README.md` says so. The
   Broadway plot PDFs are not ETC's and are not to be committed.
 
-### Video blocking capture — SPECCED, NOT BUILT (2026-10-13, RULINGS FX–GE)
+### Video blocking capture — STAGES 1–2 BUILT, 3–5 NOT (2026-10-14, RULINGS FX–GE)
 
 Jack: *"body recognition on those videos to detect every body … figure out where everyone should be and when, then
 … figure out where the camera angle would be."* The spec is `docs/superpowers/specs/2026-10-13-video-blocking-capture-design.md`:
 a five-stage pipeline (frames + album-time alignment by the envelope matcher, 2D pose + tracking, per-shot camera
 by PnP from clicked set points in a Calibrate mode of `blocking.html`, floor projection, identity labelling) that
-writes per-character `(at, x, z)` tracks and a reviewable diff against the blocking — never an overwrite. Needs
-Jack to download the clips (git-ignored `video/`) and create a venv (`tools/vision/`), the one place in the repo
-with third-party Python. Dance from skeletons is timing-only in v1 (GD). Five PRs planned, after #234.
+writes per-character `(at, x, z)` tracks and a reviewable diff against the blocking — never an overwrite.
+
+**Built 2026-10-14 (`tools/vision/run.py`, see `tools/README.md`):** `index` (the clips in, named, `video/INDEX.json`),
+`frames` (stage 1: 5 fps frames, cuts, clip time → album `(track, at)` with a `tconf`), `sheet` (every cut as a pair
+of frames to judge by eye), `bodies` (stage 2: YOLO-pose + ByteTrack per shot — WRITTEN, NOT RUN: Jack's Python is
+3.15 and torch has no wheel for it; a 3.13 venv is his to make). Stage 1 ran on all 34 clips: 33 aligned (median
+residual ≤ 0.4 s), **1-04 The Story of Tonight did not** (a quiet close-harmony number; every window correlates
+under 0.5 and the windows disagree) — it needs `cache/1-04-the-story-of-tonight/anchors.json` by hand, two
+`[clipTime, "1-04:at"]` pairs from a scrub.
+
+**Not built:** stage 3 (the Calibrate mode, in-page PnP, `calib/`), stage 4 (floor projection, `out/`), stage 5
+(identities, `labels/`), `compare.py` (the diff), GD (dance timing). **Not had:** 10 of the playlist's 46 clips are
+unavailable on YouTube (1-01, 1-07, 1-11, 1-13, 1-20, 1-23, 2-02, 2-15, 2-22, 2-23 — other uploads to find), and
+1-09 A Winter's Ball and 2-13 Hurricane did not finish downloading. **Known soft spots:** a lead-in anchor can sit
+up to 1.5 s off (applause matched at the lowered local bar — it is bounded by the ±2 s slack and only at a clip's
+ends; `tconf` marks the ends); One Last Time's offset drifts 10 s over the clip (the film's version is 25 s longer)
+and the chain follows it at correlations of 0.25–0.33. The spec's open questions stay Jack's: the Tonys/Ham4Ham
+clips, who clicks the calibration, 5 vs 10 fps for the dance numbers.
 
 ### The blocking editor — what it does not do yet (2026-10-12, RULING FP built)
 

@@ -1806,3 +1806,25 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **The editor's whole-file export is a byte check.** A field the merge writes and the editor does not keep — `moves` here,
   props' `model` in FU — breaks "byte-identical when nothing is edited" silently, at the first actor or prop that has one.
   Check `EDITOR.fileText() === EDITOR.sourceText()` after any format change.
+
+## From the video capture round (2026-10-14)
+
+- **Python 3.15 has no torch, torchvision or onnxruntime wheel** (checked 2026-10-14: torch 2.14.1 stops at cp314,
+  onnxruntime 1.31 too). Jack's machine has 3.15 only; the `tools/vision/.venv` must be made with `py -3.13` (or
+  3.14) or stage 2 cannot import ultralytics. Stage 1 (numpy, OpenCV, imageio-ffmpeg) does install on 3.15.
+- **The repo lives in OneDrive, so `video/` would sync 1.5 GB of footage.** `video/` is a directory JUNCTION to
+  `C:\Users\jackf\Videos\hamilton-clips` (`cmd /c mklink /J`, no admin). Git sees a plain directory; the ignore
+  rules apply through it; `INDEX.json` and `README.md` inside are tracked. A fresh clone has no junction — make it
+  before importing, or the clips land in OneDrive.
+- **A `{**stats}` merge with a key that matches the data key overwrites the data.** `align.anchors` (the list)
+  was folded with `anchor_stats()` whose count was also called `anchors`; the list became an int and the next read
+  crashed on it. Counts are `count` now. Name a summary field after what it summarises, never after the thing.
+- **A single 10 s envelope window hits 0.45 on the WRONG number.** The first global search of the alignment
+  accepted it and the whole chain followed (28 s off on a synthetic Guns and Ships). A global find must stand clear
+  of its runner-up AND agree with a neighbouring window correlated on its own; a chain only ever moves ±2 s a step.
+- **Python's `open(p, 'w')` on Windows writes CRLF — again.** The in-place patches to `run.py` through
+  `open(p, 'w').write(s)` turned the whole file CRLF; `file` shows it. Normalise before committing (`sed -i 's/\r$//'`)
+  and write committed files with `newline='\n'`.
+- **The JDownloader playlist grab names files by title and fetches the audio separately.** `Title - Hamilton
+  (Original Cast 2016 - Live) [HD] (1080p_24fps_H264-128kbit_AAC).mp4` plus a `.m4a`/`.opus` beside it; the mp4 is
+  muxed with its audio. `?` in a title becomes `¿`. The `index --import --rename` route places them by title words.

@@ -20,3 +20,13 @@ assets/audio/*
 # the blocking generators' output (tools/blocking/*.py write it; tools/blocking-merge.py reads it) and their bytecode
 tools/blocking/segments/
 __pycache__/
+
+# Video blocking capture (docs/superpowers/specs/2026-10-13-video-blocking-capture-design.md, RULING FX):
+# the footage is Jack's, downloaded by him, NEVER committed; only video/INDEX.json (what the files are) is.
+# tools/vision/cache/ holds decoded frames and per-frame detections, regenerable from the footage; the venv is his.
+video/*
+!video/INDEX.json
+!video/README.md
+tools/vision/cache/
+tools/vision/.venv/
+tools/vision/*.pt
