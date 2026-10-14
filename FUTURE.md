@@ -555,7 +555,14 @@ it does not do yet, and what the ETC pack could still give:
 - **Licence:** ETC's pack is non-commercial; `assets/README.md` says so. The
   Broadway plot PDFs are not ETC's and are not to be committed.
 
-### Video blocking capture — STAGES 1–2 BUILT, 3–5 NOT (2026-10-14, RULINGS FX–GE)
+### Video blocking capture — STAGES 1–5 AND THE CALIBRATE UI BUILT; THE CAMERAS ONLY HALF WON (2026-10-14, second session, RULINGS FX–GE)
+
+**2026-10-14 (second session):** the agents' round ran — nine calibration agents, ~55 kept solves of ~190 wide shots,
+stage 4 (`floor.py`), stage 5 (`ident.py`), the Calibrate clicking UI in `blocking.html`, the stage 1 fixes. What is
+left is `docs/guide/VISION.md` §7: finish the solver round (prior + body-height cue, `resolve all`, census), fix
+`setpoints.json` (rail height, the stairs per number, lip-c), `bodies` at imgsz 1280, the missed-cut round,
+Jack's labels, then `compare.py` (GC) and GD. The text below is the state before that round.
+
 
 Jack: *"body recognition on those videos to detect every body … figure out where everyone should be and when, then
 … figure out where the camera angle would be."* The spec is `docs/superpowers/specs/2026-10-13-video-blocking-capture-design.md`:

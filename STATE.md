@@ -3,6 +3,34 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
+## NEWEST — 2026-10-14 (second session): THE AGENTS' ROUND RAN — STAGES 4–5, THE CALIBRATE UI, ~55 CAMERAS OF ~190 WIDE SHOTS, THE SOLVER REWRITTEN UNDER THEM — PR #234
+
+**Read this block first, then `docs/guide/VISION.md` §7** (the manual: findings and the ordered list). Jack: *"finish
+everything using agents"*, then *"everything has to be at a point it can pause by 11"*. Fourteen agents ran in this
+worktree (`actors`). **Commit `62f7ddf`**: stage 4 `tools/vision/floor.py` (`run.py floor`/`floor-check`), stage 5
+`tools/vision/ident.py` (`run.py ident`), the Calibrate mode in `blocking.html` (Advanced; `window.CALIB`; its JS PnP
+matches `calib.py` to 1e-7), stage 1's wrong-beat drop + tempo-matched refine + tempo prior (every clip re-aligned, no
+shot id changed; 1-04 aligns, its hand `anchors.json` force-added), `tools/vision/aligncheck.py` (one honest failure
+left: My Shot ×1.03 coverage), `AGENT-COMMON.md`. **Uncommitted / in flight at the pause:** the solver agent's
+`calib.py` (a physical prior + the body-height depth cue + `resolve`/`census` commands; it was told to soften the
+bounds — y ≥ 0, z ≥ 3.5, fov ≤ 100 — because pit and on-stage cameras are real) and its `resolve all` over the 43
+`tools/vision/calib/<clip>.json` files the nine agents wrote; `tools/vision/out/` (4 tracks, STALE against the
+re-aligned `at`s until `floor` + `ident` re-run). If the solver finished: check `git status`, read its report in
+HANDOFF if recorded, else run `$P -I tools/vision/run.py calib all resolve` yourself, then `floor` every clip, `ident`
+every track, commit `calib.py` + `calib/` + `out/`.
+
+- **The cameras:** the brief's 45 m / 24° reference was a wrong solve (misidentified posts); G&S s16 is a pit camera
+  at deck height, 85–90°. The real families and the degeneracy (lens vs distance from one-plane points; the body
+  cue fixes it) are in VISION.md §7. Set points to fix from the solver's census: rail height (+10–15 %), both stairs
+  (and they move between numbers), lip-c (the lip bows ~0.5–1 m), the SR strip; add the rolling staircases and the
+  light rig. Missed cuts 15–20 % — the structure test is written down, not applied (it re-keys everything).
+- **Stage 2:** imgsz 1280 finds 2–3× the bodies in wide shots at ~16 fps; not re-run (the spawning session's call).
+- **Stage 5 has no labels yet** — every identity is `blocking` (conf 0.3, `fromBlocking`) or `ens?`; not evidence.
+- **Not started:** `compare.py` (GC), GD dance timing, the UI solver carrying the prior.
+- Nothing in `src/`; suites unaffected (not run). Dance round 2 still PAUSED; Jack's five rulings still open.
+
+---
+
 ## NEWEST — 2026-10-14: THE FOOTAGE IS IN, STAGE 1 RAN ON ALL OF IT, STAGE 2 WAITS ON A PYTHON 3.13 VENV — PR #234
 
 **Read this block first.** Jack downloaded the playlist (JDownloader; 34 of the 36 available clips — 1-09 and 2-13

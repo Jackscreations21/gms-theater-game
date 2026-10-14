@@ -328,40 +328,56 @@ Cuts were judged by eye on Aaron Burr, Sir and Guns and Ships: every detected cu
 unmeasured (a missed cut merges two shots — the tracker then bridges a cut it should not, and a camera solve fits
 only half the shot).
 
-## 7. What is left, in the order it should go
+## 7. Where it stands after the agents' round (2026-10-14, second session), and what is left
 
-1. **The pose batch is done** (45 `bodies.json`; if the cache is ever lost, the §3 loop remakes it in ~25 min).
-2. **Spawn the calibration agents** (§5). Commit `calib/*.json`.
-3. **Stage 4 — floor positions (GA/FY-4)**, not built: for each tracklet in a calibrated shot, the foot point = the
-   mean of the two ankles when both have conf > 0.3, else the lower hip minus a standard 0.85 m leg (in pixels, scale
-   by the body's box height ≈ 1.7 m); back-project the pixel through the camera as a ray and intersect the deck plane
-   (y 0.045); **upper level**: if the deck intersection lands beyond the gallery's front rail in the image while the
-   ankle pixel is above the rail line, intersect the y 2.743 plane instead; stairs: deck plane and `level: "stair"`.
-   Write `tools/vision/out/<track>.json` `positions`: per tracklet, per frame, `(at, x, z, level, conf)` with
-   `conf` = tconf × the solve's verdict (good 1, fair 0.6) × the keypoint confidence. Uncalibrated (tight) shots
-   yield no position but keep their tracklets for stage 5. `tools/hamilton-floor.json` (the measured floor grid,
-   0.2 m cells, `deck` and `top` heights) is the source for "is there a gallery here".
-4. **Stage 5 — identities (GB)**: `labels/<clip>.json` (tracklet → cast id, a human label once per shot — the
-   Calibrate UI would offer it: click a body, pick a name); continuity across cuts (start within 0.5 s and 0.6 m of a
-   labelled tracklet's end, conf × 0.8); a torso colour histogram matched within the clip (principals' costumes are
-   distinct; the parchment ensemble only among themselves); last resort the current blocking's nearest character at
-   that time, conf 0.3, flagged `fromBlocking`. Unresolvable ensemble bodies pool as `ens?`. Merge all clips of a
-   track into per-character tracks under `characters` in `out/<track>.json`, each sample carrying clip/shot/rule.
-   The cast ids and colours are in `tools/hamilton-cast.json` and `docs/hamilton-blocking-format.md`.
-5. **`compare.py` (GC)**: `out/<track>.json` vs `assets/hamilton-blocking.json` → `diffs/<track>.md` + `.json`:
-   disagreements > 0.75 m for > 2 s, on/off-stage disagreements, level disagreements, and proposed waypoints
-   (Douglas–Peucker at 0.3 m, ≤ one per 3 s, snapped to the floor map) each naming its evidence; proposals under
-   conf 0.5 marked "do not apply without a look"; the RULED items (boundary carry-overs, the Cabinet Battle sides,
-   Burr's balcony, the Non-Stop gallery, the duel sides) reported as "footage disagrees with ruling", never proposed.
-   `--apply --min-conf 0.7` writes a `# VISION:` section into a NEW generator section for a human to accept.
-6. **GD — dance timing** from the skeletons against `assets/hamilton-beats.json` (per character per bar a motion
-   energy and arm/leg split; DTW against the move library's joint-angle sequences, proposals above 0.7).
-7. **The Calibrate clicking UI** in `blocking.html` (GA) — when the agents' precision is not enough.
-8. **Loose ends**: 1-04's anchors by hand; a committed script for the synthetic alignment check; the missed-cut
-   rate; `setpoints.json`'s rail height and post positions verified against a good solve; the clips still wanted
-   (1-09, 2-13 — on the playlist, did not download; 2-02, 2-15, 2-22, 2-23 — unavailable there; a full uncut 1-01).
-9. **Jack's open questions** (the spec's): the Tonys/Ham4Ham clips (a different stage — only relative positions
-   transfer); who clicks; 5 vs 10 fps for the dance numbers (everything so far is 5).
+**The round ran** (the §5 plan, nine Opus agents in parallel, plus builders): 43 `calib/<clip>.json` files, about 190 wide
+shots looked at, **~55 kept solves** (good/fair, many `moving`), the rest `"skipped": "<why>"` with the reason and, for
+merged shots, the frame of the missed cut in a `note`. Stage 4 and stage 5 are BUILT (§3, §4); the Calibrate clicking
+UI is BUILT (`blocking.html` Advanced → Calibrate, `window.CALIB`); the stage 1 fixes landed and every clip was
+re-aligned without a shot id changing. Commit `62f7ddf` holds the code; the calib JSONs, `calib.py` with its prior
+and `out/` follow once the solver agent's `resolve all` finishes (see STATE.md).
+
+**What the agents found, which changes the method:**
+- **The brief's reference camera was wrong.** Guns and Ships shot 16 is a front-stalls camera at about deck height
+  with a wide lens (≈ (0, 0.2, 9), 85–90°), not 45 m back at 24°: the old solve came from misidentified posts, and
+  `HOUSE_CAMERAS` in `calib.py` must lose that entry. The real families: a fixed centre-stalls camera ≈ (0, 2–2.6,
+  14–19 m), fov 32–45° (most house wides, found independently by four agents); a high close camera ≈ (0, 4–5, 14–15),
+  50–55°; a pit/front-row camera ≈ (0, 0.1–0.4, 9–13.5), 67–94°; on-stage cameras near the SR lip in We Know.
+- **Lens and distance trade off freely when the points sit in one plane** (rail + gallery edge + lip-c), so a low rms
+  from 5–7 points means nothing; several first solves put the camera on the deck with a 90° lens or 60 m back at 11°.
+  The fix is the solver's physical prior plus the **body-height cue** (the shot's bodies' shoulder height through the
+  candidate camera, ≈ 1.4 m), which is what pinned every shot that was pinned. Points spread across the full width at
+  deck level (back-wall window frames, gallery ends, the ring arcs) are what fix depth without it.
+- **Set points that are off** (every agent's residual pattern agrees; the solver's `census` command measures it):
+  the rail-top-to-gallery-floor gap in the footage is 1.1–1.2× the model's 0.86 m (rail higher, or the fascia read
+  as the floor); `stair-sl-*` (foot ≈ 1 m further stage-left, run ≈ 1.3 m not 2.3) and `stair-sr-*` (10–25 px,
+  maybe 0.5–1 m) — and **the stair units move between numbers**, so stair points are unreliable across songs; the
+  lip bows downstage at centre by roughly 0.5–1 m (`lip-c` too far upstage); `rail-srstrip-ds`, `bal-sr-ds` 10–17 px;
+  the side galleries look wider than placed. Missing from the set points and often the only lit things in a dark
+  wide: the turntable's rolling staircases (props) and the overhead light rig.
+- **Missed cuts are common** (15–20 % of real cuts; lighting changes split shots too): a merged shot defeats the
+  tracker and the solve. The structure test that separates them (NCC of the normalised 48×27 gray < 0.4 with
+  hist > 0.12) is in the loose-ends report, NOT applied — changing cuts re-keys every shot id, tracklet and calib.
+- **Stage 2 at imgsz 640 misses most bodies in the widest shots** (1–2 of ~20 in G&S s16); 1280 (native) finds
+  2–3× as many at ~16 fps; the nano model still misses the galleries. A larger pose model is the next step.
+- The homography trick: read ONE frame of a camera set-up carefully and carry its points to sibling shots by SIFT
+  homography or a measured similarity (1-08, 2-09, 1-10 were done this way; the `note` says so).
+
+**What is left, in order:**
+1. **Finish the solver round:** `calib.py`'s prior softened (y ≥ 0, z ≥ 3.5, fov ≤ 100, the body cue decides),
+   `resolve all`, drop the 45 m entry from `HOUSE_CAMERAS`, run the `census`, then `floor` on every clip and `ident`
+   on every track (stage 1 re-aligned the `at`s, so every out file is stale until then). Commit calib + out.
+2. **Fix `setpoints.json`** from the census (rail height, the stairs per number or dropped, lip-c, the SR strip),
+   add the rolling staircases and the light rig as points, re-solve.
+3. **Re-run `bodies` at `--imgsz 1280`** on every clip (~80 min), or a larger pose model; then `floor` + `ident`.
+4. **The missed cuts:** apply the structure test in a new round that re-keys everything (frames → bodies → calib
+   shot ids re-mapped by frame range — the calib entries carry `frame`, so a remap is mechanical).
+5. **Jack labels a few numbers in the Calibrate UI** (bodies → cast ids) so rules 1–3 of stage 5 have something to
+   work from; until then every identity is `blocking` or `ens?` and is not evidence.
+6. **`compare.py` (GC)** and **GD dance timing** — not started.
+7. The Calibrate UI's JS solver must carry the same prior and body cue as `calib.py` once those settle.
+8. `aligncheck.py`'s one failing case (My Shot ×1.03, coverage 47 %): a tempo-aware walk-back.
+9. The Tonys/Ham4Ham question, 5 vs 10 fps, the still-wanted clips.
 
 ## 8. Traps specific to this (the full list is in TRAPS.md)
 

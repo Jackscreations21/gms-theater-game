@@ -1828,3 +1828,19 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **The JDownloader playlist grab names files by title and fetches the audio separately.** `Title - Hamilton
   (Original Cast 2016 - Live) [HD] (1080p_24fps_H264-128kbit_AAC).mp4` plus a `.m4a`/`.opus` beside it; the mp4 is
   muxed with its audio. `?` in a title becomes `¿`. The `index --import --rename` route places them by title words.
+- **A low rms from five or six set points in one plane proves nothing about the camera.** Rail + gallery edge + the
+  centre lip let the lens and the distance trade off freely: the same frame solved at 9 m / 90° and 60 m / 11°, both
+  under 6 px. Only a physical prior plus the bodies' height through the candidate camera pins it; points spread
+  across the width at deck level do it without the cue. (2026-10-14, the calibration round.)
+- **The "known good" reference was itself a wrong solve.** AGENT-CALIB.md told nine agents Guns and Ships s16 was 45 m
+  back at 24°, and the solver's `HOUSE_CAMERAS` carried it; it was misidentified posts. A reference an agent is told
+  to trust must have been checked by a second method (the bodies' height, a sibling shot) first.
+- **"A camera on the stage means the points are wrong" is false for a film shoot.** We Know has on-stage cameras at
+  the SR lip and several numbers a pit camera at deck height; a hard bound on camera height rejected real cameras.
+- **Re-aligning stage 1 silently stales stages 4–5.** `frames --no-decode` rewrites every frame's `at`; `out/` keeps
+  the old ones. `floor` then `ident` must follow any re-alignment (ident now warns when it has to match by nearest frame).
+- **Agents sharing one scratchpad overwrite each other's helper scripts by name** (`crop.py`, `sheet.py`, three
+  times). Give each agent a subfolder in the brief.
+- **The stair units move between numbers.** Set points for them hold within a song at best; across songs they pulled
+  solves off by 18–200 px.
+
