@@ -143,6 +143,8 @@ body.calib #app { grid-template-rows: auto 1fr; }
 #cal_tl .tl { display: grid; grid-template-columns: 1fr 150px; gap: 4px; align-items: center; padding: 1px 2px; cursor: pointer; }
 #cal_tl .tl.sel { background: #3b3320; }
 #cal_res { font-size: 12px; margin: 4px 0; }
+#cal_res .calprior { margin-top: 3px; line-height: 1.45; }
+#cal_res .caldeg { color: #ff5a4e; }
 #cal_json { font: 11px ui-monospace, Consolas, monospace; }
 @media (max-width: 820px) { #calib { grid-template-columns: 1fr; } #cal_view { height: 60vh; } }
 @media (max-width: 1100px) { #main { grid-template-columns: 200px 1fr 300px; } }
@@ -2523,10 +2525,16 @@ window.EDITOR = {
 // tools/vision/calib.py's solve_pnp in JS, conventions identical: K = [[f,0,w/2],[0,f,h/2],[0,0,1]] with f = (w/2)/tan(fov/2)
 // (fov horizontal); R, t map a set point to the camera (x_c = R X + t; +z of the camera is where it looks, +y is down the image);
 // camera = −Rᵀt; look = Rᵀ(0,0,1) (R's third row); rvec = Rodrigues(R). The lens is unknown: the horizontal fov is grid-searched
-// 12°–100° in 1° steps, at each a pose is found (starts: a DLT of P when ≥ 6 points are not coplanar, a plane homography when
-// ≥ 4 share a height, look-at guesses from the house, the previous fov's pose) and refined by Levenberg–Marquardt on the
-// reprojection error (rotation as a small-angle vector left-multiplied); the least RMS wins, then a 0.1° search ±1° around it.
-// Self-contained: paste this block into any console to run CALIBMATH.solvePnP(obj, img, 1280, 720).
+// 12°–100° in 1° steps, and at each the camera is solved twice. FREE (what the points alone want): a pose from every start (a DLT
+// of P when ≥ 6 points are not coplanar, a plane homography when ≥ 4 share a height, look-at guesses from the house, the previous
+// fov's pose) refined by Levenberg–Marquardt on the reprojection error (rotation as a small-angle vector left-multiplied).
+// BOUNDED (calib.py's _bounded): least squares in (rotation, camera centre) with the centre held in calib.py's physical PRIOR
+// box (y 0–14, z ≥ 3.5, |x| ≤ 14) by a projected LM, the turntable, the 60 m distance and the points' being in front as the same
+// stiff penalties. Which bounded candidate wins is calib.py's solve_pnp exactly: the body-height cue (the shot's bodies' implied
+// shoulder height vs 1.40 m, within 5 px of the best rms, dropped when uninformative or implausible), else — when the window's
+// camera distances span > 25 % — the one nearest a known HOUSE_CAMERAS camera, else the least rms; then a 0.1° search ±0.9° by
+// the same score. `degenerate`, `mPerPx`, `cond`, `window`, `choice`, `depthCue(Note)`, `bodyHeightM`, `bodies`, `free` as there.
+// Self-contained: paste this block into any console to run CALIBMATH.solvePnP(obj, img, 1280, 720, null, null, { bodies }).
 (function () {
 'use strict';
 const I3 = () => [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
@@ -2736,26 +2744,228 @@ function poseAt(fov, obj, img, w, h, warm) {   // the best pose at one fov from 
   return Number.isFinite(q.rms) ? { R: best.R, t: best.t, f, fov, rms: q.rms } : null;
 }
 const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100, r3 = v => Math.round(v * 1000) / 1000;
-function solvePnP(obj, img, w = 1280, h = 720, fovLo = 12, fovHi = 100) {
+
+// ---------------------------------------------------------------- the physical prior and the body-height cue: calib.py's constants (keep them equal)
+const PRIOR = { zMin: 3.5, yMin: 0.0, yMax: 14.0, xAbs: 14.0, ringR: 3.82, dMax: 60.0, fovMin: 12.0, fovMax: 100.0 };
+const FLAT_PX = 1.5, FLAT_FOV = 30.0, CENTRE = [0.0, 0.045, 0.95], TOL_PX = 1.5, TOL_FRAC = 0.15, POOR_SPAN = 0.25;
+const HOUSE_CAMERAS = [[0.0, 2.1, 18.0, 33.5], [0.0, 4.5, 14.5, 52.5], [-5.0, 2.0, 45.0, 24.0], [0.0, 0.3, 9.0, 88.0], [-0.1, 0.1, 13.5, 67.0],
+  [-2.6, 1.7, 4.9, 70.0]];                  // [x, y, z, fov]: the tie-break of a poorly conditioned solve with no body cue
+const SHOULDER_M = 1.40, NOSE_OVER_SHOULDER_M = 0.22, LAMBDA = 5.0 / 0.3, CUE_CAP_PX = 5.0, MIN_BODIES = 3, DECK_Y = 0.045;
+const LOOK_STARTS = [[0.0, 2.0, 14.0], [0.0, 3.0, 25.0], [0.0, 3.0, 40.0], [0.0, 5.0, 55.0], [0.0, 0.4, 9.0], [-2.5, 1.2, 5.5], [2.5, 1.2, 5.5]];
+const BLO = [-PRIOR.xAbs, PRIOR.yMin, PRIOR.zMin], BHI = [PRIOR.xAbs, PRIOR.yMax, CENTRE[2] + PRIOR.dMax];
+const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]), distC = C => dist3(C, CENTRE);
+const camOf = (R, t) => mv3(tr3(R), t).map(v => -v), tOf = (R, C) => mv3(R, C).map(v => -v);
+const minBy = (a, k) => { let b = null, bk = Infinity; for (const x of a) { const v = k(x); if (v < bk) { bk = v; b = x; } } return b; };   // the first least, as Python's min
+const median = a => { const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+const sd = a => { const m = a.reduce((s, v) => s + v, 0) / a.length; return Math.sqrt(a.reduce((s, v) => s + (v - m) * (v - m), 0) / a.length); };   // numpy's std (ddof 0)
+function violations(C, fov) {             // the prior's bounds this camera breaks -> ['y>=0', ...] (empty: inside them all)
+  const [x, y, z] = C, d = distC(C), e = 1e-3, out = [];
+  if (z < PRIOR.zMin - e) out.push('z>=' + PRIOR.zMin);
+  if (y < PRIOR.yMin - e) out.push('y>=' + PRIOR.yMin);
+  if (y > PRIOR.yMax + e) out.push('y<=' + PRIOR.yMax);
+  if (Math.abs(x) > PRIOR.xAbs + e) out.push('|x|<=' + PRIOR.xAbs);
+  if (Math.hypot(x, z - CENTRE[2]) < PRIOR.ringR - e) out.push('off the turntable');
+  if (d > PRIOR.dMax + e) out.push('dist<=' + PRIOR.dMax);
+  if (fov != null && fov < PRIOR.fovMin - 0.05) out.push('fov>=' + PRIOR.fovMin);
+  if (fov != null && fov > PRIOR.fovMax + 0.05) out.push('fov<=' + PRIOR.fovMax);
+  return out;
+}
+function errC(R, C, f, cx, cy, obj, img, out) {   // calib.py's _bounded residuals for camera centre C: the pixel errors [du0, dv0, …] (2n),
+  const n = obj.length; let zmin = Infinity;      // the turntable and distance penalties (2), each point's in-front penalty (n) -> the least depth
+  for (let i = 0; i < n; i++) {
+    const a = obj[i][0] - C[0], b = obj[i][1] - C[1], c = obj[i][2] - C[2];
+    const x = R[0][0] * a + R[0][1] * b + R[0][2] * c, y = R[1][0] * a + R[1][1] * b + R[1][2] * c, z = R[2][0] * a + R[2][1] * b + R[2][2] * c;
+    const zz = Math.abs(z) < 1e-9 ? 1e-9 : z;
+    out[2 * i] = f * x / zz + cx - img[i][0]; out[2 * i + 1] = f * y / zz + cy - img[i][1];
+    out[2 * n + 2 + i] = 100 * Math.max(0, 0.5 - z);
+    if (z < zmin) zmin = z;
+  }
+  out[2 * n] = 100 * Math.max(0, PRIOR.ringR - Math.hypot(C[0], C[2] - CENTRE[2]));
+  out[2 * n + 1] = 100 * Math.max(0, distC(C) - PRIOR.dMax);
+  return zmin;
+}
+function boundedLM(R0, C0, f, cx, cy, obj, img, iters = 300) {   // LM in (rotation, centre), the centre projected into the PRIOR box
+  const n = obj.length, m = 3 * n + 2, r = new Float64Array(m), rp = new Float64Array(m), rm = new Float64Array(m);
+  let R = R0, C = C0.map((v, k) => Math.min(BHI[k] - 1e-3, Math.max(BLO[k] + 1e-3, v)));      // calib.py clips the start inside
+  const cost = (R, C, buf) => { errC(R, C, f, cx, cy, obj, img, buf); let s = 0; for (let i = 0; i < m; i++) s += buf[i] * buf[i]; return s; };
+  const step = (R, C, d) => [mul3(expR([d[0], d[1], d[2]]), R), [0, 1, 2].map(k => Math.min(BHI[k], Math.max(BLO[k], C[k] + d[3 + k])))];
+  let c = cost(R, C, r), lam = 1e-3;
+  for (let it = 0; it < iters; it++) {
+    const J = [];
+    for (let k = 0; k < 6; k++) {                 // central differences (unclamped: the residuals are defined past the box)
+      const h = k < 3 ? 1e-7 : 1e-6 * (1 + Math.abs(C[k - 3]));
+      const at = s => k < 3 ? [mul3(expR([k === 0 ? s : 0, k === 1 ? s : 0, k === 2 ? s : 0]), R), C] : [R, C.map((v, j) => j === k - 3 ? v + s : v)];
+      let [Ra, Ca] = at(h); errC(Ra, Ca, f, cx, cy, obj, img, rp);
+      [Ra, Ca] = at(-h); errC(Ra, Ca, f, cx, cy, obj, img, rm);
+      const col = new Float64Array(m); for (let i = 0; i < m; i++) col[i] = (rp[i] - rm[i]) / (2 * h); J.push(col);
+    }
+    errC(R, C, f, cx, cy, obj, img, r);
+    const JtJ = [0, 1, 2, 3, 4, 5].map(a => [0, 1, 2, 3, 4, 5].map(b => { let s = 0; for (let i = 0; i < m; i++) s += J[a][i] * J[b][i]; return s; }));
+    const g = [0, 1, 2, 3, 4, 5].map(a => { let s = 0; for (let i = 0; i < m; i++) s += J[a][i] * r[i]; return s; });
+    // the active set: a centre coordinate on a face of the box whose descent direction points out of it is held there
+    const free = [0, 1, 2, 3, 4, 5].filter(k => k < 3 || !((C[k - 3] <= BLO[k - 3] + 1e-9 && g[k] > 0) || (C[k - 3] >= BHI[k - 3] - 1e-9 && g[k] < 0)));
+    let accepted = false;
+    for (let tries = 0; tries < 14 && !accepted; tries++) {
+      const A = free.map(i => free.map(j => i === j ? JtJ[i][j] * (1 + lam) + 1e-12 : JtJ[i][j]));
+      const x = solveLin(A, free.map(i => -g[i])); if (!x) { lam *= 10; continue; }
+      const d = [0, 0, 0, 0, 0, 0]; free.forEach((k, q) => { d[k] = x[q]; });
+      const [Rn, Cn] = step(R, C, d), cn = cost(Rn, Cn, rp);
+      if (cn < c) {
+        const gain = c - cn; R = Rn; C = Cn; c = cn; lam = Math.max(lam / 10, 1e-12); accepted = true;
+        if (gain < 1e-12 * (c + 1e-12)) return { R, C, cost: c };
+      } else lam *= 10;
+    }
+    if (!accepted) break;
+  }
+  return { R, C, cost: c };
+}
+function boundedAt(obj, img, f, cx, cy, starts) {   // calib.py's _bounded: the best start -> { rms, R, C } (+1e3 outside the prior) or null
+  const n = obj.length, buf = new Float64Array(3 * n + 2); let best = null;
+  for (const s of starts) {
+    const q = boundedLM(s.R, s.C, f, cx, cy, obj, img);
+    if (!(errC(q.R, q.C, f, cx, cy, obj, img, buf) > 0)) continue;            // a point behind the camera
+    let ss = 0; for (let i = 0; i < 2 * n; i++) ss += buf[i] * buf[i];
+    let rms = Math.sqrt(ss / n); if (violations(q.C).length) rms += 1e3;
+    if (!best || rms < best.rms) best = { rms, R: q.R, C: q.C };
+  }
+  return best;
+}
+function bodySamples(bodies, fi, first, last, k = 3) {   // calib.py's body_samples: frames fi±k (inside the shot), both ankles and both shoulders (or the nose) over 0.3
+  if (!bodies || !Array.isArray(bodies.frames)) return [];   // -> [[foot [u, v], top [u, v], top's height over the shoulders m]]
+  let lo = fi - k, hi = fi + k;
+  if (first != null) lo = Math.max(lo, first);
+  if (last != null) hi = Math.min(hi, last);
+  const out = [];
+  for (const f of bodies.frames) {
+    if (!(lo <= f.i && f.i <= hi)) continue;
+    for (const b of f.bodies || []) {
+      const kp = b.kp; if (!kp || kp.length < 17) continue;
+      if (kp[15][2] <= 0.3 || kp[16][2] <= 0.3) continue;
+      const foot = [(kp[15][0] + kp[16][0]) / 2, (kp[15][1] + kp[16][1]) / 2];
+      if (kp[5][2] > 0.3 && kp[6][2] > 0.3) out.push([foot, [(kp[5][0] + kp[6][0]) / 2, (kp[5][1] + kp[6][1]) / 2], 0.0]);
+      else if (kp[0][2] > 0.3) out.push([foot, [kp[0][0], kp[0][1]], NOSE_OVER_SHOULDER_M]);
+    }
+  }
+  return out;
+}
+function bodyHeight(samples, R, C, f, cx, cy) {   // calib.py's body_height: the median implied shoulder height -> [m | null, count]
+  const Rt = tr3(R), hs = [];
+  for (const [foot, top, off] of samples || []) {
+    const d = mv3(Rt, [(foot[0] - cx) / f, (foot[1] - cy) / f, 1]);
+    if (d[1] >= -1e-9) continue;
+    const s = (DECK_Y - C[1]) / d[1], X = [0, 1, 2].map(k => C[k] + s * d[k]);
+    if (!(Math.abs(X[0]) <= 7.0 && X[2] >= -4.3 && X[2] <= 5.5)) continue;     // the foot off the deck
+    let e = mv3(Rt, [(top[0] - cx) / f, (top[1] - cy) / f, 1]); const en = norm(e); e = e.map(v => v / en);
+    const w0 = [X[0] - C[0], X[1] - C[1], X[2] - C[2]], b = e[1], dd = e[0] * w0[0] + e[1] * w0[1] + e[2] * w0[2], den = 1 - b * b;
+    if (den < 1e-9) continue;
+    const t = (b * dd - w0[1]) / den;           // the vertical through X and the top's ray: closest approach
+    hs.push(X[1] + t - DECK_Y - off);
+  }
+  return hs.length ? [median(hs), hs.length] : [null, 0];
+}
+function mPerPx(sol) {                      // calib.py's m_per_px: metres of deck one pixel down the frame moves the set centre's floor point
+  const K = sol.K, R = sol.R, t = sol.t, C = camOf(R, t);
+  const pc = mv3(K, mv3(R, CENTRE).map((v, i) => v + t[i]));
+  if (pc[2] <= 0) return null;
+  const u = pc[0] / pc[2], v = pc[1] / pc[2], Ki = inv3(K), Rt = tr3(R), out = [];
+  for (const vv of [v, v + 1]) {
+    const d = mv3(Rt, mv3(Ki, [u, vv, 1]));
+    if (Math.abs(d[1]) < 1e-9) return null;
+    const s = (CENTRE[1] - C[1]) / d[1]; if (s <= 0) return null;
+    out.push([0, 1, 2].map(k => C[k] + s * d[k]));
+  }
+  return Math.round(dist3(out[1], out[0]) * 1e4) / 1e4;
+}
+function conditioning(obj, img, R, C, fov, w, h) {   // calib.py's conditioning: the cloud's spread and the distance's / lens's 1σ per px
+  const n = obj.length, mu = [0, 1, 2].map(k => obj.reduce((s, X) => s + X[k], 0) / n);
+  const S = [0, 1, 2].map(i => [0, 1, 2].map(j => obj.reduce((s, X) => s + (X[i] - mu[i]) * (X[j] - mu[j]), 0)));
+  const sv = jacobiEig(S).vals.map(v => Math.sqrt(Math.max(0, v)) / Math.sqrt(n)).sort((a, b) => b - a);
+  const look = R[2], depth = obj.map(X => (X[0] - C[0]) * look[0] + (X[1] - C[1]) * look[1] + (X[2] - C[2]) * look[2]);
+  const buf = new Float64Array(3 * n + 2), res = p => { errC(mul3(expR([p[0], p[1], p[2]]), R), [C[0] + p[3], C[1] + p[4], C[2] + p[5]], focal(fov + p[6], w), w / 2, h / 2, obj, img, buf); return Array.from(buf.subarray(0, 2 * n)); };
+  const steps = [1e-4, 1e-4, 1e-4, 1e-3, 1e-3, 1e-3, 1e-3], J = [];   // columns; the rotation as a left-multiplied small angle (the C/fov block of the covariance does not depend on it)
+  for (let k = 0; k < 7; k++) { const dp = [0, 0, 0, 0, 0, 0, 0]; dp[k] = steps[k]; const a = res(dp); dp[k] = -steps[k]; const b = res(dp); J.push(a.map((v, i) => (v - b[i]) / (2 * steps[k]))); }
+  const JtJ = J.map(a => J.map(b => a.reduce((s, v, i) => s + v * b[i], 0)));
+  const dC = [C[0] - CENTRE[0], C[1] - CENTRE[1], C[2] - CENTRE[2]], dn = Math.max(1e-9, norm(dC)), gv = [0, 0, 0, dC[0] / dn, dC[1] / dn, dC[2] / dn, 0];
+  const xg = solveLin(JtJ, gv), xf = solveLin(JtJ, [0, 0, 0, 0, 0, 0, 1]);
+  const sdD = xg ? Math.sqrt(Math.max(0, gv.reduce((s, v, i) => s + v * xg[i], 0))) : Infinity, sdF = xf ? Math.sqrt(Math.max(0, xf[6])) : Infinity;
+  const rd = v => Number.isFinite(v) ? r2(v) : 1e9;
+  return { sv: sv.map(r2), heightSd: r2(sd(obj.map(X => X[1]))), depthSd: r2(sd(depth)), sdDistPerPx: rd(sdD), sdFovPerPx: rd(sdF) };
+}
+function pack(obj, img, R, C, fov, w, h, extra) {   // calib.py's _pack: the solve dict, keys in its order
+  const f = focal(fov, w), t = tOf(R, C), n = obj.length, buf = new Float64Array(3 * n + 2);
+  errC(R, C, f, w / 2, h / 2, obj, img, buf);
+  const res = []; let ss = 0; for (let i = 0; i < n; i++) { const e = Math.hypot(buf[2 * i], buf[2 * i + 1]); res.push(e); ss += e * e; }
+  const out = { K: [[f, 0, w / 2], [0, f, h / 2], [0, 0, 1]], R: R.map(r => r.slice()), t, rvec: logR(R), camera: C.map(r3), look: R[2].map(r3),
+    fovDeg: r1(fov), rms: r2(Math.sqrt(ss / n)), residuals: res.map(r1), frameSize: [w, h] };
+  Object.assign(out, extra);
+  out.mPerPx = mPerPx(out);
+  out.cond = conditioning(obj, img, R, C, fov, w, h);
+  return out;
+}
+// obj: N×3 set points, img: N×2 pixels, (w, h) the frame; opt.bodies: bodySamples() of the shot (or null: no cue, no note);
+// opt.prior false: the least-rms free solve. -> calib.py's solve dict (see the top of this block), or null.
+function solvePnP(obj, img, w = 1280, h = 720, fovLo = null, fovHi = null, opt = {}) {
   if (obj.length < 5 || obj.length !== img.length) return null;
-  let best = null, warm = null;
-  for (let fov = fovLo; fov <= fovHi + 1e-9; fov += 1) {
+  const bodies = opt.bodies == null ? null : opt.bodies, cx = w / 2, cy = h / 2;
+  const lo = fovLo == null ? PRIOR.fovMin : fovLo, hi = fovHi == null ? PRIOR.fovMax : fovHi;
+  const freeAt = new Map(), free = []; let warm = null;      // free: every lens 12–100, what the points alone want
+  for (let fov = Math.min(lo, 12); fov <= Math.max(hi, 100) + 0.01; fov += 1) {
     const s = poseAt(fov, obj, img, w, h, warm);
-    if (s) { warm = { R: s.R, t: s.t }; if (!best || s.rms < best.rms) best = s; }
+    if (s) { warm = { R: s.R, t: s.t }; const c = { rms: s.rms, fov, R: s.R, C: camOf(s.R, s.t) }; free.push(c); freeAt.set(fov.toFixed(4), c); }
   }
-  if (!best) return null;
-  const coarse = best.fov;
-  for (let k = 0; k <= 20; k++) {                       // calib.py: a 0.1° search ±1° about the best, from its pose
-    const fov2 = Math.round((coarse - 1 + 0.1 * k) * 10) / 10, f = focal(fov2, w);
-    const r = refineLM(best.R, best.t, f, w / 2, h / 2, obj, img);
-    if (!Number.isFinite(r.cost)) continue;
-    const q = rmsOf(r.R, r.t, f, w / 2, h / 2, obj, img);
-    if (q.rms < best.rms) best = { R: r.R, t: r.t, f, fov: fov2, rms: q.rms };
+  if (opt.prior === false) { if (!free.length) return null; const b = minBy(free, c => c.rms); return pack(obj, img, b.R, b.C, b.fov, w, h, { prior: false }); }
+  const freeIn = free.filter(c => !violations(c.C, c.fov).length), fb = free.length ? minBy(free, c => c.rms) : null;
+  const T = [0, 1, 2].map(k => obj.reduce((s, X) => s + X[k], 0) / obj.length), cands = []; let prev = null;
+  for (let fov = lo; fov <= hi + 0.01; fov += 1) {         // bounded: warm-started from the previous lens, the free pose, look-ats
+    const starts = []; if (prev) starts.push(prev);
+    let fr = freeAt.get(fov.toFixed(4));
+    if (!fr) { const s = poseAt(fov, obj, img, w, h, null); if (s) fr = { R: s.R, C: camOf(s.R, s.t) }; }
+    if (fr) starts.push({ R: fr.R, C: fr.C });
+    for (const C0 of LOOK_STARTS) { const s = lookAt(C0, T); if (s) starts.push({ R: s.R, C: C0 }); }
+    const b = boundedAt(obj, img, focal(fov, w), cx, cy, starts);
+    if (!b || b.rms >= 1e3) continue;
+    cands.push({ rms: b.rms, fov, R: b.R, C: b.C }); prev = { R: b.R, C: b.C };
   }
-  const { R, t, f } = best, q = rmsOf(R, t, f, w / 2, h / 2, obj, img);
-  const Rt = tr3(R), cam = mv3(Rt, t).map(v => -v), look = [R[2][0], R[2][1], R[2][2]];
-  return { K: [[f, 0, w / 2], [0, f, h / 2], [0, 0, 1]], R: R.map(r => r.slice()), t: t.slice(), rvec: logR(R),
-    camera: cam.map(r3), look: look.map(r3), fovDeg: r1(best.fov), rms: r2(q.rms), residuals: q.res.map(r1), frameSize: [w, h] };
+  if (!cands.length) return null;
+  const best = minBy(cands, c => c.rms), tol = Math.max(TOL_PX, TOL_FRAC * best.rms);
+  const win = cands.filter(c => c.rms <= best.rms + tol), ds = win.map(c => distC(c.C));
+  const poor = (Math.max(...ds) - Math.min(...ds)) > POOR_SPAN * distC(best.C);
+  const bscore = c => { const [hm, nb] = bodyHeight(bodies, c.R, c.C, focal(c.fov, w), cx, cy); return nb < MIN_BODIES ? [null, hm, nb] : [c.rms + LAMBDA * Math.abs(hm - SHOULDER_M), hm, nb]; };
+  let scored = [], cueNote = null;
+  if (bodies && bodies.length >= MIN_BODIES) {
+    const hs = [];
+    for (const c of cands) {
+      if (c.rms > best.rms + CUE_CAP_PX) continue;
+      const s = bscore(c); if (s[0] != null) { scored.push([s[0], c]); hs.push(s[1]); }
+    }
+    // the cue only when it says something: h must move along the candidates and reach a standing adult's somewhere
+    const hlo = Math.min(...hs), hhi = Math.max(...hs);
+    if (scored.length && hhi - hlo < 0.15) { cueNote = `uninformative: shoulders ${hlo.toFixed(2)}-${hhi.toFixed(2)} m over every lens`; scored = []; }
+    else if (scored.length && !hs.some(x => x >= 1.25 && x <= 1.55)) { cueNote = `implausible: shoulders ${hlo.toFixed(2)}-${hhi.toFixed(2)} m, never 1.25-1.55`; scored = []; }
+  } else if (bodies != null) cueNote = `fewer than ${MIN_BODIES} bodies`;
+  const cue = scored.length ? 'bodies' : 'none'; let pick, choice, key;
+  if (scored.length) { pick = minBy(scored, x => x[0])[1]; choice = `least rms + ${LAMBDA.toFixed(1)} px/m x |shoulders - ${SHOULDER_M.toFixed(2)} m|`; key = c => bscore(c)[0]; }
+  else if (poor) { pick = minBy(win, c => Math.min(...HOUSE_CAMERAS.map(k => dist3(c.C, k)))); choice = `nearest house camera within ${tol.toFixed(1)} px of the best`; key = null; }
+  else { pick = best; choice = 'least rms'; key = c => c.rms; }
+  if (key) {                                               // a finer lens search around the pick, by the same score
+    let k0 = key(pick); const f0 = pick.fov;
+    for (let i = 0; i <= 18; i++) {
+      const fov = f0 - 0.9 + 0.1 * i;
+      if (!(fov >= lo - 1e-6 && fov <= hi + 1e-6)) continue;
+      const b = boundedAt(obj, img, focal(fov, w), cx, cy, [{ R: pick.R, C: pick.C }]);
+      if (!b || b.rms >= 1e3) continue;
+      const c = { rms: b.rms, fov, R: b.R, C: b.C }, kc = key(c);
+      if (kc != null && kc < k0) { pick = c; k0 = kc; }
+    }
+  }
+  const extra = { prior: 'house', choice, depthCue: cue, depthCueNote: cueNote,
+    window: { tolPx: r2(tol), fov: [Math.min(...win.map(c => c.fov)), Math.max(...win.map(c => c.fov))], dist: [r1(Math.min(...ds)), r1(Math.max(...ds))], poor } };
+  if (bodies && bodies.length) { const [hm, nb] = bodyHeight(bodies, pick.R, pick.C, focal(pick.fov, w), cx, cy); extra.bodyHeightM = hm != null ? r2(hm) : null; extra.bodies = nb; }
+  if (fb) extra.free = { camera: fb.C.map(r2), fovDeg: r1(fb.fov), rms: r2(fb.rms), breaks: violations(fb.C, fb.fov) };
+  const flat = cands.filter(c => c.rms <= best.rms + FLAT_PX).map(c => c.fov);   // degenerate: no cue and the points flat over a wide range of lens
+  if (cue === 'none' && Math.max(...flat) - Math.min(...flat) > FLAT_FOV) extra.degenerate = `rms within ${FLAT_PX.toFixed(1)} px over fov ${Math.min(...flat).toFixed(0)}-${Math.max(...flat).toFixed(0)}`;
+  else if (!freeIn.length) extra.degenerate = 'the points alone want ' + ((fb ? violations(fb.C, fb.fov) : []).join(', ') || 'no free solve');
+  return pack(obj, img, pick.R, pick.C, pick.fov, w, h, extra);
 }
 function project(points, sol) {           // set points -> [[u, v, depth]] through a solve dict (calib.py's `project`)
   const K = sol.K, R = sol.R, t = sol.t;
@@ -2765,7 +2975,8 @@ function project(points, sol) {           // set points -> [[u, v, depth]] throu
     return [(K[0][0] * x + K[0][1] * y + K[0][2] * z) / zz, (K[1][1] * y + K[1][2] * z) / zz, z];
   });
 }
-window.CALIBMATH = { solvePnP, project, poseAt, refineLM, expR, logR, focal, jacobiEig };
+window.CALIBMATH = { solvePnP, project, poseAt, refineLM, expR, logR, focal, jacobiEig, violations, boundedAt, bodySamples, bodyHeight, mPerPx, conditioning,
+  PRIOR, HOUSE_CAMERAS, SHOULDER_M, LAMBDA, CUE_CAP_PX, MIN_BODIES };
 })();
 </script>
 <script>
@@ -2904,10 +3115,17 @@ function solveNow() {
   const w = work(), names = Object.keys(w.points);
   if (names.length < 5) { w.solve = null; renderPoints(); C.dirty = true; return null; }
   const t0 = performance.now();
-  const sol = M.solvePnP(names.map(n => C.setpts[n].p), names.map(n => w.points[n]), C.img && C.img.naturalWidth || 1280, C.img && C.img.naturalHeight || 720);
+  const sol = M.solvePnP(names.map(n => C.setpts[n].p), names.map(n => w.points[n]), C.img && C.img.naturalWidth || 1280, C.img && C.img.naturalHeight || 720,
+    null, null, { bodies: shotBodies(Number.isFinite(w.frame) ? w.frame : C.frame) });
   C.lastSolveMs = performance.now() - t0;
   w.solve = sol; w.touched = true; w.by = 'blocking.html'; C.draftDue = true; C.dirty = true; renderPoints(); renderShots();
   return sol;
+}
+function shotBodies(fi) {                                 // calib.py's shot_bodies: the body samples for a solve at frame fi (fi ± 3, inside its shot)
+  if (!C.bodies || !C.frames) return [];
+  const f = C.frames.frames[fi] && C.frames.frames[fi].i === fi ? C.frames.frames[fi] : C.frames.frames.find(x => x.i === fi);
+  const s = f && f.shot != null ? f.shot : C.shot, sh = s != null ? C.frames.shots[s] : null;
+  return M.bodySamples(C.bodies, fi, sh ? sh.first : null, sh ? sh.last : null);
 }
 function residualOf(w, name) { if (!w || !w.solve) return null; const k = Object.keys(w.points).indexOf(name); return k >= 0 ? w.solve.residuals[k] : null; }
 function predict(sol, names) { names = names || Object.keys(C.setpts); const P = M.project(names.map(n => C.setpts[n].p), sol); const o = {}; names.forEach((n, k) => { o[n] = P[k]; }); return o; }
@@ -2923,7 +3141,20 @@ function renderPoints() {
   $('cal_see').innerHTML = C.sel ? `<b>${esc(C.sel)}</b> [${C.setpts[C.sel].p.join(', ')}]: ${esc(C.setpts[C.sel].see)}` : 'Select a point, then click the frame where it is.';
   const s = w && w.solve;
   $('cal_res').innerHTML = s ? `fov <b>${s.fovDeg}°</b> · rms <b>${s.rms} px</b> · camera (${s.camera.map(v => v.toFixed(2)).join(', ')}) m · look (${s.look.join(', ')})${w.by === 'blocking.html' ? ` · ${C.lastSolveMs ? Math.round(C.lastSolveMs) + ' ms' : ''}` : ` · <span class="faint">as loaded${s.refined ? ' (' + esc(s.refined) + '-refined)' : ''}</span>`}`
-    : n >= 5 ? '<span class="faint">not solved — Solve (Enter)</span>' : '';
+    + priorHTML(s) : n >= 5 ? '<span class="faint">not solved — Solve (Enter)</span>' : '';
+}
+function priorHTML(s) {                                   // calib.py's prior record: the choice, m/px, the implied height, DEGENERATE, free vs bounded
+  if (!s.choice && !s.free && s.mPerPx == null) return '<br><span class="faint">no prior record (an older solve)</span>';
+  const cam = c => '(' + c.map(v => (+v).toFixed(1)).join(', ') + ')', wn = s.window;
+  let o = `<div class="calprior">chose <b>${esc(s.choice || '?')}</b>${wn ? ` <span class="faint">· window fov ${wn.fov[0]}–${wn.fov[1]}°, ${wn.dist[0]}–${wn.dist[1]} m${wn.poor ? ', <b>poorly conditioned</b>' : ''}</span>` : ''}`;
+  o += `<br>m/px at the centre <b>${s.mPerPx != null ? s.mPerPx.toFixed(3) : '—'}</b> · cue ${esc(s.depthCue || '—')}` +
+    (s.bodyHeightM != null ? ` · shoulders <b>${s.bodyHeightM.toFixed(2)} m</b> <span class="faint">(${s.bodies} bodies, want 1.40)</span>` : s.bodies === 0 ? ' · <span class="faint">no body on the deck</span>' : '') +
+    (s.depthCueNote ? ` <span class="faint">· ${esc(s.depthCueNote)}</span>` : '');
+  if (s.degenerate) o += `<br><b class="caldeg">DEGENERATE</b> <span class="caldeg">${esc(s.degenerate)}</span>`;
+  if (s.free) o += `<br><span class="faint">free</span> ${cam(s.free.camera)} ${s.free.fovDeg}° ${s.free.rms} px${s.free.breaks.length ? ` <span class="caldeg">breaks ${esc(s.free.breaks.join(', '))}</span>` : ''}` +
+    ` <span class="faint">vs bounded</span> ${cam(s.camera)} ${s.fovDeg}° ${s.rms} px <span class="faint">· moved ${Math.hypot(...s.camera.map((v, k) => v - s.free.camera[k])).toFixed(1)} m</span>`;
+  if (s.cond) o += `<br><span class="faint">cond: dist ±${s.cond.sdDistPerPx} m/px, fov ±${s.cond.sdFovPerPx}°/px, spread ${s.cond.sv.join(' / ')} m</span>`;
+  return o + '</div>';
 }
 function renderShotForm() {
   const w = recOf(C.shot) || {};
@@ -3047,7 +3278,8 @@ function draw() {
   if (!C.frames) { g.fillStyle = '#a39fae'; g.font = '14px system-ui, sans-serif'; g.fillText(C.clip ? 'loading…' : 'Pick a clip (right).', 20, 30); return; }
   scene(C.v.s, C.v.ox, C.v.oy, false);
   const w = recOf(C.shot), s = w && w.solve;
-  label(`${C.clip} · shot ${C.shot} · frame ${C.frame}${s ? `  ·  fov ${s.fovDeg}°  rms ${s.rms} px  camera (${s.camera.map(v => v.toFixed(1)).join(', ')})` : ''}`, 10, 14, '#fff');
+  label(`${C.clip} · shot ${C.shot} · frame ${C.frame}${s ? `  ·  fov ${s.fovDeg}°  rms ${s.rms} px  camera (${s.camera.map(v => v.toFixed(1)).join(', ')})${s.mPerPx != null ? `  ${s.mPerPx.toFixed(3)} m/px` : ''}${s.bodyHeightM != null ? `  shoulders ${s.bodyHeightM.toFixed(2)} m` : ''}` : ''}`, 10, 14, '#fff');
+  if (s && s.degenerate) label(`DEGENERATE: ${s.degenerate}`, 10, 32, '#ff5a4e');
   if (C.mouse && $('cal_vloupe').checked && !C.pan) {                 // the loupe: 4 screen px per frame px, beside the cursor
     const L = 200, Z = 4, [fu, fv] = toFrame(C.mouse[0], C.mouse[1]);
     let lx = C.mouse[0] + 24, ly = C.mouse[1] + 24; if (lx + L > C.W) lx = C.mouse[0] - 24 - L; if (ly + L > C.H) ly = C.mouse[1] - 24 - L;
