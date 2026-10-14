@@ -3,7 +3,7 @@
 
     python tools/vision/run.py index                       # scan video/, (re)write video/INDEX.json
     python tools/vision/run.py frames <clip> [--fps 5]     # stage 1: frames, cuts, clip time -> album time
-    python tools/vision/run.py bodies <clip> [--model M]   # stage 2: pose + tracklets on every kept frame
+    python tools/vision/run.py bodies <clip> [--model M] [--imgsz 640]   # stage 2: pose + tracklets on every kept frame
     python tools/vision/run.py check  <clip>               # what the cache says about a clip
 
 <clip> is a file in video/ by name, stem, or path.  Everything this writes goes to tools/vision/cache/<clip>/
@@ -296,9 +296,86 @@ def ncc_search(win, hay):
     return i, cc
 
 
+TEMPO_PRIOR = (0.94, 0.97, 1.03, 1.06)   # the clip envelope's stretches tried when the plain pass finds < 3 anchors
+PRIOR_CORR = 0.45                         # ... and the median corr a stretched chain must reach to be taken
+
+
 def align(cenv, aenv, ts, tids, win_s=10.0, step_s=10.0, slack_s=2.0, min_corr=0.35):
+    """piecewise anchors (clipTime, albumFileTime, corr): align_pass, then the tempo prior - a film number can run
+    5 % off the album's tempo (1-04 The Story of Tonight does), which the +-2 s slack cannot follow; when the plain
+    pass finds fewer than 3 anchors the clip envelope is resampled at each TEMPO_PRIOR stretch and the best chain
+    is kept (most anchors, then the best median corr).  info['stretch'] is the one used (1.0: none)."""
+    import numpy as np
+    anchors, info = align_pass(cenv, aenv, ts, tids, win_s, step_s, slack_s, min_corr)
+    info['stretch'] = 1.0
+    if len(anchors) >= 3: return anchors, info
+
+    def score(an): return (len(an), float(np.median([a[2] for a in an])) if an else 0.0)
+    best, tried = (anchors, info), {'1.0': len(anchors)}
+    x = np.asarray(cenv, dtype=np.float32)
+    for s in TEMPO_PRIOR:
+        # stretched clip time c' = s * c: c' / s is the clip time again (album times are untouched)
+        sx = np.interp(np.arange(int(round(len(x) * s))) / s, np.arange(len(x)), x)
+        an, inf = align_pass(sx, aenv, ts, tids, win_s, step_s, slack_s, min_corr)
+        an = [(round(c / s, 3), a, cc) for c, a, cc in an]
+        inf['dropped'] = [(round(c / s, 3), a, cc) for c, a, cc in inf['dropped']]
+        inf['stretch'] = s; tried[str(s)] = len(an)
+        # four more tries are four more chances at a wrong number: a stretched chain must be three anchors with a
+        # median corr of PRIOR_CORR (true ones: 1-04 0.55, 1-01 0.48; What'd I Miss over My Shot's span at x0.97
+        # made a false chain of seven at 0.33)
+        if len(an) >= 3 and score(an)[1] >= PRIOR_CORR and score(an) > score(best[0]): best = (an, inf)
+    best[1]['tempoTried'] = tried
+    return best
+
+
+def drop_outliers(anchors, max_res=0.5, agree=0.3, steady=0.25, step=1.5, reach=40.0, max_slope=0.08):
+    """drop the wrong-beat anchors: the local search takes a beat or bar of the same groove (0.6-2 s off) when the
+    true peak weakens, about one anchor in fifty.  A run of one or two anchors goes when every one of them is more
+    than max_res off the line through the anchors either side of the run (p and q, within reach s of each other),
+    and p and q agree.  They agree when
+      - their offsets (album - clip) are within `agree` of each other; or
+      - the film runs steadily off the album's tempo (0.3 s per 10 s at 3 %): the line through p and q has a
+        believable slope (under max_slope), the next anchor out on each side sits on it within `steady`, and the run
+        lies outside p's and q's offsets by more than `steady` (in between, it is a pause being taken up); or
+      - the run is more than `step` times their disagreement D off that line.  A pause in the film is a STEP (the
+        offset jumps by D and stays), and an anchor on either side of a step is never more than D off the line
+        through its neighbours; a wrong beat goes out and comes back.
+    So a real drift or pause is kept (Take a Break slows by 4 s over a minute; Aaron Burr, Sir gains 1.5 s in a gap).
+    The first and last anchors are never judged (the next number after a pause looks like a wrong beat from one
+    side).  Worst first, then all again, until none goes.  -> (kept, dropped)."""
+    a = sorted(anchors); dropped = []
+
+    def on(p, q):
+        return lambda c: p[1] + (q[1] - p[1]) * (c - p[0]) / (q[0] - p[0])
+    while True:
+        worst = None
+        for n in (1, 2):
+            for k in range(1, len(a) - n):
+                p, q = a[k - 1], a[k + n]
+                if q[0] - p[0] > reach: continue
+                f = on(p, q)
+                r = min(abs(x[1] - f(x[0])) for x in a[k:k + n])
+                if r <= max_res or (worst is not None and r <= worst[0]): continue
+                d = abs((q[1] - q[0]) - (p[1] - p[0]))
+                if d > agree and r <= step * d:
+                    if abs((q[1] - p[1]) / (q[0] - p[0]) - 1.0) > max_slope or k < 2 or k + n + 1 >= len(a): continue
+                    pl, qr = a[k - 2], a[k + n + 1]
+                    if abs(pl[1] - f(pl[0])) > steady or abs(qr[1] - f(qr[0])) > steady: continue
+                    # ... and the run goes OUT of the offsets either side and comes back (an anchor between them is a
+                    # pause being taken up, not a wrong beat: Take a Break 4719.3 -> 4718.2 -> 4717.5 -> 4717.6)
+                    lo, hi = sorted((p[1] - p[0], q[1] - q[0]))
+                    if any(lo - steady <= x[1] - x[0] <= hi + steady for x in a[k:k + n]): continue
+                worst = (r, k, n)
+        if worst is None: break
+        _, k, n = worst
+        dropped += a[k:k + n]; del a[k:k + n]
+    return a, dropped
+
+
+def align_pass(cenv, aenv, ts, tids, win_s=10.0, step_s=10.0, slack_s=2.0, min_corr=0.35):
     """piecewise anchors (clipTime, albumFileTime, corr) over the span of the covered tracks (+-30 s): a win_s
-    window every step_s, searched +-slack_s around the running offset (globally when there is none)."""
+    window every step_s, searched +-slack_s around the running offset (globally when there is none), then
+    drop_outliers."""
     import numpy as np
     b = 1.0 / ENV_BIN
     first = next(t for t in ts if t['id'] == tids[0]); last = next(t for t in ts if t['id'] == tids[-1])
@@ -360,10 +437,41 @@ def align(cenv, aenv, ts, tids, win_s=10.0, step_s=10.0, slack_s=2.0, min_corr=0
             else:
                 misses += 1
                 if misses >= 6: break
-    anchors.sort()
+    # drop, refine, and drop again: a wrong beat between two anchors still carrying their tempo jitter (+-0.15 s) can
+    # fail the steady test before refine and pass it after (One Last Time at +3 %)
+    anchors, dropped = drop_outliers(anchors)
+    for _ in range(3):
+        if REFINE: anchors = refine(anchors, clip, hay, span0, wn)
+        anchors, more = drop_outliers(anchors); dropped += more
+        if not more: break
     info = {'spanS': [round(span0 / b, 1), round(span1 / b, 1)], 'searches': searches, 'winS': win_s, 'slackS': slack_s,
-            'minCorr': min_corr, 'globalFinds': len(found_global)}
+            'minCorr': min_corr, 'globalFinds': len(found_global), 'dropped': dropped}
     return anchors, info
+
+
+REFINE = True
+
+
+def refine(anchors, clip, hay, span0, wn, reach=25.0, r_bins=15):
+    """each anchor again, its window resampled to the local tempo (the slope of the anchors within reach s) and
+    searched +-r_bins around where it is: a 10 s window 3 % off tempo has no single best offset (+-0.15 s), one at
+    the album's tempo has.  Kept only where the corr does not fall."""
+    import numpy as np
+    b = 1.0 / ENV_BIN; out = []
+    for k, (c, a, cc) in enumerate(anchors):
+        nb = [x for x in anchors if abs(x[0] - c) <= reach]
+        if len(nb) < 2: out.append((c, a, cc)); continue
+        r = float(np.polyfit([x[0] for x in nb], [x[1] for x in nb], 1)[0])
+        s = int(round(c * b - wn / 2))
+        if abs(r - 1.0) < 0.005 or abs(r - 1.0) > 0.1 or s < 0 or s + wn > len(clip): out.append((c, a, cc)); continue
+        m = int(round(wn * r))
+        w = np.interp(np.arange(m) / r, np.arange(wn), clip[s:s + wn])
+        lo = int(round(a * b - span0 - m / 2)) - r_bins; hi = lo + m + 2 * r_bins
+        if lo < 0 or hi > len(hay): out.append((c, a, cc)); continue
+        j, c2 = ncc_search(w, hay[lo:hi])
+        if j is None or c2 < cc: out.append((c, a, cc)); continue
+        out.append((c, round((span0 + lo + j + m / 2) / b, 3), round(c2, 3)))
+    return out
 
 
 def anchor_stats(anchors):
@@ -393,7 +501,7 @@ def load_manual_anchors(cdir, ts):
     p = os.path.join(cdir, 'anchors.json')
     if not os.path.isfile(p): return None
     with open(p, encoding='utf-8') as f: raw = json.load(f)
-    return [(float(c), parse_album_time(a, ts), 1.0) for c, a in raw]
+    return [(round(float(c), 3), round(parse_album_time(a, ts), 3), 1.0) for c, a in raw]
 
 
 # ---------------------------------------------------------------- stage 1: frames and cuts
@@ -449,6 +557,7 @@ def cmd_frames(args):
         anchors, info = align(cenv, album_envelope(), ts, tids, win_s=args.win, slack_s=args.slack, min_corr=args.min_corr)
         log('anchors: %d  %s' % (len(anchors), info))
         if not anchors: log('WARNING: no alignment - no usable music?  write cache/%s/anchors.json by hand' % stem)
+    anchors = [(round(c, 3), round(a, 3), round(cc, 3)) for c, a, cc in anchors]    # no float noise in the file
     stats = anchor_stats(anchors)
     # --- frames
     if args.no_decode and prev and os.path.isdir(fdir):
@@ -490,7 +599,8 @@ def cmd_frames(args):
     covered = sorted({fr['track'] for fr in frames if fr['track'] and fr['tconf'] >= 0.5})
     out = {'clip': stem, 'source': os.path.relpath(path, ROOT).replace('\\', '/'), 'tracksDeclared': tids,
            'tracksSeen': covered, 'fps': fps, 'height': height, 'frames': frames, 'shots': shots,
-           'align': {'anchors': anchors, 'info': info, **stats, 'envelope': os.path.relpath(ENV, ROOT).replace('\\', '/')},
+           'align': {'anchors': anchors, 'info': info, **stats, 'stretch': info.get('stretch'),
+                     'envelope': os.path.relpath(ENV, ROOT).replace('\\', '/')},
            'cuts': {'threshold': args.cut, 'histThreshold': args.cut_hist, 'detected': detected}, 'diffs': diffs,
            'written': time.strftime('%Y-%m-%d %H:%M')}
     with open(fjson, 'w', encoding='utf-8') as f: json.dump(out, f, separators=(',', ':')); f.write('\n')
@@ -630,6 +740,15 @@ def cmd_calib(args):
     calib.cmd_calib(args, cdir, json.load(open(fp, encoding='utf-8')))
 
 
+def cmd_floor(args):
+    sys.path.insert(0, HERE); import floor
+    stem = os.path.splitext(os.path.basename(args.clip))[0]
+    cdir = os.path.join(CACHE, stem)
+    if not os.path.isfile(os.path.join(cdir, 'bodies.json')): die('run frames and bodies first for %s' % stem)
+    if args.cmd == 'floor-check': floor.cmd_floor_check(stem, cdir, int(args.shot))
+    else: floor.cmd_floor(stem, cdir, args.unjudged)
+
+
 def cmd_wide(args):
     sys.path.insert(0, HERE); import calib
     stem = os.path.splitext(os.path.basename(args.clip))[0]
@@ -691,16 +810,23 @@ def main():
     p.add_argument('--keep-align', action='store_true', help='keep the anchors too (with --no-decode: re-apply cuts.json only)')
     p = sub.add_parser('bodies'); p.set_defaults(fn=cmd_bodies); p.add_argument('clip')
     p.add_argument('--model', default='yolo26n-pose.pt'); p.add_argument('--conf', type=float, default=0.25)
-    p.add_argument('--imgsz', type=int, default=640)
+    p.add_argument('--imgsz', type=int, default=640, help='the model\'s input size: 960/1280 find many more bodies in the widest shots, at ~1/2 and ~1/3 the speed (VISION.md stage 2)')
     p = sub.add_parser('check'); p.set_defaults(fn=cmd_check); p.add_argument('clip'); p.add_argument('-n', type=int, default=12)
     p = sub.add_parser('sheet'); p.set_defaults(fn=cmd_sheet); p.add_argument('clip')
     p = sub.add_parser('draw'); p.set_defaults(fn=cmd_draw); p.add_argument('clip'); p.add_argument('-n', type=int, default=9)
     p = sub.add_parser('wide', help='the shots that look wide (small bodies, several) - the ones to calibrate'); p.set_defaults(fn=cmd_wide)
     p.add_argument('clip'); p.add_argument('--max-h', type=float, default=0.4); p.add_argument('--min-bodies', type=float, default=3)
     p = sub.add_parser('calib', help='stage 3: a shot\'s camera from named set points (calib.py)'); p.set_defaults(fn=cmd_calib)
-    p.add_argument('clip'); p.add_argument('shot', help="the shot id, or 'list'"); p.add_argument('what', nargs='?', default='grid', choices=['grid', 'solve', 'refine', 'zoom', 'list'])
+    p.add_argument('clip'); p.add_argument('shot', help="the shot id, or 'list'"); p.add_argument('what', nargs='?', default='grid', choices=['grid', 'solve', 'refine', 'zoom', 'list', 'resolve'])
     p.add_argument('points', nargs='*', help='name=u,v (pixels in the cache frame)'); p.add_argument('--from', dest='from_file')
     p.add_argument('--frame', type=int, help='which frame of the shot (default: its middle)')
+    p = sub.add_parser('floor', help='stage 4: every body\'s feet in the calibrated shots onto the floor -> out/<track>.json (floor.py)'); p.set_defaults(fn=cmd_floor)
+    p.add_argument('clip'); p.add_argument('--unjudged', action='store_true', help='also use shots with a solve and no verdict yet (weight 0.3)')
+    p = sub.add_parser('floor-check', help='cache/<clip>/floor-s<shot>.jpg: the shot\'s foot pixels and its positions on a plan'); p.set_defaults(fn=cmd_floor)
+    p.add_argument('clip'); p.add_argument('shot')
+    p = sub.add_parser('ident', help='stage 5: identities -> characters in out/<track>.json (ident.py)')
+    p.set_defaults(fn=lambda a: (sys.path.insert(0, HERE), __import__('ident').run(a.track, a.clip, a.labels, a.hist_stats)))
+    p.add_argument('track'); p.add_argument('--clip'); p.add_argument('--labels'); p.add_argument('--hist-stats', action='store_true')
     args = ap.parse_args(); args.fn(args)
 
 

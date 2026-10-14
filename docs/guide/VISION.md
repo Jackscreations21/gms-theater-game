@@ -54,6 +54,9 @@ $P -I tools/vision/run.py calib  1-03-my-shot 16 grid             # grid-s16.jpg
 $P -I tools/vision/run.py calib  1-03-my-shot 16 solve lip-sr=200,652 rail-us-c=615,405 ...   # >= 5 points -> camera + overlay
 $P -I tools/vision/run.py calib  1-03-my-shot 16 zoom [name ...]  # 4x crops around each point's PREDICTED pixel, 10 px grid
 $P -I tools/vision/run.py calib  1-03-my-shot 16 refine           # slide the solve onto the image's edges (small help)
+$P -I tools/vision/run.py floor  1-03-my-shot [--unjudged]        # stage 4: feet onto the floor -> tools/vision/out/<track>.json
+$P -I tools/vision/run.py floor-check 1-03-my-shot 16             # floor-s16.jpg: the shot's foot pixels over a plan of its positions
+$P -I tools/vision/ident.py 1-03 [--clip 1-03-my-shot] [--hist-stats]   # stage 5: identities -> characters in out/<track>.json (also `run.py ident`)
 ```
 
 `<clip>` is a file in `video/` by stem. Every stage reads the previous stage's file and writes its own, so any one can
@@ -81,15 +84,46 @@ for f in video/*.mp4; do c=$(basename "$f" .mp4); [ -f tools/vision/cache/$c/bod
      (0.7 × 0.35) — the film drifts through rapped dialogue over crowd noise, where it correlates weakly. Six misses
      in a row and the chain is lost (global search again). From every global find the chain also walks BACK to pick
      up a quiet opening.
+   - **Wrong beats are dropped.** About one anchor in fifty (10 of 466 synthetic) took a beat or bar of the same
+     groove, 0.6–2.1 s off, where the true peak had weakened. `drop_outliers` drops a run of one or two anchors when
+     every one is more than 0.5 s off the line through the anchors either side of it AND those two agree: offsets
+     within 0.3 s; or a steady tempo (the next anchor out on each side on their line within 0.25 s, and the run
+     outside both their offsets); or the run is more than 1.5× their disagreement off the line. That last one is the
+     shape test: a pause in the film is a STEP, and an anchor beside a step is never further off its neighbours' line
+     than the step itself; a wrong beat goes out and comes back. The first and last anchors are never judged (the
+     next number after a pause looks like a wrong beat from one side). A first try that fitted lines through any
+     three neighbours ate real drifts — Take a Break slows 4 s over a minute, Aaron Burr, Sir gains 1.5 s in a gap —
+     so it is this strict on purpose: 13 anchors went over the 45 clips (1-08, 1-11, 1-16, 2-05, 2-09, 2-16, 2-18,
+     2-19; none lost more than 20 %), every one an excursion by eye. What went is in `align.info.dropped`.
+   - **Refine.** Each anchor's window is then resampled to the local tempo (the slope of the anchors within 25 s) and
+     searched ±0.3 s again, kept where the corr does not fall; then the drop runs again (a wrong beat between two
+     anchors still carrying their jitter can fail the steady test before refine). A 10 s window 3 % off tempo has no
+     single best offset (±0.15 s of jitter); at the album's tempo it has — the synthetic check went from 57 anchors
+     over 0.1 s to 444 of 456 under 0.02 s (worst 0.133 s: an anchor with no neighbour within 25 s to take a tempo
+     from).
+   - **Tempo prior.** 1-04 The Story of Tonight runs 5 % faster in the film than on the album, and ±2 s of slack
+     cannot follow that. When the plain pass finds fewer than 3 anchors, the clip envelope is resampled ×0.94, 0.97,
+     1.03, 1.06 and the best chain kept (most anchors, then the best median corr) — but only a chain of 3+ with a
+     median corr of 0.45: four more tries are four more chances at a wrong number (What'd I Miss over My Shot's span
+     at ×0.97 made a false chain of seven at 0.33). The stretch used is `align.stretch` (1.0 none, null for manual
+     anchors), the counts per stretch `align.info.tempoTried`. 1-04 (its hand anchors moved aside) found ×1.06, eight
+     anchors within 0.06 s of the hand ones. 1-01 Alexander Hamilton, 0 anchors before, now has six at ×0.97 (median
+     corr 0.45, just over the bar) — the middle four agree on a film 4 % slow, the first and last do not: look at it
+     before trusting it.
    - The result is `align.anchors`: `(clipTime, albumFileTime, corr)`, plus `count`, `medianResidualS` (an anchor
      against the line through its neighbours), `worstGapS`. Frames interpolate linearly between anchors and ride a
      constant offset beyond the ends; each frame gets `tconf` 1 between anchors, falling to 0.2 ten seconds past the
      last one (applause, the next number's lead-in).
    - `cache/<clip>/anchors.json` = `[[clipTime, "1-04:12.5"], ...]` overrides the matcher entirely (for a clip with no
      usable music). `--keep-align` keeps the previous anchors; `--no-decode` keeps the frames and detected cuts.
-   - Synthetic check (not a suite — it needs numpy): slice ten tracks out of the album envelope, stretch ±3 %, put 8 s
-     of noise in front → every anchor within 0.1 s; slice any other track and search My Shot's span → no anchor. The
-     recipe is in the session's record (HANDOFF 2026-10-14); it should become a script in `tools/vision/` (not done).
+   - Synthetic check, `$P -I tools/vision/aligncheck.py [-v] [--tol 0.15]` (not a suite — it needs numpy): slice ten
+     tracks out of the album envelope, stretch ±3 %, put 8 s of noise in front → every anchor within 0.15 s (the
+     jitter a 10 s window at 3 % has in itself) and anchors over 60 % of the track; slice any other track and search
+     My Shot's span → no anchor. Documented exceptions, printed EXCEPT: the last 30 s of 1-02 and the first ~29 s of
+     1-04 really are inside the span (an anchor there must land on the truth), and Non-Stop ends on My Shot's own
+     refrain (an anchor allowed in its last 30 s). One case fails, and it is not a wrong anchor: My Shot at +3 %
+     has no two agreeing windows before 185 s, and the walk back from there gives up after six windows under the
+     full bar (0.30–0.34 at the truth, smeared by the tempo), so its anchors cover 47 % of the track.
 3. **Cuts.** Consecutive frames compared on a 48×27 gray (mean abs diff) and a hue/sat histogram (16×8, half-L1):
    a cut when gray > 12 AND hist > 0.2. On the film, every true cut had hist > 0.2 and fast motion inside a shot
    reached gray 33 but stayed under hist 0.15. `cuts.json` `{"add": [i], "remove": [i]}` edits them. Shots are
@@ -106,6 +140,22 @@ conf, kp[[x,y,c]×17 COCO order]}]}], tracklets{tid: {shot, first, last, n}}, fr
 eyes/ears, 5–6 shoulders, 7–8 elbows, 9–10 wrists, 11–12 hips, 13–14 knees, 15–16 ankles. Runs at ~17 fps cold and
 ~40 fps warm on Jack's CPU — the spec expected 6–10. `draw` makes `bodies.jpg` to check by eye; Schuyler Defeated's
 was checked: every body in nine shots boxed and skeletoned right, the dark upstage ensemble included.
+
+**The widest shots lose most of their bodies at 640.** `bodies --imgsz N` (default 640) sets the model's input size.
+Measured by calling the model straight on the cached frames (predict, no tracker, conf 0.25; the frames are 1280×720,
+so 1280 is native and above it is upsampling):
+
+| frames | ~visible | 640 | 960 | 1280 | 1280 at conf 0.1 |
+|---|---|---|---|---|---|
+| 1-18 shot 16 (335–341) | ~20 | 0–3, mean 1.6 | 2–6, 3.7 | 4–6, 4.9 | 4–9, 6.9 |
+| 1-18 frames 330–346 (shots 15–17) | | mean 3.5 | 5.5 | 7.0 | |
+| 2-05 shot 65 (1520–1526) | 13 | 4–8, 6.6 | 10–12, 10.7 | 12–15, 13.3 | 15–18, 16.0 |
+| speed (Jack's CPU, warm) | | ~45 fps | ~24 fps | ~16 fps | ~16 fps |
+
+1280 finds 2-05's thirteen (15–18 at conf 0.1 is more than are there — doubles or false boxes, not looked at); on Guns and Ships it still misses the galleries, the
+stairs and a man centre stage with his arms up — the nano model, not the size, is the limit there (1920, upsampled,
+found about one more per frame, at 6.5 fps; a larger pose model is the untried next step). Not
+re-run over any clip: a re-run changes every tracklet id, so it waits for the decision.
 
 ### Stage 3 — `calib`: the camera of a shot (GA) — BUILT, the clicking UI NOT
 
@@ -135,7 +185,62 @@ was checked: every body in nine shots boxed and skeletoned right, the dark upsta
 - **Not built**: the Calibrate mode in `blocking.html` (Advanced) that RULING GA specifies (show a cache frame, list
   the named points, click, solve in the page or through a tiny local server that calls `calib.py`, draw the wire,
   write `calib/<clip>.json` by the download route); moving-shot handling (GA: calibrate first and last frames, track
-  the set's features by optical flow, re-solve every 0.5 s, `moving: "failed"` over 2 px RMS); the upper-level rule.
+  the set's features by optical flow, re-solve every 0.5 s, `moving: "failed"` over 2 px RMS). The upper-level rule
+  is built, in stage 4.
+
+### Stage 4 — `floor`: floor positions (FY-4, GA) — BUILT
+
+`tools/vision/floor.py`. A shot is used when `calib/<clip>.json` has its `solve`, no `skipped`, and `judged` `good` or
+`fair` (`--unjudged` also takes a solve with no verdict yet, weighted as a moving shot). Per body per frame: the foot
+pixel is the mean of the ankles (COCO 15, 16) when both are over 0.3, else the lower hip plus 0.85 m of leg (half the
+box, the box taken as 1.7 m), else nothing. Its ray from the camera meets, in order: the **upstage gallery** by the
+ruling's test — the deck point lands upstage of the gallery's front (z −3.0) or nowhere, while the foot pixel is
+above the gallery's projected front line (`gal-us-sr`..`gal-us-sl`, the edge **at the floor**, 0.3 m of slack; the
+rail top at 3.6 m is not used, since from a house lens 1.6 m up a gallery foot sits ~0.8 m below it) → the 2.743 m
+plane; else the first of the deck plane (0.045), the gallery plane where `tools/hamilton-floor.json`'s `top` grid has
+gallery floor (the one big component at 2.55–2.95 m inside the proscenium — the side galleries, and any gallery seen
+from above), and a **stair** tread (the `top` grid's mid-height components that rise ≥ 1 m, marched in 0.05 m steps;
+a hit within 0.35 m under a tread's top — a ray low through the risers is a foot hidden behind the stair and goes on
+to the deck). A stair body is placed where its ray meets the tread, flagged `stair` for a human: the deck plane would
+throw it tens of metres upstage from a low lens. Nothing is clamped; a point outside the floor map or on the house
+floor beyond the lip is kept with `offMap`. `conf` = the frame's `tconf` × the verdict (good 1, fair 0.6, moving or
+unjudged 0.3) × the least keypoint confidence used.
+
+Output `tools/vision/out/<track>.json` (committed), one per album track the clip's used shots fall in; a run
+replaces only its own clip's entry, so Yorktown p1–p4 or Non-Stop p1–p3 merge into one file (and a clip's stale
+entry in a track it no longer feeds is removed): `{format: "hamilton-vision 1", track, frame (the blocking's frame
+sentence), clips: {<clip>: {source: {sha256, url}, shots: {<shot>: {camera, fovDeg, rms, judged, moving}},
+positions: {<tid>: [[at, x, z, level, conf], ...]}}}}` — a sample off the map carries a sixth element
+`{"offMap": true}`. `floor` prints per shot the count, the x/z ranges on the map, the levels, and **how many metres one
+pixel of foot moves the point**: over ~0.1 m the shot's depth is fragile (a lens near deck height sees the deck
+edge-on). `floor-check` draws the shot's middle frame with every foot pixel (filled = ankles, hollow = hip + leg) over
+a plan (the floor map's deck, galleries in blue, stairs in brown, the rings, the lip; a colour per tracklet; dot deck,
+square gallery, triangle stair).
+
+### Stage 5 — `ident`: identities (FY-5, GB) — BUILT, no labels yet
+
+`tools/vision/ident.py <track>` (per TRACK: it reads every clip in `out/<track>.json` plus every cached clip whose
+`frames.json` reaches the track, and the clip's positions from every `out/*.json` it feeds). Every tracklet gets an id,
+uncalibrated shots' too (x, z null). In order: (1) `labels/<clip>.json` `{"clip", "labels": {tid: castId}}` → conf 1.0
+(no such file exists yet — the Calibrate mode is to write it); (2) **continuity**, shot by shot: a tracklet starting
+≤ 0.5 s after a label/continuity tracklet of the previous shot ends, its first floor position ≤ 0.6 m from that one's
+last (both within 0.6 s of the cut) → conf × 0.8; (3) **appearance**: the torso box (shoulders 5/6 to hips 11/12, ≥ one
+of each over 0.3, widened to 0.4 of its height) in up to 12 frames, an 18×8×4 HSV histogram, Bhattacharyya coefficient
+against the clip's label/continuity tracklets; the nearest picks the group (principals / ensemble — the parchment
+costumes match only among themselves), it must reach **0.80** and beat the group's next id by **0.05**, conf = 0.7 ×
+similarity × the reference's conf; an ensemble body that cannot be told apart (or only one ensemble id labelled) pools
+as `ens?`. The 0.80: on 2-05 a tracklet's two halves reach it 53 % of the time and two bodies in one frame 6.5 % (1-18:
+64 % / 12 %) — `--hist-stats` prints this per clip; with real labels re-judge it. (4) **blocking**: the committed
+blocking's on-stage actor (straight legs at 1.3 m/s, not seen at or between `off` waypoints) nearest the tracklet's
+median floor position at its median time, same level (gallery/deck; a stair either), < 1.5 m → conf 0.3,
+`fromBlocking` — it agrees with the blocking by construction and is never evidence for it. Else the pool `ens?`
+(rule `pool`). No id is held by two tracklets overlapping in time in one clip (greedy, nearest first). Written into
+the same `out/<track>.json`, stage 4's keys byte-for-byte as they were: `identities: {clip: {tid: {id, rule, conf,
+fromBlocking?}}}` and `characters: {castId | "ens?": [{at, x, z, level, conf, clip, shot, tid, rule, fromBlocking?,
+offMap?}]}` sorted by `at`, a sample's conf = the position's × the identity's (a pooled body: the position's). It is
+idempotent; **re-running `floor` drops both keys — run `ident` after it**, and after a stage-1 re-run (positions are
+joined to frames by `at`; a stale join falls back to the tracklet's nearest frame and says so). With no labels every
+identity is `blocking` or `ens?` (2-05: 525 tracklets, 14 with positions, 11 blocking, 514 pooled).
 
 ## 5. What the agents were going to be told
 

@@ -120,6 +120,31 @@ body.simple #main { grid-template-columns: 260px 1fr; }
 #picker .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 #s_count { margin: 6px 0; }
 kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; }
+/* Calibrate (RULING GA): Advanced ▸ Calibrate replaces the bars and the plan while it is open */
+body.calib #bars, body.calib #main { display: none !important; }
+body.calib #app { grid-template-rows: auto 1fr; }
+#calib { display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-height: 0; }
+#calib[hidden] { display: none !important; }
+#cal_view { position: relative; min-width: 0; min-height: 0; background: #0b0a0d; }
+#cal_cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+#cal_help { position: absolute; left: 8px; right: 8px; bottom: 6px; color: var(--dim); font-size: 11px; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 3px #000; }
+#cal_side { background: var(--panel); border-left: 1px solid var(--line); overflow: auto; padding: 4px 10px 16px; min-height: 0; }
+#cal_status { margin: 6px 0; padding: 6px 8px; border-radius: 5px; border: 1px solid var(--line); font-size: 12px; }
+#cal_status.bad { border-color: #7a2a24; background: #2a1414; color: #ffb3aa; }
+#cal_side select { max-width: 100%; }
+#cal_pts { max-height: 300px; overflow: auto; border: 1px solid var(--line); border-radius: 5px; font-size: 12px; }
+#cal_pts .cp { display: grid; grid-template-columns: 1fr 92px 40px; gap: 4px; padding: 1px 6px; cursor: pointer; }
+#cal_pts .cp:hover { background: #2a2733; }
+#cal_pts .cp.set span:first-child { color: #ffe600; }
+#cal_pts .cp.sel { background: #3b3320; color: #ffe2a0; }
+#cal_pts .cp span:nth-child(2), #cal_pts .cp span:nth-child(3) { text-align: right; font-family: ui-monospace, Consolas, monospace; }
+#cal_pts .cp .hi { color: #ff9c92; }
+#cal_tl { max-height: 260px; overflow: auto; font-size: 12px; }
+#cal_tl .tl { display: grid; grid-template-columns: 1fr 150px; gap: 4px; align-items: center; padding: 1px 2px; cursor: pointer; }
+#cal_tl .tl.sel { background: #3b3320; }
+#cal_res { font-size: 12px; margin: 4px 0; }
+#cal_json { font: 11px ui-monospace, Consolas, monospace; }
+@media (max-width: 820px) { #calib { grid-template-columns: 1fr; } #cal_view { height: 60vh; } }
 @media (max-width: 1100px) { #main { grid-template-columns: 200px 1fr 300px; } }
 @media (max-width: 820px) {
   #app { height: auto; }
@@ -134,6 +159,7 @@ kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid
   <div id="top">
     <div class="title">Blocking <span>· Hamilton, from the top</span></div>
     <button id="modebtn" aria-pressed="false" title="Simple: drag the dots while the music plays. Advanced: every waypoint, the forms, the change file">Advanced ▸</button>
+    <button id="calbtn" class="advonly" aria-pressed="false" title="Calibrate (RULING GA): a video shot's camera from named set points clicked on its frame, and its bodies labelled with cast ids">Calibrate</button>
     <div class="grp">
       <button id="play" aria-pressed="false" title="Play / pause (Space)">Play</button>
       <button data-n="-5" title="Back 5 s (Shift+[)">−5</button><button data-n="-1" title="Back 1 s ([)">−1</button>
@@ -256,6 +282,45 @@ kbd { font: 11px ui-monospace, monospace; background: #2a2832; border: 1px solid
       </div>
       <div id="chg"></div>
       <div class="note">The draft of your edits and notes is kept in this browser as you go. Give Claude the changes file; it says what to change in the generators (tools/blocking/).</div>
+    </div>
+  </div>
+  <div id="calib" hidden>
+    <div id="cal_view">
+      <canvas id="cal_cv" aria-label="The shot's frame"></canvas>
+      <div id="cal_help">Points: select a name, click the frame (drag to move) · <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> 1 px (<kbd>Shift</kbd> 5) · <kbd>Del</kbd> clear · <kbd>Enter</kbd> solve · <kbd>,</kbd> <kbd>.</kbd> frame · wheel zoom · right-drag pan · Labels: click a box, pick a name</div>
+    </div>
+    <div id="cal_side">
+      <h2>Calibrate · a shot's camera (GA)</h2>
+      <div id="cal_status">—</div>
+      <div class="form">
+        <label>Clip</label><select id="cal_clip" aria-label="Clip"></select>
+        <label>Shot</label><select id="cal_shot" aria-label="Shot"></select>
+        <label>Frame</label><span><input id="cal_frame" type="number" step="1"> <span class="faint" id="cal_frinfo"></span></span>
+      </div>
+      <div class="btns"><button id="cal_tpts" aria-pressed="true" title="Clicks set the selected set point">Points</button><button id="cal_tlab" aria-pressed="false" title="Clicks pick a body to label">Labels</button><button id="cal_fit">Fit</button></div>
+      <div class="btns">
+        <label><input type="checkbox" id="cal_vwire" checked> Wire</label>
+        <label><input type="checkbox" id="cal_vpred" checked> Predicted</label>
+        <label><input type="checkbox" id="cal_vbod"> Bodies</label>
+        <label><input type="checkbox" id="cal_vloupe" checked> Loupe 4×</label>
+      </div>
+      <h2>Set points <span class="faint" id="cal_npts"></span></h2>
+      <div id="cal_pts"></div>
+      <div class="note" id="cal_see"></div>
+      <div class="btns"><button id="cal_clr" title="Del">Clear point</button><button id="cal_clrall">Clear all</button><button id="cal_solve" title="Enter">Solve</button><label><input type="checkbox" id="cal_auto" checked> on every change</label></div>
+      <div id="cal_res"></div>
+      <h2>This shot</h2>
+      <div class="form">
+        <label>Judged</label><select id="cal_judged"><option value="">—</option><option value="good">good (≤ 8 px, on the set)</option><option value="fair">fair (≤ 15 px)</option><option value="poor">poor</option></select>
+        <label>Moving</label><span><input type="checkbox" id="cal_moving"> <span class="faint">the camera moves in this shot</span></span>
+        <label>Skipped</label><input id="cal_skip" type="text" placeholder="why (e.g. too tight) — blank: not skipped">
+      </div>
+      <h2>Labels <span class="faint" id="cal_nlab"></span></h2>
+      <div id="cal_tl"></div>
+      <h2>Export</h2>
+      <div class="btns"><button id="cal_dl" title="calib-<clip>.json: the loaded calib file with this page's shots merged in">Download calib JSON</button><button id="cal_dll" title="labels-<clip>.json">Download labels JSON</button><button id="cal_show" title="Both files as text, to copy">Show JSON</button></div>
+      <div class="note" id="cal_dlnote">The page writes nothing: save the downloads as tools/vision/calib/&lt;clip&gt;.json and tools/vision/labels/&lt;clip&gt;.json (or hand them to Claude). A draft per clip stays in this browser.</div>
+      <textarea id="cal_json" rows="10" readonly hidden></textarea>
     </div>
   </div>
 </div>
@@ -2452,6 +2517,663 @@ window.EDITOR = {
   recordDrop: (kind, id, x, z) => recordDrop(kind, id, x, z), recordKey: (kind, id, k) => recordKey(kind, id, k), recUndo: () => recUndo(), recordingDoc: () => recordingDoc(), importRecording: d => importRecording(d),
   recCount: tid => recCount(tid ?? curTrack().id), dance: (move, counts, mirror, canon) => recordMoves(move, counts, !!mirror, canon || 0), moves: id => effMoves(id), danceNow: (id, T = S.T) => danceNow(id, T), openDance: () => openDance(), beatAt: (id, t) => beatAtEd(id, t), /* FV */ putDown: id => { const q = effProps().get(id) && propPose(effProps().get(id), S.T); if (q) putDown(id, q.x, q.z); }, select2: (keys, add) => { if (!add) S.selSet.clear(); for (const k of keys) S.selSet.add(k); S.dirty = S.listDirty = true; }, recDelete: m => recDelete(m), deleteKeyframe: () => deleteKeyframe(), recClear: () => recClear(), recRestore: () => recRestore(), addFurniture: (kind, name) => { $('f_kind').value = kind; $('f_name').value = name || ''; addFurniture(); }, openPicker: id => openPicker(id, 100, 100),
 };
+</script>
+<script id="calibmath">
+// ================================================================ CALIBRATE: the camera solve (RULING GA), pure maths, no DOM
+// tools/vision/calib.py's solve_pnp in JS, conventions identical: K = [[f,0,w/2],[0,f,h/2],[0,0,1]] with f = (w/2)/tan(fov/2)
+// (fov horizontal); R, t map a set point to the camera (x_c = R X + t; +z of the camera is where it looks, +y is down the image);
+// camera = −Rᵀt; look = Rᵀ(0,0,1) (R's third row); rvec = Rodrigues(R). The lens is unknown: the horizontal fov is grid-searched
+// 12°–100° in 1° steps, at each a pose is found (starts: a DLT of P when ≥ 6 points are not coplanar, a plane homography when
+// ≥ 4 share a height, look-at guesses from the house, the previous fov's pose) and refined by Levenberg–Marquardt on the
+// reprojection error (rotation as a small-angle vector left-multiplied); the least RMS wins, then a 0.1° search ±1° around it.
+// Self-contained: paste this block into any console to run CALIBMATH.solvePnP(obj, img, 1280, 720).
+(function () {
+'use strict';
+const I3 = () => [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+const mul3 = (A, B) => A.map(r => [0, 1, 2].map(j => r[0] * B[0][j] + r[1] * B[1][j] + r[2] * B[2][j]));
+const tr3 = A => [0, 1, 2].map(i => [A[0][i], A[1][i], A[2][i]]);
+const mv3 = (A, v) => A.map(r => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]);
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm = a => Math.hypot(a[0], a[1], a[2]);
+const det3 = A => A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+function inv3(A) {
+  const d = det3(A); if (!Number.isFinite(d) || Math.abs(d) < 1e-300) return null;
+  const c = (i, j) => { const r = [0, 1, 2].filter(k => k !== i), s = [0, 1, 2].filter(k => k !== j); return ((i + j) % 2 ? -1 : 1) * (A[r[0]][s[0]] * A[r[1]][s[1]] - A[r[0]][s[1]] * A[r[1]][s[0]]); };
+  return [0, 1, 2].map(i => [0, 1, 2].map(j => c(j, i) / d));
+}
+function polar(M) {                       // the nearest rotation to M (det M > 0): Newton's iteration X ← (X + X⁻ᵀ)/2
+  let X = M.map(r => r.slice());
+  for (let k = 0; k < 60; k++) {
+    const Xi = inv3(X); if (!Xi) return null;
+    const Y = X.map((r, i) => r.map((v, j) => 0.5 * (v + Xi[j][i])));
+    let d = 0; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) d = Math.max(d, Math.abs(Y[i][j] - X[i][j]));
+    X = Y; if (d < 1e-15) break;
+  }
+  return X;
+}
+function expR(w) {                        // Rodrigues: a rotation vector -> R
+  const th = norm(w);
+  if (th < 1e-12) return [[1, -w[2], w[1]], [w[2], 1, -w[0]], [-w[1], w[0], 1]];
+  const k = w.map(v => v / th), s = Math.sin(th), c = 1 - Math.cos(th);
+  const K = [[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]], K2 = mul3(K, K);
+  return [0, 1, 2].map(i => [0, 1, 2].map(j => (i === j ? 1 : 0) + s * K[i][j] + c * K2[i][j]));
+}
+function logR(R) {                        // R -> its rotation vector (cv2.Rodrigues' convention, |r| in [0, π])
+  const cs = Math.max(-1, Math.min(1, (R[0][0] + R[1][1] + R[2][2] - 1) / 2)), th = Math.acos(cs);
+  const a = [R[2][1] - R[1][2], R[0][2] - R[2][0], R[1][0] - R[0][1]];
+  if (th < 1e-9) return [a[0] / 2, a[1] / 2, a[2] / 2];
+  if (Math.PI - th > 1e-4) { const k = th / (2 * Math.sin(th)); return a.map(v => v * k); }
+  const B = [0, 1, 2].map(i => [0, 1, 2].map(j => ((R[i][j] + (i === j ? 1 : 0)) / 2)));   // near π: the axis from (R + I)/2
+  let m = 0; for (let i = 1; i < 3; i++) if (B[i][i] > B[m][m]) m = i;
+  const ax = [0, 1, 2].map(j => B[m][j] / Math.sqrt(Math.max(B[m][m], 1e-300)));
+  const n = norm(ax), sg = (ax[0] * a[0] + ax[1] * a[1] + ax[2] * a[2]) < 0 ? -1 : 1;
+  return ax.map(v => sg * th * v / n);
+}
+function jacobiEig(A0) {                  // a symmetric matrix -> { vals, vecs (columns) }
+  const n = A0.length, A = A0.map(r => r.slice()), V = A0.map((r, i) => r.map((_, j) => i === j ? 1 : 0));
+  for (let sweep = 0; sweep < 80; sweep++) {
+    let off = 0, dg = 0; for (let i = 0; i < n; i++) { dg += A[i][i] * A[i][i]; for (let j = i + 1; j < n; j++) off += A[i][j] * A[i][j]; }
+    if (off <= 1e-30 * (dg + 1e-300)) break;
+    for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) {
+      if (Math.abs(A[p][q]) < 1e-300) continue;
+      const th = (A[q][q] - A[p][p]) / (2 * A[p][q]), t = (th >= 0 ? 1 : -1) / (Math.abs(th) + Math.sqrt(th * th + 1)), c = 1 / Math.sqrt(t * t + 1), s = t * c;
+      for (let k = 0; k < n; k++) { const kp = A[k][p], kq = A[k][q]; A[k][p] = c * kp - s * kq; A[k][q] = s * kp + c * kq; }
+      for (let k = 0; k < n; k++) { const pk = A[p][k], qk = A[q][k]; A[p][k] = c * pk - s * qk; A[q][k] = s * pk + c * qk; }
+      for (let k = 0; k < n; k++) { const kp = V[k][p], kq = V[k][q]; V[k][p] = c * kp - s * kq; V[k][q] = s * kp + c * kq; }
+    }
+  }
+  return { vals: A.map((r, i) => r[i]), vecs: V };
+}
+function nullVec(rows) {                  // the unit vector minimising |A x| (the smallest eigenvector of AᵀA)
+  const m = rows[0].length, AtA = Array.from({ length: m }, () => new Array(m).fill(0));
+  for (const r of rows) for (let i = 0; i < m; i++) { if (!r[i]) continue; for (let j = 0; j < m; j++) AtA[i][j] += r[i] * r[j]; }
+  const { vals, vecs } = jacobiEig(AtA);
+  let k = 0; for (let i = 1; i < m; i++) if (vals[i] < vals[k]) k = i;
+  const sorted = vals.slice().sort((a, b) => a - b);
+  return { x: vecs.map(r => r[k]), cond: sorted[1] > 0 ? sorted[0] / sorted[1] : 1 };
+}
+function solveLin(A, b) {                 // Gaussian elimination, partial pivoting
+  const n = b.length, M = A.map((r, i) => r.concat([b[i]]));
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if (Math.abs(M[p][c]) < 1e-300) return null;
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = c + 1; r < n; r++) { const f = M[r][c] / M[c][c]; if (f) for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  const x = new Array(n).fill(0);
+  for (let r = n - 1; r >= 0; r--) { let s = M[r][n]; for (let k = r + 1; k < n; k++) s -= M[r][k] * x[k]; x[r] = s / M[r][r]; }
+  return x;
+}
+const focal = (fov, w) => (w / 2) / Math.tan(fov * Math.PI / 360);
+
+function residuals(R, t, f, cx, cy, obj, img, out) {   // [du0, dv0, du1, …] in pixels; Infinity when a point is behind
+  let behind = false;
+  for (let i = 0; i < obj.length; i++) {
+    const X = obj[i], x = R[0][0] * X[0] + R[0][1] * X[1] + R[0][2] * X[2] + t[0], y = R[1][0] * X[0] + R[1][1] * X[1] + R[1][2] * X[2] + t[1], z = R[2][0] * X[0] + R[2][1] * X[1] + R[2][2] * X[2] + t[2];
+    if (z <= 1e-6) behind = true;
+    out[2 * i] = f * x / z + cx - img[i][0]; out[2 * i + 1] = f * y / z + cy - img[i][1];
+  }
+  return behind;
+}
+function refineLM(R0, t0, f, cx, cy, obj, img, iters = 150) {
+  const n2 = obj.length * 2, r = new Float64Array(n2), rp = new Float64Array(n2), rm = new Float64Array(n2);
+  let R = R0, t = t0.slice();
+  const cost = (R, t, buf) => { const b = residuals(R, t, f, cx, cy, obj, img, buf); let s = 0; for (let i = 0; i < n2; i++) s += buf[i] * buf[i]; return b ? Infinity : s; };
+  const step = (R, t, d) => [mul3(expR([d[0], d[1], d[2]]), R), [t[0] + d[3], t[1] + d[4], t[2] + d[5]]];
+  let c = cost(R, t, r), lam = 1e-3;
+  if (!Number.isFinite(c)) {                          // a start with points behind the camera: still let LM pull them round
+    residuals(R, t, f, cx, cy, obj, img, r); c = 0; for (let i = 0; i < n2; i++) c += r[i] * r[i];
+  }
+  let finite = Number.isFinite(cost(R, t, rp));
+  for (let it = 0; it < iters; it++) {
+    const J = [];
+    const ht = 1e-6 * (1 + norm(t));
+    for (let k = 0; k < 6; k++) {
+      const h = k < 3 ? 1e-7 : ht, d = [0, 0, 0, 0, 0, 0];
+      d[k] = h; let [Rp, tp] = step(R, t, d); residuals(Rp, tp, f, cx, cy, obj, img, rp);
+      d[k] = -h; [Rp, tp] = step(R, t, d); residuals(Rp, tp, f, cx, cy, obj, img, rm);
+      const col = new Float64Array(n2); for (let i = 0; i < n2; i++) col[i] = (rp[i] - rm[i]) / (2 * h); J.push(col);
+    }
+    residuals(R, t, f, cx, cy, obj, img, r);
+    const JtJ = [0, 1, 2, 3, 4, 5].map(a => [0, 1, 2, 3, 4, 5].map(b => { let s = 0; for (let i = 0; i < n2; i++) s += J[a][i] * J[b][i]; return s; }));
+    const Jtr = [0, 1, 2, 3, 4, 5].map(a => { let s = 0; for (let i = 0; i < n2; i++) s += J[a][i] * r[i]; return -s; });
+    let accepted = false;
+    for (let tries = 0; tries < 12 && !accepted; tries++) {
+      const A = JtJ.map((row, i) => row.map((v, j) => i === j ? v * (1 + lam) + 1e-12 : v));
+      const d = solveLin(A, Jtr); if (!d) { lam *= 10; continue; }
+      const [Rn, tn] = step(R, t, d);
+      let cn; const behind = residuals(Rn, tn, f, cx, cy, obj, img, rp); cn = 0; for (let i = 0; i < n2; i++) cn += rp[i] * rp[i];
+      if (finite && behind) cn = Infinity;
+      if (cn < c) {
+        const gain = c - cn; R = Rn; t = tn; c = cn; if (!behind) finite = true; lam = Math.max(lam / 10, 1e-12); accepted = true;
+        if (gain < 1e-13 * (c + 1e-12)) return { R, t, cost: finite ? c : Infinity };
+      } else lam *= 10;
+    }
+    if (!accepted) break;
+  }
+  return { R, t, cost: finite ? c : Infinity };
+}
+function orthoPose(M, p4) {               // P = [M | p4] ≈ λ[R | t] -> R, t (det M made positive first)
+  if (det3(M) < 0) { M = M.map(r => r.map(v => -v)); p4 = p4.map(v => -v); }
+  const R = polar(M); if (!R) return null;
+  const lam = (R[0][0] * M[0][0] + R[1][0] * M[1][0] + R[2][0] * M[2][0] + R[0][1] * M[0][1] + R[1][1] * M[1][1] + R[2][1] * M[2][1] + R[0][2] * M[0][2] + R[1][2] * M[1][2] + R[2][2] * M[2][2]) / 3;
+  if (!(lam > 0)) return null;
+  return { R, t: p4.map(v => v / lam) };
+}
+function normalise2(pts) {                // a similarity putting 2D points about 0 at mean distance √2
+  const n = pts.length, c = [0, 0]; for (const p of pts) { c[0] += p[0] / n; c[1] += p[1] / n; }
+  let d = 0; for (const p of pts) d += Math.hypot(p[0] - c[0], p[1] - c[1]) / n;
+  const s = d > 0 ? Math.SQRT2 / d : 1;
+  return { T: [[s, 0, -s * c[0]], [0, s, -s * c[1]], [0, 0, 1]], Ti: [[1 / s, 0, c[0]], [0, 1 / s, c[1]], [0, 0, 1]], p: pts.map(p => [s * (p[0] - c[0]), s * (p[1] - c[1])]) };
+}
+function initDLT(obj, nimg) {             // ≥ 6 points not on one plane: P from a DLT on the normalised pixels
+  const n = obj.length; if (n < 6) return null;
+  const c = [0, 0, 0]; for (const X of obj) for (let k = 0; k < 3; k++) c[k] += X[k] / n;
+  let d = 0; for (const X of obj) d += Math.hypot(X[0] - c[0], X[1] - c[1], X[2] - c[2]) / n;
+  if (!(d > 0)) return null;
+  const s = Math.sqrt(3) / d, N2 = normalise2(nimg);
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const X = [s * (obj[i][0] - c[0]), s * (obj[i][1] - c[1]), s * (obj[i][2] - c[2]), 1], [x, y] = N2.p[i];
+    rows.push([...X, 0, 0, 0, 0, ...X.map(v => -x * v)]);
+    rows.push([0, 0, 0, 0, ...X, ...X.map(v => -y * v)]);
+  }
+  const { x: p, cond } = nullVec(rows); if (cond > 0.5) return null;   // coplanar points: no unique P
+  const Pn = [p.slice(0, 4), p.slice(4, 8), p.slice(8, 12)];
+  const T3 = [[s, 0, 0, -s * c[0]], [0, s, 0, -s * c[1]], [0, 0, s, -s * c[2]], [0, 0, 0, 1]];
+  const A = mul3(N2.Ti, Pn.map(r => r.slice(0, 3))), a4 = mv3(N2.Ti, Pn.map(r => r[3]));   // P = Ti·Pn·T3
+  const P = [0, 1, 2].map(i => [0, 1, 2, 3].map(j => { let v = 0; for (let k = 0; k < 3; k++) v += [A[i][0], A[i][1], A[i][2]][k] * T3[k][j]; return v + (j === 3 ? a4[i] : 0); }));
+  return orthoPose(P.map(r => r.slice(0, 3)), P.map(r => r[3]));
+}
+function initPlane(obj, nimg) {           // ≥ 4 points at one height y = h: the homography (x, z) -> pixel gives [r1 r3 t + h r2]
+  const groups = new Map(); obj.forEach((X, i) => { const k = X[1].toFixed(3); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); });
+  const out = [];
+  for (const [, idx] of groups) {
+    if (idx.length < 4) continue;
+    const h = obj[idx[0]][1], P1 = normalise2(idx.map(i => [obj[i][0], obj[i][2]])), P2 = normalise2(idx.map(i => nimg[i]));
+    const rows = [];
+    idx.forEach((_, k) => { const [X, Z] = P1.p[k], [x, y] = P2.p[k]; rows.push([X, Z, 1, 0, 0, 0, -x * X, -x * Z, -x]); rows.push([0, 0, 0, X, Z, 1, -y * X, -y * Z, -y]); });
+    const { x: hv } = nullVec(rows);
+    let H = mul3(mul3(P2.Ti, [hv.slice(0, 3), hv.slice(3, 6), hv.slice(6, 9)]), P1.T);
+    let pos = 0; for (const i of idx) { const z = H[2][0] * obj[i][0] + H[2][1] * obj[i][2] + H[2][2]; pos += z > 0 ? 1 : -1; }
+    if (pos < 0) H = H.map(r => r.map(v => -v));
+    const h1 = [H[0][0], H[1][0], H[2][0]], h2 = [H[0][1], H[1][1], H[2][1]], h3 = [H[0][2], H[1][2], H[2][2]];
+    const lam = (norm(h1) + norm(h2)) / 2; if (!(lam > 0)) continue;
+    const r1 = h1.map(v => v / lam), r3 = h2.map(v => v / lam), r2 = cross(r3, r1);
+    const R = polar([0, 1, 2].map(i => [r1[i], r2[i], r3[i]])); if (!R) continue;
+    const c2 = [R[0][1], R[1][1], R[2][1]];
+    out.push({ R, t: h3.map((v, i) => v / lam - h * c2[i]) });
+  }
+  return out;
+}
+function lookAt(C, T) {                   // a camera at C looking at T, the set's up (+y) up in the image
+  const fw = [T[0] - C[0], T[1] - C[1], T[2] - C[2]], fn = norm(fw); const z = fw.map(v => v / fn);
+  let x = cross(z, [0, 1, 0]); const xn = norm(x); if (xn < 1e-6) return null; x = x.map(v => v / xn);
+  const y = cross(z, x), R = [x, y, z];
+  return { R, t: mv3(R, C).map(v => -v) };
+}
+function rmsOf(R, t, f, cx, cy, obj, img) {
+  const r = new Float64Array(obj.length * 2); const behind = residuals(R, t, f, cx, cy, obj, img, r);
+  if (behind) return { rms: Infinity, res: [] };
+  const res = []; let s = 0; for (let i = 0; i < obj.length; i++) { const e = Math.hypot(r[2 * i], r[2 * i + 1]); res.push(e); s += e * e; }
+  return { rms: Math.sqrt(s / obj.length), res };
+}
+function poseAt(fov, obj, img, w, h, warm) {   // the best pose at one fov from every start
+  const f = focal(fov, w), cx = w / 2, cy = h / 2, nimg = img.map(p => [(p[0] - cx) / f, (p[1] - cy) / f]);
+  const starts = [];
+  if (warm) starts.push(warm);
+  const dlt = initDLT(obj, nimg); if (dlt) starts.push(dlt);
+  for (const s of initPlane(obj, nimg)) starts.push(s);
+  const n = obj.length, cen = [0, 0, 0]; for (const X of obj) for (let k = 0; k < 3; k++) cen[k] += X[k] / n;
+  for (const C of [[0, 2, 25], [0, 2, 50], [0, 6, 90], [-15, 8, 25], [15, 8, 25]]) { const s = lookAt(C, cen); if (s) starts.push(s); }
+  let best = null;
+  for (const s of starts) {
+    const r = refineLM(s.R, s.t, f, cx, cy, obj, img);
+    if (Number.isFinite(r.cost) && (!best || r.cost < best.cost)) best = r;
+  }
+  if (!best) return null;
+  const q = rmsOf(best.R, best.t, f, cx, cy, obj, img);
+  return Number.isFinite(q.rms) ? { R: best.R, t: best.t, f, fov, rms: q.rms } : null;
+}
+const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100, r3 = v => Math.round(v * 1000) / 1000;
+function solvePnP(obj, img, w = 1280, h = 720, fovLo = 12, fovHi = 100) {
+  if (obj.length < 5 || obj.length !== img.length) return null;
+  let best = null, warm = null;
+  for (let fov = fovLo; fov <= fovHi + 1e-9; fov += 1) {
+    const s = poseAt(fov, obj, img, w, h, warm);
+    if (s) { warm = { R: s.R, t: s.t }; if (!best || s.rms < best.rms) best = s; }
+  }
+  if (!best) return null;
+  const coarse = best.fov;
+  for (let k = 0; k <= 20; k++) {                       // calib.py: a 0.1° search ±1° about the best, from its pose
+    const fov2 = Math.round((coarse - 1 + 0.1 * k) * 10) / 10, f = focal(fov2, w);
+    const r = refineLM(best.R, best.t, f, w / 2, h / 2, obj, img);
+    if (!Number.isFinite(r.cost)) continue;
+    const q = rmsOf(r.R, r.t, f, w / 2, h / 2, obj, img);
+    if (q.rms < best.rms) best = { R: r.R, t: r.t, f, fov: fov2, rms: q.rms };
+  }
+  const { R, t, f } = best, q = rmsOf(R, t, f, w / 2, h / 2, obj, img);
+  const Rt = tr3(R), cam = mv3(Rt, t).map(v => -v), look = [R[2][0], R[2][1], R[2][2]];
+  return { K: [[f, 0, w / 2], [0, f, h / 2], [0, 0, 1]], R: R.map(r => r.slice()), t: t.slice(), rvec: logR(R),
+    camera: cam.map(r3), look: look.map(r3), fovDeg: r1(best.fov), rms: r2(q.rms), residuals: q.res.map(r1), frameSize: [w, h] };
+}
+function project(points, sol) {           // set points -> [[u, v, depth]] through a solve dict (calib.py's `project`)
+  const K = sol.K, R = sol.R, t = sol.t;
+  return points.map(X => {
+    const x = R[0][0] * X[0] + R[0][1] * X[1] + R[0][2] * X[2] + t[0], y = R[1][0] * X[0] + R[1][1] * X[1] + R[1][2] * X[2] + t[1], z = R[2][0] * X[0] + R[2][1] * X[1] + R[2][2] * X[2] + t[2];
+    const zz = Math.abs(z) < 1e-9 ? 1e-9 : z;
+    return [(K[0][0] * x + K[0][1] * y + K[0][2] * z) / zz, (K[1][1] * y + K[1][2] * z) / zz, z];
+  });
+}
+window.CALIBMATH = { solvePnP, project, poseAt, refineLM, expR, logR, focal, jacobiEig };
+})();
+</script>
+<script>
+// ================================================================ CALIBRATE (RULING GA; GB rule 1): Advanced ▸ Calibrate
+// A shot's camera from named set points clicked on one of its frames, solved in the page (CALIBMATH above, calib.py's method),
+// the set's wireframe drawn through it to judge by eye; and the shot's bodies labelled with cast ids. It reads (from the server
+// at the repo root) video/INDEX.json, tools/vision/setpoints.json, tools/hamilton-cast.json and per clip
+// tools/vision/cache/<clip>/{frames.json, bodies.json, frames/*.jpg}, tools/vision/calib/<clip>.json and
+// tools/vision/labels/<clip>.json when they exist. It writes nothing: Download gives calib-<clip>.json (the loaded file with this
+// page's shots merged in: save it as tools/vision/calib/<clip>.json) and labels-<clip>.json (tools/vision/labels/<clip>.json).
+// A draft per clip is kept in this browser and offered on the next load. window.CALIB drives it from the console.
+(function () {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const M = window.CALIBMATH;
+const DRAFT = 'hamilton-calib-draft-1:';
+const EXTRA = [['ens?', 'ensemble — cannot tell who'], ['x', 'not a performer (audience, crew, a false body)']];
+const C = {
+  open: false, setpts: null, wire: null, clips: [], cast: [], clip: null, frames: null, bodies: null, byFrame: new Map(), wide: new Set(),
+  doc: null, work: new Map(), labels: {}, shot: null, frame: null, img: null, imgOK: false, sel: null, selTid: null, tool: 'points',
+  v: { s: 1, ox: 0, oy: 0, fit: true }, W: 300, H: 200, mouse: null, drag: null, pan: null, dirty: true, solveDue: false, draftDue: false, msg: '', lastSolveMs: 0,
+};
+const cv = $('cal_cv'), g = cv.getContext('2d');
+
+// ---------------------------------------------------------------- loading
+async function jget(url, optional) {
+  let r;
+  try { r = await fetch(url, { cache: 'no-cache' }); }
+  catch (e) { throw new Error(`${url}: no answer — is the server running at the repo root (python -m http.server 8093)?`); }
+  if (!r.ok) { if (optional) return null; throw new Error(`${url}: HTTP ${r.status}`); }
+  return r.json();
+}
+function status(html, bad) { C.msg = html; const s = $('cal_status'); s.innerHTML = html; s.classList.toggle('bad', !!bad); }
+function boot() { return C.booting || (C.booting = bootOnce()); }      // once: the static files
+async function bootOnce() {
+  const errs = [];
+  const [sp, idx, cast] = await Promise.all([
+    jget('tools/vision/setpoints.json').catch(e => { errs.push(e.message); return null; }),
+    jget('video/INDEX.json').catch(e => { errs.push(e.message); return null; }),
+    jget('tools/hamilton-cast.json').catch(e => { errs.push(e.message); return null; })]);
+  if (sp) { C.setpts = sp.points; C.wire = sp.wire; }
+  C.clips = idx && Array.isArray(idx.files) ? idx.files.map(f => String(f.file).replace(/\.[^.]+$/, '')).sort() : [];
+  C.cast = cast && Array.isArray(cast.actors) ? cast.actors : [];
+  const sel = $('cal_clip'); sel.innerHTML = '<option value="">— a clip —</option>' + C.clips.map(c => `<option>${esc(c)}</option>`).join('');
+  renderPoints();
+  if (errs.length) C.booting = null;                       // the next open tries again
+  status(errs.length ? errs.map(esc).join('<br>') : `${C.clips.length} clips, ${C.setpts ? Object.keys(C.setpts).length : 0} set points. Pick a clip.`, errs.length);
+}
+async function loadClip(clip, want) {
+  if (!clip) return;
+  if (!C.setpts) await boot();
+  status(`loading ${esc(clip)}…`);
+  const base = `tools/vision/cache/${clip}/`;
+  let frames;
+  try { frames = await jget(base + 'frames.json'); }
+  catch (e) { status(`${esc(e.message)}<br>No frames for this clip: run stage 1 (run.py frames ${esc(clip)}).`, true); return false; }
+  const [bodies, doc, lab] = await Promise.all([jget(base + 'bodies.json', true).catch(() => null), jget(`tools/vision/calib/${clip}.json`, true).catch(() => null),
+    jget(`tools/vision/labels/${clip}.json`, true).catch(() => null)]);
+  Object.assign(C, { clip, frames, bodies, doc: doc || { clip, what: 'per-shot camera solves (RULING GA); pixels in the 720-high cache frame', shots: {} }, work: new Map(),
+    labels: lab && lab.labels ? Object.assign({}, lab.labels) : {}, shot: null, sel: null, selTid: null, byFrame: new Map(), wide: new Set() });
+  if (!C.doc.shots) C.doc.shots = {};
+  if (bodies && Array.isArray(bodies.frames)) {
+    for (const f of bodies.frames) C.byFrame.set(f.i, f.bodies || []);
+    const H = (bodies.frameSize || [1280, 720])[1], med = a => { const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length ? (b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2) : 0; };   // np.median
+    for (const sh of frames.shots) {                       // calib.py's wide_shots: small bodies, several of them
+      const hs = [], ns = [];
+      for (let i = sh.first; i <= sh.last; i++) { const bs = C.byFrame.get(i) || []; ns.push(bs.length); for (const b of bs) hs.push((b.box[3] - b.box[1]) / H); }
+      if (hs.length && med(hs) <= 0.4 && med(ns) >= 3) C.wide.add(sh.id);
+    }
+  }
+  $('cal_clip').value = clip;
+  renderShots();
+  const dr0 = readDraft(clip), dr = dr0 && dr0.shots && (Object.keys(dr0.shots).length || Object.keys(dr0.labels || {}).length) ? dr0 : null;
+  status(`${esc(clip)}: ${frames.shots.length} shots (${C.wide.size} wide), ${doc ? Object.keys(doc.shots || {}).length + ' in calib/' + esc(clip) + '.json' : 'no calib file yet'}, ` +
+    `${bodies ? Object.keys(bodies.tracklets || {}).length + ' tracklets' : 'no bodies.json'}, ${Object.keys(C.labels).length} labels.` +
+    (dr ? `<br><b>A draft is in this browser</b> (${esc(dr.saved || '')}: ${Object.keys(dr.shots).length} shots, ${Object.keys(dr.labels || {}).length} labels). <button id="cal_drafty">Restore it</button> <button id="cal_draftn">Discard it</button>` : ''));
+  if (dr) { $('cal_drafty').onclick = () => {             // the draft's shots and labels over the file as loaded now (its other shots stay)
+      for (const [id, w] of Object.entries(dr.shots)) C.work.set(+id, Object.assign(w, { id: +id, touched: true }));
+      Object.assign(C.labels, dr.labels || {}); renderShots(); setShot(C.shot ?? firstShot()); status('The draft is restored.'); };
+    $('cal_draftn').onclick = () => { try { localStorage.removeItem(DRAFT + clip); } catch (e) { } status('The draft is discarded.'); }; }
+  setShot(want != null && frames.shots[want] ? want : firstShot());
+  return true;
+}
+const firstShot = () => { const ids = Object.keys(C.doc.shots).map(Number).filter(n => C.frames.shots[n]); return ids.length ? ids[0] : C.wide.size ? [...C.wide][0] : 0; };
+function renderShots() {
+  const s = $('cal_shot'); if (!C.frames) { s.innerHTML = ''; return; }
+  s.innerHTML = C.frames.shots.map(sh => {
+    const f0 = C.frames.frames[sh.first] || {}, r = recOf(sh.id), tag = r && r.skipped ? ' · skipped' : r && r.solve ? ` · ✓ rms ${r.solve.rms}${r.judged ? ' ' + r.judged : ''}` : '';
+    return `<option value="${sh.id}">${sh.id} · ${sh.n} fr${f0.track ? ' · ' + esc(f0.track) + ' ' + mmss(f0.at) : ''}${C.wide.has(sh.id) ? ' · wide' : ''}${tag}</option>`;
+  }).join('');
+  if (C.shot != null) s.value = String(C.shot);
+}
+const mmss = t => Number.isFinite(t) ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}` : '';
+function recOf(id) { return C.work.get(id) || toWork(C.doc.shots[String(id)], id); }
+function toWork(r, id) {
+  if (!r) return null;
+  return { frame: r.frame, points: Object.assign({}, r.points || {}), solve: r.solve || null, judged: r.judged || '', moving: !!r.moving, skipped: r.skipped || '', by: r.by, touched: false, id };
+}
+function work() {                                          // the current shot's working record (made on first edit)
+  let w = C.work.get(C.shot);
+  if (!w) { w = toWork(C.doc.shots[String(C.shot)], C.shot) || { frame: C.frame, points: {}, solve: null, judged: '', moving: false, skipped: '', touched: false, id: C.shot }; C.work.set(C.shot, w); }
+  return w;
+}
+function setShot(id) {
+  if (!C.frames) return;
+  id = Math.max(0, Math.min(C.frames.shots.length - 1, +id | 0));
+  const sh = C.frames.shots[id]; C.shot = id; C.sel = null; C.selTid = null;
+  const r = recOf(id);
+  setFrame(r && Number.isFinite(r.frame) ? r.frame : sh.first + Math.floor(sh.n / 2));
+  $('cal_shot').value = String(id);
+  renderShotForm(); renderPoints(); renderTracklets();
+}
+function setFrame(i) {
+  const sh = C.frames.shots[C.shot]; i = Math.max(sh.first, Math.min(sh.last, +i | 0)); C.frame = i;
+  const f = C.frames.frames[i] && C.frames.frames[i].i === i ? C.frames.frames[i] : C.frames.frames.find(x => x.i === i);
+  $('cal_frame').min = sh.first; $('cal_frame').max = sh.last; $('cal_frame').value = i;
+  $('cal_frinfo').textContent = `${sh.first}–${sh.last} (middle ${sh.first + Math.floor(sh.n / 2)})${f ? ` · clip ${f.t}s · ${f.track || '?'} ${f.at != null ? f.at.toFixed(1) + 's' : ''}` : ''}`;
+  C.imgOK = false;
+  if (!f) { status(`frame ${i} is not in frames.json`, true); return; }
+  const im = new Image(); C.img = im;
+  im.onload = () => { if (C.img === im) { C.imgOK = true; C.dirty = true; } };
+  im.onerror = () => { if (C.img === im) status(`Could not load tools/vision/cache/${esc(C.clip)}/frames/${esc(f.file)}`, true); };
+  im.src = `tools/vision/cache/${encodeURIComponent(C.clip)}/frames/${encodeURIComponent(f.file)}`;
+  renderTracklets(); C.dirty = true;
+}
+
+// ---------------------------------------------------------------- points and the solve
+function setPoint(name, u, v) {
+  if (!C.setpts || !C.setpts[name]) throw new Error('unknown set point: ' + name);
+  const w = work(); w.points[name] = [Math.round(u * 10) / 10, Math.round(v * 10) / 10]; w.frame = C.frame; changed(w);
+}
+function clearPoint(name) { const w = work(); if (name in w.points) { delete w.points[name]; changed(w); } }
+function changed(w) { w.touched = true; w.solve = null; w.by = 'blocking.html'; C.solveDue = $('cal_auto').checked && !C.drag; C.draftDue = true; C.dirty = true; renderPoints(); }
+function solveNow() {
+  const w = work(), names = Object.keys(w.points);
+  if (names.length < 5) { w.solve = null; renderPoints(); C.dirty = true; return null; }
+  const t0 = performance.now();
+  const sol = M.solvePnP(names.map(n => C.setpts[n].p), names.map(n => w.points[n]), C.img && C.img.naturalWidth || 1280, C.img && C.img.naturalHeight || 720);
+  C.lastSolveMs = performance.now() - t0;
+  w.solve = sol; w.touched = true; w.by = 'blocking.html'; C.draftDue = true; C.dirty = true; renderPoints(); renderShots();
+  return sol;
+}
+function residualOf(w, name) { if (!w || !w.solve) return null; const k = Object.keys(w.points).indexOf(name); return k >= 0 ? w.solve.residuals[k] : null; }
+function predict(sol, names) { names = names || Object.keys(C.setpts); const P = M.project(names.map(n => C.setpts[n].p), sol); const o = {}; names.forEach((n, k) => { o[n] = P[k]; }); return o; }
+function renderPoints() {
+  const box = $('cal_pts'); if (!C.setpts) { box.innerHTML = '<div class="faint">no setpoints.json</div>'; return; }
+  const w = C.shot != null ? recOf(C.shot) : null, pts = w ? w.points : {};
+  box.innerHTML = Object.keys(C.setpts).map(n => {
+    const p = pts[n], r = residualOf(w, n);
+    return `<div class="cp${n === C.sel ? ' sel' : ''}${p ? ' set' : ''}" data-n="${esc(n)}" title="${esc(C.setpts[n].see)}"><span>${esc(n)}</span><span>${p ? p[0].toFixed(1) + ', ' + p[1].toFixed(1) : '—'}</span><span class="${r > 15 ? 'hi' : ''}">${r != null ? r.toFixed(1) : ''}</span></div>`;
+  }).join('');
+  const n = Object.keys(pts).length;
+  $('cal_npts').textContent = `${n} set${n < 5 ? ' — 5 to solve' : ''}`;
+  $('cal_see').innerHTML = C.sel ? `<b>${esc(C.sel)}</b> [${C.setpts[C.sel].p.join(', ')}]: ${esc(C.setpts[C.sel].see)}` : 'Select a point, then click the frame where it is.';
+  const s = w && w.solve;
+  $('cal_res').innerHTML = s ? `fov <b>${s.fovDeg}°</b> · rms <b>${s.rms} px</b> · camera (${s.camera.map(v => v.toFixed(2)).join(', ')}) m · look (${s.look.join(', ')})${w.by === 'blocking.html' ? ` · ${C.lastSolveMs ? Math.round(C.lastSolveMs) + ' ms' : ''}` : ` · <span class="faint">as loaded${s.refined ? ' (' + esc(s.refined) + '-refined)' : ''}</span>`}`
+    : n >= 5 ? '<span class="faint">not solved — Solve (Enter)</span>' : '';
+}
+function renderShotForm() {
+  const w = recOf(C.shot) || {};
+  $('cal_judged').value = w.judged || ''; $('cal_moving').checked = !!w.moving; $('cal_skip').value = w.skipped || '';
+}
+
+// ---------------------------------------------------------------- labels (GB rule 1)
+function tracklets() {
+  if (!C.bodies || !C.bodies.tracklets) return [];
+  return Object.entries(C.bodies.tracklets).filter(([, t]) => t.shot === C.shot).map(([tid, t]) => Object.assign({ tid }, t))
+    .sort((a, b) => (+a.tid.split('-t')[1] || 0) - (+b.tid.split('-t')[1] || 0));
+}
+function castOpts(v) {
+  return '<option value="">—</option>' + C.cast.map(a => `<option value="${esc(a.id)}"${a.id === v ? ' selected' : ''}>${esc(a.name)} (${esc(a.id)})</option>`).join('') +
+    EXTRA.map(([id, nm]) => `<option value="${esc(id)}"${id === v ? ' selected' : ''}>${esc(id)} — ${esc(nm)}</option>`).join('');
+}
+function renderTracklets() {
+  const box = $('cal_tl'), here = new Set((C.byFrame.get(C.frame) || []).map(b => b.tid)), T = tracklets();
+  if (!C.bodies) { box.innerHTML = '<div class="faint">no bodies.json for this clip</div>'; $('cal_nlab').textContent = ''; return; }
+  box.innerHTML = T.length ? T.map(t => `<div class="tl${t.tid === C.selTid ? ' sel' : ''}" data-t="${esc(t.tid)}"><span title="frames ${t.first}–${t.last}">${esc(t.tid)} <small class="${here.has(t.tid) ? '' : 'faint'}">${t.n} fr${here.has(t.tid) ? ' · here' : ''}</small></span><select data-t="${esc(t.tid)}">${castOpts(C.labels[t.tid] || '')}</select></div>`).join('')
+    : '<div class="faint">no tracklets in this shot</div>';
+  $('cal_nlab').textContent = `${T.filter(t => C.labels[t.tid]).length} / ${T.length} in this shot · ${Object.keys(C.labels).length} in the clip`;
+}
+function setLabel(tid, cid) {
+  if (cid && !(C.cast.some(a => a.id === cid) || EXTRA.some(e => e[0] === cid))) throw new Error('unknown cast id: ' + cid);
+  if (cid) C.labels[tid] = cid; else delete C.labels[tid];
+  C.draftDue = true; C.dirty = true; renderTracklets();
+}
+
+// ---------------------------------------------------------------- the documents
+function calibDoc() {
+  const d = JSON.parse(JSON.stringify(C.doc || { clip: C.clip, shots: {} })), notes = [];
+  for (const [id, w] of C.work) {
+    if (!w.touched) continue;
+    const k = String(id), n = Object.keys(w.points).length;
+    const old = d.shots[k] || {};                         // keys this page does not know (a note, say) are kept
+    if (w.skipped) { const r = Object.assign({}, old, { frame: w.frame, skipped: w.skipped, by: 'blocking.html' }); delete r.solve; delete r.judged; if (n) r.points = w.points; else delete r.points; d.shots[k] = r; continue; }
+    if (!w.solve) { if (d.shots[k]) notes.push(`shot ${id}: ${n} point${n === 1 ? '' : 's'}, no solve — left out`); delete d.shots[k]; continue; }
+    const r = Object.assign({}, old, { frame: w.frame, points: w.points, solve: w.solve, moving: w.moving ? true : null });
+    delete r.skipped; if (w.judged) r.judged = w.judged; else delete r.judged;
+    if (w.by) r.by = w.by;
+    d.shots[k] = r;
+  }
+  const o = {}; for (const k of Object.keys(d.shots).sort((a, b) => a - b)) o[k] = d.shots[k];
+  d.shots = o; C.exportNotes = notes;
+  return d;
+}
+function labelsDoc() {
+  const key = t => { const m = /^s(\d+)-t(\d+)$/.exec(t); return m ? +m[1] * 1e6 + +m[2] : 9e15; };
+  const o = {}; for (const t of Object.keys(C.labels).sort((a, b) => key(a) - key(b))) o[t] = C.labels[t];
+  return { clip: C.clip, what: "tracklet id (bodies.json, s<shot>-t<n>) -> cast id (tools/hamilton-cast.json), RULING GB rule 1, given in blocking.html's Calibrate; 'ens?' = an ensemble member not told apart (the pool), 'x' = not a performer", labels: o };
+}
+const dl = (name, text) => {
+  if (typeof window.download === 'function') return window.download(name, text, 'application/json');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name; document.body.append(a); a.click(); a.remove();
+};
+function downloadCalib() { if (!C.clip) return; const d = calibDoc(); dl(`calib-${C.clip}.json`, JSON.stringify(d, null, 1) + '\n'); $('cal_dlnote').innerHTML = `Save it as <code>tools/vision/calib/${esc(C.clip)}.json</code> (${Object.keys(d.shots).length} shots).` + (C.exportNotes.length ? '<br>' + C.exportNotes.map(esc).join('<br>') : ''); }
+function downloadLabels() { if (!C.clip) return; const d = labelsDoc(); dl(`labels-${C.clip}.json`, JSON.stringify(d, null, 1) + '\n'); $('cal_dlnote').innerHTML = `Save it as <code>tools/vision/labels/${esc(C.clip)}.json</code> (${Object.keys(d.labels).length} labels).`; }
+function readDraft(clip) { try { const s = localStorage.getItem(DRAFT + clip); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+function saveDraft() {                                   // this page's edits only: the shots it touched and the labels
+  if (!C.clip) return;
+  const shots = {}; for (const [id, w] of C.work) if (w.touched) shots[id] = w;
+  try { localStorage.setItem(DRAFT + C.clip, JSON.stringify({ saved: new Date().toISOString(), shots, labels: C.labels })); } catch (e) { }
+}
+
+// ---------------------------------------------------------------- drawing
+function resize() {
+  const r = $('cal_view').getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  C.W = Math.max(50, r.width); C.H = Math.max(50, r.height); cv.width = Math.round(C.W * dpr); cv.height = Math.round(C.H * dpr);
+  if (C.v.fit) fit(); C.dirty = true;
+}
+function fit() { const fw = imgW(), fh = imgH(); C.v.s = Math.min((C.W - 8) / fw, (C.H - 8) / fh); C.v.ox = (C.W - fw * C.v.s) / 2; C.v.oy = (C.H - fh * C.v.s) / 2; C.v.fit = true; C.dirty = true; }
+const imgW = () => C.img && C.img.naturalWidth || 1280, imgH = () => C.img && C.img.naturalHeight || 720;
+const toFrame = (px, py) => [(px - C.v.ox) / C.v.s - 0.5, (py - C.v.oy) / C.v.s - 0.5];   // pixel centres: OpenCV's (u, v) is the middle of pixel u
+function scene(s, ox, oy, small) {
+  const X = u => ox + (u + 0.5) * s, Y = v => oy + (v + 0.5) * s;
+  g.imageSmoothingEnabled = s < 2;
+  if (C.imgOK) g.drawImage(C.img, ox, oy, imgW() * s, imgH() * s);
+  else { g.fillStyle = '#000'; g.fillRect(ox, oy, imgW() * s, imgH() * s); }
+  const w = C.shot != null ? recOf(C.shot) : null, sol = w && w.solve;
+  if ($('cal_vbod').checked) for (const b of C.byFrame.get(C.frame) || []) {
+    const lab = C.labels[b.tid], a = lab && C.cast.find(c => c.id === lab), sel = b.tid === C.selTid;
+    g.strokeStyle = sel ? '#ffe26a' : a ? a.color : lab ? '#c8c8c8' : 'rgba(255,255,255,.55)'; g.lineWidth = sel ? 2 : 1; g.setLineDash(lab ? [] : [4, 3]);
+    g.strokeRect(X(b.box[0]), Y(b.box[1]), (b.box[2] - b.box[0]) * s, (b.box[3] - b.box[1]) * s); g.setLineDash([]);
+    if (!small) label(`${b.tid.replace(/^s\d+-/, '')}${lab ? ' ' + (a ? a.name : lab) : ''}`, X(b.box[0]), Y(b.box[1]) - 7, g.strokeStyle);
+  }
+  if (sol && $('cal_vwire').checked && C.wire) {
+    g.lineWidth = 1;
+    const poly = (pts, col) => { const P = M.project(pts, sol); g.strokeStyle = col; g.beginPath(); for (let k = 0; k + 1 < P.length; k++) if (P[k][2] > 0.05 && P[k + 1][2] > 0.05) { g.moveTo(X(P[k][0]), Y(P[k][1])); g.lineTo(X(P[k + 1][0]), Y(P[k + 1][1])); } g.stroke(); };
+    for (const line of C.wire.lines) poly(line, 'rgb(0,200,255)');                          // calib.py's cyan (BGR 255,200,0)
+    for (const [cx, y, cz, r] of C.wire.circles) poly(Array.from({ length: 145 }, (_, k) => [cx + r * Math.cos(k * Math.PI / 72), y, cz + r * Math.sin(k * Math.PI / 72)]), 'rgb(255,200,0)');   // its orange
+  }
+  if (sol && $('cal_vpred').checked) {
+    const pr = predict(sol); g.lineWidth = 1;
+    for (const [n, [u, v, z]] of Object.entries(pr)) {
+      if (z <= 0.05 || w.points[n] || u < -20 || v < -20 || u > imgW() + 20 || v > imgH() + 20) continue;
+      const big = n === C.sel; g.strokeStyle = big ? '#ff6bff' : 'rgba(255,107,255,.75)';
+      g.beginPath(); g.moveTo(X(u) - 4, Y(v)); g.lineTo(X(u) + 4, Y(v)); g.moveTo(X(u), Y(v) - 4); g.lineTo(X(u), Y(v) + 4); g.stroke();
+      if (big) { g.beginPath(); g.arc(X(u), Y(v), 10, 0, 7); g.stroke(); }
+      if (!small || big) label(n, X(u) + 6, Y(v) + 8, 'rgba(255,150,255,.9)');
+    }
+  }
+  if (w) {
+    const names = Object.keys(w.points), pr = sol ? M.project(names.map(n => C.setpts[n].p), sol) : null;
+    names.forEach((n, k) => {
+      const [u, v] = w.points[n], sel = n === C.sel;
+      if (pr && pr[k][2] > 0) { g.strokeStyle = g.fillStyle = '#3cff5a'; g.lineWidth = 1; g.beginPath(); g.moveTo(X(u), Y(v)); g.lineTo(X(pr[k][0]), Y(pr[k][1])); g.stroke(); g.beginPath(); g.arc(X(pr[k][0]), Y(pr[k][1]), 2.5, 0, 7); g.fill(); }
+      g.strokeStyle = sel ? '#fff' : '#ffe600'; g.lineWidth = sel ? 2 : 1.2; g.beginPath(); g.arc(X(u), Y(v), sel ? 7 : 5, 0, 7); g.stroke();
+      if (small) { g.beginPath(); g.moveTo(X(u) - 3, Y(v)); g.lineTo(X(u) + 3, Y(v)); g.moveTo(X(u), Y(v) - 3); g.lineTo(X(u), Y(v) + 3); g.stroke(); }
+      if (!small) { const r = residualOf(w, n); label(`${n}${r != null ? ' ' + Math.round(r) : ''}`, X(u) + 7, Y(v) - 6, sel ? '#fff' : '#ffe600'); }
+    });
+  }
+}
+function label(s, x, y, col) {
+  g.font = '11px "IBM Plex Sans", system-ui, sans-serif'; g.textBaseline = 'middle';
+  const wd = g.measureText(s).width; g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(x - 2, y - 7, wd + 4, 14); g.fillStyle = col; g.fillText(s, x, y);
+}
+function draw() {
+  const dpr = window.devicePixelRatio || 1;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#0b0a0d'; g.fillRect(0, 0, C.W, C.H);
+  if (!C.frames) { g.fillStyle = '#a39fae'; g.font = '14px system-ui, sans-serif'; g.fillText(C.clip ? 'loading…' : 'Pick a clip (right).', 20, 30); return; }
+  scene(C.v.s, C.v.ox, C.v.oy, false);
+  const w = recOf(C.shot), s = w && w.solve;
+  label(`${C.clip} · shot ${C.shot} · frame ${C.frame}${s ? `  ·  fov ${s.fovDeg}°  rms ${s.rms} px  camera (${s.camera.map(v => v.toFixed(1)).join(', ')})` : ''}`, 10, 14, '#fff');
+  if (C.mouse && $('cal_vloupe').checked && !C.pan) {                 // the loupe: 4 screen px per frame px, beside the cursor
+    const L = 200, Z = 4, [fu, fv] = toFrame(C.mouse[0], C.mouse[1]);
+    let lx = C.mouse[0] + 24, ly = C.mouse[1] + 24; if (lx + L > C.W) lx = C.mouse[0] - 24 - L; if (ly + L > C.H) ly = C.mouse[1] - 24 - L;
+    lx = Math.max(0, lx); ly = Math.max(0, ly);
+    g.save(); g.beginPath(); g.rect(lx, ly, L, L); g.clip(); g.fillStyle = '#000'; g.fillRect(lx, ly, L, L);
+    scene(Z, lx + L / 2 - (fu + 0.5) * Z, ly + L / 2 - (fv + 0.5) * Z, true);
+    g.strokeStyle = 'rgba(255,80,80,.9)'; g.lineWidth = 1; g.beginPath(); g.moveTo(lx + L / 2, ly); g.lineTo(lx + L / 2, ly + L / 2 - 6); g.moveTo(lx + L / 2, ly + L / 2 + 6); g.lineTo(lx + L / 2, ly + L);
+    g.moveTo(lx, ly + L / 2); g.lineTo(lx + L / 2 - 6, ly + L / 2); g.moveTo(lx + L / 2 + 6, ly + L / 2); g.lineTo(lx + L, ly + L / 2); g.stroke();
+    g.restore(); g.strokeStyle = '#e8b44a'; g.lineWidth = 1; g.strokeRect(lx + 0.5, ly + 0.5, L - 1, L - 1);
+    label(`${fu.toFixed(1)}, ${fv.toFixed(1)}${C.sel ? ' · ' + C.sel : ''}`, lx + 4, ly + L - 10, '#fff');
+  }
+}
+function frameLoop() {
+  if (C.open) {
+    if (C.solveDue) { C.solveDue = false; solveNow(); }
+    if (C.dirty) { C.dirty = false; draw(); }
+    if (C.draftDue) { C.draftDue = false; saveDraft(); }
+  }
+  requestAnimationFrame(frameLoop);
+}
+
+// ---------------------------------------------------------------- input
+function hitPoint(px, py) {
+  const w = C.shot != null ? recOf(C.shot) : null; if (!w) return null;
+  let best = null, bd = 8;
+  for (const [n, [u, v]] of Object.entries(w.points)) { const d = Math.hypot(C.v.ox + (u + 0.5) * C.v.s - px, C.v.oy + (v + 0.5) * C.v.s - py); if (d < bd) { bd = d; best = n; } }
+  return best;
+}
+function hitBox(u, v) {
+  let best = null, ba = Infinity;
+  for (const b of C.byFrame.get(C.frame) || []) { const [x1, y1, x2, y2] = b.box, a = (x2 - x1) * (y2 - y1); if (u >= x1 && u <= x2 && v >= y1 && v <= y2 && a < ba) { ba = a; best = b.tid; } }
+  return best;
+}
+function select(n) { C.sel = n; renderPoints(); C.dirty = true; const el = $('cal_pts').querySelector(`[data-n="${CSS.escape(n || '')}"]`); if (el) el.scrollIntoView({ block: 'nearest' }); }
+function selectTid(t) { C.selTid = t; renderTracklets(); C.dirty = true; const el = $('cal_tl').querySelector(`select[data-t="${CSS.escape(t || '')}"]`); if (el) { el.scrollIntoView({ block: 'nearest' }); el.focus(); } }
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => {
+  if (!C.frames) return;
+  const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top; cv.setPointerCapture(e.pointerId);
+  if (e.button === 1 || e.button === 2) { C.pan = { px, py, ox: C.v.ox, oy: C.v.oy }; return; }
+  const [u, v] = toFrame(px, py);
+  if (C.tool === 'labels') { const t = hitBox(u, v); selectTid(t); C.focusTid = t; return; }   // its name list takes the focus on pointerup (pointerdown's focus goes to the page)
+  const h = hitPoint(px, py);
+  if (h) { select(h); C.drag = { n: h, px, py, moved: false }; return; }
+  if (!C.sel) { status('Select a set point in the list first, then click where it is.'); return; }
+  if (u < -0.5 || v < -0.5 || u > imgW() - 0.5 || v > imgH() - 0.5) return;            // off the frame: not a pixel
+  setPoint(C.sel, u, v); C.drag = { n: C.sel, px, py, moved: true };
+});
+cv.addEventListener('pointermove', e => {
+  const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top; C.mouse = [px, py]; C.dirty = true;
+  if (C.pan) { C.v.ox = C.pan.ox + px - C.pan.px; C.v.oy = C.pan.oy + py - C.pan.py; C.v.fit = false; return; }
+  if (C.drag) { if (!C.drag.moved && Math.hypot(px - C.drag.px, py - C.drag.py) < 3) return; C.drag.moved = true; const [u, v] = toFrame(px, py); setPoint(C.drag.n, u, v); }
+});
+cv.addEventListener('pointerup', () => { C.pan = null; if (C.focusTid) { const el = $('cal_tl').querySelector(`select[data-t="${CSS.escape(C.focusTid)}"]`); C.focusTid = null; if (el) el.focus(); } if (C.drag) { C.drag = null; C.solveDue = $('cal_auto').checked && !recOf(C.shot).solve; } });
+cv.addEventListener('pointerleave', () => { C.mouse = null; C.dirty = true; });
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, k = Math.exp(-e.deltaY * 0.0015), s2 = Math.max(0.2, Math.min(16, C.v.s * k));
+  C.v.ox = px - (px - C.v.ox) * s2 / C.v.s; C.v.oy = py - (py - C.v.oy) * s2 / C.v.s; C.v.s = s2; C.v.fit = false; C.dirty = true;
+}, { passive: false });
+window.addEventListener('keydown', e => {                  // while Calibrate is open, its keys only: nothing reaches the plan editor
+  if (!C.open) return;
+  e.stopPropagation();
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' && !/^(checkbox|range|button|file|color)$/.test(t.type) || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) { if (e.key === 'Escape') t.blur(); return; }
+  const k = e.key, ar = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+  if (ar) { e.preventDefault(); const w = recOf(C.shot); if (C.sel && w && w.points[C.sel]) { const st = e.shiftKey ? 5 : 1, p = w.points[C.sel]; setPoint(C.sel, p[0] + ar[0] * st, p[1] + ar[1] * st); } return; }
+  if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); if (C.sel) clearPoint(C.sel); return; }
+  if (k === 'Escape') { select(null); selectTid(null); return; }
+  if (k === 'Enter') { e.preventDefault(); solveNow(); return; }
+  if (k === ',' || k === '.') { setFrame(C.frame + (k === ',' ? -1 : 1)); return; }
+  if (k === ' ') e.preventDefault();
+}, true);
+$('cal_pts').addEventListener('click', e => { const r = e.target.closest('[data-n]'); if (r) select(r.dataset.n === C.sel ? null : r.dataset.n); });
+$('cal_tl').addEventListener('change', e => { const s = e.target.closest('select[data-t]'); if (s) setLabel(s.dataset.t, s.value); });
+$('cal_tl').addEventListener('click', e => { const r = e.target.closest('.tl'); if (r && e.target.tagName !== 'SELECT' && e.target.tagName !== 'OPTION') { const t = r.dataset.t, tl = C.bodies.tracklets[t]; if (tl && !(C.byFrame.get(C.frame) || []).some(b => b.tid === t)) setFrame(Math.round((tl.first + tl.last) / 2)); selectTid(t); } });
+$('cal_clip').onchange = e => loadClip(e.target.value);
+$('cal_shot').onchange = e => setShot(+e.target.value);
+$('cal_frame').onchange = e => setFrame(+e.target.value);
+$('cal_clr').onclick = () => { if (C.sel) clearPoint(C.sel); };
+$('cal_clrall').onclick = () => { const w = work(); if (Object.keys(w.points).length && confirm(`Clear all ${Object.keys(w.points).length} points of shot ${C.shot}?`)) { w.points = {}; changed(w); } };
+$('cal_solve').onclick = () => solveNow();
+$('cal_judged').onchange = e => { const w = work(); w.judged = e.target.value; w.touched = true; C.draftDue = true; renderShots(); };
+$('cal_moving').onchange = e => { const w = work(); w.moving = e.target.checked; w.touched = true; C.draftDue = true; };
+$('cal_skip').onchange = e => { const w = work(); w.skipped = e.target.value.trim(); w.touched = true; C.draftDue = true; renderShots(); };
+$('cal_dl').onclick = downloadCalib;
+$('cal_dll').onclick = downloadLabels;
+$('cal_show').onclick = () => { const ta = $('cal_json'); ta.hidden = !ta.hidden; if (!ta.hidden) ta.value = C.clip ? JSON.stringify(calibDoc(), null, 1) + '\n\n' + JSON.stringify(labelsDoc(), null, 1) + '\n' : ''; };
+$('cal_fit').onclick = fit;
+for (const id of ['cal_vwire', 'cal_vpred', 'cal_vbod', 'cal_vloupe']) $(id).onchange = () => { C.dirty = true; };
+const setTool = t => { C.tool = t; $('cal_tpts').setAttribute('aria-pressed', String(t === 'points')); $('cal_tlab').setAttribute('aria-pressed', String(t === 'labels')); if (t === 'labels') $('cal_vbod').checked = true; C.dirty = true; };
+$('cal_tpts').onclick = () => setTool('points');
+$('cal_tlab').onclick = () => setTool('labels');
+function setOpen(on) {
+  C.open = !!on; document.body.classList.toggle('calib', C.open); $('calib').hidden = !C.open;
+  $('calbtn').setAttribute('aria-pressed', String(C.open));
+  if (C.open) { resize(); boot(); } else window.dispatchEvent(new Event('resize'));
+}
+$('calbtn').onclick = () => setOpen(!C.open);
+$('modebtn').addEventListener('click', () => { if (C.open) setOpen(false); });
+new ResizeObserver(() => { if (C.open) resize(); }).observe($('cal_view'));
+requestAnimationFrame(frameLoop);
+
+// ---------------------------------------------------------------- for the console (and for Claude)
+window.CALIB = {
+  open: async () => { await editorReady(); if (document.body.classList.contains('simple') && window.EDITOR) window.EDITOR.mode('advanced'); setOpen(true); }, close: () => setOpen(false),
+  load: async (clip, shot) => { if (!C.open) await CALIB.open(); await boot(); if (clip !== C.clip) { const ok = await loadClip(clip, shot); if (ok === false) return null; } else if (shot != null) setShot(shot); return CALIB.info(); },
+  shot: id => { setShot(id); return CALIB.info(); }, frame: i => { setFrame(i); return C.frame; },
+  info: () => { const w = C.shot != null ? recOf(C.shot) : null; return { clip: C.clip, shot: C.shot, frame: C.frame, recordFrame: w && w.frame, points: w ? Object.assign({}, w.points) : {}, solve: w && w.solve, judged: w && w.judged, moving: w && w.moving, skipped: w && w.skipped, wide: C.wide.has(C.shot), status: C.msg }; },
+  shots: () => C.frames ? C.frames.shots.map(s => ({ id: s.id, first: s.first, last: s.last, n: s.n, wide: C.wide.has(s.id), solved: !!(recOf(s.id) && recOf(s.id).solve) })) : [],
+  setpoints: () => C.setpts, select: n => select(n),
+  set: (name, u, v) => { setPoint(name, u, v); return work().points[name]; }, setMany: obj => { for (const [n, [u, v]] of Object.entries(obj)) setPoint(n, u, v); return Object.keys(work().points).length; },
+  clear: name => clearPoint(name), clearAll: () => { const w = work(); w.points = {}; changed(w); },
+  solve: () => solveNow(), predict: names => { const w = recOf(C.shot); return w && w.solve ? predict(w.solve, names) : null; },
+  judge: v => { const w = work(); w.judged = v || ''; w.touched = true; renderShotForm(); renderShots(); C.draftDue = true; }, moving: b => { const w = work(); w.moving = !!b; w.touched = true; renderShotForm(); C.draftDue = true; },
+  skip: why => { const w = work(); w.skipped = why || ''; w.touched = true; renderShotForm(); renderShots(); C.draftDue = true; },
+  tracklets: () => tracklets().map(t => Object.assign(t, { label: C.labels[t.tid] || null, here: (C.byFrame.get(C.frame) || []).some(b => b.tid === t.tid) })),
+  bodies: () => (C.byFrame.get(C.frame) || []).map(b => ({ tid: b.tid, box: b.box, conf: b.conf, label: C.labels[b.tid] || null })),
+  label: (tid, castId) => setLabel(tid, castId), labels: () => Object.assign({}, C.labels),
+  export: () => calibDoc(), exportLabels: () => labelsDoc(), download: () => downloadCalib(), downloadLabels: () => downloadLabels(),
+  tool: t => setTool(t), view: () => Object.assign({}, C.v), state: C, math: M,
+};
+function editorReady() {                                   // the editor's boot sets Simple mode when it lands: wait for it (≤ ~5 s of frames)
+  return new Promise(res => { let n = 0; const f = () => { if ((window.EDITOR && window.EDITOR.state.ready) || ++n > 300) res(); else requestAnimationFrame(f); }; f(); });
+}
+})();
 </script>
 </body>
 </html>
