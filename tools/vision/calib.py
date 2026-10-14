@@ -40,11 +40,11 @@ CENTRE = (0.0, 0.045, 0.95)
 TOL_PX, TOL_FRAC = 1.5, 0.15      # the rms window inside which the most plausible geometry wins over the least rms
 POOR_SPAN = 0.25                  # the window's camera distances spanning more than this share of the best's: poorly conditioned
 # the film's cameras that well-conditioned solves found (2026-10-14): the centre-stalls camera (Non-Stop p1 s4, p3 s14,
-# What'd I Miss s47, s50), the high close one (Room Where It Happens s52, s65), the rear-house long lens (Guns and Ships
-# s16 from nine points), the pit/front-row cameras (One Last Time s37/43/46, 1-03 s42; Washington on Your Side s46),
-# the on-stage camera near the SR lip (We Know s1, s24).
+# What'd I Miss s47, s50), the high close one (Room Where It Happens s52, s65), the pit/front-row cameras (One Last Time
+# s37/43/46, 1-03 s42; Washington on Your Side s46), the on-stage camera near the SR lip (We Know s1, s24).  (A rear-house
+# 45 m / 24 deg entry from Guns and Ships s16 is gone: misidentified posts - that shot is a pit camera.)
 # [x, y, z, fov]: the tie-break of a poorly conditioned solve with no body cue.
-HOUSE_CAMERAS = [(0.0, 2.1, 18.0, 33.5), (0.0, 4.5, 14.5, 52.5), (-5.0, 2.0, 45.0, 24.0), (0.0, 0.3, 9.0, 88.0), (-0.1, 0.1, 13.5, 67.0),
+HOUSE_CAMERAS = [(0.0, 2.1, 18.0, 33.5), (0.0, 4.5, 14.5, 52.5), (0.0, 0.3, 9.0, 88.0), (-0.1, 0.1, 13.5, 67.0),
                  (-2.6, 1.7, 4.9, 70.0)]
 # the body-height depth cue: a standing adult's shoulders are ~1.40 m up (1.25-1.55; a dancer mid-move lower, never
 # higher); a candidate is scored rms + LAMBDA * |median implied shoulder height - 1.40|, 0.3 m costing what 5 px does

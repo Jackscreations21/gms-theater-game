@@ -2748,7 +2748,7 @@ const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100, r3
 // ---------------------------------------------------------------- the physical prior and the body-height cue: calib.py's constants (keep them equal)
 const PRIOR = { zMin: 3.5, yMin: 0.0, yMax: 14.0, xAbs: 14.0, ringR: 3.82, dMax: 60.0, fovMin: 12.0, fovMax: 100.0 };
 const FLAT_PX = 1.5, FLAT_FOV = 30.0, CENTRE = [0.0, 0.045, 0.95], TOL_PX = 1.5, TOL_FRAC = 0.15, POOR_SPAN = 0.25;
-const HOUSE_CAMERAS = [[0.0, 2.1, 18.0, 33.5], [0.0, 4.5, 14.5, 52.5], [-5.0, 2.0, 45.0, 24.0], [0.0, 0.3, 9.0, 88.0], [-0.1, 0.1, 13.5, 67.0],
+const HOUSE_CAMERAS = [[0.0, 2.1, 18.0, 33.5], [0.0, 4.5, 14.5, 52.5], [0.0, 0.3, 9.0, 88.0], [-0.1, 0.1, 13.5, 67.0],
   [-2.6, 1.7, 4.9, 70.0]];                  // [x, y, z, fov]: the tie-break of a poorly conditioned solve with no body cue
 const SHOULDER_M = 1.40, NOSE_OVER_SHOULDER_M = 0.22, LAMBDA = 5.0 / 0.3, CUE_CAP_PX = 5.0, MIN_BODIES = 3, DECK_Y = 0.045;
 const LOOK_STARTS = [[0.0, 2.0, 14.0], [0.0, 3.0, 25.0], [0.0, 3.0, 40.0], [0.0, 5.0, 55.0], [0.0, 0.4, 9.0], [-2.5, 1.2, 5.5], [2.5, 1.2, 5.5]];

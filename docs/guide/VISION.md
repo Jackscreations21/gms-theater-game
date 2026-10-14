@@ -49,7 +49,7 @@ $P -I tools/vision/run.py bodies 1-03-my-shot                     # stage 2 (~40
 $P -I tools/vision/run.py draw   1-03-my-shot [-n 9]              # bodies.jpg: boxes, ids, skeletons, a frame a shot
 $P -I tools/vision/run.py check  1-03-my-shot                     # what the cache holds
 $P -I tools/vision/run.py wide   1-03-my-shot                     # the shots worth calibrating (small bodies, several)
-$P -I tools/vision/run.py calib  1-03-my-shot list                # the 47 named set points and how to find each
+$P -I tools/vision/run.py calib  1-03-my-shot list                # the named set points (52 since the census) and how to find each
 $P -I tools/vision/run.py calib  1-03-my-shot 16 grid             # grid-s16.jpg: the shot's middle frame, 100 px grid at 2x
 $P -I tools/vision/run.py calib  1-03-my-shot 16 solve lip-sr=200,652 rail-us-c=615,405 ...   # >= 5 points -> camera + overlay
 $P -I tools/vision/run.py calib  1-03-my-shot 16 zoom [name ...]  # 4x crops around each point's PREDICTED pixel, 10 px grid
@@ -57,6 +57,9 @@ $P -I tools/vision/run.py calib  1-03-my-shot 16 refine           # slide the so
 $P -I tools/vision/run.py floor  1-03-my-shot [--unjudged]        # stage 4: feet onto the floor -> tools/vision/out/<track>.json
 $P -I tools/vision/run.py floor-check 1-03-my-shot 16             # floor-s16.jpg: the shot's foot pixels over a plan of its positions
 $P -I tools/vision/ident.py 1-03 [--clip 1-03-my-shot] [--hist-stats]   # stage 5: identities -> characters in out/<track>.json (also `run.py ident`)
+$P -I tools/vision/compare.py 1-03                                # GC: the diff -> tools/vision/diffs/1-03.md + .json (--all: every out file + a summary)
+$P -I tools/vision/compare.py 1-03 --apply [--min-conf 0.7] --dry # GC: show the `# VISION:` generator section it would write; without --dry, write it
+$P -I tools/vision/motion.py 1-03 [--check] [--all] [--dry]       # GD: motion energy per bar + move proposals -> motion, proposals in out/<track>.json (after floor AND ident)
 ```
 
 `<clip>` is a file in `video/` by stem. Every stage reads the previous stage's file and writes its own, so any one can
@@ -121,15 +124,64 @@ for f in video/*.mp4; do c=$(basename "$f" .mp4); [ -f tools/vision/cache/$c/bod
      jitter a 10 s window at 3 % has in itself) and anchors over 60 % of the track; slice any other track and search
      My Shot's span → no anchor. Documented exceptions, printed EXCEPT: the last 30 s of 1-02 and the first ~29 s of
      1-04 really are inside the span (an anchor there must land on the truth), and Non-Stop ends on My Shot's own
-     refrain (an anchor allowed in its last 30 s). One case fails, and it is not a wrong anchor: My Shot at +3 %
-     has no two agreeing windows before 185 s, and the walk back from there gives up after six windows under the
-     full bar (0.30–0.34 at the truth, smeared by the tempo), so its anchors cover 47 % of the track.
-3. **Cuts.** Consecutive frames compared on a 48×27 gray (mean abs diff) and a hue/sat histogram (16×8, half-L1):
-   a cut when gray > 12 AND hist > 0.2. On the film, every true cut had hist > 0.2 and fast motion inside a shot
-   reached gray 33 but stayed under hist 0.15. `cuts.json` `{"add": [i], "remove": [i]}` edits them. Shots are
-   `{id, first, last, n}`; `sheet` draws every cut for the eye.
+     refrain (an anchor allowed in its last 30 s). **Every case passes** (exit 0; 513 anchors, none off by 0.15 s).
+     The last failure was My Shot at +3 %: no two agreeing windows before 185 s, and the walk back from there gave up
+     after six windows under the full bar (0.30–0.34 at the truth, smeared by the tempo) — 47 % covered. The walk
+     back is now **tempo-aware**: the tempo is the slope of the chain the global find started (its anchors within
+     40 s, the two agreeing windows at least; under 0.5 % or over 10 % off is taken as 1), each window is resampled
+     to it (as refine does) and searched ±slack around where that line puts it, the line moving to every anchor
+     taken. At the right tempo the same windows correlate at 0.94–0.99: 96 % covered. On the real clips it changed
+     nothing (1-03 30 anchors, 2-09 22, identical), so no clip was re-aligned for it.
+3. **Cuts.** Per consecutive pair (i−1, i), on a 48×27 gray and a hue/sat histogram (16×8): `gray` (mean abs diff),
+   `hist` (half-L1), `ncc` (the whole normalised gray) and `tq` — **the structure**: the gray cut into 3×4 tiles,
+   each tile's mean/std-normalised NCC (tiles with std ≥ 3 on either side; four at least, else `ncc`), and their
+   lower quartile. A tile normalises its own light, so a lighting cue leaves it near 1 and a cut takes it under
+   0.4; a quartile and not the whole frame because an overlay that does not cut with the picture holds the
+   whole-frame NCC up (Wait for It's sing-along lyric caption and the Disney+ bug: whole-frame 0.73–0.83 across its
+   four missed cuts, `tq` 0.07–0.30). `diffs[i] = [gray, hist, ncc, tq]`. A cut before frame i (`run.py`
+   `CUT_RULE`, `decide_cuts`) when frame i+1 still differs from i−1 (`tq` of that pair < 0.6 — else it is a flash)
+   and either
+   - **the first rule:** gray > 12 AND hist > 0.2, unless the structure stayed (`tq` ≥ 0.5): 71 of its 1326 cuts
+     were, by eye, a lighting cue on one camera (33 in Satisfied; 2-19's shot 39/40 that the agent called "a
+     lighting change cut"), and they are cuts no more; or
+   - **the structure rule:** hist > 0.11 AND `tq` < 0.4 AND neither frame flat (gray std ≥ 2: a fade to black has
+     nothing to compare), AND the pair is a dip — both neighbouring pairs 0.3 more alike than it (fast dance and a
+     moving camera keep every pair low; a cut is one low pair between steadier ones) — or, for a cut into or out
+     of a moving shot, hist > 0.25 and ONE neighbour 0.6 more alike.
+
+   Tuned on 62 labelled missed cuts (the loose-ends agent's 1-02/1-18/1-08 pairs; every cut frame the calibration
+   agents wrote in a calib `note` or `skipped`, the "about f…" ones ±3 frames) and 39 labelled non-cuts (lighting:
+   1-18 158/159/364, 1-08 514/718/788, 1-15 477–481, 2-05 753–762, 2-19 882; 1-08's dance close-up 747–765). By eye
+   1-08 756 and 761 inside that dance ARE cuts (close→wide→close) and were moved to the cuts. Old rule: 4/62
+   found, 12/39 cut. "hist > 0.12 AND NCC < 0.4" OR old: 51/62, 14/39. This rule: **60/62 found, 8/39 cut** —
+   the 8 are all the first rule's, in 1-08's handheld dance close-up, where every pair's structure changes (747–755,
+   760, 762). A gate on "both neighbours low" would take them, and it took real cuts into moving shots too (1-03
+   1490, 1-10 1001, 1-11 238 …), so it is not applied. Over the 45 clips the rule added 331 cuts and removed 71:
+   41 of the added looked at by eye, one doubtful (a darkening in 2-07 at 719); 39 of the removed looked at, all
+   lighting but one fade up from black in the 1-01 promo (f78). Of the 52 cut frames the agents noted, 47 are cuts now; still not: 2-06 145–151 (a dissolve), 2-10
+   19 (a zoom out of the 2-09 camera, not a cut), 1-08 ~733 (a lighting change with a re-frame), 2-04 ~1015 and
+   2-05 ~909 (moving cameras both sides). `cuts.json` `{"add": [i], "remove": [i]}` edits them. Shots are
+   `{id, first, last, n}`; `sheet` draws every cut for the eye (with `ncc`/`tq` once recut).
+   - **`recut`** (`run.py recut <clip>|all [--dry] [--rebase]`, logic in `recut.py`): the cuts again from the
+     CACHED frames, no decode, no alignment (40 s for all 45 clips). It rewrites `frames.json`'s `shots`,
+     `frames[].shot`, `cuts` (+ `rule`, `recut`) and `diffs`; everything else is written back byte for byte as read.
+     `--dry` prints shots before → after and the new cut frames. It writes `cache/<clip>/shotmap.json`: for every
+     OLD shot id the new shot(s) it became by frame range (`"old": {"16": [{"new": 16, "first": 330, "last": 346},
+     …]}`), `new` (new id → old ids), `newShots`, `frames`, `cutsAdded`/`cutsRemoved`, and `base` — the old shots
+     as they were the FIRST time recut ran, so a second recut still maps from the shots bodies/calib/labels were
+     made on (`--rebase` forgets them). Run over every clip 2026-10-14: 1371 shots → 1631.
+   - **`remap`** (`$P -I tools/vision/recut.py remap <clip>|all [--write]`, the pure function `recut.remap(calib,
+     shotmap)`): re-keys a `calib/<clip>.json` to the new ids — an entry goes to the new shot holding its `frame`
+     (no frame: the old shot's middle frame, the one calib.py shows), gets `"was": old id` when its id changed and
+     `"split": [new ids]` when its old shot split; two old entries in one new shot (a removed lighting cut) keep the
+     better (good, fair, any solve, skipped) with the other under `"merged"`. The file is stamped `"shotmap":
+     <written>` and never remapped twice. Without `--write` it only prints. **Until the calib files are remapped
+     their shot keys are the OLD ids** — `floor`, `wide`, `calib <shot>` read them against the new `frames.json`;
+     and `bodies.json` (tracklet ids `s<shot>-t<n>`, trackers reset per shot) is stale after a recut: re-run
+     `bodies`.
 4. **Output** `frames.json`: `clip, source, tracksDeclared, tracksSeen (tconf ≥ 0.5), fps, height, frames[{i, file,
-   t, album, track, at, tconf, shot}], shots[], align{}, cuts{}, diffs[]`.
+   t, album, track, at, tconf, shot}], shots[], align{}, cuts{threshold, histThreshold, rule, detected, recut?},
+   diffs[[gray, hist, ncc, tq]]` (older files: `[gray, hist]`).
 
 ### Stage 2 — `bodies`: pose and tracklets (FY-2)
 
@@ -159,7 +211,7 @@ re-run over any clip: a re-run changes every tracklet id, so it waits for the de
 
 ### Stage 3 — `calib`: the camera of a shot (GA) — BUILT, the clicking UI NOT
 
-- **`setpoints.json`**: 47 named 3D points in the set frame (`assets/hamilton-set.glb`'s: metres, Y up, deck y 0.045,
+- **`setpoints.json`**: 52 named 3D points (47 + the six rig lanterns; 2026-10-14 census fixes to the SL stair top, the SR rail ends, the SR balcony; `stair-sr-*` flagged `movable`; the file's `changes` list says why) in the set frame (`assets/hamilton-set.glb`'s: metres, Y up, deck y 0.045,
   galleries y 2.743, upstage −z, house +z, **stage left +x = the RIGHT of a house camera's frame**). Taken from
   `blocking.html`'s measured `PLAN` (deck lip z 5.4; turntable rings r 3.82 and 2.59 about (0, 0.95); upstage gallery
   front z −3.0 from x −4.75 to 5.0, its rail top y 3.6 at z −2.97; SL gallery x 4.6–6.0; SR balcony arm x −6.65 to
@@ -187,7 +239,7 @@ re-run over any clip: a re-run changes every tracklet id, so it waits for the de
      within 1.25–1.55 (the bodies are not standing on the deck: a riser, a stair, a lift).
   2. else, when the candidates within 1.5 px (or 15 %) of the best span more than 25 % of its camera distance
      (`window.poor`), the one **nearest a known camera** (`HOUSE_CAMERAS`: the centre-stalls camera (0, 2.1, 18) 31–36°
-     that four shots found independently, the high close one (0, 4.5, 14.5) ~53°, the rear-house long lens (−5, 2, 45)
+     that four shots found independently, the high close one (0, 4.5, 14.5) ~53°, (the rear-house long lens entry was removed: it was a wrong solve)
      24°, the pit (0, 0.3, 9) ~88°, the front row (0, 0.1, 13.5) ~67°, the SR lip (−2.6, 1.7, 4.9) ~70°);
   3. else the least RMS. Then a 0.1° search around the pick by the same score.
 
@@ -279,6 +331,97 @@ offMap?}]}` sorted by `at`, a sample's conf = the position's × the identity's (
 idempotent; **re-running `floor` drops both keys — run `ident` after it**, and after a stage-1 re-run (positions are
 joined to frames by `at`; a stale join falls back to the tracklet's nearest frame and says so). With no labels every
 identity is `blocking` or `ens?` (2-05: 525 tracklets, 14 with positions, 11 blocking, 514 pooled).
+
+### Stage GC — `compare`: the diff against the blocking (RULING GC) — BUILT, nothing to compare until labels exist
+
+`tools/vision/compare.py <track>` reads `out/<track>.json` and the committed blocking (through `ident.py`'s `Blocking`:
+straight legs at 1.3 m/s, not seen at or between `off` waypoints) and writes `tools/vision/diffs/<track>.md` (for a
+reviewer) and `.json` (the same, machine-readable). **Evidence** is a named sample whose identity came from a label,
+continuity or appearance; a `fromBlocking` sample is only counted ("seen, placed by blocking"), a pooled `ens?` body
+only feeds the formations, an `offMap` sample is never a position. The `.md`: a header (the clips, the shots used with
+their verdicts, the stage-4 positions, the samples by kind and by rule, and a verdict line — with no evidence it says
+**NOTHING WAS TESTED** rather than letting an empty list read as agreement); the ruled items in the track; per
+character the evidence count, the "placed by blocking" count, the disagreements and the proposals; the pool's
+formations; the thresholds. Per character, from the evidence: **position** (more than 0.75 m from the blocking for more
+than 2 s, same level, she seen; a gap over 1 s or an agreeing sample ends a run), **on/off** (the footage sees her —
+a close-up counts — while the blocking has her off or has no path for her; or the footage puts her in a wing,
+|x| ≥ 6.7 or z ≤ −4.4, while the blocking has her on; or a shot a person labelled does not name her while the
+blocking stands her inside that shot's frame, through the calib camera — weak), **level** (deck vs gallery, > 2 s; a
+stair is not compared). Each item carries its evidence: clip, shots, tracklets, cache frame range, `at` span, mean
+conf, rules. **Proposals**: her evidence track binned at 0.2 s (conf-weighted), a ±0.5 s rolling median, split at
+gaps over 1 s, Douglas–Peucker at 0.3 m, then at most one waypoint per 3 s (the ends first, then the most significant);
+each snapped onto the floor map (`tools/hamilton-floor.json`: plain deck — not the house, nothing over 0.15 m — or
+gallery floor within 0.1 m of 2.743, the merge's own test); conf = the mean conf of the samples it stands on (from half
+way to the previous waypoint to half way to the next); status `agrees` / `differs` / the blocking has her off / no
+path; under 0.5 "do not apply without a look"; a stair point is never snapped ("place it by hand"). The **pool** gives,
+per 3 s window, a snapshot (the frame with the most pooled bodies at once, so a body split into several tracklets
+counts once): bodies on stage, deck/gallery, SR/C/SL, in a wing, a shape (one body, a pair, a cluster, a line
+across/up-down/diagonal, an arc or ring with its radius and centre, scattered), centroid and extent, beside how many
+of the company and of everyone the blocking has on at that moment. **The RULED items** are a table in `compare.py`
+(`RULINGS`), each with where it is written down: the boundary carry-overs (2-10 → 2-11 the King; 2-16 → 2-17 Philip,
+Eacker and the seven of FW), the Cabinet Battle sides (2-02, 2-07), Burr's balcony (1-18 6.3–50), the Non-Stop
+gallery (Washington, 1-23 330.2–382), the duel sides (2-22 at FIRE and at the shot). Footage that contradicts one is
+reported as **"footage disagrees with ruling"** (with its evidence), never proposed; a proposal inside a ruled window
+is never applied. **`--apply --min-conf 0.7`** (dry-run first with `--dry`) writes the proposals that qualify — conf
+≥ the minimum, `differs` or off/no path, not a stair, not in a ruled window, snapped ≤ 1 m, ≥ 0.25 s from an existing
+waypoint, not inside an existing waypoint's explicit `dwell` (that would be an edit of it), no leg over 3.5 m/s to its
+neighbours as the merge judges legs — as ONE section between `# VISION: <track> begin` and `# VISION: <track> end` in
+the track's segment generator (`seg1/export.py`, `gen_seg2.py`, `seg3gen.py`, `gen4.py`, `seg5gen.py`, `gen6.py`,
+`seg7_gen.py`, `gen_seg8.py`), placed before the generator writes its file, in that generator's own waypoint form:
+new waypoints between the existing ones, none of them changed; a `label` only when it would be the actor's first
+waypoint in the segment (the label then in effect). Re-applying replaces only that section; delete it to drop the
+proposals; then run the generator and the merge as the format doc says. Tested on synthetic out files (the real
+`blocking` samples relabelled as `label`, plus a body walked 1.2 m off her blocking) in a scratch copy of
+`tools/blocking`: 75 waypoints applied across all eight generators, the merge 0 errors / 0 warnings, no existing
+waypoint changed, the unapplied copy reproducing `assets/hamilton-blocking.json` byte for byte. **On the real out files
+(20 tracks, 2026-10-14) every diff is empty except the pool's formations: no labels exist, so nothing is evidence** —
+labels (§7 item 5) are what turns this on.
+
+### Stage GD — `motion`: dance timing from the skeletons (RULING GD) — BUILT, timing works, the matcher does not yet
+
+`tools/vision/motion.py <track>` reads `out/<track>.json`'s `identities` and each clip's `frames.json` + `bodies.json`,
+and adds two keys to the same file, every other key byte-for-byte as it was (it splices the raw text); idempotent.
+**Run it after `floor` AND `ident`** — `floor` rebuilds the file and drops `motion`/`proposals`, `ident` rewrites it
+(keeping them, but re-formatted). Per body per frame (box ≥ 60 px, keypoints over 0.3): nine 2D angles — elbow L/R
+(shoulder–elbow–wrist), shoulder L/R (hip–shoulder–elbow, the arm's raise), knee L/R, hip L/R (shoulder–hip–knee), the
+torso lean — and the wrists' height over the shoulders ÷ the box height (the one length; the matcher's). **Energy**
+between two frames of one tracklet ≤ 2 frames apart, not across a cut in `frames.json`: Σ|Δangle| / Δt (rad/s), each
+angle's change capped at 1.5 rad (a left/right swap is not a move); `arms`/`legs` the 4 angles each (mean × 4, 2 of 4
+seen at least), `energy` = arms + legs + lean; a pair goes in the bar of its midpoint on the beat grid
+(`tools/blocking/beats.py`, bars from 1 at `firstBeat`, the blocking's own count). **`motion`**: `{castId | "ens?" |
+"company": {"<bar>": {energy, arms, legs, n, conf[, bodies]}}}` — the mean over the bar's n pairs; conf = identity
+conf × tconf (pooled: tconf); `company` is every body on the track, with `bodies` = distinct tracklets. **The
+matcher**: the library's moves are JavaScript in `midtown.html` (`DANCE`, joint rotations on the jointed mannequin),
+so `tools/vision/motion/moves2d.js`, evaluated in the page (served; it waits for the actors), poses the rig's parts
+through every move at 4 samples a beat and writes `tools/vision/motion/moves.json` (46 moves, `freeze` out; 3D points
+in her frame, plus a fingerprint of the move code — `motion.py` warns when `midtown.html` has changed since: re-export).
+They are projected orthographically, frontal and turned ±35°, mirrored or not, into the SAME features, resampled to
+the window's frames per beat. Windows: 8 counts on the bar grid, or a tracklet's whole run in its shot when shorter
+(most are: the film cuts every 2–4 s), ≥ 4 beats and 6 frames. Subsequence DTW (slopes ½–2; a loop tiled, any phase;
+a one-shot + 2 beats held, inside the window or the window inside it), per-frame distance 0.65 × arms + 0.35 × legs.
+**score = 1 − d / d_still**, d_still the distance from the same frames to their own mean pose held still: 0 = the move
+explains the window no better than standing, 1 = all of it. A loop under 3 frames at the window's rate is not tried
+(a 1-count `bounce`/`clap` at 136 BPM and 5 fps is 2.2 frames: aliased). **`proposals`**: `[{castId, bar, beat, move,
+score, span, clip, shot, tid, mirror?, proposed}]`, the best move per window with a score above 0, `proposed` over
+0.7; labelled characters only (every non-pool identity — today `blocking`); `--all` matches the pool too, `--check`
+prints the sanity numbers, `--dry` writes nothing.
+
+**What it showed (2026-10-14, 2-05, 1-08, 1-15, 2-19).** *Timing works:* the company's median energy in the bars
+`tools/blocking/segments/dance.json` fills is 1.9× the rest on 2-05 (10.2 vs 5.3 rad/s; 7 of its 12 most energetic
+bars inside placed moves, chance 3.4 — the jazz-roll/shimmy sections, bars 93–110) and 2.0× on 1-15 (the duel's
+`bounce` bars 13–22; 6 of 12, chance 3.5). On 1-08 and 2-19 the placed moves are few (my-shot + point; jump +
+spin-full) and the energy peaks sit elsewhere — 1-08 bars 18–50 (56–153 s), 2-19 bars 37–45 (64–79 s) and 67–69
+(118–121 s): company movement the dance pass has no move on, which is a finding for it, not a failure. *The matcher
+does not discriminate yet:* with no labels only 9–20 short `blocking` tracklets per track qualify, giving 0, 0, 1, 1
+proposals (best 0.16), none over 0.7; with `--all` (654 windows over the four tracks) no score passes 0.7 (best 0.50,
+95th percentile ~0.4), the top picks are one-shot gestures (`spin-quarter`, `equals`, `kneel`, `rise`) that fit a
+single posture change, and in the placed bars the placed move ranks only a little better than chance (median rank
+fraction 0.28 `jazz-roll`, 0.33 `shimmy`, 0.67 `bojangles`; chance 0.5) — though the pool there includes everyone who
+is not dancing. At 5 fps an 8-count is 15 frames at 136 BPM (2.2 a beat) and 30 at 79 BPM; most tracklets cover 2–4 s,
+so most windows are half an 8-count. What would make it work, in order: labels (a dancer known to be dancing), 10 fps
+for the dance numbers (the spec's open question), stage 2 at `--imgsz 1280` (at 640 the wides, where a whole
+company dances, lose most of their bodies; the bodies found are mostly 160–600 px, close and medium shots), and real
+reference footage of a move in place of the mannequin's curves.
 
 ## 5. What the agents were going to be told
 
