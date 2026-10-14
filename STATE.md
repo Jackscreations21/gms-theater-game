@@ -3,6 +3,31 @@
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
+## NEWEST — 2026-10-14, 14:55: PAUSED MID-BATCH — STEPS 4–6 OF THE RE-KEY BATCH ARE NEXT (actors, PR #234)
+
+**Read this first.** Jack paused at 14:55. Everything is committed on `actors` through **`28cb486`** (plus this note);
+the full HANDOFF write-up is owed after the batch finishes (Jack's instruction). Since the block below: the UI solver
+carries the prior (`536d614`), `compare.py` (`b2b956c`), the missed cuts fixed + `recut`/shotmap/remap (`1464b3b`),
+GD `motion.py` (`d44526e`), the set points from the census + the 45 m camera gone (`b7ca344`), the calib files
+re-keyed to the new cuts and re-solved (`28cb486`). The pose re-run at `--imgsz 1280` finished on all 45 clips
+(cache only; 120,092 → 137,362 bodies, trackers reset at the new cuts). **Not yet done — run in this order, from the
+worktree, in `sh`, `P=tools/vision/.venv/Scripts/python`:**
+
+```sh
+$P -I tools/vision/calib.py resolve all                                   # step 4: the body cue now reads the 1280 bodies
+for f in tools/vision/calib/*.json; do $P -I tools/vision/run.py floor $(basename "$f" .json); done
+for f in tools/vision/out/*.json; do t=$(basename "$f" .json); $P -I tools/vision/run.py ident $t && $P -I tools/vision/run.py motion $t; done
+$P -I tools/vision/compare.py --all
+git status --short | grep -v cache                                        # then commit calib/, out/, diffs/
+```
+
+`tools/vision/out/*.json` (5 modified, uncommitted) are STALE: they were written against the old shot ids and the
+640 bodies; the loop above regenerates every one. The blocking checklist artifact now carries a "What is left" board
+(https://claude.ai/artifact/4Q5Xh37ZmSinhtsJbVhAub). The record to write after the batch: HANDOFF.md (how the system
+works, what was done, what is left — in detail), this file, VISION.md §7.
+
+---
+
 ## NEWEST — 2026-10-14 (second session): THE AGENTS' ROUND RAN — STAGES 4–5, THE CALIBRATE UI, ~55 CAMERAS OF ~190 WIDE SHOTS, THE SOLVER REWRITTEN UNDER THEM — PR #234
 
 **Read this block first, then `docs/guide/VISION.md` §7** (the manual: findings and the ordered list). Jack: *"finish
