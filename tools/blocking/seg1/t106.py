@@ -15,8 +15,7 @@ def build():
     m = assign(crowd_e, crowd)
     for e in crowd_e:
         move(e, S('1-05', 184.6), F(2.0), m[e], f=face_to(m[e], BOX))
-    # Burr joins the crowd SR
-    enter('burr', F(1.0), F(6.0), (-2.2, 1.4), 60, wing='W_MSR')
+    # Burr joins the crowd SR (REVIEW 3: he is already on, from the end of The Schuyler Sisters: t105, at (-1.3, 0.5))
     # ---- Q177 15.8 Hamilton interrupts from DSR, his friends at his back
     enter('hamilton', F(12.0), F(15.8), (-3.0, 3.6), 50, wing='W_DSR')
     move('hamilton', F(16.4), F(19.6), (-1.2, 3.15), f=50)   # SPOT: his warm-white key DSR (ch44 at (-1.53, 3.14))
@@ -29,11 +28,18 @@ def build():
     turn(['ens2'], F(17.2), -60)
     # ---- Q178 27.7 Seabury restores order; Hamilton gives a step
     move('hamilton', F(27.7), F(29.4), (-1.2, 2.9), f=50)
+    # REVIEW 3 (the Disney+ clip Oy5ybRNSkb8, its viewers' timestamped comments; the clip runs with the album here):
+    # "0:27 Lafayette: go child go / Burr: let him be"; "Lafayette tried to grab Aaron to stop him [stopping Hamilton]".
+    # Lafayette steps in at Burr's side and holds him off; at 40 he pushes Hamilton on, as before.
+    move('lafayette', F(26.4), F(27.8), (-2.95, 3.3), f=60)
     # Mulligan and Lafayette nudge him toward the box (fan staging account)
     move('lafayette', F(40.0), F(42.4), (-1.8, 2.2), f=60)
     move('mulligan', F(40.4), F(42.8), (-2.2, 3.0), f=60)
     turn(['ens2'], F(28.2), -15)
     turn(crowd_e, F(28.6), lambda a, p: face_to(p, BOX, 120))
+    # REVIEW 3: "0:46 is that Charles Lee's actor standing beside Laurens' actor?", "watching Jon (Charles Lee) the
+    # whole time. Then he walked off stage": ens3 (Charles Lee's body) drifts down beside Laurens, and goes at Q183
+    move('ens3', F(40.4), F(44.4), (-0.3, 4.55), f=-20)
     # ---- Q180 46.1 the duet: Hamilton gets up on the box beside him
     move('hamilton', F(46.1), F(48.0), (1.0, 2.65), f=30)   # SPOT: beside Seabury, in ch12 and ch45
     move('ens2', F(46.4), F(47.6), (1.8, 2.2), f=-30)
@@ -41,6 +47,8 @@ def build():
     # ---- Q181 62.3 he heats up: round to the front of the box
     move('hamilton', F(62.3), F(64.0), (1.4, 3.2), f=0)
     turn(['ens2'], F(63.0), -20)
+    exit_('ens3', F(76.8), 'W_DSL', speed=1.4)               # REVIEW 3: Charles Lee walks off (comment above)
+    crowd_e.remove('ens3')
     # ---- Q183 78.0 the company shouts with him: the crowd presses in, the friends join him
     for e in crowd_e:
         p = pos(e); dx, dz = BOX[0] - p[0], BOX[1] - p[1]; d = math.hypot(dx, dz)

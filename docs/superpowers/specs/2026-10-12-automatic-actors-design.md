@@ -626,3 +626,33 @@ the dances and the choreo"*; *"also look on youtube, there are a lot of videos o
   - the baseball pitch of the Yorktown phrase;
   - fingers;
   - Jack's eye on every assignment.
+
+### FW — The count carries over; hand props are legal
+
+From review 3 (the reviewers read the video evidence).
+
+- **2-16 → 2-17: seven of the company stand for the count and carry over the boundary.**
+  - The clip has seven of the company standing between Philip and Eacker, counting. Review 2 had cut every duel watcher
+    as invented, and the old boundary left only Philip and Eacker on stage at 2-16 172.5.
+  - The seven are, all facing 0 (the house), at 2-16 172.5 and again at 2-17 0.0:
+
+    | Who | Spot |
+    |---|---|
+    | ens2 | (−1.34, −0.44) |
+    | ens3 | (−0.69, −0.06) |
+    | ens4 | (−0.05, 0.32) |
+    | ens6 | (1.25, 1.08) |
+    | ens7 | (1.89, 1.46) |
+    | ens8 | (2.54, 1.84) |
+    | ens9 | (3.19, 2.22) |
+
+  - Segment 7 ends them there and segment 8 starts them there. The merge confirms both ends match exactly.
+  - Philip (laurens, (−0.4, 2.4)) and Eacker (ens5, (1.6, −1.0)) carry over as before. So does the King, who is not on
+    stage at the boundary.
+  - Segment 8 clears the seven after the shot.
+- **A hand prop: carried on, carried off, never set down.** It is legal (`schuyler-book`, 1-05).
+  - Waypoints: an `off` waypoint, then a carry, then an `off` waypoint.
+  - `props.py --check` reports it as "a hand prop". Only a carrier who comes back on AFTER going off with the prop is a
+    fault.
+- **The kinds table is one table.** `props.py --check` crashed on a `crate`: it had its own partial size table. It now
+  uses the full `PROP_KINDS`, the same as the merge's and the page's.

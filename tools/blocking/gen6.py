@@ -195,10 +195,17 @@ CB2 = {  # id: (seat, wing, arrival) -- the chairs: props.py SEGMENT_6 cb2-chair
 CB2_OUT = {"ens1": 127.6, "ens2": 128.2, "ens3": 129.4, "ens4": 129.0, "ens5": 128.4, "ens6": 127.8}
 
 enter("washington", T, 5.0, "D-UC", C, 0, label="Washington")
+# REVIEW 3 (video: YouTube comments on the Disney+ clip "Cabinet Battle #2", BZHnCtf-DEI): "the detail at the start
+# where Hamilton gets his mic from Washington" (Washington confiscated it after #1). Hamilton comes to him at C first.
+wp("washington", T, 6.0, 0.001, 0.95, facing=54)                   # REVIEW 3: hands Hamilton his mic
 wp("washington", T, 12.4, -0.3, 0.95, facing=-55)                  # hands Jefferson the floor
 wp("washington", T, 18.5, 0.0, 0.45, facing=0)                     # held dim, centre (between the V's vertex seats)
 wp("washington", T, 76.5, 0.05, 0.45, facing=50)                   # turns to Hamilton
-wp("washington", T, 84.0, 0.0, 0.45, facing=0)
+# REVIEW 3 (video comments): as Hamilton blows up, Washington "turns around" and then "looks back" at him ("suddenly I
+# am deaf and blind"): his back to it for a few seconds, then a look over his shoulder.
+wp("washington", T, 83.2, 0.0, 0.45, facing=170)                   # REVIEW 3: turns his back on the outburst
+wp("washington", T, 86.5, 0.001, 0.45, facing=120)                 # REVIEW 3: looks back over his shoulder
+wp("washington", T, 90.0, 0.0, 0.45, facing=40)
 wp("washington", T, 114.8, 0.0, 2.0, facing=0)                     # rules: alone DC
 wp("washington", T, 124.6, -0.5, 2.2, facing=60)                   # gives Hamilton the order
 leave("washington", T, 127.6, (-0.5, 2.2), "D-UC")                 # gone (956): the room clears with him
@@ -221,7 +228,10 @@ wp("lafayette", T, 72.5, -2.65, 3.1, facing=0)                     # the mic-dro
 wp("lafayette", T, 77.0, -2.0, 2.0, facing=50)                     # waits out Hamilton's verse inside the V
 wp("lafayette", T, 100.0, -2.05, 2.05, facing=65)                  # Hamilton comes at him
 wp("lafayette", T, 111.8, -2.0, 2.1, facing=80)                    # takes the French-king jab
-wp("lafayette", T, 115.0, -2.2, 2.3, facing=70)
+# REVIEW 3 (video comments, BZHnCtf-DEI at 1:47): during Washington's ruling "Hamilton and Jefferson seem to be trying to
+# send a message to each other while looking over Washington's shoulder": both stand just upstage of his DC special
+# (954 ch93 (0, 1.96) r 0.87; they are 1.3 m from its centre, unlit), one each side, eyeing each other behind him.
+wp("lafayette", T, 116.5, -1.1, 1.2, facing=90)                    # REVIEW 3: over Washington's SR shoulder
 wp("lafayette", T, 130.0, -1.6, 2.9, facing=90)                    # face-off across centre (956), the room cleared
 wp("lafayette", T, 139.6, -1.35, 2.95, facing=90)                  # the final dig (957); then alone, staring after them
 
@@ -238,15 +248,17 @@ wp("mulligan", T, 113.0, -2.75, 2.75, facing=30)
 leave("mulligan", T, 128.8, (-2.75, 2.75), "W-DSR")               # REVIEW 2: clears out with the room (re-enters SL in 2-08)
 
 # Hamilton: the SL side, the DL mic for his verse; in from his 2-06 pool across the dark top of the number.
-wp("hamilton", T, 6.5, 2.1, 2.0, facing=-60)                       # REVIEW 2: inside the V (was in the SL arm)
+wp("hamilton", T, 6.0, 0.55, 1.4, facing=-129)                    # REVIEW 3: takes his mic from Washington at C
+wp("hamilton", T, 9.2, 2.1, 2.0, facing=-60)                       # REVIEW 2: inside the V (was in the SL arm)
 wp("hamilton", T, 18.0, 2.1, 2.05, facing=-45)
 wp("hamilton", T, 54.0, 2.3, 2.2, facing=-70)                      # gives ground as Jefferson closes
 wp("hamilton", T, 77.0, 2.2, 2.0, facing=-30)
-wp("hamilton", T, 83.5, 3.0, 3.0, facing=-20)                      # the DL mic
+wp("hamilton", T, 82.0, 3.0, 3.0, facing=-20)                      # the DL mic (REVIEW 3: at it for the outburst, 951 at 82.1:
+                                                                   # he "steps forward calmly", then jumps - dance.py)
 wp("hamilton", T, 100.0, 1.6, 2.2, facing=-55)                     # drives at them
 wp("hamilton", T, 105.5, 1.1, 1.7, facing=-70)
 wp("hamilton", T, 111.8, 2.35, 3.0, facing=-60)                    # back at his mic: the punchline snap (953)
-wp("hamilton", T, 119.0, 1.7, 1.3, facing=-30)                     # Washington rules: backs off
+wp("hamilton", T, 117.5, 1.1, 1.2, facing=-90)                     # Washington rules: REVIEW 3: over his SL shoulder
 wp("hamilton", T, 126.0, 1.3, 2.6, facing=-60)                     # called to Washington (955)
 wp("hamilton", T, 129.5, 1.6, 2.9, facing=-90)                     # face-off (956)
 wp("hamilton", T, 140.0, 1.6, 2.9, facing=80)                      # Washington calls from the SL wing
@@ -316,16 +328,45 @@ wp("burr", T, 98.5, -3.9, 3.6, facing=30)
 wp("burr", T, 115.0, -2.6, 2.8, facing=45)
 # Washington's desk, set in the background by one of the company (props.py washington-desk: BRING at 123.0)
 WDESK = (-0.4, 0.85)                                               # in the desk pool of 981 (ch18 at (0, 1.11)), clear of ch94
-enter("ens1", T, 123.0, "D-UC", (WDESK[0], WDESK[1] - 0.6), 0)
-leave("ens1", T, 124.6, (WDESK[0], WDESK[1] - 0.6), "D-UC")
+enter("ens1", T, 123.0, "D-UC", (WDESK[0], WDESK[1] - 0.6), 0, label="The Bullet")   # REVIEW 3: named
+# REVIEW 3 (video): ens1 is the Bullet (hamilton-cast.json). She stays after setting the desk and joins the company below.
 # the chant: the three in a row
 wp("lafayette", T, 123.5, 0.0, 3.0, facing=0)
 wp("mulligan", T, 124.0, 2.7, 3.0, facing=0)
 wp("burr", T, 124.0, -2.7, 3.0, facing=0)
-wp("lafayette", T, 140.0, -0.8, 3.6, facing=10)                    # the money: Jefferson works the line
-wp("lafayette", T, 144.0, 0.8, 3.6, facing=-10)
-wp("burr", T, 140.0, -2.9, 3.3, facing=20)
-wp("mulligan", T, 140.0, 2.9, 3.3, facing=-20)
+# REVIEW 3 (video: YouTube comments on the Disney+ clip "Washington On Your Side", o0uncfmN_cM; the film runs about
+# 2.5 s ahead of the album here, checked on Jefferson's rap at 1:52 = album 115.1 and the chant's first hit at 1:58):
+#  - "a whole army forms behind them in a split second" just before the curse line (album 130.35-133.8): SIX of the
+#    company run on into a line upstage of the three, four of them in the chant's four deck shafts (972-973: ch72-75
+#    at x -2.68 / -0.87 / 0.87 / 2.67, z 1.14, r 0.78; the SR-centre one stands just in front of the desk) and one
+#    each side, 1.4 m or more clear of the three keys; they dance the chant (dance.py) and run off on the final hook
+#    (975, 151.6);
+#  - at 2:15-2:16 "the walk": the three walk together ("the flex walk and James Madison wagging his finger ... as they're
+#    walking"; Burr "was pointed the wrong way and corrected himself") - on the money (973, 137.7) they turn and walk
+#    0.9 m to SL in step, Burr first facing SR;
+#  - at 2:22-2:24 "the Bullet ... dancing around Jefferson and Burr as they're singing about digging up dirt" (974,
+#    148.0): ens1 weaves out of the line, round Burr and back between the two, and off DSR.
+WOYS_ARMY = {  # id: (spot, wing) -- in at 130.3 at a run, out from 151.6
+    "ens2": ((-3.6, 1.7), "W-DSR"), "ens3": ((-2.68, 1.3), "W-MSR"), "ens4": ((-0.87, 1.55), "W-USR"),
+    "ens5": ((2.67, 1.3), "W-MSL"), "ens6": ((3.6, 1.7), "W-DSL"),
+}
+for a, (sp, ent) in WOYS_ARMY.items():
+    enter(a, T, 130.3, ent, sp, 0, label="Ensemble " + a[3:], speed=3.0)
+    leave(a, T, 151.6 + 0.15 * int(a[3:]), sp, ent, speed=2.0)
+wp("ens1", T, 128.0, 0.55, 0.4, dwell=0)                           # round the desk's SL end
+wp("ens1", T, 130.3, 0.87, 1.3, facing=0)                          # in the line (ch74)
+wp("ens1", T, 145.4, -0.5, 2.3, dwell=0)                           # the Bullet weaves out (974)
+wp("ens1", T, 146.6, -1.9, 2.3, dwell=0)
+wp("ens1", T, 147.9, -3.7, 2.7, dwell=0)                           # round Burr
+wp("ens1", T, 149.0, -3.3, 4.1, dwell=0)
+wp("ens1", T, 150.4, -1.6, 3.9, facing=60)                         # between Burr and Jefferson
+leave("ens1", T, 150.8, (-1.6, 3.9), "W-DSR", speed=2.0)
+for a, p, f0 in (("lafayette", ROW["lafayette"], 90), ("mulligan", ROW["mulligan"], 90), ("burr", ROW["burr"], -90)):
+    wp(a, T, 137.4, p[0] + 0.001, p[1], facing=f0, dwell=1.0 if a == "burr" else 0.4)   # REVIEW 3: Burr faces the wrong way
+    wp(a, T, 141.0, p[0] + 0.9, p[1], facing=90)                   # REVIEW 3: the walk, in step, to SL
+wp("lafayette", T, 144.0, -0.5, 3.4, facing=10)                    # the money: Jefferson works the line (in his key ch2)
+wp("burr", T, 144.0, -2.9, 3.3, facing=20)
+wp("mulligan", T, 144.0, 2.9, 3.3, facing=-20)
 wp("lafayette", T, 149.5, 0.0, 2.8, facing=0)                      # the digging
 for a, p in ROW.items():                                           # final hook
     wp(a, T, 153.0, p[0], p[1], facing=0)
@@ -379,13 +420,22 @@ wp("washington", T, 164.0, 0.8, 2.0, facing=0)                     # the hush be
 # The address (992-995): Hamilton at the front reading, Washington behind him at the desk; they change places
 # (Washington takes over the reading at 993, 193.1, DSC in ch13); Hamilton finishes it at the desk.
 wp("washington", T, 168.0, 0.65, 0.5, dwell=0)
-wp("washington", T, 170.0, WBEHIND[0] + 0.1, WBEHIND[1], facing=0)
+# REVIEW 3 (video: YouTube comments on the Disney+ clip "One Last Time", mgoFrstrYNk, 482 likes, and a second comment):
+# "when Hamilton and Washington swap places during Washington's farewell address, they stand side by side for a moment
+# with Hamilton on George's left side" (his left = stage left, +x). The Kennedy Center Honors clip (4wYwA2LRShQ): "Lin
+# fades into the background as Christopher steps forward". So Washington comes down the SR side of the desk and
+# Hamilton up the SL side; they meet side by side at z 2.5, facing the house (186.0-190.4); then Washington steps into
+# ch13 to take over the reading (993, 193.1) and Hamilton goes round the desk's SL end to finish it there.
+wp("washington", T, 170.0, WBEHIND[0] + 0.1, WBEHIND[1], facing=0, dwell=13.6)
 wp("hamilton", T, 171.5, 0.0, 3.35, facing=0)                      # DSC, in ch13 (0, 3.32) as the address begins
-wp("washington", T, 186.5, 0.75, 1.4, dwell=0)                     # the change of places
+wp("washington", T, 184.5, -1.3, 0.9, dwell=0)                     # the change of places: round the desk's SR end
+wp("washington", T, 185.3, -1.05, 1.8, dwell=0)
+wp("washington", T, 186.0, -0.4, 2.5, facing=0)                    # REVIEW 3: side by side, Hamilton on his left
 wp("hamilton", T, 184.0, 0.001, 3.35, dwell=0)
-wp("hamilton", T, 185.8, -1.5, 1.5, dwell=0)
-wp("hamilton", T, 186.9, -1.35, 0.2, dwell=0)
-wp("hamilton", T, 187.6, WBEHIND[0] - 0.15, WBEHIND[1] - 0.05, facing=0)   # at the desk, writing
+wp("hamilton", T, 186.0, 0.6, 2.5, facing=0, dwell=4.4)            # REVIEW 3: beside him, SL of him
+wp("hamilton", T, 191.6, 0.8, 1.05, dwell=0)                       # round the desk's SL end
+wp("hamilton", T, 192.4, 0.45, 0.15, dwell=0)
+wp("hamilton", T, 193.2, WBEHIND[0] - 0.15, WBEHIND[1] - 0.05, facing=0)   # at the desk, writing
 wp("washington", T, 193.0, 0.1, 3.3, facing=0)                     # takes over the reading (993), DSC in ch13
 wp("washington", T, 195.0, 0.0, 3.35, facing=0)
 wp("washington", T, 213.0, 0.2, 3.4, facing=0)
@@ -412,8 +462,13 @@ wp("washington", T, 282.8, 3.35, -2.45, facing=-40, dwell=4.5, y="top")   # half
 wp("washington", T, 289.5, 4.5, -2.45, dwell=0, y="gallery")       # the top
 wp("washington", T, 290.3, 4.75, -2.9, dwell=0, y="gallery")
 wp("washington", T, 290.8, 4.75, -3.3, dwell=0, y="gallery")
-wp("washington", T, 293.8, 0.6, -3.35, dwell=0, y="gallery")       # along the USG behind the company, off by the passage
-off("washington", T, 294.9, "G-UC")
+# REVIEW 3 (video comments): on the Disney+ clip "I Know Him" (FAgwoLO0S-4) "Washington and George staring at each other
+# for a few seconds, then Washington walking slowly backstage"; on the amateur compilation ynBgEBhygGw "King George stops
+# and stares dumbfounded at Washington exiting the stage" (and ironinkpen's side-eye). Washington stops on the USG above
+# the deck door, looks down at the King, holds the look into the top of 2-10, then walks slowly off by the passage.
+wp("washington", T, 293.0, 1.7, -3.3, facing=-39, dwell=3.1, y="gallery")   # REVIEW 3: the stare (to 2-10 0.1)
+wp("washington", T, 296.0 + 1.6, 0.6, -3.35, dwell=0, y="gallery")  # slowly along the USG to the passage
+off("washington", T, 296.0 + 2.9, "G-UC")
 wp("hamilton", T, 270.0, -2.2, 2.8, facing=135)                    # the family watches him go
 wp("eliza", T, 270.4, -3.15, 3.45, facing=120)
 wp("laurens", T, 270.8, -2.85, 2.25, facing=125)
@@ -425,12 +480,19 @@ leave("laurens", T, 294.8, (-2.85, 2.25), "W-DSR")
 CO9 = {  # id: (spot, entrance, arrival)
     "ens1": ((-2.6, -0.3), "W-MSR", 245.0), "ens2": ((-1.4, -0.9), "W-USR", 246.2), "ens3": ((-0.2, -1.3), "W-USR", 247.6),
     "ens4": ((0.9, -1.0), "W-USL", 249.0), "ens5": ((3.4, 0.3), "W-MSL", 245.4), "ens6": ((3.7, -0.9), "W-USL", 246.0),
+    # REVIEW 3: "the entire company comes out to salute him" (buzzfeed readers' list; the salute is in dance.py), so the
+    # other four come out too, three of them into the empty gospel-build shafts of 997-999 (ch96 (-3, 0.41), ch97
+    # (-1.2, 0.21), ch98 (0, -0.59)); all stay 1.3 m or more from his lane to the SL stair.
+    "ens7": ((-3.1, 0.5), "W-MSR", 246.6), "ens8": ((-1.2, 0.25), "W-USR", 249.6), "ens9": ((0.15, -0.45), "D-UC", 245.3),
+    "ens10": ((2.2, 1.6), "W-DSL", 245.8),
 }
+CO9_OUT = {"ens9": "W-USL"}   # REVIEW 3: not back through the deck door, which the King comes through
 for i, (a, (sp, ent, arr)) in enumerate(CO9.items()):
-    enter(a, T, arr, ent, sp, face(sp, (0.0, 3.3), 0.8))
+    enter(a, T, arr, ent, sp, face(sp, (0.0, 3.3), 0.8),
+          label=("Ensemble " + a[3:]) if a in ("ens7", "ens8", "ens9", "ens10") else None)   # REVIEW 3: their first in seg 6
     wp(a, T, 268.0 + 0.2 * i, sp[0], sp[1], facing=face(sp, (1.0, 0.7), 0.9))           # he comes up through them
     wp(a, T, 283.0 + 0.2 * i, sp[0], sp[1] + 0.01, facing=face(sp, (3.35, -2.45), 0.9))  # watch him on the stair
-    leave(a, T, 293.0 + 0.3 * i, (sp[0], sp[1] + 0.01), ent, speed=2.0)
+    leave(a, T, 293.0 + 0.2 * i, (sp[0], sp[1] + 0.01), CO9_OUT.get(a, ent), speed=2.2)   # REVIEW 3: ten, so 0.2 s apart
 
 # ---------------------------------------------------------------- 2-10 I Know Him
 # REVIEW: his UC special lands at (0, -0.62) (1004), DC at (0, 3.4) (1005-1009.5: the button special is ch93 at
@@ -440,8 +502,13 @@ for i, (a, (sp, ent, arr)) in enumerate(CO9.items()):
 # whisper it and giggle) - in the six-second silence before the name (1006, 39.1-45.1). The stool (he sets a small
 # chair and sits to watch the next number) belongs to 2-11: seg7_gen.py / props.py segment 7 'king-stool'.
 T = "2-10"
-off("king", "2-09", 294.0, "D-UC", label="King George")
-wp("king", T, 0.3, 1.25, -3.6, dwell=0)
+# REVIEW 3 (video comments, FAgwoLO0S-4 / ynBgEBhygGw): he "wanders onto stage", stops and stares at Washington on his
+# way out, and the two hold the look before Washington walks slowly off; then his careful walk to UC. The walk (Groff to
+# Colbert, 03IpD4QWPgQ): a 50-lb crown, a heavy cape and heels, "one foot in front of the other without crossing them ...
+# as though you're walking on a tightrope"; comments: "dragging his scepter behind him". Not a library move: dance.py.
+off("king", "2-09", 292.4, "D-UC", label="King George")
+wp("king", "2-09", 293.5, 1.25, -3.6, dwell=0)
+wp("king", "2-09", 294.7, 0.9, -2.3, facing=141, dwell=1.3)        # REVIEW 3: stops, stares up at Washington on the USG
 wp("king", T, 2.0, 0.0, -0.65, facing=0)                           # appears UC on the first note
 wp("king", T, 12.0, 0.2, -0.6, facing=-15)
 wp("king", T, 24.0, 0.0, 3.45, facing=0)                           # comes down to his spot DC
@@ -449,9 +516,11 @@ wp("king", T, 33.0, 0.2, 3.4, facing=-10)
 wp("king", T, 40.6, 0.15, 3.4, facing=-60)                         # the messenger
 wp("king", T, 43.0, 0.1, 3.45, facing=-20)                         # shoos them off
 wp("king", T, 45.1, 0.0, 3.45, facing=0)                           # the name
-enter("ens3", T, 40.5, "W-DSR", (-0.65, 3.65), 70, speed=3.2)      # runs on, whispers the name
-wp("ens3", T, 42.3, -0.65, 3.66, facing=40)                        # giggles
-leave("ens3", T, 42.8, (-0.65, 3.66), "W-DSR", speed=3.2)
+# REVIEW 3: the messenger is the Bullet (ens1): "the lady who whispered in King George['s] ear is Ariana DeBose" (video
+# comments), and Flicks And The City's essay on the Bullet (g-XwMQA26h8): "she's the one who tells him about John Adams".
+enter("ens1", T, 40.5, "W-DSR", (-0.65, 3.65), 70, label="The Bullet", speed=3.2)   # runs on, whispers the name
+wp("ens1", T, 42.3, -0.65, 3.66, facing=40)                        # giggles
+leave("ens1", T, 42.8, (-0.65, 3.66), "W-DSR", speed=3.2)
 wp("king", T, 58.0, -1.0, 3.35, facing=20)                         # the band: he struts
 wp("king", T, 64.0, 1.0, 3.35, facing=-20)
 wp("king", T, 70.3, 0.0, 3.6, facing=0)

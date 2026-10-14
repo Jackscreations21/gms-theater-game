@@ -89,7 +89,10 @@ stand(J, t(172.0), facing=-60)
 go(J, [(0.0, 4.1)], t_end=t(188.5), facing=0)
 go(J, [(0.0, 4.5)], t_end=t(199.0), facing=0)
 stand(J, t(209.3), facing=55)
-go(J, [(0.3, 4.1)], t_end=t(222.0), facing=-20)
+# REVIEW 3: the welcome handshake (ironinkpen: Jefferson reaches for Washington's hand and Hamilton jumps in and takes it;
+# Disney+ clip comments: Hamilton pushes past to get to Jefferson at about 214, Jefferson laughs at him at about 218)
+go(J, [(1.05, 4.25)], t_start=t(211.6), t_end=t(213.0), facing=75)    # reaches for Washington
+go(J, [(0.3, 4.1)], t_start=t(217.8), t_end=t(222.0), facing=-20)     # steps back, laughing
 stand(J, t(233.0), facing=0)
 
 # Madison: arrives DR on the hit, flustered (mirrored from the reconstruction's DL - see notes)
@@ -105,13 +108,14 @@ go(M, [(-1.6, 3.9)], t_end=t(222.0), facing=20)
 # Hamilton: named by the company, appears DL (mirrored, see notes)
 H = 'hamilton'
 enter(H, 'W-DSL', (3.5, 3.4), t_end=t(208.3), facing=-50, label='Hamilton')
-go(H, [(3.0, 3.0)], t_end=t(222.5), facing=-60)
+go(H, [(1.85, 4.0)], t_start=t(212.2), t_end=t(213.8), facing=-80)   # REVIEW 3: jumps in and takes Jefferson's hand
+go(H, [(3.0, 3.0)], t_start=t(218.6), t_end=t(222.5), facing=-60)
 
 # Washington comes on with Hamilton for the welcome (REVIEW: Jefferson reaches for Washington's hand and
 # Hamilton takes it - ironinkpen staging notes), then steps to the DSC mic in the snap for the cabinet meeting
 WA = 'washington'
-enter(WA, 'W-DSL', (2.2, 3.7), t_end=t(210.8), facing=face((2.2, 3.7), (0.0, 4.5)), label='Washington')
-stand(WA, t(222.6), facing=face((2.2, 3.7), (0.3, 4.1)))
+enter(WA, 'W-DSL', (2.75, 4.25), t_end=t(210.8), facing=face((2.75, 4.25), (0.0, 4.5)), label='Washington')   # REVIEW 3: DS of Hamilton's way to Jefferson
+stand(WA, t(222.6), facing=face((2.75, 4.25), (0.3, 4.1)))
 go(WA, [(0.0, 4.4)], t_start=t(234.3), t_end=T('2-02', 0.5), facing=0)
 
 # ======================================================================= 2-02 CABINET BATTLE #1
@@ -266,7 +270,14 @@ s = lambda at: T('2-04', at)
 MR = 'peggy'
 enter('burr', 'W-DSR', (-3.4, 1.2), t_end=s(0.5), facing=35, label='Burr', extra=[(-3.9, 2.4)])
 stand('burr', s(15.0), facing=60)
-leave('burr', 'W-DSR', t_start=s(22.0), extra=[(-3.9, 2.4)])
+# REVIEW 3: Burr does not leave after he hands the story over - he stays in the back watching the whole number
+# (Disney+ clip comments: Burr in the back watching the whole time, his smirk). Upstage SR, clear of the
+# desk, the lamps and James' DR entrance; off on the button (832), ahead of James and Hamilton.
+SN_BURR = (-3.5, -0.7)
+go('burr', [SN_BURR], t_start=s(22.0), facing=face(SN_BURR, (0.8, 1.5)))
+stand('burr', s(130.0), facing=face(SN_BURR, (-1.6, 3.0)))     # turns to Reynolds' letter, DR
+stand('burr', s(153.6), facing=face(SN_BURR, (1.8, 1.5)))      # back to the pair
+leave('burr', 'W-DSR', t_start=s(231.0), extra=[(-3.9, 2.4)])   # off before James and Hamilton go DSR
 # SPOT: Maria's face key is ch13 throughout (preset 732 'Woman SL' (3.5, 0.24); 790-818 at (2.7, 0.8)/(3.1, 1.0);
 # 820 at (0.93, 1.66)); her door is SL, Hamilton's pool ch93 at (0.42, 1.96) / (1.66, 1.75)
 enter(MR, 'W-MSL', (3.1, 0.8), t_end=s(16.0), facing=-80, label='Maria Reynolds')
@@ -292,6 +303,10 @@ go(H, [(-1.15, 2.65)], t_end=s(133.5), facing=-55)
 enter('ens4', 'W-DSR', (-2.7, 3.8), t_end=s(131.0), facing=125, label='James Reynolds', t_off=s(125.0))
 go('ens4', [(-2.3, 3.6)], t_end=s(144.0), facing=120)    # names his price
 leave('ens4', 'W-DSR', t_start=s(154.0))
+# REVIEW 3: James comes back for the money on the last line (ironinkpen: on Hamilton's last line he hands money
+# to Reynolds; Disney+ clip comment at 3:56: James takes the money and walks away) - beside him DSC, then off DSR first
+enter('ens4', 'W-DSR', (-0.85, 4.35), t_end=s(232.3), facing=88)
+leave('ens4', 'W-DSR', t_start=s(233.6))
 go(H, [(1.8, 1.5)], t_start=s(153.6), speed=1.9, facing=65)   # races to her door (812, ch93 at (1.66, 1.75))
 go(H, [(2.1, 1.35)], t_end=s(166.0), facing=75)
 go(MR, [(3.0, 0.95)], t_end=s(166.0), facing=-95)
@@ -304,7 +319,7 @@ go(H, [(0.8, 3.0)], t_end=s(209.0), facing=0)            # answering the hits
 go(H, [(0.2, 2.3)], t_end=s(214.0), facing=-110)
 leave(MR, 'W-MSL', t_start=s(222.0), extra=[(1.6, 0.6)])
 go(H, [(0.0, 4.4)], t_end=s(229.0), facing=0)            # to the house, alone
-leave(H, 'W-DSR', t_start=s(236.2))
+leave(H, 'W-DSL', t_start=s(236.2))   # REVIEW 3: off SL, the side Room opens on (James and Burr go DSR)
 
 # the company in the two choruses: UP ON THE GALLERIES, shouting down at him
 # (REVIEW: "the ensemble stands on the second floor and shouts down at Hamilton", also after the kiss -
@@ -339,33 +354,62 @@ r = lambda at: T('2-05', at)
 TABLE = (0.0, 0.2)
 H_T, J_T, M_T = (0.0, -0.65), (0.85, 0.3), (-0.85, 0.3)
 B = 'burr'
-# Burr and Hamilton walk on together from SR, talking
-go(H, [(-6.0, 4.65), (-2.2, 3.3)], t_end=r(4.6), facing=face((-2.2, 3.3), (-3.0, 3.8)), hold=False)
-go(B, [(-6.0, 4.65), (-3.0, 3.8)], t_end=r(5.4), facing=face((-3.0, 3.8), (-2.2, 3.3)), hold=False)
-go(H, [(-0.8, 3.0)], t_end=r(14.0), facing=face((-0.8, 3.0), (-1.6, 3.7)))
-go(B, [(-1.6, 3.7)], t_end=r(14.5), facing=face((-1.6, 3.7), (-0.8, 3.0)))
-go(H, [(0.8, 2.9)], t_end=r(24.0), facing=face((0.8, 2.9), (0.0, 3.5)))
-go(B, [(0.0, 3.5)], t_end=r(24.5), facing=face((0.0, 3.5), (0.8, 2.9)))
-go(H, [(2.0, 3.2)], t_end=r(33.0), facing=face((2.0, 3.2), (1.2, 3.8)))
-go(B, [(1.2, 3.8)], t_end=r(33.5), facing=face((1.2, 3.8), (2.0, 3.2)))
-go(H, [(1.4, 2.5)], t_end=r(40.0), facing=face((1.4, 2.5), (0.4, 3.9)))
-go(B, [(0.4, 3.9)], t_end=r(41.0), facing=face((0.4, 3.9), (1.4, 2.5)))
-go(H, [(1.9, 0.9), (1.1, -0.9), H_T], t_start=r(44.5), facing=0)      # off to the dinner
+# REVIEW 3 (video evidence): the three "entries" into the room. The opening picture - Hamilton and Burr talking while
+# Madison and Jefferson talk - is played THREE times, and each time ends with Hamilton, Jefferson and Madison walking into
+# the room together the same way (reddit, Jack's notes: on Hamilton's dinner line at the top, on the end of Jefferson's
+# list of what he arranged, and on Madison's go / Burr's refusal before chorus 3; a Disney+ clip comment: the opening at
+# 0:31 is Hamilton's and Burr's view, 1:55 Jefferson's, 2:41 Madison's, and at 2:57 Hamilton and Burr talk exactly as at
+# 0:40, Madison motioning Hamilton to come the same way both times; ironinkpen: the scene rewinds to Hamilton and Burr's
+# talk while Madison advises Jefferson, and Burr's refusal matches the moment Hamilton walked away to the dinner).
+# Jefferson's approach to Madison is the same both times (reddit: in Jefferson's account and again in Burr's account of
+# the invitation): the same path DSR. Burr walks round the lit circle and never crosses it (reddit; ironinkpen: Burr
+# wanders round the table asking Hamilton what they said to him, and Hamilton cannot hear him), and Hamilton goes to
+# the house's front left (= DR, cue 872) on his line about the banks, not on the click-boom.
+# They open talking on the house's right = STAGE LEFT (ironinkpen; the same account puts the 872 DR confrontation at the
+# front left, so it counts from the house): they walk on from DSL and stay on the SL half.
+H_TALK, B_TALK = (1.9, 2.7), (1.1, 3.5)
+H_IN = [(2.0, 1.2), (1.6, -0.6), (0.7, -0.85), H_T]            # Hamilton into the room, from H_TALK (round the SL side)
+H_OUT = [(0.7, -0.85), (1.6, -0.6), (2.0, 1.2), H_TALK]         # and back out of it to the same spot
+J_DSR, M_DSR = (-2.2, 3.4), (-3.0, 3.7)                         # Jefferson and Madison talking DSR (867.5 Madison DSR)
+J_IN = [(-0.3, 2.0), (0.45, 0.9), J_T]                          # Jefferson into the room from J_DSR (in front of his chair)
+J_OUT = [(0.45, 0.9), (-0.3, 2.0), J_DSR]                       # his approach to Madison: the same path, out
+M_IN = [(-0.6, 1.2), M_T]
+M_OUT = [(-0.6, 1.2), M_DSR]
+
+# --- Hamilton
+enter(H, 'W-DSL', (2.4, 3.3), t_end=r(4.6), facing=face((2.4, 3.3), (3.0, 3.9)))
+go(H, [(1.2, 3.0)], t_end=r(14.0), facing=face((1.2, 3.0), (2.0, 3.7)))
+go(H, [(2.3, 2.6)], t_end=r(24.0), facing=face((2.3, 2.6), (1.4, 3.3)))
+go(H, [(1.4, 2.9)], t_end=r(33.0), facing=face((1.4, 2.9), (2.2, 3.6)))
+go(H, [H_TALK], t_end=r(40.0), facing=face(H_TALK, B_TALK))
+go(H, H_IN, t_start=r(42.3), t_end=r(46.6), facing=0)                   # ENTRY 1: off to the dinner
+go(H, H_OUT, t_start=r(97.3), facing=face(H_TALK, (3.0, 3.7)))         # Jefferson's account: back out (in distress)
+go(H, H_IN, t_start=r(114.6), t_end=r(118.4), facing=0)                 # ENTRY 2: the end of Jefferson's list
+go(H, H_OUT, t_start=r(156.6), facing=face(H_TALK, B_TALK))            # Madison's account: the talk with Burr again
+go(H, H_IN, t_start=r(175.5), t_end=r(179.3), facing=0)                 # ENTRY 3: Madison's go / Burr's refusal
+# his line about the banks: the house's front left = DR (872), round the SR side of the table
+go(H, [(-1.0, -0.85), (-1.9, 0.6), (-3.2, 2.9)], t_start=r(209.6), t_end=r(213.6), facing=face((-3.2, 2.9), (-2.3, 3.5)))
+stand(H, r(221.0), facing=60)
+
+# --- Burr: straight lines (reddit: Burr walks in straight lines, Hamilton in arcs)
+enter(B, 'W-DSL', (3.0, 3.9), t_end=r(5.4), facing=face((3.0, 3.9), (2.4, 3.3)))
+go(B, [(2.0, 3.7)], t_end=r(14.5), facing=face((2.0, 3.7), (1.2, 3.0)))
+go(B, [(1.4, 3.3)], t_end=r(24.5), facing=face((1.4, 3.3), (2.3, 2.6)))
+go(B, [(2.2, 3.6)], t_end=r(33.5), facing=face((2.2, 3.6), (1.4, 2.9)))
+go(B, [B_TALK], t_end=r(40.5), facing=face(B_TALK, H_TALK))
 go(B, [(0.0, 3.9)], t_end=r(46.0), facing=0)                           # alone, DS
-enter(J, 'D-UC', J_T, t_end=r(47.0), facing=face(J_T, H_T), label='Jefferson', t_off=r(40.0))
-enter(M, 'D-UC', [(-0.9, -1.5), M_T], t_end=r(48.5), facing=face(M_T, H_T), label='Madison', t_off=r(41.5))
-# Burr through the number
-go(B, [(0.0, 4.9)], t_end=r(72.5), facing=0)            # chorus 1: the lines cross upstage of him
-go(B, [(-2.6, 4.2)], t_end=r(99.0), facing=45)          # watches Jefferson's account
-go(B, [(0.0, 4.9)], t_end=r(119.0), facing=0)           # chorus 2
+go(B, [(0.0, 4.9)], t_end=r(72.5), facing=0)                           # chorus 1
+stand(B, r(99.0), facing=face((0.0, 4.9), (3.0, 3.7)))                 # watches Jefferson's account (DSL)
+stand(B, r(119.0), facing=0)                                            # chorus 2
 go(B, [(0.8, 4.0)], t_end=r(134.0), facing=face((0.8, 4.0), TABLE))   # peers in at the chess game
 go(B, [(1.5, 4.1)], t_end=r(145.0), facing=-60)
-go(B, [(0.0, 4.4)], t_end=r(157.0), facing=0)
-stand(B, r(166.0), facing=180)                           # the trade - turned to the table
-go(B, [(0.0, 4.9)], t_end=r(177.5), facing=0)           # chorus 3
-go(B, [(0.0, 4.1)], t_end=r(194.0), facing=0)           # click-boom
-stand(B, r(196.5), facing=180)                           # to the table
-go(B, [(-2.3, 3.5)], t_end=r(201.0), facing=face((-2.3, 3.5), (-3.2, 2.9)))   # Burr / Ham DR
+go(B, [B_TALK], t_start=r(157.0), t_end=r(160.5), facing=face(B_TALK, H_TALK))   # the talk replayed
+go(B, [(0.0, 4.9)], t_start=r(175.6), t_end=r(178.0), facing=0)       # his refusal - chorus 3
+go(B, [(0.0, 4.1)], t_end=r(194.0), facing=0)                          # click-boom
+# round the lit circle (r about 2 m from the table), never inside it, asking Hamilton what they said to him (870 on)
+go(B, [(0.0, 2.2), (1.45, 1.8), (2.05, 0.4), (1.5, -1.05), (0.0, -1.75), (-1.5, -1.05), (-2.05, 0.4), (-1.45, 1.8),
+       (0.0, 2.2)], t_start=r(196.4), t_end=r(209.6), facing=180)
+go(B, [(-2.3, 3.5)], t_end=r(214.2), facing=face((-2.3, 3.5), (-3.2, 2.9)))   # after him, DR (872)
 stand(B, r(221.0), facing=-90)
 go(B, [(0.0, 2.4)], t_start=r(243.6), facing=0)         # Burr MC, the music slows
 go(B, [(-0.8, 2.9)], t_end=r(262.0), facing=15)
@@ -381,29 +425,45 @@ go(B, [(0.0, 4.3)], t_end=r(314.2), facing=0)           # the final click-boom (
 add(B, r(314.6), 0.0, 4.3, facing=0, dwell=0.55)
 go(B, [(-6.0, 4.65), WINGS['W-DSR']], t_end=r(317.5), last_off=True, hold=False)
 
-# Jefferson and Madison at the table, their asides DSL / DSR, the dinner
-go(J, [(3.0, 3.7)], t_end=r(99.5), facing=-20)          # Jefferson's account DSL
-go(J, [J_T], t_end=r(118.0), facing=face(J_T, H_T))     # the dinner he set
-go(M, [(-1.5, 1.7), (-3.0, 3.7)], t_start=r(142.0), t_end=r(146.0), facing=20)   # Madison weighs it DSR
-go(J, [(0.0, 2.4), (-0.2, 3.3), (-2.2, 3.4)], t_start=r(147.0), t_end=r(151.0), facing=face((-2.2, 3.4), (-3.0, 3.7)))
-go(M, [(-1.5, 1.7), M_T], t_start=r(153.0), t_end=r(157.0), facing=face(M_T, H_T))
-go(J, [(-0.2, 3.3), (0.0, 2.4), J_T], t_start=r(153.4), t_end=r(158.0), facing=face(J_T, H_T))
-stand(J, r(166.0), facing=-90)                           # the trade struck
-stand(M, r(166.2), facing=90)
-go(H, [(-0.1, 1.3), (-3.2, 2.9)], t_start=r(197.4), t_end=r(201.0), facing=face((-3.2, 2.9), (-2.3, 3.5)))
-stand(H, r(221.0), facing=60)
-stand(J, r(200.0), facing=-120)
-stand(M, r(200.2), facing=-150)
-# REVIEW: 874 "Lose DR" - Hamilton walks back into the room (the table) and leaves Burr outside it. The THPP
-# renders keep three bodies at the table through 876, 876.1 and 882 (dark after 878 "Lose table") and none at
-# 884; the staging notes say Hamilton, Jefferson and Madison leave together and Burr is left with the company.
-# So the three stay at the table through Burr's build and go upstage on 882 "Burr DS", before 884.
-go(H, [(-1.8, 2.0), (-1.6, 0.4), (-0.9, -0.8), H_T], t_start=r(242.5), facing=0)
+# --- Jefferson
+enter(J, 'D-UC', [(1.0, -1.6), J_T], t_end=r(45.0), facing=face(J_T, H_T), label='Jefferson', t_off=r(39.5))
+stand(J, r(50.0), facing=0)                              # the three out front for the company vocal (ironinkpen)
+stand(J, r(72.0), facing=face(J_T, H_T))
+go(J, [(0.6, 1.2), (3.0, 3.7)], t_end=r(99.5), facing=-20)            # Jefferson's account DSL (867.1)
+go(J, [(1.2, 3.9), J_DSR], t_start=r(108.5), t_end=r(112.3), facing=face(J_DSR, M_DSR))   # his approach to Madison
+go(J, J_IN, t_start=r(114.8), t_end=r(118.4), facing=face(J_T, H_T))  # ENTRY 2
+go(J, J_OUT, t_start=r(152.2), t_end=r(155.4), facing=face(J_DSR, M_DSR))   # the same approach, with the invitation
+go(J, J_IN, t_start=r(175.6), t_end=r(179.2), facing=face(J_T, H_T))  # ENTRY 3
+stand(J, r(210.0), facing=-120)
 stand(J, r(247.0), facing=face(J_T, H_T))
+
+# --- Madison
+enter(M, 'D-UC', (-0.9, -1.5), t_end=r(39.6), facing=face((-0.9, -1.5), H_TALK), label='Madison', t_off=r(36.0))
+stand(M, r(40.6), facing=face((-0.9, -1.5), H_TALK))   # motions Hamilton to come
+go(M, [M_T], t_start=r(43.0), t_end=r(46.6), facing=face(M_T, H_T))   # ENTRY 1
+stand(M, r(50.2), facing=0)
+stand(M, r(72.2), facing=face(M_T, H_T))
+go(M, M_OUT, t_start=r(97.6), facing=face(M_DSR, J_DSR))               # out of the room for Jefferson's account
+go(M, M_IN, t_start=r(114.8), t_end=r(118.4), facing=face(M_T, H_T))  # ENTRY 2
+go(M, M_OUT, t_start=r(142.0), t_end=r(146.0), facing=20)             # Madison weighs it DSR (867.5)
+stand(M, r(155.6), facing=face(M_DSR, J_DSR))                          # Jefferson's invitation
+stand(M, r(175.0), facing=face(M_DSR, H_TALK))                         # motions Hamilton to come, as at the top
+go(M, M_IN, t_start=r(175.6), t_end=r(179.2), facing=face(M_T, H_T))  # ENTRY 3
+stand(M, r(210.2), facing=-150)
+
+# 874 "Lose DR" (REVIEW): Hamilton walks back into the room and leaves Burr outside it; the three stay at the table
+# through Burr's build and go upstage on 882 "Burr DS", before 884.
+go(H, [(-1.8, 2.0), (-1.6, 0.4), (-0.9, -0.8), H_T], t_start=r(242.5), facing=0)
 stand(M, r(247.2), facing=face(M_T, H_T))
 leave(H, 'D-UC', t_start=r(271.6), extra=[(0.4, -2.0)])
 leave(J, 'D-UC', t_start=r(272.4), extra=[(1.25, -1.2)])
 leave(M, 'D-UC', t_start=r(273.4), extra=[(-0.2, -1.0), (0.6, -2.6)])
+
+# REVIEW 3: two of the company up on the gallery shout the city names down (ironinkpen: the ensemble on the second
+# floor shouts random names down while Congress fights over the capital; a Disney+ clip comment on the shouted names)
+for k, (a, p) in enumerate([('ens9', (-1.6, -3.35, 'g')), ('ens10', (2.2, -3.35, 'g'))]):
+    enter(a, 'G-UC', p, t_end=r(149.4 + 0.3 * k), facing=face(p, TABLE), label=lab(a))
+    leave(a, 'G-UC', t_start=r(155.6 - 1.2 * k))     # the far one (ens10) first, so they do not pass on the gallery
 
 # the company (REVIEW 2, Jack's verdict): EIGHT bodies (ens1-ens8), not ten, in the shapes ETC's renders of Binkley's real
 # cues show (THPP Cue Photos 866-890; research/seg5pics): a line of four with Burr DS (866); four a side down the
@@ -427,8 +487,10 @@ for k, a in enumerate(['ens1', 'ens3', 'ens5', 'ens7']):
 for k, a in enumerate(['ens2', 'ens6', 'ens4', 'ens8']):
     enter(a, SIDEvia[a], SIDE[a], t_end=r(74.0 + 0.3 * k), facing=face(SIDE[a], LOOKC), label=lab(a))
 # they hold the sides of the room to Burr's build, turned to whoever has the moment
-for when, at in [(97.3, (3.0, 3.7)), (118.6, LOOKC), (144.2, (-3.0, 3.7)), (155.2, TABLE), (194.0, LOOKC),
-                 (199.2, (-2.7, 3.2)), (244.0, (0.0, 2.4)), (272.0, (0.0, 4.3))]:
+# REVIEW 3: re-timed to the replayed scene - Jefferson's approach DSR (109), the talk replayed SL (160.5), the walk-in
+# into chorus 3 (176), and Hamilton DR on the banks line (211, not 199.2)
+for when, at in [(97.3, (3.0, 3.7)), (109.0, (-2.6, 3.55)), (118.6, LOOKC), (144.2, (-3.0, 3.7)), (160.5, (1.5, 3.1)),
+                 (176.0, LOOKC), (211.0, (-2.7, 3.2)), (244.0, (0.0, 2.4)), (272.0, (0.0, 4.3))]:
     for k, a in enumerate(E8):
         stand(a, r(when + 0.1 * k), facing=face(SIDE[a], at))
 # 277.9 "Art of Bink": two lines fanning out downstage from the table, Burr at it
@@ -484,7 +546,14 @@ NOTES = (
  "2-05 Room: THPP cue photos 866-892 - a line of four with Burr DS (866), four a side down the sides of the room (867-882), "
  "the round table USC with Jefferson SL / Madison SR / Hamilton upstage of it, Burr+Ham DR at 872, Hamilton back to the table "
  "at 874, the three out upstage on 882, two fanning lines (884), four round the table (885), a horseshoe round the table "
- "for the dance (890), Burr DC at 892; Burr stands at deck level where the table is."
+ "for the dance (890), Burr DC at 892; Burr stands at deck level where the table is. "
+ "REVIEW 3 (video text: Disney+ clip comments, Ham4Ham captions, ironinkpen, reddit): 2-01 Hamilton takes the hand "
+ "Jefferson offers Washington (212-214); 2-04 Burr stays upstage SR watching the whole number and James comes back DSC for "
+ "the money on the last line, Hamilton off SL; 2-05 Hamilton and Burr open on SL (the house's right), the opening is "
+ "replayed twice (97-118 Jefferson's account, 152-179 Madison's) and each ends with the three walking into the room the "
+ "same way (46.6, 118.4, 179.3), Jefferson's approach to Madison DSR the same both times, Burr walks round the lit circle "
+ "196.4-209.6 without crossing it, Hamilton goes DR on his banks line (213.6, not 198.9), two of the company shout the "
+ "city names from the gallery (149-157)."
 )
 if __name__ == '__main__':
     import os

@@ -101,12 +101,17 @@ g('burr', T(tr, 3.0), 4.75, -3.2, dwell=0)
 g('burr', T(tr, 3.6), 4.9, -2.2, dwell=0)
 g('burr', T(tr, 5.8), 4.9, 1.9, dwell=0)
 g('burr', T(tr, 6.3), GS[0], GS[1], face=-40)
-hold_until('burr', T(tr, 20.5))
-g('burr', T(tr, 21.1), 4.9, 1.9, dwell=0)
-g('burr', T(tr, 24.3), 4.9, -2.2, dwell=0)
-g('burr', T(tr, 25.1), 4.75, -3.2, dwell=0)
-g('burr', T(tr, 28.3), 0.6, -3.35, dwell=0)
-off('burr', T(tr, 29.5), 'G-UC')
+# REVIEW 3 (video): Burr does NOT leave after the intro. Comments on the Disney+ clip (0D3zz6byFT4): "everyone upstairs
+# is dancing except for Burr" and "the guy that comes up to him is the one who played Lee" (clip 1:04, album ~62);
+# "we see him glaring angrily from above while Lafayette tells Washington he needs his right-hand man back"
+# (CinemaBlend background details, OAMOh17f7FU); "Burr hesitates to pass the letter" in the chain "on the top raft"
+# (clip 1:31, album ~89). He stays on the SL gallery, looking down on the deck, then joins the letter chain on the USG.
+hold_until('burr', T(tr, 50.0))
+g('burr', T(tr, 51.8), 4.9, 0.5, face=facing_to((4.9, 0.5), (0.0, 1.0)))       # upstairs, glaring down at the deck
+hold_until('burr', T(tr, 66.5))
+g('burr', T(tr, 68.6), 4.9, -2.2, dwell=0)
+g('burr', T(tr, 69.4), 4.75, -3.2, dwell=0)
+g('burr', T(tr, 70.8), 2.8, -3.35, face=0)                                       # his place in the letter chain
 
 # REVIEW2 (Jack's verdict: the ensemble is used too much, much of the choreography is wrong). Eight soldiers, not
 # twelve: Laurens and Mulligan are out of this number (their labels would read as the characters; Mulligan's entrance
@@ -121,18 +126,90 @@ G18 = {'ens1': ('W-USR', (-3.6, -1.1)), 'ens2': ('W-MSR', (-2.3, -0.5)), 'ens3':
 for a in CO8:
     e, p = G18[a]
     off(a, T(tr, 0.0), e)
-    wp(a, T(tr, 24.0), p[0], p[1], face=facing_to(p, (0.0, 1.0)))     # they walk on from about 19 s, behind his burst
+    if a == 'ens6':   # REVIEW 3: she carries Lafayette's table on from SL (props.py 'gs-table') and sets it in the beams
+        wp(a, T(tr, 28.5), 0.85, 1.75, face=-100, dwell=0.3)
+        wp(a, T(tr, 31.0), p[0], p[1], face=facing_to(p, (0.0, 1.0)))
+    else:
+        wp(a, T(tr, 24.0), p[0], p[1], face=facing_to(p, (0.0, 1.0)))     # they walk on from about 19 s, behind his burst
 for a in CO8:
     wp(a, T(tr, 31.3), *pos(a), face=facing_to(pos(a), (0.0, 2.1)))     # Lafayette in the ring of beams
+    if a == 'ens6':   # REVIEW 3: back for the table once he is off it and travelling, off SL with it, back to her place
+        wp(a, T(tr, 46.0), 0.85, 1.75, face=-100, dwell=0.3)
+        exit_to(a, T(tr, 46.3), 'W-MSL', speed=1.5)
+        off(a, T(tr, 53.0), 'W-MSL')
+        wp(a, T(tr, 58.0), *G18[a][1], face=facing_to(G18[a][1], C))
+    if a == 'ens3':   # REVIEW 3: Lee goes upstairs (below)
+        continue
     wp(a, T(tr, 59.2), *pos(a), face=facing_to(pos(a), C))              # Washington's special
-for a in CO8:   # the company chant (cue 567): a step in towards the front, out to the house
+# REVIEW 3 (video): "the guy that comes up to [Burr upstairs] is the one who played Lee" (clip 1:04, album ~62). ens3
+# (Charles Lee's body) leaves the deck in Lafayette's second rap, climbs the SL stair and stands by Burr on the SL
+# gallery (outer half, so Burr can pass), then takes his place in the letter chain on the USG.
+hold_until('ens3', T(tr, 46.0))
+climb_SL('ens3', T(tr, 51.2))
+g('ens3', T(tr, 56.0), *SLJ, dwell=0)
+g('ens3', T(tr, 58.0), 5.45, -0.3, face=facing_to((5.45, -0.3), (4.9, 0.5)))
+hold_until('ens3', T(tr, 68.5))
+g('ens3', T(tr, 69.9), 4.9, -2.2, dwell=0)
+g('ens3', T(tr, 70.7), 4.75, -3.15, dwell=0)
+g('ens3', T(tr, 71.6), 3.6, -3.35, face=0)
+CO7 = [a for a in CO8 if a != 'ens3']
+for a in CO7:   # the company chant (cue 567): a step in towards the front, out to the house
     x, z = pos(a); wp(a, T(tr, 69.6), x * 0.85, z + 0.8, face=0)
 WDC = (0.0, 1.6)   # SPOT: Washington in his special (cue 568: Viper 93 at (0, 1.54))
-for a in CO8:
+for a in CO7:
     wp(a, T(tr, 80.0), *pos(a), face=facing_to(pos(a), WDC))            # his anthem: they turn to him
     wp(a, T(tr, 104.4), *pos(a), face=0)                                 # the build, out front
-for a in CO8:   # the button (cue 572): everything out but Washington and Hamilton - the company goes in the dark
+for a in CO7:   # the button (cue 572): everything out but Washington and Hamilton - the company goes in the dark
     exit_to(a, T(tr, 120.0), G18[a][0], speed=1.5)
+
+# REVIEW 3 (video): the upstairs company and the LETTER CHAIN. Disney+ clip comments (0D3zz6byFT4): "watch the top and
+# you can see Peggy and Angelica jamming on the rafter"; "1:16 Angelica's feeling it" (album ~74); "1:22 the background
+# dancers forming a chain to pass the letter to Hamilton" (album ~80); "1:30 Laurens gave Lee the letter", "1:31 Burr
+# hesitates", "the way they pass the letter on the top raft", "eyes on Peggy" (she holds a spare letter), "1:33 ... to
+# Hamilton" (album ~89-91); "Washington could've just turned around and given Hamilton the letter himself" (Hamilton
+# is behind him, above); "when he gave her the letter she ... gave him his coat"; "the tender way Alexander looks at
+# Eliza and the baby right before he goes to war at 1:50" (album ~108). Lafayette "SPRINTS WITH LETTER", "running
+# away with Washington's letter held above his head": he runs it to the SL stair, where Laurens takes it up.
+# (Clip time ~ album + 1.9 s: Washington's "Alexander Hamilton" is clip 1:21.9, cue 568 album 80.0.)
+for a, lab in (('angelica', 'Angelica'), ('peggy', 'Peggy')):
+    off(a, T(tr, 0.0), 'G-UC', label=lab)
+    off(a, T(tr, 55.0), 'G-UC')
+    g(a, T(tr, 56.2 if a == 'angelica' else 56.8), 0.6, -3.35, dwell=0)
+g('angelica', T(tr, 57.6), -1.0, -3.65, face=0)
+g('peggy', T(tr, 57.8), 2.0, -3.35, face=0)
+off('laurens', T(tr, 0.0), 'W-USL', label='Laurens')
+off('laurens', T(tr, 64.0), 'W-USL')
+wp('laurens', T(tr, 71.0), *SLF, face=facing_to(SLF, (1.7, -1.9)))   # at the foot of the SL stair for the letter
+hold_until('laurens', T(tr, 72.3))
+wp('laurens', T(tr, 76.8), *SLT, dwell=0, y='top')
+g('laurens', T(tr, 77.5), 4.6, -3.2, face=-90)
+off('hamilton', T(tr, 0.0), 'G-UC')
+off('hamilton', T(tr, 83.5), 'G-UC')
+g('hamilton', T(tr, 84.7), 0.6, -3.35, dwell=0)
+g('hamilton', T(tr, 85.3), 1.2, -3.35, face=0)
+off('eliza', T(tr, 0.0), 'G-UC', label='Eliza')
+off('eliza', T(tr, 84.6), 'G-UC')
+g('eliza', T(tr, 85.8), 0.6, -3.35, dwell=0)
+g('eliza', T(tr, 86.4), 0.3, -3.65, face=0)
+# the passes, east to west (each turns to take it, then turns to pass it on)
+g('ens3', T(tr, 87.2), 3.6, -3.35, face=90); g('ens3', T(tr, 88.4), 3.6, -3.35, face=-90)
+g('burr', T(tr, 88.2), 2.8, -3.35, face=90); g('burr', T(tr, 90.0), 2.8, -3.35, face=-90)     # he hesitates
+g('peggy', T(tr, 89.4), 2.0, -3.35, face=90); g('peggy', T(tr, 90.6), 2.0, -3.35, face=-90)
+g('hamilton', T(tr, 90.4), 1.2, -3.35, face=90); g('hamilton', T(tr, 91.6), 1.2, -3.35, face=0)   # he reads it
+g('hamilton', T(tr, 95.0), 1.2, -3.35, face=-90); g('eliza', T(tr, 95.0), 0.3, -3.65, face=75)   # she gives him his coat
+g('hamilton', T(tr, 104.4), 1.2, -3.35, face=0); g('eliza', T(tr, 104.4), 0.3, -3.65, face=20)
+g('hamilton', T(tr, 108.0), 1.2, -3.35, face=-80)                                                 # the look at Eliza
+# down the SR side for the button in his DS special (cue 572), along the front of the gallery past the sisters
+g('hamilton', T(tr, 109.2), 0.9, -3.1, dwell=0)
+g('hamilton', T(tr, 112.0), -4.5, -3.1, dwell=0)
+down_SR('hamilton', T(tr, 113.6))
+wp('hamilton', T(tr, 120.5), -0.8, 4.0, face=165)
+# the button: the upstairs company out through the back way, one by one along the gallery
+for a, t0 in (('eliza', 120.0), ('angelica', 120.8), ('peggy', 122.0), ('burr', 123.0), ('ens3', 124.0), ('laurens', 124.8)):
+    hold_until(a, T(tr, t0))
+    p = pos(a); t1 = t0 + max(0.4, dist(p, (0.6, -3.35)) / 1.5)
+    g(a, T(tr, t1), 0.6, -3.35, dwell=0)
+    off(a, T(tr, t1 + 1.2), 'G-UC')
 
 LAFC = (0.0, 2.1)   # REVIEW: the ring of beams of cue 562 is centred (0, 2.0), his front key (0, 2.3)
 # REVIEW: Lafayette bursts in up centre through the company on the shout (17.6) and raps on the deck; he is centre
@@ -143,14 +220,28 @@ off('lafayette', T(tr, 14.5), 'D-UC')
 wp('lafayette', T(tr, 17.0), 0.6, -2.6, dwell=0)
 wp('lafayette', T(tr, 19.0), 0.0, -0.2, face=0)
 wp('lafayette', T(tr, 24.5), -1.0, 1.0, face=20)
-wp('lafayette', T(tr, 28.0), 1.0, 1.4, face=-20)
+wp('lafayette', T(tr, 28.0), -0.8, 1.6, face=20)   # REVIEW 3: SR of the table ens6 is bringing on
+# REVIEW 3 (video): he raps standing ON a table and jumps down off it mid-rap without breaking the flow (Disney+ clip
+# comments: "jump from a table, land on the ground, and STILL keep the same momentum", "0:38 ... when he jumped and
+# when he landed"; clip 0:38-0:39 = album ~36.5). The page has no raised standing: he stands inside the table's
+# footprint (props.py 'gs-table' at LAFC), as Burr does on the Room's table in 2-05; the jump is the 'jump' move.
 wp('lafayette', T(tr, 31.3), LAFC[0], LAFC[1], face=0)
+hold_until('lafayette', T(tr, 36.4))
+wp('lafayette', T(tr, 37.0), 0.0, 3.0, face=0)      # landed, downstage of the table
 hold_until('lafayette', T(tr, 40.0))
 wp('lafayette', T(tr, 42.3), -1.0, 2.8, face=15)
 wp('lafayette', T(tr, 45.7), 1.0, 2.8, face=-15)
 wp('lafayette', T(tr, 48.8), 0.0, 1.8, face=0)
 wp('lafayette', T(tr, 59.2), 1.4, 1.6, face=-65)
-wp('lafayette', T(tr, 69.6), 1.2, 3.3, face=0)
+# REVIEW 3 (video): "Lafayette ... SPRINTS WITH LETTER", "running away with Washington's letter held above his head":
+# on the chant he takes Washington's letter at a run to the foot of the SL stair, where Laurens takes it up to the
+# chain on the gallery; then back to watch Washington's anthem
+hold_until('lafayette', T(tr, 70.0))
+wp('lafayette', T(tr, 70.6), 1.0, 0.3, dwell=0)
+wp('lafayette', T(tr, 71.6), 1.7, -1.9, face=140)
+hold_until('lafayette', T(tr, 72.3))
+wp('lafayette', T(tr, 73.6), 1.0, 0.3, dwell=0)
+wp('lafayette', T(tr, 77.0), 1.6, 3.7, face=-60)
 wp('lafayette', T(tr, 80.0), 1.6, 3.7, face=-60)
 wp('lafayette', T(tr, 104.4), 1.6, 3.1, face=0)
 wp('lafayette', T(tr, 109.6), 1.4, 3.5, face=-10)
@@ -166,10 +257,8 @@ wp('washington', T(tr, 80.0), 0.0, 1.65, face=0)
 wp('washington', T(tr, 93.7), 0.0, 1.55, face=0)
 wp('washington', T(tr, 108.0), 0.0, 1.2, face=0)
 
-# Hamilton: sent for - in from DSR at the end, into his DS special facing his general
-off('hamilton', T(tr, 0.0), 'W-DSR')
-off('hamilton', T(tr, 112.0), 'W-DSR')
-wp('hamilton', T(tr, 118.5), -0.8, 4.0, face=165)
+# Hamilton: REVIEW 3 - sent for: he is upstairs at the end of the letter chain (above), and comes down the SR side into
+# his DS special facing his general for the button (written with the chain)
 
 # ====================================================================================
 # 1-19 HISTORY HAS ITS EYES ON YOU
@@ -189,6 +278,9 @@ wp('hamilton', T(tr, 0.5), -1.4, 3.4, face=70)
 wp('hamilton', T(tr, 15.0), -1.4, 3.5, face=80)
 wp('hamilton', T(tr, 37.3), -1.0, 3.9, face=45)
 wp('hamilton', T(tr, 52.9), -0.8, 3.8, face=60)
+# REVIEW 3 (video): Disney+ clip comment (ws_pklV1cP8) "1:08 Washington: sharing a touching moment with Alexander"
+# (clip ~ album + 4 s: album ~64, the verse-2 build, cue 581): Hamilton comes up beside him, at the edge of his special
+wp('hamilton', T(tr, 64.5), -1.1, 2.45, face=80)
 wp('hamilton', T(tr, 74.7), -1.2, 3.2, face=30)
 # into Yorktown: onto the box near the lip
 hold_until('hamilton', T(tr, 95.0))
@@ -239,9 +331,25 @@ wp('hamilton', T(tr, 43.6), 0.0, 4.6, face=0)
 wp('hamilton', T(tr, 52.0), 0.0, 4.55, face=0)   # SPOT: cue 592's centre shaft (Viper 98) crosses the lip at (0, 5.55)
 REC = [a for a in RING_Y if a != 'ens10']
 srt = sorted(REC, key=lambda a: pos(a)[0])
-place(srt, [p for p in W1s if p != (1.6, -3.1)], T(tr, 56.0), face=0)
+# REVIEW 3 (video): Blankenbuehler (WSJ "Breaks Down His Moves", captions read): "as they're marching into the Battle of
+# Yorktown ... his group of marching troops sort of freeze and they bring to life this lyric", "I'm in marching
+# formation behind him". So the company is IN its formation behind him when his verse starts (cue 592, bar 21 =
+# 51.36), and dances it standing (dance.py); it no longer walks upstage during the phrase (it arrived at 56.0).
+place(srt, [p for p in W1s if p != (1.6, -3.1)], T(tr, 51.0), face=0)
 # ens10 (the SL end of the line) goes off DL instead, to come back for the box
-exit_to('ens10', T(tr, 52.0), 'W-DSL', speed=1.4)
+exit_to('ens10', T(tr, 46.5), 'W-DSL', speed=1.4)
+# REVIEW 3 (video): the heartbeat (bar 25, cue 593): "this thought is way over here, we grab it, we put it down, and
+# Eliza is right over our head on the balcony, we turn home" (WSJ). Eliza on the USG right above the company's rows;
+# they turn to her for the heartbeat and back out for the march.
+off('eliza', T(tr, 55.0), 'G-UC')
+g('eliza', T(tr, 57.4), 0.6, -3.35, dwell=0)
+g('eliza', T(tr, 58.2), 0.0, -3.35, face=0)
+hold_until('eliza', T(tr, 66.8))
+g('eliza', T(tr, 67.6), 0.6, -3.35, dwell=0)
+off('eliza', T(tr, 68.8), 'G-UC')
+for a in srt:
+    wp(a, T(tr, 61.2), *pos(a), face=180)    # "we turn home"
+    wp(a, T(tr, 65.6), *pos(a), face=0)
 wp('hamilton', T(tr, 61.2), -1.1, 3.7, face=10)   # SPOT: cue 593, his DS special (X4 44 at (-1.31, 3.53)) warms
 wp('hamilton', T(tr, 66.7), 0.0, 3.2, face=0)
 # the box struck on the march (66.7, "the drive returns"): ens10 in from DL, out with it the same way
@@ -269,6 +377,17 @@ for a in DECKY:   # the creep: a slow advance inside each pool
 # the friends' fortunes: Hamilton narrates DS; Laurens in his own pool; Lafayette at the bay DR
 wp('hamilton', T(tr, 92.0), 0.05, 3.0, face=0)   # SPOT: cue 597's warm key on him is X4 43, focused (0.06, 2.98)
 wp('laurens', T(tr, 93.0), 2.75, 1.7, face=-20)  # SPOT: Laurens' own pool is Viper 13 (2.69, 1.66), lit 595-598
+# REVIEW 3 (video): "as they celebrate their victory in South Carolina we see Laurens celebrating and shaking hands with
+# the Bullet" (CinemaBlend, OAMOh17f7FU); "she shakes hands with Laurens during Yorktown, who dies soon after" (MsMojo
+# 2q1PTOSbdhM and YyqT13_N_aw). The Bullet's body is ens1 (2-22): she crosses in the dark of the sunk pools to his
+# pool on his line, they shake hands, and she goes back.
+P_ENS1 = pos('ens1')
+hold_until('ens1', T(tr, 92.0))
+wp('ens1', T(tr, 94.6), 2.15, 1.95, face=facing_to((2.15, 1.95), (2.75, 1.7)))
+wp('laurens', T(tr, 94.6), 2.75, 1.7, face=facing_to((2.75, 1.7), (2.15, 1.95)))
+hold_until('ens1', T(tr, 96.8))
+wp('ens1', T(tr, 99.5), *P_ENS1, face=0)
+wp('laurens', T(tr, 97.0), 2.75, 1.7, face=-20)
 wp('lafayette', T(tr, 100.1), -3.5, 3.4, face=20)
 # Mulligan bursts in from upstage
 off('mulligan', T(tr, 100.0), 'D-UC')
@@ -340,6 +459,22 @@ wp('hamilton', T(tr, 155.5), 0.0, 2.3, face=0)
 for a in B11 + ['lafayette']:
     wp(a, T(tr, 170.5), *pos(a), face=0)
 wp('hamilton', T(tr, 169.8), 0.0, 2.6, face=0)
+# REVIEW 3 (video): THE FURNITURE. In The World Turned Upside Down "they're holding the furniture upside down"
+# (G.O.T Games reaction to the Disney+ number, Kodkbh1MbEY 11:08, said over the first company "world turned upside
+# down", album ~204-212); Jack's reddit notes: "they are picking up the furniture and holding it upside-down"; the
+# AllMusicals annotation: the furniture is turned over "then righted, matching the lyric". Six soldiers on the dark
+# outer ring go off with the escort of the beaten army (cue 608, 179.8) and come back each carrying a chair or
+# a crate for the celebration (cue 608.5, 189.6), stand with it, lift it upside down on the company's first full
+# phrase (cue 609.2, dance.py 'upside-down'), carry it overhead to the tableau pools, right it on the chant (609.3),
+# set it down by their pool at victory (609.5) and take it off with them in the blackout. props.py 'ytown-*'.
+FURN = [a for a in sorted(B11, key=lambda a: pk[a]) if a.startswith('ens') and pk[a] >= 4][:6]
+FURN_WING = {}
+for a in FURN:
+    p = pos(a)
+    e = nearest(p, ['W-MSR', 'W-USR', 'W-DSR', 'W-MSL', 'W-USL', 'W-DSL'])
+    FURN_WING[a] = (e, round(exit_to(a, T(tr, 182.0), e, speed=1.4) - OFFS[tr], 2), p)
+    off(a, T(tr, 188.5), e)
+    wp(a, T(tr, 197.0), p[0], p[1], face=0)
 hold_until('ens5', T(tr, 169.0))
 off('ens5', T(tr, 172.0), 'D-UC')   # SPOT: back out through the deck door
 # Washington comes through the door: the surrender terms, his smile
@@ -374,10 +509,16 @@ for a in tab_bodies:
     wp(a, T(tr, 217.1), p[0], p[1], face=0)
 wp('hamilton', T(tr, 235.4), TAB[4][0], TAB[4][1], face=0)
 # blackout: everyone off in the dark, upstage and mid wings (the King comes on DSL)
+# REVIEW 3 (video): What Comes Next? clip comments (ERYukmba5Vg): "at the beginning, when the other actors are walking
+# off stage, Groff is looking around as if to say 'Get off! My stage!'" - they WALK off (1.3 m/s, was a 1.7 run) and
+# are still going as the King arrives at the lip; the furniture goes off in their hands.
+FURN_OFF = {}
 for a in OUT9 + IN4 + ['hamilton', 'washington']:
     p = pos(a)
     e = nearest(p, ['W-MSR', 'W-USR', 'W-MSL', 'W-USL', 'D-UC'])
-    exit_to(a, T(tr, 240.3), e, speed=1.7)
+    FURN_OFF[a] = (e, round(exit_to(a, T(tr, 240.3), e, speed=1.3) - OFFS[tr], 2), p)
+for a in FURN:   # for props.py SEGMENT 4 (the six carriers): escort wing, off time, spot; tableau spot, blackout wing, off
+    print('FURN', a, FURN_WING[a], 'tableau', TAB[TABK[a]] if a in TABK else 'dark', 'out', FURN_OFF[a])
 
 # ====================================================================================
 # 1-21 WHAT COMES NEXT?  - the King alone at the lip
@@ -385,7 +526,11 @@ for a in OUT9 + IN4 + ['hamilton', 'washington']:
 tr = '1-21'
 off('king', T('1-20', 238.0), 'W-DSL')
 hold_until('king', T('1-20', 240.2))
-wp('king', T(tr, 2.0), 0.3, 4.5, face=-5)
+# REVIEW 3 (video): "he walks in looking absolutely bewildered", "looking around as if to say 'Get off! My stage!'"
+# while the soldiers walk off (ERYukmba5Vg comments): he looks round after them (up left, then up right), then out
+wp('king', T(tr, 2.0), 0.3, 4.5, face=150)
+wp('king', T(tr, 4.0), 0.3, 4.5, face=-150)
+wp('king', T(tr, 6.0), 0.3, 4.5, face=-5)
 wp('king', T(tr, 16.5), 0.1, 4.7, face=0)
 wp('king', T(tr, 38.6), -0.6, 4.3, face=15)
 wp('king', T(tr, 54.5), 0.0, 4.9, face=0)
@@ -421,6 +566,14 @@ wp('hamilton', T(tr, 126.5), -2.1, 2.8, face=20)
 wp('hamilton', T(tr, 135.6), -2.0, 2.6, face=10)
 wp('hamilton', T(tr, 153.4), -2.1, 2.7, face=35)
 wp('hamilton', T(tr, 162.5), -2.05, 2.55, face=60)
+# REVIEW 3 (video): Dear Theodosia clip comments (GgxPJRN_LVI): "can I just pretend the scene ends at 2:31 and Eliza
+# doesn't walk in?" and "when you remember what the letter Eliza's holding at the end says" - she walks in during the
+# last tag with the letter (Laurens' death, the scene that follows in the show and is not on the album). She comes in
+# from up right to just upstage of him (clear of his chair), he turns to her, and she goes the way she came in the fade.
+off('eliza', T(tr, 150.0), 'W-USR')
+wp('eliza', T(tr, 168.0), -1.0, 1.4, face=facing_to((-1.0, 1.4), (-2.05, 2.55)))
+wp('hamilton', T(tr, 170.5), -2.05, 2.55, face=110)
+exit_to('eliza', T(tr, 176.9), 'W-USR', speed=1.3)
 # REVIEW2: the Disney+ frame behind cue 618 has Burr SEATED SL and Hamilton SR: each brings his chair on (props.py
 # 'theo-chair-burr' / 'theo-chair-hamilton', set 0.7 m behind his first place). In the fade (176.9) each picks his
 # chair up and turns it into a juror's chair for Non-Stop (the courtroom of real cue 631.01), then goes to his place
@@ -527,13 +680,22 @@ wp('angelica', T(tr, 209.5), 3.6, -0.4, face=-45)   # SPOT: cue 646's warm SL ke
 off('hamilton', T(tr, 219.0), 'W-DSR')
 wp('hamilton', T(tr, 225.4), -0.8, 3.6, face=60)
 off('eliza', T(tr, 0.0), 'W-MSR', label='Eliza')
-off('eliza', T(tr, 225.0), 'W-MSR')
-wp('eliza', T(tr, 231.4), -3.4, 3.0, face=30)
-wp('hamilton', T(tr, 233.0), -0.6, 3.5, face=-45)
+# REVIEW 3 (video): Eliza's plea rides the turntable in. Musical Theatre Coach on the Disney+ number (N0LaZYfm_XU
+# 16:56-17:29): "Hamilton is still looking out at Angelica as Eliza [is] starting to come into view ... they don't get
+# Phillipa to turn to look at him. She keeps her focus on whatever she's looking at until the stage brings them
+# together"; Mortius/Casper Fox (Jk8_nyTSo8k 15:23-15:37) over her lines: "genius way of using the circular stage".
+# She comes onto the outer ring up right in the dark and is carried round into her SR key (cue 648, 231.4), then on
+# round, still looking out, until she is beside him in his DS special; only then do they turn to each other. He keeps
+# looking SL to Angelica until then (was: turned to Eliza at 233).
+off('eliza', T(tr, 222.0), 'W-USR')
+wp('eliza', T(tr, 228.0), *polar(3.2, 300), face=30)
+revolve('eliza', 3.2, 300, 240, T(tr, 228.6), T(tr, 231.4), step=30, face=30)
+revolve('eliza', 3.2, 240, 215, T(tr, 233.0), T(tr, 240.0), step=25, face=35)
+wp('hamilton', T(tr, 233.0), -0.6, 3.5, face=70)
 wp('angelica', T(tr, 240.0), 3.5, -0.3, face=-60)
-wp('hamilton', T(tr, 242.0), -0.2, 3.3, face=0)
+wp('hamilton', T(tr, 242.0), -1.0, 3.45, face=-70)
+wp('eliza', T(tr, 242.0), *polar(3.2, 215), face=70)
 exit_to('angelica', T(tr, 245.0), 'W-MSL', speed=1.3)
-wp('eliza', T(tr, 244.0), -2.6, 3.2, face=45)
 exit_to('eliza', T(tr, 249.0), 'W-MSR', speed=1.3)
 # REVIEW2: Hamilton's desk (props.py 'hamilton-desk') is brought on in the change by ens8 from SR and set at (-1.0, 2.1)
 off('ens8', T(tr, 246.0), 'W-MSR')
@@ -558,6 +720,14 @@ for a, th in zip(FIN, FIN_TH):
     p = polar(2.9, th)
     off(a, T(tr, 276.0), nearest(p, ['W-USR', 'W-MSR', 'D-UC', 'W-USL', 'W-MSL']))
     wp(a, T(tr, 285.5), p[0], p[1], face=facing_to(p, (-1.0, 2.65)))
+# REVIEW 3: Mulligan on the balcony. Jack's notes (reddit, the Philip tour's Madison/Mulligan, Fergie L. Philippe):
+# "during Non-Stop Mulligan is on the balcony, and seemingly growing distant from Hamilton" (a producer confirmed it
+# with a smile). Review 1 kept Mulligan out of Non-Stop for want of evidence; this is the evidence. He comes onto the
+# upstage gallery for the company chorus and watches from there to the end, apart from the company below.
+off('mulligan', T(tr, 0.0), 'G-UC', label='Mulligan')
+off('mulligan', T(tr, 276.0), 'G-UC')
+g('mulligan', T(tr, 277.2), 0.6, -3.35, dwell=0)
+g('mulligan', T(tr, 279.3), -2.4, -3.35, face=20)
 # the desk struck as the music drops for Washington (304.3): ens8 in from DR, off with it the same way
 off('ens8', T(tr, 302.0), 'W-DSR')
 wp('ens8', T(tr, 305.5), -1.6, 2.65, face=60, dwell=0.3)
@@ -601,13 +771,15 @@ for a, th in zip(FIN, FIN_TH):
 # Viper 9 (0, 4.0) all reach (-0.4, 3.5)
 wp('hamilton', T(tr, 374.0), -0.4, 3.5, face=0)
 # the button, then the blackout: everyone off for the interval
-everyone = FIN + ['hamilton', 'burr', 'eliza', 'angelica', 'washington']
+everyone = FIN + ['hamilton', 'burr', 'eliza', 'angelica', 'washington', 'mulligan']
 for a in everyone:
     hold_until(a, T(tr, 382.2))
     p = pos(a)
     if a == 'washington':
         g(a, T(tr, 382.57), 4.85, -2.7, dwell=0); g(a, T(tr, 382.78), 4.6, -3.3, dwell=0)
         g(a, T(tr, 384.0), 0.6, -3.35, dwell=0); off(a, T(tr, 384.45), 'G-UC'); continue
+    if a == 'mulligan':   # REVIEW 3: along the gallery and out the back way, ahead of Washington
+        g(a, T(tr, 383.4), 0.6, -3.35, dwell=0); off(a, T(tr, 383.9), 'G-UC'); continue
     if a == 'hamilton': e = 'W-DSR'   # SPOT: from (-0.4, 3.5) DSL would be 3.5 m/s
     elif a in ('burr',): e = 'W-DSL'
     elif a == 'eliza': e = 'W-DSR'

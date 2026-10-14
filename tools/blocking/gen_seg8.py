@@ -245,8 +245,23 @@ wp('ens5', '2-17', 0.0, 1.6, -1.0, facing=180, dwell=0.0, label='George Eacker')
 hold('ens5', T('2-17', 0.36), face((1.6, -1.0), (-0.4, 2.4)), dwell=1.2)
 leave('ens5', 'W-USL', T('2-17', 1.56), speed=1.3, label='Ensemble 5')
 
-# the Doctor: in by the deck door to the inside of the table, rides round with it, ends behind it at the front (1110)
-enter('ens4', 'D-UC', clock(2.2, 0.0), T('2-17', 6.0), 180, speed=1.3, label='The Doctor', via=[(1.1, -1.3)])
+# REVIEW 3 (coordinator's ruling, from a film clip of Blow Us All Away): seven of the company stand between Philip and
+# Eacker for the count and are still on at the boundary, on a line from upstage SR to downstage SL, facing the house. At the
+# shot they turn to Philip, and clear in the blackout (a comment on the clip: Eacker "goes around out of sight, shoots, and
+# leaves"); ens4 stays: he is the Doctor, and goes to the inside of the table once Philip has passed.
+S17 = {'ens2': (-1.34, -0.44), 'ens3': (-0.69, -0.06), 'ens4': (-0.05, 0.32), 'ens6': (1.25, 1.08),
+       'ens7': (1.89, 1.46), 'ens8': (2.54, 1.84), 'ens9': (3.19, 2.22)}
+S17_EX = {'ens2': 'W-USR', 'ens3': 'W-USR', 'ens6': 'W-MSL', 'ens7': 'W-MSL', 'ens8': 'W-DSL', 'ens9': 'W-DSL'}
+for k, (e, p) in enumerate(S17.items()):
+    wp(e, '2-17', 0.0, p[0], p[1], facing=0, dwell=0.0, label='Ensemble %s' % e[3:])
+    hold(e, T('2-17', 0.36 + 0.06 * k), face(p, (-0.4, 2.4)), dwell=0.9)       # they turn to the shot
+S17_GO = {'ens2': 1.3, 'ens3': 2.0, 'ens7': 1.3, 'ens6': 2.0, 'ens9': 1.3, 'ens8': 2.0}   # the nearer one first, in file
+for e, t in S17_GO.items():
+    leave(e, S17_EX[e], T('2-17', t), speed=1.5)
+# the Doctor: steps aside from Philip's stagger up to the table, then to the inside of the table; rides round with it, ends
+# behind it at the front (1110)
+walk('ens4', T('2-17', 1.8), (0.6, 0.0), facing=-20)
+wpa('ens4', T('2-17', 6.0), *clock(2.2, 0.0), facing=180, label='The Doctor')
 circle('ens4', 2.2, 0.0, TAB_A1 - 4, T('2-17', TAB_T0), T('2-17', TAB_T1), step=15, end_facing=180)
 
 # Hamilton runs in by the deck door on "Lose Wedge" to the table's leading end and rides round with it, ending at its SR
@@ -435,8 +450,13 @@ leave(M, 'W-DSR', T('2-19', 230.3))
 B_UL = (4.2, -1.6)
 enter('burr', 'W-USL', B_UL, T('2-19', 19.5), -30, label='Burr')
 # the vamp: Burr from voter to voter with his pamphlets, then the centre of their ring
-for t, p, f in ((52.5, (2.55, 1.05), 60), (55.0, (1.3, 1.4), 0), (57.5, (-0.65, 1.3), 180), (60.0, (-1.95, 1.25), -90)):
-    walk('burr', T('2-19', t), p, facing=f, dwell=0.7)
+# REVIEW 3 (video): the Disney+ clip's comments at its 1:06-1:08 (album ~61, the clip runs ~5 s ahead) laugh at Burr
+# "walking on like a rectangle"; Blankenbuehler (Broadway Direct, 2020): "Most staging around Burr is linear. It's square."
+# So his round of the voters is a rectangle of straight legs with square corners (a stop at each, his pamphlet to a voter):
+# across between the two rows, down between the front-row voters, along the front, back up, and in to the centre.
+for t, p, f in ((52.5, (2.7, 1.25), -90), (55.8, (-1.3, 1.25), -90), (57.6, (-1.3, 3.2), 90), (59.8, (1.3, 3.2), 90),
+                (61.6, (1.3, 1.25), -90)):
+    walk('burr', T('2-19', t), p, facing=f, dwell=0.3)
 walk('burr', T('2-19', 62.6), C, facing=0)
 hold('burr', T('2-19', 65.05), 0)                  # the company chants for him
 # the townspeople's line: he crouches and weaves behind it, lunges at the one who likes him
@@ -493,6 +513,11 @@ formation(T('2-19', 80.0), [(-2.8 + 0.8 * i, 3.3) for i in range(8)], lambda p: 
 # the letters: two lines facing each other, an alley up to Hamilton UC, papers held out to him (ironinkpen)
 ALLEY = [(-1.0, -1.2 + 0.95 * i) for i in range(4)] + [(1.0, -1.2 + 0.95 * i) for i in range(4)]
 AL = formation(T('2-19', 95.0), ALLEY, lambda p: 125 if p[0] < 0 else -125, stagger=0.15)
+# REVIEW 3 (video): the clip's comments at 1:46-1:56 (album ~101-111; the clip runs ~5 s ahead of the album): the company
+# pressing Hamilton, and "Jon Rua getting all up in his face" - Rua is the Charles Lee body, ens3. He steps out of the alley
+# into Hamilton's face, and back.
+walk('ens3', T('2-19', 110.0), (0.0, -0.85), facing=180)
+walk('ens3', T('2-19', 113.4), AL['ens3'], facing=125 if AL['ens3'][0] < 0 else -125)
 # the two men's exchange DSC: the company falls back (1162), and stays there
 for k, e in enumerate(VOT):
     q = (AL[e][0], AL[e][1] - 1.2)
@@ -539,9 +564,27 @@ hold('hamilton', T('2-20', 136.61), 10)
 OS_HOME = {'ens1': (-3.7, -0.7), 'ens6': (-3.5, 0.55),
            'ens7': (3.9, -0.9), 'ens8': (4.1, 0.3), 'ens9': (3.95, 1.5), 'ens10': (4.25, 2.35)}
 OS_ENT = {'ens1': 'W-USR', 'ens6': 'W-USR', 'ens7': 'W-USL', 'ens8': 'W-MSL', 'ens9': 'W-MSL', 'ens10': 'W-DSL'}
+# REVIEW 3 (video): the Disney+ clip's comments put the company ON for Burr's rant after all: "I understand why the dancers
+# swayed the way they did" through his rant about the room he was kept out of (the company echoes him, 17.38-30, bars
+# 8-14), "everything was red and everyone was dancing". The six come on for it behind him (the writer's upstage fan, cut in
+# review 2, comes back on this evidence; dance.py sways them), and then go to their places at the sides (the jury, the film's
+# editor) instead of walking on at 60. The Bullet (ens1) brings Burr his quill as he starts to write (the clip at 0:42, album
+# ~41, cue 38.59: "the one who plays the bullet ... gives burr the pen").
+OS_FAN = [clock(3.0, a) for a in (300, 330, 15, 40, 65, 90)]    # two SR, four SL, as their places at the sides
+FAN = dict(zip(OS_HOME, hungarian([OS_HOME[e] for e in OS_HOME], OS_FAN)))
+for k, e in enumerate(OS_HOME):
+    p = FAN[e]
+    enter(e, OS_ENT[e], p, T('2-20', 16.4 + 0.3 * k), face(p, (0.0, 2.2)), speed=1.3, label='Ensemble %s' % e[3:])
 for k, e in enumerate(OS_HOME):
     p = OS_HOME[e]
-    enter(e, OS_ENT[e], p, T('2-20', 60.0 + 0.8 * k), face(p, DESK) * 0.6, speed=1.3, label='Ensemble %s' % e[3:])
+    walk(e, T('2-20', 33.5 + 0.4 * k), p, facing=face(p, DESK) * 0.6)
+walk('ens1', T('2-20', 38.4), (-0.6, 0.45), facing=90, dwell=0.8)     # the quill, from his SR side
+walk('ens1', T('2-20', 43.0), OS_HOME['ens1'], facing=face(OS_HOME['ens1'], DESK) * 0.6)
+# REVIEW 3 (video): as Burr's letter asks Hamilton to set a meeting, "the actor who plays Charles Lee comes out holding his
+# side" (the clip at 1:01, album ~60.5): Lee's wound from his own duel, a ghost of it. ens3, up SR (where he comes on is
+# not given), gone before Hamilton comes on that side at 70.
+enter('ens3', 'W-USR', (-2.8, -2.0), T('2-20', 60.5), 70, speed=1.0, label='Charles Lee')
+leave('ens3', 'W-USR', T('2-20', 63.0), speed=1.2, label='Ensemble 3')
 # the courier: ens6 takes Burr's letter from the desk across to Hamilton
 cr = 'ens6'
 walk(cr, T('2-20', 67.6), (0.55, 1.1), dwell=0.6, facing=-120)
@@ -554,8 +597,12 @@ for e, t, stop in (('ens7', 79.5, (2.45, 2.4)), ('ens8', 83.5, (2.35, 3.25)), ('
     walk(e, T('2-20', t + 4.2), home, facing=face(home, DESK))
 # Hamilton's signed reply goes across
 walk('ens7', T('2-20', 103.2), (0.6, 1.05), dwell=0.6, facing=-120)
-walk('ens7', T('2-20', 106.5), (2.45, 2.4), facing=50, dwell=0.6)
-walk('ens7', T('2-20', 110.5), OS_HOME['ens7'], facing=face(OS_HOME['ens7'], DESK))
+# REVIEW 3 (video): the clip at 1:40-1:50 (album ~100-108), the most-liked moment in its comments: the woman bringing the
+# last page "hands burr the paper then takes it away then gives it back and laughs at him". ens7 (Martha's body, a woman).
+walk('ens7', T('2-20', 105.6), (2.45, 2.4), facing=50)
+walk('ens7', T('2-20', 106.6), (2.1, 2.1), facing=50)            # snatches it back
+walk('ens7', T('2-20', 107.6), (2.45, 2.4), facing=50, dwell=0.4)  # and gives it again
+walk('ens7', T('2-20', 111.2), OS_HOME['ens7'], facing=face(OS_HOME['ens7'], DESK))
 # 111.09 escalates: the country leans in (half a metre toward the desk); 130.1 Weehawken: one SR, one SL staring out
 WEE = {'ens1': (-3.7, 3.6), 'ens10': (4.2, 1.2)}
 for k, e in enumerate(OS_HOME):
@@ -691,9 +738,19 @@ walk('hamilton', T('2-22', 49.0), (-2.5, -1.0), facing=180)
 leave('laurens', 'G-UC', T('2-22', 52.5), speed=1.1)
 walk('hamilton', T('2-22', 56.0), H_PLACE, facing=face(H_PLACE, BD))
 walk('burr', T('2-22', 58.5), (2.6, 3.4), facing=-15)   # his confession, out to us
-walk('burr', T('2-22', 71.42), (3.0, 2.3), facing=-80)  # reads Hamilton
+# REVIEW 3 (hamilton-lyrics' staging account, re-read for this pass): for the last chance to negotiate the seconds step into
+# a pool at centre; Hamilton freezes while Burr keeps moving; Burr crosses toward Hamilton CUTTING THROUGH the seconds, who
+# kneel as he passes; he points and shouts at Hamilton; he goes back past them and they rise. The seconds face each other
+# across Burr's line (z 0.95) so he passes between them; Burr's legs are straight, with stops (his rule).
+walk('ens2', T('2-22', 66.0), (0.0, 0.3), facing=0)
+walk('ens3', T('2-22', 66.3), (0.0, 1.6), facing=180)
+walk('burr', T('2-22', 72.9), (1.6, 1.0), facing=-90)   # reads Hamilton: toward him
+walk('burr', T('2-22', 75.0), (-0.9, 1.0), facing=-95)  # through the seconds; points at him (dance.py)
 hold('hamilton', T('2-22', 72.0), 75)
+walk('burr', T('2-22', 79.5), (1.6, 1.0), facing=90)    # back past them
 walk('burr', T('2-22', 83.13), (3.1, 3.3), facing=0)    # his daughter
+walk('ens2', T('2-22', 87.0), (3.75, 0.55), facing=face((3.75, 0.55), BD))
+walk('ens3', T('2-22', 87.3), (-3.75, 0.6), facing=60)
 # the count: the company clears; the two meet at centre and pace out
 walk('hamilton', T('2-22', 94.36), H_CNT, facing=face(H_CNT, HD))
 walk('burr', T('2-22', 94.36), B_CNT, facing=face(B_CNT, BD))
@@ -701,7 +758,14 @@ walk('hamilton', T('2-22', 100.6), HD, facing=face(HD, BD))
 walk('burr', T('2-22', 100.6), BD, facing=face(BD, HD))
 # the turntable carries the frozen Burr round to his monologue pool, and later on to the DSL end of the line
 arc('burr', ang_of(BD), ang_of(B_MON), rad_of(BD), rad_of(B_MON), T('2-22', 104.0), T('2-22', 128.0), 4, face(B_MON, (-3.5, 3.4)))
-arc('burr', ang_of(B_MON), 146, rad_of(B_MON), 2.85, T('2-22', 175.0), T('2-22', 187.0), 4, face(B_SHOT, H_SHOT))
+# REVIEW 3: Blankenbuehler (Playbill; Broadway Direct): "in the duel ... the person who kills him always rotates the wrong
+# way" - the killer turns with inevitability, COUNTER-clockwise; "when Hamilton dies, he turns right" (clockwise). The
+# second leg used to run clockwise (70 -> 146 deg). hamilton-lyrics: the turntable stops while Hamilton is on the box and
+# starts again on the phrase after it (151.8, off the box), Burr carried "to downstage right". So the platform carries
+# the frozen Burr on round counter-clockwise from 151.8: up past 12 o'clock, down the SR side (Binkley's own "Burr R" preset
+# is up at ELIZA, 1262), across the front, to the DSL end of the line for the shot - the ruled sides are kept.
+arc('burr', ang_of(B_MON), 146 - 360, rad_of(B_MON), 2.85, T('2-22', 151.8), T('2-22', 187.0), 12, face(B_SHOT, H_SHOT))
+BURR_RIDE = [clock(2.85, a) for a in range(185, 260, 8)]   # the part of his ride that passes the blown-out company
 leave('ens2', 'W-MSL', T('2-22', 94.4), speed=1.2)
 leave('ens3', 'W-USR', T('2-22', 94.4), speed=1.2)
 leave('ens4', 'W-USR', T('2-22', 94.6), speed=1.2)
@@ -712,8 +776,15 @@ for k, (e, a) in enumerate(ARC22.items()):
 BL = 'ens1'
 enter(BL, 'W-USL', B_PISTOL, T('2-22', 100.4), face(B_PISTOL, HD), speed=1.0, label='The Bullet')
 hold(BL, T('2-22', 101.42), face(B_PISTOL, HD), dwell=0)
-walk(BL, T('2-22', 129.0), BULLET_HOLD, facing=face(BULLET_HOLD, HD), dwell=40.0)   # near centre: the company round her
-walk(BL, T('2-22', 182.0), (-1.2, 0.15), dwell=0)
+# REVIEW 3 (video text): she never stops - Dance Magazine, "she traverses across the stage toward him in slow motion";
+# hamilton-lyrics: "the bullet creeps closer throughout", and "at 'eyes up' the bullet girl reaches center" (155.46), where
+# the company poses round her and lifts her (Blankenbuehler, Broadway Direct: "every cast member joins her to help slow
+# down the bullet"). Was: at the centre by 129.0 and held there 40 s. Now a steady creep of about 0.06 m/s, through ch49's
+# pool near the centre (lit 129.9-149.9, (-0.69, 1.53)), to the centre at "Eyes UP"; held in the knot until ELIZA (174.5),
+# when the knot is blown away; then on to him for the shot.
+walk(BL, T('2-22', 129.9), (0.6, 1.75), facing=face((0.6, 1.75), HD), dwell=0)
+walk(BL, T('2-22', 149.9), (-0.45, 1.5), facing=face((-0.45, 1.5), HD), dwell=0)
+walk(BL, T('2-22', 155.46), BULLET_HOLD, facing=face(BULLET_HOLD, HD), dwell=19.0)
 walk(BL, T('2-22', 191.18), (-1.75, -0.6), facing=face((-1.75, -0.6), H_SHOT))
 leave(BL, 'W-DSR', T('2-22', 193.0), speed=1.3)
 
@@ -822,14 +893,20 @@ for k, e in enumerate(sorted(MON, key=lambda e: P2[e][1])):     # the upstage pl
 # gallery at (0.72, -3.09))
 enter('ens10', 'G-UC', (0.75, -3.35), T('2-22', 165.6), -20, speed=1.3, ty='gallery')
 leave('ens10', 'G-UC', T('2-22', 169.0), speed=1.3)
+BLOWN = []                  # REVIEW 3: spots already taken (two used to land on one spot)
 def blown(a0):
-    for d in (0, 12, -12, 24, -24, 36, -36):
+    for d in (0, 12, -12, 24, -24, 36, -36, 48, -48):
         q = clock(3.4, a0 + d)
-        if min(math.hypot(q[0] - o[0], q[1] - o[1]) for o in (B_MON, H_EYES, (0.95, 2.6), H_SHOT, (-2.6, 1.0), (-1.2, 0.15))) > 1.0: return q
-    return clock(3.4, a0)
+        if min(math.hypot(q[0] - o[0], q[1] - o[1]) for o in (H_EYES, (0.95, 2.6), (0.85, 2.45), H_SHOT, (-2.6, 1.0), (-1.2, 0.15)) + tuple(BURR_RIDE) + tuple(BLOWN)) > 1.0:
+            BLOWN.append(q); return q
+    q = clock(3.4, a0); BLOWN.append(q); return q
+# REVIEW 3 (hamilton-lyrics): "at Eliza's cue, the ensemble scatters from center and freezes around the stage, as if blown off
+# their feet by an explosion" - on ELIZA (1262, 174.5), not Restore (was 169.6); the 1262 render has the knot gone.
+BL_Q = hungarian([P2[e] for e in MON], [blown(ang_of(P2[e])) for e in MON])     # REVIEW 3: matched, so no two cross
 for k, e in enumerate(MON):
-    q = blown(ang_of(P2[e]))
-    walk(e, T('2-22', 169.6 + 0.08 * k), q, facing=face(C, q))      # blown out to the edges
+    q = BL_Q[k]
+    hold(e, T('2-22', 174.4), face(P2[e], BULLET_HOLD))
+    walk(e, T('2-22', 175.4 + 0.08 * k), q, facing=face(C, q))      # blown out to the edges
 for k, e in enumerate(MON):
     a = ang_of(pos(e))
     if 120 <= a < 240: ex = 'W-DSR' if a >= 180 else 'W-DSL'
@@ -846,34 +923,45 @@ walk('burr', T('2-22', 200.67), B_AWAY, facing=-50)
 walk('ens2', T('2-22', 201.3), (1.45, 2.75), facing=60)
 leave('ens2', 'W-MSL', T('2-22', 205.0), speed=1.2)
 HA = ang_of(H_HIT); HR = rad_of(H_HIT)
+# REVIEW 3: Blankenbuehler (Broadway Direct): "When we resist fate, we turn right. So when Hamilton dies, he turns right" -
+# and (Playbill) "the person who gets shot rotates the way of resisting fate, which to me is clockwise". The rowers' ride
+# was counter-clockwise (307 -> 262 deg, down the SR side); now it is clockwise, 307 -> 352, up toward 12 o'clock. That
+# leaves him upstage, so "Hamilton walks upstage ... climbs the back stairs toward the bridge" (hamilton-lyrics) is the SL
+# stair (its foot is upstage at (2.2, -2.45)) and the USG, off by G-UC at 248 - a comment on the film: "4:08-4:11 ...
+# Hamilton making his way [out] in the background" (the official audio runs with the album).
 enter('ens8', 'W-USR', clock(HR, HA - 14), T('2-22', 201.5), 180, speed=2.0, label='Ensemble 8')
 enter('ens9', 'D-UC', clock(HR, HA + 14), T('2-22', 201.8), 0, speed=1.6, label='Ensemble 9')
 for e, d in (('hamilton', 0), ('ens8', -14), ('ens9', 14)):
-    circle(e, HR, HA + d, 262 + d, T('2-22', 202.2), T('2-22', 213.0), step=8,
-           end_facing=(-90 if e == 'hamilton' else (180 if d < 0 else 0)))
-leave('ens8', 'W-DSR', T('2-22', 214.5), speed=1.2)
-leave('ens9', 'W-USR', T('2-22', 214.8), speed=1.2)
-# Hamilton rises, facing upstage; Eliza and Angelica either side of him; he walks up the SR stair to the bridge
-E_D = (-3.0, 2.25); A_D = (-2.45, 0.95)
+    circle(e, HR, HA + d, HA + 45 + d, T('2-22', 202.2), T('2-22', 213.0), step=8, end_facing=90)
+leave('ens8', 'W-USR', T('2-22', 213.4), speed=1.5)
+leave('ens9', 'D-UC', T('2-22', 213.6), speed=1.5)
+# Hamilton rises, facing upstage; Eliza and Angelica either side of him; he walks upstage and up the SL stair to the bridge
+H_RISE = clock(HR, HA + 45)
+E_D = (H_RISE[0] - 0.8, H_RISE[1] + 0.4); A_D = (H_RISE[0] + 0.8, H_RISE[1] + 0.4)
 hold('hamilton', T('2-22', 222.0), 180)
-enter('eliza', 'W-DSR', E_D, T('2-22', 226.0), 160, speed=1.2)
-enter('angelica', 'W-USR', A_D, T('2-22', 226.5), -150, speed=1.2, label='Angelica')
-walk('hamilton', T('2-22', 233.3), (-4.1, 2.25), dwell=0)
-walk('hamilton', T('2-22', 234.0), (-4.5, 1.85), dwell=0)
-wpa('hamilton', T('2-22', 239.5), -4.5, -0.3, y='gallery', dwell=0)
-wpa('hamilton', T('2-22', 242.6), -4.5, -3.3, y='gallery', dwell=0)
+enter('eliza', 'W-USR', E_D, T('2-22', 226.0), 160, speed=1.2)
+enter('angelica', 'D-UC', A_D, T('2-22', 226.5), -160, speed=1.2, label='Angelica')
+walk('hamilton', T('2-22', 234.6), (0.5, -2.75), dwell=0)
+walk('hamilton', T('2-22', 236.4), (2.2, -2.45), dwell=0)                   # the foot of the SL stair
+wpa('hamilton', T('2-22', 241.2), 4.5, -2.45, y='gallery', dwell=0)        # its top
+wpa('hamilton', T('2-22', 242.3), 4.5, -3.3, y='gallery', dwell=0)
 wpa('hamilton', T('2-22', 247.0), 0.6, -3.35, y='gallery', dwell=0)
 wpa('hamilton', T('2-22', 248.2), 0.6, -4.8, y='gallery', off=True)
 hold('eliza', T('2-22', 233.0), face(E_D, A_D))        # the women turn to each other
 hold('angelica', T('2-22', 233.3), face(A_D, E_D))
-leave('eliza', 'W-DSR', T('2-22', 252.0), speed=1.0)
-leave('angelica', 'W-USR', T('2-22', 252.5), speed=1.0)
+# REVIEW 3 (hamilton-lyrics): "the ensemble AND THE SISTERS walk downstage, close around Burr, then collapse and back away.
+# Eliza and Angelica remain standing straight" - then the rest of the cast goes, leaving Burr. The sisters come down behind
+# the closing company and stand; they leave with it.
+walk('eliza', T('2-22', 243.5), (-0.9, 0.4), facing=face((-0.9, 0.4), (0.15, 2.95)))
+walk('angelica', T('2-22', 243.7), (1.2, 0.4), facing=face((1.2, 0.4), (0.15, 2.95)))
+leave('eliza', 'W-USR', T('2-22', 252.0), speed=1.0)
+leave('angelica', 'D-UC', T('2-22', 253.5), speed=1.0)
 # the city mourns: the company mirrors the women, then turns out, closes round Burr DSC and falls back
 MOURN = ['ens3', 'ens4', 'ens5', 'ens6', 'ens7', 'ens10']
 MP = [(-2.0, -0.3), (-1.2, -0.3), (-0.4, -0.3), (0.4, -0.3), (1.2, -0.3), (2.0, -0.3)]
-MENT = ['W-USR', 'W-USR', 'D-UC', 'D-UC', 'W-USL', 'W-USL']
+MENT = ['W-DSR', 'W-DSR', 'D-UC', 'D-UC', 'W-USL', 'W-USL']   # REVIEW 3: the SR pair by W-DSR (the rowers leave by W-USR)
 for k, (e, p, en) in enumerate(zip(MOURN, MP, MENT)):
-    enter(e, en, p, T('2-22', 218.0 + 1.6 * (k % 2) + 0.4 * k), 0, speed=1.1)
+    enter(e, en, p, T('2-22', 221.0 + 1.6 * (k % 2) + 0.4 * k), 0, speed=1.1)   # REVIEW 3: +3 s, after the rowers are off
     hold(e, T('2-22', 233.5 + 0.1 * k), 90 if k % 2 == 0 else -90)     # in pairs, facing each other like the women
 BURR_DSC = (0.15, 2.95)        # SPOTLIGHT: "Burr DSC" is ch5 at (0.17, 2.75)
 RING_B = [clock(1.35, a, BURR_DSC) for a in (-75, -45, -15, 15, 45, 75)]

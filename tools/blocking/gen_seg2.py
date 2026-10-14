@@ -137,6 +137,13 @@ w("ens5", T, 21.6, -2.3, 3.2, 40)                # steps in behind her
 w("ens1", T, 23.0, -2.0, 3.7, 0, dwell=3.0)      # the kill - she drops (photo 204.02: one of the pair gone dark)
 off("ens1", T, 31.0, "W-DSR")                    # carried off
 off("ens5", T, 31.5, "W-DSR")
+# REVIEW 3 (video): the Disney+ clip's comments put the three sisters "front and center of the stage and then they run
+# off" in the first seconds (Angelica at 0:14 and 0:16, "Angelica's acting in the first few seconds"): they walk on in
+# the dark after the King's button, look out over the house (the harbour), and run off SL before the kill (Q204 22.22).
+for a, x, z in (("angelica", 0.0, 3.25), ("eliza", -0.8, 3.35), ("peggy", 0.8, 3.35)):
+    off(a, "1-07", 205.2, "W-MSR")
+    w(a, T, 2.2, x, z, 0, dwell=15.8)
+    off(a, T, 21.6, "W-DSL")
 
 # Q274 Here comes the General: photo 274 / 274.01 - Washington at the head of a SINGLE FILE of soldiers standing in the
 # blue-white centre lane, Hamilton DSR of its head. Washington and seven ensemble walk down from the door in the
@@ -167,7 +174,14 @@ w("washington", T, 130.0, 0.0, 3.0, 0)
 w("hamilton", T, 79.5, -1.1, 3.3, 45)            # photo 278: the figure just SR of Washington
 # Q280-282.5 the battle: R2 - the scatter, the cannon recoils and the retreat were invented. Kept only what the fan
 # notes say: the soldiers desert him one by one over the number (ironinkpen). Hamilton goes off to the fight.
-off("hamilton", T, 132.0, "W-DSR")
+# REVIEW 3 (video + libretto): Hamilton sings the battle verse himself (128-141, to his plan to take the cannons) and
+# Mulligan answers him (the clip's 2:09 / 2:13 comments: Mulligan's shouts), so both stay for it, then go off DSR
+# together to take the cannons. Mulligan is back in 1-08 for this alone.
+w("hamilton", T, 129.0, -1.1, 3.3, 30, dwell=12.6)
+off("hamilton", T, 146.5, "W-DSR")
+off("mulligan", T, 125.0, "W-DSR")
+w("mulligan", T, 129.5, -2.3, 3.55, 40, dwell=12.4)
+off("mulligan", T, 146.0, "W-DSR")
 DESERT = [("ens10", 128.0), ("ens8", 131.5), ("ens7", 135.0), ("ens6", 138.5), ("ens4", 142.0), ("ens3", 145.5),
           ("ens5", 149.0), ("ens2", 152.5)]
 for a, t in DESERT:
@@ -209,9 +223,13 @@ w("hamilton", T, 290.0, 1.25, 2.6, -15)
 # last chorus in ONE loose line upstage of the desk, standing, and goes in the last line (Q288.5).
 FIN = [("ens8", -3.5, "W-USR"), ("ens7", -2.5, "W-USR"), ("ens3", -1.5, "W-USR"), ("ens2", -0.5, "D-UC"),
        ("ens4", 0.5, "D-UC"), ("ens6", 1.5, "W-USL"), ("ens5", 2.5, "W-USL"), ("ens10", 3.5, "W-MSL")]
+# REVIEW 3 (libretto + Blankenbuehler): the COMPANY (not Hamilton) sings the My Shot refrain twice and the signature
+# phrase right after Washington's offer (263.5-272), and Blankenbuehler names the My Shot phrase
+# "in the middle of Right Hand Man" (dance.py places it). So the eight burst on at Q286 (264.06) into the same line and
+# stay there through the duet (the libretto gives them Washington's refrain lines too) to the finale.
 for i, (a, x, ent) in enumerate(FIN):
-    off(a, T, 294.0 + 0.3 * i, ent)
-    w(a, T, 302.0, x, -1.6, 0, dwell=10.8 + 0.4 * (i % 3))
+    off(a, T, 261.4 + 0.2 * i, ent)
+    w(a, T, 266.6, x, -1.6, 0, dwell=46.2 + 0.4 * (i % 3))
     ex, ez = OFF[ent]
     off(a, T, 313.0 + 0.4 * (i % 3) + math.hypot(ex - x, ez + 1.6) / 1.6, ent)
 w("washington", T, 302.0, -0.47, 2.52, 10, dwell=16.94)   # SPOT: Q288.5/Q289 the two DC specials ch12 (-0.47, 2.52)
@@ -229,15 +247,24 @@ w("burr", T, 45.0, 0.0, 3.0, 0)                 # Q291.5 Burr's aside DSC; SPOT:
 w("burr", T, 50.5, 2.6, 3.9, -30)               # R2: Q292 the ball - Burr DL (the men leave SL: fan write-up, photo 300.3)
 # the desk: Washington behind it, Hamilton at his right hand (the desk stays from the tent; props.py)
 off("washington", T, 8.0, "W-MSR")
-w("washington", T, 17.0, -0.3, 0.2, 0)
+w("washington", T, 17.0, -0.3, 0.2, 0, dwell=3.3)   # REVIEW 3: the clip has him going at 0:21, desk and all
 off("hamilton", T, 8.5, "W-MSR")
 w("hamilton", T, 18.2, -1.5, 0.4, 20)
-off("washington", T, 40.0, "W-USR")             # takes the desk with him as the men take over (props.py)
-# Q291 refrain - the three friends round Hamilton (R2: the five ensemble men behind them are cut)
-w("hamilton", T, 35.0, 0.0, 1.8, 0)
-w("laurens", T, 35.5, -1.1, 2.4, 20)
-w("lafayette", T, 35.5, 1.1, 2.4, -20)
-w("mulligan", T, 36.0, 1.9, 1.3, -30)
+off("washington", T, 27.5, "W-USR")             # takes the desk with him (props.py) - R3: at 0:21 in the clip, not Q291
+# Q291 refrain - the three friends round Hamilton (R2: the five ensemble men behind them are cut).
+# REVIEW 3 (the clip's comments): a "LADIES lineup" - Laurens reaching for Hamilton's hand beside him - so the four
+# stand in a line abreast, not an arc. And one lady (ens1, the free woman) walks across behind them on the men's
+# shouted refrain (the clip's 0:34 "the lady"; "walk across the stage" with "the little shimmy at the end"; "the girl [who] runs
+# away after seeing Hamilton").
+w("hamilton", T, 35.0, 0.0, 2.2, 0)
+w("laurens", T, 35.5, -1.1, 2.2, 10)
+w("lafayette", T, 35.5, 1.1, 2.2, -10)
+off("mulligan", T, 31.0, "W-MSL")
+w("mulligan", T, 36.0, 2.2, 2.2, -20)
+off("ens1", T, 30.6, "W-MSR")
+w("ens1", T, 33.0, -3.0, 0.3, 90, dwell=0)
+w("ens1", T, 36.2, 0.4, 0.3, 90, dwell=1.6)      # sees Hamilton, the little shimmy (dance.py) ...
+off("ens1", T, 42.0, "W-MSL")                    # ... and hurries off SL
 # Q292 the ball: four couples come on and stand on the turntable's upstage half (they start to turn on Q293)
 CPL_H = [9.5, 11.0, 13.0, 14.5]
 for i, (m, wo) in enumerate(zip(MEN, WOMEN)):
@@ -249,33 +276,44 @@ for i, (m, wo) in enumerate(zip(MEN, WOMEN)):
     off(wo, T, 42.2 + 0.4 * i, ent)
     w(m, T, 50.5, xm, zm, face(xm, zm, xw, zw))
     w(wo, T, 51.0, xw, zw, face(xw, zw, xm, zm))
-# Hamilton and the men drift DL to Burr; Laurens and Mulligan dance off SL
+# Hamilton and the men drift DL to Burr; Mulligan dances off SL
+# REVIEW 3 (the clip's comments, which run on the album's clock to a second here): Lafayette tries Angelica at 0:50,
+# Hamilton pushes him aside at 0:52 - six seconds earlier than before, so the sisters are in by 49 - and at 0:55
+# Lafayette "pushes a guy [a soldier] out of the way to talk to" Peggy. Laurens stays (1:02 he watches Angelica) and for
+# the closing chant Hamilton and Laurens flirt with the front row at the DL lip "until they're off stage".
 w("hamilton", T, 51.0, 1.6, 3.4, -40)
-w("laurens", T, 51.5, 2.2, 2.6, -30, dwell=4.0)
-off("laurens", T, 61.0, "W-DSL")
+w("laurens", T, 51.5, 2.2, 2.6, -100, dwell=10.8)
+w("laurens", T, 63.8, 3.3, 4.35, -10, dwell=1.7)
+off("laurens", T, 68.6, "W-DSL")
 w("mulligan", T, 52.5, 1.0, 4.3, -20, dwell=2.5)
 off("mulligan", T, 61.5, "W-DSL")
-w("lafayette", T, 50.0, 0.6, 2.6, -20)
+w("lafayette", T, 49.6, 0.6, 2.6, -20)
 # Q292.5 the sisters: Angelica and Peggy centre (door), Eliza in her own pool far SL
-off("angelica", T, 44.0, "D-UC")
-off("peggy", T, 44.0, "D-UC")
+off("angelica", T, 43.5, "D-UC")
+off("peggy", T, 43.5, "D-UC")
 W["angelica"][-1]["x"] = 0.7
 W["peggy"][-1]["x"] = 1.25
-w("angelica", T, 52.3, -0.4, 1.6, 0)            # SPOT: in the sisters' centre pool ch13 (-0.04, 1.84)
-w("peggy", T, 52.3, 0.4, 1.6, 0)
+w("angelica", T, 49.3, -0.4, 1.6, 0)            # SPOT: in the sisters' centre pool ch13 (-0.04, 1.84)
+w("peggy", T, 49.3, 0.4, 1.6, 0)
 off("eliza", T, 46.0, "W-MSL")
 w("eliza", T, 52.3, 3.1, 1.8, -20)               # SPOT: the centre of her own pool far SL, ch14 (3.05, 1.89)
 # Angelica sees him and crosses on the diagonal toward him, Lafayette at her side; Hamilton pushes him aside, kisses
 # her hand, circles her and goes back downstage to Burr (fan write-up)
-w("lafayette", T, 56.5, 0.35, 2.75, -30)
-w("angelica", T, 57.5, 0.85, 2.85, 60)
-w("lafayette", T, 58.8, -0.4, 2.5, 30)           # pushed aside
-w("hamilton", T, 58.5, 1.5, 3.2, -110)           # kisses her hand
-w("hamilton", T, 59.8, 1.55, 2.3, dwell=0)       # circles her
-w("hamilton", T, 61.0, 0.4, 2.35, dwell=0)
-w("hamilton", T, 62.2, 0.6, 3.5, dwell=0)
-w("hamilton", T, 63.8, 2.0, 3.6, -40)            # back to Burr
-off("lafayette", T, 66.0, "W-DSR")
+w("lafayette", T, 51.0, 0.35, 2.75, -30)
+w("angelica", T, 51.5, 0.85, 2.85, 60)
+w("lafayette", T, 52.7, -0.4, 2.5, 30, dwell=0.6)   # pushed aside
+w("hamilton", T, 52.4, 1.5, 3.2, -110)           # kisses her hand
+w("hamilton", T, 53.7, 1.55, 2.3, dwell=0)       # circles her
+w("hamilton", T, 54.9, 0.4, 2.35, dwell=0)
+w("hamilton", T, 56.1, 0.6, 3.5, dwell=0)
+w("hamilton", T, 57.7, 2.0, 3.6, -40)            # back to Burr ("...or which one?" 60.3)
+w("hamilton", T, 64.0, 1.9, 4.25, -15, dwell=1.8)   # the closing chant at the lip
+# a soldier (ens3) is talking to Peggy; Lafayette shoulders him back to his partner and takes his place
+xs, zs = clock(1.6, CPL_H[1])
+w("ens3", T, 53.4, -0.25, 1.05, face(-0.25, 1.05, 0.4, 1.6), dwell=1.4)
+w("ens3", T, 56.4, xs, zs, face(xs, zs, *clock(2.2, CPL_H[1])))
+w("lafayette", T, 55.2, -0.2, 1.3, 70, dwell=9.0)
+off("lafayette", T, 68.9, "W-DSR")
 # Q293 build into Helpless: the turntable starts (couples CCW). R2: photo 300.3 (Binkley's top of Helpless) has the
 # three sisters together SR and two men SL - the earlier passes had it the other way round. The men hold SL; Angelica
 # watches them, then the sisters gather SR; Eliza crosses from her SL pool round the downstage edge.
@@ -341,11 +379,12 @@ w("hamilton", T, 47.0, 2.45, -2.45, -40, y="top")   # perched on the SL stair's 
 # Q301.2 Angelica crosses to him on the steps
 w("angelica", T, 54.5, 2.1, -1.6, 60)
 w("eliza", T, 56.0, 0.1, 3.75, 0)                  # back to her spot for chorus 2 (SPOT: in ch13 again)
-# Peggy changes partners: Laurens takes her
-off("laurens", T, 56.0, "W-DSL")
-w("laurens", T, 62.0, 1.8, 3.4, -60)
-w("peggy", T, 62.5, 1.2, 4.1, 60)
-off("mulligan", T, 66.0, "W-DSL")
+# Peggy changes partners: Laurens takes her. REVIEW 3: the clip's comments have Peggy with Laurens in the background of
+# the ball from 0:45 to 1:35 ("dancing together"), so he cuts in at 44, not 62, and Mulligan goes then.
+off("laurens", T, 38.0, "W-DSL")
+w("laurens", T, 44.0, 1.8, 3.4, -60)
+w("peggy", T, 44.5, 1.2, 4.1, 60)
+off("mulligan", T, 48.5, "W-MSL")
 # Q301.6 Angelica brings him down to Eliza - the three DC
 w("hamilton", T, 85.0, 2.45, -2.45, -40, dwell=0, y="top")
 w("angelica", T, 85.0, 2.1, -1.6, -40, dwell=0)
@@ -358,9 +397,12 @@ w("angelica", T, 89.3, 3.2, 2.6, dwell=0)
 w("hamilton", T, 91.0, 0.0, 2.0, -68)
 w("angelica", T, 91.3, 0.78, 2.31, -80)
 w("eliza", T, 89.0, -0.78, 2.31, 60)
-# Laurens and Peggy dance off
+# Laurens and Peggy dance off. REVIEW 3: Peggy does not go: as Angelica leaves the couple and the letters begin she does her
+# "little dance" with a letter in her hand (the clip's 1:43-1:45, the most-liked comments; the side-by-side shows the
+# same dance in Satisfied) - she runs Laurens to the DL portal and comes back dancing (dance.py).
 off("laurens", T, 99.0, "W-DSL")
-off("peggy", T, 99.5, "W-DSL")
+w("peggy", T, 99.4, 5.2, 4.0, 60, dwell=0)
+w("peggy", T, 101.6, 3.7, 3.75, -40)
 # Q301.8 the letters: the ensemble goes ("The ensemble exits"), two pools apart
 for i, (m, wo) in enumerate(zip(MEN, WOMEN)):
     for j, (a, r) in enumerate(((m, 1.6), (wo, 2.2))):
@@ -371,8 +413,6 @@ w("hamilton", T, 107.0, -3.1, 2.8, 35)
 w("eliza", T, 105.3, 0.7, 3.2, dwell=0)            # SPOT: round downstage of Angelica to DL
 w("eliza", T, 107.0, 2.9, 3.0, -35)
 w("angelica", T, 108.0, 2.2, 3.6, -30)
-off("peggy", T, 102.0, "W-DSL")
-w("peggy", T, 106.5, 3.7, 3.7, -40)                # brings the letters
 w("angelica", T, 110.5, 2.6, 3.5, 60)              # snatches them
 w("eliza", T, 112.0, 3.1, 3.1, 60)                 # takes them back
 w("peggy", T, 113.5, 3.7, 3.9, 0)                  # turns out to the house
@@ -418,6 +458,11 @@ w("angelica", T, 139.5, -0.55, 2.3, 180, dwell=0)
 w("angelica", T, 142.5, -0.65, -1.3, 10)
 w("peggy", T, 139.5, 0.55, 2.3, 180, dwell=0)
 w("peggy", T, 142.5, 0.65, -1.3, -10)
+# REVIEW 3 (the clip's 2:26-2:31, many comments): blessed, Hamilton goes up to the sisters ("got to hug the Schuyler
+# sisters"), does his little celebration dance there with "Eliza in the back doing the dance that Alexander was doing"
+# and her father reacting (dance.py), then goes back to Schuyler by the chair.
+w("hamilton", T, 144.0, 1.3, -0.55, -120, dwell=5.4)
+w("hamilton", T, 151.5, 2.7, 0.6, 130)
 # the sisters come down and dance; Eliza at centre for the climax
 w("eliza", T, 156.0, 0.0, 1.8, 0)
 w("angelica", T, 156.0, -0.8, 2.1, 20)
@@ -533,7 +578,7 @@ for a in SEMI:
 w("laurens", T, 2.5, -2.4, 1.6, dwell=0)
 w("laurens", T, 4.5, -1.0, 0.0, dwell=0)
 w("laurens", T, 6.5, 1.2, 0.3, dwell=0)
-w("laurens", T, 9.6, 0.9, 3.0, -20)
+w("laurens", T, 9.6, -1.2, 2.5, 20)             # R3: beside Peggy, just behind Angelica (the clips' 0:30-0:37)
 w("angelica", T, 9.6, 0.0, 3.3, 0)
 w("peggy", T, 9.0, -0.9, 3.0, 20)
 # the couple to DL
@@ -546,9 +591,10 @@ w("angelica", T, 46.7, 0.0, 3.3, 0, dwell=0)
 w("angelica", T, 57.6, 0.0, 2.25, 0)                     # walks backward upstage (SPOT: to the centre, photo 366.01/368)
 w("peggy", T, 46.7, -0.9, 3.0, 20, dwell=0)
 w("peggy", T, 52.0, -1.6, 4.2, 20)
-w("laurens", T, 46.7, 0.9, 3.0, -20, dwell=0)
-w("laurens", T, 52.0, 1.2, 4.3, -30)
-off("laurens", T, 60.0, "W-DSL")
+# REVIEW 3 (the side-by-side's comments): Laurens, like Angelica, keeps his glass raised and does NOT dance backwards,
+# stays "in the back of Angelica ... a few more seconds after Peggy left", and takes the cup from her (0:55).
+w("laurens", T, 54.8, -0.55, 2.45, 60, dwell=2.5)
+off("laurens", T, 63.5, "W-MSR")
 # the couple walks backward to centre, the kiss reversed, and turns out of it
 w("hamilton", T, 46.7, 2.4, 3.9, -40, dwell=0)
 w("eliza", T, 46.7, 3.0, 3.4, -40, dwell=0)
@@ -558,7 +604,7 @@ w("hamilton", T, 57.5, -3.2, 3.0, 50)                    # Q366.01 DR pool: froz
 w("eliza", T, 57.5, 3.7, -1.0, -40)                      # Q366.01 UL pool
 # Q368 lose outside pools: Eliza, Peggy slip away; Angelica alone (photo 368: one figure, centre)
 off("eliza", T, 64.5, "W-MSL")
-off("peggy", T, 60.0, "W-DSR")
+off("peggy", T, 56.0, "W-DSR")
 # the ensemble re-forms as the ball (four couples on the upstage half), then turns CCW as silhouettes (Q369).
 # Washington leaves; Lafayette stays near Angelica for the replay; Burr comes on beside Hamilton.
 CPL2 = list(zip(MEN, WOMEN))
@@ -628,7 +674,18 @@ w("hamilton", T, 212.0, 1.6, 0.6, face(1.6, 0.6, 3.6, -0.4))
 MEXIT = {"laurens": "W-USR", "ens2": "W-MSR", "ens3": "W-DSR", "ens5": "W-USR", "ens10": "W-MSL"}
 for j, (a, x) in enumerate(MLINE):
     w(a, T, 213.0, x, 0.6, 60, dwell=1.0 + 1.2 * (j % 3))
-    off(a, T, 224.0 + 1.2 * (j % 3), MEXIT[a])
+    if a != "laurens":
+        off(a, T, 224.0 + 1.2 * (j % 3), MEXIT[a])
+# REVIEW 3 (the side-by-side's comments): as in Helpless, Laurens and Peggy run off together "like a couple of
+# lovebirds" (Satisfied 3:45), and Peggy's little dance comes back on Angelica's third point (3:50,
+# "even Peggy's dance is the same"): she runs him to the DL portal and comes back dancing (dance.py).
+w("laurens", T, 217.5, -1.2, 3.45, dwell=0)            # round downstage of Angelica
+w("laurens", T, 221.0, 2.0, 3.4, -60, dwell=0.4)
+w("laurens", T, 223.6, 4.8, 3.45, dwell=0)
+off("laurens", T, 225.8, "W-DSL")
+w("peggy", T, 221.2, 2.75, 3.75, 100, dwell=0.4)
+w("peggy", T, 224.4, 5.2, 4.15, 60, dwell=0)
+w("peggy", T, 226.6, 3.4, 3.85, -40)
 # the women: upstage after the freeze, then the letters held up (Q380)
 for i, a in enumerate(WOMEN):
     x = -2.4 + 1.2 * i
@@ -637,7 +694,6 @@ for i, a in enumerate(WOMEN):
     off(a, T, 243.0 + 1.0 * i, ["W-USR", "W-MSR", "W-USL", "W-MSL"][i])
 # Q380 confession: Hamilton leaves, Eliza crosses to Peggy, they meet Angelica centre (the letters)
 off("hamilton", T, 232.0, "W-MSL")
-off("peggy", T, 230.0, "W-DSL")
 w("peggy", T, 236.0, 1.6, 3.3, -40)
 w("eliza", T, 238.0, 1.0, 2.95, -10)
 w("angelica", T, 239.0, 0.35, 2.6, 30)

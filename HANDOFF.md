@@ -244,7 +244,18 @@ readout, the sound-synced skip, the interval fix. Read STATE.md's newest block.
 3. Then the older list: the rig placements the photos exposed (FUTURE.md), `edge`/`frost`, the 238 effects, the body,
    the headset.
 
-## DONE — 2026-10-13 (latest): the dancing — a beat grid, 47 moves, the show's own choreography, the Dance button (PR #234, RULING FV)
+## DONE — 2026-10-13 (latest): review 3 merged — the video evidence, the dance assignments (PR #234, RULING FW)
+
+- Eight reviewers' generators, `props.py` / `dance.py` sections and research notes were merged. Totals: waypoints
+  6,596 → 7,153, moves 322 → 859, props 62 → 72. The merge has 0 errors and 0 warnings; `props.py --check` gives 0.
+- RULING FW: the seven at 2-16's count carry over into 2-17; a hand prop is legal; `props.py --check` uses the whole
+  kinds table.
+- Checks pass: the actors with props, limbs and moves; the show's seek equivalence; the lead-in; the console.
+- The bodies cost 14–31 ms a frame at the busiest dance moments.
+- 15 renders and a contact sheet are in scratch `act/shots/review3/`.
+- The cue items and Jack's open questions are in the cue notes; the not-built items are in FUTURE.md.
+
+## DONE — 2026-10-13: the dancing — a beat grid, 47 moves, the show's own choreography, the Dance button (PR #234, RULING FV)
 
 - `tools/beats.html` → `assets/hamilton-beats.json`; `midtown.html` `DANCE` (→ `tools/hamilton-moves.json`, described with
   sources in `docs/hamilton-dance-moves.md`); actors' `moves` (format doc), `tools/blocking/dance.py` → the merge → the file;

@@ -1,9 +1,75 @@
-# STATE — 2026-10-13 (`actors` = PR #234: THE AUTOMATIC ACTORS, THE EDITOR, NOTES2 (RULING FU); IT NOW CARRIES `cue-blackouts` = PR #233: JACK'S CHECKLIST NOTES, THE SOUND TAP, THE READOUT — BOTH OPEN)
+# STATE — 2026-10-13 (`actors` = PR #234: THE AUTOMATIC ACTORS, THE EDITOR, NOTES2 (RULING FU), THE DANCING (FV), REVIEW 3 (FW); IT NOW CARRIES `cue-blackouts` = PR #233: JACK'S CHECKLIST NOTES, THE SOUND TAP, THE READOUT — BOTH OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-13 (latest): THE DANCING — A BEAT GRID, 47 MOVES, THE SHOW'S OWN CHOREOGRAPHY, THE DANCE BUTTON (RULING FV) — PR #234
+## NEWEST — 2026-10-13 (latest): REVIEW 3 MERGED — THE VIDEO EVIDENCE, THE DANCE ASSIGNMENTS (RULING FW) — PR #234
+
+Eight reviewers went through the video evidence: the clips' titles, descriptions and top comments, the written accounts,
+and Blankenbuehler's interviews. Nobody here can watch video. They edited:
+- the generators (marked `REVIEW 3`);
+- their sections of `tools/blocking/props.py` and `tools/blocking/dance.py`;
+- `## Review 3 (video evidence)` in each `tools/blocking/research/segN.md`.
+
+This session merged and checked the result.
+
+- **Integrity.**
+  - `props.py` and `dance.py` are whole, with each of the eight sections present exactly once, and both run.
+  - All eight generators run. Their own checks report only these:
+    - seg4: Washington at 3.2–3.3 m/s at 1-23 384, Non-Stop's last second;
+    - seg5: a near pass, Burr and ens3 at 2-05 317;
+    - seg7: ens6, ens7 and ens8 close together in Hurricane's hoist (2-13 110–114), and the King against the SR stair
+      at 2-14 37–39;
+    - an off-to-off jump for ens6 in 2-16, which is harmless.
+- **Tool fixes.**
+  - `props.py --check` used a partial size table and crashed on a `crate`. It now uses the full `PROP_KINDS`.
+  - A hand prop, carried on and off with no set-down, is legal (RULING FW). `schuyler-book` now reads "a hand prop", not
+    a warning.
+  - The lyric quotes in `dance.py`'s SEGMENT 4 header are reworded, and so is one in `seg7_gen.py`.
+- **The lyric scan (5-word runs) over everything this round touched.** The hits left are song titles, cue labels or
+  plain English ("at the end of the").
+  - The dance agent's committed `docs/hamilton-dance-moves.md` and `tools/hamilton-moves.json` still quote lyrics:
+    15 lines.
+  - I asked the dance agent to reword them in its next commit. It is editing those files now.
+- **RULING FW.** At 2-16 → 2-17 the seven at the count carry over: ens2, 3, 4, 6, 7, 8 and 9, at the coordinator's
+  spots, facing 0. Both ends match exactly in the merge. Philip, Eacker and the King are unchanged.
+- **Totals, before → after:**
+
+  | | before | after |
+  |---|---|---|
+  | waypoints | 6,596 | **7,153** |
+  | moves | 322 | **859** |
+  | props | 62 | **72** |
+  | prop waypoints | 335 | 382 |
+
+  - The merge has 0 errors and 0 warnings; `props.py --check` gives 0 warnings.
+- **Checked on :8095:**
+  - `MIDTOWN.actors.check()` passes, with props, limbs and the 859 moves; 0 problems, 0 warnings.
+  - `show.check()`'s seek equivalence passes, with references resolved and the timeline monotonic. Its overall
+    `pass: false` is the 16 channels with no unit, as before.
+  - The lead-in: Burr walks on at −6 s.
+  - The console is clean.
+- **Frame cost.** Measured at 1280 × 800 on this Intel GPU, as the median of three runs of six frames, with the bodies
+  shown and then hidden:
+
+  | moment | visible bodies | with | without | the bodies cost |
+  |---|---|---|---|---|
+  | Yorktown's phrase (1-20 55) | 12 | 51.7 ms | 37.2 ms | 14.5 ms |
+  | the Room's bridge (2-05 225) | 12 | 62.9 ms | 37.5 ms | 25.4 ms |
+  | the Pamphlet freestyle (2-14 103) | 13 | 77.6 ms | 46.4 ms | **31.2 ms** |
+  | the 1-01 roll call (1-01 205), for comparison | 19 | — | — | 14.3 ms |
+
+- **Renders:** 15 "watch first" moments and a contact sheet, in scratch `act/shots/review3/`.
+- **For the dance agent, next:** about 40 missing moves, and the beat grid. My Shot needs tempo changes (about 160 s
+  and the death verse). 1-18's downbeats are about two beats off the cue hits. Segment 7's clip timestamps were 0–7 s
+  off. All of this is in FUTURE.md.
+- **Open for Jack** (`docs/hamilton-blocking-cue-notes.md`, "Added after review 3"):
+  - The King's stool: brought at the end of 2-10 by a cast member, and he sits stage right? Or set UL at 2-11, as now?
+  - The duel's sides at the shot: two sources now point to a swap.
+  - The new cue items: 2-05 872 and 867.6 / 867.7, 1-13 420, 1-14 443 / 445, 1-20 61–66, 1-18 120, and Hurricane's
+    gallery sides.
+
+## 2026-10-13: THE DANCING — A BEAT GRID, 47 MOVES, THE SHOW'S OWN CHOREOGRAPHY, THE DANCE BUTTON (RULING FV) — PR #234
 
 Jack: *"have an agent build the dancing system"* — and his sources (`Downloads\hamilton choreo info.txt`: a playlist of the
 film's clips, the reddit staging notes, the Blankenbuehler interviews) and *"also look on youtube"*.

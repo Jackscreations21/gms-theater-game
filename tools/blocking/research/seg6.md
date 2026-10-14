@@ -510,3 +510,145 @@ the deck. No furniture.
 3. 2-09 170-195: the address, with Hamilton DSC and Washington behind at the desk, then the change of places.
 4. 2-09 243-295: the family SR, the six behind Washington, and his walk up to the SL stair.
 5. 2-10 38-46: the messenger.
+
+
+## Review 3 (video evidence)
+
+The generator was edited and re-run (`python -I tools/blocking/gen6.py`); every edit is marked `REVIEW 3`. The copy from
+before this pass is in the scratchpad at `review3/seg6/orig/` (gen6.py and seg6.json). Moves are in `dance.py`, SEGMENT 6.
+No props changed. Merge check (seg6.json, props.json and dance.json alone): 0 errors; the one warning is another
+segment's prop (`sisters-bench`, carried by peggy). `dance.py --check 6`: 0 errors, 0 warnings. `props.py --check`: every
+seg-6 carry ok. The legs checker (`legcheck6.py`): no close approaches; the only hits are the known D-UC overhead `^`
+(two legs). 473 waypoints (was 434).
+
+**How the video text was read.** Titles and descriptions from the watch pages; captions through the player API
+(ANDROID client, json3); comments through the watch-next API (the "top comments" feed, up to 12 pages). The Disney+
+clips in Jack's playlist have no description beyond "From Hamilton on Disney+"; their captions are the lyrics (used only
+to line the film's clock up with the album's; nothing of them is in any file). The comments are the evidence: many
+describe a moment, often with a timestamp. The film's clock is not the album's: in 2-08 the film runs about 2.5 s ahead;
+in 2-07, 2-09 and 2-10 the filmed performance has different pauses, so moments are matched by what is happening, not by
+the time.
+
+### Videos and pages used
+
+| video / page | what was read | what it settled |
+|---|---|---|
+| Schuyler Defeated, Disney+ clip, https://youtu.be/927fS7jelnk | 32 comments | nothing to change: Philip with the paper, Burr's state after the Room. No dance. |
+| Cabinet Battle #2, Disney+ clip, https://youtu.be/BZHnCtf-DEI | about 240 comments, ASR captions (timing only) | Hamilton gets his mic from Washington at the start; at the outburst Hamilton steps up calmly, takes a breath, then jumps ("the hop", "jumps / jumps again"); Washington turns around and looks back; Hamilton and Jefferson look at each other over Washington's shoulder during the ruling; the seated company reacts ("the Charles Lee actor on his chair"); Madison's timid aside; one comment says Burr is "in the background" (not placed). |
+| "Cabinet Battle #2" from HAMILTON (official), https://youtu.be/THXHQQJB0mM | about 90 comments | "hand-puppeting a skull" in the head-in-the-basket bit. |
+| Washington On Your Side, Disney+ clip, https://youtu.be/o0uncfmN_cM | about 240 comments | Burr marching in and Jefferson's look; Jefferson's head bob "right on the downbeat" in his rap; "a whole army forms behind them" just before the curse line; the jump on that line ("that jump", Madison "jumping"), Burr does not sing it and "bounces back in"; "the walk" (smooth, Madison wagging a finger, Burr facing the wrong way and correcting himself, copying the other two); the Bullet dancing round Jefferson and Burr at the digging; "the little spin they do at the end"; Jefferson's head rolling round. |
+| "Washington on Your Side" from HAMILTON (official), https://youtu.be/ok03QOm5EUs | about 120 comments | Burr does not sing the curse line (he is a Northerner). |
+| One Last Time, Disney+ clip, https://youtu.be/mgoFrstrYNk | about 180 comments | in the address they "stand side by side for a moment with Hamilton on George's left side" (two comments, 482 likes); Philip and Eliza there at the end; the drinks. |
+| "One Last Time" from HAMILTON (official), https://youtu.be/CPgDZBADR3Y | about 165 comments | nothing about staging. |
+| Kennedy Center Honors 2018: Jack's link https://www.youtube.com/watch?v=9QoRHMuiqMs is now private; re-upload https://youtu.be/4wYwA2LRShQ | 120 comments | "Lin fades into the background as Christopher steps forward": the change of places, as staged. |
+| Marc Daniel Patrick, "One Last Time" reactions, https://youtu.be/gYoHcQJNOmA (also 7zVF7p08gZg, 5MDk_AWX5H4) | captions | Hamilton writes the address while Washington comes in behind him; nothing new. |
+| I Know Him, Disney+ clip, https://youtu.be/FAgwoLO0S-4 | about 240 comments, ASR captions (timing only) | he "wanders onto stage" dragging his scepter "like a kid dragging a toy"; he and Washington stare at each other, then Washington walks slowly off; the messenger is Ariana DeBose (the Bullet); the shoo ("that hand wave"); "his lil shoulder flair" on the band's entry; "that catwalk" (the strut); the stool brought at the end, put too far from him, and his gesture to move it behind him; jumping and giggling at the laugh; he sits at the end. |
+| "I Know Him" from HAMILTON (official), https://youtu.be/hGibKLo3SC0 | 32 comments | the laugh. |
+| All King George appearances (amateur), https://youtu.be/ynBgEBhygGw | description, comments (seg 2's fetch) | "King George stops and stares dumbfounded at Washington exiting"; the uploader: he "stayed at the right-stage after finishing his 3rd song; audience's left-hand side", which is SR. |
+| Jonathan Groff teaches Stephen his King George walk, https://youtu.be/03IpD4QWPgQ | captions | the walk: a 50-pound crown, a heavy cape and heels; one foot in front of the other without crossing, as on a tightrope (head level, as if balancing a book). |
+| Flicks And The City, "HAMILTON's Secret Character", https://youtu.be/g-XwMQA26h8 | captions | the Bullet (ens1) is the one who tells the King about Adams. |
+| Flicks And The City "22 details", MsMojo top 10 / top 20, That Shelf, SuperHeroNexus (782gnhUox64, 2q1PTOSbdhM, YyqT13_N_aw, raYALE0no9U, aPWSm-4ELvI) | captions | nothing on these five numbers beyond the King's walk. |
+| ironinkpen, Act II staging (re-read), https://ironinkpen.tumblr.com/post/136585710522 | text | Hamilton mimes pulling the French king's head out of the basket, then mimes being the head; the King's air quotes; the King sets up "a little chair on the left of the stage and sits down to watch". |
+| hamilton-lyrics, Act 2 staging (re-read), https://hamilton-lyrics.tumblr.com/post/136891099523 | text | "Ham jumps around and mimics King Louis' dead head"; the King's finger quotes; the giggling messenger. |
+| buzzfeed readers' list (re-read), https://www.buzzfeed.com/andyneuenschwander/best-hamilton-moments-ranked | text | "the entire company comes out to salute him" at the end of One Last Time. |
+
+Searched without anything usable: web searches for the staging or choreography of each number, the Kennedy Center
+performance, reaction videos (Open Arms ANXseyUS9D0, SalvoG IigsYbHZYQE), the 2024 tour's One Last Time ending clip.
+
+### 2-06 Schuyler Defeated: nothing changed, no dance
+The comments describe the paper and faces only.
+
+### 2-07 Cabinet Battle #2
+- **The mic at the top:** Hamilton crosses from his 2-06 pool to Washington at C (6.0) and takes his mic, then goes to
+  his place in the V (9.2). Washington turns to him to hand it over.
+- **The outburst (951):** Hamilton reaches the DL mic at 82.0 (was 83.5), so he jumps on the spot (dance).
+- **Washington turns his back on it** (83.2), looks back over his shoulder (86.5), then watches (90.0).
+- **The ruling (954):** Jefferson (-1.1, 1.2) and Hamilton (1.1, 1.2) stand just upstage of Washington's DC special, one
+  each side, looking at each other behind him (116.5 / 117.5; were (-2.2, 2.3) and (1.7, 1.3)). They are 1.34 m from
+  ch93's centre (r 0.87), so he is still alone in the light. 955 and the face-off are unchanged.
+- Kept: the V of six chairs, the sides, every special.
+- **Not placed:** "Burr in the background" (one comment, no place given). Jefferson pointing at Washington on the last
+  jab (a comment about a live performance, not the film).
+- **"Ha-ha-ha":** the head moves in Jack's notes belong to Cabinet Battle #1 (2-02, segment 5); #2 has no laugh (its
+  captions were checked).
+
+### 2-08 Washington on Your Side
+- **The company is back for the chant, on evidence this time:** "a whole army forms behind them in a split second" just
+  before the curse line, and the Bullet dancing round Jefferson and Burr at the digging. Six run on at 3 m/s and are in
+  place at 130.3: four in the chant's four deck shafts (972-973, ch72-75 at x ±0.87 and ±2.68, z 1.14), one each side
+  at (±3.6, 1.7). The Bullet (ens1) is one of them: she sets the desk (123.0) and walks round its SL end into the line,
+  instead of going off. The rest run off on the final hook (151.6). Review 2's cut stands for 122.6-130 and after 152.
+- **The walk (973, 137.4-141.0):** the three turn and walk 0.9 m to SL in step; Burr faces SR first and turns a second
+  later. Then Jefferson works the line (his 144.0 point moved into his key ch2, from 1.3 m to 1.0 m off its centre).
+- **The Bullet's weave (145.4-150.8):** out of the line, upstage of Jefferson, round Burr on his SR and downstage sides,
+  then between Burr and Jefferson, and off DSR. She keeps 0.85 m or more from both.
+
+### 2-09 One Last Time
+- **The change of places:** Washington comes down round the SR end of the desk and Hamilton up from DSC, and they
+  stand side by side at z 2.5, facing the house, Hamilton on Washington's left (SL): 186.0-190.4. Then Hamilton goes
+  round the desk's SL end to finish at it (193.2), and Washington steps into ch13 for 993 (193.0), as before. Both
+  stand on the edge of ch13 (0.9-1.0 m) while side by side.
+- **The entire company:** the other four come out too (ens7-10, in by 245.3-249.6): three into the empty gospel
+  shafts of 997-999 (ch96, ch97, ch98) and one at (2.2, 1.6), each 1.3 m or more from his lane to the SL stair. They
+  leave after the cut-off with the rest, 0.2 s apart (ens9 by the SL wing, not the deck door). Ten in all, plus the
+  family.
+- **Washington's exit:** he stops on the USG above the deck door (293.0, facing the King), holds the look into the top of
+  2-10 and walks slowly off by the passage (off at 2-10 2.9).
+
+### 2-10 I Know Him
+- **The entrance:** the King comes through the deck door earlier (off at 2-09 292.4), stops on the deck at (0.9, -2.3)
+  at 294.7 and looks up at Washington; at the top of 2-10 he walks to UC for the first note (2.0), as before.
+- **The messenger is the Bullet (ens1)**, labelled so (was ens3). Same path and times.
+- Kept, as ruled: (0, 3.41) at the blackout.
+
+### Moves placed (dance.py SEGMENT 6)
+| track | who | when | move | counts | source |
+|---|---|---|---|---|---|
+| 2-07 | Hamilton | bar 42 beat 3 (82.1, cue 951) | jump | 4 | "the hop", "jumps around" |
+| 2-07 | Hamilton | bar 56 (108.0), the two bars before 953 | point | 8 | stand-in for the head-in-the-basket mime |
+| 2-08 | Jefferson | 115.9 to 121.3 | bounce | until | stand-in for his head bob |
+| 2-08 | the six | 130.25 to 133.83 | bounce | until | the chant |
+| 2-08 | Jefferson, Madison | 133.83 (the curse line) | jump | 4 | "that jump" |
+| 2-08 | ens2-6 | 133.83 to 151.6 | bounce | until | the chant (the simplest move: they dance, the sources do not say what) |
+| 2-08 | the Bullet | 133.83 to 144.58, then to 150.8 | bounce, sway | until | in the line, then dancing round the two |
+| 2-08 | Burr | 135.62 | bounce | 4 | "bounces back in" |
+| 2-08 | the three | bar 100 beat 3 (179.5) | spin-full | 2 | "the little spin at the end" |
+| 2-09 | ens1-10 | 268.68 (998) to 281.4 (1000) | salute | until | "the entire company comes out to salute him" |
+| 2-10 | the King | 42.64 | arm-sweep | 2 | stand-in for the shoo |
+| 2-10 | the King | 56.21 (1007.5) | shimmy | 2 | "his lil shoulder flair" |
+| 2-10 | the King | 89.15 | point | 2 | stand-in for the air quotes |
+| 2-10 | the King | bar 48 beat 3 (92.1) | jump | 4 | "jumping and giggling" |
+
+### Moves the library does not have (for the dance agent)
+- **head-in-the-basket** (2-07, Hamilton, 8 counts): 1-2 bend the knees and reach the right hand down to hip height at
+  his right side, as into a basket; 3-4 lift it to face height, elbow bent, fingers curled as if gripping hair, the
+  "head" held 30 cm in front of his face; 5-6 tilt his own head towards it, as if asking it; 7-8 the hand becomes the
+  head: the wrist goes limp and the hand flops forward as it "answers", his own head lolling to the side.
+- **head-bob** (2-08, Jefferson): on every downbeat the chin drives forward and down 10-15 cm and springs back on the
+  "and"; the shoulders loose and still, the hair flicking. A variant: the head rolling round in a circle over 4 counts.
+- **finger-wag** (2-08, Madison, during the walk): the right forearm up, index finger raised, wagging side to side twice
+  a beat; the left hand on the hip.
+- **king-walk** (2-09 into 2-10, the entrance; and the strut on the band): a gait, not a move on the spot. The head and
+  neck rigid and level (the crown), chin a little up, the torso still; each foot placed directly in front of the other
+  without crossing, as on a tightrope, small steps from the heel, the hips swaying a little with each; the right arm
+  trailing low behind him, dragging the scepter's tip along the floor; the left hand at the waist. For the "catwalk" on
+  the band, the same line of feet but quicker, with a bigger hip sway and the chin higher.
+- **shoo** (2-10): the right hand at chest height, palm out, flicks outward two or three times from the wrist, the head
+  turned away.
+- **air-quotes** (2-10): both hands raised beside the face, palms forward, the first two fingers of each flexed twice.
+- **giggle-jump** (2-10): the library `jump` is close; the giggle is the shoulders shaking.
+
+### For Jack, first
+1. 2-08 128-152: the company forming behind the three, the jump on the curse line, the walk, and the Bullet's weave.
+2. 2-09 184-194: the change of places, the two side by side with Hamilton on Washington's left.
+3. 2-09 290 to 2-10 3: Washington stopping on the gallery and the King staring up at him from the deck.
+4. 2-07 0-10 (the mic), 80-91 (the outburst, the jumps, Washington's back) and 113-125 (the two over his shoulders).
+5. 2-09 266-282: the ten saluting as he goes.
+
+### For other segments
+- **Segment 5 (2-02 Cabinet Battle #1):** the "Ha-Ha-Ha-Ha" head movements in Jack's notes are Jefferson's, in #1.
+- **Segment 7 (2-11) and the ruling:** the King's stool. The I Know Him clip's comments put it in 2-10: a member of the
+  company brings it at the end, sets it a little too far away, he gestures for it to go behind him, and he sits. The
+  compilation's uploader says he stays "at the right-stage ... audience's left-hand side" (SR) afterwards. Seg 7 sets
+  the stool UL (+x, which is SL) at 2-11 1.0. The ruled (0, 3.41) across the boundary is kept here; whether the stool
+  comes at the end of 2-10, and on which side, is Jack's to rule.

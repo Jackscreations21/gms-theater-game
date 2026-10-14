@@ -69,6 +69,9 @@ def build():
 
 
     # ---- Q42 63.4 the company takes the story: everyone warps in slow motion into an upstage arc
+    # REVIEW 3: the "warp in slow motion" quote is about IN THE HEIGHTS' opening, not this one (Playbill, "Andy
+    # Blankenbuehler on Making History with Hamilton", re-read): the slow move and the arc are unsourced. Kept,
+    # because Jack has watched them and did not flag them.
     arc = [ring(3.2, -81 + 18 * k) for k in range(10)]
     form(E, arc, A(63.4), A(68.4), face=0)
     move('mulligan', A(64.4), A(67.4), (4.4, 2.2), f=-40, label='Mulligan')
@@ -111,11 +114,32 @@ def build():
     turn(['hamilton'], A(93.0), 40)
     eline = [(-4.4, -1.9), (-3.5, -1.9), (-2.6, -1.9), (-1.7, -1.9), (-0.9, -1.9),
              (0.9, -1.9), (1.7, -1.9), (2.6, -1.9), (3.5, -1.9), (4.3, -1.7)]
-    form(E, eline, A(92.4), A(95.8), face=0)   # SPOT: a beat early, clear of Eliza's key
-
-    # ---- Q48 105.2 his mother dies: ens6 comes down to him, then is gone
     MOTHER = 'ens6'
     CARRIER = 'ens7'   # REVIEW2: fixed (was the nearest to (-1.7, -1.9), which is ens7): props.py names him
+    FATHER = 'ens10'   # REVIEW 3: the father (below)
+    COUSIN = 'ens3'    # fixed (was the nearest to (0.9, -1.9)): props.py names him
+    # REVIEW 3 (the official Disney+ "Alexander Hamilton" clip, hrGwCJQoeVo, its viewers' comments): during Eliza's
+    # verse "you can see Hamilton's dad leaving his mom" -- the mother and the father come out of the withdrawal as a
+    # couple SR of him and, on Eliza's line about the father leaving (93.6), the father turns away and walks off USR; she stays, watching.
+    # (He slips back into his place in the line in the dark of the mother's exit, from 110.)
+    form([e for e in E if e not in (MOTHER, FATHER)], eline[2:], A(92.4), A(95.8), face=0)   # SPOT: a beat early, clear of Eliza's key
+    move(MOTHER, A(92.4), A(94.6), (-2.2, -0.35), f=-80)
+    move(FATHER, A(92.4), A(94.4), (-2.85, -0.2), f=80)
+    turn([FATHER], A(95.0), -110, dt=0.5)
+    exit_(FATHER, A(95.5), 'W_USR', speed=1.6)
+    turn([MOTHER], A(96.0), -95)
+    put(FATHER, A(110.0), WINGS['W_USR'], off=True); W[FATHER][-1]['d'] = 0
+    put(FATHER, A(114.6), eline[1], f=0)
+    # REVIEW 3 (the same clip): he is SICK IN THE CHAIR through the lines of him and his mother lying sick -- "Ham slowly stands up from
+    # the chair and his mother is carried back down" on the line where he recovers. So the cousin brings the chair (preset UC,
+    # props.py 'cousin-chair') to the centre BEFORE that, at 99.4, sets it 0.7 m behind him and waits beside it; the
+    # line of the company holds. (The mother "lifted up", Sasha Hutchings in Dance Magazine: the page has no lift.)
+    cousin_line = pos(COUSIN)
+    move(COUSIN, A(95.9), A(96.9), (1.35, -2.35), f=150)       # to the chair, preset by the SL stair foot
+    move(COUSIN, A(97.1), A(99.4), (0.55, 0.0), f=-30)        # carries it down and sets it at (0, 0.35)
+    move('hamilton', A(97.4), A(98.2), (0.0, 1.05), f=0)       # sits sick, the chair behind him
+
+    # ---- Q48 105.2 his mother dies: ens6 comes down to him, then is gone
     move(MOTHER, A(101.6), A(105.0), (-0.75, 1.25), f=70)
     move(CARRIER, A(102.6), A(105.6), (-1.25, 0.95), f=60)
     turn(['hamilton'], A(104.6), -70)
@@ -128,19 +152,22 @@ def build():
     move('washington', A(119.8), A(121.8), (0.0, -2.3), f=0)
     move('hamilton', A(107.6), A(109.0), (1.0, 1.7), f=-150)
     # REVIEW2: the chair is real (fan account: a chair centre, the cousin on it). It stands preset UC by the SL
-    # stair foot (props.py 'cousin-chair' at (1.6, -2.75)); the cousin picks it up at 106.6 and sets it at centre.
-    COUSIN = 'ens3'    # fixed (was the nearest to (0.9, -1.9)): props.py names him
-    cousin_home = pos(COUSIN)
+    # stair foot (props.py 'cousin-chair' at (1.6, -2.75)); REVIEW 3: he set it at 99.4 (above), and now gets up on it.
+    cousin_home = cousin_line
     move(COUSIN, A(106.6), A(109.4), (0.0, 0.35), f=0)    # REVIEW2: on the chair, which he sets at (0, 0.35)
     move(COUSIN, A(116.4), A(118.6), cousin_home, f=0)
-    move('eliza', A(109.6), A(112.6), (5.0, 3.6), f=-60)
-    exit_('eliza', A(113.0), 'W_DSL')
+    # REVIEW 3 (Disney+ clip comments): on the line where he recovers (105.2) "Eliza walks over and drags her hand across
+    # Alexander's back and he gets back up" -- she leaves her key, passes behind him (he is turned to his mother), and
+    # goes on off SL (she was walking off SL at 109.6 anyway)
+    move('eliza', A(104.0), A(105.4), (0.75, 0.85), f=-110)
+    move('eliza', A(106.2), A(110.0), (5.0, 3.6), f=-60)
+    exit_('eliza', A(110.4), 'W_DSL')
 
     # ---- Q50 119.8 Burr, the reader
     move('burr', A(119.8), A(121.6), (-1.65, 4.15), f=0)   # SPOT: his AF (ch2)
     move('hamilton', A(119.8), A(122.0), (1.6, 2.7), f=40)
-    enter('angelica', A(118.4), A(122.6), (2.3, 3.2), -50, wing='W_DSL')   # she hands him a book
-    exit_('angelica', A(125.0), 'W_DSL')
+    # REVIEW 3: CUT Angelica's entrance here to hand him a book (its moment was a guess): the official Disney+
+    # "Alexander Hamilton" Clip 2 (CurgvjZ7hcM) has her hand him the book in the women's section (Q56), below.
     # ---- Q51 130.0 the clerking: Mulligan's verse SL; the company dances in two loose rows
     move('mulligan', A(130.0), A(131.6), (1.8, 3.3), f=-30)   # SPOT: his key SL (ch51 at (1.78, 3.27))
     move('burr', A(130.0), A(132.6), (-3.0, 4.4), f=35)    # REVIEW2: was (-3.6, 3.8), the carriers' path
@@ -160,12 +187,8 @@ def build():
               (3.6, 0.6), (3.4, -1.0), (4.2, 1.9)]
     others = [e for e in E if e not in (MOTHER, CARRIER)]
     form(others, fslots, A(130.0), A(133.0), face=0)
-    # Laurens brings him his pack for the voyage (fan account): to the table's SL side
-    move('laurens', A(136.4), A(137.0), (2.75, 2.9), d=0)   # SPOT: round Mulligan, who is in his key
-    put('laurens', A(138.8), (1.15, 1.05), f=-90)
-    turn(['hamilton'], A(137.6), 80)
-    move('laurens', A(139.8), A(141.2), (2.75, 2.9), d=0)
-    put('laurens', A(142.6), (2.6, 4.4), f=-20)
+    # REVIEW 3: CUT Laurens bringing him his pack here (fan account, its moment a guess): Disney+ Clip 2's viewers
+    # place it AFTER Eliza (the coat) and Angelica (the book), in the women's section (Q56), below.
     # Q52 141.3: the table goes off DSR between the two (FU); the cousin takes the chair off upstage right
     move(MOTHER, A(139.8), A(141.2), (0.85, 1.6), f=-90)       # back to the table's SL end
     turn([CARRIER], A(140.8), 90)
@@ -232,8 +255,18 @@ def build():
     move('lafayette', A(166.3), A(168.8), (-3.8, 4.2), f=150)
     move('laurens', A(166.3), A(168.8), (1.6, 4.3), f=-150)
     move('mulligan', A(166.3), A(168.8), (3.9, 4.2), f=-140)
-    turn(['hamilton'], A(169.6), -101)    # to Angelica
-    turn(['hamilton'], A(172.8), 112)     # to Eliza
+    # REVIEW 3 (the official Disney+ "Alexander Hamilton" Clip 2, CurgvjZ7hcM, its viewers' comments): he is dressed
+    # for the new land, in this order -- "Eliza putting on his coat (dressing him) and Angelica handing him the book",
+    # then "it was Laurens who hands him his bag after Eliza and Angelica" (about 0:25 into the clip, near 175 here).
+    # Each comes to him from her key / his place and goes back. (Was: he only turned to Angelica, then to Eliza.)
+    move('eliza', A(167.8), A(169.0), (0.5, 2.5), f=-40)       # behind his SL shoulder: the coat
+    move('eliza', A(170.2), A(171.6), (2.55, 1.95), f=-68)     # back into her key
+    turn(['hamilton'], A(170.4), -80)                          # to Angelica
+    move('angelica', A(170.2), A(171.6), (-0.65, 3.05), f=90)  # the book
+    move('angelica', A(172.6), A(174.0), (-2.75, 2.45), f=78)
+    turn(['hamilton'], A(173.6), 70)                           # to Laurens
+    move('laurens', A(173.6), A(174.6), (0.6, 3.6), f=-60)     # the bag
+    move('laurens', A(175.6), A(176.8), (1.6, 4.3), f=-150)
     turn(['hamilton'], A(176.0), 0)
 
     # ---- Q58 179.5 the anthem: a wedge behind him DSC

@@ -128,7 +128,8 @@ add("laurens", T, 45.9, -1.0, 2.8, -60)
 add("lafayette", T, 46.1, 1.0, 2.6, -70)
 add("mulligan", T, 46.1, 0.4, 1.7, -50)
 # the friends crowd Burr, teasing him about his lady
-add("laurens", T, 49.0, -2.45, 2.55, 40)
+# REVIEW 3: ironinkpen ("Laurens is very drunk ... kinda drapes himself on Burr"): Laurens right at Burr's shoulder
+add("laurens", T, 49.0, -2.1, 2.85, 45)
 add("lafayette", T, 50.5, -0.6, 3.75, -80)
 add("mulligan", T, 51.5, -1.35, 2.2, -10)
 add("burr", T, 50.0, -1.5, 3.4, 30)
@@ -140,10 +141,16 @@ add("lafayette", T, 56.0, 0.6, 1.9, -40)
 add("laurens", T, 56.5, -0.9, 1.6, -30)     # SPOT: back at the table but out of Burr's key and VL (ch2/72/74)
 add("hamilton", T, 66.0, 1.2, 3.4, -55)
 add("burr", T, 66.5, -1.3, 3.6, 50)
+# REVIEW 3: ironinkpen: Laurens comes down to Hamilton and Burr, "the rest of the rev crew joins them at this point,
+# and then Ham shoves them away, shooing them off" - so the three come down to the pair, and on 75.4 he shoos them
+add("laurens", T, 69.5, -0.45, 2.8, 20)
+add("lafayette", T, 71.5, 0.55, 2.45, -20)
+add("mulligan", T, 72.0, -0.75, 1.65, 10)
+add("hamilton", T, 73.8, 0.6, 3.15, -160)    # he turns on them: the shove
 # friends sent off (75.4)
-add("laurens", T, 75.4, -0.9, 1.6, -90)
-add("lafayette", T, 75.4, 0.6, 1.9, 60)
-add("mulligan", T, 75.4, -0.3, 1.2, -100)
+add("laurens", T, 75.4, -0.45, 2.8, -120)
+add("lafayette", T, 75.4, 0.55, 2.45, 60)
+add("mulligan", T, 75.4, -0.75, 1.65, -100)
 exit_to("laurens", T, 75.6, "W-USR")
 exit_to("lafayette", T, 75.6, "W-MSL")
 exit_to("mulligan", T, 77.5, "W-MSR")
@@ -156,6 +163,22 @@ add("hamilton", T, 108.25, 0.95, 3.45, -40)
 exit_to("hamilton", T, 108.4, "W-DSL")
 # Burr walks to his spot on the turntable for Wait for It
 add("burr", T, 112.5, 0.63, 2.2, 0)     # SPOT: his Wait for It pool (ch93 at 0.63, 2.37; blue column ch8 behind)
+# REVIEW 3 (Disney+ clip e4NAz2TWA4I, its comments): two of the wedding guests are still there, passed out - one on the
+# stairs ("Oak waking up the ensemble member on the stairs"), and at the end "Thayne helping Ephraim get up". Thayne
+# Jasperson is the OBC's Seabury, so ens2; Ephraim Sykes is ens9. They come in through the deck door in the opening dark
+# and slump (dance.py: kneel); at the end ens2 helps ens9 up off the SL stair and they go out the way they came.
+add("ens9", T, 0.0, ENT["D-UC"][0], ENT["D-UC"][1], off=True, label="Ensemble 9")
+add("ens9", T, 2.6, 2.1, -2.45, dwell=0)
+add("ens9", T, 3.6, 2.55, -2.45, 0, y=0.63)  # two steps up the SL stair (0.63 m), slumped
+add("ens2", T, 0.5, ENT["D-UC"][0], ENT["D-UC"][1], off=True, label="Ensemble 2")
+add("ens2", T, 4.2, 1.3, -1.7, -30)          # slumped on the deck below the stair
+add("ens2", T, 104.5, 1.3, -1.7, 120)
+add("ens2", T, 106.3, 1.6, -2.0, 120)        # to his friend on the stair
+add("ens9", T, 107.9, 2.55, -2.45, -90, dwell=0.9, y=0.63)
+add("ens9", T, 109.2, 2.1, -2.45, 170, dwell=1.2)
+add("ens2", T, 109.0, 1.6, -2.0, 170, dwell=0.2)
+exit_to("ens2", T, 109.2, "D-UC", extra=0.0)
+exit_to("ens9", T, 110.4, "D-UC", extra=0.0)
 
 # =====================================================================================
 # 1-13  Wait for It - Burr alone in his pool; the ensemble a slow formation behind him
@@ -187,28 +210,32 @@ exit_to("ens8", T, 51.3, "W-MSL")
 # step down on his boast and at the peak, the turn upstage to look at Hamilton in verse 3 - and nothing else.
 MIRROR = {"ens1": (-1.9, 1.45), "ens2": (-0.75, 0.55), "ens5": (2.05, 0.65), "ens6": (3.05, 1.6),
           "ens7": (-1.35, -0.6), "ens9": (1.15, -0.45)}
-GATE13 = {"ens1": "W-MSR", "ens2": "W-MSR", "ens7": "W-USR", "ens5": "W-MSL", "ens6": "W-MSL", "ens9": "W-USL"}
-for k, (m, (x, z)) in enumerate(sorted(MIRROR.items())):
-    enter_from(m, T, 31.15, GATE13[m], x, z, 0, label="Ensemble %s" % m[3:], t_off=22.5 + 0.4 * k)
-    add(m, T, 44.8, x, z, 0)
-    for at, dz in [(99.9, 0.6), (106.0, 0.0), (152.2, 0.6), (159.45, 0.0)]:   # his boast / his peak: a step down with him
-        add(m, T, at, x, z + dz, 0)
-# verse 3: as he turns upstage to watch Hamilton UC, they turn with him; front again when he does
-for m, (x, z) in MIRROR.items():
-    add(m, T, 115.4, x, z, 180)
-    add(m, T, 132.3, x, z, 0)
-for k, (m, (x, z)) in enumerate(sorted(MIRROR.items())):
-    add(m, T, 178.2, x, z, 0)
-    g = {"ens1": "W-MSR", "ens2": "W-MSR", "ens7": "W-USR", "ens9": "W-USL", "ens5": "W-MSL", "ens6": "W-DSL"}[m]
-    exit_to(m, T, 179.0 + 0.7 * k, g)          # a slow walk off in the outro fade
-for m in MIRROR:
+# REVIEW 3: ironinkpen (a staging account from the theatre, https://ironinkpen.tumblr.com/post/136570471307): "Burr
+# is alone on stage ... the ensemble appears, but they're on the second floor, detached from the scene ... at one point
+# Burr turns away from the audience entirely and starts talking to the ensemble instead." So the six are on the
+# UPSTAGE GALLERY, not the turntable; they come on through the backstage passage (G-UC) for chorus 1 and stand along
+# it facing out (no step-downs: the gallery has no room downstage), and Burr's verse-3 turn upstage is to THEM.
+# Their moves (dance.py SEGMENT_3): they sway with Burr on the three choruses - the sourced part is only that they move
+# as he moves (Blankenbuehler, Playbill); the sway is the simplest fitting move.
+# Hamilton's UC cross in verse 3 (an inferred cue, 420) is cut: the account has Burr alone, and the upstage look he
+# had watched Hamilton by is his turn to the ensemble above. The UC special of cue 420 now lands on nobody.
+GAL13 = [("ens7", -3.3), ("ens6", 3.5), ("ens1", -2.2), ("ens5", 2.4), ("ens2", -1.1), ("ens9", 1.3)]   # entry order
+GZ = -3.35
+for k, (m, x) in enumerate(GAL13):
+    tm = 24.0 + 1.1 * k                       # at the passage mouth, 1.1 s apart
+    add(m, T, tm - 1.3, 0.6, -4.8, y="gallery", off=True, label="Ensemble %s" % m[3:])
+    add(m, T, tm, 0.6, GZ, y="gallery", dwell=0)
+    add(m, T, tm + abs(x - 0.6) / 1.2, x, GZ, y="gallery", facing=0)
+    add(m, T, 31.15, x, GZ, y="gallery", facing=0)
+    add(m, T, 115.4, x, GZ, y="gallery", facing=face((x, GZ), (0.63, 2.2)))    # Burr turns up to them: they look down at him
+    add(m, T, 132.3, x, GZ, y="gallery", facing=0)
+for k, (m, x) in enumerate(reversed(GAL13)):  # off the way they came, nearest the passage first, in the outro fade
+    t0 = 179.0 + 1.1 * k
+    add(m, T, t0, x, GZ, y="gallery", facing=0, dwell=0)
+    add(m, T, t0 + abs(x - 0.6) / 1.2, 0.6, GZ, y="gallery", dwell=0)
+    add(m, T, t0 + abs(x - 0.6) / 1.2 + 1.3, 0.6, -4.8, y="gallery", off=True)
+for m, _ in GAL13:
     P[m].sort(key=lambda w: clock(w["track"], w["at"]))
-
-# Hamilton crosses UC through verse 3
-add("hamilton", T, 106.0, ENT["D-UC"][0], ENT["D-UC"][1], off=True)
-add("hamilton", T, 114.9, 0.05, -2.15, 0)   # SPOT: the UC special (ch18 0.11,-2.0; VL ch73/75) to its end at 131.8
-add("hamilton", T, 124.0, -0.1, -2.1, 20)
-exit_to("hamilton", T, 131.9, "D-UC")
 # Burr walks off in the dark into Stay Alive
 # REVIEW: he holds his pool to its last cue (189.6), then goes in the navy hold, off before Eliza's opening is lit
 _bw = [w for w in P["burr"] if w["track"] == "1-13" and w["at"] == 189.6][0]
@@ -219,20 +246,60 @@ add("burr", "1-14", 1.0, ENT["W-MSR"][0], ENT["W-MSR"][1], off=True)
 # 1-14  Stay Alive - Eliza writing on the gallery; Washington's tent; Monmouth; Lee
 # =====================================================================================
 T = "1-14"
+# REVIEW 3 (video and staging-account evidence; research/seg3.md "Review 3"):
+#  - the Bullet crosses at the top and passes Hamilton; Laurens is the one who blocks her (Odyssey Online; a fan's
+#    tweet in BuzzFeed's Hamilton details; the Disney+ clip pd3L7mI19q8's comments put her at 0:10-0:17);
+#  - Eliza stays on the gallery; Angelica joins her and hugs her at their shared line (~84; the libretto's
+#    ANGELICA/ELIZA, the clip's comments at 1:25); Eliza hands Washington her letter up there (~97-100, comments);
+#  - Washington is on the SECOND FLOOR for Lee's attack / retreat orders, Lee on the deck yelling up at him
+#    (ironinkpen); Lee is up on the second floor for his slander, Hamilton charges at him and Washington stops him
+#    (ironinkpen) - Lee on the SL gallery, the DL end, so cue 445's "Lee DL" is still his side of the stage;
+#  - the four soldiers are on for the war reports too, as the British, guns on the friends (the clip's comments: "at
+#    1:13 someone points a gun at John Laurens", "the British soldiers choreography", "the rifle choreography");
+#  - Burr dances in the war scenes (hamilton-lyrics, "my Hamilton experience"): he is in the Monmouth rank, and stands
+#    SL under Lee through the slander (a comment on "Burr's stance" at 2:06);
+#  - Lafayette goes for Lee as Washington takes over (comment at 1:49); Laurens and Hamilton "forehead to forehead" at
+#    the end (ironinkpen).
 add("eliza", T, 0.0, 0.6, -4.8, y="gallery", off=True, label="Eliza")
 add("eliza", T, 2.0, 0.6, -3.35, y="gallery", dwell=0)
 add("eliza", T, 4.5, 0.0, -3.35, y="gallery", facing=0)      # SPOT: her gallery special ch18 (0.0, -3.42)
 add("eliza", T, 29.65, -0.2, -3.35, y="gallery", facing=10)
 add("eliza", T, 59.45, 0.0, -3.35, y="gallery", facing=0)
-add("eliza", T, 66.0, 0.0, -3.35, y="gallery", facing=0)
-add("eliza", T, 68.5, 0.6, -3.35, y="gallery", dwell=0)
-add("eliza", T, 70.0, 0.6, -4.8, y="gallery", off=True)
+add("eliza", T, 81.0, -0.2, -3.05, y="gallery", facing=0)      # to the rail, so Angelica can pass behind her
+add("eliza", T, 84.6, -0.2, -3.05, y="gallery", facing=-60)    # turns to her sister: the hug
+add("eliza", T, 92.0, -0.2, -3.05, y="gallery", facing=0)
+add("eliza", T, 97.2, 0.55, -3.25, y="gallery", facing=90)     # the letter, into Washington's hand
+add("eliza", T, 100.0, -0.2, -3.15, y="gallery", facing=0)
+add("eliza", T, 104.4, -0.2, -3.15, y="gallery", facing=0, dwell=0)
+add("eliza", T, 105.2, 0.6, -3.35, y="gallery", dwell=0)
+add("eliza", T, 106.5, 0.6, -4.8, y="gallery", off=True)
+add("angelica", T, 81.5, 0.6, -4.8, y="gallery", off=True, label="Angelica")
+add("angelica", T, 82.8, 0.6, -3.35, y="gallery", dwell=0)
+add("angelica", T, 83.5, -0.1, -3.72, y="gallery", dwell=0)
+add("angelica", T, 84.4, -0.85, -3.45, y="gallery", facing=60)
+add("angelica", T, 92.0, -0.85, -3.45, y="gallery", facing=10)
+add("angelica", T, 105.4, -0.85, -3.45, y="gallery", facing=10, dwell=0)
+add("angelica", T, 106.7, 0.6, -3.35, y="gallery", dwell=0)
+add("angelica", T, 108.0, 0.6, -4.8, y="gallery", off=True)
 
 W = "washington"
 enter_from(W, T, 16.9, "D-UC", 0.0, 1.4, 0, label="Washington", t_off=9.0)   # SPOT: the desk where its pools land
 for at, x, z, f in [(29.65, 0.0, 1.4, 0), (44.95, -0.3, 1.5, 20), (65.5, 0.0, 1.35, 0), (77.5, -0.2, 1.4, 10),
-                    (87.1, 0.4, 1.45, -60), (90.1, 0.0, 1.4, 30), (98.6, 0.0, 1.4, 0), (105.0, 0.0, 3.0, 0),
-                    (114.1, 0.0, 2.8, 0), (119.5, -0.3, 1.45, 40), (137.3, 0.0, 1.4, 0), (140.0, 0.2, 1.35, -45)]:
+                    (87.1, 0.4, 1.45, -60), (90.1, 0.0, 1.4, 30)]:
+    add(W, T, at, x, z, f)
+# up to the gallery (round the desk, out the deck door, up the back): on it by 96.8, by Eliza
+add(W, T, 91.6, 0.95, 1.1, dwell=0)
+add(W, T, 94.8, ENT["D-UC"][0], ENT["D-UC"][1], off=True)
+add(W, T, 95.0, 0.6, -4.8, y="gallery", off=True)
+add(W, T, 96.2, 0.6, -3.35, y="gallery", dwell=0)
+add(W, T, 96.8, 1.2, -3.35, y="gallery", facing=-90)
+add(W, T, 100.6, 1.2, -3.35, y="gallery", facing=10)           # the orders: Lee yelling up at him from the deck
+add(W, T, 108.4, 1.2, -3.35, y="gallery", facing=10, dwell=0)
+add(W, T, 109.0, 0.6, -3.35, y="gallery", dwell=0)
+add(W, T, 110.3, 0.6, -4.8, y="gallery", off=True)
+add(W, T, 113.5, ENT["D-UC"][0], ENT["D-UC"][1], off=True)
+for at, x, z, f in [(119.5, -0.3, 1.45, 40), (128.3, 1.25, 1.9, -120),   # he steps into Hamilton's charge at Lee
+                    (137.3, 0.0, 1.4, 0), (140.0, 0.2, 1.35, -45)]:
     add(W, T, at, x, z, f)
 exit_to(W, T, 144.5, "D-UC")
 
@@ -240,24 +307,34 @@ H = "hamilton"
 enter_from(H, T, 16.9, "W-MSR", -1.4, 2.4, 20, t_off=8.0)
 for at, x, z, f in [(29.65, -1.0, 1.2, 50), (44.95, -0.4, 2.6, 0), (53.45, -1.0, 2.2, 30), (65.5, -1.3, 1.4, 45),
                     (77.5, -1.1, 1.6, 40), (87.1, -0.6, 1.85, 70), (90.1, -0.4, 2.4, 60), (96.0, -3.8, 2.6, 30), (99.5, -3.8, 2.6, 30),
-                    (105.0, -3.0, 3.4, 30), (114.1, -3.4, 3.0, 20), (122.5, -1.25, 1.0, 60), (137.3, -0.9, 1.6, 45),
-                    (144.3, -0.9, 1.6, 90), (147.5, 1.7, 3.3, 60), (151.0, 1.7, 3.3, 70)]:
+                    (105.0, -3.0, 3.4, 30), (114.1, -3.4, 3.0, 20), (122.5, -1.25, 1.0, 60),
+                    (125.6, -0.6, 2.4, 60),         # he charges at Lee up on the SL gallery (round Washington) ...
+                    (127.6, 0.75, 2.4, 55),
+                    (137.3, -0.9, 1.6, 45),          # ... and Washington sends him back
+                    (144.3, -0.9, 1.6, 90), (147.5, 1.7, 3.3, 60), (151.0, 1.8, 3.3, 90)]:
     add(H, T, at, x, z, f)
-add(H, T, 158.1, 1.7, 3.3, 70, dwell=0.05)
+add(H, T, 158.1, 1.8, 3.3, 90, dwell=0.05)    # forehead to forehead with Laurens (ironinkpen), in his key ch2
 # REVIEW: he holds his flank through the heat until the ranks have opened out
 add(H, T, 120.3, -3.4, 3.0, 20, dwell=0.05)
 
 L = "laurens"
-enter_from(L, T, 29.65, "W-MSL", 1.2, 1.3, -30, t_off=22.0)
+# the top: he cuts in between the Bullet and Hamilton as Hamilton walks in, then goes, back with the camp at 29.65
+add(L, T, 9.5, ENT["W-DSR"][0], ENT["W-DSR"][1], off=True)
+add(L, T, 15.5, -0.9, 1.75, 90)
+add(L, T, 17.6, -0.9, 1.75, 120)
+exit_to(L, T, 17.6, "W-MSR")
+enter_from(L, T, 29.65, "W-MSL", 1.2, 1.3, -30, t_off=24.0)
 for at, x, z, f in [(53.45, 1.6, 1.9, -20), (65.5, 2.0, 2.4, -20), (77.5, 1.7, 2.0, -20), (87.1, 2.2, 0.9, -20),
-                    (94.0, 3.9, 2.6, -30), (98.6, 3.9, 2.6, -30), (105.0, 3.6, 3.2, -40), (119.5, 1.4, 1.6, 45), (137.3, 1.0, 1.9, 30),
-                    (144.3, 1.0, 1.9, 60), (147.5, 2.6, 3.3, -70), (151.0, 2.6, 3.3, -75)]:
+                    (94.0, 3.9, 2.6, -30), (98.6, 3.9, 2.6, -30), (105.0, 3.6, 3.2, -40), (119.5, 2.0, 2.6, 60), (137.3, 1.0, 1.9, 30),
+                    (144.3, 1.0, 1.9, 60), (147.5, 2.6, 3.3, -70), (151.0, 2.45, 3.3, -90)]:
     add(L, T, at, x, z, f)
-add(L, T, 158.1, 2.6, 3.3, -75, dwell=0.05)
+add(L, T, 158.1, 2.45, 3.3, -90, dwell=0.05)
 LF = "lafayette"
 enter_from(LF, T, 29.65, "W-MSR", -2.0, 0.0, 30, t_off=22.0)
 for at, x, z, f in [(53.45, -2.1, 0.6, 20), (65.5, -1.8, 2.6, 20), (77.5, -1.9, 2.1, 30), (87.1, -2.0, -0.3, 20),
-                    (93.0, -3.6, -0.5, 30), (98.6, -3.6, -0.5, 30), (114.1, -3.0, 0.2, 20), (119.5, -0.6, -0.6, 60), (137.3, -0.9, -0.4, 30)]:
+                    (93.0, -3.6, -0.5, 30), (98.6, -3.6, -0.5, 30),
+                    (107.5, -1.9, 3.6, -10),          # at Lee as Washington takes over ("ready to backhand Lee")
+                    (114.1, -3.0, 0.2, 20), (119.5, -0.6, -0.6, 60), (137.3, -0.9, -0.4, 30)]:
     add(LF, T, at, x, z, f)
 exit_to(LF, T, 144.5, "W-MSR")
 MU = "mulligan"
@@ -267,32 +344,67 @@ for at, x, z, f in [(53.45, 1.2, 0.3, -10), (65.5, 0.3, 2.9, 0), (77.5, 0.0, 2.6
     add(MU, T, at, x, z, f)
 exit_to(MU, T, 144.5, "W-USL")
 
-# REVIEW 2: the camp ring, the two drill lines, the marching revolve, the cut-away and the two Monmouth ranks with a
-# colour bearer were invented and are cut. Newtfire's libretto gives the company ONE line in the whole number (the
-# reaction to Lee's slander, which they can sing unseen) and credits the tactics chant to Hamilton / Lafayette /
-# Laurens; the only staging source for an ensemble body is WatchMojo's "the Bullet mimes holding a bullet" during it.
-# So the camp is the principals, and FOUR soldiers (ens1 the Bullet among them) come on for Monmouth only: Lee's men,
-# who advance and fall back on his four contradictory orders and leave as the battle ends.
+# The Bullet (ens1): in from upstage left at the top, slow (dance.py: bullet) toward Hamilton as he walks in; Laurens
+# cuts in; she passes upstage of the two and away
+add("ens1", T, 5.0, ENT["W-USL"][0], ENT["W-USL"][1], off=True, label="The Bullet")
+add("ens1", T, 10.0, 3.0, 0.4, dwell=0)
+add("ens1", T, 16.0, -0.2, 1.6, dwell=0)
+add("ens1", T, 19.5, -1.7, 0.5, -120)
+exit_to("ens1", T, 19.5, "W-USR", label="Ensemble 1")
+
+# REVIEW 2 cut the camp ring, the drill lines, the marching revolve, the cut-away and the two Monmouth ranks with a
+# colour bearer (invented). REVIEW 3 puts the four soldiers back on in two stretches the clip's comments see: the war
+# reports (65.5 to the snap to two at 87.1), as the British at the upstage corners, guns on the four friends; and
+# Monmouth (98.6 to the heat), Lee's men, with Burr among them.
+WAR = {"ens1": ((-3.3, -0.9), "lafayette", "W-USR"), "ens2": ((-2.0, -1.6), "hamilton", "W-USR"),
+       "ens5": ((1.8, -1.2), "mulligan", "W-MSL"), "ens6": ((3.3, -0.9), "laurens", "W-MSL")}
+FR = {65.5: {"lafayette": (-1.8, 2.6), "hamilton": (-1.3, 1.4), "mulligan": (0.3, 2.9), "laurens": (2.0, 2.4)},
+      77.5: {"lafayette": (-1.9, 2.1), "hamilton": (-1.1, 1.6), "mulligan": (0.0, 2.6), "laurens": (1.7, 2.0)}}
+for k, (m, (p, tgt, g)) in enumerate(WAR.items()):
+    enter_from(m, T, 65.5, g, p[0], p[1], face(p, FR[65.5][tgt]), label="Ensemble %s" % m[3:], t_off=59.0 + 0.5 * k)
+    add(m, T, 77.5, p[0], p[1], face(p, FR[77.5][tgt]))
+    add(m, T, 85.2, p[0], p[1], face(p, FR[77.5][tgt]))
+    exit_to(m, T, 85.2 + 0.3 * k, g)
 # Charles Lee: ens3 walks on for his promotion, into his DL special (ch5, up from 87.1)
 add("ens3", T, 80.0, ENT["W-DSL"][0], ENT["W-DSL"][1], off=True, label="Charles Lee")
 add("ens3", T, 87.6, 2.45, 3.05, -20)      # SPOT: Lee's DL special (ch5 2.35-2.56, 3.02-3.33) is up from 87.1
 add("ens3", T, 90.1, 2.45, 3.05, -20)
-SOLD = {"ens1": -1.8, "ens2": -0.6, "ens5": 0.6, "ens6": 1.8}
-GATE14 = {"ens1": "W-MSR", "ens2": "W-MSR", "ens5": "W-MSL", "ens6": "W-MSL"}
+SOLD = {"ens1": -1.8, "ens2": -0.6, "ens5": 0.6, "ens6": 1.8, "burr": 3.0}
+GATE14 = {"ens1": "W-MSR", "ens2": "W-MSR", "ens5": "W-MSL", "ens6": "W-MSL", "burr": "W-MSL"}
 SZ = 2.2
 for k, (m, x) in enumerate(SOLD.items()):
-    enter_from(m, T, 98.6, GATE14[m], x, SZ, 0, label="Ensemble %s" % m[3:], t_off=89.5 + 0.5 * k)
+    enter_from(m, T, 98.6, GATE14[m], x, SZ, 0, label="Burr" if m == "burr" else "Ensemble %s" % m[3:],
+               t_off=89.5 + 0.5 * k)
     for at, dz in [(101.3, 1.0), (102.5, 0.0), (103.4, 1.0), (104.1, 0.0)]:
         add(m, T, at, x, SZ + dz, 0 if dz else 180)
     add(m, T, 105.6, x, SZ, 0)
-    add(m, T, 114.1, x * 1.15, SZ - 0.3, 20 if x < 0 else -20)    # the heat: a slow sag outward
-    exit_to(m, T, {"ens1": 115.0, "ens2": 115.6, "ens6": 115.0, "ens5": 115.6}[m], GATE14[m])   # off before the sepia camp (119.5)
-# Lee's battle: running back and forth in front of the troops
-for at, x, z, f in [(98.6, 1.2, 4.0, 0), (101.3, 1.0, 4.2, 0), (102.5, -0.8, 4.0, -90), (103.4, 0.9, 4.2, 90),
-                    (104.1, -0.9, 4.0, -90), (105.6, -2.4, 4.3, 45), (110.0, -1.8, 4.4, 30),
-                    (119.5, 2.45, 3.05, -30), (130.0, 2.3, 3.1, -40), (137.3, 2.45, 3.05, -20)]:
+    add(m, T, 114.1, x * 1.15 if m != "burr" else 3.3, SZ - 0.3, 20 if x < 0 else -20)    # the heat: a slow sag outward
+    if m != "burr":
+        exit_to(m, T, {"ens1": 115.0, "ens2": 115.6, "ens6": 115.0, "ens5": 115.6}[m], GATE14[m])   # off before the sepia camp (119.5)
+# Burr stays: SL, under Lee on the gallery, through the slander; off SL as Lee goes
+add("burr", T, 119.5, 3.8, 0.45, face((3.8, 0.45), (4.9, 1.8)))
+add("burr", T, 137.3, 3.8, 0.45, 20)
+exit_to("burr", T, 137.6, "W-MSL")
+# Lee's battle: running back and forth in front of the troops, yelling UP at Washington on the gallery
+WG = (1.2, -3.35)
+for at, x, z in [(98.6, 1.2, 4.0), (101.3, 1.0, 4.2), (102.5, -0.8, 4.0), (103.4, 0.9, 4.2), (104.1, -0.9, 4.0)]:
+    add("ens3", T, at, x, z, face((x, z), WG))
+for at, x, z, f in [(105.6, -2.4, 4.3, 45), (109.5, -1.8, 4.4, 30)]:
     add("ens3", T, at, x, z, f)
-exit_to("ens3", T, 137.5, "W-DSL")
+# off DR, round the back and up: along the upstage gallery onto the SL gallery, out to its DL end for the slander
+_t = exit_to("ens3", T, 109.5, "W-DSR", extra=0.0)
+add("ens3", T, _t + 0.3, 0.6, -4.8, y="gallery", off=True)
+_t += 1.3 + 0.3
+add("ens3", T, _t, 0.6, -3.35, y="gallery", dwell=0)
+add("ens3", T, _t + 4.15 / 1.8, 4.75, -3.35, y="gallery", dwell=0)
+add("ens3", T, _t + 4.91 / 1.8, 4.9, -2.6, y="gallery", dwell=0)
+add("ens3", T, _t + 9.31 / 1.8, 4.9, 1.8, y="gallery", facing=-95)
+add("ens3", T, 130.0, 4.9, 1.95, y="gallery", facing=-100)
+add("ens3", T, 137.3, 4.9, 1.8, y="gallery", facing=-90, dwell=0.2)
+add("ens3", T, 140.6, 4.9, -2.6, y="gallery", dwell=0)
+add("ens3", T, 141.2, 4.75, -3.35, y="gallery", dwell=0)
+add("ens3", T, 144.0, 0.6, -3.35, y="gallery", dwell=0)
+add("ens3", T, 145.2, 0.6, -4.8, y="gallery", off=True)
 
 # =====================================================================================
 # 1-15  Ten Duel Commandments - REVIEW 2: staged from ETC's renders of Binkley's real cues (THPP Cue Photos.pdf,
@@ -314,8 +426,9 @@ SEC = {"hamilton": -1, "burr": 1}           # Laurens' second SR, Lee's second S
 # the walk-on in the 1-14 FTB (158.1), placed when the three pools come up (1.6)
 add("ens3", "1-14", 157.0, ENT["W-MSL"][0], ENT["W-MSL"][1], off=True, dwell=0, label="Charles Lee")
 add("burr", "1-14", 157.2, ENT["W-DSL"][0], ENT["W-DSL"][1], off=True, dwell=0)
-add("laurens", T, 1.6, -0.45, 1.84, 90)     # SPOT: the centre pool of preset 402 "3 pools" (ch13 -0.04, 1.84)
-add("ens3", T, 1.65, 0.45, 1.84, -90)
+# REVIEW 3: the clip's comments at 0:01-0:07 ("intense staring", "about to kiss"): the two stand close, nose to nose
+add("laurens", T, 1.6, -0.35, 1.84, 90)     # SPOT: the centre pool of preset 402 "3 pools" (ch13 -0.04, 1.84)
+add("ens3", T, 1.65, 0.35, 1.84, -90)
 add("hamilton", T, 1.6, -3.18, 3.86, 50)    # SPOT: the DR pool (ch12 -3.18, 3.86)
 add("burr", T, 1.6, 3.35, 4.08, -50)        # SPOT: the DL pool (ch14 3.35, 4.08)
 for a, s in DUEL.items():
@@ -350,7 +463,7 @@ GATE15 = {"ens5": ("W-USR", 51.6), "ens2": ("W-USR", 52.3), "ens1": ("W-USR", 53
 VIA = -1.2      # the company comes on upstage of the four and steps down into the line (clear of the Doctor UC)
 for m in CO:
     g, t0 = GATE15[m]
-    add(m, T, t0, ENT[g][0], ENT[g][1], off=True, label="Ensemble %s" % m[3:])
+    add(m, T, t0, ENT[g][0], ENT[g][1], off=True, label="The Bullet" if m == "ens1" else "Ensemble %s" % m[3:])
     add(m, T, 56.0, LX[m], VIA, dwell=0)
 for a, x in LX.items():
     if a in ("laurens", "ens3"):
@@ -358,8 +471,13 @@ for a, x in LX.items():
     add(a, T, 57.3, x, LZ, 0)
     add(a, T, 58.3, x, LZ, 0, dwell=3.2 if a in CO else None)   # the company moves off the line all together at 61.5
 # 464 #7 (held through 466 #8): a loose cluster on the inner disc, Hamilton and Burr outside it DR / DL
-WEDGE_CO = [(0.0, 2.0), (-0.6, 1.35), (0.6, 1.35), (0.0, 0.7), (-0.6, 0.05), (0.6, 0.05)]
-WA = assign(CO, WEDGE_CO, {m: (LX[m], LZ) for m in CO})
+# REVIEW 3: the Odyssey Online (the Bullet): "the Bullet places herself directly at Hamilton's side ... the pair stand
+# side by side for numbers six and seven of the Commandments, moving through the choreography in sync". She is beside
+# him in the line at #6 already (LX); for #7 she goes with him to his place DR, and the cluster is the other five.
+WEDGE_CO = [(0.0, 2.0), (-0.6, 1.35), (0.6, 1.35), (-0.3, 0.6), (0.3, 0.6)]
+CO5 = [m for m in CO if m != "ens1"]
+WA = assign(CO5, WEDGE_CO, {m: (LX[m], LZ) for m in CO5})
+WA["ens1"] = (-2.05, 2.45)
 for m in CO:
     add(m, T, 64.5, WA[m][0], WA[m][1], 0)
     add(m, T, 71.0, WA[m][0], WA[m][1], 0)
@@ -369,13 +487,17 @@ add("hamilton", T, 64.5, -2.7, 2.5, 30)
 add("burr", T, 64.5, 2.7, 2.5, -30)
 # 468 the Hamilton/Burr scene: the company goes; the seconds negotiate in the front row (ch113 / ch112), the duellists
 # wait in the two mid pools (ch119 / ch117)
-for k, m in enumerate(sorted(CO, key=lambda q: (WA[q][1], abs(WA[q][0])))):
+add("ens1", T, 76.0, -2.05, 2.45, 30)      # the Bullet goes first, straight up and off SR
+add("ens1", T, 76.0 + (2.45 - VIA) / 1.3, -2.05, VIA, dwell=0)
+exit_to("ens1", T, 76.0 + (2.45 - VIA) / 1.3, "W-USR", extra=0.0, label="Ensemble 1")
+for k, m in enumerate(sorted(CO5, key=lambda q: (WA[q][1], abs(WA[q][0])))):
     x, z = WA[m]
     t0 = 77.1 + 0.8 * k
     add(m, T, t0 + (z - VIA) / 1.3, x, VIA, dwell=0)     # straight upstage, then off to the upstage wing
     exit_to(m, T, t0 + (z - VIA) / 1.3, "W-USR" if x < 0 or (x == 0 and z < 1) else "W-USL", extra=0.0)
 add("laurens", T, 79.0, -1.83, 1.2, 30)
-add("ens3", T, 79.0, 1.83, 1.2, -30)
+add("ens3", T, 79.0, 1.83, 1.2, 150)      # REVIEW 3: his back to the seconds' talk ...
+add("ens3", T, 90.5, 1.83, 1.2, -31)      # ... then he turns round to Hamilton (the clip's comments at 1:32)
 add("hamilton", T, 79.6, 0.4, 3.6, 70)
 add("burr", T, 79.0, 1.5, 3.5, -70)
 add("hamilton", T, 91.0, 0.4, 3.6, 60)
@@ -415,13 +537,20 @@ add("burr", T, 3.0, 1.1, 4.1, -100)
 add("burr", T, 9.6, 1.1, 4.1, -165)
 add("burr", T, 18.0, 1.1, 4.1, -120)
 exit_to("burr", T, 19.0, "W-DSL")
+# REVIEW 3: ironinkpen: "Ham and Laurens hug when Laurens comes out of the duel the winner"; the clip's comments
+# (TZ1w59D5et4, 0:21): "hamilton held laurens back" - Laurens comes down to him, and stays at his side, held, until he goes
 add("laurens", T, 3.0, -1.9, 0.9, 30)
-add("laurens", T, 9.6, -1.9, 0.9, 150)
-add("laurens", T, 17.0, -1.9, 0.9, -90)
-exit_to("laurens", T, 17.5, "W-MSR")
-for at, x, z, f in [(2.5, -2.0, 2.6, 55), (9.6, -2.0, 2.6, 155), (25.0, -2.0, 2.6, 160), (28.5, 1.3, 3.1, -60),
+add("laurens", T, 4.6, -1.95, 1.95, 0)       # the hug
+add("laurens", T, 9.6, -1.95, 1.95, 150)
+add("laurens", T, 17.0, -1.95, 1.95, 40)     # straining toward Lee; Hamilton holds him
+add("laurens", T, 21.5, -1.95, 1.95, -60)
+exit_to("laurens", T, 21.5, "W-DSR")
+# REVIEW 3: hamiltonsideblog: he stands still, hands behind his back, then "steps right into Washington's face"; the
+# clip's comments put it on his threat (1:10, the music cut at 70.25). Back in his key for Washington's order (74.4).
+for at, x, z, f in [(2.5, -2.0, 2.6, 55), (4.6, -2.0, 2.6, 180), (9.6, -2.0, 2.6, 155), (16.5, -2.0, 2.6, 175),
+                    (25.0, -2.0, 2.6, 160), (28.5, 1.3, 3.1, -60),
                     (31.6, 1.3, 3.1, -60), (43.4, 1.15, 3.2, -70), (57.0, 1.35, 3.65, -20), (63.0, 0.85, 3.3, -50),
-                    (70.25, 1.15, 3.25, -70), (74.4, 1.3, 3.3, -60), (80.45, 1.4, 3.35, 0)]:
+                    (68.6, -0.5, 3.2, -85), (70.25, -0.5, 3.2, -85), (74.4, 1.3, 3.3, -60), (80.45, 1.4, 3.35, 0)]:
     add("hamilton", T, at, x, z, f)
 add(W, T, 4.5, ENT["D-UC"][0], ENT["D-UC"][1], off=True)
 for at, x, z, f in [(9.6, 0.0, -2.3, 0), (25.0, 0.0, -2.3, 10), (31.6, -1.25, 3.05, 60), (43.4, -1.1, 3.2, 70),

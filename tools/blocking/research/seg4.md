@@ -360,3 +360,125 @@ No lamp or lantern: nothing in these numbers shows one.
 3. 1-18 17-35: the eight soldiers coming on with Lafayette.
 4. 1-20 198-240: the slow walk into the tableau pools in place of the counter-rotating rings.
 5. 1-22 176-184 into 1-23 0.7: the fathers' chairs becoming jury chairs in the dark.
+
+
+## Review 3 (video evidence)
+
+Third pass, from what video text could be read: titles, descriptions, auto-captions (read through the YouTube player
+API's ANDROID client, whose caption URLs are not token-gated; the WEB ones and the transcript endpoint are), comments
+(the `next` endpoint, up to 25 pages each), and the captions of reaction and "details" videos, whose hosts describe
+what they see. Every change is in `gen4.py` marked `REVIEW 3`; props in `props.py` SEGMENT 4; moves in `dance.py`
+SEGMENT 4. The pre-pass generator and JSON are kept at `scratchpad/act/review3/seg4/before/`; the plots are in
+`scratchpad/act/review3/seg4/` (moments and the 1-18 / 1-20 / 1-23 sheets). Result: 903 waypoints (was 769); the merge
+`--check` on seg4.json + props.json + dance.json: 0 errors, 0 warnings; `props.py --check`: every segment-4 carry OK;
+the generator's own flags are only the pre-existing blackout runs at the end of 1-23. Scripts used:
+`scratchpad/ytcap.sh`, `ytcap.py` (captions), `ytcom.py` (comments), `ytsearch.py` (search).
+
+Clip time vs album time: Guns and Ships clip = album + ~1.9 s (Washington's call, clip 1:21.9 = cue 568 at 80.0);
+History clip = album + ~4 s; the official "from HAMILTON" uploads are the album itself (their captions give album time).
+
+### Videos used (27 read, 14 of them useful)
+| video | text read | what it settled |
+|---|---|---|
+| WSJ, "'Hamilton' Choreographer Breaks Down His Moves", gb67f2HLVGM | captions, in full | the Yorktown phrase order (memory, pride, enemy, end, friend into rifle, command, heartbeat, march); "his group of marching troops ... freeze", "I'm in marching formation behind him"; **"Eliza is right over our head on the balcony, we turn home"**; the march "takes us into formation" |
+| Guns and Ships, Disney+ clip (Jack's playlist), 0D3zz6byFT4 | captions + 499 comments | **Lafayette raps on a table and jumps off mid-rap** (0:38-0:39, many comments); **"everyone upstairs is dancing except for Burr"**, "the guy that comes up to him is the one who played Lee" (1:04); **"Peggy and Angelica jamming on the rafter"**, "1:16 Angelica's feeling it"; **the letter chain** "on the top raft" (1:22-1:33: Laurens to Lee 1:30, Burr hesitates 1:31, a spare letter with Peggy, to Hamilton); "Washington could've just turned around and given Hamilton the letter himself"; **Eliza gives him his coat**, he looks at "Eliza and the baby" (1:50); Lafayette "sprints with the letter ... held above his head"; the company dancing during the rap ("0:34", Seabury "at the back" 0:46) |
+| CinemaBlend, "Hamilton: 20 Background Details", OAMOh17f7FU | captions | Burr "glaring angrily from above" while Lafayette talks to Washington; **Laurens shakes hands with the Bullet** in Yorktown; Burr brings Hamilton's green jacket at the top of Non-Stop |
+| MsMojo, "Top 10 Hidden Details" 2q1PTOSbdhM and "Top 20" YyqT13_N_aw | captions | the Bullet shakes Laurens' hand in Yorktown (second and third source) |
+| G.O.T Games, "NON Musical Fan REACTS ... Yorktown & History", Kodkbh1MbEY | captions | **"they're holding the furniture upside down"** said over the company's first full title phrase (album ~204-212); History: "the passing of the sword" |
+| History Has Its Eyes on You, Disney+ clip, ws_pklV1cP8 | captions + comments | Washington gives Hamilton a **sword** (three comments); "when Hamilton salutes" looking into Washington's eyes; "1:08 Washington sharing a touching moment with Alexander" (album ~64) |
+| What Comes Next?, Disney+ clip, ERYukmba5Vg | comments | the King "walks in looking absolutely bewildered" while "the other actors are walking off stage"; he walks away at the end |
+| Dear Theodosia, Disney+ clip, GgxPJRN_LVI | captions + comments | they sit ("sitting as if having an earnest conversation with the audience"); **Eliza walks in at the end** holding the letter (2:31, the last tag) |
+| Musical Theatre Coach reacts to Non-Stop (Disney+), N0LaZYfm_XU | captions | **Eliza's plea: "the stage brings them together"** - she comes into view on the turntable while Hamilton still looks at Angelica; the staging moves from street to courtroom to Burr's house |
+| Mortius & Casper Fox, Non-Stop reaction, Jk8_nyTSo8k | captions | "genius way of using the circular stage" over Eliza's lines |
+| "Yorktown ... from HAMILTON" (official album upload), 41qJIfzaqlM | captions + comments | album timing: the reprise's first phrase line at ~36.2 (bar 15 = 36.67), the narration 159-196; "0:56 imagine death" |
+| Musical Theatre Coach reacts to Yorktown, QIR3lu_1rb8 | captions | general (the battle relies on lighting); no staging |
+| 2016 Tonys, Fb4GlOabb1M | comments | "all of them frozen, pointing the invisible guns" (no muskets that night) |
+| Dance Magazine, "10 Minutes With Andy Blankenbuehler" (page fetched directly) | text | "The American soldiers will never have guns in the Battle of Yorktown - it's a pantomime. And there's one whole battle sequence where you only see the Americans. Then another with only the British." |
+
+Read, nothing usable: Mortius G&S reaction thpZYOit_yU (audio reaction), BrosReact owEq_xQPkKQ, SalvoG npJkpD2jC94, Howard Ho
+ro8uhPr2PSM (music only), Flicks and the City 782gnhUox64, the Non-Stop / Yorktown "Part N" re-uploads and Ripley's Realm
+(comments are lyrics), the Tony "History/Yorktown" 5upLudfimso. The rest of Jack's playlist (36 clips) was listed; it has
+no Yorktown or Non-Stop clip. Reddit's API is blocked here; the AllMusicals Yorktown annotations (via WebFetch) say the
+furniture is "turned over ... then righted, matching the lyric" (weak, one annotator). Jack's notes add Mulligan on the
+balcony in Non-Stop (the Philip tour's Madison/Mulligan, Fergie L. Philippe, confirmed with a producer's smile).
+
+### 1-18 Guns and Ships (7 videos) - staging changes
+- **Burr stays upstairs** the whole number (was: off at 20.5): balcony (ruled), then the SL gallery glaring down
+  (51.8), then his place in the letter chain on the USG (70.8); out through G-UC in the button.
+- **Lafayette's table**: ens6 carries a small table on from SL in the build (28.5, `gs-table`), Lafayette raps standing
+  in it in the ring of beams (31.3) and jumps down at 36.4-37.0 (the `jump` move), ens6 strikes it at 46.
+- **Lafayette runs Washington's letter** on the chant (70.0-72.3) to the foot of the SL stair, where Laurens takes it up.
+- **The upstairs company and the letter chain** (USG, SL to centre): Laurens (4.6), Lee = ens3 (3.6, he climbs from the
+  deck and "comes up to" Burr on the SL gallery at ~58-62), Burr (2.8), Peggy (2.0), Hamilton (1.2), with Eliza (0.3) and
+  Angelica (-1.0). The passes at 87.2-91.6; Eliza gives him his coat (95); the look at her (108); Hamilton goes down the SR
+  strip and stair (109-118) into his DS special for the button (120.5). The sisters come on at 56.
+- New bodies: Angelica, Peggy, Eliza, Laurens upstairs; Hamilton enters upstairs (was: from DSR at 112). Deck company
+  7 (ens3 goes up).
+- Moves: `two-step` for the deck company in the rap (bar 18 b3 -> 48.8) and on the chant (bar 40 b3 -> 80); `bounce`
+  for Angelica, Peggy and ens3 upstairs (bar 34 b3 -> 80; Burr does not dance); `jump` for Lafayette (bar 21 b3).
+  The 1-18 grid's downbeats fall about two beats off the cue hits, so these are named by bar and beat.
+
+### 1-19 History Has Its Eyes on You (3 videos)
+- Hamilton steps up beside Washington at the edge of his special at the verse-2 build (64.5), back DS at 74.7.
+- Move: `salute` for Hamilton from bar 28 b2 (86.9) to the end; the comment does not time it (placement mine).
+- Not done: **the sword** Washington gives him (three comments). There is no prop kind for it ('custom' would be a 0.5 m
+  box); timing unknown. For Jack: a sword prop handed over near the end would match the film.
+
+### 1-20 Yorktown (6 videos + Dance Magazine)
+- **Bars, checked against the album and the WSJ order** (98 BPM, bar 21 = 51.36): the reprise phrase at bar 15 is right;
+  `imagine-death` now bar 21, 10 counts at speed 0.8 (it reaches the arms-crossed end on bar 23); `command` bar 23 b3,
+  6 counts at speed 2/3 (rifle overhead on the friend, epaulets on bar 24); `heartbeat` bar 25 x 8; `hiphop-march` bar 27
+  x 8 (was 16: the night attack is bar 29). These four are the company's (not Hamilton's: he sings it alone at the lip).
+- The company falls back into its formation by 51.0 (was 56.0), so it stands still for the phrase instead of walking.
+- **Eliza on the balcony** (USG centre, 58.2-66.8) for the heartbeat; the company turns upstage to her at 61.2 ("we turn
+  home") and back out at 65.6.
+- **The Bullet (ens1) shakes Laurens' hand** in his pool (94.6-96.8) and goes back to her pool.
+- The battle: `musket` from the drill to the cold turn, `freeze` on bar 58 (141.99) to 146, `musket` again at 146.
+- **The furniture**: five soldiers on the dark outer ring (ens4, ens8, ens10 with chairs, ens9 and ens6 with crates) go
+  off with the escort (182) and come back carrying their piece (188.5 -> 197). `upside-down` for every soldier but
+  Hamilton on bar 83 b3 (204.44, the full-band hit) held to 217.1, then the same move reversed on bar 89 (217.91), the
+  furniture righted; set down beside their tableau pools at 230.8; carried off in the blackout. Those without furniture
+  lift empty arms.
+- The blackout exits are a walk (1.3 m/s, was 1.7): the King arrives while they are still going (1-21 comments).
+- Kept: Mulligan's D-UC entrance and the redcoat (no new evidence); "one battle sequence with only the Americans, another
+  with only the British" (Dance Magazine) is NOT staged - the company does not split; for Jack.
+
+### 1-21 What Comes Next? (1 video)
+- The King looks round after the departing soldiers (2.0 up left, 4.0 up right) before facing out at 6.0.
+
+### 1-22 Dear Theodosia (1 video)
+- **Eliza walks in** in the last tag (from W-USR, at (-1.0, 1.4) by 168, Hamilton turns to her at 170.5) and leaves the
+  way she came in the fade (176.9), clear of the chair moves.
+
+### 1-23 Non-Stop (3 videos + Jack's notes)
+- **Eliza's plea rides the turntable**: on the outer ring up right at 228, carried round into her SR key by 231.4 (cue
+  648), and on round to beside Hamilton in his DS special by 240; Hamilton keeps looking SL to Angelica until 242, when
+  they turn to each other.
+- **Mulligan on the balcony** (USG at (-2.4, -3.35)) from the company chorus (279) to the end; out through G-UC ahead of
+  Washington in the blackout.
+- Move: `my-shot` for Hamilton on his last Shot line (cue 665, 368.45), the whole phrase in one bar (speed 2). No source
+  describes the company's dancing in Non-Stop, so none is added; the "legacy" phrase is Act 2's (2-22/2-23), not here.
+- Not done: Burr bringing Hamilton's green jacket at the top (CinemaBlend) - no coat prop.
+
+### Moves wanted that the library lacks
+- **handshake** (1-20, the Bullet and Laurens): facing a partner 0.6 m away, the right forearm forward to waist height,
+  the hand closed; two small pumps from the elbow on counts 1 and 2, held on 3-4. 4 counts, once then held; mirror for
+  a left-handed partner. Used now: none (they only face each other).
+- **coat-on** (1-18, Eliza helps him into his coat; 1-23 Burr with the green jacket): the arms back and down behind the
+  body, a shrug of both shoulders on 3, the hands smooth the lapels on 4. 4 counts, once.
+- **sword-take** (1-19): both hands forward at chest height, palms up, then the right hand closes and lifts to the
+  shoulder. 4 counts, once (pairs with a sword prop).
+- The baseball pitch (WSJ) is still folded into `command` (FUTURE.md has it).
+
+### Lighting notes for Jack (cues not edited)
+1. 1-18: the gallery specials ch181-188 light the upstairs bodies well; Lafayette in the table at 31.3 is in the cue's
+   ring of washes (no narrow special), as before.
+2. 1-20 61-66: nothing lights Eliza on the USG (cue 593 is Hamilton's DS special only).
+3. 1-18 120: Hamilton arrives in his DS special 0.5 s after the button cue (he comes down from the gallery).
+
+### For Jack to watch first
+1. 1-18 80-121: the letter chain on the gallery, the coat, the look at Eliza, Hamilton down the SR stair.
+2. 1-18 22-52: the table on, Lafayette on it and the jump at 36.5, the table off.
+3. 1-20 51-67: the frozen phrase in formation, Eliza over their heads, the turn home, the march into the pools.
+4. 1-20 182-241: the furniture fetched, lifted upside down at 204.4, righted at 217.9, set down, carried off.
+5. 1-23 222-249: Eliza carried in on the ring to Hamilton.

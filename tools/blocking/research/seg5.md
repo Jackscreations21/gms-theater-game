@@ -503,3 +503,168 @@ one-segment check. `props.py --check`: no warning on a segment-5 prop.
 ### Warnings left standing
 The generator's own check shows only the convergence in the 2-05 exits after 315.75, in the dark of 892/894, and the brief's
 own D-UC door legs crossing the `^` row at z -4.5.
+
+## Review 3 (video evidence)
+
+Jack: "use those videos and ones you can find to work on the choreo". Video cannot be watched, so the evidence is the
+TEXT around the videos: titles, descriptions, the top comments (which name moments with timestamps), and auto-captions.
+Done by editing `seg5gen.py` (every change marked `REVIEW 3`), the SEGMENT 5 sections of `dance.py` and `props.py`.
+Originals: `scratchpad/act/review3/seg5/orig/`. Result: 1,025 waypoints (was 942), 19 bodies (ens9 and ens10 are back,
+for six seconds on the gallery in 2-05). Merge check (seg5 + props + dance, nothing in assets/): **0 errors**, 1 warning
+(the King's stool in segment 7, whose carrier is not in a one-segment check). `dance.py --check 5`: 0 errors, 0 warnings.
+The generator's own check shows only the old convergence in the 2-05 blackout exits (315.75 on) and the D-UC door legs.
+
+### How the text was got (for the next reviewer)
+- Comments: the watch page's `ytInitialData` gives the comment continuation token; POST it to
+  `youtubei/v1/next` (WEB client) and read `commentEntityPayload`. Top comments, 80-400 per video.
+- Captions: the WEB player's caption URLs come back EMPTY now; the innertube `player` call with the **IOS client**
+  returns caption tracks whose URLs work (XML `<p t=...>`). Used for the Ham4Ham talk, and, on the official audio and the
+  Disney+ clips, only to map film time to album time (the lyrics were read for timing, never copied).
+- Film to album time: the Disney+ clips run about 1 s behind the album up to 2-05 176 s and 3-4 s behind after it;
+  What'd I Miss and Say No are within 1-2 s.
+- Scripts: `scratchpad/yt5tools/` (ytc.py comments, ytcap2.py captions, yts.py search). Standard library.
+
+### Videos used (title, URL, what text, what it settled)
+1. **"The Room Where it Happens - Hamilton (Original Cast 2016 - Live) [HD]"** (Jack's playlist, Disney+ clip)
+   https://www.youtube.com/watch?v=e_FWUW6SnDo - about 400 comments, auto-captions for timing. Settled: the same scene is
+   played three times from three points of view (comment: 0:31 Hamilton's and Burr's, 1:55 Jefferson's, 2:41 Madison's);
+   at 2:57 Hamilton and Burr talk exactly as at 0:40 and Madison motions Hamilton to come the same way both times; 2:44
+   "they re-enact the beginning"; the company shouts names; Jefferson "bouncy" at 1:08, "the leg"/"that kick" at
+   1:58-1:59; Burr dances and runs 4:26-4:41 and pumps his chest at 4:34; the cloth pulled as he jumps (4:55-4:58); "they
+   kicked the chair" at 5:00; a comment on the company getting up from chairs; Burr walks straight while the floor gobos
+   are circles and in circles once they turn to squares (886 "Lose Squares").
+2. **"Ham4Ham Aug, 3 2015 Andy Blankenbuehler Room Where it Happens"** https://www.youtube.com/watch?v=ZJVc88LbZrA -
+   description and auto-captions. Settled: Blankenbuehler dances "the ensemble part of the bridge" of Room and says the
+   steps are his imitation of the Fred Astaire film - the `bojangles` move belongs to Room's bridge (2-05 bar 80 on).
+3. **"What'd I Miss? - Hamilton (Original Cast 2016 - Live) [HD]"** https://www.youtube.com/watch?v=t8xQU1hkYao - 89
+   comments, captions for timing. Jefferson dancing 1:38, "moonwalking" 1:40, "the bouncing" 2:00, the strut ("pimp
+   walk") 2:56, his cane; an ensemble LIFT at 3:14 (a comment: the dancer tore a tendon doing it); Hamilton pushes past
+   two people to get to Jefferson at 3:34 and Jefferson laughs at him at 3:38; Jefferson laughs off Hamilton's handshake
+   and pounds his fist to his heart for Washington; the women of the company swoon at him.
+4. **"Hamilton cabinet battle #1"** (a Disney+ excerpt, 2:50) https://www.youtube.com/watch?v=dEUBn4VJNr8 - 120
+   comments. Hamilton bows when Washington names him; "the prancing and fanning at 1:29" (Hamilton mocking Jefferson,
+   with TVLine's "Hamilton mocking Jefferson's dance moves"); Jefferson's dancing; Washington reacting in the back,
+   rooting for Hamilton; one of the company shouts on the whiskey line; Jefferson checks on Madison when Hamilton turns on
+   him; Jefferson's laugh on the gloat. (The playlist has no Cabinet Battle #1 clip.) Four other CB1 uploads had comments
+   off.
+5. **"Say No To This - Hamilton (Original Cast 2016 - Live) [HD]"** https://www.youtube.com/watch?v=4ScINbiDDos - about
+   200 comments, captions for timing. "Burr's just in the back the whole time watching", his smirk; James takes the
+   money at 3:56 (the last line) "and his walk away"; James "put the chair" at 3:23 (unplaced); the company's shouted
+   refusals.
+6. **"Take a Break - Hamilton (Original Cast 2016 - Live) [HD]"** https://www.youtube.com/watch?v=2G8q2To4IGU - 127
+   comments. Nothing on blocking except "he has to walk the whole underground stage just to push the piano off? 3:00"
+   (the piano goes off near 2-03 178-180 - who pushes it is unclear; NOT changed, see open items).
+7. Official audio, auto-captions for the lyric-to-time map only: Room https://www.youtube.com/watch?v=qrkwgEUXyTU,
+   What'd I Miss https://www.youtube.com/watch?v=gEXV60TZ144, Say No https://www.youtube.com/watch?v=NIJ2I7mxOE4,
+   Cabinet Battle #1 https://www.youtube.com/watch?v=TZ1drFwVT24.
+8. Titles and descriptions only (no usable text): Premier Arts "The Room Where it Happens" HAMILTON Dance Tutorial
+   (U0VTWmLsszo, 19:42), Jenne Vermes tap tutorial (qDfi4xZQDtY), "Hamilton Broadway Callback Audition Dance | The Room
+   Where It Happens" (RD2c5w2IH_4 - the show's audition combo is from Room), "#HamiltonLA Room Where It Happens"
+   (NVH8WXbkCqY), the coach's reaction (ozRpqHa6cwo), the official #Ham4Ham West Wing Cabinet Battle (A1mYfsNFtGI).
+
+**Written sources** read again or new: ironinkpen's Act II staging notes (re-read in full: new details used below),
+the Portland Press Herald review (Room: Fosse's "splayed fingers, jolting haunches and dance-hall struts", hip-hop body
+rolls and chest pops), Broadway in Cincinnati's Blankenbuehler interview (Room "probably my favorite thing I've ever
+choreographed"; the revolve counter-clockwise for time passing), and the reddit thread and TheaterMania interview in
+Jack's notes. Searches for written breakdowns of WIM, Cabinet Battle and the Room table/circle found nothing new.
+
+### Staging changes
+**2-01 What'd I Miss**
+- The welcome handshake (ironinkpen; clip 3:34-3:38): Jefferson reaches toward Washington (211.6-213.0), Hamilton jumps
+  in from DL and takes his hand (212.2-213.8), Jefferson laughs and steps back (217.8-222). Washington now stands a little
+  further DS (2.75, 4.25) so Hamilton's way to Jefferson does not go through him.
+
+**2-02 Cabinet Battle #1** - no staging change (moves only).
+
+**2-03 Take a Break** - no change.
+
+**2-04 Say No to This**
+- Burr no longer leaves at 22: he stays upstage SR (-3.5, -0.7) watching the whole number (clip comments), turned to
+  Reynolds' letter DR at 130 and back to the pair at 153.6, and goes off DSR on the button (231).
+- James Reynolds (ens4) comes back DSC beside Hamilton for the money on the last line (ironinkpen; clip 3:56): on at
+  232.3, off DSR from 233.6.
+- Hamilton exits DSL (was DSR) in the fade, the side Room now opens on, clear of James and Burr.
+
+**2-05 The Room Where It Happens**
+- Hamilton and Burr open on STAGE LEFT (ironinkpen "talking on the right"; the same account calls the 872 DR
+  confrontation "front left", so it counts from the house): on from DSL, talking on the SL half (H_TALK (1.9, 2.7),
+  B_TALK (1.1, 3.5) by 40).
+- **The three entries** (reddit; clip comments; ironinkpen), each the same walk into the room:
+  - 1: Madison comes in from the upstage door with his chair and motions Hamilton to come at 40.6; Hamilton walks in
+    round the SL side 42.3-46.6; Jefferson in from the door by 45.0.
+  - 2 (Jefferson's account): Hamilton and Madison step out of the room at 97.3 (Hamilton to H_TALK, Madison DSR),
+    Jefferson tells it DSL (867.1), crosses DS to Madison DSR on his approach (108.5-112.3), and the three walk in
+    together 114.6-118.4 (Jefferson's kick at bar 42 beat 3).
+  - 3 (Madison's account): Madison DSR (867.5, 142-146); Jefferson's approach on the same path (152.2-155.4); Hamilton
+    leaves the table at 156.6 and Burr comes to B_TALK - their talk replayed (160.5-175.5); Madison motions Hamilton to
+    come (175.0) and the three walk in 175.5-179.3 into chorus 3; Burr's refusal sends him DS (178).
+- Burr walks ROUND the lit circle, about 2 m out, never inside it, 196.4-209.6 (reddit; ironinkpen: he wanders round the
+  table asking Hamilton what they said, Hamilton cannot hear him). Straight legs (Burr walks in straight lines).
+- Hamilton goes DR on his banks line (209.6-213.6), not on the click-boom (198.9); Burr follows (214.2).
+- Two of the company (ens9, ens10) come up through G-UC and shout the city names from the upstage gallery (149.4-157).
+- The three face the house for the company vocal (50-72) and step forward on their lines (moves).
+- Props: Jefferson's and Madison's chairs come in with the first entry (39.5-45.0 and 36.0-46.6) and stay at the table
+  through the replays; the company's turns re-timed to the replays (109, 160.5, 176) and to Hamilton DR (211).
+
+### Moves placed (`dance.py`, SEGMENT 5; actors, bar/time, move, counts)
+- 2-01: ens1-8 `kneel` bar 24 b3 (63.5) until 76 (scrubbing); `rise` bar 29 b3 (76.2) 2; `step-touch` bar 38 (97.8) 16,
+  bar 72 (188.5) 12, bar 84 (221.2) 16 (the hooks and the final build: "the ensemble ate", no step named). Jefferson
+  `bounce` bar 28 (72.4) to 97.8, bar 42 (108.9) to 188.4, bar 76 (199.2) to 221.2; `two-step` bar 38 16, bar 72 12,
+  bar 84 16.
+- 2-02: ens1-8 `reach-up` bar 3 b3 (7.8) 2 (the roar), bar 29 (77.4) 2 and bar 54 (145.5) 2 (the mic drops); `bounce`
+  bar 9 (22.8) to 77.3 and bar 32 (85.5) to 145.5 (heads nodding through each verse). Hamilton `bow` bar 5 b2 (12.6) 4;
+  `march` bar 34 b3 (92.3) 4 (NEAREST to the prance-and-fan). Jefferson `bounce` bar 58 (156.4) 8 (NEAREST to the head-bob on his laugh).
+- 2-04: the six on the galleries `point` bar 36 b4 (107.1) 4 and bar 70 b4 (207.9) 4 (NEAREST to pointing down at him).
+- 2-05: Madison `point` bar 15 (41.1) 2 and bar 63 b3 (174.9) 2 (NEAREST to a beckon); Hamilton `lunge` bar 22 (60.4) 4;
+  Jefferson and Madison `lunge` bar 24 (65.9) 4, Madison mirrored; ens1-8 `jazz-roll` bar 28 (76.9) 8 (chorus 1);
+  Jefferson `kick` bar 42 b3 (117.0) 1; ens1-8 `shimmy` 118.4 8 + `jazz-roll` 2 bars on 8 (chorus 2, kept) and the same at
+  176.8 (chorus 3, kept); **the bridge** ens1-8 `bojangles` bar 80 (220.5) 12, `shimmy` bar 83 (228.7) 8 (Hamilton
+  mocking Burr's motto), `bojangles` bar 85 (234.3) 12; **Burr with the company** `jazz-roll` bar 95 (263.0) 8, `shimmy`
+  bar 97 (268.5) 4; **the Dance (890)** Burr + ens1-8 `jazz-roll` bar 107 (296.4) 8, `shimmy` bar 109 8, `jazz-roll`
+  bar 111 8.
+
+### Moves the sources describe that the library lacks (the nearest is used for now)
+- **scrub** (2-01, the company as he descends): down on the right knee, both palms flat on the floor in front, torso low
+  and head down; the right hand circles on 1-2, the left on 3-4. 4 counts, loops. (Now `kneel`.)
+- **beckon** (2-05, Madison, twice): the right arm out toward him at chest height, palm up; the hand curls in on 1 and
+  again on 2, the head tipping toward the room. 2 counts. (Now `point`.)
+- **point-down** (2-04 gallery company on the refusals; also Burr's final pose at 892, ironinkpen: he "points at the
+  ground"): the right arm thrust down and forward at 45 degrees, index finger out, the left fist on the hip; on 1, held.
+  2 counts, once. (Now `point`, which points UP; Burr's 892 pose is not placed.)
+- **prance-fan** (2-02 Hamilton mocking Jefferson): on the balls of the feet, the knees lifting in turn on every beat,
+  the wrists loose, the right hand fanning the face with a flick each count. 4 counts, loops. (Now `march`.)
+- **head-bob** (2-02 Jefferson's laugh at the gloat; the reddit note in Jack's file belongs to Cabinet Battle #1, not #2 -
+  segment 6's reviewer found no laugh in #2's captions): the chin drives forward and down 10-15 cm on each downbeat and
+  springs back on the "and", the shoulders shaking with it. 1 count, loops; placed 2-02 bar 58 (156.4) for 8 counts.
+  (Now `bounce`.)
+- **moonwalk** (2-01 Jefferson on the hook): weight on the right ball, the left foot sliding back flat, then the other;
+  0.3 m back a count. 4 counts. (Now `two-step`.)
+- **strut** (Jefferson's walk, 2-01 and 2-05: "pimp walk", "crip walk"): an overlay on a walk - a dip on each step, the
+  shoulders rolling back, leaning back, one hand swinging low. 2 counts.
+- **chest-pump** (2-05 Burr in his build, 4:34; Press Herald "chest pops"): fists at the sternum, the chest popped
+  forward on every beat, shoulders back. 1 count, loops. (Now `shimmy`.)
+- **partner lift** (2-01 hook 2, clip 3:14): two dancers; not placeable until the library has two-body moves.
+
+### Suspect cues (the blocking follows the video text; the cues are the reconstruction's timing)
+- **872 "Burr/Ham DR" at 198.9**: Hamilton now goes DR on his banks line (213.6) and Burr circles the table 196.4-209.6,
+  so the DR special lights nobody for 15 s. Retime 872 to about 211-213.
+- **867.6 (154.9) and 867.7 (165.3)** "the three at the table" / "the trade tight on the table" (both inferred): the
+  table is empty of Jefferson and Madison from 152 and of Hamilton from 156.6 until the third entry (179.3); the replay is
+  downstage (Hamilton and Burr SL, Jefferson and Madison DSR). These looks belong after 179.3, or on the two pairs.
+- 2-04 830/832 (Hamilton alone DSC): James now stands beside him, 0.85 m SR, for the last line.
+
+### Open items (not changed: no position or timing in the sources)
+- The company "getting up from their chairs" and "kicked the chair" at the Dance (Room clip): there are no ensemble
+  chairs in Room (ETC's renders show none); "Ensemble X on chairs" (867) may mean chairs after all.
+- The Take a Break piano pushed off at about 178-180 (clip 3:00), by someone walking "the whole underground stage".
+- James "put the chair" in Say No (3:23, about 2-04 200).
+- Jefferson shakes one of the scrubbing company's hands on his way down and wipes his hand (ironinkpen) - not placed.
+- Burr's "finger gun" at Room 1:00 and his final point at the floor (892).
+- The ensemble lift in What'd I Miss hook 2.
+
+### Watch first
+1. 2-05 0-48: the SL opening and the first entry (Madison's beckon at 41).
+2. 2-05 97-118 and 152-180: the two replays and the walk-ins (does the same walk read three times?).
+3. 2-05 196-214: Burr round the circle, Hamilton DR on the banks line.
+4. 2-05 220-243 (the Bojangles bridge), 263-271 (Burr dancing with them), 296-313 (the Dance).
+5. 2-01 211-222: the handshake. 2-04: Burr upstage all number; 227-236 James and the money.

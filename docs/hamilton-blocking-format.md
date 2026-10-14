@@ -136,6 +136,8 @@ PROP WAYPOINT: `{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }` — t
   floor; the boxes stand in until it loads (or if it cannot). The merge requires an `assets/props/*.glb` path.
 - **`off`**: not seen from `at` on.
 - **Before its first waypoint a prop is not on stage**; after its last it stays as that one says.
+- **A hand prop** (RULING FW: a book, a quill) may be carried on and carried off again with no set-down. The waypoints
+  are `off`, then a carry, then `off` (`schuyler-book` in 1-05).
 - "Hamilton carries the desk on at 2-05 12.0 and sets it at centre at 18.0" is two waypoints:
   `{ "track": "2-05", "at": 12.0, "carriedBy": "hamilton" }`, `{ "track": "2-05", "at": 18.0, "x": 0, "z": 1.9, "facing": 0 }`.
 - A prop's state is a pure function of show time (and its carrier's pose), so a seek shows it right; `MIDTOWN.actors.check()`

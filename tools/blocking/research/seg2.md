@@ -603,3 +603,119 @@ off unless evidence puts it on. Where there is no evidence, I chose the simplest
   | 1-09 | 298 | 178 |
   | 1-10 | 1561 | 1304 |
   | 1-11 | 2761 | 2249 |
+
+
+## Review 3 (video evidence)
+
+Method. No video can be watched, so I read what the video pages carry: titles, descriptions, and the top comments
+(fetched from YouTube's own web client with a small script, `scratchpad/act/review3/seg2/tools/ytc.py`; the raw dumps
+are in `review3/seg2/web/`). The auto-caption tracks exist but are not readable this way (the caption endpoint returns
+empty, the transcript endpoint 400). To turn a comment's timestamp into the blocking's clock I lined each clip up
+against the album's synced line timings (lrclib.net, read for timing only, nothing copied): A Winter's Ball's clip runs
+on the album clock to within 1 s, Right Hand Man's within 1-2 s, Helpless's clip runs about 2 s ahead of the album
+(4 s by the end). The side-by-side video runs on Satisfied's clock. The copy of the generator from before this pass is
+`scratchpad/act/review3/seg2/gen_seg2.pre-r3.py` (and `seg2.pre-r3.json`).
+
+### Videos used
+| video | what I got | what it settled |
+|---|---|---|
+| Right Hand Man - Hamilton (Original Cast 2016 - Live) [HD], https://www.youtube.com/watch?v=FmnDhbCd3N4 (Jack's playlist) | title, description, 156 top comments; lyric comments with the libretto's role labels | the sisters front and centre at the top, then they run off (0:14, 0:16, "the first few seconds"); Mulligan's shouts in the battle (2:09, 2:13); Washington first seen from the back of the stage; the quill handed over (4:35); Washington draws his sword at the end; the role labels: the COMPANY sings the My Shot lines after Washington's offer, Hamilton sings the battle verse, Mulligan answers him |
+| A Winter's Ball (same channel), https://www.youtube.com/watch?v=fxEQZXv8uN4 | 160 comments | Washington leaves at 0:21; the men's "lineup" (Laurens reaching for Hamilton's hand); one lady crossing at 0:34 with "the little shimmy at the end", a girl who "runs away after seeing Hamilton"; Lafayette tries Angelica 0:50, Hamilton pushes him 0:52, Lafayette "pushes a soldier out of the way" to talk to Peggy 0:55; Laurens watching Angelica 1:02; Hamilton and Laurens flirt with the front row on the closing chant "until they're off stage" (1:04-1:07) |
+| Helpless (same channel), https://www.youtube.com/watch?v=Or-M9E0C27Q | 200 comments | Peggy with Laurens in the background of the ball 0:45-1:35; Hamilton and Washington bowing "in the corner" 0:47 (already so); Peggy's little dance "with a letter in her hand" 1:43-1:45; Hamilton's celebration dance after the blessing 2:28-2:31, Eliza copying it in the back (2:30), her father reacting, "got to hug the Schuyler sisters"; a red light on Peggy on Eliza's claim (2:35-2:37, a cue note); the wedding: the turntable fast (3:47), Lafayette and Peggy (3:48), Mulligan's petals (3:51) |
+| Satisfied - Renée Elise Goldsberry and the cast of Hamilton (the show's own 74 s preview), https://www.youtube.com/watch?v=Bd2psryPDuo | 200 comments | Laurens drunk at the toast; Peggy and Laurens standing close (0:30-0:37); Laurens "stayed in the back of Angelica doing the same toast ... a few more seconds after Peggy left"; Lafayette visible in the rewind (0:45, SR side) |
+| A Winter's Ball/Helpless vs. Satisfied (ClownOwO), https://www.youtube.com/watch?v=wD2LdRGyhwY | description (the clips lined up with edits) and 300 comments | the replay is the SAME choreography, backwards then forwards; Laurens, like Angelica, keeps his glass up and does not dance backwards; he takes the cup from Angelica (0:55); Peggy's dance is the same in both songs (3:50); Laurens and Peggy run off "like lovebirds" (3:45); Washington dances with Angelica in both; the soldiers turn Hamilton to face Eliza (3:30); Washington straightens Hamilton's coat (4:39); the faint men's refrain under Satisfied (1:13, 1:17, 1:20) lines the ball up with Satisfied's replay |
+| "Satisfied" from HAMILTON, https://www.youtube.com/watch?v=YCxxWli-gkA ; "You'll Be Back" from HAMILTON, https://www.youtube.com/watch?v=PyD6jeDBoDo | the official audio tracks: descriptions and 200 comments each | nothing on staging |
+| All King George Appearance in Hamilton [w/ Transition of Entrances & Exits], https://www.youtube.com/watch?v=ynBgEBhygGw | description and 200 comments (a bootleg; description only) | nothing on the You'll Be Back ensemble |
+| Hamilton - 8. You'll be Back (Original Cast 2016 - Live), https://www.youtube.com/watch?v=mz60VBXikSA ; Satisfied (LIVE), https://www.youtube.com/watch?v=37tLRSly8DE ; 'Satisfied' (Full HD), https://www.youtube.com/watch?v=F26jrJbr388 | 0-2 comments | nothing |
+| Jack's playlist, https://youtube.com/playlist?list=PLSOfHhku9XxiQuGTppcAc4NPRkja13MSK | the 37 titles | You'll Be Back and Satisfied are not in it |
+
+Also re-read: the hamilton-lyrics staging write-up (Hamilton and the guys exit as the turntable starts; the men lift the
+women in Helpless and lift them backwards in Satisfied). Web searches for You'll Be Back's ensemble (sway, the
+sing-along) found nothing.
+
+### 1-07 You'll Be Back (0 videos settled anything)
+- Staging: unchanged.
+- Move: the ring's eight `sway`, in sync, half time, bar 94 (184.97, just after they arrive) to Q198 (196.48). No
+  source names a move: the simplest one for a sing-along, as the brief asks.
+
+### 1-08 Right Hand Man (1 clip, the libretto)
+- The three sisters walk on in the dark after the King's button and stand front and centre (Angelica at (0, 3.25),
+  Eliza SR of her, Peggy SL), looking out; they run off SL at 18.0-21.6, before the kill. They stand in the DS
+  specials ch1/ch5 and the warm wash already.
+- Hamilton stays by Washington through the battle verse (his own lines, to 141) and goes off DSR at 141.6-146.5 (was
+  132); Mulligan comes on DSR beside him at 129.5 for his shouts and goes with him.
+- The company line comes on at Q286 (261.4-266.6) instead of Q288, and stands there to the end (same places, same
+  exits). The libretto gives the company the My Shot lines and the later refrain, so they are on for it.
+- Moves: `my-shot` for the eight at bar 88 beat 2 (269.37, the line's pickup is at 269.65), 8 counts to 275.45 - the
+  old placement (264.06 + 2 bars = 271.65) was 2 s late and gave it to Hamilton, whose line it is not. Washington
+  `point` (4 counts) at bar 102 beat 2 (the last line), for the sword.
+
+### 1-09 A Winter's Ball (1 clip, on the album clock)
+- Washington leaves at 20.3 (was 40) and takes the desk (props.py: strike 20.3 -> 27.5, W-USR).
+- The refrain: the four men in a line abreast at z 2.2 (was an arc); Mulligan enters from SL at 31.
+- ens1 (the free woman) walks on SR at 30.6, across behind the men at z 0.3, stops at (0.4, 0.3), shimmies, and
+  hurries off SL by 42.
+- The sisters are in by 49.3 (was 52.3; same spot); Lafayette at Angelica 51.0; the push 52.7 and the hand-kiss 52.4
+  (both 6 s earlier); the circle 53.7-56.1; back to Burr 57.7.
+- ens3 steps out of his couple to Peggy at 53.4; Lafayette shoulders him back at 55.2 and stays with Peggy until
+  Q293, then goes off DSR.
+- Laurens stays (was off at 61): watching Angelica, then with Hamilton at the DL lip for the closing chant (63.8-65.5),
+  off DSL. Hamilton at the lip 64.0-65.8, then to his photo-300.3 place for Helpless.
+- Moves: the couples `gavotte` from the ball's downbeat (50.9) to Q293 (28 counts, women mirrored); ens3 his share
+  around the visit; ens1 `shimmy` 3 counts at 36.36.
+
+### 1-10 Helpless (1 clip, the side-by-side)
+- Laurens cuts in on Peggy at 44 (was 62); Mulligan goes off SL at 48.5.
+- Peggy does not exit with Laurens at 99.5: she runs him to the DL portal (5.2, 4.0) and is back at (3.7, 3.75) by
+  101.6 for her little dance; the 102/106.5 exit and re-entry are gone.
+- After the blessing Hamilton goes up to the sisters at (1.3, -0.55) at 144.0, dances, and is back with Schuyler by
+  151.5.
+- Moves: the couples `gavotte` at bar 10 (28.94, the ball memory) for 17 counts; `grind` at bar 14 beat 2 (41.85 - the
+  album's word is at 42.2) for 8 counts; `gavotte` again at bar 16 beat 2 for 17 counts to chorus 2's turn. The old
+  grind was at 28.24 + 20 s = 47.2: Blankenbuehler's "about 20 seconds later" is a round number, and the lyric names
+  the bar. Peggy `two-step` 4 counts at bar 34 beat 2; Hamilton `two-step` 4 counts at bar 48 beat 3; Eliza
+  `two-step` 4 counts at bar 49.
+- Not done: the wedding's fast turntable ("Eliza was flying", 3:47) and the processional about 5 s earlier than the
+  generator has it (Lafayette and Peggy at about 226, Mulligan at about 229 by the clip). The clip's drift (2-4 s)
+  is close to that difference, so I left the processional where it is. Jack should look.
+
+### 1-11 Satisfied (2 videos)
+- Laurens's toast place is beside Peggy, just behind Angelica (-1.2, 2.5) (was (0.9, 3.0) on her other side). He
+  does not rewind: he holds his toast, steps to Angelica at 54.8 to take her cup, and goes off SR at 57.3-63.5 (was
+  rewinding downstage and off DSL at 60). Peggy goes off at 56 (was 60), before him.
+- As in Helpless: after the men's line Laurens goes round downstage of Angelica to Peggy (who enters DSL at 221), they
+  run to the DL portal and he goes off; Peggy comes back to (3.4, 3.85) by 226.6, dances, and goes on to the letters
+  at 236 (her 230 exit is gone).
+- Moves: `rewind` for everyone on stage except Angelica and Laurens (46.74-57.62). The replay mirrors the ball and
+  Helpless exactly (the side-by-side), so the couples' moves sit where the mirrored moments fall: `gavotte` 91.9-107.9
+  (the ball's), `gavotte` 155.84-167.47 (Helpless's) and `grind` 167.47 to the freeze at Q374 (172.35) - Helpless's
+  grind line falls at Satisfied 168.3 (the matching line). The old replay gavotte at 71.64 (ens1-ens8, which named two
+  people not in the couples and missed ens9 and ens10) is replaced. Peggy `two-step` 8 counts at bar 118 beat 2.
+
+### Moves that do not exist (the nearest is used for now)
+- **shoulder-pop** (Peggy's dance, Helpless and Satisfied; used `two-step`): the shoulders pop up in turn on each beat,
+  right on 1, left on 2, right on 3, left on 4; elbows bent at 90 degrees, hands loose at the waist (one holds a letter);
+  a small knee bounce under it; the head bobs. 4 counts, loops.
+- **tootsie-roll** (Hamilton's celebration, Helpless; used `two-step`): the forearms roll over each other in front of
+  the chest, one roll per beat; a step to the right on 1, together on 2, to the left on 3, together on 4; the hips swing
+  with the step; on 4 the elbows pull back. 4 counts, loops.
+- **sword-draw** (Washington, the end of Right Hand Man; used `point`): the right hand crosses to the left hip on 1,
+  draws up and out across the body on 2, the arm ends overhead and forward at 45 degrees on 3, held on 4. Once, then
+  held. Wants a sword prop to carry.
+- **lift** (the ensemble men lift the women in Helpless, and lift them backwards in the Satisfied rewind; the
+  hamilton-lyrics write-up): a two-person move. His hands at her waist, she rises on 1-2 to his shoulder height, held
+  on 3, down on 4. Not placed.
+- **floor-slide** (Satisfied's rewind: one ensemble man slides in a circle on the floor round Angelica, "like the
+  backwards filter on a snapchat video"): a travelling slide on one knee, the arms swept back. Not placed.
+
+### Cue notes (for the cue team)
+- 1-10, about 153.0 (Eliza claims him): the clip shows a red light thrown on Peggy's dress (the Maria foreshadowing).
+- 1-08 top: the sisters now stand DC for the first 18 s; they are already in the DS specials ch1/ch5.
+
+### Checks
+- `python -I tools/blocking-merge.py <dir with seg2.json, props.json, dance.json> --check`: 0 errors, 0 warnings
+  (1,112 waypoints).
+- `props.py --check segments/seg2.json`: every segment-2 carry passes (the desk strike at 1-09 20.3 included).
+- `review/seg2/tools/sim_vis.py`: no leg over 2.6 m/s; the new close passes under 0.45 m last 0.5-0.6 s (the
+  hand-kiss circle, the push, the men crossing to Burr).
+- Plots: `scratchpad/act/review3/seg2/` (a sheet a track, `wb4/` every 4 s for the ball, `png/` the key moments).

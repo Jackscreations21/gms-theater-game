@@ -1710,6 +1710,13 @@ against this list before opening a PR; **add new traps as you hit them.**
   time). Take several runs and drop the first before comparing a before and an after.
 - **Clicking a viewpoint button and capturing in the same script captured the old view.** Two shots taken a click apart
   in one call (`v-back`, then `v-front`) came out byte-identical. Click, let a call return, then capture.
+- **A table copied into three tools drifts.** The prop kinds' sizes lived in the page, the merge, the plotter and a
+  partial copy inside `props.py --check`. The partial one lacked `crate`, so the check crashed the first time a reviewer
+  used a crate. Copy the WHOLE table, and name it the same in each place, with a comment saying where the others are.
+- **The Browser pane is shared with the other agents.** In review 3, another agent navigated the fronted tab to its own
+  page in the middle of my checks. My next call then ran against the wrong page (`window.MIDTOWN` undefined).
+  - Pass `tabId` on every browser call once there is more than one agent.
+  - Re-read `location.href` before trusting a result.
 - **A corrective step judged against the ORIGINAL request undoes itself.** The sound tap measured a skip's landing
   error e and seeked by −e, which was right. But the next check still computed the error from the first request's
   want / req, saw e again, and moved it back. So a back skip resumed about e from where it was asked: 11 s, 16 s.

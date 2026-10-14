@@ -149,8 +149,13 @@ h.at('2-12', 106.4, 0.0, 3.4, f=0)                                         # his
 h.at('2-12', 119.3, -1.3, 3.5, f=60, dwell=None)                           # alone DSR (the accusers gone) (SPOT: in X4 44, 1027)
 h.face('2-12', 121.82, 70)                                                 # to Burr
 h.face('2-12', 131.63, 80)
-h.go('2-12', 141.4, C, f=0)                                                # into the eye
+h.go('2-12', 141.4, C, f=180)                                              # into the eye (REVIEW 3: his back to the house)
 # Hurricane - the still centre
+# REVIEW 3: "Hamilton's slow turn to the audience" at the top (Disney+ clip 9rVURq5isnY, top comment): he turns from
+# upstage to the house over the first bars, by the still point
+h.face('2-13', 3.0, 140)
+h.face('2-13', 6.5, 90)
+h.face('2-13', 9.5, 40)
 h.face('2-13', 11.88, 0)
 h.face('2-13', 23.76, -30)
 h.at('2-13', 35.5, 0.0, 1.7, f=0)                                          # writing - a step DS into the cool key
@@ -191,6 +196,8 @@ h.exit('2-16', 138.4, 'D-UC', speed=1.6, via=[(1.25, -3.4), (-0.8, -0.6), (-0.85
 # ================================================================ BURR
 b = actor('burr').start('W-DSR', 'Burr')
 b.enter('W-DSR', '2-11', 2.4, (-3.3, 3.8), 25, speed=1.8)                  # DSR, narrating (SPOT: in X4 42 sooner)
+b.face('2-11', 10.6, 125)                                                  # REVIEW 3: turns and sees the King jamming UL (clip 0:12)
+b.face('2-11', 13.2, 25)                                                   # REVIEW 3: and back to the house
 b.at('2-11', 15.6, -2.8, 3.5, f=20)
 b.at('2-11', 26.4, -2.9, 3.85, f=160)                                      # looks up at Hamilton on the gallery (SPOT: clear of X4 44)
 b.at('2-11', 38.6, -2.5, 3.7, f=60)                                        # gloats with Jefferson and Madison (SPOT: in X4 42)
@@ -206,9 +213,13 @@ b.path('2-12', 111.8, [(-0.6, 4.6), (1.4, 3.8)], '2-12', 116.3, f=-60)     # rou
 b.at('2-12', 132.6, 1.0, 3.6, f=-80)                                       # the warning, closer (SPOT: stays in Viper 2)
 b.exit('2-12', 136.9, 'W-DSL', speed=1.6)
 # Hurricane (REVIEW): Burr has the one 'wait for it' line (newtfire libretto) - UR, on Binkley's 'Burr's motif' (116.28)
-b.enter('W-USR', '2-13', 116.0, (-3.6, -2.0), 30, speed=1.4)
-b.face('2-13', 125.22, 40)
-b.path('2-13', 138.0, [(-3.4, 1.0), (-1.0, 3.3)], '2-14', 0.4, f=10)      # into the narrators' three DC for the Pamphlet
+# REVIEW 3 (Disney+ clip 9rVURq5isnY comments): "Burr just sitting in the background", then at his line about surviving the storm
+# (2:02-2:03) he "looms up in the foreground", holding his book like a pistol, as the company sing his motif. UR on the
+# deck behind the ring, still; down to the DSR foreground for the motif (116.28); dance.py: point (the book aimed)
+b.enter('W-USR', '2-13', 16.0, (-2.4, -2.9), 20, speed=1.4)
+b.path('2-13', 111.0, [(-2.8, 3.9)], '2-13', 116.28, f=facing_to((-2.8, 3.9), (0.0, 1.7)))
+b.face('2-13', 125.22, 60)
+b.path('2-13', 138.0, [(-1.0, 3.3)], '2-14', 0.4, f=10)                   # into the narrators' three DC for the Pamphlet
 # Reynolds Pamphlet (REVIEW: the three are DC from Build MC - ETC renders 1039.01/1040; hamilton-lyrics staging post)
 b.face('2-14', 7.2, 10)
 b.face('2-14', 21.5, 40)                                                   # points at Philip's page
@@ -229,9 +240,12 @@ j.enter('W-DSR', '2-11', 39.0, (-0.8, 2.2), 20, speed=1.7)
 j.at('2-11', 48.0, -0.4, 4.0, f=0)
 j.at('2-12', 6.5, 0.2, 1.4, f=60)                                          # closes on him at the desk (SR of it)
 j.at('2-12', 21.08, 0.7, 1.9, f=45)                                        # the accusation
+j.last()['dwell'] = round(G('2-12', 29.9) - j.last()['g'], 2)              # REVIEW 3: then WALKS BACKWARDS down to DSC, facing
+                                                                           # him (dance.py: rewind) - Disney+ clip comments
 j.at('2-12', 33.72, -0.3, 4.0, f=20)                                       # pushes in DSC
 j.at('2-12', 44.5, -0.9, 1.7, f=60)                                        # SPOT: out of Hamilton's key
 j.at('2-12', 74.0, 1.3, 2.2, f=30)                                         # reads the letter over his shoulder
+j.last()['dwell'] = round(G('2-12', 80.6) - j.last()['g'], 2)              # REVIEW 3: recoils walking backwards (clip 1:28)
 j.at('2-12', 83.4, -0.6, 1.8, f=45)                                        # recoils
 j.exit('2-12', 116.3, 'W-MSR', speed=1.4)
 # Pamphlet (REVIEW: the three are DC at Build MC - ETC renders 1039.01/1040; moves from the hamilton-lyrics post)
@@ -285,8 +299,9 @@ k.add(G('2-11', 0.0), 0.0, 3.41, f=0, label='King George')               # REVIE
 k.at('2-11', 4.0, 4.2, -1.6, f=-30)                                       # walks in the dark to UL: a stool is brought; he sits and watches
 k.face('2-11', 16.0, -40)
 k.face('2-11', 25.37, -126)                                                # up at Hamilton on the gallery
-k.face('2-11', 37.63, -40)
-k.exit('2-11', 47.44, 'W-MSL', speed=1.4)
+# REVIEW 3: he runs off just after the papers drop (Disney+ clip jpFsc2bDXUk, comments at 0:36-0:37 "running from his
+# book drop"); was a walk off at 47.44
+k.exit('2-11', 34.6, 'W-MSL', speed=2.6)
 # Pamphlet (REVIEW): dancing on the balcony, then down the stairs (hamilton-lyrics post) to Binkley's real 'King DR'
 k.enter('G-UC', '2-14', 34.8, (-4.5, -0.3), 0, y='gallery', via=[(0.6, -3.35), (-4.5, -3.35)])
 k.last()['dwell'] = 0.2
@@ -299,8 +314,14 @@ k.exit('2-14', 54.4, 'W-DSR', speed=1.5)
 
 # ================================================================ ELIZA
 e = actor('eliza').start('G-UC', 'Eliza')
+# REVIEW 3: We Know - Eliza watches from the upper level ("his son, Eliza and Maria all hanging around up in the top part
+# of the stage"; "Washington, Eliza and Philip watching too" - comments on the Disney+ clip 0VVuEPbjLoU). The SR gallery.
+e.enter('G-UC', '2-12', 6.0, (-4.5, -2.2), 60, y='gallery', via=[(0.6, -3.35), (-4.5, -3.35)])
+e.exit('2-12', 130.5, 'G-UC', via=[(0.6, -3.35), (-4.5, -3.35)])
 e.enter('G-UC', '2-13', 125.2, (5.35, -0.75), -90, y='gallery', via=[(0.6, -3.35), (4.75, -3.3), (4.9, -2.5), (4.9, -0.75)])  # SPOT: a voice, SL gallery special (Viper 20)
-e.exit('2-13', 131.0, 'G-UC', via=[(0.6, -3.35), (4.75, -3.3), (4.9, -2.5), (4.9, -0.75)])
+# REVIEW 3: the voices stay on the second level to the end, staring down at him and his raised pen (Disney+ clip
+# 9rVURq5isnY, the 2:28 shot: "Eliza, Philip, Washington, and Angelica all up on the second level"); off in the FTB
+e.exit('2-13', 142.4, 'G-UC', speed=1.6, via=[(0.6, -3.35), (4.75, -3.3), (4.9, -2.5), (4.9, -0.75)])
 # (REVIEW: removed from the Pamphlet - she has no line in it and the company's last line leaves her out; no account puts her on)
 # Burn
 e.enter('W-DSR', '2-15', 6.0, BENCH, 0, speed=1.2)                         # on the bench, in the window light
@@ -320,7 +341,7 @@ e.exit('2-15', 217.2, 'W-DSR', speed=1.2)
 # ================================================================ ANGELICA
 an = actor('angelica').start('G-UC', 'Angelica')
 an.enter('G-UC', '2-13', 123.4, (-4.5, -1.3), 90, y='gallery', via=[(0.6, -3.35), (-4.5, -3.35)])  # SPOT: SR strip, in Viper 16's beam (it stops on the rail at y 3.66)
-an.exit('2-13', 132.0, 'G-UC', via=[(0.6, -3.35), (-4.5, -3.35)])
+an.exit('2-13', 143.5, 'G-UC', speed=1.6, via=[(0.6, -3.35), (-4.5, -3.35)])   # REVIEW 3: stays to the end (the 2:28 shot)
 # Pamphlet (REVIEW: hamilton-lyrics post - through the desk-arch at centre with her bags; her verse is AT him, closer each line)
 an.enter('D-UC', '2-14', 55.49, (0.3, 3.0), 0, speed=1.4, via=[(1.25, -3.4), (0.0, -2.7), (0.0, -1.6), (0.55, 0.3), (0.0, 1.9)])   # REVIEW 2: through the gap, round his chair
 an.face('2-14', 57.0, 0)
@@ -331,8 +352,11 @@ an.exit('2-14', 86.0, 'W-MSL', speed=1.5, via=[(5.0, -0.6), (2.6, 2.0), (2.0, 3.
 
 # ================================================================ WASHINGTON
 wa = actor('washington').start('G-UC', 'Washington')
-wa.enter('D-UC', '2-13', 124.8, (-1.9, -2.7), 20, via=[(1.25, -3.4)])      # SPOT: on the deck UC-R in Viper 94 (Binkley's GW focus)
-wa.exit('2-13', 130.7, 'D-UC', via=[(1.25, -3.4)])
+# REVIEW 3: on the SECOND LEVEL with Eliza, Philip and Angelica, to the end (Disney+ clip 9rVURq5isnY, the 2:28 shot);
+# the spotlight pass had him on the deck at (-1.9, -2.7) in Viper 94, whose raw focus (-2.6, -5.4) is upstage of the
+# gallery - its beam crosses the USG near here at head height (not verified)
+wa.enter('G-UC', '2-13', 124.8, (-2.4, -3.35), 10, y='gallery')
+wa.exit('2-13', 141.8, 'G-UC', speed=1.6)
 # Pamphlet (REVIEW: on the deck, not the gallery - he sweeps round to the SL side of the desk; Philip exits SL in front of him)
 wa.enter('W-MSL', '2-14', 34.0, (0.9, 1.9), -90, speed=1.4, via=[(5.0, -0.6), (3.4, 2.2)])
 wa.face('2-14', 41.0, -60)
@@ -340,6 +364,11 @@ wa.exit('2-14', 50.5, 'W-MSL', speed=1.4, via=[(5.0, -0.6), (3.4, 2.2)])
 
 # ================================================================ MARIA REYNOLDS (peggy)
 p = actor('peggy').start('G-UC', 'Maria Reynolds')
+# REVIEW 3: We Know - Maria watches it unfold "on the side", "in the corner", "in the shadows" (many comments on the
+# Disney+ clip 0VVuEPbjLoU, the top one 9.2K likes; she is seen at 1:48-1:55): the SL gallery's upstage corner, above the
+# cabinet that holds her letters
+p.enter('G-UC', '2-12', 8.0, (4.9, -2.5), -45, y='gallery', via=[(0.6, -3.35), (4.75, -3.3)])
+p.exit('2-12', 130.0, 'G-UC', via=[(0.6, -3.35), (4.75, -3.3)])
 # REVIEW: in the montage she appears on the upper walkway (a fan account: Maria 'on the upper walkway at key moments')
 p.enter('G-UC', '2-13', 84.38, (-1.0, -3.35), 0, y='gallery')
 p.at('2-13', 92.5, -3.4, -3.35, f=20, y='gallery')                         # drifts along it, red, watching him
@@ -356,7 +385,13 @@ p.at('2-14', 33.0, 0.0, -0.4, f=0)                                         # beh
 p.exit('2-14', 38.0, 'D-UC', via=[(1.25, -3.4), (0.0, -2.4)])             # turns on her heel and goes
 
 # ================================================================ PHILIP (laurens)
-ph = actor('laurens').start('W-DSR', 'Philip')
+ph = actor('laurens').start('G-UC', 'Philip')
+# REVIEW 3: We Know - "Philip just chilling in the rafters listening to the three roasting his dad", "sitting above the
+# stage looking at Hamilton" (0:10; comments on the Disney+ clip 0VVuEPbjLoU): the upstage gallery, from the top
+ph.enter('G-UC', '2-12', 9.0, (-1.2, -3.35), 10, y='gallery')
+ph.exit('2-12', 129.0, 'G-UC')
+ph.enter('G-UC', '2-13', 125.5, (1.6, -3.35), -10, y='gallery')           # REVIEW 3: Hurricane, the 2:28 shot - on the second level
+ph.exit('2-13', 141.8, 'G-UC', speed=1.6)
 # Pamphlet (REVIEW: hamilton-lyrics post): in behind Jefferson, looking up at his father on the desk; left in the middle
 # of the three, made to read; exits SL crossing in front of Washington
 ph.enter('W-DSR', '2-14', 19.5, (-0.3, 2.65), 160, speed=1.5, via=[(-6.0, 4.7), (-2.2, 2.3)])
@@ -367,7 +402,8 @@ ph.enter('D-UC', '2-16', 1.72, C, 0, speed=1.5)                            # the
 ph.at('2-16', 12.0, 0.0, 2.8, f=0)
 ph.at('2-16', 25.85, 0.0, 3.8, f=0)                                        # the hook
 ph.at('2-16', 30.0, -1.6, 2.4, f=-60)                                      # the girls SR
-ph.at('2-16', 40.1, -0.6, 3.9, f=0)                                        # off to the play
+# REVIEW 3: he stays with the two women until about 47.6 (the girls' "OK" and twirl at the second hook, clip 0:44-0:50);
+# review 2 had him leave them at 40.1 for (-0.6, 3.9)
 ph.at('2-16', 50.01, 1.0, 4.2, f=20)
 ph.at('2-16', 55.5, 3.4, 3.6, f=-30)
 ph.at('2-16', 59.39, 2.9, 2.8, f=95)                                       # confronts Eacker in his box above (SPOT: in Vipers 93 / 13)
@@ -410,9 +446,13 @@ for i in range(1, 11):
 R = 3.2
 R0 = 1.9
 RING8 = range(1, 9)
-base = {i: -67.5 + 45 * (i - 1) for i in RING8}                         # so the mother and her two bearers end the montage SR
-hw = {1: 'W-USR', 2: 'D-UC', 3: 'D-UC', 4: 'W-USL', 5: 'W-MSL', 6: 'W-DSL', 7: 'W-DSR', 8: 'W-MSR'}   # each from the wing nearest
-stag = {1: 5.4, 2: 6.6, 3: 5.4, 4: 6.6, 5: 6.6, 6: 5.4, 7: 5.4, 8: 6.6}
+# REVIEW 3: the ring revolves COUNTER-CLOCKWISE seen from above (upstage -> SR -> downstage -> SL), as a hurricane does
+# north of the equator (a comment on the Disney+ clip 9rVURq5isnY: "the rotating floor is spinning counter-clockwise");
+# review 2 turned it clockwise. Each revolve below is negated and the start angles moved on +90 deg, so that every member
+# ENDS the montage where review 2 had them (the mother and her bearers SR); the wings follow their new start places.
+base = {i: 22.5 + 45 * (i - 1) for i in RING8}                          # so the mother and her two bearers end the montage SR
+hw = {1: 'D-UC', 2: 'W-USL', 3: 'W-MSL', 4: 'W-DSL', 5: 'W-DSR', 6: 'W-MSR', 7: 'W-USR', 8: 'D-UC'}   # each from the wing nearest
+stag = {1: 5.4, 2: 6.6, 3: 6.6, 4: 5.4, 5: 5.4, 6: 6.6, 7: 5.4, 8: 6.6}
 rot = {}
 def revolve(a, th, deg, t0, t1, step=30, r0=R, r1=R):
     n = max(1, round(abs(deg) / step))
@@ -428,9 +468,9 @@ for i in RING8:
     a = ens[i]; th = base[i]
     a.enter(hw[i], '2-13', stag[i], ring(R0, th), inward(th), speed=1.5)     # gathered round him
     a.face('2-13', 11.88, inward(th))                                      # frozen in shapes at the still point
-    th = revolve(a, th, 90, 23.76, 34.33, r0=R0, r1=R)                     # the storm memory: flung out to the outer ring
-    th = revolve(a, th, 45, 51.16, 64.49)                                  # the town helps
-    th = revolve(a, th, 270, 70.47, 97.38)                                 # the montage
+    th = revolve(a, th, -90, 23.76, 34.33, r0=R0, r1=R)                    # the storm memory: flung out to the outer ring
+    th = revolve(a, th, -45, 51.16, 64.49)                                 # the town helps
+    th = revolve(a, th, -270, 70.47, 97.38)                                # the montage (REVIEW 3: counter-clockwise)
     rot[i] = th
 
 # the mother (ens6) - lifted and carried away SR by ens7 and ens8
@@ -447,9 +487,13 @@ for a, s in ((m6, 0), (m7, 0.65), (m8, -0.65)):
     a.add(G('2-13', 113.4 + abs(s)), -7.3, 4.6, off=True)
 
 # cockroaches: ens2 and ens4 crawl backwards across the downstage edge, slowly (placement invented)
+# REVIEW 3: ens2 and ens4 hoisted chairs in the storm (props.py storm-chair-1/2); after the still point they take them
+# off (ens2 W-USL, ens4 W-DSL, from the golden sky 101.3) and come back on empty-handed from the DSL wing for the crawl
+ens[2].exit('2-13', 101.3, 'W-USL', speed=1.5)
+ens[4].exit('2-13', 101.3, 'W-DSL', speed=1.5)
 for i, (p0, p1) in {2: ((2.4, 4.8), (-1.6, 4.8)), 4: ((3.6, 4.8), (-0.4, 4.8))}.items():
     a = ens[i]
-    a.at('2-13', 112.0 + (i - 2) * 0.5, p0[0], p0[1], f=-90)
+    a.enter('W-DSL', '2-13', 112.0 + (i - 2) * 0.5, p0, -90, speed=1.5)
     a.last()['dwell'] = round(G('2-13', 116.28) - a.last()['g'], 2)
     a.at('2-13', 129.0, p1[0], p1[1], f=-90)
     a.exit('2-13', {2: 131.2, 4: 131.8}[i], 'W-DSR', speed=1.6)
@@ -462,14 +506,17 @@ for i, (p0, p1) in {2: ((2.4, 4.8), (-1.6, 4.8)), 4: ((3.6, 4.8), (-0.4, 4.8))}.
 # storm), his chair with ens10, the extra chair with ens8; those two go again (props.py SEGMENT 7).
 ens[9].enter('D-UC', '2-13', 133.4, (0.6, 1.75), -90, speed=1.6, via=[(1.25, -3.4), (1.0, -1.0)])   # sets the desk down
 ens[9].at('2-13', 134.9, 0.95, 1.4, f=facing_to((0.95, 1.4), (0.0, 2.0)))
-ens[10].enter('D-UC', '2-13', 138.2, (0.65, 0.25), -90, speed=1.6, via=[(1.25, -3.4), (1.0, -1.0)])  # sets his chair behind him
-ens[10].exit('2-13', 139.0, 'D-UC', speed=1.6, via=[(1.25, -3.4), (1.0, -1.0)])
-ens[8].enter('W-MSL', '2-13', 134.4, (1.4, 2.95), -120, speed=1.6, via=[(5.0, -0.6), (2.6, 2.2)])   # sets the extra chair DS-SL of the desk (0.7, 2.6)
-ens[8].exit('2-13', 135.2, 'W-MSL', speed=1.6, via=[(5.0, -0.6), (2.6, 2.2)])
+# REVIEW 3: the two chairs are the ones ens1 and ens3 hoisted in the storm (props.py): ens1 sets his chair behind him
+# (from beside it, at (-0.65, 0.25)) and ens3 the extra chair DS-SL of the desk as she arrives at her place; ens10 and
+# ens8 no longer come on with them.
 desk4 = {1: (-0.95, 1.4), 3: (1.25, 2.3), 5: (-0.95, 2.4)}             # REVIEW 2: clear of the extra chair
 for k_, (i, pos) in enumerate(desk4.items()):
     ens[i].last()['dwell'] = round(G('2-13', 130.65 + 0.3 * k_) - ens[i].last()['g'], 2)
-    ens[i].go('2-13', 134.0 + 0.3 * k_, pos, f=facing_to(pos, (0.0, 2.0)))
+    if i == 1:
+        ens[i].go('2-13', 133.0, (-0.65, 0.25), f=90, dwell=0.6)          # REVIEW 3: sets his chair down behind him
+        ens[i].go('2-13', 134.6, pos, f=facing_to(pos, (0.0, 2.0)))
+    else:
+        ens[i].go('2-13', 134.0 + 0.3 * k_, pos, f=facing_to(pos, (0.0, 2.0)))
 
 # ---- 2-14 The Reynolds Pamphlet (REVIEW: restaged from the ETC renders of Binkley's real cues 1039.01, 1040, 1042,
 # 1044 - a horseshoe of the company upstage of him, open to the house, tight at Build MC and wider by the King - and
@@ -515,7 +562,7 @@ j4.enter('D-UC', '2-14', 22.0, (0.0, -0.7), 0, speed=1.7, via=[(1.25, -3.4), (0.
 j4.exit('2-14', 24.6, 'D-UC', speed=1.7, via=[(1.25, -3.4), (0.0, -2.6)])
 j4.add(G('2-14', 40.0), 1.25, -4.9, off=True, label='Ensemble 4')
 # the USG reader
-ens[10].enter('G-UC', '2-14', 6.0, (2.2, -3.3), 0, y='gallery')
+ens[10].enter('G-UC', '2-14', 9.0, (2.2, -3.3), 0, y='gallery')          # REVIEW 3: 9.0 (was 6.0), after the Hurricane voices leave the gallery
 ens[10].face('2-14', 41.0, -30)
 # chorus 2: the gloating ring, r 2.0 round him at C, revolving (it continues the circling: start at SA + 90)
 R3 = 2.0
@@ -548,19 +595,25 @@ ens[10].exit('2-14', 118.6, 'G-UC')
 # hamilton-lyrics: ensemble women swooning) - ens6 and ens7, from the top; the play at centre with its audience on
 # chairs SL facing SR (ironinkpen), who turn to watch the quarrel - ens1-4 each bring a chair on from SL, sit, and take
 # it off again in the clear (props.py SEGMENT 7); the play's two actors ens9 and ens10 (the count is invented: two).
-girls = {6: ((-2.6, 1.6), 40, 1.0, 'Dolly'), 7: ((-3.0, 2.7), 50, 2.6, 'Martha')}
+# REVIEW 3 (Disney+ clip A1ufXcZwBxI, comments "flirting with the character of The Bullet - literally flirting with
+# death" (1.9K), "right before he dies he encounters and talks to the bullet"; Looper / Odyssey: in this number the
+# Bullet tells Philip where to find Eacker, which is Martha's line): Martha is played by THE BULLET, ens1 (the cast file's
+# label), not ens7. The two stay with him until the second hook (50.01) - "her twirl at 0:50" (dance.py: spin-full) -
+# and go as he heads for the theatre (review 2 had them off at 40.6 / 42.4). ens7 takes ens1's theatre chair.
+girls = {6: ((-2.6, 1.6), 40, 1.0, 'Dolly'), 1: ((-3.0, 2.7), 50, 2.6, 'The Bullet')}
 for i, (pos, f, t, lab) in girls.items():
     ens[i].enter('W-USR', '2-16', t, pos, f, speed=1.5, label=lab,        # their libretto names, allowed by the cast file since review 2
-                 via=[(-5.0, -2.9), (-3.6, -1.2)] if i == 7 else None)
+                 via=[(-5.0, -2.9), (-3.6, -1.2)] if i == 1 else None)
     ens[i].face('2-16', 25.85, 0)                                          # the hook
     ens[i].face('2-16', 27.24, f - 15)
     ens[i].face('2-16', 30.0, 60)                                          # Philip comes to them
-ens[7].exit('2-16', 40.6, 'W-DSR', speed=1.4)
-ens[6].exit('2-16', 42.4, 'W-DSR', speed=1.4)
-for i in (6, 7):                                                           # back to the company in the wing
-    ens[i].add(G('2-16', 47.0), 7.3, 4.6, off=True, label=f'Ensemble {i}')
-SEATS = {1: (3.0, 0.6), 2: (3.0, 1.8), 3: (1.6, 1.8), 4: (1.6, 0.6)}     # the theatre audience, SL, facing SR
-seat_w = {1: ('W-MSL', 49.4), 2: ('W-DSL', 49.8), 3: ('W-DSL', 51.4), 4: ('W-USL', 50.6)}
+    ens[i].face('2-16', 47.6, 90)                                          # REVIEW 3: watching him go
+ens[1].exit('2-16', 51.3, 'W-DSR', speed=1.4)
+ens[6].exit('2-16', 52.0, 'W-DSR', speed=1.4)
+for i in (6, 1):                                                           # back to the company in the wing
+    ens[i].add(G('2-16', 58.0), 7.3, 4.6, off=True, label=f'Ensemble {i}')
+SEATS = {7: (3.0, 0.6), 2: (3.0, 1.8), 3: (1.6, 1.8), 4: (1.6, 0.6)}     # the theatre audience, SL, facing SR
+seat_w = {7: ('W-MSL', 49.4), 2: ('W-DSL', 49.8), 3: ('W-DSL', 51.4), 4: ('W-USL', 50.6)}
 for i, st in SEATS.items():
     ens[i].enter(seat_w[i][0], '2-16', seat_w[i][1], st, -90, speed=1.4)   # each brings a chair on, sits, watching the play
     ens[i].face('2-16', 59.39 + 0.1 * i, 60)                               # turn to the quarrel
@@ -569,7 +622,7 @@ players = {9: ((-1.2, 0.5), 'W-USR', 50.5), 10: ((-0.4, 1.5), 'W-MSR', 51.0)}
 for i, (st, w, t) in players.items():
     ens[i].enter(w, '2-16', t, st, 90, speed=1.4)                          # the play, centre, played out to the SL audience
     ens[i].face('2-16', 59.39, 60)
-sx = {1: ('W-MSL', 73.0), 2: ('W-DSL', 73.0), 3: ('W-MSL', 75.6), 4: ('W-USL', 74.4), 9: ('W-USR', 72.6), 10: ('W-DSR', 72.6)}
+sx = {7: ('W-MSL', 73.0), 2: ('W-DSL', 73.0), 3: ('W-MSL', 75.6), 4: ('W-USL', 74.4), 9: ('W-USR', 72.6), 10: ('W-DSR', 72.6)}
 for i, (w, t) in sx.items():
     ens[i].exit('2-16', t, w, speed=1.5)
 # George Eacker
@@ -586,6 +639,21 @@ ea.face('2-16', 156.52, -40)
 ea.path('2-16', 167.6, [EA_BB], '2-16', 169.7, f=facing_to(PH_BB, EA_BB), last_dwell=0.2)  # back to back with Philip (SPOT: in his pool to 167.6)
 ea.at('2-16', 172.5, EA_END[0], EA_END[1], f=180)                                     # REVIEW (ruled exception): paces to his mark
                                                                            # and turns toward Philip; seg 8 fires the shot
+# REVIEW 3 (coordinator's RULING on 2-16's count; Disney+ clip A1ufXcZwBxI: "the people standing between Philip and
+# eacker say count to ten, there's only 7 people"): SEVEN of the company step in between the duellists on the count and
+# are STILL ON STAGE at 172.5 - a carry-over into 2-17 beside Philip and Eacker (seg 8 starts them at these numbers and
+# clears them after the shot). A loose line on the perpendicular bisector of the two ruled marks, every place >= 1.97 m
+# from each mark, with a gap on the duel line itself (they arrive 170.0-170.6, after the two have passed back to back at
+# 169.7), facing the house. ens1 (the Bullet) and ens10 are left free; ens5 is Eacker.
+_perp = (-DUEL_DIR[1], DUEL_DIR[0])                                         # along the bisector, upstage-SR -> downstage-SL
+COUNT7 = {}
+for i, e_, w_, t_ in ((2, -2.25, 'W-USR', 170.5), (3, -1.5, 'W-MSR', 170.0), (4, -0.75, 'D-UC', 170.4), (6, 0.75, 'W-DSL', 169.9),
+                      (7, 1.5, 'W-MSL', 170.2), (8, 2.25, 'W-DSL', 170.0), (9, 3.0, 'W-USL', 170.6)):   # the inner ones first: no one walks through a placed body
+    pt = (round(DUEL_MID[0] + e_ * _perp[0], 2), round(DUEL_MID[1] + e_ * _perp[1], 2))
+    COUNT7[f'ens{i}'] = pt
+    ens[i].enter(w_, '2-16', t_, pt, 0, speed=1.6)                       # REVIEW 3: steps in on the count (169.91)
+    ens[i].face('2-16', 172.5, 0)                                          # REVIEW 3: held at the boundary
+print('COUNT7 at 2-16 172.5 (facing 0):', COUNT7)
 # REVIEW 2: the writer's duel seconds (ens2, ens3) and seven watchers (USG and deck) are CUT - all marked INVENTED; the
 # libretto names no second, and the only account (ironinkpen) has just the two on the spinning platform. The count is
 # the company's, unseen.

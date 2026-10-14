@@ -32,6 +32,46 @@ these is edited. They are yours to rule or fix. The sources are the eight agents
    - The blocking keeps the ruled sides, Hamilton SR and Burr SL, and stands them in the same pools the other way round.
    - If the preset names are right, the sides at the shot should swap.
 
+## Added after review 3 (2026-10-13: the video evidence; research/segN.md "Review 3")
+
+The reviewers moved the blocking on the evidence of the clips and their comments. These cues now light places nobody
+stands, or are mistimed:
+
+- **2-05 872 "Burr/Ham DR" at 198.9.** Hamilton now goes DR on his banks line (213.6), and Burr circles the table from
+  196.4 to 209.6. So the DR special lights nobody for 15 s. **Retime 872 to about 211–213.**
+- **2-05 867.6 (154.9) "the three at the table" and 867.7 (165.3) "the trade tight on the table"** (both inferred).
+  - The table is empty of Jefferson and Madison from 152, and of Hamilton from 156.6, until the third entry (179.3).
+  - The replay is downstage: Hamilton and Burr SL, Jefferson and Madison DSR.
+  - **These looks belong after 179.3, or on the two pairs.**
+- **1-13 420 "Hamilton seen UC"** (an inference). Hamilton's cross in verse 3 is cut: Burr is alone and turns up to the
+  six on the gallery. **Its UC special lands on nobody.**
+- **1-14 443:** Washington's DC key at 105 lands on nobody. He is on the upstage gallery for Lee's orders, and back at
+  his desk by 119.5.
+- **1-14 445:** the DL special (ch5, (2.45, 3.05)) lands on nobody. Lee's slander is from the SL gallery, (4.9, 1.8).
+  The reconstruction moved this cue onto the deck because it "hung off the lip", so it may have been aimed at the SL
+  balcony all along.
+- **1-20 61–66:** nothing lights Eliza on the upstage gallery. Cue 593 is Hamilton's DS special only.
+- **1-18 120:** Hamilton reaches his DS special 0.5 s after the button cue, because he comes down from the gallery.
+  Either the cue waits, or he starts down earlier.
+- **2-13 Hurricane, the galleries' sides.** A 2:28 comment lists "Eliza, Philip, Washington, and Angelica", possibly
+  left to right on screen. That would put Eliza SR and Angelica SL, the reverse of the spotlight pass, which the
+  blocking keeps.
+  - Is Washington on the upstage gallery in Viper 94? Its raw focus (−2.6, −5.4) should cross the gallery near
+    (−2.4, −3.35) at head height. Not measured.
+
+### Still open, for Jack (review 3 found more evidence)
+
+- **The King's stool (2-10 / 2-11).**
+  - The I Know Him clip's comments: a cast member brings the stool at the END of 2-10, puts it too far from him, and he
+    gestures to move it behind him. He sits at the end, stage right.
+  - The blocking sets it UL (SL) at 2-11 1.0, and keeps the ruled (0, 3.41) across the boundary.
+  - When does it come, and on which side?
+- **The duel's sides at the shot (2-22).** There are now two sources for a swap.
+  - Binkley's presets, "Burr R" and "AH duel".
+  - hamilton-lyrics: at the face-off "Burr downstage, Hamilton upstage". At Hamilton's line to his first friend,
+    Hamilton is at 6 o'clock and Burr at 12.
+  - The ruling (Hamilton SR, Burr SL) is kept until Jack rules.
+
 ## After merging #233 (2026-10-13): what its cue revisions settled, and what is still open
 
 Every item below was checked in the re-dump. For each, the cue's landing points in the old dump were compared with

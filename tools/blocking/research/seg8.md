@@ -759,3 +759,158 @@ and the bows line-up is ruled. No source shows a chair for Eliza, so none was ad
 - 2-20 60-140: the six from the sides.
 - 2-21 44 into 2-22 17: Hamilton rises from the desk; the desk and chair go off.
 - 2-22 122-170: behind him, the box, the ring, the knot.
+
+
+## Review 3 (video evidence)
+
+I cannot watch video. What I read: each clip's title, description and top comments (fetched from YouTube's own web
+client, 95-400 comments per clip, sorted by top), the written staging accounts, and Blankenbuehler's interviews in full
+(Playbill direct; Broadway Direct through the Wayback Machine, as its live page is behind Cloudflare). Caption tracks are
+gated (the timed text comes back empty). So clip timestamps were mapped to the album by lining up comments that quote a
+moment against the cue labels. All edits are in `gen_seg8.py` (marked `REVIEW 3`), the seg 8 section of `dance.py`, and
+`seg8-notes.txt`. The pre-pass copies are in `scratchpad/act/review3/seg8/orig/`; the plots are in `review3/seg8/png/`.
+No lyrics are in any file.
+
+### Videos and texts used
+| # | Source | What I got | What it settled |
+|---|---|---|---|
+| 1 | "Stay Alive Reprise - Hamilton (Original Cast 2016 - Live) [HD]" (Asaki Takaya, Jack's playlist) https://youtu.be/5N2E43Tx3Xk | 160 comments | Philip is on the table. At the end Hamilton puts his hand over Eliza's and she pulls it away (clip 1:55-1:56). The heartbeat in the music stops when Philip dies. No staging change. |
+| 2 | "It's Quiet Uptown ... [HD]" (playlist) https://youtu.be/I5N7xCSOrQg | 160 comments | Emotional reactions only. The couple walk off together at the end (already staged). |
+| 3 | "The Election of 1800 ... [HD]" (playlist) https://youtu.be/yEq-B8gPVn4 | 160 comments. The clip runs about 5 s ahead of the album (Madison's tears at 0:13, Hamilton's endorsement opening at 2:41, Jefferson's laugh at 3:36). | Burr "walking on like a rectangle" (1:06-1:08). A townsperson's "extra spin" (1:33). The company pressing Hamilton (1:46). "Jon Rua getting all up in his face" (1:56; Rua is the Charles Lee body, ens3). Jefferson's "lil jump" (2:55). |
+| 4 | "Your Obedient Servant ... [HD]" (playlist) https://youtu.be/V6_qvZFRlJQ | 160 comments. The clip runs with the album. | "The dancers swayed" through Burr's rant about the room, and "everyone was dancing": the company is on for the rant. The Bullet hands Burr the quill (0:42). "The actor who plays Charles Lee comes out holding his side" (1:01). Hamilton is handed a quill (1:23) and "needed his own chair" (1:20). A woman hands Burr the last page, snatches it back, gives it again and laughs (1:40-1:50, the clip's most-liked moment). |
+| 5 | "Best of Wives and Best of Women ... [HD]" (playlist) https://youtu.be/eKF0AmJUcIk | 95 comments | He sits in a chair writing, his arm covers the letter when she comes over, and he holds her hands. This matches the desk and chair staging; no change. |
+| 6 | "The World Was Wide Enough" from HAMILTON (official channel, album audio) https://youtu.be/xcqQy4eOZvQ | 400 comments | "Throughout this whole monologue they are doing dances from other songs", the My Shot phrase among them. "4:08-4:11 ... Hamilton making his way [out] in the background" (album 248-251). |
+| 7 | "Who Lives, Who Dies, Who Tells Your Story" from HAMILTON (official channel) https://youtu.be/ppXigfLHZog | 400 comments | The gasp, with "her hands to her heart". Washington's face drops at her line about slavery (he already bows his head at 119.94). |
+| 8 | Other uploads: Ga9i6G8dYSo (Hamilton's death), enru-ZOwb_8 (the monologue), 9IwuO-QvX0w, W_QklLnhtLo, lLJj5ohEcQo (Gareth Withers, "The Bullet") | 15-112 comments each | Nothing positional beyond the above. |
+| 9 | PBS "We Are Broadway", "Embodying the Bullet in Hamilton" (Ashley Merritt) https://www.pbs.org/video/embodying-the-bullet-in-hamilton-y9a9kp/ | the transcript | She takes the bullet "out of a gun": she takes it at Burr's pistol. |
+| 10 | hamilton-lyrics, "The World Was Wide Enough staging" https://hamilton-lyrics.tumblr.com/post/139464778319/ (re-read in full) | text | The moment-by-moment account this pass applied (see 2-22 below). |
+| 11 | Blankenbuehler in Playbill https://playbill.com/article/andy-blankenbuehler-on-making-history-with-hamilton | text | "In the duel ... the person who kills him always rotates the wrong way ... the person who gets shot rotates the way of resisting fate, which to me is clockwise". |
+| 12 | Blankenbuehler in Broadway Direct (2020) https://broadwaydirect.com/hamiltons-andy-blankenbuehler-on-his-tony-award-winning-choreography/ (Wayback copy of 2023-02-09) | text | "When we resist fate, we turn right. So when Hamilton dies, he turns right." "Most staging around Burr is linear. It's square." On the Bullet: "every cast member joins her to help slow down the bullet" (in the duel's vision). |
+| 13 | ProVideo Coalition, the film's editor (re-read) https://www.provideocoalition.com/aotc-hamilton/ | text | Quiet Uptown: "the women start leaning forward and the men catch them ... the men pull them back and then the entire ensemble starts to rotate in the other direction". The women are being sick. |
+| 14 | Washingtonian on the Bullet (Hollinger) https://washingtonian.com/2016/07/07/actress-grew-woodbridge-play-bullet-hamilton/ ; Dance Spirit's Hamilfilm list | text | The hand that holds the bullet. "She traverses across the stage toward him in slow motion." |
+
+### Coordinator's ruling applied: 2-17 at 0
+A film clip of Blow Us All Away shows seven of the company standing between Philip and Eacker for the count. They are on
+stage at the boundary, facing the house:
+
+| actor | position |
+|---|---|
+| ens2 | (-1.34, -0.44) |
+| ens3 | (-0.69, -0.06) |
+| ens4 | (-0.05, 0.32) |
+| ens6 | (1.25, 1.08) |
+| ens7 | (1.89, 1.46) |
+| ens8 | (2.54, 1.84) |
+| ens9 | (3.19, 2.22) |
+
+- At the shot they turn to Philip (0.36-0.72).
+- They then clear in the blackout in single file, the nearer one first, leaving at 1.3 and 2.0: ens2 and ens3 by W-USR,
+  ens7 and ens6 by W-MSL, ens9 and ens8 by W-DSL. All are off by about 9 s.
+- ens4 stays. He steps aside to (0.6, 0.0) by 1.8 so that Philip can stagger up to the table, then becomes the Doctor at the
+  inside of the table at 6.0. Before, he came in from D-UC at 6.0.
+- Philip and Eacker are unchanged.
+
+### Per track
+
+**2-17 Stay Alive (Reprise)** (1 clip). The ruling above. No other change. The hand pulled away is a gesture the page
+cannot show; there is no move for it.
+
+**2-18 It's Quiet Uptown** (1 clip and the editor). No staging change.
+- Move: the "woman" of each couple (ens1, ens4, ens6, ens7) does `bow` for 4 counts from bar 36 (65.9). That is the pitch
+  forward and the pull back, before the rotation reverses at 68.0.
+
+**2-19 The Election of 1800** (1 clip with 160 comments, and Broadway Direct).
+- Burr's round of the voters (52.5-62.6) is now a rectangle of straight legs with square corners. He goes across between the
+  rows, down between the front-row voters, along the front, back up, and in to the centre.
+- ens3 steps out of the alley into Hamilton's face at 110.0 and back at 113.4.
+- Moves: ens2 `spin-full` at 88; Jefferson `jump` at 170.
+
+**2-20 Your Obedient Servant** (1 clip with 160 comments).
+- The six (ens1, ens6-ens10) are on for Burr's rant.
+  - They stand in an upstage fan at r 3.0, two SR and four SL, by 16.4-17.9.
+  - They `sway` through bars 8-14.
+  - At 33.5 they go to their places at the sides and stay there. Before, they walked on at 60.
+  - This reverses review 2's cut of the fan, on this evidence.
+- ens1 (the Bullet) brings Burr his quill at 38.4.
+- ens3 appears as Charles Lee up SR at 60.5, holding his side, and is gone by about 66.
+- ens7 hands over the last page at 105.6, snatches it back at 106.6 and gives it again at 107.6.
+- Move: the six `lunge` for 3 counts from bar 52 (113.8), the lean in.
+- Not acted on, because who does it is unclear: Hamilton being handed a quill (about 83), and "his own chair".
+
+**2-21 Best of Wives** (1 clip). No change.
+
+**2-22 The World Was Wide Enough** (the official audio, 5 uploads, hamilton-lyrics, Blankenbuehler twice, PBS).
+- **The seconds.** They stand in the centre pool across Burr's line (66). They kneel as he cuts through them toward
+  Hamilton (72.9-75.0), and Burr points at him. They rise as he passes back (79.5) and return to their places (87).
+- **The Bullet** now creeps the whole way. Before, she reached the centre by 129 and held there for 40 s. Her route:
+  - Burr's pistol at 101.42;
+  - (0.6, 1.75) at 129.9;
+  - (-0.45, 1.5) at 149.9, in ch49;
+  - the centre (-0.4, 1.2) at "Eyes UP" (155.46);
+  - held in the knot until ELIZA (174.5);
+  - then on to him for the shot (191.18).
+- **Burr's turntable ride.** The second leg now runs counter-clockwise, because the killer turns with inevitability. It
+  starts at "Hamilton off box" (151.8), goes up past 12 o'clock, down the SR side (he is near Binkley's "Burr R" preset at
+  166-172), and across the front (hamilton-lyrics: carried "to downstage right"). He reaches the DSL end of the line at 187;
+  B_SHOT is unchanged. Before, the leg ran clockwise from 175 to 187. The ruled sides at the shot are kept.
+- **The knot** is blown out on ELIZA (174.5-175.9); before, it was at 169.6. The spots are matched so that no two dancers
+  cross, and they are kept off Burr's ride.
+- **After the shot.** The rowers now carry Hamilton clockwise, 307 -> 352 deg, up toward 12 o'clock. Before, they went
+  307 -> 262 deg, down the SR side.
+  - He rises upstage at (-0.42, -2.02), with Eliza (in from W-USR) and Angelica (in from D-UC) either side of him.
+  - He walks upstage to the foot of the SL stair (236.4), climbs it (241.2), and goes along the USG and off by G-UC at 248.2.
+    Before, he used the SR stair.
+  - The sisters walk down with the company as it closes round Burr (243.5), and stand. They leave at 252.
+- **The mourners.** The SR pair enters by W-DSR, and all six enter 3 s later (221+), so that the rowers can leave by W-USR
+  and D-UC first.
+- **Moves:**
+  - the six of ARC22: `heartbeat` for 8 counts at bar 26 (Burr's confession);
+  - ens2 and ens3: `kneel` (bar 32.3), then `rise` (bar 34.3);
+  - Burr: `point` (bar 33);
+  - ens1: `bullet` from 101.5 to 155.5 and from 174.5 to 191.2;
+  - the monologue company: `legacy` with Hamilton at 129.9;
+  - the eight round the box: `my-shot` at 4x speed to its end shape, then held (bar 63.3 to 149.9);
+  - the knot: `bullet` from 155.5 to 164.4, then `hoist` while ens1 does `reach-up` (the lift), bar 73 to 168.9;
+  - Washington: `lunge` (160);
+  - Hamilton: `point` for the aim (bar 83.2 to 191.2), `kneel` from bar 84.4 to 221 (the fold), and `rise` at 222;
+  - the rowers: `row` from bar 89.3 to 213.
+
+**2-23 Who Lives, Who Dies** (the official audio with 400 comments, and 1 upload). No staging change.
+- Move: everyone, and the King, does `bow` for 2 counts at bar 66 beat 4 (215.2), in the line.
+
+### Moves wanted (not in the library)
+- **catch** (2-18; partnered, 4 counts). She pitches forward from the hips, knees soft, arms hanging, head down (1-2). He
+  stands beside her and a little behind, catches her round the waist with both hands (2), and pulls her back upright against
+  him (3-4).
+- **fold** (2-22, the hit; once, then held). On 1 the body jack-knifes forward at the waist: torso hanging, arms dangling,
+  knees slightly bent. Held. Used for now: `kneel`.
+- **aim-up** (2-22; once, then held). The right arm straight up overhead, the pistol hand pointing at the sky, the left arm
+  at the side, chin up. Used for now: `point`, which goes up and out.
+- **lift** (2-22; three people). Two or three dancers raise the Bullet about 0.7 m, her body horizontal, the bullet hand
+  still reaching ahead. This needs a body height offset, which the page does not have. Used for now: `hoist` and `reach-up`.
+- **sabre** (2-22, Washington; loops, 4 counts). A fencing lunge with the right arm thrust forward on 1, a parry across the
+  body on 3. Used for now: `lunge`.
+- **hold-side** (2-20, Charles Lee; once, then held). The right hand pressed to the left ribs, the torso curled over it, a
+  limp. Used for now: nothing.
+- **gasp** (2-23, Eliza at 210.98; once, then held). A sharp breath, both hands flat to the chest, the chin lifting, the eyes
+  out to the house. Used for now: nothing.
+- **lean-in** (2-20; held). The weight on the front foot, the torso tipped 15-20 deg toward the desk. Used for now: `lunge`.
+- **The second My Shot phrase** the film's commenter names, from the "not a moment" section of My Shot. I found no
+  description of its shape anywhere.
+
+### Evidence for Jack, not acted on
+- **The sides at the shot.** hamilton-lyrics has, at the face-off, "Burr downstage, Hamilton upstage". At Hamilton's line to
+  his first friend, it has Hamilton at 6 o'clock and Burr at 12. Together with Binkley's "Burr R" and "AH duel" presets,
+  this is more evidence that the turntables have swapped the two men by the shot. The ruling (Hamilton SR, Burr SL) is
+  kept.
+- **Philip.** hamilton-lyrics has him first standing SL on the deck, then walking upstage to the bridge. The spotlight pass
+  put him on the bridge from the start, because that is where the 'philip' preset lands. Kept.
+- **Burr's facing on the ride.** The page faces a moving body along its path. So Burr, carried round frozen, turns with the
+  ride instead of keeping his aim.
+
+### Checks
+- `blocking-merge.py --check` on seg8 + props + dance: 0 errors, 0 warnings, 1,357 waypoints, 70 props.
+- `check8.py 0.45`, run from a scratch copy that takes the file as an argument: 47 close passes (was 43). The new ones are
+  all under 1 s except the SR mourner pair walking on side by side (2-22 217.8-219.0, 0.33 m), a pair entering together.
+- `props.py --check` crashes on another segment's new prop kind, `crate` (a KeyError in its size table). That is not a
+  seg 8 prop.

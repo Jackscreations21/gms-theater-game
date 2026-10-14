@@ -584,6 +584,21 @@ it does not do yet, and what the ETC pack could still give:
 
 ### Automatic actors — what is still to come (2026-10-12, RULINGS FF–FM built)
 
+**From review 3 (2026-10-13, the video evidence), NOT built:**
+- **A thrown prop:** a carry that flies, an arc from one actor's hands to another's. My Shot's thrown stool is one: a
+  clip comment has a stool thrown across the stage and caught, and chairs thrown in the air.
+- **Lifts:** Hamilton's mother carried in Hurricane, the Bullet "lifted" at the centre, Eliza carried in on the ring
+  (1-23 222–249, walked today).
+- **A sit pose.** The King sits on his stool at the end of I Know Him; Hamilton "needed his own chair" in Your Obedient
+  Servant; the tavern stools. Today the mannequins stand by their chairs.
+- **Hand props** beyond the book (RULING FW): the sword, the coat (Eliza puts it on him in 1-01; the coat in Guns and
+  Ships), the quill (handed to Burr and to Hamilton in 2-20), more books.
+- **Costume changes**: Burr's green jacket; the parchment outfits of the 1-01 roll call.
+- **The beat grid** (`assets/hamilton-beats.json`, the dance agent's):
+  - My Shot needs tempo changes, at about 160 s and at the death verse (segment 1);
+  - 1-18's downbeats are about two beats off the cue hits (segment 4);
+  - segment 7's clip timestamps were 0–7 s off the album.
+
 **What Jack said:** *"make a system for automatic actors. Make a software where you can create their paths
 and stuff. Right now just make them using this mannequin but later we will add arm and feet movement."*
 The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocking.json`, the spec). NOT built:

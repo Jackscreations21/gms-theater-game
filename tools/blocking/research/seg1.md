@@ -467,3 +467,134 @@ Result: 819 waypoints (was 1288). `blocking-merge.py --check` gives 0 errors; it
 - The picnic table's spot DSC. It is chosen so that the verse pools sit at its ends and Laurens' Q115 pool lands on it.
   Binkley's "Cntr Table" presets light a table nearer centre (about (0, 1.0–1.2)), probably for another scene.
 - The street lamp's exact place. The cue says only "SL".
+
+## Review 3 (video evidence)
+
+The third pass, from video. Nobody can watch a video here, so this is the TEXT around the videos: titles, descriptions,
+chapter lists, and above all the viewers' timestamped comments under the Disney+ film's clips (Jack's playlist), read
+through YouTube's own comment endpoint (`/youtubei/v1/next`). Captions could not be read this time (the timedtext
+endpoint returns empty without a browser token; the transcript panel returns 400; the piped / invidious mirrors are
+blocked or return empty files). For WHEN a sung word falls, two independent synced-lyric files of the cast album
+(lrclib.net, read in the scratchpad only) were checked against the cue times (they agree with Binkley's
+reconstructions to 0.1 s) and against the beat grid. No lyrics are written here.
+
+All changes are in the generator (`tools/blocking/seg1/t101.py`, `t105.py`, `t106.py`, marked `REVIEW 3`), segment 1's
+sections of `tools/blocking/props.py` and `tools/blocking/dance.py`, and `seg1/notes.txt`. Result: 955 waypoints (was
+924); `blocking-merge.py --check` on seg1 + props + dance gives 0 errors and 1 warning (another segment's `king-stool`);
+`props.py --check` adds one warning of mine, `schuyler-book` "comes back on with it" (the checker expects a carry to end
+in a set-down; this book is carried on and off with its dancer). `lib.check()` leaves the same five sub-second passes as
+before the round (0.21-0.41 m), plus none new. Backups: `scratchpad/act/review3/seg1/backup/`.
+
+### The videos and pages used
+
+| video / page | what text | what it settled |
+|---|---|---|
+| Disney, "Alexander Hamilton" Clip, https://www.youtube.com/watch?v=hrGwCJQoeVo (0:49, the film; it covers Eliza's verse) | 160 comments | the father leaving the mother during Eliza's verse; Hamilton in a CHAIR while he and his mother are sick, standing up on the line where he recovers, while "his mother is carried back down"; Eliza "walks over and drags her hand across Alexander's back and he gets back up" |
+| Disney, "Alexander Hamilton" Official Clip 2, https://www.youtube.com/watch?v=CurgvjZ7hcM (0:47, the voyage and the women) | 123 comments | Eliza puts on his coat, Angelica hands him the book, then Laurens hands him his bag (0:25); "when she takes the book all the ensemble point and fall back" |
+| Hamilton (official), "Alexander Hamilton" from HAMILTON, https://www.youtube.com/watch?v=cuyMAneJqms | 200 comments | nothing new on staging (lyric talk) |
+| "Hamilton (Opening Scene)" QMBWKB9cjOY; Dew, BDDY_0HxGq4; Flicks And The City iXunxTyrpSY; Ripley's Realm xYDegc4WhKI | comments | at the end Burr steps aside and Hamilton steps down centre into the light (kept); Lin carries a bag in the opening |
+| "Hamilton - Full Musical", https://www.youtube.com/watch?v=gHej85If2Rg | 200 comments | the cousin "stand[s] on a chair" a minute or so in (the chair, kept) |
+| Asaki Takaya (Jack's playlist), My Shot, https://www.youtube.com/watch?v=wk01z2f5akg (5:38) | 240 comments (clip runs with the album to ~1 s) | "Aaron Burr just reading a book in the background" (a book prop); at 3:00-3:01 "Anthony Ramos casually throwing a stool across the stage and Oak casually catching it", "they started to throw literal chairs in the air and catch them" (NOT built: see below); 3:24 Laurens takes the lead; the libretto in the comments (chorus 1's first half is Hamilton's alone, the second the four; chorus 2 the four and the company; the last chorus Hamilton and the company) |
+| Asaki Takaya, Aaron Burr, Sir, https://www.youtube.com/watch?v=KAnVd7Fxb0g (Jack's link) | 160 comments | "Mulligan was banging the table" (the tavern table, kept) |
+| Asaki Takaya, The Story of Tonight, https://www.youtube.com/watch?v=66W9gG_kZS8 | 114 comments | "0:27 ... Laurens doesn't [survive]. That's why he's standing on the other side" from the other three; Lafayette with two cups; Mulligan pushes Lafayette (0:32). NOT changed: Jack passed 1-04 as good; the Laurens-apart picture is reported below |
+| Asaki Takaya, The Schuyler Sisters, https://www.youtube.com/watch?v=POHVE9uCNAY (3:11; ~1 s behind the album) | 160 comments | Burr dances at the sisters' introduction and "with the ensemble", talks with Lafayette "in the background" at 2:05-2:07, and does "angel wings" behind Peggy at her last name (2:48): he never leaves. Lafayette and Mulligan's "secret handshake on the railing" (1:23); Laurens "in the back" (0:51) and his "jumpscare" making Peggy jump (0:59-1:06); "the rotating floor ... the characters walk in place"; "Eliza and Peggy's walk to the beat on that rolling floor" (1:18); Eliza's little jumps (2:12, 3:07); the "book guy" ("their dad's dancing with a book"); "0:09 ensemble's grandpa walk"; "1:04 Lee sliding under the plank thingy" |
+| The 2016 Tonys closing number, https://www.youtube.com/watch?v=eyb1w8iMSck | 146 comments | "where's book guy appreciation" (the book guy is a fixture of the number) |
+| Asaki Takaya, Farmer Refuted, https://www.youtube.com/watch?v=Oy5ybRNSkb8 (1:40) | 160 comments | "0:27 Lafayette: go child go / Burr: let him be", "Lafayette tried to grab Aaron to stop him", "Lafayette pushes Alex back into the debate after Burr tried to stop him" (Lafayette holds Burr off); "0:46 Charles Lee's actor standing beside Laurens' actor", "then he walked off stage"; the friends "pushing him to go"; Seabury "gets off his box to push it" (direction disputed with the fan account: kept as it was); "neither one of them fell off the stand" (both on the box: kept) |
+| WSJ, "Choreographing 'Hamilton': The Meaning Behind the Moves", https://www.youtube.com/watch?v=VmYTsOrnWP0 | description, 120 comments | nothing new (the phrase was read last round from its captions) |
+| Beginner Dance Tutorials, "My Shot" tutorial, https://www.youtube.com/watch?v=uJkX2IBkuAY | description, chapters | its "steps" are full 8-counts by lyric; the phrase naming his country is one step = 8 counts (matches `my-shot`'s 8). Not the Broadway choreography ("inspired by") |
+| Blankenbuehler at #Ham4Ham YMQ5ogjlnUM; Broadway.com "Building Broadway" R49vKv8f0Wc; Howard Ho on24JsOBZAA; audition combos VI8tTJcYJCA, MTsCUt7zkNE; Sheila Watko's Sisters tutorial R5r3U0dBYD4; Grammys rehearsal XlLn55wWj6M | descriptions, comments | nothing placeable |
+| Playbill, "Andy Blankenbuehler on Making History with Hamilton" (re-read) | text | **the "ensemble all warp in slow motion" quote is about IN THE HEIGHTS' opening, not Hamilton's** -- the writer's Q42 source is gone (the move is kept, unsourced; Jack has not flagged it) |
+| BroadwayWorld, "All the Right Moves" (2016-05-28) | text | Washington's line telling the boy to look after himself "unlocked how the show would rotate": "the counter clockwise gesture would be [Hamilton]'s destiny", "the momentum would keep falling left" |
+| Jack's notes (`Downloads\hamilton choreo info.txt`) | reddit thread | "all the company inhale close to in-sync" before the last word of the women's line in the opening; the equals sign; "work" |
+| Tried, not reached | | the Pitt dissertation (Olmstead, *Who Tells the Story?*, Cloudflare challenge); VocalEyes' Disney+ audio introduction (403; the archived page has no download); YouTube captions (see above) |
+
+### Staging changes, per track
+
+- **1-01 Alexander Hamilton**
+  - Eliza's verse: the mother (ens6) and a father (ens10) come out of the company's withdrawal as a couple SR of him; on
+    the father's line he turns away and walks off USR; she stays (he slips back into the line at 114.6).
+  - The cousin's chair comes to the centre at 99.4 (was 109.4), set behind Hamilton, who sits in it sick from 97.4;
+    the cousin waits beside it and gets up on it at 109.4 as before. Props: the chair's pick-up moves to 97.1.
+  - His recovery: Eliza leaves her key at 104.0, passes behind him (105.4), and goes straight off SL (was: off at
+    109.6-113).
+  - CUT: Angelica's entrance at Q50 to hand him a book; Laurens' pack crossing at Q51 (both moments were guesses).
+  - Q56 (the women): Eliza comes to him with the coat (168.8-170.2), Angelica with the book (171.6-172.6), Laurens with
+    the bag (174.6-175.6), each back to their place; Hamilton turns to each in turn (was: he only turned to Angelica,
+    then Eliza).
+  - Q42's slow-motion source corrected in the comment (the move kept).
+- **1-02 Aaron Burr, Sir**: no change (the table is confirmed).
+- **1-03 My Shot**: no blocking change. Burr now holds a book (props `burr-book`: by his chair from the 1-01 blackout,
+  in his hands from 6.7, off with him at Q118).
+- **1-04 The Story of Tonight**: no change (Jack: good). Reported only: Laurens apart from the other three at 0:27.
+- **1-05 The Schuyler Sisters**
+  - Burr stays on to the end: he watches the start of her solo from the DSR corner (Jack's note kept), joins the
+    city's SR group in the back at Q167 (-1.1, -1.9), talks with Lafayette there (122.4-127.6), crosses at 163 to stand
+    behind Peggy's SL shoulder for the last names (2.15, 2.45), and in the blackout goes straight to his place in
+    Seabury's crowd (-1.3, 0.5); his walk-on in 1-06 is cut (t106).
+  - Lafayette and Mulligan come through the passage onto the upstage gallery at 43-46 (the handshake on the railing);
+    Lafayette comes down the SL stair at 110.6-122.4 to Burr; Mulligan stays up; both off in the blackout.
+  - Laurens walks on USL into the back at 51.4 (0.9, -1.7); at Q161 he pops up behind Peggy (64.6), backs off (69.0);
+    steps USL (3.3, -1.6) out of the city's anthem crossing at 112; off USL in the blackout.
+  - Prop `schuyler-book`: ens4 (the sisters' father's body, Philip Schuyler) carries a book on and dances the number
+    with it.
+- **1-06 Farmer Refuted**
+  - Burr is already on (from 1-05).
+  - Lafayette steps in at Burr's side at 27.8 (holding him off) before pushing Hamilton on at 40 as before.
+  - ens3 (Charles Lee's body) comes down beside Laurens at 44.4 and walks off DSL at 76.8; the crowd is three from Q183.
+
+### Dance (dance.py, segment 1), with the times of the words
+
+| track | who | bar / beat (time) | move, counts | the moment |
+|---|---|---|---|---|
+| 1-01 | the seven in the upstage line | 63 (117.5) | spin-quarter, 4 | Washington's line to the boy: the counter-clockwise gesture (BroadwayWorld); the shape is a reading |
+| 1-01 | the ensemble | 93.3 (171.5) | point, 4 | Angelica hands him the book: "point and fall back" (fall-back missing) |
+| 1-01 | everyone on but Hamilton | 96 (175.9) | rise, 2 | the company's breath before the last word of the women's line |
+| 1-03 | the four + the company | 31, 35 (79.5, 90.1) | my-shot, 8 | chorus 1 (unchanged: the grid and the words agree) |
+| 1-03 | the four + the company | 67.2, 71.2 (175.1, 185.7) | my-shot, 8 | chorus 2 (was beat 1: the words fall ~0.6 beat behind the grid here) |
+| 1-03 | the four + the company | 115.3 (302.4) | my-shot, 8 | the last chorus (was 301.1, 1.3 s early); the old entry at 311.6 CUT (no phrase there) |
+| 1-05 | Burr | 10 (21.3) | two-step, 12 | the sisters' introduction |
+| 1-05 | the three sisters | 18.3 (41.3) | slow-walk x2 speed, to 50.6 | the street walk: walking on the spot against the floor |
+| 1-05 | Peggy | 28.3 (64.9) | jump, 2 | Q161: startled |
+| 1-05 | Eliza, Peggy | 34.3 (78.7) | slow-walk x2 speed, to 91.5 | walking to the beat on the rolling floor |
+| 1-05 | the three sisters | 47 (108.5) | equals, 4 | the declaration's last word (unchanged) |
+| 1-05 | the three sisters | 49.3 (114.4) | work, 2 | the shout after the sequel line (was bar 50, 1.8 s late) |
+| 1-05 | the city + Laurens | 52 (120.3) | step-touch, 16 | the anthem (general: the step is not named) |
+| 1-05 | Eliza | 57 (132.1) | jump, 4 | the shouted line (2:12) |
+| 1-05 | the three sisters | 63 (146.2) | equals, 4 | the declaration again in the counterpoint |
+| 1-05 | the city + Burr, Laurens, Lafayette | 64 (148.6) | step-touch, 16 | the reprise (general) |
+| 1-05 | Burr | 72 (167.4) | reach-up, 4 | the "angel wings" behind Peggy (wings missing) |
+| 1-05 | Eliza | 78.3 (182.8) | jump, 2 | the button (3:07) |
+
+**The beat grid in My Shot** (for whoever owns `assets/hamilton-beats.json`): the sung lines sit on the grid in chorus 1
+(each half's lines start on beat 4-and), but from about 160 s to 232 s they fall ~0.6-0.8 of a beat later (both lyric
+files; the loudness envelope's onset phase moves by the same 0.63 beat between those regions), and after the death verse
+everything is two beats later relative to the bar count (a 2/4 bar or a held beat the constant 91 BPM grid does not
+have). The fixes above work round it; a tempo change at about 160 s and at the death verse would fix it at source.
+
+### Moves the sources describe that the library does not have
+
+1. **point-fall** (1-01, Q56): 4 counts. 1: the right arm shoots straight out at Hamilton, index finger extended, the
+   weight forward on the right foot; 2: hold; 3: the chest caves and the body is thrown back as if shot -- a step back
+   onto the left foot, the head and shoulders recoiling, the arms flung forward and down; 4: recover upright.
+2. **breath** (1-01, before the last word of the women's line): 2 counts. On the "and" before 1 the chest lifts, the
+   shoulders rise a little, the chin lifts, the arms float a few centimetres out from the sides; held through 1; released
+   on 2. Done by everyone in unison.
+3. **angel-wings** (1-05, Burr behind Peggy): 4 counts, standing close behind someone. 1-2: both arms rise out to the
+   sides to just above shoulder height, elbows soft, wrists leading; 3-4: the forearms and hands ripple down and up twice
+   like wings beating, then fold back down.
+4. **old-walk** (1-05, the city's "grandpa walk" as it comes on, ~0:09): a travelling walk -- bent forward 20-25 degrees
+   at the waist, one hand on the small of the back, the other on an imaginary cane, short shuffling steps on each beat,
+   the head nodding. (Not placed: a travelling walk needs the path, not a move on the spot.)
+5. **a thrown prop** (1-03 chorus 2, ~180 s, film 3:00): Laurens throws a stool across the stage to Mulligan, who
+   catches it; "they started to throw literal chairs in the air and catch them". This needs the page to fly a prop on an
+   arc from one actor's hands to another's (a `thrown` carry), and stools for the tavern; not built. For FUTURE.md.
+6. "Lee sliding under the plank thingy" (1-05, ~1:04): a slide under a held plank; too little to build.
+
+### Not verified; left or chosen simply
+
+- The company's quarter turn at Washington's line: the moment and the direction are Blankenbuehler's; the shape is mine.
+- The father's body (ens10) and the couple's spot SR of Hamilton: the comment says only that the father leaves the mother.
+- When exactly Angelica hands over the book (the ensemble's point is put there): the comments give the order, not the bar.
+- The friends' exact places in The Schuyler Sisters (the gallery for Lafayette and Mulligan is "the railing"; "the back"
+  for Laurens).
+- Chorus 2's phrase on beat 2 rather than beat 1: half a beat either way.

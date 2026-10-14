@@ -567,3 +567,137 @@ ironinkpen (no hits), and Kollaboration / Dance Magazine (no blocking).
 3. 1-14 from 98.6 to 119 s: Monmouth with four soldiers and Lee.
 4. 1-13 from 31 to 190 s: six bodies standing behind Burr, with no shapes.
 5. 1-16 from 25 to 30 s: the desk and chair carried on. 1-17: Hamilton in front of the chair.
+
+## Review 3 (video evidence)
+
+Third reviewer, segment 3 (Jack: "use those videos and ones you can find to work on the choreo"). Fixes are in
+`seg3gen.py` (`REVIEW 3:` marks; the pre-review generator, JSON and notes are kept in the scratchpad at
+`review3/seg3/before/`), props.py SEGMENT_3 (the bench) and dance.py SEGMENT_3 (the moves). Result: 537 waypoints
+(was 458), 17 actors (Angelica added). Merge check on seg3.json + props.json + dance.json: 0 errors; the warnings all
+name other segments' actors. The generator's spacing check (`--space`) leaves two passes under 0.5 m, both a body on a
+gallery over a body on the deck (1-14 115.5 Lee / Washington, 138.5 Lee / Burr): different levels, not a collision.
+
+### How the videos were read
+Video cannot be watched here, and every caption route is shut: the watch pages' caption URLs return empty without the
+player's token, `get_transcript` returns 400, the player API asks to sign in, and the transcript sites and Invidious
+caption endpoints say YouTube is blocking them. What could be read: each video's title, description and its comments
+(YouTube's own comment endpoint, about 120-160 top comments each). Comments that name a moment with a timestamp were
+mapped to the album by the clips' own landmarks (the clips run within a few seconds of the album: Stay Alive's
+promotion comments at 1:33-1:35 against cue 439 at 90.1; the duel's "head snap" at 0:14 against #1 at 14.9; Meet Me
+Inside's threat at 1:10 against the cut at 70.25; the reprise's secret at 1:35 against cue 406).
+
+| video | URL | text read | what it gave |
+|---|---|---|---|
+| The Story of Tonight (Reprise) - Hamilton (Original Cast 2016 - Live) [HD] | https://youtu.be/e4NAz2TWA4I | description (none), 74 comments | the four's goofy sway after the toast (0:40-0:46); Mulligan waking "the ensemble member on the stairs"; "Thayne helping Ephraim get up" at the end (1:50) |
+| Stay Alive - Hamilton (Original Cast 2016 - Live) [HD] | https://youtu.be/pd3L7mI19q8 | 160 comments | the Bullet at 0:10-0:17; Eliza holding a letter (0:25); "someone points a gun at John Laurens" (1:13); Angelica arrives and hugs Eliza (1:25); Eliza at the top of the stairs passes the letter to Washington (1:36-1:41); Lee and Washington like an exasperated dad and his son (1:42); "the bounce" (1:45); Lafayette "ready to backhand Lee" (1:49); "Burr's stance" (2:06); "the British soldiers choreography", "the rifle choreography" (a colour-guard member); Hamilton's small arm movement on the vocal gun (0:58) |
+| Ten Duel Commandments - Hamilton (Original Cast 2016 - Live) [HD] | https://youtu.be/TW3-3Xy0kCo | 160 comments | the duellists nose to nose at the top (0:01-0:07); "the little head snap the ensemble and Charles Lee do" (0:14); the seconds pass the gun, the two spin round and "immediately do the bouncing thing", "in number 4 ... bouncing up and down" (0:39-0:41); Lee turns round to Hamilton while Hamilton talks about him (1:32) |
+| Meet Me Inside - Hamilton (Original Cast 2016 - Live) [HD] | https://youtu.be/TZ1w59D5et4 | 160 comments | "hamilton held laurens back" (0:21); the threat at 1:10 |
+| That Would Be Enough - Hamilton (Original Cast 2016 - Live) [HD] | https://youtu.be/KghsrSY10fo | 160 comments | "he's sitting there" (1:21); at the end he holds her hand (2:35) |
+| Jack's playlist | https://youtube.com/playlist?list=PLSOfHhku9XxiQuGTppcAc4NPRkja13MSK | the 36 clips' ids and titles | it has no Wait for It clip |
+| "Ten Duel Commandments" from HAMILTON (official audio) | https://youtu.be/uq4A7iqjBRk | 40 comments | nothing on staging |
+| HAMILTON Ham4Ham 9/11/15 "Love for the Techies Day" | https://youtu.be/XqE-mGI5OaM | description, 120 comments | the company performs the number without the turntables while the stage manager calls LQ 450 on; "they still went and did the turns even without the turn tables, that poor line looked so smushed"; "the spinny thing" (3:04): the number has a line that turns |
+| HAMILTON's Secret Character YOU Completely MISSED! (Flicks And The City) | https://youtu.be/g-XwMQA26h8 | description (chapters), 120 comments | the Bullet "barely missing Hamilton in Stay Alive"; Blankenbuehler (Hamilcast 217, as quoted): she is trying to slow the bullet down |
+| Wait For It Sing-A-Long (Disney+ UK); "Wait for It" from HAMILTON; Hamilton 360 Wait For It (CBS); the RockDog live clip; Disney and Hamilton - Wait For It; The Bullet - Hamilton (Gareth Withers); a Stay Alive / TDC reaction; the TDC lighting-design video | https://youtu.be/3MLUqK4rHsE, https://youtu.be/vZH8TyHUzRQ, https://youtu.be/k9AyO8h2I0k, https://youtu.be/HdR34Mdi56s, https://youtu.be/7_0txBjXTiU, https://youtu.be/lLJj5ohEcQo, https://youtu.be/1W7v5A_2ihs, https://youtu.be/0EpMVEdM2c0 | descriptions and comments (captions blocked) | nothing usable on these numbers' staging (the 360 video is a rehearsal-room performance) |
+
+### Written sources that settled things
+- **ironinkpen, "neat little hamilton staging things, act I"** - https://ironinkpen.tumblr.com/post/136570471307 -
+  an account from the theatre, song by song. The reprise: the friends drunk, Laurens draped on Burr; Laurens joins
+  Hamilton and Burr, the rest join, Hamilton shoos them off. **Wait for It: Burr alone on stage, the ensemble on the
+  second floor, detached; Burr turns his back on the house to talk to them.** Stay Alive: in the attack / retreat
+  Washington is on the second floor and Lee on the ground yelling up at him; Lee slanders Washington from the second
+  floor, Hamilton charges over and Washington stops him; Laurens and Hamilton forehead to forehead. Ten Duel
+  Commandments: Laurens and Lee on the turntable. Meet Me Inside: Hamilton and Laurens hug. That Would Be Enough: "a
+  little bench", Hamilton sits on it.
+- **hamiltonsideblog, "hamilton staging notes"** - https://hamiltonsideblog.tumblr.com/post/137020626930 - Meet Me
+  Inside: Hamilton completely still, hands behind his back, then steps right into Washington's face.
+- **hamilton-lyrics, "my Hamilton experience"** - http://hamilton-lyrics.tumblr.com/post/135188799432 - Burr dances in
+  the war scenes where he does not sing, Stay Alive among them.
+- **The Odyssey Online, "The Piece Of Foreshadowing In Hamilton That Everyone Misses"** -
+  https://www.theodysseyonline.com/piece-foreshadowing-hamilton-misses - the Bullet first becomes the Bullet in Stay
+  Alive, passing Hamilton at the gunshot at the top; in Ten Duel Commandments the ensemble line stands between Hamilton
+  and Burr and the Bullet places herself directly at Hamilton's side; the pair stand side by side for numbers six and
+  seven, moving through the choreography in sync.
+- **BuzzFeed, Hamilton details** - https://www.buzzfeed.com/asiawmclain/hamilton-details - a fan's tweet: Laurens is the
+  one who blocks the Bullet from Hamilton in Stay Alive.
+- **Newtfire / Digital Mitford libretto, Stay Alive** - https://newtfire.org/hamilton/14_StayAlive.html - the speaker
+  labels only (no lyrics copied): ANGELICA/ELIZA share a line before Lee's promotion; no BURR label.
+- Searched with nothing usable: Dance Magazine's Hamilfilm list (403; Dance Spirit's copy names none of these songs),
+  itshamiltime, the WhatsOnStage duel piece again (only "the two groups clutch pistols in the same way"), reddit (its
+  search API is blocked), and searches on Wait for It's ensemble, Monmouth's staging and Lee's horse.
+
+### Per track
+- **1-12 The Story of Tonight (Reprise).** Sources: the clip, ironinkpen.
+  - Two passed-out wedding guests are on: ens9 slumped two treads up the SL stair (y 0.63), ens2 below it (Thayne
+    Jasperson was the OBC's Seabury, so ens2; Ephraim Sykes ens9). In by the deck door in the opening dark; ens2 helps
+    ens9 up at the end and they go out the door (104.5-112). Mulligan waking him is not placed (no time for it).
+  - Laurens drapes on Burr: his crowding place is now (-2.1, 2.85), at Burr's shoulder.
+  - Laurens comes down to Hamilton and Burr (69.5), Lafayette and Mulligan join (71.5 / 72.0), Hamilton turns on them
+    (73.8) and they go on 75.4 as before.
+  - Moves: the four sway after the toast (cue 402); ens2 / ens9 kneel (slumped) and rise.
+- **1-13 Wait for It.** Sources: ironinkpen; Blankenbuehler (Playbill) for the mirroring. No film clip of it was
+  readable (Jack's playlist skips it).
+  - The six (ens1, 2, 5, 6, 7, 9) are on the UPSTAGE GALLERY, x -3.3 ... 3.5, not on the turntable. In through the
+    backstage passage one by one for chorus 1, off the same way in the outro fade. No step-downs (the gallery has no
+    room); in verse 3 they look down at Burr, who turns up to them.
+  - **Hamilton's UC cross in verse 3 is cut.** Cue 420 ("Hamilton seen UC") was an inference; the account has Burr
+    alone, and Burr's turn upstage there is to the ensemble above. Cue 420's UC special now lands on nobody.
+  - The watcher (ens8) and her chair are kept.
+  - Moves: Burr and the six sway on the three choruses (31.15-51.1, 72.0-92.5, 159.6-175.2). It is sourced only that
+    they move as he moves; the sway is the simplest fitting move.
+- **1-14 Stay Alive.** Sources: the clip, ironinkpen, hamilton-lyrics, Odyssey, BuzzFeed, the libretto.
+  - The Bullet (ens1, labelled The Bullet) comes in from upstage left at the top and drifts slowly toward Hamilton as
+    he walks in (10-16); Laurens comes in from DR and cuts between them (15.5); she passes upstage of the two and away
+    (19.5); Laurens goes, and comes back with the camp at 29.65.
+  - Eliza stays on the gallery to 105 (was off at 70). Angelica comes on through the passage behind her and hugs her
+    (84.4). Washington goes up (out the deck door at 94.8, onto the gallery through the passage at 96.2) and Eliza
+    gives him her letter (97.2). Washington stays up there through Lee's four orders; Lee, on the deck, faces up to
+    him. The sisters go at 105-108, Washington at 108.4, and he is back at his desk by 119.5. **His DC key at 105
+    (cue 443) now lands on nobody.**
+  - The four soldiers (ens1, 2, 5, 6) are also on for the war reports (65.5-87): the British at the upstage corners,
+    each facing one of the friends. Monmouth as before, with **Burr fifth in the rank** (SL, x 3.0).
+  - Lafayette goes for Lee as Washington takes over (107.5, at (-1.9, 3.6)).
+  - **Lee's slander is from the SL gallery** (4.9, 1.8): off DR after the battle, round the back, along the upstage
+    gallery onto the SL gallery by 120.5, back the same way from 137.3. Burr stands SL under him (3.8, 0.45) and goes
+    off SL as Lee goes. **Cue 445's DL special (ch5, 2.45, 3.05) now lands on nobody**; the cue reconstruction moved it
+    onto the deck because it "hung off the lip", so it may have been aimed at the SL balcony all along.
+  - Hamilton charges toward Lee (round Washington, 125.6-127.6) and Washington steps into his way (128.3).
+  - Hamilton and Laurens stand 0.65 m apart, facing, in their two keys for the end.
+  - Moves: the Bullet's walk (10-19.5); Hamilton's point on the vocal gun (bar 19 beat 3); musket for the soldiers on
+    the raids (77.5) and for the soldiers and Burr in Monmouth (98.6, 105.0).
+- **1-15 Ten Duel Commandments.** The review-2 staging (ETC's renders of the real cues) is kept. Sources: the clip,
+  Odyssey, the Ham4Ham.
+  - The duellists start nose to nose (0.7 m apart, was 0.9).
+  - The Bullet (ens1, labelled The Bullet) is beside Hamilton in the line at #6 (already so) and now goes with him to
+    his place DR for #7 and #8 (-2.05, 2.45); the cluster is the other five. She leaves first in the seconds' scene.
+  - Lee stands with his back to the seconds' talk, then turns round to Hamilton at 90.5.
+  - Moves: the duellists spin as the guns are passed (bar 12 beat 3) and bounce on #4 (bar 13, 8 counts); the line of
+    ten bounces on #6 (bar 19), and the cluster with Hamilton and the Bullet on #7 (bar 21 beat 2). The "in sync"
+    choreography is not described, so the number's own #4 bounce stands in. The ten paces are march at 3.33x speed
+    (bar 33 beat 2, three beats: ten steps); musket for the turn and the shot (bar 34).
+  - Not placed: the ensemble's head snap at #1 (the renders have no company on at #1; the one comment may mean the
+    seconds); the line's turns in the Ham4Ham (no time or count for them).
+- **1-16 Meet Me Inside.** Sources: the clip, ironinkpen, hamiltonsideblog.
+  - Laurens comes down to Hamilton for the hug (4.6), stays at his side, held back as he strains toward Lee (17-21.5),
+    and goes off DR.
+  - Hamilton steps right into Washington's face for his threat (68.6-70.25), and is back in his key for Washington's
+    order.
+  - Not placed: "Washington bows at Lee when he apologizes" (no time for it; Lee yields before Washington arrives).
+- **1-17 That Would Be Enough.** Sources: the clip, ironinkpen. Hamilton's seat is now a little bench (props.py,
+  `office-chair` re-kinded as a 1.0 m bench). The page has no sitting pose, so he still stands before it.
+
+### Moves the library does not have (for the dance agent)
+- **head-snap** (1-15 #1): a sharp turn of the head to one side on the count's hit, held a beat, the body still. 1
+  count, once, held.
+- **sit** (1-17; and 1-13's "sit as he sits"): sitting on a bench or chair behind her, knees at 90 degrees, hips at
+  seat height (0.45 m), hands on the thighs. Once, held.
+- **comfort** (1-17): standing beside a seated partner, both hands on his shoulders, a slow rub. 4 counts, loops.
+- **gun-pass** (1-15, the Company Vocal before #4): the second holds a pistol out flat on both palms and the duellist
+  takes it by the grip. 2 counts, once.
+
+### Watch first
+1. 1-13 31-51 s: the six on the upstage gallery, swaying with Burr; and 115-132 s, Burr turning up to them (no Hamilton).
+2. 1-14 0-30 s: the Bullet's slow crossing and Laurens cutting in.
+3. 1-14 84-110 s: Angelica and Eliza on the gallery, the letter to Washington, Washington up there through Lee's orders.
+4. 1-14 110-138 s: Lee out on the SL gallery for the slander, Burr below, Hamilton's charge stopped by Washington.
+5. 1-15 36-46 s (spin and bounce), 57-72 s (#6 / #7 with the Bullet at Hamilton's side), 101-105 s (the paces, the shot).
+6. 1-12 0-10 s and 104-112 s: the two slumped guests; 69-78 s, Hamilton shooing his friends.

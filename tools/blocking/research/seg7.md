@@ -320,3 +320,100 @@ No spotlight placement of a principal was moved.
 - The size of the 2-16 play's cast.
 - Whether the King dances on the SR or the SL balcony in the Pamphlet. hamilton-lyrics says "stage left"; the King DR cue lands SR, so SR is kept.
 - Eliza standing inside the bench footprint at 2-15 119.5 is a spotlight-pass placement, and is left.
+
+
+## Review 3 (video evidence)
+
+This pass read the Disney+ clips as TEXT (their titles, descriptions and top comments, many of which describe a moment with
+a timestamp), edited `seg7_gen.py`, the SEGMENT 7 sections of `props.py` and `dance.py`, and re-ran all three. Every change
+is marked `REVIEW 3`. The pre-pass copies are in `scratchpad/act/review3/seg7/orig/`; the comment dumps are in
+`review3/seg7/web/` (fetched with `review3/seg7/tools/ytc.py`: the watch page, then YouTube's own comment continuation).
+Merge `--check` on seg7 + props + dance alone: **0 errors, 0 warnings, 764 waypoints** (was 743). The generator's sampler
+reports only the long-standing items (the mother lift, the King on the SR stair, off-to-off FAST legs in the wings).
+`props.py --check`: `ok` on every seg 7 carry. No lyric is quoted here.
+
+The auto-captions could not be read (the caption request returns empty without a browser token), and they would be the
+lyrics anyway. The clip timestamps run 0-7 s later than the album (the film's tempo and a lead-in), so a comment's time was
+matched to the nearest cue, never used raw.
+
+### Videos used
+| # | Video | Text read | What it settled |
+|---|---|---|---|
+| 1 | Asaki Takaya, "The Adams Administration" (Disney+ clip, 0:57) https://youtu.be/jpFsc2bDXUk | title, description, ~120 comments | The King jams on his chair UL from 0:07; Burr turns at 0:12, sees him and nearly corpses; the King runs off just after the papers drop (0:36-0:37); "the dude in the white dodging the papers" at 0:35 (one body under the drop - not added, see below). |
+| 2 | Asaki Takaya, "We Know" (2:28) https://youtu.be/0VVuEPbjLoU | ~200 comments | Maria watches it all from the side / a corner / "in the shadows" (top comment 9.2K; seen 1:48-1:55); Philip "chilling in the rafters", "sitting above the stage" (0:10; four comments); Eliza up top too (two comments); Washington and Angelica named once each. Jefferson's backwards walk (~0:32, 930 likes; again 1:28). |
+| 3 | Asaki Takaya, "Hurricane" (2:31) https://youtu.be/9rVURq5isnY | ~230 comments | His slow turn to the house at the top; the stage fills and stands still on the slowly revolving floor; the floor turns COUNTER-CLOCKWISE; at 1:38 the people holding the furniture are "debris flying all around" him; at 1:53 someone is carried (the mother lift, kept); Burr "sitting in the background", then "looming up in the foreground" holding his book like a pistol at 2:02-2:03; Maria the only colour at 1:36; Maria hands him the pen; the 2:28 shot: Maria behind him, **Eliza, Philip, Washington and Angelica all on the second level** staring down at him and his raised pen. |
+| 4 | Asaki Takaya, "The Reynolds Pamphlet" (2:09) https://youtu.be/x_MQRNkRaUE | title and description only | Comments are off. |
+| 5 | ClownOwO, "6 Reasons The Reynolds Pamphlet Is The Best Scene In Hamilton" (film clips, 3:04) https://youtu.be/LMaM6godYSk | 200 comments | The ensemble improvise ("the background actors don't have any choreography", "the only time the actors improv"), throw pages everywhere and pick them ALL up before Eliza's Burn; Jefferson bouncing on the desk making it rain; Maria behind the chair with a page; Philip's entrance and exit; the conductor handed a copy; the King "shuffled in". Its timestamps are the compilation's, not the song's. |
+| 6 | Hamilton (official), "The Reynolds Pamphlet" (audio, 2:09) https://youtu.be/ppfcuc8ptVg | 184 comments | "Honest with our money" at about 1:42 = cue 101.45; Angelica in at 0:54. |
+| 7 | Broadcast Zero, "Hamilton: The Reynolds Pamphlet" (audio) https://youtu.be/uYQPP49MSEk | 200 comments | "In the last part everyone is dancing around Hamilton throwing pamphlets" (a bootleg viewer); the King dancing round throwing pages; Philip made to read and walking off. |
+| 8 | fatmanfalling, "The Reynolds Pamphlet vs Congratulations analysis" https://youtu.be/YvP9B5bCqLo | description, 59 comments | The King throwing pamphlets; in Chicago he joined the chorus. |
+| 9 | Asaki Takaya, "Blow Us All Away" (2:57) https://youtu.be/A1ufXcZwBxI | ~190 comments | One of the two women is **the Bullet** ("flirting with death", 1.9K); the girl to his right runs at 0:27 and twirls at 0:50 (the second hook); "the people standing between Philip and Eacker" for the count are **seven**; Eacker "goes around out of sight, shoots, and leaves". |
+| 10 | Asaki Takaya, "Stay Alive (Reprise)" (2:04) https://youtu.be/5N2E43Tx3Xk | 200 comments | For seg 8: Washington, Burr, Jefferson and Madison "on the surround". |
+| 11 | Hamilton (official), "Hurricane" (audio) https://youtu.be/ZDrIMv-irD8 | 104 comments | Only jokes about dancing with a chair. |
+| 12 | Hamilton (official), "Burn" https://youtu.be/ibiXMtfG6a8 ; Broadcast Zero, "Hamilton: Burn" https://youtu.be/fnmNzQlflO0 | 267 comments | Nothing about the staging. **Burn is not in Jack's playlist.** |
+| 13 | Ripley's Realm, "The Reynolds Pamplet" https://youtu.be/MK_pO900b1c | 2 comments | Nothing. |
+| - | Looper, "Small details you missed in Hamilton"; The Odyssey, "The piece of foreshadowing in Hamilton everyone misses" (search snippets) | text | In Blow Us All Away the Bullet tells Philip where to find Eacker (Martha's line). |
+
+### Changes per track
+- **2-11:** The King **runs off right after the papers drop** (leaves 34.6 at a run; was a walk at 47.44), taking his stool
+  (props.py). Burr **turns to see the King jamming** (10.6) and back (13.2). Moves: the King `bounce` on his stool 5.5-33.3.
+  Not added: the "dude in the white dodging the papers" (one comment, no place).
+- **2-12:** **Philip on the USG** (-1.2, -3.35) from 9 to 129; **Maria in the SL gallery's upstage corner** (4.9, -2.5),
+  above her letters' cabinet, 8 to 130; **Eliza on the SR gallery** (-4.5, -2.2), 6 to 130.5. Washington and Angelica were
+  named once each and are NOT added. Jefferson's two legs are slowed for a backwards walk (leaves 29.9 for DSC; leaves 80.6
+  for the recoil). Moves: Jefferson `rewind` on both.
+- **2-13:**
+  - Hamilton reaches C with his back to the house (end of 2-12) and turns slowly to it by the still point (3.0-11.88).
+  - The ring revolves **counter-clockwise** (every revolve negated; start angles +90 deg, wings re-picked, so every member
+    ends the montage where review 2 had them).
+  - **Furniture:** ens1 carries on Hamilton's chair and ens3 the extra chair (the Pamphlet's two chairs), ens2 and ens4 a
+    storm chair each, from their entrances. All four hoist on the storm memory (23.0-34.3) and through the montage
+    (70.1-97.4). At the still point ens2 and ens4 drop theirs, pick them up at the golden sky (101.3), take them off (W-USL,
+    W-DSL) and come back on from DSL for the crawl. At the decision ens1 sets his chair behind him (133.0) and ens3 the
+    extra chair as she reaches the desk (134.3); **ens10 and ens8 no longer come on** for them.
+  - **Burr** sits UR on the deck behind the ring (-2.4, -2.9) from 16.0, and walks down to the DSR foreground (-2.8, 3.9)
+    for his motif (116.28), aiming at Hamilton; then DC for the Pamphlet as before.
+  - **The voices stay to the end**, on the second level: Eliza (SL gallery) and Angelica (SR strip) as before but until
+    the FTB; **Washington moves from the deck to the USG** (-2.4, -3.35); **Philip added on the USG** (1.6, -3.35). All off
+    in the FTB (141.8-143.5). ens10's USG reader in 2-14 arrives at 9.0 (was 6.0) to let them pass.
+- **2-14:** no staging change; moves only.
+- **2-15:** no change (no video text about Burn's staging).
+- **2-16:** Martha is **the Bullet (ens1)**, with Dolly (ens6); they stay with Philip until the second hook (ens1 twirls) and
+  leave SR at 51.3 / 52.0; Philip leaves them at about 47.6 (his 40.1 stop is cut). **ens7** takes ens1's theatre chair.
+
+### Moves placed (dance.py SEGMENT 7)
+2-11 the King `bounce` (5.5-33.3). 2-12 Jefferson `rewind` (29.9-33.7, 80.2-83.4). 2-13 ens1-4 `hoist` (the storm memory
+and the montage, canon 0.2 s); ens2/ens4 `crawl-back` (116.3-129.0); Burr `point` (4 counts at his motif). 2-14 Jefferson
+`bounce` x2 on the desk (bar 10.4 to 41.0); the King `two-step` x2 (bar 12.2 to 51.16), then `shimmy` to 53.8; the ring
+(E8) `wall-ooze` at bars 16.3, 19.3 and 21.3 (8 counts each); in chorus 2 the ring `two-step` x2 (bar 26.3 to 100.9) and
+the three `bounce` x2 (bar 26.3 to 115.66); the freestyle from bar 30 for 16 counts, a different move each (grind,
+two-step, shimmy, jump, bounce, stomp, jazz-roll, kick, arm-sweep). 2-16 ens1 `spin-full` at bar 19.3.
+
+### Moves needed that do not exist
+- **aim** (Burr, 2-13): the right arm raised straight forward at shoulder height, elbow locked, the hand closed round
+  the book as a pistol grip, the left hand coming to cup it on count 2, the head down the arm; held (once, then held, 2
+  counts). `point` stands in.
+- **make-it-rain** (2-14: Jefferson, the King, the freestyle): both hands at the chest, the forearms flicking out and up
+  on every beat to throw pages, alternating hands on the "and"; the body bouncing (loops, 1 count). `bounce` stands in.
+- **floor freestyle** (2-14: "the worm", "throwing it back on the floor", "rolling in the pages like a pool"): down to
+  the floor on 1-2, a roll onto the back on 3-4, up on 5-8 (loops, 8 counts).
+
+### Not settled, for Jack or the coordinator
+- **2-16, the count:** the clip shows "the people standing between Philip and Eacker" counting, **seven** of them. Review 2
+  cut all duel watchers as invented; now there is evidence, but they would stand on stage at 172.5, where the ruled
+  boundary leaves only Philip and Eacker. It needs a ruling (and seg 8 would have to clear them after the shot).
+- **2-16 -> 2-17:** Eacker "goes around out of sight, shoots, and leaves" (a comment): for the seg 8 shot.
+- Whether Eliza and Angelica swap galleries in Hurricane: the 2:28 comment lists "Eliza, Philip, Washington, and
+  Angelica", possibly left to right on screen (Eliza SR ... Angelica SL), the reverse of the spotlight pass. Kept.
+- Washington on the USG in Hurricane: is he in Viper 94 there? Its raw focus (-2.6, -5.4) lies upstage of the gallery,
+  so its beam should cross the USG near (-2.4, -3.35) at head height; not measured.
+
+### Ruling on 2-16's count (the coordinator, after this review)
+The clip wins: **seven of the company stand between Philip and Eacker for the count and are still on stage at 2-16
+172.5**, a third carry-over into 2-17 beside the two duellists (seg 8 starts them at these numbers and clears them after
+the shot). They are ens2, 3, 4, 6, 7, 8 and 9 (ens1, the Bullet, and ens10 are left free; ens5 is Eacker). They stand in
+a loose line on the perpendicular bisector of the two ruled marks, every place at least 1.97 m from each mark, with a gap
+on the duel line itself. They step in on the count, arriving at 169.9-170.6 (after the two pass back to back at 169.7),
+the inner ones first, and all face the house:
+ens2 (-1.34, -0.44); ens3 (-0.69, -0.06); ens4 (-0.05, 0.32); ens6 (1.25, 1.08); ens7 (1.89, 1.46); ens8 (2.54, 1.84);
+ens9 (3.19, 2.22); facing 0. Merge --check: 0 errors, 0 warnings, 791 waypoints; the sampler finds no new close pass.
