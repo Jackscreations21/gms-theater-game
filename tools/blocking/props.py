@@ -10,7 +10,7 @@ The furniture the blocking already MIMES (the research notes and the eight gener
 a desk, a table, a box that the model does not have), placed where the reviewers put it. Format (the merge
 validates it; docs/hamilton-blocking-format.md):
 
-    { "props": [ { "id", "kind", "label", "size": [w, h, d], "color", "model"?,
+    { "props": [ { "id", "kind", "item"?, "label", "size": [w, h, d], "color", "model"?,
                    "waypoints": [ { "track", "at", "x"?, "z"?, "facing"?, "off"?, "carriedBy"?, "note"? } ] } ] }
 
 A waypoint with `carriedBy` hands the prop to that actor until the next waypoint (held in front at hip height,
@@ -19,6 +19,10 @@ forearms under it; a chair or a stool at her side; seen when she is) — or, RUL
 walk them ABREAST, about its width + 0.5 m apart. One without places it on the floor at (x, z) turned to
 `facing`; `off` hides it. `model` (FU) names a GLB in assets/props/ drawn in place of the boxes. Before its first
 waypoint a prop is hidden; every prop here still starts with an `off` waypoint.
+
+A HAND PROP (RULING GF): `kind='hand'` with `item=` one of HAND_ITEMS (book, quill, letter, pistol, sword, glass), no
+size (the item's own). It rides in the carrier's right hand with no carry pose on her arm, may be carried on and off
+with no set-down (RULING FW), and lies on the floor like any prop at a placed waypoint.
 
 HOW A CARRY IS CHOSEN. Bring-on: an actor the notes name, else one who is OFFSTAGE before the moment and walks
 on to within about a metre of the spot just as the scene needs it (found with the actors' poses; --check
@@ -60,8 +64,10 @@ PROPS = []
 
 
 class Prop:
-    def __init__(self, pid, kind, label, color, size=None, model=None):
-        self.d = {'id': pid, 'kind': kind, 'label': label}
+    def __init__(self, pid, kind, label, color, size=None, model=None, item=None):
+        self.d = {'id': pid, 'kind': kind}
+        if item: self.d['item'] = item                         # RULING GF: a hand prop's item, right after its kind
+        self.d['label'] = label
         if size: self.d['size'] = size
         self.d['color'] = color
         if model: self.d['model'] = model                       # RULING FU: assets/props/<file>.glb
@@ -125,14 +131,18 @@ def chair_for(sitter, look, d=0.7):
 # partial table in check(), which crashed on a crate)
 PROP_KINDS = {'desk': [1.2, 0.75, 0.6], 'table': [1.5, 0.75, 0.9], 'chair': [0.45, 0.9, 0.45], 'bench': [1.4, 0.45, 0.4],
               'stool': [0.4, 0.6, 0.4], 'box': [0.5, 0.45, 0.5], 'crate': [0.6, 0.5, 0.6], 'lantern': [0.2, 0.35, 0.2],
-              'bucket': [0.3, 0.35, 0.3], 'custom': [0.5, 0.5, 0.5]}
+              'bucket': [0.3, 0.35, 0.3], 'custom': [0.5, 0.5, 0.5], 'hand': [0.22, 0.05, 0.16]}
+# RULING GF: a hand prop's items and their sizes, as tools/blocking-merge.py's HAND_ITEMS
+HAND_ITEMS = {'book': [0.22, 0.05, 0.16], 'quill': [0.02, 0.3, 0.02], 'letter': [0.2, 0.005, 0.28], 'pistol': [0.04, 0.14, 0.36],
+              'sword': [0.04, 0.9, 0.1], 'glass': [0.07, 0.12, 0.07]}
 
 OAK, WALNUT, PINE, CRATE = '#7a5230', '#5e3f26', '#9a7b4f', '#8c6d45'
 
 
 # The operations a section lists. Each returns a plain tuple; the file applies them in section order (below).
-def P(pid, kind, label, color, size=None, model=None):                        # a new prop (declared once, where it first appears)
-    return ('new', pid, (kind, label, color), {'size': size, 'model': model})
+def P(pid, kind, label, color, size=None, model=None, item=None):             # a new prop (declared once, where it first appears)
+    assert (kind == 'hand') == (item is not None) and (item is None or item in HAND_ITEMS), (pid, 'a hand prop, and only one, names its item')
+    return ('new', pid, (kind, label, color), {'size': size, 'model': model, 'item': item})
 
 
 def DARK(pid, track, at, x, z, facing=0.0, note='set in the dark'):            # set on the floor in a blackout
@@ -188,7 +198,7 @@ SEGMENT_1 = [
     DARK('burr-chair', '1-02', 0.3, *behind((-3.3, -2.2), 20, 0.7), 20, note='1-03: the tavern chair UR where Burr reads (fan account); set in the 1-01 blackout'),
     # REVIEW 3: Burr's book in My Shot ("Aaron burr just reading a book in the background", a Disney+ clip comment):
     # it lies by his chair UR from the 1-01 blackout; he picks it up as he sits (1-03 6.6) and takes it off with him
-    P('burr-book', 'custom', "Book (Burr's)", '#3b2a1a', size=[0.22, 0.05, 0.16]),
+    P('burr-book', 'hand', "Book (Burr's)", '#3b2a1a', item='book'),                # RULING GF: a hand prop
     DARK('burr-book', '1-02', 0.3, -3.0, -2.75, 20, note="1-03: by Burr's chair UR, set with it in the 1-01 blackout"),
     CARRY('burr-book', '1-03', 6.7, 'burr', note='he reads in the chair until his verse, and keeps it'),
     HIDE('burr-book', '1-03', 143.4, 'W-DSR', note='off with him (Q118)'),
@@ -211,7 +221,7 @@ SEGMENT_1 = [
     # REVIEW 3: the Schuyler Sisters' "book guy" -- "their dad's dancing with a book", "that guy with the book is going
     # wild with his dance moves" (Disney+ clip comments; of the 2016 Tonys number: "where's book guy appreciation"):
     # the sisters' father's actor, so ens4 (Philip Schuyler's body), dances the number with a book in his hands
-    P('schuyler-book', 'custom', 'Book', '#4a2f1c', size=[0.22, 0.05, 0.16]),
+    P('schuyler-book', 'hand', 'Book', '#4a2f1c', item='book'),                     # RULING GF: a hand prop
     HIDE('schuyler-book', '1-05', 11.1, 'W-USL'),
     CARRY('schuyler-book', '1-05', 11.3, 'ens4', note='on with him from USL, the whole number'),
     HIDE('schuyler-book', '1-06', 0.8, 'D-UC', note='off with him in the blackout'),
@@ -621,7 +631,7 @@ def check(path):
                     print(f'  WARN {p.d["id"]}: the pair {ids} are {min(gaps):.2f}..{max(gaps):.2f} m apart (it is {wd} m long)'); bad += 1
                 elif gaps: print(f'  ok   {p.d["id"]}: the pair {ids} walk {min(gaps):.2f}..{max(gaps):.2f} m apart')
         # bodies standing inside a placed piece (expected for the box / the climbed desk / Burr's table / Philip's)
-        hw, hd = [v / 2 for v in (p.d.get('size') or PROP_KINDS.get(p.d['kind'], PROP_KINDS['custom']))[::2]]   # REVIEW 3: every kind the page knows
+        hw, hd = [v / 2 for v in (p.d.get('size') or HAND_ITEMS.get(p.d.get('item')) or PROP_KINDS.get(p.d['kind'], PROP_KINDS['custom']))[::2]]   # REVIEW 3: every kind the page knows (GF: a hand prop's item)
         for i, w in enumerate(W):
             if w.get('off') or w.get('carriedBy') or i + 1 >= len(W): continue
             t, t1, hits = G(w), G(W[i + 1]), {}

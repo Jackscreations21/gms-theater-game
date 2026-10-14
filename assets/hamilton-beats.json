@@ -59,13 +59,52 @@
    "bpm": 91,
    "firstBeat": 0.416,
    "meter": 4,
+   "changes": [
+    {
+     "at": 24.036,
+     "bpm": 90.53
+    },
+    {
+     "at": 45.907,
+     "bpm": 91
+    },
+    {
+     "at": 123.713,
+     "bpm": 89.62
+    },
+    {
+     "at": 140.451,
+     "bpm": 91
+    },
+    {
+     "at": 156.935,
+     "bpm": 89.78
+    },
+    {
+     "at": 170.301,
+     "bpm": 91.02
+    },
+    {
+     "at": 228.311,
+     "bpm": 90.14
+    },
+    {
+     "at": 284.223,
+     "bpm": 88.59
+    },
+    {
+     "at": 297.769,
+     "bpm": 91
+    }
+   ],
    "published": 182,
    "confidence": 4.34,
    "onBeatMs": {
     "n": 377,
     "median": 1,
     "within50": 0.74
-   }
+   },
+   "note": "RULING GF: re-gridded against the album's onsets. The album drifts behind a constant 91: 0.39 of a beat late from about 140 s, 0.65 from 170 s, slowing through the death verse, and 2 beats late (half a bar) from 298 s. Each change is a music beat the onset comb found, given the beat number that keeps the bars on the music; between two, the tempo that lands the count there."
   },
   "1-04": {
    "title": "The Story of Tonight",
@@ -276,7 +315,7 @@
   "1-18": {
    "title": "Guns and Ships",
    "bpm": 138,
-   "firstBeat": 0.846,
+   "firstBeat": 1.716,
    "meter": 4,
    "published": 138,
    "confidence": 5.51,
@@ -284,7 +323,8 @@
     "n": 224,
     "median": 1,
     "within50": 0.85
-   }
+   },
+   "note": "RULING GF: re-gridded against the album's onsets: the downbeat moved on two beats. The loudest hit every four beats is the backbeat, not the one: the cue hits and the sung phrases start two beats after the old downbeats all through the song."
   },
   "1-19": {
    "title": "History Has Its Eyes on You",

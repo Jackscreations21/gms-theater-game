@@ -93,7 +93,8 @@ Jack: *"make it so i can also put in props i want people to carry on like desks 
 ```jsonc
 "props": [
   { "id": "room-table",                 // unique
-    "kind": "table",                    // desk · table · chair · bench · stool · box · crate · lantern · bucket · custom
+    "kind": "table",                    // desk · table · chair · bench · stool · box · crate · lantern · bucket · custom · hand (GF)
+    "item": "book",                     // a hand prop only (RULING GF): book · quill · letter · pistol · sword · glass
     "label": "The Room's table",        // the name tag over it (the Names box)
     "size": [1.5, 0.75, 0.9],           // [w across, h, d deep] metres; absent: the kind's default
     "color": "#8a6a48",
@@ -109,6 +110,24 @@ Jack: *"make it so i can also put in props i want people to carry on like desks 
 | chair | 0.45 × 0.9 × 0.45 | | lantern | 0.2 × 0.35 × 0.2 |
 | bench | 1.4 × 0.45 × 0.4 | | bucket | 0.3 × 0.35 × 0.3 |
 | stool | 0.4 × 0.6 × 0.4 | | custom | 0.5 × 0.5 × 0.5 |
+| | | | hand (GF) | its item's, below |
+
+**Hand props (RULING GF).** `kind: "hand"` with `item`, one of the six below; `size` may be left out (the item's own is
+written). The merge errors on any other `item`, and warns (and drops it) on an `item` given to another kind.
+
+| item | size [w, h, d] m | | item | size |
+|---|---|---|---|---|
+| book | 0.22 × 0.05 × 0.16 | | pistol | 0.04 × 0.14 × 0.36 |
+| quill | 0.02 × 0.3 × 0.02 | | sword | 0.04 × 0.9 × 0.1 |
+| letter | 0.2 × 0.005 × 0.28 | | glass | 0.07 × 0.12 × 0.07 |
+
+- **Carried**, it rides in the carrier's RIGHT HAND (midtown.html: on her hand bone; a pistol's barrel and a sword's blade
+  along the hand), with NO carry pose on her arm: she walks and dances as she would empty-handed. `blocking.html` and
+  `tools/blocking-plot.py` draw it at her right hand (0.30 m to her right, 0.12 m ahead: a plan's approximation).
+- It may be carried on and carried off with no set-down (the FW rule, below); placed (a waypoint with x / z), it lies on
+  the floor like any prop.
+- In the file, `item` is written right after `kind`: `{"id": "burr-book", "kind": "hand", "item": "book", "label": …}`.
+  The two books (`burr-book`, `schuyler-book`) are hand props.
 
 PROP WAYPOINT: `{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }` — the same clock (and edges) as an actor's.
 `carriedBy` is one cast id, or (RULING FU) a list of two different ones.
@@ -136,8 +155,8 @@ PROP WAYPOINT: `{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }` — t
   floor; the boxes stand in until it loads (or if it cannot). The merge requires an `assets/props/*.glb` path.
 - **`off`**: not seen from `at` on.
 - **Before its first waypoint a prop is not on stage**; after its last it stays as that one says.
-- **A hand prop** (RULING FW: a book, a quill) may be carried on and carried off again with no set-down. The waypoints
-  are `off`, then a carry, then `off` (`schuyler-book` in 1-05).
+- **A hand prop** (RULING FW: a book, a quill; since RULING GF `kind: "hand"`, above) may be carried on and carried off
+  again with no set-down. The waypoints are `off`, then a carry, then `off` (`schuyler-book` in 1-05).
 - "Hamilton carries the desk on at 2-05 12.0 and sets it at centre at 18.0" is two waypoints:
   `{ "track": "2-05", "at": 12.0, "carriedBy": "hamilton" }`, `{ "track": "2-05", "at": 18.0, "x": 0, "z": 1.9, "facing": 0 }`.
 - A prop's state is a pure function of show time (and its carrier's pose), so a seek shows it right; `MIDTOWN.actors.check()`
@@ -145,7 +164,7 @@ PROP WAYPOINT: `{ track, at, x, z, y?, facing?, off?, carriedBy?, note? }` — t
 - In the page: a few shaded boxes of its size and colour (a desk or a table is a top on four legs, a chair has a back), lit as
   the actors are, with a name tag (the Names box).
 - The seed is GENERATED: `python -I tools/blocking/props.py` writes `tools/blocking/segments/props.json`; the merge validates it
-  (kind, size, colour, unique id, `carriedBy` a cast id or two different ones, `model` an `assets/props/*.glb` path (a
+  (kind, a hand prop's `item` (GF), size, colour, unique id, `carriedBy` a cast id or two different ones, `model` an `assets/props/*.glb` path (a
   missing file is a warning), x / z on a placed waypoint, the track ranges, strictly increasing times
   — errors; a placed prop off the stage, a carrier with no waypoints — warnings) and writes `props` after the actors.
 
@@ -156,7 +175,7 @@ An actor may carry `moves` after her `path`:
 ```jsonc
 {"id": "hamilton", "name": "Hamilton", "color": "#…", "path": [ … ],
  "moves": [ { "track": "1-03", "at": 76.99, "move": "my-shot", "counts": 8.0,
-              "mirror"?: true, "canon"?: 0.33, "speed"?: 2.0, "reverse"?: true, "note"?: "…" } ]}
+              "mirror"?: true, "canon"?: 0.33, "speed"?: 2.0, "reverse"?: true, "with"?: "eliza", "note"?: "…" } ]}
 ```
 
 | key | required | meaning |
@@ -168,6 +187,7 @@ An actor may carry `moves` after her `path`:
 | `canon` | no | Seconds added AFTER the snap, so a ripple can be finer than a beat. |
 | `speed` | no | The move's own counts per beat: 2 is double time, 0.5 is half time. |
 | `reverse` | no | The move run backwards. `rewind` is `slow-walk` with this already set. |
+| `with` | no | (RULING GF) The PARTNER of a two-body move: another cast id, never her own. Written on the LEAD's entry only; the partner has no entry of her own for it. Only on a move whose library entry has `pair` (below). |
 | `note` | no | Why. |
 
 **Rules:**
@@ -178,6 +198,13 @@ An actor may carry `moves` after her `path`:
 - A move given to someone who is offstage does nothing.
 - A move whose `lift` is `overhead` or `flip` (`hoist`, `upside-down`) carries the prop she is carrying up over her head
   (`flip` also turns it over).
+- **Pair moves (RULING GF).** A library move may carry `pair` and `reach` (metres): `pair: "required"` (`lift`, `catch`,
+  `partner-lift`, `comfort`) must name its partner in `with`; `pair: "optional"` (`sabre`, `handshake`, `gun-pass`,
+  `sword-take`) may. The page fits the two together (each slides toward the other and turns to face her); the partner's own
+  path and moves still say where she is otherwise. The merge **errors** on `with` that is not a cast id or is her own, on
+  `with` on a move without `pair`, and on a `pair: "required"` move without `with`; it **warns** when either of the two is
+  not on stage at the move's start, or they stand more than `reach` + 1 m apart then (judged by the poses of
+  `tools/blocking-plot.py`, the page's pose rules in Python, as `tools/blocking/props.py --check` judges a carry).
 
 Like everything else, it is a pure function of the show time: `MIDTOWN.actors.check()` compares every joint, seek against
 play, in the middle of moves.
@@ -196,6 +223,12 @@ play, in the middle of moves.
 - A change starts a new tempo at its time, and the beat count carries on.
 - `MIDTOWN.show.beatAt(track, t)` returns `{ beat, bar, inBar, phase, bpm, meter }`. `MIDTOWN.show.beatTime(track, beat)` is
   its inverse.
+- A track may carry a `note` saying how its grid was made.
+- **Re-gridded (RULING GF):** 1-03 *My Shot* and 1-18 *Guns and Ships* were re-gridded against the album's onsets. 1-03 has
+  nine tempo `changes` (at 24.036, 45.907, 123.713, 140.451, 156.935, 170.301, 228.311, 284.223 and 297.769 s; 88.59–91.02
+  BPM): the album drifts behind a constant 91 BPM, half a bar late by its last chorus. 1-18's `firstBeat` moved on two beats
+  (0.846 → 1.716 s): the loud hit every four beats is the backbeat. Under the new grids My Shot's phrase starts (bars 31,
+  35, 67, 71, 115) and the 1-18 company cues (565–568, 570–572) fall on beat 1. The other tracks are unchanged.
 
 ## The editor: `blocking.html` (RULING FP)
 
@@ -255,8 +288,10 @@ square for it, and it has a button, then when I press it I can choose who carrie
 - **Transport:** Space play / pause anywhere on the page (never a scroll or a button press); ← / → ±1 s, Shift ±5 s; Home the
   song's top. The song list (with each song's keyframe count), "Keyframes: N in this song" and a tick per keyframe on the song's
   scrub bar show what is recorded.
-- **Furniture:** "Add furniture" (desk, table, chair, bench, stool, box, crate, lantern, bucket; a name) makes a square in the
-  upstage-right wing tray. Every square has a **carry ▾** button (on hover or when clicked): it lists "Nobody — set it down
+- **Furniture:** "Add furniture" (desk, table, chair, bench, stool, box, crate, lantern, bucket, **hand prop**; a name) makes a
+  square in the upstage-right wing tray. For a hand prop (RULING GF) a second select picks the item (book, quill, letter,
+  pistol, sword, glass); its square is small and tagged "✋ item", and carried it sits at the carrier's right hand with its
+  tag and buttons on the side away from her dot. Every square has a **carry ▾** button (on hover or when clicked): it lists "Nobody — set it down
   here" and the company, the nearest first; choosing someone records `{ at, carriedBy }` now — the square rides with them until
   it is dragged somewhere (a placed keyframe: set down there, then). A CARRIED square is drawn beside its carrier's dot (not
   under it), tagged "carried by …", with a **⬇ put down** button (a placed keyframe where it rides, now); its carry ▾ list
@@ -287,9 +322,12 @@ square for it, and it has a button, then when I press it I can choose who carrie
 - **Dance** (RULING FV): select dots, press **♪ Dance… (D)**, pick a move (the counts, mirror, a canon step in seconds added
   per body in selection order): each gets `{ at: the clock, move, counts, mirror?, canon? }` in this song, recorded in the
   track's `moves`. A dancing dot wears "♪ move"; the song's bar shows the beats faintly, the bars brighter, and the moves.
+  **With … (RULING GF):** a pair move (marked ⇄ in the list) asks next who it is WITH: the selected first, then the company
+  nearest the first selected dot (offstage last); an optional pair move also offers "Nobody — alone". Each selected dancer
+  except the partner gets `with: "<partner id>"` on her entry; the partner gets none. Her dot then wears "♪ move ⇄ Name".
   The loaded file's `moves` stay unless the song is cleared or the body's track deleted (all, or from the clock on); X takes
   back a move starting now. Applying a recording: each `moves` entry becomes an actor's `moves` entry for that track in
-  `tools/blocking/dance.py` (its section `# ---- DANCE: <track> …`).
+  `tools/blocking/dance.py` (its section `# ---- DANCE: <track> …`), its `with` carried through unchanged (RULING GF).
 
 **The recording file** (`hamilton-blocking-recording-<date>.json`, the **Export** button; "Load a recording…" reads one back):
 
@@ -300,7 +338,8 @@ square for it, and it has a button, then when I press it I can choose who carrie
   "rule": "…the rule above, in words…",
   "clock": "at: seconds into the album track; 1-01 and 2-01 may be −10…0, 1-23 up to its length + 10, 2-23 open (RULING FQ)",
   "notes": { "global": "…", "tracks": { "1-04": "…" } },
-  "furniture": [ { "id": "f-test-desk", "kind": "desk", "label": "Test desk", "size": [1.2, 0.75, 0.6], "color": "#9a7b4f" } ],   // props he added
+  "furniture": [ { "id": "f-test-desk", "kind": "desk", "label": "Test desk", "size": [1.2, 0.75, 0.6], "color": "#9a7b4f" },
+                 { "id": "f-quill", "kind": "hand", "item": "quill", "label": "Quill", "size": [0.02, 0.3, 0.02], "color": "#c9b48a" } ],   // props he added
   "keyframes": 5,
   "tracks": {
     "1-04": { "title": "The Story of Tonight", "cleared": false,
@@ -309,7 +348,8 @@ square for it, and it has a button, then when I press it I can choose who carrie
                                            { "at": 77.4, "x": 0, "z": 1.65, "off": false },
                                            { "at": 85.6, "carriedBy": "hamilton", "off": false } ] },
               "deletions": { "actors": { "laurens": { "deleted": "all" }, "hamilton": { "deletedFrom": 30 } }, "props": {} },
-              "moves": { "hamilton": [ { "at": 30, "move": "my-shot", "counts": 8, "canon": 0.25 } ] } } }   // RULING FV
+              "moves": { "hamilton": [ { "at": 30, "move": "my-shot", "counts": 8, "canon": 0.25 } ],             // RULING FV
+                         "eliza": [ { "at": 41.5, "move": "lift", "counts": 4, "with": "angelica" } ] } } }   // RULING GF
 }
 ```
 
@@ -321,7 +361,9 @@ was cut and who would be left on stage gets an offstage waypoint at the nearest 
 nearest her next spot, timed to walk on to it), as the editor plays it. Then write each keyframe as a waypoint:
 `{ track, at, x, z }` plus `"y": "gallery"` when `level` is "gallery" and `"off": true` when `off` — no `dwell`, no `facing`
 (add a `facing` only if Jack's note asks); a prop keyframe with `carriedBy` becomes `{ track, at, carriedBy }`, one with x / z a
-placed waypoint (`facing` 0 unless noted). Each `furniture` entry becomes a new prop in `props.py`. A cleared track's bodies
+placed waypoint (`facing` 0 unless noted). Each `furniture` entry becomes a new prop in `props.py` (a hand prop as
+`P(id, 'hand', label, color, item='<item>')`, no size: RULING GF). Each `moves` entry becomes a `dance.py` entry for that
+actor and track, `with` included as it stands (the lead's entry only). A cleared track's bodies
 with no keyframes need an offstage waypoint at the track's top and before its end (the editor's holds: the nearest wing). Run
 the generators and the merge, then `MIDTOWN.actors.check()`.
 
@@ -459,7 +501,10 @@ The merge **fails** (writes nothing) if any of these occur:
 - an `at` outside its track;
 - a label the cast does not allow that actor;
 - time that does not strictly increase for an actor across the whole show;
-- a track claimed by two segments.
+- a track claimed by two segments;
+- a hand prop whose `item` is not one of the six (RULING GF);
+- a move's `with` that is not another cast id, `with` on a move without `pair`, or a `pair: "required"` move without
+  `with` (RULING GF).
 
 It **warns** (and still writes) if any of these occur:
 
@@ -472,7 +517,8 @@ It **warns** (and still writes) if any of these occur:
 - a stair climbed faster than 0.7 m/s across the floor;
 - a leg faster than 3.5 m/s;
 - a dwell that overruns;
-- an offstage waypoint in plain view.
+- an offstage waypoint in plain view;
+- a pair move whose two are not both on stage, or are more than its `reach` + 1 m apart, at its start (RULING GF).
 
 It then prints, for each track, the actors present and their waypoint counts.
 

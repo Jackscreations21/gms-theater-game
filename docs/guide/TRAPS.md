@@ -1844,3 +1844,25 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **The stair units move between numbers.** Set points for them hold within a song at best; across songs they pulled
   solves off by 18–200 px.
 
+- **A grid change silently moves every `bar=` / `beat=` entry in that track.** `dance.py` turns bar and beat into
+  a time through `assets/hamilton-beats.json`, so re-gridding Guns and Ships by two beats made every "bar N beat 3"
+  entry resolve two beats late until it was re-placed as "beat 1"; My Shot's beat-2/beat-3 work-arounds became
+  wrong the moment the tempo changes went in. After any grid edit, re-place that track's entries by bar and read the
+  merge's "off the beat" warnings. (2026-10-14, dance round 2.)
+- **`with` is a Python keyword.** `dict(with='burr')` is a syntax error; `dance.py` takes `with_=` and `put()` writes
+  it out as `"with"`.
+- **A move overrides a sit, and the sit does not come back.** The later-wins rule (FV) means an upper-body move given
+  to a seated body stands her up for the rest of her seat. Two seated actions are HELD in `dance.py` for a seated
+  layer that is not built; do not "fix" them by shortening the sit.
+- **The Browser pane serves `midtown.html` from cache** (transferSize 0): a plain reload runs the old code after an
+  edit. Navigate to the URL with a fresh `?r=N` each time.
+- **With the Browser pane hidden, `requestAnimationFrame` never fires.** A `javascript_tool` script that awaits it
+  hangs to the 45 s timeout and then runs later, when the pane is next shown. Drive the page's own synchronous
+  frame (`MIDTOWN.frame()`) instead.
+- **A body-frame `dvReach` reads the spine and pelvis angles already in V.** Set the lean before calling it, or the
+  hand lands where the upright body's hand would, off by the lean.
+- **On an arm abducted to horizontal, `dvArm`'s forward raise rotates about the arm's own axis** and shows nothing;
+  swinging it behind needs the twist (Euler XYZ). Same family as the four orientation-sign traps: check a palm
+  POSITION with the IK, never by eye.
+- **A long `python - <<'EOF'` heredoc full of quotes fails in the Bash tool with "unexpected EOF".** Write the
+  script to a scratch file and run that.

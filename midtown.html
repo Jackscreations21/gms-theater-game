@@ -5210,7 +5210,7 @@ const ACT_DRAFT = 'midtown-blocking-draft';
 const ACT_COLOURS = ['#d9b45a', '#5a8fd8', '#d8665a', '#6abf7a', '#b07ad8', '#e8e4dc', '#4fc1c1', '#d88ab8'];
 const ACT = { geo: null, root: null, group: null, help: null, actors: [], sel: -1, wsel: -1, drop: false, shown: true, T: NaN, dirty: true,
   compiledFor: undefined, el: null, E: {}, btn: null, drag: null, press: null, mats: new Map(), band: new Map(), file: null, err: null, note: '', ready: false,
-  litBodies: true, names: true, props: [] };                       // false: the pools' bands left as the engine fits them (a body lit to the shins) — for comparing
+  litBodies: true, names: true, props: [], mv: 0 };   // mv: bumped whenever the moves may have changed (GF: a pair entry lives on the other actor)                       // false: the pools' bands left as the engine fits them (a body lit to the shins) — for comparing
 
 // ---- the path, compiled: the waypoints in time order with their global times, each leg's curve and arc-length table
 const actF = v => v === null || v === undefined || v === '' ? null : Number.isFinite(+v) ? +v : null;
@@ -5963,6 +5963,400 @@ Object.assign(DANCE, {
   } },
 });
 DANCE.rewind = Object.assign({}, DANCE['slow-walk'], { reverse: true, desc: 'Satisfied\'s rewind: the slow-motion walk run backwards (the slow walk with reverse); travelling, she turns her back to her path' });
+// ---- DANCE ROUND 2 (RULING GF): forty more moves, from the reviewers' video evidence (tools/blocking/research/seg1–8.md, review 3).
+// Besides joint angles they need:
+//   - dvReach: a hand to a POINT by a 3-D two-bone IK, the elbow turned toward a pole — in her frame (x her left, y up from her
+//     feet, z forward), or with `spine: true` a point on her upper body given as if she stood straight, which leans with her
+//     spine (a hand at her mouth, on her ribs, at her lapels). Her spine and pelvis angles must be in V first;
+//   - dvTilt: the whole body tipped back (or forward, negative) about her feet — a fall back into someone's arms;
+//   - THE SEAT (`seat`: sit): the chair, bench, stool or box nearest her when the move starts (danceSeatW) — she sits on it;
+//   - THE PAIR (`pair`: the move's `with`): two bodies, one entry written on the lead; both slide together and face (dancePair).
+// The seat and the pair are worked out BEFORE the move (both pure: the path poses and the props at T) and put on the body AFTER
+// it (and after the mirror): f sees the mate (o.mate) where she will stand, in her own turned frame.
+const DR = { M1: new THREE.Matrix4(), M2: new THREE.Matrix4(), E: new THREE.Euler(), Q: new THREE.Quaternion(), Q2: new THREE.Quaternion(),
+  P: new THREE.Vector3(), S: new THREE.Vector3(), v: new THREE.Vector3(), d: new THREE.Vector3(), a: new THREE.Vector3(), w: new THREE.Vector3(),
+  t: new THREE.Vector3(), one: new THREE.Vector3(1, 1, 1) };
+function dvReach(V, s, tg, o = {}) {                         // the middle of her palm to tg; o: { spine, pole: [out, up, forward], hand (its bend) }
+  const part = n => RIG.parts[DJ[n] / 3], ua = part('upperarm_' + s), fa = part('forearm_' + s), hd = part('hand_' + s);
+  const sx = s === 'L' ? 1 : -1, hand = o.hand ?? -0.25, po = o.pole || [0.7, -1, -0.4], t = DR.t;
+  if (o.spine) t.set(tg.x - RIG.J.spine.x, tg.y - RIG.J.spine.y, tg.z - RIG.J.spine.z);   // already in the spine's frame
+  else {                                                     // her frame → the spine's, through the pelvis and spine angles in V
+    const rest = RIG.parts[0].pos;
+    DR.M1.compose(DR.P.set(rest.x + V[DV_PEL], rest.y + V[DV_PEL + 1], rest.z + V[DV_PEL + 2]), DR.Q.setFromEuler(DR.E.set(V[DJ.pelvis], V[DJ.pelvis + 1], V[DJ.pelvis + 2])), DR.one);
+    DR.M2.compose(part('spine').pos, DR.Q.setFromEuler(DR.E.set(V[DJ.spine], V[DJ.spine + 1], V[DJ.spine + 2])), DR.one);
+    t.set(tg.x, tg.y, tg.z).applyMatrix4(DR.M1.multiply(DR.M2).invert());
+  }
+  const d = DR.d.copy(t).sub(ua.pos), L = d.length(), a0 = DR.a.copy(fa.pos);
+  // the chain's end with the elbow bent e: a0 + Rx(−e)·(wrist→palm), the palm 0.07 m past the wrist with the hand bent by `hand`
+  const wx = hd.pos.x, wy = hd.pos.y - 0.07 * Math.cos(hand), wz = hd.pos.z - 0.07 * Math.sin(hand);
+  const end = (e, out) => { const c = Math.cos(e), sn = Math.sin(e); return out.set(a0.x + wx, a0.y + wy * c + wz * sn, a0.z - wy * sn + wz * c); };
+  let lo = 0, hi = 2.7; const v = DR.v;                     // the elbow's bend for that reach (the farther, the straighter)
+  if (end(0, v).length() <= L) hi = 0; else if (end(hi, v).length() >= L) lo = hi;
+  else for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2; if (end(m, v).length() > L) lo = m; else hi = m; }
+  const e = (lo + hi) / 2, dn = d.normalize(), q = DR.Q.setFromUnitVectors(end(e, v).normalize(), dn);
+  // then turned about the line to the target so the elbow points the pole's way (out to her side, down, back by default)
+  const el = DR.w.copy(a0).applyQuaternion(q), pp = DR.S.set(sx * po[0], po[1], po[2]);
+  el.addScaledVector(dn, -el.dot(dn)); pp.addScaledVector(dn, -pp.dot(dn));
+  if (el.lengthSq() > 1e-10 && pp.lengthSq() > 1e-10) q.premultiply(DR.Q2.setFromAxisAngle(dn, Math.atan2(DR.P.copy(el).cross(pp).dot(dn), el.dot(pp))));
+  DR.E.setFromQuaternion(q, 'XYZ');
+  dvRot(V, 'upperarm_' + s, DR.E.x, DR.E.y, DR.E.z); dvRot(V, 'forearm_' + s, -e, 0, 0); dvRot(V, 'hand_' + s, hand, 0, 0);
+}
+function dvTilt(V, th) {                                     // the whole body tipped back by th (rad) about her feet, a plank
+  const H = RIG.J.thigh_L.y; V[DJ.pelvis] -= th; V[DV_PEL + 1] -= H * (1 - Math.cos(th)); V[DV_PEL + 2] -= H * Math.sin(th);
+}
+const dPt = (x, y, z) => ({ x, y, z }), dMix = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t });
+const D_SIDE = { L: dPt(0.2, 0.76, 0.03), R: dPt(-0.21, 0.77, 0.05) };   // the hands hanging at her sides
+const D_HIP = { L: dPt(0.21, 0.99, 0.03), R: dPt(-0.22, 0.99, 0.04) }, D_OUT = [1, -0.1, -0.35];   // a fist on the hip, the elbow out
+const dHip = (V, s) => dvReach(V, s, D_HIP[s], { pole: D_OUT, hand: 0.1 });
+// how far below her hip joint she rests on a seat, the thighs level: the back of the thigh (or the pelvis's underside) — measured
+// off the rig's own mesh once (0.11 m for this mannequin: the thigh's back, 0.06 the pelvis)
+let DANCE_UNDER = null;
+function danceUnder() {
+  if (DANCE_UNDER !== null) return DANCE_UNDER;
+  const box = n => { const g = RIG.parts[DJ[n] / 3].geo; if (!g.boundingBox) g.computeBoundingBox(); return g.boundingBox; };
+  return (DANCE_UNDER = Math.max(-box('pelvis').min.y, -box('thigh_L').min.z, -box('thigh_R').min.z));
+}
+// THE SEAT: the chair, bench, stool or box (placed, seen) nearest her at T0 within DANCE_SEAT.near (to its nearest point; on a bench
+// the spot along it nearest her; of two about as near, the one behind her) — her hips DANCE_SEAT.back behind it, facing its front.
+// → { x, z, yaw, y (the seat's top) } set-local, or null.
+const DANCE_SEATS = { chair: true, bench: true, stool: true, box: true }, DANCE_SEAT = { near: 0.8, back: 0.04, h: 0.46, end: 0.15, tie: 0.1 };
+const danceSeatTop = p => p.kind === 'chair' ? Math.min(0.46, p.size[1] * 0.52) : p.size[1];   // a chair's seat as propParts builds it
+function danceSeatW(a, T0) {
+  if (!a.c) a.c = actCompile(a);
+  const me = actPose(a, T0), mfx = Math.sin(me.yaw), mfz = Math.cos(me.yaw); let best = null;
+  for (const pr of ACT.props) {
+    if (!DANCE_SEATS[pr.kind]) continue;
+    if (!pr.c) pr.c = propCompile(pr);
+    const q = propPose(pr, T0); if (!q.visible || q.carrier) continue;
+    // the seat's nearest point to her: along a bench's long axis (to its ends less DANCE_SEAT.end), else its middle — the search
+    // radius is measured to that point, not to the prop's centre (a sister standing off a bench's end still finds it)
+    const ax = Math.cos(q.yaw), az = -Math.sin(q.yaw), fx = Math.sin(q.yaw), fz = Math.cos(q.yaw), half = pr.kind === 'bench' ? Math.max(0, pr.size[0] / 2 - DANCE_SEAT.end) : 0;
+    const t = Math.max(-half, Math.min(half, (me.x - q.x) * ax + (me.z - q.z) * az)), px = q.x + ax * t, pz = q.z + az * t, d = Math.hypot(px - me.x, pz - me.z);
+    if (d > DANCE_SEAT.near) continue;
+    const behind = (px - me.x) * mfx + (pz - me.z) * mfz < 0;
+    // two seats about as near (DANCE_SEAT.tie): the one BEHIND her — she sits back onto it, not forward onto the one she faces
+    if (best && (d > best.d + DANCE_SEAT.tie || (d > best.d - DANCE_SEAT.tie && !(behind && !best.behind)))) continue;
+    best = { x: px - fx * DANCE_SEAT.back, z: pz - fz * DANCE_SEAT.back, yaw: q.yaw, y: q.y + danceSeatTop(pr), d, behind };
+  }
+  return best;
+}
+function danceSeat(a, T0, p) {                               // the same in her frame at p: { x, z, yaw (her body's offset and turn), h (the seat's height) }
+  const s = danceSeatW(a, T0); if (!s) return { x: 0, z: 0, yaw: 0, h: DANCE_SEAT.h };
+  const c = Math.cos(p.yaw), sn = Math.sin(p.yaw), dx = s.x - p.x, dz = s.z - p.z;
+  return { x: dx * c - dz * sn, z: dx * sn + dz * c, yaw: actYawLerp(p.yaw, s.yaw, 1) - p.yaw, h: s.y - p.y };
+}
+// THE PAIR: from both path poses at T, each body slides half the gap's excess toward the other (a lead-only move: the lead all of
+// it), at most DANCE_PAIR.cap, and turns to face her (the mate of a `faceWith` move turns that much further: her back for catch).
+// → { x, z, yaw: her body's offset and turn; mate: { x, y, z, yaw, d, seat } where the other one is, in her turned frame } or null
+// (the other one unseen: she dances it alone).
+const DANCE_PAIR = { cap: 0.6, near: 0.05 };
+function dancePair(e, T, p) {
+  const b = e.mate, def = e.def;
+  if (!b.c) b.c = actCompile(b);
+  const q = actPose(b, T); if (!q.visible) return null;
+  let mx = q.x, mz = q.z, myaw = q.yaw, seat = null;
+  if (def.leadOnly) {                                        // comfort: the mate is where her own moves put her — on her seat if she sits
+    const d = danceAt(b, T);
+    if (d && d.cur.def.seat) { const s = danceSeatW(b, d.cur.T0); if (s) { mx = s.x; mz = s.z; myaw = s.yaw; seat = s.y - p.y; } else seat = q.y + DANCE_SEAT.h - p.y; }
+  }
+  let dx = mx - p.x, dz = mz - p.z; const d = Math.hypot(dx, dz);
+  if (d < DANCE_PAIR.near) { const y = e.role === 'with' ? q.yaw + Math.PI : p.yaw; dx = Math.sin(y); dz = Math.cos(y); }   // on one spot: the lead keeps her front
+  else { dx /= d; dz /= d; }
+  const c = Math.cos(p.yaw), sn = Math.sin(p.yaw), ux = dx * c - dz * sn, uz = dx * sn + dz * c;   // toward the other, in her frame
+  const share = def.leadOnly ? 1 : 0.5, slide = Math.max(-0.3, Math.min(DANCE_PAIR.cap, (d - def.gap) * share));
+  const dir = Math.atan2(ux, uz), turn = e.role === 'with' ? def.faceWith || 0 : 0, gap = d - slide / share;
+  return { x: ux * slide, z: uz * slide, yaw: dir + turn,
+    mate: { x: -gap * Math.sin(turn), y: q.y - p.y, z: gap * Math.cos(turn), d: gap, seat,
+      yaw: seat !== null ? actYawLerp(0, myaw - p.yaw - dir, 1) : e.role === 'with' ? Math.PI - turn : Math.PI + (def.faceWith || 0) } };
+}
+function danceAnchor(V, x, z, yaw) {                         // the move's own body offset turned by yaw, then moved by (x, z)
+  const bx = V[DV_BODY], bz = V[DV_BODY + 2], c = Math.cos(yaw), s = Math.sin(yaw);
+  V[DV_BODY] = x + bx * c + bz * s; V[DV_BODY + 2] = z - bx * s + bz * c; V[DV_YAW] += yaw;
+}
+const dDown = (k, n) => (n >= 3 ? dEase(dSeg(k, n - 1, n)) : 0);   // a held two-body shape let down over the entry's last count
+Object.assign(DANCE, {
+  // ---- the hands and arms
+  'aim': { counts: 2, once: true, desc: 'a pistol arm levelled at the target straight ahead, the elbow locked, the head down the arm; on 2 the other hand comes up under it to steady it; held', f(V, k, u) {
+    const aim = V => { dStance(V, 0.03, 0.12, -0.05, 0.12); dvRot(V, 'spine', 0.02, 0, 0); dvArm(V, 'R', 1.55, -0.06, 0.03, 0, 0.1); dvRot(V, 'head', 0.1, -0.1, 0); };
+    dPhrase(V, u * 2, [[0, V => {}], [0.6, aim], [1, aim], [1.5, V => { aim(V); dvReach(V, 'L', dPt(-0.13, 1.25, 0.47), { hand: 0, pole: [0.6, -1, -0.2] }); }]]);
+  } },
+  'aim-up': { counts: 2, once: true, desc: 'the pistol arm thrown straight up, pointing at the sky, the other arm down at her side, the chin up; held (the duel: he fires into the air)', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 2.5));
+    dvArm(V, 'R', 2.95 * e, 0.1 * e, 0.03, 0, 0.1 * e); dvArm(V, 'L', 0.05, 0.12 * e, 0.12);
+    dvRot(V, 'head', -0.4 * e, 0, 0); dvRot(V, 'spine', -0.07 * e, 0, 0); dStance(V, 0.02 * e, 0.12);
+  } },
+  'point-down': { counts: 2, once: true, desc: 'the right arm thrust down and forward at 45 degrees, pointing at the floor, the left fist on the hip; on 1, held', f(V, k, u) {
+    dPhrase(V, u * 2, [[0, V => {}], [0.5, V => { dStance(V, 0.04, 0.12, 0, 0.12); dvRot(V, 'spine', 0.1, -0.1, 0); dvArm(V, 'R', 0.75, 0.22, 0.02, 0, 0.1); dHip(V, 'L'); dvRot(V, 'head', 0.3, -0.2, 0); }]]);
+  } },
+  'point-fall': { counts: 4, once: true, body: true, desc: 'the point straight at him on 1, held; on 3 the chest caves and the body is thrown back half a step as if shot, the arms flung forward and dropping; upright again on 4, half a step back (the ensemble as the book changes hands)', f(V, k, u) {
+    const pt = V => { dvBody(V, 0, 0, 0.05); dStance(V, 0.04, 0.1, -0.06, 0.16); dvRot(V, 'spine', 0.08, -0.05, 0); dvArm(V, 'R', 1.6, -0.05, 0.03, 0, 0.1); dvArm(V, 'L', 0.15, 0.12, 0.25); dvRot(V, 'head', 0.05, -0.05, 0); };
+    dPhrase(V, u * 4, [
+      [0, V => {}], [0.5, pt], [2, pt],
+      [2.5, V => { dvBody(V, 0, 0, -0.15); dStance(V, 0.07, 0.1, -0.12, 0.12); dvRot(V, 'spine', -0.32, 0, 0); dvRot(V, 'head', -0.35, 0, 0); dvArm(V, 'R', 0.8, 0.25, 0.3); dvArm(V, 'L', 0.7, 0.25, 0.3); }],
+      [3, V => { dvBody(V, 0, 0, -0.14); dStance(V, 0.06, 0.1, -0.1, 0.1); dvRot(V, 'spine', -0.22, 0, 0); dvRot(V, 'head', -0.2, 0, 0); dvArm(V, 'R', 0.55, 0.2, 0.35); dvArm(V, 'L', 0.5, 0.2, 0.35); }],
+      [4, V => { dvBody(V, 0, 0, -0.12); dStance(V, 0.01, 0.1); dvArm(V, 'R', 0.05, 0.06, 0.15); dvArm(V, 'L', 0.05, 0.06, 0.15); }],
+    ]);
+  } },
+  'beckon': { counts: 2, desc: 'the right arm out toward someone at chest height, palm up; the hand curls in toward her on each count, the head tipping toward them', f(V, k, u) {
+    const c = Math.pow(Math.sin(Math.PI * rigFrac(u * 2)), 2);
+    dStance(V, 0.02, 0.1); dvRot(V, 'spine', 0.04, -0.08, 0.03 * c);
+    dvArm(V, 'R', 1.2, 0.25, 0.35 + 0.75 * c, 0, 0.2 + 1.0 * c); dvArm(V, 'L', 0.1, 0.1, 0.25); dvRot(V, 'head', 0.06 * c, -0.15, 0.12 * c);
+  } },
+  'shoo': { counts: 2, desc: 'the right hand up at chest height, palm out, flicked outward from the wrist three times over the two counts, the head turned away', f(V, k, u) {
+    const fl = Math.max(0, Math.sin(3 * Math.PI * u * 2));
+    dvRot(V, 'spine', -0.03, 0.12, 0); dvArm(V, 'R', 0.75, 0.35 + 0.2 * fl, 1.45 - 0.3 * fl, 0, 0.9 - 0.7 * fl); dvArm(V, 'L', 0.05, 0.08, 0.2);
+    dvRot(V, 'head', -0.1, 0.5, 0.05);
+  } },
+  'air-quotes': { counts: 2, desc: 'both hands up beside the face, palms forward, the fingers flexed twice on 1 (the quotation marks), held up through 2', f(V, k, u) {
+    const b = u * 2, fl = b < 1 ? dBump(rigFrac(b * 2)) : 0;
+    dvRot(V, 'spine', -0.03, 0, 0); for (const s of ['L', 'R']) dvArm(V, s, 0.45, 0.85, 2.25, 0, 0.35 - 0.9 * fl);
+    dvRot(V, 'head', -0.05, 0, 0.1);
+  } },
+  'finger-wag': { counts: 1, desc: 'the right forearm up in front of her, the finger raised, wagging side to side twice a beat; the left fist on the hip', f(V, k, u) {
+    const w = Math.sin(4 * Math.PI * u);
+    dStance(V, 0.015, 0.1); dvRot(V, 'pelvis', 0, 0, -0.04); V[DJ.thigh_L + 2] += 0.04; V[DJ.thigh_R + 2] += 0.04;
+    dvArm(V, 'R', 0.45, 0.2, 1.95, 0.35 * w, 0.2); dHip(V, 'L'); dvRot(V, 'head', 0.05, -0.08 * w, 0.06);
+  } },
+  'make-it-rain': { counts: 1, desc: 'the left hand holds a stack of bills at her chest; the right hand, just above it, flicks them out and down on every beat; the knees bouncing', f(V, k, u) {
+    const fl = Math.pow(Math.sin(Math.PI * u), 2), hit = Math.pow(Math.max(0, 1 - u * 3), 2);
+    dStance(V, 0.04 * fl, 0.12); dvRot(V, 'spine', 0.04, -0.06, 0); dvRot(V, 'head', 0.1 + 0.05 * fl, 0, 0);
+    dvReach(V, 'L', dPt(0.03, 1.1, 0.3), { spine: true, hand: 0.4 });
+    dvReach(V, 'R', dPt(-0.04 - 0.22 * hit, 1.2 + 0.06 * hit, 0.32 + 0.08 * hit), { spine: true, hand: -0.2 + 0.9 * hit });
+  } },
+  'angel-wings': { counts: 4, once: true, desc: 'both arms spread wide behind her, a little above the shoulders, wrists leading; they beat twice like wings on 3 and 4, then are held spread (standing behind someone, as her wings)', f(V, k, u) {
+    const b = u * 4, e = dEase(dSeg(b, 0, 1.5)), fl = b > 1.5 && b < 3.5 ? Math.sin(2 * Math.PI * (b - 1.5)) : 0;
+    for (const s of ['L', 'R']) dvArm(V, s, 0, (1.65 + 0.15 * fl) * e, (0.35 + 0.3 * Math.max(0, -fl)) * e + 0.12 * (1 - e), 0.75 * e, -0.4 * fl * e);
+    dvRot(V, 'spine', -0.08 * e, 0, 0); dvRot(V, 'head', -0.12 * e, 0, 0);
+  } },
+  'breath': { counts: 2, once: true, desc: 'a slow breath in: the chest lifts, the chin rises, the shoulders go back and the arms float a little out from her sides; held', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 1.6));
+    dvRot(V, 'spine', -0.1 * e, 0, 0); dvRot(V, 'head', -0.18 * e, 0, 0);
+    dvArm(V, 'L', -0.12 * e, 0.3 * e, 0.12 + 0.1 * e, 0, -0.2 * e); dvArm(V, 'R', -0.12 * e, 0.3 * e, 0.12 + 0.1 * e, 0, -0.2 * e);
+  } },
+  'gasp': { counts: 2, once: true, body: true, desc: 'a sharp breath: a hand flies to her mouth and the other to her chest, the body jerks back; held', f(V, k, u) {
+    const b = u * 2, e = dEase(Math.min(1, b / 0.35)), j = dBump(dSeg(b, 0, 0.7));
+    dStance(V, 0.02 * e, 0.1); dvBody(V, 0, 0, -0.05 * e); dvRot(V, 'spine', -0.08 * e - 0.1 * j, 0, 0); dvRot(V, 'head', -0.12 * e - 0.08 * j, 0, 0);
+    dvReach(V, 'R', dMix(D_SIDE.R, dPt(-0.03, 1.5, 0.17), e), { spine: true, hand: 0.1, pole: [0.6, -1, -0.2] });
+    dvReach(V, 'L', dMix(D_SIDE.L, dPt(0.05, 1.24, 0.17), e), { spine: true, hand: 0.1 });
+  } },
+  'handshake': { counts: 4, once: true, pair: 'optional', reach: 1.2, gap: 0.75, desc: 'the right hand out at waist height, pumped twice from the elbow on 1 and 2, held on 3 and 4 (with: the two meet face to face and their hands join)', f(V, k, u, o) {
+    const b = u * 4, e = dEase(Math.min(1, b / 0.8)), pump = b > 1 && b < 3 ? 0.05 * Math.sin(2 * Math.PI * (b - 1)) : 0;
+    const z = o.mate ? Math.max(0.25, Math.min(0.45, o.mate.z / 2)) : 0.38;
+    dStance(V, 0.02 * e, 0.1, 0, 0.06 * e); dvRot(V, 'spine', 0.06 * e, 0, 0); dvRot(V, 'head', 0.05 * e, 0, 0);
+    dvReach(V, 'R', dMix(D_SIDE.R, dPt(-0.02, 0.98 + pump, z), e), { hand: 0 });
+  } },
+  'coat-on': { counts: 4, once: true, desc: 'into a coat: the arms back and down behind her into the sleeves on 1 and 2, a shrug of both shoulders on 3, the hands smooth the lapels on 4', f(V, k, u) {
+    const lapel = (V, y, z) => { for (const [s, x] of [['L', 0.09], ['R', -0.09]]) dvReach(V, s, dPt(x, y, z), { spine: true, hand: 0 }); };
+    dPhrase(V, u * 4, [
+      [0, V => {}],
+      [1, V => { dvRot(V, 'spine', 0.08, 0, 0); dvRot(V, 'head', 0.1, 0, 0); for (const s of ['L', 'R']) dvArm(V, s, -0.55, 0.3, 0.45, 0.25); }],
+      [2, V => { dvRot(V, 'spine', -0.04, 0, 0); for (const s of ['L', 'R']) dvArm(V, s, -0.75, 0.25, 0.2, 0.2); }],
+      [3, V => { dvRot(V, 'spine', -0.1, 0, 0); dvRot(V, 'head', 0.12, 0, 0); for (const s of ['L', 'R']) dvArm(V, s, -0.35, 0.4, 0.5); }],
+      [3.5, V => { dvRot(V, 'head', 0.15, 0, 0); lapel(V, 1.33, 0.16); }],
+      [4, V => { dvRot(V, 'spine', -0.04, 0, 0); dvRot(V, 'head', 0.05, 0, 0); lapel(V, 1.15, 0.17); }],
+    ]);
+  } },
+  'sword-draw': { counts: 4, once: true, desc: 'drawing a sword: the right hand crosses to the left hip on 1, draws up and out across her on 2, ends overhead and forward at 45 degrees on 3, held', f(V, k, u) {
+    dPhrase(V, u * 4, [
+      [0, V => {}],
+      [1, V => { dStance(V, 0.04, 0.12); dvRot(V, 'spine', 0.08, 0.25, 0); dvRot(V, 'head', 0.2, 0.2, 0); dvReach(V, 'R', dPt(0.15, 0.93, 0.1), { spine: true, hand: 0, pole: [1, -0.3, 0.1] }); dvArm(V, 'L', 0.2, 0.25, 0.4); }],
+      [2, V => { dStance(V, 0.06, 0.14, 0, 0.1); dvRot(V, 'spine', 0, 0.05, 0); dvRot(V, 'head', 0, -0.1, 0); dvArm(V, 'R', 1.55, -0.55, 0.25); dvArm(V, 'L', 0.15, 0.4, 0.3); }],
+      [3, V => { dStance(V, 0.08, 0.14, -0.08, 0.2); dvRot(V, 'spine', -0.06, -0.12, 0); dvRot(V, 'head', -0.25, -0.12, 0); dvArm(V, 'R', 2.4, 0.3, 0.06, 0, 0.1); dvArm(V, 'L', 0.2, 0.45, 0.35); }],
+    ]);
+  } },
+  'sword-take': { counts: 4, once: true, pair: 'optional', reach: 1.2, gap: 0.7, desc: 'taking a sword handed over: both hands reach forward low, palms up, on 1; the right closes on it on 2 and lifts it up before her on 3; held (with: the partner presents it on both hands, lets it go and bows)', f(V, k, u, o) {
+    const z = o.mate ? Math.max(0.28, Math.min(0.45, o.mate.z / 2)) : 0.38;
+    const offer = (V, y) => { dvRot(V, 'spine', 0.08, 0, 0); dvRot(V, 'head', 0.25, 0, 0); dvReach(V, 'L', dPt(0.12, y, z), { hand: 0.3 }); dvReach(V, 'R', dPt(-0.12, y, z), { hand: 0.3 }); };
+    if (o.role === 'with') return dPhrase(V, u * 4, [[0, V => {}], [1, V => offer(V, 1.02)], [2, V => offer(V, 1.02)],
+      [3, V => { dvRot(V, 'spine', 0.18, 0, 0); dvRot(V, 'head', 0.25, 0, 0); dvArm(V, 'L', 0.1, 0.1, 0.2); dvArm(V, 'R', 0.1, 0.1, 0.2); }]]);
+    dPhrase(V, u * 4, [[0, V => {}], [1, V => offer(V, 0.98)], [2, V => offer(V, 1.02)],
+      [3, V => { dvRot(V, 'spine', -0.04, 0, 0); dvRot(V, 'head', -0.1, -0.15, 0); dvReach(V, 'R', dPt(-0.16, 1.42, 0.24), { hand: -0.2, pole: [1, -1, -0.3] }); dvArm(V, 'L', 0.1, 0.12, 0.25); }]]);
+  } },
+  'gun-pass': { counts: 2, once: true, pair: 'optional', reach: 1.2, gap: 0.85, desc: 'a pistol held out at full stretch, handle first, on the right palm with the left hand under it, and held out (with: the partner reaches in on 1, takes it by the grip and draws it back to her side on 2)', f(V, k, u, o) {
+    if (o.role === 'with') {
+      const z = o.mate ? Math.max(0.3, Math.min(0.5, o.mate.z - 0.55)) : 0.4;
+      return dPhrase(V, u * 2, [[0, V => {}], [0.9, V => { dvRot(V, 'spine', 0.08, 0, 0); dvReach(V, 'R', dPt(-0.04, 1.2, z), { hand: 0 }); }],
+        [1.2, V => { dvRot(V, 'spine', 0.06, 0, 0); dvReach(V, 'R', dPt(-0.05, 1.18, z - 0.03), { hand: 0.2 }); }],
+        [2, V => { dvRot(V, 'head', 0.1, 0, 0); dvReach(V, 'R', dPt(-0.22, 0.95, 0.12), { hand: 0.1 }); }]]);
+    }
+    const out = V => { dvRot(V, 'head', 0.15, 0, 0); dvArm(V, 'R', 1.45, -0.05, 0.05, 0, -0.15); };
+    dPhrase(V, u * 2, [[0, V => {}], [0.8, V => { out(V); dvReach(V, 'L', dPt(-0.12, 1.2, 0.42), { hand: -0.2, pole: [0.6, -1, -0.2] }); }],
+      [2, V => { out(V); dvArm(V, 'L', 0.1, 0.1, 0.2); }]]);
+  } },
+  // ---- the head and the body
+  'head-bob': { counts: 1, desc: 'the head nodding on the beat: the chin drives forward and down on each beat and springs back on the "and", the shoulders loose, the knees giving', f(V, k, u) {
+    const h = 0.5 + 0.5 * Math.cos(2 * Math.PI * u);
+    dStance(V, 0.02 * h, 0.1); dvRot(V, 'spine', 0.05 * h, 0, 0.02 * Math.sin(2 * Math.PI * u)); dvRot(V, 'head', 0.32 * h - 0.05, 0, 0);
+    dvArm(V, 'L', 0.1, 0.1, 0.3); dvArm(V, 'R', 0.1, 0.1, 0.3);
+  } },
+  'head-snap': { counts: 1, once: true, bin: 0.05, desc: 'the head whips round to her left on the hit and holds there, the body still (mirror: to the right)', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 5)); dvRot(V, 'head', -0.05 * e, 0.8 * e, 0);
+  } },
+  'laugh-bob': { counts: 1, desc: 'laughing: the head thrown back, the shoulders shaking three times a beat, the knees giving with it', f(V, k, u) {
+    const sh = Math.sin(6 * Math.PI * u), a = Math.abs(sh);
+    dStance(V, 0.02 + 0.02 * a, 0.1); dvRot(V, 'spine', -0.1 + 0.05 * a, 0, 0); dvRot(V, 'head', -0.32 + 0.08 * a, 0, 0);
+    dvArm(V, 'L', 0.3 + 0.05 * a, 0.2, 0.9 + 0.1 * sh); dvArm(V, 'R', 0.3 + 0.05 * a, 0.2, 0.9 - 0.1 * sh);
+  } },
+  'chest-pump': { counts: 1, desc: 'fists at the breastbone, the elbows back; the chest popped forward on every beat, the knees pulsing under it', f(V, k, u) {
+    const c = Math.pow(Math.cos(Math.PI * u), 6);
+    dStance(V, 0.03 + 0.03 * c, 0.12); dvRot(V, 'spine', 0.1 * c - 0.04, 0, 0); dvRot(V, 'head', -0.12 * c, 0, 0);
+    dvReach(V, 'L', dPt(0.07, 1.22, 0.18), { spine: true, hand: 0.3, pole: [0.8, -0.3, -1] }); dvReach(V, 'R', dPt(-0.07, 1.22, 0.18), { spine: true, hand: 0.3, pole: [0.8, -0.3, -1] });
+  } },
+  'shoulder-pop': { counts: 4, desc: 'the shoulders pop up in turn on each beat, right, left, right, left; the elbows bent at the waist, a small knee bounce, the head bobbing', f(V, k, u) {
+    const b = u * 4, sd = Math.floor(b) % 2 ? 1 : -1, hit = Math.pow(Math.max(0, 1 - rigFrac(b) * 2.5), 2), d = 0.03 * Math.pow(Math.sin(Math.PI * rigFrac(b)), 2);
+    dStance(V, d, 0.1); dvRot(V, 'spine', 0.03, 0, 0.12 * sd * hit); dvRot(V, 'head', 0.08 * hit, 0, -0.08 * sd * hit);
+    dvArm(V, 'L', 0.15 + (sd > 0 ? 0.15 * hit : 0), 0.15, 1.5); dvArm(V, 'R', 0.15 + (sd < 0 ? 0.15 * hit : 0), 0.15, 1.5);
+  } },
+  'tootsie-roll': { counts: 4, desc: 'the forearms rolling over each other in front of her on every beat, the knees in and out, the hips rolling side to side over the four', f(V, k, u) {
+    const b = u * 4, a = 2 * Math.PI * b, kin = 0.5 + 0.5 * Math.cos(a), sw = Math.sin(Math.PI * b / 2), d = 0.09;
+    dvPel(V, 0, d); dvRot(V, 'pelvis', 0, 0.05 * sw, -0.07 * sw);
+    dvLeg(V, 'L', 0, 0, 0, d, 0.12); dvLeg(V, 'R', 0, 0, 0, d, 0.12);
+    V[DJ.thigh_L + 2] += 0.07 * sw - 0.12 * kin; V[DJ.thigh_R + 2] += 0.07 * sw + 0.12 * kin; V[DJ.shin_L + 2] += 0.2 * kin; V[DJ.shin_R + 2] -= 0.2 * kin;
+    dvRot(V, 'spine', 0.06, 0.08 * sw, 0.06 * sw); dvRot(V, 'head', 0.06 * Math.abs(Math.sin(Math.PI * b)), 0, -0.05 * sw);
+    dvArm(V, 'L', 0.95 + 0.15 * Math.sin(a), 0.1, 1.75 + 0.25 * Math.cos(a), 0.2); dvArm(V, 'R', 0.95 - 0.15 * Math.sin(a), 0.1, 1.75 - 0.25 * Math.cos(a), 0.2);
+  } },
+  'prance-fan': { counts: 4, desc: 'a high-knee prance up on the balls of the feet, a knee up on every beat, the right hand fanning her face with a flick each count, the left wrist limp (mocking the court)', f(V, k, u) {
+    const b = u * 4, s = Math.floor(b) % 2 ? 'L' : 'R', o2 = s === 'R' ? 'L' : 'R', up = Math.sin(Math.PI * rigFrac(b)), fan = Math.sin(2 * Math.PI * b);
+    dvBody(V, 0, 0.035, 0);
+    const [a1, a2] = dLegRest(s); dvLegAbs(V, s, a1 + 1.1 * up, a2 - 0.7 * up, 0.5); dvLeg(V, o2, 0, 0, 0.45, 0);
+    dvRot(V, 'spine', -0.05, 0.06 * fan, 0); dvRot(V, 'head', -0.15, 0.1 * fan, 0.08);
+    dvArm(V, 'R', 0.55, 0.5, 2.25, 0, 0.5 * fan); dvArm(V, 'L', 0.55, 0.45, 0.9, 0, -0.9);
+  } },
+  'scrub': { counts: 4, desc: 'on both knees, bent low over the floor, both hands scrubbing it side to side (the washerwomen)', f(V, k, u) {
+    const a = 4 * Math.PI * u, sw = Math.sin(a), drop = 0.5, pole = [0.6, 0.2, -1];
+    dvPel(V, 0, drop, -0.06); dvLeg(V, 'L', -0.3, -0.01, 1.3, drop); dvLeg(V, 'R', -0.3, -0.01, 1.3, drop);
+    dvRot(V, 'spine', 1.3, 0.08 * sw, 0.05 * sw); dvRot(V, 'head', -0.25, -0.05 * sw, 0);
+    dvReach(V, 'L', dPt(0.17 + 0.13 * sw, 0.1, 0.55 + 0.04 * Math.cos(a)), { hand: 0.6, pole }); dvReach(V, 'R', dPt(-0.17 + 0.13 * sw, 0.1, 0.55 - 0.04 * Math.cos(a)), { hand: 0.6, pole });
+  } },
+  'lean-in': { counts: 2, once: true, desc: 'the weight onto the front foot and the torso tipped forward toward someone (or a desk), the feet planted; held', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 1.5));
+    dStance(V, 0.04 * e, 0.12, -0.06 * e, 0.16 * e); dvRot(V, 'spine', 0.3 * e, 0, 0); dvRot(V, 'head', -0.18 * e, 0, 0);
+    dvArm(V, 'L', 0.35 * e, 0.12, 0.35 + 0.2 * e); dvArm(V, 'R', 0.35 * e, 0.12, 0.35 + 0.2 * e);
+  } },
+  'fold': { counts: 4, once: true, bin: 0.1, desc: 'folding to the floor: onto both knees, then sitting back on the heels, then the torso down over the knees, the arms on the floor ahead; held (the passed-out guest, the mourner, the hit)', f(V, k, u) {
+    dPhrase(V, u * 4, [
+      [0, V => {}],
+      [1.3, V => { const d = 0.43; dvPel(V, 0, d, -0.02); dvLeg(V, 'L', -0.38, -0.01, 1.2, d); dvLeg(V, 'R', -0.38, -0.01, 1.2, d); dvRot(V, 'spine', 0.15, 0, 0); dvRot(V, 'head', 0.25, 0, 0); dvArm(V, 'L', 0.2, 0.1, 0.3); dvArm(V, 'R', 0.2, 0.1, 0.3); }],
+      [2.6, V => { const d = 0.58; dvPel(V, 0, d, -0.05); dvLeg(V, 'L', 0.09, -0.015, 1.4, d); dvLeg(V, 'R', 0.09, -0.015, 1.4, d); dvRot(V, 'spine', 0.25, 0, 0); dvRot(V, 'head', 0.35, 0, 0); dvArm(V, 'L', 0.25, 0.12, 0.35); dvArm(V, 'R', 0.25, 0.12, 0.35); }],
+      [4, V => { const d = 0.58; dvPel(V, 0, d, -0.05); dvLeg(V, 'L', 0.09, -0.015, 1.4, d); dvLeg(V, 'R', 0.09, -0.015, 1.4, d); dvRot(V, 'spine', 1.3, 0, 0); dvRot(V, 'head', 0.2, 0, 0);
+        dvReach(V, 'L', dPt(0.18, 0.06, 0.62), { hand: 0.5, pole: [0.5, 0.3, -1] }); dvReach(V, 'R', dPt(-0.18, 0.06, 0.62), { hand: 0.5, pole: [0.5, 0.3, -1] }); }],
+    ]);
+  } },
+  'hold-side': { counts: 2, once: true, desc: 'wounded: the right hand clutching the left side of the ribs, the torso curled over it, the knees soft; held', f(V, k, u) {
+    const e = dEase(Math.min(1, u * 1.5));
+    dStance(V, 0.07 * e, 0.12, 0.04 * e, -0.04 * e); dvRot(V, 'spine', 0.38 * e, 0.12 * e, -0.14 * e); dvRot(V, 'head', 0.2 * e, 0, 0.1 * e);
+    dvReach(V, 'R', dMix(D_SIDE.R, dPt(0.1, 1.1, 0.13), e), { spine: true, hand: 0.1, pole: [1, -0.5, -0.3] });
+    dvArm(V, 'L', 0.25 * e, 0.3 * e, 0.4 * e + 0.12);
+  } },
+  'floor-slide': { counts: 4, once: true, body: true, bin: 0.1, desc: 'down onto the right knee on 1, then sliding 0.8 m to her right along the floor on 2 and 3, the arms swept back; held there (mirror: to the left)', f(V, k, u) {
+    const b = u * 4, e = dEase(Math.min(1, b)), sl = dEase(dSeg(b, 1, 3)), drop = 0.43 * e;
+    dvBody(V, -0.8 * sl, 0, 0); dvPel(V, 0, drop, -0.04 * e);
+    dvLeg(V, 'L', 0.32 * e, 0, 0, drop); dvLeg(V, 'R', -0.38 * e, -0.01 * e, 1.2 * e, drop);
+    dvRot(V, 'spine', 0.2 * e, 0, 0.1 * dBump(dSeg(b, 1, 3.5))); dvRot(V, 'head', 0.05, -0.3 * e, 0);
+    dvArm(V, 'L', -0.55 * e, 0.6 * e, 0.25); dvArm(V, 'R', -0.55 * e, 0.6 * e, 0.25);
+  } },
+  'floor-freestyle': { counts: 8, body: true, desc: 'floor work, round and round: down to a crouch, a kick-through to sitting, rolled back onto the shoulders with the legs in the air, and up again to the crouch', f(V, k, u) {
+    const crouch = V => { const d = 0.5; dvPel(V, 0, d, -0.06); dvLeg(V, 'L', 0.1, 0.03, 0.3, d, 0.12); dvLeg(V, 'R', 0.1, 0.03, 0.3, d, 0.12); dvRot(V, 'spine', 0.55, 0, 0); dvRot(V, 'head', -0.35, 0, 0);
+      dvReach(V, 'L', dPt(0.17, 0.08, 0.42), { hand: 0.7 }); dvReach(V, 'R', dPt(-0.17, 0.08, 0.42), { hand: 0.7 }); };
+    const through = (V, kick) => { const d = 0.74; dvPel(V, 0, d, -0.1); dvRot(V, 'spine', -0.25, 0.2, 0); dvRot(V, 'head', 0.1, 0.2, 0);
+      dvLegAbs(V, 'R', 1.6 + kick, 1.6 + kick, 0.8); dvLegAbs(V, 'L', 2.3, 0.3, 0);
+      dvReach(V, 'R', dPt(-0.22, 0.1, -0.25), { hand: 0.8, pole: [0.3, 0, -1] }); dvArm(V, 'L', 1.6, 0.3, 0.3); };
+    const back = (V, w) => { const d = 0.72; dvBody(V, 0, 0, -0.25); dvPel(V, 0, d, 0); dvRot(V, 'pelvis', -1.25, 0, 0); dvRot(V, 'spine', -0.25, 0, 0); dvRot(V, 'head', 0.55, 0, 0);
+      dvLegAbs(V, 'L', 1.6 - w, 0.9 - w, 0.6); dvLegAbs(V, 'R', 1.4 + w, 0.6 + w, 0.6); dvArm(V, 'L', 0.1, 0.35, 0.2); dvArm(V, 'R', 0.1, 0.35, 0.2); };
+    dPhrase(V, u * 8, [[0, crouch], [1, crouch], [2.2, V => through(V, 0)], [3, V => through(V, 0.35)], [4.5, V => back(V, 0)], [5.5, V => back(V, 0.3)], [7, crouch], [8, crouch]]);
+  } },
+  // ---- the gaits: overlays on her own walk (the path still carries her), keyed to its phase; standing, the posture keeps time
+  'strut': { counts: 2, desc: 'a swagger on her own walk: chest up and leaning back, the shoulders rolling with each step, a bigger arm swing, the right hand swinging low (standing: the same swagger in time)', f(V, k, u, o) {
+    danceBaseAt(V, o, null, o.p);
+    const G = RIG_GAIT, wk = actSmooth(o.p.speed / G.full), ph = rigFrac(o.p.dist / G.cycle), legL = Math.cos(2 * Math.PI * ph);
+    const roll = wk * Math.sin(2 * Math.PI * ph) + (1 - wk) * Math.sin(2 * Math.PI * u);
+    V[DJ.spine] -= 0.1; V[DJ.spine + 1] += 0.12 * roll; V[DJ.spine + 2] += 0.07 * roll; V[DJ.head] -= 0.06; V[DJ.head + 1] -= 0.08 * roll;
+    V[DJ.upperarm_L] += 0.22 * wk * legL; V[DJ.upperarm_R] -= 0.3 * wk * legL; V[DJ.upperarm_R + 2] -= 0.12; V[DJ.forearm_R] = -0.05;
+  } },
+  'king-walk': { counts: 2, desc: 'the King\'s mincing walk on her own path: small quick steps up on the toes, the chin up and the head held still, the hips swaying, the right hand raised with the wrist limp, the left at the waist', f(V, k, u, o) {
+    const G = RIG_GAIT, wk = actSmooth(o.p.speed / G.full);
+    danceBaseAt(V, o, null, Object.assign({}, o.p, { dist: o.p.dist * 2, speed: 0.25 * wk }));     // half steps, twice as many
+    const sw = wk * Math.sin(2 * Math.PI * rigFrac(o.p.dist * 2 / G.cycle)) + (1 - wk) * 0.5 * Math.sin(2 * Math.PI * u);
+    V[DJ.foot_L] += 0.35; V[DJ.foot_R] += 0.35; V[DV_BODY + 1] += 0.035;                            // up on the toes
+    V[DJ.pelvis + 2] -= 0.06 * sw; V[DJ.thigh_L + 2] += 0.06 * sw; V[DJ.thigh_R + 2] += 0.06 * sw;
+    dvRot(V, 'spine', -0.04, 0, 0); dvRot(V, 'head', -0.18, 0, 0);
+    dvArm(V, 'R', 0.55, 0.35, 2.0, 0, -1.0); dvReach(V, 'L', D_HIP.L, { pole: D_OUT, hand: 0.3 });
+  } },
+  'old-walk': { counts: 2, desc: 'an old man\'s walk on her own path: stooped forward at the waist, short shuffling steps, a hand on the small of the back, the other on an imaginary cane, the head nodding', f(V, k, u, o) {
+    const G = RIG_GAIT, wk = actSmooth(o.p.speed / G.full);
+    danceBaseAt(V, o, null, Object.assign({}, o.p, { dist: o.p.dist * 2.5, speed: 0.21 * wk }));   // little steps
+    const nod = wk * Math.sin(4 * Math.PI * rigFrac(o.p.dist * 2.5 / G.cycle)) + (1 - wk) * Math.sin(2 * Math.PI * u);
+    V[DJ.spine] = 0.4; V[DJ.spine + 1] *= 0.5; V[DJ.head] = -0.3 + 0.06 * nod;
+    dvReach(V, 'L', dPt(0.06, 1.02, -0.2), { spine: true, hand: 0.2, pole: [1, 0, -0.2] }); dvArm(V, 'R', 0.5 + 0.05 * nod, 0.12, 0.45, 0, 0.3);
+  } },
+  'moonwalk': { counts: 4, desc: 'the moonwalk: up on the ball of one foot while the other slides back flat past it, changing feet each count; travelling, she turns her back to her path and glides backward along it; standing, she slides back 0.25 m a count for three counts and glides back to her mark on 4', f(V, k, u, o) {
+    const b = u * 4, n = Math.floor(b), f = rigFrac(b), e = dEase(f), ball = n % 2 ? 'L' : 'R', flat = ball === 'R' ? 'L' : 'R', d = 0.03;
+    const go = actSmooth(o.p.speed / 0.08);                  // travelling: her path carries her, backward
+    dvBody(V, 0, 0, (n < 3 ? -0.25 * (n + e) : -0.75 * (1 - e)) * (1 - go)); V[DV_YAW] = Math.PI * go;
+    dvPel(V, 0, d);
+    if (n === 3 && go < 0.5) { dvLeg(V, 'L', 0, 0, 0, d); dvLeg(V, 'R', 0, 0, 0, d); }       // standing: both flat, gliding home
+    else { dvLeg(V, ball, -0.12 + 0.25 * e, 0.05, 0.75, d); dvLeg(V, flat, 0.13 - 0.25 * e, 0, 0, d); }
+    dvRot(V, 'spine', -0.03, 0, 0); dvArm(V, 'L', 0.15, 0.1, 0.5); dvArm(V, 'R', 0.15, 0.1, 0.5);
+  } },
+  // ---- seated
+  'sit': { counts: 1, once: true, body: true, seat: true, bin: 0.5, bout: 0.5, desc: 'sitting: on the chair, bench, stool or box nearest her as the move starts (within 0.8 m), facing its front; with none there, where she stands at chair height; the thighs level, the feet forward, the hands on the thighs', f(V, k, u, o) {
+    const h = o.seat ? o.seat.h : DANCE_SEAT.h, drop = Math.max(0, Math.min(0.6, RIG.J.thigh_L.y - h - danceUnder())), y = RIG.J.thigh_L.y - drop + 0.1;
+    dvPel(V, 0, drop); dvLeg(V, 'L', 0.47, 0, 0, drop, 0.04); dvLeg(V, 'R', 0.47, 0, 0, drop, 0.04);
+    dvRot(V, 'spine', 0.04, 0, 0); dvRot(V, 'head', 0.06, 0, 0);
+    dvReach(V, 'L', dPt(0.12, y, 0.26), { hand: 0.5 }); dvReach(V, 'R', dPt(-0.12, y, 0.26), { hand: 0.5 });
+  } },
+  'comfort': { counts: 2, once: true, pair: 'required', leadOnly: true, reach: 1.2, gap: 0.45, desc: 'comforting someone seated: she stands close behind or beside her, one hand on her near shoulder, the head bowed (with: the seated one, who keeps her own sit)', f(V, k, u, o) {
+    const e = dEase(Math.min(1, u * 1.5)), m = o.mate;
+    dStance(V, 0.03 * e, 0.1); dvRot(V, 'spine', 0.15 * e, 0, 0); dvRot(V, 'head', 0.42 * e, 0, 0);
+    let tg = dPt(-0.12, 1.05, 0.38);
+    if (m) {                                                 // her two shoulders (±0.16 across her), the one nearer this hand
+      const top = (m.seat !== null ? m.seat + danceUnder() + RIG.J.upperarm_R.y - RIG.J.thigh_R.y : m.y + RIG.J.upperarm_R.y) + 0.06, c = Math.cos(m.yaw), s = Math.sin(m.yaw);
+      const sh = [-1, 1].map(sd => dPt(m.x + sd * 0.16 * c - 0.02 * s, top, m.z - sd * 0.16 * s - 0.02 * c));
+      tg = Math.hypot(sh[0].x + 0.15, sh[0].z) <= Math.hypot(sh[1].x + 0.15, sh[1].z) ? sh[0] : sh[1];
+    }
+    dvReach(V, 'R', dMix(D_SIDE.R, tg, e), { hand: 0.4 }); dvArm(V, 'L', 0.15 * e, 0.1, 0.4 * e + 0.12);
+  } },
+  // ---- two bodies (`with`): the lead's entry; the mate dances its other half (o.role 'with')
+  'lift': { counts: 4, once: true, pair: 'required', reach: 1.2, gap: 0.38, bout: 0.6, desc: 'the lead lifts the mate: a dip, then hands at her waist carry her 0.5 m up by 2, the lead\'s arms up under her, her legs trailing behind and her arms up; held, and down again over the entry\'s last count', f(V, k, u, o) {
+    const up = dEase(dSeg(k, 0.3, 2)) * (1 - dDown(k, o.n)), dip = dBump(dSeg(k, 0, 0.6));
+    if (o.role === 'with') {
+      const d = 0.06 * dip * (1 - up);
+      dvBody(V, 0, 0.5 * up, 0); dvPel(V, 0, d); dvLeg(V, 'L', -0.3 * up, 0.35 * up, 0.9 * up, d); dvLeg(V, 'R', -0.2 * up, 0.25 * up, 0.9 * up, d);
+      dvRot(V, 'spine', -0.12 * up, 0, 0); dvRot(V, 'head', -0.22 * up, 0, 0); dvArm(V, 'L', 2.3 * up, 0.55 * up, 0.25); dvArm(V, 'R', 2.3 * up, 0.55 * up, 0.25);
+      return;
+    }
+    const z = o.mate ? o.mate.z - 0.02 : 0.36, y = RIG.J.pelvis.y + 0.1 + 0.5 * up - 0.06 * dip, pole = [1, -0.6, -0.4];
+    dStance(V, 0.1 * dip + 0.05 * up, 0.16, 0, 0.08); dvRot(V, 'spine', -0.06 * up, 0, 0); dvRot(V, 'head', -0.25 * up, 0, 0);
+    dvReach(V, 'L', dPt(0.15, y, z), { hand: -0.6, pole }); dvReach(V, 'R', dPt(-0.15, y, z), { hand: -0.6, pole });
+  } },
+  'catch': { counts: 4, once: true, pair: 'required', reach: 1.2, gap: 0.45, faceWith: Math.PI, bout: 0.6, desc: 'the mate pitches forward, straight from her feet, the head and arms hanging; the lead behind her catches her round the waist by 2, leaning in after her; held, and drawn back upright over the entry\'s last count (the women in It\'s Quiet Uptown)', f(V, k, u, o) {
+    const th = 0.45 * dEase(dSeg(k, 0, 2)) * (1 - dDown(k, o.n)), f = th / 0.45;
+    if (o.role === 'with') { dvTilt(V, -th); V[DJ.spine] += 0.15 * f; dvRot(V, 'head', 0.35 * f, 0, 0); dvArm(V, 'L', th + 0.15 * f, 0.1, 0.15); dvArm(V, 'R', th + 0.15 * f, 0.1, 0.15); return; }
+    // her waist (0.95 m up her) tips away from the lead with her; his hands follow it, his body leaning in after her
+    const M = o.mate ? o.mate.z : 0.45, bz = 0.15 * f, y = 0.95 * Math.cos(th), z = M + 0.95 * Math.sin(th) - bz;
+    dvBody(V, 0, 0, bz); dStance(V, 0.04 + 0.06 * f, 0.14, -0.12 * f, 0.12 * f); dvRot(V, 'spine', 0.1 + 0.25 * f, 0, 0); dvRot(V, 'head', 0.15 - 0.15 * f, 0, 0);
+    dvReach(V, 'L', dPt(0.16, y, z), { hand: -0.3 }); dvReach(V, 'R', dPt(-0.16, y, z), { hand: -0.3 });
+  } },
+  'partner-lift': { counts: 4, once: true, pair: 'required', reach: 1.2, gap: 0.34, bout: 0.6, desc: 'a ballroom lift: the lead\'s hands at the mate\'s waist, she rises 0.55 m and turns a quarter in the air, one leg stretched behind, the other bent, the arms out; held, and down over the entry\'s last count', f(V, k, u, o) {
+    const up = dEase(dSeg(k, 0.3, 2)) * (1 - dDown(k, o.n)), dip = dBump(dSeg(k, 0, 0.6)), tw = dEase(dSeg(k, 0.5, 2)) * up;
+    if (o.role === 'with') {
+      const d = 0.05 * dip * (1 - up);
+      dvBody(V, 0, 0.55 * up, 0, Math.PI / 2 * tw); dvPel(V, 0, d); dvLeg(V, 'L', -0.45 * up, 0.25 * up, 0.9 * up, d); dvLeg(V, 'R', 0.15 * up, 0.3 * up, 0.8 * up, d);
+      dvRot(V, 'spine', -0.15 * up, 0, 0); dvRot(V, 'head', -0.2 * up, 0.3 * up, 0); dvArm(V, 'L', 1.3 * up, 1.1 * up, 0.2); dvArm(V, 'R', 1.6 * up, 0.9 * up, 0.2);
+      return;
+    }
+    const z = o.mate ? o.mate.z : 0.34, y = RIG.J.pelvis.y + 0.1 + 0.55 * up - 0.06 * dip, pole = [1, -0.6, -0.4];
+    dStance(V, 0.1 * dip + 0.05 * up, 0.16, 0, 0.08); dvRot(V, 'spine', -0.06 * up, 0, 0); dvRot(V, 'head', -0.25 * up, 0, 0);
+    dvReach(V, 'L', dPt(0.14, y, z), { hand: -0.6, pole }); dvReach(V, 'R', dPt(-0.14, y, z), { hand: -0.6, pole });
+  } },
+  'sabre': { counts: 4, pair: 'optional', reach: 2.0, gap: 1.3, desc: 'swordplay: a fencing lunge with the right arm thrust forward on 1, recovered, then a parry across the body on 3, the free arm up behind (with: the partner parries the thrust and thrusts on 3, so the blades cross)', f(V, k, u, o) {
+    const b = (u * 4 + (o.role === 'with' ? 2 : 0)) % 4, l = b < 0.5 ? dEase(b / 0.5) : b < 1.3 ? 1 : b < 2 ? 1 - dEase((b - 1.3) / 0.7) : 0, p = b >= 2 ? dBump((b - 2) / 2) : 0, drop = 0.08 + 0.14 * l;
+    dvBody(V, 0, 0, 0.22 * l); dvPel(V, 0, drop); dvRot(V, 'pelvis', 0, -0.25, 0);
+    dvLeg(V, 'R', 0.08 + 0.3 * l, b < 0.5 ? dStep(b, 0, 0.5, 0.05) : 0, 0, drop); dvLeg(V, 'L', -0.18 - 0.3 * l, 0.02 * l, 0.3 * l, drop);
+    dvRot(V, 'spine', 0.05 + 0.1 * l, 0.15, 0); dvRot(V, 'head', 0, 0.1, 0);
+    dvArm(V, 'R', 1.0 + 0.55 * l + 0.4 * p, -0.15 - 0.45 * p, 0.6 * (1 - l) + 0.6 * p, 0, -0.2); dvArm(V, 'L', 0.4, 0.9, 1.4);
+  } },
+});
 function danceSpin(V, u, ang) {                              // a turn on the spot: arms in, little steps, back up on the toes; out at the end
   const e = dEase(u), mid = dBump(u);
   dvBody(V, 0, 0.03 * mid, 0, ang * e);
@@ -5998,30 +6392,49 @@ function danceMirror(V) {                                    // left for right: 
 function actCleanMove(m) {
   const o = { track: String(m.track ?? ''), at: actF(m.at) ?? 0, move: String(m.move || ''), counts: Math.max(0, actF(m.counts) ?? 0) };
   if (m.mirror) o.mirror = true; if (actF(m.canon)) o.canon = actF(m.canon); if (actF(m.speed) !== null && actF(m.speed) > 0 && actF(m.speed) !== 1) o.speed = actF(m.speed);
-  if (m.reverse) o.reverse = true; if (typeof m.note === 'string' && m.note) o.note = m.note;
+  if (m.reverse) o.reverse = true; if (typeof m.with === 'string' && m.with) o.with = m.with;   // GF: the pair move's mate
+  if (typeof m.note === 'string' && m.note) o.note = m.note;
   return o;
 }
+// Her entries, and (RULING GF) every other actor's pair entry naming her as the mate (`with`): the same entry, role 'with'. A pair
+// move with no mate it can find, or whose mate is not on stage when it starts, is a problem (shown by the check; she dances it
+// alone). Keyed on her path's compile, the beat grid's and ACT.mv (bumped whenever any actor's moves may have changed).
 function danceCompile(a) {
   const tr = SHW.d ? SHW.d.byTrack : null, L = [], probs = [], warns = [];
-  (a.moves || []).forEach((m, i) => {
-    const t = tr && tr.get(m.track), def = DANCE[m.move];
-    if (!def) { probs.push(`move ${i + 1}: no move "${m.move}"`); return; }
-    if (!(m.counts > 0)) { probs.push(`move ${i + 1}: counts must be more than 0`); return; }
-    if (tr && !t) { probs.push(`move ${i + 1}: no track "${m.track}"`); return; }
+  const add = (m, i, role, mate) => {
+    const t = tr && tr.get(m.track), def = DANCE[m.move], P = role ? [] : probs, W = role ? [] : warns;   // a mate's copy: the lead reports it
+    if (!def) { P.push(`move ${i + 1}: no move "${m.move}"`); return; }
+    if (!(m.counts > 0)) { P.push(`move ${i + 1}: counts must be more than 0`); return; }
+    if (tr && !t) { P.push(`move ${i + 1}: no track "${m.track}"`); return; }
     if (!t) return;
     // `at` snaps to the nearest beat; `canon` is added AFTER the snap, so a ripple can be finer than a beat
     const canon = m.canon || 0, bt = beatAt(m.track, m.at);
     let b0 = null, t0 = m.at + canon, t1 = t0 + m.counts * 0.5;    // no grid for the track: 120 BPM from `at`
-    if (bt) { b0 = Math.round(bt.beat); t0 = beatTime(m.track, b0) + canon; t1 = beatTime(m.track, b0 + m.counts) + canon; if (Math.abs(t0 - canon - m.at) > 0.1) warns.push(`move ${i + 1}: ${m.move} at ${m.at.toFixed(2)} s is ${(t0 - canon - m.at).toFixed(2)} s off the beat (snapped)`); }
-    L.push({ m, def, i, track: m.track, b0, t0, canon, T0: t.start + t0, T1: t.start + t1, start: t.start, speed: m.speed || 1,
-      bin: def.bin ?? 0.25, bout: def.bout ?? 0.3, sign: m.reverse || def.reverse ? -1 : 1, lift: def.lift || null });
-  });
+    if (bt) { b0 = Math.round(bt.beat); t0 = beatTime(m.track, b0) + canon; t1 = beatTime(m.track, b0 + m.counts) + canon; if (Math.abs(t0 - canon - m.at) > 0.1) W.push(`move ${i + 1}: ${m.move} at ${m.at.toFixed(2)} s is ${(t0 - canon - m.at).toFixed(2)} s off the beat (snapped)`); }
+    const e = { m, def, i, track: m.track, b0, t0, canon, T0: t.start + t0, T1: t.start + t1, start: t.start, speed: m.speed || 1,
+      bin: def.bin ?? (def.pair ? 0.5 : 0.25), bout: def.bout ?? (def.pair ? 0.5 : 0.3), sign: m.reverse || def.reverse ? -1 : 1, lift: def.lift || null, role: role, mate: mate };
+    if (!role && m.with) {
+      const b = ACT.actors.find(x => x.id === m.with);
+      if (!def.pair) W.push(`move ${i + 1}: ${m.move} is not a pair move — its with "${m.with}" does nothing`);
+      else if (!b || b === a) P.push(`move ${i + 1}: ${m.move} with "${m.with}": no such other actor`);
+      else {
+        if (!b.c) b.c = actCompile(b);
+        if (!actPose(b, e.T0).visible) P.push(`move ${i + 1}: ${m.move} with ${b.name}: she is not on stage when it starts (${m.track} ${m.at})`);
+        e.role = 'lead'; e.mate = b;
+      }
+    } else if (!role && def.pair === 'required') P.push(`move ${i + 1}: ${m.move} needs a partner (with: the other actor's id)`);
+    L.push(e);
+  };
+  const own = a.moves || [];
+  own.forEach((m, i) => add(m, i, null, null));
+  let j = own.length;
+  for (const b of ACT.actors) if (b !== a) for (const m of b.moves || []) { const def = DANCE[m.move]; if (m.with === a.id && def && def.pair && !def.leadOnly) add(m, j++, 'with', b); }
   L.sort((x, y) => x.T0 - y.T0 || x.i - y.i);
-  return { L, probs, warns, c: a.c, bv: BEAT.v };
+  return { L, probs, warns, c: a.c, bv: BEAT.v, mv: ACT.mv };
 }
 // The move (if any) she is in at T, and the one before it if she is still blending out of it. Pure.
 function danceAt(a, T) {
-  if (!a.dc || a.dc.c !== a.c || a.dc.bv !== BEAT.v) a.dc = danceCompile(a);
+  if (!a.dc || a.dc.c !== a.c || a.dc.bv !== BEAT.v || a.dc.mv !== ACT.mv) a.dc = danceCompile(a);
   const L = a.dc.L; if (!L.length || T < L[0].T0) return null;
   let lo = 0, hi = L.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (L[m].T0 <= T) lo = m; else hi = m - 1; }
   const cur = L[lo]; if (T > cur.T1 + cur.bout) return null;
@@ -6038,8 +6451,14 @@ function danceEval(e, T, o, V) {
   V.set(danceNeutral());
   const k = Math.max(0, danceK(e, T, true)), def = e.def, ks = k * e.speed;
   const u = def.once ? Math.min(1, ks / def.counts) : rigFrac(ks / def.counts);
-  def.f(V, e.sign * ks, def.once ? u : (e.sign < 0 ? rigFrac(1 - u) : u), Object.assign(o, { at0: e.T0, reverse: e.sign < 0 }));
+  // GF: where a pair stands and the seat she sits on, worked out first (pure: the path poses and the props at T) and put on the body
+  // after the move and its mirror; o.mate is the other one in her turned frame (mirrored with her), o.n the entry's length in counts
+  const pr = e.mate ? dancePair(e, T, o.p) : null, st = def.seat ? danceSeat(o.a, e.T0, o.p) : null;
+  let mate = pr ? pr.mate : null;
+  if (mate && e.m.mirror) mate = Object.assign({}, mate, { x: -mate.x, yaw: -mate.yaw });
+  def.f(V, e.sign * ks, def.once ? u : (e.sign < 0 ? rigFrac(1 - u) : u), Object.assign(o, { at0: e.T0, reverse: e.sign < 0, role: e.role, mate, seat: st, n: e.m.counts * e.speed }));
   if (e.m.mirror) danceMirror(V);
+  if (pr) danceAnchor(V, pr.x, pr.z, pr.yaw); else if (st) danceAnchor(V, st.x, st.z, st.yaw);
   return V;
 }
 const DV_A = new Float64Array(DV_N), DV_B = new Float64Array(DV_N), DV_C = new Float64Array(DV_N);
@@ -6070,7 +6489,7 @@ function danceApply(a, p, g) {
 const DP_Q = new THREE.Quaternion(), DP_X = new THREE.Vector3(1, 0, 0);
 function danceProps(T) {
   for (const p of ACT.props) {
-    const o = p.obj, q = o.userData.pose; if (!o.visible || !q || !q.carrier) continue;
+    const o = p.obj, q = o.userData.pose; if (!o.visible || !q || !q.carrier || q.hold === 'hand') continue;
     const id = Array.isArray(q.carrier) ? q.carrier[0] : q.carrier, a = ACT.actors.find(x => x.id === id);
     if (!a || !a.obj.visible) continue;
     const d = danceAt(a, T); if (!d || !d.cur.lift) continue;
@@ -6079,6 +6498,39 @@ function danceProps(T) {
     const me = a.obj.position, h = p.size[1], up = me.y + 1.85 + (e.lift === 'flip' ? h * 0.9 : 0);   // over her head, in her hands
     o.position.set(o.position.x + (me.x + Math.sin(a.obj.rotation.y) * 0.08 - o.position.x) * w, o.position.y + (up - o.position.y) * w, o.position.z + (me.z + Math.cos(a.obj.rotation.y) * 0.08 - o.position.z) * w);
     if (e.lift === 'flip') { const f = dEase(dSeg(u * 4, 1, 2)) * w; DP_Q.setFromAxisAngle(DP_X, Math.PI * f); o.quaternion.multiply(DP_Q); }
+  }
+}
+// HAND PROPS (RULING GF): a prop of kind `hand` (a book, a quill, a letter, a pistol, a sword, a glass) carried rides in her RIGHT
+// HAND — not in front of her, and her arm is not put in the carry pose (propHeld leaves it out): after the moves have posed her,
+// it is set from her hand_R part's world matrix, its grip HAND_GRIP down the hand (the hand's −y runs out along the fingers). Pure:
+// her hand is a function of T like the rest of her. Each item says where its own +y and +z lie in the hand's frame, and which of
+// its points sits at the grip: a pistol's barrel and a sword's blade run out along the fingers.
+const HAND_ITEMS = { book: [0.22, 0.05, 0.16], quill: [0.02, 0.3, 0.02], letter: [0.2, 0.005, 0.28], pistol: [0.04, 0.14, 0.36], sword: [0.04, 0.9, 0.1], glass: [0.07, 0.12, 0.07] };
+const HAND_GRIP = 0.08;
+const HAND_HOLD = {
+  book: { y: [1, 0, 0], z: [0, -1, 0], at: s => [0, s[1] / 2, 0] },          // flat in the palm, its length down the fingers
+  letter: { y: [1, 0, 0], z: [0, -1, 0], at: s => [0, s[1] / 2, 0] },
+  pistol: { y: [0, 0, 1], z: [0, -1, 0], at: s => [0, s[1] / 2, -s[2] * 0.28] },   // the grip at the back, the barrel out past the fingers
+  sword: { y: [0, -1, 0], z: [0, 0, 1], at: () => [0, 0.06, 0] },           // the hilt in the fist, the blade out along the fingers
+  quill: { y: [0, -1, 0], z: [0, 0, 1], at: () => [0, 0.1, 0] },
+  glass: { y: [0, 1, 0], z: [0, 0, 1], at: s => [0, s[1] / 2, 0] },          // upright with her arm down
+};
+const HP = { inv: new THREE.Matrix4(), M: new THREE.Matrix4(), R: new THREE.Matrix4(), v: new THREE.Vector3(), s: new THREE.Vector3(), x: new THREE.Vector3(), y: new THREE.Vector3(), z: new THREE.Vector3() };
+function handProps() {
+  let inv = null;
+  for (const p of ACT.props) {
+    if (p.kind !== 'hand') continue;
+    const o = p.obj, q = o.userData.pose; if (!o.visible || !q || q.hold !== 'hand') continue;
+    const a = ACT.actors.find(x => x.id === q.carrier), P = a && a.obj.visible && a.obj.userData.body && a.obj.userData.body.userData.parts;
+    if (!P) continue;                                        // no jointed body: it stays at her side (propPose)
+    if (!inv) { ACT.group.updateWorldMatrix(true, false); inv = HP.inv.copy(ACT.group.matrixWorld).invert(); }
+    a.obj.updateMatrixWorld(true);
+    const H = HAND_HOLD[p.item] || HAND_HOLD.book, an = H.at(p.size);
+    HP.y.fromArray(H.y); HP.z.fromArray(H.z); HP.x.crossVectors(HP.y, HP.z);
+    HP.R.makeBasis(HP.x, HP.y, HP.z);
+    HP.v.set(an[0], an[1], an[2]).applyMatrix4(HP.R);       // its held point, in the hand's frame
+    HP.R.setPosition(-HP.v.x, -HAND_GRIP - HP.v.y, -HP.v.z);
+    HP.M.multiplyMatrices(inv, P.hand_R.matrixWorld).multiply(HP.R).decompose(o.position, o.quaternion, HP.s);
   }
 }
 function actSlug(name) {
@@ -6104,7 +6556,7 @@ function actSetData(d, from) {
   propSetData(d.props);                                      // FR: after the actors (a prop names its carrier by id)
   ACT.file = { format: d.format || 'hamilton-blocking 1', note: d.note || '' };
   ACT.sel = ACT.actors.length ? 0 : -1;
-  ACT.compiledFor = undefined; ACT.dirty = true;
+  ACT.compiledFor = undefined; ACT.dirty = true; ACT.mv++;
   ACT.note = `${ACT.actors.length} actor${ACT.actors.length === 1 ? '' : 's'}${ACT.props.length ? ` and ${ACT.props.length} prop${ACT.props.length === 1 ? '' : 's'}` : ''} from ${from}`;
   actUI(true); requestRender();
 }
@@ -6136,7 +6588,7 @@ const actGT = w => { const t = SHW.d && SHW.d.byTrack.get(String(w.track)); retu
 function actSorted(a) { return a.path.map((w, k) => [w, k]).sort((x, y) => actGT(x[0]) - actGT(y[0]) || x[1] - y[1]).map(x => x[0]); }
 function actEdited(a) {                   // after any edit: re-sorted, recompiled, redrawn, the draft kept
   if (a) { const w = ACT.wsel >= 0 ? a.path[ACT.wsel] : null; a.path = actSorted(a); ACT.wsel = w ? a.path.indexOf(w) : -1; a.c = actCompile(a); }
-  ACT.dirty = true; ACT.helpDirty = true;
+  ACT.dirty = true; ACT.helpDirty = true; ACT.mv++;
   try { localStorage.setItem(ACT_DRAFT, JSON.stringify(actData())); } catch (e) { /* no storage here: Download keeps it */ }
   ACT.note = 'edited — Download to keep it (a draft is kept in this browser)';
   actUI(true); requestRender();
@@ -6164,7 +6616,7 @@ function actUpdate(T) {
     if (RIG.parts && o.visible && o.userData.body.userData.parts) { try { danceApply(a, p, o); } catch (e) { console.warn('dance:', e); } }
   }
   propUpdate(T);
-  if (RIG.parts) danceProps(T);                              // FV: a prop hoisted or turned over by the dancer carrying it                                             // after the actors: a carried prop rides with her pose
+  if (RIG.parts) { danceProps(T); handProps(); }             // FV: a prop hoisted or turned over by the dancer carrying it; GF: one in her hand                                             // after the actors: a carried prop rides with her pose
 }
 function actTick(dt, force = false) {
   if (!ACT.ready) return false;
@@ -6219,7 +6671,8 @@ function actPoolBands() {
 // A prop may name a MODEL (`model`: assets/props/*.glb): loaded once, cloned, scaled to its size, drawn instead of the boxes (lit
 // the same way); until it loads, or if it cannot, the boxes stand in.
 const PROP_KINDS = { desk: [1.2, 0.75, 0.6], table: [1.5, 0.75, 0.9], chair: [0.45, 0.9, 0.45], bench: [1.4, 0.45, 0.4], stool: [0.4, 0.6, 0.4],
-  box: [0.5, 0.45, 0.5], crate: [0.6, 0.5, 0.6], lantern: [0.2, 0.35, 0.2], bucket: [0.3, 0.35, 0.3], custom: [0.5, 0.5, 0.5] };
+  box: [0.5, 0.45, 0.5], crate: [0.6, 0.5, 0.6], lantern: [0.2, 0.35, 0.2], bucket: [0.3, 0.35, 0.3], custom: [0.5, 0.5, 0.5],
+  hand: [0.22, 0.05, 0.16] };                                   // GF: a hand prop (its `item` gives its size: HAND_ITEMS)
 const PROP_HOLD = { waist: 1.0, ahead: 0.22, tag: 0.12,     // m: (FR) a carried prop's centre at her waist, this far beyond her front; the tag over its top
   hand: 0.88, near: 0.10, body: 0.13, side: 0.70, lean: -0.07 };   // FU: the forearms' height under it, its near face beyond her front (her front 0.13
                                                                // from her axis), a one-hand side carry's hand height, the lean back carrying in front
@@ -6268,8 +6721,8 @@ function propBuild(p) {
   }).catch(e => console.warn(`props: ${p.model} could not be loaded — ${p.label} stays boxes (${e && e.message || e})`));
 }
 function propClean(s, k) {                       // a prop from the file, validated, never thrown
-  const kind = PROP_KINDS[s.kind] ? s.kind : 'custom';
-  const size = Array.isArray(s.size) && s.size.length === 3 && s.size.every(v => +v > 0) ? s.size.map(v => +v) : PROP_KINDS[kind].slice();
+  const kind = PROP_KINDS[s.kind] ? s.kind : 'custom', item = kind === 'hand' ? (HAND_ITEMS[s.item] ? String(s.item) : 'book') : null;   // GF
+  const size = Array.isArray(s.size) && s.size.length === 3 && s.size.every(v => +v > 0) ? s.size.map(v => +v) : (item ? HAND_ITEMS[item] : PROP_KINDS[kind]).slice();
   const id = String(s.id || `prop-${k + 1}`);
   const wps = (Array.isArray(s.waypoints) ? s.waypoints : []).filter(w => w && typeof w === 'object').map(w => {
     const o = { track: String(w.track ?? ''), at: actF(w.at) ?? 0 };
@@ -6281,7 +6734,7 @@ function propClean(s, k) {                       // a prop from the file, valida
     return o;
   });
   const model = typeof s.model === 'string' && /^assets\/props\/[\w.-]+\.glb$/i.test(s.model) ? s.model : null;
-  return { id, kind, label: String(s.label || id), size, color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color.toLowerCase() : '#8a6a48', model, waypoints: wps, c: null, obj: null, tag: null };
+  return { id, kind, ...(item ? { item } : {}), label: String(s.label || id), size, color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color.toLowerCase() : '#8a6a48', model, waypoints: wps, c: null, obj: null, tag: null };
 }
 function propCompile(p) {
   const tr = SHW.d ? SHW.d.byTrack : null, probs = [], P = [];
@@ -6311,6 +6764,10 @@ function propPose(p, T) {
   if (w.byId) {
     const A = w.by; if (!A || A.some(a => !a)) return { x: w.x, y: 0, z: w.z, yaw: 0, visible: false, carrier: w.byId };
     for (const a of A) if (!a.c) a.c = actCompile(a);
+    if (p.kind === 'hand') {                                 // GF: in her right hand (handProps puts it there); here at her right side
+      const q = actPose(A[0], T), c = Math.cos(q.yaw), sn = Math.sin(q.yaw);
+      return { x: q.x - 0.2 * c + 0.05 * sn, y: q.y + 0.72, z: q.z + 0.2 * sn + 0.05 * c, yaw: q.yaw, visible: q.visible && !w.off, carrier: A[0].id, hold: 'hand' };
+    }
     if (A.length === 2) {                                    // FU: between two, its long side from the first to the second
       const q1 = actPose(A[0], T), q2 = actPose(A[1], T), dx = q2.x - q1.x, dz = q2.z - q1.z;
       return { x: (q1.x + q2.x) / 2, y: (q1.y + q2.y) / 2 + propHoldY(p), z: (q1.z + q2.z) / 2, yaw: Math.atan2(-dz, dx),
@@ -6340,7 +6797,7 @@ function propHeld(T) {
   const m = new Map();
   for (const p of ACT.props) {
     if (!p.c) p.c = propCompile(p);
-    const P = p.c.P; if (!P.length || T < P[0].T) continue;
+    const P = p.c.P; if (!P.length || T < P[0].T || p.kind === 'hand') continue;   // GF: a hand prop leaves her arms free
     let lo = 0, hi = P.length - 1;
     while (lo < hi) { const k = (lo + hi + 1) >> 1; if (P[k].T <= T) lo = k; else hi = k - 1; }
     const w = P[lo]; if (!w.by || w.off || w.by.some(a => !a)) continue;
@@ -6368,7 +6825,7 @@ function propSetData(list) {
 }
 function propData(p) {
   const gt = w => actGT(w);
-  return { id: p.id, kind: p.kind, label: p.label, size: p.size.map(v => actR(v)), color: p.color, ...(p.model ? { model: p.model } : {}),
+  return { id: p.id, kind: p.kind, ...(p.item ? { item: p.item } : {}), label: p.label, size: p.size.map(v => actR(v)), color: p.color, ...(p.model ? { model: p.model } : {}),
     waypoints: p.waypoints.map((w, k) => [w, k]).sort((x, y) => gt(x[0]) - gt(y[0]) || x[1] - y[1]).map(([w]) => {
       const o = { track: w.track, at: actR(w.at, 2) };
       if (w.x !== undefined) o.x = actR(w.x); if (w.z !== undefined) o.z = actR(w.z); if (w.y !== undefined) o.y = actR(w.y);
@@ -6786,7 +7243,7 @@ buildLightsPanel = () => {
       rig: RIG,                                              // FS: the jointed body (parts, joints, bones; null parts: the whole mannequin)
       moves: DANCE, beats: BEAT, beatAt: (id, t) => beatAt(id, t),   // FV: the move library, the beat grid
       dance: (id, T = actNow()) => { const a = ACT.actors.find(x => x.id === id) || ACT.actors[id]; if (!a) return null; const d = danceAt(a, T); return d && { move: d.cur.m.move, from: d.cur.T0, to: d.cur.T1, beats: danceK(d.cur, T, false), prev: d.prev && d.prev.m.move }; },
-      get props() { return ACT.props.map(p => ({ id: p.id, kind: p.kind, label: p.label, size: p.size, waypoints: p.waypoints.length, pose: p.obj.userData.pose || null, visible: p.obj.visible })); },
+      get props() { return ACT.props.map(p => ({ id: p.id, kind: p.kind, item: p.item, label: p.label, size: p.size, waypoints: p.waypoints.length, pose: p.obj.userData.pose || null, visible: p.obj.visible })); },
       propPose: (id, T = actNow()) => { const p = ACT.props.find(x => x.id === id) || ACT.props[id]; if (!p) return null; if (!p.c) p.c = propCompile(p); ACT.root.updateWorldMatrix(true, false); return propPose(p, T); },
     };
   }).catch(e => { console.error('actors: they could not be set up —', e); ACT.btn.title = 'No actors: ' + (e.message || e); });

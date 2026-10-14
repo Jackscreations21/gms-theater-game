@@ -217,6 +217,209 @@
    "counts": 4,
    "reverse": true,
    "desc": "Satisfied's rewind: the slow-motion walk run backwards (the slow walk with reverse); travelling, she turns her back to her path"
+  },
+  "aim": {
+   "counts": 2,
+   "once": true,
+   "desc": "a pistol arm levelled at the target straight ahead, the elbow locked, the head down the arm; on 2 the other hand comes up under it to steady it; held"
+  },
+  "aim-up": {
+   "counts": 2,
+   "once": true,
+   "desc": "the pistol arm thrown straight up, pointing at the sky, the other arm down at her side, the chin up; held (the duel: he fires into the air)"
+  },
+  "point-down": {
+   "counts": 2,
+   "once": true,
+   "desc": "the right arm thrust down and forward at 45 degrees, pointing at the floor, the left fist on the hip; on 1, held"
+  },
+  "point-fall": {
+   "counts": 4,
+   "once": true,
+   "body": true,
+   "desc": "the point straight at him on 1, held; on 3 the chest caves and the body is thrown back half a step as if shot, the arms flung forward and dropping; upright again on 4, half a step back (the ensemble as the book changes hands)"
+  },
+  "beckon": {
+   "counts": 2,
+   "desc": "the right arm out toward someone at chest height, palm up; the hand curls in toward her on each count, the head tipping toward them"
+  },
+  "shoo": {
+   "counts": 2,
+   "desc": "the right hand up at chest height, palm out, flicked outward from the wrist three times over the two counts, the head turned away"
+  },
+  "air-quotes": {
+   "counts": 2,
+   "desc": "both hands up beside the face, palms forward, the fingers flexed twice on 1 (the quotation marks), held up through 2"
+  },
+  "finger-wag": {
+   "counts": 1,
+   "desc": "the right forearm up in front of her, the finger raised, wagging side to side twice a beat; the left fist on the hip"
+  },
+  "make-it-rain": {
+   "counts": 1,
+   "desc": "the left hand holds a stack of bills at her chest; the right hand, just above it, flicks them out and down on every beat; the knees bouncing"
+  },
+  "angel-wings": {
+   "counts": 4,
+   "once": true,
+   "desc": "both arms spread wide behind her, a little above the shoulders, wrists leading; they beat twice like wings on 3 and 4, then are held spread (standing behind someone, as her wings)"
+  },
+  "breath": {
+   "counts": 2,
+   "once": true,
+   "desc": "a slow breath in: the chest lifts, the chin rises, the shoulders go back and the arms float a little out from her sides; held"
+  },
+  "gasp": {
+   "counts": 2,
+   "once": true,
+   "body": true,
+   "desc": "a sharp breath: a hand flies to her mouth and the other to her chest, the body jerks back; held"
+  },
+  "handshake": {
+   "counts": 4,
+   "once": true,
+   "pair": "optional",
+   "reach": 1.2,
+   "desc": "the right hand out at waist height, pumped twice from the elbow on 1 and 2, held on 3 and 4 (with: the two meet face to face and their hands join)"
+  },
+  "coat-on": {
+   "counts": 4,
+   "once": true,
+   "desc": "into a coat: the arms back and down behind her into the sleeves on 1 and 2, a shrug of both shoulders on 3, the hands smooth the lapels on 4"
+  },
+  "sword-draw": {
+   "counts": 4,
+   "once": true,
+   "desc": "drawing a sword: the right hand crosses to the left hip on 1, draws up and out across her on 2, ends overhead and forward at 45 degrees on 3, held"
+  },
+  "sword-take": {
+   "counts": 4,
+   "once": true,
+   "pair": "optional",
+   "reach": 1.2,
+   "desc": "taking a sword handed over: both hands reach forward low, palms up, on 1; the right closes on it on 2 and lifts it up before her on 3; held (with: the partner presents it on both hands, lets it go and bows)"
+  },
+  "gun-pass": {
+   "counts": 2,
+   "once": true,
+   "pair": "optional",
+   "reach": 1.2,
+   "desc": "a pistol held out at full stretch, handle first, on the right palm with the left hand under it, and held out (with: the partner reaches in on 1, takes it by the grip and draws it back to her side on 2)"
+  },
+  "head-bob": {
+   "counts": 1,
+   "desc": "the head nodding on the beat: the chin drives forward and down on each beat and springs back on the \"and\", the shoulders loose, the knees giving"
+  },
+  "head-snap": {
+   "counts": 1,
+   "once": true,
+   "desc": "the head whips round to her left on the hit and holds there, the body still (mirror: to the right)"
+  },
+  "laugh-bob": {
+   "counts": 1,
+   "desc": "laughing: the head thrown back, the shoulders shaking three times a beat, the knees giving with it"
+  },
+  "chest-pump": {
+   "counts": 1,
+   "desc": "fists at the breastbone, the elbows back; the chest popped forward on every beat, the knees pulsing under it"
+  },
+  "shoulder-pop": {
+   "counts": 4,
+   "desc": "the shoulders pop up in turn on each beat, right, left, right, left; the elbows bent at the waist, a small knee bounce, the head bobbing"
+  },
+  "tootsie-roll": {
+   "counts": 4,
+   "desc": "the forearms rolling over each other in front of her on every beat, the knees in and out, the hips rolling side to side over the four"
+  },
+  "prance-fan": {
+   "counts": 4,
+   "desc": "a high-knee prance up on the balls of the feet, a knee up on every beat, the right hand fanning her face with a flick each count, the left wrist limp (mocking the court)"
+  },
+  "scrub": {
+   "counts": 4,
+   "desc": "on both knees, bent low over the floor, both hands scrubbing it side to side (the washerwomen)"
+  },
+  "lean-in": {
+   "counts": 2,
+   "once": true,
+   "desc": "the weight onto the front foot and the torso tipped forward toward someone (or a desk), the feet planted; held"
+  },
+  "fold": {
+   "counts": 4,
+   "once": true,
+   "desc": "folding to the floor: onto both knees, then sitting back on the heels, then the torso down over the knees, the arms on the floor ahead; held (the passed-out guest, the mourner, the hit)"
+  },
+  "hold-side": {
+   "counts": 2,
+   "once": true,
+   "desc": "wounded: the right hand clutching the left side of the ribs, the torso curled over it, the knees soft; held"
+  },
+  "floor-slide": {
+   "counts": 4,
+   "once": true,
+   "body": true,
+   "desc": "down onto the right knee on 1, then sliding 0.8 m to her right along the floor on 2 and 3, the arms swept back; held there (mirror: to the left)"
+  },
+  "floor-freestyle": {
+   "counts": 8,
+   "body": true,
+   "desc": "floor work, round and round: down to a crouch, a kick-through to sitting, rolled back onto the shoulders with the legs in the air, and up again to the crouch"
+  },
+  "strut": {
+   "counts": 2,
+   "desc": "a swagger on her own walk: chest up and leaning back, the shoulders rolling with each step, a bigger arm swing, the right hand swinging low (standing: the same swagger in time)"
+  },
+  "king-walk": {
+   "counts": 2,
+   "desc": "the King's mincing walk on her own path: small quick steps up on the toes, the chin up and the head held still, the hips swaying, the right hand raised with the wrist limp, the left at the waist"
+  },
+  "old-walk": {
+   "counts": 2,
+   "desc": "an old man's walk on her own path: stooped forward at the waist, short shuffling steps, a hand on the small of the back, the other on an imaginary cane, the head nodding"
+  },
+  "moonwalk": {
+   "counts": 4,
+   "desc": "the moonwalk: up on the ball of one foot while the other slides back flat past it, changing feet each count; travelling, she turns her back to her path and glides backward along it; standing, she slides back 0.25 m a count for three counts and glides back to her mark on 4"
+  },
+  "sit": {
+   "counts": 1,
+   "once": true,
+   "body": true,
+   "desc": "sitting: on the chair, bench, stool or box nearest her as the move starts (within 0.8 m), facing its front; with none there, where she stands at chair height; the thighs level, the feet forward, the hands on the thighs"
+  },
+  "comfort": {
+   "counts": 2,
+   "once": true,
+   "pair": "required",
+   "reach": 1.2,
+   "desc": "comforting someone seated: she stands close behind or beside her, one hand on her near shoulder, the head bowed (with: the seated one, who keeps her own sit)"
+  },
+  "lift": {
+   "counts": 4,
+   "once": true,
+   "pair": "required",
+   "reach": 1.2,
+   "desc": "the lead lifts the mate: a dip, then hands at her waist carry her 0.5 m up by 2, the lead's arms up under her, her legs trailing behind and her arms up; held, and down again over the entry's last count"
+  },
+  "catch": {
+   "counts": 4,
+   "once": true,
+   "pair": "required",
+   "reach": 1.2,
+   "desc": "the mate pitches forward, straight from her feet, the head and arms hanging; the lead behind her catches her round the waist by 2, leaning in after her; held, and drawn back upright over the entry's last count (the women in It's Quiet Uptown)"
+  },
+  "partner-lift": {
+   "counts": 4,
+   "once": true,
+   "pair": "required",
+   "reach": 1.2,
+   "desc": "a ballroom lift: the lead's hands at the mate's waist, she rises 0.55 m and turns a quarter in the air, one leg stretched behind, the other bent, the arms out; held, and down over the entry's last count"
+  },
+  "sabre": {
+   "counts": 4,
+   "pair": "optional",
+   "reach": 2,
+   "desc": "swordplay: a fencing lunge with the right arm thrust forward on 1, recovered, then a parry across the body on 3, the free arm up behind (with: the partner parries the thrust and thrusts on 3, so the blades cross)"
   }
  }
 }

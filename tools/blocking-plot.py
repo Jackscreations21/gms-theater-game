@@ -26,7 +26,9 @@ timed on assets/hamilton-beats.json as the page times them) wears a little note 
 her label; the moment printout names the move.
 
 Props (RULINGS FR, FT) are drawn as shaded squares in their colour, from the blocking file's `props`, or for a segment
-file from the `props.json` beside it; a placed prop GLIDES between two placed waypoints, as the page draws it.
+file from the `props.json` beside it; a placed prop GLIDES between two placed waypoints, as the page draws it.  A HAND
+PROP (RULING GF: `kind: "hand"`, a book, quill, letter, pistol, sword or glass) in someone's hands is a small dot in its
+colour with a pale rim at her right hand, drawn over her disc; set down, it is a tiny box (at least 3 px) on the floor.
 
 <file> is either a SEGMENT file (`{"segment", "tracks", "waypoints": {"<id>": [...]}}`, as the
 blocking writers produce) or the page's blocking file (`assets/hamilton-blocking.json`,
@@ -456,7 +458,12 @@ def dance_at(a, T):
 # ---------------------------------------------------------------- input
 # ---------------------------------------------------------------- the props (RULINGS FR, FT): midtown.html propCompile / propPose
 PROP_KINDS = {'desk': [1.2, 0.75, 0.6], 'table': [1.5, 0.75, 0.9], 'chair': [0.45, 0.9, 0.45], 'bench': [1.4, 0.45, 0.4], 'stool': [0.4, 0.6, 0.4],
-              'box': [0.5, 0.45, 0.5], 'crate': [0.6, 0.5, 0.6], 'lantern': [0.2, 0.35, 0.2], 'bucket': [0.3, 0.35, 0.3], 'custom': [0.5, 0.5, 0.5]}
+              'box': [0.5, 0.45, 0.5], 'crate': [0.6, 0.5, 0.6], 'lantern': [0.2, 0.35, 0.2], 'bucket': [0.3, 0.35, 0.3], 'custom': [0.5, 0.5, 0.5],
+              'hand': [0.22, 0.05, 0.16]}
+# RULING GF: a hand prop's items and their sizes (tools/blocking-merge.py's HAND_ITEMS); it rides in the carrier's right hand
+HAND_ITEMS = {'book': [0.22, 0.05, 0.16], 'quill': [0.02, 0.3, 0.02], 'letter': [0.2, 0.005, 0.28], 'pistol': [0.04, 0.14, 0.36],
+              'sword': [0.04, 0.9, 0.1], 'glass': [0.07, 0.12, 0.07]}
+HAND_AT = (0.30, 0.12)     # GF: the right hand, metres to her right and in front of her centre (drawn clear of her disc)
 PROP_AHEAD = 0.22          # (FR; FU replaced it with the hold below)
 PROP_HOLD = {'hand': 0.88, 'near': 0.10, 'body': 0.13, 'side': 0.70}   # RULING FU, as midtown.html's PROP_HOLD
 
@@ -502,6 +509,10 @@ def prop_pose(p, T, actors_by_id):
             return {'x': (q1['x'] + q2['x']) / 2, 'z': (q1['z'] + q2['z']) / 2, 'y': (q1['y'] + q2['y']) / 2 + prop_hold_y(p),
                     'yaw': math.atan2(-(q2['z'] - q1['z']), q2['x'] - q1['x']), 'visible': (q1['visible'] or q2['visible']) and not w['off'], 'by': w['by']}
         q = Q[0]
+        if p.get('kind') == 'hand':                        # GF: in her right hand (no carry pose)
+            sd, fw = HAND_AT
+            return {'x': q['x'] - math.cos(q['yaw']) * sd + math.sin(q['yaw']) * fw, 'z': q['z'] + math.sin(q['yaw']) * sd + math.cos(q['yaw']) * fw,
+                    'y': q['y'] + 0.85, 'yaw': q['yaw'], 'visible': q['visible'] and not w['off'], 'by': w['by']}
         if p.get('kind') in ('chair', 'stool') or p['size'][1] > 1.6:   # FU: at her right side
             sd = 0.16 + p['size'][0] / 2
             return {'x': q['x'] - math.cos(q['yaw']) * sd, 'z': q['z'] + math.sin(q['yaw']) * sd, 'y': q['y'], 'yaw': q['yaw'], 'visible': q['visible'] and not w['off'], 'by': w['by']}
@@ -516,7 +527,14 @@ def prop_pose(p, T, actors_by_id):
 
 
 def draw_prop(cv, st, p, q, short=False):
+    if p.get('kind') == 'hand' and q.get('by'):           # GF: a hand prop in her hand: a dot at her right hand
+        cx, cy = st.P(q['x'], q['z'])
+        r = max(1.5, 0.07 * st.s)
+        cv.disc(cx, cy, r + 1, (235, 220, 190)); cv.disc(cx, cy, r, p['rgb'])
+        return
     w, d = p['size'][0], p['size'][2]
+    if p.get('kind') == 'hand':                            # GF: set down, a tiny box, never under 3 px across
+        w, d = max(w, 3.0 / st.s), max(d, 3.0 / st.s)
     c, s_ = math.cos(q['yaw']), math.sin(q['yaw'])
     corners = [(q['x'] + u * c + v * s_, q['z'] - u * s_ + v * c) for u, v in ((-w / 2, -d / 2), (w / 2, -d / 2), (w / 2, d / 2), (-w / 2, d / 2))]
     pts = [st.P(x, z) for x, z in corners]
@@ -577,8 +595,9 @@ def load_inputs(path):
         plist = json.load(open(side, encoding='utf-8')).get('props', []) if os.path.exists(side) else []
     PROPS_LOADED.clear()
     for pr in plist:
-        size = pr.get('size') if isinstance(pr.get('size'), list) and len(pr['size']) == 3 else PROP_KINDS.get(pr.get('kind'), PROP_KINDS['custom'])
-        PROPS_LOADED.append({'id': pr.get('id'), 'kind': pr.get('kind'), 'label': str(pr.get('label') or pr.get('id')), 'size': [float(v) for v in size],
+        size = pr.get('size') if isinstance(pr.get('size'), list) and len(pr['size']) == 3 else (
+            HAND_ITEMS.get(pr.get('item')) or PROP_KINDS.get(pr.get('kind'), PROP_KINDS['custom']))
+        PROPS_LOADED.append({'id': pr.get('id'), 'kind': pr.get('kind'), 'item': pr.get('item'), 'label': str(pr.get('label') or pr.get('id')), 'size': [float(v) for v in size],
                              'rgb': hexc(pr.get('color') or '#8a6a48'), 'c': compile_prop(pr, tracks)})
     return d, tracks, actors
 
@@ -590,11 +609,15 @@ def frame(st, tracks, actors, tid, sec, title=True, short=False, pdir=None, ever
     draw_pools(cv, st, pools)
     ps = [(a, pose(a['c'], T)) for a in actors]
     byid = {a['id']: a for a in actors}
+    held = []
     for pr in PROPS_LOADED:
         q = prop_pose(pr, T, byid)
-        if q and q['visible']: draw_prop(cv, st, pr, q, short)
+        if q and q['visible']:
+            if pr.get('kind') == 'hand' and q.get('by'): held.append((pr, q))     # GF: drawn over her disc, below
+            else: draw_prop(cv, st, pr, q, short)
     for a, p in sorted(ps, key=lambda ap: (ap[1]['visible'], ap[1]['y']) if ap[1] else (False, 0)):
         if p: draw_actor(cv, st, a, p, short, dance_at(a, T))
+    for pr, q in held: draw_prop(cv, st, pr, q, short)
     if title:
         m, s = divmod(sec, 60)
         cv.text(st.ml, 4, f'{tid} {tr["title"]}  {int(m)}:{s:04.1f}  ({sec:.1f} s)' + (f'  - {len(pools)} pools' if pdir else ''), (255, 225, 120), 1)

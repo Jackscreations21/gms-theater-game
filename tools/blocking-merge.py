@@ -12,21 +12,26 @@
 holding ONLY its own tracks' waypoints.  The folder may also hold PROPS.JSON
 (RULING FR; tools/blocking/props.py writes it):
 
-    { "props": [ { "id", "kind", "label", "size": [w, h, d], "color",
+    { "props": [ { "id", "kind", "item"?, "label", "size": [w, h, d], "color",
                    "waypoints": [ { "track", "at", "x", "z", "facing"?, "off"?,
                                     "carriedBy"?: "<actor id>" | ["<id>", "<id>"], "note"? }, ... ],
                    "model"?: "assets/props/<file>.glb" } ] }
 
-merged into the file's "props" list after the actors.  And DANCE.JSON (RULING FV;
+merged into the file's "props" list after the actors.  A HAND PROP (RULING GF) is `kind: "hand"` with `item` one of
+HAND_ITEMS (book, quill, letter, pistol, sword, glass); its size defaults to the item's; it rides in the carrier's
+right hand.  And DANCE.JSON (RULING FV;
 tools/blocking/dance.py writes it):
 
     { "moves": { "<actor id>": [ { "track", "at", "move", "counts", "mirror"?, "canon"?,
-                                   "speed"?, "reverse"?, "note"? }, ... ] } }
+                                   "speed"?, "reverse"?, "with"?, "note"? }, ... ] } }
 
 merged into each actor as "moves" after her path: a move from tools/hamilton-moves.json (the library
 midtown.html dances), counts > 0 beats, `at` (+ `canon`) inside its track, snapped by the page to the
 nearest beat of assets/hamilton-beats.json (a warning here when that is more than 0.1 s away); `canon`
-(seconds) is added after that snap, so a ripple can be finer than a beat.
+(seconds) is added after that snap, so a ripple can be finer than a beat.  `with` (RULING GF) names the PARTNER of a
+two-body move, on the lead's entry only: a cast id, not her own, and only on a move whose library entry has `pair`
+("required": `with` must be given; "optional": it may be); both should be on stage at the move's start and within the
+move's `reach` + 1 m of each other (warnings, judged by tools/blocking-plot.py's re-implementation of the page's pose).
 
 THE CLOCK'S EDGES (RULING FQ): `at` runs 0 ... the track's length, except
 -10 ... 0 is also allowed on the first track of each act (1-01, and the track
@@ -51,7 +56,9 @@ track (with its lead-in and tail, FQ); a label the cast does not allow that
 actor; time not strictly increasing for an actor across the whole show; a malformed waypoint; two
 segments writing the same track; for a prop: an unknown kind, a bad size or
 colour, a duplicate id, `carriedBy` not a cast id, time not strictly
-increasing, a placed waypoint without x / z.
+increasing, a placed waypoint without x / z, a hand prop's `item` not one of
+HAND_ITEMS; for a move: an unknown move, bad counts, `with` not another cast
+id, `with` on a move without `pair`, a `pair: "required"` move without `with`.
 WARNINGS (written anyway, printed): a waypoint outside the measured stage
 (x beyond +-9.5, z beyond -6.5 .. +5.3); standing on a prop or a stair at deck
 level; a "gallery" waypoint where the map has no gallery; a leg between two
@@ -60,7 +67,9 @@ more than 1 m over more than 3.5 m of floor (split it at a stair's foot and
 top); a stair leg climbed faster than 0.7 m/s across the floor; a leg faster
 than 3.5 m/s; a dwell that runs past the next waypoint; an offstage waypoint in
 plain view (the body would vanish in front of the house); a prop placed off the
-measured stage; a prop carried by an actor who has no waypoints.
+measured stage; a prop carried by an actor who has no waypoints; a move more
+than 0.1 s off the beat; a pair move whose partner is not on stage, or more
+than its `reach` + 1 m away, at its start.
 Then a summary per track: who has waypoints in it, and how many.
 
 Standard library only.
@@ -75,7 +84,10 @@ LEAD, TAIL = 10.0, 10.0                               # RULING FQ: the lead-in b
 # RULING FR: the prop kinds and their default sizes [w (across), h, d (deep)] in metres
 PROP_KINDS = {'desk': [1.2, 0.75, 0.6], 'table': [1.5, 0.75, 0.9], 'chair': [0.45, 0.9, 0.45], 'bench': [1.4, 0.45, 0.4],
               'stool': [0.4, 0.6, 0.4], 'box': [0.5, 0.45, 0.5], 'crate': [0.6, 0.5, 0.6], 'lantern': [0.2, 0.35, 0.2],
-              'bucket': [0.3, 0.35, 0.3], 'custom': [0.5, 0.5, 0.5]}
+              'bucket': [0.3, 0.35, 0.3], 'custom': [0.5, 0.5, 0.5], 'hand': [0.22, 0.05, 0.16]}
+# RULING GF: a hand prop's item and its default size (it rides in the carrier's right hand; midtown.html draws the item)
+HAND_ITEMS = {'book': [0.22, 0.05, 0.16], 'quill': [0.02, 0.3, 0.02], 'letter': [0.2, 0.005, 0.28], 'pistol': [0.04, 0.14, 0.36],
+              'sword': [0.04, 0.9, 0.1], 'glass': [0.07, 0.12, 0.07]}
 
 
 def track_table(show):
@@ -253,7 +265,7 @@ def main(argv):
                         warns.append(f'{a["_src"]} -> {b["_src"]}: leaves the gallery floor near ({x:.2f}, {z:.2f}) (top {t}) — route it along the gallery')
                         break
     props = merge_props(segdir, tracks, byid, floor, paths, errors, warns)
-    moves = merge_moves(segdir, tracks, byid, errors, warns)       # RULING FV
+    moves = merge_moves(segdir, tracks, byid, errors, warns, paths)   # RULING FV (and GF: `with`)
     for e in errors: print('ERROR  ', e)
     for w in warns: print('warning', w)
     # the summary
@@ -293,7 +305,8 @@ def main(argv):
         if props:                                       # RULING FR: after the actors
             f.write(' ],\n "props": [\n')
             for n, p in enumerate(props):
-                f.write('  {"id": ' + json.dumps(p['id']) + ', "kind": ' + json.dumps(p['kind']) + ', "label": ' + json.dumps(p['label'], ensure_ascii=False) +
+                f.write('  {"id": ' + json.dumps(p['id']) + ', "kind": ' + json.dumps(p['kind']) + (', "item": ' + json.dumps(p['item']) if p.get('item') else '') +
+                        ', "label": ' + json.dumps(p['label'], ensure_ascii=False) +
                         ', "size": ' + json.dumps(p['size']) + ', "color": ' + json.dumps(p['color']) +
                         (', "model": ' + json.dumps(p['model']) if p.get('model') else '') + ', "waypoints": [')
                 f.write(','.join('\n   ' + json.dumps(w, ensure_ascii=False) for w in p['waypoints']))
@@ -330,8 +343,10 @@ def beat_at(grid, tid, t):
     return s[1] + (t - s[0]) / s[2], s
 
 
-def merge_moves(segdir, tracks, byid, errors, warns):
-    """RULING FV: <segdir>/dance.json, validated -> {actor id: [move, ...]} in time order (empty when there is none)."""
+def merge_moves(segdir, tracks, byid, errors, warns, paths=None):
+    """RULING FV: <segdir>/dance.json, validated -> {actor id: [move, ...]} in time order (empty when there is none).
+    RULING GF: `with` (the partner of a pair move) is checked here; where both are at its start, from `paths` (the merged
+    waypoints) through tools/blocking-plot.py's pose (loaded only when some move has a partner)."""
     p = os.path.join(segdir, 'dance.json')
     if not os.path.exists(p):
         return {}
@@ -342,7 +357,7 @@ def merge_moves(segdir, tracks, byid, errors, warns):
         errors.append(f'dance.json / tools/hamilton-moves.json: not JSON ({e})'); return {}
     try: grid = beat_grid(load(os.path.join(ROOT, 'assets', 'hamilton-beats.json')))
     except Exception: grid = {}; warns.append('dance.json: no assets/hamilton-beats.json: the moves are not checked against the beat')
-    out = {}
+    out, pairs = {}, []
     for aid, L in (d.get('moves') or {}).items():
         if aid not in byid:
             errors.append(f'dance.json: unknown actor id "{aid}"'); continue
@@ -367,6 +382,17 @@ def merge_moves(segdir, tracks, byid, errors, warns):
                     o['speed'] = sp
                 except Exception: errors.append(f'{where}: speed must be a number above 0')
             if m.get('reverse'): o['reverse'] = True
+            pair = lib[name].get('pair') if isinstance(lib[name], dict) else None     # RULING GF: a two-body move
+            mate = m.get('with')
+            if mate is not None:
+                if not isinstance(mate, str) or mate not in byid: errors.append(f'{where}: with {mate!r} is not a cast id')
+                elif mate == aid: errors.append(f'{where}: with {mate!r} is herself (`with` names the partner, on the lead\'s entry)')
+                elif not pair: errors.append(f'{where}: {name} is not a pair move (no `pair` in tools/hamilton-moves.json), so it takes no `with`')
+                else:
+                    o['with'] = mate
+                    pairs.append((where, aid, mate, name, tracks[tid]['start'] + at + canon, lib[name].get('reach')))
+            elif pair == 'required':
+                errors.append(f'{where}: {name} needs a partner (`with`: the other body, RULING GF)')
             if m.get('note'): o['note'] = str(m['note'])
             ba = beat_at(grid, tid, at)                    # `at` snaps to its beat; `canon` is added after the snap
             if ba is not None:
@@ -377,7 +403,33 @@ def merge_moves(segdir, tracks, byid, errors, warns):
     for aid in out:
         out[aid].sort(key=lambda o: o['_T'])
         for o in out[aid]: del o['_T']
+    if pairs and paths is not None:
+        check_pairs(pairs, tracks, paths, warns)
     return out
+
+
+def check_pairs(pairs, tracks, paths, warns):
+    """RULING GF: both bodies of a pair move on stage at its start, and within its `reach` + 1 m (warnings). The poses are
+    tools/blocking-plot.py's (the page's pose rules in Python), as tools/blocking/props.py --check judges the carries."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('bplot', os.path.join(ROOT, 'tools', 'blocking-plot.py'))
+    bp = importlib.util.module_from_spec(spec); spec.loader.exec_module(bp)
+    comp = {}
+    def pose(aid, T):
+        if aid not in comp:
+            P = [{k: v for k, v in o.items() if not k.startswith('_')} for o in paths.get(aid) or []]
+            comp[aid] = bp.compile_path(P, tracks, aid) if P else None
+        return bp.pose(comp[aid], T) if comp[aid] else None
+    for where, aid, mate, name, T, reach in pairs:
+        q1, q2 = pose(aid, T), pose(mate, T)
+        off = [who for who, q in ((aid, q1), (mate, q2)) if not q or not q['visible']]
+        if off:
+            warns.append(f'{where}: {name} with {mate}, but {" and ".join(off)} {"is" if len(off) == 1 else "are"} not on stage at its start'); continue
+        try: reach = float(reach)
+        except Exception: continue
+        d = math.hypot(q1['x'] - q2['x'], q1['z'] - q2['z'])
+        if d > reach + 1.0:
+            warns.append(f'{where}: {name} with {mate}, {d:.2f} m apart at its start (its reach is {reach:g} m; within {reach + 1:g} m, please)')
 
 
 def merge_props(segdir, tracks, byid, floor, paths, errors, warns):
@@ -399,7 +451,14 @@ def merge_props(segdir, tracks, byid, floor, paths, errors, warns):
         kind = str(q.get('kind') or 'custom')
         if kind not in PROP_KINDS:
             errors.append(f'{where}: kind "{kind}" is not one of {sorted(PROP_KINDS)}'); continue
-        size = q.get('size') or PROP_KINDS[kind]
+        item = None
+        if kind == 'hand':                       # RULING GF: a hand prop names its item; its size defaults to the item's
+            item = str(q.get('item') or '')
+            if item not in HAND_ITEMS:
+                errors.append(f'{where}: a hand prop\'s item "{item}" is not one of {list(HAND_ITEMS)}'); continue
+        elif q.get('item') is not None:
+            warns.append(f'{where}: `item` is only for a hand prop (kind "hand"); dropped')
+        size = q.get('size') or (HAND_ITEMS[item] if item else PROP_KINDS[kind])
         try:
             size = [round(float(v), 3) for v in size]
             assert len(size) == 3 and all(v > 0 for v in size)
@@ -462,6 +521,7 @@ def merge_props(segdir, tracks, byid, floor, paths, errors, warns):
             if b['_T'] <= a['_T'] + 1e-6:
                 errors.append(f'{where}: time does not increase: {a["track"]} {a["at"]} then {b["track"]} {b["at"]}')
         rec = {'id': pid, 'kind': kind, 'label': str(q.get('label') or pid), 'size': size, 'color': color}
+        if item: rec['item'] = item
         if q.get('model'):                       # RULING FU: a GLB drawn in place of the boxes (scaled to `size`)
             mdl = str(q['model'])
             if not (mdl.startswith('assets/props/') and mdl.endswith('.glb')):
