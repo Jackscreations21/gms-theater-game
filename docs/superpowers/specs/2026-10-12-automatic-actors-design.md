@@ -1,8 +1,8 @@
 # Automatic actors — design (2026-10-12)
 
-**BINDING. Rulings FF–FV.** The next spec starts at **FW**. (FN was added the same day, from Jack's
-second message — see its section; FP–FR from his messages on the editor, the clock's edges and the props; FS, the limbs, on
-2026-10-13.)
+**BINDING. Rulings FF–FW, and GF.** FX–GE are in `2026-10-13-video-blocking-capture-design.md`; the next ruling is **GG**.
+(FN was added the same day, from Jack's second message — see its section; FP–FR from his messages on the editor, the
+clock's edges and the props; FS, the limbs, on 2026-10-13; FW from review 3; GF, dance round 2, on 2026-10-14.)
 
 These rulings were made by the building session (an agent), not answered by
 Jack in a Q&A first: he asked for the system and named the model, and every
@@ -656,3 +656,74 @@ From review 3 (the reviewers read the video evidence).
     fault.
 - **The kinds table is one table.** `props.py --check` crashed on a `crate`: it had its own partial size table. It now
   uses the full `PROP_KINDS`, the same as the merge's and the page's.
+
+### GF — Dance round 2: forty moves, pairs, sitting, hand props, the re-grid
+
+From review 3's video evidence: each segment's reviewer listed the moves the library lacked and the stand-in used for each
+(`tools/blocking/research/segN.md`, "Review 3"). Built on 2026-10-14 by three agents (the page, the tooling, the
+assignments). The moves and their sources are in `docs/hamilton-dance-moves.md`; the file format in
+`docs/hamilton-blocking-format.md`.
+
+- **The library is 87 moves**: FV's 47 and these 40. The names, their counts and kinds are binding (a rename breaks the
+  file); their shapes are a reading of the sources and Jack's to overturn.
+  - Hands and arms, once then held: `aim`, `aim-up`, `point-down`, `point-fall`, `angel-wings`, `breath`, `gasp`, `coat-on`,
+    `sword-draw`; looped: `beckon`, `shoo`, `air-quotes`, `finger-wag`, `make-it-rain`.
+  - Head and body, once then held: `head-snap`, `lean-in`, `fold`, `hold-side`, `floor-slide`; looped: `head-bob`,
+    `laugh-bob`, `chest-pump`, `shoulder-pop`, `tootsie-roll`, `prance-fan`, `scrub`, `floor-freestyle`.
+  - Gaits, overlays on her own walk (the path carries her; standing, the posture keeps time): `strut`, `king-walk`,
+    `old-walk`, `moonwalk`.
+  - Seated: `sit`; `comfort` (pair, required, lead only).
+  - Pairs: `lift`, `catch`, `partner-lift` (required); `sabre` (optional, looped: the mate runs the loop two counts
+    later); `handshake`, `sword-take`, `gun-pass` (optional, once).
+  - `tools/hamilton-moves.json` carries two new fields: `pair` (`"required"` | `"optional"`) and `reach` (metres).
+- **`with`: one entry, on the LEAD.** A pair move is written once, on the lead's moves, with `with: "<the partner's id>"`.
+  The partner (the mate) has no entry for it; the page poses her from the lead's (`role: "with"`).
+  - **The lead is the one doing the verb:** the lifter, the catcher, the comforter, the giver in `gun-pass`, the taker in
+    `sword-take`, the one who offers her hand in `handshake`.
+  - One `with` per lead: a lift by three is written with one lifter (2-22: ens6 lifts the Bullet; the knot keeps `hoist`).
+  - `dance.py` writes it `with_=` (Python's `with` is a keyword) and asserts a required move has one.
+- **The aligner (`dancePair`).** From both path poses at the move's time, each body slides half the gap's excess over the
+  move's own gap toward the other, at most 0.6 m (two too close are pushed apart, up to 0.3 m), and both turn to face.
+  `comfort` is lead-only: the lead takes the whole slide, and the mate stays where her own moves put her (on her seat).
+  `catch`'s mate turns her back to the lead. Pair moves blend in and out over 0.5 s, and a lift or a catch comes down over
+  the entry's last count. The paths are never changed: the slide is on the body and comes back as the move blends out.
+  Pure: from the path poses and the props at T.
+- **`sit` snaps to a seat.** At the move's first beat, the placed, seen chair, bench, stool or box nearest her within
+  0.8 m of its nearest point (along a bench, 0.15 m in from its ends); of two within 0.1 m of each other, the one behind
+  her. Her hips 0.04 m behind that point, facing the seat's front. The seat's height: a chair's seat, min(0.46 m, 0.52 × its
+  height); a bench's, stool's or box's top. The pelvis drop is measured off the rig's mesh (0.11 m, the thigh's back). With
+  no seat in reach she sits where she stands at 0.46 m.
+- **A move overrides a sit; the sit does not come back.** The generator gives a seated body `sit` again after a move.
+- **Hand props.** `kind: "hand"` with `item`, one of `book`, `quill`, `letter`, `pistol`, `sword`, `glass` (each with its own
+  default size). Carried, it rides in the carrier's RIGHT hand, set from her hand bone after the moves (`handProps`), and
+  her arm is NOT put in the carry pose (`hold: 'hand'`): she walks and dances as she would empty-handed. A pistol's barrel
+  and a sword's blade run along the hand's −y (out past the fingers), a book or a letter lies flat along the fingers, a
+  glass stands upright. `burr-book` and `schuyler-book` are hand props (`item: "book"`). The editor and the plotter draw a
+  carried one at her right hand (0.30 m right, 0.12 m ahead: a plan's approximation).
+- **The grid is corrected for 1-03 and 1-18.** 1-03 My Shot has nine tempo `changes` (88.59–91.02 BPM; the album drifts
+  behind a constant 91, half a bar late by the last chorus); 1-18 Guns and Ships' `firstBeat` is 1.716 s (was 0.846: the
+  loud hit every four beats is the backbeat). Each track's `note` says how. The other tracks are unchanged.
+  - **The generators place by bar.** My Shot's phrase is on beat 1 of bars 31, 35, 67, 71 and 115; every 1-18 entry that
+    round 1 put on "beat 3" is now on beat 1, at the same time.
+- **The page's check** (`MIDTOWN.actors.check()`) reports as problems: a `pair: "required"` move with no `with`; a `with`
+  naming no other actor; a mate not on stage when the move starts (she dances it alone). A `with` on a move with no `pair`
+  is a warning.
+- **The merge** errors on: a hand prop whose `item` is not one of the six; a `with` that is not another cast id; `with` on a
+  move without `pair`; a `pair: "required"` move without `with`. It warns on: an `item` given to another kind (and drops
+  it); a pair whose two are not both on stage, or stand more than `reach` + 1 m apart, at its start (judged by
+  `tools/blocking-plot.py`'s poses). `props.py` asserts a hand prop, and only a hand prop, names its item.
+- **The editor** (Simple mode): the Dance picker marks a pair move ⇄ and asks who it is with (an optional one offers
+  "Nobody — alone"); "Add furniture" has a hand prop with an item picker; the recording carries `with` and a hand prop's
+  `item` through, and applying it writes them into `dance.py` and `props.py` unchanged.
+- **The assignments.** `tools/blocking/dance.py`: 177 → 260 entries, 859 → 974 moves on 20 actors, 13 pairs, 46 `sit`s.
+  Each entry's `note` cites its segment's Review 3. They are a reading, and Jack's eye is the judge.
+- **NOT ruled (FUTURE.md):**
+  - **The seated layer:** an upper-body move on a seated body. Without it two seated actions are HELD, commented in
+    `dance.py`: the 2-02 cabinet's heads nodding through each verse, and the King jamming on his stool in 2-11.
+  - **Not seated** for want of a seat prop: Burr in 1-02 and 2-13, Jefferson on the 2-14 desk, the rowers, the 2-03 piano.
+  - **Unplaced:** the men's lifts in Helpless and Satisfied and the rewind's `floor-slide` (no time or body in the sources;
+    `floor-slide` is in the library, unused).
+  - **The grid's other drift candidates**, unexamined: 1-02, 1-07, 1-11, 1-17, 1-22, 2-01, 2-03, 2-07, 2-09, 2-22, 2-23.
+  - **A far-body level of detail** for the jointed bodies (their frame cost, FS).
+  - The coat as a worn costume (`coat-on` is a mime); hand props beyond the two books in the blocking (the swords,
+    pistols, quills, letters and glasses the moves mime); the Yorktown baseball pitch and fingers (as FV).

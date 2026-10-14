@@ -624,16 +624,23 @@ clips, who clicks the calibration, 5 vs 10 fps for the dance numbers.
 **From review 3 (2026-10-13, the video evidence), NOT built:**
 - **A thrown prop:** a carry that flies, an arc from one actor's hands to another's. My Shot's thrown stool is one: a
   clip comment has a stool thrown across the stage and caught, and chairs thrown in the air.
-- **Lifts:** Hamilton's mother carried in Hurricane, the Bullet "lifted" at the centre, Eliza carried in on the ring
-  (1-23 222–249, walked today).
-- **A sit pose.** The King sits on his stool at the end of I Know Him; Hamilton "needed his own chair" in Your Obedient
-  Servant; the tavern stools. Today the mannequins stand by their chairs.
-- **Hand props** beyond the book (RULING FW): the sword, the coat (Eliza puts it on him in 1-01; the coat in Guns and
-  Ships), the quill (handed to Burr and to Hamilton in 2-20), more books.
+- **Lifts — BUILT as moves (RULING GF):** `lift`, `catch`, `partner-lift`, two bodies on one entry (`with`). The Bullet
+  is lifted at the centre in 2-22 (ens6 lifts her). NOT built: a body CARRIED along a path (Hamilton's mother in Hurricane,
+  Eliza carried in on the ring, 1-23 222–249, walked today); a lift by more than one lifter (one `with` per lead).
+- **A sit pose — BUILT (RULING GF):** `sit` snaps to the nearest chair, bench, stool or box; 46 seated entries (the King's
+  stool, Hamilton's chair in Your Obedient Servant, the tavern, the cabinet, the jury…). See "the seated layer" below.
+- **Hand props — BUILT (RULING GF):** `kind: "hand"` with an `item` (book, quill, letter, pistol, sword, glass), riding in
+  the carrier's right hand. NOT yet in the blocking: only the two books are hand props. The sword Washington gives him
+  (1-19), the quills handed to Burr and to Hamilton in 2-20, the duel's pistols (1-15, 2-22), Peggy's letter (1-10) and the
+  toast's glasses (1-11) are mimed by the moves (`sword-take`, `gun-pass`, `aim`…) with nothing in the hand; a session
+  adds them in `tools/blocking/props.py` (`P(id, 'hand', label, color, item=…)`) with carry waypoints.
+- **The coat as a costume.** `coat-on` (1-01, 1-18) is a mime: no coat appears on him. A worn costume piece wants the
+  per-character models (below).
 - **Costume changes**: Burr's green jacket; the parchment outfits of the 1-01 roll call.
 - **The beat grid** (`assets/hamilton-beats.json`, the dance agent's):
-  - My Shot needs tempo changes, at about 160 s and at the death verse (segment 1);
-  - 1-18's downbeats are about two beats off the cue hits (segment 4);
+  - My Shot's tempo changes and 1-18's downbeat — FIXED (RULING GF: nine `changes` in 1-03, `firstBeat` 1.716 in 1-18);
+  - the other drift candidates, unexamined: 1-02, 1-07, 1-11, 1-17, 1-22, 2-01, 2-03, 2-07, 2-09, 2-22, 2-23 — re-grid
+    each against the album's onsets as GF did, then move its entries by bar;
   - segment 7's clip timestamps were 0–7 s off the album.
 
 **What Jack said:** *"make a system for automatic actors. Make a software where you can create their paths
@@ -642,22 +649,31 @@ The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocki
 
 - **Arms and feet — BUILT (RULING FS, 2026-10-13):** the mannequin cut into fifteen rigid parts
   (`assets/mannequin-woman-rig.glb`, `tools/mannequin-rig.py`), a walk / idle / turn / carry from the pose. NOT built:
-  - **Gestures per keyframe** — PARTLY BUILT by FV: a move from the library (point, salute, bow, kneel, reach-up,
-    freeze…) is given to a body at a time with `moves`, and the editor's Dance button records it. Not built: a pose held
-    for as long as a waypoint holds (today a move's counts say how long), sitting, and the duel's raised pistol.
-- **Dancing (RULING FV) — BUILT: the beat grid, 47 moves, `moves` in the file, the Dance button, a first pass of
-  assignments. NOT built:**
-  - **Partnering, lifts and contact:** the gavotte's palms meet only if the two are placed facing each other; nobody is
-    lifted (Hamilton's mother in Hurricane, the Bullet "lifted" at the centre), nobody is caught or dipped.
-  - **Props in a dance** beyond `hoist` / `upside-down` lifting what she already carries: nobody carries furniture in
-    Yorktown or the Hurricane ring yet (`tools/blocking/props.py`), so their arms go up empty; the duel's pistols, quills,
-    letters and the Pamphlet's papers are not props.
+  - **Gestures per keyframe** — PARTLY BUILT by FV and GF: a move from the library (point, salute, bow, kneel, reach-up,
+    freeze…) is given to a body at a time with `moves`, and the editor's Dance button records it. Sitting (`sit`) and the
+    duel's raised pistol (`aim-up`) are BUILT (GF). Not built: a pose held for as long as a waypoint holds (today a move's
+    counts say how long).
+- **Dancing (RULINGS FV, GF) — BUILT: the beat grid (1-03 and 1-18 re-gridded), 87 moves, `moves` in the file, the
+  Dance button, two passes of assignments (260 entries); pairs (`with`: `lift`, `catch`, `partner-lift`, `comfort`,
+  `sabre`, `handshake`, `sword-take`, `gun-pass`), sitting, hand props. NOT built:**
+  - **The seated layer:** an upper-body move laid on a seated body. Today a move overrides a `sit` and the sit does not
+    come back, so two seated actions are HELD (commented in `tools/blocking/dance.py`): the 2-02 cabinet's heads nodding
+    through each verse (`head-bob`), and the King jamming on his stool in 2-11 (`bounce`). Put them back when it is built.
+    Also not seated, for want of a seat prop: Burr in 1-02 and 2-13, Jefferson on the 2-14 desk, the rowers, the 2-03 piano.
+  - **Partnering, the rest:** the gavotte's palms meet only if the two are placed facing each other (it is not a pair
+    move); the men's lifts in Helpless and Satisfied and the rewind's `floor-slide` round Angelica are NOT placed (the
+    sources give no time or body; `floor-slide` is in the library, unused); nobody is dipped.
+  - **Props in a dance:** the furniture is carried now (Yorktown's five, Hurricane's ring) and a hand prop rides in the
+    hand (GF); still not props: the duel's pistols, the sword, the quills, letters and glasses (above), and the Pamphlet's
+    papers (`make-it-rain` throws nothing).
+  - **A far-body level of detail** for the jointed bodies (their frame cost: "The jointed bodies cost frame time", below).
   - **Motion capture** or video-derived poses: every shape is hand-made from the sources' words and a few frames.
   - **The Yorktown phrase's baseball pitch** ("from here I take the baseball … into my batting … into my glove") and
     **fingers** (the Schuyler sisters' two fingers, jazz hands): the hand is one rigid part.
-  - **Jack's eye on every assignment.** `tools/blocking/dance.py` places each move by a cue label + whole bars; the Right
-    Hand Man phrase is a guess at the bar; the Bojangles move is in the library but not placed (no source says which
-    number). The beat grid's tempo changes (18 tracks) are placed to within a 16 s window.
+  - **Jack's eye on every assignment**, and first on GF's 83 new ones (each `note` cites its `research/segN.md` Review 3).
+    `tools/blocking/dance.py` places each move by a cue label + whole bars, or by bar and beat; the Right Hand Man phrase
+    is a guess at the bar; which two dancers do 2-01's lift, and who lifts the Bullet, are readings. The beat grid's tempo
+    changes (18 tracks) are placed to within a 16 s window.
   - **Speed per move in the editor** (`speed`, `reverse` exist in the file; the picker offers counts, mirror and canon).
   - **A rigged, skinned model** (Mixamo-style), which would bend at the joints instead of showing the cut; the
     rig's part names and joints (FS) are the skeleton it would have to match.
