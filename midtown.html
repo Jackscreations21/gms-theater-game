@@ -24,7 +24,11 @@
   hamilton set. also make the lobby bigger to fit the second theater"): a second copy of the same scan,
   THEATRE 2 (HOUSE2, "THE SECOND HOUSE" below), stands HOUSE2.dx = 20 m house left (+x) of the first, as the
   GLB shipped it — its own proscenium at z 2.30, fly tower, back brick and hanging iron, an empty stage: no set,
-  no rig, no cuts, no booth, no desk. The lobby runs behind both houses, a pair of doorways from each.
+  no rig, no show. Jack: "add the spot booth and the desk for the second theater": it has the first house's
+  followspot booth and lighting desk, the same moved dx and measured against its own scan, cut into its back wall
+  and its stalls by HOUSE2_CUTS (its meshes only); three Lycians on the booth's stands as plain props (no beams,
+  not in the lighting engine) and the desk's monitors dark (no show to draw). The lobby runs behind both houses,
+  a pair of doorways from each and a projection room round each booth.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -5428,8 +5432,13 @@ function towerNear(meshes, boxes) {
 // against the house and the set), so the window is jamb to jamb, x −2.81…3.07, y 2.93/3.04…4.40, its edges
 // on the scan's own lines. Box: x −2.70…2.95, y 2.85…4.50, z −14.75…−13.95 (the wall is at −14.23…−14.43).
 const BOOTH_CUTS = [{ p: [0.125, 3.675, -14.35], r: [0, 0, 0], s: [5.65, 1.65, 0.8] }];
-function buildSpotBooth(houseScene) {
-  const S = boothSpec, t0 = performance.now();
+// houseScene: the scan to measure. The first house's booth is buildSpotBooth(house.scene); THEATRE 2'S is the same room
+// moved dx along x against its own scan (Jack: "add the spot booth and the desk for the second theater"):
+// buildSpotBooth(house2Root, { dx: HOUSE2.dx, mesh: house2Mesh, props: <lycian.glb> }) — its fills by the GLB's names,
+// its window cut by HOUSE2_CUTS, and no rig: three Lycians from the fixture model stand on its stands as plain props
+// (boothProps), aimed at its stage, no beam, nothing in the lighting engine. → the booth's group.
+function buildSpotBooth(houseScene, { dx = 0, mesh = houseMesh, props = null } = {}) {
+  const S = boothAt(dx), t0 = performance.now(), T2 = dx !== 0, tag = T2 ? 'booth, Theatre 2' : 'booth';
   scene.updateMatrixWorld(true);                             // no frame has drawn: the set's and the rig's world matrices are stale
   const meshes = []; houseScene.traverse(o => { if (o.isMesh && o.visible) meshes.push(o); });
   const ray = new THREE.Raycaster(), V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -5437,23 +5446,26 @@ function buildSpotBooth(houseScene) {
   const f2 = n => n === null || n === undefined ? '—' : n.toFixed(2);
   // 1. MEASURE the uncut wall (the cuts go on later, in reapplyAll at the load's tail): −z from each spot
   // and from six points over the window; ±x for the alcove's jambs; down for the house floor in front.
-  const spots = rig ? ['lycian-1', 'lycian-2', 'lycian-3'].map(id => rig.children.find(u => u.userData.id === id)).filter(Boolean) : [];
+  const spots = rig && !T2 ? ['lycian-1', 'lycian-2', 'lycian-3'].map(id => rig.children.find(u => u.userData.id === id)).filter(Boolean) : [];
   const from = spots.map(u => u.getWorldPosition(new THREE.Vector3()));
-  for (const x of [-2, 0, 2]) for (const y of [3.7, 4.1]) from.push(V(x, y, -12));
+  for (const x of [-2, 0, 2]) for (const y of [3.7, 4.1]) from.push(V(x + dx, y, -12));
   const wallZs = from.map(o => cast(o, V(0, 0, -1), 6)).filter(Boolean).map(h => h.point.z);
   const wallZ = wallZs.length ? wallZs.reduce((a, b) => a + b, 0) / wallZs.length : null;
   const mid = V((S.x0 + S.x1) / 2, 3.8, S.wallZ + 0.2);
-  const jl = cast(mid, V(-1, 0, 0), 5), jr = cast(mid, V(1, 0, 0), 5), fl = cast(V(0.1, 2.9, S.wallZ + 0.35), DOWN, 3);
-  if (wallZ === null || Math.abs(wallZ - S.wallZ) > 0.15) console.warn(`booth: the back wall measured at z ${f2(wallZ)}, not the ${S.wallZ} the booth and its cut are built for — check BOOTH_CUTS / boothSpec`);
+  const jl = cast(mid, V(-1, 0, 0), 5), jr = cast(mid, V(1, 0, 0), 5), fl = cast(V(0.1 + dx, 2.9, S.wallZ + 0.35), DOWN, 3);
+  if (wallZ === null || Math.abs(wallZ - S.wallZ) > 0.15) console.warn(`${tag}: the back wall measured at z ${f2(wallZ)}, not the ${S.wallZ} the booth and its cut are built for — check BOOTH_CUTS / boothSpec`);
   // 2. The fills behind the scan wall (both planes at z −14.9) would stand in the booth: house_skirt_s
   // (y 2.5–8.05, the full width) gets a hole the booth's size, skirting_s_mid (x ±3.3, up to y 2.5)
-  // stops under the booth's floor. The rear doorways keep both, untouched.
+  // stops under the booth's floor. The rear doorways keep both, untouched. Theatre 2's copies stand moved dx, which
+  // boothHole refuses: lobbyHoles takes the offset (and buildLobby re-holes house_skirt_s with its doorways).
   const yB = S.floor - S.t, yT = S.ceil + S.t;
-  const skirt = boothHole(houseMesh.house_skirt_s, S.xo0, S.xo1, yB, yT), skirting = boothHole(houseMesh.skirting_s_mid, S.xo0, S.xo1, yB, yT);
+  const hole = m => T2 ? lobbyHoles(m, [[S.xo0, S.xo1, yB, yT]], dx) : boothHole(m, S.xo0, S.xo1, yB, yT);
+  const skirt = hole(mesh.house_skirt_s), skirting = hole(mesh.skirting_s_mid);
   // 3. THE BOOTH, world frame: the scan wall stays its face to the house; behind it a front wall with the
   // window, a floor level with the house's back floor, side walls, back wall, ceiling; the window's
   // sill ledge (0.3 m proud into the house), lintel and jamb liners cover the cut's edges.
-  const group = new THREE.Group(); group.name = 'followspot booth';
+  const group = new THREE.Group(); group.name = 'followspot booth';   // Theatre 2's too: the walk's collision grid takes it by this name
+  if (T2) group.userData.house = 2;
   const add = (g, mat, name) => { const m = new THREE.Mesh(g, mat); m.name = name; m.castShadow = m.receiveShadow = false; m.userData.rig = true; group.add(m); return m; };
   const box = (x0, x1, y0, y1, z0, z1, mat, name) => add(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), mat, name);
   const cyl = (r, x, y0, y1, z, mat, name) => add(new THREE.CylinderGeometry(r, r, y1 - y0, 16).translate(x, (y0 + y1) / 2, z), mat, name);
@@ -5479,7 +5491,7 @@ function buildSpotBooth(houseScene) {
   // turntable centre; an operator's stool behind each.
   // The spots themselves are put on the stands by boothSpots, which rigPlace runs again whenever the set changes size
   // (the units are under the set's root, the booth is not).
-  const moved = boothSpots();
+  const moved = T2 ? boothProps(S, props) : boothSpots();
   S.spotX.forEach(x => {
     cyl(0.22, x, S.floor, S.floor + 0.03, S.spotZ, boothMats.metal, 'booth stand base');
     cyl(0.035, x, S.floor + 0.03, S.spotY - 0.025, S.spotZ, boothMats.metal, 'booth stand post');
@@ -5490,11 +5502,13 @@ function buildSpotBooth(houseScene) {
     cyl(0.175, x, S.floor + 0.70, S.floor + 0.75, zs, boothMats.seat, 'booth stool seat');
   });
   scene.add(group);
-  console.info(`booth: wall at z ${f2(wallZ)} (${wallZs.length} rays, ${f2(Math.min(...wallZs))}…${f2(Math.max(...wallZs))}; built for ${S.wallZ}), alcove jambs at x ${f2(jl && jl.point.x)} / ${f2(jr && jr.point.x)}, house floor in front y ${f2(fl && fl.point.y)}`
+  console.info(`${tag}: wall at z ${f2(wallZ)} (${wallZs.length} rays, ${f2(Math.min(...wallZs))}…${f2(Math.max(...wallZs))}; built for ${S.wallZ}), alcove jambs at x ${f2(jl && jl.point.x)} / ${f2(jr && jr.point.x)}, house floor in front y ${f2(fl && fl.point.y)}`
     + ` · window x ${S.x0}…${S.x1} y ${S.sill}…${S.head} (cut ${BOOTH_CUTS.length} box), floor y ${S.floor}, room x ${S.xo0}…${S.xo1} z ${zFo.toFixed(2)}…${zBo.toFixed(2)}`
     + ` · fills: house_skirt_s ${skirt ? 'holed' : 'NOT holed'}, skirting_s_mid ${skirting ? 'cut down' : 'NOT cut'}`
-    + ` · spots moved to y ${S.spotY} z ${S.spotZ}: ${moved.join(', ') || 'none (no rig)'} · ${(performance.now() - t0).toFixed(0)} ms`);
+    + (T2 ? ` · props on the stands at y ${S.spotY} z ${S.spotZ}: ${moved.join(', ') || 'none (lycian.glb not loaded)'}` : ` · spots moved to y ${S.spotY} z ${S.spotZ}: ${moved.join(', ') || 'none (no rig)'}`)
+    + ` · ${(performance.now() - t0).toFixed(0)} ms`);
   requestRender(); shadowsDirty();
+  return group;
 }
 // The booth's numbers, world metres, from the measurements above (the console line re-measures them).
 const boothSpec = {
@@ -5507,6 +5521,12 @@ const boothSpec = {
   spotX: [-2.2, 0, 2.2], spotY: 3.28, spotZ: -14.90,   // the units' origin (the yoke's foot), on stands; the lens 0.37 m ahead of it, just inside the window
   aim: [0, HOUSE.deckY + 1.5, 2.6], // the turntable centre, 1.5 m up
 };
+// The booth's numbers moved dx along x (Theatre 2's: the same scan, the same room); dx 0 is boothSpec itself.
+function boothAt(dx) {
+  if (!dx) return boothSpec;
+  const S = boothSpec, m = x => +(x + dx).toFixed(3);
+  return { ...S, x0: m(S.x0), x1: m(S.x1), xo0: m(S.xo0), xo1: m(S.xo1), spotX: S.spotX.map(m), aim: [m(S.aim[0]), S.aim[1], S.aim[2]] };
+}
 // Lit by the hemisphere alone the room read as a flat black hole from the stalls; a faint warm emissive
 // stands in for the work light's spill (a real light would cost every lit material a frame).
 const boothSpill = 0x1a1510, boothSpillLow = 0x0d0b08;
@@ -5592,6 +5612,32 @@ function boothSpots() {
   rig.updateMatrixWorld(true);
   return out;
 }
+// Theatre 2's three followspots: clones of the one loaded lycian.glb (objects only: the geometry is shared and nothing
+// edits it), each a THREE.LOD as a rig unit is (the far level from lod/lycian.glb past LOD_NEAR, when it loaded: the
+// full model is 8,000 triangles), each level posed as the rig poses one and aimed by boothAim at S.aim, on S's stands
+// at 1:1 — the rig's are drawn at the set's scale, 1 at real size, the page's default. Not rig units: no beam, no
+// channel, nothing in the lighting engine (lx); out of the walk's grid as the first house's units are (a group of their
+// own, not the booth's). gltf: { near, far } (far may be null). → one report string per spot.
+let boothPropGroup = null;
+function boothProps(S, gltf) {
+  if (!gltf || !gltf.near) return [];
+  const group = new THREE.Group(); group.name = 'followspots, Theatre 2';
+  scene.add(group); boothPropGroup = group;
+  const target = new THREE.Vector3(...S.aim), e = new THREE.Euler();
+  const lensMat = new THREE.MeshBasicMaterial({ color: LX_LENS_DARK, toneMapped: false, side: THREE.DoubleSide });   // dark, as an unlit unit's
+  return S.spotX.map((x, i) => {
+    const unit = new THREE.LOD();
+    for (const [g, d] of [[gltf.near, 0], [gltf.far, LOD_NEAR]]) {
+      if (!g) continue;
+      const level = g.scene.clone(); poseLevel(level, { type: 'lycian' }, g, e, lensMat); unit.addLevel(level, d);
+    }
+    unit.name = `Theatre 2 followspot ${i + 1}`;
+    unit.position.set(x, S.spotY, S.spotZ);
+    group.add(unit);
+    const dot = boothAim(unit, target);
+    return `${unit.name.replace('Theatre 2 ', '')} x ${x.toFixed(2)} (aim dot ${dot === null ? '—' : dot.toFixed(4)})`;
+  });
+}
 
 /* ---------------------------------------------------------------- HOUSE WORKS: THE LIGHTING DESK (agent F)
    Jack: "take out some of the seats in the middle here and put in a lighting desk." DESK_CUTS are delete
@@ -5605,12 +5651,30 @@ function boothSpots() {
 // up to 0.026 higher toward x +2), so the box is tilted to that rake: its bottom face 0.079 m above the
 // plane (≥ 0.05 above the floor everywhere, so no floor triangle's centroid is inside), its top 1.30 m above.
 const DESK_CUTS = [{ p: [-0.04, 1.343, -7.992], r: [0.1130, 0, 0], s: [4.16, 1.213, 1.832] }];
-function buildDeskPosition(houseScene) {
+// A delete box moved dx along x (Theatre 2's copies of the booth's and the desk's).
+const cutMoved = (c, dx) => ({ ...c, p: [+(c.p[0] + dx).toFixed(3), c.p[1], c.p[2]] });
+// THEATRE 2'S CUTS: the booth's window and the desk's two rows, the same boxes moved dx, scoped to Theatre 2's meshes
+// only ('house2': house2Root, never houseRoot or the set). reapplyAll applies them with the others every time — it
+// restores every geometry it has cut first, so a cut applied once at load would vanish on the first bake or undo.
+const HOUSE2_CUTS = [
+  { ...cutMoved(BOOTH_CUTS[0], HOUSE2.dx), only: 'house2', name: 'Theatre 2 booth window' },
+  { ...cutMoved(DESK_CUTS[0], HOUSE2.dx), only: 'house2', name: 'Theatre 2 desk rows' },
+];
+// houseScene: the scan to measure; its meshes are the ones whose names pass `scan` (the first house's /^Object_/,
+// Theatre 2's /^h2: Object_/), the position moved dx along x. live: the two monitors draw the show (THE DESK SCREENS)
+// — Theatre 2 has no show, so its desk is built with live false and its monitors are plain dark screens, merged with
+// the rest, never in DSK.screens, so deskClick and showUI's redraw never meet them. → the desk's group.
+function buildDeskPosition(houseScene, { dx = 0, scan: named = /^Object_/, live = true } = {}) {
   // Runs BEFORE the cuts (reapplyAll at the load tail), so the scan still has its seats: every floor
   // reading is the LOWEST up-facing hit straight down, under the seats.
-  const t0 = performance.now(), D = DESK;
+  const t0 = performance.now(), D = deskAt(dx), cut = dx ? cutMoved(DESK_CUTS[0], dx) : DESK_CUTS[0], tag = dx ? 'desk, Theatre 2' : 'desk';
   houseScene.updateMatrixWorld(true);
-  const scan = []; houseScene.traverse(o => { if (o.isMesh && o.visible && /^Object_/.test(o.name)) scan.push(o); });
+  const all = []; houseScene.traverse(o => { if (o.isMesh && o.visible && named.test(o.name)) all.push(o); });
+  // Every ray here is straight down from y 4 (6 m long) inside x x0−1…x1+1, z −1…z1−1.5. Theatre 2's: one pass first
+  // keeps only its scan's triangles in that column (towerNear, as the lobby does) — the same hits, ~0.2 s sooner. The
+  // first house's casts at its meshes as it always has: the pre-transformed copy moves its numbers by ~1e-8 m.
+  const near = dx ? towerNear(all, [new THREE.Box3(new THREE.Vector3(D.x0 - 1, -3, D.z1 - 1.5), new THREE.Vector3(D.x1 + 1, 5, -1.0))])[0] : null;
+  const scan = near ? [near] : all;
   const ray = new THREE.Raycaster(), cx = (D.x0 + D.x1) / 2;
   // FLOOR: the four corners (for the skirt) and a grid (for the highest point and the cut's clearance)
   const corner = (x, z) => deskFloor(ray, scan, x, z) ?? D.plane(z);
@@ -5619,7 +5683,7 @@ function buildDeskPosition(houseScene) {
     const u = (x - D.x0) / (D.x1 - D.x0), v = (z - D.z0) / (D.z1 - D.z0);
     return (C.fl * (1 - u) + C.fr * u) * (1 - v) + (C.bl * (1 - u) + C.br * u) * v;
   };
-  const inv = cutMatrix(DESK_CUTS[0]), q = new THREE.Vector3();
+  const inv = cutMatrix(cut), q = new THREE.Vector3();
   let top = -Infinity, clear = Infinity, misses = 0;
   for (let i = 0; i <= 5; i++) for (let j = 0; j <= 4; j++) {
     const x = D.x0 + 0.02 + (D.x1 - D.x0 - 0.04) * i / 5, z = D.z0 - 0.02 - (D.z0 - D.z1 - 0.04) * j / 4;
@@ -5627,7 +5691,7 @@ function buildDeskPosition(houseScene) {
     if (y === null) { misses++; continue; }
     top = Math.max(top, y);
     q.set(x, y, z).applyMatrix4(inv);                          // how far BELOW the cut box's bottom face this floor point lies (positive: kept)
-    if (Math.abs(q.x) <= 0.5 && Math.abs(q.z) <= 0.5) clear = Math.min(clear, -(q.y + 0.5) * DESK_CUTS[0].s[1]);
+    if (Math.abs(q.x) <= 0.5 && Math.abs(q.z) <= 0.5) clear = Math.min(clear, -(q.y + 0.5) * cut.s[1]);
   }
   if (!Number.isFinite(top)) top = Math.max(C.fl, C.fr, C.bl, C.br);
   // ROWS: seat runs straight down the centre line from the front of the stalls back past the block
@@ -5678,9 +5742,12 @@ function buildDeskPosition(houseScene) {
     deskBox(P, 'knob', m.w + 0.024, m.h + 0.024, 0.025, mx, my, mz, -a, Math.PI);         // the bezel
     const sc = new THREE.Vector3(mx, my, mz).addScaledVector(n, 0.0135);
     // the screen itself is a live mesh of its own (THE DESK SCREENS: the songs on the left, the cue list on the right), not
-    // merged: its picture is redrawn as the show runs, and it takes clicks
-    screens.push({ side: sx > 0 ? 'songs' : 'cues', geo: deskPut({}, 'screen', new THREE.PlaneGeometry(m.w, m.h), sc.x, sc.y, sc.z, -a, Math.PI) });
-    deskPut(P, 'halo', new THREE.PlaneGeometry(m.w + 0.14, m.h + 0.12), sc.x + n.x * 0.002, sc.y + n.y * 0.002, sc.z + n.z * 0.002, -a, Math.PI);
+    // merged: its picture is redrawn as the show runs, and it takes clicks. Not live (Theatre 2's): a dark screen, merged, no glow.
+    if (!live) deskPut(P, 'screen', new THREE.PlaneGeometry(m.w, m.h), sc.x, sc.y, sc.z, -a, Math.PI);
+    else {
+      screens.push({ side: sx > 0 ? 'songs' : 'cues', geo: deskPut({}, 'screen', new THREE.PlaneGeometry(m.w, m.h), sc.x, sc.y, sc.z, -a, Math.PI) });
+      deskPut(P, 'halo', new THREE.PlaneGeometry(m.w + 0.14, m.h + 0.12), sc.x + n.x * 0.002, sc.y + n.y * 0.002, sc.z + n.z * 0.002, -a, Math.PI);
+    }
     deskBox(P, 'frame', 0.03, m.lift + 0.02, 0.03, mx, T + (m.lift + 0.02) / 2, mz + 0.03);   // the stand
     deskBox(P, 'frame', 0.22, 0.012, 0.16, mx, T + 0.006, mz + 0.02);                         // its foot
   }
@@ -5710,7 +5777,7 @@ function buildDeskPosition(houseScene) {
     deskBox(P, 'fabric', 0.44, 0.40, 0.05, chx, Y0 + 0.83, chz - 0.27, -0.14);                       // the back
   }
   // One mesh per material, world frame, never cast or caught, skipped by the build tools.
-  const group = new THREE.Group(); group.name = 'lighting desk';
+  const group = new THREE.Group(); group.name = 'lighting desk';   // Theatre 2's too: the walk's collision grid takes it by this name
   let tris = 0;
   for (const [key, geos] of Object.entries(P)) {
     const geo = mergeGeometries(geos, false); geos.forEach(g => g.dispose());
@@ -5722,16 +5789,19 @@ function buildDeskPosition(houseScene) {
   }
   for (const s of screens) group.add(deskScreenMesh(s.side, s.geo));
   group.userData = { floor: C, top, platformTop: Y0, rows: mine, pitch, clearance: clear };
+  if (dx) group.userData.house = 2;
   scene.add(group);
   const f = v => v.toFixed(3);
-  const c = DESK_CUTS[0];
-  console.info(`desk: floor y ${f(Math.min(C.fl, C.fr))} (front, z ${D.z0}) to ${f(Math.max(C.bl, C.br))} (back, z ${D.z1}), highest ${f(top)}`
+  const c = cut;
+  console.info(`${tag}: floor y ${f(Math.min(C.fl, C.fr))} (front, z ${D.z0}) to ${f(Math.max(C.bl, C.br))} (back, z ${D.z1}), highest ${f(top)}`
     + ` over rows z ${mine.length ? mine.map(r => `${r.front.toFixed(2)}…${r.back.toFixed(2)} (row ${r.n} from the front)`).join(', ') : '— none found —'}`
     + `, seat pitch ${Number.isFinite(pitch) ? pitch.toFixed(2) : '?'} m over ${rows.length} rows; platform top y ${f(Y0)}`
     + `; cut ${c.s[0]} × ${c.s[2]} m at (${c.p.join(', ')}) tilted ${(c.r[0] * 180 / Math.PI).toFixed(1)}°, bottom ${Number.isFinite(clear) ? f(clear) : '?'} m above the floor at its closest`
     + ` · ${tris} triangles · ${(performance.now() - t0).toFixed(0)} ms` + (misses ? ` (${misses} floor rays missed)` : ''));
-  if (Number.isFinite(clear) && clear < 0.04) console.warn(`desk: the cut box comes within ${f(clear)} m of the floor — floor triangles may be cut`);
+  if (Number.isFinite(clear) && clear < 0.04) console.warn(`${tag}: the cut box comes within ${f(clear)} m of the floor — floor triangles may be cut`);
+  if (near) near.geometry.dispose();
   requestRender(); shadowsDirty();
+  return group;
 }
 // THE BRICK, GRADED. The set's generated brick texture (tools/blender/hamilton_set.py) averages sRGB (98, 28, 14): nearly pure
 // red, where weathered brick is a brown-red (~120, 70, 55) and Binkley's renders show it so. Under stage light a pure-red
@@ -5772,6 +5842,12 @@ const DESK = {
   laptop: { w: 0.33, d: 0.23, lid: 0.22, open: 100 * Math.PI / 180 },
   chairs: [-0.52, 0.48],
 };
+// The desk position's numbers moved dx along x (Theatre 2's: the same rows of the same scan); dx 0 is DESK itself.
+function deskAt(dx) {
+  if (!dx) return DESK;
+  const m = x => +(x + dx).toFixed(3);
+  return { ...DESK, x0: m(DESK.x0), x1: m(DESK.x1), chairs: DESK.chairs.map(m) };
+}
 // The house round it is an unlit photo and the desk sits out of the FOH spots' throw, under the hemisphere
 // alone: at true blacks it drew as one black hole. So the "blacks" are dark greys, nothing is metallic
 // (no environment map to reflect: metal drew black), and each lit surface glows a third of its own colour.
@@ -5846,7 +5922,8 @@ function deskSkirt(P, x0, x1, za, zb, yTop, floorAt) {
    nothing, and the two rear doorways opened onto void. The lobby is built behind that wall in the world
    frame (like the booth and the desk: meshes merged one per material, marked userData.rig so the build
    tools leave them alone, in the walk's collision grid by the group's name), and it wraps round the
-   followspot booth, which pokes into it from the house side boxed in as a projection room.
+   followspot booths (the first house's and Theatre 2's, dx along), which poke into it from the house side, each
+   boxed in as a projection room.
    THE DOORWAYS, measured off the scan (the console line re-measures them): they are not openings at the
    back cross-aisle's level (y 2.10 behind the last row, x −3…3) but two short passages from the SIDE
    aisles, 1.2 m lower — house right x −4.77…−3.57, floor y 0.90, head 3.04; house left x 3.78…5.08, floor
@@ -5948,13 +6025,13 @@ function buildLobby(houseScene, house2) {
     if (meas.sideX2[0] === null || meas.sideX2[0] < L.x0 || meas.sideX2[1] === null || meas.sideX2[1] > L.x1) warn.push(`Theatre 2's side walls measured at x ${f2(meas.sideX2[0])} / ${f2(meas.sideX2[1])}, outside the lobby's ${L.x0} / ${L.x1}`);
   }
   // 2. THE FILLS the passages cross: holes the linings' size (house_skirt_s keeps the booth's hole too). Theatre 2's
-  // copies of the same fills get their own two doorways' holes, and no booth's.
+  // copies of the same fills get their own two doorways' holes and its own booth's (buildSpotBooth made it; passed again).
   const S = boothSpec, hole = d => [d.x0 - L.lining, d.x1 + L.lining, F - 0.25, d.head + 0.15];
   const [dr, dl, dr2, dl2] = L.doors, h2 = n => house2 ? house2Mesh[n] : null;
   const filled = [
     lobbyHoles(houseMesh.house_skirt_s, [[S.xo0, S.xo1, S.floor - S.t, S.ceil + S.t], hole(dr), hole(dl)]),
     lobbyHoles(houseMesh.skirting_s_doorw, [hole(dr)]), lobbyHoles(houseMesh.skirting_s_doore, [hole(dl)]),
-    lobbyHoles(h2('house_skirt_s'), [hole(dr2), hole(dl2)], DX),
+    lobbyHoles(h2('house_skirt_s'), [[S.xo0 + DX, S.xo1 + DX, S.floor - S.t, S.ceil + S.t], hole(dr2), hole(dl2)], DX),
     lobbyHoles(h2('skirting_s_doorw'), [hole(dr2)], DX), lobbyHoles(h2('skirting_s_doore'), [hole(dl2)], DX),
   ];
   // 3. THE ROOM. Geometry goes into P by material key and is merged at the end (deskBox / deskPut file it).
@@ -5963,18 +6040,23 @@ function buildLobby(houseScene, house2) {
   const cyl = (key, rT, rB, y0, y1, x, z, seg) => deskPut(P, key, new THREE.CylinderGeometry(rT, rB, y1 - y0, seg), x, (y0 + y1) / 2, z);
   const tint = (g, hex) => { const c = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) a.set([c.r, c.g, c.b], i * 3); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
   const encl = L.encl, zE = S.front - S.depth - S.t - 0.12;     // the projection room's front face: 12 cm in front of the booth's back wall
-  // floor, ceiling (round the projection room, whose own roof is the booth's), roof
+  // the projection rooms' middles: the first house's booth, and Theatre 2's (the same booth moved dx, buildSpotBooth)
+  const rooms = house2 ? [0, DX] : [0];
+  const pdoor = o => [o - 2.85, o - 1.95];                      // a room's door: under its booth's own (x −2.85…−1.95, in its back wall)
+  // floor, ceiling (round the projection rooms, whose own roofs are the booths'), roof
   bx('carpet', X0, X1, F - 0.2, F, L.wallZ, zFo);
-  bx('ceil', X0, -encl, C, R, L.wallZ, zFo); bx('ceil', encl, X1, C, R, L.wallZ, zFo); bx('ceil', -encl, encl, C, R, zE, zFo);
-  // the side walls, and the house-side wall: solid but for the four doorways (a head over each) and the projection room
+  { let x = X0; for (const o of rooms) { bx('ceil', x, o - encl, C, R, L.wallZ, zFo); bx('ceil', o - encl, o + encl, C, R, zE, zFo); x = o + encl; } bx('ceil', x, X1, C, R, L.wallZ, zFo); }
+  // the side walls, and the house-side wall: solid but for the four doorways (a head over each) and the projection rooms
   bx('wall', X0, L.x0, F, C, L.wallZ, zFo); bx('wall', L.x1, X1, F, C, L.wallZ, zFo);
-  const gaps = [...L.doors.map(d => [d.x0, d.x1, d]), [-encl, encl, null]].sort((a, b) => a[0] - b[0]);   // left to right
+  const gaps = [...L.doors.map(d => [d.x0, d.x1, d]), ...rooms.map(o => [o - encl, o + encl, null])].sort((a, b) => a[0] - b[0]);   // left to right
   { let x = X0; for (const [a, b, d] of gaps) { bx('wall', x, a, F, C, L.wallZ, zH); if (d) bx('wall', a, b, d.head, C, L.wallZ, zH); x = b; } bx('wall', x, X1, F, C, L.wallZ, zH); }
-  // the projection room: the booth boxed in from the lobby floor to the roof, a door at floor level (stairs behind it)
-  bx('wall', -encl, -S.xo1, F, R, L.wallZ, zE); bx('wall', S.xo1, encl, F, R, L.wallZ, zE); bx('wall', -encl, encl, F, R, zE + 0.12, zE);
-  const dx0 = -2.85, dx1 = -1.95;                                // under the booth's own door (x −2.85…−1.95, in its back wall)
-  bx('door', dx0, dx1, F, F + 2.1, zE, zE - 0.025);
-  bx('brass', dx1 - 0.12, dx1 - 0.08, F + 1.0, F + 1.06, zE - 0.025, zE - 0.06);
+  // the projection rooms: each booth boxed in from the lobby floor to the roof, a door at floor level (stairs behind it)
+  for (const o of rooms) {
+    bx('wall', o - encl, o - S.xo1, F, R, L.wallZ, zE); bx('wall', o + S.xo1, o + encl, F, R, L.wallZ, zE); bx('wall', o - encl, o + encl, F, R, zE + 0.12, zE);
+    const [dx0, dx1] = pdoor(o);
+    bx('door', dx0, dx1, F, F + 2.1, zE, zE - 0.025);
+    bx('brass', dx1 - 0.12, dx1 - 0.08, F + 1.0, F + 1.06, zE - 0.025, zE - 0.06);
+  }
   // the passages' linings, scan end to lobby: floor ramps from the passage's height to the lobby's, walls, soffit
   for (const d of L.doors) {
     const a = d.x0 + 0.004, b = d.x1 - 0.004, top = d.head - 0.004;
@@ -6014,9 +6096,12 @@ function buildLobby(houseScene, house2) {
   for (const [x0, x1] of [[L.x0, ea], [eb, L.x1]]) { wains(x0, x1, zF, zF + 0.02); rail(x0, x1, zF, zF + 0.035); }
   for (const [xa, xb] of [[L.x0, L.x0 + 0.02], [L.x1 - 0.02, L.x1]]) wains(xa, xb, zH, zF);
   bx('brass', L.x0, L.x0 + 0.035, F + 1.0, F + 1.04, zH, zF); bx('brass', L.x1 - 0.035, L.x1, F + 1.0, F + 1.04, zH, zF);
-  for (const [x0, x1] of [[-encl, dx0], [dx1, encl]]) { wains(x0, x1, zE, zE - 0.02); rail(x0, x1, zE, zE - 0.035); }
-  for (const s of [-1, 1]) { const x = s * encl; wains(x, x + s * 0.02, zH, zE); bx('brass', x, x + s * 0.035, F + 1.0, F + 1.04, zH, zE); }
-  lobbySign(P, 3, 1.2, 0.15, (dx0 + dx1) / 2, F + 2.32, zE - 0.03, Math.PI);
+  for (const o of rooms) {                                      // each projection room's front and sides, and its door's sign
+    const [dx0, dx1] = pdoor(o);
+    for (const [x0, x1] of [[o - encl, dx0], [dx1, o + encl]]) { wains(x0, x1, zE, zE - 0.02); rail(x0, x1, zE, zE - 0.035); }
+    for (const s of [-1, 1]) { const x = o + s * encl; wains(x, x + s * 0.02, zH, zE); bx('brass', x, x + s * 0.035, F + 1.0, F + 1.04, zH, zE); }
+    lobbySign(P, 3, 1.2, 0.15, (dx0 + dx1) / 2, F + 2.32, zE - 0.03, Math.PI);
+  }
   // 4. THE BOX OFFICE, house right (−x): a room in the corner behind a counter and a glazed screen
   const bo = { x: -8.1, z0: -16.9, z1: -20.7 };
   bx('wall', L.x0, bo.x + 0.1, F, C, bo.z0, bo.z0 + 0.12); bx('wall', L.x0, bo.x + 0.1, F, C, bo.z1, bo.z1 - 0.12);
@@ -6065,10 +6150,10 @@ function buildLobby(houseScene, house2) {
   // 6. POSTERS (framed panels, plain), TICKET-CHECK STANCHIONS, BENCHES, BINS
   const POSTER = [0x7a1e28, 0x1e2e5a, 0x9a7a2a, 0x1e5a5a, 0x4a2450, 0x2a4a2a];
   const posters = [[-8.3, zH, Math.PI], [-6.4, zH, Math.PI], [6.6, zH, Math.PI], [8.5, zH, Math.PI], [-5.2, zF, 0], [5.2, zF, 0],
-    // across Theatre 2's half: the first house's house-side four moved dx, two between its doorways, and the entrance
-    // wall's two mirrored about the doors' middle
+    // across Theatre 2's half: the first house's house-side four moved dx (between its doorways is its projection room
+    // now, as in the first house's half), and the entrance wall's two mirrored about the doors' middle
     [-8.3 + DX, zH, Math.PI], [-6.4 + DX, zH, Math.PI], [6.6 + DX, zH, Math.PI], [8.5 + DX, zH, Math.PI],
-    [DX - 1.9, zH, Math.PI], [DX + 1.9, zH, Math.PI], [2 * xm - 5.2, zF, 0], [2 * xm + 5.2, zF, 0]];
+    [2 * xm - 5.2, zF, 0], [2 * xm + 5.2, zF, 0]];
   posters.forEach(([x, z, ry], i) => {
     const s = ry ? -1 : 1;                                     // which way the wall's face looks: −z for the house-side wall, +z for the entrance wall
     deskBox(P, 'dark', 0.86, 1.22, 0.04, x, F + 1.75, z + s * 0.02);
@@ -6083,9 +6168,9 @@ function buildLobby(houseScene, house2) {
     tint(deskBox(P, 'colour', 0.006, 0.05, zs[0] - zs[1] - 0.06, x, F + 0.82, (zs[0] + zs[1]) / 2), 0x7a1420);
     bx('brass', x - 0.04, x + 0.04, F + 0.78, F + 0.86, zH, zH - 0.02);                             // the belt's wall receiver
   }
-  // backless benches: by the projection room, by the entrance, and in Theatre 2's half one between its doorways and the
-  // entrance one mirrored about the doors' middle
-  for (const [x0, x1, z0, z1] of [[0.3, 2.7, zE - 0.33, zE - 0.75], [-6.6, -4.6, zF + 0.7, zF + 0.28], [DX - 1.2, DX + 1.2, zH - 0.33, zH - 0.75], [2 * xm + 4.6, 2 * xm + 6.6, zF + 0.7, zF + 0.28]]) {
+  // backless benches: by the projection room, by the entrance, and in Theatre 2's half the same by its projection room
+  // and the entrance one mirrored about the doors' middle
+  for (const [x0, x1, z0, z1] of [[0.3, 2.7, zE - 0.33, zE - 0.75], [-6.6, -4.6, zF + 0.7, zF + 0.28], [DX + 0.3, DX + 2.7, zE - 0.33, zE - 0.75], [2 * xm + 4.6, 2 * xm + 6.6, zF + 0.7, zF + 0.28]]) {
     bx('wood', x0, x1, F + 0.40, F + 0.46, z0, z1);
     for (const x of [x0 + 0.1, x1 - 0.18]) bx('dark', x, x + 0.08, F, F + 0.40, z0 - 0.04, z1 + 0.04);
   }
@@ -6093,12 +6178,14 @@ function buildLobby(houseScene, house2) {
     cyl('dark', 0.2, 0.17, F, F + 0.72, x, z, 16); cyl('brass', 0.205, 0.205, F + 0.72, F + 0.75, x, z, 16);
   }
   // 7. CEILING FITTINGS: recessed downlights (their faces lit), and three real lights of the lobby's own
-  // the grid: the first house's six columns, then every 2.1 m across Theatre 2's half, and a pair either side of the bar's pendants
+  // the grid: the first house's six columns either side of its projection room, Theatre 2's four the same moved dx, and a
+  // pair either side of the bar's pendants (where the first house's last two fall, moved dx); in front of each projection
+  // room, three in each of two rows
   const dlx = [-8.4, -6.2, -4.1, 4.3, 6.4, 8.6];
-  for (let x = 10.7; x < L.x1 - 5; x += 2.1) dlx.push(+x.toFixed(2));
+  if (house2) dlx.push(...[-8.4, -6.2, -4.1, 4.3].map(x => +(x + DX).toFixed(2)));
   dlx.push(L.x1 - 3.6, L.x1 - 1.4);
   for (const x of dlx) for (const z of [-16.2, -18.6, -21.0]) deskPut(P, 'glow', new THREE.CircleGeometry(0.11, 16), x, C - 0.004, z, Math.PI / 2);
-  for (const x of [-1.8, 0, 1.8]) for (const z of [zE - 1.4, zF + 0.9]) deskPut(P, 'glow', new THREE.CircleGeometry(0.11, 16), x, C - 0.004, z, Math.PI / 2);
+  for (const o of rooms) for (const x of [-1.8, 0, 1.8]) for (const z of [zE - 1.4, zF + 0.9]) deskPut(P, 'glow', new THREE.CircleGeometry(0.11, 16), o + x, C - 0.004, z, Math.PI / 2);
   // 8. One mesh per material, world frame, never cast or caught, skipped by the build tools; the carpet's uv in world metres.
   lobbyMat.carpet.map = lobbyMat.carpet.emissiveMap = lobbyCarpet(); lobbyMat.sign.map = lobbySigns();
   const group = new THREE.Group(); group.name = 'lobby';
@@ -6120,7 +6207,7 @@ function buildLobby(houseScene, house2) {
     + meas.doors.map(m => `${m.name} x ${f2(m.x0)}…${f2(m.x1)} floor y ${f2(m.floor)} head ${f2(m.head)}, scan ends at z ${f2(m.end)}`).join('; ')
     + `; the scan's rearmost point z ${f2(rearmost)}, its side walls x ${f2(meas.sideX[0])} / ${f2(meas.sideX[1])}`
     + (house2 ? `; Theatre 2's rearmost point z ${f2(rearmost2)}, its side walls x ${f2(meas.sideX2[0])} / ${f2(meas.sideX2[1])}` : '')
-    + ` · built: room x ${L.x0}…${L.x1} z ${zH.toFixed(2)}…${zF.toFixed(2)} (${(L.x1 - L.x0).toFixed(1)} × ${L.depth} m), floor y ${F}, ceiling ${C}, ${L.doors.length} doorways; the projection room to z ${zE.toFixed(2)}`
+    + ` · built: room x ${L.x0}…${L.x1} z ${zH.toFixed(2)}…${zF.toFixed(2)} (${(L.x1 - L.x0).toFixed(1)} × ${L.depth} m), floor y ${F}, ceiling ${C}, ${L.doors.length} doorways; ${rooms.length === 1 ? 'the projection room' : `${rooms.length} projection rooms (x ${rooms.map(o => `${(o - encl).toFixed(2)}…${(o + encl).toFixed(2)}`).join(', ')})`} to z ${zE.toFixed(2)}`
     + ` · fills holed: ${['house_skirt_s', 'skirting_s_doorw', 'skirting_s_doore', 'Theatre 2 house_skirt_s', 'Theatre 2 skirting_s_doorw', 'Theatre 2 skirting_s_doore'].filter((n, i) => filled[i]).join(', ') || 'none'}`
     + ` · ${group.children.length} meshes, ${tris} triangles, ${lights.length} lights · ${(performance.now() - t0).toFixed(0)} ms`);
   for (const w of warn) console.warn('lobby: ' + w + ' — check LOBBY');
@@ -6252,6 +6339,7 @@ const WALL_CUTS = (() => {
   ];
 })();
 let wallsCut = [], wallSplitInfo = null;                    // what each wall cut took the last time reapplyAll ran; what wallSplit did
+let house2Cut = [];                                          // the same for HOUSE2_CUTS (Theatre 2's booth and desk): { cut, removed: { mesh name: triangles } }
 const cutAABB = c => new THREE.Box3().setFromPoints([0, 1, 2, 3, 4, 5, 6, 7].map(i => new THREE.Vector3(i & 1 ? 0.5 : -0.5, i & 2 ? 0.5 : -0.5, i & 4 ? 0.5 : -0.5)
   .applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3().fromArray(c.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(c.r[0], c.r[1], c.r[2])), new THREE.Vector3().fromArray(c.s)))));
 // Split the house's triangles along the 'house' wall boxes' faces (see above). Once, at load, before any cut.
@@ -6590,7 +6678,19 @@ function buildHouse2(src) {
   placeSet(SET.fit);
   root.updateMatrixWorld(true);
   buildSpotBooth(house.scene); buildDeskPosition(house.scene);
-  const lobby = buildLobby(house.scene, house2Root);         // after the booth: it re-holes the fill the booth holed
+  // Theatre 2's booth and desk, the same moved dx, measured against its own scan (cut by HOUSE2_CUTS in reapplyAll). Its
+  // followspots are props from the rig's own copies of the Lycian model and its far level (fetched here only when there
+  // is no rig).
+  const LYCIAN = 'assets/fixtures/lycian.glb';
+  const lycian = {
+    near: (rigSrc && rigSrc.gltfs[LYCIAN]) || await load(LYCIAN).catch(e => { console.warn(`booth, Theatre 2: ${LYCIAN} not loaded (${e && e.message || e}) — its stands stay empty`); return null; }),
+    far: (rigSrc && rigSrc.lods && rigSrc.lods[LYCIAN]) || null,
+  };
+  const house2Works = {
+    booth: buildSpotBooth(house2Root, { dx: HOUSE2.dx, mesh: house2Mesh, props: lycian }),
+    desk: buildDeskPosition(house2Root, { dx: HOUSE2.dx, scan: /^h2: Object_/, live: false }),
+  };
+  const lobby = buildLobby(house.scene, house2Root);         // after the booths: it re-holes the fills they holed
   houseRoot = house.scene;
   gradeSetBrick(root);
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
@@ -6605,7 +6705,9 @@ function buildHouse2(src) {
   rigPlaceable = true; placeSet(1);                          // the rig trimmed and rigged for real size, against the house as cut
   const wallChecked = wallCheck();
   try { lxInit(); } catch (e) { console.error('lx: the lighting engine failed to start —', e); }   // never stops the page
-  window.MIDTOWN = { scene, house: house.scene, house2: house2Root, house2Spec: HOUSE2, house2Mesh, set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty, lx: LX_API,
+  window.MIDTOWN = { scene, house: house.scene, house2: house2Root, house2Spec: HOUSE2, house2Mesh,
+    house2Works: { ...house2Works, spots: boothPropGroup, cuts: HOUSE2_CUTS, cut: () => house2Cut },   // Theatre 2's booth, desk and followspot props; its cut boxes and what they took
+    set: setGroup, houseMesh, camera, orbit, THREE, built, rig, renderer, requestRender, shadowsDirty, lx: LX_API,
     frame: () => { lxDrawn(clock.elapsedTime); renderer.render(scene, camera); },   // one full frame now (the pools' depth pass included): captures from a hidden tab, where no animation frame comes
     rigTrim: { table: RIG_TRIM, fitDrop: RIG_FIT_DROP, place: rigPlace, report: () => rigPlacedReport },
     walls: { cuts: WALL_CUTS, set: WALL_SET, margin: WALL_MARGIN, split: wallSplitInfo, report: wallReport, check: wallCheck, checked: wallChecked, placeSet },
@@ -6828,10 +6930,12 @@ cutBox.name = 'delete box'; cutBox.userData = { cutter: true }; cutBox.visible =
 scene.add(cutBox);
 let cuts = [];                                               // this session's confirmed boxes
 const originals = new Map();                                 // mesh -> original index (array) or null (was non-indexed)
-// only: undefined → everything (his boxes); 'house' → the scan and the fills; 'frame' → the page's proscenium frame (the wall cuts)
+// only: undefined → everything of the first house (his boxes); 'house' → the scan and the fills; 'frame' → the page's
+// proscenium frame (the wall cuts); 'house2' → Theatre 2's scan and fills and nothing else (HOUSE2_CUTS)
 function cuttables(only) {
   const list = [];
   const take = o => { if (o.isMesh && !o.userData.cutter && !o.userData.piece && !o.userData.rig && o.geometry.attributes.position) list.push(o); };   // never the rig: it is not scenery to cut or copy
+  if (only === 'house2') { if (house2Root) house2Root.traverse(take); return list; }
   if (houseRoot && only !== 'frame') houseRoot.traverse(take);
   if (!only) setGroup.traverse(take);
   if (only !== 'house') scene.children.forEach(o => { if (o.name === 'proscenium' || o.name === 'pros_wall') take(o); });
@@ -6879,6 +6983,7 @@ function cutAt(c) {
 function reapplyAll() {
   for (const [o, orig] of originals) { if (orig) o.geometry.setIndex(orig.slice()); else o.geometry.setIndex(null); }
   for (const c of [...BAKED_CUTS, ...BOOTH_CUTS, ...DESK_CUTS]) applyCut(c);
+  house2Cut = HOUSE2_CUTS.map(c => ({ cut: c, removed: applyCut(c) }));   // Theatre 2's booth window and desk rows, its meshes only
   wallsCut = WALL_CUTS.map(c => ({ cut: c, removed: applyCut(c) }));   // the house cut for the set at 1:1, after his boxes and before this session's
   for (const c of cuts) applyCut(c);
   shadowsDirty(); colliderStale();                           // cut geometry casts differently, and is walked differently

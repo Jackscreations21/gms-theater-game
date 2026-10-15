@@ -1634,3 +1634,21 @@ against this list before opening a PR; **add new traps as you hit them.**
   whenever scenery is added beside the house.
 - **The console tool's `pattern` is a plain substring**, not a regex: `lobby|walls` matches nothing.
 
+## From the Theatre 2 works round (2026-10-15)
+
+- **A cut applied once at load vanishes on the first bake or undo.** `reapplyAll` restores every geometry in
+  `originals` (every mesh any cut has touched) before it re-applies the lists it knows. A box applied anywhere else
+  is gone the next time it runs; Theatre 2's booth and desk boxes live in `HOUSE2_CUTS`, which `reapplyAll` applies
+  with the others, scoped `only: 'house2'` so they never reach house 1 or the set (and his boxes never reach Theatre 2).
+- **`towerNear`'s pre-transformed copy is not bit-identical to casting at the meshes.** The scan's meshes carry the
+  GLB's node transforms; a ray against the merged world-space copy lands ~1e-8 m off a ray against the originals.
+  Printed to 3 decimals it is the same line, but the geometry built from it moves — so the first house's desk still
+  casts at its own meshes (byte-for-byte as before), and only Theatre 2's uses the copy (~0.2 s off the load).
+  The first house's desk measure costs ~1.3 s of the load; switching it to the copy is a ruling, not a free win.
+- **Two booths, one group name.** The walk's collision grid takes scene children by name (`followspot booth`,
+  `lighting desk`); Theatre 2's groups carry the same names (`userData.house = 2` tells them apart). Anything that
+  ever looks a booth up BY NAME (`getObjectByName`, `find(o => o.name === …)`) now gets the first of two.
+- **An isolated worktree agent cannot edit the root checkout's `.claude/launch.json`**, and `preview_start` reads
+  only that one, not the worktree's: serve the worktree with `python -m http.server <port> --directory <worktree>`
+  as a background command and open it with `preview_start({url})`.
+
