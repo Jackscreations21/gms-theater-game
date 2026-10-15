@@ -32,7 +32,7 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
   (`#sh-hud`), the skip synced by the sound itself (`assets/hamilton-soundtrack-env.u8`, `soundtrack.seek.toc`), and the
   interval fix. Nothing in `src/`, so `the-house.html` and `docs/ARTNET.md` are untouched and the suites are unaffected.
   **Until it merges, that work is live only on the local server (localhost:8080), not on Pages.**
-- Rulings are at **FE** (FF next).
+- Rulings are at **FF** (FG next). FF (2026-10-15): the auditorium doors swing INTO the house.
 
 ## Open, in the order it will bite
 
@@ -41,9 +41,8 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
    `record-230`, `fixture-glbs` both sides (the sandbox refuses `git push --delete`; Jack or a terminal); suites when
    Node is on the PATH (`winget install OpenJS.NodeJS.LTS`, Jack runs it — the sandbox cannot).
 2. **Jack's eye on Theatre 2, its booth and desk, the doors and the long lobby** (PR #235). Decisions it raises, none
-   made: Theatre 2's own show, or stays empty (its desk screens are dark until there is one); the doors' swing — they
-   open INTO the house (a leaf lies flat on its reveal; swinging toward the lobby would hit the projection rooms), where
-   real auditorium doors open toward the way out; whether the doors should also open for the orbit camera (they stay
+   made: Theatre 2's own show, or stays empty (its desk screens are dark until there is one); the doors' swing is
+   RULED (FF: into the house); whether the doors should also open for the orbit camera (they stay
    shut unless you are walking); a runner meets a leaf mid-swing and loses 2–3 frames; the 0.68 m void between the two
    houses' outer walls (sealed by the lobby's wall, invisible from inside); the signs ("STALLS" over house 1's doors,
    "THEATRE 2" over the new pair, "PROJECTION" on both projection rooms); Build mode's "add piece" / delete box still

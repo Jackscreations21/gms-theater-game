@@ -226,7 +226,7 @@ compare the *same* production across stages instead.
 
 ## NEXT SESSION: **LAND #235 AND #233; HIS EYE ON THEATRE 2'S BOOTH, DESK AND THE DOORS** (2026-10-15)
 
-Rulings at **FE** (FF next). `main` is **`5d24188`**. Two PRs open, independent of each other: **#235 `second-house`**
+Rulings at **FF** (FG next). `main` is **`5d24188`**. Two PRs open, independent of each other: **#235 `second-house`**
 (now `bb74206`: Theatre 2, its booth and desk, the doors) and **#233 `cue-blackouts`** (the 2026-10-12 cue day; its
 record lives only on that branch, so whichever merges second conflicts here at the top block: keep both). STATE.md
 holds the open items only.
@@ -234,9 +234,9 @@ holds the open items only.
 1. **When either PR merges:** the post-merge protocol (fast-forward, delete the branch and the five older landed ones
    both sides, suites when Node is on the PATH).
 2. **His eye on Theatre 2** ("Theatre 2" then look behind you for the booth window; "Lobby" for the doors and the two
-   projection rooms; walk lobby → either house through the doors). The decisions it raises are STATE.md item 2: the
-   doors' swing direction, doors for the orbit camera, a show for Theatre 2 or empty, the signs, Build mode's scope,
-   the desk measure's speed, the props' size when fitted.
+   projection rooms; walk lobby → either house through the doors). The decisions it raises are STATE.md item 2:
+   doors for the orbit camera, a show for Theatre 2 or empty, the signs, Build mode's scope, the desk measure's speed,
+   the props' size when fitted. The swing direction is ruled (FF, below).
 3. **His re-check through the checklist** (STATE.md item 3; the method is in #233's NEXT SESSION block on
    `cue-blackouts`), then the older list.
 
@@ -264,6 +264,10 @@ doorway); the walker stops 0.25 m off a closed leaf from either side. +32 draw c
 220,279 triangles / 233 meshes, the walk through house-right's doorway with the doors opening ahead and shut behind
 on the live loop (the pane at 1.5 fps — see TRAPS). Pushed; nothing in `src/`; suites not run (Node not on the PATH).
 Both agents' worktrees were cut from `main`, not `second-house`, and each fixed that before editing (TRAPS).
+
+**RULING FF** (2026-10-15) — asked whether the doors should swing toward the lobby, as real egress doors do, instead of
+into the house, Jack: *"Keep the doors swinging into the house."* So the leaves swing into the passage and lie flat on
+their reveals when open, as built; do not re-open this for the projection rooms' sake or for realism.
 
 ## SUPERSEDED (the round above landed on top): **LAND #235 AND #233; HIS EYE ON THEATRE 2 AND THE LONG LOBBY** (2026-10-14)
 
