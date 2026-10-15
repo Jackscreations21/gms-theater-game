@@ -224,7 +224,40 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
+## NEXT SESSION: **LAND #235 AND #233; HIS EYE ON THEATRE 2 AND THE LONG LOBBY** (2026-10-14)
+
+Rulings at **FE** (FF next). `main` is **`5d24188`** (#230, #231, #232 merged). Two PRs open, independent of each
+other: **#235 `second-house`** (this round, off `main`) and **#233 `cue-blackouts`** (the 2026-10-12 cue day; its
+record — a NEXT SESSION and a DONE block that belong above this one, and the earlier STATE.md — lives only on that
+branch, so whichever merges second conflicts here at the top block: keep both). STATE.md is now OPEN ITEMS ONLY
+(2026-10-14); finished rounds go here, not there.
+
+1. **When either PR merges:** the post-merge protocol (fast-forward, delete the branch and the five older landed
+   ones both sides, suites when Node is on the PATH).
+2. **His eye on Theatre 2** (the "Theatre 2" and "Lobby" buttons; walk from one house through the lobby into the
+   other). Decisions it raises are listed in STATE.md item 2: a booth and desk for Theatre 2 or not, a show for it or
+   empty, the signs, Build mode's scope.
+3. **His re-check through the checklist** (STATE.md item 3; the method is in #233's NEXT SESSION block on
+   `cue-blackouts`), then the older list.
+
+## DONE — 2026-10-14: a second house beside the first, empty stage, one lobby behind both (PR #235)
+
+*"use the same theater we used for the hamilton one. just copy it over then remove the hamilton set. also make the
+lobby bigger to fit the second theater."* The morning's model hunt (Sketchfab: the Girona municipal theatre, CC BY,
+the one real scanned theatre interior bigger than Midtown; the Lyceum scan at $50) was set aside by that ruling. One
+Opus agent: Theatre 2 is a clone of the scanned house taken straight after load, before house 1's arch move, beam cut,
+set cuts, booth, desk and bakes — its own geometry per mesh (two clones of one GLB share buffers), unlit materials in
+`houseMats`, meshes `h2: …`, root at x +20 (`HOUSE2.dx`), the GLB's own proscenium, fly tower and hanging iron kept;
+no set, rig, cuts or bakes. The lobby runs behind both (x −9.80…30.00, 39.8 × 7 m): four doorways, Theatre 2's two
+measured off its own scan, lined, cased, signed "THEATRE 2" and stanchioned; its skirt fills holed (`lobbyHoles`
+takes the copy's x offset); entrance, canopy and pavement centred on the room; the bar keyed off `L.x1`; posters,
+benches, bins and downlights carried across. A "Theatre 2" view; the walk grid covers it (159k → 220k triangles);
+`MIDTOWN.house2`. The lead trimmed Jack's baked stage-floor slab (box 21, bake 3) at x 10.4 — it reached x 19.75 and
+lay as a black box across Theatre 2's stage. Checked: no errors or new warnings, `walls.check()` and `lx.check()`
+(301/313) unchanged, walked house 1 → lobby → Theatre 2 on the ground throughout, Back-of-house frame ~20.8 →
+23.7 ms. Nothing in `src/`. Five traps. Also this session: STATE.md cut from 79 KB to open items only.
+
+## SUPERSEDED (#232 merged; the show reached him): **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
 
 Rulings at **FE** (FF next). `main` is **`8961616`**: #229 and #230 merged by Jack — the house at 1:1, the lobby, bake 3,
 the rig trimmed, the lighting engine, the show, the calibration, all on `main`. Read STATE.md's newest block.
