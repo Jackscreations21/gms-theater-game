@@ -1,9 +1,800 @@
-# STATE — 2026-10-12 (PR #230 MERGED: THE HOUSE AT 1:1, THE LIGHTING ENGINE, THE WHOLE OF HAMILTON AUTO-TIMED AND CALIBRATED TO BINKLEY'S PHOTOS — ALL ON `main`)
+# STATE — 2026-10-14 (`actors` = PR #234: THE AUTOMATIC ACTORS, THE EDITOR, NOTES2 (FU), THE DANCING (FV), REVIEW 3 (FW), THE VIDEO CAPTURE (FX–GE), AND NOW DANCE ROUND 2 (GF); IT CARRIES `cue-blackouts` = PR #233 — BOTH OPEN)
 
 **Do not trust this file for what is next without fetching first.** `git
 fetch`, compare `origin/main`, then read this.
 
-## NEWEST — 2026-10-12: the engine calibrated to Binkley's cue photos, every cue re-judged from renders, the preshow and the interval — UNCOMMITTED on `midtown-lights`
+## NEWEST — 2026-10-14 (evening): HIS ACT-1 NOTES ON THE DANCING ROUND ARE IN — THE NEXT ROUND'S BRIEF (PR #234)
+
+**Read this block first.** Jack watched act 1 in `midtown.html` after dance round 2 (GF) landed (`04dbe42` on origin)
+and wrote his verdicts into the blocking checklist (https://claude.ai/artifact/4Q5Xh37ZmSinhtsJbVhAub, `songs`):
+**14 good** (1-06, 1-07, 1-09, 1-10, 1-12, 1-13, 1-15, 1-16, 1-19, 1-21, 1-22, 1-23 — and 1-05's row still says "fix"
+with the 10-13 note, see below), **7 need work**, **2 notes with no verdict** (1-08, 1-18). Act 2 not yet watched.
+His words, by song (times are minutes:seconds into the track as the page's readout shows them):
+
+- **1-01 Alexander Hamilton — fix:** *"the spotlights are off"* (a CUE note: the specials in `assets/hamilton-show.json`,
+  not the blocking).
+- **1-02 Aaron Burr, Sir — fix:** *"the table should come in a little farther towards center and the three guys are at
+  the table when they do their parts"* (`picnic-table`, props.py: today it goes to upstage right (−2.4, −1.0); the
+  verse pools are at it).
+- **1-03 My Shot — fix:** *"there are a lot of parts where they should be dancing and they are just standing still"*
+  (the biggest one: the company has the phrase six times and little else — a fuller dance track for the number).
+- **1-04 The Story of Tonight — fix:** *"find a better way for the chairs to come off like maybe at the end they stand up
+  and move forward and it is just spotlights on them and ensemble members go and take the chairs off. find a better
+  transition into the next song. they come off too early"* (`tavern-chair-1..4`, the four's `sit`s to 16.0, the end
+  of the number and the lead-in to 1-05).
+- **1-05 The Schuyler Sisters — fix (the 10-13 note, unchanged):** *"burr needs to come from upstage left and he runs to
+  downstage right at the start. at cue 164 burr goes off too early"* — review 2 applied both (Burr from USL to his
+  AF DSR; backs off on Q164, leaves at Q166). Re-check it with him: either it still reads wrong or the row is stale.
+- **1-08 Right Hand Man — no verdict:** *"when they are in a line near the start at around 1 minute in washington is at
+  the back till he starts talking then the line disperses and he comes to the front. also at the start when hamilton is
+  talking lafayette, burr, mulligan and laurens are on with him. at around 55 seconds in hamilton goes off then he comes
+  back when mulligan comes back on. washington's desk should come off around 4:37 and at 5:02 they get into a line with
+  washington at the front hamilton behind him and burr in the middle."*
+- **1-11 Satisfied — fix:** *"make the rewind part look better"* (`rewind`, cues 366.2–366.8: the slow walk backwards).
+- **1-14 Stay Alive — fix:** *"at 50 washington's desk should come off. charles lee's spotlight is off"* (the desk:
+  props.py `washington-desk`; the spotlight: a CUE note).
+- **1-17 That Would Be Enough — fix:** *"make hamilton and eliza wait to come off till the lights are fully out"* (their
+  exits against the blackout's fade in the cue file).
+- **1-18 Guns and Ships — no verdict:** *"burr should already be on the balcony by the time the light goes to him.
+  lafayette is on top of the table till 40 seconds in then he jumps off. he was inside the table. washington should
+  come on at around 46 seconds"* (`gs-table`: Lafayette stands IN it today — the page has no raised standing, see the
+  props.py header; a `y` on his waypoints, or the table's top as his floor, is the fix).
+- **1-20 Yorktown — fix:** *"the box doesn't come on till later. lafayette comes on to talk with hamilton at 10. lafayette
+  goes off at 32. mulligan is in front of ham at his solo. at the end laurens hamilton mulligan lafayette and washington
+  are at the front not the ensemble"* (`yorktown-box`; the friends' entrances and the final line-up).
+
+The method for the round: his checklist rows are the brief (read them again first — he may add act 2); blocking
+changes go into the segment generators (`tools/blocking/seg1/t1NN.py`, `gen_seg2.py`, `seg3gen.py`, `gen4.py`),
+props into `props.py`, dance into `dance.py`; regenerate, merge, `MIDTOWN.actors.check()`; the two CUE notes (1-01,
+1-14's spotlight) go to `assets/hamilton-show.json` by the cue method in the 2026-10-12 block. Write back a
+one-line reply per row in the checklist's notes when applied, and leave his status for him to flip.
+
+---
+
+## DONE — 2026-10-14 (third session): DANCE ROUND 2 LANDED (RULING GF) AND THE RE-KEY BATCH RAN — PR #234
+
+**Read this block first.** Jack: *"finish everything for the choreo and dancing"*, then *"use opus agents to finish
+everything"*, then (from the handoff-review session's note) *"Do this task here: run steps 4–6 of the vision re-key
+batch"*. `actors` on origin is **`ec66e53`** (+ this record). Three Opus agents ran in parallel on disjoint files,
+then a fourth wrote the docs; the batch ran as one background script in between (`6e2580c`, pushed).
+
+- **Dance round 2 is BUILT and merged, RULING GF** (the spec, the moves doc, the format doc, FUTURE):
+  - **40 new moves** in `midtown.html` after `DANCE.rewind` (87 in `tools/hamilton-moves.json`, which now carries
+    `pair` and `reach`): hand/arm (aim, aim-up, point-down, point-fall, beckon, shoo, air-quotes, finger-wag,
+    make-it-rain, angel-wings, breath, gasp, handshake, coat-on, sword-draw, sword-take, gun-pass), head/body
+    (head-bob, head-snap, laugh-bob, chest-pump, shoulder-pop, tootsie-roll, prance-fan, scrub, lean-in, fold,
+    hold-side, floor-slide, floor-freestyle), four gait overlays on her own walk (strut, king-walk, old-walk,
+    moonwalk), `sit` (snaps to the nearest chair/bench/stool/box — to the seat's nearest point, the chair behind her
+    on a tie — seat height from the prop, the pelvis drop measured off the rig) and `comfort`, and the two-body
+    `lift`, `catch`, `partner-lift`, `sabre`.
+  - **Pairs:** `with: "<id>"` on the LEAD's entry only (the one doing the verb: lifter, catcher, comforter, the giver
+    in gun-pass, the taker in sword-take); the mate is posed from it; the aligner slides each half the gap excess
+    (cap 0.6 m) and turns them to face; the check reports a required move with no `with`, a `with` naming nobody,
+    a mate off stage. The merge validates the same (`tools/blocking-merge.py`).
+  - **Hand props:** `kind: "hand"`, `item` ∈ book | quill | letter | pistol | sword | glass, in the page (ride from
+    the `hand_R` bone, the arm free), the editor (a hand-prop square, an item select, the "with …" picker on pair
+    moves, `with` through the recording file), the merge, the plot and `props.py` (the two books converted).
+  - **The beat grid:** 1-03 nine tempo changes, 1-18 `firstBeat` 1.716 (the verified regrid of the paused round).
+  - **The assignments** (`tools/blocking/dance.py`): 177 → 260 entries, 859 → 974 moves on 20 actors, 13 pairs,
+    46 sits; every stand-in from review 3 swapped for the reviewers' gesture; My Shot's five phrases on beat 1 of
+    bars 31/35/67/71/115; every 1-18 entry re-placed on beat 1. Two seated actions HELD (the 2-02 crowd's nodding,
+    the King's jamming on his stool) — a seated layer is not built (FUTURE). `floor-slide` is unused; the
+    Helpless/Satisfied lifts and the rewind's floor-slide have no time in the sources.
+  - **Checks:** merge 7,153 waypoints, 72 props, 0 errors, 0 warnings; `props.py --check` 0 warnings;
+    `dance.py --check` 1–8 all 0 errors; `MIDTOWN.actors.check()` on the real blocking passes (seek equivalence,
+    worst 0 rad / 0 m); console clean. Suites not run (no Node on the PATH; nothing in `src/`; `the-house.html`
+    and `docs/ARTNET.md` untouched by this branch).
+- **The re-key batch (steps 4–6) RAN and is committed** (`6e2580c`): 54 shots re-solved on the 1280 bodies, floor
+  on every calib file (20 tracks have `out/`), ident + motion on the 20, `compare --all` (20 diffs). No labels, so
+  evidence is 0 everywhere; `motion` finds nothing over 0.7. VISION.md §7 has the numbers and the list that is left
+  (his labels first).
+- **Open, Jack's:** the five blocking rulings (1-05 sisters' order, 1-07 the two Kings men, 1-09/1-10 the side
+  flip, 2-11 the King's stool, 2-22 the duel sides); his eye on the 83 new assignments and the 46 sits (the
+  checklist https://claude.ai/artifact/4Q5Xh37ZmSinhtsJbVhAub); the labels. Not started: the far-body LOD; the
+  grid drift candidates (1-02, 1-07, 1-11, 1-17, 1-22, 2-01, 2-03, 2-07, 2-09, 2-22, 2-23).
+- Eight traps into TRAPS.md.
+
+---
+
+## DONE (the batch ran this session, `6e2580c`) — 2026-10-14, 14:55: PAUSED MID-BATCH — STEPS 4–6 OF THE RE-KEY BATCH ARE NEXT (actors, PR #234)
+
+**Read this first.** Jack paused at 14:55, resumed the batch at 15:36 and stopped its agent at 15:38 mid-step-4 (four calib files — 1-02, 1-03, 1-05, 1-06 — re-solved with the 1280 bodies, uncommitted; `resolve all` redoes them). HANDOFF.md's top block has the full account: how the system works, what was done, what is left. Everything is committed on `actors` through **`28cb486`** (plus this note);
+HANDOFF.md is written in full. Since the block below: the UI solver
+carries the prior (`536d614`), `compare.py` (`b2b956c`), the missed cuts fixed + `recut`/shotmap/remap (`1464b3b`),
+GD `motion.py` (`d44526e`), the set points from the census + the 45 m camera gone (`b7ca344`), the calib files
+re-keyed to the new cuts and re-solved (`28cb486`). The pose re-run at `--imgsz 1280` finished on all 45 clips
+(cache only; 120,092 → 137,362 bodies, trackers reset at the new cuts). **Not yet done — run in this order, from the
+worktree, in `sh`, `P=tools/vision/.venv/Scripts/python`:**
+
+```sh
+$P -I tools/vision/calib.py resolve all                                   # step 4: the body cue now reads the 1280 bodies
+for f in tools/vision/calib/*.json; do $P -I tools/vision/run.py floor $(basename "$f" .json); done
+for f in tools/vision/out/*.json; do t=$(basename "$f" .json); $P -I tools/vision/run.py ident $t && $P -I tools/vision/run.py motion $t; done
+$P -I tools/vision/compare.py --all
+git status --short | grep -v cache                                        # then commit calib/, out/, diffs/
+```
+
+`tools/vision/out/*.json` (5 modified, uncommitted) are STALE: they were written against the old shot ids and the
+640 bodies; the loop above regenerates every one. The blocking checklist artifact now carries a "What is left" board
+(https://claude.ai/artifact/4Q5Xh37ZmSinhtsJbVhAub). The record to write after the batch: HANDOFF.md (how the system
+works, what was done, what is left — in detail), this file, VISION.md §7.
+
+---
+
+## NEWEST — 2026-10-14 (second session): THE AGENTS' ROUND RAN — STAGES 4–5, THE CALIBRATE UI, ~55 CAMERAS OF ~190 WIDE SHOTS, THE SOLVER REWRITTEN UNDER THEM — PR #234
+
+**Read this block first, then `docs/guide/VISION.md` §7** (the manual: findings and the ordered list). Jack: *"finish
+everything using agents"*, then *"everything has to be at a point it can pause by 11"*. Fourteen agents ran in this
+worktree (`actors`). **Commit `62f7ddf`**: stage 4 `tools/vision/floor.py` (`run.py floor`/`floor-check`), stage 5
+`tools/vision/ident.py` (`run.py ident`), the Calibrate mode in `blocking.html` (Advanced; `window.CALIB`; its JS PnP
+matches `calib.py` to 1e-7), stage 1's wrong-beat drop + tempo-matched refine + tempo prior (every clip re-aligned, no
+shot id changed; 1-04 aligns, its hand `anchors.json` force-added), `tools/vision/aligncheck.py` (one honest failure
+left: My Shot ×1.03 coverage), `AGENT-COMMON.md`. **Landed as `5efc9aa` (the solver finished before the pause):** the solver agent's
+`calib.py` (a physical prior + the body-height depth cue + `resolve`/`census` commands; it was told to soften the
+bounds — y ≥ 0, z ≥ 3.5, fov ≤ 100 — because pit and on-stage cameras are real) and its `resolve all` over the 43
+`tools/vision/calib/<clip>.json` files the nine agents wrote; `tools/vision/out/` (4 tracks, STALE against the
+re-aligned `at`s until `floor` + `ident` re-run). `floor` ran on every calibrated clip and `ident` on all 20 tracks after the re-solve; `calib.py`, `calib/` and `out/`
+are committed. 59 solves kept, 2 degenerate; the census is in the commit message and VISION.md §7.
+
+- **The cameras:** the brief's 45 m / 24° reference was a wrong solve (misidentified posts); G&S s16 is a pit camera
+  at deck height, 85–90°. The real families and the degeneracy (lens vs distance from one-plane points; the body
+  cue fixes it) are in VISION.md §7. Set points to fix from the solver's census: rail height (+10–15 %), both stairs
+  (and they move between numbers), lip-c (the lip bows ~0.5–1 m), the SR strip; add the rolling staircases and the
+  light rig. Missed cuts 15–20 % — the structure test is written down, not applied (it re-keys everything).
+- **Stage 2:** imgsz 1280 finds 2–3× the bodies in wide shots at ~16 fps; not re-run (the spawning session's call).
+- **Stage 5 has no labels yet** — every identity is `blocking` (conf 0.3, `fromBlocking`) or `ens?`; not evidence.
+- **Not started:** `compare.py` (GC), GD dance timing, the UI solver carrying the prior.
+- Nothing in `src/`; suites unaffected (not run). Dance round 2 still PAUSED; Jack's five rulings still open.
+
+---
+
+## NEWEST — 2026-10-14: THE FOOTAGE IS IN, STAGE 1 RAN ON ALL OF IT, STAGE 2 WAITS ON A PYTHON 3.13 VENV — PR #234
+
+**Read this block first.** Jack downloaded the playlist (JDownloader; 34 of the 36 available clips — 1-09 and 2-13
+did not finish, 10 of 46 are unavailable on YouTube) and then 11 more from elsewhere (`Downloads\Jack - ham\`:
+1-01, 1-07, 1-11, 1-13, Yorktown in four parts, Non-Stop in three) — **45 files, 40 of the 46 tracks**. The spec's
+stages 1–2 were built the same morning in `tools/vision/run.py` (`tools/README.md` has the commands). His Python
+was 3.15 (no torch wheel); he ran `py install 3.13` and the venv `tools/vision/.venv` was made from it in this
+worktree. Stage 1 ran over every clip, ~10 s each.
+
+- **Where the footage is:** copied (his download folders untouched) into `C:\Users\jackf\Videos\hamilton-clips\`,
+  and `video/` in this worktree is a directory junction to that folder (the repo is in OneDrive; 1.8 GB must not
+  sync). `video/INDEX.json` (committed) names the 45 files, their sha256, duration, size, fps, the playlist's URL
+  per clip, a `note` on the odd ones, and `elsewhere.stillWanted`: **1-09, 2-13 (on the playlist, did not
+  download), 2-02, 2-15, 2-22, 2-23, and a full 1-01** (what came is Disney's 104 s promo montage — cut up, it
+  does not align). A fresh clone needs the junction remade (TRAPS). `index --import` skips a file whose bytes are
+  already here, so a folder can be re-imported after a download finishes.
+- **Stage 1 results** (`tools/vision/cache/<clip>/frames.json` + `shots.jpg`, git-ignored, 1.9 GB of frames):
+  43 of 45 clips aligned to the album by the envelope matcher — median residual ≤ 0.2 s on 40 of them, 0.26–0.77 s
+  on 1-16, 1-19 and 2-11 (dialogue-heavy, few anchors). **Not aligned: 1-04 The Story of Tonight** (every window
+  under 0.5, no two agree — it wants `cache/1-04-the-story-of-tonight/anchors.json` by hand) **and the 1-01
+  montage**. The film runs at the album's tempo to within 20 ms on most numbers, drifts 1.5 s through Aaron Burr,
+  Sir's rap and 10 s over One Last Time (the film's is 25 s longer). The "LIVE AUDIO" Satisfied and the sing-along
+  Wait for It are the film's performance (0.01–0.02 s residuals). Cuts: 3 to 95 shots a clip, judged by eye on
+  Aaron Burr, Sir and Guns and Ships (every detected cut real; the sheets are there for the rest). Each frame
+  carries `tconf` (1 between anchors, falling at the ends where the offset is extrapolated through applause).
+- **The alignment's own checks** (not a suite — stdlib has no numpy; run in the venv): a stretched slice of the
+  album envelope with applause in front recovers its time to ≤ 0.1 s on ten tracks at ±3 % tempo, and a slice of
+  every other track yields no anchor against My Shot's span (except Story of Tonight, which really starts inside
+  it). The recipe is in `tools/README.md`.
+- **Stage 2 ran** on Schuyler Defeated (316 frames in 22 s, 17.6 fps on his CPU, 1,183 bodies, 71 tracklets, right by
+  eye in `draw`), then over every clip in the background at ~40 fps once warm — all 45 done.
+- **Stage 3, the camera, is BUILT AND PROVEN ON ONE SHOT, not yet precise** (`tools/vision/calib.py`,
+  `tools/vision/setpoints.json`: 47 named set points from the editor's measured plan and the GLB's posts, a
+  wireframe; `run.py calib <clip> <shot> grid|solve|refine`). *"can you figure out now how to figure out the camera
+  angle"* → Guns and Ships shot 16 (the whole set from the house): nine points read off gridded crops of the frame
+  by the agent gave a camera **45 m back, 2.5 m up, 24° lens** (a long lens from the rear of the house — plausible)
+  with the lip fitting to 8 px but posts 25–50 px off: **at 720p the agent cannot tell one timber post from
+  another; a human click would give ~3 px.** `tools/vision/calib/1-18-guns-and-ships.json` holds that solve, the
+  overlay is `cache/1-18-guns-and-ships/calib-s16.jpg`. Jack's word: *"once you figure out the best way to do it
+  have opus agents do the rest"* — see HANDOFF for where that stands.
+- **Nothing in `src/`**; suites unaffected (not run: no Node on the PATH). `the-house.html` and `docs/ARTNET.md` untouched.
+- Dance round 2 is still PAUSED (below). Jack's five rulings still open.
+
+---
+
+## 2026-10-13 (end of day): DANCE ROUND 2 PAUSED, THE VIDEO-CAPTURE SPEC WRITTEN, JACK OUT OF CREDITS — PR #234
+
+**Read this block first.** `actors` on origin is **`ec5ea08`** (review 3 merged, RULING FW) plus this record commit.
+PR #234 holds everything: the actors, the editor (`blocking.html`, Simple mode = dots + music + drag records), the
+limbs, the dancing (47 moves, the beat grid), three review rounds (written → references → Jack's verdict → video
+evidence), 72 props, 859 placed moves, and #233's 14 commits (the sound tap, the cue revisions). Jack works on
+http://localhost:8093 from this worktree. Checklist: https://claude.ai/artifact/4Q5Xh37ZmSinhtsJbVhAub (v5, the
+review-3 watch lists; his `songs` rows are the brief).
+
+- **Dance round 2 is PAUSED, not lost:** ~40 moves the video reviewers asked for (sit — the first seated pose —
+  head-bob, shoulder-pop, king-walk, sword-draw, the two-body lift/catch, hand props …) and the beat-grid fixes for
+  My Shot (~160 s and the death verse) and 1-18. The agent had verified the grid fix and coded nothing in the
+  worktree when Jack paused it. Its note: session scratch `scratchpad/dance/WIP-round2.md` (the 2026-10-12 session,
+  `a0b0b830…`); the reviewers' move descriptions are the `## Review 3` sections of `tools/blocking/research/segN.md`,
+  the stand-ins are marked in `tools/blocking/dance.py`. It takes RULING **GF** when it lands.
+- **The video-capture system is SPECCED, not built:** `docs/superpowers/specs/2026-10-13-video-blocking-capture-design.md`
+  (RULINGS FX–GE). It needs Jack's downloads and a venv before any code.
+- **Open, Jack's rulings** (the checklist's "Your call" bullets; `docs/hamilton-blocking-cue-notes.md`): the sisters'
+  order in 1-05; the duel sides at the shot in 2-22 (two sources say they swap); the King's stool (end of 2-10, sits
+  stage right?); 1-07's two "Kings men" figures; the 1-09/1-10 side flip. Plus the cue items listed there.
+- **Frame cost:** the jointed bodies cost up to ~+30 ms a frame at the busiest dance moment (the Pamphlet freestyle)
+  on his Intel GPU. A far-body LOD was offered, not started.
+- Suites not run all day (no Node; nothing in `src/`). `the-house.html` and `docs/ARTNET.md` untouched by this branch.
+
+---
+
+## 2026-10-13 (latest): REVIEW 3 MERGED — THE VIDEO EVIDENCE, THE DANCE ASSIGNMENTS (RULING FW) — PR #234
+
+Eight reviewers went through the video evidence: the clips' titles, descriptions and top comments, the written accounts,
+and Blankenbuehler's interviews. Nobody here can watch video. They edited:
+- the generators (marked `REVIEW 3`);
+- their sections of `tools/blocking/props.py` and `tools/blocking/dance.py`;
+- `## Review 3 (video evidence)` in each `tools/blocking/research/segN.md`.
+
+This session merged and checked the result.
+
+- **Integrity.**
+  - `props.py` and `dance.py` are whole, with each of the eight sections present exactly once, and both run.
+  - All eight generators run. Their own checks report only these:
+    - seg4: Washington at 3.2–3.3 m/s at 1-23 384, Non-Stop's last second;
+    - seg5: a near pass, Burr and ens3 at 2-05 317;
+    - seg7: ens6, ens7 and ens8 close together in Hurricane's hoist (2-13 110–114), and the King against the SR stair
+      at 2-14 37–39;
+    - an off-to-off jump for ens6 in 2-16, which is harmless.
+- **Tool fixes.**
+  - `props.py --check` used a partial size table and crashed on a `crate`. It now uses the full `PROP_KINDS`.
+  - A hand prop, carried on and off with no set-down, is legal (RULING FW). `schuyler-book` now reads "a hand prop", not
+    a warning.
+  - The lyric quotes in `dance.py`'s SEGMENT 4 header are reworded, and so is one in `seg7_gen.py`.
+- **The lyric scan (5-word runs) over everything this round touched.** The hits left are song titles, cue labels or
+  plain English ("at the end of the").
+  - The dance agent's committed `docs/hamilton-dance-moves.md` and `tools/hamilton-moves.json` still quote lyrics:
+    15 lines.
+  - I asked the dance agent to reword them in its next commit. It is editing those files now.
+- **RULING FW.** At 2-16 → 2-17 the seven at the count carry over: ens2, 3, 4, 6, 7, 8 and 9, at the coordinator's
+  spots, facing 0. Both ends match exactly in the merge. Philip, Eacker and the King are unchanged.
+- **Totals, before → after:**
+
+  | | before | after |
+  |---|---|---|
+  | waypoints | 6,596 | **7,153** |
+  | moves | 322 | **859** |
+  | props | 62 | **72** |
+  | prop waypoints | 335 | 382 |
+
+  - The merge has 0 errors and 0 warnings; `props.py --check` gives 0 warnings.
+- **Checked on :8095:**
+  - `MIDTOWN.actors.check()` passes, with props, limbs and the 859 moves; 0 problems, 0 warnings.
+  - `show.check()`'s seek equivalence passes, with references resolved and the timeline monotonic. Its overall
+    `pass: false` is the 16 channels with no unit, as before.
+  - The lead-in: Burr walks on at −6 s.
+  - The console is clean.
+- **Frame cost.** Measured at 1280 × 800 on this Intel GPU, as the median of three runs of six frames, with the bodies
+  shown and then hidden:
+
+  | moment | visible bodies | with | without | the bodies cost |
+  |---|---|---|---|---|
+  | Yorktown's phrase (1-20 55) | 12 | 51.7 ms | 37.2 ms | 14.5 ms |
+  | the Room's bridge (2-05 225) | 12 | 62.9 ms | 37.5 ms | 25.4 ms |
+  | the Pamphlet freestyle (2-14 103) | 13 | 77.6 ms | 46.4 ms | **31.2 ms** |
+  | the 1-01 roll call (1-01 205), for comparison | 19 | — | — | 14.3 ms |
+
+- **Renders:** 15 "watch first" moments and a contact sheet, in scratch `act/shots/review3/`.
+- **For the dance agent, next:** about 40 missing moves, and the beat grid. My Shot needs tempo changes (about 160 s
+  and the death verse). 1-18's downbeats are about two beats off the cue hits. Segment 7's clip timestamps were 0–7 s
+  off. All of this is in FUTURE.md.
+- **Open for Jack** (`docs/hamilton-blocking-cue-notes.md`, "Added after review 3"):
+  - The King's stool: brought at the end of 2-10 by a cast member, and he sits stage right? Or set UL at 2-11, as now?
+  - The duel's sides at the shot: two sources now point to a swap.
+  - The new cue items: 2-05 872 and 867.6 / 867.7, 1-13 420, 1-14 443 / 445, 1-20 61–66, 1-18 120, and Hurricane's
+    gallery sides.
+
+## 2026-10-13: THE DANCING — A BEAT GRID, 47 MOVES, THE SHOW'S OWN CHOREOGRAPHY, THE DANCE BUTTON (RULING FV) — PR #234
+
+Jack: *"have an agent build the dancing system"* — and his sources (`Downloads\hamilton choreo info.txt`: a playlist of the
+film's clips, the reddit staging notes, the Blankenbuehler interviews) and *"also look on youtube"*.
+
+- **The beat grid** `assets/hamilton-beats.json` (`tools/beats.html` decodes Jack's soundtrack in the browser): 46 tracks,
+  measured vs published BPM median 0.04 % (largest 4.2 %), 57–96 % of clear onsets within 50 ms; tempo changes in 18
+  tracks for Jack's ear. `MIDTOWN.show.beatAt / beatTime`.
+- **47 moves** (`midtown.html` `DANCE`, `tools/hamilton-moves.json`, `docs/hamilton-dance-moves.md` with sources): 25
+  general and 22 of this show's — the My Shot phrase and `legacy`, Yorktown's I-imagined-death / command / heartbeat /
+  hip-hop march (from Blankenbuehler's WSJ breakdown, captions read and frames seen), musket, upside-down furniture, the
+  Room's shimmy and ooey-gooey jazz, Hurricane's hoist and cockroach crawl, the gavotte and grind, equals and work, the
+  Pamphlet's wall, Bojangles, the Bullet, the rowers, the rewind.
+- **`moves` in the file**, a first pass of assignments for 11 numbers by `tools/blocking/dance.py` (322 entries), merged and
+  validated by `tools/blocking-merge.py`, marked by `tools/blocking-plot.py`. `MIDTOWN.actors.check()` compares limbs and
+  body offsets in the middle of moves: passes (45 moments, 421 body-moments, worst 0); negative-checked.
+- **Cost:** posing 0.1–0.2 → 0.2–0.3 ms with 13 dancing; frames 72–74 ms either way (noise).
+- **The editor:** ♪ Dance… (D) on the selection (counts, mirror, canon step), dancing badges, beat ticks, `moves` in the
+  recording file, undo / Clear / Restore / Delete / X. Also (the coordinator's ask) two-person carries ("two carry it
+  (with…)") and props' `model` kept: the whole-file export is byte-identical again and the editor shows 0 errors.
+- Checked on 8115 (scratch) and 8116 (the worktree); never 8093 / 8080. Shots: session scratch `dance/shots/`.
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-13 (later still): `cue-blackouts` (PR #233) MERGED INTO `actors` — THE SOUND TAP IN THE 3D PAGE — PR #234
+
+Jack: *"the sound in the 3D page gets out of sync when he skips a lot and no longer resyncs."* The envelope sound tap
+(`sndStart` / `sndTick`, `assets/hamilton-soundtrack-env.u8`, `showSoundSeek` with the seek table, `MIDTOWN.show.sound`,
+the HUD) existed only on `cue-blackouts`. That branch is now merged into `actors` with a merge commit, so **PR #234
+carries #233's 14 commits**. Either #233 merges first, or #234 absorbs it.
+
+- **Conflicts, each resolved by keeping both sides:**
+  - **`midtown.html`, five places where the FQ clock edges met the sound tap:**
+    - `showPause` keeps FQ's `!SHW.gap` (a lead-in or tail is silent) and the tap's `sndStart` on the Play click;
+    - `showTick` keeps the `!SHW.gap` tests and the interval guard after `showSoundTick`;
+    - `loadedmetadata` seeks by the table and arms the check; `ended` goes to FQ's tail when the track has one;
+    - `showSoundTick` reads `currentTime + soundOff` and then takes FQ's tail test on that true time;
+    - `showScrubMax` (FQ) and `showHud` (#233) are both kept.
+  - **`STATE.md`, `docs/guide/TRAPS.md`:** both blocks kept, newest first.
+  - **Auto-merged:** `HANDOFF.md`. `assets/hamilton-show.json` is #233's (cue revisions 3–5; `actors` never changed it).
+- **`assets/hamilton-pools.json` regenerated.** The pools were re-dumped from the merged page: 46 tracks, 891 cues,
+  13,346 person lights. On an unchanged track, 2,376 shared lights landed within 0.05 m of the old dump.
+  `docs/hamilton-blocking-cue-notes.md` says what #233 settled:
+  - Cabinet Battle #1's sides;
+  - 1-07's FTB.
+  - And what is still open, including 1-03 Q120's focus leak, which the data now shows.
+- **Checked on :8095 with the soundtrack, the Play button clicked (the tap needs the gesture):**
+
+  | skip | landing error | moved | result |
+  |---|---|---|---|
+  | forward 20 min, to 1-07 | 0.7 s | yes | "sound synced" |
+  | back 10 min, to 1-03 | 10.9 s | yes | "sound synced" |
+  | across the interval, forward to 2-03 | 2.5 s | yes | "sound synced" |
+  | across the interval, back to 1-20 | −15.6 s | yes | "sound synced" |
+
+  - The HUD showed each note.
+  - Playing into 1-23's tail held at the interval, on 670, with the house up.
+  - `actors.check()` passes. `show.check()`'s seek equivalence passes, its references resolve and its timeline is
+    monotonic. Its overall `pass: false` is the 16 channels with no unit, as before.
+  - The console is clean.
+- **Two bugs that test found, now FIXED (`sndTick`, `showTail`, `showHold`):**
+  - **A back skip resumed about its landing error away from the asked time** (1-03 ~11 s early, 1-20 ~16 s late).
+    - The cause: the check kept the FIRST request's want / req. The corrective seek did land right: a played
+      stretch is off by one constant, so subtracting the measured error lands it.
+    - But the second check re-measured that same error against the old relation and moved it back again (twice,
+      at most), undoing the fix.
+    - Now each corrective seek re-arms the check with its own target and request:
+      - the target is the asked time + what the element has played since the last request;
+      - the check judges the POSITION error, within 0.25 s, with up to 3 corrective seeks.
+    - If it cannot converge, the clock stays on the measured position (sound and picture agree). The HUD then says
+      "sound synced, N s after/before the skip's time (the file would not land there)" instead of pretending.
+  - **A stale "moving it" note.** A check cut short by a tail or the interval left the note up. `showTail` /
+    `showHold` now clear the pending check and its note.
+  - `MIDTOWN.show.sound.err` is the last measured position error.
+- **Verified after the fix**, on :8095 with the soundtrack, the back targets primed by playing them first:
+  - Resume error = the show clock − (asked time + what the element played since), sampled every 0.1 s. The tap's
+    own figure is in brackets.
+
+    | skip | resume error |
+    |---|---|
+    | forward 20 min, to 1-07 | +0.01 s (0.05) |
+    | back 9.6 min, to 1-03 | +0.13 s (0.00) — it landed −6.0 s off, was moved once, then synced |
+    | across the interval, forward to 2-03 | −0.06 s (−0.07) |
+    | across the interval, back to 1-20 | +0.06 s (0.00) |
+    | 1-11 → 1-03 | +0.15 s (−0.01) — it landed −10.0 s off, was moved once, then synced |
+    | 2-20 → 2-05 | +0.12 s (0.03) |
+
+  - Into 1-23's tail mid-check, the note cleared at the tail.
+  - `actors.check()` and the show's seek equivalence pass; the console is clean.
+
+## 2026-10-13: NOTES2 — TWO CARRY IT, A BETTER CARRY, PROP MODELS, THE ROLL CALL ON THE GALLERY (RULING FU) — PR #234
+
+Jack's notes on 1-01 to 1-03: *"make two people carry it on and make the carrying look better"*; *"everyone who has one of
+those lines is on the balcony except Burr who is at center stage"*; *"find a model for the lamp. find a model for the
+picnic bench"*; *"the bench should go onto upstage right. two people should carry the table on. the street light should
+come off right before the table comes on"*; *"the table should come off about halfway through"*.
+
+- **RULING FU.**
+  - `carriedBy` may be `[a, b]`: the prop rides between the two at hand height, its long side along them, and each
+    holds her end.
+  - One carrier holds it in front at hip height, forearms under it, leaning back; a chair or a stool one-handed at her
+    side; a tall piece upright at her side.
+  - A prop may name `model` (a GLB in `assets/props/`), scaled to its size; the boxes stand in until it loads.
+  - Built in `midtown.html`, the plotter, the merge, `props.py` and the format doc. **`blocking.html` does not have it
+    yet**: it is the editor round's work (that agent was fixing the clock this round).
+- **The models are built, not downloaded:** `tools/props-models.py` writes `assets/props/picnic-table.glb` (an A-frame
+  table with attached benches, dark red-brown) and `street-lamp.glb` (an iron post, a glowing lantern). The 2-04 lamps
+  use the lamp model too.
+- **1-01.**
+  - The clerk's table is carried on and off between ens7 and ens6. The cousin strikes the chair. Lafayette steps off
+    DSR while they pass.
+  - The roll-call singers sing from the galleries and stay there for the line-up. Burr sings Q65 at (0, 2.5).
+    - Re-placed by an eyewitness account (Jack's Reddit notes): Lafayette and Mulligan side by side at the upstage
+      gallery's centre (∓0.5), Laurens at 2.2.
+    - The three sisters are on the SL end balcony (Guns and Ships' balcony, about (5.3, 2.3)); Washington is on the
+      SR balcony (−5.5, 2.2).
+  - **Crowding:** the deck's centre third (|x| < 1.83) held up to 10 bodies, more than 8 at four moments. Now it never
+    holds more than 8:
+    - Q45 closes in an oval (it was a 2 m circle);
+    - Q58's company stands to the sides;
+    - the roll-call ring is looser.
+- **1-02.** The lamp is struck at 80.0, just before Q86. Mulligan and Laurens carry the picnic table on, between them,
+  to upstage right at (−2.4, −1.0).
+- **1-03.** ens1 and ens4 strike the table in the blue of Q119 (159.8, the cue nearest the middle). Laurens is no longer
+  up on it.
+- **Checked on :8095:**
+  - merge: 0 errors, 0 warnings;
+  - `props.py --check`: 0 warnings, both pairs walk 2.28–2.30 m apart;
+  - `actors.check()` passes;
+  - `show.check()`'s seek equivalence passes (its overall `pass: false` is the 16 channels with no unit, as before);
+  - the console is clean;
+  - renders are in scratch `act/shots/notes2/`.
+- **The cues still light the deck for the roll call.** The refocus asks are in `docs/hamilton-blocking-cue-notes.md`.
+
+## 2026-10-13: FIXED — THE EDITOR'S SOUND DRIFTING OUT OF SYNC (blocking.html) — PR #234
+
+Jack: *"the sound is getting out of sync and it isn't resyncing itself anymore."*
+
+- **Cause:** each song's clock was clamped to its length − 1 ms, which the music test counted as not-music, so the silent
+  clock crossed every song boundary and then force-SEEKED the element into the next song (2 seeks per boundary, measured on
+  the old build); each seek landed by Chrome's VBR index and stalled the clock — the drift the soak saw (1,125 s in 1,231 s).
+- **Fix:** `S.clock` is 'audio' while the element plays — the clock IS `currentTime` + the seek offset, every frame, across
+  boundaries and the silences between songs, never re-seeked; 'silent' only for lead-ins, tails, no file; one seek hands
+  over. A resume does not re-seek. The Music line shows "clock: audio / silent".
+- Checked on localhost:8093: 1-01 → 1-02 with 0 seeks and clock = element; the lead-in hands over at 0:00 (1 seek); pause /
+  resume 0 seeks; a scrub during play 1 seek then exact; 5 s with no frames then one frame: exact; 1-23's tail goes silent,
+  the interval holds at 2-01 −10, its lead-in hands over at 0 (1 seek). The envelope resync stays on `cue-blackouts`.
+
+## 2026-10-13 (review 2 merged): THE ENSEMBLE CUT BACK, THE FURNITURE CARRIED, PROPS GLIDE (RULING FT) — PR #234
+
+Jack watched the blocking: *"the ensemble is used far too much and much of the choreography is wrong"*. He wanted the
+furniture carried on by named people at named cues. Eight reviewers edited the eight generators and their own
+sections of `tools/blocking/props.py`; this session merged and checked the result.
+
+- **Integrity first.**
+  - `props.py` had been corrupted twice mid-round by concurrent edits, and repaired. It reads whole: eight sections once
+    each, and it runs.
+  - Every generator parses and runs.
+  - All eight segments and the props were regenerated. The merge has 0 errors and 0 warnings, and
+    `props.py --check` against the full merge gives 0 warnings.
+- **Totals, before → after:**
+  - waypoints 9,410 → **6,491**;
+  - props 28 → **62** (335 prop waypoints);
+  - ensemble time on stage 52,375 → **33,732 body-seconds** (−36 %), measured with the plotter's pose every 0.5 s;
+  - principals 28,284 → 26,557.
+- **RULING FT, placed props glide.** Between two placed waypoints (neither carried, neither off) a prop moves and turns
+  linearly in time; an `off` or a carry breaks it.
+  - It is the same in `midtown.html`, `blocking.html` (Simple mode's furniture keyframes now glide, as dots walk) and
+    `tools/blocking-plot.py`, which now draws props.
+  - Philip's table in 2-17 rides the ring on 7 + 3 points instead of 60 steps. It moves at most 0.04 m in 0.1 s and
+    stays within 0.1 m of Philip. The page and the editor agree to the centimetre.
+- **Dolly and Martha** (ens6 / ens7) are allowed in `tools/hamilton-cast.json`. Segment 7 labels the two women of 2-16
+  with them and hands the names back in the wing.
+- **Checked in the page** (worktree on 8095, never 8093):
+  - `MIDTOWN.actors.check({n: 60})` passes: positions, yaw, labels, visibility, limbs (19 bodies) and props, seek
+    against play.
+  - `show.check()`: seek-equivalence passes; overall false only on the 16 channels with no unit, as on `main`.
+  - Labels are right at every doubling, including Dolly / Martha in 2-16.
+  - The 1-01 lead-in: Burr walks on from −10 and is in place at 0.
+  - Console clean.
+- **The limbs cost frame time.** At the 1-01 line-up, 19 bodies at 1280 × 800 on the Intel UHD: medians 89.5 / 106.4 ms
+  with the actors against 60.7 / 70.2 ms without, about +30 ms. In FUTURE.md.
+- **Spot-check with `blocking-plot.py --pools`** (18 moments, all segments): principals are in their person lights wherever
+  the cue data lights them. The misses are the listed cue items: 1-10 Q302, 1-11 Q369/370, the 2-02 / 2-07 sides, 2-05's
+  table special, 2-09 ch25, ch43 blocked.
+- **Renders:** 13 house-camera frames of the reviewers' "watch first" moments are in session scratch
+  `act/shots/review2/` (`sheet.png`).
+- **blocking.html with a changed source file:** a recording saved against the old file still restores, with the banner
+  "it was made on a different blocking file", and plays. Checked on port 8095 with a planted recording, which was then
+  removed. No change was needed.
+- **`docs/hamilton-blocking-cue-notes.md`** now has the review-2 cue items and three new questions for Jack: the 1-07
+  "Kings men DS", the 1-09 / 1-10 side flip, and the King's stool side.
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-13 (latest): THE LIMBS — THE MANNEQUIN WALKS, IDLES, TURNS AND CARRIES (RULING FS) — PR #234
+
+Jack: *"start working on the system for moving body parts while I work on the choreo."*
+
+- **The body is jointed:** `assets/mannequin-woman-rig.glb` (new, 451 KB, 23,156 triangles) is the same mannequin cut by
+  `tools/mannequin-rig.py` (new; from the committed body, no STL) into fifteen rigid parts at joints MEASURED from the mesh
+  (ankle 0.095 / 0.100, knee 0.430 / 0.440, hip 0.845, waist 0.985, wrist 0.807 / 0.820, elbow 1.045 / 1.056, shoulder
+  1.323 / 1.327, neck 1.432 m), with a voxel liner under every cut and a ball at every joint.
+- **`midtown.html` animates it** through FL's hook (`rigAnimate`), a pure function of the pose: the walk's phase is the
+  distance walked (two 0.65 m steps a cycle, feet planted by two-bone IK, pelvis bob / sway / twist, arms opposite), blended
+  by speed from an idle (breath, weight shift); stairs lift the knee (the floor 0.35 m ahead); a turn on the spot leads with
+  the head and steps round; a carried prop takes both arms forward. `?rig=0` or a missing file: the whole mannequin as before.
+- **Checked on my own port (8113 / 8114, not 8093):** `MIDTOWN.actors.check()` passes with the limbs compared too (40 and 60
+  moments, 416 / 641 body-moments, worst 0); negative-checked (a smoothed arm fails all 40). Frame cost at the bows (20
+  bodies): ~75 ms → 74–76 ms a synchronous frame on this machine (noise); the limbs 0.10–0.16 ms, the stair ray 0.06 ms.
+  Shots: session scratch `limbs/shots/` (a walk from the side and front, Washington's real walk, Hamilton's stair climb,
+  a turn, an idle, a carried desk, the house).
+- Up close the fused hip and armpit read patched when an arm swings away (FUTURE.md). Suites not run (no Node; nothing in
+  `src/`).
+
+## 2026-10-13 (later): FIXED — "IT WASN'T LETTING ME LET SOMEONE STOP CARRYING AN OBJECT" — PR #234
+
+- **Cause:** a carried square was drawn under its carrier's dot, only d/2 + 0.22 m ahead of her, and the hit test takes the
+  nearest centre: 45 % of a desk's visible square (more for a chair or a lantern, all of it at small zoom) grabbed the
+  PERSON, so a drag moved her instead of setting the prop down; the picker's only release was a line labelled "Nobody".
+- **Fix:** carried squares are drawn after the people, clear of the dot, tagged "carried by X", with a ⬇ put down button;
+  the carry ▾ list starts with "Set down here, now" and "Off stage, now". Now 100 % of the square grabs the prop.
+- Checked (localhost:8093): put down while paused (1-01 100.0), a drag-down while playing (recorded at the drop, 105.5),
+  Off stage now, Ctrl+Z, export → wipe → load replays identically.
+
+## 2026-10-13: SIMPLE MODE — SELECT SEVERAL, DELETE A TRACK IN A SONG OR FROM NOW ON — PR #234
+
+Jack: *"make it so I can delete the track for a specific person, or it can delete the track in front of the position of the
+song I am at. Make it so I can select multiple people at once to delete tracks for."*
+
+- Select: click, Shift / Ctrl-click, a box on the empty plan, Ctrl+A, Esc; the cast list mirrors it (Shift-click ranges).
+- Delete (their whole track in this song), Shift+Delete ("Delete from 0:30 on in this song": the current song only, from the
+  clock on), X (one keyframe). Confirm with song, time, who, count; one Ctrl+Z each; nobody left frozen.
+- The recording file carries `deletions` per song and body (`deleted: "all"` / `deletedFrom`); format doc updated.
+- Checked on http://localhost:8093 with real input: a box round Hamilton and Lafayette, Shift-click Mulligan, Shift+Delete at
+  1-04 30 s (they walk off by ~41 s; earlier untouched), click Laurens + Delete (she walks off in the song's first 4 s), Ctrl+Z
+  twice restores, X removes a keyframe and Ctrl+Z brings it back, Ctrl+A selects 20, cast-row Shift range, export → wipe →
+  load replays identically.
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (latest, round 3): THE EDITOR'S SIMPLE MODE — DRAG THE DOTS WHILE THE MUSIC PLAYS, CARRY THE FURNITURE — PR #234
+
+Jack: *"just make it so every person has a dot, then I can play the music and I move the people to where they need to be, and
+make it so I pause it with space bar … then make it export that so I can give it to you"*; *"when I add furniture it creates a
+square for it, and it has a button, then when I press it I can choose who carries it at that time."*
+
+- `blocking.html` opens in **Simple**: a dot per person (big, named), a square per prop, the plan, the music, the blackout
+  indicator, the scrub bars; Space anywhere; ← → ±1 s (Shift 5), Home; drag = a keyframe now; drop in a wing = offstage; ⇅ / L =
+  level; Ctrl+Z; "Keyframes: N in this song" and ticks; Clear this song / Restore / Export; Add furniture + carry ▾ (nearest
+  first, or nobody); notes per song and on the show; saved at every keyframe and back on reload. **Advanced ▸** is the editor
+  as it was.
+- **The rule** (format doc, spec FP): keyframes replace a body's loaded waypoints in that song from the first keyframe on.
+- **The recording file** `hamilton-blocking-recording-<date>.json` and how to apply it: the format doc.
+- **Checked on http://localhost:8093** with real mouse drags: Laurens dragged while paused (1-04 30.0), Lafayette while playing
+  (recorded at the drag's end, 39.23), Space toggling, a desk carried on by Laurens (66.1), set down at centre (77.4) and
+  carried off by Hamilton (85.6) all live with the music playing; Ctrl+Z; Clear (nobody frozen; a body with a keyframe walks
+  on from the wing); ⇅ to the gallery (y 2.743); export → wipe → load back replays identically (141 sampled poses equal).
+  A 20-minute play soak: see below. Shots: session scratch `act/shots/editor/simple-*.jpg`.
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (latest, round 2): THE EDITOR — MUSIC CHECKED ON 8093, CLEAR / RESTORE A SONG, THE LEVEL BUTTON, A CLEAN PLAN — PR #234
+
+Jack: *"The audio isn't playing"*; *"for each song I can choose to start with none of the lines already in there"*; *"add a
+button so if it is in a place with a second level I can choose what level it is on"*; *"make the map of the stage look better"*.
+
+- **Music:** the cause was the soundtrack missing from the worktree (git-ignored); it is now in its `assets/audio/` (copied by
+  the coordinator). Checked on http://localhost:8093/blocking.html with a real click: the element plays, `currentTime` and the
+  readout advance with wall time (2.9 s in 3 s), and from 1-01 −3 the Music line says "lead-in — the music starts at 0:00" and
+  the music joins at 0 (file 0.4 + at). Fixed on the way: the frame dt clamp (0.25 s) slowed the silent clock in a throttled
+  pane (now 1 s); a refused `play()` is shown and stops the clock; loading shows a percentage; a missing file says to press
+  "Choose the MP3…" and lights that button.
+- **Clear this song / Restore this song** (one undo step each; the change file's `clear-track`). Ruled: the clear leaves
+  `off` holds so nobody stands frozen from the song before (format doc). Checked on 1-02, 1-04, 2-17: only walk-offs in the
+  first seconds and walk-ons in the last; 0 errors, 0 warnings; undo returns the file byte for byte.
+- **The level button**: Lower · deck / Upper · gallery on the form, a ⇅ tab by the disc, the L key; enabled only on two-level
+  floor; drag keeps it over gallery floor; the change file names the level.
+- **The plan redrawn** as clean vector shapes with non-overlapping labels, a key and a scale bar (before / after:
+  session scratch `act/shots/editor/plan-BEFORE-*.jpg`, `plan-AFTER-*.jpg`).
+- **From the props helper:** the YouTube time guard (`showState` no longer throws when the video is unavailable);
+  `actors.check` samples 5 ms off waypoint instants (its only failures were the two sides of a step there); Washington's chair
+  (2-02) and the 2-16 desk now have carriers (Washington, Hamilton; `props.py --check` warns Hamilton is 1.77 m from the desk).
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (latest): THE BLOCKING EDITOR `blocking.html`, THE CLOCK'S LEAD-INS AND TAILS, PROPS (RULINGS FP–FR) — PR #234 grows
+
+Jack: *"make a software that i can make paths for the people … make this a different html … play the music and it shows me
+where they would be … export a file that tells you what to change … an indicator for when it is a blackout … a 2d view from
+the top and add text showing what each part is"*; then *"give me 10 seconds before the first song starts at the start of the
+first and second act, and give me 10 seconds at the end of act 1, and as much time as I want at the end of act 2"*; then
+*"make it so i can also put in props i want people to carry on like desks or stuff."*
+
+- **`blocking.html`** (repo root; on the worktree server `/blocking.html`): the plan from the top, labelled part by part from
+  the measured floor; every actor at the moment with her label; the selected actor's / prop's path; drag, click-to-add at the
+  current time, a waypoint form, delete, undo / redo, nudges, snapping 0.05 m; the merge tool's checks live (the committed file:
+  0 errors, 0 warnings); the music (Jack's soundtrack fetched as a Blob, or chosen from disk, or silent; the VBR seek table);
+  BLACKOUT / LIT with brightness and the cue, blackout bands on both scrub bars; the person lights; Notes for Claude per track
+  and on the show; downloads: the change file (format in `docs/hamilton-blocking-format.md`), its Markdown, the whole edited
+  blocking file (byte-identical when unedited). A draft is kept in the browser and offered on reload.
+- **Checked:** the editor's pose = `MIDTOWN.actors.pose` at 360 random moments (0 m, 0 rad, labels and visibility alike) and =
+  `blocking-plot.py`'s printout; its BLACKOUT agrees with the page's per-cue pool dump on all 892 cues (after it learnt to skip
+  the channels no unit answers — TRAPS); export round-trips byte for byte; drag / add / delete / undo / redo / draft restore;
+  the clock through 1-01's lead-in into the music, a corrected skip into 1-11, 1-23's tail, the interval stop at 2-01 −10;
+  console clean. Shots: session scratch `act/shots/editor/`.
+- **FQ in the page** (`midtown.html` show player): `at` −10 … 0 on 1-01 and 2-01 (silent; the preshow / interval look held),
+  1-23 runs 10 s past its music before the interval hold, 2-23 has an open tail. `show.check` passes at points inside every
+  edge; `actors.check({ n: 40 })` passes. The merge (`track_table`, `at_ok`) and `blocking-plot.py` lay the clock out the same.
+  NOT seen: Play with real frames through a lead-in in the 3D page — the Browser pane was hidden (no animation frames); the
+  hand-driven clock and the editor's (same rules) were.
+- **FR props** in the page (boxes, a desk a top on legs, lit, name tags, carried in front of the carrier at waist height,
+  pure function of time, in `actors.check`), in the merge (validated, written after the actors), in the editor (a Props panel,
+  "Carry from now", the change file's `prop-*` ops). **The seed:** `tools/blocking/props.py` (written by a helper agent) —
+  28 props (the tavern table and chairs, Seabury's box, Washington's desk, Hamilton's desk through Act Two, the ten Cabinet
+  chairs and Washington's, the Room's table and three chairs, the King's stool, Burn's bench / bucket / lantern, Philip's
+  table), carried on and off by the actors its notes name, else set in the dark; merged: 0 errors, 0 warnings; the editor
+  loads it with 0 problems.
+- **`assets/hamilton-pools.json`** (0.6 MB, `tools/blocking-pools.py`): the person lights per cue, slimmed from the page dump —
+  a snapshot of the cue data on `actors` (before #233's revisions 3–5).
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (late night): THE WHOLE OF HAMILTON BLOCKED — 9,410 WAYPOINTS, MERGED AND CHECKED (RULING FO) — PR #234
+
+Jack: *"put the choreography for every character in hamilton"*, then *"run agents to check each section using reference
+pictures, documents, and videos then have them fix anything that is wrong"*, then *"make sure that spotlights are on their
+actor."*
+
+- **The pipeline.** Eight agents wrote one segment each, eight reviewed them against references, and eight checked them
+  against the spotlights. The merge (`tools/blocking-merge.py`) reads their outputs: 0 errors, 0 warnings.
+- **`assets/hamilton-blocking.json`** (720 KB) has the twenty bodies over all 46 tracks:
+  - Hamilton 667 waypoints, Burr 400, Eliza 271, the ensemble about 590–690 each.
+  - 2–20 actors per number.
+  - The merge prints the per-track table.
+- **The ruled segment edges are continuous to the number:**
+  - 2-10 → 2-11: the King at (0, 3.41).
+  - 2-16 → 2-17: Philip at (−0.4, 2.4) and Eacker at (1.6, −1.0), both facing 180.
+  - 2-23: ends on the bows with all twenty on stage.
+- **Regenerable.**
+  - The eight generators, their notes and research are in `tools/blocking/` (stdlib; `docs/hamilton-blocking-format.md`
+    has the eight commands).
+  - Run from the repo, they reproduce every segment byte for byte, and the merge reproduces the committed file byte for
+    byte.
+  - Their output folder `tools/blocking/segments/` and `__pycache__/` are git-ignored (two lines in `.gitignore`).
+  - Lyric scan (5-word runs against the album's synced lyrics): only song titles and Binkley's own cue labels. One phrase
+    in `research/seg7.md` was reworded.
+- **Checked in the page** (worktree served on 8093):
+  - `MIDTOWN.actors.check({n: 40})` passes: seek = play at 40 moments, 0 m / 0 rad, labels equal. This came after a fix:
+    the page's speed check had flagged 19 legs between two OFFSTAGE waypoints (up to 128 m/s, unseen). Like the merge, it
+    now skips them.
+  - `show.check()`: seek-equivalence passes. Overall still false on the 16 channels with no unit, as on `main`.
+  - Labels at the doublings are right: 1-01 Jefferson / Madison verses, 2-01 Jefferson, 2-04 Maria and James Reynolds,
+    2-16 George Eacker, 2-22 the Bullet, plus Seabury, Lee, the Doctor and Philip.
+  - Console clean apart from the git-ignored soundtrack's 404.
+- **Frame cost**, 19 on stage at the 1-01 line-up, house camera, 1280 × 800, Intel UHD:
+  - Medians 94.7 ms with the actors and 91.2 ms without, run-to-run 60–130 ms. The look's 142 lit pools dominate.
+  - On a tiny canvas (CPU-bound) the actors add about 2.5 ms (24.3 vs 21.8).
+- **Twelve proof renders** from the house: session scratch `act/shots/final/` (`01-1-01.png` … `12-2-23.png`, `sheet.png`).
+- **For Jack: `docs/hamilton-blocking-cue-notes.md`.**
+  - The cue, rig and page problems the passes found, per track: the 2-02 / 2-07 mirrors, 1-11 Q369/370, 1-23 659/661,
+    the FOH X4s ch41–46 and apron Vipers ch2/ch4 stopped by house geometry at z ≈ 8.4, 2-05's unresolved preset-767
+    focus, and more.
+  - Two blocking questions: the 1-05 sisters' order and the 2-22 duel sides.
+  - The pool data the spotlight pass used was dumped from `actors`, which lacks the cue revisions 3–5 on `cue-blackouts`
+    (#233). The agents allowed for the Cabinet Battle sides and 1-03 Q119.
+- **`tools/blocking-plot.py`'s person-light test** now counts any unit at zoom ≤ 18.5°. The dump's `special` cut-off
+  misses those face keys.
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (night): NAMES OVER THEIR HEADS, THE COMPANY OF TWENTY, AND THE TOOLS FOR EIGHT BLOCKING WRITERS (RULING FN) — PR #234 grows
+
+Jack: *"dont focus on any costumes or arm or feet movements. but i want you to put the choreography for every character in
+hamilton. for now just use the blank mannequin and put a thing over their head with what character they are."* The
+preparation for eight parallel writers (one per cue-round segment); their merged blocking is the next commit on `actors`.
+
+- **Head labels (midtown.html):** a constant-screen-size name tag 0.25 m over every crown, drawn over everything, hidden with
+  her, left out of the lighting engine's passes; a waypoint `label` changes it from that waypoint on (Lafayette → Jefferson);
+  part of the pose, so `MIDTOWN.actors.check()` compares labels — and the check now SEEKS FIRST, as a jump from 600 s away,
+  then plays (negative-checked: a label that updates only on small steps fails it; it passed the old order). A body with no
+  waypoints is not on stage (was: at centre). Pose lookup is a binary search (6,131 random waypoints: load 78 ms, check
+  passes). Panel: a `label` field per waypoint, a Names box.
+- **The company:** `tools/hamilton-cast.json` — 20 ids (10 principals, ens1–ens10 in grey), colours, and the only labels each
+  may show (Maria Reynolds, Jefferson, Madison, Philip; the Bullet ens1, Seabury ens2, Charles Lee ens3, Philip Schuyler /
+  James Reynolds / the Doctor ens4, George Eacker ens5). `assets/hamilton-blocking.json` is now that cast with NO waypoints
+  (the demo is kept in the session scratch `act/brief/example-demo-1-01.json`).
+- **Measured, not guessed:** `tools/hamilton-floor.json` (the floor at deck level and at the top, every 0.2 m, x −10…10,
+  z −7…6, from `MIDTOWN.actors.floor` at Real size); the glossary in the brief and the format doc: deck points, the
+  turntables (centre (0, 0.95), inner r 2.59, outer to 3.82), the SL stair (foot (2.2, −2.45) → top (4.5, −2.45)), the SR
+  stair (foot (−4.5, 1.85) → top (−4.5, −0.3)), the galleries at 2.743 (USG x −4.75…5 z −3.8…−3; SR strip, cross-walk and
+  SR arm; SLG x 4.6…6 with a hole in its outer half at z −1.8…−1.4), entrances checked hidden from six house seats.
+- **`tools/blocking-merge.py`** (stdlib): seg*.json → `assets/hamilton-blocking.json`; errors on ids, tracks, `at`, labels,
+  time not strictly increasing per actor, a track claimed twice; warns on off-stage positions, props, gallery legs leaving
+  the gallery, level changes away from a stair, fast stairs/legs, overrunning dwells, `off` in plain view, a segment's first
+  waypoint without a label; fills `y` from "deck" / "gallery" / "top"; prints a per-track summary. Tested on a broken set
+  (5 errors, 6 warnings, nothing written) and on the demo (written).
+- **The brief** (session scratch `act/brief/README.md`, with `tracks/*.txt` — every track's cues as timing anchors, no
+  lyrics — `floor-map.txt`, `pictures/`, `segments-template/`): segmentation = the cue round's (1-01…06 · 07…11 · 12…17 ·
+  18…23 · 2-01…05 · 06…10 · 11…16 · 17…23).
+- Suites not run (no Node; nothing in `src/`).
+
+## 2026-10-12 (evening): AUTOMATIC ACTORS — the Blocking panel, RULINGS FF–FM — branch `actors`, PR #234 OPEN
+
+Jack: *"make a system for automatic actors. Make a software where you can create their paths and stuff. Right now
+just make them using this mannequin but later we will add arm and feet movement."* Branched from `main` at
+**`5d24188`** ALONGSIDE the open **#233** (`cue-blackouts`) — not stacked on it; both touch `midtown.html` (this one
+adds one CSS block and one code region, and touches none of #233's lines: a test merge of the two is clean in
+`midtown.html`; the record files will conflict and want a hand merge).
+
+- **The mannequin:** `assets/mannequin-woman.glb` from his `Downloads\standing-woman.stl` by the new
+  `tools/mannequin-glb.py` (standard library; weld, quadric vertex clustering at 1.5 cm, smooth normals, GLB
+  writer): 158,010 → **18,096 triangles, 8,864 vertices, 322,508 bytes**; the STL is +z up facing −y,
+  unitless (2,000 units tall) → metres, Y up, feet at 0, facing +Z, **1.65 m**. Licence UNKNOWN (assets/README.md).
+- **Actors on the page (midtown.html, region "AUTOMATIC ACTORS: THE BLOCKING"):** a group per actor with a `body`
+  child, under the set's root (set-local metres, scale with the set), in her own colour. Paths of waypoints
+  `{track, at, x, z, y?, dwell?, facing?, off?}` on the show clock; the pose is a PURE function of show time
+  (centripetal Catmull–Rom through walk-throughs, straight into stops, eased 0.6 s, facing turns 0.6 s, auto
+  dwell walks at 1.3 m/s, offstage flag); the floor by a ray down the walk's collision grid (she climbs the
+  stage-left stair onto the 2.74 m gallery). Lit by the show: the pools' depth band is widened per frame round
+  any actor in a cone (without it a pool lit her to the shins).
+- **The Blocking panel** (header button): the show clock (the player's own Play/seek), actors (add, rename,
+  colour, remove), the path in the view (line + discs), **Click to place** at the current show time, drag a disc
+  to move it, a waypoint form, Download / Load… / Copy JSON, a draft in this browser offered on reload.
+  `MIDTOWN.actors` on the console; `MIDTOWN.frame()` poses them first.
+- **`assets/hamilton-blocking.json`:** a DEMONSTRATION through 1-01 — Burr enters SR at "Burr Enters"; Hamilton
+  walks into the centre shaft at "Hamilton revealed" and climbs the SL stair to the gallery at "the Voyage";
+  Eliza on the upstage gallery at 93 s and again at 166 s. Format: `docs/hamilton-blocking-format.md`.
+  Spec: `docs/superpowers/specs/2026-10-12-automatic-actors-design.md`.
+- **Verified in the Browser pane** (the worktree served on 8093, not Jack's 8080): console clean but the
+  soundtrack HEAD 404 (his file is not in the worktree; pre-existing); `MIDTOWN.actors.check()` **passes**
+  (12 moments, seek = play to 0 mm / 0 rad; negative-checked with a position lerp and a yaw smoothing — both
+  fail it); `MIDTOWN.show.check()` seek-equivalence still passes (overall `pass` false on the 16 channels with no
+  unit, as on `main`); `lx.check()` 301/313 as before; a real click dropped a waypoint at 0:05, a drag moved it
+  without orbiting the camera; Download → Load round-trips byte-identical; real-time Play walks Burr on at
+  1.7 m/s and turns him to the house on arrival. Renders in the session scratch `act/shots/`
+  (`stair-climb.png`, `play-burr-walking.png`, `lit-on.png` / `lit-off.png`).
+- **Found on `main`, not fixed (FUTURE.md):** `MIDTOWN.show.state` throws once the YouTube adapter is the audio
+  and YouTube cannot play (`showState` → `SHW.A.currentTime.toFixed`).
+- **Suites NOT run** (no Node on the PATH; nothing in `src/` moved, so `the-house.html` and `docs/ARTNET.md` are
+  untouched). The new GLB is declared in `assets/README.md`, which the `beetlejuice.js` assets assertion reads.
+
+---
+
+## 2026-10-12 (merged into `actors` 2026-10-13): Jack's first full watch — his notes answered twice over, the skip synced by the sound, the readout, the checklist — `cue-blackouts`, PR #233 OPEN
+
+**Read this block first.** `main` is **`5d24188`**: #230 (the show), #231 (its record) and #232 (`fixture-glbs`, the 38
+model files) merged by Jack — the rig hangs on Pages. **PR #233 (`cue-blackouts`, 13 commits) is open:**
+https://github.com/Jackscreations21/gms-theater-game/pull/233. Everything below is on it. Nothing in `src/`, so
+`the-house.html` and `docs/ARTNET.md` are untouched and the suites are unaffected (not run: no Node on the PATH).
+**Until it merges, all of this is live only in the working copy on the local server (localhost:8080), not on Pages.**
+
+**Where his notes come from now:** the checklist artifact https://claude.ai/artifact/FpiGBBW8LicWbaRb1nTUjg ("Hamilton
+Cue Checklist", one row per album track, Good / Need work + a notes field, saved to its database: collection `songs`, doc
+id = track id, fields `status` / `notes` / `updatedAt`). **Read it with `ArtifactData` `list` (or `query` on
+`status != good`) at the start of every round** — it is the brief. He marked act 1 (18 good, 5 notes) and act 2 (4
+notes) today; all nine notes are answered once (revisions 4 and 5) and the rows still carry his marks until he re-checks.
+
+The day, in order (each step a commit on the branch):
+
+1. **Revision 3 — the blackouts he named by ear** (`assets/hamilton-show.json`, 892 → 890 cues, the 124 real untouched).
+   Checked the clock first and found it right (his one-file soundtrack's `tracks[].file` starts all sit on measured
+   silences; the YouTube uploads are the album's length to the second). A luminance scanner in the page (`CAP.scan` /
+   `CAP.dark`, `CAP.sheet` — session scratch `capture.js`, recipe in HANDOFF) showed the eight reviewers' "pull-ins"
+   at 3–5 % of the frame and true black for 1.5–4 s at every song change. No blackout out of Alexander Hamilton, The Story
+   of Tonight, The Schuyler Sisters, Right Hand Man (their zeros folded into the next song's first look); My Shot's
+   pull-ins at a third; Farmer Refuted's middle one warm palette; Right Hand Man's 283 and the tent lit; That Would Be
+   Enough's fade on the cut-off and complete; Yorktown's last chord keeps the stage. `why` fields start "Revision 3".
+2. **The checklist** (above) and **the readout** (`#sh-hud`, `showHud()` from `showUI`): the song (id, act, number,
+   title), the time into it to a tenth, the live cue and label, paused / the interval, the sound tap's state. Hidden when
+   the show stops.
+3. **The skip, first pass (open loop):** his soundtrack is variable-bitrate with a Xing table and Chrome seeks it by that
+   table — up to 52 s from the requested time while `currentTime` reports the request (+17 / −18 / −33 s measured by
+   tapping the element through Web Audio and matching its loudness against the file's stored 20 ms envelope).
+   `soundtrack.seek.toc` in the show file = the true time of every table cell from the file's frame index (scratch
+   `ham/mp3toc.py`), checked in all 100 cells against what Chrome played (`ham/probes.py`; cells 37 and 79 decode from
+   the cell before); `showSoundSeek(P)` asks for the time whose cell lands on P and reads the clock as
+   `currentTime + err`. Right for regions the page has not played.
+4. **Revision 4 — his act-1 notes** (889 cues, 123 real): My Shot's "did I talk too loud" blue with a white centre spot
+   (119; 120 restores the warm colours); no blackout Farmer Refuted → You'll Be Back (189.5 and Binkley's 190 FTB left
+   out of the show; 190.01 cross-fades); Ten Duel Commandments fades into 452 (451.5) and the number cues land on the
+   number word; Guns and Ships holds its special to 31 before the sweep.
+5. **The skip, second pass (closed loop — the sound tap):** *"going forward works but doesn't go back correctly"* — the
+   browser indexes every frame it reads with the time it believes it is at, so a skip back into a played region lands on
+   those entries and the table mis-corrects. Now the element's output is tapped through Web Audio (`sndStart`, on the Play
+   click; the element is tapped only once the context runs, or it would mute) into 20 ms bins and matched (normalised
+   cross-correlation, ±75 s) against **`assets/hamilton-soundtrack-env.u8`** (new asset, one byte per 20 ms,
+   `soundtrack.envelope`) after every seek — one corrective seek if the landing is far off — and every half-minute
+   (`sndTick`). The readout says "checking the sound…" / "the sound landed −14.5 s off — moving it" / "sound synced";
+   `MIDTOWN.show.sound` for the console. Tested the way it failed: detected, moved, synced. **The interval bug** he found
+   (act 2's first cue at the hold) was the tick firing to the clock the hold had just put on the next track's start: fixed,
+   checked with the audio running (holds on 670, house up, 720 next).
+6. **Revision 5 — his act-2 notes, and Guns and Ships twice more** (891 cues, 123 real): Cabinet Battle #1's Jefferson
+   and Hamilton specials mirrored (the sides were swapped); Cabinet Battle #2's mic-drop and French-king punchline on
+   their lines; a blackout (977.5) into One Last Time; the finale fades up to the full warm look 3 s after the final
+   blackout (1298, the bows). **Guns and Ships' top:** the balcony is the railed platform at the stage-left end of the
+   gallery (floor by raycast at set-local 5.49, 2.78, 2.36); a floor pool from above was invisible from the house and the
+   apron unit's beam was clipped by the proscenium, so **Viper 93 on the 1st Electric** (upstage of the arch) is aimed at
+   chest height on it, zoom 16 — checked from the house and the front row; the sweep is **the upstage row (9th and 10th
+   Electric Vipers) snapping on white at their feet at 31.0 and tilting out over the audience in 0.6 s**, the full warm
+   look at 32.0, the ring of beams on Lafayette at 34.2.
+
+**Checks after every step:** `MIDTOWN.show.check()` seek-equivalence passes, references resolve, timeline monotonic;
+every changed moment rendered and looked at (session scratch `shots/r3*.png`, `r4.png`, `r5*.png`, `balcony*.png`).
+The seek and sound work is specific to HIS copy of the album: a different file needs `mp3toc.py` (the table) and a new
+envelope (decoded in the browser, 20 ms RMS, quantised `255·(log10(rms)+4)/4`); YouTube on Pages seeks exactly and
+is untouched. Session scratch: `ham/` (`edit3.py`–`edit6.py` the revision scripts, `mp3toc.py`, `probes.py`,
+`seekcheck.py`, `audio.py` + the envelope, the before-files), `capture.js`, `shotrecv.py`, `shots/`.
+
+**Open:** his re-check of the nine noted songs (and anything new he marks); the post-merge protocol when #233 lands
+(fast-forward, delete `cue-blackouts` and the five landed branches both sides, suites when Node is on the PATH); then
+the older list — the rig placements the photos exposed (FUTURE.md), `edge`/`frost`, the 238 effects, the body, the
+headset.
+
+---
+
+## (earlier today, landed as #230) 2026-10-12: the engine calibrated to Binkley's cue photos, every cue re-judged from renders, the preshow and the interval
 
 Jack: *"go through all the cues and compare them to pictures to make sure they are all correct"*, *"the main problem i saw
 where spotlight places, timing and brightness"*, and *"you didnt do the preshow lighting and make it so at the end of

@@ -1,0 +1,18 @@
+{
+ "clip": "1-01-alexander-hamilton",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "2": {
+   "skipped": "angled side shot, dark; album time not anchored (trailer-style montage), not worth a camera"
+  },
+  "9": {
+   "skipped": "angled, heavy motion; album time not anchored",
+   "was": 10
+  },
+  "30": {
+   "skipped": "title card (THE MOMENT) over the frame; album time not anchored",
+   "was": 31
+  }
+ },
+ "shotmap": "2026-10-14 12:10:49"
+}

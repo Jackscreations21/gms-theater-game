@@ -1,0 +1,30 @@
+{
+ "clip": "1-20-yorktown-the-world-turned-upside-down-p1",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "1": {
+   "frame": 19,
+   "skipped": "too tight: a medium shot of the deck crowd, no lip, ring or gallery corners/posts readable (fewer than five set points)",
+   "was": 0,
+   "split": [
+    0,
+    1
+   ]
+  },
+  "13": {
+   "frame": 217,
+   "skipped": "too tight: a medium shot of the deck crowd, no lip, ring or gallery corners/posts readable (fewer than five set points)",
+   "was": 10
+  },
+  "16": {
+   "frame": 280,
+   "skipped": "too tight: a medium shot of the deck crowd, no lip, ring or gallery corners/posts readable (fewer than five set points); dark, dancers fill the frame",
+   "was": 12,
+   "split": [
+    15,
+    16
+   ]
+  }
+ },
+ "shotmap": "2026-10-14 12:11:04"
+}

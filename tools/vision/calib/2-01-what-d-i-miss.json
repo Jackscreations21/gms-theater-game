@@ -1,0 +1,505 @@
+{
+ "clip": "2-01-what-d-i-miss",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "1": {
+   "skipped": "angled from house SL, dim; under five certain points (rolling stair is a prop)"
+  },
+  "3": {
+   "skipped": "too tight and angled; rolling stair (a prop) dominates, under five certain set points"
+  },
+  "5": {
+   "frame": 202,
+   "skipped": "back deck line ambiguous (riser or wall); the solve drifts to a 9 m / 61 deg camera that the actors' front/back size ratio (~1.3) rules out"
+  },
+  "6": {
+   "skipped": "too tight; close on two actors on the gallery"
+  },
+  "7": {
+   "frame": 256,
+   "points": {
+    "lip-c": [
+     645.0,
+     627.0
+    ],
+    "rail-us-c": [
+     645.0,
+     402.0
+    ],
+    "post-bw-sr1-gal": [
+     444.0,
+     456.0
+    ],
+    "post-bw-sl1-gal": [
+     846.0,
+     456.0
+    ],
+    "post-bw-sr2-gal": [
+     408.0,
+     456.0
+    ],
+    "post-bw-sl2-gal": [
+     882.0,
+     456.0
+    ],
+    "stair-sl-foot": [
+     805.0,
+     610.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1256.0707235232965,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1256.0707235232965,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9998788959319953,
+      -0.013588294789206127,
+      -0.00758628463319424
+     ],
+     [
+      -0.014890004690251193,
+      -0.9770614649247457,
+      -0.21243629990995974
+     ],
+     [
+      -0.004525619309940119,
+      0.2125235328236186,
+      -0.9771454685797963
+     ]
+    ],
+    "t": [
+     0.0844658090100955,
+     3.3013768942028365,
+     15.183240406176616
+    ],
+    "rvec": [
+     2.9273842064786044,
+     -0.02108374165853932,
+     -0.008966976905144705
+    ],
+    "camera": [
+     0.033,
+     0.0,
+     15.538
+    ],
+    "look": [
+     -0.005,
+     0.213,
+     -0.977
+    ],
+    "fovDeg": 54.0,
+    "rms": 9.8,
+    "residuals": [
+     0.5,
+     14.4,
+     6.6,
+     7.2,
+     4.9,
+     5.9,
+     17.6
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "nearest house camera within 1.5 px of the best",
+    "depthCue": "none",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      17.0,
+      54.0
+     ],
+     "dist": [
+      14.6,
+      60.0
+     ],
+     "poor": true
+    },
+    "bodyHeightM": null,
+    "bodies": 0,
+    "free": {
+     "camera": [
+      0.26,
+      -0.22,
+      55.19
+     ],
+     "fovDeg": 19.0,
+     "rms": 8.34,
+     "breaks": [
+      "y>=0"
+     ]
+    },
+    "degenerate": "rms within 1.5 px over fov 17-54",
+    "mPerPx": 4.7776,
+    "cond": {
+     "sv": [
+      3.37,
+      2.68,
+      0.87
+     ],
+     "heightSd": 1.33,
+     "depthSd": 3.36,
+     "sdDistPerPx": 0.85,
+     "sdFovPerPx": 2.02
+    }
+   },
+   "moving": null,
+   "judged": "fair",
+   "note": "camera at deck height (the floor is not visible), so feet depth is ill-conditioned; distance/fov trade off (33-50 m) without the lip ends"
+  },
+  "9": {
+   "skipped": "centre line not fixable (the rolling stair hides the coils, back posts unreadable); the visible SL stair is steeper/shorter than the model's (run ~1.3 m vs 2.3 m)"
+  },
+  "10": {
+   "skipped": "angled from house SR, dim; under five certain set points"
+  },
+  "11": {
+   "skipped": "angled from house SR, dim; under five certain set points"
+  },
+  "29": {
+   "skipped": "red wash, close and angled; under five certain set points"
+  },
+  "38": {
+   "skipped": "dim; camera at deck height (floor not visible), gallery and posts unreadable",
+   "was": 35
+  },
+  "47": {
+   "skipped": "dark blue wash like shot 45; gallery and back posts unreadable",
+   "was": 43
+  },
+  "50": {
+   "skipped": "dark blue wash; gallery and back posts unreadable, camera at deck height (no floor visible)",
+   "was": 45,
+   "split": [
+    49,
+    50
+   ]
+  },
+  "53": {
+   "frame": 1073,
+   "points": {
+    "rail-us-c": [
+     720.0,
+     207.0
+    ],
+    "lip-c": [
+     720.0,
+     690.0
+    ],
+    "post-bw-sr2-base": [
+     385.0,
+     545.0
+    ],
+    "post-bw-sl2-base": [
+     1063.0,
+     545.0
+    ],
+    "post-bw-sr1-base": [
+     442.0,
+     545.0
+    ],
+    "post-bw-sl1-base": [
+     1008.0,
+     545.0
+    ],
+    "ring-out-sl": [
+     1188.0,
+     612.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1999.3594320983254,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1999.3594320983254,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9991015290094271,
+      0.0013506652333137514,
+      -0.04235930162848099
+     ],
+     [
+      0.0013859566145990757,
+      -0.9999987165242136,
+      0.000803787402296216
+     ],
+     [
+      -0.042358161613643766,
+      -0.0008617733769144526,
+      -0.9991021186502206
+     ]
+    ],
+    "t": [
+     0.713071086166716,
+     2.0548356644376056,
+     17.511900588248306
+    ],
+    "rvec": [
+     -3.140054136246165,
+     -0.0021492510808929976,
+     0.06653425630696023
+    ],
+    "camera": [
+     0.026,
+     2.069,
+     17.525
+    ],
+    "look": [
+     -0.042,
+     -0.001,
+     -0.999
+    ],
+    "fovDeg": 35.5,
+    "rms": 3.23,
+    "residuals": [
+     3.0,
+     2.4,
+     1.3,
+     2.5,
+     2.5,
+     2.0,
+     6.3
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms",
+    "depthCue": "none",
+    "depthCueNote": "uninformative: shoulders 1.41-1.52 m over every lens",
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      33.0,
+      38.0
+     ],
+     "dist": [
+      15.3,
+      18.3
+     ],
+     "poor": false
+    },
+    "bodyHeightM": 1.46,
+    "bodies": 71,
+    "free": {
+     "camera": [
+      0.03,
+      2.11,
+      17.82
+     ],
+     "fovDeg": 35.0,
+     "rms": 3.28,
+     "breaks": []
+    },
+    "mPerPx": 0.0676,
+    "cond": {
+     "sv": [
+      3.52,
+      2.78,
+      1.23
+     ],
+     "heightSd": 1.24,
+     "depthSd": 3.45,
+     "sdDistPerPx": 0.19,
+     "sdFovPerPx": 0.32
+    }
+   },
+   "moving": null,
+   "judged": "fair",
+   "was": 47
+  },
+  "56": {
+   "frame": 1121,
+   "points": {
+    "rail-us-c": [
+     660.0,
+     232.0
+    ],
+    "lip-c": [
+     660.0,
+     688.0
+    ],
+    "post-bw-sr2-base": [
+     325.0,
+     558.0
+    ],
+    "post-bw-sl2-base": [
+     1003.0,
+     558.0
+    ],
+    "post-bw-sr1-base": [
+     382.0,
+     558.0
+    ],
+    "post-bw-sl1-base": [
+     948.0,
+     558.0
+    ],
+    "ring-out-sl": [
+     1110.0,
+     603.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      2133.231095982149,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      2133.231095982149,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9998798426923935,
+      -0.007245501338754668,
+      -0.013704119372825242
+     ],
+     [
+      -0.007337509222881532,
+      -0.9999507976922748,
+      -0.006675563870380655
+     ],
+     [
+      -0.013655077291566982,
+      0.0067753158548887905,
+      -0.9998838102295826
+     ]
+    ],
+    "t": [
+     0.20091576457562943,
+     2.1864492906778366,
+     19.154786411175284
+    ],
+    "rvec": [
+     3.1347727892093165,
+     -0.01142942208945408,
+     -0.02144274705034864
+    ],
+    "camera": [
+     0.077,
+     2.058,
+     19.17
+    ],
+    "look": [
+     -0.014,
+     0.007,
+     -1.0
+    ],
+    "fovDeg": 33.4,
+    "rms": 3.8,
+    "residuals": [
+     6.3,
+     1.5,
+     4.1,
+     2.6,
+     2.6,
+     2.7,
+     4.7
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      30.0,
+      36.0
+     ],
+     "dist": [
+      16.7,
+      20.9
+     ],
+     "poor": false
+    },
+    "bodyHeightM": 1.51,
+    "bodies": 52,
+    "free": {
+     "camera": [
+      0.08,
+      2.09,
+      19.44
+     ],
+     "fovDeg": 33.0,
+     "rms": 3.76,
+     "breaks": []
+    },
+    "mPerPx": 0.0769,
+    "cond": {
+     "sv": [
+      3.52,
+      2.78,
+      1.23
+     ],
+     "heightSd": 1.24,
+     "depthSd": 3.44,
+     "sdDistPerPx": 0.24,
+     "sdFovPerPx": 0.35
+    }
+   },
+   "moving": null,
+   "judged": "fair",
+   "was": 50
+  },
+  "58": {
+   "frame": 1156,
+   "skipped": "angled from house SR; the visible SR stair does not fit the model's stair-sr points (solve drifts to 9 m / 60 deg)",
+   "was": 52
+  },
+  "59": {
+   "skipped": "angled from house SR like shot 52; the model's SR stair does not fit",
+   "was": 53
+  },
+  "60": {
+   "skipped": "dark; only a centre spot lit, set unreadable",
+   "was": 54
+  }
+ },
+ "shotmap": "2026-10-14 12:11:10"
+}

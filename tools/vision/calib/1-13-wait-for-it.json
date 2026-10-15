@@ -1,0 +1,36 @@
+{
+ "clip": "1-13-wait-for-it",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "7": {
+   "skipped": "two shots merged: a tight side shot 527-543 and a high wide shot 547-551 (missed cut at 543/547); deck hidden by the lyric caption",
+   "was": 6,
+   "split": [
+    7,
+    8
+   ]
+  },
+  "11": {
+   "skipped": "three shots merged: tight 568-588, wide 592-600, closer wide 606-627 (missed cuts); a carried solve of the 592-600 part reached rms 12 but the SL stair sat 40 px off, and it would not hold for the rest",
+   "was": 8,
+   "split": [
+    10,
+    11,
+    12
+   ]
+  },
+  "15": {
+   "skipped": "two shots merged: tight 642-650 and wide ~655-669 (missed cut); the wide part is dark and its deck is covered by the lyric caption",
+   "was": 10,
+   "split": [
+    14,
+    15
+   ]
+  },
+  "18": {
+   "skipped": "too dark (single special), set barely visible; deck covered by the lyric caption",
+   "was": 13
+  }
+ },
+ "shotmap": "2026-10-14 12:11:00"
+}

@@ -1,0 +1,694 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-15",
+  "title": "Ten Duel Commandments",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-15.json",
+  "outSha256": "1cac7e295fd70e756b9735877d97a3610d45ce30476dc87a2c9e4632f765d43a",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-15-ten-duel-commandments": {
+    "url": "https://www.youtube.com/watch?v=TW3-3Xy0kCo",
+    "shots": {
+     "7": {
+      "judged": "fair",
+      "moving": true,
+      "rms": 7.05
+     },
+     "9": {
+      "judged": "good",
+      "moving": true,
+      "rms": 4.71
+     },
+     "28": {
+      "judged": "fair",
+      "moving": true,
+      "rms": 9.67
+     },
+     "33": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 6.47
+     },
+     "36": {
+      "judged": "fair",
+      "moving": true,
+      "rms": 10.2
+     }
+    },
+    "tracklets": 69,
+    "positions": 937,
+    "identified": 334
+   },
+   "1-16-meet-me-inside": {
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 4
+   }
+  },
+  "stage4Positions": 937,
+  "counts": {
+   "samples": 937,
+   "withPosition": 937,
+   "offMap": 242,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 232,
+   "pool": 705,
+   "other": 0,
+   "byRule": {
+    "blocking": 232,
+    "pool": 705
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "burr": {
+   "name": "Burr",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 54,
+    "tracklets": 3
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens1": {
+   "name": "Ensemble 1 (also The Bullet)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 30,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens2": {
+   "name": "Ensemble 2 (also Samuel Seabury)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 6,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens3": {
+   "name": "Ensemble 3 (also Charles Lee)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 13,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens4": {
+   "name": "Ensemble 4 (also Philip Schuyler, James Reynolds, The Doctor)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 1,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens5": {
+   "name": "Ensemble 5 (also George Eacker)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 8,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens6": {
+   "name": "Ensemble 6 (also Dolly)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 6,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens7": {
+   "name": "Ensemble 7 (also Martha)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 5,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens9": {
+   "name": "Ensemble 9",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 5,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "hamilton": {
+   "name": "Hamilton",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 40,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "laurens": {
+   "name": "Laurens (also Philip)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 64,
+    "tracklets": 3
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 705,
+  "withPosition": 463,
+  "tracklets": 52,
+  "formations": [
+   {
+    "from": 9.0,
+    "to": 12.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 10.8,
+    "bodies": 3,
+    "tracklets": 5,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 1,
+     "C": 2,
+     "SL": 0
+    },
+    "shape": "a line across the stage",
+    "centroid": [
+     -1.11,
+     0.25
+    ],
+    "extent": {
+     "x": [
+      -4.07,
+      0.56
+     ],
+     "z": [
+      -0.72,
+      1.47
+     ]
+    },
+    "samples": 24,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 1,
+     "everyoneOn": 4
+    }
+   },
+   {
+    "from": 12.0,
+    "to": 15.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 12.4,
+    "bodies": 3,
+    "tracklets": 5,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 1,
+     "C": 1,
+     "SL": 1
+    },
+    "shape": "a line on a diagonal",
+    "centroid": [
+     -0.14,
+     -0.81
+    ],
+    "extent": {
+     "x": [
+      -4.07,
+      3.31
+     ],
+     "z": [
+      -2.8,
+      1.47
+     ]
+    },
+    "samples": 30,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 1,
+     "everyoneOn": 4
+    }
+   },
+   {
+    "from": 15.0,
+    "to": 18.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 16.8,
+    "bodies": 5,
+    "tracklets": 6,
+    "deck": 5,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 2,
+     "C": 0,
+     "SL": 3
+    },
+    "shape": "scattered",
+    "centroid": [
+     1.04,
+     0.21
+    ],
+    "extent": {
+     "x": [
+      -3.56,
+      4.85
+     ],
+     "z": [
+      -2.4,
+      4.27
+     ]
+    },
+    "samples": 41,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 1,
+     "everyoneOn": 4
+    }
+   },
+   {
+    "from": 18.0,
+    "to": 21.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 18.2,
+    "bodies": 4,
+    "tracklets": 5,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 2,
+     "C": 0,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.5,
+     0.89
+    ],
+    "extent": {
+     "x": [
+      -3.54,
+      4.99
+     ],
+     "z": [
+      -2.57,
+      4.4
+     ]
+    },
+    "samples": 30,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 1,
+     "everyoneOn": 4
+    }
+   },
+   {
+    "from": 63.0,
+    "to": 66.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 65.6,
+    "bodies": 3,
+    "tracklets": 3,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 2,
+     "SL": 1
+    },
+    "shape": "an arc r 2.4 m about (1.0, -2.1)",
+    "centroid": [
+     0.46,
+     -1.18
+    ],
+    "extent": {
+     "x": [
+      -1.27,
+      3.39
+     ],
+     "z": [
+      -1.84,
+      -0.41
+     ]
+    },
+    "samples": 9,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 11
+    }
+   },
+   {
+    "from": 66.0,
+    "to": 69.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 66.2,
+    "bodies": 3,
+    "tracklets": 4,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 2,
+     "SL": 1
+    },
+    "shape": "an arc r 4.1 m about (2.3, -0.0)",
+    "centroid": [
+     0.56,
+     -0.99
+    ],
+    "extent": {
+     "x": [
+      -1.25,
+      3.39
+     ],
+     "z": [
+      -3.93,
+      2.96
+     ]
+    },
+    "samples": 14,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 11
+    }
+   },
+   {
+    "from": 75.0,
+    "to": 78.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 76.8,
+    "bodies": 4,
+    "tracklets": 5,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 2,
+     "C": 0,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.31,
+     -1.02
+    ],
+    "extent": {
+     "x": [
+      -4.46,
+      5.26
+     ],
+     "z": [
+      -3.82,
+      1.65
+     ]
+    },
+    "samples": 55,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 11
+    }
+   },
+   {
+    "from": 78.0,
+    "to": 81.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 78.2,
+    "bodies": 4,
+    "tracklets": 5,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 0,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.37,
+     -1.16
+    ],
+    "extent": {
+     "x": [
+      -4.46,
+      5.24
+     ],
+     "z": [
+      -3.7,
+      1.65
+     ]
+    },
+    "samples": 55,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 11
+    }
+   },
+   {
+    "from": 81.0,
+    "to": 84.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 81.2,
+    "bodies": 4,
+    "tracklets": 4,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 0,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.47,
+     -0.65
+    ],
+    "extent": {
+     "x": [
+      -4.42,
+      5.24
+     ],
+     "z": [
+      -3.57,
+      1.7
+     ]
+    },
+    "samples": 7,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 11
+    }
+   },
+   {
+    "from": 93.0,
+    "to": 96.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 94.6,
+    "bodies": 8,
+    "tracklets": 9,
+    "deck": 7,
+    "gallery": 1,
+    "inWings": 1,
+    "sides": {
+     "SR": 3,
+     "C": 0,
+     "SL": 5
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.94,
+     0.08
+    ],
+    "extent": {
+     "x": [
+      -4.59,
+      4.45
+     ],
+     "z": [
+      -3.95,
+      3.71
+     ]
+    },
+    "samples": 86,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 5
+    }
+   },
+   {
+    "from": 96.0,
+    "to": 99.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 98.2,
+    "bodies": 8,
+    "tracklets": 12,
+    "deck": 7,
+    "gallery": 1,
+    "inWings": 1,
+    "sides": {
+     "SR": 3,
+     "C": 1,
+     "SL": 4
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.71,
+     0.3
+    ],
+    "extent": {
+     "x": [
+      -3.65,
+      4.58
+     ],
+     "z": [
+      -4.01,
+      3.99
+     ]
+    },
+    "samples": 103,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 5
+    }
+   },
+   {
+    "from": 99.0,
+    "to": 102.0,
+    "clip": "1-15-ten-duel-commandments",
+    "at": 99.0,
+    "bodies": 8,
+    "tracklets": 9,
+    "deck": 7,
+    "gallery": 1,
+    "inWings": 1,
+    "sides": {
+     "SR": 3,
+     "C": 1,
+     "SL": 4
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.57,
+     0.58
+    ],
+    "extent": {
+     "x": [
+      -4.54,
+      4.93
+     ],
+     "z": [
+      -3.35,
+      4.08
+     ]
+    },
+    "samples": 9,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 5
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 12
+ }
+}

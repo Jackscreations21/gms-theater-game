@@ -1,0 +1,1092 @@
+{
+ "note": "what is in video/ (the files themselves are never committed, RULING FX)",
+ "files": [
+  {
+   "file": "1-01-alexander-hamilton.mp4",
+   "sha256": "53fdd58dd3830176ea4b22b2e287e5bfb9dfaf22e471f8fdd991280eb720e792",
+   "size": 34182612,
+   "duration": 104.06,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-01"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "Disney's promo 'Song Clip': 104 s of a 236 s number, cut as a montage (the audio windows land at 109, 47, 83, 224 s...). Not continuous footage - no alignment; a full upload is still wanted."
+  },
+  {
+   "file": "1-02-aaron-burr-sir.mp4",
+   "sha256": "7749b7a765485dc357435e247ed1585e854f0110dd4677c458e29b79a40a9e6d",
+   "size": 49297293,
+   "duration": 149.98,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-02"
+   ],
+   "url": "https://www.youtube.com/watch?v=KAnVd7Fxb0g",
+   "title": "Aaron Burr, Sir - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-03-my-shot.mp4",
+   "sha256": "69fa50b602071ef251cb3ae3562565e350a5a5966bff763ad50c15cf65f12bc0",
+   "size": 84494891,
+   "duration": 338.09,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-03"
+   ],
+   "url": "https://www.youtube.com/watch?v=wk01z2f5akg",
+   "title": "My Shot - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-04-the-story-of-tonight.mp4",
+   "sha256": "de541011fb3b89c15526668f9553d36e38056fb290f9ede10b56214186a4fccb",
+   "size": 27976584,
+   "duration": 88.09,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-04"
+   ],
+   "url": "https://www.youtube.com/watch?v=66W9gG_kZS8",
+   "title": "The Story of Tonight - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-05-the-schuyler-sisters.mp4",
+   "sha256": "a31b470089dcb61007d8212ce4da21d5e584192d1a504629f566a27b0558619b",
+   "size": 79086121,
+   "duration": 190.69,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-05"
+   ],
+   "url": "https://www.youtube.com/watch?v=POHVE9uCNAY",
+   "title": "The Schuyler Sisters - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-06-farmer-refuted.mp4",
+   "sha256": "f50986001546ab2e5b2428c52f5c2304bd95e230a0864cad6b2b73638d42e593",
+   "size": 43986294,
+   "duration": 99.89,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-06"
+   ],
+   "url": "https://www.youtube.com/watch?v=Oy5ybRNSkb8",
+   "title": "Farmer Refuted - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-07-you-ll-be-back.mp4",
+   "sha256": "753a4070a8f72bd74062e01f97da2219f4325bf13410d3f7aa316e59adc67b61",
+   "size": 24870038,
+   "duration": 246.51,
+   "width": 1920,
+   "height": 1080,
+   "fps": 29.97,
+   "tracks": [
+    "1-07"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "Indonesian lyric upload of the film clip (subtitles burned in)."
+  },
+  {
+   "file": "1-08-right-hand-man.mp4",
+   "sha256": "dfd23ebec31b6b477d2523fe6a17982cba9576b192699f1c663ed6bf83bc84b7",
+   "size": 72992865,
+   "duration": 322.86,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-08"
+   ],
+   "url": "https://www.youtube.com/watch?v=FmnDhbCd3N4",
+   "title": "Right Hand Man - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-10-helpless.mp4",
+   "sha256": "ecc27c2c711252d68c05f211442fbc962ba4f8bdde102f02be14714e759eb726",
+   "size": 79763785,
+   "duration": 255.63,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-10"
+   ],
+   "url": "https://www.youtube.com/watch?v=Or-M9E0C27Q",
+   "title": "Helpless - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-11-satisfied.mp4",
+   "sha256": "38ee58b6cdda55817ef79858c26dd5703a5f1174aed8253e1d36585f6dea8023",
+   "size": 112975009,
+   "duration": 328.2,
+   "width": 1920,
+   "height": 1080,
+   "fps": 30.0,
+   "tracks": [
+    "1-11"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "Titled 'LIVE AUDIO' (Renee Elise Goldsberry); aligned to the album to 0.02 s over 28 anchors, so it is the film's performance."
+  },
+  {
+   "file": "1-12-the-story-of-tonight-reprise.mp4",
+   "sha256": "92f8f76a702b9294f1620a0166b579101f4edfd64f455737463ef28b7f4f0d8b",
+   "size": 40913096,
+   "duration": 122.33,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-12"
+   ],
+   "url": "https://www.youtube.com/watch?v=e4NAz2TWA4I",
+   "title": "The Story of Tonight (Reprise) - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-13-wait-for-it.mp4",
+   "sha256": "b6f843b87e67a66a48ff7429dd34d516fdb15f181413fcb6d42ce65a77269c78",
+   "size": 34107302,
+   "duration": 211.44,
+   "width": 1920,
+   "height": 1080,
+   "fps": 25.0,
+   "tracks": [
+    "1-13"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "Disney+ UK sing-along upload (lyrics on screen)."
+  },
+  {
+   "file": "1-14-stay-alive.mp4",
+   "sha256": "00a5ded64c66b072a5718e07522f5975feb3a65ba9d1893e46a5dbf9bba7a9a0",
+   "size": 49911797,
+   "duration": 159.08,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-14"
+   ],
+   "url": "https://www.youtube.com/watch?v=pd3L7mI19q8",
+   "title": "Stay Alive - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-15-ten-duel-commandments.mp4",
+   "sha256": "623c9b45b759a063e09b2c088d608fe0a84159a00df7c31c4de7289fe41ea630",
+   "size": 42085064,
+   "duration": 107.23,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-15"
+   ],
+   "url": "https://www.youtube.com/watch?v=TW3-3Xy0kCo",
+   "title": "Ten Duel Commandments - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-16-meet-me-inside.mp4",
+   "sha256": "25b9a8340a787773ec40c45d25e0fded0a95bee745d9cc84ef5e362ef65fce26",
+   "size": 28472157,
+   "duration": 87.17,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-16"
+   ],
+   "url": "https://www.youtube.com/watch?v=TZ1w59D5et4",
+   "title": "Meet Me Inside - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-17-that-would-be-enough.mp4",
+   "sha256": "773ac7a8ab49b9da5b1e56d873eb0b5cdc9fddca380fbe08ce36289376b22f61",
+   "size": 34823687,
+   "duration": 177.14,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-17"
+   ],
+   "url": "https://www.youtube.com/watch?v=KghsrSY10fo",
+   "title": "That Would Be Enough - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-18-guns-and-ships.mp4",
+   "sha256": "63a8406b9dea1ee4c75ca4d925255d977db052e0e008e6634215cb59b73db7df",
+   "size": 27202424,
+   "duration": 131.67,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-18"
+   ],
+   "url": "https://www.youtube.com/watch?v=0D3zz6byFT4",
+   "title": "Guns and Ships - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-19-history-has-its-eyes-on-you.mp4",
+   "sha256": "127218b763ec51ccd5e9ed4d22051cd7e8dddac5ffe2077b0f1697d0382123a2",
+   "size": 25345102,
+   "duration": 103.9,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-19"
+   ],
+   "url": "https://www.youtube.com/watch?v=ws_pklV1cP8",
+   "title": "History Has its Eyes on You - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-20-yorktown-the-world-turned-upside-down-p1.mp4",
+   "sha256": "d408450317d22cf294479d750d5a549e39a8a6897c1fb6c175bd3585f1ce0329",
+   "size": 16328531,
+   "duration": 67.23,
+   "width": 1920,
+   "height": 1040,
+   "fps": 30.0,
+   "tracks": [
+    "1-20"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-20-yorktown-the-world-turned-upside-down-p2.mp4",
+   "sha256": "6516eb0516a00a885dde846d5ffaeb1257c1b47cb2929838036fb5708ae163fb",
+   "size": 21154498,
+   "duration": 63.13,
+   "width": 1920,
+   "height": 1040,
+   "fps": 30.0,
+   "tracks": [
+    "1-20"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-20-yorktown-the-world-turned-upside-down-p3.mp4",
+   "sha256": "008bc3c45daedcffde32780aaa17756cdb09cc5e2b5eeb654cc568be6c505e74",
+   "size": 15059864,
+   "duration": 60.2,
+   "width": 1920,
+   "height": 1040,
+   "fps": 30.0,
+   "tracks": [
+    "1-20"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-20-yorktown-the-world-turned-upside-down-p4.mp4",
+   "sha256": "07793d9a5b5f165d119604b2d9f9f5cef8bf06bf53176eba144a9b61f1c6e737",
+   "size": 11623272,
+   "duration": 57.43,
+   "width": 1920,
+   "height": 1040,
+   "fps": 30.0,
+   "tracks": [
+    "1-20"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-21-what-comes-next.mp4",
+   "sha256": "7709e84a854e5a1d3599663a2f90ec845f3475cead16d6942b796c006b36d2ba",
+   "size": 19037444,
+   "duration": 120.75,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-21"
+   ],
+   "url": "https://www.youtube.com/watch?v=ERYukmba5Vg",
+   "title": "What Comes Next? - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-22-dear-theodosia.mp4",
+   "sha256": "54184c7750fcd8a9f12e268f0aaaec6a6deb4e711cab888d2dbabeccd0ba8f2f",
+   "size": 17484270,
+   "duration": 170.88,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "1-22"
+   ],
+   "url": "https://www.youtube.com/watch?v=GgxPJRN_LVI",
+   "title": "Dear Theodosia - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "1-23-non-stop-p1.mp4",
+   "sha256": "a988e0d89c8694c9bc54f476f5212f8068fe9054568fd2d5a4d451ccaa92f7f2",
+   "size": 37151307,
+   "duration": 118.1,
+   "width": 1920,
+   "height": 1024,
+   "fps": 30.0,
+   "tracks": [
+    "1-23"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-23-non-stop-p2.mp4",
+   "sha256": "cd9526f19def8083d4d5b40ae13d1e3e489a5d9d42c2da1c110fca41497ce9fb",
+   "size": 11826487,
+   "duration": 60.6,
+   "width": 1920,
+   "height": 1024,
+   "fps": 30.0,
+   "tracks": [
+    "1-23"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "1-23-non-stop-p3.mp4",
+   "sha256": "7b7f6dbf1111e20e736f6933f02dd030e31481ddfa6e32376ac828f887da132f",
+   "size": 29428280,
+   "duration": 121.5,
+   "width": 1920,
+   "height": 1024,
+   "fps": 30.0,
+   "tracks": [
+    "1-23"
+   ],
+   "url": "",
+   "title": "",
+   "uploader": "",
+   "note": "One of several parts of the number (-pN), an HD upload at 30 fps."
+  },
+  {
+   "file": "2-01-what-d-i-miss.mp4",
+   "sha256": "79e7f7c8fd5f3baea9c0a88060eca3d6ccf9b1cea5171e0f6a9c108b8ec632c9",
+   "size": 92902860,
+   "duration": 240.7,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-01"
+   ],
+   "url": "https://www.youtube.com/watch?v=t8xQU1hkYao",
+   "title": "What'd I Miss? - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-03-take-a-break.mp4",
+   "sha256": "03ea5b7b9af4b94cbc17e61b92c1c5c459dcd99b988ca67594ba89528a9fe5ec",
+   "size": 49862598,
+   "duration": 289.41,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-03"
+   ],
+   "url": "https://www.youtube.com/watch?v=2G8q2To4IGU",
+   "title": "Take a Break - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-04-say-no-to-this.mp4",
+   "sha256": "75cc521433619f09ecdd9015052ce4f3d8bba9f9b134beb5aaf0535c3633c4d1",
+   "size": 38197861,
+   "duration": 249.54,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-04"
+   ],
+   "url": "https://www.youtube.com/watch?v=4ScINbiDDos",
+   "title": "Say No To This - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-05-the-room-where-it-happens.mp4",
+   "sha256": "6d21136145617aaf0098a13bda3d9c3e704ec30f53316e8b983c8de5487fdd98",
+   "size": 70936276,
+   "duration": 331.21,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-05"
+   ],
+   "url": "https://www.youtube.com/watch?v=e_FWUW6SnDo",
+   "title": "The Room Where it Happens - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-06-schuyler-defeated.mp4",
+   "sha256": "ae2ccdf8b97b5bf5edac13c7a8f8357b668498495e0ae83ad3b986e17e068ece",
+   "size": 14091721,
+   "duration": 63.15,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-06"
+   ],
+   "url": "https://www.youtube.com/watch?v=927fS7jelnk",
+   "title": "Schuyler Defeated - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-07-cabinet-battle-2.mp4",
+   "sha256": "e31c8d629f353d7531297323e3551a958debac08d65151a36ac250b8bc5aa76c",
+   "size": 52477706,
+   "duration": 144.27,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-07"
+   ],
+   "url": "https://www.youtube.com/watch?v=BZHnCtf-DEI",
+   "title": "Cabinet Battle #2 - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-08-washington-on-your-side.mp4",
+   "sha256": "c45bcdd0335ec470958aaf514cd194d950dca44a1dce9b9122524ac80c828b3c",
+   "size": 51647207,
+   "duration": 179.1,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-08"
+   ],
+   "url": "https://www.youtube.com/watch?v=o0uncfmN_cM",
+   "title": "Washington On Your Side - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-09-one-last-time.mp4",
+   "sha256": "0f7c89cffc8ea6b0170d956eadb057018d04afa7cf263ecc3d05ce3c4128def0",
+   "size": 45907807,
+   "duration": 320.7,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-09"
+   ],
+   "url": "https://www.youtube.com/watch?v=mgoFrstrYNk",
+   "title": "One Last Time - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-10-i-know-him.mp4",
+   "sha256": "a4db84bfa0b481352c4dd57044dec6dc5c3cfd4a70af56a6cb4e691535176660",
+   "size": 29784458,
+   "duration": 115.03,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-10"
+   ],
+   "url": "https://www.youtube.com/watch?v=FAgwoLO0S-4",
+   "title": "I Know Him - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-11-the-adams-administration.mp4",
+   "sha256": "887f6cf0b4b368e56338c324329a42a049728ca5e4382f101f404a6d7b610eb9",
+   "size": 13606197,
+   "duration": 56.68,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-11"
+   ],
+   "url": "https://www.youtube.com/watch?v=jpFsc2bDXUk",
+   "title": "The Adams Administration - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-12-we-know.mp4",
+   "sha256": "f222773d55fbb32615d11046fd225f47f68d27c92093bfc30dcd29b05a7aa477",
+   "size": 27176757,
+   "duration": 147.48,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-12"
+   ],
+   "url": "https://www.youtube.com/watch?v=0VVuEPbjLoU",
+   "title": "We Know - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-14-the-reynolds-pamphlet.mp4",
+   "sha256": "8006ffef2fbc72439e242965a15f79c9e971e52f0afba11edb3fdf31ec61ec98",
+   "size": 61936047,
+   "duration": 128.46,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-14"
+   ],
+   "url": "https://www.youtube.com/watch?v=x_MQRNkRaUE",
+   "title": "The Reynolds Pamphlet - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-16-blow-us-all-away.mp4",
+   "sha256": "235d3e035c06f48cffd2f513fb1dc7ba7a42ad763b3676549c979ff35b4ae7ca",
+   "size": 50538942,
+   "duration": 176.47,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-16"
+   ],
+   "url": "https://www.youtube.com/watch?v=A1ufXcZwBxI",
+   "title": "Blow Us All Away - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-17-stay-alive-reprise.mp4",
+   "sha256": "ca570abd5d3f46cb6a3a06ff1c9c421e65d9f2e2859f859b145fceccfb691447",
+   "size": 29911794,
+   "duration": 124.29,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-17"
+   ],
+   "url": "https://www.youtube.com/watch?v=5N2E43Tx3Xk",
+   "title": "Stay Alive Reprise - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-18-it-s-quiet-uptown.mp4",
+   "sha256": "e6261b503a9c7c322ebdf3cbb6f7b08fa26311807f74ad210f5be5ffd6b9128b",
+   "size": 28831570,
+   "duration": 277.69,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-18"
+   ],
+   "url": "https://www.youtube.com/watch?v=I5N7xCSOrQg",
+   "title": "It's Quiet Uptown - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-19-the-election-of-1800.mp4",
+   "sha256": "63f0eadb868ffa8ba21bbc78332e471bbc65c746f1427125619897ea7b812c60",
+   "size": 57325865,
+   "duration": 242.66,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-19"
+   ],
+   "url": "https://www.youtube.com/watch?v=yEq-B8gPVn4",
+   "title": "The Election of 1800 - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-20-your-obedient-servant.mp4",
+   "sha256": "3a4b2d9305115558ce3ef5d367ff91699aa08374b7c5a384ff61ac8f170b560b",
+   "size": 33454394,
+   "duration": 150.15,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-20"
+   ],
+   "url": "https://www.youtube.com/watch?v=V6_qvZFRlJQ",
+   "title": "Your Obedient Servant - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  },
+  {
+   "file": "2-21-best-of-wives-and-best-of-women.mp4",
+   "sha256": "abb95a04716ef8cd5b6042a5db583350bea2154b9f8559d3415b0402db203f30",
+   "size": 5841608,
+   "duration": 51.38,
+   "width": 1920,
+   "height": 1080,
+   "fps": 23.976,
+   "tracks": [
+    "2-21"
+   ],
+   "url": "https://www.youtube.com/watch?v=eKF0AmJUcIk",
+   "title": "Best of Wives and Best of Women - Hamilton (Original Cast 2016 - Live) [HD]",
+   "uploader": "Asaki Takaya"
+  }
+ ],
+ "playlist": {
+  "url": "https://youtube.com/playlist?list=PLSOfHhku9XxiQuGTppcAc4NPRkja13MSK",
+  "title": "Hamilfilm song clips in actual good quality - [Hamilton HD]",
+  "by": "Asaki Takaya",
+  "read": "2026-10-14",
+  "note": "46 videos, 10 unavailable (hidden); the available 36, with the file name each should be saved as",
+  "unavailable": [
+   "1-01",
+   "1-07",
+   "1-11",
+   "1-13",
+   "1-20",
+   "1-23",
+   "2-02",
+   "2-15",
+   "2-22",
+   "2-23"
+  ],
+  "clips": [
+   {
+    "track": "1-02",
+    "yt": "KAnVd7Fxb0g",
+    "url": "https://www.youtube.com/watch?v=KAnVd7Fxb0g",
+    "title": "Aaron Burr, Sir - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 150,
+    "albumLen": 156,
+    "file": "1-02-aaron-burr-sir.mp4"
+   },
+   {
+    "track": "1-03",
+    "yt": "wk01z2f5akg",
+    "url": "https://www.youtube.com/watch?v=wk01z2f5akg",
+    "title": "My Shot - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 339,
+    "albumLen": 333,
+    "file": "1-03-my-shot.mp4"
+   },
+   {
+    "track": "1-04",
+    "yt": "66W9gG_kZS8",
+    "url": "https://www.youtube.com/watch?v=66W9gG_kZS8",
+    "title": "The Story of Tonight - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 89,
+    "albumLen": 91,
+    "file": "1-04-the-story-of-tonight.mp4"
+   },
+   {
+    "track": "1-05",
+    "yt": "POHVE9uCNAY",
+    "url": "https://www.youtube.com/watch?v=POHVE9uCNAY",
+    "title": "The Schuyler Sisters - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 191,
+    "albumLen": 186,
+    "file": "1-05-the-schuyler-sisters.mp4"
+   },
+   {
+    "track": "1-06",
+    "yt": "Oy5ybRNSkb8",
+    "url": "https://www.youtube.com/watch?v=Oy5ybRNSkb8",
+    "title": "Farmer Refuted - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 100,
+    "albumLen": 112,
+    "file": "1-06-farmer-refuted.mp4"
+   },
+   {
+    "track": "1-08",
+    "yt": "FmnDhbCd3N4",
+    "url": "https://www.youtube.com/watch?v=FmnDhbCd3N4",
+    "title": "Right Hand Man - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 323,
+    "albumLen": 321,
+    "file": "1-08-right-hand-man.mp4"
+   },
+   {
+    "track": "1-09",
+    "yt": "fxEQZXv8uN4",
+    "url": "https://www.youtube.com/watch?v=fxEQZXv8uN4",
+    "title": "A Winter's Ball - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 70,
+    "albumLen": 69,
+    "file": "1-09-a-winter-s-ball.mp4"
+   },
+   {
+    "track": "1-10",
+    "yt": "Or-M9E0C27Q",
+    "url": "https://www.youtube.com/watch?v=Or-M9E0C27Q",
+    "title": "Helpless - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 256,
+    "albumLen": 249,
+    "file": "1-10-helpless.mp4"
+   },
+   {
+    "track": "1-12",
+    "yt": "e4NAz2TWA4I",
+    "url": "https://www.youtube.com/watch?v=e4NAz2TWA4I",
+    "title": "The Story of Tonight (Reprise) - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 123,
+    "albumLen": 115,
+    "file": "1-12-the-story-of-tonight-reprise.mp4"
+   },
+   {
+    "track": "1-14",
+    "yt": "pd3L7mI19q8",
+    "url": "https://www.youtube.com/watch?v=pd3L7mI19q8",
+    "title": "Stay Alive - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 160,
+    "albumLen": 159,
+    "file": "1-14-stay-alive.mp4"
+   },
+   {
+    "track": "1-15",
+    "yt": "TW3-3Xy0kCo",
+    "url": "https://www.youtube.com/watch?v=TW3-3Xy0kCo",
+    "title": "Ten Duel Commandments - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 108,
+    "albumLen": 106,
+    "file": "1-15-ten-duel-commandments.mp4"
+   },
+   {
+    "track": "1-16",
+    "yt": "TZ1w59D5et4",
+    "url": "https://www.youtube.com/watch?v=TZ1w59D5et4",
+    "title": "Meet Me Inside - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 88,
+    "albumLen": 83,
+    "file": "1-16-meet-me-inside.mp4"
+   },
+   {
+    "track": "1-17",
+    "yt": "KghsrSY10fo",
+    "url": "https://www.youtube.com/watch?v=KghsrSY10fo",
+    "title": "That Would Be Enough - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 178,
+    "albumLen": 178,
+    "file": "1-17-that-would-be-enough.mp4"
+   },
+   {
+    "track": "1-18",
+    "yt": "0D3zz6byFT4",
+    "url": "https://www.youtube.com/watch?v=0D3zz6byFT4",
+    "title": "Guns and Ships - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 132,
+    "albumLen": 127,
+    "file": "1-18-guns-and-ships.mp4"
+   },
+   {
+    "track": "1-19",
+    "yt": "ws_pklV1cP8",
+    "url": "https://www.youtube.com/watch?v=ws_pklV1cP8",
+    "title": "History Has its Eyes on You - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 104,
+    "albumLen": 97,
+    "file": "1-19-history-has-its-eyes-on-you.mp4"
+   },
+   {
+    "track": "1-21",
+    "yt": "ERYukmba5Vg",
+    "url": "https://www.youtube.com/watch?v=ERYukmba5Vg",
+    "title": "What Comes Next? - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 121,
+    "albumLen": 99,
+    "file": "1-21-what-comes-next.mp4"
+   },
+   {
+    "track": "1-22",
+    "yt": "GgxPJRN_LVI",
+    "url": "https://www.youtube.com/watch?v=GgxPJRN_LVI",
+    "title": "Dear Theodosia - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 171,
+    "albumLen": 184,
+    "file": "1-22-dear-theodosia.mp4"
+   },
+   {
+    "track": "2-01",
+    "yt": "t8xQU1hkYao",
+    "url": "https://www.youtube.com/watch?v=t8xQU1hkYao",
+    "title": "What'd I Miss? - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 241,
+    "albumLen": 236,
+    "file": "2-01-what-d-i-miss.mp4"
+   },
+   {
+    "track": "2-03",
+    "yt": "2G8q2To4IGU",
+    "url": "https://www.youtube.com/watch?v=2G8q2To4IGU",
+    "title": "Take a Break - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 290,
+    "albumLen": 286,
+    "file": "2-03-take-a-break.mp4"
+   },
+   {
+    "track": "2-04",
+    "yt": "4ScINbiDDos",
+    "url": "https://www.youtube.com/watch?v=4ScINbiDDos",
+    "title": "Say No To This - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 250,
+    "albumLen": 242,
+    "file": "2-04-say-no-to-this.mp4"
+   },
+   {
+    "track": "2-05",
+    "yt": "e_FWUW6SnDo",
+    "url": "https://www.youtube.com/watch?v=e_FWUW6SnDo",
+    "title": "The Room Where it Happens - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 332,
+    "albumLen": 318,
+    "file": "2-05-the-room-where-it-happens.mp4"
+   },
+   {
+    "track": "2-06",
+    "yt": "927fS7jelnk",
+    "url": "https://www.youtube.com/watch?v=927fS7jelnk",
+    "title": "Schuyler Defeated - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 64,
+    "albumLen": 63,
+    "file": "2-06-schuyler-defeated.mp4"
+   },
+   {
+    "track": "2-07",
+    "yt": "BZHnCtf-DEI",
+    "url": "https://www.youtube.com/watch?v=BZHnCtf-DEI",
+    "title": "Cabinet Battle #2 - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 145,
+    "albumLen": 142,
+    "file": "2-07-cabinet-battle-2.mp4"
+   },
+   {
+    "track": "2-08",
+    "yt": "o0uncfmN_cM",
+    "url": "https://www.youtube.com/watch?v=o0uncfmN_cM",
+    "title": "Washington On Your Side - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 180,
+    "albumLen": 181,
+    "file": "2-08-washington-on-your-side.mp4"
+   },
+   {
+    "track": "2-09",
+    "yt": "mgoFrstrYNk",
+    "url": "https://www.youtube.com/watch?v=mgoFrstrYNk",
+    "title": "One Last Time - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 321,
+    "albumLen": 296,
+    "file": "2-09-one-last-time.mp4"
+   },
+   {
+    "track": "2-10",
+    "yt": "FAgwoLO0S-4",
+    "url": "https://www.youtube.com/watch?v=FAgwoLO0S-4",
+    "title": "I Know Him - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 116,
+    "albumLen": 97,
+    "file": "2-10-i-know-him.mp4"
+   },
+   {
+    "track": "2-11",
+    "yt": "jpFsc2bDXUk",
+    "url": "https://www.youtube.com/watch?v=jpFsc2bDXUk",
+    "title": "The Adams Administration - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 57,
+    "albumLen": 54,
+    "file": "2-11-the-adams-administration.mp4"
+   },
+   {
+    "track": "2-12",
+    "yt": "0VVuEPbjLoU",
+    "url": "https://www.youtube.com/watch?v=0VVuEPbjLoU",
+    "title": "We Know - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 148,
+    "albumLen": 142,
+    "file": "2-12-we-know.mp4"
+   },
+   {
+    "track": "2-13",
+    "yt": "9rVURq5isnY",
+    "url": "https://www.youtube.com/watch?v=9rVURq5isnY",
+    "title": "Hurricane - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 152,
+    "albumLen": 143,
+    "file": "2-13-hurricane.mp4"
+   },
+   {
+    "track": "2-14",
+    "yt": "x_MQRNkRaUE",
+    "url": "https://www.youtube.com/watch?v=x_MQRNkRaUE",
+    "title": "The Reynolds Pamphlet - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 129,
+    "albumLen": 128,
+    "file": "2-14-the-reynolds-pamphlet.mp4"
+   },
+   {
+    "track": "2-16",
+    "yt": "A1ufXcZwBxI",
+    "url": "https://www.youtube.com/watch?v=A1ufXcZwBxI",
+    "title": "Blow Us All Away - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 177,
+    "albumLen": 173,
+    "file": "2-16-blow-us-all-away.mp4"
+   },
+   {
+    "track": "2-17",
+    "yt": "5N2E43Tx3Xk",
+    "url": "https://www.youtube.com/watch?v=5N2E43Tx3Xk",
+    "title": "Stay Alive Reprise - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 125,
+    "albumLen": 111,
+    "file": "2-17-stay-alive-reprise.mp4"
+   },
+   {
+    "track": "2-18",
+    "yt": "I5N7xCSOrQg",
+    "url": "https://www.youtube.com/watch?v=I5N7xCSOrQg",
+    "title": "It's Quiet Uptown - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 278,
+    "albumLen": 270,
+    "file": "2-18-it-s-quiet-uptown.mp4"
+   },
+   {
+    "track": "2-19",
+    "yt": "yEq-B8gPVn4",
+    "url": "https://www.youtube.com/watch?v=yEq-B8gPVn4",
+    "title": "The Election of 1800 - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 243,
+    "albumLen": 237,
+    "file": "2-19-the-election-of-1800.mp4"
+   },
+   {
+    "track": "2-20",
+    "yt": "V6_qvZFRlJQ",
+    "url": "https://www.youtube.com/watch?v=V6_qvZFRlJQ",
+    "title": "Your Obedient Servant - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 151,
+    "albumLen": 150,
+    "file": "2-20-your-obedient-servant.mp4"
+   },
+   {
+    "track": "2-21",
+    "yt": "eKF0AmJUcIk",
+    "url": "https://www.youtube.com/watch?v=eKF0AmJUcIk",
+    "title": "Best of Wives and Best of Women - Hamilton (Original Cast 2016 - Live) [HD]",
+    "uploader": "Asaki Takaya",
+    "duration": 52,
+    "albumLen": 47,
+    "file": "2-21-best-of-wives-and-best-of-women.mp4"
+   }
+  ]
+ },
+ "elsewhere": {
+  "note": "clips Jack found outside the playlist (folder \"Jack - ham\"), 2026-10-14",
+  "tracks": [
+   "1-01",
+   "1-07",
+   "1-11",
+   "1-13",
+   "1-20",
+   "1-23"
+  ],
+  "stillWanted": [
+   "1-09 (playlist, did not download)",
+   "2-13 (playlist, did not download)",
+   "2-02",
+   "2-15",
+   "2-22",
+   "2-23",
+   "1-01 (a full, uncut upload)"
+  ]
+ }
+}

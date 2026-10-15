@@ -1,0 +1,329 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "2-01",
+  "title": "What'd I Miss",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/2-01.json",
+  "outSha256": "18ee82783cc4ef6517a254543a4f75d52bae09407aedb56b2bc13d5abb3d2982",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "2-01-what-d-i-miss": {
+    "url": "https://www.youtube.com/watch?v=t8xQU1hkYao",
+    "shots": {
+     "7": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 9.8
+     },
+     "53": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 3.23
+     },
+     "56": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 3.8
+     }
+    },
+    "tracklets": 49,
+    "positions": 640,
+    "identified": 539
+   }
+  },
+  "stage4Positions": 640,
+  "counts": {
+   "samples": 640,
+   "withPosition": 640,
+   "offMap": 232,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 128,
+   "pool": 512,
+   "other": 0,
+   "byRule": {
+    "blocking": 128,
+    "pool": 512
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "ens1": {
+   "name": "Ensemble 1 (also The Bullet)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 24,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens2": {
+   "name": "Ensemble 2 (also Samuel Seabury)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 15,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens3": {
+   "name": "Ensemble 3 (also Charles Lee)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 15,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens5": {
+   "name": "Ensemble 5 (also George Eacker)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 20,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens7": {
+   "name": "Ensemble 7 (also Martha)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 36,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "ens8": {
+   "name": "Ensemble 8",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 6,
+    "tracklets": 2
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "hamilton": {
+   "name": "Hamilton",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 12,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 512,
+  "withPosition": 280,
+  "tracklets": 39,
+  "formations": [
+   {
+    "from": 210.0,
+    "to": 213.0,
+    "clip": "2-01-what-d-i-miss",
+    "at": 210.2,
+    "bodies": 7,
+    "tracklets": 10,
+    "deck": 7,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 3,
+     "C": 4,
+     "SL": 0
+    },
+    "shape": "scattered",
+    "centroid": [
+     -1.75,
+     -0.5
+    ],
+    "extent": {
+     "x": [
+      -5.4,
+      1.04
+     ],
+     "z": [
+      -3.31,
+      2.32
+     ]
+    },
+    "samples": 85,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 213.0,
+    "to": 216.0,
+    "clip": "2-01-what-d-i-miss",
+    "at": 213.2,
+    "bodies": 6,
+    "tracklets": 8,
+    "deck": 6,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 2,
+     "C": 3,
+     "SL": 1
+    },
+    "shape": "scattered",
+    "centroid": [
+     -1.47,
+     -0.84
+    ],
+    "extent": {
+     "x": [
+      -5.04,
+      1.78
+     ],
+     "z": [
+      -4.29,
+      2.21
+     ]
+    },
+    "samples": 34,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 219.0,
+    "to": 222.0,
+    "clip": "2-01-what-d-i-miss",
+    "at": 219.7,
+    "bodies": 7,
+    "tracklets": 14,
+    "deck": 7,
+    "gallery": 0,
+    "inWings": 3,
+    "sides": {
+     "SR": 3,
+     "C": 0,
+     "SL": 4
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.32,
+     -0.06
+    ],
+    "extent": {
+     "x": [
+      -4.36,
+      4.68
+     ],
+     "z": [
+      -4.07,
+      2.93
+     ]
+    },
+    "samples": 106,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   },
+   {
+    "from": 222.0,
+    "to": 225.0,
+    "clip": "2-01-what-d-i-miss",
+    "at": 222.1,
+    "bodies": 7,
+    "tracklets": 12,
+    "deck": 7,
+    "gallery": 0,
+    "inWings": 2,
+    "sides": {
+     "SR": 3,
+     "C": 0,
+     "SL": 4
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.28,
+     0.16
+    ],
+    "extent": {
+     "x": [
+      -5.3,
+      4.88
+     ],
+     "z": [
+      -3.29,
+      2.77
+     ]
+    },
+    "samples": 55,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 8,
+     "everyoneOn": 12
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 4
+ }
+}

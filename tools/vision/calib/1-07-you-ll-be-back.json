@@ -1,0 +1,19 @@
+{
+ "clip": "1-07-you-ll-be-back",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "16": {
+   "skipped": "too tight: King George close-up (2 bodies), no set points",
+   "was": 13,
+   "split": [
+    15,
+    16
+   ]
+  },
+  "17": {
+   "skipped": "too tight: King George medium with the ensemble behind, no gallery or lip in frame",
+   "was": 14
+  }
+ },
+ "shotmap": "2026-10-14 12:10:54"
+}

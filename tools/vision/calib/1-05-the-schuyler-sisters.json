@@ -1,0 +1,179 @@
+{
+ "clip": "1-05-the-schuyler-sisters",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "5": {
+   "skipped": "camera tracks (low, moving) through the shot; no lip"
+  },
+  "14": {
+   "skipped": "low wide camera: the upstage rail centre and ends do not fit together (coil spacing inconsistent), lip occluded by audience heads",
+   "was": 11
+  },
+  "25": {
+   "skipped": "camera tracks right through the shot; low angle, no lip",
+   "was": 23
+  },
+  "26": {
+   "skipped": "no deck-level set point: the lip is below the frame and the rings are not visible; only gallery-height points",
+   "was": 24
+  },
+  "28": {
+   "skipped": "blue wash: rail and gallery barely legible, the lit circle is a light pool not the ring, no lip",
+   "was": 26
+  },
+  "37": {
+   "frame": 780,
+   "points": {
+    "rail-us-c": [
+     658.0,
+     198.0
+    ],
+    "rail-us-sl": [
+     1118.0,
+     198.0
+    ],
+    "rail-sl-us": [
+     1128.0,
+     185.0
+    ],
+    "lip-c": [
+     658.0,
+     699.0
+    ],
+    "rail-us-sr": [
+     232.0,
+     199.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      2483.635528354606,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      2483.635528354606,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9999714103230721,
+      -0.007473317281333747,
+      -0.0011524171548266775
+     ],
+     [
+      -0.007429661608155304,
+      -0.9993903733950634,
+      0.03411277903753964
+     ],
+     [
+      -0.0014066502317646656,
+      -0.03410324169471605,
+      -0.9994173253656539
+     ]
+    ],
+    "t": [
+     0.12530185190331236,
+     2.0851486558581414,
+     21.714212343814403
+    ],
+    "rvec": [
+     -3.1074555654747567,
+     0.011581120994428895,
+     0.001988654030632372
+    ],
+    "camera": [
+     -0.079,
+     2.825,
+     21.631
+    ],
+    "look": [
+     -0.001,
+     -0.034,
+     -0.999
+    ],
+    "fovDeg": 28.9,
+    "rms": 5.83,
+    "residuals": [
+     7.8,
+     5.3,
+     8.1,
+     0.4,
+     3.9
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      13.0,
+      43.0
+     ],
+     "dist": [
+      12.2,
+      51.7
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 77,
+    "free": {
+     "camera": [
+      -0.08,
+      2.81,
+      21.54
+     ],
+     "fovDeg": 29.0,
+     "rms": 5.83,
+     "breaks": []
+    },
+    "mPerPx": 0.0622,
+    "cond": {
+     "sv": [
+      3.67,
+      3.19,
+      0.11
+     ],
+     "heightSd": 1.42,
+     "depthSd": 3.23,
+     "sdDistPerPx": 1.38,
+     "sdFovPerPx": 1.55
+    }
+   },
+   "moving": null,
+   "judged": "fair",
+   "was": 34
+  },
+  "39": {
+   "skipped": "tighter version of shot 34: the lip is below the frame and the deck is covered by the chorus",
+   "was": 36
+  },
+  "42": {
+   "skipped": "camera zooms in from wide to close; at mid-shot the lip and rail ends are out of frame",
+   "was": 38,
+   "split": [
+    41,
+    42
+   ]
+  },
+  "43": {
+   "skipped": "high (balcony) camera that pans; the upstage rail ends and stair feet not identifiable with confidence - a good candidate for a human click",
+   "was": 39
+  }
+ },
+ "shotmap": "2026-10-14 12:10:53"
+}

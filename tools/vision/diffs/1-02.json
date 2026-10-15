@@ -1,0 +1,77 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-02",
+  "title": "Aaron Burr, Sir",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-02.json",
+  "outSha256": "22753538fecf4578a8d7d184ab5bc2611bac1c8a26b6834ffe618ad0d100d98e",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-02-aaron-burr-sir": {
+    "url": "https://www.youtube.com/watch?v=KAnVd7Fxb0g",
+    "shots": {
+     "0": {
+      "judged": "fair",
+      "moving": null,
+      "rms": 16.83
+     }
+    },
+    "tracklets": 7,
+    "positions": 46,
+    "identified": 213
+   }
+  },
+  "stage4Positions": 46,
+  "counts": {
+   "samples": 46,
+   "withPosition": 46,
+   "offMap": 31,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 0,
+   "pool": 46,
+   "other": 0,
+   "byRule": {
+    "pool": 46
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {},
+ "pool": {
+  "samples": 46,
+  "withPosition": 15,
+  "tracklets": 7,
+  "formations": []
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 0
+ }
+}

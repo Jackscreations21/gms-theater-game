@@ -1,0 +1,379 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "2-12",
+  "title": "We Know",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/2-12.json",
+  "outSha256": "24562b70654742134ab2413b104928e274573dafa3cc956b309d2f4f21aab971",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "2-12-we-know": {
+    "url": "https://www.youtube.com/watch?v=0VVuEPbjLoU",
+    "shots": {
+     "1": {
+      "judged": "good",
+      "moving": true,
+      "rms": 3.68
+     },
+     "29": {
+      "judged": "fair",
+      "moving": true,
+      "rms": 11.71
+     }
+    },
+    "tracklets": 13,
+    "positions": 379,
+    "identified": 151
+   }
+  },
+  "stage4Positions": 379,
+  "counts": {
+   "samples": 379,
+   "withPosition": 379,
+   "offMap": 15,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 0,
+   "pool": 379,
+   "other": 0,
+   "byRule": {
+    "pool": 379
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {},
+ "pool": {
+  "samples": 379,
+  "withPosition": 364,
+  "tracklets": 13,
+  "formations": [
+   {
+    "from": 0.0,
+    "to": 3.0,
+    "clip": "2-12-we-know",
+    "at": 2.8,
+    "bodies": 5,
+    "tracklets": 6,
+    "deck": 5,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 0,
+     "C": 4,
+     "SL": 1
+    },
+    "shape": "scattered",
+    "centroid": [
+     -0.03,
+     -1.58
+    ],
+    "extent": {
+     "x": [
+      -1.26,
+      2.91
+     ],
+     "z": [
+      -2.14,
+      -0.79
+     ]
+    },
+    "samples": 6,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 0,
+     "everyoneOn": 5
+    }
+   },
+   {
+    "from": 3.0,
+    "to": 6.0,
+    "clip": "2-12-we-know",
+    "at": 3.4,
+    "bodies": 4,
+    "tracklets": 6,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 0,
+     "C": 3,
+     "SL": 1
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.1,
+     -1.58
+    ],
+    "extent": {
+     "x": [
+      -1.39,
+      2.92
+     ],
+     "z": [
+      -2.14,
+      -0.81
+     ]
+    },
+    "samples": 68,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 0,
+     "everyoneOn": 6
+    }
+   },
+   {
+    "from": 6.0,
+    "to": 9.0,
+    "clip": "2-12-we-know",
+    "at": 6.2,
+    "bodies": 3,
+    "tracklets": 4,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 1,
+     "C": 0,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     1.4,
+     -3.23
+    ],
+    "extent": {
+     "x": [
+      -2.37,
+      4.26
+     ],
+     "z": [
+      -3.59,
+      -2.74
+     ]
+    },
+    "samples": 60,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 0,
+     "everyoneOn": 7
+    }
+   },
+   {
+    "from": 9.0,
+    "to": 12.0,
+    "clip": "2-12-we-know",
+    "at": 9.2,
+    "bodies": 4,
+    "tracklets": 4,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 1,
+     "C": 1,
+     "SL": 2
+    },
+    "shape": "a line across the stage",
+    "centroid": [
+     1.55,
+     -2.9
+    ],
+    "extent": {
+     "x": [
+      -1.68,
+      5.13
+     ],
+     "z": [
+      -3.43,
+      -2.58
+     ]
+    },
+    "samples": 60,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 0,
+     "everyoneOn": 7
+    }
+   },
+   {
+    "from": 12.0,
+    "to": 15.0,
+    "clip": "2-12-we-know",
+    "at": 12.1,
+    "bodies": 4,
+    "tracklets": 4,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 0,
+     "C": 3,
+     "SL": 1
+    },
+    "shape": "a line across the stage",
+    "centroid": [
+     0.94,
+     -1.84
+    ],
+    "extent": {
+     "x": [
+      -1.42,
+      3.89
+     ],
+     "z": [
+      -2.45,
+      -1.38
+     ]
+    },
+    "samples": 32,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 0,
+     "everyoneOn": 7
+    }
+   },
+   {
+    "from": 132.0,
+    "to": 135.0,
+    "clip": "2-12-we-know",
+    "at": 132.7,
+    "bodies": 3,
+    "tracklets": 4,
+    "deck": 3,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 1,
+     "C": 1,
+     "SL": 1
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.02,
+     -1.7
+    ],
+    "extent": {
+     "x": [
+      -3.08,
+      2.69
+     ],
+     "z": [
+      -3.62,
+      0.47
+     ]
+    },
+    "samples": 52,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 0,
+     "everyoneOn": 4
+    }
+   },
+   {
+    "from": 135.0,
+    "to": 138.0,
+    "clip": "2-12-we-know",
+    "at": 135.3,
+    "bodies": 4,
+    "tracklets": 5,
+    "deck": 4,
+    "gallery": 0,
+    "inWings": 1,
+    "sides": {
+     "SR": 1,
+     "C": 1,
+     "SL": 2
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.68,
+     -1.86
+    ],
+    "extent": {
+     "x": [
+      -3.77,
+      3.12
+     ],
+     "z": [
+      -3.94,
+      1.06
+     ]
+    },
+    "samples": 68,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 0,
+     "everyoneOn": 2
+    }
+   },
+   {
+    "from": 138.0,
+    "to": 141.0,
+    "clip": "2-12-we-know",
+    "at": 138.2,
+    "bodies": 2,
+    "tracklets": 5,
+    "deck": 2,
+    "gallery": 0,
+    "inWings": 2,
+    "sides": {
+     "SR": 0,
+     "C": 1,
+     "SL": 1
+    },
+    "shape": "a pair 5.2 m apart",
+    "centroid": [
+     1.15,
+     -1.17
+    ],
+    "extent": {
+     "x": [
+      -0.95,
+      3.24
+     ],
+     "z": [
+      -2.72,
+      0.38
+     ]
+    },
+    "samples": 18,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 0,
+     "everyoneOn": 2
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 8
+ }
+}
