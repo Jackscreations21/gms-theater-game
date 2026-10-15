@@ -1,0 +1,161 @@
+{
+ "clip": "2-08-washington-on-your-side",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "41": {
+   "skipped": "2 frames; oblique dark view, no lip/ring/post anchors readable",
+   "was": 37
+  },
+  "42": {
+   "skipped": "tight on the dance group: the deck is a light pool under bodies (no lip, ring), only the SR stair and gallery run readable, no centre or post anchor; first solve rms 35; camera also drifts ~50 px",
+   "was": 38
+  },
+  "45": {
+   "skipped": "medium shot, gallery and back-wall posts unlit; only the SR stair foot and deck readable (fewer than five sure points); camera drifts 15-25 px with 3% zoom",
+   "was": 41
+  },
+  "47": {
+   "skipped": "camera pans ~260 px and zooms 9% through the shot; medium shot with dark gallery, too few sure set points",
+   "was": 43
+  },
+  "50": {
+   "frame": 875,
+   "points": {
+    "rail-us-c": [
+     640.0,
+     407.0
+    ],
+    "lip-c": [
+     640.0,
+     626.0
+    ],
+    "stair-sr-foot": [
+     245.0,
+     605.0
+    ],
+    "rail-srstrip-ds": [
+     345.0,
+     365.0
+    ],
+    "stair-sr-top": [
+     330.0,
+     418.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      966.9345239135366,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      966.9345239135366,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9994987148774466,
+      0.024883407333452907,
+      0.019573834519843153
+     ],
+     [
+      0.02902330526557391,
+      -0.9671597362205733,
+      -0.25250681651237167
+     ],
+     [
+      0.012647794661285868,
+      0.25294833597639793,
+      -0.9673971121607596
+     ]
+    ],
+    "t": [
+     -0.11349138408000568,
+     3.5379435229786504,
+     12.999043312119172
+    ],
+    "rvec": [
+     2.8856933819910497,
+     0.03954144553643468,
+     0.023635086131811582
+    ],
+    "camera": [
+     -0.154,
+     0.136,
+     13.471
+    ],
+    "look": [
+     0.013,
+     0.253,
+     -0.967
+    ],
+    "fovDeg": 67.0,
+    "rms": 7.47,
+    "residuals": [
+     4.8,
+     1.6,
+     6.0,
+     13.5,
+     5.9
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "nearest house camera within 1.5 px of the best",
+    "depthCue": "none",
+    "depthCueNote": "implausible: shoulders 1.57-2.88 m, never 1.25-1.55",
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      54.0,
+      72.0
+     ],
+     "dist": [
+      11.5,
+      16.2
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 3.56,
+    "bodies": 2,
+    "free": {
+     "camera": [
+      -0.17,
+      0.03,
+      14.66
+     ],
+     "fovDeg": 62.0,
+     "rms": 7.18,
+     "breaks": []
+    },
+    "mPerPx": 1.4592,
+    "cond": {
+     "sv": [
+      3.17,
+      2.12,
+      0.72
+     ],
+     "heightSd": 1.63,
+     "depthSd": 3.06,
+     "sdDistPerPx": 0.22,
+     "sdFovPerPx": 0.99
+    }
+   },
+   "moving": false,
+   "judged": "fair",
+   "note": "front-of-house camera at deck height; points lean SR + centre (SL stair hidden in the dark), but the solved lip tilt matches the image at both ends",
+   "was": 46
+  }
+ },
+ "shotmap": "2026-10-14 12:11:16"
+}

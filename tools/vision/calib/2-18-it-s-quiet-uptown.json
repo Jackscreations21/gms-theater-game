@@ -1,0 +1,22 @@
+{
+ "clip": "2-18-it-s-quiet-uptown",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "23": {
+   "skipped": "far low house camera (deck ~15 px deep), lit only in blue, set unreadable; 428 frames whose first/middle/last do not match (missed cuts or a long move)",
+   "was": 6,
+   "split": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27
+   ]
+  }
+ },
+ "shotmap": "2026-10-14 12:11:22"
+}

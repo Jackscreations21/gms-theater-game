@@ -235,3 +235,28 @@ stop — the sign is a scene mover, so a haul the show started runs on.
 The first line is the built file's byte size, per the probe rule, and the suite
 compares it — so a change to `src/` needs this file regenerated alongside the
 build. The reasoning is written beside the assertion in `tests/artnet.js`.
+
+## `vision/` — the footage, measured (RULINGS FX–GE; stages 1–2 built)
+
+The video blocking capture of `docs/superpowers/specs/2026-10-13-video-blocking-capture-design.md`: Jack's
+downloaded clips (in `video/`, git-ignored, indexed by `video/INDEX.json`) become per-frame bodies on album time.
+Python with third-party packages — the ONE place in the repo that has them — in a venv Jack creates
+(`tools/vision/requirements.txt` says how; Python 3.13 or 3.14, torch has no 3.15 wheel):
+
+    python tools/vision/run.py index --import <download folder> --rename   # copy in, name 1-03-slug.mp4, INDEX.json
+    python tools/vision/run.py frames 1-03-my-shot      # stage 1: 5 fps frames, cuts, clip time -> (track, at)
+    python tools/vision/run.py sheet  1-03-my-shot      # cache/<clip>/shots.jpg — every cut, last frame | first frame
+    python tools/vision/run.py bodies 1-03-my-shot      # stage 2: YOLO-pose + ByteTrack per shot -> bodies.json
+    python tools/vision/run.py draw   1-03-my-shot      # cache/<clip>/bodies.jpg — the boxes and skeletons, a frame a shot
+    python tools/vision/run.py check  1-03-my-shot      # what the cache holds for a clip
+    python tools/vision/run.py calib  1-03-my-shot 16 grid            # stage 3: the shot's middle frame with a 100 px grid
+    python tools/vision/run.py calib  1-03-my-shot 16 solve lip-sr=200,652 rail-us-c=615,405 ...   # >= 5 named points -> camera + overlay
+    python tools/vision/run.py calib  1-03-my-shot list               # the named set points (setpoints.json) and how to find each
+
+Stage 1 needs only numpy, OpenCV and an ffmpeg (imageio-ffmpeg's is found when none is on the PATH); stage 2
+needs ultralytics. The time alignment (RULING FZ) is the page's own 20 ms envelope recipe cross-correlated against
+`assets/hamilton-soundtrack-env.u8`, 10 s windows every 10 s, each searched ±2 s around the running offset — a
+global search (no offset yet, or the chain lost for six windows) must clear 0.45, stand clear of its runner-up and
+agree with its neighbour window. On the film: Aaron Burr, Sir holds a constant offset for 85 s then drifts 1.5 s
+through the rap, and the chain follows it. Cuts: a 48×27 gray mean-abs-diff over 12 AND a hue/sat histogram
+distance over 0.2 (fast motion inside a shot reaches 33 gray but stays under 0.15 hist).

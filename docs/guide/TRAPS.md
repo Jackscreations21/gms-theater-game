@@ -1617,6 +1617,256 @@ against this list before opening a PR; **add new traps as you hit them.**
   read the album's loudness bins from the PREVIOUS session's `shots/`; three agents each wrote their own copy before
   anyone told me. Copy a helper's data with the helper.
 
+## From the automatic-actors round (2026-10-12)
+
+- **Stopping a pointerup to "take" a click leaves OrbitControls holding the button down.** r160's OrbitControls
+  registers its pointerup on the canvas at pointerdown; a capture-phase listener on `#stage` that calls
+  `stopPropagation()` on the pointerup starves it, and the next mouse move rotates the camera with no button
+  pressed. Take a click from the page's own handler by clearing its `press` (same module scope) instead; stop
+  only a pointerdown the orbit must never see (a marker drag).
+- **A capture listener on `#stage` also catches clicks on every panel inside `#stage`.** The first cut of the
+  Blocking panel picked markers behind its own buttons. Check `e.target === canvas` first.
+- **A pool's depth band stops 0.4 m short of what it lands on, so a body standing in it is lit to the shins.**
+  `lxPoolBand` fits the cone to the scenery its twelve rays meet; anything taller standing in it (an actor) is
+  outside the band and discarded. `actPoolBands` widens the band of every lit pool with an actor in it, each
+  frame — any new thing that moves through pools needs the same.
+- **The Browser pane's `preview_start` reads the MAIN checkout's `.claude/launch.json`, not a worktree's.** A
+  config written in the worktree was "not found"; the main one's `the-house` serves port 8080 from the main
+  checkout (Jack's). Serve the worktree with a background `python -m http.server <port> --bind 127.0.0.1` and
+  `preview_start({ url })`.
+- **A hidden pane gets no animation frames, so the show clock does not move** (`document.visibilityState`
+  "hidden"): Play looks dead. A screenshot brings the pane up and the clock runs; `MIDTOWN.frame()` and the
+  check functions do not need frames.
+- **`MIDTOWN.show.state` can throw on `main`** (fixed on `actors`, PR #234: the adapter answers 0) once the YouTube adapter is the show's audio and YouTube cannot
+  play: `showState` reads `SHW.A.currentTime.toFixed` and the adapter has no time. A test that calls
+  `showAdvance` (which ends in `showState()`) throws with it — `actCheck` steps `showTick` + `lxTick` itself.
+- **A seek-equivalence check that seeks to the SAME moment it just played to proves nothing about history.** The first
+  `MIDTOWN.actors.check()` played up to T, then seeked to T: a deliberately broken label that only updated on small time
+  steps passed, because the stale value the seek left behind was the value play had just set. Seek FIRST, as a jump from far
+  away (600 s), then play — now the broken label fails it. `show.check()` (the cues) seeks after playing too; its state is
+  re-folded from scratch on every seek, which is why it holds there.
+- **Eight agents editing one file corrupts it, even "each in its own section".** During review 2,
+  `tools/blocking/props.py` was broken twice by concurrent edits: a duplicated block in the docstring, and a quote
+  error. Each agent's exact-string Edit read the file, and another's write landed in between. It was repaired both times.
+  - Sections make edits small; they do not make them atomic.
+  - After a parallel round, read the shared file whole, parse it (`ast.parse`), and run it before trusting any output.
+  - Better: give each agent its own file and let the shared one import them.
+- **Python's `open(path, 'w', newline=BAD)` truncates the file, then raises.** A rewrite script with
+  `newline='\\n'` (a doubled backslash) emptied `tools/blocking-plot.py` and only then failed with
+  `illegal newline value`. Recovered from git. Write to a temporary name and rename, or validate the arguments before
+  opening for write.
+- **A Browser pane that is hidden or squeezed renders a tiny canvas, and every measurement taken from it is wrong.**
+  The merge round's first frame-cost numbers (24 ms) and its twelve proof shots came off a 302 × 52 canvas — the pane
+  was collapsed to a strip. `MIDTOWN.renderer.domElement.width/height` first; for numbers and pictures,
+  `renderer.setSize(1280, 800, false)` and the camera's aspect before measuring.
+- **`python -I` leaves the script's own directory off `sys.path`.** A generator that does `from lib import *` (its
+  sibling) fails under `-I` though `python export.py` works. Insert `os.path.dirname(os.path.abspath(__file__))`
+  into `sys.path` at the top (the copies in `tools/blocking/` do).
+- **A blackout test that counts every channel in the cues calls dark cues lit.** The editor first counted any channel a cue
+  set above 0: six Color Force channels (764, 766, 803–806) sit at 57 % through Act One's end, but no unit answers them (no
+  `type` in the Eos file, not in the rig), so eleven of the page's blackouts — the end of Non-Stop among them — read "lit".
+  Count only the channels a unit in `assets/hamilton-rig.json` answers; then all 892 cues agree with the page's own dump.
+- **A clock that clamps to "just before the end" and then asks "is this the music?" re-seeks at every boundary.** The
+  editor clamped each song's clock to its length − 1 ms, and its music test was `at < length − 1 ms`: false there, so the next
+  frame ran the silent clock across the boundary and force-seeked the element into the next song — two seeks per song
+  boundary, each landing by Chrome's VBR index and stalling the clock, so sound and clock drifted (1,125 s in 1,231 s). While the
+  element plays, IT is the clock (`S.clock = 'audio'`), across boundaries, with no seek; the silent clock is for lead-ins,
+  tails and no file only.
+- **A hit test by "nearest centre" steals clicks from a small shape drawn beside a big one.** In the editor's Simple mode a
+  carried prop's square sat d/2 + 0.22 m ahead of its carrier, drawn UNDER her dot; a press on the half of the square nearer
+  her centre found her (45 % of a desk's visible square at 48 px/m), so Jack dragged the person and could not put the prop
+  down. Draw the small thing on top, clear of the big one, and give it its own button.
+- **`JSON.stringify` writes −0 as 0.** The editor keeps undo steps and its draft as JSON; the merged file has a few `-0.0`, so
+  an undone edit no longer downloaded byte-identical. Snapshot with a replacer that keeps the sign (`toJ` / `fromJ` in
+  `blocking.html`).
+- **A frame-time clock clamped per frame runs slow when frames are slow.** The editor clamped each frame's dt to 0.25 s; in a
+  throttled pane (a frame every few hundred ms) the silent lead-in ran at half speed. Clamp only against a long gap (1 s).
+- **A `<canvas>` given only `width: 100%` in CSS takes its height from its 300 × 150 attribute ratio.** The editor's scrub
+  bars grew to 670 px each while the pane was hidden (no frame had sized them yet). Give a canvas a CSS height.
+- **A speed check that does not know about offstage flags reports invisible moves.** `MIDTOWN.actors.check()` flagged 19
+  legs at up to 128 m/s after the merge — every one between two `off` waypoints (a body crossing the wings in the dark).
+  The page's check now skips them, as the merge always did; keep the two checks' rules the same.
+- **At "Set fitted" the set has holes the cuts made at that scale**, so a floor ray that finds the gallery at
+  real size can fall through to the deck there. Author blocking at Real size (the default).
+
+## From the limbs round (2026-10-13)
+
+- **The decimated mannequin is not a clean manifold.** `assets/mannequin-woman.glb` (quadric clustering) has 608
+  non-manifold edges and 333 open ones. Cutting it into parts and capping each part's open loops with fans failed three
+  ways: loops break at pinched vertices, a zigzag rim's area vector points either way (so a whole cap comes out inside-out,
+  dark or see-through), and a fan over a long contact patch is spikes. `tools/mannequin-rig.py` closes the cuts with a
+  voxel LINER instead (RULING FS). If you ever fan-cap a scan, wind each fan triangle on its own toward an outward
+  reference, never the loop as a whole.
+- **A voxel surface built from the cells the scan passes through sits OUTSIDE the scan** (by up to a cell) and pokes through
+  it everywhere — a blotchy second skin. Build it from the cells wholly inside (not the shell), then set it a few mm in.
+- **A scan with the arms against the body has no surface there.** The sleeve was fused to the hip and the armpit; whatever
+  rule cuts the arm off, the body's side under it does not exist in the scan. Give the crease to the BODY (a tighter
+  distance rule on the body's side of the arm): a hole in the arm's inner side faces the body and is seldom seen, a hole
+  in her side faces the house.
+- **An `animate` that skips unseen bodies leaves their limbs stale**, so a limb comparison that includes unseen bodies fails
+  for no reason. `MIDTOWN.actors.check()` compares limbs only for bodies seen on both sides (a seen / unseen disagreement
+  is counted as a visibility failure).
+- **The first timing run after a page load is ~10 ms high** (75 ms frames read 84–104 on the first of three runs, every
+  time). Take several runs and drop the first before comparing a before and an after.
+- **Clicking a viewpoint button and capturing in the same script captured the old view.** Two shots taken a click apart
+  in one call (`v-back`, then `v-front`) came out byte-identical. Click, let a call return, then capture.
+- **A table copied into three tools drifts.** The prop kinds' sizes lived in the page, the merge, the plotter and a
+  partial copy inside `props.py --check`. The partial one lacked `crate`, so the check crashed the first time a reviewer
+  used a crate. Copy the WHOLE table, and name it the same in each place, with a comment saying where the others are.
+- **The Browser pane is shared with the other agents.** In review 3, another agent navigated the fronted tab to its own
+  page in the middle of my checks. My next call then ran against the wrong page (`window.MIDTOWN` undefined).
+  - Pass `tabId` on every browser call once there is more than one agent.
+  - Re-read `location.href` before trusting a result.
+- **A corrective step judged against the ORIGINAL request undoes itself.** The sound tap measured a skip's landing
+  error e and seeked by −e, which was right. But the next check still computed the error from the first request's
+  want / req, saw e again, and moved it back. So a back skip resumed about e from where it was asked: 11 s, 16 s.
+  The symptom looked like the browser's history defeating the fix; it was the bookkeeping.
+  - Every corrective action must re-arm its check with the state it created: here, the target advanced by what has
+    played, and the new request.
+  - Test a closed loop by its RESULT (where it is, against an independent clock), not by its own "synced" message.
+- **A helper that rewrites a waypoint from `pos()` dropped the level.** `seg1/lib.py` `turn()` copied x and z only, so
+  everyone who turned on the gallery stepped back down to the deck for that waypoint (the page's floor ray follows the `y`
+  hint). It now carries `y`. Any helper that copies a position must copy `y` with it. Check a gallery scene by sampling
+  `sim()`'s level, not only x and z.
+- **This machine's Bash tool rejected a heredoc** (`unexpected EOF while looking for matching '`) whose body held apostrophes
+  or a `'''`, even with the delimiter quoted — the command never ran. Write the text to a scratch file with the Write tool
+  and `cat` it, or patch with a small Python script that reads its replacement text from a file.
+
+## From the blackout round (2026-10-12)
+
+- **A reconstructed "pull-in" that leaves one pool on a black stage IS a blackout to the person watching.** Eight
+  reviewers judged cues from stills and wrote "everything down to Hamilton in warm" at 5–10 % on the surround; from
+  the house that is 3–5 % of the frame, and Jack called every one of them a blackout, and the ones that came before a
+  button "too early". Measure, don't judge: `CAP.scan` (HANDOFF, this round) renders every half-second from the house
+  camera and prints the mean luminance per cue; anything under ~0.06 that is not a real FTB wants a surround.
+- **Both audio paths were checked before touching a single `at`.** "The timing got off really bad" turned out to be
+  the pull-ins above, not the clock: the one-file soundtrack's `tracks[].file` starts all sit on a measured silence
+  (`shots/soundtrack-env-20ms.f32`, copied with `audio.py` this time), and the YouTube uploads are the album's length
+  to the second (`getDuration()` through the IFrame API — poll until `getVideoData().video_id` is the one you cued,
+  or you read the PREVIOUS video's duration). Check the clock first; it is cheap, and moving `at`s to chase a
+  perception would have broken every real island.
+- **Merging two cues' `ch` maps is per CHANNEL, not per key.** `dict.update` on the channel level replaced
+  `{"cp": 28, "i": 60}` with `{"i": 75}`, so the lustrs kept the previous song's palette and the "full warm stage"
+  came up blue. Merge `{**a[k], **b[k]}` for every key, and render the result: the offline fold cannot see it,
+  because it does not resolve `cp`/`preset` references the way the player does.
+- **Removing a blackout cue is not a deletion.** The next cue only sets what it lights; everything the blackout took
+  out stays lit through it. Fold the intensity state up to the removed cue, and move its zeros into the next cue (as
+  channels, with the groups expanded, so a group zero cannot override a channel the next cue sets).
+- **A browser does not seek a variable-bitrate MP3 where you ask.** Chrome seeks a VBR file with a Xing table by that
+  table — 100 cells, each byte position a 1/256 of the file (33 s of audio on a 2.4-hour file) — lands on the cell's
+  byte, calls it the cell's nominal time, decodes on to the requested time and REPORTS the requested time: what plays
+  was up to 52 s away. Playing from the top is exact, so nothing shows until someone skips ("when I skip it
+  misaligns"). Measure it, don't reason about it: route the element through Web Audio (`createMediaElementSource` →
+  a ScriptProcessor summing RMS per 20 ms), match the live envelope against the file's stored one (normalised
+  cross-correlation, a ±70 s window — a narrower window finds a confident wrong peak in repetitive music, and 4 s of
+  capture can lock onto a repeated phrase; 8 s is safe), and the offset is the landing error. The frame index
+  predicts it to 0.1 s for 98 cells — and two cells decode from the cell before, which no model would have said.
+  The fix lives in the show file (`soundtrack.seek`) and `showSoundSeek`; a different copy of the album needs the
+  table rebuilt (`mp3toc.py`, then `probes.py` to check).
+- **A browser's seek is history-dependent: a table of landings holds only for a region the page has not played.** As the
+  file plays, the demuxer indexes every frame it reads with the time it believes it is at; a later seek lands on those
+  entries, labelled with whatever error the run that read them carried. So the open-loop table (above) was right going
+  forward into fresh territory and wrong going back ("works going forward but doesn't go back"). The only clock to trust
+  is the sound: tap the element through Web Audio and match its loudness against the stored envelope after every seek
+  (`sndTick`). Two things that bit on the way: `createMediaElementSource` reroutes the element's output through the
+  context, so a context that never runs (no gesture) MUTES the music — make the context on the Play click and tap the
+  element only after `ctx.state === "running"`; and the first Play often comes before the file's blob has landed, so
+  the tap must also start from the blob handler (the click's activation still allows it). Test it the way it fails:
+  run across a table cell, skip away, skip back, and read `MIDTOWN.show.sound`.
+
+## From the dancing round (2026-10-13)
+
+- **A comb fit always prefers half the tempo.** A comb's mean onset strength over the beats is highest on the sparser grid,
+  because half the tempo keeps only the strong beats. The first pass of `tools/beats.html` measured Alexander Hamilton at 68
+  BPM and The Schuyler Sisters at 51. The octave has to be RULED, not scored. `tools/beats.html` takes the count a dancer
+  counts, 70–140.
+- **Snapping a canon to the beat swallows it.** The first cut added `canon` to `at` and then snapped to the nearest beat, so
+  a 0.25 s ripple at 80 BPM (a 0.75 s beat) put all four bodies on the same beat. Snap `at`, then add `canon` (page, editor,
+  merge alike).
+- **A `//` comment pasted into the MIDDLE of a long line comments out the rest of it.** It happened twice:
+  - `actTick`'s update line lost its `ACT.T = T; … }`, and the page died with "Unexpected end of input".
+  - The editor's `window.EDITOR` lost every method after `beatAt` (`recClear is not a function`).
+
+  An exact-replacement script that adds a note mid-line must use `/* … */`.
+- **Python's `open(p, 'w')` on Windows writes CRLF.** Every file the apply scripts wrote came out with CRLF line ends.
+  `midtown.html` alone had 8,811. Git warned "CRLF will be replaced by LF". Write with `newline='\n'`, or put the bytes back
+  before committing.
+- **A spine that tips forward turns its children's "forward" toward the floor.** The arms are children of the spine. In the
+  crawl the spine pitches 1.25 rad, so the arm's rest (hanging) points down and BACK, and "forward" points down. The first
+  crawl's arms flailed behind her. Write limb angles relative to the parent's frame, not the world's.
+- **YouTube's transcript endpoints are gated.**
+  - `timedtext` returns an empty body without a PO token.
+  - `youtubei/v1/get_transcript` answers 400 "Precondition check failed", from Python and from the page alike.
+
+  What worked: in the Browser pane on youtube.com, hook `XMLHttpRequest` / `fetch`, then make the player reload its caption
+  module (`player.unloadModule('captions'); player.loadModule('captions'); setOption('captions','track',{languageCode:'en'})`).
+  Read the player's own `timedtext` response. Wait for the ads to finish first: their captions come through the same request,
+  so filter by `v=<id>`. For frames, draw `<video>` onto a canvas AFTER `requestVideoFrameCallback`. Seeking a paused video
+  and drawing on `seeked` drew the same stale frame nine times.
+- **The editor's whole-file export is a byte check.** A field the merge writes and the editor does not keep — `moves` here,
+  props' `model` in FU — breaks "byte-identical when nothing is edited" silently, at the first actor or prop that has one.
+  Check `EDITOR.fileText() === EDITOR.sourceText()` after any format change.
+
+## From the video capture round (2026-10-14)
+
+- **Python 3.15 has no torch, torchvision or onnxruntime wheel** (checked 2026-10-14: torch 2.14.1 stops at cp314,
+  onnxruntime 1.31 too). Jack's machine has 3.15 only; the `tools/vision/.venv` must be made with `py -3.13` (or
+  3.14) or stage 2 cannot import ultralytics. Stage 1 (numpy, OpenCV, imageio-ffmpeg) does install on 3.15.
+- **The repo lives in OneDrive, so `video/` would sync 1.5 GB of footage.** `video/` is a directory JUNCTION to
+  `C:\Users\jackf\Videos\hamilton-clips` (`cmd /c mklink /J`, no admin). Git sees a plain directory; the ignore
+  rules apply through it; `INDEX.json` and `README.md` inside are tracked. A fresh clone has no junction — make it
+  before importing, or the clips land in OneDrive.
+- **A `{**stats}` merge with a key that matches the data key overwrites the data.** `align.anchors` (the list)
+  was folded with `anchor_stats()` whose count was also called `anchors`; the list became an int and the next read
+  crashed on it. Counts are `count` now. Name a summary field after what it summarises, never after the thing.
+- **A single 10 s envelope window hits 0.45 on the WRONG number.** The first global search of the alignment
+  accepted it and the whole chain followed (28 s off on a synthetic Guns and Ships). A global find must stand clear
+  of its runner-up AND agree with a neighbouring window correlated on its own; a chain only ever moves ±2 s a step.
+- **Python's `open(p, 'w')` on Windows writes CRLF — again.** The in-place patches to `run.py` through
+  `open(p, 'w').write(s)` turned the whole file CRLF; `file` shows it. Normalise before committing (`sed -i 's/\r$//'`)
+  and write committed files with `newline='\n'`.
+- **The JDownloader playlist grab names files by title and fetches the audio separately.** `Title - Hamilton
+  (Original Cast 2016 - Live) [HD] (1080p_24fps_H264-128kbit_AAC).mp4` plus a `.m4a`/`.opus` beside it; the mp4 is
+  muxed with its audio. `?` in a title becomes `¿`. The `index --import --rename` route places them by title words.
+- **A low rms from five or six set points in one plane proves nothing about the camera.** Rail + gallery edge + the
+  centre lip let the lens and the distance trade off freely: the same frame solved at 9 m / 90° and 60 m / 11°, both
+  under 6 px. Only a physical prior plus the bodies' height through the candidate camera pins it; points spread
+  across the width at deck level do it without the cue. (2026-10-14, the calibration round.)
+- **The "known good" reference was itself a wrong solve.** AGENT-CALIB.md told nine agents Guns and Ships s16 was 45 m
+  back at 24°, and the solver's `HOUSE_CAMERAS` carried it; it was misidentified posts. A reference an agent is told
+  to trust must have been checked by a second method (the bodies' height, a sibling shot) first.
+- **"A camera on the stage means the points are wrong" is false for a film shoot.** We Know has on-stage cameras at
+  the SR lip and several numbers a pit camera at deck height; a hard bound on camera height rejected real cameras.
+- **Re-aligning stage 1 silently stales stages 4–5.** `frames --no-decode` rewrites every frame's `at`; `out/` keeps
+  the old ones. `floor` then `ident` must follow any re-alignment (ident now warns when it has to match by nearest frame).
+- **Agents sharing one scratchpad overwrite each other's helper scripts by name** (`crop.py`, `sheet.py`, three
+  times). Give each agent a subfolder in the brief.
+- **The stair units move between numbers.** Set points for them hold within a song at best; across songs they pulled
+  solves off by 18–200 px.
+
+- **A grid change silently moves every `bar=` / `beat=` entry in that track.** `dance.py` turns bar and beat into
+  a time through `assets/hamilton-beats.json`, so re-gridding Guns and Ships by two beats made every "bar N beat 3"
+  entry resolve two beats late until it was re-placed as "beat 1"; My Shot's beat-2/beat-3 work-arounds became
+  wrong the moment the tempo changes went in. After any grid edit, re-place that track's entries by bar and read the
+  merge's "off the beat" warnings. (2026-10-14, dance round 2.)
+- **`with` is a Python keyword.** `dict(with='burr')` is a syntax error; `dance.py` takes `with_=` and `put()` writes
+  it out as `"with"`.
+- **A move overrides a sit, and the sit does not come back.** The later-wins rule (FV) means an upper-body move given
+  to a seated body stands her up for the rest of her seat. Two seated actions are HELD in `dance.py` for a seated
+  layer that is not built; do not "fix" them by shortening the sit.
+- **The Browser pane serves `midtown.html` from cache** (transferSize 0): a plain reload runs the old code after an
+  edit. Navigate to the URL with a fresh `?r=N` each time.
+- **With the Browser pane hidden, `requestAnimationFrame` never fires.** A `javascript_tool` script that awaits it
+  hangs to the 45 s timeout and then runs later, when the pane is next shown. Drive the page's own synchronous
+  frame (`MIDTOWN.frame()`) instead.
+- **A body-frame `dvReach` reads the spine and pelvis angles already in V.** Set the lean before calling it, or the
+  hand lands where the upright body's hand would, off by the lean.
+- **On an arm abducted to horizontal, `dvArm`'s forward raise rotates about the arm's own axis** and shows nothing;
+  swinging it behind needs the twist (Euler XYZ). Same family as the four orientation-sign traps: check a palm
+  POSITION with the IK, never by eye.
+- **A long `python - <<'EOF'` heredoc full of quotes fails in the Bash tool with "unexpected EOF".** Write the
+  script to a scratch file and run that.
+
 ## From the second-house round (2026-10-14, one Opus agent)
 
 - **Two clones of one GLB share geometry.** `scene.clone()` copies objects, not buffers: `cutBeams` edits a

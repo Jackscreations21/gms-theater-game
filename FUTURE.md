@@ -42,6 +42,9 @@ moved the Beetlejuice sign onto two fly channels, and `FA` made
 `docs/ARTNET.md` a flat one-line-per-channel list — all the same day.
 **`EY` — the band channels on a dead universe — is ruled and NOT built; see
 PART 1a item 4.** The next spec starts at `FE`.
+**Update 2026-10-12:** `FE` went to the Hamilton set (2026-10-11) and **`FF`–`FO` to the
+automatic actors** (`docs/superpowers/specs/2026-10-12-automatic-actors-design.md`). **The next spec
+starts at `FP`.**
 
 When something in here ships, **delete it from this file** — this is a list of
 what is *not* done. It stops being useful the moment it becomes a history.
@@ -551,6 +554,172 @@ it does not do yet, and what the ETC pack could still give:
   /Turntable", "Outer Ring CC").
 - **Licence:** ETC's pack is non-commercial; `assets/README.md` says so. The
   Broadway plot PDFs are not ETC's and are not to be committed.
+
+### Video blocking capture — STAGES 1–5 AND THE CALIBRATE UI BUILT; THE CAMERAS ONLY HALF WON (2026-10-14, second session, RULINGS FX–GE)
+
+**2026-10-14 (second session):** the agents' round ran — nine calibration agents, ~55 kept solves of ~190 wide shots,
+stage 4 (`floor.py`), stage 5 (`ident.py`), the Calibrate clicking UI in `blocking.html`, the stage 1 fixes. What is
+left is `docs/guide/VISION.md` §7: finish the solver round (prior + body-height cue, `resolve all`, census), fix
+`setpoints.json` (rail height, the stairs per number, lip-c), `bodies` at imgsz 1280, the missed-cut round,
+Jack's labels, then `compare.py` (GC) and GD. The text below is the state before that round.
+
+
+Jack: *"body recognition on those videos to detect every body … figure out where everyone should be and when, then
+… figure out where the camera angle would be."* The spec is `docs/superpowers/specs/2026-10-13-video-blocking-capture-design.md`:
+a five-stage pipeline (frames + album-time alignment by the envelope matcher, 2D pose + tracking, per-shot camera
+by PnP from clicked set points in a Calibrate mode of `blocking.html`, floor projection, identity labelling) that
+writes per-character `(at, x, z)` tracks and a reviewable diff against the blocking — never an overwrite.
+
+**Built 2026-10-14 (`tools/vision/run.py`, see `tools/README.md`):** `index` (the clips in, named, `video/INDEX.json`),
+`frames` (stage 1: 5 fps frames, cuts, clip time → album `(track, at)` with a `tconf`), `sheet` (every cut as a pair
+of frames to judge by eye), `bodies` (stage 2: YOLO-pose + ByteTrack per shot). Stage 1 ran on all 45 clips (40 of
+the 46 tracks): 43 aligned (median residual ≤ 0.8 s), **1-04 The Story of Tonight did not** (a quiet close-harmony
+number; every window correlates under 0.5 and the windows disagree) — it needs
+`cache/1-04-the-story-of-tonight/anchors.json` by hand, two `[clipTime, "1-04:at"]` pairs from a scrub — and
+**1-01 is Disney's promo montage**, cut up, not continuous footage.
+
+**Stage 3 half-built (2026-10-14, afternoon):** `tools/vision/setpoints.json` (47 named set points + a wireframe)
+and `tools/vision/calib.py` (a focal grid-search over 12–100° with PnP at each, refined; an overlay of the
+wireframe; `calib/<clip>.json`). Proven on Guns and Ships shot 16 from nine agent-read points: a long lens from
+the back of the house, lip to 8 px, posts 25–50 px — the agent cannot resolve the timber at 720p. **Not built:**
+the Calibrate clicking mode in `blocking.html` (GA), moving-shot tracking (GA's optical-flow re-solve), the
+upper-level rule. **Not built:** stage 4 (floor projection, `out/`), stage 5 (identities, `labels/`),
+`compare.py` (the diff), GD (dance timing). **Not had** (`video/INDEX.json`
+`elsewhere.stillWanted`): 1-09 and 2-13 (on the playlist, did not download), 2-02, 2-15, 2-22, 2-23 (unavailable
+there), and a full uncut 1-01. **Known soft spots:** a lead-in anchor can sit
+up to 1.5 s off (applause matched at the lowered local bar — it is bounded by the ±2 s slack and only at a clip's
+ends; `tconf` marks the ends); One Last Time's offset drifts 10 s over the clip (the film's version is 25 s longer)
+and the chain follows it at correlations of 0.25–0.33. The spec's open questions stay Jack's: the Tonys/Ham4Ham
+clips, who clicks the calibration, 5 vs 10 fps for the dance numbers.
+
+### The blocking editor — what it does not do yet (2026-10-12, RULING FP built)
+
+`blocking.html` is built (the plan, the music, the blackouts, editing, the change file, props). NOT built:
+
+- **Applying the change file automatically.** A session applies it to the generators by hand ("Applying it" in the format
+  doc). A tool that turns `move` / `retime` changes into generator patches would be the next step if Jack sends many.
+- **The sound tap.** Skips are corrected by the VBR seek table only; `midtown.html` (now on `actors` too, merged from
+  `cue-blackouts`) also matches the audio's loudness envelope, because Chrome lands a skip into an already-played region
+  by its own history. (In the 3D page a back skip now resumes within ~0.15 s of the asked time: STATE 2026-10-13.) In the editor a
+  skip BACK into music already played may land some seconds off. Port `sndTick` / the envelope if he notices.
+- **YouTube** as a music source (the page has it; the editor has the file, a chosen MP3, or silence).
+- **Group edits:** select several waypoints or actors, move a formation, copy a number's blocking to another moment,
+  mirror a staging. One waypoint at a time today.
+- **The cast is fixed** in the editor (no adding / renaming actors; the cast file is the source, FN).
+- **Turntable revolves** as a tool (walk an actor round an arc: today waypoints by hand, as the writers did).
+- **The person lights are a snapshot** (`assets/hamilton-pools.json`, re-dumped 2026-10-13 after merging #233's cue revisions):
+  re-dump and run `tools/blocking-pools.py` after cue changes. The blackouts are computed live from the cues and do not
+  have this problem.
+- **Simple mode does not:** set facings (a keyframe faces the way she walked; facings are Advanced's), give a dwell or a
+  walk-through point (every keyframe is a stop), record a stair climb as foot and top (drag to the foot, then the top), or
+  merge a recording into the loaded file in the page (a session applies it to the generators). It shows Advanced's edits
+  only through the loaded file, not live.
+- **3D in the editor:** it is a plan only; height shows as "↑" and a white rim. `midtown.html` remains the 3D view.
+- **Prop models in the editor (RULING FU).** Two-person carries are recorded and drawn since FV's round, and a prop's `model`
+  is kept and written back; but a modelled prop is still drawn as its square on the plan, and Advanced mode's "Carried by"
+  form shows one carrier only.
+
+### Automatic actors — what is still to come (2026-10-12, RULINGS FF–FM built)
+
+**From review 3 (2026-10-13, the video evidence), NOT built:**
+- **A thrown prop:** a carry that flies, an arc from one actor's hands to another's. My Shot's thrown stool is one: a
+  clip comment has a stool thrown across the stage and caught, and chairs thrown in the air.
+- **Lifts — BUILT as moves (RULING GF):** `lift`, `catch`, `partner-lift`, two bodies on one entry (`with`). The Bullet
+  is lifted at the centre in 2-22 (ens6 lifts her). NOT built: a body CARRIED along a path (Hamilton's mother in Hurricane,
+  Eliza carried in on the ring, 1-23 222–249, walked today); a lift by more than one lifter (one `with` per lead).
+- **A sit pose — BUILT (RULING GF):** `sit` snaps to the nearest chair, bench, stool or box; 46 seated entries (the King's
+  stool, Hamilton's chair in Your Obedient Servant, the tavern, the cabinet, the jury…). See "the seated layer" below.
+- **Hand props — BUILT (RULING GF):** `kind: "hand"` with an `item` (book, quill, letter, pistol, sword, glass), riding in
+  the carrier's right hand. NOT yet in the blocking: only the two books are hand props. The sword Washington gives him
+  (1-19), the quills handed to Burr and to Hamilton in 2-20, the duel's pistols (1-15, 2-22), Peggy's letter (1-10) and the
+  toast's glasses (1-11) are mimed by the moves (`sword-take`, `gun-pass`, `aim`…) with nothing in the hand; a session
+  adds them in `tools/blocking/props.py` (`P(id, 'hand', label, color, item=…)`) with carry waypoints.
+- **The coat as a costume.** `coat-on` (1-01, 1-18) is a mime: no coat appears on him. A worn costume piece wants the
+  per-character models (below).
+- **Costume changes**: Burr's green jacket; the parchment outfits of the 1-01 roll call.
+- **The beat grid** (`assets/hamilton-beats.json`, the dance agent's):
+  - My Shot's tempo changes and 1-18's downbeat — FIXED (RULING GF: nine `changes` in 1-03, `firstBeat` 1.716 in 1-18);
+  - the other drift candidates, unexamined: 1-02, 1-07, 1-11, 1-17, 1-22, 2-01, 2-03, 2-07, 2-09, 2-22, 2-23 — re-grid
+    each against the album's onsets as GF did, then move its entries by bar;
+  - segment 7's clip timestamps were 0–7 s off the album.
+
+**What Jack said:** *"make a system for automatic actors. Make a software where you can create their paths
+and stuff. Right now just make them using this mannequin but later we will add arm and feet movement."*
+The system is built (`midtown.html`, the Blocking panel, `assets/hamilton-blocking.json`, the spec). NOT built:
+
+- **Arms and feet — BUILT (RULING FS, 2026-10-13):** the mannequin cut into fifteen rigid parts
+  (`assets/mannequin-woman-rig.glb`, `tools/mannequin-rig.py`), a walk / idle / turn / carry from the pose. NOT built:
+  - **Gestures per keyframe** — PARTLY BUILT by FV and GF: a move from the library (point, salute, bow, kneel, reach-up,
+    freeze…) is given to a body at a time with `moves`, and the editor's Dance button records it. Sitting (`sit`) and the
+    duel's raised pistol (`aim-up`) are BUILT (GF). Not built: a pose held for as long as a waypoint holds (today a move's
+    counts say how long).
+- **Dancing (RULINGS FV, GF) — BUILT: the beat grid (1-03 and 1-18 re-gridded), 87 moves, `moves` in the file, the
+  Dance button, two passes of assignments (260 entries); pairs (`with`: `lift`, `catch`, `partner-lift`, `comfort`,
+  `sabre`, `handshake`, `sword-take`, `gun-pass`), sitting, hand props. NOT built:**
+  - **The seated layer:** an upper-body move laid on a seated body. Today a move overrides a `sit` and the sit does not
+    come back, so two seated actions are HELD (commented in `tools/blocking/dance.py`): the 2-02 cabinet's heads nodding
+    through each verse (`head-bob`), and the King jamming on his stool in 2-11 (`bounce`). Put them back when it is built.
+    Also not seated, for want of a seat prop: Burr in 1-02 and 2-13, Jefferson on the 2-14 desk, the rowers, the 2-03 piano.
+  - **Partnering, the rest:** the gavotte's palms meet only if the two are placed facing each other (it is not a pair
+    move); the men's lifts in Helpless and Satisfied and the rewind's `floor-slide` round Angelica are NOT placed (the
+    sources give no time or body; `floor-slide` is in the library, unused); nobody is dipped.
+  - **Props in a dance:** the furniture is carried now (Yorktown's five, Hurricane's ring) and a hand prop rides in the
+    hand (GF); still not props: the duel's pistols, the sword, the quills, letters and glasses (above), and the Pamphlet's
+    papers (`make-it-rain` throws nothing).
+  - **A far-body level of detail** for the jointed bodies (their frame cost: "The jointed bodies cost frame time", below).
+  - **Motion capture** or video-derived poses: every shape is hand-made from the sources' words and a few frames.
+  - **The Yorktown phrase's baseball pitch** ("from here I take the baseball … into my batting … into my glove") and
+    **fingers** (the Schuyler sisters' two fingers, jazz hands): the hand is one rigid part.
+  - **Jack's eye on every assignment**, and first on GF's 83 new ones (each `note` cites its `research/segN.md` Review 3).
+    `tools/blocking/dance.py` places each move by a cue label + whole bars, or by bar and beat; the Right Hand Man phrase
+    is a guess at the bar; which two dancers do 2-01's lift, and who lifts the Bullet, are readings. The beat grid's tempo
+    changes (18 tracks) are placed to within a 16 s window.
+  - **Speed per move in the editor** (`speed`, `reverse` exist in the file; the picker offers counts, mirror and canon).
+  - **A rigged, skinned model** (Mixamo-style), which would bend at the joints instead of showing the cut; the
+    rig's part names and joints (FS) are the skeleton it would have to match.
+  - **Faces, costumes, per-character bodies** (men's bodies, heights): a `model` key per actor, a body swap (FL).
+  - **The fused hip and armpit** read patched up close (about 1 m) when an arm swings away: the scan has no surface
+    there and the liner is a smoothed voxel stand-in. A better liner (finer, or a fitted surface), or a body scanned
+    with her arms away from her sides, would fix it.
+  - **A stride fitted to a stair's treads** (today the gait's 1.3 m cycle is kept on stairs, and her height steps
+    riser by riser with the floor ray, FI); **feet planted on a turning turntable** (with the turntables, below).
+  - **Running.** Above ~2.5 m/s the walk just goes faster (a run has a flight phase and more knee).
+- **Per-character models.** A `model` key per actor in the file; today every actor wears the mannequin in her
+  own colour. Open: men's bodies, costumes, heights per character.
+- **Riding the turntables.** The two turntables do not turn yet (their moves are in no file — FUTURE's Hamilton
+  section); when they do, an actor standing on one should turn with it: waypoints in the turntable's frame
+  (a `on: "tt-inner"` key), or the turn added to the pose. Open: which.
+- **The whole show — BLOCKED (RULING FO; after review 2, 6,491 waypoints and 62 props).** Still open:
+  - Jack's eye on it with the music, and his two rulings: the sisters' order in 1-05, and the duel sides in 2-22.
+  - The cue fixes in `docs/hamilton-blocking-cue-notes.md`:
+    - the 2-02 / 2-07 Cabinet Battle mirrors;
+    - 1-23 cues 659/661 refocused onto Washington on the SL gallery;
+    - 1-11 Q369/370 mirrored to the DR pool;
+    - the FOH X4s ch41–46 and apron Vipers ch2/ch4 stopped by house geometry at z ≈ 8.4;
+    - 2-05's preset-767 table light that the page does not resolve to a focus;
+    - the rest of the list.
+  - Props the blocking mimes: props are BUILT (RULING FR) and seeded by `tools/blocking/props.py`; still not a prop:
+    - the rolling staircase (a moving set piece, not something carried).
+  - The turntables do not turn: revolves are walked as arcs (props ride them by gliding, FT).
+  - Review 2's questions for Jack (`docs/hamilton-blocking-cue-notes.md`):
+    - the 1-07 "Kings men DS" figures;
+    - the 1-09 / 1-10 side flip;
+    - which side the King's stool goes;
+    - and the cue items: 1-10 Q302 ch25/26, 1-20 596, 1-23 631.1 X4 44, 2-09 992–995 ch25 → the desk, the 2-07 sides.
+  - **The jointed bodies cost frame time.** At the 1-01 line-up, 19 bodies at 1280 × 800 on the Intel UHD: medians
+    89.5 / 106.4 ms with the actors against 60.7 / 70.2 ms without, about +30 ms. The single-mesh bodies cost about
+    3 ms. FS measured the draw calls going 1,247 → 1,527 a pass. Merging each body's parts, or a level of detail for
+    far bodies, would win it back.
+- **Follow spots on actors.** The three Lycians could track a named actor (`focus` = her head each frame).
+- **Actors avoiding each other.** Paths cross freely; nothing stops two bodies sharing a spot.
+- **Light on a body is speckled.** The pool shader takes its normal from depth; on a dense body that shows
+  dark flecks where it faces away. Real normals into the albedo pass would fix it (an engine change).
+- **Small props under a path lift her** by their height (the floor is found by ray, FI); a "deck only" flag
+  per leg, or a minimum footprint, would smooth it.
+- **FIXED on `actors` (2026-10-12, PR #234), still on `main` until it merges:** once the show had made its YouTube adapter
+  `SHW.A` and YouTube could not play, `showState()` threw reading `SHW.A.currentTime.toFixed`. The adapter's time now answers
+  0 for an unavailable video and `showState` guards it. Also, by the player's own design the clock waits while the YouTube player is not ready (readyState 0), so
+  where YouTube cannot play, untick "Play the album from YouTube" to get the silent clock (seen, not measured).
 
 ### Realism — the Midtown scan, and the options list (2026-10-10)
 

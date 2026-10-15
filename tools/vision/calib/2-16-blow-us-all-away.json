@@ -1,0 +1,213 @@
+{
+ "clip": "2-16-blow-us-all-away",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "4": {
+   "frame": 142,
+   "points": {
+    "stair-sr-foot": [
+     80.0,
+     578.0
+    ],
+    "stair-sr-top": [
+     200.0,
+     256.0
+    ],
+    "rail-srstrip-ds": [
+     252.0,
+     152.0
+    ],
+    "rail-sl-us": [
+     1180.0,
+     172.0
+    ],
+    "stair-sl-top": [
+     1140.0,
+     285.0
+    ],
+    "post-bw-sr2-gal": [
+     385.0,
+     284.0
+    ],
+    "post-bw-sr1-gal": [
+     441.0,
+     284.0
+    ],
+    "post-bw-c-gal": [
+     704.0,
+     283.0
+    ],
+    "rail-us-c": [
+     704.0,
+     182.0
+    ],
+    "lip-c": [
+     700.0,
+     662.0
+    ],
+    "post-bw-c-base": [
+     706.0,
+     521.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1493.2318770911036,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1493.2318770911036,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9987944533390412,
+      0.004702849471732028,
+      -0.04886228797357122
+     ],
+     [
+      0.0027589324620666228,
+      -0.9992048477781157,
+      -0.039775123738116085
+     ],
+     [
+      -0.04901049143638255,
+      0.03959236521804325,
+      -0.9980132345543347
+     ]
+    ],
+    "t": [
+     0.544268714317091,
+     1.7291789708183314,
+     12.601887362604613
+    ],
+    "rvec": [
+     3.1009511295146583,
+     0.0057904275597868305,
+     -0.0759503888315581
+    ],
+    "camera": [
+     0.069,
+     1.226,
+     12.672
+    ],
+    "look": [
+     -0.049,
+     0.04,
+     -0.998
+    ],
+    "fovDeg": 46.4,
+    "rms": 8.49,
+    "residuals": [
+     10.4,
+     10.6,
+     9.1,
+     8.1,
+     14.9,
+     0.7,
+     4.1,
+     3.8,
+     12.1,
+     2.9,
+     4.1
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      44.0,
+      51.0
+     ],
+     "dist": [
+      10.4,
+      12.6
+     ],
+     "poor": false
+    },
+    "bodyHeightM": 1.34,
+    "bodies": 48,
+    "free": {
+     "camera": [
+      0.07,
+      1.21,
+      12.48
+     ],
+     "fovDeg": 47.0,
+     "rms": 8.39,
+     "breaks": []
+    },
+    "mPerPx": 0.0766,
+    "cond": {
+     "sv": [
+      3.34,
+      2.8,
+      1.17
+     ],
+     "heightSd": 1.39,
+     "depthSd": 2.9,
+     "sdDistPerPx": 0.07,
+     "sdFovPerPx": 0.22
+    }
+   },
+   "moving": true,
+   "judged": "fair"
+  },
+  "17": {
+   "skipped": "too tight (SL gallery pair + seated group), dark; frames across the shot do not match (move or missed cut)",
+   "was": 11,
+   "split": [
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+   ]
+  },
+  "23": {
+   "skipped": "medium shot, very dark (two pools of light + SL balcony); fewer than five nameable points; first and middle frames do not match (likely a missed cut)",
+   "was": 13,
+   "split": [
+    22,
+    23
+   ]
+  },
+  "35": {
+   "skipped": "too tight at the middle frame; first/middle/last frames do not match (big move or missed cuts in 123 frames)",
+   "was": 22,
+   "split": [
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38
+   ]
+  },
+  "42": {
+   "skipped": "gallery floor/rail and lip lines readable but no certain x anchors in the dark; 7 frames",
+   "was": 26
+  }
+ },
+ "shotmap": "2026-10-14 12:11:20"
+}

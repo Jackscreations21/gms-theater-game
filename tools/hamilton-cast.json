@@ -1,0 +1,25 @@
+{
+ "what": "The Hamilton company for midtown.html's automatic actors (RULING FN): twenty bodies, their ids, default head labels (name), colours, and the ONLY other labels each may show (the doublings, by per-waypoint `label`). tools/blocking-merge.py reads it; docs/hamilton-blocking-format.md lists it. Doublings follow the Original Broadway Cast's tracks as far as they are known: Lafayette/Jefferson, Mulligan/Madison, Laurens/Philip, Peggy/Maria Reynolds; the ensemble's named parts each on one fixed body.",
+ "actors": [
+  { "id": "hamilton",   "name": "Hamilton",    "color": "#6abf7a", "labels": [] },
+  { "id": "burr",       "name": "Burr",        "color": "#c9a23a", "labels": [] },
+  { "id": "eliza",      "name": "Eliza",       "color": "#5a8fd8", "labels": [] },
+  { "id": "angelica",   "name": "Angelica",    "color": "#e0789e", "labels": [] },
+  { "id": "peggy",      "name": "Peggy",       "color": "#e8d24a", "labels": ["Maria Reynolds"] },
+  { "id": "washington", "name": "Washington",  "color": "#ece6da", "labels": [] },
+  { "id": "lafayette",  "name": "Lafayette",   "color": "#4fc1c1", "labels": ["Jefferson"] },
+  { "id": "mulligan",   "name": "Mulligan",    "color": "#a47ad8", "labels": ["Madison"] },
+  { "id": "laurens",    "name": "Laurens",     "color": "#e0883a", "labels": ["Philip"] },
+  { "id": "king",       "name": "King George", "color": "#c0392b", "labels": [] },
+  { "id": "ens1",  "name": "Ensemble 1",  "color": "#8c8c8c", "labels": ["The Bullet"] },
+  { "id": "ens2",  "name": "Ensemble 2",  "color": "#8c8c8c", "labels": ["Samuel Seabury"] },
+  { "id": "ens3",  "name": "Ensemble 3",  "color": "#8c8c8c", "labels": ["Charles Lee"] },
+  { "id": "ens4",  "name": "Ensemble 4",  "color": "#8c8c8c", "labels": ["Philip Schuyler", "James Reynolds", "The Doctor"] },
+  { "id": "ens5",  "name": "Ensemble 5",  "color": "#8c8c8c", "labels": ["George Eacker"] },
+  { "id": "ens6",  "name": "Ensemble 6",  "color": "#8c8c8c", "labels": ["Dolly"] },
+  { "id": "ens7",  "name": "Ensemble 7",  "color": "#8c8c8c", "labels": ["Martha"] },
+  { "id": "ens8",  "name": "Ensemble 8",  "color": "#8c8c8c", "labels": [] },
+  { "id": "ens9",  "name": "Ensemble 9",  "color": "#8c8c8c", "labels": [] },
+  { "id": "ens10", "name": "Ensemble 10", "color": "#8c8c8c", "labels": [] }
+ ]
+}

@@ -1,4 +1,4 @@
-# STATE — 2026-10-15 (OPEN ITEMS ONLY — `second-house` = PR #235 OPEN; `cue-blackouts` = PR #233 OPEN; nothing is local-only)
+# STATE — 2026-10-15 (OPEN ITEMS ONLY — `second-house` = PR #235 OPEN, carrying `main` as of #234; #233 and #234 MERGED)
 
 **Do not trust this file for what is next without fetching first.** `git fetch`, compare `origin/main`, then read
 this. **This file holds only what is open.** Everything finished is in HANDOFF.md (the "DONE" blocks, newest first)
@@ -6,8 +6,9 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
 
 ## Where things stand
 
-- **`main` is `5d24188`**: #230 (the show), #231 (its record) and #232 (`fixture-glbs`, the 38 model files) merged by
-  Jack. The Midtown page with the rig, the set and the whole of Hamilton auto-timed is on Pages:
+- **`main` is `b74480b`**: #234 (`actors` — the automatic actors, the editor, the dancing, the video capture, dance
+  round 2; it carried #233, the 2026-10-12 cue day) merged 2026-10-15 at Jack's word, on top of #230–#232. The Midtown
+  page with the rig, the set, the whole of Hamilton auto-timed AND the actors is on Pages:
   https://jackscreations21.github.io/gms-theater-game/midtown.html
 - **PR #235 (`second-house`, off `main`) is OPEN**: https://github.com/Jackscreations21/gms-theater-game/pull/235.
   Jack: *"use the same theater we used for the hamilton one. just copy it over then remove the hamilton set. also make
@@ -34,20 +35,18 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
   house end (two pleated halves on a track, parting to the jambs in 1 s); a closed door or curtain stops the walker.
   Checked on the merge at localhost:8080 with real key presses: doors opened on E, the curtain stopped the walker,
   E parted it, the walker went through into the aisle; console clean, `walls.check()` / `lx.check()` unchanged.
-- **PR #233 (`cue-blackouts`) is OPEN**: https://github.com/Jackscreations21/gms-theater-game/pull/233. It carries the
-  2026-10-12 day — cue revisions 3, 4 and 5 (`assets/hamilton-show.json`, 891 cues, 123 real), the song/time readout
-  (`#sh-hud`), the skip synced by the sound itself (`assets/hamilton-soundtrack-env.u8`, `soundtrack.seek.toc`), and the
-  interval fix. Nothing in `src/`, so `the-house.html` and `docs/ARTNET.md` are untouched and the suites are unaffected.
-  **Until it merges, that work is live only on the local server (localhost:8080), not on Pages.**
+- **PR #233 and PR #234 are MERGED** (2026-10-15). Their records — the cue day, the actors, the dancing, the video
+  capture — are HANDOFF.md's blocks below the second-house ones. **The actors' open work is item 3a below.**
 - Rulings are at **FG** (FH next). FF (2026-10-15): the auditorium doors swing INTO the house. FG (2026-10-15): a
   closed curtain stops the walker, like a closed door.
 
 ## Open, in the order it will bite
 
-1. **Land #235 and #233 (either order), then the post-merge protocol for each:** fast-forward local `main`; delete
-   the landed branch and the five older landed branches `midtown-walk`, `midtown-walls`, `midtown-lights`,
+1. **Land #235, then the post-merge protocol:** fast-forward local `main`; delete the landed branches `second-house`,
+   `actors`, `cue-blackouts` and the five older landed ones `midtown-walk`, `midtown-walls`, `midtown-lights`,
    `record-230`, `fixture-glbs` both sides (the sandbox refuses `git push --delete`; Jack or a terminal); suites when
-   Node is on the PATH (`winget install OpenJS.NodeJS.LTS`, Jack runs it — the sandbox cannot).
+   Node is on the PATH (`winget install OpenJS.NodeJS.LTS`, Jack runs it — the sandbox cannot; `C:\Program Files\nodejs`
+   does not exist on this machine today). The `actors` worktree under `.claude/worktrees/` goes with its branch.
 2. **Jack's eye on Theatre 2, its booth and desk, the doors and the long lobby** (PR #235). Decisions it raises, none
    made: Theatre 2's own show, or stays empty (its desk screens are dark until there is one); the doors' swing is
    RULED (FF: into the house); a closed curtain stopping the walker is RULED (FG: it does, like a closed door); whether
@@ -60,7 +59,16 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
    land on house 1 only (`houseScene()` — one line to include Theatre 2); house 1's desk measure costs ~1.3 s of the
    load and the faster copy Theatre 2 uses would save ~0.9 s but moves its geometry by ~1e-8 m (TRAPS); Theatre 2's
    followspot props stay full size when house 1's set is "fitted" (house 1's spots shrink with the set).
-3. **His re-check through the checklist.** The brief is the artifact https://claude.ai/artifact/FpiGBBW8LicWbaRb1nTUjg
+3a. **The actors' next round (from PR #234): his act-1 notes on the dancing.** Jack watched act 1 after dance round 2
+   (RULING GF) and wrote verdicts into the blocking checklist https://claude.ai/artifact/4Q5Xh37ZmSinhtsJbVhAub
+   (`songs`): 14 good, 7 need work (1-01 spotlights off — a CUE note; 1-02 the table farther to centre; 1-03 My Shot
+   needs a real dance track; 1-04 the chairs' exit and the lead-in to 1-05; 1-05 Burr, re-check; 1-11 the rewind;
+   1-14 the desk off at 50 and Lee's spotlight — a CUE note; 1-17 wait for the blackout; 1-20 Yorktown's box and
+   line-up), two notes with no verdict (1-08, 1-18 — Lafayette stands IN the table: no raised standing yet). Act 2 not
+   watched. **The full brief, with his words per song and the method (segment generators, `props.py`, `dance.py`,
+   `MIDTOWN.actors.check()`), is HANDOFF.md's block "NEXT SESSION: HIS ACT-1 NOTES — SEVEN FIXES AND TWO SETS OF
+   TIMINGS".** Read the checklist again first; he may add act 2.
+3. **His re-check through the cue checklist.** The brief is the artifact https://claude.ai/artifact/FpiGBBW8LicWbaRb1nTUjg
    ("Hamilton Cue Checklist": collection `songs`, doc id = track id, fields `status` / `notes` / `updatedAt`). **Read
    it with `ArtifactData` `list` (or `query` on `status != good`) at the start of every cue round.** Nine songs carry
    notes answered once and not yet re-checked — act 1: My Shot, Farmer Refuted, Ten Duel Commandments, Guns and Ships,

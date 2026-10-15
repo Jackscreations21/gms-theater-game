@@ -30,6 +30,7 @@ paint, save).
 | [docs/guide/WORKFLOW.md](docs/guide/WORKFLOW.md) | before your first commit — PR rules, seam checks, this machine's quirks |
 | [docs/guide/VR.md](docs/guide/VR.md) | touching p9, grabs, controllers, VR perf |
 | [docs/guide/BUILD-SYSTEM.md](docs/guide/BUILD-SYSTEM.md) | touching p4c, wood, assemblies, the save |
+| [docs/guide/VISION.md](docs/guide/VISION.md) | touching `tools/vision/`, `video/`, the footage, or spawning the calibration agents — how the video blocking capture works, where it stands, what is left |
 
 ## Commands
 

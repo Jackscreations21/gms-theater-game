@@ -1,0 +1,170 @@
+{
+ "clip": "1-12-the-story-of-tonight-reprise",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "7": {
+   "skipped": "medium shot of the SR half that pans (252 vs 263 differ); fewer than five clear set points"
+  },
+  "8": {
+   "frame": 276,
+   "points": {
+    "rail-us-sr": [
+     205.0,
+     204.0
+    ],
+    "rail-us-c": [
+     640.0,
+     203.0
+    ],
+    "stair-sl-top": [
+     1088.0,
+     297.0
+    ],
+    "post-bw-c-gal": [
+     639.0,
+     295.0
+    ],
+    "post-sl-b-gal": [
+     1216.0,
+     288.0
+    ],
+    "post-sl-b-base": [
+     1187.0,
+     565.0
+    ],
+    "gal-sl-ds": [
+     1275.0,
+     278.0
+    ],
+    "stair-sr-top": [
+     69.0,
+     281.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      2160.6037904583973,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      2160.6037904583973,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9994676424725845,
+      0.002214118025251279,
+      -0.03255041215813094
+     ],
+     [
+      0.0028393498474631345,
+      -0.9998121216262987,
+      0.019174450228440696
+     ],
+     [
+      -0.03250184214375629,
+      -0.019256664573323586,
+      -0.999286150773027
+     ]
+    ],
+    "t": [
+     -0.25626883213586016,
+     2.1011303742052716,
+     18.09302177551682
+    ],
+    "rvec": [
+     -3.121957734090082,
+     -0.003945592856308457,
+     0.050790806694577834
+    ],
+    "camera": [
+     0.838,
+     2.45,
+     18.031
+    ],
+    "look": [
+     -0.033,
+     -0.019,
+     -0.999
+    ],
+    "fovDeg": 33.0,
+    "rms": 14.59,
+    "residuals": [
+     4.3,
+     15.9,
+     9.3,
+     11.6,
+     7.1,
+     29.1,
+     3.9,
+     17.3
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "nearest house camera within 2.1 px of the best",
+    "depthCue": "none",
+    "depthCueNote": "uninformative: shoulders 1.52-1.53 m over every lens",
+    "window": {
+     "tolPx": 2.09,
+     "fov": [
+      31.0,
+      43.0
+     ],
+     "dist": [
+      12.7,
+      18.5
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.52,
+    "bodies": 40,
+    "free": {
+     "camera": [
+      1.3,
+      2.52,
+      15.82
+     ],
+     "fovDeg": 37.0,
+     "rms": 13.92,
+     "breaks": []
+    },
+    "mPerPx": 0.0564,
+    "cond": {
+     "sv": [
+      3.96,
+      2.05,
+      0.88
+     ],
+     "heightSd": 1.04,
+     "depthSd": 2.2,
+     "sdDistPerPx": 0.19,
+     "sdFovPerPx": 0.32
+    }
+   },
+   "moving": false,
+   "judged": "fair",
+   "note": "points carried from 1-10-helpless shot 2 by a SIFT homography (12 inliers, upper set only); rail, gallery floor and SL stair checked on the overlay; within the shot the framing changes <2% (264 vs 287)"
+  },
+  "10": {
+   "skipped": "medium, closer camera on the SR half, panning across 75 frames (288 vs 362 differ); set points too few and dim",
+   "was": 9,
+   "split": [
+    9,
+    10
+   ]
+  }
+ },
+ "shotmap": "2026-10-14 12:10:59"
+}

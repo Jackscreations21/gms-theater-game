@@ -1,0 +1,16 @@
+{
+ "clip": "1-21-what-comes-next",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "1": {
+   "frame": 35,
+   "skipped": "too dark: near-black blue wash, no set edges readable (found only with --max-h 0.5 --min-bodies 2)",
+   "was": 0,
+   "split": [
+    0,
+    1
+   ]
+  }
+ },
+ "shotmap": "2026-10-14 12:11:06"
+}

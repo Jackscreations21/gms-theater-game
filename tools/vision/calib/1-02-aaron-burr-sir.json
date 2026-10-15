@@ -1,0 +1,179 @@
+{
+ "clip": "1-02-aaron-burr-sir",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "0": {
+   "frame": 4,
+   "points": {
+    "rail-us-c": [
+     640.0,
+     412.0
+    ],
+    "gal-us-sr": [
+     390.0,
+     463.0
+    ],
+    "rail-sl-us": [
+     940.0,
+     363.0
+    ],
+    "rail-sl-ds": [
+     1145.0,
+     252.0
+    ],
+    "rail-sr-ds": [
+     112.0,
+     265.0
+    ],
+    "rail-sr-us": [
+     280.0,
+     352.0
+    ],
+    "rail-srstrip-ds": [
+     375.0,
+     362.0
+    ],
+    "lip-c": [
+     635.0,
+     636.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      772.2539707563114,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      772.2539707563114,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9991204206620352,
+      -0.0034002173731139543,
+      -0.0417950180994511
+     ],
+     [
+      -0.015497672069064581,
+      -0.956080504736021,
+      -0.2926941930140656
+     ],
+     [
+      -0.038964178119878345,
+      0.29308447073417404,
+      -0.9552922515324362
+     ]
+    ],
+    "t": [
+     0.2037217012170268,
+     3.3100076586828733,
+     9.679184954846045
+    ],
+    "rvec": [
+     2.843636922361631,
+     -0.013742188962126962,
+     -0.0587265651157061
+    ],
+    "camera": [
+     0.225,
+     0.329,
+     10.224
+    ],
+    "look": [
+     -0.039,
+     0.293,
+     -0.955
+    ],
+    "fovDeg": 79.3,
+    "rms": 16.83,
+    "residuals": [
+     20.6,
+     9.8,
+     23.1,
+     22.2,
+     16.7,
+     17.3,
+     3.9,
+     11.3
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms",
+    "depthCue": "none",
+    "depthCueNote": "implausible: shoulders 2.31-3.26 m, never 1.25-1.55",
+    "window": {
+     "tolPx": 2.53,
+     "fov": [
+      73.0,
+      86.0
+     ],
+     "dist": [
+      8.3,
+      10.3
+     ],
+     "poor": false
+    },
+    "bodyHeightM": null,
+    "bodies": 0,
+    "free": {
+     "camera": [
+      0.23,
+      0.33,
+      10.27
+     ],
+     "fovDeg": 79.0,
+     "rms": 16.83,
+     "breaks": []
+    },
+    "mPerPx": 0.3395,
+    "cond": {
+     "sv": [
+      4.01,
+      3.05,
+      0.98
+     ],
+     "heightSd": 1.17,
+     "depthSd": 3.1,
+     "sdDistPerPx": 0.04,
+     "sdFovPerPx": 0.27
+    }
+   },
+   "moving": null,
+   "judged": "fair"
+  },
+  "17": {
+   "skipped": "too tight: a medium of three men in the tavern, fewer than five set points",
+   "was": 16,
+   "split": [
+    16,
+    17,
+    18
+   ]
+  },
+  "22": {
+   "skipped": "tavern medium-wide: the upstage rail ends and centre are hidden by the chandelier and dressing, no lip; fewer than five certain points",
+   "was": 19
+  },
+  "27": {
+   "skipped": "camera pans/zooms through the shot; tavern dressing hides the rail ends and centre, lip not legible",
+   "was": 23
+  },
+  "30": {
+   "skipped": "tavern medium-wide, zooms; the rail ends, centre and lip not identifiable with confidence",
+   "was": 26
+  }
+ },
+ "shotmap": "2026-10-14 12:10:50"
+}

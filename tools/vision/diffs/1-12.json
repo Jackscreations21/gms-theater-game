@@ -1,0 +1,167 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-12",
+  "title": "The Story of Tonight (Reprise)",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-12.json",
+  "outSha256": "869b714d167b67fdef4cf4de78c4832480fe17ea1d38e5677f9df8516560fe7d",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-12-the-story-of-tonight-reprise": {
+    "url": "https://www.youtube.com/watch?v=e4NAz2TWA4I",
+    "shots": {
+     "8": {
+      "judged": "fair",
+      "moving": false,
+      "rms": 14.59
+     }
+    },
+    "tracklets": 7,
+    "positions": 130,
+    "identified": 92
+   }
+  },
+  "stage4Positions": 130,
+  "counts": {
+   "samples": 130,
+   "withPosition": 130,
+   "offMap": 0,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 2,
+   "pool": 128,
+   "other": 0,
+   "byRule": {
+    "blocking": 2,
+    "pool": 128
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "mulligan": {
+   "name": "Mulligan (also Madison)",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 2,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 128,
+  "withPosition": 128,
+  "tracklets": 6,
+  "formations": [
+   {
+    "from": 45.0,
+    "to": 48.0,
+    "clip": "1-12-the-story-of-tonight-reprise",
+    "at": 47.2,
+    "bodies": 6,
+    "tracklets": 6,
+    "deck": 6,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 1,
+     "SL": 3
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.92,
+     -0.4
+    ],
+    "extent": {
+     "x": [
+      -3.2,
+      4.67
+     ],
+     "z": [
+      -3.85,
+      0.71
+     ]
+    },
+    "samples": 60,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 7
+    }
+   },
+   {
+    "from": 48.0,
+    "to": 51.0,
+    "clip": "1-12-the-story-of-tonight-reprise",
+    "at": 48.2,
+    "bodies": 6,
+    "tracklets": 6,
+    "deck": 6,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 3,
+     "C": 0,
+     "SL": 3
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.58,
+     -0.28
+    ],
+    "extent": {
+     "x": [
+      -3.18,
+      4.63
+     ],
+     "z": [
+      -3.69,
+      0.84
+     ]
+    },
+    "samples": 68,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 7
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 2
+ }
+}

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hamilton beat grid</title>
+<style>
+  :root { --bg: #15141a; --fg: #ece8f2; --dim: #9a94a6; --acc: #e0b25a; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, sans-serif; }
+  button { font: inherit; padding: 6px 12px; margin-right: 6px; }
+  pre { white-space: pre-wrap; color: var(--dim); font-size: 12px; }
+  table { border-collapse: collapse; font-size: 12px; } td, th { padding: 2px 8px; border-bottom: 1px solid #2a2833; text-align: right; }
+  th { color: var(--dim); font-weight: 500; } td:nth-child(2) { text-align: left; }
+  canvas { display: block; margin: 8px 0; max-width: 100%; background: #0d0c10; }
+</style></head>
+<body>
+<h1 style="font-size:18px;margin:0 0 6px">Hamilton beat grid — <span style="color:var(--dim)">tools/beats.html (RULING FV)</span></h1>
+<p style="color:var(--dim);margin:0 0 10px">Serve the repository root (python -m http.server), with Jack's git-ignored
+<code>assets/audio/hamilton-soundtrack.mp3</code> in place, and press Measure. It decodes each album track from the one file,
+measures its tempo and downbeat, and offers <code>assets/hamilton-beats.json</code> to download. Nothing is sent anywhere.</p>
+<button id="go">Measure</button><button id="dl" disabled>Download hamilton-beats.json</button>
+<pre id="log"></pre>
+<div id="out"></div>
+<script>
+'use strict';
+/* THE BEAT GRID (RULING FV). Every album track gets { bpm, firstBeat, meter, changes? } on its own clock (seconds into the
+   track, the cues' and the blocking's clock). How it is measured, all here in the browser (the soundtrack is an MP3; Python on
+   this machine has no decoder):
+   1. The MP3's frames are walked (headers only) for an exact time ↔ byte map: a track's bytes are sliced out and decoded alone
+      (4 frames of pre-roll for the bit reservoir), at 11,025 Hz.
+   2. ONSET STRENGTH: spectral flux of the log magnitude (512-point FFT, 128-sample hop = 11.6 ms), half-wave rectified, its local
+      mean (0.4 s) taken off; a LOW band (< 220 Hz: kick and bass) kept apart for the downbeat.
+   3. TEMPO: the published BPM (songbpm.com; tunebat.com where it disagrees) and its half and double are the candidates; around
+      each, ±4 % in 0.01 BPM steps, a comb (every beat's onset strength, at the best phase) scores the grid over the whole track;
+      the best is the track's tempo. The published number only picks the octave — the measurement sets the value.
+   4. TEMPO CHANGES: the same comb on 16 s windows (8 s apart), searching ±12 %; a run of two or more windows more than 3 %
+      off the track's tempo (with a clear comb) is a change, written { at, bpm } at the beat nearest its start.
+   5. DOWNBEAT: of the four (or three) beats of a bar, the one whose LOW-band onsets are strongest is "1"; firstBeat is the first
+      such downbeat at or after the music starts (the envelope's first sustained rise). METER: 4 unless the low-band accent
+      repeats every 3 beats more strongly than every 4 (and OVERRIDE says so).
+   Confidence = the comb's score over the mean onset strength (1 = no better than chance). Rubato tracks score low and are
+   written with their grid all the same, flagged. */
+const PUBLISHED = {   // songbpm.com (the cast album and its instrumental), fetched 2026-10-13; tb: tunebat.com
+  '1-01': 134, '1-02': 107, '1-03': 182, '1-04': 81, '1-05': 102, '1-06': 156, '1-07': 122, '1-08': 160, '1-09': 132, '1-10': 79,
+  '1-11': 124, '1-12': 164, '1-13': 94, '1-14': 160, '1-15': 156, '1-16': 177, '1-17': 139, '1-18': 138, '1-19': 78, '1-20': 98,
+  '1-21': 117, '1-22': 107, '1-23': 92, '2-01': 89, '2-02': 88, '2-03': 162, '2-04': 81, '2-05': 173, '2-06': 102, '2-07': 112,
+  '2-08': 134, '2-09': 83, '2-10': 121, '2-11': 130, '2-12': 172, '2-13': 86, '2-14': 142, '2-15': 99, '2-16': 89, '2-17': 80,
+  '2-18': 130, '2-19': 135, '2-20': null, '2-21': 142, '2-22': 103, '2-23': 76,
+};
+const OVERRIDE = {    // what the measurement cannot know: a meter heard, not measured
+  '2-20': { meter: 3, note: 'Your Obedient Servant: a 3/4 minuet groove' },
+};
+const SR = 11025, N = 512, HOP = 128, DT = HOP / SR;
+const $ = id => document.getElementById(id), log = s => { $('log').textContent += s + '\n'; };
+let RESULT = null;
+
+// ---- the MP3's frames: a time ↔ byte map
+function mp3Frames(u8) {
+  let p = 0;
+  if (u8[0] === 0x49 && u8[1] === 0x44 && u8[2] === 0x33) p = 10 + ((u8[6] & 127) << 21 | (u8[7] & 127) << 14 | (u8[8] & 127) << 7 | (u8[9] & 127)) + (u8[5] & 16 ? 10 : 0);
+  const BR1 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320], BR2 = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
+  const off = [], t = []; let time = 0, first = true, info = false;
+  while (p + 4 < u8.length) {
+    const b1 = u8[p + 1], b2 = u8[p + 2];
+    if (u8[p] !== 0xFF || (b1 & 0xE0) !== 0xE0) { p++; continue; }
+    const ver = (b1 >> 3) & 3, layer = (b1 >> 1) & 3, bri = b2 >> 4, sri = (b2 >> 2) & 3, pad = (b2 >> 1) & 1;
+    if (ver === 1 || layer !== 1 || bri === 0 || bri === 15 || sri === 3) { p++; continue; }
+    const m1 = ver === 3, sr = [44100, 48000, 32000][sri] / (m1 ? 1 : ver === 2 ? 2 : 4);
+    const br = (m1 ? BR1 : BR2)[bri], len = Math.floor((m1 ? 144000 : 72000) * br / sr) + pad, spf = m1 ? 1152 : 576;
+    if (len < 24) { p++; continue; }
+    if (first) {                       // a Xing / Info frame carries no audio: it is not on the timeline
+      first = false;
+      const s = String.fromCharCode(...u8.subarray(p + 4, p + 40));
+      if (s.includes('Xing') || s.includes('Info')) { info = true; p += len; continue; }
+    }
+    off.push(p); t.push(time); time += spf / sr; p += len;
+  }
+  return { off, t, end: time, info };
+}
+// ---- a radix-2 FFT (real input, magnitudes)
+function makeFFT(n) {
+  const rev = new Uint32Array(n), lg = Math.log2(n), cos = new Float64Array(n / 2), sin = new Float64Array(n / 2);
+  for (let i = 0; i < n; i++) { let r = 0; for (let b = 0; b < lg; b++) r |= ((i >> b) & 1) << (lg - 1 - b); rev[i] = r; }
+  for (let i = 0; i < n / 2; i++) { cos[i] = Math.cos(2 * Math.PI * i / n); sin[i] = -Math.sin(2 * Math.PI * i / n); }
+  const re = new Float64Array(n), im = new Float64Array(n);
+  return (x, mag) => {
+    for (let i = 0; i < n; i++) { re[rev[i]] = x[i]; im[rev[i]] = 0; }
+    for (let size = 2; size <= n; size <<= 1) {
+      const h = size >> 1, step = n / size;
+      for (let i = 0; i < n; i += size) for (let j = 0; j < h; j++) {
+        const k = j * step, a = i + j, b = a + h, tr = re[b] * cos[k] - im[b] * sin[k], ti = re[b] * sin[k] + im[b] * cos[k];
+        re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+      }
+    }
+    for (let i = 0; i <= n / 2; i++) mag[i] = Math.hypot(re[i], im[i]);
+  };
+}
+// ---- onset strength (all bands, and the low band) from mono samples
+function onsets(x) {
+  const fft = makeFFT(N), win = new Float64Array(N), buf = new Float64Array(N), mag = new Float64Array(N / 2 + 1), prev = new Float64Array(N / 2 + 1);
+  for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N);
+  const nF = Math.max(0, Math.floor((x.length - N) / HOP)), all = new Float32Array(nF), low = new Float32Array(nF), lowBin = Math.round(220 / SR * N);
+  for (let f = 0; f < nF; f++) {
+    const o = f * HOP; for (let i = 0; i < N; i++) buf[i] = x[o + i] * win[i];
+    fft(buf, mag);
+    let s = 0, sl = 0;
+    for (let k = 1; k <= N / 2; k++) { const m = Math.log1p(100 * mag[k]), d = m - prev[k]; prev[k] = m; if (d > 0) { s += d; if (k <= lowBin) sl += d; } }
+    all[f] = s; low[f] = sl;
+  }
+  const detrend = e => { const w = Math.round(0.4 / DT), out = new Float32Array(e.length); let acc = 0;
+    for (let i = 0; i < e.length; i++) { acc += e[i]; if (i >= w) acc -= e[i - w]; const m = acc / Math.min(i + 1, w); out[i] = Math.max(0, e[Math.max(0, i - (w >> 1))] - m); }
+    // the centred mean: shift back by half a window
+    const r = new Float32Array(e.length); for (let i = 0; i < e.length; i++) r[i] = out[Math.min(e.length - 1, i + (w >> 1))]; return r; };
+  return { all: detrend(all), low: detrend(low), raw: all };
+}
+const at = (e, t) => { const f = t / DT, i = Math.floor(f); if (i < 0 || i + 1 >= e.length) return 0; const k = f - i; return e[i] * (1 - k) + e[i + 1] * k; };
+// the comb: for period P over [t0, t1), the best phase and its mean onset strength on the beats
+function comb(e, P, t0, t1) {
+  let best = -1, ph = 0; const steps = Math.max(8, Math.round(P / DT));
+  for (let s = 0; s < steps; s++) {
+    const p = t0 + s * P / steps; let sum = 0, n = 0;
+    for (let t = p; t < t1; t += P) { sum += Math.max(at(e, t - DT), at(e, t), at(e, t + DT)); n++; }
+    if (n && sum / n > best) { best = sum / n; ph = p; }
+  }
+  return { score: best, phase: ph };
+}
+function fitTempo(e, guess, t0, t1, span = 0.04, step = 0.01) {
+  let best = null;
+  for (let b = guess * (1 - span); b <= guess * (1 + span); b += step * (span > 0.05 ? 4 : 1)) {
+    const c = comb(e, 60 / b, t0, t1); if (!best || c.score > best.score) best = { bpm: b, ...c };
+  }
+  if (span > 0.05 && best) return fitTempo(e, best.bpm, t0, t1, 0.006, 0.01);
+  return best;
+}
+function meanOf(e, a, b) { let s = 0, n = 0; for (let i = Math.max(0, Math.floor(a / DT)); i < Math.min(e.length, b / DT); i++) { s += e[i]; n++; } return n ? s / n : 0; }
+
+async function measureTrack(u8, map, tr, nextFile) {
+  const t0 = tr.file, t1 = Math.min(nextFile ?? map.end, tr.file + tr.len + 0.5);
+  let i0 = 0; while (i0 + 1 < map.t.length && map.t[i0 + 1] <= t0) i0++;
+  let i1 = i0; while (i1 + 1 < map.t.length && map.t[i1] < t1) i1++;
+  const pre = Math.min(4, i0), b0 = map.off[i0 - pre], b1 = map.off[i1];
+  const ctx = new OfflineAudioContext(1, 1, SR);
+  const buf = await ctx.decodeAudioData(u8.slice(b0, b1).buffer);
+  const x = new Float32Array(buf.length); for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < x.length; i++) x[i] += d[i] / buf.numberOfChannels; }
+  const lead = t0 - map.t[i0 - pre];                       // seconds of decoded audio before the track's own 0
+  const skip = Math.round(lead * SR), y = x.subarray(skip);
+  const E = onsets(y), len = Math.min(tr.len, y.length / SR), mean = meanOf(E.all, 0, len) || 1e-9;
+  // where the music starts: the first 0.5 s whose raw flux is a fifth of the track's median-ish level
+  const rawMean = meanOf(E.raw, 0, len); let start = 0;
+  for (let t = 0; t < len - 0.5; t += DT) if (meanOf(E.raw, t, t + 0.5) > 0.35 * rawMean) { start = t; break; }
+  const pub = PUBLISHED[tr.id];
+  const cands = pub ? [pub, pub / 2, pub * 2].filter(b => b >= 50 && b <= 220) : [];
+  let best = null;
+  for (const c of cands) { const f = fitTempo(E.all, c, start, len); if (f && (!best || f.score > best.score)) best = f; }
+  if (!pub || !best || best.score / mean < 1.25) {          // no number, or it does not fit: search 60-180 broadly
+    for (let c = 62; c <= 178; c += 6) { const f = fitTempo(E.all, c, start, len, 0.06); if (f && (!best || f.score > best.score * 1.02)) best = f; }
+  }
+  // THE OCTAVE: a comb's mean always favours the sparser grid (half the tempo keeps only the strong beats), so the octave is
+  // ruled, not scored — the beat a dancer counts, 70 to 140 BPM (My Shot's published 182 is counted at 91; Right Hand Man's 160
+  // at 80). The tempo inside that octave is the comb's.
+  if (best) { let b = best.bpm; while (b >= 140) b /= 2; while (b < 70) b *= 2; if (Math.abs(b - best.bpm) > 1) best = fitTempo(E.all, b, start, len); }
+  const P = 60 / best.bpm;
+  // tempo changes: 16 s windows, 8 s apart
+  const wins = [];
+  for (let w = start; w + 16 <= len; w += 8) { const f = fitTempo(E.all, best.bpm, w, w + 16, 0.12); const m = meanOf(E.all, w, w + 16) || 1e-9; wins.push({ w, bpm: f.bpm, conf: f.score / m }); }
+  const changes = []; let run = [];
+  const flush = () => { if (run.length >= 2) { const b = run.reduce((s, r) => s + r.bpm, 0) / run.length; changes.push({ from: run[0].w, to: run[run.length - 1].w + 16, bpm: b }); } run = []; };
+  for (const r of wins) { if (r.conf > 1.6 && Math.abs(r.bpm / best.bpm - 1) > 0.03 && !(run.length && Math.abs(r.bpm / run[0].bpm - 1) > 0.03)) run.push(r); else flush(); }
+  flush();
+  // the downbeat and the meter, from the low band
+  const meterOf = m => { let s = Array(m).fill(0); for (let k = 0, t = best.phase; t < len; t += P, k++) s[k % m] += at(E.low, t) + 0.25 * at(E.all, t); return s; };
+  const s4 = meterOf(4), s3 = meterOf(3), acc4 = Math.max(...s4) / (s4.reduce((a, b) => a + b, 0) / 4), acc3 = Math.max(...s3) / (s3.reduce((a, b) => a + b, 0) / 3);
+  const ov = OVERRIDE[tr.id] || {}, meter = ov.meter || 4, sm = meter === 3 ? s3 : s4, down = sm.indexOf(Math.max(...sm));
+  let first = best.phase + down * P; while (first - meter * P >= start - 0.05) first -= meter * P; while (first < start - 0.05) first += meter * P;
+  // the grid's own check: of the beats with a clear onset near them, how far off they are (ms)
+  const offs = [];
+  for (let t = first; t < len; t += P) { let bi = -1, bv = 0; for (let d = -0.08; d <= 0.08; d += DT) { const v = at(E.all, t + d); if (v > bv) { bv = v; bi = d; } } if (bv > 2 * mean) offs.push(bi * 1000); }
+  const med = a => { const s = [...a].sort((p, q) => p - q); return s.length ? s[s.length >> 1] : 0; };
+  return { id: tr.id, title: tr.title, len: tr.len, published: pub, bpm: +best.bpm.toFixed(2), firstBeat: +first.toFixed(3), meter,
+    confidence: +(best.score / mean).toFixed(2), start: +start.toFixed(2), accent4: +acc4.toFixed(2), accent3: +acc3.toFixed(2),
+    // a change runs from its first window to its last and then the track's tempo comes back: two entries, each on a beat of the
+    // track's grid (a window is 16 s: a change is placed to within a few seconds, and Jack's ear is the final word)
+    changes: changes.flatMap(c => { const k0 = Math.max(0, Math.round((c.from - first) / P)), k1 = Math.round((c.to - first) / P);
+      const a = { at: +(first + k0 * P).toFixed(3), bpm: +c.bpm.toFixed(2) };
+      return c.to < len - 8 ? [a, { at: +(first + k1 * P).toFixed(3), bpm: +best.bpm.toFixed(2) }] : [a]; })
+      // two runs back to back: the first one's return to the track's tempo is the second's start (drop it); and a change to
+      // the tempo already running is no change
+      .filter((c, i, A) => !(A[i + 1] && Math.abs(A[i + 1].at - c.at) < 1e-3))
+      .filter((c, i, A) => Math.abs(c.bpm - (i ? A[i - 1].bpm : best.bpm)) > 0.05),
+    onBeatMs: { n: offs.length, median: Math.round(med(offs)), within50: offs.length ? +(offs.filter(o => Math.abs(o) <= 50).length / offs.length).toFixed(2) : 0 },
+    note: ov.note || undefined, env: E, x: null };
+}
+
+function draw(r, from, to) {   // the envelope with the grid's ticks: the audible check, as a picture
+  const c = document.createElement('canvas'); c.width = 1200; c.height = 160; const g = c.getContext('2d'), e = r.env.all;
+  let mx = 0; for (let t = from; t < to; t += DT) mx = Math.max(mx, at(e, t));
+  g.fillStyle = '#0d0c10'; g.fillRect(0, 0, 1200, 160); g.strokeStyle = '#7fb0ff'; g.beginPath();
+  for (let px = 0; px < 1200; px++) { const t = from + (to - from) * px / 1200, v = at(e, t) / (mx || 1); px ? g.lineTo(px, 150 - v * 130) : g.moveTo(px, 150 - v * 130); } g.stroke();
+  const P = 60 / r.bpm; let k = Math.ceil((from - r.firstBeat) / P);
+  for (let t = r.firstBeat + k * P; t < to; t += P, k++) { const px = (t - from) / (to - from) * 1200, bar = ((k % r.meter) + r.meter) % r.meter === 0;
+    g.strokeStyle = bar ? '#e0b25a' : 'rgba(224,178,90,.45)'; g.lineWidth = bar ? 2 : 1; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, 160); g.stroke(); }
+  g.fillStyle = '#ece8f2'; g.font = '13px system-ui'; g.fillText(`${r.id} ${r.title} · ${from.toFixed(1)}–${to.toFixed(1)} s · ${r.bpm} BPM · onsets (blue), beats (amber; bars bold)`, 8, 16);
+  return c;
+}
+
+$('go').onclick = async () => {
+  $('go').disabled = true; $('log').textContent = '';
+  const show = await (await fetch('../assets/hamilton-show.json')).json();
+  log('fetching the soundtrack…');
+  const u8 = new Uint8Array(await (await fetch('../' + show.soundtrack.url)).arrayBuffer());
+  const map = mp3Frames(u8); log(`${(u8.length / 1e6).toFixed(1)} MB, ${map.off.length} frames, ${map.end.toFixed(2)} s${map.info ? ' (an Info frame skipped)' : ''}`);
+  const out = [];
+  for (let i = 0; i < show.tracks.length; i++) {
+    const tr = show.tracks[i]; const r = await measureTrack(u8, map, tr, show.tracks[i + 1] && show.tracks[i + 1].file);
+    out.push(r); log(`${r.id} ${r.title}: ${r.bpm} BPM (published ${r.published ?? '—'}), first downbeat ${r.firstBeat} s, conf ${r.confidence}, on-beat median ${r.onBeatMs.median} ms (${Math.round(r.onBeatMs.within50 * 100)} % within 50)${r.changes.length ? ', changes ' + r.changes.map(c => `${c.at}→${c.bpm}`).join(' ') : ''}`);
+    await new Promise(z => setTimeout(z, 0));
+  }
+  window.MEASURED = out;
+  RESULT = { format: 'hamilton-beats 1', made: new Date().toISOString().slice(0, 10), by: 'tools/beats.html (RULING FV)',
+    clock: 'seconds into each album track (the cues and the blocking clock); a beat is a quarter note unless noted',
+    sources: { published: 'songbpm.com (cast album and instrumental pages), tunebat.com for Burn; the published number picks the octave only', measured: 'Jack\'s soundtrack (assets/audio/hamilton-soundtrack.mp3, git-ignored): spectral-flux comb over the whole track; the downbeat from the low band' },
+    tracks: Object.fromEntries(out.map(r => [r.id, Object.assign({ title: r.title, bpm: r.bpm, firstBeat: r.firstBeat, meter: r.meter },
+      r.changes.length ? { changes: r.changes.map(c => ({ at: c.at, bpm: c.bpm })) } : {},
+      { published: r.published, confidence: r.confidence, onBeatMs: r.onBeatMs }, r.note ? { note: r.note } : {})])) };
+  $('dl').disabled = false;
+  const tb = document.createElement('table'); tb.innerHTML = '<tr><th>id</th><th>title</th><th>pub</th><th>bpm</th><th>first</th><th>conf</th><th>med ms</th><th>≤50</th><th>changes</th></tr>' +
+    out.map(r => `<tr><td>${r.id}</td><td>${r.title}</td><td>${r.published ?? '—'}</td><td>${r.bpm}</td><td>${r.firstBeat}</td><td>${r.confidence}</td><td>${r.onBeatMs.median}</td><td>${r.onBeatMs.within50}</td><td>${r.changes.map(c => c.at + '→' + c.bpm).join(' ')}</td></tr>`).join('');
+  $('out').appendChild(tb);
+};
+$('dl').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(RESULT, null, 1)], { type: 'application/json' })); a.download = 'hamilton-beats.json'; a.click(); };
+window.BEATS = { mp3Frames, onsets, comb, fitTempo, draw, measureTrack, get result() { return RESULT; } };
+</script>
+</body></html>

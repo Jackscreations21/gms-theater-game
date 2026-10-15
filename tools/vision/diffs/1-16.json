@@ -1,0 +1,187 @@
+{
+ "format": "hamilton-vision-diff 1",
+ "header": {
+  "track": "1-16",
+  "title": "Meet Me Inside",
+  "made": "2026-10-14",
+  "outFile": "tools/vision/out/1-16.json",
+  "outSha256": "e5671d94a7c37eb2bd6e5150ce2cfa8aa6e5a992e03873b7c335d1b6147ce6ea",
+  "blocking": "assets/hamilton-blocking.json",
+  "blockingSha256": "93f0a2c6795ad4b7e50b16e497a6044ecb2a387b1be2f57a2f400634386ea9d2",
+  "stage5": true,
+  "clips": {
+   "1-16-meet-me-inside": {
+    "url": "https://www.youtube.com/watch?v=TZ1w59D5et4",
+    "shots": {
+     "7": {
+      "judged": "good",
+      "moving": true,
+      "rms": 4.3
+     }
+    },
+    "tracklets": 15,
+    "positions": 152,
+    "identified": 95
+   },
+   "1-17-that-would-be-enough": {
+    "url": "",
+    "shots": {},
+    "tracklets": 0,
+    "positions": 0,
+    "identified": 3
+   }
+  },
+  "stage4Positions": 152,
+  "counts": {
+   "samples": 152,
+   "withPosition": 152,
+   "offMap": 7,
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "placedByBlocking": 6,
+   "pool": 146,
+   "other": 0,
+   "byRule": {
+    "blocking": 6,
+    "pool": 146
+   }
+  },
+  "verdict": "NO EVIDENCE: not one sample was named by a label, continuity or appearance (no labels exist yet). Every named sample was placed by the blocking (fromBlocking) and every other body is pooled. The empty disagreement and proposal lists below mean NOTHING WAS TESTED - not that the footage agrees with the blocking. Only the pool's formation counts and shapes say anything here."
+ },
+ "thresholds": {
+  "positionM": 0.75,
+  "positionS": 2.0,
+  "gapS": 1.0,
+  "dpM": 0.3,
+  "waypointS": 3.0,
+  "lookConf": 0.5,
+  "applyConf": 0.7,
+  "snapMaxM": 1.0,
+  "sameTimeS": 0.25,
+  "fastMps": 3.5,
+  "offstage": "|x| >= 6.7 or z <= -4.4",
+  "windowS": 3.0
+ },
+ "rulings": [],
+ "characters": {
+  "hamilton": {
+   "name": "Hamilton",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 1,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  },
+  "washington": {
+   "name": "Washington",
+   "evidence": 0,
+   "evidenceWithPosition": 0,
+   "evidenceOffMap": 0,
+   "placedByBlocking": {
+    "samples": 5,
+    "tracklets": 1
+   },
+   "other": 0,
+   "items": [],
+   "proposals": []
+  }
+ },
+ "pool": {
+  "samples": 146,
+  "withPosition": 140,
+  "tracklets": 13,
+  "formations": [
+   {
+    "from": 9.0,
+    "to": 12.0,
+    "clip": "1-16-meet-me-inside",
+    "at": 10.1,
+    "bodies": 6,
+    "tracklets": 9,
+    "deck": 5,
+    "gallery": 1,
+    "inWings": 1,
+    "sides": {
+     "SR": 3,
+     "C": 0,
+     "SL": 3
+    },
+    "shape": "scattered",
+    "centroid": [
+     0.57,
+     -0.01
+    ],
+    "extent": {
+     "x": [
+      -3.36,
+      4.5
+     ],
+     "z": [
+      -3.1,
+      3.53
+     ]
+    },
+    "samples": 59,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 6
+    }
+   },
+   {
+    "from": 12.0,
+    "to": 15.0,
+    "clip": "1-16-meet-me-inside",
+    "at": 12.1,
+    "bodies": 7,
+    "tracklets": 10,
+    "deck": 7,
+    "gallery": 0,
+    "inWings": 0,
+    "sides": {
+     "SR": 2,
+     "C": 1,
+     "SL": 4
+    },
+    "shape": "scattered",
+    "centroid": [
+     1.37,
+     0.21
+    ],
+    "extent": {
+     "x": [
+      -3.13,
+      4.14
+     ],
+     "z": [
+      -2.14,
+      3.89
+     ]
+    },
+    "samples": 81,
+    "otherClips": {},
+    "blocking": {
+     "ensembleOn": 2,
+     "everyoneOn": 6
+    }
+   }
+  ]
+ },
+ "summary": {
+  "position": 0,
+  "on-off": 0,
+  "level": 0,
+  "rulingDisagreements": 0,
+  "rulingsTestable": 0,
+  "rulingChecks": 0,
+  "proposals": 0,
+  "proposalsLook": 0,
+  "proposalsDiffer": 0,
+  "formationWindows": 2
+ }
+}

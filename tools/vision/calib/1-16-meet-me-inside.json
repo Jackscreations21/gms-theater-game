@@ -1,0 +1,158 @@
+{
+ "clip": "1-16-meet-me-inside",
+ "what": "per-shot camera solves (RULING GA); pixels in the 720-high cache frame",
+ "shots": {
+  "7": {
+   "frame": 66,
+   "points": {
+    "rail-us-c": [
+     640.0,
+     232.0
+    ],
+    "rail-us-sl": [
+     1064.0,
+     234.0
+    ],
+    "rail-us-sr": [
+     250.0,
+     232.0
+    ],
+    "lip-c": [
+     640.0,
+     700.0
+    ],
+    "gal-us-sr": [
+     204.0,
+     311.0
+    ],
+    "gal-us-sl": [
+     1100.0,
+     311.0
+    ]
+   },
+   "solve": {
+    "K": [
+     [
+      1633.0875181158567,
+      0.0,
+      640.0
+     ],
+     [
+      0.0,
+      1633.0875181158567,
+      360.0
+     ],
+     [
+      0.0,
+      0.0,
+      1.0
+     ]
+    ],
+    "R": [
+     [
+      0.9999960797371136,
+      0.0003071551267375997,
+      0.002783193513322314
+     ],
+     [
+      0.00039560658961455234,
+      -0.9994930291397034,
+      -0.031835957604043154
+     ],
+     [
+      0.002772003937719812,
+      0.03183693384841415,
+      -0.9994892323768682
+     ]
+    ],
+    "t": [
+     -0.014876925373263229,
+     2.1234758218365544,
+     14.550749838481527
+    ],
+    "rvec": [
+     3.1097477476284365,
+     0.0005464924983465107,
+     0.004319919061024961
+    ],
+    "camera": [
+     -0.026,
+     1.659,
+     14.611
+    ],
+    "look": [
+     0.003,
+     0.032,
+     -0.999
+    ],
+    "fovDeg": 42.8,
+    "rms": 4.3,
+    "residuals": [
+     2.0,
+     1.6,
+     8.0,
+     0.1,
+     6.2,
+     1.0
+    ],
+    "frameSize": [
+     1280,
+     720
+    ],
+    "prior": "house",
+    "choice": "least rms + 16.7 px/m x |shoulders - 1.40 m|",
+    "depthCue": "bodies",
+    "depthCueNote": null,
+    "window": {
+     "tolPx": 1.5,
+     "fov": [
+      13.0,
+      62.0
+     ],
+     "dist": [
+      7.3,
+      57.2
+     ],
+     "poor": true
+    },
+    "bodyHeightM": 1.4,
+    "bodies": 35,
+    "free": {
+     "camera": [
+      -0.09,
+      5.06,
+      32.52
+     ],
+     "fovDeg": 22.0,
+     "rms": 3.99,
+     "breaks": []
+    },
+    "mPerPx": 0.0698,
+    "cond": {
+     "sv": [
+      3.78,
+      3.35,
+      0.36
+     ],
+     "heightSd": 1.26,
+     "depthSd": 3.16,
+     "sdDistPerPx": 3.89,
+     "sdFovPerPx": 8.31
+    }
+   },
+   "moving": true,
+   "judged": "good",
+   "note": "missed cut at frame 55: frames 43-54 are a closer moving shot / transition; this camera holds 55-77 (solved on 66), zooming out ~3% over 66-77",
+   "was": 6,
+   "split": [
+    6,
+    7
+   ]
+  },
+  "9": {
+   "skipped": "too dark: the galleries and rail ends are black (only the deck pool is lit), fewer than five points readable; by image matching it is the shot-6 camera (scale 0.99) panned ~12 px left and tilted ~17 px down, drifting through the shot",
+   "was": 8
+  }
+ },
+ "shotmap": "2026-10-14 12:11:02"
+}
