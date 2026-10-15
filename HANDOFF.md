@@ -224,7 +224,22 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **LAND #235 AND #233; HIS EYE ON THEATRE 2'S BOOTH, DESK AND THE DOORS** (2026-10-15)
+## DONE — 2026-10-15: #233, #234 and #235 merged; the Midtown theatre moved to its own repository
+
+Jack: *"can we get github up to date first … can you merge any pr that havent been merged yet"* — #234 (`actors`,
+carrying #233) merged through the API; `main` merged into `second-house` (midtown.html merged by itself; the three
+record files by hand); Jack merged #235 himself when the classifier blocked the call. Then *"i made a new repository
+at https://github.com/Jackscreations21/midtown_theater_gms . can you move everything for the midtown theater to that repository"*: the history of this repository was
+filtered (`git filter-branch`, 670 → 370 commits) to the 279 Midtown files at `main` `14af651` and pushed there as its
+`main`; it got its own CLAUDE.md, README and `index.html`, a STATE.md cut to Midtown's open items, and this file and
+TRAPS.md whole. The backstage round (two Opus agents, built here in worktrees off `second-house`) landed THERE as PR #1.
+Rulings FF and FG of the second-house line collided with the actors line's letters (which had reached GF) and are GG
+and GH there. This PR removes the Midtown files from this repository (271 files: `midtown.html`, `blocking.html`, the
+Hamilton assets and fixtures, the Midtown source scan, the blocking, vision and Blender tools, the Hamilton docs and
+specs, `docs/guide/VISION.md`, `video/`) and leaves the record: this file, STATE.md, FUTURE.md, TRAPS.md, the assets
+licence README. `the-house.html`, `src/`, `build.sh`, `docs/ARTNET.md` and the suites are untouched.
+
+## SUPERSEDED (all three merged; Midtown moved): **LAND #235 AND #233; HIS EYE ON THEATRE 2'S BOOTH, DESK AND THE DOORS** (2026-10-15)
 
 Rulings at **FG** (FH next). `main` is **`5d24188`**. Two PRs open, independent of each other: **#235 `second-house`**
 (now `bb74206`: Theatre 2, its booth and desk, the doors) and **#233 `cue-blackouts`** (the 2026-10-12 cue day; its

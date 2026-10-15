@@ -1,4 +1,13 @@
-# STATE — 2026-10-15 (OPEN ITEMS ONLY — `second-house` = PR #235 OPEN, carrying `main` as of #234; #233 and #234 MERGED)
+# STATE — 2026-10-15 (OPEN ITEMS ONLY — the Palace game; THE MIDTOWN THEATRE MOVED OUT)
+
+**The Midtown theatre has its own repository since 2026-10-15:** https://github.com/Jackscreations21/midtown_theater_gms. Every Midtown item below (Theatre 2,
+the doors, the cue checklist, the actors, the Hamilton game spec, the Midtown facts) is FROZEN here at the split
+and is live THERE, in its STATE.md. What is still this repository's: items 8–10 (the headset run, Art-Net, the
+perf round's carry-overs) and the post-merge tidy (delete the merged remote branches `second-house`, `actors`,
+`cue-blackouts`, `midtown-walk`, `midtown-walls`, `midtown-lights`, `record-230`, `fixture-glbs` — the sandbox
+refuses remote deletes). #233, #234 and #235 are MERGED; `main` is `14af651` plus the removal PR.
+
+---
 
 **Do not trust this file for what is next without fetching first.** `git fetch`, compare `origin/main`, then read
 this. **This file holds only what is open.** Everything finished is in HANDOFF.md (the "DONE" blocks, newest first)

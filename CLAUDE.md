@@ -6,6 +6,11 @@ stages sharing one board, four productions, a six-hand crew, a full VR
 mode (Quest 3), and a physical build system (order wood, saw, nail,
 paint, save).
 
+**The Midtown theatre is NOT here any more.** `midtown.html` and everything of it (the Hamilton set and
+rig, the show, the actors, the blocking and vision tools) moved to https://github.com/Jackscreations21/midtown_theater_gms on 2026-10-15 with its history.
+Work on it there (its own CLAUDE.md, STATE.md, HANDOFF.md). The Midtown blocks in this repository's
+HANDOFF.md, TRAPS.md and FUTURE.md are frozen at the split, for the record only.
+
 ## Read order — do this before touching anything
 
 1. **STATE.md** — where things stand right now (live file, newest truth).
