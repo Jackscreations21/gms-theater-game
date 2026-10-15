@@ -1,4 +1,4 @@
-# STATE — 2026-10-14 (OPEN ITEMS ONLY — `second-house` = PR #235 OPEN; `cue-blackouts` = PR #233 OPEN)
+# STATE — 2026-10-15 (OPEN ITEMS ONLY — `second-house` = PR #235 OPEN; `cue-blackouts` = PR #233 OPEN; nothing is local-only)
 
 **Do not trust this file for what is next without fetching first.** `git fetch`, compare `origin/main`, then read
 this. **This file holds only what is open.** Everything finished is in HANDOFF.md (the "DONE" blocks, newest first)
@@ -18,7 +18,9 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
   stage-floor slab (box 21) is trimmed at x 10.4, where it ran into Theatre 2. Built by one Opus agent. Nothing in
   `src/`. **Independent of #233** — different regions of `midtown.html`. The record for #233 (its HANDOFF and the
   earlier STATE) lives only on `cue-blackouts`; whichever merges second will conflict in HANDOFF.md at its top block
-  and in this file — keep both HANDOFF blocks, keep this file's shape.
+  and in this file — keep both HANDOFF blocks, keep this file's shape. **Both branches match their remotes; no
+  local-only commits anywhere** (2026-10-15). Local server: `http://localhost:8080/midtown.html` (`preview_start`
+  `the-house` if it is down).
 - **PR #233 (`cue-blackouts`) is OPEN**: https://github.com/Jackscreations21/gms-theater-game/pull/233. It carries the
   2026-10-12 day — cue revisions 3, 4 and 5 (`assets/hamilton-show.json`, 891 cues, 123 real), the song/time readout
   (`#sh-hud`), the skip synced by the sound itself (`assets/hamilton-soundtrack-env.u8`, `soundtrack.seek.toc`), and the

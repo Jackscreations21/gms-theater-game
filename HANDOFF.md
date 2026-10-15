@@ -255,7 +255,9 @@ benches, bins and downlights carried across. A "Theatre 2" view; the walk grid c
 `MIDTOWN.house2`. The lead trimmed Jack's baked stage-floor slab (box 21, bake 3) at x 10.4 — it reached x 19.75 and
 lay as a black box across Theatre 2's stage. Checked: no errors or new warnings, `walls.check()` and `lx.check()`
 (301/313) unchanged, walked house 1 → lobby → Theatre 2 on the ground throughout, Back-of-house frame ~20.8 →
-23.7 ms. Nothing in `src/`. Five traps. Also this session: STATE.md cut from 79 KB to open items only.
+23.7 ms. Nothing in `src/`. Five traps. Also this session: STATE.md cut from 79 KB to open items only (its first
+draft sat as a local commit on `cue-blackouts`; dropped on 2026-10-15 once the record moved to #235 — both branches
+match their remotes).
 
 ## SUPERSEDED (#232 merged; the show reached him): **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
 
