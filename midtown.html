@@ -8979,6 +8979,9 @@ const BACKSTAGE = {
 };
 // The shell: floor, walls, ceiling, the stage doors and their cuts, the room doors, the corridor's and rooms' lights, signs.
 function buildBackstage() { console.warn('backstage: the shell is not built yet'); return null; }
+// ---- (the shell's code goes above this line; the fittings' below it — two agents, one file, no shared lines)
+// The spec's rooms are the whole contract: a fitting reads its room's x0/x1 and BACKSTAGE.roomZ0/roomZ1/floor and
+// stays clear of the doorway's swath (door.x0 − 0.1 … door.x1 + 0.1, 1.2 m into the room) and the street door's.
 // The fittings: each room's furniture by its key (mirrors, counters, rails, sofas, the stage door's desk …).
 function buildBackstageFittings() { console.warn('backstage: the fittings are not built yet'); return null; }
 
