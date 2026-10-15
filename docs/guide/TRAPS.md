@@ -1640,10 +1640,16 @@ against this list before opening a PR; **add new traps as you hit them.**
   of door leaves with a 6 mm meeting gap stopped a walker square on at 0.18 m, not the body's 0.25: the middle ray
   (reach 0.25) went through the gap and only the shoulder rays (reach 0.18) hit. Close every such gap for the rays
   (the doors have an astragal on each face), or the walker's eye ends up inside whatever is behind it.
-- **Something that swings TOWARD the walker can stall a runner.** The doors open as the walker comes near, but a
-  leaf swinging into the passage meets a walker coming from the house mid-swing; at the run (6.4 m/s) the leaf
-  holds them for a frame or two. Measure the approach from the whole depth a leaf sweeps (`doorReach`), not its
-  closed plane, or the house-side walker meets it even at a walk.
+- **A leaf you open on E swings THROUGH a walker standing in its sweep.** The doors no longer open for the walker
+  coming near (they open on E), so the old stall — a runner from the house meeting a leaf mid-swing — is gone; but
+  E reaches 2 m, and a walker in the passage within a leaf's width of the frame who presses E has the leaf pass
+  through their body (the walk stops movement, it never pushes). They are not trapped: the leaves' boxes are
+  FrontSide, so a ray starting inside one misses its faces and they walk straight out. Make a leaf DoubleSide, or
+  give the doors a push, and that changes.
+- **A vertical fold reads flat under the hemisphere light.** The hemisphere shades by how far a normal points up, so
+  every face of a vertical pleat gets the same light, and the unlit passages have nothing else: a pleated curtain
+  rendered as one flat dark panel. Its pleats are shaded by a stripe map on the cloth's own u (`curtainPleats`, as map
+  and emissive map), which bunches with the pleats.
 - **An agent's worktree may be cut from `main`, not the branch the brief names.** This round's was at `main` while
   the work belonged on `second-house` (whose `midtown.html` is 8 KB bigger). Check `git merge-base --is-ancestor`
   before the first edit; a fast-forward was enough here.
