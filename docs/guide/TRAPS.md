@@ -1617,3 +1617,20 @@ against this list before opening a PR; **add new traps as you hit them.**
   read the album's loudness bins from the PREVIOUS session's `shots/`; three agents each wrote their own copy before
   anyone told me. Copy a helper's data with the helper.
 
+## From the second-house round (2026-10-14, one Opus agent)
+
+- **Two clones of one GLB share geometry.** `scene.clone()` copies objects, not buffers: `cutBeams` edits a
+  geometry in place and `lobbyHoles` REPLACES one and disposes the old, so the first house's cuts and holes would
+  have landed in (or freed the buffers under) the second. Every mesh of a clone gets `geometry.clone()` before
+  anything touches either house — even for an edit that swaps geometry rather than changing it.
+- **`lobbyHoles` only took a fill at the identity transform** (an exact `matrixWorld` check) — a moved copy was
+  refused as "not a plain fill" and left whole. It now takes the copy's x offset.
+- **Furniture placed at fixed x is not "in the room".** The bar's front counter sat at x 7.4 and the benches at
+  literal x; widening `LOBBY.x1` alone left the bar standing in the middle of the room. Key every fitting off
+  `L.x0` / `L.x1` / the openings, as the box office already was.
+- **A baked piece made "to the walls" of one house reaches into a neighbour.** Jack's stage-floor slab (box 21,
+  42 × 39 m) ran ten metres past house 1's wall, harmless until Theatre 2 stood there — then it was a black box
+  across that stage and a 3 cm step in its floor. Trimmed at Theatre 2's wall; check every baked piece's extent
+  whenever scenery is added beside the house.
+- **The console tool's `pattern` is a plain substring**, not a regex: `lobby|walls` matches nothing.
+
