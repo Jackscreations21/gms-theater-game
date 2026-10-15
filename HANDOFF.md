@@ -224,7 +224,58 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **HIS EYE ON THE DANCING AND THE SITS; HIS LABELS; THE CAMERAS' SECOND ROUND** (2026-10-14, third session)
+## NEXT SESSION: **HIS ACT-1 NOTES — SEVEN FIXES AND TWO SETS OF TIMINGS; THEN ACT 2 WHEN HE HAS WATCHED IT** (2026-10-14, evening)
+
+Rulings at **GF** (GG next). `actors` = PR #234 at **`04dbe42`** + this record; `cue-blackouts` = PR #233. Read STATE.md's top block
+(the same notes). After his notes: his five rulings, his labels, the cameras' second round (the block below).
+
+**Read this block first.** Jack watched act 1 in `midtown.html` after dance round 2 (GF) landed (`04dbe42` on origin)
+and wrote his verdicts into the blocking checklist (https://claude.ai/artifact/4Q5Xh37ZmSinhtsJbVhAub, `songs`):
+**14 good** (1-06, 1-07, 1-09, 1-10, 1-12, 1-13, 1-15, 1-16, 1-19, 1-21, 1-22, 1-23 — and 1-05's row still says "fix"
+with the 10-13 note, see below), **7 need work**, **2 notes with no verdict** (1-08, 1-18). Act 2 not yet watched.
+His words, by song (times are minutes:seconds into the track as the page's readout shows them):
+
+- **1-01 Alexander Hamilton — fix:** *"the spotlights are off"* (a CUE note: the specials in `assets/hamilton-show.json`,
+  not the blocking).
+- **1-02 Aaron Burr, Sir — fix:** *"the table should come in a little farther towards center and the three guys are at
+  the table when they do their parts"* (`picnic-table`, props.py: today it goes to upstage right (−2.4, −1.0); the
+  verse pools are at it).
+- **1-03 My Shot — fix:** *"there are a lot of parts where they should be dancing and they are just standing still"*
+  (the biggest one: the company has the phrase six times and little else — a fuller dance track for the number).
+- **1-04 The Story of Tonight — fix:** *"find a better way for the chairs to come off like maybe at the end they stand up
+  and move forward and it is just spotlights on them and ensemble members go and take the chairs off. find a better
+  transition into the next song. they come off too early"* (`tavern-chair-1..4`, the four's `sit`s to 16.0, the end
+  of the number and the lead-in to 1-05).
+- **1-05 The Schuyler Sisters — fix (the 10-13 note, unchanged):** *"burr needs to come from upstage left and he runs to
+  downstage right at the start. at cue 164 burr goes off too early"* — review 2 applied both (Burr from USL to his
+  AF DSR; backs off on Q164, leaves at Q166). Re-check it with him: either it still reads wrong or the row is stale.
+- **1-08 Right Hand Man — no verdict:** *"when they are in a line near the start at around 1 minute in washington is at
+  the back till he starts talking then the line disperses and he comes to the front. also at the start when hamilton is
+  talking lafayette, burr, mulligan and laurens are on with him. at around 55 seconds in hamilton goes off then he comes
+  back when mulligan comes back on. washington's desk should come off around 4:37 and at 5:02 they get into a line with
+  washington at the front hamilton behind him and burr in the middle."*
+- **1-11 Satisfied — fix:** *"make the rewind part look better"* (`rewind`, cues 366.2–366.8: the slow walk backwards).
+- **1-14 Stay Alive — fix:** *"at 50 washington's desk should come off. charles lee's spotlight is off"* (the desk:
+  props.py `washington-desk`; the spotlight: a CUE note).
+- **1-17 That Would Be Enough — fix:** *"make hamilton and eliza wait to come off till the lights are fully out"* (their
+  exits against the blackout's fade in the cue file).
+- **1-18 Guns and Ships — no verdict:** *"burr should already be on the balcony by the time the light goes to him.
+  lafayette is on top of the table till 40 seconds in then he jumps off. he was inside the table. washington should
+  come on at around 46 seconds"* (`gs-table`: Lafayette stands IN it today — the page has no raised standing, see the
+  props.py header; a `y` on his waypoints, or the table's top as his floor, is the fix).
+- **1-20 Yorktown — fix:** *"the box doesn't come on till later. lafayette comes on to talk with hamilton at 10. lafayette
+  goes off at 32. mulligan is in front of ham at his solo. at the end laurens hamilton mulligan lafayette and washington
+  are at the front not the ensemble"* (`yorktown-box`; the friends' entrances and the final line-up).
+
+The method for the round: his checklist rows are the brief (read them again first — he may add act 2); blocking
+changes go into the segment generators (`tools/blocking/seg1/t1NN.py`, `gen_seg2.py`, `seg3gen.py`, `gen4.py`),
+props into `props.py`, dance into `dance.py`; regenerate, merge, `MIDTOWN.actors.check()`; the two CUE notes (1-01,
+1-14's spotlight) go to `assets/hamilton-show.json` by the cue method in the 2026-10-12 block. Write back a
+one-line reply per row in the checklist's notes when applied, and leave his status for him to flip.
+
+---
+
+## SUPERSEDED (he watched act 1; his notes are the block above): **HIS EYE ON THE DANCING AND THE SITS; HIS LABELS; THE CAMERAS' SECOND ROUND** (2026-10-14, third session)
 
 Rulings at **GF** (GG next). `actors` = PR #234 at **`ec66e53`**; `cue-blackouts` = PR #233; both open, both Jack's to
 merge. Read STATE.md's top block. Dance round 2 landed this session (below) and the re-key batch ran (`6e2580c`), so
