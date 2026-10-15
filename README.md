@@ -9,6 +9,13 @@ The whole game is **one HTML file** — [`the-house.html`](the-house.html)
 (~583 KB, three.js r128). No install, no build, no server required for the
 desktop version.
 
+## The Midtown theatre moved
+
+The Midtown theatre — `midtown.html`, the Hamilton set and rig, the show, the automatic actors, the
+blocking editor and the video-capture tools — has its own repository since 2026-10-15:
+[https://github.com/Jackscreations21/midtown_theater_gms](https://github.com/Jackscreations21/midtown_theater_gms), with the history of every one of its files. Nothing of it is in this repository any more
+except the record (HANDOFF.md's and TRAPS.md's Midtown blocks, kept as they were at the split).
+
 ## Play it
 
 Download or clone, then open `the-house.html` in a browser. That's it.
