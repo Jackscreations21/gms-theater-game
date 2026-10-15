@@ -234,9 +234,10 @@ holds the open items only.
 1. **When either PR merges:** the post-merge protocol (fast-forward, delete the branch and the five older landed ones
    both sides, suites when Node is on the PATH).
 2. **His eye on Theatre 2** ("Theatre 2" then look behind you for the booth window; "Lobby" for the doors and the two
-   projection rooms; walk lobby → either house through the doors). The decisions it raises are STATE.md item 2:
-   doors for the orbit camera, a show for Theatre 2 or empty, the signs, Build mode's scope, the desk measure's speed,
-   the props' size when fitted. The swing direction is ruled (FF, below).
+   projection rooms; walk lobby → either house: E opens the doors, E parts the curtain at the passage's far end).
+   The decisions it raises are STATE.md item 2: E in orbit mode, a closed curtain blocking or not, the curtain's colour,
+   a show for Theatre 2 or empty, the signs, Build mode's scope, the desk measure's speed, the props' size when fitted.
+   The swing direction is ruled (FF, below).
 3. **His re-check through the checklist** (STATE.md item 3; the method is in #233's NEXT SESSION block on
    `cue-blackouts`), then the older list.
 
@@ -268,6 +269,20 @@ Both agents' worktrees were cut from `main`, not `second-house`, and each fixed 
 **RULING FF** (2026-10-15) — asked whether the doors should swing toward the lobby, as real egress doors do, instead of
 into the house, Jack: *"Keep the doors swinging into the house."* So the leaves swing into the passage and lie flat on
 their reveals when open, as built; do not re-open this for the projection rooms' sake or for realism.
+
+**Later the same day (one Opus agent, `41ba7d1`):** *"make it so you open and close the doors by pressing e and they are
+at the edge by the lobby then at the other end of the hallway there is a curtain you can open and close by pressing
+e."* The proximity opening is gone: while walking, a single E (edge-triggered, ignored in inputs and when Build mode
+owns the key) toggles the one door pair or curtain within 2 m and 50° of the look on the same floor (`doorsUse`,
+`doorAim`), reversing mid-swing; leaving walk mode leaves things as they are; the walk hint names the action. The
+doors stay at the lobby end. A curtain at each passage's house end, measured off the scan in `buildLobby` (walls stop
+at z −13.03 / −13.02, mouths 14–15 cm deep, jambs 1.44 m apart, hung 6 cm in): two red velour halves (0.74 × 2.1 m,
+9 pleats each, overlapping 5 cm) on a slim track with 48 instanced rings, parting to 0.2 m stacks (1.02 m clear) in
+1 s; `doorsHit` tests them (slide box first); a drawn curtain stops the walker at 0.25 m from either side.
+`MIDTOWN.doors.toggle(name)`. Triangles +3.9k at the back of house, draw calls +1; the walk's door/curtain ray tests
+on a run through a doorway 244 → 356, frame cost no worse. Lead's check on the merge, real key presses in the pane:
+hint `E — open the doors` → E → 90° open → walked to the curtain, stopped at 0.27 m with `E — open the curtain` → E →
+100 % open → into the aisle. Two TRAPS (the fold that reads flat; a leaf opened onto a walker passes through them).
 
 ## SUPERSEDED (the round above landed on top): **LAND #235 AND #233; HIS EYE ON THEATRE 2 AND THE LONG LOBBY** (2026-10-14)
 

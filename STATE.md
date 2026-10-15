@@ -27,6 +27,13 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
   Checked on the merge at localhost:8080: no errors or warnings, house 1's booth/desk/lobby lines unchanged, `walls.check()`
   and `lx.check()` unchanged, the walk passed lobby → house-right doorway → house with the doors opening ahead and closing
   behind (the live loop). Pages will not show it until #235 merges.
+- **And (2026-10-15, later, one Opus agent, `41ba7d1`):** *"make it so you open and close the doors by pressing e and they
+  are at the edge by the lobby then at the other end of the hallway there is a curtain you can open and close by
+  pressing e."* The doors no longer open by themselves: while walking, E toggles the door pair or curtain you face within
+  2 m and 50° (the walk hint says `E — open the doors` / `… the curtain`); a red velour curtain hangs at each passage's
+  house end (two pleated halves on a track, parting to the jambs in 1 s); a closed door or curtain stops the walker.
+  Checked on the merge at localhost:8080 with real key presses: doors opened on E, the curtain stopped the walker,
+  E parted it, the walker went through into the aisle; console clean, `walls.check()` / `lx.check()` unchanged.
 - **PR #233 (`cue-blackouts`) is OPEN**: https://github.com/Jackscreations21/gms-theater-game/pull/233. It carries the
   2026-10-12 day — cue revisions 3, 4 and 5 (`assets/hamilton-show.json`, 891 cues, 123 real), the song/time readout
   (`#sh-hud`), the skip synced by the sound itself (`assets/hamilton-soundtrack-env.u8`, `soundtrack.seek.toc`), and the
@@ -42,8 +49,11 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
    Node is on the PATH (`winget install OpenJS.NodeJS.LTS`, Jack runs it — the sandbox cannot).
 2. **Jack's eye on Theatre 2, its booth and desk, the doors and the long lobby** (PR #235). Decisions it raises, none
    made: Theatre 2's own show, or stays empty (its desk screens are dark until there is one); the doors' swing is
-   RULED (FF: into the house); whether the doors should also open for the orbit camera (they stay
-   shut unless you are walking); a runner meets a leaf mid-swing and loses 2–3 frames; the 0.68 m void between the two
+   RULED (FF: into the house); whether E should also work in orbit mode (walking only now); whether a closed curtain
+   should stop the walker (it does, like a closed door); the curtain's colour (0x7a1020, glow 0.3); whether E should
+   refuse to open a pair onto a walker standing in a leaf's path (the leaf passes through them now; they walk out); the
+   curtains' 48 track rings are always drawn (~3.8k triangles, frustum culling off on the instanced mesh); the 0.68 m
+   void between the two
    houses' outer walls (sealed by the lobby's wall, invisible from inside); the signs ("STALLS" over house 1's doors,
    "THEATRE 2" over the new pair, "PROJECTION" on both projection rooms); Build mode's "add piece" / delete box still
    land on house 1 only (`houseScene()` — one line to include Theatre 2); house 1's desk measure costs ~1.3 s of the
@@ -94,8 +104,13 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
   (`only: 'house2'`, applied by `reapplyAll` with the rest — a cut applied anywhere else vanishes on the first bake or
   undo); `MIDTOWN.house2Works` = { booth, desk, spots, cuts, cut() }. Both houses' groups share the names `followspot
   booth` / `lighting desk` (`userData.house` tells them apart) — never look a booth up by name. The doors: `DOORS`,
-  `buildDoors`, `doorsTick(dt)` in the frame loop, `doorsHit` inside `builtHit` (ray-tested directly, NOT in the walk's
-  grid); `MIDTOWN.doors.state()` prints every pair's angle and the walker's distance. **The Browser pane runs the page at
+  `buildDoors`, `doorsTick(dt)` in the frame loop (doors and curtains both), `doorsHit` inside `builtHit` (ray-tested
+  directly, NOT in the walk's grid); E while walking → `doorsUse()` (edge-triggered in the keydown listener), the target
+  from `doorAim` (within `DOORS.reach` 2 m and `DOORS.aim` 50° of the look, same floor), the hint from `doorAimTick`;
+  the curtains: `CURTAINS`, `buildCurtains` (measured off each passage's house end in `buildLobby`, `meas.curtains`),
+  `curtainMat` / `curtainPleats` (a stripe map shades the pleats — a real vertical fold reads flat under the hemisphere).
+  `MIDTOWN.doors.state()` prints every pair's and curtain's state, the walker's distance and what E would reach;
+  `MIDTOWN.doors.toggle(name, open?)` drives one from the console. **The Browser pane runs the page at
   ~1.5 fps when the Claude window is not in front** (dt capped at 0.1 s, so game time crawls 6×): a 0.7 s door takes
   ~5 s of wall time there; measure with `requestAnimationFrame` before trusting any timing in the pane.
 - **Two houses now (PR #235).** House 1 is `houseRoot` (`MIDTOWN.house`), the cut one with the set, rig, booth, desk
