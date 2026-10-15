@@ -226,7 +226,7 @@ compare the *same* production across stages instead.
 
 ## NEXT SESSION: **LAND #235 AND #233; HIS EYE ON THEATRE 2'S BOOTH, DESK AND THE DOORS** (2026-10-15)
 
-Rulings at **FF** (FG next). `main` is **`5d24188`**. Two PRs open, independent of each other: **#235 `second-house`**
+Rulings at **FG** (FH next). `main` is **`5d24188`**. Two PRs open, independent of each other: **#235 `second-house`**
 (now `bb74206`: Theatre 2, its booth and desk, the doors) and **#233 `cue-blackouts`** (the 2026-10-12 cue day; its
 record lives only on that branch, so whichever merges second conflicts here at the top block: keep both). STATE.md
 holds the open items only.
@@ -235,7 +235,7 @@ holds the open items only.
    both sides, suites when Node is on the PATH).
 2. **His eye on Theatre 2** ("Theatre 2" then look behind you for the booth window; "Lobby" for the doors and the two
    projection rooms; walk lobby → either house: E opens the doors, E parts the curtain at the passage's far end).
-   The decisions it raises are STATE.md item 2: E in orbit mode, a closed curtain blocking or not, the curtain's colour,
+   The decisions it raises are STATE.md item 2: E in orbit mode, the curtain's colour,
    a show for Theatre 2 or empty, the signs, Build mode's scope, the desk measure's speed, the props' size when fitted.
    The swing direction is ruled (FF, below).
 3. **His re-check through the checklist** (STATE.md item 3; the method is in #233's NEXT SESSION block on
@@ -283,6 +283,10 @@ at z −13.03 / −13.02, mouths 14–15 cm deep, jambs 1.44 m apart, hung 6 cm 
 on a run through a doorway 244 → 356, frame cost no worse. Lead's check on the merge, real key presses in the pane:
 hint `E — open the doors` → E → 90° open → walked to the curtain, stopped at 0.27 m with `E — open the curtain` → E →
 100 % open → into the aisle. Two TRAPS (the fold that reads flat; a leaf opened onto a walker passes through them).
+
+**RULING FG** (2026-10-15) — asked whether a closed curtain should keep stopping the walker or let them push through,
+Jack: *"Keep a closed curtain stopping the walker, like a closed door."* So a drawn curtain is a wall to the walk
+(`doorsHit`) until E parts it, as built; do not make it pushable for realism.
 
 ## SUPERSEDED (the round above landed on top): **LAND #235 AND #233; HIS EYE ON THEATRE 2 AND THE LONG LOBBY** (2026-10-14)
 

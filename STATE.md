@@ -39,7 +39,8 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
   (`#sh-hud`), the skip synced by the sound itself (`assets/hamilton-soundtrack-env.u8`, `soundtrack.seek.toc`), and the
   interval fix. Nothing in `src/`, so `the-house.html` and `docs/ARTNET.md` are untouched and the suites are unaffected.
   **Until it merges, that work is live only on the local server (localhost:8080), not on Pages.**
-- Rulings are at **FF** (FG next). FF (2026-10-15): the auditorium doors swing INTO the house.
+- Rulings are at **FG** (FH next). FF (2026-10-15): the auditorium doors swing INTO the house. FG (2026-10-15): a
+  closed curtain stops the walker, like a closed door.
 
 ## Open, in the order it will bite
 
@@ -49,8 +50,8 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
    Node is on the PATH (`winget install OpenJS.NodeJS.LTS`, Jack runs it — the sandbox cannot).
 2. **Jack's eye on Theatre 2, its booth and desk, the doors and the long lobby** (PR #235). Decisions it raises, none
    made: Theatre 2's own show, or stays empty (its desk screens are dark until there is one); the doors' swing is
-   RULED (FF: into the house); whether E should also work in orbit mode (walking only now); whether a closed curtain
-   should stop the walker (it does, like a closed door); the curtain's colour (0x7a1020, glow 0.3); whether E should
+   RULED (FF: into the house); a closed curtain stopping the walker is RULED (FG: it does, like a closed door); whether
+   E should also work in orbit mode (walking only now); the curtain's colour (0x7a1020, glow 0.3); whether E should
    refuse to open a pair onto a walker standing in a leaf's path (the leaf passes through them now; they walk out); the
    curtains' 48 track rings are always drawn (~3.8k triangles, frustum culling off on the instanced mesh); the 0.68 m
    void between the two

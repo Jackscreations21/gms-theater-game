@@ -6667,7 +6667,8 @@ function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (
    move, so they are NOT in the collision grid (a static copy: the groups' names 'doors' and 'curtains' are not ones
    colliderMeshes takes): builtHit ray-tests the leaves and the curtains directly (doorsHit), each one's swing or slide
    box first so a ray far from every door costs nothing — a closed pair or a drawn curtain stops the walker, so you
-   press E to pass. MIDTOWN.doors: state(), check(), toggle(name). */
+   press E to pass (the curtain blocking is RULING FG, 2026-10-15, Jack: "Keep a closed curtain stopping the walker,
+   like a closed door"). MIDTOWN.doors: state(), check(), toggle(name). */
 const DOORS = {
   frame: 0.05, headH: 0.06,         // the frame: jambs 5 cm on each reveal's face (through the wall's 20 cm), a 6 cm head under the soffit
   sill: 0.012, sillIn: 0.06,        // the brass threshold under the closed leaves: 12 mm over the lobby floor, from the lobby face to 6 cm into the passage
