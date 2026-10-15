@@ -224,6 +224,107 @@ compare the *same* production across stages instead.
 
 ---
 
+## NEXT SESSION: **LAND #235 AND #233; HIS EYE ON THEATRE 2'S BOOTH, DESK AND THE DOORS** (2026-10-15)
+
+Rulings at **FG** (FH next). `main` is **`5d24188`**. Two PRs open, independent of each other: **#235 `second-house`**
+(now `bb74206`: Theatre 2, its booth and desk, the doors) and **#233 `cue-blackouts`** (the 2026-10-12 cue day; its
+record lives only on that branch, so whichever merges second conflicts here at the top block: keep both). STATE.md
+holds the open items only.
+
+1. **When either PR merges:** the post-merge protocol (fast-forward, delete the branch and the five older landed ones
+   both sides, suites when Node is on the PATH).
+2. **His eye on Theatre 2** ("Theatre 2" then look behind you for the booth window; "Lobby" for the doors and the two
+   projection rooms; walk lobby → either house: E opens the doors, E parts the curtain at the passage's far end).
+   The decisions it raises are STATE.md item 2: E in orbit mode, the curtain's colour,
+   a show for Theatre 2 or empty, the signs, Build mode's scope, the desk measure's speed, the props' size when fitted.
+   The swing direction is ruled (FF, below).
+3. **His re-check through the checklist** (STATE.md item 3; the method is in #233's NEXT SESSION block on
+   `cue-blackouts`), then the older list.
+
+## DONE — 2026-10-15: Theatre 2's followspot booth and lighting desk, and doors on all four doorways (PR #235)
+
+*"add the spot booth and the desk for the second theater … and add doors to both theaters and use opus agents."* Two
+Opus agents in their own worktrees, merged by the lead (`bb74206`, three conflicts, all "both": the header comment,
+the load sequence, TRAPS). **Booth and desk** (`058ee84`): `buildSpotBooth` and `buildDeskPosition` take `{dx, mesh,
+props}` / `{dx, scan, live}` and build both houses — Theatre 2's measured against its own scan (`/^h2: Object_/`, the
+desk through a `towerNear` copy of its stalls), its window and two rows cut by `HOUSE2_CUTS` (the same boxes moved dx,
+`only: 'house2'`, applied in `reapplyAll` so they survive a bake or undo; 32 and 2,398 triangles, as house 1's);
+three Lycians from the rig's own copy of `lycian.glb` as `THREE.LOD` props on the stands, aimed at Theatre 2's stage
+centre, not rig units; the monitors plain `deskMat.screen`, no `deskScreen`, so `deskClick` ignores them; the lobby
+boxes the second booth in as a second projection room (gap, walls, door, PROJECTION sign, ceiling), the two posters
+there removed, the bench and downlights moved; `MIDTOWN.house2Works`. House 1's geometry, cut indices, booth/desk
+lines, `walls.check()` and `lx.check()` hash-identical to before. Walk stops at Theatre 2's rails and booth walls at
+house 1's numbers + 20. **Doors** (`77560a0`): in each of the four passages a static frame and brass threshold merged
+into the lobby (in the grid), and a pair of 45 mm timber leaves (0.58–0.63 × 2.1 m, vision panel, brass push plates,
+an astragal over the meeting gap — without it the walk's middle ray went through) hinged 12 mm in from the reveals at
+z −14.871, swinging 90° INTO the passage; they open over 0.7 s when the walker is within 1.6 m of the doorway (measured
+across the depth the leaves sweep, `doorReach`) and close over 0.9 s past 2.3 m, smoothstep, off `dt` (`doorsTick` in
+the loop beside `lxTick`); closed unless walking. Not in the grid: `doorsHit` inside `builtHit` (~5 µs a ray through a
+doorway); the walker stops 0.25 m off a closed leaf from either side. +32 draw calls at the Lobby view; walk frame
+0.027 → 0.033 ms. Lead's check on the merge at localhost:8080: console clean, both booths and desks report, grid
+220,279 triangles / 233 meshes, the walk through house-right's doorway with the doors opening ahead and shut behind
+on the live loop (the pane at 1.5 fps — see TRAPS). Pushed; nothing in `src/`; suites not run (Node not on the PATH).
+Both agents' worktrees were cut from `main`, not `second-house`, and each fixed that before editing (TRAPS).
+
+**RULING FF** (2026-10-15) — asked whether the doors should swing toward the lobby, as real egress doors do, instead of
+into the house, Jack: *"Keep the doors swinging into the house."* So the leaves swing into the passage and lie flat on
+their reveals when open, as built; do not re-open this for the projection rooms' sake or for realism.
+
+**Later the same day (one Opus agent, `41ba7d1`):** *"make it so you open and close the doors by pressing e and they are
+at the edge by the lobby then at the other end of the hallway there is a curtain you can open and close by pressing
+e."* The proximity opening is gone: while walking, a single E (edge-triggered, ignored in inputs and when Build mode
+owns the key) toggles the one door pair or curtain within 2 m and 50° of the look on the same floor (`doorsUse`,
+`doorAim`), reversing mid-swing; leaving walk mode leaves things as they are; the walk hint names the action. The
+doors stay at the lobby end. A curtain at each passage's house end, measured off the scan in `buildLobby` (walls stop
+at z −13.03 / −13.02, mouths 14–15 cm deep, jambs 1.44 m apart, hung 6 cm in): two red velour halves (0.74 × 2.1 m,
+9 pleats each, overlapping 5 cm) on a slim track with 48 instanced rings, parting to 0.2 m stacks (1.02 m clear) in
+1 s; `doorsHit` tests them (slide box first); a drawn curtain stops the walker at 0.25 m from either side.
+`MIDTOWN.doors.toggle(name)`. Triangles +3.9k at the back of house, draw calls +1; the walk's door/curtain ray tests
+on a run through a doorway 244 → 356, frame cost no worse. Lead's check on the merge, real key presses in the pane:
+hint `E — open the doors` → E → 90° open → walked to the curtain, stopped at 0.27 m with `E — open the curtain` → E →
+100 % open → into the aisle. Two TRAPS (the fold that reads flat; a leaf opened onto a walker passes through them).
+
+**RULING FG** (2026-10-15) — asked whether a closed curtain should keep stopping the walker or let them push through,
+Jack: *"Keep a closed curtain stopping the walker, like a closed door."* So a drawn curtain is a wall to the walk
+(`doorsHit`) until E parts it, as built; do not make it pushable for realism.
+
+## SUPERSEDED (the round above landed on top): **LAND #235 AND #233; HIS EYE ON THEATRE 2 AND THE LONG LOBBY** (2026-10-14)
+
+Rulings at **FE** (FF next). `main` is **`5d24188`** (#230, #231, #232 merged). Two PRs open, independent of each
+other: **#235 `second-house`** (this round, off `main`) and **#233 `cue-blackouts`** (the 2026-10-12 cue day; its
+record — a NEXT SESSION and a DONE block that belong above this one, and the earlier STATE.md — lives only on that
+branch, so whichever merges second conflicts here at the top block: keep both). STATE.md is now OPEN ITEMS ONLY
+(2026-10-14); finished rounds go here, not there.
+
+1. **When either PR merges:** the post-merge protocol (fast-forward, delete the branch and the five older landed
+   ones both sides, suites when Node is on the PATH).
+2. **His eye on Theatre 2** (the "Theatre 2" and "Lobby" buttons; walk from one house through the lobby into the
+   other). Decisions it raises are listed in STATE.md item 2: a booth and desk for Theatre 2 or not, a show for it or
+   empty, the signs, Build mode's scope.
+3. **His re-check through the checklist** (STATE.md item 3; the method is in #233's NEXT SESSION block on
+   `cue-blackouts`), then the older list.
+
+## DONE — 2026-10-14: a second house beside the first, empty stage, one lobby behind both (PR #235)
+
+*"use the same theater we used for the hamilton one. just copy it over then remove the hamilton set. also make the
+lobby bigger to fit the second theater."* The morning's model hunt (Sketchfab: the Girona municipal theatre, CC BY,
+the one real scanned theatre interior bigger than Midtown; the Lyceum scan at $50) was set aside by that ruling. One
+Opus agent: Theatre 2 is a clone of the scanned house taken straight after load, before house 1's arch move, beam cut,
+set cuts, booth, desk and bakes — its own geometry per mesh (two clones of one GLB share buffers), unlit materials in
+`houseMats`, meshes `h2: …`, root at x +20 (`HOUSE2.dx`), the GLB's own proscenium, fly tower and hanging iron kept;
+no set, rig, cuts or bakes. The lobby runs behind both (x −9.80…30.00, 39.8 × 7 m): four doorways, Theatre 2's two
+measured off its own scan, lined, cased, signed "THEATRE 2" and stanchioned; its skirt fills holed (`lobbyHoles`
+takes the copy's x offset); entrance, canopy and pavement centred on the room; the bar keyed off `L.x1`; posters,
+benches, bins and downlights carried across. A "Theatre 2" view; the walk grid covers it (159k → 220k triangles);
+`MIDTOWN.house2`. The lead trimmed Jack's baked stage-floor slab (box 21, bake 3) at x 10.4 — it reached x 19.75 and
+lay as a black box across Theatre 2's stage. Checked: no errors or new warnings, `walls.check()` and `lx.check()`
+(301/313) unchanged, walked house 1 → lobby → Theatre 2 on the ground throughout, Back-of-house frame ~20.8 →
+23.7 ms. Nothing in `src/`. Five traps. Also this session: STATE.md cut from 79 KB to open items only (its first
+draft sat as a local commit on `cue-blackouts`; dropped on 2026-10-15 once the record moved to #235 — both branches
+match their remotes).
+
+## SUPERSEDED (#232 merged; the show reached him): **THE FIXTURE GLBs ONTO PAGES, THEN HIS EYE ON THE SHOW WITH THE MUSIC PLAYING** (2026-10-12, evening)
+
 ## NEXT SESSION: **HIS ACT-1 NOTES — SEVEN FIXES AND TWO SETS OF TIMINGS; THEN ACT 2 WHEN HE HAS WATCHED IT** (2026-10-14, evening)
 
 Rulings at **GF** (GG next). `actors` = PR #234 at **`04dbe42`** + this record; `cue-blackouts` = PR #233. Read STATE.md's top block

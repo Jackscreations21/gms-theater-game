@@ -1866,3 +1866,63 @@ against this list before opening a PR; **add new traps as you hit them.**
   POSITION with the IK, never by eye.
 - **A long `python - <<'EOF'` heredoc full of quotes fails in the Bash tool with "unexpected EOF".** Write the
   script to a scratch file and run that.
+
+## From the second-house round (2026-10-14, one Opus agent)
+
+- **Two clones of one GLB share geometry.** `scene.clone()` copies objects, not buffers: `cutBeams` edits a
+  geometry in place and `lobbyHoles` REPLACES one and disposes the old, so the first house's cuts and holes would
+  have landed in (or freed the buffers under) the second. Every mesh of a clone gets `geometry.clone()` before
+  anything touches either house — even for an edit that swaps geometry rather than changing it.
+- **`lobbyHoles` only took a fill at the identity transform** (an exact `matrixWorld` check) — a moved copy was
+  refused as "not a plain fill" and left whole. It now takes the copy's x offset.
+- **Furniture placed at fixed x is not "in the room".** The bar's front counter sat at x 7.4 and the benches at
+  literal x; widening `LOBBY.x1` alone left the bar standing in the middle of the room. Key every fitting off
+  `L.x0` / `L.x1` / the openings, as the box office already was.
+- **A baked piece made "to the walls" of one house reaches into a neighbour.** Jack's stage-floor slab (box 21,
+  42 × 39 m) ran ten metres past house 1's wall, harmless until Theatre 2 stood there — then it was a black box
+  across that stage and a 3 cm step in its floor. Trimmed at Theatre 2's wall; check every baked piece's extent
+  whenever scenery is added beside the house.
+- **The console tool's `pattern` is a plain substring**, not a regex: `lobby|walls` matches nothing.
+
+## From the doors round (2026-10-15)
+
+- **A gap thinner than the body between two collision surfaces lets the walk's middle ray through.** A closed pair
+  of door leaves with a 6 mm meeting gap stopped a walker square on at 0.18 m, not the body's 0.25: the middle ray
+  (reach 0.25) went through the gap and only the shoulder rays (reach 0.18) hit. Close every such gap for the rays
+  (the doors have an astragal on each face), or the walker's eye ends up inside whatever is behind it.
+- **A leaf you open on E swings THROUGH a walker standing in its sweep.** The doors no longer open for the walker
+  coming near (they open on E), so the old stall — a runner from the house meeting a leaf mid-swing — is gone; but
+  E reaches 2 m, and a walker in the passage within a leaf's width of the frame who presses E has the leaf pass
+  through their body (the walk stops movement, it never pushes). They are not trapped: the leaves' boxes are
+  FrontSide, so a ray starting inside one misses its faces and they walk straight out. Make a leaf DoubleSide, or
+  give the doors a push, and that changes.
+- **A vertical fold reads flat under the hemisphere light.** The hemisphere shades by how far a normal points up, so
+  every face of a vertical pleat gets the same light, and the unlit passages have nothing else: a pleated curtain
+  rendered as one flat dark panel. Its pleats are shaded by a stripe map on the cloth's own u (`curtainPleats`, as map
+  and emissive map), which bunches with the pleats.
+- **An agent's worktree may be cut from `main`, not the branch the brief names.** This round's was at `main` while
+  the work belonged on `second-house` (whose `midtown.html` is 8 KB bigger). Check `git merge-base --is-ancestor`
+  before the first edit; a fast-forward was enough here.
+- **An isolated worktree agent cannot edit the root checkout's `.claude/launch.json`**, and `preview_start` reads
+  only that one, so the "add it to the root's" fallback is refused. Start `python -m http.server <port>` in the
+  worktree by hand (in the background) and open your own tab at it.
+
+## From the Theatre 2 works round (2026-10-15)
+
+- **A cut applied once at load vanishes on the first bake or undo.** `reapplyAll` restores every geometry in
+  `originals` (every mesh any cut has touched) before it re-applies the lists it knows. A box applied anywhere else
+  is gone the next time it runs; Theatre 2's booth and desk boxes live in `HOUSE2_CUTS`, which `reapplyAll` applies
+  with the others, scoped `only: 'house2'` so they never reach house 1 or the set (and his boxes never reach Theatre 2).
+- **`towerNear`'s pre-transformed copy is not bit-identical to casting at the meshes.** The scan's meshes carry the
+  GLB's node transforms; a ray against the merged world-space copy lands ~1e-8 m off a ray against the originals.
+  Printed to 3 decimals it is the same line, but the geometry built from it moves — so the first house's desk still
+  casts at its own meshes (byte-for-byte as before), and only Theatre 2's uses the copy (~0.2 s off the load).
+  The first house's desk measure costs ~1.3 s of the load; switching it to the copy is a ruling, not a free win.
+- **Two booths, one group name.** The walk's collision grid takes scene children by name (`followspot booth`,
+  `lighting desk`); Theatre 2's groups carry the same names (`userData.house = 2` tells them apart). Anything that
+  ever looks a booth up BY NAME (`getObjectByName`, `find(o => o.name === …)`) now gets the first of two.
+- **The Browser pane runs the page at ~1.5 fps when the Claude window is not in front.** The frame loop caps `dt`
+  at 0.1 s, so game time runs 6× slow there: a 0.7 s door swing took ~5 s of wall time and a 3 s walk moved 1.1 m,
+  which reads as "the doors are slow" or "the walk is stuck". Count `requestAnimationFrame` over two seconds before
+  trusting any timing in the pane, and give a walk-through ten-second waits; the numbers in his Chrome are right.
+
