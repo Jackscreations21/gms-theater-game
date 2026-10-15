@@ -21,6 +21,12 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
   and in this file — keep both HANDOFF blocks, keep this file's shape. **Both branches match their remotes; no
   local-only commits anywhere** (2026-10-15). Local server: `http://localhost:8080/midtown.html` (`preview_start`
   `the-house` if it is down).
+- **Also on #235 (2026-10-15, two Opus agents, merged `bb74206`):** Theatre 2 has the followspot booth and the lighting desk
+  (the same functions, moved `HOUSE2.dx`, measured against its own scan; three Lycians as props, no beams; the desk's
+  monitors dark — no show), and all four auditorium doorways have double doors that open for the walker and close behind.
+  Checked on the merge at localhost:8080: no errors or warnings, house 1's booth/desk/lobby lines unchanged, `walls.check()`
+  and `lx.check()` unchanged, the walk passed lobby → house-right doorway → house with the doors opening ahead and closing
+  behind (the live loop). Pages will not show it until #235 merges.
 - **PR #233 (`cue-blackouts`) is OPEN**: https://github.com/Jackscreations21/gms-theater-game/pull/233. It carries the
   2026-10-12 day — cue revisions 3, 4 and 5 (`assets/hamilton-show.json`, 891 cues, 123 real), the song/time readout
   (`#sh-hud`), the skip synced by the sound itself (`assets/hamilton-soundtrack-env.u8`, `soundtrack.seek.toc`), and the
@@ -34,11 +40,16 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
    the landed branch and the five older landed branches `midtown-walk`, `midtown-walls`, `midtown-lights`,
    `record-230`, `fixture-glbs` both sides (the sandbox refuses `git push --delete`; Jack or a terminal); suites when
    Node is on the PATH (`winget install OpenJS.NodeJS.LTS`, Jack runs it — the sandbox cannot).
-2. **Jack's eye on Theatre 2 and the long lobby** (PR #235). Decisions it raises, none made: does Theatre 2 get its
-   own followspot booth and lighting desk (house 1's are house 1's); its own show, or stays empty; the 0.68 m void
-   between the two houses' outer walls (sealed by the lobby's wall, invisible from inside); the signs ("STALLS" over
-   house 1's doors, "THEATRE 2" over the new pair); Build mode's "add piece" / delete box still land on house 1 only
-   (`houseScene()` — one line to include Theatre 2).
+2. **Jack's eye on Theatre 2, its booth and desk, the doors and the long lobby** (PR #235). Decisions it raises, none
+   made: Theatre 2's own show, or stays empty (its desk screens are dark until there is one); the doors' swing — they
+   open INTO the house (a leaf lies flat on its reveal; swinging toward the lobby would hit the projection rooms), where
+   real auditorium doors open toward the way out; whether the doors should also open for the orbit camera (they stay
+   shut unless you are walking); a runner meets a leaf mid-swing and loses 2–3 frames; the 0.68 m void between the two
+   houses' outer walls (sealed by the lobby's wall, invisible from inside); the signs ("STALLS" over house 1's doors,
+   "THEATRE 2" over the new pair, "PROJECTION" on both projection rooms); Build mode's "add piece" / delete box still
+   land on house 1 only (`houseScene()` — one line to include Theatre 2); house 1's desk measure costs ~1.3 s of the
+   load and the faster copy Theatre 2 uses would save ~0.9 s but moves its geometry by ~1e-8 m (TRAPS); Theatre 2's
+   followspot props stay full size when house 1's set is "fitted" (house 1's spots shrink with the set).
 3. **His re-check through the checklist.** The brief is the artifact https://claude.ai/artifact/FpiGBBW8LicWbaRb1nTUjg
    ("Hamilton Cue Checklist": collection `songs`, doc id = track id, fields `status` / `notes` / `updatedAt`). **Read
    it with `ArtifactData` `list` (or `query` on `status != good`) at the start of every cue round.** Nine songs carry
@@ -79,6 +90,15 @@ and everything wanted-but-not-built is in FUTURE.md. Do not append finished roun
 
 ## Facts you need to work on the Midtown page (not history)
 
+- **Theatre 2's works and the doors (PR #235, 2026-10-15).** `buildSpotBooth(root, {dx, mesh, props})` and
+  `buildDeskPosition(root, {dx, scan, live})` build both houses' booths and desks; Theatre 2's cuts are `HOUSE2_CUTS`
+  (`only: 'house2'`, applied by `reapplyAll` with the rest — a cut applied anywhere else vanishes on the first bake or
+  undo); `MIDTOWN.house2Works` = { booth, desk, spots, cuts, cut() }. Both houses' groups share the names `followspot
+  booth` / `lighting desk` (`userData.house` tells them apart) — never look a booth up by name. The doors: `DOORS`,
+  `buildDoors`, `doorsTick(dt)` in the frame loop, `doorsHit` inside `builtHit` (ray-tested directly, NOT in the walk's
+  grid); `MIDTOWN.doors.state()` prints every pair's angle and the walker's distance. **The Browser pane runs the page at
+  ~1.5 fps when the Claude window is not in front** (dt capped at 0.1 s, so game time crawls 6×): a 0.7 s door takes
+  ~5 s of wall time there; measure with `requestAnimationFrame` before trusting any timing in the pane.
 - **Two houses now (PR #235).** House 1 is `houseRoot` (`MIDTOWN.house`), the cut one with the set, rig, booth, desk
   and bakes; everything that treats scan meshes by the `Object_` name or traverses `houseRoot` (booth, lobby measure,
   `cutBeams`, `wallSplit`/`wallCheck`, `applyCut`, the rigging, the lighting check) is house 1's and must stay so.

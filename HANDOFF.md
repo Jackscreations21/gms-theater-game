@@ -224,7 +224,48 @@ compare the *same* production across stages instead.
 
 ---
 
-## NEXT SESSION: **LAND #235 AND #233; HIS EYE ON THEATRE 2 AND THE LONG LOBBY** (2026-10-14)
+## NEXT SESSION: **LAND #235 AND #233; HIS EYE ON THEATRE 2'S BOOTH, DESK AND THE DOORS** (2026-10-15)
+
+Rulings at **FE** (FF next). `main` is **`5d24188`**. Two PRs open, independent of each other: **#235 `second-house`**
+(now `bb74206`: Theatre 2, its booth and desk, the doors) and **#233 `cue-blackouts`** (the 2026-10-12 cue day; its
+record lives only on that branch, so whichever merges second conflicts here at the top block: keep both). STATE.md
+holds the open items only.
+
+1. **When either PR merges:** the post-merge protocol (fast-forward, delete the branch and the five older landed ones
+   both sides, suites when Node is on the PATH).
+2. **His eye on Theatre 2** ("Theatre 2" then look behind you for the booth window; "Lobby" for the doors and the two
+   projection rooms; walk lobby → either house through the doors). The decisions it raises are STATE.md item 2: the
+   doors' swing direction, doors for the orbit camera, a show for Theatre 2 or empty, the signs, Build mode's scope,
+   the desk measure's speed, the props' size when fitted.
+3. **His re-check through the checklist** (STATE.md item 3; the method is in #233's NEXT SESSION block on
+   `cue-blackouts`), then the older list.
+
+## DONE — 2026-10-15: Theatre 2's followspot booth and lighting desk, and doors on all four doorways (PR #235)
+
+*"add the spot booth and the desk for the second theater … and add doors to both theaters and use opus agents."* Two
+Opus agents in their own worktrees, merged by the lead (`bb74206`, three conflicts, all "both": the header comment,
+the load sequence, TRAPS). **Booth and desk** (`058ee84`): `buildSpotBooth` and `buildDeskPosition` take `{dx, mesh,
+props}` / `{dx, scan, live}` and build both houses — Theatre 2's measured against its own scan (`/^h2: Object_/`, the
+desk through a `towerNear` copy of its stalls), its window and two rows cut by `HOUSE2_CUTS` (the same boxes moved dx,
+`only: 'house2'`, applied in `reapplyAll` so they survive a bake or undo; 32 and 2,398 triangles, as house 1's);
+three Lycians from the rig's own copy of `lycian.glb` as `THREE.LOD` props on the stands, aimed at Theatre 2's stage
+centre, not rig units; the monitors plain `deskMat.screen`, no `deskScreen`, so `deskClick` ignores them; the lobby
+boxes the second booth in as a second projection room (gap, walls, door, PROJECTION sign, ceiling), the two posters
+there removed, the bench and downlights moved; `MIDTOWN.house2Works`. House 1's geometry, cut indices, booth/desk
+lines, `walls.check()` and `lx.check()` hash-identical to before. Walk stops at Theatre 2's rails and booth walls at
+house 1's numbers + 20. **Doors** (`77560a0`): in each of the four passages a static frame and brass threshold merged
+into the lobby (in the grid), and a pair of 45 mm timber leaves (0.58–0.63 × 2.1 m, vision panel, brass push plates,
+an astragal over the meeting gap — without it the walk's middle ray went through) hinged 12 mm in from the reveals at
+z −14.871, swinging 90° INTO the passage; they open over 0.7 s when the walker is within 1.6 m of the doorway (measured
+across the depth the leaves sweep, `doorReach`) and close over 0.9 s past 2.3 m, smoothstep, off `dt` (`doorsTick` in
+the loop beside `lxTick`); closed unless walking. Not in the grid: `doorsHit` inside `builtHit` (~5 µs a ray through a
+doorway); the walker stops 0.25 m off a closed leaf from either side. +32 draw calls at the Lobby view; walk frame
+0.027 → 0.033 ms. Lead's check on the merge at localhost:8080: console clean, both booths and desks report, grid
+220,279 triangles / 233 meshes, the walk through house-right's doorway with the doors opening ahead and shut behind
+on the live loop (the pane at 1.5 fps — see TRAPS). Pushed; nothing in `src/`; suites not run (Node not on the PATH).
+Both agents' worktrees were cut from `main`, not `second-house`, and each fixed that before editing (TRAPS).
+
+## SUPERSEDED (the round above landed on top): **LAND #235 AND #233; HIS EYE ON THEATRE 2 AND THE LONG LOBBY** (2026-10-14)
 
 Rulings at **FE** (FF next). `main` is **`5d24188`** (#230, #231, #232 merged). Two PRs open, independent of each
 other: **#235 `second-house`** (this round, off `main`) and **#233 `cue-blackouts`** (the 2026-10-12 cue day; its

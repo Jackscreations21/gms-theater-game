@@ -1665,4 +1665,8 @@ against this list before opening a PR; **add new traps as you hit them.**
 - **Two booths, one group name.** The walk's collision grid takes scene children by name (`followspot booth`,
   `lighting desk`); Theatre 2's groups carry the same names (`userData.house = 2` tells them apart). Anything that
   ever looks a booth up BY NAME (`getObjectByName`, `find(o => o.name === …)`) now gets the first of two.
+- **The Browser pane runs the page at ~1.5 fps when the Claude window is not in front.** The frame loop caps `dt`
+  at 0.1 s, so game time runs 6× slow there: a 0.7 s door swing took ~5 s of wall time and a 3 s walk moved 1.1 m,
+  which reads as "the doors are slow" or "the walk is stuck". Count `requestAnimationFrame` over two seconds before
+  trusting any timing in the pane, and give a walk-through ten-second waits; the numbers in his Chrome are right.
 
