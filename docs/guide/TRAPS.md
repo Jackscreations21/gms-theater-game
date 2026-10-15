@@ -1634,3 +1634,20 @@ against this list before opening a PR; **add new traps as you hit them.**
   whenever scenery is added beside the house.
 - **The console tool's `pattern` is a plain substring**, not a regex: `lobby|walls` matches nothing.
 
+## From the doors round (2026-10-15)
+
+- **A gap thinner than the body between two collision surfaces lets the walk's middle ray through.** A closed pair
+  of door leaves with a 6 mm meeting gap stopped a walker square on at 0.18 m, not the body's 0.25: the middle ray
+  (reach 0.25) went through the gap and only the shoulder rays (reach 0.18) hit. Close every such gap for the rays
+  (the doors have an astragal on each face), or the walker's eye ends up inside whatever is behind it.
+- **Something that swings TOWARD the walker can stall a runner.** The doors open as the walker comes near, but a
+  leaf swinging into the passage meets a walker coming from the house mid-swing; at the run (6.4 m/s) the leaf
+  holds them for a frame or two. Measure the approach from the whole depth a leaf sweeps (`doorReach`), not its
+  closed plane, or the house-side walker meets it even at a walk.
+- **An agent's worktree may be cut from `main`, not the branch the brief names.** This round's was at `main` while
+  the work belonged on `second-house` (whose `midtown.html` is 8 KB bigger). Check `git merge-base --is-ancestor`
+  before the first edit; a fast-forward was enough here.
+- **An isolated worktree agent cannot edit the root checkout's `.claude/launch.json`**, and `preview_start` reads
+  only that one, so the "add it to the root's" fallback is refused. Start `python -m http.server <port>` in the
+  worktree by hand (in the background) and open your own tab at it.
+

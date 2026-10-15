@@ -25,6 +25,8 @@
   THEATRE 2 (HOUSE2, "THE SECOND HOUSE" below), stands HOUSE2.dx = 20 m house left (+x) of the first, as the
   GLB shipped it — its own proscenium at z 2.30, fly tower, back brick and hanging iron, an empty stage: no set,
   no rig, no cuts, no booth, no desk. The lobby runs behind both houses, a pair of doorways from each.
+  Each doorway has a pair of timber doors (Jack: "add doors to both theaters"; THE DOORS below) that swing open into
+  the passage as the walker comes near and close behind them.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -484,13 +486,16 @@ function hitTri(t, ox, oy, oz, dx, dy, dz, far) {
   const d = (e2x * qx + e2y * qy + e2z * qz) * inv;
   return d >= 0 && d <= far ? d : -1;
 }
-// The pieces being built, ray-tested as they stand: the nearest hit within far, or Infinity.
+// The pieces being built and the auditorium doors' leaves (THE DOORS: doorsHit), ray-tested as they stand: the
+// nearest hit within far, or Infinity.
 const builtRay = new THREE.Raycaster(), builtO = new THREE.Vector3(), builtD = new THREE.Vector3();
 function builtHit(ox, oy, oz, dx, dy, dz, far) {
-  if (!built.children.length || !(far > 0)) return Infinity;
-  builtRay.set(builtO.set(ox, oy, oz), builtD.set(dx, dy, dz)); builtRay.far = far;
+  if (!(far > 0)) return Infinity;
+  const door = doorsHit(ox, oy, oz, dx, dy, dz, far);
+  if (!built.children.length) return door;
+  builtRay.set(builtO.set(ox, oy, oz), builtD.set(dx, dy, dz)); builtRay.far = Math.min(far, door);
   const h = builtRay.intersectObjects(built.children, true);
-  return h.length ? h[0].distance : Infinity;
+  return h.length ? h[0].distance : door;
 }
 // The highest surface straight down from (x, y, z): its y, or null.
 function rayDown(x, y, z) {
@@ -5983,6 +5988,12 @@ function buildLobby(houseScene, house2) {
     g.computeVertexNormals(); (P.carpet = P.carpet || []).push(g);   // the lobby's carpet runs on through the passage
     bx('reveal', a - L.lining, a, F - 0.25, top, L.linZ, L.wallZ); bx('reveal', b, b + L.lining, F - 0.25, top, L.linZ, L.wallZ);
     bx('reveal', a - L.lining, b + L.lining, top, d.head + 0.15, L.linZ, L.wallZ);
+    // the doors' frame (THE DOORS hang the leaves in it, house side): jambs on the reveals' faces through the wall's depth,
+    // a head under d.head, and a brass threshold under the closed leaves
+    const fw = DOORS.frame;
+    bx('reveal', d.x0, a + fw, F, d.head, L.wallZ, zH); bx('reveal', b - fw, d.x1, F, d.head, L.wallZ, zH);
+    bx('reveal', a + fw, b - fw, d.head - DOORS.headH, d.head, L.wallZ, zH);
+    bx('brass', a, b, F - 0.01, F + DOORS.sill, zH, L.wallZ + DOORS.sillIn);
     // the lobby side: a timber casing round the opening, and a lit sign over it (STALLS for the first house, THEATRE 2)
     bx('wood', d.x0 - 0.1, d.x0, F, d.head + 0.1, zH, zH - 0.04); bx('wood', d.x1, d.x1 + 0.1, F, d.head + 0.1, zH, zH - 0.04);
     bx('wood', d.x0 - 0.1, d.x1 + 0.1, d.head, d.head + 0.1, zH, zH - 0.04);
@@ -6518,6 +6529,185 @@ function cutBeams(houseScene) {
 // copy box below and puts it where he wants it.
 function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
 
+/* ---------------------------------------------------------------- HOUSE WORKS: THE DOORS
+   Jack: "add doors to both theaters". A pair of hinged timber doors in each of the four passages (LOBBY.doors), hung
+   at the lobby end: the frame (jambs on the reveals' faces through the house-side wall's depth, a head under the
+   soffit, a brass threshold) is the lobby's own, built in buildLobby's doorway loop and so in the walk's grid; the
+   LEAVES are here, each a group pivoted at its hinge on the reveal, swinging INTO the passage toward the house (the
+   house-left passage stands right beside the projection room's skin, so nothing swings into the lobby), and opened
+   flat against the reveal: the reveal is the stop, so the swing is 90°. Solid leaves (lobbyMat.wood), a small vision
+   panel (lobbyMat.glass), brass kick, push and pull plates and three hinge knuckles; per leaf one mesh per material.
+   They open themselves for the WALKER: within DOORS.near of a doorway (doorReach, on the lobby's floor) both
+   leaves swing open over tOpen, eased, and stay open; past DOORS.far they close over tClose. Not walking, they close.
+   All of it off the frame's dt in doorsTick (the animation loop). They move, so they are NOT in the collision grid
+   (a static copy: the group's name 'doors' is not one colliderMeshes takes): builtHit ray-tests the leaves directly
+   (doorsHit), each doorway's swing box first so a ray far from every door costs nothing. MIDTOWN.doors. */
+const DOORS = {
+  frame: 0.05, headH: 0.06,         // the frame: jambs 5 cm on each reveal's face (through the wall's 20 cm), a 6 cm head under the soffit
+  sill: 0.012, sillIn: 0.06,        // the brass threshold under the closed leaves: 12 mm over the lobby floor, from the lobby face to 6 cm into the passage
+  t: 0.045,                         // a leaf's thickness
+  gap: 0.012,                       // the hinge edge's clearance from the reveal: an open leaf lies this far off it (the pull plate is 4 mm)
+  meet: 0.003,                      // half the gap between the two leaves' meeting edges
+  top: 0.008,                       // the leaf's top under the soffit's underside (d.head − 0.004)
+  under: 0.006,                     // the leaf's bottom over the highest floor it swings over (the threshold, or the passage's ramp)
+  glass: { w: 0.16, y0: 1.2, y1: 1.65 },   // the vision panel: its width, its bottom and top over the leaf's bottom
+  swing: Math.PI / 2,               // open: flat against the reveal
+  near: 1.6, far: 2.3,              // open within this of the doorway (doorReach); close past this
+  floorTol: 0.8,                    // "the same floor": the walker's feet within this of the lobby's (the booth's floor is 1.2 m up)
+  tOpen: 0.7, tClose: 0.9,          // seconds, eased
+  list: [], group: null, rays: 0,   // rays: the Raycaster calls doorsHit has made (the swing boxes let most rays off)
+};
+// The ramp under a passage (buildLobby's lining): the carpet runs from F at the house-side wall to the passage's own
+// floor + 4 mm where the scan stops, and the threshold over the first sillIn of it.
+function doorFloorAt(d, z) {
+  const L = LOBBY, F = L.floor;
+  const ramp = z <= L.wallZ ? F : F + (d.floor + 0.004 - F) * Math.min(1, (z - L.wallZ) / (L.linZ - L.wallZ));
+  return z <= L.wallZ + DOORS.sillIn ? Math.max(ramp, F + DOORS.sill) : ramp;
+}
+// One leaf: a group at its hinge (s = +1 hinged on the house-right reveal at a, the leaf running +x; −1 on the other at
+// b), the leaf in its local frame from the hinge to W across, 0…H up, its lobby face at z −t and its house face at 0.
+function doorLeaf(name, s, W, H) {
+  const T = DOORS.t, G = DOORS.glass, P = {};
+  const box = (key, x0, x1, y0, y1, z0, z1) => deskBox(P, key, x1 - x0, y1 - y0, z1 - z0, s * (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  const g0 = (W - G.w) / 2, g1 = g0 + G.w;
+  box('wood', 0, W, 0, G.y0, -T, 0); box('wood', 0, W, G.y1, H, -T, 0);               // the leaf round its vision panel
+  box('wood', 0, g0, G.y0, G.y1, -T, 0); box('wood', g1, W, G.y0, G.y1, -T, 0);
+  deskPut(P, 'glass', new THREE.PlaneGeometry(G.w, G.y1 - G.y0), s * (g0 + g1) / 2, (G.y0 + G.y1) / 2, -T / 2);
+  // the astragals: a strip over the meeting gap on each face, the house-right leaf's on the lobby face and the other's on
+  // the house face, so the pair closes the doorway whole (the walk's middle ray went through the 6 mm gap and a walker
+  // square on stopped 18 cm off the doors, not a body's radius). Each draws away from the other leaf as the pair swings;
+  // open, the house-face one stands 5 mm into the leaf's 12 mm off its reveal.
+  box('wood', W - 0.02, W + 2 * DOORS.meet + 0.02, 0, H, ...(s > 0 ? [-T - 0.005, -T] : [0, 0.005]));
+  box('brass', 0.03, W - 0.03, 0.02, 0.24, -T - 0.002, -T);                             // the kick plate, lobby face
+  box('brass', W - 0.14, W - 0.04, 0.95, 1.30, -T - 0.003, -T);                         // the push plate, lobby face
+  box('brass', W - 0.10, W - 0.065, 0.90, 1.25, 0, 0.004);                              // the pull plate, house face (open, it faces the reveal)
+  for (const y of [0.25, H / 2, H - 0.25]) deskPut(P, 'brass', new THREE.CylinderGeometry(0.008, 0.008, 0.1, 8), 0, y, 0);   // the hinges' knuckles, on the axis
+  const leaf = new THREE.Group(); leaf.name = name; leaf.userData.s = s;
+  const hit = [];
+  for (const [key, geos] of Object.entries(P)) {
+    const geo = mergeGeometries(geos, false); geos.forEach(g => g.dispose());
+    const mesh = new THREE.Mesh(geo, lobbyMat[key]);
+    mesh.name = name + ': ' + key; mesh.castShadow = mesh.receiveShadow = false; mesh.userData.rig = true;
+    leaf.add(mesh);
+    if (key !== 'brass') hit.push(mesh);                     // the walk stops on the timber and the glass; the plates lie on them
+  }
+  return { leaf, hit };
+}
+function buildDoors() {
+  const L = LOBBY, D = DOORS, group = new THREE.Group(); group.name = 'doors';
+  D.list = [];
+  for (const d of L.doors) {
+    const a = d.x0 + 0.004, b = d.x1 - 0.004;                // the reveals' faces (buildLobby's lining)
+    const hz = L.wallZ + 0.006 + D.t;                         // the hinges' axis: the leaves' house face (their lobby face 6 mm off the frame's, the astragal 1 mm)
+    const W = (b - a) / 2 - D.gap - D.meet;
+    const y0 = Math.max(doorFloorAt(d, L.wallZ), doorFloorAt(d, hz + W + 0.05)) + D.under, y1 = d.head - 0.004 - D.top;
+    const leaves = [], hit = [];
+    for (const [s, hx, side] of [[1, a + D.gap, 'house right leaf'], [-1, b - D.gap, 'house left leaf']]) {
+      const l = doorLeaf(`door: ${d.name}, ${side}`, s, W, y1 - y0);
+      l.leaf.position.set(hx, y0, hz); group.add(l.leaf); leaves.push(l.leaf); hit.push(...l.hit);
+    }
+    D.list.push({ name: d.name, spec: d, cx: (a + b) / 2, cz: hz, leaves, hit, W, H: y1 - y0, y0, hinges: [a + D.gap, b - D.gap], hz,
+      box: [a, b, y0, y1, L.wallZ, hz + W + 0.02],            // every place a leaf can be, closed to open: the rays' first test
+      z0: L.wallZ, z1: hz + W,                                // the depth the leaves sweep (doorReach)
+      u: 0, want: 0, angle: 0 });
+  }
+  scene.add(group); group.updateMatrixWorld(true);
+  D.group = group;
+  const d0 = D.list[0];
+  console.info(`doors: ${D.list.length} pairs, ${D.list.length * 2} leaves, ${group.children.reduce((n, l) => n + l.children.length, 0)} meshes — `
+    + D.list.map(e => `${e.name} leaves ${e.W.toFixed(3)} × ${e.H.toFixed(3)} m from y ${e.y0.toFixed(3)}, hinges x ${e.hinges.map(x => x.toFixed(3)).join(' / ')} z ${e.hz.toFixed(3)}`).join('; ')
+    + ` · swing ${(D.swing * 180 / Math.PI).toFixed(0)}° into the passage, open within ${D.near} m (${D.tOpen} s), close past ${D.far} m (${D.tClose} s)` + (d0 ? '' : ' · no doorways'));
+}
+// How far the walker (feet at p) is from a doorway: from its centre line in x, and in z from the depth its leaves sweep
+// (the frame to the open leaves' far edges, e.z0…e.z1), so a walker coming from the house, toward whom the leaves swing,
+// has them start as early before they reach a leaf as one coming from the lobby.
+function doorReach(e, p) {
+  const dz = p.z < e.z0 ? e.z0 - p.z : p.z > e.z1 ? p.z - e.z1 : 0;
+  return Math.hypot(p.x - e.cx, dz);
+}
+// One frame of the doors: each doorway's leaves toward open while the walker is near, toward closed once they are
+// away or not walking. u runs linearly in time (so a reversal mid-swing is smooth) and the angle is u eased.
+// → whether anything moved (the frame then draws).
+function doorsTick(dt) {
+  const D = DOORS, p = player.pos;
+  let moved = false;
+  for (const e of D.list) {
+    if (!walking) e.want = 0;
+    else {
+      const r = Math.abs(p.y - LOBBY.floor) < D.floorTol ? doorReach(e, p) : Infinity;
+      if (r < D.near) e.want = 1; else if (r > D.far) e.want = 0;          // between the two: as they were
+    }
+    if (e.u === e.want) continue;
+    e.u = e.want > e.u ? Math.min(1, e.u + dt / D.tOpen) : Math.max(0, e.u - dt / D.tClose);
+    e.angle = e.u * e.u * (3 - 2 * e.u) * D.swing;
+    for (const l of e.leaves) { l.rotation.y = -l.userData.s * e.angle; l.updateMatrixWorld(true); }   // the free edge toward +z, the house
+    moved = true;
+  }
+  return moved;
+}
+// The leaves as they stand, along a ray: the nearest hit within far, or Infinity. A doorway whose swing box the ray's
+// span misses is not tested at all.
+const doorRay = new THREE.Raycaster(), doorO = new THREE.Vector3(), doorD = new THREE.Vector3();
+function doorsHit(ox, oy, oz, dx, dy, dz, far) {
+  if (!DOORS.list.length || !(far > 0)) return Infinity;
+  const ex = ox + dx * far, ey = oy + dy * far, ez = oz + dz * far;
+  const x0 = Math.min(ox, ex), x1 = Math.max(ox, ex), y0 = Math.min(oy, ey), y1 = Math.max(oy, ey), z0 = Math.min(oz, ez), z1 = Math.max(oz, ez);
+  let best = Infinity;
+  for (const e of DOORS.list) {
+    const B = e.box;
+    if (x1 < B[0] || x0 > B[1] || y1 < B[2] || y0 > B[3] || z1 < B[4] || z0 > B[5]) continue;
+    DOORS.rays++;
+    doorRay.set(doorO.set(ox, oy, oz), doorD.set(dx, dy, dz)); doorRay.far = Math.min(far, best);
+    const h = doorRay.intersectObjects(e.hit, false);
+    if (h.length && h[0].distance < best) best = h[0].distance;
+  }
+  return best;
+}
+const DOORS_API = {
+  spec: DOORS, tick: doorsTick, hit: doorsHit,
+  // each doorway's angle (degrees), where it is going and how far the walker is: printed, and returned as a string
+  state() {
+    const p = player.pos, s = DOORS.list.map(e => `${e.name}: ${(e.angle * 180 / Math.PI).toFixed(1)}° ${e.u === e.want ? (e.want ? 'open' : 'closed') : e.want ? 'opening' : 'closing'}`
+      + (walking ? `, walker ${doorReach(e, p).toFixed(2)} m` : '')).join('; ');
+    console.info('doors: ' + s); return s;
+  },
+  // every leaf swept closed → open in 12 steps: inside the reveals' faces, never lobby-side of the frame or past the
+  // scan's end, its bottom over the threshold and the ramp, its top under the soffit; open, how far off its reveal
+  check() {
+    const L = LOBBY, v = new THREE.Vector3(), out = [];
+    let fails = 0;
+    for (const e of DOORS.list) {
+      const d = e.spec, a = d.x0 + 0.004, b = d.x1 - 0.004, keep = e.leaves.map(l => l.rotation.y);
+      let xin = Infinity, zmin = Infinity, zmax = -Infinity, under = Infinity, over = Infinity, flat = [];
+      for (let k = 0; k <= 12; k++) {
+        const ang = DOORS.swing * k / 12;
+        e.leaves.forEach((l, i) => {
+          l.rotation.y = -l.userData.s * ang; l.updateMatrixWorld(true);
+          let lo = Infinity, hi = -Infinity;
+          l.traverse(m => {
+            if (!m.isMesh) return;
+            const P = m.geometry.attributes.position;
+            for (let j = 0; j < P.count; j++) {
+              v.fromBufferAttribute(P, j).applyMatrix4(m.matrixWorld);
+              xin = Math.min(xin, v.x - a, b - v.x); zmin = Math.min(zmin, v.z); zmax = Math.max(zmax, v.z);
+              under = Math.min(under, v.y - doorFloorAt(d, v.z)); over = Math.min(over, d.head - 0.004 - v.y);
+              if (/wood$/.test(m.name)) { lo = Math.min(lo, v.x); hi = Math.max(hi, v.x); }   // the timber's face (the knuckles stand 8 mm proud of it)
+            }
+          });
+          if (k === 12) flat[i] = l.userData.s > 0 ? lo - a : b - hi;
+        });
+      }
+      e.leaves.forEach((l, i) => { l.rotation.y = keep[i]; l.updateMatrixWorld(true); });
+      const ok = xin > 0 && zmin >= L.wallZ && zmax < L.linZ && under > 0 && over > 0;
+      if (!ok) fails++;
+      out.push(`${e.name} ${ok ? 'pass' : 'FAIL'}: closest to a reveal ${(xin * 1000).toFixed(1)} mm, z ${zmin.toFixed(3)}…${zmax.toFixed(3)} (frame ${L.wallZ}, scan end ${L.linZ}), `
+        + `over the floor ${(under * 1000).toFixed(1)} mm, under the soffit ${(over * 1000).toFixed(1)} mm, open ${flat.map(f => (f * 1000).toFixed(1)).join(' / ')} mm off the reveals`);
+    }
+    const s = `doors: ${DOORS.list.length - fails} / ${DOORS.list.length} pass — ` + out.join('; ');
+    console.info(s); return s;
+  },
+};
+
 /* ---------------------------------------------------------------- THE SECOND HOUSE (Theatre 2)
    Jack: "use the same theater we used for the hamilton one. just copy it over then remove the hamilton set." A copy of
    the scan taken the moment it loads, before anything touches it (moveArch, cutBeams, the booth, the desk, the bakes,
@@ -6591,6 +6781,7 @@ function buildHouse2(src) {
   root.updateMatrixWorld(true);
   buildSpotBooth(house.scene); buildDeskPosition(house.scene);
   const lobby = buildLobby(house.scene, house2Root);         // after the booth: it re-holes the fill the booth holed
+  buildDoors();                                              // the leaves in the lobby's four door frames (THE DOORS)
   houseRoot = house.scene;
   gradeSetBrick(root);
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
@@ -6611,6 +6802,7 @@ function buildHouse2(src) {
     walls: { cuts: WALL_CUTS, set: WALL_SET, margin: WALL_MARGIN, split: wallSplitInfo, report: wallReport, check: wallCheck, checked: wallChecked, placeSet },
     lobby: { group: lobby, spec: LOBBY, measured: lobby.userData.measured, lights: lobby.userData.lights, triangles: lobby.userData.triangles },
     player, walk: { WALK, keys, setMode, step: walkStep, groundAt, rayDown, rayUp, rayH, col, perf: walkPerf, look: (y, p) => { yaw = y; pitch = p; } } };   // a handle for measuring from the console
+  MIDTOWN.doors = DOORS_API;                                 // MIDTOWN.doors.state(), .check()
   const [p, t] = VIEWS['v-back']; camera.position.set(...p); orbit.target.set(...t); orbit.update();
   // Compile every shader and draw one frame (texture uploads, the shadow maps) behind the loader, so the
   // first visible frame does not freeze for a second.
@@ -7049,6 +7241,7 @@ renderer.setAnimationLoop(() => {
   if (walking) { if (ready && walkStep(dt)) moving = true; }  // the walk, its gravity and its floor come off this frame's dt
   else if (orbit.update()) moving = true;                    // true while the camera moved: input, or damping still settling
   if (ready && lxTick(dt)) moving = true;                    // the lights' fades, movers travelling, gobos turning: off this frame's dt
+  if (ready && doorsTick(dt)) moving = true;                 // the auditorium doors swinging for the walker: off this frame's dt
   if (ready && lxPanelTick(dt)) moving = true;               // the lights panel: Step through's Play (off this frame's dt), the selection's outline
   drewLast = ready && (needsRender || moving);               // render on demand: an idle page draws nothing
   if (drewLast) { needsRender = false; lxDrawn(clock.elapsedTime); renderer.render(scene, camera); }
