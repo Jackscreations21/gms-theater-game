@@ -431,7 +431,7 @@ function colliderMeshes() {
   if (house2Root) house2Root.traverse(take);                 // Theatre 2, the same scan uncut
   setGroup.traverse(o => { if (!o.userData.rig) take(o); });  // the set; not the rig's 313 units (they hang overhead)
   if (rig) for (const o of rig.children) if (o.isMesh) take(o);   // the rig's structures: booms, trusses, the grid, the wing towers
-  for (const o of scene.children) if (/^(proscenium|pros_wall|followspot booth|lighting desk|lobby)$/.test(o.name)) o.traverse(take);
+  for (const o of scene.children) if (/^(proscenium|pros_wall|followspot booth|lighting desk|lobby|backstage|backstage fittings)$/.test(o.name)) o.traverse(take);
   baked.traverse(take);
   return list;
 }
@@ -6644,6 +6644,46 @@ function cutBeams(houseScene) {
 // copy box below and puts it where he wants it.
 function fail(err) { loadtxt.textContent = 'The model could not be loaded: ' + (err && err.message || err); console.error(err); }
 
+/* ---------------------------------------------------------------- HOUSE WORKS: BACKSTAGE — THE SPEC
+   Jack: "add an area behind both stages for dressing rooms and stuff and make it be one big area not 2 separate
+   ones." ONE block behind both stage houses, world frame, its floor level with the two stages (the deck, y 0.80) so
+   the stage doors are flat. Its stage-side wall is staggered: behind house 1 the set at real size stands through the
+   cut back wall to z 10.47, so the wall is at z 11.00 and the two 1.0 m slots beside the set (between its sides at
+   x ±8.65 and the fly walls at x −9.8 / 10.0) are the way in from house 1's wings; behind Theatre 2 the back brick is
+   whole, its outer face at z 9.10, so the room begins at 9.30 and a pair of doors is cut through the brick
+   (HOUSE2_CUTS). A crossover corridor runs the whole width along the stage-side wall; the rooms line the far wall and
+   open onto the corridor. Numbers are the contract between the shell (buildBackstage) and the fittings
+   (buildBackstageFittings): change them here, nowhere else. Jack's baked slab (box 21) was trimmed to z 11.00 for it. */
+const BACKSTAGE = {
+  floor: HOUSE.deckY,                 // 0.80: level with both stages
+  ceil: 4.60, roof: 4.80,             // the ceiling's underside, the roof's top
+  t: 0.20, part: 0.15,                // outer walls; the partitions between rooms
+  x0: -9.80, x1: 30.00,               // the block's inner side faces: house 1's house-right fly wall to Theatre 2's house-left one
+  stageZ: { h1: 11.00, h2: 9.30, jog: 10.20 },   // the stage-side wall's inner face behind each house; the jog between them
+  corridorZ: 13.40,                   // the crossover's far side: the rooms' corridor wall is 13.40…13.60
+  roomZ0: 13.60, roomZ1: 17.00, farZ: 17.20,     // the rooms' inner depth; the far wall's outer face
+  doorHead: 2.10,                     // every room door's head over the floor; leaves 0.9–1.0 m wide, on E like the lobby's
+  stageDoors: {
+    h1: [{ x0: -9.75, x1: -8.80 }, { x0: 8.80, x1: 9.95 }],  // open slots beside the set, no leaves (house right, house left)
+    h2: { x0: 19.00, x1: 21.00, head: 3.40 },                // a pair of leaves through Theatre 2's back brick (z 8.90…9.10), on E
+  },
+  // house right to house left; door: the doorway in the corridor wall (z 13.40…13.60); street: the exterior door in the far wall
+  rooms: [
+    { key: 'stagedoor', name: 'STAGE DOOR',      x0: -9.80, x1: -6.30, door: { x0: -7.60, x1: -6.60 }, street: { x0: -9.00, x1: -7.60, head: 2.30 } },
+    { key: 'green',     name: 'GREEN ROOM',      x0: -6.15, x1:  0.50, door: { x0: -3.30, x1: -2.30 } },
+    { key: 'dr1',       name: 'DRESSING ROOM 1', x0:  0.65, x1:  5.50, door: { x0:  0.90, x1:  1.80 } },
+    { key: 'dr2',       name: 'DRESSING ROOM 2', x0:  5.65, x1: 10.50, door: { x0:  5.90, x1:  6.80 } },
+    { key: 'wardrobe',  name: 'WARDROBE',        x0: 10.65, x1: 15.50, door: { x0: 12.60, x1: 13.60 } },
+    { key: 'dr3',       name: 'DRESSING ROOM 3', x0: 15.65, x1: 20.50, door: { x0: 15.90, x1: 16.80 } },
+    { key: 'dr4',       name: 'DRESSING ROOM 4', x0: 20.65, x1: 25.50, door: { x0: 20.90, x1: 21.80 } },
+    { key: 'wc',        name: 'SHOWERS · WC',    x0: 25.65, x1: 30.00, door: { x0: 25.90, x1: 26.80 } },
+  ],
+};
+// The shell: floor, walls, ceiling, the stage doors and their cuts, the room doors, the corridor's and rooms' lights, signs.
+function buildBackstage() { console.warn('backstage: the shell is not built yet'); return null; }
+// The fittings: each room's furniture by its key (mirrors, counters, rails, sofas, the stage door's desk …).
+function buildBackstageFittings() { console.warn('backstage: the fittings are not built yet'); return null; }
+
 /* ---------------------------------------------------------------- HOUSE WORKS: THE DOORS
    Jack: "add doors to both theaters". A pair of hinged timber doors in each of the four passages (LOBBY.doors), hung
    at the lobby end: the frame (jambs on the reveals' faces through the house-side wall's depth, a head under the
@@ -7076,6 +7116,7 @@ function buildHouse2(src) {
   const lobby = buildLobby(house.scene, house2Root);         // after the booths: it re-holes the fills they holed
   buildDoors();                                              // the leaves in the lobby's four door frames (THE DOORS)
   buildCurtains(lobby.userData.measured.curtains);           // a curtain at each passage's house end, measured by buildLobby (THE CURTAINS)
+  buildBackstage(); buildBackstageFittings();                // one backstage block behind both stages (BACKSTAGE), then its rooms' furniture
   houseRoot = house.scene;
   gradeSetBrick(root);
   registerModelTextures(root, 'set: ', ['ham_brick', 'ham_plank', 'ham_post', 'ham_rail', 'ham_iron']);
@@ -7133,10 +7174,11 @@ const built = new THREE.Group(); built.name = 'built'; scene.add(built);
 // on in the house's deck_fill to the walls and far upstage (42 x 39 m, top y 0.845), and a stair copied from the
 // set at 1:1 to house right. The cuts ADD: an export carries only that session's cuts and "Edit the baked pieces"
 // lifts none, so the six baked before stayed in his view; bake 3 brings two made on the set at 1:1.
+// 2026-10-15: box 21 also ran to z 40.92 behind the stage; trimmed to z 11.00, the backstage block's stage-side wall (BACKSTAGE).
 // 2026-10-14: box 21, the stage-floor slab, reached x 19.75 — ten metres past house 1's wall, and once Theatre 2 stood
 // at x +20 it lay as a black box across that stage. Its house-left end is trimmed to x 10.4 (centre −4.365, 29.53 wide);
 // nothing house 1 could see has moved.
-const BAKED = [{"type":"box","name":"box 4 (bake 3)","tex":{"name":"colour: black"},"tile":1,"tint":"#ffffff","p":[-7.543,2.851,2.133],"r":[0,0,0],"s":[4.027,-6.628,-0.109]},{"type":"box","name":"box 6b (bake 3)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[4.336,0.312,0.244],"r":[0,3.1416,0],"s":[4.942,1,1]},{"type":"box","name":"box 6 (bake 3)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[-4.022,0.312,0.244],"r":[0,3.1416,0],"s":[4.942,1,1]},{"type":"box","name":"box 17 (bake 3)","tex":{"name":"set: post"},"tile":1,"tint":"#ffffff","p":[6.426,4.138,-0.737],"r":[0,-1.5708,0],"s":[1.701,10.082,1]},{"type":"box","name":"box 18 (bake 3)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[1.12,0.312,0.244],"r":[0,3.1416,0],"s":[4.942,1,1]},{"type":"box","name":"box 19 (bake 3)","tex":{"name":"set: post"},"tile":1,"tint":"#ffffff","p":[-6.193,4.138,-0.737],"r":[0,-1.5708,0],"s":[1.701,10.082,1]},{"type":"box","name":"box 20 (bake 3)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[-0.451,8.046,-0.678],"r":[0,1.5708,0],"s":[1,1.521,17.571]},{"type":"box","name":"box 21 (bake 3)","tex":{"name":"house: deck_fill"},"tile":1,"tint":"#ffffff","p":[-4.365,0.345,19.77],"r":[0,-1.5708,0],"s":[42.29,1,29.53]},{"type":"box","name":"box 22 (bake 3)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[-5.329,3.482,3.08],"r":[0,0,0],"s":[1.5,0.129,2.306]},{"type":"copy","name":"copy 24 (bake 3)","tile":1,"tint":"#ffffff","src":{"p":[-1.978,2.857,6.47],"r":[0,0,0],"s":[4.581,3.665,1],"set":1},"p":[4.266,2.86,1.997],"r":[-3.1416,1.5708,-3.1416],"s":[1,1,1]}];
+const BAKED = [{"type":"box","name":"box 4 (bake 3)","tex":{"name":"colour: black"},"tile":1,"tint":"#ffffff","p":[-7.543,2.851,2.133],"r":[0,0,0],"s":[4.027,-6.628,-0.109]},{"type":"box","name":"box 6b (bake 3)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[4.336,0.312,0.244],"r":[0,3.1416,0],"s":[4.942,1,1]},{"type":"box","name":"box 6 (bake 3)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[-4.022,0.312,0.244],"r":[0,3.1416,0],"s":[4.942,1,1]},{"type":"box","name":"box 17 (bake 3)","tex":{"name":"set: post"},"tile":1,"tint":"#ffffff","p":[6.426,4.138,-0.737],"r":[0,-1.5708,0],"s":[1.701,10.082,1]},{"type":"box","name":"box 18 (bake 3)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[1.12,0.312,0.244],"r":[0,3.1416,0],"s":[4.942,1,1]},{"type":"box","name":"box 19 (bake 3)","tex":{"name":"set: post"},"tile":1,"tint":"#ffffff","p":[-6.193,4.138,-0.737],"r":[0,-1.5708,0],"s":[1.701,10.082,1]},{"type":"box","name":"box 20 (bake 3)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[-0.451,8.046,-0.678],"r":[0,1.5708,0],"s":[1,1.521,17.571]},{"type":"box","name":"box 21 (bake 3)","tex":{"name":"house: deck_fill"},"tile":1,"tint":"#ffffff","p":[-4.365,0.345,4.81],"r":[0,-1.5708,0],"s":[12.38,1,29.53]},{"type":"box","name":"box 22 (bake 3)","tex":{"name":"set: rail"},"tile":1,"tint":"#ffffff","p":[-5.329,3.482,3.08],"r":[0,0,0],"s":[1.5,0.129,2.306]},{"type":"copy","name":"copy 24 (bake 3)","tile":1,"tint":"#ffffff","src":{"p":[-1.978,2.857,6.47],"r":[0,0,0],"s":[4.581,3.665,1],"set":1},"p":[4.266,2.86,1.997],"r":[-3.1416,1.5708,-3.1416],"s":[1,1,1]}];
 const BAKED_CUTS = [{"p":[-3.339,6.616,-7.907],"r":[0,0,0],"s":[8.811,1.658,1.834]},{"p":[5.381,0.525,-0.468],"r":[-0.0035,0.9708,-0.0016],"s":[1,1,1]},{"p":[-4.866,0.513,-0.324],"r":[0,0,0],"s":[1.061,1,1]},{"p":[-4.564,0.528,-0.518],"r":[0,0.5768,0],"s":[1,1,1]},{"p":[2.524,3.537,1.215],"r":[0,0,0],"s":[1,1,3.069]},{"p":[1.712,2.748,2.653],"r":[0,0,0],"s":[1.054,1.464,1]},{"p":[4.378,1.753,2.025],"r":[0,0,0],"s":[1,1,1],"set":1},{"p":[-2.727,3.361,2.086],"r":[0,0,0],"s":[1,1,1],"set":1}];      // his delete boxes: something hanging at the back of the house, the scan's corner stairs, two gallery tidy-ups (fitted), and two at 1:1 (bake 3) that find nothing of the set or house inside them at load
 const baked = new THREE.Group(); baked.name = 'baked'; scene.add(baked);
 const transform = new TransformControls(camera, canvas);
