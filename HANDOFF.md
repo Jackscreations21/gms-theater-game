@@ -1,5 +1,11 @@
 # THE HOUSE — handoff
 
+> **WORK HAPPENS IN THE MIDTOWN REPOSITORY NOW (Jack, 2026-10-16).** We are working out of
+> https://github.com/Jackscreations21/midtown_theater_gms (PRs: https://github.com/Jackscreations21/midtown_theater_gms/pulls),
+> on the local clone at `C:\Users\jackf\OneDrive\Documents\midtown_theater_gms`. Open sessions there and read its
+> own CLAUDE.md, STATE.md and HANDOFF.md. This repository (`gms-theater-game`, the Palace game) is not the working
+> repository until Jack says otherwise; its STATE.md predates the Midtown move (#236) and is stale.
+
 A 3D theatre you work in. Two buildings, three stages, a lighting rig you can
 plot, a counterweight fly rail you can haul, productions that load in, a crew
 that carries them, and a VR mode for a Quest 3. One HTML file, ~875KB, three.js
